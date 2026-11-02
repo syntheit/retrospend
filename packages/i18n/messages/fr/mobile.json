@@ -2210,7 +2210,9 @@
 			"linkTitle": "Rejoindre avec un lien",
 			"linkLabel": "Lien du projet",
 			"linkOpen": "Ouvrir",
-			"linkInvalid": "Ce n'est pas un lien de projet."
+			"linkInvalid": "Ce n'est pas un lien de projet.",
+			"confirmServerTitle": "Ouvrir ce lien sur ce serveur ?",
+			"confirmServerContinue": "Continuer"
 		},
 		"delete": {
 			"title": "Supprimer {name} ?",

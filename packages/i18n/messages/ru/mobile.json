@@ -2210,7 +2210,9 @@
 			"linkTitle": "Присоединиться по ссылке",
 			"linkLabel": "Ссылка на проект",
 			"linkOpen": "Открыть",
-			"linkInvalid": "Это не ссылка на проект."
+			"linkInvalid": "Это не ссылка на проект.",
+			"confirmServerTitle": "Открыть эту ссылку на этом сервере?",
+			"confirmServerContinue": "Продолжить"
 		},
 		"delete": {
 			"title": "Удалить {name}?",

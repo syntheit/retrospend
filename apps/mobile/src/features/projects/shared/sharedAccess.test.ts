@@ -1,7 +1,9 @@
 import type { InviteInfo } from "./guestApi";
 import {
+	acceptsResume,
 	type GuestRecord,
 	parseProjectLink,
+	serverFor,
 	serverParam,
 	stepFor,
 } from "./sharedAccess";
@@ -146,5 +148,49 @@ describe("stepFor", () => {
 				record: record({ token: "t" }),
 			}),
 		).toEqual({ kind: "open", mode: "guest" });
+	});
+});
+
+describe("acceptsResume", () => {
+	it("takes a session only for the project the link opened", () => {
+		expect(acceptsResume(ID, ID)).toBe(true);
+		expect(acceptsResume(ID, "another-project-id")).toBe(false);
+	});
+});
+
+describe("serverFor", () => {
+	const none = { connected: null, candidate: null, recordBase: null, confirmed: null };
+
+	it("always uses the connected server, whatever the link names", () => {
+		expect(
+			serverFor({ ...none, connected: "https://mine.org", candidate: "https://evil.org" }),
+		).toEqual({ kind: "use", baseUrl: "https://mine.org" });
+	});
+
+	it("asks before using a server only the link names", () => {
+		expect(serverFor({ ...none, candidate: "https://evil.org" })).toEqual({
+			kind: "confirm",
+			baseUrl: "https://evil.org",
+			host: "evil.org",
+		});
+	});
+
+	it("uses a linked server the phone already holds a session on, or the person confirmed", () => {
+		const candidate = "https://retrospend.app";
+		expect(serverFor({ ...none, candidate, recordBase: candidate })).toEqual({
+			kind: "use",
+			baseUrl: candidate,
+		});
+		expect(serverFor({ ...none, candidate, confirmed: candidate })).toEqual({
+			kind: "use",
+			baseUrl: candidate,
+		});
+		expect(
+			serverFor({ ...none, candidate, recordBase: "https://other.org" }).kind,
+		).toBe("confirm");
+	});
+
+	it("has nothing to talk to without a connection or a linked server", () => {
+		expect(serverFor(none)).toEqual({ kind: "none" });
 	});
 });

@@ -101,3 +101,37 @@ export function stepFor(input: {
 	if (record?.token) return { kind: "open", mode: "guest" };
 	return { kind: "join", linkId: invite, info };
 }
+
+/** A resumed session only counts for the project the link was opened on. */
+export function acceptsResume(routeId: string, resultId: string): boolean {
+	return routeId === resultId;
+}
+
+export type ServerChoice =
+	| { kind: "use"; baseUrl: string }
+	| { kind: "confirm"; baseUrl: string; host: string }
+	| { kind: "none" };
+
+/**
+ * Which server a project address talks to. The connected server always wins.
+ * A server named only by a link is used when this phone already holds a guest
+ * session for the project on it, or the person has confirmed its host; else
+ * the person is asked first, because a link can name any server.
+ */
+export function serverFor(input: {
+	connected: string | null;
+	candidate: string | null;
+	recordBase: string | null;
+	confirmed: string | null;
+}): ServerChoice {
+	const { connected, candidate, recordBase, confirmed } = input;
+	if (connected) return { kind: "use", baseUrl: connected };
+	if (!candidate) return { kind: "none" };
+	if (recordBase === candidate || confirmed === candidate)
+		return { kind: "use", baseUrl: candidate };
+	return {
+		kind: "confirm",
+		baseUrl: candidate,
+		host: candidate.replace(/^https?:\/\//, ""),
+	};
+}

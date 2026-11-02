@@ -4,6 +4,7 @@ import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { projectHref } from "@/layout/detailRoutes";
 import { showAlert } from "@/ui/alert";
+import { Button } from "@/ui/Button";
 import { EmptyState } from "@/ui/EmptyState";
 import { Screen } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
@@ -64,7 +65,7 @@ function Gateway({
 }) {
 	const tc = useTranslations("mobile.common");
 	const t = useTranslations("mobile.projects.shared");
-	const { access, baseUrl, open, forget } = useSharedAccess({
+	const { access, baseUrl, open, forget, confirmServer } = useSharedAccess({
 		projectId: id,
 		invite,
 		resume,
@@ -72,6 +73,19 @@ function Gateway({
 	});
 	const leave = () => (router.canGoBack() ? router.back() : router.replace("/"));
 
+	if (access.status === "confirmServer") {
+		return (
+			<Screen>
+				<EmptyState
+					actionLabel={t("confirmServerContinue")}
+					detail={access.host}
+					onAction={() => confirmServer(access.baseUrl)}
+					title={t("confirmServerTitle")}
+				/>
+				<Button label={tc("cancel")} onPress={leave} variant="text" />
+			</Screen>
+		);
+	}
 	if (access.status === "loading" || !baseUrl) {
 		return access.status === "failed" ? (
 			<Failure reason={access.reason} />

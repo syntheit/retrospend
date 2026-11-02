@@ -163,9 +163,13 @@ export async function addMember(
 /** A signed-in person joins through an invite link with their own account. */
 export async function joinWithInvite(
 	caller: LedgerCaller,
+	headers: Headers,
 	body: Body<typeof joinWithInviteSchema>,
 ) {
-	return (await trpcGuest(caller)).joinWithAccount({ linkId: body.linkId });
+	// The headers carry the client address the join's rate limit keys on.
+	return (await trpcGuest({ ...caller, headers })).joinWithAccount({
+		linkId: body.linkId,
+	});
 }
 
 export async function setMemberRole(
