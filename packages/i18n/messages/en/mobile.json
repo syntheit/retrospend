@@ -2470,7 +2470,7 @@
 			"unread": "{count} unread",
 			"noUnread": "Nothing unread",
 			"settings": "Features, privacy, AI",
-			"participants": "People added without an account",
+			"participants": "Added by users, and project guests",
 			"errors": "{count, plural, one {# crash report} other {# crash reports}}",
 			"aiUsage": "Tokens used each month",
 			"server": "Size, imports, rates, backups",
@@ -2650,7 +2650,7 @@
 		},
 		"actionError": "Couldn't do that. Try again.",
 		"participants": {
-			"title": "People without an account",
+			"title": "Not on Retrospend",
 			"shadow": "Added by users",
 			"guests": "Guests",
 			"empty": "No one here yet",

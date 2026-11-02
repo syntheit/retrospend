@@ -2470,7 +2470,7 @@
 			"unread": "{count} non lus",
 			"noUnread": "Rien de non lu",
 			"settings": "Fonctions, confidentialité, IA",
-			"participants": "Personnes sans compte",
+			"participants": "Ajoutés par des utilisateurs, et invités de projets",
 			"errors": "{count, plural, one {# rapport de plantage} other {# rapports de plantage}}",
 			"aiUsage": "Jetons utilisés chaque mois",
 			"server": "Taille, imports, taux, sauvegardes",
@@ -2650,7 +2650,7 @@
 		},
 		"actionError": "Impossible de le faire. Réessayez.",
 		"participants": {
-			"title": "Personnes sans compte",
+			"title": "Hors Retrospend",
 			"shadow": "Ajoutés par des utilisateurs",
 			"guests": "Invités",
 			"empty": "Personne pour l'instant",

@@ -2470,7 +2470,7 @@
 			"unread": "{count} não lidos",
 			"noUnread": "Nada não lido",
 			"settings": "Recursos, privacidade, IA",
-			"participants": "Pessoas sem conta",
+			"participants": "Adicionados por usuários, e convidados de projetos",
 			"errors": "{count, plural, one {# relatório de falha} other {# relatórios de falha}}",
 			"aiUsage": "Tokens usados por mês",
 			"server": "Tamanho, importações, cotações, backups",
@@ -2650,7 +2650,7 @@
 		},
 		"actionError": "Não foi possível fazer isso. Tente de novo.",
 		"participants": {
-			"title": "Pessoas sem conta",
+			"title": "Fora do Retrospend",
 			"shadow": "Adicionados por usuários",
 			"guests": "Convidados",
 			"empty": "Ninguém ainda",

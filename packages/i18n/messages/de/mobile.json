@@ -2470,7 +2470,7 @@
 			"unread": "{count} ungelesen",
 			"noUnread": "Nichts Ungelesenes",
 			"settings": "Funktionen, Datenschutz, KI",
-			"participants": "Personen ohne Konto",
+			"participants": "Von Nutzern hinzugefügt, und Projektgäste",
 			"errors": "{count, plural, one {# Absturzbericht} other {# Absturzberichte}}",
 			"aiUsage": "Verbrauchte Tokens pro Monat",
 			"server": "Größe, Importe, Kurse, Backups",
@@ -2650,7 +2650,7 @@
 		},
 		"actionError": "Das hat nicht geklappt. Versuch es noch einmal.",
 		"participants": {
-			"title": "Personen ohne Konto",
+			"title": "Nicht bei Retrospend",
 			"shadow": "Von Nutzern hinzugefügt",
 			"guests": "Gäste",
 			"empty": "Noch niemand",

@@ -2470,7 +2470,7 @@
 			"unread": "{count} sin leer",
 			"noUnread": "Nada sin leer",
 			"settings": "Funciones, privacidad, IA",
-			"participants": "Personas sin cuenta",
+			"participants": "Añadidos por usuarios, e invitados a proyectos",
 			"errors": "{count, plural, one {# informe de fallo} other {# informes de fallo}}",
 			"aiUsage": "Tokens usados cada mes",
 			"server": "Tamaño, importaciones, tasas, copias",
@@ -2650,7 +2650,7 @@
 		},
 		"actionError": "No se pudo hacer. Inténtalo de nuevo.",
 		"participants": {
-			"title": "Personas sin cuenta",
+			"title": "Sin Retrospend",
 			"shadow": "Añadidos por usuarios",
 			"guests": "Invitados",
 			"empty": "Todavía no hay nadie",
