@@ -14,13 +14,13 @@ import { useEntryCatalog } from "@/features/entry/hooks";
 import { OptionRow } from "@/features/entry/MorePanel";
 import { SheetHead } from "@/features/entry/SheetHead";
 import type { EntryCatalog } from "@/features/entry/types";
-import { useLocalPad } from "@/features/entry/useLocalPad";
 import { PreviewChanges } from "@/features/read/PreviewChanges";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount, wireAmount } from "@/features/write/amount";
 import { type FigureDiff, figureLines } from "@/features/write/figures";
 import { useAmountLocale } from "@/features/write/parts";
 import { useFigureLabel } from "@/features/write/useFigureLabel";
+import { useFoldingPad } from "@/features/write/useFoldingPad";
 import {
 	type PreviewStatus,
 	useMoneyWrite,
@@ -102,7 +102,7 @@ export function RecurringComposer({
 	const entered = readAmount(text, locale, currency);
 	const minor = minorOf(entered);
 	const title = name.trim();
-	const pad = useLocalPad({ open: true, hasAmount: minor !== null });
+	const pad = useFoldingPad(minor !== null);
 	const input =
 		title !== "" && minor !== null
 			? {

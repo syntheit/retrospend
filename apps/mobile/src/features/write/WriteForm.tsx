@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useTranslations } from "use-intl";
 import { Button } from "@/ui/Button";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
-import { type FigureDiff } from "./figures";
+import type { FigureDiff } from "./figures";
 import { Note, SheetBody } from "./parts";
 import {
 	type PreviewStatus,
