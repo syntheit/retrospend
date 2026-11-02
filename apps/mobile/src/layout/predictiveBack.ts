@@ -1,6 +1,7 @@
 import { useRootNavigationState } from "expo-router";
 import { useEffect } from "react";
 import { Platform } from "react-native";
+import { useTheme } from "@/theme";
 import { RetrospendPredictiveBack } from "../../modules/predictive-back";
 
 /** The part of a navigation state this file reads (a React Navigation state). */
@@ -40,8 +41,10 @@ function walk(state: NavState | undefined): boolean | undefined {
 export function usePredictiveBack(): void {
 	const state = useRootNavigationState();
 	const pops = Platform.OS === "android" && backPopsAScreen(state as NavState);
+	// The shrinking screen reveals the raised tone around itself.
+	const backdrop = useTheme().color.raised;
 	useEffect(() => {
 		if (!RetrospendPredictiveBack) return;
-		RetrospendPredictiveBack.setEnabled(pops);
-	}, [pops]);
+		RetrospendPredictiveBack.setEnabled(pops, backdrop);
+	}, [pops, backdrop]);
 }

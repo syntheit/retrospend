@@ -1,6 +1,7 @@
 package app.retrospend.predictiveback
 
 import android.app.Activity
+import android.graphics.Color
 import android.os.Build
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -19,6 +20,7 @@ import expo.modules.kotlin.modules.ModuleDefinition
  */
 class RetrospendPredictiveBackModule : Module() {
   private var wanted = false
+  private var color: Int? = null
   private var preview: BackPreview? = null
 
   private val activity: Activity?
@@ -27,8 +29,11 @@ class RetrospendPredictiveBackModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("RetrospendPredictiveBack")
 
-    Function("setEnabled") { enabled: Boolean ->
+    // `backdrop` is the color (#rrggbb) the shrinking screen reveals around
+    // itself, from the theme tokens.
+    Function("setEnabled") { enabled: Boolean, backdrop: String? ->
       wanted = enabled
+      color = backdrop?.let { runCatching { Color.parseColor(it) }.getOrNull() }
       apply()
     }
 
@@ -43,6 +48,7 @@ class RetrospendPredictiveBackModule : Module() {
     host.runOnUiThread {
       if (wanted) {
         val current = preview ?: BackPreview(host).also { preview = it }
+        current.backdrop = color
         current.register()
       } else {
         preview?.unregister()

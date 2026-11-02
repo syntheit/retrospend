@@ -5,6 +5,7 @@ import android.app.Activity
 import android.graphics.Outline
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewOutlineProvider
@@ -43,12 +44,20 @@ internal class BackPreview(private val activity: Activity) {
   private var progress = 0f
   private var touchY = 0f
   private var settle: ValueAnimator? = null
+  private var exit = 0f
+  private var gesture = 0
+  private var poppedScreen: Screen? = null
   private var saved: Saved? = null
+
+  /** The color the shrinking screen reveals around itself; set from JavaScript. */
+  var backdrop: Int? = null
 
   private class Saved(
     val provider: ViewOutlineProvider?,
     val clip: Boolean,
     val elevation: Float,
+    val container: View?,
+    val containerBackground: android.graphics.drawable.Drawable?,
   )
 
   private val callback =
@@ -75,17 +84,34 @@ internal class BackPreview(private val activity: Activity) {
     if (!registered) return
     activity.onBackInvokedDispatcher.unregisterOnBackInvokedCallback(callback)
     registered = false
-    restore()
+    // The pop that a commit started turns the callback off while the screen
+    // is still on its way out; the watcher puts it back afterwards.
+    if (exit == 0f) restore()
   }
 
   private fun start(event: BackEvent) {
+    gesture++
     restore()
-    val found = findTarget() ?: return
+    val found = findTarget()
+    if (found == null) return
     val screen = found
+    poppedScreen = screen
     sheet = screen.stackPresentation == Screen.StackPresentation.FORM_SHEET
     val target = if (sheet) screen else (screen.parent as? View ?: screen)
     view = target
-    saved = Saved(target.outlineProvider, target.clipToOutline, target.elevation)
+    // Behind a pushed screen there is only its stack; give it the backdrop
+    // color so the shrunk screen reads against something.
+    val container = if (sheet) null else target.parent as? View
+    saved =
+      Saved(
+        target.outlineProvider,
+        target.clipToOutline,
+        target.elevation,
+        container,
+        container?.background,
+      )
+    val color = backdrop
+    if (container != null && color != null) container.setBackgroundColor(color)
     direction = if (event.swipeEdge == BackEvent.EDGE_LEFT) 1f else -1f
     startY = event.touchY
     touchY = event.touchY
@@ -112,11 +138,47 @@ internal class BackPreview(private val activity: Activity) {
 
   private fun commit() {
     val host = activity
-    // The stack pops through JavaScript, as for a back key; its own exit
-    // animation carries the shrunk screen out.
+    // The stack pops through JavaScript, as for a back key. The stack's own
+    // exit animation would start from the full-size screen, so this carries
+    // the shrunk screen out itself (it keeps setting the screen's properties
+    // every frame, so nothing jumps) while the previous screen comes in.
     @Suppress("DEPRECATION")
     host.onBackPressed()
-    handler.postDelayed({ if (progress > 0f) animateTo(0f) { restore() } }, SETTLE_DELAY_MS)
+    if (view == null) return
+    settle?.cancel()
+    settle =
+      ValueAnimator.ofFloat(0f, 1f).apply {
+        duration = EXIT_MS
+        interpolator = EASE
+        addUpdateListener {
+          exit = it.animatedValue as Float
+          apply()
+        }
+        start()
+      }
+    // The screen is put back once the pop is over (its view is gone). A pop
+    // that did not happen (a screen that blocks back) settles it back instead.
+    val popped = poppedScreen
+    val started = SystemClock.uptimeMillis()
+    val mine = gesture
+    val watch =
+      object : Runnable {
+        override fun run() {
+          if (mine != gesture) return
+          val elapsed = SystemClock.uptimeMillis() - started
+          val stuck =
+            popped != null && (popped.container as? ScreenStack)?.topScreen === popped
+          when {
+            elapsed > WATCH_MS -> restore()
+            stuck && elapsed > SETTLE_DELAY_MS -> {
+              exit = 0f
+              animateTo(0f) { restore() }
+            }
+            else -> handler.postDelayed(this, 50)
+          }
+        }
+      }
+    handler.postDelayed(watch, 50)
   }
 
   private fun animateTo(end: Float, done: () -> Unit) {
@@ -146,14 +208,15 @@ internal class BackPreview(private val activity: Activity) {
     val scale = 1f - SCALE_DELTA * progress
     target.scaleX = scale
     target.scaleY = scale
+    target.alpha = 1f - exit * exit
     if (sheet) {
       target.translationX = 0f
-      target.translationY = 0f
+      target.translationY = exit * target.height * EXIT_SHIFT
       return
     }
     // Slide toward the finger until the window is 8 dp from the far edge.
     val room = (target.width * (1f - scale) / 2f - MARGIN_DP * density).coerceAtLeast(0f)
-    target.translationX = direction * room
+    target.translationX = direction * (room + exit * target.width * EXIT_SHIFT)
     val limit = target.height / 20f
     target.translationY = (touchY - startY).coerceIn(-limit, limit) * progress
     target.elevation = ELEVATION_DP * density * progress
@@ -170,6 +233,8 @@ internal class BackPreview(private val activity: Activity) {
     saved = null
     progress = 0f
     if (target == null) return
+    exit = 0f
+    target.alpha = 1f
     target.scaleX = 1f
     target.scaleY = 1f
     target.translationX = 0f
@@ -178,6 +243,7 @@ internal class BackPreview(private val activity: Activity) {
       target.elevation = before.elevation
       target.outlineProvider = before.provider
       target.clipToOutline = before.clip
+      before.container?.background = before.containerBackground
     }
   }
 
@@ -221,7 +287,11 @@ internal class BackPreview(private val activity: Activity) {
     const val CORNER_DP = 28f
     const val ELEVATION_DP = 8f
     const val SETTLE_MS = 200L
-    const val SETTLE_DELAY_MS = 600L
+    const val EXIT_MS = 240L
+    const val EXIT_SHIFT = 0.1f
+    const val SETTLE_DELAY_MS = 500L
+    // The stack's own exit animation (450 ms) has ended by then.
+    const val WATCH_MS = 1200L
     val EASE = PathInterpolator(0.2f, 0f, 0f, 1f)
   }
 }
