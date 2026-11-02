@@ -8,6 +8,9 @@ import { focusSearch } from "@/layout/searchShortcut";
 import { useHardwareKeys } from "@/layout/useHardwareKeys";
 import { Tabs } from "@/ui/Tabs";
 
+// The tabs open on Home, and system back returns to it (Android's floating bar).
+export const unstable_settings = { initialRouteName: "home" };
+
 function TabsWithAdd() {
 	const t = useTranslations("mobile.composer");
 	const tt = useTranslations("mobile.tabs");

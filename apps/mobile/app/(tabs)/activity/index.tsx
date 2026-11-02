@@ -35,6 +35,7 @@ import { EmptyDetail, ListDetail } from "@/ui/ListDetail";
 import { markPaneSwitch } from "@/ui/PaneVeil";
 import { Screen, useAddInset } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
+import { useScrollToTop } from "@/ui/scrollToTop";
 import { useTransient } from "@/ui/transient";
 
 export default function ActivityScreen() {
@@ -47,6 +48,7 @@ export default function ActivityScreen() {
 	const { listDetail } = useLayoutClass();
 	const insets = useSafeAreaInsets();
 	const addInset = useAddInset();
+	const listRef = useScrollToTop();
 	const fabScroll = useAddButtonScroll();
 	const add = useOptionalAddEntry();
 	const params = useLocalSearchParams<{ segment?: string }>();
@@ -186,23 +188,22 @@ export default function ActivityScreen() {
 					<View style={{ height: addInset }} />
 				)
 			}
-			// Over the rows: the pane's cover hangs from the tabs in this header.
-			ListHeaderComponentStyle={{ zIndex: 1 }}
 			ListHeaderComponent={
 				<View>
 					{segments}
-					{page && !picked ? (
-						<ActivitySummary page={page} />
-					) : null}
+					{page && !picked ? <ActivitySummary page={page} /> : null}
 					<StaleNote
 						since={state.status === "ready" ? state.staleSince : null}
 					/>
 					<ActivityFilters filter={filter} onChange={setFilter} />
 				</View>
 			}
+			// Over the rows: the pane's cover hangs from the tabs in this header.
+			ListHeaderComponentStyle={{ zIndex: 1 }}
 			onEndReached={loadMore}
 			onEndReachedThreshold={0.6}
 			onRefresh={reload}
+			ref={listRef}
 			refreshing={false}
 			renderItem={({ item: items }) => (
 				<ListGroup>

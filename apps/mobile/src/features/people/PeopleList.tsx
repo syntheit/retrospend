@@ -24,6 +24,7 @@ import { EmptyDetail, ListDetail } from "@/ui/ListDetail";
 import { Menu } from "@/ui/Menu";
 import { useAddInset } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
+import { useScrollToTop } from "@/ui/scrollToTop";
 
 /** The chips narrow the list; pressing the one that is on turns it off. */
 const CHIPS: Exclude<PeopleChip, "all">[] = [
@@ -69,6 +70,7 @@ export function PeopleList({
 	const { color, space } = useTheme();
 	const { listDetail } = useLayoutClass();
 	const inset = useAddInset();
+	const listRef = useScrollToTop();
 	const fabScroll = useAddButtonScroll();
 	const searchRef = useSearchShortcut(filters === undefined);
 	const { state, reload } = usePeopleOverview();
@@ -122,8 +124,6 @@ export function PeopleList({
 			keyExtractor={(section) => section.group}
 			ListEmptyComponent={empty}
 			ListFooterComponent={<View style={{ height: inset }} />}
-			// Over the rows: the pane cover hangs from the tabs in this header.
-			ListHeaderComponentStyle={{ zIndex: 1 }}
 			ListHeaderComponent={
 				<View>
 					{top}
@@ -179,7 +179,10 @@ export function PeopleList({
 					) : null}
 				</View>
 			}
+			// Over the rows: the pane cover hangs from the tabs in this header.
+			ListHeaderComponentStyle={{ zIndex: 1 }}
 			onRefresh={reload}
+			ref={listRef}
 			refreshing={false}
 			renderItem={({ item: section }) => (
 				<View>

@@ -12,12 +12,14 @@ import {
 	AccessibilityInfo,
 	Animated,
 	Easing,
+	Platform,
 	Pressable,
 	View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
+import { tabBarFootprint } from "./tabBarMetrics";
 import { Text } from "./Text";
 import { toastColors } from "./toastColors";
 
@@ -38,7 +40,7 @@ const ToastContext = createContext<ToastApi | null>(null);
 const ToastLiftContext = createContext<Animated.AnimatedInterpolation<number> | number>(0);
 const UNDO_MS = 6000;
 const PLAIN_MS = 4000;
-/** Clears the tab bar; the toast floats above it. */
+/** Clears the iOS tab bar; the toast floats above it. The Android pill clears by its own footprint. */
 const TAB_BAR_CLEARANCE = 64;
 
 /**
@@ -47,7 +49,8 @@ const TAB_BAR_CLEARANCE = 64;
  * (moves only when reduced motion is off). Never animates money.
  */
 export function ToastProvider({ children }: { children: ReactNode }) {
-	const { color, duration, radius, size, space } = useTheme();
+	const theme = useTheme();
+	const { color, duration, radius, size, space } = theme;
 	const insets = useSafeAreaInsets();
 	const t = useTranslations("mobile.common");
 	const [current, setCurrent] = useState<ToastOptions | null>(null);
@@ -131,7 +134,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 						position: "absolute",
 						left: space[4],
 						right: space[4],
-						bottom: insets.bottom + TAB_BAR_CLEARANCE,
+						bottom:
+							insets.bottom +
+							(Platform.OS === "android"
+								? tabBarFootprint(theme) + space[2]
+								: TAB_BAR_CLEARANCE),
 						opacity: progress,
 						transform: reduceMotion
 							? []

@@ -21,6 +21,7 @@ import { ListGroup, SectionHeader, StaleNote } from "@/ui/List";
 import { EmptyDetail, ListDetail } from "@/ui/ListDetail";
 import { useAddInset } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
+import { useScrollToTop } from "@/ui/scrollToTop";
 
 /** The phone's today as a YYYY-MM-DD day; the list carries no server day. */
 function todayDay(): string {
@@ -48,6 +49,7 @@ export function ProjectsList({
 	const { color, space } = useTheme();
 	const { listDetail } = useLayoutClass();
 	const inset = useAddInset();
+	const listRef = useScrollToTop();
 	const fabScroll = useAddButtonScroll();
 	const searchRef = useSearchShortcut(sharedQuery === undefined);
 	const { state, reload } = useProjectList();
@@ -95,8 +97,6 @@ export function ProjectsList({
 			keyExtractor={(group) => group.key}
 			ListEmptyComponent={empty}
 			ListFooterComponent={<View style={{ height: inset }} />}
-			// Over the rows: the pane cover hangs from the tabs in this header.
-			ListHeaderComponentStyle={{ zIndex: 1 }}
 			ListHeaderComponent={
 				<View>
 					{top}
@@ -122,7 +122,10 @@ export function ProjectsList({
 					) : null}
 				</View>
 			}
+			// Over the rows: the pane cover hangs from the tabs in this header.
+			ListHeaderComponentStyle={{ zIndex: 1 }}
 			onRefresh={reload}
+			ref={listRef}
 			refreshing={false}
 			renderItem={({ item: group }) => (
 				<View>

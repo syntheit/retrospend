@@ -1,14 +1,14 @@
 import { useSegments } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { useEffect } from "react";
-import { Platform } from "react-native";
 import { useTranslations } from "use-intl";
 import { configureSidebar, IPAD_SIDEBAR } from "@/layout/destinations";
 import { useTheme } from "@/theme";
 import { closeTransients } from "./transient";
 
 /**
- * Five destinations in the bar on every device: Home, Activity, Budget,
+ * The iOS tabs (Android has its own, Tabs.android: a floating pill). Five
+ * destinations in the bar on every device: Home, Activity, Budget,
  * Wealth and People. On phones Projects is the second segment of People.
  *
  * The iPad's floating tab bar holds the same five, so it does not scroll, and
@@ -19,22 +19,19 @@ import { closeTransients } from "./transient";
  * Add is not a tab: five tabs fill the iPhone's bar and a sixth goes into
  * More, so the add button floats above the bar (AddEntryProvider); the iPad
  * keeps it in the toolbar. Active nav is brand (GUIDELINE §2.1); the bar
- * itself is a theme surface.
+ * keeps the system material and takes only the brand tint.
  *
  * Each tab keeps its stack and scroll while another is open (native tabs).
  * Tapping the open tab pops it to its root, and tapping again scrolls to the
- * top (the native repeated-selection effects, on by default on both
- * platforms). Leaving a tab closes its passing UI: an open swipe row, a menu,
- * bulk select (ui/transient). An iPad's list-detail selection stays.
+ * top (the native repeated-selection effects, on by default). Leaving a tab
+ * closes its passing UI: an open swipe row, a menu, bulk select
+ * (ui/transient). An iPad's list-detail selection stays.
  */
 export function Tabs() {
 	const t = useTranslations("mobile.tabs");
 	const tw = useTranslations("mobile.wealth");
 	const ts = useTranslations("mobile.settings");
 	const { color } = useTheme();
-	// Android draws an M3 navigation bar in token colors; iOS keeps the
-	// system bar material and takes only the brand tint.
-	const m3 = Platform.OS === "android";
 	const tab = (useSegments() as string[])[1];
 	// biome-ignore lint/correctness/useExhaustiveDependencies: runs on each tab switch
 	useEffect(() => closeTransients(), [tab]);
@@ -44,17 +41,7 @@ export function Tabs() {
 	return (
 		<NativeTabs
 			backBehavior="initialRoute"
-			backgroundColor={m3 ? color.surface : undefined}
 			badgeBackgroundColor={color.attention}
-			iconColor={m3 ? { default: color.fg2, selected: color.brand } : undefined}
-			indicatorColor={color.brandSoft}
-			labelStyle={
-				m3
-					? { default: { color: color.fg2 }, selected: { color: color.brand } }
-					: undefined
-			}
-			labelVisibilityMode="labeled"
-			rippleColor={color.brandSoft}
 			sidebarAdaptable
 			tintColor={color.brand}
 		>

@@ -5,19 +5,26 @@ import { useAddButtonScroll } from "@/features/entry/addEntryContext";
 import { ADD_CONTROL } from "@/layout/destinations";
 import { useTheme } from "@/theme";
 import { useSidesCleared } from "./ListDetail";
+import { useScrollToTop } from "./scrollToTop";
+import { useTabBarCover } from "./tabBarMetrics";
 
 /**
  * Room a scrolling list leaves under its last row on phones, where the add
  * control floats above the tab bar (the iOS glass button, the M3 FAB): the
  * control's height (48 points, 56 for the M3 FAB), its 16 point margin and 16 of air, so it never
  * covers a row's money at the end of the list. Zero on iPad, whose plus sits
- * in the toolbar. Lists that are not a Screen add it as their footer.
+ * in the toolbar. On Android the tab screens run behind the floating bar, so
+ * the bar's cover (its height and the gesture area) comes on top. Lists that
+ * are not a Screen add it as their footer.
  */
 export function useAddInset(): number {
 	const { space } = useTheme();
+	const cover = useTabBarCover();
 	// The M3 extended FAB is 56 tall, the iOS glass button 48.
 	const control = Platform.OS === "android" ? space[12] + space[2] : space[12];
-	return ADD_CONTROL === "floating" ? control + space[4] + space[4] : 0;
+	return (
+		(ADD_CONTROL === "floating" ? control + space[4] + space[4] : 0) + cover
+	);
 }
 
 /**
@@ -46,6 +53,8 @@ export function Screen({
 	const cleared = useSidesCleared();
 	const inset = useAddInset();
 	const fabScroll = useAddButtonScroll();
+	const cover = useTabBarCover();
+	const scroller = useScrollToTop();
 	const body = (
 		<ScrollView
 			{...fabScroll}
@@ -60,6 +69,7 @@ export function Screen({
 			}
 			contentInsetAdjustmentBehavior="automatic"
 			keyboardShouldPersistTaps="handled"
+			ref={scroller}
 			refreshControl={
 				onRefresh ? (
 					<RefreshControl
@@ -83,7 +93,9 @@ export function Screen({
 	return (
 		<SafeAreaView
 			edges={
-				Platform.OS === "android"
+				// Behind the floating bar the body pads for the bar's cover, which
+				// already includes the gesture area.
+				Platform.OS === "android" && cover === 0
 					? ["left", "right", "bottom"]
 					: ["left", "right"]
 			}
