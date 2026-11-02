@@ -62,7 +62,6 @@ export default function GalleryScreen() {
 	const [period, setPeriod] = useState<"week" | "month" | "year">("month");
 	const [currency, setCurrency] = useState<"ARS" | "USD" | "EUR">("ARS");
 	const [draft, setDraft] = useState("");
-	const [expanded, setExpanded] = useState(true);
 	const [page, setPage] = useState(0);
 	const [folded, setFolded] = useState(false);
 	const [pill, setPill] = useState("Cafe");
@@ -230,9 +229,8 @@ export default function GalleryScreen() {
 									{ id: "income", label: "Add income", onPress: () => {} },
 									{ id: "transfer", label: "Transfer", onPress: () => {} },
 								]}
-								expanded={expanded}
 								label="Add expense"
-								onPress={() => setExpanded((value) => !value)}
+								onPress={() => {}}
 							/>
 						</Section>
 						<Section title="Money keypad">

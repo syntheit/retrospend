@@ -21,7 +21,6 @@ import { useActivity } from "@/features/activity/useActivity";
 import { useBulkActions } from "@/features/activity/useBulkActions";
 import { useDebouncedSearch } from "@/features/activity/useDebouncedSearch";
 import {
-	useAddButtonScroll,
 	useHideAddButton,
 	useOptionalAddEntry,
 } from "@/features/entry/addEntryContext";
@@ -57,7 +56,6 @@ export default function ActivityScreen() {
 	const tabCover = useTabBarCover();
 	const collapsing = useCollapsingBar();
 	const barMetrics = useBarMetrics(collapsing?.footer ?? 0);
-	const fabScroll = useAddButtonScroll();
 	const add = useOptionalAddEntry();
 	const params = useLocalSearchParams<{ segment?: string }>();
 	// On the iPad sidebar Recurring is a destination of its own.
@@ -190,7 +188,6 @@ export default function ActivityScreen() {
 	// page, or without it as the results of the expanded search view.
 	const rowsList = (withHeader: boolean) => (
 		<BarSectionList
-			{...fabScroll}
 			contentInsetAdjustmentBehavior="automatic"
 			extraData={picked}
 			keyboardDismissMode="on-drag"

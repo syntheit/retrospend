@@ -49,8 +49,9 @@ export interface FloatingTabBarProps {
  * raised surface with a hairline (no glass, blur or shadow), five equal tabs
  * with the icon over the label. The open tab sits in one lozenge around the
  * whole tab, brand-soft with a brand icon and label; it slides to the tab
- * you press (220, the land curve, no overshoot), and with reduced motion it
- * jumps. A press on the open tab emits `tabPress`, which pops its stack to
+ * you press (220, the land curve, no overshoot; it starts on touch down, in
+ * the same frame the screen swap is requested, and runs on the UI thread),
+ * and with reduced motion it jumps. A press on the open tab emits `tabPress`, which pops its stack to
  * the root; at the root it scrolls the list to the top. The bar steps aside
  * while the keyboard is up. Labels truncate at large text sizes, never
  * overlap. A screen reader hears a tab list with the open tab selected.
@@ -75,21 +76,47 @@ export function FloatingTabBar({
 	const focusedName = state.routes[state.index]?.name;
 	const open = tabs.findIndex((tab) => tab.name === focusedName);
 
+	// The tab a press-in is taking you to, until the navigator catches up. The
+	// lozenge and the tab colors follow the finger at once; the screen swap
+	// (the heavy render) comes after, and never gates the highlight.
+	const [pending, setPending] = useState<number | null>(null);
+	const shownIndex = pending ?? open;
+	// The tab whose press-in already navigated, so its press (the release)
+	// does not navigate twice. A screen reader's activation has no press-in
+	// and goes through the press alone.
+	const taken = useRef<{ index: number; at: number } | null>(null);
+
 	const x = useSharedValue(0);
 	const shown = useSharedValue(0);
 	const placed = useRef(false);
+	// Where the lozenge is heading, so the navigator's later confirmation of a
+	// tab it already slid to does not restart the slide.
+	const aimed = useRef(-1);
+
+	const slideTo = (index: number) => {
+		if (tabWidth === 0 || index < 0) return;
+		aimed.current = index;
+		shown.value = withTiming(1, { duration: duration.state });
+		x.value = reduce
+			? index * tabWidth
+			: withTiming(index * tabWidth, { duration: duration.tab, easing: ease });
+	};
 
 	useEffect(() => {
+		setPending(null);
 		if (tabWidth === 0) return;
 		const target = Math.max(open, 0) * tabWidth;
 		const visible = open >= 0 ? 1 : 0;
 		if (!placed.current || reduce) {
 			// The first layout and reduced motion: no slide, the lozenge is there.
 			placed.current = true;
+			aimed.current = open;
 			x.value = target;
 			shown.value = visible;
 			return;
 		}
+		if (open === aimed.current) return;
+		aimed.current = open;
 		shown.value = withTiming(visible, { duration: duration.state });
 		if (open >= 0) {
 			x.value = withTiming(target, { duration: duration.tab, easing: ease });
@@ -145,7 +172,7 @@ export function FloatingTabBar({
 					/>
 					{tabs.map((tab, index) => {
 						const route = state.routes.find((r) => r.name === tab.name);
-						const on = index === open;
+						const on = index === shownIndex;
 						const tone = on ? color.brand : color.fg2;
 						return (
 							<Pressable
@@ -155,17 +182,45 @@ export function FloatingTabBar({
 								key={tab.name}
 								onPress={() => {
 									if (!route) return;
+									const done = taken.current;
+									taken.current = null;
+									if (
+										done &&
+										done.index === index &&
+										Date.now() - done.at < 2000
+									)
+										return;
 									const event = emitter.emit({
 										type: "tabPress",
 										target: route.key,
 										canPreventDefault: true,
 									});
 									if (event?.defaultPrevented) return;
-									if (!on) navigateToTab(route.key);
+									if (index !== open) {
+										setPending(index);
+										slideTo(index);
+										navigateToTab(route.key);
+									}
 									// Open already: the stack pops to its root (the event);
 									// at the root, the list goes to the top.
 									else if ((route.state?.index ?? 0) === 0)
 										scrollFocusedToTop();
+								}}
+								// Another tab goes on touch down: the lozenge starts to slide
+								// and the screen swaps without waiting for the finger to lift.
+								onPressIn={() => {
+									taken.current = null;
+									if (!route || index === shownIndex) return;
+									const event = emitter.emit({
+										type: "tabPress",
+										target: route.key,
+										canPreventDefault: true,
+									});
+									if (event?.defaultPrevented) return;
+									taken.current = { index, at: Date.now() };
+									setPending(index);
+									slideTo(index);
+									navigateToTab(route.key);
 								}}
 								style={{
 									flex: 1,

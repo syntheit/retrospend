@@ -105,9 +105,7 @@ export interface AddButtonProps {
 	/** The main action, for example "Add expense". */
 	label: string;
 	onPress: () => void;
-	/** Android: shrinks to the plus when the list scrolls. */
-	expanded?: boolean;
-	/** iOS: the long-press menu (Income, Transfer); a tap always adds an expense. Android has none. */
+	/** iOS: the long-press menu (Income, Transfer); a tap always adds an expense. Android has none (its FAB is the plus, with a long-press tooltip). */
 	actions?: AddAction[];
 }
 
