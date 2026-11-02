@@ -210,6 +210,38 @@ export function groupByDay(
 	return days;
 }
 
+export const NOTIFICATION_FILTERS = [
+	"all",
+	"expenses",
+	"settlements",
+	"projects",
+] as const;
+export type NotificationFilter = (typeof NOTIFICATION_FILTERS)[number];
+
+const FILTER_TYPES: Record<
+	NotificationFilter,
+	InboxNotification["type"][] | null
+> = {
+	all: null,
+	expenses: ["EXPENSE_SPLIT", "EXPENSE_EDITED", "EXPENSE_DELETED"],
+	settlements: [
+		"SETTLEMENT_RECEIVED",
+		"SETTLEMENT_CONFIRMED",
+		"SETTLEMENT_REJECTED",
+		"PAYMENT_REMINDER",
+	],
+	projects: ["PERIOD_CLOSED", "PARTICIPANT_ADDED", "VERIFICATION_REQUEST"],
+};
+
+/** The same four filters as the web inbox, by notification kind. */
+export function filterNotifications(
+	items: InboxNotification[],
+	filter: NotificationFilter,
+): InboxNotification[] {
+	const types = FILTER_TYPES[filter];
+	return types ? items.filter((n) => types.includes(n.type)) : items;
+}
+
 export function unreadCount(items: InboxNotification[]): number {
 	return items.filter((n) => !n.isRead).length;
 }

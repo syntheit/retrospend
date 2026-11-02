@@ -2654,7 +2654,15 @@
 		"errorDetail": "Revisa tu conexión e inténtalo de nuevo.",
 		"showMore": "Mostrar más",
 		"markError": "No se pudo guardar. Inténtalo de nuevo.",
-		"moreError": "No se pudieron cargar más. Inténtalo de nuevo."
+		"moreError": "No se pudieron cargar más. Inténtalo de nuevo.",
+		"filterLabel": "Mostrar",
+		"filter": {
+			"all": "Todas",
+			"expenses": "Gastos",
+			"settlements": "Pagos",
+			"projects": "Proyectos"
+		},
+		"noMatches": "Nada por aquí"
 	},
 	"recurring": {
 		"title": "Gastos recurrentes",

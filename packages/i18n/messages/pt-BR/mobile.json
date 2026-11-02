@@ -2654,7 +2654,15 @@
 		"errorDetail": "Verifique sua conexão e tente de novo.",
 		"showMore": "Mostrar mais",
 		"markError": "Não foi possível salvar. Tente de novo.",
-		"moreError": "Não foi possível carregar mais. Tente de novo."
+		"moreError": "Não foi possível carregar mais. Tente de novo.",
+		"filterLabel": "Mostrar",
+		"filter": {
+			"all": "Todas",
+			"expenses": "Despesas",
+			"settlements": "Pagamentos",
+			"projects": "Projetos"
+		},
+		"noMatches": "Nada aqui"
 	},
 	"recurring": {
 		"title": "Despesas recorrentes",

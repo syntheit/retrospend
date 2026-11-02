@@ -8,9 +8,15 @@ import config, {
 	apnsEnvironment,
 	assertBuildProfile,
 	defaultServer,
+	LINK_HOSTS,
 	releaseVersion,
+	WEB_LINK_PATHS,
 } from "../app.config";
 import { APP_LOCALES } from "../src/lib/locales";
+import {
+	WEB_LINK_HOSTS,
+	WEB_LINK_PATHS as ROUTED_PATHS,
+} from "../src/surfaces/links";
 
 // Owner decision (2026-10-22): plain http servers are allowed after a
 // warning, so release builds must not block them at the OS level.
@@ -62,10 +68,45 @@ describe("app config", () => {
 	});
 
 	it("ties the iOS app to both server domains for Password AutoFill", () => {
-		expect(config.ios?.associatedDomains).toEqual([
-			"webcredentials:dev.retrospend.app",
-			"webcredentials:retrospend.app",
-		]);
+		expect(config.ios?.associatedDomains).toEqual(
+			expect.arrayContaining([
+				"webcredentials:dev.retrospend.app",
+				"webcredentials:retrospend.app",
+			]),
+		);
+	});
+
+	it("opens the app for both server domains' links on iOS", () => {
+		const domains = config.ios?.associatedDomains ?? [];
+		for (const host of ["retrospend.app", "dev.retrospend.app"]) {
+			expect(domains).toContain(`applinks:${host}`);
+		}
+	});
+
+	it("verifies the same hosts and paths as app links on Android", () => {
+		const filters = config.android?.intentFilters ?? [];
+		expect(filters).toHaveLength(1);
+		const [filter] = filters;
+		expect(filter?.autoVerify).toBe(true);
+		expect(filter?.action).toBe("VIEW");
+		expect(filter?.category).toEqual(["BROWSABLE", "DEFAULT"]);
+		const data = (filter?.data ?? []) as {
+			scheme: string;
+			host: string;
+			pathPrefix: string;
+		}[];
+		expect(new Set(data.map((d) => d.scheme))).toEqual(new Set(["https"]));
+		expect(new Set(data.map((d) => d.host))).toEqual(
+			new Set(["retrospend.app", "dev.retrospend.app"]),
+		);
+		expect(new Set(data.map((d) => d.pathPrefix))).toEqual(
+			new Set(WEB_LINK_PATHS.map((p) => `/${p}`)),
+		);
+	});
+
+	it("keeps the link hosts and paths equal to the ones the router maps", () => {
+		expect(LINK_HOSTS).toEqual([...WEB_LINK_HOSTS]);
+		expect(WEB_LINK_PATHS).toEqual([...ROUTED_PATHS]);
 	});
 
 	it("tells Android and iOS which languages the app speaks", () => {

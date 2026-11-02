@@ -1,4 +1,5 @@
 import {
+	filterNotifications,
 	groupByDay,
 	leadOf,
 	pushTarget,
@@ -251,5 +252,27 @@ describe("the inbox after a change", () => {
 		});
 		expect(next.items.map((n) => n.id)).toEqual(["a", "b", "c", "d"]);
 		expect(next.nextCursor).toBeNull();
+	});
+});
+
+describe("filterNotifications", () => {
+	const items = [
+		note({ id: "e", type: "EXPENSE_EDITED" }),
+		note({ id: "s", type: "SETTLEMENT_RECEIVED" }),
+		note({ id: "r", type: "PAYMENT_REMINDER" }),
+		note({ id: "p", type: "PERIOD_CLOSED" }),
+		note({ id: "v", type: "VERIFICATION_REQUEST" }),
+	];
+	const ids = (filter: Parameters<typeof filterNotifications>[1]) =>
+		filterNotifications(items, filter).map((n) => n.id);
+
+	it("shows everything for All", () => {
+		expect(ids("all")).toEqual(["e", "s", "r", "p", "v"]);
+	});
+
+	it("groups by kind as the web inbox does", () => {
+		expect(ids("expenses")).toEqual(["e"]);
+		expect(ids("settlements")).toEqual(["s", "r"]);
+		expect(ids("projects")).toEqual(["p", "v"]);
 	});
 });

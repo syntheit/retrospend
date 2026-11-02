@@ -2654,7 +2654,15 @@
 		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
 		"showMore": "Mehr anzeigen",
 		"markError": "Das konnte nicht gespeichert werden. Versuche es erneut.",
-		"moreError": "Weitere konnten nicht geladen werden. Versuche es erneut."
+		"moreError": "Weitere konnten nicht geladen werden. Versuche es erneut.",
+		"filterLabel": "Anzeigen",
+		"filter": {
+			"all": "Alle",
+			"expenses": "Ausgaben",
+			"settlements": "Zahlungen",
+			"projects": "Projekte"
+		},
+		"noMatches": "Nichts hier"
 	},
 	"recurring": {
 		"title": "Wiederkehrende Ausgaben",

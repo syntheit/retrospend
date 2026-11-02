@@ -2654,7 +2654,15 @@
 		"errorDetail": "Check your connection and try again.",
 		"showMore": "Show more",
 		"markError": "Couldn't save that. Try again.",
-		"moreError": "Couldn't load more. Try again."
+		"moreError": "Couldn't load more. Try again.",
+		"filterLabel": "Show",
+		"filter": {
+			"all": "All",
+			"expenses": "Expenses",
+			"settlements": "Settlements",
+			"projects": "Projects"
+		},
+		"noMatches": "Nothing here"
 	},
 	"recurring": {
 		"title": "Recurring expenses",
