@@ -2,10 +2,11 @@
 
 import { EllipsisIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import * as React from "react";
+import type * as React from "react";
 
 import { Button } from "~/components/ui/button";
 import { Tip } from "~/components/ui/tooltip";
+import { useHasFinePointer } from "~/hooks/use-mobile";
 import {
 	ContextMenu,
 	ContextMenuContent,
@@ -145,36 +146,24 @@ export function ActionMenu<E extends Entity>(
 /**
  * ActionArea wraps a row: right-click and the keyboard (Shift+F10, the Menu
  * key) open the same menu as its ⋯ button, and the menu's letter hints work
- * while the row has focus. Touch keeps the ⋯ button: a long press by a touch
- * or pen pointer is left to the browser, never taken over. The row itself
- * stays the child element.
+ * while the row has focus. Devices with no fine pointer keep only the ⋯
+ * button: the trigger is disabled there, so a long press is left alone. The
+ * row itself stays the child element.
  */
 export function ActionArea<E extends Entity>({
 	children,
 	...props
 }: EntityActionProps<E> & { children: React.ReactElement }) {
 	const actions = useEntityActions(props);
-	const touched = React.useRef(false);
+	const fine = useHasFinePointer();
 	if (actions.entries.length === 0) return children;
 	return (
 		<>
 			<ContextMenu>
 				<ContextMenuTrigger
 					asChild
-					onContextMenu={(e) => {
-						// A long press on touch also fires contextmenu: skip it.
-						if (touched.current) e.preventDefault();
-					}}
-					onKeyDown={(e) => {
-						touched.current = false;
-						actions.onRowKeyDown(e);
-					}}
-					onPointerDown={(e) => {
-						touched.current = e.pointerType !== "mouse";
-						// Radix starts its long-press timer on a non-mouse pointerdown
-						// unless the event is already default-prevented.
-						if (touched.current) e.preventDefault();
-					}}
+					disabled={!fine}
+					onKeyDown={actions.onRowKeyDown}
 				>
 					{children}
 				</ContextMenuTrigger>
