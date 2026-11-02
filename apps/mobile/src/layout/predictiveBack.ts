@@ -2,6 +2,7 @@ import { useRootNavigationState } from "expo-router";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 import { useTheme } from "@/theme";
+import { useHasBackConsumer } from "./backConsumers";
 import { RetrospendPredictiveBack } from "../../modules/predictive-back";
 
 /** The part of a navigation state this file reads (a React Navigation state). */
@@ -40,7 +41,10 @@ function walk(state: NavState | undefined): boolean | undefined {
  */
 export function usePredictiveBack(): void {
 	const state = useRootNavigationState();
-	const pops = Platform.OS === "android" && backPopsAScreen(state as NavState);
+	// An open search takes Back first: nothing pops, so there is no preview.
+	const consumed = useHasBackConsumer();
+	const pops =
+		Platform.OS === "android" && !consumed && backPopsAScreen(state as NavState);
 	// The shrinking screen reveals the raised tone around itself.
 	const backdrop = useTheme().color.raised;
 	useEffect(() => {

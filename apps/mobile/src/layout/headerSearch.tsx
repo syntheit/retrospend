@@ -13,6 +13,7 @@ import { useCollapsingBar } from "@/ui/barScroll";
 import { SearchPill } from "@/ui/SearchPill";
 import { SearchView } from "@/ui/SearchView";
 import type { TopBarAction } from "@/ui/types";
+import { useBackConsumer } from "./backConsumers";
 import { useSearchOpener, useSearchShortcut } from "./searchShortcut";
 
 /**
@@ -73,6 +74,8 @@ export function useHeaderSearch({
 	openRef.current = open;
 	// The add button would float over the full screen view.
 	useHideAddButton(expanded && open);
+	// The system search bar closes on Back before the page pops.
+	useBackConsumer(enabled && open && !expanded);
 
 	const show = useCallback(() => {
 		if (openRef.current) {

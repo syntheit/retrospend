@@ -3,12 +3,15 @@ package app.retrospend.predictiveback
 import android.animation.ValueAnimator
 import android.app.Activity
 import android.graphics.Outline
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewOutlineProvider
+import android.view.WindowInsets
+import android.view.inputmethod.InputMethodManager
 import android.view.animation.PathInterpolator
 import android.window.BackEvent
 import android.window.OnBackAnimationCallback
@@ -45,14 +48,25 @@ internal class BackPreview(private val activity: Activity) {
   private var touchY = 0f
   private var settle: ValueAnimator? = null
   private var exit = 0f
-  private var attached: androidx.fragment.app.Fragment? = null
-  private var attachedIn: androidx.fragment.app.FragmentManager? = null
+  /** The previous screen this gesture added under the top one. */
+  private var added: Added? = null
+  /** The same, after a commit and until it is clear whether the pop happened. */
+  private var pendingAdded: Added? = null
+  /** The keyboard was up when the gesture began: Back hides it, nothing pops. */
+  private var keyboardGesture = false
   private var gesture = 0
   private var poppedScreen: Screen? = null
   private var saved: Saved? = null
 
   /** The color the shrinking screen reveals around itself; set from JavaScript. */
   var backdrop: Int? = null
+
+  private class Added(
+    val fragment: androidx.fragment.app.Fragment,
+    val screen: Screen,
+    val stack: ScreenStack,
+    val manager: androidx.fragment.app.FragmentManager,
+  )
 
   private class Saved(
     val provider: ViewOutlineProvider?,
@@ -88,12 +102,24 @@ internal class BackPreview(private val activity: Activity) {
     registered = false
     // The pop that a commit started turns the callback off while the screen
     // is still on its way out; the watcher puts it back afterwards.
-    if (exit == 0f) restore()
+    if (exit == 0f) {
+      restore()
+      removeIfUnused(added)
+      added = null
+    }
   }
 
   private fun start(event: BackEvent) {
     gesture++
+    // Whatever the last gesture left: put the screen back, and take away a
+    // previous screen it added that is not the top one now.
     restore()
+    removeIfUnused(added)
+    removeIfUnused(pendingAdded)
+    added = null
+    pendingAdded = null
+    keyboardGesture = keyboardUp()
+    if (keyboardGesture) return
     val found = findTarget()
     if (found == null) return
     val screen = found
@@ -139,34 +165,46 @@ internal class BackPreview(private val activity: Activity) {
    */
   private fun attachPrevious(top: Screen, topView: View): Boolean {
     val stack = top.container as? ScreenStack ?: return false
+    // The stack may have changed since the gesture began: add only under
+    // the screen that is still on top.
+    if (stack.topScreen !== top) return false
     var index = -1
     for (i in 0 until stack.screenCount) if (stack.getScreenAt(i) === top) index = i
     if (index < 1) return false
-    val previous = stack.getScreenFragmentWrapperAt(index - 1).fragment
+    val previousWrapper = stack.getScreenFragmentWrapperAt(index - 1)
+    val previous = previousWrapper.fragment
     if (previous.isAdded) return true
     val manager = stack.getScreenFragmentWrapperAt(index).fragment.parentFragmentManager
     return try {
       manager.beginTransaction().add(stack.id, previous).commitNowAllowingStateLoss()
       topView.bringToFront()
-      attached = previous
-      attachedIn = manager
+      added = Added(previous, previousWrapper.screen, stack, manager)
       true
     } catch (_: Exception) {
       false
     }
   }
 
-  /** Takes the previous screen away again when the gesture was cancelled. */
-  private fun detachPrevious() {
-    val previous = attached ?: return
-    val manager = attachedIn
-    attached = null
-    attachedIn = null
-    if (manager == null || !previous.isAdded) return
+  /**
+   * Takes a previous screen this file added away again, unless it is the
+   * stack's top screen now (the pop happened) or is already gone.
+   */
+  private fun removeIfUnused(item: Added?) {
+    if (item == null || !item.fragment.isAdded) return
+    if (item.stack.topScreen === item.screen) return
     try {
-      manager.beginTransaction().remove(previous).commitNowAllowingStateLoss()
+      item.manager.beginTransaction().remove(item.fragment).commitNowAllowingStateLoss()
     } catch (_: Exception) {
     }
+  }
+
+  /** True while the soft keyboard is showing. */
+  private fun keyboardUp(): Boolean =
+    activity.window.decorView.rootWindowInsets?.isVisible(WindowInsets.Type.ime()) == true
+
+  private fun hideKeyboard() {
+    val manager = activity.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+    manager?.hideSoftInputFromWindow(activity.window.decorView.windowToken, 0)
   }
 
   private fun move(event: BackEvent) {
@@ -180,11 +218,18 @@ internal class BackPreview(private val activity: Activity) {
   private fun cancel() {
     animateTo(0f) {
       restore()
-      detachPrevious()
+      removeIfUnused(added)
+      added = null
     }
   }
 
   private fun commit() {
+    if (keyboardGesture) {
+      // Back with the keyboard up hides it, as the system does.
+      keyboardGesture = false
+      hideKeyboard()
+      return
+    }
     val host = activity
     // The stack pops through JavaScript, as for a back key. The stack's own
     // exit animation would start from the full-size screen, so this carries
@@ -193,10 +238,8 @@ internal class BackPreview(private val activity: Activity) {
     @Suppress("DEPRECATION")
     host.onBackPressed()
     // The stack now shows it as its top screen; it is no longer ours to remove.
-    val addedPrevious = attached
-    val addedIn = attachedIn
-    attached = null
-    attachedIn = null
+    pendingAdded = added
+    added = null
     if (view == null) return
     settle?.cancel()
     settle =
@@ -222,15 +265,18 @@ internal class BackPreview(private val activity: Activity) {
           val stuck =
             popped != null && (popped.container as? ScreenStack)?.topScreen === popped
           when {
-            elapsed > WATCH_MS -> restore()
+            elapsed > WATCH_MS -> {
+              restore()
+              pendingAdded = null
+            }
             stuck && elapsed > SETTLE_DELAY_MS -> {
               exit = 0f
-              // The pop did not happen: the previous screen goes away again.
-              attached = addedPrevious
-              attachedIn = addedIn
+              // The pop did not happen: the previous screen goes away again
+              // (unless it became the top meanwhile).
               animateTo(0f) {
                 restore()
-                detachPrevious()
+                removeIfUnused(pendingAdded)
+                pendingAdded = null
               }
             }
             else -> handler.postDelayed(this, 50)
