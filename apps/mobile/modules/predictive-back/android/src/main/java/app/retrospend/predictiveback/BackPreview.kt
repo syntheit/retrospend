@@ -45,6 +45,8 @@ internal class BackPreview(private val activity: Activity) {
   private var touchY = 0f
   private var settle: ValueAnimator? = null
   private var exit = 0f
+  private var attached: androidx.fragment.app.Fragment? = null
+  private var attachedIn: androidx.fragment.app.FragmentManager? = null
   private var gesture = 0
   private var poppedScreen: Screen? = null
   private var saved: Saved? = null
@@ -110,8 +112,13 @@ internal class BackPreview(private val activity: Activity) {
         container,
         container?.background,
       )
+    // The screen being returned to is detached while another is on top;
+    // attach it under the top one so it shows as the top one shrinks. Without
+    // it (nothing to attach) the backdrop color fills in.
     val color = backdrop
-    if (container != null && color != null) container.setBackgroundColor(color)
+    if (container != null && !(attachPrevious(screen, target)) && color != null) {
+      container.setBackgroundColor(color)
+    }
     direction = if (event.swipeEdge == BackEvent.EDGE_LEFT) 1f else -1f
     startY = event.touchY
     touchY = event.touchY
@@ -124,6 +131,44 @@ internal class BackPreview(private val activity: Activity) {
     }
   }
 
+  /**
+   * Adds the fragment of the screen under [top] to the stack, below [topView],
+   * the way the stack itself adds it when the pop happens (it skips a
+   * fragment that is already added, so the pop then shows no blank frame).
+   * Returns whether there is a screen under it now.
+   */
+  private fun attachPrevious(top: Screen, topView: View): Boolean {
+    val stack = top.container as? ScreenStack ?: return false
+    var index = -1
+    for (i in 0 until stack.screenCount) if (stack.getScreenAt(i) === top) index = i
+    if (index < 1) return false
+    val previous = stack.getScreenFragmentWrapperAt(index - 1).fragment
+    if (previous.isAdded) return true
+    val manager = stack.getScreenFragmentWrapperAt(index).fragment.parentFragmentManager
+    return try {
+      manager.beginTransaction().add(stack.id, previous).commitNowAllowingStateLoss()
+      topView.bringToFront()
+      attached = previous
+      attachedIn = manager
+      true
+    } catch (_: Exception) {
+      false
+    }
+  }
+
+  /** Takes the previous screen away again when the gesture was cancelled. */
+  private fun detachPrevious() {
+    val previous = attached ?: return
+    val manager = attachedIn
+    attached = null
+    attachedIn = null
+    if (manager == null || !previous.isAdded) return
+    try {
+      manager.beginTransaction().remove(previous).commitNowAllowingStateLoss()
+    } catch (_: Exception) {
+    }
+  }
+
   private fun move(event: BackEvent) {
     if (view == null) return
     settle?.cancel()
@@ -133,7 +178,10 @@ internal class BackPreview(private val activity: Activity) {
   }
 
   private fun cancel() {
-    animateTo(0f) { restore() }
+    animateTo(0f) {
+      restore()
+      detachPrevious()
+    }
   }
 
   private fun commit() {
@@ -144,6 +192,11 @@ internal class BackPreview(private val activity: Activity) {
     // every frame, so nothing jumps) while the previous screen comes in.
     @Suppress("DEPRECATION")
     host.onBackPressed()
+    // The stack now shows it as its top screen; it is no longer ours to remove.
+    val addedPrevious = attached
+    val addedIn = attachedIn
+    attached = null
+    attachedIn = null
     if (view == null) return
     settle?.cancel()
     settle =
@@ -172,7 +225,13 @@ internal class BackPreview(private val activity: Activity) {
             elapsed > WATCH_MS -> restore()
             stuck && elapsed > SETTLE_DELAY_MS -> {
               exit = 0f
-              animateTo(0f) { restore() }
+              // The pop did not happen: the previous screen goes away again.
+              attached = addedPrevious
+              attachedIn = addedIn
+              animateTo(0f) {
+                restore()
+                detachPrevious()
+              }
             }
             else -> handler.postDelayed(this, 50)
           }

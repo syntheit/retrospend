@@ -17,4 +17,6 @@ android {
 dependencies {
   // The screens the preview moves; the app already ships the library.
   compileOnly project(':react-native-screens')
+  // The stack's fragments; the same version react-native-screens ships.
+  compileOnly 'androidx.fragment:fragment-ktx:1.8.9'
 }
