@@ -208,7 +208,7 @@ internal class BackPreview(private val activity: Activity) {
     val scale = 1f - SCALE_DELTA * progress
     target.scaleX = scale
     target.scaleY = scale
-    target.alpha = 1f - exit * exit
+    target.alpha = 1f - exit * exit * exit
     if (sheet) {
       target.translationX = 0f
       target.translationY = exit * target.height * EXIT_SHIFT
@@ -287,7 +287,7 @@ internal class BackPreview(private val activity: Activity) {
     const val CORNER_DP = 28f
     const val ELEVATION_DP = 8f
     const val SETTLE_MS = 200L
-    const val EXIT_MS = 240L
+    const val EXIT_MS = 300L
     const val EXIT_SHIFT = 0.1f
     const val SETTLE_DELAY_MS = 500L
     // The stack's own exit animation (450 ms) has ended by then.
