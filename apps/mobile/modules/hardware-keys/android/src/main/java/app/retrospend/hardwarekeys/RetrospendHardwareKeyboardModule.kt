@@ -34,14 +34,14 @@ class RetrospendHardwareKeyboardModule : Module() {
     Function("keyboardConnected") { connected() }
 
     OnCreate {
-      val changed = object : InputManager.InputDeviceListener {
-        override fun onInputDeviceAdded(deviceId: Int) = notify()
-        override fun onInputDeviceRemoved(deviceId: Int) = notify()
-        override fun onInputDeviceChanged(deviceId: Int) = notify()
-        private fun notify() = sendEvent("onKeyboardChange", mapOf("connected" to connected()))
+      val watcher = object : InputManager.InputDeviceListener {
+        override fun onInputDeviceAdded(deviceId: Int) = report()
+        override fun onInputDeviceRemoved(deviceId: Int) = report()
+        override fun onInputDeviceChanged(deviceId: Int) = report()
+        private fun report() = sendEvent("onKeyboardChange", mapOf("connected" to connected()))
       }
-      listener = changed
-      manager?.registerInputDeviceListener(changed, null)
+      listener = watcher
+      manager?.registerInputDeviceListener(watcher, null)
     }
 
     OnDestroy {

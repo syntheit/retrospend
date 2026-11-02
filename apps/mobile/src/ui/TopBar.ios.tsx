@@ -56,7 +56,8 @@ export function TopBar({
 			))}
 			{showAdd ? (
 				<AddButton
-					label={t("addExpense")}
+					label={t("add")}
+					showLabel
 					onPress={() => add?.open("expense")}
 				/>
 			) : null}
