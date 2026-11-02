@@ -4,16 +4,20 @@ import { useTranslations } from "use-intl";
 import { newClientId } from "@/data/ids";
 import { announceEntryChange } from "@/features/entry/events";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import {
+	type FigureDiff,
+	figureKey,
+	figureLines,
+} from "@/features/write/figures";
 import { Note } from "@/features/write/parts";
-import { type FigureDiff, figureKey, figureLines } from "@/features/write/figures";
-import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
-import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
+import { WriteForm } from "@/features/write/WriteForm";
+import { useApi } from "@/features/write/WriteFrame";
 import { useTheme } from "@/theme";
 import { ChangeList, type ChangeStatus } from "@/ui/ChangeList";
 import { DateField } from "@/ui/DateField";
-import { FieldLabel } from "@/ui/TextField";
 import { Segmented } from "@/ui/Segmented";
 import { Text } from "@/ui/Text";
+import { FieldLabel } from "@/ui/TextField";
 import { useToast } from "@/ui/Toast";
 import { useDayRange } from "./dates";
 import {
@@ -89,13 +93,15 @@ function DatesChanges({
 	const label = (id: string) => {
 		const key = figureKey(id);
 		return tf.has(key as "other")
-			? { name: tf(key as "other", { name }), inline: ti(key as "other", { name }) }
+			? {
+					name: tf(key as "other", { name }),
+					inline: ti(key as "other", { name }),
+				}
 			: { name: tf("other"), inline: ti("other") };
 	};
 	const lines = preview ? figureLines(preview) : null;
-	const side = (
-		value: { minor: number; currency: string } | null,
-	): string => (value ? money(value) : tp("notAvailable"));
+	const side = (value: { minor: number; currency: string } | null): string =>
+		value ? money(value) : tp("notAvailable");
 	return (
 		<ChangeList
 			changes={(lines?.changes ?? []).map((change) => ({
@@ -146,23 +152,10 @@ export function MemberDatesPane({
 
 	const body = datesBody(projectId, member, dates);
 	const out = datesOutOfOrder(dates);
-	const { idFor, reset } = useWriteIds(body ? JSON.stringify(body) : null);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: each member starts from their own dates with fresh ids
+	// biome-ignore lint/correctness/useExhaustiveDependencies: each member starts from their own dates
 	useEffect(() => {
 		setDates(datesOf(member));
-		reset();
 	}, [member.id]);
-
-	const flow = useMoneyWrite({
-		input: body,
-		idempotencyKey: body ? idFor("write") : null,
-		preview: (b) =>
-			api ? api.projects.previewSetMemberDates(b) : noSession(),
-		write: (b, key) =>
-			api
-				? api.projects.setMemberDates(b, { context: { idempotencyKey: key } })
-				: noSession(),
-	});
 
 	async function put(before: MemberDates) {
 		if (!api) return false;
@@ -176,9 +169,8 @@ export function MemberDatesPane({
 		}
 	}
 
-	async function submit() {
-		const done = await flow.commit();
-		if (!done) return;
+	// Undone by writing the old dates back, which has its own words.
+	function done() {
 		const before = datesOf(member);
 		announceEntryChange();
 		onSaved();
@@ -196,24 +188,29 @@ export function MemberDatesPane({
 				},
 			},
 		});
-		onBack();
 	}
 
 	const meaning = datesMeaning(dates);
 	const date = range(dates.leftOn ?? dates.joinedOn, null, today) ?? "";
 
 	return (
-		<WriteFrame
-			busy={flow.committing}
-			changes={
+		<WriteForm
+			changes={({ preview, status }) =>
 				body ? (
-					<DatesChanges name={who} preview={flow.preview} status={flow.status} />
+					<DatesChanges name={who} preview={preview} status={status} />
 				) : null
 			}
-			failed={flow.commitFailed}
-			onSubmit={submit}
-			ready={flow.status === "ready"}
+			done={done}
+			input={body}
+			onClose={onBack}
+			onDone={onSaved}
+			preview={(client, b) => client.projects.previewSetMemberDates(b)}
 			submitLabel={t("submit")}
+			write={(client, b, key) =>
+				client.projects.setMemberDates(b, {
+					context: { idempotencyKey: key },
+				})
+			}
 		>
 			<DateChoice
 				label={t("joined")}
@@ -236,6 +233,6 @@ export function MemberDatesPane({
 					{t("hint")}
 				</Text>
 			</View>
-		</WriteFrame>
+		</WriteForm>
 	);
 }

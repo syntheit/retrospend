@@ -14,9 +14,16 @@ import { useResetOnOpen } from "./useResetOnOpen";
 import { type UndoFamily, useUndoToast } from "./useUndoToast";
 import { noSession, useApi, WriteFrame } from "./WriteFrame";
 
-/** The answer every money write gives: the engine's result and an undo token (null when it cannot be taken back). */
-export interface WriteAnswer {
-	undo: string | null;
+/**
+ * The answer of a money write: the engine's result, which carries an `undo`
+ * token when the write can be taken back (null when it cannot; absent when
+ * the caller undoes it itself, see `done`).
+ */
+export type WriteAnswer = object;
+
+function tokenOf(out: WriteAnswer): string | null {
+	const token = (out as { undo?: unknown }).undo;
+	return typeof token === "string" ? token : null;
 }
 
 /** What one money write is: the exact body, its dry run, its write and its Undo. */
@@ -38,7 +45,13 @@ export interface WriteSpec<I, P extends FigureDiff, W extends WriteAnswer> {
 	 */
 	canSave?: (preview: P) => boolean;
 	/** The toast sentence once it is written, from the server's answer. */
-	message: (out: W) => string;
+	message?: (out: W) => string;
+	/**
+	 * Ends the write in the caller's own way instead of the server-token Undo
+	 * toast (a write that is undone by writing the old value back). It must
+	 * still refresh the screen behind and end in an Undo toast.
+	 */
+	done?: (out: W) => void;
 	family?: UndoFamily;
 	onClose: () => void;
 	onDone: () => void;
@@ -59,6 +72,7 @@ export function useWriteForm<I, P extends FigureDiff, W extends WriteAnswer>({
 	write,
 	canSave,
 	message,
+	done,
 	family = "budget",
 	onClose,
 	onDone,
@@ -83,7 +97,14 @@ export function useWriteForm<I, P extends FigureDiff, W extends WriteAnswer>({
 	async function submit() {
 		const out = await flow.commit();
 		if (!out) return;
-		announce({ message: message(out), token: out.undo, onChanged: onDone });
+		if (done) done(out);
+		else {
+			announce({
+				message: message?.(out) ?? "",
+				token: tokenOf(out),
+				onChanged: onDone,
+			});
+		}
 		onClose();
 	}
 
