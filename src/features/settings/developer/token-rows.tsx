@@ -11,11 +11,7 @@ import { SkeletonRows } from "~/components/ui/skeleton";
 import { formatDateOnly } from "~/lib/date";
 import { cn } from "~/lib/cn";
 import { SectionUnavailable } from "../section-shell";
-import {
-	type ApiToken,
-	isExpired,
-	orderScopes,
-} from "./tokens";
+import { type ApiToken, isExpired, orderScopes } from "./tokens";
 
 /** The words for a token's scopes ("Read, Expenses") and its dates. */
 export function useTokenWords() {
@@ -54,7 +50,12 @@ export function TokenBlock({
 }) {
 	return (
 		<>
-			<div className={cn("mb-1 flex min-h-ctl items-center gap-3", !first && "mt-6")}>
+			<div
+				className={cn(
+					"mb-1 flex min-h-ctl items-center gap-3",
+					!first && "mt-6",
+				)}
+			>
 				<h3 className="flex-1 font-semibold text-fg-2 text-small">{title}</h3>
 				{action}
 			</div>
@@ -83,34 +84,30 @@ export function KeyRow({
 	const handlers = { revoke: onRevoke };
 	const target = { id: k.id, name: k.name };
 	return (
-		<ActionArea
-			entity="apiKey"
-			handlers={handlers}
-			target={target}
-		>
-		<Row
-			actions={
-				<ActionMenu entity="apiKey" handlers={handlers} target={target} />
-			}
-			lead={<IconTile icon={KeyRound} />}
-			sub={
-				<RowSub
-					parts={[
-						k.start && <span className="font-mono">{`${k.start}…`}</span>,
-						w.scopes(k.scopes),
-						isExpired(k)
-							? t("expired")
-							: k.expiresAt
-								? t("expiresOn", { date: w.day(k.expiresAt) })
-								: null,
-						k.lastUsedAt
-							? t("lastUsed", { date: w.day(k.lastUsedAt) })
-							: t("neverUsed"),
-					]}
-				/>
-			}
-			title={k.name}
-		/>
+		<ActionArea entity="apiKey" handlers={handlers} target={target}>
+			<Row
+				actions={
+					<ActionMenu entity="apiKey" handlers={handlers} target={target} />
+				}
+				lead={<IconTile icon={KeyRound} />}
+				sub={
+					<RowSub
+						parts={[
+							k.start && <span className="font-mono">{`${k.start}…`}</span>,
+							w.scopes(k.scopes),
+							isExpired(k)
+								? t("expired")
+								: k.expiresAt
+									? t("expiresOn", { date: w.day(k.expiresAt) })
+									: null,
+							k.lastUsedAt
+								? t("lastUsed", { date: w.day(k.lastUsedAt) })
+								: t("neverUsed"),
+						]}
+					/>
+				}
+				title={k.name}
+			/>
 		</ActionArea>
 	);
 }

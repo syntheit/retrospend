@@ -43,31 +43,31 @@ function NotificationRow({
 			handlers={{ open: onOpen, markRead: onMarkRead }}
 			target={{ id: n.id, name: n.title, unread }}
 		>
-		<Button
-			className="h-auto w-full items-start justify-start gap-3 whitespace-normal px-2 py-3 text-left font-normal text-fg"
-			kind="ghost"
-			onClick={onOpen}
-		>
-			<span
-				aria-hidden="true"
-				className={cn(
-					"mt-2 size-2 shrink-0 rounded-chip bg-brand",
-					!unread && "invisible",
-				)}
-			/>
-			<span className="flex min-w-0 flex-1 flex-col gap-0.5">
-				<span className={cn("text-body", unread && "font-semibold")}>
-					{unread && <span className="sr-only">{t("unread")}: </span>}
-					{n.title}
+			<Button
+				className="h-auto w-full items-start justify-start gap-3 whitespace-normal px-2 py-3 text-left font-normal text-fg"
+				kind="ghost"
+				onClick={onOpen}
+			>
+				<span
+					aria-hidden="true"
+					className={cn(
+						"mt-2 size-2 shrink-0 rounded-chip bg-brand",
+						!unread && "invisible",
+					)}
+				/>
+				<span className="flex min-w-0 flex-1 flex-col gap-0.5">
+					<span className={cn("text-body", unread && "font-semibold")}>
+						{unread && <span className="sr-only">{t("unread")}: </span>}
+						{n.title}
+					</span>
+					{n.body && (
+						<span className="line-clamp-2 text-fg-2 text-small">{n.body}</span>
+					)}
+					<span className="text-fg-3 text-meta">
+						{formatRelativeTimeCompact(n.createdAt)}
+					</span>
 				</span>
-				{n.body && (
-					<span className="line-clamp-2 text-fg-2 text-small">{n.body}</span>
-				)}
-				<span className="text-fg-3 text-meta">
-					{formatRelativeTimeCompact(n.createdAt)}
-				</span>
-			</span>
-		</Button>
+			</Button>
 		</ActionArea>
 	);
 }

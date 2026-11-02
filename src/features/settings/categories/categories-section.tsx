@@ -154,31 +154,31 @@ function CategoryRow({
 	};
 
 	return (
-		<ActionArea
-			entity="category"
-			handlers={handlers}
-			target={target}
-		>
-		<Row
-			actions={
-				<ActionMenu entity="category" handlers={handlers} target={target} />
-			}
-			lead={
-				<CategoryTile
-					category={{ name: c.name, icon: c.icon, tone: categoryTone(c.color) }}
-				/>
-			}
-			open={{ label: t("open", { name }), onOpen: () => onOpen(null) }}
-			sub={
-				<RowSub
-					parts={[
-						count > 0 ? t("entries", { count }) : t("noEntries"),
-						c.excludeByDefault && t("excluded"),
-					]}
-				/>
-			}
-			title={name}
-		/>
+		<ActionArea entity="category" handlers={handlers} target={target}>
+			<Row
+				actions={
+					<ActionMenu entity="category" handlers={handlers} target={target} />
+				}
+				lead={
+					<CategoryTile
+						category={{
+							name: c.name,
+							icon: c.icon,
+							tone: categoryTone(c.color),
+						}}
+					/>
+				}
+				open={{ label: t("open", { name }), onOpen: () => onOpen(null) }}
+				sub={
+					<RowSub
+						parts={[
+							count > 0 ? t("entries", { count }) : t("noEntries"),
+							c.excludeByDefault && t("excluded"),
+						]}
+					/>
+				}
+				title={name}
+			/>
 		</ActionArea>
 	);
 }

@@ -23,41 +23,37 @@ export function WebhookRow({
 	const state = stateOf(w);
 	const target = { id: w.id, name: w.name, enabled: w.enabled };
 	return (
-		<ActionArea
-			entity="webhook"
-			handlers={handlers}
-			target={target}
-		>
-		<Row
-			actions={
-				<ActionMenu entity="webhook" handlers={handlers} target={target} />
-			}
-			lead={<IconTile icon={Webhook} />}
-			sub={
-				<RowSub
-					parts={[
-						<span className="font-mono" key="host">
-							{targetOf(w.url)}
-						</span>,
-						w.eventTypes.length === 0
-							? t("events.all")
-							: areasOfFilters(w.eventTypes)
-								.map((a) => tArea(a))
-								.join(", "),
-					]}
-				/>
-			}
-			title={w.name}
-			titleEnd={
-				state.kind === "off" ? (
-					<StatusDot
-						kind={state.status}
-						label={t(`webhookState.${state.reason}`)}
-						size="sm"
+		<ActionArea entity="webhook" handlers={handlers} target={target}>
+			<Row
+				actions={
+					<ActionMenu entity="webhook" handlers={handlers} target={target} />
+				}
+				lead={<IconTile icon={Webhook} />}
+				sub={
+					<RowSub
+						parts={[
+							<span className="font-mono" key="host">
+								{targetOf(w.url)}
+							</span>,
+							w.eventTypes.length === 0
+								? t("events.all")
+								: areasOfFilters(w.eventTypes)
+										.map((a) => tArea(a))
+										.join(", "),
+						]}
 					/>
-				) : null
-			}
-		/>
+				}
+				title={w.name}
+				titleEnd={
+					state.kind === "off" ? (
+						<StatusDot
+							kind={state.status}
+							label={t(`webhookState.${state.reason}`)}
+							size="sm"
+						/>
+					) : null
+				}
+			/>
 		</ActionArea>
 	);
 }

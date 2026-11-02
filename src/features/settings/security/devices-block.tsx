@@ -86,28 +86,30 @@ function DeviceRow({
 	const target = { id: d.id, name: title };
 	return (
 		<ActionArea entity="device" handlers={handlers} target={target}>
-		<Row
-			actions={
-				d.current ? undefined : (
-					<ActionMenu entity="device" handlers={handlers} target={target} />
-				)
-			}
-			lead={<IconTile icon={Icon} />}
-			sub={
-				<RowSub
-					parts={[
-						t("lastUsed", { date: w.day(d.lastUsedAt) }),
-						t("signedIn", { date: w.day(d.createdAt) }),
-					]}
-				/>
-			}
-			title={title}
-			titleEnd={
-				d.current ? (
-					<span className="text-fg-3 text-meta font-normal">{t("current")}</span>
-				) : undefined
-			}
-		/>
+			<Row
+				actions={
+					d.current ? undefined : (
+						<ActionMenu entity="device" handlers={handlers} target={target} />
+					)
+				}
+				lead={<IconTile icon={Icon} />}
+				sub={
+					<RowSub
+						parts={[
+							t("lastUsed", { date: w.day(d.lastUsedAt) }),
+							t("signedIn", { date: w.day(d.createdAt) }),
+						]}
+					/>
+				}
+				title={title}
+				titleEnd={
+					d.current ? (
+						<span className="text-fg-3 text-meta font-normal">
+							{t("current")}
+						</span>
+					) : undefined
+				}
+			/>
 		</ActionArea>
 	);
 }

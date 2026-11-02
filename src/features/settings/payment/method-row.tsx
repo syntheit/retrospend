@@ -50,39 +50,39 @@ export function MethodRow({
 		remove: onRemove,
 	};
 	return (
-		<ActionArea
-			entity="paymentMethod"
-			handlers={handlers}
-			target={target}
-		>
-		<Row
-			actions={
-				<ActionMenu
-					entity="paymentMethod"
-					handlers={handlers}
-					target={target}
-				/>
-			}
-			lead={
-				<IconTile>
-					<PaymentMethodIcon currency={m.currency} size="sm" typeId={m.type} />
-				</IconTile>
-			}
-			open={{ onOpen: onEdit, label: name }}
-			sub={
-				<RowSub
-					parts={[{ shrink: m.identifier }, t(`visibility.${m.visibility}`)]}
-				/>
-			}
-			title={name}
-			titleEnd={
-				first ? (
-					<span className="text-fg-3 text-meta font-normal">
-						{t("primary")}
-					</span>
-				) : undefined
-			}
-		/>
+		<ActionArea entity="paymentMethod" handlers={handlers} target={target}>
+			<Row
+				actions={
+					<ActionMenu
+						entity="paymentMethod"
+						handlers={handlers}
+						target={target}
+					/>
+				}
+				lead={
+					<IconTile>
+						<PaymentMethodIcon
+							currency={m.currency}
+							size="sm"
+							typeId={m.type}
+						/>
+					</IconTile>
+				}
+				open={{ onOpen: onEdit, label: name }}
+				sub={
+					<RowSub
+						parts={[{ shrink: m.identifier }, t(`visibility.${m.visibility}`)]}
+					/>
+				}
+				title={name}
+				titleEnd={
+					first ? (
+						<span className="text-fg-3 text-meta font-normal">
+							{t("primary")}
+						</span>
+					) : undefined
+				}
+			/>
 		</ActionArea>
 	);
 }

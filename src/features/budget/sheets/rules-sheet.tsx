@@ -85,35 +85,35 @@ export function RulesSheet({ open, onClose, month }: SheetProps) {
 									key={r.id}
 									target={targetOf(r, i)}
 								>
-								<Row
-									actions={
-										<ActionMenu
-											entity="incomeRule"
-											handlers={handlersOf(r, i)}
-											target={targetOf(r, i)}
-										/>
-									}
-									end={
-										<Switch
-											aria-label={t("active", { name: r.name })}
-											checked={r.active}
-											onCheckedChange={(active) =>
-												void update
-													.mutateAsync({ id: r.id, active })
-													.then(refresh)
-											}
-										/>
-									}
-									sub={
-										<RowSub
-											parts={[
-												sentence(r, name(r.envelopeId)),
-												r.active ? null : t("paused"),
-											]}
-										/>
-									}
-									title={r.name}
-								/>
+									<Row
+										actions={
+											<ActionMenu
+												entity="incomeRule"
+												handlers={handlersOf(r, i)}
+												target={targetOf(r, i)}
+											/>
+										}
+										end={
+											<Switch
+												aria-label={t("active", { name: r.name })}
+												checked={r.active}
+												onCheckedChange={(active) =>
+													void update
+														.mutateAsync({ id: r.id, active })
+														.then(refresh)
+												}
+											/>
+										}
+										sub={
+											<RowSub
+												parts={[
+													sentence(r, name(r.envelopeId)),
+													r.active ? null : t("paused"),
+												]}
+											/>
+										}
+										title={r.name}
+									/>
 								</ActionArea>
 							))}
 						</RowList>
