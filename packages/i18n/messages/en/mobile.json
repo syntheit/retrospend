@@ -13,6 +13,7 @@
 	},
 	"common": {
 		"cancel": "Cancel",
+		"more": "More actions",
 		"undo": "Undo",
 		"dismiss": "Dismiss",
 		"retry": "Try again",
@@ -408,7 +409,8 @@
 		"paid": "paid",
 		"addedBy": "{name} added this. Only they can change it.",
 		"delete": "Delete",
-		"makeRecurring": "Make recurring"
+		"makeRecurring": "Make recurring",
+		"more": "More actions"
 	},
 	"connect": {
 		"title": "Connect to a server",

@@ -3,6 +3,7 @@ import { useTranslations } from "use-intl";
 import type { SwipeAction } from "@/ui/SwipeRow";
 import type { MenuItem } from "@/ui/types";
 import {
+	ACCOUNT_ICON,
 	type AccountAction,
 	type AccountRowActions,
 	actionsOf,
@@ -23,6 +24,7 @@ export function useAccountActions(
 			const item = (action: AccountAction): MenuItem => ({
 				id: action,
 				label: t(action),
+				icon: ACCOUNT_ICON[action],
 				onPress: () => run(action, account),
 				destructive: action === "delete",
 			});

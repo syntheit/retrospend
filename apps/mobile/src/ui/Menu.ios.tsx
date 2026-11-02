@@ -19,6 +19,7 @@ import {
 	strokeBorder,
 } from "@expo/ui/swift-ui/modifiers";
 import { useTheme } from "@/theme";
+import { MENU_SYMBOL } from "./menuIcons";
 import { NativeHost } from "./NativeHost";
 import { useChromeTextSize } from "./Text";
 import type { MenuProps } from "./types";
@@ -117,8 +118,29 @@ function SortLabel({ active }: { active: boolean }) {
 }
 
 /** The overflow mark: three dots at the 44 point touch size. */
-function IconLabel() {
+function IconLabel({ raised }: { raised?: boolean }) {
 	const { color, size } = useTheme();
+	if (raised) {
+		// A sheet header's item: the raised 28 point circle of the pencil and
+		// the close button, inside the 44 point touch target.
+		return (
+			<HStack
+				modifiers={[
+					frame({ width: size.touchMin.phone, height: size.touchMin.phone }),
+				]}
+			>
+				<Image
+					color={color.fg2}
+					modifiers={[
+						frame({ width: size.ctlSm.phone, height: size.ctlSm.phone }),
+						background(color.raised, shapes.circle()),
+					]}
+					size={size.icon.phone}
+					systemName="ellipsis"
+				/>
+			</HStack>
+		);
+	}
 	return (
 		<Image
 			color={color.fg}
@@ -164,6 +186,7 @@ export function Menu({
 	chip,
 	active = false,
 	icon,
+	raised,
 	heading,
 	leadingCalendar,
 	sortIcon,
@@ -201,6 +224,7 @@ export function Menu({
 								label={item.label}
 								onPress={item.onPress}
 								role={item.destructive ? "destructive" : undefined}
+								systemImage={item.icon && MENU_SYMBOL[item.icon]}
 							/>
 						))}
 					</SwiftMenu>
@@ -235,7 +259,7 @@ export function Menu({
 							label={label}
 						/>
 					) : icon ? (
-						<IconLabel />
+						<IconLabel raised={raised} />
 					) : heading ? (
 						<HeadingLabel label={label} />
 					) : (
@@ -262,6 +286,7 @@ export function Menu({
 						label={item.label}
 						onPress={item.onPress}
 						role={item.destructive ? "destructive" : undefined}
+						systemImage={item.icon && MENU_SYMBOL[item.icon]}
 					/>
 				))}
 			</SwiftMenu>

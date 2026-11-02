@@ -6,6 +6,7 @@
 import type { ReactElement } from "react";
 import type { Face } from "./Avatar";
 import type { GlyphName } from "./Glyph";
+import type { MenuIcon } from "./menuIcons";
 
 /** The platform sheet around the content Sheet lays out (SheetFrame). */
 export interface SheetFrameProps {
@@ -26,6 +27,12 @@ export interface MenuItem {
 	label: string;
 	onPress: () => void;
 	destructive?: boolean;
+	/**
+	 * A glyph before the label: the action's own mark (repeat, trash). The iOS
+	 * system menu draws its SF Symbol, Android the lucide glyph. Identity marks
+	 * (faces, categories) use `lead` instead.
+	 */
+	icon?: MenuIcon;
 	/**
 	 * An identity mark before the label: a face, a bare category glyph or a
 	 * cover (GUIDELINE 8), for filter menus of people, categories and
@@ -71,6 +78,11 @@ export interface MenuProps {
 	 * the toolbar. `label` is not shown then, so pass `accessibilityLabel`.
 	 */
 	icon?: boolean;
+	/**
+	 * With `icon`: the mark sits in a raised 28 point circle inside the 44
+	 * point touch target, the way a sheet header draws its pencil and close.
+	 */
+	raised?: boolean;
 	/**
 	 * Draws the trigger as a page-level choice (the month on Budget): 16/500
 	 * in accent-strong with a chevron, no border.

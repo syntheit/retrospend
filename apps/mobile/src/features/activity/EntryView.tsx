@@ -2,12 +2,12 @@ import { Stack } from "expo-router";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
+import { DetailActions } from "@/ui/DetailActions";
 import { EmptyState } from "@/ui/EmptyState";
 import { StaleNote } from "@/ui/List";
 import { PaneBar } from "@/ui/PaneBar";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
-import { TopBarAction } from "@/ui/TopBarAction";
 import { useEntryActions } from "./EntryActions";
 import { EntryFacts } from "./EntryFacts";
 import { EntryHead } from "./EntryHead";
@@ -93,10 +93,16 @@ export function EntryView({
 		repeating:
 			detail.personal === null || detail.personal.recurringTemplateId !== null,
 	});
-	// Edit is a pencil in the header: a pushed page's bar, or the pane's.
-	const pencil = actions.edit ? (
-		<TopBarAction icon="Pencil" id="edit" label={t("edit")} onPress={actions.edit} />
-	) : null;
+	// Edit is the pencil in the header, with the overflow menu after it: a
+	// pushed page's bar, or the pane's.
+	const header = (
+		<DetailActions
+			edit={actions.edit}
+			editLabel={t("edit")}
+			items={actions.menu}
+			moreLabel={t("more")}
+		/>
+	);
 	const heading =
 		item.kind === "income"
 			? t("titleIncome")
@@ -116,11 +122,11 @@ export function EntryView({
 					options={{
 						title: heading,
 						headerLargeTitle: false,
-						headerRight: pencil ? () => pencil : undefined,
+						headerRight: () => header,
 					}}
 				/>
 			) : (
-				<PaneBar title={heading} trailing={pencil ?? undefined} />
+				<PaneBar title={heading} trailing={header} />
 			)}
 			<EntryHead item={item} />
 			<EntryFacts extra={detail.personal} item={item} />
@@ -131,7 +137,6 @@ export function EntryView({
 					{t("addedBy", { name: addedBy })}
 				</Text>
 			) : null}
-			{actions.footer}
 			<StaleNote since={staleSince ?? detail.staleSince} />
 			{actions.sheets}
 		</View>

@@ -4,11 +4,11 @@ import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { announceEntryChange } from "@/features/entry/events";
+import { showAlert } from "@/ui/alert";
 import { useToast } from "@/ui/Toast";
 import type { MenuItem } from "@/ui/types";
 import { canArchiveProject, canEditProject } from "./projectForm";
 import type { ProjectPage } from "./source";
-import { showAlert } from "@/ui/alert";
 
 /**
  * Add person, Share, Settings, Archive and Restore for one project, as items
@@ -96,6 +96,7 @@ export function useProjectActions(
 		items.push({
 			id: "add-person",
 			label: t("addPerson"),
+			icon: "UserPlus",
 			onPress: () => setAdding(true),
 		});
 	}
@@ -104,11 +105,13 @@ export function useProjectActions(
 			{
 				id: "share-project",
 				label: t("share"),
+				icon: "Share",
 				onPress: () => setSharing(true),
 			},
 			{
 				id: "project-settings",
 				label: t("settings"),
+				icon: "Settings",
 				onPress: () => setConfiguring(true),
 			},
 		);
@@ -119,25 +122,23 @@ export function useProjectActions(
 				? {
 						id: "restore-project",
 						label: t("restore"),
+						icon: "ArchiveRestore",
 						onPress: () => void restore(),
 					}
 				: {
 						id: "archive-project",
 						label: t("archive"),
+						icon: "Archive",
 						destructive: true,
 						onPress: () =>
-							showAlert(
-								t("archiveTitle", { name: page.name }),
-								undefined,
-								[
-									{ text: tc("cancel"), style: "cancel" },
-									{
-										text: t("archiveConfirm"),
-										style: "destructive",
-										onPress: () => void archive(),
-									},
-								],
-							),
+							showAlert(t("archiveTitle", { name: page.name }), undefined, [
+								{ text: tc("cancel"), style: "cancel" },
+								{
+									text: t("archiveConfirm"),
+									style: "destructive",
+									onPress: () => void archive(),
+								},
+							]),
 					},
 		);
 	}

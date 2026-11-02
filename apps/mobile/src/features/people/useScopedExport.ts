@@ -17,6 +17,7 @@ export function useProjectExport(projectId: string): MenuItem[] {
 		{
 			id: "export-project",
 			label: t("exportExpenses"),
+			icon: "Download",
 			onPress: () => {
 				if (exporter.busy) return;
 				void exporter

@@ -93,6 +93,18 @@ export function ItemSheet({
 			<Sheet
 				detents={["medium"]}
 				edit={{ label: tc("edit"), onPress: () => setEditing(true) }}
+				menu={{
+					label: tc("more"),
+					items: [
+						{
+							id: "delete",
+							label: t("delete"),
+							icon: "Trash2",
+							destructive: true,
+							onPress: onDelete,
+						},
+					],
+				}}
 				onClose={close}
 				title={item.title}
 				visible={visible}
@@ -111,14 +123,6 @@ export function ItemSheet({
 								tr(item.autoPay ? "autoPayOn" : "autoPayOff"),
 							].join(" · ")}
 						</Note>
-						<View style={{ alignItems: "flex-start" }}>
-							<Button
-								label={t("delete")}
-								onPress={onDelete}
-								size="small"
-								variant="dangerText"
-							/>
-						</View>
 					</View>
 				</SheetBody>
 			</Sheet>

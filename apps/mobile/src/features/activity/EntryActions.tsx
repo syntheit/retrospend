@@ -1,14 +1,12 @@
 import { router } from "expo-router";
 import { type ReactNode, useState } from "react";
-import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
 import { useDeleteEntry } from "@/features/entry/useDeleteEntry";
 import { MakeRecurringSheet } from "@/features/recurring/MakeRecurringSheet";
 import { canRepeat } from "@/features/recurring/makeRecurring";
 import { useLayoutClass } from "@/layout/useLayoutClass";
-import { useTheme } from "@/theme";
-import { Button } from "@/ui/Button";
+import type { MenuItem } from "@/ui/types";
 import { canSelect } from "./bulk";
 import { canEditEntry } from "./canEdit";
 import type { ActivityItem } from "./source";
@@ -16,8 +14,8 @@ import type { ActivityItem } from "./source";
 /**
  * The actions of an entry, split by where they belong. Edit is the pencil in
  * the header and opens the existing edit flow (a view never edits in place).
- * Delete and Make recurring are small quiet controls at the end of the page;
- * Delete asks in a system alert (after the server's dry run) and ends in an
+ * Make recurring and Delete are items of the header's overflow menu, Delete
+ * last; Delete asks in a system alert (after the server's dry run) and ends in an
  * Undo toast; Make recurring shows what it changes for the template it creates. Each only where
  * the server lets you: your own expense deletes and repeats, and a split you
  * may change edits and deletes (it warns first when others owe on it, and Undo
@@ -39,14 +37,13 @@ export function useEntryActions({
 }): {
 	/** Opens the edit flow; null where the entry is not yours to change. */
 	edit: (() => void) | null;
-	/** The quiet controls at the page end; null when there are none. */
-	footer: ReactNode;
+	/** The header menu: Make recurring, Delete last; empty when there are none. */
+	menu: MenuItem[];
 	sheets: ReactNode;
 } {
 	const t = useTranslations("mobile.entry");
 	const add = useOptionalAddEntry();
 	const { listDetail } = useLayoutClass();
-	const { space } = useTheme();
 	const [repeat, setRepeat] = useState(false);
 
 	const canDeleteOwn = editable && canSelect(item);
@@ -68,37 +65,30 @@ export function useEntryActions({
 		onDeleted: leave,
 	});
 
-	const footer =
-		canDelete || canRepeatIt ? (
-			<View
-				style={{
-					flexDirection: "row",
-					alignItems: "center",
-					justifyContent: "space-between",
-					gap: space[2],
-					paddingTop: space[4],
-				}}
-			>
-				<View>
-					{canRepeatIt ? (
-						<Button
-							label={t("makeRecurring")}
-							onPress={() => setRepeat(true)}
-							size="small"
-							variant="text"
-						/>
-					) : null}
-				</View>
-				{canDelete ? (
-					<Button
-						label={t("delete")}
-						onPress={askDelete}
-						size="small"
-						variant="dangerText"
-					/>
-				) : null}
-			</View>
-		) : null;
+	// Make recurring, then Delete (last, destructive): the header's menu.
+	const menu: MenuItem[] = [
+		...(canRepeatIt
+			? [
+					{
+						id: "make-recurring",
+						label: t("makeRecurring"),
+						icon: "Repeat" as const,
+						onPress: () => setRepeat(true),
+					},
+				]
+			: []),
+		...(canDelete
+			? [
+					{
+						id: "delete",
+						label: t("delete"),
+						icon: "Trash2" as const,
+						destructive: true,
+						onPress: askDelete,
+					},
+				]
+			: []),
+	];
 
 	const sheets = (
 		<>
@@ -119,7 +109,7 @@ export function useEntryActions({
 						item.source === "shared" ? "shared" : undefined,
 					)
 			: null,
-		footer,
+		menu,
 		sheets,
 	};
 }
