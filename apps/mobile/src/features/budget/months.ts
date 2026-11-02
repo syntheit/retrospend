@@ -22,15 +22,6 @@ export function lastMonth(bounds: MonthBounds): number {
 	return addMonths(bounds.open, 1);
 }
 
-export function canStep(
-	key: number,
-	delta: -1 | 1,
-	bounds: MonthBounds,
-): boolean {
-	const next = addMonths(key, delta);
-	return next >= bounds.first && next <= lastMonth(bounds);
-}
-
 /** Newest first, from the month after the open one back to the book's first (at most `limit`). */
 export function monthChoices(bounds: MonthBounds, limit = 13): number[] {
 	const out: number[] = [];

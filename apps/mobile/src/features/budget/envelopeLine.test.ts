@@ -1,5 +1,5 @@
 import { envelopeSpentPercent, leftAtom, targetLine } from "./envelopeLine";
-import type { BudgetEnvelope, BudgetGroup } from "./source";
+import type { BudgetEnvelope } from "./source";
 
 const ars = (minor: number) => ({ minor, currency: "ARS" });
 const usd = (minor: number) => ({ minor, currency: "USD" });

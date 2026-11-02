@@ -16,7 +16,6 @@ export type FillPlan = Awaited<ReturnType<Client["fillFromTargets"]>>;
 export type CoverOverview = Awaited<ReturnType<Client["coverSources"]>>;
 export type BudgetPreview = Awaited<ReturnType<Client["previewAssign"]>>;
 export type PayoffProjection = Awaited<ReturnType<Client["payoffProjection"]>>;
-export type MovementResult = Awaited<ReturnType<Client["assign"]>>["result"];
 
 /** The month the server calls current, or the one asked for. */
 export interface BudgetRead {

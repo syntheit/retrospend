@@ -178,31 +178,6 @@ export function previewRows(preview: PaymentPreview): {
 	return { changes, kept };
 }
 
-/**
- * What the payment pays, in the payment currency, from the allocation the
- * server answers with in the preview's detail (the same one the write
- * returns). `converted` is true when a debt in another currency was turned
- * into the payment currency at a rate, so the amount is an estimate.
- */
-export function allocationOf(
-	preview: PaymentPreview,
-): { amount: Money; converted: boolean } | null {
-	const detail = preview.detail as
-		| {
-				allocation?: {
-					amount: Money;
-					rows?: { rate: unknown | null }[];
-				} | null;
-		  }
-		| undefined;
-	const allocation = detail?.allocation;
-	if (!allocation) return null;
-	return {
-		amount: allocation.amount,
-		converted: (allocation.rows ?? []).some((row) => row.rate !== null),
-	};
-}
-
 /** Which way a signed line points: they owe you (incoming) or you owe them. */
 function pointsTheWay(minor: number, direction: Direction): boolean {
 	return direction === "incoming" ? minor > 0 : minor < 0;

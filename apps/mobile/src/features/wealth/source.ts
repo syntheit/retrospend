@@ -34,7 +34,6 @@ export const CHANGE_DAYS = 30;
 
 export const WEALTH_CACHE: CacheKey = { name: "wealth", schema: 3 };
 export const ACCOUNT_CACHE_PREFIX = "account.";
-export const ACCOUNT_CACHE_KEEP = 20;
 
 export function accountCache(id: string): CacheKey {
 	return { name: `${ACCOUNT_CACHE_PREFIX}${id}`, schema: 1 };

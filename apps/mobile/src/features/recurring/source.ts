@@ -11,7 +11,6 @@ export type RecurringItem = Awaited<
 	ReturnType<Client["list"]>
 >["items"][number];
 export type RecurringSummary = Awaited<ReturnType<Client["summary"]>>;
-export type ConfirmPreview = Awaited<ReturnType<Client["previewConfirm"]>>;
 
 export interface RecurringData {
 	items: RecurringItem[];

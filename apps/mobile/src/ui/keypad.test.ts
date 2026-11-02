@@ -10,7 +10,6 @@ import {
 	applyPlainKey,
 	BACKSPACE,
 	keypadLayout,
-	TRIPLE_ZERO,
 } from "./keypad";
 
 // The keypad must produce exactly the drafts the domain vectors promise.
@@ -43,12 +42,12 @@ describe("keypadLayout", () => {
 		const keys = keypadLayout("en-US").flat();
 		expect(keys).toHaveLength(12);
 		expect(keys.at(-1)).toBe(BACKSPACE);
-		expect(keys).not.toContain(TRIPLE_ZERO);
+		expect(keys).not.toContain("000");
 	});
 
 	it("still takes three zeros as one key", () => {
 		let draft = "";
-		for (const key of ["1", "2", "5", TRIPLE_ZERO]) {
+		for (const key of ["1", "2", "5", "000"]) {
 			draft = applyKey(draft, key, "en-US", "ARS");
 		}
 		expect(parseMoneyInput(draft, "en-US", "ARS")).toMatchObject({

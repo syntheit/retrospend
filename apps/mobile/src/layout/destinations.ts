@@ -82,12 +82,6 @@ export const ADD_CONTROL = addControlFor({
 	version: Platform.Version,
 });
 
-/**
- * Room a scrolling screen leaves under its last row so the floating add button
- * never covers it: the button, its margin and a little air.
- */
-export const FLOATING_ADD_INSET = ADD_CONTROL === "floating" ? 80 : 0;
-
 /** Page actions that are not adds: they stay in the bar beside the plus. */
 const STAY_IN_BAR = new Set(["search", "converter", "notifications"]);
 

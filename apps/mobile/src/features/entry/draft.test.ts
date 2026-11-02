@@ -1,4 +1,4 @@
-import { applyKey, TRIPLE_ZERO } from "@/ui/keypad";
+import { applyKey } from "@/ui/keypad";
 import {
 	amountMinor,
 	buildExpenseUpdate,
@@ -87,7 +87,7 @@ describe("the keypad to minor units", () => {
 	});
 
 	it("takes the 000 key as three zeros", () => {
-		const text = type(["3", TRIPLE_ZERO]);
+		const text = type(["3", "000"]);
 		expect(amountMinor(text, "en-US", "ARS")).toBe(300_000);
 	});
 

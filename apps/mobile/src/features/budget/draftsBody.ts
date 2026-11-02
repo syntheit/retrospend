@@ -9,8 +9,6 @@ export type SaveDraftInput = Parameters<Client["saveDraft"]>[0];
 export type DraftsRead = Awaited<ReturnType<Client["drafts"]>>;
 export type Draft = NonNullable<DraftsRead["open"]>;
 export type DraftOutcome = Awaited<ReturnType<Client["draftOutcome"]>>;
-export type FundNowInput = Parameters<Client["fundPlanNow"]>[0];
-export type ApplyDraftInput = Parameters<Client["applyDraft"]>[0];
 
 /** The month after `key` (YYYYMM). */
 export function nextMonthKey(key: number): number {

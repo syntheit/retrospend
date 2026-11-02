@@ -1,5 +1,5 @@
 import type { Money } from "@retrospend/domain/money-minor";
-import type { BudgetEnvelope, BudgetGroup } from "./source";
+import type { BudgetEnvelope } from "./source";
 
 // What an envelope row says under its name, and how its Left reads at the end.
 // The server decides every figure and status; this only picks which of the

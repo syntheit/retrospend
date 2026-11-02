@@ -84,9 +84,6 @@ export type Margin = (typeof MARGIN)[keyof typeof MARGIN];
 /** The time axis under a chart: its row height (labels at 12 sit in it). */
 export const AXIS = { height: 22 } as const;
 
-/** Bars: the widest a bar gets, its corner radius, the y label column. */
-export const BAR = { maxSize: 48, radius: 4, yAxisWidth: 44 } as const;
-
 /** Thin bars (ranked, allocation, balance), in pt. */
 export const THIN = { ranked: 8, allocation: 10, balance: 12, gap: 2 } as const;
 
@@ -97,24 +94,6 @@ export const THIN = { ranked: 8, allocation: 10, balance: 12, gap: 2 } as const;
  * precise read.
  */
 export const SCRUB = { holdMs: 240, startPx: 8, failPx: 12 } as const;
-
-/** "Nice" top of a value axis: 1, 2, 2.5, 5 or 10 times a power of ten. */
-export function niceMax(max: number): number {
-	if (max <= 0) return 1;
-	const power = 10 ** Math.floor(Math.log10(max));
-	const m = max / power;
-	const step = m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10;
-	return step * power;
-}
-
-/**
- * A bar's length as a share of the longest, for ranked bars. Geometry only:
- * the amounts shown next to the bars come from the server as they are.
- */
-export function barShare(value: number, max: number): number {
-	if (max <= 0 || value <= 0) return 0;
-	return Math.max(1, (value / max) * 100);
-}
 
 /** Which points of a time axis get a label: first, middle, last. */
 export function edgeTicks<T>(points: readonly T[]): T[] {

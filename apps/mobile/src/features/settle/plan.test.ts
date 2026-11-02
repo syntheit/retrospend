@@ -2,7 +2,6 @@ import type { SettleContext } from "@/features/people/source";
 import {
 	type Allocation,
 	allocationDetail,
-	allocationOf,
 	answerFor,
 	balanceAfter,
 	chipRate,
@@ -165,28 +164,6 @@ describe("previewRows", () => {
 		]);
 	});
 
-	it("reads the amount the allocation pays", () => {
-		expect(allocationOf(preview)).toBeNull();
-		const detail = (rows: { rate: unknown }[]) => ({
-			...preview,
-			detail: {
-				kind: "payment.record",
-				allocation: {
-					amount: { minor: 30518100, currency: "ARS" },
-					rows,
-				},
-			},
-		});
-		expect(allocationOf(detail([{ rate: null }]))).toEqual({
-			amount: { minor: 30518100, currency: "ARS" },
-			converted: false,
-		});
-		// A BRL debt paid in ARS went through a rate: an estimate.
-		expect(
-			allocationOf(detail([{ rate: null }, { rate: { rateType: "official" } }]))
-				?.converted,
-		).toBe(true);
-	});
 });
 
 describe("answerFor", () => {
