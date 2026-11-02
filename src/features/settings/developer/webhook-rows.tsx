@@ -3,7 +3,7 @@
 import type { WebhookDto } from "@retrospend/api-contract";
 import { Webhook } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { ActionMenu } from "~/components/actions/action-menu";
+import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import type { ActionHandlers } from "~/components/actions/types";
 import type { WebhookTarget } from "~/components/actions/webhook";
 import { IconTile, Row, RowSub } from "~/components/rows/row";
@@ -21,14 +21,16 @@ export function WebhookRow({
 	const t = useTranslations("settingsV2.developer");
 	const tArea = useTranslations("settingsV2.developer.areas");
 	const state = stateOf(w);
+	const target = { id: w.id, name: w.name, enabled: w.enabled };
 	return (
+		<ActionArea
+			entity="webhook"
+			handlers={handlers}
+			target={target}
+		>
 		<Row
 			actions={
-				<ActionMenu
-					entity="webhook"
-					handlers={handlers}
-					target={{ id: w.id, name: w.name, enabled: w.enabled }}
-				/>
+				<ActionMenu entity="webhook" handlers={handlers} target={target} />
 			}
 			lead={<IconTile icon={Webhook} />}
 			sub={
@@ -56,5 +58,6 @@ export function WebhookRow({
 				) : null
 			}
 		/>
+		</ActionArea>
 	);
 }

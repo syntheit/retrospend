@@ -3,6 +3,7 @@
 import { Bell, BellOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
+import { ActionArea } from "~/components/actions/action-menu";
 import { Button } from "~/components/ui/button";
 import { Empty } from "~/components/ui/empty-state";
 import {
@@ -28,13 +29,20 @@ import {
 function NotificationRow({
 	n,
 	onOpen,
+	onMarkRead,
 }: {
 	n: ShellNotification;
 	onOpen: () => void;
+	onMarkRead: () => void;
 }) {
 	const t = useTranslations("shell.notifications");
 	const unread = !n.isRead;
 	return (
+		<ActionArea
+			entity="notification"
+			handlers={{ open: onOpen, markRead: onMarkRead }}
+			target={{ id: n.id, name: n.title, unread }}
+		>
 		<Button
 			className="h-auto w-full items-start justify-start gap-3 whitespace-normal px-2 py-3 text-left font-normal text-fg"
 			kind="ghost"
@@ -60,6 +68,7 @@ function NotificationRow({
 				</span>
 			</span>
 		</Button>
+		</ActionArea>
 	);
 }
 
@@ -122,6 +131,7 @@ export function NotificationsPanel({
 						<NotificationRow
 							key={n.id}
 							n={n}
+							onMarkRead={() => feed.markOneRead(n)}
 							onOpen={() => feed.openNotification(n)}
 						/>
 					))

@@ -4,7 +4,7 @@ import { KeyRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { useDateFormat } from "~/components/pickers/use-date-format";
-import { ActionMenu } from "~/components/actions/action-menu";
+import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import { IconTile, Row, RowList, RowSub } from "~/components/rows/row";
 import { Empty } from "~/components/ui/empty-state";
 import { SkeletonRows } from "~/components/ui/skeleton";
@@ -80,14 +80,17 @@ export function KeyRow({
 }) {
 	const t = useTranslations("settingsV2.developer");
 	const w = useTokenWords();
+	const handlers = { revoke: onRevoke };
+	const target = { id: k.id, name: k.name };
 	return (
+		<ActionArea
+			entity="apiKey"
+			handlers={handlers}
+			target={target}
+		>
 		<Row
 			actions={
-				<ActionMenu
-					entity="apiKey"
-					handlers={{ revoke: onRevoke }}
-					target={{ id: k.id, name: k.name }}
-				/>
+				<ActionMenu entity="apiKey" handlers={handlers} target={target} />
 			}
 			lead={<IconTile icon={KeyRound} />}
 			sub={
@@ -108,5 +111,6 @@ export function KeyRow({
 			}
 			title={k.name}
 		/>
+		</ActionArea>
 	);
 }

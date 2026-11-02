@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ActionMenu } from "~/components/actions/action-menu";
+import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import { IconTile, Row, RowSub } from "~/components/rows/row";
 import { PaymentMethodIcon } from "~/components/ui/payment-method-icon";
 import type { Method, Visibility } from "./types";
@@ -50,6 +50,11 @@ export function MethodRow({
 		remove: onRemove,
 	};
 	return (
+		<ActionArea
+			entity="paymentMethod"
+			handlers={handlers}
+			target={target}
+		>
 		<Row
 			actions={
 				<ActionMenu
@@ -78,5 +83,6 @@ export function MethodRow({
 				) : undefined
 			}
 		/>
+		</ActionArea>
 	);
 }

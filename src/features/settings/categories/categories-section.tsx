@@ -5,7 +5,7 @@ import { ChevronDown, Plus } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { ActionMenu } from "~/components/actions/action-menu";
+import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import { Row, RowList, RowSub } from "~/components/rows/row";
 import { Button } from "~/components/ui/button";
 import { CategoryTile } from "~/components/ui/category-badge";
@@ -154,6 +154,11 @@ function CategoryRow({
 	};
 
 	return (
+		<ActionArea
+			entity="category"
+			handlers={handlers}
+			target={target}
+		>
 		<Row
 			actions={
 				<ActionMenu entity="category" handlers={handlers} target={target} />
@@ -174,5 +179,6 @@ function CategoryRow({
 			}
 			title={name}
 		/>
+		</ActionArea>
 	);
 }

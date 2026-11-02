@@ -93,6 +93,7 @@ export function useNotificationFeed(open: boolean, onNavigate: () => void) {
 		isError,
 		retry: () => void refetch(),
 		openNotification,
+		markOneRead: (n: ShellNotification) => markRead.mutate({ id: n.id }),
 		markAllRead: () => markAllRead.mutate(),
 		markingAll: markAllRead.isPending,
 	};
