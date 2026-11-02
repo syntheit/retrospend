@@ -1,4 +1,5 @@
-import { dayOfPicker, pickerDate, shiftDay } from "./dates";
+import { shiftDay } from "@/lib/days";
+import { dayOfPicker, pickerDate } from "./dates";
 
 describe("the day a native picker holds", () => {
 	it("round-trips every day of a leap year on both clocks", () => {
@@ -25,11 +26,5 @@ describe("the day a native picker holds", () => {
 		// 23:30 on the 24th in Buenos Aires is already the 25th in UTC.
 		const lateLocal = new Date("2026-10-25T02:30:00Z");
 		expect(dayOfPicker(lateLocal, "utc")).toBe("2026-10-25");
-	});
-
-	it("shifts across month and year ends", () => {
-		expect(shiftDay("2026-03-01", -1)).toBe("2026-02-28");
-		expect(shiftDay("2028-03-01", -1)).toBe("2028-02-29");
-		expect(shiftDay("2026-12-31", 1)).toBe("2027-01-01");
 	});
 });

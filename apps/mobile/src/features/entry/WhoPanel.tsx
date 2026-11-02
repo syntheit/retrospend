@@ -4,6 +4,7 @@ import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
 import { GlyphPill } from "@/ui/GlyphPill";
+import { HAIRLINE } from "@/ui/metrics";
 import { StatusText } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
 import { FaceRow } from "./FaceRow";
@@ -177,7 +178,7 @@ export function WhoPanel({
 												gap: space[3],
 												paddingHorizontal: space[3],
 												borderRadius: radius.panel,
-												borderWidth: 1,
+												borderWidth: HAIRLINE,
 												borderColor: invalid
 													? color.danger
 													: active

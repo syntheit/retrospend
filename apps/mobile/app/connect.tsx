@@ -1,9 +1,10 @@
 import Constants from "expo-constants";
 import { Stack } from "expo-router";
 import { useState } from "react";
-import { Platform, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerConnection } from "@/auth/server-connection";
+import { LARGE_TITLE } from "@/layout/pushedHeader";
 import {
 	initialServerAddress,
 	type ProbeResult,
@@ -73,7 +74,7 @@ export default function ConnectScreen() {
 			<Stack.Screen
 				options={{
 					headerShown: true,
-					headerLargeTitle: Platform.OS === "ios",
+					headerLargeTitle: LARGE_TITLE,
 					headerShadowVisible: false,
 					title: t("title"),
 				}}

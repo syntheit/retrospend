@@ -1,6 +1,7 @@
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
+import { HAIRLINE } from "@/ui/metrics";
 import { Text } from "@/ui/Text";
 import { TextAction } from "@/ui/TextAction";
 import { BULK_DELETE_LIMIT, entityIdsOf } from "./bulk";
@@ -40,7 +41,7 @@ export function BulkControls({
 					paddingHorizontal: space[4],
 					paddingVertical: space[1],
 					backgroundColor: color.raised,
-					borderBottomWidth: 1,
+					borderBottomWidth: HAIRLINE,
 					borderBottomColor: color.line,
 				}}
 			>

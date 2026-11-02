@@ -9,6 +9,7 @@ import { useHeaderSearch } from "@/layout/headerSearch";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { useCollapsingBar } from "@/ui/barScroll";
+import { LAYER } from "@/ui/metrics";
 import { usePaneEnter } from "@/ui/motion";
 import { markPaneSwitch, PaneVeil } from "@/ui/PaneVeil";
 import { UnderlineTabs } from "@/ui/UnderlineTabs";
@@ -74,7 +75,7 @@ export function PeopleHub() {
 	}
 
 	const switcher = (
-		<View style={{ zIndex: 1 }}>
+		<View style={{ zIndex: LAYER.above }}>
 			{/* Pinned in the large bar, the row takes the bar's tone. */}
 			<View
 				style={{

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { useList } from "@/lib/list";
 import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { ChipChevron } from "@/ui/Chip";
@@ -10,12 +11,13 @@ import type { GlyphName } from "@/ui/Glyph";
 import { IconTile } from "@/ui/IconTile";
 import { ListGroup, ListRow } from "@/ui/List";
 import { MoneyAmount } from "@/ui/Money";
+import { HAIRLINE } from "@/ui/metrics";
 import { Pill } from "@/ui/Pill";
 import { ProgressBar } from "@/ui/ProgressBar";
 import { Text } from "@/ui/Text";
 import { EnvelopeRow, useColumnWidth } from "./EnvelopeRow";
 import type { EnvelopeMode } from "./EnvelopeSheet";
-import { groupSpentPercent } from "./envelopeLine";
+import { envelopeSpentPercent } from "./envelopeLine";
 import type { MonthKind } from "./months";
 import {
 	groupKey,
@@ -26,7 +28,6 @@ import {
 } from "./rows";
 import type { BudgetEnvelope, BudgetGroup, BudgetStyle } from "./source";
 import { useGroupName } from "./useGroupName";
-import { joinNames } from "./verdict";
 
 type Open = (envelope: BudgetEnvelope, mode: EnvelopeMode) => void;
 
@@ -51,16 +52,15 @@ function roleGlyph(role: BudgetGroup["role"]): GlyphName {
  */
 function useGroupSpoken() {
 	const t = useTranslations("mobile.budget.group");
-	const tb = useTranslations("mobile.budget");
+	const list = useList();
 	const money = useMoneyText();
 	const locale = useMoneyLocale();
 	const name = useGroupName();
 	return (group: BudgetGroup, style: BudgetStyle, open: boolean): string => {
-		const overNames = joinNames(
+		const overNames = list(
 			group.envelopes
 				.filter((e) => e.status === "OVERSPENT")
 				.map((e) => e.name),
-			(head, last) => tb("listAnd", { head, last }),
 		);
 		const share = groupPercents(group);
 		return [
@@ -293,7 +293,7 @@ function BucketRows({
 	const words = line(group);
 	const { over, node } = end(group, style, wide);
 	const percent =
-		group.role === "SAVINGS" ? null : groupSpentPercent(group.totals);
+		group.role === "SAVINGS" ? null : envelopeSpentPercent(group.totals);
 	return (
 		<>
 			<ListRow
@@ -339,7 +339,7 @@ function BucketRows({
 			{open
 				? group.envelopes.map((envelope) => (
 						<View key={envelope.id}>
-							<View style={{ height: 1, backgroundColor: color.line }} />
+							<View style={{ height: HAIRLINE, backgroundColor: color.line }} />
 							<View style={{ paddingLeft: space[6] }}>
 								<EnvelopeRow
 									envelope={envelope}

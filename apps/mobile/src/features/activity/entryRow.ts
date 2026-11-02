@@ -1,3 +1,4 @@
+import { isMoney } from "@retrospend/domain/money-minor";
 import type { ReadCache } from "@/data/cache";
 import { ACTIVITY_CACHE, type ActivityItem, type ActivityPage } from "./source";
 
@@ -26,10 +27,6 @@ const SCHEMA = 1;
 type Shape = Record<string, unknown>;
 const isObject = (v: unknown): v is Shape =>
 	typeof v === "object" && v !== null && !Array.isArray(v);
-const isMoney = (v: unknown) =>
-	isObject(v) &&
-	Number.isSafeInteger(v.minor) &&
-	typeof v.currency === "string";
 const optional = (v: unknown, check: (v: unknown) => boolean) =>
 	v === undefined || v === null || check(v);
 const SOURCES = ["personal", "shared", "payment"];
@@ -88,6 +85,28 @@ export function rowFromParam(
 		return null;
 	}
 	return isActivityRow(parsed) && parsed.id === id ? parsed : null;
+}
+
+// The row a list opens, kept by id so the route carries only the id (a JSON
+// copy of the row in the route is parsed and validated on every navigation
+// event). Like a row in a route, it is only what shows while the server
+// answers.
+const STASH_LIMIT = 40;
+const stash = new Map<string, ActivityItem>();
+
+/** Remember the row about to be opened, newest last. */
+export function stashRow(item: ActivityItem): void {
+	stash.delete(item.id);
+	stash.set(item.id, item);
+	for (const id of stash.keys()) {
+		if (stash.size <= STASH_LIMIT) break;
+		stash.delete(id);
+	}
+}
+
+/** The row the list stashed for this id, if it is still there. */
+export function stashedRow(id: string | undefined): ActivityItem | null {
+	return (id && stash.get(id)) || null;
 }
 
 const notFound = (error: unknown) =>

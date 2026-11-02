@@ -1,4 +1,4 @@
-import type { Money } from "@retrospend/domain/money-minor";
+import { isMoney, type Money } from "@retrospend/domain/money-minor";
 import type { BalancePreview } from "./source";
 
 // What "Update balance" would do, from the server's dry run of the write. The
@@ -16,16 +16,6 @@ export interface BalanceRows {
 
 /** The figure the account's own line already says. */
 export const ACCOUNT_BALANCE = "accounts.balance";
-
-function isMoney(value: unknown): value is Money {
-	const m = value as Money | null;
-	return (
-		typeof m === "object" &&
-		m !== null &&
-		typeof m.minor === "number" &&
-		typeof m.currency === "string"
-	);
-}
 
 export function balanceRows(preview: BalancePreview): BalanceRows {
 	const result = (

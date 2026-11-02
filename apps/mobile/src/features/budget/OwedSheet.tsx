@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Line, Note, SheetBody } from "@/features/write/parts";
+import { useResetOnOpen } from "@/features/write/useResetOnOpen";
 import { Avatar } from "@/ui/Avatar";
 import { ListRow } from "@/ui/List";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
@@ -42,9 +43,7 @@ export function OwedSheet({
 		owed?.people.find((p) => participantKey(p.participant) === forgiving) ??
 		null;
 
-	useEffect(() => {
-		if (visible) setForgiving(null);
-	}, [visible]);
+	useResetOnOpen(visible, () => setForgiving(null));
 
 	return (
 		<Sheet

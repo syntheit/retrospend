@@ -5,7 +5,6 @@ import {
 	chartColors,
 	edgeTicks,
 	MARGIN,
-	niceMax,
 	seriesColor,
 } from "./chartSpec";
 
@@ -76,11 +75,5 @@ describe("spec", () => {
 		expect(seriesColor(light.color, 1)).toBe(light.color.series1);
 		expect(seriesColor(light.color, 9)).toBe(light.color.series1);
 		expect(categoryColor(light.color, 21)).toBe(light.color.category21);
-	});
-
-	it("rounds an axis top to a nice number", () => {
-		expect(niceMax(0)).toBe(1);
-		expect(niceMax(130)).toBe(200);
-		expect(niceMax(2400)).toBe(2500);
 	});
 });

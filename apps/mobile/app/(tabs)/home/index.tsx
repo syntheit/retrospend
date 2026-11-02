@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
@@ -7,7 +7,6 @@ import { ActivityRow } from "@/features/activity/ActivityRow";
 import { mergePending } from "@/features/activity/pending";
 import { usePendingRows } from "@/features/activity/usePending";
 import { ConverterSheet } from "@/features/currencies/ConverterSheet";
-import { subscribeEntryChanges } from "@/features/entry/events";
 import { SyncIssues } from "@/features/entry/SyncIssues";
 import { useHomeDates } from "@/features/home/dates";
 import { Glance } from "@/features/home/Glance";
@@ -16,6 +15,7 @@ import { NeedsYou } from "@/features/home/NeedsYou";
 import { fetchHome, HOME_CACHE, RECENT_COUNT } from "@/features/home/source";
 import { useUnreadNotifications } from "@/features/notifications/useUnreadCount";
 import { useCachedRead } from "@/features/read/useCachedRead";
+import { useReloadOnEntryChange } from "@/features/read/useReloadOnEntryChange";
 import { entryHref } from "@/layout/detailRoutes";
 import { useShowConverter } from "@/lib/converter-pref";
 import { useTheme } from "@/theme";
@@ -52,7 +52,7 @@ export default function HomeScreen() {
 	);
 	const [refreshing, setRefreshing] = useState(false);
 	// An entry added, undone or sent from the outbox changes what Home shows.
-	useEffect(() => subscribeEntryChanges(() => void reload()), [reload]);
+	useReloadOnEntryChange(reload);
 
 	const refresh = useCallback(async () => {
 		setRefreshing(true);
@@ -95,10 +95,8 @@ export default function HomeScreen() {
 									<ActivityRow
 										item={item}
 										key={item.id}
-										onPress={() =>
-											router.push(
-												entryHref(item.id, true, JSON.stringify(item)),
-											)
+										onOpen={(row) =>
+											router.push(entryHref(row.id, true, JSON.stringify(row)))
 										}
 									/>
 								))}

@@ -4,6 +4,7 @@ import {
 	type SortFacts,
 	sortAccounts as sort,
 } from "@retrospend/domain/account-sort";
+import { parseBasisPoints } from "@/lib/basisPoints";
 import type { GlyphName } from "@/ui/Glyph";
 import type { Account } from "./source";
 
@@ -104,12 +105,7 @@ export function glyphOf(type: Account["type"]): GlyphName {
  * touches it; digits past the second are dropped. Null when it is not a number.
  */
 export function aprBasis(text: string | null): number | null {
-	if (text === null) return null;
-	const match = /^(\d{1,3})(?:\.(\d+))?$/.exec(text.trim());
-	if (!match) return null;
-	const whole = Number(match[1]);
-	const fraction = Number(`${match[2] ?? ""}00`.slice(0, 2));
-	return whole * 100 + fraction;
+	return text === null ? null : parseBasisPoints(text, { truncate: true });
 }
 
 /** What the order needs to know: the home value by size (a debt by what is owed), none without a rate. */

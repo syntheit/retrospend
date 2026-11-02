@@ -4,7 +4,10 @@
  * budget month a date belongs to depends on BookPeriod start days and is the
  * engine's job; these helpers only do plain calendar math.
  */
+import { addMonths, monthKey, monthParts } from "@retrospend/domain/month-key";
 import type { IsoDate, MonthKey } from "./types";
+
+export { addMonths, monthKey, monthParts };
 
 const DAY_MS = 86_400_000;
 const ISO = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -28,23 +31,6 @@ function toUtc(date: IsoDate): number {
 
 function fromUtc(ms: number): IsoDate {
 	return new Date(ms).toISOString().slice(0, 10);
-}
-
-export function monthKey(year: number, month: number): MonthKey {
-	return year * 100 + month;
-}
-
-export function monthParts(key: MonthKey): { year: number; month: number } {
-	const year = Math.floor(key / 100);
-	const month = key % 100;
-	if (month < 1 || month > 12) throw new RangeError(`bad month key ${key}`);
-	return { year, month };
-}
-
-export function addMonths(key: MonthKey, n: number): MonthKey {
-	const { year, month } = monthParts(key);
-	const index = year * 12 + (month - 1) + n;
-	return monthKey(Math.floor(index / 12), (index % 12) + 1);
 }
 
 /** Whole months from `from` to `to` (Nov to May = 6). */

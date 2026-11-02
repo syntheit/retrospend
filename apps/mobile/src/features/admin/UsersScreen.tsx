@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import { dayKey } from "@/lib/days";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
 import { Chip } from "@/ui/Chip";
@@ -74,7 +75,7 @@ export function UsersScreen() {
 		[users, filter, query],
 	);
 	const open = users?.find((user) => user.id === openId) ?? null;
-	const today = new Date().toISOString().slice(0, 10);
+	const today = dayKey(new Date());
 
 	if (!users)
 		return (

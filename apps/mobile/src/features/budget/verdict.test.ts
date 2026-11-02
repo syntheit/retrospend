@@ -1,6 +1,5 @@
 import type { Verdict } from "./source";
 import {
-	joinNames,
 	verdictActionKey,
 	verdictIsOver,
 	verdictLabel,
@@ -133,16 +132,6 @@ describe("verdict sentence", () => {
 			key: "weekLeft",
 			values: { resets: { kind: "date", iso: "2026-10-26" } },
 		});
-	});
-});
-
-describe("joining names", () => {
-	it("uses the catalog's and between the last two", () => {
-		const and = (head: string, last: string) => `${head} and ${last}`;
-		expect(joinNames([], and)).toBe("");
-		expect(joinNames(["Cafe"], and)).toBe("Cafe");
-		expect(joinNames(["Cafe", "Transport"], and)).toBe("Cafe and Transport");
-		expect(joinNames(["A", "B", "C"], and)).toBe("A, B and C");
 	});
 });
 

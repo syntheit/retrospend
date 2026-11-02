@@ -1,6 +1,7 @@
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { dayDate } from "@/lib/days";
 import { IconTile } from "@/ui/IconTile";
 import { CategoryTile, ListRow } from "@/ui/List";
 import { MoneyAmount } from "@/ui/Money";
@@ -16,8 +17,7 @@ export type LedgerRow = PersonPage["rows"][number];
 function useShortDay() {
 	const format = useFormatter();
 	return (day: string) => {
-		const [y, m, d] = day.split("-").map(Number) as [number, number, number];
-		return format.dateTime(new Date(y, m - 1, d, 12), {
+		return format.dateTime(dayDate(day), {
 			month: "short",
 			day: "numeric",
 		});

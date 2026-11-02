@@ -4,6 +4,7 @@ import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { SectionHeader } from "@/ui/List";
+import { HAIRLINE } from "@/ui/metrics";
 import { Text } from "@/ui/Text";
 import type { InsightsCashflow } from "./source";
 import type { InsightsWords } from "./useInsightsWords";
@@ -46,7 +47,7 @@ function FigureRow({
 				gap: space[3],
 				paddingHorizontal: space[4],
 				paddingVertical: space[2],
-				borderBottomWidth: 1,
+				borderBottomWidth: HAIRLINE,
 				borderBottomColor: color.line,
 			}}
 		>

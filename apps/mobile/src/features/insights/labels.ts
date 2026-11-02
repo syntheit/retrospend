@@ -33,9 +33,3 @@ export function rangeLabel(
 	if (from === to) return day(from);
 	return words.span(day(from), day(to));
 }
-
-/** "2026-10-14" as a local noon Date, so no zone moves it to another day. */
-export function localDate(day: string): Date {
-	const [y, m, d] = day.split("-").map(Number) as [number, number, number];
-	return new Date(y, m - 1, d, 12);
-}

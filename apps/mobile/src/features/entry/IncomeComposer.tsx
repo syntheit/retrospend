@@ -2,6 +2,7 @@ import { formatMoneyDraft } from "@retrospend/domain/parse";
 import type { ReactNode } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
+import { usePadFold } from "@/features/write/useFoldingPad";
 import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import type { PagerTab } from "@/ui/DetailPager";
@@ -20,7 +21,6 @@ import { PreviewLine } from "./PreviewLine";
 import type { EntryCatalog, EntryMode } from "./types";
 import type { ComposerPreview } from "./useComposerPreview";
 import type { EntryForm } from "./useEntryForm";
-import { usePanelFold } from "./usePanelFold";
 import { useDayWords, WhenPanel } from "./WhenPanel";
 
 type PanelName = "category" | "when" | "into" | "plan" | "more";
@@ -73,7 +73,10 @@ export function useIncomeFrame({
 	const { space } = useTheme();
 	const day = useDayWords();
 	const draft = form.income;
-	const { page, goTo, fold, system } = usePanelFold(form);
+	const { page, goTo, fold, system } = usePadFold(
+		form.typedAmount !== null,
+		form.setPadOpen,
+	);
 	const planned = catalog.hasBudget === true;
 	const names: PanelName[] = planned
 		? ["category", "when", "into", "plan", "more"]

@@ -1,10 +1,12 @@
 import { dayKey } from "@retrospend/domain/time-zone";
 import { Pressable, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
+import { shiftDay } from "@/lib/days";
 import { useTheme } from "@/theme";
 import { DateField } from "@/ui/DateField";
+import { HAIRLINE } from "@/ui/metrics";
 import { Text } from "@/ui/Text";
-import { pickerDate, shiftDay } from "./dates";
+import { pickerDate } from "./dates";
 
 /** Today, Yesterday and the six days before: eight tiles, four to a row. */
 const DAYS = 8;
@@ -85,7 +87,7 @@ export function WhenPanel({
 									alignItems: "center",
 									justifyContent: "center",
 									borderRadius: radius.panel,
-									borderWidth: 1,
+									borderWidth: HAIRLINE,
 									borderColor: on ? color.brand : "transparent",
 									backgroundColor: on
 										? color.brandSoft

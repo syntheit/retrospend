@@ -4,11 +4,13 @@ import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { useFaces } from "@/features/read/faces";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { dayDate } from "@/lib/days";
 import { useRateFormat } from "@/lib/rateFormat";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
 import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
 import { useRateTypeLabel } from "@/ui/Money";
+import { HAIRLINE } from "@/ui/metrics";
 import { StatusText } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
 import { rowStatus } from "./ActivityRow";
@@ -39,7 +41,7 @@ function Fact({
 				justifyContent: "space-between",
 				gap: space[4],
 				paddingVertical: space[2],
-				borderBottomWidth: 1,
+				borderBottomWidth: HAIRLINE,
 				borderBottomColor: color.line,
 			}}
 		>
@@ -67,12 +69,6 @@ function Fact({
 			</View>
 		</View>
 	);
-}
-
-/** Time of day is not shown; the server sends days. */
-function dayDate(day: string): Date {
-	const [y, m, d] = day.split("-").map(Number) as [number, number, number];
-	return new Date(y, m - 1, d, 12);
 }
 
 /**

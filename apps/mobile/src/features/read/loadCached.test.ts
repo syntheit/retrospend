@@ -1,6 +1,12 @@
 import { createReadCache } from "@/data/cache";
 import { createMemoryStore } from "@/data/store";
-import { loadCached } from "./loadCached";
+import {
+	loadCached,
+	REWRITE_AFTER_MS,
+	type ReadState,
+	sameData,
+	settle,
+} from "./loadCached";
 
 const KEY = { name: "thing", schema: 1 };
 const fail = async (): Promise<string> => {
@@ -111,5 +117,140 @@ describe("loadCached", () => {
 			(s) => early.push(s),
 		);
 		expect(early).toEqual([]);
+	});
+});
+
+describe("loadCached disk writes", () => {
+	it("does not write rows that did not change", async () => {
+		const cache = createReadCache(createMemoryStore(), "a");
+		await loadCached(
+			cache,
+			KEY,
+			async () => ({ n: 1 }),
+			() => {},
+		);
+		const write = jest.spyOn(cache, "write");
+		await loadCached(
+			cache,
+			KEY,
+			async () => ({ n: 1 }),
+			() => {},
+		);
+		expect(write).not.toHaveBeenCalled();
+		await loadCached(
+			cache,
+			KEY,
+			async () => ({ n: 2 }),
+			() => {},
+		);
+		expect(write).toHaveBeenCalledTimes(1);
+	});
+
+	it("writes unchanged rows again once the entry is an hour old", async () => {
+		const cache = createReadCache(createMemoryStore(), "a");
+		await loadCached(
+			cache,
+			KEY,
+			async () => ({ n: 1 }),
+			() => {},
+		);
+		const write = jest.spyOn(cache, "write");
+		await loadCached(
+			cache,
+			KEY,
+			async () => ({ n: 1 }),
+			() => {},
+			undefined,
+			{
+				now: () => Date.now() + REWRITE_AFTER_MS + 1000,
+			},
+		);
+		expect(write).toHaveBeenCalledTimes(1);
+	});
+
+	it("does not prune when it wrote nothing", async () => {
+		const cache = createReadCache(createMemoryStore(), "a");
+		const prune = { prefix: "person.", keep: 2 };
+		await loadCached(
+			cache,
+			KEY,
+			async () => 1,
+			() => {},
+			prune,
+		);
+		const spy = jest.spyOn(cache, "prune");
+		await loadCached(
+			cache,
+			KEY,
+			async () => 1,
+			() => {},
+			prune,
+		);
+		expect(spy).not.toHaveBeenCalled();
+	});
+
+	it("answers from the cache alone when that is enough, and asks the server when there is none", async () => {
+		const cache = createReadCache(createMemoryStore(), "a");
+		const fetch = jest.fn(async () => "server");
+		const empty = await loadCached(cache, KEY, fetch, () => {}, undefined, {
+			cachedIsEnough: true,
+		});
+		expect(empty).toMatchObject({ status: "ready", data: "server" });
+		expect(fetch).toHaveBeenCalledTimes(1);
+		const cached = await loadCached(cache, KEY, fetch, () => {}, undefined, {
+			cachedIsEnough: true,
+		});
+		expect(cached).toEqual({
+			status: "ready",
+			data: "server",
+			staleSince: null,
+			refreshing: false,
+		});
+		expect(fetch).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("settle", () => {
+	const ready = (
+		data: unknown,
+		extra: Partial<{ staleSince: string | null; refreshing: boolean }> = {},
+	): ReadState<unknown> => ({
+		status: "ready",
+		data,
+		staleSince: null,
+		refreshing: false,
+		...extra,
+	});
+
+	it("keeps the very same state when the answer is the same rows", () => {
+		const prev = ready({ a: [1, 2] });
+		expect(settle(prev, ready({ a: [1, 2] }))).toBe(prev);
+	});
+
+	it("keeps the old rows, with the new flags, when only a flag changed", () => {
+		const prev = ready({ a: 1 }, { refreshing: true });
+		const next = settle(prev, ready({ a: 1 }));
+		expect(next).not.toBe(prev);
+		expect((next as { data: unknown }).data).toBe(
+			(prev as { data: unknown }).data,
+		);
+		expect(next).toMatchObject({ refreshing: false });
+	});
+
+	it("takes the new state when the rows changed or the old state was not rows", () => {
+		const changed = ready({ a: 2 });
+		expect(settle(ready({ a: 1 }), changed)).toBe(changed);
+		expect(settle({ status: "loading" }, changed)).toBe(changed);
+		expect(settle(ready(1), { status: "error" })).toEqual({ status: "error" });
+	});
+});
+
+describe("sameData", () => {
+	it("compares rows by value, and plain values by identity", () => {
+		expect(sameData({ a: [1] }, { a: [1] })).toBe(true);
+		expect(sameData({ a: [1] }, { a: [2] })).toBe(false);
+		expect(sameData(1, 1)).toBe(true);
+		expect(sameData("a", "b")).toBe(false);
+		expect(sameData(null, { a: 1 })).toBe(false);
 	});
 });

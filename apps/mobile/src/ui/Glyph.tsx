@@ -2,6 +2,7 @@ import {
 	type CategoryIconName,
 	categoryIconName,
 } from "@retrospend/domain/category-icons";
+import { memo } from "react";
 import Svg, {
 	Circle,
 	Ellipse,
@@ -98,7 +99,7 @@ export type GlyphName =
  * carries the words, so a screen reader skips it. `filled` fills the shape
  * in its stroke color (a starred currency).
  */
-export function Glyph({
+export const Glyph = memo(function Glyph({
 	name,
 	size,
 	color,
@@ -130,7 +131,7 @@ export function Glyph({
 			})}
 		</Svg>
 	);
-}
+});
 
 /** A category's own glyph, bare: for pickers and menus, where a tinted tile is not allowed. */
 export function CategoryGlyph({
@@ -153,6 +154,7 @@ export function CategoryGlyph({
 
 /** The color of a category's slot (1 to 21); grey when the slot is unknown. */
 export function categoryColor(color: Theme["color"], tone: number): string {
-	const palette = color as unknown as Record<string, string>;
-	return palette[`category${((tone - 1) % 21) + 1}`] ?? color.fg3;
+	return (
+		color[`category${((tone - 1) % 21) + 1}` as keyof typeof color] ?? color.fg3
+	);
 }

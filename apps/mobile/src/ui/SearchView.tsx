@@ -15,12 +15,13 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { SearchBarCommands } from "react-native-screens";
 import { useTranslations } from "use-intl";
+import { useBackConsumer } from "@/layout/backConsumers";
 import { useTheme } from "@/theme";
 import { NoBar } from "./barScroll";
+import { LAYER } from "./metrics";
 import { easeLand } from "./motion";
 import { typeStyle } from "./Text";
 import { TopBarAction } from "./TopBarAction";
-import { useBackConsumer } from "@/layout/backConsumers";
 import { useHideTabBar } from "./tabBarMetrics";
 
 /**
@@ -103,7 +104,7 @@ export function SearchView({
 					left: 0,
 					right: 0,
 					bottom: 0,
-					zIndex: 5,
+					zIndex: LAYER.cover,
 					backgroundColor: color.bg,
 				},
 				fade,

@@ -7,6 +7,7 @@ import { minorOf, readAmount } from "@/features/write/amount";
 import { Note, SheetBody, useAmountLocale } from "@/features/write/parts";
 import { AmountField } from "@/ui/AmountField";
 import { Button } from "@/ui/Button";
+import { TYPING_SETTLE_MS } from "@/ui/metrics";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { affordQuery } from "./moreBodies";
@@ -16,8 +17,6 @@ import { type BudgetMonth, envelopesOf } from "./source";
 type Answer = NonNullable<
 	Awaited<ReturnType<RetrospendClient["budget"]["afford"]>>
 >;
-
-const SETTLE_MS = 300;
 
 /**
  * Can I afford it? One amount, one answer. The server reads the same figure
@@ -94,7 +93,7 @@ export function AffordSheet({
 				.catch(() => {
 					if (!cancelled) setFailed(true);
 				});
-		}, SETTLE_MS);
+		}, TYPING_SETTLE_MS);
 		return () => {
 			cancelled = true;
 			clearTimeout(timer);

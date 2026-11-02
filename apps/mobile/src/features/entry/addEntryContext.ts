@@ -1,5 +1,6 @@
 import { useFocusEffect } from "expo-router";
 import { createContext, useCallback, useContext } from "react";
+import { Platform } from "react-native";
 import type { ComposerPrefill } from "@/surfaces/prefill";
 import type { EntryMode } from "./types";
 
@@ -42,6 +43,14 @@ export function useHideAddButton(hidden = true): void {
 			return add.hideButton();
 		}, [add, hidden]),
 	);
+}
+
+/**
+ * A pushed detail page: Android has no floating add button there (the page
+ * has its own actions); iOS keeps it.
+ */
+export function useHideAddButtonOnDetail(): void {
+	useHideAddButton(Platform.OS === "android");
 }
 
 /** Like useAddEntry, but null outside a provider (the gallery has none). */

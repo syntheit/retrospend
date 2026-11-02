@@ -126,6 +126,8 @@ export function AmountCard({
 					{line.currency}
 					{system ? (
 						<Pressable
+							// The field inside carries the label; the wrapper is not a second stop.
+							accessible={false}
 							onPress={() => {
 								if (!line.active) line.onPress();
 								// The target changes first, then the keyboard opens on it.

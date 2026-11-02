@@ -1,4 +1,5 @@
 import type { Money } from "@retrospend/domain/money-minor";
+import { shiftDay } from "@/lib/days";
 
 export interface DaySection<T> {
 	/** YYYY-MM-DD, in the caller's zone as the server sent it. */
@@ -10,12 +11,6 @@ export interface DaySection<T> {
 	items: T[];
 }
 
-/** The day before `day`, calendar arithmetic on the date text (no time zone). */
-export function dayBefore(day: string): string {
-	const [y, m, d] = day.split("-").map(Number) as [number, number, number];
-	return new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
-}
-
 /**
  * Rows are newest first, so a day's rows are neighbors: one section per run
  * of equal dates. `today` is the server's today, not the phone's.
@@ -25,7 +20,7 @@ export function groupByDay<T extends { date: string }>(
 	dayTotals: Record<string, Money> | null,
 	today: string,
 ): DaySection<T>[] {
-	const yesterday = dayBefore(today);
+	const yesterday = shiftDay(today, -1);
 	const sections: DaySection<T>[] = [];
 	for (const item of items) {
 		const last = sections.at(-1);

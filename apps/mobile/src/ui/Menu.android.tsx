@@ -6,6 +6,7 @@ import { useTheme } from "@/theme";
 import { Chip, ChipChevron } from "./Chip";
 import { DropdownPanel } from "./DropdownItems";
 import { Glyph } from "./Glyph";
+import { HAIRLINE } from "./metrics";
 import { NativeHost } from "./NativeHost";
 import { Text } from "./Text";
 import { useTransient } from "./transient";
@@ -72,7 +73,7 @@ export function Menu({
 				width: size.ctl.phone,
 				height: size.ctl.phone,
 				borderRadius: radius.chip,
-				borderWidth: 1,
+				borderWidth: HAIRLINE,
 				borderColor: active ? color.brand : color.lineStrong,
 				backgroundColor: active ? color.brandSoft : "transparent",
 				alignItems: "center",

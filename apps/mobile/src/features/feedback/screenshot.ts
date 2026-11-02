@@ -1,6 +1,7 @@
 import { FEEDBACK_SCREENSHOT_MAX_BYTES } from "@retrospend/api-contract/feedback-client";
 import { File as FsFile } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
+import { asFile } from "@/lib/asFile";
 
 export type ScreenshotPick =
 	| { status: "picked"; uri: string }
@@ -51,16 +52,10 @@ export async function pickScreenshot(): Promise<ScreenshotPick> {
 	return { status: "picked", uri: asset.uri };
 }
 
-/**
- * The file as a Blob, which API v1 sends as multipart. The client's type says
- * File (the web's); the server reads the same bytes either way. Null when it
- * is over the limit.
- */
+/** The picture as a file for the multipart upload; null when it is over the limit. */
 export async function readScreenshot(uri: string): Promise<File | null> {
 	const blob = await (await fetch(uri)).blob();
-	return blob.size > FEEDBACK_SCREENSHOT_MAX_BYTES
-		? null
-		: (blob as unknown as File);
+	return blob.size > FEEDBACK_SCREENSHOT_MAX_BYTES ? null : asFile(blob);
 }
 
 /**

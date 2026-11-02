@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "use-intl";
 import { minorOf, readAmount } from "@/features/write/amount";
 import { Note, useAmountLocale } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
+import { useResetOnOpen } from "@/features/write/useResetOnOpen";
 import { AmountField } from "@/ui/AmountField";
 import { ChipGroup } from "@/ui/Chip";
 import type { SheetDetent } from "@/ui/Sheet";
@@ -49,13 +50,11 @@ export function StyleSheet({
 	const entered = readAmount(draft, locale, currency);
 	const leavingLimits = current === "LIMITS" && picked !== null;
 	const { idFor, reset } = useWriteIds(visible ? `${picked}|${draft}` : null);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: a new opening starts empty
-	useEffect(() => {
-		if (!visible) return;
+	useResetOnOpen(visible, () => {
 		reset();
 		setPicked(null);
 		setDraft("");
-	}, [visible]);
+	});
 
 	const body = picked
 		? styleBody({

@@ -21,11 +21,10 @@ import Animated, {
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { Glyph } from "@/ui/Glyph";
+import { LAYER } from "@/ui/metrics";
 
 /** How long the grip is held before the row lifts, so a swipe past it still scrolls. */
 const HOLD_MS = 180;
-/** The row height assumed until a row has been measured. */
-const FALLBACK_HEIGHT = 56;
 
 let haptics: Promise<typeof import("expo-haptics") | null> | null = null;
 
@@ -78,13 +77,15 @@ export function ReorderGroup({
 	onMove: (from: number, to: number) => void;
 	children: (wrapRow: WrapRow) => ReactNode;
 }) {
-	const { duration } = useTheme();
+	const { duration, space } = useTheme();
+	// The row height assumed until a row has been measured.
+	const fallbackHeight = space[12] + space[2];
 	const reduced = useReducedMotion();
 	const settle = reduced ? 0 : duration.row;
 	const active = useSharedValue(-1);
 	const over = useSharedValue(-1);
 	const dragY = useSharedValue(0);
-	const rowH = useSharedValue(FALLBACK_HEIGHT);
+	const rowH = useSharedValue(fallbackHeight);
 	const heights = useRef<number[]>([]);
 	const count = ids.length;
 	const key = ids.join("|");
@@ -111,7 +112,7 @@ export function ReorderGroup({
 			begin: (index) => {
 				tick();
 				cancelAnimation(dragY);
-				rowH.value = heights.current[index] ?? FALLBACK_HEIGHT;
+				rowH.value = heights.current[index] ?? fallbackHeight;
 				dragY.value = 0;
 				over.value = index;
 				active.value = index;
@@ -147,7 +148,7 @@ export function ReorderGroup({
 				if (to !== index) onMove(index, to);
 			},
 		};
-	}, [active, over, dragY, rowH, count, settle, onMove]);
+	}, [active, over, dragY, rowH, count, settle, onMove, fallbackHeight]);
 
 	const wrapRow = useCallback<WrapRow>(
 		({ index, children: row }) => <Wrap index={index}>{row}</Wrap>,
@@ -168,11 +169,11 @@ function Wrap({ index, children }: { index: number; children: ReactNode }) {
 	const { color } = useTheme();
 	const style = useAnimatedStyle(() => {
 		const a = s.active.value;
-		if (a < 0) return { transform: [{ translateY: 0 }], zIndex: 0 };
+		if (a < 0) return { transform: [{ translateY: 0 }], zIndex: LAYER.base };
 		if (a === index)
 			return {
 				transform: [{ translateY: s.dragY.value }],
-				zIndex: 10,
+				zIndex: LAYER.lift,
 				backgroundColor: color.raised,
 			};
 		const o = s.over.value;
@@ -180,7 +181,7 @@ function Wrap({ index, children }: { index: number; children: ReactNode }) {
 		const y = a < index && index <= o ? -h : o <= index && index < a ? h : 0;
 		return {
 			transform: [{ translateY: withTiming(y, { duration: s.duration }) }],
-			zIndex: 0,
+			zIndex: LAYER.base,
 		};
 	});
 	return (

@@ -7,6 +7,7 @@ import Animated, {
 	withTiming,
 } from "react-native-reanimated";
 import { useTheme } from "@/theme";
+import { HAIRLINE } from "./metrics";
 import { easeLand } from "./motion";
 import { Text } from "./Text";
 
@@ -127,7 +128,7 @@ export function UnderlineTabs<T extends string>({
 	return (
 		<View
 			style={{
-				borderBottomWidth: 1,
+				borderBottomWidth: HAIRLINE,
 				borderBottomColor: color.line,
 				marginHorizontal: size.gutter.phone,
 			}}
