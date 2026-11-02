@@ -16,13 +16,16 @@ import {
 	useWindowDimensions,
 } from "react-native";
 import Animated, {
+	runOnUI,
 	type SharedValue,
+	scrollTo,
 	useAnimatedRef,
 	useScrollOffset,
 	useSharedValue,
 } from "react-native-reanimated";
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 import { useTheme } from "@/theme";
+import { useScrollToTopTarget } from "./scrollToTop";
 import { TEXT_SCALE_CAP } from "./Text";
 
 /**
@@ -147,6 +150,14 @@ function useTracked(bar: BarState) {
 	// biome-ignore lint/suspicious/noExplicitAny: one ref for three list kinds
 	const ref = useAnimatedRef<any>();
 	useScrollOffset(ref, bar.offset);
+	// Tapping the open tab again goes back to the top (the offset follows, so
+	// the title expands again).
+	useScrollToTopTarget(() => {
+		runOnUI(() => {
+			"worklet";
+			scrollTo(ref, 0, 0, true);
+		})();
+	});
 	return { ref, by: metrics.expanded };
 }
 

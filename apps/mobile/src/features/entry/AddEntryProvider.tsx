@@ -7,7 +7,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { Animated, Keyboard, Platform, View } from "react-native";
+import { Animated, Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
 import { ADD_CONTROL } from "@/layout/destinations";
@@ -17,7 +17,9 @@ import { useTheme } from "@/theme";
 import { AddButton } from "@/ui/AddButton";
 import { Sheet, useSheetBodySize } from "@/ui/Sheet";
 import { useToastLift } from "@/ui/Toast";
+import { tabBarFootprint } from "@/ui/tabBarMetrics";
 import { useTransient } from "@/ui/transient";
+import { useKeyboardShown } from "@/ui/useKeyboardShown";
 import {
 	type AddEntryApi,
 	AddEntryContext,
@@ -45,30 +47,6 @@ export {
 	useOptionalAddEntry,
 };
 
-/** Height of the bar the floating button sits above: the M3 navigation bar, or the iOS tab bar. */
-const BAR_HEIGHT = Platform.OS === "android" ? 80 : 49;
-
-/** True while the software keyboard is up: the floating button steps aside. */
-function useKeyboardShown(): boolean {
-	const [shown, setShown] = useState(false);
-	useEffect(() => {
-		const ios = Platform.OS === "ios";
-		const show = Keyboard.addListener(
-			ios ? "keyboardWillShow" : "keyboardDidShow",
-			() => setShown(true),
-		);
-		const hide = Keyboard.addListener(
-			ios ? "keyboardWillHide" : "keyboardDidHide",
-			() => setShown(false),
-		);
-		return () => {
-			show.remove();
-			hide.remove();
-		};
-	}, []);
-	return shown;
-}
-
 /**
  * Where "add" lives (IMPLEMENTATION S5). Phones float one button above the tab
  * bar (Liquid Glass on iOS 26, an M3 FAB on Android; five tabs leave no room
@@ -82,7 +60,8 @@ function useKeyboardShown(): boolean {
 export function AddEntryProvider({ children }: { children: ReactNode }) {
 	const t = useTranslations("mobile.composer");
 	const insets = useSafeAreaInsets();
-	const { space } = useTheme();
+	const theme = useTheme();
+	const { space } = theme;
 	const [open, setOpen] = useState<EntryMode | null>(null);
 	// A prefill belongs to one opening; the counter remounts the composer when
 	// a second share arrives while the first is still open (after asking, when
@@ -166,7 +145,11 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 					style={{
 						position: "absolute",
 						right: space[4],
-						bottom: insets.bottom + space[4] + BAR_HEIGHT,
+						// Above the bar: the iOS system bar, or the Android pill.
+						bottom:
+							insets.bottom +
+							(Platform.OS === "android" ? space[3] : space[4]) +
+							tabBarFootprint(theme),
 						// Clear of the Undo toast while one shows.
 						transform: [{ translateY: toastLift }],
 					}}

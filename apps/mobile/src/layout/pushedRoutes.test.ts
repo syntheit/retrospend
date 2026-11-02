@@ -94,21 +94,35 @@ describe("pushed screens have the back button", () => {
 		// Every page the sheet lists is a re-export of the page Settings pushes.
 		const pages = SETTINGS_SCREENS.map((s) => s.name)
 			.filter((n) => n !== "settings/recurring")
-			.map((n) => `account/${n.replace(/^settings\//, "").replace(/^index$/, "settings")}`);
+			.map(
+				(n) =>
+					`account/${n.replace(/^settings\//, "").replace(/^index$/, "settings")}`,
+			);
 		for (const page of pages) expect(inSheet).toContain(page);
 		const layout = readFileSync(join(APP, "account/_layout.tsx"), "utf8");
 		expect(layout).toMatch(/unstable_settings\s*=\s*{\s*anchor:\s*"index"/);
 		const root = readFileSync(join(APP, "_layout.tsx"), "utf8");
-		expect(root).toMatch(/name="account"\s+options=\{accountSheetOptions\(\)\}/);
+		expect(root).toMatch(
+			/name="account"\s+options=\{accountSheetOptions\(\)\}/,
+		);
 	});
 
 	// The owner chose the platform standard: a tab keeps its stack, tapping the
 	// open tab pops it to its root, and tapping again at the root scrolls to the
-	// top. The native tabs do all three unless a trigger turns them off.
+	// top. The native tabs (iOS) do all three unless a trigger turns them off;
+	// the Android floating bar emits tabPress (the stack pops) and scrolls.
 	it("leaves the native tab behavior on: pop to root and scroll to top", () => {
-		const tabs = readFileSync(join(SRC, "ui/Tabs.tsx"), "utf8");
-		expect(tabs).not.toMatch(/disablePopToTop|disableScrollToTop/);
-		expect(tabs).not.toMatch(/popToRoot|unstable_nativeProps/);
+		for (const file of ["ui/Tabs.tsx", "ui/Tabs.android.tsx"]) {
+			const tabs = readFileSync(join(SRC, file), "utf8");
+			expect(tabs).not.toMatch(/disablePopToTop|disableScrollToTop/);
+			expect(tabs).not.toMatch(/popToRoot|unstable_nativeProps/);
+		}
+		const android = readFileSync(join(SRC, "ui/FloatingTabBar.tsx"), "utf8");
+		expect(android).toContain('type: "tabPress"');
+		expect(android).toContain("scrollFocusedToTop()");
+		expect(readFileSync(join(SRC, "ui/Tabs.android.tsx"), "utf8")).toContain(
+			'backBehavior="initialRoute"',
+		);
 	});
 
 	it("never hides the back button or swaps it for a drawn one", () => {
@@ -145,6 +159,8 @@ describe("pushed screens have the back button", () => {
 			"../app/_layout.tsx",
 			"layout/pushedHeader.ts",
 			"layout/useSettingsScreens.tsx",
+			// The JS tab navigator draws a header of its own; each tab owns its stack header.
+			"ui/Tabs.android.tsx",
 			"ui/TopBar.android.tsx",
 			"ui/TopBar.ios.tsx",
 		]);
