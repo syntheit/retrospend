@@ -1,3 +1,4 @@
+import { deviceRoute } from "@/layout/tabRoutes";
 import type { ComposerPrefill } from "./prefill";
 import { canonicalAmount } from "./prefill";
 
@@ -11,7 +12,10 @@ import { canonicalAmount } from "./prefill";
 // A project link (retrospend://projects/ID, or the web address
 // https://host/projects/ID?invite=LINK a person was sent) opens that project
 // in the app; the project screen sends it to the web page when you are not in
-// it (the guest join flow and the public page are web pages).
+// it (the guest join flow and the public page are web pages). A link to a
+// route that is not a tab on this device (Projects, Recurring, Currencies,
+// Settings, Insights) is mapped to the screen that holds it (layout/tabRoutes),
+// because an undeclared tab route lands on Home.
 
 export type AppLink =
 	| { kind: "compose"; prefill: ComposerPrefill }
@@ -24,10 +28,7 @@ const WEB_ORIGIN = /^https?:\/\/[^/?#]+/i;
 
 /** Scheme and leading slashes dropped: "retrospend://add?x=1" and "/add?x=1" both give "add?x=1". */
 function pathOf(url: string): string {
-	return url
-		.replace(WEB_ORIGIN, "")
-		.replace(SCHEME, "")
-		.replace(/^\/+/, "");
+	return url.replace(WEB_ORIGIN, "").replace(SCHEME, "").replace(/^\/+/, "");
 }
 
 export function routeForUrl(url: string): AppLink | null {
@@ -58,11 +59,14 @@ export function routeForUrl(url: string): AppLink | null {
 		// Marked as a link, so a project you are not in opens its web page.
 		const params = new URLSearchParams(query);
 		params.set("link", "1");
-		return { kind: "route", path: `/${segments.join("/")}?${params}` };
+		return {
+			kind: "route",
+			path: deviceRoute(`/${segments.join("/")}?${params}`),
+		};
 	}
 	return {
 		kind: "route",
-		path: `/${segments.join("/")}${query ? `?${query}` : ""}`,
+		path: deviceRoute(`/${segments.join("/")}${query ? `?${query}` : ""}`),
 	};
 }
 
