@@ -103,7 +103,6 @@ export function usePendingFeed(settled: unknown): {
 		};
 	}, [local, version]);
 
-	// The list read again after the entry was sent: its answer is the truth now.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `settled` is the trigger
 	useEffect(() => {
 		let changed = false;
