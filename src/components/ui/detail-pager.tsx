@@ -123,6 +123,7 @@ export function DetailPager({
 			>
 				{tabs.map((t, i) => (
 					<div
+						aria-hidden={t.id !== active ? true : undefined}
 						aria-labelledby={`tab-${t.id}`}
 						className={cn(
 							"w-full min-w-0 shrink-0 snap-center md:col-start-1 md:row-start-1",
