@@ -355,7 +355,7 @@ describe("/api/v1/admin", () => {
 		expect(sent).toEqual([{ to: me.email, bypass: true }]);
 	});
 
-	it("throttles test emails to 3 a minute per admin and logs each one", async () => {
+	it("throttles test emails to 3 a minute per admin (409 conflict) and logs each one", async () => {
 		const other = (await createTestUser({ role: "ADMIN" })).user.id;
 		const headers = await asKey(other, ["admin"]);
 		let n = 0;
@@ -367,7 +367,7 @@ describe("/api/v1/admin", () => {
 				idempotent: `test-mail-${n++}`,
 			});
 		for (let i = 0; i < 3; i++) expect((await send()).status).toBe(200);
-		expect((await send()).status).toBe(429);
+		expect((await send()).status).toBe(409);
 		await expect
 			.poll(() =>
 				adminDb.eventLog.count({
