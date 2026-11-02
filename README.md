@@ -1,143 +1,68 @@
 # Retrospend
 
-A self-hostable personal finance app with built-in bill splitting. Track expenses, manage wealth, set budgets, and split costs with friends, all in one place.
+[![CI](https://github.com/syntheit/retrospend/actions/workflows/ci.yml/badge.svg)](https://github.com/syntheit/retrospend/actions/workflows/ci.yml)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 
-Unlike most expense splitters, Retrospend is **person-centric**: debts roll up to a single per-person balance regardless of which trip or project they came from. No groups required for a quick split, no mental math across multiple projects. You just see "you owe Sarah $35" and settle up.
+Self-hosted personal finance with bill splitting built in. Track expenses, run a budget, split costs with anyone, and watch your net worth, in any currency. Runs on your own hardware, or free at [retrospend.app](https://retrospend.app).
 
-[Website](https://retrospend.app) · [Matrix Chat](https://matrix.to/#/#retrospend:matrix.org) · [Contact](https://matv.io)
+[Website](https://retrospend.app) · [Matrix chat](https://matrix.to/#/#retrospend:matrix.org) · [Self-hosting](docs/self-hosting.md) · [Releases](https://github.com/syntheit/retrospend/releases)
+
+## Why Retrospend
+
+- **Person-centric balances.** Everything you and Sarah owe each other rolls up to one number, across every trip and project. No groups needed for a quick split.
+- **A budget that knows about your friends.** Money you fronted for someone leaves your budget until they pay you back.
+- **Real multi-currency.** Every amount keeps its original currency, and rate types are first-class (ARS official, blue, card and MEP), so the numbers match what you actually paid.
+- **Yours.** Self-host it, export everything, and use the API. Android works fully without Google services.
 
 ## Features
 
-**Core finance**
-- Expense tracking with categories, tags, and filters
-- Wealth dashboard: assets, liabilities, net worth over time
-- Budgets with monthly spending limits per category
-- Recurring expense templates for subscriptions and bills
-- Multi-currency with daily exchange rates from [syntheit/exchange-rates](https://github.com/syntheit/exchange-rates)
-- Analytics and spending trends
+**Money**
+- Expenses and income with categories, tags, filters and search
+- Envelope budgets with eight styles on one engine: Track, Limits, Flex, Every peso, Save first, 50/30/20, Weekly and Debt payoff
+- Recurring expenses and income
+- Wealth: accounts, assets and liabilities, net worth over time
+- Daily exchange rates from [syntheit/exchange-rates](https://github.com/syntheit/exchange-rates)
+- Insights and spending trends
+- Every money action shows what will change before you save, and can be undone
 
-**Shared expenses**
-- Split costs with anyone, no account required for participants
-- Person-centric balances: all debts with someone roll into one number
-- Projects for trips, roommates, or group purchases (optional; you can split without one)
-- Guest sessions via magic links, name and email gets you in within seconds
-- Verification system so nobody gets quietly overcharged
-- Settlement flow: record payment, payee confirms receipt, full audit trail
-- Payment method matching with deep links (Venmo, PayPal, Cash App, etc.)
-- Payment requests and reminders for outstanding balances
-- Revision history on every shared transaction
+**Shared costs**
+- Split with anyone. People without an account join through a link.
+- Projects for trips, households or group purchases, or split without one
+- Settle up: record a payment, the other person confirms, full history
+- Payment method deep links (Venmo, PayPal, Cash App and more)
+- Verification, so nobody gets quietly overcharged, and revision history on every shared expense
 
-**Import & admin**
-- AI-powered bank statement importer (PDF and CSV) via Ollama or OpenRouter
-- Admin panel with user management, invite controls, and system status
-- Automatic database backups
+**Apps and platform**
+- Web app for desktop and phone
+- Native apps for iPhone, iPad and Android, offline-first (in testing)
+- Push notifications through APNs, UnifiedPush or FCM, with no personal text in the payload
+- Full REST API (`/api/v1`) with OpenAPI, scoped tokens and webhooks
+- Bank statement import (PDF and CSV) with a local model through Ollama or a cloud model through OpenRouter
+- 7 languages
+- Admin panel, invite-only sign-up, automatic backups
 
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend / API | Next.js (App Router), React, Tailwind CSS, tRPC |
-| Auth | Better Auth |
-| Database | PostgreSQL + Prisma |
-| Go sidecar | Background jobs (exchange rates, recurring expenses, backups, notifications) and AI bank import |
-| File storage | Local filesystem (Docker volume) |
-| Local LLM | Ollama (optional) |
-
-## Getting Started
-
-### Prerequisites
-
-- Docker and Docker Compose
-
-### 1. Get the config files
+## Run it
 
 ```bash
 cp docker-compose.example.yml docker-compose.yml
-cp .env.example .env
-```
-
-### 2. Configure environment variables
-
-Edit `.env` and set the required variables. See the full reference below.
-
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `AUTH_SECRET` | **Yes** | | 32+ char secret: `openssl rand -base64 32` |
-| `PUBLIC_URL` | **Yes** | | Your public URL (e.g. `https://app.yourdomain.com`) |
-| `POSTGRES_USER` | **Yes** | `postgres` | Database username |
-| `POSTGRES_PASSWORD` | **Yes** | | Database password |
-| `POSTGRES_DB_NAME` | **Yes** | `retrospend` | Database name |
-| `DATABASE_URL` | **Yes** | | Full PostgreSQL connection string |
-| `WORKER_API_KEY` | **Yes** | | Shared secret between app, worker, and importer: `openssl rand -base64 32` |
-| `NEXT_PUBLIC_SHOW_LANDING_PAGE` | No | `false` | Show public landing page at `/` |
-| `NEXT_PUBLIC_ENABLE_LEGAL_PAGES` | No | `false` | Show `/privacy` and `/terms` |
-| `UNSUBSCRIBE_SECRET` | No | | Secret for signed one-click unsubscribe links in emails |
-| `SMTP_HOST` | No | | SMTP server hostname |
-| `SMTP_PORT` | No | | SMTP port (e.g. `587`) |
-| `SMTP_USER` | No | | SMTP username |
-| `SMTP_PASSWORD` | No | | SMTP password |
-| `EMAIL_FROM` | No | | Sender address (e.g. `Retrospend <noreply@example.com>`) |
-| `OPENROUTER_API_KEY` | No | | Cloud LLM for bank statement import (alternative to Ollama) |
-| `OPENROUTER_MODEL` | No | `qwen/qwen-2.5-7b-instruct` | OpenRouter model |
-| `LLM_MODEL` | No | `qwen2.5:7b` | Ollama model |
-| `BACKUP_CRON` | No | `0 3 * * *` | Backup schedule (cron syntax) |
-| `BACKUP_RETENTION_DAYS` | No | `30` | Days to keep backup files |
-| `TRUSTED_ORIGINS` | No | | Extra allowed CORS/auth origins (comma-separated) |
-| `VAPID_PRIVATE_KEY` | No | | Turns on push to Android phones through UnifiedPush (see [Push notifications](#push-notifications)) |
-| `VAPID_PUBLIC_KEY` | No | derived | The matching public key, checked against the private one |
-| `VAPID_SUBJECT` | No | `PUBLIC_URL` if https | `mailto:` or `https:` contact sent to push services |
-| `PUSH_ENDPOINT_ALLOW_HOSTS` | No | | Hosts (names or IPs, comma-separated) that may receive push although they are on a private network, such as a LAN ntfy server. The admin setting Allow private webhook targets also allows private UnifiedPush endpoints |
-| `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID` | No | | Apple push (iPhone and iPad); all four APNs settings are needed |
-| `APNS_KEY` or `APNS_KEY_FILE` | No | | The APNs auth key (`.p8`) as text (newlines written `\n`) or as a file path |
-| `ANDROID_APP_CERT_SHA256` | No | | More SHA-256 fingerprint(s), comma-separated, of Android app signing certificates, besides the release key. Served in `/.well-known/assetlinks.json` for app links and password manager autofill |
-| `FCM_SERVICE_ACCOUNT` or `FCM_SERVICE_ACCOUNT_FILE` | No | | Firebase service account key (JSON or file path) for Android phones with Google Play services |
-| `FCM_PROJECT_ID` | No | from the key | Firebase project, if it differs from the key's |
-
-### 3. Start the services
-
-```bash
+cp .env.example .env      # set AUTH_SECRET, PUBLIC_URL, the Postgres settings and WORKER_API_KEY
 docker compose up -d
 ```
 
-The app is available on port `1997`. Migrations run automatically on startup.
+Open port `1997` and sign up. The first account becomes the admin. Every setting, push notifications, backups and updating are in **[docs/self-hosting.md](docs/self-hosting.md)**.
 
-**First-run notes:**
+## How it's built
 
-- The first user to sign up becomes admin. You can restrict further signups to invite-only in the admin panel.
-- If using Ollama for AI import, pull the model after first start:
-  ```bash
-  docker exec local-ollama ollama pull qwen2.5:7b
-  ```
-- The `sidecar` and `ollama` services are optional. Remove them from `docker-compose.yml` if you don't need bank statement import.
+Next.js and tRPC for the web app, a versioned REST API (oRPC, OpenAPI) for the mobile apps and other clients, PostgreSQL with row-level security, a Go sidecar for scheduled jobs and import, and an Expo app for iOS and Android. Shared TypeScript packages hold the money math, design tokens, API contract and translations.
 
-## Push notifications
+See **[docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md)** for the full picture.
 
-Optional. Without any of these settings the server sends no push and the apps check for changes when they open. Each sender below turns on by itself once all of its settings are present; a sender with a missing or unreadable setting stays off and says which setting it did not like in the server log.
+## Contributing
 
-A push says what happened and carries ids and an amount. It never carries an expense title, a note or a person's name, so nothing a push service relays can be read from it. Android pushes are also encrypted for the phone (RFC 8291).
-
-- **Android without Google (UnifiedPush).** Install a distributor such as ntfy on the phone, then create a VAPID key pair once and set `VAPID_PRIVATE_KEY` (the command is in `.env.example`). Keep the key: a new one makes every phone register again. The phone gives the server an endpoint on its distributor; the server will not connect to an endpoint on a private network (a phone on your LAN pointing at `192.168.x.x`, `localhost`, a name that resolves to one) unless you list its host in `PUSH_ENDPOINT_ALLOW_HOSTS` or an admin allows private targets for webhooks.
-- **iPhone and iPad (APNs).** Create an APNs auth key in your Apple developer account and set `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID` and `APNS_KEY`. Builds signed for development use Apple's sandbox without a setting.
-- **Android with Google Play services (FCM).** Set `FCM_SERVICE_ACCOUNT` to a Firebase service account key. Phones without Play services use UnifiedPush or check for changes themselves.
-
-What is pushed: a shared expense added or changed on a split you are on, a payment recorded, confirmed, marked not received or waiting for your confirmation, a request to fix an expense, and a recurring expense or income that is due. A notification type you turned off in Settings (in-app) is not pushed either. A person gets at most 60 different pushes an hour.
-
-## Production & Security
-
-See [`docs/cloudflare-security.md`](docs/cloudflare-security.md) for Cloudflare Tunnel + WAF setup.
-
-- Uploaded files (avatars, project images) are stored in the `uploads` Docker volume. Back it up alongside your database.
-- Use strong, unique values for `AUTH_SECRET` and `WORKER_API_KEY`.
-
-## Backups
-
-The sidecar service handles scheduled database backups on the schedule set by `BACKUP_CRON` (default: daily at 3 AM UTC). Retention is controlled by `BACKUP_RETENTION_DAYS` (default: 30).
-
-Backup files are written inside the sidecar container. To persist them on the host, mount a volume to `/app/backups`.
-
-## Development
-
-See [`docs/development.md`](docs/development.md) for running Retrospend locally from source.
+- [docs/development.md](docs/development.md): run it from source
+- [AGENTS.md](AGENTS.md): how changes are made here, for people and AI agents alike
+- [CONTRIBUTING.md](CONTRIBUTING.md): issues and pull requests
+- [SECURITY.md](SECURITY.md): reporting a vulnerability
 
 ## License
 

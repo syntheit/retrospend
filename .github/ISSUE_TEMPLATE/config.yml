@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and self-hosting help
+    url: https://matrix.to/#/#retrospend:matrix.org
+    about: Ask in the Matrix chat.
+  - name: Security vulnerability
+    url: https://github.com/syntheit/retrospend/security/advisories/new
+    about: Report privately. Never in a public issue.
