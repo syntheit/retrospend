@@ -3,11 +3,16 @@ import {
 	createContext,
 	type ReactNode,
 	useContext,
+	useEffect,
 	useMemo,
+	useRef,
+	useState,
 } from "react";
 import {
 	FlatList,
 	type FlatListProps,
+	type LayoutChangeEvent,
+	Platform,
 	ScrollView,
 	type ScrollViewProps,
 	SectionList,
@@ -25,6 +30,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 import { useTheme } from "@/theme";
+import { RetrospendPredictiveBack } from "../../modules/predictive-back";
 import { useScrollToTopTarget } from "./scrollToTop";
 import { TEXT_SCALE_CAP } from "./Text";
 
@@ -173,11 +179,61 @@ function TrackedScrollView({
 	);
 }
 
+/**
+ * Android only: lets a list hand its drag to the sheet around it. A modal
+ * bottom sheet (the account sheet) closes on a downward drag of the body once
+ * the list is at the top; that is nested scrolling, which a React Native list
+ * takes part in only when it asks for it. A list whose content fits does not
+ * scroll, takes no touch of its own and so must not be the sheet's scrolling
+ * child: the sheet then drags from anywhere in its body. So the list asks for
+ * nested scrolling only while its content is taller than it is. Elsewhere
+ * nothing is nested, so it changes nothing; iOS draws its own sheet and the
+ * props are left alone.
+ */
+function useSheetHandoff<
+	P extends {
+		onLayout?: (e: LayoutChangeEvent) => void;
+		onContentSizeChange?: (w: number, h: number) => void;
+	},
+>(props: P): P {
+	const [nested, setNested] = useState(false);
+	const size = useRef({ view: 0, content: 0 });
+	const first = useRef(true);
+	const android = Platform.OS === "android";
+	// The sheet picks its scrolling child when it lays out; tell it again when
+	// the answer changes.
+	useEffect(() => {
+		if (first.current) {
+			first.current = false;
+			return;
+		}
+		if (android) RetrospendPredictiveBack?.refreshSheetScroll();
+	}, [nested, android]);
+	if (!android) return props;
+	const check = () =>
+		setNested(size.current.content > size.current.view + 1);
+	return {
+		...props,
+		nestedScrollEnabled: nested,
+		onLayout: (e: LayoutChangeEvent) => {
+			size.current.view = e.nativeEvent.layout.height;
+			check();
+			props.onLayout?.(e);
+		},
+		onContentSizeChange: (w: number, h: number) => {
+			size.current.content = h;
+			check();
+			props.onContentSizeChange?.(w, h);
+		},
+	};
+}
+
 /** A ScrollView that drives the collapsing bar of its screen, if it has one. */
 export function BarScrollView(props: ScrollViewProps) {
 	const bar = useCollapsingBar();
-	if (!bar) return <ScrollView {...props} />;
-	return <TrackedScrollView {...props} bar={bar} />;
+	const merged = useSheetHandoff(props);
+	if (!bar) return <ScrollView {...merged} />;
+	return <TrackedScrollView {...merged} bar={bar} />;
 }
 
 function TrackedFlatList<T>({
@@ -199,8 +255,9 @@ function TrackedFlatList<T>({
 /** A FlatList that drives the collapsing bar of its screen, if it has one. */
 export function BarFlatList<T>(props: FlatListProps<T>) {
 	const bar = useCollapsingBar();
-	if (!bar) return <FlatList {...props} />;
-	return <TrackedFlatList {...props} bar={bar} />;
+	const merged = useSheetHandoff(props);
+	if (!bar) return <FlatList {...merged} />;
+	return <TrackedFlatList {...merged} bar={bar} />;
 }
 
 function TrackedSectionList<T, S>({
@@ -222,6 +279,7 @@ function TrackedSectionList<T, S>({
 /** A SectionList that drives the collapsing bar of its screen, if it has one. */
 export function BarSectionList<T, S>(props: SectionListProps<T, S>) {
 	const bar = useCollapsingBar();
-	if (!bar) return <SectionList {...props} />;
-	return <TrackedSectionList {...props} bar={bar} />;
+	const merged = useSheetHandoff(props);
+	if (!bar) return <SectionList {...merged} />;
+	return <TrackedSectionList {...merged} bar={bar} />;
 }

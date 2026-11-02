@@ -1,4 +1,5 @@
 import { Stack } from "expo-router";
+import { useEffect } from "react";
 import { Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
@@ -6,6 +7,7 @@ import { pushedHeader } from "@/layout/pushedHeader";
 import { useSettingsScreens } from "@/layout/useSettingsScreens";
 import { useTheme } from "@/theme";
 import { ToastProvider } from "@/ui/Toast";
+import { RetrospendPredictiveBack } from "../../modules/predictive-back";
 
 // The sheet opens at its first page; a link to a page inside it still has
 // that page under it, so Back returns to the account sheet.
@@ -55,11 +57,20 @@ export default function AccountLayout() {
 	// The bar pads itself by the status bar, but the sheet sits below it, so
 	// the stack moves up by that much to put the bar right under the handle.
 	const inset = useSafeAreaInsets().top;
+	// Android: a page of the sheet takes the downward drag of its body once
+	// the sheet has laid out around it (see the module's refreshSheetScroll).
+	const refresh = () => RetrospendPredictiveBack?.refreshSheetScroll();
+	useEffect(() => {
+		if (android) RetrospendPredictiveBack?.refreshSheetScroll();
+	}, [android]);
 	return (
 		<ToastProvider>
 			{android ? <DragHandle /> : null}
 			<View style={{ flex: 1, marginTop: android ? -inset : 0 }}>
 				<Stack
+					screenListeners={
+						android ? { focus: refresh, transitionEnd: refresh } : undefined
+					}
 					screenOptions={{ ...pushedHeader(color, android), title: "" }}
 				>
 					<Stack.Screen

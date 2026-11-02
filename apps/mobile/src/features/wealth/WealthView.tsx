@@ -205,6 +205,7 @@ function AccountsList({
 		id: mode,
 		label: t(`sort.${mode}`),
 		onPress: () => onOrder({ sort: mode }),
+		selected: order.sort === mode,
 	}));
 	if (query.trim() !== "" && accounts.length === 0) {
 		return <EmptyState title={t("noMatch")} />;

@@ -135,6 +135,13 @@ export function DropdownItems({
 									</RNHostView>
 								</DropdownMenuItem.LeadingIcon>
 							) : null}
+							{item.selected ? (
+								<DropdownMenuItem.TrailingIcon>
+									<RNHostView matchContents>
+										<Glyph color={color.brand} name="Check" size={MENU.icon} />
+									</RNHostView>
+								</DropdownMenuItem.TrailingIcon>
+							) : null}
 						</DropdownMenuItem>
 					</Fragment>
 				);

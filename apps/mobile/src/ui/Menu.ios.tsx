@@ -4,6 +4,7 @@ import {
 	Image,
 	Menu as SwiftMenu,
 	Text,
+	Toggle,
 } from "@expo/ui/swift-ui";
 import {
 	accessibilityLabel as a11yLabel,
@@ -22,7 +23,31 @@ import { useTheme } from "@/theme";
 import { MENU_SYMBOL } from "./menuIcons";
 import { NativeHost } from "./NativeHost";
 import { useChromeTextSize } from "./Text";
-import type { MenuProps } from "./types";
+import type { MenuItem, MenuProps } from "./types";
+
+/**
+ * One row of the system menu. A list of options (`selected` set) is a
+ * Toggle, which the menu draws with its checked state on the active row.
+ */
+function MenuRow({ item }: { item: MenuItem }) {
+	if (item.selected !== undefined) {
+		return (
+			<Toggle
+				isOn={item.selected}
+				label={item.label}
+				onIsOnChange={() => item.onPress()}
+			/>
+		);
+	}
+	return (
+		<Button
+			label={item.label}
+			onPress={item.onPress}
+			role={item.destructive ? "destructive" : undefined}
+			systemImage={item.icon && MENU_SYMBOL[item.icon]}
+		/>
+	);
+}
 
 /**
  * The filter chip as a SwiftUI label (GUIDELINE 5): control height, capsule,
@@ -219,13 +244,7 @@ export function Menu({
 						]}
 					>
 						{items.map((item) => (
-							<Button
-								key={item.id}
-								label={item.label}
-								onPress={item.onPress}
-								role={item.destructive ? "destructive" : undefined}
-								systemImage={item.icon && MENU_SYMBOL[item.icon]}
-							/>
+							<MenuRow item={item} key={item.id} />
 						))}
 					</SwiftMenu>
 					<Button
@@ -281,14 +300,8 @@ export function Menu({
 				]}
 			>
 				{items.map((item) => (
-					<Button
-						key={item.id}
-						label={item.label}
-						onPress={item.onPress}
-						role={item.destructive ? "destructive" : undefined}
-						systemImage={item.icon && MENU_SYMBOL[item.icon]}
-					/>
-				))}
+							<MenuRow item={item} key={item.id} />
+						))}
 			</SwiftMenu>
 		</NativeHost>
 	);
