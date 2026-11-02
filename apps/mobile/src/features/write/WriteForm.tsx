@@ -107,7 +107,7 @@ export interface WriteFormProps<I, P, W extends WriteAnswer>
 	after?: ReactNode | ((preview: P | null) => ReactNode);
 	/** The sentence for a write that failed; the generic one by default. */
 	error?: string;
-	children: ReactNode;
+	children?: ReactNode;
 }
 
 /**
