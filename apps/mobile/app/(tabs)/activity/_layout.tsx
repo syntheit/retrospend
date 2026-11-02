@@ -7,5 +7,5 @@ export const unstable_settings = { anchor: "index" };
 
 export default function ActivityLayout() {
 	const t = useTranslations("mobile.tabs");
-	return <TabStack title={t("activity")} />;
+	return <TabStack collapsing title={t("activity")} />;
 }

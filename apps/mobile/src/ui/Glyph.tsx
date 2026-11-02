@@ -29,6 +29,7 @@ export type GlyphName =
 	| CategoryIconName
 	| "AlarmClock"
 	| "ArrowDownToLine"
+	| "ArrowLeft"
 	| "ArrowRight"
 	| "ArrowUpFromLine"
 	| "ArrowUpDown"

@@ -8,6 +8,7 @@ import { ProjectsTopBar } from "@/features/projects/ProjectsTopBar";
 import { useHeaderSearch } from "@/layout/headerSearch";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
+import { useCollapsingBar } from "@/ui/barScroll";
 import { usePaneEnter } from "@/ui/motion";
 import { markPaneSwitch, PaneVeil } from "@/ui/PaneVeil";
 import { UnderlineTabs } from "@/ui/UnderlineTabs";
@@ -37,6 +38,9 @@ export function PeopleHub() {
 	// switch, so the line slides to the tab (M3 tabs are fixed, not part of the
 	// scroll). iOS and the wide Android pair keep it in each list's header.
 	const fixedTabs = Platform.OS === "android" && !listDetail;
+	// With the large bar the row rides under it (the bar's footer) and scrolls
+	// no part of the page.
+	const pinned = useCollapsingBar() !== null;
 	const { segment: requested } = useLocalSearchParams<{ segment?: string }>();
 	const [segment, setSegment] = useState<PeopleSegment>(
 		() => parseSegment(requested) ?? readSegment(),
@@ -46,6 +50,7 @@ export function PeopleHub() {
 	const headerSearch = useHeaderSearch({
 		onChange: setQuery,
 		placeholder: segment === "people" ? tp("search") : tj("search"),
+		pill: true,
 	});
 	const [chip, setChip] = useState<PeopleChip>("all");
 	const [sort, setSort] = useState<PeopleSort>("balance");
@@ -70,7 +75,13 @@ export function PeopleHub() {
 
 	const switcher = (
 		<View style={{ zIndex: 1 }}>
-			<View style={{ paddingBottom: space[2], backgroundColor: color.bg }}>
+			{/* Pinned in the large bar, the row takes the bar's tone. */}
+			<View
+				style={{
+					paddingBottom: space[2],
+					backgroundColor: fixedTabs ? undefined : color.bg,
+				}}
+			>
 				<UnderlineTabs
 					accessibilityLabel={tp("segmentLabel")}
 					onChange={choose}
@@ -88,7 +99,7 @@ export function PeopleHub() {
 
 	return (
 		<View style={{ flex: 1, backgroundColor: color.bg }}>
-			{fixedTabs ? switcher : null}
+			{fixedTabs && !pinned ? switcher : null}
 			{/*
 			 * The list is the first child, then the bars: the system finds the
 			 * scroll view behind the large title and search through the first
@@ -103,18 +114,38 @@ export function PeopleHub() {
 				{segment === "people" ? (
 					<PeopleList
 						filters={{ query, chip, onChip: setChip, sort, onSort: setSort }}
-						top={fixedTabs ? undefined : switcher}
+						top={fixedTabs ? (headerSearch.pill ?? undefined) : switcher}
 					/>
 				) : (
-					<ProjectsList query={query} top={fixedTabs ? undefined : switcher} />
+					<ProjectsList
+						query={query}
+						top={fixedTabs ? (headerSearch.pill ?? undefined) : switcher}
+					/>
 				)}
 			</Animated.View>
 			{segment === "people" ? (
-				<PeopleTopBar search={headerSearch.action} title={t("peopleSegment")} />
+				<PeopleTopBar
+					footer={pinned ? switcher : undefined}
+					search={headerSearch.action}
+					title={t("peopleSegment")}
+				/>
 			) : (
-				<ProjectsTopBar search={headerSearch.action} title={t("projects")} />
+				<ProjectsTopBar
+					footer={pinned ? switcher : undefined}
+					search={headerSearch.action}
+					title={t("projects")}
+				/>
 			)}
-			{headerSearch.screen}
+			{headerSearch.view(
+				segment === "people" ? (
+					<PeopleList
+						bare
+						filters={{ query, chip, onChip: setChip, sort, onSort: setSort }}
+					/>
+				) : (
+					<ProjectsList bare query={query} />
+				),
+			)}
 		</View>
 	);
 }

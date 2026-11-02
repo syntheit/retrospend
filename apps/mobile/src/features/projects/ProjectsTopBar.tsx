@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { type ReactElement, useState } from "react";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
-import type { TopBarAction } from "@/ui/types";
 import { useExpensesExport } from "@/features/people/useExpensesExport";
+import type { TopBarAction } from "@/ui/types";
 import { openProject } from "./openProject";
 import { ProjectSheet } from "./ProjectSheet";
 
@@ -17,10 +17,13 @@ import { ProjectSheet } from "./ProjectSheet";
 export function ProjectsTopBar({
 	title,
 	search,
+	footer,
 }: {
 	title: string;
 	/** The list's Search icon, first in the bar. */
 	search?: TopBarAction | null;
+	/** Android's collapsing bar: the tabs pinned under it. */
+	footer?: ReactElement;
 }) {
 	const t = useTranslations("mobile.projects.form");
 	const more = useTranslations("mobile.activity")("overflow");
@@ -40,6 +43,7 @@ export function ProjectsTopBar({
 						onPress: () => setAdding(true),
 					},
 				]}
+				footer={footer}
 				overflow={overflow}
 				overflowLabel={more}
 				title={title}

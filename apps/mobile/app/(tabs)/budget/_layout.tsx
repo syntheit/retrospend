@@ -7,5 +7,5 @@ export const unstable_settings = { anchor: "index" };
 
 export default function BudgetLayout() {
 	const t = useTranslations("mobile.tabs");
-	return <TabStack title={t("budget")} />;
+	return <TabStack collapsing title={t("budget")} />;
 }
