@@ -1,9 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
-import {
-	type FlatListProps,
-	Platform,
-	RefreshControl,
-} from "react-native";
+import { type FlatListProps, Platform, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ADD_CONTROL } from "@/layout/destinations";
 import { useTheme } from "@/theme";

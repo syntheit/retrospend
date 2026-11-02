@@ -93,7 +93,11 @@ const CurrencyLine = memo(function CurrencyLine({
 	const { space } = useTheme();
 	const canStar = row.favorite || row.rateId !== null;
 	const items = [
-		{ id: "convert", label: t("menu.convert"), onPress: () => onOpen(row.code) },
+		{
+			id: "convert",
+			label: t("menu.convert"),
+			onPress: () => onOpen(row.code),
+		},
 		...(canStar
 			? [
 					{
@@ -289,43 +293,45 @@ export function CurrenciesScreen() {
 				ListEmptyComponent={empty}
 				ListHeaderComponent={
 					<>
-				<StaleNote since={state.status === "ready" ? state.staleSince : null} />
-					<TableNote table={table} />
-					<View
-						style={{
-							flexDirection: "row",
-							flexWrap: "wrap",
-							gap: space[2],
-							paddingHorizontal: space[4],
-							paddingVertical: space[3],
-						}}
-					>
-						{TOGGLE_FILTERS.map((id) => (
-							<Chip
-								key={id}
-								label={t(`filter.${id}`)}
-								onPress={() => setFilter(filter === id ? "all" : id)}
-								selected={filter === id}
-							/>
-						))}
-					</View>
-					{conv ? <QuickConvert home={table.home} query={conv} /> : null}
-					{missing.length ? (
-						<Text
+						<StaleNote
+							since={state.status === "ready" ? state.staleSince : null}
+						/>
+						<TableNote table={table} />
+						<View
 							style={{
+								flexDirection: "row",
+								flexWrap: "wrap",
+								gap: space[2],
 								paddingHorizontal: space[4],
-								paddingBottom: space[3],
+								paddingVertical: space[3],
 							}}
-							tone="attention"
-							variant="small"
 						>
-							{t("missing", {
-								codes: missing.map((m) => m.code).join(", "),
-								names: usedBy.join(", "),
-								count: usedBy.length,
-							})}
-						</Text>
-					) : null}
+							{TOGGLE_FILTERS.map((id) => (
+								<Chip
+									key={id}
+									label={t(`filter.${id}`)}
+									onPress={() => setFilter(filter === id ? "all" : id)}
+									selected={filter === id}
+								/>
+							))}
+						</View>
+						{conv ? <QuickConvert home={table.home} query={conv} /> : null}
+						{missing.length ? (
+							<Text
+								style={{
+									paddingHorizontal: space[4],
+									paddingBottom: space[3],
+								}}
+								tone="attention"
+								variant="small"
+							>
+								{t("missing", {
+									codes: missing.map((m) => m.code).join(", "),
+									names: usedBy.join(", "),
+									count: usedBy.length,
+								})}
+							</Text>
+						) : null}
 					</>
 				}
 				onRefresh={() => void reload()}
