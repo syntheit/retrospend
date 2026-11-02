@@ -54,6 +54,8 @@ internal class BackPreview(private val activity: Activity) {
   private var touchY = 0f
   private var settle: ValueAnimator? = null
   private var exit = 0f
+  /** A commit started the pop; the screen is on its way out until the watcher ends it. */
+  private var committing = false
   /** The previous screen this gesture added under the top one. */
   private var added: Added? = null
   /** The same, after a commit and until it is clear whether the pop happened. */
@@ -108,7 +110,7 @@ internal class BackPreview(private val activity: Activity) {
     registered = false
     // The pop that a commit started turns the callback off while the screen
     // is still on its way out; the watcher puts it back afterwards.
-    if (exit == 0f) {
+    if (!committing) {
       restore()
       removeIfUnused(added)
       added = null
@@ -238,6 +240,7 @@ internal class BackPreview(private val activity: Activity) {
       hideKeyboard()
       return
     }
+    committing = true
     val host = activity
     // A pushed screen leaves the way it was dragged: the stack's own slide
     // toward the trailing edge, run from the shrunk state the screen is in
@@ -356,6 +359,7 @@ internal class BackPreview(private val activity: Activity) {
     view = null
     saved = null
     progress = 0f
+    committing = false
     if (target == null) return
     exit = 0f
     target.alpha = 1f
