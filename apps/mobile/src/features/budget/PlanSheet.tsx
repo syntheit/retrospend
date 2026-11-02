@@ -196,6 +196,7 @@ export function PlanSheet({
 							<Note tone="attention">{t("error")}</Note>
 						) : null}
 						<Button
+							busy={busy}
 							disabled={!drafts || minor === null || busy}
 							label={busy ? tc("saving") : t("save")}
 							onPress={() => void save()}

@@ -12,6 +12,7 @@ import {
 } from "@expo/ui/jetpack-compose/modifiers";
 import { useColorScheme } from "react-native";
 import { useTheme } from "@/theme";
+import { InlineLoadingIndicator } from "./LoadingIndicator";
 import { NativeHost } from "./NativeHost";
 import { useChromeTextSize } from "./Text";
 import type { ButtonProps } from "./types";
@@ -34,6 +35,7 @@ export function Button({
 	size = "regular",
 	disabled,
 	fill,
+	busy,
 }: ButtonProps) {
 	const scheme = useColorScheme();
 	const { color, size: sizes, space, type } = useTheme();
@@ -63,7 +65,8 @@ export function Button({
 					? { start: space[3], end: space[3], top: 0, bottom: 0 }
 					: undefined
 			}
-			enabled={!disabled}
+			// A busy button keeps its colors; it ignores taps instead.
+			enabled={!disabled || !!busy}
 			modifiers={[
 				...(fill ? [fillMaxWidth()] : []),
 				...(small ? [height(sizes.ctlSm.phone)] : []),
@@ -71,8 +74,24 @@ export function Button({
 					? [semantics({ contentDescription: accessibilityLabel })]
 					: []),
 			]}
-			onClick={disabled ? undefined : onPress}
+			onClick={disabled || busy ? undefined : onPress}
 		>
+			{busy ? (
+				<InlineLoadingIndicator
+					color={
+						variant === "filled"
+							? color.brandFg
+							: variant === "danger"
+								? color.dangerFg
+								: variant === "dangerText"
+									? color.danger
+									: variant === "outlined"
+										? color.fg
+										: color.brand
+					}
+					size={labelSize + space[1]}
+				/>
+			) : null}
 			<Text style={{ fontSize: labelSize }}>{label}</Text>
 		</Component>
 	);

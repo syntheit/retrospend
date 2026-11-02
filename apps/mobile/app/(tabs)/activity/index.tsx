@@ -9,7 +9,7 @@ import { ActivityRow } from "@/features/activity/ActivityRow";
 import { ActivitySegments } from "@/features/activity/ActivitySegments";
 import { ActivitySummary } from "@/features/activity/ActivitySummary";
 import { BulkControls } from "@/features/activity/BulkControls";
-import { canSelect } from "@/features/activity/bulk";
+import { canSelect, entityIdsOf } from "@/features/activity/bulk";
 import { DayHeader, useDayLabel } from "@/features/activity/DayHeader";
 import { groupByDay } from "@/features/activity/days";
 import { EntryDetail } from "@/features/activity/EntryView";
@@ -22,6 +22,7 @@ import { useBulkActions } from "@/features/activity/useBulkActions";
 import { useDebouncedSearch } from "@/features/activity/useDebouncedSearch";
 import {
 	useAddButtonScroll,
+	useHideAddButton,
 	useOptionalAddEntry,
 } from "@/features/entry/addEntryContext";
 import { RecurringView } from "@/features/recurring/RecurringView";
@@ -86,6 +87,10 @@ export default function ActivityScreen() {
 	useTransient(picked ? () => setPicked(null) : null);
 	const { state, reload, loadMore, loadingMore } = useActivity(filter);
 	const bulk = useBulkActions(() => setPicked(null));
+	// Android: the floating toolbar takes the Add button's place while picking,
+	// and the count and Done move to the top bar.
+	const floatingBulk = Platform.OS === "android";
+	useHideAddButton(floatingBulk && picked !== null);
 
 	const page = state.status === "ready" ? state.data : null;
 	const sections = useMemo(
@@ -186,20 +191,18 @@ export default function ActivityScreen() {
 					<View style={{ height: addInset }} />
 				)
 			}
-			// Over the rows: the pane's cover hangs from the tabs in this header.
-			ListHeaderComponentStyle={{ zIndex: 1 }}
 			ListHeaderComponent={
 				<View>
 					{segments}
-					{page && !picked ? (
-						<ActivitySummary page={page} />
-					) : null}
+					{page && !picked ? <ActivitySummary page={page} /> : null}
 					<StaleNote
 						since={state.status === "ready" ? state.staleSince : null}
 					/>
 					<ActivityFilters filter={filter} onChange={setFilter} />
 				</View>
 			}
+			// Over the rows: the pane's cover hangs from the tabs in this header.
+			ListHeaderComponentStyle={{ zIndex: 1 }}
 			onEndReached={loadMore}
 			onEndReachedThreshold={0.6}
 			onRefresh={reload}
@@ -238,6 +241,7 @@ export default function ActivityScreen() {
 	const overBar = Platform.OS === "ios" && !listDetail;
 	const bulkBar = picked ? (
 		<View
+			pointerEvents={floatingBulk ? "box-none" : undefined}
 			style={
 				overBar
 					? {
@@ -248,7 +252,16 @@ export default function ActivityScreen() {
 							right: space[12] + space[4],
 							zIndex: 1,
 						}
-					: undefined
+					: floatingBulk
+						? {
+								// Android: the floating toolbar over the foot of the list.
+								position: "absolute",
+								bottom: space[4],
+								left: space[4],
+								right: space[4],
+								zIndex: 2,
+							}
+						: undefined
 			}
 		>
 			<BulkControls
@@ -264,9 +277,9 @@ export default function ActivityScreen() {
 	// flow they sit above the rows.
 	const list = picked ? (
 		<View style={{ flex: 1 }}>
-			{overBar ? null : bulkBar}
+			{overBar || floatingBulk ? null : bulkBar}
 			{rows}
-			{overBar ? bulkBar : null}
+			{overBar || floatingBulk ? bulkBar : null}
 		</View>
 	) : (
 		rows
@@ -279,6 +292,17 @@ export default function ActivityScreen() {
 				bar={
 					<AccountTopBar
 						actions={[
+							// Android: Done leaves bulk select from the top bar.
+							...(floatingBulk && picked
+								? [
+										{
+											id: "done",
+											icon: "X" as const,
+											label: t("bulk.done"),
+											onPress: () => setPicked(null),
+										},
+									]
+								: []),
 							...(headerSearch.action ? [headerSearch.action] : []),
 							...(segment === "recurring"
 								? [
@@ -303,7 +327,15 @@ export default function ActivityScreen() {
 								: undefined
 						}
 						overflowLabel={t("overflow")}
-						title={t("title")}
+						title={
+							floatingBulk && picked
+								? picked.size > 0
+									? t("bulk.selected", {
+											count: entityIdsOf(page?.items ?? [], picked).length,
+										})
+									: t("bulk.pickSome")
+								: t("title")
+						}
 					/>
 				}
 				detail={

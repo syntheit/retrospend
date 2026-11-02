@@ -3,7 +3,11 @@
  */
 import config from "../app.config";
 
-const { setAttribute, valuesXml, NAME } = require("../plugins/with-predictive-back");
+const {
+	setAttribute,
+	valuesXml,
+	NAME,
+} = require("../plugins/with-predictive-back");
 
 describe("predictive back plugin", () => {
 	it("is registered", () => {

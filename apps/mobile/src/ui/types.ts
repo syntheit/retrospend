@@ -175,6 +175,24 @@ export interface ButtonProps {
 	 */
 	fill?: boolean;
 	disabled?: boolean;
+	/**
+	 * Android: a request is in flight. The button keeps its colors (no
+	 * disabled wash), ignores taps and shows the loading indicator before its
+	 * label. iOS ignores it (its label already says "Saving").
+	 */
+	busy?: boolean;
+}
+
+/** The Material 3 Expressive loading indicator (Android; iOS draws nothing). */
+export interface LoadingIndicatorProps {
+	/** Side in points; the Material default is 48. */
+	size?: number;
+	/** The shape in a round container (a wait on its own) instead of bare. */
+	contained?: boolean;
+	/** The shape's color; defaults to fg-2, the neutral (it has no color job). */
+	color?: string;
+	/** What a screen reader says; defaults to "Loading". */
+	accessibilityLabel?: string;
 }
 
 /** The glyphs a button may lead with. */

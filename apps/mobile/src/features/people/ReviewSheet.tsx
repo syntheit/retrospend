@@ -133,6 +133,7 @@ export function ReviewSheet({
 			detents={["large"]}
 			footer={
 				<Button
+					busy={flow.busy}
 					disabled={!flow.preview || flow.busy}
 					label={flow.busy ? tc("saving") : saveLabel}
 					onPress={save}

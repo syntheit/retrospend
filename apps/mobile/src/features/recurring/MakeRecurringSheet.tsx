@@ -91,6 +91,7 @@ export function MakeRecurringSheet({
 					<Note>{t("stays")}</Note>
 					{failed ? <Note tone="attention">{t("error")}</Note> : null}
 					<Button
+						busy={busy}
 						disabled={busy}
 						label={busy ? tc("saving") : t("submit")}
 						onPress={submit}

@@ -210,6 +210,7 @@ export function FeedbackSheet({
 						<Button label={tc("cancel")} onPress={close} variant="text" />
 					) : null}
 					<Button
+						busy={busy}
 						disabled={busy || text === ""}
 						label={busy ? t("sending") : t("send")}
 						onPress={() => void send()}

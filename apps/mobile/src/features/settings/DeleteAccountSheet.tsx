@@ -110,11 +110,11 @@ export function DeleteAccountSheet({
 	return (
 		<Sheet
 			detents={["large"]}
-			footerApart
 			footer={
 				<>
 					<Button label={tc("cancel")} onPress={onClose} variant="text" />
 					<Button
+						busy={busy}
 						disabled={busy || password === "" || what === null}
 						label={busy ? t("deleting") : t("delete")}
 						onPress={remove}
@@ -122,6 +122,7 @@ export function DeleteAccountSheet({
 					/>
 				</>
 			}
+			footerApart
 			onClose={onClose}
 			title={t("title")}
 			visible={visible}

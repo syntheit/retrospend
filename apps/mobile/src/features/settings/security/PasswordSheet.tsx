@@ -146,6 +146,7 @@ export function PasswordSheet({
 					</Text>
 				) : null}
 				<Button
+					busy={busy}
 					disabled={busy || !ready}
 					label={busy ? t("saving") : t("submit")}
 					onPress={submit}

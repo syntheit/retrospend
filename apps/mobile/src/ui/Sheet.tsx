@@ -255,6 +255,7 @@ export function Sheet({
 		footer ??
 		(pinned ? (
 			<Button
+				busy={pinned.busy}
 				disabled={pinned.disabled}
 				label={pinned.label}
 				onPress={pinned.onPress}

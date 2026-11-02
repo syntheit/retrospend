@@ -118,6 +118,7 @@ export default function SignInScreen() {
 					</Text>
 				) : null}
 				<Button
+					busy={busy}
 					disabled={busy}
 					label={
 						busy ? t("signingIn") : t(step === "code" ? "verify" : "submit")

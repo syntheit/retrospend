@@ -102,6 +102,7 @@ export function ConfirmSheet({
 			detents={["large"]}
 			footer={
 				<Button
+					busy={busy}
 					disabled={!preview || busy}
 					label={busy ? t("recording") : t("confirm")}
 					onPress={confirm}

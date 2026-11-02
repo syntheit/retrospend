@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
+import { LoadingIndicator } from "@/ui/LoadingIndicator";
 import { Text } from "@/ui/Text";
 import { TextAction } from "@/ui/TextAction";
 import { useToast } from "@/ui/Toast";
@@ -20,6 +22,8 @@ export function SyncIssues({ padded }: { padded?: boolean }) {
 	const { format } = useFormatMoney();
 	const toast = useToast();
 	const { entries, retry, discard } = useParkedEntries();
+	// The entry being sent again: Android shows the loading indicator beside it.
+	const [retrying, setRetrying] = useState<string | null>(null);
 	if (entries.length === 0) return null;
 
 	return (
@@ -50,14 +54,23 @@ export function SyncIssues({ padded }: { padded?: boolean }) {
 							{t("sync.refused")}
 						</Text>
 					</View>
-					<View style={{ flexDirection: "row" }}>
+					<View style={{ flexDirection: "row", alignItems: "center" }}>
+						{retrying === entry.clientId ? (
+							<LoadingIndicator size={space[6]} />
+						) : null}
 						<TextAction
 							accessibilityLabel={`${tc("retry")}, ${entry.title}`}
 							label={tc("retry")}
 							onPress={async () => {
-								const sent = await retry(entry.clientId);
-								announceEntryChange();
-								if (!sent) toast.show({ message: t("sync.retryFailed") });
+								if (retrying !== null) return;
+								setRetrying(entry.clientId);
+								try {
+									const sent = await retry(entry.clientId);
+									announceEntryChange();
+									if (!sent) toast.show({ message: t("sync.retryFailed") });
+								} finally {
+									setRetrying(null);
+								}
 							}}
 						/>
 						<TextAction
