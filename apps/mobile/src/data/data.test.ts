@@ -1,4 +1,5 @@
-import { createReadCache } from "./cache";
+import { SNOOZE_CACHE } from "@/features/home/source";
+import { createReadCache, STICKY_CACHE_NAMES } from "./cache";
 import { createOutbox, type NewOutboxEntry } from "./outbox";
 import { createMemoryStore } from "./store";
 import { flushOutbox } from "./sync";
@@ -13,6 +14,10 @@ const create = (id: string): NewOutboxEntry => ({
 });
 
 describe("read cache", () => {
+	it("keeps Home later across builds", () => {
+		expect(STICKY_CACHE_NAMES).toContain(SNOOZE_CACHE.name);
+	});
+
 	it("returns what it wrote and drops other schema versions", async () => {
 		const cache = createReadCache(createMemoryStore(), "acct");
 		await cache.write("categories", 1, [{ id: "a" }], "2026-10-24T10:00:00Z");
@@ -22,6 +27,30 @@ describe("read cache", () => {
 		});
 		expect(await cache.read("categories", 2)).toBeNull();
 		expect(await cache.read("categories", 1)).toBeNull();
+	});
+
+	it("drops what another build wrote, except the person's own choices", async () => {
+		const store = createMemoryStore();
+		const old = createReadCache(store, "a", undefined, {
+			build: "2201",
+			sticky: ["later"],
+		});
+		await old.write("home", 3, { glance: "old shape" });
+		await old.write("later", 1, ["x"]);
+		// An entry from before builds were recorded counts as another build.
+		await createReadCache(store, "a").write("legacy", 1, "no build");
+
+		const next = createReadCache(store, "a", undefined, {
+			build: "2202",
+			sticky: ["later"],
+		});
+		expect(await next.read("legacy", 1)).toBeNull();
+		expect(await next.read("home", 3)).toBeNull();
+		expect((await next.read("later", 1))?.data).toEqual(["x"]);
+		await next.write("home", 3, { glance: "new shape" });
+		expect((await next.read("home", 3))?.data).toEqual({
+			glance: "new shape",
+		});
 	});
 
 	it("keeps accounts apart and clears one on sign out", async () => {

@@ -2,9 +2,14 @@ import type { KeyValueStore } from "./store";
 
 // A read cache with a schema version per entry. A payload written by an older
 // build, or for a different account, is dropped instead of being trusted.
+// Entries also carry the build that wrote them: a payload shape can change
+// without anyone bumping its schema number, and a screen that reads the old
+// shape crashes on the first frame (build 2202 died on Home that way).
 
 interface Entry<T> {
 	schema: number;
+	/** The build number that wrote it; absent in entries from before this field. */
+	build?: string;
 	/** The server clock at the read: the `updatedSince` for the next delta. */
 	serverTime: string | null;
 	fetchedAt: string;
@@ -35,11 +40,26 @@ export interface ReadCache {
 	clear(): Promise<void>;
 }
 
-/** `scope` is the account (server + user), so two accounts never share rows. */
+/** Per-phone choices kept in the cache that no server answer replaces (Home "later"). */
+export const STICKY_CACHE_NAMES: readonly string[] = ["home.later"];
+
+export interface CacheBuild {
+	/** The running build: only entries it wrote are read, the others are dropped. */
+	build: string;
+	/** Names that are the person's own choices, not a server answer: kept across builds. */
+	sticky?: readonly string[];
+}
+
+/**
+ * `scope` is the account (server + user), so two accounts never share rows.
+ * With a `binding`, an update starts from the server's answer, never from a
+ * payload of the old shape.
+ */
 export function createReadCache(
 	store: KeyValueStore,
 	scope: string,
 	now: () => Date = () => new Date(),
+	binding?: CacheBuild,
 ): ReadCache {
 	const prefix = `cache:${scope}:`;
 	return {
@@ -48,7 +68,12 @@ export function createReadCache(
 			if (raw === null) return null;
 			try {
 				const entry = JSON.parse(raw) as Entry<T>;
-				if (entry.schema === schema) {
+				if (
+					entry.schema === schema &&
+					(!binding ||
+						binding.sticky?.includes(name) ||
+						entry.build === binding.build)
+				) {
 					return {
 						data: entry.data,
 						serverTime: entry.serverTime,
@@ -64,6 +89,7 @@ export function createReadCache(
 		async write(name, schema, data, serverTime = null) {
 			const entry: Entry<unknown> = {
 				schema,
+				build: binding?.build,
 				serverTime,
 				fetchedAt: now().toISOString(),
 				data,
