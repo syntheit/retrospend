@@ -367,7 +367,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 
 	// ── guests ───────────────────────────────────────────────────────────
 	"guest.deleteMyData": internal(GUEST),
-	"guest.joinWithAccount": internal(GUEST),
+	"guest.joinWithAccount": to("POST /projects/join"),
 	"guest.register": internal(GUEST),
 	"guest.resume": internal(GUEST),
 	"guest.validateLink": internal(GUEST),

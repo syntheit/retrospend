@@ -11,7 +11,7 @@ import { canArchiveProject, canEditProject } from "./projectForm";
 import type { ProjectPage } from "./source";
 
 /**
- * Add person, Share, Settings, Archive and Restore for one project, as items
+ * Add person, Share, Settings, Archive, Restore and Delete for one project, as items
  * of its overflow menu, and `edit` for the header's pencil (it opens the
  * project sheet). Share opens the share sheet and Settings the settings sheet (switches and member dates). Archive asks first (a native alert: no money
  * moves) and ends with a toast that restores it, since the API restores with
@@ -34,6 +34,8 @@ export function useProjectActions(
 	closeShare: () => void;
 	configuring: boolean;
 	closeSettings: () => void;
+	deleting: boolean;
+	closeDelete: () => void;
 } {
 	const t = useTranslations("mobile.projects.actions");
 	const tc = useTranslations("mobile.common");
@@ -42,6 +44,7 @@ export function useProjectActions(
 	const [editing, setEditing] = useState(false);
 	const [sharing, setSharing] = useState(false);
 	const [configuring, setConfiguring] = useState(false);
+	const [deleting, setDeleting] = useState(false);
 	// A link or a project just made "with others" opens Add person at once.
 	const [adding, setAdding] = useState(startAdding);
 	useEffect(() => {
@@ -142,6 +145,16 @@ export function useProjectActions(
 					},
 		);
 	}
+	// Delete is quiet: the last item of the menu, red, and it previews first.
+	if (canArchiveProject(page.myRole)) {
+		items.push({
+			id: "delete-project",
+			label: t("delete"),
+			icon: "Trash2",
+			destructive: true,
+			onPress: () => setDeleting(true),
+		});
+	}
 	return {
 		items,
 		edit: canEditProject(page.myRole) ? () => setEditing(true) : null,
@@ -153,5 +166,7 @@ export function useProjectActions(
 		closeShare: () => setSharing(false),
 		configuring,
 		closeSettings: () => setConfiguring(false),
+		deleting,
+		closeDelete: () => setDeleting(false),
 	};
 }

@@ -138,20 +138,23 @@ describe("routeForUrl", () => {
 		expect(routeForUrl("retrospend://share")).toEqual({ kind: "pending" });
 	});
 
-	it("marks a project link, so a project you are not in opens its web page", () => {
+	it("sends a project link through the shared page, with the server a web address names", () => {
 		expect(routeForUrl("retrospend://projects/p1")).toEqual({
 			kind: "route",
-			path: "/people/project/p1?link=1",
+			path: "/shared/p1",
 		});
 		expect(routeForUrl("https://retrospend.app/projects/p1?invite=l1")).toEqual(
-			{ kind: "route", path: "/people/project/p1?invite=l1&link=1" },
+			{
+				kind: "route",
+				path: "/shared/p1?invite=l1&server=https%3A%2F%2Fretrospend.app",
+			},
 		);
 		expect(routeForUrl("http://192.168.1.5:1997/projects/p1")).toEqual({
 			kind: "route",
-			path: "/people/project/p1?link=1",
+			path: "/shared/p1?server=http%3A%2F%2F192.168.1.5%3A1997",
 		});
-		expect(systemPath("https://retrospend.app/projects/p1?invite=l1")).toBe(
-			"/people/project/p1?invite=l1&link=1",
+		expect(systemPath("retrospend://projects/p1?guestResume=t1")).toBe(
+			"/shared/p1?guestResume=t1",
 		);
 	});
 

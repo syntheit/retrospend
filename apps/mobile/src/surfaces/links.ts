@@ -10,9 +10,9 @@ import { canonicalAmount } from "./prefill";
 //   retrospend://share    a share or Shortcut waits in the native hand-off
 //
 // A project link (retrospend://projects/ID, or the web address
-// https://host/projects/ID?invite=LINK a person was sent) opens that project
-// in the app; the project screen sends it to the web page when you are not in
-// it (the guest join flow and the public page are web pages). A link to a
+// https://host/projects/ID?invite=LINK a person was sent) opens the shared
+// page (app/shared/[id]): the project itself when you are in it, else the
+// join step for an invite or the read-only page. A link to a
 // route that is not a tab on this device (Projects, Recurring, Currencies,
 // Settings, Insights) is mapped to the screen that holds it (layout/tabRoutes),
 // because an undeclared tab route lands on Home.
@@ -56,12 +56,16 @@ export function routeForUrl(url: string): AppLink | null {
 		};
 	}
 	if (first === "projects" && segments.length === 2) {
-		// Marked as a link, so a project you are not in opens its web page.
+		// A project link goes through the shared page: a project you are in opens
+		// as itself, one you are not opens the join step or the read-only page.
+		// A web address names its server, which a guest with no connection needs.
 		const params = new URLSearchParams(query);
-		params.set("link", "1");
+		const origin = WEB_ORIGIN.exec(url.trim())?.[0];
+		if (origin && !params.has("server")) params.set("server", origin);
+		const rest = params.toString();
 		return {
 			kind: "route",
-			path: deviceRoute(`/${segments.join("/")}?${params}`),
+			path: `/shared/${segments[1]}${rest ? `?${rest}` : ""}`,
 		};
 	}
 	return {

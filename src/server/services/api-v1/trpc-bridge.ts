@@ -5,6 +5,7 @@ import { authRouter } from "~/server/api/routers/auth";
 import { billingPeriodRouter } from "~/server/api/routers/billingPeriod";
 import { expenseRouter } from "~/server/api/routers/expense";
 import { feedbackRouter } from "~/server/api/routers/feedback";
+import { guestRouter } from "~/server/api/routers/guest";
 import { inviteRouter } from "~/server/api/routers/invite";
 import { paymentMethodRouter } from "~/server/api/routers/paymentMethod";
 import { profileRouter } from "~/server/api/routers/profile";
@@ -65,6 +66,7 @@ async function contextFor(caller: BridgeCaller) {
 const adminFactory = createCallerFactory(adminRouter);
 const expenseFactory = createCallerFactory(expenseRouter);
 const feedbackFactory = createCallerFactory(feedbackRouter);
+const guestFactory = createCallerFactory(guestRouter);
 const inviteFactory = createCallerFactory(inviteRouter);
 const projectFactory = createCallerFactory(projectRouter);
 const billingPeriodFactory = createCallerFactory(billingPeriodRouter);
@@ -82,6 +84,8 @@ export const trpcExpense = async (c: BridgeCaller) =>
 	expenseFactory(await contextFor(c));
 export const trpcFeedback = async (c: BridgeCaller) =>
 	feedbackFactory(await contextFor(c));
+export const trpcGuest = async (c: BridgeCaller) =>
+	guestFactory(await contextFor(c));
 export const trpcInvite = async (c: BridgeCaller) =>
 	inviteFactory(await contextFor(c));
 export const trpcProject = async (c: BridgeCaller) =>

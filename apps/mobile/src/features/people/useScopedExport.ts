@@ -5,28 +5,36 @@ import type { MenuItem } from "@/ui/types";
 import type { PersonRef } from "./source";
 
 /**
- * The overflow menu of a project: its expenses as one CSV. The server builds
- * the file and the share sheet opens when it is ready.
+ * The overflow menu of a project, as the web's: its expenses as one CSV, the
+ * settlement plan as a CSV (shared projects only) and the PDF. The server
+ * builds the file and the share sheet opens when it is ready.
  */
-export function useProjectExport(projectId: string): MenuItem[] {
+export function useProjectExport(projectId: string, solo = false): MenuItem[] {
 	const t = useTranslations("mobile.people");
 	const failed = useTranslations("mobile.settings.data")("failed");
 	const toast = useToast();
 	const exporter = useDataExport();
-	return [
-		{
-			id: "export-project",
-			label: t("exportExpenses"),
-			icon: "Download",
-			onPress: () => {
-				if (exporter.busy) return;
-				void exporter
-					.run({ kind: "project_expenses", projectId })
-					.then((ok) => {
-						if (!ok) toast.show({ message: failed });
-					});
-			},
+	const item = (
+		id: string,
+		label: string,
+		kind: "project_expenses" | "project_settlement_plan" | "project_pdf",
+	): MenuItem => ({
+		id,
+		label,
+		icon: "Download",
+		onPress: () => {
+			if (exporter.busy) return;
+			void exporter.run({ kind, projectId }).then((ok) => {
+				if (!ok) toast.show({ message: failed });
+			});
 		},
+	});
+	return [
+		item("export-project", t("exportExpenses"), "project_expenses"),
+		...(solo
+			? []
+			: [item("export-plan", t("exportPlan"), "project_settlement_plan")]),
+		item("export-project-pdf", t("exportProjectPdf"), "project_pdf"),
 	];
 }
 

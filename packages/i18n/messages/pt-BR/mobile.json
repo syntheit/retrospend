@@ -1750,7 +1750,9 @@
 			"added": "{name} adicionado",
 			"existing": "{name} já está aqui",
 			"error": "Não foi possível adicionar esta pessoa. Tente de novo."
-		}
+		},
+		"exportPlan": "Exportar plano de acerto (CSV)",
+		"exportProjectPdf": "Exportar projeto (PDF)"
 	},
 	"person": {
 		"owesYou": "deve a você",
@@ -2033,7 +2035,8 @@
 			"restoreError": "Não foi possível restaurar. Tente de novo.",
 			"addPerson": "Adicionar pessoa",
 			"share": "Compartilhar projeto",
-			"settings": "Ajustes do projeto"
+			"settings": "Ajustes do projeto",
+			"delete": "Excluir projeto"
 		},
 		"addPerson": {
 			"title": "Adicionar pessoa",
@@ -2049,7 +2052,9 @@
 			"joinsHint": "As despesas anteriores a esta data não mudam.",
 			"submit": "Adicionar ao projeto",
 			"added": "{name} adicionado",
-			"error": "Não foi possível adicionar esta pessoa. Tente de novo."
+			"error": "Não foi possível adicionar esta pessoa. Tente de novo.",
+			"undone": "{name} removido",
+			"undoError": "Não foi possível desfazer. Tente de novo."
 		},
 		"share": {
 			"title": "Compartilhar projeto",
@@ -2148,6 +2153,73 @@
 				"balance_person": "seu saldo com {name}",
 				"other": "outro valor"
 			}
+		},
+		"shared": {
+			"joinTitle": "Entrar em {project}",
+			"joinSub": "{count, plural, one {# pessoa} other {# pessoas}} · você entra como {role}",
+			"joinAsYou": "Entrar no projeto",
+			"join": "Entrar no projeto",
+			"joining": "Entrando",
+			"joinFailed": "Não foi possível adicionar você. Tente de novo.",
+			"name": "Seu nome",
+			"email": "E-mail",
+			"back": "Voltar à lista",
+			"elsewhere": "{name} também está em outros projetos, então este convite não pode assumir o histórico. Entre como você mesmo.",
+			"chooserTitle": "Você é uma destas pessoas?",
+			"chooserHint": "Alguém pode ter adicionado você a {project}. Escolha você para manter seu histórico ou entre como alguém novo.",
+			"chooserNone": "Nenhuma, sou novo",
+			"resumeTitle": "Confira seu e-mail",
+			"resumeHint": "Este e-mail já entrou em {project}. Enviamos um link para continuar de onde você parou. Ele funciona uma vez e expira em uma hora.",
+			"noSummary": "Ainda não há nada para somar.",
+			"byCategory": "Por categoria",
+			"uncategorized": "Sem categoria",
+			"yours": "Seu {amount}",
+			"privateTitle": "Este projeto é privado",
+			"privateHint": "Peça ao proprietário para compartilhá-lo com você.",
+			"errorTitle": "Não foi possível carregar o projeto",
+			"errorHint": "Verifique sua conexão e tente de novo.",
+			"noticeGuest": "Vendo como {name}, convidado",
+			"noticeViewer": "Somente leitura",
+			"noticePublic": "Visualização pública. Saldos e pagamentos continuam privados.",
+			"createAccount": "Criar conta",
+			"forget": "Esquecer neste telefone",
+			"forgetTitle": "Esquecer este projeto neste telefone?",
+			"forgetConfirm": "Esquecer",
+			"failed": {
+				"noServer": {
+					"title": "Nenhum servidor para consultar",
+					"hint": "Abra este link pelo endereço do servidor de onde ele veio."
+				},
+				"resumeFailed": {
+					"title": "Este link não funciona mais",
+					"hint": "Ele funciona uma vez e expira em uma hora. Abra seu link de convite de novo."
+				},
+				"inviteInvalid": {
+					"title": "Este convite não funciona",
+					"hint": "Peça um novo link ao proprietário."
+				},
+				"otherProject": {
+					"title": "Este convite é de outro projeto",
+					"hint": "Abra o link do projeto para o qual você foi convidado."
+				},
+				"busy": {
+					"title": "Muitas tentativas",
+					"hint": "Espere um minuto e abra o link de novo."
+				}
+			},
+			"linkTitle": "Entrar com um link",
+			"linkLabel": "Link do projeto",
+			"linkOpen": "Abrir",
+			"linkInvalid": "Esse não é um link de projeto."
+		},
+		"delete": {
+			"title": "Excluir {name}?",
+			"confirm": "Excluir projeto",
+			"deleting": "Excluindo",
+			"deleted": "{name} excluído",
+			"checking": "Verificando o que muda",
+			"previewError": "Não foi possível verificar o que muda. Tente de novo.",
+			"error": "Não foi possível excluir o projeto. Tente de novo."
 		}
 	},
 	"settings": {

@@ -94258,6 +94258,143 @@
 				"x-required-scope": "write:expenses"
 			}
 		},
+		"/projects/join": {
+			"post": {
+				"description": "You join with your own account, with the role the link grants. Already in the project: nothing changes and the link use is not counted again. A link that is off, expired or used up answers 404.",
+				"operationId": "joinProjectWithInvite",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"linkId": {
+										"description": "The invite link's id, the `invite` part of its address.",
+										"maxLength": 255,
+										"minLength": 1,
+										"type": "string"
+									}
+								},
+								"required": [
+									"linkId"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"alreadyMember": {
+											"type": "boolean"
+										},
+										"projectId": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										}
+									},
+									"required": [
+										"projectId",
+										"alreadyMember"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Join a project with the invite link someone sent you",
+				"tags": [
+					"Projects"
+				],
+				"x-event-type": "project.member_joined",
+				"x-required-scope": "write:expenses"
+			}
+		},
 		"/projects/last-activity": {
 			"get": {
 				"description": "Projects you are not in are left out.",

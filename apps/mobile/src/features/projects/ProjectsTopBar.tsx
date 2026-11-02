@@ -6,6 +6,7 @@ import { useExpensesExport } from "@/features/people/useExpensesExport";
 import type { TopBarAction } from "@/ui/types";
 import { openProject } from "./openProject";
 import { ProjectSheet } from "./ProjectSheet";
+import { JoinLinkSheet } from "./shared/JoinLinkSheet";
 
 /**
  * The top bar of Projects: the page's title, New project as a plain icon (in
@@ -31,6 +32,8 @@ export function ProjectsTopBar({
 	const { state } = useSession();
 	const me = state.status === "signedIn" ? state.me : null;
 	const [adding, setAdding] = useState(false);
+	const [joining, setJoining] = useState(false);
+	const join = useTranslations("mobile.projects.shared")("linkTitle");
 	return (
 		<>
 			<AccountTopBar
@@ -44,7 +47,10 @@ export function ProjectsTopBar({
 					},
 				]}
 				footer={footer}
-				overflow={overflow}
+				overflow={[
+					{ id: "join-link", label: join, onPress: () => setJoining(true) },
+					...overflow,
+				]}
 				overflowLabel={more}
 				title={title}
 			/>
@@ -55,6 +61,7 @@ export function ProjectsTopBar({
 				project={null}
 				visible={adding}
 			/>
+			<JoinLinkSheet onClose={() => setJoining(false)} visible={joining} />
 		</>
 	);
 }

@@ -88,6 +88,8 @@ function Routes() {
 				<Stack.Protected guard={!connected}>
 					<Stack.Screen name="connect" />
 				</Stack.Protected>
+				{/* A project you have no seat in, reached by a link: guests have no account. */}
+				<Stack.Screen name="shared/[id]" />
 				<Stack.Protected guard={GALLERY_ENABLED}>
 					<Stack.Screen name="gallery" />
 				</Stack.Protected>

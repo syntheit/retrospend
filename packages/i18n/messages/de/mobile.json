@@ -1750,7 +1750,9 @@
 			"added": "{name} hinzugefügt",
 			"existing": "{name} ist schon da",
 			"error": "Die Person konnte nicht hinzugefügt werden. Versuche es erneut."
-		}
+		},
+		"exportPlan": "Ausgleichsplan exportieren (CSV)",
+		"exportProjectPdf": "Projekt exportieren (PDF)"
 	},
 	"person": {
 		"owesYou": "schuldet dir",
@@ -2033,7 +2035,8 @@
 			"restoreError": "Wiederherstellen hat nicht geklappt. Versuch es noch einmal.",
 			"addPerson": "Person hinzufügen",
 			"share": "Projekt teilen",
-			"settings": "Projekteinstellungen"
+			"settings": "Projekteinstellungen",
+			"delete": "Projekt löschen"
 		},
 		"addPerson": {
 			"title": "Person hinzufügen",
@@ -2049,7 +2052,9 @@
 			"joinsHint": "Ausgaben vor diesem Datum bleiben unverändert.",
 			"submit": "Zum Projekt hinzufügen",
 			"added": "{name} hinzugefügt",
-			"error": "Die Person konnte nicht hinzugefügt werden. Versuch es noch einmal."
+			"error": "Die Person konnte nicht hinzugefügt werden. Versuch es noch einmal.",
+			"undone": "{name} entfernt",
+			"undoError": "Das ließ sich nicht rückgängig machen. Versuch es noch einmal."
 		},
 		"share": {
 			"title": "Projekt teilen",
@@ -2148,6 +2153,73 @@
 				"balance_person": "dein Saldo mit {name}",
 				"other": "eine andere Zahl"
 			}
+		},
+		"shared": {
+			"joinTitle": "{project} beitreten",
+			"joinSub": "{count, plural, one {# Person} other {# Personen}} · Beitritt als {role}",
+			"joinAsYou": "Projekt beitreten",
+			"join": "Projekt beitreten",
+			"joining": "Wird beigetreten",
+			"joinFailed": "Du konntest nicht hinzugefügt werden. Versuch es noch einmal.",
+			"name": "Dein Name",
+			"email": "E-Mail",
+			"back": "Zurück zur Liste",
+			"elsewhere": "{name} ist auch in anderen Projekten, daher kann diese Einladung den Verlauf nicht übernehmen. Tritt stattdessen als du selbst bei.",
+			"chooserTitle": "Bist du eine dieser Personen?",
+			"chooserHint": "Jemand hat dich vielleicht zu {project} hinzugefügt. Wähle dich aus, um deinen Verlauf zu behalten, oder tritt als neue Person bei.",
+			"chooserNone": "Keine davon, ich bin neu",
+			"resumeTitle": "Prüfe deine E-Mails",
+			"resumeHint": "Diese E-Mail-Adresse ist {project} bereits beigetreten. Wir haben dir einen Link geschickt, damit du dort weitermachen kannst. Er funktioniert einmal und läuft in einer Stunde ab.",
+			"noSummary": "Noch nichts zu summieren.",
+			"byCategory": "Nach Kategorie",
+			"uncategorized": "Keine Kategorie",
+			"yours": "Dein Anteil {amount}",
+			"privateTitle": "Dieses Projekt ist privat",
+			"privateHint": "Bitte den Inhaber, es mit dir zu teilen.",
+			"errorTitle": "Das Projekt ließ sich nicht laden",
+			"errorHint": "Prüfe deine Verbindung und versuch es noch einmal.",
+			"noticeGuest": "Du siehst das Projekt als {name}, Gast",
+			"noticeViewer": "Nur ansehen",
+			"noticePublic": "Öffentliche Ansicht. Salden und Zahlungen bleiben privat.",
+			"createAccount": "Konto erstellen",
+			"forget": "Auf diesem Telefon vergessen",
+			"forgetTitle": "Dieses Projekt auf diesem Telefon vergessen?",
+			"forgetConfirm": "Vergessen",
+			"failed": {
+				"noServer": {
+					"title": "Kein Server zum Fragen",
+					"hint": "Öffne diesen Link über die Adresse des Servers, von dem er kam."
+				},
+				"resumeFailed": {
+					"title": "Dieser Link funktioniert nicht mehr",
+					"hint": "Er funktioniert einmal und läuft nach einer Stunde ab. Öffne deinen Einladungslink erneut."
+				},
+				"inviteInvalid": {
+					"title": "Diese Einladung funktioniert nicht",
+					"hint": "Bitte den Inhaber um einen neuen Link."
+				},
+				"otherProject": {
+					"title": "Diese Einladung gehört zu einem anderen Projekt",
+					"hint": "Öffne den Link des Projekts, zu dem du eingeladen wurdest."
+				},
+				"busy": {
+					"title": "Zu viele Versuche",
+					"hint": "Warte eine Minute und öffne den Link erneut."
+				}
+			},
+			"linkTitle": "Mit einem Link beitreten",
+			"linkLabel": "Projektlink",
+			"linkOpen": "Öffnen",
+			"linkInvalid": "Das ist kein Projektlink."
+		},
+		"delete": {
+			"title": "{name} löschen?",
+			"confirm": "Projekt löschen",
+			"deleting": "Wird gelöscht",
+			"deleted": "{name} gelöscht",
+			"checking": "Es wird geprüft, was sich ändert",
+			"previewError": "Die Änderungen ließen sich nicht prüfen. Versuch es noch einmal.",
+			"error": "Das Projekt ließ sich nicht löschen. Versuch es noch einmal."
 		}
 	},
 	"settings": {

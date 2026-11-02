@@ -142,7 +142,25 @@ export function AddMemberSheet({
 			);
 			announceEntryChange();
 			onDone();
-			toast.show({ message: t("added", { name: who.name }) });
+			toast.show({
+				message: t("added", { name: who.name }),
+				undo: {
+					label: tc("undo"),
+					onUndo: async () => {
+						try {
+							await api.projects.removeMember(
+								{ id: projectId, type: who.type, personId: who.id },
+								{ context: { idempotencyKey: newClientId() } },
+							);
+							announceEntryChange();
+							onDone();
+							toast.show({ message: t("undone", { name: who.name }) });
+						} catch {
+							toast.show({ message: t("undoError") });
+						}
+					},
+				},
+			});
 			onClose();
 		} catch {
 			setFailed(true);

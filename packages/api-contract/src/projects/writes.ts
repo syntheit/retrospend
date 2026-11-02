@@ -297,6 +297,18 @@ export const projectExpensesPageSchema = pageOf(
 	projectExpenseListRowSchema,
 ).extend({ total: z.int().min(0) });
 
+export const joinWithInviteSchema = z
+	.object({
+		linkId: z.string().min(1).max(255).meta({
+			description: "The invite link's id, the `invite` part of its address.",
+		}),
+	})
+	.meta({ id: "JoinWithInvite" });
+
+export const joinedProjectSchema = z
+	.object({ projectId: idSchema, alreadyMember: z.boolean() })
+	.meta({ id: "JoinedProject" });
+
 /**
  * Creating and running a project: its settings, members, roles, ownership,
  * invite links and expenses. Roles are the web's: an Editor changes the
@@ -378,6 +390,19 @@ export const projectWritesContract = {
 		.meta({ scope: SCOPE, event: "project.member_added" })
 		.input(addMemberSchema)
 		.output(memberRowSchema),
+	joinWithInvite: v1
+		.route({
+			method: "POST",
+			path: "/projects/join",
+			operationId: "joinProjectWithInvite",
+			tags: TAG,
+			summary: "Join a project with the invite link someone sent you",
+			description:
+				"You join with your own account, with the role the link grants. Already in the project: nothing changes and the link use is not counted again. A link that is off, expired or used up answers 404.",
+		})
+		.meta({ scope: SCOPE, event: "project.member_joined" })
+		.input(joinWithInviteSchema)
+		.output(joinedProjectSchema),
 	setMemberRole: v1
 		.route({
 			method: "PUT",
