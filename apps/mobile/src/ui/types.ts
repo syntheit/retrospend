@@ -79,6 +79,11 @@ export interface MenuProps {
 	 */
 	icon?: boolean;
 	/**
+	 * With `icon`: the mark sits in a raised 28 point circle inside the 44
+	 * point touch target, the way a sheet header draws its pencil and close.
+	 */
+	raised?: boolean;
+	/**
 	 * Draws the trigger as a page-level choice (the month on Budget): 16/500
 	 * in accent-strong with a chevron, no border.
 	 */

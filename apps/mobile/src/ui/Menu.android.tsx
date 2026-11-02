@@ -62,6 +62,7 @@ export function Menu({
 	chip,
 	active = false,
 	icon,
+	raised,
 	heading,
 	leadingCalendar,
 	sortIcon,
@@ -124,7 +125,30 @@ export function Menu({
 				justifyContent: "center",
 			}}
 		>
-			<Glyph color={color.fg} name="EllipsisVertical" size={size.icon.phone} />
+			{raised ? (
+				<View
+					style={{
+						width: size.ctlSm.phone,
+						height: size.ctlSm.phone,
+						borderRadius: size.ctlSm.phone / 2,
+						backgroundColor: color.raised,
+						alignItems: "center",
+						justifyContent: "center",
+					}}
+				>
+					<Glyph
+						color={color.fg2}
+						name="EllipsisVertical"
+						size={size.icon.phone}
+					/>
+				</View>
+			) : (
+				<Glyph
+					color={color.fg}
+					name="EllipsisVertical"
+					size={size.icon.phone}
+				/>
+			)}
 		</Pressable>
 	) : heading ? (
 		<Pressable
