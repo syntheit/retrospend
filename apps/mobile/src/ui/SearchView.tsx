@@ -8,16 +8,16 @@ import {
 } from "react";
 import { BackHandler, StyleSheet, TextInput, View } from "react-native";
 import Animated, {
-	FadeIn,
-	FadeOut,
-	ReduceMotion,
+	useAnimatedStyle,
+	useSharedValue,
+	withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { SearchBarCommands } from "react-native-screens";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { NoBar } from "./barScroll";
-import { easeLand, easeLeave } from "./motion";
+import { easeLand } from "./motion";
 import { typeStyle } from "./Text";
 import { TopBarAction } from "./TopBarAction";
 
@@ -58,6 +58,15 @@ export function SearchView({
 	const { color, duration, space } = theme;
 	const { top } = useSafeAreaInsets();
 	const input = useRef<ComponentRef<typeof TextInput>>(null);
+	// A plain fade in (state duration), driven by a value and not a layout
+	// animation: those wrap the field and drop what the keyboard types.
+	const shown = useSharedValue(0);
+	const fade = useAnimatedStyle(() => ({ opacity: shown.value }));
+	useEffect(() => {
+		shown.value = open
+			? withTiming(1, { duration: duration.state, easing: easeLand(theme) })
+			: 0;
+	}, [open, shown, duration.state, theme]);
 	useImperativeHandle(
 		commands,
 		() =>
@@ -83,21 +92,18 @@ export function SearchView({
 	if (!open) return null;
 	return (
 		<Animated.View
-			entering={FadeIn.duration(duration.state)
-				.easing(easeLand(theme))
-				.reduceMotion(ReduceMotion.Never)}
-			exiting={FadeOut.duration(duration.state)
-				.easing(easeLeave(theme))
-				.reduceMotion(ReduceMotion.Never)}
-			style={{
-				position: "absolute",
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				zIndex: 5,
-				backgroundColor: color.bg,
-			}}
+			style={[
+				{
+					position: "absolute",
+					top: 0,
+					left: 0,
+					right: 0,
+					bottom: 0,
+					zIndex: 5,
+					backgroundColor: color.bg,
+				},
+				fade,
+			]}
 		>
 			<View
 				style={{
