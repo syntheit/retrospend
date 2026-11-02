@@ -147,6 +147,7 @@ export function ProjectSheet({
 				<>
 					<Button label={tc("cancel")} onPress={onClose} variant="text" />
 					<Button
+						busy={saving}
 						disabled={(update === null && create === null) || saving}
 						label={saving ? tc("saving") : editing ? t("save") : t("create")}
 						onPress={() => void submit()}
