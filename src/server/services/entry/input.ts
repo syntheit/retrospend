@@ -156,7 +156,12 @@ export const sharedDeleteSchema = z.object({
 	confirmUnsettled: z.boolean().optional(),
 	// The Undo of a create (see deleteSharedExpense).
 	retract: z.boolean().optional(),
+	// Keep what Undo needs: the stash that sharedExpense.restore takes.
+	keepForUndo: z.boolean().optional(),
 });
+
+/** What sharedExpense.delete returned as `stash`. */
+export const sharedUndoSchema = z.object({ stash: z.string().min(1).max(200) });
 
 /** A signed undo payload (restore-token.ts). */
 export const restoreTokenSchema = z.object({

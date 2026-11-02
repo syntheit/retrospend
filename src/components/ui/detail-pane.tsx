@@ -42,7 +42,9 @@ export function DetailPane({
 			aria-label={typeof title === "string" ? title : undefined}
 			className={cn(
 				"bg-bg flex min-h-0 flex-col",
-				phone ? "fixed inset-0 z-40" : "border-line w-90 shrink-0 border-l",
+				phone
+					? "fixed inset-0 z-40"
+					: "border-line w-80 shrink-0 border-l xl:w-90",
 				className,
 			)}
 			data-detail-pane=""

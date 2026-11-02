@@ -1,9 +1,17 @@
 "use client";
 
-import { PanelLeftOpen, Plus, Search } from "lucide-react";
+import { Ellipsis, PanelLeftOpen, Plus, Search } from "lucide-react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { Button } from "~/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import { Tip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/cn";
 import {
@@ -80,7 +88,7 @@ export function SidebarRail({
 				aria-label={t("sidebar.destinations")}
 				className="mt-2 flex w-full flex-col gap-0.5"
 			>
-				{[...DESTINATIONS, ...TOOLS].map((entry) => {
+				{DESTINATIONS.map((entry) => {
 					const Icon = entry.icon;
 					return (
 						<RailLink
@@ -93,15 +101,15 @@ export function SidebarRail({
 						/>
 					);
 				})}
-				{pinned.map((p) => (
-					<RailLink
-						current={p.id === pinnedCurrentId}
-						href={projectHref(p.id)}
-						key={p.id}
-						label={p.name}
-						lead={p.lead}
-					/>
-				))}
+				<RailMore
+					active={
+						pinnedCurrentId !== undefined ||
+						TOOLS.some((entry) => entry.id === current)
+					}
+					current={current}
+					pinned={pinned}
+					pinnedCurrentId={pinnedCurrentId}
+				/>
 			</nav>
 			<div className="flex-1" />
 			{onToggleRail ? (
@@ -119,5 +127,68 @@ export function SidebarRail({
 			) : null}
 			{account}
 		</aside>
+	);
+}
+
+/**
+ * The rail holds the six destinations; Import, Currencies and the pinned
+ * projects sit behind this item, so no label in the rail is cut short.
+ */
+function RailMore({
+	pinned,
+	pinnedCurrentId,
+	current,
+	active,
+}: {
+	pinned: { id: string; name: string; lead: ReactNode }[];
+	pinnedCurrentId: string | undefined;
+	current: NavId | null;
+	active: boolean;
+}) {
+	const t = useTranslations("shell");
+	const tn = useTranslations("shell.nav");
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button
+					className={cn(
+						"text-meta h-auto w-full flex-col gap-1 px-0 py-2",
+						active ? "bg-raised text-brand font-semibold" : "text-fg-2",
+					)}
+					kind="ghost"
+				>
+					<Ellipsis aria-hidden="true" />
+					{t("sidebar.more")}
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="start" side="right">
+				{TOOLS.map((entry) => {
+					const Icon = entry.icon;
+					return (
+						<DropdownMenuItem asChild key={entry.id}>
+							<Link
+								aria-current={current === entry.id ? "page" : undefined}
+								href={entry.href}
+							>
+								<Icon aria-hidden="true" />
+								{tn(entry.id)}
+							</Link>
+						</DropdownMenuItem>
+					);
+				})}
+				{pinned.length > 0 && <DropdownMenuSeparator />}
+				{pinned.map((p) => (
+					<DropdownMenuItem asChild key={p.id}>
+						<Link
+							aria-current={p.id === pinnedCurrentId ? "page" : undefined}
+							href={projectHref(p.id)}
+						>
+							{p.lead}
+							{p.name}
+						</Link>
+					</DropdownMenuItem>
+				))}
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }

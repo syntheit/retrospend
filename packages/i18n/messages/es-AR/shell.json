@@ -8,7 +8,8 @@
 		"pinned": "Fijados",
 		"pinnedLabel": "Proyectos fijados",
 		"collapse": "Contraer barra lateral",
-		"expand": "Expandir barra lateral"
+		"expand": "Expandir barra lateral",
+		"more": "Más"
 	},
 	"bottomNav": {
 		"label": "Principal"

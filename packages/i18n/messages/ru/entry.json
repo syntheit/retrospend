@@ -305,6 +305,13 @@
 		"home": "В {currency}",
 		"rate": "Курс",
 		"location": "Место",
-		"note": "Заметка"
+		"note": "Заметка",
+		"splitWith": "Разделено с",
+		"recurring": "Регулярный расход",
+		"recurringOpen": "Открыть",
+		"spread": "Распределено на",
+		"months": "{count, plural, one {# месяц} few {# месяца} many {# месяцев} other {# месяца}}",
+		"hidden": "Не входит в отчёты",
+		"yes": "Да"
 	}
 }

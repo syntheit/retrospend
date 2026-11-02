@@ -155,6 +155,11 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 		"sharedTransaction",
 		"verification",
 	],
+	"entry.shared.restore.save": [
+		...SHARED_TX_DEPS,
+		"sharedTransaction",
+		"verification",
+	],
 	"entry.shared.delete.save": [...SHARED_TX_DEPS, "sharedTransaction"],
 	"entry.transfer.save": ["wealth", "expense", "envelope"],
 	// Income feeds Insights' money in and savings rate.

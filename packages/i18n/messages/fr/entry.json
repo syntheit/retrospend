@@ -305,6 +305,13 @@
 		"home": "En {currency}",
 		"rate": "Taux",
 		"location": "Lieu",
-		"note": "Note"
+		"note": "Note",
+		"splitWith": "Partagé avec",
+		"recurring": "Dépense récurrente",
+		"recurringOpen": "Ouvrir",
+		"spread": "Réparti sur",
+		"months": "{count, plural, one {# mois} other {# mois}}",
+		"hidden": "Exclu des rapports",
+		"yes": "Oui"
 	}
 }

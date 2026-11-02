@@ -305,6 +305,13 @@
 		"home": "En {currency}",
 		"rate": "Cotización",
 		"location": "Lugar",
-		"note": "Nota"
+		"note": "Nota",
+		"splitWith": "Dividido con",
+		"recurring": "Gasto recurrente",
+		"recurringOpen": "Abrir",
+		"spread": "Repartido en",
+		"months": "{count, plural, one {# mes} other {# meses}}",
+		"hidden": "Fuera de los informes",
+		"yes": "Sí"
 	}
 }

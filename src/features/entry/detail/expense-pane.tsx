@@ -1,15 +1,10 @@
 "use client";
 
-import { toMinorUnits } from "@retrospend/domain/money";
-import { dayKey } from "@retrospend/domain/time-zone";
 import { useTranslations } from "next-intl";
 import { Suspense, useCallback, useMemo } from "react";
 import { ActionMenu } from "~/components/actions/action-menu";
 import type { ExpenseTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
-import { Money } from "~/components/money/money";
-import { useRateFormat } from "~/components/money/use-rate-format";
-import { useDateFormat } from "~/components/pickers/use-date-format";
 import { DetailPane } from "~/components/ui/detail-pane";
 import { useToast } from "~/components/ui/toast";
 import { saveError } from "~/features/activity/error-code";
@@ -17,7 +12,7 @@ import { useIsMobile } from "~/hooks/use-mobile";
 import { api } from "~/trpc/react";
 import { useEntrySheets } from "../context";
 import { useEntryActions } from "../entry-actions";
-import { Row } from "../read/read-view";
+import { PaneTitle, PersonalFacts } from "./pane-facts";
 import { PaneActions, type PaneProps, Waiting } from "./pane-parts";
 import { type PaneTarget, usePaneRoute } from "./pane-route";
 import { SharedPane } from "./shared-pane";
@@ -26,9 +21,6 @@ import { SharedPane } from "./shared-pane";
 function PersonalPane({ id, onClose, phone }: PaneProps & { id: string }) {
 	const t = useTranslations("entry.detail");
 	const tr = useTranslations("entry.read");
-	const types = useTranslations("activity.rateTypes");
-	const rates = useRateFormat();
-	const { label } = useDateFormat();
 	const toast = useToast();
 	const sheets = useEntrySheets();
 	const entry = useEntryActions();
@@ -87,18 +79,6 @@ function PersonalPane({ id, onClose, phone }: PaneProps & { id: string }) {
 		[sheets, id, e, entry, del, restore, onClose, toast, ta, refresh],
 	);
 
-	const typeName = e?.rateType
-		? types.has(e.rateType)
-			? types(e.rateType)
-			: e.rateType
-		: null;
-	const rate =
-		e?.home && e.rate && e.currency !== e.home.currency
-			? typeName
-				? rates.typed(typeName, e.currency, e.home.currency, e.rate)
-				: rates.rate(e.currency, e.home.currency, e.rate)
-			: null;
-
 	return (
 		<DetailPane
 			actions={
@@ -119,33 +99,11 @@ function PersonalPane({ id, onClose, phone }: PaneProps & { id: string }) {
 			closeLabel={phone ? t("back") : t("close")}
 			onClose={onClose}
 			phone={phone}
-			title={e?.title ?? tr("amount")}
+			title={
+				e ? <PaneTitle category={e.category} title={e.title} /> : tr("amount")
+			}
 		>
-			{!e ? (
-				<Waiting failed={q.isError} />
-			) : (
-				<div className="flex flex-col gap-1" data-entry-read="">
-					<Row k={tr("amount")}>
-						<Money
-							figure={`entry.amount:personal:${e.id}`}
-							value={{
-								minor: toMinorUnits(e.amount, e.currency),
-								currency: e.currency,
-							}}
-						/>
-					</Row>
-					{e.home && e.home.currency !== e.currency ? (
-						<Row k={t("home", { currency: e.home.currency })}>
-							<Money figure={`entry.home:personal:${e.id}`} value={e.home} />
-						</Row>
-					) : null}
-					{rate ? <Row k={t("rate")}>{rate}</Row> : null}
-					{e.category ? <Row k={tr("category")}>{e.category.name}</Row> : null}
-					<Row k={tr("date")}>{label.long(dayKey(new Date(e.date)))}</Row>
-					{e.location ? <Row k={t("location")}>{e.location}</Row> : null}
-					{e.description ? <Row k={t("note")}>{e.description}</Row> : null}
-				</div>
-			)}
+			{!e ? <Waiting failed={q.isError} /> : <PersonalFacts e={e} />}
 		</DetailPane>
 	);
 }

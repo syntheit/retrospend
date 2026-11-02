@@ -12,7 +12,7 @@ import { useFixState } from "~/features/corrections/use-fix-state";
 import { useSession } from "~/hooks/use-session";
 import { api } from "~/trpc/react";
 import { useEntrySheets } from "../context";
-import { ReadFacts } from "../read/read-view";
+import { PaneTitle, SharedFacts } from "./pane-facts";
 import { PaneActions, type PaneProps, Waiting } from "./pane-parts";
 
 /** A shared expense: facts, and what the corrections router allows. */
@@ -27,7 +27,8 @@ export function SharedPane({ id, onClose, phone }: PaneProps & { id: string }) {
 	const me = session?.user?.id;
 	const q = api.sharedTransaction.getById.useQuery({ id });
 	const fix = useFixState(id, me);
-	const del = api.sharedTransaction.delete.useMutation();
+	const del = api.entry.shared.delete.save.useMutation();
+	const restore = api.entry.shared.restore.save.useMutation();
 	const tx = q.data;
 	const lock = fix.lock;
 
@@ -60,16 +61,24 @@ export function SharedPane({ id, onClose, phone }: PaneProps & { id: string }) {
 			delete: async () => {
 				if (!tx) return;
 				try {
-					await del.mutateAsync({ id });
+					const out = await del.mutateAsync({ id, keepForUndo: true });
+					const stash = out.value.stash;
 					onClose();
-					toast.saved(ta("deleted", { name: tx.description }));
+					toast.saved(ta("deleted", { name: tx.description }), {
+						undo: stash
+							? async () => {
+									await restore.mutateAsync({ stash });
+									await utils.expense.listV2.invalidate();
+								}
+							: undefined,
+					});
 				} catch (error) {
 					toast.failed(ta(`error.${saveError(error)}`));
 				}
 				await utils.expense.listV2.invalidate();
 			},
 		}),
-		[sheets, id, lock, tx, del, onClose, toast, ta, utils],
+		[sheets, id, lock, tx, del, restore, onClose, toast, ta, utils],
 	);
 
 	return (
@@ -92,13 +101,15 @@ export function SharedPane({ id, onClose, phone }: PaneProps & { id: string }) {
 			closeLabel={phone ? t("back") : t("close")}
 			onClose={onClose}
 			phone={phone}
-			title={tx?.description ?? tr("amount")}
+			title={
+				tx ? (
+					<PaneTitle category={tx.category} title={tx.description} />
+				) : (
+					tr("amount")
+				)
+			}
 		>
-			{!tx ? (
-				<Waiting failed={q.isError} />
-			) : (
-				<ReadFacts me={me} notice={null} quote={null} tx={tx} />
-			)}
+			{!tx ? <Waiting failed={q.isError} /> : <SharedFacts me={me} tx={tx} />}
 		</DetailPane>
 	);
 }

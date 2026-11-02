@@ -1,7 +1,14 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { type ReactElement, type ReactNode, useCallback, useMemo } from "react";
+import {
+	type ReactElement,
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import type { ExpenseTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
@@ -124,12 +131,32 @@ function PhoneList({ entries, props }: { entries: Entry[]; props: Props }) {
 	);
 }
 
+/** Below this content width the table gives way to compact rows. */
+const NARROW_LIST = 480;
+
+/** Whether the page column (`[data-page]`) is narrower than `limit` px. */
+function useNarrowPage(limit: number) {
+	const [narrow, setNarrow] = useState(false);
+	useEffect(() => {
+		const el = document.querySelector("[data-page]");
+		if (!el) return;
+		const ro = new ResizeObserver(([entry]) =>
+			setNarrow((entry?.contentRect.width ?? limit) < limit),
+		);
+		ro.observe(el);
+		return () => ro.disconnect();
+	}, [limit]);
+	return narrow;
+}
+
 /**
  * The list: TransactionTable on desktop (R13), day-grouped rows on phones.
  * Every amount, share and home value is the server's; rows only format.
  */
 export function ActivityList(props: Props) {
-	const phone = useIsMobile();
+	// A list squeezed beside the detail pane keeps its amounts: compact rows.
+	const narrow = useNarrowPage(NARROW_LIST);
+	const phone = useIsMobile() || narrow;
 	const entries = useEntries(props.rows, props);
 	const bulk = useBulkActions(props.rows);
 	const { day } = useRowDates(props.today);

@@ -35,7 +35,8 @@ export function useRowActions(rows: ActivityRowDTO[]) {
 	// restore token, so the toast's Undo brings back the same row (R15).
 	const deletePersonal = api.entry.expense.delete.save.useMutation();
 	const restorePersonal = api.entry.expense.restore.save.useMutation();
-	const deleteShared = api.sharedTransaction.delete.useMutation();
+	const deleteShared = api.entry.shared.delete.save.useMutation();
+	const restoreShared = api.entry.shared.restore.save.useMutation();
 	// Who may ask to fix or correct comes from the corrections router, 200 rows a read.
 	const sharedChunks = useMemo(() => {
 		const ids = rows
@@ -114,8 +115,19 @@ export function useRowActions(rows: ActivityRowDTO[]) {
 							},
 						});
 					} else {
-						await deleteShared.mutateAsync({ id: r.entityId });
-						toast.saved(t("deleted", { name: target.name }));
+						const out = await deleteShared.mutateAsync({
+							id: r.entityId,
+							keepForUndo: true,
+						});
+						const stash = out.value.stash;
+						toast.saved(t("deleted", { name: target.name }), {
+							undo: stash
+								? async () => {
+										await restoreShared.mutateAsync({ stash });
+										await refresh();
+									}
+								: undefined,
+						});
 					}
 				} catch (error) {
 					toast.failed(t(`error.${saveError(error)}`));
@@ -130,6 +142,7 @@ export function useRowActions(rows: ActivityRowDTO[]) {
 		deletePersonal,
 		restorePersonal,
 		deleteShared,
+		restoreShared,
 		refresh,
 		toast,
 		t,

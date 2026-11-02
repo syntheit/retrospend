@@ -8,7 +8,8 @@
 		"pinned": "Pinned",
 		"pinnedLabel": "Pinned projects",
 		"collapse": "Collapse sidebar",
-		"expand": "Expand sidebar"
+		"expand": "Expand sidebar",
+		"more": "More"
 	},
 	"bottomNav": {
 		"label": "Main"

@@ -303,6 +303,8 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 		"POST /shared-expenses/{id}/delete/preview",
 	),
 	"entry.shared.delete.save": to("DELETE /shared-expenses/{id}"),
+	"entry.shared.restore.preview": to("POST /shared-expenses/undo/preview"),
+	"entry.shared.restore.save": to("POST /shared-expenses/undo"),
 	"entry.shared.revert.preview": to("POST /shared-expenses/undo/preview"),
 	"entry.shared.revert.save": to("POST /shared-expenses/undo"),
 	"entry.shared.update.preview": to("POST /shared-expenses/{id}/preview"),
