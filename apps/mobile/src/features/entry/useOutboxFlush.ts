@@ -1,5 +1,5 @@
 import { useNetworkState } from "expo-network";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
@@ -20,6 +20,10 @@ export function useOutboxFlush(): void {
 	const toast = useToast();
 	const { api, local } = useSession();
 	const online = useNetworkState().isInternetReachable !== false;
+	// The run depends on the account and the network alone: a toast or a
+	// translator that changes between renders must not restart it.
+	const say = useRef({ toast, t });
+	say.current = { toast, t };
 
 	useEffect(() => {
 		if (!api || !local || !online) return;
@@ -31,8 +35,10 @@ export function useOutboxFlush(): void {
 			if (run.signal.aborted) return;
 			if (report.sent > 0 || report.conflicts > 0) announceEntryChange();
 			if (report.conflicts > 0) {
-				toast.show({
-					message: t("toast.parkedBackground", { count: report.conflicts }),
+				say.current.toast.show({
+					message: say.current.t("toast.parkedBackground", {
+						count: report.conflicts,
+					}),
 				});
 			}
 		};
@@ -44,5 +50,5 @@ export function useOutboxFlush(): void {
 			run.abort();
 			subscription.remove();
 		};
-	}, [api, local, online, toast, t]);
+	}, [api, local, online]);
 }

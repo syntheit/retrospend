@@ -46,7 +46,15 @@ export function useActivity(filter: ActivityFilter) {
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `text` is the trigger
 	useEffect(() => {
-		setState({ status: "loading" });
+		// The rows stay (marked as refreshing) until the new filter's answer
+		// arrives; a skeleton only stands in when there is nothing to show.
+		setState((prev) =>
+			prev.status === "ready" && !prev.refreshing
+				? { ...prev, refreshing: true }
+				: prev.status === "ready"
+					? prev
+					: { status: "loading" },
+		);
 	}, [text]);
 
 	useFocusEffect(

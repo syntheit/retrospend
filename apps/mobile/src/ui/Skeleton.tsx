@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import {
 	AccessibilityInfo,
 	Animated,
@@ -17,27 +17,37 @@ type Shape = "line" | "tile" | "face" | "money";
 /** One pulse: the fill fades to half and back, opacity only (GUIDELINE §11). */
 const PULSE_MS = 700;
 
+// The reduce-motion setting is asked of the system once and followed by one
+// listener for all placeholders, not one subscription per set of them. Until
+// the system answers the placeholders hold still.
+let reduceMotion = true;
+const reduceListeners = new Set<() => void>();
+let reduceWatching = false;
+
+function setReduceMotion(next: boolean) {
+	reduceMotion = next;
+	for (const listener of reduceListeners) listener();
+}
+
+function watchReduceMotion(listener: () => void) {
+	if (!reduceWatching) {
+		reduceWatching = true;
+		AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+		AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+	}
+	reduceListeners.add(listener);
+	return () => {
+		reduceListeners.delete(listener);
+	};
+}
+
 /**
  * Pulsing opacity shared by a set of placeholders. With reduced motion on,
  * the placeholders hold still.
  */
 function usePulse(): Animated.Value {
 	const opacity = useRef(new Animated.Value(1)).current;
-	const [still, setStill] = useState(true);
-	useEffect(() => {
-		let live = true;
-		AccessibilityInfo.isReduceMotionEnabled().then((reduce) => {
-			if (live) setStill(reduce);
-		});
-		const sub = AccessibilityInfo.addEventListener(
-			"reduceMotionChanged",
-			setStill,
-		);
-		return () => {
-			live = false;
-			sub.remove();
-		};
-	}, []);
+	const still = useSyncExternalStore(watchReduceMotion, () => reduceMotion);
 	useEffect(() => {
 		if (still) {
 			opacity.setValue(1);
