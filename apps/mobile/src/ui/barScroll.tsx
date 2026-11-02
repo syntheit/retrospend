@@ -21,7 +21,7 @@ import Animated, {
 	useScrollOffset,
 	useSharedValue,
 } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 import { useTheme } from "@/theme";
 import { TEXT_SCALE_CAP } from "./Text";
 
@@ -95,7 +95,9 @@ export interface BarMetrics {
 export function useBarMetrics(footer = 0): BarMetrics {
 	const { space, type } = useTheme();
 	const { fontScale } = useWindowDimensions();
-	const { top } = useSafeAreaInsets();
+	// The context, not the hook: Screen asks for the inset on every page, and
+	// the hook throws where no provider is mounted (tests, the gallery).
+	const top = useContext(SafeAreaInsetsContext)?.top ?? 0;
 	const scale = Math.min(Math.max(fontScale, 1), TEXT_SCALE_CAP.chrome);
 	const row = space[12] + space[2];
 	const titleLine = Math.round(type.hero.size * type.hero.lineHeight * scale);

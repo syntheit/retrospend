@@ -21,9 +21,13 @@ const { act, create } = renderer;
 jest.mock("@/theme", () => ({
 	useTheme: () => require("@retrospend/tokens/theme").light,
 }));
-jest.mock("react-native-safe-area-context", () => ({
-	useSafeAreaInsets: () => ({ top: 24, bottom: 0, left: 0, right: 0 }),
-}));
+jest.mock("react-native-safe-area-context", () => {
+	const insets = { top: 24, bottom: 0, left: 0, right: 0 };
+	return {
+		SafeAreaInsetsContext: require("react").createContext(insets),
+		useSafeAreaInsets: () => insets,
+	};
+});
 jest.mock("use-intl", () => ({
 	useTranslations: () => (key: string) => key,
 }));
