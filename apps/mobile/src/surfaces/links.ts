@@ -89,11 +89,13 @@ export function routeForUrl(url: string): AppLink | null {
 		return open(`/activity/${second}`);
 	}
 	// Activity's own sub-pages are screens, never an entry id.
-	if (first === "activity" && second === "recurring" && segments.length === 2) {
-		return open("/recurring");
-	}
-	if (first === "activity" && second === "insights" && segments.length === 2) {
-		return open("/insights");
+	// deviceRoute maps them to where this device holds them.
+	if (
+		first === "activity" &&
+		(second === "recurring" || second === "insights") &&
+		segments.length === 2
+	) {
+		return open(`/${second}`);
 	}
 	if (first === "share" && segments.length === 1) return { kind: "pending" };
 	if (first === "add" && segments.length === 1) {
