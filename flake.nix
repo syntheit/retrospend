@@ -166,6 +166,42 @@
                 ANDROID_SDK_ROOT = "${emuSdk}/libexec/android-sdk";
               };
             };
+          # The same with older system images (API 35, 34, 26 and 24) for
+          # checking that a feature degrades on old Android; choose one with
+          # AVD_API=<n> in android-emulator.sh. The app's minSdk is 24, but
+          # expo-modules-core needs java.nio.file.Path, so it starts on 26+.
+          android-emu-legacy =
+            let
+              legacyPkgs = import nixpkgs {
+                inherit system;
+                config = {
+                  allowUnfree = true;
+                  android_sdk.accept_license = true;
+                };
+              };
+              legacySdk =
+                (legacyPkgs.androidenv.composeAndroidPackages {
+                  platformVersions = [ "36" "35" "34" "26" "24" ];
+                  buildToolsVersions = [ "36.0.0" ];
+                  includeEmulator = true;
+                  includeSystemImages = true;
+                  systemImageTypes = [ "google_apis" ];
+                  abiVersions = [ "x86_64" ];
+                  includeNDK = false;
+                }).androidsdk;
+            in
+            legacyPkgs.mkShell {
+              packages = [
+                legacySdk
+                legacyPkgs.jdk17
+                legacyPkgs.util-linux
+              ];
+              env = {
+                JAVA_HOME = legacyPkgs.jdk17.home;
+                ANDROID_HOME = "${legacySdk}/libexec/android-sdk";
+                ANDROID_SDK_ROOT = "${legacySdk}/libexec/android-sdk";
+              };
+            };
         }
       );
     };

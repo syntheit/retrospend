@@ -87,6 +87,7 @@ export function SettleAllSheet({
 					<>
 						<Button label={tc("cancel")} onPress={onClose} variant="text" />
 						<Button
+							busy={flow.recording}
 							disabled={
 								!flow.preview || flow.recording || willRecord.length === 0
 							}

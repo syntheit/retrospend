@@ -1,5 +1,8 @@
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
+import { useTheme } from "@/theme";
 import { ListGroup, ListRow } from "@/ui/List";
+import { LoadingIndicator } from "@/ui/LoadingIndicator";
 import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
 import { Block, SettingsPage } from "./parts";
@@ -11,6 +14,7 @@ const DATA_KINDS: DataKind[] = ["data", "expenses", "wealth"];
 export function DataSection() {
 	const t = useTranslations("mobile.settings.data");
 	const toast = useToast();
+	const { space } = useTheme();
 	const exporter = useDataExport();
 
 	async function runExport(kind: DataKind) {
@@ -25,11 +29,20 @@ export function DataSection() {
 					{DATA_KINDS.map((kind) => (
 						<ListRow
 							end={
-								<Text tone="fg2">
-									{exporter.busy === kind
-										? t("preparing")
-										: t(`formats.${kind}`)}
-								</Text>
+								exporter.busy === kind ? (
+									<View
+										style={{
+											flexDirection: "row",
+											alignItems: "center",
+											gap: space[2],
+										}}
+									>
+										<LoadingIndicator size={space[6]} />
+										<Text tone="fg2">{t("preparing")}</Text>
+									</View>
+								) : (
+									<Text tone="fg2">{t(`formats.${kind}`)}</Text>
+								)
 							}
 							key={kind}
 							onPress={exporter.busy ? undefined : () => void runExport(kind)}

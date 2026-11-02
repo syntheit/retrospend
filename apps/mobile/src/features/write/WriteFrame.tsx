@@ -60,6 +60,7 @@ export function WriteFrame({
 	// sheet draws it, so this frame leaves its own out.
 	const pinned = usePinnedAction({
 		label,
+		busy,
 		disabled: !ready || busy,
 		onPress: onSubmit,
 	});
@@ -69,7 +70,12 @@ export function WriteFrame({
 			{changes}
 			{failed ? <Note tone="attention">{t("error")}</Note> : null}
 			{pinned ? null : (
-				<Button disabled={!ready || busy} label={label} onPress={onSubmit} />
+				<Button
+					busy={busy}
+					disabled={!ready || busy}
+					label={label}
+					onPress={onSubmit}
+				/>
 			)}
 		</View>
 	);

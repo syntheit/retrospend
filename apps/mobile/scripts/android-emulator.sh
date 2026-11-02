@@ -12,19 +12,23 @@
 #   bash apps/mobile/scripts/android-emulator.sh stop
 #   bash apps/mobile/scripts/android-emulator.sh destroy   # deletes the AVD data
 #
-# The AVD is a Pixel 8 class phone (written by hand, no device definition) (1080 x 2400, 420 dpi), Android 16 x86_64
+# The AVD is a Pixel 8 class phone (written by hand, no device definition) (1080 x 2400, 420 dpi), Android 16 (AVD_API=n: another API) x86_64
 # google_apis (no Play Store), 3 GB RAM, 2 cores, software GPU, no window, no
 # audio, no snapshots. Data lives in $AVD_ROOT (default ~/.cache/retrospend-avd).
 # Build the APK in the android shell like the F-Droid release (RETROSPEND_ABIS=x86_64,
 # no keystore signs it with the debug key) and install it with the install command.
 set -euo pipefail
 
-name=${AVD_NAME:-retrospend_phone}
+# AVD_API picks an older system image (needs the android-emu-legacy shell):
+# 35, 34 or 24 (the app's minSdk). Unset is API 36, the default shell's image.
+api=${AVD_API:-36}
+if [ "$api" = 36 ]; then default_name=retrospend_phone; else default_name=retrospend_api$api; fi
+name=${AVD_NAME:-$default_name}
 root=${AVD_ROOT:-$HOME/.cache/retrospend-avd}
 export ANDROID_AVD_HOME=$root/avd
 export ANDROID_USER_HOME=$root/user
 sdk=${ANDROID_HOME:?run inside nix develop .#android-emu}
-image="system-images;android-36;google_apis;x86_64"
+image="system-images;android-$api;google_apis;x86_64"
 mkdir -p "$ANDROID_AVD_HOME" "$ANDROID_USER_HOME"
 export ANDROID_EMULATOR_HOME=$ANDROID_USER_HOME
 
@@ -40,7 +44,7 @@ create)
 avd.ini.encoding=UTF-8
 path=$ANDROID_AVD_HOME/$name.avd
 path.rel=avd/$name.avd
-target=android-36
+target=android-$api
 CFG
 	cat >"$ANDROID_AVD_HOME/$name.avd/config.ini" <<CFG
 AvdId=$name
@@ -70,7 +74,7 @@ hw.audioOutput=no
 hw.gps=no
 hw.battery=yes
 hw.accelerometer=yes
-image.sysdir.1=system-images/android-36/google_apis/x86_64/
+image.sysdir.1=system-images/android-$api/google_apis/x86_64/
 tag.id=google_apis
 tag.display=Google APIs
 showDeviceFrame=no

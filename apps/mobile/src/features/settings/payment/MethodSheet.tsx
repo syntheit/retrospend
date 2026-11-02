@@ -5,6 +5,7 @@ import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { Note } from "@/features/write/parts";
 import { useTheme } from "@/theme";
+import { showAlert } from "@/ui/alert";
 import { Button } from "@/ui/Button";
 import { Picker } from "@/ui/Picker";
 import { Sheet, useSheetBodySize } from "@/ui/Sheet";
@@ -18,7 +19,6 @@ import {
 	withEdit,
 	without,
 } from "./source";
-import { showAlert } from "@/ui/alert";
 
 const VISIBILITIES: Visibility[] = ["PUBLIC", "FRIENDS_ONLY", "PAYMENT_ONLY"];
 
@@ -105,6 +105,7 @@ export function MethodSheet({
 			detents={["large"]}
 			footer={
 				<Button
+					busy={busy}
 					disabled={busy || !changed}
 					label={busy ? tc("saving") : tc("save")}
 					onPress={() =>
