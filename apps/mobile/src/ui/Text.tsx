@@ -4,11 +4,11 @@ import {
 	type TextProps as NativeTextProps,
 	Platform,
 	type TextStyle,
-	useWindowDimensions,
 } from "react-native";
 import { type Theme, useTheme } from "@/theme";
 // Not from "@/theme": tests that mock the theme hook still get the faces.
 import { fontFamilyFor } from "@/theme/fonts";
+import { useFontScale } from "./fontScale";
 
 /** The type roles (GUIDELINE §2.3): one size, line height, weight and tracking each. */
 export type TextRole = "hero" | "title" | "section" | "body" | "small" | "meta";
@@ -46,8 +46,7 @@ export function nativeTextSize(
 
 /** `nativeTextSize` for the current text size setting; it updates when the setting does. */
 export function useChromeTextSize(base: number): number {
-	const { fontScale } = useWindowDimensions();
-	return nativeTextSize(base, fontScale);
+	return nativeTextSize(base, useFontScale());
 }
 
 /** Which color job the words do (GUIDELINE §2.1). */

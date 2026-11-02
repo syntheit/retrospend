@@ -8,10 +8,11 @@ import {
 	type ReactNode,
 	useContext,
 } from "react";
-import { Pressable, useWindowDimensions, View } from "react-native";
+import { Pressable, View } from "react-native";
 import Animated, { LayoutAnimationConfig } from "react-native-reanimated";
 import { useFormatter, useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
+import { useFontScale } from "./fontScale";
 import { categoryColor, Glyph, type GlyphName } from "./Glyph";
 import { rowEnter, rowExit, rowLayout } from "./motion";
 import { Text } from "./Text";
@@ -311,6 +312,50 @@ export function ListGroup({
 	);
 }
 
+/**
+ * One row of a group that a virtualized list draws row by row (a FlatList
+ * item per row): the same surface, 1px edge, panel radius at the ends and
+ * hairline between rows as ListGroup, without its row animations.
+ */
+export function ListGroupItem({
+	children,
+	index,
+	count,
+}: {
+	children: ReactNode;
+	index: number;
+	count: number;
+}) {
+	const { color, radius, size } = useTheme();
+	const first = index === 0;
+	const last = index === count - 1;
+	return (
+		<View
+			style={{
+				marginHorizontal: size.gutter.phone,
+				backgroundColor: color.surface,
+				borderColor: color.line,
+				borderLeftWidth: 1,
+				borderRightWidth: 1,
+				borderTopWidth: first ? 1 : 0,
+				borderBottomWidth: last ? 1 : 0,
+				borderTopLeftRadius: first ? radius.panel : 0,
+				borderTopRightRadius: first ? radius.panel : 0,
+				borderBottomLeftRadius: last ? radius.panel : 0,
+				borderBottomRightRadius: last ? radius.panel : 0,
+				overflow: "hidden",
+			}}
+		>
+			<InGroup.Provider value={true}>
+				{first ? null : (
+					<View style={{ height: 1, backgroundColor: color.line }} />
+				)}
+				{children}
+			</InGroup.Provider>
+		</View>
+	);
+}
+
 /** True inside a ListGroup: a row there sits on the surface. */
 export function useInGroup(): boolean {
 	return useContext(InGroup);
@@ -326,7 +371,7 @@ export const WRAP_FROM_SCALE = 1.3;
 export function RowText({ title, sub }: { title: ReactNode; sub?: ReactNode }) {
 	const form = useContext(InForm);
 	// At the largest text sizes a title wraps whole words instead of ending in an ellipsis.
-	const { fontScale } = useWindowDimensions();
+	const fontScale = useFontScale();
 	const titleLines = fontScale > WRAP_FROM_SCALE ? undefined : 1;
 	return (
 		<View style={{ flex: 1, minWidth: 0 }}>

@@ -36,6 +36,7 @@ import "@/push/background";
 import { PushProvider } from "@/push/PushProvider";
 import { navigationTheme, themeFor, useTheme } from "@/theme";
 import { AlertHost } from "@/ui/alert";
+import { FontScaleProvider } from "@/ui/fontScale";
 import { ToastProvider } from "@/ui/Toast";
 
 // Metro folds the inlined env var, so a build without it leaves the dev
@@ -125,6 +126,7 @@ export default function RootLayout() {
 
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
+			<FontScaleProvider>
 			<SafeAreaProvider>
 				<AppIntlProvider>
 					<ThemeProvider value={navigationTheme(scheme)}>
@@ -148,6 +150,7 @@ export default function RootLayout() {
 					</ThemeProvider>
 				</AppIntlProvider>
 			</SafeAreaProvider>
+			</FontScaleProvider>
 		</GestureHandlerRootView>
 	);
 }
