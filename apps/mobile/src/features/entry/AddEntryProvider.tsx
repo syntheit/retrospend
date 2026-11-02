@@ -2,7 +2,6 @@ import {
 	type ComponentType,
 	type ReactNode,
 	useCallback,
-	useEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -18,12 +17,10 @@ import { AddButton } from "@/ui/AddButton";
 import { Sheet, useSheetBodySize } from "@/ui/Sheet";
 import { useToastLift } from "@/ui/Toast";
 import { tabBarFootprint } from "@/ui/tabBarMetrics";
-import { useTransient } from "@/ui/transient";
 import { useKeyboardShown } from "@/ui/useKeyboardShown";
 import {
 	type AddEntryApi,
 	AddEntryContext,
-	useAddButtonScroll,
 	useAddEntry,
 	useHideAddButton,
 	useOptionalAddEntry,
@@ -40,12 +37,7 @@ const DevComposerTour: ComponentType<{ add: AddEntryApi }> | null = process.env
 	? require("@/dev/DevComposerTour").DevComposerTour
 	: null;
 
-export {
-	useAddButtonScroll,
-	useAddEntry,
-	useHideAddButton,
-	useOptionalAddEntry,
-};
+export { useAddEntry, useHideAddButton, useOptionalAddEntry };
 
 /**
  * Where "add" lives (IMPLEMENTATION S5). Phones float one button above the tab
@@ -80,9 +72,6 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 		setHiders((n) => n + 1);
 		return () => setHiders((n) => n - 1);
 	}, []);
-	// Folded to the plus by a scroll is passing UI: leaving the tab extends it.
-	const [expanded, setExpanded] = useState(true);
-	useTransient(expanded ? null : () => setExpanded(true));
 
 	const sheetSize = useSheetBodySize();
 
@@ -125,7 +114,6 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 			edit: (entryId: string, kind?: "shared") =>
 				show("expense", undefined, entryId, kind === "shared"),
 			hideButton,
-			setButtonExpanded: setExpanded,
 		}),
 		[show, hideButton],
 	);
@@ -167,7 +155,6 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 								onPress: () => show("transfer"),
 							},
 						]}
-						expanded={expanded}
 						label={t("addExpense")}
 						onPress={() => show("expense")}
 					/>

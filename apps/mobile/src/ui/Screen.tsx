@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { Platform, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAddButtonScroll } from "@/features/entry/addEntryContext";
 import { ADD_CONTROL } from "@/layout/destinations";
 import { useTheme } from "@/theme";
 import { BarScrollView, useBarInset } from "./barScroll";
@@ -54,12 +53,10 @@ export function Screen({
 	const { color, space } = useTheme();
 	const cleared = useSidesCleared();
 	const inset = useAddInset();
-	const fabScroll = useAddButtonScroll();
 	const cover = useTabBarCover();
 	const barInset = useBarInset();
 	const body = (
 		<BarScrollView
-			{...fabScroll}
 			contentContainerStyle={
 				flush
 					? { paddingBottom: space[8] + inset }

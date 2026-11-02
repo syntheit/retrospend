@@ -1,4 +1,4 @@
-import { useSegments } from "expo-router";
+import { router, useSegments } from "expo-router";
 import { Tabs as JsTabs } from "expo-router/js-tabs";
 import { useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -13,6 +13,13 @@ import {
 import { closeTransients } from "./transient";
 import { useKeyboardShown } from "./useKeyboardShown";
 
+// The tabs the first screen does not open: mounted hidden once the launch has
+// settled, so a first visit swaps an already built screen (a fresh mount cost
+// the first tap on each tab about 100 ms more than a return to it).
+const WARM_TABS = ["/activity", "/budget", "/wealth", "/people"] as const;
+const WARM_AFTER_MS = 1500;
+const WARM_GAP_MS = 500;
+
 /**
  * The Android tabs: the same five destinations as iOS (Home, Activity,
  * Budget, Wealth, People; Projects is the second segment of People), in the
@@ -26,7 +33,9 @@ import { useKeyboardShown } from "./useKeyboardShown";
  * pops the stack, then returns to Home, then leaves. Leaving a tab closes
  * its passing UI: an open swipe row, a menu, bulk select (ui/transient).
  * The screens run behind the bar and pad their ends by the cover it
- * reports, so the last row stays reachable.
+ * reports, so the last row stays reachable. Once Home has rendered and the
+ * JS thread is idle, the other four tabs mount hidden, one at a time, so
+ * their first page is already loading when you first open them.
  */
 export function Tabs() {
 	const t = useTranslations("mobile.tabs");
@@ -38,6 +47,28 @@ export function Tabs() {
 	const tab = (useSegments() as string[])[1];
 	// biome-ignore lint/correctness/useExhaustiveDependencies: runs on each tab switch
 	useEffect(() => closeTransients(), [tab]);
+
+	useEffect(() => {
+		const timers: ReturnType<typeof setTimeout>[] = [];
+		const handles: number[] = [];
+		WARM_TABS.forEach((href, index) => {
+			timers.push(
+				setTimeout(
+					() => {
+						// When the JS thread has nothing else to do.
+						handles.push(
+							requestIdleCallback(() => router.prefetch(href as never)),
+						);
+					},
+					WARM_AFTER_MS + index * WARM_GAP_MS,
+				),
+			);
+		});
+		return () => {
+			for (const timer of timers) clearTimeout(timer);
+			for (const handle of handles) cancelIdleCallback(handle);
+		};
+	}, []);
 
 	const tabs: FloatingTab[] = [
 		{ name: "home", label: t("home"), glyph: "Home" },
