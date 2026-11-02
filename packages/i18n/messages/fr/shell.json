@@ -6,7 +6,9 @@
 		"destinations": "Rubriques",
 		"tools": "Outils",
 		"pinned": "Épinglés",
-		"pinnedLabel": "Projets épinglés"
+		"pinnedLabel": "Projets épinglés",
+		"collapse": "Réduire la barre latérale",
+		"expand": "Développer la barre latérale"
 	},
 	"bottomNav": {
 		"label": "Principal"

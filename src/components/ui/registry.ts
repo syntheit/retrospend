@@ -137,6 +137,11 @@ export const REGISTRY: Primitive[] = [
 		job: "A fixed grid of equal icon-over-word tabs with one panel each; swipe row on phones, the chosen panel in place from md up. The expense composer only",
 	},
 	{
+		file: "detail-pane",
+		status: "core",
+		job: "PROVISIONAL (T2, owner sign-off pending): the view-only pane beside a list (an expense); a page with a back chevron on a phone; the header holds the title, pencil and overflow",
+	},
+	{
 		file: "dialog",
 		status: "internal",
 		job: "Radix dialog building block",

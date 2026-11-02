@@ -297,5 +297,14 @@
 		"expense": "Expense",
 		"income": "Income",
 		"transfer": "Transfer"
+	},
+	"detail": {
+		"edit": "Edit",
+		"close": "Close",
+		"back": "Back",
+		"home": "In {currency}",
+		"rate": "Rate",
+		"location": "Place",
+		"note": "Note"
 	}
 }

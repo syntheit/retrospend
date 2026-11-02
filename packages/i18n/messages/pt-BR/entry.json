@@ -297,5 +297,14 @@
 		"expense": "Gasto",
 		"income": "Receita",
 		"transfer": "Transferência"
+	},
+	"detail": {
+		"edit": "Editar",
+		"close": "Fechar",
+		"back": "Voltar",
+		"home": "Em {currency}",
+		"rate": "Taxa",
+		"location": "Local",
+		"note": "Nota"
 	}
 }

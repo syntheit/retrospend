@@ -297,5 +297,14 @@
 		"expense": "Ausgabe",
 		"income": "Einnahme",
 		"transfer": "Umbuchung"
+	},
+	"detail": {
+		"edit": "Bearbeiten",
+		"close": "Schließen",
+		"back": "Zurück",
+		"home": "In {currency}",
+		"rate": "Kurs",
+		"location": "Ort",
+		"note": "Notiz"
 	}
 }

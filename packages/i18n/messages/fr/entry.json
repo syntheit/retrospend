@@ -297,5 +297,14 @@
 		"expense": "Dépense",
 		"income": "Revenu",
 		"transfer": "Virement"
+	},
+	"detail": {
+		"edit": "Modifier",
+		"close": "Fermer",
+		"back": "Retour",
+		"home": "En {currency}",
+		"rate": "Taux",
+		"location": "Lieu",
+		"note": "Note"
 	}
 }

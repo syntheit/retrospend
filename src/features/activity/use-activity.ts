@@ -5,6 +5,7 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DateRangeValue } from "~/components/pickers/date-range-model";
+import { PANE_PARAMS } from "~/features/entry/detail/pane-route";
 import { api } from "~/trpc/react";
 import {
 	type ActivityFilter,
@@ -36,8 +37,15 @@ export function useActivity() {
 	const setFilter = useCallback(
 		(next: ActivityFilter) => {
 			setFilterState(next);
-			const qs = writeFilter(next, today);
-			router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+			const qs = new URLSearchParams(writeFilter(next, today));
+			// The open expense (detail pane) is not a filter: it stays.
+			const open = new URLSearchParams(window.location.search);
+			for (const key of PANE_PARAMS)
+				if (open.has(key)) qs.set(key, open.get(key) ?? "");
+			const text = qs.toString();
+			router.replace(text ? `${pathname}?${text}` : pathname, {
+				scroll: false,
+			});
 		},
 		[router, pathname, today],
 	);

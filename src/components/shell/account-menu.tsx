@@ -1,8 +1,8 @@
 "use client";
 
 import { EllipsisVertical } from "lucide-react";
-import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Fragment } from "react";
 import { Face, type FaceSize } from "~/components/ui/avatar-face";
 import { Button } from "~/components/ui/button";
@@ -31,7 +31,7 @@ function EntryInner({ entry }: { entry: AccountEntry }) {
 			<Icon aria-hidden="true" className="size-4" />
 			{entry.label}
 			{entry.count ? (
-				<DropdownMenuShortcut className="font-medium text-attention-text">
+				<DropdownMenuShortcut className="text-attention-text font-medium">
 					{t("newCount", { count: entry.count })}
 				</DropdownMenuShortcut>
 			) : entry.hint ? (
@@ -80,11 +80,11 @@ export function IdentityView({
 		<>
 			<Face imageUrl={user.imageUrl} name={user.name || "?"} size={size} />
 			<span className="flex min-w-0 flex-1 flex-col text-left">
-				<span className="truncate font-semibold text-body text-fg">
+				<span className="text-body text-fg truncate font-semibold">
 					{user.name}
 				</span>
 				{user.username && (
-					<span className="truncate font-normal text-fg-3 text-meta">
+					<span className="text-fg-3 text-meta truncate font-normal">
 						@{user.username}
 					</span>
 				)}
@@ -121,7 +121,7 @@ export function AccountTrigger({
  * its menu. Profile, Settings, the admin and invite entries, feedback, docs,
  * release notes, shortcuts, Sign out, then the version.
  */
-export function AccountMenu() {
+export function AccountMenu({ compact = false }: { compact?: boolean }) {
 	const t = useTranslations("shell.account");
 	const e = useAccountEntries();
 	const user = useAccountUser();
@@ -135,11 +135,17 @@ export function AccountMenu() {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<AccountTrigger user={user} />
+				{compact ? (
+					<Button aria-label={t("menu")} icon kind="ghost">
+						<Face imageUrl={user.imageUrl} name={user.name || "?"} size="sm" />
+					</Button>
+				) : (
+					<AccountTrigger user={user} />
+				)}
 			</DropdownMenuTrigger>
 			<DropdownMenuContent
 				align="start"
-				className="w-(--radix-dropdown-menu-trigger-width)"
+				className={compact ? "w-60" : "w-(--radix-dropdown-menu-trigger-width)"}
 				side="top"
 			>
 				{groups.map((group, i) => (
@@ -150,7 +156,7 @@ export function AccountMenu() {
 						))}
 					</Fragment>
 				))}
-				<DropdownMenuLabel className="px-3 pt-2 pb-1 font-normal text-fg-3 text-meta">
+				<DropdownMenuLabel className="text-fg-3 text-meta px-3 pt-2 pb-1 font-normal">
 					{t("version", { version: APP_VERSION })}
 				</DropdownMenuLabel>
 			</DropdownMenuContent>

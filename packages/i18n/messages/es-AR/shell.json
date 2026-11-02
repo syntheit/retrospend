@@ -6,7 +6,9 @@
 		"destinations": "Secciones",
 		"tools": "Herramientas",
 		"pinned": "Fijados",
-		"pinnedLabel": "Proyectos fijados"
+		"pinnedLabel": "Proyectos fijados",
+		"collapse": "Contraer barra lateral",
+		"expand": "Expandir barra lateral"
 	},
 	"bottomNav": {
 		"label": "Principal"

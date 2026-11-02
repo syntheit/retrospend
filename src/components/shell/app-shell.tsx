@@ -1,12 +1,20 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useState,
+	useSyncExternalStore,
+} from "react";
 import { FeedbackModal } from "~/components/feedback-modal";
 import { PageTransition } from "~/components/page-transition";
 import { Sheet } from "~/components/ui/sheet";
 import { useToast } from "~/components/ui/toast";
 import { useEntrySheets } from "~/features/entry/context";
+import { ExpensePaneHost } from "~/features/entry/detail/expense-pane";
+import { usePaneRoute } from "~/features/entry/detail/pane-route";
 import { ADD_ACTIONS, type AddId, type NavBadges } from "~/lib/nav";
 import { AccountSheet } from "./account-sheet";
 import { BottomNav, FloatingAdd } from "./bottom-nav";
@@ -57,6 +65,53 @@ function useDesktop(): boolean {
 		() => window.matchMedia(DESKTOP).matches,
 		() => true,
 	);
+}
+
+const query = (q: string) => (notify: () => void) => {
+	const mql = window.matchMedia(q);
+	mql.addEventListener("change", notify);
+	return () => mql.removeEventListener("change", notify);
+};
+const WIDE = "(min-width: 1024px)";
+const WIDER = "(min-width: 1280px)";
+const RAIL_KEY = "sidebar-rail";
+
+function useWide(q: string): boolean {
+	return useSyncExternalStore(
+		query(q),
+		() => window.matchMedia(q).matches,
+		() => true,
+	);
+}
+
+/**
+ * Sidebar or rail (T2). By default the sidebar is a rail below 1024, and
+ * while the detail pane is open below 1280 (so the list keeps its room).
+ * The toggle is the person's choice and is remembered on this device.
+ */
+function useRail(paneOpen: boolean) {
+	const wide = useWide(WIDE);
+	const wider = useWide(WIDER);
+	const [pref, setPref] = useState<boolean | null>(null);
+	useEffect(() => {
+		try {
+			const v = window.localStorage.getItem(RAIL_KEY);
+			if (v === "1" || v === "0") setPref(v === "1");
+		} catch {
+			// no storage: the width decides
+		}
+	}, []);
+	const auto = !wide || (paneOpen && !wider);
+	const rail = pref ?? auto;
+	const toggle = useCallback(() => {
+		setPref(!rail);
+		try {
+			window.localStorage.setItem(RAIL_KEY, rail ? "0" : "1");
+		} catch {
+			// not remembered
+		}
+	}, [rail]);
+	return { rail, toggle };
 }
 
 /** Phone toasts sit above the bottom bar and the floating Add. */
@@ -118,23 +173,33 @@ export function AppShell({
 	useShellKeys(actions, setLayer);
 	useToastOffset();
 	const desktop = useDesktop();
+	const paneOpen = usePaneRoute().target !== null;
+	const { rail, toggle } = useRail(paneOpen);
 
 	return (
 		<ShellActionsContext value={actions}>
 			<div className="bg-bg text-fg flex h-svh w-full overflow-hidden">
 				<a
-					className="rounded-ctl bg-surface text-body focus-visible:outline-brand sr-only px-4 py-2 font-medium focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:shadow-menu focus-visible:outline-2"
+					className="rounded-ctl bg-surface text-body focus-visible:outline-brand focus:shadow-menu sr-only px-4 py-2 font-medium focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus-visible:outline-2"
 					href="#main-content"
 				>
 					{t("skipToContent")}
 				</a>
-				{desktop && <ShellSidebar badges={badges} className="hidden md:flex" />}
+				{desktop && (
+					<ShellSidebar
+						badges={badges}
+						className="hidden md:flex"
+						onToggleRail={toggle}
+						rail={rail}
+					/>
+				)}
 				<main
 					className="bg-bg flex min-w-0 flex-1 flex-col overflow-hidden pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0"
 					id="main-content"
 				>
 					<PageTransition>{children}</PageTransition>
 				</main>
+				<ExpensePaneHost />
 				<BottomNav badges={badges} className="md:hidden" />
 				<FloatingAdd className="md:hidden" />
 			</div>

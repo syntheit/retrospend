@@ -297,5 +297,14 @@
 		"expense": "Gasto",
 		"income": "Ingreso",
 		"transfer": "Transferencia"
+	},
+	"detail": {
+		"edit": "Editar",
+		"close": "Cerrar",
+		"back": "Atrás",
+		"home": "En {currency}",
+		"rate": "Cotización",
+		"location": "Lugar",
+		"note": "Nota"
 	}
 }

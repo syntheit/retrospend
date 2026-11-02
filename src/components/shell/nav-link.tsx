@@ -1,7 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "~/lib/cn";
 import { badgeText } from "~/lib/nav";
@@ -23,7 +23,7 @@ export function NavBadge({
 	return (
 		<span
 			className={cn(
-				"min-w-5 rounded-chip bg-attention-bg px-1 text-center font-semibold text-attention-text text-meta tabular-nums leading-5",
+				"rounded-chip bg-attention-bg text-attention-text text-meta min-w-5 px-1 text-center leading-5 font-semibold tabular-nums",
 				className,
 			)}
 		>
@@ -64,6 +64,44 @@ export function SidebarLink({
 			</span>
 			<span className="min-w-0 flex-1 truncate">{label}</span>
 			<NavBadge count={badge} />
+		</Link>
+	);
+}
+
+const RAIL =
+	"relative flex w-full flex-col items-center gap-1 rounded-ctl px-1 py-2 font-medium text-meta text-fg-2 transition-colors duration-(--t-state) ease-land can-hover:hover:bg-raised can-hover:hover:text-fg focus-visible:outline-2 focus-visible:outline-brand focus-visible:-outline-offset-2 aria-[current=page]:bg-raised aria-[current=page]:font-semibold aria-[current=page]:text-brand";
+
+/**
+ * One rail row (the sidebar collapsed, T2): the icon over its label, and the
+ * selected one is a single lozenge around both. Never icon-only: the label
+ * always shows.
+ */
+export function RailLink({
+	href,
+	lead,
+	label,
+	current,
+	badge,
+	...rest
+}: {
+	href: string;
+	lead: ReactNode;
+	label: string;
+	current: boolean;
+	badge?: number;
+} & Omit<ComponentProps<typeof Link>, "href" | "children" | "className">) {
+	return (
+		<Link
+			{...rest}
+			aria-current={current ? "page" : undefined}
+			className={RAIL}
+			href={href}
+		>
+			<span className="relative flex size-4 shrink-0 items-center justify-center">
+				{lead}
+				<NavBadge className="absolute -top-2 left-3" count={badge} />
+			</span>
+			<span className="w-full min-w-0 truncate text-center">{label}</span>
 		</Link>
 	);
 }

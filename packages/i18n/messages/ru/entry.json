@@ -297,5 +297,14 @@
 		"expense": "Расход",
 		"income": "Доход",
 		"transfer": "Перевод"
+	},
+	"detail": {
+		"edit": "Изменить",
+		"close": "Закрыть",
+		"back": "Назад",
+		"home": "В {currency}",
+		"rate": "Курс",
+		"location": "Место",
+		"note": "Заметка"
 	}
 }
