@@ -1,7 +1,7 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "@/auth/session";
-import { subscribeEntryChanges } from "@/features/entry/events";
+import { useReloadOnEntryChange } from "@/features/read/useReloadOnEntryChange";
 import { type ActivityFilter, filterString } from "./filter";
 import {
 	type ActivityState,
@@ -42,11 +42,19 @@ export function useActivity(filter: ActivityFilter) {
 	}, [source, local]);
 
 	// An entry added, undone or sent from the outbox changes the list.
-	useEffect(() => subscribeEntryChanges(() => void reload()), [reload]);
+	useReloadOnEntryChange(reload);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `text` is the trigger
 	useEffect(() => {
-		setState({ status: "loading" });
+		// The rows stay (marked as refreshing) until the new filter's answer
+		// arrives; a skeleton only stands in when there is nothing to show.
+		setState((prev) =>
+			prev.status === "ready" && !prev.refreshing
+				? { ...prev, refreshing: true }
+				: prev.status === "ready"
+					? prev
+					: { status: "loading" },
+		);
 	}, [text]);
 
 	useFocusEffect(

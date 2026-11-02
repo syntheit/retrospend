@@ -2,6 +2,7 @@ import {
 	type CategoryIconName,
 	categoryIconName,
 } from "@retrospend/domain/category-icons";
+import { memo } from "react";
 import Svg, {
 	Circle,
 	Ellipse,
@@ -97,7 +98,7 @@ export type GlyphName =
  * carries the words, so a screen reader skips it. `filled` fills the shape
  * in its stroke color (a starred currency).
  */
-export function Glyph({
+export const Glyph = memo(function Glyph({
 	name,
 	size,
 	color,
@@ -129,7 +130,7 @@ export function Glyph({
 			})}
 		</Svg>
 	);
-}
+});
 
 /** A category's own glyph, bare: for pickers and menus, where a tinted tile is not allowed. */
 export function CategoryGlyph({

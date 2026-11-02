@@ -31,33 +31,48 @@ export function easeLeave(theme: Theme) {
 	return Easing.bezier(a, b, c, d);
 }
 
-/** A row joining a list that is already on screen: it fades in (200). */
-export function rowEnter(theme: Theme) {
-	return FadeIn.duration(theme.duration.row)
-		.easing(easeLand(theme))
-		.reduceMotion(ReduceMotion.Never);
+/**
+ * A builder that makes its animation once per theme (there are two, light and
+ * dark). Every row of every list asks for these on every render, and a
+ * builder chain allocates a few objects each time.
+ */
+function oncePerTheme<T>(build: (theme: Theme) => T): (theme: Theme) => T {
+	const made = new WeakMap<Theme, T>();
+	return (theme) => {
+		let animation = made.get(theme);
+		if (animation === undefined) {
+			animation = build(theme);
+			made.set(theme, animation);
+		}
+		return animation;
+	};
 }
+
+/** A row joining a list that is already on screen: it fades in (200). */
+export const rowEnter = oncePerTheme((theme) =>
+	FadeIn.duration(theme.duration.row)
+		.easing(easeLand(theme))
+		.reduceMotion(ReduceMotion.Never),
+);
 
 /** A row leaving: it fades out (200) while the rows under it close the gap. */
-export function rowExit(theme: Theme) {
-	return FadeOut.duration(theme.duration.row)
+export const rowExit = oncePerTheme((theme) =>
+	FadeOut.duration(theme.duration.row)
 		.easing(easeLeave(theme))
-		.reduceMotion(ReduceMotion.Never);
-}
+		.reduceMotion(ReduceMotion.Never),
+);
 
 /** The rows around an insert or a removal slide to their place (200); movement, so reduced motion jumps. */
-export function rowLayout(theme: Theme) {
-	return LinearTransition.duration(theme.duration.row)
+export const rowLayout = oncePerTheme((theme) =>
+	LinearTransition.duration(theme.duration.row)
 		.easing(easeLand(theme))
-		.reduceMotion(ReduceMotion.System);
-}
+		.reduceMotion(ReduceMotion.System),
+);
 
 /** Loading placeholders hand over to the content with a short fade (120). */
-export function placeholderExit(theme: Theme) {
-	return FadeOut.duration(theme.duration.state).reduceMotion(
-		ReduceMotion.Never,
-	);
-}
+export const placeholderExit = oncePerTheme((theme) =>
+	FadeOut.duration(theme.duration.state).reduceMotion(ReduceMotion.Never),
+);
 
 /**
  * The pane under underline tabs arriving after a switch: it fades in while

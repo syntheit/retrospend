@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { memo, type ReactNode, useCallback, useMemo } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFaces } from "@/features/read/faces";
@@ -14,7 +14,8 @@ import { RowMenu } from "@/ui/RowMenu";
 import { StatusText } from "@/ui/StatusText";
 import { SwipeRow } from "@/ui/SwipeRow";
 import { Text } from "@/ui/Text";
-import type { RowActions } from "./rowActions";
+import { canSelect } from "./bulk";
+import { type RowActionWords, rowActions } from "./rowActions";
 import type { ActivityItem } from "./source";
 
 type Words = ReturnType<typeof useTranslations<"mobile.activity">>;
@@ -109,20 +110,37 @@ const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? name;
  * right in its own currency with the home value, or your share, under it.
  * Payments and transfers are muted, money in is positive. With `actions` the
  * row swipes and a long press opens the same actions as a menu.
+ *
+ * A long list draws hundreds of these, so the row is memoized and takes only
+ * values that stay the same between renders: `onOpen` and `ops` are stable
+ * and get the item back, and the row builds its own actions and pick mark.
  */
-export function ActivityRow({
+export interface RowOps {
+	words: RowActionWords;
+	/** Whether the person can open the composer to edit. */
+	canEdit: boolean;
+	select(item: ActivityItem): void;
+	edit(item: ActivityItem): void;
+	categorize(item: ActivityItem): void;
+	remove(item: ActivityItem): void;
+}
+
+export const ActivityRow = memo(function ActivityRow({
 	item,
-	onPress,
+	onOpen,
 	selected,
-	pick,
-	actions,
+	picking,
+	checked,
+	ops,
 }: {
 	item: ActivityItem;
-	onPress?: () => void;
+	onOpen?: (item: ActivityItem) => void;
 	selected?: boolean;
-	/** Set while expenses are being selected: whether this one is, and whether it can be. */
-	pick?: { checked: boolean; enabled: boolean };
-	actions?: RowActions;
+	/** True while expenses are being selected; `checked` says whether this one is. */
+	picking?: boolean;
+	checked?: boolean;
+	/** The actions of the row; none, and the row neither swipes nor opens a menu. */
+	ops?: RowOps;
 }) {
 	const t = useTranslations("mobile.activity");
 	const tm = useTranslations("mobile.money");
@@ -131,6 +149,31 @@ export function ActivityRow({
 	const rateFmt = useRateFormat();
 	const rateName = useRateTypeName();
 	const faces = useFaces();
+	const onPress = useCallback(() => onOpen?.(item), [onOpen, item]);
+	const pick = useMemo(
+		() =>
+			picking
+				? { checked: checked === true, enabled: canSelect(item) }
+				: undefined,
+		[picking, checked, item],
+	);
+	const actions = useMemo(
+		() =>
+			ops && !picking
+				? rowActions(
+						item,
+						ops.words,
+						{
+							select: () => ops.select(item),
+							edit: () => ops.edit(item),
+							categorize: () => ops.categorize(item),
+							remove: () => ops.remove(item),
+						},
+						ops.canEdit,
+					)
+				: undefined,
+		[ops, picking, item],
+	);
 	const status = rowStatus(item, t);
 	const title = rowTitle(item, t);
 	const people = item.people ?? [];
@@ -294,7 +337,7 @@ export function ActivityRow({
 			}
 			// A swiping or holding row hands its tap to the wrapper, which also
 			// owns the long press; a disabled inner press lets both through.
-			onPress={swipes || holds ? undefined : onPress}
+			onPress={swipes || holds ? undefined : onOpen ? onPress : undefined}
 			pickState={pick}
 			selected={pick ? pick.checked : selected}
 			sub={sub}
@@ -303,7 +346,7 @@ export function ActivityRow({
 	);
 	if (holds) {
 		return (
-			<RowMenu items={[]} onPress={onPress}>
+			<RowMenu items={[]} onPress={onOpen ? onPress : undefined}>
 				{row}
 			</RowMenu>
 		);
@@ -314,10 +357,10 @@ export function ActivityRow({
 			leading={actions.leading}
 			menu={actions.menu}
 			menuTitle={title}
-			onPress={onPress}
+			onPress={onOpen ? onPress : undefined}
 			trailing={actions.trailing}
 		>
 			{row}
 		</SwipeRow>
 	);
-}
+});

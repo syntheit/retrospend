@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useServerConnection } from "@/auth/server-connection";
 import type { Face } from "@/ui/Avatar";
 
@@ -15,12 +16,16 @@ export function absoluteImage(
 export function useFaces() {
 	const { connection } = useServerConnection();
 	const baseUrl = connection.status === "connected" ? connection.baseUrl : null;
-	return (
-		people: { key: string; name: string; imageUrl: string | null }[],
-	): Face[] =>
-		people.map((p) => ({
-			key: p.key,
-			name: p.name,
-			imageUri: absoluteImage(p.imageUrl, baseUrl),
-		}));
+	// Stable between renders, so a memoized row that takes it does not redraw.
+	return useCallback(
+		(
+			people: { key: string; name: string; imageUrl: string | null }[],
+		): Face[] =>
+			people.map((p) => ({
+				key: p.key,
+				name: p.name,
+				imageUri: absoluteImage(p.imageUrl, baseUrl),
+			})),
+		[baseUrl],
+	);
 }

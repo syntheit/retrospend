@@ -16,7 +16,8 @@ jest.mock("use-intl", () => ({
 		values?.code ? `${key}:${values.code}` : key,
 }));
 jest.mock("react-native-svg", () => ({
-	SvgXml: () => null,
+	parse: () => ({}),
+	SvgAst: () => null,
 }));
 jest.mock("./Glyph", () => ({ Glyph: () => null }));
 const mockPins = jest.fn((): string[] => []);
@@ -37,6 +38,7 @@ let sheet: {
 	title: string;
 	visible: boolean;
 	onSelect(id: string): void;
+	onClose(): void;
 };
 jest.mock("./PickerSheet", () => ({
 	PickerSheet: (props: typeof sheet) => {
@@ -74,6 +76,17 @@ function mount(
 	return { root: tree!.root, onChange };
 }
 
+/** Presses the trigger: the sheet builds its rows on the first open. */
+function open(root: TestNode) {
+	const pill = root.findAll(
+		(n) =>
+			typeof n.props.accessibilityLabel === "string" &&
+			n.props.accessibilityRole === "button",
+	)[0];
+	const press = pill?.props.onPress as () => void;
+	act(() => press());
+}
+
 const ids = (groups: PickGroup[]) =>
 	groups.flatMap((g) => g.rows.map((r) => r.id));
 
@@ -106,9 +119,19 @@ describe("CurrencyPicker", () => {
 		expect(sheet.title).toBe("Home currency");
 	});
 
+	it("builds the rows only when the sheet is first opened", () => {
+		const { root } = mount();
+		expect(sheet.groups.flatMap((g) => g.rows)).toEqual([]);
+		open(root);
+		expect(ids(sheet.groups)).toContain("ARS");
+		// Closing keeps them for the closing animation.
+		act(() => sheet.onClose());
+		expect(ids(sheet.groups)).toContain("ARS");
+	});
+
 	it("lists pinned first, then yours, recent, fiat and crypto", () => {
 		mockPins.mockReturnValue(["JPY", "BTC"]);
-		mount({ recent: ["EUR"] });
+		open(mount({ recent: ["EUR"] }).root);
 		expect(sheet.groups.map((g) => g.key)).toEqual([
 			"pinned",
 			"yours",
@@ -126,7 +149,7 @@ describe("CurrencyPicker", () => {
 	});
 
 	it("shows each row as code and name in the app language, the current one selected", () => {
-		mount();
+		open(mount().root);
 		const rows = sheet.groups.flatMap((g) => g.rows);
 		const ars = rows.find((r) => r.id === "ARS");
 		expect(ars).toMatchObject({
@@ -138,7 +161,7 @@ describe("CurrencyPicker", () => {
 	});
 
 	it("finds a currency by code, by name in either language or by country", () => {
-		mount();
+		open(mount().root);
 		const find = (q: string) => ids(filterGroups(sheet.groups, q));
 		expect(find("brl")).toEqual(["BRL"]);
 		expect(find("brasileño")).toEqual(["BRL"]);
@@ -150,7 +173,7 @@ describe("CurrencyPicker", () => {
 	});
 
 	it("puts the exact code, then a code prefix, before name matches", () => {
-		mount();
+		open(mount().root);
 		// "eu" is the start of EUR, and a word in no other name.
 		expect(ids(filterGroups(sheet.groups, "eu"))[0]).toBe("EUR");
 		// "r": BRL has a name starting with it ("real"), EUR and ARS only hold
@@ -164,7 +187,7 @@ describe("CurrencyPicker", () => {
 		act(() => sheet.onSelect("JPY"));
 		expect(onChange).toHaveBeenCalledWith("JPY");
 		act(() => sheet.onSelect("EUR"));
-		mount();
+		open(mount().root);
 		const recent = sheet.groups.find((g) => g.key === "recent");
 		expect(recent?.rows.map((r) => r.id)).toEqual(["EUR", "JPY"]);
 		expect(

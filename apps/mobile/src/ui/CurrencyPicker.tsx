@@ -19,6 +19,7 @@ import type { PickGroup } from "./pickGroups";
 import { Text } from "./Text";
 
 const NONE: string[] = [];
+const NO_GROUPS: PickGroup[] = [];
 
 /**
  * The one place the app picks a currency: a trigger pill (flag, code,
@@ -57,9 +58,13 @@ export function CurrencyPicker({
 	const t = useTranslations("mobile.pickers");
 	const locale = useLocale();
 	const [open, setOpen] = useState(false);
+	// The ~170 rows are built when the sheet is first opened, not for every
+	// picker on every screen; once built they stay for the closing animation.
+	const [opened, setOpened] = useState(false);
 	const pinned = usePinnedCurrencies();
 	const picked = useRecentCurrencies();
 	const groups = useMemo<PickGroup[]>(() => {
+		if (!opened) return NO_GROUPS;
 		const sections = currencySections({
 			currencies,
 			pinned,
@@ -87,7 +92,12 @@ export function CurrencyPicker({
 			group("fiat", t("currency.fiat")),
 			group("crypto", t("currency.crypto")),
 		];
-	}, [currencies, pinned, yours, picked, recent, locale, value, t]);
+	}, [opened, currencies, pinned, yours, picked, recent, locale, value, t]);
+
+	function show() {
+		setOpened(true);
+		setOpen(true);
+	}
 
 	return (
 		<>
@@ -97,7 +107,7 @@ export function CurrencyPicker({
 					end={
 						<NavEnd lead={<CurrencyFlag code={value} small />} value={value} />
 					}
-					onPress={() => setOpen(true)}
+					onPress={show}
 					title={
 						<Text numberOfLines={2} weight="normal">
 							{label}
@@ -113,7 +123,7 @@ export function CurrencyPicker({
 					}
 					label={value}
 					leading={<CurrencyFlag code={value} small />}
-					onPress={() => setOpen(true)}
+					onPress={show}
 					variant="trigger"
 				/>
 			)}

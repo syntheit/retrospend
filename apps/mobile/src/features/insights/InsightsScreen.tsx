@@ -1,15 +1,15 @@
 import { dayKey } from "@retrospend/domain/time-zone";
 import { Stack } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { useFilterLeads } from "@/features/activity/filterLeads";
 import { useCategories } from "@/features/activity/useCategories";
 import { useAddEntry } from "@/features/entry/AddEntryProvider";
-import { subscribeEntryChanges } from "@/features/entry/events";
 import { usePeopleOverview } from "@/features/people/usePeople";
 import { useCachedRead } from "@/features/read/useCachedRead";
+import { useReloadOnEntryChange } from "@/features/read/useReloadOnEntryChange";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { SectionHeader, StaleNote } from "@/ui/List";
@@ -60,7 +60,7 @@ export function InsightsScreen() {
 		{ prefix: INSIGHTS_PREFIX, keep: KEEP },
 	);
 	// An entry added, undone or sent from the outbox changes every figure.
-	useEffect(() => subscribeEntryChanges(() => void reload()), [reload]);
+	useReloadOnEntryChange(reload);
 
 	const categories = useCategories();
 	const people = usePeopleOverview();
