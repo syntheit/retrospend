@@ -11,8 +11,20 @@ import type { EntryPlace } from "./types";
 
 const ID = "6f1d1c1e-5b0e-4f5c-9c33-0a4a1c0f8a11";
 const places: EntryPlace[] = [
-	{ id: "bank", name: "Bank", type: "CHECKING", currency: "JPY", inBudget: true },
-	{ id: "stash", name: "Stash", type: "CASH", currency: "KWD", inBudget: false },
+	{
+		id: "bank",
+		name: "Bank",
+		type: "CHECKING",
+		currency: "JPY",
+		inBudget: true,
+	},
+	{
+		id: "stash",
+		name: "Stash",
+		type: "CASH",
+		currency: "KWD",
+		inBudget: false,
+	},
 	{ id: "odd", name: "Odd", type: "CASH", currency: "USD" },
 ];
 
@@ -34,7 +46,12 @@ const ctx = { locale: "en-US", hasBudget: false as boolean | null };
 describe("a new income draft", () => {
 	it("starts empty, in no account, with the default rate", () => {
 		expect(
-			newIncomeDraft({ id: ID, currency: "KWD", date: "2026-11-02", usePlan: true }),
+			newIncomeDraft({
+				id: ID,
+				currency: "KWD",
+				date: "2026-11-02",
+				usePlan: true,
+			}),
 		).toEqual({
 			id: ID,
 			currency: "KWD",
@@ -58,7 +75,9 @@ describe("a new income draft", () => {
 
 describe("incomeErrors", () => {
 	it("asks for an amount, who paid, and a rate that reads", () => {
-		expect(incomeErrors(draft({ amountText: "", source: " " }), "en-US")).toEqual({
+		expect(
+			incomeErrors(draft({ amountText: "", source: " " }), "en-US"),
+		).toEqual({
 			amount: true,
 			source: true,
 		});
@@ -69,7 +88,9 @@ describe("incomeErrors", () => {
 	});
 
 	it("refuses an amount with more decimals than the currency has", () => {
-		expect(incomeErrors(draft({ amountText: "10.5" }), "en-US").amount).toBe(true);
+		expect(incomeErrors(draft({ amountText: "10.5" }), "en-US").amount).toBe(
+			true,
+		);
 		expect(
 			incomeErrors(draft({ currency: "KWD", amountText: "10.5" }), "en-US"),
 		).toEqual({});
@@ -118,9 +139,9 @@ describe("buildIncomeWrite", () => {
 			ctx,
 		)?.body;
 		expect(body).toMatchObject({ title: "Acme", description: "March" });
-		expect(buildIncomeWrite(draft({ note: "  " }), ctx)?.body).not.toHaveProperty(
-			"description",
-		);
+		expect(
+			buildIncomeWrite(draft({ note: "  " }), ctx)?.body,
+		).not.toHaveProperty("description");
 	});
 
 	it("is null without an amount, a source or a rate that reads", () => {
@@ -136,7 +157,9 @@ describe("buildIncomeWrite", () => {
 
 	describe("the rate", () => {
 		it("sends none by default and the picked type when there is one", () => {
-			expect(buildIncomeWrite(draft(), ctx)?.body).not.toHaveProperty("rateType");
+			expect(buildIncomeWrite(draft(), ctx)?.body).not.toHaveProperty(
+				"rateType",
+			);
 			expect(
 				buildIncomeWrite(draft({ rateType: "official" }), ctx)?.body,
 			).toMatchObject({ rateType: "official" });
@@ -163,15 +186,15 @@ describe("buildIncomeWrite", () => {
 	describe("the plan", () => {
 		it("uses the plan only with an envelope budget", () => {
 			const plan = draft({ usePlan: true });
-			expect(buildIncomeWrite(plan, { ...ctx, hasBudget: true })?.body).toMatchObject(
-				{ usePlan: true },
-			);
-			expect(buildIncomeWrite(plan, { ...ctx, hasBudget: false })?.body).toMatchObject(
-				{ usePlan: false },
-			);
-			expect(buildIncomeWrite(plan, { ...ctx, hasBudget: null })?.body).toMatchObject(
-				{ usePlan: false },
-			);
+			expect(
+				buildIncomeWrite(plan, { ...ctx, hasBudget: true })?.body,
+			).toMatchObject({ usePlan: true });
+			expect(
+				buildIncomeWrite(plan, { ...ctx, hasBudget: false })?.body,
+			).toMatchObject({ usePlan: false });
+			expect(
+				buildIncomeWrite(plan, { ...ctx, hasBudget: null })?.body,
+			).toMatchObject({ usePlan: false });
 		});
 
 		it("does not use the plan for an account outside the budget", () => {
@@ -181,8 +204,16 @@ describe("buildIncomeWrite", () => {
 					hasBudget: true,
 					places,
 				})?.body;
-			expect(body("bank")).toMatchObject({ into: "bank", keep: false, usePlan: true });
-			expect(body("stash")).toMatchObject({ into: "stash", keep: true, usePlan: false });
+			expect(body("bank")).toMatchObject({
+				into: "bank",
+				keep: false,
+				usePlan: true,
+			});
+			expect(body("stash")).toMatchObject({
+				into: "stash",
+				keep: true,
+				usePlan: false,
+			});
 		});
 
 		it("sends keep only when the account's budget side is known", () => {

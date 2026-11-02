@@ -35,7 +35,11 @@ export const buttonMock = {
 
 /** The system menu's items as plain buttons. */
 export const menuMock = {
-	Menu: ({ items }: { items: { id: string; label: string; onPress: () => void }[] }) =>
+	Menu: ({
+		items,
+	}: {
+		items: { id: string; label: string; onPress: () => void }[];
+	}) =>
 		items.map((item) => (
 			<Pressable
 				accessibilityLabel={item.label}

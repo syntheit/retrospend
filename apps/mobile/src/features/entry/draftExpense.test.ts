@@ -199,7 +199,9 @@ describe("expenseErrors", () => {
 	});
 
 	it("does not look at the split when there is none or it divides equally", () => {
-		expect(expenseErrors(draft(), "en-US", undefined, ME).split).toBeUndefined();
+		expect(
+			expenseErrors(draft(), "en-US", undefined, ME).split,
+		).toBeUndefined();
 		const equal = draft({ withKeys: ["user:lucia1"] });
 		expect(expenseErrors(equal, "en-US", undefined, ME).split).toBeUndefined();
 	});
@@ -229,7 +231,10 @@ describe("a split expense", () => {
 
 	it("is paid by another person on the split when picked", () => {
 		const write = buildExpenseWrite(
-			draft({ withKeys: ["user:lucia1", "shadow:martin1"], paidByKey: "shadow:martin1" }),
+			draft({
+				withKeys: ["user:lucia1", "shadow:martin1"],
+				paidByKey: "shadow:martin1",
+			}),
 			input,
 		);
 		expect(write?.body).toMatchObject({
@@ -284,7 +289,11 @@ describe("a split expense", () => {
 			imageUrl: null,
 		};
 		const write = buildExpenseWrite(
-			draft({ projectId: "trip", projectPeople: [ana], withKeys: ["guest:ana1"] }),
+			draft({
+				projectId: "trip",
+				projectPeople: [ana],
+				withKeys: ["guest:ana1"],
+			}),
 			input,
 		);
 		expect(write?.body).toMatchObject({
@@ -354,14 +363,14 @@ describe("a custom split", () => {
 				{ id: "lucia1", sharePercentage: "66.6667" },
 			],
 		});
-		expect(buildExpenseWrite(two("SHARES", "2", "1"), input)?.body).toMatchObject(
-			{
-				splitWith: [
-					{ id: ME, shareUnits: 2 },
-					{ id: "lucia1", shareUnits: 1 },
-				],
-			},
-		);
+		expect(
+			buildExpenseWrite(two("SHARES", "2", "1"), input)?.body,
+		).toMatchObject({
+			splitWith: [
+				{ id: ME, shareUnits: 2 },
+				{ id: "lucia1", shareUnits: 1 },
+			],
+		});
 	});
 
 	it("is null while a part is missing or does not read", () => {
@@ -389,7 +398,10 @@ describe("a custom split", () => {
 
 describe("splitRows", () => {
 	const people = [lucia, martin];
-	const rows = (d: ExpenseDraft, shares: Parameters<typeof splitRows>[1]["shares"]) =>
+	const rows = (
+		d: ExpenseDraft,
+		shares: Parameters<typeof splitRows>[1]["shares"],
+	) =>
 		splitRows(d, {
 			locale: "en-US",
 			meId: ME,
@@ -400,14 +412,18 @@ describe("splitRows", () => {
 
 	it("is empty for a personal expense or an unreadable amount", () => {
 		expect(rows(draft(), null)).toEqual([]);
-		expect(rows(draft({ withKeys: ["user:lucia1"], amountText: "" }), null)).toEqual(
-			[],
-		);
+		expect(
+			rows(draft({ withKeys: ["user:lucia1"], amountText: "" }), null),
+		).toEqual([]);
 	});
 
 	it("names you first, then the others in the order picked", () => {
 		const d = draft({ withKeys: ["shadow:martin1", "user:lucia1"] });
-		expect(rows(d, null).map((r) => r.name)).toEqual(["You", "Martín", "Lucía"]);
+		expect(rows(d, null).map((r) => r.name)).toEqual([
+			"You",
+			"Martín",
+			"Lucía",
+		]);
 	});
 
 	it("shows each share as the server split it, in the currency's own units", () => {
@@ -445,7 +461,9 @@ describe("opening a saved expense", () => {
 	});
 
 	it("shows yen and dinars in their own decimals", () => {
-		expect(expenseFromEntry(saved(1500, "JPY"), "en-US").amountText).toBe("1,500");
+		expect(expenseFromEntry(saved(1500, "JPY"), "en-US").amountText).toBe(
+			"1,500",
+		);
 		expect(expenseFromEntry(saved(12_345, "KWD"), "en-US").amountText).toBe(
 			"12.345",
 		);
@@ -455,7 +473,9 @@ describe("opening a saved expense", () => {
 	});
 
 	it("reads a saved refund's amount as its size", () => {
-		expect(expenseFromEntry(saved(-1500, "JPY"), "en-US").amountText).toBe("1,500");
+		expect(expenseFromEntry(saved(-1500, "JPY"), "en-US").amountText).toBe(
+			"1,500",
+		);
 	});
 
 	it("saves back the same amount it opened with", () => {
@@ -506,7 +526,12 @@ describe("opening a saved expense", () => {
 
 	it("waits for a rate the person is typing instead of sending 1", () => {
 		const opened = expenseFromEntry(saved(1500, "JPY"), "en-US");
-		const typing = { ...opened, custom: true, customText: "", customEdited: true };
+		const typing = {
+			...opened,
+			custom: true,
+			customText: "",
+			customEdited: true,
+		};
 		expect(buildExpenseUpdate(typing, input)).toBeNull();
 	});
 });
@@ -606,14 +631,15 @@ describe("opening and saving a saved split", () => {
 			...sharedFromDetail(detail("EXACT"), "en-US", ME),
 			splitTouched: true,
 		};
-		expect(
-			buildExpenseUpdate(d, { locale: "en-US", catalog }),
-		).toBeNull();
+		expect(buildExpenseUpdate(d, { locale: "en-US", catalog })).toBeNull();
 	});
 
 	it("keeps a payer who holds no share pickable and flags a part that stopped reading", () => {
 		const d = sharedFromDetail(
-			{ ...detail("EXACT"), paidBy: { type: "shadow", id: "martin1", name: "Martín" } },
+			{
+				...detail("EXACT"),
+				paidBy: { type: "shadow", id: "martin1", name: "Martín" },
+			},
 			"en-US",
 			ME,
 		);

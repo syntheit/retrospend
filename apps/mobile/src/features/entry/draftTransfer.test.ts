@@ -34,18 +34,18 @@ function draft(over: Partial<TransferDraft> = {}): TransferDraft {
 
 describe("a new transfer draft", () => {
 	it("leaves from an account in your currency to another one", () => {
-		expect(newTransferDraft({ id: ID, date: "d", currency: "KWD", places })).toMatchObject(
-			{ fromId: "dinar", toId: "yen" },
-		);
-		expect(newTransferDraft({ id: ID, date: "d", currency: "JPY", places })).toMatchObject(
-			{ fromId: "yen", toId: "yen2" },
-		);
+		expect(
+			newTransferDraft({ id: ID, date: "d", currency: "KWD", places }),
+		).toMatchObject({ fromId: "dinar", toId: "yen" });
+		expect(
+			newTransferDraft({ id: ID, date: "d", currency: "JPY", places }),
+		).toMatchObject({ fromId: "yen", toId: "yen2" });
 	});
 
 	it("takes the first account when none is in your currency", () => {
-		expect(newTransferDraft({ id: ID, date: "d", currency: "EUR", places })).toMatchObject(
-			{ fromId: "yen", toId: "yen2" },
-		);
+		expect(
+			newTransferDraft({ id: ID, date: "d", currency: "EUR", places }),
+		).toMatchObject({ fromId: "yen", toId: "yen2" });
 	});
 
 	it("names no account when there are none, or only one", () => {
@@ -75,16 +75,25 @@ describe("transferCurrencies", () => {
 
 describe("transferErrors", () => {
 	it("needs two accounts, two different ones, and an amount", () => {
-		expect(transferErrors(draft({ toId: null }), ctx)).toEqual({ places: true });
+		expect(transferErrors(draft({ toId: null }), ctx)).toEqual({
+			places: true,
+		});
 		expect(transferErrors(draft({ toId: "yen" }), ctx)).toEqual({ same: true });
-		expect(transferErrors(draft({ amountText: "" }), ctx)).toEqual({ amount: true });
+		expect(transferErrors(draft({ amountText: "" }), ctx)).toEqual({
+			amount: true,
+		});
 		expect(transferErrors(draft(), ctx)).toEqual({});
 	});
 
 	it("reads the amount in the sending account's decimals", () => {
-		expect(transferErrors(draft({ amountText: "10.5" }), ctx).amount).toBe(true);
+		expect(transferErrors(draft({ amountText: "10.5" }), ctx).amount).toBe(
+			true,
+		);
 		expect(
-			transferErrors(draft({ fromId: "dinar", toId: "yen", amountText: "10.5" }), ctx),
+			transferErrors(
+				draft({ fromId: "dinar", toId: "yen", amountText: "10.5" }),
+				ctx,
+			),
 		).toEqual({});
 	});
 
@@ -95,8 +104,12 @@ describe("transferErrors", () => {
 			received: true,
 		});
 		// KWD has three decimals; JPY none.
-		expect(transferErrors({ ...exchange, receivedText: "12.345" }, ctx)).toEqual({});
-		expect(transferErrors({ ...exchange, receivedText: "12.3456" }, ctx)).toEqual({
+		expect(
+			transferErrors({ ...exchange, receivedText: "12.345" }, ctx),
+		).toEqual({});
+		expect(
+			transferErrors({ ...exchange, receivedText: "12.3456" }, ctx),
+		).toEqual({
 			received: true,
 		});
 		expect(
@@ -106,7 +119,9 @@ describe("transferErrors", () => {
 
 	it("reads the fee in the sending account's currency", () => {
 		expect(transferErrors(draft({ feeText: "150" }), ctx)).toEqual({});
-		expect(transferErrors(draft({ feeText: "1.5" }), ctx)).toEqual({ fee: true });
+		expect(transferErrors(draft({ feeText: "1.5" }), ctx)).toEqual({
+			fee: true,
+		});
 		expect(transferErrors(draft({ feeText: "x" }), ctx)).toEqual({ fee: true });
 	});
 });
@@ -129,7 +144,10 @@ describe("buildTransferWrite", () => {
 	});
 
 	it("leaves what arrived out of a move in one currency, even if typed", () => {
-		const body = buildTransferWrite(draft({ receivedText: "9,000" }), ctx)?.body;
+		const body = buildTransferWrite(
+			draft({ receivedText: "9,000" }),
+			ctx,
+		)?.body;
 		expect(body).not.toHaveProperty("toAmount");
 	});
 
@@ -169,7 +187,12 @@ describe("buildTransferWrite", () => {
 		const body = buildTransferWrite(draft({ feeText: "150" }), ctx)?.body;
 		expect(body).toMatchObject({ fee: { amount: "150", accountId: "yen" } });
 		const dinars = buildTransferWrite(
-			draft({ fromId: "dinar", toId: "yen", amountText: "5", feeText: "0.250" }),
+			draft({
+				fromId: "dinar",
+				toId: "yen",
+				amountText: "5",
+				feeText: "0.250",
+			}),
 			ctx,
 		)?.body;
 		expect(dinars).toMatchObject({
@@ -195,12 +218,14 @@ describe("buildTransferWrite", () => {
 	});
 
 	it("trims the note and leaves an empty one out", () => {
-		expect(buildTransferWrite(draft({ note: " rent " }), ctx)?.body).toMatchObject({
+		expect(
+			buildTransferWrite(draft({ note: " rent " }), ctx)?.body,
+		).toMatchObject({
 			note: "rent",
 		});
-		expect(buildTransferWrite(draft({ note: " " }), ctx)?.body).not.toHaveProperty(
-			"note",
-		);
+		expect(
+			buildTransferWrite(draft({ note: " " }), ctx)?.body,
+		).not.toHaveProperty("note");
 	});
 
 	it("is null for any draft that has an error", () => {

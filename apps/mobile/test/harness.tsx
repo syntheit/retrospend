@@ -104,8 +104,9 @@ jest.mock("@/lib/intl", () => ({ useFormatLocale: () => mockWorld().locale }));
 jest.mock("expo-network", () => ({
 	useNetworkState: () => ({ isInternetReachable: mockWorld().reachable }),
 }));
-jest.mock("react-native-safe-area-context", () =>
-	require("react-native-safe-area-context/jest/mock").default,
+jest.mock(
+	"react-native-safe-area-context",
+	() => require("react-native-safe-area-context/jest/mock").default,
 );
 
 // jest.mock factories may only name variables that start with "mock".
@@ -137,36 +138,42 @@ export async function mount(ui: ReactElement): Promise<Tree> {
 	return tree;
 }
 
+function Probe<Result, Props>({
+	use,
+	props,
+	result,
+}: {
+	use: (props: Props) => Result;
+	props: Props;
+	result: { current: Result };
+}) {
+	result.current = use(props);
+	return null;
+}
+
 /** Runs a hook under the same providers; `result.current` is its latest return. */
 export async function renderHook<Result, Props = void>(
 	use: (props: Props) => Result,
 	initial?: Props,
 ) {
 	const result = { current: undefined as Result };
-	function Probe({ props }: { props: Props }) {
-		result.current = use(props);
-		return null;
-	}
 	const element = (props: Props) => (
 		<IntlProvider locale="en" messages={loadMessages("en")}>
-			<Probe props={props} />
+			<Probe props={props} result={result} use={use} />
 		</IntlProvider>
 	);
 	let tree!: { update(element: ReactElement): void; unmount(): void };
 	await act(async () => {
 		tree = create(element(initial as Props));
 	});
-	const handle = {
-		unmount: () => act(() => tree.unmount()),
-	};
-	mounted.add(handle as unknown as Tree);
+	mounted.add(tree as unknown as Tree);
 	return {
 		result,
 		rerender: (props: Props) =>
 			act(async () => {
 				tree.update(element(props));
 			}),
-		unmount: handle.unmount,
+		unmount: () => act(() => tree.unmount()),
 	};
 }
 

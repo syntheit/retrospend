@@ -104,7 +104,7 @@ function expectParse(
 	c: {
 		locale: string;
 		numberFormat?: NumberFormatChoice;
-	homeCurrency?: string;
+		homeCurrency?: string;
 		currency: string;
 	},
 	expected: Expected,
@@ -174,8 +174,11 @@ describe("money-parse vectors", () => {
 		expect(formatMoneyDraft(draft, loc(c), currency)).toBe(draft);
 	});
 
-	it.each(parseVectors.separators as SeparatorCase[])("separators: $locale $numberFormat", (c) => {
-		expect(decimalSeparator(loc(c))).toBe(c.decimal);
-		expect(groupSeparator(loc(c))).toBe(c.group);
-	});
+	it.each(parseVectors.separators as SeparatorCase[])(
+		"separators: $locale $numberFormat",
+		(c) => {
+			expect(decimalSeparator(loc(c))).toBe(c.decimal);
+			expect(groupSeparator(loc(c))).toBe(c.group);
+		},
+	);
 });

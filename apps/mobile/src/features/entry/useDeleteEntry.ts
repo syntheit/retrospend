@@ -3,11 +3,11 @@ import { useRef } from "react";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
+import { showAlert } from "@/ui/alert";
 import { useToast } from "@/ui/Toast";
 import { previewDelete, runDelete } from "./deleteEntry";
 import { announceEntryChange } from "./events";
 import { undoWrite } from "./send";
-import { showAlert } from "@/ui/alert";
 
 /**
  * Delete one entry: the server's dry run first (R30), then the system alert

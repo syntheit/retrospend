@@ -25,17 +25,23 @@ import type { EntryMode } from "./types";
 // sheets (no JS to press) have stand-ins.
 const FIXED_ID = "6f1d1c1e-5b0e-4f5c-9c33-0a4a1c0f8a11";
 
-jest.mock("@/ui/CurrencyPicker", () =>
-	require("../../../test/native").currencyPickerMock,
+jest.mock(
+	"@/ui/CurrencyPicker",
+	() => require("../../../test/native").currencyPickerMock,
 );
-jest.mock("./CategoryPicker", () =>
-	require("../../../test/native").categoryPickerMock,
+jest.mock(
+	"./CategoryPicker",
+	() => require("../../../test/native").categoryPickerMock,
 );
-jest.mock("@/ui/Segmented", () => require("../../../test/native").segmentedMock);
+jest.mock(
+	"@/ui/Segmented",
+	() => require("../../../test/native").segmentedMock,
+);
 jest.mock("@/ui/Sheet", () => require("../../../test/native").sheetMock);
 jest.mock("@/ui/Menu", () => require("../../../test/native").menuMock);
-jest.mock("@/ui/PickerSheet", () =>
-	require("../../../test/native").pickerSheetMock,
+jest.mock(
+	"@/ui/PickerSheet",
+	() => require("../../../test/native").pickerSheetMock,
 );
 
 const page = <T,>(items: T[]) => ({ items, nextCursor: null });
@@ -1300,7 +1306,11 @@ let alertSpy: jest.SpyInstance<void, Parameters<typeof Alert.alert>>;
 function lastAlert(): [string, string | undefined, AlertButton[]] {
 	const call = alertSpy.mock.calls.at(-1);
 	if (!call) throw new Error("no alert");
-	return [String(call[0]), call[1] ?? undefined, (call[2] ?? []) as AlertButton[]];
+	return [
+		String(call[0]),
+		call[1] ?? undefined,
+		(call[2] ?? []) as AlertButton[],
+	];
 }
 function destructive(buttons: AlertButton[]): () => void {
 	const button = buttons.find((b) => b.style === "destructive");

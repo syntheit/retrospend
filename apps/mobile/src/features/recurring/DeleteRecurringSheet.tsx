@@ -66,7 +66,6 @@ export function DeleteRecurringSheet({
 	return (
 		<Sheet
 			detents={["medium"]}
-			footerApart
 			footer={
 				<>
 					<Button label={tc("cancel")} onPress={onClose} variant="text" />
@@ -83,6 +82,7 @@ export function DeleteRecurringSheet({
 					/>
 				</>
 			}
+			footerApart
 			onClose={onClose}
 			title={t("title", { title: item.title })}
 			visible={visible}
