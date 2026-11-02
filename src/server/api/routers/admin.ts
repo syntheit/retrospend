@@ -17,8 +17,8 @@ import {
 	getTestEmailTemplate,
 	getVerificationEmailTemplate,
 } from "~/server/email-templates";
-import { InMemoryRateLimiter } from "~/server/lib/rate-limiter";
 import { sendEmail } from "~/server/mailer";
+import { guardTestEmail } from "~/server/services/admin-test-email";
 import { getAiUsageSummary } from "~/server/services/ai-access.service";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
 import { deleteFile, getStorageSize } from "~/server/storage";
@@ -29,8 +29,6 @@ import {
 	getAppSettings,
 	updateAppSettings,
 } from "~/server/services/settings";
-
-const testEmailLimiter = new InMemoryRateLimiter();
 
 export const adminRouter = createTRPCRouter({
 	getStats: adminProcedure.query(async ({ ctx }) => {
@@ -594,22 +592,7 @@ export const adminRouter = createTRPCRouter({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			// 3 a minute per admin: a test mail is real mail from the server.
-			if (!testEmailLimiter.check(`adminTestEmail_${ctx.session.user.id}`, 3, 60_000)) {
-				throw new TRPCError({
-					code: "TOO_MANY_REQUESTS",
-					message: "Too many test emails. Try again in a minute.",
-				});
-			}
-			logEventAsync({
-				eventType: "SETTINGS_UPDATED",
-				userId: ctx.session.user.id,
-				metadata: {
-					action: "admin_test_email",
-					adminId: ctx.session.user.id,
-					emailType: input.type,
-				},
-			});
+			guardTestEmail(ctx.session.user.id, input.type);
 			try {
 				let subject = "Retrospend SMTP Test";
 				let html = getTestEmailTemplate();
@@ -633,12 +616,7 @@ export const adminRouter = createTRPCRouter({
 						break;
 				}
 
-				await sendEmail(
-					input.email,
-					subject,
-					html,
-					true, // bypassEnabledCheck
-				);
+				await sendEmail(input.email, subject, html, true);
 				return { success: true, message: "Test email sent successfully" };
 			} catch (error) {
 				throw new TRPCError({
