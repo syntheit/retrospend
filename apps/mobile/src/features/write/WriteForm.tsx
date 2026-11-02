@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useTranslations } from "use-intl";
 import { Button } from "@/ui/Button";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
+import { type FigureDiff } from "./figures";
 import { Note, SheetBody } from "./parts";
 import {
 	type PreviewStatus,
@@ -19,7 +20,7 @@ export interface WriteAnswer {
 }
 
 /** What one money write is: the exact body, its dry run, its write and its Undo. */
-export interface WriteSpec<I, P, W extends WriteAnswer> {
+export interface WriteSpec<I, P extends FigureDiff, W extends WriteAnswer> {
 	/** The exact request body, or null while the form is not complete. */
 	input: I | null;
 	/**
@@ -51,7 +52,7 @@ export interface WriteSpec<I, P, W extends WriteAnswer> {
  * write under one idempotency key, and an Undo toast. A form only builds the
  * body; `WriteForm`, `WriteSheet` and the keypad sheets all run on this.
  */
-export function useWriteForm<I, P, W extends WriteAnswer>({
+export function useWriteForm<I, P extends FigureDiff, W extends WriteAnswer>({
 	input,
 	idempotencyKey,
 	preview,
@@ -98,7 +99,7 @@ export interface WriteView<P> {
 	status: PreviewStatus;
 }
 
-export interface WriteFormProps<I, P, W extends WriteAnswer>
+export interface WriteFormProps<I, P extends FigureDiff, W extends WriteAnswer>
 	extends WriteSpec<I, P, W> {
 	submitLabel: string;
 	/** The dry run as the form shows it (the rows that move, what stays). */
@@ -107,14 +108,15 @@ export interface WriteFormProps<I, P, W extends WriteAnswer>
 	after?: ReactNode | ((preview: P | null) => ReactNode);
 	/** The sentence for a write that failed; the generic one by default. */
 	error?: string;
-	children?: ReactNode;
+	/** The fields; a function is given whether the write is going out (to hold other actions). */
+	children?: ReactNode | ((state: { committing: boolean }) => ReactNode);
 }
 
 /**
  * The body of one money write: the fields, the dry run, one Save that stays
  * off until that is in, and the write. A form only builds the body.
  */
-export function WriteForm<I, P, W extends WriteAnswer>({
+export function WriteForm<I, P extends FigureDiff, W extends WriteAnswer>({
 	submitLabel,
 	changes,
 	after,
@@ -138,7 +140,7 @@ export function WriteForm<I, P, W extends WriteAnswer>({
 			ready={ready}
 			submitLabel={submitLabel}
 		>
-			{children}
+			{typeof children === "function" ? children(flow) : children}
 		</WriteFrame>
 	);
 }
@@ -173,10 +175,11 @@ export interface Destructive {
 	busyLabel: string;
 }
 
-export type WriteSheetProps<I, P, W extends WriteAnswer> = Omit<
-	WriteFormProps<I, P, W>,
-	"submitLabel"
-> & {
+export type WriteSheetProps<
+	I,
+	P extends FigureDiff,
+	W extends WriteAnswer,
+> = Omit<WriteFormProps<I, P, W>, "submitLabel"> & {
 	visible: boolean;
 	title: string;
 	detent?: SheetDetent;
@@ -190,7 +193,7 @@ export type WriteSheetProps<I, P, W extends WriteAnswer> = Omit<
  * Cancel and the danger verb in the footer, apart; any other has the one
  * primary action pinned in it.
  */
-export function WriteSheet<I, P, W extends WriteAnswer>({
+export function WriteSheet<I, P extends FigureDiff, W extends WriteAnswer>({
 	visible,
 	title,
 	detent = "large",
@@ -215,15 +218,12 @@ export function WriteSheet<I, P, W extends WriteAnswer>({
 			title={title}
 			visible={visible}
 		>
-			<WriteForm
-				{...(form as WriteFormProps<I, P, W>)}
-				active={visible}
-			/>
+			<WriteForm {...(form as WriteFormProps<I, P, W>)} active={visible} />
 		</FormSheet>
 	);
 }
 
-function DestructiveSheet<I, P, W extends WriteAnswer>({
+function DestructiveSheet<I, P extends FigureDiff, W extends WriteAnswer>({
 	visible,
 	title,
 	detent,
@@ -263,7 +263,7 @@ function DestructiveSheet<I, P, W extends WriteAnswer>({
 			visible={visible}
 		>
 			<SheetBody>
-				{children}
+				{typeof children === "function" ? children(flow) : children}
 				{changes(flow)}
 				{typeof after === "function" ? after(flow.preview) : after}
 				{flow.commitFailed ? (

@@ -1,14 +1,8 @@
-import { useEffect } from "react";
 import { useTranslations } from "use-intl";
 import { PreviewChanges } from "@/features/read/PreviewChanges";
-import { Note, SheetBody } from "@/features/write/parts";
-import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
-import { noSession, useApi } from "@/features/write/WriteFrame";
-import { Button } from "@/ui/Button";
-import { Sheet } from "@/ui/Sheet";
+import { WriteSheet } from "@/features/write/WriteForm";
 import { useDayText } from "./ConfirmSheet";
 import type { RecurringItem } from "./source";
-import { useDeleteUndo, useRecurringToast } from "./useRecurringToast";
 
 /**
  * Delete a recurring template. The server's dry run of the exact delete comes
@@ -30,64 +24,10 @@ export function DeleteRecurringSheet({
 }) {
 	const t = useTranslations("mobile.recurring.delete");
 	const tc = useTranslations("mobile.common");
-	const api = useApi();
-	const announce = useRecurringToast();
-	const undoOf = useDeleteUndo();
 	const day = useDayText();
-	const input = { id: item.id };
-	const { idFor, reset } = useWriteIds(JSON.stringify(input));
-	// biome-ignore lint/correctness/useExhaustiveDependencies: each opening starts with a fresh write id
-	useEffect(() => {
-		if (visible) reset();
-	}, [visible]);
-
-	const flow = useMoneyWrite({
-		input: visible ? input : null,
-		idempotencyKey: idFor("write"),
-		preview: (body) => (api ? api.recurring.previewDelete(body) : noSession()),
-		write: (body, key) =>
-			api
-				? api.recurring.delete(body, { context: { idempotencyKey: key } })
-				: noSession(),
-	});
-
-	async function submit() {
-		const out = await flow.commit();
-		if (!out) return;
-		announce({
-			message: t("toast", { title: item.title }),
-			undo: undoOf(out.undo),
-			onChanged: onDone,
-		});
-		onClose();
-	}
-
-	const busy = flow.committing;
 	return (
-		<Sheet
-			detents={["medium"]}
-			footer={
-				<>
-					<Button label={tc("cancel")} onPress={onClose} variant="text" />
-					<Button
-						busy={busy}
-						disabled={flow.status !== "ready" || busy}
-						label={
-							busy
-								? tc("deleting")
-								: t(item.direction === "in" ? "submitIn" : "submit")
-						}
-						onPress={() => void submit()}
-						variant="danger"
-					/>
-				</>
-			}
-			footerApart
-			onClose={onClose}
-			title={t("title", { title: item.title })}
-			visible={visible}
-		>
-			<SheetBody>
+		<WriteSheet
+			changes={({ preview, status }) => (
 				<PreviewChanges
 					lead={[
 						{
@@ -105,17 +45,29 @@ export function DeleteRecurringSheet({
 								]
 							: []),
 						// What does not change is said too (R7).
-						{
-							key: "logged",
-							label: t("logged"),
-							value: t("loggedStays"),
-						},
+						{ key: "logged", label: t("logged"), value: t("loggedStays") },
 					]}
-					preview={flow.preview}
-					status={flow.status}
+					preview={preview}
+					status={status}
 				/>
-				{flow.commitFailed ? <Note tone="attention">{t("error")}</Note> : null}
-			</SheetBody>
-		</Sheet>
+			)}
+			destructive={{
+				label: t(item.direction === "in" ? "submitIn" : "submit"),
+				busyLabel: tc("deleting"),
+			}}
+			detent="medium"
+			error={t("error")}
+			family="recurringDelete"
+			input={{ id: item.id }}
+			message={() => t("toast", { title: item.title })}
+			onClose={onClose}
+			onDone={onDone}
+			preview={(api, body) => api.recurring.previewDelete(body)}
+			title={t("title", { title: item.title })}
+			visible={visible}
+			write={(api, body, key) =>
+				api.recurring.delete(body, { context: { idempotencyKey: key } })
+			}
+		/>
 	);
 }
