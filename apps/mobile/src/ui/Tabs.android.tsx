@@ -9,15 +9,6 @@ import { TabBarCoverContext, tabBarFootprint } from "./tabBarMetrics";
 import { closeTransients } from "./transient";
 import { useKeyboardShown } from "./useKeyboardShown";
 
-/** Routes under app/(tabs) that are not in the bar on a phone. */
-const OFF_BAR = [
-	"currencies",
-	"insights",
-	"preferences",
-	"projects",
-	"recurring",
-] as const;
-
 /**
  * The Android tabs: the same five destinations as iOS (Home, Activity,
  * Budget, Wealth, People; Projects is the second segment of People), in the
@@ -70,8 +61,9 @@ export function Tabs() {
 					/>
 				)}
 			>
-				{OFF_BAR.map((name) => (
-					<JsTabs.Screen key={name} name={name} options={{ href: null }} />
+				{/* Only a declared screen is a tab: Projects, Settings and the rest stay out. */}
+				{tabs.map((item) => (
+					<JsTabs.Screen key={item.name} name={item.name} />
 				))}
 			</JsTabs>
 		</TabBarCoverContext.Provider>
