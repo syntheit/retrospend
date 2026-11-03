@@ -99,6 +99,7 @@ export function SharedPane({ id, onClose, phone }: PaneProps & { id: string }) {
 				) : null
 			}
 			closeLabel={phone ? t("back") : t("close")}
+			label={tx?.description ?? tr("amount")}
 			onClose={onClose}
 			phone={phone}
 			title={

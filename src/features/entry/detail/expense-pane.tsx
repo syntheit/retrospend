@@ -97,6 +97,7 @@ function PersonalPane({ id, onClose, phone }: PaneProps & { id: string }) {
 				) : null
 			}
 			closeLabel={phone ? t("back") : t("close")}
+			label={e?.title ?? tr("amount")}
 			onClose={onClose}
 			phone={phone}
 			title={

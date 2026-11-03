@@ -14,6 +14,7 @@ import { cn } from "~/lib/cn";
  */
 export function DetailPane({
 	title,
+	label,
 	actions,
 	onClose,
 	closeLabel,
@@ -22,6 +23,8 @@ export function DetailPane({
 	className,
 }: {
 	title: ReactNode;
+	/** The accessible name of the pane (plain text of the title). */
+	label: string;
 	actions?: ReactNode;
 	onClose: () => void;
 	closeLabel: string;
@@ -39,7 +42,7 @@ export function DetailPane({
 	);
 	return (
 		<aside
-			aria-label={typeof title === "string" ? title : undefined}
+			aria-label={label}
 			className={cn(
 				"bg-bg flex min-h-0 flex-col",
 				phone
