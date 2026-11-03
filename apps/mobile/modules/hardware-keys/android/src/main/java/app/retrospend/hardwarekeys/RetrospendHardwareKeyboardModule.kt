@@ -1,15 +1,15 @@
 package app.retrospend.hardwarekeys
 
 import android.content.Context
+import android.content.res.Configuration
 import android.hardware.input.InputManager
-import android.view.InputDevice
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
 /**
  * Whether a physical keyboard is connected, so the composer can drop its
- * on-screen keypad. A real keyboard is an alphabetic, non-virtual input
- * device; the module also tells JavaScript when one is plugged in or removed.
+ * on-screen keypad, from the system's own configuration. The module also
+ * tells JavaScript when a keyboard is plugged in or removed.
  */
 class RetrospendHardwareKeyboardModule : Module() {
   private var listener: InputManager.InputDeviceListener? = null
@@ -17,14 +17,14 @@ class RetrospendHardwareKeyboardModule : Module() {
   private val manager: InputManager?
     get() = appContext.reactContext?.getSystemService(Context.INPUT_SERVICE) as? InputManager
 
-  private fun connected(): Boolean =
-    InputDevice.getDeviceIds().any { id ->
-      val device = InputDevice.getDevice(id)
-      device != null &&
-        !device.isVirtual &&
-        device.keyboardType == InputDevice.KEYBOARD_TYPE_ALPHABETIC &&
-        (device.sources and InputDevice.SOURCE_KEYBOARD) == InputDevice.SOURCE_KEYBOARD
-    }
+  // The system's own view of it: the configuration reports a keyboard only
+  // while a physical one is attached and in use. (The device list is not
+  // enough: the emulator always lists a PS/2 keyboard, even with none set.)
+  private fun connected(): Boolean {
+    val config = appContext.reactContext?.resources?.configuration ?: return false
+    return config.keyboard != Configuration.KEYBOARD_NOKEYS &&
+      config.hardKeyboardHidden != Configuration.HARDKEYBOARDHIDDEN_YES
+  }
 
   override fun definition() = ModuleDefinition {
     Name("RetrospendHardwareKeyboard")
