@@ -26,6 +26,7 @@
 		"./month-key": "./src/month-key.ts",
 		"./parse": "./src/parse.ts",
 		"./picker-match": "./src/picker-match.ts",
+		"./precise-decimal": "./src/precise-decimal.ts",
 		"./rate-format": "./src/rate-format.ts",
 		"./rate-text": "./src/rate-text.ts",
 		"./recurring": "./src/recurring.ts",
@@ -37,7 +38,8 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"date-fns": "^4.4.0"
+		"date-fns": "^4.4.0",
+		"decimal.js": "10.6.0"
 	},
 	"devDependencies": {
 		"typescript": "^7.0.2",

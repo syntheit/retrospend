@@ -8,7 +8,7 @@
  * Decimal inputs (row amounts, rates, APRs) arrive as strings or Prisma
  * Decimals and are only multiplied with Decimal math, never floats.
  */
-import type { Decimal } from "@prisma/client/runtime/index-browser";
+import type { Decimal } from "@retrospend/domain/precise-decimal";
 
 export { MissingRateError } from "@retrospend/domain/money";
 

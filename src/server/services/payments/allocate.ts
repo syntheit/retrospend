@@ -24,8 +24,9 @@
  * A debt currency without a quote is left untouched and listed in
  * `unpriced`: a missing rate is never 1 (R14).
  */
-import type { Decimal } from "@prisma/client/runtime/index-browser";
+
 import { currencyDecimals } from "@retrospend/domain/money";
+import type { Decimal } from "@retrospend/domain/precise-decimal";
 import {
 	dec,
 	fromMinor,
