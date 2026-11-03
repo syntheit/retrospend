@@ -17,6 +17,8 @@ type Tx = Prisma.TransactionClient;
 /** The stash's key: no client key has this shape unless it copies one of its own. */
 const stashKey = (stash: string) => `undo-stash:${stash}`;
 
+const STASH_HASH = "undo-stash";
+
 export const invalidUndo = () =>
 	new TRPCError({
 		code: "BAD_REQUEST",
@@ -35,7 +37,7 @@ export async function putUndoStash(
 		data: {
 			userId,
 			key: stashKey(stash),
-			requestHash: "undo-stash",
+			requestHash: STASH_HASH,
 			completedAt: now,
 			status: 200,
 			responseBody: JSON.parse(JSON.stringify(body)) as Prisma.InputJsonValue,
@@ -54,7 +56,9 @@ export async function takeUndoStash<T>(
 	const row = await tx.idempotencyKey.findUnique({
 		where: { userId_key: { userId, key: stashKey(stash) } },
 	});
-	if (!row || row.expiresAt <= new Date()) throw invalidUndo();
+	// Only a stash this module wrote: a client key can never be taken as one.
+	if (!row || row.requestHash !== STASH_HASH || row.expiresAt <= new Date())
+		throw invalidUndo();
 	await tx.idempotencyKey.delete({ where: { id: row.id } });
 	if (!row.responseBody) throw invalidUndo();
 	return row.responseBody as T;

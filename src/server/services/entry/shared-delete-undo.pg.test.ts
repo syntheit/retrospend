@@ -81,4 +81,51 @@ describe("Undo of a shared expense delete", () => {
 		});
 		expect(gone.value.stash).toBeNull();
 	});
+
+	it("does not let another user restore with the stash", async () => {
+		const { user } = await arsUser();
+		const { user: other } = await createTestUser();
+		const created = await forUser(user.id).apply(createSharedExpense, {
+			amount: 500,
+			currency: "ARS",
+			description: "Mine",
+			date: TODAY,
+			paidBy: { participantType: "user", participantId: user.id },
+			splitWith: [{ participantType: "user", participantId: user.id }],
+			splitMode: "EQUAL",
+		});
+		const gone = await forUser(user.id).apply(deleteSharedExpense, {
+			id: created.value.id,
+			confirmUnsettled: true,
+			keepForUndo: true,
+		});
+		await expect(
+			forUser(other.id).apply(restoreSharedExpense, {
+				stash: gone.value.stash as string,
+			}),
+		).rejects.toThrow();
+		// The owner can still use it: the failed try took nothing.
+		await forUser(user.id).apply(restoreSharedExpense, {
+			stash: gone.value.stash as string,
+		});
+	});
+
+	it("takes only rows the stash module wrote, not a client key", async () => {
+		const { user } = await arsUser();
+		const stash = randomUUID();
+		await adminDb.idempotencyKey.create({
+			data: {
+				userId: user.id,
+				key: `undo-stash:${stash}`,
+				requestHash: "client-request",
+				completedAt: new Date(),
+				status: 200,
+				responseBody: { fake: true },
+				expiresAt: new Date(Date.now() + 60_000),
+			},
+		});
+		await expect(
+			forUser(user.id).apply(restoreSharedExpense, { stash }),
+		).rejects.toThrow();
+	});
 });

@@ -41,7 +41,7 @@ export const idempotency = os
 		if (!isValidIdempotencyKey(key))
 			throw problem(
 				"bad_request",
-				"Idempotency-Key must be 1 to 255 printable characters",
+				"Idempotency-Key must be 1 to 255 printable characters and not start with undo-stash:",
 			);
 
 		const start = await startIdempotentRequest(user.db, {
