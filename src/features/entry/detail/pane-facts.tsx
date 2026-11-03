@@ -5,7 +5,7 @@ import { toMinorUnits } from "@retrospend/domain/money";
 import { dayKey } from "@retrospend/domain/time-zone";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import { Money } from "~/components/money/money";
 import { useRateFormat } from "~/components/money/use-rate-format";
 import { CategoryGlyph } from "~/components/pickers/category-picker";
@@ -54,37 +54,51 @@ function Hero({
 }: {
 	figure: string;
 	amount: { minor: number; currency: string };
-	home?: { minor: number; currency: string } | null;
+	home?: ReactNode;
 	rate?: string | null;
 }) {
 	return (
 		<div className="border-line flex flex-col gap-1 border-b pb-4">
 			<Money className="text-hero text-fg" figure={figure} value={amount} />
-			{home ? <Money className="text-fg-2 text-body" value={home} /> : null}
+			{home}
 			{rate ? <span className="text-fg-3 text-small">{rate}</span> : null}
 		</div>
 	);
 }
 
-/** Facts of one of your own expenses (what the server sent, formatted). */
-export function PersonalFacts({ e }: { e: Personal }) {
-	const t = useTranslations("entry.detail");
-	const tr = useTranslations("entry.read");
+type Row = RouterOutputs["expense"]["rowV2"];
+
+/** The rate line of a row: its type with its number, only when booked at a named type. */
+function useRateLine(row: Row | null | undefined) {
 	const types = useTranslations("activity.rateTypes");
 	const rates = useRateFormat();
+	if (!row?.rateType || !row.rate || !row.home) return null;
+	const name = types.has(row.rateType) ? types(row.rateType) : row.rateType;
+	return rates.typed(name, row.amount.currency, row.home.currency, row.rate);
+}
+
+/** The home value of a foreign amount: a number, or the words for no rate yet. */
+function HomeLine({ row }: { row: Row | null | undefined }) {
+	if (!row || row.home === undefined) return null;
+	return row.home ? (
+		<Money className="text-fg-2 text-body" value={row.home} />
+	) : (
+		<Money className="text-fg-2 text-body" missing="noRate" value={null} />
+	);
+}
+
+/** Facts of one of your own expenses (what the server sent, formatted). */
+export function PersonalFacts({
+	e,
+	row,
+}: {
+	e: Personal;
+	row: Row | null | undefined;
+}) {
+	const t = useTranslations("entry.detail");
+	const tr = useTranslations("entry.read");
 	const { label } = useDateFormat();
-	const foreign = e.home && e.home.currency !== e.currency ? e.home : null;
-	const typeName = e.rateType
-		? types.has(e.rateType)
-			? types(e.rateType)
-			: e.rateType
-		: null;
-	const rate =
-		foreign && e.rate
-			? typeName
-				? rates.typed(typeName, e.currency, foreign.currency, e.rate)
-				: rates.rate(e.currency, foreign.currency, e.rate)
-			: null;
+	const rate = useRateLine(row);
 	return (
 		<div className="flex flex-col gap-1" data-entry-read="">
 			<Hero
@@ -93,7 +107,7 @@ export function PersonalFacts({ e }: { e: Personal }) {
 					currency: e.currency,
 				}}
 				figure={`entry.amount:personal:${e.id}`}
-				home={foreign}
+				home={<HomeLine row={row} />}
 				rate={rate}
 			/>
 			<Row k={tr("date")}>{label.long(dayKey(new Date(e.date)))}</Row>
@@ -116,7 +130,15 @@ export function PersonalFacts({ e }: { e: Personal }) {
 }
 
 /** Facts of a shared expense: payer, the split with faces, your share, status. */
-export function SharedFacts({ tx, me }: { tx: Tx; me: string | undefined }) {
+export function SharedFacts({
+	tx,
+	me,
+	row,
+}: {
+	tx: Tx;
+	me: string | undefined;
+	row: Row | null | undefined;
+}) {
 	const t = useTranslations("entry.detail");
 	const tr = useTranslations("entry.read");
 	const { label } = useDateFormat();
@@ -139,10 +161,16 @@ export function SharedFacts({ tx, me }: { tx: Tx; me: string | undefined }) {
 		// biome-ignore lint/correctness/useExhaustiveDependencies: money is a pure helper of tx
 		[tx, me, money],
 	);
+	const rate = useRateLine(row);
 	const payer = `${tx.paidBy.participantType}:${tx.paidBy.participantId}`;
 	return (
 		<div className="flex flex-col gap-1" data-entry-read="">
-			<Hero amount={money(tx.amount)} figure={`entry.amount:shared:${tx.id}`} />
+			<Hero
+				amount={money(tx.amount)}
+				figure={`entry.amount:shared:${tx.id}`}
+				home={<HomeLine row={row} />}
+				rate={rate}
+			/>
 			<Row k={tr("paidBy")}>
 				<Face imageUrl={tx.paidBy.avatarUrl} name={tx.paidBy.name} size="xs" />
 				{tx.paidBy.name}

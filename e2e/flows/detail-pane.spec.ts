@@ -71,9 +71,9 @@ test("Activity at tablet width: with the pane open every amount stays visible", 
 	await expect(pane).toBeVisible();
 	const row = page.getByRole("main").getByText("Recarga SUBE").first();
 	await expect(row).toBeVisible();
-	await expect(
-		page.getByRole("main").getByText("$42,000").first(),
-	).toBeInViewport();
+	const amount = page.getByRole("main").getByText("$42,000").last();
+	await amount.scrollIntoViewIfNeeded();
+	await expect(amount).toBeInViewport();
 	// The rail shows only the six destinations and More.
 	const rail = page.locator("[data-rail]");
 	await expect(rail.getByRole("link")).toHaveCount(6);

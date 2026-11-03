@@ -29,6 +29,7 @@ export function SharedPane({ id, onClose, phone }: PaneProps & { id: string }) {
 	const fix = useFixState(id, me);
 	const del = api.entry.shared.delete.save.useMutation();
 	const restore = api.entry.shared.restore.save.useMutation();
+	const row = api.expense.rowV2.useQuery({ id: `shared:${id}` });
 	const tx = q.data;
 	const lock = fix.lock;
 
@@ -110,7 +111,11 @@ export function SharedPane({ id, onClose, phone }: PaneProps & { id: string }) {
 				)
 			}
 		>
-			{!tx ? <Waiting failed={q.isError} /> : <SharedFacts me={me} tx={tx} />}
+			{!tx ? (
+				<Waiting failed={q.isError} />
+			) : (
+				<SharedFacts me={me} row={row.data} tx={tx} />
+			)}
 		</DetailPane>
 	);
 }

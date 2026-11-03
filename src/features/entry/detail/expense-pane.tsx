@@ -28,6 +28,7 @@ function PersonalPane({ id, onClose, phone }: PaneProps & { id: string }) {
 	const q = api.entry.expense.get.useQuery({ id });
 	const del = api.entry.expense.delete.save.useMutation();
 	const restore = api.entry.expense.restore.save.useMutation();
+	const row = api.expense.rowV2.useQuery({ id });
 	const e = q.data;
 	const ta = useTranslations("activity.actions");
 
@@ -104,7 +105,11 @@ function PersonalPane({ id, onClose, phone }: PaneProps & { id: string }) {
 				e ? <PaneTitle category={e.category} title={e.title} /> : tr("amount")
 			}
 		>
-			{!e ? <Waiting failed={q.isError} /> : <PersonalFacts e={e} />}
+			{!e ? (
+				<Waiting failed={q.isError} />
+			) : (
+				<PersonalFacts e={e} row={row.data} />
+			)}
 		</DetailPane>
 	);
 }

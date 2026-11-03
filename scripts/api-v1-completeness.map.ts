@@ -344,6 +344,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 		"shared entries are part of GET /expenses",
 	),
 	"expense.listV2": to("GET /expenses"),
+	"expense.rowV2": to("GET /expenses/row"),
 	"expense.titleSuggestions": to("GET /expenses/title-suggestions"),
 	"expense.updateExpense": to("PUT /expenses/{id}"),
 
