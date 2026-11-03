@@ -10,6 +10,7 @@ import { Animated, Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
 import { ADD_CONTROL } from "@/layout/destinations";
+import { useLayoutClass } from "@/layout/useLayoutClass";
 import type { ComposerPrefill } from "@/surfaces/prefill";
 import { useSurfaceLinks } from "@/surfaces/useSurfaceLinks";
 import { useTheme } from "@/theme";
@@ -75,6 +76,8 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	const sheetSize = useSheetBodySize();
+	// Tablets: the pill in the toolbar adds, so no floating button.
+	const { tablet } = useLayoutClass();
 
 	// Whether the open composer holds unsaved changes: a new opening asks first.
 	const dirty = useRef(false);
@@ -137,7 +140,7 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 		<AddEntryContext.Provider value={api}>
 			{children}
 			{DevComposerTour ? <DevComposerTour add={api} /> : null}
-			{ADD_CONTROL === "floating" && !keyboard && hiders === 0 ? (
+			{ADD_CONTROL === "floating" && !tablet && !keyboard && hiders === 0 ? (
 				<Animated.View
 					pointerEvents="box-none"
 					style={{

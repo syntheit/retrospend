@@ -7,6 +7,14 @@ import { HAIRLINE } from "./metrics";
 /** The sheet's handle and header row above a body, plus its padding. */
 export const SHEET_CHROME = Platform.OS === "ios" ? 84 : 120;
 
+/** The centered form sheet of an Android tablet: 640 wide (the web composer's width). */
+export const DIALOG_WIDTH = 640;
+
+/** Its height: most of the window, never taller than a form needs. */
+export function dialogHeight(window: number): number {
+	return Math.min(Math.round(window * 0.9), 800);
+}
+
 /** The pinned footer's height: a hairline, its padding and one button row. */
 export function footerHeight({ size, space }: Theme): number {
 	return HAIRLINE + space[3] + size.touchMin.phone;

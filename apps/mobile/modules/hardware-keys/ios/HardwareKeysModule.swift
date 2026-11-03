@@ -1,4 +1,5 @@
 import ExpoModulesCore
+import GameController
 import UIKit
 
 /// Cmd shortcuts for a hardware keyboard. React Native has no key command API
@@ -9,12 +10,29 @@ import UIKit
 public final class HardwareKeysModule: Module {
   private static let selector = NSSelectorFromString("retrospendKeyCommand:")
   private var installed: [UIKeyCommand] = []
+  private var observers: [NSObjectProtocol] = []
   private weak var host: UIViewController?
 
   public func definition() -> ModuleDefinition {
     Name("HardwareKeys")
 
-    Events("onKeyCommand")
+    Events("onKeyCommand", "onKeyboardChange")
+
+    // True while a hardware keyboard is connected (the composer drops its
+    // on-screen keypad then).
+    Function("keyboardConnected") { () -> Bool in
+      GCKeyboard.coalesced != nil
+    }
+
+    OnCreate {
+      let center = NotificationCenter.default
+      for name in [NSNotification.Name.GCKeyboardDidConnect, NSNotification.Name.GCKeyboardDidDisconnect] {
+        self.observers.append(
+          center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+            self?.sendEvent("onKeyboardChange", ["connected": GCKeyboard.coalesced != nil])
+          })
+      }
+    }
 
     // commands: [{ id, input, title }]; every one is Cmd + input.
     Function("setCommands") { (commands: [[String: String]]) in
@@ -22,6 +40,8 @@ public final class HardwareKeysModule: Module {
     }
 
     OnDestroy {
+      for observer in self.observers { NotificationCenter.default.removeObserver(observer) }
+      self.observers = []
       DispatchQueue.main.async { self.remove() }
     }
   }

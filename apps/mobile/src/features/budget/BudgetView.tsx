@@ -1,5 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
@@ -14,6 +15,7 @@ import { SkeletonRows } from "@/ui/Skeleton";
 import { BudgetBody } from "./BudgetBody";
 import { BudgetSheets, type OpenSheet } from "./BudgetSheets";
 import { devSheet } from "./devSheet";
+import { EnvelopeInspector, INSPECTOR_MIN_WIDTH } from "./EnvelopeInspector";
 import { useManageItems } from "./ManageList";
 import { monthInfo } from "./months";
 import { SetupSheet } from "./SetupSheet";
@@ -21,6 +23,7 @@ import {
 	BUDGET_CACHE_KEEP,
 	BUDGET_CACHE_PREFIX,
 	budgetCache,
+	envelopeById,
 	fetchBudget,
 } from "./source";
 
@@ -34,7 +37,9 @@ export function BudgetView() {
 	const t = useTranslations("mobile.budget");
 	const common = useTranslations("mobile.common");
 	const { api } = useSession();
-	const { widthClass } = useLayoutClass();
+	const { widthClass, columns } = useLayoutClass();
+	const [inspectedId, setInspectedId] = useState<string | null>(null);
+	const [paneWidth, setPaneWidth] = useState(0);
 	// null is the current month; a number is a month the person stepped to.
 	const [selected, setSelected] = useState<number | null>(null);
 	const [seenOpen, setSeenOpen] = useState<number | null>(null);
@@ -76,57 +81,87 @@ export function BudgetView() {
 		if (GALLERY_ENABLED && devName && data) setSheet(devSheet(devName, data));
 	}, [devName, data !== null]);
 
+	// Expanded tablets: a row tap fills the inspector beside the table instead
+	// of opening the envelope sheet; its actions open the same forms.
+	// It needs room for the table beside it (an iPad with its sidebar open has
+	// about 900 wide, too narrow for both), so it waits for the measured width.
+	const inspect = columns && paneWidth >= INSPECTOR_MIN_WIDTH;
+	const inspected =
+		inspect && data && inspectedId ? envelopeById(data, inspectedId) : null;
+	const open = (next: OpenSheet) =>
+		inspect && next.kind === "envelope" && next.mode === "overview"
+			? setInspectedId(next.id)
+			: setSheet(next);
+
 	return (
 		<>
-			<Screen
-				flush
-				onRefresh={() => {
-					setRefreshing(true);
-					void reload().finally(() => setRefreshing(false));
-				}}
-				refreshing={refreshing}
+			<View
+				onLayout={(event) => setPaneWidth(event.nativeEvent.layout.width)}
+				style={{ flex: 1, flexDirection: "row" }}
 			>
-				{state.status === "loading" ? (
-					<SkeletonRows count={6} />
-				) : state.status === "error" ? (
-					<EmptyState
-						actionLabel={common("retry")}
-						detail={t("errorDetail")}
-						onAction={() => void reload()}
-						title={t("error")}
-					/>
-				) : !data || !info ? (
-					<EmptyState
-						actionLabel={t("setup.open")}
-						detail={t("noBudgetDetail")}
-						onAction={() => setSetupOpen(true)}
-						title={t("noBudget")}
-					/>
-				) : data.book.paused ? (
-					<EmptyState
-						actionLabel={t("resume")}
-						detail={t("pausedDetail")}
-						onAction={() =>
-							void api?.budget
-								.resume({}, { context: { idempotencyKey: newClientId() } })
-								.then(() => reload())
-								.catch(() => undefined)
-						}
-						title={t("paused")}
-					/>
-				) : (
-					<BudgetBody
-						bounds={info.bounds}
+				<View style={{ flex: 1 }}>
+					<Screen
+						flush
+						onRefresh={() => {
+							setRefreshing(true);
+							void reload().finally(() => setRefreshing(false));
+						}}
+						refreshing={refreshing}
+					>
+						{state.status === "loading" ? (
+							<SkeletonRows count={6} />
+						) : state.status === "error" ? (
+							<EmptyState
+								actionLabel={common("retry")}
+								detail={t("errorDetail")}
+								onAction={() => void reload()}
+								title={t("error")}
+							/>
+						) : !data || !info ? (
+							<EmptyState
+								actionLabel={t("setup.open")}
+								detail={t("noBudgetDetail")}
+								onAction={() => setSetupOpen(true)}
+								title={t("noBudget")}
+							/>
+						) : data.book.paused ? (
+							<EmptyState
+								actionLabel={t("resume")}
+								detail={t("pausedDetail")}
+								onAction={() =>
+									void api?.budget
+										.resume({}, { context: { idempotencyKey: newClientId() } })
+										.then(() => reload())
+										.catch(() => undefined)
+								}
+								title={t("paused")}
+							/>
+						) : (
+							<BudgetBody
+								bounds={info.bounds}
+								data={data}
+								kind={info.kind}
+								onOpen={open}
+								onSelectMonth={setSelected}
+								payoff={state.data.payoff}
+								stale={state.staleSince}
+								wide={widthClass !== "compact"}
+							/>
+						)}
+					</Screen>
+				</View>
+				{inspect && data && info && !data.book.paused ? (
+					<EnvelopeInspector
 						data={data}
+						envelope={inspected}
 						kind={info.kind}
-						onOpen={setSheet}
-						onSelectMonth={setSelected}
-						payoff={state.data.payoff}
-						stale={state.staleSince}
-						wide={widthClass !== "compact"}
+						onMode={(mode) =>
+							inspected &&
+							setSheet({ kind: "envelope", id: inspected.id, mode })
+						}
 					/>
-				)}
-			</Screen>
+				) : null}
+			</View>
 			{/* After the scroll view: see ListDetail. */}
 			<AccountTopBar
 				overflow={overflow}

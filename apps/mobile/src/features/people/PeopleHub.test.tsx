@@ -31,6 +31,16 @@ jest.mock("expo-router", () => ({
 		},
 	},
 }));
+// A phone window (the jest default is 750 wide, a medium tablet).
+jest.mock("@/layout/useLayoutClass", () => ({
+	useLayoutClass: () => ({
+		widthClass: "compact",
+		tablet: false,
+		navigation: "bar",
+		listDetail: false,
+		columns: false,
+	}),
+}));
 jest.mock("expo-sqlite/kv-store", () => ({
 	__esModule: true,
 	default: { getItemSync: jest.fn(() => null), setItemSync: jest.fn() },

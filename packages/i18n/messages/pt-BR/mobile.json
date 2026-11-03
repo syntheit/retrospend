@@ -507,6 +507,7 @@
 		"errorDetail": "Verifique sua conexão e tente de novo.",
 		"noBudget": "Ainda não há orçamento",
 		"noBudgetDetail": "Crie um para planejar seu dinheiro em envelopes.",
+		"inspector": { "empty": "Escolha um envelope" },
 		"paused": "Seu orçamento está pausado",
 		"pausedDetail": "Nada é contado enquanto está pausado.",
 		"month": {

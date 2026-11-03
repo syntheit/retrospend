@@ -507,6 +507,7 @@
 		"errorDetail": "Check your connection and try again.",
 		"noBudget": "No budget yet",
 		"noBudgetDetail": "Set one up to plan your money in envelopes.",
+		"inspector": { "empty": "Pick an envelope" },
 		"paused": "Your budget is paused",
 		"pausedDetail": "Nothing is counted while it is paused.",
 		"month": {

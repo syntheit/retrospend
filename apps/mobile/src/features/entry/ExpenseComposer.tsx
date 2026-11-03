@@ -2,6 +2,7 @@ import { formatMoneyDraft } from "@retrospend/domain/parse";
 import { type ReactNode, useCallback, useState } from "react";
 import { Keyboard, useWindowDimensions, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { useSystemPad } from "@/layout/useHardwareKeyboard";
 import { useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import type { PagerTab } from "@/ui/DetailPager";
@@ -95,7 +96,7 @@ export function useExpenseFrame({
 	// The person whose part of a split the keypad types; null: the amount.
 	const [part, setPart] = useState<string | null>(null);
 	const [picked, setPicked] = useState(false);
-	const system = fontScale > SYSTEM_PAD_SCALE;
+	const system = useSystemPad(fontScale, SYSTEM_PAD_SCALE);
 
 	// A pick in a panel, a swipe or a tap on a tab folds the keys away once
 	// there is an amount to add, so the panel can use the room.

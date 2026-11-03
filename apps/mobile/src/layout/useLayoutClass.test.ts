@@ -20,22 +20,41 @@ describe("widthClassFor", () => {
 
 describe("layoutFor", () => {
 	it("keeps an iPhone compact in either orientation", () => {
-		const compact = { widthClass: "compact", listDetail: false };
-		expect(layoutFor(393, IPHONE)).toEqual(compact);
-		expect(layoutFor(852, IPHONE)).toEqual(compact); // iPhone 15, landscape
+		expect(layoutFor(393, IPHONE, 852)).toMatchObject({
+			widthClass: "compact",
+			tablet: false,
+			navigation: "bar",
+			listDetail: false,
+		});
+		expect(layoutFor(852, IPHONE, 393).widthClass).toBe("compact");
 	});
 
 	it("goes list-detail on iPad from the regular (medium) width", () => {
-		expect(layoutFor(820, IPAD)).toEqual({
+		expect(layoutFor(820, IPAD, 1180)).toMatchObject({
 			widthClass: "medium",
 			listDetail: true,
+			navigation: "native",
+			columns: false,
 		});
-		expect(layoutFor(1180, IPAD).widthClass).toBe("expanded");
-		expect(layoutFor(507, IPAD).listDetail).toBe(false); // Slide Over
+		expect(layoutFor(1180, IPAD, 820).widthClass).toBe("expanded");
+		expect(layoutFor(507, IPAD, 800).listDetail).toBe(false); // Slide Over
 	});
 
-	it("goes list-detail on Android only when expanded", () => {
-		expect(layoutFor(700, ANDROID).listDetail).toBe(false);
-		expect(layoutFor(900, ANDROID).listDetail).toBe(true);
+	it("goes list-detail on Android tablets from medium", () => {
+		expect(layoutFor(500, ANDROID, 900).listDetail).toBe(false);
+		expect(layoutFor(700, ANDROID, 1000).listDetail).toBe(true);
+		expect(layoutFor(900, ANDROID, 1200).listDetail).toBe(true);
+	});
+
+	it("picks the Android chrome from size and orientation", () => {
+		expect(layoutFor(393, ANDROID, 852).navigation).toBe("bar");
+		expect(layoutFor(700, ANDROID, 1000).navigation).toBe("rail");
+		expect(layoutFor(840, ANDROID, 1200).navigation).toBe("rail"); // portrait
+		expect(layoutFor(1280, ANDROID, 800).navigation).toBe("sidebar");
+	});
+
+	it("adds columns only at expanded", () => {
+		expect(layoutFor(820, ANDROID, 1180).columns).toBe(false);
+		expect(layoutFor(1280, ANDROID, 800).columns).toBe(true);
 	});
 });

@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
@@ -18,6 +19,7 @@ import { useUnreadNotifications } from "@/features/notifications/useUnreadCount"
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useReloadOnEntryChange } from "@/features/read/useReloadOnEntryChange";
 import { entryHref } from "@/layout/detailRoutes";
+import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useShowConverter } from "@/lib/converter-pref";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
@@ -34,6 +36,7 @@ export default function HomeScreen() {
 	const showConverter = useShowConverter();
 	const [converter, setConverter] = useState(false);
 	const { space } = useTheme();
+	const { columns } = useLayoutClass();
 	const dates = useHomeDates();
 	const { api } = useSession();
 	const fetch = useMemo(() => (api ? fetchHome(api) : null), [api]);
@@ -69,43 +72,55 @@ export default function HomeScreen() {
 		<>
 			<Screen flush onRefresh={refresh} refreshing={refreshing}>
 				{state.status === "ready" ? (
-					<>
-						<Text
-							style={{ paddingHorizontal: space[4], paddingBottom: space[3] }}
-							tone="fg2"
-						>
-							{dates.weekday(state.data.glance.today)}
-						</Text>
-						<StaleNote since={state.staleSince} />
-						<Glance
-							approx={state.data.approx}
-							glance={state.data.glance}
-							owers={state.data.owers}
-						/>
-						<SyncIssues padded />
-						<NeedsYou list={state.data.needs} />
-						<SectionHeader
-							actionLabel={t("recent.seeAll")}
-							onAction={() => router.navigate("/activity")}
-							title={t("recent.title")}
-						/>
-						{recent.length === 0 ? (
-							<EmptyState title={t("recent.empty")} />
-						) : (
-							<ListGroup>
-								{recent.map((item) => (
-									<ActivityRow
-										item={item}
-										key={item.id}
-										onOpen={(row) =>
-											router.push(entryHref(row.id, true, JSON.stringify(row)))
-										}
-										ops={rowOps}
-									/>
-								))}
-							</ListGroup>
-						)}
-					</>
+					<View
+						style={{
+							flexDirection: columns ? "row" : "column",
+							gap: columns ? space[6] : 0,
+						}}
+					>
+						{/* Expanded tablets: hero and glance on the left, Needs you and Recent on the right. */}
+						<View style={{ flex: 1, minWidth: 0 }}>
+							<Text
+								style={{ paddingHorizontal: space[4], paddingBottom: space[3] }}
+								tone="fg2"
+							>
+								{dates.weekday(state.data.glance.today)}
+							</Text>
+							<StaleNote since={state.staleSince} />
+							<Glance
+								approx={state.data.approx}
+								glance={state.data.glance}
+								owers={state.data.owers}
+							/>
+							<SyncIssues padded />
+						</View>
+						<View style={{ flex: 1, minWidth: 0 }}>
+							<NeedsYou list={state.data.needs} />
+							<SectionHeader
+								actionLabel={t("recent.seeAll")}
+								onAction={() => router.navigate("/activity")}
+								title={t("recent.title")}
+							/>
+							{recent.length === 0 ? (
+								<EmptyState title={t("recent.empty")} />
+							) : (
+								<ListGroup>
+									{recent.map((item) => (
+										<ActivityRow
+											item={item}
+											key={item.id}
+											onOpen={(row) =>
+												router.push(
+													entryHref(row.id, true, JSON.stringify(row)),
+												)
+											}
+											ops={rowOps}
+										/>
+									))}
+								</ListGroup>
+							)}
+						</View>
+					</View>
 				) : state.status === "error" ? (
 					<EmptyState
 						actionLabel={tc("retry")}

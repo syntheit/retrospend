@@ -123,6 +123,8 @@ export interface AddButtonProps {
 	/** The main action, for example "Add expense". */
 	label: string;
 	onPress: () => void;
+	/** iOS: draw the label beside the plus (the iPad toolbar's "Add" pill). */
+	showLabel?: boolean;
 	/** iOS: the long-press menu (Income, Transfer); a tap always adds an expense. Android has none (its FAB is the plus, with a long-press tooltip). */
 	actions?: AddAction[];
 }

@@ -3,8 +3,10 @@ import { Tabs as JsTabs } from "expo-router/js-tabs";
 import { useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
+import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { type FloatingTab, FloatingTabBar } from "./FloatingTabBar";
+import { TabletNav } from "./TabletNav";
 import {
 	TabBarCoverContext,
 	tabBarFootprint,
@@ -40,6 +42,8 @@ const WARM_GAP_MS = 500;
 export function Tabs() {
 	const t = useTranslations("mobile.tabs");
 	const tw = useTranslations("mobile.wealth");
+	const ts = useTranslations("mobile.settings");
+	const { navigation } = useLayoutClass();
 	const theme = useTheme();
 	const insets = useSafeAreaInsets();
 	const keyboard = useKeyboardShown();
@@ -77,8 +81,26 @@ export function Tabs() {
 		{ name: "wealth", label: tw("title"), glyph: "Landmark" },
 		{ name: "people", label: t("people"), glyph: "Users" },
 	];
-	const cover =
-		keyboard || searching ? 0 : insets.bottom + tabBarFootprint(theme);
+	const wide = navigation === "sidebar" || navigation === "rail";
+	// A tablet has no bar under the screens, so nothing is covered.
+	const cover = wide
+		? 0
+		: keyboard || searching
+			? 0
+			: insets.bottom + tabBarFootprint(theme);
+	// A tablet lists all six destinations and Settings at the bottom, in the
+	// sidebar and in the rail alike; the phone bar keeps its five.
+	const side: FloatingTab[] = wide
+		? [
+				...tabs.slice(0, 4),
+				{ name: "people", label: t("peopleSegment"), glyph: "Users" },
+				{ name: "projects", label: t("projects"), glyph: "Folder" },
+			]
+		: tabs;
+	const footer: FloatingTab[] = wide
+		? [{ name: "preferences", label: ts("title"), glyph: "Settings" }]
+		: [];
+	const declared = [...side, ...footer];
 
 	return (
 		<TabBarCoverContext.Provider value={cover}>
@@ -87,19 +109,31 @@ export function Tabs() {
 				screenOptions={{
 					headerShown: false,
 					sceneStyle: { backgroundColor: theme.color.bg },
+					tabBarPosition: wide ? "left" : "bottom",
 				}}
-				tabBar={(bar) => (
-					<FloatingTabBar
-						emitter={bar.emitter}
-						insets={bar.insets}
-						navigateToTab={bar.navigateToTab}
-						state={bar.state}
-						tabs={tabs}
-					/>
-				)}
+				tabBar={(bar) =>
+					wide ? (
+						<TabletNav
+							emitter={bar.emitter}
+							footer={footer}
+							items={side}
+							navigateToTab={bar.navigateToTab}
+							state={bar.state}
+							variant={navigation === "sidebar" ? "sidebar" : "rail"}
+						/>
+					) : (
+						<FloatingTabBar
+							emitter={bar.emitter}
+							insets={bar.insets}
+							navigateToTab={bar.navigateToTab}
+							state={bar.state}
+							tabs={tabs}
+						/>
+					)
+				}
 			>
 				{/* Only a declared screen is a tab: Projects, Settings and the rest stay out. */}
-				{tabs.map((item) => (
+				{declared.map((item) => (
 					<JsTabs.Screen key={item.name} name={item.name} />
 				))}
 			</JsTabs>

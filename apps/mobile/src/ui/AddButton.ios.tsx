@@ -17,7 +17,12 @@ import type { AddButtonProps } from "./types";
  * (Add income, Transfer). Glass comes from the system button style, which
  * is chrome only (R17).
  */
-export function AddButton({ label, onPress, actions }: AddButtonProps) {
+export function AddButton({
+	label,
+	onPress,
+	actions,
+	showLabel,
+}: AddButtonProps) {
 	const { color } = useTheme();
 	// Glass is iOS 26; the floating button on older iPhones is a plain prominent one.
 	const glass =
@@ -26,7 +31,8 @@ export function AddButton({ label, onPress, actions }: AddButtonProps) {
 	const modifiers = [
 		buttonStyle(glass ? "glassProminent" : "borderedProminent"),
 		controlSize("large"),
-		labelStyle("iconOnly"),
+		// The iPad toolbar says "Add" beside the plus; the phone's button is the plus alone.
+		labelStyle(showLabel ? "titleAndIcon" : "iconOnly"),
 		// The plus reads on the brand glass in both themes (cream glass, dark plus).
 		foregroundColor(color.brandFg),
 	];
