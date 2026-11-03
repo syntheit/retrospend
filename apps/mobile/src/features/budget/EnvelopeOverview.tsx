@@ -143,10 +143,7 @@ export function EnvelopeOverview({
 				<IconTile name={categoryIconName(e.name, e.icon)} />
 				<View style={{ flex: 1, minWidth: 0, gap: space[1] }}>
 					{status ? (
-						<StatusText
-							label={statusWords(status)}
-							tone={statusTone(status)}
-						/>
+						<StatusText label={statusWords(status)} tone={statusTone(status)} />
 					) : null}
 					{target ? (
 						<Text

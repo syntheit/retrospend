@@ -327,8 +327,8 @@ export function Sheet({
 							accessibilityLabel={menu.label}
 							icon
 							items={menu.items}
-							raised
 							label={menu.label}
+							raised
 						/>
 					) : null}
 					{way === "none" ? null : <DismissItem kind={way} onPress={onClose} />}

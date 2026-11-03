@@ -10,6 +10,8 @@ import type { MonthKind } from "./months";
 import type { BudgetEnvelope, BudgetMonth } from "./source";
 
 export const INSPECTOR_WIDTH = 360;
+/** The content width from which the inspector sits beside the table (table 640 plus the inspector). */
+export const INSPECTOR_MIN_WIDTH = 1000;
 
 /**
  * The Budget inspector (expanded tablets): the picked envelope's overview in a

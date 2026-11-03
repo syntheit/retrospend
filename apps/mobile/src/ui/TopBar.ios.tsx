@@ -3,6 +3,7 @@ import { Platform, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
 import { singleAdd } from "@/layout/destinations";
+import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { AccountButton } from "./AccountButton";
 import { AddButton } from "./AddButton";
@@ -30,6 +31,7 @@ export function TopBar({
 	const t = useTranslations("mobile.composer");
 	const { space } = useTheme();
 	const inPair = useInPair();
+	const { columns } = useLayoutClass();
 	const add = useOptionalAddEntry();
 	// The iPad has no tab-bar plus (its bar is a top bar that overflows), so
 	// the toolbar carries it next to the account button.
@@ -57,8 +59,9 @@ export function TopBar({
 			{showAdd ? (
 				<AddButton
 					label={t("add")}
-					showLabel
 					onPress={() => add?.open("expense")}
+					// The word fits beside the plus from expanded; in the portrait tab bar row it is the plus alone.
+					showLabel={columns}
 				/>
 			) : null}
 			{hasOverflow ? (

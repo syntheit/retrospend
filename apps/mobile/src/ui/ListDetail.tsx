@@ -84,25 +84,25 @@ export function ListDetail({
 			edges={["top", "left", "right"]}
 			style={{ flex: 1, flexDirection: "row" }}
 		>
-			<View
-				style={{
-					width: LIST_WIDTH,
-					borderRightWidth: HAIRLINE,
-					borderRightColor: color.line,
-				}}
-			>
-				<InPair.Provider value>{bar}</InPair.Provider>
-				{search ? (
-					<PaneSearch
-						onChange={search.onChange}
-						placeholder={search.placeholder}
-						searchRef={search.ref}
-						value={search.value}
-					/>
-				) : null}
-				{list}
-			</View>
 			<SidesCleared.Provider value>
+				<View
+					style={{
+						width: LIST_WIDTH,
+						borderRightWidth: HAIRLINE,
+						borderRightColor: color.line,
+					}}
+				>
+					<InPair.Provider value>{bar}</InPair.Provider>
+					{search ? (
+						<PaneSearch
+							onChange={search.onChange}
+							placeholder={search.placeholder}
+							searchRef={search.ref}
+							value={search.value}
+						/>
+					) : null}
+					{list}
+				</View>
 				<View style={{ flex: 1 }}>{detail}</View>
 			</SidesCleared.Provider>
 		</SafeAreaView>

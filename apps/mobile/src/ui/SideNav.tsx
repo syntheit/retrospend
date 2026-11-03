@@ -43,7 +43,9 @@ export function SideNav({
 	const insets = useSafeAreaInsets();
 	const handled = useRef(false);
 	const wide = variant === "sidebar";
-	const width = wide ? size.sidebar.desktop : space[12] + space[8] + space[1] * 2;
+	const width = wide
+		? size.sidebar.desktop
+		: space[12] + space[8] + space[1] * 2;
 
 	const entry = (item: SideNavItem) => {
 		const on = item.name === selected;
@@ -54,13 +56,13 @@ export function SideNav({
 				accessibilityRole="tab"
 				accessibilityState={{ selected: on }}
 				key={item.name}
-				onPressIn={() => {
-					handled.current = !on;
-					if (!on) onSelect(item.name);
-				}}
 				onPress={() => {
 					// Open already: the stack pops to its root (the tab press).
 					if (!handled.current) onSelect(item.name);
+				}}
+				onPressIn={() => {
+					handled.current = !on;
+					if (!on) onSelect(item.name);
 				}}
 				style={{
 					flexDirection: wide ? "row" : "column",

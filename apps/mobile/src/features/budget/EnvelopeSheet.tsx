@@ -94,16 +94,16 @@ export function EnvelopeSheet({
 		<Sheet
 			backLabel={tc("back")}
 			detents={MODE_DETENTS[mode]}
-			onBack={
-				mode === "overview" || envelope === null
-					? undefined
-					: () => setMode("overview")
-			}
 			// Edit is the pencil in the header; the overview shows facts (R2, R3).
 			edit={
 				mode === "overview" && envelope !== null && kind !== "closed"
 					? { label: tc("edit"), onPress: () => setMode("edit") }
 					: undefined
+			}
+			onBack={
+				mode === "overview" || envelope === null
+					? undefined
+					: () => setMode("overview")
 			}
 			onClose={onClose}
 			title={title}
@@ -116,26 +116,24 @@ export function EnvelopeSheet({
 				</View>
 			) : (
 				<SheetBody>
-					{mode === "assign"
-						? form((e) => <AssignForm {...props(e)} />)
-						: mode === "cover"
-							? form((e) => <CoverForm {...props(e)} />)
-							: mode === "limit"
-								? form((e) => <LimitForm {...props(e)} />)
-								: mode === "target"
-									? form((e) => <TargetForm {...props(e)} />)
-									: mode === "edit"
-										? form((e) => <EditForm {...props(e)} />)
-										: envelope
-											? (
-													<EnvelopeOverview
-														data={data}
-														envelope={envelope}
-														kind={kind}
-														onMode={setMode}
-													/>
-												)
-											: null}
+					{mode === "assign" ? (
+						form((e) => <AssignForm {...props(e)} />)
+					) : mode === "cover" ? (
+						form((e) => <CoverForm {...props(e)} />)
+					) : mode === "limit" ? (
+						form((e) => <LimitForm {...props(e)} />)
+					) : mode === "target" ? (
+						form((e) => <TargetForm {...props(e)} />)
+					) : mode === "edit" ? (
+						form((e) => <EditForm {...props(e)} />)
+					) : envelope ? (
+						<EnvelopeOverview
+							data={data}
+							envelope={envelope}
+							kind={kind}
+							onMode={setMode}
+						/>
+					) : null}
 				</SheetBody>
 			)}
 		</Sheet>

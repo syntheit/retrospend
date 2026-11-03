@@ -28,16 +28,16 @@ import { ListDetail } from "@/ui/ListDetail";
 import { PaneBar } from "@/ui/PaneBar";
 import { SwitchRow } from "@/ui/SwitchRow";
 import { adminAccess } from "../admin/rules";
-import { channelsOn, type NotificationChannel } from "./channels";
 import { CategoriesScreen } from "./categories/CategoriesScreen";
+import { channelsOn, type NotificationChannel } from "./channels";
 import { DangerSection } from "./DangerSection";
 import { DataSection } from "./DataSection";
 import { NotificationsSection } from "./NotificationsSection";
-import { PaymentMethodsScreen } from "./payment/PaymentMethodsScreen";
 import { PreferencesSection } from "./PreferencesSection";
 import { ProfileSection } from "./ProfileSection";
-import { SecuritySection } from "./security/SecuritySection";
 import { AboutFooter, Block, GroupNote, SettingsPage } from "./parts";
+import { PaymentMethodsScreen } from "./payment/PaymentMethodsScreen";
+import { SecuritySection } from "./security/SecuritySection";
 import {
 	useCategories,
 	useGeneralSettings,

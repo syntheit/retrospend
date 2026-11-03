@@ -1,8 +1,11 @@
-import { type FloatingTab, type FloatingTabBarProps } from "./FloatingTabBar";
-import { scrollFocusedToTop } from "./scrollToTop";
+import type { FloatingTab, FloatingTabBarProps } from "./FloatingTabBar";
 import { SideNav } from "./SideNav";
+import { scrollFocusedToTop } from "./scrollToTop";
 
-type Props = Pick<FloatingTabBarProps, "state" | "emitter" | "navigateToTab"> & {
+type Props = Pick<
+	FloatingTabBarProps,
+	"state" | "emitter" | "navigateToTab"
+> & {
 	items: readonly FloatingTab[];
 	footer: readonly FloatingTab[];
 	variant: "sidebar" | "rail";
