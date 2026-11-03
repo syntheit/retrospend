@@ -14,6 +14,8 @@ import type { RowMenuProps } from "./types";
  * Native's longer 500, so the menu opens when the system says a hold is one.
  */
 export const LONG_PRESS_MS = 400;
+/** A touch held longer than this is a hold, not a tap: releasing it opens nothing. */
+export const TAP_MAX_MS = 250;
 
 /**
  * The long-press twin of a row's swipe actions: an M3 dropdown menu anchored
@@ -30,6 +32,7 @@ export function RowMenu({
 	const { color } = useTheme();
 	const [at, setAt] = useState<{ x: number; y: number } | null>(null);
 	const row = useRef<HostInstance>(null);
+	const down = useRef(0);
 	const close = () => setAt(null);
 	useTransient(at === null ? null : close);
 	return (
@@ -62,7 +65,16 @@ export function RowMenu({
 						setAt({ x: pageX - rowX, y: pageY - rowY }),
 					);
 				}}
-				onPress={onPress}
+				onPress={
+					onPress
+						? () => {
+								if (Date.now() - down.current <= TAP_MAX_MS) onPress();
+							}
+						: undefined
+				}
+				onPressIn={() => {
+					down.current = Date.now();
+				}}
 			>
 				{children}
 			</Pressable>
