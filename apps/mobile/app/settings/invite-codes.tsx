@@ -1,4 +1,4 @@
-import { InviteCodesScreen } from "@/features/admin/InvitesScreen";
+import { InviteCodesScreen } from "@/features/admin/InviteCodesScreen";
 
 export default function InviteCodesRoute() {
 	return <InviteCodesScreen />;

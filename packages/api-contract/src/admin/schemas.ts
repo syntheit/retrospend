@@ -305,3 +305,35 @@ export const errorReportListQuerySchema = z.object({
 	cursor: z.string().min(1).max(512).optional(),
 	limit: z.coerce.number().int().min(1).max(100).default(20),
 });
+
+export const adminShadowProfileSchema = z
+	.object({
+		id: idSchema,
+		name: z.string(),
+		email: z.string().nullable(),
+		createdByUsername: z.string().nullable(),
+		/** Set once the person signed up and took the profile over. */
+		claimedByUsername: z.string().nullable(),
+		claimedAt: timestampSchema.nullable(),
+		createdAt: timestampSchema,
+		projectCount: z.int().min(0),
+	})
+	.meta({ id: "AdminShadowProfile" });
+
+export const adminGuestSessionSchema = z
+	.object({
+		id: idSchema,
+		name: z.string(),
+		email: z.string(),
+		projectName: z.string(),
+		createdAt: timestampSchema,
+		lastActiveAt: timestampSchema,
+	})
+	.meta({ id: "AdminGuestSession" });
+
+export const adminParticipantsSchema = z
+	.object({
+		shadowProfiles: z.array(adminShadowProfileSchema),
+		guestSessions: z.array(adminGuestSessionSchema),
+	})
+	.meta({ id: "AdminParticipants" });

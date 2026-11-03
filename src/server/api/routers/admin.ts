@@ -18,6 +18,7 @@ import {
 	getVerificationEmailTemplate,
 } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
+import { guardTestEmail } from "~/server/services/admin-test-email";
 import { getAiUsageSummary } from "~/server/services/ai-access.service";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
 import { deleteFile, getStorageSize } from "~/server/storage";
@@ -590,7 +591,8 @@ export const adminRouter = createTRPCRouter({
 					.default("basic"),
 			}),
 		)
-		.mutation(async ({ input }) => {
+		.mutation(async ({ ctx, input }) => {
+			guardTestEmail(ctx.session.user.id, input.type);
 			try {
 				let subject = "Retrospend SMTP Test";
 				let html = getTestEmailTemplate();
@@ -614,12 +616,7 @@ export const adminRouter = createTRPCRouter({
 						break;
 				}
 
-				await sendEmail(
-					input.email,
-					subject,
-					html,
-					true, // bypassEnabledCheck
-				);
+				await sendEmail(input.email, subject, html, true);
 				return { success: true, message: "Test email sent successfully" };
 			} catch (error) {
 				throw new TRPCError({

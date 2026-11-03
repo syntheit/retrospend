@@ -11474,6 +11474,125 @@
 				"x-required-scope": "admin"
 			}
 		},
+		"/admin/guest-sessions/{id}": {
+			"delete": {
+				"operationId": "deleteAdminGuestSession",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Delete a guest session and anonymize what references it",
+				"tags": [
+					"Admin"
+				],
+				"x-event-type": "admin_guest_session.deleted",
+				"x-required-scope": "admin"
+			}
+		},
 		"/admin/invite-codes": {
 			"get": {
 				"operationId": "listAdminInviteCodes",
@@ -12059,6 +12178,216 @@
 				"x-required-scope": "admin"
 			}
 		},
+		"/admin/participants": {
+			"get": {
+				"description": "Names and emails of people added to projects without an account.",
+				"operationId": "listAdminParticipants",
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"guestSessions": {
+											"items": {
+												"properties": {
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"email": {
+														"type": "string"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"lastActiveAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"name": {
+														"type": "string"
+													},
+													"projectName": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"name",
+													"email",
+													"projectName",
+													"createdAt",
+													"lastActiveAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"shadowProfiles": {
+											"items": {
+												"properties": {
+													"claimedAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"claimedByUsername": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"createdByUsername": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"email": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"name": {
+														"type": "string"
+													},
+													"projectCount": {
+														"maximum": 9007199254740991,
+														"minimum": 0,
+														"type": "integer"
+													}
+												},
+												"required": [
+													"id",
+													"name",
+													"email",
+													"createdByUsername",
+													"claimedByUsername",
+													"claimedAt",
+													"createdAt",
+													"projectCount"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"shadowProfiles",
+										"guestSessions"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Shadow profiles and guest sessions, with who made them",
+				"tags": [
+					"Admin"
+				],
+				"x-required-scope": "admin"
+			}
+		},
 		"/admin/settings": {
 			"get": {
 				"operationId": "getAdminSettings",
@@ -12368,6 +12697,125 @@
 				"x-required-scope": "admin"
 			}
 		},
+		"/admin/shadow-profiles/{id}": {
+			"delete": {
+				"operationId": "deleteAdminShadowProfile",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Delete a shadow profile and anonymize what references it",
+				"tags": [
+					"Admin"
+				],
+				"x-event-type": "admin_shadow_profile.deleted",
+				"x-required-scope": "admin"
+			}
+		},
 		"/admin/stats": {
 			"get": {
 				"operationId": "getAdminStats",
@@ -12526,6 +12974,116 @@
 				"tags": [
 					"Admin"
 				],
+				"x-required-scope": "admin"
+			}
+		},
+		"/admin/test-email": {
+			"post": {
+				"description": "Sent even when email is off, so the server's mail settings can be checked.",
+				"operationId": "sendAdminTestEmail",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Send a test email to your own address",
+				"tags": [
+					"Admin"
+				],
+				"x-event-type": "admin_test_email.sent",
 				"x-required-scope": "admin"
 			}
 		},

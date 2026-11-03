@@ -69,6 +69,22 @@ export const adminRouter = {
 	startBackup: a.startBackup.handler(
 		serve(({ context }) => admin.startBackup(signedIn(context))),
 	),
+	listParticipants: a.listParticipants.handler(
+		serve(({ context }) => admin.listParticipants(signedIn(context))),
+	),
+	deleteShadowProfile: a.deleteShadowProfile.handler(
+		serve(({ context, input }) =>
+			admin.deleteShadowProfile(signedIn(context), input.id),
+		),
+	),
+	deleteGuestSession: a.deleteGuestSession.handler(
+		serve(({ context, input }) =>
+			admin.deleteGuestSession(signedIn(context), input.id),
+		),
+	),
+	sendTestEmail: a.sendTestEmail.handler(
+		serve(({ context }) => admin.sendTestEmail(signedIn(context))),
+	),
 	listInviteCodes: a.listInviteCodes.handler(
 		serve(({ context, input }) => invites.listAll(signedIn(context), input)),
 	),

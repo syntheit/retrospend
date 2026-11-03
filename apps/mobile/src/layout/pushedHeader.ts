@@ -69,9 +69,13 @@ export const SETTINGS_SCREENS: readonly {
 	{ name: "settings/admin", title: "title", ns: "admin" },
 	{ name: "settings/admin-users", title: "users.title", ns: "admin" },
 	{ name: "settings/invite-codes", title: "invites.title", ns: "admin" },
-	{ name: "settings/admin-invites", title: "invites.title", ns: "admin" },
 	{ name: "settings/admin-feedback", title: "feedback.title", ns: "admin" },
 	{ name: "settings/admin-settings", title: "settings.title", ns: "admin" },
+	{ name: "settings/admin-participants", title: "participants.title", ns: "admin" },
+	{ name: "settings/admin-ai-usage", title: "aiUsage.title", ns: "admin" },
+	{ name: "settings/admin-server", title: "server.title", ns: "admin" },
+	{ name: "settings/admin-audit", title: "audit.title", ns: "admin" },
+	{ name: "settings/admin-errors", title: "errors.title", ns: "admin" },
 ];
 
 /**
