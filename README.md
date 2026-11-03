@@ -1,4 +1,6 @@
-# Retrospend
+<p align="center">
+  <img src="docs/assets/banner.png" alt="Retrospend" width="100%">
+</p>
 
 [![CI](https://github.com/syntheit/retrospend/actions/workflows/ci.yml/badge.svg)](https://github.com/syntheit/retrospend/actions/workflows/ci.yml)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
