@@ -1,15 +1,17 @@
 import { Redirect, useLocalSearchParams } from "expo-router";
 import { useHideAddButtonOnDetail } from "@/features/entry/addEntryContext";
 import { ProjectView } from "@/features/projects/ProjectView";
+import { startOf } from "@/features/projects/projectActions";
 import { PROJECTS_APART } from "@/layout/destinations";
 
 export default function ProjectScreen() {
 	useHideAddButtonOnDetail();
-	const { id, name, settle, add } = useLocalSearchParams<{
+	const { id, name, settle, add, sheet } = useLocalSearchParams<{
 		id: string;
 		name?: string;
 		settle?: string;
 		add?: string;
+		sheet?: string;
 	}>();
 	// Phones keep projects inside the People tab.
 	if (!PROJECTS_APART) {
@@ -22,6 +24,7 @@ export default function ProjectScreen() {
 						...(name ? { name } : {}),
 						...(settle ? { settle } : {}),
 						...(add ? { add } : {}),
+						...(sheet ? { sheet } : {}),
 					},
 				}}
 			/>
@@ -33,6 +36,7 @@ export default function ProjectScreen() {
 			name={name}
 			startAdding={add === "person"}
 			startSettling={settle === "1"}
+			startWith={startOf(sheet)}
 		/>
 	);
 }

@@ -7,6 +7,7 @@ import { LARGE_TITLE } from "@/layout/pushedHeader";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
+import { menuOf } from "@/ui/actionRegistry";
 import { Chip } from "@/ui/Chip";
 import { CurrencyFlag } from "@/ui/CurrencyFlag";
 import { EmptyState } from "@/ui/EmptyState";
@@ -17,6 +18,7 @@ import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import { ConversionLines } from "./ConvertBlock";
 import { CurrencySheet } from "./CurrencySheet";
+import { CURRENCY_ACTIONS, currencyActionsOf } from "./currencyActions";
 import {
 	PriceText,
 	StarButton,
@@ -91,32 +93,20 @@ const CurrencyLine = memo(function CurrencyLine({
 	const label = useRateLabel();
 	const price = defaultPrice(row);
 	const { space } = useTheme();
-	const canStar = row.favorite || row.rateId !== null;
-	const items = [
+	const items = menuOf(
+		currencyActionsOf(row),
+		CURRENCY_ACTIONS,
 		{
-			id: "convert",
-			label: t("menu.convert"),
-			onPress: () => onOpen(row.code),
+			convert: t("menu.convert"),
+			favorite: row.favorite ? t("menu.unfavorite") : t("menu.favorite"),
+			history: t("menu.history"),
 		},
-		...(canStar
-			? [
-					{
-						id: "favorite",
-						label: row.favorite ? t("menu.unfavorite") : t("menu.favorite"),
-						onPress: () => onFavorite(row, !row.favorite),
-					},
-				]
-			: []),
-		...(row.crypto
-			? []
-			: [
-					{
-						id: "history",
-						label: t("menu.history"),
-						onPress: () => openHistory(row.code, table.home),
-					},
-				]),
-	];
+		{
+			convert: () => onOpen(row.code),
+			favorite: () => onFavorite(row, !row.favorite),
+			history: () => openHistory(row.code, table.home),
+		},
+	);
 	return (
 		<RowMenu items={items} onPress={() => onOpen(row.code)} title={row.code}>
 			<ListRow

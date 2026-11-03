@@ -32,6 +32,7 @@ import { type ReviewNeed, ReviewSheet } from "./ReviewSheet";
 import type { PersonRef } from "./source";
 import { useLedgerMore } from "./useLedgerMore";
 import { usePerson } from "./usePeople";
+import { useRemind } from "./usePersonMenu";
 import { usePersonExport } from "./useScopedExport";
 
 /**
@@ -53,6 +54,7 @@ export function PersonView({
 	const tc = useTranslations("mobile.common");
 	const more = useTranslations("mobile.activity")("overflow");
 	const overflow = usePersonExport(person);
+	const remindThem = useRemind();
 	const format = useFormatter();
 	const money = useMoneyText();
 	const heroText = useNetHeroText();
@@ -125,40 +127,7 @@ export function PersonView({
 		t("projectCount", { count: page.stats.projects }),
 	].filter(Boolean);
 
-	async function remind() {
-		// Someone not on Retrospend has no app to nudge: the share sheet opens
-		// a message you send yourself.
-		if (!identity.onRetrospend) {
-			const first = identity.name.split(/\s+/)[0] ?? identity.name;
-			try {
-				await Share.share({
-					message: t("remindMessage", {
-						name: first,
-						amount: open
-							.map((p) =>
-								money({
-									minor: Math.abs(p.amount.minor),
-									currency: p.amount.currency,
-								}),
-							)
-							.join(" + "),
-					}),
-				});
-			} catch {
-				toast.show({ message: t("remindFailed") });
-			}
-			return;
-		}
-		try {
-			await api?.people.remind(
-				{ type: person.type, id: person.id },
-				{ context: { idempotencyKey: newClientId() } },
-			);
-			toast.show({ message: t("reminded") });
-		} catch {
-			toast.show({ message: t("remindFailed") });
-		}
-	}
+	const remind = () => remindThem(identity, identity.onRetrospend, open);
 
 	const actions: PersonAction[] = [
 		...(page.settled.nothingShared

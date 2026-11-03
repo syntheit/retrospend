@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Image, Pressable, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerConnection } from "@/auth/server-connection";
@@ -9,7 +9,9 @@ import { AvatarStack, avatarColor } from "@/ui/Avatar";
 import { Button } from "@/ui/Button";
 import { ListGroup } from "@/ui/List";
 import { MoneyAmount } from "@/ui/Money";
+import { RowMenu } from "@/ui/RowMenu";
 import { Text } from "@/ui/Text";
+import type { MenuItem } from "@/ui/types";
 import { useDayRange } from "./dates";
 import { BudgetLine } from "./ProjectRow";
 import { balanceSides, daysSince, type ProjectItem } from "./source";
@@ -55,6 +57,40 @@ function Banner({ project }: { project: ProjectItem }) {
 	);
 }
 
+/** The card's touch target: a long press opens the menu when it has one. */
+function Tap({
+	accessibilityLabel,
+	menu,
+	onPress,
+	children,
+}: {
+	accessibilityLabel: string;
+	menu?: MenuItem[];
+	onPress: () => void;
+	children: ReactNode;
+}) {
+	if (menu && menu.length > 0) {
+		return (
+			<RowMenu
+				accessibilityLabel={accessibilityLabel}
+				items={menu}
+				onPress={onPress}
+			>
+				{children}
+			</RowMenu>
+		);
+	}
+	return (
+		<Pressable
+			accessibilityLabel={accessibilityLabel}
+			accessibilityRole="button"
+			onPress={onPress}
+		>
+			{children}
+		</Pressable>
+	);
+}
+
 /**
  * One project of the list as a cover card (layout A): the cover banner, the
  * name, when and how many expenses, who is in it, what the group spent and
@@ -68,6 +104,7 @@ export function ProjectCard({
 	onPress,
 	onSettle,
 	hero = false,
+	menu,
 }: {
 	project: ProjectItem;
 	/** The server's today, for "back 3 days ago". */
@@ -76,6 +113,8 @@ export function ProjectCard({
 	/** The hero's Settle up. */
 	onSettle?: () => void;
 	hero?: boolean;
+	/** The long-press menu (the project's actions); none, no menu. */
+	menu?: MenuItem[];
 }) {
 	const t = useTranslations("mobile.projects");
 	const tp = useTranslations("mobile.person");
@@ -118,11 +157,7 @@ export function ProjectCard({
 	return (
 		<ListGroup>
 			<View>
-				<Pressable
-					accessibilityLabel={spoken}
-					accessibilityRole="button"
-					onPress={onPress}
-				>
+				<Tap accessibilityLabel={spoken} menu={menu} onPress={onPress}>
 					<Banner project={project} />
 					<View style={{ gap: space[2], padding: space[4] }}>
 						{hero ? (
@@ -213,7 +248,7 @@ export function ProjectCard({
 							) : null}
 						</View>
 					</View>
-				</Pressable>
+				</Tap>
 				{hero ? (
 					<View
 						style={{

@@ -5,6 +5,7 @@ import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { AddButton } from "@/ui/AddButton";
+import { menuOf } from "@/ui/actionRegistry";
 import { EmptyState } from "@/ui/EmptyState";
 import { CategoryTile, ListGroup, ListRow, StaleNote } from "@/ui/List";
 import { RowMenu } from "@/ui/RowMenu";
@@ -16,6 +17,7 @@ import { TopBarAction } from "@/ui/TopBarAction";
 import { SettingsPage } from "../parts";
 import { useCategories } from "../useSettings";
 import { CategorySheet } from "./CategorySheet";
+import { CATEGORY_ACTIONS, categoryActionsOf } from "./categoryActions";
 import type { Category } from "./source";
 
 /**
@@ -111,26 +113,23 @@ export function CategoriesScreen() {
 						const count = t("count", { count: category.expenseCount });
 						return (
 							<RowMenu
-								items={[
+								items={menuOf(
+									categoryActionsOf(),
+									CATEGORY_ACTIONS,
 									{
-										id: "rename",
-										label: t("menu.rename"),
-										onPress: () => show(category),
-									},
-									{
-										id: "icon",
-										label: t("menu.iconColor"),
-										onPress: () => show(category),
-									},
-									{
-										id: "count",
-										label: category.excludeByDefault
+										rename: t("menu.rename"),
+										icon: t("menu.iconColor"),
+										count: category.excludeByDefault
 											? t("menu.count")
 											: t("menu.uncount"),
-										onPress: () =>
+									},
+									{
+										rename: () => show(category),
+										icon: () => show(category),
+										count: () =>
 											void setCounted(category, category.excludeByDefault),
 									},
-								]}
+								)}
 								key={category.id}
 								onPress={() => show(category)}
 								title={category.name}

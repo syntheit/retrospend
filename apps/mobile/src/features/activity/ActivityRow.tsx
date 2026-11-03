@@ -126,9 +126,10 @@ export interface RowOps {
 	words: RowActionWords;
 	/** Whether the person can open the composer to edit. */
 	canEdit: boolean;
-	select(item: ActivityItem): void;
+	select?(item: ActivityItem): void;
 	edit(item: ActivityItem): void;
-	categorize(item: ActivityItem): void;
+	categorize?(item: ActivityItem): void;
+	makeRecurring?(item: ActivityItem): void;
 	remove(item: ActivityItem): void;
 }
 
@@ -171,9 +172,14 @@ export const ActivityRow = memo(function ActivityRow({
 						item,
 						ops.words,
 						{
-							select: () => ops.select(item),
+							select: ops.select ? () => ops.select?.(item) : undefined,
 							edit: () => ops.edit(item),
-							categorize: () => ops.categorize(item),
+							categorize: ops.categorize
+								? () => ops.categorize?.(item)
+								: undefined,
+							makeRecurring: ops.makeRecurring
+								? () => ops.makeRecurring?.(item)
+								: undefined,
 							remove: () => ops.remove(item),
 						},
 						ops.canEdit,

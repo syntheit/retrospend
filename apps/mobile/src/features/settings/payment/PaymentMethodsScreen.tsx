@@ -6,13 +6,16 @@ import { EmptyState } from "@/ui/EmptyState";
 import type { GlyphName } from "@/ui/Glyph";
 import { IconTile } from "@/ui/IconTile";
 import { ListGroup, ListRow, StaleNote } from "@/ui/List";
+import { RowMenu } from "@/ui/RowMenu";
 import { Screen } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import { GroupNote, SettingsPage } from "../parts";
 import { usePaymentMethods } from "../useSettings";
 import { MethodSheet } from "./MethodSheet";
+import { methodMenu } from "./methodActions";
 import type { PaymentMethod } from "./source";
+import { useMethodWrites } from "./useMethodWrites";
 
 /** The tile for a kind of method: a bank, crypto, cash, or a card for the rest. */
 export function methodGlyph(type: string): GlyphName {
@@ -36,6 +39,14 @@ export function PaymentMethodsScreen() {
 	const { state, reload } = usePaymentMethods();
 	const [editing, setEditing] = useState<PaymentMethod | null>(null);
 	const [open, setOpen] = useState(false);
+	const writes = useMethodWrites(
+		state.status === "ready" ? state.data : [],
+		() => void reload(),
+	);
+	function edit(method: PaymentMethod) {
+		setEditing(method);
+		setOpen(true);
+	}
 
 	if (state.status !== "ready") {
 		return (
@@ -63,39 +74,52 @@ export function PaymentMethodsScreen() {
 				) : (
 					<ListGroup>
 						{all.map((method) => (
-							<ListRow
+							<RowMenu
+								items={methodMenu(
+									method,
+									{
+										edit: tc("edit"),
+										prefer: t("prefer"),
+										remove: t("remove"),
+									},
+									{
+										edit: () => edit(method),
+										prefer: () => void writes.prefer(method),
+										remove: () => writes.remove(method),
+									},
+								)}
 								key={method.id}
-								lead={<IconTile name={methodGlyph(method.type)} />}
-								onPress={() => {
-									setEditing(method);
-									setOpen(true);
-								}}
-								sub={[method.identifier, t(`visibility.${method.visibility}`)]
-									.filter(Boolean)
-									.join(" · ")}
-								title={
-									<View
-										style={{
-											flexDirection: "row",
-											alignItems: "center",
-											gap: space[2],
-										}}
-									>
-										<Text
-											numberOfLines={1}
-											style={{ flexShrink: 1 }}
-											weight="medium"
+								onPress={() => edit(method)}
+							>
+								<ListRow
+									lead={<IconTile name={methodGlyph(method.type)} />}
+									sub={[method.identifier, t(`visibility.${method.visibility}`)]
+										.filter(Boolean)
+										.join(" · ")}
+									title={
+										<View
+											style={{
+												flexDirection: "row",
+												alignItems: "center",
+												gap: space[2],
+											}}
 										>
-											{method.label || method.type}
-										</Text>
-										{method.rank === 1 ? (
-											<Text tone="fg2" variant="meta">
-												{t("preferred")}
+											<Text
+												numberOfLines={1}
+												style={{ flexShrink: 1 }}
+												weight="medium"
+											>
+												{method.label || method.type}
 											</Text>
-										) : null}
-									</View>
-								}
-							/>
+											{method.rank === 1 ? (
+												<Text tone="fg2" variant="meta">
+													{t("preferred")}
+												</Text>
+											) : null}
+										</View>
+									}
+								/>
+							</RowMenu>
 						))}
 					</ListGroup>
 				)}

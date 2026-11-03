@@ -13,6 +13,7 @@ import { PersonRow } from "@/features/people/PersonRow";
 import { PersonView } from "@/features/people/PersonView";
 import { keyOf, type PersonRef, refOfKey } from "@/features/people/source";
 import { usePeopleOverview } from "@/features/people/usePeople";
+import { usePersonMenu } from "@/features/people/usePersonMenu";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
@@ -34,10 +35,10 @@ const CHIPS: Exclude<PeopleChip, "all">[] = [
 ];
 const SORTS: PeopleSort[] = ["balance", "recent", "name"];
 
-function openPerson(ref: PersonRef) {
+function openPerson(ref: PersonRef, settle = false) {
 	router.push({
 		pathname: "/people/[type]/[id]",
-		params: { type: ref.type, id: ref.id },
+		params: { type: ref.type, id: ref.id, ...(settle ? { settle: "1" } : {}) },
 	});
 }
 
@@ -96,6 +97,11 @@ export function PeopleList({
 		if (listDetail) setSelected(ref);
 		else openPerson(ref);
 	}
+	// Settle up from a row opens the person with the sheet showing.
+	const menuOf = usePersonMenu((ref) => {
+		if (listDetail) setSelected(ref);
+		else openPerson(ref, true);
+	});
 
 	const empty =
 		state.status === "loading" ? (
@@ -202,6 +208,7 @@ export function PeopleList({
 								<PersonRow
 									home={overview?.home ?? ""}
 									key={item.person.key}
+									menu={menuOf(item)}
 									onPress={() => open(ref)}
 									selected={
 										listDetail &&

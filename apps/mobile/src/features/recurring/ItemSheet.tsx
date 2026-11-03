@@ -6,10 +6,12 @@ import { newClientId } from "@/data/ids";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Note, SheetBody } from "@/features/write/parts";
 import { useTheme } from "@/theme";
+import { menuOf } from "@/ui/actionRegistry";
 import { Button } from "@/ui/Button";
 import { Sheet } from "@/ui/Sheet";
 import { SwitchRow } from "@/ui/SwitchRow";
 import { useDayText } from "./ConfirmSheet";
+import { RECURRING_ACTIONS } from "./recurringActions";
 import type { RecurringItem } from "./source";
 import { useRecurringToast } from "./useRecurringToast";
 
@@ -95,15 +97,17 @@ export function ItemSheet({
 				edit={{ label: tc("edit"), onPress: () => setEditing(true) }}
 				menu={{
 					label: tc("more"),
-					items: [
+					items: menuOf(
+						["delete"],
+						RECURRING_ACTIONS,
+						{ confirm: "", skip: "", details: "", delete: t("delete") },
 						{
-							id: "delete",
-							label: t("delete"),
-							icon: "Trash2",
-							destructive: true,
-							onPress: onDelete,
+							confirm: onDelete,
+							skip: onDelete,
+							details: onDelete,
+							delete: onDelete,
 						},
-					],
+					),
 				}}
 				onClose={close}
 				title={item.title}

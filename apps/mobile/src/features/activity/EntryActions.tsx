@@ -7,9 +7,11 @@ import { useDeletePending } from "@/features/entry/useDeletePending";
 import { MakeRecurringSheet } from "@/features/recurring/MakeRecurringSheet";
 import { canRepeat } from "@/features/recurring/makeRecurring";
 import { useLayoutClass } from "@/layout/useLayoutClass";
+import { menuOf } from "@/ui/actionRegistry";
 import type { MenuItem } from "@/ui/types";
 import { canSelect } from "./bulk";
 import { canEditEntry } from "./canEdit";
+import { DETAIL_ORDER, ENTRY_ACTIONS, entryActionsOf } from "./entryActions";
 import type { ActivityItem } from "./source";
 
 /**
@@ -69,46 +71,38 @@ export function useEntryActions({
 		onDeleted: leave,
 	});
 
-	// Make recurring, then Delete (last, destructive): the header's menu.
-	const menu: MenuItem[] = waiting
-		? [
-				{
-					id: "delete",
-					label: t("delete"),
-					icon: "Trash2" as const,
-					destructive: true,
-					onPress: () =>
-						deletePending({
-							clientId: item.entityId,
-							kind: item.kind,
-							title: item.title,
-							onDeleted: leave,
-						}),
-				},
-			]
-		: [
-				...(canRepeatIt
-					? [
-							{
-								id: "make-recurring",
-								label: t("makeRecurring"),
-								icon: "Repeat" as const,
-								onPress: () => setRepeat(true),
-							},
-						]
-					: []),
-				...(canDelete
-					? [
-							{
-								id: "delete",
-								label: t("delete"),
-								icon: "Trash2" as const,
-								destructive: true,
-								onPress: askDelete,
-							},
-						]
-					: []),
-			];
+	// The header's menu, from the entry registry: Make recurring, Delete last.
+	const run = {
+		edit: () => undefined,
+		categorize: () => undefined,
+		select: () => undefined,
+		"make-recurring": () => setRepeat(true),
+		delete: waiting
+			? () =>
+					deletePending({
+						clientId: item.entityId,
+						kind: item.kind,
+						title: item.title,
+						onDeleted: leave,
+					})
+			: askDelete,
+	};
+	const words = {
+		edit: "",
+		categorize: "",
+		select: "",
+		"make-recurring": t("makeRecurring"),
+		delete: t("delete"),
+	};
+	const menu: MenuItem[] = menuOf(
+		entryActionsOf(DETAIL_ORDER, {
+			"make-recurring": !waiting && canRepeatIt,
+			delete: waiting || canDelete,
+		}),
+		ENTRY_ACTIONS,
+		words,
+		run,
+	);
 
 	const sheets = (
 		<>

@@ -5,7 +5,6 @@ import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { Note } from "@/features/write/parts";
 import { useTheme } from "@/theme";
-import { showAlert } from "@/ui/alert";
 import { Button } from "@/ui/Button";
 import { Picker } from "@/ui/Picker";
 import { Sheet, useSheetBodySize } from "@/ui/Sheet";
@@ -14,11 +13,10 @@ import { useToast } from "@/ui/Toast";
 import {
 	type MethodInput,
 	type PaymentMethod,
-	preferred,
 	type Visibility,
 	withEdit,
-	without,
 } from "./source";
+import { useMethodWrites } from "./useMethodWrites";
 
 const VISIBILITIES: Visibility[] = ["PUBLIC", "FRIENDS_ONLY", "PAYMENT_ONLY"];
 
@@ -89,16 +87,7 @@ export function MethodSheet({
 		}
 	}
 
-	function askDelete() {
-		showAlert(t("removeTitle"), undefined, [
-			{ text: tc("cancel"), style: "cancel" },
-			{
-				text: t("removeConfirm"),
-				style: "destructive",
-				onPress: () => void send(without(all, method.id), t("removed")),
-			},
-		]);
-	}
+	const writes = useMethodWrites(all, onDone);
 
 	return (
 		<Sheet
@@ -153,16 +142,14 @@ export function MethodSheet({
 						<Button
 							disabled={busy}
 							label={t("prefer")}
-							onPress={() =>
-								send(preferred(all, method.id), t("preferredToast"))
-							}
+							onPress={() => void writes.prefer(method, onClose)}
 							variant="outlined"
 						/>
 					)}
 					<Button
 						disabled={busy}
 						label={t("remove")}
-						onPress={askDelete}
+						onPress={() => writes.remove(method, onClose)}
 						size="small"
 						variant="dangerText"
 					/>

@@ -20,11 +20,14 @@ import type { ActivityItem } from "@/features/activity/source";
 import { useActivity } from "@/features/activity/useActivity";
 import { useBulkActions } from "@/features/activity/useBulkActions";
 import { useDebouncedSearch } from "@/features/activity/useDebouncedSearch";
+import { useRowRecurring } from "@/features/activity/useRowRecurring";
 import {
 	useHideAddButton,
 	useOptionalAddEntry,
 } from "@/features/entry/addEntryContext";
+import { announceEntryChange } from "@/features/entry/events";
 import { SyncIssues } from "@/features/entry/SyncIssues";
+import { useDeleteEntry } from "@/features/entry/useDeleteEntry";
 import { useDeletePending } from "@/features/entry/useDeletePending";
 import { RecurringView } from "@/features/recurring/RecurringView";
 import { RECURRING_APART } from "@/layout/destinations";
@@ -98,6 +101,8 @@ export default function ActivityScreen() {
 	const { state, reload, loadMore, loadingMore } = useActivity(filter);
 	const bulk = useBulkActions(() => setPicked(null));
 	const deletePending = useDeletePending();
+	// One entry from a row: the system alert after the server's dry run, then Undo.
+	const deleteOne = useDeleteEntry();
 	// Android: the floating toolbar takes the Add button's place while picking,
 	// and the count and Done move to the top bar.
 	const floatingBulk = Platform.OS === "android";
@@ -143,8 +148,16 @@ export default function ActivityScreen() {
 	// The rows are memoized, so what they get must not change between
 	// renders: `ops` and `onOpen` are stable and read the screen's latest
 	// state through a ref.
-	const latest = useRef({ add, bulk, open, deletePending });
-	latest.current = { add, bulk, open, deletePending };
+	const rowRecurring = useRowRecurring(() => announceEntryChange());
+	const latest = useRef({
+		add,
+		bulk,
+		open,
+		deletePending,
+		deleteOne,
+		rowRecurring,
+	});
+	latest.current = { add, bulk, open, deletePending, deleteOne, rowRecurring };
 	const canEdit = add !== null;
 	const ops = useMemo<RowOps>(
 		() => ({
@@ -152,6 +165,7 @@ export default function ActivityScreen() {
 				select: t("bulk.select"),
 				edit: te("edit"),
 				categorize: t("bulk.categorize"),
+				makeRecurring: te("makeRecurring"),
 				delete: t("bulk.delete"),
 			},
 			canEdit,
@@ -165,6 +179,7 @@ export default function ActivityScreen() {
 							item.source === "shared" ? "shared" : undefined,
 						),
 			categorize: (item) => latest.current.bulk.categorize([item.entityId]),
+			makeRecurring: (item) => latest.current.rowRecurring.open(item),
 			remove: (item) =>
 				item.unsynced
 					? latest.current.deletePending({
@@ -172,7 +187,11 @@ export default function ActivityScreen() {
 							kind: item.kind,
 							title: item.title,
 						})
-					: latest.current.bulk.remove([item.entityId]),
+					: latest.current.deleteOne({
+							id: item.entityId,
+							shared: false,
+							title: item.title,
+						}),
 		}),
 		[t, te, canEdit],
 	);
@@ -355,6 +374,7 @@ export default function ActivityScreen() {
 
 	return (
 		<View style={{ flex: 1, backgroundColor: color.bg }}>
+			{rowRecurring.sheet}
 			{headerSearch.view(
 				segment === "recurring" ? recurring(false) : rowsList(false),
 			)}

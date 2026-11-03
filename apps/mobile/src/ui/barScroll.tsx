@@ -31,6 +31,7 @@ import Animated, {
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 import { useTheme } from "@/theme";
 import { RetrospendPredictiveBack } from "../../modules/predictive-back";
+import { scrollActive } from "./hostQueue";
 import { useScrollToTopTarget } from "./scrollToTop";
 import { TEXT_SCALE_CAP } from "./Text";
 
@@ -190,12 +191,36 @@ function TrackedScrollView({
  * nothing is nested, so it changes nothing; iOS draws its own sheet and the
  * props are left alone.
  */
+/** A scroll's begin and end tell the host queue to hold off (hostQueue). */
+function gated<
+	P extends {
+		onScrollBeginDrag?: (e: never) => void;
+		onScrollEndDrag?: (e: never) => void;
+		onMomentumScrollBegin?: (e: never) => void;
+		onMomentumScrollEnd?: (e: never) => void;
+	},
+>(props: P): P {
+	const wrap = (on: boolean, inner?: (e: never) => void) => (e: never) => {
+		scrollActive(on);
+		inner?.(e);
+	};
+	return {
+		...props,
+		onScrollBeginDrag: wrap(true, props.onScrollBeginDrag),
+		// A drag that ends may coast: the momentum begin keeps it active.
+		onScrollEndDrag: wrap(false, props.onScrollEndDrag),
+		onMomentumScrollBegin: wrap(true, props.onMomentumScrollBegin),
+		onMomentumScrollEnd: wrap(false, props.onMomentumScrollEnd),
+	};
+}
+
 function useSheetHandoff<
 	P extends {
 		onLayout?: (e: LayoutChangeEvent) => void;
 		onContentSizeChange?: (w: number, h: number) => void;
 	},
->(props: P): P {
+>(raw: P): P {
+	const props = gated(raw as never) as P;
 	const [nested, setNested] = useState(false);
 	const size = useRef({ view: 0, content: 0 });
 	const first = useRef(true);
@@ -210,8 +235,7 @@ function useSheetHandoff<
 		if (android) RetrospendPredictiveBack?.refreshSheetScroll();
 	}, [nested, android]);
 	if (!android) return props;
-	const check = () =>
-		setNested(size.current.content > size.current.view + 1);
+	const check = () => setNested(size.current.content > size.current.view + 1);
 	return {
 		...props,
 		nestedScrollEnabled: nested,

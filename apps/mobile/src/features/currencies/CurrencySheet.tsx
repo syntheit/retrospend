@@ -6,6 +6,7 @@ import { CurrencyFlag } from "@/ui/CurrencyFlag";
 import { Sheet } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { ConvertBlock } from "./ConvertBlock";
+import { currencyActionsOf } from "./currencyActions";
 import {
 	PriceText,
 	TypeLine,
@@ -41,7 +42,8 @@ export function CurrencySheet({
 	const day = useDayText();
 	const { space } = useTheme();
 	const hasRate = priced(row);
-	const blocked = !row.favorite && !row.rateId;
+	// Favorite is an action of the currency registry, here and in the row menu.
+	const blocked = !currencyActionsOf(row).includes("favorite");
 	const several = row.rates.length > 1;
 	return (
 		<Sheet

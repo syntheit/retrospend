@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 
 import { useTranslations } from "use-intl";
-import { useSession } from "@/auth/session";
-import { newClientId } from "@/data/ids";
-import { announceEntryChange } from "@/features/entry/events";
-import { showAlert } from "@/ui/alert";
-import { useToast } from "@/ui/Toast";
+import { menuOf } from "@/ui/actionRegistry";
 import type { MenuItem } from "@/ui/types";
-import { canArchiveProject, canEditProject } from "./projectForm";
+import {
+	PROJECT_ACTIONS,
+	type ProjectActionId,
+	projectActionsOf,
+} from "./projectActions";
+import { canEditProject } from "./projectForm";
 import type { ProjectPage } from "./source";
+import { projectWords, useArchiveProject } from "./useArchiveProject";
 
 /**
  * Add person, Share, Settings, Archive, Restore and Delete for one project, as items
@@ -18,10 +20,14 @@ import type { ProjectPage } from "./source";
  * the same write. What the role may not do is left out; the server checks it
  * again.
  */
+/** A sheet a row's menu asks the project page to open once it shows. */
+export type ProjectStart = "share" | "settings" | "delete";
+
 export function useProjectActions(
 	page: Pick<ProjectPage, "id" | "name" | "status" | "myRole">,
 	onChanged: () => void,
 	startAdding = false,
+	startWith?: ProjectStart,
 ): {
 	items: MenuItem[];
 	/** Opens the project sheet (the header's pencil); null where the role may not edit. */
@@ -38,123 +44,32 @@ export function useProjectActions(
 	closeDelete: () => void;
 } {
 	const t = useTranslations("mobile.projects.actions");
-	const tc = useTranslations("mobile.common");
-	const { api } = useSession();
-	const toast = useToast();
 	const [editing, setEditing] = useState(false);
-	const [sharing, setSharing] = useState(false);
-	const [configuring, setConfiguring] = useState(false);
-	const [deleting, setDeleting] = useState(false);
+	const [sharing, setSharing] = useState(startWith === "share");
+	const [configuring, setConfiguring] = useState(startWith === "settings");
+	const [deleting, setDeleting] = useState(startWith === "delete");
 	// A link or a project just made "with others" opens Add person at once.
 	const [adding, setAdding] = useState(startAdding);
 	useEffect(() => {
 		if (startAdding) setAdding(true);
 	}, [startAdding]);
 
-	async function setStatus(status: "ACTIVE" | "ARCHIVED"): Promise<boolean> {
-		if (!api) return false;
-		try {
-			await api.projects.update(
-				{ id: page.id, status },
-				{ context: { idempotencyKey: newClientId() } },
-			);
-			announceEntryChange();
-			onChanged();
-			return true;
-		} catch {
-			return false;
-		}
-	}
-
-	async function archive() {
-		if (!(await setStatus("ARCHIVED"))) {
-			toast.show({ message: t("archiveError") });
-			return;
-		}
-		toast.show({
-			message: t("archived", { name: page.name }),
-			undo: {
-				label: tc("undo"),
-				onUndo: async () => {
-					const ok = await setStatus("ACTIVE");
-					toast.show({
-						message: ok
-							? t("restored", { name: page.name })
-							: t("restoreError"),
-					});
-				},
-			},
-		});
-	}
-
-	async function restore() {
-		const ok = await setStatus("ACTIVE");
-		toast.show({
-			message: ok ? t("restored", { name: page.name }) : t("restoreError"),
-		});
-	}
-
-	const items: MenuItem[] = [];
-	if (canEditProject(page.myRole)) {
-		items.push({
-			id: "add-person",
-			label: t("addPerson"),
-			icon: "UserPlus",
-			onPress: () => setAdding(true),
-		});
-	}
-	if (canEditProject(page.myRole)) {
-		items.push(
-			{
-				id: "share-project",
-				label: t("share"),
-				icon: "Share",
-				onPress: () => setSharing(true),
-			},
-			{
-				id: "project-settings",
-				label: t("settings"),
-				icon: "Settings",
-				onPress: () => setConfiguring(true),
-			},
-		);
-	}
-	if (canArchiveProject(page.myRole)) {
-		items.push(
-			page.status === "ARCHIVED"
-				? {
-						id: "restore-project",
-						label: t("restore"),
-						icon: "ArchiveRestore",
-						onPress: () => void restore(),
-					}
-				: {
-						id: "archive-project",
-						label: t("archive"),
-						icon: "Archive",
-						destructive: true,
-						onPress: () =>
-							showAlert(t("archiveTitle", { name: page.name }), undefined, [
-								{ text: tc("cancel"), style: "cancel" },
-								{
-									text: t("archiveConfirm"),
-									style: "destructive",
-									onPress: () => void archive(),
-								},
-							]),
-					},
-		);
-	}
-	// Delete is quiet: the last item of the menu, red, and it previews first.
-	if (canArchiveProject(page.myRole)) {
-		items.push({
-			id: "delete-project",
-			label: t("delete"),
-			icon: "Trash2",
-			destructive: true,
-			onPress: () => setDeleting(true),
-		});
-	}
+	const { archive, restore } = useArchiveProject(onChanged);
+	const run: Record<ProjectActionId, () => void> = {
+		"add-person": () => setAdding(true),
+		"share-project": () => setSharing(true),
+		"project-settings": () => setConfiguring(true),
+		"restore-project": () => void restore(page),
+		"archive-project": () => archive(page),
+		// Delete is quiet: the last item of the menu, red, and it previews first.
+		"delete-project": () => setDeleting(true),
+	};
+	const items = menuOf(
+		projectActionsOf(page),
+		PROJECT_ACTIONS,
+		projectWords(t),
+		run,
+	);
 	return {
 		items,
 		edit: canEditProject(page.myRole) ? () => setEditing(true) : null,

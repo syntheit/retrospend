@@ -22,6 +22,7 @@ const words = {
 	select: "Select",
 	edit: "Edit",
 	categorize: "Categorize",
+	makeRecurring: "Make recurring",
 	delete: "Delete",
 };
 const none = () => {};
@@ -33,12 +34,12 @@ const on: RowActionHandlers = {
 };
 
 describe("rowActions", () => {
-	it("gives your own expense every action, Select first and Delete last", () => {
+	it("gives your own expense every action, Edit first and Delete last", () => {
 		const actions = rowActions(item(), words, on, true);
 		expect(actions.menu.map((m) => m.id)).toEqual([
-			"select",
 			"edit",
 			"categorize",
+			"select",
 			"delete",
 		]);
 		expect(actions.menu.at(-1)?.destructive).toBe(true);
@@ -49,8 +50,8 @@ describe("rowActions", () => {
 	it("leaves Edit out when the add flow is not there", () => {
 		const actions = rowActions(item(), words, on, false);
 		expect(actions.menu.map((m) => m.id)).toEqual([
-			"select",
 			"categorize",
+			"select",
 			"delete",
 		]);
 		expect(actions.leading).toBeUndefined();
@@ -70,5 +71,21 @@ describe("rowActions", () => {
 		expect(rowActions(item({ locked: true }), words, on, true).menu).toEqual(
 			[],
 		);
+	});
+
+	it("puts Make recurring after Categorize for your own plain expense", () => {
+		const actions = rowActions(
+			item(),
+			words,
+			{ ...on, makeRecurring: none },
+			true,
+		);
+		expect(actions.menu.map((m) => m.id)).toEqual([
+			"edit",
+			"categorize",
+			"make-recurring",
+			"select",
+			"delete",
+		]);
 	});
 });

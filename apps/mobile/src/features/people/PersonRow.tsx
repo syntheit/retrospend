@@ -5,8 +5,10 @@ import { dayDate } from "@/lib/days";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
 import { ListRow } from "@/ui/List";
+import { RowMenu } from "@/ui/RowMenu";
 import { StatusText } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
+import type { MenuItem } from "@/ui/types";
 import { NetAmount, useNetText } from "./NetAmount";
 import { agoOf, daysSince } from "./relative";
 import type { PersonSummary } from "./source";
@@ -40,11 +42,14 @@ export function PersonRow({
 	home,
 	onPress,
 	selected,
+	menu,
 }: {
 	summary: PersonSummary;
 	home: string;
 	onPress: () => void;
 	selected?: boolean;
+	/** The long-press menu (the person's actions); none, no menu. */
+	menu?: MenuItem[];
 }) {
 	const t = useTranslations("mobile.people");
 	const tp = useTranslations("mobile.person");
@@ -76,7 +81,8 @@ export function PersonRow({
 	const last = summary.lastShared;
 	const when = last ? ago(last.date) : null;
 
-	return (
+	const holds = menu !== undefined && menu.length > 0;
+	const row = (
 		<ListRow
 			accessibilityLabel={[
 				person.name,
@@ -99,7 +105,7 @@ export function PersonRow({
 				)
 			}
 			lead={face ? <Avatar face={face} size="row" /> : null}
-			onPress={onPress}
+			onPress={holds ? undefined : onPress}
 			selected={selected}
 			sub={
 				<View style={{ gap: space[1] }}>
@@ -123,5 +129,11 @@ export function PersonRow({
 			}
 			title={person.name}
 		/>
+	);
+	if (!holds) return row;
+	return (
+		<RowMenu items={menu} onPress={onPress}>
+			{row}
+		</RowMenu>
 	);
 }
