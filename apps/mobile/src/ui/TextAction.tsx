@@ -23,6 +23,7 @@ export function TextAction({
 	inset,
 	accessibilityLabel,
 	link,
+	testID,
 }: {
 	label: string;
 	onPress: () => void;
@@ -34,6 +35,8 @@ export function TextAction({
 	accessibilityLabel?: string;
 	/** Opens a page outside the app: read out as a link, not a button. */
 	link?: boolean;
+	/** The stable id the Maestro flows find it by (src/lib/testIds.ts). */
+	testID?: string;
 }) {
 	const { color, radius, size, space } = useTheme();
 	return (
@@ -43,6 +46,7 @@ export function TextAction({
 			accessibilityState={{ disabled: !!disabled }}
 			disabled={disabled}
 			onPress={onPress}
+			testID={testID}
 			style={({ pressed }) => ({
 				minHeight: size.touchMin.phone,
 				justifyContent: "center",

@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
+import { TEST_IDS } from "@/lib/testIds";
 import { useTheme } from "@/theme";
 import { tabBarFootprint } from "./tabBarMetrics";
 import { Text } from "./Text";
@@ -172,6 +173,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 						}}
 					>
 						<Text
+							testID={TEST_IDS.toast.message}
 							style={{
 								flex: 1,
 								color: toastColors(color).text,
@@ -183,6 +185,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 						{current.undo ? (
 							<Pressable
 								accessibilityRole="button"
+								testID={TEST_IDS.toast.undo}
 								onPress={() => {
 									current.undo?.onUndo();
 									dismiss();

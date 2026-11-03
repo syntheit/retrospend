@@ -51,6 +51,7 @@ export function TextField({
 	onTypingChange,
 	bare,
 	align,
+	testID,
 }: {
 	label: string;
 	value: string;
@@ -93,6 +94,8 @@ export function TextField({
 	bare?: boolean;
 	/** Centers the words, for the composer's title. */
 	align?: "center";
+	/** The stable id the Maestro flows find it by (src/lib/testIds.ts). */
+	testID?: string;
 }) {
 	const theme = useTheme();
 	const { color, radius, size, space } = theme;
@@ -162,6 +165,7 @@ export function TextField({
 							? { paddingVertical: space[2], textAlignVertical: "top" }
 							: null,
 					]}
+					testID={testID}
 					textContentType={textContentType}
 					value={value}
 				/>

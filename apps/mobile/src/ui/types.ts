@@ -53,6 +53,8 @@ export interface MenuProps {
 	label: string;
 	/** What a screen reader says when it differs from the text ("Currency, ARS"). */
 	accessibilityLabel?: string;
+	/** The stable id of the trigger (src/lib/testIds.ts). */
+	testID?: string;
 	items: MenuItem[];
 	/**
 	 * Draws the trigger as a filter chip with a chevron (Activity and Insights
@@ -185,6 +187,8 @@ export interface ButtonProps {
 	label: string;
 	/** What a screen reader says when it differs from the text ("Currency, ARS"). */
 	accessibilityLabel?: string;
+	/** The stable id the Maestro flows find it by (src/lib/testIds.ts). */
+	testID?: string;
 	onPress?: () => void;
 	/**
 	 * Filled is the one primary action on a screen; outlined is the rest;

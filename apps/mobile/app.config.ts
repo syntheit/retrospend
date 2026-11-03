@@ -8,13 +8,17 @@ import type { ExpoConfig } from "expo/config";
 export const APP_LOCALES = ["en", "es", "es-AR", "ru", "pt-BR", "fr", "de"];
 
 const DEV_PROFILES = ["development", "simulator"];
+// Maestro builds (maestro-plan.md 2.2): the only profile that may carry the
+// test-only sign-in link (EXPO_PUBLIC_E2E), and the dev variables too.
+const E2E_PROFILE = "e2e";
 
 /**
  * Metro bakes every EXPO_PUBLIC_* value into the JS bundle, and reads them
  * from apps/mobile/.env* too. The dev auto sign-in (a server, an email and a
  * password) and the gallery flag must never reach a release bundle, so the
  * config refuses to build with them unless the build says it is a dev or
- * simulator build (RETROSPEND_BUILD_PROFILE=development|simulator).
+ * simulator build (RETROSPEND_BUILD_PROFILE=development|simulator). The
+ * test-only sign-in link (EXPO_PUBLIC_E2E) is stricter: only the e2e profile.
  */
 export function assertBuildProfile(
 	env: Record<string, string | undefined>,
@@ -25,9 +29,18 @@ export function assertBuildProfile(
 			env[name],
 	);
 	const profile = env.RETROSPEND_BUILD_PROFILE ?? "";
-	if (dev.length > 0 && !DEV_PROFILES.includes(profile)) {
+	if (
+		dev.length > 0 &&
+		!DEV_PROFILES.includes(profile) &&
+		profile !== E2E_PROFILE
+	) {
 		throw new Error(
 			`${dev.join(", ")} must not be set in a release build. Unset them, or build with RETROSPEND_BUILD_PROFILE=development or simulator.`,
+		);
+	}
+	if (env.EXPO_PUBLIC_E2E && profile !== E2E_PROFILE) {
+		throw new Error(
+			"EXPO_PUBLIC_E2E must not be set in a release build. Unset it, or build with RETROSPEND_BUILD_PROFILE=e2e.",
 		);
 	}
 }

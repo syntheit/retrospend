@@ -412,6 +412,7 @@ export function ListRow({
 	selected,
 	pickState,
 	accessibilityLabel,
+	testID,
 }: {
 	children?: ReactNode;
 	/** A tile, a face or a cover at the start. */
@@ -428,6 +429,8 @@ export function ListRow({
 	/** While expenses are picked: a row that cannot join is disabled, the others are checkboxes. */
 	pickState?: { checked: boolean; enabled: boolean };
 	accessibilityLabel?: string;
+	/** The stable id the Maestro flows find it by (src/lib/testIds.ts rowId). */
+	testID?: string;
 }) {
 	const { color, size, space } = useTheme();
 	const inGroup = useInGroup();
@@ -448,6 +451,7 @@ export function ListRow({
 			disabled={!onPress}
 			onLongPress={onLongPress}
 			onPress={onPress}
+			testID={testID}
 			style={({ pressed }) => ({
 				minHeight: size.row.phone,
 				flexDirection: "row",

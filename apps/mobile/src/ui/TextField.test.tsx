@@ -65,4 +65,14 @@ describe("TextField autofill", () => {
 		expect(props.importantForAutofill).toBe("auto");
 		expect(props.returnKeyType).toBe("done");
 	});
+
+	it("passes its test id to the native input, where Maestro looks", () => {
+		const props = input({
+			label: "Email",
+			value: "",
+			onChangeText: jest.fn(),
+			testID: "signIn.email",
+		});
+		expect(props.testID).toBe("signIn.email");
+	});
 });

@@ -7,6 +7,7 @@ import {
 	Toggle,
 } from "@expo/ui/swift-ui";
 import {
+	accessibilityIdentifier,
 	accessibilityLabel as a11yLabel,
 	background,
 	buttonStyle,
@@ -207,6 +208,7 @@ function HeadingLabel({ label }: { label: string }) {
 export function Menu({
 	label,
 	accessibilityLabel,
+	testID,
 	items,
 	chip,
 	active = false,
@@ -241,6 +243,7 @@ export function Menu({
 							buttonStyle("plain"),
 							menuIndicator("hidden"),
 							...(accessibilityLabel ? [a11yLabel(accessibilityLabel)] : []),
+							...(testID ? [accessibilityIdentifier(testID)] : []),
 						]}
 					>
 						{items.map((item) => (
@@ -297,6 +300,7 @@ export function Menu({
 					...(accessibilityLabel || icon || sortIcon
 						? [a11yLabel(accessibilityLabel ?? label)]
 						: []),
+					...(testID ? [accessibilityIdentifier(testID)] : []),
 				]}
 			>
 				{items.map((item) => (

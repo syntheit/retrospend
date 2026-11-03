@@ -45,6 +45,10 @@ const DevAutoSignIn: ComponentType | null = process.env.EXPO_PUBLIC_DEV_SERVER
 	? require("@/dev/DevAutoSignIn").DevAutoSignIn
 	: null;
 
+// The same for the test-only sign-in link, in the e2e build profile only.
+const E2eLink: ComponentType | null =
+	process.env.EXPO_PUBLIC_E2E === "1" ? require("@/dev/E2eLink").E2eLink : null;
+
 // Records crashes and unhandled promise rejections into the local ring. Nothing
 // leaves the phone unless the person turns on error reports (Settings).
 installErrorHandlers(getErrorLog());
@@ -143,6 +147,7 @@ export default function RootLayout() {
 													<ErrorReportsFlusher />
 													<AlertHost />
 													{DevAutoSignIn ? <DevAutoSignIn /> : null}
+													{E2eLink ? <E2eLink /> : null}
 												</FeedbackProvider>
 											</ToastProvider>
 										</PushProvider>

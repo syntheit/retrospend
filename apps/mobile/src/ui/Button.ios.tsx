@@ -1,6 +1,7 @@
 import { Host } from "@expo/ui";
 import { HStack, Image, Button as SwiftButton, Text } from "@expo/ui/swift-ui";
 import {
+	accessibilityIdentifier,
 	accessibilityLabel as a11yLabel,
 	background,
 	buttonStyle,
@@ -152,6 +153,7 @@ function KitLabel({
 export function Button({
 	label,
 	accessibilityLabel,
+	testID,
 	onPress,
 	variant = "filled",
 	size = "regular",
@@ -171,6 +173,7 @@ export function Button({
 					buttonStyle(BUTTON_STYLE[variant]),
 					...(fill ? [frame({ maxWidth: Infinity })] : []),
 					...(accessibilityLabel ? [a11yLabel(accessibilityLabel)] : []),
+					...(testID ? [accessibilityIdentifier(testID)] : []),
 					...(disabled ? [disabledModifier(true)] : []),
 				]}
 				onPress={onPress}
@@ -212,6 +215,7 @@ export function Button({
 					// The system label scales on its own; stop it where the kit's does.
 					dynamicTypeSize({ max: CHROME_DYNAMIC_TYPE }),
 					...(accessibilityLabel ? [a11yLabel(accessibilityLabel)] : []),
+					...(testID ? [accessibilityIdentifier(testID)] : []),
 					...(disabled ? [disabledModifier(true)] : []),
 				]}
 				onPress={onPress}
