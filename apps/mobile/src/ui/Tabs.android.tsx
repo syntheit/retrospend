@@ -88,19 +88,18 @@ export function Tabs() {
 		: keyboard || searching
 			? 0
 			: insets.bottom + tabBarFootprint(theme);
-	// The sidebar adds Projects and Settings; the rail keeps the five.
-	const side: FloatingTab[] =
-		navigation === "sidebar"
-			? [
-					...tabs.slice(0, 4),
-					{ name: "people", label: t("peopleSegment"), glyph: "Users" },
-					{ name: "projects", label: t("projects"), glyph: "Folder" },
-				]
-			: tabs;
-	const footer: FloatingTab[] =
-		navigation === "sidebar"
-			? [{ name: "preferences", label: ts("title"), glyph: "Settings" }]
-			: [];
+	// A tablet lists all six destinations and Settings at the bottom, in the
+	// sidebar and in the rail alike; the phone bar keeps its five.
+	const side: FloatingTab[] = wide
+		? [
+				...tabs.slice(0, 4),
+				{ name: "people", label: t("peopleSegment"), glyph: "Users" },
+				{ name: "projects", label: t("projects"), glyph: "Folder" },
+			]
+		: tabs;
+	const footer: FloatingTab[] = wide
+		? [{ name: "preferences", label: ts("title"), glyph: "Settings" }]
+		: [];
 	const declared = [...side, ...footer];
 
 	return (
