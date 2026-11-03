@@ -123,7 +123,10 @@ export const RESOURCE_GROUPS: Readonly<Record<string, readonly ApiGroup[]>> = {
 	// Data and admin
 	admin_ai_settings: ["admin", "settings"],
 	admin_backup: ["admin"],
+	admin_guest_session: ["admin"],
 	admin_settings: ["admin", "settings", "platform"],
+	admin_shadow_profile: ["admin"],
+	admin_test_email: ["admin"],
 	admin_user: ["admin"],
 	export: ["exports"],
 	feedback: ["feedback", "admin"],

@@ -22,9 +22,13 @@ export type SettingsRoute =
 	| "admin"
 	| "admin-users"
 	| "invite-codes"
-	| "admin-invites"
 	| "admin-feedback"
-	| "admin-settings";
+	| "admin-settings"
+	| "admin-participants"
+	| "admin-ai-usage"
+	| "admin-server"
+	| "admin-audit"
+	| "admin-errors";
 
 /** The route of a settings page, inside the account sheet or pushed over the tabs. */
 export function settingsHref(page: SettingsRoute, inAccount: boolean): string {

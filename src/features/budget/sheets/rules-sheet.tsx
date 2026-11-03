@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { ActionMenu } from "~/components/actions/action-menu";
+import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import { Row, RowList, RowSub } from "~/components/rows/row";
 import { Button } from "~/components/ui/button";
 import { Sheet } from "~/components/ui/sheet";
@@ -39,6 +39,20 @@ export function RulesSheet({ open, onClose, month }: SheetProps) {
 	const name = (id: string) => m.byId.get(id)?.name ?? t("envelopeFallback");
 	const refresh = () => utils.envelope.rules.invalidate();
 
+	const handlersOf = (r: Rule, i: number) => ({
+		moveUp: () => move(i, -1),
+		moveDown: () => move(i, 1),
+		applyToMonth: () => setApplying(r),
+		remove: () => archive.mutateAsync({ id: r.id }).then(refresh),
+	});
+	const targetOf = (r: Rule, i: number) => ({
+		id: r.id,
+		name: r.name,
+		first: i === 0,
+		last: i === list.length - 1,
+		active: r.active,
+	});
+
 	const move = async (index: number, by: -1 | 1) => {
 		const ids = list.map((r) => r.id);
 		const [id] = ids.splice(index, 1);
@@ -65,48 +79,42 @@ export function RulesSheet({ open, onClose, month }: SheetProps) {
 					) : (
 						<RowList label={t("title")} variant="flat">
 							{list.map((r, i) => (
-								<Row
-									actions={
-										<ActionMenu
-											entity="incomeRule"
-											handlers={{
-												moveUp: () => move(i, -1),
-												moveDown: () => move(i, 1),
-												applyToMonth: () => setApplying(r),
-												remove: () =>
-													archive.mutateAsync({ id: r.id }).then(refresh),
-											}}
-											target={{
-												id: r.id,
-												name: r.name,
-												first: i === 0,
-												last: i === list.length - 1,
-												active: r.active,
-											}}
-										/>
-									}
-									end={
-										<Switch
-											aria-label={t("active", { name: r.name })}
-											checked={r.active}
-											onCheckedChange={(active) =>
-												void update
-													.mutateAsync({ id: r.id, active })
-													.then(refresh)
-											}
-										/>
-									}
+								<ActionArea
+									entity="incomeRule"
+									handlers={handlersOf(r, i)}
 									key={r.id}
-									sub={
-										<RowSub
-											parts={[
-												sentence(r, name(r.envelopeId)),
-												r.active ? null : t("paused"),
-											]}
-										/>
-									}
-									title={r.name}
-								/>
+									target={targetOf(r, i)}
+								>
+									<Row
+										actions={
+											<ActionMenu
+												entity="incomeRule"
+												handlers={handlersOf(r, i)}
+												target={targetOf(r, i)}
+											/>
+										}
+										end={
+											<Switch
+												aria-label={t("active", { name: r.name })}
+												checked={r.active}
+												onCheckedChange={(active) =>
+													void update
+														.mutateAsync({ id: r.id, active })
+														.then(refresh)
+												}
+											/>
+										}
+										sub={
+											<RowSub
+												parts={[
+													sentence(r, name(r.envelopeId)),
+													r.active ? null : t("paused"),
+												]}
+											/>
+										}
+										title={r.name}
+									/>
+								</ActionArea>
 							))}
 						</RowList>
 					)}

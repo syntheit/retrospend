@@ -2,7 +2,7 @@
 
 import { Laptop, Smartphone, Terminal } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { ActionMenu } from "~/components/actions/action-menu";
+import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import { IconTile, Row, RowSub } from "~/components/rows/row";
 import { useToast } from "~/components/ui/toast";
 import { api } from "~/trpc/react";
@@ -82,32 +82,34 @@ function DeviceRow({
 	const title = useDeviceNameText()(d);
 	const Icon =
 		d.kind === "mobile" ? Smartphone : d.kind === "device" ? Terminal : Laptop;
+	const handlers = d.current ? {} : { disconnect: onSignOut };
+	const target = { id: d.id, name: title };
 	return (
-		<Row
-			actions={
-				d.current ? undefined : (
-					<ActionMenu
-						entity="device"
-						handlers={{ disconnect: onSignOut }}
-						target={{ id: d.id, name: title }}
+		<ActionArea entity="device" handlers={handlers} target={target}>
+			<Row
+				actions={
+					d.current ? undefined : (
+						<ActionMenu entity="device" handlers={handlers} target={target} />
+					)
+				}
+				lead={<IconTile icon={Icon} />}
+				sub={
+					<RowSub
+						parts={[
+							t("lastUsed", { date: w.day(d.lastUsedAt) }),
+							t("signedIn", { date: w.day(d.createdAt) }),
+						]}
 					/>
-				)
-			}
-			lead={<IconTile icon={Icon} />}
-			sub={
-				<RowSub
-					parts={[
-						t("lastUsed", { date: w.day(d.lastUsedAt) }),
-						t("signedIn", { date: w.day(d.createdAt) }),
-					]}
-				/>
-			}
-			title={title}
-			titleEnd={
-				d.current ? (
-					<span className="text-fg-3 text-meta font-normal">{t("current")}</span>
-				) : undefined
-			}
-		/>
+				}
+				title={title}
+				titleEnd={
+					d.current ? (
+						<span className="text-fg-3 text-meta font-normal">
+							{t("current")}
+						</span>
+					) : undefined
+				}
+			/>
+		</ActionArea>
 	);
 }

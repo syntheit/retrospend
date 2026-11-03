@@ -36,6 +36,7 @@ import "@/push/background";
 import { PushProvider } from "@/push/PushProvider";
 import { navigationTheme, themeFor, useTheme } from "@/theme";
 import { AlertHost } from "@/ui/alert";
+import { FontScaleProvider } from "@/ui/fontScale";
 import { ToastProvider } from "@/ui/Toast";
 
 // Metro folds the inlined env var, so a build without it leaves the dev
@@ -75,12 +76,15 @@ function Routes() {
 				<Stack.Protected guard={signedIn}>
 					<Stack.Screen name="(tabs)" options={tabsScreenOptions(back)} />
 					{settingsScreens}
-					<Stack.Screen name="account" options={accountSheetOptions(
+					<Stack.Screen
+						name="account"
+						options={accountSheetOptions(
 							windowHeight,
 							topInset,
 							Platform.OS === "android",
 							color.bg,
-						)} />
+						)}
+					/>
 				</Stack.Protected>
 				<Stack.Protected guard={connected && !signedIn}>
 					<Stack.Screen name="sign-in" />
@@ -125,29 +129,31 @@ export default function RootLayout() {
 
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
-			<SafeAreaProvider>
-				<AppIntlProvider>
-					<ThemeProvider value={navigationTheme(scheme)}>
-						<ServerConnectionProvider>
-							<SessionProvider>
-								<MoneyPrefsProvider>
-									<PushProvider>
-										<ToastProvider>
-											<FeedbackProvider>
-												<Routes />
-												<ErrorReportsFlusher />
-												<AlertHost />
-												{DevAutoSignIn ? <DevAutoSignIn /> : null}
-											</FeedbackProvider>
-										</ToastProvider>
-									</PushProvider>
-								</MoneyPrefsProvider>
-							</SessionProvider>
-						</ServerConnectionProvider>
-						<StatusBar style="auto" />
-					</ThemeProvider>
-				</AppIntlProvider>
-			</SafeAreaProvider>
+			<FontScaleProvider>
+				<SafeAreaProvider>
+					<AppIntlProvider>
+						<ThemeProvider value={navigationTheme(scheme)}>
+							<ServerConnectionProvider>
+								<SessionProvider>
+									<MoneyPrefsProvider>
+										<PushProvider>
+											<ToastProvider>
+												<FeedbackProvider>
+													<Routes />
+													<ErrorReportsFlusher />
+													<AlertHost />
+													{DevAutoSignIn ? <DevAutoSignIn /> : null}
+												</FeedbackProvider>
+											</ToastProvider>
+										</PushProvider>
+									</MoneyPrefsProvider>
+								</SessionProvider>
+							</ServerConnectionProvider>
+							<StatusBar style="auto" />
+						</ThemeProvider>
+					</AppIntlProvider>
+				</SafeAreaProvider>
+			</FontScaleProvider>
 		</GestureHandlerRootView>
 	);
 }

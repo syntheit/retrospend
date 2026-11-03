@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useState } from "react";
+import { memo, useCallback, useRef, useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { LARGE_TITLE } from "@/layout/pushedHeader";
@@ -11,9 +11,9 @@ import { menuOf } from "@/ui/actionRegistry";
 import { Chip } from "@/ui/Chip";
 import { CurrencyFlag } from "@/ui/CurrencyFlag";
 import { EmptyState } from "@/ui/EmptyState";
-import { ListGroup, ListRow, StaleNote } from "@/ui/List";
+import { ListGroupItem, ListRow, StaleNote } from "@/ui/List";
 import { RowMenu } from "@/ui/RowMenu";
-import { Screen } from "@/ui/Screen";
+import { Screen, ScreenList } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import { ConversionLines } from "./ConvertBlock";
@@ -75,7 +75,7 @@ function QuickConvert({ query, home }: { query: ConvQuery; home: string }) {
 	);
 }
 
-function CurrencyLine({
+const CurrencyLine = memo(function CurrencyLine({
 	row,
 	table,
 	busy,
@@ -85,8 +85,8 @@ function CurrencyLine({
 	row: CurrencyRow;
 	table: RateTable;
 	busy: boolean;
-	onOpen: () => void;
-	onFavorite: (on: boolean) => void;
+	onOpen: (code: string) => void;
+	onFavorite: (row: CurrencyRow, on: boolean) => void;
 }) {
 	const t = useTranslations("mobile.currencies");
 	const name = useCurrencyName();
@@ -102,13 +102,13 @@ function CurrencyLine({
 			history: t("menu.history"),
 		},
 		{
-			convert: onOpen,
-			favorite: () => onFavorite(!row.favorite),
+			convert: () => onOpen(row.code),
+			favorite: () => onFavorite(row, !row.favorite),
 			history: () => openHistory(row.code, table.home),
 		},
 	);
 	return (
-		<RowMenu items={items} onPress={onOpen} title={row.code}>
+		<RowMenu items={items} onPress={() => onOpen(row.code)} title={row.code}>
 			<ListRow
 				end={
 					price && row.defaultType ? (
@@ -130,7 +130,11 @@ function CurrencyLine({
 							gap: space[3],
 						}}
 					>
-						<StarButton busy={busy} onToggle={onFavorite} row={row} />
+						<StarButton
+							busy={busy}
+							onToggle={(on) => onFavorite(row, on)}
+							row={row}
+						/>
 						<CurrencyFlag code={row.code} />
 					</View>
 				}
@@ -147,7 +151,7 @@ function CurrencyLine({
 			/>
 		</RowMenu>
 	);
-}
+});
 
 /** The line under the title: the shared unit, how fresh the rates are, the default type. */
 function TableNote({ table }: { table: RateTable }) {
@@ -195,6 +199,15 @@ export function CurrenciesScreen() {
 	const [query, setQuery] = useState("");
 	const [filter, setFilter] = useState<CurrencyFilter>("all");
 	const [open, setOpen] = useState<string | null>(null);
+	// The rows get callbacks that never change, so a row renders again only
+	// when its own currency or the table changes.
+	const favorite = useRef(setFavorite);
+	favorite.current = setFavorite;
+	const onFavorite = useCallback(
+		(row: CurrencyRow, on: boolean) => void favorite.current(row, on),
+		[],
+	);
+	const onOpen = useCallback((code: string) => setOpen(code), []);
 
 	const table = state.status === "ready" ? state.data : null;
 	const conv = table
@@ -264,61 +277,67 @@ export function CurrenciesScreen() {
 	return (
 		<View style={{ flex: 1, backgroundColor: color.bg }}>
 			{header}
-			<Screen flush onRefresh={() => void reload()} refreshing={false}>
-				<StaleNote since={state.status === "ready" ? state.staleSince : null} />
-				<TableNote table={table} />
-				<View
-					style={{
-						flexDirection: "row",
-						flexWrap: "wrap",
-						gap: space[2],
-						paddingHorizontal: space[4],
-						paddingVertical: space[3],
-					}}
-				>
-					{TOGGLE_FILTERS.map((id) => (
-						<Chip
-							key={id}
-							label={t(`filter.${id}`)}
-							onPress={() => setFilter(filter === id ? "all" : id)}
-							selected={filter === id}
+			<ScreenList
+				data={rows}
+				keyExtractor={(item) => item.code}
+				ListEmptyComponent={empty}
+				ListHeaderComponent={
+					<>
+						<StaleNote
+							since={state.status === "ready" ? state.staleSince : null}
 						/>
-					))}
-				</View>
-				{conv ? <QuickConvert home={table.home} query={conv} /> : null}
-				{missing.length ? (
-					<Text
-						style={{
-							paddingHorizontal: space[4],
-							paddingBottom: space[3],
-						}}
-						tone="attention"
-						variant="small"
-					>
-						{t("missing", {
-							codes: missing.map((m) => m.code).join(", "),
-							names: usedBy.join(", "),
-							count: usedBy.length,
-						})}
-					</Text>
-				) : null}
-				{rows.length === 0 ? (
-					empty
-				) : (
-					<ListGroup>
-						{rows.map((item) => (
-							<CurrencyLine
-								busy={pending}
-								key={item.code}
-								onFavorite={(on) => void setFavorite(item, on)}
-								onOpen={() => setOpen(item.code)}
-								row={item}
-								table={table}
-							/>
-						))}
-					</ListGroup>
+						<TableNote table={table} />
+						<View
+							style={{
+								flexDirection: "row",
+								flexWrap: "wrap",
+								gap: space[2],
+								paddingHorizontal: space[4],
+								paddingVertical: space[3],
+							}}
+						>
+							{TOGGLE_FILTERS.map((id) => (
+								<Chip
+									key={id}
+									label={t(`filter.${id}`)}
+									onPress={() => setFilter(filter === id ? "all" : id)}
+									selected={filter === id}
+								/>
+							))}
+						</View>
+						{conv ? <QuickConvert home={table.home} query={conv} /> : null}
+						{missing.length ? (
+							<Text
+								style={{
+									paddingHorizontal: space[4],
+									paddingBottom: space[3],
+								}}
+								tone="attention"
+								variant="small"
+							>
+								{t("missing", {
+									codes: missing.map((m) => m.code).join(", "),
+									names: usedBy.join(", "),
+									count: usedBy.length,
+								})}
+							</Text>
+						) : null}
+					</>
+				}
+				onRefresh={() => void reload()}
+				refreshing={false}
+				renderItem={({ item, index }) => (
+					<ListGroupItem count={rows.length} index={index}>
+						<CurrencyLine
+							busy={pending}
+							onFavorite={onFavorite}
+							onOpen={onOpen}
+							row={item}
+							table={table}
+						/>
+					</ListGroupItem>
 				)}
-			</Screen>
+			/>
 			{openRow ? (
 				<CurrencySheet
 					busy={pending}

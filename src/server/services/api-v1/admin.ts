@@ -350,3 +350,48 @@ export async function startBackup(caller: LedgerCaller) {
 		throw error;
 	}
 }
+
+// ── participants ────────────────────────────────────────────────────────
+
+export async function listParticipants(caller: LedgerCaller) {
+	const t = await admin(caller);
+	const [shadows, guests] = await Promise.all([
+		t.listShadowProfiles(),
+		t.listGuestSessions(),
+	]);
+	return {
+		shadowProfiles: shadows.map((p) => ({
+			...p,
+			claimedAt: p.claimedAt ? p.claimedAt.toISOString() : null,
+			createdAt: p.createdAt.toISOString(),
+		})),
+		guestSessions: guests.map((g) => ({
+			...g,
+			createdAt: g.createdAt.toISOString(),
+			lastActiveAt: g.lastActiveAt.toISOString(),
+		})),
+	};
+}
+
+export async function deleteShadowProfile(caller: LedgerCaller, id: string) {
+	await (await admin(caller)).deleteShadowProfile({ id });
+	return ok;
+}
+
+export async function deleteGuestSession(caller: LedgerCaller, id: string) {
+	await (await admin(caller)).deleteGuestSession({ id });
+	return ok;
+}
+
+/** To the admin's own address only: this takes no recipient. */
+export async function sendTestEmail(caller: LedgerCaller) {
+	const t = await admin(caller);
+	const me = await db.user.findUnique({
+		where: { id: caller.principal.userId },
+		select: { email: true },
+	});
+	if (!me)
+		throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+	await t.sendTestEmail({ email: me.email, type: "basic" });
+	return ok;
+}

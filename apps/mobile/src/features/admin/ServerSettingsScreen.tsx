@@ -1,5 +1,6 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { useTranslations } from "use-intl";
+import { useState } from "react";
+import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { GroupItem, ListGroup, ListRow } from "@/ui/List";
@@ -8,6 +9,7 @@ import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
 import { Block, PageState, PickerRow, SettingsPage } from "../settings/parts";
 import { importJobChoices } from "./rules";
+import { quotaChoices } from "./serverRules";
 import { detailOf, useAdminRead } from "./useAdminRead";
 import { useServerSettings } from "./useServerSettings";
 
@@ -17,14 +19,17 @@ type Privacy = "minimal" | "anonymized" | "full";
 /**
  * Server settings: the feature switches, the audit log's detail, how many
  * imports run at once, and which AI the server uses. Every change saves at
- * once and says so in a toast. Sign-up and invite codes are on their own page;
- * email, token quotas and backups stay on the web.
+ * once and says so in a toast. Email has its own switch and a test message to
+ * your own address; AI has the token quotas. Sign-up and invite codes are on
+ * their own page, backups on the server page.
  */
 export function ServerSettingsScreen() {
 	const t = useTranslations("mobile.admin.settings");
 	const ta = useTranslations("mobile.admin");
 	const { api } = useSession();
 	const toast = useToast();
+	const format = useFormatter();
+	const [testing, setTesting] = useState(false);
 	const server = useServerSettings();
 	const ai = useAdminRead((client) => client.admin.getAiSettings());
 
@@ -40,6 +45,21 @@ export function ServerSettingsScreen() {
 		} catch (error) {
 			toast.show({ message: detailOf(error) ?? ta("saveError") });
 			await ai.reload();
+		}
+	}
+
+	async function sendTest() {
+		if (!api || testing) return;
+		setTesting(true);
+		try {
+			await api.admin.sendTestEmail(undefined, {
+				context: { idempotencyKey: newClientId() },
+			});
+			toast.show({ message: t("testSent") });
+		} catch (error) {
+			toast.show({ message: detailOf(error) ?? t("testFailed") });
+		} finally {
+			setTesting(false);
 		}
 	}
 
@@ -79,6 +99,22 @@ export function ServerSettingsScreen() {
 							value={s.webhooksAllowPrivateTargets}
 						/>
 					</GroupItem>
+				</ListGroup>
+			</Block>
+			<Block title={t("email")}>
+				<ListGroup form>
+					<GroupItem>
+						<SwitchRow
+							detail={t("emailDetail")}
+							label={t("emailSwitch")}
+							onChange={(on) => void server.save({ enableEmail: on })}
+							value={s.enableEmail}
+						/>
+					</GroupItem>
+					<ListRow
+						onPress={testing ? undefined : () => void sendTest()}
+						title={testing ? t("testSending") : t("testSend")}
+					/>
 				</ListGroup>
 			</Block>
 			<Block title={t("limits")}>
@@ -133,6 +169,25 @@ export function ServerSettingsScreen() {
 						)}
 						value={a.externalAiAccessMode}
 					/>
+
+					{(
+						[
+							["monthlyAiTokenQuota", "quotaTotal"],
+							["monthlyLocalAiTokenQuota", "quotaLocal"],
+							["monthlyExternalAiTokenQuota", "quotaExternal"],
+						] as const
+					).map(([field, label]) => (
+						<PickerRow
+							key={field}
+							label={t(label)}
+							onChange={(value) => void saveAi({ [field]: Number(value) })}
+							options={quotaChoices(a[field]).map((n) => ({
+								value: String(n),
+								label: n === 0 ? t("quotaNone") : format.number(n),
+							}))}
+							value={String(a[field])}
+						/>
+					))}
 					<ListRow
 						end={
 							<Text tone="fg2">

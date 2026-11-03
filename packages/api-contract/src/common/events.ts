@@ -174,7 +174,10 @@ export const EVENT_TYPES = [
 	// G5 data and admin (S3c, S3d)
 	"admin_ai_settings.updated",
 	"admin_backup.started",
+	"admin_guest_session.deleted",
 	"admin_settings.updated",
+	"admin_shadow_profile.deleted",
+	"admin_test_email.sent",
 	"admin_user.ai_access_set",
 	"admin_user.avatar_removed",
 	"admin_user.deleted",

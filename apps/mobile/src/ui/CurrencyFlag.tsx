@@ -3,7 +3,6 @@ import { memo } from "react";
 import { View } from "react-native";
 import { type JsxAST, parse, SvgAst } from "react-native-svg";
 import { useTheme } from "@/theme";
-import { FLAGS } from "./flags.generated";
 import { Glyph } from "./Glyph";
 
 // A flag's drawing is parsed once per country for the whole run. Rendering
@@ -11,10 +10,20 @@ import { Glyph } from "./Glyph";
 // rendered rows (about 20 at first paint, more as it scrolls).
 const parsed = new Map<string, JsxAST | null>();
 
+type Flags = Record<string, string>;
+let flags: Flags | undefined;
+
+// The drawings are about 230 KB of XML: they load on the first flag drawn,
+// not when the bundle starts.
+function flagXml(country: string): string | undefined {
+	flags ??= (require("./flags.generated") as { FLAGS: Flags }).FLAGS;
+	return flags[country];
+}
+
 function flagAst(country: string): JsxAST | null {
 	let ast = parsed.get(country);
 	if (ast === undefined) {
-		const xml = FLAGS[country];
+		const xml = flagXml(country);
 		ast = xml ? parse(xml) : null;
 		parsed.set(country, ast);
 	}

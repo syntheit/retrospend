@@ -6,6 +6,7 @@ import type * as React from "react";
 
 import { Button } from "~/components/ui/button";
 import { Tip } from "~/components/ui/tooltip";
+import { useHasFinePointer } from "~/hooks/use-mobile";
 import {
 	ContextMenu,
 	ContextMenuContent,
@@ -143,20 +144,27 @@ export function ActionMenu<E extends Entity>(
 }
 
 /**
- * ActionArea wraps a row: right-click (fine pointers) and long press
- * (touch) open the same menu as its ⋯ button, and the menu's letter hints
- * work while the row has focus. The row itself stays the child element.
+ * ActionArea wraps a row: right-click and the keyboard (Shift+F10, the Menu
+ * key) open the same menu as its ⋯ button, and the menu's letter hints work
+ * while the row has focus. Devices with no fine pointer keep only the ⋯
+ * button: the trigger is disabled there, so a long press is left alone. The
+ * row itself stays the child element.
  */
 export function ActionArea<E extends Entity>({
 	children,
 	...props
 }: EntityActionProps<E> & { children: React.ReactElement }) {
 	const actions = useEntityActions(props);
+	const fine = useHasFinePointer();
 	if (actions.entries.length === 0) return children;
 	return (
 		<>
 			<ContextMenu>
-				<ContextMenuTrigger asChild onKeyDown={actions.onRowKeyDown}>
+				<ContextMenuTrigger
+					asChild
+					disabled={!fine}
+					onKeyDown={actions.onRowKeyDown}
+				>
 					{children}
 				</ContextMenuTrigger>
 				<ContextMenuContent>
