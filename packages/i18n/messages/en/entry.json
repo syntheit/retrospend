@@ -297,5 +297,21 @@
 		"expense": "Expense",
 		"income": "Income",
 		"transfer": "Transfer"
+	},
+	"detail": {
+		"edit": "Edit",
+		"close": "Close",
+		"back": "Back",
+		"home": "In {currency}",
+		"rate": "Rate",
+		"location": "Place",
+		"note": "Note",
+		"splitWith": "Split with",
+		"recurring": "Recurring expense",
+		"recurringOpen": "Open",
+		"spread": "Spread over",
+		"months": "{count, plural, one {# month} other {# months}}",
+		"hidden": "Left out of reports",
+		"yes": "Yes"
 	}
 }

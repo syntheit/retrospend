@@ -3,6 +3,7 @@
 import { toMinorUnits } from "@retrospend/domain/money";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { type EntrySheets, EntrySheetsContext } from "./context";
+import { usePaneRoute } from "./detail/pane-route";
 import { type EntryActions, EntryActionsContext } from "./entry-actions";
 import { EntryFrame } from "./entry-frame";
 import { ExpenseSheet } from "./expense/expense-sheet";
@@ -31,6 +32,7 @@ export function EntrySheetsProvider({ children }: { children: ReactNode }) {
 		[],
 	);
 	const close = useCallback(() => setCurrent(null), []);
+	const pane = usePaneRoute();
 	const sheets = useMemo<EntrySheets>(() => ({ open, close }), [open, close]);
 
 	const actions = useMemo<EntryActions>(
@@ -43,8 +45,8 @@ export function EntrySheetsProvider({ children }: { children: ReactNode }) {
 					projectName: o?.projectName,
 					projectCurrency: o?.projectDefaultCurrency,
 				}),
-			openExpense: (id) => open({ kind: "expense", mode: "edit", id }),
-			openSharedExpense: (id) => open({ kind: "shared", id }),
+			openExpense: (id) => pane.open({ kind: "personal", id }),
+			openSharedExpense: (id) => pane.open({ kind: "shared", id }),
 			openDuplicateExpense: (s) =>
 				open({
 					kind: "expense",
@@ -59,10 +61,10 @@ export function EntrySheetsProvider({ children }: { children: ReactNode }) {
 						location: s.location,
 					},
 				}),
-			expenseId: null,
+			expenseId: pane.target?.id ?? null,
 			isOpen: current !== null,
 		}),
-		[open, current],
+		[open, current, pane],
 	);
 
 	return (

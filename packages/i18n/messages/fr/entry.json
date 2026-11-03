@@ -297,5 +297,21 @@
 		"expense": "Dépense",
 		"income": "Revenu",
 		"transfer": "Virement"
+	},
+	"detail": {
+		"edit": "Modifier",
+		"close": "Fermer",
+		"back": "Retour",
+		"home": "En {currency}",
+		"rate": "Taux",
+		"location": "Lieu",
+		"note": "Note",
+		"splitWith": "Partagé avec",
+		"recurring": "Dépense récurrente",
+		"recurringOpen": "Ouvrir",
+		"spread": "Réparti sur",
+		"months": "{count, plural, one {# mois} other {# mois}}",
+		"hidden": "Exclu des rapports",
+		"yes": "Oui"
 	}
 }

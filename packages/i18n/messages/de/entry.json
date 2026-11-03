@@ -297,5 +297,21 @@
 		"expense": "Ausgabe",
 		"income": "Einnahme",
 		"transfer": "Umbuchung"
+	},
+	"detail": {
+		"edit": "Bearbeiten",
+		"close": "Schließen",
+		"back": "Zurück",
+		"home": "In {currency}",
+		"rate": "Kurs",
+		"location": "Ort",
+		"note": "Notiz",
+		"splitWith": "Geteilt mit",
+		"recurring": "Wiederkehrende Ausgabe",
+		"recurringOpen": "Öffnen",
+		"spread": "Verteilt über",
+		"months": "{count, plural, one {# Monat} other {# Monate}}",
+		"hidden": "Nicht in Berichten",
+		"yes": "Ja"
 	}
 }

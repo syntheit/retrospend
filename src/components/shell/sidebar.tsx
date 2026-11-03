@@ -1,8 +1,8 @@
 "use client";
 
-import { Search } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { PanelLeftClose, Search } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { type ReactNode, useCallback, useMemo } from "react";
 import { ActionArea } from "~/components/actions/action-menu";
 import type { ProjectTarget } from "~/components/actions/registry";
@@ -10,6 +10,7 @@ import type { ActionHandlers } from "~/components/actions/types";
 import { ProjectVisual } from "~/components/project/project-visual";
 import { Button } from "~/components/ui/button";
 import { Tip } from "~/components/ui/tooltip";
+import { useProjectActions } from "~/features/projects/use-project-actions";
 import { cn } from "~/lib/cn";
 import {
 	currentNav,
@@ -20,13 +21,14 @@ import {
 	projectHref,
 	TOOLS,
 } from "~/lib/nav";
-import { useProjectActions } from "~/features/projects/use-project-actions";
 import { api } from "~/trpc/react";
 import { AccountMenu } from "./account-menu";
 import { AddSplitButton } from "./add-button";
 import { SidebarLink } from "./nav-link";
 import { NotificationsButton } from "./notifications";
 import { useShellActions } from "./shell-context";
+import { SidebarRail } from "./sidebar-rail";
+import { sidebarTarget } from "./sidebar-target";
 
 /** Pinned projects for the sidebar; the same query Projects reads, so it is cached once. */
 export function usePinnedProjects() {
@@ -39,7 +41,7 @@ export function usePinnedProjects() {
 
 function GroupLabel({ children }: { children: string }) {
 	return (
-		<h2 className="px-3 pt-4 pb-1 font-medium text-fg-3 text-meta uppercase tracking-wider">
+		<h2 className="text-fg-3 text-meta px-3 pt-4 pb-1 font-medium tracking-wider uppercase">
 			{children}
 		</h2>
 	);
@@ -98,6 +100,8 @@ export function SidebarView({
 	account,
 	projectActions,
 	className,
+	rail = false,
+	onToggleRail,
 }: {
 	pathname: string;
 	pinned: PinnedItem[];
@@ -107,23 +111,39 @@ export function SidebarView({
 	/** What a pinned row's context menu can do (right-click, the menu key). */
 	projectActions?: ActionHandlers<ProjectTarget>;
 	className?: string;
+	/** Collapsed to a rail: icon over label, Add and the toggle on top. */
+	rail?: boolean;
+	onToggleRail?: () => void;
 }) {
 	const t = useTranslations("shell");
 	const { openPalette } = useShellActions();
 	const pinnedCurrent = pinned.find((p) => pathname === projectHref(p.id));
 	// One item is the current page: a pinned project wins over Projects.
 	const current = pinnedCurrent ? null : currentNav(pathname);
+	if (rail)
+		return (
+			<SidebarRail
+				account={account}
+				badges={badges}
+				bell={bell}
+				className={className}
+				current={current}
+				onToggleRail={onToggleRail}
+				pinned={pinned}
+				pinnedCurrentId={pinnedCurrent?.id}
+			/>
+		);
 	return (
 		<aside
 			aria-label={t("sidebar.label")}
 			className={cn(
-				"flex w-58 shrink-0 flex-col gap-1 overflow-y-auto border-line border-r bg-bg px-3 pt-4 pb-3",
+				"border-line bg-bg flex w-58 shrink-0 flex-col gap-1 overflow-y-auto border-r px-3 pt-4 pb-3",
 				className,
 			)}
 		>
 			<div className="flex items-center gap-2 px-2 pb-2">
-				<span aria-hidden="true" className="size-5 rounded-ctl bg-brand" />
-				<span className="flex-1 font-semibold text-fg text-section">
+				<span aria-hidden="true" className="rounded-ctl bg-brand size-5" />
+				<span className="text-fg text-section flex-1 font-semibold">
 					{t("brand")}
 				</span>
 				<Tip content={t("palette.trigger")}>
@@ -163,9 +183,9 @@ export function SidebarView({
 						{pinned.map((p) => {
 							const link = (
 								<SidebarLink
-									key={p.id}
 									current={p.id === pinnedCurrent?.id}
 									href={projectHref(p.id)}
+									key={p.id}
 									label={p.name}
 									lead={p.lead}
 								/>
@@ -189,35 +209,32 @@ export function SidebarView({
 				</>
 			)}
 			<div className="flex-1" />
+			{onToggleRail ? (
+				<Button
+					className="text-fg-2 justify-start"
+					kind="ghost"
+					onClick={onToggleRail}
+				>
+					<PanelLeftClose aria-hidden="true" />
+					{t("sidebar.collapse")}
+				</Button>
+			) : null}
 			{account}
 		</aside>
 	);
-}
-
-/** What a pinned project's menu needs from `project.list`; pinned projects are active. */
-function sidebarTarget(p: {
-	id: string;
-	name: string;
-	myRole: string | null;
-	_count: { participants: number };
-}): ProjectTarget & { archived: boolean; owner: boolean; editor: boolean } {
-	return {
-		id: p.id,
-		name: p.name,
-		solo: p._count.participants <= 1,
-		archived: false,
-		owner: p.myRole === "ORGANIZER",
-		editor: p.myRole === "ORGANIZER" || p.myRole === "EDITOR",
-	};
 }
 
 /** The sidebar on live data: pinned projects, the notifications bell, the account menu. */
 export function ShellSidebar({
 	badges,
 	className,
+	rail,
+	onToggleRail,
 }: {
 	badges?: NavBadges;
 	className?: string;
+	rail?: boolean;
+	onToggleRail?: () => void;
 }) {
 	const pathname = usePathname();
 	const router = useRouter();
@@ -247,7 +264,7 @@ export function ShellSidebar({
 		target: sidebarTarget(p),
 		lead: (
 			<ProjectVisual
-				className="size-4.5 shrink-0 rounded-ctl"
+				className="rounded-ctl size-4.5 shrink-0"
 				imagePath={p.imagePath}
 				projectName={p.name}
 				size="xs"
@@ -256,13 +273,15 @@ export function ShellSidebar({
 	}));
 	return (
 		<SidebarView
-			account={<AccountMenu />}
+			account={<AccountMenu compact={rail} />}
 			badges={badges}
 			bell={<NotificationsButton />}
 			className={className}
+			onToggleRail={onToggleRail}
 			pathname={pathname}
 			pinned={pinned}
 			projectActions={projectActions}
+			rail={rail}
 		/>
 	);
 }

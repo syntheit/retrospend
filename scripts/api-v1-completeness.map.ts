@@ -303,6 +303,8 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 		"POST /shared-expenses/{id}/delete/preview",
 	),
 	"entry.shared.delete.save": to("DELETE /shared-expenses/{id}"),
+	"entry.shared.restore.preview": to("POST /shared-expenses/undo/preview"),
+	"entry.shared.restore.save": to("POST /shared-expenses/undo"),
 	"entry.shared.revert.preview": to("POST /shared-expenses/undo/preview"),
 	"entry.shared.revert.save": to("POST /shared-expenses/undo"),
 	"entry.shared.update.preview": to("POST /shared-expenses/{id}/preview"),
@@ -342,6 +344,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 		"shared entries are part of GET /expenses",
 	),
 	"expense.listV2": to("GET /expenses"),
+	"expense.rowV2": to("GET /expenses/row"),
 	"expense.titleSuggestions": to("GET /expenses/title-suggestions"),
 	"expense.updateExpense": to("PUT /expenses/{id}"),
 

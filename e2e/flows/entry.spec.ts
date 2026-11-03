@@ -42,6 +42,10 @@ test("Entry: read view of someone else's expense, edit sheet for your own", asyn
 
 	// Her own personal expense opens the edit sheet, loaded and formatted.
 	await main.getByText("Monotributo").first().click();
+	await page
+		.getByRole("complementary", { name: "Monotributo" })
+		.getByRole("button", { name: "Edit", exact: true })
+		.click();
 	const edit = page.getByRole("dialog", { name: "Edit expense" });
 	await expect(edit).toBeVisible();
 	await expect(edit.getByRole("textbox", { name: "Amount" })).toHaveValue(

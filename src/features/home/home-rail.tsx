@@ -191,7 +191,7 @@ export function HomeRail({
 	return (
 		<aside
 			aria-label={t("label")}
-			className="flex min-w-0 shrink-0 flex-col max-lg:hidden lg:w-96"
+			className="max-@2xl:hidden flex min-w-0 shrink-0 flex-col @2xl:w-80 @5xl:w-96"
 		>
 			<PeopleBlock home={people?.home ?? ""} people={who} />
 			{recurring && <ComingUpBlock items={soon} today={recurring.today} />}

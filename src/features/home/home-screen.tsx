@@ -119,27 +119,29 @@ export function HomeScreen() {
 				onRetry={() => void glance.refetch()}
 				pending={glance.isPending}
 			/>
-			<div className="mt-8 lg:flex lg:items-start lg:gap-12">
-				<div className="min-w-0 flex-1">
-					<NeedsSection
-						failed={needs.isError}
-						list={needs.data}
-						loading={needs.isPending}
-						onRetry={() => void needs.refetch()}
-					/>
-					<RecentSection
-						failed={recent.isError}
-						loading={recent.isPending}
-						onRetry={() => void recent.refetch()}
-						rows={recent.data?.items}
-						today={recent.data?.today ?? today}
+			<div className="@container mt-8">
+				<div className="@2xl:flex @2xl:items-start @2xl:gap-8 @5xl:gap-12">
+					<div className="min-w-0 flex-1">
+						<NeedsSection
+							failed={needs.isError}
+							list={needs.data}
+							loading={needs.isPending}
+							onRetry={() => void needs.refetch()}
+						/>
+						<RecentSection
+							failed={recent.isError}
+							loading={recent.isPending}
+							onRetry={() => void recent.refetch()}
+							rows={recent.data?.items}
+							today={recent.data?.today ?? today}
+						/>
+					</div>
+					<HomeRail
+						people={people.data}
+						recurring={recurring.data}
+						totals={totals}
 					/>
 				</div>
-				<HomeRail
-					people={people.data}
-					recurring={recurring.data}
-					totals={totals}
-				/>
 			</div>
 		</PageFrame>
 	);

@@ -103,12 +103,14 @@ function BudgetBody({
 				query={query}
 			/>
 			{planning ? (
-				<div className="lg:flex lg:items-start lg:gap-12">
-					<div className="min-w-0 flex-1">
-						<PlanView actions={actions} data={data} thisMonth={today} />
-					</div>
-					<div className="mt-8 lg:mt-0 lg:w-64 lg:shrink-0">
-						<PlanRail month={key} />
+				<div className="@container">
+					<div className="@4xl:flex @4xl:items-start @4xl:gap-12">
+						<div className="min-w-0 flex-1">
+							<PlanView actions={actions} data={data} thisMonth={today} />
+						</div>
+						<div className="mt-8 @4xl:mt-0 @4xl:w-64 @4xl:shrink-0">
+							<PlanRail month={key} />
+						</div>
 					</div>
 				</div>
 			) : (

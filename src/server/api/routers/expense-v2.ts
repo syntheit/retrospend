@@ -1,5 +1,6 @@
+import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { listActivity } from "~/server/services/expense-list";
+import { activityRow, listActivity } from "~/server/services/expense-list";
 import { listV2Input } from "~/server/services/expense-list/types";
 
 /**
@@ -15,5 +16,11 @@ export const expenseV2Router = createTRPCRouter({
 		// already full expense.service.ts (UI-150).
 		.query(({ ctx, input }) =>
 			listActivity(ctx.db, ctx.session.user.id, input, ctx.timeZone),
+		),
+	/** One line of Activity as the list shapes it (the detail pane's figures). */
+	rowV2: protectedProcedure
+		.input(z.object({ id: z.string().min(1).max(200) }))
+		.query(({ ctx, input }) =>
+			activityRow(ctx.db, ctx.session.user.id, input.id, ctx.timeZone),
 		),
 });

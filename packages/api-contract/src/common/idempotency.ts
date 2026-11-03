@@ -21,8 +21,13 @@ export const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
 /** Printable ASCII without spaces, as Stripe and the IETF draft allow. */
 export const IDEMPOTENCY_KEY_PATTERN = /^[\x21-\x7e]{1,255}$/;
 
+/** Keys the server keeps for undo stashes; a client may not use them. */
+export const RESERVED_KEY_PREFIX = "undo-stash:";
+
 export function isValidIdempotencyKey(key: string): boolean {
-	return IDEMPOTENCY_KEY_PATTERN.test(key);
+	return (
+		IDEMPOTENCY_KEY_PATTERN.test(key) && !key.startsWith(RESERVED_KEY_PREFIX)
+	);
 }
 
 export const WRITE_METHODS = ["POST", "PUT", "PATCH", "DELETE"] as const;

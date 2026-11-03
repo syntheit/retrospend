@@ -85,3 +85,10 @@ describe("idempotency", () => {
 		expect(isWriteMethod("HEAD")).toBe(false);
 	});
 });
+
+describe("reserved idempotency keys", () => {
+	it("rejects the undo stash prefix and accepts other keys", () => {
+		expect(isValidIdempotencyKey("undo-stash:abc")).toBe(false);
+		expect(isValidIdempotencyKey("my-undo-stash:abc")).toBe(true);
+	});
+});

@@ -297,5 +297,21 @@
 		"expense": "Gasto",
 		"income": "Ingreso",
 		"transfer": "Transferencia"
+	},
+	"detail": {
+		"edit": "Editar",
+		"close": "Cerrar",
+		"back": "Atrás",
+		"home": "En {currency}",
+		"rate": "Tasa",
+		"location": "Lugar",
+		"note": "Nota",
+		"splitWith": "Dividido con",
+		"recurring": "Gasto recurrente",
+		"recurringOpen": "Abrir",
+		"spread": "Repartido en",
+		"months": "{count, plural, one {# mes} other {# meses}}",
+		"hidden": "Fuera de los informes",
+		"yes": "Sí"
 	}
 }

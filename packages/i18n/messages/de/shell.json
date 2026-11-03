@@ -6,7 +6,10 @@
 		"destinations": "Bereiche",
 		"tools": "Werkzeuge",
 		"pinned": "Angeheftet",
-		"pinnedLabel": "Angeheftete Projekte"
+		"pinnedLabel": "Angeheftete Projekte",
+		"collapse": "Seitenleiste einklappen",
+		"expand": "Seitenleiste ausklappen",
+		"more": "Mehr"
 	},
 	"bottomNav": {
 		"label": "Hauptmenü"

@@ -297,5 +297,21 @@
 		"expense": "Расход",
 		"income": "Доход",
 		"transfer": "Перевод"
+	},
+	"detail": {
+		"edit": "Изменить",
+		"close": "Закрыть",
+		"back": "Назад",
+		"home": "В {currency}",
+		"rate": "Курс",
+		"location": "Место",
+		"note": "Заметка",
+		"splitWith": "Разделено с",
+		"recurring": "Регулярный расход",
+		"recurringOpen": "Открыть",
+		"spread": "Распределено на",
+		"months": "{count, plural, one {# месяц} few {# месяца} many {# месяцев} other {# месяца}}",
+		"hidden": "Не входит в отчёты",
+		"yes": "Да"
 	}
 }

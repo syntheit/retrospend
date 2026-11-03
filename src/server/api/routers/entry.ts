@@ -12,6 +12,7 @@ import { entryProjectMembers } from "~/server/services/entry/project-members";
 import {
 	createSharedExpense,
 	deleteSharedExpense,
+	restoreSharedExpense,
 	updateSharedExpense,
 } from "~/server/services/entry/shared.mutation";
 import {
@@ -184,6 +185,15 @@ export const entryRouter = createTRPCRouter({
 		delete: money(
 			schema.sharedDeleteSchema,
 			deleteSharedExpense,
+			(v, _c, n) => ({
+				...v,
+				notify: n,
+			}),
+		),
+		/** Undo of a delete that asked for keepForUndo: the expense back as it was. */
+		restore: money(
+			schema.sharedUndoSchema,
+			restoreSharedExpense,
 			(v, _c, n) => ({
 				...v,
 				notify: n,
