@@ -13,6 +13,7 @@ type Config struct {
 	BackupDir           string
 	BackupRetentionDays int
 	BackupCron          string
+	BackupAgeRecipients []string
 	// Importer (optional)
 	OllamaEndpoint    string
 	LLMModel          string
@@ -51,6 +52,11 @@ func Load() (*Config, error) {
 		backupCron = "0 3 * * *"
 	}
 
+	ageRecipients, err := ParseAgeRecipients(os.Getenv("BACKUP_AGE_RECIPIENT"))
+	if err != nil {
+		return nil, err
+	}
+
 	ollama := os.Getenv("OLLAMA_ENDPOINT")
 	if ollama == "" {
 		ollama = "http://localhost:11434/api/generate"
@@ -73,6 +79,7 @@ func Load() (*Config, error) {
 		BackupDir:           backupDir,
 		BackupRetentionDays: backupRetentionDays,
 		BackupCron:          backupCron,
+		BackupAgeRecipients: ageRecipients,
 		OllamaEndpoint:      ollama,
 		LLMModel:            model,
 		EnrichBatchSize:     getEnvInt("ENRICH_BATCH_SIZE", 20),

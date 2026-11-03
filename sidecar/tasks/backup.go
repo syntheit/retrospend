@@ -25,6 +25,7 @@ type BackupResult struct {
 	SizeBytes  int64     `json:"sizeBytes"`
 	DurationMs int64     `json:"durationMs"`
 	Success    bool      `json:"success"`
+	Encrypted  bool      `json:"encrypted,omitempty"`
 	Error      string    `json:"error,omitempty"`
 }
 
@@ -52,7 +53,9 @@ func IsBackupRunning() bool {
 }
 
 // RunBackup executes pg_dump and manages the backup manifest and retention.
-func RunBackup(database *db.DB, databaseURL string, backupDir string, retentionDays int) error {
+// With age recipients the dump is streamed through age and only the encrypted
+// .dump.age file is written.
+func RunBackup(database *db.DB, databaseURL string, backupDir string, retentionDays int, ageRecipients []string) error {
 	backupMu.Lock()
 	if isRunning {
 		backupMu.Unlock()
@@ -85,23 +88,36 @@ func RunBackup(database *db.DB, databaseURL string, backupDir string, retentionD
 	// Generate filename
 	timestamp := start.Format("20060102-150405")
 	filename := fmt.Sprintf("retrospend-%s.dump", timestamp)
+	encrypt := len(ageRecipients) > 0
+	if encrypt {
+		filename += ".age"
+	}
 	filepath := filepath.Join(backupDir, filename)
 	result.Filename = filename
+	result.Encrypted = encrypt
 
 	// Run pg_dump
-	cmd := exec.Command("pg_dump",
+	args := []string{
 		"--format=custom",
 		"--no-owner",
 		"--no-privileges",
-		fmt.Sprintf("--file=%s", filepath),
 		"--host", host,
 		"--port", port,
 		"--username", user,
 		"--dbname", dbname,
-	)
+	}
+	if !encrypt {
+		args = append(args, fmt.Sprintf("--file=%s", filepath))
+	}
+	cmd := exec.Command("pg_dump", args...)
 	cmd.Env = append(os.Environ(), fmt.Sprintf("PGPASSWORD=%s", password))
 
-	output, err := cmd.CombinedOutput()
+	var output []byte
+	if encrypt {
+		output, err = dumpEncrypted(cmd, filepath, ageRecipients)
+	} else {
+		output, err = cmd.CombinedOutput()
+	}
 	if err != nil {
 		result.Error = fmt.Sprintf("pg_dump failed: %v, output: %s", err, strings.TrimSpace(string(output)))
 		result.DurationMs = time.Since(start).Milliseconds()
@@ -289,7 +305,7 @@ func cleanupOldBackups(backupDir string, retentionDays int) {
 
 	removed := 0
 	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".dump") {
+		if entry.IsDir() || !isBackupFile(entry.Name()) {
 			continue
 		}
 
