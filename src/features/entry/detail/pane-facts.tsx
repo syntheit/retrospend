@@ -66,10 +66,10 @@ function Hero({
 	);
 }
 
-type Row = RouterOutputs["expense"]["rowV2"];
+type ListRow = RouterOutputs["expense"]["rowV2"];
 
 /** The rate line of a row: its type with its number, only when booked at a named type. */
-function useRateLine(row: Row | null | undefined) {
+function useRateLine(row: ListRow | null | undefined) {
 	const types = useTranslations("activity.rateTypes");
 	const rates = useRateFormat();
 	if (!row?.rateType || !row.rate || !row.home) return null;
@@ -78,7 +78,7 @@ function useRateLine(row: Row | null | undefined) {
 }
 
 /** The home value of a foreign amount: a number, or the words for no rate yet. */
-function HomeLine({ row }: { row: Row | null | undefined }) {
+function HomeLine({ row }: { row: ListRow | null | undefined }) {
 	if (!row || row.home === undefined) return null;
 	return row.home ? (
 		<Money className="text-fg-2 text-body" value={row.home} />
@@ -93,7 +93,7 @@ export function PersonalFacts({
 	row,
 }: {
 	e: Personal;
-	row: Row | null | undefined;
+	row: ListRow | null | undefined;
 }) {
 	const t = useTranslations("entry.detail");
 	const tr = useTranslations("entry.read");
@@ -137,7 +137,7 @@ export function SharedFacts({
 }: {
 	tx: Tx;
 	me: string | undefined;
-	row: Row | null | undefined;
+	row: ListRow | null | undefined;
 }) {
 	const t = useTranslations("entry.detail");
 	const tr = useTranslations("entry.read");

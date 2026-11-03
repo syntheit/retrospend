@@ -79,3 +79,14 @@ test("Activity at tablet width: with the pane open every amount stays visible", 
 	await expect(rail.getByRole("link")).toHaveCount(6);
 	await expect(rail.getByRole("button", { name: "More" })).toBeVisible();
 });
+
+test("A foreign expense shows the original first, then the home value", async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await openV2(page, "/activity?range=all");
+	await page.getByRole("main").getByText("iCloud 200GB").first().click();
+	const pane = page.getByRole("complementary", { name: "iCloud 200GB" });
+	await expect(pane).toContainText("USD 2.99");
+	await expect(pane).toContainText("$4,335.50");
+});
