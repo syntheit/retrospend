@@ -88,6 +88,8 @@ archive_testflight() {
 		-configuration Release -destination "generic/platform=iOS" \
 		-derivedDataPath "$derived" -archivePath "$archive_path"
 	echo "Archived: $archive_path"
+	# No dev tooling or e2e sign-in link in the embedded JS bundle.
+	bash "$app/scripts/check-release-bundle.sh" "$archive_path/Products/Applications"
 
 	# Export to an .ipa first; upload is a separate step so a missing app
 	# record or API role leaves a signed .ipa behind to inspect.

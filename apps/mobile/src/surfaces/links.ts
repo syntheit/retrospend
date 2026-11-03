@@ -71,6 +71,9 @@ export function routeForUrl(url: string): AppLink | null {
 	const query = mark < 0 ? "" : rest.slice(mark + 1);
 	const segments = path.split("/").filter(Boolean);
 	const [first, second] = segments;
+	// A host or segment starting "__" is reserved for tooling links that a
+	// component handles itself; the router must not read it as a screen.
+	if (first?.startsWith("__")) return null;
 	if (
 		WEB_ORIGIN.test(trimmed) &&
 		!(WEB_LINK_PATHS as readonly string[]).includes(first ?? "")

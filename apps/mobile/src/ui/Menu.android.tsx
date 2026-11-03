@@ -1,5 +1,9 @@
 import { Box, Text as ComposeText, TextButton } from "@expo/ui/jetpack-compose";
-import { semantics, size as sized } from "@expo/ui/jetpack-compose/modifiers";
+import {
+	semantics,
+	size as sized,
+	testID as testTag,
+} from "@expo/ui/jetpack-compose/modifiers";
 import { type ReactNode, useState } from "react";
 import { Pressable, View } from "react-native";
 import { useTheme } from "@/theme";
@@ -47,6 +51,7 @@ function Dropdown({
 export function Menu({
 	label,
 	accessibilityLabel,
+	testID,
 	items,
 	chip,
 	active = false,
@@ -164,7 +169,7 @@ export function Menu({
 	) : null;
 	if (trigger) {
 		return (
-			<View>
+			<View testID={testID}>
 				{trigger}
 				<View
 					pointerEvents="none"
@@ -196,11 +201,12 @@ export function Menu({
 				setOpen={setOpen}
 				trigger={
 					<TextButton
-						modifiers={
-							accessibilityLabel
+						modifiers={[
+							...(accessibilityLabel
 								? [semantics({ contentDescription: accessibilityLabel })]
-								: undefined
-						}
+								: []),
+							...(testID ? [testTag(testID)] : []),
+						]}
 						onClick={() => setOpen(true)}
 					>
 						<ComposeText>{label}</ComposeText>

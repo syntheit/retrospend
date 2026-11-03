@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Fails when a release build could carry the dev tooling: the dev auto sign-in
 # (server, email and password baked in by EXPO_PUBLIC_DEV_*) and the gallery
-# flag. Metro inlines EXPO_PUBLIC_* values into the bundle, so names do not
+# flag, and the test-only sign-in link (EXPO_PUBLIC_E2E, the e2e build
+# profile). Metro inlines EXPO_PUBLIC_* values into the bundle, so names do not
 # survive there; the check looks for the dev component's name instead, and
 # for the variables in the build environment and in apps/mobile/.env*.
 #
@@ -14,12 +15,12 @@ app=$(cd "$(dirname "$0")/.." && pwd)
 dir=${1:-$app/dist}
 fail=0
 
-for name in $(env | cut -d= -f1 | grep -E '^EXPO_PUBLIC_(DEV_|GALLERY$)' || true); do
+for name in $(env | cut -d= -f1 | grep -E '^EXPO_PUBLIC_(DEV_|GALLERY$|E2E$)' || true); do
 	echo "FAIL: $name is set in the environment" >&2
 	fail=1
 done
 
-if grep -lE '^\s*EXPO_PUBLIC_(DEV_|GALLERY\s*=)' "$app"/.env* 2>/dev/null; then
+if grep -lE '^\s*EXPO_PUBLIC_(DEV_|GALLERY\s*=|E2E\s*=)' "$app"/.env* 2>/dev/null; then
 	echo "FAIL: dev variables in apps/mobile/.env*" >&2
 	fail=1
 fi
@@ -35,6 +36,16 @@ if grep -raql 'RetrospendDevAutoSignIn' "$dir"; then
 fi
 if grep -raql 'RetrospendDevComposerTour' "$dir"; then
 	echo "FAIL: the dev composer tour is in the bundle at $dir" >&2
+	fail=1
+fi
+
+# The test-only sign-in link: its component name and its URL host.
+if grep -raql 'RetrospendE2eLink' "$dir"; then
+	echo "FAIL: the e2e sign-in link is in the bundle at $dir" >&2
+	fail=1
+fi
+if grep -raql '__e2e' "$dir"; then
+	echo "FAIL: the e2e link host (__e2e) is in the bundle at $dir" >&2
 	fail=1
 fi
 

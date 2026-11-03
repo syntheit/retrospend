@@ -169,6 +169,30 @@ describe("app config", () => {
 			).toThrow();
 		});
 
+		// The test-only sign-in link (maestro-plan.md 2.2) is stricter than the
+		// dev variables: only the e2e profile may carry it.
+		it.each([
+			{},
+			{ RETROSPEND_BUILD_PROFILE: "release" },
+			{ RETROSPEND_BUILD_PROFILE: "development" },
+			{ RETROSPEND_BUILD_PROFILE: "simulator" },
+			{ RETROSPEND_BUILD_PROFILE: "testflight" },
+		])("refuses EXPO_PUBLIC_E2E outside the e2e profile: %j", (env) => {
+			expect(() => assertBuildProfile({ ...env, EXPO_PUBLIC_E2E: "1" })).toThrow(
+				/EXPO_PUBLIC_E2E must not be set in a release build/,
+			);
+		});
+
+		it("allows EXPO_PUBLIC_E2E in the e2e profile only", () => {
+			expect(() =>
+				assertBuildProfile({
+					EXPO_PUBLIC_E2E: "1",
+					RETROSPEND_BUILD_PROFILE: "e2e",
+				}),
+			).not.toThrow();
+			expect(() => assertBuildProfile({ EXPO_PUBLIC_E2E: "" })).not.toThrow();
+		});
+
 		it.each(["development", "simulator"])("allows them for %s", (profile) => {
 			expect(() =>
 				assertBuildProfile({

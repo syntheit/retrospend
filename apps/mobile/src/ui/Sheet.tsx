@@ -9,6 +9,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
 import { useLayoutClass } from "@/layout/useLayoutClass";
+import { TEST_IDS } from "@/lib/testIds";
 import { useTheme } from "@/theme";
 import { Button } from "./Button";
 import { Glyph } from "./Glyph";
@@ -144,6 +145,7 @@ function DismissItem({
 			accessibilityRole="button"
 			hitSlop={space[2]}
 			onPress={onPress}
+			testID={kind === "done" ? TEST_IDS.sheet.done : TEST_IDS.sheet.close}
 			style={({ pressed }) => ({
 				minWidth: size.ctlSm.phone,
 				height: size.ctlSm.phone,
@@ -175,6 +177,7 @@ function EditItem({ label, onPress }: { label: string; onPress: () => void }) {
 			accessibilityRole="button"
 			hitSlop={space[2]}
 			onPress={onPress}
+			testID={TEST_IDS.sheet.edit}
 			style={{
 				width: size.ctlSm.phone,
 				height: size.ctlSm.phone,
@@ -198,6 +201,7 @@ function BackItem({ label, onPress }: { label: string; onPress: () => void }) {
 			accessibilityRole="button"
 			hitSlop={space[2]}
 			onPress={onPress}
+			testID={TEST_IDS.sheet.back}
 			style={({ pressed }) => ({
 				width: size.ctlSm.phone,
 				height: size.ctlSm.phone,
@@ -280,6 +284,7 @@ export function Sheet({
 				disabled={pinned.disabled}
 				label={pinned.label}
 				onPress={pinned.onPress}
+				testID={TEST_IDS.sheet.primary}
 			/>
 		) : null);
 	// Where the sheet sets the content's height (fills), the content is a

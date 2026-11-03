@@ -65,6 +65,11 @@ bash "$app/scripts/check-google-free.sh" >/dev/null
 
 apk=$app/android/app/build/outputs/apk/release/app-release.apk
 [[ -f "$apk" ]] || { echo "no APK at $apk" >&2; exit 1; }
+# No dev tooling or e2e sign-in link in the embedded JS bundle.
+bundle_dir=$(mktemp -d)
+unzip -q "$apk" 'assets/*' -d "$bundle_dir"
+bash "$app/scripts/check-release-bundle.sh" "$bundle_dir"
+rm -rf "$bundle_dir"
 certs=$(apksigner verify --print-certs "$apk")
 if grep -q "Android Debug" <<<"$certs"; then
 	echo "the APK is signed with the debug key: is the signing plugin active?" >&2

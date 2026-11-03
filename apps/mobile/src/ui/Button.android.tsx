@@ -9,6 +9,7 @@ import {
 	fillMaxWidth,
 	height,
 	semantics,
+	testID as testTag,
 } from "@expo/ui/jetpack-compose/modifiers";
 import { useColorScheme } from "react-native";
 import { useTheme } from "@/theme";
@@ -30,6 +31,7 @@ import type { ButtonProps } from "./types";
 export function Button({
 	label,
 	accessibilityLabel,
+	testID,
 	onPress,
 	variant = "filled",
 	size = "regular",
@@ -73,6 +75,7 @@ export function Button({
 				...(accessibilityLabel
 					? [semantics({ contentDescription: accessibilityLabel })]
 					: []),
+				...(testID ? [testTag(testID)] : []),
 			]}
 			onClick={disabled || busy ? undefined : onPress}
 		>

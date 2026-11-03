@@ -283,3 +283,14 @@ describe("other variants", () => {
 		);
 	});
 });
+
+describe("Button test id", () => {
+	it("is the SwiftUI accessibility identifier Maestro finds the button by", () => {
+		const { button } = render(light, { label: "Save", testID: "sheet.primary" });
+		expect(find(button, "accessibilityIdentifier")?.identifier).toBe(
+			"sheet.primary",
+		);
+		const bare = render(light, { label: "Save" }).button;
+		expect(find(bare, "accessibilityIdentifier")).toBeUndefined();
+	});
+});
