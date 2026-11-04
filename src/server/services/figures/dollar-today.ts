@@ -25,6 +25,8 @@ export interface DollarToday {
 	readonly id: typeof DOLLAR_TODAY;
 	/** USD 1 in the home currency; null while home has no rate at all. */
 	readonly value: Money | null;
+	/** The rate as stored, units of home per USD 1, unrounded: the client words it (a rate below 1 reads flipped). */
+	readonly rate: string | null;
 	/** The rate type used ("blue"); null with no value. The client names it. */
 	readonly rateType: string | null;
 	/** The day the rate is from (it may be older than today). */
@@ -47,6 +49,7 @@ export async function dollarTodayIn(
 	const none = {
 		id: DOLLAR_TODAY,
 		value: null,
+		rate: null,
 		rateType: null,
 		rateDate: null,
 		home: homeCurrency,
@@ -69,6 +72,7 @@ export async function dollarTodayIn(
 			minor: toMinor(picked.rate, homeCurrency),
 			currency: homeCurrency,
 		},
+		rate: String(picked.rate),
 		rateType: picked.type,
 		rateDate: dayKey(picked.date, zone),
 		home: homeCurrency,

@@ -158,6 +158,8 @@ export const glanceSchema = z
 				id: z.string(),
 				/** Null while the home currency has no rate at all. */
 				value: moneySchema.nullable(),
+				/** The rate as stored, units of the home currency per USD 1, unrounded. */
+				rate: z.string().nullable(),
 				rateType: z.string().nullable(),
 				rateDate: daySchema.nullable(),
 				home: currencyCodeSchema,
