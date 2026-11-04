@@ -14,6 +14,7 @@ import { toNumberOrNull } from "~/lib/utils";
 import { userTransaction } from "~/server/db-tx";
 import { deleteFile } from "~/server/storage";
 import { dec } from "~/server/services/envelope/units";
+import { userTimeZone } from "~/server/services/user-time-zone";
 import { WealthService } from "~/server/services/wealth.service";
 import type { AssetType, Prisma, PrismaClient } from "~prisma";
 import { writeCheckpoint } from "./checkpoint";
@@ -66,7 +67,7 @@ const otherFields = (input: AccountFields) => ({
 });
 
 /** A balance typed by hand is dated by the user's day, like every leg. */
-const checkpointDay = (timeZone?: string) =>
+const checkpointDay = (timeZone: string) =>
 	moveDay(null, new Date(), timeZone);
 
 export async function createAccountIn(
@@ -75,7 +76,7 @@ export async function createAccountIn(
 	input: AccountFields & { readonly id?: string },
 	timeZone?: string,
 ) {
-	const today = checkpointDay(timeZone);
+	const today = checkpointDay(await userTimeZone(tx, userId, timeZone));
 	const service = new WealthService(tx);
 	const { rate, rateType } = await accountRate(service, input, today);
 	const balanceInUSD = service.calculateBalanceInUSD(
@@ -151,7 +152,9 @@ export async function editAccountIn(
 	input: AccountFields,
 	timeZone?: string,
 ) {
-	const today = checkpointDay(timeZone);
+	// Resolved once, so the checkpoint and a nested rate switch share a day.
+	const zone = await userTimeZone(tx, userId, timeZone);
+	const today = checkpointDay(zone);
 	const existing = await lockOpenAccount(tx, userId, id);
 	await refuseLegChanges(tx, existing, input);
 	await tx.assetAccount.update({ where: { id }, data: otherFields(input) });
@@ -160,7 +163,7 @@ export async function editAccountIn(
 		await switchRateType(tx, userId, {
 			accountId: id,
 			rateType: rate.rateType,
-			timeZone,
+			timeZone: zone,
 		});
 	}
 	const account = await lockOpenAccount(tx, userId, id);

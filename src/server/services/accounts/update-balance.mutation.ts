@@ -18,6 +18,7 @@ import {
 	revertRateTypeIn,
 	switchRateType,
 } from "./rate-type.mutation";
+import { withUserZone } from "~/server/services/user-time-zone";
 
 type Tx = Prisma.TransactionClient;
 
@@ -48,8 +49,9 @@ export interface BalanceUpdate extends Checkpoint {
 export async function updateBalanceIn(
 	tx: Tx,
 	userId: string,
-	input: UpdateBalanceInput,
+	given: UpdateBalanceInput,
 ): Promise<BalanceUpdate> {
+	const input = await withUserZone(tx, userId, given);
 	const account = await lockOpenAccount(tx, userId, input.accountId);
 	// The user's day, like every leg (accounts/dates.ts), so a checkpoint and
 	// a move made the same morning share a day.
@@ -153,8 +155,9 @@ function usdAt(
 export async function revertBalanceUpdateIn(
 	tx: Tx,
 	userId: string,
-	input: RevertBalanceUpdateInput,
+	given: RevertBalanceUpdateInput,
 ) {
+	const input = await withUserZone(tx, userId, given);
 	const account = await lockOpenAccount(tx, userId, input.accountId);
 	const today = moveDay(null, new Date(), input.timeZone);
 	let balance = dec(account.balance.toString());

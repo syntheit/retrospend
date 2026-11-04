@@ -11,6 +11,7 @@ import { TRPCError } from "@trpc/server";
 import { dayOf } from "./accounts/series";
 import { nextDueDay } from "./income/due-day";
 import type { MoneyMutation } from "./preview/types";
+import { userTimeZone } from "~/server/services/user-time-zone";
 
 export interface SkipRecurringInput {
 	readonly templateId: string;
@@ -63,10 +64,11 @@ export const skipRecurring: MoneyMutation<
 		)
 			throw new TRPCError({ code: "CONFLICT", message: ALREADY });
 		// Due once its day has come, as a confirm reads it.
+		const zone = await userTimeZone(tx, actor.userId, input.timeZone);
 		const due =
 			template.direction === "IN"
-				? dayOf(template.nextDueDate) <= dayKey(new Date(), input.timeZone)
-				: template.nextDueDate < startOfNextDayIn(new Date(), input.timeZone);
+				? dayOf(template.nextDueDate) <= dayKey(new Date(), zone)
+				: template.nextDueDate < startOfNextDayIn(new Date(), zone);
 		if (!due) throw new TRPCError({ code: "CONFLICT", message: ALREADY });
 
 		const nextDueAt = after(template, template.nextDueDate);

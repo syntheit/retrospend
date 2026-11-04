@@ -8,6 +8,7 @@
 import { RECURRING_COST_FIGURES } from "./figures/recurring";
 import type { MoneyMutation } from "./preview/types";
 import { createTemplate, type NewTemplate } from "./recurring.service";
+import { userTimeZone } from "~/server/services/user-time-zone";
 
 export interface CreateRecurringInput {
 	readonly template: NewTemplate;
@@ -25,7 +26,7 @@ export const createRecurring: MoneyMutation<
 			tx,
 			actor.userId,
 			input.template,
-			input.timeZone,
+			await userTimeZone(tx, actor.userId, input.timeZone),
 		);
 		return {
 			value: { id: created.id },

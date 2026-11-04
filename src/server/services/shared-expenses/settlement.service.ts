@@ -790,10 +790,7 @@ export class SettlementService {
 	}
 
 	/** See squareUpProjects in settlement-square-up.ts. */
-	async squareUpProjects(input: {
-		toParticipant: ParticipantRef;
-		currency: string;
-	}) {
+	async squareUpProjects(input: Parameters<typeof squareUpProjects>[2]) {
 		return squareUpProjects(this.db, this.currentUserRef, input);
 	}
 

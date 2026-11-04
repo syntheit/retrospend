@@ -13,6 +13,7 @@ import { moveDay } from "./dates";
 import { lockOpenAccount } from "./ledger";
 import { loadAccountsLedger } from "./load";
 import { dayOf, valueOn } from "./series";
+import { withUserZone } from "~/server/services/user-time-zone";
 
 type Tx = Prisma.TransactionClient;
 
@@ -72,8 +73,9 @@ function switchesOf(tx: Tx, accountId: string) {
 export async function switchRateType(
 	tx: Tx,
 	userId: string,
-	input: SetRateTypeInput,
+	given: SetRateTypeInput,
 ): Promise<RateTypeSwitch> {
+	const input = await withUserZone(tx, userId, given);
 	const account = await lockOpenAccount(tx, userId, input.accountId);
 	const from = moveDay(input.from, new Date(), input.timeZone);
 	const day = dayOf(from);
