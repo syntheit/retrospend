@@ -21,6 +21,7 @@
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
 import type { AnsweredFix } from "../corrections/fix-request.service";
+import { GLANCE_SPENT } from "../figures/spend-pace";
 import type { MoneyMutation } from "../preview/types";
 import { logAudit } from "../shared-expenses/audit-log";
 import { peopleToTell } from "../shared-expenses/delete-tell";
@@ -52,6 +53,7 @@ export const SHARED_FIGURES = [
 	"owed.owedToYou",
 	"owed.youOwe",
 	"spent",
+	GLANCE_SPENT,
 	"budget.notPlannedYet",
 	"budget.leftToSpend",
 	"budget.heldForOthers",
