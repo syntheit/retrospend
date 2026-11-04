@@ -40,11 +40,35 @@ export async function seedArsRates() {
 	}
 }
 
+/**
+ * ARS rates on fixed days, for tests that pin the clock: each `[day, type,
+ * rate]` is upserted, and the returned function removes those rows again.
+ */
+export async function seedArsRatesOn(
+	rates: readonly (readonly [Date, string, string])[],
+) {
+	for (const [date, type, rate] of rates) {
+		await adminDb.exchangeRate.upsert({
+			where: { date_currency_type: { date, currency: "ARS", type } },
+			create: { date, currency: "ARS", type, rate },
+			update: { rate },
+		});
+	}
+	return () =>
+		adminDb.exchangeRate.deleteMany({
+			where: {
+				currency: "ARS",
+				OR: rates.map(([date, type]) => ({ date, type })),
+			},
+		});
+}
+
+/** ARS home, and the process's zone saved, so the user's day is TODAY's. */
 export async function arsUser() {
 	const user = await createTestUser();
 	await adminDb.user.update({
 		where: { id: user.user.id },
-		data: { homeCurrency: "ARS" },
+		data: { homeCurrency: "ARS", timeZone: TODAY_ZONE },
 	});
 	return user;
 }
