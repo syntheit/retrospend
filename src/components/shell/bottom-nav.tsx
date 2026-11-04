@@ -21,7 +21,7 @@ const TABS = PHONE_TABS.map((id) =>
 
 /**
  * BottomNav (phone web, IMPLEMENTATION §3): the five tabs of the iPhone
- * tab bar. Wealth, the tools and Settings are in the account sheet.
+ * tab bar. Projects, the tools and Settings are in the account sheet.
  */
 export function BottomNav({
 	badges,
