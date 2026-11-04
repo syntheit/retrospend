@@ -18,24 +18,30 @@ declare module "use-intl" {
 }
 
 /**
+ * The app's language: the one chosen in Settings > Language, else the
+ * catalog for the phone's preferred languages (which already reflect the
+ * per-app language set in the system settings). Copy and numbers both read
+ * it, so a screen never mixes one language's words with another's digits.
+ */
+export function useAppLocale(): AppLocale {
+	const device = useLocales();
+	const pref = useLanguagePref();
+	return pref === "device" ? resolveLocale(device) : pref;
+}
+
+/**
  * The language numbers follow ("Follow language" in Settings > Numbers): the
- * app language when one is chosen in Settings > Language, else the device's
- * region tag ("es-AR", "en-US"), which keeps its separators even when the
- * copy falls back to another catalog.
+ * app language, the same locale the web formats in for the same account.
+ * Never the phone's region, which would give "1.545" here and "1,545" on the
+ * web for one account.
  */
 export function useFormatLocale(): string {
-	const device = useLocales()[0]?.languageTag ?? "en-US";
-	const pref = useLanguagePref();
-	return pref === "device" ? device : pref;
+	return useAppLocale();
 }
 
 export function AppIntlProvider({ children }: { children: ReactNode }) {
-	const device = useLocales();
-	const pref = useLanguagePref();
 	const timeZone = useCalendars()[0]?.timeZone ?? "UTC";
-	// "Use device language" follows the phone's preferred languages, which
-	// already reflect the per-app language set in the system settings.
-	const locale = pref === "device" ? resolveLocale(device) : pref;
+	const locale = useAppLocale();
 	const messages = useMemo(() => loadMessages(locale), [locale]);
 
 	return (

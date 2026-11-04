@@ -98,6 +98,17 @@ describe("useFormatMoney", () => {
 		).toEqual(["$1,234,567", "USD\u00a01,234.56"]);
 	});
 
+	it("writes an English ARS account as the web does: no space after the symbol", () => {
+		const arsHome: MoneyPrefs = { ...follow, homeCurrency: "ARS" };
+		expect(
+			read(arsHome, "en", (m) => [
+				m.format({ minor: 0, currency: "ARS" }) ?? "",
+				m.format({ minor: 154500, currency: "ARS" }) ?? "",
+				m.format({ minor: 154500, currency: "USD" }) ?? "",
+			]),
+		).toEqual(["$0", "$1,545", "USD 1,545.00"]);
+	});
+
 	it("carries the home currency and the number format on one locale", () => {
 		const [tag] = read(
 			{ numberFormat: "dot_comma", homeCurrency: "EUR" },
