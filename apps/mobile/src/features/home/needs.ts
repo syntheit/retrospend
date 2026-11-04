@@ -84,6 +84,7 @@ export type NeedsDestination =
 				| "budget"
 				| "currencies"
 				| "settings"
+				| "preferences"
 				| "add";
 	  };
 
@@ -112,6 +113,8 @@ export function needsDestination(item: NeedsYouItem): NeedsDestination {
 		case "setup.firstExpense":
 			return { kind: "add" };
 		case "setup.homeCurrency":
+			// Preferences opens on the Home currency row.
+			return { kind: "preferences" };
 		case "setup.verifyEmail":
 			return { kind: "settings" };
 		default:

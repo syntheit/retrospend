@@ -97,7 +97,7 @@ describe("needsDestination", () => {
 		expect(where("import.review")).toBe("activity");
 		expect(where("budget.missingRate")).toBe("currencies");
 		expect(where("setup.firstExpense")).toBe("add");
-		expect(where("setup.homeCurrency")).toBe("settings");
+		expect(where("setup.homeCurrency")).toBe("preferences");
 		expect(where("setup.verifyEmail")).toBe("settings");
 		for (const type of [
 			"budget.giveJob",
