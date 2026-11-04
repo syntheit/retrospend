@@ -157,17 +157,30 @@ async function createRunDatabase(project: TestProject) {
 		}
 	};
 
+	// Only names this run created get dropped: with a 4-hex run id another run
+	// can draw the same names, and a failed CREATE must not drop its databases.
+	const created: string[] = [];
+	const create = async (client: Client, name: string, sql: string) => {
+		await client.query(sql);
+		created.push(name);
+	};
 	const dropRunDatabases = () =>
 		withAdmin(async (client) => {
-			// FORCE closes pool connections the workers may still hold.
-			for (const name of [...names.workers, names.template]) {
-				await client.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);
+			// Workers first, then the template; each on its own so one failure
+			// doesn't leak the rest. FORCE closes pool connections the workers
+			// may still hold.
+			for (const name of [...created].reverse()) {
+				await client
+					.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`)
+					.catch((error: unknown) =>
+						console.error(`could not drop ${name}:`, error),
+					);
 			}
 		});
 
 	try {
 		await withAdmin((client) =>
-			client.query(`CREATE DATABASE "${names.template}"`),
+			create(client, names.template, `CREATE DATABASE "${names.template}"`),
 		);
 		execFileSync("pnpm", ["exec", "prisma", "migrate", "deploy"], {
 			env: { ...process.env, DATABASE_URL: urlFor(names.template) },
@@ -178,7 +191,9 @@ async function createRunDatabase(project: TestProject) {
 		// after another because each one locks the template.
 		await withAdmin(async (client) => {
 			for (const name of names.workers) {
-				await client.query(
+				await create(
+					client,
+					name,
 					`CREATE DATABASE "${name}" TEMPLATE "${names.template}"`,
 				);
 			}
