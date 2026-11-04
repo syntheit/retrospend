@@ -11,6 +11,7 @@ import { TRPCError } from "@trpc/server";
 import { recurringEntryData } from "./money-in.service";
 import type { MoneyMutation } from "./preview/types";
 import { paidOnInstant } from "./recurring-paid-on";
+import { userTimeZone } from "~/server/services/user-time-zone";
 
 export interface ConfirmRecurringExpenseInput {
 	readonly templateId: string;
@@ -62,7 +63,8 @@ export const confirmRecurringExpense: MoneyMutation<
 				code: "CONFLICT",
 				message: "This payment was already confirmed",
 			});
-		if (template.nextDueDate >= startOfNextDayIn(new Date(), input.timeZone))
+		const zone = await userTimeZone(tx, actor.userId, input.timeZone);
+		if (template.nextDueDate >= startOfNextDayIn(new Date(), zone))
 			throw new TRPCError({
 				code: "CONFLICT",
 				message: "This payment was already confirmed",
@@ -78,7 +80,7 @@ export const confirmRecurringExpense: MoneyMutation<
 				? paidOnInstant(
 						input.paidOn,
 						template.direction,
-						input.timeZone,
+						zone,
 						template,
 					)
 				: undefined,

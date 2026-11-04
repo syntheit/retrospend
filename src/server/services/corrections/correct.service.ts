@@ -37,6 +37,7 @@ import {
 	partyOf,
 	shareCategories,
 } from "./split-state";
+import { userTimeZone } from "~/server/services/user-time-zone";
 
 type Tx = Prisma.TransactionClient;
 
@@ -349,7 +350,7 @@ export async function correctSplit(
 		split,
 		input,
 		planned,
-		todayRow(now, ctx.timeZone),
+		todayRow(now, await userTimeZone(tx, userId, ctx.timeZone)),
 	);
 	const answered = await answerRequests(tx, original.id, ids[0] as string, now);
 	const differences = differencesView(planned);

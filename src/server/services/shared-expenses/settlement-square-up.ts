@@ -19,6 +19,7 @@ import { confirmationFor } from "~/server/services/payments/confirmation";
 import { ledgerLines, payerLines } from "~/server/services/payments/ledger";
 import { paidOnDate } from "~/server/services/payments/record.mutation";
 import { writePayment } from "~/server/services/payments/write";
+import { userTimeZone } from "~/server/services/user-time-zone";
 import type { FigureDb } from "~/server/figures/registry";
 import type { PrismaClient } from "~prisma";
 import { computeBalanceByProject, computePairLedger } from "./balance";
@@ -111,6 +112,8 @@ export async function getSquareUpOptions(
 export interface SquareUpInput {
 	toParticipant: ParticipantRef;
 	currency: string;
+	/** The request's zone for the payment's date; else the user's saved zone. */
+	timeZone?: string;
 }
 
 type Tx = FigureDb;
@@ -163,7 +166,11 @@ export async function squareUpIn(
 		parties: { payer: me, payee: other, recorder: me },
 		allocation,
 		confirmation: confirmationFor(false, other.participantType),
-		paidOn: paidOnDate(null, now),
+		paidOn: paidOnDate(
+			null,
+			now,
+			await userTimeZone(tx, me.participantId, input.timeZone),
+		),
 		now,
 		paymentMethod: null,
 		note: null,

@@ -58,6 +58,19 @@ export async function userTimeZone(
 }
 
 /**
+ * `input` with its `timeZone` resolved (userTimeZone): the one place a money
+ * write that dates by the user's day turns "no zone given" into the user's
+ * saved zone, never the server process's.
+ */
+export async function withUserZone<T extends { readonly timeZone?: string }>(
+	db: ZoneDb,
+	userId: string,
+	input: T,
+): Promise<T & { readonly timeZone: string }> {
+	return { ...input, timeZone: await userTimeZone(db, userId, input.timeZone) };
+}
+
+/**
  * The first signed-in browser request stores its zone when the user has
  * none yet. The WHERE keeps a zone the user picked meanwhile.
  */

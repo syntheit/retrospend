@@ -39,6 +39,7 @@ import {
 	storedRows,
 	unreadableCount,
 } from "./rows";
+import { userTimeZone } from "~/server/services/user-time-zone";
 
 type Tx = Prisma.TransactionClient;
 
@@ -203,11 +204,15 @@ export const commitImport: MoneyMutation<CommitImportInput, ImportSummary> = {
 	touches: IMPORT_FIGURES,
 	run: async (tx, input, actor) => {
 		const userId = actor.userId;
+		const zone = await userTimeZone(tx, userId, input.timeZone);
 		const job = await loadReviewableJob(tx, userId, input.jobId);
 		await claimJob(tx, userId, job.id);
 		const rates = cachedRates(tx);
 		const stored = storedRows(job.transactions);
-		const { rows, badDates } = prepareRows(stored, input);
+		const { rows, badDates } = prepareRows(stored, {
+			...input,
+			timeZone: zone,
+		});
 		const choices = choicesOf(input, stored.length);
 		const [ctx, categories, matches] = await Promise.all([
 			loadRateContext(rates, userId),
@@ -217,7 +222,7 @@ export const commitImport: MoneyMutation<CommitImportInput, ImportSummary> = {
 				userId,
 				rows,
 				(r) => choices.get(r.index)?.kind ?? r.proposed,
-				input.timeZone,
+				zone,
 			),
 		]);
 

@@ -16,6 +16,7 @@ import {
 } from "../envelope/verdict";
 import { type AddIncomeInput, INCOME_FIGURES } from "./add.mutation";
 import { undoPlan } from "./plan-seam";
+import { withUserZone } from "~/server/services/user-time-zone";
 
 type Tx = Prisma.TransactionClient;
 
@@ -75,8 +76,9 @@ export async function incomeRow(tx: Tx, userId: string, expenseId: string) {
 export async function deleteIncomeIn(
 	tx: Tx,
 	userId: string,
-	input: DeleteIncomeInput,
+	given: DeleteIncomeInput,
 ): Promise<DeletedIncome> {
+	const input = await withUserZone(tx, userId, given);
 	const row = await incomeRow(tx, userId, input.expenseId);
 	if (row.movedInAt) {
 		throw new TRPCError({

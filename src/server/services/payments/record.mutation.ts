@@ -19,6 +19,7 @@ import {
 	type ParticipantRef,
 	sameParticipant,
 } from "~/server/services/shared-expenses/types";
+import { userTimeZone } from "~/server/services/user-time-zone";
 import { lockSettledSplits } from "../corrections/locks";
 import {
 	assertProjectInvolvement,
@@ -82,7 +83,10 @@ export interface RecordPaymentInput {
 	readonly matchClaimId?: string | null;
 	/** The receiver said this is not the payment the payer already claims (§1.5). */
 	readonly differentPayment?: boolean;
-	/** The user's IANA zone, for today's date. Set by the transport, not the client. */
+	/**
+	 * The request's IANA zone, for today's date. Set by the transport, not the
+	 * client. Without it the day is read in the user's saved zone (userTimeZone).
+	 */
 	readonly timeZone?: string;
 	/** A client-made id: a repeated record with it is a conflict, not a second payment. */
 	readonly id?: string;
@@ -123,13 +127,13 @@ const userRef = (userId: string): ParticipantRef => ({
 
 /**
  * The calendar day a payment is dated, as a UTC midnight: the date the
- * client sent, else today in the user's time zone (the request's zone; the
- * server's when unknown), never the UTC day.
+ * client sent, else today in the user's time zone (`timeZone`, resolved by
+ * userTimeZone: the request's, else the saved one), never the UTC day.
  */
 export function paidOnDate(
 	paidOn: string | null | undefined,
 	now: Date,
-	timeZone?: string,
+	timeZone: string,
 ): Date {
 	const day = paidOn ?? dayKey(now, timeZone);
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
@@ -268,7 +272,8 @@ export const recordPayment: MoneyMutation<
 		}
 
 		const now = new Date();
-		const paidOn = paidOnDate(input.paidOn, now, input.timeZone);
+		const zone = await userTimeZone(tx, actor.userId, input.timeZone);
+		const paidOn = paidOnDate(input.paidOn, now, zone);
 		const outgoing = input.direction === "outgoing";
 		const events = await computePairLedger(tx, me, input.person, {
 			viewer: me,
