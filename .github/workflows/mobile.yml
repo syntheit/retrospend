@@ -195,14 +195,17 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile --ignore-scripts --filter '@retrospend/mobile...'
 
-      # The versions React Native 0.88 builds with (the android shell in
-      # flake.nix). The image may lack the exact NDK and CMake.
-      - name: Android SDK
-        run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-36" "platforms;android-37" \
-            "build-tools;37.0.0" "build-tools;36.0.0" "build-tools;35.0.0" \
-            "ndk;27.1.12297006" "cmake;3.22.1" >/dev/null
+      # The runner has no sdkmanager on PATH, so this installs the command
+      # line tools and accepts the licenses. The packages are the versions
+      # React Native 0.88 builds with (the android shell in flake.nix); the
+      # image lacks the exact NDK and CMake.
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: >-
+            platform-tools
+            platforms;android-36 platforms;android-37
+            build-tools;37.0.0 build-tools;36.0.0 build-tools;35.0.0
+            ndk;27.1.12297006 cmake;3.22.1
 
       - name: Prebuild
         working-directory: apps/mobile
