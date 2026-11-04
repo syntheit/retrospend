@@ -366,6 +366,7 @@
 		"left": "Остаток",
 		"moneyIn": "Поступления",
 		"assignedTo": "Распределено по конвертам",
+		"startingBalance": "Начальный баланс",
 		"assignedAhead": "Распределено на следующий месяц",
 		"assignedAheadHint": "Ждёт там до начала месяца.",
 		"overspendTaken": "Покрытый перерасход",

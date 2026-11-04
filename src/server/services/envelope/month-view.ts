@@ -110,6 +110,8 @@ export interface MonthViewInput {
 	owed?: OwedSummaryDto;
 	/** The base for % group targets (group-view.ts); none when omitted. */
 	groupBase?: GroupBase | null;
+	/** What the budget started with (starting-money-in.ts): in To assign, not in Money in. */
+	startingMoney?: Minor;
 }
 
 /** Your shares in the month: how many found no category (D19) and what waits for your OK (D20). */
@@ -411,6 +413,7 @@ export function buildMonthView(p: MonthViewInput): MonthView {
 	const range = monthRange(p.month, p.book.periods);
 	const rows = rowsFor(p, c);
 	const terms = p.state.toAssign(p.month);
+	const starting = p.startingMoney ?? 0;
 	const lts = leftToSpendFor(rows, p, terms.total);
 	const v = verdict({
 		style: p.book.style,
@@ -450,7 +453,9 @@ export function buildMonthView(p: MonthViewInput): MonthView {
 				amount: money(terms.total),
 				poolName: poolNameFor(p.book.style),
 				terms: {
-					moneyIn: money(terms.moneyIn),
+					// The engine's Money in holds the starting balance: it has its own line.
+					moneyIn: money(terms.moneyIn - starting),
+					startingMoney: money(starting),
 					assigned: money(terms.assigned),
 					assignedAhead: money(terms.assignedAhead),
 					overspendTaken: money(terms.overspendTaken),

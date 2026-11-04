@@ -366,6 +366,7 @@
 		"left": "Übrig",
 		"moneyIn": "Einnahmen",
 		"assignedTo": "Umschlägen zugewiesen",
+		"startingBalance": "Startguthaben",
 		"assignedAhead": "Dem nächsten Monat zugewiesen",
 		"assignedAheadHint": "Es wartet dort, bis der Monat beginnt.",
 		"overspendTaken": "Übernommene Überziehungen",

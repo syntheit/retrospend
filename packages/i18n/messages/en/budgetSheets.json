@@ -366,6 +366,7 @@
 		"left": "Left",
 		"moneyIn": "Money in",
 		"assignedTo": "Assigned to envelopes",
+		"startingBalance": "Starting balance",
 		"assignedAhead": "Assigned to next month",
 		"assignedAheadHint": "It waits there until the month starts.",
 		"overspendTaken": "Overspending taken",

@@ -239,6 +239,8 @@ export const toAssignSchema = z.object({
 		overspendTaken: moneySchema,
 		returned: moneySchema,
 		splitsNet: moneySchema,
+		/** What the budget started with: part of To assign, not of moneyIn. */
+		startingMoney: moneySchema,
 	}),
 });
 

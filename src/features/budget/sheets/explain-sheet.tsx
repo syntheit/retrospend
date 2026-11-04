@@ -97,6 +97,15 @@ function useParts(
 		title: t("toAssignTitle", { pool }),
 		lines: [
 			{ key: "in", label: t("moneyIn"), value: terms.moneyIn },
+			...(terms.startingMoney.minor !== 0
+				? [
+						{
+							key: "start",
+							label: t("startingBalance"),
+							value: terms.startingMoney,
+						},
+					]
+				: []),
 			{ key: "assigned", label: t("assignedTo"), value: terms.assigned },
 			{
 				key: "ahead",
