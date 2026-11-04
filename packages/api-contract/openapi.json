@@ -71866,6 +71866,16 @@
 															},
 															"type": "array"
 														},
+														"rate": {
+															"anyOf": [
+																{
+																	"type": "string"
+																},
+																{
+																	"type": "null"
+																}
+															]
+														},
 														"rateDate": {
 															"anyOf": [
 																{
@@ -71901,6 +71911,7 @@
 													"required": [
 														"id",
 														"value",
+														"rate",
 														"rateType",
 														"rateDate",
 														"home",
