@@ -29,4 +29,9 @@ if grep -E "FATAL EXCEPTION|ANR in $pkg|Unable to load script" "$out/logcat.txt"
   echo "FAIL: crash in logcat" >&2
   status=1
 fi
+# A JS error at startup leaves the process alive behind a red box.
+if grep -E "ReactNativeJS.*(${JS_ERRORS:?})" "$out/logcat.txt"; then
+  echo "FAIL: JavaScript error at startup" >&2
+  status=1
+fi
 exit "$status"

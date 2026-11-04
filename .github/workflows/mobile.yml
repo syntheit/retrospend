@@ -11,6 +11,9 @@ on:
       - "packages/**"
       - "pnpm-lock.yaml"
       - "package.json"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+      - ".npmrc"
       - ".github/workflows/mobile.yml"
       - ".github/scripts/android-smoke.sh"
   push:
@@ -22,6 +25,9 @@ on:
       - "packages/**"
       - "pnpm-lock.yaml"
       - "package.json"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+      - ".npmrc"
       - ".github/workflows/mobile.yml"
       - ".github/scripts/android-smoke.sh"
   workflow_dispatch:
@@ -37,6 +43,8 @@ env:
   # app.config.ts refuses some builds unless the build says it is a dev or
   # simulator build.
   RETROSPEND_BUILD_PROFILE: simulator
+  # Uncaught JavaScript errors as React Native logs them, on both platforms.
+  JS_ERRORS: "TypeError|ReferenceError|SyntaxError|RangeError|Invariant Violation|Unhandled JS Exception"
 
 jobs:
   ios:
@@ -151,6 +159,14 @@ jobs:
           xcrun simctl spawn "$udid" launchctl list >smoke/launchctl.txt
           grep "UIKitApplication:app.retrospend" smoke/launchctl.txt \
             || { echo "FAIL: app.retrospend is not running" >&2; exit 1; }
+          # A JS error at startup leaves the process alive behind a red box,
+          # so check React Native's log too.
+          xcrun simctl spawn "$udid" log show --last 3m --style compact \
+            --predicate 'subsystem == "com.facebook.react.log"' >smoke/react-log.txt || true
+          if grep -E "$JS_ERRORS" smoke/react-log.txt; then
+            echo "FAIL: JavaScript error at startup" >&2
+            exit 1
+          fi
 
       - name: Upload screenshot
         if: always()
