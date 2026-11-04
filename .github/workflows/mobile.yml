@@ -104,13 +104,10 @@ jobs:
           EX_UPDATES_NATIVE_DEBUG: "1"
         run: pod install || pod install
 
-      - uses: actions/cache@v4
-        with:
-          path: DerivedData
-          key: deriveddata-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
-          restore-keys: deriveddata-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
-
       # RCT_NO_LAUNCH_PACKAGER keeps Xcode from opening a Metro terminal.
+      # Ad-hoc signed ("-", no team or profile): unsigned, the simulator app
+      # has no keychain entitlement and expo-notifications shows an error over
+      # the first screen.
       - name: Build for the simulator
         working-directory: apps/mobile
         env:
@@ -123,7 +120,7 @@ jobs:
           xcodebuild -workspace "$workspace" -scheme "$scheme" \
             -configuration Debug -derivedDataPath "$DERIVED_DATA" \
             -destination "generic/platform=iOS Simulator" \
-            build CODE_SIGNING_ALLOWED=NO >"$RUNNER_TEMP/xcodebuild.log" 2>&1 \
+            build CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= >"$RUNNER_TEMP/xcodebuild.log" 2>&1 \
             || { grep -E 'error:|BUILD FAILED' "$RUNNER_TEMP/xcodebuild.log" | head -40; exit 1; }
           grep -m1 "BUILD SUCCEEDED" "$RUNNER_TEMP/xcodebuild.log"
           echo "APP=$DERIVED_DATA/Build/Products/Debug-iphonesimulator/$scheme.app" >>"$GITHUB_ENV"
