@@ -70,6 +70,8 @@ type Seed = Awaited<ReturnType<typeof seedUser>>;
 
 // The zone the books and the fixtures read days in, so "today" and "this month"
 // agree at any hour (after 00:00 UTC it is still yesterday in Buenos Aires).
+// Payments pass it too: without one the server dates them in the process zone
+// (UTC in CI), a day ahead between 00:00 and 03:00 UTC.
 const ZONE = "America/Argentina/Buenos_Aires";
 const today = dayKey(new Date(), ZONE);
 const ref = (u: Seed): ParticipantRef => ({
@@ -155,12 +157,14 @@ async function settledWorld(): Promise<World> {
 		})
 	).id;
 	await as(sofia).apply(recordPayment, {
+		timeZone: ZONE,
 		person: juan,
 		direction: "incoming",
 		currency: "PEN",
 		amount: "15000",
 	});
 	const sent = await as(martin).apply(recordPayment, {
+		timeZone: ZONE,
 		person: ref(sofia),
 		direction: "outgoing",
 		currency: "PEN",
@@ -319,6 +323,7 @@ describe("a settled split is locked", () => {
 		});
 		// Martín pays 4,000 of 10,000.
 		const sent = await as(martin).apply(recordPayment, {
+			timeZone: ZONE,
 			person: ref(sofia),
 			direction: "outgoing",
 			currency: "PEN",
@@ -483,6 +488,7 @@ describe("correct a settled split", () => {
 
 	it("paying the 1,000 settles it again; the original keeps its lock", async () => {
 		const sent = await as(w.martin).apply(recordPayment, {
+			timeZone: ZONE,
 			person: ref(w.sofia),
 			direction: "outgoing",
 			currency: "PEN",
@@ -1074,6 +1080,7 @@ describe("review: a lock does not outlive the payment that earned it", () => {
 			"45000",
 		);
 		await as(sofia).apply(recordPayment, {
+			timeZone: ZONE,
 			person: juan,
 			direction: "incoming",
 			currency: "PEN",
@@ -1081,6 +1088,7 @@ describe("review: a lock does not outlive the payment that earned it", () => {
 		});
 		const pays = async (amount: string) => {
 			const sent = await as(martin).apply(recordPayment, {
+				timeZone: ZONE,
 				person: ref(sofia),
 				direction: "outgoing",
 				currency: "PEN",
@@ -1177,6 +1185,7 @@ describe("review: undo only the latest correction, and only while nothing settle
 		const input = toFortyEight(w);
 		await as(w.sofia).apply(correctSplitMutation, input);
 		await as(w.martin).apply(recordPayment, {
+			timeZone: ZONE,
 			person: ref(w.sofia),
 			direction: "outgoing",
 			currency: "PEN",

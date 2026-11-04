@@ -190,6 +190,13 @@ jobs:
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/segment/')
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # One worker per job (the specs share one seeded ledger), so the suite is
+    # split by file across jobs instead; each has its own Postgres. Serial, it
+    # outgrew the 20-minute cap (about 18 to 19 minutes by 2026-11).
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1/2, 2/2]
     services:
       postgres:
         image: postgres:16-alpine
@@ -228,12 +235,12 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: E2E suite
-        run: pnpm exec playwright test
+        run: pnpm exec playwright test --shard=${{ matrix.shard }}
 
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ strategy.job-index }}
           path: playwright-report/
           retention-days: 7
 
