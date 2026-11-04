@@ -78,32 +78,4 @@ export function loadDirtyMarks(tx: Tx, bookId: string): Promise<DirtyMark[]> {
 	});
 }
 
-/**
- * The latest checkpoint a pass may start from: before `needFrom` (the first
- * month the caller reads), before every dirty mark, and with the
- * fingerprint of the fully loaded rows unchanged.
- */
-export function pickCheckpoint(
-	closes: readonly CloseRow[],
-	p: {
-		needFrom: MonthKey;
-		currentMonth: MonthKey;
-		dirty: readonly DirtyMark[];
-		prints: ReadonlyMap<MonthKey, string>;
-	},
-): StoredCheckpoint | null {
-	const dirtyFrom = Math.min(
-		Number.POSITIVE_INFINITY,
-		...p.dirty.map((d) => d.fromMonth),
-	);
-	let best: StoredCheckpoint | null = null;
-	for (const c of closes) {
-		const cp = c.checkpoint;
-		if (!cp || cp.month !== c.month) continue;
-		if (cp.month >= p.needFrom || cp.month >= p.currentMonth) continue;
-		if (cp.month >= dirtyFrom) continue;
-		if (p.prints.get(cp.month) !== cp.print) continue;
-		if (!best || cp.month > best.month) best = cp;
-	}
-	return best;
-}
+export { pickCheckpoint } from "@retrospend/domain/envelope/checkpoint";
