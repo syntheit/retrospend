@@ -71,6 +71,19 @@ async function fanOutUntilDone(eventId: string) {
 	throw new Error("The fan-out never handled the event");
 }
 
+// The feed hides events until no older transaction is running anywhere on the
+// server (the outbox horizon), and tests in other workers run transactions
+// too, so the copy can show a moment after the fan-out marked the event done.
+async function deletedInFeed(userId: string) {
+	let deleted: Awaited<ReturnType<typeof readEventFeed>>["items"] = [];
+	for (let n = 0; n < 50 && deleted.length === 0; n++) {
+		const feed = await readEventFeed(adminDb, userId, { limit: 50 });
+		deleted = feed.items.filter((e) => e.type === "shared_expense.deleted");
+		if (deleted.length === 0) await new Promise((r) => setTimeout(r, 100));
+	}
+	return deleted;
+}
+
 describe("deleting a shared expense", () => {
 	it("returns the other people on it and writes them into the event", async () => {
 		const b = await book();
@@ -95,10 +108,7 @@ describe("deleting a shared expense", () => {
 		});
 		const [event] = await eventsOf(b.user.id, "shared_expense.deleted");
 		await fanOutUntilDone(event?.id as string);
-		const feed = await readEventFeed(adminDb, b.ben.id, { limit: 50 });
-		const deleted = feed.items.filter(
-			(e) => e.type === "shared_expense.deleted",
-		);
+		const deleted = await deletedInFeed(b.ben.id);
 		expect(deleted).toHaveLength(1);
 		expect(deleted[0]).toMatchObject({
 			actorUserId: b.user.id,

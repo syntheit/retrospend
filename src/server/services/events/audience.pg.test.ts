@@ -77,11 +77,20 @@ async function write(actor: TestUser, type: string, entityId: string | null) {
 	throw new Error("The fan-out never handled the event");
 }
 
-/** The feed of `user`, once every copy that should be there has shown. */
-async function feedOf(user: TestUser, expected: number) {
+/**
+ * The feed of `user`, once every copy that should be there has shown. The
+ * feed hides events until no older transaction is running anywhere on the
+ * server (the outbox horizon), and tests in other workers run transactions
+ * too, so a copy can show later than the items already there. Pass `type` to
+ * wait for copies of that type rather than for any item.
+ */
+async function feedOf(user: TestUser, expected: number, type?: string) {
 	for (let n = 0; n < 50; n++) {
 		const feed = await readEventFeed(adminDb, user.user.id, { limit: 200 });
-		if (feed.items.length >= expected) return feed.items;
+		const seen = type
+			? feed.items.filter((e) => e.type === type).length
+			: feed.items.length;
+		if (seen >= expected) return feed.items;
 		await new Promise((r) => setTimeout(r, 100));
 	}
 	return (await readEventFeed(adminDb, user.user.id, { limit: 200 })).items;
@@ -194,7 +203,7 @@ describe("events reach the other people on a shared entity", () => {
 			},
 		});
 		await write(martin, "fix_request.created", request);
-		const asked = (await feedOf(sofia, 1)).filter(
+		const asked = (await feedOf(sofia, 1, "fix_request.created")).filter(
 			(e) => e.type === "fix_request.created",
 		);
 		expect(asked).toHaveLength(1);
@@ -220,7 +229,7 @@ describe("events reach the other people on a shared entity", () => {
 			},
 		});
 		await write(martin, "payment.recorded", payment);
-		const paid = (await feedOf(sofia, 2)).filter(
+		const paid = (await feedOf(sofia, 1, "payment.recorded")).filter(
 			(e) => e.type === "payment.recorded",
 		);
 		expect(paid).toHaveLength(1);

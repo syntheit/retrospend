@@ -889,8 +889,15 @@ describe("the marker of a rewrite", () => {
 			)[0]?.n;
 		// The note of the first transaction is swept by the next write after it
 		// ended; it could never be read again, its transaction id is spent.
+		// "Ended" means older than every running transaction on the server, so
+		// a transaction another worker's test has open can delay the sweep by a
+		// write or two.
 		const first = await write();
-		await write();
+		for (let n = 0; n < 50; n++) {
+			await write();
+			if ((await marks(first)) === 0) break;
+			await new Promise((r) => setTimeout(r, 100));
+		}
 		expect(await marks(first)).toBe(0);
 	});
 });

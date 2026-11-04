@@ -17,8 +17,10 @@ export default defineConfig({
 		include: ["src/**/*.pg.test.ts"],
 		globalSetup: ["src/test/pg-global-setup.ts"],
 		setupFiles: ["src/test/pg-env.ts"],
-		// Files share one database per run (AppSettings is a singleton row).
-		fileParallelism: false,
+		// One cloned database per worker (pg-global-setup.ts), so files run in
+		// parallel but never share AppSettings or table contents. Fixed rather
+		// than "all cores": every worker adds a connection pool and a database.
+		maxWorkers: Number(process.env.PG_TEST_WORKERS ?? 4),
 		testTimeout: 30_000,
 	},
 });
