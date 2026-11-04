@@ -165,12 +165,16 @@ jobs:
           exe=$(basename "$APP" .app)
           xcrun simctl spawn "$udid" log show --last 3m --info \
             --predicate "process == \"$exe\"" >smoke/app-log.txt
-          # Count entries ("<exe>[pid:tid]"), not the header line that also
-          # names the process.
-          lines=$(grep -c "$exe\[" smoke/app-log.txt || true)
-          echo "app log: $lines lines, $(grep -c com.facebook.react.log smoke/app-log.txt || true) from React Native"
-          [ "$lines" -gt 0 ] || { echo "FAIL: no log lines from $exe" >&2; exit 1; }
-          if grep "com.facebook.react.log" smoke/app-log.txt | grep -E "$JS_ERRORS"; then
+          # Entries read "<exe>: (<library>) [<subsystem>:<category>] ..."; the
+          # header line names the process too, so it is not counted.
+          lines=$(grep -c " $exe: " smoke/app-log.txt || true)
+          js=$(grep -c "com.facebook.react.log:javascript" smoke/app-log.txt || true)
+          echo "app log: $lines entries, $js from React Native's JavaScript"
+          [ "$lines" -gt 0 ] || { echo "FAIL: no log entries from $exe" >&2; exit 1; }
+          # Proof that the bundle ran and its log is readable (not <private>).
+          grep -q 'com.facebook.react.log:javascript\] Running "main"' smoke/app-log.txt \
+            || { echo "FAIL: React Native never logged Running \"main\"" >&2; exit 1; }
+          if grep "com.facebook.react.log:javascript" smoke/app-log.txt | grep -E "$JS_ERRORS"; then
             echo "FAIL: JavaScript error at startup" >&2
             exit 1
           fi
