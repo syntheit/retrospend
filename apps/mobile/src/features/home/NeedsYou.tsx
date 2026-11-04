@@ -5,6 +5,7 @@ import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { currenciesHref, recurringHref } from "@/features/account/places";
 import { personHref } from "@/layout/detailRoutes";
+import { settingsHref } from "@/layout/settingsPath";
 import { useAddEntry } from "@/features/entry/AddEntryProvider";
 import { useFaces } from "@/features/read/faces";
 import { useMoneyText } from "@/features/read/useMoneyText";
@@ -63,6 +64,9 @@ function useOpenNeeds() {
 					return;
 				case "settings":
 					router.push("/settings");
+					return;
+				case "preferences":
+					router.push(settingsHref("preferences", false) as never);
 					return;
 				case "add":
 					add.open("expense");
