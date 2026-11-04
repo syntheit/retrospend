@@ -1,0 +1,29 @@
+# Flow 4. Detail, pencil, a new amount, Save: the detail and the list show it.
+# create-expense adds 12; the edit makes it 35.
+appId: app.retrospend
+tags:
+  - smoke
+env:
+  SERVER: http://10.0.2.2:3200
+---
+- runFlow: ../_common/session.yaml
+- runFlow: ../_common/create-expense.yaml
+- tapOn: ${output.title}
+- tapOn:
+    id: sheet.edit
+- tapOn:
+    id: add.amount
+- tapOn:
+    id: keypad.key.delete
+- tapOn:
+    id: keypad.key.delete
+- tapOn:
+    id: keypad.key.3
+- tapOn:
+    id: keypad.key.5
+- tapOn:
+    id: add.save
+- assertVisible: .*35.*
+- tapOn:
+    id: sheet.close
+- assertVisible: ${output.title}

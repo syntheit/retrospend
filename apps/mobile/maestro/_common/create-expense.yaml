@@ -1,0 +1,22 @@
+# Adds an expense of 12 in the home currency under a fresh title, and leaves
+# the title in output.title. CATEGORY is the name of a seeded category.
+appId: app.retrospend
+env:
+  CATEGORY: Groceries
+---
+- runScript: unique-title.js
+- runFlow: open-add.yaml
+- tapOn:
+    id: keypad.key.1
+- tapOn:
+    id: keypad.key.2
+- tapOn:
+    id: add.title
+- inputText: ${output.title}
+- hideKeyboard
+- tapOn: ${CATEGORY}
+- tapOn:
+    id: add.save
+- extendedWaitUntil:
+    visible: ${output.title}
+    timeout: 15000

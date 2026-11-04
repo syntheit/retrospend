@@ -45,6 +45,9 @@
               go
               openssl
               pkg-config
+              # The throwaway servers of the Maestro runs (apps/mobile/maestro/server.sh,
+              # docs/roadmap/maestro-plan.md): psql, and initdb for a runner's own Postgres.
+              postgresql
             ];
 
             # Prisma 7 formats via WASM, so only the schema engine is needed.
@@ -159,11 +162,16 @@
                 emuSdk
                 emuPkgs.jdk17
                 emuPkgs.util-linux
+                # Mobile end-to-end flows (apps/mobile/maestro), driven over adb.
+                emuPkgs.maestro
               ];
               env = {
                 JAVA_HOME = emuPkgs.jdk17.home;
                 ANDROID_HOME = "${emuSdk}/libexec/android-sdk";
                 ANDROID_SDK_ROOT = "${emuSdk}/libexec/android-sdk";
+                # Maestro Cloud and its analytics are not used.
+                MAESTRO_CLI_NO_ANALYTICS = "1";
+                MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED = "true";
               };
             };
           # The same with older system images (API 35, 34, 26 and 24) for

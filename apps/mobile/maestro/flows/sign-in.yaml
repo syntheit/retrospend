@@ -1,0 +1,51 @@
+# Flow 1. The real connect and sign-in screens (no session link): a wrong
+# password says so, the right one lands on Home.
+appId: app.retrospend
+tags:
+  - smoke
+env:
+  SERVER: http://10.0.2.2:3200
+  EMAIL: sofia.reyes@example.com
+  PASSWORD: Sofia-e2e-2026!
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: connect.address
+- eraseText
+- inputText: ${SERVER}
+- hideKeyboard
+- tapOn:
+    id: connect.submit
+# The e2e server is plain http: the app asks before it saves it.
+- tapOn:
+    id: connect.continue
+- extendedWaitUntil:
+    visible:
+      id: signIn.email
+    timeout: 15000
+- tapOn:
+    id: signIn.email
+- inputText: ${EMAIL}
+- tapOn:
+    id: signIn.password
+- inputText: not-the-password
+- hideKeyboard
+- tapOn:
+    id: signIn.submit
+- extendedWaitUntil:
+    visible: That email and password don't match.
+    timeout: 15000
+- tapOn:
+    id: signIn.password
+- eraseText
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: signIn.submit
+- extendedWaitUntil:
+    visible:
+      id: add.open
+    timeout: 30000
+- assertVisible:
+    id: home.total

@@ -31,6 +31,7 @@ export function Hero({
 	subTone = "fg2",
 	align = "start",
 	help,
+	testID,
 }: {
 	label: string;
 	value: string;
@@ -46,6 +47,8 @@ export function Hero({
 	subTone?: "fg2" | "fg3";
 	align?: "start" | "center";
 	help?: { label: string; hint: string; onPress: () => void };
+	/** The stable id the Maestro flows find the figure by (src/lib/testIds.ts). */
+	testID?: string;
 }) {
 	const { color, size, space, type } = useTheme();
 	// Phones draw the hero at its own size (size.hero.phone); the rest of type.hero holds.
@@ -73,6 +76,7 @@ export function Hero({
 				gap: space[1],
 				alignItems: align === "center" ? "center" : "stretch",
 			}}
+			testID={testID}
 		>
 			{withLabel ? labelText : null}
 			<Text

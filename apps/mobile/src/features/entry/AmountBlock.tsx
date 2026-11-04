@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { TEST_IDS } from "@/lib/testIds";
 import { useTheme } from "@/theme";
 import { HAIRLINE } from "@/ui/metrics";
 import { Text } from "@/ui/Text";
@@ -67,6 +68,7 @@ export function AmountBlock({
 						minHeight: size.touchMin.phone,
 						justifyContent: "center",
 					}}
+					testID={TEST_IDS.add.amount}
 				>
 					<View style={{ flexDirection: "row", alignItems: "center" }}>
 						<Text

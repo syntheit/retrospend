@@ -1,0 +1,9 @@
+# Opens the expense composer from the Add button.
+appId: app.retrospend
+---
+- tapOn:
+    id: add.open
+- extendedWaitUntil:
+    visible:
+      id: add.save
+    timeout: 10000

@@ -1,0 +1,24 @@
+# Flow 2. The composer: amount, title, category, Add. The row is on Home and
+# in Activity, and Home's Spent figure moves.
+appId: app.retrospend
+tags:
+  - smoke
+env:
+  SERVER: http://10.0.2.2:3200
+---
+- runFlow: ../_common/session.yaml
+- extendedWaitUntil:
+    visible:
+      id: home.total
+    timeout: 20000
+- copyTextFrom:
+    id: home.total
+- evalScript: ${output.before = maestro.copiedText}
+- runFlow: ../_common/create-expense.yaml
+- copyTextFrom:
+    id: home.total
+- assertTrue: ${maestro.copiedText != output.before}
+- openLink: retrospend://activity
+- extendedWaitUntil:
+    visible: ${output.title}
+    timeout: 15000

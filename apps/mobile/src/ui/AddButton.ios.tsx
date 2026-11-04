@@ -1,5 +1,6 @@
 import { Button, Menu } from "@expo/ui/swift-ui";
 import {
+	accessibilityIdentifier,
 	buttonStyle,
 	controlSize,
 	foregroundColor,
@@ -7,6 +8,7 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import { Platform } from "react-native";
 import { iosMajor } from "@/layout/destinations";
+import { TEST_IDS } from "@/lib/testIds";
 import { useTheme } from "@/theme";
 import { NativeHost } from "./NativeHost";
 import type { AddButtonProps } from "./types";
@@ -35,6 +37,7 @@ export function AddButton({
 		labelStyle(showLabel ? "titleAndIcon" : "iconOnly"),
 		// The plus reads on the brand glass in both themes (cream glass, dark plus).
 		foregroundColor(color.brandFg),
+		accessibilityIdentifier(TEST_IDS.add.open),
 	];
 	return (
 		<NativeHost>

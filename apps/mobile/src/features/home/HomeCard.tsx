@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { Pressable, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { TEST_IDS } from "@/lib/testIds";
 import { useTheme } from "@/theme";
 import { Glyph } from "@/ui/Glyph";
 import { Hero } from "@/ui/Hero";
@@ -103,6 +104,7 @@ export function HomeCard({ glance }: { glance: Glance }) {
 					<Hero
 						label={t("spentIn", { month })}
 						sub={sub}
+						testID={TEST_IDS.home.total}
 						value={
 							spent.amount
 								? format(spent.amount, {
