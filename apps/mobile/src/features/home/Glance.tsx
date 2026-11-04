@@ -6,13 +6,16 @@ import { currenciesHref } from "@/features/account/places";
 import { useFaces } from "@/features/read/faces";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { wealthHref } from "@/features/wealth/routes";
+import { useRateFormat } from "@/lib/rateFormat";
 import { useTheme } from "@/theme";
 import { AvatarStack } from "@/ui/Avatar";
 import { WRAP_FROM_SCALE } from "@/ui/List";
 import { MoneyAmount, useRateTypeLabel } from "@/ui/Money";
+import { fitMoney } from "@/ui/fitMoney";
 import { Text } from "@/ui/Text";
 import { BudgetCard } from "./BudgetCard";
 import { useHomeDates } from "./dates";
+import { readDollar } from "./dollarRead";
 import { HomeCard } from "./HomeCard";
 import { HomeTile, TileNote } from "./HomeTile";
 import {
@@ -78,6 +81,7 @@ export function Glance({
 	const faces = useFaces();
 	const dates = useHomeDates();
 	const rateLabel = useRateTypeLabel();
+	const rateFmt = useRateFormat();
 	const { space } = useTheme();
 	const { fontScale } = useWindowDimensions();
 	const tiles: ReactElement<{ spans?: boolean }>[] = [];
@@ -156,8 +160,10 @@ export function Glance({
 			? t("tile.rateDate", { date: dates.short(dollar.rateDate) })
 			: null;
 		// The other rate types of that day, two to a line, then the date.
+		const read = readDollar(dollar, rateFmt);
 		const others = dollar.others.map(
-			(o) => `${rateLabel(o.rateType)} ${format(o.value, { display: "none" })}`,
+			(o, i) =>
+				`${rateLabel(o.rateType)} ${read.others[i] ?? format(o.value, { display: "none" })}`,
 		);
 		const lines: string[] = [];
 		for (let i = 0; i < others.length; i += 2)
@@ -171,7 +177,10 @@ export function Glance({
 				onPress={() => router.push(currenciesHref())}
 				spoken={[
 					t("dollarToday"),
-					dollar.value ? format(dollar.value, { display: "code" }) : noRate,
+					read.sentence ??
+						(dollar.value
+							? format(dollar.value, { display: "code" })
+							: noRate),
 					rate,
 					...others,
 					date,
@@ -186,7 +195,13 @@ export function Glance({
 						gap: space[2],
 					}}
 				>
-					<TileFigure code value={dollar.value} />
+					{read.sentence ? (
+						<Text {...fitMoney} tabular variant="section" weight="semibold">
+							{read.sentence}
+						</Text>
+					) : (
+						<TileFigure code value={dollar.value} />
+					)}
 					{rate ? (
 						<Text tone="fg3" variant="meta">
 							{rate}
