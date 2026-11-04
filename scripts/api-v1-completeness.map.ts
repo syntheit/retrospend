@@ -268,6 +268,11 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 
 	// ── old home dashboard ───────────────────────────────────────────────
 
+	// ── admin access log ─────────────────────────────────────────────────
+	"adminAccess.list": gap(
+		"the admin access log is on the web Settings screen; the phone apps show it with their Security screen later",
+	),
+
 	// ── approved devices (platform) ──────────────────────────────────────
 	"deviceSession.disconnect": because(
 		"g5-platform",

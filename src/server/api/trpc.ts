@@ -16,6 +16,7 @@ import { errorFormatter } from "~/server/api/error-formatter";
 import type { Session } from "~/server/better-auth/config";
 import { getWebSession } from "~/server/better-auth/web-session";
 import { createUserScopedDb, db } from "~/server/db";
+import { logAdminProcedure } from "~/server/services/admin-access.service";
 import {
 	claimTimeZone,
 	resolveTimeZone,
@@ -232,10 +233,17 @@ export const protectedProcedure = t.procedure
  * If you want a query or mutation to ONLY be accessible to admin users, use this. It verifies
  * the user is authenticated and has ADMIN role.
  */
-export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
+export const adminProcedure = protectedProcedure.use(async (opts) => {
+	const { ctx, next } = opts;
 	if (ctx.session.user.role !== "ADMIN") {
 		throw new TRPCError({ code: "UNAUTHORIZED" });
 	}
+	// Every admin action on a person's account is written to their access log.
+	await logAdminProcedure(db, {
+		path: opts.path,
+		adminId: ctx.session.user.id,
+		rawInput: await opts.getRawInput(),
+	});
 	// Restore global db so admin queries run as superuser, bypassing RLS
 	// for legitimate cross-user data access.
 	return next({ ctx: { db } });

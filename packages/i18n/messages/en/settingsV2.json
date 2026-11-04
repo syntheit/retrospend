@@ -226,6 +226,20 @@
 				"mcp": "MCP client",
 				"device": "Approved device"
 			}
+		},
+		"adminAccess": {
+			"title": "Admin access",
+			"none": "No admin has acted on your account.",
+			"action": {
+				"password_reset": "An admin reset your password",
+				"reset_link": "An admin created a password reset link",
+				"disabled": "An admin turned off your account",
+				"enabled": "An admin turned your account back on",
+				"email_verified": "An admin verified your email",
+				"email_verification_changed": "An admin changed your email verification",
+				"ai_access_changed": "An admin changed your external AI access",
+				"avatar_removed": "An admin removed your photo"
+			}
 		}
 	},
 	"password": {

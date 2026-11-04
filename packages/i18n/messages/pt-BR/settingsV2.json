@@ -226,6 +226,20 @@
 				"mcp": "Cliente MCP",
 				"device": "Dispositivo aprovado"
 			}
+		},
+		"adminAccess": {
+			"title": "Acesso de administradores",
+			"none": "Nenhum administrador agiu na sua conta.",
+			"action": {
+				"password_reset": "Um administrador redefiniu sua senha",
+				"reset_link": "Um administrador criou um link para redefinir sua senha",
+				"disabled": "Um administrador desativou sua conta",
+				"enabled": "Um administrador reativou sua conta",
+				"email_verified": "Um administrador verificou seu e-mail",
+				"email_verification_changed": "Um administrador alterou a verificação do seu e-mail",
+				"ai_access_changed": "Um administrador alterou seu acesso à IA externa",
+				"avatar_removed": "Um administrador removeu sua foto"
+			}
 		}
 	},
 	"password": {
