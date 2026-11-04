@@ -60,7 +60,7 @@ describe("check-release-bundle.sh", () => {
 				[join(app, "scripts", "check-release-bundle.sh")],
 				{
 					encoding: "utf8",
-					env: { ...clean, ...extraEnv },
+					env: { ...clean, ...extraEnv } as NodeJS.ProcessEnv,
 				},
 			);
 		} finally {
