@@ -1,0 +1,15 @@
+# Keeps the GitHub Actions pins in .github/workflows current. Actions are pinned
+# to commit SHAs (a moved tag can't change what runs); Dependabot proposes the
+# bumps as one grouped PR a month. npm dependencies are not covered here: pnpm's
+# 7-day minimumReleaseAge and manual upgrades handle those.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "CI"

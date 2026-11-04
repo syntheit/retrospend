@@ -2,11 +2,14 @@
  * Global setup for `pnpm test:pg` (runs once, in the main vitest process).
  *
  * TEST_DATABASE_URL names a server and a base database name. Each run creates
- * a fresh database called `<base>_<random>` on that server, applies every
- * migration with `prisma migrate deploy` (the same path prod takes), hands the
- * URL to the test workers and drops the database afterwards. Runs never share
- * state, and several worktrees can use one Postgres container as long as each
- * picks its own base name.
+ * a template database `<base>_<random>_tpl` on that server and applies every
+ * migration to it once with `prisma migrate deploy` (the same path prod
+ * takes). It then clones one database per vitest worker
+ * (`<base>_<random>_w<n>`), hands the URLs to the workers (pg-env.ts picks one
+ * by VITEST_POOL_ID) and drops everything afterwards. Test files in one worker
+ * share a database, workers never do, and runs never share state. Several
+ * worktrees can use one Postgres container as long as each picks its own base
+ * name.
  */
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
@@ -15,12 +18,47 @@ import type { TestProject } from "vitest/node";
 
 declare module "vitest" {
 	export interface ProvidedContext {
-		pgDatabaseUrl: string;
+		/** One database URL per worker, index = VITEST_POOL_ID - 1. */
+		pgWorkerDatabaseUrls: string[];
 	}
 }
 
-// Postgres truncates identifiers at 63 bytes; leave room for "_" + 8 hex.
+// Postgres truncates identifiers at 63 bytes. A derived name is
+// `<base>_<4 hex>` plus a suffix of at most 4 characters ("_tpl", "_w16").
+const MAX_IDENTIFIER = 63;
 const MAX_BASE_NAME = 54;
+
+/**
+ * Each worker holds a Pool of up to 20 connections to its own database, so
+ * the count stays well under Postgres's default max_connections of 100.
+ */
+function workerCount(maxWorkers: number | undefined): number {
+	if (!Number.isInteger(maxWorkers) || !maxWorkers || maxWorkers < 1 || maxWorkers > 16) {
+		throw new Error(
+			`PG_TEST_WORKERS must be an integer from 1 to 16, got "${process.env.PG_TEST_WORKERS}"`,
+		);
+	}
+	return maxWorkers;
+}
+
+/** Names of the template and the per-worker databases for one run. */
+export function runDatabaseNames(
+	baseName: string,
+	runId: string,
+	workers: number,
+): { template: string; workers: string[] } {
+	const stem = `${baseName}_${runId}`;
+	const template = `${stem}_tpl`;
+	const names = Array.from({ length: workers }, (_, i) => `${stem}_w${i + 1}`);
+	for (const name of [template, ...names]) {
+		if (Buffer.byteLength(name) > MAX_IDENTIFIER) {
+			throw new Error(
+				`Derived test database name "${name}" is longer than ${MAX_IDENTIFIER} bytes`,
+			);
+		}
+	}
+	return { template, workers: names };
+}
 
 function maintenanceUrl(url: URL): string {
 	const admin = new URL(url);
@@ -98,39 +136,73 @@ async function createRunDatabase(project: TestProject) {
 		process.env.TEST_DATABASE_URL,
 	);
 
-	const runName = `${baseName}_${randomBytes(4).toString("hex")}`;
-	const runUrl = new URL(baseUrl);
-	runUrl.pathname = `/${runName}`;
+	const names = runDatabaseNames(
+		baseName,
+		randomBytes(2).toString("hex"),
+		workerCount(project.config.maxWorkers),
+	);
+	const urlFor = (name: string) => {
+		const url = new URL(baseUrl);
+		url.pathname = `/${name}`;
+		return url.toString();
+	};
 
-	const admin = new Client({ connectionString: maintenanceUrl(baseUrl) });
-	await admin.connect();
-	try {
-		await admin.query(`CREATE DATABASE "${runName}"`);
-	} finally {
-		await admin.end();
-	}
-
-	const dropRunDatabase = async () => {
+	const withAdmin = async <T>(run: (client: Client) => Promise<T>) => {
 		const client = new Client({ connectionString: maintenanceUrl(baseUrl) });
 		await client.connect();
 		try {
-			// FORCE closes pool connections the workers may still hold.
-			await client.query(`DROP DATABASE IF EXISTS "${runName}" WITH (FORCE)`);
+			return await run(client);
 		} finally {
 			await client.end();
 		}
 	};
 
+	// Only names this run created get dropped: with a 4-hex run id another run
+	// can draw the same names, and a failed CREATE must not drop its databases.
+	const created: string[] = [];
+	const create = async (client: Client, name: string, sql: string) => {
+		await client.query(sql);
+		created.push(name);
+	};
+	const dropRunDatabases = () =>
+		withAdmin(async (client) => {
+			// Workers first, then the template; each on its own so one failure
+			// doesn't leak the rest. FORCE closes pool connections the workers
+			// may still hold.
+			for (const name of [...created].reverse()) {
+				await client
+					.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`)
+					.catch((error: unknown) =>
+						console.error(`could not drop ${name}:`, error),
+					);
+			}
+		});
+
 	try {
+		await withAdmin((client) =>
+			create(client, names.template, `CREATE DATABASE "${names.template}"`),
+		);
 		execFileSync("pnpm", ["exec", "prisma", "migrate", "deploy"], {
-			env: { ...process.env, DATABASE_URL: runUrl.toString() },
+			env: { ...process.env, DATABASE_URL: urlFor(names.template) },
 			stdio: ["ignore", "ignore", "inherit"],
 		});
+		// A clone fails while anyone else is connected to the template; migrate
+		// deploy has exited and the workers have not started. The clones run one
+		// after another because each one locks the template.
+		await withAdmin(async (client) => {
+			for (const name of names.workers) {
+				await create(
+					client,
+					name,
+					`CREATE DATABASE "${name}" TEMPLATE "${names.template}"`,
+				);
+			}
+		});
 	} catch (error) {
-		await dropRunDatabase();
+		await dropRunDatabases();
 		throw error;
 	}
 
-	project.provide("pgDatabaseUrl", runUrl.toString());
-	return dropRunDatabase;
+	project.provide("pgWorkerDatabaseUrls", names.workers.map(urlFor));
+	return dropRunDatabases;
 }

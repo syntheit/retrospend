@@ -87,13 +87,19 @@ type DueDelivery = Prisma.WebhookDeliveryGetPayload<{
  * (so a worker that was slow past its lease cannot overwrite the worker
  * that took over), or null when another worker got there first.
  */
-async function claim(delivery: DueDelivery, now: Date): Promise<Date | null> {
+export async function claim(
+	delivery: DueDelivery,
+	now: Date,
+): Promise<Date | null> {
 	const lease = new Date(now.getTime() + CLAIM_LEASE_MS);
 	const { count } = await db.webhookDelivery.updateMany({
 		where: {
 			id: delivery.id,
 			status: "PENDING",
-			nextAttemptAt: delivery.nextAttemptAt,
+			// Still the value that was read, and still due: a row another worker
+			// claimed since (its lease is in the future) or settled as a retry
+			// (its backoff has not ended) is not ours to take.
+			nextAttemptAt: { equals: delivery.nextAttemptAt, lte: now },
 		},
 		data: { nextAttemptAt: lease },
 	});
@@ -220,7 +226,7 @@ async function attempt(
  * everyone's second oldest). Plain "oldest first" would let one account with
  * a backlog fill the batch for as long as the backlog lasts.
  */
-async function pickDue(now: Date): Promise<DueDelivery[]> {
+export async function pickDue(now: Date): Promise<DueDelivery[]> {
 	const picked = await db.$queryRaw<{ id: string }[]>`
 		SELECT "id" FROM (
 			SELECT "id", "nextAttemptAt",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseTestDatabaseUrl } from "./pg-global-setup";
+import { parseTestDatabaseUrl, runDatabaseNames } from "./pg-global-setup";
 
 const url = (hostPort: string, name: string) =>
 	`postgresql://postgres:testpassword@${hostPort}/${name}`;
@@ -62,5 +62,31 @@ describe("parseTestDatabaseUrl", () => {
 				/retrospend_test/,
 			);
 		}
+	});
+});
+
+describe("runDatabaseNames", () => {
+	const longest = `retrospend_test_${"a".repeat(38)}`;
+
+	it("names a template and one database per worker", () => {
+		const names = runDatabaseNames("retrospend_test_x", "ab12", 3);
+		expect(names.template).toBe("retrospend_test_x_ab12_tpl");
+		expect(names.workers).toEqual([
+			"retrospend_test_x_ab12_w1",
+			"retrospend_test_x_ab12_w2",
+			"retrospend_test_x_ab12_w3",
+		]);
+	});
+
+	it("fits the 63 byte limit for the longest base name and 16 workers", () => {
+		expect(longest.length).toBe(54);
+		const names = runDatabaseNames(longest, "ab12", 16);
+		for (const name of [names.template, ...names.workers]) {
+			expect(Buffer.byteLength(name)).toBeLessThanOrEqual(63);
+		}
+	});
+
+	it("refuses a name that would be truncated", () => {
+		expect(() => runDatabaseNames(longest, "ab12cd", 16)).toThrow(/63 bytes/);
 	});
 });
