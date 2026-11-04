@@ -3,7 +3,7 @@ import * as WebBrowser from "expo-web-browser";
 import { memo, useCallback, useRef, useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { LARGE_TITLE } from "@/layout/pushedHeader";
+import { HEADER_TITLE_FACE, LARGE_TITLE } from "@/layout/pushedHeader";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
@@ -222,6 +222,7 @@ export function CurrenciesScreen() {
 			options={{
 				title: t("title"),
 				headerLargeTitle: LARGE_TITLE,
+				...HEADER_TITLE_FACE,
 				headerSearchBarOptions: {
 					ref: searchRef,
 					placeholder: t("search"),

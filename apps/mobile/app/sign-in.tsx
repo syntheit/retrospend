@@ -5,7 +5,7 @@ import { useTranslations } from "use-intl";
 import type { AuthFailure } from "@/auth/errors";
 import { useServerConnection } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
-import { LARGE_TITLE } from "@/layout/pushedHeader";
+import { HEADER_TITLE_FACE, LARGE_TITLE } from "@/layout/pushedHeader";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Screen } from "@/ui/Screen";
@@ -55,6 +55,7 @@ export default function SignInScreen() {
 					headerShown: true,
 					headerLargeTitle: LARGE_TITLE,
 					headerShadowVisible: false,
+					...HEADER_TITLE_FACE,
 					title: t("title"),
 				}}
 			/>
