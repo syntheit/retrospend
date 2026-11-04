@@ -11,7 +11,7 @@ import type { Adjustment } from "~/lib/schemas/envelope-book";
 import { Prisma } from "~prisma";
 import { EnvelopeError } from "./errors";
 import { forgetMonthViews } from "./month-read";
-import { RateBook } from "./rate-book";
+import { loadRateBook } from "./rate-book";
 import type { IsoDate } from "./types";
 import { fromMinor, toMinor } from "./units";
 
@@ -36,7 +36,7 @@ export async function writeEntryRow(tx: Tx, userId: string, p: EntryRow) {
 	const amount = fromMinor(p.minor, p.currency);
 	let rate = new Prisma.Decimal(1);
 	if (p.currency !== USD) {
-		const rates = await RateBook.load(tx, {
+		const rates = await loadRateBook(tx, {
 			bookCurrency: p.currency,
 			rateTypes: [p.rateType, "official"],
 			since: "1970-01-01",

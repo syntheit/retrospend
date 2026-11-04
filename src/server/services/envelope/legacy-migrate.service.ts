@@ -29,7 +29,7 @@ import {
 import { spendingByCategory } from "./limits.service";
 import { forgetMonthViews, monthViewIn } from "./month-read";
 import { budgetMonthOf, isoDateIn } from "./months";
-import { RateBook } from "./rate-book";
+import { loadRateBook } from "./rate-book";
 import type { Minor, MonthKey } from "./types";
 import { fromMinor, toMinor } from "./units";
 import { convertToBook, type ValuationContext } from "./valuation";
@@ -180,7 +180,7 @@ async function load(
 /** The converter the plan sizes funding with: today's rates, the book's rate type, official for a third currency (D25). */
 async function converter(tx: Tx, l: Loaded, currencies: readonly string[]) {
 	const first = `${Math.floor(addMonths(l.current, -1) / 100)}-${String(addMonths(l.current, -1) % 100).padStart(2, "0")}-01`;
-	const rates = await RateBook.load(tx, {
+	const rates = await loadRateBook(tx, {
 		bookCurrency: l.currency,
 		rateTypes: [l.rateType, "official"],
 		since: first,

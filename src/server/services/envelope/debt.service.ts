@@ -32,7 +32,7 @@ import { findPersonalBook } from "./inputs";
 import { forgetMonthViews } from "./month-read";
 import { budgetMonthOf, isoDateIn } from "./months";
 import { type PayoffDebt, projectPayoff } from "./payoff";
-import { RateBook } from "./rate-book";
+import { loadRateBook } from "./rate-book";
 import { LIABILITY_TYPES } from "./target-write";
 import { dec, fromMinor, toMinor } from "./units";
 import {
@@ -310,7 +310,7 @@ async function valuationFor(
 	currencies: readonly string[],
 	today: string,
 ): Promise<ValuationContext> {
-	const rates = await RateBook.load(tx, {
+	const rates = await loadRateBook(tx, {
 		bookCurrency: book.currency,
 		rateTypes: [
 			...new Set(["official", ...book.periods.map((p) => p.rateType)]),

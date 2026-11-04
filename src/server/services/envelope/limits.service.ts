@@ -34,7 +34,7 @@ import { forgetMonthViews } from "./month-read";
 import { isoDateIn } from "./months";
 import { insert, replay, result } from "./movement.service";
 import { checkEnvelope, lockedSnapshot } from "./movement-state";
-import { RateBook } from "./rate-book";
+import { loadRateBook } from "./rate-book";
 import type { MissingRate } from "./types";
 import { fromMinor } from "./units";
 import { convertToBookOrThrow, valueRow } from "./valuation";
@@ -82,7 +82,7 @@ export async function spendingByCategory(
 			categoryId: true,
 		},
 	});
-	const rates = await RateBook.load(tx, {
+	const rates = await loadRateBook(tx, {
 		bookCurrency: currency,
 		rateTypes: [rateType, "official"],
 		since: range.gte.toISOString().slice(0, 10),
@@ -176,7 +176,7 @@ async function inBook(
 ) {
 	const H = s.loaded.book.currency;
 	if (currency === H) return amountMinor;
-	const rates = await RateBook.load(tx, {
+	const rates = await loadRateBook(tx, {
 		bookCurrency: H,
 		rateTypes: [s.loaded.valuation.defaultRateType, "official"],
 		since: "1970-01-01",
