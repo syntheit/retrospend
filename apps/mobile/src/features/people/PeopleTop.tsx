@@ -22,6 +22,8 @@ export function PeopleTop({
 	const { space } = useTheme();
 	const owed = overview.people.filter((p) => p.group === "owed");
 	const owe = overview.people.filter((p) => p.group === "owe");
+	// With no one at all the empty state speaks; "Settled" needs someone settled.
+	if (overview.people.length === 0) return null;
 	if (owed.length === 0 && owe.length === 0) {
 		return (
 			<View style={{ padding: space[4] }}>
