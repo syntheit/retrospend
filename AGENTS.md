@@ -199,7 +199,7 @@ Run from the repo root. On NixOS, run inside `nix develop` (it provides Node, pn
 | `pnpm exec tsx packages/api-contract/scripts/write-openapi.ts` | Regenerate `openapi.json` after a contract change |
 | `pnpm vitest run <file>` | One test file, while iterating |
 
-CI (`.github/workflows/ci.yml`) runs check, pg, build, mobile, the Android Google-free tree, the sidecar, e2e and visual.
+CI (`.github/workflows/ci.yml`) runs check, pg, build, mobile, the sidecar, e2e (two shards), visual and the Docker image builds. `.github/workflows/mobile.yml` builds and smoke-tests the iOS and Android apps (with the Google-free tree check) when mobile code changes. Branch pushes run nothing until there is a pull request; `main` and `segment/**` always run.
 
 ---
 
