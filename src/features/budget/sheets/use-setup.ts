@@ -35,6 +35,24 @@ export const hasAmount = (
 	t !== null &&
 	(t.kind === "MONTHLY" || t.kind === "BILL" || t.kind === "SAVINGS");
 
+/** The styles that fund envelopes from amounts set here, so a plan with none funds nothing. */
+export const AMOUNT_STYLES: ReadonlySet<SetupStyle> = new Set([
+	"FLEX",
+	"WEEKLY",
+	"EVERY_DOLLAR",
+	"DEBT_PAYOFF",
+]);
+
+/**
+ * Whether a row takes an amount typed here: an envelope whose target carries
+ * one, and, in the amount styles, a Monthly envelope that starts with none
+ * (Spending, a category). Limits keeps Everything else without a limit.
+ */
+export function takesAmount(e: PresetEnvelope, style: SetupStyle): boolean {
+	if (hasAmount(e.target)) return true;
+	return e.target === null && e.kind === "MONTHLY" && AMOUNT_STYLES.has(style);
+}
+
 /**
  * The setup sheet's state: the style, what you have now, and the style's
  * proposed envelopes (the server's preset) with the ones you keep and the
@@ -97,7 +115,17 @@ export function useSetup(locale: string) {
 		const envelopes: SetupInput["envelopes"] = [];
 		for (const e of keep) {
 			let target: SetupInput["envelopes"][number]["target"];
-			if (e.target && hasAmount(e.target)) {
+			if (e.target === null && takesAmount(e, style)) {
+				const minor = minorOf(texts[e.key] ?? "", locale, p.currency);
+				if (minor === null && texts[e.key]) return null;
+				if (minor)
+					target = {
+						kind: "MONTHLY",
+						amountMinor: minor,
+						mode: "REFILL",
+						cadence: "MONTH",
+					};
+			} else if (e.target && hasAmount(e.target)) {
 				const minor = minorOf(texts[e.key] ?? "", locale, p.currency);
 				if (minor === null && texts[e.key]) return null;
 				target =
@@ -184,4 +212,12 @@ export function useSetup(locale: string) {
 		input: input && input.envelopes.length > 0 ? input : null,
 		name,
 	};
+}
+
+/** An amount style whose plan costs nothing: starting would leave every envelope at 0 and the first expense overspent. */
+export function nothingPlanned(
+	style: SetupStyle,
+	plan: { cost: { minor: number } } | null,
+): boolean {
+	return AMOUNT_STYLES.has(style) && plan !== null && plan.cost.minor === 0;
 }

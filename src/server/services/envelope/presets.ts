@@ -209,14 +209,52 @@ function limits(
 	];
 }
 
+/**
+ * Flex and Every dollar from the last 3 months: Spending (every category no
+ * bill covers) or each category starts at its monthly average, rounded up to
+ * whole units, as a Refill target. With no spending the envelope keeps no
+ * target, so nothing is proposed that history does not back.
+ */
+export function withHistory(
+	style: SetupStyle,
+	envelopes: readonly PresetEnvelope[],
+	spent: ReadonlyMap<string, number>,
+	unit: number,
+): PresetEnvelope[] {
+	const monthly = (total: number) => ceilDiv(total, 3 * unit) * unit;
+	const refill = (total: number): PresetEnvelope["target"] =>
+		total > 0
+			? {
+					kind: "MONTHLY",
+					amountMinor: monthly(total),
+					mode: "REFILL",
+					cadence: "MONTH",
+				}
+			: null;
+	if (style === "EVERY_DOLLAR")
+		return envelopes.map((e) =>
+			e.key.startsWith("cat-") && e.categoryIds[0] !== undefined
+				? { ...e, target: refill(spent.get(e.categoryIds[0]) ?? 0) }
+				: e,
+		);
+	const billed = new Set(envelopes.flatMap((e) => e.categoryIds));
+	let rest = 0;
+	for (const [id, total] of spent) if (!billed.has(id)) rest += total;
+	return envelopes.map((e) =>
+		e.key === "spending" && e.target === null
+			? { ...e, target: refill(rest) }
+			: e,
+	);
+}
+
 export function stylePreset(p: {
 	style: SetupStyle;
 	currency: string;
 	templates: readonly PresetTemplate[];
 	categories: readonly PresetCategory[];
-	/** Limits: spending per category over the last 3 months, in minor units. */
+	/** Limits, Flex, Every dollar: spending per category over the last 3 months, in minor units. */
 	spent?: ReadonlyMap<string, number>;
-	/** Limits: one whole currency unit in minor units (limits round up to it). */
+	/** One whole currency unit in minor units (proposals round up to it). */
 	unit?: number;
 	/** Limits: spending rows left out for a missing rate (R14). */
 	missingRates?: SetupPresetOutput["missingRates"];
@@ -233,6 +271,8 @@ export function stylePreset(p: {
 			],
 			envelopes: limits(p.categories, p.spent ?? new Map(), p.unit ?? 1),
 		};
+	const fromHistory = (style: SetupStyle, envelopes: PresetEnvelope[]) =>
+		p.spent ? withHistory(style, envelopes, p.spent, p.unit ?? 1) : envelopes;
 	const head = {
 		style: p.style,
 		currency: p.currency,
@@ -244,7 +284,10 @@ export function stylePreset(p: {
 	if (p.style === "DEBT_PAYOFF")
 		return {
 			...head,
-			...debtPayoff(flex("FLEX", p.templates), p.liabilities ?? []),
+			...debtPayoff(
+				fromHistory("FLEX", flex("FLEX", p.templates)),
+				p.liabilities ?? [],
+			),
 		};
 	const dollar = p.style === "EVERY_DOLLAR";
 	return {
@@ -253,7 +296,7 @@ export function stylePreset(p: {
 		missingRates: p.missingRates ?? [],
 		groups: [...(dollar ? GROUPS.EVERY_DOLLAR : GROUPS.FLEX)],
 		envelopes: dollar
-			? everyDollar(p.templates, p.categories)
-			: flex(p.style, p.templates),
+			? fromHistory(p.style, everyDollar(p.templates, p.categories))
+			: fromHistory(p.style, flex(p.style, p.templates)),
 	};
 }

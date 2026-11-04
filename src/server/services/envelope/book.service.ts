@@ -29,6 +29,14 @@ import { toMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
 
+/** The styles that propose amounts from the last 3 months of spending. */
+const HISTORY_STYLES: ReadonlySet<SetupStyle> = new Set([
+	"LIMITS",
+	"FLEX",
+	"EVERY_DOLLAR",
+	"DEBT_PAYOFF",
+]);
+
 export async function setupPreset(
 	tx: Tx,
 	userId: string,
@@ -48,16 +56,15 @@ export async function setupPreset(
 		orderBy: { name: "asc" },
 		select: { id: true, name: true, isFixed: true },
 	});
-	const recent =
-		style === "LIMITS"
-			? await recentSpending(
-					tx,
-					userId,
-					user.homeCurrency,
-					await rateTypeFor(tx, userId, user.homeCurrency),
-					new Date(),
-				)
-			: null;
+	const recent = HISTORY_STYLES.has(style)
+		? await recentSpending(
+				tx,
+				userId,
+				user.homeCurrency,
+				await rateTypeFor(tx, userId, user.homeCurrency),
+				new Date(),
+			)
+		: null;
 	const liabilities =
 		style === "DEBT_PAYOFF"
 			? await tx.assetAccount.findMany({
