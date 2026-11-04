@@ -33,6 +33,9 @@
 		"brand-soft": {
 			"$value": "color-mix(in oklab, {color.brand} 13%, transparent)"
 		},
+		"switch-on": {
+			"$value": "oklch(0.6 0.06 60)"
+		},
 		"accent": {
 			"$value": "oklch(0.72 0.108 220)"
 		},

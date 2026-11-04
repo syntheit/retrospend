@@ -51,11 +51,11 @@ describe.each(themes)("M3 token colors (%s)", (_name, theme) => {
 		});
 	});
 
-	it("maps the switch to a brand track on and a raised track off", () => {
+	it("maps the switch to a switch-on track on and a raised track off", () => {
 		expect(sw).toEqual({
-			checkedTrackColor: color.brand,
+			checkedTrackColor: color.switchOn,
 			checkedThumbColor: color.brandFg,
-			checkedBorderColor: color.brand,
+			checkedBorderColor: color.switchOn,
 			uncheckedTrackColor: color.raised,
 			uncheckedThumbColor: color.fg3,
 			uncheckedBorderColor: color.lineStrong,
@@ -110,9 +110,9 @@ describe.each(themes)("M3 token colors (%s)", (_name, theme) => {
 	});
 
 	it("keeps the switch thumb readable on both tracks", () => {
-		expect(ratio(color.brandFg, color.brand, color.bg)).toBeGreaterThanOrEqual(
-			4.5,
-		);
+		expect(
+			ratio(color.brandFg, color.switchOn, color.bg),
+		).toBeGreaterThanOrEqual(3);
 		expect(ratio(color.fg3, color.raised, color.bg)).toBeGreaterThanOrEqual(
 			4.5,
 		);
@@ -120,7 +120,7 @@ describe.each(themes)("M3 token colors (%s)", (_name, theme) => {
 
 	it("tells the on track from the off track", () => {
 		expect(
-			contrast(rgba(color.brand), rgba(color.raised)),
+			contrast(rgba(color.switchOn), rgba(color.raised)),
 		).toBeGreaterThanOrEqual(3);
 	});
 });

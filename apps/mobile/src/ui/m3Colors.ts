@@ -32,12 +32,16 @@ export function segmentedColors(color: ThemeColor): SegmentedButtonColors {
 	};
 }
 
-/** The switch: a brand track when on, a raised track and a quiet thumb when off. */
+/**
+ * The switch: the switch-on track when on (the brand in light, a tan in dark
+ * that holds 3:1 against the thumb and the surface), a raised track and a
+ * quiet thumb when off.
+ */
 export function switchColors(color: ThemeColor): SwitchColors {
 	return {
-		checkedTrackColor: color.brand,
+		checkedTrackColor: color.switchOn,
 		checkedThumbColor: color.brandFg,
-		checkedBorderColor: color.brand,
+		checkedBorderColor: color.switchOn,
 		uncheckedTrackColor: color.raised,
 		uncheckedThumbColor: color.fg3,
 		uncheckedBorderColor: color.lineStrong,
