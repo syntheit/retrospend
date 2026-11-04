@@ -2,7 +2,9 @@
  * Fixtures for the account, transfer and income pg tests (MONEY-MOVES
  * conventions): ARS home, today's rates ARS 1,468 Blue, 1,412 Official and
  * 1,449 MEP per USD. Accounts are created through the real service and
- * dated ten days ago, so moves today land after their first balance.
+ * dated ten days before the clock reads when they are opened (a test that
+ * pins the clock gets ten days before its pinned day), so moves today land
+ * after their first balance.
  */
 import { dayKey } from "@retrospend/domain/time-zone";
 import { readFigures } from "~/server/figures/read";
@@ -91,9 +93,13 @@ export async function openAccount(
 		isLiquid: type === "CASH",
 		...extra,
 	});
+	const opened = new Date(
+		new Date(`${dayKey(new Date())}T00:00:00.000Z`).getTime() -
+			ageDays * 86_400_000,
+	);
 	await adminDb.assetSnapshot.updateMany({
 		where: { accountId: account.id },
-		data: { date: daysAgo(ageDays), recordedAt: daysAgo(ageDays) },
+		data: { date: opened, recordedAt: opened },
 	});
 	return account.id;
 }
