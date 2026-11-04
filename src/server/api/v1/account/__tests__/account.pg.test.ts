@@ -251,7 +251,13 @@ describe("/api/v1/me/deletion", () => {
 		});
 	});
 
-	it("limits tries per user, right or wrong", async () => {
+	it("limits tries per user, right or wrong", { timeout: 90_000 }, async () => {
+		// The counter is a fixed 15-minute window, so six tries that straddle
+		// its edge would start a fresh count. Start just after an edge instead.
+		const window = 15 * 60_000;
+		const untilEdge = window - (Date.now() % window);
+		if (untilEdge < 30_000)
+			await new Promise((r) => setTimeout(r, untilEdge + 100));
 		const id = await passwordUser();
 		const headers = { ...ip(), ...(await asMobile(id)) };
 		for (let i = 0; i < 5; i++)
