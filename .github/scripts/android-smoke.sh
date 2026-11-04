@@ -25,7 +25,7 @@ if ! adb shell pidof "$pkg" >/dev/null; then
   echo "FAIL: $pkg is not running" >&2
   status=1
 fi
-if grep -E "FATAL EXCEPTION|ANR in $pkg" "$out/logcat.txt"; then
+if grep -E "FATAL EXCEPTION|ANR in $pkg|Unable to load script" "$out/logcat.txt"; then
   echo "FAIL: crash in logcat" >&2
   status=1
 fi

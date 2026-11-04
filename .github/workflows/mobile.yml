@@ -216,6 +216,15 @@ jobs:
           CI: "1"
         run: pnpm exec expo prebuild --platform android --clean --no-install
 
+      # Gradle leaves the JS bundle out of debug variants, so the app would
+      # show "Unable to load script" without a Metro server. An empty list
+      # of debuggable variants makes debug builds embed the bundle.
+      - name: Embed the JS bundle in the debug APK
+        working-directory: apps/mobile/android/app
+        run: |
+          sed -i 's/^react {$/react {\n    debuggableVariants = []/' build.gradle
+          grep -n -A1 '^react {$' build.gradle | grep -q 'debuggableVariants = \[\]'
+
       # x86_64 only: the emulator below is x86_64, and one ABI is a quarter of
       # the native compile.
       - name: Build debug APK
