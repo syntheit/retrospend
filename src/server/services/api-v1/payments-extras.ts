@@ -80,16 +80,22 @@ const squareUpMutation: MoneyMutation<SquareUpInput, SquaredUp> = {
 	},
 };
 
-const squareUpInput = (body: SquareUpBody): SquareUpInput => ({
+type LedgerCaller = Caller & { timeZone: string };
+
+const squareUpInput = (
+	caller: LedgerCaller,
+	body: SquareUpBody,
+): SquareUpInput => ({
 	toParticipant: {
 		participantType: body.person.type,
 		participantId: body.person.id,
 	},
 	currency: body.currency,
+	timeZone: caller.timeZone,
 });
 
-export async function squareUp(caller: Caller, body: SquareUpBody) {
-	const input = squareUpInput(body);
+export async function squareUp(caller: LedgerCaller, body: SquareUpBody) {
+	const input = squareUpInput(caller, body);
 	const done = await applyWrite(caller, squareUpMutation, input);
 	await notifySquaredUp(me(caller), input, done);
 	return {
@@ -104,8 +110,8 @@ export async function squareUp(caller: Caller, body: SquareUpBody) {
 	};
 }
 
-export const previewSquareUp = (caller: Caller, body: SquareUpBody) =>
-	previewWrite(caller, squareUpMutation, squareUpInput(body));
+export const previewSquareUp = (caller: LedgerCaller, body: SquareUpBody) =>
+	previewWrite(caller, squareUpMutation, squareUpInput(caller, body));
 
 export async function readSquareUpOptions(
 	caller: Caller,

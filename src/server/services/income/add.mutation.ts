@@ -44,6 +44,7 @@ import { bookRate, loadRateContext, type RateChoice } from "../rate-types";
 import { typedAmount } from "../transfers/plan";
 import { nextDueDay } from "./due-day";
 import { applyPlanFor, PLAN_NOT_REQUESTED, type PlanResult } from "./plan-seam";
+import { withUserZone } from "~/server/services/user-time-zone";
 
 type Tx = Prisma.TransactionClient;
 
@@ -289,8 +290,9 @@ function countedUnitsOf(
 export async function addIncomeIn(
 	tx: Tx,
 	userId: string,
-	input: AddIncomeInput,
+	given: AddIncomeInput,
 ): Promise<IncomeValue> {
+	const input = await withUserZone(tx, userId, given);
 	const date = moveDay(input.date, new Date(), input.timeZone);
 	const amount = typedAmount(input.amount, input.currency);
 	if (!amount.gt(0)) {

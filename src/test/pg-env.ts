@@ -1,10 +1,17 @@
 /**
  * Setup file for pg tests (runs in each worker before the test file loads).
- * `~/env` and `~/server/db` read process.env when first imported, so the run
- * database has to be in place before any test imports them.
+ * `~/env` and `~/server/db` read process.env when first imported, so the
+ * worker's database has to be in place before any test imports them.
  */
 import { inject } from "vitest";
 
-process.env.DATABASE_URL = inject("pgDatabaseUrl");
+// Vitest numbers its workers 1..maxWorkers; the global setup cloned one
+// database for each, so no two workers (and no two files at once) share one.
+const poolId = Number(process.env.VITEST_POOL_ID);
+const databaseUrl = inject("pgWorkerDatabaseUrls")[poolId - 1];
+if (!databaseUrl) {
+	throw new Error(`No pg test database for VITEST_POOL_ID "${poolId}"`);
+}
+process.env.DATABASE_URL = databaseUrl;
 // env validation requires a secret; pg tests never sign anything.
 process.env.BETTER_AUTH_SECRET ??= "pg-test-placeholder-not-a-secret";

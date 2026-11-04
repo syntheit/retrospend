@@ -1,0 +1,284 @@
+name: Mobile
+
+# Builds the Expo app for iOS (simulator) and Android (x86_64 debug APK) on
+# GitHub-hosted runners, then launches it and checks it stays up. Unsigned
+# debug builds: no secrets are used.
+
+on:
+  pull_request:
+    paths:
+      - "apps/mobile/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+      - ".npmrc"
+      - ".github/workflows/mobile.yml"
+      - ".github/scripts/android-smoke.sh"
+  push:
+    branches:
+      - main
+      - "segment/**"
+    paths:
+      - "apps/mobile/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+      - ".npmrc"
+      - ".github/workflows/mobile.yml"
+      - ".github/scripts/android-smoke.sh"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # app.config.ts refuses some builds unless the build says it is a dev or
+  # simulator build.
+  RETROSPEND_BUILD_PROFILE: simulator
+  # Uncaught JavaScript errors as React Native logs them, on both platforms.
+  JS_ERRORS: "Error:|Invariant Violation|Unhandled JS Exception"
+
+jobs:
+  ios:
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      # CocoaPods refuses to run without a UTF-8 locale.
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+      DERIVED_DATA: ${{ github.workspace }}/DerivedData
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # The newest Xcode 26 on the image. The Mac mini uses Xcode 27, which
+      # the runners do not have yet, so code that needs the iOS 27 SDK fails
+      # here first.
+      - name: Select Xcode
+        run: |
+          # shellcheck disable=SC2012
+          ls -d /Applications/Xcode_*.app
+          # shellcheck disable=SC2012
+          xcode_app=$(ls -d /Applications/Xcode_26.*.app | sort -V | tail -1)
+          sudo xcode-select -s "$xcode_app"
+          xcodebuild -version
+
+      # Version comes from packageManager in package.json.
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # Node 24.16 fails Expo's bundle write with EBADF; log what we got.
+      - run: node --version
+
+      # Only the app and the workspace packages it imports. The root's
+      # lifecycle scripts (Prisma for the web app) have no place here.
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-scripts --filter '@retrospend/mobile...'
+
+      # ios/ is generated and never committed. Debug builds register with the
+      # APNs sandbox.
+      - name: Prebuild
+        working-directory: apps/mobile
+        env:
+          RETROSPEND_APNS_ENV: development
+          CI: "1"
+        run: pnpm exec expo prebuild --platform ios --clean --no-install
+
+      # pod install downloads through the CocoaPods CDN into this cache; the
+      # Pods folder itself is rebuilt by every prebuild --clean.
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/Library/Caches/CocoaPods
+          key: cocoapods-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: cocoapods-${{ runner.os }}-
+
+      # EX_UPDATES_NATIVE_DEBUG makes pod install write ios/.xcode.env.updates,
+      # which embeds a production JS bundle in the Debug build, so the app
+      # starts without a Metro server. One retry for network drops.
+      - name: Pod install
+        working-directory: apps/mobile/ios
+        env:
+          EX_UPDATES_NATIVE_DEBUG: "1"
+        run: pod install || pod install
+
+      # RCT_NO_LAUNCH_PACKAGER keeps Xcode from opening a Metro terminal.
+      # Ad-hoc signed ("-", no team or profile): unsigned, the simulator app
+      # has no keychain entitlement and expo-notifications shows an error over
+      # the first screen.
+      - name: Build for the simulator
+        working-directory: apps/mobile
+        env:
+          RCT_NO_LAUNCH_PACKAGER: "1"
+        run: |
+          set -o pipefail
+          # shellcheck disable=SC2012
+          workspace=$(ls -d ios/*.xcworkspace | head -1)
+          scheme=$(basename "$workspace" .xcworkspace)
+          xcodebuild -workspace "$workspace" -scheme "$scheme" \
+            -configuration Debug -derivedDataPath "$DERIVED_DATA" \
+            -destination "generic/platform=iOS Simulator" \
+            build CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= >"$RUNNER_TEMP/xcodebuild.log" 2>&1 \
+            || { grep -E 'error:|BUILD FAILED' "$RUNNER_TEMP/xcodebuild.log" | head -40; exit 1; }
+          grep -m1 "BUILD SUCCEEDED" "$RUNNER_TEMP/xcodebuild.log"
+          echo "APP=$DERIVED_DATA/Build/Products/Debug-iphonesimulator/$scheme.app" >>"$GITHUB_ENV"
+
+      # The newest iOS runtime on the image that has an iPhone 17.
+      - name: Smoke test
+        run: |
+          mkdir -p smoke
+          xcrun simctl list runtimes
+          read -r udid < <(xcrun simctl list devices available -j | node -e '
+            const { devices } = JSON.parse(require("node:fs").readFileSync(0, "utf8"));
+            const out = [];
+            for (const [rt, ds] of Object.entries(devices))
+              for (const d of ds) if (d.name === "iPhone 17") out.push([rt, d.udid]);
+            out.sort((a, b) => a[0].localeCompare(b[0], "en", { numeric: true }));
+            if (!out.length) process.exit(1);
+            console.log(out[out.length - 1][1]);
+          ')
+          echo "Simulator $udid"
+          xcrun simctl boot "$udid" || true
+          xcrun simctl bootstatus "$udid" -b >/dev/null
+          xcrun simctl install "$udid" "$APP"
+          xcrun simctl launch "$udid" app.retrospend
+          # Long enough for the embedded bundle to load and the first screen
+          # to draw on a cold boot.
+          sleep 20
+          xcrun simctl io "$udid" screenshot smoke/ios.png
+          xcrun simctl spawn "$udid" launchctl list >smoke/launchctl.txt
+          grep "UIKitApplication:app.retrospend" smoke/launchctl.txt \
+            || { echo "FAIL: app.retrospend is not running" >&2; exit 1; }
+          # A JS error at startup leaves the process alive behind a red box,
+          # so check the app's log too. Fail on an empty log: a query that
+          # matched nothing must not read as "no errors".
+          exe=$(basename "$APP" .app)
+          xcrun simctl spawn "$udid" log show --last 3m --info \
+            --predicate "process == \"$exe\"" >smoke/app-log.txt
+          # Entries read "<exe>: (<library>) [<subsystem>:<category>] ..."; the
+          # header line names the process too, so it is not counted.
+          lines=$(grep -c " $exe: " smoke/app-log.txt || true)
+          js=$(grep -c "com.facebook.react.log:javascript" smoke/app-log.txt || true)
+          echo "app log: $lines entries, $js from React Native's JavaScript"
+          [ "$lines" -gt 0 ] || { echo "FAIL: no log entries from $exe" >&2; exit 1; }
+          # Proof that the bundle ran and its log is readable (not <private>).
+          grep -q 'com.facebook.react.log:javascript\] Running "main"' smoke/app-log.txt \
+            || { echo "FAIL: React Native never logged Running \"main\"" >&2; exit 1; }
+          if grep "com.facebook.react.log:javascript" smoke/app-log.txt | grep -E "$JS_ERRORS"; then
+            echo "FAIL: JavaScript error at startup" >&2
+            exit 1
+          fi
+
+      - name: Upload screenshot
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ios-smoke
+          path: smoke
+          if-no-files-found: ignore
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ios-xcodebuild-log
+          path: ${{ runner.temp }}/xcodebuild.log
+          if-no-files-found: ignore
+
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # Caches ~/.gradle (dependencies and wrapper). Pull requests write
+      # their own branch scoped cache too.
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
+        with:
+          cache-read-only: false
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-scripts --filter '@retrospend/mobile...'
+
+      # The runner has no sdkmanager on PATH, so this installs the command
+      # line tools and accepts the licenses. The packages are the versions
+      # React Native 0.88 builds with (the android shell in flake.nix); the
+      # image lacks the exact NDK and CMake.
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
+        with:
+          packages: >-
+            platform-tools
+            platforms;android-36 platforms;android-37.0
+            build-tools;37.0.0 build-tools;36.0.0 build-tools;35.0.0
+            ndk;27.1.12297006 cmake;3.22.1
+
+      - name: Prebuild
+        working-directory: apps/mobile
+        env:
+          CI: "1"
+        run: pnpm exec expo prebuild --platform android --clean --no-install
+
+      # Gradle leaves the JS bundle out of debug variants, so the app would
+      # show "Unable to load script" without a Metro server. An empty list
+      # of debuggable variants makes debug builds embed the bundle.
+      - name: Embed the JS bundle in the debug APK
+        working-directory: apps/mobile/android/app
+        run: |
+          sed -i 's/^react {$/react {\n    debuggableVariants = []/' build.gradle
+          grep -n -A1 '^react {$' build.gradle | grep -q 'debuggableVariants = \[\]'
+
+      # x86_64 only: the emulator below is x86_64, and one ABI is a quarter of
+      # the native compile.
+      - name: Build debug APK
+        working-directory: apps/mobile/android
+        run: ./gradlew --no-daemon -Dorg.gradle.jvmargs=-Xmx4g -PreactNativeArchitectures=x86_64 assembleDebug
+
+      - name: Google-free check
+        run: bash apps/mobile/scripts/check-google-free.sh
+
+      # GitHub's Ubuntu runners have KVM, but the device node needs a rule.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Smoke test
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 34
+          arch: x86_64
+          target: default
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: bash .github/scripts/android-smoke.sh
+
+      - name: Upload screenshot and logcat
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: android-smoke
+          path: smoke
+          if-no-files-found: ignore

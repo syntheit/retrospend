@@ -36,6 +36,7 @@ import {
 	type TransferPlanInput,
 	typedAmount,
 } from "./plan";
+import { withUserZone } from "~/server/services/user-time-zone";
 
 type Tx = Prisma.TransactionClient;
 
@@ -347,8 +348,10 @@ async function writeMove(
 export async function createTransferIn(
 	tx: Tx,
 	userId: string,
-	input: CreateTransferInput,
+	given: CreateTransferInput,
 ): Promise<TransferValue> {
+	// Resolved once here: the fee row reads the same zone as the move's day.
+	const input = await withUserZone(tx, userId, given);
 	const move = await resolveMove(tx, userId, input);
 	const { transferId, changes } = await writeMove(tx, userId, move, input);
 	const fee = await writeFee(tx, userId, input, { ...move, transferId });

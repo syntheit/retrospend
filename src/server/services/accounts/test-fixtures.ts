@@ -2,7 +2,9 @@
  * Fixtures for the account, transfer and income pg tests (MONEY-MOVES
  * conventions): ARS home, today's rates ARS 1,468 Blue, 1,412 Official and
  * 1,449 MEP per USD. Accounts are created through the real service and
- * dated ten days ago, so moves today land after their first balance.
+ * dated ten days before the clock reads when they are opened (a test that
+ * pins the clock gets ten days before its pinned day), so moves today land
+ * after their first balance.
  */
 import { dayKey } from "@retrospend/domain/time-zone";
 import { readFigures } from "~/server/figures/read";
@@ -40,11 +42,35 @@ export async function seedArsRates() {
 	}
 }
 
+/**
+ * ARS rates on fixed days, for tests that pin the clock: each `[day, type,
+ * rate]` is upserted, and the returned function removes those rows again.
+ */
+export async function seedArsRatesOn(
+	rates: readonly (readonly [Date, string, string])[],
+) {
+	for (const [date, type, rate] of rates) {
+		await adminDb.exchangeRate.upsert({
+			where: { date_currency_type: { date, currency: "ARS", type } },
+			create: { date, currency: "ARS", type, rate },
+			update: { rate },
+		});
+	}
+	return () =>
+		adminDb.exchangeRate.deleteMany({
+			where: {
+				currency: "ARS",
+				OR: rates.map(([date, type]) => ({ date, type })),
+			},
+		});
+}
+
+/** ARS home, and the process's zone saved, so the user's day is TODAY's. */
 export async function arsUser() {
 	const user = await createTestUser();
 	await adminDb.user.update({
 		where: { id: user.user.id },
-		data: { homeCurrency: "ARS" },
+		data: { homeCurrency: "ARS", timeZone: TODAY_ZONE },
 	});
 	return user;
 }
@@ -59,17 +85,26 @@ export async function openAccount(
 	extra: Partial<AccountFields> = {},
 	ageDays = 10,
 ) {
-	const account = await createAccount(adminDb, userId, {
-		name,
-		type,
-		currency,
-		balance,
-		isLiquid: type === "CASH",
-		...extra,
-	});
+	const account = await createAccount(
+		adminDb,
+		userId,
+		{
+			name,
+			type,
+			currency,
+			balance,
+			isLiquid: type === "CASH",
+			...extra,
+		},
+		TODAY_ZONE,
+	);
+	const opened = new Date(
+		new Date(`${dayKey(new Date())}T00:00:00.000Z`).getTime() -
+			ageDays * 86_400_000,
+	);
 	await adminDb.assetSnapshot.updateMany({
 		where: { accountId: account.id },
-		data: { date: daysAgo(ageDays), recordedAt: daysAgo(ageDays) },
+		data: { date: opened, recordedAt: opened },
 	});
 	return account.id;
 }

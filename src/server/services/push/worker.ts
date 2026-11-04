@@ -74,13 +74,16 @@ type Due = PushDelivery;
  * time. Returns the lease, which the settle step must still find in place,
  * or null when another worker got there first.
  */
-async function claim(delivery: Due, now: Date): Promise<Date | null> {
+export async function claim(delivery: Due, now: Date): Promise<Date | null> {
 	const lease = new Date(now.getTime() + CLAIM_LEASE_MS);
 	const { count } = await db.pushDelivery.updateMany({
 		where: {
 			id: delivery.id,
 			status: "PENDING",
-			nextAttemptAt: delivery.nextAttemptAt,
+			// Still the value that was read, and still due: a row another worker
+			// claimed since (its lease is in the future) or settled as a retry
+			// (its backoff has not ended) is not ours to take.
+			nextAttemptAt: { equals: delivery.nextAttemptAt, lte: now },
 		},
 		data: { nextAttemptAt: lease },
 	});

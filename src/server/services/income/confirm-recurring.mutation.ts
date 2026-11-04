@@ -43,6 +43,7 @@ import {
 	type PlanResult,
 	undoPlan,
 } from "./plan-seam";
+import { withUserZone } from "~/server/services/user-time-zone";
 
 type Tx = Prisma.TransactionClient;
 
@@ -109,8 +110,9 @@ async function dueTemplate(
 export async function confirmRecurringIncomeIn(
 	tx: Tx,
 	userId: string,
-	input: ConfirmRecurringIncomeInput,
+	given: ConfirmRecurringIncomeInput,
 ): Promise<ConfirmedIncome> {
+	const input = await withUserZone(tx, userId, given);
 	const template = await dueTemplate(tx, userId, input);
 	const entry = await recurringEntryData(
 		tx,

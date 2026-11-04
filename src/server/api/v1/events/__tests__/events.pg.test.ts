@@ -368,6 +368,10 @@ describe("event outbox", () => {
 					idempotent: true,
 					body: { name: `${n} ${user.slice(0, 4)}`, color: "teal" },
 				});
+			// The feed hides an event until every older transaction on the server
+			// has ended, so the third one can show after the first two. Wait for
+			// all three: a timeout fails here, before the paging is checked.
+			expect((await feed(headers, "", 3)).items).toHaveLength(3);
 			const first = await feed(headers, "?limit=2", 2);
 			expect(first.items).toHaveLength(2);
 			expect(first.hasMore).toBe(true);

@@ -33,6 +33,7 @@ import {
 	removeBudgetSide,
 } from "../transfers/budget-side";
 import { incomeRow } from "./delete.mutation";
+import { withUserZone } from "~/server/services/user-time-zone";
 
 type Tx = Prisma.TransactionClient;
 
@@ -181,8 +182,9 @@ async function accountSide(
 export async function moveInIn(
 	tx: Tx,
 	userId: string,
-	input: MoveInInput,
+	given: MoveInInput,
 ): Promise<MovedIn> {
+	const input = await withUserZone(tx, userId, given);
 	const date = moveDay(input.date, new Date(), input.timeZone);
 	const homeCurrency = await homeCurrencyOf(tx, userId);
 	// A retry of a Move in already recorded: what it did, nothing counted twice.

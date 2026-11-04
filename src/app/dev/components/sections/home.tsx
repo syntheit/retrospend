@@ -59,8 +59,10 @@ export function GlanceSection() {
 export function NeedsSection() {
 	const toast = useToast();
 	const act = () => toast.info(CAP.fixtures);
-	const one = (i: number, list = NEEDS_YOU) => {
-		const item = list[i];
+	// Picks by id: picking by index broke silently when a fixture item was added.
+	const one = (i: number | string, list = NEEDS_YOU) => {
+		const item =
+			typeof i === "string" ? list.find((x) => x.id === i) : list[i];
 		return item ? (
 			<ul className="w-105 max-w-full">
 				<NeedsYouItem item={item} onAction={act} />
@@ -92,11 +94,11 @@ export function NeedsSection() {
 				items={[
 					[CAP.itemDefault, one(2)],
 					[CAP.itemOverdue, one(0)],
-					[CAP.itemSetup, one(0, NEEDS_YOU_MORE)],
-					[CAP.itemRejected, one(1, NEEDS_YOU_MORE)],
-					[CAP.itemBudget, one(2, NEEDS_YOU_MORE)],
-					[CAP.itemShares, one(3, NEEDS_YOU_MORE)],
-					[CAP.itemAging, one(4, NEEDS_YOU_MORE)],
+					[CAP.itemSetup, one("nys1", NEEDS_YOU_MORE)],
+					[CAP.itemRejected, one("nyr1", NEEDS_YOU_MORE)],
+					[CAP.itemBudget, one("nyb1", NEEDS_YOU_MORE)],
+					[CAP.itemShares, one("nyb2", NEEDS_YOU_MORE)],
+					[CAP.itemAging, one("nyo1", NEEDS_YOU_MORE)],
 					[
 						CAP.itemFace,
 						<div className="w-105 max-w-full" key="f">
