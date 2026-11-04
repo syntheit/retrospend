@@ -378,6 +378,7 @@
 	"signIn": {
 		"title": "Anmelden",
 		"intro": "Melde dich bei {host} an.",
+		"createAccount": "Konto erstellen",
 		"changeServer": "Server wechseln",
 		"expired": "Deine Sitzung ist abgelaufen. Melde dich erneut an.",
 		"email": "E-Mail",
