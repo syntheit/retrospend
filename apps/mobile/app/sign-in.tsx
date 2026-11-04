@@ -5,6 +5,7 @@ import { useTranslations } from "use-intl";
 import type { AuthFailure } from "@/auth/errors";
 import { useServerConnection } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
+import { openWebPage } from "@/features/settings/webPages";
 import { LARGE_TITLE } from "@/layout/pushedHeader";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
@@ -126,6 +127,14 @@ export default function SignInScreen() {
 					}
 					onPress={submit}
 				/>
+				{step === "password" && connection.status === "connected" ? (
+					<Button
+						disabled={busy}
+						label={t("createAccount")}
+						onPress={() => void openWebPage(connection.baseUrl, "/signup")}
+						variant="text"
+					/>
+				) : null}
 				<Button
 					disabled={busy}
 					label={t("changeServer")}

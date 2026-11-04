@@ -378,6 +378,7 @@
 	"signIn": {
 		"title": "Iniciar sesión",
 		"intro": "Iniciá sesión en {host}.",
+		"createAccount": "Crear una cuenta",
 		"changeServer": "Cambiar servidor",
 		"expired": "Tu sesión terminó. Iniciá sesión de nuevo.",
 		"email": "Correo electrónico",
