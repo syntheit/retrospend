@@ -120,14 +120,22 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # Next's incremental build cache: unchanged modules are not recompiled.
-      - uses: actions/cache@v4
+      # Every run restores the newest one; only main saves, so pull requests
+      # don't churn the repo's 10 GB cache quota.
+      - uses: actions/cache/restore@v4
         with:
           path: .next/cache
-          key: next-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('src/**', 'packages/**', 'next.config.*') }}
+          key: next-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
           restore-keys: next-${{ hashFiles('pnpm-lock.yaml') }}-
 
       - name: Build
         run: pnpm build
+
+      - uses: actions/cache/save@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          path: .next/cache
+          key: next-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
 
   # The production images build (nothing is pushed), so a broken Dockerfile
   # shows up here and not at release time.
