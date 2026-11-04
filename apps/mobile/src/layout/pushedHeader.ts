@@ -1,8 +1,19 @@
 import { light } from "@retrospend/tokens/theme";
 import { Platform } from "react-native";
+import { fontFamilyFor } from "@/theme/fonts";
 
 /** Large titles are iOS's; Android's top app bar keeps the small one. */
 export const LARGE_TITLE = Platform.OS === "ios";
+
+/**
+ * The system header's titles in the app's face (DM Sans, semibold), so a
+ * native large title reads like the body text and the tab titles instead of
+ * the system font.
+ */
+export const HEADER_TITLE_FACE = {
+	headerLargeTitleStyle: { fontFamily: fontFamilyFor(light.font.weight.semibold) },
+	headerTitleStyle: { fontFamily: fontFamilyFor(light.font.weight.semibold) },
+} as const;
 
 /**
  * The header of a screen pushed over another (Settings and its pages). It is
@@ -20,6 +31,7 @@ export function pushedHeader(
 	return {
 		headerShown: true,
 		headerShadowVisible: false,
+		...HEADER_TITLE_FACE,
 		headerTintColor: color.fg,
 		headerStyle: android ? { backgroundColor: color.bg } : undefined,
 		contentStyle: { backgroundColor: color.bg },

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerConnection } from "@/auth/server-connection";
-import { LARGE_TITLE } from "@/layout/pushedHeader";
+import { HEADER_TITLE_FACE, LARGE_TITLE } from "@/layout/pushedHeader";
 import {
 	initialServerAddress,
 	type ProbeResult,
@@ -76,6 +76,7 @@ export default function ConnectScreen() {
 					headerShown: true,
 					headerLargeTitle: LARGE_TITLE,
 					headerShadowVisible: false,
+					...HEADER_TITLE_FACE,
 					title: t("title"),
 				}}
 			/>
