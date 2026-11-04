@@ -55,7 +55,9 @@ jobs:
       # here first.
       - name: Select Xcode
         run: |
+          # shellcheck disable=SC2012
           ls -d /Applications/Xcode_*.app
+          # shellcheck disable=SC2012
           xcode_app=$(ls -d /Applications/Xcode_26.*.app | sort -V | tail -1)
           sudo xcode-select -s "$xcode_app"
           xcodebuild -version
@@ -115,6 +117,7 @@ jobs:
           RCT_NO_LAUNCH_PACKAGER: "1"
         run: |
           set -o pipefail
+          # shellcheck disable=SC2012
           workspace=$(ls -d ios/*.xcworkspace | head -1)
           scheme=$(basename "$workspace" .xcworkspace)
           xcodebuild -workspace "$workspace" -scheme "$scheme" \
@@ -203,7 +206,7 @@ jobs:
         with:
           packages: >-
             platform-tools
-            platforms;android-36 platforms;android-37
+            platforms;android-36 platforms;android-37.0
             build-tools;37.0.0 build-tools;36.0.0 build-tools;35.0.0
             ndk;27.1.12297006 cmake;3.22.1
 
