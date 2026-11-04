@@ -790,12 +790,7 @@ export class SettlementService {
 	}
 
 	/** See squareUpProjects in settlement-square-up.ts. */
-	async squareUpProjects(input: {
-		toParticipant: ParticipantRef;
-		currency: string;
-		/** The request's zone; else the user's saved zone dates the payment. */
-		timeZone?: string;
-	}) {
+	async squareUpProjects(input: Parameters<typeof squareUpProjects>[2]) {
 		return squareUpProjects(this.db, this.currentUserRef, input);
 	}
 
