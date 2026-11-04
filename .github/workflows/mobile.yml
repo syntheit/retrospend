@@ -165,7 +165,9 @@ jobs:
           exe=$(basename "$APP" .app)
           xcrun simctl spawn "$udid" log show --last 3m --info \
             --predicate "process == \"$exe\"" >smoke/app-log.txt
-          lines=$(grep -c "$exe" smoke/app-log.txt || true)
+          # Count entries ("<exe>[pid:tid]"), not the header line that also
+          # names the process.
+          lines=$(grep -c "$exe\[" smoke/app-log.txt || true)
           echo "app log: $lines lines, $(grep -c com.facebook.react.log smoke/app-log.txt || true) from React Native"
           [ "$lines" -gt 0 ] || { echo "FAIL: no log lines from $exe" >&2; exit 1; }
           if grep "com.facebook.react.log" smoke/app-log.txt | grep -E "$JS_ERRORS"; then
