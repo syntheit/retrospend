@@ -15,8 +15,9 @@ import { addMonths } from "./calendar";
 import { savedPlanLines } from "./draft-store";
 import { computeBook } from "./engine";
 import { EnvelopeError } from "./errors";
+import type { GroupBase } from "./group-view";
 import { groupBaseFor, hasPercentGroup } from "./income-history";
-import { type LoadedBook, loadBook } from "./inputs";
+import { type LoadContext, type LoadedBook, loadBook } from "./inputs";
 import { buildMonthView, type MonthView } from "./month-view";
 import { owedSummary } from "./owed";
 import { coverOverview, fillFromTargets } from "./planning";
@@ -62,14 +63,41 @@ export function monthViewIn(
 	return view;
 }
 
-async function computeMonthView(
+/**
+ * What a month view reads. The server answers with Postgres
+ * (prismaMonthViewSource); a device answers from its own store. The view
+ * itself (monthViewFrom) never sees a database.
+ */
+export interface MonthViewSource {
+	loadBook(ctx: LoadContext): Promise<LoadedBook | null>;
+	/** The % base of a month for percent groups (SPEC §5.9), which needs closed months. */
+	groupBase(loaded: LoadedBook, month: MonthKey): Promise<GroupBase | null>;
+}
+
+export function prismaMonthViewSource(tx: Tx, userId: string): MonthViewSource {
+	return {
+		loadBook: (ctx) => loadBook(tx, userId, ctx),
+		groupBase: (loaded, month) => groupBaseFor(tx, loaded, month),
+	};
+}
+
+function computeMonthView(
 	tx: Tx,
 	userId: string,
 	now: Date,
 	month?: MonthKey,
 ): Promise<MonthRead | null> {
+	return monthViewFrom(prismaMonthViewSource(tx, userId), now, month);
+}
+
+/** The month view of a source: the same figures on the server and on a device. */
+export async function monthViewFrom(
+	src: MonthViewSource,
+	now: Date,
+	month?: MonthKey,
+): Promise<MonthRead | null> {
 	// A past month needs the pass to start before it, not at the last closed one.
-	const loaded = await loadBook(tx, userId, { now, needFrom: month });
+	const loaded = await src.loadBook({ now, needFrom: month });
 	if (!loaded) return null;
 	const key = month ?? loaded.input.currentMonth;
 	if (
@@ -80,7 +108,7 @@ async function computeMonthView(
 	const state = computeBook(loaded.input, key);
 	const groupBase =
 		key >= loaded.input.currentMonth && hasPercentGroup(loaded)
-			? await groupBaseFor(tx, loaded, key)
+			? await src.groupBase(loaded, key)
 			: null;
 	const view = buildMonthView({
 		book: loaded.book,

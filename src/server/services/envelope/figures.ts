@@ -28,6 +28,8 @@
  * Every one is unavailable (null) without a book or while a rate is
  * missing (R14: "Incomplete", never a guess).
  */
+import type { PayoffProjection } from "~/lib/schemas/envelope-debt";
+import type { PlanCostDto } from "~/lib/schemas/envelope-plan";
 import type {
 	FigureDb,
 	FigureDefinition,
@@ -36,7 +38,7 @@ import type {
 } from "~/server/figures/registry";
 import { budgetHolds } from "./bank";
 import { projectIn } from "./debt.service";
-import { forgetMonthViews, monthViewIn } from "./month-read";
+import { forgetMonthViews, type MonthRead, monthViewIn } from "./month-read";
 import { planCostIn } from "./plan-read";
 import {
 	FIGURE_LEFT_IN_LIMITS,
@@ -52,185 +54,213 @@ export const FIGURE_TYPICAL_INCOME = "budget.typicalIncome";
 export const FIGURE_TOTAL_DEBT = "budget.totalDebt";
 
 /**
- * The current month, read once per figure pass. Each pass reads anew: a
- * preview's after side must see the write it wraps, and writers outside the
- * envelope services (a shared expense, a payment) do not clear the
- * transaction's month view memo.
+ * What the budget figures read, once per pass; each is null without a book or
+ * while a rate is missing (R14). The server answers from Postgres
+ * (prismaBudgetReads); a device answers from its own store. The figure
+ * definitions only pick a number out of what these return, so a figure means
+ * the same thing wherever it is computed.
  */
-async function current(db: FigureDb, userId: string, pass?: FigurePass) {
-	const read = () => {
-		forgetMonthViews(db);
-		return monthViewIn(db, userId, new Date());
-	};
-	const view = await (pass
-		? pass.once(`budget.month:${userId}`, read)
-		: read());
-	return view && !view.dto.incomplete ? view : null;
+export interface BudgetReads<Db> {
+	month(db: Db, userId: string, pass?: FigurePass): Promise<MonthRead | null>;
+	plan(db: Db, userId: string, pass?: FigurePass): Promise<PlanCostDto | null>;
+	debt(
+		db: Db,
+		userId: string,
+		pass?: FigurePass,
+	): Promise<PayoffProjection | null>;
 }
+
+/**
+ * The server's reads. The current month is read once per figure pass. Each
+ * pass reads anew: a preview's after side must see the write it wraps, and
+ * writers outside the envelope services (a shared expense, a payment) do not
+ * clear the transaction's month view memo.
+ */
+export const prismaBudgetReads: BudgetReads<FigureDb> = {
+	async month(db, userId, pass) {
+		const read = () => {
+			forgetMonthViews(db);
+			return monthViewIn(db, userId, new Date());
+		};
+		const view = await (pass
+			? pass.once(`budget.month:${userId}`, read)
+			: read());
+		return view && !view.dto.incomplete ? view : null;
+	},
+
+	/** This month's plan cost read once per pass. */
+	async plan(db, userId, pass) {
+		const read = async () => {
+			if (!(await monthViewIn(db, userId, new Date()))) return null;
+			return planCostIn(db, userId, {}, new Date());
+		};
+		const v = await (pass ? pass.once(`budget.plan:${userId}`, read) : read());
+		return v && !v.incomplete ? v : null;
+	},
+
+	async debt(db, userId, pass) {
+		const read = async () => {
+			if (!(await monthViewIn(db, userId, new Date()))) return null;
+			return projectIn(db, userId, {}, new Date());
+		};
+		const v = await (pass ? pass.once(`budget.debt:${userId}`, read) : read());
+		return v && !v.incomplete ? v : null;
+	},
+};
 
 const inBook = (minor: number, currency: string): Money => ({
 	minor,
 	currency,
 });
 
-export const notPlannedYetFigure: FigureDefinition = {
-	id: FIGURE_NOT_PLANNED_YET,
-	scope: [],
-	compute: async (db, scope, pass) => {
-		const v = await current(db, scope.userId, pass);
-		return v ? v.dto.toAssign.amount : null;
-	},
-};
-
-export const leftToSpendFigure: FigureDefinition = {
-	id: FIGURE_LEFT_TO_SPEND,
-	scope: [],
-	compute: async (db, scope, pass) => {
-		const v = await current(db, scope.userId, pass);
-		return v ? v.dto.leftToSpend.left : null;
-	},
-};
-
-export const leftThisWeekFigure: FigureDefinition = {
-	id: FIGURE_LEFT_THIS_WEEK,
-	scope: [],
-	compute: async (db, scope, pass) => {
-		const v = await current(db, scope.userId, pass);
-		if (!v) return null;
-		const weekly = v.dto.groups
-			.flatMap((g) => g.envelopes)
-			.filter((e) => e.leftThisWeek);
-		if (weekly.length === 0) return null;
-		return inBook(
-			weekly.reduce((t, e) => t + (e.leftThisWeek?.amount.minor ?? 0), 0),
-			v.dto.book.currency,
-		);
-	},
-};
-
-export const envelopeLeftFigure: FigureDefinition = {
-	id: "envelope.left",
-	scope: ["envelopeId"],
-	compute: async (db, scope, pass) => {
-		if (!scope.envelopeId) return null;
-		const v = await current(db, scope.userId, pass);
-		const row = v?.dto.groups
-			.flatMap((g) => g.envelopes)
-			.find((e) => e.id === scope.envelopeId);
-		return row ? row.left : null;
-	},
-};
-
-/** Money in this month: what came into the budget (income, starting money, moves from Wealth), the rail's Money in. */
-export const moneyInFigure: FigureDefinition = {
-	id: "budget.moneyIn",
-	scope: [],
-	compute: async (db, scope, pass) => {
-		const v = await current(db, scope.userId, pass);
-		return v ? v.dto.toAssign.terms.moneyIn : null;
-	},
-};
-
-export const envelopeSpentFigure: FigureDefinition = {
-	id: "envelope.spent",
-	scope: ["envelopeId"],
-	compute: async (db, scope, pass) => {
-		if (!scope.envelopeId) return null;
-		const v = await current(db, scope.userId, pass);
-		const row = v?.dto.groups
-			.flatMap((g) => g.envelopes)
-			.find((e) => e.id === scope.envelopeId);
-		return row ? row.spent : null;
-	},
-};
-
-export const heldForOthersFigure: FigureDefinition = {
-	id: FIGURE_HELD_FOR_OTHERS,
-	scope: [],
-	compute: async (db, scope, pass) => {
-		const v = await current(db, scope.userId, pass);
-		return v ? v.dto.owed.held : null;
-	},
-};
-
-/** Limits (SPEC §6.1): Σ Left of the envelopes with a limit; null in other styles. */
-export const leftInLimitsFigure: FigureDefinition = {
-	id: FIGURE_LEFT_IN_LIMITS,
-	scope: [],
-	compute: async (db, scope, pass) => {
-		const v = await current(db, scope.userId, pass);
-		const lead = v?.dto.verdict.lead;
-		return lead?.kind === "LEFT_IN_LIMITS" ? lead.amount : null;
-	},
-};
-
-/** What the budget holds: To assign + Σ Left + next month's assigned (reconcile, SPEC §5.11). */
-export const budgetHoldsFigure: FigureDefinition = {
-	id: FIGURE_BUDGET_HOLDS,
-	scope: [],
-	compute: async (db, scope, pass) => {
-		const v = await current(db, scope.userId, pass);
-		return v ? inBook(budgetHolds(v), v.dto.book.currency) : null;
-	},
-};
-
-/** This month's plan cost read once per pass; null without a book or with a rate missing. */
-async function plan(db: FigureDb, userId: string, pass?: FigurePass) {
-	const read = async () => {
-		if (!(await monthViewIn(db, userId, new Date()))) return null;
-		return planCostIn(db, userId, {}, new Date());
+export function createBudgetFigures<Db>(
+	reads: BudgetReads<Db>,
+): FigureDefinition<Db>[] {
+	const notPlannedYetFigure: FigureDefinition<Db> = {
+		id: FIGURE_NOT_PLANNED_YET,
+		scope: [],
+		compute: async (db, scope, pass) => {
+			const v = await reads.month(db, scope.userId, pass);
+			return v ? v.dto.toAssign.amount : null;
+		},
 	};
-	const v = await (pass ? pass.once(`budget.plan:${userId}`, read) : read());
-	return v && !v.incomplete ? v : null;
+
+	const leftToSpendFigure: FigureDefinition<Db> = {
+		id: FIGURE_LEFT_TO_SPEND,
+		scope: [],
+		compute: async (db, scope, pass) => {
+			const v = await reads.month(db, scope.userId, pass);
+			return v ? v.dto.leftToSpend.left : null;
+		},
+	};
+
+	const leftThisWeekFigure: FigureDefinition<Db> = {
+		id: FIGURE_LEFT_THIS_WEEK,
+		scope: [],
+		compute: async (db, scope, pass) => {
+			const v = await reads.month(db, scope.userId, pass);
+			if (!v) return null;
+			const weekly = v.dto.groups
+				.flatMap((g) => g.envelopes)
+				.filter((e) => e.leftThisWeek);
+			if (weekly.length === 0) return null;
+			return inBook(
+				weekly.reduce((t, e) => t + (e.leftThisWeek?.amount.minor ?? 0), 0),
+				v.dto.book.currency,
+			);
+		},
+	};
+
+	const envelopeLeftFigure: FigureDefinition<Db> = {
+		id: "envelope.left",
+		scope: ["envelopeId"],
+		compute: async (db, scope, pass) => {
+			if (!scope.envelopeId) return null;
+			const v = await reads.month(db, scope.userId, pass);
+			const row = v?.dto.groups
+				.flatMap((g) => g.envelopes)
+				.find((e) => e.id === scope.envelopeId);
+			return row ? row.left : null;
+		},
+	};
+
+	/** Money in this month: what came into the budget (income, starting money, moves from Wealth), the rail's Money in. */
+	const moneyInFigure: FigureDefinition<Db> = {
+		id: "budget.moneyIn",
+		scope: [],
+		compute: async (db, scope, pass) => {
+			const v = await reads.month(db, scope.userId, pass);
+			return v ? v.dto.toAssign.terms.moneyIn : null;
+		},
+	};
+
+	const envelopeSpentFigure: FigureDefinition<Db> = {
+		id: "envelope.spent",
+		scope: ["envelopeId"],
+		compute: async (db, scope, pass) => {
+			if (!scope.envelopeId) return null;
+			const v = await reads.month(db, scope.userId, pass);
+			const row = v?.dto.groups
+				.flatMap((g) => g.envelopes)
+				.find((e) => e.id === scope.envelopeId);
+			return row ? row.spent : null;
+		},
+	};
+
+	const heldForOthersFigure: FigureDefinition<Db> = {
+		id: FIGURE_HELD_FOR_OTHERS,
+		scope: [],
+		compute: async (db, scope, pass) => {
+			const v = await reads.month(db, scope.userId, pass);
+			return v ? v.dto.owed.held : null;
+		},
+	};
+
+	/** Limits (SPEC §6.1): Σ Left of the envelopes with a limit; null in other styles. */
+	const leftInLimitsFigure: FigureDefinition<Db> = {
+		id: FIGURE_LEFT_IN_LIMITS,
+		scope: [],
+		compute: async (db, scope, pass) => {
+			const v = await reads.month(db, scope.userId, pass);
+			const lead = v?.dto.verdict.lead;
+			return lead?.kind === "LEFT_IN_LIMITS" ? lead.amount : null;
+		},
+	};
+
+	/** What the budget holds: To assign + Σ Left + next month's assigned (reconcile, SPEC §5.11). */
+	const budgetHoldsFigure: FigureDefinition<Db> = {
+		id: FIGURE_BUDGET_HOLDS,
+		scope: [],
+		compute: async (db, scope, pass) => {
+			const v = await reads.month(db, scope.userId, pass);
+			return v ? inBook(budgetHolds(v), v.dto.book.currency) : null;
+		},
+	};
+
+	/** Plan cost (SPEC §5.13, E6): Σ monthly-equivalent targets this month; null with a rate missing. */
+	const planCostFigure: FigureDefinition<Db> = {
+		id: FIGURE_PLAN_COST,
+		scope: [],
+		compute: async (db, scope, pass) => {
+			const v = await reads.plan(db, scope.userId, pass);
+			return v ? v.cost : null;
+		},
+	};
+
+	/** Typical income (SPEC §12.3): median budget income of the last 3 closed months; null with none. */
+	const typicalIncomeFigure: FigureDefinition<Db> = {
+		id: FIGURE_TYPICAL_INCOME,
+		scope: [],
+		compute: async (db, scope, pass) => {
+			const v = await reads.plan(db, scope.userId, pass);
+			return v ? v.typicalIncome : null;
+		},
+	};
+
+	/** Total debt today in the book currency (SPEC §5.11 debt hero); null with a rate missing. */
+	const totalDebtFigure: FigureDefinition<Db> = {
+		id: FIGURE_TOTAL_DEBT,
+		scope: [],
+		compute: async (db, scope, pass) => {
+			const v = await reads.debt(db, scope.userId, pass);
+			return v ? v.totalDebt : null;
+		},
+	};
+
+	return [
+		notPlannedYetFigure,
+		leftToSpendFigure,
+		leftThisWeekFigure,
+		leftInLimitsFigure,
+		envelopeLeftFigure,
+		envelopeSpentFigure,
+		moneyInFigure,
+		heldForOthersFigure,
+		budgetHoldsFigure,
+		planCostFigure,
+		typicalIncomeFigure,
+		totalDebtFigure,
+	];
 }
 
-/** Plan cost (SPEC §5.13, E6): Σ monthly-equivalent targets this month; null with a rate missing. */
-export const planCostFigure: FigureDefinition = {
-	id: FIGURE_PLAN_COST,
-	scope: [],
-	compute: async (db, scope, pass) => {
-		const v = await plan(db, scope.userId, pass);
-		return v ? v.cost : null;
-	},
-};
-
-/** Typical income (SPEC §12.3): median budget income of the last 3 closed months; null with none. */
-export const typicalIncomeFigure: FigureDefinition = {
-	id: FIGURE_TYPICAL_INCOME,
-	scope: [],
-	compute: async (db, scope, pass) => {
-		const v = await plan(db, scope.userId, pass);
-		return v ? v.typicalIncome : null;
-	},
-};
-
-/** Total debt today in the book currency (SPEC §5.11 debt hero); null with a rate missing. */
-export const totalDebtFigure: FigureDefinition = {
-	id: FIGURE_TOTAL_DEBT,
-	scope: [],
-	compute: async (db, scope, pass) => {
-		const read = async () => {
-			if (!(await monthViewIn(db, scope.userId, new Date()))) return null;
-			return projectIn(db, scope.userId, {}, new Date());
-		};
-		const v = await (pass
-			? pass.once(`budget.debt:${scope.userId}`, read)
-			: read());
-		return v && !v.incomplete ? v.totalDebt : null;
-	},
-};
-
-export const budgetFigures = [
-	notPlannedYetFigure,
-	leftToSpendFigure,
-	leftThisWeekFigure,
-	leftInLimitsFigure,
-	envelopeLeftFigure,
-	envelopeSpentFigure,
-	moneyInFigure,
-	heldForOthersFigure,
-	budgetHoldsFigure,
-	planCostFigure,
-	typicalIncomeFigure,
-	totalDebtFigure,
-];
+export const budgetFigures = createBudgetFigures(prismaBudgetReads);
