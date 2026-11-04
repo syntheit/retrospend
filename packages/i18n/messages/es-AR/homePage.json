@@ -14,6 +14,7 @@
 			"yourShare": "Tu parte, {date}",
 			"dueOn": "Vence el {date}",
 			"arrived": "{title}, {date}",
+			"startingBalance": "Saldo inicial, {date}",
 			"firstExpense": "Te lleva unos diez segundos",
 			"homeCurrency": "Todos los totales se muestran en ella",
 			"importStatement": "CSV o PDF de tu banco",

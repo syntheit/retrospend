@@ -129,6 +129,27 @@ describe("toNeedsVM", () => {
 		});
 	});
 
+	it("a starting balance is named, not given an empty title", () => {
+		expect(
+			toNeedsVM(
+				item("budget.giveJob", {
+					amount: ars(50000000),
+					sources: [
+						{
+							entryId: "e2",
+							kind: "STARTING_BALANCE",
+							title: "",
+							date: "2026-11-01",
+							amount: ars(50000000),
+							part: ars(50000000),
+						},
+					],
+				}),
+				W,
+			),
+		).toMatchObject({ context: "startingBalance(short 2026-11-01)" });
+	});
+
 	it("a rejected split takes its action from the server's first action", () => {
 		expect(
 			toNeedsVM(

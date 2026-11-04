@@ -14,6 +14,7 @@
 			"yourShare": "Dein Anteil, {date}",
 			"dueOn": "Fällig am {date}",
 			"arrived": "{title}, {date}",
+			"startingBalance": "Startguthaben, {date}",
 			"firstExpense": "Dauert etwa zehn Sekunden",
 			"homeCurrency": "Alle Summen werden darin angezeigt",
 			"importStatement": "CSV oder PDF von deiner Bank",

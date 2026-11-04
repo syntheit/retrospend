@@ -18,6 +18,7 @@ export type ContextKey =
 	| "yourShare"
 	| "dueOn"
 	| "arrived"
+	| "startingBalance"
 	| "firstExpense"
 	| "homeCurrency"
 	| "importStatement"
@@ -176,10 +177,14 @@ export function toNeedsVM(item: NeedsYouItem, w: Words): NeedsYouItemVM | null {
 				href: "/budget",
 				...(src
 					? {
-							context: w.context("arrived", {
-								title: src.title,
-								date: w.short(src.date),
-							}),
+							// A starting balance has no title of its own: name it.
+							context:
+								src.kind === "STARTING_BALANCE"
+									? w.context("startingBalance", { date: w.short(src.date) })
+									: w.context("arrived", {
+											title: src.title,
+											date: w.short(src.date),
+										}),
 						}
 					: {}),
 			};
