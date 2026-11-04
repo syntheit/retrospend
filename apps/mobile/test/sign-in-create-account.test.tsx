@@ -59,8 +59,8 @@ describe("sign-in create an account", () => {
 	it("opens the connected server's sign-up page in the system browser", () => {
 		mockOpen.mockClear();
 		const link = buttons().find((b) => b.label === "createAccount");
-		expect(link).toBeDefined();
-		(link?.onPress as () => void)();
+		if (!link) throw new Error("no Create an account button");
+		(link.onPress as () => void)();
 		expect(mockOpen).toHaveBeenCalledWith(
 			"https://money.example.com/app/signup",
 		);
