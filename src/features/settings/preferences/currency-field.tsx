@@ -3,7 +3,7 @@
 import { currencyName } from "@retrospend/domain/currency-names";
 import { ChevronDown } from "lucide-react";
 import { useLocale } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CurrencyPicker } from "~/components/pickers/currency-picker";
 import { PickerPopover } from "~/components/pickers/picker-popover";
 import { Button } from "~/components/ui/button";
@@ -22,6 +22,8 @@ export function CurrencyField({
 	value,
 	onChange,
 	disabled,
+	className,
+	autoOpen,
 }: {
 	id: string;
 	/** What the picker sets (its title and the trigger's name). */
@@ -29,14 +31,24 @@ export function CurrencyField({
 	value: string;
 	onChange: (code: string) => void;
 	disabled?: boolean;
+	/** Replaces the settings column's width (a form field fills its row). */
+	className?: string;
+	/** Opens the picker once on arrival (a link that asks for this choice). */
+	autoOpen?: boolean;
 }) {
 	const [open, setOpen] = useState(false);
+	useEffect(() => {
+		if (autoOpen) setOpen(true);
+	}, [autoOpen]);
 	const locale = useLocale();
 	const name = currencyName(value, locale, "");
 	const trigger = (
 		<Button
 			aria-label={`${label}: ${value}`}
-			className={cn(CONTROL_MIN_WIDTH, "max-w-full justify-between")}
+			className={cn(
+				className ?? CONTROL_MIN_WIDTH,
+				"max-w-full justify-between",
+			)}
 			disabled={disabled}
 			id={id}
 			kind="secondary"

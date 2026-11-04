@@ -1,5 +1,7 @@
 "use client";
 
+import { CURRENCIES } from "@retrospend/domain/currencies";
+import { currencyForLocale } from "@retrospend/domain/currency-country";
 import {
 	AlertCircle,
 	BarChart3,
@@ -26,6 +28,7 @@ import {
 	InputOTPSlot,
 } from "~/components/ui/input-otp";
 import { Label } from "~/components/ui/label";
+import { CurrencyField } from "~/features/settings/preferences/currency-field";
 import { authClient } from "~/lib/auth-client";
 import { handleError } from "~/lib/handle-error";
 import { CURRENT_POLICY_VERSION } from "~/lib/policy-version";
@@ -68,6 +71,16 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 	const { data: settings } = api.settings.getInviteOnlyEnabled.useQuery();
 	const inviteOnlyEnabled = settings?.inviteOnlyEnabled ?? false;
 	const recordConsent = api.auth.recordConsent.useMutation();
+	const saveSettings = api.settings.updateGeneral.useMutation();
+	// Home currency: the browser's region suggests it, the person can change it.
+	const [homeCurrency, setHomeCurrency] = useState("USD");
+	useEffect(() => {
+		const suggested = currencyForLocale(
+			navigator.language,
+			new Set(Object.keys(CURRENCIES)),
+		);
+		if (suggested) setHomeCurrency(suggested);
+	}, []);
 
 	// Pre-fill from query params (guest upgrade flow)
 	useEffect(() => {
@@ -202,6 +215,14 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 							});
 						} catch {
 							// Non-fatal: consent recording failure should not block signup
+						}
+					}
+					// Every account starts in USD: only another choice is written.
+					if (homeCurrency !== "USD") {
+						try {
+							await saveSettings.mutateAsync({ homeCurrency });
+						} catch {
+							// Non-fatal: Settings and Home can set it later
 						}
 					}
 					window.location.href = signupRedirectTo;
@@ -391,6 +412,17 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 							required
 							type="password"
 							value={confirmPassword}
+						/>
+					</div>
+					<div className="space-y-2">
+						<Label htmlFor="homeCurrency">{t("homeCurrency")}</Label>
+						<CurrencyField
+							className="w-full"
+							disabled={isLoading}
+							id="homeCurrency"
+							label={t("homeCurrency")}
+							onChange={setHomeCurrency}
+							value={homeCurrency}
 						/>
 					</div>
 					{enableLegalPages && (

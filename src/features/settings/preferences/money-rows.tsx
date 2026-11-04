@@ -5,6 +5,7 @@ import {
 	numberFormatExamples,
 } from "@retrospend/domain/format";
 import { useLocale, useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 import { useDateFormat } from "~/components/pickers/use-date-format";
 import { Switch } from "~/components/ui/switch";
 import { useHydrated } from "~/hooks/use-hydrated";
@@ -43,6 +44,15 @@ export function MoneyRows({
 	const hydrated = useHydrated();
 	const span = hydrated ? monthSpan(new Date(), startDay) : null;
 	const defaultCurrency = settings.defaultCurrency ?? settings.homeCurrency;
+	// Needs you's "Choose" arrives with ?pick=homeCurrency: open that picker once.
+	const [askHome, setAskHome] = useState(false);
+	useEffect(() => {
+		const url = new URL(window.location.href);
+		if (url.searchParams.get("pick") !== "homeCurrency") return;
+		setAskHome(true);
+		url.searchParams.delete("pick");
+		window.history.replaceState(window.history.state, "", url);
+	}, []);
 	// Each option reads as the user's own amount, in the language's pattern.
 	const examples = numberFormatExamples(settings.homeCurrency, language);
 	const formatOptions: { value: NumberFormatOption; label: string }[] = [
@@ -56,6 +66,7 @@ export function MoneyRows({
 		<SettingRows>
 			<SettingRow label={t("homeCurrency")} labelFor="pf-home">
 				<CurrencyField
+					autoOpen={askHome}
 					id="pf-home"
 					label={t("homeCurrency")}
 					onChange={(code) =>
