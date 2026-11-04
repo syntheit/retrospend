@@ -17,6 +17,9 @@ env:
 - tapOn: ${CATEGORY}
 - tapOn:
     id: add.save
+# Saved: the composer closes. The row is not asserted here; on Home it can be
+# below the fold, and the flows read it in Activity.
 - extendedWaitUntil:
-    visible: ${output.title}
+    notVisible:
+      id: add.save
     timeout: 15000

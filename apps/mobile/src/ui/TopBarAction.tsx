@@ -14,13 +14,14 @@ const BADGE_MAX = 9;
  * A `badge` count rides on the glyph's corner in the attention fill; the
  * label should say it too, so it is not color alone.
  */
-export function TopBarAction({ icon, label, onPress, badge }: Action) {
+export function TopBarAction({ icon, label, onPress, badge, testID }: Action) {
 	const { color, radius, size, space } = useTheme();
 	return (
 		<Pressable
 			accessibilityLabel={label}
 			accessibilityRole="button"
 			onPress={onPress}
+			testID={testID}
 			style={({ pressed }) => ({
 				width: size.touchMin.phone,
 				height: size.touchMin.phone,

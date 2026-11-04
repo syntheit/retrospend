@@ -45,6 +45,9 @@ export function HomeCard({ glance }: { glance: Glance }) {
 		<Pressable
 			accessibilityRole="button"
 			onPress={() => router.push(noBudget ? "/budget" : "/home/insights")}
+			// The card is the node Android reports (it carries the figure in its
+			// label); the Hero inside it is not an accessibility node of its own.
+			testID={TEST_IDS.home.total}
 			style={({ pressed }) => ({
 				padding: space[4],
 				gap: space[2],
@@ -104,7 +107,6 @@ export function HomeCard({ glance }: { glance: Glance }) {
 					<Hero
 						label={t("spentIn", { month })}
 						sub={sub}
-						testID={TEST_IDS.home.total}
 						value={
 							spent.amount
 								? format(spent.amount, {

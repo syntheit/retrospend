@@ -1,4 +1,5 @@
 import { View } from "react-native";
+import { TEST_IDS } from "@/lib/testIds";
 import { useTheme } from "@/theme";
 import { Menu } from "./Menu";
 import { TopBarAction } from "./TopBarAction";
@@ -34,6 +35,7 @@ export function DetailActions({
 					id="edit"
 					label={editLabel}
 					onPress={edit}
+					testID={TEST_IDS.sheet.edit}
 				/>
 			) : null}
 			{items.length > 0 ? (

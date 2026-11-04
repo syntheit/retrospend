@@ -8,6 +8,10 @@ env:
 ---
 - runFlow: ../_common/session.yaml
 - runFlow: ../_common/create-expense.yaml
+- openLink: retrospend://activity
+- extendedWaitUntil:
+    visible: ${output.title}
+    timeout: 15000
 - tapOn: ${output.title}
 - tapOn:
     id: sheet.edit
@@ -24,6 +28,6 @@ env:
 - tapOn:
     id: add.save
 - assertVisible: .*35.*
-- tapOn:
-    id: sheet.close
+# The pushed detail's way out is the system back, not a sheet's close button.
+- back
 - assertVisible: ${output.title}
