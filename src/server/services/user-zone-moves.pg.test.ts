@@ -16,6 +16,7 @@ import {
 	vi,
 } from "vitest";
 import { forUser } from "~/server/services/preview";
+import { createAccount, editAccount } from "./accounts/manage";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { openAccount, seedArsRatesOn } from "./accounts/test-fixtures";
 import { setRateType } from "./accounts/rate-type.mutation";
@@ -186,5 +187,79 @@ describe("income.delete", () => {
 
 	it("reads the row's day in the input zone when one is given", async () => {
 		expect(await recreatedDate("UTC")).toBe("2026-11-03");
+	});
+});
+
+describe("account.create", () => {
+	const openedDay = async (timeZone?: string) => {
+		const userId = await buenosAiresUser();
+		const account = await createAccount(
+			adminDb,
+			userId,
+			{
+				name: "Wallet",
+				type: "CASH",
+				currency: "ARS",
+				balance: 1000,
+				isLiquid: true,
+			},
+			timeZone,
+		);
+		const snapshot = await adminDb.assetSnapshot.findFirstOrThrow({
+			where: { accountId: account.id },
+		});
+		return snapshot.date;
+	};
+
+	it("dates the first balance on the saved zone's day: Nov 2", async () => {
+		expect(await openedDay()).toEqual(NOV_2);
+	});
+
+	it("dates it on the input zone's day when one is given", async () => {
+		expect(await openedDay("Asia/Tokyo")).toEqual(NOV_3);
+	});
+});
+
+describe("account.edit", () => {
+	// The balance stays 100 USD; the type goes Blue to Official, so the edit
+	// writes a rate switch and a checkpoint, which must share one day.
+	async function edit(timeZone?: string) {
+		const userId = await buenosAiresUser();
+		const accountId = await openAccount(userId, "USD cash", "CASH", "USD", 100, {
+			exchangeRateType: "blue",
+		});
+		await editAccount(
+			adminDb,
+			userId,
+			accountId,
+			{
+				name: "USD cash",
+				type: "CASH",
+				currency: "USD",
+				balance: 100,
+				isLiquid: true,
+				exchangeRateType: "official",
+			},
+			timeZone,
+		);
+		const switched = await adminDb.assetRateType.findFirstOrThrow({
+			where: { accountId },
+		});
+		const latest = await adminDb.assetSnapshot.findFirstOrThrow({
+			where: { accountId },
+			orderBy: { date: "desc" },
+		});
+		return { switched: switched.from, checkpoint: latest.date };
+	}
+
+	it("switches and checkpoints on the saved zone's one day: Nov 2", async () => {
+		expect(await edit()).toEqual({ switched: NOV_2, checkpoint: NOV_2 });
+	});
+
+	it("uses the input zone's day for both when one is given", async () => {
+		expect(await edit("Asia/Tokyo")).toEqual({
+			switched: NOV_3,
+			checkpoint: NOV_3,
+		});
 	});
 });

@@ -85,14 +85,19 @@ export async function openAccount(
 	extra: Partial<AccountFields> = {},
 	ageDays = 10,
 ) {
-	const account = await createAccount(adminDb, userId, {
-		name,
-		type,
-		currency,
-		balance,
-		isLiquid: type === "CASH",
-		...extra,
-	});
+	const account = await createAccount(
+		adminDb,
+		userId,
+		{
+			name,
+			type,
+			currency,
+			balance,
+			isLiquid: type === "CASH",
+			...extra,
+		},
+		TODAY_ZONE,
+	);
 	const opened = new Date(
 		new Date(`${dayKey(new Date())}T00:00:00.000Z`).getTime() -
 			ageDays * 86_400_000,
