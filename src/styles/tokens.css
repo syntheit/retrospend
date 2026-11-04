@@ -20,6 +20,7 @@
 	--brand-fg: oklch(0.99 0.004 70);
 	--brand-soft: color-mix(in oklab, var(--brand) 9%, transparent);
 	--brand-hover: color-mix(in oklab, var(--brand) 88%, var(--fg));
+	--switch-on: var(--brand);
 	--ds-accent: oklch(0.6 0.108 220);
 	--accent-strong: oklch(0.48 0.085 220);
 	--accent-soft: color-mix(in oklab, var(--ds-accent) 14%, var(--surface));
@@ -108,6 +109,7 @@
 	--brand: oklch(0.9247 0.0524 66);
 	--brand-fg: oklch(0.2 0.02 50);
 	--brand-soft: color-mix(in oklab, var(--brand) 13%, transparent);
+	--switch-on: oklch(0.6 0.06 60);
 	--ds-accent: oklch(0.72 0.108 220);
 	--accent-strong: oklch(0.8 0.09 220);
 	--accent-soft: color-mix(in oklab, var(--ds-accent) 20%, var(--surface));
@@ -187,6 +189,7 @@
 	--color-brand-fg: var(--brand-fg);
 	--color-brand-soft: var(--brand-soft);
 	--color-brand-hover: var(--brand-hover);
+	--color-switch-on: var(--switch-on);
 	--color-ds-accent: var(--ds-accent);
 	--color-accent-strong: var(--accent-strong);
 	--color-accent-soft: var(--accent-soft);

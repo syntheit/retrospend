@@ -99,6 +99,25 @@ describe("design tokens", () => {
 		}
 	});
 
+	it("UI-004: the switch-on track reaches 3:1 against the white iOS thumb, the Android brand-fg thumb and every surface", () => {
+		for (const theme of THEMES) {
+			const pairs: [string | Rgba, string][] = [
+				[WHITE, "switch-on"],
+				["brand-fg", "switch-on"],
+				["switch-on", "bg"],
+				["switch-on", "surface"],
+				["switch-on", "raised"],
+			];
+			for (const [fg, bg] of pairs) {
+				const ratio = tokenContrast(fg, bg, theme);
+				expect(
+					ratio,
+					`${typeof fg === "string" ? fg : "white thumb"} on ${bg} (${theme}) is ${ratio.toFixed(2)}:1`,
+				).toBeGreaterThanOrEqual(3);
+			}
+		}
+	});
+
 	it("UI-004: the accent and every series reach 3:1 on bg (graphics)", () => {
 		for (const theme of THEMES) {
 			for (const t of [
