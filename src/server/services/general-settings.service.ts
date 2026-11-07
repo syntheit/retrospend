@@ -92,6 +92,20 @@ export async function updateGeneralSettings(
 		}
 		data.timeZone = zone;
 	}
+	// The default for new expenses follows the home currency until it is set
+	// apart from it: a default equal to the home currency has not been chosen.
+	// A write that names the default itself is the person choosing it.
+	if (
+		changes.homeCurrency !== undefined &&
+		changes.defaultCurrency === undefined
+	) {
+		const before = await db.user.findUnique({
+			where: { id: userId },
+			select: { homeCurrency: true, defaultCurrency: true },
+		});
+		if (before && before.defaultCurrency === before.homeCurrency)
+			data.defaultCurrency = changes.homeCurrency;
+	}
 	return db.user.update({
 		where: { id: userId },
 		data,
