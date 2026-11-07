@@ -24,6 +24,8 @@ describe("webhook auto-disable", () => {
 	let failing = new Set<string>();
 	/** Delivery ids the receiver holds until their webhook is off. */
 	let holding = new Set<string>();
+	/** Held deliveries that saw their webhook switch off before answering. */
+	let heldPastOff: string[] = [];
 
 	async function webhookOff(deliveryId: string) {
 		const row = await adminDb.webhookDelivery.findUniqueOrThrow({
@@ -39,8 +41,9 @@ describe("webhook auto-disable", () => {
 			hits.push(id);
 			void (async () => {
 				if (holding.has(id)) {
-					for (let n = 0; n < 100 && !(await webhookOff(id)); n++)
+					for (let n = 0; n < 500 && !(await webhookOff(id)); n++)
 						await new Promise((r) => setTimeout(r, 20));
+					if (await webhookOff(id)) heldPastOff.push(id);
 					// Let the switch-off finish whatever follows it.
 					await new Promise((r) => setTimeout(r, 250));
 				}
@@ -63,6 +66,7 @@ describe("webhook auto-disable", () => {
 		hits = [];
 		failing = new Set();
 		holding = new Set();
+		heldPastOff = [];
 	});
 
 	const sweep = (now: Date) =>
@@ -142,6 +146,8 @@ describe("webhook auto-disable", () => {
 
 	it("records a send that was in flight when the webhook switched off as delivered", async () => {
 		const { inFlight } = await switchOffMidSend();
+		// The answer went out after the switch-off, or this proves nothing.
+		expect(heldPastOff).toEqual([inFlight]);
 
 		const row = await read(inFlight);
 		expect(row.status).toBe("SUCCEEDED");
