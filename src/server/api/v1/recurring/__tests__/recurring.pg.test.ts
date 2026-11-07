@@ -132,9 +132,15 @@ describe("/api/v1/recurring", () => {
 			where: { id: item.id },
 		});
 		expect(row.anchorDay).toBe(31);
-		const mar = nextRecurringDate(row.nextDueDate, "MONTHLY", row.anchorDay);
-		const apr = nextRecurringDate(mar, "MONTHLY", row.anchorDay);
-		expect([mar, apr].map((d) => d.toISOString().slice(0, 10))).toEqual([
+		const zone = defaultTimeZone();
+		const mar = nextRecurringDate(
+			row.nextDueDate,
+			"MONTHLY",
+			row.anchorDay,
+			zone,
+		);
+		const apr = nextRecurringDate(mar, "MONTHLY", row.anchorDay, zone);
+		expect([mar, apr].map((d) => dayKey(d, zone))).toEqual([
 			"2027-03-31",
 			"2027-04-30",
 		]);

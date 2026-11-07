@@ -9,7 +9,6 @@
 import { NO_CATEGORY_TONE } from "@retrospend/domain/category-tone";
 import { isValidRate, USD } from "@retrospend/domain/money";
 import type { Money } from "@retrospend/domain/money-minor";
-import { nextRecurringDate } from "@retrospend/domain/recurring";
 import {
 	dayKey,
 	fromWallTime,
@@ -18,6 +17,7 @@ import {
 } from "@retrospend/domain/time-zone";
 import { userTransaction } from "~/server/db-tx";
 import { findExchangeRatesForDates } from "~/server/exchange-rates";
+import { userTimeZone } from "~/server/services/user-time-zone";
 import type { Prisma, PrismaClient, RecurringTemplate } from "~prisma";
 import {
 	categoryRef,
@@ -28,6 +28,7 @@ import {
 } from "./expense-list/money";
 import { shapeRows } from "./expense-list/rows";
 import type { ActivityRowDTO, CategoryRefDTO } from "./expense-list/types";
+import { nextDueAfter } from "./income/due-day";
 import { previousDueDay } from "./recurring-paid-on";
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -173,9 +174,11 @@ export type RecurringBody = Omit<RecurringView, "logged">;
 export async function readRecurringBody(
 	tx: Prisma.TransactionClient,
 	userId: string,
-	timeZone: string | undefined,
+	requestZone: string | undefined,
 	now: Date,
 ): Promise<RecurringBody & { rates: HomeRates }> {
+	// Due dates step in the user's zone, so there is always one (no process zone).
+	const timeZone = await userTimeZone(tx, userId, requestZone);
 	const today = dayKey(now, timeZone);
 	const [user, templates] = await Promise.all([
 		tx.user.findUnique({
@@ -226,10 +229,7 @@ export async function readRecurringBody(
 			frequency: t.frequency.toLowerCase() as RecurringFrequencyDTO,
 			next,
 			dueAt: t.nextDueDate.toISOString(),
-			nextAfter: dayKey(
-				nextRecurringDate(t.nextDueDate, t.frequency, t.anchorDay),
-				timeZone,
-			),
+			nextAfter: dayKey(nextDueAfter(t, t.nextDueDate, timeZone), timeZone),
 			paidOnFrom: previousDueDay(
 				t,
 				t.direction === "IN" ? "IN" : "OUT",
@@ -260,8 +260,12 @@ export async function listRecurringView(
 	requestZone?: string,
 	now: Date = new Date(),
 ): Promise<RecurringView> {
-	const timeZone = normalizeTimeZone(requestZone);
 	return userTransaction(db as PrismaClient, userId, async (tx) => {
+		const timeZone = await userTimeZone(
+			tx,
+			userId,
+			normalizeTimeZone(requestZone),
+		);
 		const { rates, ...body } = await readRecurringBody(
 			tx,
 			userId,

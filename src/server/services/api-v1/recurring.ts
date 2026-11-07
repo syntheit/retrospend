@@ -392,7 +392,10 @@ export async function undoRecurringConfirm(
 	const undo = undoOf(op, input);
 	const done = await spendUndo(caller, token, () =>
 		op === "recurring.unconfirm"
-			? applyWrite(caller, unconfirmRecurringExpense, undo)
+			? applyWrite(caller, unconfirmRecurringExpense, {
+					...undo,
+					timeZone: caller.timeZone,
+				})
 			: applyWrite(caller, unconfirmRecurringIncome, undo),
 	);
 	return { expenseId: done.expenseId, templateId: done.templateId, redo: null };
@@ -405,7 +408,10 @@ export function previewUndoRecurringConfirm(
 	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
 	const undo = undoOf(op, input);
 	return op === "recurring.unconfirm"
-		? previewWrite(caller, unconfirmRecurringExpense, undo)
+		? previewWrite(caller, unconfirmRecurringExpense, {
+				...undo,
+				timeZone: caller.timeZone,
+			})
 		: previewWrite(caller, unconfirmRecurringIncome, undo);
 }
 
@@ -457,12 +463,18 @@ export async function undoSkipRecurring(caller: LedgerCaller, token: string) {
 	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
 	const undo = unskipOf(op, input);
 	const done = await spendUndo(caller, token, () =>
-		applyWrite(caller, unskipRecurring, undo),
+		applyWrite(caller, unskipRecurring, {
+			...undo,
+			timeZone: caller.timeZone,
+		}),
 	);
 	return { templateId: done.templateId, dueAt: done.dueAt.toISOString() };
 }
 
 export function previewUndoSkipRecurring(caller: LedgerCaller, token: string) {
 	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
-	return previewWrite(caller, unskipRecurring, unskipOf(op, input));
+	return previewWrite(caller, unskipRecurring, {
+		...unskipOf(op, input),
+		timeZone: caller.timeZone,
+	});
 }

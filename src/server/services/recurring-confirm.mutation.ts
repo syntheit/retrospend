@@ -10,6 +10,7 @@ import { startOfNextDayIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import { recurringEntryData } from "./money-in.service";
 import type { MoneyMutation } from "./preview/types";
+import { dueAnchorDay, nextDueAfter } from "./income/due-day";
 import { paidOnInstant } from "./recurring-paid-on";
 import { userTimeZone } from "~/server/services/user-time-zone";
 
@@ -77,19 +78,10 @@ export const confirmRecurringExpense: MoneyMutation<
 			input.amount ?? undefined,
 			undefined,
 			input.paidOn
-				? paidOnInstant(
-						input.paidOn,
-						template.direction,
-						zone,
-						template,
-					)
+				? paidOnInstant(input.paidOn, template.direction, zone, template)
 				: undefined,
 		);
-		const nextDueAt = nextRecurringDate(
-			template.nextDueDate,
-			template.frequency,
-			template.anchorDay,
-		);
+		const nextDueAt = nextDueAfter(template, template.nextDueDate, zone);
 		// The advance only succeeds while nextDueDate is still the one read,
 		// so two confirms racing each other create a single expense.
 		const advanced = await tx.recurringTemplate.updateMany({
@@ -100,7 +92,7 @@ export const confirmRecurringExpense: MoneyMutation<
 			},
 			data: {
 				nextDueDate: nextDueAt,
-				anchorDay: template.anchorDay ?? template.nextDueDate.getDate(),
+				anchorDay: dueAnchorDay(template, zone),
 			},
 		});
 		if (advanced.count === 0)
@@ -136,6 +128,7 @@ export interface UnconfirmRecurringExpenseInput {
 	 * when omitted.
 	 */
 	readonly dueDate?: Date | null;
+	readonly timeZone?: string;
 }
 
 export interface UnconfirmedExpense {
@@ -173,6 +166,7 @@ export const unconfirmRecurringExpense: MoneyMutation<
 		// one period after this entry. Rewinding past a later confirm would
 		// book those periods again.
 		const dueDate = input.dueDate ?? row.date;
+		const zone = await userTimeZone(tx, actor.userId, input.timeZone);
 		if (
 			template &&
 			template.nextDueDate.getTime() !==
@@ -180,6 +174,7 @@ export const unconfirmRecurringExpense: MoneyMutation<
 					dueDate,
 					template.frequency,
 					template.anchorDay,
+					zone,
 				).getTime()
 		)
 			throw new TRPCError({

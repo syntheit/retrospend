@@ -31,7 +31,11 @@ export const recurringStepsRouter = createTRPCRouter({
 				const undo = { expenseId: input.expenseId, dueDate: input.dueDate };
 				return row?.direction === "IN"
 					? unconfirmRecurringIncome.run(tx, undo, { userId })
-					: unconfirmRecurringExpense.run(tx, undo, { userId });
+					: unconfirmRecurringExpense.run(
+							tx,
+							{ ...undo, timeZone: ctx.timeZone },
+							{ userId },
+						);
 			});
 			return { templateId: done.value.templateId };
 		}),
@@ -63,7 +67,11 @@ export const recurringStepsRouter = createTRPCRouter({
 			const done = await userTransaction(ctx.db, userId, (tx) =>
 				unskipRecurring.run(
 					tx,
-					{ templateId: input.id, dueDate: input.dueDate },
+					{
+						templateId: input.id,
+						dueDate: input.dueDate,
+						timeZone: ctx.timeZone,
+					},
 					{ userId },
 				),
 			);
