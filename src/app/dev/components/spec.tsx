@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { Notice } from "~/components/ui/notice";
+import { useIsMobile } from "~/hooks/use-mobile";
 import { cn } from "~/lib/cn";
 import { CAP, type GallerySection, SECTIONS } from "./sections";
 
@@ -67,7 +68,13 @@ export function Phone({
 	);
 }
 
-/** Desktop on the left, phone on the right (stacked on a phone). */
+/**
+ * Desktop on the left, phone on the right (stacked on a phone). The desktop
+ * pane shows the layouts the product uses from md up, so it is not mounted
+ * below md, where a 390px viewport cannot hold it; the phone pane is. It is
+ * unmounted, not hidden: an open static menu portals out of a hidden pane
+ * and lands at the page corner.
+ */
 export function Pair({
 	desktop,
 	phone,
@@ -79,12 +86,15 @@ export function Pair({
 	desktopCap?: string;
 	phoneCap?: string;
 }) {
+	const narrow = useIsMobile();
 	return (
 		<div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_390px]">
-			<div className="min-w-0">
-				<Cap>{desktopCap}</Cap>
-				{desktop}
-			</div>
+			{!narrow && (
+				<div className="min-w-0">
+					<Cap>{desktopCap}</Cap>
+					{desktop}
+				</div>
+			)}
 			<div className="min-w-0">
 				<Cap>{phoneCap}</Cap>
 				<Phone>{phone}</Phone>
@@ -104,7 +114,10 @@ export function States({
 	return (
 		<div className={cn("flex flex-wrap items-end gap-x-6 gap-y-4", className)}>
 			{items.map(([label, node]) => (
-				<div className="flex flex-col items-start gap-2" key={label}>
+				<div
+					className="flex max-w-full min-w-0 flex-col items-start gap-2"
+					key={label}
+				>
 					<Cap className="mb-0">{label}</Cap>
 					{node}
 				</div>
