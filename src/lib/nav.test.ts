@@ -17,7 +17,7 @@ const byId = (id: string) =>
 	[...DESTINATIONS, ...TOOLS, ...PLACES].find((e) => e.id === id)!;
 
 describe("nav definition", () => {
-	it("has the six destinations in order, five phone tabs without Wealth", () => {
+	it("has the six destinations in order, five phone tabs as on the iPhone, without Projects", () => {
 		expect(DESTINATIONS.map((d) => d.id)).toEqual([
 			"home",
 			"activity",
@@ -30,8 +30,8 @@ describe("nav definition", () => {
 			"home",
 			"activity",
 			"budget",
+			"wealth",
 			"people",
-			"projects",
 		]);
 		expect(TOOLS.map((t) => t.id)).toEqual(["import", "currencies"]);
 	});
@@ -127,9 +127,9 @@ describe("ADD_ACTIONS", () => {
 });
 
 describe("phone Go to", () => {
-	it("reaches Wealth, the tools, Recurring, Insights and Settings from the account sheet", () => {
+	it("reaches Projects, the tools, Recurring, Insights and Settings from the account sheet", () => {
 		expect(PHONE_GO_TO.map((id) => entryOf(id).href)).toEqual([
-			"/wealth",
+			"/projects",
 			"/currencies",
 			"/import",
 			"/activity/recurring",

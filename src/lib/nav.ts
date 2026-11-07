@@ -49,13 +49,17 @@ export const DESTINATIONS: readonly NavEntry<DestinationId>[] = [
 	{ id: "wealth", icon: ChartLine, href: "/wealth" },
 ];
 
-/** Phone tabs (N65): Wealth is reached from Home, so it has no tab. */
+/**
+ * Phone tabs, the iPhone's own five (apps/mobile/src/layout/destinations.ts).
+ * Projects has no tab: the app keeps it as a segment of People, which web
+ * People does not have, so it is a Go to row in the account sheet.
+ */
 export const PHONE_TABS: readonly DestinationId[] = [
 	"home",
 	"activity",
 	"budget",
+	"wealth",
 	"people",
-	"projects",
 ];
 
 /** The sidebar's Tools group (N46, N48). */
@@ -76,7 +80,7 @@ export const PLACES: readonly NavEntry<PlaceId>[] = [
  * phones have no global search (N65), so everything else is reached here.
  */
 export const PHONE_GO_TO: readonly NavId[] = [
-	"wealth",
+	"projects",
 	"currencies",
 	"import",
 	"recurring",
