@@ -105,11 +105,12 @@ describe("figure envelope.spent", () => {
 
 /**
  * Money in this month (the rail's figure). The setup's starting money is
- * 1,000.00 (100,000 minor) and a 25.00 income row arrives: 100,000 + 2,500
- * = 102,500. Unavailable without a book.
+ * 1,000.00 (100,000 minor) and a 25.00 income row arrives. The starting
+ * balance is not money that came in, so Money in is the income alone: 2,500.
+ * Unavailable without a book.
  */
 describe("figure budget.moneyIn", () => {
-	it("is the starting money plus income this month", async () => {
+	it("is this month's income, without the starting money", async () => {
 		const s = await seedUser();
 		await forUser(s.user.id).apply(setupEnvelopeBook, {
 			...setupInput(s),
@@ -117,7 +118,7 @@ describe("figure budget.moneyIn", () => {
 		});
 		await addRow(s.user.id, { amount: 25, direction: "IN", inType: "INCOME" });
 		const r = await readFigures(s.user.id, ["budget.moneyIn"]);
-		expect(r.get("budget.moneyIn")).toEqual([usd(102_500)]);
+		expect(r.get("budget.moneyIn")).toEqual([usd(2_500)]);
 		const none = await seedUser();
 		const n = await readFigures(none.user.id, ["budget.moneyIn"]);
 		expect(n.get("budget.moneyIn")).toBeNull();

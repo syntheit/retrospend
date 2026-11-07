@@ -11,8 +11,9 @@
  * - envelope.left: one envelope's Left, narrowed by `envelopeId`.
  * - envelope.spent: what one envelope spent this month (positive), narrowed
  *   by `envelopeId`; spending and shares minus refunds, never Wealth moves.
- * - budget.moneyIn: this month's money in (income, starting money, moves from
- *   Wealth), from the same terms To assign is.
+ * - budget.moneyIn: money in through this month (income, moves from Wealth),
+ *   from the same terms To assign is. The starting balance is not in it: it
+ *   has its own term (startingMoney).
  * - budget.leftInLimits: Limits, Σ Left of the envelopes with a limit.
  * - budget.holds: To assign + Σ Left + next month's assigned, what the
  *   bank should hold (reconcile).

@@ -92,7 +92,7 @@ async function computeMonthView(
 		owed: owedSummary(owedInputOf(loaded)),
 		groupBase,
 		approximateRows: loaded.approximate.length,
-		startingMoney: await startingMoneyIn(tx, loaded),
+		startingMoney: await startingMoneyIn(tx, loaded, key),
 	});
 	return { ...view, loaded };
 }
