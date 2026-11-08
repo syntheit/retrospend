@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { userText } from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { env } from "~/env";
@@ -39,7 +40,6 @@ function newGuestToken() {
 }
 
 export const guestRouter = createTRPCRouter({
-
 	/**
 	 * Validates a magic link and returns safe project preview info.
 	 * Returns NOT_FOUND for all invalid states to prevent enumeration.
@@ -108,7 +108,7 @@ export const guestRouter = createTRPCRouter({
 		.input(
 			z.object({
 				linkId: z.string().min(1),
-				name: z.string().min(1).max(191),
+				name: userText("guest_session.name", 191),
 				email: z.email().max(255),
 			}),
 		)

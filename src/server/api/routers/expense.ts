@@ -1,3 +1,4 @@
+import { userText, userTextOrEmpty } from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { BASE_CURRENCY } from "~/lib/constants";
@@ -20,7 +21,7 @@ const expenseId = z.string().min(1).max(64);
 
 const expenseInputSchema = z.object({
 	id: z.guid(),
-	title: z.string().min(1).max(500),
+	title: userText("expense.title", 500),
 	amount: z.number().positive("Amount must be positive"),
 	currency: z.string().min(3).max(10).default(BASE_CURRENCY),
 	/**
@@ -37,8 +38,8 @@ const expenseInputSchema = z.object({
 		.object({ base: z.string().min(3).max(10), value: customRateSchema })
 		.optional(),
 	date: z.date(),
-	location: z.string().max(500).optional(),
-	description: z.string().max(2000).optional(),
+	location: userTextOrEmpty("expense.location", 500).optional(),
+	description: userTextOrEmpty("expense.description", 2000).optional(),
 	categoryId: z.cuid().optional(),
 	amortizeOver: z.number().int().min(2).max(60).optional(),
 	excludeFromAnalytics: z.boolean().optional(),
@@ -153,14 +154,18 @@ export const expenseRouter = createTRPCRouter({
 				rows: z
 					.array(
 						z.object({
-							title: z.string().min(1),
+							title: userText("expense.title", 500),
 							amount: z.number().positive(),
 							currency: z.string().min(3).max(10),
 							date: z.date(),
 							exchangeRate: z.number().positive().optional(),
 							amountInUSD: z.number().positive().optional(),
-							location: z.string().nullable().optional(),
-							description: z.string().nullable().optional(),
+							location: userTextOrEmpty("expense.location", 500)
+								.nullable()
+								.optional(),
+							description: userTextOrEmpty("expense.description", 2000)
+								.nullable()
+								.optional(),
 							categoryId: z.cuid().nullable().optional(),
 							pricingSource: z.string().nullable().optional(),
 							isAmortized: z.boolean().optional().default(false),

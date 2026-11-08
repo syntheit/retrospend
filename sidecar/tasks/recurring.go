@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"retrospend-sidecar/db"
+	"retrospend-sidecar/usertext"
 )
 
 type RecurringTemplate struct {
@@ -200,7 +201,7 @@ func ProcessRecurringExpenses(database *db.DB) error {
 				gen_random_uuid()::text, $1, $2, $3::numeric, $4, $5, $6, $7, $8, 'RECURRING', $9, 'FINALIZED',
 				$10::"ExpenseDirection", $11::"InType", NOW(), NOW()
 			)
-		`, template.UserID, template.Name, template.Amount, template.Currency, template.NextDueDate,
+		`, template.UserID, usertext.StripControls(template.Name), template.Amount, template.Currency, template.NextDueDate,
 			template.CategoryID, amountInUSD, exchangeRate, template.ID, post.Direction, post.InType)
 
 		if err != nil {

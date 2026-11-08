@@ -10,5 +10,6 @@
   "errorReports": "Informes de errores",
   "invitesUsed": "Invitaciones usadas",
   "invitesOpen": "{count} abiertas",
-  "tabServer": "Servidor"
+  "tabServer": "Servidor",
+  "keystoreBackup": "Respaldo de claves"
 }

@@ -1,4 +1,8 @@
 import crypto from "node:crypto";
+import {
+	stripUserTextControls,
+	userText,
+} from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
 import { verifyPassword } from "better-auth/crypto";
 import { env } from "~/env";
@@ -63,6 +67,14 @@ export type UpdatedIdentity = {
 	username: string;
 	email: string;
 };
+
+/**
+ * A name is user text, but Undo of a name change sends the previous stored
+ * name back, and an old name may hold a control character. So the transports
+ * take any string and the name is cleaned here: the characters userText
+ * refuses are dropped, then it must pass userText.
+ */
+const nameText = userText("user.name", 100);
 
 /**
  * The fields to change. A field left out keeps its stored value and is not
@@ -178,8 +190,12 @@ export async function updateProfile(
 	input: ProfileChanges,
 ): Promise<{ emailChangePending: boolean; user: UpdatedIdentity }> {
 	const userId = current.id;
+	const name =
+		input.name === undefined ? undefined : stripUserTextControls(input.name);
+	if (name !== undefined && !nameText.safeParse(name).success)
+		throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid name" });
 	const write: IdentityWrite = {
-		...(input.name !== undefined ? { name: input.name } : {}),
+		...(name !== undefined ? { name } : {}),
 		...(input.username !== undefined
 			? { username: input.username.toLowerCase() }
 			: {}),

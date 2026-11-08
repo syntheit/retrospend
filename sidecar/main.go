@@ -70,7 +70,7 @@ func main() {
 
 	// Schedule database backup
 	_, err = c.AddFunc(cfg.BackupCron, func() {
-		if err := tasks.RunBackup(database, cfg.DatabaseURL, cfg.BackupDir, cfg.BackupRetentionDays, cfg.BackupAgeRecipients); err != nil {
+		if err := tasks.RunBackups(database, cfg.DatabaseURL, cfg.BackupDir, cfg.BackupRetentionDays, cfg.BackupAgeRecipients); err != nil {
 			log.Printf("❌ Database backup failed: %v", err)
 		}
 	})
@@ -174,7 +174,7 @@ func main() {
 		log.Println("[HTTP] Manual backup triggered")
 
 		go func() {
-			if err := tasks.RunBackup(database, cfg.DatabaseURL, cfg.BackupDir, cfg.BackupRetentionDays, cfg.BackupAgeRecipients); err != nil {
+			if err := tasks.RunBackups(database, cfg.DatabaseURL, cfg.BackupDir, cfg.BackupRetentionDays, cfg.BackupAgeRecipients); err != nil {
 				log.Printf("[HTTP] Backup failed: %v", err)
 			}
 		}()

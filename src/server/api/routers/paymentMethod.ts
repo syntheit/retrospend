@@ -1,18 +1,15 @@
+import { userTextOrEmpty } from "@retrospend/api-contract/common";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { db } from "~/server/db";
+import { participantRefSchema } from "~/server/services/payments/input";
 import { sharesExpenseWith } from "~/server/services/people/co-participants";
-
-const participantRefSchema = z.object({
-	participantType: z.enum(["user", "guest", "shadow"]),
-	participantId: z.string().min(1),
-});
 
 const methodInputSchema = z.object({
 	id: z.string().optional(),
 	type: z.string().min(1).max(50),
-	label: z.string().max(100).optional(),
-	identifier: z.string().max(500).optional(),
+	label: userTextOrEmpty("payment_method.label", 100).optional(),
+	identifier: userTextOrEmpty("payment_method.identifier", 500).optional(),
 	rank: z.number().int().min(1),
 	visibility: z.enum(["PUBLIC", "FRIENDS_ONLY", "PAYMENT_ONLY"]),
 	minAmount: z.number().positive().optional(),

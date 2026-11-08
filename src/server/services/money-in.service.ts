@@ -3,6 +3,7 @@
  * service (2D) lands: the seeded income categories and the row a recurring
  * confirm posts.
  */
+import { stripUserTextControls } from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient } from "~prisma";
 import { bookRate, loadRateContext, type RateChoice } from "./rate-types";
@@ -99,7 +100,7 @@ export async function recurringEntryData(
 	const isIncome = template.direction === "IN";
 	return {
 		userId: template.userId,
-		title: template.name,
+		title: stripUserTextControls(template.name),
 		amount,
 		currency: template.currency,
 		date: bookedOn,
