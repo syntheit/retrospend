@@ -8,7 +8,9 @@
  * the role: the path of a new install, so a migration that needs more than the
  * owner's rights fails here. A second database, `<base>_<random>_leg`, takes the
  * path of an upgrade (migrated as the superuser, then handed over) for the one
- * test file that checks that. The template is cloned once per vitest worker
+ * test file that checks that, and a third, `_old`, does the same from a release
+ * before the keystore schema existed, so the owner has migrations still to
+ * apply. The template is cloned once per vitest worker
  * (`<base>_<random>_w<n>`). Workers get the owner's URL, so `adminDb`
  * runs as retrospend_owner like the app in production; the superuser's URL is
  * a separate, opt-in value (`superUrl()` in pg-harness.ts). pg-env.ts picks a
@@ -20,6 +22,17 @@
  */
 import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import {
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Client } from "pg";
 import type { TestProject } from "vitest/node";
 import {
@@ -46,6 +59,12 @@ declare module "vitest" {
 		 * state of an upgraded install, and how many objects the handover moved.
 		 */
 		pgLegacy: { ownerUrl: string; superUrl: string; handedOver: number };
+		/**
+		 * A database migrated as the superuser only up to the migration before
+		 * the keystore schema (OLD_CUTOFF), then handed over: an install from an
+		 * older release, with migrations left to apply as the owner.
+		 */
+		pgOld: { ownerUrl: string; superUrl: string; cutoff: string };
 	}
 }
 
@@ -72,24 +91,28 @@ function workerCount(maxWorkers: number | undefined): number {
 	return maxWorkers;
 }
 
-/** Names of the template, the legacy fixture and the per-worker databases for one run. */
+/** The first migration the `_old` database does not get: the keystore schema. */
+export const OLD_CUTOFF = "20261109100000_keystore";
+
+/** Names of the template, the two upgrade fixtures and the per-worker databases for one run. */
 export function runDatabaseNames(
 	baseName: string,
 	runId: string,
 	workers: number,
-): { template: string; legacy: string; workers: string[] } {
+): { template: string; legacy: string; old: string; workers: string[] } {
 	const stem = `${baseName}_${runId}`;
 	const template = `${stem}_tpl`;
 	const legacy = `${stem}_leg`;
+	const old = `${stem}_old`;
 	const names = Array.from({ length: workers }, (_, i) => `${stem}_w${i + 1}`);
-	for (const name of [template, legacy, ...names]) {
+	for (const name of [template, legacy, old, ...names]) {
 		if (Buffer.byteLength(name) > MAX_IDENTIFIER) {
 			throw new Error(
 				`Derived test database name "${name}" is longer than ${MAX_IDENTIFIER} bytes`,
 			);
 		}
 	}
-	return { template, legacy, workers: names };
+	return { template, legacy, old, workers: names };
 }
 
 function maintenanceUrl(url: URL): string {
@@ -223,6 +246,53 @@ async function createRunDatabase(project: TestProject) {
 				},
 			);
 		});
+	// `prisma migrate deploy` only knows "all of them", so the old release's
+	// state is made from a scratch project directory that links the schema and
+	// the migrations before the cutoff, and nothing else.
+	const migrateBefore = (databaseUrl: string, cutoff: string) =>
+		new Promise<void>((resolve, reject) => {
+			const root = process.cwd();
+			const dir = mkdtempSync(join(tmpdir(), "retrospend-old-release-"));
+			try {
+				mkdirSync(join(dir, "prisma", "migrations"), { recursive: true });
+				symlinkSync(join(root, "node_modules"), join(dir, "node_modules"));
+				writeFileSync(
+					join(dir, "prisma.config.ts"),
+					readFileSync(join(root, "prisma.config.ts")),
+				);
+				symlinkSync(
+					join(root, "prisma", "schema.prisma"),
+					join(dir, "prisma", "schema.prisma"),
+				);
+				const migrations = join(root, "prisma", "migrations");
+				symlinkSync(
+					join(migrations, "migration_lock.toml"),
+					join(dir, "prisma", "migrations", "migration_lock.toml"),
+				);
+				for (const name of readdirSync(migrations).sort()) {
+					if (name >= cutoff || name.endsWith(".toml")) continue;
+					symlinkSync(
+						join(migrations, name),
+						join(dir, "prisma", "migrations", name),
+					);
+				}
+			} catch (error) {
+				rmSync(dir, { recursive: true, force: true });
+				reject(error);
+				return;
+			}
+			execFile(
+				join(root, "node_modules", ".bin", "prisma"),
+				["migrate", "deploy"],
+				{ cwd: dir, env: { ...process.env, DATABASE_URL: databaseUrl } },
+				(error, _stdout, stderr) => {
+					rmSync(dir, { recursive: true, force: true });
+					if (error)
+						reject(new Error(`prisma migrate deploy failed: ${stderr}`));
+					else resolve();
+				},
+			);
+		});
 	const switched = async (databaseUrl: string) => {
 		const result = await bootstrap(databaseUrl, {
 			warn: (message) => console.error(message),
@@ -245,6 +315,7 @@ async function createRunDatabase(project: TestProject) {
 				`CREATE DATABASE "${names.template}"`,
 			);
 			await create(client, names.legacy, `CREATE DATABASE "${names.legacy}"`);
+			await create(client, names.old, `CREATE DATABASE "${names.old}"`);
 		});
 		// The template takes the path of a new install: the bootstrap, then
 		// every migration as retrospend_owner, so a migration that needs more
@@ -253,11 +324,15 @@ async function createRunDatabase(project: TestProject) {
 		// The legacy database takes the path of an upgrade: migrated as the
 		// superuser (every older release did), then the bootstrap hands all of
 		// it to the owner. One test file reads it; nothing else touches it.
+		// The old one is the same, from a release before the keystore schema
+		// (OLD_CUTOFF): the owner then has migrations left to apply.
 		await Promise.all([
 			migrate(ownerOfTemplate.ownerUrl),
 			migrate(urlFor(names.legacy)),
+			migrateBefore(urlFor(names.old), OLD_CUTOFF),
 		]);
 		legacyHandedOver = (await switched(urlFor(names.legacy))).changedObjects;
+		await switched(urlFor(names.old));
 		// A second start: the migrations made everything as the owner, so there
 		// is nothing left to hand over.
 		freshHandedOver = (await switched(urlFor(names.template))).changedObjects;
@@ -302,6 +377,11 @@ async function createRunDatabase(project: TestProject) {
 		ownerUrl: ownerUrl(urlFor(names.legacy), ownerPassword),
 		superUrl: urlFor(names.legacy),
 		handedOver: legacyHandedOver,
+	});
+	project.provide("pgOld", {
+		ownerUrl: ownerUrl(urlFor(names.old), ownerPassword),
+		superUrl: urlFor(names.old),
+		cutoff: OLD_CUTOFF,
 	});
 	return dropRunDatabases;
 }

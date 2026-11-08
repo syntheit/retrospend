@@ -14,13 +14,17 @@ echo "Database is ready!"
 # objects (prisma/bootstrap), then run everything below, and the app, as that
 # role. It prints the owner's URL, or nothing when DATABASE_URL should stay as
 # it is (a URL that is not a superuser's, or a superuser with no password).
-# The superuser URL is not exported anywhere after this line.
 echo "Preparing the database role..."
 OWNER_DATABASE_URL=$(node scripts/db-owner/cli.mjs bootstrap)
 if [ -n "$OWNER_DATABASE_URL" ]; then
+  # Replaces the superuser's URL, so prisma and everything after it only see
+  # the owner's.
   export DATABASE_URL="$OWNER_DATABASE_URL"
 fi
 unset OWNER_DATABASE_URL
+# Nothing below needs the superuser's credentials: drop them from the shell
+# now, before prisma runs.
+unset POSTGRES_PASSWORD POSTGRES_USER DATABASE_OWNER_PASSWORD
 
 # Apply any pending database migrations
 echo "Applying database migrations..."

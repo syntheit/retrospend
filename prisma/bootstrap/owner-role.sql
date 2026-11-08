@@ -10,13 +10,25 @@
 --      app's global client and pg_dump must keep seeing every row);
 --   2. lets the owner grant retrospend_app (WITH ADMIN OPTION), which an old
 --      migration does with GRANT retrospend_app TO CURRENT_USER;
---   3. gives the owner CREATE on the database until the first migration has
---      finished (the first migration says CREATE SCHEMA IF NOT EXISTS), and
---      takes it back after;
+--   3. gives the owner CREATE on the database (the first migration says
+--      CREATE SCHEMA IF NOT EXISTS, and a later one CREATE SCHEMA IF NOT EXISTS
+--      keystore: Postgres checks CREATE before it looks whether the schema
+--      exists). That lets the owner create schemas in its own database and
+--      nothing else;
 --   4. creates the unaccent extension (needs CREATE on the database);
 --   5. creates the keystore schema for the owner (same reason);
 --   6. keeps PUBLIC from creating objects in public.
 -- The ownership handover (owner-handover.sql) is the second half.
+--
+-- THE RULE for everything in prisma/bootstrap: this SQL runs as the superuser,
+-- and the owner owns every table, function, type and view in public and
+-- keystore and can create new ones, so the superuser here never reads, writes
+-- or calls an object the owner owns or could create. Only pg_catalog, fixed DDL
+-- on roles, databases and schemas, and ALTER ... OWNER (which runs no owner
+-- code). A SELECT from a table in public would let the owner swap it for a view
+-- that calls a function, and that function would run as the superuser (granting
+-- itself pg_execute_server_program, say). scripts/db-owner checks the result
+-- from the catalogs afterwards (owner-verify.sql) and refuses to start.
 --
 -- Safe to repeat: every statement checks first, so a normal start writes
 -- nothing. The password is not set here (it is a derived secret that never
@@ -63,35 +75,23 @@ BEGIN
 END
 $role$;
 
--- The first migration says CREATE SCHEMA IF NOT EXISTS "public", and Postgres
--- checks CREATE on the database before it looks whether the schema exists.
--- The owner needs that privilege until one migration has finished, and not
--- after: it would let the owner create schemas, which nothing in a normal
--- start needs. (A new schema or extension for a later migration is added to
--- this file, not given to the owner.)
+-- CREATE on the database, kept: see item 3 in the header. A catalog check, no
+-- table of the owner's is read.
 DO $database$
-DECLARE
-  migrated boolean := false;
-  can_create boolean;
 BEGIN
-  IF pg_catalog.to_regclass('public._prisma_migrations') IS NOT NULL THEN
-    EXECUTE 'SELECT EXISTS (SELECT 1 FROM public._prisma_migrations WHERE finished_at IS NOT NULL)'
-      INTO migrated;
-  END IF;
-  can_create := pg_catalog.has_database_privilege(
-    'retrospend_owner', pg_catalog.current_database(), 'CREATE');
-  IF NOT migrated AND NOT can_create THEN
+  IF NOT pg_catalog.has_database_privilege(
+       'retrospend_owner', pg_catalog.current_database(), 'CREATE') THEN
     EXECUTE pg_catalog.format('GRANT CREATE ON DATABASE %I TO retrospend_owner',
-      pg_catalog.current_database());
-  ELSIF migrated AND can_create THEN
-    EXECUTE pg_catalog.format('REVOKE CREATE ON DATABASE %I FROM retrospend_owner',
       pg_catalog.current_database());
   END IF;
 END
 $database$;
 
--- Where an older migration already put the extension (any schema), keep it.
--- Its members stay with the superuser; the handover skips them.
+-- Where an older migration already put the extension (any schema), IF NOT EXISTS
+-- keeps it, and nothing of the owner's runs. On a new install this is the first
+-- thing created in public, before the handover (the step after this file) gives
+-- the owner the schema, so no object of the owner's can be in the extension
+-- script's way. Its members stay with the superuser; the handover skips them.
 CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
 
 -- The keystore migration says CREATE SCHEMA IF NOT EXISTS, so it keeps this one.

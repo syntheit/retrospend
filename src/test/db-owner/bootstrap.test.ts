@@ -8,10 +8,18 @@ type Fake = {
 	superuser: boolean;
 	/** Whether the owner can sign in, by attempt number (1-based). */
 	ownerLogins: boolean[];
+	/** What the role check (owner-verify.sql) finds, one answer per call. */
+	problems: string[][];
 	log: string[];
 	logins: number;
 };
-const fake: Fake = { superuser: true, ownerLogins: [], log: [], logins: 0 };
+const fake: Fake = {
+	superuser: true,
+	ownerLogins: [],
+	problems: [],
+	log: [],
+	logins: 0,
+};
 
 vi.mock("pg", () => {
 	class Client {
@@ -31,8 +39,27 @@ vi.mock("pg", () => {
 					? "owner-role.sql"
 					: sql.includes("ALTER SCHEMA %I OWNER")
 						? "owner-handover.sql"
-						: (sql.trim().split("\n")[0] ?? ""),
+						: sql.includes("owner is a member of")
+							? "owner-verify.sql"
+							: sql.includes("pg_auth_members") && sql.includes("GRANTED BY")
+								? "owner-unsafe-grants.sql"
+								: (sql.trim().split("\n")[0] ?? ""),
 			);
+			if (sql.includes("owner is a member of")) {
+				return {
+					rows: (fake.problems.shift() ?? []).map((problem) => ({ problem })),
+				};
+			}
+			if (sql.includes("pg_auth_members") && sql.includes("GRANTED BY")) {
+				return {
+					rows: [
+						{
+							ddl: "REVOKE pg_execute_server_program FROM retrospend_owner GRANTED BY postgres CASCADE",
+						},
+					],
+				};
+			}
+			if (sql.startsWith("REVOKE ")) fake.log.push(sql);
 			if (sql.includes("SELECT rolsuper")) {
 				const owner =
 					new URL(this.config.connectionString).username === "retrospend_owner";
@@ -54,6 +81,7 @@ const { bootstrap } = await import("../../../scripts/db-owner/index.mjs");
 beforeEach(() => {
 	fake.superuser = true;
 	fake.ownerLogins = [];
+	fake.problems = [];
 	fake.log = [];
 	fake.logins = 0;
 });
@@ -131,5 +159,55 @@ describe("bootstrap on a superuser URL with a password", () => {
 		if (result.status === "switched") {
 			expect(new URL(result.ownerUrl).password).toBe("own-secret");
 		}
+	});
+});
+
+describe("bootstrap checks the role from the catalogs", () => {
+	it("checks before the owner signs in and again as the owner", async () => {
+		fake.ownerLogins = [true];
+		await bootstrap("postgresql://postgres:pw@db/retro");
+		expect(fake.log.filter((line) => line === "owner-verify.sql")).toHaveLength(
+			2,
+		);
+		expect(fake.log.indexOf("owner-role.sql")).toBeLessThan(
+			fake.log.indexOf("owner-verify.sql"),
+		);
+	});
+
+	it("revokes what the owner holds beyond its rights, says so loudly and refuses to start", async () => {
+		const warn = vi.fn();
+		fake.ownerLogins = [true];
+		fake.problems = [["owner is a member of pg_execute_server_program"], []];
+		await expect(
+			bootstrap("postgresql://postgres:pw@db/retro", { warn }),
+		).rejects.toThrow(/held more than it may.*removed, start again/);
+		expect(warn.mock.calls[0]?.[0]).toMatch(
+			/^WARNING: .*pg_execute_server_program/,
+		);
+		expect(fake.log).toContain(
+			"REVOKE pg_execute_server_program FROM retrospend_owner GRANTED BY postgres CASCADE",
+		);
+		// No handover, no password, no login after a refusal.
+		expect(fake.log).not.toContain("owner-handover.sql");
+		expect(fake.logins).toBe(0);
+	});
+
+	it("refuses too when it cannot remove it", async () => {
+		fake.problems = [["attribute superuser"], ["attribute superuser"]];
+		await expect(
+			bootstrap("postgresql://postgres:pw@db/retro", { warn: vi.fn() }),
+		).rejects.toThrow(/could not be removed/);
+	});
+
+	it("does not call a login that holds too much a login failure", async () => {
+		fake.ownerLogins = [true];
+		fake.problems = [
+			[],
+			["owner holds pg_read_server_files (directly or through another role)"],
+		];
+		await expect(
+			bootstrap("postgresql://postgres:pw@db/retro"),
+		).rejects.toThrow(/holds more than it may/);
+		expect(fake.log.some((line) => line.startsWith("ALTER ROLE"))).toBe(false);
 	});
 });

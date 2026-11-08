@@ -23,8 +23,10 @@ import { userTransaction } from "~/server/db-tx";
 import { adminDb, superUrl, withSuperuser } from "~/test/pg-harness";
 import {
 	bootstrap,
+	enforceOwnerRole,
 	handover,
 	handoverStatements,
+	ownerProblems,
 } from "../../../scripts/db-owner/index.mjs";
 import { REPO_ROOT } from "../uiRules/paths";
 import { readPrivilegeCatalog } from "./privilege-catalog";
@@ -317,7 +319,10 @@ describe("prisma/bootstrap/owner-role.sql", () => {
 			}
 		});
 
-	it("gives the owner CREATE on the database only until a migration has finished", async () => {
+	it("gives the owner CREATE on the database, and gives it back if it was taken away", async () => {
+		// Permanent: CREATE SCHEMA IF NOT EXISTS (the first migration, and
+		// keystore in a later one) is checked against it before the existence
+		// check. It lets the owner create schemas in its own database, nothing more.
 		await inRolledBack(async (client) => {
 			const canCreate = async () =>
 				(
@@ -325,19 +330,110 @@ describe("prisma/bootstrap/owner-role.sql", () => {
 						"SELECT has_database_privilege('retrospend_owner', current_database(), 'CREATE') AS can",
 					)
 				).rows[0]?.can;
-			// A migrated database: no CREATE.
-			expect(await canCreate()).toBe(false);
-			// Nothing has finished yet (a new install, or one that failed in its
-			// first migration and is retried): CREATE, for CREATE SCHEMA IF NOT EXISTS.
-			await client.query("UPDATE public._prisma_migrations SET finished_at = NULL");
 			await client.query(sql);
 			expect(await canCreate()).toBe(true);
-			// Once a migration has finished it is taken away again.
-			await client.query(
-				"UPDATE public._prisma_migrations SET finished_at = now() WHERE ctid = (SELECT min(ctid) FROM public._prisma_migrations)",
+			const { rows } = await client.query<{ name: string }>(
+				"SELECT quote_ident(current_database()) AS name",
 			);
-			await client.query(sql);
+			await client.query(
+				`REVOKE CREATE ON DATABASE ${rows[0]?.name} FROM retrospend_owner`,
+			);
 			expect(await canCreate()).toBe(false);
+			await client.query(sql);
+			expect(await canCreate()).toBe(true);
+		});
+	});
+
+	it("reads and calls nothing of the owner's: an owner-made view in place of _prisma_migrations does not run", async () => {
+		// The attack: the owner owns _prisma_migrations, so it can replace it with
+		// a view whose condition calls a function. A superuser that reads the
+		// table runs that function with superuser rights (here it grants the
+		// owner pg_execute_server_program, which means COPY ... TO PROGRAM).
+		await inRolledBack(async (client) => {
+			const holdsProgramRole = async () =>
+				(
+					await client.query<{ held: boolean }>(
+						"SELECT pg_has_role('retrospend_owner', 'pg_execute_server_program', 'MEMBER') AS held",
+					)
+				).rows[0]?.held;
+			await client.query("SET LOCAL ROLE retrospend_owner");
+			await client.query(
+				"ALTER TABLE public._prisma_migrations RENAME TO a2_real_migrations",
+			);
+			await client.query(`
+				CREATE FUNCTION public.a2_evil() RETURNS boolean LANGUAGE plpgsql AS $f$
+				BEGIN
+				  GRANT pg_execute_server_program TO retrospend_owner;
+				  RETURN true;
+				END $f$`);
+			await client.query(
+				"CREATE VIEW public._prisma_migrations AS SELECT now() AS finished_at WHERE public.a2_evil()",
+			);
+			await client.query("RESET ROLE");
+			expect(await holdsProgramRole()).toBe(false);
+
+			// The bootstrap, the handover listing and the handover itself.
+			await client.query(sql);
+			for (const statement of await handoverStatements(client)) {
+				await client.query(statement);
+			}
+			expect(await holdsProgramRole()).toBe(false);
+
+			// The control: a superuser read of the view does run the owner's function,
+			// so the checks above would fail if the bootstrap did that.
+			await client.query("SELECT * FROM public._prisma_migrations");
+			expect(await holdsProgramRole()).toBe(true);
+			expect(await ownerProblems(client)).toEqual([
+				"owner holds pg_execute_server_program (directly or through another role)",
+				"owner is a member of pg_execute_server_program",
+			]);
+
+			// And the check that follows the bootstrap removes it and refuses to start.
+			const warnings: string[] = [];
+			await expect(
+				enforceOwnerRole(client, (message) => warnings.push(message)),
+			).rejects.toThrow(/removed, start again/);
+			expect(warnings[0]).toMatch(/^WARNING: .*pg_execute_server_program/);
+			expect(await holdsProgramRole()).toBe(false);
+			expect(await ownerProblems(client)).toEqual([]);
+		});
+	});
+
+	it("refuses a role that holds a pg_ role, a role-creating role or another member, however it got there", async () => {
+		await inRolledBack(async (client) => {
+			await client.query("CREATE ROLE a2_probe_creator CREATEROLE");
+			await client.query("CREATE ROLE a2_probe_relay");
+			await client.query("GRANT pg_read_server_files TO a2_probe_relay");
+			await client.query("GRANT a2_probe_relay TO retrospend_owner");
+			await client.query("GRANT a2_probe_creator TO retrospend_owner");
+			await client.query("GRANT pg_read_all_data TO retrospend_app");
+			expect(await ownerProblems(client)).toEqual([
+				"owner holds a2_probe_creator (directly or through another role)",
+				// Through retrospend_app, which must be a member of nothing.
+				"owner holds pg_read_all_data (directly or through another role)",
+				"owner holds pg_read_server_files (directly or through another role)",
+				"owner is a member of a2_probe_creator",
+				"owner is a member of a2_probe_relay",
+				"retrospend_app is a member of pg_read_all_data",
+			]);
+			await expect(enforceOwnerRole(client, () => undefined)).rejects.toThrow(
+				/removed, start again/,
+			);
+			expect(await ownerProblems(client)).toEqual([]);
+			// What the app role was allowed stays.
+			const { rows } = await client.query<{ ok: boolean }>(
+				"SELECT pg_has_role('retrospend_owner', 'retrospend_app', 'MEMBER') AS ok",
+			);
+			expect(rows[0]?.ok).toBe(true);
+		});
+	});
+
+	it("passes on a role that is as it should be", async () => {
+		await withSuperuser(async (client) => {
+			expect(await ownerProblems(client)).toEqual([]);
+			await expect(
+				enforceOwnerRole(client, () => undefined),
+			).resolves.toBeUndefined();
 		});
 	});
 
@@ -346,7 +442,9 @@ describe("prisma/bootstrap/owner-role.sql", () => {
 			await client.query(
 				"ALTER ROLE retrospend_owner CREATEROLE CREATEDB REPLICATION NOBYPASSRLS",
 			);
-			await client.query("REVOKE ADMIN OPTION FOR retrospend_app FROM retrospend_owner CASCADE");
+			await client.query(
+				"REVOKE ADMIN OPTION FOR retrospend_app FROM retrospend_owner CASCADE",
+			);
 			await client.query(sql);
 			const { rows } = await client.query(`
 				SELECT r.rolsuper, r.rolcreaterole, r.rolcreatedb, r.rolreplication,
@@ -518,4 +616,67 @@ describe("an install that older releases migrated as the superuser", () => {
 			rmSync(dir, { recursive: true, force: true });
 		}
 	}, 60_000);
+});
+
+describe("an install from before the keystore migration", () => {
+	const old = inject("pgOld");
+	let owner: Client;
+	beforeAll(async () => {
+		owner = await connect(old.ownerUrl);
+	});
+	afterAll(async () => {
+		await owner.end();
+	});
+
+	const prisma = (args: string[]) =>
+		execFileSync("pnpm", ["exec", "prisma", ...args], {
+			cwd: REPO_ROOT,
+			env: { ...process.env, DATABASE_URL: old.ownerUrl },
+			encoding: "utf8",
+			stdio: ["ignore", "pipe", "pipe"],
+		});
+
+	it("was migrated as the superuser only up to the cutoff, and the bootstrap made the keystore schema for the owner", async () => {
+		const { rows: later } = await owner.query<{ n: string }>(
+			"SELECT count(*) AS n FROM _prisma_migrations WHERE migration_name >= $1",
+			[old.cutoff],
+		);
+		expect(Number(later[0]?.n)).toBe(0);
+		const { rows } = await owner.query<{ owner: string; tables: string }>(`
+			SELECT pg_get_userbyid(n.nspowner) AS owner,
+			       (SELECT count(*) FROM pg_class c WHERE c.relnamespace = n.oid AND c.relkind = 'r') AS tables
+			  FROM pg_namespace n WHERE n.nspname = 'keystore'`);
+		expect(rows[0]).toEqual({ owner: "retrospend_owner", tables: "0" });
+		expect(await foreignOwned(owner)).toEqual([]);
+	});
+
+	it("applies the pending migrations as the owner, the keystore one included, and the grants file after it", async () => {
+		const migrate = prisma(["migrate", "deploy"]);
+		expect(migrate).toContain(old.cutoff);
+		expect(migrate).toContain("20261109600000_least_privilege");
+		expect(migrate).toMatch(/successfully applied/);
+		prisma(["db", "execute", "--file", "prisma/grants/app-role.sql"]);
+
+		const catalog = await readPrivilegeCatalog(owner);
+		expect(catalog.tables).toEqual(expected.tables);
+		expect(catalog.columns).toEqual(expected.columns);
+		expect(catalog.sequences).toEqual(expected.sequences);
+		expect(await foreignOwned(owner)).toEqual([]);
+		// The keystore migration ran as the owner inside the schema the bootstrap made.
+		const { rows } = await owner.query<{ owner: string }>(
+			`SELECT pg_get_userbyid(relowner) AS owner FROM pg_class WHERE oid = 'keystore.user_data_key'::regclass`,
+		);
+		expect(rows[0]?.owner).toBe("retrospend_owner");
+		// The app role reaches its key through the two functions only.
+		const { rows: fns } = await owner.query<{ name: string }>(`
+			SELECT p.proname AS name FROM pg_proc p
+			 WHERE p.pronamespace = 'keystore'::regnamespace
+			   AND has_function_privilege('retrospend_app', p.oid, 'EXECUTE')
+			 ORDER BY 1`);
+		expect(fns.map((f) => f.name)).toEqual([
+			"create_first_data_key",
+			"current_user_data_keys",
+		]);
+		expect(await ownerProblems(owner)).toEqual([]);
+	}, 120_000);
 });
