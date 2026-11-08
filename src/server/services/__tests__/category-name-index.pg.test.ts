@@ -13,13 +13,19 @@
  *   rows "Food" and "Food "            -> 1 updated, 1 conflict, one stays null
  *   another user's session             -> its keyring gives a different index
  *   no signed-in user                  -> no key, no index
+ *   key replaced, "Food" indexed       -> its index is stale: "Food " still refused by name
+ *   recompute                          -> the stale row gets a current index, then 0 updated
+ *   key store missing, grants lost,
+ *   master key wrong                   -> the write goes through with a null index
+ *   a create racing a backfill         -> that user is skipped and counted
  */
 import { randomBytes } from "node:crypto";
 import { TRPCError } from "@trpc/server";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { blindIndexTag } from "~/server/crypto/blind-index";
 import { Keyring } from "~/server/crypto/field-crypto";
 import { userTransaction } from "~/server/db-tx";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, withSuperuser } from "~/test/pg-harness";
 import {
 	type CategoryWriteOptions,
 	createCategory,
@@ -28,10 +34,15 @@ import {
 import {
 	backfillCategoryNameIndexes,
 	backfillCategoryNameIndexForUser,
+	CATEGORY_NAME_INDEX_LABEL,
 	categoryNameIndexFor,
 	computeCategoryNameIndex,
 } from "../category-name-index.service";
-import { DataKeyError, getOrCreateDataKeyring } from "../keys/data-key.service";
+import {
+	DataKeyError,
+	destroyDataKeys,
+	getOrCreateDataKeyring,
+} from "../keys/data-key.service";
 
 const master = new Keyring([{ id: 1, key: randomBytes(32) }]);
 const withKey = { masterKeyring: master };
@@ -58,14 +69,21 @@ const create = (
 	options: CategoryWriteOptions = withKey,
 ) => createCategory(who.db, who.user.id, input(name), options);
 
+const ringOf = (who: TestUser) =>
+	who.db.$transaction((tx) => getOrCreateDataKeyring(tx, master));
+
+afterEach(() => {
+	vi.restoreAllMocks();
+});
+
 describe("category name index", () => {
 	it("gives the same name different indexes for two users", async () => {
 		const [a, b] = await Promise.all([createTestUser(), createTestUser()]);
 		const rowA = await create(a, "Food");
 		const rowB = await create(b, "Food");
 		const [ia, ib] = [await indexOf(rowA.id), await indexOf(rowB.id)];
-		expect(ia).toMatch(/^[0-9a-f]{64}$/);
-		expect(ib).toMatch(/^[0-9a-f]{64}$/);
+		expect(ia).toMatch(/^[0-9a-f]{8}:[0-9a-f]{64}$/);
+		expect(ib).toMatch(/^[0-9a-f]{8}:[0-9a-f]{64}$/);
 		expect(ia).not.toBe(ib);
 		// Each is the hash under that user's own key, and not the other's.
 		const keyA = await a.db.$transaction((tx) =>
@@ -134,16 +152,18 @@ describe("category name index", () => {
 
 	it("answers two creates of one name at once with one row and one conflict", async () => {
 		const a = await createTestUser();
+		// "Race " is a trimmed duplicate, so the old unique index (exact names)
+		// cannot stop it; only the name index can.
 		const results = await Promise.allSettled([
 			create(a, "Race"),
-			create(a, "Race"),
+			create(a, "Race "),
 		]);
 		expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
 		const failed = results.find((r) => r.status === "rejected");
 		expect(failed).toMatchObject({ reason: CONFLICT });
 		expect(
 			await adminDb.category.count({
-				where: { userId: a.user.id, name: "Race" },
+				where: { userId: a.user.id, name: { in: ["Race", "Race "] } },
 			}),
 		).toBe(1);
 	});
@@ -208,7 +228,12 @@ describe("category name index", () => {
 		// left categories whose keys were wrapped by another master key.
 		const only = { userIds: [a.user.id, b.user.id] };
 		const first = await backfillCategoryNameIndexes(adminDb, master, only);
-		expect(first).toEqual({ updated: 3, conflicts: 0 });
+		expect(first).toEqual({
+			updated: 3,
+			conflicts: 0,
+			stale: 0,
+			skippedUsers: 0,
+		});
 		const mine = await adminDb.category.findMany({
 			where: { userId: { in: [a.user.id, b.user.id] } },
 			select: { userId: true, name: true, nameIndex: true },
@@ -220,10 +245,15 @@ describe("category name index", () => {
 			.map((r) => r.nameIndex);
 		expect(new Set(foodIndexes).size).toBe(2);
 		const second = await backfillCategoryNameIndexes(adminDb, master, only);
-		expect(second).toEqual({ updated: 0, conflicts: 0 });
+		expect(second).toEqual({
+			updated: 0,
+			conflicts: 0,
+			stale: 0,
+			skippedUsers: 0,
+		});
 		expect(
 			await backfillCategoryNameIndexForUser(adminDb, a.user.id, master),
-		).toEqual({ updated: 0, conflicts: 0 });
+		).toEqual({ updated: 0, conflicts: 0, stale: 0 });
 		// The same index create would have made.
 		const key = await a.db.$transaction((tx) =>
 			getOrCreateDataKeyring(tx, master),
@@ -247,7 +277,7 @@ describe("category name index", () => {
 			a.user.id,
 			master,
 		);
-		expect(result).toEqual({ updated: 2, conflicts: 1 });
+		expect(result).toEqual({ updated: 2, conflicts: 1, stale: 0 });
 		const nulls = await adminDb.category.count({
 			where: { userId: a.user.id, nameIndex: null },
 		});
@@ -255,7 +285,7 @@ describe("category name index", () => {
 		// Running again reports the same conflict and writes nothing.
 		expect(
 			await backfillCategoryNameIndexForUser(adminDb, a.user.id, master),
-		).toEqual({ updated: 0, conflicts: 1 });
+		).toEqual({ updated: 0, conflicts: 1, stale: 0 });
 	});
 
 	it("cannot be computed without the user's own keyring", async () => {
@@ -272,16 +302,215 @@ describe("category name index", () => {
 			categoryNameIndexFor(tx, "Food", master),
 		);
 		expect(asA).toBe(stored);
-		// No signed-in user, no key, no index.
+		// No signed-in user: no key, so no index (and the reason is logged).
+		vi.spyOn(console, "warn").mockImplementation(() => undefined);
 		await expect(
-			adminDb.$transaction((tx) => categoryNameIndexFor(tx, "Food", master)),
+			adminDb.$transaction((tx) => getOrCreateDataKeyring(tx, master)),
 		).rejects.toBeInstanceOf(DataKeyError);
+		expect(
+			await adminDb.$transaction((tx) =>
+				categoryNameIndexFor(tx, "Food", master),
+			),
+		).toBeNull();
 		// A master key that did not wrap A's key cannot open it.
 		const wrong = new Keyring([{ id: 1, key: randomBytes(32) }]);
 		await expect(
 			userTransaction(a.db, a.user.id, (tx) =>
-				categoryNameIndexFor(tx, "Food", wrong),
+				getOrCreateDataKeyring(tx, wrong),
 			),
 		).rejects.toMatchObject({ code: "auth_failed" });
+		expect(
+			await userTransaction(a.db, a.user.id, (tx) =>
+				categoryNameIndexFor(tx, "Food", wrong),
+			),
+		).toBeNull();
+	});
+
+	it("ignores an index made by a replaced key and repairs it on recompute", async () => {
+		const a = await createTestUser();
+		const food = await create(a, "Food");
+		const oldIndex = await indexOf(food.id);
+		const oldTag = blindIndexTag(await ringOf(a), CATEGORY_NAME_INDEX_LABEL);
+		// The key is lost and made again: key id 1 with other bytes.
+		await destroyDataKeys(a.user.id);
+		const newTag = blindIndexTag(await ringOf(a), CATEGORY_NAME_INDEX_LABEL);
+		expect(newTag).not.toBe(oldTag);
+		// The new index of the same name differs, so an index compare would let
+		// a trimmed duplicate through; the name compare must still refuse it.
+		await expect(create(a, "Food ")).rejects.toMatchObject(CONFLICT);
+		const other = await create(a, "Other");
+		await expect(
+			updateCategory(a.db, a.user.id, other.id, { name: "Food " }, withKey),
+		).rejects.toMatchObject(CONFLICT);
+		expect(await indexOf(food.id)).toBe(oldIndex);
+		// Without recompute the stale row is counted and left alone.
+		expect(
+			await backfillCategoryNameIndexForUser(adminDb, a.user.id, master),
+		).toEqual({ updated: 0, conflicts: 0, stale: 1 });
+		expect(await indexOf(food.id)).toBe(oldIndex);
+		// With it the row gets an index of the current key, and a second run
+		// changes nothing.
+		expect(
+			await backfillCategoryNameIndexForUser(adminDb, a.user.id, master, {
+				recompute: true,
+			}),
+		).toEqual({ updated: 1, conflicts: 0, stale: 0 });
+		const key = await ringOf(a);
+		expect(await indexOf(food.id)).toBe(computeCategoryNameIndex(key, "Food"));
+		expect(
+			await backfillCategoryNameIndexForUser(adminDb, a.user.id, master, {
+				recompute: true,
+			}),
+		).toEqual({ updated: 0, conflicts: 0, stale: 0 });
+		// Now both rows are compared by index, and the duplicate is still refused.
+		await expect(create(a, "Food ")).rejects.toMatchObject(CONFLICT);
+	});
+
+	describe("when the key store gives no key", () => {
+		const warnings = () =>
+			vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+		/** The write goes through with a null index and a name-compare duplicate check. */
+		const expectFallback = async (a: TestUser, code: string) => {
+			const warn = warnings();
+			const food = await create(a, "Secret Food");
+			expect(await indexOf(food.id)).toBeNull();
+			await expect(create(a, "Secret Food ")).rejects.toMatchObject(CONFLICT);
+			const rent = await create(a, "Rent");
+			await updateCategory(a.db, a.user.id, rent.id, { name: "Home" }, withKey);
+			expect(await indexOf(rent.id)).toBeNull();
+			const logged = warn.mock.calls.flat().join(" ");
+			expect(logged).toContain(code);
+			expect(logged).not.toContain("Secret Food");
+			expect(logged).not.toContain(a.user.id);
+		};
+
+		it("keeps writing when the keystore schema is missing", async () => {
+			const a = await createTestUser();
+			const rename = (from: string, to: string) =>
+				withSuperuser((c) => c.query(`ALTER SCHEMA ${from} RENAME TO ${to}`));
+			await rename("keystore", "keystore_gone");
+			try {
+				await expectFallback(a, "keystore_missing");
+			} finally {
+				await rename("keystore_gone", "keystore");
+			}
+			// Back to normal: the next write is indexed again.
+			const again = await create(a, "Back");
+			expect(await indexOf(again.id)).not.toBeNull();
+		});
+
+		it("keeps writing when the app lost its keystore grants", async () => {
+			const a = await createTestUser();
+			await adminDb.$executeRawUnsafe(
+				'REVOKE EXECUTE ON FUNCTION keystore."current_user_data_keys"() FROM retrospend_app',
+			);
+			try {
+				await expectFallback(a, "keystore_grants_missing");
+			} finally {
+				await adminDb.$executeRawUnsafe(
+					'GRANT EXECUTE ON FUNCTION keystore."current_user_data_keys"() TO retrospend_app',
+				);
+			}
+		});
+
+		it("keeps writing when the master key does not open the user's key", async () => {
+			const a = await createTestUser();
+			await create(a, "Seed");
+			const wrong = new Keyring([{ id: 1, key: randomBytes(32) }]);
+			const warn = warnings();
+			const row = await createCategory(a.db, a.user.id, input("Secret Food"), {
+				masterKeyring: wrong,
+			});
+			expect(await indexOf(row.id)).toBeNull();
+			await expect(
+				createCategory(a.db, a.user.id, input("Secret Food "), {
+					masterKeyring: wrong,
+				}),
+			).rejects.toMatchObject(CONFLICT);
+			const logged = warn.mock.calls.flat().join(" ");
+			expect(logged).toContain("auth_failed");
+			expect(logged).not.toContain("Secret Food");
+			expect(logged).not.toContain(a.user.id);
+		});
+	});
+
+	it("skips a user whose backfill loses a race to a create and carries on", async () => {
+		const [a, b] = await Promise.all([createTestUser(), createTestUser()]);
+		const foods = await Promise.all(
+			[a, b].map((who) =>
+				adminDb.category.create({
+					data: { userId: who.user.id, name: "Food", color: "orange" },
+				}),
+			),
+		);
+		const foodA = foods[0];
+		if (!foodA) throw new Error("setup");
+		const keyA = await ringOf(a);
+		// Just before A's row is updated, another connection commits a category
+		// that takes the index that update is about to write.
+		let raced = false;
+		const racing = new Proxy(adminDb, {
+			get(target, prop) {
+				if (prop !== "$transaction") return Reflect.get(target, prop, target);
+				return (work: (tx: unknown) => Promise<unknown>, options?: object) =>
+					target.$transaction(async (tx) => {
+						const category = new Proxy(tx.category, {
+							get(model, key) {
+								const value = Reflect.get(model, key, model);
+								if (key !== "update") return value;
+								return async (args: { where: { id: string } }) => {
+									if (!raced && args.where.id === foodA.id) {
+										raced = true;
+										await adminDb.category.create({
+											data: {
+												userId: a.user.id,
+												name: "Elsewhere",
+												color: "orange",
+												nameIndex: computeCategoryNameIndex(keyA, "Food"),
+											},
+										});
+									}
+									return model.update(args as never);
+								};
+							},
+						});
+						return work(
+							new Proxy(tx, {
+								get(inner, key) {
+									if (key === "category") return category;
+									const value = Reflect.get(inner, key, inner);
+									return typeof value === "function"
+										? value.bind(inner)
+										: value;
+								},
+							}),
+						);
+					}, options);
+			},
+		});
+		const seen = new Map<string, boolean>();
+		const result = await backfillCategoryNameIndexes(racing, master, {
+			userIds: [a.user.id, b.user.id],
+			onUser: (id, r) => seen.set(id, r !== null),
+		});
+		expect(raced).toBe(true);
+		expect(result.skippedUsers).toBe(1);
+		expect(result.updated).toBe(1);
+		expect(seen.get(a.user.id)).toBe(false);
+		expect(seen.get(b.user.id)).toBe(true);
+		// Nothing of A's run was written; B's row got its index.
+		expect(await indexOf(foodA.id)).toBeNull();
+		expect(
+			await adminDb.category.count({
+				where: { userId: b.user.id, nameIndex: null },
+			}),
+		).toBe(0);
+		// Run again: A's "Food" now conflicts with the row that won the race.
+		expect(
+			await backfillCategoryNameIndexes(adminDb, master, {
+				userIds: [a.user.id],
+			}),
+		).toEqual({ updated: 0, conflicts: 1, stale: 0, skippedUsers: 0 });
 	});
 });

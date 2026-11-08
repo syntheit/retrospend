@@ -1,9 +1,13 @@
 import { TRPCError } from "@trpc/server";
 import type { db as globalDb } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
-import { type CategoryColor, Prisma } from "~prisma";
+import type { CategoryColor, Prisma } from "~prisma";
 import type { Keyring } from "../crypto/field-crypto";
-import { categoryNameIndexFor } from "./category-name-index.service";
+import {
+	categoryNameIndexFor,
+	comparableIndexes,
+	isUniqueViolation,
+} from "./category-name-index.service";
 
 type AppDb = typeof globalDb;
 
@@ -89,9 +93,10 @@ const nameTaken = () =>
  * Names are stored as typed, but "Food " and "Food" are the same name to the
  * person (the v1 API always trimmed). Compared here, not in SQL, so it keeps
  * working when names are encrypted; a person has few categories. A row with
- * a name index is compared by index, which holds once names are ciphertext;
- * a row not backfilled yet, or any row on an instance with no master key
- * (`nameIndex` null), by its trimmed name.
+ * a name index is compared by index, which holds once names are ciphertext,
+ * but only while both indexes were made with the same key; a row not
+ * backfilled yet (`nameIndex` null) or indexed by a key the user no longer has
+ * (stale), and every row when there is no index to make, by its trimmed name.
  */
 async function assertNameFree(
 	tx: Prisma.TransactionClient,
@@ -106,7 +111,7 @@ async function assertNameFree(
 		select: { name: true, nameIndex: true },
 	});
 	const taken = mine.some((row) =>
-		nameIndex !== null && row.nameIndex !== null
+		comparableIndexes(nameIndex, row.nameIndex)
 			? row.nameIndex === nameIndex
 			: row.name.trim() === wanted,
 	);
@@ -119,10 +124,7 @@ async function assertNameFree(
  * name taken.
  */
 function asNameTaken(error: unknown): unknown {
-	return error instanceof Prisma.PrismaClientKnownRequestError &&
-		error.code === "P2002"
-		? nameTaken()
-		: error;
+	return isUniqueViolation(error) ? nameTaken() : error;
 }
 
 /** `masterKeyring` is for tests: null means no master key. */
