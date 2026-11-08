@@ -13,12 +13,17 @@
  *   Not planned yet is 0 and the movements add to 30,000.
  *   A Spending envelope with no amount funds nothing: Not planned yet stays
  *   the whole 100,000 and no movement is written.
+ *   Flex, start 500,000, Spending 6,000, then a 5,000 expense in Spending:
+ *   Left is 6,000 - 5,000 = 1,000, so nothing is overspent.
+ *   Undo of that setup removes the book, its envelopes, its funding movements
+ *   and the starting balance row.
  */
 import { describe, expect, it } from "vitest";
 import type { SetupInput } from "~/lib/schemas/envelope";
 import { forUser } from "~/server/services/preview";
+import { userTransaction } from "~/server/db-tx";
 import { adminDb } from "~/test/pg-harness";
-import { seedUser, setupInput } from "./__tests__/pg-fixture";
+import { addRow, seedUser, setupInput } from "./__tests__/pg-fixture";
 import { getMonth } from "./read.service";
 import { setupEnvelopeBook } from "./setup.mutation";
 import { FIGURE_NOT_PLANNED_YET } from "./verdict";
@@ -177,5 +182,72 @@ describe("envelope.setup funds the amounts set in the wizard", () => {
 		});
 		expect(r.committed?.minor).toBe(100_000);
 		expect(r.moved).toHaveLength(0);
+	});
+
+	it("an expense inside the planned amount leaves Spending with what is left and nothing overspent", async () => {
+		const s = await seedUser();
+		await previewThenStart(
+			s,
+			spendingOnly({
+				kind: "MONTHLY",
+				amountMinor: 6_000,
+				mode: "REFILL",
+				cadence: "MONTH",
+			}),
+		);
+		await addRow(s.user.id, { amount: 50 });
+		const month = await getMonth(s.user.id);
+		const spending = month?.groups
+			.flatMap((g) => g.envelopes)
+			.find((e) => e.name === "Spending");
+		expect(spending?.left).toEqual({ minor: 1_000, currency: "USD" });
+		expect(spending?.status).not.toBe("OVERSPENT");
+		expect(month?.verdict.over.minor).toBe(0);
+		expect(month?.verdict.overEnvelopes).toEqual([]);
+	});
+
+	it("undo removes the book, its envelopes, its funding and the starting balance", async () => {
+		const s = await seedUser();
+		const run = {
+			...spendingOnly({
+				kind: "MONTHLY",
+				amountMinor: 6_000,
+				mode: "REFILL",
+				cadence: "MONTH",
+			}),
+			timeZone: "UTC",
+		};
+		const { undo } = await forUser(s.user.id).apply(setupEnvelopeBook, run);
+		const book = await adminDb.budgetBook.findFirstOrThrow({
+			where: { createdById: s.user.id },
+		});
+		await expect(
+			adminDb.budgetMovement.count({ where: { bookId: book.id } }),
+		).resolves.toBe(1);
+		expect(undo.kind).toBe("revert");
+		if (undo.kind !== "revert") return;
+		expect(undo.rows.map((r) => r.table)).toEqual(["budget_book", "expense"]);
+
+		// The token's rows, deleted in its order as the user.
+		await userTransaction(adminDb, s.user.id, async (tx) => {
+			for (const row of undo.rows) {
+				if (row.table === "budget_book")
+					await tx.budgetBook.delete({ where: { id: row.id } });
+				else await tx.expense.delete({ where: { id: row.id } });
+			}
+		});
+
+		await expect(
+			adminDb.budgetBook.count({ where: { createdById: s.user.id } }),
+		).resolves.toBe(0);
+		await expect(
+			adminDb.envelope.count({ where: { bookId: book.id } }),
+		).resolves.toBe(0);
+		await expect(
+			adminDb.budgetMovement.count({ where: { bookId: book.id } }),
+		).resolves.toBe(0);
+		await expect(
+			adminDb.expense.count({ where: { userId: s.user.id } }),
+		).resolves.toBe(0);
 	});
 });
