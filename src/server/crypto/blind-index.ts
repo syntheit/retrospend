@@ -6,7 +6,7 @@
  *
  *   indexKey = HKDF-SHA256(ikm = the user's oldest data key, salt = none, info = <label>)
  *   index    = hex( HMAC-SHA256(indexKey, UTF-8 text) )
- *   tag      = hex( first 4 bytes of HKDF-SHA256(same ikm, info = <label> + " key tag") )
+ *   tag      = hex( first 8 bytes of HKDF-SHA256(same ikm, info = <label> + " key tag") )
  *
  * The oldest key signs, not the current one: a rotation that adds a newer key
  * (see master-key.ts, which only rewraps data keys) must not change every
@@ -15,7 +15,7 @@
  * equals the current one. A key id would not do: a data key that is lost and
  * made again (a restore of the main dump without the keystore) gets key id 1
  * again, with other bytes, and every index made with the old bytes is stale.
- * The tag is 32 bits of a PRF output, enough to notice a changed key, and
+ * The tag is 64 bits of a PRF output, enough to notice a changed key, and
  * shows nothing of the key. The label (HKDF info) keeps one index from being
  * usable as another's.
  *
@@ -28,7 +28,7 @@ import { createHmac, hkdfSync } from "node:crypto";
 import { FieldCryptoError, type Keyring } from "./field-crypto";
 
 const INDEX_BYTES = 32;
-const TAG_BYTES = 4;
+const TAG_BYTES = 8;
 
 function derive(
 	keyring: Keyring,
