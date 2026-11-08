@@ -101,8 +101,10 @@ function Pending({ pending }: { pending: NonNullable<PersonVM["pending"]> }) {
 	return (
 		<span className="flex flex-col items-end">
 			<StatusDot kind="pending" size="sm" />
-			<span className="text-fg-2 text-small whitespace-nowrap">
-				{t(pending.direction === "out" ? "youPaid" : "paidYou")}{" "}
+			<span className="text-fg-2 text-small">
+				<span className="whitespace-nowrap">
+					{t(pending.direction === "out" ? "youPaid" : "paidYou")}
+				</span>{" "}
 				<Money value={pending.amount} />
 			</span>
 		</span>
