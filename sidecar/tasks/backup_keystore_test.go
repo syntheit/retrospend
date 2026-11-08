@@ -110,10 +110,10 @@ func TestEachDumpKeepsItsOwnRetention(t *testing.T) {
 		have[name] = true
 	}
 	for name, want := range map[string]bool{
-		"retrospend-20250101-000000.dump":     true,
-		"retrospend-20250102-000000.dump":     false,
-		"keystore-20250101-000000.dump":       false,
-		"keystore-20250102-000000.dump.age":   true,
+		"retrospend-20250101-000000.dump":   true,
+		"retrospend-20250102-000000.dump":   false,
+		"keystore-20250101-000000.dump":     false,
+		"keystore-20250102-000000.dump.age": true,
 	} {
 		if have[name] != want {
 			t.Errorf("%s: kept=%v, want %v (files: %v)", name, have[name], want, have)
