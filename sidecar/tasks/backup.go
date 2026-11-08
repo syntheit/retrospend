@@ -107,14 +107,6 @@ func runBackup(kind backupKind, database *db.DB, databaseURL string, backupDir s
 		Success:   false,
 		Kind:      kind.name,
 	}
-	if kind.pruneOnFailure {
-		// A success prunes at its end; this covers every failure return.
-		defer func() {
-			if !result.Success {
-				cleanupOldBackups(backupDir, retentionDays, kind)
-			}
-		}()
-	}
 
 	// Parse DATABASE_URL
 	host, port, user, password, dbname, err := parseDatabaseURL(databaseURL)

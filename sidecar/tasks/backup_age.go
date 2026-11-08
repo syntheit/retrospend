@@ -215,11 +215,6 @@ type backupKind struct {
 	minSize int64
 	// statusKey is the system_status row the result is written to.
 	statusKey string
-	// pruneOnFailure runs retention even when the dump fails. It is for the
-	// keystore: a dump that fails every night must not keep old key files past
-	// their window. The main dump keeps its files on failure, because they may
-	// be the only good backups left.
-	pruneOnFailure bool
 }
 
 const keystoreSchema = "keystore"
@@ -233,12 +228,11 @@ var (
 	}
 	// A dump of one small table is only a few KB, so the size floor is low.
 	keystoreKind = backupKind{
-		name:           keystoreSchema,
-		prefix:         keystoreSchema,
-		schemaArgs:     []string{"--schema=" + keystoreSchema},
-		minSize:        1,
-		statusKey:      "keystore_backup_status",
-		pruneOnFailure: true,
+		name:       keystoreSchema,
+		prefix:     keystoreSchema,
+		schemaArgs: []string{"--schema=" + keystoreSchema},
+		minSize:    1,
+		statusKey:  "keystore_backup_status",
 	}
 )
 

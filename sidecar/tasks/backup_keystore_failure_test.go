@@ -5,35 +5,28 @@ import (
 	"testing"
 )
 
-func TestFailingKeystoreDumpStillPrunesOldKeyFiles(t *testing.T) {
-	fakePgDump(t, "exit 1")
-	dir := t.TempDir()
-	seedOld(t, dir, "keystore-20250101-000000.dump.age", 10*day)
-	seedOld(t, dir, "keystore-20250102-000000.dump.age", 2*day)
-	seedOld(t, dir, "retrospend-20250101-000000.dump.age", 40*day)
+func TestAFailedDumpRemovesNoOldFiles(t *testing.T) {
+	// The last good backup of each kind must survive as long as the last good
+	// main backup, so a failing run prunes nothing, for either kind.
+	for name, run := range map[string]func(dir string) error{
+		"keystore": func(dir string) error { return RunKeystoreBackup(nil, testDBURL, dir, 7, nil) },
+		"main":     func(dir string) error { return RunBackup(nil, testDBURL, dir, 7, nil) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			fakePgDump(t, "exit 1")
+			dir := t.TempDir()
+			seedOld(t, dir, "keystore-20250101-000000.dump.age", 40*day)
+			seedOld(t, dir, "retrospend-20250101-000000.dump.age", 40*day)
 
-	if err := RunKeystoreBackup(nil, testDBURL, dir, 7, nil); err == nil {
-		t.Fatal("expected the failed dump to be reported")
-	}
-	got := strings.Join(dirNames(t, dir), ",")
-	// The keystore file past its window is gone; the recent one and the main
-	// backup (not this run's business) stay.
-	want := "keystore-20250102-000000.dump.age,retrospend-20250101-000000.dump.age"
-	if got != want {
-		t.Fatalf("got %s, want %s", got, want)
-	}
-}
-
-func TestFailingMainDumpKeepsItsFiles(t *testing.T) {
-	// The main dump's old files may be the only good backups left.
-	fakePgDump(t, "exit 1")
-	dir := t.TempDir()
-	seedOld(t, dir, "retrospend-20250101-000000.dump.age", 40*day)
-	if err := RunBackup(nil, testDBURL, dir, 30, nil); err == nil {
-		t.Fatal("expected an error")
-	}
-	if got := strings.Join(dirNames(t, dir), ","); got != "retrospend-20250101-000000.dump.age" {
-		t.Fatalf("got %s", got)
+			if err := run(dir); err == nil {
+				t.Fatal("expected the failed dump to be reported")
+			}
+			got := strings.Join(dirNames(t, dir), ",")
+			want := "keystore-20250101-000000.dump.age,retrospend-20250101-000000.dump.age"
+			if got != want {
+				t.Fatalf("got %s, want %s", got, want)
+			}
+		})
 	}
 }
 

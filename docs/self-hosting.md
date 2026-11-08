@@ -119,7 +119,7 @@ Backups made before you set the key stay unencrypted until they age out.
 
 ### Data key backups
 
-Per-user data keys live in their own database schema, `keystore`. The sidecar leaves that schema out of the main dump and writes it on its own as `keystore-<time>.dump` (or `.dump.age` when `BACKUP_AGE_RECIPIENT` is set), right after the main backup. These files are kept for `BACKUP_RETENTION_DAYS`, like the main backups, and are pruned even when a keystore dump fails. A deleted account's key stays in these backups until they age out, so lower `BACKUP_RETENTION_DAYS` if that window is too long for you. The keys inside are sealed with `DATA_MASTER_KEY`, so a keystore backup is useless without it: keep the master key with your backups, apart from the files.
+Per-user data keys live in their own database schema, `keystore`. The sidecar leaves that schema out of the main dump and writes it on its own as `keystore-<time>.dump` (or `.dump.age` when `BACKUP_AGE_RECIPIENT` is set), right after the main backup. These files are kept for `BACKUP_RETENTION_DAYS`, like the main backups, and a failed dump removes nothing, so the last good key backup lasts as long as the last good main backup. A deleted account's key stays in these backups until they age out, so lower `BACKUP_RETENTION_DAYS` if that window is too long for you. The keys inside are sealed with `DATA_MASTER_KEY`, so a keystore backup is useless without it: keep the master key with your backups, apart from the files.
 
 To restore, restore the main dump as usual, then the keystore dump. Do not pass `--schema`: the dump has to create the schema itself.
 
