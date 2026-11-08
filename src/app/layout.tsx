@@ -1,6 +1,7 @@
 import "~/styles/globals.css";
 
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { DM_Sans, JetBrains_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
@@ -72,6 +73,8 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
 	const locale = await getLocale();
 	const messages = await getMessages();
+	// Set per request by proxy.ts; the inline scripts below need it to run.
+	const nonce = (await headers()).get("x-nonce") ?? undefined;
 
 	return (
 		<html
@@ -81,8 +84,8 @@ export default async function RootLayout({
 		>
 			<head>
 				<meta name="color-scheme" content="light dark" />
-				<FontScript />
-				<ThemeScript />
+				<FontScript nonce={nonce} />
+				<ThemeScript nonce={nonce} />
 			</head>
 			<body className="overflow-hidden">
 				<NextIntlClientProvider locale={locale} messages={messages}>

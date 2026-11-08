@@ -4,9 +4,10 @@ import { createContext, useContext, useEffect } from "react";
 import { useTheme } from "~/hooks/use-theme";
 
 // Client-side script to apply theme immediately before React hydration
-function ThemeScript() {
+function ThemeScript({ nonce }: { nonce?: string }) {
 	return (
 		<script
+			nonce={nonce}
 			// biome-ignore lint/security/noDangerouslySetInnerHtml: Required for theme script before React hydration
 			dangerouslySetInnerHTML={{
 				__html: `

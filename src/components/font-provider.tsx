@@ -7,9 +7,10 @@ const FontContext = createContext<{ fontPreference: "sans" | "mono" }>({
 });
 
 // Client-side script to apply font before React hydration
-function FontScript() {
+function FontScript({ nonce }: { nonce?: string }) {
 	return (
 		<script
+			nonce={nonce}
 			// biome-ignore lint/security/noDangerouslySetInnerHtml: inline script runs before hydration
 			dangerouslySetInnerHTML={{
 				__html: `

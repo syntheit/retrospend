@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { buildCsp, newNonce, TRUSTED_TYPES_REPORT_ONLY } from "~/lib/csp";
 
 const PUBLIC_PATHS = [
 	"/login",
@@ -19,10 +20,11 @@ const PUBLIC_PATHS = [
 
 export function proxy(request: NextRequest) {
 	const { pathname } = request.nextUrl;
+	const nonce = newNonce();
 
 	// Allow public paths
 	if (PUBLIC_PATHS.some((path) => pathname.startsWith(path))) {
-		return addSecurityHeaders(NextResponse.next());
+		return pass(request, nonce);
 	}
 
 	// Allow static assets and Next.js internals
@@ -31,12 +33,12 @@ export function proxy(request: NextRequest) {
 		pathname.startsWith("/images") ||
 		pathname.startsWith("/favicon")
 	) {
-		return addSecurityHeaders(NextResponse.next());
+		return pass(request, nonce);
 	}
 
 	// Allow landing page
 	if (pathname === "/") {
-		return addSecurityHeaders(NextResponse.next());
+		return pass(request, nonce);
 	}
 
 	// Check for session cookie (better-auth uses this cookie name)
@@ -51,13 +53,35 @@ export function proxy(request: NextRequest) {
 			"callbackUrl",
 			`${pathname}${request.nextUrl.search}`,
 		);
-		return NextResponse.redirect(loginUrl);
+		return addSecurityHeaders(NextResponse.redirect(loginUrl), nonce);
 	}
 
-	return addSecurityHeaders(NextResponse.next());
+	return pass(request, nonce);
 }
 
-function addSecurityHeaders(response: NextResponse): NextResponse {
+/**
+ * Lets the request through. Next reads the nonce out of the request's CSP
+ * header and puts it on its own scripts; `x-nonce` is for the few inline
+ * scripts the app writes itself (the root layout).
+ */
+function pass(request: NextRequest, nonce: string): NextResponse {
+	const requestHeaders = new Headers(request.headers);
+	requestHeaders.set("x-nonce", nonce);
+	requestHeaders.set("Content-Security-Policy", cspFor(nonce));
+	return addSecurityHeaders(
+		NextResponse.next({ request: { headers: requestHeaders } }),
+		nonce,
+	);
+}
+
+function cspFor(nonce: string): string {
+	return buildCsp(nonce, process.env.NODE_ENV === "development");
+}
+
+function addSecurityHeaders(
+	response: NextResponse,
+	nonce: string,
+): NextResponse {
 	response.headers.set("X-Content-Type-Options", "nosniff");
 	response.headers.set("X-Frame-Options", "DENY");
 	response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -70,13 +94,10 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 		"Strict-Transport-Security",
 		"max-age=31536000; includeSubDomains",
 	);
-	const scriptSrc =
-		process.env.NODE_ENV === "development"
-			? "'self' 'unsafe-inline' 'unsafe-eval'"
-			: "'self' 'unsafe-inline'";
+	response.headers.set("Content-Security-Policy", cspFor(nonce));
 	response.headers.set(
-		"Content-Security-Policy",
-		`default-src 'self'; script-src ${scriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';`,
+		"Content-Security-Policy-Report-Only",
+		TRUSTED_TYPES_REPORT_ONLY,
 	);
 	return response;
 }
