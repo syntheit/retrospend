@@ -30,6 +30,13 @@
 		"tooBig": "{name} ist größer als 10 MB.",
 		"wrongType": "{name} ist keine CSV-, Excel- oder PDF-Datei."
 	},
+	"serverNote": "Diese Datei geht an den Server.",
+	"provider": {
+		"ollama": "Wird auf diesem Server von Ollama gelesen",
+		"ollamaModel": "Wird auf diesem Server von Ollama gelesen ({model})",
+		"openrouter": "Wird von OpenRouter gelesen",
+		"openrouterModel": "Wird von OpenRouter gelesen ({model})"
+	},
 	"recent": {
 		"title": "Letzte Importe",
 		"reading": "Wird gelesen, {percent} %",
@@ -54,9 +61,8 @@
 		"csvMissing": "Braucht Spalten für Datum, Titel, Betrag und Währung",
 		"csvPdf": "Ein PDF braucht KI zum Einlesen",
 		"ai": "Von KI lesen lassen",
-		"aiExternal": "Liest mit deinem OpenRouter-Zugang",
-		"aiLocal": "Liest mit der KI dieses Servers",
 		"aiOff": "Einlesen per KI ist auf diesem Server aus",
+		"aiNotOn": "Schalte den KI-Import in den Einstellungen ein",
 		"aiSettings": "KI-Einstellungen",
 		"pdfBlocked": "PDFs brauchen KI zum Einlesen, und die ist hier aus. Nimm eine CSV oder schalte KI ein.",
 		"columns": "Spalten",

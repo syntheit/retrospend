@@ -377,6 +377,9 @@ func main() {
 			"uptime_seconds":     int64(time.Since(startTime).Seconds()),
 			"version":            Version,
 			"importer_available": importerAvailable,
+			// Named in the import screen, so people see which model reads a file.
+			"llm_model":        cfg.LLMModel,
+			"openrouter_model": cfg.OpenRouterModel,
 		})
 	})
 

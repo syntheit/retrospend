@@ -133,8 +133,8 @@
 		"expenseDate": "Fecha para gastos nuevos",
 		"expenseDateToday": "Hoy",
 		"expenseDateLast": "La última usada",
+		"aiImport": "Importación con IA",
 		"import": "Importación de resúmenes",
-		"importMeta": "Quién lee tus resúmenes bancarios",
 		"importLocal": "Local",
 		"importExternal": "Externa",
 		"importExternalLeft": "A la externa le quedan {count, number} tokens este mes"

@@ -34,6 +34,8 @@ export const generalSettingsSchema = z
 		fiscalMonthStartDay: z.int().min(1).max(28),
 		defaultExpenseDateBehavior: z.enum(["TODAY", "LAST_USED"]),
 		aiMode: z.enum(["LOCAL", "EXTERNAL"]),
+		/** Whether an AI provider may read your import files; off until you turn it on. */
+		aiImportEnabled: z.boolean(),
 		language: languageSchema,
 		/** IANA zone the user's calendar days are read in; null until set. */
 		timeZone: z.string().nullable(),
@@ -61,6 +63,7 @@ export const generalSettingsPatchSchema = z
 		fiscalMonthStartDay: z.int().min(1).max(28),
 		defaultExpenseDateBehavior: z.enum(["TODAY", "LAST_USED"]),
 		aiMode: z.enum(["LOCAL", "EXTERNAL"]),
+		aiImportEnabled: z.boolean(),
 		language: languageSchema,
 		/** An IANA zone from the server's list, such as "Asia/Tokyo". */
 		timeZone: z.string().min(1).max(64),

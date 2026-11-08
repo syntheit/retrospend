@@ -133,8 +133,8 @@
 		"expenseDate": "Datum für neue Ausgaben",
 		"expenseDateToday": "Heute",
 		"expenseDateLast": "Zuletzt verwendet",
+		"aiImport": "KI-Import",
 		"import": "Kontoauszug-Import",
-		"importMeta": "Wer deine Kontoauszüge liest",
 		"importLocal": "Lokal",
 		"importExternal": "Extern",
 		"importExternalLeft": "Extern hat diesen Monat noch {count, number} Tokens"

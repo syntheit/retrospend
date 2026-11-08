@@ -133,8 +133,8 @@
 		"expenseDate": "Date des nouvelles dépenses",
 		"expenseDateToday": "Aujourd’hui",
 		"expenseDateLast": "Dernière utilisée",
+		"aiImport": "Import par IA",
 		"import": "Import de relevés",
-		"importMeta": "Qui lit tes relevés bancaires",
 		"importLocal": "Local",
 		"importExternal": "Externe",
 		"importExternalLeft": "Externe : il reste {count, number} jetons ce mois-ci"

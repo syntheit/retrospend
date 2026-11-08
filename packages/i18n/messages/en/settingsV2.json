@@ -133,8 +133,8 @@
 		"expenseDate": "Date for new expenses",
 		"expenseDateToday": "Today",
 		"expenseDateLast": "Last used",
+		"aiImport": "AI import",
 		"import": "Statement import",
-		"importMeta": "Who reads your bank statements",
 		"importLocal": "Local",
 		"importExternal": "External",
 		"importExternalLeft": "External has {count, number} tokens left this month"

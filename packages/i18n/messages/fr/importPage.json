@@ -30,6 +30,13 @@
 		"tooBig": "{name} dépasse 10 Mo.",
 		"wrongType": "{name} n'est pas un fichier CSV, Excel ou PDF."
 	},
+	"serverNote": "Ce fichier est envoyé au serveur.",
+	"provider": {
+		"ollama": "Lu sur ce serveur par Ollama",
+		"ollamaModel": "Lu sur ce serveur par Ollama ({model})",
+		"openrouter": "Lu par OpenRouter",
+		"openrouterModel": "Lu par OpenRouter ({model})"
+	},
 	"recent": {
 		"title": "Imports récents",
 		"reading": "Lecture, {percent} %",
@@ -54,9 +61,8 @@
 		"csvMissing": "Il faut des colonnes date, titre, montant et devise",
 		"csvPdf": "Un PDF doit être lu par l'IA",
 		"ai": "Laisser l'IA le lire",
-		"aiExternal": "Lu avec ton accès OpenRouter",
-		"aiLocal": "Lu par l'IA de ce serveur",
 		"aiOff": "La lecture par IA est désactivée sur ce serveur",
+		"aiNotOn": "Active l'import par IA dans les réglages",
 		"aiSettings": "Réglages de l'IA",
 		"pdfBlocked": "Les PDF doivent être lus par l'IA, désactivée ici. Utilise un CSV ou active l'IA.",
 		"columns": "Colonnes",

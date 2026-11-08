@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { env } from "~/env";
 import type { Prisma, PrismaClient } from "~prisma";
 import { getAppSettings } from "./settings";
@@ -7,6 +8,72 @@ interface AiAccessResult {
 	reason?: string;
 	effectiveMode: "LOCAL" | "EXTERNAL";
 	quotaRemaining: number | null;
+}
+
+/** What a refused file says. The caller maps it to a stable code. */
+export const AI_IMPORT_OFF_MESSAGE = "Turn on AI import in your settings first";
+
+/** Whether this person has agreed to let an AI provider read import files. */
+export async function isAiImportEnabled(
+	db: PrismaClient | Prisma.TransactionClient,
+	userId: string,
+): Promise<boolean> {
+	const user = await db.user.findUnique({
+		where: { id: userId },
+		select: { aiImportEnabled: true },
+	});
+	return user?.aiImportEnabled ?? false;
+}
+
+/** Refuses a file that only AI can read while the person has AI import off. */
+export async function requireAiImport(
+	db: PrismaClient | Prisma.TransactionClient,
+	userId: string,
+): Promise<void> {
+	if (!(await isAiImportEnabled(db, userId)))
+		throw new TRPCError({ code: "FORBIDDEN", message: AI_IMPORT_OFF_MESSAGE });
+}
+
+export interface ImportProvider {
+	name: "OPENROUTER" | "OLLAMA";
+	/** The model the sidecar runs; null when the sidecar does not say. */
+	model: string | null;
+}
+
+interface SidecarModels {
+	ollama: string | null;
+	openRouter: string | null;
+}
+
+/** The models the sidecar is set to use, from its health route; null when it cannot be reached. */
+export async function readSidecarModels(): Promise<SidecarModels | null> {
+	if (!env.SIDECAR_URL) return null;
+	try {
+		const res = await fetch(`${env.SIDECAR_URL}/health`, {
+			signal: AbortSignal.timeout(2000),
+		});
+		if (!res.ok) return null;
+		const body = (await res.json()) as {
+			llm_model?: string;
+			openrouter_model?: string;
+		};
+		return {
+			ollama: body.llm_model || null,
+			openRouter: body.openrouter_model || null,
+		};
+	} catch {
+		return null;
+	}
+}
+
+/** Which provider reads a file, given the mode resolveAiAccess settled on. */
+export function importProviderFor(
+	effectiveMode: "LOCAL" | "EXTERNAL",
+	models: SidecarModels | null,
+): ImportProvider {
+	return effectiveMode === "EXTERNAL"
+		? { name: "OPENROUTER", model: models?.openRouter ?? null }
+		: { name: "OLLAMA", model: models?.ollama ?? null };
 }
 
 /**
