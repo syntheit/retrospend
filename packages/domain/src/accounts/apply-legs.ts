@@ -69,10 +69,12 @@ export interface LegSnapshot {
 export interface LegState {
 	accounts: ReadonlyMap<string, LegAccount>;
 	/**
-	 * In the order Postgres visits them. A zero-balance snapshot is valued from
-	 * the nearest other snapshot that holds something, and one the same change
-	 * already moved counts at its new value, so with two affected snapshots the
-	 * order can show in the result.
+	 * In the order Postgres visits them: by date, through the unique index on
+	 * (accountId, date), which is the plan it uses for the trigger's UPDATE. A
+	 * zero-balance snapshot is valued from the nearest other snapshot that holds
+	 * something, and one the same change already moved counts at its new value,
+	 * so the order can show in the result. A different query plan could visit
+	 * them in another order.
 	 */
 	snapshots: readonly LegSnapshot[];
 }
