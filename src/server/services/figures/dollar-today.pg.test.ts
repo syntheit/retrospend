@@ -74,6 +74,7 @@ describe("glance dollarToday", () => {
 		expect(g.dollarToday).toEqual({
 			id: "rate.dollarToday",
 			value: { minor: 1_080, currency: "PLN" },
+			rate: "10.8",
 			rateType: "blue",
 			rateDate: "2026-10-20",
 			home: "PLN",
@@ -90,6 +91,7 @@ describe("glance dollarToday", () => {
 		expect(g.dollarToday).toEqual({
 			id: "rate.dollarToday",
 			value: null,
+			rate: null,
 			rateType: null,
 			rateDate: null,
 			home: "ISK",

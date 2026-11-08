@@ -4,12 +4,40 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { PaceLine, type PaceSeries } from "~/components/charts/pace-line";
-import type { MoneyValue } from "~/components/money/format";
+import { figureAttrs, type MoneyValue } from "~/components/money/format";
 import { Money } from "~/components/money/money";
+import { useRateFormat } from "~/components/money/use-rate-format";
 import { useRowDates } from "~/components/rows/dates";
 import { type FacePerson, FaceStack } from "~/components/ui/avatar-face";
 import { StatusDot } from "~/components/ui/status-dot";
 import { cn } from "~/lib/cn";
+
+/**
+ * A row's amount. Dollar today below 1 (a euro home: EUR 0.92) reads as the
+ * pair that is at least 1, "1 EUR = 1.0870 USD": a rate is never shown under 1.
+ */
+function RowAmount({ row, className }: { row: GlanceRow; className: string }) {
+	const rates = useRateFormat();
+	const flipped =
+		row.id === "dollarToday" && row.rate && row.amount && Number(row.rate) < 1
+			? rates.rate("USD", row.amount.currency, row.rate)
+			: null;
+	if (flipped)
+		return (
+			<span className={className} {...figureAttrs(row.figure, row.amount)}>
+				{flipped}
+			</span>
+		);
+	return (
+		<Money
+			className={className}
+			display={row.code ? "code" : undefined}
+			figure={row.figure}
+			missing="noRate"
+			value={row.amount}
+		/>
+	);
+}
 
 /** The line under the hero, picked by the server from the same figures. */
 export type GlanceLine =
@@ -53,6 +81,8 @@ export type GlanceRow = {
 	code?: boolean;
 	/** dollarToday: the rate type's name, already in the viewer's words. */
 	rateLabel?: string;
+	/** dollarToday: the rate unrounded, so a rate below 1 can read as "1 EUR = 1.09 USD". */
+	rate?: string;
 };
 
 export type GlanceVM = {
@@ -171,12 +201,9 @@ export function GlanceStrip({
 							<span className="text-fg-2 text-small truncate">
 								{rowLabel(r)}
 							</span>
-							<Money
+							<RowAmount
 								className="text-body @xl:text-section font-semibold"
-								display={r.code ? "code" : undefined}
-								figure={r.figure}
-								missing="noRate"
-								value={r.amount}
+								row={r}
 							/>
 						</Link>
 					))}
@@ -231,15 +258,12 @@ export function GlanceStrip({
 								{r.faces && r.faces.length > 0 && (
 									<FaceStack max={4} people={r.faces} size="xs" />
 								)}
-								<Money
+								<RowAmount
 									className={cn(
 										"text-body font-semibold",
 										r.amount ? (TONE[r.id] ?? "text-fg") : undefined,
 									)}
-									display={r.code ? "code" : undefined}
-									figure={r.figure}
-									missing="noRate"
-									value={r.amount}
+									row={r}
 								/>
 								<ChevronRight aria-hidden="true" className="text-fg-3 size-4" />
 							</Link>

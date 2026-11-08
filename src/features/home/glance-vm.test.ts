@@ -141,6 +141,7 @@ describe("toGlanceVM", () => {
 		const dollar = {
 			id: "rate.dollarToday" as const,
 			value: ars(141200),
+			rate: "1412",
 			rateType: "blue",
 			rateDate: "2026-10-20",
 			home: "ARS",
@@ -156,9 +157,16 @@ describe("toGlanceVM", () => {
 			href: "/currencies",
 			figure: "rate.dollarToday",
 			code: true,
+			rate: "1412",
 			rateLabel: "blue 2026-10-20 2026-10-21",
 		});
-		const none = { ...dollar, value: null, rateType: null, rateDate: null };
+		const none = {
+			...dollar,
+			value: null,
+			rate: null,
+			rateType: null,
+			rateDate: null,
+		};
 		expect(
 			toGlanceVM({ ...BASE, dollarToday: none }).rows.map((r) => r.id),
 		).not.toContain("dollarToday");
