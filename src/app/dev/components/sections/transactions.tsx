@@ -2,7 +2,7 @@
 
 import { Receipt, SearchX, Tag, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { type ReactElement, useCallback } from "react";
+import { type ReactElement, type ReactNode, useCallback } from "react";
 import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import type { ExpenseTarget } from "~/components/actions/registry";
 import type { ActionChoices } from "~/components/actions/types";
@@ -18,6 +18,7 @@ import { Button } from "~/components/ui/button";
 import { Empty } from "~/components/ui/empty-state";
 import { SkeletonRows } from "~/components/ui/skeleton";
 import { useToast } from "~/components/ui/toast";
+import { useIsMobile } from "~/hooks/use-mobile";
 import {
 	CAT,
 	m,
@@ -85,6 +86,8 @@ export function TransactionsSection() {
 	const b = useTranslations("activity.bulk");
 	const handlers = useDemoHandlers<ExpenseTarget>(ACTION_IDS.expense);
 	const toast = useToast();
+	// The table is desktop only: the product never draws it on a phone.
+	const narrow = useIsMobile();
 	const actions = useCallback(
 		(tx: TransactionVM) => (
 			<ActionMenu
@@ -116,34 +119,38 @@ export function TransactionsSection() {
 	);
 	return (
 		<Spec id="transaction">
-			<Cap>{CAP.table}</Cap>
-			<TransactionTable
-				actions={actions}
-				bulk={(ids) => (
-					<>
-						<BulkAction
-							icon={Tag}
-							label={b("categorize")}
-							onClick={() => toast.info(`categorize: ${ids.length}`)}
-						/>
-						<BulkAction
-							icon={Trash2}
-							label={b("delete")}
-							onClick={() => toast.info(`delete: ${ids.length}`)}
-						/>
-					</>
-				)}
-				onOpen={onOpen}
-				rowArea={rowArea}
-				rows={TABLE_ROWS}
-				today={TODAY}
-				total={{
-					figure: "spent",
-					count: TABLE_ROWS.length,
-					total: m("1553000"),
-					withoutRate: 1,
-				}}
-			/>
+			{!narrow && (
+				<>
+					<Cap>{CAP.table}</Cap>
+					<TransactionTable
+						actions={actions}
+						bulk={(ids) => (
+							<>
+								<BulkAction
+									icon={Tag}
+									label={b("categorize")}
+									onClick={() => toast.info(`categorize: ${ids.length}`)}
+								/>
+								<BulkAction
+									icon={Trash2}
+									label={b("delete")}
+									onClick={() => toast.info(`delete: ${ids.length}`)}
+								/>
+							</>
+						)}
+						onOpen={onOpen}
+						rowArea={rowArea}
+						rows={TABLE_ROWS}
+						today={TODAY}
+						total={{
+							figure: "spent",
+							count: TABLE_ROWS.length,
+							total: m("1553000"),
+							withoutRate: 1,
+						}}
+					/>
+				</>
+			)}
 			<div className="mt-6 flex flex-wrap gap-6">
 				<div className="w-98 max-w-full">
 					<Cap>{CAP.phoneRows}</Cap>
@@ -169,10 +176,14 @@ export function TransactionsSection() {
 			<States
 				className="mt-6"
 				items={[
-					[
-						CAP.loading,
-						<TableSkeleton className="w-150 max-w-full" key="t" rows={3} />,
-					],
+					...(narrow
+						? []
+						: ([
+								[
+									CAP.loading,
+									<TableSkeleton className="w-150 max-w-full" key="t" rows={3} />,
+								],
+							] as [string, ReactNode][])),
 					[
 						CAP.loadingRows,
 						<SkeletonRows className="w-95 max-w-full" count={3} key="l" />,
@@ -194,22 +205,26 @@ export function TransactionsSection() {
 					],
 				]}
 			/>
-			<Cap className="mt-6">{CAP.zero}</Cap>
-			<TransactionTable
-				empty={
-					<Empty
-						action={
-							<Button kind="secondary" size="sm">
-								{g("addExpense")}
-							</Button>
+			{!narrow && (
+				<>
+					<Cap className="mt-6">{CAP.zero}</Cap>
+					<TransactionTable
+						empty={
+							<Empty
+								action={
+									<Button kind="secondary" size="sm">
+										{g("addExpense")}
+									</Button>
+								}
+								icon={Receipt}
+								title={g("noExpenses")}
+							/>
 						}
-						icon={Receipt}
-						title={g("noExpenses")}
+						rows={[]}
+						total={{ figure: "spent", count: 0, total: m("0") }}
 					/>
-				}
-				rows={[]}
-				total={{ figure: "spent", count: 0, total: m("0") }}
-			/>
+				</>
+			)}
 		</Spec>
 	);
 }
