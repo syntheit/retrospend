@@ -34,10 +34,14 @@ export interface SettingsRow extends WithId {
 	readonly hiddenProjectIds: readonly string[];
 }
 
+/** One of your participations in an expense; `expenseId` ties it to the expense row it belongs to. */
+export type ShareRow = Readonly<SpentShareRow> &
+	WithId & { readonly expenseId: string };
+
 /** Each table's row type. A new figure's loader adds its table here. */
 export interface TableRows {
 	expenses: Readonly<SpentExpenseRow> & WithId;
-	shares: Readonly<SpentShareRow> & WithId;
+	shares: ShareRow;
 	legs: LegRow;
 	snapshots: SnapshotRow & WithId;
 	accounts: AccountRow;
