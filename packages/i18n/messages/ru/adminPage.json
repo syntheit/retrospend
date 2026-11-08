@@ -12,5 +12,5 @@
   "invitesOpen": "Открыто: {count}",
   "tabServer": "Сервер",
   "keystoreBackup": "Резервная копия ключей",
-  "keystoreBackupRetention": "Резервные копии ключей хранятся {days} дн."
+  "keystoreBackupRetention": "Резервные копии ключей хранятся {days, plural, one {1 день} few {# дня} many {# дней} other {# дня}}."
 }

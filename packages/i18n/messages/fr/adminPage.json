@@ -12,5 +12,5 @@
   "invitesOpen": "{count} ouvertes",
   "tabServer": "Serveur",
   "keystoreBackup": "Sauvegarde des clés",
-  "keystoreBackupRetention": "Les sauvegardes des clés sont conservées {days} jours."
+  "keystoreBackupRetention": "Les sauvegardes des clés sont conservées {days, plural, one {1 jour} other {# jours}}."
 }

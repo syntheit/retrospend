@@ -137,14 +137,15 @@ describe("restoring the main dump and the keystore dump", () => {
 				expect(owners).toContain(a.user.id);
 				expect(owners).not.toContain(b.user.id);
 
-				const access = (
+				// The dumps use --no-privileges, so grants are not what a restore
+				// proves (data-key.service.pg.test.ts holds the app role guard).
+				// Row-level security is part of the table definition and does come back.
+				const rls = (
 					await query(
-						`SELECT has_schema_privilege('retrospend_app', 'keystore', 'USAGE') AS usage,
-						        has_table_privilege('retrospend_app', 'keystore.user_data_key', 'SELECT') AS read,
-						        (SELECT relrowsecurity FROM pg_class WHERE oid = 'keystore.user_data_key'::regclass) AS rls`,
+						"SELECT relrowsecurity AS rls FROM pg_class WHERE oid = 'keystore.user_data_key'::regclass",
 					)
 				).rows[0];
-				expect(access).toEqual({ usage: false, read: false, rls: true });
+				expect(rls).toEqual({ rls: true });
 
 				// The restored database keeps the cascade.
 				await query('DELETE FROM "user" WHERE id = $1', [a.user.id]);

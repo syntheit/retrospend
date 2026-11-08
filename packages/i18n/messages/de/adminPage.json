@@ -12,5 +12,5 @@
   "invitesOpen": "{count} offen",
   "tabServer": "Server",
   "keystoreBackup": "Schlüsselsicherung",
-  "keystoreBackupRetention": "Schlüsselsicherungen werden {days} Tage aufbewahrt."
+  "keystoreBackupRetention": "Schlüsselsicherungen werden {days, plural, one {1 Tag} other {# Tage}} aufbewahrt."
 }
