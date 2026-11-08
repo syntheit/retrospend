@@ -2,9 +2,11 @@ package tasks
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -162,11 +164,11 @@ func TestRunBackupEncryptionFailingMidDumpDoesNotHang(t *testing.T) {
 	}
 }
 
-func TestRetentionRemovesStalePartialsAndKeepsFreshOnes(t *testing.T) {
-	dir := t.TempDir()
+// seedPartials writes stale and fresh partials, a stray .partial that is not
+// ours, and an old real backup (which is retention's to remove, not the sweep's).
+func seedPartials(t *testing.T, dir string) {
+	t.Helper()
 	stale := time.Now().Add(-stalePartialAge - time.Hour)
-	// A stale partial can be a full plaintext dump, so it must not outlive the
-	// retention period even though it is not a listed backup.
 	for name, mtime := range map[string]time.Time{
 		".retrospend-old.dump.partial":     stale,
 		".retrospend-old.dump.age.partial": stale,
@@ -180,10 +182,91 @@ func TestRetentionRemovesStalePartialsAndKeepsFreshOnes(t *testing.T) {
 		}
 		os.Chtimes(p, mtime, mtime)
 	}
-	cleanupOldBackups(dir, 30)
+}
+
+func assertOnlyStalePartialsGone(t *testing.T, dir string) {
+	t.Helper()
+	// A stale partial can be a full plaintext dump, so it goes after hours, not
+	// after the retention period, while fresh and unrelated files stay.
 	names := dirNames(t, dir)
-	if len(names) != 2 || names[0] != ".retrospend-new.dump.age.partial" || names[1] != "notes.partial" {
-		t.Fatalf("retention removed or kept the wrong files: %v", names)
+	want := []string{".retrospend-new.dump.age.partial", "notes.partial", "retrospend-old.dump.age"}
+	if strings.Join(names, ",") != strings.Join(want, ",") {
+		t.Fatalf("got %v, want %v", names, want)
+	}
+}
+
+func TestRemoveStalePartials(t *testing.T) {
+	dir := t.TempDir()
+	seedPartials(t, dir)
+	removeStalePartials(dir)
+	assertOnlyStalePartialsGone(t, dir)
+}
+
+func TestRunBackupSweepsStalePartialsBeforeDumping(t *testing.T) {
+	// The dump fails, so the end-of-run retention never runs: only the sweep at
+	// the start can have removed them (a full disk must be able to recover).
+	fakePgDump(t, "exit 1")
+	dir := t.TempDir()
+	seedPartials(t, dir)
+	if err := RunBackup(nil, testDBURL, dir, 30, nil); err == nil {
+		t.Fatal("expected an error")
+	}
+	assertOnlyStalePartialsGone(t, dir)
+}
+
+func TestPublishPartialFallsBackToRenameWithoutHardLinks(t *testing.T) {
+	for _, linkErr := range []error{syscall.EPERM, syscall.ENOTSUP, syscall.ENOSYS} {
+		old := linkFile
+		linkFile = func(string, string) error { return &os.LinkError{Op: "link", Err: linkErr} }
+		dir := t.TempDir()
+		final := filepath.Join(dir, "retrospend-x.dump")
+		partial := partialPath(final)
+		os.WriteFile(partial, []byte("new"), 0o600)
+		err := publishPartial(partial, final)
+		linkFile = old
+		if err != nil {
+			t.Fatalf("%v: %v", linkErr, err)
+		}
+		if got, _ := os.ReadFile(final); string(got) != "new" {
+			t.Fatalf("%v: not published: %q", linkErr, got)
+		}
+		if _, err := os.Stat(partial); err == nil {
+			t.Fatalf("%v: partial left behind", linkErr)
+		}
+	}
+}
+
+func TestPublishPartialFallbackStillRefusesToReplace(t *testing.T) {
+	old := linkFile
+	linkFile = func(string, string) error { return &os.LinkError{Op: "link", Err: syscall.EPERM} }
+	defer func() { linkFile = old }()
+	dir := t.TempDir()
+	final := filepath.Join(dir, "retrospend-x.dump")
+	partial := partialPath(final)
+	os.WriteFile(final, []byte("existing"), 0o600)
+	os.WriteFile(partial, []byte("new"), 0o600)
+	err := publishPartial(partial, final)
+	if err == nil || !errors.Is(err, errPublish) {
+		t.Fatalf("want errPublish, got %v", err)
+	}
+	if got, _ := os.ReadFile(final); string(got) != "existing" {
+		t.Fatalf("existing backup replaced: %q", got)
+	}
+}
+
+func TestPublishPartialOtherLinkErrorsFail(t *testing.T) {
+	old := linkFile
+	linkFile = func(string, string) error { return &os.LinkError{Op: "link", Err: syscall.EIO} }
+	defer func() { linkFile = old }()
+	dir := t.TempDir()
+	final := filepath.Join(dir, "retrospend-x.dump")
+	partial := partialPath(final)
+	os.WriteFile(partial, []byte("new"), 0o600)
+	if err := publishPartial(partial, final); err == nil {
+		t.Fatal("expected an error")
+	}
+	if _, err := os.Stat(final); err == nil {
+		t.Fatal("published despite a real link error")
 	}
 }
 

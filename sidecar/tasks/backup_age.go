@@ -5,10 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"filippo.io/age"
@@ -44,9 +47,24 @@ func partialPath(finalPath string) string {
 	return filepath.Join(filepath.Dir(finalPath), "."+filepath.Base(finalPath)+".partial")
 }
 
+// errPublish marks a failure to move a finished backup into place, so the log
+// does not blame pg_dump for it.
+var errPublish = errors.New("backup_publish_failed")
+
+// linkFile is os.Link; tests replace it to simulate a filesystem without hard links.
+var linkFile = os.Link
+
 // publishPartial makes a finished partial file the real backup: fsync the file,
-// link it into place and drop the partial name, fsync the directory so the rename survives a crash.
+// link it into place and drop the partial name, fsync the directory so the
+// change survives a crash. It never replaces an existing backup.
 func publishPartial(partial, finalPath string) error {
+	if err := publishPartialSteps(partial, finalPath); err != nil {
+		return fmt.Errorf("%w: %w", errPublish, err)
+	}
+	return nil
+}
+
+func publishPartialSteps(partial, finalPath string) error {
 	f, err := os.OpenFile(partial, os.O_RDWR, 0)
 	if err != nil {
 		return err
@@ -60,16 +78,56 @@ func publishPartial(partial, finalPath string) error {
 	}
 	// A hard link fails with EEXIST instead of replacing a backup that appeared
 	// since the caller looked, which a rename would silently overwrite.
-	if err := os.Link(partial, finalPath); err != nil {
-		return err
+	if err := linkFile(partial, finalPath); err != nil {
+		if !noHardLinks(err) {
+			return err
+		}
+		// vfat, exFAT and some network mounts cannot hard link. Only one backup
+		// runs at a time (isRunning), so check-then-rename is safe here.
+		if _, statErr := os.Lstat(finalPath); statErr == nil {
+			return fs.ErrExist
+		}
+		if err := os.Rename(partial, finalPath); err != nil {
+			return err
+		}
+	} else {
+		os.Remove(partial)
 	}
-	os.Remove(partial)
 	dir, err := os.Open(filepath.Dir(finalPath))
 	if err != nil {
 		return err
 	}
 	defer dir.Close()
 	return dir.Sync()
+}
+
+// noHardLinks reports the errors a filesystem without hard link support returns.
+func noHardLinks(err error) bool {
+	return errors.Is(err, syscall.EPERM) || errors.Is(err, syscall.ENOTSUP) ||
+		errors.Is(err, syscall.EOPNOTSUPP) || errors.Is(err, syscall.ENOSYS)
+}
+
+// removeStalePartials deletes crash leftovers. A partial can be a full plaintext
+// dump, so it must not wait for the retention period. Callers hold isRunning, so
+// no live run owns a partial that is older than a few hours.
+func removeStalePartials(backupDir string) {
+	entries, err := os.ReadDir(backupDir)
+	if err != nil {
+		return
+	}
+	cutoff := time.Now().Add(-stalePartialAge)
+	for _, entry := range entries {
+		if entry.IsDir() || !isPartialFile(entry.Name()) {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil || !info.ModTime().Before(cutoff) {
+			continue
+		}
+		if err := os.Remove(filepath.Join(backupDir, entry.Name())); err != nil {
+			log.Printf("⚠️ Failed to remove stale partial backup %s: %v", entry.Name(), err)
+		}
+	}
 }
 
 // encryptStream reads src and writes it to path, encrypted to every recipient.

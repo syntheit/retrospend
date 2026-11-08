@@ -100,6 +100,9 @@ func RunBackup(database *db.DB, databaseURL string, backupDir string, retentionD
 	result.Filename = filename
 	result.Encrypted = encrypt
 
+	// Before any new bytes are written, so a full disk can still be freed by it.
+	removeStalePartials(backupDir)
+
 	// Run pg_dump. Both paths write a hidden .partial file next to the final
 	// name and rename it only when complete, so a crash never leaves a
 	// half-written backup that looks real.
@@ -124,6 +127,8 @@ func RunBackup(database *db.DB, databaseURL string, backupDir string, retentionD
 	if err != nil {
 		if errors.Is(err, ErrInvalidAgeRecipient) || errors.Is(err, errBackupExists) {
 			result.Error = fmt.Sprintf("encrypted backup not written: %v", err)
+		} else if errors.Is(err, errPublish) {
+			result.Error = fmt.Sprintf("backup not published: %v", err)
 		} else {
 			result.Error = fmt.Sprintf("pg_dump failed: %v, output: %s", err, strings.TrimSpace(string(output)))
 		}
@@ -314,25 +319,12 @@ func cleanupOldBackups(backupDir string, retentionDays int) {
 
 	removed := 0
 	for _, entry := range entries {
-		partial := isPartialFile(entry.Name())
-		if entry.IsDir() || !(isBackupFile(entry.Name()) || partial) {
+		if entry.IsDir() || !isBackupFile(entry.Name()) {
 			continue
 		}
 
 		info, err := entry.Info()
 		if err != nil {
-			continue
-		}
-
-		// Cleanup runs inside RunBackup after this run's own partial is gone, so
-		// any partial still here is a crash leftover, possibly a full plaintext
-		// dump. It goes after a few hours, not after the retention period.
-		if partial {
-			if info.ModTime().Before(time.Now().Add(-stalePartialAge)) {
-				if err := os.Remove(filepath.Join(backupDir, entry.Name())); err != nil {
-					log.Printf("⚠️ Failed to remove stale partial backup %s: %v", entry.Name(), err)
-				}
-			}
 			continue
 		}
 
