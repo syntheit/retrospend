@@ -379,7 +379,7 @@ describe("wraps to a public key", () => {
 
 describe("recovery key text", () => {
 	const random = () => {
-		const keys = [new Uint8Array(32), new Uint8Array(32).fill(255)];
+		const keys: Uint8Array[] = [new Uint8Array(32), new Uint8Array(32).fill(255)];
 		for (let i = 0; i < 10; i++) keys.push(generateRecoveryKey(p));
 		return keys;
 	};
