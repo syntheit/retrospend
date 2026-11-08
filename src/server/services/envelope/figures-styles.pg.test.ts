@@ -11,9 +11,20 @@
  *     spent = 15,000,050 + 1,250,025 - 500,000   =  15,750,075
  *   Dining left = 30,000,000 - 15,750,075        =  14,249,925
  *   Not planned yet / To assign = 100,000,000 - 30,000,000 = 70,000,000
- *   Money in = 100,000,000
+ *   Money in = 0: the starting balance raises To assign but is not money that
+ *     came in (it is terms.startingMoney), and the refund is not income, so
+ *     budget.moneyIn is 100,000,000 - 100,000,000 = 0 in every style.
  *   Holds = 70,000,000 + 14,249,925              =  84,249,925
- *            (= money in - outflows: 100,000,000 - 15,750,075)
+ *            (= starting money - outflows: 100,000,000 - 15,750,075)
+ *
+ * Setup funds the targets of Rent (50,000 minor) and Dining (20,000) out of
+ * the pool when it creates the book: Limits assigns its own limits that way,
+ * and FLEX, WEEKLY and EVERY_DOLLAR (AMOUNT_SETUP_STYLES) fund their targets.
+ * That is 70,000 minor out of Not planned yet, 20,000 of it into Dining:
+ *   Not planned yet = 70,000,000 - 70,000        =  69,930,000
+ *   Dining left     = 14,249,925 + 20,000        =  14,269,925
+ * Holds do not move (the funding goes from the pool into envelopes). The other
+ * styles fund nothing at setup, so they keep the plain values above.
  *
  * Every style computes these the same way (styles are presets, B8); what
  * differs is the lead (Left in limits in Limits only), so those are checked
@@ -40,6 +51,14 @@ const STYLES = [
 	"FIFTY_THIRTY_TWENTY",
 	"WEEKLY",
 ] as const;
+
+/** Styles whose setup assigns the Rent and Dining amounts from the pool (header). */
+const FUNDED_AT_SETUP: readonly (typeof STYLES)[number][] = [
+	"LIMITS",
+	"FLEX",
+	"EVERY_DOLLAR",
+	"WEEKLY",
+];
 
 /** ARS needs a rate dated today for the setup's starting balance (SPEC rates). */
 async function arsRates() {
@@ -133,12 +152,15 @@ describe.each(STYLES)("budget figures, %s style, ARS book", (style) => {
 			"budget.moneyIn",
 			"budget.holds",
 		]);
-		// Limits assigns each limit itself: Rent 500.00 + Dining 200.00 = 70,000
-		// minor more out of the pool, and Dining holds 20,000 more. Holds do not move.
-		const limits = style === "LIMITS" ? 70_000 : 0;
-		const diningLimit = style === "LIMITS" ? 20_000 : 0;
-		expect(r.get("budget.notPlannedYet")).toEqual([ars(70_000_000 - limits)]);
-		expect(r.get("budget.moneyIn")).toEqual([ars(100_000_000)]);
+		// Funded at setup (see the header): Rent 50,000 + Dining 20,000 minor out
+		// of the pool, 20,000 of it into Dining. Holds do not move.
+		const funded = FUNDED_AT_SETUP.includes(style);
+		const fundedMinor = funded ? 70_000 : 0;
+		const diningFunded = funded ? 20_000 : 0;
+		expect(r.get("budget.notPlannedYet")).toEqual([
+			ars(70_000_000 - fundedMinor),
+		]);
+		expect(r.get("budget.moneyIn")).toEqual([ars(0)]);
 		expect(r.get("budget.holds")).toEqual([ars(84_249_925)]);
 		const spent = await readFigures(
 			userId,
@@ -146,7 +168,9 @@ describe.each(STYLES)("budget figures, %s style, ARS book", (style) => {
 			{ envelopeId: ids.Dining },
 		);
 		expect(spent.get("envelope.spent")).toEqual([ars(15_750_075)]);
-		expect(spent.get("envelope.left")).toEqual([ars(14_249_925 + diningLimit)]);
+		expect(spent.get("envelope.left")).toEqual([
+			ars(14_249_925 + diningFunded),
+		]);
 	});
 
 	it("reads the style's own figures as the month view the same book gives", async () => {
