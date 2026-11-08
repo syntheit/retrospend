@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import type { Dispatch, SetStateAction } from "react";
 import { useToast } from "~/components/ui/toast";
+import { categoryNameKey } from "~/lib/category-name-key";
 import type { ImportReview } from "~/server/services/import/review";
 import { api } from "~/trpc/react";
 import { type Choices, withMatched } from "./choices";
@@ -36,7 +37,7 @@ export function useMatch({
 		const byName = new Map(
 			pick.categories
 				.filter((c) => c.kind === "EXPENSE")
-				.map((c) => [c.name.toLowerCase(), c.id]),
+				.map((c) => [categoryNameKey(c.name), c.id]),
 		);
 		const matches: Record<string, string> = {};
 		const created: { id: string; name: string }[] = [];
@@ -45,7 +46,7 @@ export function useMatch({
 				matches[name] = p.id;
 				continue;
 			}
-			const existing = byName.get(name.toLowerCase());
+			const existing = byName.get(categoryNameKey(name));
 			if (existing) {
 				matches[name] = existing;
 				continue;
