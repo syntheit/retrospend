@@ -305,7 +305,7 @@ Output:
 	} else {
 		// Fallback: try parsing as a bare array
 		if err2 := json.Unmarshal([]byte(cleanJSON), &transactions); err2 != nil {
-			return nil, resp.TotalTokens, fmt.Errorf("LLM did not output a JSON object with a 'transactions' key containing an array of expense transaction objects. Fallback to bare array also failed: %w (raw response: %s)", err2, resp.Content)
+			return nil, resp.TotalTokens, fmt.Errorf("LLM did not output a JSON object with a 'transactions' key containing an array of expense transaction objects. Fallback to bare array also failed: %w (reply %d bytes)", err2, len(resp.Content))
 		}
 	}
 

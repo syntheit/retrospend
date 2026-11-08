@@ -369,7 +369,7 @@ export const auth = betterAuth({
 							`;
 							if (result === 0) {
 								console.warn(
-									`Invite code ${inviteCode} was already consumed (race condition) for user ${user.id}`,
+									`An invite code was already consumed (race condition) for user ${user.id}`,
 								);
 							}
 						}

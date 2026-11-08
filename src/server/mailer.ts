@@ -23,18 +23,14 @@ export async function sendEmail(
 	extraHeaders?: Record<string, string>,
 ) {
 	if (!transporter) {
-		console.log(
-			`[Email Skipped]: SMTP not configured. Would have sent "${subject}" to ${to}`,
-		);
+		console.log("[Email Skipped]: SMTP not configured");
 		return;
 	}
 
 	if (!bypassEnabledCheck) {
 		const settings = await getAppSettings();
 		if (!settings.enableEmail) {
-			console.log(
-				`[Email Skipped]: Email disabled by admin. Would have sent "${subject}" to ${to}`,
-			);
+			console.log("[Email Skipped]: Email disabled by admin");
 			return;
 		}
 	}
@@ -48,6 +44,15 @@ export async function sendEmail(
 			...(extraHeaders ? { headers: extraHeaders } : {}),
 		});
 	} catch (error) {
-		console.error("[Email Error]: Failed to send email.", error);
+		// SMTP error text can quote the recipient ("550 user@x unknown"), so log
+		// only the class and codes, never the message or the error object.
+		const e = error as {
+			name?: string;
+			code?: unknown;
+			responseCode?: unknown;
+		};
+		console.error(
+			`[Email Error]: Failed to send email (${e.name ?? "Error"}, code ${String(e.code ?? "none")}, response ${String(e.responseCode ?? "none")})`,
+		);
 	}
 }

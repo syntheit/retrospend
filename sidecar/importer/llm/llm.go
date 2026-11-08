@@ -79,12 +79,12 @@ func callOllamaOnce(endpoint string, request OllamaRequest) (string, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("ollama API failed with status %d: %s", resp.StatusCode, string(bodyBytes))
+		return "", fmt.Errorf("ollama API failed with status %d (response body %d bytes)", resp.StatusCode, len(bodyBytes))
 	}
 
 	var ollamaResp OllamaResponse
 	if err := json.Unmarshal(bodyBytes, &ollamaResp); err != nil {
-		return "", fmt.Errorf("failed to decode ollama response: %w (raw: %s)", err, string(bodyBytes))
+		return "", fmt.Errorf("failed to decode ollama response: %w (response body %d bytes)", err, len(bodyBytes))
 	}
 
 	return strings.TrimSpace(ollamaResp.Response), nil

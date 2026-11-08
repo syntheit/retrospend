@@ -155,12 +155,12 @@ func (p *OpenRouterProvider) generateOnce(req GenerateRequest) (GenerateResponse
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return GenerateResponse{}, fmt.Errorf("openrouter API failed with status %d: %s", resp.StatusCode, string(respBody))
+		return GenerateResponse{}, fmt.Errorf("openrouter API failed with status %d (response body %d bytes)", resp.StatusCode, len(respBody))
 	}
 
 	var chatResp chatResponse
 	if err := json.Unmarshal(respBody, &chatResp); err != nil {
-		return GenerateResponse{}, fmt.Errorf("failed to decode openrouter response: %w (raw: %s)", err, string(respBody))
+		return GenerateResponse{}, fmt.Errorf("failed to decode openrouter response: %w (response body %d bytes)", err, len(respBody))
 	}
 
 	if len(chatResp.Choices) == 0 {

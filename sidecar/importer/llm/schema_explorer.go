@@ -42,7 +42,7 @@ func DiscoverCSVSchema(provider Provider, model string, header string, sampleRow
 
 	var schema models.CSVSchema
 	if err := json.Unmarshal([]byte(cleanJSON), &schema); err != nil {
-		return models.CSVSchema{}, resp.TotalTokens, fmt.Errorf("failed to parse CSV schema from LLM: %w (raw response: %s)", err, resp.Content)
+		return models.CSVSchema{}, resp.TotalTokens, fmt.Errorf("failed to parse CSV schema from LLM: %w (reply %d bytes)", err, len(resp.Content))
 	}
 
 	return schema, resp.TotalTokens, nil

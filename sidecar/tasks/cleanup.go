@@ -170,7 +170,7 @@ func anonymizeExpiredGuest(ctx context.Context, database *db.DB, guestID string)
 
 	stmts := []struct {
 		sql  string
-		desc string
+		step string
 	}{
 		// SplitParticipant anonymization uses a merge-on-conflict pattern because of
 		// @@unique([transactionId, participantType, participantId]): if DELETED_GUEST
@@ -251,7 +251,7 @@ func anonymizeExpiredGuest(ctx context.Context, database *db.DB, guestID string)
 
 	for _, s := range stmts {
 		if _, err := tx.Exec(ctx, s.sql, sentinel, guestID); err != nil {
-			return fmt.Errorf("anonymize %s for guest %s: %w", s.desc, guestID, err)
+			return fmt.Errorf("anonymize %s for guest %s: %w", s.step, guestID, err)
 		}
 	}
 
