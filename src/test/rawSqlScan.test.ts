@@ -49,15 +49,64 @@ function isSafeArgument(text: string, start: number): boolean {
 }
 
 /**
- * Line numbers of every reference to an Unsafe method in `text` that is not a
- * plain `x.$queryRawUnsafe(<safe argument>)` call.
+ * `text` with every comment blanked (newlines kept, so offsets and lines
+ * hold). Strings and template literals, including `${}` inside a template,
+ * are read as such, so `//` in "https://x" is not a comment. A regex literal
+ * holding a quote can fool it; none of the scanned code does.
  */
-function unsafeRawCalls(text: string): number[] {
+function withoutComments(text: string): string {
+	const out = text.split("");
+	// "}" closes a `${` and returns to template mode; "{" nests inside one.
+	const modes: ("code" | "'" | '"' | "`")[] = ["code"];
+	const braces: number[] = [];
+	const blank = (from: number, to: number) => {
+		for (let k = from; k < to; k++) if (text[k] !== "\n") out[k] = " ";
+	};
+	for (let i = 0; i < text.length; i++) {
+		const mode = modes[modes.length - 1];
+		const c = text[i];
+		if (mode === "code") {
+			if (c === "/" && text[i + 1] === "/") {
+				const end = text.indexOf("\n", i);
+				const stop = end === -1 ? text.length : end;
+				blank(i, stop);
+				i = stop - 1;
+			} else if (c === "/" && text[i + 1] === "*") {
+				const end = text.indexOf("*/", i + 2);
+				const stop = end === -1 ? text.length : end + 2;
+				blank(i, stop);
+				i = stop - 1;
+			} else if (c === '"' || c === "'" || c === "`") {
+				modes.push(c);
+			} else if (c === "{" && braces.length > 0) {
+				braces[braces.length - 1]++;
+			} else if (c === "}" && braces.length > 0) {
+				if (braces[braces.length - 1] === 0) {
+					braces.pop();
+					modes.pop();
+				} else braces[braces.length - 1]--;
+			}
+		} else if (c === "\\") {
+			i++;
+		} else if (c === mode) {
+			modes.pop();
+		} else if (mode === "`" && c === "$" && text[i + 1] === "{") {
+			modes.push("code");
+			braces.push(0);
+			i++;
+		}
+	}
+	return out.join("");
+}
+
+/**
+ * Line numbers of every reference to an Unsafe method in `source` that is not
+ * a plain `x.$queryRawUnsafe(<safe argument>)` call. Comments are ignored.
+ */
+function unsafeRawCalls(source: string): number[] {
+	const text = withoutComments(source);
 	const lines: number[] = [];
 	for (const m of text.matchAll(NAME)) {
-		const lineStart = text.lastIndexOf("\n", m.index) + 1;
-		const before = text.slice(lineStart, m.index);
-		if (/^\s*(\*|\/\/|\/\*)/.test(before) || before.includes("//")) continue;
 		const memberCall = text[m.index - 1] === "." && text[m.index - 2] !== "?";
 		let i = skipGenerics(text, m.index + m[0].length);
 		while (/\s/.test(text[i] ?? "")) i++;
@@ -133,8 +182,10 @@ describe("the scan itself", () => {
 			"db.$queryRawUnsafe(\n\t\t`SELECT 1`,\n\t)",
 			"db.$queryRawUnsafe(Prisma.sql`SELECT 1`)",
 			"// call $queryRawUnsafe(sql) never",
-			" * $executeRawUnsafe(`x ${y}`) in a doc comment",
+			"/**\n * $executeRawUnsafe(`x ${y}`) in a doc comment\n */",
 			"db.$queryRawUnsafe('SELECT 1'); // not $executeRawUnsafe(sql)",
+			"/* db.$queryRawUnsafe(sql) */ db.$executeRawUnsafe('x')",
+			'const u = "https://x"; db.$queryRawUnsafe("SELECT 1");',
 		];
 		for (const text of ok) expect(unsafeRawCalls(text), text).toEqual([]);
 	});
@@ -165,6 +216,21 @@ describe("the scan itself", () => {
 			"$queryRawUnsafe('SELECT 1')",
 		];
 		for (const text of bad) expect(unsafeRawCalls(text), text).toEqual([1]);
+	});
+
+	it("a // inside a string or after a block comment does not hide a call", () => {
+		const bad = [
+			'const u = "https://x"; await db.$queryRawUnsafe(sql)',
+			"const u = 'a//b'; await db.$queryRawUnsafe(sql)",
+			"const u = `https://${host}/x`; await db.$queryRawUnsafe(sql)",
+			"const u = `a ${`//`} b`; await db.$queryRawUnsafe(sql)",
+			"/* // */ await db.$queryRawUnsafe(sql)",
+			"/* a */ /* // */ await db.$queryRawUnsafe(sql)",
+			"const r = { a: 1 }; const u = `${r.a}`; // fine\nawait db.$queryRawUnsafe(sql)",
+		];
+		for (const text of bad) {
+			expect(unsafeRawCalls(text), text).toEqual([text.split("\n").length]);
+		}
 	});
 
 	it("reports the line of the call", () => {
