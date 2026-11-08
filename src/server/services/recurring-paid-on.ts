@@ -1,59 +1,12 @@
-import { addMonthsClamped } from "@retrospend/domain/recurring";
+import {
+	type PaidOnSchedule,
+	previousDueDay,
+} from "@retrospend/domain/recurring";
 import { dayKey, parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 
-/** The schedule a confirm is for: what its previous due day is worked out from. */
-export interface PaidOnSchedule {
-	readonly nextDueDate: Date;
-	readonly frequency:
-		| "WEEKLY"
-		| "BIWEEKLY"
-		| "MONTHLY"
-		| "QUARTERLY"
-		| "YEARLY";
-	readonly anchorDay: number | null;
-}
-
-const pad = (n: number) => String(n).padStart(2, "0");
-
-/**
- * The day before this one in the template's schedule, as YYYY-MM-DD. Income
- * keeps its day as UTC midnight and an expense the start of the day in the
- * caller's zone, so the due date is read as that calendar day first.
- */
-export function previousDueDay(
-	schedule: PaidOnSchedule,
-	direction: "OUT" | "IN",
-	timeZone?: string,
-): string {
-	const [y, m, d] = dayKey(
-		schedule.nextDueDate,
-		direction === "IN" ? "UTC" : timeZone,
-	)
-		.split("-")
-		.map(Number) as [number, number, number];
-	const due = new Date(y, m - 1, d);
-	const anchor = schedule.anchorDay ?? d;
-	let prev: Date;
-	switch (schedule.frequency) {
-		case "WEEKLY":
-			prev = new Date(y, m - 1, d - 7);
-			break;
-		case "BIWEEKLY":
-			prev = new Date(y, m - 1, d - 14);
-			break;
-		case "MONTHLY":
-			prev = addMonthsClamped(due, -1, anchor);
-			break;
-		case "QUARTERLY":
-			prev = addMonthsClamped(due, -3, anchor);
-			break;
-		case "YEARLY":
-			prev = addMonthsClamped(due, -12, anchor);
-			break;
-	}
-	return `${String(prev.getFullYear()).padStart(4, "0")}-${pad(prev.getMonth() + 1)}-${pad(prev.getDate())}`;
-}
+// The previous due day is domain code, which a device runs too.
+export { type PaidOnSchedule, previousDueDay };
 
 /**
  * The instant a confirm books on when the user says it was paid (or received)

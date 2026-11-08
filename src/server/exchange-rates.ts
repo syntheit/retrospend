@@ -6,11 +6,13 @@
  * before the date, otherwise the earliest one after it. Only a currency with
  * no rate rows at all yields null (or a BAD_REQUEST from requireExchangeRate).
  */
-import { ratePickFromRows } from "@retrospend/domain/accounts/valuation";
 import {
 	type PickedRate,
 	pickBestRate,
 	RATE_ROWS_PER_SIDE,
+	type RateRow,
+	rateLookup,
+	rateRowsByCurrency,
 	USD,
 } from "@retrospend/domain/money";
 import { TRPCError } from "@trpc/server";
@@ -83,6 +85,24 @@ export async function requireExchangeRate(
 }
 
 /**
+ * Every rate row of `currencies`, grouped per currency (one query): the input
+ * of the pick a figure's compute makes in memory (rateLookup), which a device
+ * builds from its own rows.
+ */
+export async function findRateRows(
+	db: RateDb,
+	currencies: Iterable<string>,
+): Promise<Record<string, RateRow[]>> {
+	const wanted = [...new Set(currencies)].filter((c) => c !== USD);
+	if (wanted.length === 0) return {};
+	const rows = await db.exchangeRate.findMany({
+		where: { currency: { in: wanted } },
+		select: { currency: true, type: true, rate: true, date: true },
+	});
+	return rateRowsByCurrency(rows, wanted);
+}
+
+/**
  * Batch lookup for many (currency, date) pairs: one query per currency, then
  * the per-date pick happens in memory. Returns a resolver; it yields null only
  * for currencies without any rate.
@@ -97,14 +117,5 @@ export async function findExchangeRatesForDates(
 		preferredType?: string | null,
 	) => PickedRate | null
 > {
-	const wanted = [...new Set(currencies)].filter((c) => c !== USD);
-	const rows =
-		wanted.length > 0
-			? await db.exchangeRate.findMany({
-					where: { currency: { in: wanted } },
-					select: { currency: true, type: true, rate: true, date: true },
-				})
-			: [];
-	// The pick is the domain's, so a device holding the same rows prices alike.
-	return ratePickFromRows(rows.map((r) => ({ ...r, rate: Number(r.rate) })));
+	return rateLookup(await findRateRows(db, currencies));
 }

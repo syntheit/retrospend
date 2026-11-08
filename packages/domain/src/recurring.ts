@@ -1,5 +1,5 @@
 import { differenceInCalendarDays, getDay, isSameDay } from "date-fns";
-import { startOfWallDayIn, type WallTime, wallTime } from "./time-zone";
+import { dayKey, startOfWallDayIn, type WallTime, wallTime } from "./time-zone";
 
 export const FREQUENCY_LABELS: Record<string, string> = {
 	WEEKLY: "Weekly",
@@ -90,6 +90,104 @@ function onMonthsLater(
 		},
 		timeZone,
 	);
+}
+
+/**
+ * The next due day after `day` (a calendar day stored as UTC midnight),
+ * stepped as UTC days: income keeps its day as UTC midnight whatever zone the
+ * user is in.
+ */
+export function nextDueDay(
+	day: Date,
+	frequency: RecurringFrequency,
+	anchorDay?: number | null,
+): Date {
+	return nextRecurringDate(
+		day,
+		frequency,
+		anchorDay ?? day.getUTCDate(),
+		"UTC",
+	);
+}
+
+/** What a due date is stepped from: the template's direction, frequency and anchor. */
+export interface DueSchedule {
+	readonly direction: "OUT" | "IN";
+	readonly frequency: RecurringFrequency;
+	readonly anchorDay: number | null;
+}
+
+/**
+ * The due date after `from` for a template of either direction: income steps
+ * UTC days, an expense steps days in the user's `timeZone`.
+ */
+export function nextDueAfter(
+	schedule: DueSchedule,
+	from: Date,
+	timeZone: string,
+): Date {
+	return schedule.direction === "IN"
+		? nextDueDay(from, schedule.frequency, schedule.anchorDay)
+		: nextRecurringDate(from, schedule.frequency, schedule.anchorDay, timeZone);
+}
+
+/** The day of month a template is anchored to, read as its due day is stored. */
+export function dueAnchorDay(
+	schedule: DueSchedule & { readonly nextDueDate: Date },
+	timeZone: string,
+): number {
+	if (schedule.anchorDay !== null) return schedule.anchorDay;
+	return schedule.direction === "IN"
+		? schedule.nextDueDate.getUTCDate()
+		: wallTime(schedule.nextDueDate, timeZone).day;
+}
+
+/** The schedule a confirm is for: what its previous due day is worked out from. */
+export interface PaidOnSchedule {
+	readonly nextDueDate: Date;
+	readonly frequency: RecurringFrequency;
+	readonly anchorDay: number | null;
+}
+
+const pad = (n: number) => String(n).padStart(2, "0");
+
+/**
+ * The day before this one in the template's schedule, as YYYY-MM-DD. Income
+ * keeps its day as UTC midnight and an expense the start of the day in the
+ * caller's zone, so the due date is read as that calendar day first.
+ */
+export function previousDueDay(
+	schedule: PaidOnSchedule,
+	direction: "OUT" | "IN",
+	timeZone?: string,
+): string {
+	const [y, m, d] = dayKey(
+		schedule.nextDueDate,
+		direction === "IN" ? "UTC" : timeZone,
+	)
+		.split("-")
+		.map(Number) as [number, number, number];
+	const due = new Date(y, m - 1, d);
+	const anchor = schedule.anchorDay ?? d;
+	let prev: Date;
+	switch (schedule.frequency) {
+		case "WEEKLY":
+			prev = new Date(y, m - 1, d - 7);
+			break;
+		case "BIWEEKLY":
+			prev = new Date(y, m - 1, d - 14);
+			break;
+		case "MONTHLY":
+			prev = addMonthsClamped(due, -1, anchor);
+			break;
+		case "QUARTERLY":
+			prev = addMonthsClamped(due, -3, anchor);
+			break;
+		case "YEARLY":
+			prev = addMonthsClamped(due, -12, anchor);
+			break;
+	}
+	return `${String(prev.getFullYear()).padStart(4, "0")}-${pad(prev.getMonth() + 1)}-${pad(prev.getDate())}`;
 }
 
 /**

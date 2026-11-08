@@ -2,37 +2,33 @@
  * Reads the rows of one Activity page by their keys and shapes them as DTOs:
  * Money in minor units, home values at today's home rate (the totals rule),
  * dates as ISO days in the viewer's zone, faces, payer and permissions.
+ *
+ * This file is the server loader: it reads the stored rows with SQL and hands
+ * them to the pure shaping in @retrospend/domain/activity-rows, which a device
+ * runs over rows from its own store (activity-rows-store).
  */
 
-import { USD } from "@retrospend/domain/money";
-import { dayKey } from "@retrospend/domain/time-zone";
-import { findExchangeRatesForDates } from "~/server/exchange-rates";
+import {
+	type ActivityRowDTO,
+	type ActivityRowInputs,
+	activityRateCurrencies,
+	activityRowsFrom,
+	type PaymentRowInput,
+	type PersonalRowInput,
+	personKeyOf,
+	type RowKey,
+	type SharedRowInput,
+	type ShapeContext,
+	splitPaymentKey,
+} from "@retrospend/domain/activity-rows";
+import { findRateRows } from "~/server/exchange-rates";
 import type { Prisma } from "~prisma";
-import { bookedRate } from "../booked-rate";
-import {
-	buildCallerRoleMap,
-	deriveCanModify,
-} from "../shared-expenses/project-permissions";
-import {
-	categoryRef,
-	decimalMoney,
-	type HomeRates,
-	homeFromUSD,
-	homeOf,
-} from "./money";
-import { firstName, personKeyOf, resolvePeople, type Who } from "./people";
-import type { RowKey } from "./query";
-import type { ActivityRowDTO, PersonDTO } from "./types";
+import { buildCallerRoleMap } from "../shared-expenses/project-permissions";
+import { resolvePeople } from "./people";
+
+export type { ShapeContext };
 
 type Db = Prisma.TransactionClient;
-
-export type ShapeContext = {
-	userId: string;
-	timeZone: string | undefined;
-	rates: HomeRates;
-	/** The user's default rate type into their home currency; rows name any other. */
-	defaultRateType?: string | null;
-};
 
 const categorySelect = {
 	select: {
@@ -45,128 +41,35 @@ const categorySelect = {
 	},
 } as const;
 
-/** The home value only when it differs from the amount's currency. */
-function homeField(
-	currency: string,
-	home: ActivityRowDTO["home"],
-	rates: HomeRates,
-) {
-	return currency === rates.home ? {} : { home };
-}
-
-type PersonalRow = {
-	direction: "OUT" | "IN";
-	entryKind: string;
-	inType: string | null;
-};
-
-/**
- * Why the footer and day totals leave a personal row out, as the row says
- * it. spent() counts spending and refunds except these: a row hidden from
- * reports and a row filed under an income category are "Not counted"; an
- * amortized purchase is counted through its monthly parts, which the list
- * hides, so the parent says it is "Spread over N months" instead. Money in
- * and transfers add nothing either way, so they say nothing.
- */
-function leftOut(
-	e: {
-		excludeFromAnalytics: boolean;
-		isAmortizedParent: boolean;
-		category: { kind: string } | null;
-		_count: { children: number };
-	},
-	kind: ActivityRowDTO["kind"],
-): Pick<ActivityRowDTO, "notCounted" | "spread"> {
-	if (kind !== "expense" && kind !== "refund") return {};
-	// Parts inherit the parent's hiding and category: nothing is counted then.
-	if (e.excludeFromAnalytics || e.category?.kind === "INCOME")
-		return { notCounted: true };
-	if (!e.isAmortizedParent) return {};
-	return e._count.children > 0
-		? { spread: { months: e._count.children } }
-		: { notCounted: true };
-}
-
-/** How a personal row reads: money in, a refund, an own transfer or spending. */
-function personalKind(e: PersonalRow): ActivityRowDTO["kind"] {
-	if (e.entryKind === "NOT_SPENDING") return "transfer";
-	if (e.direction === "IN") return e.inType === "REFUND" ? "refund" : "income";
-	return "expense";
-}
-
-async function personalRows(db: Db, ids: string[], c: ShapeContext) {
+/** Your own expenses of the page, with their category and monthly parts. */
+async function personalRows(
+	db: Db,
+	ids: string[],
+	userId: string,
+): Promise<PersonalRowInput[]> {
 	if (!ids.length) return [];
-	const rows = await db.expense.findMany({
-		where: { id: { in: ids }, userId: c.userId },
-		include: {
-			category: categorySelect,
-			_count: { select: { children: true } },
-		},
-	});
-	return rows.map((e): ActivityRowDTO => {
-		const amount = decimalMoney(e.amount, e.currency);
-		const foreign = e.currency !== c.rates.home;
-		// A home value booked at save (M2) never moves; others use today's rate.
-		const home = !foreign
-			? amount
-			: e.homeCurrency === c.rates.home && e.homeAmount !== null
-				? decimalMoney(e.homeAmount, c.rates.home)
-				: homeFromUSD(Number(e.amountInUSD), c.rates);
-		// A type is named only with its number: no booked rate, no type.
-		const bookedAt = foreign ? bookedRate(e, c.rates.home) : null;
-		const named =
-			foreign &&
-			e.rateType !== null &&
-			e.rateType !== c.defaultRateType &&
-			bookedAt !== null;
-		const kind = personalKind(e);
-		return {
-			id: e.id,
-			source: "personal",
-			entityId: e.id,
-			kind,
-			title: e.title,
-			category: categoryRef(e.category),
-			amount,
-			...homeField(e.currency, home, c.rates),
-			...(named && e.rateType && bookedAt
-				? { rateType: e.rateType, rate: bookedAt }
-				: {}),
-			sortKey: home?.minor ?? null,
-			...leftOut(e, kind),
-			project: null,
-			date: dayKey(e.date, c.timeZone),
-			mine: true,
-			locked: false,
-			canEdit: true,
-		};
-	});
-}
-
-/**
- * Everyone in a split, the payer included. RLS hides the other split rows
- * of a standalone expense from a participant who did not create it (only
- * the creator, project members and each person's own row are visible), so
- * the payer, always on the transaction itself, is added when missing.
- */
-function peopleOf(
-	t: {
-		splitParticipants: { participantType: string; participantId: string }[];
-	},
-	payerId: string,
-): string[] {
-	const keys = t.splitParticipants.map((s) =>
-		personKeyOf(s.participantType, s.participantId),
-	);
-	return keys.includes(payerId) ? keys : [payerId, ...keys];
+	return db.expense
+		.findMany({
+			where: { id: { in: ids }, userId },
+			include: {
+				category: categorySelect,
+				_count: { select: { children: true } },
+			},
+		})
+		.then((rows) => rows.map((e) => ({ ...e, childCount: e._count.children })));
 }
 
 /** Your split rows of the page's shared expenses, with what shaping needs. */
-async function loadShares(db: Db, ids: string[], c: ShapeContext) {
+async function loadShares(
+	db: Db,
+	ids: string[],
+	userId: string,
+): Promise<SharedRowInput[]> {
+	if (!ids.length) return [];
 	const parts = await db.splitParticipant.findMany({
 		where: {
 			participantType: "user",
-			participantId: c.userId,
+			participantId: userId,
 			transactionId: { in: ids },
 		},
 		select: {
@@ -183,109 +86,18 @@ async function loadShares(db: Db, ids: string[], c: ShapeContext) {
 			},
 		},
 	});
-	const txs = parts.map((p) => p.transaction);
-	const keys = txs.flatMap((t) => [
-		personKeyOf(t.paidByType, t.paidById),
-		...t.splitParticipants.map((s) =>
-			personKeyOf(s.participantType, s.participantId),
-		),
-	]);
-	const projectIds = [
-		...new Set(txs.flatMap((t) => (t.projectId ? [t.projectId] : []))),
-	];
-	const [who, roles, lookup] = await Promise.all([
-		resolvePeople(db, keys),
-		buildCallerRoleMap(
-			db,
-			[{ participantType: "user", participantId: c.userId }],
-			projectIds,
-		),
-		findExchangeRatesForDates(
-			db,
-			txs.filter((t) => t.exchangeRate === null).map((t) => t.currency),
-		),
-	]);
-	return { parts, who, roles, lookup };
+	return parts;
 }
 
-type Shares = Awaited<ReturnType<typeof loadShares>>;
-
-function sharedRow(
-	{ transaction: t, shareAmount, verificationStatus }: Shares["parts"][number],
-	x: Omit<Shares, "parts"> & { c: ShapeContext },
-): ActivityRowDTO {
-	const me = personKeyOf("user", x.c.userId);
-	const rate =
-		t.currency === USD
-			? 1
-			: t.exchangeRate !== null
-				? Number(t.exchangeRate)
-				: (x.lookup(t.currency, t.date)?.rate ?? null);
-	const home = homeOf(Number(t.amount), t.currency, rate, x.c.rates);
-	const share =
-		homeOf(Number(shareAmount), t.currency, rate, x.c.rates) ??
-		decimalMoney(shareAmount, t.currency);
-	const payerId = personKeyOf(t.paidByType, t.paidById);
-	const mine = t.createdByType === "user" && t.createdById === x.c.userId;
-	const face = (key: string): PersonDTO => ({
-		id: key,
-		name: x.who.get(key)?.name ?? "",
-		imageUrl: x.who.get(key)?.imageUrl ?? null,
-		isSelf: key === me,
-	});
-	const waiting =
-		verificationStatus === "REJECTED"
-			? "rejected"
-			: verificationStatus === "PENDING" && !mine
-				? "review"
-				: null;
-	return {
-		id: `shared:${t.id}`,
-		source: "shared",
-		entityId: t.id,
-		kind: "expense",
-		title: t.description,
-		// Another person's category is not usable here (D19): spent() and Insights
-		// count the share as No category, so the row shows none too.
-		category:
-			t.category?.userId === x.c.userId ? categoryRef(t.category) : null,
-		amount: decimalMoney(t.amount, t.currency),
-		...homeField(t.currency, home, x.c.rates),
-		share,
-		sortKey: home?.minor ?? null,
-		...(waiting ? { waiting } : {}),
-		project: t.project,
-		people: peopleOf(t, payerId).map(face),
-		payerId,
-		...(payerId === me ? {} : { payerName: firstName(x.who.get(payerId)) }),
-		date: dayKey(t.date, x.c.timeZone),
-		mine,
-		locked: t.isLocked,
-		canEdit: deriveCanModify({
-			isLocked: t.isLocked,
-			projectId: t.projectId,
-			isCreator: mine,
-			roleMap: x.roles,
-		}),
-	};
-}
-
-async function sharedRows(db: Db, ids: string[], c: ShapeContext) {
-	if (!ids.length) return [];
-	const { parts, ...rest } = await loadShares(db, ids, c);
-	return parts.map((p) => sharedRow(p, { ...rest, c }));
-}
-
-/** Splits a payment key `<group or settlement id>|<currency>`. */
-function splitPaymentKey(key: string) {
-	const at = key.lastIndexOf("|");
-	return { group: key.slice(0, at), currency: key.slice(at + 1) };
-}
-
-async function paymentRows(db: Db, keys: string[], c: ShapeContext) {
+/** Every settlement row of the payment groups the keys name, between you and someone. */
+async function loadPayments(
+	db: Db,
+	keys: string[],
+	userId: string,
+): Promise<PaymentRowInput[]> {
 	if (!keys.length) return [];
 	const groups = [...new Set(keys.map((k) => splitPaymentKey(k).group))];
-	const rows = await db.settlement.findMany({
+	return db.settlement.findMany({
 		where: {
 			isOffset: false,
 			kind: "PAYMENT",
@@ -301,8 +113,8 @@ async function paymentRows(db: Db, keys: string[], c: ShapeContext) {
 				// other members' payments, which are not rows of yours.
 				{
 					OR: [
-						{ fromParticipantType: "user", fromParticipantId: c.userId },
-						{ toParticipantType: "user", toParticipantId: c.userId },
+						{ fromParticipantType: "user", fromParticipantId: userId },
+						{ toParticipantType: "user", toParticipantId: userId },
 					],
 				},
 			],
@@ -321,109 +133,71 @@ async function paymentRows(db: Db, keys: string[], c: ShapeContext) {
 			project: { select: { id: true, name: true } },
 		},
 	});
-	const me = personKeyOf("user", c.userId);
-	const byKey = new Map<string, typeof rows>();
-	for (const r of rows) {
-		const key = `${r.paymentGroupId ?? r.id}|${r.currency}`;
-		byKey.set(key, [...(byKey.get(key) ?? []), r]);
-	}
-	const others = rows.flatMap((r) => [
-		personKeyOf(r.fromParticipantType, r.fromParticipantId),
-		personKeyOf(r.toParticipantType, r.toParticipantId),
-	]);
-	const [who, lookup] = await Promise.all([
-		resolvePeople(db, others),
-		findExchangeRatesForDates(
-			db,
-			rows.map((r) => r.currency),
-		),
-	]);
-	return keys.flatMap((key): ActivityRowDTO[] => {
-		const group = byKey.get(key);
-		const first = group?.[0];
-		if (!group || !first) return [];
-		return [paymentRow(key, group, first, { me, who, lookup, c })];
-	});
 }
 
-type PaymentGroupRow = {
-	amount: Prisma.Decimal;
-	currency: string;
-	status: string;
-	initiatedAt: Date;
-	fromParticipantType: string;
-	fromParticipantId: string;
-	toParticipantType: string;
-	toParticipantId: string;
-	project: { id: string; name: string } | null;
-};
-
-function paymentRow(
-	key: string,
-	group: PaymentGroupRow[],
-	first: PaymentGroupRow,
-	x: {
-		me: string;
-		who: Map<string, Who>;
-		lookup: Awaited<ReturnType<typeof findExchangeRatesForDates>>;
-		c: ShapeContext;
-	},
-): ActivityRowDTO {
-	const from = personKeyOf(first.fromParticipantType, first.fromParticipantId);
-	const to = personKeyOf(first.toParticipantType, first.toParticipantId);
-	const sent = from === x.me;
-	const total = group.reduce((s, r) => s.add(r.amount), first.amount.mul(0));
-	const amount = decimalMoney(total, first.currency);
-	const rate = x.lookup(first.currency, first.initiatedAt)?.rate ?? null;
-	const home = homeOf(Number(total), first.currency, rate, x.c.rates);
-	const projects = new Map(
-		group.flatMap((r) => (r.project ? [[r.project.id, r.project]] : [])),
-	);
-	return {
-		id: `payment:${key}`,
-		source: "payment",
-		entityId: key.slice(0, key.lastIndexOf("|")),
-		kind: "payment",
-		title: "",
-		category: null,
-		amount,
-		...homeField(first.currency, home, x.c.rates),
-		sortKey: home?.minor ?? null,
-		...(group.some((r) => r.status === "PROPOSED") ? { pending: true } : {}),
-		project: projects.size === 1 ? ([...projects.values()][0] ?? null) : null,
-		date: dayKey(
-			new Date(Math.min(...group.map((r) => r.initiatedAt.getTime()))),
-			x.c.timeZone,
+/**
+ * The server loader: the stored rows of a page of keys, the names of the
+ * people on them, the caller's role in their projects and the rate rows the
+ * shaping prices them with.
+ */
+export async function loadActivityInputs(
+	db: Db,
+	keys: readonly RowKey[],
+	userId: string,
+): Promise<ActivityRowInputs> {
+	const of = (src: RowKey["src"]) =>
+		keys.filter((k) => k.src === src).map((k) => k.id);
+	const [personal, shares, payments] = await Promise.all([
+		personalRows(db, of("p"), userId),
+		loadShares(db, of("s"), userId),
+		loadPayments(db, of("g"), userId),
+	]);
+	const projectIds = [
+		...new Set(
+			shares.flatMap((s) =>
+				s.transaction.projectId ? [s.transaction.projectId] : [],
+			),
 		),
-		mine: sent,
-		locked: true,
-		canEdit: false,
-		payment: {
-			direction: sent ? "sent" : "received",
-			counterparty: firstName(x.who.get(sent ? to : from)),
-		},
+	];
+	const [who, roles, rateRows] = await Promise.all([
+		resolvePeople(db, [
+			...shares.flatMap((s) => [
+				personKeyOf(s.transaction.paidByType, s.transaction.paidById),
+				...s.transaction.splitParticipants.map((p) =>
+					personKeyOf(p.participantType, p.participantId),
+				),
+			]),
+			...payments.flatMap((r) => [
+				personKeyOf(r.fromParticipantType, r.fromParticipantId),
+				personKeyOf(r.toParticipantType, r.toParticipantId),
+			]),
+		]),
+		buildCallerRoleMap(
+			db,
+			[{ participantType: "user", participantId: userId }],
+			projectIds,
+		),
+		findRateRows(db, activityRateCurrencies({ shares, payments })),
+	]);
+	return {
+		personal,
+		shares,
+		payments,
+		who: Object.fromEntries(who),
+		roles: Object.fromEntries(roles),
+		rateRows,
 	};
 }
 
 /** The DTOs for a page of keys, in the keys' order. */
 export async function shapeRows(
 	db: Db,
-	keys: RowKey[],
+	keys: readonly RowKey[],
 	c: ShapeContext,
 ): Promise<ActivityRowDTO[]> {
-	const of = (src: RowKey["src"]) =>
-		keys.filter((k) => k.src === src).map((k) => k.id);
-	const [p, s, g] = await Promise.all([
-		personalRows(db, of("p"), c),
-		sharedRows(db, of("s"), c),
-		paymentRows(db, of("g"), c),
-	]);
-	const byId = new Map<string, ActivityRowDTO>();
-	for (const r of p) byId.set(`p|${r.id}`, r);
-	for (const r of s) byId.set(`s|${r.entityId}`, r);
-	for (const r of g) byId.set(`g|${r.id.slice("payment:".length)}`, r);
-	return keys.flatMap((k) => {
-		const row = byId.get(`${k.src}|${k.id}`);
-		return row ? [row] : [];
-	});
+	return activityRowsFrom(
+		keys,
+		await loadActivityInputs(db, keys, c.userId),
+		c,
+	);
 }

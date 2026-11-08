@@ -1,3 +1,8 @@
+import {
+	deriveCanModify,
+	ROLE_RANK,
+	strongestRoles,
+} from "@retrospend/domain/project-roles";
 import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient, ProjectParticipant } from "~prisma";
 import type { ParticipantRef } from "./types";
@@ -8,12 +13,7 @@ type TransactionWithParticipants = Prisma.SharedTransactionGetPayload<{
 
 type DbClient = PrismaClient | Prisma.TransactionClient;
 
-const ROLE_RANK: Record<string, number> = {
-	VIEWER: 0,
-	CONTRIBUTOR: 1,
-	EDITOR: 2,
-	ORGANIZER: 3,
-};
+export { deriveCanModify };
 
 /**
  * Builds a `projectId -> highest role` map for the caller across the given
@@ -34,8 +34,7 @@ export async function buildCallerRoleMap(
 	callerRefs: ParticipantRef[],
 	projectIds: string[],
 ): Promise<Map<string, string>> {
-	const roleMap = new Map<string, string>();
-	if (projectIds.length === 0 || callerRefs.length === 0) return roleMap;
+	if (projectIds.length === 0 || callerRefs.length === 0) return new Map();
 
 	const memberships = await (db as PrismaClient).projectParticipant.findMany({
 		where: {
@@ -48,50 +47,7 @@ export async function buildCallerRoleMap(
 		select: { projectId: true, role: true },
 	});
 
-	for (const m of memberships) {
-		const existing = roleMap.get(m.projectId);
-		if (
-			existing === undefined ||
-			(ROLE_RANK[m.role] ?? -1) > (ROLE_RANK[existing] ?? -1)
-		) {
-			roleMap.set(m.projectId, m.role);
-		}
-	}
-
-	return roleMap;
-}
-
-/**
- * Derives the read-side edit/delete permission for a single transaction from a
- * caller-role map (see {@link buildCallerRoleMap}). Mirrors the authoritative
- * write-side rules in {@link assertCanModifyTransaction} exactly so the ⋯ menu
- * never offers an action the mutation would reject, and never hides one it
- * would allow:
- *
- * - Locked (settled) transactions: never editable.
- * - Project-scoped: ORGANIZER/EDITOR may edit any expense; CONTRIBUTOR only
- *   their own; VIEWER / non-members none.
- * - Standalone (no project): only the creator.
- *
- * `isCreator` must already account for the caller's claim aliases.
- */
-export function deriveCanModify(args: {
-	isLocked: boolean;
-	projectId: string | null;
-	isCreator: boolean;
-	roleMap: Map<string, string>;
-}): boolean {
-	const { isLocked, projectId, isCreator, roleMap } = args;
-	if (isLocked) return false;
-	if (projectId) {
-		const role = roleMap.get(projectId);
-		return (
-			role === "ORGANIZER" ||
-			role === "EDITOR" ||
-			(role === "CONTRIBUTOR" && isCreator)
-		);
-	}
-	return isCreator;
+	return strongestRoles(memberships);
 }
 
 /**

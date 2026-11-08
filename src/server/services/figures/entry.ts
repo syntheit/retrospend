@@ -8,30 +8,26 @@
  * - `entry.amount`: the row's amount in its own currency.
  * - `entry.share`: your share of a shared expense (home currency when it
  *   has a rate, the expense's own otherwise). Empty for any other row.
+ *
+ * This file is the server loader: it reads the row's stored rows with SQL and
+ * hands them to the pure shaping in @retrospend/domain/activity-rows, which a
+ * device runs over its own rows.
  */
-import { FigureNarrowingError } from "~/server/figures/narrowing";
+import {
+	type ActivityRowDTO,
+	entryAmountOf,
+	entryRowFrom,
+	entryShareOf,
+	rowKeyFromEntryId,
+} from "@retrospend/domain/activity-rows";
 import { findExchangeRate } from "~/server/exchange-rates";
+import { FigureNarrowingError } from "~/server/figures/narrowing";
 import type {
 	FigureDb,
 	FigureDefinition,
 	FigureScope,
 } from "~/server/figures/registry";
-import { shapeRows } from "~/server/services/expense-list/rows";
-import type { RowKey } from "~/server/services/expense-list/query";
-import type { ActivityRowDTO } from "~/server/services/expense-list/types";
-
-const SHARED = "shared:";
-const PAYMENT = "payment:";
-
-function keyOf(entryId: string): RowKey {
-	const date = new Date(0);
-	const created = date;
-	if (entryId.startsWith(SHARED))
-		return { src: "s", id: entryId.slice(SHARED.length), date, created };
-	if (entryId.startsWith(PAYMENT))
-		return { src: "g", id: entryId.slice(PAYMENT.length), date, created };
-	return { src: "p", id: entryId, date, created };
-}
+import { loadActivityInputs } from "~/server/services/expense-list/rows";
 
 async function rowOf(
 	db: FigureDb,
@@ -46,30 +42,33 @@ async function rowOf(
 	});
 	const home = user?.homeCurrency ?? "USD";
 	const homeRate = await findExchangeRate(db, home, new Date());
-	const [row] = await shapeRows(db, [keyOf(scope.entryId)], {
-		userId: scope.userId,
-		timeZone: undefined,
-		rates: { home, homeRate: homeRate?.rate ?? null },
-	});
-	return row ?? null;
+	return entryRowFrom(
+		scope.entryId,
+		await loadActivityInputs(
+			db,
+			[rowKeyFromEntryId(scope.entryId)],
+			scope.userId,
+		),
+		{
+			userId: scope.userId,
+			timeZone: undefined,
+			rates: { home, homeRate: homeRate?.rate ?? null },
+		},
+	);
 }
 
 export const entryAmountFigure: FigureDefinition = {
 	id: "entry.amount",
 	scope: ["entryId"],
-	compute: async (db, scope) => {
-		const row = await rowOf(db, scope, "entry.amount");
-		return row ? [row.amount] : [];
-	},
+	compute: async (db, scope) =>
+		entryAmountOf(await rowOf(db, scope, "entry.amount")),
 };
 
 export const entryShareFigure: FigureDefinition = {
 	id: "entry.share",
 	scope: ["entryId"],
-	compute: async (db, scope) => {
-		const row = await rowOf(db, scope, "entry.share");
-		return row?.share ? [row.share] : [];
-	},
+	compute: async (db, scope) =>
+		entryShareOf(await rowOf(db, scope, "entry.share")),
 };
 
 export const entryFigures: readonly FigureDefinition[] = [

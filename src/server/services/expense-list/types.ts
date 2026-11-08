@@ -6,6 +6,7 @@
  * are a kind the filter takes with no rows until their table lands (2D).
  */
 
+import type { ActivityRowDTO } from "@retrospend/domain/activity-rows";
 import type { Money } from "@retrospend/domain/money-minor";
 import { z } from "zod";
 
@@ -61,76 +62,11 @@ export const listV2Input = z.object({
 export type ListV2Input = z.input<typeof listV2Input>;
 export type ListV2Filter = z.output<typeof listV2Input>;
 
-/** A category as rows show it: the color is a category-n token number. */
-export type CategoryRefDTO = {
-	id: string | null;
-	name: string | null;
-	icon: string | null;
-	tone: number;
-};
-
-export type PersonDTO = {
-	/** The person key, `<type>:<id>`. */
-	id: string;
-	name: string;
-	imageUrl: string | null;
-	isSelf: boolean;
-};
-
-export type ActivityRowDTO = {
-	/** Unique across sources: `<expense id>`, `shared:<id>`, `payment:<key>`. */
-	id: string;
-	source: "personal" | "shared" | "payment";
-	/** The id the edit, delete and open actions take. */
-	entityId: string;
-	/** Money in reads "income"; a refund "refund"; own transfers (Not spending) "transfer". */
-	kind: "expense" | "income" | "refund" | "transfer" | "payment";
-	/** Empty for payments; the client words them from `payment`. */
-	title: string;
-	category: CategoryRefDTO | null;
-	/** As entered (a shared expense: its full amount). */
-	amount: Money;
-	/** In the home currency when foreign; null: no rate yet. Absent: same currency. */
-	home?: Money | null;
-	/** Your share of a split, in the home currency when a rate exists. */
-	share?: Money;
-	/**
-	 * The rate type a foreign personal row was booked at, set only when it is
-	 * not the user's default for their home currency (GUIDELINE §7).
-	 */
-	rateType?: string;
-	/** With `rateType`: the rate it was booked at, home per 1 unit of the amount's currency, unrounded. */
-	rate?: string;
-	/** Home minor units for the amount column's sort; null without a rate. */
-	sortKey: number | null;
-	waiting?: "review" | "rejected";
-	/**
-	 * Set on an expense or refund the list shows and the footer and day
-	 * totals leave out: hidden from reports, or filed under an income
-	 * category. The row says so (a rejected share says Rejected through
-	 * `waiting`).
-	 */
-	notCounted?: boolean;
-	/**
-	 * Set on an amortized purchase: it is counted, through its monthly parts,
-	 * which the list hides and the totals place on their own days. The row
-	 * says "Spread over N months", never "Not counted".
-	 */
-	spread?: { months: number };
-	pending?: boolean;
-	project: { id: string; name: string } | null;
-	people?: PersonDTO[];
-	payerId?: string;
-	/** Set when someone other than you paid. */
-	payerName?: string;
-	/** ISO date in the viewer's time zone. */
-	date: string;
-	/** For the action registry. */
-	mine: boolean;
-	locked: boolean;
-	canEdit: boolean;
-	payment?: { direction: "sent" | "received"; counterparty: string };
-};
+export type {
+	ActivityRowDTO,
+	CategoryRefDTO,
+	PersonDTO,
+} from "@retrospend/domain/activity-rows";
 
 export type ActivityTotalDTO = {
 	/** The figures registry key the footer renders. */

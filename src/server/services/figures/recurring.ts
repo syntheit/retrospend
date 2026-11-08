@@ -10,6 +10,12 @@
  *   1. The page names the currencies and shows its partial line untagged.
  *   An "in" figure is empty when no active template brings money in.
  */
+import {
+	type RecurringDirection,
+	type RecurringPeriod,
+	recurringAmountOf,
+	recurringCostOf,
+} from "@retrospend/domain/recurring-view";
 import { FigureNarrowingError } from "~/server/figures/narrowing";
 import type {
 	FigureDb,
@@ -41,14 +47,15 @@ const recurringAmount: FigureDefinition = {
 			throw new FigureNarrowingError(
 				"recurring.amount needs a recurringId narrowing",
 			);
-		const body = await bodyOnce(db, scope, pass);
-		const item = body.items.find((i) => i.id === scope.recurringId);
-		return item ? [item.amount] : [];
+		return recurringAmountOf(
+			await bodyOnce(db, scope, pass),
+			scope.recurringId,
+		);
 	},
 };
 
-const DIRECTIONS = ["out", "in"] as const;
-const PERIODS = ["month", "quarter", "year"] as const;
+const DIRECTIONS: readonly RecurringDirection[] = ["out", "in"];
+const PERIODS: readonly RecurringPeriod[] = ["month", "quarter", "year"];
 
 const costFigures = DIRECTIONS.flatMap((dir) =>
 	PERIODS.map(
@@ -56,11 +63,14 @@ const costFigures = DIRECTIONS.flatMap((dir) =>
 			id: `recurring.cost.${dir}.${period}`,
 			scope: [],
 			compute: async (db, scope, pass) => {
-				const cost = (await bodyOnce(db, scope, pass))[dir];
-				if (!cost) return [];
-				if (cost.missingRate.length > 0)
-					return new FigureUnavailable(cost.missingRate);
-				return [cost[period]];
+				const cost = recurringCostOf(
+					await bodyOnce(db, scope, pass),
+					dir,
+					period,
+				);
+				return Array.isArray(cost)
+					? cost
+					: new FigureUnavailable(cost.unavailable);
 			},
 		}),
 	),

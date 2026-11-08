@@ -2,17 +2,16 @@
  * Names and faces for person keys (`<type>:<id>`), in one batch per kind:
  * users, people you added (shadow profiles) and guests.
  */
+import {
+	firstName,
+	personKeyOf,
+	type Who,
+} from "@retrospend/domain/activity-rows";
 import type { Prisma } from "~prisma";
 
 type Db = Prisma.TransactionClient;
 
-export type Who = { name: string; imageUrl: string | null };
-
-/** The name rows use for a payer or the other side of a payment ("Martín paid"). */
-export const firstName = (who: Who | undefined) =>
-	who?.name.trim().split(/\s+/)[0] ?? "";
-
-export const personKeyOf = (type: string, id: string) => `${type}:${id}`;
+export { firstName, personKeyOf, type Who };
 
 export async function resolvePeople(
 	db: Db,
