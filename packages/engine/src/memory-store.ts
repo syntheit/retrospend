@@ -70,15 +70,46 @@ function owned<T extends TableName>(table: T, row: TableRows[T]): TableRows[T] {
 	return own(row);
 }
 
+/**
+ * A row as a reader gets it: its Dates are fresh copies, since a Date cannot
+ * be frozen and `setTime` on a shared one would change committed state. A row
+ * with no Date is handed out as stored.
+ */
+function out<V>(v: V): V {
+	if (v instanceof Date) return new Date(v.getTime()) as V;
+	if (Array.isArray(v)) {
+		const copy = v.map(out);
+		return copy.some((x, i) => x !== v[i]) ? (Object.freeze(copy) as V) : v;
+	}
+	if (v !== null && typeof v === "object" && isPlain(v)) {
+		const entries = Object.entries(v);
+		const copy = entries.map(([k, x]) => [k, out(x)] as const);
+		return copy.some(([, x], i) => x !== entries[i]?.[1])
+			? (Object.freeze(Object.fromEntries(copy)) as V)
+			: v;
+	}
+	return v;
+}
+
 class Snap implements Snapshot {
-	constructor(private readonly state: State) {}
+	/** The stored rows themselves, for a transaction that copies on its own reads. */
+	readonly raw: Reader;
+
+	constructor(state: State) {
+		this.raw = {
+			get: <T extends TableName>(table: T, id: string) =>
+				state[table].get(id) as TableRows[T] | undefined,
+			list: <T extends TableName>(table: T) =>
+				[...state[table].values()].sort(byId) as TableRows[T][],
+		};
+	}
 
 	get<T extends TableName>(table: T, id: string) {
-		return this.state[table].get(id) as TableRows[T] | undefined;
+		return out(this.raw.get(table, id));
 	}
 
 	list<T extends TableName>(table: T) {
-		return [...this.state[table].values()].sort(byId) as TableRows[T][];
+		return out(this.raw.list(table));
 	}
 }
 
@@ -126,12 +157,12 @@ class MemoryTx implements Tx {
 
 	get<T extends TableName>(table: T, id: string) {
 		this.live();
-		return this.view.get(table, id);
+		return out(this.view.get(table, id));
 	}
 
 	list<T extends TableName>(table: T) {
 		this.live();
-		return this.view.list(table);
+		return out(this.view.list(table));
 	}
 
 	put<T extends TableName>(table: T, row: TableRows[T]) {
@@ -255,7 +286,7 @@ export class MemoryStore implements Store {
 			release = resolve;
 		});
 		await this.turn(before, release);
-		return new MemoryTx(this.snapshot(), {
+		return new MemoryTx(new Snap(this.state).raw, {
 			commit: (writes) => this.apply(writes),
 			end: release,
 		});

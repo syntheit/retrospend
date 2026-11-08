@@ -195,6 +195,31 @@ describe("memory store", () => {
 			]);
 		});
 
+		it("a Date changed on a read row changes neither the store, a snapshot, nor a transaction", async () => {
+			const iso = "2026-03-05T12:00:00.000Z";
+			const store = new MemoryStore({
+				rows: { expenses: [fixtureRow("expenses", "e")] },
+			});
+			const snap = store.snapshot();
+			store.get("expenses", "e")?.date.setTime(0);
+			store.list("expenses")[0]?.date.setTime(0);
+			snap.get("expenses", "e")?.date.setTime(0);
+			snap.list("expenses")[0]?.date.setTime(0);
+			const tx = await store.begin();
+			tx.get("expenses", "e")?.date.setTime(0);
+			tx.list("expenses")[0]?.date.setTime(0);
+			tx.rollback();
+			const get = (r: {
+				get: (t: "expenses", id: string) => { date: Date } | undefined;
+			}) => r.get("expenses", "e")?.date.toISOString();
+			expect(get(store)).toBe(iso);
+			expect(get(snap)).toBe(iso);
+			// Each read is its own copy.
+			expect(store.get("expenses", "e")?.date).not.toBe(
+				store.get("expenses", "e")?.date,
+			);
+		});
+
 		it("nested objects are copied, and a date changed after put changes nothing", async () => {
 			const store = new MemoryStore();
 			const category = { id: "c", name: "Rent", color: "teal", icon: null };
