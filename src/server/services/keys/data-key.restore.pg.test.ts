@@ -103,10 +103,14 @@ describe("restoring the main dump and the keystore dump", () => {
 					`--dbname=${url}`,
 					file,
 				]);
+			// Workers share a database across files, so the dumps hold other
+			// tests' users and keys too; only this test's two users count.
+			const mine = [a.user.id, b.user.id];
 			const keyOwners = async (query: Client["query"]) =>
 				(
 					await query<{ userId: string }>(
-						'SELECT "userId" FROM keystore."user_data_key" ORDER BY "userId"',
+						'SELECT "userId" FROM keystore."user_data_key" WHERE "userId" = ANY($1) ORDER BY "userId"',
+						[mine],
 					)
 				).rows.map((row) => row.userId);
 
