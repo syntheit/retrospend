@@ -3,24 +3,38 @@
 -- NOT APPLIED. This folder sits outside prisma/migrations on purpose, so
 -- `prisma migrate deploy` never runs it. Uniqueness of a category name is
 -- enforced by "category_userId_nameIndex_key" (migration 20261109700000) once
--- every row has a nameIndex. Until then the index dropped here is the only
--- thing that protects a row without one.
+-- every row has a current nameIndex. Until then the index dropped here is the
+-- only thing that protects a row without one, or with a stale one (an index
+-- made by a data key the user no longer has; the app compares names for such
+-- rows, but a race between two creates is caught only by this index).
 --
 -- To run it, once the owner schedules it:
 --   1. The index and column are live in production, and the backfill has run:
---        DATABASE_URL=... pnpm exec tsx scripts/backfill-category-name-index.ts --apply
---      It must report no failures and 0 left to index, and this must return 0:
+--        DATABASE_URL=... pnpm exec tsx scripts/backfill-category-name-index.ts --apply --recompute
+--      It must report no failures, 0 conflicts, 0 stale, 0 skipped users and
+--      0 left to index, and this must return 0:
 --        SELECT count(*) FROM "category" WHERE "nameIndex" IS NULL;
 --      A category it reports as a conflict (two rows whose names differ only by
 --      leading or trailing spaces) needs the owner to rename or merge one first.
---   2. Every writer that inserts a category outside createCategory computes
---      nameIndex first: the sign-up seed (better-auth/config.ts), the income
---      categories (money-in.service.ts ensureIncomeCategories, which relies on
---      this index to skip duplicates), scripts/sync-default-categories.ts, and
+--      No NULL or stale index may remain: after the drop, a NULL or stale index
+--      is protected only by the name compare, which a race between two creates
+--      defeats.
+--   2. Key store errors are alerting. createCategory and rename fall back to a
+--      NULL index when the key store gives no key (keystore_missing,
+--      keystore_grants_missing, a master key that does not open the key) and log
+--      "Category name index skipped". Before the drop, an alert on that log line
+--      is in place and it has been quiet; after the drop each such line is a
+--      category written without the index that protects it.
+--   3. Every writer that inserts or renames a category outside createCategory
+--      and updateCategory computes nameIndex first: the sign-up seed
+--      (better-auth/config.ts), the income categories (money-in.service.ts
+--      ensureIncomeCategories, which relies on this index to skip duplicates),
+--      scripts/sync-default-categories.ts, scripts/migrate-default-categories.ts
+--      (it clears nameIndex on a rename, and creates rows without one), and
 --      anything D10 or D11 finds. After the drop a row with a NULL nameIndex
 --      can duplicate another name.
---   3. Move this folder to prisma/migrations/<timestamp>_drop_category_name_unique/.
---   4. In the same commit remove the line
+--   4. Move this folder to prisma/migrations/<timestamp>_drop_category_name_unique/.
+--   5. In the same commit remove the line
 --        @@unique([name, userId])
 --      from model Category in prisma/schema.prisma.
 -- Rerunning is safe. The drop stops every category write from maintaining it,
