@@ -217,7 +217,7 @@ func EnrichTransactions(provider Provider, model string, transactions []models.N
 				enrichedItems = wrapper.Enriched
 			} else if err := json.Unmarshal([]byte(cleanJSON), &enrichedItems); err != nil {
 				errMsg := fmt.Sprintf("Failed to parse enrichment response for batch %d-%d", j.startIdx, j.endIdx-1)
-				log.Printf("WARNING: %s: %s", errMsg, resp.Content)
+				log.Printf("WARNING: %s (response of %d bytes)", errMsg, len(resp.Content))
 
 				progressMu.Lock()
 				failedBatches++

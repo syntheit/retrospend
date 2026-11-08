@@ -275,7 +275,7 @@ func main() {
 		defer file.Close()
 
 		ext := strings.ToLower(filepath.Ext(header.Filename))
-		log.Printf("[HTTP] Processing file: %s (%s)", header.Filename, ext)
+		log.Printf("[HTTP] Processing a %s file", ext)
 
 		var transactions []models.NormalizedTransaction
 		var metadata *models.ImportMetadata

@@ -250,7 +250,7 @@ export function computeSettlementPlan(
 		const balanceSum = [...netMap.values()].reduce((a, b) => a + b, 0);
 		if (Math.abs(balanceSum) > 2 * ZERO_TOLERANCE) {
 			console.warn(
-				`[group-settlement] Balances for ${currency} sum to ${balanceSum.toFixed(6)}, expected ~0`,
+				`[group-settlement] Balances for ${currency} do not sum to zero`,
 			);
 		}
 

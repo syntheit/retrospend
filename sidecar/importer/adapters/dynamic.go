@@ -109,7 +109,7 @@ func ParseDynamicCSV(reader io.Reader, schema models.CSVSchema) ([]models.Normal
 		}
 
 		if parseErr != nil {
-			log.Printf("Warning: failed to parse date '%s' at row %d: %v", dateStr, rowNum, parseErr)
+			log.Printf("Warning: failed to parse a date at row %d (skipping)", rowNum)
 			continue
 		}
 
