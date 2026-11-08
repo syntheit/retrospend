@@ -5,13 +5,16 @@
 // the migrated database, so a new field, a new limit or a new bounded column
 // that breaks the rule fails here.
 import { randomBytes } from "node:crypto";
-import { USER_TEXT_FIELDS, USER_TEXT_LIMITS } from "@retrospend/api-contract";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { USER_TEXT_FIELDS } from "@retrospend/api-contract";
 import { describe, expect, it } from "vitest";
 import { Keyring, sealField } from "~/server/crypto/field-crypto";
 import { adminDb, createTestUser } from "~/test/pg-harness";
+import { REPO_ROOT } from "../uiRules/paths";
 
-// Every module that declares a field has to be loaded for USER_TEXT_FIELDS to
-// be complete.
+// The contract and form schemas are loaded so the registry can cross-check
+// the source scan below (it need not be complete).
 import.meta.glob(
 	[
 		"../../../packages/api-contract/src/**/*.ts",
@@ -20,6 +23,50 @@ import.meta.glob(
 	],
 	{ eager: true },
 );
+
+/**
+ * Every `userText("field", max)` call in the source tree, found by reading the
+ * files, so a declaration in a router or a service counts without importing
+ * it. A field declared with several limits keeps the largest. A call the scan
+ * cannot read (a variable name or limit) is reported, never skipped. A bare
+ * `userText()` in prose is not a call.
+ */
+function scanDeclarations(): {
+	limits: Map<string, number>;
+	unreadable: string[];
+} {
+	const limits = new Map<string, number>();
+	const unreadable: string[] = [];
+	const skip = new Set(["node_modules", "generated", "dist", ".next"]);
+	const walk = (dir: string) => {
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const path = join(dir, entry.name);
+			if (entry.isDirectory()) {
+				if (!skip.has(entry.name)) walk(path);
+				continue;
+			}
+			if (!/\.tsx?$/.test(entry.name) || /\.test\.tsx?$/.test(entry.name))
+				continue;
+			if (path.endsWith(join("common", "user-text.ts"))) continue;
+			const text = readFileSync(path, "utf8");
+			const calls = text.match(/\buserText\((?!\))/g)?.length ?? 0;
+			if (calls === 0) continue;
+			let read = 0;
+			for (const m of text.matchAll(
+				/\buserText\(\s*"([^"]+)"\s*,\s*(\d+)\s*\)/g,
+			)) {
+				read++;
+				const [, field = "", max = "0"] = m;
+				limits.set(field, Math.max(limits.get(field) ?? 0, Number(max)));
+			}
+			if (read !== calls) unreadable.push(path);
+		}
+	};
+	for (const root of ["src", "packages"]) walk(join(REPO_ROOT, root));
+	return { limits, unreadable };
+}
+
+const scanned = scanDeclarations();
 
 type Column = { table: string; column: string };
 
@@ -106,22 +153,28 @@ describe("worst-case ciphertext length", () => {
 
 describe("user-text columns hold their ciphertext", () => {
 	it("maps every declared field to a column, or says it is not stored", () => {
-		const declared = [...USER_TEXT_FIELDS].filter(
-			(f) => !f.startsWith("test."),
-		);
+		expect(scanned.unreadable).toEqual([]);
+		const declared = [...scanned.limits.keys()];
 		expect(declared.length).toBeGreaterThan(30);
 		const unmapped = declared.filter((f) => !STORED[f] && !NOT_STORED.has(f));
 		expect(unmapped).toEqual([]);
 		const stale = [...Object.keys(STORED), ...NOT_STORED].filter(
-			(f) => !USER_TEXT_FIELDS.has(f),
+			(f) => !scanned.limits.has(f),
 		);
 		expect(stale).toEqual([]);
+	});
+
+	it("sees every field the loaded schemas register", () => {
+		const missed = [...USER_TEXT_FIELDS].filter(
+			(f) => !f.startsWith("test.") && !scanned.limits.has(f),
+		);
+		expect(missed).toEqual([]);
 	});
 
 	it("has a column at least as long as the worst-case ciphertext", async () => {
 		const tooSmall: string[] = [];
 		for (const [field, columns] of Object.entries(STORED)) {
-			const limit = USER_TEXT_LIMITS.get(field);
+			const limit = scanned.limits.get(field);
 			expect(limit, field).toBeGreaterThan(0);
 			const needed = worstCaseStored(limit ?? 0);
 			for (const { table, column } of columns) {
@@ -146,7 +199,7 @@ describe("user-text columns hold their ciphertext", () => {
 
 	it("stores the longest category name ciphertext", async () => {
 		const { user } = await createTestUser();
-		const limit = USER_TEXT_LIMITS.get("category.name") ?? 0;
+		const limit = scanned.limits.get("category.name") ?? 0;
 		const sealed = sealField(keyring, "€".repeat(limit), aad);
 		const row = await adminDb.category.create({
 			data: { userId: user.id, name: sealed, color: "teal", kind: "EXPENSE" },
