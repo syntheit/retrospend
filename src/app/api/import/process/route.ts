@@ -120,8 +120,7 @@ export async function POST(request: NextRequest) {
 							null,
 						userAgent: request.headers.get("user-agent"),
 						metadata: {
-							fileName: file.name,
-							fileType: file.type || ext.slice(1),
+														fileType: file.type || ext.slice(1),
 							fileSize: file.size,
 							duration_ms: duration,
 							status,
@@ -155,7 +154,7 @@ export async function POST(request: NextRequest) {
 				);
 			}
 
-			console.error(`Importer error [${response.status}]: ${errorText}`);
+			console.error(`Importer error [${response.status}]`);
 			await startLogging("error", {
 				status: response.status,
 				error: errorText,
@@ -224,8 +223,7 @@ export async function POST(request: NextRequest) {
 							null,
 						userAgent: request.headers.get("user-agent"),
 						metadata: {
-							fileName: file.name,
-							fileType: file.type || ext.slice(1),
+														fileType: file.type || ext.slice(1),
 							fileSize: file.size,
 							duration_ms: duration,
 							status: "timeout",
@@ -260,8 +258,7 @@ export async function POST(request: NextRequest) {
 						null,
 					userAgent: request.headers.get("user-agent"),
 					metadata: {
-						fileName: file.name,
-						fileType: file.type || ext.slice(1),
+												fileType: file.type || ext.slice(1),
 						fileSize: file.size,
 						duration_ms: duration,
 						status: "connection_error",

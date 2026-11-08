@@ -38,7 +38,7 @@ export const IntegrationService = {
 			if (!response.ok) {
 				const errorText = await response.text().catch(() => "Unknown error");
 				console.error(
-					`Integration error [${response.status}] ${url}: ${errorText}`,
+					`Integration error [${response.status}] ${url}`,
 				);
 
 				throw new IntegrationError(

@@ -740,7 +740,6 @@ export const adminRouter = createTRPCRouter({
 				metadata: {
 					adminId: session.user.id,
 					adminUsername: (session.user as { username: string }).username,
-					shadowProfileName: profile.name,
 				},
 			});
 
@@ -763,8 +762,6 @@ export const adminRouter = createTRPCRouter({
 				metadata: {
 					adminId: session.user.id,
 					adminUsername: (session.user as { username: string }).username,
-					guestName: guest.name,
-					guestEmail: guest.email,
 				},
 			});
 
