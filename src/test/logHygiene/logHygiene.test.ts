@@ -190,6 +190,52 @@ describe("LOG-010: log calls", () => {
 		for (const src of good) expect(go(src), src).toEqual([]);
 	});
 
+	it("catches who a mail goes to and invite codes", () => {
+		const bad = [
+			"console.log(`[Email Skipped]: Would have sent \"${subject}\" to ${to}`);",
+			"console.log(to);",
+			"console.warn(`Invite code ${inviteCode} was already consumed`);",
+			"console.warn(`sent to ${recipient}`);",
+			"console.warn(recipients);",
+		];
+		for (const src of bad) expect(rules(ts(src)), src).toEqual(["LOG-010"]);
+		const good = [
+			'console.log("[Email Skipped]: SMTP not configured");',
+			"console.warn(`An invite code was already consumed for user ${user.id}`);",
+			"console.warn(`sent ${recipients.length} mails`);",
+			"console.warn(`Invite ${invite.id} used`);",
+			"console.warn(`went to ${total} items`);",
+		];
+		for (const src of good) expect(ts(src), src).toEqual([]);
+	});
+
+	it("catches a provider body, a reply or a text line in a Go error or log", () => {
+		const bad = [
+			'return fmt.Errorf("openrouter API failed with status %d: %s", resp.StatusCode, string(respBody))',
+			'return fmt.Errorf("decode failed: %w (raw: %s)", err, string(respBody))',
+			'return "", fmt.Errorf("ollama failed with status %d: %s", resp.StatusCode, string(bodyBytes))',
+			'return fmt.Errorf("bad schema: %w (raw response: %s)", err, resp.Content)',
+			'return fmt.Errorf("write row for %s: %w", tx.Title, err)',
+			'log.Printf("[sanitizer]   - %s", truncate(s, 80))',
+			'log.Printf("stripped %s", stripped[0])',
+			'log.Printf("line: %s", line)',
+			'log.Printf("text: %s", text)',
+			'return errors.New("bad " + string(body))',
+		];
+		for (const src of bad) expect(rules(go(src)), src).toEqual(["LOG-010"]);
+		const good = [
+			'return fmt.Errorf("openrouter API failed with status %d (response body %d bytes)", resp.StatusCode, len(respBody))',
+			'return fmt.Errorf("decode failed: %w (response body %d bytes)", err, len(respBody))',
+			'return fmt.Errorf("bad schema: %w (reply %d bytes)", err, len(resp.Content))',
+			'return fmt.Errorf("write row %d: %w", i+1, err)',
+			'log.Printf("[sanitizer] Stripped %d lines from PDF text, kept %d", len(stripped), len(result))',
+			'return fmt.Errorf("unexpected status code: %d", resp.StatusCode)',
+			'return fmt.Errorf("%w: none set", ErrInvalidAgeRecipient)',
+			'return errors.New("backup_publish_failed")',
+		];
+		for (const src of good) expect(go(src), src).toEqual([]);
+	});
+
 	it("splits identifiers into words", () => {
 		expect(words("shadowProfileName")).toEqual(["shadow", "profile", "name"]);
 		expect(words("user_email")).toEqual(["user", "email"]);

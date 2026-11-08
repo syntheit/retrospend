@@ -5,6 +5,9 @@
 //   LOG-010  a log call (console.*, logger.*, Go log.* and fmt.Print*) whose
 //            arguments name a money or user-text field (title, notes, name,
 //            amount, balance, token, email, ...) or a whole record.
+//            Go error constructors (fmt.Errorf, errors.New) count as log calls:
+//            their text ends up in a log. A provider's response body is the
+//            usual leak there; use `len(body)` and the status instead.
 //   LOG-020  an event written with a metadata key outside
 //            EVENT_METADATA_KEYS (logEvent, logEventAsync, eventLog.create).
 //
@@ -53,6 +56,18 @@ export const SENSITIVE_WORDS: ReadonlySet<string> = new Set([
 	"body",
 	"content",
 	"buffer",
+	// text read back from a provider, a file or a tool
+	"raw",
+	"reply",
+	"snippet",
+	"excerpt",
+	"stripped",
+	"truncate",
+	"truncated",
+	// who a message goes to
+	"recipient",
+	"recipients",
+	"addressee",
 	// money
 	"amount",
 	"amounts",
@@ -95,6 +110,9 @@ export const SENSITIVE_WORDS: ReadonlySet<string> = new Set([
 /** Compound names the word split cannot see. */
 const SENSITIVE_COMPOUND = /apikey|privatekey|secretkey|passw/i;
 
+/** A bare `to` is the address of a mail call; `listenTo` or `ratio.to` words are not split off, only the whole name counts. */
+const BARE_NAMES: ReadonlySet<string> = new Set(["to"]);
+
 /** Go: the name an uploader gave a multipart file (`header.Filename`). */
 const UPLOADED_FILE_NAME = "Filename";
 
@@ -105,9 +123,12 @@ const ERROR_NAME = /\b(?:err|error|e|cause|ex)\??\.name\b/g;
 const NOT_USER_TEXT =
 	/\b(?:modelName|typeName|className|tableName|columnName|fieldName|eventName)\b/g;
 
+/** Go sentinel errors (`ErrInvalidAgeRecipient`) name a failure, they carry no data. */
+const GO_SENTINEL = /\bErr[A-Z]\w*/g;
+
 /** Counts, ids and codes of a thing are fine: `len(transactions)`, `rows.length`, `row.id`. */
 const COUNT_OF =
-	/\blen\([^()]*\)|[\w$.?]+\.(?:length|size|count|id|ids|ID|Id|IDs|type|kind|status|statusText|ok|code)\b/g;
+	/\blen\([^()]*\)|[\w$.?]+\.(?:length|size|count|id|ids|ID|Id|IDs|type|kind|status|Status|StatusCode|statusText|ok|code)\b/g;
 
 /** Go's `entry.Name()` on a directory entry is a file name on the server. */
 const GO_FILE_NAME = /[\w.]+\.Name\(\)/g;
@@ -150,6 +171,7 @@ const SECRET_WORDS: ReadonlySet<string> = new Set([
 	"email",
 	"otp",
 	"credential",
+	"invite",
 ]);
 
 const secretWordsIn = (ident: string) =>
@@ -161,6 +183,7 @@ export function sensitiveIn(code: string): string[] {
 	const plain = code
 		.replace(ERROR_NAME, " ")
 		.replace(NOT_USER_TEXT, " ")
+		.replace(GO_SENTINEL, " ")
 		.replace(COUNT_OF, (m) => {
 			// `error.code` is fine, `apiToken.code` is not
 			if (!m.endsWith(".code")) return " ";
@@ -181,6 +204,7 @@ export function sensitiveIn(code: string): string[] {
 		for (const w of parts) if (SENSITIVE_WORDS.has(w)) found.add(w);
 		if (SENSITIVE_COMPOUND.test(ident)) found.add(ident.toLowerCase());
 		if (ident === UPLOADED_FILE_NAME) found.add("filename");
+		if (BARE_NAMES.has(ident)) found.add(ident);
 	}
 	return [...found].sort();
 }
@@ -272,7 +296,7 @@ function skipQuoted(src: string, at: number, quote: string): number {
 const TS_LOG =
 	/(?<![\w$.])console\.(?:log|info|warn|error|debug|trace)\s*\(|(?<![\w$])(?:logger|log)\.(?:log|info|warn|error|debug|trace)\s*\(/g;
 const GO_LOG =
-	/(?<![\w.])(?:log\.(?:Print\w*|Fatal\w*|Panic\w*)|fmt\.(?:Print\w*|Fprint\w*)|slog\.\w+)\s*\(/g;
+	/(?<![\w.])(?:log\.(?:Print\w*|Fatal\w*|Panic\w*)|fmt\.(?:Print\w*|Fprint\w*|Errorf)|errors\.New|slog\.\w+)\s*\(/g;
 const TS_EVENT =
 	/(?<![\w$.]|function\s)(?:logEvent|logEventAsync)\s*\(|\beventLog\.(?:create|createMany)\s*\(/g;
 

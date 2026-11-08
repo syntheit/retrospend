@@ -23,18 +23,14 @@ export async function sendEmail(
 	extraHeaders?: Record<string, string>,
 ) {
 	if (!transporter) {
-		console.log(
-			`[Email Skipped]: SMTP not configured. Would have sent "${subject}" to ${to}`,
-		);
+		console.log("[Email Skipped]: SMTP not configured");
 		return;
 	}
 
 	if (!bypassEnabledCheck) {
 		const settings = await getAppSettings();
 		if (!settings.enableEmail) {
-			console.log(
-				`[Email Skipped]: Email disabled by admin. Would have sent "${subject}" to ${to}`,
-			);
+			console.log("[Email Skipped]: Email disabled by admin");
 			return;
 		}
 	}

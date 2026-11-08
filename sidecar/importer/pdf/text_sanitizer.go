@@ -108,10 +108,8 @@ func SanitizePDFText(text string) string {
 	}
 
 	if len(stripped) > 0 && isDebugLog() {
-		log.Printf("[sanitizer] Stripped %d lines from PDF text", len(stripped))
-		for _, s := range stripped {
-			log.Printf("[sanitizer]   - %s", truncate(s, 80))
-		}
+		// Counts only: the stripped lines are statement text.
+		log.Printf("[sanitizer] Stripped %d lines from PDF text, kept %d", len(stripped), len(result))
 	}
 
 	return strings.Join(result, "\n")
@@ -275,9 +273,3 @@ func isDebugLog() bool {
 	return strings.EqualFold(os.Getenv("LOG_LEVEL"), "debug")
 }
 
-func truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen] + "..."
-}

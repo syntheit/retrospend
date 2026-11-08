@@ -24,7 +24,7 @@ func ExportToCSV(transactions []models.NormalizedTransaction, filename string) e
 		return fmt.Errorf("failed to write CSV header: %w", err)
 	}
 
-	for _, tx := range transactions {
+	for i, tx := range transactions {
 		row := []string{
 			tx.Title,
 			fmt.Sprintf("%.2f", tx.Amount),
@@ -40,7 +40,7 @@ func ExportToCSV(transactions []models.NormalizedTransaction, filename string) e
 			"",      // amortizeDuration
 		}
 		if err := writer.Write(row); err != nil {
-			return fmt.Errorf("failed to write CSV row for %s: %w", tx.Title, err)
+			return fmt.Errorf("failed to write CSV row %d: %w", i+1, err)
 		}
 	}
 
