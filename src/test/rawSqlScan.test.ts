@@ -142,7 +142,8 @@ function sourceFiles(): string[] {
 			}
 		}
 	};
-	for (const root of ["src", "packages", "scripts"]) walk(join(REPO_ROOT, root));
+	for (const root of ["src", "packages", "scripts"])
+		walk(join(REPO_ROOT, root));
 	return files;
 }
 

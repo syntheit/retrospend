@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
-import type { PrismaClient } from "~prisma";
 import { userTransaction } from "~/server/db-tx";
 import { logEventAsync } from "~/server/services/audit.service";
+import type { PrismaClient } from "~prisma";
 
 /** Users can change their username at most once every 30 days. */
 export const USERNAME_CHANGE_COOLDOWN_DAYS = 30;
@@ -66,9 +66,7 @@ export async function validateAndProcessUsernameChange(
 	});
 
 	if (reservedEntry) {
-		if (
-			reservedEntry.userId === userId
-		) {
+		if (reservedEntry.userId === userId) {
 			// User is reclaiming their own old username - remove the history record
 			await db.usernameHistory.delete({
 				where: { previousUsername: newUsername },

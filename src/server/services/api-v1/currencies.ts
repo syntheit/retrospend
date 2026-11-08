@@ -69,9 +69,7 @@ export async function listCurrencyPage(
 
 const pairCursor = z.object({ currency: z.string(), type: z.string() });
 
-export async function listRatePage(
-	q: z.infer<typeof ratesQuerySchema>,
-) {
+export async function listRatePage(q: z.infer<typeof ratesQuerySchema>) {
 	const after = decodeCursor(q.cursor, pairCursor);
 	const rows = await listLatestRates({
 		currency: q.currency,

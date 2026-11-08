@@ -1,6 +1,6 @@
 import { CRYPTO_CURRENCIES, CURRENCIES } from "@retrospend/domain/currencies";
-import { TRPCError } from "@trpc/server";
 import { currencyDecimals } from "@retrospend/domain/money";
+import { TRPCError } from "@trpc/server";
 import { env } from "~/env";
 import { db as globalDb } from "~/server/db";
 import { findExchangeRate } from "~/server/exchange-rates";
@@ -34,15 +34,13 @@ function plain(value: Prisma.Decimal | string): string {
  * The newest rate per (currency, type) on or before `onOrBefore` (all
  * dates when absent), sorted by currency then type, starting after `after`.
  */
-export async function listLatestRates(
-	filter: {
-		currency?: string;
-		type?: string;
-		onOrBefore?: Date;
-		after?: { currency: string; type: string } | null;
-		take: number;
-	},
-): Promise<RateRow[]> {
+export async function listLatestRates(filter: {
+	currency?: string;
+	type?: string;
+	onOrBefore?: Date;
+	after?: { currency: string; type: string } | null;
+	take: number;
+}): Promise<RateRow[]> {
 	const where = [
 		filter.currency ? Prisma.sql`"currency" = ${filter.currency}` : null,
 		filter.type ? Prisma.sql`"type" = ${filter.type}` : null,
@@ -197,9 +195,11 @@ export type CurrencyInfo = {
  * Every currency the app knows, sorted by code, with the rate types stored
  * for it. Codes after `afterCode` only.
  */
-export async function listCurrencies(
-	filter: { kind?: "fiat" | "crypto"; afterCode?: string; take: number },
-): Promise<CurrencyInfo[]> {
+export async function listCurrencies(filter: {
+	kind?: "fiat" | "crypto";
+	afterCode?: string;
+	take: number;
+}): Promise<CurrencyInfo[]> {
 	const byCode = new Map(
 		[
 			...Object.values(CURRENCIES).map((c) => ({ c, kind: "fiat" as const })),
