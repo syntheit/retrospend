@@ -27,6 +27,7 @@ import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { adminDb, superUrl, withSuperuser } from "~/test/pg-harness";
+import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 import { makeScratchProject } from "~/test/scratch-project";
 import {
 	applyGrants,
@@ -438,21 +439,12 @@ describe("prisma/bootstrap/owner-role.sql", () => {
 		"utf8",
 	).replace(/^(BEGIN|COMMIT);$/gm, "");
 
-	const inRolledBack = (steps: (client: Client) => Promise<void>) =>
-		withSuperuser(async (client) => {
-			await client.query("BEGIN");
-			try {
-				await steps(client);
-			} finally {
-				await client.query("ROLLBACK");
-			}
-		});
-
 	it("takes CREATE on the database away from the owner if it holds it", async () => {
-		// The owner holds it only while the migrations run (prepare). With it the
-		// owner could CREATE EXTENSION a trusted extension into a schema it
-		// controls, and the install script would run as the superuser.
-		await inRolledBack(async (client) => {
+		// The owner never holds it: only a one-shot migration role does, on a
+		// brand-new install. With it the owner could CREATE EXTENSION a trusted
+		// extension into a schema it controls, and the install script would run
+		// as the superuser.
+		await inRolledBackTransaction(async (client) => {
 			const canCreate = async () =>
 				(
 					await client.query<{ can: boolean }>(
@@ -474,7 +466,7 @@ describe("prisma/bootstrap/owner-role.sql", () => {
 			await client.query(sql);
 			expect(await canCreate()).toBe(false);
 			expect(await ownerProblems(client)).toEqual([]);
-		});
+		}, superUrl());
 	});
 
 	it("reads and calls nothing of the owner's: an owner-made view in place of _prisma_migrations does not run", async () => {
@@ -482,7 +474,7 @@ describe("prisma/bootstrap/owner-role.sql", () => {
 		// a view whose condition calls a function. A superuser that reads the
 		// table runs that function with superuser rights (here it grants the
 		// owner pg_execute_server_program, which means COPY ... TO PROGRAM).
-		await inRolledBack(async (client) => {
+		await inRolledBackTransaction(async (client) => {
 			const holdsProgramRole = async () =>
 				(
 					await client.query<{ held: boolean }>(
@@ -529,11 +521,11 @@ describe("prisma/bootstrap/owner-role.sql", () => {
 			expect(warnings[0]).toMatch(/^WARNING: .*pg_execute_server_program/);
 			expect(await holdsProgramRole()).toBe(false);
 			expect(await ownerProblems(client)).toEqual([]);
-		});
+		}, superUrl());
 	});
 
 	it("refuses a role that holds a pg_ role, a role-creating role or another member, however it got there", async () => {
-		await inRolledBack(async (client) => {
+		await inRolledBackTransaction(async (client) => {
 			await client.query("CREATE ROLE a2_probe_creator CREATEROLE");
 			await client.query("CREATE ROLE a2_probe_relay");
 			await client.query("GRANT pg_read_server_files TO a2_probe_relay");
@@ -558,7 +550,7 @@ describe("prisma/bootstrap/owner-role.sql", () => {
 				"SELECT pg_has_role('retrospend_owner', 'retrospend_app', 'MEMBER') AS ok",
 			);
 			expect(rows[0]?.ok).toBe(true);
-		});
+		}, superUrl());
 	});
 
 	it("passes on a role that is as it should be", async () => {
@@ -571,7 +563,7 @@ describe("prisma/bootstrap/owner-role.sql", () => {
 	});
 
 	it("puts a drifted owner role back: no extra power, ADMIN OPTION on the app role", async () => {
-		await inRolledBack(async (client) => {
+		await inRolledBackTransaction(async (client) => {
 			await client.query(
 				"ALTER ROLE retrospend_owner CREATEROLE CREATEDB REPLICATION NOBYPASSRLS",
 			);
@@ -595,7 +587,7 @@ describe("prisma/bootstrap/owner-role.sql", () => {
 				rolcanlogin: true,
 				admin: true,
 			});
-		});
+		}, superUrl());
 	});
 
 	it("pins its search_path and keeps PUBLIC from creating objects in public", () => {
@@ -606,9 +598,7 @@ describe("prisma/bootstrap/owner-role.sql", () => {
 
 describe("the handover from an install the superuser migrated", () => {
 	it("finds every kind of object, hands them over, and a second run finds none", async () => {
-		const admin = await connect(superUrl());
-		try {
-			await admin.query("BEGIN");
+		await inRolledBackTransaction(async (admin) => {
 			await admin.query(`
 				ALTER TABLE public.expense OWNER TO CURRENT_USER;
 				ALTER TABLE public.api_event OWNER TO CURRENT_USER;
@@ -662,10 +652,7 @@ describe("the handover from an install the superuser migrated", () => {
 			for (const statement of statements) await admin.query(statement);
 			expect(await foreignOwned(admin)).toEqual([]);
 			expect(await handoverStatements(admin)).toEqual([]);
-		} finally {
-			await admin.query("ROLLBACK");
-			await admin.end();
-		}
+		}, superUrl());
 	});
 });
 
@@ -1192,18 +1179,8 @@ describe("the migration window on a brand-new install", () => {
 });
 
 describe("neverHandedOver (is this a brand-new, empty database?)", () => {
-	const inRolledBack = (steps: (client: Client) => Promise<void>) =>
-		withSuperuser(async (client) => {
-			await client.query("BEGIN");
-			try {
-				await steps(client);
-			} finally {
-				await client.query("ROLLBACK");
-			}
-		});
-
 	it("is no for a migrated database, and an old marker setting changes nothing", async () => {
-		await inRolledBack(async (client) => {
+		await inRolledBackTransaction(async (client) => {
 			expect(await neverHandedOver(client)).toBe(false);
 			// What an earlier version kept between starts: only a superuser can
 			// write it, and it means nothing now.
@@ -1214,11 +1191,11 @@ describe("neverHandedOver (is this a brand-new, empty database?)", () => {
 				`ALTER DATABASE ${rows[0]?.name} SET retrospend.fresh_install = 'on'`,
 			);
 			expect(await neverHandedOver(client)).toBe(false);
-		});
+		}, superUrl());
 	});
 
 	it("is yes only when nothing in any schema can carry code, and the unaccent extension does not count", async () => {
-		await inRolledBack(async (client) => {
+		await inRolledBackTransaction(async (client) => {
 			await client.query("DROP SCHEMA keystore CASCADE");
 			await client.query("DROP SCHEMA public CASCADE");
 			await client.query("CREATE SCHEMA public");
@@ -1226,7 +1203,7 @@ describe("neverHandedOver (is this a brand-new, empty database?)", () => {
 			// An extension's own objects are not the owner's.
 			await client.query("CREATE EXTENSION unaccent WITH SCHEMA public");
 			expect(await neverHandedOver(client)).toBe(true);
-		});
+		}, superUrl());
 	});
 
 	it("is no for a payload in any schema, however empty public is", async () => {
@@ -1241,7 +1218,7 @@ describe("neverHandedOver (is this a brand-new, empty database?)", () => {
 			"CREATE TABLE public.t (id int)",
 			"CREATE OPERATOR public.@@@ (leftarg = int, rightarg = int, function = int4pl)",
 		];
-		await inRolledBack(async (client) => {
+		await inRolledBackTransaction(async (client) => {
 			await client.query("DROP SCHEMA keystore CASCADE");
 			await client.query("DROP SCHEMA public CASCADE");
 			await client.query("CREATE SCHEMA public");
@@ -1252,6 +1229,6 @@ describe("neverHandedOver (is this a brand-new, empty database?)", () => {
 				await client.query("ROLLBACK TO SAVEPOINT p");
 			}
 			expect(await neverHandedOver(client)).toBe(true);
-		});
+		}, superUrl());
 	});
 });
