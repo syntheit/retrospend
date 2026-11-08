@@ -66,6 +66,8 @@ model User {
   language          String    @default("en")
   aiMode            AiMode    @default(LOCAL)
   externalAiAllowed Boolean?
+  // Must be on before any file goes to an AI provider; off for new accounts.
+  aiImportEnabled   Boolean   @default(false)
   aiUsages          AiUsage[]
 
   avatarPath              String?                  @db.VarChar(500)
