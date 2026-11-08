@@ -1,5 +1,5 @@
 {
-	"_why": "Every SECURITY DEFINER function in schema public, by who may execute it (definer-functions.pg.test.ts). appExecutable: retrospend_app calls it from an RLS policy, an invoker trigger function or scoped code. ownerOnly: trigger functions and the helpers they call; they run as the owner. A new definer function goes in exactly one list, and a migration that adds one grants EXECUTE to retrospend_app only for appExecutable.",
+	"_why": "Every SECURITY DEFINER function in schema public, by who may execute it (definer-functions.pg.test.ts). appExecutable: retrospend_app calls it from an RLS policy, an invoker trigger function or scoped code. ownerOnly: trigger functions and the helpers they call; they run as the owner. A new definer function goes in exactly one list, and a migration that adds one grants EXECUTE to retrospend_app only for appExecutable. invokerAppExecutable: the SECURITY INVOKER functions in public that retrospend_app may execute (policies, indexes and invoker triggers call them as retrospend_app); every other invoker function is owner only. Nothing in public is executable by PUBLIC.",
 	"appExecutable": [
 		"can_write_transaction_splits",
 		"claim_header_back_ok",
@@ -46,6 +46,7 @@
 		"budget_dirty_wealth",
 		"budget_party_user",
 		"claim_put_back_ok",
+		"keystore_drop_user_keys",
 		"payment_back_check",
 		"payment_note_back",
 		"payment_note_header",
@@ -61,5 +62,18 @@
 		"settlement_note_claim",
 		"split_participant_record_removal",
 		"split_participant_use_removal"
+	],
+	"invokerAppExecutable": [
+		"account_cap_counted",
+		"account_leg_apply",
+		"account_leg_moves_balance",
+		"account_usd_per_unit",
+		"budget_book_keep_creator",
+		"budget_dirty_month",
+		"currency_step",
+		"immutable_unaccent",
+		"project_participant_guard_update",
+		"shared_transaction_guard_update",
+		"split_participant_guard_update"
 	]
 }

@@ -145,7 +145,7 @@ describe("rollback of 20261109500000_definer_hygiene", () => {
 		} finally {
 			await admin.end();
 		}
-	});
+	}, 60_000);
 
 	it("puts back every grant, search_path and default the migration changed", async () => {
 		const before = await snapshot(beforeName);

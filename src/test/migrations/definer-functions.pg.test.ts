@@ -9,15 +9,17 @@ import lists from "./definer-functions.json";
 
 type FunctionRow = {
 	name: string;
+	definer: boolean;
 	publicExecute: boolean;
 	appExecute: boolean;
 	searchPath: string | null;
 };
 
 // Extension functions (unaccent) are not ours and keep their own grants.
-async function definerFunctions(): Promise<FunctionRow[]> {
+async function publicFunctions(): Promise<FunctionRow[]> {
 	return adminDb.$queryRaw<FunctionRow[]>`
 		SELECT p.proname AS name,
+		       p.prosecdef AS definer,
 		       (p.proacl IS NULL OR EXISTS (
 		         SELECT 1 FROM aclexplode(p.proacl) a
 		         WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE'
@@ -27,11 +29,15 @@ async function definerFunctions(): Promise<FunctionRow[]> {
 		         WHERE c LIKE 'search_path=%') AS "searchPath"
 		FROM pg_proc p
 		WHERE p.pronamespace = 'public'::regnamespace
-		  AND p.prosecdef
+		  AND p.prokind IN ('f', 'p')
 		  AND NOT EXISTS (
 		    SELECT 1 FROM pg_depend d WHERE d.objid = p.oid AND d.deptype = 'e'
 		  )
 		ORDER BY p.proname`;
+}
+
+async function definerFunctions(): Promise<FunctionRow[]> {
+	return (await publicFunctions()).filter((f) => f.definer);
 }
 
 type Tx = Parameters<Parameters<typeof adminDb.$transaction>[0]>[0];
@@ -80,6 +86,25 @@ describe("SECURITY DEFINER functions in public", () => {
 			.filter((f) => !f.searchPath || !/pg_temp\s*$/.test(f.searchPath))
 			.map((f) => `${f.name}: ${f.searchPath}`);
 		expect(bad).toEqual([]);
+	});
+});
+
+describe("SECURITY INVOKER functions in public", () => {
+	it("none is executable by PUBLIC", async () => {
+		const open = (await publicFunctions())
+			.filter((f) => !f.definer && f.publicExecute)
+			.map((f) => f.name);
+		expect(open).toEqual([]);
+	});
+
+	it("retrospend_app executes exactly the invokerAppExecutable ones", async () => {
+		const rows = (await publicFunctions()).filter((f) => !f.definer);
+		expect(
+			rows
+				.filter((f) => f.appExecute)
+				.map((f) => f.name)
+				.sort(),
+		).toEqual([...lists.invokerAppExecutable].sort());
 	});
 });
 
