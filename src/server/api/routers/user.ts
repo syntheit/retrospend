@@ -1,18 +1,13 @@
 import { userText } from "@retrospend/api-contract/common";
-import { TRPCError } from "@trpc/server";
-import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { z } from "zod";
-import { env } from "~/env";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { getPasswordChangedAlertTemplate } from "~/server/email-templates";
-import { emailSubject } from "~/server/email-copy";
-import { sendEmail } from "~/server/mailer";
 import {
 	deleteOwnAccount,
 	isLastAdminAccount,
 	previewOwnAccountDeletion,
 } from "~/server/services/account-deletion.service";
-import { validateAndProcessUsernameChange } from "~/server/services/username.service";
+import { changeOwnPassword } from "~/server/services/account-security.service";
+import { updateProfile } from "~/server/services/profile.service";
 
 export const userRouter = createTRPCRouter({
 	updateProfile: protectedProcedure
@@ -58,103 +53,34 @@ export const userRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { session, db } = ctx;
 
-			if (input.username !== session.user.username) {
-				await validateAndProcessUsernameChange(
-					db,
-					session.user.id,
-					session.user.username,
-					input.username,
-				);
-			}
-
-			if (input.email !== session.user.email) {
-				const existingEmail = await db.user.findUnique({
-					where: { email: input.email },
-				});
-				if (existingEmail) {
-					throw new TRPCError({
-						code: "CONFLICT",
-						message: "Email is already in use",
-					});
-				}
-			}
-
-			const updatedUser = await db.user.update({
-				where: { id: session.user.id },
-				data: {
+			// The same services as profile.update and PATCH /api/v1/profile: the
+			// app role cannot write the email, username or password columns, and a
+			// new email needs the current password.
+			const { user } = await updateProfile(
+				db,
+				{
+					id: session.user.id,
+					username: session.user.username,
+					email: session.user.email,
+				},
+				{
 					name: input.name,
 					username: input.username,
 					email: input.email,
+					currentPassword: input.currentPassword,
 				},
-				select: {
-					id: true,
-					name: true,
-					username: true,
-					email: true,
-				},
-			});
+			);
 
-			if (input.password?.trim()) {
-				const credentialAccount = await db.account.findFirst({
-					where: {
-						userId: session.user.id,
-						providerId: "credential",
-					},
+			if (input.password?.trim() && input.currentPassword) {
+				await changeOwnPassword({
+					userId: session.user.id,
+					keepSessionId: session.session.id,
+					currentPassword: input.currentPassword,
+					newPassword: input.password,
 				});
-
-				if (!credentialAccount?.password) {
-					throw new TRPCError({
-						code: "BAD_REQUEST",
-						message: "Password change is not available for this account",
-					});
-				}
-
-				const isCurrentValid = await verifyPassword({
-					password: input.currentPassword ?? "",
-					hash: credentialAccount.password,
-				});
-
-				if (!isCurrentValid) {
-					throw new TRPCError({
-						code: "BAD_REQUEST",
-						message: "Current password is incorrect",
-					});
-				}
-
-				const hashedPassword = await hashPassword(input.password);
-
-				await db.account.updateMany({
-					where: {
-						userId: session.user.id,
-						providerId: "credential",
-					},
-					data: {
-						password: hashedPassword,
-					},
-				});
-
-				// Invalidate all other sessions to force re-login
-				await db.session.deleteMany({
-					where: {
-						userId: session.user.id,
-						id: { not: session.session.id },
-					},
-				});
-
-				if (env.SMTP_HOST) {
-					const htmlContent = getPasswordChangedAlertTemplate();
-
-					sendEmail(
-						session.user.email,
-						emailSubject.passwordChanged,
-						htmlContent,
-					).catch((error) =>
-						console.error("Failed to send security alert:", error),
-					);
-				}
 			}
 
-			return updatedUser;
+			return user;
 		}),
 
 	previewAccountDeletion: protectedProcedure.query(async ({ ctx }) => ({

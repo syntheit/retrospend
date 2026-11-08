@@ -29,7 +29,7 @@ vi.mock("~/server/lib/email-delivery", () => ({
 	isEmailDeliveryEnabled: vi.fn().mockResolvedValue(false),
 }));
 vi.mock("~/server/services/username.service", () => ({
-	validateAndProcessUsernameChange: usernames.validate,
+	changeUsername: usernames.validate,
 }));
 
 import { createCallerFactory } from "~/server/api/trpc";
@@ -115,14 +115,11 @@ describe("profile.update", () => {
 
 	it("a username change is checked and written alone", async () => {
 		await callAndFlush(() => caller().update({ username: "Sofia2" }));
-		expect(usernames.validate).toHaveBeenCalledWith(
-			mockDb,
-			"user-1",
-			"sofi",
-			"sofia2",
-		);
+		expect(usernames.validate).toHaveBeenCalledWith("user-1", "sofia2");
+		// The username column is written by the owner-side service, never by
+		// the app role's update.
 		const data = mockDb.user.update.mock.calls[0]?.[0].data;
-		expect(data).toMatchObject({ username: "sofia2" });
+		expect(data.username).toBeUndefined();
 		expect(data.name).toBeUndefined();
 	});
 });

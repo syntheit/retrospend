@@ -59,5 +59,11 @@ else
   echo "Database migrations applied successfully!"
 fi
 
+# Give the app role its privileges. A database restored from a dump made with
+# --no-privileges has every table back with no grants, and its migration table
+# says nothing is pending, so this runs on every start. Safe to repeat.
+echo "Applying database grants..."
+./node_modules/.bin/prisma db execute --file prisma/grants/app-role.sql
+
 echo "Starting application..."
 exec "$@"

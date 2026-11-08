@@ -47,22 +47,18 @@ docker exec "$PROD_CONTAINER" sh -c \
 | docker exec -i "$DEV_CONTAINER" sh -c \
   "PGPASSWORD='$DEV_PASSWORD' psql -q -v ON_ERROR_STOP=0 -U '$DEV_USER' -d '$DEV_DB'" >/dev/null
 
-# The dump was taken with --no-privileges (keeps the restore clean), so re-grant
-# the app role its table privileges. The app connects and does SET ROLE
-# retrospend_app for row-level security; without these grants it gets
-# "permission denied". --clean recreated the tables, so this must run every sync.
-docker exec -i "$DEV_CONTAINER" psql -U "$DEV_USER" -d "$DEV_DB" >/dev/null 2>&1 <<'GRANTS'
-GRANT USAGE ON SCHEMA public TO retrospend_app;
-GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON ALL TABLES IN SCHEMA public TO retrospend_app;
-GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO retrospend_app;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO retrospend_app;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO retrospend_app;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO retrospend_app;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO retrospend_app;
--- The blanket grant above also reopens tables the app role may only read
--- (see migrations 20261022130000_ui_flags and 20261022130001_revoke_app_writes).
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON "app_settings", "exchange_rate", "password_reset_token" FROM retrospend_app;
-GRANTS
+# The dump was taken with --no-privileges (keeps the restore clean), so the
+# tables came back with no grants for the app role, which the app needs for
+# SET ROLE retrospend_app. prisma/grants/app-role.sql is the one place that
+# says what the role may do; applying it keeps dev as narrow as production.
+# --clean recreated the tables, so this must run every sync.
+# The file names every table of the current code, so when prod is behind this
+# checkout it stops (nothing is half applied) and `pnpm dev` applies it after
+# migrating.
+if ! docker exec -i "$DEV_CONTAINER" psql -q -v ON_ERROR_STOP=1 -U "$DEV_USER" -d "$DEV_DB" >/dev/null \
+  < "$(dirname "$0")/../prisma/grants/app-role.sql"; then
+  echo "Grants not applied yet: prod is behind this checkout. 'pnpm dev' migrates and applies them." >&2
+fi
 
 echo "Done. Dev db now mirrors production."
 echo "Layer any in-progress migrations on top with:  pnpm prisma migrate dev"

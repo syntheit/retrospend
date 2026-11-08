@@ -159,6 +159,7 @@ export async function setDefaultRateType(
 	await db.user.update({
 		where: { id: userId },
 		data: { defaultRateTypes: next },
+		select: { id: true },
 	});
 	return next;
 }

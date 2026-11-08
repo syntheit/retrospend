@@ -9,6 +9,7 @@ import {
 	publicProcedure,
 } from "~/server/api/trpc";
 import { isAllowAllUsersToGenerateInvitesEnabled } from "~/server/services/settings";
+import { Prisma } from "~prisma";
 
 /**
  * Generates a random 8-character invite code using uppercase letters and numbers
@@ -251,37 +252,29 @@ export const inviteRouter = createTRPCRouter({
 			});
 		}
 
-		let code: string;
-		let attempts = 0;
-		const maxAttempts = 10;
-
-		do {
-			if (attempts >= maxAttempts) {
-				throw new TRPCError({
-					code: "INTERNAL_SERVER_ERROR",
-					message:
-						"Failed to generate unique invite code after multiple attempts",
+		// A code another user already holds is invisible here (row-level
+		// security), so a clash shows up as a unique violation on create.
+		for (let attempt = 0; attempt < 10; attempt++) {
+			try {
+				const inviteCode = await db.inviteCode.create({
+					data: { code: generateInviteCode(), createdById: session.user.id },
 				});
+				return {
+					code: inviteCode.code,
+					createdAt: inviteCode.createdAt,
+				};
+			} catch (error) {
+				if (
+					!(error instanceof Prisma.PrismaClientKnownRequestError) ||
+					error.code !== "P2002"
+				)
+					throw error;
 			}
-			code = generateInviteCode();
-			attempts++;
-		} while (
-			await db.inviteCode.findUnique({
-				where: { code },
-			})
-		);
-
-		const inviteCode = await db.inviteCode.create({
-			data: {
-				code,
-				createdById: session.user.id,
-			},
+		}
+		throw new TRPCError({
+			code: "INTERNAL_SERVER_ERROR",
+			message: "Failed to generate unique invite code after multiple attempts",
 		});
-
-		return {
-			code: inviteCode.code,
-			createdAt: inviteCode.createdAt,
-		};
 	}),
 
 	deleteUserCode: protectedProcedure

@@ -37,7 +37,7 @@ vi.mock("~/server/services/settings", () => ({
 vi.mock("~/server/mailer", () => ({ sendEmail: vi.fn() }));
 vi.mock("~/server/storage", () => ({ getImageUrl: vi.fn(() => null) }));
 vi.mock("~/server/services/username.service", () => ({
-	validateAndProcessUsernameChange: vi.fn(),
+	changeUsername: vi.fn(),
 }));
 vi.mock("~/server/services/guest-migration.service", () => ({
 	migrateGuestDataForVerifiedUser: mockMigrate,

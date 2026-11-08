@@ -44,6 +44,7 @@ export async function replaceAvatar(
 	await db.user.update({
 		where: { id: userId },
 		data: { avatarPath: filePath },
+		select: { id: true },
 	});
 	if (before?.avatarPath) await deleteQuietly(before.avatarPath);
 	return { avatarUrl: getImageUrl(filePath) ?? filePath };
@@ -56,7 +57,11 @@ export async function removeAvatar(db: AppDb, userId: string): Promise<void> {
 	});
 	if (!user?.avatarPath) return;
 	await deleteQuietly(user.avatarPath);
-	await db.user.update({ where: { id: userId }, data: { avatarPath: null } });
+	await db.user.update({
+		where: { id: userId },
+		data: { avatarPath: null },
+		select: { id: true },
+	});
 }
 
 async function deleteQuietly(path: string) {

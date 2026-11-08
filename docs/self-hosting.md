@@ -115,6 +115,8 @@ age --decrypt -i retrospend-backup.key retrospend-20260101-030000.dump.age > res
 pg_restore --clean --if-exists --no-owner -d retrospend restore.dump
 ```
 
+The dumps carry no privileges, so a restored database has no grants for the app's database role. Restart the app after every restore: it applies `prisma/grants/app-role.sql` on each start, which gives the role back exactly what it needs. Until you restart, signed-in requests fail.
+
 Backups made before you set the key stay unencrypted until they age out.
 
 ### Data key backups
@@ -127,10 +129,11 @@ To restore, restore the main dump as usual, then the keystore dump. Do not pass 
 pg_restore --clean --if-exists --no-owner -d retrospend retrospend-20260101-030000.dump
 pg_restore --clean --if-exists --no-owner -d retrospend keystore-20260101-030000.dump
 psql -d retrospend -c 'DELETE FROM keystore.user_data_key k WHERE NOT EXISTS (SELECT 1 FROM public."user" u WHERE u.id = k."userId")'
-psql -d retrospend -c 'GRANT USAGE ON SCHEMA keystore TO retrospend_app; GRANT EXECUTE ON FUNCTION keystore.current_user_data_keys(), keystore.create_first_data_key(text, bigint) TO retrospend_app; REVOKE EXECUTE ON FUNCTION keystore.current_user_data_keys(), keystore.create_first_data_key(text, bigint) FROM PUBLIC'
 ```
 
-The delete removes keys of accounts that were deleted after the keystore dump was made, so a restore never brings a deleted account's key back. The grants are needed because the dumps carry no privileges; without them the app cannot reach its keys. If you restore a keystore dump that is older than the main one, accounts created in between have no key yet; the server makes one on first use.
+Restart the app afterwards: the grants the dumps do not carry, including the app's access to its own key, are applied on start.
+
+The delete removes keys of accounts that were deleted after the keystore dump was made, so a restore never brings a deleted account's key back. If you restore a keystore dump that is older than the main one, accounts created in between have no key yet; the server makes one on first use.
 
 If you restore a main dump into a new database and have no keystore dump (it is older than `BACKUP_RETENTION_DAYS`, or was lost), the database lists the keystore migration as applied but the schema is missing, and the server reports that the key store is missing. Make an empty one and restart:
 

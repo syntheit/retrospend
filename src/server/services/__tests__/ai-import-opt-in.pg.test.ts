@@ -84,11 +84,13 @@ describe("aiImportEnabled", () => {
 		await me.db.user.update({
 			where: { id: me.user.id },
 			data: { aiImportEnabled: true },
+			select: { id: true },
 		});
 		expect(await isAiImportEnabled(me.db, me.user.id)).toBe(true);
 		await me.db.user.update({
 			where: { id: me.user.id },
 			data: { aiImportEnabled: false },
+			select: { id: true },
 		});
 		expect(await isAiImportEnabled(me.db, me.user.id)).toBe(false);
 	});

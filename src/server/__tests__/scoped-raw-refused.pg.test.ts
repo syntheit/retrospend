@@ -12,7 +12,6 @@ import {
 	listLatestRates,
 } from "~/server/services/exchange-rate.service";
 import { ExpenseService } from "~/server/services/expense.service";
-import { validateAndProcessUsernameChange } from "~/server/services/username.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 
 const REFUSED = [
@@ -161,34 +160,5 @@ describe("exchange-rate raw reads", () => {
 		expect(typesOf("ARS")).toEqual(["blue", "official"]);
 		expect(typesOf("EUR")).toEqual(["official"]);
 		expect(typesOf("USD")).toEqual([]);
-	});
-});
-
-describe("username change", () => {
-	it("records the old name, frees a stale reservation of it and stamps the cooldown", async () => {
-		const me = await createTestUser();
-		const other = await createTestUser();
-		const current = me.user.username;
-		// Another user once held this name and left it: a stale history row.
-		await adminDb.usernameHistory.create({
-			data: { userId: other.user.id, previousUsername: current },
-		});
-
-		await validateAndProcessUsernameChange(
-			me.db,
-			me.user.id,
-			current,
-			`${current}_new`,
-		);
-
-		const history = await adminDb.usernameHistory.findMany({
-			where: { previousUsername: current },
-		});
-		expect(history.map((h) => h.userId)).toEqual([me.user.id]);
-		const after = await adminDb.user.findUniqueOrThrow({
-			where: { id: me.user.id },
-			select: { lastUsernameChangeAt: true },
-		});
-		expect(after.lastUsernameChangeAt).toBeInstanceOf(Date);
 	});
 });

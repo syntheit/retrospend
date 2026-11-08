@@ -21,7 +21,7 @@ import { hashToken } from "~/server/lib/tokens";
 import { emailSubject } from "~/server/email-copy";
 import { sendEmail } from "~/server/mailer";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
-import { validateAndProcessUsernameChange } from "~/server/services/username.service";
+import { changeUsername } from "~/server/services/username.service";
 
 type AppDb = typeof globalDb;
 
@@ -90,17 +90,19 @@ export interface ProfileChanges {
 	currentPassword?: string;
 }
 
-/** The identity columns a change writes besides the email. */
-type IdentityWrite = { name?: string; username?: string };
+/** The identity column a change writes besides the email. */
+type IdentityWrite = { name?: string };
 
-async function assertPassword(db: AppDb, userId: string, password?: string) {
+// The password hash is auth data: the app role cannot read the account table,
+// so it is read on the owner connection, for the caller's own id.
+async function assertPassword(userId: string, password?: string) {
 	if (!password) {
 		throw new TRPCError({
 			code: "BAD_REQUEST",
 			message: "Current password is required to change email",
 		});
 	}
-	const credential = await db.account.findFirst({
+	const credential = await globalDb.account.findFirst({
 		where: { userId, providerId: "credential" },
 	});
 	if (!credential?.password) {
@@ -196,29 +198,26 @@ export async function updateProfile(
 		throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid name" });
 	const write: IdentityWrite = {
 		...(name !== undefined ? { name } : {}),
-		...(input.username !== undefined
-			? { username: input.username.toLowerCase() }
-			: {}),
 	};
-	if (write.username !== undefined && write.username !== current.username) {
-		await validateAndProcessUsernameChange(
-			db,
-			userId,
-			current.username,
-			write.username,
-		);
-	}
+	const username = input.username?.toLowerCase();
 	const email = input.email?.toLowerCase().trim();
 	const newEmail = email !== undefined && email !== current.email ? email : null;
+	// Everything that can refuse comes before the first write.
 	if (newEmail !== null) {
-		await assertPassword(db, userId, input.currentPassword);
+		await assertPassword(userId, input.currentPassword);
 		await assertEmailFree(db, userId, newEmail);
+	}
+	if (username !== undefined && username !== current.username) {
+		await changeUsername(userId, username);
 	}
 	if (newEmail !== null && (await isEmailDeliveryEnabled())) {
 		const user = await startEmailChange(db, current, write, newEmail);
 		return { emailChangePending: true, user };
 	}
-	const user = await db.user.update({
+	// The email column is not writable by the app role: an immediate change
+	// (no email delivery) goes through the owner connection, for the caller's
+	// own id only.
+	const user = await (newEmail !== null ? globalDb : db).user.update({
 		where: { id: userId },
 		data: { ...write, ...(newEmail !== null ? { email: newEmail } : {}) },
 		select: IDENTITY_SELECT,
@@ -237,6 +236,7 @@ export async function cancelPendingEmailChange(db: AppDb, userId: string) {
 			pendingEmailToken: null,
 			pendingEmailExpiresAt: null,
 		},
+		select: { id: true },
 	});
 }
 

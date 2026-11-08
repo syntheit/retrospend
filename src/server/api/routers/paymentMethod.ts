@@ -2,6 +2,7 @@ import { userTextOrEmpty } from "@retrospend/api-contract/common";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { db } from "~/server/db";
+import { logEventAsync } from "~/server/services/audit.service";
 import { participantRefSchema } from "~/server/services/payments/input";
 import { sharesExpenseWith } from "~/server/services/people/co-participants";
 
@@ -79,15 +80,14 @@ export const paymentMethodRouter = createTRPCRouter({
 						});
 					}
 				}
+			});
 
-				// Log the change
-				await tx.eventLog.create({
-					data: {
-						eventType: "SETTINGS_UPDATED",
-						userId,
-						metadata: { section: "payment_methods", count: methods.length },
-					},
-				});
+			// The audit log is written on the owner connection after the save: the
+			// app role has no access to event_log.
+			logEventAsync({
+				eventType: "SETTINGS_UPDATED",
+				userId,
+				metadata: { section: "payment_methods", count: methods.length },
 			});
 
 			return { success: true };

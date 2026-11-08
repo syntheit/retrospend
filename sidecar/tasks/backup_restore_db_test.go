@@ -17,7 +17,8 @@ import (
 // TestKeystoreRestoreSteps runs the restore steps in docs/self-hosting.md
 // ("Data key backups") against the dumps this package really writes: a fresh
 // database restored main dump first, then the keystore dump and the orphan
-// delete, then an in-place --clean restore of both. It needs a migrated test
+// delete, the grants file the app applies on start, then an in-place --clean
+// restore of both. It needs a migrated test
 // database (SIDECAR_TEST_DATABASE_URL, as the other *_db_test.go files do) and
 // pg_dump, pg_restore on PATH, and it creates and drops one scratch database,
 // so it lives here and not in the vitest pg suite: a DROP DATABASE holds a
@@ -151,15 +152,39 @@ func TestKeystoreRestoreSteps(t *testing.T) {
 	if n := count(`SELECT count(*) FROM pg_class WHERE oid = 'keystore.user_data_key'::regclass AND relrowsecurity`); n != 1 {
 		t.Fatal("row-level security did not come back")
 	}
-	// The dumps carry no privileges, so the documented grants restore the app
-	// role's way in: its own key through the functions, nothing else.
-	mustExec(t, scratch, docsGrants)
+	// The dumps carry no privileges: the app role cannot even read a user until
+	// the grants file, which the app applies on every start, is applied.
+	if _, err := asAppUserErr(scratch, userA, `SELECT count(*) FROM "user"`); err == nil {
+		t.Fatal("the app role can read user before any grants")
+	}
+	// A definer function that only triggers call is open to PUBLIC after a
+	// restore, until the file closes it.
+	const partyUserExecutors = `SELECT count(*) FROM pg_proc p
+		WHERE p.pronamespace = 'public'::regnamespace AND p.proname = 'budget_party_user'
+		  AND (has_function_privilege('retrospend_app', p.oid, 'EXECUTE')
+		       OR EXISTS (SELECT 1 FROM aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
+		                  WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE'))`
+	if n := count(partyUserExecutors); n != 1 {
+		t.Fatalf("budget_party_user should be open to PUBLIC after a restore, executors: %d", n)
+	}
+	mustExec(t, scratch, appRoleGrants(t))
+	if n := count(partyUserExecutors); n != 0 {
+		t.Fatal("budget_party_user is still executable by retrospend_app or PUBLIC after the grants file")
+	}
+	if got := asAppUser(t, scratch, userA, `SELECT count(*) FROM "user"`); got < 1 {
+		t.Fatalf("the app role sees %d users after the grants", got)
+	}
+	if _, err := asAppUserErr(scratch, userA, `SELECT count("pendingEmailToken") FROM "user"`); err == nil {
+		t.Fatal("the app role can read the pending email token")
+	}
 	if got := asAppUser(t, scratch, userA, `SELECT count(*) FROM keystore.current_user_data_keys()`); got != 1 {
 		t.Fatalf("the app role sees %d keys through the function, want 1", got)
 	}
 	if _, err := asAppUserErr(scratch, userA, `SELECT count(*) FROM keystore.user_data_key`); err == nil {
 		t.Fatal("the app role can read the keystore table")
 	}
+	// Applying it again changes nothing and does not fail.
+	mustExec(t, scratch, appRoleGrants(t))
 
 	// The restored database keeps the cascade.
 	mustExec(t, scratch, `DELETE FROM "user" WHERE id = $1`, userA)
@@ -185,10 +210,16 @@ func TestKeystoreRestoreSteps(t *testing.T) {
 	}
 }
 
-// docsGrants is the grant step from docs/self-hosting.md, "Data key backups".
-const docsGrants = `GRANT USAGE ON SCHEMA keystore TO retrospend_app;
-GRANT EXECUTE ON FUNCTION keystore.current_user_data_keys(), keystore.create_first_data_key(text, bigint) TO retrospend_app;
-REVOKE EXECUTE ON FUNCTION keystore.current_user_data_keys(), keystore.create_first_data_key(text, bigint) FROM PUBLIC`
+// appRoleGrants is prisma/grants/app-role.sql, the file docker-entrypoint.sh
+// applies after the migrations on every start.
+func appRoleGrants(t *testing.T) string {
+	t.Helper()
+	sql, err := os.ReadFile(filepath.Join("..", "..", "prisma", "grants", "app-role.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(sql)
+}
 
 // asAppUserErr runs a count query the way the scoped client does: in a
 // transaction with the user setting and the app role.

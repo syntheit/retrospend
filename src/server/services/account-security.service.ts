@@ -89,6 +89,22 @@ export async function changeOwnPassword(input: {
 	return { signedOut: ended.count };
 }
 
+/**
+ * Replaces the pending email verification token for an address. Verification
+ * tokens are auth data the app role cannot touch, so this runs on the owner
+ * connection; the caller passes the signed-in user's own address.
+ */
+export async function storeEmailVerificationToken(
+	identifier: string,
+	token: string,
+	expires: Date,
+): Promise<void> {
+	await db.$transaction([
+		db.verificationToken.deleteMany({ where: { identifier } }),
+		db.verificationToken.create({ data: { identifier, token, expires } }),
+	]);
+}
+
 export type SessionKind = "web" | "mobile" | "device";
 
 export type OwnSession = {

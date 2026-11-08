@@ -19,6 +19,7 @@ import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
 import { emailSubject } from "~/server/email-copy";
 import { sendEmail } from "~/server/mailer";
 
+import { storeEmailVerificationToken } from "~/server/services/account-security.service";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 
@@ -248,6 +249,7 @@ export const authRouter = createTRPCRouter({
 					consentVersion: input.consentVersion,
 					consentIp: ip === "unknown" ? null : ip,
 				},
+				select: { id: true },
 			});
 
 			return { success: true };
@@ -266,29 +268,16 @@ export const authRouter = createTRPCRouter({
 
 		const user = await db.user.findUnique({
 			where: { id: session.user.id },
+			select: { email: true, emailVerified: true },
 		});
 
 		if (!user || user.emailVerified || !(await isEmailDeliveryEnabled())) {
 			return { success: true };
 		}
 
-		// Clear existing tokens
-		await db.verificationToken.deleteMany({
-			where: { identifier: user.email },
-		});
-
-		// Generate verification token
 		const token = crypto.randomBytes(32).toString("hex");
 		const expires = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24 hours
-
-		// Insert into VerificationToken table
-		await db.verificationToken.create({
-			data: {
-				identifier: user.email,
-				token,
-				expires,
-			},
-		});
+		await storeEmailVerificationToken(user.email, token, expires);
 
 		// Dispatch email
 		const verifyUrl = `${env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/verify?token=${token}`;
