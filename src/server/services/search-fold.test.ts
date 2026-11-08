@@ -3,6 +3,7 @@ import { Keyring, sealField } from "../crypto/field-crypto";
 import {
 	foldUnaccentIlike,
 	ilikeContains,
+	ilikeEquals,
 	pgLower,
 	readUserText,
 	unaccent,
@@ -76,6 +77,32 @@ describe("ilikeContains", () => {
 		const started = Date.now();
 		expect(has("a".repeat(5000))).toBe(false);
 		expect(Date.now() - started).toBeLessThan(500);
+	});
+});
+
+describe("ilikeEquals", () => {
+	it("matches the whole text, in any case, without folding accents", () => {
+		expect(ilikeEquals("COFFEE")("coffee")).toBe(true);
+		expect(ilikeEquals("coffee")("coffee shop")).toBe(false);
+		expect(ilikeEquals("coffee")("a coffee")).toBe(false);
+		expect(ilikeEquals("cafe")("café")).toBe(false);
+		expect(ilikeEquals("coffee")(" coffee")).toBe(false);
+	});
+
+	it("reads percent, underscore and backslash as ILIKE does", () => {
+		expect(ilikeEquals("50%")("50 off")).toBe(true);
+		expect(ilikeEquals("50_ off")("50% off")).toBe(true);
+		expect(ilikeEquals("50\\% off")("50% off")).toBe(true);
+		expect(ilikeEquals("50\\% off")("50x off")).toBe(false);
+		expect(ilikeEquals("a\\b")("ab")).toBe(true);
+		expect(ilikeEquals("a\\b")("a\\b")).toBe(false);
+	});
+
+	it("matches nothing for a lone trailing backslash", () => {
+		expect(ilikeEquals("a\\")("a\\")).toBe(false);
+		expect(ilikeEquals("a\\")("a")).toBe(false);
+		// An escaped backslash is one literal backslash.
+		expect(ilikeEquals("a\\\\")("a\\")).toBe(true);
 	});
 });
 

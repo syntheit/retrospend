@@ -386,8 +386,14 @@ export class ExpenseService {
 	async findDuplicate(
 		userId: string,
 		input: Parameters<typeof findDuplicateExpense>[2],
+		options?: Parameters<typeof findDuplicateExpense>[3],
 	) {
-		return findDuplicateExpense(this.db as PrismaClient, userId, input);
+		return findDuplicateExpense(
+			this.db as PrismaClient,
+			userId,
+			input,
+			options,
+		);
 	}
 
 	async getExpensesByDate(userId: string, date: Date) {

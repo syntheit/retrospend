@@ -59,8 +59,22 @@ export function foldUnaccentIlike(text: string): string {
  * a hostile q cannot make it slow.
  */
 export function ilikeContains(query: string): (text: string) => boolean {
+	return ilikePattern(`%${query}%`);
+}
+
+/**
+ * `text ILIKE pattern`, which is what Prisma's `equals` with `mode:
+ * "insensitive"` runs on the whole value: no wildcards are escaped, so `%` and
+ * `_` in q are wildcards and a backslash escapes the next character. Postgres
+ * rejects a pattern ending in a lone backslash; this matches nothing instead.
+ */
+export function ilikeEquals(query: string): (text: string) => boolean {
+	return ilikePattern(query);
+}
+
+function ilikePattern(raw: string): (text: string) => boolean {
 	type Token = { star: true } | { star: false; any: boolean; ch: string };
-	const pattern = [...pgLower(`%${query}%`)];
+	const pattern = [...pgLower(raw)];
 	const tokens: Token[] = [];
 	for (let i = 0; i < pattern.length; i++) {
 		const c = pattern[i] as string;

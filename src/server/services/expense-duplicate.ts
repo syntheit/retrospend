@@ -3,7 +3,9 @@ import {
 	parseDateOnlyIn,
 	startOfNextDayIn,
 } from "@retrospend/domain/time-zone";
+import type { Keyring } from "~/server/crypto/field-crypto";
 import type { PrismaClient } from "~prisma";
+import { ilikeEquals, readUserText, searchesInApp } from "./search-fold";
 import { listedEntryWhere } from "./spending";
 
 /**
@@ -11,6 +13,19 @@ import { listedEntryWhere } from "./spending";
  * the duplicate warning: 50 EUR is not a duplicate of 50 USD. `amount` as
  * decimal text is compared exactly; with a `timeZone` the day is the user's,
  * not the server's. Without a `currency`, any currency matches.
+ *
+ * Titles may be ciphertext (docs/roadmap/e2ee-spike.md, lane D), so with a
+ * `keyring` (the same switch as search and title suggestions, `searchesInApp`)
+ * Postgres filters by user, amount, currency and day only, and the titles of
+ * those few rows are opened and compared here. The candidates are one day of
+ * one amount in one currency, so no row window is needed. Without a keyring
+ * Postgres compares the title too, as before. Both compare titles as Prisma's
+ * case-insensitive `equals` does, which is `ILIKE` on the whole title
+ * (`ilikeEquals`): per code point, no trimming, no accent folding, and a `%`,
+ * `_` or backslash in the asked title is a pattern character, not text. That
+ * last part is a quirk of the old query kept on purpose so both paths agree
+ * with it; a title of just `%` is a duplicate of anything with that amount. The
+ * `title` returned is the opened text.
  */
 export async function findDuplicateExpense(
 	db: PrismaClient,
@@ -22,6 +37,7 @@ export async function findDuplicateExpense(
 		date: Date;
 		timeZone?: string;
 	},
+	options: { keyring?: Keyring } = {},
 ) {
 	let startOfDay: Date;
 	let endOfDay: Date;
@@ -40,15 +56,34 @@ export async function findDuplicateExpense(
 		endOfDay.setHours(23, 59, 59, 999);
 	}
 
-	return await db.expense.findFirst({
-		where: {
-			// Money in never makes an expense look like a duplicate.
-			...listedEntryWhere(userId),
-			title: { equals: input.title, mode: "insensitive" },
-			amount: { equals: input.amount },
-			...(input.currency ? { currency: input.currency } : {}),
-			date: { gte: startOfDay, lte: endOfDay },
-		},
+	const { keyring } = options;
+	const where = {
+		// Money in never makes an expense look like a duplicate.
+		...listedEntryWhere(userId),
+		amount: { equals: input.amount },
+		...(input.currency ? { currency: input.currency } : {}),
+		date: { gte: startOfDay, lte: endOfDay },
+	};
+
+	if (!searchesInApp(keyring))
+		return await db.expense.findFirst({
+			where: { ...where, title: { equals: input.title, mode: "insensitive" } },
+			select: { id: true, title: true },
+		});
+
+	const matches = ilikeEquals(input.title);
+	const rows = await db.expense.findMany({
+		where,
+		orderBy: [{ date: "desc" }, { id: "desc" }],
 		select: { id: true, title: true },
 	});
+	for (const row of rows) {
+		const title = readUserText(keyring, row.title, {
+			table: "expense",
+			column: "title",
+			rowId: row.id,
+		});
+		if (matches(title)) return { id: row.id, title };
+	}
+	return null;
 }
