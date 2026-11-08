@@ -32,6 +32,8 @@ import {
 	addIncomeSchema,
 	createAccountSchema,
 	createTransferSchema,
+	recreateIncomeSchema,
+	recreateTransferSchema,
 } from "~/server/services/accounts/input";
 import {
 	expenseFormSchema,
@@ -451,6 +453,28 @@ describe("restore payloads", () => {
 				notes: stored,
 				projectId: null,
 				...split,
+			}).success,
+		).toBe(true);
+	});
+
+	it("accept a stored control character when an income or a move comes back", () => {
+		const stored = "legacy\u000bimport\u0001";
+		expect(
+			recreateTransferSchema.safeParse({
+				id: "m1",
+				fromAccountId: "a1",
+				toAccountId: "a2",
+				fromAmount: "5",
+				note: stored,
+			}).success,
+		).toBe(true);
+		expect(
+			recreateIncomeSchema.safeParse({
+				id: "i1",
+				title: stored,
+				amount: "5",
+				currency: "ARS",
+				description: stored,
 			}).success,
 		).toBe(true);
 	});
