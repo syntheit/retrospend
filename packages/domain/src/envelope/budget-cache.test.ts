@@ -21,6 +21,7 @@ import {
 import { monthsFrom } from "./months";
 import type { ReplayEffect } from "./splits-replay";
 import type { MissingRate } from "./types";
+import type { ApproximateRow } from "./valuer";
 
 const START = 202601;
 const CURRENT = 202610;
@@ -282,5 +283,51 @@ describe("BudgetCheckpointCache", () => {
 		});
 		expect(warm.startedAt).toBe(202608);
 		expect(warm.missingRates).toEqual([missing]);
+	});
+
+	it("a checkpoint written by a warm pass inherits what the one it started at carried, through a month rollover", () => {
+		const b = book(11);
+		const missing: MissingRate = {
+			currency: "USD",
+			rateType: "official",
+			date: "2026-03-10",
+			rowId: "usd-march",
+		};
+		const approx: ApproximateRow = { rowId: "usd-april", date: "2026-04-10" };
+		const cache = new BudgetCheckpointCache(hash);
+		// A cold pass loads every row, so its checkpoints carry March's missing rate and April's approximate row.
+		cache.run(inputOf(b), {
+			closedMonths: CLOSED,
+			missingThrough: (m) => (m >= 202603 ? [missing] : []),
+			approximateThrough: (m) => (m >= 202604 ? [approx] : []),
+		});
+		// September's checkpoint goes stale, so the warm pass starts at August.
+		cache.markDirty(202609);
+		// The device now loads only rows after August: what it values reports nothing.
+		const warm = cache.run(
+			{ ...inputOf(b), activity: b.activity.filter((a) => a.month > 202608) },
+			{
+				closedMonths: CLOSED,
+				missingThrough: () => [],
+				approximateThrough: () => [],
+			},
+		);
+		expect(warm.startedAt).toBe(202608);
+		// October closes. The pass starts at the September checkpoint the warm pass wrote.
+		const rolled = cache.run(
+			{
+				...inputOf(b),
+				currentMonth: 202611,
+				activity: b.activity.filter((a) => a.month > 202609),
+			},
+			{
+				closedMonths: monthsFrom(START, 202610),
+				missingThrough: () => [],
+				approximateThrough: () => [],
+			},
+		);
+		expect(rolled.startedAt).toBe(202609);
+		expect(rolled.missingRates).toEqual([missing]);
+		expect(rolled.approximate).toEqual([approx]);
 	});
 });

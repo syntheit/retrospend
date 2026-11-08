@@ -108,8 +108,10 @@ export class BudgetCheckpointCache {
 			this.byMonth.set(
 				m,
 				checkpointAt(state, m, {
-					missingRates: p.missingThrough?.(m) ?? [],
-					approximate: p.approximateThrough?.(m) ?? [],
+					// The pass started at `cp`, so the rows behind it were not loaded:
+					// what it carried goes into every checkpoint written after it.
+					missingRates: merged(cp?.missingRates, p.missingThrough?.(m)),
+					approximate: merged(cp?.approximate, p.approximateThrough?.(m)),
 					print,
 				}),
 			);
@@ -121,4 +123,15 @@ export class BudgetCheckpointCache {
 			approximate: cp ? [...cp.approximate] : [],
 		};
 	}
+}
+
+/** The union of two lists by value, `inherited` first. */
+function merged<T>(inherited: readonly T[] = [], own: readonly T[] = []): T[] {
+	const seen = new Set<string>();
+	return [...inherited, ...own].filter((x) => {
+		const key = JSON.stringify(x);
+		if (seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
 }
