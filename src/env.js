@@ -57,6 +57,9 @@ export const env = createEnv({
 		// /.well-known/assetlinks.json so the phone trusts the app for this
 		// domain (app links, password manager autofill).
 		ANDROID_APP_CERT_SHA256: z.string().optional(),
+		// Where to report a vulnerability, comma-separated mailto: or https:
+		// links. Served in /.well-known/security.txt.
+		SECURITY_CONTACT: z.string().optional(),
 	},
 
 	/**
@@ -117,6 +120,7 @@ export const env = createEnv({
 		FCM_SERVICE_ACCOUNT: process.env.FCM_SERVICE_ACCOUNT,
 		FCM_SERVICE_ACCOUNT_FILE: process.env.FCM_SERVICE_ACCOUNT_FILE,
 		ANDROID_APP_CERT_SHA256: process.env.ANDROID_APP_CERT_SHA256,
+		SECURITY_CONTACT: process.env.SECURITY_CONTACT,
 	},
 	/**
 	 * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

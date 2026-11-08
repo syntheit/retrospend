@@ -66,6 +66,7 @@ Set these in `.env`. Runtime settings are read at start; nothing is baked into t
 | `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID` | No | | Apple push (iPhone and iPad); all four APNs settings are needed |
 | `APNS_KEY` or `APNS_KEY_FILE` | No | | The APNs auth key (`.p8`) as text (newlines written `\n`) or as a file path |
 | `ANDROID_APP_CERT_SHA256` | No | | More SHA-256 fingerprint(s), comma-separated, of Android app signing certificates, besides the release key. Served in `/.well-known/assetlinks.json` for app links and password manager autofill |
+| `SECURITY_CONTACT` | No | project's GitHub report form | Where to report a vulnerability, as comma-separated `mailto:` or `https:` links. Served with `PUBLIC_URL` as the canonical address in `/.well-known/security.txt`; set it to your own address |
 | `FCM_SERVICE_ACCOUNT` or `FCM_SERVICE_ACCOUNT_FILE` | No | | Firebase service account key (JSON or file path) for Android phones with Google Play services |
 | `FCM_PROJECT_ID` | No | from the key | Firebase project, if it differs from the key's |
 

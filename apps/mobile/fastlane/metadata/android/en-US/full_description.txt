@@ -1,0 +1,28 @@
+Retrospend is a personal finance app for your own server. It tracks expenses, runs your budget, splits costs with other people and keeps your net worth, in any currency. This app is the Android client: connect it to your own Retrospend server, or to the free hosted one at retrospend.app.
+
+<b>Money</b>
+<ul>
+<li>Expenses and income with categories, filters and search</li>
+<li>Envelope budgets in several styles</li>
+<li>Recurring expenses and income</li>
+<li>Wealth: accounts, assets and liabilities, and net worth over time</li>
+<li>Every amount keeps its original currency, with exchange rate types where they matter</li>
+<li>Money actions show what will change before you save, and can be undone</li>
+</ul>
+
+<b>Shared costs</b>
+<ul>
+<li>Split with anyone. People without an account join through a link.</li>
+<li>One balance per person, across every project</li>
+<li>Projects for trips, households and group purchases</li>
+<li>Settle up by recording a payment</li>
+</ul>
+
+<b>Yours</b>
+<ul>
+<li>Works without Google services. Notifications are checked on the phone.</li>
+<li>Your data stays on your server, and you can export it</li>
+<li>Free and open source under the GPL-3.0</li>
+</ul>
+
+To use the app you need a Retrospend server. Steps for running your own are at github.com/syntheit/retrospend.
