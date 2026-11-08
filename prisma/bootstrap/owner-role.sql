@@ -11,11 +11,12 @@
 --   2. lets the owner grant retrospend_app (WITH ADMIN OPTION), which an old
 --      migration does with GRANT retrospend_app TO CURRENT_USER;
 --   3. takes CREATE on the database away from the owner if it somehow holds it.
---      scripts/db-owner gives it back only on a brand-new install, while
---      `prisma migrate deploy` runs (the first migration says CREATE SCHEMA IF
---      NOT EXISTS, which Postgres checks against CREATE before it looks whether
---      the schema exists), and takes it away again in a `finally`. An upgrade
---      never gets it, so no pending migration may need it
+--      The owner never holds it. scripts/db-owner gives it only to a one-shot
+--      migration role on a brand-new, empty install, while `prisma migrate
+--      deploy` runs (the first migration says CREATE SCHEMA IF NOT EXISTS, which
+--      Postgres checks against CREATE before it looks whether the schema
+--      exists), and drops that role in a `finally`. An upgrade gets no CREATE for
+--      anyone, so no pending migration may need it
 --      (src/test/migrations/database-create.test.ts): anything that does goes in
 --      this file. With CREATE the owner could CREATE EXTENSION a trusted
 --      extension into a schema it controls, whose install script then runs as
@@ -116,5 +117,21 @@ $extension$;
 CREATE SCHEMA IF NOT EXISTS keystore AUTHORIZATION retrospend_owner;
 
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+
+-- What the owner creates is granted to nobody by default: tables, sequences and
+-- functions made by the owner reach retrospend_app only by a grant of their own,
+-- and functions are not executable by PUBLIC. The statements are those of the
+-- grants file (prisma/grants/app-role.sql, section "Default privileges") for this
+-- role. They are here too because a brand-new install is migrated by a one-shot
+-- role whose own default privileges are dropped with it, and the owner has none
+-- of its own until the grants file runs. Nothing is read from the owner's objects.
+ALTER DEFAULT PRIVILEGES FOR ROLE retrospend_owner IN SCHEMA public REVOKE ALL ON TABLES FROM retrospend_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE retrospend_owner IN SCHEMA public REVOKE ALL ON SEQUENCES FROM retrospend_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE retrospend_owner IN SCHEMA public REVOKE ALL ON FUNCTIONS FROM retrospend_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE retrospend_owner REVOKE ALL ON TABLES FROM retrospend_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE retrospend_owner REVOKE ALL ON SEQUENCES FROM retrospend_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE retrospend_owner REVOKE ALL ON FUNCTIONS FROM PUBLIC, retrospend_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE retrospend_owner REVOKE ALL ON TABLES FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE retrospend_owner REVOKE ALL ON SEQUENCES FROM PUBLIC;
 
 COMMIT;

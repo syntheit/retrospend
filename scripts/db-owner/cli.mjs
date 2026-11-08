@@ -2,9 +2,10 @@
 //
 //   prepare     The start's database work. Reads DATABASE_URL (and
 //               DATABASE_OWNER_PASSWORD). With a superuser URL it creates the
-//               owner role and hands it the objects, runs the migrations as
-//               the owner (the owner holds CREATE on the database for that
-//               long only), applies the grants file as the owner, and prints
+//               owner role and hands it the objects, runs the migrations (a
+//               brand-new install as a one-shot role that holds CREATE on the
+//               database for that long, an upgrade as the owner), applies the
+//               grants file as the owner, and prints
 //               the owner's URL on stdout, and nothing else there. With any
 //               other URL it migrates and applies the grants as given and
 //               prints nothing. Messages and the tools' output go to stderr.

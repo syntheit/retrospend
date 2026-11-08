@@ -1,9 +1,9 @@
-// A pending migration must not need CREATE on the database. The migration role
-// (retrospend_owner) holds it only on a brand-new install, while the migrations
-// run; an upgrade never gets it, because whatever the owner has planted in its
-// own objects (a view, a trigger) runs during the migrations, and with CREATE it
-// could install a trusted extension into a schema it controls, whose install
-// script runs as the superuser (scripts/db-owner, prisma/bootstrap).
+// A pending migration must not need CREATE on the database. Only a one-shot role
+// holds it, on a brand-new install, while the migrations run; an upgrade gets no
+// CREATE for anyone, because whatever the owner has planted in its own objects (a
+// view, a trigger) runs during the migrations, and with CREATE it could install a
+// trusted extension into a schema it controls, whose install script runs as the
+// superuser (scripts/db-owner, prisma/bootstrap).
 //
 // Postgres checks CREATE on the database for CREATE SCHEMA and CREATE
 // EXTENSION even with IF NOT EXISTS and even when the object exists. So in a

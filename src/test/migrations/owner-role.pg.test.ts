@@ -35,6 +35,7 @@ import {
 	handover,
 	handoverStatements,
 	migrateWithRecovery,
+	migratorRoleName,
 	neverHandedOver,
 	ownerProblems,
 	prepare,
@@ -63,6 +64,61 @@ async function ownerCanCreateIn(superUrl: string): Promise<boolean> {
 	} finally {
 		await client.end();
 	}
+}
+
+/** The name of the database a URL points at. */
+const databaseOf = (url: string) =>
+	decodeURIComponent(new URL(url).pathname.slice(1));
+
+/** Whether the one-shot migration role of the database `superUrl` names exists. */
+async function migratorExists(superUrl: string): Promise<boolean> {
+	const client = await connect(superUrl);
+	try {
+		const { rows } = await client.query(
+			"SELECT 1 FROM pg_roles WHERE rolname = $1",
+			[migratorRoleName(databaseOf(superUrl))],
+		);
+		return rows.length > 0;
+	} finally {
+		await client.end();
+	}
+}
+
+/**
+ * A session of the owner that keeps trying, until stopped, for what the
+ * migrations hold during a brand-new install's window: CREATE on the database
+ * (and with it a schema, and a trusted extension whose script runs as the
+ * superuser). Every attempt that is not refused is a win for the attacker.
+ */
+function raceForCreate(session: Client) {
+	let attempts = 0;
+	const wins: string[] = [];
+	let stop = false;
+	const loop = (async () => {
+		while (!stop) {
+			attempts++;
+			for (const sql of [
+				"CREATE SCHEMA a2_zz",
+				"CREATE EXTENSION hstore WITH SCHEMA a2_zz",
+				"CREATE EXTENSION hstore",
+				"SELECT 1 WHERE has_database_privilege(current_user, current_database(), 'CREATE')",
+			]) {
+				try {
+					const result = await session.query(sql);
+					if (result.command !== "SELECT" || result.rowCount) wins.push(sql);
+				} catch {
+					// refused
+				}
+			}
+		}
+	})();
+	return {
+		finish: async () => {
+			stop = true;
+			await loop;
+			return { attempts, wins };
+		},
+	};
 }
 
 /** Every object in public or keystore that retrospend_owner does not own, extension members excepted. */
@@ -316,10 +372,50 @@ describe("ownership", () => {
 		}
 	});
 
-	it("is done for every object the migrations created: current_user was the owner while they ran", () => {
-		// The template was migrated by `prisma migrate deploy` signed in as
-		// retrospend_owner. A second bootstrap after that handed over nothing.
+	it("is done for every object the migrations created: the migration role made them and they went to the owner", () => {
+		// The template was migrated by `prisma migrate deploy` as the one-shot
+		// migration role of a new install; REASSIGN OWNED gave everything it made
+		// to retrospend_owner. A second bootstrap handed over nothing.
 		expect(inject("pgFresh").handedOverAfterMigrate).toBe(0);
+	});
+
+	it("leaves no trace of the one-shot migration role: every ACL names the owner as grantor, and the role is gone", async () => {
+		// The template was migrated by a role that no longer exists. REASSIGN
+		// OWNED rewrote the owner and grantor entries of every ACL it left behind.
+		const client = await connect(process.env.DATABASE_URL as string);
+		try {
+			const { rows } = await client.query<{ object: string; grantor: string }>(`
+				WITH owner AS (SELECT oid FROM pg_roles WHERE rolname = 'retrospend_owner')
+				SELECT 'relation ' || c.relname AS object, pg_get_userbyid(a.grantor) AS grantor
+				  FROM pg_class c CROSS JOIN LATERAL aclexplode(c.relacl) a
+				 WHERE c.relnamespace IN ('public'::regnamespace, 'keystore'::regnamespace)
+				   AND a.grantor <> (SELECT oid FROM owner)
+				UNION ALL
+				SELECT 'function ' || p.proname, pg_get_userbyid(a.grantor)
+				  FROM pg_proc p CROSS JOIN LATERAL aclexplode(p.proacl) a
+				 WHERE p.pronamespace IN ('public'::regnamespace, 'keystore'::regnamespace)
+				   AND a.grantor <> (SELECT oid FROM owner)
+				   AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.objid = p.oid AND d.deptype = 'e')
+				UNION ALL
+				SELECT 'schema ' || n.nspname, pg_get_userbyid(a.grantor)
+				  FROM pg_namespace n CROSS JOIN LATERAL aclexplode(n.nspacl) a
+				 WHERE n.nspname IN ('public', 'keystore')
+				   AND a.grantor <> (SELECT oid FROM owner)`);
+			expect(rows).toEqual([]);
+			const { rows: roles } = await client.query<{ name: string }>(
+				"SELECT rolname AS name FROM pg_roles WHERE rolname = $1",
+				[migratorRoleName(databaseOf(process.env.DATABASE_URL as string))],
+			);
+			expect(roles).toEqual([]);
+			// Nothing in the cluster still depends on a role of that name's kind.
+			const { rows: dangling } = await client.query<{ n: string }>(`
+				SELECT count(*) AS n FROM pg_shdepend s
+				 WHERE s.refclassid = 'pg_authid'::regclass
+				   AND NOT EXISTS (SELECT 1 FROM pg_roles r WHERE r.oid = s.refobjid)`);
+			expect(dangling[0]?.n).toBe("0");
+		} finally {
+			await client.end();
+		}
 	});
 
 	it("leaves the app role exactly the privileges the ratchet lists", async () => {
@@ -654,6 +750,40 @@ describe("an install that older releases migrated as the superuser", () => {
 		}
 	}, 60_000);
 
+	it("removes a migration role that a killed start left, with what it owned and its grants", async () => {
+		const role = migratorRoleName(databaseOf(legacy.superUrl));
+		await admin.query(
+			`CREATE ROLE "${role}" LOGIN NOINHERIT NOSUPERUSER NOCREATEROLE NOCREATEDB`,
+		);
+		const { rows: named } = await admin.query<{ name: string }>(
+			"SELECT quote_ident(current_database()) AS name",
+		);
+		try {
+			await admin.query(
+				`GRANT CREATE ON DATABASE ${named[0]?.name} TO "${role}"`,
+			);
+			await admin.query("CREATE TABLE public.a2_leftover (id integer)");
+			await admin.query(`ALTER TABLE public.a2_leftover OWNER TO "${role}"`);
+			await admin.query(
+				`ALTER DEFAULT PRIVILEGES FOR ROLE "${role}" GRANT SELECT ON TABLES TO retrospend_app`,
+			);
+			expect(await migratorExists(legacy.superUrl)).toBe(true);
+
+			await bootstrap(legacy.superUrl);
+
+			expect(await migratorExists(legacy.superUrl)).toBe(false);
+			const { rows } = await admin.query<{ owner: string }>(
+				"SELECT pg_get_userbyid(relowner) AS owner FROM pg_class WHERE oid = 'public.a2_leftover'::regclass",
+			);
+			expect(rows[0]?.owner).toBe("retrospend_owner");
+			expect(await ownerCanCreateIn(legacy.superUrl)).toBe(false);
+		} finally {
+			await admin.query("DROP TABLE IF EXISTS public.a2_leftover");
+			await admin.query(`DROP OWNED BY "${role}"`).catch(() => undefined);
+			await admin.query(`DROP ROLE IF EXISTS "${role}"`);
+		}
+	});
+
 	it("is not a new install, and a later start never gives the owner CREATE", async () => {
 		expect(await neverHandedOver(admin)).toBe(false);
 		let during: boolean | undefined;
@@ -812,7 +942,7 @@ describe("the migration window on a brand-new install", () => {
 	/** What a retry can apply on an install that is no longer new: nothing needs CREATE. */
 	const fixedSql = "CREATE TABLE public.a2_fixed (id integer);";
 
-	it("is recognized from the catalogs, and gives the owner CREATE for the migrations only", async () => {
+	it("is recognized from the catalogs, and migrates as a one-shot role while no session of the owner can get CREATE", async () => {
 		const owner = await connect(scratch.ownerUrl);
 		const admin = await connect(scratch.superUrl);
 		try {
@@ -827,11 +957,21 @@ describe("the migration window on a brand-new install", () => {
 			const project = makeScratchProject({
 				extra: [window("20300101000000_first", "first")],
 			});
+			// A session of the owner tries for CREATE, a schema and a trusted
+			// extension, all through the start; it is refused every time. The
+			// migrations get CREATE through a role of their own.
+			const attacker = await connect(scratch.ownerUrl);
+			const race = raceForCreate(attacker);
 			try {
 				await prepare(scratch.superUrl, { root: project.dir, ...quiet });
 			} finally {
 				project.cleanup();
 			}
+			const { attempts, wins } = await race.finish();
+			await attacker.end();
+			expect(attempts).toBeGreaterThan(1);
+			expect(wins).toEqual([]);
+			expect(await migratorExists(scratch.superUrl)).toBe(false);
 			// The migrations created a schema, which needs CREATE: it was there.
 			const { rows } = await owner.query<{ owner: string }>(
 				"SELECT pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname = 'a2_first_schema'",
@@ -956,6 +1096,19 @@ describe("the migration window on a brand-new install", () => {
 				prepare(scratch3.superUrl, { root: project.dir, ...quiet }),
 			).rejects.toThrow(/Migration failed/);
 			expect(await ownerCanCreateIn(scratch3.superUrl)).toBe(false);
+			// The one-shot role is gone and what it made belongs to the owner.
+			expect(await migratorExists(scratch3.superUrl)).toBe(false);
+			const { rows: held } = await admin.query<{
+				name: string;
+				owner: string;
+			}>(`
+				SELECT nspname AS name, pg_get_userbyid(nspowner) AS owner FROM pg_namespace
+				 WHERE nspname IN ('public', 'keystore', 'a2_third_schema') ORDER BY 1`);
+			expect(held).toEqual([
+				{ name: "a2_third_schema", owner: "retrospend_owner" },
+				{ name: "keystore", owner: "retrospend_owner" },
+				{ name: "public", owner: "retrospend_owner" },
+			]);
 			// No marker keeps it new: the first migration, fixed, is refused with
 			// the way out in the message.
 			expect(await neverHandedOver(admin)).toBe(false);
@@ -1009,28 +1162,7 @@ describe("the migration window on a brand-new install", () => {
 				);
 			}
 
-			let attempts = 0;
-			const wins: string[] = [];
-			let stop = false;
-			const race = (async () => {
-				while (!stop) {
-					attempts++;
-					for (const sql of [
-						"CREATE SCHEMA a2_zz",
-						"CREATE EXTENSION hstore WITH SCHEMA a2_zz",
-						"SELECT 1 WHERE has_database_privilege(current_user, current_database(), 'CREATE')",
-					]) {
-						try {
-							const result = await attacker.query(sql);
-							if (result.command !== "SELECT" || result.rowCount) {
-								wins.push(sql);
-							}
-						} catch {
-							// refused
-						}
-					}
-				}
-			})();
+			const race = raceForCreate(attacker);
 			const project = makeScratchProject({
 				extra: [window("20300101000000_first", "again")],
 			});
@@ -1040,9 +1172,8 @@ describe("the migration window on a brand-new install", () => {
 				).rejects.toThrow(/Migration failed/);
 			} finally {
 				project.cleanup();
-				stop = true;
-				await race;
 			}
+			const { attempts, wins } = await race.finish();
 			expect(attempts).toBeGreaterThan(1);
 			expect(wins).toEqual([]);
 			const { rows } = await owner.query<{

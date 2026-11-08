@@ -3,10 +3,10 @@
 // With a superuser URL in DATABASE_URL, a start runs prisma/bootstrap/owner-role.sql
 // as the superuser (creates retrospend_owner, hands it the objects), checks the
 // owner can sign in, and gives everything after that the owner's URL: the
-// migrations, the grants file and the app. The owner holds CREATE on the
-// database only on a brand-new install, and only while `prisma migrate deploy`
-// runs (prepare); the superuser connection stays open for that long to take it
-// back. Upgrades never grant it. retrospend_owner is not a
+// migrations, the grants file and the app. The owner never holds CREATE on the
+// database: a brand-new install is migrated by a one-shot role that does, while
+// `prisma migrate deploy` runs (prepare), and is then removed; an upgrade
+// migrates as the owner with no CREATE for anyone. retrospend_owner is not a
 // superuser, so SQL that escapes the row-level security role lands on a role
 // that cannot read files, run programs, create roles or touch other databases.
 //
@@ -158,9 +158,20 @@ export function urlPassword(connectionString) {
  * @param {string} ownerPassword
  */
 export function ownerUrl(connectionString, ownerPassword) {
+	return roleUrl(connectionString, OWNER_ROLE, ownerPassword);
+}
+
+/**
+ * The URL with another role's name and password.
+ *
+ * @param {string} connectionString
+ * @param {string} role
+ * @param {string} password
+ */
+export function roleUrl(connectionString, role, password) {
 	const url = new URL(connectionString);
-	url.username = OWNER_ROLE;
-	url.password = ownerPassword;
+	url.username = role;
+	url.password = password;
 	return url.toString();
 }
 
@@ -418,6 +429,18 @@ export async function neverHandedOver(client) {
 }
 
 /**
+ * The name of the database `client` is connected to.
+ *
+ * @param {pg.Client} client
+ */
+async function databaseName(client) {
+	const { rows } = await client.query(
+		"SELECT pg_catalog.current_database() AS name",
+	);
+	return String(rows[0]?.name);
+}
+
+/**
  * The quoted name of the database `client` is connected to.
  *
  * @param {pg.Client} client
@@ -429,25 +452,121 @@ async function databaseIdentifier(client) {
 	return String(rows[0]?.name);
 }
 
+/** The start of every one-shot migration role's name. */
+export const MIGRATOR_PREFIX = "retrospend_migrator";
+
 /**
- * Takes CREATE on the database away from the owner. If the connection died
- * while the migrations ran, it signs in again to do it.
+ * The migration role of a database. The role is cluster-wide, so each database
+ * gets its own (a hash of its name): two installs on one cluster, or two test
+ * runs, never meet in one role.
+ *
+ * @param {string} databaseName
+ */
+export function migratorRoleName(databaseName) {
+	const hash = createHash("sha256").update(databaseName).digest("hex");
+	return `${MIGRATOR_PREFIX}_${hash.slice(0, 12)}`;
+}
+
+/**
+ * Removes a migration role and everything it was given, from the catalogs
+ * only: its sessions end, CREATE on the database is revoked, what it owns
+ * goes to the owner (REASSIGN OWNED runs no code, and rewrites the owner and
+ * grantor entries of every ACL), whatever else names it (default privileges,
+ * grants) is dropped, and the role goes. Safe when it does not exist.
+ *
+ * @param {pg.Client} client a superuser connection
+ * @param {string} role
+ */
+async function removeMigrator(client, role) {
+	const { rows } = await client.query(
+		"SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = $1",
+		[role],
+	);
+	if (rows.length === 0) return;
+	const name = client.escapeIdentifier(role);
+	const database = await databaseIdentifier(client);
+	await client.query(`ALTER ROLE ${name} NOLOGIN`);
+	await client.query(
+		"SELECT pg_catalog.pg_terminate_backend(pid) FROM pg_catalog.pg_stat_activity WHERE usename = $1 AND pid <> pg_catalog.pg_backend_pid()",
+		[role],
+	);
+	await client.query(`REVOKE CREATE ON DATABASE ${database} FROM ${name}`);
+	const owner = await client.query(
+		"SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = $1",
+		[OWNER_ROLE],
+	);
+	if (owner.rows.length > 0) {
+		await client.query(`REASSIGN OWNED BY ${name} TO ${OWNER_ROLE}`);
+	}
+	await client.query(`DROP OWNED BY ${name}`);
+	await client.query(`DROP ROLE ${name}`);
+}
+
+/**
+ * removeMigrator, and once more on a new connection if the open one died while
+ * the migrations ran.
  *
  * @param {pg.Client} admin
  * @param {string} databaseUrl
- * @param {string} database the quoted database name
+ * @param {string} role
  */
-async function revokeDatabaseCreate(admin, databaseUrl, database) {
-	const statement = `REVOKE CREATE ON DATABASE ${database} FROM ${OWNER_ROLE}`;
+async function removeMigratorSurely(admin, databaseUrl, role) {
 	try {
-		await admin.query(statement);
+		await removeMigrator(admin, role);
 	} catch {
 		const again = await connect(databaseUrl);
 		try {
-			await again.query(statement);
+			await removeMigrator(again, role);
 		} finally {
 			await again.end().catch(() => undefined);
 		}
+	}
+}
+
+/**
+ * The migrations of a brand-new install, as a one-shot role of their own, so
+ * that the owner never holds CREATE on the database and no session of the owner
+ * can use the window. The role (a random password for this start, never
+ * logged) holds CREATE on the database and owns public and keystore while the
+ * callback runs; it is not the owner and not a member of it, and nothing the
+ * owner could use exists in the database yet. Afterwards, in a `finally`, all it
+ * made goes to the owner and the role is dropped.
+ *
+ * Returns false, without running the callback, when the database turns out not
+ * to be empty once the schemas have changed hands: something got in between the
+ * decision and now.
+ *
+ * @param {pg.Client} admin a superuser connection
+ * @param {string} databaseUrl
+ * @param {string} role the migration role's name
+ * @param {(migratorUrl: string) => Promise<void>} run
+ * @returns {Promise<boolean>}
+ */
+async function withCreateWindow(admin, databaseUrl, role, run) {
+	const password = randomBytes(24).toString("hex");
+	const name = admin.escapeIdentifier(role);
+	const database = await databaseIdentifier(admin);
+	try {
+		await admin.query("BEGIN");
+		await admin.query("SET LOCAL log_statement = 'none'");
+		await admin.query(
+			`CREATE ROLE ${name} LOGIN NOSUPERUSER NOCREATEROLE NOCREATEDB NOINHERIT NOREPLICATION BYPASSRLS PASSWORD ${admin.escapeLiteral(scramVerifier(password))}`,
+		);
+		// An old migration says GRANT retrospend_app TO CURRENT_USER.
+		await admin.query(`GRANT retrospend_app TO ${name} WITH ADMIN OPTION`);
+		await admin.query("COMMIT");
+		await admin.query(`GRANT CREATE ON DATABASE ${database} TO ${name}`);
+		await admin.query(`ALTER SCHEMA public OWNER TO ${name}`);
+		await admin.query(`ALTER SCHEMA keystore OWNER TO ${name}`);
+		// The owner owned keystore until now: look again, from the catalogs.
+		if (!(await neverHandedOver(admin))) return false;
+		await run(roleUrl(databaseUrl, role, password));
+		return true;
+	} catch (error) {
+		await admin.query("ROLLBACK").catch(() => undefined);
+		throw error;
+	} finally {
+		await removeMigratorSurely(admin, databaseUrl, role);
 	}
 }
 
@@ -459,15 +578,15 @@ async function revokeDatabaseCreate(admin, databaseUrl, database) {
  * that is not guessable, so it keeps today's behavior with a loud warning
  * unless DATABASE_OWNER_PASSWORD gives the owner a secret of its own.
  *
- * With `whileOwnerMayCreate`, the callback runs with the owner's URL. On a
- * brand-new install (never handed over: neverHandedOver) the owner holds CREATE
- * on the database for as long as it runs and loses it again in a `finally`, so a
- * failed callback still takes it back; the superuser connection stays open for
- * that and reads nothing the owner owns. On an upgrade or any later start the
- * owner is never given CREATE, so the callback's migrations must not need it.
+ * With `whileOwnerMayCreate`, the callback runs the migrations. On a brand-new,
+ * empty install (neverHandedOver) it gets the URL of a one-shot migration role
+ * that holds CREATE on the database and is removed afterwards, even when the
+ * callback fails (withCreateWindow); the owner never holds CREATE. On an
+ * upgrade or any later start it gets the owner's URL, the owner has no CREATE,
+ * and the migrations must not need it.
  *
  * @param {string} databaseUrl
- * @param {{ ownerPassword?: string, warn?: (message: string) => void, whileOwnerMayCreate?: (ownerUrl: string) => Promise<void> }} [options]
+ * @param {{ ownerPassword?: string, warn?: (message: string) => void, whileOwnerMayCreate?: (databaseUrl: string) => Promise<void> }} [options]
  * @returns {Promise<BootstrapResult>}
  */
 export async function bootstrap(databaseUrl, options = {}) {
@@ -505,6 +624,10 @@ export async function bootstrap(databaseUrl, options = {}) {
 		const ownerPassword = override ?? deriveOwnerPassword(superPassword ?? "");
 		const url = ownerUrl(databaseUrl, ownerPassword);
 
+		// A migration role left by a start that was killed.
+		const migrator = migratorRoleName(await databaseName(admin));
+		await removeMigratorSurely(admin, databaseUrl, migrator);
+
 		// Decided now, from the catalogs, before the owner is given anything.
 		const fresh = options.whileOwnerMayCreate
 			? await neverHandedOver(admin)
@@ -524,25 +647,20 @@ export async function bootstrap(databaseUrl, options = {}) {
 			);
 		}
 
-		const database = await databaseIdentifier(admin);
+		// A brand-new install migrates as the one-shot role, before the handover;
+		// an upgrade or a later start migrates as the owner, after it, with no CREATE.
+		const migrated =
+			fresh && options.whileOwnerMayCreate
+				? await withCreateWindow(
+						admin,
+						databaseUrl,
+						migrator,
+						options.whileOwnerMayCreate,
+					)
+				: false;
 		const changedObjects = await handover(admin);
-		if (options.whileOwnerMayCreate) {
-			if (!fresh) {
-				// An upgrade or a later start: no CREATE. Whatever the owner has
-				// planted in its own objects (a view, a trigger) runs during the
-				// migrations, and with CREATE it could install a trusted
-				// extension whose script runs as the superuser.
-				await options.whileOwnerMayCreate(url);
-			} else {
-				await admin.query(
-					`GRANT CREATE ON DATABASE ${database} TO ${OWNER_ROLE}`,
-				);
-				try {
-					await options.whileOwnerMayCreate(url);
-				} finally {
-					await revokeDatabaseCreate(admin, databaseUrl, database);
-				}
-			}
+		if (options.whileOwnerMayCreate && !migrated) {
+			await options.whileOwnerMayCreate(url);
 		}
 		return { status: "switched", ownerUrl: url, changedObjects };
 	} finally {
@@ -782,9 +900,10 @@ export async function applyGrants(databaseUrl, options = {}) {
 }
 
 /**
- * A start: the bootstrap, the migrations as the owner, and the grants file as
- * the owner. The owner holds CREATE on the database for the migrations and not
- * a moment longer. A URL the bootstrap leaves alone migrates as it is.
+ * A start: the bootstrap, the migrations, and the grants file as the owner. A
+ * brand-new install migrates as a one-shot role that holds CREATE on the
+ * database for the migrations and not a moment longer; an upgrade migrates as
+ * the owner. A URL the bootstrap leaves alone migrates as it is.
  *
  * @param {string} databaseUrl
  * @param {{ ownerPassword?: string, warn?: (message: string) => void, log?: (message: string) => void, root?: string, grants?: boolean }} [options]

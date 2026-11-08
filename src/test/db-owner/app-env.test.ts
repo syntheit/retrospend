@@ -241,7 +241,8 @@ describe("docker-entrypoint.sh", () => {
 		expect(lines[prepare]).toMatch(/^OWNER_DATABASE_URL=\$\(node /);
 		expect(prepare).toBeLessThan(at("cli.mjs app-exec"));
 		// The migrations (with their recovery) and the grants file are the CLI's:
-		// the owner holds CREATE on the database inside them and not after.
+		// a brand-new install's one-shot role holds CREATE on the database inside
+		// them and not after.
 		expect(lines.join("\n")).not.toMatch(/prisma/);
 		expect(lines.join("\n")).not.toMatch(/migrate/i);
 	});

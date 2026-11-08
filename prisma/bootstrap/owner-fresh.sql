@@ -1,5 +1,5 @@
--- Is this a brand-new, empty database? scripts/db-owner gives the owner CREATE on
--- the database for the length of the migrations only when this says yes. Catalog
+-- Is this a brand-new, empty database? scripts/db-owner migrates only a database
+-- for which this says yes as a one-shot role that holds CREATE on the database. Catalog
 -- reads only (the rule in owner-role.sql); run as the superuser before the owner
 -- is given anything.
 --
@@ -8,7 +8,7 @@
 -- hang off these), no routine, no operator and no standalone type, in any schema
 -- but pg_* and information_schema, apart from extension members (unaccent). With
 -- nothing like that in it, there is nothing for the owner to have planted, so the
--- migrations cannot run owner code while the owner holds CREATE. It does not
+-- migrations cannot run owner code while a role holds CREATE. It does not
 -- matter which schema holds a payload: one in keystore, with public emptied,
 -- reads as not new.
 --

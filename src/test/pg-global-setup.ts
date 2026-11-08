@@ -4,10 +4,11 @@
  * TEST_DATABASE_URL names a server (as its superuser) and a base database
  * name. Each run creates a template database `<base>_<random>_tpl` on that
  * server and applies every migration to it once with `prisma migrate deploy`
- * as retrospend_owner, after the owner bootstrap (scripts/db-owner) has made
- * the role and with the owner holding CREATE on the database for the length of
- * the migrations only, as a start gives it: the path of a new install, so a
- * migration that needs more than the owner's rights fails here. A second
+ * as the one-shot migration role of a new install (scripts/db-owner: it holds
+ * CREATE on the database and owns public and keystore for the length of the
+ * migrations, then everything it made goes to retrospend_owner and it is
+ * dropped), after the bootstrap has made the owner: the path of a new install,
+ * so a migration that needs more than that fails here. A second
  * database, `<base>_<random>_leg`, takes the path of an upgrade (migrated as the
  * superuser, then handed over) for the one test file that checks that, a third,
  * `_old`, does the same from a 0.4.x release (OLD_CUTOFF) so the owner has
@@ -42,8 +43,8 @@ declare module "vitest" {
 		pgWorkerSuperUrls: string[];
 		/**
 		 * How many objects a second owner bootstrap handed over on the template
-		 * after the migrations ran as the owner: zero when every migration made
-		 * its objects as retrospend_owner.
+		 * after the migrations ran as the one-shot migration role: zero when all
+		 * it made went to retrospend_owner.
 		 */
 		pgFresh: { handedOverAfterMigrate: number };
 		/**
