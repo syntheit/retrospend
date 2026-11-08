@@ -200,8 +200,51 @@ func dumpEncrypted(dump *exec.Cmd, outPath string, recipientKeys []string) (out 
 	return stderr.Bytes(), publishPartial(partial, outPath)
 }
 
-func backupFilename(timestamp string, encrypt bool) string {
-	name := fmt.Sprintf("retrospend-%s.dump", timestamp)
+// backupKind is one of the two dumps a run can make. The keystore schema holds
+// the per-user data keys: it stays out of the main dump and is dumped alone, so
+// it can be kept for a much shorter time (a deleted user's key must not outlive
+// them in a long-lived backup).
+type backupKind struct {
+	// name is the manifest tag, empty for the main dump.
+	name string
+	// prefix starts every file name: retrospend-... or keystore-...
+	prefix string
+	// schemaArgs choose what pg_dump includes.
+	schemaArgs []string
+	// minSize is the smallest file that can be a real dump.
+	minSize int64
+	// statusKey is the system_status row the result is written to.
+	statusKey string
+}
+
+const keystoreSchema = "keystore"
+
+var (
+	mainKind = backupKind{
+		prefix:     "retrospend",
+		schemaArgs: []string{"--exclude-schema=" + keystoreSchema},
+		minSize:    1024,
+		statusKey:  "backup_status",
+	}
+	// A dump of one small table is only a few KB, so the size floor is low.
+	keystoreKind = backupKind{
+		name:       keystoreSchema,
+		prefix:     keystoreSchema,
+		schemaArgs: []string{"--schema=" + keystoreSchema},
+		minSize:    1,
+		statusKey:  "keystore_backup_status",
+	}
+)
+
+func (k backupKind) label() string {
+	if k.name == "" {
+		return "Backup"
+	}
+	return "Keystore backup"
+}
+
+func backupFilename(k backupKind, timestamp string, encrypt bool) string {
+	name := fmt.Sprintf("%s-%s.dump", k.prefix, timestamp)
 	if encrypt {
 		name += ".age"
 	}
@@ -210,16 +253,19 @@ func backupFilename(timestamp string, encrypt bool) string {
 
 // pgDumpArgs asks pg_dump to write to a file, or to stdout when the stream is
 // encrypted, so the plain dump is never a file.
-func pgDumpArgs(host, port, user, dbname, outPath string, encrypt bool) []string {
+func pgDumpArgs(k backupKind, host, port, user, dbname, outPath string, encrypt bool) []string {
 	args := []string{
 		"--format=custom",
 		"--no-owner",
 		"--no-privileges",
+	}
+	args = append(args, k.schemaArgs...)
+	args = append(args,
 		"--host", host,
 		"--port", port,
 		"--username", user,
 		"--dbname", dbname,
-	}
+	)
 	if !encrypt {
 		args = append(args, fmt.Sprintf("--file=%s", outPath))
 	}
@@ -230,7 +276,8 @@ func pgDumpArgs(host, port, user, dbname, outPath string, encrypt bool) []string
 const stalePartialAge = 6 * time.Hour
 
 func isPartialFile(name string) bool {
-	return strings.HasPrefix(name, ".retrospend-") && strings.HasSuffix(name, ".partial")
+	return (strings.HasPrefix(name, "."+mainKind.prefix+"-") || strings.HasPrefix(name, "."+keystoreKind.prefix+"-")) &&
+		strings.HasSuffix(name, ".partial")
 }
 
 func isBackupFile(name string) bool {
