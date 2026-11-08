@@ -7,7 +7,12 @@
  * IMPORTANT: These functions return the CURRENT USER'S SHARE only,
  * never the full transaction amount.
  */
-import { computeAmountInUSD, sumIn, toUSD, USD } from "@retrospend/domain/money";
+import {
+	computeAmountInUSD,
+	sumIn,
+	toUSD,
+	USD,
+} from "@retrospend/domain/money";
 import type { Prisma, PrismaClient } from "~prisma";
 import { findExchangeRatesForDates } from "../exchange-rates";
 import type { RateCache } from "./rate-cache";
@@ -100,6 +105,8 @@ function exactShareUSD(amount: number, currency: string, rate: number | null) {
  */
 export interface SharedExpenseShare {
 	amount: number;
+	/** The stored amount as exact decimal text (spentMinorByCurrency reads it). */
+	amountExact: string;
 	currency: string;
 	/** NaN when the share's currency has no rate at all (unpriced, see shareToUSD). */
 	amountInUSD: number;
@@ -221,6 +228,7 @@ export async function getSharedExpenseShares(
 
 		return {
 			amount: shareAmount,
+			amountExact: p.shareAmount.toFixed(),
 			currency,
 			amountInUSD: exactShareUSD(shareAmount, currency, rateFor(p.transaction)),
 			// The category belongs to whoever created the expense. Another

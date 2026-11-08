@@ -240,6 +240,19 @@ beforeAll(async () => {
 		direction: "IN",
 		inType: "REFUND",
 	});
+	// Refunds that fail exactly one clause each: hidden, draft, income category.
+	for (const o of [
+		{ hidden: true },
+		{ status: "DRAFT" as const },
+		{ categoryId: salary },
+	])
+		await own({
+			amount: "1500",
+			amountInUSD: "1",
+			direction: "IN",
+			inType: "REFUND",
+			...o,
+		});
 	// Never counted.
 	await own({
 		amount: "900",

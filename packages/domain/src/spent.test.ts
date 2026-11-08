@@ -77,6 +77,17 @@ describe("spent on rows in memory", () => {
 					row({ ...out, entryKind: "ADJUSTMENT" }),
 					row({ ...out, status: "DRAFT" }),
 					row({ ...out, excludeFromAnalytics: true }),
+					// Refunds that fail exactly one clause each.
+					...[
+						{ excludeFromAnalytics: true },
+						{ status: "DRAFT" },
+						{ categoryKind: "INCOME" },
+						{ entryKind: "NOT_SPENDING" },
+						{ inType: "INCOME" },
+						{ direction: "OUT", isAmortizedParent: true },
+					].map((o) =>
+						row({ amount: "30", direction: "IN", inType: "REFUND", ...o }),
+					),
 					row({ ...out, isAmortizedParent: true }),
 					row({ ...out, categoryKind: "INCOME" }),
 				],

@@ -39,6 +39,8 @@ export interface SpentItem extends MoneyItem {
 /** Your share of a shared expense, with its USD value (NaN when its currency has no rate at all). */
 export interface SpentShare {
 	amount: number;
+	/** The stored amount as exact decimal text; the minor units read it, so a huge share never goes through a float. */
+	amountExact?: string;
 	currency: string;
 	amountInUSD: number;
 	categoryId: string | null;
@@ -196,6 +198,7 @@ export function spentInputsFromRows(args: {
 				const rate = rateFor(s);
 				return {
 					amount,
+					amountExact: dec(s.shareAmount).toFixed(),
 					currency: s.currency,
 					amountInUSD:
 						rate === null ? Number.NaN : toUSD(amount, s.currency, rate),
@@ -261,7 +264,13 @@ export function spentMinorByCurrency(inputs: SpentInputs): Money[] {
 		add(g.currency, groupMinor(g.amount, g.currency));
 	for (const g of inputs.refunds)
 		add(g.currency, -groupMinor(g.amount, g.currency));
-	for (const s of inputs.shares) add(s.currency, toMinor(s.amount, s.currency));
+	for (const s of inputs.shares)
+		add(
+			s.currency,
+			s.amountExact === undefined
+				? toMinor(s.amount, s.currency)
+				: groupMinor(s.amountExact, s.currency),
+		);
 	return [...minor]
 		.filter(([, units]) => units !== 0)
 		.map(([currency, units]) => ({ minor: units, currency }));
