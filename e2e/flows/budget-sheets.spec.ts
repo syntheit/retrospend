@@ -1083,7 +1083,7 @@ test.describe("Set up your budget", () => {
 		await expect(sheet.getByText(/Started from your last 3 months/)).toHaveCount(
 			0,
 		);
-		await expect(sheet.getByText("Nothing is planned yet.")).toBeVisible();
+		await expect(sheet.getByText("Give an envelope an amount to start.")).toBeVisible();
 		await sheet
 			.getByRole("textbox", { name: "Amount for Spending" })
 			.fill("500");
