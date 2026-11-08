@@ -116,15 +116,84 @@ func TestResolveUsesANonSuperuserURLAsGiven(t *testing.T) {
 	}
 }
 
-func TestResolveKeepsAPasswordlessSuperuserWithAWarning(t *testing.T) {
-	probe := &fakeProbe{isSuper: true}
+// Nothing to derive from, and no owner role: the sidecar has nothing else to
+// connect with, so it keeps the URL as given, says so, and does not wait.
+func TestResolvePasswordlessSuperuserWithNoOwnerRoleFallsBackWithAWarning(t *testing.T) {
+	probe := &fakeProbe{isSuper: true, roleExists: []bool{false}}
 	h := newHarness(probe)
 	got, err := ResolveOwnerURL(context.Background(), "postgresql://postgres@db/retro", h.opts)
 	if err != nil || got != "postgresql://postgres@db/retro" {
 		t.Fatalf("got %q, %v", got, err)
 	}
-	if !strings.Contains(h.logText(), "WARNING") || probe.roleCalls != 0 {
-		t.Fatalf("want a warning and no owner queries, logs: %s", h.logText())
+	if !strings.Contains(h.logText(), "WARNING") || probe.roleCalls != 1 || h.slept != 0 {
+		t.Fatalf("want a warning, one role check and no wait; calls %d, slept %s, logs: %s", probe.roleCalls, h.slept, h.logText())
+	}
+	if probe.stateCalls != 0 {
+		t.Fatal("signed in as an owner it cannot name")
+	}
+}
+
+// The owner role exists (the app made it, with a password this container
+// cannot derive): a superuser session must not run, because the owner owns
+// the tables and can plant triggers. The container stops with a clear message.
+func TestResolvePasswordlessSuperuserWithTheOwnerRolePresentExits(t *testing.T) {
+	for name, url := range map[string]string{
+		"no password":       "postgresql://postgres@db/retro",
+		"unreadable escape": "postgresql://postgres:ab%zz@db/retro",
+	} {
+		t.Run(name, func(t *testing.T) {
+			probe := &fakeProbe{isSuper: true, roleExists: []bool{true}}
+			h := newHarness(probe)
+			got, err := ResolveOwnerURL(context.Background(), url, h.opts)
+			if !errors.Is(err, ErrOwnerUnusable) || got != "" {
+				t.Fatalf("want ErrOwnerUnusable and no URL, got %q, %v", got, err)
+			}
+			for _, want := range []string{"retrospend_owner", "DATABASE_OWNER_PASSWORD"} {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("message does not name %s: %v", want, err)
+				}
+			}
+			if strings.Contains(err.Error(), "postgresql://") || strings.Contains(err.Error(), "ab%zz") {
+				t.Errorf("message holds the URL: %v", err)
+			}
+			if probe.stateCalls != 0 {
+				t.Fatal("tried to sign in without a password")
+			}
+		})
+	}
+}
+
+// A failed role check in the no-password case is retried, never read as
+// "role missing" (which would fall back to the superuser).
+func TestResolvePasswordlessSuperuserDoesNotFallBackOnAFailedRoleCheck(t *testing.T) {
+	probe := &fakeProbe{isSuper: true, roleErr: errors.New("connection reset")}
+	h := newHarness(probe)
+	got, err := ResolveOwnerURL(context.Background(), "postgresql://postgres@db/retro", h.opts)
+	if err == nil || got != "" {
+		t.Fatalf("got %q, %v", got, err)
+	}
+}
+
+// Characters pgx and Node accept unencoded but net/url rejects must derive an
+// owner URL, not drop to the superuser.
+func TestResolveDerivesFromAnUnencodedPassword(t *testing.T) {
+	const superPassword = `a{b}|"[x]pässwörd`
+	rawURL := "postgresql://postgres:" + superPassword + "@db:5432/retro?sslmode=disable"
+	probe := &fakeProbe{isSuper: true, roleExists: []bool{true}, states: []fakeState{{}}}
+	h := newHarness(probe)
+	got, err := ResolveOwnerURL(context.Background(), rawURL, h.opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := parseURL(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.User != OwnerRole || cfg.Password != DeriveOwnerPassword(superPassword) || cfg.Host != "db" || cfg.Database != "retro" {
+		t.Fatalf("owner URL reads as user %q host %q db %q", cfg.User, cfg.Host, cfg.Database)
+	}
+	if strings.Contains(got, "{") || strings.Contains(got, "pässwörd") {
+		t.Fatalf("owner URL still holds the superuser's password: %q", got)
 	}
 }
 

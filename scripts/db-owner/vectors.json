@@ -1,5 +1,5 @@
 {
-	"_comment": "Shared by the Node tests (src/test/db-owner) and, in A2 PR 2, the Go sidecar tests. ownerPassword = hex(HMAC-SHA256(key = percent-decoded URL password, message = retrospend_owner)), computed with Python's hmac.",
+	"_comment": "Shared by the Node tests (src/test/db-owner) and the Go sidecar tests (sidecar/config/testdata/owner-vectors.json is a copy; a Go test keeps them equal). ownerPassword = hex(HMAC-SHA256(key = URL password as pgx and Node both read it, message = retrospend_owner)), computed with Python's hmac. The last three cases spell characters unencoded that net/url rejects and pgx and Node accept.",
 	"role": "retrospend_owner",
 	"cases": [
 		{
@@ -19,6 +19,24 @@
 			"url": "postgresql://u:%40%3A%25@db.internal:5432/retrospend?sslmode=disable",
 			"password": "@:%",
 			"ownerPassword": "e463d08e431dfc5012cadcb13399c642a8dcac7ce92bdf8510453e116ba2e0d3"
+		},
+		{
+			"name": "unencoded braces",
+			"url": "postgresql://postgres:a{b}c@db.internal:5432/retrospend?sslmode=disable",
+			"password": "a{b}c",
+			"ownerPassword": "74dd2f981dda93905cf5d17ccb6ea3e5d27836d11fffe19b5354a18da88eb854"
+		},
+		{
+			"name": "unencoded non-ASCII",
+			"url": "postgresql://postgres:pässwörd@db.internal:5432/retrospend?sslmode=disable",
+			"password": "pässwörd",
+			"ownerPassword": "98d48eadd9a52c607e8ff2e2a63d3c8b3135bd1895deeeced1fac17237f7db6e"
+		},
+		{
+			"name": "unencoded quote, pipe and brackets",
+			"url": "postgresql://postgres:q\"u|o[t]e@db.internal:5432/retrospend?sslmode=disable",
+			"password": "q\"u|o[t]e",
+			"ownerPassword": "dd672dff571b68fdbd3ceda907d7299342eebd1d6cdcf195c358cdc2b48ea95e"
 		}
 	]
 }

@@ -39,7 +39,7 @@ func TestOwnerPasswordVectors(t *testing.T) {
 	if v.Role != OwnerRole {
 		t.Fatalf("role %q, want %q", v.Role, OwnerRole)
 	}
-	if len(v.Cases) < 3 {
+	if len(v.Cases) < 6 {
 		t.Fatalf("expected the shared vectors, got %d cases", len(v.Cases))
 	}
 	for _, c := range v.Cases {
@@ -50,6 +50,16 @@ func TestOwnerPasswordVectors(t *testing.T) {
 			}
 			if got := DeriveOwnerPassword(password); got != c.OwnerPassword {
 				t.Fatalf("DeriveOwnerPassword = %s, want %s", got, c.OwnerPassword)
+			}
+			// The owner URL built from it reads back as the owner with that
+			// password, whatever the original spelled.
+			built, err := OwnerURL(c.URL, c.OwnerPassword)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cfg, err := parseURL(built)
+			if err != nil || cfg.User != OwnerRole || cfg.Password != c.OwnerPassword {
+				t.Fatalf("owner URL reads as %v, %v", cfg, err)
 			}
 		})
 	}
@@ -79,6 +89,21 @@ func TestURLPasswordRefusesWhatNodeRefuses(t *testing.T) {
 		if password, ok := URLPassword(raw); ok {
 			t.Errorf("%s: got password %q, want none", name, password)
 		}
+	}
+}
+
+// The password comes from the URL alone, not from PGPASSWORD or a passfile
+// that pgx would also read: Node reads the URL alone.
+func TestURLPasswordIgnoresTheEnvironment(t *testing.T) {
+	t.Setenv("PGPASSWORD", "from-the-environment")
+	if password, ok := URLPassword("postgresql://postgres@db/retro"); ok {
+		t.Fatalf("took %q from the environment", password)
+	}
+	if password, ok := URLPassword("postgresql://postgres:from-url@db/retro"); !ok || password != "from-url" {
+		t.Fatalf("got %q, %v", password, ok)
+	}
+	if os.Getenv("PGPASSWORD") != "from-the-environment" {
+		t.Fatal("the environment was not restored")
 	}
 }
 

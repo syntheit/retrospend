@@ -60,6 +60,11 @@ type OwnerState struct {
 	Pending int
 }
 
+// ErrOwnerUnusable is returned when the owner role exists but this container
+// cannot work out its URL (no password it can read, and no
+// DATABASE_OWNER_PASSWORD). The superuser URL is not a fallback then.
+var ErrOwnerUnusable = errors.New("the owner role cannot be used")
+
 // ErrOwnerNotReady is returned when the owner role exists but did not sign in
 // or finish the handover in time.
 var ErrOwnerNotReady = errors.New("the owner role is not ready")
@@ -68,13 +73,15 @@ var ErrOwnerNotReady = errors.New("the owner role is not ready")
 //
 //   - A URL that is not a superuser's (managed Postgres, a setup done by hand)
 //     is used as given.
-//   - A superuser URL with no readable password (and no override) is used as
-//     given, with a warning: a derived password would be guessable.
 //   - Otherwise it waits for the owner role, derives its URL, waits until the
 //     role signs in and nothing is left to hand over, and returns that URL.
-//   - Only when the owner role does not exist after RoleWait (an old app image
-//     that never bootstraps) does it return the URL as given, with a loud
-//     warning. A role that exists but is not ready after ReadyWait is an error.
+//   - The URL as given, with a loud warning, is returned only when the owner
+//     role does not exist: after RoleWait (an old app image that never
+//     bootstraps), or at once when the superuser URL has no password this
+//     container can read (nothing to derive from, and the app refuses too).
+//   - While the role exists there is never a fallback. A role that exists but
+//     is not ready after ReadyWait is ErrOwnerNotReady; one whose password
+//     this container cannot work out is ErrOwnerUnusable.
 //
 // It never logs a URL or a password.
 func ResolveOwnerURL(ctx context.Context, databaseURL string, o OwnerOptions) (string, error) {
@@ -112,33 +119,30 @@ func ResolveOwnerURL(ctx context.Context, databaseURL string, o OwnerOptions) (s
 		return databaseURL, nil
 	}
 
-	superPassword, hasPassword := URLPassword(databaseURL)
-	ownerPassword := o.OwnerPassword
-	if ownerPassword == "" {
-		if !hasPassword {
-			o.Logf("WARNING: DATABASE_URL names a superuser with no usable password, so the sidecar keeps connecting as the superuser. Give the database user a password (percent-encode special characters), or set DATABASE_OWNER_PASSWORD to a secret of your own.")
-			return databaseURL, nil
+	// Work out the owner's URL. When that is not possible, the owner role may
+	// still exist (the app created it with a password this container cannot
+	// derive): then there is no fallback, because a superuser session writing
+	// to tables the owner owns can fire triggers the owner planted.
+	ownerURL, unusable := ownerURLFor(databaseURL, o.OwnerPassword)
+	if unusable != "" {
+		exists, err := o.askRole(ctx, databaseURL, roleDeadline)
+		if err != nil {
+			return "", err
 		}
-		ownerPassword = DeriveOwnerPassword(superPassword)
-	}
-	ownerURL, err := OwnerURL(databaseURL, ownerPassword)
-	if err != nil {
-		return "", fmt.Errorf("cannot build the owner URL: %w", err)
+		if exists {
+			return "", fmt.Errorf("%w: the %s role exists, but this container cannot use it: %s", ErrOwnerUnusable, OwnerRole, unusable)
+		}
+		o.Logf("WARNING: %s, so the sidecar keeps connecting as the superuser because the %s role does not exist. If the app creates it later, the sidecar stops and then refuses to start until this is fixed.", unusable, OwnerRole)
+		return databaseURL, nil
 	}
 
 	// Wait for the role to exist. The app's entrypoint creates it; on a first
 	// upgrade the sidecar can start first.
 	logged := false
 	for {
-		exists, err := o.Probe.RoleExists(ctx, databaseURL)
+		exists, err := o.askRole(ctx, databaseURL, roleDeadline)
 		if err != nil {
-			// A failed question is not an answer: never read it as "missing".
-			if !o.Now().Before(roleDeadline) {
-				return "", fmt.Errorf("cannot check for the %s role: %w", OwnerRole, err)
-			}
-			o.Logf("cannot check for the %s role yet: %v", OwnerRole, err)
-			o.Sleep(o.Poll)
-			continue
+			return "", err
 		}
 		if exists {
 			break
@@ -183,6 +187,40 @@ func ResolveOwnerURL(ctx context.Context, databaseURL string, o OwnerOptions) (s
 // that would run with the superuser's rights. So the superuser connection
 // asks only about pg_roles, and the handover check runs as the owner, over
 // pg_catalog alone (TestOwnerQueriesTouchOnlyCatalogs checks the text).
+// ownerURLFor returns the owner's URL, or why it cannot be built. The reason
+// names a likely cause and never holds a password or a URL.
+func ownerURLFor(databaseURL, override string) (ownerURL, unusable string) {
+	password := override
+	if password == "" {
+		superPassword, ok := URLPassword(databaseURL)
+		if !ok {
+			return "", "DATABASE_URL has no password the sidecar can read (give the database user a password, percent-encode spaces, or set DATABASE_OWNER_PASSWORD to the value the app container has)"
+		}
+		password = DeriveOwnerPassword(superPassword)
+	}
+	built, err := OwnerURL(databaseURL, password)
+	if err != nil {
+		return "", fmt.Sprintf("the owner URL cannot be built from DATABASE_URL (%v)", err)
+	}
+	return built, ""
+}
+
+// askRole asks whether the owner role exists, retrying a failed question until
+// deadline: a failed check is never read as "missing".
+func (o OwnerOptions) askRole(ctx context.Context, databaseURL string, deadline time.Time) (bool, error) {
+	for {
+		exists, err := o.Probe.RoleExists(ctx, databaseURL)
+		if err == nil {
+			return exists, nil
+		}
+		if !o.Now().Before(deadline) {
+			return false, fmt.Errorf("cannot check for the %s role: %w", OwnerRole, err)
+		}
+		o.Logf("cannot check for the %s role yet: %v", OwnerRole, err)
+		o.Sleep(o.Poll)
+	}
+}
+
 type pgProbe struct{}
 
 const (
