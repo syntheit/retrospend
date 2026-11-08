@@ -7,6 +7,7 @@ import { useServerConnection } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
 import { openWebPage } from "@/features/settings/webPages";
 import { HEADER_TITLE_FACE, LARGE_TITLE } from "@/layout/pushedHeader";
+import { TEST_IDS } from "@/lib/testIds";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Screen } from "@/ui/Screen";
@@ -73,6 +74,7 @@ export default function SignInScreen() {
 							label={t("email")}
 							onChangeText={setEmail}
 							returnKeyType="next"
+							testID={TEST_IDS.signIn.email}
 							textContentType="username"
 							value={email}
 						/>
@@ -85,6 +87,7 @@ export default function SignInScreen() {
 							onSubmitEditing={submit}
 							returnKeyType="go"
 							secure
+							testID={TEST_IDS.signIn.password}
 							textContentType="password"
 							value={password}
 						/>
@@ -127,6 +130,7 @@ export default function SignInScreen() {
 						busy ? t("signingIn") : t(step === "code" ? "verify" : "submit")
 					}
 					onPress={submit}
+					testID={TEST_IDS.signIn.submit}
 				/>
 				{step === "password" && connection.status === "connected" ? (
 					<Button

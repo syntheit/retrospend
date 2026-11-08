@@ -1,0 +1,25 @@
+# Adds an expense of 12 in the home currency under a fresh title, and leaves
+# the title in output.title. CATEGORY is the name of a seeded category.
+appId: app.retrospend
+env:
+  CATEGORY: Groceries
+---
+- runScript: unique-title.js
+- runFlow: open-add.yaml
+- tapOn:
+    id: keypad.key.1
+- tapOn:
+    id: keypad.key.2
+- tapOn:
+    id: add.title
+- inputText: ${output.title}
+- hideKeyboard
+- tapOn: ${CATEGORY}
+- tapOn:
+    id: add.save
+# Saved: the composer closes. The row is not asserted here; on Home it can be
+# below the fold, and the flows read it in Activity.
+- extendedWaitUntil:
+    notVisible:
+      id: add.save
+    timeout: 15000

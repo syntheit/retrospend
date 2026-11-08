@@ -4,7 +4,8 @@ import {
 	Text,
 	TooltipBox,
 } from "@expo/ui/jetpack-compose";
-import { semantics } from "@expo/ui/jetpack-compose/modifiers";
+import { semantics, testID } from "@expo/ui/jetpack-compose/modifiers";
+import { TEST_IDS } from "@/lib/testIds";
 import { useTheme } from "@/theme";
 import { NativeHost } from "./NativeHost";
 import type { AddButtonProps } from "./types";
@@ -23,7 +24,10 @@ const PLUS = require("./plus.xml");
 export function AddButton({ label, onPress }: AddButtonProps) {
 	const { color } = useTheme();
 	// A Compose node is not read by TalkBack from its text alone here.
-	const describe = [semantics({ contentDescription: label })];
+	const describe = [
+		semantics({ contentDescription: label }),
+		testID(TEST_IDS.add.open),
+	];
 
 	return (
 		<NativeHost>

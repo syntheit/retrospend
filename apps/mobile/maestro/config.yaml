@@ -1,0 +1,8 @@
+# Maestro workspace for the mobile end-to-end flows
+# (docs/roadmap/maestro-plan.md). Only flows/ are run; _common/ holds subflows.
+#
+#   maestro test -e SERVER=http://10.0.2.2:3200 --include-tags smoke apps/mobile/maestro
+#
+# Every run sets MAESTRO_CLI_NO_ANALYTICS=1 (the flake dev shell does).
+flows:
+  - flows/*.yaml

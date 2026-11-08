@@ -3,6 +3,7 @@ import { Pressable, View } from "react-native";
 import Animated, { FadeIn, ReduceMotion } from "react-native-reanimated";
 import { useTranslations } from "use-intl";
 import { useMoneyLocale } from "@/lib/money";
+import { keyId, TEST_IDS } from "@/lib/testIds";
 import { useTheme } from "@/theme";
 import { applyEntryKey, BACKSPACE, type EntryKind } from "./keypad";
 import { LoadingIndicator } from "./LoadingIndicator";
@@ -94,6 +95,7 @@ export function FoldingKeypad({
 						? color.brandHover
 						: color.brand,
 			})}
+			testID={TEST_IDS.add.save}
 		>
 			<View
 				style={{ flexDirection: "row", alignItems: "center", gap: space[2] }}
@@ -157,6 +159,8 @@ export function FoldingKeypad({
 		const flat = key === separator || key === BACKSPACE;
 		const label =
 			key === BACKSPACE ? t("delete") : key === separator ? t("decimal") : key;
+		const id =
+			key === BACKSPACE ? "delete" : key === separator ? "decimal" : key;
 		// A shares entry takes no decimal point: its key is blank, not hidden, so the grid holds.
 		const blank = key === separator && entry.kind === "units";
 		return (
@@ -180,6 +184,7 @@ export function FoldingKeypad({
 							: color.surface,
 					opacity: blank ? 0 : 1,
 				})}
+				testID={keyId(id)}
 			>
 				<Text
 					maxFontSizeMultiplier={KEY_LABEL_SCALE}

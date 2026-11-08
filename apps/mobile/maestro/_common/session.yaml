@@ -1,0 +1,22 @@
+# Starts a flow signed in: a clean app, then the test sign-in link with the
+# real connect and sign-in code behind it. The flow sets SERVER (the runner
+# passes it with -e); EMAIL and PASSWORD default to Sofía, whose ledger is the
+# one the flows read. ROUTE is the screen to land on (default: Home).
+appId: app.retrospend
+env:
+  EMAIL: sofia.reyes@example.com
+  PASSWORD: Sofia-e2e-2026!
+  ROUTE: ""
+---
+# The link starts the app (never sent to a running one): the app reads it as
+# its launch URL. A link opened right after launchApp reaches the activity
+# before the JS side listens, and is lost.
+- clearState
+- stopApp
+- runScript: session-link.js
+- openLink: ${output.link}
+# The Add button is on every tab, so it says the session is up.
+- extendedWaitUntil:
+    visible:
+      id: add.open
+    timeout: 30000

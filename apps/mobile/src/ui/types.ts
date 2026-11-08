@@ -140,6 +140,8 @@ export interface TopBarAction {
 	onPress: () => void;
 	/** A count shown on the glyph (unread notifications); none when 0 or absent. */
 	badge?: number;
+	/** The stable id the Maestro flows find the action by (src/lib/testIds.ts). */
+	testID?: string;
 	/**
 	 * Android's collapsing bar: the icon appears only once the bar has
 	 * collapsed (search, while a search bar sits on the page). Ignored

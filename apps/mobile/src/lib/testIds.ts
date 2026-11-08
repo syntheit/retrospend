@@ -7,6 +7,23 @@
 // (rowId). Never visible text, never an index.
 
 export const TEST_IDS = {
+	connect: {
+		address: "connect.address",
+		submit: "connect.submit",
+		continue: "connect.continue",
+	},
+	signIn: {
+		email: "signIn.email",
+		password: "signIn.password",
+		submit: "signIn.submit",
+	},
+	home: { total: "home.total" },
+	add: {
+		open: "add.open",
+		title: "add.title",
+		amount: "add.amount",
+		save: "add.save",
+	},
 	toast: { message: "toast.message", undo: "toast.undo" },
 	sheet: {
 		close: "sheet.close",
@@ -21,4 +38,9 @@ export const TEST_IDS = {
 /** The id of a list row: `rowId("activity", expense.id)` is "activity.row.<id>". */
 export function rowId(screen: string, entityId: string): string {
 	return `${screen}.row.${entityId}`;
+}
+
+/** The id of a composer keypad key: `keyId("5")` is "keypad.key.5", `keyId("delete")` the Delete key. */
+export function keyId(key: string): string {
+	return `keypad.key.${key}`;
 }

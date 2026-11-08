@@ -419,8 +419,10 @@ async function writeWealth(db: Db, anchor: Anchor): Promise<void> {
 export async function seedE2eDatabase(
 	databaseUrl: string,
 	anchor: Anchor = seedAnchor(),
+	// The Maestro seed CLI swaps in its own guard (../maestro-db-guard.ts).
+	check: (url: string) => void = assertE2eDatabase,
 ): Promise<void> {
-	assertE2eDatabase(databaseUrl);
+	check(databaseUrl);
 	const db = new PrismaClient({
 		adapter: new PrismaPg({ connectionString: databaseUrl }),
 	});

@@ -10,6 +10,7 @@ import {
 	type ProbeResult,
 	probeServer,
 } from "@/lib/server-info";
+import { TEST_IDS } from "@/lib/testIds";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Screen } from "@/ui/Screen";
@@ -93,6 +94,7 @@ export default function ConnectScreen() {
 						onChangeText={edit}
 						onSubmitEditing={submit}
 						returnKeyType="go"
+						testID={TEST_IDS.connect.address}
 						textContentType="URL"
 						value={address}
 					/>
@@ -122,6 +124,7 @@ export default function ConnectScreen() {
 						disabled={checking}
 						label={t("continueAnyway")}
 						onPress={continueInsecure}
+						testID={TEST_IDS.connect.continue}
 						variant="outlined"
 					/>
 				) : (
@@ -129,6 +132,7 @@ export default function ConnectScreen() {
 						disabled={checking}
 						label={checking ? t("checking") : t("submit")}
 						onPress={submit}
+						testID={TEST_IDS.connect.submit}
 					/>
 				)}
 			</Screen>

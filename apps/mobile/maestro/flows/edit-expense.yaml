@@ -1,0 +1,35 @@
+# Flow 4. Detail, pencil, a new amount, Save: the detail and the list show it.
+# create-expense adds 12; the edit makes it 35.
+appId: app.retrospend
+tags:
+  - smoke
+env:
+  SERVER: http://10.0.2.2:3200
+---
+- runFlow: ../_common/session.yaml
+- runFlow: ../_common/create-expense.yaml
+- openLink: retrospend://activity
+- extendedWaitUntil:
+    visible: ${output.title}
+    timeout: 15000
+- tapOn: ${output.title}
+- tapOn:
+    id: sheet.edit
+- tapOn:
+    id: add.amount
+- tapOn:
+    id: keypad.key.delete
+- tapOn:
+    id: keypad.key.delete
+- tapOn:
+    id: keypad.key.3
+- tapOn:
+    id: keypad.key.5
+- tapOn:
+    id: add.save
+# The detail shows the new amount as its own figure, not any "35" on screen.
+- assertVisible: '\$35'
+# The pushed detail's way out is the system back, not a sheet's close button.
+- back
+# The list row for this title carries the new amount in its label.
+- assertVisible: '${output.title}.*\$35.*'

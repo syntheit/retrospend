@@ -6,6 +6,9 @@ import { useSession } from "@/auth/session";
 import { probeServer } from "@/lib/server-info";
 import { type E2eSession, parseE2eLink } from "./e2eSession";
 
+const MAX_RETRIES = 20;
+const RETRY_MS = 500;
+
 // End-to-end runs (Maestro) install one build and point it at a different
 // throwaway server each run, so they cannot bake credentials in the way
 // DevAutoSignIn does. They open retrospend://__e2e/session?... instead. This
@@ -18,6 +21,9 @@ export function E2eLink() {
 	const { state, signIn } = useSession();
 	const [pending, setPending] = useState<E2eSession | null>(null);
 	const tried = useRef({ connect: false, signIn: false });
+	// The session says "unknown" until its auth client exists, which can come a
+	// moment after the state reads signed out: try again, a bounded number of times.
+	const [retry, setRetry] = useState(0);
 
 	useEffect(() => {
 		function take(url: string | null) {
@@ -53,8 +59,15 @@ export function E2eLink() {
 			return;
 		}
 		tried.current.signIn = true;
-		signIn(pending.email, pending.password);
-	}, [pending, connection.status, state.status, signIn]);
+		signIn(pending.email, pending.password).then((step) => {
+			if (step.status !== "error" || step.reason !== "unknown") return;
+			if (retry >= MAX_RETRIES) return;
+			setTimeout(() => {
+				tried.current.signIn = false;
+				setRetry(retry + 1);
+			}, RETRY_MS);
+		});
+	}, [pending, connection.status, state.status, signIn, retry]);
 
 	const signedIn = state.status === "signedIn";
 	useEffect(() => {

@@ -4,6 +4,7 @@ import { Keyboard, useWindowDimensions, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSystemPad } from "@/layout/useHardwareKeyboard";
 import { useFormatMoney, useMoneyLocale } from "@/lib/money";
+import { TEST_IDS } from "@/lib/testIds";
 import { useTheme } from "@/theme";
 import type { PagerTab } from "@/ui/DetailPager";
 import { Text } from "@/ui/Text";
@@ -383,6 +384,7 @@ export function useExpenseFrame({
 					onChangeText={(title) => form.patchExpense({ title })}
 					onTypingChange={form.setTyping}
 					placeholder={t("titlePlaceholder")}
+					testID={TEST_IDS.add.title}
 					value={draft.title}
 				/>
 				{titleError ? (
