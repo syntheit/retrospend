@@ -126,3 +126,61 @@ describe("nextRecurringDate in a zone", () => {
 		expect(iso(next)).toBe("2027-02-28T00:00:00.000Z");
 	});
 });
+
+describe("nextRecurringDate where DST skips local midnight", () => {
+	const SANTIAGO = "America/Santiago";
+	const HAVANA = "America/Havana";
+	const BEIRUT = "Asia/Beirut";
+
+	it("Santiago: weekly onto Sep 5 lands on 01:00 that day, then back on midnight", () => {
+		// Sep 5 2027 00:00 -04 does not exist; the clock jumps to 01:00 -03 (04:00Z).
+		const gap = nextRecurringDate(
+			at("2027-08-29", SANTIAGO),
+			"WEEKLY",
+			null,
+			SANTIAGO,
+		);
+		expect(iso(gap)).toBe("2027-09-05T04:00:00.000Z");
+		expect(dayKey(gap, SANTIAGO)).toBe("2027-09-05");
+		const after = nextRecurringDate(gap, "WEEKLY", null, SANTIAGO);
+		expect(iso(after)).toBe("2027-09-12T03:00:00.000Z");
+	});
+
+	it("Santiago: monthly anchor 5 keeps Sep 5 as the day and Oct 5 at midnight", () => {
+		const sep = nextRecurringDate(
+			at("2027-08-05", SANTIAGO),
+			"MONTHLY",
+			5,
+			SANTIAGO,
+		);
+		expect(dayKey(sep, SANTIAGO)).toBe("2027-09-05");
+		const oct = nextRecurringDate(sep, "MONTHLY", 5, SANTIAGO);
+		expect(iso(oct)).toBe("2027-10-05T03:00:00.000Z");
+	});
+
+	it("Havana: biweekly onto Mar 14 lands on 01:00 that day (05:00Z)", () => {
+		const gap = nextRecurringDate(
+			at("2027-02-28", HAVANA),
+			"BIWEEKLY",
+			null,
+			HAVANA,
+		);
+		expect(iso(gap)).toBe("2027-03-14T05:00:00.000Z");
+		expect(dayKey(gap, HAVANA)).toBe("2027-03-14");
+		const after = nextRecurringDate(gap, "BIWEEKLY", null, HAVANA);
+		expect(iso(after)).toBe("2027-03-28T04:00:00.000Z");
+	});
+
+	it("Beirut: weekly onto Mar 28 lands on 01:00 that day (22:00Z the day before)", () => {
+		const gap = nextRecurringDate(
+			at("2027-03-21", BEIRUT),
+			"WEEKLY",
+			null,
+			BEIRUT,
+		);
+		expect(iso(gap)).toBe("2027-03-27T22:00:00.000Z");
+		expect(dayKey(gap, BEIRUT)).toBe("2027-03-28");
+		const after = nextRecurringDate(gap, "WEEKLY", null, BEIRUT);
+		expect(iso(after)).toBe("2027-04-03T21:00:00.000Z");
+	});
+});

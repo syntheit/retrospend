@@ -151,6 +151,42 @@ export function parseDateOnlyIn(value: string, timeZone?: string): Date {
 	);
 }
 
+/**
+ * The first instant of the calendar day `parts` in `timeZone` (out-of-range
+ * parts roll over like Date.UTC). Where DST skips local midnight (Santiago,
+ * Havana, Beirut) that is the first valid time of the day, 01:00, never the
+ * evening before, which is where fromWallTime resolves a time that does not
+ * exist.
+ */
+export function startOfWallDayIn(
+	parts: { year: number; month: number; day: number },
+	timeZone: string,
+): Date {
+	const rolled = new Date(Date.UTC(parts.year, parts.month, parts.day));
+	const target = {
+		year: rolled.getUTCFullYear(),
+		month: rolled.getUTCMonth(),
+		day: rolled.getUTCDate(),
+	};
+	const candidate = fromWallTime(target, timeZone);
+	const targetDay = rolled.getTime();
+	const dayOf = (instant: number) => {
+		const w = wallTime(new Date(instant), timeZone);
+		return Date.UTC(w.year, w.month, w.day);
+	};
+	if (dayOf(candidate.getTime()) >= targetDay) return candidate;
+	// Midnight is skipped: search the minutes after it for the day's first.
+	const MINUTE = 60_000;
+	let lo = candidate.getTime() / MINUTE;
+	let hi = lo + 6 * 60;
+	while (hi - lo > 1) {
+		const mid = Math.floor((lo + hi) / 2);
+		if (dayOf(mid * MINUTE) >= targetDay) hi = mid;
+		else lo = mid;
+	}
+	return new Date(hi * MINUTE);
+}
+
 /** Midnight at the start of `date`'s day in `timeZone`. */
 export function startOfDayIn(date: Date, timeZone?: string): Date {
 	const { year, month, day } = wallTime(date, timeZone);
