@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseTestDatabaseUrl, runDatabaseNames } from "./pg-global-setup";
+import { runDatabaseNames } from "./pg-global-setup";
+import { parseTestDatabaseUrl } from "./pg-test-url";
 
 const url = (hostPort: string, name: string) =>
 	`postgresql://postgres:testpassword@${hostPort}/${name}`;
