@@ -1167,7 +1167,8 @@
     "eventEmailChangeReverted": "Modification d’e-mail annulée",
     "eventGuestUpgraded": "Compte invité converti",
     "eventShadowProfileDeleted": "Profil sans compte supprimé",
-    "eventGuestSessionDeleted": "Session d'invité supprimée"
+    "eventGuestSessionDeleted": "Session d'invité supprimée",
+    "eventAdminListViewed": "Liste consultée par un administrateur"
   },
   "auth": {
     "loginFailed": "La connexion a échoué",

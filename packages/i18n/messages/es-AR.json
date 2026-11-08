@@ -1167,7 +1167,8 @@
     "eventEmailChangeReverted": "Cambio de Email Revertido",
     "eventGuestUpgraded": "Invitado Actualizado",
     "eventShadowProfileDeleted": "Perfil Sombra Eliminado",
-    "eventGuestSessionDeleted": "Sesión de Invitado Eliminada"
+    "eventGuestSessionDeleted": "Sesión de Invitado Eliminada",
+    "eventAdminListViewed": "Lista vista por un administrador"
   },
   "auth": {
     "loginFailed": "Error al iniciar sesión",

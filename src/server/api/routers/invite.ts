@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import crypto from "crypto";
 import { z } from "zod";
 import {
+	adminListProcedure,
 	adminProcedure,
 	createTRPCRouter,
 	protectedProcedure,
@@ -23,7 +24,7 @@ function generateInviteCode(): string {
 }
 
 export const inviteRouter = createTRPCRouter({
-	list: adminProcedure
+	list: adminListProcedure("invites")
 		.input(
 			z.object({
 				status: z.enum(["all", "active", "used"]).default("active"),
@@ -36,11 +37,8 @@ export const inviteRouter = createTRPCRouter({
 			const { status, page, pageSize } = input;
 
 			const where: { usedAt?: null | { not: null } } = {};
-			if (status === "active") {
-				where.usedAt = null;
-			} else if (status === "used") {
-				where.usedAt = { not: null };
-			}
+			if (status === "active") where.usedAt = null;
+			else if (status === "used") where.usedAt = { not: null };
 
 			const [totalCount, inviteCodes] = await Promise.all([
 				db.inviteCode.count({ where }),
@@ -192,11 +190,8 @@ export const inviteRouter = createTRPCRouter({
 				createdById: session.user.id,
 			};
 
-			if (status === "active") {
-				where.usedAt = null;
-			} else if (status === "used") {
-				where.usedAt = { not: null };
-			}
+			if (status === "active") where.usedAt = null;
+			else if (status === "used") where.usedAt = { not: null };
 
 			const [totalCount, inviteCodes] = await Promise.all([
 				db.inviteCode.count({ where }),

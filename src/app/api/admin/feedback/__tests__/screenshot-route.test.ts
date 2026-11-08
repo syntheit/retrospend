@@ -3,11 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("~/server/better-auth/web-session", () => ({ getWebSession: vi.fn() }));
 vi.mock("~/server/services/feedback-screenshot.service", () => ({
-	openFeedbackScreenshot: vi.fn(),
+	openFeedbackScreenshotAsAdmin: vi.fn(),
 }));
 
 import { getWebSession } from "~/server/better-auth/web-session";
-import { openFeedbackScreenshot } from "~/server/services/feedback-screenshot.service";
+import { openFeedbackScreenshotAsAdmin } from "~/server/services/feedback-screenshot.service";
 import { GET } from "../[id]/screenshot/route";
 
 const params = (id: string) => ({ params: Promise.resolve({ id }) });
@@ -20,7 +20,7 @@ const as = (role: "ADMIN" | "USER") =>
 
 beforeEach(() => {
 	vi.clearAllMocks();
-	vi.mocked(openFeedbackScreenshot).mockResolvedValue(
+	vi.mocked(openFeedbackScreenshotAsAdmin).mockResolvedValue(
 		Readable.from(["webp-bytes"]),
 	);
 });
@@ -30,14 +30,14 @@ describe("admin feedback screenshot route", () => {
 		vi.mocked(getWebSession).mockResolvedValue(null);
 		const res = await GET(request(), params("f1"));
 		expect(res.status).toBe(401);
-		expect(openFeedbackScreenshot).not.toHaveBeenCalled();
+		expect(openFeedbackScreenshotAsAdmin).not.toHaveBeenCalled();
 	});
 
 	it("is a 403 for a signed-in member and reads nothing", async () => {
 		as("USER");
 		const res = await GET(request(), params("f1"));
 		expect(res.status).toBe(403);
-		expect(openFeedbackScreenshot).not.toHaveBeenCalled();
+		expect(openFeedbackScreenshotAsAdmin).not.toHaveBeenCalled();
 	});
 
 	it("serves the picture to an admin, private and uncached", async () => {
@@ -46,12 +46,12 @@ describe("admin feedback screenshot route", () => {
 		expect(res.status).toBe(200);
 		expect(res.headers.get("Content-Type")).toBe("image/webp");
 		expect(res.headers.get("Cache-Control")).toBe("private, no-store");
-		expect(openFeedbackScreenshot).toHaveBeenCalledWith("f1");
+		expect(openFeedbackScreenshotAsAdmin).toHaveBeenCalledWith("u1", "f1");
 	});
 
 	it("is a 404 when there is no screenshot or the file is gone", async () => {
 		as("ADMIN");
-		vi.mocked(openFeedbackScreenshot).mockResolvedValue(null);
+		vi.mocked(openFeedbackScreenshotAsAdmin).mockResolvedValue(null);
 		expect((await GET(request(), params("f1"))).status).toBe(404);
 	});
 });

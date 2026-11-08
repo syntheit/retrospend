@@ -16,7 +16,12 @@ import { errorFormatter } from "~/server/api/error-formatter";
 import type { Session } from "~/server/better-auth/config";
 import { getWebSession } from "~/server/better-auth/web-session";
 import { createUserScopedDb, db } from "~/server/db";
-import { logAdminProcedure } from "~/server/services/admin-access.service";
+import {
+	type AdminListView,
+	isFirstPage,
+	logAdminProcedure,
+	recordAdminListView,
+} from "~/server/services/admin-access.service";
 import {
 	claimTimeZone,
 	resolveTimeZone,
@@ -252,6 +257,26 @@ export const adminProcedure = protectedProcedure.use(async (opts) => {
 	}
 	return result;
 });
+
+/**
+ * Admin procedure for a list that spans many people. Once the read has
+ * succeeded, the first page is one event in the admin audit (not an entry in
+ * anyone's own access log); a refused or invalid request writes nothing.
+ * A list filtered to one person is a per-person read instead: log it with
+ * recordAdminRead.
+ */
+export const adminListProcedure = (view: AdminListView) =>
+	adminProcedure.use(async (opts) => {
+		const result = await opts.next();
+		if (result.ok) {
+			await recordAdminListView(db, {
+				adminId: opts.ctx.session.user.id,
+				view,
+				firstPage: isFirstPage(await opts.getRawInput()),
+			});
+		}
+		return result;
+	});
 
 /**
  * Guest-or-protected procedure

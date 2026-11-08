@@ -1,8 +1,10 @@
 import { TRPCError } from "@trpc/server";
+import { logEvent } from "~/server/services/audit.service";
 import type { ParticipantType, PrismaClient } from "~prisma";
 
 /** The global client or a transaction on it (the app role cannot write the log). */
 type LogDb = Pick<PrismaClient, "adminAccessLog">;
+type ListViewDb = Pick<PrismaClient, "eventLog">;
 type RemovalDb = Pick<PrismaClient, "adminAccessLog" | "user">;
 type ParticipantDb = Pick<
 	PrismaClient,
@@ -30,6 +32,7 @@ export const ADMIN_ACCESS_ACTIONS = [
 	"avatar_removed",
 	"person_deleted",
 	"shared_data_changed",
+	"feedback_screenshot_viewed",
 ] as const;
 
 export type AdminAccessAction = (typeof ADMIN_ACCESS_ACTIONS)[number];
@@ -58,6 +61,90 @@ export async function recordAdminAccess(
 		}
 		throw error;
 	}
+}
+
+/**
+ * The same admin reading the same thing of the same person within this window
+ * is one entry: a picture is fetched again on every redraw, and the log is
+ * read by people, not counted.
+ */
+const READ_DEDUPE_MS = 5 * 60 * 1000;
+
+/**
+ * Records an admin reading one person's data. Call it once the read has
+ * succeeded and before the data is handed back, so a failed write means the
+ * data is not served. A repeat by the same admin within five minutes adds no
+ * second entry.
+ */
+export async function recordAdminRead(
+	db: LogDb,
+	params: { adminId: string; userId: string; action: AdminAccessAction },
+): Promise<void> {
+	const recent = await db.adminAccessLog.findFirst({
+		where: {
+			userId: params.userId,
+			adminId: params.adminId,
+			action: params.action,
+			createdAt: { gte: new Date(Date.now() - READ_DEDUPE_MS) },
+		},
+		select: { id: true },
+	});
+	if (recent) return;
+	await recordAdminAccess(db, params);
+}
+
+/** The lists across many people an admin can open, as written to the admin audit. */
+export type AdminListView =
+	| "users"
+	| "event_log"
+	| "ai_usage"
+	| "shadow_profiles"
+	| "guest_sessions"
+	| "feedback"
+	| "error_reports"
+	| "invites";
+
+/**
+ * Records an admin opening a list that spans many people, as one event in the
+ * admin audit (the event log), never in any person's own log. Only the first
+ * page of a list counts (pass `firstPage`), and the same admin opening the
+ * same list again within five minutes adds no second event. The audit is best
+ * effort like every other admin event: a failed write never fails the read.
+ */
+export async function recordAdminListView(
+	db: ListViewDb,
+	params: { adminId: string; view: AdminListView; firstPage: boolean },
+): Promise<void> {
+	if (!params.firstPage) return;
+	try {
+		const recent = await db.eventLog.findFirst({
+			where: {
+				eventType: "ADMIN_LIST_VIEWED",
+				userId: params.adminId,
+				timestamp: { gte: new Date(Date.now() - READ_DEDUPE_MS) },
+				metadata: { path: ["view"], equals: params.view },
+			},
+			select: { id: true },
+		});
+		if (recent) return;
+		await logEvent({
+			eventType: "ADMIN_LIST_VIEWED",
+			userId: params.adminId,
+			metadata: { adminId: params.adminId, view: params.view },
+		});
+	} catch (error) {
+		console.error("Failed to record an admin list view:", error);
+	}
+}
+
+/** Whether a list request asks for the first page, whichever paging it uses. */
+export function isFirstPage(rawInput: unknown): boolean {
+	const input = (rawInput ?? {}) as {
+		cursor?: unknown;
+		offset?: unknown;
+		page?: unknown;
+	};
+	return !input.cursor && !input.offset && (!input.page || input.page === 1);
 }
 
 /** The admin procedures that act on one person's account, and what each is logged as. */

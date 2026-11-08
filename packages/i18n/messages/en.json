@@ -1167,7 +1167,8 @@
     "eventEmailChangeReverted": "Email Change Reverted",
     "eventGuestUpgraded": "Guest Upgraded",
     "eventShadowProfileDeleted": "Shadow Profile Deleted",
-    "eventGuestSessionDeleted": "Guest Session Deleted"
+    "eventGuestSessionDeleted": "Guest Session Deleted",
+    "eventAdminListViewed": "Admin list viewed"
   },
   "auth": {
     "loginFailed": "Login failed",

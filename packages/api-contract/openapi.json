@@ -10347,7 +10347,8 @@
 								"EMAIL_CHANGE_REVERTED",
 								"GUEST_UPGRADED",
 								"ADMIN_DELETE_SHADOW_PROFILE",
-								"ADMIN_DELETE_GUEST_SESSION"
+								"ADMIN_DELETE_GUEST_SESSION",
+								"ADMIN_LIST_VIEWED"
 							],
 							"type": "string"
 						}
@@ -10388,7 +10389,8 @@
 															"EMAIL_CHANGE_REVERTED",
 															"GUEST_UPGRADED",
 															"ADMIN_DELETE_SHADOW_PROFILE",
-															"ADMIN_DELETE_GUEST_SESSION"
+															"ADMIN_DELETE_GUEST_SESSION",
+															"ADMIN_LIST_VIEWED"
 														],
 														"type": "string"
 													},

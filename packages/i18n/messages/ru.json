@@ -1167,7 +1167,8 @@
     "eventEmailChangeReverted": "Изменение адреса электронной почты отменено",
     "eventGuestUpgraded": "Гостевой профиль преобразован",
     "eventShadowProfileDeleted": "Теневой профиль удалён",
-    "eventGuestSessionDeleted": "Гостевая сессия удалена"
+    "eventGuestSessionDeleted": "Гостевая сессия удалена",
+    "eventAdminListViewed": "Администратор открыл список"
   },
   "auth": {
     "loginFailed": "Не удалось войти",

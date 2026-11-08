@@ -1,9 +1,14 @@
+import { EVENT_LOG_TYPES } from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import { hashPassword } from "better-auth/crypto";
 import crypto from "crypto";
 import { z } from "zod";
 import { env } from "~/env";
-import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
+import {
+	adminListProcedure,
+	adminProcedure,
+	createTRPCRouter,
+} from "~/server/api/trpc";
 import {
 	deleteGuestSessionAsAdmin,
 	deleteShadowProfileAsAdmin,
@@ -77,40 +82,12 @@ export const adminRouter = createTRPCRouter({
 		};
 	}),
 
-	getEventLogs: adminProcedure
+	getEventLogs: adminListProcedure("event_log")
 		.input(
 			z.object({
 				limit: z.number().min(1).max(100).default(50),
 				offset: z.number().min(0).default(0),
-				eventType: z
-					.enum([
-						"FAILED_LOGIN",
-						"SUCCESSFUL_LOGIN",
-						"PASSWORD_RESET",
-						"PASSWORD_CHANGED",
-						"ACCOUNT_CREATED",
-						"ACCOUNT_DELETED",
-						"ACCOUNT_ENABLED",
-						"ACCOUNT_DISABLED",
-						"INVITE_USED",
-						"INVITE_CREATED",
-						"EMAIL_VERIFIED",
-						"TWO_FACTOR_ENABLED",
-						"TWO_FACTOR_DISABLED",
-						"SETTINGS_UPDATED",
-						"USER_UPDATED",
-						"USERNAME_CHANGED",
-						"EXPENSE_IMPORT",
-						"ADMIN_RESET_LINK_GENERATED",
-						"ADMIN_AI_ACCESS_CHANGED",
-						"EMAIL_CHANGE_REQUESTED",
-						"EMAIL_CHANGE_CONFIRMED",
-						"EMAIL_CHANGE_REVERTED",
-						"GUEST_UPGRADED",
-						"ADMIN_DELETE_SHADOW_PROFILE",
-						"ADMIN_DELETE_GUEST_SESSION",
-					])
-					.optional(),
+				eventType: z.enum(EVENT_LOG_TYPES).optional(),
 			}),
 		)
 		.query(async ({ ctx, input }) => {
@@ -146,40 +123,12 @@ export const adminRouter = createTRPCRouter({
 			};
 		}),
 
-	getEventLogsCursor: adminProcedure
+	getEventLogsCursor: adminListProcedure("event_log")
 		.input(
 			z.object({
 				limit: z.number().min(1).max(100).default(50),
 				cursor: z.string().optional(),
-				eventType: z
-					.enum([
-						"FAILED_LOGIN",
-						"SUCCESSFUL_LOGIN",
-						"PASSWORD_RESET",
-						"PASSWORD_CHANGED",
-						"ACCOUNT_CREATED",
-						"ACCOUNT_DELETED",
-						"ACCOUNT_ENABLED",
-						"ACCOUNT_DISABLED",
-						"INVITE_USED",
-						"INVITE_CREATED",
-						"EMAIL_VERIFIED",
-						"TWO_FACTOR_ENABLED",
-						"TWO_FACTOR_DISABLED",
-						"SETTINGS_UPDATED",
-						"USER_UPDATED",
-						"USERNAME_CHANGED",
-						"EXPENSE_IMPORT",
-						"ADMIN_RESET_LINK_GENERATED",
-						"ADMIN_AI_ACCESS_CHANGED",
-						"EMAIL_CHANGE_REQUESTED",
-						"EMAIL_CHANGE_CONFIRMED",
-						"EMAIL_CHANGE_REVERTED",
-						"GUEST_UPGRADED",
-						"ADMIN_DELETE_SHADOW_PROFILE",
-						"ADMIN_DELETE_GUEST_SESSION",
-					])
-					.optional(),
+				eventType: z.enum(EVENT_LOG_TYPES).optional(),
 			}),
 		)
 		.query(async ({ ctx, input }) => {
@@ -212,7 +161,7 @@ export const adminRouter = createTRPCRouter({
 			return { logs, nextCursor };
 		}),
 
-	listUsers: adminProcedure.query(async ({ ctx }) => {
+	listUsers: adminListProcedure("users").query(async ({ ctx }) => {
 		const { db } = ctx;
 
 		const users = await db.user.findMany({
@@ -548,7 +497,7 @@ export const adminRouter = createTRPCRouter({
 			return { success: true };
 		}),
 
-	getAiUsageStats: adminProcedure
+	getAiUsageStats: adminListProcedure("ai_usage")
 		.input(
 			z
 				.object({
@@ -723,7 +672,7 @@ export const adminRouter = createTRPCRouter({
 		}
 	}),
 
-	listShadowProfiles: adminProcedure.query(async ({ ctx }) => {
+	listShadowProfiles: adminListProcedure("shadow_profiles").query(async ({ ctx }) => {
 		const { db } = ctx;
 
 		const profiles = await db.shadowProfile.findMany({
@@ -769,7 +718,7 @@ export const adminRouter = createTRPCRouter({
 		}));
 	}),
 
-	listGuestSessions: adminProcedure.query(async ({ ctx }) => {
+	listGuestSessions: adminListProcedure("guest_sessions").query(async ({ ctx }) => {
 		const { db } = ctx;
 
 		const sessions = await db.guestSession.findMany({

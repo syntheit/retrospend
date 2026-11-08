@@ -2,6 +2,7 @@ import type { InviteCodeDto } from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import * as z from "zod";
 import { db } from "~/server/db";
+import { recordAdminListView } from "~/server/services/admin-access.service";
 import { isAllowAllUsersToGenerateInvitesEnabled } from "~/server/services/settings";
 import type { Prisma } from "~prisma";
 import { assertAdmin } from "./admin";
@@ -109,7 +110,13 @@ export async function deleteMine(caller: LedgerCaller, id: string) {
 
 export async function listAll(caller: LedgerCaller, q: Query) {
 	assertAdmin(caller);
-	return page(db, {}, q);
+	const result = await page(db, {}, q);
+	await recordAdminListView(db, {
+		adminId: caller.principal.userId,
+		view: "invites",
+		firstPage: !q.cursor,
+	});
+	return result;
 }
 
 export async function createAny(caller: LedgerCaller): Promise<InviteCodeDto> {
