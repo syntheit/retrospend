@@ -4,6 +4,7 @@
  * chip). Which rows are already in Activity is match.ts. Both call these, so the review
  * cannot promise a count the commit does not keep.
  */
+import { stripUserTextControls } from "@retrospend/api-contract/common";
 import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import type { ImportRateInput } from "./book";
 import { type ImportKind, proposeKind, type StoredRow } from "./rows";
@@ -48,7 +49,7 @@ export function prepareRows(
 		rows.push({
 			index,
 			stored: row,
-			title: row.title.trim(),
+			title: stripUserTextControls(row.title).trim(),
 			date,
 			day: row.date,
 			rate: {

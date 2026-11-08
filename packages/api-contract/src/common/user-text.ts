@@ -46,6 +46,33 @@ export function hasLoneSurrogate(text: string): boolean {
 	return false;
 }
 
+/**
+ * The text with the characters `userText` refuses taken out: C0 controls
+ * other than tab, line feed and carriage return, and lone surrogates.
+ * Nothing else changes (no trim, no case folding, rule 11). For writes that
+ * do not come from a form, such as imports and recurring posts, so one stray
+ * control character in a file cannot make the row fail every later edit.
+ */
+export function stripUserTextControls(text: string): string {
+	if (!hasForbiddenControl(text) && !hasLoneSurrogate(text)) return text;
+	let out = "";
+	for (let i = 0; i < text.length; i++) {
+		const code = text.charCodeAt(i);
+		if (code < 0x20) {
+			if (ALLOWED_C0.has(code)) out += text[i];
+		} else if (code >= 0xd800 && code <= 0xdbff) {
+			const next = text.charCodeAt(i + 1);
+			if (next >= 0xdc00 && next <= 0xdfff) {
+				out += text[i] + text[i + 1];
+				i++;
+			}
+		} else if (code < 0xdc00 || code > 0xdfff) {
+			out += text[i];
+		}
+	}
+	return out;
+}
+
 function declare(field: string, max: number, required: boolean) {
 	fields.add(field);
 	const text = z.string();

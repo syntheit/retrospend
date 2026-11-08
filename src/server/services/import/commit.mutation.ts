@@ -12,6 +12,7 @@
  * no rate, so the counts add up to the file's rows.
  */
 import { randomUUID } from "node:crypto";
+import { stripUserTextControls } from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
 import type { Money } from "~/server/figures/registry";
 import type { Prisma } from "~prisma";
@@ -189,8 +190,10 @@ function rowData(
 		amountInUSD: c.rate.amountInUSD,
 		...(c.rate.home ?? {}),
 		pricingSource: s.pricingSource || "IMPORT",
-		location: s.location || null,
-		description: s.description || null,
+		location: s.location ? stripUserTextControls(s.location) || null : null,
+		description: s.description
+			? stripUserTextControls(s.description) || null
+			: null,
 		// The file's column, else the category's default, else counted.
 		excludeFromAnalytics: s.excludeFromAnalytics ?? excludeByDefault ?? false,
 		status: "FINALIZED",

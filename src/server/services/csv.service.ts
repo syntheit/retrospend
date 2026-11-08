@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { stripUserTextControls } from "@retrospend/api-contract/common";
 import { generateCsv } from "~/lib/csv";
 import {
 	computeAmountInUSD,
@@ -107,6 +108,18 @@ export interface ImportExpenseRow {
 	excludeFromAnalytics?: boolean;
 }
 
+/** The row with the characters userText refuses taken out of its text. */
+function withCleanText(row: ImportExpenseRow): ImportExpenseRow {
+	const clean = (text: string | null | undefined) =>
+		text ? stripUserTextControls(text) : text;
+	return {
+		...row,
+		title: stripUserTextControls(row.title),
+		location: clean(row.location),
+		description: clean(row.description),
+	};
+}
+
 export class CsvService {
 	constructor(private db: PrismaClient | Prisma.TransactionClient) {}
 
@@ -182,10 +195,12 @@ export class CsvService {
 	 */
 	async importExpensesFromRows(
 		userId: string,
-		rows: ImportExpenseRow[],
+		incoming: ImportExpenseRow[],
 		options: { timeZone?: string } = {},
 	) {
 		const tz = options.timeZone;
+		// Before the duplicate check, so the fingerprint sees what is stored.
+		const rows = incoming.map(withCleanText);
 		// Validate categories
 		const categoryIds = Array.from(
 			new Set(

@@ -90,6 +90,35 @@ describe("CsvService.importExpensesFromRows", () => {
 			Object.fromEntries(created().map((e) => [e.title, e.excludeFromAnalytics])),
 		).toEqual({ Transfer: true, Food: false, Flagged: true, Kept: false, None: false });
 	});
+	it("stores text without control characters and matches duplicates on what is stored", async () => {
+		useExpenseTable(db, [
+			{ date: OCT5_LOCAL, title: "Coffee", amount: 3500, currency: "ARS", amountInUSD: 2.24 },
+		]);
+
+		const result = await service.importExpensesFromRows(
+			"user-1",
+			[
+				{ title: "Cof\u000bfee", amount: 3500, currency: "ARS", date: OCT5_LOCAL, exchangeRate: 1560 },
+				{
+					title: "  Lun\u0001ch ",
+					amount: 9000,
+					currency: "ARS",
+					date: OCT5_LOCAL,
+					exchangeRate: 1560,
+					location: "BA\u0000",
+					description: "one\r\ntwo\u0007\tthree",
+				},
+				{ title: "Dinner", amount: 100, currency: "ARS", date: OCT5_LOCAL, exchangeRate: 1560, location: "", description: null },
+			],
+			{ timeZone: BA },
+		);
+
+		expect(result.skippedDuplicates).toBe(1);
+		const rows = created();
+		expect(rows.map((e) => e.title)).toEqual(["  Lunch ", "Dinner"]);
+		expect(rows[0]).toMatchObject({ location: "BA", description: "one\r\ntwo\tthree" });
+		expect(rows[1]).toMatchObject({ location: "", description: undefined });
+	});
 });
 
 vi.mock("~/server/services/amortization.service", () => ({

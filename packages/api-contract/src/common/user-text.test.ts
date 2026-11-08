@@ -3,6 +3,7 @@ import { categoryNameSchema, createCategorySchema } from "../categories";
 import {
 	hasForbiddenControl,
 	hasLoneSurrogate,
+	stripUserTextControls,
 	USER_TEXT_FIELDS,
 	userText,
 	userTextOrEmpty,
@@ -91,5 +92,41 @@ describe("Category.name", () => {
 		for (const blank of [" ", "\t \n"])
 			expect(categoryNameSchema.safeParse(blank).success).toBe(false);
 		expect(categoryNameSchema.parse(" Food ")).toBe(" Food ");
+	});
+});
+
+describe("stripUserTextControls", () => {
+	it("removes every C0 control except tab, line feed and carriage return", () => {
+		for (let code = 0; code < 0x20; code++) {
+			const char = String.fromCharCode(code);
+			const kept = code === 0x09 || code === 0x0a || code === 0x0d;
+			expect(stripUserTextControls(`a${char}b`)).toBe(
+				kept ? `a${char}b` : "ab",
+			);
+		}
+	});
+
+	it("removes lone surrogates and keeps valid pairs", () => {
+		expect(stripUserTextControls("a\uD800b\uDC00c")).toBe("abc");
+		expect(stripUserTextControls("x\uD83D")).toBe("x");
+		expect(stripUserTextControls("\u{1F600}\uD83D\u{1F600}")).toBe(
+			"\u{1F600}\u{1F600}",
+		);
+	});
+
+	it("changes nothing else: no trim, no case folding, other characters kept", () => {
+		const text =
+			"  Caf\u00e9 \u00d1 \u05e9\u05dc\u05d5\u05dd \u007f\u0085\r\n\t ";
+		expect(stripUserTextControls(text)).toBe(text);
+		expect(stripUserTextControls("ABC\u000bdef ")).toBe("ABCdef ");
+	});
+
+	it("leaves text that userText refuses acceptable to userText", () => {
+		const dirty = "bell\u0007 nul\u0000 marker\u0001k1: \uD800";
+		expect(userText("test.strip", 100).safeParse(dirty).success).toBe(false);
+		expect(
+			userText("test.strip", 100).safeParse(stripUserTextControls(dirty))
+				.success,
+		).toBe(true);
 	});
 });
