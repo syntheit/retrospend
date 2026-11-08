@@ -2,7 +2,7 @@
 
 **DRAFT. Not a security claim.** This document describes a design that is only partly built. No audit has been done. An independent audit comes before any public statement that Retrospend is end-to-end encrypted (spike phase 6, W2), and until that report exists nothing here may be used in marketing.
 
-Written 2026-11-08 against base commit `d081bfc1` (the crypto foundation F1 to F3 is merged there) plus D1 (server field crypto), merged into the segment at `038d4709`, which this branch does not contain; D1 files are read from `e2ee/d1-field-crypto`. Every technical statement cites the file it comes from. Where the design in `docs/roadmap/e2ee-spike.md` (the spike) and the code disagree, section 12 says so, and the code is what this document describes.
+Written 2026-11-08 against base commit `d081bfc1` (the crypto foundation F1 to F3 is merged there) plus D1 (server field crypto), merged into the segment at `038d4709`, which this branch does not contain; D1 files are read from `e2ee/d1-field-crypto`. Every technical statement cites the file it comes from. Where the design in `docs/roadmap/e2ee-spike.md` (the spike) and the code disagree, section 12 says so, and the code is what this document describes. Section 14 covers database access, which applies to every account.
 
 ## 1. What exists today
 
@@ -324,3 +324,53 @@ Everything else in spike section 4 that is built (XChaCha20-Poly1305, Argon2id, 
 An independent firm reviews the design and the code before any public claim (spike phase 6, W2). The audit package should include this document, `packages/crypto`, the vectors and their generators (`packages/crypto/scripts`), and `src/server/crypto`. The known-answer vectors were produced by implementations other than libsodium (`vectors/primitives.vectors.json`, `keys.vectors.json`), which is what lets them catch a wrong build. Questions to hand the auditor: section 5.2 (hostile parameters), 5.6 (account key substitution), 5.8 (the commitment step for device approval), 6 (rollback and omission), 7 (mixed mode), 9 (web delivery).
 
 Until that report exists, wording stays at what is true today: no user's data is end-to-end encrypted, and none of it is encrypted with a server data key yet.
+
+## 14. Database access
+
+This section applies to every account, Advanced or not. It describes the database roles and what they do and do not protect, written 2026-11-08 against `4bc4d1d7` (access hardening PRs 1 to 3 and A2 are merged there). It is a statement of what the code does, not an audit.
+
+### 14.1 What row-level security and the grants protect
+
+User-scoped work (`ctx.db`, `userTransaction`) runs in a transaction that sets `app.current_user_id` and switches to the role `retrospend_app` (`src/server/db.ts`). Every row-level security policy targets that role. The grants of `retrospend_app` are the least a user-scoped path needs, table by table and column by column (`prisma/grants/app-role.sql`, the privilege ratchet `src/test/migrations/retrospend-app-privileges.json`). The `SECURITY DEFINER` functions are not executable by PUBLIC, are on an allowlist and pin their `search_path` (`src/test/migrations/definer-functions.json`).
+
+This protects against logic bugs in model calls: a missing `where`, a wrong id passed down, a scoped path that writes a table or column it should not. A bug like that reads or writes nothing it was not meant to.
+
+It does not protect against arbitrary SQL running as `retrospend_app`. That SQL can call `set_config('app.current_user_id', <anyone>, true)` and becomes that user under every policy. A custom setting cannot be made unforgeable. It can also run `RESET ROLE`, which returns to the session user, `retrospend_owner`. That role has `BYPASSRLS` and owns every table, so it reads every row and can change the objects it owns. This holds until A3, a planned second login role for scoped work that cannot switch back. The owner is not a superuser: it cannot run `COPY ... PROGRAM`, read server files, create roles or reach another database.
+
+### 14.2 Raw SQL
+
+- On a user-scoped client, `$queryRaw`, `$executeRaw`, their `Unsafe` and `Typed` forms and the array form of `$transaction` are refused with an error that names `userTransaction` (`src/server/db.ts`, `src/server/__tests__/scoped-raw-refused.pg.test.ts`). Before this, such a call ran as the connection's own role, not `retrospend_app`, so no policy applied.
+- Raw SQL as a user goes through `userTransaction`. Raw SQL on shared data uses the global client on purpose.
+- A scan fails the build unless every `$queryRawUnsafe` and `$executeRawUnsafe` outside tests is a plain call with a string literal or `Prisma.sql` as its argument (`src/test/rawSqlScan.test.ts`). Anything built from input uses the tagged `$queryRaw` and `$executeRaw`, which parameterize.
+- Another scan fails any migration that grants on `ALL TABLES`, `ALL SEQUENCES` or `ALL FUNCTIONS` to `retrospend_app` or PUBLIC (`src/test/migrations/blanket-grants.test.ts`). Two migrations from before the rule are listed by name.
+
+### 14.3 The roles
+
+- **The bootstrap runs as the superuser and touches only the catalogs.** It runs `prisma/bootstrap/owner-role.sql` with `search_path = pg_catalog, pg_temp`: fixed statements on roles, the database and schemas, and `ALTER ... OWNER`. It never reads, writes or calls an object the owner owns or could create. Otherwise the owner could replace a table with a view that calls a function, and the function would run as the superuser.
+- **The owner is not a superuser and is checked at every start.** `retrospend_owner` has no `SUPERUSER`, `CREATEDB`, `CREATEROLE` or `REPLICATION`, and is a member of no role except `retrospend_app`, no `pg_*` role in particular. Its attributes and memberships are read from the catalogs on every start (`prisma/bootstrap/owner-verify.sql`). If it or `retrospend_app` holds more than allowed, the start removes the extra rights, logs a warning and stops.
+- **Database `CREATE` exists only on a brand-new install.** The owner never holds it. A new, empty database (nothing in any schema that can carry code) is migrated by a one-shot role, `retrospend_migrator_*`, that holds `CREATE` while `prisma migrate deploy` runs. What it made is then reassigned to the owner and the role is dropped, also when a migration fails. An upgrade gives `CREATE` to nobody, so a migration must not need it (`src/test/migrations/database-create.test.ts`). A schema or extension goes into the bootstrap SQL instead.
+- **The environment is allowlisted.** The entrypoint starts the app with `env -i` and only the names the app reads, with `DATABASE_URL` replaced by the owner's. The sidecar's wrapper does the same. The superuser's URL and `POSTGRES_PASSWORD` are not in the environment of either process. The files the entrypoint runs belong to root and the app's user cannot write them (`scripts/check-entrypoint-perms.sh`), because a container restart keeps the writable layer.
+- **The owner's password** is derived from the superuser's, or comes from `DATABASE_OWNER_PASSWORD`. A superuser URL with no password cannot get a derived secret that is not guessable, so the app warns and keeps connecting as the superuser. That setup has none of the protection in this section.
+
+### 14.4 Residual risks
+
+- **An owner-to-superuser path needs a Postgres bug or a misconfiguration.** The owner has no superuser rights, no database `CREATE`, no role memberships and no way to log in as the superuser. Nothing here claims such a bug does not exist.
+- **Superuser DML on owner tables runs code the owner can plant.** The owner owns the tables, so it can add triggers, and can define the functions that triggers, `CHECK` constraints and domains call. A superuser session that writes to those tables runs that code with superuser rights. Today's paths:
+  - `scripts/sync-dev-db.sh` pipes `pg_dump --clean` into `psql` as the dev database's user, which is a superuser in the dev container (`docker-compose.dev.yml`).
+  - The e2e seed runs `TRUNCATE ... CASCADE` as the superuser (`e2e/fixtures/seed.ts`), on the e2e database only.
+  - The documented `pg_restore` as the superuser, for the keystore dump (`docs/self-hosting.md`), which creates a schema the owner cannot.
+  - Any admin `psql` session as `postgres`. Its default `search_path` includes `public`, which the owner controls, so a function or table the owner placed there can shadow a name the session means.
+  - pgweb, which is a superuser console (`docker-compose.yml`, off unless the `tools` profile is used).
+  `pg_dump` alone is low risk: it reads data and runs no triggers. A restore as the owner removes the exposure for the main dump.
+- **Until A3, arbitrary SQL in the app is owner access.** Anything that runs SQL as `retrospend_app`, by injection or by a code bug that survives the scans, can reach `retrospend_owner` and so every row (section 14.1).
+- **A failed first migration on a fresh install needs the database dropped and created again.** A half-built database is no longer empty, so the retry gets no `CREATE`, and an upgrade is not allowed to create schemas. The steps are in `docs/self-hosting.md`. Do this only before the install holds data.
+- **A leaked owner password** gives owner access, which is everything inside this one database. A derived password cannot be turned into the superuser's, because the derivation is one-way.
+
+### 14.5 Mitigations and recommendations for operators
+
+- Keep the Postgres and sidecar ports on `127.0.0.1` or unpublished, as the sample compose files do. Do not publish them on all interfaces.
+- Leave pgweb off. When it is needed, start it with `--profile tools` and stop it afterwards. Never expose it.
+- Give the database user a long password and do not use trust authentication, or set `DATABASE_OWNER_PASSWORD` on the app and the sidecar. Read the start-up log: `Database: connecting as retrospend_owner` is the expected line, and any `WARNING` about the owner role or a password is a reason to stop and look.
+- Restore backups as `retrospend_owner` where possible, and run admin sessions as the superuser with schema-qualified names or `SET search_path = pg_catalog`. Do not write to app tables as the superuser.
+- Encrypt backups with `BACKUP_AGE_RECIPIENT` and keep the key and `DATA_MASTER_KEY` apart from the backup files.
+- Keep the database on a private network, and use TLS if it is on another host.
