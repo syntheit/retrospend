@@ -59,6 +59,10 @@ export function resolveImportRate(
 	};
 }
 
+/** C0 controls other than tab, line feed and carriage return. */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: this is what it matches
+const CONTROLS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g;
+
 /**
  * What makes an imported row "already in Activity": the same calendar day in
  * the user's zone (an expense saved at any time of that day counts), title,
@@ -72,6 +76,25 @@ export function importFingerprint(
 	timeZone?: string,
 ): string {
 	return `${dayKey(date, timeZone)}|${title.trim()}|${Math.abs(amount)}|${currency.toUpperCase()}`;
+}
+
+/**
+ * The fingerprints a title can have been stored as. A control character in a
+ * file's title is a separator in one form ("COFFEE\vSHOP" kept as is, or read
+ * from the file) and gone in the other (stored with its controls stripped), so
+ * two titles are the same row when any of their fingerprints agree.
+ */
+export function importFingerprints(
+	date: Date,
+	title: string,
+	amount: number,
+	currency: string,
+	timeZone?: string,
+): string[] {
+	const keys = [title.replace(CONTROLS, " "), stripUserTextControls(title)].map(
+		(t) => importFingerprint(date, t, amount, currency, timeZone),
+	);
+	return [...new Set(keys)];
 }
 
 type ExportExpensePayload = Prisma.ExpenseGetPayload<{
@@ -199,7 +222,7 @@ export class CsvService {
 		options: { timeZone?: string } = {},
 	) {
 		const tz = options.timeZone;
-		// Before the duplicate check, so the fingerprint sees what is stored.
+		// The text is stored cleaned; the duplicate check also reads the file's own.
 		const rows = incoming.map(withCleanText);
 		// Validate categories
 		const categoryIds = Array.from(
@@ -225,12 +248,12 @@ export class CsvService {
 			}
 		}
 
-		const fingerprint = (
+		const fingerprints = (
 			date: Date,
 			title: string,
 			amount: number,
 			currency: string,
-		) => importFingerprint(date, title, amount, currency, tz);
+		) => importFingerprints(date, title, amount, currency, tz);
 
 		const times = rows.map((row) => row.date.getTime());
 		const existingExpenses =
@@ -251,8 +274,8 @@ export class CsvService {
 
 		// Build fingerprint set for duplicate detection
 		const existingFingerprints = new Set(
-			existingExpenses.map((e) =>
-				fingerprint(e.date, e.title, Number(e.amount), e.currency),
+			existingExpenses.flatMap((e) =>
+				fingerprints(e.date, e.title, Number(e.amount), e.currency),
 			),
 		);
 
@@ -298,15 +321,15 @@ export class CsvService {
 		const batchRows: PreparedRow[] = [];
 		const amortizedRows: PreparedRow[] = [];
 
-		for (const row of rows) {
-			const rowFingerprint = fingerprint(
+		for (const [at, row] of rows.entries()) {
+			const rowFingerprints = fingerprints(
 				row.date,
-				row.title,
+				incoming[at]?.title ?? row.title,
 				row.amount,
 				row.currency,
 			);
 
-			if (existingFingerprints.has(rowFingerprint)) {
+			if (rowFingerprints.some((key) => existingFingerprints.has(key))) {
 				skippedDuplicates++;
 				continue;
 			}
@@ -337,7 +360,7 @@ export class CsvService {
 				batchRows.push(prepared);
 			}
 
-			existingFingerprints.add(rowFingerprint);
+			for (const key of rowFingerprints) existingFingerprints.add(key);
 		}
 
 		// Batch create all non-amortized rows in one call

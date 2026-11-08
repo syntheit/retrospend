@@ -30,7 +30,13 @@ type Db = PrismaClient | Prisma.TransactionClient;
 export const LIKELY_DAYS = 3;
 const DAY_MS = 86_400_000;
 
-/** Lowercase, no accents, words only: "MERPAGO*Café  Martínez" -> "merpago cafe martinez". */
+/**
+ * Lowercase, no accents, words only: "MERPAGO*Café  Martínez" -> "merpago cafe
+ * martinez". A control character is not a letter or a number, so it is a
+ * separator like any other. Give it the title as the file has it, not the
+ * stored one, which has its controls stripped: "COFFEE\vSHOP" is "coffee shop"
+ * here and "coffeeshop" once stripped.
+ */
 export function normalizeTitle(title: string): string {
 	return title
 		.normalize("NFD")
@@ -88,7 +94,7 @@ export function fileFingerprint(row: PreparedRow): string {
 		row.rate.currency,
 		minorKey(row.rate.amount, row.rate.currency),
 		row.proposed,
-		normalizeTitle(row.title),
+		normalizeTitle(row.stored.title),
 	].join("|");
 	return createHash("sha256").update(key).digest("hex");
 }
@@ -100,7 +106,8 @@ export function matchRowOf(row: PreparedRow, kind: ImportKind): MatchRow {
 		currency: row.rate.currency,
 		minor: minorKey(row.rate.amount, row.rate.currency),
 		kind,
-		title: row.title,
+		// The file's own text, for the key only (see normalizeTitle).
+		title: row.stored.title,
 		fingerprint: fileFingerprint(row),
 	};
 }
