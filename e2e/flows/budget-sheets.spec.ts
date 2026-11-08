@@ -92,8 +92,10 @@ test("the book: set up, with an overspent envelope", async ({ page }) => {
 	await gotoReady(page, "/budget");
 	const due = new Date();
 	due.setMonth(due.getMonth() + 1, 5);
+	// Save first starts the envelopes unfunded (Flex would fund the amounts at
+	// setup); the style is set to Flex after, as the tests below expect.
 	await trpcMutation(page, "envelope.setup", {
-		style: "FLEX",
+		style: "SAVE_FIRST",
 		currency: "USD",
 		startingMoneyMinor: 150000,
 		groups: [
@@ -137,6 +139,10 @@ test("the book: set up, with an overspent envelope", async ({ page }) => {
 			},
 		],
 	});
+	await sql(
+		`UPDATE "budget_book" SET "style" = 'FLEX', "fundingSource" = 'INCOME' WHERE "createdById" = (SELECT id FROM "user" WHERE email = $1)`,
+		[TEST_USER.email],
+	);
 	const category = await trpcMutation<{ id: string }>(
 		page,
 		"categories.create",
