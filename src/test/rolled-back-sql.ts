@@ -16,11 +16,16 @@ import type { Prisma } from "~prisma";
 
 class Rollback extends Error {}
 
-/** On a plain `pg` client, for tests that read and write with SQL. */
+/**
+ * On a plain `pg` client, for tests that read and write with SQL. It signs in
+ * as the app's role, retrospend_owner. A replay that needs more (CREATE SCHEMA,
+ * CREATE ROLE, ALTER EXTENSION) passes `superUrl()` and says why.
+ */
 export async function inRolledBackTransaction(
 	steps: (client: Client) => Promise<void>,
+	connectionString: string | undefined = process.env.DATABASE_URL,
 ): Promise<void> {
-	const client = new Client({ connectionString: process.env.DATABASE_URL });
+	const client = new Client({ connectionString });
 	await client.connect();
 	try {
 		await client.query("BEGIN");

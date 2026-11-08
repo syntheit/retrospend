@@ -1,25 +1,51 @@
 /**
  * Global setup for `pnpm test:pg` (runs once, in the main vitest process).
  *
- * TEST_DATABASE_URL names a server and a base database name. Each run creates
- * a template database `<base>_<random>_tpl` on that server and applies every
- * migration to it once with `prisma migrate deploy` (the same path prod
- * takes). It then clones one database per vitest worker
- * (`<base>_<random>_w<n>`), hands the URLs to the workers (pg-env.ts picks one
- * by VITEST_POOL_ID) and drops everything afterwards. Test files in one worker
- * share a database, workers never do, and runs never share state. Several
- * worktrees can use one Postgres container as long as each picks its own base
- * name.
+ * TEST_DATABASE_URL names a server (as its superuser) and a base database
+ * name. Each run creates a template database `<base>_<random>_tpl` on that
+ * server and applies every migration to it once with `prisma migrate deploy`
+ * as retrospend_owner, after the owner bootstrap (scripts/db-owner) has made
+ * the role: the path of a new install, so a migration that needs more than the
+ * owner's rights fails here. A second database, `<base>_<random>_leg`, takes the
+ * path of an upgrade (migrated as the superuser, then handed over) for the one
+ * test file that checks that. The template is cloned once per vitest worker
+ * (`<base>_<random>_w<n>`). Workers get the owner's URL, so `adminDb`
+ * runs as retrospend_owner like the app in production; the superuser's URL is
+ * a separate, opt-in value (`superUrl()` in pg-harness.ts). pg-env.ts picks a
+ * worker's URLs by VITEST_POOL_ID. Everything is dropped afterwards. Test
+ * files in one worker share a database, workers never do, and runs never share
+ * state. Several worktrees can use one Postgres container as long as each
+ * picks its own base name. The owner role is cluster-wide: every run derives
+ * the same password from the superuser's, so runs share it harmlessly.
  */
-import { execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { Client } from "pg";
 import type { TestProject } from "vitest/node";
+import {
+	bootstrap,
+	deriveOwnerPassword,
+	ownerUrl,
+	urlPassword,
+} from "../../scripts/db-owner/index.mjs";
 
 declare module "vitest" {
 	export interface ProvidedContext {
-		/** One database URL per worker, index = VITEST_POOL_ID - 1. */
+		/** One database URL per worker as retrospend_owner, index = VITEST_POOL_ID - 1. */
 		pgWorkerDatabaseUrls: string[];
+		/** The same databases as the superuser, for tests that opt in. */
+		pgWorkerSuperUrls: string[];
+		/**
+		 * How many objects a second owner bootstrap handed over on the template
+		 * after the migrations ran as the owner: zero when every migration made
+		 * its objects as retrospend_owner.
+		 */
+		pgFresh: { handedOverAfterMigrate: number };
+		/**
+		 * A database migrated as the superuser and then handed to the owner, the
+		 * state of an upgraded install, and how many objects the handover moved.
+		 */
+		pgLegacy: { ownerUrl: string; superUrl: string; handedOver: number };
 	}
 }
 
@@ -33,7 +59,12 @@ const MAX_BASE_NAME = 54;
  * the count stays well under Postgres's default max_connections of 100.
  */
 function workerCount(maxWorkers: number | undefined): number {
-	if (!Number.isInteger(maxWorkers) || !maxWorkers || maxWorkers < 1 || maxWorkers > 16) {
+	if (
+		!Number.isInteger(maxWorkers) ||
+		!maxWorkers ||
+		maxWorkers < 1 ||
+		maxWorkers > 16
+	) {
 		throw new Error(
 			`PG_TEST_WORKERS must be an integer from 1 to 16, got "${process.env.PG_TEST_WORKERS}"`,
 		);
@@ -41,23 +72,24 @@ function workerCount(maxWorkers: number | undefined): number {
 	return maxWorkers;
 }
 
-/** Names of the template and the per-worker databases for one run. */
+/** Names of the template, the legacy fixture and the per-worker databases for one run. */
 export function runDatabaseNames(
 	baseName: string,
 	runId: string,
 	workers: number,
-): { template: string; workers: string[] } {
+): { template: string; legacy: string; workers: string[] } {
 	const stem = `${baseName}_${runId}`;
 	const template = `${stem}_tpl`;
+	const legacy = `${stem}_leg`;
 	const names = Array.from({ length: workers }, (_, i) => `${stem}_w${i + 1}`);
-	for (const name of [template, ...names]) {
+	for (const name of [template, legacy, ...names]) {
 		if (Buffer.byteLength(name) > MAX_IDENTIFIER) {
 			throw new Error(
 				`Derived test database name "${name}" is longer than ${MAX_IDENTIFIER} bytes`,
 			);
 		}
 	}
-	return { template, workers: names };
+	return { template, legacy, workers: names };
 }
 
 function maintenanceUrl(url: URL): string {
@@ -178,24 +210,78 @@ async function createRunDatabase(project: TestProject) {
 			}
 		});
 
-	try {
-		await withAdmin((client) =>
-			create(client, names.template, `CREATE DATABASE "${names.template}"`),
-		);
-		execFileSync("pnpm", ["exec", "prisma", "migrate", "deploy"], {
-			env: { ...process.env, DATABASE_URL: urlFor(names.template) },
-			stdio: ["ignore", "ignore", "inherit"],
+	const migrate = (databaseUrl: string) =>
+		new Promise<void>((resolve, reject) => {
+			execFile(
+				"pnpm",
+				["exec", "prisma", "migrate", "deploy"],
+				{ env: { ...process.env, DATABASE_URL: databaseUrl } },
+				(error, _stdout, stderr) => {
+					if (error)
+						reject(new Error(`prisma migrate deploy failed: ${stderr}`));
+					else resolve();
+				},
+			);
 		});
+	const switched = async (databaseUrl: string) => {
+		const result = await bootstrap(databaseUrl, {
+			warn: (message) => console.error(message),
+		});
+		if (result.status !== "switched") {
+			throw new Error(
+				`The owner bootstrap did not run on the test database (${result.reason}); TEST_DATABASE_URL needs a superuser with a password`,
+			);
+		}
+		return result;
+	};
+
+	let legacyHandedOver = 0;
+	let freshHandedOver = -1;
+	try {
+		await withAdmin(async (client) => {
+			await create(
+				client,
+				names.template,
+				`CREATE DATABASE "${names.template}"`,
+			);
+			await create(client, names.legacy, `CREATE DATABASE "${names.legacy}"`);
+		});
+		// The template takes the path of a new install: the bootstrap, then
+		// every migration as retrospend_owner, so a migration that needs more
+		// than the owner's rights fails here and not in production.
+		const ownerOfTemplate = await switched(urlFor(names.template));
+		// The legacy database takes the path of an upgrade: migrated as the
+		// superuser (every older release did), then the bootstrap hands all of
+		// it to the owner. One test file reads it; nothing else touches it.
+		await Promise.all([
+			migrate(ownerOfTemplate.ownerUrl),
+			migrate(urlFor(names.legacy)),
+		]);
+		legacyHandedOver = (await switched(urlFor(names.legacy))).changedObjects;
+		// A second start: the migrations made everything as the owner, so there
+		// is nothing left to hand over.
+		freshHandedOver = (await switched(urlFor(names.template))).changedObjects;
 		// A clone fails while anyone else is connected to the template; migrate
-		// deploy has exited and the workers have not started. The clones run one
-		// after another because each one locks the template.
+		// deploy and the bootstrap have exited and the workers have not started.
+		// The clones run one after another because each one locks the template.
+		// Postgres may still be tearing down the bootstrap's backends, so a
+		// clone that sees them is retried.
 		await withAdmin(async (client) => {
 			for (const name of names.workers) {
-				await create(
-					client,
-					name,
-					`CREATE DATABASE "${name}" TEMPLATE "${names.template}"`,
-				);
+				for (let attempt = 1; ; attempt++) {
+					try {
+						await create(
+							client,
+							name,
+							`CREATE DATABASE "${name}" TEMPLATE "${names.template}"`,
+						);
+						break;
+					} catch (error) {
+						const code = (error as { code?: string }).code;
+						if (code !== "55006" || attempt >= 20) throw error;
+						await new Promise((resolve) => setTimeout(resolve, 100));
+					}
+				}
 			}
 		});
 	} catch (error) {
@@ -203,6 +289,19 @@ async function createRunDatabase(project: TestProject) {
 		throw error;
 	}
 
-	project.provide("pgWorkerDatabaseUrls", names.workers.map(urlFor));
+	const superPassword = urlPassword(baseUrl.toString());
+	if (!superPassword) throw new Error("TEST_DATABASE_URL needs a password");
+	const ownerPassword = deriveOwnerPassword(superPassword);
+	project.provide(
+		"pgWorkerDatabaseUrls",
+		names.workers.map((name) => ownerUrl(urlFor(name), ownerPassword)),
+	);
+	project.provide("pgWorkerSuperUrls", names.workers.map(urlFor));
+	project.provide("pgFresh", { handedOverAfterMigrate: freshHandedOver });
+	project.provide("pgLegacy", {
+		ownerUrl: ownerUrl(urlFor(names.legacy), ownerPassword),
+		superUrl: urlFor(names.legacy),
+		handedOver: legacyHandedOver,
+	});
 	return dropRunDatabases;
 }

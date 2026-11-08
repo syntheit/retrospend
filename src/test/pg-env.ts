@@ -9,10 +9,15 @@ import { beforeAll, inject } from "vitest";
 // database for each, so no two workers (and no two files at once) share one.
 const poolId = Number(process.env.VITEST_POOL_ID);
 const databaseUrl = inject("pgWorkerDatabaseUrls")[poolId - 1];
-if (!databaseUrl) {
+const superUrl = inject("pgWorkerSuperUrls")[poolId - 1];
+if (!databaseUrl || !superUrl) {
 	throw new Error(`No pg test database for VITEST_POOL_ID "${poolId}"`);
 }
+// The app's connection runs as retrospend_owner, as in production. The
+// superuser's URL is there for the few tests that need it, through
+// superUrl() in pg-harness.ts; nothing reads it by default.
 process.env.DATABASE_URL = databaseUrl;
+process.env.PG_TEST_SUPER_URL = superUrl;
 // env validation requires a secret; pg tests never sign anything.
 process.env.BETTER_AUTH_SECRET ??= "pg-test-placeholder-not-a-secret";
 

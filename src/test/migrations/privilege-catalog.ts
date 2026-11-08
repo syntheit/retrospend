@@ -197,7 +197,7 @@ export async function readCatalogSnapshot(
 	const lines = async (sql: string) =>
 		(await client.query<{ line: string }>(sql)).rows.map((r) => r.line);
 	const acl = await lines(`
-		SELECT c.relname || ' ' || CASE WHEN a.grantee = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(a.grantee)::text END
+		SELECT c.relname || ' ' || CASE WHEN a.grantee = 0 THEN 'PUBLIC' WHEN a.grantee = c.relowner THEN '<owner>' ELSE pg_get_userbyid(a.grantee)::text END
 		       || ' ' || a.privilege_type || CASE WHEN a.is_grantable THEN '*' ELSE '' END AS line
 		FROM pg_class c
 		CROSS JOIN LATERAL aclexplode(coalesce(c.relacl, acldefault((CASE c.relkind WHEN 'S' THEN 's' ELSE 'r' END)::"char", c.relowner))) a

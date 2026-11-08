@@ -20,6 +20,8 @@
 //     psql -v ON_ERROR_STOP=1 -d scratch -f prisma/migrations/<folder>/migration.sql
 //   psql -At -d scratch -f src/test/migrations/definer-catalog.sql \
 //     > src/test/migrations/definer-catalog.before.json
+// The function owner is written as <owner> (it is the role that ran the
+// migrations: retrospend_owner now, postgres before the owner role existed).
 // A NULL function ACL is read as the default ACL it stands for (acldefault),
 // because SQL cannot write the NULL back: granting PUBLIC again stores the
 // same owner-and-PUBLIC default as explicit entries.

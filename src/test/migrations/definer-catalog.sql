@@ -13,10 +13,10 @@ SELECT jsonb_pretty(jsonb_build_object(
         'config', coalesce(array_to_string(p.proconfig, ';'), ''),
         'acl', (
           SELECT string_agg(
-                   CASE WHEN a.grantee = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(a.grantee) END
+                   CASE WHEN a.grantee = 0 THEN 'PUBLIC' WHEN a.grantee = p.proowner THEN '<owner>' ELSE pg_get_userbyid(a.grantee) END
                      || ':' || a.privilege_type
                      || CASE WHEN a.is_grantable THEN '*' ELSE '' END,
-                   ',' ORDER BY a.grantee, a.privilege_type)
+                   ',' ORDER BY (a.grantee <> 0), (a.grantee <> p.proowner), pg_get_userbyid(a.grantee), a.privilege_type)
           FROM aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
         )
       ) AS f
