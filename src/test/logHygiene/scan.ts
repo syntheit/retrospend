@@ -140,19 +140,44 @@ export function words(ident: string): string[] {
 		.map((w) => w.toLowerCase());
 }
 
+/** A code of one of these is the secret itself: `secretCode`, `apiToken.code`. */
+const SECRET_WORDS: ReadonlySet<string> = new Set([
+	"secret",
+	"token",
+	"password",
+	"passcode",
+	"key",
+	"email",
+	"otp",
+	"credential",
+]);
+
+const secretWordsIn = (ident: string) =>
+	(ident.match(IDENT) ?? []).flatMap(words).filter((w) => SECRET_WORDS.has(w));
+
 /** The sensitive words found in the identifiers of a stretch of code. */
 export function sensitiveIn(code: string): string[] {
 	const found = new Set<string>();
 	const plain = code
 		.replace(ERROR_NAME, " ")
 		.replace(NOT_USER_TEXT, " ")
-		.replace(COUNT_OF, " ")
+		.replace(COUNT_OF, (m) => {
+			// `error.code` is fine, `apiToken.code` is not
+			if (!m.endsWith(".code")) return " ";
+			const secret = secretWordsIn(m.slice(0, -".code".length));
+			for (const w of secret) found.add(w);
+			return " ";
+		})
 		.replace(GO_FILE_NAME, " ");
 	for (const ident of plain.match(IDENT) ?? []) {
 		const parts = words(ident);
 		// rowNum, tokenId, nameLength: a number or an id, not the thing itself
-		if (NOT_THE_THING.has(parts[parts.length - 1] ?? "") && parts.length > 1)
+		const last = parts[parts.length - 1] ?? "";
+		if (NOT_THE_THING.has(last) && parts.length > 1) {
+			// secretCode, tokenCode: the code is the secret
+			if (last === "code") for (const w of secretWordsIn(ident)) found.add(w);
 			continue;
+		}
 		for (const w of parts) if (SENSITIVE_WORDS.has(w)) found.add(w);
 		if (SENSITIVE_COMPOUND.test(ident)) found.add(ident.toLowerCase());
 		if (ident === UPLOADED_FILE_NAME) found.add("filename");

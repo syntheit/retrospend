@@ -124,6 +124,8 @@ describe("LOG-010: log calls", () => {
 			"ctx.logger.error(`bad ${expense.title}`);",
 			"this.logger.warn(entry);",
 			"console.error(await response.text());",
+			"console.log(secretCode);",
+			"console.log(apiToken.code);",
 		];
 		for (const src of bad) expect(rules(ts(src)), src).toEqual(["LOG-010"]);
 	});
@@ -135,6 +137,7 @@ describe("LOG-010: log calls", () => {
 			"console.warn(`webhook ${delivery.id} failed with ${status}`);",
 			"this.logger.warn(`dropped ${rows.length} rows, last ${row.id}`);",
 			"console.error(`importer answered ${response.status} ${response.statusText}`);",
+			"console.error(error.code, err.code, `${e.code}`);",
 			"console.error(`Imported ${expenses.length} of ${rows.length}`);",
 			"console.error(`Queue error for user ${userId}:`, error);",
 			"console.warn(`${error.name} while syncing project ${projectId}`);",
