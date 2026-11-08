@@ -52,7 +52,13 @@ export const applyRuleToMonthMutation: MoneyMutation<
 	id: "envelope.applyRuleToMonth",
 	touches: [...POOL, "envelope.left"],
 	run: async (tx, input, actor) => {
-		const value = await applyRuleToMonth(tx, actor.userId, input, new Date());
+		const value = await applyRuleToMonth(
+			tx,
+			actor.userId,
+			input,
+			new Date(),
+			actor.keyring,
+		);
 		return { value, undo: batchUndo(value.movement) };
 	},
 };

@@ -15,12 +15,15 @@
  * file with each other: a statement can list two real, identical charges.
  * Descriptions are compared here, inside the import service, so a
  * client-side matcher can replace it when descriptions are end-to-end
- * encrypted.
+ * encrypted. Stored titles may be ciphertext, so they are opened here
+ * (`readUserText`) before any comparison; SQL never looks at them.
  */
 import { createHash } from "node:crypto";
 import { currencyDecimals } from "@retrospend/domain/money";
 import { dayKey, startOfDayIn, startOfNextDayIn } from "@retrospend/domain/time-zone";
+import type { Keyring } from "~/server/crypto/field-crypto";
 import { Prisma, type PrismaClient } from "~prisma";
+import { readUserText } from "../search-fold";
 import type { PreparedRow } from "./prepare";
 import { type ImportKind, kindOfColumns } from "./rows";
 
@@ -229,13 +232,20 @@ export function matchRows(
 	return out;
 }
 
-/** Your Activity rows a file could match: its days widened by LIKELY_DAYS, plus earlier imports of its rows. */
+/**
+ * Your Activity rows a file could match: its days widened by LIKELY_DAYS,
+ * plus earlier imports of its rows, with each title opened. SQL narrows by
+ * user, status and those days or fingerprints only, never by title, so the
+ * set is bounded by the file's date span and the keyring changes nothing
+ * about which rows come back.
+ */
 export async function existingRows(
 	db: Db,
 	userId: string,
 	rows: readonly MatchRow[],
 	dates: readonly Date[],
 	timeZone?: string,
+	keyring?: Keyring,
 ): Promise<ExistingRow[]> {
 	if (rows.length === 0) return [];
 	const times = dates.map((d) => d.getTime());
@@ -275,7 +285,11 @@ export async function existingRows(
 		return [
 			{
 				id: e.id,
-				title: e.title,
+				title: readUserText(keyring, e.title, {
+					table: "expense",
+					column: "title",
+					rowId: e.id,
+				}),
 				day: dayKey(e.date, timeZone),
 				currency: e.currency.toUpperCase(),
 				minor: minorKey(e.amount, e.currency),
@@ -293,6 +307,7 @@ export async function matchFile(
 	rows: readonly PreparedRow[],
 	kindOf: (row: PreparedRow) => ImportKind,
 	timeZone?: string,
+	keyring?: Keyring,
 ): Promise<Map<number, Match>> {
 	const keyed = rows.map((r) => matchRowOf(r, kindOf(r)));
 	const existing = await existingRows(
@@ -301,6 +316,7 @@ export async function matchFile(
 		keyed,
 		rows.map((r) => r.date),
 		timeZone,
+		keyring,
 	);
 	return matchRows(keyed, existing);
 }

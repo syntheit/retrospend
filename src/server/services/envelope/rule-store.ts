@@ -8,18 +8,31 @@
 import { z } from "zod";
 import type { RuleActionInput, RuleMatchInput } from "~/lib/schemas/envelope";
 import type { IncomeRuleDto } from "~/lib/schemas/envelope-plan";
+import type { Keyring } from "~/server/crypto/field-crypto";
+import { readUserText } from "~/server/services/search-fold";
 import { Prisma, type IncomeRule as RuleRow } from "~prisma";
 import type { IncomeRule, RecordedRun, RuleAction, RuleMatch } from "./rules";
 import { dec, fromMinor, toMinor } from "./units";
 
-export function matchOf(r: RuleRow): RuleMatch {
+/**
+ * A rule's match. The title it looks for may be ciphertext, so it is read
+ * through `readUserText`; ciphertext with no keyring throws.
+ */
+export function matchOf(r: RuleRow, keyring?: Keyring): RuleMatch {
 	switch (r.matchKind) {
 		case "CATEGORY":
 			return { kind: "CATEGORY", categoryId: r.matchValue ?? "" };
 		case "TEMPLATE":
 			return { kind: "TEMPLATE", templateId: r.matchValue ?? "" };
 		case "TITLE":
-			return { kind: "TITLE", contains: r.matchTitle ?? "" };
+			return {
+				kind: "TITLE",
+				contains: readUserText(keyring, r.matchTitle, {
+					table: "income_rule",
+					column: "matchTitle",
+					rowId: r.id,
+				}),
+			};
 		case "CURRENCY":
 			return { kind: "CURRENCY", currency: r.matchValue ?? "" };
 		default:
@@ -41,25 +54,30 @@ export function actionOf(r: RuleRow, H: string): RuleAction {
 	return { kind: "REMAINDER" };
 }
 
-export function toRule(r: RuleRow, H: string): IncomeRule {
+export function toRule(r: RuleRow, H: string, keyring?: Keyring): IncomeRule {
 	return {
 		id: r.id,
 		sortOrder: r.sortOrder,
 		envelopeId: r.envelopeId,
 		active: r.active && r.archivedAt === null,
 		createdAtMs: r.createdAt.getTime(),
-		match: matchOf(r),
+		match: matchOf(r, keyring),
 		action: actionOf(r, H),
 	};
 }
 
-export function toRuleDto(r: RuleRow, H: string): IncomeRuleDto {
+/** The keyring is for a sealed match text; the list callers pass none until D11. */
+export function toRuleDto(
+	r: RuleRow,
+	H: string,
+	keyring?: Keyring,
+): IncomeRuleDto {
 	const a = actionOf(r, H);
 	return {
 		id: r.id,
 		name: r.name,
 		sortOrder: r.sortOrder,
-		match: matchOf(r),
+		match: matchOf(r, keyring),
 		action: {
 			kind: a.kind,
 			basisPoints: a.kind === "PERCENT" ? a.basisPoints : null,

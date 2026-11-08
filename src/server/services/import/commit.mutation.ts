@@ -223,6 +223,7 @@ export const commitImport: MoneyMutation<CommitImportInput, ImportSummary> = {
 				rows,
 				(r) => choices.get(r.index)?.kind ?? r.proposed,
 				zone,
+				actor.keyring,
 			),
 		]);
 
