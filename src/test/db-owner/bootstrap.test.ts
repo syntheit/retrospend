@@ -10,6 +10,8 @@ type Fake = {
 	ownerLogins: boolean[];
 	/** What the role check (owner-verify.sql) finds, one answer per call. */
 	problems: string[][];
+	/** How many REVOKE CREATE ON DATABASE statements fail before one works. */
+	revokeFailures: number;
 	log: string[];
 	logins: number;
 };
@@ -17,6 +19,7 @@ const fake: Fake = {
 	superuser: true,
 	ownerLogins: [],
 	problems: [],
+	revokeFailures: 0,
 	log: [],
 	logins: 0,
 };
@@ -45,6 +48,14 @@ vi.mock("pg", () => {
 								? "owner-unsafe-grants.sql"
 								: (sql.trim().split("\n")[0] ?? ""),
 			);
+			if (sql.includes("quote_ident")) return { rows: [{ name: '"retro"' }] };
+			if (sql.startsWith("REVOKE CREATE ON DATABASE")) {
+				if (fake.revokeFailures > 0) {
+					fake.revokeFailures--;
+					throw new Error("connection terminated");
+				}
+				return { rows: [] };
+			}
 			if (sql.includes("owner is a member of")) {
 				return {
 					rows: (fake.problems.shift() ?? []).map((problem) => ({ problem })),
@@ -82,6 +93,7 @@ beforeEach(() => {
 	fake.superuser = true;
 	fake.ownerLogins = [];
 	fake.problems = [];
+	fake.revokeFailures = 0;
 	fake.log = [];
 	fake.logins = 0;
 });
@@ -209,5 +221,66 @@ describe("bootstrap checks the role from the catalogs", () => {
 			bootstrap("postgresql://postgres:pw@db/retro"),
 		).rejects.toThrow(/holds more than it may/);
 		expect(fake.log.some((line) => line.startsWith("ALTER ROLE"))).toBe(false);
+	});
+});
+
+describe("bootstrap's migration window", () => {
+	const GRANT = 'GRANT CREATE ON DATABASE "retro" TO retrospend_owner';
+	const REVOKE = 'REVOKE CREATE ON DATABASE "retro" FROM retrospend_owner';
+
+	it("grants CREATE on the database to the owner for the callback only, and revokes it after", async () => {
+		fake.ownerLogins = [true];
+		let during: string[] = [];
+		const result = await bootstrap("postgresql://postgres:pw@db/retro", {
+			whileOwnerMayCreate: async (url) => {
+				during = [...fake.log];
+				expect(new URL(url).username).toBe("retrospend_owner");
+			},
+		});
+		expect(result.status).toBe("switched");
+		expect(during).toContain(GRANT);
+		expect(during).not.toContain(REVOKE);
+		expect(fake.log.indexOf(GRANT)).toBeGreaterThan(
+			fake.log.indexOf("owner-handover.sql"),
+		);
+		expect(fake.log.indexOf(REVOKE)).toBeGreaterThan(fake.log.indexOf(GRANT));
+	});
+
+	it("grants nothing when there is no callback, and nothing for a URL it leaves alone", async () => {
+		fake.ownerLogins = [true];
+		await bootstrap("postgresql://postgres:pw@db/retro");
+		expect(fake.log).not.toContain(GRANT);
+		fake.log = [];
+		fake.superuser = false;
+		await bootstrap("postgresql://app:pw@db/retro", {
+			whileOwnerMayCreate: async () => {
+				throw new Error("must not run");
+			},
+		});
+		expect(fake.log.some((line) => line.includes("CREATE ON DATABASE"))).toBe(
+			false,
+		);
+	});
+
+	it("revokes even when the callback fails, and still fails", async () => {
+		fake.ownerLogins = [true];
+		await expect(
+			bootstrap("postgresql://postgres:pw@db/retro", {
+				whileOwnerMayCreate: async () => {
+					throw new Error("Migration failed.");
+				},
+			}),
+		).rejects.toThrow(/Migration failed/);
+		expect(fake.log).toContain(GRANT);
+		expect(fake.log).toContain(REVOKE);
+	});
+
+	it("revokes on a new connection when the open one died during the migrations", async () => {
+		fake.ownerLogins = [true];
+		fake.revokeFailures = 1;
+		await bootstrap("postgresql://postgres:pw@db/retro", {
+			whileOwnerMayCreate: async () => undefined,
+		});
+		expect(fake.log.filter((line) => line === REVOKE)).toHaveLength(2);
 	});
 });

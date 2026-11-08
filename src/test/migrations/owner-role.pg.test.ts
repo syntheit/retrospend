@@ -21,12 +21,14 @@ import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { adminDb, superUrl, withSuperuser } from "~/test/pg-harness";
+import { makeScratchProject } from "~/test/scratch-project";
 import {
 	bootstrap,
 	enforceOwnerRole,
 	handover,
 	handoverStatements,
 	ownerProblems,
+	prepare,
 } from "../../../scripts/db-owner/index.mjs";
 import { REPO_ROOT } from "../uiRules/paths";
 import { readPrivilegeCatalog } from "./privilege-catalog";
@@ -199,6 +201,12 @@ describe("the runtime connection", () => {
 		expect(
 			await failureOf(client, "ALTER ROLE retrospend_owner SUPERUSER"),
 		).toMatch(denied);
+		expect(await failureOf(client, "CREATE SCHEMA a2_must_not_exist")).toMatch(
+			denied,
+		);
+		expect(
+			await failureOf(client, "CREATE EXTENSION pgcrypto WITH SCHEMA public"),
+		).toMatch(denied);
 		expect(
 			await failureOutsideTransaction(client, "DROP DATABASE postgres"),
 		).toMatch(denied);
@@ -319,10 +327,10 @@ describe("prisma/bootstrap/owner-role.sql", () => {
 			}
 		});
 
-	it("gives the owner CREATE on the database, and gives it back if it was taken away", async () => {
-		// Permanent: CREATE SCHEMA IF NOT EXISTS (the first migration, and
-		// keystore in a later one) is checked against it before the existence
-		// check. It lets the owner create schemas in its own database, nothing more.
+	it("takes CREATE on the database away from the owner if it holds it", async () => {
+		// The owner holds it only while the migrations run (prepare). With it the
+		// owner could CREATE EXTENSION a trusted extension into a schema it
+		// controls, and the install script would run as the superuser.
 		await inRolledBack(async (client) => {
 			const canCreate = async () =>
 				(
@@ -330,17 +338,21 @@ describe("prisma/bootstrap/owner-role.sql", () => {
 						"SELECT has_database_privilege('retrospend_owner', current_database(), 'CREATE') AS can",
 					)
 				).rows[0]?.can;
-			await client.query(sql);
-			expect(await canCreate()).toBe(true);
+			expect(await canCreate()).toBe(false);
 			const { rows } = await client.query<{ name: string }>(
 				"SELECT quote_ident(current_database()) AS name",
 			);
+			// A crash between the grant and the revoke of a start leaves this.
 			await client.query(
-				`REVOKE CREATE ON DATABASE ${rows[0]?.name} FROM retrospend_owner`,
+				`GRANT CREATE ON DATABASE ${rows[0]?.name} TO retrospend_owner`,
 			);
-			expect(await canCreate()).toBe(false);
-			await client.query(sql);
 			expect(await canCreate()).toBe(true);
+			expect(await ownerProblems(client)).toContain(
+				"owner can create schemas in the database",
+			);
+			await client.query(sql);
+			expect(await canCreate()).toBe(false);
+			expect(await ownerProblems(client)).toEqual([]);
 		});
 	});
 
@@ -628,14 +640,6 @@ describe("an install from before the keystore migration", () => {
 		await owner.end();
 	});
 
-	const prisma = (args: string[]) =>
-		execFileSync("pnpm", ["exec", "prisma", ...args], {
-			cwd: REPO_ROOT,
-			env: { ...process.env, DATABASE_URL: old.ownerUrl },
-			encoding: "utf8",
-			stdio: ["ignore", "pipe", "pipe"],
-		});
-
 	it("was migrated as the superuser only up to the cutoff, and the bootstrap made the keystore schema for the owner", async () => {
 		const { rows: later } = await owner.query<{ n: string }>(
 			"SELECT count(*) AS n FROM _prisma_migrations WHERE migration_name >= $1",
@@ -651,11 +655,25 @@ describe("an install from before the keystore migration", () => {
 	});
 
 	it("applies the pending migrations as the owner, the keystore one included, and the grants file after it", async () => {
-		const migrate = prisma(["migrate", "deploy"]);
-		expect(migrate).toContain(old.cutoff);
-		expect(migrate).toContain("20261109600000_least_privilege");
-		expect(migrate).toMatch(/successfully applied/);
-		prisma(["db", "execute", "--file", "prisma/grants/app-role.sql"]);
+		// A whole start: the owner gets CREATE for the migrations (the keystore
+		// one says CREATE SCHEMA IF NOT EXISTS, and the schema exists), loses it,
+		// and the grants file runs as the owner.
+		const messages: string[] = [];
+		const started = await prepare(old.superUrl, {
+			grants: true,
+			log: (message) => messages.push(message),
+			warn: (message) => messages.push(message),
+		});
+		expect(started.result.status).toBe("switched");
+		expect(messages).toContain("Database migrations applied successfully!");
+
+		const { rows: ran } = await owner.query<{ name: string }>(
+			"SELECT migration_name AS name FROM _prisma_migrations WHERE migration_name >= $1 AND finished_at IS NOT NULL",
+			[old.cutoff],
+		);
+		expect(ran.map((r) => r.name)).toEqual(
+			expect.arrayContaining([old.cutoff, "20261109100000_keystore"]),
+		);
 
 		const catalog = await readPrivilegeCatalog(owner);
 		expect(catalog.tables).toEqual(expected.tables);
@@ -677,6 +695,110 @@ describe("an install from before the keystore migration", () => {
 			"create_first_data_key",
 			"current_user_data_keys",
 		]);
+		// After the start the owner holds no CREATE on the database and nothing else extra.
+		expect(await ownerProblems(owner)).toEqual([]);
+		const { rows: can } = await owner.query<{ can: boolean }>(
+			"SELECT has_database_privilege('retrospend_owner', current_database(), 'CREATE') AS can",
+		);
+		expect(can[0]?.can).toBe(false);
+	}, 180_000);
+});
+
+describe("the migration window (CREATE on the database while migrations run)", () => {
+	const scratch = inject("pgScratch");
+	let owner: Client;
+	const quiet = { log: () => undefined, warn: () => undefined };
+	const ownerCanCreate = async () =>
+		(
+			await owner.query<{ can: boolean }>(
+				"SELECT has_database_privilege('retrospend_owner', current_database(), 'CREATE') AS can",
+			)
+		).rows[0]?.can;
+
+	beforeAll(async () => {
+		owner = await connect(scratch.ownerUrl);
+	});
+	afterAll(async () => {
+		await owner.end();
+	});
+
+	it("lets a migration that says CREATE SCHEMA IF NOT EXISTS run, and takes CREATE back after", async () => {
+		// Outside the window the owner cannot, even for a schema that exists:
+		// Postgres checks CREATE before IF NOT EXISTS.
+		expect(await ownerCanCreate()).toBe(false);
+		expect(
+			await failureOf(owner, 'CREATE SCHEMA IF NOT EXISTS "public"'),
+		).toMatch(/permission denied for database/);
+
+		const project = makeScratchProject({
+			extra: [
+				{
+					name: "20300101000000_window",
+					sql: `CREATE SCHEMA IF NOT EXISTS "public";
+						CREATE SCHEMA IF NOT EXISTS keystore;
+						CREATE SCHEMA a2_window_schema;
+						CREATE TABLE a2_window_schema.probe (id integer);`,
+				},
+			],
+		});
+		try {
+			await prepare(scratch.superUrl, { root: project.dir, ...quiet });
+		} finally {
+			project.cleanup();
+		}
+		const { rows } = await owner.query<{ owner: string }>(
+			"SELECT pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname = 'a2_window_schema'",
+		);
+		expect(rows[0]?.owner).toBe("retrospend_owner");
+		expect(await ownerCanCreate()).toBe(false);
 		expect(await ownerProblems(owner)).toEqual([]);
 	}, 120_000);
+
+	it("takes CREATE back when a migration fails, and the P3009 recovery then applies the fixed one", async () => {
+		const good = {
+			name: "20300101000000_window",
+			sql: `CREATE SCHEMA IF NOT EXISTS "public";
+				CREATE SCHEMA IF NOT EXISTS keystore;
+				CREATE SCHEMA a2_window_schema;
+				CREATE TABLE a2_window_schema.probe (id integer);`,
+		};
+		const bad = {
+			name: "20300102000000_breaks",
+			sql: "SELECT 1 / 0;",
+		};
+		const project = makeScratchProject({ extra: [good, bad] });
+		try {
+			await expect(
+				prepare(scratch.superUrl, { root: project.dir, ...quiet }),
+			).rejects.toThrow(/Migration failed/);
+			expect(await ownerCanCreate()).toBe(false);
+			expect(await ownerProblems(owner)).toEqual([]);
+
+			// Same behavior as the entrypoint had: the failed migration is marked
+			// rolled back and the (fixed) migration is tried again.
+			project.writeMigration(
+				bad.name,
+				"CREATE TABLE a2_after_failure (id integer);",
+			);
+			const messages: string[] = [];
+			await prepare(scratch.superUrl, {
+				root: project.dir,
+				log: (message) => messages.push(message),
+				warn: () => undefined,
+			});
+			expect(messages.join("\n")).toContain(
+				`Found failed migration: ${bad.name}`,
+			);
+			expect(messages).toContain(
+				"Database migrations applied successfully after rollback!",
+			);
+			const { rows } = await owner.query<{ owner: string }>(
+				"SELECT pg_get_userbyid(relowner) AS owner FROM pg_class WHERE oid = 'public.a2_after_failure'::regclass",
+			);
+			expect(rows[0]?.owner).toBe("retrospend_owner");
+			expect(await ownerCanCreate()).toBe(false);
+		} finally {
+			project.cleanup();
+		}
+	}, 180_000);
 });

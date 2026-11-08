@@ -3,7 +3,9 @@
 // With a superuser URL in DATABASE_URL, a start runs prisma/bootstrap/owner-role.sql
 // as the superuser (creates retrospend_owner, hands it the objects), checks the
 // owner can sign in, and gives everything after that the owner's URL: the
-// migrations, the grants file and the app. retrospend_owner is not a
+// migrations, the grants file and the app. The owner holds CREATE on the
+// database only while `prisma migrate deploy` runs (prepare), and the superuser
+// connection stays open for that long to take it back. retrospend_owner is not a
 // superuser, so SQL that escapes the row-level security role lands on a role
 // that cannot read files, run programs, create roles or touch other databases.
 //
@@ -11,8 +13,10 @@
 // is imported by docker-entrypoint.sh through cli.mjs and by the pg test
 // harness. The owner's password is derived from the superuser's, so no new
 // secret needs configuring: see deriveOwnerPassword.
+
+import { spawn } from "node:child_process";
 import { createHash, createHmac, pbkdf2Sync, randomBytes } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
@@ -20,7 +24,9 @@ import pg from "pg";
 export const OWNER_ROLE = "retrospend_owner";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const BOOTSTRAP_DIR = join(here, "..", "..", "prisma", "bootstrap");
+/** The project root: /app in the image. */
+export const PROJECT_ROOT = join(here, "..", "..");
+const BOOTSTRAP_DIR = join(PROJECT_ROOT, "prisma", "bootstrap");
 
 /** Environment variables the app process may see; see buildAppEnv. */
 export const APP_ENV_NAMES = [
@@ -398,6 +404,40 @@ async function setOwnerPassword(client, password) {
  */
 
 /**
+ * The quoted name of the database `client` is connected to.
+ *
+ * @param {pg.Client} client
+ */
+async function databaseIdentifier(client) {
+	const { rows } = await client.query(
+		"SELECT pg_catalog.quote_ident(pg_catalog.current_database()) AS name",
+	);
+	return String(rows[0]?.name);
+}
+
+/**
+ * Takes CREATE on the database away from the owner. If the connection died
+ * while the migrations ran, it signs in again to do it.
+ *
+ * @param {pg.Client} admin
+ * @param {string} databaseUrl
+ * @param {string} database the quoted database name
+ */
+async function revokeDatabaseCreate(admin, databaseUrl, database) {
+	const statement = `REVOKE CREATE ON DATABASE ${database} FROM ${OWNER_ROLE}`;
+	try {
+		await admin.query(statement);
+	} catch {
+		const again = await connect(databaseUrl);
+		try {
+			await again.query(statement);
+		} finally {
+			await again.end().catch(() => undefined);
+		}
+	}
+}
+
+/**
  * Runs the whole bootstrap against `databaseUrl` when it is a superuser URL
  * with a password. Anything else is left exactly as it is: a managed Postgres
  * or a setup done by hand (not a superuser) keeps working, and a superuser
@@ -405,8 +445,13 @@ async function setOwnerPassword(client, password) {
  * that is not guessable, so it keeps today's behavior with a loud warning
  * unless DATABASE_OWNER_PASSWORD gives the owner a secret of its own.
  *
+ * With `whileOwnerMayCreate`, the owner gets CREATE on the database for as long
+ * as that callback runs (it is given the owner's URL) and loses it again in a
+ * `finally`, so a failed callback still takes it back. The superuser connection
+ * stays open for that, and reads nothing the owner owns.
+ *
  * @param {string} databaseUrl
- * @param {{ ownerPassword?: string, warn?: (message: string) => void }} [options]
+ * @param {{ ownerPassword?: string, warn?: (message: string) => void, whileOwnerMayCreate?: (ownerUrl: string) => Promise<void> }} [options]
  * @returns {Promise<BootstrapResult>}
  */
 export async function bootstrap(databaseUrl, options = {}) {
@@ -459,6 +504,17 @@ export async function bootstrap(databaseUrl, options = {}) {
 		}
 
 		const changedObjects = await handover(admin);
+		if (options.whileOwnerMayCreate) {
+			const database = await databaseIdentifier(admin);
+			await admin.query(
+				`GRANT CREATE ON DATABASE ${database} TO ${OWNER_ROLE}`,
+			);
+			try {
+				await options.whileOwnerMayCreate(url);
+			} finally {
+				await revokeDatabaseCreate(admin, databaseUrl, database);
+			}
+		}
 		return { status: "switched", ownerUrl: url, changedObjects };
 	} finally {
 		await admin.end().catch(() => undefined);
@@ -507,4 +563,210 @@ export function shellExecPrefix(env) {
 		.sort(([a], [b]) => a.localeCompare(b))
 		.map(([name, value]) => shellQuote(`${name}=${value}`));
 	return `set -- env -i ${assignments.join(" ")} "$@"`;
+}
+
+/** What the migration and grants tools may see: no secret of the app's, none of the superuser's. */
+const TOOL_ENV_NAMES = [
+	"PATH",
+	"HOME",
+	"USER",
+	"TMPDIR",
+	"TZ",
+	"LANG",
+	"LC_ALL",
+	"LD_LIBRARY_PATH",
+	"NODE_OPTIONS",
+	"NODE_EXTRA_CA_CERTS",
+	"SSL_CERT_FILE",
+	"SSL_CERT_DIR",
+	"HTTP_PROXY",
+	"HTTPS_PROXY",
+	"NO_PROXY",
+	"http_proxy",
+	"https_proxy",
+	"no_proxy",
+];
+const TOOL_ENV_PREFIXES = ["PRISMA_", "LC_"];
+
+/**
+ * The environment of `prisma migrate deploy` and the grants file: system
+ * variables, Prisma's own settings, and DATABASE_URL set to `databaseUrl` (the
+ * owner's). POSTGRES_PASSWORD, the superuser's URL and the app's secrets are
+ * not in it.
+ *
+ * @param {Record<string, string | undefined>} env
+ * @param {string} databaseUrl
+ * @returns {Record<string, string>}
+ */
+export function buildToolEnv(env, databaseUrl) {
+	/** @type {Record<string, string>} */
+	const kept = {};
+	for (const [name, value] of Object.entries(env)) {
+		if (value === undefined) continue;
+		if (
+			TOOL_ENV_NAMES.includes(name) ||
+			TOOL_ENV_PREFIXES.some((prefix) => name.startsWith(prefix))
+		) {
+			kept[name] = value;
+		}
+	}
+	kept.DATABASE_URL = databaseUrl;
+	return kept;
+}
+
+/**
+ * @typedef {(args: string[]) => Promise<{ status: number | null, output: string }>} PrismaRunner
+ */
+
+/**
+ * Runs the Prisma CLI in `root` with the tool environment. Its output goes to
+ * stderr (stdout is for the owner's URL) and is returned too.
+ *
+ * @param {string} root
+ * @param {string} databaseUrl
+ * @param {Record<string, string | undefined>} [env]
+ * @returns {PrismaRunner}
+ */
+export function prismaRunner(root, databaseUrl, env = process.env) {
+	return (args) =>
+		new Promise((resolve) => {
+			const child = spawn(join(root, "node_modules", ".bin", "prisma"), args, {
+				cwd: root,
+				env: /** @type {NodeJS.ProcessEnv} */ (buildToolEnv(env, databaseUrl)),
+				stdio: ["ignore", "pipe", "pipe"],
+			});
+			let output = "";
+			/** @param {Buffer} chunk */
+			const take = (chunk) => {
+				output += chunk.toString();
+				process.stderr.write(chunk);
+			};
+			child.stdout.on("data", take);
+			child.stderr.on("data", take);
+			child.on("error", (error) => {
+				output += String(error);
+				resolve({ status: null, output });
+			});
+			child.on("close", (status) => resolve({ status, output }));
+		});
+}
+
+/**
+ * `prisma migrate deploy`, with the recovery the entrypoint always had: a
+ * failed migration (P3009) is marked rolled back and tried again, a database
+ * that has tables but no migration table (P3005) is baselined at the first
+ * migration and migrated, and anything else stops the start.
+ *
+ * @param {string} databaseUrl the URL to migrate with
+ * @param {{ root?: string, run?: PrismaRunner, log?: (message: string) => void }} [options]
+ */
+export async function migrateWithRecovery(databaseUrl, options = {}) {
+	const root = options.root ?? PROJECT_ROOT;
+	const run = options.run ?? prismaRunner(root, databaseUrl);
+	const log = options.log ?? ((message) => console.error(message));
+	/** @param {string[]} args */
+	const mustRun = async (args) => {
+		const done = await run(args);
+		if (done.status !== 0) {
+			throw new Error(`prisma ${args.slice(0, 2).join(" ")} failed`);
+		}
+	};
+
+	const first = await run(["migrate", "deploy"]);
+	if (first.status === 0) {
+		log("Database migrations applied successfully!");
+		return;
+	}
+
+	if (first.output.includes("P3009")) {
+		const failed = /The `([^`]+)` migration/.exec(first.output)?.[1];
+		if (!failed) {
+			throw new Error(
+				"Migration failed (P3009) but could not parse migration name.",
+			);
+		}
+		log(`Found failed migration: ${failed}. Rolling back and retrying...`);
+		await mustRun(["migrate", "resolve", "--rolled-back", failed]);
+		await mustRun(["migrate", "deploy"]);
+		log("Database migrations applied successfully after rollback!");
+		return;
+	}
+
+	if (first.output.includes("P3005")) {
+		log(
+			"Database schema is not empty (Error P3005). Attempting to baseline...",
+		);
+		const baseline = readdirSync(join(root, "prisma", "migrations"), {
+			withFileTypes: true,
+		})
+			.filter((entry) => entry.isDirectory())
+			.map((entry) => entry.name)
+			.sort()[0];
+		if (!baseline) {
+			throw new Error("No migration files found in prisma/migrations.");
+		}
+		log(`Marking baseline migration as applied: ${baseline}`);
+		const resolved = await run(["migrate", "resolve", "--applied", baseline]);
+		if (resolved.status !== 0) {
+			throw new Error("Failed to resolve baseline migration.");
+		}
+		log("Baseline migration resolved. Retrying migrations...");
+		await mustRun(["migrate", "deploy"]);
+		log("Database migrations applied successfully after baseline!");
+		return;
+	}
+
+	throw new Error("Migration failed. Please check the logs above.");
+}
+
+/**
+ * Gives the app role its privileges (prisma/grants/app-role.sql), as the URL's
+ * user.
+ *
+ * @param {string} databaseUrl
+ * @param {{ root?: string, run?: PrismaRunner }} [options]
+ */
+export async function applyGrants(databaseUrl, options = {}) {
+	const root = options.root ?? PROJECT_ROOT;
+	const run = options.run ?? prismaRunner(root, databaseUrl);
+	const done = await run([
+		"db",
+		"execute",
+		"--file",
+		"prisma/grants/app-role.sql",
+	]);
+	if (done.status !== 0) throw new Error("Applying the grants file failed.");
+}
+
+/**
+ * A start: the bootstrap, the migrations as the owner, and the grants file as
+ * the owner. The owner holds CREATE on the database for the migrations and not
+ * a moment longer. A URL the bootstrap leaves alone migrates as it is.
+ *
+ * @param {string} databaseUrl
+ * @param {{ ownerPassword?: string, warn?: (message: string) => void, log?: (message: string) => void, root?: string, grants?: boolean }} [options]
+ * @returns {Promise<{ url: string, result: BootstrapResult }>} the URL the rest of the start should use
+ */
+export async function prepare(databaseUrl, options = {}) {
+	const log = options.log ?? ((message) => console.error(message));
+	const root = options.root ?? PROJECT_ROOT;
+	log("Applying database migrations...");
+	const migrate = (/** @type {string} */ url) =>
+		migrateWithRecovery(url, { root, log });
+	const result = await bootstrap(databaseUrl, {
+		ownerPassword: options.ownerPassword,
+		warn: options.warn,
+		whileOwnerMayCreate: migrate,
+	});
+	let url = databaseUrl;
+	if (result.status === "switched") {
+		url = result.ownerUrl;
+	} else {
+		await migrate(databaseUrl);
+	}
+	if (options.grants) {
+		log("Applying database grants...");
+		await applyGrants(url, { root });
+	}
+	return { url, result };
 }
