@@ -8,6 +8,7 @@ import { Switch } from "~/components/ui/switch";
 import { setLocaleCookie } from "~/i18n/actions";
 import { type AppLocale, LOCALE_OPTIONS } from "~/i18n/locales";
 import { api } from "~/trpc/react";
+import { useProviderLine } from "~/features/import/provider-line";
 import { useAutosave, useSaveGuard } from "../autosave";
 import { SelectField } from "../select-field";
 import { SettingRow, SettingRows } from "../setting-row";
@@ -125,10 +126,15 @@ export function DefaultRows({
 	const save = useSaveSetting(writer);
 	const utils = api.useUtils();
 	const { data: ai } = api.settings.getAiStatus.useQuery();
+	const providerLine = useProviderLine(ai);
 	const date = settings.defaultExpenseDateBehavior ?? "TODAY";
 	const mode = settings.aiMode ?? "LOCAL";
 	const setMode = async (aiMode: "LOCAL" | "EXTERNAL") => {
 		await save("aiMode", aiMode, { fallback: "LOCAL" });
+		await utils.settings.getAiStatus.invalidate();
+	};
+	const setImportOn = async (on: boolean) => {
+		await save("aiImportEnabled", on, { fallback: false });
 		await utils.settings.getAiStatus.invalidate();
 	};
 	const meta =
@@ -136,7 +142,7 @@ export function DefaultRows({
 			? t("importExternalLeft", { count: ai.quotaRemaining })
 			: ai && !ai.externalAvailable && ai.externalDeniedReason
 				? ai.externalDeniedReason
-				: t("importMeta");
+				: providerLine;
 
 	return (
 		<SettingRows>
@@ -151,6 +157,13 @@ export function DefaultRows({
 						{ value: "LAST_USED", label: t("expenseDateLast") },
 					]}
 					value={date}
+				/>
+			</SettingRow>
+			<SettingRow label={t("aiImport")} labelFor="pf-ai-import">
+				<Switch
+					checked={settings.aiImportEnabled ?? false}
+					id="pf-ai-import"
+					onCheckedChange={(on) => void setImportOn(on)}
 				/>
 			</SettingRow>
 			<SettingRow label={t("import")} meta={meta}>

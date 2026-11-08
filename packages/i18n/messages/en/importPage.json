@@ -30,6 +30,13 @@
 		"tooBig": "{name} is larger than 10 MB.",
 		"wrongType": "{name} is not a CSV, Excel or PDF file."
 	},
+	"serverNote": "This file goes to the server.",
+	"provider": {
+		"ollama": "Read on this server by Ollama",
+		"ollamaModel": "Read on this server by Ollama ({model})",
+		"openrouter": "Read by OpenRouter",
+		"openrouterModel": "Read by OpenRouter ({model})"
+	},
 	"recent": {
 		"title": "Recent imports",
 		"reading": "Reading, {percent}%",
@@ -54,9 +61,8 @@
 		"csvMissing": "Needs date, title, amount and currency columns",
 		"csvPdf": "A PDF needs AI reading",
 		"ai": "Let AI read it",
-		"aiExternal": "Reads it with your OpenRouter access",
-		"aiLocal": "Reads it with this server's AI",
 		"aiOff": "AI reading is off on this server",
+		"aiNotOn": "Turn on AI import in settings",
 		"aiSettings": "AI settings",
 		"pdfBlocked": "PDFs need AI reading, and it is off here. Use a CSV, or turn on AI.",
 		"columns": "Columns",

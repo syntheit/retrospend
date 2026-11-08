@@ -28,6 +28,7 @@ The app is available on port `1997`. Migrations run automatically on startup.
   ```bash
   docker exec local-ollama ollama pull qwen2.5:7b
   ```
+- AI import is opt-in per person: each user turns it on in Settings, and until then no file goes to Ollama or OpenRouter. The import screen names the provider and model that will read the file.
 - The `ollama` service is optional. Remove it if you don't use bank statement import, or set `OPENROUTER_API_KEY` to use a cloud model instead. Keep the `sidecar`: it also runs exchange rates, recurring expenses and backups.
 
 ## Settings

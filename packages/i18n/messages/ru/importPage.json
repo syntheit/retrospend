@@ -30,6 +30,13 @@
 		"tooBig": "{name} больше 10 МБ.",
 		"wrongType": "{name} не является файлом CSV, Excel или PDF."
 	},
+	"serverNote": "Этот файл отправляется на сервер.",
+	"provider": {
+		"ollama": "Читает Ollama на этом сервере",
+		"ollamaModel": "Читает Ollama на этом сервере ({model})",
+		"openrouter": "Читает OpenRouter",
+		"openrouterModel": "Читает OpenRouter ({model})"
+	},
 	"recent": {
 		"title": "Недавние импорты",
 		"reading": "Чтение, {percent}%",
@@ -54,9 +61,8 @@
 		"csvMissing": "Нужны столбцы даты, названия, суммы и валюты",
 		"csvPdf": "PDF можно прочитать только с ИИ",
 		"ai": "Прочитать с помощью ИИ",
-		"aiExternal": "Читает через ваш доступ к OpenRouter",
-		"aiLocal": "Читает с помощью ИИ этого сервера",
 		"aiOff": "Чтение с помощью ИИ на этом сервере выключено",
+		"aiNotOn": "Включите импорт с ИИ в настройках",
 		"aiSettings": "Настройки ИИ",
 		"pdfBlocked": "PDF читаются только с ИИ, а здесь он выключен. Используйте CSV или включите ИИ.",
 		"columns": "Столбцы",

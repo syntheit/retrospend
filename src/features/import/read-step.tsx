@@ -15,6 +15,7 @@ import { settingsHref } from "~/lib/nav";
 import type { RecentImport } from "~/server/services/import/recent";
 import { api } from "~/trpc/react";
 import type { CsvHeader, FileKind } from "./file";
+import { useProviderLine } from "./provider-line";
 import type { ReadAs } from "./use-import-flow";
 
 type Option = { as: ReadAs; title: string; hint: string; off: boolean };
@@ -24,7 +25,10 @@ function useOptions(kind: FileKind, header: CsvHeader | null) {
 	const t = useTranslations("importPage.read");
 	const importer = api.system.checkImporterStatus.useQuery();
 	const ai = api.settings.getAiStatus.useQuery();
-	const aiOff = importer.isSuccess && !importer.data.available;
+	const providerLine = useProviderLine(ai.data);
+	const serverOff = importer.isSuccess && !importer.data.available;
+	const notOn = ai.isSuccess && !ai.data.importEnabled;
+	const aiOff = serverOff || notOn;
 	const csvOff = kind === "pdf" || (header != null && !header.retrospend);
 	const options: Option[] = [
 		{
@@ -37,11 +41,11 @@ function useOptions(kind: FileKind, header: CsvHeader | null) {
 		{
 			as: "BANK_STATEMENT",
 			title: t("ai"),
-			hint: aiOff
+			hint: serverOff
 				? t("aiOff")
-				: ai.data?.currentMode === "EXTERNAL"
-					? t("aiExternal")
-					: t("aiLocal"),
+				: notOn
+					? t("aiNotOn")
+					: (providerLine ?? ""),
 			off: aiOff,
 		},
 	];
@@ -69,6 +73,7 @@ export function ReadStep({
 	onRead: (as: ReadAs) => void;
 }) {
 	const t = useTranslations("importPage.read");
+	const tPage = useTranslations("importPage");
 	const router = useRouter();
 	const { options, aiOff } = useOptions(kind, header);
 	const first = options.find((o) => !o.off)?.as ?? null;
@@ -80,6 +85,7 @@ export function ReadStep({
 			<p className="text-fg-2 text-small mb-4">
 				<span className="text-fg font-semibold">{file.name}</span>
 			</p>
+			<p className="text-fg-2 text-small mb-3">{tPage("serverNote")}</p>
 			{kind === "pdf" && aiOff ? (
 				<Notice
 					action={

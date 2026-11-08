@@ -22,6 +22,7 @@ export function DropZone({
 	busy?: boolean;
 }) {
 	const t = useTranslations("importPage.drop");
+	const tPage = useTranslations("importPage");
 	const phone = useIsMobile();
 	const input = useRef<HTMLInputElement>(null);
 	const [over, setOver] = useState(false);
@@ -53,6 +54,7 @@ export function DropZone({
 				{phone ? t("titlePhone") : t("title")}
 			</p>
 			<p className="text-fg-2 text-small">{t("hint")}</p>
+			<p className="text-fg-2 text-small">{tPage("serverNote")}</p>
 			<Button
 				kind="primary"
 				loading={busy}

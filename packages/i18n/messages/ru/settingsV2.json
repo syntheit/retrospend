@@ -133,8 +133,8 @@
 		"expenseDate": "Дата новых расходов",
 		"expenseDateToday": "Сегодня",
 		"expenseDateLast": "Последняя использованная",
+		"aiImport": "Импорт с ИИ",
 		"import": "Импорт выписок",
-		"importMeta": "Кто читает ваши банковские выписки",
 		"importLocal": "Локальный",
 		"importExternal": "Внешний",
 		"importExternalLeft": "Внешний: в этом месяце осталось токенов: {count, number}"
