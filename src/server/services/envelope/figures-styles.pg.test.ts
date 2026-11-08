@@ -31,8 +31,9 @@
  * against the month view the same pass reads.
  */
 import { randomUUID } from "node:crypto";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { readFigures } from "~/server/figures/read";
+import { seedArsRatesOn } from "~/server/services/accounts/test-fixtures";
 import { forUser } from "~/server/services/preview";
 import { adminDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
@@ -60,19 +61,26 @@ const FUNDED_AT_SETUP: readonly (typeof STYLES)[number][] = [
 	"WEEKLY",
 ];
 
-/** ARS needs a rate dated today for the setup's starting balance (SPEC rates). */
+/**
+ * ARS needs a rate dated today for the setup's starting balance (SPEC rates).
+ * The rate table is global and this file's worker runs other files after it:
+ * the rows are removed again afterwards, so a file that dates its rates by
+ * another zone's today never reads 1465 as the latest Blue.
+ */
+const removeRates: (() => Promise<unknown>)[] = [];
 async function arsRates() {
 	const date = new Date(`${isoDateIn(new Date(), "UTC")}T00:00:00Z`);
-	for (const [type, rate] of [
-		["official", "1412"],
-		["blue", "1465"],
-	] as const)
-		await adminDb.exchangeRate.upsert({
-			where: { date_currency_type: { date, currency: "ARS", type } },
-			create: { date, currency: "ARS", type, rate: new Prisma.Decimal(rate) },
-			update: { rate: new Prisma.Decimal(rate) },
-		});
+	removeRates.push(
+		await seedArsRatesOn([
+			[date, "official", "1412"],
+			[date, "blue", "1465"],
+		]),
+	);
 }
+
+afterAll(async () => {
+	for (const remove of removeRates) await remove();
+});
 
 function arsRow(
 	userId: string,
