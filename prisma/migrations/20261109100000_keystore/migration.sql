@@ -16,7 +16,18 @@
 -- Work with no user in scope (account deletion, master key rotation) uses the
 -- owner connection: see src/server/services/keys.
 
-CREATE SCHEMA IF NOT EXISTS keystore;
+-- The bootstrap (prisma/bootstrap/owner-role.sql) makes this schema for the
+-- owner before any migration runs. The migration role has no CREATE on the
+-- database outside a brand-new install, and Postgres checks that privilege even
+-- for CREATE SCHEMA IF NOT EXISTS, so the statement only runs when the schema
+-- is missing (a database restored without it, or a bootstrap-free setup).
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_namespace WHERE nspname = 'keystore') THEN
+    CREATE SCHEMA keystore;
+  END IF;
+END
+$$;
 
 REVOKE ALL ON SCHEMA keystore FROM PUBLIC;
 

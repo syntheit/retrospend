@@ -4,8 +4,9 @@
 // as the superuser (creates retrospend_owner, hands it the objects), checks the
 // owner can sign in, and gives everything after that the owner's URL: the
 // migrations, the grants file and the app. The owner holds CREATE on the
-// database only while `prisma migrate deploy` runs (prepare), and the superuser
-// connection stays open for that long to take it back. retrospend_owner is not a
+// database only on a brand-new install, and only while `prisma migrate deploy`
+// runs (prepare); the superuser connection stays open for that long to take it
+// back. Upgrades never grant it. retrospend_owner is not a
 // superuser, so SQL that escapes the row-level security role lands on a role
 // that cannot read files, run programs, create roles or touch other databases.
 //
@@ -403,6 +404,21 @@ async function setOwnerPassword(client, password) {
  *   | { status: "unchanged", reason: "not-superuser" | "no-password" | "unreadable-password" }} BootstrapResult
  */
 
+/** The database setting a superuser sets while a new install is being set up. */
+const FRESH_MARKER = "retrospend.fresh_install";
+
+/**
+ * Whether this database is a brand-new install the owner has had no chance to
+ * plant anything in (owner-fresh.sql), from the catalogs only.
+ *
+ * @param {{ query: (sql: string) => Promise<{ rows: Array<Record<string, unknown>> }> }} client
+ * @returns {Promise<boolean>}
+ */
+export async function neverHandedOver(client) {
+	const { rows } = await client.query(bootstrapFile("owner-fresh.sql"));
+	return rows[0]?.fresh === true;
+}
+
 /**
  * The quoted name of the database `client` is connected to.
  *
@@ -445,10 +461,12 @@ async function revokeDatabaseCreate(admin, databaseUrl, database) {
  * that is not guessable, so it keeps today's behavior with a loud warning
  * unless DATABASE_OWNER_PASSWORD gives the owner a secret of its own.
  *
- * With `whileOwnerMayCreate`, the owner gets CREATE on the database for as long
- * as that callback runs (it is given the owner's URL) and loses it again in a
- * `finally`, so a failed callback still takes it back. The superuser connection
- * stays open for that, and reads nothing the owner owns.
+ * With `whileOwnerMayCreate`, the callback runs with the owner's URL. On a
+ * brand-new install (never handed over: neverHandedOver) the owner holds CREATE
+ * on the database for as long as it runs and loses it again in a `finally`, so a
+ * failed callback still takes it back; the superuser connection stays open for
+ * that and reads nothing the owner owns. On an upgrade or any later start the
+ * owner is never given CREATE, so the callback's migrations must not need it.
  *
  * @param {string} databaseUrl
  * @param {{ ownerPassword?: string, warn?: (message: string) => void, whileOwnerMayCreate?: (ownerUrl: string) => Promise<void> }} [options]
@@ -489,6 +507,11 @@ export async function bootstrap(databaseUrl, options = {}) {
 		const ownerPassword = override ?? deriveOwnerPassword(superPassword ?? "");
 		const url = ownerUrl(databaseUrl, ownerPassword);
 
+		// Decided now, from the catalogs, before the owner is given anything.
+		const fresh = options.whileOwnerMayCreate
+			? await neverHandedOver(admin)
+			: false;
+
 		await createOwnerRole(admin);
 		await enforceOwnerRole(admin, warn);
 
@@ -503,16 +526,31 @@ export async function bootstrap(databaseUrl, options = {}) {
 			);
 		}
 
+		const database = await databaseIdentifier(admin);
+		if (fresh) {
+			// A start that fails halfway is retried as a new install.
+			await admin.query(
+				`ALTER DATABASE ${database} SET ${FRESH_MARKER} = 'on'`,
+			);
+		}
 		const changedObjects = await handover(admin);
 		if (options.whileOwnerMayCreate) {
-			const database = await databaseIdentifier(admin);
-			await admin.query(
-				`GRANT CREATE ON DATABASE ${database} TO ${OWNER_ROLE}`,
-			);
-			try {
+			if (!fresh) {
+				// An upgrade or a later start: no CREATE. Whatever the owner has
+				// planted in its own objects (a view, a trigger) runs during the
+				// migrations, and with CREATE it could install a trusted
+				// extension whose script runs as the superuser.
 				await options.whileOwnerMayCreate(url);
-			} finally {
-				await revokeDatabaseCreate(admin, databaseUrl, database);
+			} else {
+				await admin.query(
+					`GRANT CREATE ON DATABASE ${database} TO ${OWNER_ROLE}`,
+				);
+				try {
+					await options.whileOwnerMayCreate(url);
+				} finally {
+					await revokeDatabaseCreate(admin, databaseUrl, database);
+				}
+				await admin.query(`ALTER DATABASE ${database} RESET ${FRESH_MARKER}`);
 			}
 		}
 		return { status: "switched", ownerUrl: url, changedObjects };

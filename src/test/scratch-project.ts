@@ -3,11 +3,13 @@
  * other than the repository's: an older release (some of the real migrations),
  * or a migration of their own (one that fails, or one that needs CREATE on the
  * database). `prisma migrate deploy` only knows "all of the migrations in the
- * project", so the project links the schema, node_modules and the chosen real
- * migrations, and writes the extra ones itself. Pass `dir` as `root` to
+ * project", so the project links the schema and node_modules, copies the chosen
+ * real migrations (Prisma does not follow a symlinked migration folder), and
+ * writes the extra ones itself. Pass `dir` as `root` to
  * migrateWithRecovery and prepare (scripts/db-owner).
  */
 import {
+	cpSync,
 	mkdirSync,
 	mkdtempSync,
 	readdirSync,
@@ -55,7 +57,8 @@ export function makeScratchProject(options: {
 		if (before) {
 			for (const name of readdirSync(real).sort()) {
 				if (name >= before || name.endsWith(".toml")) continue;
-				symlinkSync(join(real, name), join(migrations, name));
+				// Copied: Prisma does not follow a symlinked migration folder.
+				cpSync(join(real, name), join(migrations, name), { recursive: true });
 			}
 		}
 		for (const { name, sql } of options.extra ?? []) {

@@ -11,13 +11,15 @@
 --   2. lets the owner grant retrospend_app (WITH ADMIN OPTION), which an old
 --      migration does with GRANT retrospend_app TO CURRENT_USER;
 --   3. takes CREATE on the database away from the owner if it somehow holds it.
---      The owner gets it only while `prisma migrate deploy` runs (the first
---      migration says CREATE SCHEMA IF NOT EXISTS, and a later one the same for
---      keystore: Postgres checks CREATE before it looks whether the schema
---      exists), and scripts/db-owner takes it back in a `finally`. With it the
---      owner could CREATE EXTENSION a trusted extension into a schema it
---      controls, whose install script then runs as the superuser, or drop and
---      recreate public;
+--      scripts/db-owner gives it back only on a brand-new install, while
+--      `prisma migrate deploy` runs (the first migration says CREATE SCHEMA IF
+--      NOT EXISTS, which Postgres checks against CREATE before it looks whether
+--      the schema exists), and takes it away again in a `finally`. An upgrade
+--      never gets it, so no pending migration may need it
+--      (src/test/migrations/database-create.test.ts): anything that does goes in
+--      this file. With CREATE the owner could CREATE EXTENSION a trusted
+--      extension into a schema it controls, whose install script then runs as
+--      the superuser, or drop and recreate public;
 --   4. creates the unaccent extension (needs CREATE on the database);
 --   5. creates the keystore schema for the owner (same reason);
 --   6. keeps PUBLIC from creating objects in public.
@@ -78,9 +80,9 @@ BEGIN
 END
 $role$;
 
--- No CREATE on the database outside the migrations: see item 3 in the header. A
--- catalog check, no table of the owner's is read. This also repairs a crash
--- between the grant and the revoke around the migrations.
+-- No CREATE on the database here: see item 3 in the header. A catalog check, no
+-- table of the owner's is read. This also repairs a crash between the grant and
+-- the revoke around the migrations of a new install.
 DO $database$
 BEGIN
   IF pg_catalog.has_database_privilege(
@@ -97,8 +99,8 @@ $database$;
 -- the owner the schema, so no object of the owner's can be in the extension
 -- script's way. Once the owner owns public it is not done here at all: the
 -- extension script would run as the superuser inside a schema the owner
--- controls, and the migration (which runs as the owner, with CREATE on the
--- database for its length) creates it instead. Its members stay with the
+-- controls. (Every install that ever ran the search migration has it; a new
+-- install gets it here before the handover.) Its members stay with the
 -- superuser; the handover skips them.
 DO $extension$
 BEGIN
