@@ -179,6 +179,13 @@ export async function readDefaultAcls(
 	return rows.rows;
 }
 
+async function currentUser(client: Queryable): Promise<string> {
+	const { rows } = await client.query<{ owner: string }>(
+		"SELECT current_user::text AS owner",
+	);
+	return rows[0]?.owner ?? "";
+}
+
 /** Everything the least-privilege migration changes, as plain comparable text. */
 export type CatalogSnapshot = {
 	/** `table[.column] grantee PRIVILEGE`, for tables, columns and sequences. */
@@ -223,12 +230,7 @@ export async function readCatalogSnapshot(
 		FROM pg_policy p JOIN pg_class c ON c.oid = p.polrelid
 		WHERE c.relnamespace = 'public'::regnamespace
 		ORDER BY 1`);
-	const owner =
-		(
-			await client.query<{ owner: string }>(
-				"SELECT current_user::text AS owner",
-			)
-		).rows[0]?.owner ?? "";
+	const owner = await currentUser(client);
 	const defaults = (await readDefaultAcls(client))
 		.filter((d) => d.kind === "r" || d.kind === "S")
 		.map((d) =>
@@ -287,4 +289,64 @@ export async function readKeystoreAccess(client: Queryable): Promise<string[]> {
 		         OR has_table_privilege('retrospend_app', c.oid, 'DELETE'))
 		FROM pg_class c WHERE c.relnamespace = 'keystore'::regnamespace AND c.relkind IN ('r', 'p')`);
 	return rows.map((r) => r.line).sort();
+}
+
+export type FunctionState = {
+	/** Entries as `grantee:PRIVILEGE`, comma-separated; PUBLIC first, then the owner as `<owner>`. */
+	acl: string;
+	sig: string;
+	/** The function's own settings, such as `search_path=public`, joined by `;`. */
+	config: string;
+	definer: boolean;
+};
+
+/** The function grants the definer hygiene migration touches. */
+export type FunctionCatalog = {
+	/** Function default privileges, with the role running the test as `<owner>`. */
+	defaults: DefaultAcl[];
+	/** Every non-extension function in public, sorted by signature. */
+	functions: FunctionState[];
+};
+
+/**
+ * Every non-extension function in public (mode, search_path, ACL) and the
+ * function default privileges. A function with a NULL ACL is read as the
+ * default ACL it stands for (owner and PUBLIC).
+ */
+export async function readFunctionCatalog(
+	client: Queryable,
+): Promise<FunctionCatalog> {
+	const { rows } = await client.query<FunctionState>(`
+		SELECT p.oid::regprocedure::text AS sig,
+		       p.prosecdef AS definer,
+		       coalesce(array_to_string(p.proconfig, ';'), '') AS config,
+		       (
+		         SELECT string_agg(
+		                  CASE WHEN a.grantee = 0 THEN 'PUBLIC' WHEN a.grantee = p.proowner THEN '<owner>' ELSE pg_get_userbyid(a.grantee) END
+		                    || ':' || a.privilege_type
+		                    || CASE WHEN a.is_grantable THEN '*' ELSE '' END,
+		                  ',' ORDER BY (a.grantee <> 0), (a.grantee <> p.proowner), pg_get_userbyid(a.grantee), a.privilege_type)
+		         FROM aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
+		       ) AS acl
+		FROM pg_proc p
+		WHERE p.pronamespace = 'public'::regnamespace
+		  AND p.prokind IN ('f', 'p')
+		  AND NOT EXISTS (
+		    SELECT 1 FROM pg_depend d WHERE d.objid = p.oid AND d.deptype = 'e'
+		  )`);
+	const owner = await currentUser(client);
+	const defaults = (await readDefaultAcls(client))
+		.filter((d) => d.kind === "f")
+		.map((d) => ({
+			...d,
+			role: d.role.replaceAll(owner, "<owner>"),
+			entries: d.entries.map((e) => e.replaceAll(owner, "<owner>")),
+		}));
+	// Sorted here, not by the database, so the order does not depend on its collation.
+	return {
+		defaults,
+		functions: rows
+			.map(({ acl, sig, config, definer }) => ({ acl, sig, config, definer }))
+			.sort((a, b) => (a.sig < b.sig ? -1 : a.sig > b.sig ? 1 : 0)),
+	};
 }

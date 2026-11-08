@@ -17,13 +17,14 @@
  *     pnpm test:regen-fixtures
  */
 import { randomBytes } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Client } from "pg";
 import {
 	onlyTables,
 	type Queryable,
 	readCatalogSnapshot,
+	readFunctionCatalog,
 } from "../src/test/migrations/privilege-catalog";
 import {
 	DEFINER_MIGRATION,
@@ -48,11 +49,8 @@ const FIXTURES: Fixture[] = [
 	{
 		file: "definer-catalog.before.json",
 		cutoff: DEFINER_MIGRATION,
-		read: async (client) => {
-			const sql = readFileSync(join(DIR, "definer-catalog.sql"), "utf8");
-			const { rows } = await client.query<{ jsonb_pretty: string }>(sql);
-			return `${rows[0]?.jsonb_pretty}\n`;
-		},
+		read: async (client) =>
+			`${JSON.stringify(await readFunctionCatalog(client), null, 4)}\n`,
 	},
 	{
 		file: "pre-least-privilege-catalog.json",

@@ -32,51 +32,35 @@ import { Client } from "pg";
 import { describe, expect, it } from "vitest";
 import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 import { REPO_ROOT } from "../uiRules/paths";
+import { type FunctionCatalog, readFunctionCatalog } from "./privilege-catalog";
 import { DEFINER_MIGRATION } from "./rollback-fixtures";
 
 const MIGRATION = DEFINER_MIGRATION;
 
-type FunctionState = {
-	sig: string;
-	definer: boolean;
-	config: string;
-	acl: string;
-};
-type Catalog = {
-	functions: FunctionState[];
-	defaults: { role: string; schema: string; acl: string }[];
-};
-
 const read = (...parts: string[]) =>
 	readFileSync(join(REPO_ROOT, ...parts), "utf8");
 
-const catalogSql = read("src/test/migrations/definer-catalog.sql");
-const before: Catalog = JSON.parse(
+const before: FunctionCatalog = JSON.parse(
 	read("src/test/migrations/definer-catalog.before.json"),
 );
 const migrationSql = read("prisma/migrations", MIGRATION, "migration.sql");
 const rollbackSql = read("prisma/rollback", `${MIGRATION}.sql`);
 
-async function capture(client: Client): Promise<Catalog> {
-	const result = await client.query<{ jsonb_pretty: string }>(catalogSql);
-	return JSON.parse(result.rows[0]?.jsonb_pretty ?? "{}");
-}
-
 describe("rollback of 20261109500000_definer_hygiene", () => {
 	it("puts back every grant, search_path and default the migration changed, and the migration applies again", async () => {
-		let migrated: Catalog | undefined;
-		let restored: Catalog | undefined;
-		let reapplied: Catalog | undefined;
+		let migrated: FunctionCatalog | undefined;
+		let restored: FunctionCatalog | undefined;
+		let reapplied: FunctionCatalog | undefined;
 		await inRolledBackTransaction(async (client) => {
-			migrated = await capture(client);
+			migrated = await readFunctionCatalog(client);
 			await client.query(rollbackSql);
-			restored = await capture(client);
+			restored = await readFunctionCatalog(client);
 			await client.query(migrationSql);
-			reapplied = await capture(client);
+			reapplied = await readFunctionCatalog(client);
 		});
 		if (!migrated || !restored || !reapplied) throw new Error("no capture");
 
-		const bySig = (catalog: Catalog) =>
+		const bySig = (catalog: FunctionCatalog) =>
 			new Map(catalog.functions.map((f) => [f.sig, f]));
 		const now = bySig(migrated);
 		const back = bySig(restored);
