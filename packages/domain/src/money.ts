@@ -468,3 +468,55 @@ export function pickBestRate(
 	);
 	return ranked[0] ?? null;
 }
+
+// ── Rate lookups over rows held in memory ───────────────────────────────────
+
+/** A stored rate row with its currency, the rate as a number or exact text. */
+export interface StoredRateRow {
+	currency: string;
+	type: string;
+	rate: number | string | { toString(): string };
+	date: Date;
+}
+
+/**
+ * The rows of `currencies` (USD never has any), grouped per currency and with
+ * the rate as a number: what the server reads with one query and a device
+ * filters from its store, the input of rateLookup.
+ */
+export function rateRowsByCurrency(
+	rows: Iterable<StoredRateRow>,
+	currencies: Iterable<string>,
+): Record<string, RateRow[]> {
+	const wanted = new Set([...currencies].filter((c) => c !== USD));
+	const out: Record<string, RateRow[]> = {};
+	for (const r of rows) {
+		if (!wanted.has(r.currency)) continue;
+		const list = out[r.currency] ?? [];
+		list.push({
+			type: r.type,
+			rate: typeof r.rate === "number" ? r.rate : Number(r.rate.toString()),
+			date: r.date,
+		});
+		out[r.currency] = list;
+	}
+	return out;
+}
+
+/**
+ * A resolver over the rows of rateRowsByCurrency: the best rate for a currency
+ * on a date from all its rows (no window, as a batch lookup of the server
+ * reads them). USD is 1; null only for a currency without any rate.
+ */
+export function rateLookup(
+	rows: Readonly<Record<string, readonly RateRow[]>>,
+): (
+	currency: string,
+	date: Date,
+	preferredType?: string | null,
+) => PickedRate | null {
+	return (currency, date, preferredType) =>
+		currency === USD
+			? { rate: 1, type: "official", date, onOrBefore: true }
+			: pickBestRate(rows[currency] ?? [], { date, preferredType });
+}

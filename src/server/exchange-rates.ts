@@ -11,6 +11,9 @@ import {
 	type PickedRate,
 	pickBestRate,
 	RATE_ROWS_PER_SIDE,
+	type RateRow,
+	rateLookup,
+	rateRowsByCurrency,
 	USD,
 } from "@retrospend/domain/money";
 import type { Prisma, PrismaClient } from "~prisma";
@@ -82,6 +85,24 @@ export async function requireExchangeRate(
 }
 
 /**
+ * Every rate row of `currencies`, grouped per currency (one query): the input
+ * of the pick a figure's compute makes in memory (rateLookup), which a device
+ * builds from its own rows.
+ */
+export async function findRateRows(
+	db: RateDb,
+	currencies: Iterable<string>,
+): Promise<Record<string, RateRow[]>> {
+	const wanted = [...new Set(currencies)].filter((c) => c !== USD);
+	if (wanted.length === 0) return {};
+	const rows = await db.exchangeRate.findMany({
+		where: { currency: { in: wanted } },
+		select: { currency: true, type: true, rate: true, date: true },
+	});
+	return rateRowsByCurrency(rows, wanted);
+}
+
+/**
  * Batch lookup for many (currency, date) pairs: one query per currency, then
  * the per-date pick happens in memory. Returns a resolver; it yields null only
  * for currencies without any rate.
@@ -96,27 +117,5 @@ export async function findExchangeRatesForDates(
 		preferredType?: string | null,
 	) => PickedRate | null
 > {
-	const wanted = [...new Set(currencies)].filter((c) => c !== USD);
-	const rowsByCurrency = new Map<
-		string,
-		{ type: string; rate: number; date: Date }[]
-	>();
-	if (wanted.length > 0) {
-		const rows = await db.exchangeRate.findMany({
-			where: { currency: { in: wanted } },
-			select: { currency: true, type: true, rate: true, date: true },
-		});
-		for (const r of rows) {
-			const list = rowsByCurrency.get(r.currency) ?? [];
-			list.push({ type: r.type, rate: Number(r.rate), date: r.date });
-			rowsByCurrency.set(r.currency, list);
-		}
-	}
-	return (currency, date, preferredType) => {
-		if (currency === USD) return USD_RATE(date);
-		return pickBestRate(rowsByCurrency.get(currency) ?? [], {
-			date,
-			preferredType,
-		});
-	};
+	return rateLookup(await findRateRows(db, currencies));
 }
