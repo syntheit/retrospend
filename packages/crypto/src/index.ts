@@ -19,7 +19,6 @@ export {
 	recordAad,
 	type SealedHeader,
 	sealRecord,
-	sealRecordWithNonce,
 } from "./format";
 export { fromHex, toHex } from "./hex";
 export {

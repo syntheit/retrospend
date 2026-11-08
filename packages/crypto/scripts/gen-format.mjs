@@ -105,9 +105,12 @@ function canon(v) {
 		.join(",")}}`;
 }
 
+// AAD: "rs.v1|" + hex of header bytes 0..17 (version 01, algorithm 01, keyId)
+// + "|userId|collectionId|entity|recordId|version".
 function seal(c) {
 	const aad = [
 		"rs.v1",
+		`0101${c.keyId}`,
 		c.context.userId,
 		c.context.collectionId,
 		c.context.entity,

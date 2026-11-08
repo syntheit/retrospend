@@ -7,7 +7,9 @@
 //   bytes 18..41 nonce, 24 random bytes (random is safe at this size)
 //   bytes 42..   ciphertext, then the 16-byte tag
 //   plaintext    schema version (u16, big endian) | canonical JSON | padding
-//   AAD          "rs.v1|userId|collectionId|entity|recordId|version"
+//   AAD          "rs.v1|<header hex>|userId|collectionId|entity|recordId|version"
+//                where <header hex> is bytes 0..17 (version, algorithm, keyId) as
+//                36 lowercase hex characters
 //
 // Why it is built this way:
 // - The AAD binds the record to its place. The server can store, withhold or
@@ -19,15 +21,19 @@
 // - The JSON is deterministic and pure ASCII (keys sorted, no spaces, every
 //   character above 0x7e written as a \u escape) so every platform produces
 //   the same bytes without a UTF-8 codec, and the golden vectors can pin them.
-// - The header is not encrypted but is checked. A version or algorithm this
-//   build does not know is refused with `invalid_input` (read it first with
-//   `readHeader` to tell the user to update). A keyId that names no key, a
-//   changed keyId, a wrong place and changed bytes all fail the same way,
-//   `decrypt_failed`, so a failure never says which.
+// - The header is not encrypted but it is authenticated: its first 18 bytes
+//   are in the AAD, so a rewritten keyId fails to open even if the reader
+//   would hand out the key for it. A version or algorithm this build does not
+//   know is refused with `invalid_input` before any decryption (read it first
+//   with `readHeader` to tell the user to update). A keyId that names no key,
+//   a changed keyId, a wrong place and changed bytes all fail the same way,
+//   `decrypt_failed`, so a failure never says which. The nonce needs no
+//   binding: the cipher takes it as an input.
 // - Only `invalid_input` and `decrypt_failed` exist (errors.ts). An authentic
 //   record this version cannot read is `decrypt_failed` too.
 import { fromBase64Url, toBase64Url } from "./base64url";
 import { CryptoError } from "./errors";
+import { toHex } from "./hex";
 import {
 	KEY_BYTES,
 	NONCE_BYTES,
@@ -80,16 +86,19 @@ const safeInt = (v: number, max: number) =>
 	Number.isSafeInteger(v) && v >= 0 && v <= max ? v : bad();
 
 /**
- * The AAD string. Ids are limited to letters, digits, `-` and `_` and the
- * rest are integers, so `|` cannot appear inside a field and no two contexts
- * produce the same string.
+ * The AAD string (ASCII only: the native AEAD takes a string). `header` is
+ * the first 18 bytes of the sealed record. Ids are limited to letters, digits,
+ * `-` and `_`, the header is hex and the rest are integers, so `|` cannot
+ * appear inside a field and no two inputs produce the same string.
  */
-export function recordAad(ctx: RecordContext): string {
+export function recordAad(ctx: RecordContext, header: Uint8Array): string {
+	if (header.length !== 2 + KEY_ID_BYTES) bad();
 	for (const id of [ctx.userId, ctx.collectionId, ctx.recordId]) {
 		if (typeof id !== "string" || !ID.test(id)) bad();
 	}
 	return [
 		"rs.v1",
+		toHex(header),
 		ctx.userId,
 		ctx.collectionId,
 		safeInt(ctx.entity, 0xffff),
@@ -128,6 +137,8 @@ export function canonicalJson(value: Json, depth = 0): string {
 	}
 	if (typeof value === "string") return quote(value);
 	if (Array.isArray(value)) {
+		// A hole would print as an empty item that no reader can parse.
+		for (let i = 0; i < value.length; i++) if (!(i in value)) bad();
 		return `[${value.map((v) => canonicalJson(v, depth + 1)).join(",")}]`;
 	}
 	if (typeof value !== "object") return bad();
@@ -161,8 +172,9 @@ function unpad(padded: Uint8Array): Uint8Array | null {
 }
 
 /**
- * Seal with a caller-chosen nonce. For golden vectors only: a nonce must
- * never be reused with a key, so real code calls `sealRecord`.
+ * Seal with a caller-chosen nonce. For golden vectors only, so it is not in
+ * the package index: a nonce must never be reused with a key, so real code
+ * calls `sealRecord`.
  */
 export function sealRecordWithNonce(
 	p: Primitives,
@@ -177,7 +189,11 @@ export function sealRecordWithNonce(
 	if (record === null || typeof record !== "object" || Array.isArray(record)) {
 		bad();
 	}
-	const aad = recordAad(ctx);
+	const header = new Uint8Array(2 + KEY_ID_BYTES);
+	header[0] = FORMAT_VERSION;
+	header[1] = ALGORITHM_XCHACHA20_POLY1305;
+	header.set(recordKey.keyId, 2);
+	const aad = recordAad(ctx, header);
 	const json = canonicalJson(record);
 	if (json.length + 2 >= MAX_PLAINTEXT_BYTES) bad();
 	const body = new Uint8Array(2 + json.length);
@@ -188,9 +204,7 @@ export function sealRecordWithNonce(
 	try {
 		const encrypted = p.aeadEncrypt(recordKey.key, nonce, padded, aad);
 		const out = new Uint8Array(HEADER_BYTES + encrypted.length);
-		out[0] = FORMAT_VERSION;
-		out[1] = ALGORITHM_XCHACHA20_POLY1305;
-		out.set(recordKey.keyId, 2);
+		out.set(header);
 		out.set(nonce, 2 + KEY_ID_BYTES);
 		out.set(encrypted, HEADER_BYTES);
 		return out;
@@ -251,7 +265,6 @@ export function openRecord(
 	ctx: RecordContext,
 	sealed: Uint8Array,
 ): OpenedRecord {
-	const aad = recordAad(ctx);
 	const header = readHeader(sealed);
 	if (
 		header.version !== FORMAT_VERSION ||
@@ -276,7 +289,7 @@ export function openRecord(
 		key,
 		sealed.slice(2 + KEY_ID_BYTES, HEADER_BYTES),
 		encrypted,
-		aad,
+		recordAad(ctx, sealed.subarray(0, 2 + KEY_ID_BYTES)),
 	);
 	try {
 		const body = unpad(padded);

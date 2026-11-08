@@ -20,10 +20,10 @@ import {
 	recordAad,
 	runKnownAnswerTests,
 	sealRecord,
-	sealRecordWithNonce,
 	toBase64Url,
 	toHex,
 } from "../src";
+import { sealRecordWithNonce } from "../src/format";
 import { createWebPrimitives } from "../src/web";
 import vectors from "../vectors/format.vectors.json";
 
@@ -130,6 +130,23 @@ describe("seal and open", () => {
 		expect(HEADER_BYTES - 2 - KEY_ID_BYTES).toBe(NONCE_BYTES);
 	});
 
+	it("refuses arrays with holes, which would seal but never open", () => {
+		const seal = (r: unknown) =>
+			code(() => sealRecord(p, recordKey, ctx, 1, r as { [k: string]: never }));
+		// biome-ignore lint/suspicious/noSparseArray: the hole is the test
+		expect(seal({ a: [1, , 2] })).toBe("invalid_input");
+		expect(seal({ a: new Array(2) })).toBe("invalid_input");
+		expect(seal({ a: [[1, 2], [3]] })).toBe("none");
+	});
+
+	it("binds the header and the place into one AAD string", () => {
+		const header = Uint8Array.from([1, 1, ...keyId]);
+		expect(recordAad(ctx, header)).toBe(
+			`rs.v1|0101${toHex(keyId)}|user_1|coll-1|1|rec_1|3`,
+		);
+		expect(code(() => recordAad(ctx, header.slice(1)))).toBe("invalid_input");
+	});
+
 	it("refuses inputs that cannot be sealed exactly", () => {
 		const seal = (r: unknown, c = ctx, v = 1) =>
 			code(() => sealRecord(p, recordKey, c, v, r as { [k: string]: never }));
@@ -192,6 +209,27 @@ describe("tampering never returns plaintext", () => {
 		}
 	});
 
+	it("a rewritten key id fails even when the reader hands out the key", () => {
+		const anyKey = () => key;
+		for (let at = 2; at < 2 + KEY_ID_BYTES; at++) {
+			expect(code(() => open(flip(good, at), ctx, anyKey))).toBe(
+				"decrypt_failed",
+			);
+		}
+		expect(open(good, ctx, anyKey).record).toEqual(record);
+	});
+
+	it("a changed version or algorithm is refused before any key lookup", () => {
+		let lookups = 0;
+		const spy = () => {
+			lookups++;
+			return key;
+		};
+		expect(code(() => open(flip(good, 0), ctx, spy))).toBe("invalid_input");
+		expect(code(() => open(flip(good, 1), ctx, spy))).toBe("invalid_input");
+		expect(lookups).toBe(0);
+	});
+
 	it("unknown version and unknown algorithm", () => {
 		for (const at of [0, 1]) {
 			for (const value of [0, 2, 255]) {
@@ -209,7 +247,12 @@ describe("tampering never returns plaintext", () => {
 			const padded = new Uint8Array(64);
 			padded.set(body);
 			padded[body.length] = 0x80;
-			const ct = p.aeadEncrypt(key, nonce, padded, recordAad(ctx));
+			const ct = p.aeadEncrypt(
+				key,
+				nonce,
+				padded,
+				recordAad(ctx, Uint8Array.from([1, 1, ...keyId])),
+			);
 			const out = new Uint8Array(HEADER_BYTES + ct.length);
 			out.set([1, 1]);
 			out.set(keyId, 2);
