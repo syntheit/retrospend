@@ -24,6 +24,7 @@ import {
 	openAccount,
 	seedArsRates,
 	TODAY,
+	TODAY_ZONE,
 } from "../accounts/test-fixtures";
 import { addIncome } from "./add.mutation";
 import {
@@ -267,6 +268,11 @@ describe("typed amounts stay exact end to end", () => {
 
 	it("a confirmed recurring amount is a decimal string, stored as typed", async () => {
 		const { user } = await createTestUser();
+		// Due TODAY in the user's zone, the day the confirm checks.
+		await adminDb.user.update({
+			where: { id: user.id },
+			data: { timeZone: TODAY_ZONE },
+		});
 		const template = await adminDb.recurringTemplate.create({
 			data: {
 				userId: user.id,
@@ -336,6 +342,11 @@ describe("a row with a leg keeps its money", () => {
 describe("Use my plan on a recurring income confirm", () => {
 	it("assigns the income by the plan in the same action, and its undo takes it back", async () => {
 		const s = await seedUser();
+		// Due TODAY in the user's zone, the day the confirm checks.
+		await adminDb.user.update({
+			where: { id: s.user.id },
+			data: { timeZone: TODAY_ZONE },
+		});
 		await forUser(s.user.id).apply(setupEnvelopeBook, {
 			...setupInput(s),
 			startingMoneyMinor: 0,
