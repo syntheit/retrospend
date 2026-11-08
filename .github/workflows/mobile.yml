@@ -84,7 +84,7 @@ jobs:
       # Only the app and the workspace packages it imports. The root's
       # lifecycle scripts (Prisma for the web app) have no place here.
       - name: Install
-        run: pnpm install --frozen-lockfile --ignore-scripts --filter '@retrospend/mobile...'
+        run: pnpm install --frozen-lockfile --filter '@retrospend/mobile...'
 
       # ios/ is generated and never committed. Debug builds register with the
       # APNs sandbox.
@@ -220,7 +220,7 @@ jobs:
           cache-read-only: false
 
       - name: Install
-        run: pnpm install --frozen-lockfile --ignore-scripts --filter '@retrospend/mobile...'
+        run: pnpm install --frozen-lockfile --filter '@retrospend/mobile...'
 
       # The runner has no sdkmanager on PATH, so this installs the command
       # line tools and accepts the licenses. The packages are the versions

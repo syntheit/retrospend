@@ -7,6 +7,9 @@ packages:
 onlyBuiltDependencies:
   - '@prisma/engines'
   - prisma
+  # Unpacks the vendored libsodium the native build links (dependency approved
+  # by the owner 2026-11-03).
+  - react-native-libsodium
 
 # Skip versions published in the last 7 days (supply-chain safety).
 minimumReleaseAge: 10080
@@ -83,3 +86,5 @@ minimumReleaseAgeExclude:
 # gives the host the standard motion scheme, as Expo's own TextField does.
 patchedDependencies:
   '@expo/ui@58.0.20': patches/@expo__ui@58.0.20.patch
+  # iOS: RN 0.88 has no RCTCxxBridge cast (upstream PR serenity-kit/react-native-libsodium#109).
+  react-native-libsodium@1.7.0: patches/react-native-libsodium@1.7.0.patch
