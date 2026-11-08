@@ -20,9 +20,10 @@
  */
 import { describe, expect, it } from "vitest";
 import type { SetupInput } from "~/lib/schemas/envelope";
-import { forUser } from "~/server/services/preview";
 import { userTransaction } from "~/server/db-tx";
+import { forUser } from "~/server/services/preview";
 import { adminDb } from "~/test/pg-harness";
+import { seedArsRates } from "../accounts/test-fixtures";
 import { addRow, seedUser, setupInput } from "./__tests__/pg-fixture";
 import { getMonth } from "./read.service";
 import { setupEnvelopeBook } from "./setup.mutation";
@@ -128,13 +129,9 @@ describe("envelope.setup funds the amounts set in the wizard", () => {
 			where: { id: s.user.id },
 			data: { homeCurrency: "ARS" },
 		});
-		// One rate row per pair, as the sync keeps it.
-		await adminDb.exchangeRate.deleteMany({
-			where: { currency: "ARS", type: "official" },
-		});
-		await adminDb.exchangeRate.create({
-			data: { date: new Date(), currency: "ARS", type: "official", rate: 1000 },
-		});
+		// The shared ARS rates: the rate table is global, so other files in
+		// this worker must keep reading the same rows.
+		await seedArsRates();
 		const input = flex(s);
 		const r = await previewThenStart(s, {
 			...input,
