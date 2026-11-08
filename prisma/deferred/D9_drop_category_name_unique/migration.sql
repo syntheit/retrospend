@@ -1,0 +1,29 @@
+-- D9: drop the unique index on the plaintext category name (E2EE lane D9).
+--
+-- NOT APPLIED. This folder sits outside prisma/migrations on purpose, so
+-- `prisma migrate deploy` never runs it. Uniqueness of a category name is
+-- enforced by "category_userId_nameIndex_key" (migration 20261109700000) once
+-- every row has a nameIndex. Until then the index dropped here is the only
+-- thing that protects a row without one.
+--
+-- To run it, once the owner schedules it:
+--   1. The index and column are live in production, and the backfill has run:
+--        DATABASE_URL=... pnpm exec tsx scripts/backfill-category-name-index.ts --apply
+--      It must report no failures and 0 left to index, and this must return 0:
+--        SELECT count(*) FROM "category" WHERE "nameIndex" IS NULL;
+--      A category it reports as a conflict (two rows whose names differ only by
+--      leading or trailing spaces) needs the owner to rename or merge one first.
+--   2. Every writer that inserts a category outside createCategory computes
+--      nameIndex first: the sign-up seed (better-auth/config.ts), the income
+--      categories (money-in.service.ts ensureIncomeCategories, which relies on
+--      this index to skip duplicates), scripts/sync-default-categories.ts, and
+--      anything D10 or D11 finds. After the drop a row with a NULL nameIndex
+--      can duplicate another name.
+--   3. Move this folder to prisma/migrations/<timestamp>_drop_category_name_unique/.
+--   4. In the same commit remove the line
+--        @@unique([name, userId])
+--      from model Category in prisma/schema.prisma.
+-- Rerunning is safe. The drop stops every category write from maintaining it,
+-- and is what lets the name column hold ciphertext without a plaintext index.
+
+DROP INDEX IF EXISTS "category_name_userId_key";
