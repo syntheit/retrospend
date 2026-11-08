@@ -29,6 +29,7 @@
 		"test:e2e:headed": "playwright test --headed",
 		"typecheck": "tsc --noEmit && pnpm --filter @retrospend/domain typecheck && pnpm --filter @retrospend/crypto typecheck && pnpm --filter @retrospend/api-client typecheck",
 		"ui:ratchet": "tsx src/test/uiRules/ratchet.ts",
+		"log:ratchet": "tsx src/test/logHygiene/ratchet.ts",
 		"ui:tokens": "pnpm --filter @retrospend/tokens build"
 	},
 	"dependencies": {

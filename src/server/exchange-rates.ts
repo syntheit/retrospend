@@ -6,7 +6,6 @@
  * before the date, otherwise the earliest one after it. Only a currency with
  * no rate rows at all yields null (or a BAD_REQUEST from requireExchangeRate).
  */
-import { TRPCError } from "@trpc/server";
 import {
 	type PickedRate,
 	pickBestRate,
@@ -16,6 +15,7 @@ import {
 	rateRowsByCurrency,
 	USD,
 } from "@retrospend/domain/money";
+import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient } from "~prisma";
 
 type RateDb = Pick<PrismaClient | Prisma.TransactionClient, "exchangeRate">;

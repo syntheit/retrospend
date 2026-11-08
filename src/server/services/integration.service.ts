@@ -18,6 +18,15 @@ interface FetchOptions extends RequestInit {
 
 const DEFAULT_TIMEOUT = 5000;
 
+/** The host only: a URL's path and query can carry ids and tokens. */
+function hostOf(url: string): string {
+	try {
+		return new URL(url).host;
+	} catch {
+		return "unknown host";
+	}
+}
+
 export const IntegrationService = {
 	/**
 	 * Makes a request and returns the raw Response object after confirming it is OK.
@@ -37,9 +46,7 @@ export const IntegrationService = {
 
 			if (!response.ok) {
 				const errorText = await response.text().catch(() => "Unknown error");
-				console.error(
-					`Integration error [${response.status}] ${url}: ${errorText}`,
-				);
+				console.error(`Integration error [${response.status}] ${hostOf(url)}`);
 
 				throw new IntegrationError(
 					`External API request failed: ${errorText}`,

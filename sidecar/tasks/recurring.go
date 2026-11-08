@@ -153,7 +153,7 @@ func ProcessRecurringExpenses(database *db.DB) error {
 
 		amount, err := strconv.ParseFloat(template.Amount, 64)
 		if err != nil {
-			log.Printf("[RECURRING] Warning: bad amount %q, skipping template %s", template.Amount, template.ID)
+			log.Printf("[RECURRING] Warning: bad amount, skipping template %s", template.ID)
 			continue
 		}
 		amountInUSD := amountToUSD(amount, template.Currency, exchangeRate)
