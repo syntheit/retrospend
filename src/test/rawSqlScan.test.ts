@@ -79,12 +79,11 @@ function withoutComments(text: string): string {
 			} else if (c === '"' || c === "'" || c === "`") {
 				modes.push(c);
 			} else if (c === "{" && braces.length > 0) {
-				braces[braces.length - 1]++;
+				braces.push((braces.pop() ?? 0) + 1);
 			} else if (c === "}" && braces.length > 0) {
-				if (braces[braces.length - 1] === 0) {
-					braces.pop();
-					modes.pop();
-				} else braces[braces.length - 1]--;
+				const depth = braces.pop() ?? 0;
+				if (depth === 0) modes.pop();
+				else braces.push(depth - 1);
 			}
 		} else if (c === "\\") {
 			i++;
