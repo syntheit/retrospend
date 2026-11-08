@@ -1,10 +1,33 @@
+export type {
+	AccountAggregate,
+	AccountRow,
+	LegRow,
+	SnapshotRow,
+} from "./accounts";
+export {
+	type AnyRow,
+	type ChangeKind,
+	changeKind,
+	type RowChange,
+} from "./changes";
+export { sameValue } from "./equal";
+export { ConflictError, NotFoundError } from "./errors";
+export type { ExpenseAggregate, ExpenseRow } from "./expenses";
+export {
+	LocalDb,
+	type LocalPreview,
+	type LocalWrite,
+	type WriteFn,
+} from "./local-db";
 export { MemoryStore, type MemoryStoreOptions } from "./memory-store";
+export { type MovementRow, mirrorId } from "./movements";
 export {
 	type Change,
 	InvalidInputError,
 	type Reader,
 	SETTINGS_ID,
 	type SettingsRow,
+	type ShareRow,
 	type Snapshot,
 	type Store,
 	TABLE_NAMES,
@@ -15,3 +38,6 @@ export {
 	type WithId,
 	type Writer,
 } from "./port";
+export { type ReadRepos, type Repos, readRepos, repos } from "./repos";
+export type { TemplateRow } from "./templates";
+export type { UndoToken } from "./undo";

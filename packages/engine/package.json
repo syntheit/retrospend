@@ -8,6 +8,7 @@
 	"exports": {
 		".": "./src/index.ts",
 		"./conformance": "./src/conformance.ts",
+		"./local-conformance": "./src/local-conformance.ts",
 		"./fixtures": "./src/fixtures.ts"
 	},
 	"scripts": {
