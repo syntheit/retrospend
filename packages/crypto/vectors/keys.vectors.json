@@ -1,0 +1,184 @@
+{
+	"about": "Known answers for the key hierarchy (@retrospend/crypto src/keys.ts), spike section 4.4. Regenerate with packages/crypto/scripts/gen-keys.mjs, which uses no libsodium and none of keys.ts.",
+	"source": "packages/crypto/scripts/gen-keys.mjs: node:crypto Argon2id, X25519 and ChaCha20-Poly1305; python3 hashlib.blake2b; hand HChaCha20, Salsa20 and Poly1305; own GF(32) check symbols and proquint. Self-checked against RFC 9106, RFC 7693, the proquint reference examples and the F1 vectors.",
+	"masters": [
+		{
+			"name": "default parameters, ASCII",
+			"password": "correct horse battery staple",
+			"salt": "101112131415161718191a1b1c1d1e1f",
+			"memoryKiB": 65536,
+			"passes": 3,
+			"normalizedUtf8": "636f727265637420686f727365206261747465727920737461706c65",
+			"masterKey": "1a563099620be88a73c7bd53da0b313e98060493b58ba22254a065c3d7db26c3",
+			"authKey": "41509038979be6e5010043e9e4e01314071e352b055842c081969957c25655a7",
+			"wrapKey": "f7ba66e82a12e35aeb30a692bb106a68004651ee8ac37b0613529571ece74b20"
+		},
+		{
+			"name": "floor parameters, fullwidth and decomposed letters, emoji",
+			"password": "Ｐａss wörd 😀",
+			"salt": "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+			"memoryKiB": 47104,
+			"passes": 1,
+			"normalizedUtf8": "506173732077c3b6726420f09f9880",
+			"masterKey": "3f8f204157508469ea592cf95a56d702b9d6315a53569ab1fc2e707249342844",
+			"authKey": "c7546d51bce17724cd63ade0f6786711d53d04fcf556e2e92071657300ea122b",
+			"wrapKey": "d7889daca9421401830327ed665c0a5399b930f68bcd09f2d0e3b21e10e5a145"
+		},
+		{
+			"name": "3-byte UTF-8 and a space",
+			"password": "咸辣 é€",
+			"salt": "404142434445464748494a4b4c4d4e4f",
+			"memoryKiB": 49152,
+			"passes": 2,
+			"normalizedUtf8": "e592b8e8bea320c3a9e282ac",
+			"masterKey": "72795d2a7aa51f0005f4e59db0923445b3d2b2116772f5995d9c672cd7115d5f",
+			"authKey": "2cc063b8664f6523d0caf8e3f00a2bcdc73474cbc73c8e2a631f4e3d999435ab",
+			"wrapKey": "017a5579ea0be726bf01178d7f612201e596b7f270f84da174e7afd3d0b1ca6e"
+		}
+	],
+	"recoveryKeys": [
+		{
+			"name": "all zero",
+			"recoveryKey": "0000000000000000000000000000000000000000000000000000000000000000",
+			"text": "000000-000000-000000-000000-000000-000000-000000-000000-00011C",
+			"wrapKey": "d06f1c8f05876630006b2d1966df62f150d96f6788711aac6707e49b72040e00"
+		},
+		{
+			"name": "all ones",
+			"recoveryKey": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+			"text": "ZZZZZZ-ZZZZZZ-ZZZZZZ-ZZZZZZ-ZZZZZZ-ZZZZZZ-ZZZZZZ-ZZZZZZ-ZZZHEQ",
+			"wrapKey": "22db316aa10c1df38b30515212548e99ee3a545b36d5b3750188a19693d44d85"
+		},
+		{
+			"name": "ascending",
+			"recoveryKey": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+			"text": "000G40-R40M30-E20918-5GR38E-1W8124-GK2GAH-C5RR34-D1P70X-3RFH8K",
+			"wrapKey": "de0234361946d23b75c58f717d3c9fb87a6c1d22cfb66d9760d852b3148af128"
+		},
+		{
+			"name": "wrapping",
+			"recoveryKey": "e0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+			"text": "W3GY5R-Z4WQKE-FT79XB-NYSVFE-XZRF3W-QKYKTZ-DXZRZ7-XFQZ7X-ZVZH7W",
+			"wrapKey": "2338a4e6728b7b29eadd682d60d7b8b24bdd66c646c56bcb222df03fde983a96"
+		},
+		{
+			"name": "mixed",
+			"recoveryKey": "0123456789abcdeffedcba9876543210a5a5a5a5c3c3c3c3000000010000000f",
+			"text": "04HMAS-W9NF6Y-ZZPWQA-C7CN1J-22JTB9-D5RF1W-7GR000-002000-007H08",
+			"wrapKey": "ef521ac9b20615975afd27973137b403e9d6d4db89f3b2d19db2f58f52a38f57"
+		}
+	],
+	"symmetricWraps": [
+		{
+			"name": "ak-password",
+			"wrappingKey": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
+			"nonce": "404142434445464748494a4b4c4d4e4f5051525354555657",
+			"role": "ak-password",
+			"id": "0b1f2e3d-4c5b-4a69-8877-665544332211",
+			"key": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+			"aad": "rs.wrap.v1|0101|ak-password|0b1f2e3d-4c5b-4a69-8877-665544332211",
+			"wrapped": "0101404142434445464748494a4b4c4d4e4f5051525354555657d12d51d77fd5d27dd33b5df8da83b37a0276405d3171aadbf283cf377e6833f70c32b62634f674c620a005c80768d731"
+		},
+		{
+			"name": "ak-recovery",
+			"wrappingKey": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
+			"nonce": "4142434445464748494a4b4c4d4e4f505152535455565758",
+			"role": "ak-recovery",
+			"id": "0b1f2e3d-4c5b-4a69-8877-665544332211",
+			"key": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+			"aad": "rs.wrap.v1|0101|ak-recovery|0b1f2e3d-4c5b-4a69-8877-665544332211",
+			"wrapped": "01014142434445464748494a4b4c4d4e4f505152535455565758ae3db3684bd8c9a72a3044391de005a2e9fadbd64e5b50883e1c4d7984453b6983f8b5ae397708e9420fb81f48b9269d"
+		},
+		{
+			"name": "collection-key",
+			"wrappingKey": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
+			"nonce": "42434445464748494a4b4c4d4e4f50515253545556575859",
+			"role": "collection-key",
+			"id": "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+			"key": "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f",
+			"aad": "rs.wrap.v1|0101|collection-key|a0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+			"wrapped": "010142434445464748494a4b4c4d4e4f50515253545556575859e1e2d3534df4b4f5abab6f282e034dda8795f28876e90e126c3c82f96aa460d462c5fbc304cf0103c8327c669afbd553"
+		},
+		{
+			"name": "private-key",
+			"wrappingKey": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
+			"nonce": "434445464748494a4b4c4d4e4f505152535455565758595a",
+			"role": "private-key",
+			"id": "user_1",
+			"key": "c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf",
+			"aad": "rs.wrap.v1|0101|private-key|user_1",
+			"wrapped": "0101434445464748494a4b4c4d4e4f505152535455565758595aa99689cc1db42b18ab2a00f33e956414029ac5571803167650284f09b45c79b2c3ab06811796b2d4d65dac97302b17ae"
+		}
+	],
+	"boxWraps": [
+		{
+			"name": "ak-device",
+			"recipientSeed": "101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f",
+			"publicKey": "0427a5d75c1471e72fc176011f82968caa76dbd2bd661cd736b6e8834ac58f0e",
+			"privateKey": "35dbf67498dbee33cb5d3bc53761476e5dc6f3a973875ab45bc2538aff29a985",
+			"role": "ak-device",
+			"id": "device-1",
+			"key": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+			"aad": "rs.wrap.v1|0102|ak-device|device-1",
+			"binding": "914e407829a930ef7e10e9aa454821d8",
+			"wrapped": "01026b3ee67463583cbe3dc08fe9d0765c2666ff5210dd527c9d8705e44927c80d55e23d4165d55f2d8101179ed6b961698ad478c1967f0b889f201e8820af1513153f177c922bb28495e26265633604834ef79fd189f24a2a86def4a899f486c4c4"
+		},
+		{
+			"name": "ak-contact",
+			"recipientSeed": "707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f",
+			"publicKey": "a7010feb8140bfa354d95698b03c2e195207a6e6c142716c2103f68013bae34e",
+			"privateKey": "953997bd427b9e086d7b0dac57b1673752e63d614912fec15507b4c295f7fd42",
+			"role": "ak-contact",
+			"id": "contact_7",
+			"key": "909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+			"aad": "rs.wrap.v1|0102|ak-contact|contact_7",
+			"binding": "fd7f17b7ed0c302c394f46eb8bebf07f",
+			"wrapped": "010221c3332b61be6a7b6ab8461e155651b17501b6e07532ecf9ab6661bd5a2ca575aac089a9fcbca4191da03eb94de36ba762db9867502d5003fb5fee12f55af917c18fb079495a57f9b37269418e7472c31eb76f0304e430824517f2da23011a93"
+		}
+	],
+	"fingerprints": [
+		{
+			"name": "one key",
+			"publicKeys": [
+				"0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
+			],
+			"phrase": "kikoz muvoj rilub vuzur savut puzuj"
+		},
+		{
+			"name": "another key",
+			"publicKeys": [
+				"8182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0"
+			],
+			"phrase": "jazuz titur gavit judur sovuv kukid"
+		},
+		{
+			"name": "two keys",
+			"publicKeys": [
+				"0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+				"f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f10"
+			],
+			"phrase": "zudil tumum bujuj jirav zubih gival"
+		},
+		{
+			"name": "the same two keys, other order",
+			"publicKeys": [
+				"f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f10",
+				"0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
+			],
+			"phrase": "hular sahip ladun tikog juzid nuhud"
+		}
+	],
+	"proquint": {
+		"93437702": "natag-lisaf",
+		"7f000001": "lusab-babad",
+		"3f54dcc1": "gutih-tugad",
+		"3f760723": "gutuk-bisog",
+		"8c62c18d": "mudof-sakat",
+		"40ff06c8": "haguz-biram",
+		"801e342d": "mabiv-gibot",
+		"d82344d7": "tobog-higil",
+		"d844e815": "todah-vobij",
+		"c6518188": "sinid-makam",
+		"0c6e6ecc": "budov-kuras"
+	}
+}
