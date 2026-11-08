@@ -36,6 +36,12 @@ export const env = createEnv({
 		// localhost names (a LAN ntfy server), comma-separated.
 		PUSH_ENDPOINT_ALLOW_HOSTS: z.string().optional(),
 
+		// The server master key that wraps per-user data keys: 64 hex characters
+		// (optionally `<id>:<hex>` entries), or a path to a file holding it. A
+		// malformed value stops the server at start (src/server/crypto/master-key.ts).
+		DATA_MASTER_KEY: z.string().optional(),
+		DATA_MASTER_KEY_FILE: z.string().optional(),
+
 		// Push senders. A sender with missing settings is off; nothing else
 		// changes. See docs/self-hosting for how to get each value.
 		APNS_KEY_ID: z.string().optional(),
@@ -108,6 +114,8 @@ export const env = createEnv({
 		EXPORT_DIR: process.env.EXPORT_DIR,
 		UNSUBSCRIBE_SECRET: process.env.UNSUBSCRIBE_SECRET,
 		PUSH_ENDPOINT_ALLOW_HOSTS: process.env.PUSH_ENDPOINT_ALLOW_HOSTS,
+		DATA_MASTER_KEY: process.env.DATA_MASTER_KEY,
+		DATA_MASTER_KEY_FILE: process.env.DATA_MASTER_KEY_FILE,
 		APNS_KEY_ID: process.env.APNS_KEY_ID,
 		APNS_TEAM_ID: process.env.APNS_TEAM_ID,
 		APNS_BUNDLE_ID: process.env.APNS_BUNDLE_ID,

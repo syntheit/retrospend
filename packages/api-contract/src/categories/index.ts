@@ -1,6 +1,7 @@
 import * as z from "zod";
 import { v1 } from "../common/meta";
 import { cursorQuerySchema, pageOf } from "../common/pagination";
+import { userText } from "../common/user-text";
 import { idParamsSchema, idSchema, okSchema } from "../core";
 
 /** Mirrors CATEGORY_COLORS in src/lib/constants.ts (a server test keeps them equal). */
@@ -50,12 +51,16 @@ export const categorySchema = z
 
 export type CategoryDto = z.infer<typeof categorySchema>;
 
-const nameSchema = z.string().trim().min(1).max(64);
+/** Stored as typed (rule 6.4); only a name that is blank once trimmed is refused. */
+export const categoryNameSchema = userText("category.name", 64).refine(
+	(value) => value.trim().length > 0,
+	{ message: "Category name is required" },
+);
 const iconSchema = z.string().max(50);
 
 export const createCategorySchema = z
 	.object({
-		name: nameSchema,
+		name: categoryNameSchema,
 		color: categoryColorSchema,
 		icon: iconSchema.optional(),
 		excludeByDefault: z.boolean().optional(),
@@ -64,7 +69,7 @@ export const createCategorySchema = z
 
 export const updateCategorySchema = z
 	.object({
-		name: nameSchema,
+		name: categoryNameSchema,
 		color: categoryColorSchema,
 		/** Null removes the icon. */
 		icon: iconSchema.nullable(),

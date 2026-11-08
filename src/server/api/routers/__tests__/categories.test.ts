@@ -110,3 +110,43 @@ describe("categories.delete", () => {
 		]);
 	});
 });
+
+describe("categories name", () => {
+	beforeEach(() => {
+		mockDb.category.findMany.mockResolvedValue([{ name: "Food" }]);
+		mockDb.category.create.mockResolvedValue({ id: CATEGORY });
+	});
+
+	it("refuses a name that is blank once trimmed, before touching the database", async () => {
+		for (const name of ["", " ", "\t \n"]) {
+			await expect(
+				callAndFlush(() => caller().create({ name, color: "teal" })),
+			).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		}
+		await expect(
+			callAndFlush(() => caller().create({ name: "a\u0001b", color: "teal" })),
+		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		await expect(
+			callAndFlush(() => caller().create({ name: "a\uD800b", color: "teal" })),
+		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		expect(mockDb.category.create).not.toHaveBeenCalled();
+	});
+
+	it("a name that differs only by surrounding spaces is a duplicate", async () => {
+		await expect(
+			callAndFlush(() => caller().create({ name: " Food ", color: "teal" })),
+		).rejects.toMatchObject({ code: "CONFLICT" });
+		expect(mockDb.category.create).not.toHaveBeenCalled();
+	});
+
+	it("stores the name as typed", async () => {
+		await callAndFlush(() =>
+			caller().create({ name: " Fuel ", color: "teal" }),
+		);
+		expect(mockDb.category.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({ name: " Fuel " }),
+			}),
+		);
+	});
+});

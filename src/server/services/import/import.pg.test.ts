@@ -178,6 +178,19 @@ describe("importReview", () => {
 		]);
 	});
 
+	it("a file's category finds one saved with surrounding spaces or other case", async () => {
+		const s = await setup();
+		const typed = await adminDb.category.create({
+			data: { userId: s.userId, name: " supermercado ", color: "teal" },
+		});
+		const review = await importReview(adminDb, s.userId, s.jobId);
+		expect(review.rows.find((r) => r.index === 0)).toMatchObject({
+			categoryId: typed.id,
+			fileCategory: "Supermercado",
+		});
+		expect(review.unmatched).toEqual([]);
+	});
+
 	it("a currency for every row drops the file's rates and books from the table", async () => {
 		const s = await setup();
 		const review = await importReview(adminDb, s.userId, s.jobId, {

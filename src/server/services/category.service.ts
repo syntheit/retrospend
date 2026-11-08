@@ -80,17 +80,23 @@ export async function getCategory(
 	return row;
 }
 
+/**
+ * Names are stored as typed, but "Food " and "Food" are the same name to the
+ * person (the v1 API always trimmed). Compared here, not in SQL, so it keeps
+ * working when names are encrypted; a person has few categories.
+ */
 async function assertNameFree(
 	db: AppDb,
 	userId: string,
 	name: string,
 	exceptId?: string,
 ) {
-	const clash = await db.category.findFirst({
-		where: { userId, name, ...(exceptId ? { id: { not: exceptId } } : {}) },
-		select: { id: true },
+	const wanted = name.trim();
+	const mine = await db.category.findMany({
+		where: { userId, ...(exceptId ? { id: { not: exceptId } } : {}) },
+		select: { name: true },
 	});
-	if (clash) {
+	if (mine.some((row) => row.name.trim() === wanted)) {
 		throw new TRPCError({
 			code: "CONFLICT",
 			message: "Category name already exists",

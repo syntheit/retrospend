@@ -7,6 +7,7 @@
  * rows that cannot be read.
  */
 import { TRPCError } from "@trpc/server";
+import { categoryNameKey } from "~/lib/category-name-key";
 import type { Money } from "~/server/figures/registry";
 import type { Prisma, PrismaClient } from "~prisma";
 import { toMinor } from "../envelope/units";
@@ -171,7 +172,7 @@ export async function importReview(
 		matchFile(db, userId, rows, (r) => r.proposed, options.timeZone),
 	]);
 	const home = ctx.homeCurrency;
-	const byName = new Map(categories.map((c) => [c.name.toLowerCase(), c]));
+	const byName = new Map(categories.map((c) => [categoryNameKey(c.name), c]));
 	const byId = new Map(categories.map((c) => [c.id, c]));
 
 	const out: ImportReviewRow[] = [];
@@ -185,7 +186,7 @@ export async function importReview(
 			: undefined;
 		const named =
 			given ??
-			(fileCategory ? byName.get(fileCategory.toLowerCase()) : undefined);
+			(fileCategory ? byName.get(categoryNameKey(fileCategory)) : undefined);
 		const categoryId = named && named.kind === want ? named.id : null;
 		const match = matches.get(row.index);
 		const duplicate = match?.exact != null;
