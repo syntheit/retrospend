@@ -48,7 +48,12 @@ while (($#)); do
 	esac
 done
 
-ssh_opts=(-o BatchMode=yes -o ConnectTimeout=10)
+# One ssh connection per call, never a shared master: when a master dies every
+# session on it dies with it, and two runs at once would take each other down.
+# Keepalives end a run whose network went away (its cleanup then runs on vista).
+ssh_opts=(-o BatchMode=yes -o ConnectTimeout=10 -o ControlMaster=no -o ControlPath=none
+	-o ServerAliveInterval=15 -o ServerAliveCountMax=8)
+rsync_ssh="ssh ${ssh_opts[*]}"
 vista() { ssh "${ssh_opts[@]}" vista "$@" </dev/null; }
 vista true 2>/dev/null || { echo "maestro: vista is not reachable" >&2; exit 2; }
 
@@ -79,7 +84,7 @@ vista "mkdir -p $dir" || exit 2
 remote_cleanup() { vista "rm -rf $dir" >/dev/null 2>&1; }
 
 if ((avd_base)); then
-	(cd "$src" && rsync -aR flake.nix flake.lock pnpm-lock.yaml apps/mobile/scripts/android-emulator.sh \
+	(cd "$src" && rsync -e "$rsync_ssh" -aR flake.nix flake.lock pnpm-lock.yaml apps/mobile/scripts/android-emulator.sh \
 		apps/mobile/maestro/ops/avd-base.sh "vista:$dir/") || exit 2
 	ssh -tt "${ssh_opts[@]}" vista "cd $dir && nix develop path:\$PWD#android-emu -c bash apps/mobile/maestro/ops/avd-base.sh" </dev/null
 	rc=$?
@@ -87,7 +92,7 @@ if ((avd_base)); then
 	exit "$rc"
 fi
 
-rsync -a --delete \
+rsync -e "$rsync_ssh" -a --delete \
 	--exclude node_modules --exclude .next --exclude generated --exclude .git \
 	--exclude .env --exclude tsconfig.tsbuildinfo --exclude 'public/images/flags' \
 	--exclude 'public/images/crypto' --exclude apps/mobile/android --exclude apps/mobile/ios \
@@ -100,7 +105,7 @@ ssh -tt "${ssh_opts[@]}" vista "cd $dir && RUN_ID=$run_id TAGS='$tags' FLOWS='${
 rc=$?
 
 mkdir -p "$results"
-rsync -a "vista:$dir/maestro-results/" "$results/" 2>/dev/null
+rsync -e "$rsync_ssh" -a "vista:$dir/maestro-results/" "$results/" 2>/dev/null
 remote_cleanup
 echo "maestro: results in $results" >&2
 echo "maestro: wall time $((SECONDS - started)) s including sync and copy-back" >&2

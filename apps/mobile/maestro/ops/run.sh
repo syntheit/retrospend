@@ -39,7 +39,8 @@ if [[ ! -f $flakedir/flake.nix ]]; then
 fi
 # Closes the slot lock and the build lock: a child must never keep either held.
 shell() { local name=$1; shift; nix develop "path:$flakedir#$name" -c "$@" 9>&- 8>&-; }
-adbs() { shell android-emu adb -s "$serial" "$@"; }
+# A dead emulator makes adb wait forever; nothing here may hang the run's cleanup.
+adbs() { timeout 60 nix develop "path:$flakedir#android-emu" -c adb -s "$serial" "$@" 9>&- 8>&-; }
 
 # --- Timings -----------------------------------------------------------------
 times=()
@@ -86,6 +87,11 @@ hash_of() { # paths relative to $dir; node_modules, generated output, tests and 
 		-not -name '*.apk' -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-16)
 }
 
+# Keys of the synced tree as it arrived. Taken before install and build: those
+# write files into the tree, and a key that moved with them never hit the cache.
+serverkey=$(hash_of src prisma public packages scripts patches next.config.js package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json postcss.config.js prisma.config.ts)
+apkkey=$({ hash_of apps/mobile packages pnpm-lock.yaml package.json; sha256sum "$here/build-apk.sh"; } | sha256sum | cut -c1-16)
+
 phase install
 # Prisma's config and the Next build want these set; the server run overrides them.
 cat >"$dir/.env" <<'ENV'
@@ -104,14 +110,17 @@ ENV
 build_lock() {
 	exec 8>>"$home/.build.lock"
 	flock -w 3600 8 || { log "FAIL build lock not free in an hour"; exit 6; }
-	while (($(pgrep -fc 'qemu-system-x86_64-headless -avd' || true) >= 2)); do
-		log "waiting: two emulators are up"
+	# A Gradle build loads vista to 100+ and slows the flows of a run in progress
+	# enough to fail them. Wait for an idle pool (never while both slots are
+	# busy), at most 10 minutes; after that build anyway, at low priority.
+	local waited=$SECONDS
+	while (($(busy_slots) >= 2 || ($(busy_slots) >= 1 && SECONDS - waited < 600))); do
+		log "waiting: $(busy_slots) emulator slot(s) busy"
 		sleep 20
 	done
 }
 build_unlock() { exec 8>&-; }
 
-serverkey=$(hash_of src prisma public packages scripts patches next.config.js package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json postcss.config.js prisma.config.ts)
 servercache=$home/server-cache/$serverkey.tar
 phase server-build
 if [[ ${REBUILD:-0} != 1 && -f $servercache ]]; then
@@ -121,7 +130,7 @@ else
 	if [[ ${REBUILD:-0} != 1 && -f $servercache ]]; then
 		log "server build cached ($serverkey), built by the run ahead"
 	else
-		(cd "$dir" && NODE_OPTIONS=--max-old-space-size=4096 shell default pnpm build >.build.log 2>&1) \
+		(cd "$dir" && NODE_OPTIONS=--max-old-space-size=4096 nice -n 10 nix develop "path:$flakedir#default" -c pnpm build 9>&- 8>&- >.build.log 2>&1) \
 			|| { tail -40 "$dir/.build.log" >&2; log "FAIL server build"; exit 4; }
 		mkdir -p "$home/server-cache"
 		tar -C "$dir" -cf "$servercache.part.$$" .next && mv "$servercache.part.$$" "$servercache"
@@ -130,7 +139,6 @@ else
 fi
 [[ -d $dir/.next ]] || tar -C "$dir" -xf "$servercache"
 
-apkkey=$({ hash_of apps/mobile packages pnpm-lock.yaml package.json; sha256sum "$here/build-apk.sh"; } | sha256sum | cut -c1-16)
 apk=$home/apk-cache/$apkkey.apk
 phase apk-build
 if [[ ${REBUILD:-0} != 1 && -f $apk ]]; then
@@ -140,7 +148,7 @@ else
 	if [[ ${REBUILD:-0} != 1 && -f $apk ]]; then
 		log "APK cached ($apkkey), built by the run ahead"
 	else
-		shell android bash "$app/maestro/ops/build-apk.sh" "$out/app.apk" >"$out/apk-build.log" 2>&1 \
+		nice -n 10 nix develop "path:$flakedir#android" -c bash "$app/maestro/ops/build-apk.sh" "$out/app.apk" 9>&- 8>&- >"$out/apk-build.log" 2>&1 \
 			|| { tail -40 "$out/apk-build.log" >&2; log "FAIL APK build"; exit 5; }
 		mkdir -p "$home/apk-cache"
 		cp "$out/app.apk" "$apk.part.$$" && mv "$apk.part.$$" "$apk"

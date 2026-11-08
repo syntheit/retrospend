@@ -93,6 +93,16 @@ take_slot() {
 	done
 }
 
+# busy_slots: how many slots have a live run. Probing takes a lock for a
+# moment, which a run taking that slot just then survives: it tries again.
+busy_slots() {
+	local n count=0
+	for n in "${pool_slots[@]}"; do
+		if ! (exec 7>>"$pool_dir/slot-$n.lock" && flock -n 7); then count=$((count + 1)); fi
+	done
+	echo "$count"
+}
+
 release_slot() {
 	[[ -n $slot ]] || return 0
 	rm -f "$pool_dir/slot-$slot.holder"
