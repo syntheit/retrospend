@@ -257,8 +257,8 @@ const ORDER = [
 	"spent",
 	"netWorth",
 ];
-/** Parts of net worth's 30-day breakdown: the net worth line already says it. */
-const HIDDEN = /^netWorthChange\./;
+/** Net worth parts, and the home spending the web leads its spending line with. */
+const HIDDEN = /^(netWorthChange\.|glance\.spent$)/;
 /** Budget figures that read nothing on both sides: no envelope budget, not unknown. */
 const BUDGET = /^budget\./;
 

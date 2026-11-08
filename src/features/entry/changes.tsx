@@ -35,8 +35,13 @@ const ORDER = [
 	"spent",
 	"netWorth",
 ];
-/** Parts of net worth's 30-day breakdown: the net worth line already says it. */
-const HIDDEN = /^netWorthChange\./;
+/**
+ * Parts of net worth's 30-day breakdown (the net worth line already says it)
+ * and the spending in home currency, which the spending line shows first.
+ */
+const HIDDEN = /^(netWorthChange\.|glance\.spent$)/;
+/** Your spending in the home currency, the one a spending line leads with. */
+const SPENT_HOME = "glance.spent";
 /** Budget figures read null on both sides when there is no envelope budget: not applicable, not unknown. */
 const BUDGET = /^budget\./;
 
@@ -87,6 +92,16 @@ export function ChangesBlock({
 				.slice()
 				.sort((a, b) => rank(a.id) - rank(b.id))
 		: [];
+	// One spending change in a foreign currency leads with its home figure,
+	// the original second: Home shows the same amount the save books.
+	const spentChanges = diff?.changes.filter((c) => c.id === "spent") ?? [];
+	const home = diff?.changes.find((c) => c.id === SPENT_HOME);
+	const homeFirst =
+		spentChanges.length === 1 &&
+		home &&
+		home.currency !== spentChanges[0]?.currency
+			? home
+			: null;
 	const moved = new Set(changes.map((c) => c.id));
 	const stays = diff
 		? [
@@ -114,22 +129,52 @@ export function ChangesBlock({
 			lines={changes.map((c) => ({
 				key: `${c.id}-${c.currency}`,
 				label: name(c.id),
-				value: (
-					<ChangeValue
-						delta={
-							<Money
-								figure={`preview.${c.id}.delta`}
-								sign="exceptZero"
-								value={c.delta}
+				value:
+					homeFirst && c.id === "spent" ? (
+						<>
+							<ChangeValue
+								delta={
+									<Money
+										figure={`preview.${SPENT_HOME}.delta`}
+										sign="exceptZero"
+										value={homeFirst.delta}
+									/>
+								}
+								to={
+									homeFirst.after ? (
+										<Money
+											figure={`preview.${SPENT_HOME}.after`}
+											value={homeFirst.after}
+										/>
+									) : undefined
+								}
 							/>
-						}
-						to={
-							c.after ? (
-								<Money figure={`preview.${c.id}.after`} value={c.after} />
-							) : undefined
-						}
-					/>
-				),
+							<span className="text-fg-3">
+								(
+								<Money
+									figure={`preview.${c.id}.delta`}
+									sign="exceptZero"
+									value={c.delta}
+								/>
+								)
+							</span>
+						</>
+					) : (
+						<ChangeValue
+							delta={
+								<Money
+									figure={`preview.${c.id}.delta`}
+									sign="exceptZero"
+									value={c.delta}
+								/>
+							}
+							to={
+								c.after ? (
+									<Money figure={`preview.${c.id}.after`} value={c.after} />
+								) : undefined
+							}
+						/>
+					),
 			}))}
 			status={cannot ? t("cannot", { reason: cannot }) : undefined}
 			// Names inside a sentence come from their own keys: a language decides its case (German nouns).

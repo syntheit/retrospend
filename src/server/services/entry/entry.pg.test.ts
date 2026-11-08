@@ -84,9 +84,13 @@ describe("Add expense: rate per entry", () => {
 		expect(blue.value).toMatchObject({ rateType: "blue", homeCurrency: "ARS" });
 		expect(blue.value.homeAmount?.toString()).toBe("146800");
 		expect(official.value.homeAmount?.toString()).toBe("141200");
-		// Spending moves in the entry's own currency; accounts and net worth do not (N75).
+		// Spending moves in the entry's own currency and, beside it, in the home
+		// currency at the booked rate (ARS 146,800 = 14,680,000 minor, official
+		// 14,120,000); accounts and net worth do not (N75).
 		expect(delta(blue, "spent")).toEqual(USD(10_000));
-		expect(blue.changes.map((c) => c.id)).toEqual(["spent"]);
+		expect(delta(blue, "glance.spent")).toEqual(ARS(14_680_000));
+		expect(delta(official, "glance.spent")).toEqual(ARS(14_120_000));
+		expect(blue.changes.map((c) => c.id)).toEqual(["spent", "glance.spent"]);
 	});
 
 	it("the rate strip offers each type booked as saving books it; Blue is the ARS default", async () => {

@@ -17,6 +17,7 @@ import { TRPCError } from "@trpc/server";
 import { CUSTOM_RATE_TYPE } from "~/lib/rate-selection";
 import type { Prisma } from "~prisma";
 import { type CreateExpenseInput, ExpenseService } from "../expense.service";
+import { GLANCE_SPENT } from "../figures/spend-pace";
 import type { MoneyMutation } from "../preview/types";
 import {
 	type ExpenseSnapshot,
@@ -27,7 +28,7 @@ import { type RestoreToken, readRestore, signRestore } from "./restore-token";
 
 type Tx = Prisma.TransactionClient;
 
-export const EXPENSE_FIGURES = ["spent"];
+export const EXPENSE_FIGURES = ["spent", GLANCE_SPENT];
 
 export type UpdateExpenseInput = Parameters<ExpenseService["updateExpense"]>[1];
 

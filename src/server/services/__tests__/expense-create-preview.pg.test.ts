@@ -1,6 +1,6 @@
 /**
  * expense.create through the preview framework on a real Postgres: preview
- * reports the change to `spent` and writes nothing; apply writes the same
+ * reports the change to `spent` (and the home figure `glance.spent`) and writes nothing; apply writes the same
  * expense and reports the same change (preview = result, I22).
  */
 import { randomUUID } from "node:crypto";
@@ -50,6 +50,16 @@ describe("expense.create preview", () => {
 				delta: usd(1_234),
 				figureAfter: [usd(2_234)],
 			},
+			// Home currency is USD, so the home figure the composer leads with
+			// moves by the same amount: 10.00 + 12.34 = 22.34.
+			{
+				id: "glance.spent",
+				currency: "USD",
+				before: usd(1_000),
+				after: usd(2_234),
+				delta: usd(1_234),
+				figureAfter: [usd(2_234)],
+			},
 		]);
 		expect(preview.value).toMatchObject({ id: books.id, direction: "OUT" });
 		await expect(
@@ -76,7 +86,7 @@ describe("expense.create preview", () => {
 		expect(saved?.userId).toBe(userId);
 	});
 
-	it("reports spent unchanged for an expense outside this month", async () => {
+	it("reports spent and the home figure unchanged for an expense outside this month", async () => {
 		const userId = await userWithLunch();
 		const lastYear = new Date();
 		lastYear.setFullYear(lastYear.getFullYear() - 1);
@@ -87,7 +97,11 @@ describe("expense.create preview", () => {
 		);
 
 		expect(preview.changes).toEqual([]);
-		expect(preview.unchanged).toEqual([{ id: "spent", value: [usd(1_000)] }]);
+		// Last year's expense is in neither this month's total.
+		expect(preview.unchanged).toEqual([
+			{ id: "spent", value: [usd(1_000)] },
+			{ id: "glance.spent", value: [usd(1_000)] },
+		]);
 	});
 
 	it("refuses an income category", async () => {

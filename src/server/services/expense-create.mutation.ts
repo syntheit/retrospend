@@ -4,6 +4,7 @@
  * would change and `apply` makes exactly that change.
  */
 import { type CreateExpenseInput, createExpenseIn } from "./expense.service";
+import { GLANCE_SPENT } from "./figures/spend-pace";
 import type { MoneyMutation } from "./preview/types";
 
 type CreatedExpense = Awaited<ReturnType<typeof createExpenseIn>>;
@@ -11,7 +12,7 @@ type CreatedExpense = Awaited<ReturnType<typeof createExpenseIn>>;
 export const createExpense: MoneyMutation<CreateExpenseInput, CreatedExpense> =
 	{
 		id: "expense.create",
-		touches: ["spent"],
+		touches: ["spent", GLANCE_SPENT],
 		run: async (tx, input, actor) => {
 			const expense = await createExpenseIn(tx, actor.userId, input);
 			return {
