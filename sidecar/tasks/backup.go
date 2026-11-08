@@ -38,13 +38,12 @@ type BackupStatus struct {
 	LastBackup    *BackupResult `json:"lastBackup,omitempty"`
 	NextScheduled *time.Time    `json:"nextScheduled,omitempty"`
 	RetentionDays int           `json:"retentionDays"`
-	// The keystore dump has its own retention and its own last run; it is not
-	// counted in the totals or the history here.
-	LastKeystoreBackup    *BackupResult  `json:"lastKeystoreBackup,omitempty"`
-	KeystoreRetentionDays int            `json:"keystoreRetentionDays"`
-	TotalBackups          int            `json:"totalBackups"`
-	TotalSize             int64          `json:"totalSize"`
-	History               []BackupResult `json:"history"`
+	// The keystore dump has its own last run; it is not counted in the totals
+	// or the history here.
+	LastKeystoreBackup *BackupResult  `json:"lastKeystoreBackup,omitempty"`
+	TotalBackups       int            `json:"totalBackups"`
+	TotalSize          int64          `json:"totalSize"`
+	History            []BackupResult `json:"history"`
 }
 
 // Tests replace these to run RunBackup against a fake pg_dump and a fixed clock.
@@ -72,7 +71,8 @@ func RunBackup(database *db.DB, databaseURL string, backupDir string, retentionD
 	return runBackup(mainKind, database, databaseURL, backupDir, retentionDays, ageRecipients)
 }
 
-// RunKeystoreBackup dumps only the keystore schema, with its own retention.
+// RunKeystoreBackup dumps only the keystore schema. Its files are pruned on their
+// own, apart from the main dumps.
 // It is encrypted the same way as the main dump.
 func RunKeystoreBackup(database *db.DB, databaseURL string, backupDir string, retentionDays int, ageRecipients []string) error {
 	return runBackup(keystoreKind, database, databaseURL, backupDir, retentionDays, ageRecipients)
@@ -80,9 +80,9 @@ func RunKeystoreBackup(database *db.DB, databaseURL string, backupDir string, re
 
 // RunBackups makes the main dump and then the keystore dump. A failure of the
 // first does not skip the second: the keys matter most when something is wrong.
-func RunBackups(database *db.DB, databaseURL string, backupDir string, retentionDays, keystoreRetentionDays int, ageRecipients []string) error {
+func RunBackups(database *db.DB, databaseURL string, backupDir string, retentionDays int, ageRecipients []string) error {
 	mainErr := RunBackup(database, databaseURL, backupDir, retentionDays, ageRecipients)
-	keysErr := RunKeystoreBackup(database, databaseURL, backupDir, keystoreRetentionDays, ageRecipients)
+	keysErr := RunKeystoreBackup(database, databaseURL, backupDir, retentionDays, ageRecipients)
 	return errors.Join(mainErr, keysErr)
 }
 
@@ -205,12 +205,11 @@ func runBackup(kind backupKind, database *db.DB, databaseURL string, backupDir s
 }
 
 // GetBackupStatus reads the manifest and computes status for the HTTP endpoint.
-func GetBackupStatus(backupDir string, retentionDays int, keystoreRetentionDays int, cronScheduler *cron.Cron) BackupStatus {
+func GetBackupStatus(backupDir string, retentionDays int, cronScheduler *cron.Cron) BackupStatus {
 	status := BackupStatus{
-		Available:             true,
-		Running:               IsBackupRunning(),
-		RetentionDays:         retentionDays,
-		KeystoreRetentionDays: keystoreRetentionDays,
+		Available:     true,
+		Running:       IsBackupRunning(),
+		RetentionDays: retentionDays,
 	}
 
 	all := readManifest(backupDir)

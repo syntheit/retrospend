@@ -70,7 +70,7 @@ func main() {
 
 	// Schedule database backup
 	_, err = c.AddFunc(cfg.BackupCron, func() {
-		if err := tasks.RunBackups(database, cfg.DatabaseURL, cfg.BackupDir, cfg.BackupRetentionDays, cfg.KeystoreRetentionDays, cfg.BackupAgeRecipients); err != nil {
+		if err := tasks.RunBackups(database, cfg.DatabaseURL, cfg.BackupDir, cfg.BackupRetentionDays, cfg.BackupAgeRecipients); err != nil {
 			log.Printf("❌ Database backup failed: %v", err)
 		}
 	})
@@ -155,7 +155,7 @@ func main() {
 			return
 		}
 
-		status := tasks.GetBackupStatus(cfg.BackupDir, cfg.BackupRetentionDays, cfg.KeystoreRetentionDays, c)
+		status := tasks.GetBackupStatus(cfg.BackupDir, cfg.BackupRetentionDays, c)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(status)
 	}))
@@ -174,7 +174,7 @@ func main() {
 		log.Println("[HTTP] Manual backup triggered")
 
 		go func() {
-			if err := tasks.RunBackups(database, cfg.DatabaseURL, cfg.BackupDir, cfg.BackupRetentionDays, cfg.KeystoreRetentionDays, cfg.BackupAgeRecipients); err != nil {
+			if err := tasks.RunBackups(database, cfg.DatabaseURL, cfg.BackupDir, cfg.BackupRetentionDays, cfg.BackupAgeRecipients); err != nil {
 				log.Printf("[HTTP] Backup failed: %v", err)
 			}
 		}()
@@ -405,7 +405,7 @@ func main() {
 	log.Println("✓ Scheduler started")
 	log.Println("  - Exchange rates: daily at 09:05 UTC")
 	log.Println("  - Recurring expenses: every 15 minutes")
-	log.Printf("  - Database backup: %s (retention: %d days, keystore: %d days)", cfg.BackupCron, cfg.BackupRetentionDays, cfg.KeystoreRetentionDays)
+	log.Printf("  - Database backup: %s (retention: %d days)", cfg.BackupCron, cfg.BackupRetentionDays)
 	if len(cfg.BackupAgeRecipients) > 0 {
 		log.Printf("  - Backups encrypted to %d age recipient(s)", len(cfg.BackupAgeRecipients))
 	}

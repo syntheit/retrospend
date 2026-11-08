@@ -46,7 +46,7 @@ func TestOneFailingDumpDoesNotSkipTheOther(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			fakePgDump(t, `case "$*" in `+tc.failPattern+`) exit 1;; esac`)
 			dir := t.TempDir()
-			if err := RunBackups(nil, testDBURL, dir, 30, 7, nil); err == nil {
+			if err := RunBackups(nil, testDBURL, dir, 30, nil); err == nil {
 				t.Fatal("expected the failure to be reported")
 			}
 			names := dirNames(t, dir)

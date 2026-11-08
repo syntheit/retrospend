@@ -64,7 +64,7 @@ func TestKeystoreRestoreSteps(t *testing.T) {
 
 	// The dumps come from the real backup code.
 	dir := t.TempDir()
-	if err := RunBackups(nil, rawURL, dir, 30, 7, nil); err != nil {
+	if err := RunBackups(nil, rawURL, dir, 30, nil); err != nil {
 		t.Fatal(err)
 	}
 	mainDump, keysDump := findDump(t, dir, "retrospend-"), findDump(t, dir, "keystore-")
@@ -151,6 +151,15 @@ func TestKeystoreRestoreSteps(t *testing.T) {
 	if n := count(`SELECT count(*) FROM pg_class WHERE oid = 'keystore.user_data_key'::regclass AND relrowsecurity`); n != 1 {
 		t.Fatal("row-level security did not come back")
 	}
+	// The dumps carry no privileges, so the documented grants restore the app
+	// role's way in: its own key through the functions, nothing else.
+	mustExec(t, scratch, docsGrants)
+	if got := asAppUser(t, scratch, userA, `SELECT count(*) FROM keystore.current_user_data_keys()`); got != 1 {
+		t.Fatalf("the app role sees %d keys through the function, want 1", got)
+	}
+	if _, err := asAppUserErr(scratch, userA, `SELECT count(*) FROM keystore.user_data_key`); err == nil {
+		t.Fatal("the app role can read the keystore table")
+	}
 
 	// The restored database keeps the cascade.
 	mustExec(t, scratch, `DELETE FROM "user" WHERE id = $1`, userA)
@@ -174,6 +183,37 @@ func TestKeystoreRestoreSteps(t *testing.T) {
 	if got := keyOwners(); strings.Join(got, ",") != userA+","+userB {
 		t.Fatalf("keys after in-place restore: %v", got)
 	}
+}
+
+// docsGrants is the grant step from docs/self-hosting.md, "Data key backups".
+const docsGrants = `GRANT USAGE ON SCHEMA keystore TO retrospend_app;
+GRANT EXECUTE ON FUNCTION keystore.current_user_data_keys(), keystore.create_first_data_key(text, bigint) TO retrospend_app;
+REVOKE EXECUTE ON FUNCTION keystore.current_user_data_keys(), keystore.create_first_data_key(text, bigint) FROM PUBLIC`
+
+// asAppUserErr runs a count query the way the scoped client does: in a
+// transaction with the user setting and the app role.
+func asAppUserErr(d *db.DB, userID, query string) (int, error) {
+	ctx := context.Background()
+	tx, err := d.Pool.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(ctx)
+	if _, err := tx.Exec(ctx, `SELECT set_config('app.current_user_id', $1, true), set_config('role', 'retrospend_app', true)`, userID); err != nil {
+		return 0, err
+	}
+	var n int
+	err = tx.QueryRow(ctx, query).Scan(&n)
+	return n, err
+}
+
+func asAppUser(t *testing.T, d *db.DB, userID, query string) int {
+	t.Helper()
+	n, err := asAppUserErr(d, userID, query)
+	if err != nil {
+		t.Fatalf("%s as %s: %v", query, userID, err)
+	}
+	return n
 }
 
 func mustExec(t *testing.T, d *db.DB, sql string, args ...any) {

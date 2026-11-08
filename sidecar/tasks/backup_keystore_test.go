@@ -31,7 +31,7 @@ func TestMainDumpExcludesKeystoreAndKeystoreDumpIsOnlyKeystore(t *testing.T) {
 	_, pub := newIdentity(t)
 	dir := t.TempDir()
 
-	if err := RunBackups(nil, testDBURL, dir, 30, 7, []string{pub}); err != nil {
+	if err := RunBackups(nil, testDBURL, dir, 30, []string{pub}); err != nil {
 		t.Fatal(err)
 	}
 	runs := readRuns(t, argsFile)
@@ -92,17 +92,17 @@ func seedOld(t *testing.T, dir, name string, age time.Duration) {
 
 const day = 24 * time.Hour
 
-func TestEachDumpKeepsItsOwnRetention(t *testing.T) {
+func TestRetentionPrunesEachKindsOwnFiles(t *testing.T) {
 	fakePgDump(t, "exit 0")
 	dir := t.TempDir()
 	seedOld(t, dir, "retrospend-20250101-000000.dump", 10*day)
 	seedOld(t, dir, "retrospend-20250102-000000.dump", 40*day)
 	seedOld(t, dir, "keystore-20250101-000000.dump", 10*day)
-	seedOld(t, dir, "keystore-20250102-000000.dump.age", 2*day)
+	seedOld(t, dir, "keystore-20250102-000000.dump.age", 40*day)
 
-	// Main keeps 30 days, keystore keeps 7: only the 10 day old keystore file
-	// and the 40 day old main file go.
-	if err := RunBackups(nil, testDBURL, dir, 30, 7, nil); err != nil {
+	// One retention for both: the 40 day old file of each kind goes, the 10 day
+	// old ones stay.
+	if err := RunBackups(nil, testDBURL, dir, 30, nil); err != nil {
 		t.Fatal(err)
 	}
 	have := map[string]bool{}
@@ -112,8 +112,8 @@ func TestEachDumpKeepsItsOwnRetention(t *testing.T) {
 	for name, want := range map[string]bool{
 		"retrospend-20250101-000000.dump":   true,
 		"retrospend-20250102-000000.dump":   false,
-		"keystore-20250101-000000.dump":     false,
-		"keystore-20250102-000000.dump.age": true,
+		"keystore-20250101-000000.dump":     true,
+		"keystore-20250102-000000.dump.age": false,
 	} {
 		if have[name] != want {
 			t.Errorf("%s: kept=%v, want %v (files: %v)", name, have[name], want, have)
@@ -127,8 +127,9 @@ func TestMainRetentionNeverRemovesKeystoreFiles(t *testing.T) {
 	seedOld(t, dir, "retrospend-20250101-000000.dump", 10*day)
 	seedOld(t, dir, "keystore-20250101-000000.dump", 10*day)
 
-	// A short main retention and a long keystore one: the keystore file stays.
-	if err := RunBackups(nil, testDBURL, dir, 1, 30, nil); err != nil {
+	// A main run with a short retention leaves the keystore file alone, and the
+	// other way round.
+	if err := RunBackup(nil, testDBURL, dir, 1, nil); err != nil {
 		t.Fatal(err)
 	}
 	names := strings.Join(dirNames(t, dir), ",")
@@ -140,14 +141,14 @@ func TestMainRetentionNeverRemovesKeystoreFiles(t *testing.T) {
 func TestStatusKeepsKeystoreRunsOutOfTheMainHistory(t *testing.T) {
 	fakePgDump(t, "exit 0")
 	dir := t.TempDir()
-	if err := RunBackups(nil, testDBURL, dir, 30, 7, nil); err != nil {
+	if err := RunBackups(nil, testDBURL, dir, 30, nil); err != nil {
 		t.Fatal(err)
 	}
-	status := GetBackupStatus(dir, 30, 7, nil)
+	status := GetBackupStatus(dir, 30, nil)
 	if status.TotalBackups != 1 || status.LastBackup == nil || status.LastBackup.Kind != "" {
 		t.Fatalf("main status polluted: %+v", status)
 	}
-	if status.LastKeystoreBackup == nil || status.LastKeystoreBackup.Kind != "keystore" || status.KeystoreRetentionDays != 7 {
+	if status.LastKeystoreBackup == nil || status.LastKeystoreBackup.Kind != "keystore" {
 		t.Fatalf("keystore status missing: %+v", status)
 	}
 }

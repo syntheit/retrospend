@@ -11,6 +11,5 @@
   "invitesUsed": "Invites used",
   "invitesOpen": "{count} open",
   "tabServer": "Server",
-  "keystoreBackup": "Key backup",
-  "keystoreBackupRetention": "Key backups are kept {days, plural, one {1 day} other {# days}}."
+  "keystoreBackup": "Key backup"
 }

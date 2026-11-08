@@ -30,7 +30,6 @@ interface BackupStatusData {
 	history?: BackupResult[];
 	/** The data key dump runs after each backup and is not in the totals above. */
 	lastKeystoreBackup?: BackupResult;
-	keystoreRetentionDays?: number;
 }
 
 function Value({ children }: { children: React.ReactNode }) {
@@ -101,10 +100,7 @@ export function BackupStatus() {
 			title={t("databaseBackups")}
 		>
 			<p className="text-fg-3 text-small mb-2">
-				{t("autoBackupRetention", { days: status.retentionDays ?? 0 })}{" "}
-				{ta("keystoreBackupRetention", {
-					days: status.keystoreRetentionDays ?? 0,
-				})}
+				{t("autoBackupRetention", { days: status.retentionDays ?? 0 })}
 			</p>
 			<SettingRows>
 				<SettingRow label={t("backupStatus")}>
