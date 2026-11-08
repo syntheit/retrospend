@@ -107,13 +107,14 @@ export async function activityItems(
 
 /**
  * New-user prompts (Home mockup, state "new"): with no expense at all, add
- * one, pick the home currency, import a statement (unless one was started).
+ * one, pick the home currency (until it has been changed from the USD every
+ * account starts with), import a statement (unless one was started).
  * Verify your email shows until the address is verified, and only when the
  * instance can send email (otherwise Resend could never work).
  */
 export async function setupItems(
 	tx: Tx,
-	user: { id: string; emailVerified: boolean },
+	user: { id: string; emailVerified: boolean; homeCurrency: string },
 	emailEnabled: boolean,
 ): Promise<NeedsYouItem[]> {
 	const userEntity = { kind: "user" as const, id: user.id };
@@ -128,7 +129,8 @@ export async function setupItems(
 			select: { id: true },
 		});
 		out.push(item("setup.firstExpense", { entity: userEntity }));
-		out.push(item("setup.homeCurrency", { entity: userEntity }));
+		if (user.homeCurrency === "USD")
+			out.push(item("setup.homeCurrency", { entity: userEntity }));
 		if (!anyImport)
 			out.push(item("setup.importStatement", { entity: userEntity }));
 	}

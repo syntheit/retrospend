@@ -225,6 +225,23 @@ describe("needsYou on Postgres", () => {
 		expect(own.counts.setup).toBe(3);
 	});
 
+	it("Set your home currency goes once the home currency is not the USD every account starts with", async () => {
+		const { user } = await createTestUser();
+		const types = async () =>
+			(
+				await needsYou(adminDb, user.id, { ...opts, emailEnabled: false })
+			).items.map((i) => i.type);
+		expect(await types()).toContain("setup.homeCurrency");
+		await adminDb.user.update({
+			where: { id: user.id },
+			data: { homeCurrency: "ARS" },
+		});
+		expect(await types()).toEqual([
+			"setup.firstExpense",
+			"setup.importStatement",
+		]);
+	});
+
 	it("a share in a currency with no rate: the budget names it and shows no amounts (R14)", async () => {
 		const s = await seedUser();
 		await shared("Hverir", martin.user.id, s.user.id, "9000", "ACCEPTED");

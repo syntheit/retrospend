@@ -168,7 +168,7 @@ export async function needsYouIn(
 	const timeZone = await userTimeZone(tx, userId, options.timeZone);
 	const user = await tx.user.findUnique({
 		where: { id: userId },
-		select: { id: true, emailVerified: true },
+		select: { id: true, emailVerified: true, homeCurrency: true },
 	});
 	if (!user) throw new Error("needsYou: no such user");
 	const people = await peopleItems(

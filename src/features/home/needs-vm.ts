@@ -35,7 +35,7 @@ export type Words = {
 	email: string | null;
 };
 
-const SETTINGS_CURRENCY = "/settings#preferences";
+const SETTINGS_CURRENCY = "/settings?pick=homeCurrency#preferences";
 
 /**
  * Item amounts carry no figure tag: the figures registry has no id for

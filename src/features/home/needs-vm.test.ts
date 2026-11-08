@@ -197,7 +197,7 @@ describe("toNeedsVM", () => {
 			id: "setup.homeCurrency:x",
 			kind: "homeCurrency",
 			context: "homeCurrency",
-			href: "/settings#preferences",
+			href: "/settings?pick=homeCurrency#preferences",
 		});
 		expect(toNeedsVM(item("setup.verifyEmail"), W)).toMatchObject({
 			kind: "verifyEmail",
