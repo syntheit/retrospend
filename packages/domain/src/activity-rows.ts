@@ -330,10 +330,7 @@ function personalRow(e: PersonalRowInput, c: ShapeContext): ActivityRowDTO {
  * the creator, project members and each person's own row are visible), so
  * the payer, always on the transaction itself, is added when missing.
  */
-function peopleOf(
-	t: SharedRowInput["transaction"],
-	payerId: string,
-): string[] {
+function peopleOf(t: SharedRowInput["transaction"], payerId: string): string[] {
 	const keys = t.splitParticipants.map((s) =>
 		personKeyOf(s.participantType, s.participantId),
 	);
@@ -478,7 +475,11 @@ export function activityRowsFrom(
 	}
 	for (const [key, group] of byGroup) {
 		const first = group[0];
-		if (first) byId.set(`g|${key}`, paymentRow(key, group, first, { c, who: inputs.who, lookup }));
+		if (first)
+			byId.set(
+				`g|${key}`,
+				paymentRow(key, group, first, { c, who: inputs.who, lookup }),
+			);
 	}
 	return keys.flatMap((k) => {
 		const row = byId.get(`${k.src}|${k.id}`);

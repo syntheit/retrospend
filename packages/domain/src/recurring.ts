@@ -1,10 +1,5 @@
 import { differenceInCalendarDays, getDay, isSameDay } from "date-fns";
-import {
-	dayKey,
-	startOfWallDayIn,
-	type WallTime,
-	wallTime,
-} from "./time-zone";
+import { dayKey, startOfWallDayIn, type WallTime, wallTime } from "./time-zone";
 
 export const FREQUENCY_LABELS: Record<string, string> = {
 	WEEKLY: "Weekly",

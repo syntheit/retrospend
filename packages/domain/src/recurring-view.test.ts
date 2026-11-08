@@ -54,7 +54,10 @@ const body = (
 		stepZone: zones.stepZone ?? BA,
 	});
 
-const arsHome = (templates: RecurringTemplateRow[], extra = {}): RecurringInputs => ({
+const arsHome = (
+	templates: RecurringTemplateRow[],
+	extra = {},
+): RecurringInputs => ({
 	home: "ARS",
 	templates,
 	rates: { ARS: 1500, JPY: 150, KWD: 0.3, ...extra },
@@ -213,7 +216,9 @@ describe("a missing rate is named and never 1, zero or NaN", () => {
 
 	it("a rate that is not a positive number is missing, not used", () => {
 		for (const bad of [0, -2, Number.NaN, Number.POSITIVE_INFINITY]) {
-			const b = body(arsHome([tpl({ id: "t", currency: "XYZ" })], { XYZ: bad }));
+			const b = body(
+				arsHome([tpl({ id: "t", currency: "XYZ" })], { XYZ: bad }),
+			);
 			expect(b.out.missingRate).toEqual(["XYZ"]);
 			expect(b.items[0]?.home).toBeNull();
 		}
@@ -330,7 +335,9 @@ describe("due dates", () => {
 			{ timeZone: SCL, stepZone: SCL, now },
 		);
 		expect(b.today).toBe("2026-09-01");
-		expect(b.items.map((i) => [i.id, i.next, i.nextAfter, i.paidOnFrom])).toEqual([
+		expect(
+			b.items.map((i) => [i.id, i.next, i.nextAfter, i.paidOnFrom]),
+		).toEqual([
 			["before", "2026-08-30", "2026-09-06", "2026-08-23"],
 			["gap", "2026-09-06", "2026-09-13", "2026-08-30"],
 		]);
@@ -364,10 +371,10 @@ describe("due dates", () => {
 
 	it("the viewer's display zone and the saved step zone are separate", () => {
 		// Due Oct 31 Buenos Aires midnight (03:00Z), shown from UTC the same day.
-		const [t] = body(
-			arsHome([tpl({ id: "rent", anchorDay: 31 })]),
-			{ timeZone: "UTC", stepZone: BA },
-		).items;
+		const [t] = body(arsHome([tpl({ id: "rent", anchorDay: 31 })]), {
+			timeZone: "UTC",
+			stepZone: BA,
+		}).items;
 		expect(t?.next).toBe("2026-10-31");
 		expect(t?.nextAfter).toBe("2026-11-30");
 	});
@@ -443,7 +450,12 @@ describe("the device loader", () => {
 				now: NOW,
 			}),
 		);
-		expect(fromRows.items[0]?.home).toEqual({ minor: 1_500_000, currency: "ARS" });
-		expect(fromRows).toEqual(body({ home: "ARS", templates: t, rates: { ARS: 1500 } }));
+		expect(fromRows.items[0]?.home).toEqual({
+			minor: 1_500_000,
+			currency: "ARS",
+		});
+		expect(fromRows).toEqual(
+			body({ home: "ARS", templates: t, rates: { ARS: 1500 } }),
+		);
 	});
 });

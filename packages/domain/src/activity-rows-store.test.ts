@@ -16,7 +16,9 @@ import {
 const ME = "me";
 const key = rowKeyFromEntryId;
 
-const expense = (o: Partial<StoredExpense> & { id: string }): StoredExpense => ({
+const expense = (
+	o: Partial<StoredExpense> & { id: string },
+): StoredExpense => ({
 	userId: ME,
 	direction: "OUT",
 	entryKind: "STANDARD",
@@ -49,7 +51,7 @@ const settlement = (
 	fromParticipantId: "ben",
 	toParticipantType: "user",
 	toParticipantId: ME,
-	project: null,
+	projectId: null,
 	isOffset: false,
 	kind: "PAYMENT",
 	...o,
@@ -119,9 +121,27 @@ describe("activityInputsFromRows", () => {
 				},
 			],
 			splits: [
-				{ transactionId: "t", participantType: "user", participantId: ME, shareAmount: "3000", verificationStatus: "ACCEPTED" },
-				{ transactionId: "t", participantType: "user", participantId: "ben", shareAmount: "6000", verificationStatus: "ACCEPTED" },
-				{ transactionId: "other", participantType: "user", participantId: "ben", shareAmount: "1", verificationStatus: "ACCEPTED" },
+				{
+					transactionId: "t",
+					participantType: "user",
+					participantId: ME,
+					shareAmount: "3000",
+					verificationStatus: "ACCEPTED",
+				},
+				{
+					transactionId: "t",
+					participantType: "user",
+					participantId: "ben",
+					shareAmount: "6000",
+					verificationStatus: "ACCEPTED",
+				},
+				{
+					transactionId: "other",
+					participantType: "user",
+					participantId: "ben",
+					shareAmount: "1",
+					verificationStatus: "ACCEPTED",
+				},
 			],
 			projects: [{ id: "pr", name: "Trip" }],
 			people: {
@@ -129,14 +149,35 @@ describe("activityInputsFromRows", () => {
 				"user:zed": { name: "Zed", imageUrl: null },
 			},
 			memberships: [
-				{ projectId: "pr", participantType: "user", participantId: ME, role: "CONTRIBUTOR" },
-				{ projectId: "pr", participantType: "shadow", participantId: ME, role: "ORGANIZER" },
-				{ projectId: "pr", participantType: "user", participantId: "ben", role: "ORGANIZER" },
+				{
+					projectId: "pr",
+					participantType: "user",
+					participantId: ME,
+					role: "CONTRIBUTOR",
+				},
+				{
+					projectId: "pr",
+					participantType: "shadow",
+					participantId: ME,
+					role: "ORGANIZER",
+				},
+				{
+					projectId: "pr",
+					participantType: "user",
+					participantId: "ben",
+					role: "ORGANIZER",
+				},
 			],
 		});
-		const inputs = activityInputsFromRows(s, [key("shared:t"), key("shared:other")]);
+		const inputs = activityInputsFromRows(s, [
+			key("shared:t"),
+			key("shared:other"),
+		]);
 		expect(inputs.shares).toHaveLength(1);
-		expect(inputs.shares[0]?.transaction.project).toEqual({ id: "pr", name: "Trip" });
+		expect(inputs.shares[0]?.transaction.project).toEqual({
+			id: "pr",
+			name: "Trip",
+		});
 		expect(inputs.shares[0]?.transaction.splitParticipants).toEqual([
 			{ participantType: "user", participantId: ME },
 			{ participantType: "user", participantId: "ben" },
@@ -165,7 +206,11 @@ describe("activityInputsFromRows", () => {
 				settlement({ id: "offset", isOffset: true }),
 				settlement({ id: "kind", kind: "REIMBURSEMENT" }),
 				settlement({ id: "rejected", status: "REJECTED" }),
-				settlement({ id: "others", fromParticipantId: "cam", toParticipantId: "ben" }),
+				settlement({
+					id: "others",
+					fromParticipantId: "cam",
+					toParticipantId: "ben",
+				}),
 				settlement({ id: "g1", paymentGroupId: "grp" }),
 				settlement({ id: "g2", paymentGroupId: "grp", currency: "USD" }),
 				// A row whose own id is a group id counts only when it has no group.

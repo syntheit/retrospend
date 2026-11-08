@@ -23,7 +23,10 @@ import {
 import { strongestRoles } from "./project-roles";
 
 /** An expense as stored: the shaped fields, its owner and where it hangs. */
-export type StoredExpense = Omit<PersonalRowInput, "category" | "childCount"> & {
+export type StoredExpense = Omit<
+	PersonalRowInput,
+	"category" | "childCount"
+> & {
 	userId: string;
 	categoryId: string | null;
 	/** Set on a monthly part of an amortized purchase. */
@@ -37,7 +40,8 @@ export type StoredSharedTransaction = Omit<
 > & { categoryId: string | null };
 
 /** A settlement as stored: a payment, an offset or another kind. */
-export type StoredSettlement = PaymentRowInput & {
+export type StoredSettlement = Omit<PaymentRowInput, "project"> & {
+	projectId: string | null;
 	isOffset: boolean;
 	kind: string;
 };
@@ -164,7 +168,7 @@ export function activityInputsFromRows(
 				fromParticipantId: r.fromParticipantId,
 				toParticipantType: r.toParticipantType,
 				toParticipantId: r.toParticipantId,
-				project: store.projects.find((x) => x.id === r.project?.id) ?? null,
+				project: store.projects.find((x) => x.id === r.projectId) ?? null,
 			}),
 		);
 
@@ -176,8 +180,7 @@ export function activityInputsFromRows(
 	const roles = strongestRoles(
 		store.memberships.filter(
 			(m) =>
-				projectIds.has(m.projectId) &&
-				me(m.participantType, m.participantId),
+				projectIds.has(m.projectId) && me(m.participantType, m.participantId),
 		),
 	);
 

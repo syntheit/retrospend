@@ -34,7 +34,9 @@ const ctx = (o: Partial<ShapeContext> = {}): ShapeContext => ({
 	...o,
 });
 
-const personal = (o: Partial<PersonalRowInput> & { id: string }): PersonalRowInput => ({
+const personal = (
+	o: Partial<PersonalRowInput> & { id: string },
+): PersonalRowInput => ({
 	direction: "OUT",
 	entryKind: "STANDARD",
 	inType: null,
@@ -63,16 +65,8 @@ const empty: ActivityRowInputs = {
 	rateRows: {},
 };
 
-const rowsOf = (
-	inputs: Partial<ActivityRowInputs>,
-	ids: string[],
-	c = ctx(),
-) =>
-	activityRowsFrom(
-		ids.map(rowKeyFromEntryId),
-		{ ...empty, ...inputs },
-		c,
-	);
+const rowsOf = (inputs: Partial<ActivityRowInputs>, ids: string[], c = ctx()) =>
+	activityRowsFrom(ids.map(rowKeyFromEntryId), { ...empty, ...inputs }, c);
 
 describe("personal rows, home ARS", () => {
 	it("JPY has no minor digits and KWD three; the home value is the stored USD at today's rate", () => {
@@ -81,8 +75,18 @@ describe("personal rows, home ARS", () => {
 		const [jpy, kwd] = rowsOf(
 			{
 				personal: [
-					personal({ id: "jpy", amount: "1234", currency: "JPY", amountInUSD: "8.23" }),
-					personal({ id: "kwd", amount: "12.345", currency: "KWD", amountInUSD: "40.1" }),
+					personal({
+						id: "jpy",
+						amount: "1234",
+						currency: "JPY",
+						amountInUSD: "8.23",
+					}),
+					personal({
+						id: "kwd",
+						amount: "12.345",
+						currency: "KWD",
+						amountInUSD: "40.1",
+					}),
 				],
 			},
 			["jpy", "kwd"],
@@ -127,7 +131,12 @@ describe("personal rows, home ARS", () => {
 		const [row] = rowsOf(
 			{
 				personal: [
-					personal({ id: "a", amount: "10", currency: "USD", amountInUSD: "10" }),
+					personal({
+						id: "a",
+						amount: "10",
+						currency: "USD",
+						amountInUSD: "10",
+					}),
 				],
 			},
 			["a"],
@@ -153,12 +162,20 @@ describe("personal rows, home ARS", () => {
 		expect(row?.home).toEqual({ minor: 14_000_000, currency: "ARS" });
 		expect(row?.rateType).toBe("blue");
 		expect(row?.rate).toBe("1400");
-		const [isDefault] = rowsOf({ personal: [booked] }, ["booked"], ctx({ defaultRateType: "blue" }));
+		const [isDefault] = rowsOf(
+			{ personal: [booked] },
+			["booked"],
+			ctx({ defaultRateType: "blue" }),
+		);
 		expect(isDefault && "rateType" in isDefault).toBe(false);
 		// No booked rate, no type; a row booked in another home currency uses today's.
-		const [noRate] = rowsOf({ personal: [{ ...booked, homeRate: null }] }, ["booked"]);
+		const [noRate] = rowsOf({ personal: [{ ...booked, homeRate: null }] }, [
+			"booked",
+		]);
 		expect(noRate && "rateType" in noRate).toBe(false);
-		const [other] = rowsOf({ personal: [{ ...booked, homeCurrency: "EUR" }] }, ["booked"]);
+		const [other] = rowsOf({ personal: [{ ...booked, homeCurrency: "EUR" }] }, [
+			"booked",
+		]);
 		expect(other?.home).toEqual({ minor: 15_000_000, currency: "ARS" });
 		expect(other && "rateType" in other).toBe(false);
 	});
@@ -166,7 +183,9 @@ describe("personal rows, home ARS", () => {
 	it("reads the day in the viewer's zone: 01:30Z on Oct 31 is Oct 30 in Buenos Aires and Oct 31 in UTC", () => {
 		const row = personal({ id: "a", date: new Date("2026-10-31T01:30:00Z") });
 		expect(rowsOf({ personal: [row] }, ["a"])[0]?.date).toBe("2026-10-30");
-		expect(rowsOf({ personal: [row] }, ["a"], ctx({ timeZone: "UTC" }))[0]?.date).toBe("2026-10-31");
+		expect(
+			rowsOf({ personal: [row] }, ["a"], ctx({ timeZone: "UTC" }))[0]?.date,
+		).toBe("2026-10-31");
 	});
 
 	it("says how each kind reads and why the totals leave a row out", () => {
@@ -191,12 +210,34 @@ describe("personal rows, home ARS", () => {
 					}),
 					personal({ id: "parent", isAmortizedParent: true, childCount: 3 }),
 					personal({ id: "bare", isAmortizedParent: true, childCount: 0 }),
-					personal({ id: "hiddenIn", direction: "IN", inType: "INCOME", excludeFromAnalytics: true }),
+					personal({
+						id: "hiddenIn",
+						direction: "IN",
+						inType: "INCOME",
+						excludeFromAnalytics: true,
+					}),
 				],
 			},
-			["out", "in", "refund", "own", "hidden", "cat", "parent", "bare", "hiddenIn"],
+			[
+				"out",
+				"in",
+				"refund",
+				"own",
+				"hidden",
+				"cat",
+				"parent",
+				"bare",
+				"hiddenIn",
+			],
 		);
-		expect(kinds.map((r) => [r.id, r.kind, r.notCounted ?? false, r.spread?.months ?? 0])).toEqual([
+		expect(
+			kinds.map((r) => [
+				r.id,
+				r.kind,
+				r.notCounted ?? false,
+				r.spread?.months ?? 0,
+			]),
+		).toEqual([
 			["out", "expense", false, 0],
 			["in", "income", false, 0],
 			["refund", "refund", false, 0],
@@ -281,9 +322,25 @@ describe("shared rows", () => {
 		const [row] = rowsOf(
 			{
 				shares: [
-					share(tx({ id: "e", amount: "60", currency: "EUR", exchangeRate: "0.75" }), "20"),
+					share(
+						tx({
+							id: "e",
+							amount: "60",
+							currency: "EUR",
+							exchangeRate: "0.75",
+						}),
+						"20",
+					),
 				],
-				rateRows: { EUR: [{ type: "official", rate: 0.5, date: new Date("2026-10-09T00:00:00Z") }] },
+				rateRows: {
+					EUR: [
+						{
+							type: "official",
+							rate: 0.5,
+							date: new Date("2026-10-09T00:00:00Z"),
+						},
+					],
+				},
 			},
 			["shared:e"],
 		);
@@ -300,8 +357,16 @@ describe("shared rows", () => {
 				shares: [share(tx({ id: "e", amount: "60", currency: "EUR" }), "20")],
 				rateRows: {
 					EUR: [
-						{ type: "official", rate: 0.8, date: new Date("2026-10-01T00:00:00Z") },
-						{ type: "official", rate: 0.5, date: new Date("2026-10-20T00:00:00Z") },
+						{
+							type: "official",
+							rate: 0.8,
+							date: new Date("2026-10-01T00:00:00Z"),
+						},
+						{
+							type: "official",
+							rate: 0.5,
+							date: new Date("2026-10-20T00:00:00Z"),
+						},
 					],
 				},
 			},
@@ -323,8 +388,14 @@ describe("shared rows", () => {
 
 	it("a JPY share rounds to whole yen and a KWD one to fils, half to even", () => {
 		// JPY 1,000 split three ways: 333.33333333 is 333. KWD 4.1155 is 4.116.
-		const jpy = share(tx({ id: "j", amount: "1000", currency: "JPY" }), "333.33333333");
-		const kwd = share(tx({ id: "k", amount: "8.231", currency: "KWD" }), "4.1155");
+		const jpy = share(
+			tx({ id: "j", amount: "1000", currency: "JPY" }),
+			"333.33333333",
+		);
+		const kwd = share(
+			tx({ id: "k", amount: "8.231", currency: "KWD" }),
+			"4.1155",
+		);
 		const rows = rowsOf({ shares: [jpy, kwd] }, ["shared:j", "shared:k"]);
 		expect(rows.map((r) => r.amount)).toEqual([
 			{ minor: 1000, currency: "JPY" },
@@ -350,25 +421,38 @@ describe("shared rows", () => {
 			},
 			["shared:p", "shared:m", "shared:r", "shared:a"],
 		);
-		expect(rows.map((r) => r.waiting ?? null)).toEqual(["review", null, "rejected", null]);
+		expect(rows.map((r) => r.waiting ?? null)).toEqual([
+			"review",
+			null,
+			"rejected",
+			null,
+		]);
 	});
 
 	it("can edit: the creator of a standalone expense, a project's organizer or editor, a contributor only their own, never a locked one", () => {
 		const proj = { id: "pr", name: "Trip" };
-		const rows = (roles: Record<string, string>, t: Partial<SharedRowInput["transaction"]>) =>
-			rowsOf(
-				{ shares: [share(tx({ id: "x", ...t }), "1")], roles },
-				["shared:x"],
-			)[0]?.canEdit;
+		const rows = (
+			roles: Record<string, string>,
+			t: Partial<SharedRowInput["transaction"]>,
+		) =>
+			rowsOf({ shares: [share(tx({ id: "x", ...t }), "1")], roles }, [
+				"shared:x",
+			])[0]?.canEdit;
 		expect(rows({}, { createdById: ME })).toBe(true);
 		expect(rows({}, {})).toBe(false);
 		const inProject = { projectId: "pr", project: proj };
 		expect(rows({ pr: "ORGANIZER" }, inProject)).toBe(true);
 		expect(rows({ pr: "EDITOR" }, inProject)).toBe(true);
 		expect(rows({ pr: "CONTRIBUTOR" }, inProject)).toBe(false);
-		expect(rows({ pr: "CONTRIBUTOR" }, { ...inProject, createdById: ME })).toBe(true);
-		expect(rows({ pr: "VIEWER" }, { ...inProject, createdById: ME })).toBe(false);
-		expect(rows({ pr: "ORGANIZER" }, { ...inProject, isLocked: true })).toBe(false);
+		expect(rows({ pr: "CONTRIBUTOR" }, { ...inProject, createdById: ME })).toBe(
+			true,
+		);
+		expect(rows({ pr: "VIEWER" }, { ...inProject, createdById: ME })).toBe(
+			false,
+		);
+		expect(rows({ pr: "ORGANIZER" }, { ...inProject, isLocked: true })).toBe(
+			false,
+		);
 	});
 
 	it("adds the payer to the people when the split rows leave them out, and names who paid only when it is not you", () => {
@@ -408,7 +492,12 @@ describe("shared rows", () => {
 			},
 			["shared:a", "shared:b"],
 		);
-		expect(mine?.category).toEqual({ id: "c", name: "Food", icon: "utensils", tone: 3 });
+		expect(mine?.category).toEqual({
+			id: "c",
+			name: "Food",
+			icon: "utensils",
+			tone: 3,
+		});
 		expect(theirs?.category).toBeNull();
 	});
 });
@@ -501,7 +590,15 @@ describe("payment rows", () => {
 					pay({ id: "u", currency: "USD", amount: "10" }),
 					pay({ id: "j", currency: "JPY", amount: "3000" }),
 				],
-				rateRows: { JPY: [{ type: "official", rate: 150, date: new Date("2026-10-01T00:00:00Z") }] },
+				rateRows: {
+					JPY: [
+						{
+							type: "official",
+							rate: 150,
+							date: new Date("2026-10-01T00:00:00Z"),
+						},
+					],
+				},
 			},
 			["payment:u|USD", "payment:j|JPY"],
 		);
@@ -533,22 +630,41 @@ describe("keys and entry figures", () => {
 	it("reads an entry id as a personal id, shared:<id> or payment:<key>", () => {
 		expect(rowKeyFromEntryId("abc")).toEqual({ src: "p", id: "abc" });
 		expect(rowKeyFromEntryId("shared:abc")).toEqual({ src: "s", id: "abc" });
-		expect(rowKeyFromEntryId("payment:g|ARS")).toEqual({ src: "g", id: "g|ARS" });
-		expect(splitPaymentKey("a|b|ARS")).toEqual({ group: "a|b", currency: "ARS" });
+		expect(rowKeyFromEntryId("payment:g|ARS")).toEqual({
+			src: "g",
+			id: "g|ARS",
+		});
+		expect(splitPaymentKey("a|b|ARS")).toEqual({
+			group: "a|b",
+			currency: "ARS",
+		});
 	});
 
 	it("entry.amount is the row's amount whatever its kind and entry.share only a shared row's share", () => {
 		const inputs: ActivityRowInputs = {
 			...empty,
-			personal: [personal({ id: "p", amount: "12.5", currency: "USD", amountInUSD: "12.5" })],
+			personal: [
+				personal({
+					id: "p",
+					amount: "12.5",
+					currency: "USD",
+					amountInUSD: "12.5",
+				}),
+			],
 			shares: [share(tx({ id: "d" }), "3000")],
 			payments: [pay({ id: "g" })],
 		};
 		const row = (id: string) => entryRowFrom(id, inputs, ctx());
 		expect(entryAmountOf(row("p"))).toEqual([{ minor: 1250, currency: "USD" }]);
-		expect(entryAmountOf(row("shared:d"))).toEqual([{ minor: 900_000, currency: "ARS" }]);
-		expect(entryAmountOf(row("payment:g|ARS"))).toEqual([{ minor: 50_000, currency: "ARS" }]);
-		expect(entryShareOf(row("shared:d"))).toEqual([{ minor: 300_000, currency: "ARS" }]);
+		expect(entryAmountOf(row("shared:d"))).toEqual([
+			{ minor: 900_000, currency: "ARS" },
+		]);
+		expect(entryAmountOf(row("payment:g|ARS"))).toEqual([
+			{ minor: 50_000, currency: "ARS" },
+		]);
+		expect(entryShareOf(row("shared:d"))).toEqual([
+			{ minor: 300_000, currency: "ARS" },
+		]);
 		expect(entryShareOf(row("p"))).toEqual([]);
 		expect(entryShareOf(row("payment:g|ARS"))).toEqual([]);
 		expect(entryAmountOf(row("nope"))).toEqual([]);
@@ -562,15 +678,24 @@ describe("keys and entry figures", () => {
 					share(tx({ id: "b", currency: "GBP", exchangeRate: "0.8" }), "1"),
 					share(tx({ id: "c", currency: "USD" }), "1"),
 				],
-				payments: [pay({ id: "p", currency: "JPY" }), pay({ id: "q", currency: "EUR" })],
+				payments: [
+					pay({ id: "p", currency: "JPY" }),
+					pay({ id: "q", currency: "EUR" }),
+				],
 			}),
 		).toEqual(["EUR", "JPY"]);
 	});
 
 	it("words a booked rate from its stored text, only when booked in the home currency", () => {
-		expect(bookedRate({ homeCurrency: "ARS", homeRate: "1545.500000000000" }, "ARS")).toBe("1545.5");
-		expect(bookedRate({ homeCurrency: "EUR", homeRate: "1" }, "ARS")).toBeNull();
-		expect(bookedRate({ homeCurrency: "ARS", homeRate: null }, "ARS")).toBeNull();
+		expect(
+			bookedRate({ homeCurrency: "ARS", homeRate: "1545.500000000000" }, "ARS"),
+		).toBe("1545.5");
+		expect(
+			bookedRate({ homeCurrency: "EUR", homeRate: "1" }, "ARS"),
+		).toBeNull();
+		expect(
+			bookedRate({ homeCurrency: "ARS", homeRate: null }, "ARS"),
+		).toBeNull();
 		expect(firstName({ name: "  Ana  Ruiz", imageUrl: null })).toBe("Ana");
 		expect(firstName(undefined)).toBe("");
 	});

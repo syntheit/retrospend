@@ -56,9 +56,7 @@ async function personalRows(
 				_count: { select: { children: true } },
 			},
 		})
-		.then((rows) =>
-			rows.map((e) => ({ ...e, childCount: e._count.children })),
-		);
+		.then((rows) => rows.map((e) => ({ ...e, childCount: e._count.children })));
 }
 
 /** Your split rows of the page's shared expenses, with what shaping needs. */
@@ -197,5 +195,9 @@ export async function shapeRows(
 	keys: readonly RowKey[],
 	c: ShapeContext,
 ): Promise<ActivityRowDTO[]> {
-	return activityRowsFrom(keys, await loadActivityInputs(db, keys, c.userId), c);
+	return activityRowsFrom(
+		keys,
+		await loadActivityInputs(db, keys, c.userId),
+		c,
+	);
 }
