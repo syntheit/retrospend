@@ -466,7 +466,7 @@
 		"limitsSub": "D'après tes 3 derniers mois. Le reste est suivi, sans limite.",
 		"envelopesSubNew": "Donne un montant à chaque enveloppe ou décoche ce dont tu n'as pas besoin.",
 		"limitsNone": "Aucune dépense ces 3 derniers mois pour fixer des limites.",
-		"nothingPlanned": "Rien n'est encore prévu. Donne un montant à une enveloppe.",
+		"nothingPlanned": "Donne un montant à une enveloppe pour commencer.",
 		"stop": "Ton plan coûte <cost></cost> par mois mais tu démarres avec <available></available>.",
 		"usePay": "Utiliser ma paie pour le reste. <short></short> de plus démarrent à son arrivée.",
 		"moneyNow": "Argent à planifier",

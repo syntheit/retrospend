@@ -466,7 +466,7 @@
 		"limitsSub": "Con tus últimos 3 meses. Todo lo demás se registra, sin límite.",
 		"envelopesSubNew": "Dale un monto a cada sobre o destildá lo que no necesites.",
 		"limitsNone": "No hubo gastos en los últimos 3 meses para armar límites.",
-		"nothingPlanned": "Todavía no hay nada planificado. Dale un monto a un sobre.",
+		"nothingPlanned": "Dale un monto a un sobre para empezar.",
 		"stop": "Tu plan cuesta <cost></cost> por mes pero empezás con <available></available>.",
 		"usePay": "Usar mi sueldo para el resto. Los <short></short> restantes arrancan cuando llegue.",
 		"moneyNow": "Plata para planificar",
