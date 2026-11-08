@@ -14,7 +14,9 @@ export function sameValue(a: unknown, b: unknown): boolean {
 	if (typeof a !== "object" || typeof b !== "object") return false;
 	if (a instanceof Date || b instanceof Date)
 		return (
-			a instanceof Date && b instanceof Date && a.getTime() === b.getTime()
+			a instanceof Date &&
+			b instanceof Date &&
+			Object.is(a.getTime(), b.getTime())
 		);
 	if (Array.isArray(a) || Array.isArray(b))
 		return (

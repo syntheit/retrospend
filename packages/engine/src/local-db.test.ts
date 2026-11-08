@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { fixtureRow } from "./fixtures";
-import { ConflictError, LocalDb, MemoryStore, sameValue } from "./index";
+import {
+	ConflictError,
+	LocalDb,
+	MemoryStore,
+	sameValue,
+	TransactionError,
+} from "./index";
 import { localWriteCases } from "./local-conformance";
 
 describe("local writes conformance (memory store)", () => {
@@ -73,6 +79,49 @@ describe("local writes on the memory store", () => {
 	});
 });
 
+describe("nested calls", () => {
+	const db = () => new LocalDb(new MemoryStore({ beginTimeoutMs: 60_000 }));
+
+	it("a write, preview or undo started inside a preview throws instead of waiting", async () => {
+		const d = db();
+		const { undo } = await d.write("expense.create", (r) =>
+			r.expenses.create(agg()),
+		);
+		await expect(
+			d.preview(() => d.write("x", (r) => r.expenses.remove("e1"))),
+		).rejects.toBeInstanceOf(TransactionError);
+		await expect(
+			d.preview(() => d.preview((r) => r.expenses.remove("e1"))),
+		).rejects.toBeInstanceOf(TransactionError);
+		await expect(d.previewUndo(undo)).resolves.toHaveLength(2);
+		await expect(
+			d.previewUndo({ kind: "revert", mutation: "x", changes: [] }),
+		).resolves.toEqual([]);
+	});
+
+	it("a preview started inside a write throws, and the write is rolled back", async () => {
+		const d = db();
+		await expect(
+			d.write("x", (r) => {
+				r.expenses.create(agg());
+				return d.preview((q) => q.expenses.remove("e1"));
+			}),
+		).rejects.toBeInstanceOf(TransactionError);
+		expect(d.reads().expenses.list()).toEqual([]);
+	});
+
+	it("a preview that throws rethrows its own error and changes nothing", async () => {
+		const d = db();
+		await expect(
+			d.preview((r) => {
+				r.expenses.create(agg());
+				throw new Error("boom");
+			}),
+		).rejects.toThrow("boom");
+		expect(d.reads().expenses.list()).toEqual([]);
+	});
+});
+
 /** A stand-in for Decimal: equal by value through `equals`. */
 class Amount {
 	constructor(readonly n: number) {}
@@ -89,6 +138,8 @@ describe("sameValue", () => {
 		expect(sameValue({ a: 1 }, { a: 1, b: undefined })).toBe(false);
 		expect(sameValue(new Amount(1.5), new Amount(1.5))).toBe(true);
 		expect(sameValue(new Amount(1.5), new Amount(1.6))).toBe(false);
+		expect(sameValue(new Date("nope"), new Date("nope"))).toBe(true);
+		expect(sameValue(new Date("nope"), new Date(5))).toBe(false);
 		expect(sameValue(null, undefined)).toBe(false);
 		expect(sameValue("1.0", "1")).toBe(false);
 	});

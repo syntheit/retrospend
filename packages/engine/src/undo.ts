@@ -16,6 +16,7 @@
  * revert token with before and after swapped, or the mirror of the mirror.
  */
 import { type AnyRow, putAny, type RowChange } from "./changes";
+import { strayChildren } from "./children";
 import { sameValue } from "./equal";
 import { ConflictError } from "./errors";
 import { type MovementRow, mirrorId, movementRepo } from "./movements";
@@ -68,6 +69,12 @@ export function applyUndo(w: Writer, token: UndoToken): UndoToken {
 	const current = (c: RowChange): AnyRow | null => w.get(c.table, c.id) ?? null;
 	const moved = token.changes.filter((c) => !sameValue(current(c), c.after));
 	if (moved.length > 0) throw stale("These rows", moved);
+	const stray = strayChildren(w, token.changes);
+	if (stray.length > 0)
+		throw new ConflictError(
+			"Rows were added to this since. Undo is no longer safe.",
+			stray,
+		);
 	for (const c of token.changes)
 		if (c.before === null) w.delete(c.table, c.id);
 		else putAny(w, c.table, c.before);

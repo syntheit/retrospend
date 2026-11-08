@@ -9,7 +9,7 @@
  * way for a preview and for the real write, so the preview is the write.
  */
 import { type RowChange, record } from "./changes";
-import type { Store } from "./port";
+import type { Store, Writer } from "./port";
 import { type ReadRepos, type Repos, readRepos, repos } from "./repos";
 import { applyUndo, tokenFor, type UndoToken } from "./undo";
 
@@ -45,15 +45,12 @@ export class LocalDb {
 	}
 
 	/** Runs `run` and rolls it back. The store is exactly as it was. */
-	async preview<V>(run: WriteFn<V>): Promise<LocalPreview<V>> {
-		const tx = await this.store.begin();
-		try {
-			const recorder = record(tx);
+	preview<V>(run: WriteFn<V>): Promise<LocalPreview<V>> {
+		return this.rolledBack(async (w) => {
+			const recorder = record(w);
 			const value = await run(repos(recorder.writer));
 			return { value, changes: recorder.changes() };
-		} finally {
-			tx.rollback();
-		}
+		});
 	}
 
 	/**
@@ -65,14 +62,33 @@ export class LocalDb {
 	}
 
 	/** What an undo would change, for the Undo sheet; applies nothing. */
-	async previewUndo(token: UndoToken): Promise<readonly RowChange[]> {
-		const tx = await this.store.begin();
-		try {
-			const recorder = record(tx);
+	previewUndo(token: UndoToken): Promise<readonly RowChange[]> {
+		return this.rolledBack((w) => {
+			const recorder = record(w);
 			applyUndo(recorder.writer, token);
 			return recorder.changes();
-		} finally {
-			tx.rollback();
+		});
+	}
+
+	/**
+	 * Runs `fn` in a store transaction and throws it away. It goes through
+	 * `store.transaction`, like a write, so the store's nested-call guard
+	 * covers a preview too: a write started inside one throws instead of
+	 * waiting for it.
+	 */
+	private async rolledBack<R>(fn: (tx: Writer) => R | Promise<R>): Promise<R> {
+		let result: { value: R } | undefined;
+		try {
+			await this.store.transaction(async (tx) => {
+				result = { value: await fn(tx) };
+				throw new Discard();
+			});
+		} catch (e) {
+			if (!(e instanceof Discard)) throw e;
 		}
+		return (result as { value: R }).value;
 	}
 }
+
+/** Thrown after a preview ran, so its transaction rolls back instead of committing. */
+class Discard extends Error {}
