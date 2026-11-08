@@ -5,6 +5,7 @@ import {
 	encodeCursor,
 	FOLD_FROM,
 	FOLD_TO,
+	foldColumn,
 	foldText,
 	likePattern,
 } from "./search";
@@ -28,6 +29,15 @@ describe("Activity search", () => {
 
 	it("folds a decomposed accent typed in the query like the precomposed one", () => {
 		expect(foldText("Almace\u0301n")).toBe("almacen");
+	});
+
+	it("folds a stored value as stored: no normalization, per-letter lowercase", () => {
+		expect(foldColumn("Almacén")).toBe("almacen");
+		// SQL translate saw the combining mark as its own character.
+		expect(foldColumn("Almace\u0301n")).toBe("almace\u0301n");
+		// lower() has no context: a final sigma stays sigma, I with dot is i.
+		expect(foldColumn("ΟΔΟΣ")).toBe("οδοσ");
+		expect(foldColumn("\u0130stanbul")).toBe("istanbul");
 	});
 
 	it("escapes LIKE wildcards", () => {
