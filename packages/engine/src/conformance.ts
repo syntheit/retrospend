@@ -9,7 +9,13 @@
  * halfway, is that store's own tests.
  */
 import { fixtureRow } from "./fixtures";
-import { type Store, TABLE_NAMES, TransactionError } from "./port";
+import {
+	InvalidInputError,
+	SETTINGS_ID,
+	type Store,
+	TABLE_NAMES,
+	TransactionError,
+} from "./port";
 
 export interface ConformanceCase {
 	name: string;
@@ -34,12 +40,16 @@ function expectEqual(actual: unknown, expected: unknown, what: string) {
 		);
 }
 
-async function expectThrows(fn: () => unknown, what: string) {
+async function expectThrows(
+	fn: () => unknown,
+	what: string,
+	kind: new (...args: never[]) => Error = TransactionError,
+) {
 	try {
 		await fn();
 	} catch (e) {
-		if (e instanceof TransactionError) return;
-		throw new Error(`${what}: threw ${String(e)}, not a TransactionError`);
+		if (e instanceof kind) return;
+		throw new Error(`${what}: threw ${String(e)}, not a ${kind.name}`);
 	}
 	throw new Error(`${what}: did not throw`);
 }
@@ -59,25 +69,39 @@ export const conformanceCases: ConformanceCase[] = [
 		async run(makeStore) {
 			const store = await makeStore();
 			for (const t of TABLE_NAMES) {
-				const row = fixtureRow(t, "a");
+				// Settings has one row.
+				const [a, b] = t === "settings" ? [SETTINGS_ID, null] : ["a", "b"];
+				const row = fixtureRow(t, a);
 				await store.transaction((tx) => tx.put(t, row));
-				expectEqual(store.get(t, "a"), row, `${t} get`);
+				expectEqual(store.get(t, a), row, `${t} get`);
 				expectEqual(store.list(t), [row], `${t} list`);
-				const other = fixtureRow(t, "b");
-				await store.transaction((tx) => tx.put(t, other));
-				await store.transaction((tx) => tx.put(t, row));
-				expectEqual(
-					ids(store.list(t)),
-					["a", "b"],
-					`${t} replace keeps one row`,
-				);
-				const existed = await store.transaction((tx) => tx.delete(t, "a"));
+				if (b !== null) {
+					await store.transaction((tx) => tx.put(t, fixtureRow(t, b)));
+					await store.transaction((tx) => tx.put(t, row));
+					expectEqual(ids(store.list(t)), [a, b], `${t} replace keeps one row`);
+				}
+				const existed = await store.transaction((tx) => tx.delete(t, a));
 				expectEqual(existed, true, `${t} delete existing`);
-				const again = await store.transaction((tx) => tx.delete(t, "a"));
+				const again = await store.transaction((tx) => tx.delete(t, a));
 				expectEqual(again, false, `${t} delete missing`);
-				expectEqual(store.get(t, "a"), undefined, `${t} gone`);
-				expectEqual(ids(store.list(t)), ["b"], `${t} other stays`);
+				expectEqual(store.get(t, a), undefined, `${t} gone`);
+				expectEqual(ids(store.list(t)), b === null ? [] : [b], `${t} left`);
 			}
+		},
+	},
+	{
+		name: "settings holds one row, with id user",
+		async run(makeStore) {
+			const store = await makeStore();
+			await expectThrows(
+				() =>
+					store.transaction((tx) =>
+						tx.put("settings", fixtureRow("settings", "other")),
+					),
+				"settings put",
+				InvalidInputError,
+			);
+			expectEqual(store.list("settings"), [], "nothing stored");
 		},
 	},
 	{

@@ -1,7 +1,9 @@
 export { MemoryStore, type MemoryStoreOptions } from "./memory-store";
 export {
 	type Change,
+	InvalidInputError,
 	type Reader,
+	SETTINGS_ID,
 	type SettingsRow,
 	type Snapshot,
 	type Store,

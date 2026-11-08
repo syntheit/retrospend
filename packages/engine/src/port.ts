@@ -73,7 +73,11 @@ export interface Reader {
 export type Snapshot = Reader;
 
 export interface Writer extends Reader {
-	/** Insert or replace by id. */
+	/**
+	 * Insert or replace by id. Rows are copied in, so changing the object
+	 * afterwards changes nothing. Settings has one row: any id but "user"
+	 * throws InvalidInputError.
+	 */
 	put<T extends TableName>(table: T, row: TableRows[T]): void;
 	/** True when the row existed. */
 	delete(table: TableName, id: string): boolean;
@@ -101,7 +105,10 @@ export interface Store extends Reader {
 	 * Starts a transaction. Top-level transactions run one at a time in call
 	 * order: `begin` resolves when every earlier one has committed or rolled
 	 * back, and the new one reads what they committed. Never await `begin`
-	 * or `transaction` from inside a transaction; use `tx.savepoint()`.
+	 * or `transaction` from inside a transaction; use `tx.savepoint()`. The
+	 * store throws TransactionError for the case it can see (a call made
+	 * while a `transaction` callback is still running its synchronous part)
+	 * and, when `beginTimeoutMs` is set, for any `begin` that waits longer.
 	 */
 	begin(): Promise<Tx>;
 	/** Runs `fn` in a transaction: commit when it returns, rollback when it throws. */
@@ -117,4 +124,12 @@ export interface Change {
 
 export class TransactionError extends Error {
 	override readonly name = "TransactionError";
+}
+
+/** The one row of the settings table. */
+export const SETTINGS_ID = "user";
+
+/** A write the port refuses: the row breaks a rule of its table. */
+export class InvalidInputError extends Error {
+	override readonly name = "InvalidInputError";
 }

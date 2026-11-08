@@ -19,7 +19,9 @@
  */
 import {
 	type Change,
+	InvalidInputError,
 	type Reader,
+	SETTINGS_ID,
 	type Snapshot,
 	type Store,
 	TABLE_NAMES,
@@ -38,8 +40,35 @@ type Overlay = Map<TableName, Map<string, AnyRow | null>>;
 const byId = (a: { id: string }, b: { id: string }) =>
 	a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 
-/** Callers keep no handle that could change a stored row. */
-const owned = <T extends AnyRow>(row: T): T => Object.freeze({ ...row }) as T;
+const isPlain = (v: object) => {
+	const proto = Object.getPrototypeOf(v);
+	return proto === Object.prototype || proto === null;
+};
+
+/**
+ * A deep copy with plain objects and arrays frozen, so callers keep no handle
+ * that could change a stored row and a reader cannot edit one. Dates are
+ * copied (they cannot be frozen); other class instances, such as Decimal, are
+ * immutable values and kept as they are.
+ */
+function own<V>(v: V): V {
+	if (Array.isArray(v)) return Object.freeze(v.map(own)) as V;
+	if (v instanceof Date) return new Date(v.getTime()) as V;
+	if (v !== null && typeof v === "object" && isPlain(v))
+		return Object.freeze(
+			Object.fromEntries(Object.entries(v).map(([k, x]) => [k, own(x)])),
+		) as V;
+	return v;
+}
+
+/** The copy a table keeps of a row; refuses what the table cannot hold. */
+function owned<T extends TableName>(table: T, row: TableRows[T]): TableRows[T] {
+	if (table === "settings" && row.id !== SETTINGS_ID)
+		throw new InvalidInputError(
+			`The settings table has one row, with id "${SETTINGS_ID}"`,
+		);
+	return own(row);
+}
 
 class Snap implements Snapshot {
 	constructor(private readonly state: State) {}
@@ -107,7 +136,7 @@ class MemoryTx implements Tx {
 
 	put<T extends TableName>(table: T, row: TableRows[T]) {
 		this.live();
-		this.write(table, row.id, owned(row));
+		this.write(table, row.id, owned(table, row));
 	}
 
 	delete(table: TableName, id: string) {
@@ -165,21 +194,37 @@ export interface MemoryStoreOptions {
 	rows?: { [T in TableName]?: readonly TableRows[T][] };
 	/** Called with a commit's changes before they become visible. */
 	onCommit?: (changes: readonly Change[]) => void | Promise<void>;
+	/**
+	 * How long `begin` waits for earlier transactions before it throws
+	 * TransactionError, in milliseconds. Unset waits forever, which hides a
+	 * transaction nobody committed or rolled back.
+	 */
+	beginTimeoutMs?: number;
 }
+
+/** The timer functions every runtime here has; the package declares no DOM or Node types. */
+const timers = globalThis as unknown as {
+	setTimeout(fn: () => void, ms: number): unknown;
+	clearTimeout(handle: unknown): void;
+};
 
 export class MemoryStore implements Store {
 	private state: State;
 	/** Settles when the newest transaction has ended. */
 	private tail: Promise<void> = Promise.resolve();
+	/** True while a `transaction` callback runs its synchronous part. */
+	private inCallback = false;
 	private readonly onCommit: MemoryStoreOptions["onCommit"];
+	private readonly beginTimeoutMs: number | undefined;
 
 	constructor(options: MemoryStoreOptions = {}) {
 		this.onCommit = options.onCommit;
+		this.beginTimeoutMs = options.beginTimeoutMs;
 		const state = {} as Record<TableName, Rows>;
 		for (const table of TABLE_NAMES) {
 			const rows = new Map<string, AnyRow>();
 			for (const row of options.rows?.[table] ?? [])
-				rows.set(row.id, owned(row));
+				rows.set(row.id, owned(table, row));
 			state[table] = rows;
 		}
 		this.state = state;
@@ -198,22 +243,61 @@ export class MemoryStore implements Store {
 	}
 
 	async begin(): Promise<Tx> {
+		// Only the synchronous part of a callback can be told apart from another
+		// caller; a nested begin after an await waits until the timeout.
+		if (this.inCallback)
+			throw new TransactionError(
+				"begin was called inside a transaction callback, which would wait for itself; use tx.savepoint()",
+			);
 		const before = this.tail;
 		let release!: () => void;
 		this.tail = new Promise<void>((resolve) => {
 			release = resolve;
 		});
-		await before;
+		await this.turn(before, release);
 		return new MemoryTx(this.snapshot(), {
 			commit: (writes) => this.apply(writes),
 			end: release,
 		});
 	}
 
+	/** Waits for `before`; on timeout gives the slot back once `before` ends, so the queue moves on. */
+	private async turn(before: Promise<void>, release: () => void) {
+		const ms = this.beginTimeoutMs;
+		if (ms === undefined) return before;
+		let timer: unknown;
+		const late = new Promise<never>((_, reject) => {
+			timer = timers.setTimeout(
+				() =>
+					reject(
+						new TransactionError(
+							`A transaction waited ${ms} ms for an earlier one to commit or roll back`,
+						),
+					),
+				ms,
+			);
+		});
+		try {
+			await Promise.race([before, late]);
+		} catch (e) {
+			void before.then(release);
+			throw e;
+		} finally {
+			timers.clearTimeout(timer);
+		}
+	}
+
 	async transaction<R>(fn: (tx: Tx) => R | Promise<R>): Promise<R> {
 		const tx = await this.begin();
 		try {
-			const result = await fn(tx);
+			this.inCallback = true;
+			let pending: R | Promise<R>;
+			try {
+				pending = fn(tx);
+			} finally {
+				this.inCallback = false;
+			}
+			const result = await pending;
 			await tx.commit();
 			return result;
 		} finally {

@@ -3,7 +3,9 @@ import { conformanceCases } from "./conformance";
 import { fixtureRow } from "./fixtures";
 import {
 	type Change,
+	InvalidInputError,
 	MemoryStore,
+	SETTINGS_ID,
 	TABLE_NAMES,
 	TransactionError,
 } from "./index";
@@ -92,7 +94,8 @@ describe("memory store", () => {
 			},
 		});
 		const tx = await store.begin();
-		for (const t of TABLE_NAMES) tx.put(t, fixtureRow(t, "new") as never);
+		for (const t of TABLE_NAMES)
+			tx.put(t, fixtureRow(t, t === "settings" ? SETTINGS_ID : "new") as never);
 		tx.delete("rates", "keep");
 		await expect(tx.commit()).rejects.toThrow("disk full");
 		for (const t of TABLE_NAMES)
@@ -147,5 +150,129 @@ describe("memory store", () => {
 		open.rollback();
 		await next;
 		expect(started).toBe(true);
+	});
+
+	describe("rows are deep copies", () => {
+		const settings = (ids: string[]) => ({
+			...fixtureRow("settings", SETTINGS_ID),
+			hiddenProjectIds: ids,
+		});
+
+		it("an array changed after put changes neither the store nor an old snapshot", async () => {
+			const store = new MemoryStore();
+			const ids = ["a"];
+			await store.transaction((tx) => tx.put("settings", settings(ids)));
+			const snap = store.snapshot();
+			ids.push("b");
+			expect(store.get("settings", SETTINGS_ID)?.hiddenProjectIds).toEqual([
+				"a",
+			]);
+			expect(snap.get("settings", SETTINGS_ID)?.hiddenProjectIds).toEqual([
+				"a",
+			]);
+		});
+
+		it("an array changed after put inside a still-open transaction changes nothing", async () => {
+			const store = new MemoryStore();
+			const ids = ["a"];
+			const tx = await store.begin();
+			tx.put("settings", settings(ids));
+			ids.push("b");
+			expect(tx.get("settings", SETTINGS_ID)?.hiddenProjectIds).toEqual(["a"]);
+			await tx.commit();
+			expect(store.get("settings", SETTINGS_ID)?.hiddenProjectIds).toEqual([
+				"a",
+			]);
+		});
+
+		it("an array read from the store cannot be edited", async () => {
+			const store = new MemoryStore({ rows: { settings: [settings(["a"])] } });
+			const read = store.get("settings", SETTINGS_ID)
+				?.hiddenProjectIds as string[];
+			expect(() => read.push("b")).toThrow(TypeError);
+			expect(store.get("settings", SETTINGS_ID)?.hiddenProjectIds).toEqual([
+				"a",
+			]);
+		});
+
+		it("nested objects are copied, and a date changed after put changes nothing", async () => {
+			const store = new MemoryStore();
+			const category = { id: "c", name: "Rent", color: "teal", icon: null };
+			const due = new Date("2026-04-01T00:00:00Z");
+			await store.transaction((tx) =>
+				tx.put("recurringTemplates", {
+					...fixtureRow("recurringTemplates", "t"),
+					category,
+					nextDueDate: due,
+				}),
+			);
+			category.name = "Changed";
+			due.setTime(0);
+			const row = store.get("recurringTemplates", "t");
+			expect(row?.category?.name).toBe("Rent");
+			expect(row?.nextDueDate.toISOString()).toBe("2026-04-01T00:00:00.000Z");
+			expect(Object.isFrozen(row?.category)).toBe(true);
+		});
+	});
+
+	it("settings refuses any id but user, in a seed too", () => {
+		expect(
+			() =>
+				new MemoryStore({ rows: { settings: [fixtureRow("settings", "x")] } }),
+		).toThrow(InvalidInputError);
+	});
+
+	describe("a transaction that waits for itself", () => {
+		it("a nested transaction throws instead of hanging, and the outer rolls back", async () => {
+			const store = new MemoryStore();
+			await expect(
+				store.transaction(async (tx) => {
+					tx.put("rates", rate("outer"));
+					await store.transaction((inner) => inner.put("rates", rate("inner")));
+				}),
+			).rejects.toThrow(/savepoint/);
+			expect(store.list("rates")).toEqual([]);
+			// The queue is intact.
+			await store.transaction((tx) => tx.put("rates", rate("after")));
+			expect(ids(store.list("rates"))).toEqual(["after"]);
+		});
+
+		it("a nested begin throws too", async () => {
+			const store = new MemoryStore();
+			await expect(store.transaction(() => store.begin())).rejects.toThrow(
+				TransactionError,
+			);
+		});
+
+		it("other callers queued meanwhile are not mistaken for nesting", async () => {
+			const store = new MemoryStore();
+			const first = store.transaction(async (tx) => {
+				await Promise.resolve();
+				tx.put("rates", rate("a"));
+			});
+			const second = store.transaction((tx) => tx.put("rates", rate("b")));
+			await Promise.all([first, second]);
+			expect(ids(store.list("rates"))).toEqual(["a", "b"]);
+		});
+
+		it("a begin waiting past the timeout throws, and the queue moves on after", async () => {
+			const store = new MemoryStore({ beginTimeoutMs: 20 });
+			const forgotten = await store.begin();
+			await expect(store.begin()).rejects.toThrow(/waited 20 ms/);
+			await expect(store.transaction(() => undefined)).rejects.toThrow(
+				TransactionError,
+			);
+			forgotten.rollback();
+			await store.transaction((tx) => tx.put("rates", rate("after")));
+			expect(ids(store.list("rates"))).toEqual(["after"]);
+		});
+
+		it("without a timeout a wait that ends in time is fine", async () => {
+			const store = new MemoryStore({ beginTimeoutMs: 1000 });
+			const open = await store.begin();
+			const next = store.begin();
+			open.rollback();
+			(await next).rollback();
+		});
 	});
 });
