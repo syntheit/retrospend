@@ -38377,6 +38377,9 @@
 																},
 																"splitsNet": {
 																	"$ref": "#/components/schemas/Money"
+																},
+																"startingMoney": {
+																	"$ref": "#/components/schemas/Money"
 																}
 															},
 															"required": [
@@ -38385,7 +38388,8 @@
 																"assignedAhead",
 																"overspendTaken",
 																"returned",
-																"splitsNet"
+																"splitsNet",
+																"startingMoney"
 															],
 															"type": "object"
 														}

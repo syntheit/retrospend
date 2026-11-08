@@ -100,6 +100,7 @@ function month(o: {
 				overspendTaken: zero,
 				returned: zero,
 				splitsNet: zero,
+				startingMoney: zero,
 			},
 		},
 		groups: [

@@ -366,6 +366,7 @@
 		"left": "Disponível",
 		"moneyIn": "Entradas",
 		"assignedTo": "Atribuído a envelopes",
+		"startingBalance": "Saldo inicial",
 		"assignedAhead": "Atribuído ao mês seguinte",
 		"assignedAheadHint": "Fica lá até o mês começar.",
 		"overspendTaken": "Estouros descontados",

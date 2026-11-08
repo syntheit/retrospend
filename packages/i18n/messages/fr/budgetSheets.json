@@ -366,6 +366,7 @@
 		"left": "Reste",
 		"moneyIn": "Entrées",
 		"assignedTo": "Attribué aux enveloppes",
+		"startingBalance": "Solde de départ",
 		"assignedAhead": "Attribué au mois suivant",
 		"assignedAheadHint": "Cela attend là jusqu'au début du mois.",
 		"overspendTaken": "Dépassements repris",

@@ -20,6 +20,7 @@ import { type LoadedBook, loadBook } from "./inputs";
 import { buildMonthView, type MonthView } from "./month-view";
 import { owedSummary } from "./owed";
 import { coverOverview, fillFromTargets } from "./planning";
+import { startingMoneyIn } from "./starting-money-in";
 import type { Minor, MonthKey } from "./types";
 import { toMinor } from "./units";
 
@@ -91,6 +92,7 @@ async function computeMonthView(
 		owed: owedSummary(owedInputOf(loaded)),
 		groupBase,
 		approximateRows: loaded.approximate.length,
+		startingMoney: await startingMoneyIn(tx, loaded, key),
 	});
 	return { ...view, loaded };
 }

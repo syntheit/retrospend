@@ -14,6 +14,7 @@
 			"yourShare": "Ваша доля, {date}",
 			"dueOn": "Срок {date}",
 			"arrived": "{title}, {date}",
+			"startingBalance": "Начальный баланс, {date}",
 			"firstExpense": "Займёт около десяти секунд",
 			"homeCurrency": "В ней показываются все итоги",
 			"importStatement": "CSV или PDF из вашего банка",
