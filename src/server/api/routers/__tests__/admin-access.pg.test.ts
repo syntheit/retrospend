@@ -189,17 +189,20 @@ describe("admin access log: an admin deleting a Person", () => {
 	let alice: Made;
 	let bob: Made;
 	let carol: Made;
+	let erin: Made;
 
 	beforeAll(async () => {
 		admin = await createTestUser({ role: "ADMIN" });
 		alice = await createTestUser();
 		bob = await createTestUser();
 		carol = await createTestUser();
+		erin = await createTestUser();
 	});
 
 	const sharedWith = async (
 		creatorId: string,
 		participant: { type: "shadow" | "guest"; id: string },
+		alsoSplitWith: string[] = [],
 	) => {
 		const tx = await adminDb.sharedTransaction.create({
 			data: {
@@ -213,6 +216,37 @@ describe("admin access log: an admin deleting a Person", () => {
 				createdById: creatorId,
 			},
 		});
+		const shares = [
+			{ participantType: participant.type, participantId: participant.id },
+			...alsoSplitWith.map((id) => ({
+				participantType: "user" as const,
+				participantId: id,
+			})),
+		];
+		for (const share of shares) {
+			await adminDb.splitParticipant.create({
+				data: { transactionId: tx.id, shareAmount: "5", ...share },
+			});
+		}
+	};
+
+	/** An expense whose payer's account was deleted: the payer is the sentinel. */
+	const paidByDeletedUser = async (participant: {
+		type: "shadow" | "guest";
+		id: string;
+	}) => {
+		const tx = await adminDb.sharedTransaction.create({
+			data: {
+				description: "Old dinner",
+				amount: "10",
+				currency: "USD",
+				date: new Date("2026-01-01T00:00:00Z"),
+				paidByType: "user",
+				paidById: "DELETED_USER",
+				createdByType: "user",
+				createdById: "DELETED_USER",
+			},
+		});
 		await adminDb.splitParticipant.create({
 			data: {
 				transactionId: tx.id,
@@ -221,13 +255,26 @@ describe("admin access log: an admin deleting a Person", () => {
 				shareAmount: "5",
 			},
 		});
+		await adminDb.settlement.create({
+			data: {
+				fromParticipantType: participant.type,
+				fromParticipantId: participant.id,
+				toParticipantType: "user",
+				toParticipantId: "DELETED_USER",
+				amount: "5",
+				currency: "USD",
+			},
+		});
 	};
 
 	it("tells the person who added the Person, and whose expenses were rewritten", async () => {
 		const shadow = await adminDb.shadowProfile.create({
 			data: { createdById: alice.user.id, name: "Dana" },
 		});
-		await sharedWith(bob.user.id, { type: "shadow", id: shadow.id });
+		await sharedWith(bob.user.id, { type: "shadow", id: shadow.id }, [
+			bob.user.id,
+			erin.user.id,
+		]);
 
 		await asAdmin(admin).deleteShadowProfile({ id: shadow.id });
 
@@ -235,6 +282,10 @@ describe("admin access log: an admin deleting a Person", () => {
 			"person_deleted",
 		]);
 		expect((await asUser(bob).list()).map((r) => r.action)).toEqual([
+			"shared_data_changed",
+		]);
+		// Erin shares the expense without having paid or created it.
+		expect((await asUser(erin).list()).map((r) => r.action)).toEqual([
 			"shared_data_changed",
 		]);
 		expect(await asUser(carol).list()).toEqual([]);
@@ -260,6 +311,43 @@ describe("admin access log: an admin deleting a Person", () => {
 
 		expect((await asUser(carol).list()).map((r) => r.action)).toEqual([
 			"shared_data_changed",
+		]);
+	});
+
+	it("deletes a guest whose expense payer's account was deleted", async () => {
+		const guest = await adminDb.guestSession.create({
+			data: {
+				name: "Gus",
+				email: "gus2@pg-test.invalid",
+				magicLinkId: "ml-2",
+				projectId: "p-2",
+				sessionToken: `tok-${Math.random()}`,
+			},
+		});
+		await paidByDeletedUser({ type: "guest", id: guest.id });
+
+		await asAdmin(admin).deleteGuestSession({ id: guest.id });
+
+		expect(
+			await adminDb.guestSession.findUnique({ where: { id: guest.id } }),
+		).toBeNull();
+		expect(await adminDb.adminAccessLog.count({ where: { userId: "DELETED_USER" } })).toBe(0);
+	});
+
+	it("deletes a Person whose expense payer's account was deleted, and still tells the owner", async () => {
+		const owner = await createTestUser();
+		const shadow = await adminDb.shadowProfile.create({
+			data: { createdById: owner.user.id, name: "Dan" },
+		});
+		await paidByDeletedUser({ type: "shadow", id: shadow.id });
+
+		await asAdmin(admin).deleteShadowProfile({ id: shadow.id });
+
+		expect(
+			await adminDb.shadowProfile.findUnique({ where: { id: shadow.id } }),
+		).toBeNull();
+		expect((await asUser(owner).list()).map((r) => r.action)).toEqual([
+			"person_deleted",
 		]);
 	});
 

@@ -3,6 +3,7 @@ import type { ParticipantType, PrismaClient } from "~prisma";
 
 /** The global client or a transaction on it (the app role cannot write the log). */
 type LogDb = Pick<PrismaClient, "adminAccessLog">;
+type RemovalDb = Pick<PrismaClient, "adminAccessLog" | "user">;
 type ParticipantDb = Pick<
 	PrismaClient,
 	"splitParticipant" | "sharedTransaction" | "settlement"
@@ -88,8 +89,9 @@ export async function logAdminProcedure(
 
 /**
  * The users whose shared expenses or payments name this Person or guest, found
- * before it is deleted: the creators and payers of the expenses it is in, and
- * the other side of its payments. Ids only.
+ * before it is deleted: the creators, payers and other split members of the
+ * expenses it is in, and the other side of its payments. Ids only; may include
+ * the sentinel of a deleted account, which recordParticipantRemoval drops.
  */
 export async function usersSharingWithParticipant(
 	db: ParticipantDb,
@@ -109,11 +111,16 @@ export async function usersSharingWithParticipant(
 			],
 		},
 		select: {
+			id: true,
 			paidByType: true,
 			paidById: true,
 			createdByType: true,
 			createdById: true,
 		},
+	});
+	const members = await db.splitParticipant.findMany({
+		where: { transactionId: { in: expenses.map((e) => e.id) }, participantType: "user" },
+		select: { participantId: true },
 	});
 	const payments = await db.settlement.findMany({
 		where: {
@@ -134,6 +141,7 @@ export async function usersSharingWithParticipant(
 		if (e.paidByType === "user") users.add(e.paidById);
 		if (e.createdByType === "user") users.add(e.createdById);
 	}
+	for (const m of members) users.add(m.participantId);
 	for (const p of payments) {
 		if (p.fromParticipantType === "user") users.add(p.fromParticipantId);
 		if (p.toParticipantType === "user") users.add(p.toParticipantId);
@@ -145,13 +153,29 @@ export async function usersSharingWithParticipant(
  * Logs an admin deleting a Person or guest: "person_deleted" for the user who
  * added the Person (if any), "shared_data_changed" for each user whose
  * expenses or payments were rewritten. Call it inside the deleting
- * transaction.
+ * transaction. Ids with no user row (the sentinel of a deleted account) are
+ * skipped, so the log never makes the delete fail.
  */
 export async function recordParticipantRemoval(
-	db: LogDb,
+	db: RemovalDb,
 	params: { adminId: string; ownerId?: string; affectedUserIds: string[] },
 ): Promise<void> {
-	if (params.ownerId) {
+	const existing = new Set(
+		(
+			await db.user.findMany({
+				where: {
+					id: {
+						in: [
+							...params.affectedUserIds,
+							...(params.ownerId ? [params.ownerId] : []),
+						],
+					},
+				},
+				select: { id: true },
+			})
+		).map((u) => u.id),
+	);
+	if (params.ownerId && existing.has(params.ownerId)) {
 		await recordAdminAccess(db, {
 			adminId: params.adminId,
 			userId: params.ownerId,
@@ -159,6 +183,7 @@ export async function recordParticipantRemoval(
 		});
 	}
 	for (const userId of params.affectedUserIds) {
+		if (!existing.has(userId)) continue;
 		await recordAdminAccess(db, {
 			adminId: params.adminId,
 			userId,
