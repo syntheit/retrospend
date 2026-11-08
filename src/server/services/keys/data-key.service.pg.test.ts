@@ -251,8 +251,11 @@ describe("who can reach which key", () => {
 		await keyringOf(me, master());
 		const refusal = /no signed-in user/;
 
-		// A bare raw query on the scoped client has no setting at all.
-		await expect(readFunction(me.db)).rejects.toThrow(refusal);
+		// A bare raw query on the scoped client is refused before it reaches
+		// the database.
+		expect(() => readFunction(me.db)).toThrow(
+			/not allowed on a user-scoped client/,
+		);
 		// An owner transaction with the setting empty.
 		await expect(
 			adminDb.$transaction(async (tx) => {
