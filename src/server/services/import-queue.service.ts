@@ -17,6 +17,7 @@ import {
 	AI_IMPORT_OFF_MESSAGE,
 	isAiImportEnabled,
 	recordTokenUsage,
+	requireAiImport,
 	resolveAiAccess,
 } from "./ai-access.service";
 import { CsvService } from "./csv.service";
@@ -79,15 +80,9 @@ export class ImportQueueService {
 			});
 		}
 
-		// AI reads a statement only when the person turned AI import on. A
-		// spreadsheet falls back to the plain CSV reader; a PDF has no other reader.
-		let type = input.type;
-		if (type === "BANK_STATEMENT" && !(await isAiImportEnabled(this.db, userId))) {
-			if (input.fileType === "pdf") {
-				throw new TRPCError({ code: "FORBIDDEN", message: AI_IMPORT_OFF_MESSAGE });
-			}
-			type = "CSV";
-		}
+		// A PDF has no reader but AI; a spreadsheet is read as a CSV instead.
+		if (input.type === "BANK_STATEMENT" && input.fileType === "pdf")
+			await requireAiImport(this.db, userId);
 
 		const pendingCount = await this.db.importJob.count({
 			where: {
@@ -108,7 +103,7 @@ export class ImportQueueService {
 				id: generateId(),
 				userId,
 				status: "QUEUED",
-				type,
+				type: input.type,
 				fileName: input.fileName,
 				fileSize: input.fileSize,
 				fileType: input.fileType,
@@ -435,7 +430,10 @@ export class ImportQueueService {
 		// Checked again here: the setting can be turned off while a job waits.
 		if (!(await isAiImportEnabled(this.db, job.userId))) {
 			if (job.fileType === "pdf") throw new Error(AI_IMPORT_OFF_MESSAGE);
-			return this.processCsvJob(job);
+			// A file that is not in Retrospend's format needs AI, so say that.
+			return this.processCsvJob(job).catch(() => {
+				throw new Error(AI_IMPORT_OFF_MESSAGE);
+			});
 		}
 
 		const importerUrl = env.SIDECAR_URL;

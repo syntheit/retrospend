@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { env } from "~/env";
 import type { Prisma, PrismaClient } from "~prisma";
 import { getAppSettings } from "./settings";
@@ -22,6 +23,15 @@ export async function isAiImportEnabled(
 		select: { aiImportEnabled: true },
 	});
 	return user?.aiImportEnabled ?? false;
+}
+
+/** Refuses a file that only AI can read while the person has AI import off. */
+export async function requireAiImport(
+	db: PrismaClient | Prisma.TransactionClient,
+	userId: string,
+): Promise<void> {
+	if (!(await isAiImportEnabled(db, userId)))
+		throw new TRPCError({ code: "FORBIDDEN", message: AI_IMPORT_OFF_MESSAGE });
 }
 
 export interface ImportProvider {

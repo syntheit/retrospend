@@ -51,7 +51,7 @@ describe("/api/v1/settings", () => {
 
 		it("stores monthly income from minor units and reads it back", async () => {
 			// ARS 1.234.567,89 = 123456789 minor units.
-			const patched = await expectBody(
+			const patched = await expectBody<{ aiImportEnabled: boolean }>(
 				await call("/settings", {
 					method: "PATCH",
 					headers: asAlice,
@@ -77,7 +77,7 @@ describe("/api/v1/settings", () => {
 		});
 
 		it("sets the time zone and refuses one off the list", async () => {
-			const patched = await expectBody(
+			const patched = await expectBody<{ aiImportEnabled: boolean }>(
 				await call("/settings", {
 					method: "PATCH",
 					headers: asAlice,
@@ -158,6 +158,34 @@ describe("/api/v1/settings", () => {
 			);
 		});
 
+		it("keeps AI import off until the caller turns it on, for the caller only", async () => {
+			const before = await expectBody<{ aiImportEnabled: boolean }>(
+				await call("/settings", { headers: asBob }),
+				s.get,
+			);
+			expect(before.aiImportEnabled).toBe(false);
+			const patched = await expectBody<{ aiImportEnabled: boolean }>(
+				await call("/settings", {
+					method: "PATCH",
+					headers: asAlice,
+					body: { aiImportEnabled: true },
+					idempotent: true,
+				}),
+				s.update,
+			);
+			expect(patched.aiImportEnabled).toBe(true);
+			const alices = await expectBody<{ aiImportEnabled: boolean }>(
+				await call("/settings", { headers: asAlice }),
+				s.get,
+			);
+			const bobs = await expectBody<{ aiImportEnabled: boolean }>(
+				await call("/settings", { headers: asBob }),
+				s.get,
+			);
+			expect(alices.aiImportEnabled).toBe(true);
+			expect(bobs.aiImportEnabled).toBe(false);
+		});
+
 		it("changes only the caller (RLS)", async () => {
 			await call("/settings", {
 				method: "PATCH",
@@ -165,7 +193,7 @@ describe("/api/v1/settings", () => {
 				body: { language: "es-AR" },
 				idempotent: true,
 			});
-			const alices = await expectBody(
+			const alices = await expectBody<{ aiImportEnabled: boolean }>(
 				await call("/settings", { headers: asAlice }),
 				s.get,
 			);
@@ -183,7 +211,7 @@ describe("/api/v1/settings", () => {
 				page: "table",
 				settings: { version: 1, showDescriptions: true },
 			});
-			const patched = await expectBody(
+			const patched = await expectBody<{ aiImportEnabled: boolean }>(
 				await call("/settings/pages/table", {
 					method: "PATCH",
 					headers: asAlice,

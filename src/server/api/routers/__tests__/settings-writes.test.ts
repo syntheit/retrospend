@@ -86,6 +86,13 @@ describe("settings.updateGeneral", () => {
 		});
 	});
 
+	it("writes the AI import setting alone", async () => {
+		await callAndFlush(() => caller().updateGeneral({ aiImportEnabled: true }));
+		expect(mockDb.user.update.mock.calls[0]?.[0].data).toEqual({
+			aiImportEnabled: true,
+		});
+	});
+
 	it("still writes the home currency when that is the change", async () => {
 		await callAndFlush(() => caller().updateGeneral({ homeCurrency: "ARS" }));
 		expect(mockDb.user.update.mock.calls[0]?.[0].data).toEqual({

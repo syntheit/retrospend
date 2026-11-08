@@ -136,6 +136,26 @@ describe("AI import opt-in", () => {
 		});
 	});
 
+	describe("a bank spreadsheet queued while on, read after the setting was turned off", () => {
+		it("fails saying AI import is off, not a CSV column error", async () => {
+			optedIn(false);
+			db.importJob.findFirst
+				.mockResolvedValueOnce(queuedJob("csv", BANK_CSV))
+				.mockResolvedValueOnce(null);
+			db.importJob.update.mockResolvedValue({});
+
+			await service.processQueue("user-1");
+
+			const failed = db.importJob.update.mock.calls.find(
+				(c) => (c[0] as { data: { status?: string } }).data.status === "FAILED",
+			);
+			const text = JSON.stringify(failed);
+			expect(text).toContain(AI_IMPORT_OFF_MESSAGE);
+			expect(text).not.toContain("title");
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
+	});
+
 	describe("a queued statement with the setting on", () => {
 		it("goes to the sidecar, on the provider the account uses", async () => {
 			optedIn(true);
@@ -176,18 +196,38 @@ describe("AI import opt-in", () => {
 			expect(db.importJob.create).not.toHaveBeenCalled();
 		});
 
-		it("keeps a spreadsheet as a plain CSV job while the setting is off", async () => {
+		it("queues a spreadsheet while the setting is off, to be read as a Retrospend CSV", async () => {
 			optedIn(false);
-			db.importJob.create.mockResolvedValue(queuedJob("csv", BANK_CSV, "CSV"));
+			db.importJob.create.mockResolvedValue(queuedJob("csv", BANK_CSV));
 			db.importJob.findFirst.mockResolvedValue(null);
 
 			await service.createJob("user-1", input("csv"));
 
 			expect(db.importJob.create).toHaveBeenCalledWith(
 				expect.objectContaining({
-					data: expect.objectContaining({ type: "CSV" }),
+					data: expect.objectContaining({ type: "BANK_STATEMENT" }),
 				}),
 			);
+		});
+
+		it("a bank spreadsheet created while off, then read, fails saying AI import is off", async () => {
+			optedIn(false);
+			const job = queuedJob("csv", BANK_CSV);
+			db.importJob.create.mockResolvedValue(job);
+			db.importJob.findFirst
+				.mockResolvedValueOnce(job)
+				.mockResolvedValueOnce(null);
+			db.importJob.update.mockResolvedValue({});
+
+			await service.createJob("user-1", input("csv"));
+			await vi.waitFor(() => {
+				const failed = db.importJob.update.mock.calls.find(
+					(c) =>
+						(c[0] as { data: { status?: string } }).data.status === "FAILED",
+				);
+				expect(JSON.stringify(failed)).toContain(AI_IMPORT_OFF_MESSAGE);
+			});
+			expect(fetchMock).not.toHaveBeenCalled();
 		});
 
 		it("queues a PDF as a statement job when the setting is on", async () => {

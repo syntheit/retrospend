@@ -2,6 +2,11 @@ import { type NextRequest, NextResponse } from "next/server";
 import { env } from "~/env";
 import { db } from "~/server/db";
 import { getWebSession } from "~/server/better-auth/web-session";
+import {
+	AI_IMPORT_OFF_MESSAGE,
+	isAiImportEnabled,
+	resolveAiAccess,
+} from "~/server/services/ai-access.service";
 
 export async function POST(request: NextRequest) {
 	// Validate session
@@ -19,6 +24,27 @@ export async function POST(request: NextRequest) {
 
 	if (!activeUser?.isActive) {
 		return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+	}
+
+	// The same gate and quota as the import queue: no file reaches a provider
+	// unless the person turned AI import on.
+	if (!(await isAiImportEnabled(db, session.user.id))) {
+		return NextResponse.json({ error: AI_IMPORT_OFF_MESSAGE }, { status: 403 });
+	}
+	const mode = await db.user.findUnique({
+		where: { id: session.user.id },
+		select: { aiMode: true },
+	});
+	const aiAccess = await resolveAiAccess(
+		db,
+		session.user.id,
+		mode?.aiMode ?? "LOCAL",
+	);
+	if (!aiAccess.allowed) {
+		return NextResponse.json(
+			{ error: aiAccess.reason ?? "AI token quota exceeded" },
+			{ status: 429 },
+		);
 	}
 
 	const importerUrl = env.SIDECAR_URL;
@@ -82,6 +108,10 @@ export async function POST(request: NextRequest) {
 	// Forward to the Go importer
 	const importerFormData = new FormData();
 	importerFormData.append("file", file);
+	importerFormData.append(
+		"provider",
+		aiAccess.effectiveMode === "EXTERNAL" ? "openrouter" : "local",
+	);
 
 	const currency = formData.get("currency");
 	if (currency && typeof currency === "string") {
