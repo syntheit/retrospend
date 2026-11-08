@@ -1,15 +1,17 @@
 /**
- * Text search for the Activity keys, in the app layer. Titles, descriptions
- * and notes may be ciphertext, which Postgres cannot match. A search reads
+ * The app-layer path of the Activity text search, used when a keyring is set
+ * (`searchesInApp`: field encryption is active). Without one, Postgres
+ * matches in SQL (query-parts.ts, no row limit). Titles, descriptions and
+ * notes may be ciphertext, which Postgres cannot match. A search reads
  * candidate rows with every other filter applied in SQL (one query per
  * source, the newest SEARCH_CANDIDATE_CAP each), reads the text through
  * readUserText and matches it here, then query.ts cuts the cursor and the
- * page from the matches. The old SQL matched with
+ * page from the matches. The SQL path matches with
  * `lower(translate(col, FOLD_FROM, FOLD_TO)) LIKE '%q%'`; foldColumn is that.
  */
 import type { Keyring } from "~/server/crypto/field-crypto";
 import { Prisma } from "~prisma";
-import { readUserText } from "../search-fold";
+import { readUserText, searchesInApp } from "../search-fold";
 import {
 	all,
 	type KeyQuery,
@@ -32,13 +34,14 @@ type Db = Prisma.TransactionClient;
 
 /**
  * What a search looks for: the folded text, and the numbers a typed amount
- * can mean. Null when there is no search (blank counts as none).
+ * can mean. Null when there is no search (blank counts as none) and when
+ * there is no keyring, which leaves the text to the SQL path.
  */
 export function searchOf(
 	k: KeyQuery,
 ): { needle: string; amounts: string[] } | null {
 	const q = k.filter.q?.trim();
-	if (!q) return null;
+	if (!q || !searchesInApp(k.keyring)) return null;
 	return { needle: foldText(q), amounts: amountCandidates(q) };
 }
 

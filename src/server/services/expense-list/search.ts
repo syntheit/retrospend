@@ -2,8 +2,9 @@
  * Search text and the page cursor for the Activity read, as pure functions.
  *
  * Search ignores case and accents (RC-10): "almacen" finds "Almacén". Both
- * sides fold through the same letter table, in the app layer: the stored text
- * may be ciphertext, which Postgres cannot match (see query.ts).
+ * sides fold through the same letter table: in SQL (`translate`) for the
+ * columns, or in the app layer when the stored text may be ciphertext, which
+ * Postgres cannot match (search-scan.ts).
  */
 import { pgLower } from "../search-fold";
 
@@ -32,6 +33,11 @@ export function foldColumn(text: string): string {
 	let out = "";
 	for (const c of text) out += FOLD.get(c) ?? c;
 	return pgLower(out);
+}
+
+/** A LIKE pattern that matches `q` anywhere, its wildcards escaped (the SQL path). */
+export function likePattern(q: string): string {
+	return `%${foldText(q.trim()).replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 }
 
 /**

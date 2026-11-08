@@ -4,8 +4,10 @@
  * cursor and the count are exact across sources. The rows themselves are
  * read afterwards (rows.ts), only for the page.
  *
- * A text search is the exception: its text may be ciphertext, so it matches
- * in the app layer (search-scan.ts) and this file only cuts the page.
+ * A text search has two paths (`searchesInApp`). Without a keyring it is one
+ * more WHERE part in the SQL (query-parts.ts), over every row. With a keyring
+ * the text may be ciphertext, so it matches in the app layer (search-scan.ts)
+ * and this file only cuts the page.
  */
 import { Prisma } from "~prisma";
 import {

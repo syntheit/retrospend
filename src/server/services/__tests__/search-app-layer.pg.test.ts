@@ -23,7 +23,7 @@ import {
 	FOLD_TO,
 } from "~/server/services/expense-list/search";
 import { listV2Input } from "~/server/services/expense-list/types";
-import { searchExpenses } from "~/server/services/search.service";
+import { searchExpenses as searchExpensesWith } from "~/server/services/search.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 
@@ -32,6 +32,26 @@ const day = (d: number, m = 10) =>
 	fromWallTime({ year: 2026, month: m - 1, day: d }, TZ);
 const NOW = new Date("2026-10-21T15:00:00Z");
 const keyring = new Keyring([{ id: 1, key: Buffer.alloc(32, 9) }]);
+/** Both ways to match text. Plaintext rows must give the same answer on each. */
+const PATHS = [
+	["the SQL path (no keyring)", undefined],
+	["the app-layer path (keyring)", keyring],
+] as const;
+
+/** Counts $queryRaw calls on a transaction client. */
+function counted(tx: Prisma.TransactionClient, count: { n: number }) {
+	return new Proxy(tx, {
+		get(target, prop, receiver) {
+			const value = Reflect.get(target, prop, receiver);
+			if (prop === "$queryRaw")
+				return (...args: unknown[]) => {
+					count.n++;
+					return (value as (...a: unknown[]) => unknown).apply(target, args);
+				};
+			return typeof value === "function" ? value.bind(target) : value;
+		},
+	});
+}
 
 type Who = Awaited<ReturnType<typeof createTestUser>>;
 let me: Who;
@@ -267,10 +287,24 @@ const ACTIVITY_QUERIES = [
 	"zzz",
 ];
 
-const activity = (q: string, extra: object = {}) =>
-	listActivity(me.db, me.user.id, listV2Input.parse({ q, ...extra }), TZ, NOW);
+const activityWith = (
+	ring: Keyring | undefined,
+	q: string,
+	extra: object = {},
+) =>
+	listActivity(
+		me.db,
+		me.user.id,
+		listV2Input.parse({ q, ...extra }),
+		TZ,
+		NOW,
+		ring,
+	);
 
-describe("Activity search, app layer vs the old SQL", () => {
+describe.each(PATHS)("Activity search on %s vs the old SQL", (_name, ring) => {
+	const activity = (q: string, extra: object = {}) =>
+		activityWith(ring, q, extra);
+
 	it.each(ACTIVITY_QUERIES)(
 		"returns the old rows in the old order for %j",
 		async (q) => {
@@ -337,67 +371,77 @@ describe("Activity search, app layer vs the old SQL", () => {
 	});
 });
 
-describe("v1 expense search, app layer vs the old SQL", () => {
-	const V1_QUERIES = [
-		"cafe",
-		"CAFÉ",
-		"caf",
-		"con leche",
-		"ñandú",
-		"nandu",
-		"ÑUÑOA",
-		"100%",
-		"_",
-		"\\",
-		"muñoz & hijos",
-		"istanbul",
-		"İSTANBUL",
-		"strasse",
-		"STRAßE",
-		"oficina",
-		"café de la",
-		"  cafe",
-		"zzz",
-	];
+describe.each(PATHS)(
+	"v1 expense search on %s vs the old SQL",
+	(_name, ring) => {
+		const searchExpenses = (
+			db: typeof adminDb,
+			userId: string,
+			q: string,
+			page: { after: { date: string; id: string } | null; take: number },
+		) => searchExpensesWith(db, userId, q, page, ring ? { keyring: ring } : {});
 
-	it.each(V1_QUERIES)(
-		"pages the same rows as the old SQL for %j",
-		async (q) => {
-			let after: { date: string; id: string } | null = null;
-			for (let guard = 0; guard < 20; guard++) {
-				const want = await oldSearchExpenses(me.user.id, q, after, 3);
-				const got = await searchExpenses(adminDb, me.user.id, q, {
-					after,
-					take: 3,
-				});
-				expect(
-					got.map((r) => ({ id: r.id, title: r.title })),
-					`${q} after ${after?.id}`,
-				).toEqual(want.map((r) => ({ id: r.id, title: r.title })));
-				const last = want.at(-1);
-				if (want.length < 3 || !last) return;
-				after = { date: last.date.toISOString(), id: last.id };
-			}
-		},
-	);
+		const V1_QUERIES = [
+			"cafe",
+			"CAFÉ",
+			"caf",
+			"con leche",
+			"ñandú",
+			"nandu",
+			"ÑUÑOA",
+			"100%",
+			"_",
+			"\\",
+			"muñoz & hijos",
+			"istanbul",
+			"İSTANBUL",
+			"strasse",
+			"STRAßE",
+			"oficina",
+			"café de la",
+			"  cafe",
+			"zzz",
+		];
 
-	it("finds Straße by strasse and by the accented spelling", async () => {
-		const titles = async (q: string) =>
-			(
-				await searchExpenses(adminDb, me.user.id, q, { after: null, take: 5 })
-			).map((r) => r.title);
-		expect(await titles("strasse")).toEqual(["Straße"]);
-		expect(await titles("straße")).toEqual(["Straße"]);
-	});
+		it.each(V1_QUERIES)(
+			"pages the same rows as the old SQL for %j",
+			async (q) => {
+				let after: { date: string; id: string } | null = null;
+				for (let guard = 0; guard < 20; guard++) {
+					const want = await oldSearchExpenses(me.user.id, q, after, 3);
+					const got = await searchExpenses(adminDb, me.user.id, q, {
+						after,
+						take: 3,
+					});
+					expect(
+						got.map((r) => ({ id: r.id, title: r.title })),
+						`${q} after ${after?.id}`,
+					).toEqual(want.map((r) => ({ id: r.id, title: r.title })));
+					const last = want.at(-1);
+					if (want.length < 3 || !last) return;
+					after = { date: last.date.toISOString(), id: last.id };
+				}
+			},
+		);
 
-	it("returns money columns as text for the caller to shape", async () => {
-		const [hit] = await searchExpenses(adminDb, me.user.id, "super", {
-			after: null,
-			take: 1,
+		it("finds Straße by strasse and by the accented spelling", async () => {
+			const titles = async (q: string) =>
+				(
+					await searchExpenses(adminDb, me.user.id, q, { after: null, take: 5 })
+				).map((r) => r.title);
+			expect(await titles("strasse")).toEqual(["Straße"]);
+			expect(await titles("straße")).toEqual(["Straße"]);
 		});
-		expect(hit).toMatchObject({ amount: "64000.00000000", currency: "ARS" });
-	});
-});
+
+		it("returns money columns as text for the caller to shape", async () => {
+			const [hit] = await searchExpenses(adminDb, me.user.id, "super", {
+				after: null,
+				take: 1,
+			});
+			expect(hit).toMatchObject({ amount: "64000.00000000", currency: "ARS" });
+		});
+	},
+);
 
 describe("rows that hold ciphertext", () => {
 	let user: Who;
@@ -491,7 +535,7 @@ describe("rows that hold ciphertext", () => {
 	});
 
 	it("v1 search matches them and returns the title in the clear", async () => {
-		const hits = await searchExpenses(
+		const hits = await searchExpensesWith(
 			adminDb,
 			user.user.id,
 			"CAFE",
@@ -505,15 +549,19 @@ describe("rows that hold ciphertext", () => {
 		]);
 	});
 
-	it("fails loudly with no key or the wrong row, never skips the row", async () => {
-		await expect(
-			userTransaction(adminDb, user.user.id, (tx) =>
-				pageKeys(tx, query("cafe", false), null, 50),
-			),
-		).rejects.toBeInstanceOf(FieldCryptoError);
-		await expect(
-			searchExpenses(adminDb, user.user.id, "cafe", { after: null, take: 5 }),
-		).rejects.toBeInstanceOf(FieldCryptoError);
+	it("without a keyring the SQL path runs and sealed rows are not found", async () => {
+		const noKey = await userTransaction(adminDb, user.user.id, async (tx) =>
+			(await pageKeys(tx, query("cafe", false), null, 50)).map((k) => k.id),
+		);
+		expect(noKey).toEqual([ids["Plain café"]]);
+		const v1 = await searchExpensesWith(adminDb, user.user.id, "cafe", {
+			after: null,
+			take: 5,
+		});
+		expect(v1.map((h) => h.title)).toEqual(["Plain café"]);
+	});
+
+	it("fails loudly for a value sealed for another row, never skips it", async () => {
 		const moved = randomUUID();
 		await adminDb.expense.create({
 			data: {
@@ -537,23 +585,8 @@ describe("rows that hold ciphertext", () => {
 	});
 });
 
-describe("the candidate bound and the query count", () => {
+describe("the app-layer path: candidate bound and query count", () => {
 	let user: Who;
-
-	/** Counts $queryRaw calls on a transaction client. */
-	function counted(tx: Prisma.TransactionClient, count: { n: number }) {
-		return new Proxy(tx, {
-			get(target, prop, receiver) {
-				const value = Reflect.get(target, prop, receiver);
-				if (prop === "$queryRaw")
-					return (...args: unknown[]) => {
-						count.n++;
-						return (value as (...a: unknown[]) => unknown).apply(target, args);
-					};
-				return typeof value === "function" ? value.bind(target) : value;
-			},
-		});
-	}
 
 	beforeAll(async () => {
 		user = await createTestUser();
@@ -580,6 +613,7 @@ describe("the candidate bound and the query count", () => {
 			filter: listV2Input.parse({ q }),
 			bounds: {},
 			excludedProjectIds: [],
+			keyring,
 		};
 		const found = await userTransaction(adminDb, user.user.id, async (tx) => {
 			const t = counted(tx, count);
@@ -609,7 +643,13 @@ describe("the candidate bound and the query count", () => {
 					options: object,
 				) => adminDb.$transaction((tx) => fn(counted(tx, count)), options),
 			} as unknown as typeof adminDb;
-			await searchExpenses(client, user.user.id, q, { after: null, take: 51 });
+			await searchExpensesWith(
+				client,
+				user.user.id,
+				q,
+				{ after: null, take: 51 },
+				{ keyring },
+			);
 			expect(count.n, q).toBe(1);
 		}
 	});
@@ -621,6 +661,7 @@ describe("the candidate bound and the query count", () => {
 			bounds: {},
 			excludedProjectIds: [],
 			candidateCap: 10,
+			keyring,
 		};
 		const found = await userTransaction(adminDb, user.user.id, (tx) =>
 			pageKeys(tx, k, null, 50),
@@ -638,30 +679,65 @@ describe("the candidate bound and the query count", () => {
 	});
 
 	it("v1 search reads a window of the newest expenses and cuts the cursor inside it", async () => {
-		const all = await searchExpenses(adminDb, user.user.id, "volumen", {
+		const all = await searchExpensesWith(adminDb, user.user.id, "volumen", {
 			after: null,
 			take: 100,
 		});
 		expect(all).toHaveLength(60);
-		const windowed = await searchExpenses(
+		const windowed = await searchExpensesWith(
 			adminDb,
 			user.user.id,
 			"volumen",
 			{ after: null, take: 100 },
-			{ window: 10 },
+			{ keyring, window: 10 },
 		);
 		expect(windowed.map((r) => r.id)).toEqual(
 			all.slice(0, 10).map((r) => r.id),
 		);
 		const last = all[5];
 		const after = last ? { date: last.date.toISOString(), id: last.id } : null;
-		const next = await searchExpenses(
+		const next = await searchExpensesWith(
 			adminDb,
 			user.user.id,
 			"volumen",
 			{ after, take: 100 },
-			{ window: 10 },
+			{ keyring, window: 10 },
 		);
 		expect(next.map((r) => r.id)).toEqual(all.slice(6, 10).map((r) => r.id));
+	});
+
+	it("picks the path by the keyring: the SQL path has no cap, the app layer does", async () => {
+		const run = async (ring?: Keyring) => {
+			const count = { n: 0 };
+			const k = {
+				userId: user.user.id,
+				filter: listV2Input.parse({ q: "volumen" }),
+				bounds: {},
+				excludedProjectIds: [],
+				candidateCap: 10,
+				...(ring ? { keyring: ring } : {}),
+			};
+			const found = await userTransaction(adminDb, user.user.id, (tx) =>
+				pageKeys(counted(tx, count), k, null, 100),
+			);
+			return { found: found.length, queries: count.n };
+		};
+		// One UNION query over every row: older than the cap, still found.
+		expect(await run()).toEqual({ found: 60, queries: 1 });
+		// One candidate query per source, cut at the cap.
+		expect(await run(keyring)).toEqual({ found: 10, queries: 3 });
+
+		const v1 = async (options: { keyring?: Keyring; window: number }) =>
+			(
+				await searchExpensesWith(
+					adminDb,
+					user.user.id,
+					"volumen",
+					{ after: null, take: 100 },
+					options,
+				)
+			).length;
+		expect(await v1({ window: 10 })).toBe(60);
+		expect(await v1({ keyring, window: 10 })).toBe(10);
 	});
 });

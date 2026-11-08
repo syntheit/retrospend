@@ -1,12 +1,14 @@
 /**
- * The pieces of the Activity key queries that do not depend on how the text
- * is matched: the query's types and the WHERE parts of each source (personal
+ * The pieces of the Activity key queries: the query's types and the WHERE
+ * parts of each source, SQL text search included (personal
  * expenses, your shares, payments). query.ts builds the SQL page from them,
- * search-scan.ts the candidate rows of a text search.
+ * search-scan.ts the candidate rows of an app-layer text search.
  */
 
 import type { Keyring } from "~/server/crypto/field-crypto";
 import { Prisma } from "~prisma";
+import { searchesInApp } from "../search-fold";
+import { amountCandidates, FOLD_FROM, FOLD_TO, likePattern } from "./search";
 import type { ActivityKind, ListV2Filter } from "./types";
 import { NO_CATEGORY } from "./types";
 
@@ -45,6 +47,31 @@ export function dateParts(col: Prisma.Sql, b: ListBounds): Prisma.Sql[] {
 }
 
 export const has = (list?: readonly unknown[]) => !!list && list.length > 0;
+
+const fold = (col: Prisma.Sql) =>
+	Prisma.sql`lower(translate(${col}, ${FOLD_FROM}, ${FOLD_TO}))`;
+
+/**
+ * The SQL path of a text search: text columns that fold-match, or an amount
+ * equal to a typed number. Null when there is no search, and also when a
+ * keyring is set: then the text may be ciphertext and search-scan.ts matches
+ * it in the app layer (see searchesInApp).
+ */
+function sqlSearchPart(
+	k: KeyQuery,
+	texts: Prisma.Sql[],
+	amounts: Prisma.Sql[],
+): Prisma.Sql | null {
+	const q = k.filter.q;
+	if (searchesInApp(k.keyring) || !q?.trim()) return null;
+	const pattern = likePattern(q);
+	const nums = amountCandidates(q);
+	const ors = texts.map((t) => Prisma.sql`${fold(t)} LIKE ${pattern}`);
+	if (nums.length)
+		for (const a of amounts)
+			ors.push(Prisma.sql`${a} = ANY(${nums}::numeric[])`);
+	return Prisma.sql`(${Prisma.join(ors, " OR ")})`;
+}
 
 /** Personal entry kinds a Type pick lists; reimbursements have no rows yet (2D). */
 export const PERSONAL_KIND_SQL: Partial<Record<ActivityKind, Prisma.Sql>> = {
@@ -128,6 +155,16 @@ export function personalParts(k: KeyQuery): Prisma.Sql[] {
 		parts.push(
 			categoryPart(Prisma.sql`e."categoryId"`, f.categoryIds, PERSONAL_NONE),
 		);
+	const text = sqlSearchPart(
+		k,
+		[
+			Prisma.sql`e.title`,
+			Prisma.sql`coalesce(e.description, '')`,
+			Prisma.sql`coalesce(e.location, '')`,
+		],
+		[Prisma.sql`e.amount`],
+	);
+	if (text) parts.push(text);
 	if (has(f.currencies))
 		parts.push(Prisma.sql`e.currency = ANY(${f.currencies}::text[])`);
 	if (k.only) parts.push(Prisma.sql`e.id = ${k.only.id}`);
@@ -169,6 +206,12 @@ export function sharedParts(k: KeyQuery): Prisma.Sql[] {
 		parts.push(
 			Prisma.sql`${keyOf(Prisma.sql`st."paidByType"`, Prisma.sql`st."paidById"`)} = ANY(${payerKeys(k)}::text[])`,
 		);
+	const text = sqlSearchPart(
+		k,
+		[Prisma.sql`st.description`, Prisma.sql`coalesce(st.notes, '')`],
+		[Prisma.sql`st.amount`, Prisma.sql`sp."shareAmount"`],
+	);
+	if (text) parts.push(text);
 	if (has(f.currencies))
 		parts.push(Prisma.sql`st.currency = ANY(${f.currencies}::text[])`);
 	if (k.only) parts.push(Prisma.sql`st.id = ${k.only.id}`);
@@ -202,6 +245,12 @@ export function paymentGroups(k: KeyQuery, extra: Prisma.Sql): Prisma.Sql {
 		Prisma.sql`s."toParticipantType"`,
 		Prisma.sql`s."toParticipantId"`,
 	);
+	// The SQL path matches note and method as one string; the app-layer path
+	// reads the notes itself (they may be ciphertext).
+	const words = searchesInApp(k.keyring)
+		? Prisma.empty
+		: Prisma.sql`,
+			coalesce(min(s.note), '') || ' ' || coalesce(min(s."paymentMethod"), '') AS words`;
 	return Prisma.sql`(
 		SELECT coalesce(s."paymentGroupId", s.id) || '|' || s.currency AS key,
 			min(s.currency) AS currency,
@@ -209,7 +258,7 @@ export function paymentGroups(k: KeyQuery, extra: Prisma.Sql): Prisma.Sql {
 			sum(s.amount) AS amount,
 			bool_or(coalesce(s."projectId" = ANY(${f.projectIds ?? []}::text[]), false)) AS in_project,
 			min(CASE WHEN ${from} = ${me} THEN ${to} ELSE ${from} END) AS other,
-			min(${from}) AS payer${extra}
+			min(${from}) AS payer${words}${extra}
 		FROM settlement s
 		WHERE ${PAYMENT_ROW}
 			AND (${from} = ${me} OR ${to} = ${me})
@@ -227,6 +276,8 @@ export function paymentParts(k: KeyQuery): Prisma.Sql[] {
 	if (has(f.people)) parts.push(Prisma.sql`g.other = ANY(${f.people}::text[])`);
 	if (has(f.paidBy))
 		parts.push(Prisma.sql`g.payer = ANY(${payerKeys(k)}::text[])`);
+	const text = sqlSearchPart(k, [Prisma.sql`g.words`], [Prisma.sql`g.amount`]);
+	if (text) parts.push(text);
 	if (k.only) parts.push(Prisma.sql`g.key = ${k.only.id}`);
 	return parts;
 }

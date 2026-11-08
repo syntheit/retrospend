@@ -15,6 +15,7 @@ import {
 } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import { preferredRateType } from "~/lib/rate-selection";
+import type { Keyring } from "~/server/crypto/field-crypto";
 import { userTransaction } from "~/server/db-tx";
 import { findExchangeRate } from "~/server/exchange-rates";
 import type { Prisma, PrismaClient } from "~prisma";
@@ -56,6 +57,8 @@ export async function listActivity(
 	filter: ListV2Filter,
 	requestZone?: string,
 	now: Date = new Date(),
+	/** Passing one makes a text search match in the app layer (ciphertext). */
+	keyring?: Keyring,
 ): Promise<ListV2Result> {
 	const timeZone = normalizeTimeZone(requestZone);
 	const after = filter.cursor ? decodeCursor(filter.cursor) : null;
@@ -74,7 +77,13 @@ export async function listActivity(
 			getExcludedProjectIds(tx, userId),
 			getDefaultRateTypes(tx, userId),
 		]);
-		const k: KeyQuery = { userId, filter, bounds, excludedProjectIds };
+		const k: KeyQuery = {
+			userId,
+			filter,
+			bounds,
+			excludedProjectIds,
+			...(keyring ? { keyring } : {}),
+		};
 		const keys = await pageKeys(tx, k, after, filter.limit + 1);
 		const page = keys.slice(0, filter.limit);
 		const last = page[page.length - 1];

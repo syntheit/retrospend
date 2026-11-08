@@ -50,6 +50,19 @@ export function foldUnaccentIlike(text: string): string {
 	return pgLower(unaccent(text));
 }
 
+/**
+ * The one switch between the two ways to match search text. Without a keyring
+ * (field encryption is not active, the case today) Postgres matches in SQL
+ * over every row. With one, text may be ciphertext, so candidates are read
+ * and matched in the app layer over a bounded window. D11 passes the user's
+ * keyring when DATA_KEYS_WRITE is on; until then nothing supplies one.
+ */
+export function searchesInApp(
+	keyring: Keyring | undefined,
+): keyring is Keyring {
+	return keyring !== undefined;
+}
+
 /** The text of a column that may hold ciphertext; null reads as empty. */
 export function readUserText(
 	keyring: Keyring | undefined,
