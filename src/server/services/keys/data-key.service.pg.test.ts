@@ -20,7 +20,7 @@ import {
 	sealField,
 } from "~/server/crypto/field-crypto";
 import { userTransaction } from "~/server/db-tx";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, withSuperuser } from "~/test/pg-harness";
 import {
 	DataKeyError,
 	destroyDataKeys,
@@ -31,6 +31,16 @@ const master = (id = 1) => new Keyring([{ id, key: randomBytes(32) }]);
 const cell: FieldAad = { table: "expense", column: "title", rowId: "e1" };
 
 type TestUser = Awaited<ReturnType<typeof createTestUser>>;
+
+/**
+ * Renaming a schema needs CREATE on the database, which the app's role
+ * (retrospend_owner) does not have, so the keystore is hidden and put back
+ * on a superuser connection.
+ */
+const renameKeystore = (from: string, to: string) =>
+	withSuperuser((client) =>
+		client.query(`ALTER SCHEMA ${from} RENAME TO ${to}`),
+	);
 
 /** What a signed-in request does: the scoped client's transaction. */
 const keyringOf = (who: TestUser, mk: Keyring | undefined) =>
@@ -168,16 +178,12 @@ describe("getOrCreateDataKeyring", () => {
 
 	it("says so plainly when the keystore is missing", async () => {
 		const me = await createTestUser();
-		await adminDb.$executeRawUnsafe(
-			"ALTER SCHEMA keystore RENAME TO keystore_gone",
-		);
+		await renameKeystore("keystore", "keystore_gone");
 		try {
 			await expectDataKeyError(keyringOf(me, master()), "keystore_missing");
 			await expectDataKeyError(destroyDataKeys(me.user.id), "keystore_missing");
 		} finally {
-			await adminDb.$executeRawUnsafe(
-				"ALTER SCHEMA keystore_gone RENAME TO keystore",
-			);
+			await renameKeystore("keystore_gone", "keystore");
 		}
 	});
 });
@@ -428,39 +434,35 @@ describe("destroyDataKeys", () => {
 		const other = await createTestUser();
 		await keyringOf(me, master());
 		await keyringOf(other, master());
-		const rollback = new Error("rollback");
-		await adminDb
-			.$transaction(async (tx) => {
-				// "user" has row-level security, so the probe bypasses it: the test is
-				// about the keystore, not about who may delete which user.
-				await tx.$executeRawUnsafe("CREATE ROLE keystore_probe BYPASSRLS");
-				await tx.$executeRawUnsafe(
-					'GRANT SELECT, DELETE ON "user" TO keystore_probe',
+		// "user" has row-level security, so the probe bypasses it: the test is
+		// about the keystore, not about who may delete which user. Creating a
+		// role needs the superuser; the transaction is rolled back.
+		await withSuperuser(async (client) => {
+			await client.query("BEGIN");
+			try {
+				await client.query("CREATE ROLE keystore_probe BYPASSRLS");
+				await client.query('GRANT SELECT, DELETE ON "user" TO keystore_probe');
+				await client.query("SET LOCAL ROLE keystore_probe");
+				await client.query('DELETE FROM "user" WHERE id = $1', [me.user.id]);
+				await client.query("RESET ROLE");
+				const left = await client.query<{ n: string }>(
+					'SELECT count(*) AS n FROM keystore."user_data_key" WHERE "userId" = $1',
+					[me.user.id],
 				);
-				await tx.$executeRawUnsafe("SET LOCAL ROLE keystore_probe");
-				await tx.$executeRaw`DELETE FROM "user" WHERE id = ${me.user.id}`;
-				await tx.$executeRawUnsafe("RESET ROLE");
-				const left = await tx.$queryRaw<{ n: bigint }[]>`
-					SELECT count(*) AS n FROM keystore."user_data_key" WHERE "userId" = ${me.user.id}`;
-				expect(Number(left[0]?.n)).toBe(0);
-				throw rollback;
-			})
-			.catch((e: unknown) => {
-				if (e !== rollback) throw e;
-			});
+				expect(Number(left.rows[0]?.n)).toBe(0);
+			} finally {
+				await client.query("ROLLBACK");
+			}
+		});
 	});
 
 	it("never blocks a user delete when the keystore is missing", async () => {
 		const me = await createTestUser();
-		await adminDb.$executeRawUnsafe(
-			"ALTER SCHEMA keystore RENAME TO keystore_gone",
-		);
+		await renameKeystore("keystore", "keystore_gone");
 		try {
 			await adminDb.user.delete({ where: { id: me.user.id } });
 		} finally {
-			await adminDb.$executeRawUnsafe(
-				"ALTER SCHEMA keystore_gone RENAME TO keystore",
-			);
+			await renameKeystore("keystore_gone", "keystore");
 		}
 		expect(
 			await adminDb.user.findUnique({ where: { id: me.user.id } }),

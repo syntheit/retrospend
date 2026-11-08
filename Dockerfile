@@ -81,17 +81,25 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Copy Prisma generated client (custom output location)
 COPY --from=builder --chown=nextjs:nodejs /app/generated ./generated
 
+# Everything the entrypoint runs while it still holds the database superuser's
+# credentials is root-owned and not writable by nextjs: the entrypoint, the
+# db-owner scripts and the bootstrap SQL, the Prisma CLI and the node_modules
+# they load. The app runs as nextjs, and a container restart keeps its
+# writable layer, so code running in the app must not be able to change what
+# the next start runs with the superuser's URL in its environment. Copied
+# without --chown, then fixed up below.
+
 # Copy node_modules so Prisma CLI is available at runtime
-COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=deps /app/node_modules ./node_modules
 
 # Copy package files and Prisma config for runtime operations
-COPY --chown=nextjs:nodejs package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY --chown=nextjs:nodejs prisma/ ./prisma/
-COPY --chown=nextjs:nodejs prisma.config.ts ./
-COPY --chown=nextjs:nodejs tsconfig.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY prisma/ ./prisma/
+COPY prisma.config.ts ./
+COPY tsconfig.json ./
 
-# Copy scripts directory for runtime operations
-COPY --chown=nextjs:nodejs scripts/ ./scripts/
+# Copy scripts directory for runtime operations (the entrypoint runs scripts/db-owner)
+COPY scripts/ ./scripts/
 
 # Copy src for runtime scripts (e.g. tsx scripts/*.ts), and the workspace
 # packages its re-exports and node_modules links point to
@@ -99,8 +107,22 @@ COPY --from=builder --chown=nextjs:nodejs /app/src ./src
 COPY --from=builder --chown=nextjs:nodejs /app/packages ./packages
 
 # Copy entrypoint script
-COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
-RUN chmod +x ./docker-entrypoint.sh
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod 755 ./docker-entrypoint.sh
+
+# The standalone copy above made some node_modules directories nextjs-owned,
+# and a file or directory may have arrived group or world writable. Fix only
+# what is wrong, so the layer stays small. scripts/check-entrypoint-perms.sh
+# checks the result inside the built image (src/test/dockerfile-perms.test.ts
+# checks this file).
+RUN find /app/node_modules /app/prisma /app/scripts /app/package.json \
+      /app/pnpm-lock.yaml /app/pnpm-workspace.yaml /app/prisma.config.ts \
+      /app/tsconfig.json /app/docker-entrypoint.sh \
+      ! -user root -exec chown -h root:root {} + && \
+    find /app/node_modules /app/prisma /app/scripts /app/package.json \
+      /app/pnpm-lock.yaml /app/pnpm-workspace.yaml /app/prisma.config.ts \
+      /app/tsconfig.json /app/docker-entrypoint.sh \
+      ! -type l \( -perm -020 -o -perm -002 \) -exec chmod go-w {} +
 
 USER nextjs
 

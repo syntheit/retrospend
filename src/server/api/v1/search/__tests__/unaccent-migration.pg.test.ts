@@ -7,6 +7,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Client } from "pg";
 import { describe, expect, it } from "vitest";
+import { superUrl } from "~/test/pg-harness";
 import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 
 const MIGRATION = readFileSync(
@@ -51,6 +52,9 @@ describe("search_unaccent migration", () => {
 	});
 
 	it("uses unaccent from the schema it is installed in", async () => {
+		// As the superuser: moving an extension to a new schema needs CREATE on
+		// the database and ownership of the extension, which retrospend_owner
+		// does not have. The migration itself runs as the owner everywhere else.
 		await inRolledBackTransaction(async (client) => {
 			await client.query("CREATE SCHEMA IF NOT EXISTS ext_elsewhere");
 			await client.query("ALTER EXTENSION unaccent SET SCHEMA ext_elsewhere");
@@ -58,6 +62,6 @@ describe("search_unaccent migration", () => {
 			await client.query(MIGRATION);
 			expect(await extensionSchema(client)).toBe("ext_elsewhere");
 			expect(await unaccentAsApp(client, "Ñandú")).toBe("Nandu");
-		});
+		}, superUrl());
 	});
 });
