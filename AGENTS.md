@@ -235,6 +235,7 @@ CI (`.github/workflows/ci.yml`) runs check, pg, build, mobile, the sidecar, e2e 
 
 - Use the user-scoped client (`ctx.db`, `createUserScopedDb`) and `userTransaction()` for interactive transactions. No new admin or global-client bypass.
 - **Write migration SQL by hand:** additive, `IF NOT EXISTS`, idempotent, with the RLS policy and grants in the same file. Pattern: `prisma/migrations/20260303000001_security_rls`.
+- **Least privilege.** Default privileges grant `retrospend_app` and PUBLIC nothing, and no migration may `GRANT ... ON ALL TABLES|SEQUENCES|FUNCTIONS` to either. A new table grants `retrospend_app` exactly what a user-scoped path uses, in its own migration, then goes into `src/test/migrations/retrospend-app-privileges.json` (the privilege ratchet, `privileges.pg.test.ts`, fails on any drift). Auth data and identity columns (`role`, `email`, `emailVerified`, `username`) are written on the owner connection only; the `user` table's row-level security and column grants enforce it. A migration that changes grants ships a tested snippet in `prisma/rollback/`.
 - **Never edit a migration that has shipped.** `src/test/migrations/applied.test.ts` checksums them. Add the new folders to `applied.json` after a production release.
 - Never run a migration against a shared or production database. Migrations run on container start.
 - Destructive migrations wait in `prisma/deferred/` until the owner schedules them.

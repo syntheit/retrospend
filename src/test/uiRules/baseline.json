@@ -401,7 +401,7 @@
 		"src/components/user-invite-codes-table.tsx": 61,
 		"src/server/api/routers/admin.ts": 485,
 		"src/server/api/routers/audit-log.ts": 722,
-		"src/server/api/routers/auth.ts": 143,
+		"src/server/api/routers/auth.ts": 130,
 		"src/server/api/routers/billingPeriod.ts": 426,
 		"src/server/api/routers/claim.ts": 33,
 		"src/server/api/routers/guest.ts": 144,

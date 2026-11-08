@@ -1,0 +1,935 @@
+{
+	"tables": {
+		"_prisma_migrations": {
+			"privileges": [],
+			"rls": false,
+			"forceRls": false,
+			"policies": []
+		},
+		"account": {
+			"privileges": [],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"account_isolation:ALL"
+			]
+		},
+		"account_leg": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": true,
+			"policies": [
+				"account_leg_isolation:ALL"
+			]
+		},
+		"admin_access_log": {
+			"privileges": [
+				"SELECT"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"admin_access_log_select_own:SELECT"
+			]
+		},
+		"ai_usage": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"ai_usage_user_isolation:ALL"
+			]
+		},
+		"analytics_category_preference": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"analytics_category_preference_isolation:ALL"
+			]
+		},
+		"api_event": {
+			"privileges": [
+				"INSERT",
+				"SELECT"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"api_event_insert:INSERT",
+				"api_event_read:SELECT"
+			]
+		},
+		"api_rate_limit": {
+			"privileges": [],
+			"rls": true,
+			"forceRls": false,
+			"policies": []
+		},
+		"apikey": {
+			"privileges": [
+				"DELETE",
+				"SELECT"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"apikey_isolation:ALL"
+			]
+		},
+		"app_settings": {
+			"privileges": [],
+			"rls": false,
+			"forceRls": false,
+			"policies": []
+		},
+		"asset_account": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"asset_account_isolation:ALL"
+			]
+		},
+		"asset_history": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"asset_history_isolation:ALL"
+			]
+		},
+		"asset_rate_type": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": true,
+			"policies": [
+				"asset_rate_type_isolation:ALL"
+			]
+		},
+		"asset_snapshot": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"asset_snapshot_isolation:ALL"
+			]
+		},
+		"audit_log_entry": {
+			"privileges": [
+				"INSERT",
+				"SELECT"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"audit_log_entry_insert:INSERT",
+				"audit_log_entry_read:SELECT"
+			]
+		},
+		"billing_period": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"billing_period_access:ALL"
+			]
+		},
+		"book_period": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"book_period_access:ALL"
+			]
+		},
+		"budget": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"budget_isolation:ALL"
+			]
+		},
+		"budget_book": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"budget_book_delete:DELETE",
+				"budget_book_insert:INSERT",
+				"budget_book_select:SELECT",
+				"budget_book_update:UPDATE"
+			]
+		},
+		"budget_dirty": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"budget_dirty_access:ALL"
+			]
+		},
+		"budget_draft": {
+			"privileges": [
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"budget_draft_access:ALL"
+			]
+		},
+		"budget_member": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"budget_member_delete:DELETE",
+				"budget_member_insert:INSERT",
+				"budget_member_select:SELECT",
+				"budget_member_update:UPDATE"
+			]
+		},
+		"budget_movement": {
+			"privileges": [
+				"INSERT",
+				"SELECT"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"budget_movement_access:ALL"
+			]
+		},
+		"budget_row_value": {
+			"privileges": [
+				"INSERT",
+				"SELECT"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"budget_row_value_access:ALL"
+			]
+		},
+		"category": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"category_isolation:ALL"
+			]
+		},
+		"device_code": {
+			"privileges": [
+				"SELECT"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"device_code_isolation:ALL"
+			]
+		},
+		"envelope": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"envelope_access:ALL"
+			]
+		},
+		"envelope_category": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"envelope_category_access:ALL"
+			]
+		},
+		"envelope_change": {
+			"privileges": [
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"envelope_change_access:ALL"
+			]
+		},
+		"envelope_group": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"envelope_group_access:ALL"
+			]
+		},
+		"error_report": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"error_report_delete_own:DELETE",
+				"error_report_insert_own:INSERT",
+				"error_report_select_own:SELECT"
+			]
+		},
+		"event_log": {
+			"privileges": [],
+			"rls": false,
+			"forceRls": false,
+			"policies": []
+		},
+		"exchange_rate": {
+			"privileges": [
+				"SELECT"
+			],
+			"rls": false,
+			"forceRls": false,
+			"policies": []
+		},
+		"exchange_rate_favorite": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"exchange_rate_favorite_isolation:ALL"
+			]
+		},
+		"exchange_rate_history": {
+			"privileges": [
+				"SELECT"
+			],
+			"rls": false,
+			"forceRls": false,
+			"policies": []
+		},
+		"expense": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"expense_isolation:ALL"
+			]
+		},
+		"export_job": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"export_job_isolation:ALL"
+			]
+		},
+		"feedback": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"feedback_delete_own:DELETE",
+				"feedback_insert_own:INSERT",
+				"feedback_select_own:SELECT",
+				"feedback_update_own:UPDATE"
+			]
+		},
+		"fix_request": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"fix_request_access:ALL"
+			]
+		},
+		"guest_session": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"guest_session_app_access:ALL"
+			]
+		},
+		"idempotency_key": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"idempotency_key_isolation:ALL"
+			]
+		},
+		"import_job": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"import_job_isolation:ALL"
+			]
+		},
+		"income_rule": {
+			"privileges": [
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"income_rule_access:ALL"
+			]
+		},
+		"income_rule_run": {
+			"privileges": [
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"income_rule_run_access:ALL"
+			]
+		},
+		"invite_code": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT"
+			],
+			"rls": false,
+			"forceRls": false,
+			"policies": []
+		},
+		"magic_link": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"magic_link_access:ALL"
+			]
+		},
+		"month_close": {
+			"privileges": [
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"month_close_access:ALL"
+			]
+		},
+		"needs_you_snooze": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": true,
+			"policies": [
+				"needs_you_snooze_isolation:ALL"
+			]
+		},
+		"notification": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"notification_user_policy:ALL"
+			]
+		},
+		"notification_preference": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"notification_preference_user_policy:ALL"
+			]
+		},
+		"password_reset_token": {
+			"privileges": [],
+			"rls": false,
+			"forceRls": false,
+			"policies": []
+		},
+		"payment": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"payment_delete:DELETE",
+				"payment_insert:INSERT",
+				"payment_select:SELECT",
+				"payment_update:UPDATE"
+			]
+		},
+		"payment_method": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"payment_method_isolation:ALL"
+			]
+		},
+		"payment_tx_note": {
+			"privileges": [],
+			"rls": true,
+			"forceRls": false,
+			"policies": []
+		},
+		"payoff_plan": {
+			"privileges": [
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"payoff_plan_access:ALL"
+			]
+		},
+		"project": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"project_access:ALL",
+				"project_public_read:SELECT"
+			]
+		},
+		"project_participant": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"project_participant_delete:DELETE",
+				"project_participant_insert:INSERT",
+				"project_participant_select:SELECT",
+				"project_participant_update:UPDATE"
+			]
+		},
+		"push_delivery": {
+			"privileges": [],
+			"rls": true,
+			"forceRls": false,
+			"policies": []
+		},
+		"push_device": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"push_device_isolation:ALL"
+			]
+		},
+		"recurring_template": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"recurring_template_isolation:ALL"
+			]
+		},
+		"session": {
+			"privileges": [],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"session_isolation:ALL"
+			]
+		},
+		"settlement": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"settlement_delete:DELETE",
+				"settlement_insert:INSERT",
+				"settlement_select:SELECT",
+				"settlement_update:UPDATE"
+			]
+		},
+		"shadow_profile": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"shadow_profile_isolation:ALL"
+			]
+		},
+		"shared_transaction": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"shared_transaction_access:ALL",
+				"shared_transaction_insert_author:INSERT"
+			]
+		},
+		"split_participant": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"split_participant_delete:DELETE",
+				"split_participant_insert:INSERT",
+				"split_participant_select:SELECT",
+				"split_participant_update:UPDATE"
+			]
+		},
+		"split_participant_removal": {
+			"privileges": [],
+			"rls": true,
+			"forceRls": false,
+			"policies": []
+		},
+		"system_status": {
+			"privileges": [
+				"SELECT"
+			],
+			"rls": false,
+			"forceRls": false,
+			"policies": []
+		},
+		"transfer": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": true,
+			"policies": [
+				"transfer_isolation:ALL"
+			]
+		},
+		"twoFactor": {
+			"privileges": [],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"two_factor_isolation:ALL"
+			]
+		},
+		"user": {
+			"privileges": [
+				"SELECT"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"user_select_all:SELECT",
+				"user_update_own:UPDATE"
+			]
+		},
+		"user_page_setting": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"user_page_setting_isolation:ALL"
+			]
+		},
+		"username_history": {
+			"privileges": [],
+			"rls": false,
+			"forceRls": false,
+			"policies": []
+		},
+		"verification": {
+			"privileges": [],
+			"rls": false,
+			"forceRls": false,
+			"policies": []
+		},
+		"verification_token": {
+			"privileges": [],
+			"rls": false,
+			"forceRls": false,
+			"policies": []
+		},
+		"wealth_transfer": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"wealth_transfer_access:ALL"
+			]
+		},
+		"webhook": {
+			"privileges": [
+				"DELETE",
+				"INSERT",
+				"SELECT",
+				"UPDATE"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"webhook_isolation:ALL"
+			]
+		},
+		"webhook_delivery": {
+			"privileges": [
+				"SELECT"
+			],
+			"rls": true,
+			"forceRls": false,
+			"policies": [
+				"webhook_delivery_read:SELECT"
+			]
+		}
+	},
+	"columns": {
+		"user": {
+			"UPDATE": [
+				"aiImportEnabled",
+				"aiMode",
+				"autoAcceptSplits",
+				"avatarPath",
+				"categoryClickBehavior",
+				"consentIp",
+				"consentVersion",
+				"consentedAt",
+				"currencySymbolStyle",
+				"defaultAccounts",
+				"defaultCurrency",
+				"defaultExpenseDateBehavior",
+				"defaultPrivacyMode",
+				"defaultRateTypes",
+				"fiscalMonthStartDay",
+				"homeCurrency",
+				"language",
+				"monthlyIncome",
+				"monthlyIncomeCurrency",
+				"name",
+				"numberFormat",
+				"pendingEmail",
+				"pendingEmailExpiresAt",
+				"pendingEmailToken",
+				"smartCurrencyFormatting",
+				"timeZone",
+				"updatedAt"
+			]
+		}
+	},
+	"sequences": {
+		"api_event_seq_seq": [
+			"SELECT",
+			"USAGE"
+		],
+		"budget_dirty_id_seq": [
+			"SELECT",
+			"USAGE"
+		]
+	}
+}
