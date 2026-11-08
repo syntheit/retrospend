@@ -35,7 +35,11 @@ describe("logAdminProcedure", () => {
 			});
 			seen.push(action);
 		}
-		expect(seen.sort()).toEqual([...ADMIN_ACCESS_ACTIONS].sort());
+		// The Person deletions log through recordParticipantRemoval instead.
+		const viaPerson = ["person_deleted", "shared_data_changed"];
+		expect([...seen, ...viaPerson].sort()).toEqual(
+			[...ADMIN_ACCESS_ACTIONS].sort(),
+		);
 	});
 
 	it("also matches a router called without the admin prefix", async () => {
@@ -78,7 +82,7 @@ describe("logAdminProcedure", () => {
 		expect(create).not.toHaveBeenCalled();
 	});
 
-	it("lets the failure through so the action does not happen", async () => {
+	it("lets a failed write through instead of hiding it", async () => {
 		const create = vi.fn().mockRejectedValue(new Error("disk full"));
 		const db = { adminAccessLog: { create } } as unknown as PrismaClient;
 		await expect(

@@ -238,7 +238,9 @@
 				"email_verified": "Un administrador verificó tu correo",
 				"email_verification_changed": "Un administrador cambió la verificación de tu correo",
 				"ai_access_changed": "Un administrador cambió tu acceso a la IA externa",
-				"avatar_removed": "Un administrador quitó tu foto"
+				"avatar_removed": "Un administrador quitó tu foto",
+				"person_deleted": "Un administrador eliminó a una persona que agregaste",
+				"shared_data_changed": "Un administrador quitó a una persona de tus gastos compartidos"
 			}
 		}
 	},

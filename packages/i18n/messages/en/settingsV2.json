@@ -238,7 +238,9 @@
 				"email_verified": "An admin verified your email",
 				"email_verification_changed": "An admin changed your email verification",
 				"ai_access_changed": "An admin changed your external AI access",
-				"avatar_removed": "An admin removed your photo"
+				"avatar_removed": "An admin removed your photo",
+				"person_deleted": "An admin deleted a person you added",
+				"shared_data_changed": "An admin removed a person from your shared expenses"
 			}
 		}
 	},

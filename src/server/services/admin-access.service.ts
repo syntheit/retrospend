@@ -1,5 +1,12 @@
 import { TRPCError } from "@trpc/server";
-import type { PrismaClient } from "~prisma";
+import type { ParticipantType, PrismaClient } from "~prisma";
+
+/** The global client or a transaction on it (the app role cannot write the log). */
+type LogDb = Pick<PrismaClient, "adminAccessLog">;
+type ParticipantDb = Pick<
+	PrismaClient,
+	"splitParticipant" | "sharedTransaction" | "settlement"
+>;
 
 /**
  * The admin access log: every time an admin acts on a person's account, one
@@ -15,18 +22,20 @@ export const ADMIN_ACCESS_ACTIONS = [
 	"email_verification_changed",
 	"ai_access_changed",
 	"avatar_removed",
+	"person_deleted",
+	"shared_data_changed",
 ] as const;
 
 export type AdminAccessAction = (typeof ADMIN_ACCESS_ACTIONS)[number];
 
 /**
- * Records an admin acting on a person's account. Call it before the action:
- * if the log cannot be written the action does not happen. Needs the global
- * connection (the app role has no write on this table). A missing person is a
- * NOT_FOUND, not a database error.
+ * Records an admin acting on a person's account. Call it once the action has
+ * succeeded, or inside the action's own transaction, so a refused or failed
+ * action leaves no entry. Needs the global connection (the app role has no
+ * write on this table). A missing person is a NOT_FOUND, not a database error.
  */
 export async function recordAdminAccess(
-	db: PrismaClient,
+	db: LogDb,
 	params: { adminId: string; userId: string; action: AdminAccessAction },
 ): Promise<void> {
 	try {
@@ -58,13 +67,14 @@ const ACTION_BY_PROCEDURE: Record<string, AdminAccessAction> = {
 };
 
 /**
- * The one hook for the log: adminProcedure calls it before every admin
- * procedure runs. A procedure not in the table above, or one without a
+ * The one hook for the log: adminProcedure calls it after an admin procedure
+ * has succeeded. A procedure not in the table above, or one without a
  * `userId` in its input, is not an action on an account and logs nothing.
- * Throws when the row cannot be written, so the action does not happen.
+ * (The procedures that act on other people's data through a Person log inside
+ * their own transaction, with recordParticipantRemoval.)
  */
 export async function logAdminProcedure(
-	db: PrismaClient,
+	db: LogDb,
 	call: { path: string; adminId: string; rawInput: unknown },
 ): Promise<void> {
 	const name = call.path.replace(/^admin\./, "");
@@ -74,6 +84,87 @@ export async function logAdminProcedure(
 	const userId = (call.rawInput as { userId?: unknown } | null)?.userId;
 	if (!action || typeof userId !== "string" || userId === "") return;
 	await recordAdminAccess(db, { adminId: call.adminId, userId, action });
+}
+
+/**
+ * The users whose shared expenses or payments name this Person or guest, found
+ * before it is deleted: the creators and payers of the expenses it is in, and
+ * the other side of its payments. Ids only.
+ */
+export async function usersSharingWithParticipant(
+	db: ParticipantDb,
+	participantType: ParticipantType,
+	participantId: string,
+): Promise<string[]> {
+	const splits = await db.splitParticipant.findMany({
+		where: { participantType, participantId },
+		select: { transactionId: true },
+	});
+	const expenses = await db.sharedTransaction.findMany({
+		where: {
+			OR: [
+				{ id: { in: splits.map((s) => s.transactionId) } },
+				{ paidByType: participantType, paidById: participantId },
+				{ createdByType: participantType, createdById: participantId },
+			],
+		},
+		select: {
+			paidByType: true,
+			paidById: true,
+			createdByType: true,
+			createdById: true,
+		},
+	});
+	const payments = await db.settlement.findMany({
+		where: {
+			OR: [
+				{ fromParticipantType: participantType, fromParticipantId: participantId },
+				{ toParticipantType: participantType, toParticipantId: participantId },
+			],
+		},
+		select: {
+			fromParticipantType: true,
+			fromParticipantId: true,
+			toParticipantType: true,
+			toParticipantId: true,
+		},
+	});
+	const users = new Set<string>();
+	for (const e of expenses) {
+		if (e.paidByType === "user") users.add(e.paidById);
+		if (e.createdByType === "user") users.add(e.createdById);
+	}
+	for (const p of payments) {
+		if (p.fromParticipantType === "user") users.add(p.fromParticipantId);
+		if (p.toParticipantType === "user") users.add(p.toParticipantId);
+	}
+	return [...users];
+}
+
+/**
+ * Logs an admin deleting a Person or guest: "person_deleted" for the user who
+ * added the Person (if any), "shared_data_changed" for each user whose
+ * expenses or payments were rewritten. Call it inside the deleting
+ * transaction.
+ */
+export async function recordParticipantRemoval(
+	db: LogDb,
+	params: { adminId: string; ownerId?: string; affectedUserIds: string[] },
+): Promise<void> {
+	if (params.ownerId) {
+		await recordAdminAccess(db, {
+			adminId: params.adminId,
+			userId: params.ownerId,
+			action: "person_deleted",
+		});
+	}
+	for (const userId of params.affectedUserIds) {
+		await recordAdminAccess(db, {
+			adminId: params.adminId,
+			userId,
+			action: "shared_data_changed",
+		});
+	}
 }
 
 /** The person's own entries, newest first. Pass a user-scoped client. */

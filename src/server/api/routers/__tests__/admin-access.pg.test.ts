@@ -2,13 +2,15 @@
  * The admin access log on real Postgres (RLS on): an admin acting on a person
  * writes one row with the global connection, the person reads only their own
  * rows through the user-scoped connection, and the person cannot add, change
- * or delete a row. A missing person is NOT_FOUND and nothing is written.
+ * or delete a row. A missing person is NOT_FOUND and nothing is written, and
+ * an action the procedure refuses or fails to validate leaves no entry.
  */
 import { TRPCError } from "@trpc/server";
 import { beforeAll, describe, expect, it } from "vitest";
 import { adminAccessRouter } from "~/server/api/routers/admin-access";
 import { adminRouter } from "~/server/api/routers/admin";
 import { createCallerFactory } from "~/server/api/trpc";
+import { LastAdminError } from "~/server/services/admin-guard.service";
 import { recordAdminAccess } from "~/server/services/admin-access.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
@@ -112,6 +114,159 @@ describe("admin access log", () => {
 		).rejects.toBeInstanceOf(TRPCError);
 		await expect(
 			asAdmin(admin).enableUser({ userId: "no-such-user" }),
+		).rejects.toThrow();
+		expect(await adminDb.adminAccessLog.count()).toBe(before);
+	});
+});
+
+describe("admin access log: a refused or failed action writes nothing", () => {
+	let admin: Made;
+	let target: Made;
+
+	beforeAll(async () => {
+		admin = await createTestUser({ role: "ADMIN" });
+		target = await createTestUser();
+	});
+
+	const entriesFor = (userId: string) =>
+		adminDb.adminAccessLog.count({ where: { userId } });
+
+	it("an admin disabling their own account is refused and not logged", async () => {
+		await expect(
+			asAdmin(admin).disableUser({ userId: admin.user.id }),
+		).rejects.toMatchObject({ code: "FORBIDDEN" });
+		expect(await entriesFor(admin.user.id)).toBe(0);
+		expect(
+			(await adminDb.user.findUniqueOrThrow({ where: { id: admin.user.id } }))
+				.isActive,
+		).toBe(true);
+	});
+
+	it("disabling the last active admin is refused and not logged", async () => {
+		const lastAdmin = await createTestUser({ role: "ADMIN" });
+		const others = await adminDb.user.findMany({
+			where: { role: "ADMIN", isActive: true, id: { not: lastAdmin.user.id } },
+			select: { id: true },
+		});
+		await adminDb.user.updateMany({
+			where: { id: { in: others.map((o) => o.id) } },
+			data: { isActive: false },
+		});
+		try {
+			await expect(
+				asAdmin(admin).disableUser({ userId: lastAdmin.user.id }),
+			).rejects.toBeInstanceOf(LastAdminError);
+			expect(await entriesFor(lastAdmin.user.id)).toBe(0);
+		} finally {
+			await adminDb.user.updateMany({
+				where: { id: { in: others.map((o) => o.id) } },
+				data: { isActive: true },
+			});
+		}
+	});
+
+	it("input that fails validation is not logged", async () => {
+		await expect(
+			asAdmin(admin).setUserAiAccess({
+				userId: target.user.id,
+				externalAiAllowed: "yes" as unknown as boolean,
+			}),
+		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		expect(await entriesFor(target.user.id)).toBe(0);
+	});
+
+	it("the same action, when it succeeds, is logged once", async () => {
+		await asAdmin(admin).setUserAiAccess({
+			userId: target.user.id,
+			externalAiAllowed: true,
+		});
+		expect(await entriesFor(target.user.id)).toBe(1);
+	});
+});
+
+describe("admin access log: an admin deleting a Person", () => {
+	let admin: Made;
+	let alice: Made;
+	let bob: Made;
+	let carol: Made;
+
+	beforeAll(async () => {
+		admin = await createTestUser({ role: "ADMIN" });
+		alice = await createTestUser();
+		bob = await createTestUser();
+		carol = await createTestUser();
+	});
+
+	const sharedWith = async (
+		creatorId: string,
+		participant: { type: "shadow" | "guest"; id: string },
+	) => {
+		const tx = await adminDb.sharedTransaction.create({
+			data: {
+				description: "Dinner",
+				amount: "10",
+				currency: "USD",
+				date: new Date("2026-01-01T00:00:00Z"),
+				paidByType: "user",
+				paidById: creatorId,
+				createdByType: "user",
+				createdById: creatorId,
+			},
+		});
+		await adminDb.splitParticipant.create({
+			data: {
+				transactionId: tx.id,
+				participantType: participant.type,
+				participantId: participant.id,
+				shareAmount: "5",
+			},
+		});
+	};
+
+	it("tells the person who added the Person, and whose expenses were rewritten", async () => {
+		const shadow = await adminDb.shadowProfile.create({
+			data: { createdById: alice.user.id, name: "Dana" },
+		});
+		await sharedWith(bob.user.id, { type: "shadow", id: shadow.id });
+
+		await asAdmin(admin).deleteShadowProfile({ id: shadow.id });
+
+		expect((await asUser(alice).list()).map((r) => r.action)).toEqual([
+			"person_deleted",
+		]);
+		expect((await asUser(bob).list()).map((r) => r.action)).toEqual([
+			"shared_data_changed",
+		]);
+		expect(await asUser(carol).list()).toEqual([]);
+		const rows = await adminDb.adminAccessLog.findMany({
+			where: { userId: { in: [alice.user.id, bob.user.id] } },
+		});
+		expect(rows.every((r) => r.adminId === admin.user.id)).toBe(true);
+	});
+
+	it("tells the people whose expenses a deleted guest was in", async () => {
+		const guest = await adminDb.guestSession.create({
+			data: {
+				name: "Gus",
+				email: "gus@pg-test.invalid",
+				magicLinkId: "ml-1",
+				projectId: "p-1",
+				sessionToken: `tok-${Math.random()}`,
+			},
+		});
+		await sharedWith(carol.user.id, { type: "guest", id: guest.id });
+
+		await asAdmin(admin).deleteGuestSession({ id: guest.id });
+
+		expect((await asUser(carol).list()).map((r) => r.action)).toEqual([
+			"shared_data_changed",
+		]);
+	});
+
+	it("a missing Person writes nothing", async () => {
+		const before = await adminDb.adminAccessLog.count();
+		await expect(
+			asAdmin(admin).deleteShadowProfile({ id: "no-such-person" }),
 		).rejects.toMatchObject({ code: "NOT_FOUND" });
 		expect(await adminDb.adminAccessLog.count()).toBe(before);
 	});

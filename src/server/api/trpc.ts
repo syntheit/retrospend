@@ -238,15 +238,19 @@ export const adminProcedure = protectedProcedure.use(async (opts) => {
 	if (ctx.session.user.role !== "ADMIN") {
 		throw new TRPCError({ code: "UNAUTHORIZED" });
 	}
-	// Every admin action on a person's account is written to their access log.
-	await logAdminProcedure(db, {
-		path: opts.path,
-		adminId: ctx.session.user.id,
-		rawInput: await opts.getRawInput(),
-	});
 	// Restore global db so admin queries run as superuser, bypassing RLS
 	// for legitimate cross-user data access.
-	return next({ ctx: { db } });
+	const result = await next({ ctx: { db } });
+	// An admin action on a person's account is written to their access log
+	// only once it has succeeded: a refused or invalid one leaves no entry.
+	if (result.ok) {
+		await logAdminProcedure(db, {
+			path: opts.path,
+			adminId: ctx.session.user.id,
+			rawInput: await opts.getRawInput(),
+		});
+	}
+	return result;
 });
 
 /**
