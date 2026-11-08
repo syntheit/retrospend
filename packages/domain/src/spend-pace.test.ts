@@ -9,8 +9,14 @@
  * Sep 5 2026 and ends at 24:00 on Saturday Apr 4 2026).
  */
 import { describe, expect, it } from "vitest";
-import { MissingRateError, sumIn } from "./money";
 import {
+	MissingRateError,
+	RATE_ROWS_PER_SIDE,
+	rateWindow,
+	sumIn,
+} from "./money";
+import {
+	homeRateOn,
 	lastToDate,
 	type SpendPace,
 	spendPaceFrom,
@@ -450,5 +456,50 @@ describe("spend pace edges", () => {
 		expect(() =>
 			sumIn([{ currency: "USD", amount: 1, amountInUSD: 1 }], "ARS", null),
 		).toThrow(MissingRateError);
+	});
+});
+
+describe("the rate window the server reads", () => {
+	const day = (n: number) => new Date(Date.UTC(2026, 8, n));
+	const official = Array.from({ length: 25 }, (_, i) =>
+		rate(day(1 + i).toISOString(), 30, "official"),
+	);
+	const stale = rate(day(1 - 12).toISOString(), 40);
+
+	it("keeps the newest 20 rows on or before the date, newest first", () => {
+		const w = rateWindow([stale, ...official], day(25));
+		expect(w).toHaveLength(RATE_ROWS_PER_SIDE);
+		expect(w[0]?.date).toEqual(day(25));
+		expect(w.at(-1)?.date).toEqual(day(6));
+		expect(w.some((r) => r.type === "blue")).toBe(false);
+	});
+
+	it("with few rows before the date the old blue row is still in the window", () => {
+		expect(
+			rateWindow([stale, ...official], day(10)).map((r) => r.type),
+		).toContain("blue");
+	});
+
+	it("rows after the date count only when none exist on or before it", () => {
+		const w = rateWindow(official, day(-5));
+		expect(w).toHaveLength(RATE_ROWS_PER_SIDE);
+		expect(w[0]?.date).toEqual(day(1));
+		expect(rateWindow(official, day(1))).toHaveLength(1);
+	});
+
+	it("ties on one date are cut by type, as the server's ordering does", () => {
+		const same = Array.from({ length: 22 }, (_, i) =>
+			rate(day(1).toISOString(), i, `t${String(i).padStart(2, "0")}`),
+		);
+		const w = rateWindow(same, day(2));
+		expect(w[0]?.type).toBe("t00");
+		expect(w.at(-1)?.type).toBe("t19");
+	});
+
+	it("homeRateOn prices at official when the stale blue row is outside the window", () => {
+		expect(homeRateOn("UYU", [stale, ...official], day(25))).toBe(30);
+		expect(homeRateOn("UYU", [stale, ...official], day(10))).toBe(40);
+		expect(homeRateOn("USD", [], day(10))).toBe(1);
+		expect(homeRateOn("UYU", [], day(10))).toBeNull();
 	});
 });

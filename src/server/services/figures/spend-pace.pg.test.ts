@@ -38,6 +38,7 @@ import {
 	lastToDate,
 	type SpendPace,
 	type SpendPaceInputs,
+	homeRateOn,
 	spendPaceFrom,
 	spendPaceInputsFromRows,
 } from "@retrospend/domain/spend-pace";
@@ -48,6 +49,7 @@ import type {
 } from "@retrospend/domain/spent";
 import { beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
+import { findExchangeRate } from "~/server/exchange-rates";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import { loadSpendPace, loadSpendPaceInputs } from "./spend-pace";
@@ -255,6 +257,7 @@ let february: Person;
 let rateless: Person;
 let jpyHome: Person;
 let kwdHome: Person;
+let uyuHome: Person;
 
 async function seedUser(
 	home: string,
@@ -483,6 +486,31 @@ beforeAll(async () => {
 		usd: "40",
 		date: noon("2026-10-02"),
 	});
+	// UYU: one stale blue row (40) behind 25 daily official rows (30) from Sep
+	// 20 to Oct 14. The server reads the newest 20 rows on or before a date,
+	// so for now they are all official; for the end of September only 12
+	// official rows exist and the blue row is in the window.
+	for (let i = 0; i < 25; i++)
+		await rateDay(
+			new Date(Date.UTC(2026, 8, 20 + i)).toISOString().slice(0, 10),
+			"UYU",
+			"30",
+			"official",
+		);
+	await rateDay("2026-09-01", "UYU", "40", "blue");
+	uyuHome = await seedUser("UYU", BA);
+	await addExpense(uyuHome.id, {
+		amount: "10",
+		currency: "USD",
+		usd: "10",
+		date: noon("2026-10-02"),
+	});
+	await addExpense(uyuHome.id, {
+		amount: "10",
+		currency: "USD",
+		usd: "10",
+		date: noon("2026-09-02"),
+	});
 	kwdHome = await seedUser("KWD", BA);
 	await addExpense(kwdHome.id, {
 		amount: "100",
@@ -600,5 +628,32 @@ describe("home currencies and missing rates", () => {
 		expect(p.missingRates).toEqual(["ISK"]);
 		// Last period has only ISK 10, in the home currency itself (no decimals).
 		expect(p.lastTotal).toBe(10);
+	});
+});
+
+describe("the rate window", () => {
+	it("a blue row older than 20 official ones loses this period and wins the last, on both loaders", async () => {
+		const p = await bothAgree(uyuHome, NOW, BA);
+		// This period: USD 10 at official 30 = UYU 300. Last period (ends Oct 1
+		// 02:59Z): 12 official rows, so blue 40 is in the window: UYU 400.
+		expect(p.thisTotal).toBe(30_000);
+		expect(p.lastTotal).toBe(40_000);
+	});
+
+	it("homeRateOn equals the server's lookup on dates before, inside and after the rows", async () => {
+		const rows = await homeRates("UYU");
+		for (const iso of [
+			"2026-08-01T00:00:00Z",
+			"2026-09-10T00:00:00Z",
+			"2026-10-01T02:59:59Z",
+			"2026-10-15T15:00:00Z",
+			"2027-01-01T00:00:00Z",
+		]) {
+			const date = new Date(iso);
+			const served = await userTransaction(adminDb, uyuHome.id, (tx) =>
+				findExchangeRate(tx, "UYU", date),
+			);
+			expect(homeRateOn("UYU", rows, date), iso).toBe(served?.rate ?? null);
+		}
 	});
 });

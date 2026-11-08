@@ -31,6 +31,7 @@ import {
 	missingRatesIn,
 	periodRateDate,
 	pickBestRate,
+	rateWindow,
 	type RateRow,
 	sumIn,
 	USD,
@@ -119,13 +120,19 @@ export function spendPaceRateDates(
 	};
 }
 
-/** The home currency's rate on `date` from rows held in memory (the server fetches the same rows with SQL, exchange-rates.ts). */
+/**
+ * The home currency's rate on `date` from all its rate rows held in memory.
+ * The server only sees a window of them (rateWindow), so this picks from the
+ * same window: a stale blue row behind 20 newer official ones loses on both.
+ */
 export function homeRateOn(
 	home: string,
 	rows: readonly RateRow[],
 	date: Date,
 ): number | null {
-	return home === USD ? 1 : (pickBestRate(rows, { date })?.rate ?? null);
+	return home === USD
+		? 1
+		: (pickBestRate(rateWindow(rows, date), { date })?.rate ?? null);
 }
 
 /** Income groups as items for the totals rule. */
@@ -180,6 +187,7 @@ function datedRows(inputs: SpentInputs, timeZone: string): DatedItem[] {
 			r.item.currency,
 			r.item.booked?.currency ?? "",
 			String(r.item.amount),
+			String(r.item.amountInUSD),
 		].join("|");
 	return rows
 		.map((r) => ({ r, k: key(r) }))
