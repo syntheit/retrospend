@@ -2,7 +2,7 @@
 
 **DRAFT. Not a security claim.** This document describes a design that is only partly built. No audit has been done. An independent audit comes before any public statement that Retrospend is end-to-end encrypted (spike phase 6, W2), and until that report exists nothing here may be used in marketing.
 
-Written 2026-11-08 against base commit `d081bfc1` (the crypto foundation F1 to F3 is merged there) plus branch `e2ee/d1-field-crypto` at `851b444a` (D1, not merged). Every technical statement cites the file it comes from. Where the design in `docs/roadmap/e2ee-spike.md` (the spike) and the code disagree, section 12 says so, and the code is what this document describes.
+Written 2026-11-08 against base commit `d081bfc1` (the crypto foundation F1 to F3 is merged there) plus D1 (server field crypto), merged into the segment at `038d4709`, which this branch does not contain; D1 files are read from `e2ee/d1-field-crypto`. Every technical statement cites the file it comes from. Where the design in `docs/roadmap/e2ee-spike.md` (the spike) and the code disagree, section 12 says so, and the code is what this document describes.
 
 ## 1. What exists today
 
@@ -12,7 +12,7 @@ Written 2026-11-08 against base commit `d081bfc1` (the crypto foundation F1 to F
 | Sealed record format | Built, merged | `packages/crypto/src/format.ts` |
 | Key hierarchy, wraps, recovery key text, fingerprint phrase | Built, merged | `packages/crypto/src/keys.ts` |
 | Known-answer vectors from other implementations | Built, merged | `packages/crypto/vectors/*.json`, `src/self-test.ts` |
-| Server field crypto (AES-256-GCM) and master key loading | Built on a branch, not merged, not called by anything | `src/server/crypto/field-crypto.ts`, `master-key.ts` on `e2ee/d1-field-crypto` |
+| Server field crypto (AES-256-GCM) and master key loading | Built, merged into the segment. No callers except the start-up key check in `src/instrumentation.ts` | `src/server/crypto/field-crypto.ts`, `master-key.ts` |
 | Backups encrypted with age (optional, operator key) | Built, merged | `sidecar/tasks/backup.go`, `docs/self-hosting.md` |
 | Admin access log, shown to the person | Built, merged | `prisma/schema.prisma` (`AdminAccessLog`), `src/features/settings/security/admin-access-block.tsx` |
 | Nonce CSP | Built, merged. Trusted Types is report-only | `src/lib/csp.ts`, `src/proxy.ts` |
@@ -67,7 +67,7 @@ An attacker who controls the app, the database and the master key, or a maliciou
   - seal a substitute account key to a device or contact public key (section 5.6, open requirement);
   - serve modified web code (section 9).
 
-  It cannot move a record to another id, entity, version, user or collection, or change a wrap's role or id, without the tag check failing (sections 5.5 and 6).
+  It cannot move a record to another id, entity, version, user or collection, or present a genuine wrap as another role or id, without the tag check failing (sections 5.5 and 6).
 
 ### 4.3 Compromised backup
 
@@ -106,7 +106,7 @@ All of this is in `packages/crypto/src/keys.ts` and `primitives.ts`. Nothing the
 
 | Job | Primitive | Notes |
 |---|---|---|
-| Data | XChaCha20-Poly1305-IETF, 24-byte random nonce | Caller never reuses a nonce; production code draws it from `randomBytes` |
+| Data | XChaCha20-Poly1305-IETF, 24-byte random nonce | `aeadEncrypt` takes the caller's nonce, so never reusing one is a rule, not enforced. Only `sealRecord` and `wrapKey` draw a random nonce, and the nonce-taking variants (for vectors) are left out of the package index |
 | Password to key | Argon2id v1.3 (`crypto_pwhash`) | libsodium fixes parallelism at 1 |
 | Subkeys | `crypto_kdf_derive_from_key` (keyed BLAKE2b) | 8-character ASCII context, id below 2^31 |
 | Public-key wrap | X25519 sealed box (`crypto_box_seal`) | Anonymous sender |
@@ -186,7 +186,12 @@ This is an open requirement (section 11, item 1). The code comment in `keys.ts` 
 
 `fingerprintPhrase` takes one or more public keys in an order both sides agree on and returns six proquint words (Wilkerson 2009), which are the first 12 bytes of BLAKE2b with a 16-byte output over `rs.fp.v1` followed by the keys. That is 96 bits. Two people compare it aloud to confirm they hold the same public key (trusted contact) or the same pair of keys (device approval).
 
-Open question for the audit (our analysis, not in the spike): when one side's key is replaced the attacker must find a second preimage, about 2^96 work. When an attacker can substitute both keys of a pair (device approval), the two sides see different hashes and the attacker needs only a collision between two lists it grinds itself, about 2^48 work. Whether 96 bits is enough for the device-approval comparison should be decided with the audit (section 13).
+Open design question (our analysis, not in the spike):
+
+- **One key fixed** (trusted contact: the user compares the phrase of the contact's real key). To pass a substitute key the attacker needs a second preimage, about 2^96 work.
+- **Both keys of a pair controlled by the relaying party** (device approval, where the server relays both public keys). The two sides see different hashes, so the attacker needs only a collision between two lists it grinds itself, about 2^48 work. Keys are cheap to grind, so this is feasible for a well-resourced attacker, not for a casual one. Only the party that relays both keys, in practice the server, can do it. The work is online: the new device's ephemeral key is fresh for each session, so the grinding has to finish inside the approval window.
+- **Length is not the right fix.** 128-bit second-preimage resistance would need 8 proquint words, and 128-bit collision resistance 16, which no one will read aloud.
+- **Ordering is.** Commit to one key before the other exists, as Bluetooth Secure Simple Pairing and ZRTP do: the new device's code, typed into the existing device, commits to the new device's ephemeral key before any phrase is shown. The attacker then has to find a second preimage against a fixed commitment instead of a free collision. This is a protocol step, not a primitive, and it is not built (section 11, item 7).
 
 ## 6. Record format
 
@@ -204,21 +209,21 @@ AAD           "rs.v1|<bytes 0..17 as 36 hex characters>|userId|collectionId|enti
 
 - **The header is authenticated.** Its first 18 bytes are in the AAD, so a rewritten key id, version or algorithm fails to open. An unknown version or algorithm is refused as `invalid_input` before any decryption, so a client can tell the user to update.
 - **The record is bound to its place.** Moving a sealed record to another user, collection, entity, id or version fails the tag check. Ids are limited to `[A-Za-z0-9_-]{1,64}`, the entity to 0 to 65535, so `|` cannot appear inside a field and two different inputs never give the same AAD.
-- **Padding** hides length: ISO/IEC 7816-4 style (`0x80`, then zeros) up to the next multiple of 64 bytes, always at least the one marker byte. Length is hidden only within a 64-byte bucket. Canonical JSON writes every character above `0x7e` as a `\u` escape, so text in a non-Latin script is longer than the same number of Latin characters, and bucket size leaks a little about script and length. The ceiling is 1 MiB of plaintext.
+- **Padding** hides length: ISO/IEC 7816-4 style (`0x80`, then zeros) up to the next multiple of 64 bytes, always at least the one marker byte. Length is hidden only within a 64-byte bucket. Canonical JSON writes every character above `0x7e` as a `\u` escape, so any such character grows (an e with an acute accent becomes a 6-byte escape, and a character outside the Basic Multilingual Plane 12 bytes). Bucket size therefore leaks a little about which characters a record holds, not only its length. The ceiling is 1 MiB of plaintext.
 - **Canonical JSON** is deterministic and pure ASCII (keys sorted, no spaces) so every platform produces the same bytes without a UTF-8 codec, and the golden vectors can pin them. Non-finite numbers, holes in arrays, class instances and nesting beyond 32 levels are refused.
 - **Failure is uniform.** A wrong key, a key id that names no key, a wrong place, changed bytes, bad padding and non-ASCII plaintext all return `decrypt_failed`.
 - **What the format does not do.** The server can still store, withhold and delete records. Rolling a record back to an older version of itself opens fine (it carries its own older version in the AAD), so it has to be caught by a per-record high-water mark kept on the device. That mark is not built, and it cannot detect a record the server never sent. The per-user change sequence in the spike (section 2.2) has no code yet either.
 
 ## 7. Server field crypto for default users (D1)
 
-Branch `e2ee/d1-field-crypto`. A helper exists. Nothing calls it. No data keys, no Prisma extension, no backfill, no flag.
+Merged into the segment at `038d4709`. A helper exists. Nothing calls it except the start-up key check in `src/instrumentation.ts`. No data keys, no Prisma extension, no backfill, no flag.
 
 - **Cipher:** AES-256-GCM through `node:crypto`, 12-byte random nonce from the operating system for every call, never derived and never supplied by a caller. NIST SP 800-38D limits random 96-bit nonces to about 2^32 encryptions per key, so the design needs per-user data keys (D2) before D11. A single key over every field of the database would approach that bound far sooner.
 - **Wire form:** `"\u0001k1:"` followed by base64 of `key id (u32 big endian) | nonce (12) | ciphertext | tag (16)`. The colon ends the version number so a later `k10:` cannot be read as `k1:`. A value that starts with U+0001 is ciphertext. An unknown version is an error, never plaintext.
 - **AAD:** `"rs.k1"`, the key id (u32), then table, column and row id, each as a 4-byte length and UTF-8. Moving a ciphertext to another table, column or row, or relabeling its key id, fails the tag check. Every copy of an encrypted value between rows (recurring template to expense, import queue to expense, duplicate) must therefore be decrypted and encrypted again. Tables with composite keys need a defined row id.
 - **Key ids and the keyring:** a keyring holds keys by id. The first entry is current and seals, the others only open. Keys are held as `KeyObject`s in private state, so logging a keyring shows no bytes.
 - **Master key:** `DATA_MASTER_KEY` or the file `DATA_MASTER_KEY_FILE` names (a Docker or Kubernetes secret). Entries are `<id>:<64 hex>` separated by commas or whitespace, or a single bare key that is id 1. A key that is set but malformed, unreadable, all zero, repeated, or set both ways stops the server at start (`assertMasterKeyConfig`, called from `src/instrumentation.ts`). With neither set the key is absent and nothing is encrypted. Rotation: put the new key first with the next id, keep the old one, run the rewrap job (D12), then drop the old entry. The master key is meant to wrap per-user data keys (D2), and it is held outside the database.
-- **Mixed mode:** `readField` returns plaintext as it is and decrypts ciphertext, so the database can hold both forms until the D12 backfill finishes. During that window anyone with database write access can substitute plaintext for a row and the reader accepts it. A plaintext value that starts with U+0001 would be read as ciphertext and fail. `userText()` now rejects control characters other than tab, line feed and carriage return, and lone surrogates (`packages/api-contract/src/common/user-text.ts`), and `Category.name` goes through it. Most other write paths (expense title, shared transaction description, people, recurring, settlement, import queue, guest, imports, the sidecar) still accept any string.
+- **Mixed mode:** `readField` returns plaintext as it is and decrypts ciphertext, so the database can hold both forms until the D12 backfill finishes. During that window anyone with database write access can substitute plaintext for a row and the reader accepts it. A plaintext value that starts with U+0001 would be read as ciphertext and fail. `userText()` now rejects control characters other than tab, line feed and carriage return, and lone surrogates (`packages/api-contract/src/common/user-text.ts`), and `Category.name` goes through it. Many contract fields are declared through `userText` (expense title in the contract, account and envelope names, income rule names and match text, fix requests). What still accepts any string are the tRPC routers (for example `src/server/api/routers/expense.ts:23`, `import-queue.ts:20`) and the other write paths (shared transaction description, people, recurring, settlement, guest, imports, the sidecar).
 - **Crypto-shredding:** destroying a user's data key makes their ciphertext unreadable, but destroys nothing for rows that are still plaintext. The guarantee starts after D12, or has to be described with that limit.
 - **Errors** carry a stable code and a fixed message, never a key, a key id, a plaintext or a ciphertext.
 
@@ -263,7 +268,7 @@ Turning protection on requires at least one. Recommended order in the UI: recove
 |---|---|---|
 | Recovery key | 54-character text, saved or printed, confirmed by typing groups back. Unlock needs a new password | A bearer secret for the whole account. If it is lost with the password, the data is gone. If it leaks, so does the data |
 | Second device | Each device has an X25519 key pair. The server stores AK sealed to each public key. A signed-in device can also set a new password after a fresh 2FA check and an email confirmation | Needs a second device. **Not safe until the AK-substitution requirement is closed** (section 5.6). The email and 2FA step trusts the server to enforce it for a device that is still signed in |
-| New-device approval | A new device shows a code, an existing device seals AK to its ephemeral key, both show the same phrase | Needs the other device online. The pairing phrase has the 2^48 question in section 5.8. `crypto_kx` is not available in the native build, so the handshake in the spike needs redesign |
+| New-device approval | A new device shows a code, an existing device seals AK to its ephemeral key, both show the same phrase | Needs the other device online. The pairing phrase needs a commitment step (section 5.8). `crypto_kx` is not available in the native build, so the handshake in the spike needs redesign |
 | Trusted contact | The user's app seals AK to the contact's public key after both see the phrase. The server releases it only after the waiting period (1, 3, 7 or 14 days) without a refusal, with email and push at each step | The contact must have Advanced protection on. A server colluding with the contact can skip the wait. **Not safe until section 5.6 is closed** |
 | Reset account | Deletes sealed data and keys, keeps the account, shared data and identity | Loses personal data. The only thing an email password reset does for a protected account |
 | Turn off while unlocked | Client decrypts and posts plain rows through the normal services, then deletes the sealed records | Data becomes recoverable by the server again. Backups hold ciphertext only for the sealed period |
@@ -288,7 +293,7 @@ From the D1 review:
 Found while writing this draft, not in the 2026-11-08 sections:
 
 6. **Per-record high-water mark and omission.** Nothing detects a rolled-back or withheld record yet (section 6). Needs the mark, the change sequence, and a decision on whether a missing record can be detected at all.
-7. **Pairing phrase strength** for device approval (section 5.8).
+7. **Design device approval with a commitment step** (section 5.8): the new device's code commits to its ephemeral key before the phrase is shown, so a relaying server cannot grind both halves. Design it together with item 1, because the same flow carries the approval that must authenticate or pin the account key.
 8. **Trusted Types enforcement** and the worker for keys (section 9).
 9. **Device benchmark (F4).** The Argon2id default and floor are estimates until measured (section 5.2).
 10. **Plaintext deletion at commit and backup retention wording.** The owner signs off on the exact text and number of days before K11 merges (spike section 5.3 and 9, item 6). Backups hold personal amounts for up to `BACKUP_RETENTION_DAYS` after the commit.
@@ -316,6 +321,6 @@ Everything else in spike section 4 that is built (XChaCha20-Poly1305, Argon2id, 
 
 ## 13. Audit and claims
 
-An independent firm reviews the design and the code before any public claim (spike phase 6, W2). The audit package should include this document, `packages/crypto`, the vectors and their generators (`packages/crypto/scripts`), and `src/server/crypto`. The known-answer vectors were produced by implementations other than libsodium (`vectors/primitives.vectors.json`, `keys.vectors.json`), which is what lets them catch a wrong build. Questions to hand the auditor: section 5.2 (hostile parameters), 5.6 (account key substitution), 5.8 (phrase length), 6 (rollback and omission), 7 (mixed mode), 9 (web delivery).
+An independent firm reviews the design and the code before any public claim (spike phase 6, W2). The audit package should include this document, `packages/crypto`, the vectors and their generators (`packages/crypto/scripts`), and `src/server/crypto`. The known-answer vectors were produced by implementations other than libsodium (`vectors/primitives.vectors.json`, `keys.vectors.json`), which is what lets them catch a wrong build. Questions to hand the auditor: section 5.2 (hostile parameters), 5.6 (account key substitution), 5.8 (the commitment step for device approval), 6 (rollback and omission), 7 (mixed mode), 9 (web delivery).
 
 Until that report exists, wording stays at what is true today: no user's data is end-to-end encrypted, and none of it is encrypted with a server data key yet.
