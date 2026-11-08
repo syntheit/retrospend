@@ -8,6 +8,7 @@ services:
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}"
       SHOW_LANDING_PAGE: "true"
       WORKER_API_KEY: ${WORKER_API_KEY}
+      DEFAULT_TIME_ZONE: ${DEFAULT_TIME_ZONE:-}
       SIDECAR_URL: "http://sidecar:8080"
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       UPLOAD_DIR: /data/uploads
@@ -62,6 +63,7 @@ services:
     environment:
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}"
       WORKER_API_KEY: ${WORKER_API_KEY}
+      DEFAULT_TIME_ZONE: ${DEFAULT_TIME_ZONE:-}
       LOG_LEVEL: "info"
       BACKUP_DIR: "/backups"
       BACKUP_RETENTION_DAYS: "${BACKUP_RETENTION_DAYS:-30}"
