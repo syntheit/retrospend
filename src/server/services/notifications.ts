@@ -1,7 +1,7 @@
 import { env } from "~/env";
 import { signUnsubscribeToken } from "~/lib/unsubscribe-token";
 import { db } from "~/server/db";
-import { notificationEmail } from "~/server/email-templates";
+import { renderNoticeEmail } from "~/server/services/notice-email";
 import { sendEmail } from "~/server/mailer";
 import {
 	buildNoticeText,
@@ -105,11 +105,11 @@ export async function createNotification(
 					};
 				}
 
-				const html = notificationEmail({ title, body, unsubscribeUrl });
+				const email = await renderNoticeEmail(text, user, { unsubscribeUrl });
 				await sendEmail(
 					user.email,
-					`Retrospend: ${title}`,
-					html,
+					email.subject,
+					email.html,
 					false,
 					extraHeaders,
 				);

@@ -17,14 +17,8 @@ import { disableUserKeepingAnAdmin } from "~/server/services/admin-guard.service
 import {
 	anonymizeAndDeleteUser,
 } from "~/server/services/user-deletion.service";
-import {
-	getPasswordChangedAlertTemplate,
-	getPasswordResetEmailTemplate,
-	getTestEmailTemplate,
-	getVerificationEmailTemplate,
-} from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
-import { guardTestEmail } from "~/server/services/admin-test-email";
+import { adminTestEmail, guardTestEmail } from "~/server/services/admin-test-email";
 import { getAiUsageSummary } from "~/server/services/ai-access.service";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
 import { deleteFile, getStorageSize } from "~/server/storage";
@@ -544,28 +538,7 @@ export const adminRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			guardTestEmail(ctx.session.user.id, input.type);
 			try {
-				let subject = "Retrospend SMTP Test";
-				let html = getTestEmailTemplate();
-
-				switch (input.type) {
-					case "password-reset":
-						subject = "Reset your Retrospend Password";
-						html = getPasswordResetEmailTemplate(
-							`${env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/reset-password?token=sample-token`,
-						);
-						break;
-					case "credential-change":
-						subject = "Security Alert: Your Retrospend Password was Changed";
-						html = getPasswordChangedAlertTemplate();
-						break;
-					case "email-verification":
-						subject = "Verify your Retrospend Account";
-						html = getVerificationEmailTemplate(
-							`${env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/verify?token=sample-token`,
-						);
-						break;
-				}
-
+				const { subject, html } = adminTestEmail(input.type);
 				await sendEmail(input.email, subject, html, true);
 				return { success: true, message: "Test email sent successfully" };
 			} catch (error) {

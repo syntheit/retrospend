@@ -1,4 +1,12 @@
 import { TRPCError } from "@trpc/server";
+import { env } from "~/env";
+import { emailSubject } from "~/server/email-copy";
+import {
+	getPasswordChangedAlertTemplate,
+	getPasswordResetEmailTemplate,
+	getTestEmailTemplate,
+	getVerificationEmailTemplate,
+} from "~/server/email-templates";
 import { InMemoryRateLimiter } from "~/server/lib/rate-limiter";
 import { logEventAsync } from "./audit.service";
 
@@ -20,4 +28,35 @@ export function guardTestEmail(adminId: string, emailType: string): void {
 		userId: adminId,
 		metadata: { action: "admin_test_email", adminId, emailType },
 	});
+}
+
+/** The subject and page of the sample an admin sends from settings. */
+export function adminTestEmail(
+	type: "basic" | "password-reset" | "credential-change" | "email-verification",
+): { subject: string; html: string } {
+	const base =
+		env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997";
+	switch (type) {
+		case "password-reset":
+			return {
+				subject: emailSubject.passwordReset,
+				html: getPasswordResetEmailTemplate(
+					`${base}/auth/reset-password?token=sample-token`,
+				),
+			};
+		case "credential-change":
+			return {
+				subject: emailSubject.passwordChanged,
+				html: getPasswordChangedAlertTemplate(),
+			};
+		case "email-verification":
+			return {
+				subject: emailSubject.verifyEmail,
+				html: getVerificationEmailTemplate(
+					`${base}/auth/verify?token=sample-token`,
+				),
+			};
+		default:
+			return { subject: emailSubject.smtpTest, html: getTestEmailTemplate() };
+	}
 }

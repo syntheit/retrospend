@@ -108,5 +108,10 @@
 		"category": "category changed",
 		"project": "project changed",
 		"other": "other changes"
+	},
+	"email": {
+		"view": "Open Retrospend",
+		"manage": "Notification settings",
+		"unsubscribe": "Unsubscribe"
 	}
 }

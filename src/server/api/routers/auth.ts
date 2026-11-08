@@ -16,6 +16,7 @@ import {
 	getVerificationEmailTemplate,
 } from "~/server/email-templates";
 import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
+import { emailSubject } from "~/server/email-copy";
 import { sendEmail } from "~/server/mailer";
 
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
@@ -138,11 +139,7 @@ export const authRouter = createTRPCRouter({
 			const resetUrl = `${env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/reset-password?token=${token}`;
 			const htmlContent = getPasswordResetEmailTemplate(resetUrl);
 
-			await sendEmail(
-				user.email,
-				"Reset your Retrospend Password",
-				htmlContent,
-			);
+			await sendEmail(user.email, emailSubject.passwordReset, htmlContent);
 
 			return { success: true };
 		}),
@@ -220,7 +217,7 @@ export const authRouter = createTRPCRouter({
 
 				sendEmail(
 					user.email,
-					"Security Alert: Your Retrospend Password was Changed",
+					emailSubject.passwordChanged,
 					htmlContent,
 				).catch((error) =>
 					console.error("Failed to send security alert:", error),
@@ -297,7 +294,7 @@ export const authRouter = createTRPCRouter({
 		const verifyUrl = `${env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/verify?token=${token}`;
 		const htmlContent = getVerificationEmailTemplate(verifyUrl);
 
-		await sendEmail(user.email, "Verify your Retrospend Account", htmlContent);
+		await sendEmail(user.email, emailSubject.verifyEmail, htmlContent);
 
 		return { success: true };
 	}),

@@ -9,7 +9,7 @@ import {
 	publicProcedure,
 } from "~/server/api/trpc";
 import { db as globalDb } from "~/server/db";
-import { notificationEmail } from "~/server/email-templates";
+import { renderNoticeEmail } from "~/server/services/notice-email";
 import { buildNoticeText } from "~/server/services/notification-text";
 import { validateLinkOrThrow } from "~/server/lib/magic-link";
 import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
@@ -239,13 +239,12 @@ export const guestRouter = createTRPCRouter({
 				const resumeUrl = `${baseUrl}/projects/${projectId}?guestResume=${result.resumeToken}`;
 				// A guest has no language on file: English.
 				const text = await buildNoticeText({ kind: "guestResume" });
-				const html = notificationEmail({
-					title: text.title,
-					body: text.body,
-					ctaUrl: resumeUrl,
-					ctaLabel: text.cta ?? undefined,
-				});
-				await sendEmail(result.sendTo, `Retrospend: ${text.title}`, html);
+				const email = await renderNoticeEmail(
+					text,
+					{},
+					{ ctaUrl: resumeUrl },
+				);
+				await sendEmail(result.sendTo, email.subject, email.html);
 
 				return {
 					resumeEmailSent: true as const,

@@ -6,7 +6,7 @@
 import { TRPCError } from "@trpc/server";
 import { env } from "~/env";
 import { userTransaction } from "~/server/db-tx";
-import { notificationEmail } from "~/server/email-templates";
+import { renderNoticeEmail } from "~/server/services/notice-email";
 import { sendEmail } from "~/server/mailer";
 import { buildNoticeText } from "~/server/services/notification-text";
 import {
@@ -212,14 +212,12 @@ async function inviteAddedGhost(
 	});
 	// No email rather than a wrong one; the person was still added.
 	if (!text) return;
-	const { title, body, cta } = text;
-	const html = notificationEmail({
-		title,
-		body,
-		ctaUrl: joinUrl,
-		ctaLabel: joinUrl ? (cta ?? undefined) : undefined,
-	});
-	sendEmail(shadow.email, `Retrospend: ${title}`, html).catch((err) =>
+	const email = await renderNoticeEmail(
+		text,
+		{},
+		{ ctaUrl: joinUrl ?? undefined },
+	);
+	sendEmail(shadow.email, email.subject, email.html).catch((err) =>
 		console.error("[Notification Error] shadow PARTICIPANT_ADDED email:", err),
 	);
 }
