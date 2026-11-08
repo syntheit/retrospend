@@ -28,6 +28,16 @@
 // genuine wraps, and trust in the public key itself comes from comparing
 // fingerprintPhrase out of band.
 //
+// REQUIREMENT before device or contact unlock ships: public-key wraps
+// (ak-device, ak-contact) do NOT authenticate the account key. Anyone with the
+// recipient's public key, the server included, can seal any 32 bytes for that
+// role and id, and a substitute AK that also comes with a matching private-key
+// wrap and collection-key wraps is not detected by the recipient. Either the
+// device pins a commitment to AK when it is approved (for example BLAKE2b of
+// AK in secure storage, checked on every unwrap), or the approving device
+// authenticates the wrap (crypto_box with its static key). One of the two must
+// be built with the device flow.
+//
 // Recovery key text: 32 bytes then the 4-bit version 1 make 260 bits, written
 // as 52 symbols of the Crockford base32 alphabet 0123456789ABCDEFGHJKMNPQRSTVWXYZ
 // (most significant bit first), then two check symbols, 54 in all, shown as
