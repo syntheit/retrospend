@@ -9,8 +9,11 @@
 // on it.
 import {
 	CryptoError,
+	openRecord,
 	type Primitives,
+	type RecordContext,
 	runKnownAnswerTests,
+	sealRecord,
 	TAG_BYTES,
 } from "@retrospend/crypto";
 import { loadWebSodium } from "@retrospend/crypto/web";
@@ -51,5 +54,29 @@ describe("crypto vectors on the phone toolchain", () => {
 		expect(p.sealOpen(sealed, pair.publicKey, pair.privateKey)).toEqual(
 			message,
 		);
+	});
+
+	it("seals a record, opens it, and refuses another place or a changed byte", () => {
+		const key = p.randomBytes(32);
+		const keyId = p.randomBytes(16);
+		const ctx: RecordContext = {
+			userId: "u1",
+			collectionId: "c1",
+			entity: 1,
+			recordId: "r1",
+			version: 1,
+		};
+		const find = () => key;
+		const sealed = sealRecord(p, { keyId, key }, ctx, 1, {
+			title: "Caf\u00e9",
+		});
+		expect(openRecord(p, find, ctx, sealed).record).toEqual({
+			title: "Caf\u00e9",
+		});
+		expect(() =>
+			openRecord(p, find, { ...ctx, recordId: "r2" }, sealed),
+		).toThrow(CryptoError);
+		sealed[sealed.length - 1] = (sealed[sealed.length - 1] ?? 0) ^ 1;
+		expect(() => openRecord(p, find, ctx, sealed)).toThrow(CryptoError);
 	});
 });

@@ -1,0 +1,154 @@
+{
+	"about": "Golden vectors for the sealed record format (@retrospend/crypto src/format.ts), spike section 4.5. A build must reproduce `sealed` from the inputs, open it to `record`, and encode it to `base64url`. Regenerate with packages/crypto/scripts/gen-format.mjs.",
+	"records": [
+		{
+			"source": "packages/crypto/scripts/gen-format.mjs: node:crypto chacha20-poly1305 behind a hand HChaCha20 (checked against the IETF draft vector), own canonical JSON, padding and base64url",
+			"key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+			"keyId": "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+			"nonce": "404142434445464748494a4b4c4d4e4f5051525354555657",
+			"schemaVersion": 1,
+			"name": "expense with keys out of order",
+			"context": {
+				"userId": "0b1f2e3d-4c5b-4a69-8877-665544332211",
+				"collectionId": "c0ffee00-1111-4222-8333-444455556666",
+				"recordId": "11112222-3333-4444-8555-666677778888",
+				"entity": 1,
+				"version": 3
+			},
+			"record": {
+				"title": "Coffee",
+				"amount": {
+					"minor": 450,
+					"currency": "ARS"
+				},
+				"date": "2026-11-03",
+				"note": null,
+				"refund": false,
+				"tags": ["a", "b"]
+			},
+			"aad": "rs.v1|0101a0a1a2a3a4a5a6a7a8a9aaabacadaeaf|0b1f2e3d-4c5b-4a69-8877-665544332211|c0ffee00-1111-4222-8333-444455556666|1|11112222-3333-4444-8555-666677778888|3",
+			"canonicalJson": "{\"amount\":{\"currency\":\"ARS\",\"minor\":450},\"date\":\"2026-11-03\",\"note\":null,\"refund\":false,\"tags\":[\"a\",\"b\"],\"title\":\"Coffee\"}",
+			"paddedPlaintext": "00017b22616d6f756e74223a7b2263757272656e6379223a22415253222c226d696e6f72223a3435307d2c2264617465223a22323032362d31312d3033222c226e6f7465223a6e756c6c2c22726566756e64223a66616c73652c2274616773223a5b2261222c2262225d2c227469746c65223a22436f66666565227d80000000",
+			"sealed": "0101a0a1a2a3a4a5a6a7a8a9aaabacadaeaf404142434445464748494a4b4c4d4e4f5051525354555657d4387e52b18d1663e180a584d4be06e7e0c8c8aa702071a04870af162b2801fd7f976d1c77a8b025cfcfd86e6ebbae94b9515fda5fb782b187cd25c42090607634448c1736892bbde96f9cddae1cfa9a98a324114e5c0804358f25e0a40240071c2e95a89ac949d4fffc4eb8337ebde7fad129fc6aa5e58669da756fa2c77b9f5fe5e9b7df6ca9517d739854bc261e1a",
+			"base64url": "AQGgoaKjpKWmp6ipqqusra6vQEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZX1Dh-UrGNFmPhgKWE1L4G5-DIyKpwIHGgSHCvFisoAf1_l20cd6iwJc_P2G5uu66UuVFf2l-3grGHzSXEIJBgdjREjBc2iSu96W-c3a4c-pqYoyQRTlwIBDWPJeCkAkAHHC6VqJrJSdT__E64M3695_rRKfxqpeWGadp1b6LHe59f5em332ypUX1zmFS8Jh4a"
+		},
+		{
+			"source": "packages/crypto/scripts/gen-format.mjs: node:crypto chacha20-poly1305 behind a hand HChaCha20 (checked against the IETF draft vector), own canonical JSON, padding and base64url",
+			"key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+			"keyId": "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+			"nonce": "404142434445464748494a4b4c4d4e4f5051525354555657",
+			"schemaVersion": 2,
+			"name": "non-ASCII text and escapes",
+			"context": {
+				"userId": "0b1f2e3d-4c5b-4a69-8877-665544332211",
+				"collectionId": "c0ffee00-1111-4222-8333-444455556666",
+				"recordId": "11112222-3333-4444-8555-666677778888",
+				"entity": 2,
+				"version": 1
+			},
+			"record": {
+				"title": "Café 咖啡 😀 \"q\" \\ \n\tend",
+				"z": 0
+			},
+			"aad": "rs.v1|0101a0a1a2a3a4a5a6a7a8a9aaabacadaeaf|0b1f2e3d-4c5b-4a69-8877-665544332211|c0ffee00-1111-4222-8333-444455556666|2|11112222-3333-4444-8555-666677778888|1",
+			"canonicalJson": "{\"title\":\"Caf\\u00e9 \\u5496\\u5561 \\ud83d\\ude00 \\\"q\\\" \\\\ \\n\\tend\",\"z\":0}",
+			"paddedPlaintext": "00027b227469746c65223a224361665c7530306539205c75353439365c7535353631205c75643833645c7564653030205c22715c22205c5c205c6e5c74656e64222c227a223a307d8000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+			"sealed": "0101a0a1a2a3a4a5a6a7a8a9aaabacadaeaf404142434445464748494a4b4c4d4e4f5051525354555657d43b7e52a4890d7aead6bd9cecfd03cee78a9da12a790fef5f05c473557116a520c8223220f6bc239bee81286feaead1c7490cb44da5e8c096a066a867d722307807da08368975b50503b0ffdc799ceff6c7062b283d647750a30794c56533252675b7c9b8e56bb6dda1629a4717c98b9ff313de29ca83e00cbf571222c77b9fae7e67d2fc3c4a23dabdd5a8540ba4a5",
+			"base64url": "AQGgoaKjpKWmp6ipqqusra6vQEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZX1Dt-UqSJDXrq1r2c7P0DzueKnaEqeQ_vXwXEc1VxFqUgyCIyIPa8I5vugShv6urRx0kMtE2l6MCWoGaoZ9ciMHgH2gg2iXW1BQOw_9x5nO_2xwYrKD1kd1CjB5TFZTMlJnW3ybjla7bdoWKaRxfJi5_zE94pyoPgDL9XEiLHe5-ufmfS_DxKI9q91ahUC6Sl"
+		},
+		{
+			"source": "packages/crypto/scripts/gen-format.mjs: node:crypto chacha20-poly1305 behind a hand HChaCha20 (checked against the IETF draft vector), own canonical JSON, padding and base64url",
+			"key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+			"keyId": "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+			"nonce": "404142434445464748494a4b4c4d4e4f5051525354555657",
+			"schemaVersion": 1,
+			"name": "empty record",
+			"context": {
+				"userId": "0b1f2e3d-4c5b-4a69-8877-665544332211",
+				"collectionId": "c0ffee00-1111-4222-8333-444455556666",
+				"recordId": "11112222-3333-4444-8555-666677778888",
+				"entity": 1,
+				"version": 0
+			},
+			"record": {},
+			"aad": "rs.v1|0101a0a1a2a3a4a5a6a7a8a9aaabacadaeaf|0b1f2e3d-4c5b-4a69-8877-665544332211|c0ffee00-1111-4222-8333-444455556666|1|11112222-3333-4444-8555-666677778888|0",
+			"canonicalJson": "{}",
+			"paddedPlaintext": "00017b7d800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+			"sealed": "0101a0a1a2a3a4a5a6a7a8a9aaabacadaeaf404142434445464748494a4b4c4d4e4f5051525354555657d4387e0d50e079168ff487beaf9c659292baadc41359539a6a31fd450904239016f9026e55928410ffb2f44c0adadaf19b6b7de86f85b49cb6fc08f413b24c5454af1889d324870a07ce61418b9e5bdf",
+			"base64url": "AQGgoaKjpKWmp6ipqqusra6vQEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZX1Dh-DVDgeRaP9Ie-r5xlkpK6rcQTWVOaajH9RQkEI5AW-QJuVZKEEP-y9EwK2trxm2t96G-FtJy2_Aj0E7JMVFSvGInTJIcKB85hQYueW98"
+		},
+		{
+			"source": "packages/crypto/scripts/gen-format.mjs: node:crypto chacha20-poly1305 behind a hand HChaCha20 (checked against the IETF draft vector), own canonical JSON, padding and base64url",
+			"key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+			"keyId": "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+			"nonce": "404142434445464748494a4b4c4d4e4f5051525354555657",
+			"schemaVersion": 1,
+			"name": "pad byte is the last byte of the bucket (61 bytes of JSON)",
+			"context": {
+				"userId": "0b1f2e3d-4c5b-4a69-8877-665544332211",
+				"collectionId": "c0ffee00-1111-4222-8333-444455556666",
+				"recordId": "11112222-3333-4444-8555-666677778888",
+				"entity": 1,
+				"version": 3
+			},
+			"record": {
+				"k": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+			},
+			"aad": "rs.v1|0101a0a1a2a3a4a5a6a7a8a9aaabacadaeaf|0b1f2e3d-4c5b-4a69-8877-665544332211|c0ffee00-1111-4222-8333-444455556666|1|11112222-3333-4444-8555-666677778888|3",
+			"canonicalJson": "{\"k\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}",
+			"paddedPlaintext": "00017b226b223a227878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878227d80",
+			"sealed": "0101a0a1a2a3a4a5a6a7a8a9aaabacadaeaf404142434445464748494a4b4c4d4e4f5051525354555657d4387e52bbc24334f78cffc6d7e41deaeac2d5bc6b212be21249853d717c5be86e817a162deafc6887ca8c3472a2a289e313059017fdcce4ce84708c6b9031d4315235296b8dd7dd40e60e87c09292a3",
+			"base64url": "AQGgoaKjpKWmp6ipqqusra6vQEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZX1Dh-UrvCQzT3jP_G1-Qd6urC1bxrISviEkmFPXF8W-hugXoWLer8aIfKjDRyoqKJ4xMFkBf9zOTOhHCMa5Ax1DFSNSlrjdfdQOYOh8CSkqM"
+		},
+		{
+			"source": "packages/crypto/scripts/gen-format.mjs: node:crypto chacha20-poly1305 behind a hand HChaCha20 (checked against the IETF draft vector), own canonical JSON, padding and base64url",
+			"key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+			"keyId": "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+			"nonce": "404142434445464748494a4b4c4d4e4f5051525354555657",
+			"schemaVersion": 1,
+			"name": "pad byte opens a second bucket (62 bytes of JSON)",
+			"context": {
+				"userId": "0b1f2e3d-4c5b-4a69-8877-665544332211",
+				"collectionId": "c0ffee00-1111-4222-8333-444455556666",
+				"recordId": "11112222-3333-4444-8555-666677778888",
+				"entity": 1,
+				"version": 3
+			},
+			"record": {
+				"k": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+			},
+			"aad": "rs.v1|0101a0a1a2a3a4a5a6a7a8a9aaabacadaeaf|0b1f2e3d-4c5b-4a69-8877-665544332211|c0ffee00-1111-4222-8333-444455556666|1|11112222-3333-4444-8555-666677778888|3",
+			"canonicalJson": "{\"k\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}",
+			"paddedPlaintext": "00017b226b223a22787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878227d80000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+			"sealed": "0101a0a1a2a3a4a5a6a7a8a9aaabacadaeaf404142434445464748494a4b4c4d4e4f5051525354555657d4387e52bbc24334f78cffc6d7e41deaeac2d5bc6b212be21249853d717c5be86e817a162deafc6887ca8c3472a2a289e313059017fdcce4ce84708c6bca6e29da2bf87214b345c88503b0ffdc799ceff6c7062b283d647750a30794c56533252675b7c9b8e56bb6dda1629a4717c98b9ff313de29ca83e00cbf571222c77b9fa84bdf5a0546573dd12e852a2e518064",
+			"base64url": "AQGgoaKjpKWmp6ipqqusra6vQEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZX1Dh-UrvCQzT3jP_G1-Qd6urC1bxrISviEkmFPXF8W-hugXoWLer8aIfKjDRyoqKJ4xMFkBf9zOTOhHCMa8puKdor-HIUs0XIhQOw_9x5nO_2xwYrKD1kd1CjB5TFZTMlJnW3ybjla7bdoWKaRxfJi5_zE94pyoPgDL9XEiLHe5-oS99aBUZXPdEuhSouUYBk"
+		},
+		{
+			"source": "packages/crypto/scripts/gen-format.mjs: node:crypto chacha20-poly1305 behind a hand HChaCha20 (checked against the IETF draft vector), own canonical JSON, padding and base64url",
+			"key": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+			"keyId": "00000000000000000000000000000001",
+			"nonce": "101112131415161718191a1b1c1d1e1f2021222324252627",
+			"schemaVersion": 1,
+			"name": "large amount and negative number, other key and nonce",
+			"context": {
+				"userId": "0b1f2e3d-4c5b-4a69-8877-665544332211",
+				"collectionId": "c0ffee00-1111-4222-8333-444455556666",
+				"recordId": "11112222-3333-4444-8555-666677778888",
+				"entity": 65535,
+				"version": 9007199254740991
+			},
+			"record": {
+				"amount": {
+					"minor": 9007199254740991,
+					"currency": "JPY"
+				},
+				"delta": -12
+			},
+			"aad": "rs.v1|010100000000000000000000000000000001|0b1f2e3d-4c5b-4a69-8877-665544332211|c0ffee00-1111-4222-8333-444455556666|65535|11112222-3333-4444-8555-666677778888|9007199254740991",
+			"canonicalJson": "{\"amount\":{\"currency\":\"JPY\",\"minor\":9007199254740991},\"delta\":-12}",
+			"paddedPlaintext": "00017b22616d6f756e74223a7b2263757272656e6379223a224a5059222c226d696e6f72223a393030373139393235343734303939317d2c2264656c7461223a2d31327d800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+			"sealed": "010100000000000000000000000000000001101112131415161718191a1b1c1d1e1f202122232425262763afe9b592fb1d951b31488a1755474ea6889e96939c9d9a0ede24f090f1119187abee2671ae6803f51930883e6a997990ffd550ad1b66a5f79e60c62e1e29efecc6e0472162dd230f1511c82d6c45278d4150f0d36378a1dec25a30438f823cff815d8ba59f73700e7f2fa1925653b08434d79cd8bc080ed1f611301ad66ead3e4815639be20ebc174fd5cbf41d0e11",
+			"base64url": "AQEAAAAAAAAAAAAAAAAAAAABEBESExQVFhcYGRobHB0eHyAhIiMkJSYnY6_ptZL7HZUbMUiKF1VHTqaInpaTnJ2aDt4k8JDxEZGHq-4mca5oA_UZMIg-apl5kP_VUK0bZqX3nmDGLh4p7-zG4EchYt0jDxURyC1sRSeNQVDw02N4od7CWjBDj4I8_4Fdi6Wfc3AOfy-hklZTsIQ015zYvAgO0fYRMBrWbq0-SBVjm-IOvBdP1cv0HQ4R"
+		}
+	]
+}
