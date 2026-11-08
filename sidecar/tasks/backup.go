@@ -41,6 +41,12 @@ type BackupStatus struct {
 	History       []BackupResult `json:"history"`
 }
 
+// Tests replace these to run RunBackup against a fake pg_dump and a fixed clock.
+var (
+	pgDumpBin = "pg_dump"
+	backupNow = time.Now
+)
+
 var (
 	backupMu  sync.Mutex
 	isRunning bool
@@ -71,7 +77,7 @@ func RunBackup(database *db.DB, databaseURL string, backupDir string, retentionD
 		backupMu.Unlock()
 	}()
 
-	start := time.Now()
+	start := backupNow()
 	result := BackupResult{
 		Timestamp: start,
 		Success:   false,
@@ -94,26 +100,35 @@ func RunBackup(database *db.DB, databaseURL string, backupDir string, retentionD
 	result.Filename = filename
 	result.Encrypted = encrypt
 
-	// Run pg_dump
-	cmd := exec.Command("pg_dump", pgDumpArgs(host, port, user, dbname, filepath, encrypt)...)
+	// Run pg_dump. Both paths write a hidden .partial file next to the final
+	// name and rename it only when complete, so a crash never leaves a
+	// half-written backup that looks real.
+	partial := partialPath(filepath)
+	cmd := exec.Command(pgDumpBin, pgDumpArgs(host, port, user, dbname, partial, encrypt)...)
 	cmd.Env = append(os.Environ(), fmt.Sprintf("PGPASSWORD=%s", password))
 
 	var output []byte
 	if encrypt {
+		// dumpEncrypted creates and removes its own files; this run must not
+		// delete a backup it did not write.
 		output, err = dumpEncrypted(cmd, filepath, ageRecipients)
 	} else {
 		output, err = cmd.CombinedOutput()
+		if err == nil {
+			err = publishPartial(partial, filepath)
+		}
+		if err != nil {
+			os.Remove(partial)
+		}
 	}
 	if err != nil {
-		if errors.Is(err, ErrInvalidAgeRecipient) {
+		if errors.Is(err, ErrInvalidAgeRecipient) || errors.Is(err, errBackupExists) {
 			result.Error = fmt.Sprintf("encrypted backup not written: %v", err)
 		} else {
 			result.Error = fmt.Sprintf("pg_dump failed: %v, output: %s", err, strings.TrimSpace(string(output)))
 		}
 		result.DurationMs = time.Since(start).Milliseconds()
 		log.Printf("❌ Backup failed: %s", result.Error)
-		// Clean up partial file
-		os.Remove(filepath)
 		saveResult(backupDir, result, database)
 		return fmt.Errorf("%s", result.Error)
 	}
@@ -264,6 +279,10 @@ func saveResult(backupDir string, result BackupResult, database *db.DB) {
 	history := readManifest(backupDir)
 	history = append(history, result)
 	writeManifest(backupDir, history)
+
+	if database == nil {
+		return
+	}
 
 	// Update system_status table
 	statusJSON := fmt.Sprintf(`{"lastRun": "%s", "success": %t, "task": "backup", "filename": "%s", "sizeBytes": %d, "durationMs": %d}`,
