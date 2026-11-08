@@ -11,7 +11,7 @@
  */
 import type { Keyring } from "~/server/crypto/field-crypto";
 import { Prisma } from "~prisma";
-import { readUserText, searchesInApp } from "../search-fold";
+import { APP_LAYER_WINDOW, readUserText, searchesInApp } from "../search-fold";
 import {
 	all,
 	type KeyQuery,
@@ -60,7 +60,7 @@ function amountHit(cols: Prisma.Sql[], amounts: string[]): Prisma.Sql {
  * than this many expenses (or shares, or payments) in the filtered range
  * finds only the newest. A date filter narrows the window.
  */
-export const SEARCH_CANDIDATE_CAP = 20_000;
+export const SEARCH_CANDIDATE_CAP = APP_LAYER_WINDOW;
 
 type Candidate = RowKey & {
 	/** The text columns to match, in the order of the column list for the source. */

@@ -96,6 +96,12 @@ export function ilikeContains(query: string): (text: string) => boolean {
 }
 
 /**
+ * How many of the newest rows the app-layer path reads, for v1 search,
+ * Activity search and title suggestions alike, so the windows cannot drift.
+ */
+export const APP_LAYER_WINDOW = 20_000;
+
+/**
  * The one switch between the two ways to match search text. Without a keyring
  * (field encryption is not active, the case today) Postgres matches in SQL
  * over every row. With one, text may be ciphertext, so candidates are read

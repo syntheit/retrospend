@@ -2,7 +2,12 @@ import type { Keyring } from "~/server/crypto/field-crypto";
 import type { db as globalDb } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import { Prisma } from "~prisma";
-import { foldUnaccentIlike, readUserText, searchesInApp } from "./search-fold";
+import {
+	APP_LAYER_WINDOW,
+	foldUnaccentIlike,
+	readUserText,
+	searchesInApp,
+} from "./search-fold";
 
 type AppDb = typeof globalDb;
 
@@ -46,7 +51,7 @@ export type ExpenseHitRow = {
  * expense than the newest SEARCH_EXPENSE_WINDOW is not found. One query per
  * call whatever the page or the hit count. The SQL path has no such limit.
  */
-export const SEARCH_EXPENSE_WINDOW = 20_000;
+export const SEARCH_EXPENSE_WINDOW = APP_LAYER_WINDOW;
 
 type ExpenseCandidate = ExpenseHitRow & {
 	description: string | null;

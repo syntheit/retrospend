@@ -14,7 +14,12 @@
  */
 import type { Keyring } from "~/server/crypto/field-crypto";
 import type { PrismaClient } from "~prisma";
-import { ilikeContains, readUserText, searchesInApp } from "./search-fold";
+import {
+	APP_LAYER_WINDOW,
+	ilikeContains,
+	readUserText,
+	searchesInApp,
+} from "./search-fold";
 import { listedEntryWhere } from "./spending";
 
 /**
@@ -22,7 +27,7 @@ import { listedEntryWhere } from "./spending";
  * older than that are neither counted nor offered on that path; the SQL path
  * has no such limit. One query per call.
  */
-export const TITLE_SUGGESTION_WINDOW = 20_000;
+export const TITLE_SUGGESTION_WINDOW = APP_LAYER_WINDOW;
 
 /** Distinct titles kept per source, and suggestions returned. */
 const GROUPS_PER_SOURCE = 15;
