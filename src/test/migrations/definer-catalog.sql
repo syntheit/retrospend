@@ -1,7 +1,7 @@
 -- The function grants the definer hygiene migration touches, as one JSON value: every non-extension
 -- function in public (mode, search_path, ACL) and the function default
--- privileges. Used by definer-rollback.pg.test.ts, and to regenerate
--- definer-catalog.before.json (see the note in that test). A function with a
+-- privileges. Used by definer-rollback.pg.test.ts, and by
+-- `pnpm test:regen-fixtures` to write definer-catalog.before.json. A function with a
 -- NULL ACL is read as the default ACL it stands for (owner and PUBLIC).
 SELECT jsonb_pretty(jsonb_build_object(
   'functions', (

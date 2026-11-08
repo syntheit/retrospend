@@ -25,6 +25,7 @@
 		"start": "next start",
 		"test": "vitest run",
 		"test:pg": "vitest run --config vitest.pg.config.ts",
+		"test:regen-fixtures": "tsx scripts/regen-catalog-fixtures.ts",
 		"test:e2e": "playwright test",
 		"test:e2e:ui": "playwright test --ui",
 		"test:e2e:headed": "playwright test --headed",

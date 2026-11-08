@@ -15,11 +15,8 @@
 //   - after the migration again, the catalog equals the first capture.
 //
 // definer-catalog.before.json is the catalog of a database migrated to the
-// migration before this one. Regenerate it only if that state must change:
-//   createdb scratch && for each folder older than 20261109500000, in order:
-//     psql -v ON_ERROR_STOP=1 -d scratch -f prisma/migrations/<folder>/migration.sql
-//   psql -At -d scratch -f src/test/migrations/definer-catalog.sql \
-//     > src/test/migrations/definer-catalog.before.json
+// migration before this one. Regenerate it with `pnpm test:regen-fixtures` only
+// if that state must change.
 // The function owner is written as <owner> (it is the role that ran the
 // migrations: retrospend_owner now, postgres before the owner role existed).
 // A NULL function ACL is read as the default ACL it stands for (acldefault),
@@ -35,8 +32,9 @@ import { Client } from "pg";
 import { describe, expect, it } from "vitest";
 import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 import { REPO_ROOT } from "../uiRules/paths";
+import { DEFINER_MIGRATION } from "./rollback-fixtures";
 
-const MIGRATION = "20261109500000_definer_hygiene";
+const MIGRATION = DEFINER_MIGRATION;
 
 type FunctionState = {
 	sig: string;
