@@ -287,6 +287,109 @@ describe("who can reach which key", () => {
 	});
 });
 
+describe("keystore grants", () => {
+	const functions = [
+		'keystore."current_user_data_keys"()',
+		'keystore."create_first_data_key"(text, bigint)',
+		'public."keystore_drop_user_keys"()',
+	];
+	const has = async (sql: string) =>
+		(await adminDb.$queryRawUnsafe<{ ok: boolean }[]>(`SELECT ${sql} AS ok`))[0]
+			?.ok;
+
+	it("keeps every keystore function away from PUBLIC", async () => {
+		for (const fn of functions)
+			expect(await has(`has_function_privilege('public', '${fn}', 'EXECUTE')`)).toBe(
+				false,
+			);
+		// The signed-in role gets the two doors and not the trigger function.
+		expect(
+			await has(
+				`has_function_privilege('retrospend_app', '${functions[0]}', 'EXECUTE')`,
+			),
+		).toBe(true);
+		expect(
+			await has(
+				`has_function_privilege('retrospend_app', '${functions[1]}', 'EXECUTE')`,
+			),
+		).toBe(true);
+		expect(
+			await has(
+				`has_function_privilege('retrospend_app', '${functions[2]}', 'EXECUTE')`,
+			),
+		).toBe(false);
+	});
+
+	it("gives the app role and PUBLIC no privilege on the table", async () => {
+		for (const role of ["retrospend_app", "public"])
+			for (const privilege of [
+				"SELECT",
+				"INSERT",
+				"UPDATE",
+				"DELETE",
+				"TRUNCATE",
+				"REFERENCES",
+				"TRIGGER",
+			])
+				expect(
+					await has(
+						`has_table_privilege('${role}', 'keystore.user_data_key', '${privilege}')`,
+					),
+				).toBe(false);
+	});
+
+	it("names a lost grant instead of a raw permission error", async () => {
+		const me = await createTestUser();
+		await adminDb.$executeRawUnsafe(
+			'REVOKE EXECUTE ON FUNCTION keystore."current_user_data_keys"() FROM retrospend_app',
+		);
+		try {
+			await expectDataKeyError(keyringOf(me, master()), "keystore_grants_missing");
+		} finally {
+			await adminDb.$executeRawUnsafe(
+				'GRANT EXECUTE ON FUNCTION keystore."current_user_data_keys"() TO retrospend_app',
+			);
+		}
+		expect(await keyringOf(me, master())).toBeInstanceOf(Keyring);
+	});
+});
+
+describe("create_first_data_key and a user delete", () => {
+	it("holds the user row, so a delete waits and then takes the new key", async () => {
+		const me = await createTestUser();
+		let release!: () => void;
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let started!: () => void;
+		const ready = new Promise<void>((resolve) => {
+			started = resolve;
+		});
+		const holder = me.db.$transaction(async (tx) => {
+			await getOrCreateDataKeyring(tx, master());
+			started();
+			await gate;
+		});
+		await ready;
+
+		// While that transaction is open the delete cannot take the row. Without
+		// the FOR KEY SHARE lock in the function it would go through at once
+		// and leave the new key behind.
+		const blocked = await failure(
+			adminDb.$transaction(async (tx) => {
+				await tx.$executeRaw`SET LOCAL lock_timeout = '300ms'`;
+				await tx.$executeRaw`DELETE FROM "user" WHERE id = ${me.user.id}`;
+			}),
+		);
+		expect(String(blocked)).toMatch(/lock timeout|55P03/i);
+
+		release();
+		await holder;
+		await adminDb.user.delete({ where: { id: me.user.id } });
+		expect(await rowsOf(me.user.id)).toHaveLength(0);
+	});
+});
+
 describe("destroyDataKeys", () => {
 	it("removes the user's key, leaves others, and strands old ciphertext", async () => {
 		const [a, b] = await Promise.all([createTestUser(), createTestUser()]);

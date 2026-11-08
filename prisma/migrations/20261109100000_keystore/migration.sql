@@ -52,7 +52,7 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- The two doors for a signed-in user. Both pin search_path to pg_catalog and
+-- The two doors for a signed-in user. Both pin search_path to pg_catalog (pg_temp last) and
 -- name every object in full; the owner is whoever runs the migration.
 -- create_first_data_key locks the user row (FOR KEY SHARE) so a user deleted at
 -- the same moment cannot be left with a key: the delete waits for this
@@ -61,7 +61,7 @@ CREATE OR REPLACE FUNCTION keystore."current_user_data_keys"()
 RETURNS TABLE ("user_id" text, "key_id" integer, "wrapped_key" text)
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog
+SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
   uid text := nullif(pg_catalog.current_setting('app.current_user_id', true), '');
@@ -84,7 +84,7 @@ CREATE OR REPLACE FUNCTION keystore."create_first_data_key"(
 RETURNS TABLE ("user_id" text, "key_id" integer, "wrapped_key" text)
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog
+SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
   uid text := nullif(pg_catalog.current_setting('app.current_user_id', true), '');
@@ -123,7 +123,7 @@ END $$;
 CREATE OR REPLACE FUNCTION public."keystore_drop_user_keys"() RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog
+SET search_path = pg_catalog, pg_temp
 AS $$
 BEGIN
   IF to_regclass('keystore.user_data_key') IS NOT NULL THEN

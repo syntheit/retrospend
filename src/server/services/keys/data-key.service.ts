@@ -37,13 +37,17 @@ export type DataKeyErrorCode =
 	/** The keystore schema or table is gone; see "Data key backups" in docs/self-hosting.md. */
 	| "keystore_missing"
 	/** The transaction has no signed-in user, so there is no key to reach. */
-	| "no_user";
+	| "no_user"
+	/** The app role lost its keystore grants, for example after a restore; see self-hosting.md. */
+	| "keystore_grants_missing";
 
 const MESSAGES: Record<DataKeyErrorCode, string> = {
 	master_key_missing: "The server master key is not configured",
 	keystore_missing:
 		"The key store is missing from the database. See Data key backups in docs/self-hosting.md",
 	no_user: "There is no signed-in user for the key store",
+	keystore_grants_missing:
+		"The app cannot reach the key store. Re-apply the grants in Data key backups in docs/self-hosting.md",
 };
 
 export class DataKeyError extends Error {
@@ -82,7 +86,8 @@ function pgCode(error: unknown): string | undefined {
  * Runs one keystore query and turns the failures a caller can act on into
  * stable errors: 42P01 (no table), 3F000 (no schema) or 42883 (no function)
  * mean the keystore is missing; 28000 is the functions refusing a transaction
- * with no signed-in user (or a user that does not exist).
+ * with no signed-in user (or a user that does not exist); 42501 is a missing
+ * grant, which a restore leaves behind because the dumps carry no privileges.
  */
 async function keystore<T>(query: () => Promise<T>): Promise<T> {
 	try {
@@ -92,6 +97,7 @@ async function keystore<T>(query: () => Promise<T>): Promise<T> {
 		if (code === "42P01" || code === "3F000" || code === "42883")
 			throw new DataKeyError("keystore_missing");
 		if (code === "28000") throw new DataKeyError("no_user");
+		if (code === "42501") throw new DataKeyError("keystore_grants_missing");
 		throw error;
 	}
 }
