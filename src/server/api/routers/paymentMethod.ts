@@ -2,12 +2,8 @@ import { userTextOrEmpty } from "@retrospend/api-contract/common";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { db } from "~/server/db";
+import { participantRefSchema } from "~/server/services/payments/input";
 import { sharesExpenseWith } from "~/server/services/people/co-participants";
-
-const participantRefSchema = z.object({
-	participantType: z.enum(["user", "guest", "shadow"]),
-	participantId: z.string().min(1),
-});
 
 const methodInputSchema = z.object({
 	id: z.string().optional(),
