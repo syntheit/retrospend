@@ -79,6 +79,7 @@ export function createMockDb() {
 		notificationPreference: makeMockModel(),
 		paymentMethod: makeMockModel(),
 		importJob: makeMockModel(),
+		aiUsage: makeMockModel(),
 	};
 
 	const db = {

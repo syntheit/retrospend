@@ -5,7 +5,11 @@ import {
 	protectedProcedure,
 	publicProcedure,
 } from "~/server/api/trpc";
-import { resolveAiAccess } from "~/server/services/ai-access.service";
+import {
+	importProviderFor,
+	readSidecarModels,
+	resolveAiAccess,
+} from "~/server/services/ai-access.service";
 import {
 	getGeneralSettings,
 	updateGeneralSettings,
@@ -61,6 +65,7 @@ export const settingsRouter = createTRPCRouter({
 				fiscalMonthStartDay: z.number().int().min(1).max(28).optional(),
 				defaultExpenseDateBehavior: z.enum(["TODAY", "LAST_USED"]).optional(),
 				aiMode: z.enum(["LOCAL", "EXTERNAL"]).optional(),
+				aiImportEnabled: z.boolean().optional(),
 				language: z.enum(SUPPORTED_LOCALES).optional(),
 				// Checked against the runtime's zone list by the service.
 				timeZone: z.string().min(1).max(64).optional(),
@@ -86,13 +91,20 @@ export const settingsRouter = createTRPCRouter({
 		const { session, db } = ctx;
 		const user = await db.user.findUnique({
 			where: { id: session.user.id },
-			select: { aiMode: true },
+			select: { aiMode: true, aiImportEnabled: true },
 		});
 		const currentMode = user?.aiMode ?? "LOCAL";
 		const access = await resolveAiAccess(db, session.user.id, "EXTERNAL");
+		const provider = importProviderFor(
+			currentMode === "EXTERNAL" ? access.effectiveMode : "LOCAL",
+			await readSidecarModels(),
+		);
 
 		return {
 			currentMode,
+			importEnabled: user?.aiImportEnabled ?? false,
+			provider: provider.name,
+			model: provider.model,
 			externalAvailable: access.allowed,
 			externalDeniedReason: access.reason ?? null,
 			quotaRemaining: access.quotaRemaining,

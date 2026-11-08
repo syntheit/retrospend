@@ -234,9 +234,14 @@ describe("gap-closing reads and small writes", () => {
 		it("says whether the AI features are available", async () => {
 			const status = await expectBody<{
 				currentMode: string;
+				importEnabled: boolean;
+				provider: string;
 				externalAvailable: boolean;
 			}>(await get("/settings/ai-status"), contract.settings.aiStatus);
 			expect(status.currentMode).toBe("LOCAL");
+			// A new account has not turned AI import on, and local mode reads on Ollama.
+			expect(status.importEnabled).toBe(false);
+			expect(status.provider).toBe("OLLAMA");
 			expect(typeof status.externalAvailable).toBe("boolean");
 		});
 

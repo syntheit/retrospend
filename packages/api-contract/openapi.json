@@ -113408,6 +113408,9 @@
 							"application/json": {
 								"schema": {
 									"properties": {
+										"aiImportEnabled": {
+											"type": "boolean"
+										},
 										"aiMode": {
 											"enum": [
 												"LOCAL",
@@ -113531,6 +113534,7 @@
 										"fiscalMonthStartDay",
 										"defaultExpenseDateBehavior",
 										"aiMode",
+										"aiImportEnabled",
 										"language",
 										"timeZone"
 									],
@@ -113632,6 +113636,9 @@
 						"application/json": {
 							"schema": {
 								"properties": {
+									"aiImportEnabled": {
+										"type": "boolean"
+									},
 									"aiMode": {
 										"enum": [
 											"LOCAL",
@@ -113758,6 +113765,9 @@
 							"application/json": {
 								"schema": {
 									"properties": {
+										"aiImportEnabled": {
+											"type": "boolean"
+										},
 										"aiMode": {
 											"enum": [
 												"LOCAL",
@@ -113881,6 +113891,7 @@
 										"fiscalMonthStartDay",
 										"defaultExpenseDateBehavior",
 										"aiMode",
+										"aiImportEnabled",
 										"language",
 										"timeZone"
 									],
@@ -113968,7 +113979,7 @@
 		},
 		"/settings/ai-status": {
 			"get": {
-				"description": "Your mode (settings aiMode) and whether the server lets you use the external model.",
+				"description": "Your mode (settings aiMode), whether AI import is on for you, which provider and model would read a file, and whether the server lets you use the external model.",
 				"operationId": "getAiStatus",
 				"responses": {
 					"200": {
@@ -113996,6 +114007,26 @@
 												}
 											]
 										},
+										"importEnabled": {
+											"type": "boolean"
+										},
+										"model": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"provider": {
+											"enum": [
+												"OPENROUTER",
+												"OLLAMA"
+											],
+											"type": "string"
+										},
 										"quotaRemaining": {
 											"anyOf": [
 												{
@@ -114011,6 +114042,9 @@
 									},
 									"required": [
 										"currentMode",
+										"importEnabled",
+										"provider",
+										"model",
 										"externalAvailable",
 										"externalDeniedReason",
 										"quotaRemaining"

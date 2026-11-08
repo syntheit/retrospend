@@ -1,5 +1,4 @@
 import { TRPCError } from "@trpc/server";
-import * as XLSX from "xlsx";
 import { env } from "~/env";
 import { parseRawCsv } from "~/lib/csv";
 import { formatDateOnly, parseDateOnly } from "~/lib/date";
@@ -14,8 +13,14 @@ import {
 } from "@retrospend/domain/money";
 import type { ImportJobStatus, Prisma, PrismaClient } from "~prisma";
 import { findExchangeRate } from "../exchange-rates";
-import { recordTokenUsage, resolveAiAccess } from "./ai-access.service";
+import {
+	AI_IMPORT_OFF_MESSAGE,
+	isAiImportEnabled,
+	recordTokenUsage,
+	resolveAiAccess,
+} from "./ai-access.service";
 import { CsvService } from "./csv.service";
+import { excelToCsv } from "./import/excel";
 import { getAppSettings } from "./settings";
 
 // ── Types ─────────────────────────────────────────────────────────────
@@ -74,6 +79,16 @@ export class ImportQueueService {
 			});
 		}
 
+		// AI reads a statement only when the person turned AI import on. A
+		// spreadsheet falls back to the plain CSV reader; a PDF has no other reader.
+		let type = input.type;
+		if (type === "BANK_STATEMENT" && !(await isAiImportEnabled(this.db, userId))) {
+			if (input.fileType === "pdf") {
+				throw new TRPCError({ code: "FORBIDDEN", message: AI_IMPORT_OFF_MESSAGE });
+			}
+			type = "CSV";
+		}
+
 		const pendingCount = await this.db.importJob.count({
 			where: {
 				userId,
@@ -93,7 +108,7 @@ export class ImportQueueService {
 				id: generateId(),
 				userId,
 				status: "QUEUED",
-				type: input.type,
+				type,
 				fileName: input.fileName,
 				fileSize: input.fileSize,
 				fileType: input.fileType,
@@ -231,43 +246,11 @@ export class ImportQueueService {
 		let csvContent: string;
 		const additionalWarnings: string[] = [];
 
-		// Check if file is XLSX (by extension)
 		if (job.fileName.toLowerCase().endsWith(".xlsx")) {
-			// Convert XLSX to CSV
-			try {
-				const workbook = XLSX.read(fileBuffer, { type: "buffer" });
-
-				// Check for multiple sheets and warn
-				if (workbook.SheetNames.length > 1) {
-					additionalWarnings.push(
-						`Excel file contains ${workbook.SheetNames.length} sheets. Only the first sheet "${workbook.SheetNames[0]}" will be imported.`,
-					);
-				}
-
-				// Get first sheet
-				const firstSheetName = workbook.SheetNames[0];
-				if (!firstSheetName) {
-					throw new Error("Excel file contains no sheets");
-				}
-
-				const worksheet = workbook.Sheets[firstSheetName];
-				if (!worksheet) {
-					throw new Error("Failed to read Excel sheet");
-				}
-
-				// Convert to CSV
-				csvContent = XLSX.utils.sheet_to_csv(worksheet);
-
-				if (!csvContent.trim()) {
-					throw new Error("Excel sheet is empty");
-				}
-			} catch (error) {
-				throw new Error(
-					`Failed to process Excel file: ${error instanceof Error ? error.message : "Unknown error"}`,
-				);
-			}
+			const sheet = excelToCsv(fileBuffer, "imported");
+			csvContent = sheet.csv;
+			additionalWarnings.push(...sheet.warnings);
 		} else {
-			// Regular CSV file
 			csvContent = fileBuffer.toString("utf-8");
 		}
 
@@ -449,6 +432,12 @@ export class ImportQueueService {
 			throw new Error("No file data found for bank statement job");
 		}
 
+		// Checked again here: the setting can be turned off while a job waits.
+		if (!(await isAiImportEnabled(this.db, job.userId))) {
+			if (job.fileType === "pdf") throw new Error(AI_IMPORT_OFF_MESSAGE);
+			return this.processCsvJob(job);
+		}
+
 		const importerUrl = env.SIDECAR_URL;
 		if (!importerUrl) throw new Error("Import service URL (SIDECAR_URL) is not configured");
 
@@ -465,43 +454,11 @@ export class ImportQueueService {
 
 		// Convert XLSX to CSV if needed
 		if (job.fileName.toLowerCase().endsWith(".xlsx")) {
-			try {
-				const workbook = XLSX.read(fileBuffer, { type: "buffer" });
-
-				// Check for multiple sheets and warn
-				if (workbook.SheetNames.length > 1) {
-					additionalWarnings.push(
-						`Excel file contains ${workbook.SheetNames.length} sheets. Only the first sheet "${workbook.SheetNames[0]}" will be processed.`,
-					);
-				}
-
-				// Get first sheet
-				const firstSheetName = workbook.SheetNames[0];
-				if (!firstSheetName) {
-					throw new Error("Excel file contains no sheets");
-				}
-
-				const worksheet = workbook.Sheets[firstSheetName];
-				if (!worksheet) {
-					throw new Error("Failed to read Excel sheet");
-				}
-
-				// Convert to CSV
-				const csvContent = XLSX.utils.sheet_to_csv(worksheet);
-
-				if (!csvContent.trim()) {
-					throw new Error("Excel sheet is empty");
-				}
-
-				// Update file data to CSV
-				fileBuffer = Buffer.from(csvContent, "utf-8");
-				fileName = job.fileName.replace(/\.xlsx$/i, ".csv");
-				fileType = "csv";
-			} catch (error) {
-				throw new Error(
-					`Failed to process Excel file: ${error instanceof Error ? error.message : "Unknown error"}`,
-				);
-			}
+			const sheet = excelToCsv(fileBuffer, "processed");
+			additionalWarnings.push(...sheet.warnings);
+			fileBuffer = Buffer.from(sheet.csv, "utf-8");
+			fileName = job.fileName.replace(/\.xlsx$/i, ".csv");
+			fileType = "csv";
 		}
 
 		// Resolve AI provider for this user

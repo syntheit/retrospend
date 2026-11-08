@@ -39,6 +39,8 @@ vi.mock("~/server/services/csv.service", () => ({
 }));
 
 vi.mock("~/server/services/ai-access.service", () => ({
+	AI_IMPORT_OFF_MESSAGE: "off",
+	isAiImportEnabled: vi.fn().mockResolvedValue(true),
 	resolveAiAccess: vi.fn().mockResolvedValue({ allowed: true, effectiveMode: "LOCAL", quotaRemaining: null }),
 	recordTokenUsage: vi.fn().mockResolvedValue(undefined),
 }));

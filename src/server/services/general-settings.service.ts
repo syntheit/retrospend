@@ -31,6 +31,7 @@ export const GENERAL_SETTINGS_SELECT = {
 	fiscalMonthStartDay: true,
 	defaultExpenseDateBehavior: true,
 	aiMode: true,
+	aiImportEnabled: true,
 	language: true,
 	timeZone: true,
 } as const satisfies Prisma.UserSelect;
@@ -56,6 +57,7 @@ export interface GeneralSettingsChanges {
 	fiscalMonthStartDay?: number;
 	defaultExpenseDateBehavior?: DefaultExpenseDateBehavior;
 	aiMode?: AiMode;
+	aiImportEnabled?: boolean;
 	language?: string;
 	/** An IANA zone; stored in its canonical spelling (supportedTimeZone). */
 	timeZone?: string;

@@ -4,6 +4,12 @@ import { v1 } from "../common/meta";
 export const aiStatusSchema = z
 	.object({
 		currentMode: z.enum(["LOCAL", "EXTERNAL"]),
+		/** Whether you turned AI import on (settings aiImportEnabled). */
+		importEnabled: z.boolean(),
+		/** The provider that would read an import file for you. */
+		provider: z.enum(["OPENROUTER", "OLLAMA"]),
+		/** Its model, when the server knows it. */
+		model: z.string().nullable(),
 		/** Whether the external model can be used now. */
 		externalAvailable: z.boolean(),
 		/** Why not, when it cannot. */
@@ -22,7 +28,7 @@ export const settingsExtrasContract = {
 			tags: ["Settings"],
 			summary: "Whether AI features are available to you",
 			description:
-				"Your mode (settings aiMode) and whether the server lets you use the external model.",
+				"Your mode (settings aiMode), whether AI import is on for you, which provider and model would read a file, and whether the server lets you use the external model.",
 		})
 		.meta({ scope: "read" })
 		.output(aiStatusSchema),
