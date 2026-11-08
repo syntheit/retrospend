@@ -24,6 +24,7 @@ const FIXTURES: { [T in TableName]: (id: string) => TableRows[T] } = {
 	}),
 	shares: (id) => ({
 		id,
+		expenseId: "e1",
 		shareAmount: "250",
 		verificationStatus: "VERIFIED",
 		currency: "ARS",

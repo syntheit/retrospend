@@ -23,7 +23,7 @@ export interface ConformanceCase {
 }
 
 /** Rows compared by value: keys sorted, dates as ISO text. */
-function canon(value: unknown): string {
+export function canon(value: unknown): string {
 	return JSON.stringify(value, (_k, v: unknown) =>
 		v && typeof v === "object" && !Array.isArray(v) && !(v instanceof Date)
 			? Object.fromEntries(
@@ -33,14 +33,14 @@ function canon(value: unknown): string {
 	);
 }
 
-function expectEqual(actual: unknown, expected: unknown, what: string) {
+export function expectEqual(actual: unknown, expected: unknown, what: string) {
 	if (canon(actual) !== canon(expected))
 		throw new Error(
 			`${what}: expected ${canon(expected)}, got ${canon(actual)}`,
 		);
 }
 
-async function expectThrows(
+export async function expectThrows(
 	fn: () => unknown,
 	what: string,
 	kind: new (...args: never[]) => Error = TransactionError,
