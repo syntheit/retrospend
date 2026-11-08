@@ -4,6 +4,7 @@
 // values come from other implementations (see the vectors file), never from
 // the code under test.
 import formatVectors from "../vectors/format.vectors.json";
+import keyVectors from "../vectors/keys.vectors.json";
 import vectors from "../vectors/primitives.vectors.json";
 import {
 	canonicalJson,
@@ -15,6 +16,20 @@ import {
 	sealRecordWithNonce,
 } from "./format";
 import { fromHex, toHex } from "./hex";
+import {
+	deriveMasterKey,
+	encodeProquint,
+	encodeRecoveryKey,
+	fingerprintPhrase,
+	masterSubkeys,
+	type PublicRole,
+	parseRecoveryKey,
+	recoveryWrapKey,
+	type SymmetricRole,
+	unwrapKey,
+	unwrapKeyFromPublic,
+	wrapKeyWithNonce,
+} from "./keys";
 import type { Primitives } from "./primitives";
 
 /** Names of the vectors that failed; empty means every primitive matched. */
@@ -150,5 +165,101 @@ export function runKnownAnswerTests(p: Primitives): string[] {
 			v.base64url,
 		);
 	}
+	runKeyTests(p, check);
 	return failed;
+}
+
+type Check = (name: string, run: () => string, expected: string) => void;
+
+/** The key hierarchy vectors (keys.vectors.json, made by scripts/gen-keys.mjs). */
+function runKeyTests(p: Primitives, check: Check): void {
+	for (const v of keyVectors.masters) {
+		const derive = () =>
+			deriveMasterKey(p, v.password, fromHex(v.salt), {
+				memoryKiB: v.memoryKiB,
+				passes: v.passes,
+			});
+		check(`master key: ${v.name}`, () => toHex(derive()), v.masterKey);
+		check(
+			`master subkeys: ${v.name}`,
+			() => {
+				const k = masterSubkeys(p, derive());
+				return `${toHex(k.authKey)}:${toHex(k.wrapKey)}`;
+			},
+			`${v.authKey}:${v.wrapKey}`,
+		);
+	}
+	for (const v of keyVectors.recoveryKeys) {
+		const key = fromHex(v.recoveryKey);
+		check(`recovery key text: ${v.name}`, () => encodeRecoveryKey(key), v.text);
+		check(
+			`recovery key parse: ${v.name}`,
+			() => toHex(parseRecoveryKey(v.text.toLowerCase().replaceAll("-", " "))),
+			v.recoveryKey,
+		);
+		check(
+			`recovery wrap key: ${v.name}`,
+			() => toHex(recoveryWrapKey(p, key)),
+			v.wrapKey,
+		);
+	}
+	for (const v of keyVectors.symmetricWraps) {
+		const role = v.role as SymmetricRole;
+		check(
+			`wrap: ${v.name}`,
+			() =>
+				toHex(
+					wrapKeyWithNonce(
+						p,
+						fromHex(v.wrappingKey),
+						role,
+						v.id,
+						fromHex(v.key),
+						fromHex(v.nonce),
+					),
+				),
+			v.wrapped,
+		);
+		check(
+			`unwrap: ${v.name}`,
+			() =>
+				toHex(
+					unwrapKey(p, fromHex(v.wrappingKey), role, v.id, fromHex(v.wrapped)),
+				),
+			v.key,
+		);
+	}
+	for (const v of keyVectors.boxWraps) {
+		check(
+			`unwrap from public: ${v.name}`,
+			() =>
+				toHex(
+					unwrapKeyFromPublic(
+						p,
+						{
+							publicKey: fromHex(v.publicKey),
+							privateKey: fromHex(v.privateKey),
+						},
+						v.role as PublicRole,
+						v.id,
+						fromHex(v.wrapped),
+					),
+				),
+			v.key,
+		);
+	}
+	for (const v of keyVectors.fingerprints) {
+		check(
+			`fingerprint: ${v.name}`,
+			() => fingerprintPhrase(p, v.publicKeys.map(fromHex)),
+			v.phrase,
+		);
+	}
+	for (const [bytes, words] of Object.entries(keyVectors.proquint)) {
+		check(
+			`proquint: ${words}`,
+			() => encodeProquint(fromHex(bytes)).join("-"),
+			words,
+		);
+	}
 }

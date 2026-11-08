@@ -8,13 +8,24 @@
 // exported as runKnownAnswerTests for the benchmark screen) before relying
 // on it.
 import {
+	ARGON2_FLOOR,
 	CryptoError,
+	deriveMasterKey,
+	encodeRecoveryKey,
+	fingerprintPhrase,
+	masterSubkeys,
 	openRecord,
 	type Primitives,
+	parseRecoveryKey,
 	type RecordContext,
+	recoveryWrapKey,
 	runKnownAnswerTests,
 	sealRecord,
 	TAG_BYTES,
+	unwrapKey,
+	unwrapKeyFromPublic,
+	wrapKey,
+	wrapKeyToPublic,
 } from "@retrospend/crypto";
 import { loadWebSodium } from "@retrospend/crypto/web";
 
@@ -78,5 +89,42 @@ describe("crypto vectors on the phone toolchain", () => {
 		).toThrow(CryptoError);
 		sealed[sealed.length - 1] = (sealed[sealed.length - 1] ?? 0) ^ 1;
 		expect(() => openRecord(p, find, ctx, sealed)).toThrow(CryptoError);
+	});
+
+	it("unlocks the account key by password, recovery key and device key pair", () => {
+		const salt = p.randomBytes(16);
+		const { wrapKey: pwKey } = masterSubkeys(
+			p,
+			deriveMasterKey(p, "caf\u00e9 passphrase", salt, ARGON2_FLOOR),
+		);
+		const ak = p.randomBytes(32);
+		const recoveryKey = p.randomBytes(32);
+		const pair = p.boxKeypair();
+		const byPassword = wrapKey(p, pwKey, "ak-password", "u1", ak);
+		const byRecovery = wrapKey(
+			p,
+			recoveryWrapKey(p, recoveryKey),
+			"ak-recovery",
+			"u1",
+			ak,
+		);
+		const byDevice = wrapKeyToPublic(p, pair.publicKey, "ak-device", "d1", ak);
+		expect(unwrapKey(p, pwKey, "ak-password", "u1", byPassword)).toEqual(ak);
+		expect(
+			unwrapKey(
+				p,
+				recoveryWrapKey(p, parseRecoveryKey(encodeRecoveryKey(recoveryKey))),
+				"ak-recovery",
+				"u1",
+				byRecovery,
+			),
+		).toEqual(ak);
+		expect(unwrapKeyFromPublic(p, pair, "ak-device", "d1", byDevice)).toEqual(
+			ak,
+		);
+		expect(() => unwrapKey(p, pwKey, "ak-recovery", "u1", byPassword)).toThrow(
+			CryptoError,
+		);
+		expect(fingerprintPhrase(p, [pair.publicKey]).split(" ")).toHaveLength(6);
 	});
 });

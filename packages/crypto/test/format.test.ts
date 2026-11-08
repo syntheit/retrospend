@@ -3,8 +3,8 @@
 // (apps/mobile/test/crypto-vectors.test.ts) through runKnownAnswerTests.
 import { beforeAll, describe, expect, it } from "vitest";
 import {
-	canonicalJson,
 	CryptoError,
+	canonicalJson,
 	decodeSealed,
 	encodeSealed,
 	fromBase64Url,

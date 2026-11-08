@@ -22,6 +22,29 @@ export {
 } from "./format";
 export { fromHex, toHex } from "./hex";
 export {
+	ARGON2_CEILING,
+	ARGON2_DEFAULT,
+	ARGON2_FLOOR,
+	checkArgon2Params,
+	deriveMasterKey,
+	encodeProquint,
+	encodeRecoveryKey,
+	fingerprintPhrase,
+	generateAccountKey,
+	generateCollectionKey,
+	generateRecoveryKey,
+	keyPairMatches,
+	masterSubkeys,
+	type PublicRole,
+	parseRecoveryKey,
+	recoveryWrapKey,
+	type SymmetricRole,
+	unwrapKey,
+	unwrapKeyFromPublic,
+	wrapKey,
+	wrapKeyToPublic,
+} from "./keys";
+export {
 	type Argon2Params,
 	type BoxKeyPair,
 	createPrimitives,
