@@ -10,6 +10,7 @@ import { startOfNextDayIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import { recurringEntryData } from "./money-in.service";
 import type { MoneyMutation } from "./preview/types";
+import { dueAnchorDay, nextDueAfter } from "./income/due-day";
 import { paidOnInstant } from "./recurring-paid-on";
 import { userTimeZone } from "~/server/services/user-time-zone";
 
@@ -30,6 +31,8 @@ export interface ConfirmedExpense {
 	readonly nextDueAt: Date;
 	/** The due date this confirm settled, for the undo to put back. */
 	readonly dueAt: Date;
+	/** The template's anchor before this confirm (null on a legacy template), for the undo. */
+	readonly anchorDay: number | null;
 }
 
 const FIGURES = ["spent"];
@@ -77,19 +80,13 @@ export const confirmRecurringExpense: MoneyMutation<
 			input.amount ?? undefined,
 			undefined,
 			input.paidOn
-				? paidOnInstant(
-						input.paidOn,
-						template.direction,
-						zone,
-						template,
-					)
+				? paidOnInstant(input.paidOn, template.direction, zone, template)
 				: undefined,
 		);
-		const nextDueAt = nextRecurringDate(
-			template.nextDueDate,
-			template.frequency,
-			template.anchorDay,
-		);
+		// Due dates are stored as the start of a day in the user's saved zone, so
+		// they step there whatever zone this request came from.
+		const stepZone = await userTimeZone(tx, actor.userId);
+		const nextDueAt = nextDueAfter(template, template.nextDueDate, stepZone);
 		// The advance only succeeds while nextDueDate is still the one read,
 		// so two confirms racing each other create a single expense.
 		const advanced = await tx.recurringTemplate.updateMany({
@@ -100,7 +97,7 @@ export const confirmRecurringExpense: MoneyMutation<
 			},
 			data: {
 				nextDueDate: nextDueAt,
-				anchorDay: template.anchorDay ?? template.nextDueDate.getDate(),
+				anchorDay: dueAnchorDay(template, stepZone),
 			},
 		});
 		if (advanced.count === 0)
@@ -115,6 +112,7 @@ export const confirmRecurringExpense: MoneyMutation<
 				templateId: template.id,
 				nextDueAt,
 				dueAt: template.nextDueDate,
+				anchorDay: template.anchorDay,
 			},
 			undo: {
 				kind: "revert",
@@ -136,6 +134,11 @@ export interface UnconfirmRecurringExpenseInput {
 	 * when omitted.
 	 */
 	readonly dueDate?: Date | null;
+	/**
+	 * The template's anchor before the confirm, to put back (null included).
+	 * Left as it is when omitted, as for a token minted before this existed.
+	 */
+	readonly anchorDay?: number | null;
 }
 
 export interface UnconfirmedExpense {
@@ -173,6 +176,7 @@ export const unconfirmRecurringExpense: MoneyMutation<
 		// one period after this entry. Rewinding past a later confirm would
 		// book those periods again.
 		const dueDate = input.dueDate ?? row.date;
+		const stepZone = await userTimeZone(tx, actor.userId);
 		if (
 			template &&
 			template.nextDueDate.getTime() !==
@@ -180,6 +184,7 @@ export const unconfirmRecurringExpense: MoneyMutation<
 					dueDate,
 					template.frequency,
 					template.anchorDay,
+					stepZone,
 				).getTime()
 		)
 			throw new TRPCError({
@@ -194,7 +199,10 @@ export const unconfirmRecurringExpense: MoneyMutation<
 					userId: actor.userId,
 					nextDueDate: template.nextDueDate,
 				},
-				data: { nextDueDate: dueDate },
+				data: {
+					nextDueDate: dueDate,
+					...(input.anchorDay !== undefined && { anchorDay: input.anchorDay }),
+				},
 			});
 		return {
 			value: { expenseId: row.id, templateId: row.recurringTemplateId },

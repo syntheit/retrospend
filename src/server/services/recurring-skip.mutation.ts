@@ -5,11 +5,10 @@
  * date. Expense and income templates share it; only the way their due day is
  * stored differs (recurring.service dueInstant).
  */
-import { nextRecurringDate } from "@retrospend/domain/recurring";
 import { dayKey, startOfNextDayIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import { dayOf } from "./accounts/series";
-import { nextDueDay } from "./income/due-day";
+import { dueAnchorDay, nextDueAfter } from "./income/due-day";
 import type { MoneyMutation } from "./preview/types";
 import { userTimeZone } from "~/server/services/user-time-zone";
 
@@ -28,20 +27,6 @@ export interface SkippedRecurring {
 }
 
 const ALREADY = "This item was already confirmed or skipped";
-
-interface Stepping {
-	readonly direction: "OUT" | "IN";
-	readonly frequency: Parameters<typeof nextRecurringDate>[1];
-	readonly anchorDay: number | null;
-	readonly nextDueDate: Date;
-}
-
-/** The due date after `from`, stepped the way the template stores its days. */
-function after(t: Stepping, from: Date): Date {
-	return t.direction === "IN"
-		? nextDueDay(from, t.frequency, t.anchorDay)
-		: nextRecurringDate(from, t.frequency, t.anchorDay);
-}
 
 export const skipRecurring: MoneyMutation<
 	SkipRecurringInput,
@@ -71,12 +56,10 @@ export const skipRecurring: MoneyMutation<
 				: template.nextDueDate < startOfNextDayIn(new Date(), zone);
 		if (!due) throw new TRPCError({ code: "CONFLICT", message: ALREADY });
 
-		const nextDueAt = after(template, template.nextDueDate);
-		const anchorDay =
-			template.anchorDay ??
-			(template.direction === "IN"
-				? template.nextDueDate.getUTCDate()
-				: template.nextDueDate.getDate());
+		// Due dates step in the user's saved zone, not this request's.
+		const stepZone = await userTimeZone(tx, actor.userId);
+		const nextDueAt = nextDueAfter(template, template.nextDueDate, stepZone);
+		const anchorDay = dueAnchorDay(template, stepZone);
 		const advanced = await tx.recurringTemplate.updateMany({
 			where: {
 				id: template.id,
@@ -124,9 +107,10 @@ export const unskipRecurring: MoneyMutation<
 				code: "NOT_FOUND",
 				message: "Recurring template not found",
 			});
+		const stepZone = await userTimeZone(tx, actor.userId);
 		if (
 			template.nextDueDate.getTime() !==
-			after(template, input.dueDate).getTime()
+			nextDueAfter(template, input.dueDate, stepZone).getTime()
 		)
 			throw new TRPCError({
 				code: "CONFLICT",

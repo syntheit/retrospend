@@ -1,4 +1,5 @@
 import { differenceInCalendarDays, getDay, isSameDay } from "date-fns";
+import { startOfWallDayIn, type WallTime, wallTime } from "./time-zone";
 
 export const FREQUENCY_LABELS: Record<string, string> = {
 	WEEKLY: "Weekly",
@@ -39,32 +40,56 @@ export function addMonthsClamped(
 }
 
 /**
- * Next due date of a recurring template. Month-based frequencies keep the
- * template's anchor day instead of drifting after a short month.
+ * Next due date of a recurring template, read and stepped as calendar days in
+ * `timeZone`: a due date is stored as the start of the user's day, so the
+ * process's own zone must never decide which day it is. The result is always
+ * the first instant of that day (local midnight, or 01:00 where DST skips
+ * midnight), so no time-of-day drift persists across steps. Month-based frequencies keep the template's anchor day instead of
+ * drifting after a short month; without one, the date's own day in the zone.
+ * Pass "UTC" for days stored as UTC midnight (recurring income).
  */
 export function nextRecurringDate(
 	current: Date,
 	frequency: RecurringFrequency,
-	anchorDay?: number | null,
+	anchorDay: number | null | undefined,
+	timeZone: string,
 ): Date {
+	const wall = wallTime(current, timeZone);
+	const onDay = (month: number, day: number) =>
+		startOfWallDayIn({ year: wall.year, month, day }, timeZone);
 	switch (frequency) {
-		case "WEEKLY": {
-			const next = new Date(current);
-			next.setDate(next.getDate() + 7);
-			return next;
-		}
-		case "BIWEEKLY": {
-			const next = new Date(current);
-			next.setDate(next.getDate() + 14);
-			return next;
-		}
+		case "WEEKLY":
+			return onDay(wall.month, wall.day + 7);
+		case "BIWEEKLY":
+			return onDay(wall.month, wall.day + 14);
 		case "MONTHLY":
-			return addMonthsClamped(current, 1, anchorDay);
+			return onMonthsLater(wall, 1, anchorDay, timeZone);
 		case "QUARTERLY":
-			return addMonthsClamped(current, 3, anchorDay);
+			return onMonthsLater(wall, 3, anchorDay, timeZone);
 		case "YEARLY":
-			return addMonthsClamped(current, 12, anchorDay);
+			return onMonthsLater(wall, 12, anchorDay, timeZone);
 	}
+}
+
+/** The start of the day `months` on from `wall`, on `anchorDay` or the month's last day. */
+function onMonthsLater(
+	wall: WallTime,
+	months: number,
+	anchorDay: number | null | undefined,
+	timeZone: string,
+): Date {
+	const day = anchorDay ?? wall.day;
+	const lastDay = new Date(
+		Date.UTC(wall.year, wall.month + months + 1, 0),
+	).getUTCDate();
+	return startOfWallDayIn(
+		{
+			year: wall.year,
+			month: wall.month + months,
+			day: Math.min(day, lastDay),
+		},
+		timeZone,
+	);
 }
 
 /**
@@ -107,10 +132,7 @@ export function isProjectedOnDate(
 /**
  * Convert a frequency-specific amount to its monthly equivalent.
  */
-export function toMonthlyEquivalent(
-	amount: number,
-	frequency: string,
-): number {
+export function toMonthlyEquivalent(amount: number, frequency: string): number {
 	switch (frequency) {
 		case "WEEKLY":
 			return amount * (52 / 12);

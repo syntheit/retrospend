@@ -352,6 +352,7 @@ export async function confirmRecurring(
 		undo: undoFor(caller, FAMILY, "recurring.unconfirm", {
 			expenseId: v.expenseId,
 			dueAt: v.dueAt.toISOString(),
+			anchorDay: v.anchorDay,
 		}),
 	};
 }
@@ -379,9 +380,18 @@ function undoOf(op: string, input: unknown) {
 			code: "BAD_REQUEST",
 			message: "This undo is not valid anymore",
 		});
-	const { expenseId, dueAt } = input as { expenseId: string; dueAt?: string };
+	const { expenseId, dueAt, anchorDay } = input as {
+		expenseId: string;
+		dueAt?: string;
+		anchorDay?: number | null;
+	};
 	// A token minted before paid on existed has no dueAt: the entry's own date.
-	return { expenseId, dueDate: dueAt ? new Date(dueAt) : null };
+	// One minted before anchorDay was kept has none: the anchor stays as it is.
+	return {
+		expenseId,
+		dueDate: dueAt ? new Date(dueAt) : null,
+		anchorDay,
+	};
 }
 
 export async function undoRecurringConfirm(

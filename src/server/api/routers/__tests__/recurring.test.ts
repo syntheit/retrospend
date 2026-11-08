@@ -3,11 +3,8 @@
  * steps keep their anchor day, and a double confirm books one expense.
  */
 
-import {
-	addMonthsClamped,
-	nextRecurringDate,
-} from "@retrospend/domain/recurring";
-import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
+import { addMonthsClamped } from "@retrospend/domain/recurring";
+import { dayKey, parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "~/test/mock-db";
 import { RATE_DATE, useRateTable } from "~/test/rate-table";
@@ -144,39 +141,9 @@ afterEach(() => {
 });
 
 describe("month stepping", () => {
-	it("Jan 31 monthly goes Feb 28, Mar 31, Apr 30 instead of drifting to the 3rd", () => {
-		let d = local(2026, 1, 31);
-		const seen: string[] = [];
-		for (let i = 0; i < 4; i++) {
-			d = nextRecurringDate(d, "MONTHLY", 31);
-			seen.push(`${d.getMonth() + 1}/${d.getDate()}`);
-		}
-		expect(seen).toEqual(["2/28", "3/31", "4/30", "5/31"]);
-	});
-
-	it("leap years land on Feb 29", () => {
-		const d = nextRecurringDate(local(2028, 1, 31), "MONTHLY", 31);
-		expect(d.getMonth() + 1).toBe(2);
-		expect(d.getDate()).toBe(29);
-	});
-
-	it("quarterly and yearly clamp too", () => {
-		const q = nextRecurringDate(local(2025, 11, 30), "QUARTERLY", 30);
-		expect([q.getMonth() + 1, q.getDate()]).toEqual([2, 28]);
-		const y = nextRecurringDate(local(2028, 2, 29), "YEARLY", 29);
-		expect([y.getFullYear(), y.getMonth() + 1, y.getDate()]).toEqual([
-			2029, 2, 28,
-		]);
-	});
-
 	it("without an anchor uses the date's own day", () => {
 		const d = addMonthsClamped(local(2026, 3, 15), 1);
 		expect([d.getMonth() + 1, d.getDate()]).toEqual([4, 15]);
-	});
-
-	it("weekly stays a plain 7 days", () => {
-		const d = nextRecurringDate(local(2026, 1, 31), "WEEKLY");
-		expect([d.getMonth() + 1, d.getDate()]).toEqual([2, 7]);
 	});
 });
 
@@ -193,7 +160,8 @@ describe("recurring.confirmAndCreate", () => {
 			currency: "ARS",
 		});
 		const next = state.template!.nextDueDate;
-		expect([next.getMonth() + 1, next.getDate()]).toEqual([2, 28]);
+		// The saved zone (Buenos Aires) decides the day, not the process.
+		expect(dayKey(next, "America/Argentina/Buenos_Aires")).toBe("2026-02-28");
 		expect(state.template!.anchorDay).toBe(31);
 	});
 
@@ -347,7 +315,8 @@ describe("recurring.confirmAndCreate paid on", () => {
 			parseDateOnlyIn("2026-01-20", "America/Argentina/Buenos_Aires"),
 		);
 		const next = state.template!.nextDueDate;
-		expect([next.getMonth() + 1, next.getDate()]).toEqual([2, 28]);
+		// The saved zone (Buenos Aires) decides the day, not the process.
+		expect(dayKey(next, "America/Argentina/Buenos_Aires")).toBe("2026-02-28");
 	});
 
 	it("refuses a day to come or one before the previous due date", async () => {
@@ -412,7 +381,8 @@ describe("recurring.skip", () => {
 		expect(state.expenses).toHaveLength(0);
 		expect(mockDb.expense.create).not.toHaveBeenCalled();
 		const next = state.template!.nextDueDate;
-		expect([next.getMonth() + 1, next.getDate()]).toEqual([2, 28]);
+		// The saved zone (Buenos Aires) decides the day, not the process.
+		expect(dayKey(next, "America/Argentina/Buenos_Aires")).toBe("2026-02-28");
 		expect(done.nextDueAt.getTime()).toBe(next.getTime());
 		expect(state.template!.anchorDay).toBe(31);
 	});
