@@ -7,6 +7,7 @@
 	"sideEffects": false,
 	"exports": {
 		"./account-sort": "./src/account-sort.ts",
+		"./accounts/*": "./src/accounts/*.ts",
 		"./category-icons": "./src/category-icons.ts",
 		"./category-matcher": "./src/category-matcher.ts",
 		"./category-tone": "./src/category-tone.ts",
