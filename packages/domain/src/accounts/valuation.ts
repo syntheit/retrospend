@@ -10,7 +10,7 @@
  * (Wise valued at Official: USD 1 = ARS 1,412).
  */
 import { isCrypto } from "../currency-format";
-import { type PickedRate, USD } from "../money";
+import { type PickedRate, pickBestRate, USD } from "../money";
 import { type Decimal, dec } from "../precise-decimal";
 
 export const CUSTOM_RATE_TYPE = "custom";
@@ -21,6 +21,40 @@ export type RatePick = (
 	date: Date,
 	preferredType?: string | null,
 ) => PickedRate | null;
+
+/** One stored rate of one currency (an exchange_rate row). */
+export interface PickRateRow {
+	readonly currency: string;
+	readonly type: string;
+	readonly rate: number;
+	readonly date: Date;
+}
+
+/**
+ * A rate lookup over rate rows held in memory: USD is 1, any other currency
+ * picks from all of its rows (pickBestRate). The server's batch lookup
+ * (findExchangeRatesForDates) is this over the rows of the currencies it
+ * needs, so a device with the same rows prices at the same rates. It is not
+ * the windowed single lookup (rateWindow): the batch one never limited the
+ * rows it sees.
+ */
+export function ratePickFromRows(rows: readonly PickRateRow[]): RatePick {
+	const byCurrency = new Map<string, PickRateRow[]>();
+	for (const row of rows) {
+		const list = byCurrency.get(row.currency) ?? [];
+		list.push(row);
+		byCurrency.set(row.currency, list);
+	}
+	return (currency, date, preferredType) => {
+		if (currency === USD) {
+			return { rate: 1, type: "official", date, onOrBefore: true };
+		}
+		return pickBestRate(byCurrency.get(currency) ?? [], {
+			date,
+			preferredType,
+		});
+	};
+}
 
 export interface Valued {
 	readonly currency: string;
