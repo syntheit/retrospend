@@ -1,10 +1,10 @@
+import { isValidRate, USD } from "@retrospend/domain/money";
 import {
 	dayKey,
 	parseDateOnlyIn,
 	startOfNextDayIn,
 } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
-import { isValidRate, USD } from "@retrospend/domain/money";
 import {
 	CUSTOM_RATE_TYPE,
 	rateTypeFromPricingSource,
@@ -448,19 +448,24 @@ export class ExpenseService {
 	}
 
 	async getFilterOptions(userId: string) {
-		const [yearsResult, categories] = await Promise.all([
-			(this.db as PrismaClient).$queryRaw<{ year: number }[]>`
-				SELECT DISTINCT EXTRACT(YEAR FROM date)::INT as year 
-				FROM expense 
-				WHERE "userId" = ${userId} 
-				ORDER BY year DESC
-			`,
-			(this.db as PrismaClient).category.findMany({
-				where: { userId },
-				select: { id: true, name: true, color: true },
-				orderBy: { name: "asc" },
+		// Raw SQL runs inside a user transaction (role and RLS set), never on a
+		// bare scoped client.
+		const { yearsResult, categories } = await this.runInTransaction(
+			async (tx) => ({
+				yearsResult: await tx.$queryRaw<{ year: number }[]>`
+					SELECT DISTINCT EXTRACT(YEAR FROM date)::INT as year 
+					FROM expense 
+					WHERE "userId" = ${userId} 
+					ORDER BY year DESC
+				`,
+				categories: await tx.category.findMany({
+					where: { userId },
+					select: { id: true, name: true, color: true },
+					orderBy: { name: "asc" },
+				}),
 			}),
-		]);
+			userId,
+		);
 
 		return {
 			years: yearsResult.map((r) => r.year),

@@ -51,11 +51,10 @@ const startOfDay = (day: string) => new Date(`${day}T00:00:00.000Z`);
 const codeCursor = z.object({ code: z.string() });
 
 export async function listCurrencyPage(
-	db: AppDb,
 	q: CursorQuery & { kind?: "fiat" | "crypto" },
 ) {
 	const after = decodeCursor(q.cursor, codeCursor);
-	const rows = await listCurrencies(db, {
+	const rows = await listCurrencies({
 		kind: q.kind,
 		afterCode: after?.code,
 		take: q.limit + 1,
@@ -70,12 +69,9 @@ export async function listCurrencyPage(
 
 const pairCursor = z.object({ currency: z.string(), type: z.string() });
 
-export async function listRatePage(
-	db: AppDb,
-	q: z.infer<typeof ratesQuerySchema>,
-) {
+export async function listRatePage(q: z.infer<typeof ratesQuerySchema>) {
 	const after = decodeCursor(q.cursor, pairCursor);
-	const rows = await listLatestRates(db, {
+	const rows = await listLatestRates({
 		currency: q.currency,
 		type: q.type,
 		onOrBefore: q.date ? endOfDay(q.date) : undefined,
