@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"retrospend-sidecar/db"
@@ -55,7 +56,31 @@ var (
 var (
 	backupMu  sync.Mutex
 	isRunning bool
+	// backupStopped: StopBackups was called, so no dump starts any more.
+	backupStopped bool
+	// backupCancel aborts the dump that is running, if any.
+	backupCancel context.CancelFunc
 )
+
+// errBackupsStopped is returned by a run that started after StopBackups.
+var errBackupsStopped = errors.New("backups are stopped: the sidecar is restarting")
+
+// StopBackups ends backups for the rest of this process: a dump that is running
+// is aborted (its partial file is removed like any failed dump's), and later
+// runs, scheduled, requested or the keystore dump that follows the main one,
+// return at once. The sidecar calls it when it must restart to connect as the
+// owner role: a running pg_dump holds locks that the app's ownership handover
+// waits for. It reports whether a dump was running.
+func StopBackups() (aborted bool) {
+	backupMu.Lock()
+	defer backupMu.Unlock()
+	backupStopped = true
+	if backupCancel != nil {
+		backupCancel()
+		return true
+	}
+	return false
+}
 
 // IsBackupRunning returns whether a backup is currently in progress.
 func IsBackupRunning() bool {
@@ -88,17 +113,26 @@ func RunBackups(database *db.DB, databaseURL string, backupDir string, retention
 
 func runBackup(kind backupKind, database *db.DB, databaseURL string, backupDir string, retentionDays int, ageRecipients []string) error {
 	backupMu.Lock()
+	if backupStopped {
+		backupMu.Unlock()
+		log.Printf("%s not started: %v", kind.label(), errBackupsStopped)
+		return errBackupsStopped
+	}
 	if isRunning {
 		backupMu.Unlock()
 		return fmt.Errorf("backup already in progress")
 	}
 	isRunning = true
+	ctx, cancel := context.WithCancel(context.Background())
+	backupCancel = cancel
 	backupMu.Unlock()
 
 	defer func() {
 		backupMu.Lock()
 		isRunning = false
+		backupCancel = nil
 		backupMu.Unlock()
+		cancel()
 	}()
 
 	start := backupNow()
@@ -132,7 +166,10 @@ func runBackup(kind backupKind, database *db.DB, databaseURL string, backupDir s
 	// name and rename it only when complete, so a crash never leaves a
 	// half-written backup that looks real.
 	partial := partialPath(filepath)
-	cmd := exec.Command(pgDumpBin, pgDumpArgs(kind, host, port, user, dbname, partial, encrypt)...)
+	cmd := exec.CommandContext(ctx, pgDumpBin, pgDumpArgs(kind, host, port, user, dbname, partial, encrypt)...)
+	// An aborted dump gets SIGTERM so pg_dump closes its session, then SIGKILL.
+	cmd.Cancel = func() error { return cmd.Process.Signal(syscall.SIGTERM) }
+	cmd.WaitDelay = 5 * time.Second
 	cmd.Env = append(os.Environ(), fmt.Sprintf("PGPASSWORD=%s", password))
 
 	var output []byte
@@ -150,7 +187,13 @@ func runBackup(kind backupKind, database *db.DB, databaseURL string, backupDir s
 		}
 	}
 	if err != nil {
-		if errors.Is(err, ErrInvalidAgeRecipient) || errors.Is(err, errBackupExists) {
+		aborted := ctx.Err() != nil
+		if aborted {
+			result.Error = "backup aborted: the owner role appeared and the sidecar is restarting to connect as it"
+			// The manifest keeps the record; the database is not written to from
+			// a session that is about to be replaced.
+			database = nil
+		} else if errors.Is(err, ErrInvalidAgeRecipient) || errors.Is(err, errBackupExists) {
 			result.Error = fmt.Sprintf("encrypted backup not written: %v", err)
 		} else if errors.Is(err, errPublish) {
 			result.Error = fmt.Sprintf("backup not published: %v", err)

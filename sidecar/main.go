@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -31,6 +32,11 @@ import (
 var Version = "0.2.0"
 
 func main() {
+	// entrypoint.sh asks which database URL to hand the sidecar before it starts.
+	if len(os.Args) > 1 && os.Args[1] == "owner-url" {
+		os.Exit(runOwnerURL(os.Stdout, os.Stderr))
+	}
+
 	log.Printf("Retrospend Sidecar %s starting...", Version)
 
 	// Load configuration
@@ -44,6 +50,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
+
+	// Jobs started by an HTTP request run in their own goroutine; shutdown waits
+	// for them.
+	var httpJobs sync.WaitGroup
 
 	// Initialize cron scheduler
 	c := cron.New(cron.WithLogger(cron.VerbosePrintfLogger(log.New(os.Stdout, "[CRON] ", log.LstdFlags))))
@@ -173,7 +183,9 @@ func main() {
 
 		log.Println("[HTTP] Manual backup triggered")
 
+		httpJobs.Add(1)
 		go func() {
+			defer httpJobs.Done()
 			if err := tasks.RunBackups(database, cfg.DatabaseURL, cfg.BackupDir, cfg.BackupRetentionDays, cfg.BackupAgeRecipients); err != nil {
 				log.Printf("[HTTP] Backup failed: %v", err)
 			}
@@ -195,7 +207,9 @@ func main() {
 
 		log.Println("[HTTP] Manual data retention cleanup triggered")
 
+		httpJobs.Add(1)
 		go func() {
+			defer httpJobs.Done()
 			report, err := tasks.RunDataRetentionCleanup(database)
 			if err != nil {
 				log.Printf("[HTTP] Cleanup failed: %v", err)
@@ -392,52 +406,49 @@ func main() {
 		IdleTimeout:  120 * time.Second,
 	}
 
-	// Start server in goroutine
-	go func() {
-		log.Println("✓ HTTP server listening on :8080")
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("HTTP server failed: %v", err)
-		}
-	}()
-
-	// Start the scheduler
-	c.Start()
-	log.Println("✓ Scheduler started")
-	log.Println("  - Exchange rates: daily at 09:05 UTC")
-	log.Println("  - Recurring expenses: every 15 minutes")
-	log.Printf("  - Database backup: %s (retention: %d days)", cfg.BackupCron, cfg.BackupRetentionDays)
-	if len(cfg.BackupAgeRecipients) > 0 {
-		log.Printf("  - Backups encrypted to %d age recipient(s)", len(cfg.BackupAgeRecipients))
-	}
-	log.Println("  - Data retention cleanup: daily at 03:00 UTC")
-	log.Println("  - Settlement auto-finalize: daily at 04:00 UTC")
-	log.Println("  - HTTP Server: :8080")
-	if importerAvailable {
-		log.Println("  - Importer: available")
-	} else {
-		log.Println("  - Importer: no LLM provider configured")
-	}
-
-	// Wait for interrupt signal
+	// Find out whether this is a superuser session (entrypoint.sh fell back to
+	// the URL as given) before any job or request can run. A session that
+	// cannot be checked does not run: the restart retries.
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	<-sigChan
+	lc := newLifecycle(database.Pool, c, server, &httpJobs, database.Close, sigChan)
 
-	log.Println("🛑 Shutting down gracefully...")
-	c.Stop()
+	// runSupervised checks the session before any work starts, starts the HTTP
+	// server and the scheduler, and then blocks until a signal, or until the
+	// owner role appears while this sidecar runs as the superuser.
+	code, err := runSupervised(context.Background(), lc, func() {
+		// Start server in goroutine
+		go func() {
+			log.Println("✓ HTTP server listening on :8080")
+			if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Fatalf("HTTP server failed: %v", err)
+			}
+		}()
 
-	// Graceful shutdown with timeout
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer shutdownCancel()
-
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Printf("HTTP server shutdown error: %v", err)
-	} else {
-		log.Println("✓ HTTP server stopped gracefully")
+		// Start the scheduler
+		c.Start()
+		log.Println("✓ Scheduler started")
+		log.Println("  - Exchange rates: daily at 09:05 UTC")
+		log.Println("  - Recurring expenses: every 15 minutes")
+		log.Printf("  - Database backup: %s (retention: %d days)", cfg.BackupCron, cfg.BackupRetentionDays)
+		if len(cfg.BackupAgeRecipients) > 0 {
+			log.Printf("  - Backups encrypted to %d age recipient(s)", len(cfg.BackupAgeRecipients))
+		}
+		log.Println("  - Data retention cleanup: daily at 03:00 UTC")
+		log.Println("  - Settlement auto-finalize: daily at 04:00 UTC")
+		log.Println("  - HTTP Server: :8080")
+		if importerAvailable {
+			log.Println("  - Importer: available")
+		} else {
+			log.Println("  - Importer: no LLM provider configured")
+		}
+	})
+	if err != nil {
+		log.Fatalf("%v", err)
 	}
-
-	database.Close()
-	log.Println("✓ Sidecar stopped")
+	if code != 0 {
+		os.Exit(code)
+	}
 }
 
 func handleCSV(file *os.File, provider llm.Provider, model string, batchSize int, enrichConcurrency int, categories []string, defaultCurrency string, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, error) {
