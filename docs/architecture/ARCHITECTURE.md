@@ -219,5 +219,7 @@ Preferred, for the same reason:
 | Accounts change only on deliberate money moves | Without bank sync, accounts touched by every expense drift from reality. |
 | Owed to you and You owe never netted | Netting made "Owed to you" rise after paying someone back. |
 | Postgres RLS under a user-scoped client | A missed `where userId` in app code cannot leak another person's data. |
+| Access hardening: least-privilege grants, refused raw SQL on scoped clients, `SECURITY DEFINER` hygiene | RLS stops logic bugs, not arbitrary SQL, so `retrospend_app` holds only what a scoped path uses and the scans fail a blanket grant or an unparameterized query. The limit is written down in `docs/security/threat-model.md`. |
+| The app and sidecar connect as `retrospend_owner`, not the superuser (A2) | `RESET ROLE` from `retrospend_app` used to land on the superuser. It now lands on a table owner that is not a superuser and holds no database `CREATE`, until a separate login for scoped work (A3). The superuser runs only a catalog-only bootstrap and never reaches the app's environment. |
 | Android without Google, Google only as an extra | De-Googled phones (GrapheneOS) are first-class. Features must not depend on Play services. |
 | Integer minor units on the wire, `Decimal` in the database | Floats lose cents. ARS and crypto amounts exceed what naive formats handle. |
