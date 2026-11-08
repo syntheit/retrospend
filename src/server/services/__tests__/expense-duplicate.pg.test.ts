@@ -2,9 +2,10 @@
  * The duplicate check on the SQL path (no keyring) and the app-layer path
  * (keyring), E2EE lane D7. On plaintext both must answer what the old query
  * answered (copied below as the oracle), including how titles compare: any
- * case, but no trimming and no accent folding, and `%` and `_` are ordinary
- * characters. Then the day edges in the user's time zone, other currencies,
- * other users, and sealed titles mixed with plaintext.
+ * case, but no trimming and no accent folding, and `%`, `_` and backslash in
+ * the asked title are ILIKE pattern characters. Then the day edges in the
+ * user's time zone, other currencies, other users, and sealed titles mixed
+ * with plaintext.
  */
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
