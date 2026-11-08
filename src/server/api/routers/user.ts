@@ -1,3 +1,4 @@
+import { userText } from "@retrospend/api-contract/common";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
@@ -13,7 +14,10 @@ export const userRouter = createTRPCRouter({
 		.input(
 			z
 				.object({
-					name: z.string().min(1, "Name is required").max(100),
+					name: z
+						.string()
+						.min(1, "Name is required")
+						.pipe(userText("user.name", 100)),
 					username: z
 						.string()
 						.min(1, "Username is required")

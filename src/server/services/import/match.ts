@@ -19,6 +19,7 @@
  * (`readUserText`) before any comparison; SQL never looks at them.
  */
 import { createHash } from "node:crypto";
+import { stripUserTextControls } from "@retrospend/api-contract/common";
 import { currencyDecimals } from "@retrospend/domain/money";
 import { dayKey, startOfDayIn, startOfNextDayIn } from "@retrospend/domain/time-zone";
 import type { Keyring } from "~/server/crypto/field-crypto";
@@ -33,7 +34,13 @@ type Db = PrismaClient | Prisma.TransactionClient;
 export const LIKELY_DAYS = 3;
 const DAY_MS = 86_400_000;
 
-/** Lowercase, no accents, words only: "MERPAGO*Café  Martínez" -> "merpago cafe martinez". */
+/**
+ * Lowercase, no accents, words only: "MERPAGO*Café  Martínez" -> "merpago cafe
+ * martinez". A control character is not a letter or a number, so it is a
+ * separator like any other. Give it the title as the file has it, not the
+ * stored one, which has its controls stripped: "COFFEE\vSHOP" is "coffee shop"
+ * here and "coffeeshop" once stripped.
+ */
 export function normalizeTitle(title: string): string {
 	return title
 		.normalize("NFD")
@@ -91,7 +98,7 @@ export function fileFingerprint(row: PreparedRow): string {
 		row.rate.currency,
 		minorKey(row.rate.amount, row.rate.currency),
 		row.proposed,
-		normalizeTitle(row.title),
+		normalizeTitle(row.stored.title),
 	].join("|");
 	return createHash("sha256").update(key).digest("hex");
 }
@@ -103,7 +110,8 @@ export function matchRowOf(row: PreparedRow, kind: ImportKind): MatchRow {
 		currency: row.rate.currency,
 		minor: minorKey(row.rate.amount, row.rate.currency),
 		kind,
-		title: row.title,
+		// The file's own text, for the key only (see normalizeTitle).
+		title: row.stored.title,
 		fingerprint: fileFingerprint(row),
 	};
 }
@@ -122,6 +130,19 @@ function groupBy<T>(items: readonly T[], key: (item: T) => string | null) {
 		const list = groups.get(k);
 		if (list) list.push(item);
 		else groups.set(k, [item]);
+	}
+	return groups;
+}
+
+/** Rows grouped by every key they have (a row may sit in several groups), in the order given. */
+function groupByAny<T>(items: readonly T[], keys: (item: T) => string[]) {
+	const groups = new Map<string, T[]>();
+	for (const item of items) {
+		for (const k of new Set(keys(item))) {
+			const list = groups.get(k);
+			if (list) list.push(item);
+			else groups.set(k, [item]);
+		}
 	}
 	return groups;
 }
@@ -185,9 +206,19 @@ export function matchRows(
 		groupBy(existing, (e) => e.fingerprint),
 		(r) => r.fingerprint,
 	);
-	const sameRow = (x: ExistingRow | MatchRow) =>
-		`${moneyKey(x)}|${x.day}|${normalizeTitle(x.title)}`;
-	pass(groupBy(existing, sameRow), sameRow);
+	const sameRow = (x: ExistingRow | MatchRow, title = x.title) =>
+		`${moneyKey(x)}|${x.day}|${normalizeTitle(title)}`;
+	// An Activity row stored before text was cleaned may still hold a control
+	// character, which reads as a separator ("A\vB" is "a b"). A file read by
+	// the sidecar arrives already cleaned ("AB"). So a row is keyed on its title
+	// as stored and as cleaned, and either one meets the file row.
+	pass(
+		groupByAny(existing, (e) => [
+			sameRow(e),
+			sameRow(e, stripUserTextControls(e.title)),
+		]),
+		(r) => sameRow(r),
+	);
 
 	// Likely: same money within LIKELY_DAYS, closest pair first.
 	const buckets = new Map(

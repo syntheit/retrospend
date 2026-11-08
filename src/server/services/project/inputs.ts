@@ -3,6 +3,7 @@
  * packages/api-contract with /api/v1 (IMPLEMENTATION §2.2), so tRPC and v1
  * validate the same shapes.
  */
+import { userText, userTextOrEmpty } from "@retrospend/api-contract/common";
 import { z } from "zod";
 import { isIsoDate } from "./membership";
 
@@ -33,8 +34,8 @@ const group = z.object({ projectId: id, periodId: z.string().optional() });
 export const projectInput = {
 	create: z.object({
 		id: z.uuid().optional(),
-		name: z.string().min(1).max(191),
-		description: z.string().max(500).optional(),
+		name: userText("project.name", 191),
+		description: userTextOrEmpty("project.description", 500).optional(),
 		budgetAmount: z.number().positive().optional(),
 		budgetCurrency: z.string().min(1).max(10).optional(),
 		primaryCurrency: z.string().min(1).max(10).default("USD"),
@@ -50,8 +51,8 @@ export const projectInput = {
 	analyticsExclusion: z.object({ projectId: id, exclude: z.boolean() }),
 	update: z.object({
 		id,
-		name: z.string().min(1).max(191).optional(),
-		description: z.string().max(500).nullish(),
+		name: userText("project.name", 191).optional(),
+		description: userTextOrEmpty("project.description", 500).nullish(),
 		budgetAmount: z.number().positive().nullish(),
 		budgetCurrency: z.string().min(1).max(10).nullish(),
 		primaryCurrency: z.string().min(1).max(10).optional(),

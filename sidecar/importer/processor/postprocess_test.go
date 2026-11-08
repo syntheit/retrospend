@@ -308,6 +308,35 @@ func TestValidateTransactions_FiltersInvalidSkipsWithWarnings(t *testing.T) {
 	}
 }
 
+func TestValidateTransactions_StripsControlCharactersFromText(t *testing.T) {
+	dirty := validTx()
+	dirty.Title = "  Caf\vé\x01 LATTE "
+	dirty.Location = "BA\x00"
+	dirty.Description = "one\r\ntwo\x07\tthree"
+	onlyControls := validTx()
+	onlyControls.Title = "\x01\x02"
+	meta := &models.ImportMetadata{}
+
+	valid := ValidateTransactions([]models.NormalizedTransaction{dirty, onlyControls}, meta)
+
+	if len(valid) != 1 {
+		t.Fatalf("expected 1 valid transaction, got %d", len(valid))
+	}
+	if meta.SkippedTransactions != 1 {
+		t.Errorf("expected the controls-only title skipped, got %d skipped", meta.SkippedTransactions)
+	}
+	got := valid[0]
+	if got.Title != "  Café LATTE " {
+		t.Errorf("title: got %q", got.Title)
+	}
+	if got.Location != "BA" {
+		t.Errorf("location: got %q", got.Location)
+	}
+	if got.Description != "one\r\ntwo\tthree" {
+		t.Errorf("description: got %q", got.Description)
+	}
+}
+
 func TestValidateTransactions_AllValid(t *testing.T) {
 	txs := []models.NormalizedTransaction{validTx(), validTx()}
 	meta := &models.ImportMetadata{}

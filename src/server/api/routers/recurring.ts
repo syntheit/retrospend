@@ -2,6 +2,10 @@ import { convertAmount } from "@retrospend/domain/money";
 import { dayKey, startOfNextDayIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import {
+	createRecurringInput,
+	updateRecurringInput,
+} from "~/lib/schemas/recurring";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { userTransaction } from "~/server/db-tx";
 import { RateCache } from "~/server/services/rate-cache";
@@ -148,25 +152,7 @@ export const recurringRouter = createTRPCRouter({
 		}),
 
 	create: protectedProcedure
-		.input(
-			z.object({
-				name: z.string().min(1).max(191),
-				amount: z.number().positive(),
-				currency: z.string().length(3).default("USD"),
-				categoryId: z.cuid().optional(),
-				frequency: z.enum([
-					"WEEKLY",
-					"BIWEEKLY",
-					"MONTHLY",
-					"QUARTERLY",
-					"YEARLY",
-				]),
-				nextDueDate: z.date(),
-				websiteUrl: z.url().max(512).optional(),
-				paymentSource: z.string().min(1).max(191).optional(),
-				autoPay: z.boolean().default(true),
-			}),
-		)
+		.input(createRecurringInput)
 		.mutation(async ({ ctx, input }) => {
 			const { session, db } = ctx;
 
@@ -193,23 +179,7 @@ export const recurringRouter = createTRPCRouter({
 		}),
 
 	update: protectedProcedure
-		.input(
-			z.object({
-				id: z.cuid(),
-				name: z.string().min(1).max(191).optional(),
-				amount: z.number().positive().optional(),
-				currency: z.string().length(3).optional(),
-				categoryId: z.cuid().nullable().optional(),
-				frequency: z
-					.enum(["WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY", "YEARLY"])
-					.optional(),
-				nextDueDate: z.date().optional(),
-				websiteUrl: z.url().max(512).nullable().optional(),
-				paymentSource: z.string().min(1).max(191).nullable().optional(),
-				autoPay: z.boolean().optional(),
-				isActive: z.boolean().optional(),
-			}),
-		)
+		.input(updateRecurringInput)
 		.mutation(async ({ ctx, input }) => {
 			const { session, db } = ctx;
 

@@ -1,3 +1,4 @@
+import { userText } from "@retrospend/api-contract/common";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { getImageUrl } from "~/server/storage";
@@ -147,7 +148,7 @@ export const peopleRouter = createTRPCRouter({
 	createShadow: protectedProcedure
 		.input(
 			z.object({
-				name: z.string().min(1).max(191),
+				name: userText("person.name", 191),
 				email: z.email().max(255).optional(),
 			}),
 		)
@@ -190,7 +191,7 @@ export const peopleRouter = createTRPCRouter({
 		.input(
 			z.object({
 				shadowId: z.string().min(1),
-				name: z.string().min(1).max(191),
+				name: userText("person.name", 191),
 				email: z.email().max(255).optional(),
 			}),
 		)
