@@ -48,6 +48,30 @@ describe("selectRateRows", () => {
 		]);
 	});
 
+	it("keeps the row stored last on a day with two rows of a pair, in either input order", () => {
+		const early: RateRow = {
+			...row("ARS", "card", "2026-09-30", "1040"),
+			at: "2026-09-30T08:00:00.000Z",
+		};
+		const late: RateRow = {
+			...row("ARS", "card", "2026-09-30", "1050"),
+			at: "2026-09-30T20:00:00.000Z",
+		};
+		for (const rows of [
+			[early, late],
+			[late, early],
+		]) {
+			const card = selectRateRows(rows, P).filter((r) => r.type === "card");
+			expect(card.map((r) => r.rate)).toEqual(["1050"]);
+		}
+		// Rows from since on keep both, oldest stored first, so the later one wins a lookup.
+		const both = selectRateRows([late, early], {
+			...P,
+			since: "2026-09-30",
+		}).filter((r) => r.type === "card");
+		expect(both.map((r) => r.rate)).toEqual(["1040", "1050"]);
+	});
+
 	it("reads nothing when only USD is asked for", () => {
 		expect(
 			selectRateRows(ALL, { ...P, bookCurrency: "USD", extraCurrencies: [] }),

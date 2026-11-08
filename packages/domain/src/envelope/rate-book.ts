@@ -15,6 +15,12 @@ export interface RateRow {
 	type: string;
 	rate: string;
 	date: IsoDate;
+	/**
+	 * The stored timestamp. A day can hold several rows of one pair (the table
+	 * is unique on the timestamp), and the latest wins; leave it out only
+	 * when a pair has one row a day.
+	 */
+	at?: string;
 }
 
 export interface RateBookParams {
@@ -50,12 +56,25 @@ export function selectRateRows(
 		else {
 			const key = `${r.currency}\0${r.type}`;
 			const held = anchors.get(key);
-			if (!held || held.date < r.date) anchors.set(key, r);
+			if (!held || isLater(r, held)) anchors.set(key, r);
 		}
 	}
 	return [...anchors.values(), ...later].sort((x, y) =>
-		x.date < y.date ? -1 : x.date > y.date ? 1 : 0,
+		x.date < y.date
+			? -1
+			: x.date > y.date
+				? 1
+				: (x.at ?? "") < (y.at ?? "")
+					? -1
+					: (x.at ?? "") > (y.at ?? "")
+						? 1
+						: 0,
 	);
+}
+
+/** Whether `a` is the later row: by day, then by stored timestamp (SQL: ORDER BY date DESC). */
+function isLater(a: RateRow, b: RateRow): boolean {
+	return a.date !== b.date ? a.date > b.date : (a.at ?? "") > (b.at ?? "");
 }
 
 interface RatePoint {

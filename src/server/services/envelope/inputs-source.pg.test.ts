@@ -138,6 +138,9 @@ describe("budget inputs port on Postgres", () => {
 				data: [
 					row("XQA", "official", "2026-09-20T00:00:00Z", "1000"),
 					row("XQA", "official", "2026-09-30T23:59:59Z", "1050.123456"),
+					// Two rows on one day of one pair: the later timestamp is the anchor.
+					row("XQA", "card", "2026-09-30T08:00:00Z", "1040"),
+					row("XQA", "card", "2026-09-30T20:00:00Z", "1050"),
 					row("XQA", "blue", "2026-09-28T00:00:00Z", "1400"),
 					row("XQA", "mep", "2026-09-29T00:00:00Z", "1300.5"),
 					row("XQA", "blue", "2026-10-01T00:00:00Z", "1500.100000"),
@@ -163,6 +166,7 @@ describe("budget inputs port on Postgres", () => {
 						type: r.type,
 						rate: r.rate.toString(),
 						date: r.date.toISOString().slice(0, 10),
+						at: r.date.toISOString(),
 					}),
 				),
 				P,
@@ -173,11 +177,13 @@ describe("budget inputs port on Postgres", () => {
 			expect(keyed(sql)).toEqual(keyed(pure));
 			// Anchors before 2026-10-01: official 09-30 (23:59:59 counts as the 30th,
 			// not the 20th), blue 09-28, mep 09-29, JPY 09-30; then every row from
-			// the 1st on. Trailing zeros of 1500.100000 are gone.
+			// the 1st on. Trailing zeros of 1500.100000 are gone. The card anchor is
+			// the 20:00 row (1050), not the 08:00 one (1040).
 			expect(keyed(sql)).toEqual([
 				"XQA/blue/2026-09-28/1400",
 				"XQA/blue/2026-10-01/1500.1",
 				"XQA/blue/2026-10-10/1520.5",
+				"XQA/card/2026-09-30/1050",
 				"XQA/mep/2026-09-29/1300.5",
 				"XQA/official/2026-09-30/1050.123456",
 				"XQJ/official/2026-09-30/150.25",
