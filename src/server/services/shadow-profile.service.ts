@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { env } from "~/env";
 import { signClaimToken } from "~/lib/claim-token";
 import { getShadowInviteEmailTemplate } from "~/server/email-templates";
+import { emailSubject } from "~/server/email-copy";
 import { sendEmail } from "~/server/mailer";
 import type { PrismaClient } from "~prisma";
 import { consumeRateLimit } from "./api-v1/rate-limit.service";
@@ -143,7 +144,7 @@ function inviteByEmail(creator: string, name: string, email: string) {
 	const signupUrl = `${appUrl}/signup?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&invited=true`;
 	void sendEmail(
 		email,
-		`${creator} invited you to Retrospend`,
+		emailSubject.shadowInvite(creator),
 		getShadowInviteEmailTemplate(creator, signupUrl),
 	);
 }

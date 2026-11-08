@@ -13,6 +13,7 @@ import {
 } from "~/server/api/trpc";
 import { db } from "~/server/db";
 import { getFeedbackNotificationTemplate } from "~/server/email-templates";
+import { emailSubject } from "~/server/email-copy";
 import { sendEmail } from "~/server/mailer";
 import { deleteFile } from "~/server/storage";
 
@@ -84,7 +85,7 @@ export const feedbackRouter = createTRPCRouter({
 
 					await Promise.allSettled(
 						admins.map((admin) =>
-							sendEmail(admin.email, `New feedback from ${userName}`, html),
+							sendEmail(admin.email, emailSubject.feedback(userName), html),
 						),
 					);
 				} catch {

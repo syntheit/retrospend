@@ -1,4 +1,14 @@
 import { env } from "~/env";
+import { emailCopy, emailSubject } from "~/server/email-copy";
+import { emailTheme as theme } from "~/server/email-theme";
+
+/**
+ * Transactional email layout. Email clients need tables and inline styles, so
+ * every value is written into the element it styles. The values themselves
+ * are the design tokens (email-theme.ts), never literals: the page is the
+ * `bg` tone, the card is `surface`, the button is `brand`. Flat, like the
+ * app: no shadow, no accent stripe, no border around the card.
+ */
 
 function escapeHtml(str: string): string {
 	return str
@@ -8,104 +18,118 @@ function escapeHtml(str: string): string {
 		.replace(/"/g, "&quot;");
 }
 
-const colors = {
-	background: "#f8f8fa",
-	card: "#ffffff",
-	textBase: "#2e2e33",
-	textSecondary: "#52525b",
-	textMuted: "#a1a1aa",
-	primary: "#6b584d",
-	primaryDark: "#5c4b42",
-	border: "#e4e4e7",
-	accent: "#6b584d",
-	warningBg: "#fffbeb",
-	warningBorder: "#fde68a",
-	warningText: "#92400e",
-};
+const { color, font, type, space, radius } = theme;
 
-const getBaseStyles = () => `
-  <style>
-    body { margin: 0; padding: 0; background-color: ${colors.background}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
-    table, td { border-collapse: collapse; }
-  </style>
-`;
+function text(
+	role: "body" | "small" | "meta",
+	tone: "textSecondary" | "textMuted" | "text",
+	extra = "",
+) {
+	return `font-size: ${type[role].size}px; line-height: ${type[role].lineHeight}; color: ${color[tone]}; ${extra}`;
+}
+
+function heading(value: string) {
+	return `<p style="margin: 0 0 ${space[2]}px 0; font-size: ${type.title.size}px; line-height: ${type.title.lineHeight}; letter-spacing: ${type.title.tracking}em; font-weight: ${font.semibold}; color: ${color.text};">${escapeHtml(value)}</p>`;
+}
+
+function paragraph(value: string, bottom: number = space[6]) {
+	return `<p style="margin: 0 0 ${bottom}px 0; ${text("body", "textSecondary")}">${value}</p>`;
+}
+
+function strong(value: string) {
+	return `<strong style="font-weight: ${font.semibold}; color: ${color.text};">${escapeHtml(value)}</strong>`;
+}
+
+function button(
+	label: string,
+	url: string,
+	tone: "brand" | "danger" = "brand",
+	bottom: number = space[8],
+) {
+	const fill = tone === "danger" ? color.danger : color.brand;
+	const ink = tone === "danger" ? color.onDanger : color.onBrand;
+	return `<table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation">
+      <tr>
+        <td align="center" style="padding: ${space[2]}px 0 ${bottom}px 0;">
+          <a href="${escapeHtml(url)}" style="display: inline-block; padding: ${space[3]}px ${space[6]}px; background-color: ${fill}; color: ${ink}; text-decoration: none; border-radius: ${radius.control}px; font-size: ${type.body.size}px; line-height: ${type.body.lineHeight}; font-weight: ${font.medium};">${escapeHtml(label)}</a>
+        </td>
+      </tr>
+    </table>`;
+}
+
+/** The link as text, for a client that does not show the button. */
+function fallbackLink(url: string, bottom: number = space[4]) {
+	return `<p style="margin: 0 0 ${space[1]}px 0; ${text("small", "textMuted")}">${escapeHtml(emailCopy.fallbackLink)}</p>
+    <p style="margin: 0 0 ${bottom}px 0; font-size: ${type.small.size}px; line-height: ${type.small.lineHeight}; word-break: break-all;">
+      <a href="${escapeHtml(url)}" style="color: ${color.link}; text-decoration: underline;">${escapeHtml(url)}</a>
+    </p>`;
+}
+
+function meta(value: string, bottom: number = 0) {
+	return `<p style="margin: 0 0 ${bottom}px 0; ${text("small", "textMuted")}">${escapeHtml(value)}</p>`;
+}
+
+/** What needs the reader: an attention fill, no border. */
+function notice(value: string) {
+	return `<table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: ${space[6]}px;">
+      <tr>
+        <td style="padding: ${space[4]}px; background-color: ${color.attentionBg}; border-radius: ${radius.panel}px; font-size: ${type.body.size}px; line-height: ${type.body.lineHeight}; color: ${color.attentionText};">${escapeHtml(value)}</td>
+      </tr>
+    </table>`;
+}
 
 /**
- * Base email template structure with fully inlined styles for email client compatibility.
+ * Base email structure with fully inlined styles for email client
+ * compatibility.
  */
-function baseEmailTemplate(
-	title: string,
-	content: string,
-	preheader: string = "",
-) {
+function baseEmailTemplate({
+	title,
+	content,
+	preheader = "",
+	locale = "en",
+}: {
+	title: string;
+	content: string;
+	preheader?: string;
+	locale?: string;
+}) {
 	const appUrl = env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL;
 	return `
 <!DOCTYPE html>
-<html lang="en">
+<html lang="${escapeHtml(locale)}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
   <title>${escapeHtml(title)}</title>
-  ${getBaseStyles()}
 </head>
-<body style="margin: 0; padding: 0; background-color: ${colors.background}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
-  <!-- Preheader -->
-  <span style="display:none;font-size:1px;color:${colors.background};line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
-    ${escapeHtml(preheader)}
-  </span>
+<body style="margin: 0; padding: 0; background-color: ${color.page}; font-family: ${font.stack}; -webkit-font-smoothing: antialiased;">
+  <span style="display: none; font-size: 1px; color: ${color.page}; line-height: 1px; max-height: 0; max-width: 0; opacity: 0; overflow: hidden;">${escapeHtml(preheader)}</span>
 
-  <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: ${colors.background};">
+  <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color: ${color.page}; border-collapse: collapse;">
     <tr>
-      <td align="center" style="padding: 48px 24px;">
-
-        <!-- Card -->
-        <table width="100%" border="0" cellpadding="0" cellspacing="0" style="max-width: 560px; background-color: ${colors.card}; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden;">
-
-          <!-- Accent bar -->
+      <td align="center" style="padding: ${space[12]}px ${space[4]}px;">
+        <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="max-width: 560px; background-color: ${color.card}; border-radius: ${radius.panel}px; border-collapse: separate;">
           <tr>
-            <td style="height: 4px; background-color: ${colors.accent};"></td>
-          </tr>
-
-          <!-- Header -->
-          <tr>
-            <td style="padding: 40px 40px 0 40px; text-align: center;">
-              <p style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px; color: ${colors.primary};">RETROSPEND</p>
+            <td style="padding: ${space[8]}px ${space[8]}px 0 ${space[8]}px;">
+              <p style="margin: 0; font-size: ${type.section.size}px; line-height: ${type.section.lineHeight}; font-weight: ${font.semibold}; color: ${color.text};">Retrospend</p>
             </td>
           </tr>
-
-          <!-- Divider -->
           <tr>
-            <td style="padding: 20px 40px 0 40px;">
-              <hr style="border: none; border-top: 1px solid ${colors.border}; margin: 0;" />
-            </td>
-          </tr>
-
-          <!-- Content -->
-          <tr>
-            <td style="padding: 32px 40px 40px 40px;">
+            <td style="padding: ${space[6]}px ${space[8]}px ${space[8]}px ${space[8]}px;">
               ${content}
             </td>
           </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="padding: 24px 40px; background-color: #fafafa; border-top: 1px solid ${colors.border};">
-              <p style="margin: 0 0 4px 0; font-size: 13px; line-height: 1.5; color: ${colors.textMuted}; text-align: center;">
-                Sent by <span style="color: ${colors.primary}; font-weight: 600;">Retrospend</span> - the financial multitool
-              </p>
-              ${
-								appUrl
-									? `<p style="margin: 8px 0 0 0; font-size: 13px; text-align: center;"><a href="${appUrl}" style="color: ${colors.primary}; text-decoration: none;">${appUrl}</a></p>`
-									: ""
-							}
-              <p style="margin: 12px 0 0 0; font-size: 11px; line-height: 1.5; color: #c4c4cc; text-align: center;">
-                This is an automated message. Please do not reply directly.
-              </p>
+          ${
+						appUrl
+							? `<tr>
+            <td style="padding: ${space[4]}px ${space[8]}px; border-top: 1px solid ${color.line};">
+              <p style="margin: 0; font-size: ${type.meta.size}px; line-height: ${type.meta.lineHeight};"><a href="${escapeHtml(appUrl)}" style="color: ${color.textMuted}; text-decoration: none;">${escapeHtml(appUrl)}</a></p>
             </td>
-          </tr>
-
+          </tr>`
+							: ""
+					}
         </table>
-
       </td>
     </tr>
   </table>
@@ -114,376 +138,209 @@ function baseEmailTemplate(
   `;
 }
 
-/**
- * Generates an email verification HTML template.
- */
+/** Email verification. */
 export function getVerificationEmailTemplate(verifyUrl: string) {
+	const copy = emailCopy.verifyEmail;
 	const content = `
-    <p style="margin: 0 0 8px 0; font-size: 20px; font-weight: 600; color: ${colors.textBase};">Welcome to Retrospend</p>
-    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: ${colors.textSecondary};">
-      Please verify your email address to get started managing your finances.
-    </p>
-
-    <table width="100%" border="0" cellpadding="0" cellspacing="0">
-      <tr>
-        <td align="center" style="padding: 8px 0 32px 0;">
-          <a href="${escapeHtml(verifyUrl)}" style="display: inline-block; padding: 14px 32px; background-color: ${colors.primary}; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 600; letter-spacing: 0.3px;">Verify Email Address</a>
-        </td>
-      </tr>
-    </table>
-
-    <p style="margin: 0 0 6px 0; font-size: 13px; line-height: 1.5; color: ${colors.textMuted};">
-      If the button doesn't work, copy and paste this link into your browser:
-    </p>
-    <p style="margin: 0 0 16px 0; font-size: 13px; word-break: break-all;">
-      <a href="${escapeHtml(verifyUrl)}" style="color: ${colors.primary}; text-decoration: underline;">${escapeHtml(verifyUrl)}</a>
-    </p>
-    <p style="margin: 0; font-size: 13px; color: ${colors.textMuted};">This link will expire in 24 hours.</p>
+    ${heading(copy.title)}
+    ${paragraph(escapeHtml(copy.body))}
+    ${button(copy.button, verifyUrl)}
+    ${fallbackLink(verifyUrl)}
+    ${meta(copy.expiry)}
   `;
-
-	return baseEmailTemplate(
-		"Verify your Retrospend Account",
+	return baseEmailTemplate({
+		title: emailSubject.verifyEmail,
 		content,
-		"Please verify your email address to get started managing your finances.",
-	);
+		preheader: copy.body,
+	});
 }
 
-/**
- * Generates a password reset HTML template.
- */
+/** Password reset. */
 export function getPasswordResetEmailTemplate(resetUrl: string) {
+	const copy = emailCopy.passwordReset;
 	const content = `
-    <p style="margin: 0 0 8px 0; font-size: 20px; font-weight: 600; color: ${colors.textBase};">Reset Your Password</p>
-    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: ${colors.textSecondary};">
-      We received a request to reset your password. If you didn't make this request, you can safely ignore this email.
-    </p>
-
-    <table width="100%" border="0" cellpadding="0" cellspacing="0">
-      <tr>
-        <td align="center" style="padding: 8px 0 32px 0;">
-          <a href="${escapeHtml(resetUrl)}" style="display: inline-block; padding: 14px 32px; background-color: ${colors.primary}; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 600; letter-spacing: 0.3px;">Reset Password</a>
-        </td>
-      </tr>
-    </table>
-
-    <p style="margin: 0 0 6px 0; font-size: 13px; line-height: 1.5; color: ${colors.textMuted};">
-      If the button doesn't work, copy and paste this link into your browser:
-    </p>
-    <p style="margin: 0 0 16px 0; font-size: 13px; word-break: break-all;">
-      <a href="${escapeHtml(resetUrl)}" style="color: ${colors.primary}; text-decoration: underline;">${escapeHtml(resetUrl)}</a>
-    </p>
-    <p style="margin: 0; font-size: 13px; color: ${colors.textMuted};">This link will expire in 1 hour.</p>
+    ${heading(copy.title)}
+    ${paragraph(escapeHtml(copy.body))}
+    ${button(copy.button, resetUrl)}
+    ${fallbackLink(resetUrl)}
+    ${meta(copy.expiry)}
   `;
-
-	return baseEmailTemplate(
-		"Reset your Retrospend Password",
+	return baseEmailTemplate({
+		title: emailSubject.passwordReset,
 		content,
-		"We received a request to reset your Retrospend password.",
-	);
+		preheader: copy.body,
+	});
 }
 
-/**
- * Generates a security alert when a password is changed.
- */
+/** Security alert after a password change. */
 export function getPasswordChangedAlertTemplate() {
+	const copy = emailCopy.passwordChanged;
 	const content = `
-    <p style="margin: 0 0 8px 0; font-size: 20px; font-weight: 600; color: ${colors.textBase};">Security Alert</p>
-    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: ${colors.textSecondary};">
-      Your Retrospend password was recently changed.
-    </p>
-
-    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 8px;">
-      <tr>
-        <td style="padding: 16px 20px; background-color: ${colors.warningBg}; border: 1px solid ${colors.warningBorder}; border-radius: 8px;">
-          <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: ${colors.warningText};">Did you make this change?</p>
-          <p style="margin: 0; font-size: 14px; line-height: 1.6; color: ${colors.warningText};">
-            If you did, you can safely ignore this email. If not, please contact your administrator immediately or reset your password.
-          </p>
-        </td>
-      </tr>
-    </table>
+    ${heading(copy.title)}
+    ${paragraph(escapeHtml(copy.body))}
+    ${notice(copy.notice)}
   `;
-
-	return baseEmailTemplate(
-		"Security Alert: Your Retrospend Password was Changed",
+	return baseEmailTemplate({
+		title: emailSubject.passwordChanged,
 		content,
-		"Your Retrospend password was recently changed.",
-	);
+		preheader: copy.body,
+	});
 }
 
 /**
- * Generates a notification email for in-app notification types.
- * Optionally includes a one-click unsubscribe link in the footer.
+ * A notice email for an in-app notification. The words (title, body, button
+ * label) and the three footer labels come from the notificationText catalog,
+ * in the reader's language. Optionally carries a one-click unsubscribe link.
  */
 export function notificationEmail({
 	title,
 	body,
+	labels,
+	locale,
 	unsubscribeUrl,
 	ctaUrl,
 	ctaLabel,
 }: {
 	title: string;
 	body: string;
+	labels: { view: string; manage: string; unsubscribe: string };
+	locale?: string;
 	unsubscribeUrl?: string;
 	ctaUrl?: string;
 	ctaLabel?: string;
 }) {
 	const appUrl = env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "";
 	const settingsUrl = appUrl ? `${appUrl}/settings` : null;
-	const buttonUrl = ctaUrl ?? (appUrl ? appUrl + "/home" : null);
-	const buttonLabel = ctaLabel ?? "View in Retrospend";
+	const buttonUrl = ctaUrl ?? (appUrl ? `${appUrl}/home` : null);
+	const links = [
+		settingsUrl ? { label: labels.manage, url: settingsUrl } : null,
+		unsubscribeUrl ? { label: labels.unsubscribe, url: unsubscribeUrl } : null,
+	].filter((link) => link !== null);
 
 	const content = `
-    <p style="margin: 0 0 8px 0; font-size: 20px; font-weight: 600; color: ${colors.textBase};">${escapeHtml(title)}</p>
-    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: ${colors.textSecondary};">${escapeHtml(body)}</p>
-    ${
-			buttonUrl
-				? `<table width="100%" border="0" cellpadding="0" cellspacing="0">
-      <tr>
-        <td align="center" style="padding: 8px 0 32px 0;">
-          <a href="${escapeHtml(buttonUrl)}" style="display: inline-block; padding: 14px 32px; background-color: ${colors.primary}; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 600; letter-spacing: 0.3px;">${escapeHtml(buttonLabel)}</a>
-        </td>
-      </tr>
-    </table>`
-				: ""
-		}
-    <p style="margin: 0; font-size: 12px; color: ${colors.textMuted}; text-align: center;">
-      ${settingsUrl ? `<a href="${escapeHtml(settingsUrl)}" style="color: ${colors.textMuted};">Manage notification preferences</a>` : ""}
-      ${settingsUrl && unsubscribeUrl ? " &middot; " : ""}
-      ${unsubscribeUrl ? `<a href="${escapeHtml(unsubscribeUrl)}" style="color: ${colors.textMuted};">Unsubscribe</a>` : ""}
-    </p>
+    ${heading(title)}
+    ${paragraph(escapeHtml(body))}
+    ${buttonUrl ? button(ctaLabel ?? labels.view, buttonUrl, "brand", space[6]) : ""}
+    <p style="margin: 0; font-size: ${type.meta.size}px; line-height: ${type.meta.lineHeight}; color: ${color.textMuted}; text-align: center;">${links
+			.map(
+				(link) =>
+					`<a href="${escapeHtml(link.url)}" style="color: ${color.textMuted};">${escapeHtml(link.label)}</a>`,
+			)
+			.join(" &middot; ")}</p>
   `;
 
-	return baseEmailTemplate(`Retrospend: ${title}`, content, body);
+	return baseEmailTemplate({
+		title: emailSubject.notification(title),
+		content,
+		preheader: body,
+		locale,
+	});
 }
 
-/**
- * Generates an email sent to the NEW email address to confirm the change.
- */
+/** Sent to the new address to confirm an email change. */
 export function getEmailChangeVerificationTemplate(
 	verifyUrl: string,
 	newEmail: string,
 ) {
+	const copy = emailCopy.emailChangeConfirm;
 	const content = `
-    <p style="margin: 0 0 8px 0; font-size: 20px; font-weight: 600; color: ${colors.textBase};">Confirm Your New Email</p>
-    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: ${colors.textSecondary};">
-      You requested to change your Retrospend email to <strong>${escapeHtml(newEmail)}</strong>. Click below to confirm this change.
-    </p>
-
-    <table width="100%" border="0" cellpadding="0" cellspacing="0">
-      <tr>
-        <td align="center" style="padding: 8px 0 32px 0;">
-          <a href="${escapeHtml(verifyUrl)}" style="display: inline-block; padding: 14px 32px; background-color: ${colors.primary}; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 600; letter-spacing: 0.3px;">Confirm Email Change</a>
-        </td>
-      </tr>
-    </table>
-
-    <p style="margin: 0 0 6px 0; font-size: 13px; line-height: 1.5; color: ${colors.textMuted};">
-      If the button doesn't work, copy and paste this link into your browser:
-    </p>
-    <p style="margin: 0 0 16px 0; font-size: 13px; word-break: break-all;">
-      <a href="${escapeHtml(verifyUrl)}" style="color: ${colors.primary}; text-decoration: underline;">${escapeHtml(verifyUrl)}</a>
-    </p>
-    <p style="margin: 0; font-size: 13px; color: ${colors.textMuted};">This link will expire in 24 hours. If you didn't request this change, you can safely ignore this email.</p>
+    ${heading(copy.title)}
+    ${paragraph(copy.body(strong(newEmail)))}
+    ${button(copy.button, verifyUrl)}
+    ${fallbackLink(verifyUrl)}
+    ${meta(copy.expiry)}
   `;
-
-	return baseEmailTemplate(
-		"Confirm Your New Email Address",
+	return baseEmailTemplate({
+		title: emailSubject.emailChangeConfirm,
 		content,
-		"Please confirm your new email address for your Retrospend account.",
-	);
+		preheader: copy.body(newEmail),
+	});
 }
 
-/**
- * Generates a security alert email sent to the OLD email address when an email change is requested.
- */
+/** Security alert to the old address when an email change is requested. */
 export function getEmailChangeAlertTemplate(
 	revertUrl: string,
 	newEmail: string,
 ) {
+	const copy = emailCopy.emailChangeAlert;
 	const content = `
-    <p style="margin: 0 0 8px 0; font-size: 20px; font-weight: 600; color: ${colors.textBase};">Security Alert</p>
-    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: ${colors.textSecondary};">
-      A request was made to change your Retrospend account email to <strong>${escapeHtml(newEmail)}</strong>.
-    </p>
-    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: ${colors.textSecondary};">
-      If this was you, no action is needed. The change will take effect once the new email is verified.
-    </p>
-
-    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
-      <tr>
-        <td style="padding: 16px 20px; background-color: ${colors.warningBg}; border: 1px solid ${colors.warningBorder}; border-radius: 8px;">
-          <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: ${colors.warningText};">Didn't request this change?</p>
-          <p style="margin: 0; font-size: 14px; line-height: 1.6; color: ${colors.warningText};">
-            If you didn't request this, click the button below immediately to cancel the change and secure your account. We recommend resetting your password afterwards.
-          </p>
-        </td>
-      </tr>
-    </table>
-
-    <table width="100%" border="0" cellpadding="0" cellspacing="0">
-      <tr>
-        <td align="center" style="padding: 8px 0 32px 0;">
-          <a href="${escapeHtml(revertUrl)}" style="display: inline-block; padding: 14px 32px; background-color: #dc2626; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 600; letter-spacing: 0.3px;">Cancel Email Change</a>
-        </td>
-      </tr>
-    </table>
-
-    <p style="margin: 0 0 6px 0; font-size: 13px; line-height: 1.5; color: ${colors.textMuted};">
-      If the button doesn't work, copy and paste this link into your browser:
-    </p>
-    <p style="margin: 0; font-size: 13px; word-break: break-all;">
-      <a href="${escapeHtml(revertUrl)}" style="color: ${colors.primary}; text-decoration: underline;">${escapeHtml(revertUrl)}</a>
-    </p>
+    ${heading(copy.title)}
+    ${paragraph(copy.body(strong(newEmail)))}
+    ${notice(copy.notice)}
+    ${button(copy.button, revertUrl, "danger")}
+    ${fallbackLink(revertUrl, 0)}
   `;
-
-	return baseEmailTemplate(
-		"Security Alert: Email Change Requested",
+	return baseEmailTemplate({
+		title: emailSubject.emailChangeAlert,
 		content,
-		"Someone requested to change your Retrospend account email. If this wasn't you, take action immediately.",
-	);
+		preheader: copy.body(newEmail),
+	});
 }
 
-/**
- * Generates a feedback notification email for admins.
- */
+/** Feedback forwarded to admins. */
 export function getFeedbackNotificationTemplate(
 	userName: string,
 	message: string,
 	pageUrl: string,
 	timestamp: string,
 ) {
+	const copy = emailCopy.feedback;
 	const appUrl = env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "";
 	const adminUrl = appUrl ? `${appUrl}/admin` : null;
 
 	const content = `
-    <p style="margin: 0 0 8px 0; font-size: 20px; font-weight: 600; color: ${colors.textBase};">New Feedback Received</p>
-    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: ${colors.textSecondary};">
-      <strong>${escapeHtml(userName)}</strong> submitted feedback:
-    </p>
-
-    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
+    ${heading(copy.title)}
+    ${paragraph(copy.body(strong(userName)))}
+    <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: ${space[6]}px;">
       <tr>
-        <td style="padding: 16px 20px; background-color: #f4f4f5; border: 1px solid ${colors.border}; border-radius: 8px;">
-          <p style="margin: 0; font-size: 14px; line-height: 1.6; color: ${colors.textBase}; white-space: pre-wrap;">${escapeHtml(message)}</p>
+        <td style="padding: ${space[4]}px; background-color: ${color.raised}; border-radius: ${radius.panel}px;">
+          <p style="margin: 0; ${text("body", "text", "white-space: pre-wrap;")}">${escapeHtml(message)}</p>
         </td>
       </tr>
     </table>
-
-    <p style="margin: 0 0 4px 0; font-size: 13px; color: ${colors.textMuted};">Page: ${escapeHtml(pageUrl)}</p>
-    <p style="margin: 0 0 24px 0; font-size: 13px; color: ${colors.textMuted};">Time: ${escapeHtml(timestamp)}</p>
-
-    ${
-			adminUrl
-				? `<table width="100%" border="0" cellpadding="0" cellspacing="0">
-      <tr>
-        <td align="center" style="padding: 8px 0 16px 0;">
-          <a href="${escapeHtml(adminUrl)}" style="display: inline-block; padding: 14px 32px; background-color: ${colors.primary}; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 600; letter-spacing: 0.3px;">View in Admin Panel</a>
-        </td>
-      </tr>
-    </table>`
-				: ""
-		}
+    ${meta(`${copy.page}: ${pageUrl}`, space[1])}
+    ${meta(`${copy.time}: ${timestamp}`, space[6])}
+    ${adminUrl ? button(copy.button, adminUrl, "brand", space[2]) : ""}
   `;
-
-	return baseEmailTemplate(
-		`New feedback from ${userName}`,
+	return baseEmailTemplate({
+		title: emailSubject.feedback(userName),
 		content,
-		`${userName} submitted feedback: ${message.slice(0, 100)}`,
-	);
+		preheader: `${userName}: ${message.slice(0, 100)}`,
+	});
 }
 
 /**
- * Generates an invitation email for someone added as a shadow profile.
- * Sent when a user creates a shadow with an email address (splitting expenses).
+ * An invitation for someone added as a shadow profile with an email address
+ * (splitting expenses).
  */
 export function getShadowInviteEmailTemplate(
 	creatorName: string,
 	signupUrl: string,
 ) {
+	const copy = emailCopy.shadowInvite;
 	const content = `
-    <p style="margin: 0 0 8px 0; font-size: 20px; font-weight: 600; color: ${colors.textBase};">You've been invited to Retrospend</p>
-    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: ${colors.textSecondary};">
-      ${escapeHtml(creatorName)} wants to share expenses with you on Retrospend. Create a free account to view your balance, settle up, and take control of your finances.
-    </p>
-
-    <table width="100%" border="0" cellpadding="0" cellspacing="0">
-      <tr>
-        <td align="center" style="padding: 8px 0 32px 0;">
-          <a href="${escapeHtml(signupUrl)}" style="display: inline-block; padding: 14px 32px; background-color: ${colors.primary}; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 600; letter-spacing: 0.3px;">Join Retrospend</a>
-        </td>
-      </tr>
-    </table>
-
-    <p style="margin: 0 0 16px 0; font-size: 14px; font-weight: 600; color: ${colors.textBase};">Your free account includes:</p>
-
-    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
-      <tr>
-        <td style="padding: 4px 0; font-size: 14px; line-height: 1.6; color: ${colors.textSecondary};">
-          &#8226;&nbsp; View shared expenses and settle up with friends
-        </td>
-      </tr>
-      <tr>
-        <td style="padding: 4px 0; font-size: 14px; line-height: 1.6; color: ${colors.textSecondary};">
-          &#8226;&nbsp; Track personal spending with smart categorization
-        </td>
-      </tr>
-      <tr>
-        <td style="padding: 4px 0; font-size: 14px; line-height: 1.6; color: ${colors.textSecondary};">
-          &#8226;&nbsp; Set budgets and get real-time spending insights
-        </td>
-      </tr>
-      <tr>
-        <td style="padding: 4px 0; font-size: 14px; line-height: 1.6; color: ${colors.textSecondary};">
-          &#8226;&nbsp; Track your net worth and wealth over time
-        </td>
-      </tr>
-      <tr>
-        <td style="padding: 4px 0; font-size: 14px; line-height: 1.6; color: ${colors.textSecondary};">
-          &#8226;&nbsp; Multi-currency support with live exchange rates
-        </td>
-      </tr>
-      <tr>
-        <td style="padding: 4px 0; font-size: 14px; line-height: 1.6; color: ${colors.textSecondary};">
-          &#8226;&nbsp; Import bank statements and scan receipts
-        </td>
-      </tr>
-      <tr>
-        <td style="padding: 4px 0; font-size: 14px; line-height: 1.6; color: ${colors.textSecondary};">
-          &#8226;&nbsp; Access from any device, anywhere
-        </td>
-      </tr>
-    </table>
-
-    <p style="margin: 0; font-size: 13px; color: ${colors.textMuted};">
-      Your shared expense data will be automatically linked when you sign up with this email address.
-    </p>
+    ${heading(copy.title)}
+    ${paragraph(escapeHtml(copy.body(creatorName)))}
+    ${button(copy.button, signupUrl)}
+    ${meta(copy.note)}
   `;
-
-	return baseEmailTemplate(
-		"You've been invited to Retrospend",
+	return baseEmailTemplate({
+		title: emailSubject.shadowInvite(creatorName),
 		content,
-		`${creatorName} wants to share expenses with you on Retrospend. Join to view your balance and settle up.`,
-	);
+		preheader: copy.body(creatorName),
+	});
 }
 
-/**
- * Generates an SMTP test email template.
- */
+/** The SMTP test an admin sends from settings. */
 export function getTestEmailTemplate() {
+	const copy = emailCopy.smtpTest;
 	const content = `
-    <p style="margin: 0 0 8px 0; font-size: 20px; font-weight: 600; color: ${colors.textBase};">SMTP Test Successful</p>
-    <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.6; color: ${colors.textSecondary};">
-      Your SMTP configuration is working correctly.
-    </p>
-    <p style="margin: 0; font-size: 15px; line-height: 1.6; color: ${colors.textSecondary};">
-      Email features like account verification and password resets are now available.
-    </p>
+    ${heading(copy.title)}
+    ${paragraph(escapeHtml(copy.body), 0)}
   `;
-
-	return baseEmailTemplate(
-		"Retrospend SMTP Test",
+	return baseEmailTemplate({
+		title: emailSubject.smtpTest,
 		content,
-		"Your SMTP configuration for Retrospend is working correctly.",
-	);
+		preheader: copy.body,
+	});
 }

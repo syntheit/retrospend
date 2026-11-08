@@ -27,6 +27,7 @@ import { db } from "~/server/db";
 import { getVerificationEmailTemplate } from "~/server/email-templates";
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 import { getClientIp, InMemoryRateLimiter } from "~/server/lib/rate-limiter";
+import { emailSubject } from "~/server/email-copy";
 import { sendEmail } from "~/server/mailer";
 import { logEventAsync } from "~/server/services/audit.service";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
@@ -426,7 +427,7 @@ export const auth = betterAuth({
 
 						await sendEmail(
 							user.email,
-							"Verify your Retrospend Account",
+							emailSubject.verifyEmail,
 							htmlContent,
 						);
 					}

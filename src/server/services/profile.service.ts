@@ -14,6 +14,7 @@ import {
 } from "~/server/email-templates";
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 import { hashToken } from "~/server/lib/tokens";
+import { emailSubject } from "~/server/email-copy";
 import { sendEmail } from "~/server/mailer";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
 import { validateAndProcessUsernameChange } from "~/server/services/username.service";
@@ -146,7 +147,7 @@ async function startEmailChange(
 	});
 	sendEmail(
 		newEmail,
-		"Confirm Your New Email Address",
+		emailSubject.emailChangeConfirm,
 		getEmailChangeVerificationTemplate(
 			`${appUrl}/auth/confirm-email?token=${token}`,
 			newEmail,
@@ -156,7 +157,7 @@ async function startEmailChange(
 	);
 	sendEmail(
 		user.email,
-		"Security Alert: Email Change Requested",
+		emailSubject.emailChangeAlert,
 		getEmailChangeAlertTemplate(
 			`${appUrl}/auth/revert-email?token=${token}`,
 			newEmail,

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { env } from "~/env";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { getPasswordChangedAlertTemplate } from "~/server/email-templates";
+import { emailSubject } from "~/server/email-copy";
 import { sendEmail } from "~/server/mailer";
 import {
 	deleteOwnAccount,
@@ -141,7 +142,7 @@ export const userRouter = createTRPCRouter({
 
 					sendEmail(
 						session.user.email,
-						"Security Alert: Your Retrospend Password was Changed",
+						emailSubject.passwordChanged,
 						htmlContent,
 					).catch((error) =>
 						console.error("Failed to send security alert:", error),
