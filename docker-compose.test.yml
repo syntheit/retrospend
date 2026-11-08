@@ -1,4 +1,8 @@
-# Shared throwaway Postgres for `pnpm test:pg` (and e2e runs) on 127.0.0.1:5436.
+# Shared throwaway Postgres for `pnpm test:pg` on 127.0.0.1:5436, and one for
+# e2e and visual runs on 127.0.0.1:5437. They are separate servers because the
+# webhook and push fan-out wait for every open transaction on the server
+# (pg_snapshot_xmin), and an e2e dev server's open transactions would stall
+# the pg tests that drive the fan-out.
 # 5433 is taken on harbor by another project, 5434 is the dev DB, 5435 staging.
 #   docker compose -f docker-compose.test.yml up -d --wait
 #   TEST_DATABASE_URL=postgresql://postgres:testpassword@localhost:5436/retrospend_test_<worktree> pnpm test:pg
@@ -17,6 +21,22 @@ services:
       POSTGRES_DB: retrospend_test
     ports:
       - "127.0.0.1:5436:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-e2e:
+    image: postgres:16-alpine
+    container_name: retrospend-postgres-e2e
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: testpassword
+      POSTGRES_DB: retrospend_test_e2e
+    ports:
+      - "127.0.0.1:5437:5432"
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
