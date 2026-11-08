@@ -90,7 +90,7 @@ hash_of() { # paths relative to $dir; node_modules, generated output, tests and 
 # Keys of the synced tree as it arrived. Taken before install and build: those
 # write files into the tree, and a key that moved with them never hit the cache.
 serverkey=$(hash_of src prisma public packages scripts patches next.config.js package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json postcss.config.js prisma.config.ts)
-apkkey=$({ hash_of apps/mobile packages pnpm-lock.yaml package.json; sha256sum "$here/build-apk.sh"; } | sha256sum | cut -c1-16)
+apkkey=$({ hash_of apps/mobile packages pnpm-lock.yaml package.json; sha256sum <"$here/build-apk.sh"; } | sha256sum | cut -c1-16)
 
 phase install
 # Prisma's config and the Next build want these set; the server run overrides them.
