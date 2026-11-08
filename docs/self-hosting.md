@@ -168,31 +168,38 @@ Backups made before you set the key stay unencrypted until they age out.
 
 The dumps carry no owners and no privileges, so a restored database has tables with the wrong owner (the user that ran the restore) and no grants for the app's roles. Restart the app after every restore: on each start it hands every object to `retrospend_owner` and applies `prisma/grants/app-role.sql`, which gives the roles back exactly what they need. Until you restart, signed-in requests fail.
 
-1. Stop the app and the sidecar: `docker compose stop retrospend sidecar`.
-2. Copy the dump out of the `backup_data` volume (or decrypt it, see above) to the machine you restore from.
-3. Restore the main dump as `retrospend_owner` where you can. A restore as the superuser loads rows into tables the owner role owns, and a trigger on such a table then runs with the superuser's rights. The Postgres image trusts connections made inside its own container, so no password is needed there:
+1. On a brand-new server, start the app once (`docker compose up -d`) so it creates the roles and the schema, then stop it. On an existing install skip this.
+2. Stop the app and the sidecar: `docker compose stop retrospend sidecar`.
+3. Copy the dump out of the `backup_data` volume (or decrypt it, see above) to the machine you restore from.
+4. Restore the main dump as `retrospend_owner`. A restore as the superuser loads rows into tables the owner role owns, and a trigger on such a table then runs with the superuser's rights. The Postgres image trusts connections made inside its own container, so no password is needed there:
 
    ```sh
    docker exec -i retrospend-postgres pg_restore --clean --if-exists --no-owner -U retrospend_owner -d retrospend < restore.dump
    ```
 
-   From anywhere else, set `PGPASSWORD` to the derived password: `printf %s retrospend_owner | openssl dgst -sha256 -hmac "$POSTGRES_PASSWORD"` prints it, or use your `DATABASE_OWNER_PASSWORD`.
-4. A statement that needs `CREATE` on the database fails as the owner, and the keystore dump below has one (it creates a schema). Restore a dump that fails this way as the superuser (`-U postgres`), knowing the trigger caveat above applies, and keep that session short.
+   Exactly two errors are expected, both about the `unaccent` extension: `must be owner of extension unaccent`, once on `DROP EXTENSION` and once on `COMMENT`. The extension belongs to the superuser and stays as it is. Because of them `pg_restore` exits with status 1, but the rest of the restore is complete. Confirm it with a row count, for example:
+
+   ```sh
+   docker exec retrospend-postgres psql -U retrospend_owner -d retrospend -c 'SELECT count(*) FROM "user"'
+   ```
+
+   Any other error is a real failure. From anywhere but inside the container, set `PGPASSWORD` to the derived password, which `printf %s retrospend_owner | openssl dgst -sha256 -hmac "$POSTGRES_PASSWORD" | awk '{print $NF}'` prints, or use your `DATABASE_OWNER_PASSWORD`.
 5. Start again with `docker compose up -d`.
 
 ### Data key backups
 
 Per-user data keys live in their own database schema, `keystore`. The sidecar leaves that schema out of the main dump and writes it on its own as `keystore-<time>.dump` (or `.dump.age` when `BACKUP_AGE_RECIPIENT` is set), right after the main backup. These files are kept for `BACKUP_RETENTION_DAYS`, like the main backups, and a failed dump removes nothing, so the last good key backup lasts as long as the last good main backup. A deleted account's key stays in these backups until they age out, so lower `BACKUP_RETENTION_DAYS` if that window is too long for you. The keys inside are sealed with `DATA_MASTER_KEY`, so a keystore backup is useless without it: keep the master key with your backups, apart from the files.
 
-To restore, restore the main dump as usual, then the keystore dump. Do not pass `--schema`: the dump has to create the schema itself.
+To restore, restore the main dump as above, then replace the contents of the key table with the keystore dump. The app must have started at least once, so that `retrospend_owner` owns the `keystore` schema and the table exists. With the app and the sidecar stopped:
 
 ```sh
-docker exec -i retrospend-postgres pg_restore --clean --if-exists --no-owner -U retrospend_owner -d retrospend < retrospend-20260101-030000.dump
-docker exec -i retrospend-postgres pg_restore --clean --if-exists --no-owner -U postgres -d retrospend < keystore-20260101-030000.dump
+docker exec retrospend-postgres psql -U retrospend_owner -d retrospend -c 'TRUNCATE keystore.user_data_key'
+docker exec -i retrospend-postgres pg_restore --data-only --no-owner -U retrospend_owner -d retrospend < keystore-20260101-030000.dump
 docker exec retrospend-postgres psql -U retrospend_owner -d retrospend -c 'DELETE FROM keystore.user_data_key k WHERE NOT EXISTS (SELECT 1 FROM public."user" u WHERE u.id = k."userId")'
+docker compose up -d
 ```
 
-The keystore dump runs as the superuser because it creates the schema. Restart the app afterwards: the schema goes back to `retrospend_owner`, and the grants the dumps do not carry, including the app's access to its own key, are applied on start.
+Never restore the keystore dump as the owner with `--clean`. It drops the `keystore` schema and the owner cannot create it again, which leaves the database with no key store. The superuser is not needed for any of these steps. The app's grants on the key table are applied on start.
 
 The delete removes keys of accounts that were deleted after the keystore dump was made, so a restore never brings a deleted account's key back. If you restore a keystore dump that is older than the main one, accounts created in between have no key yet; the server makes one on first use.
 

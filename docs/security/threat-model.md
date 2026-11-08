@@ -358,10 +358,10 @@ It does not protect against arbitrary SQL running as `retrospend_app`. That SQL 
 - **Superuser DML on owner tables runs code the owner can plant.** The owner owns the tables, so it can add triggers, and can define the functions that triggers, `CHECK` constraints and domains call. A superuser session that writes to those tables runs that code with superuser rights. Today's paths:
   - `scripts/sync-dev-db.sh` pipes `pg_dump --clean` into `psql` as the dev database's user, which is a superuser in the dev container (`docker-compose.dev.yml`).
   - The e2e seed runs `TRUNCATE ... CASCADE` as the superuser (`e2e/fixtures/seed.ts`), on the e2e database only.
-  - The documented `pg_restore` as the superuser, for the keystore dump (`docs/self-hosting.md`), which creates a schema the owner cannot.
+  - A `pg_restore` run as the superuser instead of the owner. `docs/self-hosting.md` restores the main and the keystore dump as the owner and needs no superuser step.
   - Any admin `psql` session as `postgres`. Its default `search_path` includes `public`, which the owner controls, so a function or table the owner placed there can shadow a name the session means.
   - pgweb, which is a superuser console (`docker-compose.yml`, off unless the `tools` profile is used).
-  `pg_dump` alone is low risk: it reads data and runs no triggers. A restore as the owner removes the exposure for the main dump.
+  `pg_dump` alone is low risk: it reads data and runs no triggers. A restore as the owner removes the exposure.
 - **Until A3, arbitrary SQL in the app is owner access.** Anything that runs SQL as `retrospend_app`, by injection or by a code bug that survives the scans, can reach `retrospend_owner` and so every row (section 14.1).
 - **A failed first migration on a fresh install needs the database dropped and created again.** A half-built database is no longer empty, so the retry gets no `CREATE`, and an upgrade is not allowed to create schemas. The steps are in `docs/self-hosting.md`. Do this only before the install holds data.
 - **A leaked owner password** gives owner access, which is everything inside this one database. A derived password cannot be turned into the superuser's, because the derivation is one-way.
@@ -371,6 +371,6 @@ It does not protect against arbitrary SQL running as `retrospend_app`. That SQL 
 - Keep the Postgres and sidecar ports on `127.0.0.1` or unpublished, as the sample compose files do. Do not publish them on all interfaces.
 - Leave pgweb off. When it is needed, start it with `--profile tools` and stop it afterwards. Never expose it.
 - Give the database user a long password and do not use trust authentication, or set `DATABASE_OWNER_PASSWORD` on the app and the sidecar. Read the start-up log: `Database: connecting as retrospend_owner` is the expected line, and any `WARNING` about the owner role or a password is a reason to stop and look.
-- Restore backups as `retrospend_owner` where possible, and run admin sessions as the superuser with schema-qualified names or `SET search_path = pg_catalog`. Do not write to app tables as the superuser.
+- Restore backups as `retrospend_owner`, and run admin sessions as the superuser with schema-qualified names or `SET search_path = pg_catalog`. Do not write to app tables as the superuser.
 - Encrypt backups with `BACKUP_AGE_RECIPIENT` and keep the key and `DATA_MASTER_KEY` apart from the backup files.
 - Keep the database on a private network, and use TLS if it is on another host.
