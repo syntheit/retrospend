@@ -1,0 +1,103 @@
+{
+	"actorUnknown": "Quelqu'un",
+	"expenseSplit": {
+		"title": "Nouvelle dépense partagée",
+		"body": "{actor} a partagé une dépense avec toi",
+		"bodyWithAmount": "{actor} a partagé une dépense avec toi, ta part est de {amount}",
+		"bodyWithTotal": "{actor} a partagé une dépense avec toi, ta part est de {amount} sur {total}"
+	},
+	"expenseEdited": {
+		"title": "Dépense modifiée",
+		"body": "{actor} a modifié une dépense que tu partages"
+	},
+	"expenseDeleted": {
+		"title": "Dépense supprimée",
+		"body": "{actor} a supprimé une dépense que tu partages",
+		"bodyWithAmount": "{actor} a supprimé une dépense de {amount}"
+	},
+	"paymentRecordedByPayee": {
+		"title": "Paiement enregistré",
+		"body": "{actor} a enregistré la réception de ton paiement",
+		"bodyWithAmount": "{actor} a enregistré la réception de ton paiement de {amount}",
+		"bodyAcross": "{actor} a enregistré la réception de ton paiement de {amount} en {count} devises"
+	},
+	"settlementReceived": {
+		"title": "Règlement reçu",
+		"body": "{actor} t'a envoyé un règlement",
+		"bodyWithAmount": "{actor} t'a envoyé un règlement de {amount}",
+		"bodyAcross": "{actor} t'a envoyé un règlement de {amount} en {count} devises"
+	},
+	"settlementConfirmed": {
+		"title": "Règlement confirmé",
+		"body": "{actor} a confirmé ton règlement",
+		"bodyWithAmount": "{actor} a confirmé ton règlement de {amount}",
+		"bodyAcross": "{actor} a confirmé ton règlement de {amount} en {count} devises",
+		"bodyOffset": "{actor} a confirmé ton règlement avec une compensation de {amount}"
+	},
+	"settlementRejected": {
+		"title": "Règlement refusé",
+		"body": "{actor} a refusé ton règlement",
+		"bodyWithAmount": "{actor} a refusé ton règlement de {amount}",
+		"bodyAcross": "{actor} a refusé ton règlement de {amount} en {count} devises",
+		"bodyOffset": "{actor} a refusé ton règlement avec une compensation de {amount}"
+	},
+	"settlementReminder": {
+		"title": "Rappel de règlement",
+		"body": "{actor} te rappelle un règlement",
+		"bodyWithAmount": "{actor} te rappelle un règlement de {amount}",
+		"bodyAcross": "{actor} te rappelle un règlement de {amount} en {count} devises",
+		"bodyOffset": "{actor} te rappelle un règlement avec une compensation de {amount}"
+	},
+	"balanceReminder": {
+		"title": "Rappel de paiement",
+		"body": "{actor} t'a rappelé un solde en attente"
+	},
+	"squaredUp": {
+		"title": "Soldes de projets réglés",
+		"body": "{actor} a réglé vos soldes de projets, aucun argent n'a bougé",
+		"bodyOffset": "{actor} a réglé vos soldes de projets avec une compensation de {amount}, aucun argent n'a bougé"
+	},
+	"periodClosed": {
+		"title": "Période clôturée",
+		"body": "{actor} a clôturé une période dans un projet où tu es"
+	},
+	"addedToProject": {
+		"title": "Ajouté à un projet",
+		"body": "{actor} t'a ajouté à un projet"
+	},
+	"ownershipTransferred": {
+		"title": "Propriété transférée",
+		"body": "{actor} t'a transféré un projet"
+	},
+	"profileClaimed": {
+		"title": "Profil réclamé",
+		"body": "{actor} a rejoint un projet et y a réclamé un profil"
+	},
+	"fixRequested": {
+		"title": "Correction demandée",
+		"body": "{actor} te demande de corriger une dépense"
+	},
+	"fixAccepted": {
+		"title": "Correction acceptée",
+		"body": "{actor} va corriger la dépense dont tu as parlé"
+	},
+	"fixDeclined": {
+		"title": "Correction refusée",
+		"body": "{actor} ne modifiera pas la dépense dont tu as parlé"
+	},
+	"splitCorrected": {
+		"title": "Dépense corrigée",
+		"body": "{actor} a ajouté une correction à une dépense que tu partages"
+	},
+	"projectInvite": {
+		"title": "Ajouté à un projet",
+		"body": "{actor} t'a ajouté à un projet sur Retrospend",
+		"bodyWithLink": "{actor} t'a ajouté à un projet sur Retrospend. Rejoins-le pour voir les dépenses partagées.",
+		"cta": "Rejoindre le projet"
+	},
+	"guestResume": {
+		"title": "Continuer dans un projet",
+		"body": "Quelqu'un a demandé à rejoindre de nouveau un projet sur Retrospend avec cette adresse e-mail. Si c'était toi, reprends là où tu t'étais arrêté. Le lien ne fonctionne qu'une fois et expire dans une heure. Si ce n'était pas toi, ignore cet e-mail.",
+		"cta": "Continuer"
+	}
+}

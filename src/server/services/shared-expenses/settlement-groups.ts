@@ -15,7 +15,10 @@
  * flag is false on the rows, whichever way each row points.
  */
 
-import { currencyDecimals } from "@retrospend/domain/money";
+import {
+	type NoticeAmount,
+	noticeMoney,
+} from "~/server/services/notification-text";
 
 export interface GroupRow {
 	id: string;
@@ -252,12 +255,20 @@ export function summarizeGroup(rows: GroupRow[], userId: string): GroupSummary {
 	};
 }
 
-/** Short English description of a group for notifications. */
-export function describeGroupAmount(rows: GroupRow[], userId: string): string {
+/**
+ * The amount a notification about a group names: the headline figure, how
+ * many currencies a multi-currency payment spans, and whether it is an
+ * offset (a square-up). Null when the amount cannot be read exactly.
+ */
+export function groupNoticeAmount(
+	rows: GroupRow[],
+	userId: string,
+): NoticeAmount | null {
 	const summary = summarizeGroup(rows, userId);
-	const formatted = `${summary.currency} ${summary.amount.toFixed(currencyDecimals(summary.currency))}`;
-	if (summary.kind === "square_up") return `an offset of ${formatted}`;
+	const money = noticeMoney(summary.amount, summary.currency);
+	if (!money) return null;
+	if (summary.kind === "square_up") return { money, offset: true };
 	return summary.cashByCurrency.length > 1
-		? `${formatted} across ${summary.cashByCurrency.length} currencies`
-		: formatted;
+		? { money, currencies: summary.cashByCurrency.length }
+		: { money };
 }

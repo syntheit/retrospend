@@ -1,14 +1,15 @@
 /**
- * The notifications corrections and Ask to fix send, built in one place
- * from ids, kinds and the sender's name, never from a title or a message
- * (end-to-end encryption rule 3). The kind rides in `data`, so a client can
- * word it in the reader's language; the text here is the English fallback.
+ * The notifications corrections and Ask to fix send. The text is made in
+ * notification-text.ts from the kind and the sender's name, never from a
+ * title or a message (end-to-end encryption rule 3), in the reader's
+ * language. The kind also rides in `data`.
  *
  * Existing notification types are reused (no new type to add to every
  * client's settings): asking someone to fix is a VERIFICATION_REQUEST, the
  * rest are EXPENSE_EDITED. They are queued in the write and sent after it
  * commits, so a preview tells nobody.
  */
+import type { NoticeKind } from "~/server/services/notification-text";
 import {
 	createNotification,
 	resolveParticipantName,
@@ -20,34 +21,17 @@ export type CorrectionNoticeKind =
 	| "FIX_DECLINED"
 	| "SPLIT_CORRECTED";
 
-const TEXT: Record<
+const NOTICE: Record<
 	CorrectionNoticeKind,
 	{
 		type: "VERIFICATION_REQUEST" | "EXPENSE_EDITED";
-		title: string;
-		body: string;
+		kind: NoticeKind;
 	}
 > = {
-	FIX_REQUESTED: {
-		type: "VERIFICATION_REQUEST",
-		title: "Fix requested",
-		body: "{name} asked you to fix an expense",
-	},
-	FIX_ACCEPTED: {
-		type: "EXPENSE_EDITED",
-		title: "Fix accepted",
-		body: "{name} will fix the expense you asked about",
-	},
-	FIX_DECLINED: {
-		type: "EXPENSE_EDITED",
-		title: "Fix declined",
-		body: "{name} will not change the expense you asked about",
-	},
-	SPLIT_CORRECTED: {
-		type: "EXPENSE_EDITED",
-		title: "Expense corrected",
-		body: "{name} added a correction to an expense you share",
-	},
+	FIX_REQUESTED: { type: "VERIFICATION_REQUEST", kind: "fixRequested" },
+	FIX_ACCEPTED: { type: "EXPENSE_EDITED", kind: "fixAccepted" },
+	FIX_DECLINED: { type: "EXPENSE_EDITED", kind: "fixDeclined" },
+	SPLIT_CORRECTED: { type: "EXPENSE_EDITED", kind: "splitCorrected" },
 };
 
 export interface CorrectionNotice {
@@ -64,13 +48,12 @@ export interface CorrectionNotice {
 /** The send, queued by the write and run after it commits. */
 export function noticeSender(notice: CorrectionNotice): () => Promise<void> {
 	return async () => {
-		const text = TEXT[notice.kind];
+		const { type, kind } = NOTICE[notice.kind];
 		const name = await resolveParticipantName("user", notice.from);
 		await createNotification({
 			userId: notice.to,
-			type: text.type,
-			title: text.title,
-			body: text.body.replace("{name}", name),
+			type,
+			notice: { kind, actor: name },
 			data: {
 				kind: notice.kind,
 				transactionId: notice.transactionId,

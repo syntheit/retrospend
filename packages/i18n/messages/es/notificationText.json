@@ -1,0 +1,103 @@
+{
+	"actorUnknown": "Alguien",
+	"expenseSplit": {
+		"title": "Nuevo gasto compartido",
+		"body": "{actor} dividió un gasto contigo",
+		"bodyWithAmount": "{actor} dividió un gasto contigo, tu parte es {amount}",
+		"bodyWithTotal": "{actor} dividió un gasto contigo, tu parte es {amount} de {total}"
+	},
+	"expenseEdited": {
+		"title": "Gasto actualizado",
+		"body": "{actor} actualizó un gasto que compartes"
+	},
+	"expenseDeleted": {
+		"title": "Gasto eliminado",
+		"body": "{actor} eliminó un gasto que compartes",
+		"bodyWithAmount": "{actor} eliminó un gasto de {amount}"
+	},
+	"paymentRecordedByPayee": {
+		"title": "Pago registrado",
+		"body": "{actor} registró que recibió tu pago",
+		"bodyWithAmount": "{actor} registró que recibió tu pago de {amount}",
+		"bodyAcross": "{actor} registró que recibió tu pago de {amount} en {count} monedas"
+	},
+	"settlementReceived": {
+		"title": "Liquidación recibida",
+		"body": "{actor} te envió una liquidación",
+		"bodyWithAmount": "{actor} te envió una liquidación de {amount}",
+		"bodyAcross": "{actor} te envió una liquidación de {amount} en {count} monedas"
+	},
+	"settlementConfirmed": {
+		"title": "Liquidación confirmada",
+		"body": "{actor} confirmó tu liquidación",
+		"bodyWithAmount": "{actor} confirmó tu liquidación de {amount}",
+		"bodyAcross": "{actor} confirmó tu liquidación de {amount} en {count} monedas",
+		"bodyOffset": "{actor} confirmó tu liquidación con una compensación de {amount}"
+	},
+	"settlementRejected": {
+		"title": "Liquidación rechazada",
+		"body": "{actor} rechazó tu liquidación",
+		"bodyWithAmount": "{actor} rechazó tu liquidación de {amount}",
+		"bodyAcross": "{actor} rechazó tu liquidación de {amount} en {count} monedas",
+		"bodyOffset": "{actor} rechazó tu liquidación con una compensación de {amount}"
+	},
+	"settlementReminder": {
+		"title": "Recordatorio de liquidación",
+		"body": "{actor} te recuerda una liquidación",
+		"bodyWithAmount": "{actor} te recuerda una liquidación de {amount}",
+		"bodyAcross": "{actor} te recuerda una liquidación de {amount} en {count} monedas",
+		"bodyOffset": "{actor} te recuerda una liquidación con una compensación de {amount}"
+	},
+	"balanceReminder": {
+		"title": "Recordatorio de pago",
+		"body": "{actor} te recordó un saldo pendiente"
+	},
+	"squaredUp": {
+		"title": "Saldos de proyectos saldados",
+		"body": "{actor} saldó tus saldos de proyectos, no se movió dinero",
+		"bodyOffset": "{actor} saldó tus saldos de proyectos con una compensación de {amount}, no se movió dinero"
+	},
+	"periodClosed": {
+		"title": "Período cerrado",
+		"body": "{actor} cerró un período en un proyecto en el que participas"
+	},
+	"addedToProject": {
+		"title": "Añadido a un proyecto",
+		"body": "{actor} te añadió a un proyecto"
+	},
+	"ownershipTransferred": {
+		"title": "Propiedad transferida",
+		"body": "{actor} te transfirió un proyecto"
+	},
+	"profileClaimed": {
+		"title": "Perfil reclamado",
+		"body": "{actor} se unió a un proyecto y reclamó un perfil allí"
+	},
+	"fixRequested": {
+		"title": "Corrección solicitada",
+		"body": "{actor} te pidió corregir un gasto"
+	},
+	"fixAccepted": {
+		"title": "Corrección aceptada",
+		"body": "{actor} corregirá el gasto por el que preguntaste"
+	},
+	"fixDeclined": {
+		"title": "Corrección rechazada",
+		"body": "{actor} no cambiará el gasto por el que preguntaste"
+	},
+	"splitCorrected": {
+		"title": "Gasto corregido",
+		"body": "{actor} añadió una corrección a un gasto que compartes"
+	},
+	"projectInvite": {
+		"title": "Añadido a un proyecto",
+		"body": "{actor} te añadió a un proyecto en Retrospend",
+		"bodyWithLink": "{actor} te añadió a un proyecto en Retrospend. Únete para ver los gastos compartidos.",
+		"cta": "Unirme al proyecto"
+	},
+	"guestResume": {
+		"title": "Continuar en un proyecto",
+		"body": "Alguien pidió volver a entrar a un proyecto en Retrospend con este correo. Si fuiste tú, continúa donde lo dejaste. El enlace funciona una vez y vence en una hora. Si no fuiste tú, ignora este correo.",
+		"cta": "Continuar"
+	}
+}

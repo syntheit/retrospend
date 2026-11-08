@@ -8,6 +8,7 @@ import { env } from "~/env";
 import { userTransaction } from "~/server/db-tx";
 import { notificationEmail } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
+import { buildNoticeText } from "~/server/services/notification-text";
 import {
 	createNotification,
 	resolveParticipantName,
@@ -142,27 +143,17 @@ export async function addParticipant(
 	return participant;
 }
 
-async function projectName(db: PrismaClient, projectId: string) {
-	const project = await db.project.findUnique({
-		where: { id: projectId },
-		select: { name: true },
-	});
-	return project?.name ?? null;
-}
-
 async function notifyAddedUser(
 	db: PrismaClient,
 	userId: string,
 	projectId: string,
 	addedUserId: string,
 ) {
-	const name = await projectName(db, projectId);
 	const actorName = await resolveParticipantName("user", userId);
 	createNotification({
 		userId: addedUserId,
 		type: "PARTICIPANT_ADDED",
-		title: "Added to project",
-		body: `${actorName} added you to '${name ?? "a project"}'`,
+		notice: { kind: "addedToProject", actor: actorName },
 		data: { projectId },
 	}).catch((err) =>
 		console.error("[Notification Error] PARTICIPANT_ADDED:", err),
@@ -186,10 +177,8 @@ async function inviteAddedGhost(
 		select: { name: true, email: true },
 	});
 	if (!shadow?.email) return;
-	const name = (await projectName(db, projectId)) ?? "a project";
 	const actorName = await resolveParticipantName("user", userId);
 	const base = appUrl();
-	const title = "You've been added to a project";
 
 	let joinUrl: string | undefined;
 	try {
@@ -212,14 +201,17 @@ async function inviteAddedGhost(
 		);
 	}
 
-	const body = joinUrl
-		? `${actorName} added you to '${name}' on Retrospend. Click the button below to join and view shared expenses.`
-		: `${actorName} added you to '${name}' on Retrospend.${base ? " Sign in or create an account to view and manage shared expenses." : ""}`;
+	// A person without an account has no language on file: English.
+	const { title, body, cta } = await buildNoticeText({
+		kind: "projectInvite",
+		actor: actorName,
+		hasLink: Boolean(joinUrl),
+	});
 	const html = notificationEmail({
 		title,
 		body,
 		ctaUrl: joinUrl,
-		ctaLabel: joinUrl ? "Join Project" : undefined,
+		ctaLabel: joinUrl ? (cta ?? undefined) : undefined,
 	});
 	sendEmail(shadow.email, `Retrospend: ${title}`, html).catch((err) =>
 		console.error("[Notification Error] shadow PARTICIPANT_ADDED email:", err),
@@ -394,8 +386,7 @@ export async function transferOwnership(
 	void createNotification({
 		userId: newOwnerId,
 		type: "PARTICIPANT_ADDED",
-		title: "Ownership transferred",
-		body: `${callerName} transferred ownership of "${project.name}" to you.`,
+		notice: { kind: "ownershipTransferred", actor: callerName },
 		data: { projectId },
 	});
 	return result;

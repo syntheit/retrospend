@@ -18,6 +18,7 @@ import {
 vi.mock("~/server/services/notifications", () => ({
 	createNotification: vi.fn().mockResolvedValue(undefined),
 	resolveParticipantName: vi.fn().mockResolvedValue("Test User"),
+	participantLabel: vi.fn().mockResolvedValue("Test User"),
 }));
 
 const MARCH = new Date("2026-03-15T12:00:00Z");

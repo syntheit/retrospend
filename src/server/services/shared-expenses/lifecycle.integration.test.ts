@@ -17,6 +17,7 @@ vi.mock("~/server/services/corrections/locks", () => import("~/test/locks-stub")
 vi.mock("~/server/services/notifications", () => ({
 	createNotification: vi.fn().mockResolvedValue(undefined),
 	resolveParticipantName: vi.fn().mockResolvedValue("Test User"),
+	participantLabel: vi.fn().mockResolvedValue("Test User"),
 }));
 
 import { computeBalance, computeBalanceByProject } from "./balance";

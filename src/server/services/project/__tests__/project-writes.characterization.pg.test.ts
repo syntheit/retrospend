@@ -179,8 +179,7 @@ describe("project.addParticipant", () => {
 		expect(createNotification).toHaveBeenCalledWith({
 			userId: trip.outsider.user.id,
 			type: "PARTICIPANT_ADDED",
-			title: "Added to project",
-			body: `Ana added you to '${trip.project.name}'`,
+			notice: { kind: "addedToProject", actor: "Ana" },
 			data: { projectId: trip.project.id },
 		});
 	});
@@ -208,14 +207,18 @@ describe("project.addParticipant", () => {
 			["CONTRIBUTOR", 1],
 		]);
 		await vi.waitFor(() => expect(sendEmail).toHaveBeenCalledTimes(1));
-		const [to, subject] = sendEmail.mock.calls[0] as unknown as [
+		const [to, subject, html] = sendEmail.mock.calls[0] as unknown as [
+			string,
 			string,
 			string,
 		];
 		expect([to, subject]).toEqual([
 			"gil@pg-test.invalid",
-			"Retrospend: You've been added to a project",
+			"Retrospend: Added to project",
 		]);
+		// The invite names the person, never the project (encryption rule 3).
+		expect(html).toContain("Ana added you to a project on Retrospend");
+		expect(html).not.toContain(trip.project.name);
 	});
 
 	it("refuses duplicates, foreign ghosts and an editor making an owner", async () => {
@@ -415,8 +418,7 @@ describe("project.transferOwnership", () => {
 			expect(createNotification).toHaveBeenCalledWith({
 				userId: trip.ben.user.id,
 				type: "PARTICIPANT_ADDED",
-				title: "Ownership transferred",
-				body: `Ana transferred ownership of "${trip.project.name}" to you.`,
+				notice: { kind: "ownershipTransferred", actor: "Ana" },
 				data: { projectId: trip.project.id },
 			}),
 		);

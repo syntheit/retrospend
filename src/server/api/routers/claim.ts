@@ -85,18 +85,10 @@ async function resolveClaimTokenOrThrow(token: string) {
 async function notifyGhostClaimedByGuest(
 	db: PrismaClient,
 	projectId: string,
-	ghostName: string,
 	guestName: string,
 	guestSessionId: string,
 	shadowId: string,
 ) {
-	const project = await db.project.findUnique({
-		where: { id: projectId },
-		select: { name: true },
-	});
-	const projectName = project?.name ?? "a project";
-	const displayGuestName = guestName?.trim() || "A guest";
-
 	const organizers = await db.projectParticipant.findMany({
 		where: { projectId, participantType: "user", role: "ORGANIZER" },
 		select: { participantId: true },
@@ -106,9 +98,8 @@ async function notifyGhostClaimedByGuest(
 		await createNotification({
 			userId: organizer.participantId,
 			type: "PARTICIPANT_ADDED",
-			title: `Someone identified as ${ghostName}`,
-			body: `${displayGuestName} joined '${projectName}' and claimed the profile for ${ghostName}. Review it in the People tab if that is not right.`,
-			data: { projectId, shadowName: ghostName, shadowId, guestSessionId },
+			notice: { kind: "profileClaimed", actor: guestName },
+			data: { projectId, shadowId, guestSessionId },
 		});
 	}
 }
@@ -317,7 +308,6 @@ export const claimRouter = createTRPCRouter({
 					await notifyGhostClaimedByGuest(
 						globalDb,
 						guestSession.projectId,
-						shadowName,
 						guestSession.name,
 						guestSession.id,
 						input.shadowId,

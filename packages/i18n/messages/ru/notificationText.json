@@ -1,0 +1,103 @@
+{
+	"actorUnknown": "Кто-то",
+	"expenseSplit": {
+		"title": "Новый общий расход",
+		"body": "{actor} делит с вами расход",
+		"bodyWithAmount": "{actor} делит с вами расход, ваша доля: {amount}",
+		"bodyWithTotal": "{actor} делит с вами расход, ваша доля: {amount} из {total}"
+	},
+	"expenseEdited": {
+		"title": "Расход обновлён",
+		"body": "{actor} обновляет общий расход"
+	},
+	"expenseDeleted": {
+		"title": "Расход удалён",
+		"body": "{actor} удаляет общий расход",
+		"bodyWithAmount": "{actor} удаляет расход на {amount}"
+	},
+	"paymentRecordedByPayee": {
+		"title": "Платёж записан",
+		"body": "{actor} записывает получение вашего платежа",
+		"bodyWithAmount": "{actor} записывает получение вашего платежа на {amount}",
+		"bodyAcross": "{actor} записывает получение вашего платежа на {amount} в {count} валютах"
+	},
+	"settlementReceived": {
+		"title": "Расчёт получен",
+		"body": "{actor} отправляет вам расчёт",
+		"bodyWithAmount": "{actor} отправляет вам расчёт на {amount}",
+		"bodyAcross": "{actor} отправляет вам расчёт на {amount} в {count} валютах"
+	},
+	"settlementConfirmed": {
+		"title": "Расчёт подтверждён",
+		"body": "{actor} подтверждает ваш расчёт",
+		"bodyWithAmount": "{actor} подтверждает ваш расчёт на {amount}",
+		"bodyAcross": "{actor} подтверждает ваш расчёт на {amount} в {count} валютах",
+		"bodyOffset": "{actor} подтверждает ваш расчёт со взаимозачётом на {amount}"
+	},
+	"settlementRejected": {
+		"title": "Расчёт отклонён",
+		"body": "{actor} отклоняет ваш расчёт",
+		"bodyWithAmount": "{actor} отклоняет ваш расчёт на {amount}",
+		"bodyAcross": "{actor} отклоняет ваш расчёт на {amount} в {count} валютах",
+		"bodyOffset": "{actor} отклоняет ваш расчёт со взаимозачётом на {amount}"
+	},
+	"settlementReminder": {
+		"title": "Напоминание о расчёте",
+		"body": "{actor} напоминает вам о расчёте",
+		"bodyWithAmount": "{actor} напоминает вам о расчёте на {amount}",
+		"bodyAcross": "{actor} напоминает вам о расчёте на {amount} в {count} валютах",
+		"bodyOffset": "{actor} напоминает вам о расчёте со взаимозачётом на {amount}"
+	},
+	"balanceReminder": {
+		"title": "Напоминание о платеже",
+		"body": "{actor} напоминает вам о неоплаченном балансе"
+	},
+	"squaredUp": {
+		"title": "Балансы проектов закрыты",
+		"body": "{actor} закрывает ваши балансы по проектам, деньги не двигались",
+		"bodyOffset": "{actor} закрывает ваши балансы по проектам взаимозачётом на {amount}, деньги не двигались"
+	},
+	"periodClosed": {
+		"title": "Период закрыт",
+		"body": "{actor} закрывает период в проекте, где вы участвуете"
+	},
+	"addedToProject": {
+		"title": "Вас добавили в проект",
+		"body": "{actor} добавляет вас в проект"
+	},
+	"ownershipTransferred": {
+		"title": "Владение передано",
+		"body": "{actor} передаёт вам проект"
+	},
+	"profileClaimed": {
+		"title": "Профиль занят",
+		"body": "{actor} присоединяется к проекту и занимает там профиль"
+	},
+	"fixRequested": {
+		"title": "Просьба исправить",
+		"body": "{actor} просит вас исправить расход"
+	},
+	"fixAccepted": {
+		"title": "Исправление принято",
+		"body": "{actor} исправит расход, о котором вы спрашивали"
+	},
+	"fixDeclined": {
+		"title": "Исправление отклонено",
+		"body": "{actor} не изменит расход, о котором вы спрашивали"
+	},
+	"splitCorrected": {
+		"title": "Расход исправлен",
+		"body": "{actor} добавляет поправку к общему расходу"
+	},
+	"projectInvite": {
+		"title": "Вас добавили в проект",
+		"body": "{actor} добавляет вас в проект в Retrospend",
+		"bodyWithLink": "{actor} добавляет вас в проект в Retrospend. Присоединитесь, чтобы видеть общие расходы.",
+		"cta": "Присоединиться к проекту"
+	},
+	"guestResume": {
+		"title": "Продолжить в проекте",
+		"body": "Кто-то попросил снова войти в проект в Retrospend с этим адресом почты. Если это были вы, продолжайте с того места, где остановились. Ссылка работает один раз и действует час. Если это были не вы, проигнорируйте письмо.",
+		"cta": "Продолжить"
+	}
+}

@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { noticeMoney } from "~/server/services/notification-text";
 import { findExchangeRate } from "~/server/exchange-rates";
 import { addGhostMembers } from "~/server/services/project/joining";
 import {
@@ -64,81 +65,6 @@ interface UpdateSharedTransactionInput {
 	notes?: string | null;
 	receiptUrl?: string | null;
 	reopenFixRequests?: readonly { id: string; previousStatus: "PENDING" | "ACCEPTED" }[]; // undo of an edit that answered fix requests (2C.2)
-}
-
-/**
- * Builds a concise human-readable summary of changes from a field-level diff.
- * Truncates after 3 fields to keep notification text brief.
- */
-function buildChangeSummary(
-	diff: Record<string, { old: unknown; new: unknown }>,
-	oldCurrency: string,
-	newCurrency: string,
-): string | null {
-	const keys = Object.keys(diff);
-	if (keys.length === 0) return null;
-
-	const MAX_FIELDS = 3;
-	const parts: string[] = [];
-
-	for (const key of keys) {
-		if (parts.length >= MAX_FIELDS) break;
-		const { old: oldVal, new: newVal } = diff[key]!;
-
-		switch (key) {
-			case "amount": {
-				const oldAmt = Number(oldVal).toFixed(2);
-				const newAmt = Number(newVal).toFixed(2);
-				parts.push(`amount: ${oldCurrency} ${oldAmt} \u2192 ${newCurrency} ${newAmt}`);
-				break;
-			}
-			case "description":
-				parts.push(`title: '${String(oldVal)}' \u2192 '${String(newVal)}'`);
-				break;
-			case "currency":
-				parts.push(`currency: ${String(oldVal)} \u2192 ${String(newVal)}`);
-				break;
-			case "date": {
-				const fmtDate = (v: unknown) => {
-					try {
-						return new Date(String(v)).toLocaleDateString("en-US", {
-							month: "short",
-							day: "numeric",
-						});
-					} catch {
-						return String(v);
-					}
-				};
-				parts.push(`date: ${fmtDate(oldVal)} \u2192 ${fmtDate(newVal)}`);
-				break;
-			}
-			case "splitMode":
-				parts.push(`split: ${String(oldVal)} \u2192 ${String(newVal)}`);
-				break;
-			case "categoryId":
-				parts.push("category changed");
-				break;
-			case "paidBy":
-				parts.push("payer changed");
-				break;
-			case "splitParticipants":
-				parts.push("split participants changed");
-				break;
-			case "notes":
-				parts.push("notes updated");
-				break;
-			default:
-				parts.push(`${key} changed`);
-				break;
-		}
-	}
-
-	const remaining = keys.length - parts.length;
-	if (remaining > 0) {
-		parts.push(`+${remaining} more`);
-	}
-
-	return parts.join(", ");
 }
 
 export class SharedTransactionService {
@@ -321,7 +247,6 @@ export class SharedTransactionService {
 
 	private async notifyExpenseSplit(transaction: {
 		id: string;
-		description: string;
 		amount: unknown;
 		currency: string;
 		createdByType: string;
@@ -336,9 +261,8 @@ export class SharedTransactionService {
 			this.actor.participantType,
 			this.actor.participantId,
 		);
-		const totalAmount = Number(transaction.amount);
 		const currency = transaction.currency;
-		const desc = transaction.description;
+		const total = noticeMoney(transaction.amount, currency);
 
 		for (const sp of transaction.splitParticipants) {
 			if (sp.participantType !== "user") continue;
@@ -349,12 +273,16 @@ export class SharedTransactionService {
 			)
 				continue;
 
-			const shareAmount = Number(sp.shareAmount);
+			const share = noticeMoney(sp.shareAmount, currency);
 			await createNotification({
 				userId: sp.participantId,
 				type: "EXPENSE_SPLIT",
-				title: "New shared expense",
-				body: `${actorName} split '${desc}' with you; your share: ${currency} ${shareAmount.toFixed(2)} (of ${currency} ${totalAmount.toFixed(2)})`,
+				notice: {
+					kind: "expenseSplit",
+					actor: actorName,
+					amount: share && { money: share },
+					total,
+				},
 				data: {
 					transactionId: transaction.id,
 					actorType: this.actor.participantType,
@@ -366,12 +294,6 @@ export class SharedTransactionService {
 
 	async update(input: UpdateSharedTransactionInput) {
 		const actor = this.actor;
-		let existingSnapshot: {
-			description: string;
-			amount: unknown;
-			currency: string;
-		} | null = null;
-		let capturedDiff: Record<string, { old: unknown; new: unknown }> = {};
 		const updated = await this.runInTransaction(async (tx) => {
 			const existing = await assertCanModifyTransaction(
 				tx,
@@ -379,12 +301,6 @@ export class SharedTransactionService {
 				this.actor.participantType,
 				this.actor.participantId,
 			);
-			// Capture before-state for notification
-				existingSnapshot = {
-				description: existing.description,
-				amount: existing.amount,
-				currency: existing.currency,
-			};
 			// Compute field-level diff
 			const diff: Record<string, { old: unknown; new: unknown }> = {};
 
@@ -828,8 +744,6 @@ export class SharedTransactionService {
 			});
 
 			await answerFixRequestsOnEdit(tx, this.actorUserId(), input, Object.keys(diff).length > 0);
-			// Capture diff for notification
-			capturedDiff = diff;
 
 			// Refetch with participants
 			return await tx.sharedTransaction.findUniqueOrThrow({
@@ -839,41 +753,22 @@ export class SharedTransactionService {
 		});
 
 		// Notify user-type participants (excluding the actor) that the expense changed
-		const snapshot = existingSnapshot;
-		if (snapshot) {
-			this.notify("EXPENSE_EDITED", () =>
-				this.notifyExpenseEdited(updated, snapshot, capturedDiff),
-			);
-		}
+		this.notify("EXPENSE_EDITED", () => this.notifyExpenseEdited(updated));
 
 		return updated;
 	}
 
-	private async notifyExpenseEdited(
-		updated: {
-			id: string;
-			description: string;
-			amount: unknown;
-			currency: string;
-			splitParticipants: Array<{
-				participantType: string;
-				participantId: string;
-			}>;
-		},
-		existing: { description: string; amount: unknown; currency: string },
-		diff: Record<string, { old: unknown; new: unknown }>,
-	) {
+	private async notifyExpenseEdited(updated: {
+		id: string;
+		splitParticipants: Array<{
+			participantType: string;
+			participantId: string;
+		}>;
+	}) {
 		const actorName = await resolveParticipantName(
 			this.actor.participantType,
 			this.actor.participantId,
 		);
-		const desc = updated.description;
-
-		// Build human-readable changes from the diff
-		const changes = buildChangeSummary(diff, existing.currency, updated.currency);
-		const body = changes
-			? `${actorName} updated '${desc}': ${changes}. Please re-verify.`
-			: `${actorName} updated '${desc}'. Please re-verify.`;
 
 		for (const sp of updated.splitParticipants) {
 			if (sp.participantType !== "user") continue;
@@ -886,13 +781,11 @@ export class SharedTransactionService {
 			await createNotification({
 				userId: sp.participantId,
 				type: "EXPENSE_EDITED",
-				title: "Expense updated",
-				body,
+				notice: { kind: "expenseEdited", actor: actorName },
 				data: {
 					transactionId: updated.id,
 					actorType: this.actor.participantType,
 					actorId: this.actor.participantId,
-					changes: changes || undefined,
 				},
 			});
 		}
@@ -956,7 +849,6 @@ export class SharedTransactionService {
 
 	private async notifyExpenseDeleted(existing: {
 		id: string;
-		description: string;
 		amount: unknown;
 		currency: string;
 		splitParticipants: Array<{
@@ -968,9 +860,7 @@ export class SharedTransactionService {
 			this.actor.participantType,
 			this.actor.participantId,
 		);
-		const amount = Number(existing.amount);
-		const desc = existing.description;
-		const currency = existing.currency;
+		const amount = noticeMoney(existing.amount, existing.currency);
 
 		for (const sp of existing.splitParticipants) {
 			if (sp.participantType !== "user") continue;
@@ -983,8 +873,11 @@ export class SharedTransactionService {
 			await createNotification({
 				userId: sp.participantId,
 				type: "EXPENSE_DELETED",
-				title: "Expense deleted",
-				body: `${actorName} deleted '${desc}' (${currency} ${amount.toFixed(2)})`,
+				notice: {
+					kind: "expenseDeleted",
+					actor: actorName,
+					amount: amount && { money: amount },
+				},
 				data: {
 					transactionId: existing.id,
 					actorType: this.actor.participantType,

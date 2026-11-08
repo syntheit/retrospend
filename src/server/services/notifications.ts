@@ -3,6 +3,10 @@ import { signUnsubscribeToken } from "~/lib/unsubscribe-token";
 import { db } from "~/server/db";
 import { notificationEmail } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
+import {
+	buildNoticeText,
+	type Notice,
+} from "~/server/services/notification-text";
 import { InvalidCursorError } from "~/server/services/api-v1/cursor";
 import type { NotificationType } from "~prisma";
 
@@ -23,8 +27,9 @@ const EMAIL_ON_BY_DEFAULT = new Set<NotificationType>([
 interface CreateNotificationParams {
 	userId: string;
 	type: NotificationType;
-	title: string;
-	body: string;
+	/** What happened. The text is made from it in notification-text.ts, never passed in. */
+	notice: Notice;
+	/** Ids the app opens the notification by. No names or free text. */
 	data?: Record<string, unknown>;
 }
 
@@ -38,7 +43,7 @@ interface CreateNotificationParams {
 export async function createNotification(
 	params: CreateNotificationParams,
 ): Promise<void> {
-	const { userId, type, title, body, data } = params;
+	const { userId, type, notice, data } = params;
 
 	try {
 		// Look up the user's preference for this notification type
@@ -50,6 +55,12 @@ export async function createNotification(
 		const inApp = pref?.inApp ?? true;
 		const emailEnabled = pref?.email ?? EMAIL_ON_BY_DEFAULT.has(type);
 		const digestMode = pref?.digestMode ?? false;
+
+		const user = await db.user.findUnique({
+			where: { id: userId },
+			select: { email: true, language: true, numberFormat: true },
+		});
+		const { title, body } = await buildNoticeText(notice, user ?? {});
 
 		if (inApp) {
 			await db.notification.create({
@@ -65,10 +76,6 @@ export async function createNotification(
 		}
 
 		if (emailEnabled && !digestMode) {
-			const user = await db.user.findUnique({
-				where: { id: userId },
-				select: { email: true },
-			});
 			if (user?.email) {
 				const appUrl = env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "";
 				const secret = env.UNSUBSCRIBE_SECRET;
@@ -101,39 +108,54 @@ export async function createNotification(
 }
 
 /**
- * Resolves a participant's display name from the database.
- * Returns "Someone" if the participant cannot be found.
+ * A participant's display name, or null when they are gone or cannot be
+ * found (the notice then reads "Someone").
  */
 export async function resolveParticipantName(
 	participantType: string,
 	participantId: string,
-): Promise<string> {
-	if (participantId === "DELETED_USER") return "Deleted User";
-	if (participantId === "DELETED_GUEST") return "Deleted Guest";
+): Promise<string | null> {
+	if (participantId === "DELETED_USER" || participantId === "DELETED_GUEST")
+		return null;
 	try {
 		if (participantType === "user") {
 			const user = await db.user.findUnique({
 				where: { id: participantId },
 				select: { name: true },
 			});
-			return user?.name ?? "Someone";
+			return user?.name ?? null;
 		}
 		if (participantType === "shadow") {
 			const shadow = await db.shadowProfile.findUnique({
 				where: { id: participantId },
 				select: { name: true },
 			});
-			return shadow?.name ?? "Someone";
+			return shadow?.name ?? null;
 		}
 		// guest
 		const guest = await db.guestSession.findUnique({
 			where: { id: participantId },
 			select: { name: true },
 		});
-		return guest?.name ?? "Someone";
+		return guest?.name ?? null;
 	} catch {
-		return "Someone";
+		return null;
 	}
+}
+
+/**
+ * The same name for a sentence in an error, where English words stand in
+ * for a person who is gone or cannot be found.
+ */
+export async function participantLabel(
+	participantType: string,
+	participantId: string,
+): Promise<string> {
+	if (participantId === "DELETED_USER") return "Deleted User";
+	if (participantId === "DELETED_GUEST") return "Deleted Guest";
+	return (
+		(await resolveParticipantName(participantType, participantId)) ?? "Someone"
+	);
 }
 
 // ---- the caller's own notifications (tRPC notification router, /api/v1) ----

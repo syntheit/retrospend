@@ -5,7 +5,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
-import { currencyDecimals } from "@retrospend/domain/money";
+import { noticeMoney } from "~/server/services/notification-text";
 import {
 	createNotification,
 	resolveParticipantName,
@@ -27,9 +27,6 @@ import { type ParticipantRef, sameParticipant } from "./types";
 
 /** Owed amounts at or below this are treated as nothing owed. */
 const OWED_TOLERANCE = 0.005;
-
-const formatAmount = (amount: number, currency: string) =>
-	amount.toFixed(currencyDecimals(currency));
 
 /**
  * Currencies where a pair's overall balance is even (within the owed
@@ -194,12 +191,15 @@ export async function notifySquaredUp(
 ) {
 	if (input.toParticipant.participantType !== "user") return;
 	const myName = await resolveParticipantName("user", me.participantId);
-	const formatted = `${input.currency} ${formatAmount(done.offset, input.currency)}`;
+	const offset = noticeMoney(done.offset, input.currency);
 	createNotification({
 		userId: input.toParticipant.participantId,
 		type: "SETTLEMENT_RECEIVED",
-		title: "Project balances squared up",
-		body: `${myName} squared up your project balances (an offset of ${formatted}, no money moved)`,
+		notice: {
+			kind: "squaredUp",
+			actor: myName,
+			amount: offset && { money: offset, offset: true },
+		},
 		data: {
 			settlementId: done.settlements[0]?.id,
 			paymentGroupId: done.paymentGroupId,

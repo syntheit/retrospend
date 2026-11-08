@@ -8,7 +8,7 @@ import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
 import {
 	createNotification,
-	resolveParticipantName,
+	participantLabel,
 } from "~/server/services/notifications";
 import { claimMatchError } from "~/server/services/payments/claim-match";
 import {
@@ -32,7 +32,6 @@ import type { AllocationView } from "~/server/services/payments/view";
 import { forUser } from "~/server/services/preview";
 import { SettlementService } from "~/server/services/shared-expenses/settlement.service";
 import {
-	describeGroupAmount,
 	type GroupRow,
 	groupCounterparty,
 } from "~/server/services/shared-expenses/settlement-groups";
@@ -114,7 +113,7 @@ async function assertRecorded(caller: Caller, value: RecordPaymentValue) {
 		if (header) {
 			throw claimMatchError(
 				value.match,
-				await resolveParticipantName(header.payerType, header.payerId),
+				await participantLabel(header.payerType, header.payerId),
 			);
 		}
 	}

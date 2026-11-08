@@ -161,8 +161,9 @@ export function leadOf(
 }
 
 /**
- * The one sentence of a row. The server writes it in English for the
- * account; the title stands in when a note has no body.
+ * The one sentence of a row. The server words it in the account's language
+ * from the kind, a name and amounts; the title stands in when a note has no
+ * body.
  */
 export function sentenceOf(n: Pick<InboxNotification, "title" | "body">) {
 	return n.body.trim() !== "" ? n.body : n.title;
