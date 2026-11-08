@@ -1,7 +1,8 @@
 /**
  * The e2e run wipes its database (fixtures/seed.ts) and `pnpm dev:test`
  * migrates it, so playwright.config.ts checks the URL before anything starts:
- * the local test Postgres (127.0.0.1, localhost or ::1, port 5436), a
+ * a local test Postgres (127.0.0.1, localhost or ::1; port 5437, the e2e
+ * one, or 5436, the pg tests' one that CI's e2e jobs use), a
  * database named retrospend_test_e2e*, and no ?host= override that would
  * point the connection somewhere else.
  *
@@ -10,7 +11,7 @@
  */
 
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
-const TEST_PORT = "5436";
+const TEST_PORTS = new Set(["5436", "5437"]);
 
 /** Why `url` is not a safe e2e database, or null when it is. */
 export function e2eDatabaseProblem(url: string): string | null {
@@ -24,8 +25,8 @@ export function e2eDatabaseProblem(url: string): string | null {
 	if (!LOCAL_HOSTS.has(parsed.hostname)) {
 		return `host "${parsed.hostname}" is not 127.0.0.1, localhost or ::1`;
 	}
-	if (parsed.port !== TEST_PORT) {
-		return `port "${parsed.port}" is not ${TEST_PORT} (the test Postgres)`;
+	if (!TEST_PORTS.has(parsed.port)) {
+		return `port "${parsed.port}" is not 5437 or 5436 (the test Postgres)`;
 	}
 	const name = decodeURIComponent(parsed.pathname.replace(/^\//, ""));
 	if (!name.startsWith("retrospend_test_e2e")) {

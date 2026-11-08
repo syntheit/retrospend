@@ -59,7 +59,7 @@ cd "$repo"
 # Only the app and the workspace packages it imports. pnpm still runs the
 # root's lifecycle scripts, and the web app's postinstall (Prisma) has no
 # place on the mini; the app's dependencies need no install scripts.
-pnpm install --frozen-lockfile --ignore-scripts --filter '@retrospend/mobile...'
+pnpm install --frozen-lockfile --filter '@retrospend/mobile...'
 
 cd "$app"
 # Xcode debug builds register with the APNs sandbox; the TestFlight archive
