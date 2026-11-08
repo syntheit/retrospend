@@ -25,6 +25,9 @@ type RecurringTemplate struct {
 	AnchorDay   *int
 	// Direction is OUT (a recurring expense) or IN (recurring income).
 	Direction string
+	// TimeZone is the user's saved zone (user.timeZone), nil when unset. Due
+	// dates of expenses are stored as the start of a day in it.
+	TimeZone *string
 }
 
 // posting is what a due template writes to expense besides its amount.
@@ -44,39 +47,6 @@ func postingFor(t RecurringTemplate) posting {
 		return posting{Direction: "IN", InType: &income}
 	}
 	return posting{Direction: "OUT"}
-}
-
-// addMonthsClamped adds months to t, landing on anchorDay (default: t's own
-// day) or the last day of the target month when that month is shorter.
-// Jan 31 + 1 month is Feb 28, and Feb 28 + 1 month with anchor 31 is Mar 31.
-// Mirrors addMonthsClamped in src/lib/recurring.ts.
-func addMonthsClamped(t time.Time, months int, anchorDay *int) time.Time {
-	day := t.Day()
-	if anchorDay != nil && *anchorDay > 0 {
-		day = *anchorDay
-	}
-	firstOfTarget := time.Date(t.Year(), t.Month(), 1, t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), t.Location()).AddDate(0, months, 0)
-	lastDay := firstOfTarget.AddDate(0, 1, -1).Day()
-	if day > lastDay {
-		day = lastDay
-	}
-	return firstOfTarget.AddDate(0, 0, day-1)
-}
-
-func calculateNextDueDate(current time.Time, frequency string, anchorDay *int) time.Time {
-	switch frequency {
-	case "WEEKLY":
-		return current.AddDate(0, 0, 7)
-	case "BIWEEKLY":
-		return current.AddDate(0, 0, 14)
-	case "MONTHLY":
-		return addMonthsClamped(current, 1, anchorDay)
-	case "QUARTERLY":
-		return addMonthsClamped(current, 3, anchorDay)
-	case "YEARLY":
-		return addMonthsClamped(current, 12, anchorDay)
-	}
-	return current
 }
 
 // isCryptoCurrency decides the rate direction by currency code, never by the
@@ -139,13 +109,14 @@ func ProcessRecurringExpenses(database *db.DB) error {
 	// posts on its own: the user confirms the real amount in the app.
 	// Note: using camelCase "userId", "categoryId", "nextDueDate", "isActive", "autoPay"
 	rows, err := database.Pool.Query(ctx, `
-		SELECT id, "userId", name, amount::text, currency, "categoryId", frequency, "nextDueDate", "anchorDay",
-		       direction::text
-		FROM recurring_template
-		WHERE "isActive" = true
-		  AND "autoPay" = true
-		  AND "amountMode" = 'FIXED'
-		  AND "nextDueDate" <= $1
+		SELECT t.id, t."userId", t.name, t.amount::text, t.currency, t."categoryId", t.frequency, t."nextDueDate", t."anchorDay",
+		       t.direction::text, u."timeZone"
+		FROM recurring_template t
+		JOIN "user" u ON u.id = t."userId"
+		WHERE t."isActive" = true
+		  AND t."autoPay" = true
+		  AND t."amountMode" = 'FIXED'
+		  AND t."nextDueDate" <= $1
 	`, now)
 	if err != nil {
 		return fmt.Errorf("failed to query templates: %w", err)
@@ -155,7 +126,7 @@ func ProcessRecurringExpenses(database *db.DB) error {
 	var templates []RecurringTemplate
 	for rows.Next() {
 		var t RecurringTemplate
-		if err := rows.Scan(&t.ID, &t.UserID, &t.Name, &t.Amount, &t.Currency, &t.CategoryID, &t.Frequency, &t.NextDueDate, &t.AnchorDay, &t.Direction); err != nil {
+		if err := rows.Scan(&t.ID, &t.UserID, &t.Name, &t.Amount, &t.Currency, &t.CategoryID, &t.Frequency, &t.NextDueDate, &t.AnchorDay, &t.Direction, &t.TimeZone); err != nil {
 			return fmt.Errorf("failed to scan template: %w", err)
 		}
 		templates = append(templates, t)
@@ -197,17 +168,16 @@ func ProcessRecurringExpenses(database *db.DB) error {
 
 		// Advance the template first, only if nobody else did since we read it
 		// (a manual confirm or an overlapping run), so each period is booked once.
-		anchorDay := template.AnchorDay
-		if anchorDay == nil {
-			day := template.NextDueDate.Day()
-			anchorDay = &day
-		}
-		nextDueDate := calculateNextDueDate(template.NextDueDate, template.Frequency, anchorDay)
+		// Expense due dates are the start of a day in the user's saved zone, so
+		// they step there; the process zone and pgx's UTC never decide the day.
+		zone := resolveZone(template.TimeZone, defaultZoneName())
+		anchorDay := dueAnchorDay(template, template.NextDueDate, zone)
+		nextDueDate := nextDueAfter(template, template.NextDueDate, zone)
 		tag, err := tx.Exec(ctx, `
 			UPDATE recurring_template
 			SET "nextDueDate" = $1, "anchorDay" = $2, "updatedAt" = NOW()
 			WHERE id = $3 AND "nextDueDate" = $4
-		`, nextDueDate, *anchorDay, template.ID, template.NextDueDate)
+		`, nextDueDate, anchorDay, template.ID, template.NextDueDate)
 
 		if err != nil {
 			tx.Rollback(ctx)
