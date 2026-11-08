@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("~/server/storage", () => ({ deleteFile: vi.fn() }));
 const removeUserExports = vi.hoisted(() => vi.fn(async () => undefined));
 vi.mock("~/server/export-storage", () => ({ removeUserExports }));
+const destroyDataKeys = vi.hoisted(() => vi.fn(async () => 1));
+vi.mock("../keys/data-key.service", () => ({ destroyDataKeys }));
 
 import { deleteFile } from "~/server/storage";
 import {
@@ -47,6 +49,27 @@ function makeTx(overrides: Record<string, Record<string, Fn>>) {
 }
 
 describe("anonymizeAndDeleteUser", () => {
+	it("destroys the user's data keys in the transaction, before the user row goes", async () => {
+		destroyDataKeys.mockClear();
+		const userDelete = vi.fn(async () => ({}));
+		const { tx } = makeTx({ user: { delete: userDelete } });
+		const db = {
+			$transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)),
+		};
+
+		await anonymizeAndDeleteUser(db as never, "user-1", "u@example.com", null);
+
+		const [id, client] = destroyDataKeys.mock.calls[0] as unknown as [
+			string,
+			unknown,
+		];
+		expect(id).toBe("user-1");
+		expect(client).toBe(tx);
+		expect(destroyDataKeys.mock.invocationCallOrder[0]!).toBeLessThan(
+			userDelete.mock.invocationCallOrder[0]!,
+		);
+	});
+
 	it("detaches the user's ghosts from projects before the cascade deletes them", async () => {
 		const shadowFindMany = vi.fn(async () => [
 			{ id: "shadow-a" },

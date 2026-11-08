@@ -164,13 +164,20 @@ export async function getOrCreateDataKeyring(
  * Anything sealed with them can never be read again. Only deletion and
  * rotation jobs may call this: it runs on the owner connection and takes a
  * free user id. A later getOrCreateDataKeyring would make a new, unrelated
- * key, so account deletion (D3) must call it after the user can no longer
- * write. Deleting the user row also removes the keys (a trigger, see the
- * migration), which is the backstop for every other way a user row can go.
+ * key, so a deletion job calls it before the user row goes, in the same
+ * transaction: pass that transaction as `client`, so a failed deletion keeps
+ * the keys. Without one it runs on its own connection and commits at once.
+ *
+ * Deleting the user row also removes the keys (a trigger, see the migration),
+ * which is the backstop for every other way a user row can go. This call is
+ * how account deletion states the intent in code.
  */
-export async function destroyDataKeys(userId: string): Promise<number> {
+export async function destroyDataKeys(
+	userId: string,
+	client: Pick<Prisma.TransactionClient, "$executeRaw"> = db,
+): Promise<number> {
 	return keystore(
-		() => db.$executeRaw`
+		() => client.$executeRaw`
 			DELETE FROM keystore."user_data_key" WHERE "userId" = ${userId}`,
 	);
 }
