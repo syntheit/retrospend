@@ -31,6 +31,19 @@ shard=${2:-}
 # The shard number picks the database name, port and pidfile: digits only.
 case "$cmd" in up | down) [[ "$shard" =~ ^[0-9]+$ ]] || { echo "usage: server.sh $cmd <shard>" >&2; exit 2; } ;; esac
 
+# Refuse before anything touches a database: the same guard the seed runs
+# (loopback host, rs_e2e_ name, no ?host=), on the URLs this script will wipe.
+guard() {
+	GUARD_URL=$1 pnpm exec tsx -e \
+		'import { assertMaestroDatabase } from "./e2e/maestro-db-guard"; assertMaestroDatabase(process.env.GUARD_URL ?? "")' \
+		|| { echo "server.sh: refusing MAESTRO_PG" >&2; exit 2; }
+}
+case "$cmd" in
+template) guard "$pg/rs_e2e_template" ;;
+up) guard "$pg/rs_e2e_template"; guard "$pg/rs_e2e_$shard" ;;
+down) guard "$pg/rs_e2e_$shard" ;;
+esac
+
 psql_admin() { psql -v ON_ERROR_STOP=1 -qAt "$pg/postgres" "$@"; }
 
 case "$cmd" in

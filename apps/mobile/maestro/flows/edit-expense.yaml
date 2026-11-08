@@ -27,7 +27,9 @@ env:
     id: keypad.key.5
 - tapOn:
     id: add.save
-- assertVisible: .*35.*
+# The detail shows the new amount as its own figure, not any "35" on screen.
+- assertVisible: '\$35'
 # The pushed detail's way out is the system back, not a sheet's close button.
 - back
-- assertVisible: ${output.title}
+# The list row for this title carries the new amount in its label.
+- assertVisible: '${output.title}.*\$35.*'
