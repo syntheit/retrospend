@@ -121,6 +121,38 @@ describe("changeUsername", () => {
 		expect(await historyOf(user.username)).toMatchObject({ userId: user.id });
 	});
 
+	it("gives an expired reservation to one of two users who ask for it at once", async () => {
+		const releaser = await createTestUser();
+		for (let round = 0; round < 5; round++) {
+			const a = await createTestUser();
+			const b = await createTestUser();
+			const expired = name("raced");
+			await adminDb.usernameHistory.create({
+				data: {
+					userId: releaser.user.id,
+					previousUsername: expired,
+					changedAt: new Date(
+						Date.now() - (USERNAME_RESERVATION_DAYS + 1) * DAY,
+					),
+				},
+			});
+
+			const results = await Promise.allSettled([
+				changeUsername(a.user.id, expired),
+				changeUsername(b.user.id, expired),
+			]);
+
+			expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+			// The loser gets a plain conflict, never an unhandled database error.
+			expect(results.find((r) => r.status === "rejected")).toMatchObject({
+				reason: { code: "CONFLICT" },
+			});
+			expect(await adminDb.user.count({ where: { username: expired } })).toBe(
+				1,
+			);
+		}
+	});
+
 	it("lets a user take their own old name back", async () => {
 		const { user } = await createTestUser();
 		const original = user.username;

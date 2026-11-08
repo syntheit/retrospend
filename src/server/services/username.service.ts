@@ -89,7 +89,9 @@ export async function changeUsername(
 				}
 				// Reclaiming one's own old name, or a reservation that has expired:
 				// the entry is removed.
-				await tx.usernameHistory.delete({
+				// deleteMany: when two users race for the same expired reservation,
+				// the second finds it already gone, which is not an error.
+				await tx.usernameHistory.deleteMany({
 					where: { previousUsername: newUsername },
 				});
 			}

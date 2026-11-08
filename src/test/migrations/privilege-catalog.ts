@@ -260,3 +260,31 @@ export function onlyTables(
 		defaults: snapshot.defaults,
 	};
 }
+
+/**
+ * What retrospend_app and PUBLIC may do in the keystore schema: the schema
+ * itself and every function in it, as sorted plain lines.
+ */
+export async function readKeystoreAccess(client: Queryable): Promise<string[]> {
+	const { rows } = await client.query<{ line: string }>(`
+		SELECT 'schema usage app=' || has_schema_privilege('retrospend_app', 'keystore', 'USAGE')
+		       || ' create app=' || has_schema_privilege('retrospend_app', 'keystore', 'CREATE') AS line
+		UNION ALL
+		SELECT 'schema public-usage=' || coalesce((
+		         SELECT bool_or(a.grantee = 0 AND a.privilege_type = 'USAGE')
+		         FROM aclexplode(n.nspacl) a), false)
+		FROM pg_namespace n WHERE n.nspname = 'keystore'
+		UNION ALL
+		SELECT 'function ' || p.proname || ' app=' || has_function_privilege('retrospend_app', p.oid, 'EXECUTE')
+		       || ' public=' || (p.proacl IS NULL OR EXISTS (
+		         SELECT 1 FROM aclexplode(p.proacl) a WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE'))
+		FROM pg_proc p WHERE p.pronamespace = 'keystore'::regnamespace
+		UNION ALL
+		SELECT 'table ' || c.relname || ' app=' || (
+		         has_table_privilege('retrospend_app', c.oid, 'SELECT')
+		         OR has_table_privilege('retrospend_app', c.oid, 'INSERT')
+		         OR has_table_privilege('retrospend_app', c.oid, 'UPDATE')
+		         OR has_table_privilege('retrospend_app', c.oid, 'DELETE'))
+		FROM pg_class c WHERE c.relnamespace = 'keystore'::regnamespace AND c.relkind IN ('r', 'p')`);
+	return rows.map((r) => r.line).sort();
+}
