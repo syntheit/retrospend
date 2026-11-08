@@ -164,6 +164,7 @@ describe("the user table", () => {
 					consentVersion: "2026-11",
 					consentIp: "203.0.113.9",
 				},
+				select: { id: true },
 			}),
 		);
 		const stored = await adminDb.user.findUniqueOrThrow({
@@ -199,6 +200,80 @@ describe("the user table", () => {
 		);
 		expect(seen.map((u) => u.id).sort()).toEqual(
 			[alice.user.id, bob.user.id].sort(),
+		);
+	});
+
+	it("cannot read the pending email token or the consent address", async () => {
+		await adminDb.user.update({
+			where: { id: alice.user.id },
+			data: {
+				pendingEmailToken: `tok-${alice.user.id}`,
+				consentIp: "203.0.113.7",
+			},
+		});
+		for (const column of ["pendingEmailToken", "consentIp"] as const) {
+			await expect(
+				asApp(alice, (tx) =>
+					tx.user.findUnique({
+						where: { id: alice.user.id },
+						select: { [column]: true },
+					}),
+				),
+			).rejects.toThrow(DENIED);
+			// Not even to find a row by it.
+			await expect(
+				asApp(alice, (tx) =>
+					tx.user.findFirst({
+						where: { [column]: { not: null } },
+						select: { id: true },
+					}),
+				),
+			).rejects.toThrow(DENIED);
+		}
+		// A read that names no columns asks for all of them, so it is denied too.
+		await expect(
+			asApp(alice, (tx) =>
+				tx.user.findUnique({ where: { id: alice.user.id } }),
+			),
+		).rejects.toThrow(DENIED);
+		// Another user's secret is as closed as one's own.
+		await expect(
+			asApp(alice, (tx) =>
+				tx.user.findUnique({
+					where: { id: bob.user.id },
+					select: { pendingEmailToken: true },
+				}),
+			),
+		).rejects.toThrow(DENIED);
+		// Everything else stays readable, including the pending address itself.
+		const own = await asApp(alice, (tx) =>
+			tx.user.findUnique({
+				where: { id: alice.user.id },
+				select: { name: true, email: true, role: true, pendingEmail: true },
+			}),
+		);
+		expect(own).toMatchObject({ email: alice.user.email, role: "USER" });
+		await adminDb.user.update({
+			where: { id: alice.user.id },
+			data: { pendingEmailToken: null, consentIp: null },
+		});
+	});
+
+	it("an update that returns every column is denied, one that selects is not", async () => {
+		await expect(
+			asApp(alice, (tx) =>
+				tx.user.update({
+					where: { id: alice.user.id },
+					data: { name: alice.user.name },
+				}),
+			),
+		).rejects.toThrow(DENIED);
+		await asApp(alice, (tx) =>
+			tx.user.update({
+				where: { id: alice.user.id },
+				data: { name: alice.user.name },
+				select: { id: true },
+			}),
 		);
 	});
 
@@ -324,7 +399,71 @@ describe("auth tables", () => {
 				}),
 			),
 		).rejects.toThrow(DENIED);
-		await asApp(alice, (tx) => tx.inviteCode.delete({ where: { id: code.id } }));
+		await asApp(alice, (tx) =>
+			tx.inviteCode.delete({ where: { id: code.id } }),
+		);
+	});
+
+	it("invite codes belong to the user who made them", async () => {
+		const bobs = await adminDb.inviteCode.create({
+			data: { code: `bob-${bob.user.id}`, createdById: bob.user.id },
+		});
+		try {
+			// Not listed, not found by code, not deletable.
+			expect(await asApp(alice, (tx) => tx.inviteCode.findMany())).toEqual([]);
+			expect(
+				await asApp(alice, (tx) =>
+					tx.inviteCode.findUnique({ where: { code: bobs.code } }),
+				),
+			).toBeNull();
+			expect(
+				(await asApp(alice, (tx) => tx.inviteCode.deleteMany({}))).count,
+			).toBe(0);
+			await expect(
+				asApp(alice, (tx) => tx.inviteCode.delete({ where: { id: bobs.id } })),
+			).rejects.toThrow();
+			// Cannot create one in Bob's name.
+			await expect(
+				asApp(alice, (tx) =>
+					tx.inviteCode.create({
+						data: { code: `forged-${alice.user.id}`, createdById: bob.user.id },
+					}),
+				),
+			).rejects.toThrow(/row-level security/);
+			// A code Bob holds clashes as a unique violation, not as a read.
+			await expect(
+				asApp(alice, (tx) =>
+					tx.inviteCode.create({
+						data: { code: bobs.code, createdById: alice.user.id },
+					}),
+				),
+			).rejects.toMatchObject({ code: "P2002" });
+			expect(await adminDb.inviteCode.count({ where: { id: bobs.id } })).toBe(
+				1,
+			);
+		} finally {
+			await adminDb.inviteCode.delete({ where: { id: bobs.id } });
+		}
+	});
+
+	it("a user's invite codes list with the names of who made and used them", async () => {
+		const mine = await asApp(alice, (tx) =>
+			tx.inviteCode.create({
+				data: { code: `list-${alice.user.id}`, createdById: alice.user.id },
+			}),
+		);
+		const rows = await asApp(alice, (tx) =>
+			tx.inviteCode.findMany({
+				where: { createdById: alice.user.id },
+				include: {
+					createdBy: { select: { username: true, name: true } },
+					usedBy: { select: { username: true, name: true } },
+				},
+			}),
+		);
+		expect(rows).toHaveLength(1);
+		expect(rows[0]?.createdBy.username).toBe(alice.user.username);
+		await adminDb.inviteCode.delete({ where: { id: mine.id } });
 	});
 
 	it("the audit log of shared expenses cannot be rewritten", async () => {

@@ -175,3 +175,81 @@ export async function readDefaultAcls(client: Queryable): Promise<DefaultAcl[]> 
 		ORDER BY 1, 2, 3`);
 	return rows.rows;
 }
+
+/** Everything the least-privilege migration changes, as plain comparable text. */
+export type CatalogSnapshot = {
+	/** `table[.column] grantee PRIVILEGE`, for tables, columns and sequences. */
+	acl: string[];
+	/** `table rls=<bool> force=<bool>`. */
+	security: string[];
+	/** `table policy COMMAND using | check`. */
+	policies: string[];
+	/** Table and sequence default privileges, the role running the test as `<owner>`. */
+	defaults: string[];
+};
+
+export async function readCatalogSnapshot(
+	client: Queryable,
+): Promise<CatalogSnapshot> {
+	const lines = async (sql: string) =>
+		(await client.query<{ line: string }>(sql)).rows.map((r) => r.line);
+	const acl = await lines(`
+		SELECT c.relname || ' ' || CASE WHEN a.grantee = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(a.grantee)::text END
+		       || ' ' || a.privilege_type || CASE WHEN a.is_grantable THEN '*' ELSE '' END AS line
+		FROM pg_class c
+		CROSS JOIN LATERAL aclexplode(coalesce(c.relacl, acldefault((CASE c.relkind WHEN 'S' THEN 's' ELSE 'r' END)::"char", c.relowner))) a
+		WHERE c.relnamespace = 'public'::regnamespace AND c.relkind IN ('r', 'p', 'S')
+		UNION ALL
+		SELECT c.relname || '.' || at.attname || ' ' || pg_get_userbyid(a.grantee)::text
+		       || ' ' || a.privilege_type AS line
+		FROM pg_attribute at
+		JOIN pg_class c ON c.oid = at.attrelid
+		CROSS JOIN LATERAL aclexplode(at.attacl) a
+		WHERE c.relnamespace = 'public'::regnamespace AND at.attacl IS NOT NULL
+		ORDER BY 1`);
+	const security = await lines(`
+		SELECT c.relname || ' rls=' || c.relrowsecurity || ' force=' || c.relforcerowsecurity AS line
+		FROM pg_class c
+		WHERE c.relnamespace = 'public'::regnamespace AND c.relkind IN ('r', 'p')
+		ORDER BY 1`);
+	const policies = await lines(`
+		SELECT c.relname || ' ' || p.polname || ' ' || p.polcmd::text || ' '
+		       || coalesce(pg_get_expr(p.polqual, p.polrelid), '') || ' | '
+		       || coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '') AS line
+		FROM pg_policy p JOIN pg_class c ON c.oid = p.polrelid
+		WHERE c.relnamespace = 'public'::regnamespace
+		ORDER BY 1`);
+	const owner =
+		(await client.query<{ owner: string }>("SELECT current_user::text AS owner"))
+			.rows[0]?.owner ?? "";
+	const defaults = (await readDefaultAcls(client))
+		.filter((d) => d.kind === "r" || d.kind === "S")
+		.map((d) =>
+			`${d.role} ${d.schema} ${d.kind} ${d.entries.join(",")}`.replaceAll(
+				owner,
+				"<owner>",
+			),
+		);
+	// Sorted here, not by the database, so the order does not depend on its collation.
+	return {
+		acl: acl.sort(),
+		security: security.sort(),
+		policies: policies.sort(),
+		defaults: defaults.sort(),
+	};
+}
+
+/** A snapshot reduced to lines that name one of `tables` (defaults are kept). */
+export function onlyTables(
+	snapshot: CatalogSnapshot,
+	tables: readonly string[],
+): CatalogSnapshot {
+	const names = new Set(tables);
+	const mine = (line: string) => names.has(line.split(/[ .]/)[0] ?? "");
+	return {
+		acl: snapshot.acl.filter(mine),
+		security: snapshot.security.filter(mine),
+		policies: snapshot.policies.filter(mine),
+		defaults: snapshot.defaults,
+	};
+}

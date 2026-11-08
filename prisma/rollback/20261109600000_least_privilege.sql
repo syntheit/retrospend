@@ -8,12 +8,13 @@
 -- It puts back what the migration changed on retrospend_app, checked against a
 -- catalog diff by src/test/migrations/least-privilege-rollback.pg.test.ts:
 --   * "user": row-level security off again, the two policies dropped, the
---     column-level UPDATE grants gone, and SELECT, INSERT, UPDATE and DELETE
+--     column-level SELECT and UPDATE grants gone, and SELECT, INSERT, UPDATE and DELETE
 --     on the whole table back;
 --   * SELECT, INSERT, UPDATE and DELETE back on _prisma_migrations,
 --     verification, verification_token, session, account, "twoFactor",
 --     username_history, event_log, invite_code, system_status, audit_log_entry
 --     and error_report;
+--   * invite_code: row-level security off again and its policy dropped;
 --   * SELECT only back on password_reset_token and app_settings;
 --   * the default privileges on tables (SELECT, INSERT, UPDATE, DELETE) and
 --     sequences (USAGE, SELECT) for retrospend_app in schema public, for the
@@ -45,6 +46,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON "twoFactor" TO retrospend_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON "username_history" TO retrospend_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON "event_log" TO retrospend_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON "invite_code" TO retrospend_app;
+ALTER TABLE "invite_code" DISABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS invite_code_own ON "invite_code";
 GRANT SELECT, INSERT, UPDATE, DELETE ON "system_status" TO retrospend_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON "audit_log_entry" TO retrospend_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON "error_report" TO retrospend_app;

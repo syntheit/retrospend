@@ -53,6 +53,7 @@ export async function setDefaultAccount(
 		await tx.user.update({
 			where: { id: userId },
 			data: { defaultAccounts: next },
+			select: { id: true },
 		});
 		return next;
 	});

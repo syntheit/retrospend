@@ -75,9 +75,24 @@ describe("retrospend_app privileges", () => {
 		]) {
 			expect(columns).not.toContain(forbidden);
 		}
-		// Never INSERT or DELETE on user, and no column-level INSERT either.
-		expect(actual.tables.user?.privileges).toEqual(["SELECT"]);
+		// No table-level privilege at all, never INSERT or DELETE, and no
+		// column-level INSERT either: SELECT and UPDATE are granted by column.
+		expect(actual.tables.user?.privileges).toEqual([]);
 		expect(actual.columns.user?.INSERT).toBeUndefined();
+	});
+
+	it("reads every user column except the secret and the personal data", async () => {
+		const { rows } = await client.query<{ name: string }>(
+			`SELECT attname AS name FROM pg_attribute
+			 WHERE attrelid = '"user"'::regclass AND attnum > 0 AND NOT attisdropped
+			 ORDER BY 1`,
+		);
+		const all = rows.map((r) => r.name);
+		const readable = actual.columns.user?.SELECT ?? [];
+		expect(all.filter((c) => !readable.includes(c))).toEqual([
+			"consentIp",
+			"pendingEmailToken",
+		]);
 	});
 
 	it("sequence privileges are exactly the expectation", () => {
@@ -135,6 +150,34 @@ describe("retrospend_app privileges", () => {
 		);
 		expect(owners.length).toBeGreaterThan(0);
 		for (const owner of owners) expect(covered.has(owner.role)).toBe(true);
+	});
+
+	it("the keystore schema gives the app role nothing but USAGE and two functions", async () => {
+		const { rows: tables } = await client.query<{ name: string; priv: string }>(
+			`SELECT c.relname AS name, p AS priv
+			 FROM pg_class c
+			 CROSS JOIN unnest(ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE']) p
+			 WHERE c.relnamespace = 'keystore'::regnamespace
+			   AND c.relkind IN ('r', 'p', 'S')
+			   AND has_table_privilege('retrospend_app', c.oid, p)`,
+		);
+		expect(tables).toEqual([]);
+		const { rows: functions } = await client.query<{ name: string }>(
+			`SELECT p.proname AS name
+			 FROM pg_proc p
+			 WHERE p.pronamespace = 'keystore'::regnamespace
+			   AND has_function_privilege('retrospend_app', p.oid, 'EXECUTE')
+			 ORDER BY 1`,
+		);
+		expect(functions.map((f) => f.name)).toEqual([
+			"create_first_data_key",
+			"current_user_data_keys",
+		]);
+		const { rows: usage } = await client.query<{ can: boolean; create: boolean }>(
+			`SELECT has_schema_privilege('retrospend_app', 'keystore', 'USAGE') AS can,
+			        has_schema_privilege('retrospend_app', 'keystore', 'CREATE') AS create`,
+		);
+		expect(usage[0]).toEqual({ can: true, create: false });
 	});
 
 	it("retrospend_app is not a member of any other role and cannot create objects", async () => {

@@ -249,6 +249,7 @@ export const authRouter = createTRPCRouter({
 					consentVersion: input.consentVersion,
 					consentIp: ip === "unknown" ? null : ip,
 				},
+				select: { id: true },
 			});
 
 			return { success: true };
@@ -267,6 +268,7 @@ export const authRouter = createTRPCRouter({
 
 		const user = await db.user.findUnique({
 			where: { id: session.user.id },
+			select: { email: true, emailVerified: true },
 		});
 
 		if (!user || user.emailVerified || !(await isEmailDeliveryEnabled())) {

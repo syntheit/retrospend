@@ -81,11 +81,13 @@ describe("aiImportEnabled", () => {
 		await me.db.user.update({
 			where: { id: me.user.id },
 			data: { aiImportEnabled: true },
+			select: { id: true },
 		});
 		expect(await isAiImportEnabled(me.db, me.user.id)).toBe(true);
 		await me.db.user.update({
 			where: { id: me.user.id },
 			data: { aiImportEnabled: false },
+			select: { id: true },
 		});
 		expect(await isAiImportEnabled(me.db, me.user.id)).toBe(false);
 	});
@@ -117,6 +119,11 @@ describe("aiImportEnabled", () => {
 		} finally {
 			await adminDb.$executeRawUnsafe(
 				'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "aiImportEnabled" BOOLEAN NOT NULL DEFAULT false',
+			);
+			// A column added again has no column privileges; the app role reads and
+			// writes this one (least-privilege migration).
+			await adminDb.$executeRawUnsafe(
+				'GRANT SELECT ("aiImportEnabled"), UPDATE ("aiImportEnabled") ON "user" TO retrospend_app',
 			);
 		}
 	});

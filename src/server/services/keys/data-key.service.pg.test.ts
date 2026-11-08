@@ -428,7 +428,9 @@ describe("destroyDataKeys", () => {
 		const rollback = new Error("rollback");
 		await adminDb
 			.$transaction(async (tx) => {
-				await tx.$executeRawUnsafe("CREATE ROLE keystore_probe");
+				// "user" has row-level security, so the probe bypasses it: the test is
+				// about the keystore, not about who may delete which user.
+				await tx.$executeRawUnsafe("CREATE ROLE keystore_probe BYPASSRLS");
 				await tx.$executeRawUnsafe(
 					'GRANT SELECT, DELETE ON "user" TO keystore_probe',
 				);

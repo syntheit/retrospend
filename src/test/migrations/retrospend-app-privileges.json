@@ -526,9 +526,11 @@
 				"INSERT",
 				"SELECT"
 			],
-			"rls": false,
+			"rls": true,
 			"forceRls": false,
-			"policies": []
+			"policies": [
+				"invite_code_own:ALL"
+			]
 		},
 		"magic_link": {
 			"privileges": [
@@ -812,9 +814,7 @@
 			]
 		},
 		"user": {
-			"privileges": [
-				"SELECT"
-			],
+			"privileges": [],
 			"rls": true,
 			"forceRls": false,
 			"policies": [
@@ -891,6 +891,44 @@
 	},
 	"columns": {
 		"user": {
+			"SELECT": [
+				"aiImportEnabled",
+				"aiMode",
+				"autoAcceptSplits",
+				"avatarPath",
+				"categoryClickBehavior",
+				"consentVersion",
+				"consentedAt",
+				"createdAt",
+				"currencySymbolStyle",
+				"defaultAccounts",
+				"defaultCurrency",
+				"defaultExpenseDateBehavior",
+				"defaultPrivacyMode",
+				"defaultRateTypes",
+				"email",
+				"emailVerified",
+				"externalAiAllowed",
+				"fiscalMonthStartDay",
+				"homeCurrency",
+				"id",
+				"image",
+				"isActive",
+				"language",
+				"lastUsernameChangeAt",
+				"monthlyIncome",
+				"monthlyIncomeCurrency",
+				"name",
+				"numberFormat",
+				"pendingEmail",
+				"pendingEmailExpiresAt",
+				"role",
+				"smartCurrencyFormatting",
+				"timeZone",
+				"twoFactorEnabled",
+				"updatedAt",
+				"username"
+			],
 			"UPDATE": [
 				"aiImportEnabled",
 				"aiMode",

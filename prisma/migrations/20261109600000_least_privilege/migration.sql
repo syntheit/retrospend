@@ -23,15 +23,18 @@
 --   app_settings         read only through the owner connection
 --
 -- It keeps only what is used on:
---   invite_code          SELECT, INSERT, DELETE: a user's own codes
+--   invite_code          SELECT, INSERT, DELETE on a user's own codes, with
+--                        row-level security: createdById is the caller
 --   system_status        SELECT: the worker heartbeat shown in the app
 --   audit_log_entry      loses UPDATE and DELETE (no policy allowed them)
 --   error_report         loses UPDATE (no policy allowed it)
 --
 -- "user" gets row-level security: every row is readable (shared views show
 -- other people's names), only the caller's own row is updatable, and INSERT and
--- DELETE are gone. UPDATE is also limited by column, to the profile and
--- settings columns scoped code writes. role, email, emailVerified, isActive,
+-- DELETE are gone. SELECT is limited by column to everything except
+-- pendingEmailToken (a secret) and consentIp (personal data): no scoped read
+-- may select them, so every scoped read of "user" names its columns. UPDATE is
+-- limited by column, to the profile and settings columns scoped code writes. role, email, emailVerified, isActive,
 -- username, lastUsernameChangeAt, the two-factor column and everything else
 -- are written only on the owner connection.
 --
@@ -61,9 +64,21 @@ CREATE POLICY user_update_own ON "user"
   USING ("id" = current_setting('app.current_user_id', TRUE))
   WITH CHECK ("id" = current_setting('app.current_user_id', TRUE));
 
--- Revoking on the table also revokes every column privilege on it.
+-- Revoking on the table also revokes every column privilege on it. A column
+-- added later is not readable by the app role until a migration grants it (the
+-- privilege ratchet fails first).
 REVOKE ALL ON "user" FROM retrospend_app;
-GRANT SELECT ON "user" TO retrospend_app;
+GRANT SELECT (
+  "id", "name", "username", "email", "emailVerified", "image",
+  "homeCurrency", "categoryClickBehavior", "role", "isActive", "createdAt",
+  "updatedAt", "defaultCurrency", "currencySymbolStyle", "monthlyIncome",
+  "smartCurrencyFormatting", "defaultPrivacyMode", "twoFactorEnabled",
+  "monthlyIncomeCurrency", "fiscalMonthStartDay", "defaultExpenseDateBehavior",
+  "aiMode", "externalAiAllowed", "avatarPath", "consentedAt", "consentVersion",
+  "lastUsernameChangeAt", "pendingEmail", "pendingEmailExpiresAt", "language",
+  "autoAcceptSplits", "defaultRateTypes", "defaultAccounts", "timeZone",
+  "numberFormat", "aiImportEnabled"
+) ON "user" TO retrospend_app;
 GRANT UPDATE (
   -- profile: profile.service, avatar.service, the pending email change
   "name",
@@ -119,6 +134,15 @@ REVOKE ALL ON "app_settings" FROM retrospend_app;
 
 REVOKE ALL ON "invite_code" FROM retrospend_app;
 GRANT SELECT, INSERT, DELETE ON "invite_code" TO retrospend_app;
+
+-- A user sees, creates and deletes only the codes they made. Public validation,
+-- sign-up and the admin list run on the owner connection and bypass this.
+ALTER TABLE "invite_code" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS invite_code_own ON "invite_code";
+CREATE POLICY invite_code_own ON "invite_code"
+  AS PERMISSIVE FOR ALL TO retrospend_app
+  USING ("createdById" = current_setting('app.current_user_id', TRUE))
+  WITH CHECK ("createdById" = current_setting('app.current_user_id', TRUE));
 
 REVOKE ALL ON "system_status" FROM retrospend_app;
 GRANT SELECT ON "system_status" TO retrospend_app;

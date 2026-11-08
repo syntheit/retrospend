@@ -236,6 +236,7 @@ export async function cancelPendingEmailChange(db: AppDb, userId: string) {
 			pendingEmailToken: null,
 			pendingEmailExpiresAt: null,
 		},
+		select: { id: true },
 	});
 }
 
