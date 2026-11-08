@@ -232,6 +232,29 @@ for (const [label, ring] of PATHS) {
 			expect(await find(other, ring, { title: "Coffee" })).not.toBeNull();
 		});
 
+		it("filters by user itself, not only through row-level security", async () => {
+			const me = await createTestUser();
+			const other = await createTestUser();
+			await seed(other, [{ title: "Coffee" }]);
+			// The admin client sees every row, so only the query's own filter
+			// keeps the other user's expense out.
+			const ask = (userId: string) =>
+				findDuplicateExpense(
+					adminDb,
+					userId,
+					{
+						title: "Coffee",
+						amount: "1500.5",
+						currency: "ARS",
+						date: NOON,
+						timeZone: TZ,
+					},
+					{ keyring: ring },
+				);
+			expect(await ask(me.user.id)).toBeNull();
+			expect(await ask(other.user.id)).not.toBeNull();
+		});
+
 		it("ignores money in and entries that are not spending", async () => {
 			const me = await createTestUser();
 			await seed(me, [
