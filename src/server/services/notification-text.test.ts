@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadCatalog } from "@retrospend/i18n/load";
 import { SUPPORTED_LOCALES } from "~/i18n/locales";
+import { loadCatalogFromDisk } from "./catalog-from-disk";
 import { serverTranslator } from "./server-translator";
 import {
 	buildNoticeText,
@@ -360,5 +361,14 @@ describe("serverTranslator", () => {
 		expect(() => t("noSuchKind.title")).toThrow();
 		const none = await serverTranslator("en", "noSuchNamespace");
 		expect(() => none("a.b")).toThrow();
+	});
+});
+
+describe("loadCatalogFromDisk", () => {
+	it("reads the same catalog the Vite and Turbopack loader does, for every locale", async () => {
+		for (const locale of SUPPORTED_LOCALES)
+			expect(await loadCatalogFromDisk(locale), locale).toEqual(
+				await loadCatalog(locale),
+			);
 	});
 });
