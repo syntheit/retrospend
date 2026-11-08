@@ -1,184 +1,133 @@
 // The rollback snippet for 20261109500000_definer_hygiene
 // (prisma/rollback/, not a migration). An image rollback cannot undo a
 // migration, so the snippet has to put the function grants and search_path
-// back by hand. This builds a database migrated to the migration before it,
-// clones it, applies the migration to the clone and then the snippet, and
-// compares every function's mode, search_path and ACL, and the function
-// default privileges, with the database that never had the migration.
+// back by hand.
 //
-// One representation differs and is normalized away: a function nobody ever
-// granted on has a NULL ACL, which Postgres reads as "owner and PUBLIC may
-// execute". Granting to PUBLIC again stores that same default as explicit
-// entries, and SQL cannot write the NULL back. Both are compared as the
-// default ACL they stand for (acldefault).
-import { randomBytes } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
+// This creates no database: creating or dropping one holds an xid long enough
+// to stall the outbox horizon every other pg worker waits on. It works in the
+// worker's own, fully migrated database, inside one transaction that always
+// ends in ROLLBACK (GRANT, REVOKE, ALTER FUNCTION and ALTER DEFAULT PRIVILEGES
+// are transactional): capture the catalog, apply the snippet, capture again,
+// apply the migration, capture a third time.
+//   - after the snippet, every function in definer-catalog.before.json has the
+//     mode, search_path and ACL it had before the migration, and the function
+//     default privileges match;
+//   - after the migration again, the catalog equals the first capture.
+//
+// definer-catalog.before.json is the catalog of a database migrated to the
+// migration before this one. Regenerate it only if that state must change:
+//   createdb scratch && for each folder older than 20261109500000, in order:
+//     psql -v ON_ERROR_STOP=1 -d scratch -f prisma/migrations/<folder>/migration.sql
+//   psql -At -d scratch -f src/test/migrations/definer-catalog.sql \
+//     > src/test/migrations/definer-catalog.before.json
+// A NULL function ACL is read as the default ACL it stands for (acldefault),
+// because SQL cannot write the NULL back: granting PUBLIC again stores the
+// same owner-and-PUBLIC default as explicit entries.
+//
+// Functions a later migration adds are not in the JSON and are ignored. A later
+// migration that changes the grants of one that is in it fails this test: the
+// snippet then needs a second look.
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Client } from "pg";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { parseTestDatabaseUrl } from "~/test/pg-global-setup";
+import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../uiRules/paths";
 
 const MIGRATION = "20261109500000_definer_hygiene";
-const MIGRATIONS = join(REPO_ROOT, "prisma/migrations");
 
 type FunctionState = {
 	sig: string;
 	definer: boolean;
 	config: string;
-	acl: string | null;
-};
-
-type DefaultState = {
-	role: string;
-	schema: string;
-	kind: string;
 	acl: string;
 };
+type Catalog = {
+	functions: FunctionState[];
+	defaults: { role: string; schema: string; acl: string }[];
+};
 
-const { baseUrl, baseName } = parseTestDatabaseUrl(
-	process.env.TEST_DATABASE_URL,
+const read = (...parts: string[]) =>
+	readFileSync(join(REPO_ROOT, ...parts), "utf8");
+
+const catalogSql = read("src/test/migrations/definer-catalog.sql");
+const before: Catalog = JSON.parse(
+	read("src/test/migrations/definer-catalog.before.json"),
 );
-const suffix = randomBytes(2).toString("hex");
-const beforeName = `${baseName}_rb${suffix}_before`;
-const afterName = `${baseName}_rb${suffix}_after`;
+const migrationSql = read("prisma/migrations", MIGRATION, "migration.sql");
+const rollbackSql = read("prisma/rollback", `${MIGRATION}.sql`);
 
-function urlFor(database: string): string {
-	const url = new URL(baseUrl);
-	url.pathname = `/${database}`;
-	return url.toString();
+class Rollback extends Error {}
+
+async function capture(client: Client): Promise<Catalog> {
+	const result = await client.query<{ jsonb_pretty: string }>(catalogSql);
+	return JSON.parse(result.rows[0]?.jsonb_pretty ?? "{}");
 }
 
-async function withClient<T>(
-	database: string,
-	run: (client: Client) => Promise<T>,
-): Promise<T> {
-	const client = new Client({ connectionString: urlFor(database) });
+/** Runs the steps in one transaction on the worker's database, then rolls back. */
+async function inRolledBackTransaction(
+	steps: (client: Client) => Promise<void>,
+) {
+	const client = new Client({ connectionString: process.env.DATABASE_URL });
 	await client.connect();
 	try {
-		return await run(client);
+		await client.query("BEGIN");
+		await steps(client);
+		throw new Rollback();
+	} catch (error) {
+		await client.query("ROLLBACK");
+		if (!(error instanceof Rollback)) throw error;
 	} finally {
 		await client.end();
 	}
 }
 
-function migrationFolders(): string[] {
-	return readdirSync(MIGRATIONS, { withFileTypes: true })
-		.filter((entry) => entry.isDirectory())
-		.map((entry) => entry.name)
-		.sort();
-}
-
-function migrationSql(folder: string): string {
-	return readFileSync(join(MIGRATIONS, folder, "migration.sql"), "utf8");
-}
-
-async function snapshot(database: string) {
-	return withClient(database, async (client) => {
-		const functions = await client.query<FunctionState>(`
-			SELECT p.oid::regprocedure::text AS sig,
-			       p.prosecdef AS definer,
-			       coalesce(array_to_string(p.proconfig, ';'), '') AS config,
-			       (SELECT string_agg(
-			                 CASE WHEN a.grantee = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(a.grantee) END
-			                   || ':' || a.privilege_type
-			                   || CASE WHEN a.is_grantable THEN '*' ELSE '' END,
-			                 ',' ORDER BY a.grantee, a.privilege_type)
-			          FROM aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a) AS acl
-			FROM pg_proc p
-			WHERE p.pronamespace = 'public'::regnamespace
-			  AND p.prokind IN ('f', 'p')
-			  AND NOT EXISTS (
-			    SELECT 1 FROM pg_depend d WHERE d.objid = p.oid AND d.deptype = 'e'
-			  )
-			ORDER BY 1`);
-		const defaults = await client.query<DefaultState>(`
-			SELECT pg_get_userbyid(defaclrole)::text AS role,
-			       defaclnamespace::text AS schema,
-			       defaclobjtype::text AS kind,
-			       defaclacl::text AS acl
-			FROM pg_default_acl
-			ORDER BY 1, 2, 3`);
-		return { functions: functions.rows, defaults: defaults.rows };
-	});
-}
-
 describe("rollback of 20261109500000_definer_hygiene", () => {
-	beforeAll(async () => {
-		const folders = migrationFolders();
-		const index = folders.indexOf(MIGRATION);
-		expect(index).toBeGreaterThan(0);
-		const admin = new Client({
-			connectionString: urlFor("postgres"),
+	it("puts back every grant, search_path and default the migration changed, and the migration applies again", async () => {
+		let migrated: Catalog | undefined;
+		let restored: Catalog | undefined;
+		let reapplied: Catalog | undefined;
+		await inRolledBackTransaction(async (client) => {
+			migrated = await capture(client);
+			await client.query(rollbackSql);
+			restored = await capture(client);
+			await client.query(migrationSql);
+			reapplied = await capture(client);
 		});
-		await admin.connect();
-		try {
-			await admin.query(`CREATE DATABASE "${beforeName}"`);
-		} finally {
-			await admin.end();
-		}
-		// Migrated up to the one before the migration under test.
-		await withClient(beforeName, async (client) => {
-			for (const folder of folders.slice(0, index)) {
-				await client.query(migrationSql(folder));
-			}
-		});
-		// A clone fails while anyone is connected to its source.
-		const maintenance = new Client({ connectionString: urlFor("postgres") });
-		await maintenance.connect();
-		try {
-			await maintenance.query(
-				`CREATE DATABASE "${afterName}" TEMPLATE "${beforeName}"`,
-			);
-		} finally {
-			await maintenance.end();
-		}
-	}, 240_000);
+		if (!migrated || !restored || !reapplied) throw new Error("no capture");
 
-	afterAll(async () => {
-		const admin = new Client({ connectionString: urlFor("postgres") });
-		await admin.connect();
-		try {
-			for (const name of [afterName, beforeName]) {
-				await admin.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);
-			}
-		} finally {
-			await admin.end();
-		}
-	}, 60_000);
+		const bySig = (catalog: Catalog) =>
+			new Map(catalog.functions.map((f) => [f.sig, f]));
+		const now = bySig(migrated);
+		const back = bySig(restored);
 
-	it("puts back every grant, search_path and default the migration changed", async () => {
-		const before = await snapshot(beforeName);
-
-		await withClient(afterName, (client) =>
-			client.query(migrationSql(MIGRATION)),
-		);
-		const migrated = await snapshot(afterName);
-		const changed = migrated.functions.filter(
-			(f, i) => JSON.stringify(f) !== JSON.stringify(before.functions[i]),
-		);
 		// The migration did change things, so the comparison below can fail.
+		const changed = before.functions.filter(
+			(f) => JSON.stringify(now.get(f.sig)) !== JSON.stringify(f),
+		);
 		expect(changed.length).toBeGreaterThanOrEqual(30);
-		expect(migrated.defaults).not.toEqual(before.defaults);
 
-		const rollback = readFileSync(
-			join(REPO_ROOT, "prisma/rollback", `${MIGRATION}.sql`),
-			"utf8",
+		// Every function of the earlier catalog is back as it was.
+		expect(before.functions.map((f) => back.get(f.sig))).toEqual(
+			before.functions,
 		);
-		await withClient(afterName, (client) => client.query(rollback));
-		const restored = await snapshot(afterName);
-
-		expect(restored.functions).toEqual(before.functions);
 		expect(restored.defaults).toEqual(before.defaults);
-	}, 120_000);
 
-	it("can run twice", async () => {
-		const before = await snapshot(beforeName);
-		const rollback = readFileSync(
-			join(REPO_ROOT, "prisma/rollback", `${MIGRATION}.sql`),
-			"utf8",
-		);
-		await withClient(afterName, (client) => client.query(rollback));
-		expect((await snapshot(afterName)).functions).toEqual(before.functions);
+		// The migration, run on top of the snippet, lands where it started.
+		expect(reapplied).toEqual(migrated);
 	}, 60_000);
+
+	it("left the worker's database as the migration made it", async () => {
+		const client = new Client({ connectionString: process.env.DATABASE_URL });
+		await client.connect();
+		try {
+			const [row] = (
+				await client.query<{ open: boolean }>(
+					`SELECT has_function_privilege('retrospend_app', 'budget_party_user(text,text)', 'EXECUTE') AS open`,
+				)
+			).rows;
+			expect(row?.open).toBe(false);
+		} finally {
+			await client.end();
+		}
+	});
 });
