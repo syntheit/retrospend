@@ -14,9 +14,10 @@
  * Rates use the stored convention of @retrospend/domain/money: fiat in units per USD,
  * crypto in USD per coin. The loader supplies them through `usdRate`.
  */
-import type { Decimal } from "@prisma/client/runtime/index-browser";
+
 import { isCrypto } from "@retrospend/domain/currency-format";
 import { MissingRateError, USD } from "@retrospend/domain/money";
+import type { Decimal } from "@retrospend/domain/precise-decimal";
 import type {
 	DecimalLike,
 	IsoDate,

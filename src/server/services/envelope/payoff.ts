@@ -9,7 +9,7 @@
  * it and the pool (the extra, freed minimums) converts at today's rate.
  * Stops when every debt is 0 or after 50 years.
  */
-import type { Decimal } from "@prisma/client/runtime/index-browser";
+import type { Decimal } from "@retrospend/domain/precise-decimal";
 import { addMonths } from "./calendar";
 import type { DecimalLike, Minor, MonthKey, PayoffStrategy } from "./types";
 import { dec, fromMinor, sumMinor, toMinor } from "./units";

@@ -1,24 +1,16 @@
 /**
  * Minor-unit arithmetic for the envelope modules. Integer math runs on
- * BigInt, decimal inputs on a 40-digit Prisma Decimal, so no float ever
+ * BigInt, decimal inputs on the 40-digit domain Decimal, so no float ever
  * touches money. Rounding is half-even (IMPLEMENTATION §2.2).
  *
  * These belong in packages/domain once that package exists; they live here
  * so the pure modules have no dependency on work in flight.
  */
-import { Decimal } from "@prisma/client/runtime/index-browser";
 import { currencyDecimals } from "@retrospend/domain/money";
+import { Dec, type Decimal, dec } from "@retrospend/domain/precise-decimal";
 import type { DecimalLike, Minor } from "./types";
 
-/** Decimal with enough precision for amount x rate x 10^8 without loss. */
-export const Dec = Decimal.clone({
-	precision: 40,
-	rounding: Decimal.ROUND_HALF_EVEN,
-});
-
-export function dec(value: DecimalLike | number): Decimal {
-	return new Dec(typeof value === "number" ? value : value.toString());
-}
+export { Dec, dec };
 
 export function assertMinor(value: number, what = "amount"): Minor {
 	if (!Number.isSafeInteger(value)) {
@@ -31,7 +23,7 @@ export function assertMinor(value: number, what = "amount"): Minor {
 export function toMinor(amount: DecimalLike, currency: string): Minor {
 	const scaled = dec(amount)
 		.mul(dec(10).pow(currencyDecimals(currency)))
-		.toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN);
+		.toDecimalPlaces(0, Dec.ROUND_HALF_EVEN);
 	return assertMinor(scaled.toNumber(), `${currency} amount`);
 }
 
