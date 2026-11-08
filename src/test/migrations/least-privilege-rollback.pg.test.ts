@@ -25,8 +25,8 @@
 // change with the definer hygiene migration, whose rollback owns it.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Client } from "pg";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
+import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 import { REPO_ROOT } from "../uiRules/paths";
 import before from "./pre-least-privilege-catalog.json";
 import {
@@ -65,38 +65,19 @@ const rollbackSql = readFileSync(
 	"utf8",
 );
 
-let client: Client;
-
-beforeAll(async () => {
-	client = new Client({ connectionString: process.env.DATABASE_URL });
-	await client.connect();
-});
-
-afterAll(async () => {
-	await client.end();
-});
-
-/** Runs `work` inside a transaction that is always rolled back. */
-async function rolledBack<T>(work: () => Promise<T>): Promise<T> {
-	await client.query("BEGIN");
-	try {
-		return await work();
-	} finally {
-		await client.query("ROLLBACK");
-	}
-}
-
-const snapshot = (): Promise<CatalogSnapshot> => readCatalogSnapshot(client);
-
 describe("rollback of 20261109600000_least_privilege", () => {
 	it("puts back every grant, policy, security flag and default the migration changed", async () => {
-		const { migrated, rolledBackTo, reapplied } = await rolledBack(async () => {
-			const migrated = await snapshot();
+		let migrated: CatalogSnapshot | undefined;
+		let rolledBackTo: CatalogSnapshot | undefined;
+		let reapplied: CatalogSnapshot | undefined;
+		await inRolledBackTransaction(async (client) => {
+			migrated = await readCatalogSnapshot(client);
 			await client.query(rollbackSql);
-			const rolledBackTo = await snapshot();
+			rolledBackTo = await readCatalogSnapshot(client);
 			await client.query(migrationSql);
-			return { migrated, rolledBackTo, reapplied: await snapshot() };
+			reapplied = await readCatalogSnapshot(client);
 		});
+		if (!migrated || !rolledBackTo || !reapplied) throw new Error("no capture");
 
 		// The migration did change things, so the comparisons below can fail.
 		expect(migrated.security).toContain("user rls=true force=false");
@@ -116,26 +97,29 @@ describe("rollback of 20261109600000_least_privilege", () => {
 	}, 60_000);
 
 	it("can run twice, and so can the migration", async () => {
-		const { once, twice, migratedOnce, migratedTwice } = await rolledBack(
-			async () => {
-				await client.query(rollbackSql);
-				const once = await snapshot();
-				await client.query(rollbackSql);
-				const twice = await snapshot();
-				await client.query(migrationSql);
-				const migratedOnce = await snapshot();
-				await client.query(migrationSql);
-				return { once, twice, migratedOnce, migratedTwice: await snapshot() };
-			},
-		);
-		expect(twice).toEqual(once);
-		expect(migratedTwice).toEqual(migratedOnce);
+		const seen: Record<string, CatalogSnapshot> = {};
+		await inRolledBackTransaction(async (client) => {
+			await client.query(rollbackSql);
+			seen.once = await readCatalogSnapshot(client);
+			await client.query(rollbackSql);
+			seen.twice = await readCatalogSnapshot(client);
+			await client.query(migrationSql);
+			seen.migratedOnce = await readCatalogSnapshot(client);
+			await client.query(migrationSql);
+			seen.migratedTwice = await readCatalogSnapshot(client);
+		});
+		expect(seen.twice).toEqual(seen.once);
+		expect(seen.migratedTwice).toEqual(seen.migratedOnce);
 	}, 60_000);
 
 	it("leaves the database as it found it", async () => {
-		const { rows } = await client.query<{ rls: boolean }>(
-			`SELECT relrowsecurity AS rls FROM pg_class WHERE oid = '"user"'::regclass`,
-		);
-		expect(rows[0]?.rls).toBe(true);
+		let rls: boolean | undefined;
+		await inRolledBackTransaction(async (client) => {
+			const { rows } = await client.query<{ rls: boolean }>(
+				`SELECT relrowsecurity AS rls FROM pg_class WHERE oid = '"user"'::regclass`,
+			);
+			rls = rows[0]?.rls;
+		});
+		expect(rls).toBe(true);
 	});
 });

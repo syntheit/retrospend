@@ -11,12 +11,15 @@
 // they are stripped here so that COMMIT cannot end the test's transaction.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Client } from "pg";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { Client } from "pg";
+import { describe, expect, it } from "vitest";
+import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 import { REPO_ROOT } from "../uiRules/paths";
+import lists from "./definer-functions.json";
 import {
 	type PrivilegeCatalog,
 	readCatalogSnapshot,
+	readDefaultAcls,
 	readKeystoreAccess,
 	readPrivilegeCatalog,
 } from "./privilege-catalog";
@@ -43,21 +46,60 @@ const AS_RESTORED = `
 	GRANT EXECUTE ON FUNCTION keystore."current_user_data_keys"(), keystore."create_first_data_key"(text, bigint) TO PUBLIC;
 	ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO retrospend_app;
 	ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO retrospend_app;
+	REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM retrospend_app;
+	GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO PUBLIC;
+	ALTER DEFAULT PRIVILEGES GRANT EXECUTE ON FUNCTIONS TO PUBLIC;
 `;
 
-let client: Client;
+type FunctionState = {
+	name: string;
+	definer: boolean;
+	publicExecute: boolean;
+	appExecute: boolean;
+	/** The whole ACL, as a restore or the file leaves it. */
+	acl: string;
+};
 
-beforeAll(async () => {
-	client = new Client({ connectionString: process.env.DATABASE_URL });
-	await client.connect();
-});
+/** Every function in public that is not an extension's, with who may execute it. */
+async function functionStates(client: Client): Promise<FunctionState[]> {
+	const { rows } = await client.query<FunctionState>(`
+		SELECT p.oid::regprocedure::text AS name,
+		       p.prosecdef AS definer,
+		       EXISTS (
+		         SELECT 1 FROM aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
+		         WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE'
+		       ) AS "publicExecute",
+		       has_function_privilege('retrospend_app', p.oid, 'EXECUTE') AS "appExecute",
+		       (SELECT string_agg(
+		                 CASE WHEN a.grantee = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(a.grantee)::text END
+		                   || ':' || a.privilege_type,
+		                 ',' ORDER BY a.grantee, a.privilege_type)
+		        FROM aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a) AS acl
+		FROM pg_proc p
+		WHERE p.pronamespace = 'public'::regnamespace
+		  AND p.prokind IN ('f', 'p')
+		  AND NOT EXISTS (
+		    SELECT 1 FROM pg_depend d WHERE d.objid = p.oid AND d.deptype = 'e'
+		  )`);
+	return rows.sort((a, b) => a.name.localeCompare(b.name, "en"));
+}
 
-afterAll(async () => {
-	await client.end();
-});
+const bareName = (sig: string) => sig.replace(/\(.*$/, "");
 
-async function everything() {
+async function everything(client: Client) {
+	const owner = (
+		await client.query<{ owner: string }>("SELECT current_user::text AS owner")
+	).rows[0]?.owner as string;
 	return {
+		functions: await functionStates(client),
+		functionDefaults: (await readDefaultAcls(client))
+			.filter((d) => d.kind === "f")
+			.map((d) =>
+				`${d.role} ${d.schema} ${d.entries.join(",")}`.replaceAll(
+					owner,
+					"<owner>",
+				),
+			),
 		snapshot: await readCatalogSnapshot(client),
 		catalog: await readPrivilegeCatalog(client),
 		keystore: await readKeystoreAccess(client),
@@ -67,16 +109,6 @@ async function everything() {
 			)
 		).rows[0]?.can,
 	};
-}
-
-/** Runs `work` in a transaction that is always rolled back. */
-async function rolledBack<T>(work: () => Promise<T>): Promise<T> {
-	await client.query("BEGIN");
-	try {
-		return await work();
-	} finally {
-		await client.query("ROLLBACK");
-	}
 }
 
 describe("prisma/grants/app-role.sql", () => {
@@ -97,17 +129,22 @@ describe("prisma/grants/app-role.sql", () => {
 
 	it("after a restore gives the app role back exactly the migrated state", async () => {
 		const body = file.replace(/^(BEGIN|COMMIT);$/gm, "");
-		const { migrated, restored, applied, again } = await rolledBack(
-			async () => {
-				const migrated = await everything();
-				await client.query(AS_RESTORED);
-				const restored = await everything();
-				await client.query(body);
-				const applied = await everything();
-				await client.query(body);
-				return { migrated, restored, applied, again: await everything() };
-			},
-		);
+		type State = Awaited<ReturnType<typeof everything>>;
+		let migrated: State | undefined;
+		let restored: State | undefined;
+		let applied: State | undefined;
+		let again: State | undefined;
+		await inRolledBackTransaction(async (client) => {
+			migrated = await everything(client);
+			await client.query(AS_RESTORED);
+			restored = await everything(client);
+			await client.query(body);
+			applied = await everything(client);
+			await client.query(body);
+			again = await everything(client);
+		});
+		if (!migrated || !restored || !applied || !again)
+			throw new Error("no capture");
 
 		// The restore really took everything away, so the comparison can fail.
 		for (const table of Object.values(restored.catalog.tables)) {
@@ -119,8 +156,14 @@ describe("prisma/grants/app-role.sql", () => {
 		expect(restored.keystore).not.toEqual(migrated.keystore);
 		expect(restored.snapshot.defaults).not.toEqual(migrated.snapshot.defaults);
 
+		// The restore left every function executable by PUBLIC.
+		expect(restored.functions.some((f) => f.publicExecute)).toBe(true);
+		expect(restored.functionDefaults).not.toEqual(migrated.functionDefaults);
+
 		// The file reproduces the migrated state, and the ratchet.
 		expect(applied.snapshot).toEqual(migrated.snapshot);
+		expect(applied.functions).toEqual(migrated.functions);
+		expect(applied.functionDefaults).toEqual(migrated.functionDefaults);
 		expect(applied.keystore).toEqual(migrated.keystore);
 		expect(applied.publicUsage).toBe(true);
 		const catalog: PrivilegeCatalog = applied.catalog;
@@ -129,14 +172,37 @@ describe("prisma/grants/app-role.sql", () => {
 		expect(catalog.sequences).toEqual(expected.sequences);
 		expect(catalog.publicTables).toEqual([]);
 
+		// ... and it meets the definer hygiene expectations (definer-functions.json):
+		// no PUBLIC execute anywhere, and retrospend_app executes exactly the
+		// listed definer and invoker functions.
+		expect(applied.functions.filter((f) => f.publicExecute)).toEqual([]);
+		const appliedFunctions = applied.functions;
+		const appRuns = (definer: boolean) =>
+			appliedFunctions
+				.filter((f) => f.definer === definer && f.appExecute)
+				.map((f) => bareName(f.name))
+				.sort();
+		expect(appRuns(true)).toEqual([...lists.appExecutable].sort());
+		expect(appRuns(false)).toEqual([...lists.invokerAppExecutable].sort());
+		expect(
+			applied.functions
+				.filter((f) => f.definer && !f.appExecute)
+				.map((f) => bareName(f.name))
+				.sort(),
+		).toEqual([...lists.ownerOnly].sort());
+
 		// Applying it again changes nothing.
 		expect(again).toEqual(applied);
 	}, 60_000);
 
 	it("leaves the database as it found it", async () => {
-		const { rows } = await client.query<{ rls: boolean }>(
-			`SELECT relrowsecurity AS rls FROM pg_class WHERE oid = '"user"'::regclass`,
-		);
-		expect(rows[0]?.rls).toBe(true);
+		let rls: boolean | undefined;
+		await inRolledBackTransaction(async (client) => {
+			const { rows } = await client.query<{ rls: boolean }>(
+				`SELECT relrowsecurity AS rls FROM pg_class WHERE oid = '"user"'::regclass`,
+			);
+			rls = rows[0]?.rls;
+		});
+		expect(rls).toBe(true);
 	});
 });

@@ -157,7 +157,20 @@ func TestKeystoreRestoreSteps(t *testing.T) {
 	if _, err := asAppUserErr(scratch, userA, `SELECT count(*) FROM "user"`); err == nil {
 		t.Fatal("the app role can read user before any grants")
 	}
+	// A definer function that only triggers call is open to PUBLIC after a
+	// restore, until the file closes it.
+	const partyUserExecutors = `SELECT count(*) FROM pg_proc p
+		WHERE p.pronamespace = 'public'::regnamespace AND p.proname = 'budget_party_user'
+		  AND (has_function_privilege('retrospend_app', p.oid, 'EXECUTE')
+		       OR EXISTS (SELECT 1 FROM aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
+		                  WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE'))`
+	if n := count(partyUserExecutors); n != 1 {
+		t.Fatalf("budget_party_user should be open to PUBLIC after a restore, executors: %d", n)
+	}
 	mustExec(t, scratch, appRoleGrants(t))
+	if n := count(partyUserExecutors); n != 0 {
+		t.Fatal("budget_party_user is still executable by retrospend_app or PUBLIC after the grants file")
+	}
 	if got := asAppUser(t, scratch, userA, `SELECT count(*) FROM "user"`); got < 1 {
 		t.Fatalf("the app role sees %d users after the grants", got)
 	}

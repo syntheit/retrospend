@@ -19,7 +19,9 @@
 -- the ratchet expectation: the test fails until all three agree.
 --
 -- Not covered here: policies on tables other than "user" and "invite_code"
--- (pg_dump keeps those, with row-level security on), and function grants.
+-- (pg_dump keeps those, with row-level security on). Function bodies, owners
+-- and search_path survive a dump; their grants do not, so the function section
+-- below puts them back.
 --
 -- Everything runs in one transaction, so a running app never sees the app role
 -- without its grants.
@@ -210,6 +212,74 @@ BEGIN
   END IF;
 END
 $keystore$;
+
+-- Functions in public: nobody but the owner may execute them, except
+-- retrospend_app on the ones its policies, invoker triggers and scoped code
+-- call. The list is src/test/migrations/definer-functions.json
+-- (appExecutable and invokerAppExecutable), by name. A dump made with
+-- --no-privileges leaves every function executable by PUBLIC, so this runs
+-- every start. Extension functions (unaccent) are not touched.
+DO $functions$
+DECLARE
+  f RECORD;
+  app_keeps TEXT[] := ARRAY[
+    'account_cap_counted',
+    'account_leg_apply',
+    'account_leg_moves_balance',
+    'account_usd_per_unit',
+    'budget_book_keep_creator',
+    'budget_dirty_month',
+    'can_write_transaction_splits',
+    'claim_header_back_ok',
+    'co_participant_counts',
+    'currency_step',
+    'has_self_removal_record',
+    'immutable_unaccent',
+    'is_budget_member',
+    'is_budget_owner',
+    'is_category_in_user_shared_transaction',
+    'is_project_creator',
+    'is_split_participant',
+    'is_transaction_owner',
+    'is_transaction_project_participant',
+    'lock_settled_splits',
+    'payment_group_check',
+    'payment_has_final_rows',
+    'payment_has_rows',
+    'payment_is_waiting',
+    'payment_tx_note_has',
+    'project_participant_guard_update',
+    'project_role',
+    'settled_entry_ok',
+    'settlement_created_for',
+    'settlement_delete_ok',
+    'settlement_insert_ok',
+    'shared_expense_ids_with',
+    'shared_transaction_guard_update',
+    'shares_expense_with',
+    'split_participant_guard_update'
+  ];
+BEGIN
+  FOR f IN
+    SELECT p.proname,
+           format('%I.%I(%s)', n.nspname, p.proname, pg_get_function_identity_arguments(p.oid)) AS sig
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public'
+       AND p.prokind IN ('f', 'p')
+       AND NOT EXISTS (
+         SELECT 1 FROM pg_depend d WHERE d.objid = p.oid AND d.deptype = 'e'
+       )
+  LOOP
+    EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC', f.sig);
+    IF f.proname = ANY (app_keeps) THEN
+      EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO retrospend_app', f.sig);
+    ELSE
+      EXECUTE format('REVOKE ALL ON FUNCTION %s FROM retrospend_app', f.sig);
+    END IF;
+  END LOOP;
+END
+$functions$;
 
 -- Default privileges: new tables, sequences and functions are granted to
 -- nobody. Set for the role running this file and every role that already owns
