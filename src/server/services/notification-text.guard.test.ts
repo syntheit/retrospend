@@ -55,8 +55,8 @@ const files = sources(SERVER).map((path) => ({
 
 describe("notification text guard", () => {
 	it("finds the places that make a notification", () => {
-		const makers = files.filter((f) =>
-			callArguments(f.source, "createNotification").length > 0,
+		const makers = files.filter(
+			(f) => callArguments(f.source, "createNotification").length > 0,
 		);
 		expect(makers.length).toBeGreaterThanOrEqual(8);
 	});
@@ -91,19 +91,42 @@ describe("notification text guard", () => {
 			const source = files.find((f) => f.path === path)?.source ?? "";
 			expect(source, path).not.toBe("");
 			expect(HAND_FORMATTED.test(source), path).toBe(false);
-			expect(/\bdescription\b|\bprojectName\b|\bperiodLabel\b/.test(source), path).toBe(
-				false,
-			);
+			expect(
+				/\bdescription\b|\bprojectName\b|\bperiodLabel\b/.test(source),
+				path,
+			).toBe(false);
 		}
 	});
 
-	it("a notice has no field a title could ride in", () => {
+	it("a notice, its data and its change summary have no field a title could ride in", () => {
 		const source =
 			files.find((f) => f.path === "src/server/services/notification-text.ts")
 				?.source ?? "";
-		const notice = /export interface Notice \{([\s\S]*?)\n\}/.exec(source)?.[1];
-		expect(notice).toBeDefined();
-		const fields = [...(notice ?? "").matchAll(/^\s*(\w+)\??:/gm)].map((m) => m[1]);
-		expect(fields.sort()).toEqual(["actor", "amount", "hasLink", "kind", "total"]);
+		const fieldsOf = (name: string) => {
+			const body = new RegExp(
+				`export interface ${name} \\{([\\s\\S]*?)\\n\\}`,
+			).exec(source)?.[1];
+			expect(body, name).toBeDefined();
+			return [...(body ?? "").matchAll(/^\t(\w+)\??:/gm)].map((m) => m[1]);
+		};
+		expect(fieldsOf("Notice").sort()).toEqual([
+			"actor",
+			"amount",
+			"changes",
+			"hasLink",
+			"kind",
+			"total",
+		]);
+		expect(fieldsOf("NoticeChanges").sort()).toEqual([
+			"amount",
+			"category",
+			"date",
+			"other",
+			"payer",
+			"project",
+			"split",
+		]);
+		for (const field of fieldsOf("NoticeData"))
+			expect(field, field).toMatch(/Id$|Ids$|Type$|^kind$/);
 	});
 });

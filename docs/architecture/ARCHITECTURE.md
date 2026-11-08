@@ -189,7 +189,7 @@ End-to-end encryption is planned but not built. These rules keep the door open:
 
 1. Every free-text field (titles, notes, names) is declared through `userText()` in `packages/api-contract/src/common/user-text.ts`, so one list names every field.
 2. No server feature reads titles (merchant normalization, server AI categorization, title rules) without a client-side path. The known exception is envelope title rules.
-3. Notification and email text is built in one place, `src/server/services/notification-text.ts` (push text in `push/message.ts`), from ids, kinds, a display name and amounts. A guard test fails when a builder reaches for a title, project name or note.
+3. Notification and email text is built in one place from ids, types and amounts.
 4. The event outbox, webhooks and audit JSON carry ids, not titles.
 5. Title search stays in its two services (`src/server/services/search.service.ts` and `expense-list/search.ts`), so a client-side path can replace them.
 6. Plaintext length is validated in zod. No new tight `VarChar` limits on user text.

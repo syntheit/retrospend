@@ -6,10 +6,7 @@ import type {
 } from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
-import {
-	createNotification,
-	participantLabel,
-} from "~/server/services/notifications";
+import { participantLabel } from "~/server/services/notifications";
 import { claimMatchError } from "~/server/services/payments/claim-match";
 import {
 	type ConfirmPaymentValue,
@@ -31,10 +28,6 @@ import {
 import type { AllocationView } from "~/server/services/payments/view";
 import { forUser } from "~/server/services/preview";
 import { SettlementService } from "~/server/services/shared-expenses/settlement.service";
-import {
-	type GroupRow,
-	groupCounterparty,
-} from "~/server/services/shared-expenses/settlement-groups";
 import { assertMinorUnits } from "./amounts";
 import type { Caller } from "./caller";
 import {

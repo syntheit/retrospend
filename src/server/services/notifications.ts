@@ -5,7 +5,9 @@ import { notificationEmail } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
 import {
 	buildNoticeText,
+	NOTICE_DATA_KEYS,
 	type Notice,
+	type NoticeData,
 } from "~/server/services/notification-text";
 import { InvalidCursorError } from "~/server/services/api-v1/cursor";
 import type { NotificationType } from "~prisma";
@@ -24,13 +26,13 @@ const EMAIL_ON_BY_DEFAULT = new Set<NotificationType>([
 	"SETTLEMENT_REJECTED",
 ]);
 
-interface CreateNotificationParams {
+export interface CreateNotificationParams {
 	userId: string;
 	type: NotificationType;
 	/** What happened. The text is made from it in notification-text.ts, never passed in. */
 	notice: Notice;
 	/** Ids the app opens the notification by. No names or free text. */
-	data?: Record<string, unknown>;
+	data?: NoticeData;
 }
 
 /**
@@ -60,7 +62,16 @@ export async function createNotification(
 			where: { id: userId },
 			select: { email: true, language: true, numberFormat: true },
 		});
-		const { title, body } = await buildNoticeText(notice, user ?? {});
+		const text = await buildNoticeText(notice, user ?? {});
+		const { title, body } = text;
+		// Only the listed ids, whatever a caller handed over; the edit summary
+		// is made here from the notice, never passed in.
+		const stored = {
+			...Object.fromEntries(
+				Object.entries(data ?? {}).filter(([key]) => NOTICE_DATA_KEYS.has(key)),
+			),
+			...(text.changes ? { changes: text.changes } : {}),
+		};
 
 		if (inApp) {
 			await db.notification.create({
@@ -69,8 +80,10 @@ export async function createNotification(
 					type,
 					title,
 					body,
-					// JSON.parse(JSON.stringify(data)) ensures a pure JSON value for Prisma
-					...(data ? { data: JSON.parse(JSON.stringify(data)) as object } : {}),
+					// JSON.parse(JSON.stringify(...)) ensures a pure JSON value for Prisma
+					...(Object.keys(stored).length > 0
+						? { data: JSON.parse(JSON.stringify(stored)) as object }
+						: {}),
 				},
 			});
 		}

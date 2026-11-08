@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { currencyDecimals } from "@retrospend/domain/money";
 import { db as globalDb } from "~/server/db";
 import { fromMinor } from "~/server/services/envelope/units";
-import { type Money, money } from "@retrospend/domain/money-minor";
+import { money } from "@retrospend/domain/money-minor";
 import { noticeMoney } from "~/server/services/notification-text";
 import {
 	createNotification,
@@ -37,7 +37,11 @@ import {
 	summarizeGroup,
 } from "./settlement-groups";
 import { getSquareUpOptions, squareUpProjects } from "./settlement-square-up";
-import { tellGroupCounterparty } from "./settlement-notices";
+import {
+	type SettlementSides,
+	tellGroupCounterparty,
+	tellSettlementRecorded,
+} from "./settlement-notices";
 import { type ParticipantRef, sameParticipant } from "./types";
 
 export { RECORDED_BY_PAYEE_REASON } from "~/server/services/payments/confirmation";
@@ -68,13 +72,6 @@ function toDirection(
  *   payer and the current user the payee.
  */
 export type SettlementDirection = "outgoing" | "incoming";
-
-interface SettlementSides {
-	payer: ParticipantRef;
-	payee: ParticipantRef;
-	/** The current user is the payee and is recording a payment received. */
-	recordedByPayee: boolean;
-}
 
 /** Reminder count and last reminder of a group (rows are updated together). */
 function groupReminderState(
@@ -218,7 +215,7 @@ export class SettlementService {
 		// The first cash row stands for the payment (offset rows follow it).
 		const settlement = settlements.find((s) => !s.isOffset) ?? settlements[0]!;
 		if (input.toParticipant.participantType === "user") {
-			await this.notifySettlementRecorded(
+			await tellSettlementRecorded(this.userId, 
 				this.sides(input.toParticipant, input.direction),
 				noticeMoney(input.amount, input.currency),
 				{ settlementId: settlement.id, paymentGroupId: value.paymentId },
@@ -254,51 +251,10 @@ export class SettlementService {
 		const recordedByPayee = payee.participantId === this.userId;
 		const other = recordedByPayee ? payer : payee;
 		if (other.participantType !== "user") return;
-		await this.notifySettlementRecorded(
+		await tellSettlementRecorded(this.userId, 
 			{ payer, payee, recordedByPayee },
 			noticeMoney(header.amount, header.currency),
 			{ paymentGroupId: paymentId },
-		);
-	}
-
-	private async notifySettlementRecorded(
-		sides: SettlementSides,
-		paid: Money | null,
-		ids: Record<string, unknown>,
-		currencies = 1,
-	) {
-		const myName = await resolveParticipantName("user", this.userId);
-		const notification = sides.recordedByPayee
-			? {
-					userId: sides.payer.participantId,
-					type: "SETTLEMENT_CONFIRMED" as const,
-					notice: {
-						kind: "paymentRecordedByPayee" as const,
-						actor: myName,
-						amount: paid && { money: paid, currencies },
-					},
-					data: {
-						...ids,
-						toParticipantType: "user",
-						toParticipantId: this.userId,
-					},
-				}
-			: {
-					userId: sides.payee.participantId,
-					type: "SETTLEMENT_RECEIVED" as const,
-					notice: {
-						kind: "settlementReceived" as const,
-						actor: myName,
-						amount: paid && { money: paid, currencies },
-					},
-					data: {
-						...ids,
-						fromParticipantType: "user",
-						fromParticipantId: this.userId,
-					},
-				};
-		createNotification(notification).catch((err) =>
-			console.error(`[Notification Error] ${notification.type}:`, err),
 		);
 	}
 
@@ -854,7 +810,7 @@ export class SettlementService {
 			settlements.filter((s) => !s.isOffset).map((s) => s.currency),
 		).size;
 		if (input.toParticipant.participantType === "user") {
-			await this.notifySettlementRecorded(
+			await tellSettlementRecorded(this.userId, 
 				this.sides(input.toParticipant, input.direction),
 				value.allocation
 					? money(value.allocation.amount.minor, input.paymentCurrency)

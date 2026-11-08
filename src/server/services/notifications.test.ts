@@ -52,7 +52,9 @@ describe("createNotification", () => {
 
 		const row = mocks.create.mock.calls[0]?.[0].data;
 		expect(row.title).toBe("Liquidación recibida");
-		expect(plain(row.body)).toBe("Martín te envió una liquidación de ARS 12.345,50");
+		expect(plain(row.body)).toBe(
+			"Martín te envió una liquidación de ARS 12.345,50",
+		);
 		expect(row.data).toEqual({ paymentGroupId: "g1" });
 	});
 
@@ -82,9 +84,49 @@ describe("createNotification", () => {
 		expect(plain(html)).toContain("Ana deleted an expense of JPY 4,500");
 	});
 
+	it("stores only the listed ids and the edit summary it makes itself", async () => {
+		mocks.user.mockResolvedValue({
+			email: null,
+			language: "en",
+			numberFormat: null,
+		});
+		await createNotification({
+			userId: "u4",
+			type: "EXPENSE_EDITED",
+			notice: {
+				kind: "expenseEdited",
+				actor: "Ana",
+				changes: {
+					amount: {
+						from: { minor: 100_000, currency: "ARS" },
+						to: { minor: 150_000, currency: "ARS" },
+					},
+					payer: true,
+				},
+			},
+			// What a careless caller might hand over; the type refuses it, and
+			// the store drops it anyway.
+			data: {
+				transactionId: "t1",
+				shadowName: "Gil",
+				projectName: "Bariloche",
+				changes: "title: Cena to Almuerzo",
+			} as never,
+		});
+		const row = mocks.create.mock.calls[0]?.[0].data;
+		expect(Object.keys(row.data).sort()).toEqual(["changes", "transactionId"]);
+		expect(plain(row.data.changes)).toBe(
+			"amount: ARS 1,000 to ARS 1,500, payer changed",
+		);
+	});
+
 	it("writes nothing when the person switched the app notification off, and still never throws", async () => {
 		mocks.preference.mockResolvedValue({ inApp: false, email: false });
-		mocks.user.mockResolvedValue({ email: null, language: "en", numberFormat: null });
+		mocks.user.mockResolvedValue({
+			email: null,
+			language: "en",
+			numberFormat: null,
+		});
 		await expect(
 			createNotification({
 				userId: "u3",

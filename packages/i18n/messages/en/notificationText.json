@@ -99,5 +99,14 @@
 		"title": "Continue in a project",
 		"body": "Someone asked to rejoin a project on Retrospend with this email address. If it was you, continue where you left off. The link works once and expires in one hour. If it was not you, ignore this email.",
 		"cta": "Continue"
+	},
+	"changes": {
+		"amount": "amount: {from} to {to}",
+		"date": "date changed",
+		"payer": "payer changed",
+		"split": "split changed",
+		"category": "category changed",
+		"project": "project changed",
+		"other": "other changes"
 	}
 }

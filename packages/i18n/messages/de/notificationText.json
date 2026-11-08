@@ -99,5 +99,14 @@
 		"title": "In einem Projekt weitermachen",
 		"body": "Jemand wollte mit dieser E-Mail-Adresse wieder einem Projekt in Retrospend beitreten. Wenn du das warst, mach dort weiter, wo du aufgehört hast. Der Link funktioniert einmal und läuft in einer Stunde ab. Wenn du das nicht warst, ignoriere diese E-Mail.",
 		"cta": "Weiter"
+	},
+	"changes": {
+		"amount": "Betrag: {from} auf {to}",
+		"date": "Datum geändert",
+		"payer": "Zahler geändert",
+		"split": "Aufteilung geändert",
+		"category": "Kategorie geändert",
+		"project": "Projekt geändert",
+		"other": "weitere Änderungen"
 	}
 }

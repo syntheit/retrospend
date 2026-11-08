@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import { SUPPORTED_LOCALES } from "~/i18n/locales";
 import {
 	buildNoticeText,
+	NOTICE_DATA_KEYS,
 	type Notice,
+	type NoticeData,
 	type NoticeKind,
+	noticeChanges,
 	noticeMoney,
 } from "./notification-text";
 
@@ -50,7 +53,9 @@ describe("buildNoticeText amounts", () => {
 				amount: { money: ars },
 				total: arsTotal,
 			}),
-		).toBe("Ana split an expense with you, your share is ARS 12,345.50 of ARS 49,382");
+		).toBe(
+			"Ana split an expense with you, your share is ARS 12,345.50 of ARS 49,382",
+		);
 	});
 
 	it("names a JPY amount with no decimals", async () => {
@@ -77,16 +82,16 @@ describe("buildNoticeText amounts", () => {
 				actor: "Ana",
 				amount: { money: ars, currencies: 2 },
 			}),
-		).toBe("Ana confirmed your settlement of ARS 12,345.50 across 2 currencies");
+		).toBe(
+			"Ana confirmed your settlement of ARS 12,345.50 across 2 currencies",
+		);
 		expect(
 			await text({
 				kind: "squaredUp",
 				actor: "Ana",
 				amount: { money: jpy, offset: true },
 			}),
-		).toBe(
-			"Ana offset JPY 4,500 across your project balances, no money moved",
-		);
+		).toBe("Ana offset JPY 4,500 across your project balances, no money moved");
 	});
 
 	it("reads the amount in the reader's language and number format", async () => {
@@ -98,9 +103,9 @@ describe("buildNoticeText amounts", () => {
 		expect(await text(notice, { language: "es-AR" })).toBe(
 			"Ana rechazó tu liquidación de ARS 12.345,50",
 		);
-		expect(await text(notice, { language: "en", numberFormat: "dot_comma" })).toBe(
-			"Ana rejected your settlement of ARS 12.345,50",
-		);
+		expect(
+			await text(notice, { language: "en", numberFormat: "dot_comma" }),
+		).toBe("Ana rejected your settlement of ARS 12.345,50");
 		expect(await text(notice, { language: "de" })).toContain("ARS 12.345,50");
 	});
 
@@ -150,9 +155,9 @@ describe("buildNoticeText never carries free text", () => {
 		expect(await text({ kind: "addedToProject", actor: "  " })).toBe(
 			"Someone added you to a project",
 		);
-		expect(await text({ kind: "addedToProject", actor: null }, { language: "es" })).toBe(
-			"Alguien te añadió a un proyecto",
-		);
+		expect(
+			await text({ kind: "addedToProject", actor: null }, { language: "es" }),
+		).toBe("Alguien te añadió a un proyecto");
 	});
 
 	it("gives an email its button label and says what the link leads to", async () => {
@@ -165,7 +170,10 @@ describe("buildNoticeText never carries free text", () => {
 		expect(invite.body).toBe(
 			"Ana added you to a project on Retrospend. Join to see the shared expenses.",
 		);
-		const noLink = await buildNoticeText({ kind: "projectInvite", actor: "Ana" });
+		const noLink = await buildNoticeText({
+			kind: "projectInvite",
+			actor: "Ana",
+		});
 		expect(noLink.body).toBe("Ana added you to a project on Retrospend");
 		expect((await buildNoticeText({ kind: "expenseEdited" })).cta).toBeNull();
 	});
@@ -176,7 +184,10 @@ describe("noticeMoney", () => {
 		expect(noticeMoney("12345.5", "ARS")).toEqual(ars);
 		expect(noticeMoney("4500", "JPY")).toEqual(jpy);
 		expect(noticeMoney(12.5, "USD")).toEqual({ minor: 1250, currency: "USD" });
-		expect(noticeMoney("20.00", "usd")).toEqual({ minor: 2000, currency: "USD" });
+		expect(noticeMoney("20.00", "usd")).toEqual({
+			minor: 2000,
+			currency: "USD",
+		});
 	});
 
 	it("is null, never a wrong figure, for what it cannot read", () => {
@@ -185,5 +196,109 @@ describe("noticeMoney", () => {
 		expect(noticeMoney("12.345", "USD")).toBeNull();
 		expect(noticeMoney("abc", "USD")).toBeNull();
 		expect(noticeMoney(Number.NaN, "USD")).toBeNull();
+	});
+});
+
+describe("buildNoticeText with three-decimal currencies", () => {
+	// Hand-derived: KWD has 3 decimals, so 1_250 minor units is KWD 1.250
+	// and 12_345_500 is KWD 12,345.500; a 2-decimal read would say 1.25.
+	const kwd = { minor: 1_250, currency: "KWD" };
+
+	it("keeps every decimal the currency has", async () => {
+		expect(
+			await text({
+				kind: "expenseDeleted",
+				actor: "Ana",
+				amount: { money: kwd },
+			}),
+		).toBe("Ana deleted an expense of KWD 1.250");
+		expect(
+			await text({
+				kind: "settlementReceived",
+				actor: "Ana",
+				amount: { money: { minor: 12_345_500, currency: "KWD" } },
+			}),
+		).toBe("Ana sent you a settlement of KWD 12,345.500");
+	});
+
+	it("reads a stored KWD amount as 1_250 minor units", () => {
+		expect(noticeMoney("1.250", "KWD")).toEqual(kwd);
+		expect(noticeMoney("1.2505", "KWD")).toBeNull();
+	});
+});
+
+describe("what an edit changed", () => {
+	const before = { amount: "1000", currency: "ARS" };
+
+	it("says the amount before and after in the formatter, and the kinds that changed", async () => {
+		const changes = noticeChanges(["amount", "paidBy", "date"], before, {
+			amount: "1500",
+			currency: "ARS",
+		});
+		expect(changes).toEqual({
+			amount: {
+				from: { minor: 100_000, currency: "ARS" },
+				to: { minor: 150_000, currency: "ARS" },
+			},
+			payer: true,
+			date: true,
+		});
+		const notice: Notice = { kind: "expenseEdited", actor: "Ana", changes };
+		expect(plain((await buildNoticeText(notice)).changes ?? "")).toBe(
+			"amount: ARS 1,000 to ARS 1,500, date changed, payer changed",
+		);
+		const es = await buildNoticeText(notice, { language: "es-AR" });
+		expect(plain(es.changes ?? "")).toBe(
+			"monto: ARS 1.000 a ARS 1.500, fecha modificada, quien pagó modificado",
+		);
+	});
+
+	it("reads a currency change with the new currency, in JPY and KWD too", () => {
+		expect(
+			noticeChanges(
+				["currency"],
+				{ amount: "4500", currency: "JPY" },
+				{ amount: "4500", currency: "KWD" },
+			),
+		).toEqual({
+			amount: { from: jpy, to: { minor: 4_500_000, currency: "KWD" } },
+		});
+	});
+
+	it("never names a title, note or receipt, only that something else changed", async () => {
+		const changes = noticeChanges(
+			["description", "notes", "receiptUrl"],
+			before,
+			before,
+		);
+		expect(changes).toEqual({ other: true });
+		const edited = await buildNoticeText({ kind: "expenseEdited", changes });
+		expect(edited.changes).toBe("other changes");
+		expect(
+			(await buildNoticeText({ kind: "expenseEdited" })).changes,
+		).toBeNull();
+	});
+});
+
+describe("the notification data and notice are closed", () => {
+	it("has no field a name, title or project name could ride in", () => {
+		const probes: unknown[] = [
+			// @ts-expect-error a name is not an id
+			{ shadowName: "Gil" } satisfies NoticeData,
+			// @ts-expect-error a title is not an id
+			{ title: "Cena" } satisfies NoticeData,
+			// @ts-expect-error a project name is not an id
+			{ projectName: "Bariloche" } satisfies NoticeData,
+			// @ts-expect-error the notice has no title
+			{ kind: "expenseSplit", title: "Cena" } satisfies Notice,
+			// @ts-expect-error the notice has no description
+			{ kind: "expenseSplit", description: "Cena" } satisfies Notice,
+		];
+		expect(probes).toHaveLength(5);
+	});
+
+	it("lists only ids and codes as the keys a notification may store", () => {
+		for (const key of NOTICE_DATA_KEYS)
+			expect(key, key).toMatch(/Id$|Ids$|Type$|^kind$/);
 	});
 });

@@ -51,6 +51,67 @@ export interface NoticeAmount {
 	offset?: boolean;
 }
 
+/**
+ * What an edit changed, by kind: the amount before and after, and which
+ * other parts changed. No title, note or name of anything, so a reader gets
+ * "what changed" and opens the expense by id for the rest.
+ */
+export interface NoticeChanges {
+	amount?: { from: Money; to: Money };
+	date?: boolean;
+	payer?: boolean;
+	split?: boolean;
+	category?: boolean;
+	project?: boolean;
+	/** Anything else: a title, note or receipt, which are never named. */
+	other?: boolean;
+}
+
+/**
+ * The ids and codes a notification carries so an app can open it. Closed on
+ * purpose: a name, title or any text has no field here, and createNotification
+ * drops any key that is not listed (NOTICE_DATA_KEYS).
+ */
+export interface NoticeData {
+	transactionId?: string | null;
+	settlementId?: string | null;
+	settlementIds?: string[];
+	paymentGroupId?: string | null;
+	projectId?: string | null;
+	periodId?: string | null;
+	shadowId?: string | null;
+	guestSessionId?: string | null;
+	fixRequestId?: string | null;
+	correctionIds?: string[];
+	kind?: string;
+	actorType?: string;
+	actorId?: string;
+	fromParticipantType?: string;
+	fromParticipantId?: string;
+	toParticipantType?: string;
+	toParticipantId?: string;
+}
+
+export const NOTICE_DATA_KEYS: ReadonlySet<string> = new Set<keyof NoticeData>([
+	"transactionId",
+	"settlementId",
+	"settlementIds",
+	"paymentGroupId",
+	"projectId",
+	"periodId",
+	"shadowId",
+	"guestSessionId",
+	"fixRequestId",
+	"correctionIds",
+	"kind",
+	"actorType",
+	"actorId",
+	"fromParticipantType",
+	"fromParticipantId",
+	"toParticipantType",
+	"toParticipantId",
+]);
+
 export interface Notice {
 	kind: NoticeKind;
 	/** The display name of who did it; null reads as "Someone". */
@@ -60,6 +121,8 @@ export interface Notice {
 	total?: Money | null;
 	/** The email carries a link, so the text may say what it leads to. */
 	hasLink?: boolean;
+	/** For an edit: what changed, worded as one line in `changes`. */
+	changes?: NoticeChanges | null;
 }
 
 export interface NoticeReader {
@@ -72,6 +135,8 @@ export interface NoticeText {
 	body: string;
 	/** The label of an email's button, for the kinds that have one. */
 	cta: string | null;
+	/** "amount: ARS 1,000 to ARS 1,500, payer changed", or null. */
+	changes: string | null;
 }
 
 /**
@@ -92,6 +157,33 @@ export function noticeMoney(amount: unknown, currency: string): Money | null {
 	} catch {
 		return null;
 	}
+}
+
+/**
+ * What an edit changed, from the names of the fields that changed and the
+ * amount before and after. A field it does not know counts as `other`.
+ */
+export function noticeChanges(
+	changed: readonly string[],
+	before: { amount: unknown; currency: string },
+	after: { amount: unknown; currency: string },
+): NoticeChanges {
+	const out: NoticeChanges = {};
+	for (const field of changed) {
+		if (field === "amount" || field === "currency") {
+			const from = noticeMoney(before.amount, before.currency);
+			const to = noticeMoney(after.amount, after.currency);
+			if (from && to) out.amount = { from, to };
+			else out.other = true;
+		} else if (field === "date") out.date = true;
+		else if (field === "paidBy") out.payer = true;
+		else if (field === "splitMode" || field === "splitParticipants")
+			out.split = true;
+		else if (field === "categoryId") out.category = true;
+		else if (field === "projectId") out.project = true;
+		else out.other = true;
+	}
+	return out;
 }
 
 /** The text of one notice, for the person it goes to. */
@@ -130,9 +222,28 @@ export async function buildNoticeText(
 	}
 	if (notice.hasLink && t.has(`${key}.bodyWithLink`))
 		body = `${key}.bodyWithLink`;
+	const parts: string[] = [];
+	const changes = notice.changes;
+	if (changes?.amount)
+		parts.push(
+			t("changes.amount", {
+				from: format(changes.amount.from),
+				to: format(changes.amount.to),
+			}),
+		);
+	for (const part of [
+		"date",
+		"payer",
+		"split",
+		"category",
+		"project",
+		"other",
+	] as const)
+		if (changes?.[part]) parts.push(t(`changes.${part}`));
 	return {
 		title: t(`${key}.title`),
 		body: t(body, values),
 		cta: t.has(`${key}.cta`) ? t(`${key}.cta`) : null,
+		changes: parts.length > 0 ? parts.join(", ") : null,
 	};
 }

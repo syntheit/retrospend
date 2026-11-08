@@ -1,11 +1,12 @@
 import { TRPCError } from "@trpc/server";
-import { noticeMoney } from "~/server/services/notification-text";
+import { noticeChanges } from "~/server/services/notification-text";
 import { findExchangeRate } from "~/server/exchange-rates";
 import { addGhostMembers } from "~/server/services/project/joining";
 import {
-	createNotification,
-	resolveParticipantName,
-} from "~/server/services/notifications";
+	notifyExpenseDeleted,
+	notifyExpenseEdited,
+	notifyExpenseSplit,
+} from "./transaction-notices";
 import type { Prisma, PrismaClient, SplitMode } from "~prisma";
 import { answerFixRequestsOnEdit } from "../corrections/fix-request.service";
 import { logAudit } from "./audit-log";
@@ -239,61 +240,16 @@ export class SharedTransactionService {
 
 		// Notify user-type split participants (excluding the creator)
 		this.notify("EXPENSE_SPLIT", () =>
-			this.notifyExpenseSplit(result.transaction),
+			notifyExpenseSplit(this.actor, result.transaction),
 		);
 
 		return result;
 	}
 
-	private async notifyExpenseSplit(transaction: {
-		id: string;
-		amount: unknown;
-		currency: string;
-		createdByType: string;
-		createdById: string;
-		splitParticipants: Array<{
-			participantType: string;
-			participantId: string;
-			shareAmount: unknown;
-		}>;
-	}) {
-		const actorName = await resolveParticipantName(
-			this.actor.participantType,
-			this.actor.participantId,
-		);
-		const currency = transaction.currency;
-		const total = noticeMoney(transaction.amount, currency);
-
-		for (const sp of transaction.splitParticipants) {
-			if (sp.participantType !== "user") continue;
-			// Don't notify the creator
-			if (
-				sp.participantType === this.actor.participantType &&
-				sp.participantId === this.actor.participantId
-			)
-				continue;
-
-			const share = noticeMoney(sp.shareAmount, currency);
-			await createNotification({
-				userId: sp.participantId,
-				type: "EXPENSE_SPLIT",
-				notice: {
-					kind: "expenseSplit",
-					actor: actorName,
-					amount: share && { money: share },
-					total,
-				},
-				data: {
-					transactionId: transaction.id,
-					actorType: this.actor.participantType,
-					actorId: this.actor.participantId,
-				},
-			});
-		}
-	}
-
 	async update(input: UpdateSharedTransactionInput) {
 		const actor = this.actor;
+		let before: { amount: unknown; currency: string } | null = null;
+		let changedFields: string[] = [];
 		const updated = await this.runInTransaction(async (tx) => {
 			const existing = await assertCanModifyTransaction(
 				tx,
@@ -301,6 +257,7 @@ export class SharedTransactionService {
 				this.actor.participantType,
 				this.actor.participantId,
 			);
+			before = { amount: existing.amount, currency: existing.currency };
 			// Compute field-level diff
 			const diff: Record<string, { old: unknown; new: unknown }> = {};
 
@@ -744,6 +701,7 @@ export class SharedTransactionService {
 			});
 
 			await answerFixRequestsOnEdit(tx, this.actorUserId(), input, Object.keys(diff).length > 0);
+			changedFields = Object.keys(diff);
 
 			// Refetch with participants
 			return await tx.sharedTransaction.findUniqueOrThrow({
@@ -753,42 +711,12 @@ export class SharedTransactionService {
 		});
 
 		// Notify user-type participants (excluding the actor) that the expense changed
-		this.notify("EXPENSE_EDITED", () => this.notifyExpenseEdited(updated));
-
-		return updated;
-	}
-
-	private async notifyExpenseEdited(updated: {
-		id: string;
-		splitParticipants: Array<{
-			participantType: string;
-			participantId: string;
-		}>;
-	}) {
-		const actorName = await resolveParticipantName(
-			this.actor.participantType,
-			this.actor.participantId,
+		const was = before ?? updated;
+		this.notify("EXPENSE_EDITED", () =>
+			notifyExpenseEdited(this.actor, updated, noticeChanges(changedFields, was, updated)),
 		);
 
-		for (const sp of updated.splitParticipants) {
-			if (sp.participantType !== "user") continue;
-			if (
-				sp.participantType === this.actor.participantType &&
-				sp.participantId === this.actor.participantId
-			)
-				continue;
-
-			await createNotification({
-				userId: sp.participantId,
-				type: "EXPENSE_EDITED",
-				notice: { kind: "expenseEdited", actor: actorName },
-				data: {
-					transactionId: updated.id,
-					actorType: this.actor.participantType,
-					actorId: this.actor.participantId,
-				},
-			});
-		}
+		return updated;
 	}
 
 	/** Deletes a split; a change to who owes whom needs a choice (delete-guard.ts). */
@@ -844,47 +772,7 @@ export class SharedTransactionService {
 
 		// Notify user-type participants (excluding actor) that the expense was deleted
 		const gone = deletedSnapshot;
-		if (gone) this.notify("EXPENSE_DELETED", () => this.notifyExpenseDeleted(gone));
-	}
-
-	private async notifyExpenseDeleted(existing: {
-		id: string;
-		amount: unknown;
-		currency: string;
-		splitParticipants: Array<{
-			participantType: string;
-			participantId: string;
-		}>;
-	}) {
-		const actorName = await resolveParticipantName(
-			this.actor.participantType,
-			this.actor.participantId,
-		);
-		const amount = noticeMoney(existing.amount, existing.currency);
-
-		for (const sp of existing.splitParticipants) {
-			if (sp.participantType !== "user") continue;
-			if (
-				sp.participantType === this.actor.participantType &&
-				sp.participantId === this.actor.participantId
-			)
-				continue;
-
-			await createNotification({
-				userId: sp.participantId,
-				type: "EXPENSE_DELETED",
-				notice: {
-					kind: "expenseDeleted",
-					actor: actorName,
-					amount: amount && { money: amount },
-				},
-				data: {
-					transactionId: existing.id,
-					actorType: this.actor.participantType,
-					actorId: this.actor.participantId,
-				},
-			});
-		}
+		if (gone) this.notify("EXPENSE_DELETED", () => notifyExpenseDeleted(this.actor, gone));
 	}
 
 	/**

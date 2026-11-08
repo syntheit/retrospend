@@ -5,8 +5,13 @@
  * rejection reason or a note the person typed stays on the settlement row.
  * Split from settlement.service.ts.
  */
-import type { NoticeKind } from "~/server/services/notification-text";
+import type { Money } from "@retrospend/domain/money-minor";
+import type {
+	NoticeData,
+	NoticeKind,
+} from "~/server/services/notification-text";
 import {
+	type CreateNotificationParams,
 	createNotification,
 	resolveParticipantName,
 } from "~/server/services/notifications";
@@ -16,6 +21,50 @@ import {
 	groupCounterparty,
 	groupNoticeAmount,
 } from "./settlement-groups";
+import type { ParticipantRef } from "./types";
+
+export interface SettlementSides {
+	payer: ParticipantRef;
+	payee: ParticipantRef;
+	/** The current user is the payee and is recording a payment received. */
+	recordedByPayee: boolean;
+}
+
+/**
+ * Tells the registered counterparty about a new settlement: the payee that a
+ * payment was sent (to confirm), or the payer that the payee recorded
+ * receiving their payment. `currencies` above one reads "across N currencies".
+ */
+export async function tellSettlementRecorded(
+	userId: string,
+	sides: SettlementSides,
+	paid: Money | null,
+	ids: NoticeData,
+	currencies = 1,
+): Promise<void> {
+	const actor = await resolveParticipantName("user", userId);
+	const amount = paid && { money: paid, currencies };
+	const notification: CreateNotificationParams = sides.recordedByPayee
+		? {
+				userId: sides.payer.participantId,
+				type: "SETTLEMENT_CONFIRMED",
+				notice: { kind: "paymentRecordedByPayee", actor, amount },
+				data: { ...ids, toParticipantType: "user", toParticipantId: userId },
+			}
+		: {
+				userId: sides.payee.participantId,
+				type: "SETTLEMENT_RECEIVED",
+				notice: { kind: "settlementReceived", actor, amount },
+				data: {
+					...ids,
+					fromParticipantType: "user",
+					fromParticipantId: userId,
+				},
+			};
+	createNotification(notification).catch((err) =>
+		console.error(`[Notification Error] ${notification.type}:`, err),
+	);
+}
 
 export async function tellGroupCounterparty(
 	rows: GroupRow[],
@@ -39,7 +88,5 @@ export async function tellGroupCounterparty(
 			amount: groupNoticeAmount(rows, other.participantId),
 		},
 		data: notice.data,
-	}).catch((err) =>
-		console.error(`[Notification Error] ${notice.type}:`, err),
-	);
+	}).catch((err) => console.error(`[Notification Error] ${notice.type}:`, err));
 }
