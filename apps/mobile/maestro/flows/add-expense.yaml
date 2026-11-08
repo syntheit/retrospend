@@ -3,8 +3,6 @@
 appId: app.retrospend
 tags:
   - smoke
-env:
-  SERVER: http://10.0.2.2:3200
 ---
 - runFlow: ../_common/session.yaml
 - extendedWaitUntil:

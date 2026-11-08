@@ -80,6 +80,22 @@ From harbor, like `ios-build.sh`. It takes the simulator lock on the mini, copie
 - `ITSAppUsesNonExemptEncryption` is false (`app.config.ts`), so builds skip the export compliance question.
 - Install: TestFlight app on the iPhone and iPad, accept the internal tester invite. New builds update from there.
 
+## End-to-end flows (Maestro, Android on vista)
+
+The flows in `maestro/` drive the real app against a throwaway seeded server. From any worktree on harbor:
+
+```sh
+bash apps/mobile/maestro/ops/maestro.sh --tags smoke
+bash apps/mobile/maestro/ops/maestro.sh --flows flows/add-expense.yaml
+bash apps/mobile/maestro/ops/maestro.sh --status     # who holds the two slots
+```
+
+- It syncs the worktree to vista, builds what the caches miss (server and e2e APK, keyed by content, so an unchanged tree is a hit), takes one of two slots, boots an emulator from the `clean` snapshot, runs the flows and copies the results to `docs/ui-overhaul/impl/shots/maestro/<worktree>/<run>/`. Read `summary.txt` (verdict, flows, seconds per phase) and the failing step's screenshot in `debug/`. Exit 0 is a pass.
+- Two runs at once work: each slot has its own emulator, Postgres, server port and lock (`ops/pool.sh`). A third waits up to 15 minutes. Ctrl-C or a dropped ssh stops that run's own processes and nothing else.
+- The first run after a change under `apps/mobile` (not tests, scripts or flows) builds the APK, about 15 minutes. `--rebuild` ignores the caches, `--cold-boot` skips the snapshot.
+- After an emulator upgrade in the flake, run `maestro.sh --avd-base`. It builds a new image beside the old one and switches over only when it worked.
+- The emulator renders in software, so motion and timing are not representative.
+
 ## System surfaces
 
 `plugins/with-system-surfaces.js` and `modules/surfaces` (an Expo module on both platforms) wire the app into the system. Everything opens the composer through the `retrospend://` scheme or one JSON hand-off that `src/surfaces` parses (`links.ts`, `prefill.ts`, tested in `surfaces.test.ts`).

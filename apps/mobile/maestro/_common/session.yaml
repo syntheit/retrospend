@@ -1,6 +1,7 @@
 # Starts a flow signed in: a clean app, then the test sign-in link with the
-# real connect and sign-in code behind it. The flow sets SERVER (the runner
-# passes it with -e); EMAIL and PASSWORD default to Sofía, whose ledger is the
+# real connect and sign-in code behind it. SERVER comes from the runner's -e
+# (a local run passes -e SERVER=http://10.0.2.2:3200; a flow never sets it, its
+# own env would win). EMAIL and PASSWORD default to Sofía, whose ledger is the
 # one the flows read. ROUTE is the screen to land on (default: Home).
 appId: app.retrospend
 env:
@@ -11,6 +12,7 @@ env:
 # The link starts the app (never sent to a running one): the app reads it as
 # its launch URL. A link opened right after launchApp reaches the activity
 # before the JS side listens, and is lost.
+- runScript: require-server.js
 - clearState
 - stopApp
 - runScript: session-link.js
