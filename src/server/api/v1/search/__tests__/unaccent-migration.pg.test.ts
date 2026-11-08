@@ -18,17 +18,16 @@ const MIGRATION = readFileSync(
 	"utf8",
 );
 
+// The role stays set until the test's transaction rolls back. A RESET ROLE in a
+// finally would run in an aborted transaction after a failed query and hide
+// the real error.
 async function unaccentAsApp(client: Client, text: string) {
 	await client.query("SET LOCAL ROLE retrospend_app");
-	try {
-		const { rows } = await client.query<{ out: string }>(
-			"SELECT public.immutable_unaccent($1) AS out",
-			[text],
-		);
-		return rows[0]?.out;
-	} finally {
-		await client.query("RESET ROLE");
-	}
+	const { rows } = await client.query<{ out: string }>(
+		"SELECT public.immutable_unaccent($1) AS out",
+		[text],
+	);
+	return rows[0]?.out;
 }
 
 async function extensionSchema(client: Client) {

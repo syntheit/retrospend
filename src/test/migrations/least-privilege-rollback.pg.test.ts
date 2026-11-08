@@ -15,11 +15,8 @@
 // database migrated to the migration before this one. C must equal A. The
 // grants, row-level security and policy statements are all transactional.
 //
-// Regenerate the JSON only if an earlier migration is ever rewritten: migrate
-// a scratch database to 20261109400000_widen_more_user_text (the migration
-// before this one) and write onlyTables(await readCatalogSnapshot(client),
-// TOUCHED) to the file with the `<owner>` placeholder as readCatalogSnapshot
-// produces it.
+// Regenerate the JSON with `pnpm test:regen-fixtures` only if an earlier
+// migration is ever rewritten.
 //
 // Function default privileges are not compared: the migration shares that
 // change with the definer hygiene migration, whose rollback owns it.
@@ -34,27 +31,12 @@ import {
 	onlyTables,
 	readCatalogSnapshot,
 } from "./privilege-catalog";
+import {
+	LEAST_PRIVILEGE_MIGRATION,
+	LEAST_PRIVILEGE_TABLES,
+} from "./rollback-fixtures";
 
-const MIGRATION = "20261109600000_least_privilege";
-
-/** The tables the migration changes; the rest of the catalog is not compared with the file. */
-const TOUCHED = [
-	"user",
-	"_prisma_migrations",
-	"verification",
-	"verification_token",
-	"password_reset_token",
-	"session",
-	"account",
-	"twoFactor",
-	"username_history",
-	"event_log",
-	"app_settings",
-	"invite_code",
-	"system_status",
-	"audit_log_entry",
-	"error_report",
-];
+const MIGRATION = LEAST_PRIVILEGE_MIGRATION;
 
 const migrationSql = readFileSync(
 	join(REPO_ROOT, "prisma/migrations", MIGRATION, "migration.sql"),
@@ -86,7 +68,7 @@ describe("rollback of 20261109600000_least_privilege", () => {
 		expect(migrated.acl).not.toEqual(rolledBackTo.acl);
 
 		const expected = before as CatalogSnapshot;
-		const restored = onlyTables(rolledBackTo, TOUCHED);
+		const restored = onlyTables(rolledBackTo, LEAST_PRIVILEGE_TABLES);
 		expect(restored.acl).toEqual(expected.acl);
 		expect(restored.security).toEqual(expected.security);
 		expect(restored.policies).toEqual(expected.policies);

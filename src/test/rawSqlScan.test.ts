@@ -1,3 +1,5 @@
+// Catches: a string built from input reaching $queryRawUnsafe or $executeRawUnsafe
+// (SQL injection), including the forms that hide the argument.
 // `$queryRawUnsafe` and `$executeRawUnsafe` take a string, so a string built
 // from input is an injection. Outside tests, every reference to them must be
 // a plain `x.$queryRawUnsafe(<argument>)` call whose argument is a string
@@ -6,9 +8,10 @@
 // hide the argument, so each one fails. Anything dynamic goes through the
 // tagged `$queryRaw` / `$executeRaw`, which parameterize.
 // Test files are skipped: they run fixed SQL through the owner client.
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
+import { scanSources, withoutComments } from "./source-scan";
 import { REPO_ROOT } from "./uiRules/paths";
 
 const NAME = /\$(?:query|execute)RawUnsafe\b/g;
@@ -49,56 +52,6 @@ function isSafeArgument(text: string, start: number): boolean {
 }
 
 /**
- * `text` with every comment blanked (newlines kept, so offsets and lines
- * hold). Strings and template literals, including `${}` inside a template,
- * are read as such, so `//` in "https://x" is not a comment. A regex literal
- * holding a quote can fool it; none of the scanned code does.
- */
-function withoutComments(text: string): string {
-	const out = text.split("");
-	// "}" closes a `${` and returns to template mode; "{" nests inside one.
-	const modes: ("code" | "'" | '"' | "`")[] = ["code"];
-	const braces: number[] = [];
-	const blank = (from: number, to: number) => {
-		for (let k = from; k < to; k++) if (text[k] !== "\n") out[k] = " ";
-	};
-	for (let i = 0; i < text.length; i++) {
-		const mode = modes[modes.length - 1];
-		const c = text[i];
-		if (mode === "code") {
-			if (c === "/" && text[i + 1] === "/") {
-				const end = text.indexOf("\n", i);
-				const stop = end === -1 ? text.length : end;
-				blank(i, stop);
-				i = stop - 1;
-			} else if (c === "/" && text[i + 1] === "*") {
-				const end = text.indexOf("*/", i + 2);
-				const stop = end === -1 ? text.length : end + 2;
-				blank(i, stop);
-				i = stop - 1;
-			} else if (c === '"' || c === "'" || c === "`") {
-				modes.push(c);
-			} else if (c === "{" && braces.length > 0) {
-				braces.push((braces.pop() ?? 0) + 1);
-			} else if (c === "}" && braces.length > 0) {
-				const depth = braces.pop() ?? 0;
-				if (depth === 0) modes.pop();
-				else braces.push(depth - 1);
-			}
-		} else if (c === "\\") {
-			i++;
-		} else if (c === mode) {
-			modes.pop();
-		} else if (mode === "`" && c === "$" && text[i + 1] === "{") {
-			modes.push("code");
-			braces.push(0);
-			i++;
-		}
-	}
-	return out.join("");
-}
-
-/**
  * Line numbers of every reference to an Unsafe method in `source` that is not
  * a plain `x.$queryRawUnsafe(<safe argument>)` call. Comments are ignored.
  */
@@ -123,28 +76,14 @@ function unsafeRawCalls(source: string): number[] {
 /** The one file that names the methods without calling them: the scoped client's refusal list. */
 const NAMES_ONLY = join(REPO_ROOT, "src", "server", "db.ts");
 
-const SKIP_DIRS = new Set(["node_modules", "generated", "dist", ".next"]);
-const isTestPath = (path: string) =>
-	/\.test\.tsx?$/.test(path) ||
-	/[\\/]__tests__[\\/]/.test(path) ||
-	/[\\/]src[\\/]test[\\/]/.test(path);
+const isTestPath = /\.test\.tsx?$|[\\/]__tests__[\\/]|[\\/]src[\\/]test[\\/]/;
 
-function sourceFiles(): string[] {
-	const files: string[] = [];
-	const walk = (dir: string) => {
-		for (const entry of readdirSync(dir, { withFileTypes: true })) {
-			const path = join(dir, entry.name);
-			if (entry.isDirectory()) {
-				if (!SKIP_DIRS.has(entry.name)) walk(path);
-			} else if (/\.tsx?$/.test(entry.name) && !isTestPath(path)) {
-				files.push(path);
-			}
-		}
-	};
-	for (const root of ["src", "packages", "scripts"])
-		walk(join(REPO_ROOT, root));
-	return files;
-}
+const sourceFiles = () =>
+	scanSources({
+		roots: ["src", "packages", "scripts"],
+		include: /\.tsx?$/,
+		exclude: isTestPath,
+	});
 
 describe("raw Unsafe SQL", () => {
 	it("passes only a string literal or Prisma.sql, anywhere in src, packages and scripts", () => {

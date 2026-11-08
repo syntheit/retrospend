@@ -24,20 +24,20 @@ const MIGRATION = readFileSync(
 );
 
 describe("push schema", () => {
-	const client = new Client({ connectionString: process.env.DATABASE_URL });
+	const catalog = new Client({ connectionString: process.env.DATABASE_URL });
 	let userId: string;
 
 	beforeAll(async () => {
-		await client.connect();
+		await catalog.connect();
 		userId = (await createTestUser()).user.id;
 	});
 
 	afterAll(async () => {
-		await client.end();
+		await catalog.end();
 	});
 
 	it("has the partial index the fan-out reads its queue from", async () => {
-		const { rows } = await client.query<{ indexdef: string }>(
+		const { rows } = await catalog.query<{ indexdef: string }>(
 			`SELECT indexdef FROM pg_indexes
 			  WHERE tablename = 'api_event' AND indexname = 'api_event_unpushed_idx'`,
 		);
