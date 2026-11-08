@@ -4,7 +4,9 @@ vi.mock("~/server/storage", () => ({ deleteFile: vi.fn() }));
 const removeUserExports = vi.hoisted(() => vi.fn(async () => undefined));
 vi.mock("~/server/export-storage", () => ({ removeUserExports }));
 const destroyDataKeys = vi.hoisted(() => vi.fn(async () => 1));
-vi.mock("../keys/data-key.service", () => ({ destroyDataKeys }));
+vi.mock("../keys/data-key.service", () => ({
+	destroyDataKeysIfStored: destroyDataKeys,
+}));
 
 import { deleteFile } from "~/server/storage";
 import {
@@ -49,7 +51,7 @@ function makeTx(overrides: Record<string, Record<string, Fn>>) {
 }
 
 describe("anonymizeAndDeleteUser", () => {
-	it("destroys the user's data keys in the transaction, before the user row goes", async () => {
+	it("destroys the user's data keys in the transaction, after the user row goes", async () => {
 		destroyDataKeys.mockClear();
 		const userDelete = vi.fn(async () => ({}));
 		const { tx } = makeTx({ user: { delete: userDelete } });
@@ -65,8 +67,8 @@ describe("anonymizeAndDeleteUser", () => {
 		];
 		expect(id).toBe("user-1");
 		expect(client).toBe(tx);
-		expect(destroyDataKeys.mock.invocationCallOrder[0]!).toBeLessThan(
-			userDelete.mock.invocationCallOrder[0]!,
+		expect(userDelete.mock.invocationCallOrder[0]!).toBeLessThan(
+			destroyDataKeys.mock.invocationCallOrder[0]!,
 		);
 	});
 

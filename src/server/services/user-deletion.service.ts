@@ -2,7 +2,7 @@ import type { PrismaClient } from "~prisma";
 import { stashedIconPath } from "./accounts/icon";
 import { assertAnotherAdminRemains } from "./admin-guard.service";
 import { DELETED_USER_NAME, DELETED_USER_SENTINEL } from "./deleted-sentinels";
-import { destroyDataKeys } from "./keys/data-key.service";
+import { destroyDataKeysIfStored } from "./keys/data-key.service";
 import {
 	repointSettlementParty,
 	syncPaymentHeaders,
@@ -489,14 +489,15 @@ export async function anonymizeAndDeleteUser(
 		// heir, the rest are detached before the cascade deletes them.
 		await retireGhosts(tx as unknown as PrismaTx, userId);
 
-		// Crypto-shred first, in this transaction: a deletion that fails after
-		// this point rolls the keys back with everything else. The keystore
-		// trigger on "user" does the same on delete; this call keeps the
-		// intent in code if that trigger is ever changed.
-		await destroyDataKeys(userId, tx);
-
 		// Delete the user - cascades all personal data (expenses, budgets, sessions, etc.)
 		await tx.user.delete({ where: { id: userId } });
+
+		// Crypto-shred, in this same transaction and after the user row is
+		// deleted, so a concurrent first-key insert is either seen here or made
+		// the delete wait. A failure after this point rolls the keys back with
+		// everything else. The keystore trigger on "user" has already removed
+		// them on delete; this call keeps the intent in code if it changes.
+		await destroyDataKeysIfStored(userId, tx);
 
 		// Clean up GuestSessions that used this user's email (pre-signup guest access)
 		await tx.guestSession.deleteMany({ where: { email: userEmail } });

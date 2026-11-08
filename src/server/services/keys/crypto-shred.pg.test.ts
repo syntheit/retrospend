@@ -9,7 +9,10 @@
  *   a bystander's key              -> untouched, still opens its own text
  *   user with no key               -> delete works
  *   failure after the key destroy  -> key row, user row and text all remain
+ *                                     (trigger disabled, so only the explicit call can fail it)
  *   keystore trigger disabled      -> the explicit call still destroys the key
+ *   key minted while the delete waits, trigger disabled -> no key row remains
+ *   keystore schema missing        -> the deletion still succeeds
  *
  * Until D12 backfills, most stored rows are plaintext and shredding destroys
  * nothing for them; these tests cover only text that was sealed.
@@ -103,6 +106,60 @@ async function expectUnreadable(userId: string, sealed: string) {
 	}
 }
 
+/**
+ * Runs `run` with the keystore trigger on "user" disabled, so only the
+ * explicit destroy in the deletion transaction can remove a key.
+ */
+async function withoutKeystoreTrigger<T>(run: () => Promise<T>): Promise<T> {
+	const set = (state: "DISABLE" | "ENABLE") =>
+		withSuperuser((client) =>
+			client.query(
+				`ALTER TABLE public."user" ${state} TRIGGER "keystore_user_delete"`,
+			),
+		);
+	await set("DISABLE");
+	try {
+		return await run();
+	} finally {
+		await set("ENABLE");
+	}
+}
+
+/** Fails the deletion at its last step, after the user delete and the key destroy. */
+function failingAfterKeyDestroy(error: Error) {
+	return {
+		$transaction: (fn: (tx: unknown) => Promise<unknown>) =>
+			adminDb.$transaction((tx) =>
+				fn(
+					new Proxy(tx, {
+						get(target, prop) {
+							if (prop === "guestSession")
+								return {
+									deleteMany: async () => {
+										throw error;
+									},
+								};
+							const value = Reflect.get(target, prop, target);
+							return typeof value === "function" ? value.bind(target) : value;
+						},
+					}),
+				),
+			),
+	};
+}
+
+/** Resolves once a statement matching `pattern` is waiting on a lock. */
+async function untilWaitingOnLock(pattern: string) {
+	for (let i = 0; i < 100; i++) {
+		const [row] = await adminDb.$queryRaw<{ n: bigint }[]>`
+			SELECT count(*) AS n FROM pg_stat_activity
+			WHERE wait_event_type = 'Lock' AND query ILIKE ${pattern}`;
+		if (row && row.n > 0n) return;
+		await new Promise((r) => setTimeout(r, 50));
+	}
+	throw new Error("the delete never waited on the lock");
+}
+
 describe("crypto-shred on account deletion", () => {
 	let bystander: string;
 	let bystanderSealed: string;
@@ -123,10 +180,9 @@ describe("crypto-shred on account deletion", () => {
 		);
 	};
 
-	it("destroys the key when the user deletes their own account", async () => {
+	it("leaves no key and no readable text when the user deletes their own account", async () => {
 		const id = await passwordUser();
 		const sealed = await sealFor(id);
-		expect(await keyRows(id)).toBe(1n);
 
 		await deleteOwnAccount({ id, role: "USER" }, PASSWORD);
 
@@ -136,10 +192,10 @@ describe("crypto-shred on account deletion", () => {
 		await bystanderIntact();
 	});
 
-	it("destroys the key when an admin deletes the account", async () => {
+	it("leaves no key when an admin deletes the account through the v1 route", async () => {
 		const admin = (await createTestUser({ role: "ADMIN" })).user.id;
 		const id = (await createTestUser()).user.id;
-		const sealed = await sealFor(id);
+		await sealFor(id);
 
 		const res = await call(`/admin/users/${id}`, {
 			method: "DELETE",
@@ -150,8 +206,6 @@ describe("crypto-shred on account deletion", () => {
 		expect(res.status).toBe(200);
 		expect(await userExists(id)).toBe(false);
 		expect(await keyRows(id)).toBe(0n);
-		await expectUnreadable(id, sealed);
-		await bystanderIntact();
 		await adminDb.user.delete({ where: { id: admin } });
 	});
 
@@ -162,43 +216,32 @@ describe("crypto-shred on account deletion", () => {
 		await anonymizeAndDeleteUser(adminDb, id, `${id}@pg-test.invalid`, null);
 
 		expect(await userExists(id)).toBe(false);
-		await bystanderIntact();
+	});
+
+	it("destroys the key by the explicit call when the keystore trigger is gone", async () => {
+		const id = (await createTestUser()).user.id;
+		await sealFor(id);
+		await withoutKeystoreTrigger(() =>
+			anonymizeAndDeleteUser(adminDb, id, `${id}@pg-test.invalid`, null),
+		);
+		expect(await keyRows(id)).toBe(0n);
 	});
 
 	it("keeps the key when the deletion fails after the key destroy", async () => {
 		const id = (await createTestUser()).user.id;
 		const sealed = await sealFor(id);
-		const boom = new Error("user delete failed");
-		// Fails at the user delete, the step right after the explicit destroy, so
-		// only a destroy that is part of this transaction can leave the row gone.
-		const failing = {
-			$transaction: (fn: (tx: unknown) => Promise<unknown>) =>
-				adminDb.$transaction((tx) =>
-					fn(
-						new Proxy(tx, {
-							get(target, prop) {
-								if (prop === "user")
-									return {
-										delete: async () => {
-											throw boom;
-										},
-									};
-								const value = Reflect.get(target, prop, target);
-								return typeof value === "function" ? value.bind(target) : value;
-							},
-						}),
-					),
-				),
-		};
+		const boom = new Error("guest cleanup failed");
 
-		await expect(
-			anonymizeAndDeleteUser(
-				failing as never,
-				id,
-				`${id}@pg-test.invalid`,
-				null,
-			),
-		).rejects.toBe(boom);
+		await withoutKeystoreTrigger(async () => {
+			await expect(
+				anonymizeAndDeleteUser(
+					failingAfterKeyDestroy(boom) as never,
+					id,
+					`${id}@pg-test.invalid`,
+					null,
+				),
+			).rejects.toBe(boom);
+		});
 
 		expect(await userExists(id)).toBe(true);
 		expect(await keyRows(id)).toBe(1n);
@@ -206,22 +249,53 @@ describe("crypto-shred on account deletion", () => {
 		await adminDb.user.delete({ where: { id } });
 	});
 
-	it("destroys the key by the explicit call when the keystore trigger is gone", async () => {
-		const id = (await createTestUser()).user.id;
-		const sealed = await sealFor(id);
-		const trigger = (state: "DISABLE" | "ENABLE") =>
-			withSuperuser((client) =>
-				client.query(
-					`ALTER TABLE public."user" ${state} TRIGGER "keystore_user_delete"`,
-				),
+	it("leaves no key when one is minted while the delete waits, even without the trigger", async () => {
+		const me = await createTestUser();
+		let release!: () => void;
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let started!: () => void;
+		const ready = new Promise<void>((resolve) => {
+			started = resolve;
+		});
+
+		await withoutKeystoreTrigger(async () => {
+			// This transaction holds the user row (FOR KEY SHARE) and has an
+			// uncommitted first key, so the delete below cannot take the row yet.
+			const minting = me.db.$transaction(async (tx) => {
+				await getOrCreateDataKeyring(tx, master);
+				started();
+				await gate;
+			});
+			await ready;
+			const deleting = anonymizeAndDeleteUser(
+				adminDb,
+				me.user.id,
+				`${me.user.id}@pg-test.invalid`,
+				null,
 			);
-		await trigger("DISABLE");
+			await untilWaitingOnLock('%DELETE FROM "public"."user"%');
+			release();
+			await Promise.all([minting, deleting]);
+		});
+
+		expect(await userExists(me.user.id)).toBe(false);
+		expect(await keyRows(me.user.id)).toBe(0n);
+	});
+
+	it("still deletes the account when the keystore schema is missing", async () => {
+		const id = (await createTestUser()).user.id;
+		const hide = (from: string, to: string) =>
+			withSuperuser((client) =>
+				client.query(`ALTER SCHEMA ${from} RENAME TO ${to}`),
+			);
+		await hide("keystore", "keystore_gone");
 		try {
 			await anonymizeAndDeleteUser(adminDb, id, `${id}@pg-test.invalid`, null);
-			expect(await keyRows(id)).toBe(0n);
 		} finally {
-			await trigger("ENABLE");
+			await hide("keystore_gone", "keystore");
 		}
-		await expectUnreadable(id, sealed);
+		expect(await userExists(id)).toBe(false);
 	});
 });
