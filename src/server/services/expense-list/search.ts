@@ -1,33 +1,37 @@
 /**
  * Search text and the page cursor for the Activity read, as pure functions.
  *
- * Search ignores case and accents (RC-10): "almacen" finds "Almacén". The
- * database has no unaccent extension, so both sides fold through the same
- * letter table: here for the query, in SQL (`translate`) for the columns.
+ * Search ignores case and accents (RC-10): "almacen" finds "Almacén". Both
+ * sides fold through the same letter table, in the app layer: the stored text
+ * may be ciphertext, which Postgres cannot match (see query.ts).
  */
+import { pgLower } from "../search-fold";
 
-/** Accented letters and what they fold to, one to one (for SQL translate). */
+/** Accented letters and what they fold to, one to one. */
 export const FOLD_FROM = "áàâäãåéèêëíìîïóòôöõúùûüñçÁÀÂÄÃÅÉÈÊËÍÌÎÏÓÒÔÖÕÚÙÛÜÑÇ";
 export const FOLD_TO = "aaaaaaeeeeiiiiooooouuuuncaaaaaaeeeeiiiiooooouuuunc";
 
 const FOLD = new Map([...FOLD_FROM].map((c, i) => [c, [...FOLD_TO][i]]));
 
 /**
- * The query folded exactly as SQL folds a column: `lower(translate(col,
+ * The query folded as the old SQL folded a column: `lower(translate(col,
  * FOLD_FROM, FOLD_TO))`. Only the table's letters lose their accents, so
  * Cyrillic й and ё stay as they are on both sides. NFC first, so an accent
  * typed as a combining mark meets the table's precomposed letter.
  */
 export function foldText(text: string): string {
-	return [...text.normalize("NFC")]
-		.map((c) => FOLD.get(c) ?? c)
-		.join("")
-		.toLowerCase();
+	return foldColumn(text.normalize("NFC"));
 }
 
-/** A LIKE pattern that matches `q` anywhere, its wildcards escaped. */
-export function likePattern(q: string): string {
-	return `%${foldText(q.trim()).replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+/**
+ * A stored value folded for matching. Not normalized: the old SQL matched
+ * columns as stored, so a title saved with a combining accent never matched
+ * the precomposed letter, and still does not.
+ */
+export function foldColumn(text: string): string {
+	let out = "";
+	for (const c of text) out += FOLD.get(c) ?? c;
+	return pgLower(out);
 }
 
 /**
