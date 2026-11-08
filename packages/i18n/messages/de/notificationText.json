@@ -108,5 +108,10 @@
 		"category": "Kategorie geändert",
 		"project": "Projekt geändert",
 		"other": "weitere Änderungen"
+	},
+	"email": {
+		"view": "Retrospend öffnen",
+		"manage": "Benachrichtigungseinstellungen",
+		"unsubscribe": "Abbestellen"
 	}
 }

@@ -108,5 +108,10 @@
 		"category": "catégorie modifiée",
 		"project": "projet modifié",
 		"other": "autres modifications"
+	},
+	"email": {
+		"view": "Ouvrir Retrospend",
+		"manage": "Réglages des notifications",
+		"unsubscribe": "Se désabonner"
 	}
 }

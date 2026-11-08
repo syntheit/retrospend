@@ -247,3 +247,23 @@ export async function buildNoticeText(
 		changes: parts.length > 0 ? parts.join(", ") : null,
 	};
 }
+
+export interface EmailLabels {
+	view: string;
+	manage: string;
+	unsubscribe: string;
+}
+
+/** The button and footer link labels of a notice email, in the reader's language. */
+export async function buildEmailLabels(
+	reader: NoticeReader = {},
+): Promise<EmailLabels & { locale: string }> {
+	const locale = matchSupportedLocale(reader.language) ?? DEFAULT_LOCALE;
+	const t = await serverTranslator(locale, "notificationText");
+	return {
+		locale,
+		view: t("email.view"),
+		manage: t("email.manage"),
+		unsubscribe: t("email.unsubscribe"),
+	};
+}
