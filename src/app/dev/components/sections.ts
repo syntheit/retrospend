@@ -297,7 +297,7 @@ export const SECTIONS: GallerySection[] = [
 		nav: "Bottom nav",
 		title: "BottomNav",
 		components: ["BottomNav"],
-		use: "phone navigation: Home, Activity, Budget, People, Projects, plus a floating Add.",
+		use: "phone navigation: Home, Activity, Budget, Wealth, People, plus a floating Add.",
 		never: "rows, charts or numbers in glass. Never a center plus tab.",
 		replaces: "hamburger-only mobile nav.",
 	},
