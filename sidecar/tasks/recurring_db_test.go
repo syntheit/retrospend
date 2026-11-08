@@ -27,7 +27,8 @@ func TestProcessRecurringPostsMoneyIn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer database.Close()
+	// Registered first, so it runs after the row cleanups below.
+	t.Cleanup(database.Close)
 
 	exec := func(sql string, args ...any) {
 		t.Helper()
