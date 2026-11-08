@@ -369,6 +369,22 @@ describe("due dates", () => {
 		).toBe("2026-11-30");
 	});
 
+	it("income stepped in UTC reads one day earlier in Buenos Aires: Nov 30 UTC midnight is Nov 29 there", () => {
+		// Stepped in the saved zone it would land on Nov 30 03:00Z, Nov 30 there.
+		const [t] = body(
+			arsHome([
+				tpl({
+					id: "salary",
+					direction: "IN",
+					nextDueDate: new Date("2026-10-31T00:00:00.000Z"),
+					anchorDay: 31,
+				}),
+			]),
+		).items;
+		expect(t?.next).toBe("2026-10-30");
+		expect(t?.nextAfter).toBe("2026-11-29");
+	});
+
 	it("the viewer's display zone and the saved step zone are separate", () => {
 		// Due Oct 31 Buenos Aires midnight (03:00Z), shown from UTC the same day.
 		const [t] = body(arsHome([tpl({ id: "rent", anchorDay: 31 })]), {

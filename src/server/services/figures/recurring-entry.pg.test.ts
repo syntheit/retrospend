@@ -574,12 +574,23 @@ const settle = (
 		},
 	});
 
-/** The device store as a synced device holds it: the rows RLS lets this person read, raw. */
-async function storeOf(userId: string): Promise<ActivityStore> {
+/**
+ * Runs `work` as the person, with RLS, or as the database owner without it: a
+ * loader's own filters (your rows, your payments) are redundant under RLS, so
+ * they are only held to each other without it.
+ */
+const asPerson = <T>(
+	userId: string,
+	rls: boolean,
+	work: (tx: Prisma.TransactionClient) => Promise<T>,
+) => (rls ? userTransaction(adminDb, userId, work) : work(adminDb));
+
+/** The device store as a synced device holds it: the rows RLS lets this person read, raw (all rows without RLS). */
+async function storeOf(userId: string, rls = true): Promise<ActivityStore> {
 	const users = await adminDb.user.findMany({
 		select: { id: true, name: true, avatarPath: true },
 	});
-	return userTransaction(adminDb, userId, async (tx) => ({
+	return asPerson(userId, rls, async (tx) => ({
 		userId,
 		expenses: await tx.expense.findMany(),
 		categories: await tx.category.findMany(),
@@ -628,9 +639,14 @@ describe("activity rows: the same ledger through both loaders", () => {
 		);
 
 	/** Both loaders shape the same page the same way; returns the served rows by id. */
-	async function bothAgree(p: Person, ks: RowKey[], zone: string | undefined) {
+	async function bothAgree(
+		p: Person,
+		ks: RowKey[],
+		zone: string | undefined,
+		rls = true,
+	) {
 		const rate = await homeRateOf(p);
-		const store = await storeOf(p.id);
+		const store = await storeOf(p.id, rls);
 		const deviceRate = homeRateOn(
 			p.home,
 			store.rateRows
@@ -640,10 +656,8 @@ describe("activity rows: the same ledger through both loaders", () => {
 		);
 		expect(deviceRate).toBe(rate);
 		const c = ctxOf(p.id, p.home, rate, zone);
-		const served = await userTransaction(adminDb, p.id, (tx) =>
-			shapeRows(tx, ks, c),
-		);
-		const a = await userTransaction(adminDb, p.id, (tx) =>
+		const served = await asPerson(p.id, rls, (tx) => shapeRows(tx, ks, c));
+		const a = await asPerson(p.id, rls, (tx) =>
 			loadActivityInputs(tx, ks, p.id),
 		);
 		const b = activityInputsFromRows(store, ks);
@@ -954,6 +968,20 @@ describe("activity rows: the same ledger through both loaders", () => {
 		await bothAgree(ana, keys, "UTC");
 		await bothAgree(ben, benKeys, BA);
 		await bothAgree(ben, benKeys, "UTC");
+	});
+
+	it("and without RLS, where only each loader's own filters pick your rows, your splits and your payments", async () => {
+		const served = await bothAgree(ana, keys, BA, false);
+		for (const gone of [
+			"b_own",
+			"shared:s_notmine",
+			"payment:pay_between|ARS",
+			"payment:pay_rejected|ARS",
+			"payment:pay_offset|ARS",
+		])
+			expect(served.has(gone)).toBe(false);
+		expect([...served.keys()].sort()).toEqual([...rows.keys()].sort());
+		await bothAgree(ben, benKeys, "UTC", false);
 	});
 
 	it("shows only what is hers: not Ben's expense, a split she is not on, a payment between others, a rejected one or an offset", () => {
