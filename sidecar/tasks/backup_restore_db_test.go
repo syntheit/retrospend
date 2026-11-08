@@ -22,7 +22,9 @@ import (
 // pg_dump, pg_restore on PATH, and it creates and drops one scratch database,
 // so it lives here and not in the vitest pg suite: a DROP DATABASE holds a
 // transaction open for seconds, and the event feed there reads behind the
-// oldest open transaction of the whole server.
+// oldest open transaction of the whole server. For the same reason, do not run
+// it against a server where a vitest pg run is in progress: its CREATE and DROP
+// DATABASE hold back that cluster-wide outbox horizon.
 func TestKeystoreRestoreSteps(t *testing.T) {
 	rawURL := os.Getenv("SIDECAR_TEST_DATABASE_URL")
 	if rawURL == "" {
@@ -33,7 +35,9 @@ func TestKeystoreRestoreSteps(t *testing.T) {
 	}
 	for _, bin := range []string{"pg_dump", "pg_restore"} {
 		if _, err := exec.LookPath(bin); err != nil {
-			t.Skipf("%s not on PATH", bin)
+			// The URL is set, so this is a CI or deliberate run: a missing tool
+			// must not let it pass silently.
+			t.Fatalf("%s not on PATH, and SIDECAR_TEST_DATABASE_URL is set", bin)
 		}
 	}
 	ctx := context.Background()
@@ -52,7 +56,11 @@ func TestKeystoreRestoreSteps(t *testing.T) {
 		mustExec(t, source, `INSERT INTO keystore."user_data_key" ("userId", "keyId", "wrappedKey", "masterKeyId") VALUES ($1, 1, 'sealed-for-test', 1)`, id)
 	}
 	// The trigger takes the keys with the users.
-	t.Cleanup(func() { source.Pool.Exec(ctx, `DELETE FROM "user" WHERE id = ANY($1)`, mine) })
+	t.Cleanup(func() {
+		if _, err := source.Pool.Exec(ctx, `DELETE FROM "user" WHERE id = ANY($1)`, mine); err != nil {
+			t.Logf("could not delete the test users: %v", err)
+		}
+	})
 
 	// The dumps come from the real backup code.
 	dir := t.TempDir()
@@ -79,7 +87,9 @@ func TestKeystoreRestoreSteps(t *testing.T) {
 		if scratch != nil {
 			scratch.Close()
 		}
-		source.Pool.Exec(ctx, fmt.Sprintf(`DROP DATABASE IF EXISTS "%s" WITH (FORCE)`, scratchName))
+		if _, err := source.Pool.Exec(ctx, fmt.Sprintf(`DROP DATABASE IF EXISTS "%s" WITH (FORCE)`, scratchName)); err != nil {
+			t.Logf("could not drop scratch database %s: %v", scratchName, err)
+		}
 	})
 
 	restore := func(clean bool, file string) {
