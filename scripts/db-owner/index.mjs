@@ -290,34 +290,80 @@ export async function createOwnerRole(client) {
 }
 
 /**
- * Whether `connectionString` signs in, and as a role that is no superuser.
+ * What is wrong with retrospend_owner and retrospend_app, read from the
+ * catalogs only (owner-verify.sql). Empty when all is well.
+ *
+ * @param {{ query: (sql: string) => Promise<{ rows: Array<Record<string, unknown>> }> }} client
+ * @returns {Promise<string[]>}
+ */
+export async function ownerProblems(client) {
+	const { rows } = await client.query(bootstrapFile("owner-verify.sql"));
+	return rows.map((row) => String(row.problem));
+}
+
+/**
+ * Checks the owner and the app role from the catalogs. When something is
+ * wrong it removes what it can (role memberships by the grantor that made them,
+ * the attributes), says so loudly, and throws, so the container does not start
+ * on a role that held more than it should. The next start finds it clean. A
+ * superuser connection is needed to remove anything; nothing the owner owns is
+ * read.
+ *
+ * @param {pg.Client} client a superuser connection
+ * @param {(message: string) => void} warn
+ */
+export async function enforceOwnerRole(client, warn) {
+	const found = await ownerProblems(client);
+	if (found.length === 0) return;
+	warn(
+		`WARNING: ${OWNER_ROLE} or retrospend_app holds more than it may (${found.join("; ")}). This should never happen: something with the owner's rights may have granted it. Removing it and stopping; check the database for what ran as ${OWNER_ROLE}.`,
+	);
+	const { rows } = await client.query(bootstrapFile("owner-unsafe-grants.sql"));
+	for (const row of rows) await client.query(String(row.ddl));
+	if (found.some((problem) => problem.startsWith("attribute "))) {
+		await client.query(
+			`ALTER ROLE ${OWNER_ROLE} NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION`,
+		);
+	}
+	const left = await ownerProblems(client);
+	throw new Error(
+		left.length === 0
+			? `${OWNER_ROLE} held more than it may (${found.join("; ")}); it was removed, start again`
+			: `${OWNER_ROLE} holds more than it may and it could not be removed: ${left.join("; ")}`,
+	);
+}
+
+/**
+ * Whether `connectionString` signs in. A role that signs in but holds more than
+ * it may is not a login problem: that throws.
  *
  * @param {string} connectionString
  * @returns {Promise<{ ok: true } | { ok: false, reason: string }>}
  */
 async function ownerLogin(connectionString) {
-	/** @type {pg.Client | undefined} */
-	let client;
+	const client = new pg.Client({
+		connectionString,
+		connectionTimeoutMillis: 10_000,
+	});
 	try {
-		client = new pg.Client({
-			connectionString,
-			connectionTimeoutMillis: 10_000,
-		});
 		await client.connect();
-		const { rows } = await client.query(
-			"SELECT rolsuper FROM pg_roles WHERE rolname = current_user",
-		);
-		if (rows[0]?.rolsuper) {
-			return { ok: false, reason: "the owner role is a superuser" };
-		}
-		return { ok: true };
 	} catch (error) {
+		await client.end().catch(() => undefined);
 		return {
 			ok: false,
 			reason: /** @type {Error} */ (error).message ?? String(error),
 		};
+	}
+	try {
+		const problems = await ownerProblems(client);
+		if (problems.length > 0) {
+			throw new Error(
+				`${OWNER_ROLE} holds more than it may: ${problems.join("; ")}`,
+			);
+		}
+		return { ok: true };
 	} finally {
-		await client?.end().catch(() => undefined);
+		await client.end().catch(() => undefined);
 	}
 }
 
@@ -399,6 +445,7 @@ export async function bootstrap(databaseUrl, options = {}) {
 		const url = ownerUrl(databaseUrl, ownerPassword);
 
 		await createOwnerRole(admin);
+		await enforceOwnerRole(admin, warn);
 
 		let login = await ownerLogin(url);
 		if (!login.ok) {

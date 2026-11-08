@@ -231,4 +231,16 @@ describe("docker-entrypoint.sh", () => {
 		expect(script).not.toMatch(/export\s+POSTGRES/);
 		expect(script).not.toMatch(/PGPASSWORD/);
 	});
+
+	it("drops the superuser's credentials from the shell right after the bootstrap, before prisma runs", () => {
+		const at = (needle: string) =>
+			lines.findIndex((line) => line.includes(needle));
+		const unset = lines.findIndex((line) =>
+			/^unset\b.*POSTGRES_PASSWORD.*POSTGRES_USER/.test(line),
+		);
+		expect(unset).toBeGreaterThan(at("db-owner/cli.mjs bootstrap"));
+		expect(unset).toBeLessThan(at("prisma migrate deploy"));
+		// The owner's URL replaces DATABASE_URL before that too.
+		expect(at('export DATABASE_URL="$OWNER_DATABASE_URL"')).toBeLessThan(unset);
+	});
 });
