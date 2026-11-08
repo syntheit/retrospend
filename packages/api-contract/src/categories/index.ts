@@ -1,6 +1,7 @@
 import * as z from "zod";
 import { v1 } from "../common/meta";
 import { cursorQuerySchema, pageOf } from "../common/pagination";
+import { userText } from "../common/user-text";
 import { idParamsSchema, idSchema, okSchema } from "../core";
 
 /** Mirrors CATEGORY_COLORS in src/lib/constants.ts (a server test keeps them equal). */
@@ -50,7 +51,7 @@ export const categorySchema = z
 
 export type CategoryDto = z.infer<typeof categorySchema>;
 
-const nameSchema = z.string().trim().min(1).max(64);
+const nameSchema = userText("category.name", 64);
 const iconSchema = z.string().max(50);
 
 export const createCategorySchema = z
