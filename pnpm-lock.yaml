@@ -106,6 +106,9 @@ importers:
       '@retrospend/api-contract':
         specifier: workspace:*
         version: link:packages/api-contract
+      '@retrospend/crypto':
+        specifier: workspace:*
+        version: link:packages/crypto
       '@retrospend/domain':
         specifier: workspace:*
         version: link:packages/domain
