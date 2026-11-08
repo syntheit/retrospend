@@ -128,6 +128,11 @@ export class Keyring {
 		return this.#keys.has(id);
 	}
 
+	/** The key ids the ring holds, lowest first. */
+	get ids(): number[] {
+		return [...this.#keys.keys()].sort((a, b) => a - b);
+	}
+
 	/** For seal and open in this module; callers have no use for it. */
 	keyFor(id: number): KeyObject | undefined {
 		return this.#keys.get(id);
