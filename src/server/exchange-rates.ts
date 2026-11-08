@@ -7,13 +7,15 @@
  * no rate rows at all yields null (or a BAD_REQUEST from requireExchangeRate).
  */
 import { TRPCError } from "@trpc/server";
-import { type PickedRate, pickBestRate, USD } from "@retrospend/domain/money";
+import {
+	type PickedRate,
+	pickBestRate,
+	RATE_ROWS_PER_SIDE,
+	USD,
+} from "@retrospend/domain/money";
 import type { Prisma, PrismaClient } from "~prisma";
 
 type RateDb = Pick<PrismaClient | Prisma.TransactionClient, "exchangeRate">;
-
-// Enough rows to cover every rate type of the newest one or two dates.
-const ROWS_PER_SIDE = 20;
 
 const USD_RATE = (date: Date): PickedRate => ({
 	rate: 1,
@@ -22,19 +24,21 @@ const USD_RATE = (date: Date): PickedRate => ({
 	onOrBefore: true,
 });
 
+// The window of rows every pick sees. rateWindow (@retrospend/domain/money) is
+// its in-memory twin, which a device uses; keep the two in step.
 async function fetchRows(db: RateDb, currency: string, date: Date) {
 	const select = { type: true, rate: true, date: true } as const;
 	let rows = await db.exchangeRate.findMany({
 		where: { currency, date: { lte: date } },
 		orderBy: [{ date: "desc" }, { type: "asc" }],
-		take: ROWS_PER_SIDE,
+		take: RATE_ROWS_PER_SIDE,
 		select,
 	});
 	if (rows.length === 0) {
 		rows = await db.exchangeRate.findMany({
 			where: { currency, date: { gt: date } },
 			orderBy: [{ date: "asc" }, { type: "asc" }],
-			take: ROWS_PER_SIDE,
+			take: RATE_ROWS_PER_SIDE,
 			select,
 		});
 	}
@@ -86,7 +90,11 @@ export async function findExchangeRatesForDates(
 	db: RateDb,
 	currencies: Iterable<string>,
 ): Promise<
-	(currency: string, date: Date, preferredType?: string | null) => PickedRate | null
+	(
+		currency: string,
+		date: Date,
+		preferredType?: string | null,
+	) => PickedRate | null
 > {
 	const wanted = [...new Set(currencies)].filter((c) => c !== USD);
 	const rowsByCurrency = new Map<

@@ -371,6 +371,31 @@ export function roundUSD(amount: number): number {
 
 // ── Rate selection ───────────────────────────────────────────────────────────
 
+/** Rows the server reads per side of a date (src/server/exchange-rates.ts fetchRows). */
+export const RATE_ROWS_PER_SIDE = 20;
+
+/**
+ * The rows the server's lookup sees for `date`, from all of one currency's
+ * rows: the newest RATE_ROWS_PER_SIDE on or before the date (newest first,
+ * ties by type), and only when none exist on or before it, the earliest
+ * RATE_ROWS_PER_SIDE after it. A type whose newest row is older than that
+ * window is invisible to the pick, so a device must see the same window or
+ * it prices at a different rate type than the server.
+ */
+export function rateWindow(rows: readonly RateRow[], date: Date): RateRow[] {
+	const at = date.getTime();
+	const byType = (a: RateRow, b: RateRow) =>
+		a.type < b.type ? -1 : a.type > b.type ? 1 : 0;
+	const before = rows
+		.filter((r) => r.date.getTime() <= at)
+		.sort((a, b) => b.date.getTime() - a.date.getTime() || byType(a, b));
+	if (before.length > 0) return before.slice(0, RATE_ROWS_PER_SIDE);
+	return rows
+		.filter((r) => r.date.getTime() > at)
+		.sort((a, b) => a.date.getTime() - b.date.getTime() || byType(a, b))
+		.slice(0, RATE_ROWS_PER_SIDE);
+}
+
 /** Rate types in order of preference when the caller has no preference. */
 export const RATE_TYPE_PRIORITY = ["blue", "official", "crypto"] as const;
 

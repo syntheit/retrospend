@@ -1,32 +1,31 @@
 /**
  * The spending half of Home's glance (kit `pace()`, `monthSpend`): this and
- * the last fiscal period per day in the home currency, and the three
- * figures registered from it (src/server/figures/registry.ts):
+ * the last fiscal period per day in the home currency, and the figures
+ * registered from it (src/server/figures/registry.ts):
  * - glance.spent: this period's spending, the whole period (kit monthSpend).
  * - glance.spentLastToDate: last period up to the same day (the pace line).
  * - glance.spentLast: last period's total.
  * - glance.moneyIn: income this period (Just track's "Money in vs spent", SPEC §6.11).
  *
- * Spending follows the one definition (spentItems) and the totals rule; a
- * foreign row without a home rate makes a figure unavailable and names the
- * currency, never a guess (R14). Figures read days in the zone the server
+ * This file is the server loader: it reads the rows with SQL and hands them to
+ * the pure compute in @retrospend/domain/spend-pace, which a device runs over
+ * its own rows. Spending follows the one definition (spent.ts) and the totals
+ * rule; a foreign row without a home rate makes a figure unavailable and names
+ * the currency, never a guess (R14). Figures read days in the zone the server
  * decides for the user (userTimeZone), as glance() does without a request zone.
  */
-import {
-	MissingRateError,
-	type MoneyItem,
-	missingRatesIn,
-	periodRateDate,
-	sumIn,
-} from "@retrospend/domain/money";
+import type { MoneyItem } from "@retrospend/domain/money";
 import type { Money } from "@retrospend/domain/money-minor";
-import { toMinor } from "@retrospend/domain/money-minor";
-import { dayKey } from "@retrospend/domain/time-zone";
 import {
-	getCurrentFiscalMonth,
-	getFiscalMonthRange,
-	shiftMonth,
-} from "@retrospend/domain/fiscal-month";
+	incomeItemsOf,
+	lastToDate,
+	type SpendPace,
+	type SpendPaceInputs,
+	spendPaceFrom,
+	spendPacePeriods,
+	spendPaceRateDates,
+} from "@retrospend/domain/spend-pace";
+import type { SpentGroup } from "@retrospend/domain/spent";
 import { findExchangeRate } from "~/server/exchange-rates";
 import type {
 	FigureDb,
@@ -35,20 +34,14 @@ import type {
 } from "~/server/figures/registry";
 import { FigureUnavailable } from "~/server/figures/unavailable";
 import { userTimeZone } from "~/server/services/user-time-zone";
-import {
-	cumulativeMinor,
-	dailyHome,
-	type IsoDate,
-	missingIn,
-	type PeriodSpan,
-	spanOf,
-} from "./glance-pace";
-import { type SpentItem, spentItems } from "./spent";
+import { loadSpentInputs } from "./spent";
 
 export const GLANCE_SPENT = "glance.spent";
 export const GLANCE_SPENT_LAST_TO_DATE = "glance.spentLastToDate";
 export const GLANCE_SPENT_LAST = "glance.spentLast";
 export const GLANCE_MONEY_IN = "glance.moneyIn";
+
+export { lastToDate, type SpendPace };
 
 /** A number as Home shows it, tagged with its figure id for the display audit. */
 export interface GlanceFigure {
@@ -57,32 +50,12 @@ export interface GlanceFigure {
 	readonly value: Money | null;
 }
 
-export interface SpendPace {
-	readonly home: string;
-	readonly today: IsoDate;
-	readonly period: PeriodSpan & { readonly day: number };
-	readonly last: PeriodSpan;
-	/** Running totals in home minor units: this period to today, the last in full. Null: missing rate. */
-	readonly thisSeries: number[] | null;
-	readonly lastSeries: number[] | null;
-	/** Whole-period totals (rows dated later this period count, as in Activity). */
-	readonly thisTotal: number | null;
-	readonly lastTotal: number | null;
-	/** Income this period in home minor units (Just track's "Money in vs spent"). Null: missing rate. */
-	readonly moneyIn: number | null;
-	readonly missingRates: string[];
-}
-
-/**
- * Income this period as items for the totals rule: money in typed as
- * income, kept in Wealth or not, outside Hide from reports. Refunds are
- * spending's (they net there); own transfers and adjustments are nothing.
- */
-export async function incomeItems(
+/** Income groups of a range, read with SQL (the device groups its rows with countsAsIncome). */
+async function incomeGroups(
 	db: FigureDb,
 	userId: string,
 	range: { start: Date; end: Date },
-): Promise<MoneyItem[]> {
+): Promise<SpentGroup[]> {
 	const rows = await db.expense.groupBy({
 		by: ["currency", "homeCurrency"],
 		where: {
@@ -95,51 +68,57 @@ export async function incomeItems(
 			date: { gte: range.start, lte: range.end },
 		},
 		_sum: { amount: true, amountInUSD: true, homeAmount: true },
+		_count: { _all: true },
 	});
 	return rows.map((r) => ({
 		currency: r.currency,
-		amount: Number(r._sum.amount ?? 0),
-		amountInUSD: Number(r._sum.amountInUSD ?? 0),
-		booked: r.homeCurrency
-			? { currency: r.homeCurrency, amount: Number(r._sum.homeAmount ?? 0) }
-			: null,
+		homeCurrency: r.homeCurrency,
+		categoryId: null,
+		date: null,
+		amount: r._sum.amount ?? 0,
+		amountInUSD: r._sum.amountInUSD ?? 0,
+		homeAmount: r._sum.homeAmount ?? 0,
+		count: r._count._all,
 	}));
 }
 
-const rangeKeys = (range: { start: Date; end: Date }, tz: string) =>
-	spanOf(dayKey(range.start, tz), dayKey(range.end, tz));
-
-/** This and the last fiscal period as instants and as calendar days. */
-function periodsAt(now: Date, startDay: number, timeZone: string) {
-	const label = getCurrentFiscalMonth(now, startDay, timeZone);
-	const thisRange = getFiscalMonthRange(label, startDay, timeZone);
-	const lastRange = getFiscalMonthRange(
-		shiftMonth(label, -1, timeZone),
-		startDay,
-		timeZone,
-	);
-	const today = dayKey(now, timeZone);
-	const period = rangeKeys(thisRange, timeZone);
-	const day = Math.min(
-		period.days,
-		Math.max(1, spanOf(period.from, today).days),
-	);
-	return {
-		thisRange,
-		lastRange,
-		today,
-		period: { ...period, day },
-		last: rangeKeys(lastRange, timeZone),
-	};
+/**
+ * Income in a range as items for the totals rule: money in typed as
+ * income, kept in Wealth or not, outside Hide from reports. Refunds are
+ * spending's (they net there); own transfers and adjustments are nothing.
+ */
+export async function incomeItems(
+	db: FigureDb,
+	userId: string,
+	range: { start: Date; end: Date },
+): Promise<MoneyItem[]> {
+	return incomeItemsOf(await incomeGroups(db, userId, range));
 }
 
-const UNAVAILABLE = {
-	thisSeries: null,
-	lastSeries: null,
-	thisTotal: null,
-	lastTotal: null,
-	moneyIn: null,
-} as const;
+/** The server loader of the pace: SQL groups per entry instant, this period's income, and the home rate on each period's rate date. */
+export async function loadSpendPaceInputs(
+	db: FigureDb,
+	userId: string,
+	now: Date,
+	home: string,
+	startDay: number,
+	timeZone: string,
+): Promise<SpendPaceInputs> {
+	const p = spendPacePeriods(now, startDay, timeZone);
+	const dates = spendPaceRateDates(p, now);
+	const rateOn = async (date: Date) =>
+		(await findExchangeRate(db, home, date))?.rate ?? null;
+	return {
+		spending: await loadSpentInputs(
+			db,
+			{ userId, date: { gte: p.lastRange.start, lte: p.thisRange.end } },
+			"day",
+		),
+		income: await incomeGroups(db, userId, p.thisRange),
+		thisRate: await rateOn(dates.thisDate),
+		lastRate: await rateOn(dates.lastDate),
+	};
+}
 
 /** Spending of this and the last fiscal period, per day, in the home currency. */
 export async function loadSpendPace(
@@ -153,55 +132,21 @@ export async function loadSpendPace(
 		select: { homeCurrency: true, fiscalMonthStartDay: true },
 	});
 	const home = user?.homeCurrency ?? "USD";
-	const p = periodsAt(now, user?.fiscalMonthStartDay ?? 1, timeZone);
-	const base = { home, today: p.today, period: p.period, last: p.last };
-	let items: SpentItem[];
-	try {
-		items = await spentItems(
+	const startDay = user?.fiscalMonthStartDay ?? 1;
+	return spendPaceFrom({
+		home,
+		startDay,
+		now,
+		timeZone,
+		inputs: await loadSpendPaceInputs(
 			db,
-			{ userId, date: { gte: p.lastRange.start, lte: p.thisRange.end } },
-			"day",
-		);
-	} catch (error) {
-		// Rows that cannot be valued at all: name every currency.
-		if (!(error instanceof MissingRateError)) throw error;
-		return { ...base, ...UNAVAILABLE, missingRates: [...error.currencies] };
-	}
-	const rows = items.flatMap((item) =>
-		item.date ? [{ day: dayKey(item.date, timeZone), item }] : [],
-	);
-	const rateOn = async (end: Date) =>
-		(await findExchangeRate(db, home, periodRateDate(end, now)))?.rate ?? null;
-	const thisRate = await rateOn(p.thisRange.end);
-	const lastRate = await rateOn(p.lastRange.end);
-	const thisDaily = dailyHome(rows, p.period, home, thisRate);
-	const lastDaily = dailyHome(rows, p.last, home, lastRate);
-	const income = await incomeItems(db, userId, p.thisRange);
-	const incomeMissing = missingRatesIn(income, home, thisRate);
-	const missing = new Set([
-		...missingIn(rows, p.period, home, thisRate),
-		...missingIn(rows, p.last, home, lastRate),
-		...incomeMissing,
-	]);
-	const total = (daily: number[] | null) =>
-		daily ? (cumulativeMinor(daily, daily.length, home).at(-1) ?? 0) : null;
-	return {
-		...base,
-		thisSeries: thisDaily && cumulativeMinor(thisDaily, p.period.day, home),
-		lastSeries: lastDaily && cumulativeMinor(lastDaily, p.last.days, home),
-		thisTotal: total(thisDaily),
-		lastTotal: total(lastDaily),
-		moneyIn: incomeMissing.length
-			? null
-			: toMinor(sumIn(income, home, thisRate), home),
-		missingRates: [...missing].sort(),
-	};
-}
-
-/** Last period's running total on this period's day (its last day when it was shorter). */
-export function lastToDate(pace: SpendPace): number | null {
-	if (!pace.lastSeries) return null;
-	return pace.lastSeries[Math.min(pace.period.day, pace.last.days) - 1] ?? 0;
+			userId,
+			now,
+			home,
+			startDay,
+			timeZone,
+		),
+	});
 }
 
 function paceOnce(db: FigureDb, userId: string, pass?: FigurePass) {

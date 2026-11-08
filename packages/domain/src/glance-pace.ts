@@ -8,12 +8,8 @@
  * once (half to even), the way the Activity footer rounds its total, so the
  * last point of a full period equals the period's total exactly.
  */
-import {
-	amountIn,
-	type MoneyItem,
-	missingRatesIn,
-} from "@retrospend/domain/money";
-import { toMinor } from "@retrospend/domain/money-minor";
+import { amountIn, type MoneyItem, missingRatesIn } from "./money";
+import { toMinor } from "./money-minor";
 
 export type IsoDate = string;
 

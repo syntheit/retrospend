@@ -209,16 +209,7 @@ export async function spentItems(
 	filter: SpentFilter,
 	by: SpentGrouping = "currency",
 ): Promise<SpentItem[]> {
-	const [spending, refunds, shares] = await Promise.all([
-		groupRows(db, filter, "spending", by),
-		groupRows(db, filter, "refund", by),
-		sharesFor(db, filter),
-	]);
-	return spentItemsOf({
-		spending: spending.map(toGroup),
-		refunds: refunds.map(toGroup),
-		shares,
-	});
+	return spentItemsOf(await loadSpentInputs(db, filter, by));
 }
 
 /** Your spending matching `filter` in `currency` at `rate`, by the totals rule. */
@@ -231,14 +222,15 @@ export async function spentIn(
 	return sumIn(await spentItems(db, filter), currency, rate);
 }
 
-/** The figure's inputs by currency, read with SQL: the server loader (spentInputsFromRows is the device's). */
+/** The figure's inputs, read with SQL: the server loader (spentInputsFromRows is the device's). By currency unless a reader buckets differently. */
 export async function loadSpentInputs(
 	db: AppDb,
 	filter: SpentFilter,
+	by: SpentGrouping = "currency",
 ): Promise<SpentInputs> {
 	const [spending, refunds, shares] = await Promise.all([
-		groupRows(db, filter, "spending", "currency"),
-		groupRows(db, filter, "refund", "currency"),
+		groupRows(db, filter, "spending", by),
+		groupRows(db, filter, "refund", by),
 		sharesFor(db, filter),
 	]);
 	return {

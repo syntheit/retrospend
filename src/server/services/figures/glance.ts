@@ -8,6 +8,11 @@
  * glance.* (spend-pace.ts), owed.*, netWorth and budget.* are read, never
  * recomputed here.
  */
+import {
+	fasterThanLast,
+	type IsoDate,
+	type PeriodSpan,
+} from "@retrospend/domain/glance-pace";
 import type { LeftToSpendDto, VerdictDto } from "~/lib/schemas/envelope";
 import { userTransaction } from "~/server/db-tx";
 import {
@@ -20,7 +25,6 @@ import { monthViewIn } from "~/server/services/envelope/month-read";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import type { PrismaClient } from "~prisma";
 import { type DollarToday, dollarTodayIn } from "./dollar-today";
-import { fasterThanLast, type IsoDate, type PeriodSpan } from "./glance-pace";
 import {
 	GLANCE_MONEY_IN,
 	GLANCE_SPENT,
