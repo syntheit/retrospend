@@ -11,10 +11,26 @@
  * them. Creating a database for this is no alternative: CREATE and DROP
  * DATABASE hold an xid that stalls the outbox horizon of every other worker.
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { Client } from "pg";
 import type { Prisma } from "~prisma";
+import { REPO_ROOT } from "./uiRules/paths";
 
 class Rollback extends Error {}
+
+/**
+ * A SQL file (a path from the repository root) without its own BEGIN and COMMIT
+ * lines. The grants file and the bootstrap SQL run in a transaction of their
+ * own; replayed inside a rolled-back test transaction, their COMMIT would end
+ * the test's.
+ */
+export function readSqlWithoutTransaction(path: string): string {
+	return readFileSync(join(REPO_ROOT, path), "utf8").replace(
+		/^(BEGIN|COMMIT);$/gm,
+		"",
+	);
+}
 
 /**
  * On a plain `pg` client, for tests that read and write with SQL. It signs in

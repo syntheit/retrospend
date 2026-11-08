@@ -1,6 +1,6 @@
 // The owner role's password is derived from the superuser's, so no new secret
 // has to be configured. The derivation must give the same value in Node (here)
-// and in Go (the sidecar, A2 PR 2), so the vectors live in a JSON file both
+// and in Go (the sidecar), so the vectors live in a JSON file both
 // read. Their expected values were made with Python's hmac, not with this code.
 import { createHash, createHmac, pbkdf2Sync } from "node:crypto";
 import { describe, expect, it } from "vitest";

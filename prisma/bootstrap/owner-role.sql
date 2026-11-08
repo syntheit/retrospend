@@ -10,11 +10,17 @@
 --      app's global client and pg_dump must keep seeing every row);
 --   2. lets the owner grant retrospend_app (WITH ADMIN OPTION), which an old
 --      migration does with GRANT retrospend_app TO CURRENT_USER;
---   3. gives the owner CREATE on the database (the first migration says
---      CREATE SCHEMA IF NOT EXISTS, and a later one CREATE SCHEMA IF NOT EXISTS
---      keystore: Postgres checks CREATE before it looks whether the schema
---      exists). That lets the owner create schemas in its own database and
---      nothing else;
+--   3. takes CREATE on the database away from the owner if it somehow holds it.
+--      The owner never holds it. scripts/db-owner gives it only to a one-shot
+--      migration role on a brand-new, empty install, while `prisma migrate
+--      deploy` runs (the first migration says CREATE SCHEMA IF NOT EXISTS, which
+--      Postgres checks against CREATE before it looks whether the schema
+--      exists), and drops that role in a `finally`. An upgrade gets no CREATE for
+--      anyone, so no pending migration may need it
+--      (src/test/migrations/database-create.test.ts): anything that does goes in
+--      this file. With CREATE the owner could CREATE EXTENSION a trusted
+--      extension into a schema it controls, whose install script then runs as
+--      the superuser, or drop and recreate public;
 --   4. creates the unaccent extension (needs CREATE on the database);
 --   5. creates the keystore schema for the owner (same reason);
 --   6. keeps PUBLIC from creating objects in public.
@@ -75,28 +81,57 @@ BEGIN
 END
 $role$;
 
--- CREATE on the database, kept: see item 3 in the header. A catalog check, no
--- table of the owner's is read.
+-- No CREATE on the database here: see item 3 in the header. A catalog check, no
+-- table of the owner's is read. This also repairs a crash between the grant and
+-- the revoke around the migrations of a new install.
 DO $database$
 BEGIN
-  IF NOT pg_catalog.has_database_privilege(
+  IF pg_catalog.has_database_privilege(
        'retrospend_owner', pg_catalog.current_database(), 'CREATE') THEN
-    EXECUTE pg_catalog.format('GRANT CREATE ON DATABASE %I TO retrospend_owner',
+    EXECUTE pg_catalog.format('REVOKE CREATE ON DATABASE %I FROM retrospend_owner',
       pg_catalog.current_database());
   END IF;
 END
 $database$;
 
--- Where an older migration already put the extension (any schema), IF NOT EXISTS
--- keeps it, and nothing of the owner's runs. On a new install this is the first
+-- Where an older migration already put the extension (any schema), nothing
+-- happens and nothing of the owner's runs. On a new install this is the first
 -- thing created in public, before the handover (the step after this file) gives
 -- the owner the schema, so no object of the owner's can be in the extension
--- script's way. Its members stay with the superuser; the handover skips them.
-CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
+-- script's way. Once the owner owns public it is not done here at all: the
+-- extension script would run as the superuser inside a schema the owner
+-- controls. (Every install that ever ran the search migration has it; a new
+-- install gets it here before the handover.) Its members stay with the
+-- superuser; the handover skips them.
+DO $extension$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_extension WHERE extname = 'unaccent')
+     AND (SELECT nspowner FROM pg_catalog.pg_namespace WHERE nspname = 'public')
+         <> (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'retrospend_owner') THEN
+    CREATE EXTENSION unaccent WITH SCHEMA public;
+  END IF;
+END
+$extension$;
 
 -- The keystore migration says CREATE SCHEMA IF NOT EXISTS, so it keeps this one.
 CREATE SCHEMA IF NOT EXISTS keystore AUTHORIZATION retrospend_owner;
 
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+
+-- What the owner creates is granted to nobody by default: tables, sequences and
+-- functions made by the owner reach retrospend_app only by a grant of their own,
+-- and functions are not executable by PUBLIC. The statements are those of the
+-- grants file (prisma/grants/app-role.sql, section "Default privileges") for this
+-- role. They are here too because a brand-new install is migrated by a one-shot
+-- role whose own default privileges are dropped with it, and the owner has none
+-- of its own until the grants file runs. Nothing is read from the owner's objects.
+ALTER DEFAULT PRIVILEGES FOR ROLE retrospend_owner IN SCHEMA public REVOKE ALL ON TABLES FROM retrospend_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE retrospend_owner IN SCHEMA public REVOKE ALL ON SEQUENCES FROM retrospend_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE retrospend_owner IN SCHEMA public REVOKE ALL ON FUNCTIONS FROM retrospend_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE retrospend_owner REVOKE ALL ON TABLES FROM retrospend_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE retrospend_owner REVOKE ALL ON SEQUENCES FROM retrospend_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE retrospend_owner REVOKE ALL ON FUNCTIONS FROM PUBLIC, retrospend_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE retrospend_owner REVOKE ALL ON TABLES FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE retrospend_owner REVOKE ALL ON SEQUENCES FROM PUBLIC;
 
 COMMIT;

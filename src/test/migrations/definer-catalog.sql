@@ -1,4 +1,4 @@
--- The function grants this PR touches, as one JSON value: every non-extension
+-- The function grants the definer hygiene migration touches, as one JSON value: every non-extension
 -- function in public (mode, search_path, ACL) and the function default
 -- privileges. Used by definer-rollback.pg.test.ts, and to regenerate
 -- definer-catalog.before.json (see the note in that test). A function with a

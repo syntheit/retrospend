@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import {
 	APP_ENV_NAMES,
 	buildAppEnv,
+	buildToolEnv,
 	ownerUrl,
 	shellExecPrefix,
 } from "../../../scripts/db-owner/index.mjs";
@@ -76,6 +77,35 @@ describe("buildAppEnv", () => {
 		expect(env.SMTP_PASSWORD).toBe(CONTAINER_ENV.SMTP_PASSWORD);
 		expect(env.NEXT_PUBLIC_APP_URL).toBe(CONTAINER_ENV.NEXT_PUBLIC_APP_URL);
 		expect(env.PATH).toBe(CONTAINER_ENV.PATH);
+	});
+});
+
+describe("buildToolEnv (migrations and the grants file)", () => {
+	const env = buildToolEnv(CONTAINER_ENV, OWNER_URL);
+
+	it("has the owner's URL and no value with the superuser's password", () => {
+		expect(env.DATABASE_URL).toBe(OWNER_URL);
+		for (const [name, value] of Object.entries(env)) {
+			expect(value, name).not.toContain(SUPER_PASSWORD);
+			expect(value, name).not.toContain(SUPER_ENCODED);
+		}
+		expect(env).not.toHaveProperty("POSTGRES_PASSWORD");
+		expect(env).not.toHaveProperty("DATABASE_OWNER_PASSWORD");
+	});
+
+	it("leaves out the app's secrets, and keeps what Prisma and the system need", () => {
+		expect(env).not.toHaveProperty("AUTH_SECRET");
+		expect(env).not.toHaveProperty("WORKER_API_KEY");
+		const withPrisma = buildToolEnv(
+			{ PATH: "/bin", PRISMA_SCHEMA_ENGINE_BINARY: "/nix/engine", HOME: "/h" },
+			OWNER_URL,
+		);
+		expect(withPrisma).toEqual({
+			PATH: "/bin",
+			PRISMA_SCHEMA_ENGINE_BINARY: "/nix/engine",
+			HOME: "/h",
+			DATABASE_URL: OWNER_URL,
+		});
 	});
 });
 
@@ -203,16 +233,18 @@ describe("docker-entrypoint.sh", () => {
 		.map((line) => line.trim())
 		.filter((line) => line !== "" && !line.startsWith("#"));
 
-	it("prepares the role before it migrates, and migrates before the grants file", () => {
+	it("does all the database work in one step, before anything else runs, and runs no prisma itself", () => {
 		const at = (needle: string) =>
 			lines.findIndex((line) => line.includes(needle));
-		expect(at("db-owner/cli.mjs bootstrap")).toBeGreaterThan(-1);
-		expect(at("db-owner/cli.mjs bootstrap")).toBeLessThan(
-			at("prisma migrate deploy"),
-		);
-		expect(at("prisma migrate deploy")).toBeLessThan(
-			at("prisma db execute --file prisma/grants/app-role.sql"),
-		);
+		const prepare = at("db-owner/cli.mjs prepare");
+		expect(prepare).toBeGreaterThan(-1);
+		expect(lines[prepare]).toMatch(/^OWNER_DATABASE_URL=\$\(node /);
+		expect(prepare).toBeLessThan(at("cli.mjs app-exec"));
+		// The migrations (with their recovery) and the grants file are the CLI's:
+		// a brand-new install's one-shot role holds CREATE on the database inside
+		// them and not after.
+		expect(lines.join("\n")).not.toMatch(/prisma/);
+		expect(lines.join("\n")).not.toMatch(/migrate/i);
 	});
 
 	it("builds the app's environment last and replaces itself with the app", () => {
@@ -232,14 +264,14 @@ describe("docker-entrypoint.sh", () => {
 		expect(script).not.toMatch(/PGPASSWORD/);
 	});
 
-	it("drops the superuser's credentials from the shell right after the bootstrap, before prisma runs", () => {
+	it("drops the superuser's credentials from the shell right after that step", () => {
 		const at = (needle: string) =>
 			lines.findIndex((line) => line.includes(needle));
 		const unset = lines.findIndex((line) =>
 			/^unset\b.*POSTGRES_PASSWORD.*POSTGRES_USER/.test(line),
 		);
-		expect(unset).toBeGreaterThan(at("db-owner/cli.mjs bootstrap"));
-		expect(unset).toBeLessThan(at("prisma migrate deploy"));
+		expect(unset).toBeGreaterThan(at("db-owner/cli.mjs prepare"));
+		expect(unset).toBeLessThan(at("cli.mjs app-exec"));
 		// The owner's URL replaces DATABASE_URL before that too.
 		expect(at('export DATABASE_URL="$OWNER_DATABASE_URL"')).toBeLessThan(unset);
 	});

@@ -4,13 +4,16 @@
  * TEST_DATABASE_URL names a server (as its superuser) and a base database
  * name. Each run creates a template database `<base>_<random>_tpl` on that
  * server and applies every migration to it once with `prisma migrate deploy`
- * as retrospend_owner, after the owner bootstrap (scripts/db-owner) has made
- * the role: the path of a new install, so a migration that needs more than the
- * owner's rights fails here. A second database, `<base>_<random>_leg`, takes the
- * path of an upgrade (migrated as the superuser, then handed over) for the one
- * test file that checks that, and a third, `_old`, does the same from a release
- * before the keystore schema existed, so the owner has migrations still to
- * apply. The template is cloned once per vitest worker
+ * as the one-shot migration role of a new install (scripts/db-owner: it holds
+ * CREATE on the database and owns public and keystore for the length of the
+ * migrations, then everything it made goes to retrospend_owner and it is
+ * dropped), after the bootstrap has made the owner: the path of a new install,
+ * so a migration that needs more than that fails here. A second
+ * database, `<base>_<random>_leg`, takes the path of an upgrade (migrated as the
+ * superuser, then handed over) for the one test file that checks that, a third,
+ * `_old`, does the same from a 0.4.x release (OLD_CUTOFF) so the owner has
+ * migrations still to apply, and `_scr`, `_sc2` and `_sc3` are empty, for migrations of a
+ * test's own (scratch-project.ts). The template is cloned once per vitest worker
  * (`<base>_<random>_w<n>`). Workers get the owner's URL, so `adminDb`
  * runs as retrospend_owner like the app in production; the superuser's URL is
  * a separate, opt-in value (`superUrl()` in pg-harness.ts). pg-env.ts picks a
@@ -20,27 +23,18 @@
  * picks its own base name. The owner role is cluster-wide: every run derives
  * the same password from the superuser's, so runs share it harmlessly.
  */
-import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import {
-	mkdirSync,
-	mkdtempSync,
-	readdirSync,
-	readFileSync,
-	rmSync,
-	symlinkSync,
-	writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { Client } from "pg";
 import type { TestProject } from "vitest/node";
 import {
 	bootstrap,
 	deriveOwnerPassword,
+	migrateWithRecovery,
 	ownerUrl,
 	urlPassword,
 } from "../../scripts/db-owner/index.mjs";
+import { parseTestDatabaseUrl } from "./pg-test-url";
+import { makeScratchProject } from "./scratch-project";
 
 declare module "vitest" {
 	export interface ProvidedContext {
@@ -50,8 +44,8 @@ declare module "vitest" {
 		pgWorkerSuperUrls: string[];
 		/**
 		 * How many objects a second owner bootstrap handed over on the template
-		 * after the migrations ran as the owner: zero when every migration made
-		 * its objects as retrospend_owner.
+		 * after the migrations ran as the one-shot migration role: zero when all
+		 * it made went to retrospend_owner.
 		 */
 		pgFresh: { handedOverAfterMigrate: number };
 		/**
@@ -59,19 +53,23 @@ declare module "vitest" {
 		 * state of an upgraded install, and how many objects the handover moved.
 		 */
 		pgLegacy: { ownerUrl: string; superUrl: string; handedOver: number };
+		/** An empty database with the owner bootstrap done, for migrations of a test's own. */
+		pgScratch: { ownerUrl: string; superUrl: string };
+		/** A second empty one, for a migration that fails on a new install. */
+		pgScratch2: { ownerUrl: string; superUrl: string };
+		/** A third, for a first migration that fails, and for an attack on the next start. */
+		pgScratch3: { ownerUrl: string; superUrl: string };
 		/**
-		 * A database migrated as the superuser only up to the migration before
-		 * the keystore schema (OLD_CUTOFF), then handed over: an install from an
-		 * older release, with migrations left to apply as the owner.
+		 * A database migrated as the superuser only up to OLD_CUTOFF, then handed
+		 * over: a 0.4.x install, with migrations left to apply as the owner.
 		 */
 		pgOld: { ownerUrl: string; superUrl: string; cutoff: string };
 	}
 }
 
-// Postgres truncates identifiers at 63 bytes. A derived name is
-// `<base>_<4 hex>` plus a suffix of at most 4 characters ("_tpl", "_w16").
+// Postgres truncates identifiers at 63 bytes (see MAX_BASE_NAME in
+// pg-test-url.ts for the room a derived name needs).
 const MAX_IDENTIFIER = 63;
-const MAX_BASE_NAME = 54;
 
 /**
  * Each worker holds a Pool of up to 20 connections to its own database, so
@@ -91,28 +89,59 @@ function workerCount(maxWorkers: number | undefined): number {
 	return maxWorkers;
 }
 
-/** The first migration the `_old` database does not get: the keystore schema. */
-export const OLD_CUTOFF = "20261109100000_keystore";
+/**
+ * The first migration the `_old` database does not get: the first one after
+ * the last in applied.json (the migrations that had shipped to production when
+ * this was written), so `_old` is a real 0.4.x install.
+ */
+export const OLD_CUTOFF = "20261025100000_budget_checkpoints";
 
 /** Names of the template, the two upgrade fixtures and the per-worker databases for one run. */
 export function runDatabaseNames(
 	baseName: string,
 	runId: string,
 	workers: number,
-): { template: string; legacy: string; old: string; workers: string[] } {
+): {
+	template: string;
+	legacy: string;
+	old: string;
+	scratch: string;
+	scratch2: string;
+	scratch3: string;
+	workers: string[];
+} {
 	const stem = `${baseName}_${runId}`;
 	const template = `${stem}_tpl`;
 	const legacy = `${stem}_leg`;
 	const old = `${stem}_old`;
+	const scratch = `${stem}_scr`;
+	const scratch2 = `${stem}_sc2`;
+	const scratch3 = `${stem}_sc3`;
 	const names = Array.from({ length: workers }, (_, i) => `${stem}_w${i + 1}`);
-	for (const name of [template, legacy, old, ...names]) {
+	for (const name of [
+		template,
+		legacy,
+		old,
+		scratch,
+		scratch2,
+		scratch3,
+		...names,
+	]) {
 		if (Buffer.byteLength(name) > MAX_IDENTIFIER) {
 			throw new Error(
 				`Derived test database name "${name}" is longer than ${MAX_IDENTIFIER} bytes`,
 			);
 		}
 	}
-	return { template, legacy, old, workers: names };
+	return {
+		template,
+		legacy,
+		old,
+		scratch,
+		scratch2,
+		scratch3,
+		workers: names,
+	};
 }
 
 function maintenanceUrl(url: URL): string {
@@ -136,54 +165,6 @@ export default async function setup(project: TestProject) {
 		console.error(`pg test setup failed: ${causes.join("; ")}`);
 		throw error;
 	}
-}
-
-// The harness creates and drops databases, so it must never reach a real one.
-// Dev (5434) and staging (5435) databases listen on localhost too, and the app
-// ports (prod 1997, dev 2997, staging 3997) are never a test Postgres.
-const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
-const REFUSED_PORTS = new Set([5434, 5435, 1997, 2997, 3997]);
-const TEST_NAME = /^retrospend_test(_|$)/;
-
-/**
- * Validates TEST_DATABASE_URL and returns the server URL and base database
- * name. Throws unless it points at a local test Postgres with a
- * `retrospend_test` name.
- */
-export function parseTestDatabaseUrl(raw: string | undefined): {
-	baseUrl: URL;
-	baseName: string;
-} {
-	if (!raw) {
-		throw new Error(
-			"TEST_DATABASE_URL is not set. Start docker-compose.test.yml and point it at a database name unique to your worktree.",
-		);
-	}
-
-	const baseUrl = new URL(raw);
-	if (!LOCAL_HOSTS.has(baseUrl.hostname)) {
-		throw new Error(
-			`TEST_DATABASE_URL must point at localhost, got host "${baseUrl.hostname}"`,
-		);
-	}
-	const port = Number(baseUrl.port || 5432);
-	if (REFUSED_PORTS.has(port)) {
-		throw new Error(
-			`TEST_DATABASE_URL port ${port} belongs to a dev, staging or prod service, not the test Postgres`,
-		);
-	}
-
-	const baseName = baseUrl.pathname.slice(1);
-	if (
-		!TEST_NAME.test(baseName) ||
-		!/^[a-z0-9_]+$/.test(baseName) ||
-		baseName.length > MAX_BASE_NAME
-	) {
-		throw new Error(
-			`TEST_DATABASE_URL database name must start with retrospend_test, use lowercase [a-z0-9_] and be at most ${MAX_BASE_NAME} characters, got "${baseName}"`,
-		);
-	}
-	return { baseUrl, baseName };
 }
 
 async function createRunDatabase(project: TestProject) {
@@ -233,69 +214,27 @@ async function createRunDatabase(project: TestProject) {
 			}
 		});
 
-	const migrate = (databaseUrl: string) =>
-		new Promise<void>((resolve, reject) => {
-			execFile(
-				"pnpm",
-				["exec", "prisma", "migrate", "deploy"],
-				{ env: { ...process.env, DATABASE_URL: databaseUrl } },
-				(error, _stdout, stderr) => {
-					if (error)
-						reject(new Error(`prisma migrate deploy failed: ${stderr}`));
-					else resolve();
-				},
-			);
-		});
-	// `prisma migrate deploy` only knows "all of them", so the old release's
-	// state is made from a scratch project directory that links the schema and
-	// the migrations before the cutoff, and nothing else.
-	const migrateBefore = (databaseUrl: string, cutoff: string) =>
-		new Promise<void>((resolve, reject) => {
-			const root = process.cwd();
-			const dir = mkdtempSync(join(tmpdir(), "retrospend-old-release-"));
-			try {
-				mkdirSync(join(dir, "prisma", "migrations"), { recursive: true });
-				symlinkSync(join(root, "node_modules"), join(dir, "node_modules"));
-				writeFileSync(
-					join(dir, "prisma.config.ts"),
-					readFileSync(join(root, "prisma.config.ts")),
-				);
-				symlinkSync(
-					join(root, "prisma", "schema.prisma"),
-					join(dir, "prisma", "schema.prisma"),
-				);
-				const migrations = join(root, "prisma", "migrations");
-				symlinkSync(
-					join(migrations, "migration_lock.toml"),
-					join(dir, "prisma", "migrations", "migration_lock.toml"),
-				);
-				for (const name of readdirSync(migrations).sort()) {
-					if (name >= cutoff || name.endsWith(".toml")) continue;
-					symlinkSync(
-						join(migrations, name),
-						join(dir, "prisma", "migrations", name),
-					);
-				}
-			} catch (error) {
-				rmSync(dir, { recursive: true, force: true });
-				reject(error);
-				return;
-			}
-			execFile(
-				join(root, "node_modules", ".bin", "prisma"),
-				["migrate", "deploy"],
-				{ cwd: dir, env: { ...process.env, DATABASE_URL: databaseUrl } },
-				(error, _stdout, stderr) => {
-					rmSync(dir, { recursive: true, force: true });
-					if (error)
-						reject(new Error(`prisma migrate deploy failed: ${stderr}`));
-					else resolve();
-				},
-			);
-		});
-	const switched = async (databaseUrl: string) => {
+	// A database migrated as the superuser, the way every older release did.
+	const migrateAsSuperuser = (databaseUrl: string, root?: string) =>
+		migrateWithRecovery(databaseUrl, { root, log: () => undefined });
+	const migrateBefore = async (databaseUrl: string, cutoff: string) => {
+		// `prisma migrate deploy` only knows "all of them", so the old release's
+		// state is made from a scratch project that links the migrations before
+		// the cutoff and nothing else.
+		const scratch = makeScratchProject({ realMigrationsBefore: cutoff });
+		try {
+			await migrateAsSuperuser(databaseUrl, scratch.dir);
+		} finally {
+			scratch.cleanup();
+		}
+	};
+	const switched = async (
+		databaseUrl: string,
+		whileOwnerMayCreate?: (ownerUrl: string) => Promise<void>,
+	) => {
 		const result = await bootstrap(databaseUrl, {
 			warn: (message) => console.error(message),
+			whileOwnerMayCreate,
 		});
 		if (result.status !== "switched") {
 			throw new Error(
@@ -316,23 +255,46 @@ async function createRunDatabase(project: TestProject) {
 			);
 			await create(client, names.legacy, `CREATE DATABASE "${names.legacy}"`);
 			await create(client, names.old, `CREATE DATABASE "${names.old}"`);
+			await create(client, names.scratch, `CREATE DATABASE "${names.scratch}"`);
+			await create(
+				client,
+				names.scratch2,
+				`CREATE DATABASE "${names.scratch2}"`,
+			);
+			await create(
+				client,
+				names.scratch3,
+				`CREATE DATABASE "${names.scratch3}"`,
+			);
 		});
 		// The template takes the path of a new install: the bootstrap, then
-		// every migration as retrospend_owner, so a migration that needs more
-		// than the owner's rights fails here and not in production.
-		const ownerOfTemplate = await switched(urlFor(names.template));
+		// every migration as retrospend_owner with only the CREATE on the
+		// database that a start gives it, taken back afterwards, so a migration
+		// that needs more than the owner's rights fails here and not in
+		// production.
+		// The roles first, so that the migrations of the other databases (which
+		// create retrospend_app if it is missing) never race the bootstrap.
+		await switched(urlFor(names.template));
+		const template = switched(urlFor(names.template), (url) =>
+			migrateWithRecovery(url, { log: () => undefined }),
+		);
 		// The legacy database takes the path of an upgrade: migrated as the
 		// superuser (every older release did), then the bootstrap hands all of
 		// it to the owner. One test file reads it; nothing else touches it.
-		// The old one is the same, from a release before the keystore schema
-		// (OLD_CUTOFF): the owner then has migrations left to apply.
+		// The old one is the same, from a 0.4.x release (before OLD_CUTOFF):
+		// the owner then has migrations left to apply, the keystore one among
+		// them, and the test applies them with a start. The scratch one is an
+		// empty database for migrations of the tests' own.
 		await Promise.all([
-			migrate(ownerOfTemplate.ownerUrl),
-			migrate(urlFor(names.legacy)),
+			template,
+			migrateAsSuperuser(urlFor(names.legacy)),
 			migrateBefore(urlFor(names.old), OLD_CUTOFF),
 		]);
 		legacyHandedOver = (await switched(urlFor(names.legacy))).changedObjects;
 		await switched(urlFor(names.old));
+		await switched(urlFor(names.scratch));
+		await switched(urlFor(names.scratch2));
+		await switched(urlFor(names.scratch3));
 		// A second start: the migrations made everything as the owner, so there
 		// is nothing left to hand over.
 		freshHandedOver = (await switched(urlFor(names.template))).changedObjects;
@@ -377,6 +339,18 @@ async function createRunDatabase(project: TestProject) {
 		ownerUrl: ownerUrl(urlFor(names.legacy), ownerPassword),
 		superUrl: urlFor(names.legacy),
 		handedOver: legacyHandedOver,
+	});
+	project.provide("pgScratch3", {
+		ownerUrl: ownerUrl(urlFor(names.scratch3), ownerPassword),
+		superUrl: urlFor(names.scratch3),
+	});
+	project.provide("pgScratch2", {
+		ownerUrl: ownerUrl(urlFor(names.scratch2), ownerPassword),
+		superUrl: urlFor(names.scratch2),
+	});
+	project.provide("pgScratch", {
+		ownerUrl: ownerUrl(urlFor(names.scratch), ownerPassword),
+		superUrl: urlFor(names.scratch),
 	});
 	project.provide("pgOld", {
 		ownerUrl: ownerUrl(urlFor(names.old), ownerPassword),

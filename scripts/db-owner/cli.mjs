@@ -1,53 +1,61 @@
 // Command line for scripts/db-owner/index.mjs.
 //
-//   bootstrap   Reads DATABASE_URL (and DATABASE_OWNER_PASSWORD). With a
-//               superuser URL it creates the owner role, hands it the objects
-//               and prints the owner's URL on stdout, and nothing else there.
-//               With any other URL it prints nothing and the caller keeps its
-//               URL. Messages go to stderr. docker-entrypoint.sh uses this.
+//   prepare     The start's database work. Reads DATABASE_URL (and
+//               DATABASE_OWNER_PASSWORD). With a superuser URL it creates the
+//               owner role and hands it the objects, runs the migrations (a
+//               brand-new install as a one-shot role that holds CREATE on the
+//               database for that long, an upgrade as the owner), applies the
+//               grants file as the owner, and prints
+//               the owner's URL on stdout, and nothing else there. With any
+//               other URL it migrates and applies the grants as given and
+//               prints nothing. Messages and the tools' output go to stderr.
+//               docker-entrypoint.sh uses this.
 //   app-exec    Prints a shell line that puts `env -i NAME=value ...` in front
 //               of the positional parameters, for the entrypoint's final exec.
-//   run         For local development (pnpm dev, pnpm dev:test): bootstraps,
-//               migrates as the owner, optionally applies the grants file
-//               (--grants), then runs the rest of the command line with the
-//               owner's URL as DATABASE_URL.
-import { spawn, spawnSync } from "node:child_process";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+//   run         For local development (pnpm dev, pnpm dev:test): the same
+//               preparation (the grants file only with --grants), then the rest
+//               of the command line with the owner's URL as DATABASE_URL.
+import { spawn } from "node:child_process";
 import dotenv from "dotenv";
-import { bootstrap, buildAppEnv, shellExecPrefix } from "./index.mjs";
-
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+import {
+	buildAppEnv,
+	PROJECT_ROOT,
+	prepare,
+	shellExecPrefix,
+} from "./index.mjs";
 
 /**
  * @param {NodeJS.ProcessEnv} env
- * @returns {Promise<string>} the URL later steps should use
+ * @param {boolean} grants
+ * @returns {Promise<{ url: string, switched: boolean }>}
  */
-async function bootstrapUrl(env) {
+async function prepareDatabase(env, grants) {
 	const url = env.DATABASE_URL;
 	if (!url) throw new Error("DATABASE_URL is not set");
-	const result = await bootstrap(url, {
+	const { url: next, result } = await prepare(url, {
 		ownerPassword: env.DATABASE_OWNER_PASSWORD,
+		grants,
 	});
 	if (result.status === "switched") {
 		console.error(
 			`Database: connecting as retrospend_owner (${result.changedObjects} objects handed over)`,
 		);
-		return result.ownerUrl;
+	} else {
+		console.error(
+			`Database: connecting with DATABASE_URL as given (${result.reason})`,
+		);
 	}
-	console.error(
-		`Database: connecting with DATABASE_URL as given (${result.reason})`,
-	);
-	return url;
+	return { url: next, switched: result.status === "switched" };
 }
 
 async function main() {
 	const [command, ...rest] = process.argv.slice(2);
 
-	if (command === "bootstrap") {
-		const url = await bootstrapUrl(process.env);
+	if (command === "prepare") {
+		// The entrypoint always applied the grants file after the migrations.
+		const { url, switched } = await prepareDatabase(process.env, true);
 		// Print only a URL that differs: nothing means "keep yours".
-		if (url !== process.env.DATABASE_URL) process.stdout.write(`${url}\n`);
+		if (switched) process.stdout.write(`${url}\n`);
 		return;
 	}
 
@@ -74,27 +82,16 @@ async function main() {
 		// Next and Prisma read these files themselves; this script needs the
 		// URL first. Files never override what the shell already set.
 		dotenv.config({ path: [".env.local", ".env"], quiet: true });
-		const url = await bootstrapUrl(process.env);
+		const { url } = await prepareDatabase(
+			process.env,
+			flags.includes("--grants"),
+		);
 		const env = { ...process.env, DATABASE_URL: url };
-
-		const prisma = join(repoRoot, "node_modules", ".bin", "prisma");
-		const steps = [["migrate", "deploy"]];
-		if (flags.includes("--grants")) {
-			steps.push(["db", "execute", "--file", "prisma/grants/app-role.sql"]);
-		}
-		for (const step of steps) {
-			const done = spawnSync(prisma, step, {
-				env,
-				stdio: "inherit",
-				cwd: repoRoot,
-			});
-			if (done.status !== 0) process.exit(done.status ?? 1);
-		}
 
 		const child = spawn(program, args, {
 			env,
 			stdio: "inherit",
-			cwd: repoRoot,
+			cwd: PROJECT_ROOT,
 		});
 		for (const signal of /** @type {const} */ (["SIGINT", "SIGTERM"])) {
 			process.on(signal, () => child.kill(signal));
@@ -106,7 +103,7 @@ async function main() {
 	}
 
 	throw new Error(
-		"Usage: cli.mjs bootstrap | app-exec | run [--grants] -- <command>",
+		"Usage: cli.mjs prepare | app-exec | run [--grants] -- <command>",
 	);
 }
 

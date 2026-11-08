@@ -1,5 +1,5 @@
 {
-	"_comment": "Shared by the Node tests (src/test/db-owner) and the Go sidecar tests (sidecar/config/testdata/owner-vectors.json is a copy; a Go test keeps them equal). ownerPassword = hex(HMAC-SHA256(key = URL password as pgx and Node both read it, message = retrospend_owner)), computed with Python's hmac. The last three cases spell characters unencoded that net/url rejects and pgx and Node accept.",
+	"_comment": "Shared by the Node tests (src/test/db-owner) and the Go sidecar's tests. ownerPassword = hex(HMAC-SHA256(key = percent-decoded URL password, message = retrospend_owner)), computed with Python's hmac.",
 	"role": "retrospend_owner",
 	"cases": [
 		{

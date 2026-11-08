@@ -8,7 +8,9 @@
 --     another role, and in particular of no pg_* role (pg_execute_server_program,
 --     pg_read_server_files, pg_write_server_files, pg_read_all_data ...), and of
 --     no superuser or role-creating role;
---   - retrospend_app is a member of nothing.
+--   - retrospend_app is a member of nothing;
+--   - the owner cannot create schemas or extensions in the database (it holds
+--     CREATE on it only while the migrations run, and not when this is read).
 
 WITH owner AS (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'retrospend_owner'),
      app AS (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'retrospend_app')
@@ -39,5 +41,10 @@ SELECT 'owner holds ' || g.rolname || ' (directly or through another role)'
  WHERE (g.rolsuper OR g.rolcreaterole OR g.rolname LIKE 'pg\_%')
    AND g.rolname <> 'retrospend_owner'
    AND pg_catalog.pg_has_role('retrospend_owner', g.oid, 'MEMBER')
+
+UNION
+SELECT 'owner can create schemas in the database'
+ WHERE pg_catalog.has_database_privilege(
+         'retrospend_owner', pg_catalog.current_database(), 'CREATE')
 
 ORDER BY 1;
