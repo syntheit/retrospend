@@ -54,8 +54,8 @@ done
 ssh_opts=(-o BatchMode=yes -o ConnectTimeout=10 -o ControlMaster=no -o ControlPath=none
 	-o ServerAliveInterval=15 -o ServerAliveCountMax=8)
 rsync_ssh="ssh ${ssh_opts[*]}"
-vista() { ssh "${ssh_opts[@]}" vista "$@" </dev/null; }
-vista true 2>/dev/null || { echo "maestro: vista is not reachable" >&2; exit 2; }
+on_vista() { ssh "${ssh_opts[@]}" vista "$@" </dev/null; }
+on_vista true 2>/dev/null || { echo "maestro: vista is not reachable" >&2; exit 2; }
 
 if ((status)); then
 	ssh "${ssh_opts[@]}" vista bash -s <<'REMOTE'
@@ -80,8 +80,8 @@ dir=rs-runner/mae-$run_id
 results=${MAESTRO_RESULTS:-/home/matv/Projects/retrospend/docs/ui-overhaul/impl/shots/maestro}/$name/$run_id
 started=$SECONDS
 
-vista "mkdir -p $dir" || exit 2
-remote_cleanup() { vista "rm -rf $dir" >/dev/null 2>&1; }
+on_vista "mkdir -p $dir" || exit 2
+remote_cleanup() { on_vista "rm -rf $dir" >/dev/null 2>&1; }
 
 if ((avd_base)); then
 	(cd "$src" && rsync -e "$rsync_ssh" -aR flake.nix flake.lock pnpm-lock.yaml apps/mobile/scripts/android-emulator.sh \
