@@ -160,7 +160,7 @@ describe("account.updateBalance", () => {
 });
 
 describe("recurring.create", () => {
-	const nextDueOf = async (timeZone?: string) => {
+	const nextDueOf = async () => {
 		const userId = await buenosAiresUser();
 		const { value } = await forUser(userId).apply(createRecurring, {
 			template: {
@@ -170,7 +170,6 @@ describe("recurring.create", () => {
 				frequency: "MONTHLY",
 				nextDueDate: "2026-11-03",
 			},
-			...(timeZone ? { timeZone } : {}),
 		});
 		const row = await adminDb.recurringTemplate.findUniqueOrThrow({
 			where: { id: value.id },
@@ -180,12 +179,6 @@ describe("recurring.create", () => {
 
 	it("keeps the typed day as midnight in the saved zone: Nov 3, 03:00Z", async () => {
 		expect(await nextDueOf()).toEqual(new Date("2026-11-03T03:00:00Z"));
-	});
-
-	it("keeps it as midnight in the input zone when one is given: Tokyo, UTC+9", async () => {
-		expect(await nextDueOf("Asia/Tokyo")).toEqual(
-			new Date("2026-11-02T15:00:00Z"),
-		);
 	});
 });
 

@@ -137,11 +137,14 @@ export function fromWallTime(
 	return new Date(instant);
 }
 
-/** "yyyy-MM-dd" as midnight of that day in `timeZone`. */
+/**
+ * "yyyy-MM-dd" as the start of that day in `timeZone`: midnight, or the
+ * first valid time of the day where DST skips midnight (startOfWallDayIn).
+ */
 export function parseDateOnlyIn(value: string, timeZone?: string): Date {
 	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
 	if (!match) throw new Error("Date must be in YYYY-MM-DD format");
-	return fromWallTime(
+	return startOfDayParts(
 		{
 			year: Number(match[1]),
 			month: Number(match[2]) - 1,
@@ -187,16 +190,26 @@ export function startOfWallDayIn(
 	return new Date(hi * MINUTE);
 }
 
-/** Midnight at the start of `date`'s day in `timeZone`. */
-export function startOfDayIn(date: Date, timeZone?: string): Date {
-	const { year, month, day } = wallTime(date, timeZone);
-	return fromWallTime({ year, month, day }, timeZone);
+/** startOfWallDayIn, or the process's own zone when none is given. */
+function startOfDayParts(
+	parts: { year: number; month: number; day: number },
+	timeZone?: string,
+): Date {
+	return timeZone
+		? startOfWallDayIn(parts, timeZone)
+		: fromWallTime(parts, timeZone);
 }
 
-/** Midnight at the start of the day after `date`'s day in `timeZone`. */
+/** The start of `date`'s day in `timeZone`: midnight, or 01:00 where DST skips it. */
+export function startOfDayIn(date: Date, timeZone?: string): Date {
+	const { year, month, day } = wallTime(date, timeZone);
+	return startOfDayParts({ year, month, day }, timeZone);
+}
+
+/** The start of the day after `date`'s day in `timeZone`. */
 export function startOfNextDayIn(date: Date, timeZone?: string): Date {
 	const { year, month, day } = wallTime(date, timeZone);
-	return fromWallTime({ year, month, day: day + 1 }, timeZone);
+	return startOfDayParts({ year, month, day: day + 1 }, timeZone);
 }
 
 /** "yyyy-MM-dd" of `date` in `timeZone`. */

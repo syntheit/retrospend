@@ -1,10 +1,14 @@
 import { convertAmount } from "@retrospend/domain/money";
-import { startOfNextDayIn } from "@retrospend/domain/time-zone";
+import { dayKey, startOfNextDayIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { userTransaction } from "~/server/db-tx";
 import { RateCache } from "~/server/services/rate-cache";
+import {
+	createTemplate,
+	updateTemplate,
+} from "~/server/services/recurring.service";
 import { confirmRecurringExpense } from "~/server/services/recurring-confirm.mutation";
 
 export const recurringRouter = createTRPCRouter({
@@ -166,45 +170,26 @@ export const recurringRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { session, db } = ctx;
 
-			// Validate category if provided
-			if (input.categoryId) {
-				const category = await db.category.findFirst({
-					where: { id: input.categoryId, userId: session.user.id },
-				});
-				if (!category) {
-					throw new TRPCError({
-						code: "FORBIDDEN",
-						message: "Category not found",
-					});
-				}
-			}
-
-			const template = await db.recurringTemplate.create({
-				data: {
-					userId: session.user.id,
-					name: input.name,
-					amount: input.amount,
-					currency: input.currency,
-					categoryId: input.categoryId,
-					frequency: input.frequency,
-					nextDueDate: input.nextDueDate,
-					anchorDay: input.nextDueDate.getDate(),
-					websiteUrl: input.websiteUrl,
-					paymentSource: input.paymentSource,
-					autoPay: input.autoPay,
-				},
-				include: {
-					category: {
-						select: {
-							id: true,
-							name: true,
-							color: true,
-						},
-					},
-				},
+			// The picker's Date is a calendar day in the browser's zone; the service
+			// keeps that day at the start of the user's saved zone.
+			const { id } = await createTemplate(db, session.user.id, {
+				name: input.name,
+				amount: String(input.amount),
+				currency: input.currency,
+				categoryId: input.categoryId,
+				frequency: input.frequency,
+				nextDueDate: dayKey(input.nextDueDate, ctx.timeZone),
+				websiteUrl: input.websiteUrl,
+				paymentSource: input.paymentSource,
+				autoPay: input.autoPay,
 			});
 
-			return template;
+			return db.recurringTemplate.findUniqueOrThrow({
+				where: { id },
+				include: {
+					category: { select: { id: true, name: true, color: true } },
+				},
+			});
 		}),
 
 	update: protectedProcedure
@@ -242,49 +227,33 @@ export const recurringRouter = createTRPCRouter({
 				});
 			}
 
-			// Validate category if provided
-			if (input.categoryId) {
-				const category = await db.category.findFirst({
-					where: { id: input.categoryId, userId: session.user.id },
-				});
-				if (!category) {
-					throw new TRPCError({
-						code: "FORBIDDEN",
-						message: "Category not found",
-					});
-				}
-			}
-
-			const template = await db.recurringTemplate.update({
-				where: { id: input.id },
-				data: {
-					name: input.name,
-					amount: input.amount,
-					currency: input.currency,
-					categoryId: input.categoryId,
-					frequency: input.frequency,
-					nextDueDate: input.nextDueDate,
-					// A due date the user sets is the new anchor for monthly steps.
-					...(input.nextDueDate && {
-						anchorDay: input.nextDueDate.getDate(),
-					}),
-					websiteUrl: input.websiteUrl,
-					paymentSource: input.paymentSource,
-					autoPay: input.autoPay,
-					isActive: input.isActive,
-				},
-				include: {
-					category: {
-						select: {
-							id: true,
-							name: true,
-							color: true,
-						},
-					},
-				},
+			// The edit form sends back the due date it loaded, an instant read in
+			// the browser's zone. That is no change and must not move the day.
+			const dateChanged =
+				input.nextDueDate !== undefined &&
+				input.nextDueDate.getTime() !== existing.nextDueDate.getTime();
+			await updateTemplate(db, session.user.id, input.id, {
+				name: input.name,
+				amount: input.amount === undefined ? undefined : String(input.amount),
+				currency: input.currency,
+				categoryId: input.categoryId,
+				frequency: input.frequency,
+				nextDueDate:
+					dateChanged && input.nextDueDate
+						? dayKey(input.nextDueDate, ctx.timeZone)
+						: undefined,
+				websiteUrl: input.websiteUrl,
+				paymentSource: input.paymentSource,
+				autoPay: input.autoPay,
+				isActive: input.isActive,
 			});
 
-			return template;
+			return db.recurringTemplate.findUniqueOrThrow({
+				where: { id: input.id },
+				include: {
+					category: { select: { id: true, name: true, color: true } },
+				},
+			});
 		}),
 
 	delete: protectedProcedure
