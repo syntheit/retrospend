@@ -34,7 +34,8 @@ export function proxy(request: NextRequest) {
 		pathname.startsWith("/favicon") ||
 		// The install manifest and its icons are fetched without a session.
 		pathname === "/manifest.webmanifest" ||
-		pathname.startsWith("/android-chrome-") ||
+		pathname === "/android-chrome-192x192.png" ||
+		pathname === "/android-chrome-512x512.png" ||
 		pathname === "/apple-touch-icon.png"
 	) {
 		return pass(request, nonce);

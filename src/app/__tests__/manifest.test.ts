@@ -42,8 +42,13 @@ describe("proxy and the manifest", () => {
 		expect(res.headers.get("location")).toBeNull();
 	});
 
-	it("still sends other pages to sign in", () => {
-		const res = proxy(new NextRequest("https://retrospend.app/home"));
+	it.each([
+		"/home",
+		"/android-chrome-evil",
+		"/android-chrome-192x192.png/x",
+		"/manifest.webmanifest/x",
+	])("still sends %s to sign in", (path) => {
+		const res = proxy(new NextRequest(`https://retrospend.app${path}`));
 		expect(res.headers.get("location")).toContain("/login");
 	});
 });
