@@ -1071,6 +1071,16 @@ test.describe("Set up your budget", () => {
 		// The stop (the plan costs more than you have) needs a history with bills;
 		// this account has none, so the server test covers it (setup.pg.test.ts).
 		const start = sheet.getByRole("button", { name: "Start my budget" });
+		// No history and no bills: nothing is planned, so Start waits for an amount
+		// (a budget with nothing assigned starts overspent on the first expense).
+		await expect(start).toBeDisabled();
+		await expect(sheet.getByText(/Started from your last 3 months/)).toHaveCount(
+			0,
+		);
+		await expect(sheet.getByText("Nothing is planned yet.")).toBeVisible();
+		await sheet
+			.getByRole("textbox", { name: "Amount for Spending" })
+			.fill("500");
 		await expect(start).toBeEnabled();
 		await untilSaved(page, "envelope.setup", () => start.click());
 		// The toast first: it lives 6 seconds from the save, and the sheet only

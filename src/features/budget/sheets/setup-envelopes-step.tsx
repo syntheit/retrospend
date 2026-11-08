@@ -18,7 +18,9 @@ import { useMonthYear } from "./use-month-name";
 import {
 	EXTRA_DEBT_KEY,
 	hasAmount,
+	nothingPlanned,
 	type PayoffStrategy,
+	takesAmount,
 	type useSetup,
 } from "./use-setup";
 
@@ -135,6 +137,10 @@ export function SetupEnvelopesStep({
 	const limits = s.style === "LIMITS";
 	const debt = s.style === "DEBT_PAYOFF";
 	const hasDebts = p.envelopes.some((e) => e.key.startsWith("debt-"));
+	// Amounts the server proposed are from the last 3 months; with none, the sheet says nothing about history.
+	const fromHistory = p.envelopes.some(
+		(e) => hasAmount(e.target) && !!e.target.amountMinor,
+	);
 	// A group with nothing in it (no bills yet) is not a heading over nothing.
 	const groups = p.groups
 		.map((g) => ({
@@ -149,7 +155,9 @@ export function SetupEnvelopesStep({
 					{limits ? t("limitsTitle") : t("envelopesTitle")}
 				</h2>
 				<p className="text-fg-2 text-small">
-					{limits ? t("limitsSub") : t("envelopesSub")}
+					{limits
+						? t(fromHistory ? "limitsSub" : "limitsNone")
+						: t(fromHistory ? "envelopesSub" : "envelopesSubNew")}
 				</p>
 			</div>
 			{debt && !hasDebts ? <Notice tone="info">{t("noDebts")}</Notice> : null}
@@ -165,7 +173,7 @@ export function SetupEnvelopesStep({
 						{envelopes.map((e) => (
 							<Row
 								end={
-									hasAmount(e.target) ? (
+									takesAmount(e, s.style) ? (
 										<MoneyCell
 											currency={p.currency}
 											label={t("amountFor", {
@@ -198,6 +206,9 @@ export function SetupEnvelopesStep({
 					</RowList>
 				</section>
 			))}
+			{nothingPlanned(s.style, plan) ? (
+				<Notice tone="attention">{t("nothingPlanned")}</Notice>
+			) : null}
 			{plan && plan.short.minor > 0 ? (
 				<div className="flex flex-col gap-3">
 					<Notice tone="attention">

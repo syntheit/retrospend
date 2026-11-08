@@ -4,7 +4,11 @@
  * starting the budget will hold, open balances with people included. Undo
  * deletes the book (cascade) and the starting balance row.
  */
-import type { SetupInput, SetupResult } from "~/lib/schemas/envelope";
+import {
+	AMOUNT_SETUP_STYLES,
+	type SetupInput,
+	type SetupResult,
+} from "~/lib/schemas/envelope";
 import type { MoneyMutation } from "../preview/types";
 import { setupBook } from "./book.service";
 import { projectIn, savePayoffPlan } from "./debt.service";
@@ -14,6 +18,7 @@ import { forgetMonthViews, monthViewIn } from "./month-read";
 import { nextPay } from "./pay-cycle";
 import { planCostIn } from "./plan-read";
 import { replaySplits } from "./splits-replay";
+import { applyPlan } from "./use-my-plan";
 import { FIGURE_LEFT_TO_SPEND, FIGURE_NOT_PLANNED_YET } from "./verdict";
 
 export type SetupMutationInput = SetupInput & { timeZone: string | null };
@@ -33,11 +38,13 @@ export const setupEnvelopeBook: MoneyMutation<SetupMutationInput, SetupResult> =
 				made,
 				now,
 			);
+			const plan = await planAtStart(tx, actor.userId, now);
+			await fundAmounts(tx, actor.userId, input, now);
 			return {
 				value: {
 					bookId: made.bookId,
 					openBalances: await openBalancesAtStart(tx, actor.userId, now),
-					plan: await planAtStart(tx, actor.userId, now),
+					plan,
 					nextPay: nextPay(
 						input.pay?.frequency ?? null,
 						input.pay?.nextPay ?? null,
@@ -118,6 +125,27 @@ async function planAtStart(
 			currency: cost.currency,
 		},
 	};
+}
+
+/**
+ * The amounts set here are what the budget starts with: the book is funded
+ * from the money to plan as Use my plan does (the rest stays Not planned
+ * yet), in the same write, so the preview shows the funded result and the
+ * first expense is not overspent. Undo goes with the book (cascade).
+ */
+async function fundAmounts(
+	tx: Parameters<typeof loadBook>[0],
+	userId: string,
+	input: SetupInput,
+	now: Date,
+): Promise<void> {
+	if (!AMOUNT_SETUP_STYLES.has(input.style)) return;
+	forgetMonthViews(tx);
+	const read = await monthViewIn(tx, userId, now);
+	const held = Math.max(0, read?.dto.toAssign.amount.minor ?? 0);
+	if (held > 0)
+		await applyPlan(tx, userId, now, { amount: held, rest: "LEAVE" });
+	forgetMonthViews(tx);
 }
 
 /** Balances with each person from before the start, per currency, never netted. */

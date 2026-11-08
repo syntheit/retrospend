@@ -149,7 +149,7 @@ describe("Home reads over v1", () => {
 		);
 		expect(glance.budget).toMatchObject({
 			state: "ready",
-			verdict: { style: "FLEX" },
+			verdict: { style: "SAVE_FIRST" },
 			notPlannedYet: { id: "budget.notPlannedYet" },
 		});
 	});

@@ -1,15 +1,15 @@
 "use client";
 
+import { dayKey } from "@retrospend/domain/time-zone";
 import { useTranslations } from "next-intl";
-import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { useRef, useState } from "react";
 import { MoneyInput } from "~/components/money/money-input";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { Button } from "~/components/ui/button";
 import { Sheet } from "~/components/ui/sheet";
 import { SkeletonRows } from "~/components/ui/skeleton";
 import { useToast } from "~/components/ui/toast";
 import { Field } from "~/features/entry/shared-ui";
-import { dayKey } from "@retrospend/domain/time-zone";
 import { api } from "~/trpc/react";
 import { SetupEnvelopesStep } from "./setup-envelopes-step";
 import { SetupPayStep } from "./setup-pay-step";
@@ -17,7 +17,7 @@ import { type Choice, SetupStyleStep } from "./setup-style-step";
 import type { SheetProps } from "./types";
 import { useMoneyWrite } from "./use-money-write";
 import { useMonth } from "./use-month";
-import { payAnswered, useSetup } from "./use-setup";
+import { nothingPlanned, payAnswered, useSetup } from "./use-setup";
 
 type Step = "style" | "pay" | "money" | "envelopes";
 
@@ -89,7 +89,11 @@ function SetupForm({ open, onClose }: SheetProps) {
 		onClose();
 	};
 	const payOk = step !== "pay" || payAnswered(s.pay, dayKey(new Date()));
-	const ready = payOk && (choice === "TRACK" || !last || (w.ready && !stopped));
+	const ready =
+		payOk &&
+		(choice === "TRACK" ||
+			!last ||
+			(w.ready && !stopped && !nothingPlanned(s.style, plan)));
 	return (
 		<Sheet
 			detent="large"

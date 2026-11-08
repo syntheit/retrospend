@@ -56,6 +56,12 @@ export const SETUP_STYLES = [
 	"DEBT_PAYOFF",
 ] as const;
 export const setupStyleSchema = z.enum(SETUP_STYLES);
+/**
+ * The styles that fund the envelopes' amounts from the money you start with,
+ * in the same write as the book. A plan with no amounts funds nothing.
+ */
+export const AMOUNT_SETUP_STYLES: ReadonlySet<(typeof SETUP_STYLES)[number]> =
+	new Set(["FLEX", "WEEKLY", "EVERY_DOLLAR", "DEBT_PAYOFF"]);
 
 export const envelopeKindSchema = z.enum([
 	"MONTHLY",
