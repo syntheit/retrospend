@@ -210,7 +210,6 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql://postgres:testpassword@127.0.0.1:5436/retrospend_test_sidecar
       SIDECAR_TEST_DATABASE_URL: postgresql://postgres:testpassword@127.0.0.1:5436/retrospend_test_sidecar
     defaults:
       run:
@@ -233,6 +232,8 @@ jobs:
       # Prisma owns the schema; the sidecar has no migrations of its own.
       - name: Migrate the test database
         working-directory: .
+        env:
+          DATABASE_URL: postgresql://postgres:testpassword@127.0.0.1:5436/retrospend_test_sidecar
         run: pnpm install --frozen-lockfile && pnpm exec prisma migrate deploy
 
       # The PDF importer shells out to pdftotext (the image installs it too).
@@ -245,9 +246,11 @@ jobs:
       # A skip would pass silently, so check the database tests ran.
       - name: Database tests ran
         run: |
-          go test ./tasks/ -run 'TestProcessRecurring' -v -count=1 | tee db-tests.log
+          go test ./tasks/ -run 'TestProcessRecurring|TestRecordRateHistory' -v -count=1 | tee db-tests.log
           if grep -q -- '--- SKIP' db-tests.log; then exit 1; fi
-          grep -q -- '--- PASS: TestProcessRecurringPostsMoneyIn' db-tests.log
+          for t in TestProcessRecurringPostsMoneyIn TestProcessRecurringStepsInUserZone TestRecordRateHistory; do
+            grep -q -- "--- PASS: $t" db-tests.log
+          done
 
   # The Playwright suite on a seeded database (e2e/fixtures/seed.ts). The
   # helpers' unit tests run in the check job.
