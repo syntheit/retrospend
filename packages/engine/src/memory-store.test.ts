@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { conformanceCases } from "./conformance";
 import { fixtureRow } from "./fixtures";
 import {
@@ -255,16 +255,36 @@ describe("memory store", () => {
 			expect(ids(store.list("rates"))).toEqual(["a", "b"]);
 		});
 
-		it("a begin waiting past the timeout throws, and the queue moves on after", async () => {
-			const store = new MemoryStore({ beginTimeoutMs: 20 });
-			const forgotten = await store.begin();
-			await expect(store.begin()).rejects.toThrow(/waited 20 ms/);
-			await expect(store.transaction(() => undefined)).rejects.toThrow(
-				TransactionError,
-			);
-			forgotten.rollback();
-			await store.transaction((tx) => tx.put("rates", rate("after")));
-			expect(ids(store.list("rates"))).toEqual(["after"]);
+		it("a begin waiting past the timeout throws at that time, and the queue moves on after", async () => {
+			vi.useFakeTimers();
+			try {
+				const store = new MemoryStore({ beginTimeoutMs: 20 });
+				const forgotten = await store.begin();
+				let outcome: unknown = "pending";
+				const waiting = store.begin().then(
+					(tx) => {
+						outcome = "started";
+						tx.rollback();
+					},
+					(e: unknown) => {
+						outcome = e;
+					},
+				);
+				await vi.advanceTimersByTimeAsync(19);
+				expect(outcome).toBe("pending");
+				await vi.advanceTimersByTimeAsync(1);
+				expect(outcome).toBeInstanceOf(TransactionError);
+				expect((outcome as Error).message).toMatch(/waited 20 ms/);
+				await waiting;
+
+				// A timed-out begin takes no slot: once the forgotten one ends, the next runs.
+				const next = store.transaction((tx) => tx.put("rates", rate("after")));
+				forgotten.rollback();
+				await next;
+				expect(ids(store.list("rates"))).toEqual(["after"]);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 
 		it("without a timeout a wait that ends in time is fine", async () => {
