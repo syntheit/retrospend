@@ -24,9 +24,12 @@
 -- below puts them back.
 --
 -- Everything runs in one transaction, so a running app never sees the app role
--- without its grants.
+-- without its grants. GRANT and REVOKE take no lock that waits behind a reader.
 
 BEGIN;
+-- A start that cannot get a lock fails (and the entrypoint stops) instead of
+-- waiting behind another session for ever.
+SET LOCAL lock_timeout = '10s';
 
 GRANT USAGE ON SCHEMA public TO retrospend_app;
 -- Nobody but the owner creates objects in public (a no-op on Postgres 15+).
@@ -176,24 +179,58 @@ GRANT SELECT, USAGE ON SEQUENCE "api_event_seq_seq" TO retrospend_app;
 GRANT SELECT, USAGE ON SEQUENCE "budget_dirty_id_seq" TO retrospend_app;
 
 -- Row-level security on "user": every row readable, only the caller's own row
--- updatable. On "invite_code": a user's own codes only.
-ALTER TABLE "user" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS user_select_all ON "user";
-CREATE POLICY user_select_all ON "user"
-  AS PERMISSIVE FOR SELECT TO retrospend_app
-  USING (true);
-DROP POLICY IF EXISTS user_update_own ON "user";
-CREATE POLICY user_update_own ON "user"
-  AS PERMISSIVE FOR UPDATE TO retrospend_app
-  USING ("id" = current_setting('app.current_user_id', TRUE))
-  WITH CHECK ("id" = current_setting('app.current_user_id', TRUE));
+-- updatable. On "invite_code": a user's own codes only. Enabling it and
+-- creating a policy take an ACCESS EXCLUSIVE lock, which waits behind a running
+-- pg_dump (it holds read locks for the whole dump) and blocks every query on
+-- the table behind it. pg_dump keeps policies, so normally they are all in
+-- place: each statement runs only when the flag or the policy is missing or
+-- differs from the definition below, and checking reads the catalog without
+-- locking the table.
+DO $rls$
+DECLARE
+  p RECORD;
+  in_place BOOLEAN;
+BEGIN
+  IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid = '"user"'::regclass) THEN
+    ALTER TABLE "user" ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid = '"invite_code"'::regclass) THEN
+    ALTER TABLE "invite_code" ENABLE ROW LEVEL SECURITY;
+  END IF;
 
-ALTER TABLE "invite_code" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS invite_code_own ON "invite_code";
-CREATE POLICY invite_code_own ON "invite_code"
-  AS PERMISSIVE FOR ALL TO retrospend_app
-  USING ("createdById" = current_setting('app.current_user_id', TRUE))
-  WITH CHECK ("createdById" = current_setting('app.current_user_id', TRUE));
+  -- table, policy, command, USING and WITH CHECK as pg_get_expr prints them,
+  -- and the statement that creates it.
+  FOR p IN
+    SELECT * FROM (VALUES
+      ('user', 'user_select_all', 'r', 'true', NULL::text,
+       'CREATE POLICY user_select_all ON "user" AS PERMISSIVE FOR SELECT TO retrospend_app USING (true)'),
+      ('user', 'user_update_own', 'w',
+       '(id = current_setting(''app.current_user_id''::text, true))',
+       '(id = current_setting(''app.current_user_id''::text, true))',
+       'CREATE POLICY user_update_own ON "user" AS PERMISSIVE FOR UPDATE TO retrospend_app USING ("id" = current_setting(''app.current_user_id'', TRUE)) WITH CHECK ("id" = current_setting(''app.current_user_id'', TRUE))'),
+      ('invite_code', 'invite_code_own', '*',
+       '("createdById" = current_setting(''app.current_user_id''::text, true))',
+       '("createdById" = current_setting(''app.current_user_id''::text, true))',
+       'CREATE POLICY invite_code_own ON "invite_code" AS PERMISSIVE FOR ALL TO retrospend_app USING ("createdById" = current_setting(''app.current_user_id'', TRUE)) WITH CHECK ("createdById" = current_setting(''app.current_user_id'', TRUE))')
+    ) AS v(tbl, name, cmd, qual, wcheck, ddl)
+  LOOP
+    SELECT EXISTS (
+      SELECT 1 FROM pg_policy pol
+       WHERE pol.polrelid = quote_ident(p.tbl)::regclass
+         AND pol.polname = p.name
+         AND pol.polcmd = p.cmd::"char"
+         AND pol.polpermissive
+         AND pol.polroles = ARRAY['retrospend_app'::regrole::oid]
+         AND pg_get_expr(pol.polqual, pol.polrelid) IS NOT DISTINCT FROM p.qual
+         AND pg_get_expr(pol.polwithcheck, pol.polrelid) IS NOT DISTINCT FROM p.wcheck
+    ) INTO in_place;
+    IF NOT in_place THEN
+      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', p.name, p.tbl);
+      EXECUTE p.ddl;
+    END IF;
+  END LOOP;
+END
+$rls$;
 
 -- The key store (20261109100000_keystore): the app role reaches its own key
 -- through two functions and nothing else. Skipped when the schema is missing

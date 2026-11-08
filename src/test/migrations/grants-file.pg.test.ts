@@ -11,7 +11,7 @@
 // they are stripped here so that COMMIT cannot end the test's transaction.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Client } from "pg";
+import { Client } from "pg";
 import { describe, expect, it } from "vitest";
 import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 import { REPO_ROOT } from "../uiRules/paths";
@@ -193,6 +193,73 @@ describe("prisma/grants/app-role.sql", () => {
 
 		// Applying it again changes nothing.
 		expect(again).toEqual(applied);
+	}, 60_000);
+
+	it("sets a lock timeout at the top of its transaction", () => {
+		const sql = file.replace(/--[^\n]*/g, "");
+		expect(sql.indexOf("BEGIN;")).toBeLessThan(
+			sql.indexOf("SET LOCAL lock_timeout = '10s';"),
+		);
+		expect(sql.indexOf("SET LOCAL lock_timeout")).toBeLessThan(
+			sql.indexOf("GRANT"),
+		);
+	});
+
+	it("takes no lock that waits behind a reader when the policies are in place", async () => {
+		// pg_dump holds ACCESS SHARE on every table for the whole dump. Enabling
+		// row-level security or creating a policy needs ACCESS EXCLUSIVE and would
+		// wait behind it, so a start during a backup would hang.
+		const body = file
+			.replace(/^(BEGIN|COMMIT);$/gm, "")
+			.replace(
+				"SET LOCAL lock_timeout = '10s';",
+				"SET LOCAL lock_timeout = '1s';",
+			);
+		expect(body).toContain("lock_timeout = '1s'");
+		const dump = new Client({ connectionString: process.env.DATABASE_URL });
+		await dump.connect();
+		let controlWaited = false;
+		try {
+			await dump.query("BEGIN");
+			await dump.query('LOCK TABLE "user", "invite_code" IN ACCESS SHARE MODE');
+			await inRolledBackTransaction(async (client) => {
+				await client.query(body);
+				await client.query("SAVEPOINT control");
+				// The same lock the old statements needed does wait.
+				await client
+					.query('ALTER TABLE "user" DISABLE ROW LEVEL SECURITY')
+					.catch((error: Error) => {
+						controlWaited = /lock timeout/.test(error.message);
+					});
+			});
+		} finally {
+			await dump.query("ROLLBACK");
+			await dump.end();
+		}
+		expect(controlWaited).toBe(true);
+	}, 30_000);
+
+	it("recreates a policy that is missing or different, and the flag when it is off", async () => {
+		const body = file.replace(/^(BEGIN|COMMIT);$/gm, "");
+		let before: Awaited<ReturnType<typeof readCatalogSnapshot>> | undefined;
+		let broken: Awaited<ReturnType<typeof readCatalogSnapshot>> | undefined;
+		let after: Awaited<ReturnType<typeof readCatalogSnapshot>> | undefined;
+		await inRolledBackTransaction(async (client) => {
+			before = await readCatalogSnapshot(client);
+			await client.query(`
+				DROP POLICY user_update_own ON "user";
+				ALTER POLICY invite_code_own ON "invite_code" USING (true);
+				ALTER POLICY user_select_all ON "user" TO PUBLIC;
+				ALTER TABLE "invite_code" DISABLE ROW LEVEL SECURITY`);
+			broken = await readCatalogSnapshot(client);
+			await client.query(body);
+			after = await readCatalogSnapshot(client);
+		});
+		if (!before || !broken || !after) throw new Error("no capture");
+		expect(broken.policies).not.toEqual(before.policies);
+		expect(broken.security).not.toEqual(before.security);
+		expect(after.policies).toEqual(before.policies);
+		expect(after.security).toEqual(before.security);
 	}, 60_000);
 
 	it("leaves the database as it found it", async () => {
