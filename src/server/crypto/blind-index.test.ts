@@ -6,10 +6,12 @@
  *   index("Food") = 5ee20b7c...10bac
  *   other label   -> d23f10ec...f03b2
  *   index("Café") = 9f6cee16...7b7   (UTF-8, precomposed U+00E9)
+ *   tag = first 4 bytes of HKDF(key, info = label + " key tag") = c7d189e5
+ *   tag of a key of 32 bytes of 0x07 = a235c87b
  */
 import { randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { blindIndex } from "./blind-index";
+import { blindIndex, blindIndexTag } from "./blind-index";
 import { FieldCryptoError, Keyring } from "./field-crypto";
 
 const LABEL = "retrospend category name index v1";
@@ -51,5 +53,20 @@ describe("blindIndex", () => {
 
 	it("refuses an empty label", () => {
 		expect(() => blindIndex(ring, "", "Food")).toThrow(FieldCryptoError);
+	});
+
+	it("tags the key material, not its id", () => {
+		expect(blindIndexTag(ring, LABEL)).toBe("c7d189e5");
+		// A key made again under the same id has other bytes and another tag.
+		const again = new Keyring([{ id: 1, key: Buffer.alloc(32, 7) }]);
+		expect(blindIndexTag(again, LABEL)).toBe("a235c87b");
+		// The same bytes under another id keep the tag; a rotation keeps it too.
+		const moved = new Keyring([{ id: 9, key }]);
+		expect(blindIndexTag(moved, LABEL)).toBe("c7d189e5");
+		const rotated = new Keyring([
+			{ id: 2, key: randomBytes(32) },
+			{ id: 1, key },
+		]);
+		expect(blindIndexTag(rotated, LABEL)).toBe("c7d189e5");
 	});
 });
