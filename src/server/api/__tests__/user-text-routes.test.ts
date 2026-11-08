@@ -266,19 +266,6 @@ const cases: Case[] = [
 		empty: true,
 	},
 	{
-		label: "expenseRestore description",
-		schema: expenseRestoreSchema,
-		base: {
-			id: "e1",
-			title: "Lunch",
-			amount: 5,
-			currency: "USD",
-			date: new Date(),
-		},
-		path: "description",
-		empty: true,
-	},
-	{
 		label: "sharedCreate notes",
 		schema: sharedCreateSchema,
 		base: {
@@ -305,23 +292,6 @@ const cases: Case[] = [
 			...split,
 		},
 		path: "description",
-	},
-	{
-		label: "sharedRestore notes",
-		schema: sharedRestoreSchema,
-		base: {
-			id: "t1",
-			amount: 5,
-			currency: "USD",
-			description: "Dinner",
-			categoryId: null,
-			date: new Date(),
-			notes: null,
-			projectId: null,
-			...split,
-		},
-		path: "notes",
-		empty: true,
 	},
 	{
 		label: "createAccount name",
@@ -453,6 +423,36 @@ describe("trimmed names", () => {
 			createAccessTokenSchema.safeParse({ name: "   ", scopes: ["read"] })
 				.success,
 		).toBe(false);
+	});
+});
+
+describe("restore payloads", () => {
+	it("accept any text the column holds, control characters included", () => {
+		const stored = "legacy\u000bimport\u0001";
+		expect(
+			expenseRestoreSchema.safeParse({
+				id: "e1",
+				title: stored,
+				amount: 5,
+				currency: "USD",
+				date: new Date(),
+				location: stored,
+				description: stored,
+			}).success,
+		).toBe(true);
+		expect(
+			sharedRestoreSchema.safeParse({
+				id: "t1",
+				amount: 5,
+				currency: "USD",
+				description: stored,
+				categoryId: null,
+				date: new Date(),
+				notes: stored,
+				projectId: null,
+				...split,
+			}).success,
+		).toBe(true);
 	});
 });
 

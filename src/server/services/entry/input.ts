@@ -55,10 +55,14 @@ export function toExpenseInput(
 	};
 }
 
-/** What expense.update or expense.delete returned as `restore`. */
+/**
+ * What expense.update or expense.delete returned as `restore`. Restore puts
+ * back what was stored, so its text fields are plain strings: they must accept
+ * anything the column holds, even a legacy row with a control character.
+ */
 export const expenseRestoreSchema = z.object({
 	id,
-	title: userText("expense.title", 500),
+	title: z.string().min(1).max(500),
 	amount: z.union([z.number().positive(), decimal]),
 	currency,
 	date: z.date(),
@@ -72,8 +76,8 @@ export const expenseRestoreSchema = z.object({
 			home: currency.optional(),
 		})
 		.optional(),
-	location: userTextOrEmpty("expense.location", 191).optional(),
-	description: userTextOrEmpty("expense.description", 1000).optional(),
+	location: z.string().max(191).optional(),
+	description: z.string().max(1000).optional(),
 	categoryId: z.string().min(1).optional(),
 	amortizeOver: z.number().int().min(2).max(60).optional(),
 	excludeFromAnalytics: z.boolean().optional(),
@@ -129,15 +133,18 @@ export function toSharedInput<
 	};
 }
 
-/** What sharedExpense.update returned as `restore`. */
+/**
+ * What sharedExpense.update returned as `restore`. Plain strings, like
+ * expenseRestoreSchema: restore puts back what was stored.
+ */
 export const sharedRestoreSchema = z.object({
 	id,
 	amount: z.number().positive(),
 	currency,
-	description: userText("shared_expense.description", 500),
+	description: z.string().min(1).max(500),
 	categoryId: z.string().nullable(),
 	date: z.date(),
-	notes: userTextOrEmpty("shared_expense.notes", 5000).nullable(),
+	notes: z.string().max(5000).nullable(),
 	projectId: z.string().nullable(),
 	...splitFields,
 	// The fix requests the edit being undone had answered (`answered` of its result).
