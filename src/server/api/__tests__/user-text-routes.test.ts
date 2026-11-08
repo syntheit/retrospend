@@ -50,7 +50,6 @@ import { feedbackRouter } from "../routers/feedback";
 import { guestRouter } from "../routers/guest";
 import { paymentMethodRouter } from "../routers/paymentMethod";
 import { peopleRouter } from "../routers/people";
-import { profileRouter } from "../routers/profile";
 import { recurringRouter } from "../routers/recurring";
 import { settlementRouter } from "../routers/settlement";
 import { sharedTransactionRouter } from "../routers/shared-transaction";
@@ -215,12 +214,6 @@ const cases: Case[] = [
 		empty: true,
 	},
 	{
-		label: "profile.update name",
-		schema: inputOf(profileRouter, "update"),
-		base: {},
-		path: "name",
-	},
-	{
 		label: "user.updateProfile name",
 		schema: inputOf(userRouter, "updateProfile"),
 		base: { name: "Dana", username: "dana", email: "dana@example.com" },
@@ -335,12 +328,6 @@ const cases: Case[] = [
 		label: "api token name",
 		schema: createAccessTokenSchema,
 		base: { name: "CLI", scopes: ["read"] },
-		path: "name",
-	},
-	{
-		label: "v1 profile name",
-		schema: updateProfileSchema,
-		base: { name: "Dana", username: "dana", email: "dana@example.com" },
 		path: "name",
 	},
 	{

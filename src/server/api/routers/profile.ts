@@ -1,4 +1,3 @@
-import { userText } from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
@@ -138,11 +137,7 @@ export const profileRouter = createTRPCRouter({
 			// Each field is optional: Settings saves one at a time, so a write
 			// (or an Undo) never carries another field's older value.
 			z.object({
-				name: z
-					.string()
-					.min(1, "Name is required")
-					.pipe(userText("user.name", 100))
-					.optional(),
+				name: z.string().min(1, "Name is required").max(100).optional(),
 				username: z
 					.string()
 					.min(1, "Username is required")

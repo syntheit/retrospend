@@ -59,15 +59,15 @@ export function stripUserTextControls(text: string): string {
 	for (let i = 0; i < text.length; i++) {
 		const code = text.charCodeAt(i);
 		if (code < 0x20) {
-			if (ALLOWED_C0.has(code)) out += text[i];
+			if (ALLOWED_C0.has(code)) out += text.charAt(i);
 		} else if (code >= 0xd800 && code <= 0xdbff) {
 			const next = text.charCodeAt(i + 1);
 			if (next >= 0xdc00 && next <= 0xdfff) {
-				out += text[i] + text[i + 1];
+				out += text.slice(i, i + 2);
 				i++;
 			}
 		} else if (code < 0xdc00 || code > 0xdfff) {
-			out += text[i];
+			out += text.charAt(i);
 		}
 	}
 	return out;
