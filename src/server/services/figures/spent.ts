@@ -16,16 +16,15 @@
  * included, so it never imports the db.
  */
 
+import { sumIn } from "@retrospend/domain/money";
 import {
-	getCurrentFiscalMonth,
-	getFiscalMonthRange,
-} from "@retrospend/domain/fiscal-month";
-import {
-	currencyDecimals,
-	type MoneyItem,
-	sumIn,
-} from "@retrospend/domain/money";
-import { toMinor } from "@retrospend/domain/money-minor";
+	type SpentGroup,
+	type SpentInputs,
+	type SpentItem,
+	spentItemsOf,
+	spentMinorByCurrency,
+	spentRange,
+} from "@retrospend/domain/spent";
 import type {
 	FigureDb,
 	FigureDefinition,
@@ -82,17 +81,7 @@ export interface SpentFilter {
 /** How personal rows are grouped: per currency, per category, or per entry date and category. */
 export type SpentGrouping = "currency" | "category" | "day";
 
-/** A slice of spending. Refunds come as negative amounts, so a plain sum nets them. */
-export interface SpentItem extends MoneyItem {
-	categoryId: string | null;
-	/** The entry date for "day" grouping and for shares; null otherwise. */
-	date: Date | null;
-	/**
-	 * Spending entries behind this item. A refund nets the amount but is not
-	 * an expense, so refund items count 0, matching the profile's entry count.
-	 */
-	count: number;
-}
+export type { SpentItem };
 
 // homeCurrency splits rows booked when saved (M2) from rows with no booked
 // value, so each slice is either all booked or all on the period rate.
@@ -181,22 +170,17 @@ async function groupRows(
 	});
 }
 
-const toItem =
-	(sign: 1 | -1) =>
-	(row: GroupRow): SpentItem => ({
-		currency: row.currency,
-		amount: sign * Number(row._sum.amount ?? 0),
-		amountInUSD: sign * Number(row._sum.amountInUSD ?? 0),
-		booked: row.homeCurrency
-			? {
-					currency: row.homeCurrency,
-					amount: sign * Number(row._sum.homeAmount ?? 0),
-				}
-			: null,
-		categoryId: row.categoryId ?? null,
-		date: row.date ?? null,
-		count: sign === 1 ? row._count._all : 0,
-	});
+/** A SQL group as the domain's group (the exact sums stay Decimals until used). */
+const toGroup = (row: GroupRow): SpentGroup => ({
+	currency: row.currency,
+	homeCurrency: row.homeCurrency,
+	categoryId: row.categoryId ?? null,
+	date: row.date ?? null,
+	amount: row._sum.amount ?? 0,
+	amountInUSD: row._sum.amountInUSD ?? 0,
+	homeAmount: row._sum.homeAmount ?? 0,
+	count: row._count._all,
+});
 
 async function sharesFor(db: AppDb, filter: SpentFilter) {
 	if (filter.personalOnly) return [];
@@ -230,11 +214,11 @@ export async function spentItems(
 		groupRows(db, filter, "refund", by),
 		sharesFor(db, filter),
 	]);
-	return [
-		...spending.map(toItem(1)),
-		...refunds.map(toItem(-1)),
-		...shares.map((s) => ({ ...s, count: 1 })),
-	];
+	return spentItemsOf({
+		spending: spending.map(toGroup),
+		refunds: refunds.map(toGroup),
+		shares,
+	});
 }
 
 /** Your spending matching `filter` in `currency` at `rate`, by the totals rule. */
@@ -247,47 +231,54 @@ export async function spentIn(
 	return sumIn(await spentItems(db, filter), currency, rate);
 }
 
-/**
- * A summed Decimal in minor units, exactly (no float step). The column keeps
- * 8 decimals for every currency, so a legacy row can be more precise than its
- * currency: that sum is first rounded half to even, the domain's one rule,
- * because toMinor refuses to round a string itself.
- */
-const decimalMinor = (value: Prisma.Decimal | null, currency: string) =>
-	toMinor(
-		new Prisma.Decimal(value ?? 0).toDecimalPlaces(
-			currencyDecimals(currency),
-			Prisma.Decimal.ROUND_HALF_EVEN,
-		),
-		currency,
-	);
-
-/**
- * Your spending matching `filter` per original currency, in minor units and
- * never converted (the figure shape, §2.2). Currencies that net to zero are
- * dropped, so "nothing spent" reads the same however it came about.
- */
-export async function spentByCurrency(
+/** The figure's inputs by currency, read with SQL: the server loader (spentInputsFromRows is the device's). */
+export async function loadSpentInputs(
 	db: AppDb,
 	filter: SpentFilter,
-): Promise<Money[]> {
+): Promise<SpentInputs> {
 	const [spending, refunds, shares] = await Promise.all([
 		groupRows(db, filter, "spending", "currency"),
 		groupRows(db, filter, "refund", "currency"),
 		sharesFor(db, filter),
 	]);
-	const minor = new Map<string, number>();
-	const add = (currency: string, units: number) =>
-		minor.set(currency, (minor.get(currency) ?? 0) + units);
-	for (const row of spending)
-		add(row.currency, decimalMinor(row._sum.amount, row.currency));
-	for (const row of refunds)
-		add(row.currency, -decimalMinor(row._sum.amount, row.currency));
-	for (const share of shares)
-		add(share.currency, toMinor(share.amount, share.currency));
-	return [...minor]
-		.filter(([, units]) => units !== 0)
-		.map(([currency, units]) => ({ minor: units, currency }));
+	return {
+		spending: spending.map(toGroup),
+		refunds: refunds.map(toGroup),
+		shares,
+	};
+}
+
+/**
+ * Your spending matching `filter` per original currency, in minor units and
+ * never converted (the figure shape, §2.2). The rounding and netting are the
+ * domain's (spentMinorByCurrency), shared with the device.
+ */
+export async function spentByCurrency(
+	db: AppDb,
+	filter: SpentFilter,
+): Promise<Money[]> {
+	return spentMinorByCurrency(await loadSpentInputs(db, filter));
+}
+
+/** The figure at `now`: the user's fiscal month, start day and saved zone. */
+export async function spentAt(
+	db: FigureDb,
+	userId: string,
+	now: Date,
+): Promise<Money[]> {
+	const user = await db.user.findUnique({
+		where: { id: userId },
+		select: { fiscalMonthStartDay: true, timeZone: true },
+	});
+	const month = spentRange(
+		now,
+		user?.fiscalMonthStartDay ?? 1,
+		resolveTimeZone(user?.timeZone),
+	);
+	return spentByCurrency(db, {
+		userId,
+		date: { gte: month.start, lte: month.end },
+	});
 }
 
 /**
@@ -298,21 +289,5 @@ export async function spentByCurrency(
 export const spentFigure: FigureDefinition<FigureDb> = {
 	id: "spent",
 	scope: [],
-	compute: async (db, scope) => {
-		const user = await db.user.findUnique({
-			where: { id: scope.userId },
-			select: { fiscalMonthStartDay: true, timeZone: true },
-		});
-		const startDay = user?.fiscalMonthStartDay ?? 1;
-		const zone = resolveTimeZone(user?.timeZone);
-		const month = getFiscalMonthRange(
-			getCurrentFiscalMonth(new Date(), startDay, zone),
-			startDay,
-			zone,
-		);
-		return spentByCurrency(db, {
-			userId: scope.userId,
-			date: { gte: month.start, lte: month.end },
-		});
-	},
+	compute: (db, scope) => spentAt(db, scope.userId, new Date()),
 };
