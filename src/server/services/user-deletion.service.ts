@@ -479,11 +479,7 @@ export async function anonymizeAndDeleteUser(
 			data: { actorId: DELETED_USER_SENTINEL },
 		});
 
-		// TODO: Sanitize userId from AuditLogEntry.changes JSON fields.
-		// The changes field stores structural field diffs (old/new values), not
-		// user IDs as first-class values, so the risk is low. If needed, a raw
-		// UPDATE ... SET changes = replace(changes::text, userId, DELETED_USER_SENTINEL)::jsonb
-		// query can be added here.
+		// TODO: AuditLogEntry.changes may hold this userId in field diffs (low risk).
 
 		// Ghosts this user created: the ones in a project that goes on belong to its
 		// heir, the rest are detached before the cascade deletes them.
@@ -492,11 +488,8 @@ export async function anonymizeAndDeleteUser(
 		// Delete the user - cascades all personal data (expenses, budgets, sessions, etc.)
 		await tx.user.delete({ where: { id: userId } });
 
-		// Crypto-shred, in this same transaction and after the user row is
-		// deleted, so a concurrent first-key insert is either seen here or made
-		// the delete wait. A failure after this point rolls the keys back with
-		// everything else. The keystore trigger on "user" has already removed
-		// them on delete; this call keeps the intent in code if it changes.
+		// Crypto-shred after the user row, in this transaction (race and trigger
+		// notes on destroyDataKeys in data-key.service.ts).
 		await destroyDataKeysIfStored(userId, tx);
 
 		// Clean up GuestSessions that used this user's email (pre-signup guest access)
