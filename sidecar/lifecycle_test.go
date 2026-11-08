@@ -256,6 +256,79 @@ func TestLifecycleStartRecoversFromATransientFailure(t *testing.T) {
 	}
 }
 
+// Work (the HTTP server, the scheduler) must start only after the session was
+// checked, and runSupervised must reach run, or the watchdog never reports.
+func TestRunSupervisedChecksTheSessionBeforeWorkStarts(t *testing.T) {
+	f := newFakeLifecycle(true, 2)
+	f.isSuperuser = func(context.Context) (bool, error) {
+		f.rec.add("checkSession")
+		return true, nil
+	}
+	close(f.cronDone)
+	code, err := runSupervised(context.Background(), f.lifecycle, func() { f.rec.add("startWork") })
+	if err != nil || code != 1 {
+		t.Fatalf("code %d, err %v: the owner role appeared and run must report it", code, err)
+	}
+	events := f.rec.list()
+	if len(events) < 3 || events[0] != "checkSession" || events[1] != "startWork" || events[2] != "stopScheduler" {
+		t.Fatalf("events %v: want checkSession, startWork, then the shutdown", events)
+	}
+}
+
+func TestRunSupervisedStartsNoWorkOnAnUncheckedSession(t *testing.T) {
+	f := newFakeLifecycle(true, 1)
+	f.isSuperuser = func(context.Context) (bool, error) { return false, errors.New("connection reset") }
+	started := false
+	code, err := runSupervised(context.Background(), f.lifecycle, func() { started = true })
+	if err == nil || code == 0 || started {
+		t.Fatalf("code %d, err %v, work started %v", code, err, started)
+	}
+}
+
+// run without start would leave the watchdog off without a word.
+func TestRunPanicsWhenStartWasSkipped(t *testing.T) {
+	f := newFakeLifecycle(true, 1)
+	defer func() {
+		if recover() == nil {
+			t.Fatal("run did not refuse to supervise without start")
+		}
+	}()
+	f.run()
+}
+
+// main() is not run by tests, so check that it supervises through
+// runSupervised, after the lifecycle is built and with the exit code honored.
+func TestMainSupervisesThroughRunSupervised(t *testing.T) {
+	raw, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(raw)
+	order := []string{
+		"lc := newLifecycle(",
+		"runSupervised(context.Background(), lc, func() {",
+		"server.ListenAndServe()",
+		"c.Start()",
+		"os.Exit(code)",
+	}
+	last := -1
+	for _, want := range order {
+		i := strings.Index(src, want)
+		if i < 0 {
+			t.Fatalf("main.go no longer contains %q", want)
+		}
+		// ListenAndServe and c.Start are started inside the callback, after
+		// the call opens; the order below is the order in the file.
+		if i < last {
+			t.Fatalf("main.go has %q out of order", want)
+		}
+		last = i
+	}
+	if strings.Contains(src, "lc.run(") || strings.Contains(src, "lc.start(") {
+		t.Fatal("main must go through runSupervised, not call start or run itself")
+	}
+}
+
 // fakeQuerier answers the two catalog questions the way a database would.
 type fakeQuerier struct {
 	super      bool

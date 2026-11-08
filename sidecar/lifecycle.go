@@ -119,10 +119,25 @@ func (l *lifecycle) start(ctx context.Context) error {
 	return nil
 }
 
+// runSupervised is the order main follows: check the session (start), only
+// then let work begin (startWork starts the HTTP server and the scheduler), then
+// block in run. An error from start means startWork was never called.
+func runSupervised(ctx context.Context, l *lifecycle, startWork func()) (int, error) {
+	if err := l.start(ctx); err != nil {
+		return 1, err
+	}
+	startWork()
+	return l.run(), nil
+}
+
 // run blocks until a signal arrives or the owner role appears, shuts down in
 // order, and returns the process's exit code: 0 after a signal, 1 when it
 // stops because the owner role appeared.
 func (l *lifecycle) run() int {
+	if l.ownerAppeared == nil {
+		// Without start the watchdog never ran: refuse to supervise silently.
+		panic("lifecycle.run called before lifecycle.start")
+	}
 	code := 0
 	drain := l.signalDrain
 	select {

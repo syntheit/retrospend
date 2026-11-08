@@ -412,39 +412,41 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	lc := newLifecycle(database.Pool, c, server, &httpJobs, database.Close, sigChan)
-	if err := lc.start(context.Background()); err != nil {
+
+	// runSupervised checks the session before any work starts, starts the HTTP
+	// server and the scheduler, and then blocks until a signal, or until the
+	// owner role appears while this sidecar runs as the superuser.
+	code, err := runSupervised(context.Background(), lc, func() {
+		// Start server in goroutine
+		go func() {
+			log.Println("✓ HTTP server listening on :8080")
+			if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Fatalf("HTTP server failed: %v", err)
+			}
+		}()
+
+		// Start the scheduler
+		c.Start()
+		log.Println("✓ Scheduler started")
+		log.Println("  - Exchange rates: daily at 09:05 UTC")
+		log.Println("  - Recurring expenses: every 15 minutes")
+		log.Printf("  - Database backup: %s (retention: %d days)", cfg.BackupCron, cfg.BackupRetentionDays)
+		if len(cfg.BackupAgeRecipients) > 0 {
+			log.Printf("  - Backups encrypted to %d age recipient(s)", len(cfg.BackupAgeRecipients))
+		}
+		log.Println("  - Data retention cleanup: daily at 03:00 UTC")
+		log.Println("  - Settlement auto-finalize: daily at 04:00 UTC")
+		log.Println("  - HTTP Server: :8080")
+		if importerAvailable {
+			log.Println("  - Importer: available")
+		} else {
+			log.Println("  - Importer: no LLM provider configured")
+		}
+	})
+	if err != nil {
 		log.Fatalf("%v", err)
 	}
-
-	// Start server in goroutine
-	go func() {
-		log.Println("✓ HTTP server listening on :8080")
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("HTTP server failed: %v", err)
-		}
-	}()
-
-	// Start the scheduler
-	c.Start()
-	log.Println("✓ Scheduler started")
-	log.Println("  - Exchange rates: daily at 09:05 UTC")
-	log.Println("  - Recurring expenses: every 15 minutes")
-	log.Printf("  - Database backup: %s (retention: %d days)", cfg.BackupCron, cfg.BackupRetentionDays)
-	if len(cfg.BackupAgeRecipients) > 0 {
-		log.Printf("  - Backups encrypted to %d age recipient(s)", len(cfg.BackupAgeRecipients))
-	}
-	log.Println("  - Data retention cleanup: daily at 03:00 UTC")
-	log.Println("  - Settlement auto-finalize: daily at 04:00 UTC")
-	log.Println("  - HTTP Server: :8080")
-	if importerAvailable {
-		log.Println("  - Importer: available")
-	} else {
-		log.Println("  - Importer: no LLM provider configured")
-	}
-
-	// Wait for a signal, or for the owner role to appear while this sidecar runs
-	// as the superuser; then shut down in order (lifecycle.go).
-	if code := lc.run(); code != 0 {
+	if code != 0 {
 		os.Exit(code)
 	}
 }
