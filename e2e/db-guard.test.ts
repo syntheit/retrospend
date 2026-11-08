@@ -15,6 +15,9 @@ describe("e2eDatabaseProblem", () => {
 		expect(
 			e2eDatabaseProblem("postgresql://u:p@[::1]:5436/retrospend_test_e2e"),
 		).toBeNull();
+		expect(
+			e2eDatabaseProblem("postgresql://u:p@127.0.0.1:5437/retrospend_test_e2e"),
+		).toBeNull();
 	});
 
 	it("refuses other hosts, ports and names", () => {
@@ -28,6 +31,9 @@ describe("e2eDatabaseProblem", () => {
 		).toMatch(/port/);
 		expect(
 			e2eDatabaseProblem("postgresql://u:p@127.0.0.1/retrospend_test_e2e"),
+		).toMatch(/port/);
+		expect(
+			e2eDatabaseProblem("postgresql://u:p@127.0.0.1:5438/retrospend_test_e2e"),
 		).toMatch(/port/);
 		expect(
 			e2eDatabaseProblem("postgresql://u:p@127.0.0.1:5436/retrospend_dev"),

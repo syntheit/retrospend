@@ -50,7 +50,7 @@ Or use Nix: `nix develop` provides all of the above, plus the Prisma schema engi
 |---|---|
 | `pnpm check` | Typecheck, lint, unit tests, the UI rule ratchet and the i18n catalog check |
 | `pnpm test:pg` | Real-Postgres tests. Start `docker compose -f docker-compose.test.yml up -d` and set `TEST_DATABASE_URL` (port 5436). |
-| `pnpm test:e2e` | Playwright flows on a seeded database |
+| `pnpm test:e2e` | Playwright flows on a seeded database, on the e2e Postgres from `docker-compose.test.yml` (port 5437). |
 | `bash e2e/visual/run.sh` | Visual regression in the pinned Playwright image |
 | `pnpm --filter @retrospend/mobile test` | Mobile jest suite |
 | `cd sidecar && go test ./...` | Sidecar tests |
