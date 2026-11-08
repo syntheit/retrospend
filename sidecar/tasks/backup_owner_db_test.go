@@ -190,6 +190,17 @@ func TestBackupAsOwnerCoversForceRLSTablesAndKeystore(t *testing.T) {
 	if sessionUser != config.OwnerRole || currentUser != config.OwnerRole || super || !bypass {
 		t.Fatalf("pool is %s/%s super=%v bypassrls=%v", sessionUser, currentUser, super, bypass)
 	}
+	// The fallback watchdog's two questions, against a real server: the
+	// superuser's pool is told apart from the owner's, and the role is seen.
+	if super, err := config.RunningAsSuperuser(ctx, source.Pool); err != nil || !super {
+		t.Fatalf("RunningAsSuperuser(superuser pool) = %v, %v", super, err)
+	}
+	if super, err := config.RunningAsSuperuser(ctx, owner.Pool); err != nil || super {
+		t.Fatalf("RunningAsSuperuser(owner pool) = %v, %v", super, err)
+	}
+	if exists, err := config.OwnerRoleExists(ctx, source.Pool); err != nil || !exists {
+		t.Fatalf("OwnerRoleExists = %v, %v", exists, err)
+	}
 	if n := countRows(t, owner, `SELECT count(*) FROM needs_you_snooze WHERE "userId" = $1`, userA); n != 2 {
 		t.Fatalf("the owner sees %d snoozes of user A, want 2 (FORCE ROW LEVEL SECURITY with BYPASSRLS)", n)
 	}

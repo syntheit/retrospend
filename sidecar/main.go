@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -48,6 +49,33 @@ func main() {
 	database, err := db.Connect(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
+	}
+
+	// Jobs started by an HTTP request run in their own goroutine; shutdown waits
+	// for them.
+	var httpJobs sync.WaitGroup
+
+	// A superuser session means entrypoint.sh fell back to the URL as given
+	// because the owner role did not exist. Once the role exists, a superuser
+	// session writing to its tables could fire a trigger the owner planted, so
+	// the sidecar stops and restarts into the owner's URL.
+	ownerAppeared := make(chan struct{})
+	watchCtx, stopWatching := context.WithCancel(context.Background())
+	defer stopWatching()
+	if super, err := config.RunningAsSuperuser(context.Background(), database.Pool); err != nil {
+		log.Printf("Could not tell whether this session is a superuser: %v", err)
+	} else if super {
+		log.Printf("WARNING: running as a superuser because the %s role did not exist at start. Watching for it; the sidecar restarts when it appears.", config.OwnerRole)
+		opts := config.DefaultWatchOptions()
+		opts.Logf = log.Printf
+		go func() {
+			err := config.WatchForOwnerRole(watchCtx, func(ctx context.Context) (bool, error) {
+				return config.OwnerRoleExists(ctx, database.Pool)
+			}, opts)
+			if err == nil {
+				close(ownerAppeared)
+			}
+		}()
 	}
 
 	// Initialize cron scheduler
@@ -178,7 +206,9 @@ func main() {
 
 		log.Println("[HTTP] Manual backup triggered")
 
+		httpJobs.Add(1)
 		go func() {
+			defer httpJobs.Done()
 			if err := tasks.RunBackups(database, cfg.DatabaseURL, cfg.BackupDir, cfg.BackupRetentionDays, cfg.BackupAgeRecipients); err != nil {
 				log.Printf("[HTTP] Backup failed: %v", err)
 			}
@@ -200,7 +230,9 @@ func main() {
 
 		log.Println("[HTTP] Manual data retention cleanup triggered")
 
+		httpJobs.Add(1)
 		go func() {
+			defer httpJobs.Done()
 			report, err := tasks.RunDataRetentionCleanup(database)
 			if err != nil {
 				log.Printf("[HTTP] Cleanup failed: %v", err)
@@ -423,16 +455,28 @@ func main() {
 		log.Println("  - Importer: no LLM provider configured")
 	}
 
-	// Wait for interrupt signal
+	// Wait for an interrupt signal, or for the owner role to appear while this
+	// sidecar runs as the superuser.
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	<-sigChan
+	exitCode := 0
+	shutdownWait := 30 * time.Second
+	select {
+	case <-sigChan:
+		log.Println("🛑 Shutting down gracefully...")
+	case <-ownerAppeared:
+		log.Printf("🛑 The %s role exists: no new jobs, finishing the running ones, then exiting so the restart connects as the owner", config.OwnerRole)
+		exitCode = 1
+		// A backup may be mid-dump: give running work time to finish.
+		shutdownWait = 5 * time.Minute
+	}
+	stopWatching()
 
-	log.Println("🛑 Shutting down gracefully...")
-	c.Stop()
+	// No new scheduled jobs; the returned context ends when running ones finish.
+	cronDone := c.Stop()
 
 	// Graceful shutdown with timeout
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownWait)
 	defer shutdownCancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
@@ -441,8 +485,26 @@ func main() {
 		log.Println("✓ HTTP server stopped gracefully")
 	}
 
+	// Let scheduled jobs and requested ones (a backup mid-dump) finish before the
+	// pool closes under them.
+	jobsDone := make(chan struct{})
+	go func() {
+		<-cronDone.Done()
+		httpJobs.Wait()
+		close(jobsDone)
+	}()
+	select {
+	case <-jobsDone:
+		log.Println("✓ Running jobs finished")
+	case <-shutdownCtx.Done():
+		log.Println("⚠️ Running jobs did not finish in time: closing anyway")
+	}
+
 	database.Close()
 	log.Println("✓ Sidecar stopped")
+	if exitCode != 0 {
+		os.Exit(exitCode)
+	}
 }
 
 func handleCSV(file *os.File, provider llm.Provider, model string, batchSize int, enrichConcurrency int, categories []string, defaultCurrency string, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, error) {
