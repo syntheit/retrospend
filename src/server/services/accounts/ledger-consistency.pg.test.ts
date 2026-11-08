@@ -9,7 +9,6 @@
 import { randomUUID } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { Client } from "pg";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { figures, readFiguresIn } from "~/server/figures/registry";
@@ -20,6 +19,7 @@ import { createTransfer } from "~/server/services/transfers/create.mutation";
 import { deleteTransfer } from "~/server/services/transfers/delete.mutation";
 import { WealthService } from "~/server/services/wealth.service";
 import { adminDb } from "~/test/pg-harness";
+import { inRolledBackPrismaTransaction } from "~/test/rolled-back-sql";
 import { editAccount } from "./manage";
 import { revertRateType, setRateType } from "./rate-type.mutation";
 import {
@@ -74,47 +74,46 @@ describe("M4 on a database with balance updates from before it", () => {
 				exchangeRate: 1,
 			},
 		});
-		const client = new Client({ connectionString: process.env.DATABASE_URL });
-		await client.connect();
-		try {
+		await inRolledBackPrismaTransaction(async (tx, run) => {
 			// The table as it was before M4, with two balance updates written then.
-			await client.query("BEGIN");
-			await client.query(
-				`ALTER TABLE "asset_snapshot" DROP COLUMN "recordedAt"`,
-			);
+			await run(`ALTER TABLE "asset_snapshot" DROP COLUMN "recordedAt"`);
 			for (const [date, balance] of [
 				[daysAgo(40), 900],
 				[daysAgo(5), 1000],
 			] as const) {
-				await client.query(
+				await run(
 					`INSERT INTO "asset_snapshot" ("id", "accountId", "userId", "date", "balance", "balanceInUSD", "currency", "type")
 					 VALUES ($1, $2, $3, $4, $5, $5, 'USD', 'CASH')`,
-					[randomUUID(), account.id, user.id, date, balance],
+					randomUUID(),
+					account.id,
+					user.id,
+					date,
+					balance,
 				);
 			}
-			await client.query(m4Sql());
-			await client.query("COMMIT");
-		} catch (error) {
-			await client.query("ROLLBACK");
-			throw error;
-		} finally {
-			await client.end();
-		}
+			await run(m4Sql());
 
-		const rows = await adminDb.assetSnapshot.findMany({
-			where: { accountId: account.id },
-			orderBy: { date: "asc" },
+			const rows = await tx.assetSnapshot.findMany({
+				where: { accountId: account.id },
+				orderBy: { date: "asc" },
+			});
+			expect(rows.map((r) => r.recordedAt.getTime())).toEqual(
+				rows.map((r) => r.date.getTime()),
+			);
+
+			// The figures read as the user, as readFigures does, in this transaction.
+			await tx.$executeRaw`SELECT set_config('app.current_user_id', ${user.id}, true),
+			                            set_config('role', 'retrospend_app', true)`;
+			const minor = async (id: string) => {
+				const readings = await readFiguresIn(tx, [figures.get(id)], {
+					userId: user.id,
+				});
+				return readings.get(id)?.find((m) => m.currency === "USD")?.minor;
+			};
+			// The update five days ago raised 900 to 1,000: Not logged +100, no revaluation.
+			expect(await minor("netWorthChange.notLogged")).toBe(10_000);
+			expect(await minor("netWorthChange.revaluation")).toBe(0);
 		});
-		expect(rows.map((r) => r.recordedAt.getTime())).toEqual(
-			rows.map((r) => r.date.getTime()),
-		);
-		// The update five days ago raised 900 to 1,000: Not logged +100, no revaluation.
-		expect(await figureMinor(user.id, "netWorthChange.notLogged", "USD")).toBe(
-			10_000,
-		);
-		expect(
-			await figureMinor(user.id, "netWorthChange.revaluation", "USD"),
-		).toBe(0);
 	});
 });
 

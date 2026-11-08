@@ -19,7 +19,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
-import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { CorrectInput } from "~/lib/schemas/corrections";
 import { userTransaction } from "~/server/db-tx";
@@ -52,6 +51,7 @@ import { assertCanModifyTransaction } from "~/server/services/shared-expenses/pr
 import { SharedTransactionService } from "~/server/services/shared-expenses/transaction.service";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import { adminDb } from "~/test/pg-harness";
+import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 import {
 	correctSplitMutation,
 	undoCorrectionMutation,
@@ -1314,9 +1314,7 @@ describe("migration corrections_fix_requests", () => {
 			),
 			"utf8",
 		);
-		const client = new Client({ connectionString: process.env.DATABASE_URL });
-		await client.connect();
-		try {
+		await inRolledBackTransaction(async (client) => {
 			await client.query(migration);
 			await client.query(migration);
 			const triggers = await client.query(
@@ -1326,8 +1324,6 @@ describe("migration corrections_fix_requests", () => {
 				"payment_release_locks_delete",
 				"payment_release_locks_status",
 			]);
-		} finally {
-			await client.end();
-		}
+		});
 	});
 });

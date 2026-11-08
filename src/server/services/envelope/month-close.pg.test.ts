@@ -9,7 +9,6 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Client } from "pg";
 import { beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { forUser } from "~/server/services/preview";
@@ -18,6 +17,7 @@ import {
 	removeBudgetSide,
 } from "~/server/services/transfers/budget-side";
 import { adminDb } from "~/test/pg-harness";
+import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 import { addRow, seedUser, setupInput } from "./__tests__/pg-fixture";
 import { addMonths } from "./calendar";
 import {
@@ -416,13 +416,9 @@ describe("month_close_wealth migration", () => {
 			),
 			"utf8",
 		);
-		const client = new Client({ connectionString: process.env.DATABASE_URL });
-		await client.connect();
-		try {
+		await inRolledBackTransaction(async (client) => {
 			await client.query(sql);
 			await client.query(sql);
-		} finally {
-			await client.end();
-		}
+		});
 	});
 });

@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { adminDb, createTestUser } from "~/test/pg-harness";
+import { inRolledBackPrismaTransaction } from "~/test/rolled-back-sql";
 import { Prisma } from "~prisma";
 
 const MIGRATIONS = fileURLToPath(
@@ -121,38 +122,41 @@ describe("entry_rate_type migration", () => {
 	});
 
 	it("backfills the rate type each pricingSource names, on a rerun too", async () => {
-		await runSql(migrationSql());
-		const rows = await adminDb.expense.findMany({
-			where: { userId },
-			select: { id: true, rateType: true, homeCurrency: true },
+		await inRolledBackPrismaTransaction(async (tx, run) => {
+			await run(migrationSql());
+			const rows = await tx.expense.findMany({
+				where: { userId },
+				select: { id: true, rateType: true, homeCurrency: true },
+			});
+			const byKey = Object.fromEntries(
+				Object.entries(ids).map(([key, id]) => [
+					key,
+					rows.find((r) => r.id === id)?.rateType,
+				]),
+			);
+			expect(byKey).toEqual({
+				namedType: "blue",
+				namedTypeCase: "blue",
+				custom: "custom",
+				manualMatchesOfficial: "official",
+				importNoMatch: null,
+				typeTheCurrencyLacks: "official",
+				freeText: null,
+				usd: null,
+			});
+			// No home leg is invented for a row saved before M2.
+			expect(rows.every((r) => r.homeCurrency === null)).toBe(true);
 		});
-		const byKey = Object.fromEntries(
-			Object.entries(ids).map(([key, id]) => [
-				key,
-				rows.find((r) => r.id === id)?.rateType,
-			]),
-		);
-		expect(byKey).toEqual({
-			namedType: "blue",
-			namedTypeCase: "blue",
-			custom: "custom",
-			manualMatchesOfficial: "official",
-			importNoMatch: null,
-			typeTheCurrencyLacks: "official",
-			freeText: null,
-			usd: null,
-		});
-		// No home leg is invented for a row saved before M2.
-		expect(rows.every((r) => r.homeCurrency === null)).toBe(true);
 	});
 
 	it("leaves exactly the pre-check's rows unmapped", async () => {
-		const rows = await runSql<{ left: number }>(
-			`SELECT count(*)::int AS left FROM expense
-			 WHERE "userId" = $1 AND currency <> 'USD' AND "rateType" IS NULL`,
-			[userId],
-		);
-		expect(rows).toEqual([{ left: 2 }]);
+		await inRolledBackPrismaTransaction(async (tx, run) => {
+			await run(migrationSql());
+			const rows = await tx.$queryRaw<{ left: number }[]>`
+				SELECT count(*)::int AS left FROM expense
+				WHERE "userId" = ${userId} AND currency <> 'USD' AND "rateType" IS NULL`;
+			expect(rows).toEqual([{ left: 2 }]);
+		});
 	});
 
 	it("refuses a half-booked home leg", async () => {

@@ -8,13 +8,13 @@
 import { randomUUID } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Client } from "pg";
 import { beforeAll, describe, expect, it } from "vitest";
 import { envelopeRouter } from "~/server/api/routers/envelope";
 import { createCallerFactory } from "~/server/api/trpc";
 import { readFigures } from "~/server/figures/read";
 import { forUser } from "~/server/services/preview";
 import { adminDb } from "~/test/pg-harness";
+import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 import { addRow, seedUser, setupInput } from "./__tests__/pg-fixture";
 import { EnvelopeError } from "./errors";
 import { assignEnvelopes, moveMoney, undoMovements } from "./movement.mutation";
@@ -346,12 +346,8 @@ describe("drop_rollout_flags migration", () => {
 			join(process.cwd(), "prisma/migrations", folder ?? "", "migration.sql"),
 			"utf8",
 		);
-		const client = new Client({ connectionString: process.env.DATABASE_URL });
-		await client.connect();
-		try {
+		await inRolledBackTransaction(async (client) => {
 			await client.query(sql);
-		} finally {
-			await client.end();
-		}
+		});
 	});
 });

@@ -10,7 +10,6 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Client } from "pg";
 import { beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { readFigures } from "~/server/figures/read";
@@ -19,6 +18,7 @@ import { applyPlanFor, undoPlan } from "~/server/services/income/plan-seam";
 import { forUser } from "~/server/services/preview";
 import { computeBalance } from "~/server/services/shared-expenses/balance";
 import { adminDb, createTestUser } from "~/test/pg-harness";
+import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 import { Prisma } from "~prisma";
 import { seedUser, setupInput } from "./__tests__/pg-fixture";
 import { getMonth, getOwed } from "./read.service";
@@ -541,17 +541,14 @@ describe("splits_budget migration", () => {
 			),
 			"utf8",
 		);
-		const client = new Client({ connectionString: process.env.DATABASE_URL });
-		await client.connect();
-		try {
+		await inRolledBackTransaction(async (client) => {
 			await client.query(sql);
 			await client.query(sql);
-		} finally {
-			await client.end();
-		}
-		const row = await adminDb.projectParticipant.findFirst({
-			where: { projectId: p.id },
+			const { rows } = await client.query<{ budgetRouting: string }>(
+				'SELECT "budgetRouting" FROM project_participant WHERE "projectId" = $1',
+				[p.id],
+			);
+			expect(rows.map((r) => r.budgetRouting)).toEqual(["CATEGORY"]);
 		});
-		expect(row?.budgetRouting).toBe("CATEGORY");
 	});
 });

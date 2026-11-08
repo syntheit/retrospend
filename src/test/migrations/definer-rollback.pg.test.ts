@@ -31,6 +31,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Client } from "pg";
 import { describe, expect, it } from "vitest";
+import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 import { REPO_ROOT } from "../uiRules/paths";
 
 const MIGRATION = "20261109500000_definer_hygiene";
@@ -56,29 +57,9 @@ const before: Catalog = JSON.parse(
 const migrationSql = read("prisma/migrations", MIGRATION, "migration.sql");
 const rollbackSql = read("prisma/rollback", `${MIGRATION}.sql`);
 
-class Rollback extends Error {}
-
 async function capture(client: Client): Promise<Catalog> {
 	const result = await client.query<{ jsonb_pretty: string }>(catalogSql);
 	return JSON.parse(result.rows[0]?.jsonb_pretty ?? "{}");
-}
-
-/** Runs the steps in one transaction on the worker's database, then rolls back. */
-async function inRolledBackTransaction(
-	steps: (client: Client) => Promise<void>,
-) {
-	const client = new Client({ connectionString: process.env.DATABASE_URL });
-	await client.connect();
-	try {
-		await client.query("BEGIN");
-		await steps(client);
-		throw new Rollback();
-	} catch (error) {
-		await client.query("ROLLBACK");
-		if (!(error instanceof Rollback)) throw error;
-	} finally {
-		await client.end();
-	}
 }
 
 describe("rollback of 20261109500000_definer_hygiene", () => {
