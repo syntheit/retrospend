@@ -258,6 +258,9 @@ model Expense {
   @@index([userId, date])
   @@index([parentId])
   @@index([recurringTemplateId])
+  // The duplicate check reads this one; it compares titles in the app (E2EE D7).
+  @@index([userId, date, amount, currency])
+  // Dropped by prisma/deferred/D7_drop_duplicate_title_index; remove this line with it.
   @@index([userId, date, title, amount, currency])
   @@index([userId, status, date])
   @@index([userId, excludeFromAnalytics, date])
