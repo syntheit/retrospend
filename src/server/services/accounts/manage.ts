@@ -419,7 +419,7 @@ export async function importAccounts(
 			else await createAccount(db, userId, row, timeZone);
 			successCount++;
 		} catch (error) {
-			console.error(`Failed to import wealth row ${row.name}:`, error);
+			console.error("Failed to import a wealth row:", error);
 			errorCount++;
 		}
 	}

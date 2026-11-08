@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dec } from "~/server/services/envelope/units";
+import { dec } from "../precise-decimal";
 import { homePerUnit, homeValue, type RatePick } from "./valuation";
 
 const DAY = new Date("2026-10-21T23:59:59.999Z");

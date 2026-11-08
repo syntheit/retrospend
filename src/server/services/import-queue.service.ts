@@ -554,7 +554,7 @@ export class ImportQueueService {
 						}
 					} catch (error) {
 						console.error(
-							`Failed to parse importer response line: ${line}`,
+							`Failed to parse an importer response line (${line.length} chars)`,
 							error,
 						);
 					}
@@ -574,7 +574,7 @@ export class ImportQueueService {
 						throw new Error(data.message);
 					}
 				} catch (error) {
-					console.error(`Failed to parse final buffer: ${buffer}`, error);
+					console.error(`Failed to parse the final buffer (${buffer.length} chars)`, error);
 				}
 			}
 

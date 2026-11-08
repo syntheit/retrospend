@@ -1,0 +1,6 @@
+{
+	"LOG-020": {
+		"src/server/api/routers/paymentMethod.ts": 1,
+		"src/server/services/admin-test-email.ts": 1
+	}
+}
