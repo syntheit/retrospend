@@ -19,7 +19,7 @@ import { forUser } from "~/server/services/preview";
 import { createTransfer } from "~/server/services/transfers/create.mutation";
 import { deleteTransfer } from "~/server/services/transfers/delete.mutation";
 import { WealthService } from "~/server/services/wealth.service";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb } from "~/test/pg-harness";
 import { editAccount } from "./manage";
 import { revertRateType, setRateType } from "./rate-type.mutation";
 import {
@@ -31,6 +31,7 @@ import {
 	openAccount,
 	seedArsRates,
 	TODAY,
+	todayUser,
 } from "./test-fixtures";
 import { revertBalanceUpdate, updateBalance } from "./update-balance.mutation";
 
@@ -62,7 +63,7 @@ beforeAll(seedArsRates);
 
 describe("M4 on a database with balance updates from before it", () => {
 	it("backfills recordedAt to each snapshot's day, so an old update is not Not logged from zero", async () => {
-		const { user } = await createTestUser();
+		const { user } = await todayUser();
 		const account = await adminDb.assetAccount.create({
 			data: {
 				userId: user.id,
@@ -132,7 +133,7 @@ describe("a leg deleted after a later balance update included it", () => {
 	}
 
 	it("income.delete: balance, snapshot series and netWorthChange all drop the income", async () => {
-		const { user } = await createTestUser();
+		const { user } = await todayUser();
 		const checking = await openAccount(
 			user.id,
 			"Checking",
@@ -167,7 +168,7 @@ describe("a leg deleted after a later balance update included it", () => {
 	});
 
 	it("transfer.delete: both accounts and their snapshots go back", async () => {
-		const { user } = await createTestUser();
+		const { user } = await todayUser();
 		const checking = await openAccount(
 			user.id,
 			"Checking",
@@ -233,7 +234,7 @@ describe("USD values follow the legs", () => {
 	});
 
 	it("the Wealth history counts legs on an account no rate values", async () => {
-		const { user } = await createTestUser();
+		const { user } = await todayUser();
 		const account = await adminDb.assetAccount.create({
 			data: {
 				userId: user.id,
@@ -276,7 +277,7 @@ describe("USD values follow the legs", () => {
 
 describe("a transfer with a fee from one account", () => {
 	it("shows that account once, from before both to after both, on create and delete", async () => {
-		const { user } = await createTestUser();
+		const { user } = await todayUser();
 		const checking = await openAccount(
 			user.id,
 			"Checking",
@@ -314,7 +315,7 @@ describe("checkpoints are dated by the user's day", () => {
 	});
 
 	it("a Tokyo user at 08:00 updates the balance and adds income on the same day", async () => {
-		const { user } = await createTestUser();
+		const { user } = await todayUser();
 		const checking = await openAccount(
 			user.id,
 			"Checking",
@@ -370,7 +371,7 @@ describe("checkpoints are dated by the user's day", () => {
 
 describe("an account with legs keeps its side of net worth", () => {
 	it("refuses a change between something you have and something you owe", async () => {
-		const { user } = await createTestUser();
+		const { user } = await todayUser();
 		const checking = await openAccount(
 			user.id,
 			"Checking",
@@ -521,7 +522,7 @@ describe("undo puts back exactly what it took", () => {
 
 describe("two opposite transfers at once", () => {
 	it("queue on their accounts instead of deadlocking", async () => {
-		const { user } = await createTestUser();
+		const { user } = await todayUser();
 		const a = await openAccount(user.id, "A", "CASH", "USD", 1000);
 		const b = await openAccount(user.id, "B", "CASH", "USD", 1000);
 		const move = (from: string, to: string) =>
@@ -542,7 +543,7 @@ describe("two opposite transfers at once", () => {
 
 describe("the net worth breakdown in one read", () => {
 	it("loads the ledger once for the total and its seven parts", async () => {
-		const { user } = await createTestUser();
+		const { user } = await todayUser();
 		await openAccount(user.id, "Checking", "CASH", "USD", 1000);
 		const ids = figures.ids.filter((id) => id.startsWith("netWorthChange."));
 		expect(ids).toHaveLength(8);

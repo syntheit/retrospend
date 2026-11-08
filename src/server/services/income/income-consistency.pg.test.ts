@@ -25,6 +25,7 @@ import {
 	seedArsRates,
 	TODAY,
 	TODAY_ZONE,
+	todayUser,
 } from "../accounts/test-fixtures";
 import { addIncome } from "./add.mutation";
 import {
@@ -267,12 +268,8 @@ describe("typed amounts stay exact end to end", () => {
 	});
 
 	it("a confirmed recurring amount is a decimal string, stored as typed", async () => {
-		const { user } = await createTestUser();
 		// Due TODAY in the user's zone, the day the confirm checks.
-		await adminDb.user.update({
-			where: { id: user.id },
-			data: { timeZone: TODAY_ZONE },
-		});
+		const { user } = await todayUser();
 		const template = await adminDb.recurringTemplate.create({
 			data: {
 				userId: user.id,
