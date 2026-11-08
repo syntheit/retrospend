@@ -13,10 +13,11 @@ import {
 // context into each project's `inject()`. Regular files run in parallel, one
 // cloned database per worker (pg-global-setup.ts, picked by VITEST_POOL_ID in
 // pg-env.ts). The perf project has one worker, so it reuses w1 once the
-// parallel group has finished. Files named `*.perf.pg.test.ts` assert a timing budget, which
-// other workers sharing the CPUs would skew, so they run alone, one file at a
-// time, after every regular file (groupOrder 1). Never loosen a budget; move
-// the budget test into a `*.perf.pg.test.ts` file instead.
+// parallel group has finished. Files named `*.perf.pg.test.ts` assert a
+// timing budget, which other workers sharing the CPUs would skew, so they run
+// alone, one file at a time, after every regular file (groupOrder 1). Never
+// loosen a budget; move the budget test into a `*.perf.pg.test.ts` file
+// instead.
 // Fixed rather than "all cores": every worker adds a connection pool and a
 // database. The root setup sizes its clones from this root `maxWorkers`; the
 // perf project never needs more than the first of them.
