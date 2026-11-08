@@ -10,6 +10,7 @@ vi.mock("~/env", () => ({
 }));
 
 import notificationCatalog from "../../packages/i18n/messages/en/notificationText.json";
+import { env } from "~/env";
 import { SUPPORTED_LOCALES } from "~/i18n/locales";
 import { emailSubject } from "./email-copy";
 import {
@@ -156,6 +157,41 @@ describe("email templates", () => {
 			});
 		});
 	}
+
+	it("links settings and unsubscribe in a notice, and shows the host in the footer", () => {
+		const html = cases.find((c) => c.name.startsWith("notice"))?.html ?? "";
+		expect(html).toContain('href="https://retro.example/settings"');
+		expect(html).toContain('href="https://retro.example/unsubscribe?t=1"');
+		expect(html).toContain(">retro.example</a>");
+		expect(html).not.toContain(">https://retro.example</a>");
+	});
+
+	it("leaves out the links paragraph when a notice has no links", () => {
+		const writable = env as { PUBLIC_URL?: string };
+		const saved = writable.PUBLIC_URL;
+		writable.PUBLIC_URL = "";
+		try {
+			const html = notificationEmail({
+				title: "Added to project",
+				body: "Body",
+				labels,
+				ctaUrl: URL_IN,
+			});
+			expect(html).not.toMatch(/<p[^>]*>\s*<\/p>/);
+			expect(html).not.toContain("/settings");
+		} finally {
+			writable.PUBLIC_URL = saved;
+		}
+	});
+
+	it("keeps the expiry and the ignore line of an email change confirm apart", () => {
+		const html =
+			cases.find((c) => c.name === "email change confirm")?.html ?? "";
+		expect(html).toContain("The link expires in 24 hours.</p>");
+		expect(html).toContain(
+			"If you did not ask for this, ignore this email.</p>",
+		);
+	});
 
 	it("escapes what a person typed", () => {
 		const html = cases.find((c) => c.name === "feedback")?.html ?? "";

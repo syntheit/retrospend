@@ -65,6 +65,15 @@ function fallbackLink(url: string, bottom: number = space[4]) {
     </p>`;
 }
 
+/** The address as people say it: the host, without the scheme. */
+function hostOf(url: string) {
+	try {
+		return new URL(url).host;
+	} catch {
+		return url;
+	}
+}
+
 function meta(value: string, bottom: number = 0) {
 	return `<p style="margin: 0 0 ${bottom}px 0; ${text("small", "textMuted")}">${escapeHtml(value)}</p>`;
 }
@@ -124,7 +133,7 @@ function baseEmailTemplate({
 						appUrl
 							? `<tr>
             <td style="padding: ${space[4]}px ${space[8]}px; border-top: 1px solid ${color.line};">
-              <p style="margin: 0; font-size: ${type.meta.size}px; line-height: ${type.meta.lineHeight};"><a href="${escapeHtml(appUrl)}" style="color: ${color.textMuted}; text-decoration: none;">${escapeHtml(appUrl)}</a></p>
+              <p style="margin: 0; font-size: ${type.meta.size}px; line-height: ${type.meta.lineHeight};"><a href="${escapeHtml(appUrl)}" style="color: ${color.textMuted}; text-decoration: none;">${escapeHtml(hostOf(appUrl))}</a></p>
             </td>
           </tr>`
 							: ""
@@ -221,12 +230,16 @@ export function notificationEmail({
     ${heading(title)}
     ${paragraph(escapeHtml(body))}
     ${buttonUrl ? button(ctaLabel ?? labels.view, buttonUrl, "brand", space[6]) : ""}
-    <p style="margin: 0; font-size: ${type.meta.size}px; line-height: ${type.meta.lineHeight}; color: ${color.textMuted}; text-align: center;">${links
-			.map(
-				(link) =>
-					`<a href="${escapeHtml(link.url)}" style="color: ${color.textMuted};">${escapeHtml(link.label)}</a>`,
-			)
-			.join(" &middot; ")}</p>
+    ${
+			links.length > 0
+				? `<p style="margin: 0; font-size: ${type.meta.size}px; line-height: ${type.meta.lineHeight}; color: ${color.textMuted}; text-align: center;">${links
+						.map(
+							(link) =>
+								`<a href="${escapeHtml(link.url)}" style="color: ${color.textMuted};">${escapeHtml(link.label)}</a>`,
+						)
+						.join(" &middot; ")}</p>`
+				: ""
+		}
   `;
 
 	return baseEmailTemplate({
@@ -248,7 +261,8 @@ export function getEmailChangeVerificationTemplate(
     ${paragraph(copy.body(strong(newEmail)))}
     ${button(copy.button, verifyUrl)}
     ${fallbackLink(verifyUrl)}
-    ${meta(copy.expiry)}
+    ${meta(copy.expiry, space[1])}
+    ${meta(copy.ignore)}
   `;
 	return baseEmailTemplate({
 		title: emailSubject.emailChangeConfirm,

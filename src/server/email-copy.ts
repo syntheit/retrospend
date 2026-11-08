@@ -44,8 +44,8 @@ export const emailCopy = {
 		title: "Confirm your new email",
 		body: (email: string) => `Confirm ${email} as your Retrospend email.`,
 		button: "Confirm email",
-		expiry:
-			"The link expires in 24 hours. If you did not ask for this, ignore this email.",
+		expiry: "The link expires in 24 hours.",
+		ignore: "If you did not ask for this, ignore this email.",
 	},
 	emailChangeAlert: {
 		title: "Email change requested",
