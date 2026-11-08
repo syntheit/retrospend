@@ -6,7 +6,12 @@ type LogDb = Pick<PrismaClient, "adminAccessLog">;
 type RemovalDb = Pick<PrismaClient, "adminAccessLog" | "user">;
 type ParticipantDb = Pick<
 	PrismaClient,
-	"splitParticipant" | "sharedTransaction" | "settlement"
+	| "splitParticipant"
+	| "sharedTransaction"
+	| "settlement"
+	| "payment"
+	| "project"
+	| "projectParticipant"
 >;
 
 /**
@@ -90,8 +95,9 @@ export async function logAdminProcedure(
 /**
  * The users whose shared expenses or payments name this Person or guest, found
  * before it is deleted: the creators, payers and other split members of the
- * expenses it is in, and the other side of its payments. Ids only; may include
- * the sentinel of a deleted account, which recordParticipantRemoval drops.
+ * expenses it is in, the sides and recorder of its payments, and the creator
+ * and user members of every project it was on. Ids only; may include the
+ * sentinel of a deleted account, which recordParticipantRemoval drops.
  */
 export async function usersSharingWithParticipant(
 	db: ParticipantDb,
@@ -136,7 +142,45 @@ export async function usersSharingWithParticipant(
 			toParticipantId: true,
 		},
 	});
+	const headers = await db.payment.findMany({
+		where: {
+			OR: [
+				{ payerType: participantType, payerId: participantId },
+				{ payeeType: participantType, payeeId: participantId },
+				{ recordedByType: participantType, recordedById: participantId },
+			],
+		},
+		select: {
+			payerType: true,
+			payerId: true,
+			payeeType: true,
+			payeeId: true,
+			recordedByType: true,
+			recordedById: true,
+		},
+	});
+	const projectIds = (
+		await db.projectParticipant.findMany({
+			where: { participantType, participantId },
+			select: { projectId: true },
+		})
+	).map((r) => r.projectId);
+	const projects = await db.project.findMany({
+		where: { id: { in: projectIds } },
+		select: { createdById: true },
+	});
+	const roster = await db.projectParticipant.findMany({
+		where: { projectId: { in: projectIds }, participantType: "user" },
+		select: { participantId: true },
+	});
 	const users = new Set<string>();
+	for (const p of projects) users.add(p.createdById);
+	for (const r of roster) users.add(r.participantId);
+	for (const h of headers) {
+		if (h.payerType === "user") users.add(h.payerId);
+		if (h.payeeType === "user") users.add(h.payeeId);
+		if (h.recordedByType === "user") users.add(h.recordedById);
+	}
 	for (const e of expenses) {
 		if (e.paidByType === "user") users.add(e.paidById);
 		if (e.createdByType === "user") users.add(e.createdById);
@@ -175,21 +219,17 @@ export async function recordParticipantRemoval(
 			})
 		).map((u) => u.id),
 	);
-	if (params.ownerId && existing.has(params.ownerId)) {
-		await recordAdminAccess(db, {
-			adminId: params.adminId,
-			userId: params.ownerId,
-			action: "person_deleted",
-		});
-	}
-	for (const userId of params.affectedUserIds) {
-		if (!existing.has(userId)) continue;
-		await recordAdminAccess(db, {
-			adminId: params.adminId,
-			userId,
-			action: "shared_data_changed",
-		});
-	}
+	const rows: { userId: string; action: AdminAccessAction }[] = [
+		...(params.ownerId && existing.has(params.ownerId)
+			? [{ userId: params.ownerId, action: "person_deleted" as const }]
+			: []),
+		...params.affectedUserIds
+			.filter((id) => existing.has(id))
+			.map((userId) => ({ userId, action: "shared_data_changed" as const })),
+	];
+	await db.adminAccessLog.createMany({
+		data: rows.map((r) => ({ ...r, adminId: params.adminId })),
+	});
 }
 
 /** The person's own entries, newest first. Pass a user-scoped client. */

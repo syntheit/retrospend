@@ -351,6 +351,113 @@ describe("admin access log: an admin deleting a Person", () => {
 		]);
 	});
 
+	it("tells the members of every project a deleted guest was only on the roster of", async () => {
+		const owner = await createTestUser();
+		const member = await createTestUser();
+		const outsider = await createTestUser();
+		const project = await adminDb.project.create({
+			data: { name: "Trip", createdById: owner.user.id },
+		});
+		const guest = await adminDb.guestSession.create({
+			data: {
+				name: "Gus",
+				email: "gus3@pg-test.invalid",
+				magicLinkId: "ml-3",
+				projectId: project.id,
+				sessionToken: `tok-${Math.random()}`,
+			},
+		});
+		await adminDb.projectParticipant.createMany({
+			data: [
+				{ projectId: project.id, participantType: "user", participantId: owner.user.id, role: "ORGANIZER" },
+				{ projectId: project.id, participantType: "user", participantId: member.user.id },
+				{ projectId: project.id, participantType: "guest", participantId: guest.id },
+			],
+		});
+
+		await asAdmin(admin).deleteGuestSession({ id: guest.id });
+
+		expect((await asUser(owner).list()).map((r) => r.action)).toEqual([
+			"shared_data_changed",
+		]);
+		expect((await asUser(member).list()).map((r) => r.action)).toEqual([
+			"shared_data_changed",
+		]);
+		expect(await asUser(outsider).list()).toEqual([]);
+	});
+
+	it("tells the owner and the project members of a Person in no expense or payment", async () => {
+		const owner = await createTestUser();
+		const organizer = await createTestUser();
+		const project = await adminDb.project.create({
+			data: { name: "House", createdById: organizer.user.id },
+		});
+		const shadow = await adminDb.shadowProfile.create({
+			data: { createdById: owner.user.id, name: "Cal" },
+		});
+		await adminDb.projectParticipant.createMany({
+			data: [
+				{ projectId: project.id, participantType: "user", participantId: organizer.user.id, role: "ORGANIZER" },
+				{ projectId: project.id, participantType: "shadow", participantId: shadow.id },
+			],
+		});
+
+		await asAdmin(admin).deleteShadowProfile({ id: shadow.id });
+
+		expect((await asUser(owner).list()).map((r) => r.action)).toEqual([
+			"person_deleted",
+		]);
+		expect((await asUser(organizer).list()).map((r) => r.action)).toEqual([
+			"shared_data_changed",
+		]);
+	});
+
+	it("tells a user who only recorded a payment of the deleted Person", async () => {
+		const recorder = await createTestUser();
+		const payee = await createTestUser();
+		const shadow = await adminDb.shadowProfile.create({
+			data: { createdById: alice.user.id, name: "Eli" },
+		});
+		await adminDb.payment.create({
+			data: {
+				id: `pay-${Math.random()}`,
+				payerType: "shadow",
+				payerId: shadow.id,
+				payeeType: "user",
+				payeeId: payee.user.id,
+				amount: "5",
+				currency: "USD",
+				paidOn: new Date("2026-01-02T00:00:00Z"),
+				recordedByType: "user",
+				recordedById: recorder.user.id,
+			},
+		});
+
+		await asAdmin(admin).deleteShadowProfile({ id: shadow.id });
+
+		expect((await asUser(recorder).list()).map((r) => r.action)).toEqual([
+			"shared_data_changed",
+		]);
+		expect((await asUser(payee).list()).map((r) => r.action)).toEqual([
+			"shared_data_changed",
+		]);
+	});
+
+	it("writes each person's entry once when the log is batched", async () => {
+		const owner = await createTestUser();
+		const shadow = await adminDb.shadowProfile.create({
+			data: { createdById: owner.user.id, name: "Fay" },
+		});
+		await sharedWith(owner.user.id, { type: "shadow", id: shadow.id });
+
+		await asAdmin(admin).deleteShadowProfile({ id: shadow.id });
+
+		// The owner both added the Person and had an expense rewritten.
+		expect(
+			(await asUser(owner).list()).map((r) => r.action).sort(),
+		).toEqual(["person_deleted", "shared_data_changed"]);
+	});
+
 	it("a missing Person writes nothing", async () => {
 		const before = await adminDb.adminAccessLog.count();
 		await expect(
