@@ -52,8 +52,8 @@ describe("getOrCreateDataKeyring", () => {
 	it("makes one key on first use and returns the same key after", async () => {
 		const { user } = await createTestUser();
 		const mk = master();
-		const first = await getOrCreateDataKeyring(adminDb, user.id, mk);
-		const second = await getOrCreateDataKeyring(adminDb, user.id, mk);
+		const first = await getOrCreateDataKeyring(user.id, mk);
+		const second = await getOrCreateDataKeyring(user.id, mk);
 
 		const sealed = sealField(first, "Coffee", cell);
 		expect(openField(second, sealed, cell)).toBe("Coffee");
@@ -67,7 +67,7 @@ describe("getOrCreateDataKeyring", () => {
 		const mk = master();
 		const keyrings = await Promise.all(
 			Array.from({ length: 8 }, () =>
-				getOrCreateDataKeyring(adminDb, user.id, mk),
+				getOrCreateDataKeyring(user.id, mk),
 			),
 		);
 
@@ -80,8 +80,8 @@ describe("getOrCreateDataKeyring", () => {
 	it("gives each user their own key", async () => {
 		const [a, b] = await Promise.all([createTestUser(), createTestUser()]);
 		const mk = master();
-		const keyA = await getOrCreateDataKeyring(adminDb, a.user.id, mk);
-		const keyB = await getOrCreateDataKeyring(adminDb, b.user.id, mk);
+		const keyA = await getOrCreateDataKeyring(a.user.id, mk);
+		const keyB = await getOrCreateDataKeyring(b.user.id, mk);
 
 		const sealed = sealField(keyA, "Only A", cell);
 		await expectCode(
@@ -93,14 +93,14 @@ describe("getOrCreateDataKeyring", () => {
 	it("does not open a wrapped key copied to another user", async () => {
 		const [a, b] = await Promise.all([createTestUser(), createTestUser()]);
 		const mk = master();
-		await getOrCreateDataKeyring(adminDb, a.user.id, mk);
+		await getOrCreateDataKeyring(a.user.id, mk);
 		const [row] = await rowsOf(a.user.id);
 		await adminDb.$executeRaw`
 			INSERT INTO keystore."user_data_key" ("userId", "keyId", "wrappedKey", "masterKeyId")
 			VALUES (${b.user.id}, 1, ${row?.wrappedKey}, 1)`;
 
 		await expectCode(
-			getOrCreateDataKeyring(adminDb, b.user.id, mk),
+			getOrCreateDataKeyring(b.user.id, mk),
 			"auth_failed",
 		);
 	});
@@ -108,7 +108,7 @@ describe("getOrCreateDataKeyring", () => {
 	it("stores a key that opens with the master key and with no other", async () => {
 		const { user } = await createTestUser();
 		const mk = master(7);
-		const keyring = await getOrCreateDataKeyring(adminDb, user.id, mk);
+		const keyring = await getOrCreateDataKeyring(user.id, mk);
 		const [row] = await rowsOf(user.id);
 		if (!row) throw new Error("no row");
 
@@ -132,7 +132,7 @@ describe("getOrCreateDataKeyring", () => {
 			"auth_failed",
 		);
 		await expectCode(
-			getOrCreateDataKeyring(adminDb, user.id, master(7)),
+			getOrCreateDataKeyring(user.id, master(7)),
 			"auth_failed",
 		);
 	});
@@ -140,45 +140,60 @@ describe("getOrCreateDataKeyring", () => {
 	it("still opens after the master key rotates to a new first key", async () => {
 		const { user } = await createTestUser();
 		const old = { id: 1, key: randomBytes(32) };
-		const before = await getOrCreateDataKeyring(
-			adminDb,
-			user.id,
-			new Keyring([old]),
-		);
+		const before = await getOrCreateDataKeyring(user.id, new Keyring([old]));
 		const sealed = sealField(before, "Kept", cell);
 
 		const rotated = new Keyring([{ id: 2, key: randomBytes(32) }, old]);
-		const after = await getOrCreateDataKeyring(adminDb, user.id, rotated);
+		const after = await getOrCreateDataKeyring(user.id, rotated);
 		expect(openField(after, sealed, cell)).toBe("Kept");
 	});
 
 	it("refuses without a master key and writes nothing", async () => {
 		const { user } = await createTestUser();
-		const error = await getOrCreateDataKeyring(
-			adminDb,
-			user.id,
-			// getMasterKeyring() is undefined in the test environment.
-			undefined,
-		).catch((e: unknown) => e);
+		// getMasterKeyring() is undefined in the test environment.
+		const error = await getOrCreateDataKeyring(user.id, undefined).catch(
+			(e: unknown) => e,
+		);
 		expect(error).toBeInstanceOf(DataKeyError);
 		expect((error as DataKeyError).code).toBe("master_key_missing");
 		expect(await rowsOf(user.id)).toHaveLength(0);
 	});
 
-	it("is out of reach of the user-scoped client", async () => {
+	it("leaves the app role no way into the keystore", async () => {
 		const { user, db } = await createTestUser();
-		await getOrCreateDataKeyring(adminDb, user.id, master());
+		await getOrCreateDataKeyring(user.id, master());
 
-		// Only a scoped transaction runs raw SQL as retrospend_app; a bare raw
-		// query on the scoped client still uses the owner connection.
+		// A scoped transaction runs raw SQL as retrospend_app, and it is denied.
+		// (A bare raw query on the scoped client runs on the owner connection,
+		// which is why the service takes no client and the grants are the guard.)
 		await expect(
 			db.$transaction(
 				(tx) => tx.$queryRaw`SELECT * FROM keystore."user_data_key"`,
 			),
 		).rejects.toThrow(/permission denied/i);
 		await expect(
-			db.$transaction((tx) => getOrCreateDataKeyring(tx, user.id, master())),
+			db.$transaction(
+				(tx) =>
+					tx.$executeRaw`DELETE FROM keystore."user_data_key" WHERE "userId" = ${user.id}`,
+			),
 		).rejects.toThrow(/permission denied/i);
+		expect(await rowsOf(user.id)).toHaveLength(1);
+	});
+
+	it("says so plainly when the keystore is missing", async () => {
+		const { user } = await createTestUser();
+		await adminDb.$executeRawUnsafe("ALTER SCHEMA keystore RENAME TO keystore_gone");
+		try {
+			const error = await getOrCreateDataKeyring(user.id, master()).catch(
+				(e: unknown) => e,
+			);
+			expect(error).toBeInstanceOf(DataKeyError);
+			expect((error as DataKeyError).code).toBe("keystore_missing");
+			const destroyed = await destroyDataKeys(user.id).catch((e: unknown) => e);
+			expect((destroyed as DataKeyError).code).toBe("keystore_missing");
+		} finally {
+			await adminDb.$executeRawUnsafe("ALTER SCHEMA keystore_gone RENAME TO keystore");
+		}
 	});
 });
 
@@ -186,17 +201,17 @@ describe("destroyDataKeys", () => {
 	it("removes the user's key, leaves others, and strands old ciphertext", async () => {
 		const [a, b] = await Promise.all([createTestUser(), createTestUser()]);
 		const mk = master();
-		const keyA = await getOrCreateDataKeyring(adminDb, a.user.id, mk);
-		const keyB = await getOrCreateDataKeyring(adminDb, b.user.id, mk);
+		const keyA = await getOrCreateDataKeyring(a.user.id, mk);
+		const keyB = await getOrCreateDataKeyring(b.user.id, mk);
 		const sealedA = sealField(keyA, "Gone", cell);
 		const sealedB = sealField(keyB, "Stays", cell);
 
-		expect(await destroyDataKeys(adminDb, a.user.id)).toBe(1);
-		expect(await destroyDataKeys(adminDb, a.user.id)).toBe(0);
+		expect(await destroyDataKeys(a.user.id)).toBe(1);
+		expect(await destroyDataKeys(a.user.id)).toBe(0);
 		expect(await rowsOf(a.user.id)).toHaveLength(0);
 		expect(await rowsOf(b.user.id)).toHaveLength(1);
 
-		const reborn = await getOrCreateDataKeyring(adminDb, a.user.id, mk);
+		const reborn = await getOrCreateDataKeyring(a.user.id, mk);
 		await expectCode(
 			Promise.resolve().then(() => openField(reborn, sealedA, cell)),
 			"auth_failed",
@@ -204,10 +219,44 @@ describe("destroyDataKeys", () => {
 		expect(openField(keyB, sealedB, cell)).toBe("Stays");
 	});
 
-	it("is dropped with the user row", async () => {
+	it("is dropped with the user row, whoever deletes it", async () => {
 		const { user } = await createTestUser();
-		await getOrCreateDataKeyring(adminDb, user.id, master());
+		await getOrCreateDataKeyring(user.id, master());
 		await adminDb.user.delete({ where: { id: user.id } });
 		expect(await rowsOf(user.id)).toHaveLength(0);
+	});
+
+	it("is dropped when a role without keystore access deletes the user", async () => {
+		const { user } = await createTestUser();
+		const other = await createTestUser();
+		await getOrCreateDataKeyring(user.id, master());
+		await getOrCreateDataKeyring(other.user.id, master());
+		const rollback = new Error("rollback");
+		await adminDb
+			.$transaction(async (tx) => {
+				await tx.$executeRawUnsafe("CREATE ROLE keystore_probe");
+				await tx.$executeRawUnsafe('GRANT SELECT, DELETE ON "user" TO keystore_probe');
+				await tx.$executeRawUnsafe("SET LOCAL ROLE keystore_probe");
+				await tx.$executeRaw`DELETE FROM "user" WHERE id = ${user.id}`;
+				await tx.$executeRawUnsafe("RESET ROLE");
+				const left = await tx.$queryRaw<{ n: bigint }[]>`
+					SELECT count(*) AS n FROM keystore."user_data_key" WHERE "userId" = ${user.id}`;
+				expect(Number(left[0]?.n)).toBe(0);
+				throw rollback;
+			})
+			.catch((e: unknown) => {
+				if (e !== rollback) throw e;
+			});
+	});
+
+	it("never blocks a user delete when the keystore is missing", async () => {
+		const { user } = await createTestUser();
+		await adminDb.$executeRawUnsafe("ALTER SCHEMA keystore RENAME TO keystore_gone");
+		try {
+			await adminDb.user.delete({ where: { id: user.id } });
+		} finally {
+			await adminDb.$executeRawUnsafe("ALTER SCHEMA keystore_gone RENAME TO keystore");
+		}
+		expect(await adminDb.user.findUnique({ where: { id: user.id } })).toBeNull();
 	});
 });

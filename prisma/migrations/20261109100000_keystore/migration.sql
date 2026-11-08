@@ -26,8 +26,11 @@ REVOKE ALL ON SCHEMA keystore FROM PUBLIC;
 -- "userId:keyId"), so a wrapped key copied to another user or version fails to
 -- open. "masterKeyId" repeats the master key id from the sealed header so the
 -- rewrap job (D12) can find rows without opening them; BIGINT because a master
--- key id may be up to 4294967295. The key row goes when the user does; D3
--- destroys it explicitly first.
+-- key id may be up to 4294967295.
+--
+-- There is no foreign key to "user" on purpose: a restore of the main dump
+-- (which leaves this schema out) drops and recreates "user", and a foreign key
+-- from another schema would block that. The trigger below does the cascade.
 CREATE TABLE IF NOT EXISTS keystore."user_data_key" (
   "userId"      TEXT          NOT NULL,
   "keyId"       INTEGER       NOT NULL,
@@ -38,14 +41,6 @@ CREATE TABLE IF NOT EXISTS keystore."user_data_key" (
   CONSTRAINT "user_data_key_keyId_check" CHECK ("keyId" >= 1),
   CONSTRAINT "user_data_key_masterKeyId_check" CHECK ("masterKeyId" BETWEEN 1 AND 4294967295)
 );
-
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_data_key_userId_fkey') THEN
-    ALTER TABLE keystore."user_data_key"
-      ADD CONSTRAINT "user_data_key_userId_fkey"
-      FOREIGN KEY ("userId") REFERENCES public."user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-  END IF;
-END $$;
 
 CREATE INDEX IF NOT EXISTS "user_data_key_masterKeyId_idx"
   ON keystore."user_data_key"("masterKeyId");
@@ -58,3 +53,29 @@ DO $$ BEGIN
     REVOKE ALL ON ALL TABLES IN SCHEMA keystore FROM retrospend_app;
   END IF;
 END $$;
+
+-- A user's keys go in the same transaction as the user row, whoever deletes it
+-- and whichever role they run as (retrospend_app has no access to the
+-- keystore, hence SECURITY DEFINER). The function lives in public so it is in
+-- the main dump with the trigger; to_regclass keeps a user delete working when
+-- the keystore is missing, for example after restoring a main dump into a new
+-- database before the keystore dump. Restoring "user" does not fire it.
+CREATE OR REPLACE FUNCTION public."keystore_drop_user_keys"() RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $$
+BEGIN
+  IF to_regclass('keystore.user_data_key') IS NOT NULL THEN
+    DELETE FROM keystore."user_data_key" WHERE "userId" = OLD."id";
+  END IF;
+  RETURN NULL;
+END
+$$;
+
+REVOKE ALL ON FUNCTION public."keystore_drop_user_keys"() FROM PUBLIC;
+
+DROP TRIGGER IF EXISTS "keystore_user_delete" ON public."user";
+CREATE TRIGGER "keystore_user_delete"
+  AFTER DELETE ON public."user"
+  FOR EACH ROW EXECUTE FUNCTION public."keystore_drop_user_keys"();

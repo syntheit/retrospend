@@ -122,11 +122,23 @@ Backups made before you set the key stay unencrypted until they age out.
 
 Per-user data keys live in their own database schema, `keystore`. The sidecar leaves that schema out of the main dump and writes it on its own as `keystore-<time>.dump` (or `.dump.age` when `BACKUP_AGE_RECIPIENT` is set), right after the main backup. These files are kept for `KEYSTORE_BACKUP_RETENTION_DAYS` (default 7), much shorter than the main backups, so the key of a deleted account does not outlive them for long. The keys inside are sealed with `DATA_MASTER_KEY`, so a keystore backup is useless without it: keep the master key with your backups, apart from the files.
 
-To restore, restore the main dump first (the keys refer to your users), then the keystore dump:
+To restore, restore the main dump as usual, then the keystore dump. Do not pass `--schema`: the dump has to create the schema itself.
 
 ```sh
-pg_restore --clean --if-exists --no-owner --schema=keystore -d retrospend keystore-20260101-030000.dump
+pg_restore --clean --if-exists --no-owner -d retrospend retrospend-20260101-030000.dump
+pg_restore --clean --if-exists --no-owner -d retrospend keystore-20260101-030000.dump
+psql -d retrospend -c 'DELETE FROM keystore.user_data_key k WHERE NOT EXISTS (SELECT 1 FROM public."user" u WHERE u.id = k."userId")'
 ```
+
+The last command removes keys of accounts that were deleted after the keystore dump was made, so a restore never brings a deleted account's key back. If you restore a keystore dump that is older than the main one, accounts created in between have no key yet; the server makes one on first use.
+
+If you restore a main dump into a new database and have no keystore dump (it is older than `KEYSTORE_BACKUP_RETENTION_DAYS`, or was lost), the database lists the keystore migration as applied but the schema is missing, and the server reports that the key store is missing. Make an empty one and restart:
+
+```sh
+psql -d retrospend -c "DELETE FROM _prisma_migrations WHERE migration_name = '20261109100000_keystore'"
+```
+
+The migration runs again on start and is safe to repeat. An empty key store means every user gets a new key, so anything already sealed with the lost keys can no longer be read.
 
 ## Updating
 
