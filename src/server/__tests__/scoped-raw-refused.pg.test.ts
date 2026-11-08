@@ -34,6 +34,14 @@ describe("a user-scoped client", () => {
 		expect(() => method?.("SELECT 1")).toThrow(name);
 	});
 
+	it.each(["$parent", "$extends", "$connect", "$disconnect", "$on"])(
+		"gives no way back to the owner client through %s",
+		async (name) => {
+			const { db } = await createTestUser();
+			expect(() => (db as unknown as Methods)[name]).toThrow(name);
+		},
+	);
+
 	it("refuses a tagged-template raw query too", async () => {
 		const { db } = await createTestUser();
 		expect(() => db.$queryRaw`SELECT 1`).toThrow(/userTransaction/);

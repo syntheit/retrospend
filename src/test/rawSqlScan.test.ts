@@ -1,14 +1,17 @@
 // `$queryRawUnsafe` and `$executeRawUnsafe` take a string, so a string built
-// from input is an injection. Outside tests, every call must pass a string
-// literal (a template literal without `${}` counts) or Prisma.sql. Anything
-// else goes through the tagged `$queryRaw` / `$executeRaw`, which parameterize.
+// from input is an injection. Outside tests, every reference to them must be
+// a plain `x.$queryRawUnsafe(<argument>)` call whose argument is a string
+// literal (a template literal without `${}` counts) or Prisma.sql. Optional
+// calls, `.call` and `.apply`, bracket access, aliases and destructuring all
+// hide the argument, so each one fails. Anything dynamic goes through the
+// tagged `$queryRaw` / `$executeRaw`, which parameterize.
 // Test files are skipped: they run fixed SQL through the owner client.
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "./uiRules/paths";
 
-const CALL = /\$(?:query|execute)RawUnsafe\b/g;
+const NAME = /\$(?:query|execute)RawUnsafe\b/g;
 
 /** The index just past a balanced `<...>` that starts at `from`, or `from` when there is none. */
 function skipGenerics(text: string, from: number): number {
@@ -45,24 +48,32 @@ function isSafeArgument(text: string, start: number): boolean {
 	return false;
 }
 
-/** Line numbers of every Unsafe call in `text` whose argument is not safe. */
+/**
+ * Line numbers of every reference to an Unsafe method in `text` that is not a
+ * plain `x.$queryRawUnsafe(<safe argument>)` call.
+ */
 function unsafeRawCalls(text: string): number[] {
 	const lines: number[] = [];
-	for (const m of text.matchAll(CALL)) {
+	for (const m of text.matchAll(NAME)) {
 		const lineStart = text.lastIndexOf("\n", m.index) + 1;
-		if (/^\s*(\*|\/\/|\/\*)/.test(text.slice(lineStart, m.index))) continue;
+		const before = text.slice(lineStart, m.index);
+		if (/^\s*(\*|\/\/|\/\*)/.test(before) || before.includes("//")) continue;
+		const memberCall = text[m.index - 1] === "." && text[m.index - 2] !== "?";
 		let i = skipGenerics(text, m.index + m[0].length);
 		while (/\s/.test(text[i] ?? "")) i++;
-		// A mention that is not a call (a name in a list) has no `(`.
-		if (text[i] !== "(") continue;
-		i++;
-		while (/\s/.test(text[i] ?? "")) i++;
-		if (!isSafeArgument(text, i)) {
-			lines.push(text.slice(0, m.index).split("\n").length);
+		let safe = false;
+		if (memberCall && text[i] === "(") {
+			i++;
+			while (/\s/.test(text[i] ?? "")) i++;
+			safe = isSafeArgument(text, i);
 		}
+		if (!safe) lines.push(text.slice(0, m.index).split("\n").length);
 	}
 	return lines;
 }
+
+/** The one file that names the methods without calling them: the scoped client's refusal list. */
+const NAMES_ONLY = join(REPO_ROOT, "src", "server", "db.ts");
 
 const SKIP_DIRS = new Set(["node_modules", "generated", "dist", ".next"]);
 const isTestPath = (path: string) =>
@@ -82,22 +93,33 @@ function sourceFiles(): string[] {
 			}
 		}
 	};
-	for (const root of ["src", "packages"]) walk(join(REPO_ROOT, root));
+	for (const root of ["src", "packages", "scripts"]) walk(join(REPO_ROOT, root));
 	return files;
 }
 
 describe("raw Unsafe SQL", () => {
-	it("passes only a string literal or Prisma.sql, anywhere in src and packages", () => {
-		const offenders = sourceFiles().flatMap((file) =>
-			unsafeRawCalls(readFileSync(file, "utf8")).map(
-				(line) => `${relative(REPO_ROOT, file)}:${line}`,
-			),
-		);
+	it("passes only a string literal or Prisma.sql, anywhere in src, packages and scripts", () => {
+		const offenders = sourceFiles()
+			.filter((file) => file !== NAMES_ONLY)
+			.flatMap((file) =>
+				unsafeRawCalls(readFileSync(file, "utf8")).map(
+					(line) => `${relative(REPO_ROOT, file)}:${line}`,
+				),
+			);
 		expect(offenders).toEqual([]);
 	});
 
 	it("reads the files it is meant to scan", () => {
-		expect(sourceFiles().length).toBeGreaterThan(500);
+		const files = sourceFiles();
+		expect(files.length).toBeGreaterThan(500);
+		expect(files).toContain(NAMES_ONLY);
+		expect(files.some((f) => f.startsWith(join(REPO_ROOT, "scripts")))).toBe(
+			true,
+		);
+	});
+
+	it("the refusal list in db.ts is the only place that names a method without calling it", () => {
+		expect(unsafeRawCalls(readFileSync(NAMES_ONLY, "utf8"))).toHaveLength(2);
 	});
 });
 
@@ -111,8 +133,8 @@ describe("the scan itself", () => {
 			"db.$queryRawUnsafe(\n\t\t`SELECT 1`,\n\t)",
 			"db.$queryRawUnsafe(Prisma.sql`SELECT 1`)",
 			"// call $queryRawUnsafe(sql) never",
-			' * $executeRawUnsafe(`x ${y}`) in a doc comment',
-			'const names = ["$queryRawUnsafe", "$executeRawUnsafe"];',
+			" * $executeRawUnsafe(`x ${y}`) in a doc comment",
+			"db.$queryRawUnsafe('SELECT 1'); // not $executeRawUnsafe(sql)",
 		];
 		for (const text of ok) expect(unsafeRawCalls(text), text).toEqual([]);
 	});
@@ -124,6 +146,23 @@ describe("the scan itself", () => {
 			'db.$queryRawUnsafe("SELECT " + col)',
 			"tx.$queryRawUnsafe<{ ok: boolean }[]>(query, id)",
 			"db.$executeRawUnsafe(\n\t\tbuild(),\n\t)",
+		];
+		for (const text of bad) expect(unsafeRawCalls(text), text).toEqual([1]);
+	});
+
+	it("rejects every form that hides the argument", () => {
+		const bad = [
+			"db?.$queryRawUnsafe('SELECT 1')",
+			"db.$queryRawUnsafe?.(sql)",
+			"db.$queryRawUnsafe?.('SELECT 1')",
+			"db.$queryRawUnsafe.call(db, 'SELECT 1')",
+			"db.$executeRawUnsafe.apply(db, [sql])",
+			'db["$queryRawUnsafe"](sql)',
+			"db['$executeRawUnsafe']('SELECT 1')",
+			"const q = db.$queryRawUnsafe;",
+			"const { $queryRawUnsafe } = db;",
+			'const names = ["$queryRawUnsafe"];',
+			"$queryRawUnsafe('SELECT 1')",
 		];
 		for (const text of bad) expect(unsafeRawCalls(text), text).toEqual([1]);
 	});
