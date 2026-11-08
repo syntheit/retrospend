@@ -4,7 +4,6 @@ appId: app.retrospend
 tags:
   - smoke
 env:
-  SERVER: http://10.0.2.2:3200
   EMAIL: sofia.reyes@example.com
   PASSWORD: Sofia-e2e-2026!
 ---

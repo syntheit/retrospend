@@ -31,6 +31,18 @@ describe("the Maestro runner scripts", () => {
 	});
 });
 
+// A flow's own `env:` wins over the runner's `-e SERVER=...`. A flow that pins
+// a server sends the app of slot 1 to the server of slot 0, which breaks the
+// isolation of the pool (and fails once that other run is over).
+describe("the flows", () => {
+	const flows = join(__dirname, "..", "maestro", "flows");
+	it.each(readdirSync(flows))("%s leaves SERVER to the runner", (name) => {
+		expect(readFileSync(join(flows, name), "utf8")).not.toMatch(
+			/^\s+SERVER:/m,
+		);
+	});
+});
+
 describe("the emulator pool", () => {
 	let home: string;
 	beforeEach(() => {

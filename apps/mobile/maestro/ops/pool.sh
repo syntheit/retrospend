@@ -76,7 +76,7 @@ stop_slot_processes() {
 # limit. Sets $slot, holds its lock on fd 9.
 slot=
 take_slot() {
-	local run=$1 limit=$2 n deadline=$((SECONDS + $2))
+	local run=$1 limit=$2 n logged deadline=$((SECONDS + $2))
 	while :; do
 		for n in "${pool_slots[@]}"; do
 			exec 9>>"$pool_dir/slot-$n.lock"
@@ -88,7 +88,10 @@ take_slot() {
 			exec 9>&-
 		done
 		((SECONDS < deadline)) || return 1
-		log "waiting for a slot; held by: $(describe_holders)"
+		if ((SECONDS - ${logged:--60} >= 60)); then
+			log "waiting for a slot; held by: $(describe_holders)"
+			logged=$SECONDS
+		fi
 		sleep "${POOL_POLL:-10}"
 	done
 }
