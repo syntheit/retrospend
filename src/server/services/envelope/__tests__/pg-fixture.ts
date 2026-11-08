@@ -1,4 +1,4 @@
-/** Shared seed for the envelope pg tests: a USD user with Rent and Dining, a Flex setup, plain rows. */
+/** Shared seed for the envelope pg tests: a USD user with Rent and Dining, a Save first setup (it plans nothing at setup, so every figure starts unfunded), plain rows. */
 import { randomUUID } from "node:crypto";
 import type { SetupInput } from "~/lib/schemas/envelope";
 import { userTransaction } from "~/server/db-tx";
@@ -33,7 +33,7 @@ export async function seedUser() {
 
 export function setupInput(c: { rent: string; dining: string }): SetupInput {
 	return {
-		style: "FLEX",
+		style: "SAVE_FIRST",
 		startingMoneyMinor: 100_000,
 		groups: [
 			{ key: "bills", name: "Bills", role: "BILLS" },

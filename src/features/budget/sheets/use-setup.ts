@@ -3,6 +3,7 @@
 import { draftFromMinor } from "@retrospend/domain/parse";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AMOUNT_SETUP_STYLES } from "~/lib/schemas/envelope";
 import { minorOf } from "~/components/money/money-cell";
 import { api, type RouterInputs, type RouterOutputs } from "~/trpc/react";
 import { useAmount } from "./use-amount";
@@ -36,12 +37,7 @@ export const hasAmount = (
 	(t.kind === "MONTHLY" || t.kind === "BILL" || t.kind === "SAVINGS");
 
 /** The styles that fund envelopes from amounts set here, so a plan with none funds nothing. */
-export const AMOUNT_STYLES: ReadonlySet<SetupStyle> = new Set([
-	"FLEX",
-	"WEEKLY",
-	"EVERY_DOLLAR",
-	"DEBT_PAYOFF",
-]);
+export const AMOUNT_STYLES: ReadonlySet<SetupStyle> = AMOUNT_SETUP_STYLES;
 
 /**
  * Whether a row takes an amount typed here: an envelope whose target carries

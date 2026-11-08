@@ -17,13 +17,7 @@ import { type Choice, SetupStyleStep } from "./setup-style-step";
 import type { SheetProps } from "./types";
 import { useMoneyWrite } from "./use-money-write";
 import { useMonth } from "./use-month";
-import {
-	AMOUNT_STYLES,
-	nothingPlanned,
-	payAnswered,
-	useSetup,
-} from "./use-setup";
-import { newId } from "./use-write";
+import { nothingPlanned, payAnswered, useSetup } from "./use-setup";
 
 type Step = "style" | "pay" | "money" | "envelopes";
 
@@ -55,29 +49,18 @@ function SetupForm({ open, onClose }: SheetProps) {
 	const last = at === steps.length - 1;
 	const preview = api.envelope.setupPreview.useMutation();
 	const commit = api.envelope.setup.useMutation();
-	const fundPlan = api.envelope.usePlan.useMutation();
 	const w = useMoneyWrite({
 		input: choice === "TRACK" ? null : s.input,
 		preview: preview.mutateAsync,
 		commit: async (input) => {
 			// The proposal is refused once the budget exists: stop reading it first.
 			s.setDone(true);
-			let made: Awaited<ReturnType<typeof commit.mutateAsync>>;
 			try {
-				made = await commit.mutateAsync(input);
+				return await commit.mutateAsync(input);
 			} catch (error) {
 				s.setDone(false);
 				throw error;
 			}
-			// The amounts set here are what the budget starts with: fund them from
-			// the money to plan, as Use my plan does, so the first expense is not
-			// overspent. If it fails, the budget still stands and Use my plan is on
-			// the page.
-			if (AMOUNT_STYLES.has(input.style))
-				await fundPlan
-					.mutateAsync({ batchId: newId(), rest: "LEAVE" })
-					.catch(() => undefined);
-			return made;
 		},
 		toast: () => t("toast"),
 	});

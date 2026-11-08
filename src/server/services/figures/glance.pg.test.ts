@@ -333,7 +333,7 @@ describe("glance()", () => {
 		expect(g.budget).toMatchObject({
 			state: "ready",
 			verdict: {
-				style: "FLEX",
+				style: "SAVE_FIRST",
 				lead: { kind: "LEFT_TO_SPEND", figureId: "budget.leftToSpend" },
 			},
 			notPlannedYet: {
