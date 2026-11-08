@@ -132,14 +132,9 @@ async function recordTerminalFailure(
 			disabledReason: blocked ? "blocked_target" : "too_many_failures",
 		},
 	});
-	await db.webhookDelivery.updateMany({
-		where: { webhookId, status: "PENDING" },
-		data: {
-			status: "FAILED",
-			nextAttemptAt: null,
-			lastError: "webhook_disabled",
-		},
-	});
+	// Its pending deliveries are left alone: one may be on the wire under
+	// another worker's lease, and must still settle as sent. The rest fail
+	// in attempt() when due, or go out if the webhook is back on by then.
 }
 
 async function settle(

@@ -78,6 +78,12 @@ describe("checkpoints, the late window and recalculation on Postgres", () => {
 		});
 		expect(marks.map((m) => m.fromMonth)).toEqual([202610]);
 		expect(row.id).toBeTruthy();
+		// The write happened on Nov 3, inside October's window; the trigger
+		// stamps the real clock, which a late enough run puts past it.
+		await adminDb.budgetDirty.updateMany({
+			where: { bookId: b.bookId },
+			data: { createdAt: at("2026-11-03") },
+		});
 	});
 
 	it("C17: inside the late window October is updated in place; no new revision, no change", async () => {

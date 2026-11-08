@@ -758,14 +758,14 @@ describe("/api/v1/webhooks", () => {
 			expect(
 				await adminDb.webhook.findUniqueOrThrow({ where: { id: webhook.id } }),
 			).toMatchObject({ enabled: false, disabledReason: "too_many_failures" });
-			expect(
-				(await deliveriesOf(webhook.id)).every((d) => d.status === "FAILED"),
-			).toBe(true);
 
-			// Nothing more is sent.
+			// Nothing more is sent: the retrying one fails when it comes due.
 			const sent = received.length;
 			await processDueDeliveries({ now: new Date(Date.now() + 3_600_000) });
 			expect(received.length).toBe(sent);
+			expect(
+				(await deliveriesOf(webhook.id)).every((d) => d.status === "FAILED"),
+			).toBe(true);
 
 			const shown = await expectBody<Hook>(
 				await call(`/webhooks/${webhook.id}`, { headers }),

@@ -65,6 +65,16 @@ export async function seedArsRatesOn(
 		});
 }
 
+/** The process's zone saved, so the user's day is TODAY's at any hour. */
+export async function todayUser() {
+	const user = await createTestUser();
+	await adminDb.user.update({
+		where: { id: user.user.id },
+		data: { timeZone: TODAY_ZONE },
+	});
+	return user;
+}
+
 /** ARS home, and the process's zone saved, so the user's day is TODAY's. */
 export async function arsUser() {
 	const user = await createTestUser();
