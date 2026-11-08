@@ -237,8 +237,8 @@ const time = (a: Date, b: Date) => a.getTime() - b.getTime();
 
 /**
  * The ledger from rows held in memory, in any order: accounts by when they
- * were created, snapshots by date then when recorded, legs by date then when
- * written, rate type switches by day then when written (several can share a
+ * were created, snapshots by date then when recorded, legs by date, when
+ * written, then id, rate type switches by day then when written (several can share a
  * day). Both loaders go through here, so the order is one rule.
  */
 export function accountsLedgerFromRows(args: {
@@ -259,7 +259,10 @@ export function accountsLedgerFromRows(args: {
 		(s) => s.accountId,
 	);
 	const sortedLegs = [...args.legs].sort(
-		(a, b) => time(a.date, b.date) || time(a.createdAt, b.createdAt),
+		(a, b) =>
+			time(a.date, b.date) ||
+			time(a.createdAt, b.createdAt) ||
+			(a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
 	);
 	const legsOf = groupBy(sortedLegs, (l) => l.accountId);
 	const switchesOf = groupBy(
