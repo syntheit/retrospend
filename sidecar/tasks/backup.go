@@ -3,6 +3,7 @@ package tasks
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/url"
@@ -25,6 +26,7 @@ type BackupResult struct {
 	SizeBytes  int64     `json:"sizeBytes"`
 	DurationMs int64     `json:"durationMs"`
 	Success    bool      `json:"success"`
+	Encrypted  bool      `json:"encrypted,omitempty"`
 	Error      string    `json:"error,omitempty"`
 }
 
@@ -39,6 +41,12 @@ type BackupStatus struct {
 	History       []BackupResult `json:"history"`
 }
 
+// Tests replace these to run RunBackup against a fake pg_dump and a fixed clock.
+var (
+	pgDumpBin = "pg_dump"
+	backupNow = time.Now
+)
+
 var (
 	backupMu  sync.Mutex
 	isRunning bool
@@ -52,7 +60,9 @@ func IsBackupRunning() bool {
 }
 
 // RunBackup executes pg_dump and manages the backup manifest and retention.
-func RunBackup(database *db.DB, databaseURL string, backupDir string, retentionDays int) error {
+// With age recipients the dump is streamed through age and only the encrypted
+// .dump.age file is written.
+func RunBackup(database *db.DB, databaseURL string, backupDir string, retentionDays int, ageRecipients []string) error {
 	backupMu.Lock()
 	if isRunning {
 		backupMu.Unlock()
@@ -67,7 +77,7 @@ func RunBackup(database *db.DB, databaseURL string, backupDir string, retentionD
 		backupMu.Unlock()
 	}()
 
-	start := time.Now()
+	start := backupNow()
 	result := BackupResult{
 		Timestamp: start,
 		Success:   false,
@@ -84,30 +94,46 @@ func RunBackup(database *db.DB, databaseURL string, backupDir string, retentionD
 
 	// Generate filename
 	timestamp := start.Format("20060102-150405")
-	filename := fmt.Sprintf("retrospend-%s.dump", timestamp)
+	encrypt := len(ageRecipients) > 0
+	filename := backupFilename(timestamp, encrypt)
 	filepath := filepath.Join(backupDir, filename)
 	result.Filename = filename
+	result.Encrypted = encrypt
 
-	// Run pg_dump
-	cmd := exec.Command("pg_dump",
-		"--format=custom",
-		"--no-owner",
-		"--no-privileges",
-		fmt.Sprintf("--file=%s", filepath),
-		"--host", host,
-		"--port", port,
-		"--username", user,
-		"--dbname", dbname,
-	)
+	// Before any new bytes are written, so a full disk can still be freed by it.
+	removeStalePartials(backupDir)
+
+	// Run pg_dump. Both paths write a hidden .partial file next to the final
+	// name and rename it only when complete, so a crash never leaves a
+	// half-written backup that looks real.
+	partial := partialPath(filepath)
+	cmd := exec.Command(pgDumpBin, pgDumpArgs(host, port, user, dbname, partial, encrypt)...)
 	cmd.Env = append(os.Environ(), fmt.Sprintf("PGPASSWORD=%s", password))
 
-	output, err := cmd.CombinedOutput()
+	var output []byte
+	if encrypt {
+		// dumpEncrypted creates and removes its own files; this run must not
+		// delete a backup it did not write.
+		output, err = dumpEncrypted(cmd, filepath, ageRecipients)
+	} else {
+		output, err = cmd.CombinedOutput()
+		if err == nil {
+			err = publishPartial(partial, filepath)
+		}
+		if err != nil {
+			os.Remove(partial)
+		}
+	}
 	if err != nil {
-		result.Error = fmt.Sprintf("pg_dump failed: %v, output: %s", err, strings.TrimSpace(string(output)))
+		if errors.Is(err, ErrInvalidAgeRecipient) || errors.Is(err, errBackupExists) {
+			result.Error = fmt.Sprintf("encrypted backup not written: %v", err)
+		} else if errors.Is(err, errPublish) {
+			result.Error = fmt.Sprintf("backup not published: %v", err)
+		} else {
+			result.Error = fmt.Sprintf("pg_dump failed: %v, output: %s", err, strings.TrimSpace(string(output)))
+		}
 		result.DurationMs = time.Since(start).Milliseconds()
 		log.Printf("❌ Backup failed: %s", result.Error)
-		// Clean up partial file
-		os.Remove(filepath)
 		saveResult(backupDir, result, database)
 		return fmt.Errorf("%s", result.Error)
 	}
@@ -259,6 +285,10 @@ func saveResult(backupDir string, result BackupResult, database *db.DB) {
 	history = append(history, result)
 	writeManifest(backupDir, history)
 
+	if database == nil {
+		return
+	}
+
 	// Update system_status table
 	statusJSON := fmt.Sprintf(`{"lastRun": "%s", "success": %t, "task": "backup", "filename": "%s", "sizeBytes": %d, "durationMs": %d}`,
 		result.Timestamp.Format(time.RFC3339), result.Success, result.Filename, result.SizeBytes, result.DurationMs)
@@ -289,7 +319,7 @@ func cleanupOldBackups(backupDir string, retentionDays int) {
 
 	removed := 0
 	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".dump") {
+		if entry.IsDir() || !isBackupFile(entry.Name()) {
 			continue
 		}
 

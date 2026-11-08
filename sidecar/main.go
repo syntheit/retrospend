@@ -70,7 +70,7 @@ func main() {
 
 	// Schedule database backup
 	_, err = c.AddFunc(cfg.BackupCron, func() {
-		if err := tasks.RunBackup(database, cfg.DatabaseURL, cfg.BackupDir, cfg.BackupRetentionDays); err != nil {
+		if err := tasks.RunBackup(database, cfg.DatabaseURL, cfg.BackupDir, cfg.BackupRetentionDays, cfg.BackupAgeRecipients); err != nil {
 			log.Printf("❌ Database backup failed: %v", err)
 		}
 	})
@@ -174,7 +174,7 @@ func main() {
 		log.Println("[HTTP] Manual backup triggered")
 
 		go func() {
-			if err := tasks.RunBackup(database, cfg.DatabaseURL, cfg.BackupDir, cfg.BackupRetentionDays); err != nil {
+			if err := tasks.RunBackup(database, cfg.DatabaseURL, cfg.BackupDir, cfg.BackupRetentionDays, cfg.BackupAgeRecipients); err != nil {
 				log.Printf("[HTTP] Backup failed: %v", err)
 			}
 		}()
@@ -403,6 +403,9 @@ func main() {
 	log.Println("  - Exchange rates: daily at 09:05 UTC")
 	log.Println("  - Recurring expenses: every 15 minutes")
 	log.Printf("  - Database backup: %s (retention: %d days)", cfg.BackupCron, cfg.BackupRetentionDays)
+	if len(cfg.BackupAgeRecipients) > 0 {
+		log.Printf("  - Backups encrypted to %d age recipient(s)", len(cfg.BackupAgeRecipients))
+	}
 	log.Println("  - Data retention cleanup: daily at 03:00 UTC")
 	log.Println("  - Settlement auto-finalize: daily at 04:00 UTC")
 	log.Println("  - HTTP Server: :8080")
