@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dec } from "~/server/services/envelope/units";
+import { dec } from "../precise-decimal";
 import {
 	balanceEffect,
 	defaultInBudget,
