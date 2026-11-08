@@ -2,26 +2,25 @@ Retrospend is a personal finance app for your own server. It tracks expenses, ru
 
 <b>Money</b>
 <ul>
-<li>Expenses and income with categories, tags, filters and search</li>
-<li>Envelope budgets in eight styles, built on one engine</li>
+<li>Expenses and income with categories and filters</li>
+<li>Envelope budgets</li>
 <li>Recurring expenses and income</li>
-<li>Wealth: accounts, assets and liabilities, and net worth over time</li>
-<li>Every amount keeps its original currency, with exchange rate types where they matter</li>
-<li>Every money action shows what will change before you save, and can be undone</li>
+<li>Wealth: accounts and net worth</li>
+<li>Every amount keeps its original currency</li>
+<li>Added expenses can be undone</li>
 </ul>
 
 <b>Shared costs</b>
 <ul>
-<li>Split with anyone. People without an account join through a link.</li>
-<li>One balance per person, across every project</li>
+<li>Split costs with other people</li>
 <li>Projects for trips, households and group purchases</li>
 <li>Settle up by recording a payment</li>
 </ul>
 
 <b>Yours</b>
 <ul>
-<li>Works without Google services. Push notifications can use UnifiedPush.</li>
-<li>Your data stays on your server, and you can export all of it</li>
+<li>Works without Google services. Notifications are checked on the phone.</li>
+<li>Your data stays on your server, and you can export it</li>
 <li>Free and open source under the GPL-3.0</li>
 </ul>
 
