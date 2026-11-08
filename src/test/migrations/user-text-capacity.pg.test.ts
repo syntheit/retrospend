@@ -11,6 +11,7 @@ import { USER_TEXT_FIELDS } from "@retrospend/api-contract";
 import { describe, expect, it } from "vitest";
 import { Keyring, sealField } from "~/server/crypto/field-crypto";
 import { adminDb, createTestUser } from "~/test/pg-harness";
+import { USER_TEXT_COLUMNS } from "../../../scripts/scan-control-chars";
 import { REPO_ROOT } from "../uiRules/paths";
 
 // The contract and form schemas are loaded so the registry can cross-check
@@ -166,6 +167,15 @@ describe("user-text columns hold their ciphertext", () => {
 			(f) => !scanned.limits.has(f),
 		);
 		expect(stale).toEqual([]);
+	});
+
+	it("is scanned for control characters, column by column", () => {
+		const covered = new Set(USER_TEXT_COLUMNS.map(([t, c]) => `${t}.${c}`));
+		const missed = Object.values(STORED)
+			.flat()
+			.map(({ table, column }) => `${table}.${column}`)
+			.filter((name) => !covered.has(name));
+		expect(missed).toEqual([]);
 	});
 
 	it("sees every field the loaded schemas register", () => {
