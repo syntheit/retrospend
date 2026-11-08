@@ -99,8 +99,9 @@ export function TransactionAmount({
 		return (
 			<span className="flex flex-col items-end">
 				{top}
-				<span className={cn("whitespace-nowrap", muted)}>
-					{t("yourShare")} <Money figure={tx.shareFigure} value={tx.share} />
+				<span className={muted}>
+					<span className="whitespace-nowrap">{t("yourShare")}</span>{" "}
+					<Money figure={tx.shareFigure} value={tx.share} />
 				</span>
 			</span>
 		);

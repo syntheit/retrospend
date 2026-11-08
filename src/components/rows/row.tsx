@@ -104,15 +104,17 @@ export function Row({
 	className?: string;
 } & RowPassThrough) {
 	const variant = useRowVariant();
+	// The money column takes at most 40% once its lines can wrap (your share),
+	// so on a phone the title keeps room instead of shrinking to a few letters.
 	return (
 		<li
 			className={cn(
-				"group/row min-h-row relative isolate grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-2 transition-colors duration-(--t-state)",
-				lead != null && "grid-cols-[auto_minmax(0,1fr)_auto]",
-				actions != null && "grid-cols-[minmax(0,1fr)_auto_auto]",
+				"group/row min-h-row relative isolate grid grid-cols-[minmax(0,1fr)_fit-content(40%)] items-center gap-3 py-2 transition-colors duration-(--t-state)",
+				lead != null && "grid-cols-[auto_minmax(0,1fr)_fit-content(40%)]",
+				actions != null && "grid-cols-[minmax(0,1fr)_fit-content(40%)_auto]",
 				lead != null &&
 					actions != null &&
-					"grid-cols-[auto_minmax(0,1fr)_auto_auto]",
+					"grid-cols-[auto_minmax(0,1fr)_fit-content(40%)_auto]",
 				ROW[variant],
 				className,
 			)}
