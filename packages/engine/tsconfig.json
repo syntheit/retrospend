@@ -1,0 +1,19 @@
+{
+	// The engine runs in the browser, Node and React Native: the ECMAScript
+	// library only, no DOM and no Node types.
+	"compilerOptions": {
+		"target": "es2022",
+		"lib": ["ES2022"],
+		"types": [],
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"moduleDetection": "force",
+		"isolatedModules": true,
+		"verbatimModuleSyntax": true,
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"skipLibCheck": true,
+		"noEmit": true
+	},
+	"include": ["src"]
+}
