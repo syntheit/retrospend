@@ -14,13 +14,12 @@
  * always read in full, since the splits replay needs every debt from its
  * start and their fingerprint is what keeps the checkpoint honest.
  */
+import {
+	type BudgetInputsPort,
+	rateBookFrom,
+} from "@retrospend/domain/envelope/inputs-port";
 import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import type { Prisma, RecurringTemplate } from "~prisma";
-import {
-	budgetMoneyInWhere,
-	budgetRefundWhere,
-	budgetSpendingWhere,
-} from "../spending";
 import { addDays, addMonths } from "./calendar";
 import {
 	fingerprints,
@@ -48,6 +47,7 @@ import {
 	wealthEntries,
 } from "./entries";
 import { groupTargetOf } from "./group-view";
+import { prismaBudgetInputs } from "./inputs-source";
 import {
 	closedRulesOf,
 	freeze,
@@ -64,7 +64,6 @@ import {
 	monthStart,
 	monthsFrom,
 } from "./months";
-import { RateBook } from "./rate-book";
 import { type LoadedSplits, loadSplits } from "./splits-input";
 import { type TargetContext, targetOf } from "./target-input";
 import { type LiabilityTerms, loadTargetSources } from "./target-sources";
@@ -89,10 +88,6 @@ export function findPersonalBook(tx: Tx, userId: string) {
 		include: BOOK_INCLUDE,
 	});
 }
-
-const NOT_INCOME_CATEGORY = {
-	NOT: { category: { is: { kind: "INCOME" as const } } },
-};
 
 export interface LoadedBook {
 	row: BookRow;
@@ -136,68 +131,6 @@ function periodsOf(row: BookRow): MonthBoundary[] {
 
 /** Two days of slack: the month mapping in the book zone decides. */
 const SLACK_MS = 2 * 86_400_000;
-
-/** Own rows from `from` on and movements after `afterMonth` (the checkpoint). */
-async function loadOwnRows(
-	tx: Tx,
-	row: BookRow,
-	userId: string,
-	from: Date,
-	afterMonth: MonthKey,
-) {
-	const select = {
-		id: true,
-		amount: true,
-		currency: true,
-		amountInUSD: true,
-		date: true,
-		categoryId: true,
-		recurringTemplateId: true,
-		direction: true,
-		entryKind: true,
-		homeCurrency: true,
-		homeAmount: true,
-		budgetEnvelopeId: true,
-	} as const;
-	const moneyIn = await tx.expense.findMany({
-		where: budgetMoneyInWhere(userId, from),
-		select,
-	});
-	const spending = await tx.expense.findMany({
-		where: {
-			...budgetSpendingWhere(userId, { gte: from }),
-			...NOT_INCOME_CATEGORY,
-		},
-		select,
-	});
-	const refunds = await tx.expense.findMany({
-		where: {
-			...budgetRefundWhere(userId, { gte: from }),
-			...NOT_INCOME_CATEGORY,
-		},
-		select,
-	});
-	const movements = await tx.budgetMovement.groupBy({
-		by: ["month", "fromEnvelopeId", "toEnvelopeId"],
-		where: { bookId: row.id, month: { gt: afterMonth } },
-		_sum: { amount: true },
-	});
-	return { moneyIn, spending, refunds, movements };
-}
-
-/** Every Wealth move of the book: goal progress needs them all, and they are few. */
-function loadWealthRows(tx: Tx, bookId: string) {
-	return tx.wealthTransfer.findMany({
-		where: { bookId },
-		select: {
-			id: true,
-			direction: true,
-			envelopeId: true,
-			date: true,
-			amount: true,
-		},
-	});
-}
 
 function viewEnvelopes(
 	row: BookRow,
@@ -257,12 +190,12 @@ function viewBook(
 
 /** Rates for the book currency and every other currency a target or template needs. */
 function loadRates(
-	tx: Tx,
+	source: BudgetInputsPort,
 	row: BookRow,
 	/** Currencies templates, dedicated accounts and followed liabilities are in. */
 	sources: readonly string[],
 ) {
-	return RateBook.load(tx, {
+	return rateBookFrom(source, {
 		bookCurrency: row.currency,
 		rateTypes: [
 			...new Set(["official", ...row.periods.map((p) => p.rateType)]),
@@ -285,10 +218,11 @@ export async function loadBook(
 ): Promise<LoadedBook | null> {
 	const row = await findPersonalBook(tx, userId);
 	if (!row?.defaultEnvelopeId) return null;
-	const s = await settingOf(tx, row, ctx.now);
+	const source = prismaBudgetInputs(tx, userId, row.id);
+	const s = await settingOf(tx, source, row, ctx.now);
 	const closes = await loadCloseRows(tx, row.id);
 	const dirty = await loadDirtyMarks(tx, row.id);
-	const full = await loadFull(tx, userId, s);
+	const full = await loadFull(tx, source, userId, s);
 	const lastClosed = addMonths(s.currentMonth, -1);
 	const prints =
 		lastClosed >= row.startMonth
@@ -308,7 +242,7 @@ export async function loadBook(
 			row.startDate.getTime(),
 		) - SLACK_MS,
 	);
-	const own = await loadOwnRows(tx, row, userId, from, after);
+	const own = await source.ownRows({ from, afterMonth: after });
 	const input: EngineInput = {
 		startMonth: row.startMonth,
 		currentMonth: s.currentMonth,
@@ -369,12 +303,17 @@ interface Setting {
 	accounts: DedicatedAccount[];
 }
 
-async function settingOf(tx: Tx, row: BookRow, now: Date): Promise<Setting> {
+async function settingOf(
+	tx: Tx,
+	source: BudgetInputsPort,
+	row: BookRow,
+	now: Date,
+): Promise<Setting> {
 	const periods = periodsOf(row);
 	const today = isoDateIn(now, row.timeZone);
 	const { templates, liabilities } = await loadTargetSources(tx, row, today);
 	const accounts = await loadDedicatedAccounts(tx, row);
-	const rates = await loadRates(tx, row, [
+	const rates = await loadRates(source, row, [
 		...templates.map((t) => t.currency),
 		...accounts.map((a) => a.currency),
 		...liabilities.map((l) => l.currency),
@@ -411,10 +350,15 @@ async function settingOf(tx: Tx, row: BookRow, now: Date): Promise<Setting> {
 }
 
 /** Shares, payments and Wealth moves, read in full on every load. */
-async function loadFull(tx: Tx, userId: string, s: Setting) {
+async function loadFull(
+	tx: Tx,
+	source: BudgetInputsPort,
+	userId: string,
+	s: Setting,
+) {
 	const splits = await loadSplits(tx, userId, s.valuer, s.row.startMonth);
 	const wealth = wealthEntries(
-		await loadWealthRows(tx, s.row.id),
+		await source.wealthRows(),
 		s.valuer,
 		s.row.currency,
 	);

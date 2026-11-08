@@ -15,7 +15,7 @@ import { addDays, addMonths } from "./calendar";
 import { computeBook, sumLeft } from "./engine";
 import { EnvelopeError } from "./errors";
 import type { MonthRead } from "./month-read";
-import { RateBook } from "./rate-book";
+import { loadRateBook } from "./rate-book";
 import type { Minor, MissingRate } from "./types";
 import { toMinor } from "./units";
 import { convertToBook } from "./valuation";
@@ -73,7 +73,7 @@ export async function bankSide(
 		(c) => c !== H,
 	);
 	const rates = foreign.length
-		? await RateBook.load(tx, {
+		? await loadRateBook(tx, {
 				bookCurrency: H,
 				rateTypes: [loaded.valuation.defaultRateType, "official"],
 				since: addDays(loaded.today, -31),
