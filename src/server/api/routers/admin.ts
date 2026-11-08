@@ -729,7 +729,7 @@ export const adminRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 
-			const profile = await deleteShadowProfileAsAdmin(db, {
+			await deleteShadowProfileAsAdmin(db, {
 				adminId: session.user.id,
 				id: input.id,
 			});
@@ -751,7 +751,7 @@ export const adminRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 
-			const guest = await deleteGuestSessionAsAdmin(db, {
+			await deleteGuestSessionAsAdmin(db, {
 				adminId: session.user.id,
 				id: input.id,
 			});

@@ -78,6 +78,18 @@ export const SENSITIVE_WORDS: ReadonlySet<string> = new Set([
 	"transactions",
 	"payload",
 	"input",
+	"line",
+	"lines",
+	"row",
+	"rows",
+	"record",
+	"records",
+	"entry",
+	"entries",
+	"item",
+	"items",
+	"res",
+	"response",
 ]);
 
 /** Compound names the word split cannot see. */
@@ -93,13 +105,31 @@ const ERROR_NAME = /\b(?:err|error|e|cause|ex)\??\.name\b/g;
 const NOT_USER_TEXT =
 	/\b(?:modelName|typeName|className|tableName|columnName|fieldName|eventName)\b/g;
 
-/** Counts of things are fine: `len(transactions)`, `rows.length`. */
-const COUNT_OF = /\blen\([^()]*\)|[\w$.?]+\.(?:length|size)\b/g;
+/** Counts, ids and codes of a thing are fine: `len(transactions)`, `rows.length`, `row.id`. */
+const COUNT_OF =
+	/\blen\([^()]*\)|[\w$.?]+\.(?:length|size|count|id|ids|ID|Id|IDs|type|kind|status|statusText|ok|code)\b/g;
 
 /** Go's `entry.Name()` on a directory entry is a file name on the server. */
-const GO_FILE_NAME = /\.Name\(\)/g;
+const GO_FILE_NAME = /[\w.]+\.Name\(\)/g;
 
 const IDENT = /[A-Za-z_$][A-Za-z0-9_$]*/g;
+
+const NOT_THE_THING: ReadonlySet<string> = new Set([
+	"num",
+	"number",
+	"index",
+	"idx",
+	"count",
+	"len",
+	"length",
+	"size",
+	"id",
+	"ids",
+	"type",
+	"kind",
+	"status",
+	"code",
+]);
 
 export function words(ident: string): string[] {
 	return ident
@@ -119,7 +149,11 @@ export function sensitiveIn(code: string): string[] {
 		.replace(COUNT_OF, " ")
 		.replace(GO_FILE_NAME, " ");
 	for (const ident of plain.match(IDENT) ?? []) {
-		for (const w of words(ident)) if (SENSITIVE_WORDS.has(w)) found.add(w);
+		const parts = words(ident);
+		// rowNum, tokenId, nameLength: a number or an id, not the thing itself
+		if (NOT_THE_THING.has(parts[parts.length - 1] ?? "") && parts.length > 1)
+			continue;
+		for (const w of parts) if (SENSITIVE_WORDS.has(w)) found.add(w);
 		if (SENSITIVE_COMPOUND.test(ident)) found.add(ident.toLowerCase());
 		if (ident === UPLOADED_FILE_NAME) found.add("filename");
 	}
@@ -211,7 +245,7 @@ function skipQuoted(src: string, at: number, quote: string): number {
 // ---- finding calls ----
 
 const TS_LOG =
-	/(?<![\w$.])(?:console\.(?:log|info|warn|error|debug|trace)|(?:logger|log)\.(?:log|info|warn|error|debug|trace))\s*\(/g;
+	/(?<![\w$.])console\.(?:log|info|warn|error|debug|trace)\s*\(|(?<![\w$])(?:logger|log)\.(?:log|info|warn|error|debug|trace)\s*\(/g;
 const GO_LOG =
 	/(?<![\w.])(?:log\.(?:Print\w*|Fatal\w*|Panic\w*)|fmt\.(?:Print\w*|Fprint\w*)|slog\.\w+)\s*\(/g;
 const TS_EVENT =
@@ -297,12 +331,16 @@ export function scanSource(
 		const at = (m.index ?? 0) + m[0].length;
 		const call = readBalanced(src, at, "(", ")", lang);
 		const bad = sensitiveIn(call.code);
+		// slog keys are string literals: "title", "amount"
+		if (lang === "go" && m[0].startsWith("slog."))
+			for (const k of call.raw.match(/"[A-Za-z_]+"/g) ?? [])
+				bad.push(...sensitiveIn(k.slice(1, -1)));
 		if (bad.length)
 			hits.push({
 				rule: "LOG-010",
 				line: lineOf(src, m.index ?? 0),
 				match: oneLine(m[0] + call.raw),
-				why: bad.join(", "),
+				why: [...new Set(bad)].sort().join(", "),
 			});
 	}
 	if (lang === "ts") {

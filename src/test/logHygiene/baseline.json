@@ -1,6 +1,5 @@
 {
 	"LOG-020": {
-		"src/app/api/import/process/route.ts": 3,
 		"src/server/api/routers/paymentMethod.ts": 1,
 		"src/server/services/admin-test-email.ts": 1
 	}

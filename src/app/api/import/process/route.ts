@@ -23,7 +23,10 @@ export async function POST(request: NextRequest) {
 
 	const importerUrl = env.SIDECAR_URL;
 	if (!importerUrl) {
-		return NextResponse.json({ error: "Import service is not configured" }, { status: 503 });
+		return NextResponse.json(
+			{ error: "Import service is not configured" },
+			{ status: 503 },
+		);
 	}
 
 	// Check API key is available
@@ -104,10 +107,7 @@ export async function POST(request: NextRequest) {
 			signal: controller.signal,
 		});
 
-		const startLogging = async (
-			status: string,
-			metadata: Record<string, unknown> = {},
-		) => {
+		const startLogging = async (status: string, reason?: string) => {
 			const duration = Date.now() - startTime;
 			try {
 				await db.eventLog.create({
@@ -120,11 +120,11 @@ export async function POST(request: NextRequest) {
 							null,
 						userAgent: request.headers.get("user-agent"),
 						metadata: {
-														fileType: file.type || ext.slice(1),
+							fileType: file.type || ext.slice(1),
 							fileSize: file.size,
 							duration_ms: duration,
 							status,
-							...metadata,
+							reason,
 						},
 					},
 				});
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
 			const errorText = await response.text().catch(() => "Unknown error");
 
 			if (response.status === 409) {
-				await startLogging("conflict", { error: "File already imported" });
+				await startLogging("conflict", "file_already_imported");
 				return NextResponse.json(
 					{ error: "This file has already been imported." },
 					{ status: 409 },
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
 			}
 
 			if (response.status === 422) {
-				await startLogging("unprocessable", { error: errorText });
+				await startLogging("unprocessable", "importer_rejected_file");
 				return NextResponse.json(
 					{
 						error: `Could not parse the file: ${errorText}`,
@@ -155,10 +155,7 @@ export async function POST(request: NextRequest) {
 			}
 
 			console.error(`Importer error [${response.status}]`);
-			await startLogging("error", {
-				status: response.status,
-				error: errorText,
-			});
+			await startLogging("error", `importer_http_${response.status}`);
 			return NextResponse.json(
 				{ error: "The import service encountered an error. Please try again." },
 				{ status: 502 },
@@ -170,30 +167,22 @@ export async function POST(request: NextRequest) {
 			async start(controller) {
 				const reader = response.body?.getReader();
 				if (!reader) {
-					await startLogging("error", {
-						error: "No response body from importer",
-					});
+					await startLogging("error", "no_response_body");
 					controller.close();
 					return;
 				}
 
 				try {
-					let totalBytes = 0;
 					while (true) {
 						const { done, value } = await reader.read();
 						if (done) {
-							await startLogging("success", {
-								total_bytes_streamed: totalBytes,
-							});
+							await startLogging("success");
 							break;
 						}
-						totalBytes += value.length;
 						controller.enqueue(value);
 					}
 				} catch (error) {
-					await startLogging("error", {
-						error: error instanceof Error ? error.message : String(error),
-					});
+					await startLogging("error", "stream_failed");
 					controller.error(error);
 				} finally {
 					controller.close();
@@ -223,11 +212,11 @@ export async function POST(request: NextRequest) {
 							null,
 						userAgent: request.headers.get("user-agent"),
 						metadata: {
-														fileType: file.type || ext.slice(1),
+							fileType: file.type || ext.slice(1),
 							fileSize: file.size,
 							duration_ms: duration,
 							status: "timeout",
-							error: "The import timed out",
+							reason: "import_timed_out",
 						},
 					},
 				});
@@ -258,11 +247,11 @@ export async function POST(request: NextRequest) {
 						null,
 					userAgent: request.headers.get("user-agent"),
 					metadata: {
-												fileType: file.type || ext.slice(1),
+						fileType: file.type || ext.slice(1),
 						fileSize: file.size,
 						duration_ms: duration,
 						status: "connection_error",
-						error: error instanceof Error ? error.message : String(error),
+						reason: "importer_unreachable",
 					},
 				},
 			});

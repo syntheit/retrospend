@@ -597,7 +597,7 @@ export class ImportQueueService {
 						}
 					} catch (error) {
 						console.error(
-							`Failed to parse importer response line: ${line}`,
+							`Failed to parse an importer response line (${line.length} chars)`,
 							error,
 						);
 					}

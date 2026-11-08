@@ -118,6 +118,12 @@ describe("LOG-010: log calls", () => {
 			"console.error(\n\t`multi line ${\n\t\texpense.description\n\t}`,\n);",
 			"console.error(`nested ${items.map((i) => i.title).join()}`);",
 			"console.log(session.apiKey);",
+			"console.error('fail', row);",
+			"console.error(`Failed to parse importer response line: ${line}`, error);",
+			"console.warn(`skipped ${item}`);",
+			"ctx.logger.error(`bad ${expense.title}`);",
+			"this.logger.warn(entry);",
+			"console.error(await response.text());",
 		];
 		for (const src of bad) expect(rules(ts(src)), src).toEqual(["LOG-010"]);
 	});
@@ -127,6 +133,8 @@ describe("LOG-010: log calls", () => {
 			"console.error(`Export ${row.id} could not be recorded`, error);",
 			'console.error("[Notification Error] PERIOD_CLOSED:", err);',
 			"console.warn(`webhook ${delivery.id} failed with ${status}`);",
+			"this.logger.warn(`dropped ${rows.length} rows, last ${row.id}`);",
+			"console.error(`importer answered ${response.status} ${response.statusText}`);",
 			"console.error(`Imported ${expenses.length} of ${rows.length}`);",
 			"console.error(`Queue error for user ${userId}:`, error);",
 			"console.warn(`${error.name} while syncing project ${projectId}`);",
@@ -162,6 +170,8 @@ describe("LOG-010: log calls", () => {
 			'fmt.Println("token", apiToken)',
 			'log.Fatalf("bad key %s", cfg.APIKey)',
 			'log.Printf("parse %s", transaction.Description)',
+			'slog.Info("saved", "title", t)',
+			'slog.Warn("saved", "amount", a)',
 		];
 		for (const src of bad) expect(rules(go(src)), src).toEqual(["LOG-010"]);
 		const good = [
@@ -171,6 +181,8 @@ describe("LOG-010: log calls", () => {
 			'log.Printf("skipping template %s", template.ID)',
 			'log.Printf("the amount is bad, token missing")',
 			'log.Println("Importer: available")',
+			'log.Printf("row %d has too few columns", rowNum)',
+			'slog.Info("saved", "count", n, "projectId", id)',
 		];
 		for (const src of good) expect(go(src), src).toEqual([]);
 	});
