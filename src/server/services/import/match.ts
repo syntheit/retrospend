@@ -18,6 +18,7 @@
  * encrypted.
  */
 import { createHash } from "node:crypto";
+import { stripUserTextControls } from "@retrospend/api-contract/common";
 import { currencyDecimals } from "@retrospend/domain/money";
 import { dayKey, startOfDayIn, startOfNextDayIn } from "@retrospend/domain/time-zone";
 import { Prisma, type PrismaClient } from "~prisma";
@@ -130,6 +131,19 @@ function groupBy<T>(items: readonly T[], key: (item: T) => string | null) {
 	return groups;
 }
 
+/** Rows grouped by every key they have (a row may sit in several groups), in the order given. */
+function groupByAny<T>(items: readonly T[], keys: (item: T) => string[]) {
+	const groups = new Map<string, T[]>();
+	for (const item of items) {
+		for (const k of new Set(keys(item))) {
+			const list = groups.get(k);
+			if (list) list.push(item);
+			else groups.set(k, [item]);
+		}
+	}
+	return groups;
+}
+
 /** Hands out each group's rows in order, each at most once (rows only ever become used). */
 function takeFirst(
 	groups: Map<string, ExistingRow[]>,
@@ -189,9 +203,19 @@ export function matchRows(
 		groupBy(existing, (e) => e.fingerprint),
 		(r) => r.fingerprint,
 	);
-	const sameRow = (x: ExistingRow | MatchRow) =>
-		`${moneyKey(x)}|${x.day}|${normalizeTitle(x.title)}`;
-	pass(groupBy(existing, sameRow), sameRow);
+	const sameRow = (x: ExistingRow | MatchRow, title = x.title) =>
+		`${moneyKey(x)}|${x.day}|${normalizeTitle(title)}`;
+	// An Activity row stored before text was cleaned may still hold a control
+	// character, which reads as a separator ("A\vB" is "a b"). A file read by
+	// the sidecar arrives already cleaned ("AB"). So a row is keyed on its title
+	// as stored and as cleaned, and either one meets the file row.
+	pass(
+		groupByAny(existing, (e) => [
+			sameRow(e),
+			sameRow(e, stripUserTextControls(e.title)),
+		]),
+		(r) => sameRow(r),
+	);
 
 	// Likely: same money within LIKELY_DAYS, closest pair first.
 	const buckets = new Map(
