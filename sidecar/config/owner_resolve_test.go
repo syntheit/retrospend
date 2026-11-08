@@ -33,29 +33,35 @@ type fakeState struct {
 	err   error
 }
 
-func (f *fakeProbe) IsSuperuser(context.Context, string) (bool, error) {
+// Facts answers both questions of one connection. The role question is only
+// asked, and counted, of a superuser session, like the real probe.
+func (f *fakeProbe) Facts(context.Context, string) (Facts, error) {
 	if len(f.superuser) > 0 {
 		err := f.superuser[0]
 		if len(f.superuser) > 1 {
 			f.superuser = f.superuser[1:]
 		}
 		if err != nil {
-			return false, err
+			return Facts{}, err
 		}
 	}
-	return f.isSuper, nil
-}
-
-func (f *fakeProbe) RoleExists(context.Context, string) (bool, error) {
+	facts := Facts{Superuser: f.isSuper}
+	if !f.isSuper {
+		return facts, nil
+	}
 	f.roleCalls++
 	if f.roleErr != nil {
-		return false, f.roleErr
+		facts.RoleErr = f.roleErr
+		return facts, nil
 	}
 	i := f.roleCalls - 1
 	if i >= len(f.roleExists) {
 		i = len(f.roleExists) - 1
 	}
-	return f.roleExists[i], nil
+	if i >= 0 {
+		facts.RoleExists = f.roleExists[i]
+	}
+	return facts, nil
 }
 
 func (f *fakeProbe) OwnerState(_ context.Context, ownerURL string) (OwnerState, error) {

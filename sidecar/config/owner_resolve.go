@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"time"
-
-	"github.com/jackc/pgx/v5"
 )
 
 // OwnerOptions tunes ResolveOwnerURL. Start from DefaultOwnerOptions.
@@ -42,24 +40,6 @@ func DefaultOwnerOptions() OwnerOptions {
 	}
 }
 
-// ownerProbe is what ResolveOwnerURL needs to ask the database.
-type ownerProbe interface {
-	// IsSuperuser: the URL's own role is a superuser.
-	IsSuperuser(ctx context.Context, databaseURL string) (bool, error)
-	// RoleExists: the owner role exists (any session can read pg_roles).
-	RoleExists(ctx context.Context, databaseURL string) (bool, error)
-	// OwnerState signs in with ownerURL and reports how far along it is.
-	OwnerState(ctx context.Context, ownerURL string) (OwnerState, error)
-}
-
-// OwnerState is what a session of the owner role sees.
-type OwnerState struct {
-	Superuser bool
-	// Pending counts objects in public and keystore that another role still
-	// owns. Zero means the handover is done.
-	Pending int
-}
-
 // ErrOwnerUnusable is returned when the owner role exists but this container
 // cannot work out its URL (no password it can read, and no
 // DATABASE_OWNER_PASSWORD). The superuser URL is not a fallback then.
@@ -85,6 +65,39 @@ var ErrOwnerNotReady = errors.New("the owner role is not ready")
 //
 // It never logs a URL or a password.
 func ResolveOwnerURL(ctx context.Context, databaseURL string, o OwnerOptions) (string, error) {
+	o = o.withDefaults()
+	roleDeadline := o.Now().Add(o.RoleWait)
+
+	// Is this a superuser URL? The database may still be starting.
+	facts, err := o.awaitDatabase(ctx, databaseURL, roleDeadline)
+	if err != nil {
+		return "", err
+	}
+	if !facts.Superuser {
+		o.Logf("DATABASE_URL is not a superuser's: using it as given")
+		return databaseURL, nil
+	}
+
+	// Work out the owner's URL. When that is not possible, the owner role may
+	// still exist (the app created it with a password this container cannot
+	// derive): then there is no fallback, because a superuser session writing
+	// to tables the owner owns can fire triggers the owner planted.
+	ownerURL, unusable := ownerURLFor(databaseURL, o.OwnerPassword)
+	if unusable != "" {
+		return o.resolveUnusable(ctx, databaseURL, facts, roleDeadline, unusable)
+	}
+
+	exists, err := o.awaitRole(ctx, databaseURL, facts, roleDeadline)
+	if err != nil {
+		return "", err
+	}
+	if !exists {
+		return databaseURL, nil
+	}
+	return o.awaitReady(ctx, ownerURL)
+}
+
+func (o OwnerOptions) withDefaults() OwnerOptions {
 	if o.Probe == nil {
 		o.Probe = pgProbe{}
 	}
@@ -97,68 +110,94 @@ func ResolveOwnerURL(ctx context.Context, databaseURL string, o OwnerOptions) (s
 	if o.Logf == nil {
 		o.Logf = func(string, ...any) {}
 	}
+	return o
+}
 
-	roleDeadline := o.Now().Add(o.RoleWait)
-
-	// Is this a superuser URL? The database may still be starting.
-	var superuser bool
+// awaitDatabase asks until the database answers: the URL's own role and, for a
+// superuser, whether the owner role exists, on one connection per attempt.
+func (o OwnerOptions) awaitDatabase(ctx context.Context, databaseURL string, deadline time.Time) (Facts, error) {
 	for {
-		var err error
-		superuser, err = o.Probe.IsSuperuser(ctx, databaseURL)
+		facts, err := o.Probe.Facts(ctx, databaseURL)
 		if err == nil {
-			break
+			return facts, nil
 		}
-		if !o.Now().Before(roleDeadline) {
-			return "", fmt.Errorf("cannot reach the database: %w", err)
+		if !o.Now().Before(deadline) {
+			return Facts{}, fmt.Errorf("cannot reach the database: %w", err)
 		}
 		o.Logf("database not reachable yet: %v", err)
 		o.Sleep(o.Poll)
 	}
-	if !superuser {
-		o.Logf("DATABASE_URL is not a superuser's: using it as given")
-		return databaseURL, nil
-	}
+}
 
-	// Work out the owner's URL. When that is not possible, the owner role may
-	// still exist (the app created it with a password this container cannot
-	// derive): then there is no fallback, because a superuser session writing
-	// to tables the owner owns can fire triggers the owner planted.
-	ownerURL, unusable := ownerURLFor(databaseURL, o.OwnerPassword)
-	if unusable != "" {
-		exists, err := o.askRole(ctx, databaseURL, roleDeadline)
-		if err != nil {
-			return "", err
-		}
-		if exists {
-			return "", fmt.Errorf("%w: the %s role exists, but this container cannot use it: %s", ErrOwnerUnusable, OwnerRole, unusable)
-		}
-		o.Logf("WARNING: %s, so the sidecar keeps connecting as the superuser because the %s role does not exist. If the app creates it later, the sidecar stops and then refuses to start until this is fixed.", unusable, OwnerRole)
-		return databaseURL, nil
+// resolveUnusable decides what to do when the owner's URL cannot be built: the
+// role exists (exit) or it does not (keep the URL as given, with a warning).
+func (o OwnerOptions) resolveUnusable(ctx context.Context, databaseURL string, facts Facts, deadline time.Time, unusable string) (string, error) {
+	exists, err := o.askRole(ctx, databaseURL, facts, deadline)
+	if err != nil {
+		return "", err
 	}
+	if exists {
+		return "", fmt.Errorf("%w: the %s role exists, but this container cannot use it: %s", ErrOwnerUnusable, OwnerRole, unusable)
+	}
+	o.Logf("WARNING: %s, so the sidecar keeps connecting as the superuser because the %s role does not exist. If the app creates it later, the sidecar stops and then refuses to start until this is fixed.", unusable, OwnerRole)
+	return databaseURL, nil
+}
 
-	// Wait for the role to exist. The app's entrypoint creates it; on a first
-	// upgrade the sidecar can start first.
+// awaitRole waits for the owner role to exist. The app's entrypoint creates it;
+// on a first upgrade the sidecar can start first. exists is false only when
+// the role still does not exist after RoleWait (an old app image), which it
+// logs loudly.
+func (o OwnerOptions) awaitRole(ctx context.Context, databaseURL string, facts Facts, deadline time.Time) (bool, error) {
 	logged := false
 	for {
-		exists, err := o.askRole(ctx, databaseURL, roleDeadline)
+		exists, err := o.askRole(ctx, databaseURL, facts, deadline)
 		if err != nil {
-			return "", err
+			return false, err
 		}
 		if exists {
-			break
+			return true, nil
 		}
-		if !o.Now().Before(roleDeadline) {
+		if !o.Now().Before(deadline) {
 			o.Logf("WARNING: the %s role does not exist after %s. This looks like an app image that does not create it, so the sidecar connects as the superuser from DATABASE_URL. Update the app image to run the sidecar without it.", OwnerRole, o.RoleWait)
-			return databaseURL, nil
+			return false, nil
 		}
 		if !logged {
 			o.Logf("waiting up to %s for the app to create the %s role", o.RoleWait, OwnerRole)
 			logged = true
 		}
 		o.Sleep(o.Poll)
+		facts = o.refresh(ctx, databaseURL)
 	}
+}
 
-	// The role exists: from here on there is no fallback.
+// askRole reads the role question out of facts, retrying a failed one until
+// deadline: a failed check is never read as "missing".
+func (o OwnerOptions) askRole(ctx context.Context, databaseURL string, facts Facts, deadline time.Time) (bool, error) {
+	for {
+		if facts.RoleErr == nil {
+			return facts.RoleExists, nil
+		}
+		if !o.Now().Before(deadline) {
+			return false, fmt.Errorf("cannot check for the %s role: %w", OwnerRole, facts.RoleErr)
+		}
+		o.Logf("cannot check for the %s role yet: %v", OwnerRole, facts.RoleErr)
+		o.Sleep(o.Poll)
+		facts = o.refresh(ctx, databaseURL)
+	}
+}
+
+// refresh asks again. A connection that fails now is a failed role check.
+func (o OwnerOptions) refresh(ctx context.Context, databaseURL string) Facts {
+	facts, err := o.Probe.Facts(ctx, databaseURL)
+	if err != nil {
+		return Facts{RoleErr: err}
+	}
+	return facts
+}
+
+// awaitReady waits until the owner signs in, is no superuser and nothing is
+// left to hand over. The role exists: from here on there is no fallback.
+func (o OwnerOptions) awaitReady(ctx context.Context, ownerURL string) (string, error) {
 	readyDeadline := o.Now().Add(o.ReadyWait)
 	for {
 		state, err := o.Probe.OwnerState(ctx, ownerURL)
@@ -182,11 +221,6 @@ func ResolveOwnerURL(ctx context.Context, databaseURL string, o OwnerOptions) (s
 	}
 }
 
-// pgProbe asks the database. A superuser session must never read or write an
-// app table: the owner role owns them and can attach triggers or functions
-// that would run with the superuser's rights. So the superuser connection
-// asks only about pg_roles, and the handover check runs as the owner, over
-// pg_catalog alone (TestOwnerQueriesTouchOnlyCatalogs checks the text).
 // ownerURLFor returns the owner's URL, or why it cannot be built. The reason
 // names a likely cause and never holds a password or a URL.
 func ownerURLFor(databaseURL, override string) (ownerURL, unusable string) {
@@ -203,121 +237,4 @@ func ownerURLFor(databaseURL, override string) (ownerURL, unusable string) {
 		return "", fmt.Sprintf("the owner URL cannot be built from DATABASE_URL (%v)", err)
 	}
 	return built, ""
-}
-
-// askRole asks whether the owner role exists, retrying a failed question until
-// deadline: a failed check is never read as "missing".
-func (o OwnerOptions) askRole(ctx context.Context, databaseURL string, deadline time.Time) (bool, error) {
-	for {
-		exists, err := o.Probe.RoleExists(ctx, databaseURL)
-		if err == nil {
-			return exists, nil
-		}
-		if !o.Now().Before(deadline) {
-			return false, fmt.Errorf("cannot check for the %s role: %w", OwnerRole, err)
-		}
-		o.Logf("cannot check for the %s role yet: %v", OwnerRole, err)
-		o.Sleep(o.Poll)
-	}
-}
-
-type pgProbe struct{}
-
-const (
-	isSuperuserSQL = `SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = current_user`
-	roleExistsSQL  = `SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = $1)`
-)
-
-const probeTimeout = 10 * time.Second
-
-// connectOnce opens one connection with a deadline. The returned func closes
-// it.
-func connectOnce(ctx context.Context, databaseURL string) (*pgx.Conn, func(), error) {
-	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
-	conn, err := pgx.Connect(ctx, databaseURL)
-	if err != nil {
-		cancel()
-		return nil, nil, err
-	}
-	return conn, func() {
-		_ = conn.Close(context.Background())
-		cancel()
-	}, nil
-}
-
-func (pgProbe) IsSuperuser(ctx context.Context, databaseURL string) (bool, error) {
-	conn, done, err := connectOnce(ctx, databaseURL)
-	if err != nil {
-		return false, err
-	}
-	defer done()
-	var super bool
-	err = conn.QueryRow(ctx, isSuperuserSQL).Scan(&super)
-	return super, err
-}
-
-func (pgProbe) RoleExists(ctx context.Context, databaseURL string) (bool, error) {
-	conn, done, err := connectOnce(ctx, databaseURL)
-	if err != nil {
-		return false, err
-	}
-	defer done()
-	var exists bool
-	err = conn.QueryRow(ctx, roleExistsSQL, OwnerRole).Scan(&exists)
-	return exists, err
-}
-
-// pendingHandoverSQL mirrors prisma/bootstrap/owner-handover.sql: the same
-// object kinds, in public and keystore, with extension members left out. The
-// sidecar only reads this; the handover itself is the app entrypoint's job.
-const pendingHandoverSQL = `
-WITH owner AS (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = $1),
-schemas AS (
-  SELECT oid, nspowner FROM pg_catalog.pg_namespace WHERE nspname IN ('public', 'keystore')
-)
-SELECT (
-  (SELECT count(*) FROM schemas s, owner o WHERE s.nspowner <> o.oid)
-  + (SELECT count(*) FROM pg_catalog.pg_class c
-       JOIN schemas s ON s.oid = c.relnamespace, owner o
-      WHERE c.relkind IN ('r', 'p', 'S', 'v', 'm', 'f', 'c')
-        AND c.relowner <> o.oid
-        AND NOT (c.relkind = 'S' AND EXISTS (
-              SELECT 1 FROM pg_catalog.pg_depend d
-               WHERE d.classid = 'pg_catalog.pg_class'::pg_catalog.regclass
-                 AND d.objid = c.oid AND d.deptype IN ('a', 'i')))
-        AND NOT EXISTS (
-              SELECT 1 FROM pg_catalog.pg_depend d
-               WHERE d.classid = 'pg_catalog.pg_class'::pg_catalog.regclass
-                 AND d.objid = c.oid AND d.deptype = 'e'))
-  + (SELECT count(*) FROM pg_catalog.pg_type t
-       JOIN schemas s ON s.oid = t.typnamespace, owner o
-      WHERE t.typtype IN ('e', 'd', 'r')
-        AND t.typowner <> o.oid
-        AND NOT EXISTS (
-              SELECT 1 FROM pg_catalog.pg_depend d
-               WHERE d.classid = 'pg_catalog.pg_type'::pg_catalog.regclass
-                 AND d.objid = t.oid AND d.deptype = 'e'))
-  + (SELECT count(*) FROM pg_catalog.pg_proc p
-       JOIN schemas s ON s.oid = p.pronamespace, owner o
-      WHERE p.proowner <> o.oid
-        AND NOT EXISTS (
-              SELECT 1 FROM pg_catalog.pg_depend d
-               WHERE d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
-                 AND d.objid = p.oid AND d.deptype = 'e'))
-)::int`
-
-func (pgProbe) OwnerState(ctx context.Context, ownerURL string) (OwnerState, error) {
-	conn, done, err := connectOnce(ctx, ownerURL)
-	if err != nil {
-		return OwnerState{}, err
-	}
-	defer done()
-	var state OwnerState
-	if err := conn.QueryRow(ctx, isSuperuserSQL).Scan(&state.Superuser); err != nil {
-		return OwnerState{}, err
-	}
-	if err := conn.QueryRow(ctx, pendingHandoverSQL, OwnerRole).Scan(&state.Pending); err != nil {
-		return OwnerState{}, err
-	}
-	return state, nil
 }
