@@ -30,17 +30,17 @@ describe("BottomNav", () => {
 			"/home",
 			"/activity",
 			"/budget",
+			"/wealth",
 			"/people",
-			"/projects",
 		]);
 		expect(html.match(/aria-current="page"/g)).toHaveLength(1);
 		expect(html).toMatch(/aria-current="page"[^>]*href="\/activity"/);
 		expect(html).toContain("2 need you");
-		expect(html).not.toContain("Wealth");
+		expect(html).not.toContain("Projects");
 	});
 
 	it("marks nothing on a page without a tab", () => {
-		pathname = "/wealth";
+		pathname = "/projects";
 		expect(render(h(BottomNav))).not.toContain("aria-current");
 	});
 });
