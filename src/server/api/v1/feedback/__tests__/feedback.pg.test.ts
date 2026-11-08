@@ -183,6 +183,17 @@ describe("/api/v1/feedback and /error-reports", () => {
 		});
 		expect(asUser.status).toBe(403);
 
+		// The admin's read is in the sender's access log, once; the refused
+		// read by a plain user and the admin's own log have nothing.
+		const reads = (userId: string) =>
+			adminDb.adminAccessLog.findMany({
+				where: { userId, action: "feedback_screenshot_viewed" },
+			});
+		expect(await reads(bob)).toMatchObject([{ adminId: admin }]);
+		expect(await reads(admin)).toEqual([]);
+		await call(`/admin/feedback/${sent.id}/screenshot`, { headers: asAdmin });
+		expect(await reads(bob)).toHaveLength(1);
+
 		// A new file is written over the old one: one path, no orphan.
 		const before = row.screenshotPath ?? "";
 		const count = files.size;

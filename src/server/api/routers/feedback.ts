@@ -6,6 +6,7 @@ import {
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
+	adminListProcedure,
 	adminProcedure,
 	createTRPCRouter,
 	protectedProcedure,
@@ -94,7 +95,7 @@ export const feedbackRouter = createTRPCRouter({
 			return { success: true, id: feedback.id };
 		}),
 
-	list: adminProcedure
+	list: adminListProcedure("feedback")
 		.input(
 			z.object({
 				status: z.enum(["unread", "read", "archived"]).optional(),
@@ -198,7 +199,7 @@ export const feedbackRouter = createTRPCRouter({
 		}),
 
 	/** Errors the mobile app sent, newest first. Admins only; already scrubbed. */
-	errorReports: adminProcedure
+	errorReports: adminListProcedure("error_reports")
 		.input(
 			z.object({
 				cursor: z.string().optional(),

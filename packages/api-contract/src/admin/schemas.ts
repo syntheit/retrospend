@@ -160,6 +160,7 @@ export const EVENT_LOG_TYPES = [
 	"GUEST_UPGRADED",
 	"ADMIN_DELETE_SHADOW_PROFILE",
 	"ADMIN_DELETE_GUEST_SESSION",
+	"ADMIN_LIST_VIEWED",
 ] as const;
 
 export const eventLogQuerySchema = z.object({

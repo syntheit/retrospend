@@ -9,8 +9,10 @@ import {
 import { TRPCError } from "@trpc/server";
 import * as z from "zod";
 import { db } from "~/server/db";
+import { recordAdminListView } from "~/server/services/admin-access.service";
 import { processReceipt } from "~/server/image-processing";
-import { getFileStream, uploadFile } from "~/server/storage";
+import { openFeedbackScreenshotAsAdmin } from "~/server/services/feedback-screenshot.service";
+import { uploadFile } from "~/server/storage";
 import { assertAdmin } from "./admin";
 import { decodeCursor, encodeCursor } from "./cursor";
 import type { LedgerCaller } from "./money-op";
@@ -78,16 +80,15 @@ export async function readScreenshot(
 	id: string,
 ): Promise<File> {
 	assertAdmin(caller);
-	const row = await db.feedback.findUnique({
-		where: { id },
-		select: { screenshotPath: true },
-	});
-	if (!row?.screenshotPath)
+	const stream = await openFeedbackScreenshotAsAdmin(
+		caller.principal.userId,
+		id,
+	);
+	if (!stream)
 		throw new TRPCError({ code: "NOT_FOUND", message: "No screenshot" });
 	const chunks: Buffer[] = [];
 	try {
-		for await (const chunk of await getFileStream(row.screenshotPath))
-			chunks.push(Buffer.from(chunk));
+		for await (const chunk of stream) chunks.push(Buffer.from(chunk));
 	} catch {
 		throw new TRPCError({ code: "NOT_FOUND", message: "No screenshot" });
 	}
@@ -151,6 +152,11 @@ export async function listErrorReports(
 		}),
 		db.errorReport.count(),
 	]);
+	await recordAdminListView(db, {
+		adminId: caller.principal.userId,
+		view: "error_reports",
+		firstPage: !after,
+	});
 	const more = rows.length > q.limit;
 	const items = more ? rows.slice(0, q.limit) : rows;
 	const last = items[items.length - 1];

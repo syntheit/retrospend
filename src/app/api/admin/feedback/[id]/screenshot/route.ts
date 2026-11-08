@@ -1,6 +1,6 @@
 import { Readable } from "node:stream";
 import { getWebSession } from "~/server/better-auth/web-session";
-import { openFeedbackScreenshot } from "~/server/services/feedback-screenshot.service";
+import { openFeedbackScreenshotAsAdmin } from "~/server/services/feedback-screenshot.service";
 
 /**
  * A feedback screenshot for the admin inbox. It can show a person's screen,
@@ -18,7 +18,7 @@ export async function GET(
 		return new Response("Forbidden", { status: 403 });
 
 	const { id } = await params;
-	const stream = await openFeedbackScreenshot(id);
+	const stream = await openFeedbackScreenshotAsAdmin(session.user.id, id);
 	if (!stream) return new Response("Not found", { status: 404 });
 	return new Response(Readable.toWeb(stream as Readable) as ReadableStream, {
 		headers: {

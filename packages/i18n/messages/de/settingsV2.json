@@ -240,7 +240,8 @@
 				"ai_access_changed": "Ein Admin hat deinen externen KI-Zugriff geändert",
 				"avatar_removed": "Ein Admin hat dein Foto entfernt",
 				"person_deleted": "Ein Admin hat eine Person gelöscht, die du hinzugefügt hast",
-				"shared_data_changed": "Ein Admin hat eine Person aus deinen geteilten Ausgaben entfernt"
+				"shared_data_changed": "Ein Admin hat eine Person aus deinen geteilten Ausgaben entfernt",
+				"feedback_screenshot_viewed": "Ein Admin hat einen Screenshot angesehen, den du mit einem Feedback gesendet hast"
 			}
 		}
 	},

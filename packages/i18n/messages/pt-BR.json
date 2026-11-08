@@ -1167,7 +1167,8 @@
     "eventEmailChangeReverted": "Alteração de e-mail revertida",
     "eventGuestUpgraded": "Conta de convidado convertida",
     "eventShadowProfileDeleted": "Perfil provisório excluído",
-    "eventGuestSessionDeleted": "Sessão de visitante excluída"
+    "eventGuestSessionDeleted": "Sessão de visitante excluída",
+    "eventAdminListViewed": "Lista vista por um administrador"
   },
   "auth": {
     "loginFailed": "A autenticação falhou",

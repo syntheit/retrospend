@@ -240,7 +240,8 @@
 				"ai_access_changed": "Um administrador alterou seu acesso à IA externa",
 				"avatar_removed": "Um administrador removeu sua foto",
 				"person_deleted": "Um administrador excluiu uma pessoa que você adicionou",
-				"shared_data_changed": "Um administrador removeu uma pessoa das suas despesas compartilhadas"
+				"shared_data_changed": "Um administrador removeu uma pessoa das suas despesas compartilhadas",
+				"feedback_screenshot_viewed": "Um administrador viu uma captura de tela que você enviou com um feedback"
 			}
 		}
 	},

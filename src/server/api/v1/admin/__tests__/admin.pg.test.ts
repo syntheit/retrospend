@@ -6,6 +6,7 @@
  */
 import { contract } from "@retrospend/api-contract";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { encodeCursor } from "~/server/services/api-v1/cursor";
 import { getAppSettings, updateAppSettings } from "~/server/services/settings";
 import {
 	adminDb,
@@ -654,5 +655,66 @@ describe("/api/v1/admin", () => {
 			403,
 			"missing_scope",
 		);
+	});
+});
+
+describe("/api/v1/admin list views are audited", () => {
+	const viewsOf = async (adminId: string) =>
+		(
+			await adminDb.eventLog.findMany({
+				where: { eventType: "ADMIN_LIST_VIEWED", userId: adminId },
+			})
+		)
+			.map((e) => (e.metadata as { view: string }).view)
+			.sort();
+
+	it("writes one admin audit event per list, first page only, and nothing in a person's log", async () => {
+		const adminId = (await createTestUser({ role: "ADMIN" })).user.id;
+		const person = (await createTestUser()).user.id;
+		const headers = await asKey(adminId, ["admin"]);
+		const get = async (path: string) =>
+			expect((await call(path, { headers })).status).toBe(200);
+
+		await get("/admin/users?limit=1");
+		await get("/admin/invite-codes?status=all&limit=1");
+		await get("/admin/error-reports?limit=1");
+		await get("/admin/feedback?limit=1");
+		await get("/admin/ai-usage");
+		await get("/admin/event-logs?limit=1");
+		await get("/admin/participants");
+		expect(await viewsOf(adminId)).toEqual([
+			"ai_usage",
+			"error_reports",
+			"event_log",
+			"feedback",
+			"guest_sessions",
+			"invites",
+			"shadow_profiles",
+			"users",
+		]);
+
+		// The same lists again, and a page after the first, add nothing.
+		await get("/admin/users?limit=1");
+		await get("/admin/invite-codes?status=all&limit=1");
+		await get(`/admin/error-reports?limit=1&cursor=${encodeCursor({ id: "x" })}`);
+		expect(await viewsOf(adminId)).toHaveLength(8);
+		expect(
+			await adminDb.adminAccessLog.count({ where: { userId: person } }),
+		).toBe(0);
+		expect(
+			await adminDb.adminAccessLog.count({ where: { userId: adminId } }),
+		).toBe(0);
+	});
+
+	it("writes nothing when the key is not an admin's", async () => {
+		const userId = (await createTestUser()).user.id;
+		const headers = await asKey(userId, ["read"]);
+		for (const path of [
+			"/admin/users",
+			"/admin/invite-codes",
+			"/admin/error-reports",
+		])
+			expect((await call(path, { headers })).status).toBe(403);
+		expect(await viewsOf(userId)).toEqual([]);
 	});
 });

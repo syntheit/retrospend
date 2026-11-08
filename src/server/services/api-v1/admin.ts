@@ -259,6 +259,7 @@ export const EVENT_METADATA_KEYS: ReadonlySet<string> = new Set([
 	"username",
 	"verifiedBy",
 	"verifiedByUsername",
+	"view",
 ]);
 
 type Scalar = string | number | boolean | null;

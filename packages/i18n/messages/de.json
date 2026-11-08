@@ -1167,7 +1167,8 @@
     "eventEmailChangeReverted": "Änderung der E-Mail-Adresse rückgängig gemacht",
     "eventGuestUpgraded": "Gast hochgestuft",
     "eventShadowProfileDeleted": "Schattenprofil gelöscht",
-    "eventGuestSessionDeleted": "Gastsitzung gelöscht"
+    "eventGuestSessionDeleted": "Gastsitzung gelöscht",
+    "eventAdminListViewed": "Admin-Liste angesehen"
   },
   "auth": {
     "loginFailed": "Anmeldung fehlgeschlagen",

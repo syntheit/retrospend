@@ -240,7 +240,8 @@
 				"ai_access_changed": "An admin changed your external AI access",
 				"avatar_removed": "An admin removed your photo",
 				"person_deleted": "An admin deleted a person you added",
-				"shared_data_changed": "An admin removed a person from your shared expenses"
+				"shared_data_changed": "An admin removed a person from your shared expenses",
+				"feedback_screenshot_viewed": "An admin viewed a screenshot you sent with feedback"
 			}
 		}
 	},

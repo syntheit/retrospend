@@ -76,6 +76,7 @@ function getEventTypeLabels(t: ReturnType<typeof useTranslations<"auditLog">>): 
 		GUEST_UPGRADED: t("eventGuestUpgraded"),
 		ADMIN_DELETE_SHADOW_PROFILE: t("eventShadowProfileDeleted"),
 		ADMIN_DELETE_GUEST_SESSION: t("eventGuestSessionDeleted"),
+		ADMIN_LIST_VIEWED: t("eventAdminListViewed"),
 	};
 }
 
@@ -105,6 +106,7 @@ const EVENT_TYPE_COLORS: Record<EventType, string> = {
 	GUEST_UPGRADED: "text-emerald-500",
 	ADMIN_DELETE_SHADOW_PROFILE: "text-destructive",
 	ADMIN_DELETE_GUEST_SESSION: "text-destructive",
+	ADMIN_LIST_VIEWED: "text-fg-3",
 };
 
 type PrivacyMode = "minimal" | "anonymized" | "full";
@@ -359,9 +361,7 @@ export function AuditLogsTable() {
 						</div>
 					</div>
 					<Select
-						onValueChange={(value) => {
-							setEventTypeFilter(value as EventType | "all");
-						}}
+						onValueChange={(value) => setEventTypeFilter(value as EventType | "all")}
 						value={eventTypeFilter ?? "all"}
 					>
 						<SelectTrigger className="w-[200px]">
