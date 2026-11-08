@@ -12,7 +12,7 @@
  * lower-cases, because a file's "food" must find the category "Food", and it
  * never decides what may be created.
  *
- * Stored form: "<tag>:<64 hex>" (see blind-index.ts). The tag names the data
+ * Stored form: "<16 hex tag>:<64 hex>" (see blind-index.ts). The tag names the data
  * key the hash was made with. An index counts only while its tag is the
  * current one; after the key was replaced every old index is stale, and
  * until `backfillCategoryNameIndexForUser` runs with `recompute` the name
@@ -86,8 +86,14 @@ export async function categoryNameIndexFor(
 		await tx.$executeRaw`RELEASE SAVEPOINT category_name_index`;
 		return index;
 	} catch (error) {
-		if (!(error instanceof DataKeyError || error instanceof FieldCryptoError))
-			throw error;
+		// Only what a broken key store looks like. no_user (no signed-in
+		// transaction) is a programming error and must surface.
+		const fallback =
+			error instanceof FieldCryptoError ||
+			(error instanceof DataKeyError &&
+				(error.code === "keystore_missing" ||
+					error.code === "keystore_grants_missing"));
+		if (!fallback) throw error;
 		await tx.$executeRaw`ROLLBACK TO SAVEPOINT category_name_index`;
 		console.warn(
 			`Category name index skipped, the key store gave no usable key (${error.code})`,

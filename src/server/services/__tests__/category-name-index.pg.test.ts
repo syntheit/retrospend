@@ -82,8 +82,8 @@ describe("category name index", () => {
 		const rowA = await create(a, "Food");
 		const rowB = await create(b, "Food");
 		const [ia, ib] = [await indexOf(rowA.id), await indexOf(rowB.id)];
-		expect(ia).toMatch(/^[0-9a-f]{8}:[0-9a-f]{64}$/);
-		expect(ib).toMatch(/^[0-9a-f]{8}:[0-9a-f]{64}$/);
+		expect(ia).toMatch(/^[0-9a-f]{16}:[0-9a-f]{64}$/);
+		expect(ib).toMatch(/^[0-9a-f]{16}:[0-9a-f]{64}$/);
 		expect(ia).not.toBe(ib);
 		// Each is the hash under that user's own key, and not the other's.
 		const keyA = await a.db.$transaction((tx) =>
@@ -152,6 +152,9 @@ describe("category name index", () => {
 
 	it("answers two creates of one name at once with one row and one conflict", async () => {
 		const a = await createTestUser();
+		// Make the user's key first: otherwise both creates mint it, and the
+		// keystore's insert serializes them before either reaches the category.
+		await ringOf(a);
 		// "Race " is a trimmed duplicate, so the old unique index (exact names)
 		// cannot stop it; only the name index can.
 		const results = await Promise.allSettled([
@@ -171,12 +174,13 @@ describe("category name index", () => {
 	it("the unique index itself refuses a second row with one index", async () => {
 		const a = await createTestUser();
 		const base = { userId: a.user.id, color: "orange" as const };
+		const same = `0123456789abcdef:${"ab".repeat(32)}`;
 		await adminDb.category.create({
-			data: { ...base, name: "One", nameIndex: "x" },
+			data: { ...base, name: "One", nameIndex: same },
 		});
 		await expect(
 			adminDb.category.create({
-				data: { ...base, name: "Two", nameIndex: "x" },
+				data: { ...base, name: "Two", nameIndex: same },
 			}),
 		).rejects.toMatchObject({ code: "P2002" });
 		// Rows with no index never collide.
@@ -302,16 +306,15 @@ describe("category name index", () => {
 			categoryNameIndexFor(tx, "Food", master),
 		);
 		expect(asA).toBe(stored);
-		// No signed-in user: no key, so no index (and the reason is logged).
+		// No signed-in user: no key and no index, and not swallowed, since that
+		// is a programming error and not a broken key store.
 		vi.spyOn(console, "warn").mockImplementation(() => undefined);
 		await expect(
 			adminDb.$transaction((tx) => getOrCreateDataKeyring(tx, master)),
 		).rejects.toBeInstanceOf(DataKeyError);
-		expect(
-			await adminDb.$transaction((tx) =>
-				categoryNameIndexFor(tx, "Food", master),
-			),
-		).toBeNull();
+		await expect(
+			adminDb.$transaction((tx) => categoryNameIndexFor(tx, "Food", master)),
+		).rejects.toMatchObject({ code: "no_user" });
 		// A master key that did not wrap A's key cannot open it.
 		const wrong = new Keyring([{ id: 1, key: randomBytes(32) }]);
 		await expect(
