@@ -1,0 +1,20 @@
+{
+	// Runs in the browser, Node and React Native: the ECMAScript library only,
+	// no DOM and no Node types (the tests carry their own).
+	"compilerOptions": {
+		"target": "es2022",
+		"lib": ["ES2022"],
+		"types": [],
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"moduleDetection": "force",
+		"isolatedModules": true,
+		"verbatimModuleSyntax": true,
+		"resolveJsonModule": true,
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"skipLibCheck": true,
+		"noEmit": true
+	},
+	"include": ["src"]
+}

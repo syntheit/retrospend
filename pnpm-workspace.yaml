@@ -7,6 +7,9 @@ packages:
 onlyBuiltDependencies:
   - '@prisma/engines'
   - prisma
+  # Unpacks the vendored libsodium the native build links (dependency approved
+  # by the owner 2026-11-03).
+  - react-native-libsodium
 
 # Skip versions published in the last 7 days (supply-chain safety).
 minimumReleaseAge: 10080

@@ -1,0 +1,171 @@
+{
+	"about": "Known-answer vectors for @retrospend/crypto. Expected values were produced by implementations other than libsodium (see each source). Web, Node and React Native builds must all reproduce them.",
+	"aead": [
+		{
+			"name": "ascii aad",
+			"source": "node:crypto chacha20-poly1305 with hand HChaCha20, equal to @noble/ciphers 2.4.0",
+			"key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+			"nonce": "404142434445464748494a4b4c4d4e4f5051525354555657",
+			"aad": "rs.v1|user|coll|1|record|3",
+			"plaintext": "616d6f756e743d313233343b63757272656e63793d415253",
+			"ciphertext": "b5546a05be944427bdc7b385cce917e0f7d4cebd2e1801c99a1e19bd0d676152c2e40ed4f0189233"
+		},
+		{
+			"name": "empty aad, empty plaintext",
+			"source": "node:crypto chacha20-poly1305 with hand HChaCha20, equal to @noble/ciphers 2.4.0",
+			"key": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+			"nonce": "101112131415161718191a1b1c1d1e1f2021222324252627",
+			"aad": "",
+			"plaintext": "",
+			"ciphertext": "ad265ce115351c2bb617ffee8f5b970e"
+		},
+		{
+			"name": "100 zero bytes",
+			"source": "node:crypto chacha20-poly1305 with hand HChaCha20, equal to @noble/ciphers 2.4.0",
+			"key": "303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f",
+			"nonce": "808182838485868788898a8b8c8d8e8f9091929394959697",
+			"aad": "rs.k1|abc",
+			"plaintext": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+			"ciphertext": "b7ae61ab180c059bb087007d8cac6b15d650ca9e921ce3ffdcb158e533f22814083d96176a5d993dd9da62a0b5fe12404f9736a0bed4eef7d80bc24f1e1ea1acc21ee3d5dc17cef9539de4e250cae21ee2eb2d0adfc6f2495fde08b52bfb0922af612f5c85b2d843ef8a00418c547d7746a98e0d"
+		}
+	],
+	"argon2id": [
+		{
+			"name": "1 MiB, 2 passes",
+			"source": "node:crypto argon2Sync (OpenSSL), argon2id v1.3, parallelism 1",
+			"password": "636f727265637420686f727365206261747465727920737461706c65",
+			"salt": "0102030405060708090a0b0c0d0e0f10",
+			"memoryKiB": 1024,
+			"passes": 2,
+			"length": 32,
+			"output": "3965a06afc91ceb5c7336d83eb1557e9240839cd54231b8c0448615675355c23"
+		},
+		{
+			"name": "non-ASCII password, 8 MiB, 1 pass, 16 bytes",
+			"source": "node:crypto argon2Sync (OpenSSL), argon2id v1.3, parallelism 1",
+			"password": "70c3a4737377c3b672642de5af86e7a081",
+			"salt": "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+			"memoryKiB": 8192,
+			"passes": 1,
+			"length": 16,
+			"output": "0fb1aa6353ec32ad0ebee04645fcad07"
+		},
+		{
+			"name": "production default, 64 MiB, 3 passes",
+			"source": "node:crypto argon2Sync (OpenSSL), argon2id v1.3, parallelism 1",
+			"password": "68756e74657232",
+			"salt": "55565758595a5b5c5d5e5f6061626364",
+			"memoryKiB": 65536,
+			"passes": 3,
+			"length": 32,
+			"output": "e1a3528f703f9f360559bde7d3d3c32a2528f29dec63cdb5163eb65bf6529224"
+		}
+	],
+	"kdf": [
+		{
+			"name": "id 1, 32 bytes",
+			"source": "python3 hashlib.blake2b(key, salt=LE64(id), person=context), the construction in libsodium crypto_kdf_blake2b",
+			"masterKey": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+			"subkeyId": 1,
+			"context": "testctx1",
+			"length": 32,
+			"output": "006a0ae1af4a9fe1403709fd67965c527d5e2d72d302ad7d3b41ee8524841e2e"
+		},
+		{
+			"name": "id 2, same context",
+			"source": "python3 hashlib.blake2b(key, salt=LE64(id), person=context), the construction in libsodium crypto_kdf_blake2b",
+			"masterKey": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+			"subkeyId": 2,
+			"context": "testctx1",
+			"length": 32,
+			"output": "de656f40ade6c75c19d4084045f4b8f05dd672038dfa5a0f9ffe3c3535b90b3a"
+		},
+		{
+			"name": "other context, id 1",
+			"source": "python3 hashlib.blake2b(key, salt=LE64(id), person=context), the construction in libsodium crypto_kdf_blake2b",
+			"masterKey": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+			"subkeyId": 1,
+			"context": "testctx2",
+			"length": 32,
+			"output": "e6e755b82aeecb7a29b5f7f827f95a47bf5237c72dfaa889c23f805ead4274bc"
+		},
+		{
+			"name": "16-byte subkey, id 2147483647",
+			"source": "python3 hashlib.blake2b(key, salt=LE64(id), person=context), the construction in libsodium crypto_kdf_blake2b",
+			"masterKey": "909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+			"subkeyId": 2147483647,
+			"context": "rs.test!",
+			"length": 16,
+			"output": "00f9ebd654cdd7f0400d7de9e72dc99f"
+		}
+	],
+	"blake2b": [
+		{
+			"name": "abc, 32 bytes",
+			"source": "python3 hashlib.blake2b",
+			"message": "616263",
+			"length": 32,
+			"output": "bddd813c634239723171ef3fee98579b94964e3bb1cb3e427262c8c068d52319"
+		},
+		{
+			"name": "empty, 64 bytes",
+			"source": "python3 hashlib.blake2b",
+			"message": "",
+			"length": 64,
+			"output": "786a02f742015903c6c6fd852552d272912f4740e15847618a86e217f71f5419d25e1031afee585313896444934eb04b903a685b1448b755d56f701afe9be2ce"
+		},
+		{
+			"name": "keyed, 24 bytes",
+			"source": "python3 hashlib.blake2b",
+			"message": "63617465676f7279206e616d65",
+			"key": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+			"length": 24,
+			"output": "271438509b573ef08de87aff2b261c73bcead2a5c4113c4f"
+		}
+	],
+	"boxSeed": [
+		{
+			"name": "seed 00010203",
+			"source": "node:crypto sha512 and X25519 (RFC 7748 clamping)",
+			"seed": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+			"privateKey": "3d94eea49c580aef816935762be049559d6d1440dede12e6a125f1841fff8e6f",
+			"publicKey": "4701d08488451f545a409fb58ae3e58581ca40ac3f7f114698cd71deac73ca01"
+		},
+		{
+			"name": "seed e0e1e2e3",
+			"source": "node:crypto sha512 and X25519 (RFC 7748 clamping)",
+			"seed": "e0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+			"privateKey": "aa0a2e60e45f276fe3aefe9fc07c6f2435f143ee2afd895e4809384e833be66a",
+			"publicKey": "bbe343582f235ea6e2998ea061e98ef30cca8e7881c4874eb6137fbab3a4282d"
+		}
+	],
+	"seal": [
+		{
+			"name": "short message",
+			"source": "node:crypto X25519, python3 blake2b nonce, @noble/ciphers xsalsa20poly1305; ephemeral key fixed so the sealed box is reproducible",
+			"recipientSeed": "101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f",
+			"publicKey": "0427a5d75c1471e72fc176011f82968caa76dbd2bd661cd736b6e8834ac58f0e",
+			"privateKey": "35dbf67498dbee33cb5d3bc53761476e5dc6f3a973875ab45bc2538aff29a985",
+			"plaintext": "6163636f756e74206b6579207374616e642d696e203332206279746573212121",
+			"ciphertext": "23b7bb8c91ae008711fb12846780bcdf1e065f821bdfec49f57e7c7dcd4c48238c0cfa0540df86404d1998e33f7635e40486e6b46a0343270669fb2841da81ea9e83c6f8f8a480f02b9b7c20f434dfdc"
+		},
+		{
+			"name": "empty message",
+			"source": "node:crypto X25519, python3 blake2b nonce, @noble/ciphers xsalsa20poly1305; ephemeral key fixed so the sealed box is reproducible",
+			"recipientSeed": "1112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f30",
+			"publicKey": "c2317931c46f852f8fa27414bdcb38427bc0f64403fc91625970ae5e90bb4c47",
+			"privateKey": "734699dc8006747306ebb5b84383b885056f9335d18790ac82caa132bde7e10b",
+			"plaintext": "",
+			"ciphertext": "d214723afdfe2cddbdc929b18a5e43017e44445fc5d6c8fcf88b1868c53f395cd41d1022b63156834a040ebe942037cb"
+		}
+	],
+	"xchachaDraft": {
+		"name": "draft-irtf-cfrg-xchacha-03 appendix A.3.1",
+		"source": "IETF draft text, verbatim. The AAD has bytes above 0x7f, so only the raw libsodium build can run it (the wrapper takes ASCII AAD). It anchors the generator of the other vectors.",
+		"key": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
+		"nonce": "404142434445464748494a4b4c4d4e4f5051525354555657",
+		"aadHex": "50515253c0c1c2c3c4c5c6c7",
+		"plaintext": "4c616469657320616e642047656e746c656d656e206f662074686520636c617373206f66202739393a204966204920636f756c64206f6666657220796f75206f6e6c79206f6e652074697020666f7220746865206675747572652c2073756e73637265656e20776f756c642062652069742e",
+		"ciphertext": "bd6d179d3e83d43b9576579493c0e939572a1700252bfaccbed2902c21396cbb731c7f1b0b4aa6440bf3a82f4eda7e39ae64c6708c54c216cb96b72e1213b4522f8c9ba40db5d945b11b69b982c1bb9e3f3fac2bc369488f76b2383565d3fff921f9664c97637da9768812f615c68b13b52ec0875924c1c7987947deafd8780acf49"
+	}
+}

@@ -1,0 +1,22 @@
+{
+	"name": "@retrospend/crypto",
+	"version": "0.0.0",
+	"private": true,
+	"description": "libsodium primitives for Advanced protection (end-to-end encryption): one wrapper over the web, Node and React Native builds, and the known-answer vectors every build must pass.",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./web": "./src/web.ts",
+		"./vectors/*.json": "./vectors/*.json"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"libsodium-wrappers-sumo": "0.8.4"
+	},
+	"devDependencies": {
+		"typescript": "^7.0.2",
+		"vitest": "^5.0.5"
+	}
+}
