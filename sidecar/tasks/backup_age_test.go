@@ -147,11 +147,11 @@ func TestDumpEncryptedOutputIsPrivate(t *testing.T) {
 }
 
 func TestNoKeyBackupIsUnchanged(t *testing.T) {
-	if got := backupFilename("20260101-030000", false); got != "retrospend-20260101-030000.dump" {
+	if got := backupFilename(mainKind, "20260101-030000", false); got != "retrospend-20260101-030000.dump" {
 		t.Fatalf("filename %q", got)
 	}
-	args := pgDumpArgs("h", "5432", "u", "d", "/b/x.dump", false)
-	want := []string{"--format=custom", "--no-owner", "--no-privileges",
+	args := pgDumpArgs(mainKind, "h", "5432", "u", "d", "/b/x.dump", false)
+	want := []string{"--format=custom", "--no-owner", "--no-privileges", "--exclude-schema=keystore",
 		"--host", "h", "--port", "5432", "--username", "u", "--dbname", "d", "--file=/b/x.dump"}
 	if strings.Join(args, " ") != strings.Join(want, " ") {
 		t.Fatalf("args %v", args)
@@ -159,10 +159,10 @@ func TestNoKeyBackupIsUnchanged(t *testing.T) {
 }
 
 func TestEncryptedBackupNeverAsksPgDumpForAFile(t *testing.T) {
-	if got := backupFilename("20260101-030000", true); got != "retrospend-20260101-030000.dump.age" {
+	if got := backupFilename(mainKind, "20260101-030000", true); got != "retrospend-20260101-030000.dump.age" {
 		t.Fatalf("filename %q", got)
 	}
-	for _, a := range pgDumpArgs("h", "5432", "u", "d", "/b/x.dump.age", true) {
+	for _, a := range pgDumpArgs(mainKind, "h", "5432", "u", "d", "/b/x.dump.age", true) {
 		if strings.HasPrefix(a, "--file") {
 			t.Fatalf("pg_dump would write a plain file: %v", a)
 		}

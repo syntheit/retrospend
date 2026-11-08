@@ -58,6 +58,7 @@ Set these in `.env`. Runtime settings are read at start; nothing is baked into t
 | `LLM_MODEL` | No | `qwen2.5:7b` | Ollama model |
 | `BACKUP_CRON` | No | `0 3 * * *` | Backup schedule (cron syntax) |
 | `BACKUP_RETENTION_DAYS` | No | `30` | Days to keep backup files |
+| `KEYSTORE_BACKUP_RETENTION_DAYS` | No | `7` | Days to keep the separate data key backups (`keystore-*.dump`), kept short on purpose (see [Data key backups](#data-key-backups)) |
 | `BACKUP_AGE_RECIPIENT` | No | | One or more [age](https://age-encryption.org) public keys (`age1...`, comma-separated). When set, backups are encrypted to them and written as `.dump.age` (see [Encrypted backups](#encrypted-backups)) |
 | `TRUSTED_ORIGINS` | No | | Extra allowed CORS/auth origins (comma-separated) |
 | `VAPID_PRIVATE_KEY` | No | | Turns on push to Android phones through UnifiedPush (see [Push notifications](#push-notifications)) |
@@ -116,6 +117,16 @@ pg_restore --clean --if-exists --no-owner -d retrospend restore.dump
 ```
 
 Backups made before you set the key stay unencrypted until they age out.
+
+### Data key backups
+
+Per-user data keys live in their own database schema, `keystore`. The sidecar leaves that schema out of the main dump and writes it on its own as `keystore-<time>.dump` (or `.dump.age` when `BACKUP_AGE_RECIPIENT` is set), right after the main backup. These files are kept for `KEYSTORE_BACKUP_RETENTION_DAYS` (default 7), much shorter than the main backups, so the key of a deleted account does not outlive them for long. The keys inside are sealed with `DATA_MASTER_KEY`, so a keystore backup is useless without it: keep the master key with your backups, apart from the files.
+
+To restore, restore the main dump first (the keys refer to your users), then the keystore dump:
+
+```sh
+pg_restore --clean --if-exists --no-owner --schema=keystore -d retrospend keystore-20260101-030000.dump
+```
 
 ## Updating
 

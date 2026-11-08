@@ -12,8 +12,11 @@ type Config struct {
 	LogLevel            string
 	BackupDir           string
 	BackupRetentionDays int
-	BackupCron          string
-	BackupAgeRecipients []string
+	// KeystoreRetentionDays is kept short on purpose: a deleted user's data key
+	// must not live on in a backup for long.
+	KeystoreRetentionDays int
+	BackupCron            string
+	BackupAgeRecipients   []string
 	// Importer (optional)
 	OllamaEndpoint    string
 	LLMModel          string
@@ -47,6 +50,13 @@ func Load() (*Config, error) {
 		}
 	}
 
+	keystoreRetentionDays := 7
+	if v := os.Getenv("KEYSTORE_BACKUP_RETENTION_DAYS"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+			keystoreRetentionDays = parsed
+		}
+	}
+
 	backupCron := os.Getenv("BACKUP_CRON")
 	if backupCron == "" {
 		backupCron = "0 3 * * *"
@@ -74,19 +84,20 @@ func Load() (*Config, error) {
 	}
 
 	return &Config{
-		DatabaseURL:         dbURL,
-		LogLevel:            logLevel,
-		BackupDir:           backupDir,
-		BackupRetentionDays: backupRetentionDays,
-		BackupCron:          backupCron,
-		BackupAgeRecipients: ageRecipients,
-		OllamaEndpoint:      ollama,
-		LLMModel:            model,
-		EnrichBatchSize:     getEnvInt("ENRICH_BATCH_SIZE", 20),
-		EnrichConcurrency:   getEnvInt("ENRICH_CONCURRENCY", 3),
-		PDFConcurrency:      getEnvInt("PDF_CONCURRENCY", 3),
-		OpenRouterAPIKey:    openRouterAPIKey,
-		OpenRouterModel:     openRouterModel,
+		DatabaseURL:           dbURL,
+		LogLevel:              logLevel,
+		BackupDir:             backupDir,
+		BackupRetentionDays:   backupRetentionDays,
+		KeystoreRetentionDays: keystoreRetentionDays,
+		BackupCron:            backupCron,
+		BackupAgeRecipients:   ageRecipients,
+		OllamaEndpoint:        ollama,
+		LLMModel:              model,
+		EnrichBatchSize:       getEnvInt("ENRICH_BATCH_SIZE", 20),
+		EnrichConcurrency:     getEnvInt("ENRICH_CONCURRENCY", 3),
+		PDFConcurrency:        getEnvInt("PDF_CONCURRENCY", 3),
+		OpenRouterAPIKey:      openRouterAPIKey,
+		OpenRouterModel:       openRouterModel,
 	}, nil
 }
 

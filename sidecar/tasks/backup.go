@@ -27,18 +27,24 @@ type BackupResult struct {
 	DurationMs int64     `json:"durationMs"`
 	Success    bool      `json:"success"`
 	Encrypted  bool      `json:"encrypted,omitempty"`
-	Error      string    `json:"error,omitempty"`
+	// Kind is "keystore" for the data keys dump and empty for the main one.
+	Kind  string `json:"kind,omitempty"`
+	Error string `json:"error,omitempty"`
 }
 
 type BackupStatus struct {
-	Available     bool           `json:"available"`
-	Running       bool           `json:"running"`
-	LastBackup    *BackupResult  `json:"lastBackup,omitempty"`
-	NextScheduled *time.Time     `json:"nextScheduled,omitempty"`
-	RetentionDays int            `json:"retentionDays"`
-	TotalBackups  int            `json:"totalBackups"`
-	TotalSize     int64          `json:"totalSize"`
-	History       []BackupResult `json:"history"`
+	Available     bool          `json:"available"`
+	Running       bool          `json:"running"`
+	LastBackup    *BackupResult `json:"lastBackup,omitempty"`
+	NextScheduled *time.Time    `json:"nextScheduled,omitempty"`
+	RetentionDays int           `json:"retentionDays"`
+	// The keystore dump has its own retention and its own last run; it is not
+	// counted in the totals or the history here.
+	LastKeystoreBackup    *BackupResult  `json:"lastKeystoreBackup,omitempty"`
+	KeystoreRetentionDays int            `json:"keystoreRetentionDays"`
+	TotalBackups          int            `json:"totalBackups"`
+	TotalSize             int64          `json:"totalSize"`
+	History               []BackupResult `json:"history"`
 }
 
 // Tests replace these to run RunBackup against a fake pg_dump and a fixed clock.
@@ -61,8 +67,26 @@ func IsBackupRunning() bool {
 
 // RunBackup executes pg_dump and manages the backup manifest and retention.
 // With age recipients the dump is streamed through age and only the encrypted
-// .dump.age file is written.
+// .dump.age file is written. The dump leaves out the keystore schema.
 func RunBackup(database *db.DB, databaseURL string, backupDir string, retentionDays int, ageRecipients []string) error {
+	return runBackup(mainKind, database, databaseURL, backupDir, retentionDays, ageRecipients)
+}
+
+// RunKeystoreBackup dumps only the keystore schema, with its own retention.
+// It is encrypted the same way as the main dump.
+func RunKeystoreBackup(database *db.DB, databaseURL string, backupDir string, retentionDays int, ageRecipients []string) error {
+	return runBackup(keystoreKind, database, databaseURL, backupDir, retentionDays, ageRecipients)
+}
+
+// RunBackups makes the main dump and then the keystore dump. A failure of the
+// first does not skip the second: the keys matter most when something is wrong.
+func RunBackups(database *db.DB, databaseURL string, backupDir string, retentionDays, keystoreRetentionDays int, ageRecipients []string) error {
+	mainErr := RunBackup(database, databaseURL, backupDir, retentionDays, ageRecipients)
+	keysErr := RunKeystoreBackup(database, databaseURL, backupDir, keystoreRetentionDays, ageRecipients)
+	return errors.Join(mainErr, keysErr)
+}
+
+func runBackup(kind backupKind, database *db.DB, databaseURL string, backupDir string, retentionDays int, ageRecipients []string) error {
 	backupMu.Lock()
 	if isRunning {
 		backupMu.Unlock()
@@ -81,21 +105,22 @@ func RunBackup(database *db.DB, databaseURL string, backupDir string, retentionD
 	result := BackupResult{
 		Timestamp: start,
 		Success:   false,
+		Kind:      kind.name,
 	}
 
 	// Parse DATABASE_URL
 	host, port, user, password, dbname, err := parseDatabaseURL(databaseURL)
 	if err != nil {
 		result.Error = fmt.Sprintf("failed to parse DATABASE_URL: %v", err)
-		log.Printf("❌ Backup failed: %s", result.Error)
-		saveResult(backupDir, result, database)
+		log.Printf("❌ %s failed: %s", kind.label(), result.Error)
+		saveResult(backupDir, result, database, kind)
 		return fmt.Errorf("%s", result.Error)
 	}
 
 	// Generate filename
 	timestamp := start.Format("20060102-150405")
 	encrypt := len(ageRecipients) > 0
-	filename := backupFilename(timestamp, encrypt)
+	filename := backupFilename(kind, timestamp, encrypt)
 	filepath := filepath.Join(backupDir, filename)
 	result.Filename = filename
 	result.Encrypted = encrypt
@@ -107,7 +132,7 @@ func RunBackup(database *db.DB, databaseURL string, backupDir string, retentionD
 	// name and rename it only when complete, so a crash never leaves a
 	// half-written backup that looks real.
 	partial := partialPath(filepath)
-	cmd := exec.Command(pgDumpBin, pgDumpArgs(host, port, user, dbname, partial, encrypt)...)
+	cmd := exec.Command(pgDumpBin, pgDumpArgs(kind, host, port, user, dbname, partial, encrypt)...)
 	cmd.Env = append(os.Environ(), fmt.Sprintf("PGPASSWORD=%s", password))
 
 	var output []byte
@@ -133,8 +158,8 @@ func RunBackup(database *db.DB, databaseURL string, backupDir string, retentionD
 			result.Error = fmt.Sprintf("pg_dump failed: %v, output: %s", err, strings.TrimSpace(string(output)))
 		}
 		result.DurationMs = time.Since(start).Milliseconds()
-		log.Printf("❌ Backup failed: %s", result.Error)
-		saveResult(backupDir, result, database)
+		log.Printf("❌ %s failed: %s", kind.label(), result.Error)
+		saveResult(backupDir, result, database, kind)
 		return fmt.Errorf("%s", result.Error)
 	}
 
@@ -143,17 +168,17 @@ func RunBackup(database *db.DB, databaseURL string, backupDir string, retentionD
 	if err != nil {
 		result.Error = fmt.Sprintf("failed to stat backup file: %v", err)
 		result.DurationMs = time.Since(start).Milliseconds()
-		log.Printf("❌ Backup failed: %s", result.Error)
-		saveResult(backupDir, result, database)
+		log.Printf("❌ %s failed: %s", kind.label(), result.Error)
+		saveResult(backupDir, result, database, kind)
 		return fmt.Errorf("%s", result.Error)
 	}
 
-	if info.Size() < 1024 {
+	if info.Size() < kind.minSize {
 		result.Error = fmt.Sprintf("backup file too small (%d bytes), likely corrupt", info.Size())
 		result.DurationMs = time.Since(start).Milliseconds()
-		log.Printf("❌ Backup failed: %s", result.Error)
+		log.Printf("❌ %s failed: %s", kind.label(), result.Error)
 		os.Remove(filepath)
-		saveResult(backupDir, result, database)
+		saveResult(backupDir, result, database, kind)
 		return fmt.Errorf("%s", result.Error)
 	}
 
@@ -161,25 +186,37 @@ func RunBackup(database *db.DB, databaseURL string, backupDir string, retentionD
 	result.SizeBytes = info.Size()
 	result.DurationMs = time.Since(start).Milliseconds()
 
-	log.Printf("✅ Backup completed: %s (%.2f MB, %dms)", filename, float64(result.SizeBytes)/(1024*1024), result.DurationMs)
+	log.Printf("✅ %s completed: %s (%.2f MB, %dms)", kind.label(), filename, float64(result.SizeBytes)/(1024*1024), result.DurationMs)
 
-	saveResult(backupDir, result, database)
+	saveResult(backupDir, result, database, kind)
 
 	// Clean up old backups
-	cleanupOldBackups(backupDir, retentionDays)
+	cleanupOldBackups(backupDir, retentionDays, kind)
 
 	return nil
 }
 
 // GetBackupStatus reads the manifest and computes status for the HTTP endpoint.
-func GetBackupStatus(backupDir string, retentionDays int, cronScheduler *cron.Cron) BackupStatus {
+func GetBackupStatus(backupDir string, retentionDays int, keystoreRetentionDays int, cronScheduler *cron.Cron) BackupStatus {
 	status := BackupStatus{
-		Available:     true,
-		Running:       IsBackupRunning(),
-		RetentionDays: retentionDays,
+		Available:             true,
+		Running:               IsBackupRunning(),
+		RetentionDays:         retentionDays,
+		KeystoreRetentionDays: keystoreRetentionDays,
 	}
 
-	history := readManifest(backupDir)
+	all := readManifest(backupDir)
+	var history []BackupResult
+	for _, r := range all {
+		if r.Kind == keystoreKind.name {
+			if status.LastKeystoreBackup == nil || r.Timestamp.After(status.LastKeystoreBackup.Timestamp) {
+				last := r
+				status.LastKeystoreBackup = &last
+			}
+			continue
+		}
+		history = append(history, r)
+	}
 	status.TotalBackups = len(history)
 
 	// Calculate total size
@@ -279,7 +316,7 @@ func writeManifest(backupDir string, results []BackupResult) {
 	}
 }
 
-func saveResult(backupDir string, result BackupResult, database *db.DB) {
+func saveResult(backupDir string, result BackupResult, database *db.DB, kind backupKind) {
 	// Append to manifest
 	history := readManifest(backupDir)
 	history = append(history, result)
@@ -301,14 +338,14 @@ func saveResult(backupDir string, result BackupResult, database *db.DB) {
 		VALUES ($1, $2::jsonb, NOW())
 		ON CONFLICT (key)
 		DO UPDATE SET value = $2::jsonb, "updatedAt" = NOW()
-	`, "backup_status", statusJSON)
+	`, kind.statusKey, statusJSON)
 
 	if err != nil {
 		log.Printf("⚠️ Failed to update backup status in database: %v", err)
 	}
 }
 
-func cleanupOldBackups(backupDir string, retentionDays int) {
+func cleanupOldBackups(backupDir string, retentionDays int, kind backupKind) {
 	cutoff := time.Now().AddDate(0, 0, -retentionDays)
 
 	entries, err := os.ReadDir(backupDir)
@@ -319,7 +356,7 @@ func cleanupOldBackups(backupDir string, retentionDays int) {
 
 	removed := 0
 	for _, entry := range entries {
-		if entry.IsDir() || !isBackupFile(entry.Name()) {
+		if entry.IsDir() || !isBackupFile(entry.Name()) || !ownedBy(kind, entry.Name()) {
 			continue
 		}
 
@@ -339,13 +376,13 @@ func cleanupOldBackups(backupDir string, retentionDays int) {
 	}
 
 	if removed > 0 {
-		log.Printf("🗑️ Cleaned up %d old backup(s)", removed)
+		log.Printf("🗑️ Cleaned up %d old %s file(s)", removed, strings.ToLower(kind.label()))
 
 		// Also clean manifest entries older than retention
 		history := readManifest(backupDir)
 		var kept []BackupResult
 		for _, r := range history {
-			if r.Timestamp.After(cutoff) {
+			if r.Kind != kind.name || r.Timestamp.After(cutoff) {
 				kept = append(kept, r)
 			}
 		}
@@ -353,4 +390,10 @@ func cleanupOldBackups(backupDir string, retentionDays int) {
 			writeManifest(backupDir, kept)
 		}
 	}
+}
+
+// ownedBy tells the two kinds apart by file name, so retention for one kind
+// never removes the other's files.
+func ownedBy(kind backupKind, name string) bool {
+	return strings.HasPrefix(name, keystoreKind.prefix+"-") == (kind.name == keystoreKind.name)
 }
