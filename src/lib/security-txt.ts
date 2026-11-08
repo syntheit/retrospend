@@ -15,15 +15,54 @@ export const SECURITY_POLICY_URL =
 // self-hosted file from going stale and being ignored.
 const VALID_DAYS = 364;
 
-/** Turns "a@b.c" into "mailto:a@b.c"; keeps mailto: and https: links. */
+// Whitespace and control characters end a field value, so none may appear in
+// one: a line break in a setting would otherwise add fields of its own.
+function unsafe(value: string): boolean {
+	for (const ch of value) {
+		const code = ch.charCodeAt(0);
+		if (code <= 0x20 || code === 0x7f || /\s/.test(ch)) return true;
+	}
+	return false;
+}
+const MAILTO = /^mailto:[^\s@,:/?#]+@[^\s@,:/?#]+$/i;
+
+/**
+ * One contact as a URI: a mailto: address, an https: link, or a bare address
+ * (which gets mailto:). Anything else is dropped.
+ */
 function toContactUri(raw: string): string | null {
 	const value = raw.trim();
-	if (!value) return null;
-	if (/^(mailto:|https:\/\/)/i.test(value)) return value;
-	if (/^[^\s@:/]+@[^\s@:/]+$/.test(value)) return `mailto:${value}`;
-	return null;
+	if (!value || unsafe(value)) return null;
+	if (/^mailto:/i.test(value)) return MAILTO.test(value) ? value : null;
+	if (/^https:\/\//i.test(value)) {
+		try {
+			return new URL(value).host ? value : null;
+		} catch {
+			return null;
+		}
+	}
+	return MAILTO.test(`mailto:${value}`) ? `mailto:${value}` : null;
 }
 
+/** The origin of the public URL, or null when it is not a clean http(s) URL. */
+function originOf(raw: string): string | null {
+	const value = raw.trim();
+	if (!value || unsafe(value)) return null;
+	try {
+		const url = new URL(value);
+		return url.protocol === "https:" || url.protocol === "http:"
+			? url.origin
+			: null;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * `contact` is a comma-separated list, so a comma cannot be part of a link:
+ * each piece is checked on its own and a piece that is not a valid contact is
+ * dropped.
+ */
 export function securityTxt(opts: {
 	contact?: string;
 	publicUrl?: string;
@@ -41,10 +80,8 @@ export function securityTxt(opts: {
 	);
 	lines.push(`Expires: ${expires.toISOString()}`);
 	lines.push("Preferred-Languages: en");
-	if (opts.publicUrl) {
-		const origin = opts.publicUrl.replace(/\/+$/, "");
-		lines.push(`Canonical: ${origin}/.well-known/security.txt`);
-	}
+	const origin = originOf(opts.publicUrl ?? "");
+	if (origin) lines.push(`Canonical: ${origin}/.well-known/security.txt`);
 	lines.push(`Policy: ${SECURITY_POLICY_URL}`);
 	return `${lines.join("\n")}\n`;
 }
