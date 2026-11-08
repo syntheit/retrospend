@@ -11,13 +11,13 @@
 // privileges. Never widen an entry to make this pass; narrow the migration.
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import expected from "./retrospend-app-privileges.json";
 import {
 	type DefaultAcl,
 	type PrivilegeCatalog,
 	readDefaultAcls,
 	readPrivilegeCatalog,
 } from "./privilege-catalog";
+import expected from "./retrospend-app-privileges.json";
 
 let client: Client;
 let actual: PrivilegeCatalog;
@@ -123,7 +123,9 @@ describe("retrospend_app privileges", () => {
 			.filter((d) => d.kind === "r" || d.kind === "S")
 			.flatMap((d) =>
 				d.entries
-					.filter((e) => e.startsWith("PUBLIC:") || e.startsWith("retrospend_app:"))
+					.filter(
+						(e) => e.startsWith("PUBLIC:") || e.startsWith("retrospend_app:"),
+					)
 					.map((e) => `${d.role} ${d.schema} ${d.kind} ${e}`),
 			);
 		expect(open).toEqual([]);
@@ -173,7 +175,10 @@ describe("retrospend_app privileges", () => {
 			"create_first_data_key",
 			"current_user_data_keys",
 		]);
-		const { rows: usage } = await client.query<{ can: boolean; create: boolean }>(
+		const { rows: usage } = await client.query<{
+			can: boolean;
+			create: boolean;
+		}>(
 			`SELECT has_schema_privilege('retrospend_app', 'keystore', 'USAGE') AS can,
 			        has_schema_privilege('retrospend_app', 'keystore', 'CREATE') AS create`,
 		);

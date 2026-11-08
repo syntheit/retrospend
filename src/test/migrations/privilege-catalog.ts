@@ -5,9 +5,7 @@
 // level security and policies, and default privileges.
 
 export type Queryable = {
-	query<T extends Record<string, unknown>>(
-		sql: string,
-	): Promise<{ rows: T[] }>;
+	query<T extends Record<string, unknown>>(sql: string): Promise<{ rows: T[] }>;
 };
 
 export type TableState = {
@@ -106,8 +104,11 @@ export async function readPrivilegeCatalog(
 		ORDER BY 1, 3, 2`);
 	const columns: PrivilegeCatalog["columns"] = {};
 	for (const row of columnRows.rows) {
-		const table = (columns[row.table] ??= {});
-		(table[row.privilege] ??= []).push(row.column);
+		const table = columns[row.table] ?? {};
+		columns[row.table] = table;
+		const list = table[row.privilege] ?? [];
+		table[row.privilege] = list;
+		list.push(row.column);
 	}
 
 	const sequenceRows = await client.query<{
@@ -154,7 +155,9 @@ export type DefaultAcl = {
 };
 
 /** Every pg_default_acl row, with who it grants to. */
-export async function readDefaultAcls(client: Queryable): Promise<DefaultAcl[]> {
+export async function readDefaultAcls(
+	client: Queryable,
+): Promise<DefaultAcl[]> {
 	const rows = await client.query<{
 		role: string;
 		schema: string;
@@ -206,6 +209,7 @@ export async function readCatalogSnapshot(
 		JOIN pg_class c ON c.oid = at.attrelid
 		CROSS JOIN LATERAL aclexplode(at.attacl) a
 		WHERE c.relnamespace = 'public'::regnamespace AND at.attacl IS NOT NULL
+		  AND NOT at.attisdropped
 		ORDER BY 1`);
 	const security = await lines(`
 		SELECT c.relname || ' rls=' || c.relrowsecurity || ' force=' || c.relforcerowsecurity AS line
@@ -220,8 +224,11 @@ export async function readCatalogSnapshot(
 		WHERE c.relnamespace = 'public'::regnamespace
 		ORDER BY 1`);
 	const owner =
-		(await client.query<{ owner: string }>("SELECT current_user::text AS owner"))
-			.rows[0]?.owner ?? "";
+		(
+			await client.query<{ owner: string }>(
+				"SELECT current_user::text AS owner",
+			)
+		).rows[0]?.owner ?? "";
 	const defaults = (await readDefaultAcls(client))
 		.filter((d) => d.kind === "r" || d.kind === "S")
 		.map((d) =>

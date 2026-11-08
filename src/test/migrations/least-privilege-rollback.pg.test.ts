@@ -28,12 +28,12 @@ import { join } from "node:path";
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../uiRules/paths";
+import before from "./pre-least-privilege-catalog.json";
 import {
 	type CatalogSnapshot,
 	onlyTables,
 	readCatalogSnapshot,
 } from "./privilege-catalog";
-import before from "./pre-least-privilege-catalog.json";
 
 const MIGRATION = "20261109600000_least_privilege";
 
@@ -90,15 +90,13 @@ const snapshot = (): Promise<CatalogSnapshot> => readCatalogSnapshot(client);
 
 describe("rollback of 20261109600000_least_privilege", () => {
 	it("puts back every grant, policy, security flag and default the migration changed", async () => {
-		const { migrated, rolledBackTo, reapplied } = await rolledBack(
-			async () => {
-				const migrated = await snapshot();
-				await client.query(rollbackSql);
-				const rolledBackTo = await snapshot();
-				await client.query(migrationSql);
-				return { migrated, rolledBackTo, reapplied: await snapshot() };
-			},
-		);
+		const { migrated, rolledBackTo, reapplied } = await rolledBack(async () => {
+			const migrated = await snapshot();
+			await client.query(rollbackSql);
+			const rolledBackTo = await snapshot();
+			await client.query(migrationSql);
+			return { migrated, rolledBackTo, reapplied: await snapshot() };
+		});
 
 		// The migration did change things, so the comparisons below can fail.
 		expect(migrated.security).toContain("user rls=true force=false");

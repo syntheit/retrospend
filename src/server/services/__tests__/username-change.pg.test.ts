@@ -18,7 +18,8 @@ import {
 import { adminDb, createTestUser } from "~/test/pg-harness";
 
 const DAY = 86_400_000;
-const name = (label: string) => `${label}${randomUUID().replaceAll("-", "").slice(0, 12)}`;
+const name = (label: string) =>
+	`${label}${randomUUID().replaceAll("-", "").slice(0, 12)}`;
 
 const stored = (id: string) =>
 	adminDb.user.findUniqueOrThrow({

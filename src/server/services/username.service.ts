@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { db } from "~/server/db";
-import { Prisma } from "~prisma";
 import { logEventAsync } from "~/server/services/audit.service";
+import { Prisma } from "~prisma";
 
 /** Users can change their username at most once every 30 days. */
 export const USERNAME_CHANGE_COOLDOWN_DAYS = 30;

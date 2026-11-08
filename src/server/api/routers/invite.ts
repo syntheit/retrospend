@@ -1,7 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import crypto from "crypto";
 import { z } from "zod";
-import { Prisma } from "~prisma";
 import {
 	adminListProcedure,
 	adminProcedure,
@@ -10,6 +9,7 @@ import {
 	publicProcedure,
 } from "~/server/api/trpc";
 import { isAllowAllUsersToGenerateInvitesEnabled } from "~/server/services/settings";
+import { Prisma } from "~prisma";
 
 /**
  * Generates a random 8-character invite code using uppercase letters and numbers

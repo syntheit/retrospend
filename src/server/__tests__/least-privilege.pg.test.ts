@@ -16,7 +16,6 @@ import {
 } from "~/server/api/v1/core/__tests__/harness";
 import { userTransaction } from "~/server/db-tx";
 import { storeEmailVerificationToken } from "~/server/services/account-security.service";
-import { forUser } from "~/server/services/preview";
 import {
 	arsUser,
 	balanceOf,
@@ -24,6 +23,7 @@ import {
 	seedArsRates,
 } from "~/server/services/accounts/test-fixtures";
 import { updateBalance } from "~/server/services/accounts/update-balance.mutation";
+import { forUser } from "~/server/services/preview";
 import { createTestUser } from "~/test/pg-harness";
 
 vi.mock("next/headers", () => ({
@@ -57,9 +57,9 @@ describe("the user table", () => {
 		await expect(
 			asApp(alice, (tx) => tx.user.deleteMany({ where: { id: bob.user.id } })),
 		).rejects.toThrow(DENIED);
-		await expect(
-			asApp(alice, (tx) => tx.user.deleteMany()),
-		).rejects.toThrow(DENIED);
+		await expect(asApp(alice, (tx) => tx.user.deleteMany())).rejects.toThrow(
+			DENIED,
+		);
 		expect(
 			await adminDb.user.count({
 				where: { id: { in: [alice.user.id, bob.user.id] } },
@@ -516,7 +516,10 @@ describe("what scoped paths still do", () => {
 		const headers = await asMobile(erin.user.id);
 		const result = await expectBody<{
 			groups: { type: string; items: { title?: string }[] }[];
-		}>(await call("/search?q=cafe&types=expenses", { headers }), contract.search.search);
+		}>(
+			await call("/search?q=cafe&types=expenses", { headers }),
+			contract.search.search,
+		);
 		const expenses =
 			result.groups.find((g) => g.type === "expenses")?.items ?? [];
 		expect(expenses.map((e) => e.title)).toEqual(["Café con leche"]);
