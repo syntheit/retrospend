@@ -385,6 +385,7 @@ describe("rate types", () => {
 			expect(db.user.update).toHaveBeenCalledWith({
 				where: { id: "u1" },
 				data: { defaultRateTypes: { BOB: "official", ARS: "mep" } },
+				select: { id: true },
 			});
 		});
 
