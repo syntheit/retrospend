@@ -166,9 +166,10 @@ export async function getOrCreateDataKeyring(
  * free user id. A later getOrCreateDataKeyring would make a new, unrelated
  * key, so a deletion job calls it in the same transaction as the user delete
  * (pass that transaction as `client`, so a failed deletion keeps the keys),
- * after the user row is deleted: a concurrent first-key insert then either
- * committed first and is seen here, or made the user delete wait and then
- * fail on the user row. Without a `client` it runs on its own connection and
+ * after the user row is deleted. If a first-key insert holds the user row
+ * first, the delete waits for it, then succeeds, and this call sees the
+ * committed key. If the insert starts after the delete, it waits on the user
+ * row and then fails. Without a `client` it runs on its own connection and
  * commits at once.
  *
  * The trigger on "user" (see the migration) also removes the keys when the

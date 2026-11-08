@@ -275,8 +275,11 @@ describe("crypto-shred on account deletion", () => {
 				`${me.user.id}@pg-test.invalid`,
 				null,
 			);
-			await untilWaitingOnLock('%DELETE FROM "public"."user"%');
-			release();
+			try {
+				await untilWaitingOnLock('%DELETE FROM "public"."user"%');
+			} finally {
+				release();
+			}
 			await Promise.all([minting, deleting]);
 		});
 
