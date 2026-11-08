@@ -21,6 +21,7 @@
 		"./format-date": "./src/format-date.ts",
 		"./format-locale": "./src/format-locale.ts",
 		"./format-percent": "./src/format-percent.ts",
+		"./glance-pace": "./src/glance-pace.ts",
 		"./insights": "./src/insights.ts",
 		"./money": "./src/money.ts",
 		"./money-minor": "./src/money-minor.ts",
@@ -32,6 +33,7 @@
 		"./rate-text": "./src/rate-text.ts",
 		"./recurring": "./src/recurring.ts",
 		"./shared-split-computation": "./src/shared-split-computation.ts",
+		"./spend-pace": "./src/spend-pace.ts",
 		"./spent": "./src/spent.ts",
 		"./time-zone": "./src/time-zone.ts",
 		"./vectors/*.json": "./vectors/*.json"

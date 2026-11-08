@@ -64,6 +64,8 @@ export interface SpentExpenseRow {
 	excludeFromAnalytics: boolean;
 	/** The kind of its category, null for none. Income categories never count. */
 	categoryKind: string | null;
+	/** Only read when grouping per day (the spend pace), where it splits groups as the SQL loader's does. */
+	categoryId?: string | null;
 	date: Date;
 	currency: string;
 	amount: DecimalInput;
@@ -119,22 +121,55 @@ export function countsAsRefund(row: SpentExpenseRow, r: SpentRange): boolean {
 	);
 }
 
+/** How rows are grouped: per currency, or per entry instant and category too (the SQL loader's "day" grouping). */
+export type SpentRowGrouping = "currency" | "day";
+
+/**
+ * The income rule of Just track's "Money in" (services/figures/spend-pace.ts),
+ * on a row: money in typed as income, outside Hide from reports. Refunds are
+ * spending's, own transfers and adjustments are nothing.
+ */
+export function countsAsIncome(row: SpentExpenseRow, r: SpentRange): boolean {
+	return (
+		row.status === "FINALIZED" &&
+		row.direction === "IN" &&
+		row.entryKind === "STANDARD" &&
+		row.inType === "INCOME" &&
+		!row.excludeFromAnalytics &&
+		inRange(row.date, r)
+	);
+}
+
 /** The JS counterpart of the loader's grouped SUM: per currency and booked home currency, exact. */
-export function groupSpentRows(rows: Iterable<SpentExpenseRow>): SpentGroup[] {
+export function groupSpentRows(
+	rows: Iterable<SpentExpenseRow>,
+	by: SpentRowGrouping = "currency",
+): SpentGroup[] {
 	const groups = new Map<
 		string,
 		{
 			currency: string;
 			homeCurrency: string | null;
+			categoryId: string | null;
+			date: Date | null;
 			count: number;
 			sums: Decimal[];
 		}
 	>();
 	for (const r of rows) {
-		const key = JSON.stringify([r.currency, r.homeCurrency]);
+		const daily = by === "day";
+		const categoryId = daily ? (r.categoryId ?? null) : null;
+		const key = JSON.stringify([
+			daily ? r.date.getTime() : null,
+			categoryId,
+			r.currency,
+			r.homeCurrency,
+		]);
 		const g = groups.get(key) ?? {
 			currency: r.currency,
 			homeCurrency: r.homeCurrency,
+			categoryId,
+			date: daily ? r.date : null,
 			count: 0,
 			sums: [dec(0), dec(0), dec(0)],
 		};
@@ -146,8 +181,8 @@ export function groupSpentRows(rows: Iterable<SpentExpenseRow>): SpentGroup[] {
 	return [...groups.values()].map((g) => ({
 		currency: g.currency,
 		homeCurrency: g.homeCurrency,
-		categoryId: null,
-		date: null,
+		categoryId: g.categoryId,
+		date: g.date,
 		amount: (g.sums[0] as Decimal).toFixed(),
 		amountInUSD: (g.sums[1] as Decimal).toFixed(),
 		homeAmount: (g.sums[2] as Decimal).toFixed(),
@@ -175,15 +210,19 @@ export function spentInputsFromRows(args: {
 	hiddenProjectIds: readonly string[];
 	range: SpentRange;
 	rateFor?: (s: SpentShareRow) => number | null;
+	/** "day" keeps each entry instant and category apart, for the readers that bucket by day. */
+	by?: SpentRowGrouping;
 }): SpentInputs {
 	const { range } = args;
 	const rateFor = args.rateFor ?? capturedRate;
 	return {
 		spending: groupSpentRows(
 			args.expenses.filter((r) => countsAsSpending(r, range)),
+			args.by,
 		),
 		refunds: groupSpentRows(
 			args.expenses.filter((r) => countsAsRefund(r, range)),
+			args.by,
 		),
 		shares: args.shares
 			.filter(
