@@ -192,7 +192,26 @@ jobs:
 
   sidecar:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    # The tasks' *_db_test.go run the real jobs (autopay writes money) against
+    # a migrated database; without SIDECAR_TEST_DATABASE_URL they skip.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: retrospend_test_sidecar
+        ports:
+          - 5436:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:testpassword@127.0.0.1:5436/retrospend_test_sidecar
+      SIDECAR_TEST_DATABASE_URL: postgresql://postgres:testpassword@127.0.0.1:5436/retrospend_test_sidecar
     defaults:
       run:
         working-directory: sidecar
@@ -204,12 +223,31 @@ jobs:
           go-version-file: sidecar/go.mod
           cache-dependency-path: sidecar/go.sum
 
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # Prisma owns the schema; the sidecar has no migrations of its own.
+      - name: Migrate the test database
+        working-directory: .
+        run: pnpm install --frozen-lockfile && pnpm exec prisma migrate deploy
+
       # The PDF importer shells out to pdftotext (the image installs it too).
       - name: Install pdftotext
         run: sudo apt-get update && sudo apt-get install -y poppler-utils
 
       - name: Test
         run: go test ./...
+
+      # A skip would pass silently, so check the database tests ran.
+      - name: Database tests ran
+        run: |
+          go test ./tasks/ -run 'TestProcessRecurring' -v -count=1 | tee db-tests.log
+          if grep -q -- '--- SKIP' db-tests.log; then exit 1; fi
+          grep -q -- '--- PASS: TestProcessRecurringPostsMoneyIn' db-tests.log
 
   # The Playwright suite on a seeded database (e2e/fixtures/seed.ts). The
   # helpers' unit tests run in the check job.
