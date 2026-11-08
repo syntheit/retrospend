@@ -30,7 +30,7 @@ function statements(sql: string): string[] {
  * other roles do not match.
  */
 function isBlanketGrant(statement: string): boolean {
-	return /\bGRANT\b[^]*\bON\s+ALL\s+(TABLES|SEQUENCES|FUNCTIONS|ROUTINES|PROCEDURES)\b[^]*\bTO\b[^]*\b(retrospend_app|PUBLIC)\b/i.test(
+	return /\bGRANT\b[\s\S]*\bON\s+ALL\s+(TABLES|SEQUENCES|FUNCTIONS|ROUTINES|PROCEDURES)\b[\s\S]*\bTO\b[\s\S]*\b(retrospend_app|PUBLIC)\b/i.test(
 		statement,
 	);
 }
