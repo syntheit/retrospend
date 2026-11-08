@@ -6,6 +6,8 @@ services:
     environment:
       AUTH_SECRET: ${AUTH_SECRET}
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}"
+      # Optional: a secret of your own for the retrospend_owner role. Same value on the app and the sidecar, or empty on both.
+      DATABASE_OWNER_PASSWORD: ${DATABASE_OWNER_PASSWORD:-}
       SHOW_LANDING_PAGE: "true"
       WORKER_API_KEY: ${WORKER_API_KEY}
       DEFAULT_TIME_ZONE: ${DEFAULT_TIME_ZONE:-}
@@ -50,6 +52,11 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB_NAME}
+    # Not published: only the other services reach the database. To use psql or
+    # another tool from this machine, publish it on the loopback address only
+    # (never "5432:5432", which listens on every interface):
+    # ports:
+    #   - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -62,8 +69,12 @@ services:
     image: synzeit/retrospend-sidecar:latest
     container_name: retrospend-sidecar
     restart: unless-stopped
+    # Not published: the app reaches it at http://sidecar:8080. If you need it
+    # from this machine, bind the loopback address only: "127.0.0.1:8080:8080".
     environment:
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}"
+      # Optional: a secret of your own for the retrospend_owner role. Same value on the app and the sidecar, or empty on both.
+      DATABASE_OWNER_PASSWORD: ${DATABASE_OWNER_PASSWORD:-}
       WORKER_API_KEY: ${WORKER_API_KEY}
       DEFAULT_TIME_ZONE: ${DEFAULT_TIME_ZONE:-}
       LOG_LEVEL: "info"
