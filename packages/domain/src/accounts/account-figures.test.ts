@@ -308,6 +308,43 @@ describe("accountsLedgerFromRows", () => {
 	});
 });
 
+describe("netWorthChangeFrom at the end of a UTC day", () => {
+	it("income dated Oct 15 (a zone ahead of UTC) counts at 23:30 UTC on Oct 14", () => {
+		const ledger = accountsLedgerFromRows({
+			home: "ARS",
+			accounts: [account({ id: "w", balance: "110000" })],
+			snapshots: [
+				{
+					accountId: "w",
+					date: at("2026-10-01T00:00:00Z"),
+					recordedAt: at("2026-10-01T00:00:00Z"),
+					balance: "100000",
+					currency: "ARS",
+					exchangeRateType: null,
+				},
+			],
+			legs: [
+				{
+					id: "l1",
+					accountId: "w",
+					currency: "ARS",
+					date: at("2026-10-15T00:00:00Z"),
+					createdAt: at("2026-10-14T23:00:00Z"),
+					amount: "10000",
+					source: "INCOME",
+					homeAmount: null,
+					homeCurrency: null,
+				},
+			],
+			rateSwitches: [],
+			pick,
+		});
+		const change = netWorthChangeFrom(ledger, at("2026-10-14T23:30:00Z"));
+		expect(change?.total).toBe(11_000_000);
+		expect(change?.parts.income).toBe(1_000_000);
+	});
+});
+
 describe("ratePickFromRows", () => {
 	it("USD is 1 and a currency with no rows has no rate", () => {
 		expect(pick("USD", NOW)?.rate).toBe(1);
