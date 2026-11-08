@@ -57,7 +57,7 @@ Set these in `.env`. Runtime settings are read at start; nothing is baked into t
 | `LLM_MODEL` | No | `qwen2.5:7b` | Ollama model |
 | `BACKUP_CRON` | No | `0 3 * * *` | Backup schedule (cron syntax) |
 | `BACKUP_RETENTION_DAYS` | No | `30` | Days to keep backup files |
-| `BACKUP_AGE_RECIPIENT` | No | | One or more [age](https://age-encryption.org) public keys (`age1...`, comma-separated). When set, backups are encrypted to them and written as `.dump.age` |
+| `BACKUP_AGE_RECIPIENT` | No | | One or more [age](https://age-encryption.org) public keys (`age1...`, comma-separated). When set, backups are encrypted to them and written as `.dump.age` (see [Encrypted backups](#encrypted-backups)) |
 | `TRUSTED_ORIGINS` | No | | Extra allowed CORS/auth origins (comma-separated) |
 | `VAPID_PRIVATE_KEY` | No | | Turns on push to Android phones through UnifiedPush (see [Push notifications](#push-notifications)) |
 | `VAPID_PUBLIC_KEY` | No | derived | The matching public key, checked against the private one |
@@ -99,13 +99,13 @@ Backup files are written inside the sidecar container. They go to `BACKUP_DIR` (
 
 ### Encrypted backups
 
-Set `BACKUP_AGE_RECIPIENT` to an age public key and the sidecar encrypts every backup to it. The dump is streamed through `age`, so the unencrypted file never touches the disk. Only you hold the matching private key; the server cannot read its own backups.
+Set `BACKUP_AGE_RECIPIENT` to an age public key and the sidecar encrypts every backup to it. The dump is streamed through age inside the sidecar, so the unencrypted file never touches the disk. Only you hold the matching private key; the server cannot read its own backups.
 
 1. Make a key pair on a machine you trust: `age-keygen -o retrospend-backup.key`. It prints the public key (`age1...`). Keep the key file somewhere safe and off the server. Without it the backups cannot be opened.
-2. Set `BACKUP_AGE_RECIPIENT` to the public key and restart the sidecar. The sidecar image must include the `age` command.
-3. If `age` is missing or fails, the backup fails. The sidecar never falls back to writing a plain file.
+2. Set `BACKUP_AGE_RECIPIENT` to the public key and restart the sidecar.
+3. If the key is malformed, the sidecar refuses to start, and a backup that cannot be encrypted fails. It never falls back to writing a plain file.
 
-To restore, decrypt and then restore as usual:
+The sidecar has no restore command and never sees the private key. To restore, decrypt on a machine that has the `age` command and your key file, then restore as usual:
 
 ```sh
 age --decrypt -i retrospend-backup.key retrospend-20260101-030000.dump.age > restore.dump

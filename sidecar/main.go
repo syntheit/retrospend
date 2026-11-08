@@ -10,7 +10,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -405,11 +404,7 @@ func main() {
 	log.Println("  - Recurring expenses: every 15 minutes")
 	log.Printf("  - Database backup: %s (retention: %d days)", cfg.BackupCron, cfg.BackupRetentionDays)
 	if len(cfg.BackupAgeRecipients) > 0 {
-		if _, err := exec.LookPath("age"); err != nil {
-			log.Println("  - Backups are set to be encrypted but the age command is missing: backups will fail until it is installed")
-		} else {
-			log.Printf("  - Backups encrypted to %d age recipient(s)", len(cfg.BackupAgeRecipients))
-		}
+		log.Printf("  - Backups encrypted to %d age recipient(s)", len(cfg.BackupAgeRecipients))
 	}
 	log.Println("  - Data retention cleanup: daily at 03:00 UTC")
 	log.Println("  - Settlement auto-finalize: daily at 04:00 UTC")

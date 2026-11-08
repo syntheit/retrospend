@@ -3,6 +3,7 @@ package tasks
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/url"
@@ -87,29 +88,14 @@ func RunBackup(database *db.DB, databaseURL string, backupDir string, retentionD
 
 	// Generate filename
 	timestamp := start.Format("20060102-150405")
-	filename := fmt.Sprintf("retrospend-%s.dump", timestamp)
 	encrypt := len(ageRecipients) > 0
-	if encrypt {
-		filename += ".age"
-	}
+	filename := backupFilename(timestamp, encrypt)
 	filepath := filepath.Join(backupDir, filename)
 	result.Filename = filename
 	result.Encrypted = encrypt
 
 	// Run pg_dump
-	args := []string{
-		"--format=custom",
-		"--no-owner",
-		"--no-privileges",
-		"--host", host,
-		"--port", port,
-		"--username", user,
-		"--dbname", dbname,
-	}
-	if !encrypt {
-		args = append(args, fmt.Sprintf("--file=%s", filepath))
-	}
-	cmd := exec.Command("pg_dump", args...)
+	cmd := exec.Command("pg_dump", pgDumpArgs(host, port, user, dbname, filepath, encrypt)...)
 	cmd.Env = append(os.Environ(), fmt.Sprintf("PGPASSWORD=%s", password))
 
 	var output []byte
@@ -119,7 +105,11 @@ func RunBackup(database *db.DB, databaseURL string, backupDir string, retentionD
 		output, err = cmd.CombinedOutput()
 	}
 	if err != nil {
-		result.Error = fmt.Sprintf("pg_dump failed: %v, output: %s", err, strings.TrimSpace(string(output)))
+		if errors.Is(err, ErrInvalidAgeRecipient) {
+			result.Error = fmt.Sprintf("encrypted backup not written: %v", err)
+		} else {
+			result.Error = fmt.Sprintf("pg_dump failed: %v, output: %s", err, strings.TrimSpace(string(output)))
+		}
 		result.DurationMs = time.Since(start).Milliseconds()
 		log.Printf("❌ Backup failed: %s", result.Error)
 		// Clean up partial file

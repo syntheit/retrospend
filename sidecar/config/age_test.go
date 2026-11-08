@@ -1,6 +1,10 @@
 package config
 
-import "testing"
+import (
+	"errors"
+	"strings"
+	"testing"
+)
 
 const validRecipient = "age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p"
 
@@ -20,11 +24,17 @@ func TestParseAgeRecipientsRejectsAnythingElse(t *testing.T) {
 		"/etc/passwd",
 		"age1short",
 		validRecipient + "x",
-		"AGE1QL3Z7HJY54PW3HYWW5AYYFG7ZQGVC7W3J2ELW8ZMRJ2KG5SFN9AQMCAC8P",
+		validRecipient[:len(validRecipient)-1] + "q", // bad checksum
+		"AGE-SECRET-KEY-1QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ",
 		"ssh-ed25519 AAAA",
 	} {
-		if _, err := ParseAgeRecipients(bad); err == nil {
+		_, err := ParseAgeRecipients(bad)
+		if !errors.Is(err, ErrInvalidAgeRecipient) {
 			t.Errorf("accepted %q", bad)
+			continue
+		}
+		if strings.Contains(err.Error(), bad) {
+			t.Errorf("error repeats the value %q", bad)
 		}
 	}
 }

@@ -68,6 +68,7 @@ services:
       BACKUP_DIR: "/backups"
       BACKUP_RETENTION_DAYS: "${BACKUP_RETENTION_DAYS:-30}"
       BACKUP_CRON: "${BACKUP_CRON:-0 3 * * *}"
+      BACKUP_AGE_RECIPIENT: "${BACKUP_AGE_RECIPIENT:-}"
       OLLAMA_ENDPOINT: ${OLLAMA_ENDPOINT:-http://ollama:11434/api/generate}
       LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b}
       ENRICH_BATCH_SIZE: "${ENRICH_BATCH_SIZE:-20}"
