@@ -31,6 +31,11 @@ import (
 var Version = "0.2.0"
 
 func main() {
+	// entrypoint.sh asks which database URL to hand the sidecar before it starts.
+	if len(os.Args) > 1 && os.Args[1] == "owner-url" {
+		os.Exit(runOwnerURL(os.Stdout, os.Stderr))
+	}
+
 	log.Printf("Retrospend Sidecar %s starting...", Version)
 
 	// Load configuration
