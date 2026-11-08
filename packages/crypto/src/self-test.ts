@@ -3,7 +3,17 @@
 // build that disagrees with the others is caught where it runs. The expected
 // values come from other implementations (see the vectors file), never from
 // the code under test.
+import formatVectors from "../vectors/format.vectors.json";
 import vectors from "../vectors/primitives.vectors.json";
+import {
+	canonicalJson,
+	decodeSealed,
+	encodeSealed,
+	type Json,
+	openRecord,
+	type RecordContext,
+	sealRecordWithNonce,
+} from "./format";
 import { fromHex, toHex } from "./hex";
 import type { Primitives } from "./primitives";
 
@@ -101,6 +111,43 @@ export function runKnownAnswerTests(p: Primitives): string[] {
 					),
 				),
 			v.plaintext,
+		);
+	}
+	for (const v of formatVectors.records) {
+		const ctx: RecordContext = v.context;
+		const recordKey = { keyId: fromHex(v.keyId), key: fromHex(v.key) };
+		check(
+			`format seal: ${v.name}`,
+			() =>
+				toHex(
+					sealRecordWithNonce(
+						p,
+						recordKey,
+						ctx,
+						v.schemaVersion,
+						v.record as { [key: string]: Json },
+						fromHex(v.nonce),
+					),
+				),
+			v.sealed,
+		);
+		check(
+			`format open: ${v.name}`,
+			() => {
+				const opened = openRecord(
+					p,
+					() => recordKey.key,
+					ctx,
+					decodeSealed(v.base64url),
+				);
+				return `${opened.schemaVersion}:${canonicalJson(opened.record)}`;
+			},
+			`${v.schemaVersion}:${v.canonicalJson}`,
+		);
+		check(
+			`format base64url: ${v.name}`,
+			() => encodeSealed(fromHex(v.sealed)),
+			v.base64url,
 		);
 	}
 	return failed;
