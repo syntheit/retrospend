@@ -13,6 +13,7 @@ import {
 	normalizeTimeZone,
 	parseDateOnlyIn,
 	startOfDayIn,
+	startOfNextDayIn,
 	wallTime,
 } from "./time-zone";
 
@@ -168,5 +169,61 @@ describe("fiscal month in a time zone", () => {
 			NY,
 		);
 		expect(progress.daysInPeriod).toBe(31);
+	});
+});
+
+describe("days whose local midnight DST skips", () => {
+	const SANTIAGO = "America/Santiago";
+	const HAVANA = "America/Havana";
+	const BEIRUT = "Asia/Beirut";
+
+	it("parseDateOnlyIn reads Santiago Sep 5 2027 as 01:00 that day, not Sep 4 23:00", () => {
+		// 00:00 -04 does not exist; the clock jumps to 01:00 -03, which is 04:00Z.
+		const gap = parseDateOnlyIn("2027-09-05", SANTIAGO);
+		expect(gap.toISOString()).toBe("2027-09-05T04:00:00.000Z");
+		expect(dayKey(gap, SANTIAGO)).toBe("2027-09-05");
+		// The day before keeps -04 midnight, the day after -03 midnight.
+		expect(parseDateOnlyIn("2027-09-04", SANTIAGO).toISOString()).toBe(
+			"2027-09-04T04:00:00.000Z",
+		);
+		expect(parseDateOnlyIn("2027-09-06", SANTIAGO).toISOString()).toBe(
+			"2027-09-06T03:00:00.000Z",
+		);
+	});
+
+	it("parseDateOnlyIn reads Havana Mar 14 2027 as 01:00 that day (05:00Z)", () => {
+		const gap = parseDateOnlyIn("2027-03-14", HAVANA);
+		expect(gap.toISOString()).toBe("2027-03-14T05:00:00.000Z");
+		expect(dayKey(gap, HAVANA)).toBe("2027-03-14");
+	});
+
+	it("parseDateOnlyIn reads Beirut Mar 28 2027 as 01:00 that day (22:00Z the day before)", () => {
+		const gap = parseDateOnlyIn("2027-03-28", BEIRUT);
+		expect(gap.toISOString()).toBe("2027-03-27T22:00:00.000Z");
+		expect(dayKey(gap, BEIRUT)).toBe("2027-03-28");
+	});
+
+	it("startOfDayIn of an instant on the gap day is that day's first instant", () => {
+		const noon = new Date("2027-09-05T15:00:00.000Z"); // 12:00 -03
+		expect(startOfDayIn(noon, SANTIAGO).toISOString()).toBe(
+			"2027-09-05T04:00:00.000Z",
+		);
+	});
+
+	it("startOfNextDayIn ends the day before the gap at its first instant", () => {
+		// Sep 4 runs until the clock jumps, so the next day starts at 04:00Z.
+		const late = new Date("2027-09-05T03:30:00.000Z"); // Sep 4, 23:30 -04
+		expect(startOfNextDayIn(late, SANTIAGO).toISOString()).toBe(
+			"2027-09-05T04:00:00.000Z",
+		);
+	});
+
+	it("a plain zone and no zone read midnight as before", () => {
+		expect(parseDateOnlyIn("2027-09-05", BA).toISOString()).toBe(
+			"2027-09-05T03:00:00.000Z",
+		);
+		expect(parseDateOnlyIn("2027-09-05", "UTC").toISOString()).toBe(
+			"2027-09-05T00:00:00.000Z",
+		);
 	});
 });
