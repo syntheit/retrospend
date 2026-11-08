@@ -1,40 +1,22 @@
 "use client";
 
-import { CURRENCIES } from "@retrospend/domain/currencies";
-import { currencyForLocale } from "@retrospend/domain/currency-country";
-import {
-	AlertCircle,
-	BarChart3,
-	CheckCircle,
-	Globe,
-	Info,
-	Receipt,
-	ShieldCheck,
-	Smartphone,
-	TrendingUp,
-} from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { AuthPanel } from "~/app/(site)/_components/auth-panel";
-import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
-import {
-	InputOTP,
-	InputOTPGroup,
-	InputOTPSlot,
-} from "~/components/ui/input-otp";
 import { Label } from "~/components/ui/label";
-import { CurrencyField } from "~/features/settings/preferences/currency-field";
 import { authClient } from "~/lib/auth-client";
 import { handleError } from "~/lib/handle-error";
 import { CURRENT_POLICY_VERSION } from "~/lib/policy-version";
 import { api } from "~/trpc/react";
-
-type InviteState = "idle" | "validating" | "success" | "error";
+import { HomeCurrencyField, useHomeCurrency } from "./home-currency-field";
+import { InviteCodeField, useInviteCode } from "./invite-code-field";
+import { SignupFeatures } from "./signup-features";
+import { signupError } from "./signup-validation";
 
 function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 	const t = useTranslations("auth");
@@ -63,24 +45,13 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 			? redirectParam
 			: "/home";
 
-	const [inviteCode, setInviteCode] = useState("");
-	const [inviteState, setInviteState] = useState<InviteState>("idle");
-	const [inviteError, setInviteError] = useState("");
+	const invite = useInviteCode();
 
-	const utils = api.useUtils();
 	const { data: settings } = api.settings.getInviteOnlyEnabled.useQuery();
 	const inviteOnlyEnabled = settings?.inviteOnlyEnabled ?? false;
 	const recordConsent = api.auth.recordConsent.useMutation();
 	const saveSettings = api.settings.updateGeneral.useMutation();
-	// Home currency: the browser's region suggests it, the person can change it.
-	const [homeCurrency, setHomeCurrency] = useState("USD");
-	useEffect(() => {
-		const suggested = currencyForLocale(
-			navigator.language,
-			new Set(Object.keys(CURRENCIES)),
-		);
-		if (suggested) setHomeCurrency(suggested);
-	}, []);
+	const [homeCurrency, setHomeCurrency] = useHomeCurrency();
 
 	// Pre-fill from query params (guest upgrade flow)
 	useEffect(() => {
@@ -91,96 +62,22 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
-	const validateInviteCode = useCallback(
-		async (code: string) => {
-			if (code.length !== 8) return;
-
-			setInviteState("validating");
-			setInviteError("");
-
-			try {
-				const result = await utils.invite.validate.fetch({ code });
-
-				if (result.valid) {
-					setInviteState("success");
-					// biome-ignore lint/suspicious/noDocumentCookie: Cookie must be set client-side for better-auth server-side validation
-					document.cookie = `retro_invite_code=${code}; path=/; max-age=86400; Secure; SameSite=Strict`;
-				} else {
-					setInviteState("error");
-					setInviteError(t("invalidOrExpiredInviteCode"));
-				}
-			} catch (error) {
-				setInviteState("error");
-				handleError(error, "Failed to validate invite code");
-			}
-		},
-		[utils, t],
-	);
-
-	useEffect(() => {
-		const codeParam = searchParams.get("code");
-		if (codeParam && inviteState === "idle") {
-			const uppercaseCode = codeParam.toUpperCase();
-			setInviteCode(uppercaseCode);
-			validateInviteCode(uppercaseCode);
-		}
-	}, [searchParams, inviteState, validateInviteCode]);
-
-	const handleInviteCodeChange = (value: string) => {
-		const uppercaseValue = value.toUpperCase();
-		setInviteCode(uppercaseValue);
-		setInviteError("");
-
-		if (uppercaseValue.length === 8) {
-			validateInviteCode(uppercaseValue);
-		} else if (inviteState !== "idle") {
-			setInviteState("idle");
-		}
-	};
-
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setIsLoading(true);
 		setError("");
 
-		if (inviteOnlyEnabled && inviteState !== "success") {
-			setError(t("pleaseEnterValidInviteCode"));
-			setIsLoading(false);
-			return;
-		}
-
-		if (enableLegalPages && !termsAccepted) {
-			setError(t("mustAgreeToTerms"));
-			setIsLoading(false);
-			return;
-		}
-
-		if (!username.trim()) {
-			setError(t("usernameRequired"));
-			setIsLoading(false);
-			return;
-		}
-
-		if (!/^[a-zA-Z0-9]+$/.test(username.trim())) {
-			setError(t("usernameAlphanumericOnly"));
-			setIsLoading(false);
-			return;
-		}
-
-		if (password.length < 8) {
-			setError(t("passwordMinLength"));
-			setIsLoading(false);
-			return;
-		}
-
-		if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
-			setError(t("passwordComplexity"));
-			setIsLoading(false);
-			return;
-		}
-
-		if (password !== confirmPassword) {
-			setError(t("passwordsDontMatch"));
+		const invalid = signupError({
+			inviteRequired: inviteOnlyEnabled,
+			inviteAccepted: invite.inviteState === "success",
+			termsRequired: enableLegalPages,
+			termsAccepted,
+			username,
+			password,
+			confirmPassword,
+		});
+		if (invalid) {
+			setError(t(invalid));
 			setIsLoading(false);
 			return;
 		}
@@ -235,8 +132,6 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 		}
 	};
 
-	const showInviteInput = inviteState === "idle" || inviteState === "error";
-
 	return (
 		<div className="bg-background flex min-h-screen items-center justify-center px-4">
 			<AuthPanel
@@ -246,107 +141,8 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 				title={t("createAccount")}
 			>
 				<form className="space-y-4" onSubmit={handleSubmit}>
-					{showFeatures && (
-						<div className="border-primary/20 bg-primary/5 space-y-3 rounded-lg border p-4">
-							<div className="flex items-start gap-2">
-								<Info className="text-primary mt-0.5 h-4 w-4 shrink-0" />
-								<p className="text-primary text-sm font-medium">
-									{t("sharedExpensesAutoLinked")}
-								</p>
-							</div>
-							<p className="text-muted-foreground text-sm">
-								{t("withYourOwnAccount")}
-							</p>
-							<ul className="text-muted-foreground grid gap-1.5 text-sm">
-								<li className="flex items-center gap-2">
-									<Smartphone className="text-primary/70 h-3.5 w-3.5 shrink-0" />
-									{t("featureAccessAnyDevice")}
-								</li>
-								<li className="flex items-center gap-2">
-									<ShieldCheck className="text-primary/70 h-3.5 w-3.5 shrink-0" />
-									{t("featureSecureAccount")}
-								</li>
-								<li className="flex items-center gap-2">
-									<BarChart3 className="text-primary/70 h-3.5 w-3.5 shrink-0" />
-									{t("featureSpendingTracking")}
-								</li>
-								<li className="flex items-center gap-2">
-									<TrendingUp className="text-primary/70 h-3.5 w-3.5 shrink-0" />
-									{t("featureNetWorth")}
-								</li>
-								<li className="flex items-center gap-2">
-									<Globe className="text-primary/70 h-3.5 w-3.5 shrink-0" />
-									{t("featureMultiCurrency")}
-								</li>
-								<li className="flex items-center gap-2">
-									<Receipt className="text-primary/70 h-3.5 w-3.5 shrink-0" />
-									{t("featureImportStatements")}
-								</li>
-							</ul>
-						</div>
-					)}
-					{inviteOnlyEnabled && (
-						<div className="space-y-3">
-							<div className="flex items-center justify-between">
-								<Label htmlFor="inviteCode">{t("inviteCode")}</Label>
-								{inviteState === "success" && (
-									<Badge className="flex items-center gap-1" variant="default">
-										<CheckCircle className="h-3 w-3" />
-										{t("accepted")}
-									</Badge>
-								)}
-							</div>
-
-							{showInviteInput && (
-								<div className="space-y-2">
-									<InputOTP
-										maxLength={8}
-										onChange={handleInviteCodeChange}
-										value={inviteCode}
-									>
-										<InputOTPGroup>
-											<InputOTPSlot index={0} />
-											<InputOTPSlot index={1} />
-											<InputOTPSlot index={2} />
-											<InputOTPSlot index={3} />
-											<InputOTPSlot index={4} />
-											<InputOTPSlot index={5} />
-											<InputOTPSlot index={6} />
-											<InputOTPSlot index={7} />
-										</InputOTPGroup>
-									</InputOTP>
-									<p className="text-muted-foreground text-xs">
-										{t("enterInviteCode")}
-									</p>
-								</div>
-							)}
-
-							{inviteState === "validating" && (
-								<div className="bg-muted flex items-center gap-2 rounded-md p-3">
-									<div className="border-primary h-4 w-4 animate-spin rounded-full border-2 border-t-transparent" />
-									<span className="text-sm">{t("validatingInviteCode")}</span>
-								</div>
-							)}
-
-							{inviteState === "success" && (
-								<div className="flex items-center gap-2 rounded-md bg-emerald-50 p-3 dark:bg-emerald-950">
-									<CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-									<span className="text-sm text-emerald-700 dark:text-emerald-300">
-										{t("inviteAccepted")}
-									</span>
-								</div>
-							)}
-
-							{inviteError && (
-								<div className="flex items-center gap-2 rounded-md bg-red-50 p-3 dark:bg-red-950">
-									<AlertCircle className="text-destructive h-4 w-4" />
-									<span className="text-sm text-red-700 dark:text-red-300">
-										{inviteError}
-									</span>
-								</div>
-							)}
-						</div>
-					)}
+					{showFeatures && <SignupFeatures />}
+					{inviteOnlyEnabled && <InviteCodeField {...invite} />}
 
 					<div className="space-y-2">
 						<Label htmlFor="fullName">{t("fullName")}</Label>
@@ -414,17 +210,11 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 							value={confirmPassword}
 						/>
 					</div>
-					<div className="space-y-2">
-						<Label htmlFor="homeCurrency">{t("homeCurrency")}</Label>
-						<CurrencyField
-							className="w-full"
-							disabled={isLoading}
-							id="homeCurrency"
-							label={t("homeCurrency")}
-							onChange={setHomeCurrency}
-							value={homeCurrency}
-						/>
-					</div>
+					<HomeCurrencyField
+						disabled={isLoading}
+						onChange={setHomeCurrency}
+						value={homeCurrency}
+					/>
 					{enableLegalPages && (
 						<div className="flex items-center space-x-2 pt-2 pb-2">
 							<Checkbox
