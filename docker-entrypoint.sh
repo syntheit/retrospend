@@ -10,6 +10,18 @@ done
 
 echo "Database is ready!"
 
+# With a superuser URL, create the retrospend_owner role and hand it the
+# objects (prisma/bootstrap), then run everything below, and the app, as that
+# role. It prints the owner's URL, or nothing when DATABASE_URL should stay as
+# it is (a URL that is not a superuser's, or a superuser with no password).
+# The superuser URL is not exported anywhere after this line.
+echo "Preparing the database role..."
+OWNER_DATABASE_URL=$(node scripts/db-owner/cli.mjs bootstrap)
+if [ -n "$OWNER_DATABASE_URL" ]; then
+  export DATABASE_URL="$OWNER_DATABASE_URL"
+fi
+unset OWNER_DATABASE_URL
+
 # Apply any pending database migrations
 echo "Applying database migrations..."
 
@@ -65,5 +77,13 @@ fi
 echo "Applying database grants..."
 ./node_modules/.bin/prisma db execute --file prisma/grants/app-role.sql
 
+# The app gets an allowlisted environment: the names it reads, with
+# DATABASE_URL as set above. POSTGRES_PASSWORD, the superuser's URL and
+# anything else this container was given never reach it. Assigned first so a
+# failure stops the start (a failing command inside eval would not).
+APP_EXEC=$(node scripts/db-owner/cli.mjs app-exec)
+
 echo "Starting application..."
+eval "$APP_EXEC"
+unset APP_EXEC
 exec "$@"
