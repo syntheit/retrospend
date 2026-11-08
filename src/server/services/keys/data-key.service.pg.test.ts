@@ -183,9 +183,7 @@ describe("getOrCreateDataKeyring", () => {
 });
 
 describe("who can reach which key", () => {
-	const readFunction = (tx: {
-		$queryRaw: typeof adminDb.$queryRaw;
-	}) =>
+	const readFunction = (tx: { $queryRaw: typeof adminDb.$queryRaw }) =>
 		tx.$queryRaw<{ user_id: string }[]>`
 			SELECT "user_id" FROM keystore."current_user_data_keys"()`;
 
@@ -299,9 +297,9 @@ describe("keystore grants", () => {
 
 	it("keeps every keystore function away from PUBLIC", async () => {
 		for (const fn of functions)
-			expect(await has(`has_function_privilege('public', '${fn}', 'EXECUTE')`)).toBe(
-				false,
-			);
+			expect(
+				await has(`has_function_privilege('public', '${fn}', 'EXECUTE')`),
+			).toBe(false);
 		// The signed-in role gets the two doors and not the trigger function.
 		expect(
 			await has(
@@ -344,7 +342,10 @@ describe("keystore grants", () => {
 			'REVOKE EXECUTE ON FUNCTION keystore."current_user_data_keys"() FROM retrospend_app',
 		);
 		try {
-			await expectDataKeyError(keyringOf(me, master()), "keystore_grants_missing");
+			await expectDataKeyError(
+				keyringOf(me, master()),
+				"keystore_grants_missing",
+			);
 		} finally {
 			await adminDb.$executeRawUnsafe(
 				'GRANT EXECUTE ON FUNCTION keystore."current_user_data_keys"() TO retrospend_app',

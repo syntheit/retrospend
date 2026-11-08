@@ -75,7 +75,8 @@ type KeyRow = { userId: string; keyId: number; wrappedKey: string };
 
 /** The Postgres error code of a failed raw query, as Prisma reports it. */
 function pgCode(error: unknown): string | undefined {
-	if (!(error instanceof Prisma.PrismaClientKnownRequestError)) return undefined;
+	if (!(error instanceof Prisma.PrismaClientKnownRequestError))
+		return undefined;
 	const meta = error.meta as
 		| { driverAdapterError?: { cause?: { originalCode?: string } } }
 		| undefined;
