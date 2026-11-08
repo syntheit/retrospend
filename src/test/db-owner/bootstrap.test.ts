@@ -45,7 +45,7 @@ vi.mock("pg", () => {
 					? "owner-role.sql"
 					: sql.includes("ALTER SCHEMA %I OWNER")
 						? "owner-handover.sql"
-						: sql.includes("retrospend.fresh_install=on")
+						: sql.includes("user_schemas")
 							? "owner-fresh.sql"
 							: sql.includes("owner is a member of")
 								? "owner-verify.sql"
@@ -54,7 +54,7 @@ vi.mock("pg", () => {
 									: (sql.trim().split("\n")[0] ?? ""),
 			);
 			if (sql.includes("quote_ident")) return { rows: [{ name: '"retro"' }] };
-			if (sql.includes("retrospend.fresh_install=on")) {
+			if (sql.includes("user_schemas")) {
 				return { rows: [{ fresh: fake.fresh }] };
 			}
 			if (sql.startsWith("REVOKE CREATE ON DATABASE")) {
@@ -236,8 +236,6 @@ describe("bootstrap checks the role from the catalogs", () => {
 describe("bootstrap's migration window", () => {
 	const GRANT = 'GRANT CREATE ON DATABASE "retro" TO retrospend_owner';
 	const REVOKE = 'REVOKE CREATE ON DATABASE "retro" FROM retrospend_owner';
-	const MARK = `ALTER DATABASE "retro" SET retrospend.fresh_install = 'on'`;
-	const UNMARK = 'ALTER DATABASE "retro" RESET retrospend.fresh_install';
 
 	it("on a brand-new install grants CREATE on the database for the callback only, and revokes it after", async () => {
 		fake.fresh = true;
@@ -281,24 +279,11 @@ describe("bootstrap's migration window", () => {
 		});
 		expect(ran).toBe(true);
 		for (const line of fake.log) {
-			expect(line).not.toMatch(/GRANT CREATE|REVOKE CREATE|fresh_install/);
+			expect(line).not.toMatch(/GRANT CREATE|REVOKE CREATE|ALTER DATABASE/);
 		}
 	});
 
-	it("marks a new install before the handover and unmarks it once the migrations worked", async () => {
-		fake.fresh = true;
-		fake.ownerLogins = [true];
-		await bootstrap("postgresql://postgres:pw@db/retro", {
-			whileOwnerMayCreate: async () => undefined,
-		});
-		expect(fake.log.indexOf(MARK)).toBeGreaterThan(-1);
-		expect(fake.log.indexOf(MARK)).toBeLessThan(
-			fake.log.indexOf("owner-handover.sql"),
-		);
-		expect(fake.log.indexOf(UNMARK)).toBeGreaterThan(fake.log.indexOf(REVOKE));
-	});
-
-	it("keeps the mark when the migrations fail, so the retry is a new install too", async () => {
+	it("keeps no marker between starts: a start that fails is not retried as a new install", async () => {
 		fake.fresh = true;
 		fake.ownerLogins = [true];
 		await expect(
@@ -308,8 +293,16 @@ describe("bootstrap's migration window", () => {
 				},
 			}),
 		).rejects.toThrow(/Migration failed/);
-		expect(fake.log).toContain(MARK);
-		expect(fake.log).not.toContain(UNMARK);
+		expect(fake.log.some((line) => /ALTER DATABASE/.test(line))).toBe(false);
+		// The retry looks at the catalogs again, and they now say it is not new.
+		fake.fresh = false;
+		fake.log = [];
+		fake.logins = 0;
+		fake.ownerLogins = [true, true];
+		await bootstrap("postgresql://postgres:pw@db/retro", {
+			whileOwnerMayCreate: async () => undefined,
+		});
+		expect(fake.log.some((line) => /GRANT CREATE/.test(line))).toBe(false);
 	});
 
 	it("grants nothing when there is no callback, and nothing for a URL it leaves alone", async () => {

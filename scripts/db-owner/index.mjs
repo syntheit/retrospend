@@ -404,12 +404,10 @@ async function setOwnerPassword(client, password) {
  *   | { status: "unchanged", reason: "not-superuser" | "no-password" | "unreadable-password" }} BootstrapResult
  */
 
-/** The database setting a superuser sets while a new install is being set up. */
-const FRESH_MARKER = "retrospend.fresh_install";
-
 /**
- * Whether this database is a brand-new install the owner has had no chance to
- * plant anything in (owner-fresh.sql), from the catalogs only.
+ * Whether this database is a brand-new install: nothing in it that could carry
+ * code, so nothing the owner could have planted (owner-fresh.sql), from the
+ * catalogs only.
  *
  * @param {{ query: (sql: string) => Promise<{ rows: Array<Record<string, unknown>> }> }} client
  * @returns {Promise<boolean>}
@@ -527,12 +525,6 @@ export async function bootstrap(databaseUrl, options = {}) {
 		}
 
 		const database = await databaseIdentifier(admin);
-		if (fresh) {
-			// A start that fails halfway is retried as a new install.
-			await admin.query(
-				`ALTER DATABASE ${database} SET ${FRESH_MARKER} = 'on'`,
-			);
-		}
 		const changedObjects = await handover(admin);
 		if (options.whileOwnerMayCreate) {
 			if (!fresh) {
@@ -550,7 +542,6 @@ export async function bootstrap(databaseUrl, options = {}) {
 				} finally {
 					await revokeDatabaseCreate(admin, databaseUrl, database);
 				}
-				await admin.query(`ALTER DATABASE ${database} RESET ${FRESH_MARKER}`);
 			}
 		}
 		return { status: "switched", ownerUrl: url, changedObjects };
@@ -689,6 +680,9 @@ export function prismaRunner(root, databaseUrl, env = process.env) {
 		});
 }
 
+const NO_CREATE_HINT =
+	"Migration failed: the migration role has no CREATE on this database, which only a brand-new, empty database gets. If this install never finished its first start, drop the database and create it again empty.";
+
 /**
  * `prisma migrate deploy`, with the recovery the entrypoint always had: a
  * failed migration (P3009) is marked rolled back and tried again, a database
@@ -725,7 +719,14 @@ export async function migrateWithRecovery(databaseUrl, options = {}) {
 		}
 		log(`Found failed migration: ${failed}. Rolling back and retrying...`);
 		await mustRun(["migrate", "resolve", "--rolled-back", failed]);
-		await mustRun(["migrate", "deploy"]);
+		const retry = await run(["migrate", "deploy"]);
+		if (retry.status !== 0) {
+			throw new Error(
+				retry.output.includes("permission denied for database")
+					? NO_CREATE_HINT
+					: "prisma migrate deploy failed",
+			);
+		}
 		log("Database migrations applied successfully after rollback!");
 		return;
 	}
@@ -754,7 +755,11 @@ export async function migrateWithRecovery(databaseUrl, options = {}) {
 		return;
 	}
 
-	throw new Error("Migration failed. Please check the logs above.");
+	throw new Error(
+		first.output.includes("permission denied for database")
+			? NO_CREATE_HINT
+			: "Migration failed. Please check the logs above.",
+	);
 }
 
 /**

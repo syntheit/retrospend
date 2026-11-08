@@ -11,7 +11,7 @@
  * database, `<base>_<random>_leg`, takes the path of an upgrade (migrated as the
  * superuser, then handed over) for the one test file that checks that, a third,
  * `_old`, does the same from a 0.4.x release (OLD_CUTOFF) so the owner has
- * migrations still to apply, and `_scr` and `_sc2` are empty, for migrations of a
+ * migrations still to apply, and `_scr`, `_sc2` and `_sc3` are empty, for migrations of a
  * test's own (scratch-project.ts). The template is cloned once per vitest worker
  * (`<base>_<random>_w<n>`). Workers get the owner's URL, so `adminDb`
  * runs as retrospend_owner like the app in production; the superuser's URL is
@@ -55,6 +55,8 @@ declare module "vitest" {
 		pgScratch: { ownerUrl: string; superUrl: string };
 		/** A second empty one, for a migration that fails on a new install. */
 		pgScratch2: { ownerUrl: string; superUrl: string };
+		/** A third, for a first migration that fails, and for an attack on the next start. */
+		pgScratch3: { ownerUrl: string; superUrl: string };
 		/**
 		 * A database migrated as the superuser only up to OLD_CUTOFF, then handed
 		 * over: a 0.4.x install, with migrations left to apply as the owner.
@@ -104,6 +106,7 @@ export function runDatabaseNames(
 	old: string;
 	scratch: string;
 	scratch2: string;
+	scratch3: string;
 	workers: string[];
 } {
 	const stem = `${baseName}_${runId}`;
@@ -112,15 +115,32 @@ export function runDatabaseNames(
 	const old = `${stem}_old`;
 	const scratch = `${stem}_scr`;
 	const scratch2 = `${stem}_sc2`;
+	const scratch3 = `${stem}_sc3`;
 	const names = Array.from({ length: workers }, (_, i) => `${stem}_w${i + 1}`);
-	for (const name of [template, legacy, old, scratch, scratch2, ...names]) {
+	for (const name of [
+		template,
+		legacy,
+		old,
+		scratch,
+		scratch2,
+		scratch3,
+		...names,
+	]) {
 		if (Buffer.byteLength(name) > MAX_IDENTIFIER) {
 			throw new Error(
 				`Derived test database name "${name}" is longer than ${MAX_IDENTIFIER} bytes`,
 			);
 		}
 	}
-	return { template, legacy, old, scratch, scratch2, workers: names };
+	return {
+		template,
+		legacy,
+		old,
+		scratch,
+		scratch2,
+		scratch3,
+		workers: names,
+	};
 }
 
 function maintenanceUrl(url: URL): string {
@@ -288,6 +308,11 @@ async function createRunDatabase(project: TestProject) {
 				names.scratch2,
 				`CREATE DATABASE "${names.scratch2}"`,
 			);
+			await create(
+				client,
+				names.scratch3,
+				`CREATE DATABASE "${names.scratch3}"`,
+			);
 		});
 		// The template takes the path of a new install: the bootstrap, then
 		// every migration as retrospend_owner with only the CREATE on the
@@ -316,6 +341,7 @@ async function createRunDatabase(project: TestProject) {
 		await switched(urlFor(names.old));
 		await switched(urlFor(names.scratch));
 		await switched(urlFor(names.scratch2));
+		await switched(urlFor(names.scratch3));
 		// A second start: the migrations made everything as the owner, so there
 		// is nothing left to hand over.
 		freshHandedOver = (await switched(urlFor(names.template))).changedObjects;
@@ -360,6 +386,10 @@ async function createRunDatabase(project: TestProject) {
 		ownerUrl: ownerUrl(urlFor(names.legacy), ownerPassword),
 		superUrl: urlFor(names.legacy),
 		handedOver: legacyHandedOver,
+	});
+	project.provide("pgScratch3", {
+		ownerUrl: ownerUrl(urlFor(names.scratch3), ownerPassword),
+		superUrl: urlFor(names.scratch3),
 	});
 	project.provide("pgScratch2", {
 		ownerUrl: ownerUrl(urlFor(names.scratch2), ownerPassword),

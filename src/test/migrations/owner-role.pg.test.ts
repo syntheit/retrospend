@@ -65,21 +65,6 @@ async function ownerCanCreateIn(superUrl: string): Promise<boolean> {
 	}
 }
 
-/** Whether the superuser's marker for a new install is set on the database. */
-async function freshMarkerSet(superUrl: string): Promise<boolean> {
-	const client = await connect(superUrl);
-	try {
-		const { rows } = await client.query<{ set: boolean }>(`
-			SELECT EXISTS (
-			  SELECT 1 FROM pg_db_role_setting s JOIN pg_database d ON d.oid = s.setdatabase
-			   WHERE d.datname = current_database() AND s.setrole = 0
-			     AND 'retrospend.fresh_install=on' = ANY (s.setconfig)) AS set`);
-		return rows[0]?.set === true;
-	} finally {
-		await client.end();
-	}
-}
-
 /** Every object in public or keystore that retrospend_owner does not own, extension members excepted. */
 const FOREIGN_OWNED = `
 	WITH owner AS (SELECT oid FROM pg_roles WHERE rolname = 'retrospend_owner'),
@@ -679,7 +664,6 @@ describe("an install that older releases migrated as the superuser", () => {
 		});
 		expect(result.status).toBe("switched");
 		expect(during).toBe(false);
-		expect(await freshMarkerSet(legacy.superUrl)).toBe(false);
 	});
 });
 
@@ -815,6 +799,7 @@ describe("an install from before the keystore migration", () => {
 describe("the migration window on a brand-new install", () => {
 	const scratch = inject("pgScratch");
 	const scratch2 = inject("pgScratch2");
+	const scratch3 = inject("pgScratch3");
 	const quiet = { log: () => undefined, warn: () => undefined };
 	/** A migration that needs CREATE on the database, as the first one and the keystore one did. */
 	const window = (name: string, tag: string) => ({
@@ -824,8 +809,8 @@ describe("the migration window on a brand-new install", () => {
 			CREATE SCHEMA a2_${tag}_schema;
 			CREATE TABLE a2_${tag}_schema.probe (id integer);`,
 	});
-	const fixedSql =
-		"CREATE SCHEMA a2_fixed_schema;\nCREATE TABLE a2_fixed_schema.probe (id integer);";
+	/** What a retry can apply on an install that is no longer new: nothing needs CREATE. */
+	const fixedSql = "CREATE TABLE public.a2_fixed (id integer);";
 
 	it("is recognized from the catalogs, and gives the owner CREATE for the migrations only", async () => {
 		const owner = await connect(scratch.ownerUrl);
@@ -853,7 +838,6 @@ describe("the migration window on a brand-new install", () => {
 			);
 			expect(rows[0]?.owner).toBe("retrospend_owner");
 			expect(await ownerCanCreateIn(scratch.superUrl)).toBe(false);
-			expect(await freshMarkerSet(scratch.superUrl)).toBe(false);
 			expect(await ownerProblems(owner)).toEqual([]);
 		} finally {
 			await owner.end();
@@ -865,9 +849,6 @@ describe("the migration window on a brand-new install", () => {
 		const owner = await connect(scratch.ownerUrl);
 		const admin = await connect(scratch.superUrl);
 		try {
-			// Tables or not, the install has been through a start: only the first
-			// one (public empty, or the marker of one that did not finish) counts.
-			// Here public holds _prisma_migrations, the owner's own objects.
 			expect(await neverHandedOver(admin)).toBe(false);
 			const project = makeScratchProject({
 				extra: [
@@ -886,7 +867,6 @@ describe("the migration window on a brand-new install", () => {
 				project.cleanup();
 			}
 			expect(await ownerCanCreateIn(scratch.superUrl)).toBe(false);
-			expect(await freshMarkerSet(scratch.superUrl)).toBe(false);
 			const { rows } = await owner.query<{ n: string }>(
 				"SELECT count(*) AS n FROM pg_namespace WHERE nspname = 'a2_needs_create'",
 			);
@@ -897,7 +877,7 @@ describe("the migration window on a brand-new install", () => {
 		}
 	}, 120_000);
 
-	it("takes CREATE back when a migration fails, keeps the mark so the retry is a new install, and the P3009 recovery then applies the fixed one", async () => {
+	it("takes CREATE back when a later migration fails, and the P3009 recovery then applies the fixed one without it", async () => {
 		const owner = await connect(scratch2.ownerUrl);
 		const admin = await connect(scratch2.superUrl);
 		const good = window("20300101000000_second", "second");
@@ -908,12 +888,11 @@ describe("the migration window on a brand-new install", () => {
 			await expect(
 				prepare(scratch2.superUrl, { root: project.dir, ...quiet }),
 			).rejects.toThrow(/Migration failed/);
-			// Revoked although the migration failed; marked, because the install
-			// never finished its first start.
+			// Revoked although the migration failed.
 			expect(await ownerCanCreateIn(scratch2.superUrl)).toBe(false);
-			expect(await freshMarkerSet(scratch2.superUrl)).toBe(true);
-			expect(await neverHandedOver(admin)).toBe(true);
 			expect(await ownerProblems(owner)).toEqual([]);
+			// The install has been through a first start: not new any more.
+			expect(await neverHandedOver(admin)).toBe(false);
 
 			// Same behavior as the entrypoint had: the failed migration is marked
 			// rolled back and the (fixed) migration is tried again.
@@ -931,11 +910,10 @@ describe("the migration window on a brand-new install", () => {
 				"Database migrations applied successfully after rollback!",
 			);
 			const { rows } = await owner.query<{ owner: string }>(
-				"SELECT pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname = 'a2_fixed_schema'",
+				"SELECT pg_get_userbyid(relowner) AS owner FROM pg_class WHERE oid = 'public.a2_fixed'::regclass",
 			);
 			expect(rows[0]?.owner).toBe("retrospend_owner");
 			expect(await ownerCanCreateIn(scratch2.superUrl)).toBe(false);
-			expect(await freshMarkerSet(scratch2.superUrl)).toBe(false);
 		} finally {
 			project.cleanup();
 			await owner.end();
@@ -964,4 +942,185 @@ describe("the migration window on a brand-new install", () => {
 			project.cleanup();
 		}
 	}, 120_000);
+
+	it("does not retry a first migration that failed as a new install: the documented reset is to drop the database and create it empty", async () => {
+		const admin = await connect(scratch3.superUrl);
+		const first = {
+			name: "20300101000000_first",
+			sql: `${window("x", "third").sql}\nSELECT 1 / 0;`,
+		};
+		const project = makeScratchProject({ extra: [first] });
+		try {
+			expect(await neverHandedOver(admin)).toBe(true);
+			await expect(
+				prepare(scratch3.superUrl, { root: project.dir, ...quiet }),
+			).rejects.toThrow(/Migration failed/);
+			expect(await ownerCanCreateIn(scratch3.superUrl)).toBe(false);
+			// No marker keeps it new: the first migration, fixed, is refused with
+			// the way out in the message.
+			expect(await neverHandedOver(admin)).toBe(false);
+			project.writeMigration(first.name, window("x", "third").sql);
+			await expect(
+				prepare(scratch3.superUrl, { root: project.dir, ...quiet }),
+			).rejects.toThrow(/drop the database and create it again empty/);
+			expect(await ownerCanCreateIn(scratch3.superUrl)).toBe(false);
+		} finally {
+			project.cleanup();
+			await admin.end();
+		}
+	}, 180_000);
+
+	it("gives a concurrent owner session no CREATE although the owner emptied public and left a payload in keystore", async () => {
+		// The attack: the owner plants a function in keystore (which it owns) and
+		// drops everything in public, so that public looks new. If the next
+		// start then gave the owner CREATE, a second owner session could race the
+		// migrations for it and CREATE SCHEMA zz; CREATE EXTENSION hstore WITH
+		// SCHEMA zz (a trusted extension, its script runs as the superuser).
+		const owner = await connect(scratch3.ownerUrl);
+		const attacker = await connect(scratch3.ownerUrl);
+		const admin = await connect(scratch3.superUrl);
+		try {
+			await owner.query(`
+				DROP SCHEMA IF EXISTS a2_third_schema CASCADE;
+				DROP TABLE IF EXISTS public._prisma_migrations;
+				CREATE FUNCTION keystore.a2_payload() RETURNS trigger LANGUAGE plpgsql AS $f$
+				BEGIN RETURN NEW; END $f$`);
+			// Public is empty, and the catalogs still say it is not new.
+			const { rows: left } = await owner.query<{ n: string }>(`
+				SELECT count(*) AS n FROM pg_class
+				 WHERE relnamespace = 'public'::regnamespace AND relkind IN ('r', 'v', 'S')`);
+			expect(left[0]?.n).toBe("0");
+			expect(await neverHandedOver(admin)).toBe(false);
+
+			// The control: given CREATE, the attacker session does create a schema,
+			// so a refusal below means something.
+			const { rows: named } = await admin.query<{ name: string }>(
+				"SELECT quote_ident(current_database()) AS name",
+			);
+			await admin.query(
+				`GRANT CREATE ON DATABASE ${named[0]?.name} TO retrospend_owner`,
+			);
+			try {
+				await attacker.query("CREATE SCHEMA a2_control");
+				await attacker.query("DROP SCHEMA a2_control");
+			} finally {
+				await admin.query(
+					`REVOKE CREATE ON DATABASE ${named[0]?.name} FROM retrospend_owner`,
+				);
+			}
+
+			let attempts = 0;
+			const wins: string[] = [];
+			let stop = false;
+			const race = (async () => {
+				while (!stop) {
+					attempts++;
+					for (const sql of [
+						"CREATE SCHEMA a2_zz",
+						"CREATE EXTENSION hstore WITH SCHEMA a2_zz",
+						"SELECT 1 WHERE has_database_privilege(current_user, current_database(), 'CREATE')",
+					]) {
+						try {
+							const result = await attacker.query(sql);
+							if (result.command !== "SELECT" || result.rowCount) {
+								wins.push(sql);
+							}
+						} catch {
+							// refused
+						}
+					}
+				}
+			})();
+			const project = makeScratchProject({
+				extra: [window("20300101000000_first", "again")],
+			});
+			try {
+				await expect(
+					prepare(scratch3.superUrl, { root: project.dir, ...quiet }),
+				).rejects.toThrow(/Migration failed/);
+			} finally {
+				project.cleanup();
+				stop = true;
+				await race;
+			}
+			expect(attempts).toBeGreaterThan(1);
+			expect(wins).toEqual([]);
+			const { rows } = await owner.query<{
+				schemas: string;
+				extensions: string;
+			}>(`
+				SELECT (SELECT count(*) FROM pg_namespace WHERE nspname = 'a2_zz') AS schemas,
+				       (SELECT count(*) FROM pg_extension WHERE extname = 'hstore') AS extensions`);
+			expect(rows[0]).toEqual({ schemas: "0", extensions: "0" });
+		} finally {
+			await owner.end();
+			await attacker.end();
+			await admin.end();
+		}
+	}, 120_000);
+});
+
+describe("neverHandedOver (is this a brand-new, empty database?)", () => {
+	const inRolledBack = (steps: (client: Client) => Promise<void>) =>
+		withSuperuser(async (client) => {
+			await client.query("BEGIN");
+			try {
+				await steps(client);
+			} finally {
+				await client.query("ROLLBACK");
+			}
+		});
+
+	it("is no for a migrated database, and an old marker setting changes nothing", async () => {
+		await inRolledBack(async (client) => {
+			expect(await neverHandedOver(client)).toBe(false);
+			// What an earlier version kept between starts: only a superuser can
+			// write it, and it means nothing now.
+			const { rows } = await client.query<{ name: string }>(
+				"SELECT quote_ident(current_database()) AS name",
+			);
+			await client.query(
+				`ALTER DATABASE ${rows[0]?.name} SET retrospend.fresh_install = 'on'`,
+			);
+			expect(await neverHandedOver(client)).toBe(false);
+		});
+	});
+
+	it("is yes only when nothing in any schema can carry code, and the unaccent extension does not count", async () => {
+		await inRolledBack(async (client) => {
+			await client.query("DROP SCHEMA keystore CASCADE");
+			await client.query("DROP SCHEMA public CASCADE");
+			await client.query("CREATE SCHEMA public");
+			expect(await neverHandedOver(client)).toBe(true);
+			// An extension's own objects are not the owner's.
+			await client.query("CREATE EXTENSION unaccent WITH SCHEMA public");
+			expect(await neverHandedOver(client)).toBe(true);
+		});
+	});
+
+	it("is no for a payload in any schema, however empty public is", async () => {
+		const payloads = [
+			"CREATE SCHEMA keystore; CREATE FUNCTION keystore.p() RETURNS int LANGUAGE sql AS 'SELECT 1'",
+			"CREATE SCHEMA keystore; CREATE TABLE keystore.t (id int)",
+			"CREATE SCHEMA other; CREATE VIEW other.v AS SELECT 1 AS one",
+			"CREATE SCHEMA other; CREATE SEQUENCE other.s",
+			"CREATE SCHEMA other; CREATE TYPE other.mood AS ENUM ('ok')",
+			"CREATE SCHEMA other; CREATE DOMAIN other.d AS integer",
+			"CREATE FUNCTION public.p() RETURNS int LANGUAGE sql AS 'SELECT 1'",
+			"CREATE TABLE public.t (id int)",
+			"CREATE OPERATOR public.@@@ (leftarg = int, rightarg = int, function = int4pl)",
+		];
+		await inRolledBack(async (client) => {
+			await client.query("DROP SCHEMA keystore CASCADE");
+			await client.query("DROP SCHEMA public CASCADE");
+			await client.query("CREATE SCHEMA public");
+			for (const payload of payloads) {
+				await client.query("SAVEPOINT p");
+				await client.query(payload);
+				expect(await neverHandedOver(client), payload).toBe(false);
+				await client.query("ROLLBACK TO SAVEPOINT p");
+			}
+			expect(await neverHandedOver(client)).toBe(true);
+		});
+	});
 });
