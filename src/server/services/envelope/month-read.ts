@@ -13,7 +13,8 @@ import type {
 import type { Prisma } from "~prisma";
 import { addMonths } from "./calendar";
 import { savedPlanLines } from "./draft-store";
-import { computeBook } from "./engine";
+import { computeBook, type MoneyInEntry } from "./engine";
+import { moneyInEntries } from "./entries";
 import { EnvelopeError } from "./errors";
 import type { GroupBase } from "./group-view";
 import { groupBaseFor, hasPercentGroup } from "./income-history";
@@ -72,12 +73,21 @@ export interface MonthViewSource {
 	loadBook(ctx: LoadContext): Promise<LoadedBook | null>;
 	/** The % base of a month for percent groups (SPEC §5.9), which needs closed months. */
 	groupBase(loaded: LoadedBook, month: MonthKey): Promise<GroupBase | null>;
+	/** The starting balance row as a money-in entry, for when it is behind a checkpoint. */
+	startingBalanceEntry(
+		loaded: LoadedBook,
+		id: string,
+	): Promise<MoneyInEntry | undefined>;
 }
 
 export function prismaMonthViewSource(tx: Tx, userId: string): MonthViewSource {
 	return {
 		loadBook: (ctx) => loadBook(tx, userId, ctx),
 		groupBase: (loaded, month) => groupBaseFor(tx, loaded, month),
+		startingBalanceEntry: async (loaded, id) => {
+			const row = await tx.expense.findUnique({ where: { id } });
+			return row ? moneyInEntries([row], loaded.valuer)[0] : undefined;
+		},
 	};
 }
 
@@ -120,7 +130,9 @@ export async function monthViewFrom(
 		owed: owedSummary(owedInputOf(loaded)),
 		groupBase,
 		approximateRows: loaded.approximate.length,
-		startingMoney: await startingMoneyIn(tx, loaded, key),
+		startingMoney: await startingMoneyIn(loaded, key, (id) =>
+			src.startingBalanceEntry(loaded, id),
+		),
 	});
 	return { ...view, loaded };
 }
