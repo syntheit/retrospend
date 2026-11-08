@@ -11,6 +11,7 @@ import { USER_TEXT_FIELDS } from "@retrospend/api-contract";
 import { describe, expect, it } from "vitest";
 import { Keyring, sealField } from "~/server/crypto/field-crypto";
 import { adminDb, createTestUser } from "~/test/pg-harness";
+import { USER_TEXT_COLUMNS } from "../../../scripts/scan-control-chars";
 import { REPO_ROOT } from "../uiRules/paths";
 
 // The contract and form schemas are loaded so the registry can cross-check
@@ -25,11 +26,12 @@ import.meta.glob(
 );
 
 /**
- * Every `userText("field", max)` call in the source tree, found by reading the
- * files, so a declaration in a router or a service counts without importing
- * it. A field declared with several limits keeps the largest. A call the scan
- * cannot read (a variable name or limit) is reported, never skipped. A bare
- * `userText()` in prose is not a call.
+ * Every `userText("field", max)` or `userTextOrEmpty("field", max)` call in
+ * the source tree, found by reading the files, so a declaration in a router or
+ * a service counts without importing it. A field declared with several
+ * limits keeps the largest. A call the scan cannot read (a variable name or
+ * limit) is reported, never skipped. A bare `userText()` in prose is not a
+ * call.
  */
 function scanDeclarations(): {
 	limits: Map<string, number>;
@@ -49,11 +51,11 @@ function scanDeclarations(): {
 				continue;
 			if (path.endsWith(join("common", "user-text.ts"))) continue;
 			const text = readFileSync(path, "utf8");
-			const calls = text.match(/\buserText\((?!\))/g)?.length ?? 0;
+			const calls = text.match(/\buserText(?:OrEmpty)?\((?!\))/g)?.length ?? 0;
 			if (calls === 0) continue;
 			let read = 0;
 			for (const m of text.matchAll(
-				/\buserText\(\s*"([^"]+)"\s*,\s*(\d+)\s*\)/g,
+				/\buserText(?:OrEmpty)?\(\s*"([^"]+)"\s*,\s*(\d+)\s*\)/g,
 			)) {
 				read++;
 				const [, field = "", max = "0"] = m;
@@ -73,6 +75,7 @@ type Column = { table: string; column: string };
 /** Declared field to the database columns it is stored in. */
 const STORED: Record<string, Column[]> = {
 	"account.name": [{ table: "asset_account", column: "name" }],
+	"apikey.name": [{ table: "apikey", column: "name" }],
 	"billing_period.label": [{ table: "billing_period", column: "label" }],
 	"budgetGroup.name": [{ table: "envelope_group", column: "name" }],
 	"category.name": [{ table: "category", column: "name" }],
@@ -84,6 +87,7 @@ const STORED: Record<string, Column[]> = {
 	"feedback.message": [{ table: "feedback", column: "message" }],
 	"fixRequest.message": [{ table: "fix_request", column: "message" }],
 	"fixRequest.reply": [{ table: "fix_request", column: "reply" }],
+	"guest_session.name": [{ table: "guest_session", column: "name" }],
 	"income.description": [{ table: "expense", column: "description" }],
 	"income.title": [{ table: "expense", column: "title" }],
 	"incomeRule.matchTitle": [{ table: "income_rule", column: "matchTitle" }],
@@ -122,6 +126,7 @@ const STORED: Record<string, Column[]> = {
 		{ table: "split_participant", column: "rejectionReason" },
 	],
 	"transfer.note": [{ table: "transfer", column: "note" }],
+	"user.name": [{ table: "user", column: "name" }],
 	"webhook.name": [{ table: "webhook", column: "name" }],
 };
 
@@ -162,6 +167,15 @@ describe("user-text columns hold their ciphertext", () => {
 			(f) => !scanned.limits.has(f),
 		);
 		expect(stale).toEqual([]);
+	});
+
+	it("is scanned for control characters, column by column", () => {
+		const covered = new Set(USER_TEXT_COLUMNS.map(([t, c]) => `${t}.${c}`));
+		const missed = Object.values(STORED)
+			.flat()
+			.map(({ table, column }) => `${table}.${column}`)
+			.filter((name) => !covered.has(name));
+		expect(missed).toEqual([]);
 	});
 
 	it("sees every field the loaded schemas register", () => {

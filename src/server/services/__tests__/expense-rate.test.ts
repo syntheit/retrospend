@@ -269,6 +269,19 @@ describe("the home leg an expense books", () => {
 			homeAmount: "20264.40",
 		});
 	});
+
+	it("a recurring post leaves control characters of a legacy name out of the title", async () => {
+		const row = await recurringEntryData(db as never, {
+			id: "t1",
+			userId: "u1",
+			name: " Net\u000bflix\u0001 ",
+			amount: 12.99,
+			currency: "USD",
+			categoryId: null,
+			nextDueDate: DATE,
+		});
+		expect(row.title).toBe(" Netflix ");
+	});
 });
 
 describe("rateChoice", () => {

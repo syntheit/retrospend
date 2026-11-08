@@ -2,6 +2,7 @@ import * as z from "zod";
 import { v1 } from "../common/meta";
 import { cursorQuerySchema, pageOf } from "../common/pagination";
 import { scopeSchema } from "../common/scopes";
+import { userText } from "../common/user-text";
 import { idParamsSchema, idSchema, okSchema, timestampSchema } from "../core";
 
 export const TOKEN_DEFAULT_DAYS = 90;
@@ -26,7 +27,9 @@ export type AccessTokenDto = z.infer<typeof accessTokenSchema>;
 
 export const createAccessTokenSchema = z
 	.object({
-		name: z.string().trim().min(1).max(64),
+		name: userText("apikey.name", 64)
+			.trim()
+			.refine((value) => value.length > 0, { message: "Name cannot be blank" }),
 		scopes: z.array(scopeSchema).min(1),
 		expiresInDays: z
 			.int()

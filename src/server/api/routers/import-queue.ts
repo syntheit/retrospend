@@ -1,3 +1,4 @@
+import { userText, userTextOrEmpty } from "@retrospend/api-contract/common";
 import { z } from "zod";
 import {
 	adminProcedure,
@@ -17,14 +18,14 @@ const createJobSchema = z.object({
 });
 
 const importerTransactionSchema = z.object({
-	title: z.string().min(1).max(500),
+	title: userText("expense.title", 500),
 	amount: z.number().positive(),
 	currency: z.string().min(1).max(10),
 	exchangeRate: z.number().positive().optional(),
 	amountInUSD: z.number().positive().optional(),
 	date: z.string().max(10), // YYYY-MM-DD
-	location: z.string().max(500),
-	description: z.string().max(2000),
+	location: userTextOrEmpty("expense.location", 500),
+	description: userTextOrEmpty("expense.description", 2000),
 	pricingSource: z.string().max(200),
 	category: z.string().max(200),
 	categoryId: z.string().optional(),

@@ -709,6 +709,9 @@ export const setupPayoffSchema = z.object({
 	envelopeKey: z.string().min(1).max(32),
 });
 
+/** A setup name is trimmed, as before, and never blank. */
+const notBlank = (value: string) => value.length > 0;
+
 export const setupInputSchema = z
 	.object({
 		style: setupStyleSchema,
@@ -720,7 +723,9 @@ export const setupInputSchema = z
 			.array(
 				z.object({
 					key: z.string().min(1).max(32),
-					name: z.string().trim().min(1).max(64),
+					name: userText("budgetGroup.name", 64)
+						.trim()
+						.refine(notBlank, { message: "Name cannot be blank" }),
 					role: groupRoleSchema.nullable(),
 					target: groupTargetInputSchema.optional(),
 				}),
@@ -736,7 +741,9 @@ export const setupInputSchema = z
 			.array(
 				z.object({
 					key: z.string().min(1).max(32),
-					name: z.string().trim().min(1).max(64),
+					name: userText("envelope.name", 64)
+						.trim()
+						.refine(notBlank, { message: "Name cannot be blank" }),
 					groupKey: z.string().min(1).max(32).nullable(),
 					kind: envelopeKindSchema,
 					isDefault: z.boolean().default(false),

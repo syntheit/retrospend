@@ -2,6 +2,7 @@
  * Transport schemas of the payment procedures. Amounts and rates are decimal
  * strings, never floats: the server turns them into minor units.
  */
+import { userTextOrEmpty } from "@retrospend/api-contract/common";
 import { z } from "zod";
 
 const decimal = z
@@ -23,9 +24,9 @@ export const recordPaymentSchema = z.object({
 	amount: decimal.nullable(),
 	rateType: z.string().min(1).max(32).nullish(),
 	customRate: z.object({ rate: decimal, currency }).nullish(),
-	paymentMethod: z.string().max(191).nullish(),
+	paymentMethod: userTextOrEmpty("payment.method", 191).nullish(),
 	paidOn: isoDay.nullish(),
-	note: z.string().max(500).nullish(),
+	note: userTextOrEmpty("payment.note", 500).nullish(),
 	applyTo: z
 		.array(
 			z.object({
@@ -48,7 +49,7 @@ export const recordPaymentSchema = z.object({
 export const confirmPaymentSchema = z.object({
 	/** The payment id, or the id of one of its settlement rows. */
 	paymentId: z.string().min(1),
-	paymentMethod: z.string().max(191).nullish(),
+	paymentMethod: userTextOrEmpty("payment.method", 191).nullish(),
 	paidOn: isoDay.nullish(),
 	amount: decimal.nullish(),
 });
