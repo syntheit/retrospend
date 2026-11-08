@@ -10,5 +10,7 @@
   "errorReports": "Error reports",
   "invitesUsed": "Invites used",
   "invitesOpen": "{count} open",
-  "tabServer": "Server"
+  "tabServer": "Server",
+  "keystoreBackup": "Key backup",
+  "keystoreBackupRetention": "Key backups are kept {days} days."
 }

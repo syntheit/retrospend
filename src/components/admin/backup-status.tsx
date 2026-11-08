@@ -28,6 +28,9 @@ interface BackupStatusData {
 	totalBackups?: number;
 	totalSize?: number;
 	history?: BackupResult[];
+	/** The data key dump runs after each backup and is not in the totals above. */
+	lastKeystoreBackup?: BackupResult;
+	keystoreRetentionDays?: number;
 }
 
 function Value({ children }: { children: React.ReactNode }) {
@@ -39,6 +42,7 @@ const ago = (date: Date) => formatDistanceToNow(date, { addSuffix: true });
 /** Database backups: status rows, the last few runs and one Back up now. */
 export function BackupStatus() {
 	const t = useTranslations("admin");
+	const ta = useTranslations("adminPage");
 	const toast = useToast();
 	const { data, isLoading } = api.admin.getBackupStatus.useQuery(undefined, {
 		refetchInterval: 60000,
@@ -71,6 +75,7 @@ export function BackupStatus() {
 	}
 
 	const last = status.lastBackup;
+	const keys = status.lastKeystoreBackup;
 	const busy = trigger.isPending || status.running;
 	const word = status.running
 		? t("running")
@@ -96,7 +101,10 @@ export function BackupStatus() {
 			title={t("databaseBackups")}
 		>
 			<p className="text-fg-3 text-small mb-2">
-				{t("autoBackupRetention", { days: status.retentionDays ?? 0 })}
+				{t("autoBackupRetention", { days: status.retentionDays ?? 0 })}{" "}
+				{ta("keystoreBackupRetention", {
+					days: status.keystoreRetentionDays ?? 0,
+				})}
 			</p>
 			<SettingRows>
 				<SettingRow label={t("backupStatus")}>
@@ -110,6 +118,14 @@ export function BackupStatus() {
 						<Value>{formatBytes(last.sizeBytes)}</Value>
 					</SettingRow>
 				)}
+				<SettingRow
+					label={ta("keystoreBackup")}
+					meta={keys ? ago(new Date(keys.timestamp)) : undefined}
+				>
+					<Value>
+						{keys ? (keys.success ? t("healthy") : t("failed")) : t("neverRun")}
+					</Value>
+				</SettingRow>
 				<SettingRow label={t("nextScheduled")}>
 					<Value>
 						{status.nextScheduled

@@ -10,5 +10,7 @@
   "errorReports": "Rapports d'erreurs",
   "invitesUsed": "Invitations utilisées",
   "invitesOpen": "{count} ouvertes",
-  "tabServer": "Serveur"
+  "tabServer": "Serveur",
+  "keystoreBackup": "Sauvegarde des clés",
+  "keystoreBackupRetention": "Les sauvegardes des clés sont conservées {days} jours."
 }

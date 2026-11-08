@@ -10,5 +10,7 @@
   "errorReports": "Отчеты об ошибках",
   "invitesUsed": "Использовано приглашений",
   "invitesOpen": "Открыто: {count}",
-  "tabServer": "Сервер"
+  "tabServer": "Сервер",
+  "keystoreBackup": "Резервная копия ключей",
+  "keystoreBackupRetention": "Резервные копии ключей хранятся {days} дн."
 }
