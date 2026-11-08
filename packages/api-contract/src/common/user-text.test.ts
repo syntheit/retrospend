@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { createCategorySchema } from "../categories";
-import { hasForbiddenControl, USER_TEXT_FIELDS, userText } from "./user-text";
+import { categoryNameSchema, createCategorySchema } from "../categories";
+import {
+	hasForbiddenControl,
+	hasLoneSurrogate,
+	USER_TEXT_FIELDS,
+	userText,
+} from "./user-text";
 
 const schema = userText("test.field", 20);
 
@@ -36,6 +41,14 @@ describe("userText control characters", () => {
 		}
 	});
 
+	it("rejects lone surrogates and accepts a valid pair", () => {
+		for (const text of ["a\uD800", "\uDC00b", "\uD83Dx", "x\uDE00\uD83D"])
+			expect(schema.safeParse(text).success, JSON.stringify(text)).toBe(false);
+		expect(schema.safeParse("\u{1F600}").success).toBe(true);
+		expect(hasLoneSurrogate("\uD83D\uDE00")).toBe(false);
+		expect(hasLoneSurrogate("\uD83D")).toBe(true);
+	});
+
 	it("keeps the length rules and does not trim", () => {
 		expect(schema.safeParse("").success).toBe(false);
 		expect(schema.safeParse("x".repeat(21)).success).toBe(false);
@@ -63,5 +76,11 @@ describe("Category.name", () => {
 		expect(
 			createCategorySchema.safeParse({ ...base, name: "Food\u0001" }).success,
 		).toBe(false);
+	});
+
+	it("refuses a blank name but keeps the typed one", () => {
+		for (const blank of [" ", "\t \n"])
+			expect(categoryNameSchema.safeParse(blank).success).toBe(false);
+		expect(categoryNameSchema.parse(" Food ")).toBe(" Food ");
 	});
 });

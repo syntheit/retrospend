@@ -48,9 +48,9 @@ function codeOf(run: () => unknown): FieldCryptoErrorCode {
 
 /** Flip one bit in the binary part of a wire value. */
 function flip(wire: string, byteIndex: number): string {
-	const raw = Buffer.from(wire.slice(3), "base64");
+	const raw = Buffer.from(wire.slice(4), "base64");
 	raw[byteIndex] = (raw[byteIndex] ?? 0) ^ 0x01;
-	return wire.slice(0, 3) + raw.toString("base64");
+	return wire.slice(0, 4) + raw.toString("base64");
 }
 
 beforeEach(() => {
@@ -88,7 +88,7 @@ describe("round trip", () => {
 		it(`restores ${JSON.stringify(text.slice(0, 20))}`, () => {
 			const sealed = sealField(keyring, text, CELL);
 			expect(isSealedField(sealed)).toBe(true);
-			expect(sealed.startsWith("\u0001k1")).toBe(true);
+			expect(sealed.startsWith("\u0001k1:")).toBe(true);
 			expect(openField(keyring, sealed, CELL)).toBe(text);
 		});
 	}
@@ -97,7 +97,7 @@ describe("round trip", () => {
 		const seen = new Set<string>();
 		for (let i = 0; i < 200; i++) {
 			const raw = Buffer.from(
-				sealField(keyring, "same", CELL).slice(3),
+				sealField(keyring, "same", CELL).slice(4),
 				"base64",
 			);
 			seen.add(raw.subarray(4, 16).toString("hex"));
@@ -124,7 +124,7 @@ describe("keys and rotation", () => {
 		const newRing = ring([2, KEY_2], [1, KEY_1]);
 		const oldValue = sealField(oldRing, "old", CELL);
 		const newValue = sealField(newRing, "new", CELL);
-		expect(Buffer.from(newValue.slice(3), "base64").readUInt32BE(0)).toBe(2);
+		expect(Buffer.from(newValue.slice(4), "base64").readUInt32BE(0)).toBe(2);
 		expect(openField(newRing, oldValue, CELL)).toBe("old");
 		expect(openField(newRing, newValue, CELL)).toBe("new");
 	});
@@ -146,9 +146,9 @@ describe("keys and rotation", () => {
 	it("relabeling the key id in the header fails the tag", () => {
 		const both = ring([1, KEY_1], [2, KEY_1]);
 		const value = sealField(both, "x", CELL);
-		const raw = Buffer.from(value.slice(3), "base64");
+		const raw = Buffer.from(value.slice(4), "base64");
 		raw.writeUInt32BE(2, 0);
-		const relabeled = value.slice(0, 3) + raw.toString("base64");
+		const relabeled = value.slice(0, 4) + raw.toString("base64");
 		expect(codeOf(() => openField(both, relabeled, CELL))).toBe("auth_failed");
 	});
 
@@ -218,7 +218,7 @@ describe("binding to the cell", () => {
 describe("damaged values", () => {
 	const keyring = ring([1, KEY_1]);
 	const sealed = sealField(keyring, "secret text", CELL);
-	const length = Buffer.from(sealed.slice(3), "base64").length;
+	const length = Buffer.from(sealed.slice(4), "base64").length;
 
 	it("a flipped bit in the tag fails", () => {
 		expect(
@@ -240,31 +240,31 @@ describe("damaged values", () => {
 
 	it("truncated values are malformed or fail, never decrypt", () => {
 		for (const cut of [0, 1, 5, 20, 31]) {
-			const raw = Buffer.from(sealed.slice(3), "base64").subarray(0, cut);
-			const short = sealed.slice(0, 3) + raw.toString("base64");
+			const raw = Buffer.from(sealed.slice(4), "base64").subarray(0, cut);
+			const short = sealed.slice(0, 4) + raw.toString("base64");
 			expect(codeOf(() => openField(keyring, short, CELL))).toBe("malformed");
 		}
 		// Long enough to parse; one byte short of the tag.
-		const raw = Buffer.from(sealed.slice(3), "base64");
+		const raw = Buffer.from(sealed.slice(4), "base64");
 		const chopped =
-			sealed.slice(0, 3) + raw.subarray(0, length - 1).toString("base64");
+			sealed.slice(0, 4) + raw.subarray(0, length - 1).toString("base64");
 		expect(codeOf(() => openField(keyring, chopped, CELL))).toBe("auth_failed");
 	});
 
 	it("appended bytes fail", () => {
 		const raw = Buffer.concat([
-			Buffer.from(sealed.slice(3), "base64"),
+			Buffer.from(sealed.slice(4), "base64"),
 			Buffer.from([0]),
 		]);
 		expect(
 			codeOf(() =>
-				openField(keyring, sealed.slice(0, 3) + raw.toString("base64"), CELL),
+				openField(keyring, sealed.slice(0, 4) + raw.toString("base64"), CELL),
 			),
 		).toBe("auth_failed");
 	});
 
 	it("an unknown format version is its own error, not plaintext", () => {
-		const future = `\u0001k2${sealed.slice(3)}`;
+		const future = `\u0001k2:${sealed.slice(4)}`;
 		expect(codeOf(() => openField(keyring, future, CELL))).toBe(
 			"unsupported_version",
 		);
@@ -274,12 +274,26 @@ describe("damaged values", () => {
 		);
 	});
 
+	it("the colon keeps k1: apart from k10: to k19: and from base64 digits", () => {
+		for (const version of ["k10", "k12", "k19", "k100"]) {
+			expect(
+				codeOf(() =>
+					openField(keyring, `\u0001${version}:${sealed.slice(4)}`, CELL),
+				),
+			).toBe("unsupported_version");
+		}
+		// No colon is not a version at all.
+		expect(
+			codeOf(() => openField(keyring, `\u0001k12${sealed.slice(4)}`, CELL)),
+		).toBe("malformed");
+	});
+
 	it("rejects bad base64 and plaintext handed to openField", () => {
 		expect(
-			codeOf(() => openField(keyring, `\u0001k1${"!".repeat(60)}`, CELL)),
+			codeOf(() => openField(keyring, `\u0001k1:${"!".repeat(60)}`, CELL)),
 		).toBe("malformed");
 		expect(
-			codeOf(() => openField(keyring, `\u0001k1${sealed.slice(3)}\n`, CELL)),
+			codeOf(() => openField(keyring, `\u0001k1:${sealed.slice(4)}\n`, CELL)),
 		).toBe("malformed");
 		expect(codeOf(() => openField(keyring, "Groceries", CELL))).toBe(
 			"malformed",
@@ -293,7 +307,7 @@ describe("damaged values", () => {
 		const attempts = [
 			() => openField(keyring, flip(sealed, length - 1), CELL),
 			() => openField(ring([2, KEY_2]), sealed, CELL),
-			() => openField(keyring, `\u0001k2${sealed.slice(3)}`, CELL),
+			() => openField(keyring, `\u0001k2:${sealed.slice(4)}`, CELL),
 			() => sealField(keyring, "a\uD800", CELL),
 		];
 		for (const attempt of attempts) {
@@ -303,7 +317,7 @@ describe("damaged values", () => {
 			} catch (error) {
 				const text = `${(error as Error).message} ${(error as Error).stack ?? ""} ${inspect(error)}`;
 				expect(text).not.toContain(KEY_1.toString("hex"));
-				expect(text).not.toContain(sealed.slice(3, 20));
+				expect(text).not.toContain(sealed.slice(4, 21));
 				expect(text).not.toContain("secret text");
 				expect((error as Error).cause).toBeUndefined();
 			}

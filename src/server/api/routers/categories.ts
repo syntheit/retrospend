@@ -1,4 +1,4 @@
-import { userText } from "@retrospend/api-contract/common";
+import { categoryNameSchema } from "@retrospend/api-contract";
 import { z } from "zod";
 import { CATEGORY_COLORS } from "~/lib/constants";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -10,7 +10,7 @@ import {
 } from "~/server/services/category.service";
 
 const categoryFields = {
-	name: userText("category.name", 64),
+	name: categoryNameSchema,
 	color: z.enum(CATEGORY_COLORS, {
 		message: "Category color is invalid",
 	}),

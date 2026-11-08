@@ -8,7 +8,7 @@
 		"table": "Category",
 		"column": "name",
 		"rowId": "c0000000-0000-4000-8000-000000000001",
-		"wire": "\u0001k1AAAAAaChoqOkpaanqKmqq6FqE04guWvaESOP6K86zFqt1SXGCxkt7ek="
+		"wire": "\u0001k1:AAAAAaChoqOkpaanqKmqq6FqE04guWvaESOP6K86zFqt1SXGCxkt7ek="
 	},
 	{
 		"name": "unicode",
@@ -19,7 +19,7 @@
 		"table": "Expense",
 		"column": "title",
 		"rowId": "e-1",
-		"wire": "\u0001k1/////////////////////4sIJ8E6epOKXeMmk5HlKh1qXcWPStRIBp9uFqHl3MzBd9roybsd/g=="
+		"wire": "\u0001k1://///////////////////4sIJ8E6epOKXeMmk5HlKh1qXcWPStRIBp9uFqHl3MzBd9roybsd/g=="
 	},
 	{
 		"name": "empty",
@@ -30,6 +30,6 @@
 		"table": "Expense",
 		"column": "description",
 		"rowId": "e-2",
-		"wire": "\u0001k1AAAABwAAAAAAAAAAAAAAACG2yjW3inPX3AXyeo3F6sw="
+		"wire": "\u0001k1:AAAABwAAAAAAAAAAAAAAACG2yjW3inPX3AXyeo3F6sw="
 	}
 ]

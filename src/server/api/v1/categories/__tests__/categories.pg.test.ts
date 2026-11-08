@@ -102,6 +102,61 @@ describe("/api/v1/categories", () => {
 		await expectProblem(await create(asAlice, "Housing"), 409, "conflict");
 	});
 
+	it("keeps a name as typed, refuses a blank one, and treats Food and 'Food ' as one", async () => {
+		const user = (await createTestUser()).user.id;
+		const as = await asMobile(user);
+		for (const blank of [" ", "   ", "\t \n"])
+			await expectProblem(await create(as, blank), 400, "validation_failed");
+		await expectProblem(
+			await create(as, "Bad\u0001name"),
+			400,
+			"validation_failed",
+		);
+		await expectProblem(
+			await create(as, "Bad\uD800name"),
+			400,
+			"validation_failed",
+		);
+
+		const typed = await expectBody<Category>(
+			await create(as, "Food "),
+			c.create,
+			201,
+		);
+		expect(typed.name).toBe("Food ");
+		await expectProblem(await create(as, "Food"), 409, "conflict");
+		await expectProblem(await create(as, " Food  "), 409, "conflict");
+		// Case is not folded: that was never the rule.
+		await expectBody<Category>(await create(as, "food"), c.create, 201);
+
+		const other = await expectBody<Category>(
+			await create(as, "Fuel"),
+			c.create,
+			201,
+		);
+		await expectProblem(
+			await call(`/categories/${other.id}`, {
+				method: "PATCH",
+				headers: as,
+				body: { name: "Food" },
+				idempotent: true,
+			}),
+			409,
+			"conflict",
+		);
+		// Renaming a category to its own name with different spacing is fine.
+		const same = await expectBody<Category>(
+			await call(`/categories/${typed.id}`, {
+				method: "PATCH",
+				headers: as,
+				body: { name: "Food" },
+				idempotent: true,
+			}),
+			c.update,
+		);
+		expect(same.name).toBe("Food");
+	});
+
 	it("pages by name with an opaque cursor", async () => {
 		const user = (await createTestUser()).user.id;
 		const as = await asMobile(user);

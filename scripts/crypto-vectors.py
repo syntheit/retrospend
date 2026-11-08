@@ -33,7 +33,7 @@ def lp(text: str) -> bytes:
 def seal(key: bytes, key_id: int, nonce: bytes, plaintext: str, table: str, column: str, row_id: str) -> str:
     aad = b"rs.k1" + struct.pack(">I", key_id) + lp(table) + lp(column) + lp(row_id)
     body = AESGCM(key).encrypt(nonce, plaintext.encode("utf-8"), aad)  # ciphertext || tag
-    return "\u0001k1" + base64.b64encode(struct.pack(">I", key_id) + nonce + body).decode("ascii")
+    return "\u0001k1:" + base64.b64encode(struct.pack(">I", key_id) + nonce + body).decode("ascii")
 
 
 CASES = [

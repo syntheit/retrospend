@@ -4,12 +4,15 @@
  *
  * Wire form, a plain string that fits a text column:
  *
- *   "\u0001k1" + base64( keyId u32 BE | nonce 12 | ciphertext | tag 16 )
+ *   "\u0001k1:" + base64( keyId u32 BE | nonce 12 | ciphertext | tag 16 )
  *
- * The prefix names the format. `userText()` rejects U+0001, so no value a
- * person types can look like ciphertext, and a reader can tell the two apart
- * without a flag. Any value that starts with U+0001 is ciphertext: an unknown
- * format version is an error, never plaintext.
+ * The prefix names the format; the colon ends the version number, so a later
+ * "k10:" cannot be mistaken for "k1:" plus base64. Any value that starts with
+ * U+0001 is ciphertext: an unknown format version is an error, never
+ * plaintext. The prefix cannot be typed into a field declared through
+ * `userText()`, which rejects U+0001. That is all this guarantees: other
+ * write paths still accept any string, so D11 must move every encrypted
+ * field to `userText` and scan existing rows for a leading U+0001 first.
  *
  * AAD, built by `buildAad` (unambiguous, length-prefixed):
  *
@@ -29,6 +32,7 @@
  * OpenSSL is constant time. Errors carry a stable code and a fixed message,
  * never a key, a key id, a plaintext or a ciphertext.
  */
+
 import {
 	createCipheriv,
 	createDecipheriv,
@@ -36,8 +40,9 @@ import {
 	type KeyObject,
 	randomBytes,
 } from "node:crypto";
+import { hasLoneSurrogate } from "@retrospend/api-contract/common";
 
-const PREFIX = "\u0001k1";
+const PREFIX = "\u0001k1:";
 const AAD_TAG = "rs.k1";
 const KEY_BYTES = 32;
 const NONCE_BYTES = 12;
@@ -162,19 +167,6 @@ export function isSealedField(value: string): boolean {
 	return value.startsWith("\u0001");
 }
 
-/** A lone surrogate becomes U+FFFD in UTF-8, so the text would not round-trip. */
-function hasLoneSurrogate(text: string): boolean {
-	for (let i = 0; i < text.length; i++) {
-		const code = text.charCodeAt(i);
-		if (code >= 0xd800 && code <= 0xdbff) {
-			const next = text.charCodeAt(i + 1);
-			if (next >= 0xdc00 && next <= 0xdfff) i++;
-			else return true;
-		} else if (code >= 0xdc00 && code <= 0xdfff) return true;
-	}
-	return false;
-}
-
 /** Encrypt `plaintext` with the keyring's current key. */
 export function sealField(
 	keyring: Keyring,
@@ -211,10 +203,10 @@ export function openField(
 ): string {
 	if (!sealed.startsWith("\u0001")) throw new FieldCryptoError("malformed");
 	if (!sealed.startsWith(PREFIX)) {
-		// "\u0001k" and digits is a format this build does not know; anything
+		// "\u0001k", digits and a colon is a format this build does not know; anything
 		// else is not one of ours.
 		throw new FieldCryptoError(
-			/^k[0-9]+/.test(sealed.slice(1)) ? "unsupported_version" : "malformed",
+			/^k[0-9]+:/.test(sealed.slice(1)) ? "unsupported_version" : "malformed",
 		);
 	}
 	const encoded = sealed.slice(PREFIX.length);
@@ -246,7 +238,10 @@ export function openField(
 
 /**
  * The value of a column that holds both forms during the backfill: plaintext
- * passes through, ciphertext is decrypted.
+ * passes through, ciphertext is decrypted. The pass-through ends when the D12
+ * backfill finishes; after that a plaintext value is a bug and should throw.
+ * Crypto-shredding a user's key before their rows are backfilled destroys
+ * nothing, because those rows are still plaintext.
  */
 export function readField(
 	keyring: Keyring,
