@@ -43,10 +43,16 @@
  * 1,000,000, Wise 1,840.55 x 1,380, Binance 0.5 x 50,000 x 1,400, Visa
  * -250,000, Loan -1,000 x 1,390, Euros 100 / 0.8 x 1,400, Old cash 5,000);
  * income 11,941,000; spending -1,500; exchange -18,900 + Not tracked 50 x
- * 1,400 = 51,100; Not logged -57,256.60; closed -5,000; revaluation
- * 8,942,797.60 (Binance 9,040,000, Wise -15,102.40, Loan -59,000, Euros
- * -26,500, Not tracked 3,400). Total 57,951,100, the net worth without
- * people.
+ * 1,400 = 51,100; Not logged -57,256.60; closed -5,000. Total 57,951,100, the
+ * net worth without people. Right by hand: income 11,906,000 and
+ * revaluation 8,977,797.60 (Binance 9,040,000, Euros 8,500, Wise
+ * -15,102.40, Loan -59,000, Not tracked 3,400).
+ *
+ * KNOWN GAP: the late EUR 20 income is also inside the opening balance, and
+ * accountParts counts it twice (in opened and again in income), so the code
+ * reads income 11,941,000 and revaluation 8,942,797.60 (Euros -26,500). Only
+ * their sum is asserted; the correct split is an it.fails below. Fixing it
+ * changes a money figure, an owner call.
  */
 import { randomUUID } from "node:crypto";
 import {
@@ -832,27 +838,46 @@ describe("Ana's figures, both loaders", () => {
 		});
 	});
 
-	it("the change: opened 37,079,959 ... total 57,951,100, the parts add up", async () => {
+	it("the change: total 57,951,100, the right parts by hand, income plus revaluation fixed", async () => {
 		const { change } = await conform(ana, NOW);
-		expect(change).toEqual({
-			currency: "ARS",
-			total: 5_795_110_000,
-			parts: {
-				opened: 3_707_995_900,
-				income: 1_194_100_000,
-				spending: -150_000,
-				exchange: 5_110_000,
-				notLogged: -5_725_660,
-				closed: -500_000,
-				revaluation: 894_279_760,
-			},
+		expect(change?.currency).toBe("ARS");
+		expect(change?.total).toBe(5_795_110_000);
+		expect(change?.parts).toMatchObject({
+			opened: 3_707_995_900,
+			spending: -150_000,
+			exchange: 5_110_000,
+			notLogged: -5_725_660,
+			closed: -500_000,
 		});
+		// Income and revaluation are not pinned one by one (see the known gap
+		// below); what they must add up to is.
+		expect((change?.parts.income ?? 0) + (change?.parts.revaluation ?? 0)).toBe(
+			1_190_600_000 + 897_779_760,
+		);
 	});
 
-	it("the same breakdown the evening before UTC midnight (Oct 14, 20:30 Buenos Aires)", async () => {
+	// KNOWN GAP, not a pinned expectation: the late EUR 20 income dated Oct 1 and
+	// written inside the opening balance update is counted twice by
+	// accountParts (packages/domain/src/accounts/net-worth-change.ts): once in
+	// "opened" (the first checkpoint, which the trigger moved to EUR 100, already
+	// holds it) and again in "income" (every non-update leg in the span counts,
+	// even one whose createdAt is not after the checkpoint's recordedAt, the
+	// condition series.ts includedIn uses for balances). Today it reads income
+	// 1,194,100,000 and Euros revaluation -26,500. Correct: income 1,190,600,000
+	// (11,906,000 = 200,000 + 2,898,000 + 8,808,000, no 35,000 for the EUR leg)
+	// and revaluation 897,779,760 (Euros +8,500 = 125 USD x (1,468 - 1,400)).
+	// Changing the parts changes a money figure: an owner call. When it is fixed,
+	// this starts passing and it.fails must become it.
+	it.fails("known gap: a leg already inside the opening balance is not also income", async () => {
+		const { change } = await conform(ana, NOW);
+		expect(change?.parts.income).toBe(1_190_600_000);
+		expect(change?.parts.revaluation).toBe(897_779_760);
+	});
+
+	it("the same total the evening before UTC midnight (Oct 14, 20:30 Buenos Aires)", async () => {
 		const { change } = await conform(ana, NOW_BEFORE_UTC_MIDNIGHT);
 		expect(change?.total).toBe(5_795_110_000);
-		expect(change?.parts.revaluation).toBe(894_279_760);
+		expect(change?.parts.opened).toBe(3_707_995_900);
 	});
 
 	it("balances per currency: open accounts only, liabilities against you", async () => {
