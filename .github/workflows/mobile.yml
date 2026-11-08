@@ -263,12 +263,16 @@ jobs:
       - name: Build debug APK
         working-directory: apps/mobile/android
         run: |
+          # GitHub runs steps as `bash -e` without pipefail; without this the
+          # build's failure would hide behind tee's success.
+          set -o pipefail
           for attempt in 1 2; do
             if ./gradlew --no-daemon -Dorg.gradle.jvmargs=-Xmx4g -PreactNativeArchitectures=x86_64 assembleDebug 2>&1 | tee gradle.log; then
               exit 0
             fi
             grep -qE 'failed: timeout \(|Gateway Time-out|Could not (GET|download|resolve) ' gradle.log || exit 1
-            echo "Gradle failed on a download; retrying once."
+            echo "Gradle failed on a download; retrying once in 60 s."
+            sleep 60
           done
           exit 1
 
