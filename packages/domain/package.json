@@ -32,6 +32,7 @@
 		"./rate-text": "./src/rate-text.ts",
 		"./recurring": "./src/recurring.ts",
 		"./shared-split-computation": "./src/shared-split-computation.ts",
+		"./spent": "./src/spent.ts",
 		"./time-zone": "./src/time-zone.ts",
 		"./vectors/*.json": "./vectors/*.json"
 	},
