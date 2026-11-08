@@ -249,11 +249,28 @@ jobs:
           sed -i 's/^react {$/react {\n    debuggableVariants = []/' build.gradle
           grep -n -A1 '^react {$' build.gradle | grep -q 'debuggableVariants = \[\]'
 
+      # The runner's downloads (the Gradle distribution, the Kotlin compiler)
+      # sometimes time out or get a 504; the wrapper gives up after 10 s.
+      - name: Give the Gradle wrapper a longer download timeout
+        working-directory: apps/mobile/android
+        run: |
+          sed -i 's/^networkTimeout=.*/networkTimeout=60000/' gradle/wrapper/gradle-wrapper.properties
+          grep -q '^networkTimeout=60000$' gradle/wrapper/gradle-wrapper.properties
+
       # x86_64 only: the emulator below is x86_64, and one ABI is a quarter of
-      # the native compile.
+      # the native compile. A network failure is retried once; anything else
+      # fails at once.
       - name: Build debug APK
         working-directory: apps/mobile/android
-        run: ./gradlew --no-daemon -Dorg.gradle.jvmargs=-Xmx4g -PreactNativeArchitectures=x86_64 assembleDebug
+        run: |
+          for attempt in 1 2; do
+            if ./gradlew --no-daemon -Dorg.gradle.jvmargs=-Xmx4g -PreactNativeArchitectures=x86_64 assembleDebug 2>&1 | tee gradle.log; then
+              exit 0
+            fi
+            grep -qE 'failed: timeout \(|Gateway Time-out|Could not (GET|download|resolve) ' gradle.log || exit 1
+            echo "Gradle failed on a download; retrying once."
+          done
+          exit 1
 
       - name: Google-free check
         run: bash apps/mobile/scripts/check-google-free.sh
