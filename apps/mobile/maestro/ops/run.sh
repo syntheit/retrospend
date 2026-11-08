@@ -64,10 +64,13 @@ cleanup() {
 	log "cleaning up"
 	if [[ -n $pgdir && -d $pgdir ]]; then
 		[[ -n $serial ]] && timeout 10 nix develop "path:$flakedir#android-emu" -c adb -s "$serial" emu kill >/dev/null 2>&1
-		stop_slot_processes "$pgdir"
 		cp "$pgdir/server-$slot.log" "$out/server.log" 2>/dev/null
-		cp "$pgdir/pg.log" "$out/postgres.log" 2>/dev/null
-		rm -rf "$pgdir"
+		if stop_slot_processes "$pgdir"; then
+			cp "$pgdir/pg.log" "$out/postgres.log" 2>/dev/null
+			rm -rf "$pgdir"
+		else
+			mark_unusable "$slot" "postgres did not stop"
+		fi
 	fi
 	release_slot
 }
@@ -75,6 +78,8 @@ trap cleanup EXIT
 trap 'exit 130' INT TERM HUP
 
 reap
+# Run directories whose copy-back failed stay a day, then go.
+find "$home" -maxdepth 1 -name 'mae-*' -mmin +1440 -exec rm -rf {} + 2>/dev/null
 
 # --- Install and build (no emulator needed; caches keyed by content) ------------
 hash_of() { # paths relative to $dir; node_modules, generated output, tests and scripts skipped
@@ -161,7 +166,9 @@ fi
 phase wait-slot
 take_slot "$RUN_ID" 900 || { log "FAIL no free slot in 15 minutes: $(describe_holders)"; exit 6; }
 log "slot $slot ($(describe_holders))"
+mem_deadline=$((SECONDS + 600))
 while (($(free -g | awk '/^Mem:/{print $7}') < 10)); do
+	((SECONDS < mem_deadline)) || { log "FAIL under 10 GB of memory available for 10 minutes"; exit 6; }
 	log "waiting: under 10 GB of memory available"
 	sleep 20
 done
@@ -175,6 +182,7 @@ export RS_MAESTRO_SLOT=$slot
 export MAESTRO_PG=postgresql://postgres@127.0.0.1:$pgport MAESTRO_STATE=$pgdir
 rm -rf "$pgdir"
 mkdir -p "$pgdir"
+echo "$RUN_ID" >"$pgdir/owner"
 
 # --- Emulator (boots while the server comes up) ------------------------------------
 phase server-up

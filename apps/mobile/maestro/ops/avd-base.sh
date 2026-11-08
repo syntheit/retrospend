@@ -20,6 +20,10 @@ set -euo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
 home=$HOME/rs-runner
+mkdir -p "$home"
+# Two builds would fight over the emulator port and the avd-current link.
+exec 6>>"$home/avd-base.lock"
+flock -n 6 || { echo "another --avd-base is running" >&2; exit 1; }
 flip=0
 if [[ -z ${AVD_ROOT:-} ]]; then
 	AVD_ROOT=$home/avd-$(date +%Y%m%d-%H%M%S)
@@ -46,11 +50,13 @@ trap cleanup EXIT
 # A cold boot that is allowed to write a snapshot: no -read-only, no -no-snapshot-save.
 emulator -avd "$name" -no-window -no-audio -no-boot-anim -no-snapshot-load \
 	-gpu swiftshader_indirect -memory 3072 -cores 2 -no-metrics -port "$port" \
-	>"$log" 2>&1 &
+	6>&- >"$log" 2>&1 &
 pid=$!
 
-adb -s "$serial" wait-for-device
-until [[ $(adb -s "$serial" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r') == 1 ]]; do
+timeout 240 adb -s "$serial" wait-for-device || { echo "the emulator did not appear in 4 minutes; see $log" >&2; exit 1; }
+deadline=$((SECONDS + 300))
+until [[ $(timeout 20 adb -s "$serial" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r') == 1 ]]; do
+	((SECONDS < deadline)) || { echo "the emulator did not finish booting in 5 minutes; see $log" >&2; exit 1; }
 	sleep 3
 done
 

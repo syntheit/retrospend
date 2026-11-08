@@ -7,6 +7,7 @@ env:
   EMAIL: sofia.reyes@example.com
   PASSWORD: Sofia-e2e-2026!
 ---
+- runScript: ../_common/require-server.js
 - launchApp:
     clearState: true
 - tapOn:

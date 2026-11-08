@@ -32,17 +32,19 @@ spawn() {
 	setsid "$@" 9>&- 8>&- &
 	spawned=$!
 	mkdir -p "$pgdir/pids"
+	echo "$RS_MAESTRO_RUN" >"$pgdir/owner"
 	echo "$spawned" >"$pgdir/pids/$name.pid"
 }
 
-# kill_group <pgid>: TERM, wait up to 10 s, then KILL. Only ever called with an
-# id this run recorded, or the reaper found under a dead run's slot directory.
+# kill_group <pgid> <run id>: TERM, wait up to 10 s, then KILL. Only ever
+# called with an id recorded under a slot directory, and only acts when the
+# group leader carries that slot's run id (an id reused by something else
+# after a reboot does not, and is left alone).
 kill_group() {
-	local pgid=$1 i
+	local pgid=$1 owner=${2:-} i
 	kill -0 -- "-$pgid" 2>/dev/null || return 0
-	# The leader carries the run's marker; an id that was reused by something
-	# else after a reboot does not, and is left alone.
-	if [[ -r /proc/$pgid/environ ]] && ! tr '\0' '\n' <"/proc/$pgid/environ" | grep -q '^RS_MAESTRO_RUN='; then
+	[[ -n $owner ]] || return 0
+	if [[ -r /proc/$pgid/environ ]] && ! tr '\0' '\n' <"/proc/$pgid/environ" | grep -qxF "RS_MAESTRO_RUN=$owner"; then
 		return 0
 	fi
 	kill -TERM -- "-$pgid" 2>/dev/null
@@ -54,22 +56,44 @@ kill_group() {
 	return 0
 }
 
+# postgres_alive <slot dir>: the postmaster of that data directory is running.
+# The command line must name this directory, so a reused pid never matches.
+postgres_alive() {
+	local pm
+	[[ -f $1/data/postmaster.pid ]] || return 1
+	pm=$(head -1 "$1/data/postmaster.pid")
+	[[ $pm =~ ^[0-9]+$ ]] || return 1
+	tr '\0' ' ' <"/proc/$pm/cmdline" 2>/dev/null | grep -qF -- "-D $1/data"
+}
+
 # stop_slot_processes <dir>: stop what is recorded under a slot directory
-# (maestro, emulator, server), then Postgres.
+# (maestro, emulator, server), then Postgres. Returns 1 when Postgres is
+# still up afterwards: the caller must then leave the directory alone.
 stop_slot_processes() {
-	local d=$1 f pm
+	local d=$1 f owner pm
+	owner=$(cat "$d/owner" 2>/dev/null)
 	# server.sh records its own server group as server-<slot>.pid.
 	for f in "$d/pids/maestro.pid" "$d/pids/emulator.pid" "$d"/server-*.pid; do
-		[[ -f $f ]] && kill_group "$(cat "$f")"
+		[[ -f $f ]] && kill_group "$(cat "$f")" "$owner"
 	done
-	if [[ -f $d/data/postmaster.pid ]]; then
+	if postgres_alive "$d"; then
 		pm=$(head -1 "$d/data/postmaster.pid")
-		grep -aq postgres "/proc/$pm/cmdline" 2>/dev/null && kill -INT "$pm" 2>/dev/null
-		for _ in $(seq 1 20); do
-			[[ -f $d/data/postmaster.pid ]] || break
+		kill -INT "$pm" 2>/dev/null
+		for _ in $(seq 1 "${POOL_PG_STOP_TRIES:-40}"); do
+			postgres_alive "$d" || return 0
 			sleep 0.5
 		done
+		return 1
 	fi
+	return 0
+}
+
+# mark_unusable <slot> <why>: a slot whose Postgres would not stop keeps its
+# directory (deleting a live database's files is worse) and is skipped until
+# a later run's reaper manages to clean it, or someone removes the marker.
+mark_unusable() {
+	echo "$2" >"$pool_dir/slot-$1.unusable"
+	log "slot $1 is unusable: $2. Clean it by hand: stop the postgres on $(slot_dir "$1")/data, then rm $pool_dir/slot-$1.unusable"
 }
 
 # take_slot <run id> <seconds>: take the first free slot, waiting up to the
@@ -79,6 +103,7 @@ take_slot() {
 	local run=$1 limit=$2 n logged deadline=$((SECONDS + $2))
 	while :; do
 		for n in "${pool_slots[@]}"; do
+			[[ -e $pool_dir/slot-$n.unusable ]] && continue
 			exec 9>>"$pool_dir/slot-$n.lock"
 			if flock -n 9; then
 				slot=$n
@@ -116,7 +141,11 @@ release_slot() {
 describe_holders() {
 	local n out=
 	for n in "${pool_slots[@]}"; do
-		out+="slot $n: $(cat "$pool_dir/slot-$n.holder" 2>/dev/null || echo '?')  "
+		if [[ -e $pool_dir/slot-$n.unusable ]]; then
+			out+="slot $n: UNUSABLE ($(cat "$pool_dir/slot-$n.unusable"))  "
+		else
+			out+="slot $n: $(cat "$pool_dir/slot-$n.holder" 2>/dev/null || echo free)  "
+		fi
 	done
 	echo "$out"
 }
@@ -133,8 +162,13 @@ reap() {
 			d=$(slot_dir "$n")
 			if [[ -d $d ]]; then
 				log "reaping leftovers of slot $n"
-				stop_slot_processes "$d"
-				rm -rf "$d"
+				if stop_slot_processes "$d"; then
+					rm -rf "$d" "$pool_dir/slot-$n.unusable"
+				else
+					mark_unusable "$n" "postgres did not stop"
+				fi
+			else
+				rm -f "$pool_dir/slot-$n.unusable"
 			fi
 			rm -f "$pool_dir/slot-$n.holder"
 		fi

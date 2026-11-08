@@ -94,7 +94,7 @@ fi
 
 rsync -e "$rsync_ssh" -a --delete \
 	--exclude node_modules --exclude .next --exclude generated --exclude .git \
-	--exclude .env --exclude tsconfig.tsbuildinfo --exclude 'public/images/flags' \
+	--exclude '.env*' --exclude tsconfig.tsbuildinfo --exclude 'public/images/flags' \
 	--exclude 'public/images/crypto' --exclude apps/mobile/android --exclude apps/mobile/ios \
 	--exclude apps/mobile/dist --exclude .claude --exclude docs/ui-overhaul \
 	--exclude maestro-results \
@@ -105,8 +105,11 @@ ssh -tt "${ssh_opts[@]}" vista "cd $dir && RUN_ID=$run_id TAGS='$tags' FLOWS='${
 rc=$?
 
 mkdir -p "$results"
-rsync -e "$rsync_ssh" -a "vista:$dir/maestro-results/" "$results/" 2>/dev/null
-remote_cleanup
+if rsync -e "$rsync_ssh" -a "vista:$dir/maestro-results/" "$results/" 2>/dev/null; then
+	remote_cleanup
+else
+	echo "maestro: copy-back failed; results stay on vista in ~/$dir (run.sh removes run directories after a day)" >&2
+fi
 echo "maestro: results in $results" >&2
 echo "maestro: wall time $((SECONDS - started)) s including sync and copy-back" >&2
 if ((rc == 0)); then echo "MAESTRO PASS"; else echo "MAESTRO FAIL (exit $rc)"; fi
