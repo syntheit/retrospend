@@ -14,20 +14,17 @@
 // always ends in ROLLBACK.
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import {
-	mkdtempSync,
-	readdirSync,
-	readFileSync,
-	rmSync,
-	writeFileSync,
-} from "node:fs";
+import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { adminDb, superUrl, withSuperuser } from "~/test/pg-harness";
-import { inRolledBackTransaction } from "~/test/rolled-back-sql";
+import {
+	inRolledBackTransaction,
+	readSqlWithoutTransaction,
+} from "~/test/rolled-back-sql";
 import { makeScratchProject } from "~/test/scratch-project";
 import {
 	applyGrants,
@@ -432,12 +429,9 @@ describe("ownership", () => {
 });
 
 describe("prisma/bootstrap/owner-role.sql", () => {
-	// The file has its own BEGIN and COMMIT; stripped so that COMMIT cannot end
-	// the test's transaction, which always rolls back.
-	const sql = readFileSync(
-		join(REPO_ROOT, "prisma/bootstrap/owner-role.sql"),
-		"utf8",
-	).replace(/^(BEGIN|COMMIT);$/gm, "");
+	// Without its own BEGIN and COMMIT, so that COMMIT cannot end the test's
+	// transaction, which always rolls back.
+	const sql = readSqlWithoutTransaction("prisma/bootstrap/owner-role.sql");
 
 	it("takes CREATE on the database away from the owner if it holds it", async () => {
 		// The owner never holds it: only a one-shot migration role does, on a

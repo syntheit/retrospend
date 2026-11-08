@@ -13,7 +13,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Client } from "pg";
 import { describe, expect, it } from "vitest";
-import { inRolledBackTransaction } from "~/test/rolled-back-sql";
+import {
+	inRolledBackTransaction,
+	readSqlWithoutTransaction,
+} from "~/test/rolled-back-sql";
 import { REPO_ROOT } from "../uiRules/paths";
 import lists from "./definer-functions.json";
 import {
@@ -25,10 +28,8 @@ import {
 } from "./privilege-catalog";
 import expected from "./retrospend-app-privileges.json";
 
-const file = readFileSync(
-	join(REPO_ROOT, "prisma/grants/app-role.sql"),
-	"utf8",
-);
+const GRANTS_FILE = "prisma/grants/app-role.sql";
+const file = readFileSync(join(REPO_ROOT, GRANTS_FILE), "utf8");
 
 /** What a restore leaves: tables back, no privileges, no policies on the two tables. */
 const AS_RESTORED = `
@@ -128,7 +129,7 @@ describe("prisma/grants/app-role.sql", () => {
 	});
 
 	it("after a restore gives the app role back exactly the migrated state", async () => {
-		const body = file.replace(/^(BEGIN|COMMIT);$/gm, "");
+		const body = readSqlWithoutTransaction(GRANTS_FILE);
 		type State = Awaited<ReturnType<typeof everything>>;
 		let migrated: State | undefined;
 		let restored: State | undefined;
@@ -209,12 +210,10 @@ describe("prisma/grants/app-role.sql", () => {
 		// pg_dump holds ACCESS SHARE on every table for the whole dump. Enabling
 		// row-level security or creating a policy needs ACCESS EXCLUSIVE and would
 		// wait behind it, so a start during a backup would hang.
-		const body = file
-			.replace(/^(BEGIN|COMMIT);$/gm, "")
-			.replace(
-				"SET LOCAL lock_timeout = '10s';",
-				"SET LOCAL lock_timeout = '1s';",
-			);
+		const body = readSqlWithoutTransaction(GRANTS_FILE).replace(
+			"SET LOCAL lock_timeout = '10s';",
+			"SET LOCAL lock_timeout = '1s';",
+		);
 		expect(body).toContain("lock_timeout = '1s'");
 		const dump = new Client({ connectionString: process.env.DATABASE_URL });
 		await dump.connect();
@@ -240,7 +239,7 @@ describe("prisma/grants/app-role.sql", () => {
 	}, 30_000);
 
 	it("recreates a policy that is missing or different, and the flag when it is off", async () => {
-		const body = file.replace(/^(BEGIN|COMMIT);$/gm, "");
+		const body = readSqlWithoutTransaction(GRANTS_FILE);
 		let before: Awaited<ReturnType<typeof readCatalogSnapshot>> | undefined;
 		let broken: Awaited<ReturnType<typeof readCatalogSnapshot>> | undefined;
 		let after: Awaited<ReturnType<typeof readCatalogSnapshot>> | undefined;
