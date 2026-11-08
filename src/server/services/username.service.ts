@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import type { PrismaClient } from "~prisma";
+import { userTransaction } from "~/server/db-tx";
 import { logEventAsync } from "~/server/services/audit.service";
 
 /** Users can change their username at most once every 30 days. */
@@ -88,21 +89,21 @@ export async function validateAndProcessUsernameChange(
 	// 4. Record old username in history + set cooldown timestamp (in a transaction)
 	//    Delete any stale history entry for currentUsername first - this can exist if
 	//    another user previously held this username, changed away, and the reservation expired.
-	await db.$transaction([
-		db.usernameHistory.deleteMany({
+	await userTransaction(db, userId, async (tx) => {
+		await tx.usernameHistory.deleteMany({
 			where: { previousUsername: currentUsername },
-		}),
-		db.usernameHistory.create({
+		});
+		await tx.usernameHistory.create({
 			data: {
 				userId,
 				previousUsername: currentUsername,
 			},
-		}),
-		db.user.update({
+		});
+		await tx.user.update({
 			where: { id: userId },
 			data: { lastUsernameChangeAt: new Date() },
-		}),
-	]);
+		});
+	});
 
 	// 5. Fire audit log event
 	logEventAsync({
