@@ -1,9 +1,10 @@
 /**
  * Raw SQL and the array `$transaction` are refused on a user-scoped client
- * (they would run on the owner connection, with no role and no RLS), and the
- * sites that used to rely on that now read the same rows another way:
- * getFilterOptions in a user transaction, the exchange-rate reads on the
- * global client, the username change in a user transaction.
+ * (they would run on the owner connection, with no role and no RLS; the
+ * refusals are tested in db.test.ts), and the sites that used to rely on that
+ * now read the same rows another way: getFilterOptions in a user transaction,
+ * the exchange-rate reads on the global client, the username change in a user
+ * transaction.
  */
 import { describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
@@ -14,45 +15,7 @@ import {
 import { ExpenseService } from "~/server/services/expense.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 
-const REFUSED = [
-	"$queryRaw",
-	"$executeRaw",
-	"$queryRawUnsafe",
-	"$executeRawUnsafe",
-	"$queryRawTyped",
-	"$executeRawTyped",
-] as const;
-
-type Methods = Record<string, (...args: unknown[]) => unknown>;
-
 describe("a user-scoped client", () => {
-	it.each(REFUSED)("refuses %s and points at userTransaction", async (name) => {
-		const { db } = await createTestUser();
-		const method = (db as unknown as Methods)[name];
-		expect(() => method?.("SELECT 1")).toThrow(/userTransaction/);
-		expect(() => method?.("SELECT 1")).toThrow(name);
-	});
-
-	it.each(["$parent", "$extends", "$connect", "$disconnect", "$on"])(
-		"gives no way back to the owner client through %s",
-		async (name) => {
-			const { db } = await createTestUser();
-			expect(() => (db as unknown as Methods)[name]).toThrow(name);
-		},
-	);
-
-	it("refuses a tagged-template raw query too", async () => {
-		const { db } = await createTestUser();
-		expect(() => db.$queryRaw`SELECT 1`).toThrow(/userTransaction/);
-	});
-
-	it("refuses the array form of $transaction, even when it holds model calls", async () => {
-		const { user, db } = await createTestUser();
-		expect(() =>
-			db.$transaction([db.category.findMany({ where: { userId: user.id } })]),
-		).toThrow(/userTransaction/);
-	});
-
 	it("still runs a transaction callback, with model calls", async () => {
 		const { user, db } = await createTestUser();
 		const found = await db.$transaction((tx) =>

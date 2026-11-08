@@ -14,6 +14,8 @@ services:
     environment:
       AUTH_SECRET: ${AUTH_SECRET}
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}"
+      # Optional: a secret of your own for the retrospend_owner role. Same value on the app and the sidecar, or empty on both.
+      DATABASE_OWNER_PASSWORD: ${DATABASE_OWNER_PASSWORD:-}
       WORKER_API_KEY: ${WORKER_API_KEY}
       DEFAULT_TIME_ZONE: ${DEFAULT_TIME_ZONE:-}
       SIDECAR_URL: "http://sidecar:8080"
@@ -41,8 +43,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB_NAME}
+    # Local only. Publishing this on all interfaces puts the superuser login
+    # on the network.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -57,10 +61,13 @@ services:
       dockerfile: Dockerfile
     container_name: retrospend-sidecar
     restart: unless-stopped
+    # Local only: the sidecar's API is guarded by WORKER_API_KEY alone.
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}"
+      # Optional: a secret of your own for the retrospend_owner role. Same value on the app and the sidecar, or empty on both.
+      DATABASE_OWNER_PASSWORD: ${DATABASE_OWNER_PASSWORD:-}
       WORKER_API_KEY: ${WORKER_API_KEY}
       DEFAULT_TIME_ZONE: ${DEFAULT_TIME_ZONE:-}
       LOG_LEVEL: "info"
@@ -96,12 +103,15 @@ services:
     devices:
       - nvidia.com/gpu=all
 
+  # A console that signs in to the database as the superuser. Off unless asked
+  # for: docker compose --profile tools up -d pgweb
   pgweb:
     image: sosedoff/pgweb
     container_name: retrospend-pgweb
+    profiles: ["tools"]
     restart: unless-stopped
     ports:
-      - "${ADMINER_PORT:-8081}:8081"
+      - "127.0.0.1:${ADMINER_PORT:-8081}:8081"
     environment:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}?sslmode=disable
     depends_on:

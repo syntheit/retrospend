@@ -203,6 +203,16 @@ describe("createUserScopedDb", () => {
 		expect(mockTransaction).not.toHaveBeenCalled();
 	});
 
+	it("refuses a tagged-template raw query too", () => {
+		setupExtendsMock();
+		const userDb = createUserScopedDb("user-1") as unknown as {
+			$queryRaw: (strings: TemplateStringsArray) => unknown;
+		};
+		expect(() => userDb.$queryRaw`SELECT 1`).toThrow(/userTransaction/);
+		expect(mockExecuteRaw).not.toHaveBeenCalled();
+		expect(mockTransaction).not.toHaveBeenCalled();
+	});
+
 	it.each([
 		"$parent",
 		"$extends",

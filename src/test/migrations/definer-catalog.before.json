@@ -1,6 +1,5 @@
 {
-    "defaults": [
-    ],
+    "defaults": [],
     "functions": [
         {
             "acl": "PUBLIC:EXECUTE,<owner>:EXECUTE",
