@@ -2,8 +2,11 @@ import { TRPCError } from "@trpc/server";
 import { currencyDecimals } from "@retrospend/domain/money";
 import { db as globalDb } from "~/server/db";
 import { fromMinor } from "~/server/services/envelope/units";
+import { money } from "@retrospend/domain/money-minor";
+import { noticeMoney } from "~/server/services/notification-text";
 import {
 	createNotification,
+	participantLabel,
 	resolveParticipantName,
 } from "~/server/services/notifications";
 import { assertRelationship } from "~/server/services/payments/access";
@@ -28,13 +31,17 @@ import type { MoneyMutation } from "~/server/services/preview/types";
 import type { Prisma, PrismaClient } from "~prisma";
 import { computePairLedger } from "./balance";
 import {
-	describeGroupAmount,
 	groupCounterparty,
 	groupRoles,
 	groupRows,
 	summarizeGroup,
 } from "./settlement-groups";
 import { getSquareUpOptions, squareUpProjects } from "./settlement-square-up";
+import {
+	type SettlementSides,
+	tellGroupCounterparty,
+	tellSettlementRecorded,
+} from "./settlement-notices";
 import { type ParticipantRef, sameParticipant } from "./types";
 
 export { RECORDED_BY_PAYEE_REASON } from "~/server/services/payments/confirmation";
@@ -65,13 +72,6 @@ function toDirection(
  *   payer and the current user the payee.
  */
 export type SettlementDirection = "outgoing" | "incoming";
-
-interface SettlementSides {
-	payer: ParticipantRef;
-	payee: ParticipantRef;
-	/** The current user is the payee and is recording a payment received. */
-	recordedByPayee: boolean;
-}
 
 /** Reminder count and last reminder of a group (rows are updated together). */
 function groupReminderState(
@@ -158,7 +158,7 @@ export class SettlementService {
 			select: { payerType: true, payerId: true },
 		});
 		const name = header
-			? await resolveParticipantName(header.payerType, header.payerId)
+			? await participantLabel(header.payerType, header.payerId)
 			: "They";
 		throw claimMatchError(value.match, name);
 	}
@@ -215,9 +215,9 @@ export class SettlementService {
 		// The first cash row stands for the payment (offset rows follow it).
 		const settlement = settlements.find((s) => !s.isOffset) ?? settlements[0]!;
 		if (input.toParticipant.participantType === "user") {
-			await this.notifySettlementRecorded(
+			await tellSettlementRecorded(this.userId, 
 				this.sides(input.toParticipant, input.direction),
-				`${input.currency} ${formatAmount(input.amount, input.currency)}`,
+				noticeMoney(input.amount, input.currency),
 				{ settlementId: settlement.id, paymentGroupId: value.paymentId },
 			);
 		}
@@ -251,45 +251,10 @@ export class SettlementService {
 		const recordedByPayee = payee.participantId === this.userId;
 		const other = recordedByPayee ? payer : payee;
 		if (other.participantType !== "user") return;
-		const amount = Number(header.amount);
-		await this.notifySettlementRecorded(
+		await tellSettlementRecorded(this.userId, 
 			{ payer, payee, recordedByPayee },
-			`${header.currency} ${formatAmount(amount, header.currency)}`,
+			noticeMoney(header.amount, header.currency),
 			{ paymentGroupId: paymentId },
-		);
-	}
-
-	private async notifySettlementRecorded(
-		sides: SettlementSides,
-		formattedAmount: string,
-		ids: Record<string, unknown>,
-	) {
-		const myName = await resolveParticipantName("user", this.userId);
-		const notification = sides.recordedByPayee
-			? {
-					userId: sides.payer.participantId,
-					type: "SETTLEMENT_CONFIRMED" as const,
-					title: "Payment recorded",
-					body: `${myName} recorded receiving your payment of ${formattedAmount}`,
-					data: {
-						...ids,
-						toParticipantType: "user",
-						toParticipantId: this.userId,
-					},
-				}
-			: {
-					userId: sides.payee.participantId,
-					type: "SETTLEMENT_RECEIVED" as const,
-					title: "Settlement received",
-					body: `${myName} sent you a settlement of ${formattedAmount}`,
-					data: {
-						...ids,
-						fromParticipantType: "user",
-						fromParticipantId: this.userId,
-					},
-				};
-		createNotification(notification).catch((err) =>
-			console.error(`[Notification Error] ${notification.type}:`, err),
 		);
 	}
 
@@ -319,23 +284,16 @@ export class SettlementService {
 		rows: Awaited<ReturnType<AppDb["settlement"]["findMany"]>>,
 		lead: { id: string; paymentGroupId: string | null },
 	) {
-		const other = groupCounterparty(rows, this.userId);
-		if (other?.participantType !== "user") return;
-		const myName = await resolveParticipantName("user", this.userId);
-		createNotification({
-			userId: other.participantId,
+		await tellGroupCounterparty(rows, this.userId, {
 			type: "SETTLEMENT_CONFIRMED",
-			title: "Settlement confirmed",
-			body: `${myName} confirmed your settlement of ${describeGroupAmount(rows, other.participantId)}`,
+			kind: "settlementConfirmed",
 			data: {
 				settlementId: lead.id,
 				paymentGroupId: lead.paymentGroupId,
 				toParticipantType: "user",
 				toParticipantId: this.userId,
 			},
-		}).catch((err) =>
-			console.error("[Notification Error] SETTLEMENT_CONFIRMED:", err),
-		);
+		});
 	}
 
 	/**
@@ -401,26 +359,19 @@ export class SettlementService {
 	 * is text the person typed, and it stays on the settlement row.
 	 */
 	async notifyRejected(
-		rows: Parameters<typeof describeGroupAmount>[0],
+		rows: Parameters<typeof tellGroupCounterparty>[0],
 		lead: { id: string; paymentGroupId: string | null },
 	) {
-		const other = groupCounterparty(rows, this.userId);
-		if (other?.participantType !== "user") return;
-		const myName = await resolveParticipantName("user", this.userId);
-		createNotification({
-			userId: other.participantId,
+		await tellGroupCounterparty(rows, this.userId, {
 			type: "SETTLEMENT_REJECTED",
-			title: "Settlement rejected",
-			body: `${myName} rejected your settlement of ${describeGroupAmount(rows, other.participantId)}`,
+			kind: "settlementRejected",
 			data: {
 				settlementId: lead.id,
 				paymentGroupId: lead.paymentGroupId,
 				toParticipantType: "user",
 				toParticipantId: this.userId,
 			},
-		}).catch((err) =>
-			console.error("[Notification Error] SETTLEMENT_REJECTED:", err),
-		);
+		});
 	}
 
 	/**
@@ -495,23 +446,15 @@ export class SettlementService {
 			},
 		});
 
-		const other = groupCounterparty(rows, this.userId);
-		if (other?.participantType === "user") {
-			const myName = await resolveParticipantName("user", this.userId);
-			createNotification({
-				userId: other.participantId,
-				type: "PAYMENT_REMINDER",
-				title: "Settlement reminder",
-				body: `${myName} is reminding you about a settlement of ${describeGroupAmount(rows, other.participantId)}`,
-				data: {
-					settlementId,
-					fromParticipantType: "user",
-					fromParticipantId: this.userId,
-				},
-			}).catch((err) =>
-				console.error("[Notification Error] PAYMENT_REMINDER:", err),
-			);
-		}
+		await tellGroupCounterparty(rows, this.userId, {
+			type: "PAYMENT_REMINDER",
+			kind: "settlementReminder",
+			data: {
+				settlementId,
+				fromParticipantType: "user",
+				fromParticipantId: this.userId,
+			},
+		});
 
 		return { success: true };
 	}
@@ -609,8 +552,7 @@ export class SettlementService {
 		createNotification({
 			userId: input.participantId,
 			type: "PAYMENT_REMINDER",
-			title: "Payment reminder",
-			body: `${myName} reminded you about an outstanding balance`,
+			notice: { kind: "balanceReminder", actor: myName },
 			data: {
 				fromParticipantType: "user",
 				fromParticipantId: this.userId,
@@ -868,16 +810,16 @@ export class SettlementService {
 			settlements.filter((s) => !s.isOffset).map((s) => s.currency),
 		).size;
 		if (input.toParticipant.participantType === "user") {
-			const formattedTotal = `${input.paymentCurrency} ${formatAmount(total, input.paymentCurrency)}`;
-			await this.notifySettlementRecorded(
+			await tellSettlementRecorded(this.userId, 
 				this.sides(input.toParticipant, input.direction),
-				settledCurrencyCount > 1
-					? `${formattedTotal} across ${settledCurrencyCount} currencies`
-					: formattedTotal,
+				value.allocation
+					? money(value.allocation.amount.minor, input.paymentCurrency)
+					: null,
 				{
 					settlementIds: settlements.map((s) => s.id),
 					paymentGroupId: value.paymentId,
 				},
+				settledCurrencyCount,
 			);
 		}
 

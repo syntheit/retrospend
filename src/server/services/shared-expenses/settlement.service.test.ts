@@ -16,6 +16,7 @@ vi.mock(
 vi.mock("~/server/services/notifications", () => ({
 	createNotification: vi.fn().mockResolvedValue(undefined),
 	resolveParticipantName: vi.fn().mockResolvedValue("Test User"),
+	participantLabel: vi.fn().mockResolvedValue("Test User"),
 }));
 
 import { createNotification } from "~/server/services/notifications";
@@ -146,8 +147,37 @@ describe("initiateSettlement", () => {
 			}),
 		]);
 		expect(createNotification).toHaveBeenCalledWith(
-			expect.objectContaining({ userId: "bob", type: "SETTLEMENT_RECEIVED" }),
+			expect.objectContaining({
+				userId: "bob",
+				type: "SETTLEMENT_RECEIVED",
+				notice: {
+					kind: "settlementReceived",
+					actor: "Test User",
+					amount: { money: { minor: 3000, currency: "USD" }, currencies: 1 },
+				},
+			}),
 		);
+	});
+
+	// Hand-derived: JPY has no decimals, so 4500 is 4500 minor units; ARS has
+	// two, so 12345.50 is 1_234_550.
+	it.each([
+		["JPY", 4500, 4500],
+		["ARS", 12345.5, 1_234_550],
+	])("tells the payee the %s amount in minor units, with no text", async (currency, amount, minor) => {
+		seedDebt(aliceRef, bobRef, amount, { currency });
+		await alice().initiateSettlement({
+			toParticipant: bobRef,
+			amount,
+			currency,
+		});
+		const call = vi.mocked(createNotification).mock.calls[0]?.[0];
+		expect(call?.notice).toEqual({
+			kind: "settlementReceived",
+			actor: "Test User",
+			amount: { money: { minor, currency }, currencies: 1 },
+		});
+		expect(Object.keys(call ?? {}).sort()).toEqual(["data", "notice", "type", "userId"]);
 	});
 
 	it("refuses more than is owed in that currency, and nothing owed", async () => {

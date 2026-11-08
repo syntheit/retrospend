@@ -5,7 +5,7 @@
  */
 import { TRPCError } from "@trpc/server";
 import type { z } from "zod";
-import { resolveParticipantName } from "~/server/services/notifications";
+import { participantLabel } from "~/server/services/notifications";
 import { forUser } from "~/server/services/preview";
 import { SettlementService } from "~/server/services/shared-expenses/settlement.service";
 import type { PrismaClient } from "~prisma";
@@ -65,7 +65,7 @@ export async function applyPayment(
 		if (match && header) {
 			throw claimMatchError(
 				match,
-				await resolveParticipantName(header.payerType, header.payerId),
+				await participantLabel(header.payerType, header.payerId),
 			);
 		}
 	}

@@ -10,6 +10,7 @@ import {
 } from "~/server/api/trpc";
 import { db as globalDb } from "~/server/db";
 import { notificationEmail } from "~/server/email-templates";
+import { buildNoticeText } from "~/server/services/notification-text";
 import { validateLinkOrThrow } from "~/server/lib/magic-link";
 import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
 import { hashToken } from "~/server/lib/tokens";
@@ -236,17 +237,15 @@ export const guestRouter = createTRPCRouter({
 				const baseUrl =
 					env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997";
 				const resumeUrl = `${baseUrl}/projects/${projectId}?guestResume=${result.resumeToken}`;
+				// A guest has no language on file: English.
+				const text = await buildNoticeText({ kind: "guestResume" });
 				const html = notificationEmail({
-					title: `Continue in ${link.project.name}`,
-					body: `Someone asked to rejoin '${link.project.name}' on Retrospend with this email address. If it was you, use the button below to pick up where you left off. The link works once and expires in one hour. If it wasn't you, you can ignore this email.`,
+					title: text.title,
+					body: text.body,
 					ctaUrl: resumeUrl,
-					ctaLabel: "Continue",
+					ctaLabel: text.cta ?? undefined,
 				});
-				await sendEmail(
-					result.sendTo,
-					`Retrospend: continue in ${link.project.name}`,
-					html,
-				);
+				await sendEmail(result.sendTo, `Retrospend: ${text.title}`, html);
 
 				return {
 					resumeEmailSent: true as const,

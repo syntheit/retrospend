@@ -12,6 +12,7 @@ vi.mock("~/server/services/project/join-date", () => ({
 vi.mock("~/server/services/notifications", () => ({
 	createNotification: vi.fn().mockResolvedValue(undefined),
 	resolveParticipantName: vi.fn().mockResolvedValue("Test User"),
+	participantLabel: vi.fn().mockResolvedValue("Test User"),
 }));
 
 // Mock computeBalance so the delete guard's unsettled-balance check is controlled

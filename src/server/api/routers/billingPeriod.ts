@@ -8,6 +8,7 @@ import {
 } from "~/server/api/trpc";
 import {
 	createNotification,
+	participantLabel,
 	resolveParticipantName,
 } from "~/server/services/notifications";
 import { logAudit } from "~/server/services/shared-expenses/audit-log";
@@ -192,15 +193,9 @@ export async function checkAndAutoClosePeriods(
 async function notifyPeriodClosed(
 	db: PrismaClient,
 	projectId: string,
-	periodLabel: string,
 	actorUserId: string,
 	periodId: string,
 ) {
-	const project = await db.project.findUnique({
-		where: { id: projectId },
-		select: { name: true },
-	});
-	const projectName = project?.name ?? "project";
 	const actorName = await resolveParticipantName("user", actorUserId);
 
 	const participants = await db.projectParticipant.findMany({
@@ -212,8 +207,7 @@ async function notifyPeriodClosed(
 		await createNotification({
 			userId: p.participantId,
 			type: "PERIOD_CLOSED",
-			title: "Period closed",
-			body: `${actorName} closed '${periodLabel}' in '${projectName}'. Review and verify your expenses.`,
+			notice: { kind: "periodClosed", actor: actorName },
 			data: { projectId, periodId },
 		});
 	}
@@ -524,7 +518,6 @@ export const billingPeriodRouter = createTRPCRouter({
 			notifyPeriodClosed(
 				ctx.db,
 				input.projectId,
-				period.label,
 				userId,
 				result.closedPeriod.id,
 			).catch((err) =>
@@ -607,11 +600,11 @@ export const billingPeriodRouter = createTRPCRouter({
 				let detail = "";
 				if (debtor && creditor) {
 					const [fromName, toName] = await Promise.all([
-						resolveParticipantName(
+						participantLabel(
 							debtor.participant.participantType,
 							debtor.participant.participantId,
 						),
-						resolveParticipantName(
+						participantLabel(
 							creditor.participant.participantType,
 							creditor.participant.participantId,
 						),
@@ -619,7 +612,7 @@ export const billingPeriodRouter = createTRPCRouter({
 					const amount = Math.min(-debtor.amount, creditor.amount);
 					detail = ` ${first.currency} ${amount.toFixed(2)} from ${fromName} to ${toName} is still outstanding.`;
 				} else {
-					const name = await resolveParticipantName(
+					const name = await participantLabel(
 						first.participant.participantType,
 						first.participant.participantId,
 					);

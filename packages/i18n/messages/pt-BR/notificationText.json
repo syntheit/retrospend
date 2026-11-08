@@ -1,0 +1,112 @@
+{
+	"actorUnknown": "Alguém",
+	"expenseSplit": {
+		"title": "Nova despesa compartilhada",
+		"body": "{actor} dividiu uma despesa com você",
+		"bodyWithAmount": "{actor} dividiu uma despesa com você, sua parte é {amount}",
+		"bodyWithTotal": "{actor} dividiu uma despesa com você, sua parte é {amount} de {total}"
+	},
+	"expenseEdited": {
+		"title": "Despesa atualizada",
+		"body": "{actor} atualizou uma despesa que você compartilha"
+	},
+	"expenseDeleted": {
+		"title": "Despesa excluída",
+		"body": "{actor} excluiu uma despesa que você compartilha",
+		"bodyWithAmount": "{actor} excluiu uma despesa de {amount}"
+	},
+	"paymentRecordedByPayee": {
+		"title": "Pagamento registrado",
+		"body": "{actor} registrou o recebimento do seu pagamento",
+		"bodyWithAmount": "{actor} registrou o recebimento do seu pagamento de {amount}",
+		"bodyAcross": "{actor} registrou o recebimento do seu pagamento de {amount} em {count} moedas"
+	},
+	"settlementReceived": {
+		"title": "Acerto recebido",
+		"body": "{actor} enviou um acerto para você",
+		"bodyWithAmount": "{actor} enviou um acerto de {amount} para você",
+		"bodyAcross": "{actor} enviou um acerto de {amount} em {count} moedas para você"
+	},
+	"settlementConfirmed": {
+		"title": "Acerto confirmado",
+		"body": "{actor} confirmou seu acerto",
+		"bodyWithAmount": "{actor} confirmou seu acerto de {amount}",
+		"bodyAcross": "{actor} confirmou seu acerto de {amount} em {count} moedas",
+		"bodyOffset": "{actor} confirmou seu acerto com uma compensação de {amount}"
+	},
+	"settlementRejected": {
+		"title": "Acerto recusado",
+		"body": "{actor} recusou seu acerto",
+		"bodyWithAmount": "{actor} recusou seu acerto de {amount}",
+		"bodyAcross": "{actor} recusou seu acerto de {amount} em {count} moedas",
+		"bodyOffset": "{actor} recusou seu acerto com uma compensação de {amount}"
+	},
+	"settlementReminder": {
+		"title": "Lembrete de acerto",
+		"body": "{actor} lembra você de um acerto",
+		"bodyWithAmount": "{actor} lembra você de um acerto de {amount}",
+		"bodyAcross": "{actor} lembra você de um acerto de {amount} em {count} moedas",
+		"bodyOffset": "{actor} lembra você de um acerto com uma compensação de {amount}"
+	},
+	"balanceReminder": {
+		"title": "Lembrete de pagamento",
+		"body": "{actor} lembrou você de um saldo pendente"
+	},
+	"squaredUp": {
+		"title": "Saldos de projetos acertados",
+		"body": "{actor} acertou os saldos dos seus projetos, nenhum dinheiro foi movido",
+		"bodyOffset": "{actor} acertou os saldos dos seus projetos com uma compensação de {amount}, nenhum dinheiro foi movido"
+	},
+	"periodClosed": {
+		"title": "Período fechado",
+		"body": "{actor} fechou um período em um projeto de que você participa"
+	},
+	"addedToProject": {
+		"title": "Adicionado a um projeto",
+		"body": "{actor} adicionou você a um projeto"
+	},
+	"ownershipTransferred": {
+		"title": "Propriedade transferida",
+		"body": "{actor} transferiu um projeto para você"
+	},
+	"profileClaimed": {
+		"title": "Perfil reivindicado",
+		"body": "{actor} entrou em um projeto e reivindicou um perfil lá"
+	},
+	"fixRequested": {
+		"title": "Correção pedida",
+		"body": "{actor} pediu que você corrija uma despesa"
+	},
+	"fixAccepted": {
+		"title": "Correção aceita",
+		"body": "{actor} vai corrigir a despesa sobre a qual você perguntou"
+	},
+	"fixDeclined": {
+		"title": "Correção recusada",
+		"body": "{actor} não vai alterar a despesa sobre a qual você perguntou"
+	},
+	"splitCorrected": {
+		"title": "Despesa corrigida",
+		"body": "{actor} adicionou uma correção a uma despesa que você compartilha"
+	},
+	"projectInvite": {
+		"title": "Adicionado a um projeto",
+		"body": "{actor} adicionou você a um projeto no Retrospend",
+		"bodyWithLink": "{actor} adicionou você a um projeto no Retrospend. Entre para ver as despesas compartilhadas.",
+		"cta": "Entrar no projeto"
+	},
+	"guestResume": {
+		"title": "Continuar em um projeto",
+		"body": "Alguém pediu para voltar a um projeto no Retrospend com este e-mail. Se foi você, continue de onde parou. O link funciona uma vez e expira em uma hora. Se não foi você, ignore este e-mail.",
+		"cta": "Continuar"
+	},
+	"changes": {
+		"amount": "valor: {from} para {to}",
+		"date": "data alterada",
+		"payer": "pagador alterado",
+		"split": "divisão alterada",
+		"category": "categoria alterada",
+		"project": "projeto alterado",
+		"other": "outras alterações"
+	}
+}

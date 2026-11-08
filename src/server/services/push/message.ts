@@ -5,13 +5,8 @@ import {
 	withNumberFormat,
 } from "@retrospend/domain/format-locale";
 import type { Money } from "@retrospend/domain/money-minor";
-import {
-	type MessageCatalog,
-	mergeMessageCatalogs,
-} from "@retrospend/i18n/catalog";
-import { loadCatalog } from "@retrospend/i18n/load";
-import { createTranslator } from "next-intl";
 import { DEFAULT_LOCALE, matchSupportedLocale } from "~/i18n/locales";
+import { serverTranslator } from "~/server/services/server-translator";
 import {
 	PUSH_KINDS,
 	type PushChannel,
@@ -107,26 +102,6 @@ export function parsePushData(value: unknown): PushData | null {
 	});
 }
 
-type Translate = {
-	(key: string, values?: Record<string, string>): string;
-	has(key: string): boolean;
-};
-
-const pushCatalogs = new Map<string, MessageCatalog>();
-
-async function catalogFor(locale: string): Promise<MessageCatalog> {
-	const known = pushCatalogs.get(locale);
-	if (known) return known;
-	const english = await loadCatalog(DEFAULT_LOCALE);
-	const merged =
-		locale === DEFAULT_LOCALE
-			? english
-			: mergeMessageCatalogs(english, await loadCatalog(locale));
-	const messages = { push: merged.push as MessageCatalog };
-	pushCatalogs.set(locale, messages);
-	return messages;
-}
-
 /**
  * The text of one push, in the language of the person it goes to and with
  * their number format, so an amount reads as it does in their app.
@@ -137,12 +112,7 @@ export async function buildPushMessage(
 	numberFormat: NumberFormatChoice | null = null,
 ): Promise<PushMessage> {
 	const locale = matchSupportedLocale(language) ?? DEFAULT_LOCALE;
-	// The catalog is read at run time, so its keys are not in the types.
-	const t = createTranslator({
-		locale,
-		messages: await catalogFor(locale),
-		namespace: "push",
-	}) as unknown as Translate;
+	const t = await serverTranslator(locale, "push");
 	const key =
 		data.type === "recurring.due"
 			? data.direction === "in"

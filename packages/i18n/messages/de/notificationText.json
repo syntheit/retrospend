@@ -1,0 +1,112 @@
+{
+	"actorUnknown": "Jemand",
+	"expenseSplit": {
+		"title": "Neue geteilte Ausgabe",
+		"body": "{actor} hat eine Ausgabe mit dir geteilt",
+		"bodyWithAmount": "{actor} hat eine Ausgabe mit dir geteilt, dein Anteil ist {amount}",
+		"bodyWithTotal": "{actor} hat eine Ausgabe mit dir geteilt, dein Anteil ist {amount} von {total}"
+	},
+	"expenseEdited": {
+		"title": "Ausgabe aktualisiert",
+		"body": "{actor} hat eine gemeinsame Ausgabe aktualisiert"
+	},
+	"expenseDeleted": {
+		"title": "Ausgabe gelöscht",
+		"body": "{actor} hat eine gemeinsame Ausgabe gelöscht",
+		"bodyWithAmount": "{actor} hat eine Ausgabe über {amount} gelöscht"
+	},
+	"paymentRecordedByPayee": {
+		"title": "Zahlung erfasst",
+		"body": "{actor} hat den Erhalt deiner Zahlung erfasst",
+		"bodyWithAmount": "{actor} hat den Erhalt deiner Zahlung über {amount} erfasst",
+		"bodyAcross": "{actor} hat den Erhalt deiner Zahlung über {amount} in {count} Währungen erfasst"
+	},
+	"settlementReceived": {
+		"title": "Ausgleich erhalten",
+		"body": "{actor} hat dir einen Ausgleich geschickt",
+		"bodyWithAmount": "{actor} hat dir einen Ausgleich über {amount} geschickt",
+		"bodyAcross": "{actor} hat dir einen Ausgleich über {amount} in {count} Währungen geschickt"
+	},
+	"settlementConfirmed": {
+		"title": "Ausgleich bestätigt",
+		"body": "{actor} hat deinen Ausgleich bestätigt",
+		"bodyWithAmount": "{actor} hat deinen Ausgleich über {amount} bestätigt",
+		"bodyAcross": "{actor} hat deinen Ausgleich über {amount} in {count} Währungen bestätigt",
+		"bodyOffset": "{actor} hat deinen Ausgleich mit einer Verrechnung von {amount} bestätigt"
+	},
+	"settlementRejected": {
+		"title": "Ausgleich abgelehnt",
+		"body": "{actor} hat deinen Ausgleich abgelehnt",
+		"bodyWithAmount": "{actor} hat deinen Ausgleich über {amount} abgelehnt",
+		"bodyAcross": "{actor} hat deinen Ausgleich über {amount} in {count} Währungen abgelehnt",
+		"bodyOffset": "{actor} hat deinen Ausgleich mit einer Verrechnung von {amount} abgelehnt"
+	},
+	"settlementReminder": {
+		"title": "Ausgleichserinnerung",
+		"body": "{actor} erinnert dich an einen Ausgleich",
+		"bodyWithAmount": "{actor} erinnert dich an einen Ausgleich über {amount}",
+		"bodyAcross": "{actor} erinnert dich an einen Ausgleich über {amount} in {count} Währungen",
+		"bodyOffset": "{actor} erinnert dich an einen Ausgleich mit einer Verrechnung von {amount}"
+	},
+	"balanceReminder": {
+		"title": "Zahlungserinnerung",
+		"body": "{actor} hat dich an einen offenen Saldo erinnert"
+	},
+	"squaredUp": {
+		"title": "Projektsalden ausgeglichen",
+		"body": "{actor} hat eure Projektsalden ausgeglichen, es wurde kein Geld bewegt",
+		"bodyOffset": "{actor} hat eure Projektsalden mit einer Verrechnung von {amount} ausgeglichen, es wurde kein Geld bewegt"
+	},
+	"periodClosed": {
+		"title": "Zeitraum abgeschlossen",
+		"body": "{actor} hat einen Zeitraum in einem Projekt abgeschlossen, in dem du bist"
+	},
+	"addedToProject": {
+		"title": "Zu Projekt hinzugefügt",
+		"body": "{actor} hat dich zu einem Projekt hinzugefügt"
+	},
+	"ownershipTransferred": {
+		"title": "Eigentum übertragen",
+		"body": "{actor} hat dir ein Projekt übertragen"
+	},
+	"profileClaimed": {
+		"title": "Profil übernommen",
+		"body": "{actor} ist einem Projekt beigetreten und hat dort ein Profil übernommen"
+	},
+	"fixRequested": {
+		"title": "Korrektur erbeten",
+		"body": "{actor} hat dich gebeten, eine Ausgabe zu korrigieren"
+	},
+	"fixAccepted": {
+		"title": "Korrektur akzeptiert",
+		"body": "{actor} wird die Ausgabe korrigieren, nach der du gefragt hast"
+	},
+	"fixDeclined": {
+		"title": "Korrektur abgelehnt",
+		"body": "{actor} wird die Ausgabe, nach der du gefragt hast, nicht ändern"
+	},
+	"splitCorrected": {
+		"title": "Ausgabe korrigiert",
+		"body": "{actor} hat eine Korrektur zu einer gemeinsamen Ausgabe hinzugefügt"
+	},
+	"projectInvite": {
+		"title": "Zu Projekt hinzugefügt",
+		"body": "{actor} hat dich zu einem Projekt in Retrospend hinzugefügt",
+		"bodyWithLink": "{actor} hat dich zu einem Projekt in Retrospend hinzugefügt. Tritt bei, um die gemeinsamen Ausgaben zu sehen.",
+		"cta": "Projekt beitreten"
+	},
+	"guestResume": {
+		"title": "In einem Projekt weitermachen",
+		"body": "Jemand wollte mit dieser E-Mail-Adresse wieder einem Projekt in Retrospend beitreten. Wenn du das warst, mach dort weiter, wo du aufgehört hast. Der Link funktioniert einmal und läuft in einer Stunde ab. Wenn du das nicht warst, ignoriere diese E-Mail.",
+		"cta": "Weiter"
+	},
+	"changes": {
+		"amount": "Betrag: {from} auf {to}",
+		"date": "Datum geändert",
+		"payer": "Zahler geändert",
+		"split": "Aufteilung geändert",
+		"category": "Kategorie geändert",
+		"project": "Projekt geändert",
+		"other": "weitere Änderungen"
+	}
+}

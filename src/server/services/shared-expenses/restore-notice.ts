@@ -4,6 +4,7 @@
  * notice an add sends (transaction.service.ts), queued like it so it goes out
  * only after the undo commits.
  */
+import { noticeMoney } from "~/server/services/notification-text";
 import {
 	createNotification,
 	resolveParticipantName,
@@ -11,7 +12,6 @@ import {
 
 interface Restored {
 	id: string;
-	description: string;
 	amount: unknown;
 	currency: string;
 	splitParticipants: {
@@ -26,17 +26,21 @@ export async function noticeRestored(
 	actorUserId: string,
 ): Promise<void> {
 	const actorName = await resolveParticipantName("user", actorUserId);
-	const total = Number(restored.amount);
-	const { currency, description: desc } = restored;
+	const { currency } = restored;
+	const total = noticeMoney(restored.amount, currency);
 	for (const sp of restored.splitParticipants) {
 		if (sp.participantType !== "user" || sp.participantId === actorUserId)
 			continue;
-		const share = Number(sp.shareAmount);
+		const share = noticeMoney(sp.shareAmount, currency);
 		await createNotification({
 			userId: sp.participantId,
 			type: "EXPENSE_SPLIT",
-			title: "New shared expense",
-			body: `${actorName} split '${desc}' with you; your share: ${currency} ${share.toFixed(2)} (of ${currency} ${total.toFixed(2)})`,
+			notice: {
+				kind: "expenseSplit",
+				actor: actorName,
+				amount: share && { money: share },
+				total,
+			},
 			data: {
 				transactionId: restored.id,
 				actorType: "user",

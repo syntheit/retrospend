@@ -3,6 +3,12 @@ import { signUnsubscribeToken } from "~/lib/unsubscribe-token";
 import { db } from "~/server/db";
 import { notificationEmail } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
+import {
+	buildNoticeText,
+	NOTICE_DATA_KEYS,
+	type Notice,
+	type NoticeData,
+} from "~/server/services/notification-text";
 import { InvalidCursorError } from "~/server/services/api-v1/cursor";
 import type { NotificationType } from "~prisma";
 
@@ -20,12 +26,13 @@ const EMAIL_ON_BY_DEFAULT = new Set<NotificationType>([
 	"SETTLEMENT_REJECTED",
 ]);
 
-interface CreateNotificationParams {
+export interface CreateNotificationParams {
 	userId: string;
 	type: NotificationType;
-	title: string;
-	body: string;
-	data?: Record<string, unknown>;
+	/** What happened. The text is made from it in notification-text.ts, never passed in. */
+	notice: Notice;
+	/** Ids the app opens the notification by. No names or free text. */
+	data?: NoticeData;
 }
 
 /**
@@ -38,7 +45,7 @@ interface CreateNotificationParams {
 export async function createNotification(
 	params: CreateNotificationParams,
 ): Promise<void> {
-	const { userId, type, title, body, data } = params;
+	const { userId, type, notice, data } = params;
 
 	try {
 		// Look up the user's preference for this notification type
@@ -51,6 +58,21 @@ export async function createNotification(
 		const emailEnabled = pref?.email ?? EMAIL_ON_BY_DEFAULT.has(type);
 		const digestMode = pref?.digestMode ?? false;
 
+		const user = await db.user.findUnique({
+			where: { id: userId },
+			select: { email: true, language: true, numberFormat: true },
+		});
+		const text = await buildNoticeText(notice, user ?? {});
+		const { title, body } = text;
+		// Only the listed ids, whatever a caller handed over; the edit summary
+		// is made here from the notice, never passed in.
+		const stored = {
+			...Object.fromEntries(
+				Object.entries(data ?? {}).filter(([key]) => NOTICE_DATA_KEYS.has(key)),
+			),
+			...(text.changes ? { changes: text.changes } : {}),
+		};
+
 		if (inApp) {
 			await db.notification.create({
 				data: {
@@ -58,17 +80,15 @@ export async function createNotification(
 					type,
 					title,
 					body,
-					// JSON.parse(JSON.stringify(data)) ensures a pure JSON value for Prisma
-					...(data ? { data: JSON.parse(JSON.stringify(data)) as object } : {}),
+					// JSON.parse(JSON.stringify(...)) ensures a pure JSON value for Prisma
+					...(Object.keys(stored).length > 0
+						? { data: JSON.parse(JSON.stringify(stored)) as object }
+						: {}),
 				},
 			});
 		}
 
 		if (emailEnabled && !digestMode) {
-			const user = await db.user.findUnique({
-				where: { id: userId },
-				select: { email: true },
-			});
 			if (user?.email) {
 				const appUrl = env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "";
 				const secret = env.UNSUBSCRIBE_SECRET;
@@ -101,39 +121,54 @@ export async function createNotification(
 }
 
 /**
- * Resolves a participant's display name from the database.
- * Returns "Someone" if the participant cannot be found.
+ * A participant's display name, or null when they are gone or cannot be
+ * found (the notice then reads "Someone").
  */
 export async function resolveParticipantName(
 	participantType: string,
 	participantId: string,
-): Promise<string> {
-	if (participantId === "DELETED_USER") return "Deleted User";
-	if (participantId === "DELETED_GUEST") return "Deleted Guest";
+): Promise<string | null> {
+	if (participantId === "DELETED_USER" || participantId === "DELETED_GUEST")
+		return null;
 	try {
 		if (participantType === "user") {
 			const user = await db.user.findUnique({
 				where: { id: participantId },
 				select: { name: true },
 			});
-			return user?.name ?? "Someone";
+			return user?.name ?? null;
 		}
 		if (participantType === "shadow") {
 			const shadow = await db.shadowProfile.findUnique({
 				where: { id: participantId },
 				select: { name: true },
 			});
-			return shadow?.name ?? "Someone";
+			return shadow?.name ?? null;
 		}
 		// guest
 		const guest = await db.guestSession.findUnique({
 			where: { id: participantId },
 			select: { name: true },
 		});
-		return guest?.name ?? "Someone";
+		return guest?.name ?? null;
 	} catch {
-		return "Someone";
+		return null;
 	}
+}
+
+/**
+ * The same name for a sentence in an error, where English words stand in
+ * for a person who is gone or cannot be found.
+ */
+export async function participantLabel(
+	participantType: string,
+	participantId: string,
+): Promise<string> {
+	if (participantId === "DELETED_USER") return "Deleted User";
+	if (participantId === "DELETED_GUEST") return "Deleted Guest";
+	return (
+		(await resolveParticipantName(participantType, participantId)) ?? "Someone"
+	);
 }
 
 // ---- the caller's own notifications (tRPC notification router, /api/v1) ----

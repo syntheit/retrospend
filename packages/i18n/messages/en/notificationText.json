@@ -1,0 +1,112 @@
+{
+	"actorUnknown": "Someone",
+	"expenseSplit": {
+		"title": "New shared expense",
+		"body": "{actor} split an expense with you",
+		"bodyWithAmount": "{actor} split an expense with you, your share is {amount}",
+		"bodyWithTotal": "{actor} split an expense with you, your share is {amount} of {total}"
+	},
+	"expenseEdited": {
+		"title": "Expense updated",
+		"body": "{actor} updated an expense you share"
+	},
+	"expenseDeleted": {
+		"title": "Expense deleted",
+		"body": "{actor} deleted an expense you share",
+		"bodyWithAmount": "{actor} deleted an expense of {amount}"
+	},
+	"paymentRecordedByPayee": {
+		"title": "Payment recorded",
+		"body": "{actor} recorded receiving your payment",
+		"bodyWithAmount": "{actor} recorded receiving your payment of {amount}",
+		"bodyAcross": "{actor} recorded receiving your payment of {amount} across {count} currencies"
+	},
+	"settlementReceived": {
+		"title": "Settlement received",
+		"body": "{actor} sent you a settlement",
+		"bodyWithAmount": "{actor} sent you a settlement of {amount}",
+		"bodyAcross": "{actor} sent you a settlement of {amount} across {count} currencies"
+	},
+	"settlementConfirmed": {
+		"title": "Settlement confirmed",
+		"body": "{actor} confirmed your settlement",
+		"bodyWithAmount": "{actor} confirmed your settlement of {amount}",
+		"bodyAcross": "{actor} confirmed your settlement of {amount} across {count} currencies",
+		"bodyOffset": "{actor} confirmed your settlement with an offset of {amount}"
+	},
+	"settlementRejected": {
+		"title": "Settlement rejected",
+		"body": "{actor} rejected your settlement",
+		"bodyWithAmount": "{actor} rejected your settlement of {amount}",
+		"bodyAcross": "{actor} rejected your settlement of {amount} across {count} currencies",
+		"bodyOffset": "{actor} rejected your settlement with an offset of {amount}"
+	},
+	"settlementReminder": {
+		"title": "Settlement reminder",
+		"body": "{actor} is reminding you about a settlement",
+		"bodyWithAmount": "{actor} is reminding you about a settlement of {amount}",
+		"bodyAcross": "{actor} is reminding you about a settlement of {amount} across {count} currencies",
+		"bodyOffset": "{actor} is reminding you about a settlement with an offset of {amount}"
+	},
+	"balanceReminder": {
+		"title": "Payment reminder",
+		"body": "{actor} reminded you about an outstanding balance"
+	},
+	"squaredUp": {
+		"title": "Project balances offset",
+		"body": "{actor} offset your project balances, no money moved",
+		"bodyOffset": "{actor} offset {amount} across your project balances, no money moved"
+	},
+	"periodClosed": {
+		"title": "Period closed",
+		"body": "{actor} closed a period in a project you are in"
+	},
+	"addedToProject": {
+		"title": "Added to project",
+		"body": "{actor} added you to a project"
+	},
+	"ownershipTransferred": {
+		"title": "Ownership transferred",
+		"body": "{actor} transferred a project to you"
+	},
+	"profileClaimed": {
+		"title": "Profile claimed",
+		"body": "{actor} joined a project and claimed a profile there"
+	},
+	"fixRequested": {
+		"title": "Fix requested",
+		"body": "{actor} asked you to fix an expense"
+	},
+	"fixAccepted": {
+		"title": "Fix accepted",
+		"body": "{actor} will fix the expense you asked about"
+	},
+	"fixDeclined": {
+		"title": "Fix declined",
+		"body": "{actor} will not change the expense you asked about"
+	},
+	"splitCorrected": {
+		"title": "Expense corrected",
+		"body": "{actor} added a correction to an expense you share"
+	},
+	"projectInvite": {
+		"title": "Added to project",
+		"body": "{actor} added you to a project on Retrospend",
+		"bodyWithLink": "{actor} added you to a project on Retrospend. Join to see the shared expenses.",
+		"cta": "Join project"
+	},
+	"guestResume": {
+		"title": "Continue in a project",
+		"body": "Someone asked to rejoin a project on Retrospend with this email address. If it was you, continue where you left off. The link works once and expires in one hour. If it was not you, ignore this email.",
+		"cta": "Continue"
+	},
+	"changes": {
+		"amount": "amount: {from} to {to}",
+		"date": "date changed",
+		"payer": "payer changed",
+		"split": "split changed",
+		"category": "category changed",
+		"project": "project changed",
+		"other": "other changes"
+	}
+}
