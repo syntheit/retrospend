@@ -272,6 +272,11 @@ describe("helpers", () => {
 		expect(code(() => p.randomBytes(0))).toBe("invalid_input");
 	});
 
+	it("refuses malformed hex with the package's error", () => {
+		expect(code(() => fromHex("zz"))).toBe("invalid_input");
+		expect(code(() => fromHex("abc"))).toBe("invalid_input");
+	});
+
 	it("wipes in place", () => {
 		const k = bytes(8, 1);
 		p.wipe(k);
