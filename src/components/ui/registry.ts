@@ -639,7 +639,7 @@ export const PLANNED: Planned[] = [
 	{
 		name: "BottomNav",
 		status: "built",
-		job: "Phone web tab bar: Home, Activity, Budget, People, Projects plus a separate +",
+		job: "Phone web tab bar: Home, Activity, Budget, Wealth, People plus a separate +",
 		replaces: "Hamburger-only mobile nav",
 		planRow: SHELL,
 		target: "src/components/shell/bottom-nav.tsx (items from src/lib/nav.ts)",
