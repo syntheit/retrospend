@@ -131,9 +131,17 @@ function rateView(rate: ImportRate | null, currency: string, home: string) {
  */
 export const SUGGESTION_WINDOW = APP_LAYER_WINDOW;
 
+/** The value as an ILIKE pattern that matches only itself. */
+const escapeLike = (text: string) => text.replace(/[\\%_]/g, "\\$&");
+
 type Used = { title: string; categoryId: string | null; count: number };
 
-/** The SQL path: Postgres finds the rows whose title equals one of `titles`, ignoring case. */
+/**
+ * The SQL path: Postgres finds the rows whose title equals one of `titles`,
+ * ignoring case. Prisma's insensitive `equals` is `ILIKE`, so each title is
+ * escaped first and `%`, `_` and backslash match only themselves, as on the
+ * app path.
+ */
 async function usedInSql(
 	db: Db,
 	userId: string,
@@ -144,7 +152,9 @@ async function usedInSql(
 		where: {
 			userId,
 			categoryId: { not: null },
-			OR: titles.map((t) => ({ title: { equals: t, mode: "insensitive" } })),
+			OR: titles.map((t) => ({
+				title: { equals: escapeLike(t), mode: "insensitive" },
+			})),
 		},
 		_count: { _all: true },
 	});
@@ -158,9 +168,9 @@ async function usedInSql(
 /**
  * The app-layer path, for titles that may be ciphertext: read the newest
  * categorized expenses, open each title, and keep those equal to one of
- * `titles` after `pgLower`, which is what `equals ... mode: insensitive`
- * (`lower(col) = lower(value)`) compares. Counts are per (title, category),
- * as the SQL grouped them.
+ * `titles` after `pgLower`, the fold ILIKE applies to both sides, with no
+ * pattern characters and no trimming. Counts are per (title, category), as
+ * the SQL grouped them.
  */
 async function usedInApp(
 	db: Db,

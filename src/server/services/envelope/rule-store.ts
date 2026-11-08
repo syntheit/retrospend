@@ -28,7 +28,7 @@ export function matchOf(r: RuleRow, keyring?: Keyring): RuleMatch {
 			return {
 				kind: "TITLE",
 				contains: readUserText(keyring, r.matchTitle, {
-					table: "incomeRule",
+					table: "income_rule",
 					column: "matchTitle",
 					rowId: r.id,
 				}),
@@ -66,6 +66,7 @@ export function toRule(r: RuleRow, H: string, keyring?: Keyring): IncomeRule {
 	};
 }
 
+/** The keyring is for a sealed match text; the list callers pass none until D11. */
 export function toRuleDto(
 	r: RuleRow,
 	H: string,

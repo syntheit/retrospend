@@ -75,7 +75,7 @@ async function titleRule(
 			matchKind: "TITLE",
 			matchTitle: sealed
 				? sealField(keyring, text, {
-						table: "incomeRule",
+						table: "income_rule",
 						column: "matchTitle",
 						rowId: id,
 					})

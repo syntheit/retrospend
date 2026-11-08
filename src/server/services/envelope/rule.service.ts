@@ -363,6 +363,8 @@ async function previousOf(tx: Tx, expenseId: string) {
 /**
  * Runs the rules on every income row still waiting (sidecar rows, edits,
  * deletes): exactly once under the book lock. Cheap when nothing waits.
+ * Callers without a keyring read sealed rule or row text as an error; D11
+ * passes the user's keyring where it turns field encryption on.
  */
 export async function runPendingRules(
 	tx: Tx,

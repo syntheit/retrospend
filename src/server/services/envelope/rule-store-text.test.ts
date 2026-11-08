@@ -13,7 +13,7 @@ const keyring = new Keyring([{ id: 1, key: Buffer.alloc(32, 4) }]);
 const row = (over: Partial<RuleRow>) => ({ id: "r1", ...over }) as RuleRow;
 const sealed = (text: string, rowId: string) =>
 	sealField(keyring, text, {
-		table: "incomeRule",
+		table: "income_rule",
 		column: "matchTitle",
 		rowId,
 	});

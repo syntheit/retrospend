@@ -1,13 +1,16 @@
 /**
  * The "made again by hand" check when a deleted recurring template is
  * restored (recurring-delete.mutation.ts), on real Postgres. It used to be
- * `name equals ... mode insensitive` in SQL; the names are now compared in
- * the app after opening them, so a name may be ciphertext. SQL still narrows
- * by user, active, amount, currency, frequency and direction.
+ * `name equals ... mode insensitive` in SQL, which is an unescaped ILIKE; the
+ * names are now compared in the app after opening them, so a name may be
+ * ciphertext. SQL still narrows by user, active, amount, currency, frequency
+ * and direction.
  *
- * Behavior kept from the SQL, case by case (ARS home, a monthly 8,000.00):
- * case is ignored, trim and accents are not (`lower(name) = lower(value)`),
- * another amount, frequency, direction or an inactive twin does not count.
+ * Case by case (ARS home, a monthly 8,000.00): case is ignored, trim and
+ * accents are not, and `%`, `_` and backslash are literal. That last part is
+ * a deliberate change: under ILIKE "Gym 50%" conflicted with "Gym 50% off",
+ * "Rent_A" with "Rent-A", and `A\B` did not conflict with `a\b`. Another
+ * amount, frequency, direction or an inactive twin does not count.
  * Each case runs for a plaintext and for a sealed name on both sides.
  * Preview equals the result, and a restore with no keyring refuses a sealed
  * twin instead of letting it through.
@@ -33,7 +36,7 @@ beforeAll(seedArsRates);
 
 const seal = (text: string, id: string) =>
 	sealField(keyring, text, {
-		table: "recurringTemplate",
+		table: "recurring_template",
 		column: "name",
 		rowId: id,
 	});
@@ -120,6 +123,29 @@ describe.each([
 		await expect(
 			adminDb.recurringTemplate.count({ where: { userId: u } }),
 		).resolves.toBe(5);
+	});
+
+	it("pattern characters are literal: % _ and backslash", async () => {
+		const u = (await arsUser()).user.id;
+		// Not twins (they were under ILIKE): the pattern characters match only themselves.
+		const gym = await deleted(u, "Gym 50%", sealed);
+		await template(u, "Gym 50% off", sealed);
+		const rent = await deleted(u, "Rent_A", sealed);
+		await template(u, "Rent-A", sealed);
+		await restore(u, gym);
+		await restore(u, rent);
+		await expect(
+			adminDb.recurringTemplate.count({ where: { userId: u } }),
+		).resolves.toBe(4);
+		// Twins: the same characters, any case.
+		const v = (await arsUser()).user.id;
+		const back = await deleted(v, "A\\B", sealed);
+		await template(v, "a\\b", sealed);
+		await expect(restore(v, back)).rejects.toMatchObject({ code: "CONFLICT" });
+		const w = (await arsUser()).user.id;
+		const pct = await deleted(w, "Gym 50%", sealed);
+		await template(w, "GYM 50%", sealed);
+		await expect(restore(w, pct)).rejects.toMatchObject({ code: "CONFLICT" });
 	});
 
 	it("another user's template of the same name is not a twin", async () => {

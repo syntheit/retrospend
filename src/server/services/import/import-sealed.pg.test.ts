@@ -17,11 +17,16 @@
  *   "Libreria" 1,000 vs "Otra cosa" 1,001                none (amount differs)
  *
  * Suggestions (file title -> category its equal-ignoring-case titles were
- * filed under most). `equals insensitive` is lower(a) = lower(b): it does not
- * trim and does not fold accents, so these decoys must not count:
+ * filed under most). Titles are equal literally, ignoring case: no trim, no
+ * accent folding, and `%`, `_` and backslash are ordinary characters (the SQL
+ * path escapes them, since Prisma's insensitive equals is an ILIKE). So these
+ * decoys must not count:
  *   Coto x1 Groceries, COTO x1 Groceries, coto x1 Health      for "COTO"
  *   "Coto " x2 and "Cotó" x1 Transport (3, would win if folded) -> Groceries
  *   ÑANDÚ x1 Health   "ñandú" -> Health;   "nandu" -> nothing
+ *   A\B x1 Health, "AB" x2 Transport                  "a\b" -> Health
+ *   "Q_R" x1 Health, "QxR" x2 Transport                "q_r" -> Health
+ *   "50%" x1 Health, "50 percent" x2 Transport         "50%" -> Health
  */
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -97,6 +102,15 @@ async function ledger(sealed: boolean) {
 		{ title: "COTO", amount: 15, category: "Groceries" },
 		{ title: "coto", amount: 16, category: "Health" },
 		{ title: "ÑANDÚ", amount: 17, category: "Health" },
+		{ title: "A\\B", amount: 18, category: "Health" },
+		{ title: "AB", amount: 19, category: "Transport" },
+		{ title: "AB", amount: 20, category: "Transport" },
+		{ title: "Q_R", amount: 26, category: "Health" },
+		{ title: "QxR", amount: 21, category: "Transport" },
+		{ title: "QxR", amount: 22, category: "Transport" },
+		{ title: "50%", amount: 23, category: "Health" },
+		{ title: "50 percent", amount: 24, category: "Transport" },
+		{ title: "50 percent", amount: 25, category: "Transport" },
 	];
 	for (const [i, r] of filed.entries()) await store(r, 40 + i);
 	return { userId, cats };
@@ -122,6 +136,9 @@ async function job(userId: string) {
 		fileRow("COTO", 9001, D0, "Super"),
 		fileRow("ñandú", 9002, D0, "Fiesta"),
 		fileRow("nandu", 9003, D0, "Otros"),
+		fileRow("a\\b", 9004, D0, "Slash"),
+		fileRow("q_r", 9006, D0, "Under"),
+		fileRow("50%", 9005, D0, "Percent"),
 	];
 	return (
 		await adminDb.importJob.create({
@@ -165,11 +182,17 @@ const EXPECTED = {
 		["COTO", false, null],
 		["ñandú", false, null],
 		["nandu", false, null],
+		["a\\b", false, null],
+		["q_r", false, null],
+		["50%", false, null],
 	],
 	unmatched: [
 		["Super", 1, "Groceries"],
 		["Fiesta", 1, "Health"],
 		["Otros", 1, null],
+		["Slash", 1, "Health"],
+		["Under", 1, "Health"],
+		["Percent", 1, "Health"],
 	],
 };
 
@@ -204,6 +227,9 @@ describe("import review over plain and sealed titles", () => {
 			["Super", 1, null],
 			["Fiesta", 1, null],
 			["Otros", 1, null],
+			["Slash", 1, null],
+			["Under", 1, null],
+			["Percent", 1, null],
 		]);
 	});
 });

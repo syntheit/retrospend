@@ -131,17 +131,21 @@ const nameOf = (
 	row: { id: string; name: string },
 ) =>
 	readUserText(keyring, row.name, {
-		table: "recurringTemplate",
+		table: "recurring_template",
 		column: "name",
 		rowId: row.id,
 	});
 
 /**
  * Whether the user has an active template like `t`: the same amount,
- * currency, frequency and direction, and the same name ignoring case
- * (`lower(name) = lower(value)`, which is `pgLower` equality). SQL narrows by
- * everything but the name, so the names compared here are those of one
- * user's active templates with that exact money and schedule: a handful.
+ * currency, frequency and direction, and the same name ignoring case. The
+ * names are compared literally (`pgLower` equality): no trimming, no accent
+ * folding, and `%`, `_` and backslash are ordinary characters. This is a
+ * deliberate change from the old check, Prisma's insensitive `equals`, which
+ * is an unescaped ILIKE and read those three as pattern characters ("Gym 50%"
+ * conflicted with "Gym 50% off"). SQL narrows by everything but the name, so
+ * the names compared here are those of one user's active templates with that
+ * exact money and schedule: a handful.
  */
 async function sameByHand(
 	tx: Prisma.TransactionClient,
