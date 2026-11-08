@@ -202,11 +202,17 @@ async function inviteAddedGhost(
 	}
 
 	// A person without an account has no language on file: English.
-	const { title, body, cta } = await buildNoticeText({
+	const text = await buildNoticeText({
 		kind: "projectInvite",
 		actor: actorName,
 		hasLink: Boolean(joinUrl),
+	}).catch((err) => {
+		console.error("[Invitation] Could not word the invite email:", err);
+		return null;
 	});
+	// No email rather than a wrong one; the person was still added.
+	if (!text) return;
+	const { title, body, cta } = text;
 	const html = notificationEmail({
 		title,
 		body,

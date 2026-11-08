@@ -41,9 +41,17 @@ export async function serverTranslator(
 	locale: string,
 	namespace: string,
 ): Promise<ServerTranslate> {
+	// A missing message throws instead of returning its own key, so raw
+	// "namespace.key" text can never reach a push, notification or email.
 	return createTranslator({
 		locale,
 		messages: await namespaceOf(locale, namespace),
 		namespace,
+		onError: (error) => {
+			throw error;
+		},
+		getMessageFallback: ({ namespace: ns, key }) => {
+			throw new Error(`Missing message ${ns}.${key} for ${locale}`);
+		},
 	}) as unknown as ServerTranslate;
 }

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { loadCatalog } from "@retrospend/i18n/load";
 import { SUPPORTED_LOCALES } from "~/i18n/locales";
+import { serverTranslator } from "./server-translator";
 import {
 	buildNoticeText,
 	NOTICE_DATA_KEYS,
@@ -146,6 +148,55 @@ describe("buildNoticeText never carries free text", () => {
 				expect(out.body, label).not.toMatch(/[{}]|undefined|notificationText/);
 				expect(out.body, label).not.toContain(String.fromCharCode(0x2014));
 			}
+	});
+
+	it("never lets a message key reach the text, in English and Spanish, for every variant", async () => {
+		const amount = { money: jpy };
+		const everything = {
+			date: true,
+			payer: true,
+			split: true,
+			category: true,
+			project: true,
+			other: true,
+			amount: { from: jpy, to: jpy },
+		};
+		for (const language of ["en", "es"])
+			for (const kind of KINDS)
+				for (const variant of [
+					{},
+					{ amount, total: jpy },
+					{ amount: { ...amount, currencies: 2 } },
+					{ amount: { ...amount, offset: true } },
+					{ hasLink: true },
+					{ changes: everything },
+				]) {
+					const out = await buildNoticeText(
+						{ kind, actor: "Ana", ...variant },
+						{ language },
+					);
+					const label = `${kind} ${language} ${JSON.stringify(variant)}`;
+					const all = [out.title, out.body, out.cta, out.changes].join("|");
+					expect(all, label).not.toContain("notificationText");
+					expect(all, label).not.toMatch(
+						new RegExp(`${kind}\\.(title|body|cta)|changes\\.\\w+`),
+					);
+					expect(all, label).not.toMatch(/\bbody\w*\b|\btitle\b/);
+				}
+	});
+
+	it("has the catalog namespace, with a title and body for every kind, in every locale", async () => {
+		for (const locale of SUPPORTED_LOCALES) {
+			const catalog = (await loadCatalog(locale)).notificationText as Record<
+				string,
+				Record<string, string>
+			>;
+			expect(catalog, locale).toBeDefined();
+			for (const kind of KINDS) {
+				expect(catalog[kind]?.title, `${kind} ${locale}`).toBeTruthy();
+				expect(catalog[kind]?.body, `${kind} ${locale}`).toBeTruthy();
+			}
+		}
 	});
 
 	it("reads a missing or blank actor as someone", async () => {
@@ -300,5 +351,14 @@ describe("the notification data and notice are closed", () => {
 	it("lists only ids and codes as the keys a notification may store", () => {
 		for (const key of NOTICE_DATA_KEYS)
 			expect(key, key).toMatch(/Id$|Ids$|Type$|^kind$/);
+	});
+});
+
+describe("serverTranslator", () => {
+	it("throws on a missing message instead of returning its key", async () => {
+		const t = await serverTranslator("en", "notificationText");
+		expect(() => t("noSuchKind.title")).toThrow();
+		const none = await serverTranslator("en", "noSuchNamespace");
+		expect(() => none("a.b")).toThrow();
 	});
 });
