@@ -56,8 +56,10 @@ export const skipRecurring: MoneyMutation<
 				: template.nextDueDate < startOfNextDayIn(new Date(), zone);
 		if (!due) throw new TRPCError({ code: "CONFLICT", message: ALREADY });
 
-		const nextDueAt = nextDueAfter(template, template.nextDueDate, zone);
-		const anchorDay = dueAnchorDay(template, zone);
+		// Due dates step in the user's saved zone, not this request's.
+		const stepZone = await userTimeZone(tx, actor.userId);
+		const nextDueAt = nextDueAfter(template, template.nextDueDate, stepZone);
+		const anchorDay = dueAnchorDay(template, stepZone);
 		const advanced = await tx.recurringTemplate.updateMany({
 			where: {
 				id: template.id,
@@ -87,7 +89,6 @@ export interface UnskipRecurringInput {
 	readonly templateId: string;
 	/** The due date that was skipped. */
 	readonly dueDate: Date;
-	readonly timeZone?: string;
 }
 
 /** Puts the template back on the skipped date, only while that skip is the newest change. */
@@ -106,10 +107,10 @@ export const unskipRecurring: MoneyMutation<
 				code: "NOT_FOUND",
 				message: "Recurring template not found",
 			});
-		const zone = await userTimeZone(tx, actor.userId, input.timeZone);
+		const stepZone = await userTimeZone(tx, actor.userId);
 		if (
 			template.nextDueDate.getTime() !==
-			nextDueAfter(template, input.dueDate, zone).getTime()
+			nextDueAfter(template, input.dueDate, stepZone).getTime()
 		)
 			throw new TRPCError({
 				code: "CONFLICT",

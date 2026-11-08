@@ -352,6 +352,7 @@ export async function confirmRecurring(
 		undo: undoFor(caller, FAMILY, "recurring.unconfirm", {
 			expenseId: v.expenseId,
 			dueAt: v.dueAt.toISOString(),
+			anchorDay: v.anchorDay,
 		}),
 	};
 }
@@ -379,9 +380,18 @@ function undoOf(op: string, input: unknown) {
 			code: "BAD_REQUEST",
 			message: "This undo is not valid anymore",
 		});
-	const { expenseId, dueAt } = input as { expenseId: string; dueAt?: string };
+	const { expenseId, dueAt, anchorDay } = input as {
+		expenseId: string;
+		dueAt?: string;
+		anchorDay?: number | null;
+	};
 	// A token minted before paid on existed has no dueAt: the entry's own date.
-	return { expenseId, dueDate: dueAt ? new Date(dueAt) : null };
+	// One minted before anchorDay was kept has none: the anchor stays as it is.
+	return {
+		expenseId,
+		dueDate: dueAt ? new Date(dueAt) : null,
+		anchorDay,
+	};
 }
 
 export async function undoRecurringConfirm(
@@ -392,10 +402,7 @@ export async function undoRecurringConfirm(
 	const undo = undoOf(op, input);
 	const done = await spendUndo(caller, token, () =>
 		op === "recurring.unconfirm"
-			? applyWrite(caller, unconfirmRecurringExpense, {
-					...undo,
-					timeZone: caller.timeZone,
-				})
+			? applyWrite(caller, unconfirmRecurringExpense, undo)
 			: applyWrite(caller, unconfirmRecurringIncome, undo),
 	);
 	return { expenseId: done.expenseId, templateId: done.templateId, redo: null };
@@ -408,10 +415,7 @@ export function previewUndoRecurringConfirm(
 	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
 	const undo = undoOf(op, input);
 	return op === "recurring.unconfirm"
-		? previewWrite(caller, unconfirmRecurringExpense, {
-				...undo,
-				timeZone: caller.timeZone,
-			})
+		? previewWrite(caller, unconfirmRecurringExpense, undo)
 		: previewWrite(caller, unconfirmRecurringIncome, undo);
 }
 
@@ -463,18 +467,12 @@ export async function undoSkipRecurring(caller: LedgerCaller, token: string) {
 	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
 	const undo = unskipOf(op, input);
 	const done = await spendUndo(caller, token, () =>
-		applyWrite(caller, unskipRecurring, {
-			...undo,
-			timeZone: caller.timeZone,
-		}),
+		applyWrite(caller, unskipRecurring, undo),
 	);
 	return { templateId: done.templateId, dueAt: done.dueAt.toISOString() };
 }
 
 export function previewUndoSkipRecurring(caller: LedgerCaller, token: string) {
 	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
-	return previewWrite(caller, unskipRecurring, {
-		...unskipOf(op, input),
-		timeZone: caller.timeZone,
-	});
+	return previewWrite(caller, unskipRecurring, unskipOf(op, input));
 }

@@ -179,6 +179,8 @@ export async function readRecurringBody(
 ): Promise<RecurringBody & { rates: HomeRates }> {
 	// Due dates step in the user's zone, so there is always one (no process zone).
 	const timeZone = await userTimeZone(tx, userId, requestZone);
+	// Due dates step in the saved zone, while days are shown in the request's.
+	const stepZone = requestZone ? await userTimeZone(tx, userId) : timeZone;
 	const today = dayKey(now, timeZone);
 	const [user, templates] = await Promise.all([
 		tx.user.findUnique({
@@ -229,7 +231,7 @@ export async function readRecurringBody(
 			frequency: t.frequency.toLowerCase() as RecurringFrequencyDTO,
 			next,
 			dueAt: t.nextDueDate.toISOString(),
-			nextAfter: dayKey(nextDueAfter(t, t.nextDueDate, timeZone), timeZone),
+			nextAfter: dayKey(nextDueAfter(t, t.nextDueDate, stepZone), timeZone),
 			paidOnFrom: previousDueDay(
 				t,
 				t.direction === "IN" ? "IN" : "OUT",

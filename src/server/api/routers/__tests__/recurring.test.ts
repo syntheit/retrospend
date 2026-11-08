@@ -4,7 +4,7 @@
  */
 
 import { addMonthsClamped } from "@retrospend/domain/recurring";
-import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
+import { dayKey, parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "~/test/mock-db";
 import { RATE_DATE, useRateTable } from "~/test/rate-table";
@@ -160,7 +160,8 @@ describe("recurring.confirmAndCreate", () => {
 			currency: "ARS",
 		});
 		const next = state.template!.nextDueDate;
-		expect([next.getMonth() + 1, next.getDate()]).toEqual([2, 28]);
+		// The saved zone (Buenos Aires) decides the day, not the process.
+		expect(dayKey(next, "America/Argentina/Buenos_Aires")).toBe("2026-02-28");
 		expect(state.template!.anchorDay).toBe(31);
 	});
 
@@ -314,7 +315,8 @@ describe("recurring.confirmAndCreate paid on", () => {
 			parseDateOnlyIn("2026-01-20", "America/Argentina/Buenos_Aires"),
 		);
 		const next = state.template!.nextDueDate;
-		expect([next.getMonth() + 1, next.getDate()]).toEqual([2, 28]);
+		// The saved zone (Buenos Aires) decides the day, not the process.
+		expect(dayKey(next, "America/Argentina/Buenos_Aires")).toBe("2026-02-28");
 	});
 
 	it("refuses a day to come or one before the previous due date", async () => {
@@ -379,7 +381,8 @@ describe("recurring.skip", () => {
 		expect(state.expenses).toHaveLength(0);
 		expect(mockDb.expense.create).not.toHaveBeenCalled();
 		const next = state.template!.nextDueDate;
-		expect([next.getMonth() + 1, next.getDate()]).toEqual([2, 28]);
+		// The saved zone (Buenos Aires) decides the day, not the process.
+		expect(dayKey(next, "America/Argentina/Buenos_Aires")).toBe("2026-02-28");
 		expect(done.nextDueAt.getTime()).toBe(next.getTime());
 		expect(state.template!.anchorDay).toBe(31);
 	});
