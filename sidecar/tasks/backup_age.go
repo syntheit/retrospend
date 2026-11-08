@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"filippo.io/age"
 )
@@ -44,7 +45,7 @@ func partialPath(finalPath string) string {
 }
 
 // publishPartial makes a finished partial file the real backup: fsync the file,
-// rename it into place, fsync the directory so the rename survives a crash.
+// link it into place and drop the partial name, fsync the directory so the rename survives a crash.
 func publishPartial(partial, finalPath string) error {
 	f, err := os.OpenFile(partial, os.O_RDWR, 0)
 	if err != nil {
@@ -57,9 +58,12 @@ func publishPartial(partial, finalPath string) error {
 	if err := f.Close(); err != nil {
 		return err
 	}
-	if err := os.Rename(partial, finalPath); err != nil {
+	// A hard link fails with EEXIST instead of replacing a backup that appeared
+	// since the caller looked, which a rename would silently overwrite.
+	if err := os.Link(partial, finalPath); err != nil {
 		return err
 	}
+	os.Remove(partial)
 	dir, err := os.Open(filepath.Dir(finalPath))
 	if err != nil {
 		return err
@@ -162,6 +166,13 @@ func pgDumpArgs(host, port, user, dbname, outPath string, encrypt bool) []string
 		args = append(args, fmt.Sprintf("--file=%s", outPath))
 	}
 	return args
+}
+
+// stalePartialAge is how long a .partial file may sit before retention removes it.
+const stalePartialAge = 6 * time.Hour
+
+func isPartialFile(name string) bool {
+	return strings.HasPrefix(name, ".retrospend-") && strings.HasSuffix(name, ".partial")
 }
 
 func isBackupFile(name string) bool {

@@ -162,19 +162,52 @@ func TestRunBackupEncryptionFailingMidDumpDoesNotHang(t *testing.T) {
 	}
 }
 
-func TestRetentionIgnoresPartialFiles(t *testing.T) {
+func TestRetentionRemovesStalePartialsAndKeepsFreshOnes(t *testing.T) {
 	dir := t.TempDir()
-	old := time.Now().AddDate(0, 0, -90)
-	for _, name := range []string{".retrospend-x.dump.age.partial", "retrospend-x.dump.age"} {
+	stale := time.Now().Add(-stalePartialAge - time.Hour)
+	// A stale partial can be a full plaintext dump, so it must not outlive the
+	// retention period even though it is not a listed backup.
+	for name, mtime := range map[string]time.Time{
+		".retrospend-old.dump.partial":     stale,
+		".retrospend-old.dump.age.partial": stale,
+		".retrospend-new.dump.age.partial": time.Now(),
+		"retrospend-old.dump.age":          stale.AddDate(0, 0, -90),
+		"notes.partial":                    stale,
+	} {
 		p := filepath.Join(dir, name)
 		if err := os.WriteFile(p, []byte("x"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		os.Chtimes(p, old, old)
+		os.Chtimes(p, mtime, mtime)
 	}
 	cleanupOldBackups(dir, 30)
 	names := dirNames(t, dir)
-	if len(names) != 1 || names[0] != ".retrospend-x.dump.age.partial" {
-		t.Fatalf("retention touched the wrong files: %v", names)
+	if len(names) != 2 || names[0] != ".retrospend-new.dump.age.partial" || names[1] != "notes.partial" {
+		t.Fatalf("retention removed or kept the wrong files: %v", names)
+	}
+}
+
+func TestPublishPartialNeverReplacesAnExistingBackup(t *testing.T) {
+	dir := t.TempDir()
+	final := filepath.Join(dir, "retrospend-x.dump")
+	partial := partialPath(final)
+	os.WriteFile(final, []byte("existing"), 0o600)
+	os.WriteFile(partial, []byte("new"), 0o600)
+	if err := publishPartial(partial, final); err == nil {
+		t.Fatal("expected a refusal")
+	}
+	if got, _ := os.ReadFile(final); string(got) != "existing" {
+		t.Fatalf("existing backup replaced: %q", got)
+	}
+
+	os.Remove(final)
+	if err := publishPartial(partial, final); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(final); string(got) != "new" {
+		t.Fatalf("not published: %q", got)
+	}
+	if _, err := os.Stat(partial); err == nil {
+		t.Fatal("partial name left behind")
 	}
 }

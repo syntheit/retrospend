@@ -314,12 +314,25 @@ func cleanupOldBackups(backupDir string, retentionDays int) {
 
 	removed := 0
 	for _, entry := range entries {
-		if entry.IsDir() || !isBackupFile(entry.Name()) {
+		partial := isPartialFile(entry.Name())
+		if entry.IsDir() || !(isBackupFile(entry.Name()) || partial) {
 			continue
 		}
 
 		info, err := entry.Info()
 		if err != nil {
+			continue
+		}
+
+		// Cleanup runs inside RunBackup after this run's own partial is gone, so
+		// any partial still here is a crash leftover, possibly a full plaintext
+		// dump. It goes after a few hours, not after the retention period.
+		if partial {
+			if info.ModTime().Before(time.Now().Add(-stalePartialAge)) {
+				if err := os.Remove(filepath.Join(backupDir, entry.Name())); err != nil {
+					log.Printf("⚠️ Failed to remove stale partial backup %s: %v", entry.Name(), err)
+				}
+			}
 			continue
 		}
 
