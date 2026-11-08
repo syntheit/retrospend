@@ -14,6 +14,7 @@ import { categoryTone } from "@retrospend/domain/category-tone";
 import { currencyDecimals } from "@retrospend/domain/money";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { getImageUrl } from "~/lib/image-url";
+import { db as globalDb } from "~/server/db";
 import type { Money } from "~/server/figures/registry";
 import { fromMinor, sumMinor, toMinor } from "~/server/services/envelope/units";
 import { loadQuotes } from "~/server/services/payments/quotes";
@@ -119,8 +120,14 @@ function loadPayments(db: PrismaClient, projectId: string) {
  * spending by category, per currency. Each row is rounded to its currency's
  * minor unit before it is summed, as the member page does, so the two never
  * differ by a cent.
+ *
+ * Reads on the global client explicitly: the public page has no signed-in
+ * user, so there is no RLS context to run as (publicPageView hands this the
+ * global client already), and the raw query below is refused on a scoped
+ * client. The caller has checked the project is PUBLIC.
  */
-async function loadPublicTotals(db: PrismaClient, projectId: string) {
+async function loadPublicTotals(projectId: string) {
+	const db = globalDb;
 	const where = { projectId };
 	const [count, first, currencies] = await Promise.all([
 		db.sharedTransaction.count({ where }),
@@ -329,7 +336,7 @@ async function readPage(
 						projectId,
 						me ?? { participantType: "viewerLink", participantId: "" },
 					),
-			isPublic ? loadPublicTotals(db, projectId) : Promise.resolve(null),
+			isPublic ? loadPublicTotals(projectId) : Promise.resolve(null),
 		]);
 	const others = project.participants.filter((p) => !isMe(p));
 	const [people, balances] = await Promise.all([

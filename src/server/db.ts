@@ -27,6 +27,21 @@ export const db = globalForPrisma.prisma ?? createPrismaClient();
 
 if (env.NODE_ENV !== "production") globalForPrisma.prisma = db;
 
+const REFUSED_ON_SCOPED = [
+	"$queryRaw",
+	"$executeRaw",
+	"$queryRawUnsafe",
+	"$executeRawUnsafe",
+	"$queryRawTyped",
+	"$executeRawTyped",
+] as const;
+
+function refusedOnScoped(method: string, hint: string): never {
+	throw new Error(
+		`${method} is not allowed on a user-scoped client: it would reach the owner connection without RLS. ${hint}`,
+	);
+}
+
 /**
  * Creates a user-scoped Prisma client that sets the RLS context for every
  * model operation. Each individual query is wrapped in a batch transaction
@@ -42,6 +57,14 @@ if (env.NODE_ENV !== "production") globalForPrisma.prisma = db;
  * transaction on one connection, with the RLS settings set once at its start
  * (transaction-local, so they end with it). Every query in it, model or raw,
  * then runs as `retrospend_app` for this user.
+ *
+ * Raw SQL, the array form of `$transaction`, and every other `$` member
+ * (`$parent`, `$extends`, `$connect`, `$disconnect`, `$on`) are refused on the
+ * scoped client: the per-query wrapper covers model calls only, so a raw
+ * query on it would run on the owner connection with no role and no RLS, and
+ * `$parent` or `$extends` would hand that connection back. Use
+ * `userTransaction` for raw SQL as a user, or the global `db` for data that
+ * has no owner (and say why where you do).
  */
 export function createUserScopedDb(userId: string): typeof db {
 	const extended = db.$extends({
@@ -61,10 +84,12 @@ export function createUserScopedDb(userId: string): typeof db {
 
 	function scopedTransaction(first: unknown, ...rest: unknown[]) {
 		if (typeof first !== "function") {
-			// A batch of already-scoped queries: each one carries its own context.
-			return (extended.$transaction as (...args: unknown[]) => unknown)(
-				first,
-				...rest,
+			// Raw promises in the array would run on the owner connection, and
+			// model calls in it each carry their own context but are not one
+			// atomic unit with a shared role. One callback form is the only path.
+			return refusedOnScoped(
+				"$transaction([...])",
+				"Use userTransaction(db, userId, async (tx) => { ... }) instead.",
 			);
 		}
 		const work = first as (tx: Prisma.TransactionClient) => Promise<unknown>;
@@ -81,6 +106,30 @@ export function createUserScopedDb(userId: string): typeof db {
 	return new Proxy(extended, {
 		get(target, prop) {
 			if (prop === "$transaction") return scopedTransaction;
+			if (
+				typeof prop === "string" &&
+				(REFUSED_ON_SCOPED as readonly string[]).includes(prop)
+			) {
+				return () =>
+					refusedOnScoped(
+						prop,
+						"Use userTransaction(db, userId, async (tx) => { ... }), or the global db for shared data.",
+					);
+			}
+			// Every other `$` member is refused: `$parent` is the unwrapped client,
+			// `$extends` returns one bound to it, and `$connect`, `$disconnect`
+			// and `$on` act on the shared pool. `$$typeof` and the like are
+			// inspection probes, not members.
+			if (
+				typeof prop === "string" &&
+				prop.startsWith("$") &&
+				!prop.startsWith("$$")
+			) {
+				refusedOnScoped(
+					prop,
+					"A scoped client offers model calls and $transaction(callback) only; use the global db explicitly for anything else.",
+				);
+			}
 			const value = Reflect.get(target, prop, target);
 			return typeof value === "function" ? value.bind(target) : value;
 		},

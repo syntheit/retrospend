@@ -11,20 +11,23 @@ import { signedIn, v1 } from "../middleware";
 const c = v1.currencies;
 
 /**
- * Rates are shared data; the caller's client is used only to stay on one
- * path. The rate table and the converter read the caller's home currency,
- * favorites and accounts as well.
+ * Rates are shared data. The raw rate reads run on the global client inside
+ * the service, because raw SQL is refused on a scoped client. The rate table
+ * and the converter also read the caller's home currency, favorites and
+ * accounts, under their RLS.
  */
 export const currenciesRouter = {
 	list: c.list.handler(
-		serve(({ context, input }) =>
-			currencies.listCurrencyPage(signedIn(context).db, input),
-		),
+		serve(({ context, input }) => {
+			signedIn(context);
+			return currencies.listCurrencyPage(input);
+		}),
 	),
 	listRates: c.listRates.handler(
-		serve(({ context, input }) =>
-			currencies.listRatePage(signedIn(context).db, input),
-		),
+		serve(({ context, input }) => {
+			signedIn(context);
+			return currencies.listRatePage(input);
+		}),
 	),
 	rateHistory: c.rateHistory.handler(
 		serve(({ context, input }) => {

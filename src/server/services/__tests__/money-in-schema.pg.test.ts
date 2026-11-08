@@ -8,7 +8,6 @@
 import { randomUUID } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { Client } from "pg";
 import { beforeAll, describe, expect, it } from "vitest";
 import { spentIn } from "~/server/services/figures/spent";
 import {
@@ -16,6 +15,7 @@ import {
 	INCOME_CATEGORIES,
 } from "~/server/services/money-in.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
+import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 import { at, expenseData } from "./spending-fixture";
 
 const MIGRATIONS = fileURLToPath(
@@ -41,28 +41,21 @@ describe("money_in migration", () => {
 				date: at("2026-03-01"),
 			}),
 		});
-		const client = new Client({ connectionString: process.env.DATABASE_URL });
-		await client.connect();
-		try {
+		await inRolledBackTransaction(async (client) => {
 			await client.query(moneyInSql());
-		} finally {
-			await client.end();
-		}
-		await expect(
-			adminDb.expense.findFirst({
-				where: { userId: user.id },
-				select: {
-					direction: true,
-					entryKind: true,
-					inType: true,
-					amortizeMode: true,
+			const { rows } = await client.query(
+				`SELECT "direction", "entryKind", "inType", "amortizeMode"
+				 FROM expense WHERE "userId" = $1`,
+				[user.id],
+			);
+			expect(rows).toEqual([
+				{
+					direction: "OUT",
+					entryKind: "STANDARD",
+					inType: null,
+					amortizeMode: "INSTALLMENTS",
 				},
-			}),
-		).resolves.toEqual({
-			direction: "OUT",
-			entryKind: "STANDARD",
-			inType: null,
-			amortizeMode: "INSTALLMENTS",
+			]);
 		});
 	});
 

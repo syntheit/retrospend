@@ -26,8 +26,8 @@ import { type Caller, isoDay } from "./caller";
 /** As many rate rows as the web page reads (one per currency and type). */
 const RATE_ROWS = 1000;
 
-async function latestRates(caller: Caller) {
-	const rows = await listLatestRates(caller.db, { take: RATE_ROWS });
+async function latestRates() {
+	const rows = await listLatestRates({ take: RATE_ROWS });
 	return rows.map((r) => ({
 		id: r.id,
 		currency: r.currency,
@@ -52,7 +52,7 @@ function homeAndAccounts(caller: Caller) {
 export async function readRateTable(caller: Caller): Promise<RateTableDto> {
 	const [{ home, accounts }, rates, favorites, sync] = await Promise.all([
 		homeAndAccounts(caller),
-		latestRates(caller),
+		latestRates(),
 		listFavoriteRates(caller.db, caller.principal.userId),
 		getRateSyncStatus(caller.db),
 	]);
@@ -90,7 +90,7 @@ export async function convertAmount(
 	const userId = caller.principal.userId;
 	const [home, rates] = await Promise.all([
 		userTransaction(caller.db, userId, (tx) => homeCurrencyOf(tx, userId)),
-		latestRates(caller),
+		latestRates(),
 	]);
 	const from = input.direction === "toHome" ? input.currency : home;
 	const results =

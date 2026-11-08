@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { updateNotificationPreferences } from "~/server/services/notifications";
+import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 import { adminDb, createTestUser } from "./pg-fixtures";
 
 // Found by name: the folder's timestamp is assigned when it is merged.
@@ -83,8 +84,7 @@ describe("push schema", () => {
 	});
 
 	it("starts each existing row with its in-app value, once", async () => {
-		await client.query("BEGIN");
-		try {
+		await inRolledBackTransaction(async (client) => {
 			// The table as it was before the migration.
 			await client.query(
 				'ALTER TABLE "notification_preference" DROP COLUMN "push"',
@@ -131,8 +131,6 @@ describe("push schema", () => {
 				  WHERE table_name = 'notification_preference' AND column_name = 'push'`,
 			);
 			expect(rows[0]).toEqual({ is_nullable: "NO", column_default: "true" });
-		} finally {
-			await client.query("ROLLBACK");
-		}
+		});
 	});
 });

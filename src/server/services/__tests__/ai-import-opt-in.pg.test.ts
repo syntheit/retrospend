@@ -2,9 +2,8 @@
  * The AI import setting on a real Postgres: off for a new account, readable
  * and writable by its owner under RLS, and the migration switches on only the
  * accounts that already used AI import, once. The migration adds a column, so
- * the test drops it, runs the file, and leaves the column as it found it.
- * Files in one worker run one at a time, so the dropped column is never seen
- * by another file.
+ * the test drops it and runs the file inside a transaction that is rolled
+ * back, which leaves the column as it found it.
  */
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -12,6 +11,7 @@ import { resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { isAiImportEnabled } from "~/server/services/ai-access.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
+import { inRolledBackPrismaTransaction } from "~/test/rolled-back-sql";
 
 const MIGRATION = readFileSync(
 	resolve(
@@ -35,8 +35,11 @@ async function importJob(userId: string, type: "CSV" | "BANK_STATEMENT") {
 	});
 }
 
-async function flags(ids: string[]) {
-	const rows = await adminDb.$queryRaw<
+async function flags(
+	ids: string[],
+	db: Pick<typeof adminDb, "$queryRaw"> = adminDb,
+) {
+	const rows = await db.$queryRaw<
 		{ id: string; on: boolean }[]
 	>`SELECT id, "aiImportEnabled" AS "on" FROM "user" WHERE id = ANY(${ids})`;
 	return new Map(rows.map((r) => [r.id, r.on]));
@@ -93,14 +96,12 @@ describe("aiImportEnabled", () => {
 	});
 
 	it("the migration keeps AI import on for accounts that used it, once", async () => {
-		try {
-			await adminDb.$executeRawUnsafe(
-				'ALTER TABLE "user" DROP COLUMN "aiImportEnabled"',
-			);
-			await adminDb.$executeRawUnsafe(MIGRATION);
+		await inRolledBackPrismaTransaction(async (tx, run) => {
+			await run('ALTER TABLE "user" DROP COLUMN "aiImportEnabled"');
+			await run(MIGRATION);
 
 			const ids = [external, tokens, statement, nothing, csvOnly, zeroTokens];
-			const first = await flags(ids);
+			const first = await flags(ids, tx);
 			expect(first.get(external)).toBe(true);
 			expect(first.get(tokens)).toBe(true);
 			expect(first.get(statement)).toBe(true);
@@ -109,22 +110,14 @@ describe("aiImportEnabled", () => {
 			expect(first.get(zeroTokens)).toBe(false);
 
 			// An account that turned it off stays off when the file runs again.
-			await adminDb.$executeRawUnsafe(
-				`UPDATE "user" SET "aiImportEnabled" = false WHERE id = '${tokens}'`,
+			await run(
+				'UPDATE "user" SET "aiImportEnabled" = false WHERE id = $1',
+				tokens,
 			);
-			await adminDb.$executeRawUnsafe(MIGRATION);
-			const second = await flags(ids);
+			await run(MIGRATION);
+			const second = await flags(ids, tx);
 			expect(second.get(tokens)).toBe(false);
 			expect(second.get(external)).toBe(true);
-		} finally {
-			await adminDb.$executeRawUnsafe(
-				'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "aiImportEnabled" BOOLEAN NOT NULL DEFAULT false',
-			);
-			// A column added again has no column privileges; the app role reads and
-			// writes this one (least-privilege migration).
-			await adminDb.$executeRawUnsafe(
-				'GRANT SELECT ("aiImportEnabled"), UPDATE ("aiImportEnabled") ON "user" TO retrospend_app',
-			);
-		}
+		});
 	});
 });

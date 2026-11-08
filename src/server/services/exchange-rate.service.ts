@@ -1,8 +1,8 @@
 import { CRYPTO_CURRENCIES, CURRENCIES } from "@retrospend/domain/currencies";
-import { TRPCError } from "@trpc/server";
 import { currencyDecimals } from "@retrospend/domain/money";
+import { TRPCError } from "@trpc/server";
 import { env } from "~/env";
-import type { db as globalDb } from "~/server/db";
+import { db as globalDb } from "~/server/db";
 import { findExchangeRate } from "~/server/exchange-rates";
 import { IntegrationService } from "~/server/services/integration.service";
 import { Prisma } from "~prisma";
@@ -34,16 +34,13 @@ function plain(value: Prisma.Decimal | string): string {
  * The newest rate per (currency, type) on or before `onOrBefore` (all
  * dates when absent), sorted by currency then type, starting after `after`.
  */
-export async function listLatestRates(
-	db: AppDb,
-	filter: {
-		currency?: string;
-		type?: string;
-		onOrBefore?: Date;
-		after?: { currency: string; type: string } | null;
-		take: number;
-	},
-): Promise<RateRow[]> {
+export async function listLatestRates(filter: {
+	currency?: string;
+	type?: string;
+	onOrBefore?: Date;
+	after?: { currency: string; type: string } | null;
+	take: number;
+}): Promise<RateRow[]> {
 	const where = [
 		filter.currency ? Prisma.sql`"currency" = ${filter.currency}` : null,
 		filter.type ? Prisma.sql`"type" = ${filter.type}` : null,
@@ -52,7 +49,10 @@ export async function listLatestRates(
 	const after = filter.after
 		? Prisma.sql`WHERE ("currency", "type") > (${filter.after.currency}, ${filter.after.type})`
 		: Prisma.empty;
-	const rows = await db.$queryRaw<RateRow[]>`
+	// exchange_rate is global data with no owner and no RLS. Raw SQL cannot run
+	// as a user outside a transaction, so this reads on the global client
+	// explicitly instead of the caller's scoped one.
+	const rows = await globalDb.$queryRaw<RateRow[]>`
 		SELECT * FROM (
 			SELECT DISTINCT ON ("currency", "type")
 				"id", "currency", "type", "date", "rate"::text AS "rate",
@@ -195,10 +195,11 @@ export type CurrencyInfo = {
  * Every currency the app knows, sorted by code, with the rate types stored
  * for it. Codes after `afterCode` only.
  */
-export async function listCurrencies(
-	db: AppDb,
-	filter: { kind?: "fiat" | "crypto"; afterCode?: string; take: number },
-): Promise<CurrencyInfo[]> {
+export async function listCurrencies(filter: {
+	kind?: "fiat" | "crypto";
+	afterCode?: string;
+	take: number;
+}): Promise<CurrencyInfo[]> {
 	const byCode = new Map(
 		[
 			...Object.values(CURRENCIES).map((c) => ({ c, kind: "fiat" as const })),
@@ -214,8 +215,10 @@ export async function listCurrencies(
 		.sort((a, b) => (a.c.code < b.c.code ? -1 : 1))
 		.slice(0, filter.take);
 	if (known.length === 0) return [];
-	// DISTINCT in SQL: Prisma's `distinct` would load every dated row.
-	const pairs = await db.$queryRaw<{ currency: string; type: string }[]>`
+	// DISTINCT in SQL: Prisma's `distinct` would load every dated row. Global
+	// client on purpose: exchange_rate is shared data, and raw SQL is refused
+	// on a scoped client.
+	const pairs = await globalDb.$queryRaw<{ currency: string; type: string }[]>`
 		SELECT DISTINCT "currency", "type" FROM "exchange_rate"
 		WHERE "currency" IN (${Prisma.join(known.map((x) => x.c.code))})`;
 	return known.map(({ c, kind }) => ({

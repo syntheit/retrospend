@@ -184,6 +184,64 @@ describe("createUserScopedDb", () => {
 		await expect(userDb.user.findMany({})).rejects.toThrow("DB error");
 	});
 
+	it.each([
+		"$queryRaw",
+		"$executeRaw",
+		"$queryRawUnsafe",
+		"$executeRawUnsafe",
+		"$queryRawTyped",
+		"$executeRawTyped",
+	])("refuses %s on a scoped client and names userTransaction", (name) => {
+		setupExtendsMock();
+		const userDb = createUserScopedDb("user-1") as unknown as Record<
+			string,
+			(...args: unknown[]) => unknown
+		>;
+		expect(() => userDb[name]?.("SELECT 1")).toThrow(/userTransaction/);
+		expect(() => userDb[name]?.("SELECT 1")).toThrow(name);
+		expect(mockExecuteRaw).not.toHaveBeenCalled();
+		expect(mockTransaction).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		"$parent",
+		"$extends",
+		"$connect",
+		"$disconnect",
+		"$on",
+		"$use",
+		"$metrics",
+	])("refuses %s on a scoped client", (name) => {
+		setupExtendsMock();
+		const userDb = createUserScopedDb("user-1") as unknown as Record<
+			string,
+			unknown
+		>;
+		expect(() => userDb[name]).toThrow(name);
+		expect(mockPrismaInstance.$extends).toHaveBeenCalledTimes(1);
+	});
+
+	it("still serves model delegates and inspection probes", () => {
+		const fakeDb = setupExtendsMock();
+		const userDb = createUserScopedDb("user-1") as unknown as Record<
+			string,
+			unknown
+		>;
+		expect(userDb.user).toBe(fakeDb.user);
+		expect(() => userDb.$$typeof).not.toThrow();
+	});
+
+	it("refuses the array form of $transaction and runs nothing", () => {
+		setupExtendsMock();
+		const userDb = createUserScopedDb("user-1") as unknown as {
+			$transaction: (ops: unknown[]) => unknown;
+		};
+		expect(() => userDb.$transaction([Promise.resolve(1)])).toThrow(
+			/userTransaction/,
+		);
+		expect(mockTransaction).not.toHaveBeenCalled();
+	});
+
 	it("runs an interactive transaction on the base client, RLS set first", async () => {
 		setupExtendsMock();
 		const tx = { $executeRaw: vi.fn().mockResolvedValue(1) };

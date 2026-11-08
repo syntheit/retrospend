@@ -5,8 +5,9 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Client } from "pg";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { Client } from "pg";
+import { describe, expect, it } from "vitest";
+import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 
 const MIGRATION = readFileSync(
 	join(
@@ -17,16 +18,15 @@ const MIGRATION = readFileSync(
 );
 
 async function unaccentAsApp(client: Client, text: string) {
-	await client.query("BEGIN");
+	await client.query("SET LOCAL ROLE retrospend_app");
 	try {
-		await client.query("SET LOCAL ROLE retrospend_app");
 		const { rows } = await client.query<{ out: string }>(
 			"SELECT public.immutable_unaccent($1) AS out",
 			[text],
 		);
 		return rows[0]?.out;
 	} finally {
-		await client.query("ROLLBACK");
+		await client.query("RESET ROLE");
 	}
 }
 
@@ -39,33 +39,25 @@ async function extensionSchema(client: Client) {
 	return rows[0]?.nspname;
 }
 
+// Each test runs in a transaction that is rolled back, so the extension is
+// back in public and the schema is gone for the next file.
 describe("search_unaccent migration", () => {
-	const client = new Client({ connectionString: process.env.DATABASE_URL });
-
-	beforeAll(async () => {
-		await client.connect();
-	});
-
-	afterAll(async () => {
-		// Other test files share this database: put unaccent back in public.
-		await client.query("ALTER EXTENSION unaccent SET SCHEMA public");
-		await client.query(MIGRATION);
-		await client.query("DROP SCHEMA IF EXISTS ext_elsewhere");
-		await client.end();
-	});
-
 	it("is idempotent where it was applied", async () => {
-		await client.query(MIGRATION);
-		expect(await extensionSchema(client)).toBe("public");
-		expect(await unaccentAsApp(client, "Café MUÑOZ")).toBe("Cafe MUNOZ");
+		await inRolledBackTransaction(async (client) => {
+			await client.query(MIGRATION);
+			expect(await extensionSchema(client)).toBe("public");
+			expect(await unaccentAsApp(client, "Café MUÑOZ")).toBe("Cafe MUNOZ");
+		});
 	});
 
 	it("uses unaccent from the schema it is installed in", async () => {
-		await client.query("CREATE SCHEMA IF NOT EXISTS ext_elsewhere");
-		await client.query("ALTER EXTENSION unaccent SET SCHEMA ext_elsewhere");
-		await client.query(MIGRATION);
-		await client.query(MIGRATION);
-		expect(await extensionSchema(client)).toBe("ext_elsewhere");
-		expect(await unaccentAsApp(client, "Ñandú")).toBe("Nandu");
+		await inRolledBackTransaction(async (client) => {
+			await client.query("CREATE SCHEMA IF NOT EXISTS ext_elsewhere");
+			await client.query("ALTER EXTENSION unaccent SET SCHEMA ext_elsewhere");
+			await client.query(MIGRATION);
+			await client.query(MIGRATION);
+			expect(await extensionSchema(client)).toBe("ext_elsewhere");
+			expect(await unaccentAsApp(client, "Ñandú")).toBe("Nandu");
+		});
 	});
 });

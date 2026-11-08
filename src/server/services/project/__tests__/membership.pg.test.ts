@@ -5,6 +5,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { adminDb } from "~/test/pg-harness";
+import { inRolledBackPrismaTransaction } from "~/test/rolled-back-sql";
 import {
 	addMember,
 	callerFor,
@@ -76,24 +77,26 @@ describe("M5 backfill", () => {
 			],
 		});
 
-		const dates = async () =>
-			Object.fromEntries(
-				(
-					await adminDb.projectParticipant.findMany({
-						where: { projectId: project.id },
-					})
-				).map((r) => [r.id, day(r.joinedOn)]),
-			);
-		await adminDb.$executeRawUnsafe(backfill);
-		const first = await dates();
-		expect(first).toEqual({
-			[founder.id]: null,
-			[inEarlier.id]: "2026-10-09",
-			[noExpenses.id]: "2026-10-20",
-			[lateEvening.id]: "2026-10-20",
+		await inRolledBackPrismaTransaction(async (tx, run) => {
+			const dates = async () =>
+				Object.fromEntries(
+					(
+						await tx.projectParticipant.findMany({
+							where: { projectId: project.id },
+						})
+					).map((r) => [r.id, day(r.joinedOn)]),
+				);
+			await run(backfill);
+			const first = await dates();
+			expect(first).toEqual({
+				[founder.id]: null,
+				[inEarlier.id]: "2026-10-09",
+				[noExpenses.id]: "2026-10-20",
+				[lateEvening.id]: "2026-10-20",
+			});
+			await run(backfill);
+			expect(await dates()).toEqual(first);
 		});
-		await adminDb.$executeRawUnsafe(backfill);
-		expect(await dates()).toEqual(first);
 	});
 
 	it("rejects a leave date on or before the join date in the database too", async () => {
