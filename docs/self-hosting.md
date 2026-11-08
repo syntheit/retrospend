@@ -64,6 +64,7 @@ Set these in `.env`. Runtime settings are read at start; nothing is baked into t
 | `VAPID_PUBLIC_KEY` | No | derived | The matching public key, checked against the private one |
 | `VAPID_SUBJECT` | No | `PUBLIC_URL` if https | `mailto:` or `https:` contact sent to push services |
 | `PUSH_ENDPOINT_ALLOW_HOSTS` | No | | Hosts (names or IPs, comma-separated) that may receive push although they are on a private network, such as a LAN ntfy server. The admin setting Allow private webhook targets also allows private UnifiedPush endpoints |
+| `DATA_MASTER_KEY` or `DATA_MASTER_KEY_FILE` | No | | Master key for server-side data encryption: 64 hex characters (`openssl rand -hex 32`) or a file path; the server will not start if it is malformed. Nothing is encrypted with it yet; keep a copy with your backups |
 | `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID` | No | | Apple push (iPhone and iPad); all four APNs settings are needed |
 | `APNS_KEY` or `APNS_KEY_FILE` | No | | The APNs auth key (`.p8`) as text (newlines written `\n`) or as a file path |
 | `ANDROID_APP_CERT_SHA256` | No | | More SHA-256 fingerprint(s), comma-separated, of Android app signing certificates, besides the release key. Served in `/.well-known/assetlinks.json` for app links and password manager autofill |

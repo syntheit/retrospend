@@ -1,0 +1,35 @@
+[
+	{
+		"name": "ascii",
+		"keyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+		"keyId": 1,
+		"nonceHex": "a0a1a2a3a4a5a6a7a8a9aaab",
+		"plaintext": "Groceries",
+		"table": "Category",
+		"column": "name",
+		"rowId": "c0000000-0000-4000-8000-000000000001",
+		"wire": "\u0001k1AAAAAaChoqOkpaanqKmqq6FqE04guWvaESOP6K86zFqt1SXGCxkt7ek="
+	},
+	{
+		"name": "unicode",
+		"keyHex": "030a11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc",
+		"keyId": 4294967295,
+		"nonceHex": "ffffffffffffffffffffffff",
+		"plaintext": "Caf\u00e9 \ud83d\ude00 e\u0301 \u05e9\u05dc\u05d5\u05dd",
+		"table": "Expense",
+		"column": "title",
+		"rowId": "e-1",
+		"wire": "\u0001k1/////////////////////4sIJ8E6epOKXeMmk5HlKh1qXcWPStRIBp9uFqHl3MzBd9roybsd/g=="
+	},
+	{
+		"name": "empty",
+		"keyHex": "1111111111111111111111111111111111111111111111111111111111111111",
+		"keyId": 7,
+		"nonceHex": "000000000000000000000000",
+		"plaintext": "",
+		"table": "Expense",
+		"column": "description",
+		"rowId": "e-2",
+		"wire": "\u0001k1AAAABwAAAAAAAAAAAAAAACG2yjW3inPX3AXyeo3F6sw="
+	}
+]

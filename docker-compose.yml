@@ -18,6 +18,8 @@ services:
       DEFAULT_TIME_ZONE: ${DEFAULT_TIME_ZONE:-}
       SIDECAR_URL: "http://sidecar:8080"
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      DATA_MASTER_KEY: ${DATA_MASTER_KEY:-}
+      DATA_MASTER_KEY_FILE: ${DATA_MASTER_KEY_FILE:-}
       UPLOAD_DIR: /data/uploads
       EXPORT_DIR: /data/exports
       SHOW_LANDING_PAGE: "true"
