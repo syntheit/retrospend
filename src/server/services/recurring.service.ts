@@ -1,11 +1,12 @@
 /**
  * Recurring templates as a service (create, update, delete, extras), so
- * /api/v1 does not carry the logic. Mirrors what routers/recurring.ts does
- * inline; the tRPC router can call these when it is next touched. Confirming
- * a due template is a money write: see recurring-confirm.mutation.ts.
+ * /api/v1 and the web's tRPC router share one write. Both keep a picked due
+ * day at the start of that day in the user's saved zone. Confirming a due
+ * template is a money write: see recurring-confirm.mutation.ts.
  */
 import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
+import { userTimeZone } from "~/server/services/user-time-zone";
 import type {
 	ExpenseDirection,
 	Prisma,
@@ -22,7 +23,7 @@ export interface NewTemplate {
 	readonly currency: string;
 	readonly categoryId?: string;
 	readonly frequency: RecurringFrequency;
-	/** YYYY-MM-DD, the first due day in the caller's zone. */
+	/** YYYY-MM-DD, the first due day: a calendar date, kept in the user's saved zone. */
 	readonly nextDueDate: string;
 	/**
 	 * Day of month a monthly-type schedule keeps (1 to 31). Without it the
@@ -107,12 +108,13 @@ function resolveAnchor(input: NewTemplate): number {
  * The stored due instant for a typed day. Recurring income keeps its day as
  * UTC midnight, which is how the income code reads it (add.mutation,
  * confirm-recurring); an expense template keeps the start of the day in the
- * caller's zone.
+ * user's SAVED zone, the zone every step reads it in. The day is a calendar
+ * date, so the zone of the request that typed it does not move it.
  */
 function dueInstant(
 	day: string,
 	direction: ExpenseDirection,
-	timeZone?: string,
+	timeZone: string,
 ): Date {
 	return direction === "IN"
 		? new Date(`${day}T00:00:00.000Z`)
@@ -123,7 +125,6 @@ export async function createTemplate(
 	db: Db,
 	userId: string,
 	input: NewTemplate,
-	timeZone?: string,
 ) {
 	const direction = input.direction ?? "OUT";
 	await refuseForeignCategory(db, userId, input.categoryId, direction);
@@ -137,7 +138,11 @@ export async function createTemplate(
 			direction,
 			amountMode: input.amountMode ?? "FIXED",
 			frequency: input.frequency,
-			nextDueDate: dueInstant(input.nextDueDate, direction, timeZone),
+			nextDueDate: dueInstant(
+				input.nextDueDate,
+				direction,
+				await userTimeZone(db, userId),
+			),
 			anchorDay: resolveAnchor(input),
 			websiteUrl: input.websiteUrl,
 			paymentSource: input.paymentSource,
@@ -152,7 +157,6 @@ export async function updateTemplate(
 	userId: string,
 	id: string,
 	changes: TemplateChanges,
-	timeZone?: string,
 ) {
 	const existing = await db.recurringTemplate.findFirst({
 		where: { id, userId },
@@ -183,7 +187,7 @@ export async function updateTemplate(
 				nextDueDate: dueInstant(
 					changes.nextDueDate,
 					existing.direction,
-					timeZone,
+					await userTimeZone(db, userId),
 				),
 				anchorDay: anchorOf(changes.nextDueDate),
 			}),

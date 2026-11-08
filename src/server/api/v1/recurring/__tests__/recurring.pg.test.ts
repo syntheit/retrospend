@@ -6,7 +6,7 @@
 import { randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
 import { nextRecurringDate } from "@retrospend/domain/recurring";
-import { dayKey } from "@retrospend/domain/time-zone";
+import { dayKey, parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { defaultTimeZone } from "~/server/services/user-time-zone";
 import { bookedUser } from "../../budget/__tests__/fixtures";
@@ -780,12 +780,16 @@ describe("/api/v1/recurring", () => {
 		});
 		expect(row.date.toISOString().slice(0, 10)).toBe(moved);
 
-		// An expense template keeps the start of the caller's own day.
+		// An expense template keeps the start of the day in the user's own zone
+		// (no zone saved here: the default), not the request's Tokyo.
 		const expense = await make({ name: "Tokyo bill", nextDueDate: due }, tokyo);
 		const bill = await adminDb.recurringTemplate.findUniqueOrThrow({
 			where: { id: expense.id },
 		});
 		expect(bill.nextDueDate.toISOString()).toBe(
+			parseDateOnlyIn(due, defaultTimeZone()).toISOString(),
+		);
+		expect(bill.nextDueDate.toISOString()).not.toBe(
 			new Date(`${due}T00:00:00.000+09:00`).toISOString(),
 		);
 	});

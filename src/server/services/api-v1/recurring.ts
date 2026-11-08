@@ -131,7 +131,6 @@ function createInput(
 			amountMode:
 				input.amountMode === "ask" ? ("ASK" as const) : ("FIXED" as const),
 		},
-		timeZone: caller.timeZone,
 	};
 }
 
@@ -160,21 +159,15 @@ export async function changeRecurring(
 	input: z.infer<typeof updateRecurringSchema>,
 ) {
 	const { id, paused, amountMode, ...rest } = input;
-	await updateTemplate(
-		caller.db,
-		caller.principal.userId,
-		id,
-		{
-			...rest,
-			amountMode: amountMode
-				? amountMode === "ask"
-					? "ASK"
-					: "FIXED"
-				: undefined,
-			isActive: paused === undefined ? undefined : !paused,
-		},
-		caller.timeZone,
-	);
+	await updateTemplate(caller.db, caller.principal.userId, id, {
+		...rest,
+		amountMode: amountMode
+			? amountMode === "ask"
+				? "ASK"
+				: "FIXED"
+			: undefined,
+		isActive: paused === undefined ? undefined : !paused,
+	});
 	return readRecurring(caller, id);
 }
 
