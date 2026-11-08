@@ -2,23 +2,22 @@
  * Loads what the account figures read: every account of the user (closed
  * ones keep their past), its balance updates, legs and rate type switches,
  * Not tracked per currency, and one rate lookup for all their currencies.
- * Reads only through the given client, so a preview sees its own rows.
+ * Reads only through the given client, so a preview sees its own rows. The
+ * rows go to accountsLedgerFromRows in @retrospend/domain, the same builder
+ * a device loader uses.
  */
-import { dec } from "~/server/services/envelope/units";
+import {
+	type AccountRow,
+	type AccountsLedger,
+	accountsLedgerFromRows,
+	type LegRow,
+} from "@retrospend/domain/accounts/account-figures";
 import type { Prisma } from "~prisma";
 import { homeCurrencyOf, ratePickFor } from "./ledger";
-import type { NotTrackedHistory } from "./net-worth-change";
-import type { AccountHistory, LegFacts } from "./series";
-import type { RatePick } from "./valuation";
 
 type Db = Prisma.TransactionClient;
 
-export interface AccountsLedger {
-	readonly homeCurrency: string;
-	readonly histories: readonly AccountHistory[];
-	readonly notTracked: readonly NotTrackedHistory[];
-	readonly pick: RatePick;
-}
+export type { AccountsLedger };
 
 const LEG_SELECT = {
 	id: true,
@@ -32,25 +31,43 @@ const LEG_SELECT = {
 	homeCurrency: true,
 } as const satisfies Prisma.AccountLegSelect;
 
-type LegRow = Prisma.AccountLegGetPayload<{ select: typeof LEG_SELECT }>;
+const ACCOUNT_ROW_SELECT = {
+	id: true,
+	type: true,
+	currency: true,
+	balance: true,
+	exchangeRate: true,
+	exchangeRateType: true,
+	closedAt: true,
+	createdAt: true,
+} as const satisfies Prisma.AssetAccountSelect;
 
-const legFacts = (l: LegRow): LegFacts => ({
-	id: l.id,
-	date: l.date,
-	createdAt: l.createdAt,
-	amount: dec(l.amount.toString()),
-	source: l.source,
-	homeAmount: l.homeAmount === null ? null : dec(l.homeAmount.toString()),
-	homeCurrency: l.homeCurrency,
+type AccountSqlRow = Prisma.AssetAccountGetPayload<{
+	select: typeof ACCOUNT_ROW_SELECT;
+}>;
+
+export const accountRowOf = (a: AccountSqlRow): AccountRow => ({
+	id: a.id,
+	type: a.type,
+	currency: a.currency,
+	balance: a.balance.toString(),
+	exchangeRate: a.exchangeRate === null ? null : a.exchangeRate.toString(),
+	exchangeRateType: a.exchangeRateType,
+	closedAt: a.closedAt,
+	createdAt: a.createdAt,
 });
 
-function groupBy<T, K>(rows: readonly T[], key: (row: T) => K): Map<K, T[]> {
-	const out = new Map<K, T[]>();
-	for (const row of rows) {
-		const k = key(row);
-		out.set(k, [...(out.get(k) ?? []), row]);
-	}
-	return out;
+/** Every account of the user as the figures read it. */
+export async function loadAccountRows(
+	db: Db,
+	userId: string,
+	where: Prisma.AssetAccountWhereInput = {},
+): Promise<AccountRow[]> {
+	const accounts = await db.assetAccount.findMany({
+		where: { userId, ...where },
+		select: ACCOUNT_ROW_SELECT,
+	});
+	return accounts.map(accountRowOf);
 }
 
 export async function loadAccountsLedger(
@@ -58,61 +75,53 @@ export async function loadAccountsLedger(
 	userId: string,
 ): Promise<AccountsLedger> {
 	const homeCurrency = await homeCurrencyOf(db, userId);
-	const accounts = await db.assetAccount.findMany({
-		where: { userId },
-		orderBy: { createdAt: "asc" },
-	});
+	const accounts = await loadAccountRows(db, userId);
 	const snapshots = await db.assetSnapshot.findMany({
 		where: { userId },
-		orderBy: [{ date: "asc" }, { recordedAt: "asc" }],
+		select: {
+			accountId: true,
+			date: true,
+			recordedAt: true,
+			balance: true,
+			currency: true,
+			exchangeRateType: true,
+		},
 	});
 	const legs = await db.accountLeg.findMany({
 		where: { userId },
 		select: LEG_SELECT,
-		orderBy: [{ date: "asc" }, { createdAt: "asc" }],
 	});
-	const rateTypes = await db.assetRateType.findMany({
+	const rateSwitches = await db.assetRateType.findMany({
 		where: { userId },
-		orderBy: [{ from: "asc" }, { createdAt: "asc" }],
-	});
-	const snapshotsOf = groupBy(snapshots, (s) => s.accountId);
-	const legsOf = groupBy(legs, (l) => l.accountId);
-	const typesOf = groupBy(rateTypes, (r) => r.accountId);
-
-	const histories: AccountHistory[] = accounts.map((a) => ({
-		account: {
-			id: a.id,
-			type: a.type,
-			currency: a.currency,
-			exchangeRateType: a.exchangeRateType,
-			exchangeRate:
-				a.exchangeRate === null ? null : dec(a.exchangeRate.toString()),
-			closedAt: a.closedAt,
+		select: {
+			accountId: true,
+			from: true,
+			type: true,
+			previousType: true,
+			createdAt: true,
 		},
-		checkpoints: (snapshotsOf.get(a.id) ?? []).map((s) => ({
-			date: s.date,
-			recordedAt: s.recordedAt,
-			balance: dec(s.balance.toString()),
-			currency: s.currency,
-			exchangeRateType: s.exchangeRateType,
-		})),
-		legs: (legsOf.get(a.id) ?? []).map(legFacts),
-		rateTypes: (typesOf.get(a.id) ?? []).map((r) => ({
-			from: r.from,
-			type: r.type,
-			previousType: r.previousType,
-		})),
-	}));
-	const untracked = groupBy(legsOf.get(null) ?? [], (l) => l.currency);
-	const notTracked = [...untracked].map(([currency, rows]) => ({
-		currency,
-		legs: rows.map(legFacts),
-	}));
+	});
+	const untracked = new Set(
+		legs.filter((l) => l.accountId === null).map((l) => l.currency),
+	);
 	const pick = await ratePickFor(db, [
 		homeCurrency,
 		...accounts.map((a) => a.currency),
 		...snapshots.flatMap((s) => (s.currency ? [s.currency] : [])),
-		...untracked.keys(),
+		...untracked,
 	]);
-	return { homeCurrency, histories, notTracked, pick };
+	return accountsLedgerFromRows({
+		home: homeCurrency,
+		accounts,
+		snapshots: snapshots.map((s) => ({ ...s, balance: s.balance.toString() })),
+		legs: legs.map(
+			(l): LegRow => ({
+				...l,
+				amount: l.amount.toString(),
+				homeAmount: l.homeAmount === null ? null : l.homeAmount.toString(),
+			}),
+		),
+		rateSwitches,
+		pick,
+	});
 }

@@ -6,13 +6,14 @@
  * before the date, otherwise the earliest one after it. Only a currency with
  * no rate rows at all yields null (or a BAD_REQUEST from requireExchangeRate).
  */
-import { TRPCError } from "@trpc/server";
+import { ratePickFromRows } from "@retrospend/domain/accounts/valuation";
 import {
 	type PickedRate,
 	pickBestRate,
 	RATE_ROWS_PER_SIDE,
 	USD,
 } from "@retrospend/domain/money";
+import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient } from "~prisma";
 
 type RateDb = Pick<PrismaClient | Prisma.TransactionClient, "exchangeRate">;
@@ -97,26 +98,13 @@ export async function findExchangeRatesForDates(
 	) => PickedRate | null
 > {
 	const wanted = [...new Set(currencies)].filter((c) => c !== USD);
-	const rowsByCurrency = new Map<
-		string,
-		{ type: string; rate: number; date: Date }[]
-	>();
-	if (wanted.length > 0) {
-		const rows = await db.exchangeRate.findMany({
-			where: { currency: { in: wanted } },
-			select: { currency: true, type: true, rate: true, date: true },
-		});
-		for (const r of rows) {
-			const list = rowsByCurrency.get(r.currency) ?? [];
-			list.push({ type: r.type, rate: Number(r.rate), date: r.date });
-			rowsByCurrency.set(r.currency, list);
-		}
-	}
-	return (currency, date, preferredType) => {
-		if (currency === USD) return USD_RATE(date);
-		return pickBestRate(rowsByCurrency.get(currency) ?? [], {
-			date,
-			preferredType,
-		});
-	};
+	const rows =
+		wanted.length > 0
+			? await db.exchangeRate.findMany({
+					where: { currency: { in: wanted } },
+					select: { currency: true, type: true, rate: true, date: true },
+				})
+			: [];
+	// The pick is the domain's, so a device holding the same rows prices alike.
+	return ratePickFromRows(rows.map((r) => ({ ...r, rate: Number(r.rate) })));
 }

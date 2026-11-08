@@ -4,8 +4,9 @@
  * Every case also checks that the parts add up to the change.
  */
 import { describe, expect, it } from "vitest";
-import { dec } from "~/server/services/envelope/units";
-import type { AccountLegSource, AssetType } from "~prisma";
+import { dec } from "../precise-decimal";
+import type { AccountLegSource } from "./apply-legs";
+import type { AssetType } from "./places";
 import {
 	CHANGE_PARTS,
 	type NotTrackedHistory,

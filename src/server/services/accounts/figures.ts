@@ -10,8 +10,25 @@
  * - `accounts.balance`: per currency, what open accounts hold (liabilities
  *   count against you); narrowed by `accountId`, that one account.
  * - `notTracked`: per currency, the cash side of money moves with no account.
+ *
+ * This file is the server loader: it reads rows with SQL and hands them to
+ * the pure compute in @retrospend/domain/accounts/account-figures, which a
+ * device runs over its own rows. Owed to you and You owe stay server-computed
+ * (payments/figures.ts) and enter as a reading.
  */
-import { normalizeDate } from "~/lib/date";
+import {
+	accountBalancesFrom,
+	CHANGE_DAYS,
+	CHANGE_PARTS,
+	type NetWorthInputs,
+	netWorthChangeFrom,
+	netWorthFrom,
+	notTrackedFrom,
+} from "@retrospend/domain/accounts/account-figures";
+import type {
+	ChangePart,
+	NetWorthChange,
+} from "@retrospend/domain/accounts/net-worth-change";
 import type {
 	FigureDb,
 	FigureDefinition,
@@ -19,36 +36,13 @@ import type {
 	Money,
 } from "~/server/figures/registry";
 import { FigureUnavailable } from "~/server/figures/unavailable";
-import { dec, toMinor } from "~/server/services/envelope/units";
 import { owedOnce } from "~/server/services/payments/figures";
 import { homeCurrencyOf, ratePickFor } from "./ledger";
-import { loadAccountsLedger } from "./load";
-import {
-	CHANGE_PARTS,
-	type ChangePart,
-	type NetWorthChange,
-	netWorthChange,
-} from "./net-worth-change";
-import { worthOf } from "./places";
-import { addDays, dayOf } from "./series";
-import { homeValue } from "./valuation";
+import { loadAccountRows, loadAccountsLedger } from "./load";
 
-/** The span netWorthChange figures cover, in days, ending today. */
-export const CHANGE_DAYS = 30;
+export { CHANGE_DAYS };
 
-function sumByCurrency(
-	rows: readonly { currency: string; minor: number }[],
-): Money[] {
-	const totals = new Map<string, bigint>();
-	for (const r of rows) {
-		totals.set(r.currency, (totals.get(r.currency) ?? 0n) + BigInt(r.minor));
-	}
-	return [...totals].map(([currency, minor]) => ({
-		currency,
-		minor: Number(minor),
-	}));
-}
-
+/** Not tracked units per currency, summed over the legs with no account. */
 async function notTrackedUnits(db: FigureDb, userId: string) {
 	const rows = await db.accountLeg.groupBy({
 		by: ["currency"],
@@ -57,24 +51,39 @@ async function notTrackedUnits(db: FigureDb, userId: string) {
 	});
 	return rows.map((r) => ({
 		currency: r.currency,
-		units: dec(r._sum.amount?.toString() ?? "0"),
+		units: (r._sum.amount ?? "0").toString(),
 	}));
 }
 
-/** Open accounts as Money in their own currencies; liabilities negative. */
-async function openAccountMoney(
+/**
+ * The server loader of net worth: open accounts, Not tracked grouped in SQL,
+ * one rate lookup for every currency they need, and Owed to you and You owe
+ * from the shared owed reading (loaded once per pass with owed.*).
+ */
+export async function loadNetWorthInputs(
 	db: FigureDb,
 	userId: string,
-	accountId?: string,
-) {
-	const accounts = await db.assetAccount.findMany({
-		where: accountId ? { userId, id: accountId } : { userId, closedAt: null },
-		select: { type: true, currency: true, balance: true },
-	});
-	return accounts.map((a) => ({
-		currency: a.currency,
-		minor: toMinor(worthOf(a.type, dec(a.balance.toString())), a.currency),
-	}));
+	pass?: FigurePass,
+): Promise<NetWorthInputs> {
+	const home = await homeCurrencyOf(db, userId);
+	const accounts = await loadAccountRows(db, userId, { closedAt: null });
+	const notTracked = await notTrackedUnits(db, userId);
+	const pick = await ratePickFor(db, [
+		home,
+		...accounts.map((a) => a.currency),
+		...notTracked.map((u) => u.currency),
+	]);
+	const owed = await owedOnce(db, userId, pass);
+	return {
+		home,
+		accounts,
+		notTracked,
+		pick,
+		owed:
+			owed instanceof FigureUnavailable
+				? { missingRates: owed.missingRates }
+				: { owedToYou: owed.owedToYou, youOwe: owed.youOwe },
+	};
 }
 
 /**
@@ -85,62 +94,10 @@ export async function netWorthFor(
 	db: FigureDb,
 	userId: string,
 	pass?: FigurePass,
+	now = new Date(),
 ): Promise<Money | FigureUnavailable> {
-	const home = await homeCurrencyOf(db, userId);
-	const accounts = await db.assetAccount.findMany({
-		where: { userId, closedAt: null },
-		select: {
-			type: true,
-			currency: true,
-			balance: true,
-			exchangeRate: true,
-			exchangeRateType: true,
-		},
-	});
-	const untracked = await notTrackedUnits(db, userId);
-	const pick = await ratePickFor(db, [
-		home,
-		...accounts.map((a) => a.currency),
-		...untracked.map((u) => u.currency),
-	]);
-	const now = new Date();
-	let total = dec(0);
-	const missing: string[] = [];
-	for (const a of accounts) {
-		const value = homeValue(
-			pick,
-			{
-				currency: a.currency,
-				rateType: a.exchangeRateType,
-				storedRate: a.exchangeRate,
-			},
-			worthOf(a.type, dec(a.balance.toString())),
-			home,
-			now,
-		);
-		if (value === null) missing.push(a.currency);
-		else total = total.add(value);
-	}
-	for (const u of untracked) {
-		const value = homeValue(
-			pick,
-			{ currency: u.currency, rateType: null, storedRate: null },
-			u.units,
-			home,
-			now,
-		);
-		if (value === null) missing.push(u.currency);
-		else total = total.add(value);
-	}
-	// Owed in the same home currency, loaded once per pass with owed.*.
-	const owed = await owedOnce(db, userId, pass);
-	if (owed instanceof FigureUnavailable) missing.push(...owed.missingRates);
-	if (missing.length || owed instanceof FigureUnavailable)
-		return new FigureUnavailable(missing);
-	return {
-		minor: toMinor(total, home) + owed.owedToYou - owed.youOwe,
-		currency: home,
-	};
+	const reading = netWorthFrom(await loadNetWorthInputs(db, userId, pass), now);
+	return reading.value ?? new FigureUnavailable(reading.missingRates);
 }
 
 /** The breakdown of the last `days` days, ending today (UTC day, as Wealth's history). */
@@ -148,18 +105,9 @@ export async function netWorthChangeFor(
 	db: FigureDb,
 	userId: string,
 	days = CHANGE_DAYS,
+	now = new Date(),
 ): Promise<NetWorthChange | null> {
-	const ledger = await loadAccountsLedger(db, userId);
-	const today = dayOf(normalizeDate(new Date()));
-	// A move is dated in the user's zone, which can be a day ahead of UTC, so
-	// the span ends a day later: no move dated today is ever left out.
-	return netWorthChange(
-		ledger.histories,
-		ledger.notTracked,
-		{ from: addDays(today, -days), to: addDays(today, 1) },
-		ledger.homeCurrency,
-		ledger.pick,
-	);
+	return netWorthChangeFrom(await loadAccountsLedger(db, userId), now, days);
 }
 
 export const netWorthFigure: FigureDefinition = {
@@ -192,19 +140,21 @@ export const accountsBalanceFigure: FigureDefinition = {
 	id: "accounts.balance",
 	scope: ["accountId"],
 	compute: async (db, scope) =>
-		sumByCurrency(await openAccountMoney(db, scope.userId, scope.accountId)),
+		accountBalancesFrom(
+			await loadAccountRows(
+				db,
+				scope.userId,
+				scope.accountId ? { id: scope.accountId } : { closedAt: null },
+			),
+			scope.accountId,
+		),
 };
 
 export const notTrackedFigure: FigureDefinition = {
 	id: "notTracked",
 	scope: [],
 	compute: async (db, scope) =>
-		(await notTrackedUnits(db, scope.userId))
-			.map((u) => ({
-				currency: u.currency,
-				minor: toMinor(u.units, u.currency),
-			}))
-			.filter((m) => m.minor !== 0),
+		notTrackedFrom(await notTrackedUnits(db, scope.userId)),
 };
 
 export const accountFigures: FigureDefinition[] = [
