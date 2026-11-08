@@ -28,6 +28,15 @@ export interface CachedPass {
 	state: BookState;
 	/** The checkpoint the pass started at, or null when it ran from the start. */
 	startedAt: MonthKey | null;
+	/**
+	 * What the checkpoint carries from the rows behind it (R14), empty when the
+	 * pass ran from the start. A caller that passed only the rows after
+	 * `startedAt` must merge these with the missing and approximate rows of the
+	 * rows it loaded, as the server loader does (inputs.ts), or a book with a
+	 * rate missing behind the checkpoint reads complete.
+	 */
+	missingRates: MissingRate[];
+	approximate: ApproximateRow[];
 }
 
 export class BudgetCheckpointCache {
@@ -91,9 +100,11 @@ export class BudgetCheckpointCache {
 			p.month,
 		);
 		for (const m of p.closedMonths) {
-			if (this.byMonth.has(m) || m < state.firstMonth) continue;
+			if (m < state.firstMonth) continue;
 			const print = prints.get(m);
 			if (print === undefined) continue;
+			// A checkpoint whose fingerprint failed is replaced, or every pass would restart before it.
+			if (this.byMonth.get(m)?.print === print) continue;
 			this.byMonth.set(
 				m,
 				checkpointAt(state, m, {
@@ -103,6 +114,11 @@ export class BudgetCheckpointCache {
 				}),
 			);
 		}
-		return { state, startedAt: cp?.month ?? null };
+		return {
+			state,
+			startedAt: cp?.month ?? null,
+			missingRates: cp ? [...cp.missingRates] : [],
+			approximate: cp ? [...cp.approximate] : [],
+		};
 	}
 }

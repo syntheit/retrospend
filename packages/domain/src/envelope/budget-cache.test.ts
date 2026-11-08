@@ -20,6 +20,7 @@ import {
 } from "./engine";
 import { monthsFrom } from "./months";
 import type { ReplayEffect } from "./splits-replay";
+import type { MissingRate } from "./types";
 
 const START = 202601;
 const CURRENT = 202610;
@@ -247,5 +248,39 @@ describe("BudgetCheckpointCache", () => {
 		sh.minor = -9_900_000;
 		// Checkpoints from April on fail their print; March's still stands.
 		expect(sameAsFull(inputOf(b), cache)).toBe(202603);
+		// That pass replaced them, so the next one starts late again, not at March.
+		expect(sameAsFull(inputOf(b), cache)).toBe(202608);
+	});
+
+	it("a rate missing behind the checkpoint is still reported when only later rows are passed", () => {
+		const b = book(9);
+		const missing: MissingRate = {
+			currency: "USD",
+			rateType: "official",
+			date: "2026-03-10",
+			rowId: "usd-march",
+		};
+		// The device values rows as it loads them: a month's checkpoint carries
+		// the missing rates of rows dated up to it.
+		const through = (m: number) => (m >= 202603 ? [missing] : []);
+		const cache = new BudgetCheckpointCache(hash);
+		const cold = cache.run(inputOf(b), {
+			closedMonths: CLOSED,
+			missingThrough: through,
+		});
+		expect(cold.startedAt).toBeNull();
+		expect(cold.missingRates).toEqual([]);
+		// Warm pass at the August checkpoint; the device loads only later rows,
+		// so its own valuation finds nothing missing.
+		const later = {
+			...inputOf(b),
+			activity: b.activity.filter((a) => a.month > 202608),
+		};
+		const warm = cache.run(later, {
+			closedMonths: CLOSED,
+			missingThrough: through,
+		});
+		expect(warm.startedAt).toBe(202608);
+		expect(warm.missingRates).toEqual([missing]);
 	});
 });
