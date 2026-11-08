@@ -5,8 +5,11 @@ import {
 } from "@retrospend/domain/time-zone";
 import type { Keyring } from "~/server/crypto/field-crypto";
 import type { PrismaClient } from "~prisma";
-import { ilikeEquals, readUserText, searchesInApp } from "./search-fold";
+import { pgLower, readUserText, searchesInApp } from "./search-fold";
 import { listedEntryWhere } from "./spending";
+
+/** The value as an ILIKE pattern that matches only itself. */
+const escapeLike = (text: string) => text.replace(/[\\%_]/g, "\\$&");
 
 /**
  * An expense with the same title (any case), amount, currency and day, for
@@ -19,13 +22,12 @@ import { listedEntryWhere } from "./spending";
  * Postgres filters by user, amount, currency and day only, and the titles of
  * those few rows are opened and compared here. The candidates are one day of
  * one amount in one currency, so no row window is needed. Without a keyring
- * Postgres compares the title too, as before. Both compare titles as Prisma's
- * case-insensitive `equals` does, which is `ILIKE` on the whole title
- * (`ilikeEquals`): per code point, no trimming, no accent folding, and a `%`,
- * `_` or backslash in the asked title is a pattern character, not text. That
- * last part is a quirk of the old query kept on purpose so both paths agree
- * with it; a title of just `%` is a duplicate of anything with that amount. The
- * `title` returned is the opened text.
+ * Postgres compares the title too, as before. Both compare titles literally and
+ * case-insensitively, per code point: no trimming, no accent folding, and `%`,
+ * `_` and backslash are ordinary characters. Prisma's insensitive `equals` is
+ * `ILIKE`, so the SQL path escapes those three first (`escapeLike`); the app
+ * path compares `pgLower` text, the fold ILIKE applies. The `title` returned is
+ * the opened text.
  */
 export async function findDuplicateExpense(
 	db: PrismaClient,
@@ -67,11 +69,14 @@ export async function findDuplicateExpense(
 
 	if (!searchesInApp(keyring))
 		return await db.expense.findFirst({
-			where: { ...where, title: { equals: input.title, mode: "insensitive" } },
+			where: {
+				...where,
+				title: { equals: escapeLike(input.title), mode: "insensitive" },
+			},
 			select: { id: true, title: true },
 		});
 
-	const matches = ilikeEquals(input.title);
+	const wanted = pgLower(input.title);
 	const rows = await db.expense.findMany({
 		where,
 		orderBy: [{ date: "desc" }, { id: "desc" }],
@@ -83,7 +88,7 @@ export async function findDuplicateExpense(
 			column: "title",
 			rowId: row.id,
 		});
-		if (matches(title)) return { id: row.id, title };
+		if (pgLower(title) === wanted) return { id: row.id, title };
 	}
 	return null;
 }

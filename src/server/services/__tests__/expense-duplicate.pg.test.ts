@@ -1,9 +1,8 @@
 /**
  * The duplicate check on the SQL path (no keyring) and the app-layer path
- * (keyring), E2EE lane D7. On plaintext both must answer what the old query
- * answered (copied below as the oracle), including how titles compare: any
- * case, but no trimming and no accent folding, and `%`, `_` and backslash in
- * the asked title are ILIKE pattern characters. Then the day edges in the
+ * (keyring), E2EE lane D7. On plaintext both must give the same answers, with
+ * titles compared literally in any case: no trimming, no accent folding, and
+ * `%`, `_` and backslash mean only themselves. Then the day edges in the
  * user's time zone, other currencies, other users, and sealed titles mixed
  * with plaintext.
  */
@@ -83,49 +82,58 @@ function find(who: Who, ring: Keyring | undefined, q: Query) {
 	);
 }
 
-/** The query as it was before D7: the title was part of the SQL filter. */
-async function oldFind(who: Who, q: Query & { title: string }) {
-	const startOfDay = new Date("2026-10-14T03:00:00Z");
-	const endOfDay = new Date(startOfDay.getTime() + 86_400_000 - 1);
-	return await (who.db as PrismaClient).expense.findFirst({
-		where: {
-			userId: who.user.id,
-			direction: "OUT",
-			entryKind: "STANDARD",
-			title: { equals: q.title, mode: "insensitive" },
-			amount: { equals: q.amount ?? "1500.5" },
-			currency: q.currency ?? "ARS",
-			date: { gte: startOfDay, lte: endOfDay },
-		},
-		select: { id: true, title: true },
-	});
-}
-
-describe("title comparison matches the old query on plaintext", () => {
-	// [stored, asked]: where the old query said yes or no is the oracle, so the
-	// pairs only need to cover the ways two titles can differ.
-	const PAIRS: [string, string][] = [
-		["Coffee", "Coffee"],
-		["Coffee", "coffee"],
-		["coffee", "COFFEE"],
-		["Coffee", "Coffe"],
-		["Coffee", "Coffee shop"],
-		["Coffee", " Coffee"],
-		["Coffee ", "Coffee"],
-		["Café", "Cafe"],
-		["Café", "CAFÉ"],
-		["ÁRBOL", "árbol"],
-		["50% off", "50% OFF"],
-		["50% off", "50_ off"],
-		["50% off", "%"],
-		["100_a", "100xa"],
-		["a\\b", "a\\b"],
-		["İstanbul", "istanbul"],
-		["istanbul", "İSTANBUL"],
-		["ΣΊΣΥΦΟΣ", "σίσυφος"],
-		["ΣΊΣΥΦΟΣ", "σίσυφοσ"],
-		["ß", "SS"],
-		["ǅ", "ǆ"],
+describe("title comparison is literal and case-insensitive", () => {
+	// [stored, asked, duplicate], derived by hand: titles are equal when their
+	// code points are equal after lower-casing each one separately. No trimming,
+	// no accent folding, and `%`, `_` and backslash mean only themselves.
+	const PAIRS: [string, string, boolean][] = [
+		["Coffee", "Coffee", true],
+		["Coffee", "coffee", true],
+		["coffee", "COFFEE", true],
+		["Coffee", "Coffe", false],
+		["Coffee", "Coffee shop", false],
+		["Coffee", " Coffee", false],
+		["Coffee ", "Coffee", false],
+		["Café", "Cafe", false],
+		["Café", "CAFÉ", true],
+		["ÁRBOL", "árbol", true],
+		["İstanbul", "istanbul", true],
+		["istanbul", "İSTANBUL", true],
+		// Sigma lowers one code point at a time: capital sigma is never final.
+		["ΣΊΣΥΦΟΣ", "σίσυφοσ", true],
+		["ΣΊΣΥΦΟΣ", "σίσυφος", false],
+		["ß", "SS", false],
+		["ǅ", "ǆ", true],
+		// The pattern characters of ILIKE.
+		["50% off", "50% OFF", true],
+		["50% off", "50_ off", false],
+		["50% off", "50x off", false],
+		["50% off", "%", false],
+		["50% off", "50%", false],
+		["a%b", "a%b", true],
+		["axxb", "a%b", false],
+		["a_b", "A_B", true],
+		["axb", "a_b", false],
+		["a_b", "a%b", false],
+		["a\\b", "a\\b", true],
+		["ab", "a\\b", false],
+		["a\\b", "ab", false],
+		["a\\%b", "a\\%b", true],
+		["a%b", "a\\%b", false],
+		["a\\%b", "a%b", false],
+		["a\\\\b", "a\\\\b", true],
+		["a\\b", "a\\\\b", false],
+		// A lone trailing backslash is text, not an error.
+		["Lunch\\", "Lunch\\", true],
+		["Lunch\\", "LUNCH\\", true],
+		["Lunch", "Lunch\\", false],
+		["Lunch\\", "Lunch", false],
+		["\\", "\\", true],
+		["x", "\\", false],
+		["_", "_", true],
+		["x", "_", false],
+		["%", "%", true],
+		["x", "%", false],
 	];
 
 	for (const [label, ring] of PATHS) {
@@ -144,28 +152,48 @@ describe("title comparison matches the old query on plaintext", () => {
 				);
 			});
 
-			PAIRS.forEach(([stored, asked], i) => {
-				it(`stored ${JSON.stringify(stored)}, asked ${JSON.stringify(asked)}`, async () => {
-					const q = { title: asked, amount: String(1000 + i) };
-					const before = await oldFind(me, q);
-					const now = await find(me, ring, q);
-					expect(now === null).toBe(before === null);
-					if (before) expect(now?.id).toBe(before.id);
+			PAIRS.forEach(([stored, asked, duplicate], i) => {
+				it(`stored ${JSON.stringify(stored)}, asked ${JSON.stringify(asked)}: ${duplicate ? "duplicate" : "not a duplicate"}`, async () => {
+					const now = await find(me, ring, {
+						title: asked,
+						amount: String(1000 + i),
+					});
+					expect(now === null).toBe(!duplicate);
 				});
 			});
 
-			it("has pairs the old query said yes to and pairs it said no to", async () => {
-				const answers = await Promise.all(
-					PAIRS.map(async ([, asked], i) =>
-						Boolean(await oldFind(me, { title: asked, amount: String(1000 + i) })),
-					),
+			it("a pattern character in the asked title matches only itself among same-day rows", async () => {
+				const user = await createTestUser();
+				await seed(user, [
+					{ title: "Lunch" },
+					{ title: "Lunch1" },
+					{ title: "50% off" },
+					{ title: "50x off" },
+					{ title: "a_c" },
+					{ title: "abc" },
+				]);
+				for (const asked of ["%", "_", "Lunch\\", "50_ off", "a%c", "_bc"])
+					expect(await find(user, ring, { title: asked })).toBeNull();
+				expect((await find(user, ring, { title: "50% OFF" }))?.title).toBe(
+					"50% off",
 				);
-				expect(answers).toContain(true);
-				expect(answers).toContain(false);
+				expect((await find(user, ring, { title: "A_C" }))?.title).toBe("a_c");
+			});
+
+			it("a trailing backslash does not throw", async () => {
+				const user = await createTestUser();
+				await seed(user, [{ title: "Lunch\\" }]);
+				await expect(
+					find(user, ring, { title: "Lunch\\" }),
+				).resolves.toMatchObject({ title: "Lunch\\" });
+				await expect(
+					find(user, ring, { title: "Dinner\\" }),
+				).resolves.toBeNull();
 			});
 		});
 	}
 });
+
 
 for (const [label, ring] of PATHS) {
 	describe(`duplicate check: ${label}`, () => {
@@ -439,4 +467,35 @@ describe("ExpenseService.findDuplicate", () => {
 			(await service.findDuplicate(me.user.id, input, { keyring }))?.id,
 		).toBe(id);
 	});
+
+	for (const [label, options] of [
+		["without a keyring", undefined],
+		["with a keyring", { keyring }],
+	] as const) {
+		it(`a title ending in a backslash is asked and matched literally ${label}`, async () => {
+			const me = await createTestUser();
+			const id = randomUUID();
+			await seed(me, [
+				{ id, title: "Lunch\\" },
+				{ title: "Lunch", amount: "1600" },
+				{ title: "50% off", amount: "1700" },
+				{ title: "50x off", amount: "1800" },
+			]);
+			const service = new ExpenseService(me.db);
+			const ask = (title: string, amount = "1500.5") =>
+				service.findDuplicate(
+					me.user.id,
+					{ title, amount, currency: "ARS", date: NOON, timeZone: TZ },
+					options,
+				);
+			expect((await ask("Lunch\\"))?.id).toBe(id);
+			expect((await ask("LUNCH\\"))?.id).toBe(id);
+			expect(await ask("Dinner\\")).toBeNull();
+			expect(await ask("Lunch\\", "1600")).toBeNull();
+			expect(await ask("50_ off", "1700")).toBeNull();
+			expect(await ask("50%", "1700")).toBeNull();
+			expect(await ask("50% off", "1800")).toBeNull();
+			expect((await ask("50% OFF", "1700"))?.title).toBe("50% off");
+		});
+	}
 });
