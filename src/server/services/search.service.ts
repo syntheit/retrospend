@@ -1,6 +1,8 @@
+import type { Keyring } from "~/server/crypto/field-crypto";
 import type { db as globalDb } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import { Prisma } from "~prisma";
+import { foldUnaccentIlike, readUserText } from "./search-fold";
 
 type AppDb = typeof globalDb;
 
@@ -12,7 +14,8 @@ type AppDb = typeof globalDb;
  * projects, the user table). Matching is
  * `immutable_unaccent(column) ILIKE '%' || immutable_unaccent(q) || '%'`
  * (migration search_unaccent), so "cafe" finds "Café" and "MUNOZ" finds
- * "Muñoz".
+ * "Muñoz". Expenses are the exception: their text may be ciphertext, so the
+ * same match runs in the app layer (search-fold.ts) over a bounded window.
  */
 
 type Page<K> = { after: K | null; take: number };
@@ -35,33 +38,82 @@ export type ExpenseHitRow = {
 	categoryId: string | null;
 };
 
-/** Finalized expenses by title, description or place, newest first. */
+/**
+ * How many of the newest finalized expenses a text search reads. Titles,
+ * descriptions and places may be ciphertext, so they are matched here and not
+ * in SQL; an older expense than the newest SEARCH_EXPENSE_WINDOW is not
+ * found. One query per call whatever the page or the hit count.
+ */
+export const SEARCH_EXPENSE_WINDOW = 20_000;
+
+type ExpenseCandidate = ExpenseHitRow & {
+	description: string | null;
+	location: string | null;
+};
+
+/**
+ * Finalized expenses by title, description or place, newest first. The
+ * window and the cursor are cut in SQL (so ordering and the cursor compare
+ * exactly as before); the text is matched in the app layer.
+ */
 export function searchExpenses(
 	db: AppDb,
 	userId: string,
 	q: string,
 	page: Page<{ date: string; id: string }>,
+	options: {
+		/** Opens ciphertext in text fields; plaintext needs none. */
+		keyring?: Keyring;
+		/** Rows read, for tests; SEARCH_EXPENSE_WINDOW otherwise. */
+		window?: number;
+	} = {},
 ): Promise<ExpenseHitRow[]> {
-	const p = containsPattern(q);
+	const { keyring, window: size = SEARCH_EXPENSE_WINDOW } = options;
+	const needle = foldUnaccentIlike(q);
 	const after = page.after
-		? Prisma.sql`AND ("date", "id") < (${new Date(page.after.date)}, ${page.after.id})`
+		? Prisma.sql`WHERE ("date", "id") < (${new Date(page.after.date)}, ${page.after.id})`
 		: Prisma.empty;
-	return userTransaction(
-		db,
-		userId,
-		(tx) => tx.$queryRaw<ExpenseHitRow[]>`
-			SELECT "id", "title", "date", "amount"::text AS "amount", "currency", "categoryId"
-			FROM "expense"
-			WHERE "userId" = ${userId}
-				AND "status" = 'FINALIZED'
-				AND "isAmortizedChild" = false
-				AND (${matches(Prisma.sql`"title"`, p)}
-					OR ${matches(Prisma.sql`coalesce("description", '')`, p)}
-					OR ${matches(Prisma.sql`coalesce("location", '')`, p)})
-				${after}
-			ORDER BY "date" DESC, "id" DESC
-			LIMIT ${page.take}`,
-	);
+	return userTransaction(db, userId, async (tx) => {
+		const newest = await tx.$queryRaw<ExpenseCandidate[]>`
+			SELECT * FROM (
+				SELECT "id", "title", "date", "amount"::text AS "amount", "currency", "categoryId",
+					"description", "location"
+				FROM "expense"
+				WHERE "userId" = ${userId}
+					AND "status" = 'FINALIZED'
+					AND "isAmortizedChild" = false
+				ORDER BY "date" DESC, "id" DESC
+				LIMIT ${size}
+			) newest
+			${after}
+			ORDER BY "date" DESC, "id" DESC`;
+		const hits: ExpenseHitRow[] = [];
+		for (const row of newest) {
+			const text = (column: string, value: string | null) =>
+				readUserText(keyring, value, {
+					table: "expense",
+					column,
+					rowId: row.id,
+				});
+			const title = text("title", row.title);
+			const found = [
+				title,
+				text("description", row.description),
+				text("location", row.location),
+			].some((t) => foldUnaccentIlike(t).includes(needle));
+			if (!found) continue;
+			hits.push({
+				id: row.id,
+				title,
+				date: row.date,
+				amount: row.amount,
+				currency: row.currency,
+				categoryId: row.categoryId,
+			});
+			if (hits.length === page.take) break;
+		}
+		return hits;
+	});
 }
 
 export type PersonHitRow = {
