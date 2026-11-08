@@ -1,5 +1,6 @@
 import * as z from "zod";
 import { v1 } from "../common/meta";
+import { userText } from "../common/user-text";
 import { idSchema, okSchema, timestampSchema } from "../core";
 import { profileExtrasContract } from "./extras";
 
@@ -27,7 +28,9 @@ export type ProfileDto = z.infer<typeof profileSchema>;
 
 export const updateProfileSchema = z
 	.object({
-		name: z.string().trim().min(1).max(100),
+		name: userText("user.name", 100)
+			.trim()
+			.refine((value) => value.length > 0, { message: "Name cannot be blank" }),
 		username: z
 			.string()
 			.min(1)

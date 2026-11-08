@@ -5,6 +5,7 @@ import {
 	hasLoneSurrogate,
 	USER_TEXT_FIELDS,
 	userText,
+	userTextOrEmpty,
 } from "./user-text";
 
 const schema = userText("test.field", 20);
@@ -53,6 +54,14 @@ describe("userText control characters", () => {
 		expect(schema.safeParse("").success).toBe(false);
 		expect(schema.safeParse("x".repeat(21)).success).toBe(false);
 		expect(schema.parse("  padded  ")).toBe("  padded  ");
+	});
+
+	it("takes an empty string only through userTextOrEmpty", () => {
+		const loose = userTextOrEmpty("test.loose", 20);
+		expect(loose.safeParse("").success).toBe(true);
+		expect(loose.safeParse("x".repeat(21)).success).toBe(false);
+		expect(loose.safeParse("bell\u0007").success).toBe(false);
+		expect(USER_TEXT_FIELDS.has("test.loose")).toBe(true);
 	});
 
 	it("registers the field", () => {

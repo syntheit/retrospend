@@ -1,3 +1,4 @@
+import { userTextOrEmpty } from "@retrospend/api-contract/common";
 import { z } from "zod";
 import {
 	assertWritableParticipant,
@@ -77,7 +78,7 @@ export const verificationRouter = createTRPCRouter({
 		.input(
 			z.object({
 				txnId: z.string().min(1),
-				reason: z.string().max(500).optional(),
+				reason: userTextOrEmpty("shared_expense.reject_reason", 500).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {

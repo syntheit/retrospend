@@ -9,7 +9,7 @@ datasource db {
 
 model User {
   id                    String                @id @default(cuid())
-  name                  String                @db.VarChar(191)
+  name                  String                @db.Text
   username              String                @unique @db.VarChar(64)
   email                 String                @unique @db.VarChar(255)
   emailVerified         Boolean               @default(false)
@@ -1537,7 +1537,7 @@ model ShadowProfile {
 
 model GuestSession {
   id           String   @id @default(cuid())
-  name         String   @db.VarChar(191)
+  name         String   @db.Text
   email        String   @db.VarChar(255)
   magicLinkId  String
   projectId    String
@@ -2174,7 +2174,7 @@ model ErrorReport {
 model Apikey {
   id                  String    @id
   configId            String    @default("default") @db.VarChar(64)
-  name                String?   @db.VarChar(64)
+  name                String?   @db.Text
   start               String?   @db.VarChar(32)
   referenceId         String
   prefix              String?   @db.VarChar(32)

@@ -1,3 +1,4 @@
+import { userTextOrEmpty } from "@retrospend/api-contract/common";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
@@ -66,8 +67,8 @@ export const settlementRouter = createTRPCRouter({
 				direction: settlementDirectionSchema.optional(),
 				amount: z.number().positive("Amount must be positive"),
 				currency: z.string().min(1).max(10),
-				paymentMethod: z.string().max(191).nullish(),
-				note: z.string().max(500).nullish(),
+				paymentMethod: userTextOrEmpty("payment.method", 191).nullish(),
+				note: userTextOrEmpty("payment.note", 500).nullish(),
 				// Scope of the settle-up:
 				//   string  => that project (cap + row stamped with projectId; both
 				//              parties must be project participants)
@@ -99,8 +100,8 @@ export const settlementRouter = createTRPCRouter({
 				// See create.direction.
 				direction: settlementDirectionSchema.optional(),
 				paymentCurrency: z.string().min(1).max(10),
-				paymentMethod: z.string().max(191).nullish(),
-				note: z.string().max(500).nullish(),
+				paymentMethod: userTextOrEmpty("payment.method", 191).nullish(),
+				note: userTextOrEmpty("payment.note", 500).nullish(),
 				// See create.projectId: same scoping and allocation rules.
 				projectId: z.string().min(1).nullish(),
 				differentPayment: z.boolean().optional(),
@@ -120,7 +121,7 @@ export const settlementRouter = createTRPCRouter({
 		.input(
 			z.object({
 				id: z.string().min(1),
-				reason: z.string().max(500).optional(),
+				reason: userTextOrEmpty("payment.reject_reason", 500).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {

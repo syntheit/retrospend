@@ -1,3 +1,4 @@
+import { userText } from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
@@ -15,8 +16,6 @@ import { logAudit } from "~/server/services/shared-expenses/audit-log";
 import { computePeriodSettleStatus } from "~/server/services/shared-expenses/billing-period-settle";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
 import type { Prisma, PrismaClient } from "~prisma";
-
-// ── helpers ──────────────────────────────────────────────────────────────────
 
 function computeBillingPeriodEnd(
 	start: Date,
@@ -660,7 +659,7 @@ export const billingPeriodRouter = createTRPCRouter({
 			z.object({
 				projectId: z.string().min(1),
 				periodId: z.string().min(1),
-				label: z.string().min(1).max(100),
+				label: userText("billing_period.label", 100),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
