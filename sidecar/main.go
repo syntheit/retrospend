@@ -55,29 +55,6 @@ func main() {
 	// for them.
 	var httpJobs sync.WaitGroup
 
-	// A superuser session means entrypoint.sh fell back to the URL as given
-	// because the owner role did not exist. Once the role exists, a superuser
-	// session writing to its tables could fire a trigger the owner planted, so
-	// the sidecar stops and restarts into the owner's URL.
-	ownerAppeared := make(chan struct{})
-	watchCtx, stopWatching := context.WithCancel(context.Background())
-	defer stopWatching()
-	if super, err := config.RunningAsSuperuser(context.Background(), database.Pool); err != nil {
-		log.Printf("Could not tell whether this session is a superuser: %v", err)
-	} else if super {
-		log.Printf("WARNING: running as a superuser because the %s role did not exist at start. Watching for it; the sidecar restarts when it appears.", config.OwnerRole)
-		opts := config.DefaultWatchOptions()
-		opts.Logf = log.Printf
-		go func() {
-			err := config.WatchForOwnerRole(watchCtx, func(ctx context.Context) (bool, error) {
-				return config.OwnerRoleExists(ctx, database.Pool)
-			}, opts)
-			if err == nil {
-				close(ownerAppeared)
-			}
-		}()
-	}
-
 	// Initialize cron scheduler
 	c := cron.New(cron.WithLogger(cron.VerbosePrintfLogger(log.New(os.Stdout, "[CRON] ", log.LstdFlags))))
 
@@ -429,6 +406,16 @@ func main() {
 		IdleTimeout:  120 * time.Second,
 	}
 
+	// Find out whether this is a superuser session (entrypoint.sh fell back to
+	// the URL as given) before any job or request can run. A session that
+	// cannot be checked does not run: the restart retries.
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	lc := newLifecycle(database.Pool, c, server, &httpJobs, database.Close, sigChan)
+	if err := lc.start(context.Background()); err != nil {
+		log.Fatalf("%v", err)
+	}
+
 	// Start server in goroutine
 	go func() {
 		log.Println("✓ HTTP server listening on :8080")
@@ -455,55 +442,10 @@ func main() {
 		log.Println("  - Importer: no LLM provider configured")
 	}
 
-	// Wait for an interrupt signal, or for the owner role to appear while this
-	// sidecar runs as the superuser.
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	exitCode := 0
-	shutdownWait := 30 * time.Second
-	select {
-	case <-sigChan:
-		log.Println("🛑 Shutting down gracefully...")
-	case <-ownerAppeared:
-		log.Printf("🛑 The %s role exists: no new jobs, finishing the running ones, then exiting so the restart connects as the owner", config.OwnerRole)
-		exitCode = 1
-		// A backup may be mid-dump: give running work time to finish.
-		shutdownWait = 5 * time.Minute
-	}
-	stopWatching()
-
-	// No new scheduled jobs; the returned context ends when running ones finish.
-	cronDone := c.Stop()
-
-	// Graceful shutdown with timeout
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownWait)
-	defer shutdownCancel()
-
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Printf("HTTP server shutdown error: %v", err)
-	} else {
-		log.Println("✓ HTTP server stopped gracefully")
-	}
-
-	// Let scheduled jobs and requested ones (a backup mid-dump) finish before the
-	// pool closes under them.
-	jobsDone := make(chan struct{})
-	go func() {
-		<-cronDone.Done()
-		httpJobs.Wait()
-		close(jobsDone)
-	}()
-	select {
-	case <-jobsDone:
-		log.Println("✓ Running jobs finished")
-	case <-shutdownCtx.Done():
-		log.Println("⚠️ Running jobs did not finish in time: closing anyway")
-	}
-
-	database.Close()
-	log.Println("✓ Sidecar stopped")
-	if exitCode != 0 {
-		os.Exit(exitCode)
+	// Wait for a signal, or for the owner role to appear while this sidecar runs
+	// as the superuser; then shut down in order (lifecycle.go).
+	if code := lc.run(); code != 0 {
+		os.Exit(code)
 	}
 }
 
