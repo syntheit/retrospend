@@ -90,6 +90,94 @@ describe("CsvService.importExpensesFromRows", () => {
 			Object.fromEntries(created().map((e) => [e.title, e.excludeFromAnalytics])),
 		).toEqual({ Transfer: true, Food: false, Flagged: true, Kept: false, None: false });
 	});
+	it("stores text without control characters and matches duplicates on what is stored", async () => {
+		useExpenseTable(db, [
+			{ date: OCT5_LOCAL, title: "Coffee", amount: 3500, currency: "ARS", amountInUSD: 2.24 },
+		]);
+
+		const result = await service.importExpensesFromRows(
+			"user-1",
+			[
+				{ title: "Cof\u000bfee", amount: 3500, currency: "ARS", date: OCT5_LOCAL, exchangeRate: 1560 },
+				{
+					title: "  Lun\u0001ch ",
+					amount: 9000,
+					currency: "ARS",
+					date: OCT5_LOCAL,
+					exchangeRate: 1560,
+					location: "BA\u0000",
+					description: "one\r\ntwo\u0007\tthree",
+				},
+				{ title: "Dinner", amount: 100, currency: "ARS", date: OCT5_LOCAL, exchangeRate: 1560, location: "", description: null },
+			],
+			{ timeZone: BA },
+		);
+
+		expect(result.skippedDuplicates).toBe(1);
+		const rows = created();
+		expect(rows.map((e) => e.title)).toEqual(["  Lunch ", "Dinner"]);
+		expect(rows[0]).toMatchObject({ location: "BA", description: "one\r\ntwo\tthree" });
+		expect(rows[1]).toMatchObject({ location: "", description: undefined });
+	});
+	describe("a control character inside a title", () => {
+		const row = (title: string) => ({
+			title,
+			amount: 3500,
+			currency: "ARS",
+			date: OCT5_LOCAL,
+			exchangeRate: 1560,
+		});
+		const existing = (title: string) =>
+			useExpenseTable(db, [
+				{ date: OCT5_LOCAL, title, amount: 3500, currency: "ARS", amountInUSD: 2.24 },
+			]);
+
+		it("importing the same file again skips the row", async () => {
+			useExpenseTable(db, []);
+			const file = [row("COFFEE\u000bSHOP 123")];
+			const first = await service.importExpensesFromRows("user-1", file, { timeZone: BA });
+			expect(first.skippedDuplicates).toBe(0);
+			const stored = created().map((e) => e.title as string);
+			expect(stored).toEqual(["COFFEESHOP 123"]);
+
+			existing(stored[0] ?? "");
+			const again = await service.importExpensesFromRows("user-1", file, { timeZone: BA });
+			expect(again.skippedDuplicates).toBe(1);
+			expect(created()).toHaveLength(1);
+		});
+
+		it("a row stored before the change, with the control in it, is still a duplicate", async () => {
+			existing("COFFEE\u000bSHOP 123");
+			const result = await service.importExpensesFromRows(
+				"user-1",
+				[row("COFFEE\u000bSHOP 123")],
+				{ timeZone: BA },
+			);
+			expect(result.skippedDuplicates).toBe(1);
+			expect(created()).toEqual([]);
+		});
+
+		it("a different title is not a duplicate", async () => {
+			existing("COFFEE SHOP 124");
+			const result = await service.importExpensesFromRows(
+				"user-1",
+				[row("COFFEE\u000bSHOP 123")],
+				{ timeZone: BA },
+			);
+			expect(result.skippedDuplicates).toBe(0);
+		});
+
+		it("the same row twice in one file is imported once", async () => {
+			useExpenseTable(db, []);
+			const result = await service.importExpensesFromRows(
+				"user-1",
+				[row("COFFEE\u000bSHOP 123"), row("COFFEE\u000bSHOP 123")],
+				{ timeZone: BA },
+			);
+			expect(result.skippedDuplicates).toBe(1);
+			expect(created()).toHaveLength(1);
+		});
+	});
 });
 
 vi.mock("~/server/services/amortization.service", () => ({

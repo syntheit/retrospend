@@ -381,3 +381,43 @@ describe("import.undo", () => {
 		).rejects.toThrow("no import to undo");
 	});
 });
+
+describe("import.commit text", () => {
+	it("stores the file's text without control characters, and nothing else changed", async () => {
+		const { user } = await arsUser();
+		const job = await adminDb.importJob.create({
+			data: {
+				userId: user.id,
+				status: "READY_FOR_REVIEW",
+				type: "CSV",
+				fileName: "bank.csv",
+				fileSize: 100,
+				fileType: "csv",
+				transactions: [
+					row("  Caf\u000be\u0001 con LECHE ", 3500, "ARS", {
+						location: "BA\u0002",
+						description: "line one\r\nline\u0007two\ttabbed",
+					}),
+					row("\u0001\u0002", 100, "ARS", { description: "\u0007" }),
+				] as unknown as Prisma.InputJsonValue,
+				warnings: [],
+				totalTransactions: 2,
+			},
+		});
+		await forUser(user.id).apply(commitImport, {
+			jobId: job.id,
+			rows: [
+				{ index: 0, keep: true, categoryId: null, kind: "expense" },
+				{ index: 1, keep: true, categoryId: null, kind: "expense" },
+			],
+		});
+		const rows = await adminDb.expense.findMany({
+			where: { userId: user.id },
+			orderBy: { amount: "desc" },
+		});
+		expect(rows.map((r) => r.title)).toEqual(["Cafe con LECHE", ""]);
+		expect(rows[0]?.location).toBe("BA");
+		expect(rows[0]?.description).toBe("line one\r\nlinetwo\ttabbed");
+		expect(rows[1]?.description).toBeNull();
+	});
+});

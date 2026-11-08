@@ -5,6 +5,7 @@
  * their number fields until stream 4 rebuilds them.
  */
 import { accountRateTextSchema } from "@retrospend/api-contract";
+import { userText, userTextOrEmpty } from "@retrospend/api-contract/common";
 
 export { setAccountOrderSchema } from "@retrospend/api-contract";
 
@@ -26,7 +27,7 @@ const id = z.string().min(1);
 const rateType = z.string().min(1).max(32);
 
 const accountFields = {
-	name: z.string().min(1).max(191),
+	name: userText("account.name", 191),
 	type: z.enum(AssetType),
 	currency: z.string().length(3),
 	balance: z.number(),
@@ -61,7 +62,7 @@ export const importAccountsSchema = z.object({
 	rows: z
 		.array(
 			z.object({
-				name: z.string().min(1).max(191),
+				name: userText("account.name", 191),
 				type: z.enum(AssetType),
 				currency: z.string().length(3),
 				balance: z.number(),
@@ -115,28 +116,35 @@ export const createTransferSchema = z.object({
 	toAmount: positive.nullish(),
 	kind: z.enum(TransferKind).nullish(),
 	date: isoDay.nullish(),
-	note: z.string().max(500).nullish(),
+	note: userTextOrEmpty("transfer.note", 500).nullish(),
 	fee: z.object({ amount: positive, accountId: id.nullish() }).nullish(),
 	envelopeId: id.nullish(),
 	putIn: id.nullish(),
 });
 
-/** The undo of a delete brings the move back with its own id. */
-export const recreateTransferSchema = createTransferSchema.extend({ id });
+/**
+ * The undo of a delete brings the move back with its own id. Restore puts back
+ * what was stored, so the note is a plain string: it must accept anything the
+ * column holds, even a legacy row with a control character.
+ */
+export const recreateTransferSchema = createTransferSchema.extend({
+	id,
+	note: z.string().max(500).nullish(),
+});
 
 export const transferIdSchema = z.object({ transferId: id });
 
 export const addIncomeSchema = z.object({
 	/** A client id: a repeated save (a double click) writes one income. */
 	id: z.uuid().optional(),
-	title: z.string().min(1).max(191),
+	title: userText("income.title", 191),
 	amount: positive,
 	currency,
 	rateType: rateType.nullish(),
 	/** A typed rate: 1 unit of `currency` = this much home (up to 12 decimals). */
 	customRate: customRateSchema.nullish(),
 	categoryId: id.nullish(),
-	description: z.string().max(1000).nullish(),
+	description: userTextOrEmpty("income.description", 1000).nullish(),
 	date: isoDay.nullish(),
 	into: id.nullish(),
 	keep: z.boolean().nullish(),
@@ -150,9 +158,15 @@ export const addIncomeSchema = z.object({
 
 const storedDecimal = z.string().regex(/^-?\d{1,20}(\.\d{1,12})?$/);
 
-/** income.delete's recreate input: the same row, at the rates it was booked at. */
+/**
+ * income.delete's recreate input: the same row, at the rates it was booked at.
+ * Restore puts back what was stored, so title and description are plain
+ * strings: they must accept anything the column holds.
+ */
 export const recreateIncomeSchema = addIncomeSchema.extend({
 	id,
+	title: z.string().min(1).max(191),
+	description: z.string().max(1000).nullish(),
 	restore: z
 		.object({
 			exchangeRate: storedDecimal,

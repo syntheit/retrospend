@@ -9,12 +9,11 @@
  * feed and carriage return, which notes and messages use, and no lone
  * surrogates (they do not survive UTF-8). Server field encryption marks a
  * ciphertext with a leading U+0001 (lane D), so a field declared through
- * `userText` can never hold text that looks like one. That holds only for
- * fields declared here: many write paths still validate with a bare
- * z.string() (expense, shared transaction, people, recurring, settlement,
- * import queue, guest), as do imports, the sidecar and rows written before
- * this rule. D11 must move every encrypted field's write path to `userText`
- * and scan existing rows for a leading U+0001 before encrypting anything.
+ * `userText` can never hold text that looks like one. Every write path for a
+ * declared field validates through it: the contract, the tRPC routers and the
+ * service input schemas. Imports through the sidecar and rows written before
+ * this rule are not covered, so D11 still scans existing rows for a leading
+ * U+0001 before encrypting anything.
  */
 import { z } from "zod";
 
@@ -47,12 +46,37 @@ export function hasLoneSurrogate(text: string): boolean {
 	return false;
 }
 
-/** A user-text field of 1 to `max` characters (plaintext length, rule 6). */
-export function userText(field: string, max: number) {
+/**
+ * The text with the characters `userText` refuses taken out: C0 controls
+ * other than tab, line feed and carriage return, and lone surrogates.
+ * Nothing else changes (no trim, no case folding, rule 11). For writes that
+ * do not come from a form, such as imports and recurring posts, so one stray
+ * control character in a file cannot make the row fail every later edit.
+ */
+export function stripUserTextControls(text: string): string {
+	if (!hasForbiddenControl(text) && !hasLoneSurrogate(text)) return text;
+	let out = "";
+	for (let i = 0; i < text.length; i++) {
+		const code = text.charCodeAt(i);
+		if (code < 0x20) {
+			if (ALLOWED_C0.has(code)) out += text.charAt(i);
+		} else if (code >= 0xd800 && code <= 0xdbff) {
+			const next = text.charCodeAt(i + 1);
+			if (next >= 0xdc00 && next <= 0xdfff) {
+				out += text.slice(i, i + 2);
+				i++;
+			}
+		} else if (code < 0xdc00 || code > 0xdfff) {
+			out += text.charAt(i);
+		}
+	}
+	return out;
+}
+
+function declare(field: string, max: number, required: boolean) {
 	fields.add(field);
-	return z
-		.string()
-		.min(1)
+	const text = z.string();
+	return (required ? text.min(1) : text)
 		.max(max)
 		.refine((value) => !hasForbiddenControl(value), {
 			message: "Text cannot contain control characters",
@@ -60,4 +84,18 @@ export function userText(field: string, max: number) {
 		.refine((value) => !hasLoneSurrogate(value), {
 			message: "Text is not valid Unicode",
 		});
+}
+
+/** A user-text field of 1 to `max` characters (plaintext length, rule 6). */
+export function userText(field: string, max: number) {
+	return declare(field, max, true);
+}
+
+/**
+ * Like `userText`, and "" is valid too. For a route that already took an
+ * empty string (a note cleared in the web app), so declaring the field
+ * changes nothing but the content rules. New fields use `userText`.
+ */
+export function userTextOrEmpty(field: string, max: number) {
+	return declare(field, max, false);
 }

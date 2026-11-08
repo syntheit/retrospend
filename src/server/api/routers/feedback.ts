@@ -3,6 +3,7 @@ import {
 	feedbackDiagnosticsSchema,
 	scrubReport,
 } from "@retrospend/api-contract";
+import { userText, userTextOrEmpty } from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
@@ -21,7 +22,7 @@ export const feedbackRouter = createTRPCRouter({
 	submit: protectedProcedure
 		.input(
 			z.object({
-				message: z.string().min(1).max(5000),
+				message: userText("feedback.message", 5000),
 				pageUrl: z.string(),
 				userAgent: z.string().optional(),
 				viewportSize: z.string().optional(),
@@ -169,7 +170,7 @@ export const feedbackRouter = createTRPCRouter({
 		.input(
 			z.object({
 				id: z.string(),
-				note: z.string().max(2000),
+				note: userTextOrEmpty("feedback.adminNote", 2000),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {

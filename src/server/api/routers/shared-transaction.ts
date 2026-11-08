@@ -1,3 +1,4 @@
+import { userText, userTextOrEmpty } from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
@@ -6,14 +7,10 @@ import {
 	createTRPCRouter,
 	guestOrProtectedProcedure,
 } from "~/server/api/trpc";
+import { participantRefSchema } from "~/server/services/payments/input";
 import { getImageUrl } from "~/server/storage";
 import { deleteSharedAndRecord } from "~/server/services/shared-expenses/delete-tell";
 import { SharedTransactionService } from "~/server/services/shared-expenses/transaction.service";
-
-const participantRefSchema = z.object({
-	participantType: z.enum(["user", "guest", "shadow"]),
-	participantId: z.string().min(1),
-});
 
 const splitParticipantSchema = participantRefSchema.extend({
 	shareAmount: z.number().nonnegative().optional(),
@@ -29,7 +26,7 @@ export const sharedTransactionRouter = createTRPCRouter({
 			z.object({
 				amount: z.number().positive("Amount must be positive"),
 				currency: z.string().min(1).max(10),
-				description: z.string().min(1).max(500),
+				description: userText("shared_expense.description", 500),
 				categoryId: z.cuid().optional(),
 				date: z.date(),
 				paidBy: participantRefSchema,
@@ -38,7 +35,7 @@ export const sharedTransactionRouter = createTRPCRouter({
 					.min(1, "A shared expense must have at least 1 participant"),
 				splitMode: splitModeEnum,
 				projectId: z.cuid().optional(),
-				notes: z.string().max(5000).optional(),
+				notes: userTextOrEmpty("shared_expense.notes", 5000).optional(),
 				receiptUrl: z.url().max(2048).optional(),
 			}),
 		)
@@ -56,7 +53,7 @@ export const sharedTransactionRouter = createTRPCRouter({
 				id: z.string().min(1),
 				amount: z.number().positive("Amount must be positive").optional(),
 				currency: z.string().min(1).max(10).optional(),
-				description: z.string().min(1).max(500).optional(),
+				description: userText("shared_expense.description", 500).optional(),
 				categoryId: z.cuid().nullish(),
 				date: z.date().optional(),
 				paidBy: participantRefSchema.optional(),
@@ -66,7 +63,7 @@ export const sharedTransactionRouter = createTRPCRouter({
 					.optional(),
 				splitMode: splitModeEnum.optional(),
 				projectId: z.cuid().nullish(),
-				notes: z.string().max(5000).nullish(),
+				notes: userTextOrEmpty("shared_expense.notes", 5000).nullish(),
 				receiptUrl: z.url().max(2048).nullish(),
 			}),
 		)

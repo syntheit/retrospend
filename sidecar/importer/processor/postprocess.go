@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"retrospend-sidecar/importer/models"
 	"retrospend-sidecar/money"
+	"retrospend-sidecar/usertext"
 	"strings"
 	"time"
 )
@@ -71,6 +72,12 @@ func ValidateTransactions(transactions []models.NormalizedTransaction, metadata 
 	valid := make([]models.NormalizedTransaction, 0, len(transactions))
 
 	for i, tx := range transactions {
+		// The app refuses control characters in these fields, so a row that
+		// holds one could never be edited. A title that was only controls is
+		// blank now and is skipped below.
+		tx.Title = usertext.StripControls(tx.Title)
+		tx.Location = usertext.StripControls(tx.Location)
+		tx.Description = usertext.StripControls(tx.Description)
 		if err := ValidateTransaction(tx); err != nil {
 			warning := fmt.Sprintf("Skipped transaction #%d: %v (title: '%s', amount: %.2f, date: '%s')",
 				i+1, err, tx.Title, tx.Amount, tx.Date)

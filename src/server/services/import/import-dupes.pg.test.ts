@@ -16,7 +16,10 @@ import {
 	seedArsRates,
 } from "../accounts/test-fixtures";
 import { commitImport } from "./commit.mutation";
+import { fileFingerprint } from "./match";
+import { prepareRows } from "./prepare";
 import { importReview } from "./review";
+import { storedRows } from "./rows";
 
 beforeAll(seedArsRates);
 
@@ -104,6 +107,111 @@ describe("import duplicates", () => {
 		const again = await importReview(adminDb, u, await job(u, rows));
 		expect(again.rows.map((r) => r.duplicate)).toEqual([true, true]);
 		expect(again.counts.duplicates).toBe(2);
+	});
+
+	it("a title with a control character inside: the same statement again is already in Activity", async () => {
+		const u = await user();
+		const rows = [{ title: "COFFEE\u000bSHOP 123", amount: 2500, day: D0 }];
+		await forUser(u).apply(commitImport, {
+			jobId: await job(u, rows),
+			rows: keepAll(1),
+		});
+		const stored = await adminDb.expense.findFirstOrThrow({
+			where: { userId: u },
+		});
+		expect(stored.title).toBe("COFFEESHOP 123");
+		const again = await importReview(adminDb, u, await job(u, rows));
+		expect(again.rows.map((r) => r.duplicate)).toEqual([true]);
+	});
+
+	it("a row imported before text was cleaned, control still in its title, is still recognized", async () => {
+		const u = await user();
+		const rows = [{ title: "COFFEE\u000bSHOP 123", amount: 2500, day: D0 }];
+		await forUser(u).apply(commitImport, {
+			jobId: await job(u, rows),
+			rows: keepAll(1),
+		});
+		// As the old commit stored it: the title as the file had it, and the
+		// fingerprint of that title (its control read as a separator).
+		const spaced = prepareRows(
+			storedRows([
+				fileRow({ ...(rows[0] as FileRow), title: "COFFEE SHOP 123" }),
+			]),
+			{ timeZone: "UTC" },
+		).rows[0];
+		if (!spaced) throw new Error("no row");
+		await adminDb.expense.updateMany({
+			where: { userId: u },
+			data: {
+				title: "COFFEE\u000bSHOP 123",
+				importFingerprint: fileFingerprint(spaced),
+			},
+		});
+		const again = await importReview(adminDb, u, await job(u, rows));
+		expect(again.rows.map((r) => r.duplicate)).toEqual([true]);
+	});
+
+	it("a typed-in row stored with the control in its title matches the file by day, amount and title", async () => {
+		const u = await user();
+		await typed(u, "COFFEE\u000bSHOP 123", 2500, D0);
+		const review = await importReview(
+			adminDb,
+			u,
+			await job(u, [{ title: "COFFEE\u000bSHOP 123", amount: 2500, day: D0 }]),
+		);
+		expect(review.rows.map((r) => r.duplicate)).toEqual([true]);
+	});
+
+	it("a statement the sidecar already cleaned still matches a row stored with the control in its title", async () => {
+		const u = await user();
+		// The old commit's row: the file's title, and the fingerprint of it.
+		const legacy = prepareRows(
+			storedRows([
+				fileRow({ title: "COFFEE SHOP 123", amount: 2500, day: D0 }),
+			]),
+			{ timeZone: "UTC" },
+		).rows[0];
+		if (!legacy) throw new Error("no row");
+		await typed(u, "COFFEE\u000bSHOP 123", 2500, D0);
+		await adminDb.expense.updateMany({
+			where: { userId: u },
+			data: { importFingerprint: fileFingerprint(legacy) },
+		});
+		// The sidecar strips before it stores the job.
+		const cleaned = { title: "COFFEESHOP 123", amount: 2500, day: D0 };
+		const review = await importReview(adminDb, u, await job(u, [cleaned]));
+		expect(review.rows.map((r) => r.duplicate)).toEqual([true]);
+	});
+
+	it("a cleaned title still matches the legacy row by day, amount and title alone", async () => {
+		const u = await user();
+		await typed(u, "COFFEE\u000bSHOP 123", 2500, D0);
+		const review = await importReview(
+			adminDb,
+			u,
+			await job(u, [{ title: "COFFEESHOP 123", amount: 2500, day: D0 }]),
+		);
+		expect(review.rows.map((r) => r.duplicate)).toEqual([true]);
+	});
+
+	it("titles that only differ by a space stay apart", async () => {
+		const u = await user();
+		await typed(u, "AB", 2500, D0);
+		await typed(u, "C D", 4100, D0);
+		await typed(u, "E\u000bF", 5300, D0);
+		const review = await importReview(
+			adminDb,
+			u,
+			await job(u, [
+				{ title: "A B", amount: 2500, day: D0 },
+				{ title: "CD", amount: 4100, day: D0 },
+				{ title: "E F", amount: 5300, day: D0 },
+			]),
+		);
+		// "AB" vs "A B" and "C D" vs "CD" are different descriptions: the
+		// same money on the same day is flagged as possible, never skipped.
+		// "E<control>F" is "E F", so that one is the same row.
+		expect(review.rows.map((r) => r.duplicate)).toEqual([false, false, true]);
 	});
 
 	it("case 2: a hand-typed expense days earlier is flagged, kept; the same description is exact", async () => {
