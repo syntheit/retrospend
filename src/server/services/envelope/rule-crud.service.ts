@@ -14,6 +14,7 @@ import type {
 	IncomeRuleDto,
 	UpdateRuleInput,
 } from "~/lib/schemas/envelope-plan";
+import type { Keyring } from "~/server/crypto/field-crypto";
 import type { Prisma } from "~prisma";
 import { EnvelopeError } from "./errors";
 import { forgetMonthViews } from "./month-read";
@@ -223,8 +224,9 @@ export async function applyRuleToMonth(
 	userId: string,
 	input: ApplyRuleToMonthInput,
 	now: Date,
+	keyring?: Keyring,
 ): Promise<ApplyRuleResult> {
-	await runPendingRules(tx, userId, now);
+	await runPendingRules(tx, userId, now, keyring);
 	const s = await lockedSnapshot(tx, userId, now);
 	const again = await tx.budgetMovement.findMany({
 		where: { bookId: s.loaded.row.id, batchId: input.batchId },
@@ -246,7 +248,7 @@ export async function applyRuleToMonth(
 	});
 	if (!ruleRow) throw new EnvelopeError("NOT_FOUND", "no such rule");
 	if (!ruleRow.active) invalid("resume the rule first");
-	const rule = toRule(ruleRow, s.loaded.book.currency);
+	const rule = toRule(ruleRow, s.loaded.book.currency, keyring);
 	const runs = [];
 	for (const row of await thisMonthEarlierRows(
 		tx,
@@ -260,7 +262,7 @@ export async function applyRuleToMonth(
 		const prev = stored ? loadRecord(stored.record, stored.skipped) : null;
 		if (prev?.skipped || prev?.rules.some((r) => r.id === rule.id)) continue;
 		// A recorded run reruns without matching again, so the new rule must match now.
-		if (prev && !ruleMatches(rule.match, moneyInRow(s.loaded, row))) continue;
+		if (prev && !ruleMatches(rule.match, moneyInRow(s.loaded, row, keyring))) continue;
 		const run = await runOne(tx, s.loaded, userId, {
 			expenseId: row.id,
 			row,
@@ -278,6 +280,7 @@ export async function applyRuleToMonth(
 			rules: prev ? [] : [rule],
 			appliedToEarlier: new Set([rule.id]),
 			batchId: input.batchId,
+			keyring,
 		});
 		if (run && run.lines.length) runs.push(run);
 	}

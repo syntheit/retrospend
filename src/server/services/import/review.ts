@@ -8,10 +8,17 @@
  */
 import { TRPCError } from "@trpc/server";
 import { categoryNameKey } from "~/lib/category-name-key";
+import type { Keyring } from "~/server/crypto/field-crypto";
 import type { Money } from "~/server/figures/registry";
 import type { Prisma, PrismaClient } from "~prisma";
 import { toMinor } from "../envelope/units";
 import { loadRateContext } from "../rate-types";
+import {
+	APP_LAYER_WINDOW,
+	pgLower,
+	readUserText,
+	searchesInApp,
+} from "../search-fold";
 import { bookImportRow, type ImportRate } from "./book";
 import { matchFile } from "./match";
 import { prepareRows } from "./prepare";
@@ -117,19 +124,21 @@ function rateView(rate: ImportRate | null, currency: string, home: string) {
 	};
 }
 
-/** For each unmatched name, the category its titles were filed under most often. */
-async function suggestions(
+/**
+ * How many of the newest categorized expenses the app-layer path reads for
+ * suggestions. Titles older than that are not counted on that path; the SQL
+ * path has no such limit. One query per review.
+ */
+export const SUGGESTION_WINDOW = APP_LAYER_WINDOW;
+
+type Used = { title: string; categoryId: string | null; count: number };
+
+/** The SQL path: Postgres finds the rows whose title equals one of `titles`, ignoring case. */
+async function usedInSql(
 	db: Db,
 	userId: string,
-	groups: Map<string, string[]>,
-	allowed: ReadonlySet<string>,
-): Promise<Map<string, string>> {
-	const titles = [...new Set([...groups.values()].flat())].slice(
-		0,
-		SUGGEST_TITLES,
-	);
-	const out = new Map<string, string>();
-	if (titles.length === 0) return out;
+	titles: readonly string[],
+): Promise<Used[]> {
 	const used = await db.expense.groupBy({
 		by: ["title", "categoryId"],
 		where: {
@@ -139,13 +148,75 @@ async function suggestions(
 		},
 		_count: { _all: true },
 	});
+	return used.map((u) => ({
+		title: u.title,
+		categoryId: u.categoryId,
+		count: u._count._all,
+	}));
+}
+
+/**
+ * The app-layer path, for titles that may be ciphertext: read the newest
+ * categorized expenses, open each title, and keep those equal to one of
+ * `titles` after `pgLower`, which is what `equals ... mode: insensitive`
+ * (`lower(col) = lower(value)`) compares. Counts are per (title, category),
+ * as the SQL grouped them.
+ */
+async function usedInApp(
+	db: Db,
+	userId: string,
+	titles: readonly string[],
+	keyring: Keyring,
+	window: number,
+): Promise<Used[]> {
+	const wanted = new Set(titles.map(pgLower));
+	const rows = await db.expense.findMany({
+		where: { userId, categoryId: { not: null } },
+		orderBy: [{ date: "desc" }, { id: "desc" }],
+		take: window,
+		select: { id: true, title: true, categoryId: true },
+	});
+	const counts = new Map<string, Used>();
+	for (const r of rows) {
+		const title = readUserText(keyring, r.title, {
+			table: "expense",
+			column: "title",
+			rowId: r.id,
+		});
+		if (!wanted.has(pgLower(title))) continue;
+		const key = `${r.categoryId}\u0000${title}`;
+		const seen = counts.get(key);
+		if (seen) seen.count++;
+		else counts.set(key, { title, categoryId: r.categoryId, count: 1 });
+	}
+	return [...counts.values()];
+}
+
+/** For each unmatched name, the category its titles were filed under most often. */
+async function suggestions(
+	db: Db,
+	userId: string,
+	groups: Map<string, string[]>,
+	allowed: ReadonlySet<string>,
+	options: { keyring?: Keyring; window?: number } = {},
+): Promise<Map<string, string>> {
+	const titles = [...new Set([...groups.values()].flat())].slice(
+		0,
+		SUGGEST_TITLES,
+	);
+	const out = new Map<string, string>();
+	if (titles.length === 0) return out;
+	const { keyring, window } = options;
+	const used = searchesInApp(keyring)
+		? await usedInApp(db, userId, titles, keyring, window ?? SUGGESTION_WINDOW)
+		: await usedInSql(db, userId, titles);
 	for (const [name, names] of groups) {
 		const wanted = new Set(names.map((n) => n.toLowerCase()));
 		const score = new Map<string, number>();
 		for (const u of used) {
 			if (!u.categoryId || !allowed.has(u.categoryId)) continue;
 			if (!wanted.has(u.title.toLowerCase())) continue;
-			score.set(u.categoryId, (score.get(u.categoryId) ?? 0) + u._count._all);
+			score.set(u.categoryId, (score.get(u.categoryId) ?? 0) + u.count);
 		}
 		const best = [...score].sort((a, b) => b[1] - a[1])[0];
 		if (best) out.set(name, best[0]);
@@ -157,7 +228,14 @@ export async function importReview(
 	db: Db,
 	userId: string,
 	jobId: string,
-	options: { currency?: string | null; timeZone?: string } = {},
+	options: {
+		currency?: string | null;
+		timeZone?: string;
+		/** Opens ciphertext in titles; passing one picks the app-layer paths. */
+		keyring?: Keyring;
+		/** App-layer suggestions only: rows read, for tests. */
+		suggestionWindow?: number;
+	} = {},
 ): Promise<ImportReview> {
 	const job = await loadReviewableJob(db, userId, jobId);
 	const stored = storedRows(job.transactions);
@@ -169,7 +247,14 @@ export async function importReview(
 			where: { userId },
 			select: { id: true, name: true, kind: true },
 		}),
-		matchFile(db, userId, rows, (r) => r.proposed, options.timeZone),
+		matchFile(
+			db,
+			userId,
+			rows,
+			(r) => r.proposed,
+			options.timeZone,
+			options.keyring,
+		),
 	]);
 	const home = ctx.homeCurrency;
 	const byName = new Map(categories.map((c) => [categoryNameKey(c.name), c]));
@@ -221,7 +306,10 @@ export async function importReview(
 	const expenseIds = new Set(
 		categories.filter((c) => c.kind === "EXPENSE").map((c) => c.id),
 	);
-	const suggested = await suggestions(db, userId, unmatched, expenseIds);
+	const suggested = await suggestions(db, userId, unmatched, expenseIds, {
+		keyring: options.keyring,
+		window: options.suggestionWindow,
+	});
 	const unreadable = unreadableCount(job.warnings) + badDates;
 	return {
 		jobId: job.id,

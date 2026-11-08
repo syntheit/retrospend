@@ -14,10 +14,13 @@
  * entry that was deleted or linked elsewhere, is not touched.
  */
 import { TRPCError } from "@trpc/server";
+import type { Keyring } from "~/server/crypto/field-crypto";
+import type { Prisma } from "~prisma";
 import { FIGURE_PLAN_COST } from "./envelope/figures";
 import { RECURRING_COST_FIGURES } from "./figures/recurring";
 import type { MoneyMutation } from "./preview/types";
 import { deleteTemplate } from "./recurring.service";
+import { pgLower, readUserText } from "./search-fold";
 
 /** A template as the undo token carries it: dates as ISO text, the amount as decimal text. */
 export interface TemplateSnapshot {
@@ -122,6 +125,45 @@ export interface RestoreRecurringInput {
 	readonly template: TemplateSnapshot;
 }
 
+/** The name of a template row, opened: it may be ciphertext. */
+const nameOf = (
+	keyring: Keyring | undefined,
+	row: { id: string; name: string },
+) =>
+	readUserText(keyring, row.name, {
+		table: "recurringTemplate",
+		column: "name",
+		rowId: row.id,
+	});
+
+/**
+ * Whether the user has an active template like `t`: the same amount,
+ * currency, frequency and direction, and the same name ignoring case
+ * (`lower(name) = lower(value)`, which is `pgLower` equality). SQL narrows by
+ * everything but the name, so the names compared here are those of one
+ * user's active templates with that exact money and schedule: a handful.
+ */
+async function sameByHand(
+	tx: Prisma.TransactionClient,
+	userId: string,
+	t: TemplateSnapshot,
+	keyring: Keyring | undefined,
+): Promise<boolean> {
+	const candidates = await tx.recurringTemplate.findMany({
+		where: {
+			userId,
+			isActive: true,
+			amount: t.amount,
+			currency: t.currency,
+			frequency: t.frequency,
+			direction: t.direction,
+		},
+		select: { id: true, name: true },
+	});
+	const name = pgLower(nameOf(keyring, t));
+	return candidates.some((c) => pgLower(nameOf(keyring, c)) === name);
+}
+
 /** Puts a deleted template back, unless one with its id, or the same one by hand, exists. */
 function restoreWith(
 	touches: readonly string[],
@@ -141,19 +183,10 @@ function restoreWith(
 					message: "This template is back already",
 				});
 			// Made again by hand since: restoring would run it twice.
-			const twin = await tx.recurringTemplate.findFirst({
-				where: {
-					userId: actor.userId,
-					isActive: true,
-					name: { equals: t.name, mode: "insensitive" },
-					amount: t.amount,
-					currency: t.currency,
-					frequency: t.frequency,
-					direction: t.direction,
-				},
-				select: { id: true },
-			});
-			if (twin && t.isActive)
+			const twin = t.isActive
+				? await sameByHand(tx, actor.userId, t, actor.keyring)
+				: false;
+			if (twin)
 				throw new TRPCError({
 					code: "CONFLICT",
 					message: "You already have a recurring expense like this one",

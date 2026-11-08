@@ -1,3 +1,4 @@
+import type { Keyring } from "~/server/crypto/field-crypto";
 import type {
 	FigureDb,
 	FigureNarrowing,
@@ -8,6 +9,12 @@ import type {
 /** Who the mutation runs as. The transaction is already scoped to this user (RLS). */
 export interface Actor {
 	readonly userId: string;
+	/**
+	 * Opens ciphertext in user text, for the mutations that match on it
+	 * (import commit, recurring restore, income rules). Absent while field
+	 * encryption is off, which is the case today; D11 supplies it.
+	 */
+	readonly keyring?: Keyring;
 }
 
 export interface RowRef {
