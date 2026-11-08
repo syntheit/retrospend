@@ -4,12 +4,13 @@ import crypto from "crypto";
 import { z } from "zod";
 import { env } from "~/env";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
+import {
+	deleteGuestSessionAsAdmin,
+	deleteShadowProfileAsAdmin,
+} from "~/server/services/admin-person-removal.service";
 import { disableUserKeepingAnAdmin } from "~/server/services/admin-guard.service";
 import {
 	anonymizeAndDeleteUser,
-	anonymizeParticipantReferences,
-	DELETED_GUEST_SENTINEL,
-	deletedShadowSentinel,
 } from "~/server/services/user-deletion.service";
 import {
 	getPasswordChangedAlertTemplate,
@@ -806,17 +807,9 @@ export const adminRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 
-			const profile = await db.shadowProfile.findUnique({
-				where: { id: input.id },
-				select: { id: true, name: true },
-			});
-			if (!profile) {
-				throw new TRPCError({ code: "NOT_FOUND", message: "Shadow profile not found" });
-			}
-
-			await db.$transaction(async (tx) => {
-				await anonymizeParticipantReferences(tx, "shadow", profile.id, deletedShadowSentinel(profile.id));
-				await tx.shadowProfile.delete({ where: { id: profile.id } });
+			const profile = await deleteShadowProfileAsAdmin(db, {
+				adminId: session.user.id,
+				id: input.id,
 			});
 
 			logEventAsync({
@@ -837,17 +830,9 @@ export const adminRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 
-			const guest = await db.guestSession.findUnique({
-				where: { id: input.id },
-				select: { id: true, name: true, email: true },
-			});
-			if (!guest) {
-				throw new TRPCError({ code: "NOT_FOUND", message: "Guest session not found" });
-			}
-
-			await db.$transaction(async (tx) => {
-				await anonymizeParticipantReferences(tx, "guest", guest.id, DELETED_GUEST_SENTINEL);
-				await tx.guestSession.delete({ where: { id: guest.id } });
+			const guest = await deleteGuestSessionAsAdmin(db, {
+				adminId: session.user.id,
+				id: input.id,
 			});
 
 			logEventAsync({

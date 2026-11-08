@@ -226,6 +226,22 @@
 				"mcp": "Client MCP",
 				"device": "Appareil approuvé"
 			}
+		},
+		"adminAccess": {
+			"title": "Accès administrateur",
+			"none": "Aucun administrateur n'a agi sur ton compte.",
+			"action": {
+				"password_reset": "Un administrateur a réinitialisé ton mot de passe",
+				"reset_link": "Un administrateur a créé un lien de réinitialisation de ton mot de passe",
+				"disabled": "Un administrateur a désactivé ton compte",
+				"enabled": "Un administrateur a réactivé ton compte",
+				"email_verified": "Un administrateur a vérifié ton e-mail",
+				"email_verification_changed": "Un administrateur a modifié la vérification de ton e-mail",
+				"ai_access_changed": "Un administrateur a modifié ton accès à l'IA externe",
+				"avatar_removed": "Un administrateur a supprimé ta photo",
+				"person_deleted": "Un administrateur a supprimé une personne que tu avais ajoutée",
+				"shared_data_changed": "Un administrateur a retiré une personne de tes dépenses partagées"
+			}
 		}
 	},
 	"password": {

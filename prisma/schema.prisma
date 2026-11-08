@@ -83,6 +83,7 @@ model User {
 
   feedback                Feedback[]
   errorReports            ErrorReport[]
+  adminAccessLog          AdminAccessLog[]
   usernameHistory         UsernameHistory[]
   createdShadowProfiles   ShadowProfile[]          @relation("CreatedShadowProfiles")
   claimedShadowProfiles   ShadowProfile[]          @relation("ClaimedShadowProfiles")
@@ -2120,6 +2121,23 @@ model Feedback {
   @@index([status])
   @@index([createdAt])
   @@map("feedback")
+}
+
+/// One row each time an admin acts on a person's account. The admin writes it
+/// with the global connection; the person can only read their own rows.
+/// `action` is a stable code (see admin-access.service.ts), never free text,
+/// and `adminId` is a plain id so the row outlives the admin's account.
+model AdminAccessLog {
+  id        String   @id @default(cuid())
+  userId    String
+  adminId   String
+  action    String   @db.VarChar(40)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("admin_access_log")
 }
 
 /// A crash or unhandled rejection the mobile app recorded and the person

@@ -226,6 +226,22 @@
 				"mcp": "MCP-Client",
 				"device": "Freigegebenes Gerät"
 			}
+		},
+		"adminAccess": {
+			"title": "Admin-Zugriff",
+			"none": "Kein Admin hat etwas an deinem Konto getan.",
+			"action": {
+				"password_reset": "Ein Admin hat dein Passwort zurückgesetzt",
+				"reset_link": "Ein Admin hat einen Link zum Zurücksetzen deines Passworts erstellt",
+				"disabled": "Ein Admin hat dein Konto deaktiviert",
+				"enabled": "Ein Admin hat dein Konto wieder aktiviert",
+				"email_verified": "Ein Admin hat deine E-Mail bestätigt",
+				"email_verification_changed": "Ein Admin hat die Bestätigung deiner E-Mail geändert",
+				"ai_access_changed": "Ein Admin hat deinen externen KI-Zugriff geändert",
+				"avatar_removed": "Ein Admin hat dein Foto entfernt",
+				"person_deleted": "Ein Admin hat eine Person gelöscht, die du hinzugefügt hast",
+				"shared_data_changed": "Ein Admin hat eine Person aus deinen geteilten Ausgaben entfernt"
+			}
 		}
 	},
 	"password": {

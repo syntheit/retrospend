@@ -39,6 +39,10 @@ vi.mock("~/server/services/audit.service", () => ({
 	logEventAsync: vi.fn(),
 }));
 
+vi.mock("~/server/services/admin-access.service", () => ({
+	logAdminProcedure: vi.fn(),
+}));
+
 vi.mock("~/server/mailer", () => ({ sendEmail: vi.fn() }));
 vi.mock("~/server/storage", () => ({
 	deleteFile: vi.fn(),

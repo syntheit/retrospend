@@ -1,4 +1,5 @@
 import { adminRouter } from "~/server/api/routers/admin";
+import { adminAccessRouter } from "~/server/api/routers/admin-access";
 import { adminOverviewRouter } from "~/server/api/routers/admin-overview";
 import { auditLogRouter } from "~/server/api/routers/audit-log";
 import { authRouter } from "~/server/api/routers/auth";
@@ -54,6 +55,7 @@ const adminAllRouter = mergeRouters(adminRouter, adminOverviewRouter);
 
 export const appRouter = createTRPCRouter({
 	admin: adminAllRouter,
+	adminAccess: adminAccessRouter,
 	auditLog: auditLogRouter,
 	guest: guestRouter,
 	auth: authRouter,
