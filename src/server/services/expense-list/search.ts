@@ -19,6 +19,11 @@ const FOLD = new Map([...FOLD_FROM].map((c, i) => [c, [...FOLD_TO][i]]));
  * FOLD_FROM, FOLD_TO))`. Only the table's letters lose their accents, so
  * Cyrillic й and ё stay as they are on both sides. NFC first, so an accent
  * typed as a combining mark meets the table's precomposed letter.
+ *
+ * Lowercasing is per code point (pgLower), as Postgres lower() does on the
+ * column. This changed from JS toLowerCase on the whole query, a bug fix on
+ * the SQL path too: "ΟΔΟΣ" now folds to "οδοσ" (it used to get a final sigma
+ * and miss the column) and "İstanbul" to "istanbul".
  */
 export function foldText(text: string): string {
 	return foldColumn(text.normalize("NFC"));

@@ -54,8 +54,11 @@ export function foldUnaccentIlike(text: string): string {
  * The one switch between the two ways to match search text. Without a keyring
  * (field encryption is not active, the case today) Postgres matches in SQL
  * over every row. With one, text may be ciphertext, so candidates are read
- * and matched in the app layer over a bounded window. D11 passes the user's
- * keyring when DATA_KEYS_WRITE is on; until then nothing supplies one.
+ * and matched in the app layer over a bounded window: v1 search reads the
+ * newest SEARCH_EXPENSE_WINDOW (20,000) expenses, Activity the newest
+ * SEARCH_CANDIDATE_CAP (20,000) rows per source, so older rows are not found
+ * on that path. D11 passes the user's keyring when DATA_KEYS_WRITE is on;
+ * until then nothing supplies one.
  */
 export function searchesInApp(
 	keyring: Keyring | undefined,

@@ -175,6 +175,7 @@ beforeAll(async () => {
 			row("Muñoz & Hijos", day(7), { location: "Plaza Ñuñoa" }),
 			row("İstanbul trip", day(8)),
 			row("Straße", day(9)),
+			row("ΟΔΟΣ", day(13)),
 			row("Super", day(10), {
 				amount: "64000",
 				description: "café de la esquina",
@@ -362,6 +363,16 @@ describe.each(PATHS)("Activity search on %s vs the old SQL", (_name, ring) => {
 		expect(oct.items.map((i) => i.title)).not.toContain("Old café");
 		expect(oct.items.map((i) => i.title)).not.toContain("Draft café");
 		expect(oct.items.map((i) => i.title)).not.toContain("Café de Bob");
+	});
+
+	it("lowercases per letter as lower() does: sigma and I with dot", async () => {
+		const titles = async (q: string) =>
+			(await activity(q, { limit: 5 })).items.map((i) => i.title);
+		// The query "ΟΔΟΣ" used to fold to a final sigma and miss the column.
+		expect(await titles("ΟΔΟΣ")).toEqual(["ΟΔΟΣ"]);
+		expect(await titles("οδοσ")).toEqual(["ΟΔΟΣ"]);
+		expect(await titles("istanbul")).toEqual(["İstanbul trip"]);
+		expect(await titles("İSTANBUL")).toEqual(["İstanbul trip"]);
 	});
 
 	it("treats an I with dot as an i, as lower() does", async () => {

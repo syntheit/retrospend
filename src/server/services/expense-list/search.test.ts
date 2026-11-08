@@ -7,6 +7,7 @@ import {
 	FOLD_TO,
 	foldColumn,
 	foldText,
+	likePattern,
 } from "./search";
 
 describe("Activity search", () => {
@@ -37,6 +38,10 @@ describe("Activity search", () => {
 		// lower() has no context: a final sigma stays sigma, I with dot is i.
 		expect(foldColumn("ΟΔΟΣ")).toBe("οδοσ");
 		expect(foldColumn("\u0130stanbul")).toBe("istanbul");
+	});
+
+	it("escapes LIKE wildcards", () => {
+		expect(likePattern(" 100%_ok ")).toBe("%100\\%\\_ok%");
 	});
 
 	it("reads typed amounts in both grouping styles", () => {

@@ -1,7 +1,10 @@
 /**
  * The app-layer folds against the SQL they replaced, over every code point:
  * `immutable_unaccent` and `lower`. A Postgres upgrade that changes either
- * fails here instead of silently changing what search finds.
+ * fails here instead of silently changing what search finds. unaccent is
+ * compared for every code point from 128 up; pgLower for code points 65 to
+ * 8579 minus 7305 to 7311, since newer scripts depend on the database's
+ * Unicode tables.
  */
 import { describe, expect, it } from "vitest";
 import { adminDb } from "~/test/pg-harness";
