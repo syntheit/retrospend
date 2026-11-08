@@ -19,9 +19,17 @@
 import { z } from "zod";
 
 const fields = new Set<string>();
+const limits = new Map<string, number>();
 
 /** Every declared user-text field, as "<entity>.<field>". */
 export const USER_TEXT_FIELDS: ReadonlySet<string> = fields;
+
+/**
+ * The longest plaintext each declared field accepts, in UTF-16 units. A field
+ * declared with several limits keeps the largest. The column that stores it
+ * must hold the ciphertext of that much text (src/test/migrations).
+ */
+export const USER_TEXT_LIMITS: ReadonlyMap<string, number> = limits;
 
 const ALLOWED_C0 = new Set([0x09, 0x0a, 0x0d]);
 
@@ -50,6 +58,7 @@ export function hasLoneSurrogate(text: string): boolean {
 /** A user-text field of 1 to `max` characters (plaintext length, rule 6). */
 export function userText(field: string, max: number) {
 	fields.add(field);
+	limits.set(field, Math.max(limits.get(field) ?? 0, max));
 	return z
 		.string()
 		.min(1)
