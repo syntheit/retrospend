@@ -11,7 +11,6 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Client } from "pg";
 import { beforeAll, describe, expect, it } from "vitest";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { userTransaction } from "~/server/db-tx";
@@ -21,6 +20,7 @@ import { createPreviewRunner } from "~/server/services/preview/runner";
 import { computeBalance } from "~/server/services/shared-expenses/balance";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import { adminDb, createTestUser } from "~/test/pg-harness";
+import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 import { confirmPayment, unconfirmPayment } from "./confirm.mutation";
 import { type RecordPaymentInput, recordPayment } from "./record.mutation";
 import { personKey } from "./view";
@@ -449,29 +449,27 @@ describe("M3 payments_corrections backfill", () => {
 			),
 			"utf8",
 		);
-		const client = new Client({ connectionString: process.env.DATABASE_URL });
-		await client.connect();
-		const count = async () => {
-			const row = (await client.query(M3_PRECHECK)).rows[0];
-			return Object.fromEntries(
-				Object.entries(row).map(([k, v]) => [k, Number(v)]),
-			);
-		};
-		try {
+		const a = (await createTestUser()).user.id;
+		await inRolledBackTransaction(async (client) => {
+			const count = async () => {
+				const row = (await client.query(M3_PRECHECK)).rows[0];
+				return Object.fromEntries(
+					Object.entries(row).map(([k, v]) => [k, Number(v)]),
+				);
+			};
 			// The pre-check also runs before M3, when there is no payment table.
-			await client.query("BEGIN");
+			await client.query("SAVEPOINT before_rename");
 			await client.query("ALTER TABLE payment RENAME TO payment_hidden");
 			const groups = await client.query(
 				'SELECT COUNT(DISTINCT COALESCE("paymentGroupId", id)) AS n FROM settlement',
 			);
 			expect((await count()).headers_to_create).toBe(Number(groups.rows[0].n));
-			await client.query("ROLLBACK");
+			await client.query("ROLLBACK TO SAVEPOINT before_rename");
 
 			const baseline = await count();
 			await client.query(
 				'ALTER TABLE settlement DROP CONSTRAINT "settlement_paymentGroupId_fkey"',
 			);
-			const a = (await createTestUser()).user.id;
 			const b = martin.user.id;
 			const legacy: LegacyRow[] = [
 				{
@@ -577,17 +575,25 @@ describe("M3 payments_corrections backfill", () => {
 				converted_without_currency: plus("converted_without_currency", 1),
 				sub_minor_amounts: plus("sub_minor_amounts", 1),
 			});
-			const headers = await adminDb.payment.findMany({
-				where: {
-					id: { in: ["legacy-single", "legacy-conv", "group-1", "group-2"] },
-				},
-				orderBy: { id: "asc" },
-			});
+			const headers = await client.query<{
+				id: string;
+				payerId: string;
+				amount: string;
+				currency: string;
+				status: string;
+				recordedById: string;
+			}>(
+				`SELECT id, "payerId", trim_scale(amount)::text AS amount, currency,
+				        status::text AS status, "recordedById"
+				 FROM payment
+				 WHERE id IN ('legacy-single', 'legacy-conv', 'group-1', 'group-2')
+				 ORDER BY id`,
+			);
 			expect(
-				headers.map((h) => [
+				headers.rows.map((h) => [
 					h.id,
 					h.payerId,
-					h.amount.toString(),
+					h.amount,
 					h.currency,
 					h.status,
 					h.recordedById,
@@ -598,12 +604,6 @@ describe("M3 payments_corrections backfill", () => {
 				["legacy-conv", a, "10.005", "USD", "FINALIZED", a],
 				["legacy-single", a, "10", "USD", "FINALIZED", a],
 			]);
-		} finally {
-			// The old migration brings back its single payment policy; the write
-			// rules (the settlement_write_rls migration) replaced it, and later
-			// files of this run need them.
-			await client.query('DROP POLICY IF EXISTS "payment_access" ON "payment"');
-			await client.end();
-		}
+		});
 	});
 });
