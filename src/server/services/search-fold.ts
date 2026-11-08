@@ -51,6 +51,51 @@ export function foldUnaccentIlike(text: string): string {
 }
 
 /**
+ * `lower(x) ILIKE '%' || q || '%'` as a predicate, which is what Prisma's
+ * `contains` with `mode: "insensitive"` runs. Prisma does not escape the
+ * pattern, so `%` and `_` in q are wildcards and a backslash escapes the next
+ * character (a trailing one escapes the closing `%`). Matching is per code
+ * point on `pgLower` text with the one-backtrack-point wildcard algorithm, so
+ * a hostile q cannot make it slow.
+ */
+export function ilikeContains(query: string): (text: string) => boolean {
+	type Token = { star: true } | { star: false; any: boolean; ch: string };
+	const pattern = [...pgLower(`%${query}%`)];
+	const tokens: Token[] = [];
+	for (let i = 0; i < pattern.length; i++) {
+		const c = pattern[i] as string;
+		if (c === "\\") {
+			i++;
+			tokens.push({ star: false, any: false, ch: pattern[i] as string });
+		} else if (c === "%") {
+			if (!tokens.at(-1)?.star) tokens.push({ star: true });
+		} else tokens.push({ star: false, any: c === "_", ch: c });
+	}
+	return (text) => {
+		const t = [...pgLower(text)];
+		let p = 0;
+		let i = 0;
+		let star = -1;
+		let mark = 0;
+		while (i < t.length) {
+			const tok = tokens[p];
+			if (tok?.star) {
+				star = p++;
+				mark = i;
+			} else if (tok && (tok.any || tok.ch === t[i])) {
+				p++;
+				i++;
+			} else if (star >= 0) {
+				p = star + 1;
+				i = ++mark;
+			} else return false;
+		}
+		while (tokens[p]?.star) p++;
+		return p === tokens.length;
+	};
+}
+
+/**
  * The one switch between the two ways to match search text. Without a keyring
  * (field encryption is not active, the case today) Postgres matches in SQL
  * over every row. With one, text may be ciphertext, so candidates are read

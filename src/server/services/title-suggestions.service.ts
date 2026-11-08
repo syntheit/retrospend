@@ -2,86 +2,234 @@
  * Autocomplete for the expense title field: personal expense titles and
  * shared transactions the user is in, grouped case-insensitively and ordered
  * by use, each with the category and amount it was last used with.
+ *
+ * Personal titles have two paths, picked by `searchesInApp` (search-fold.ts):
+ * Postgres groups and matches them in SQL when no keyring is passed (the case
+ * today), and the same grouping happens in the app layer over decrypted
+ * titles when one is, because a title may then be ciphertext
+ * (docs/roadmap/e2ee-spike.md, lane D). Shared descriptions are shared data
+ * (spike 2.3) and stay in SQL on both paths. Both paths hand their groups to
+ * the same merge and ranking below, so the output is one function of the
+ * groups.
  */
+import type { Keyring } from "~/server/crypto/field-crypto";
 import type { PrismaClient } from "~prisma";
+import { ilikeContains, readUserText, searchesInApp } from "./search-fold";
 import { listedEntryWhere } from "./spending";
+
+/**
+ * How many of the newest personal expenses the app-layer path reads. Titles
+ * older than that are neither counted nor offered on that path; the SQL path
+ * has no such limit. One query per call.
+ */
+export const TITLE_SUGGESTION_WINDOW = 20_000;
+
+/** Distinct titles kept per source, and suggestions returned. */
+const GROUPS_PER_SOURCE = 15;
+const SUGGESTIONS = 8;
+
+type Group = { text: string; count: number };
+type LastUsed = { categoryId: string | null; amount: number; currency: string };
+/** Personal title groups, and the last use of the titles that made the cut. */
+type Personal = {
+	groups: Group[];
+	lastUsed: (titles: string[]) => Promise<Map<string, LastUsed>>;
+};
+
+/** Most used first; equal counts by text, so the order never depends on the database. */
+const byUse = (a: Group, b: Group) =>
+	b.count - a.count || (a.text < b.text ? -1 : a.text > b.text ? 1 : 0);
 
 export async function titleSuggestions(
 	db: PrismaClient,
 	userId: string,
 	query: string,
+	options: {
+		/** Opens ciphertext in titles; passing one picks the app-layer path. */
+		keyring?: Keyring;
+		/** App-layer path only: rows read, for tests; TITLE_SUGGESTION_WINDOW otherwise. */
+		window?: number;
+	} = {},
 ) {
-	const [expenseGroups, sharedGroups] = await Promise.all([
-		db.expense.groupBy({
-			by: ["title"],
-			where: {
-				...listedEntryWhere(userId),
-				title: { contains: query, mode: "insensitive" },
-			},
-			_count: { title: true },
-			orderBy: { _count: { title: "desc" } },
-			take: 15,
-		}),
-		db.sharedTransaction.groupBy({
-			by: ["description"],
-			where: {
-				description: { contains: query, mode: "insensitive" },
-				splitParticipants: {
-					some: { participantType: "user", participantId: userId },
-				},
-			},
-			_count: { description: true },
-			orderBy: { _count: { description: "desc" } },
-			take: 15,
-		}),
+	const { keyring, window } = options;
+	const [personal, sharedGroups] = await Promise.all([
+		searchesInApp(keyring)
+			? personalInApp(db, userId, query, keyring, window)
+			: personalInSql(db, userId, query),
+		sharedInSql(db, userId, query),
 	]);
 
 	// Merge counts by title (case-insensitive), preserving canonical casing
 	const countMap = new Map<string, number>();
 	const canonicalTitle = new Map<string, string>();
-	for (const g of expenseGroups) {
-		const key = g.title.toLowerCase();
-		if (!canonicalTitle.has(key)) canonicalTitle.set(key, g.title);
-		countMap.set(key, (countMap.get(key) ?? 0) + g._count.title);
+	for (const g of [...personal.groups].sort(byUse)) {
+		const key = g.text.toLowerCase();
+		if (!canonicalTitle.has(key)) canonicalTitle.set(key, g.text);
+		countMap.set(key, (countMap.get(key) ?? 0) + g.count);
 	}
-	for (const g of sharedGroups) {
-		const key = g.description.toLowerCase();
-		if (!canonicalTitle.has(key)) canonicalTitle.set(key, g.description);
-		countMap.set(key, (countMap.get(key) ?? 0) + g._count.description);
+	for (const g of [...sharedGroups].sort(byUse)) {
+		const key = g.text.toLowerCase();
+		if (!canonicalTitle.has(key)) canonicalTitle.set(key, g.text);
+		countMap.set(key, (countMap.get(key) ?? 0) + g.count);
 	}
 
 	const sorted = [...countMap.entries()]
-		.sort((a, b) => b[1] - a[1])
-		.slice(0, 8);
+		.sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+		.slice(0, SUGGESTIONS);
 
 	if (sorted.length === 0) return [];
 
-	// Get the most recent expense's categoryId for each top title
+	// Get the most recent expense's category and amount for each top title
 	const topTitles = sorted.map(([key]) => canonicalTitle.get(key) ?? key);
-	const recentExpenses = await db.expense.findMany({
-		where: { ...listedEntryWhere(userId), title: { in: topTitles } },
-		orderBy: { date: "desc" },
-		select: { title: true, categoryId: true, amount: true, currency: true },
-		distinct: ["title"],
-	});
+	const lastUsed = await personal.lastUsed(topTitles);
 
-	const categoryByTitle = new Map<string, string | null>();
-	const amountByTitle = new Map<string, { amount: number; currency: string }>();
-	for (const e of recentExpenses) {
-		const key = e.title.toLowerCase();
-		if (!categoryByTitle.has(key)) categoryByTitle.set(key, e.categoryId);
-		if (!amountByTitle.has(key))
-			amountByTitle.set(key, {
-				amount: Number(e.amount),
-				currency: e.currency,
+	return sorted.map(([lowKey, count]) => {
+		const last = lastUsed.get(lowKey);
+		return {
+			title: canonicalTitle.get(lowKey) ?? lowKey,
+			count,
+			lastCategoryId: last?.categoryId ?? null,
+			lastAmount: last?.amount ?? null,
+			lastCurrency: last?.currency ?? null,
+		};
+	});
+}
+
+/** The SQL path: Postgres matches and groups every personal expense. */
+async function personalInSql(
+	db: PrismaClient,
+	userId: string,
+	query: string,
+): Promise<Personal> {
+	const groups = await db.expense.groupBy({
+		by: ["title"],
+		where: {
+			...listedEntryWhere(userId),
+			title: { contains: query, mode: "insensitive" },
+		},
+		_count: { title: true },
+		orderBy: { _count: { title: "desc" } },
+		take: GROUPS_PER_SOURCE,
+	});
+	return {
+		groups: groups.map((g) => ({ text: g.title, count: g._count.title })),
+		lastUsed: async (titles) => {
+			const rows = await db.expense.findMany({
+				where: { ...listedEntryWhere(userId), title: { in: titles } },
+				orderBy: [{ date: "desc" }, { id: "desc" }],
+				select: {
+					title: true,
+					categoryId: true,
+					amount: true,
+					currency: true,
+				},
+				distinct: ["title"],
+			});
+			return firstPerKey(
+				rows.map((e) => ({
+					title: e.title,
+					categoryId: e.categoryId,
+					amount: Number(e.amount),
+					currency: e.currency,
+				})),
+			);
+		},
+	};
+}
+
+/**
+ * The app-layer path: read the newest expenses, open each title, and match
+ * and group here. `contains ... mode: insensitive` is `ILIKE '%q%'` with q
+ * unescaped, which lowercases both sides one code point at a time, does not
+ * fold accents and reads `%`, `_` and backslash in q as pattern characters;
+ * `ilikeContains` does the same. Rows come in the same (date, id) order the
+ * SQL path uses for the last use of a title.
+ */
+async function personalInApp(
+	db: PrismaClient,
+	userId: string,
+	query: string,
+	keyring: Keyring,
+	window: number = TITLE_SUGGESTION_WINDOW,
+): Promise<Personal> {
+	const matches = ilikeContains(query);
+	const rows = await db.expense.findMany({
+		where: listedEntryWhere(userId),
+		orderBy: [{ date: "desc" }, { id: "desc" }],
+		take: window,
+		select: {
+			id: true,
+			title: true,
+			categoryId: true,
+			amount: true,
+			currency: true,
+		},
+	});
+	const opened = rows.map((r) => ({
+		title: readUserText(keyring, r.title, {
+			table: "expense",
+			column: "title",
+			rowId: r.id,
+		}),
+		categoryId: r.categoryId,
+		amount: Number(r.amount),
+		currency: r.currency,
+	}));
+
+	const counts = new Map<string, number>();
+	for (const r of opened)
+		if (matches(r.title)) counts.set(r.title, (counts.get(r.title) ?? 0) + 1);
+	const groups = [...counts.entries()]
+		.map(([text, count]) => ({ text, count }))
+		.sort(byUse)
+		.slice(0, GROUPS_PER_SOURCE);
+
+	return {
+		groups,
+		lastUsed: async (titles) => {
+			const wanted = new Set(titles);
+			return firstPerKey(opened.filter((r) => wanted.has(r.title)));
+		},
+	};
+}
+
+/** Shared descriptions the user is a participant of. Server-readable on both paths. */
+async function sharedInSql(
+	db: PrismaClient,
+	userId: string,
+	query: string,
+): Promise<Group[]> {
+	const groups = await db.sharedTransaction.groupBy({
+		by: ["description"],
+		where: {
+			description: { contains: query, mode: "insensitive" },
+			splitParticipants: {
+				some: { participantType: "user", participantId: userId },
+			},
+		},
+		_count: { description: true },
+		orderBy: { _count: { description: "desc" } },
+		take: GROUPS_PER_SOURCE,
+	});
+	return groups.map((g) => ({
+		text: g.description,
+		count: g._count.description,
+	}));
+}
+
+/** The first row of each title (case-insensitive), rows being newest first. */
+function firstPerKey(
+	rows: (LastUsed & { title: string })[],
+): Map<string, LastUsed> {
+	const out = new Map<string, LastUsed>();
+	for (const r of rows) {
+		const key = r.title.toLowerCase();
+		if (!out.has(key))
+			out.set(key, {
+				categoryId: r.categoryId,
+				amount: r.amount,
+				currency: r.currency,
 			});
 	}
-
-	return sorted.map(([lowKey, count]) => ({
-		title: canonicalTitle.get(lowKey) ?? lowKey,
-		count,
-		lastCategoryId: categoryByTitle.get(lowKey) ?? null,
-		lastAmount: amountByTitle.get(lowKey)?.amount ?? null,
-		lastCurrency: amountByTitle.get(lowKey)?.currency ?? null,
-	}));
+	return out;
 }

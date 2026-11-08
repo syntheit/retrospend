@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Keyring, sealField } from "../crypto/field-crypto";
 import {
 	foldUnaccentIlike,
+	ilikeContains,
 	pgLower,
 	readUserText,
 	unaccent,
@@ -41,6 +42,40 @@ describe("foldUnaccentIlike", () => {
 	it("makes accent and case differences vanish", () => {
 		expect(foldUnaccentIlike("CAFÉ")).toBe(foldUnaccentIlike("cafe"));
 		expect(foldUnaccentIlike("Œuvre")).toBe("oeuvre");
+	});
+});
+
+describe("ilikeContains", () => {
+	it("is a case-insensitive substring test that does not fold accents", () => {
+		const has = ilikeContains("CAFE");
+		expect(has("Mi cafe")).toBe(true);
+		expect(has("café")).toBe(false);
+		expect(ilikeContains("ÑANDÚ")("un ñandú")).toBe(true);
+		expect(ilikeContains("istanbul")("İstanbul")).toBe(true);
+	});
+
+	it("reads percent, underscore and backslash as ILIKE does", () => {
+		expect(ilikeContains("a%c")("xx abbbc yy")).toBe(true);
+		expect(ilikeContains("a_c")("xx abc yy")).toBe(true);
+		expect(ilikeContains("a_c")("xx ac yy")).toBe(false);
+		expect(ilikeContains("a\\%c")("a%c")).toBe(true);
+		expect(ilikeContains("a\\%c")("abc")).toBe(false);
+		expect(ilikeContains("a\\_")("a_")).toBe(true);
+		expect(ilikeContains("a\\_")("ab")).toBe(false);
+		// A trailing backslash escapes the closing %: the text must end in one.
+		expect(ilikeContains("e\\")("tax e%")).toBe(true);
+		expect(ilikeContains("e\\")("e% tax")).toBe(false);
+	});
+
+	it("handles characters outside the BMP as one character", () => {
+		expect(ilikeContains("a_b")("a\u{1f600}b")).toBe(true);
+	});
+
+	it("stays fast when many wildcards cannot match", () => {
+		const has = ilikeContains(`${"a%".repeat(40)}b`);
+		const started = Date.now();
+		expect(has("a".repeat(5000))).toBe(false);
+		expect(Date.now() - started).toBeLessThan(500);
 	});
 });
 
