@@ -19,9 +19,13 @@
  * (`readUserText`) before any comparison; SQL never looks at them.
  */
 import { createHash } from "node:crypto";
-import { stripUserTextControls } from "@retrospend/api-contract/common";
+import { stripUserTextControlsForKey } from "@retrospend/api-contract/common";
 import { currencyDecimals } from "@retrospend/domain/money";
-import { dayKey, startOfDayIn, startOfNextDayIn } from "@retrospend/domain/time-zone";
+import {
+	dayKey,
+	startOfDayIn,
+	startOfNextDayIn,
+} from "@retrospend/domain/time-zone";
 import type { Keyring } from "~/server/crypto/field-crypto";
 import { Prisma, type PrismaClient } from "~prisma";
 import { readUserText } from "../search-fold";
@@ -215,7 +219,7 @@ export function matchRows(
 	pass(
 		groupByAny(existing, (e) => [
 			sameRow(e),
-			sameRow(e, stripUserTextControls(e.title)),
+			sameRow(e, stripUserTextControlsForKey(e.title)),
 		]),
 		(r) => sameRow(r),
 	);

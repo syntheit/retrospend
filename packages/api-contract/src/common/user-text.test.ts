@@ -5,6 +5,7 @@ import {
 	hasLoneSurrogate,
 	SealedTextError,
 	stripUserTextControls,
+	stripUserTextControlsForKey,
 	USER_TEXT_FIELDS,
 	userText,
 	userTextOrEmpty,
@@ -129,6 +130,13 @@ describe("stripUserTextControls", () => {
 		expect(() => stripUserTextControls("\u0001\u0007x")).toThrow(
 			SealedTextError,
 		);
+	});
+
+	it("the key variant never throws and drops a leading U+0001 like any control", () => {
+		expect(stripUserTextControlsForKey("\u0001Coffee")).toBe("Coffee");
+		expect(stripUserTextControlsForKey("\u0001")).toBe("");
+		expect(stripUserTextControlsForKey("A\u000bB")).toBe("AB");
+		expect(stripUserTextControlsForKey("x\uD83D")).toBe("x");
 	});
 
 	it("still strips a U+0001 that is not first, and accepts empty text", () => {

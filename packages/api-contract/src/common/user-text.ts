@@ -71,6 +71,21 @@ export class SealedTextError extends Error {
  */
 export function stripUserTextControls(text: string): string {
 	if (text.charCodeAt(0) === 0x01) throw new SealedTextError();
+	return removeForbidden(text);
+}
+
+/**
+ * `stripUserTextControls` for reading rows that are already stored, to build a
+ * comparison key. It never throws: a stored value that starts with U+0001 (an
+ * old row written before the rule, or text that was not opened) is just text
+ * with a control character in it, and the key drops it like any other. Never
+ * use it to clean text that is about to be written.
+ */
+export function stripUserTextControlsForKey(text: string): string {
+	return removeForbidden(text);
+}
+
+function removeForbidden(text: string): string {
 	if (!hasForbiddenControl(text) && !hasLoneSurrogate(text)) return text;
 	let out = "";
 	for (let i = 0; i < text.length; i++) {

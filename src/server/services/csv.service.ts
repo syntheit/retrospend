@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import {
 	SealedTextError,
 	stripUserTextControls,
+	stripUserTextControlsForKey,
 } from "@retrospend/api-contract/common";
 import {
 	computeAmountInUSD,
@@ -99,9 +100,12 @@ export function importFingerprints(
 	currency: string,
 	timeZone?: string,
 ): string[] {
-	const keys = [title.replace(CONTROLS, " "), stripUserTextControls(title)].map(
-		(t) => importFingerprint(date, t, amount, currency, timeZone),
-	);
+	// Never throws: `title` may be a stored row, and a legacy title that starts
+	// with U+0001 must not stop an import. Incoming rows are refused before this.
+	const keys = [
+		title.replace(CONTROLS, " "),
+		stripUserTextControlsForKey(title),
+	].map((t) => importFingerprint(date, t, amount, currency, timeZone));
 	return [...new Set(keys)];
 }
 

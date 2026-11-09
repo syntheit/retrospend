@@ -91,6 +91,11 @@ describe("matchRows with a cleaned file", () => {
 		expect(exact("A B", "A\u000bB")).toBe(true);
 	});
 
+	it("a stored title that starts with U+0001 never throws, and reads as cleaned", () => {
+		expect(exact("Coffee", "\u0001Coffee")).toBe(true);
+		expect(exact("Tea", "\u0001Coffee")).toBe(false);
+	});
+
 	it("rows that only differ by a space stay apart", () => {
 		expect(exact("AB", "A B")).toBe(false);
 		expect(exact("A B", "AB")).toBe(false);

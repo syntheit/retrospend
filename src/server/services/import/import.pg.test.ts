@@ -18,6 +18,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { forUser } from "~/server/services/preview";
 import { adminDb } from "~/test/pg-harness";
 import type { Prisma } from "~prisma";
+import { CsvService } from "../csv.service";
 import {
 	arsUser,
 	isoDay,
@@ -461,5 +462,50 @@ describe("import.commit text that starts with U+0001", () => {
 		const rows = await adminDb.expense.findMany({ where: { userId: user.id } });
 		expect(rows.map((r) => r.title)).toEqual(["Coffee"]);
 		expect(JSON.stringify(rows)).not.toContain("k1:");
+	});
+});
+
+describe("a stored title that starts with U+0001", () => {
+	// A row from before the rule is just text with a control character in it.
+	// Only incoming text is refused; the duplicate check reads stored titles
+	// without ever throwing. (The review's matcher reads stored text through
+	// readUserText, which treats a leading U+0001 as ciphertext by design, so
+	// the pre-backfill scan must find no such row; match.test.ts covers its key.)
+	it("does not stop a CSV import on its date, and still finds the duplicate", async () => {
+		const { user } = await arsUser();
+		const legacy = {
+			userId: user.id,
+			currency: "ARS",
+			exchangeRate: 1468,
+			pricingSource: "MANUAL",
+			amount: 3500,
+			amountInUSD: 2.38,
+			date: new Date(`${DAY}T15:00:00.000Z`),
+			status: "FINALIZED" as const,
+		};
+		await adminDb.expense.create({
+			data: { ...legacy, title: "\u0001Coffee" },
+		});
+		const csv = await new CsvService(adminDb).importExpensesFromRows(
+			user.id,
+			[
+				{
+					title: "Coffee",
+					amount: 3500,
+					currency: "ARS",
+					date: new Date(`${DAY}T15:00:00.000Z`),
+					exchangeRate: 1468,
+				},
+				{
+					title: "Water",
+					amount: 100,
+					currency: "ARS",
+					date: new Date(`${DAY}T15:00:00.000Z`),
+					exchangeRate: 1468,
+				},
+			],
+			{ timeZone: "UTC" },
+		);
+		expect(csv).toMatchObject({ count: 1, skippedDuplicates: 1, rejected: [] });
 	});
 });
