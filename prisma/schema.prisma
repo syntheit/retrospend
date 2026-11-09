@@ -68,6 +68,9 @@ model User {
   externalAiAllowed Boolean?
   // Must be on before any file goes to an AI provider; off for new accounts.
   aiImportEnabled   Boolean   @default(false)
+  // When the first data key was made (keystore.create_first_data_key sets it;
+  // the app role has no access). Set with no key row means the keys were lost.
+  dataKeySince      DateTime?
   aiUsages          AiUsage[]
 
   avatarPath              String?                  @db.VarChar(500)

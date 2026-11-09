@@ -66,7 +66,7 @@ export const isUniqueViolation = (error: unknown): boolean =>
  * The index of `name` for the signed-in user of `tx` (a user-scoped
  * transaction), or null when there is no index to make: the instance has no
  * master key, or the key store cannot give this user's key (missing, grants
- * lost, or a master key that does not open it). A null index is safe while
+ * lost, keys lost, or a master key that does not open it). A null index is safe while
  * the old unique index and the name compare still protect, so a broken key
  * store never blocks a category write; the reason is logged without a user id
  * or a name. Postgres aborts a transaction on a failed statement, so the key
@@ -92,7 +92,8 @@ export async function categoryNameIndexFor(
 			error instanceof FieldCryptoError ||
 			(error instanceof DataKeyError &&
 				(error.code === "keystore_missing" ||
-					error.code === "keystore_grants_missing"));
+					error.code === "keystore_grants_missing" ||
+					error.code === "keystore_lost"));
 		if (!fallback) throw error;
 		await tx.$executeRaw`ROLLBACK TO SAVEPOINT category_name_index`;
 		console.warn(

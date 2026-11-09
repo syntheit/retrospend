@@ -9,8 +9,13 @@
  *   empty or unknown user setting  -> the functions refuse
  *   destroy                        -> row count 1, then 0; old text unreadable
  *   master key with the same id but other bytes -> the wrapped key fails
+ *   first key made                -> user."dataKeySince" is set, once
+ *   marker set and no key row     -> keystore_lost, no new key, marker kept
+ *   operator clears the marker    -> the next call makes a key again
  */
 import { randomBytes, randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
 	type FieldAad,
@@ -21,6 +26,8 @@ import {
 } from "~/server/crypto/field-crypto";
 import { userTransaction } from "~/server/db-tx";
 import { adminDb, createTestUser, withSuperuser } from "~/test/pg-harness";
+import { inRolledBackTransaction } from "~/test/rolled-back-sql";
+import { REPO_ROOT } from "~/test/uiRules/paths";
 import {
 	DataKeyError,
 	destroyDataKeys,
@@ -57,6 +64,16 @@ const rowsOf = (userId: string) =>
 	adminDb.$queryRaw<Row[]>`
 		SELECT "userId", "keyId", "wrappedKey", "masterKeyId"
 		FROM keystore."user_data_key" WHERE "userId" = ${userId}`;
+
+/** What an operator does to allow a new key after a loss (docs/self-hosting.md). */
+const clearMarker = (userId: string) =>
+	adminDb.$executeRaw`UPDATE "user" SET "dataKeySince" = NULL WHERE "id" = ${userId}`;
+
+const markerOf = async (userId: string) =>
+	(
+		await adminDb.$queryRaw<{ since: Date | null }[]>`
+			SELECT "dataKeySince" AS "since" FROM "user" WHERE "id" = ${userId}`
+	)[0]?.since;
 
 async function failure(promise: Promise<unknown>): Promise<unknown> {
 	return promise.then(
@@ -414,6 +431,10 @@ describe("destroyDataKeys", () => {
 		expect(await rowsOf(a.user.id)).toHaveLength(0);
 		expect(await rowsOf(b.user.id)).toHaveLength(1);
 
+		// The marker says A had a key, so no new one is made until an operator
+		// clears it (see "keys that were lost" below).
+		await expectDataKeyError(keyringOf(a, mk), "keystore_lost");
+		await clearMarker(a.user.id);
 		const reborn = await keyringOf(a, mk);
 		await expectCode(
 			Promise.resolve().then(() => openField(reborn, sealedA, cell)),
@@ -467,5 +488,218 @@ describe("destroyDataKeys", () => {
 		expect(
 			await adminDb.user.findUnique({ where: { id: me.user.id } }),
 		).toBeNull();
+	});
+});
+
+describe("keys that were lost", () => {
+	it("sets the marker with the first key, once", async () => {
+		const me = await createTestUser();
+		expect(await markerOf(me.user.id)).toBeNull();
+		const mk = master();
+		const before = Date.now();
+		await keyringOf(me, mk);
+		const first = await markerOf(me.user.id);
+		expect(first).toBeInstanceOf(Date);
+		// The marker is the time of the mint (UTC, to the millisecond).
+		expect(Math.abs((first?.getTime() ?? 0) - before)).toBeLessThan(10_000);
+
+		await keyringOf(me, mk);
+		expect(await markerOf(me.user.id)).toEqual(first);
+		expect(await rowsOf(me.user.id)).toHaveLength(1);
+	});
+
+	it("refuses a new first key when the marker is set and the key row is gone", async () => {
+		const me = await createTestUser();
+		const mk = master();
+		const sealed = sealField(await keyringOf(me, mk), "Kept", cell);
+		const marker = await markerOf(me.user.id);
+		// A main dump restored without the keystore: the marker stays, the key goes.
+		await withSuperuser((client) =>
+			client.query('DELETE FROM keystore."user_data_key" WHERE "userId" = $1', [
+				me.user.id,
+			]),
+		);
+
+		await expectDataKeyError(keyringOf(me, mk), "keystore_lost");
+		// It made nothing, and again the next time.
+		expect(await rowsOf(me.user.id)).toHaveLength(0);
+		await expectDataKeyError(keyringOf(me, mk), "keystore_lost");
+		expect(await markerOf(me.user.id)).toEqual(marker);
+
+		// The error names no user and no key.
+		const error = await failure(keyringOf(me, mk));
+		expect((error as Error).message).not.toContain(me.user.id);
+
+		// An operator who accepts the loss clears the marker; a key is made
+		// again and it does not open what the first one sealed.
+		await clearMarker(me.user.id);
+		const reborn = await keyringOf(me, mk);
+		expect(await rowsOf(me.user.id)).toHaveLength(1);
+		await expectCode(
+			Promise.resolve().then(() => openField(reborn, sealed, cell)),
+			"auth_failed",
+		);
+		expect(await markerOf(me.user.id)).not.toBeNull();
+	});
+
+	it("keeps a loss from touching the other users", async () => {
+		const [lost, fine, fresh] = await Promise.all([
+			createTestUser(),
+			createTestUser(),
+			createTestUser(),
+		]);
+		const mk = master();
+		await keyringOf(lost, mk);
+		const keyFine = await keyringOf(fine, mk);
+		await destroyDataKeys(lost.user.id);
+
+		await expectDataKeyError(keyringOf(lost, mk), "keystore_lost");
+		const again = await keyringOf(fine, mk);
+		expect(again.ids).toEqual(keyFine.ids);
+		// A user who never had a key (marker empty) still gets one.
+		expect(await keyringOf(fresh, mk)).toBeInstanceOf(Keyring);
+	});
+
+	it("still hands out the keys a user has, even with the marker cleared", async () => {
+		const me = await createTestUser();
+		const mk = master();
+		const first = await keyringOf(me, mk);
+		await clearMarker(me.user.id);
+		const again = await keyringOf(me, mk);
+		expect(again.ids).toEqual(first.ids);
+		// The read path made nothing, so the marker stays empty until a mint.
+		expect(await markerOf(me.user.id)).toBeNull();
+		expect(await rowsOf(me.user.id)).toHaveLength(1);
+	});
+
+	it("stamps the marker when the function runs for a key that already exists", async () => {
+		const me = await createTestUser();
+		const mk = master();
+		const key = await keyringOf(me, mk);
+		await clearMarker(me.user.id);
+		// A racing caller (or a key from before the marker) reaches the insert,
+		// which is a no-op, and the marker is set all the same.
+		await userTransaction(
+			adminDb,
+			me.user.id,
+			(tx) =>
+				tx.$queryRaw`
+				SELECT * FROM keystore."create_first_data_key"(${sealField(mk, "x", cell)}, 1::bigint)`,
+		);
+		expect(await markerOf(me.user.id)).not.toBeNull();
+		expect(await rowsOf(me.user.id)).toHaveLength(1);
+		expect((await keyringOf(me, mk)).ids).toEqual(key.ids);
+	});
+
+	it("deletes a user in every state: with a key, with a lost key, and with no marker", async () => {
+		const [withKey, lost, never] = await Promise.all([
+			createTestUser(),
+			createTestUser(),
+			createTestUser(),
+		]);
+		const mk = master();
+		await keyringOf(withKey, mk);
+		await keyringOf(lost, mk);
+		await destroyDataKeys(lost.user.id);
+
+		for (const who of [withKey, lost, never])
+			await adminDb.user.delete({ where: { id: who.user.id } });
+		for (const who of [withKey, lost, never]) {
+			expect(await rowsOf(who.user.id)).toHaveLength(0);
+			expect(
+				await adminDb.user.findUnique({ where: { id: who.user.id } }),
+			).toBeNull();
+		}
+		// A deleted user has no row to carry a marker, so nothing is minted.
+		await expectDataKeyError(
+			userTransaction(adminDb, withKey.user.id, (tx) =>
+				getOrCreateDataKeyring(tx, mk),
+			),
+			"no_user",
+		);
+		expect(await rowsOf(withKey.user.id)).toHaveLength(0);
+	});
+
+	it("keeps the function's security settings and the app role's reach", async () => {
+		const [fn] = await adminDb.$queryRaw<
+			{ secdef: boolean; config: string[]; app: boolean; pub: boolean }[]
+		>`
+			SELECT p.prosecdef AS secdef, p.proconfig AS config,
+			       has_function_privilege('retrospend_app', p.oid, 'EXECUTE') AS app,
+			       has_function_privilege('public', p.oid, 'EXECUTE') AS pub
+			FROM pg_proc p
+			WHERE p.proname = 'create_first_data_key' AND p.pronamespace = 'keystore'::regnamespace`;
+		expect(fn).toEqual({
+			secdef: true,
+			config: ["search_path=pg_catalog, pg_temp"],
+			app: true,
+			pub: false,
+		});
+		// The app role can neither read nor write the marker.
+		const [priv] = await adminDb.$queryRaw<{ read: boolean; write: boolean }[]>`
+			SELECT has_column_privilege('retrospend_app', '"user"', 'dataKeySince', 'SELECT') AS read,
+			       has_column_privilege('retrospend_app', '"user"', 'dataKeySince', 'UPDATE') AS write`;
+		expect(priv).toEqual({ read: false, write: false });
+	});
+
+	it("a signed-in user cannot clear their own marker", async () => {
+		const me = await createTestUser();
+		await keyringOf(me, master());
+		await expect(
+			me.db.user.update({
+				where: { id: me.user.id },
+				data: { dataKeySince: null },
+				select: { id: true },
+			}),
+		).rejects.toThrow();
+		expect(await markerOf(me.user.id)).not.toBeNull();
+	});
+
+	it("the migration file runs again safely and gives existing keys a marker", async () => {
+		const me = await createTestUser();
+		await keyringOf(me, master());
+		const migrationSql = readFileSync(
+			join(
+				REPO_ROOT,
+				"prisma/migrations/20261109800000_keystore_lost_guard/migration.sql",
+			),
+			"utf8",
+		);
+		// Replayed inside a transaction that is rolled back, so the worker's
+		// catalog stays as the template left it.
+		await inRolledBackTransaction(async (client) => {
+			// Compared in SQL: node-postgres reads a timestamp without a zone as local time.
+			const markerIsKeyTime = async () =>
+				(
+					await client.query<{ same: boolean }>(
+						`SELECT u."dataKeySince" = k."createdAt" AS same
+						 FROM "user" u JOIN keystore."user_data_key" k ON k."userId" = u.id
+						 WHERE u.id = $1`,
+						[me.user.id],
+					)
+				).rows[0]?.same;
+			await client.query(
+				'UPDATE "user" SET "dataKeySince" = NULL WHERE id = $1',
+				[me.user.id],
+			);
+			await client.query(migrationSql);
+			await client.query(migrationSql);
+			expect(await markerIsKeyTime()).toBe(true);
+			// The replaced function still refuses a lost key.
+			await client.query(
+				'DELETE FROM keystore."user_data_key" WHERE "userId" = $1',
+				[me.user.id],
+			);
+			await client.query("SAVEPOINT lost");
+			await client.query("SELECT set_config('app.current_user_id', $1, true)", [
+				me.user.id,
+			]);
+			await expect(
+				client.query(
+					"SELECT * FROM keystore.create_first_data_key('x', 1::bigint)",
+				),
+			).rejects.toMatchObject({ code: "KS001" });
+			await client.query("ROLLBACK TO SAVEPOINT lost");
+		});
 	});
 });
