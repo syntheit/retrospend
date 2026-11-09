@@ -7,6 +7,7 @@
 import { randomUUID } from "node:crypto";
 import type { SetupInput, SetupPresetOutput } from "~/lib/schemas/envelope";
 import type { Prisma } from "~prisma";
+import { sortByText } from "../text-order";
 import { userTimeZone } from "../user-time-zone";
 import { writeEntryRow } from "./adjustment";
 import { EnvelopeError } from "./errors";
@@ -51,11 +52,14 @@ export async function setupPreset(
 		orderBy: { nextDueDate: "asc" },
 		select: { id: true, name: true, categoryId: true, frequency: true },
 	});
-	const categories = await tx.category.findMany({
-		where: { userId, kind: "EXPENSE" },
-		orderBy: { name: "asc" },
-		select: { id: true, name: true, isFixed: true },
-	});
+	// By name, sorted here: a name may be ciphertext in the database (text-order.ts).
+	const categories = sortByText(
+		await tx.category.findMany({
+			where: { userId, kind: "EXPENSE" },
+			select: { id: true, name: true, isFixed: true },
+		}),
+		(c) => c.name,
+	);
 	const recent = HISTORY_STYLES.has(style)
 		? await recentSpending(
 				tx,

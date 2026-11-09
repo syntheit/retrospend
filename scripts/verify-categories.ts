@@ -1,4 +1,5 @@
 import { db } from "../src/server/db";
+import { compareText } from "../src/server/services/text-order";
 
 async function main() {
 	console.log("Verifying category counts per user...");
@@ -35,11 +36,13 @@ async function main() {
 	});
 
 	for (const user of sampleUsers) {
-		const categories = await db.category.findMany({
-			where: { userId: user.id },
-			select: { name: true, color: true },
-			orderBy: { name: "asc" },
-		});
+		// Sorted here: a name may be ciphertext in the database.
+		const categories = (
+			await db.category.findMany({
+				where: { userId: user.id },
+				select: { name: true, color: true },
+			})
+		).sort((a, b) => compareText(a.name, b.name));
 
 		console.log(`\nUser: ${user.username}`);
 		console.log(`Categories (${categories.length}):`);

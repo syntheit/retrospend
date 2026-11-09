@@ -13,6 +13,7 @@ import { defaultAccounts } from "../accounts/defaults";
 import { inBudget, isLiability, worthOf } from "../accounts/places";
 import { dec, toMinor } from "../envelope/units";
 import { ensureIncomeCategories } from "../money-in.service";
+import { byUsageThenName, compareText } from "../text-order";
 
 /** How far back "recent" reaches, and how many the recents line can show. */
 const RECENT_DAYS = 45;
@@ -71,6 +72,24 @@ async function recentCategoryIds(db: PrismaClient, userId: string) {
 	return rows.flatMap((r) => (r.categoryId ? [r.categoryId] : []));
 }
 
+/**
+ * Rows the database already ordered by `type` (an enum, so in declaration
+ * order), by name within each type. The name is sorted here because it may
+ * be ciphertext in the database (text-order.ts).
+ */
+function byTypeThenName<T extends { id: string; type: string; name: string }>(
+	rows: readonly T[],
+): T[] {
+	const rank = new Map<string, number>();
+	for (const r of rows) if (!rank.has(r.type)) rank.set(r.type, rank.size);
+	return [...rows].sort(
+		(a, b) =>
+			(rank.get(a.type) as number) - (rank.get(b.type) as number) ||
+			compareText(a.name, b.name) ||
+			compareText(a.id, b.id),
+	);
+}
+
 export async function entryCatalog(
 	db: PrismaClient,
 	userId: string,
@@ -84,7 +103,6 @@ export async function entryCatalog(
 		}),
 		db.category.findMany({
 			where: { userId },
-			orderBy: [{ expenses: { _count: "desc" } }, { name: "asc" }],
 			select: {
 				id: true,
 				name: true,
@@ -92,6 +110,7 @@ export async function entryCatalog(
 				color: true,
 				kind: true,
 				excludeByDefault: true,
+				_count: { select: { expenses: true } },
 			},
 		}),
 		recentCategoryIds(db, userId),
@@ -101,7 +120,7 @@ export async function entryCatalog(
 				closedAt: null,
 				type: { notIn: ["REAL_ESTATE", "VEHICLE"] },
 			},
-			orderBy: [{ type: "asc" }, { name: "asc" }],
+			orderBy: { type: "asc" },
 			select: {
 				id: true,
 				name: true,
@@ -118,12 +137,14 @@ export async function entryCatalog(
 	const home = user.homeCurrency;
 	return {
 		homeCurrency: home,
-		categories: categories.map(({ color, ...c }) => ({
+		// Most used first, then by name: the name is sorted here because it may be
+		// ciphertext in the database (text-order.ts).
+		categories: byUsageThenName(categories).map(({ color, _count, ...c }) => ({
 			...c,
 			tone: categoryTone(color),
 		})),
 		recentCategoryIds: recent,
-		places: accounts.map((a) => ({
+		places: byTypeThenName(accounts).map((a) => ({
 			id: a.id,
 			name: a.name,
 			type: a.type,

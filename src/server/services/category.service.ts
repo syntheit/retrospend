@@ -8,6 +8,7 @@ import {
 	comparableIndexes,
 	isUniqueViolation,
 } from "./category-name-index.service";
+import { byUsageThenName, compareText, sortByText } from "./text-order";
 
 type AppDb = typeof globalDb;
 
@@ -38,38 +39,41 @@ export interface CategoryInput {
 	excludeByDefault?: boolean;
 }
 
-/** The web's picker order: most used first, then by name. */
-export function listCategoriesByUsage(db: AppDb, userId: string) {
-	return db.category.findMany({
+/**
+ * The web's picker order: most used first, then by name. The name part is
+ * sorted here, not by Postgres, because a name may be ciphertext (text-order.ts).
+ */
+export async function listCategoriesByUsage(db: AppDb, userId: string) {
+	const rows = await db.category.findMany({
 		where: { userId },
-		orderBy: [{ expenses: { _count: "desc" } }, { name: "asc" }],
 		select: CATEGORY_SELECT,
 	});
+	return byUsageThenName(rows);
 }
 
-/** A page by name (ties by id), starting after `after`. */
-export function listCategoriesByName(
+/**
+ * A page by name (ties by id), starting after `after`. A user's categories
+ * are few, so all of them are read and the page is cut after sorting, because
+ * Postgres cannot order or compare names that may be ciphertext.
+ */
+export async function listCategoriesByName(
 	db: AppDb,
 	userId: string,
 	page: { after: { name: string; id: string } | null; take: number },
 ): Promise<CategoryRow[]> {
 	const { after } = page;
-	return db.category.findMany({
-		where: {
-			userId,
-			...(after
-				? {
-						OR: [
-							{ name: { gt: after.name } },
-							{ name: after.name, id: { gt: after.id } },
-						],
-					}
-				: {}),
-		},
-		orderBy: [{ name: "asc" }, { id: "asc" }],
-		take: page.take,
-		select: CATEGORY_SELECT,
-	});
+	const rows = sortByText(
+		await db.category.findMany({ where: { userId }, select: CATEGORY_SELECT }),
+		(c) => c.name,
+	);
+	const later = after
+		? rows.filter(
+				(c) =>
+					compareText(c.name, after.name) > 0 ||
+					(c.name === after.name && compareText(c.id, after.id) > 0),
+			)
+		: rows;
+	return later.slice(0, page.take);
 }
 
 export async function getCategory(

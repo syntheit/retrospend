@@ -11,6 +11,7 @@
 import type { BankSide } from "~/lib/schemas/envelope-book";
 import type { Prisma } from "~prisma";
 import { inBudget, worthOf } from "../accounts/places";
+import { sortByText } from "../text-order";
 import { addDays, addMonths } from "./calendar";
 import { computeBook, sumLeft } from "./engine";
 import { EnvelopeError } from "./errors";
@@ -63,11 +64,10 @@ export async function bankSide(
 	const { loaded } = view;
 	const H = loaded.book.currency;
 	const money = (minor: Minor) => ({ minor, currency: H });
-	const accounts = (
-		await tx.assetAccount.findMany({
-			where: { userId, closedAt: null },
-			orderBy: { name: "asc" },
-		})
+	// By name, sorted here: a name may be ciphertext in the database (text-order.ts).
+	const accounts = sortByText(
+		await tx.assetAccount.findMany({ where: { userId, closedAt: null } }),
+		(a) => a.name,
 	).filter((a) => inBudget(a, H));
 	const foreign = [...new Set(accounts.map((a) => a.currency))].filter(
 		(c) => c !== H,
