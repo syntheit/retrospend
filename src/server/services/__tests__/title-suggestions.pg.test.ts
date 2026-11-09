@@ -545,3 +545,95 @@ describe("rows that hold ciphertext", () => {
 		await expect(run).rejects.toMatchObject({ code: "auth_failed" });
 	});
 });
+
+describe("shared descriptions on the app path", () => {
+	const sealShared = (text: string, rowId: string) =>
+		sealField(keyring, text, {
+			table: "shared_transaction",
+			column: "description",
+			rowId,
+		});
+	const makeShared = (
+		id: string,
+		description: string,
+		userId: string,
+		day: number,
+	) =>
+		adminDb.sharedTransaction.create({
+			data: {
+				id,
+				description,
+				amount: "300",
+				currency: "ARS",
+				exchangeRate: "1000",
+				date: d(day),
+				paidByType: "user",
+				paidById: userId,
+				createdByType: "user",
+				createdById: userId,
+				splitParticipants: {
+					create: [
+						{
+							participantType: "user" as const,
+							participantId: userId,
+							shareAmount: "100",
+							verificationStatus: "ACCEPTED" as const,
+						},
+					],
+				},
+			},
+		});
+	const ask = (who: Who, q: string, extra: object = {}) =>
+		titleSuggestions(who.db as PrismaClient, who.user.id, q, extra);
+
+	it("counts sealed and plaintext descriptions of one text together", async () => {
+		const who = await createTestUser();
+		await makeShared("shsealed1", "Asado del domingo", who.user.id, 1);
+		await makeShared(
+			"shsealed2",
+			sealShared("ASADO del domingo", "shsealed2"),
+			who.user.id,
+			2,
+		);
+		await makeShared(
+			"shsealed3",
+			sealShared("Asado del domingo", "shsealed3"),
+			who.user.id,
+			3,
+		);
+		const got = await ask(who, "asado", { keyring });
+		expect(got.map((s) => [s.title, s.count])).toEqual([
+			["Asado del domingo", 3],
+		]);
+		// The SQL path cannot read the sealed rows.
+		expect((await ask(who, "asado")).map((s) => s.count)).toEqual([1]);
+	});
+
+	it("reads only the newest shared rows when the window is small", async () => {
+		const who = await createTestUser();
+		await makeShared("shwin1", "Window old", who.user.id, 1);
+		await makeShared("shwin2", "Window old", who.user.id, 2);
+		await makeShared("shwin3", "Window new", who.user.id, 3);
+		const got = await ask(who, "window", { keyring, window: 1 });
+		expect(got.map((s) => [s.title, s.count])).toEqual([["Window new", 1]]);
+		const all = await ask(who, "window", { keyring, window: 10 });
+		expect(all.map((s) => [s.title, s.count])).toEqual([
+			["Window old", 2],
+			["Window new", 1],
+		]);
+		expect(all).toEqual(await ask(who, "window"));
+	});
+
+	it("fails on a description sealed for another row", async () => {
+		const who = await createTestUser();
+		await makeShared(
+			"shbad1",
+			sealShared("Pan", "someotherrow"),
+			who.user.id,
+			1,
+		);
+		await expect(ask(who, "pan", { keyring })).rejects.toMatchObject({
+			code: "auth_failed",
+		});
+	});
+});
