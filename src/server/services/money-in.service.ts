@@ -7,6 +7,7 @@ import { stripUserTextControls } from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient } from "~prisma";
 import { bookRate, loadRateContext, type RateChoice } from "./rate-types";
+import { sortByText } from "./text-order";
 
 /** Income categories every user gets on first money in (budget SPEC §12.1). */
 export const INCOME_CATEGORIES = [
@@ -37,10 +38,11 @@ export async function ensureIncomeCategories(
 		})),
 		skipDuplicates: true,
 	});
-	return db.category.findMany({
-		where: { userId, kind: "INCOME" },
-		orderBy: { name: "asc" },
-	});
+	// By name, sorted here: a name may be ciphertext in the database (text-order.ts).
+	return sortByText(
+		await db.category.findMany({ where: { userId, kind: "INCOME" } }),
+		(c) => c.name,
+	);
 }
 
 /** The template fields a confirmed recurring entry is built from. */

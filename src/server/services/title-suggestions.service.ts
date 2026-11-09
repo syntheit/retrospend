@@ -7,10 +7,10 @@
  * Postgres groups and matches them in SQL when no keyring is passed (the case
  * today), and the same grouping happens in the app layer over decrypted
  * titles when one is, because a title may then be ciphertext
- * (docs/roadmap/e2ee-spike.md, lane D). Shared descriptions are shared data
- * (spike 2.3) and stay in SQL on both paths. Both paths hand their groups to
- * the same merge and ranking below, so the output is one function of the
- * groups.
+ * (docs/roadmap/e2ee-spike.md, lane D). Shared descriptions follow the same
+ * two paths (the owner decided shared text is sealed too). Both paths hand
+ * their groups to the same merge and ranking below, so the output is one
+ * function of the groups.
  */
 import type { Keyring } from "~/server/crypto/field-crypto";
 import type { PrismaClient } from "~prisma";
@@ -61,7 +61,9 @@ export async function titleSuggestions(
 		searchesInApp(keyring)
 			? personalInApp(db, userId, query, keyring, window)
 			: personalInSql(db, userId, query),
-		sharedInSql(db, userId, query),
+		searchesInApp(keyring)
+			? sharedInApp(db, userId, query, keyring, window)
+			: sharedInSql(db, userId, query),
 	]);
 
 	// Merge counts by title (case-insensitive), preserving canonical casing
@@ -198,7 +200,46 @@ async function personalInApp(
 	};
 }
 
-/** Shared descriptions the user is a participant of. Server-readable on both paths. */
+/**
+ * The app-layer path for shared descriptions, which are encrypted like
+ * personal titles (the owner decided shared text is sealed with an
+ * instance-wide key): the newest shared expenses the user is a participant
+ * of are read, opened, matched and grouped here, as `personalInApp` does.
+ */
+async function sharedInApp(
+	db: PrismaClient,
+	userId: string,
+	query: string,
+	keyring: Keyring,
+	window: number = TITLE_SUGGESTION_WINDOW,
+): Promise<Group[]> {
+	const matches = ilikeContains(query);
+	const rows = await db.sharedTransaction.findMany({
+		where: {
+			splitParticipants: {
+				some: { participantType: "user", participantId: userId },
+			},
+		},
+		orderBy: [{ date: "desc" }, { id: "desc" }],
+		take: window,
+		select: { id: true, description: true },
+	});
+	const counts = new Map<string, number>();
+	for (const r of rows) {
+		const text = readUserText(keyring, r.description, {
+			table: "shared_transaction",
+			column: "description",
+			rowId: r.id,
+		});
+		if (matches(text)) counts.set(text, (counts.get(text) ?? 0) + 1);
+	}
+	return [...counts.entries()]
+		.map(([text, count]) => ({ text, count }))
+		.sort(byUse)
+		.slice(0, GROUPS_PER_SOURCE);
+}
+
+/** The SQL path for shared descriptions: Postgres matches and groups every one the user is in. */
 async function sharedInSql(
 	db: PrismaClient,
 	userId: string,

@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "~prisma";
 import { repointSettlementParty } from "./payments/participants";
 import { mergeOverlappingSplitRows } from "./shared-expenses/split-merge";
+import { sortByText } from "./text-order";
 
 /**
  * Explicit shadow-profile claiming (claim link + "are you one of these people?"
@@ -338,11 +339,14 @@ export async function listUnclaimedProjectGhosts(
 	const shadowIds = memberships.map((m) => m.participantId);
 	if (shadowIds.length === 0) return [];
 
-	const shadows = await db.shadowProfile.findMany({
-		where: { id: { in: shadowIds }, claimedById: null },
-		select: { id: true, name: true },
-		orderBy: { name: "asc" },
-	});
+	// By name, sorted here: a name may be ciphertext in the database (text-order.ts).
+	const shadows = sortByText(
+		await db.shadowProfile.findMany({
+			where: { id: { in: shadowIds }, claimedById: null },
+			select: { id: true, name: true },
+		}),
+		(s) => s.name,
+	);
 
 	// Ghosts with history outside this project are still listed (the joiner
 	// may recognise themselves) but can't be linked by a guest; see

@@ -41,19 +41,26 @@ function invalid(message: string): never {
 }
 
 /** The interest category: the one given, else the user's Fees category (a default category). */
-async function interestCategory(tx: Tx, given: string | null | undefined) {
+async function interestCategory(
+	tx: Tx,
+	userId: string,
+	given: string | null | undefined,
+) {
 	if (given) {
+		// The caller's own: row level security also shows a category another
+		// member used in a shared expense.
 		const ok = await tx.category.count({
-			where: { id: given, kind: "EXPENSE" },
+			where: { id: given, userId, kind: "EXPENSE" },
 		});
 		if (!ok) invalid("pick one of your spending categories");
 		return given;
 	}
-	const fees = await tx.category.findFirst({
-		where: { name: "Fees", kind: "EXPENSE" },
-		select: { id: true },
+	// Found by name here, not in SQL: a name may be ciphertext in the database.
+	const categories = await tx.category.findMany({
+		where: { userId, kind: "EXPENSE" },
+		select: { id: true, name: true },
 	});
-	return fees?.id ?? null;
+	return categories.find((c) => c.name === "Fees")?.id ?? null;
 }
 
 async function existing(tx: Tx, input: RecordDebtPaymentInput, H: string) {
@@ -111,7 +118,11 @@ export async function recordDebtPayment(
 		invalid("accounts in another currency cannot pay here yet");
 	// Not tracked in the book currency is part of the budget (MONEY-MOVES §2.1).
 	const fromBudget = from ? inBudget(from, H) : true;
-	const categoryId = await interestCategory(tx, input.interestCategoryId);
+	const categoryId = await interestCategory(
+		tx,
+		userId,
+		input.interestCategoryId,
+	);
 	const before = { minor: toMinor(debt.balance, H), currency: H };
 	const date = input.date ?? isoDateIn(now, book.timeZone);
 	const moved = await createTransferIn(tx, userId, {

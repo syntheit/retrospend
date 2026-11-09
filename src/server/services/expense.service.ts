@@ -20,6 +20,7 @@ import {
 	type RateChoice,
 } from "./rate-types";
 import { listedEntryWhere } from "./spending";
+import { sortByText } from "./text-order";
 
 /** pricingSource of a rate the user typed in by hand. */
 export const CUSTOM_PRICING_SOURCE = CUSTOM_RATE_TYPE;
@@ -461,7 +462,6 @@ export class ExpenseService {
 				categories: await tx.category.findMany({
 					where: { userId },
 					select: { id: true, name: true, color: true },
-					orderBy: { name: "asc" },
 				}),
 			}),
 			userId,
@@ -469,7 +469,8 @@ export class ExpenseService {
 
 		return {
 			years: yearsResult.map((r) => r.year),
-			categories: categories.map((c) => ({
+			// By name, sorted here: a name may be ciphertext in the database (text-order.ts).
+			categories: sortByText(categories, (c) => c.name).map((c) => ({
 				...c,
 				usageCount: 0, // Usage count calculation remains client-side or simplified
 			})),
