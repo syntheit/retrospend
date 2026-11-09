@@ -93,7 +93,7 @@ func TestDumpEncryptedMalformedKeyWritesNothing(t *testing.T) {
 	for _, bad := range []string{
 		"not-a-key",
 		"age1short",
-		pub[:len(pub)-1] + "q",   // bad checksum
+		badChecksum(pub),         // bad checksum
 		"AGE-SECRET-KEY-1ABCDEF", // a private key is not a recipient
 	} {
 		dir := t.TempDir()
@@ -180,4 +180,15 @@ func TestIsBackupFile(t *testing.T) {
 			t.Errorf("%s: want %v", name, want)
 		}
 	}
+}
+
+// badChecksum changes the last character of a valid recipient, never to the
+// character it already is (a fixed "q" made the key valid 1 time in 32).
+func badChecksum(pub string) string {
+	last := pub[len(pub)-1]
+	swap := byte('q')
+	if last == swap {
+		swap = 'p'
+	}
+	return pub[:len(pub)-1] + string(swap)
 }
