@@ -2,6 +2,12 @@ import { TRPCError } from "@trpc/server";
 import type { db as globalDb } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import type { CategoryColor, Prisma } from "~prisma";
+import type { Keyring } from "../crypto/field-crypto";
+import {
+	categoryNameIndexFor,
+	comparableIndexes,
+	isUniqueViolation,
+} from "./category-name-index.service";
 import { byUsageThenName, compareText, sortByText } from "./text-order";
 
 type AppDb = typeof globalDb;
@@ -84,46 +90,81 @@ export async function getCategory(
 	return row;
 }
 
+const nameTaken = () =>
+	new TRPCError({ code: "CONFLICT", message: "Category name already exists" });
+
 /**
  * Names are stored as typed, but "Food " and "Food" are the same name to the
  * person (the v1 API always trimmed). Compared here, not in SQL, so it keeps
- * working when names are encrypted; a person has few categories.
+ * working when names are encrypted; a person has few categories. A row with
+ * a name index is compared by index, which holds once names are ciphertext,
+ * but only while both indexes were made with the same key; a row not
+ * backfilled yet (`nameIndex` null) or indexed by a key the user no longer has
+ * (stale), and every row when there is no index to make, by its trimmed name.
  */
 async function assertNameFree(
-	db: AppDb,
+	tx: Prisma.TransactionClient,
 	userId: string,
 	name: string,
+	nameIndex: string | null,
 	exceptId?: string,
 ) {
 	const wanted = name.trim();
-	const mine = await db.category.findMany({
+	const mine = await tx.category.findMany({
 		where: { userId, ...(exceptId ? { id: { not: exceptId } } : {}) },
-		select: { name: true },
+		select: { name: true, nameIndex: true },
 	});
-	if (mine.some((row) => row.name.trim() === wanted)) {
-		throw new TRPCError({
-			code: "CONFLICT",
-			message: "Category name already exists",
-		});
-	}
+	const taken = mine.some((row) =>
+		comparableIndexes(nameIndex, row.nameIndex)
+			? row.nameIndex === nameIndex
+			: row.name.trim() === wanted,
+	);
+	if (taken) throw nameTaken();
+}
+
+/**
+ * A write that loses a race on either unique index (the old one on the name,
+ * the new one on the name index) is the same answer as one that sees the
+ * name taken.
+ */
+function asNameTaken(error: unknown): unknown {
+	return isUniqueViolation(error) ? nameTaken() : error;
+}
+
+/** `masterKeyring` is for tests: null means no master key. */
+export interface CategoryWriteOptions {
+	masterKeyring?: Keyring | null;
 }
 
 export async function createCategory(
 	db: AppDb,
 	userId: string,
 	input: CategoryInput,
+	options: CategoryWriteOptions = {},
 ): Promise<CategoryRow> {
-	await assertNameFree(db, userId, input.name);
-	return db.category.create({
-		data: {
-			name: input.name,
-			color: input.color,
-			icon: input.icon ?? undefined,
-			excludeByDefault: input.excludeByDefault ?? false,
-			userId,
-		},
-		select: CATEGORY_SELECT,
-	});
+	try {
+		return await userTransaction(db, userId, async (tx) => {
+			const nameIndex = await categoryNameIndexFor(
+				tx,
+				input.name,
+				options.masterKeyring,
+			);
+			await assertNameFree(tx, userId, input.name, nameIndex);
+			return tx.category.create({
+				data: {
+					name: input.name,
+					nameIndex,
+					color: input.color,
+					icon: input.icon ?? undefined,
+					excludeByDefault: input.excludeByDefault ?? false,
+					userId,
+				},
+				select: CATEGORY_SELECT,
+			});
+		});
+	} catch (error) {
+		throw asNameTaken(error);
+	}
 }
 
 /** Changes the fields given; `icon: null` removes the icon. */
@@ -132,18 +173,34 @@ export async function updateCategory(
 	userId: string,
 	id: string,
 	changes: Partial<CategoryInput>,
+	options: CategoryWriteOptions = {},
 ): Promise<CategoryRow> {
 	await getCategory(db, userId, id);
-	if (changes.name !== undefined)
-		await assertNameFree(db, userId, changes.name, id);
 	const data = Object.fromEntries(
 		Object.entries(changes).filter(([, v]) => v !== undefined),
 	) as Prisma.CategoryUpdateInput;
-	return db.category.update({
-		where: { id, userId },
-		data,
-		select: CATEGORY_SELECT,
-	});
+	try {
+		return await userTransaction(db, userId, async (tx) => {
+			if (changes.name !== undefined) {
+				// A rename always rewrites the index, to null when there is no key,
+				// so a stale one never survives a new name.
+				const nameIndex = await categoryNameIndexFor(
+					tx,
+					changes.name,
+					options.masterKeyring,
+				);
+				await assertNameFree(tx, userId, changes.name, nameIndex, id);
+				data.nameIndex = nameIndex;
+			}
+			return tx.category.update({
+				where: { id, userId },
+				data,
+				select: CATEGORY_SELECT,
+			});
+		});
+	} catch (error) {
+		throw asNameTaken(error);
+	}
 }
 
 /**

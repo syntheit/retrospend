@@ -164,13 +164,47 @@ export async function getOrCreateDataKeyring(
  * Anything sealed with them can never be read again. Only deletion and
  * rotation jobs may call this: it runs on the owner connection and takes a
  * free user id. A later getOrCreateDataKeyring would make a new, unrelated
- * key, so account deletion (D3) must call it after the user can no longer
- * write. Deleting the user row also removes the keys (a trigger, see the
- * migration), which is the backstop for every other way a user row can go.
+ * key, so a deletion job calls it in the same transaction as the user delete
+ * (pass that transaction as `client`, so a failed deletion keeps the keys),
+ * after the user row is deleted. If a first-key insert holds the user row
+ * first, the delete waits for it, then succeeds, and this call sees the
+ * committed key. If the insert starts after the delete, it waits on the user
+ * row and then fails. Without a `client` it runs on its own connection and
+ * commits at once.
+ *
+ * The trigger on "user" (see the migration) also removes the keys when the
+ * row goes. Account deletion has both: the trigger covers every other way a
+ * user row can go, and this call states the intent in code and still works if
+ * the trigger is ever changed. Both run inside the deletion transaction.
  */
-export async function destroyDataKeys(userId: string): Promise<number> {
+export async function destroyDataKeys(
+	userId: string,
+	client: Pick<Prisma.TransactionClient, "$executeRaw"> = db,
+): Promise<number> {
 	return keystore(
-		() => db.$executeRaw`
+		() => client.$executeRaw`
 			DELETE FROM keystore."user_data_key" WHERE "userId" = ${userId}`,
 	);
+}
+
+/**
+ * destroyDataKeys for a deletion transaction. A missing keystore (a main dump
+ * restored with no keystore dump, see Data key backups in docs/self-hosting.md)
+ * means there are no keys to destroy, and it must not stop the deletion: the
+ * trigger skips it the same way. The check comes first because a failed
+ * statement would abort the whole transaction. It logs no user id.
+ */
+export async function destroyDataKeysIfStored(
+	userId: string,
+	client: Pick<Prisma.TransactionClient, "$executeRaw" | "$queryRaw">,
+): Promise<number> {
+	const [row] = await client.$queryRaw<{ present: boolean }[]>`
+		SELECT to_regclass('keystore.user_data_key') IS NOT NULL AS "present"`;
+	if (!row?.present) {
+		console.warn(
+			"The key store is missing, so account deletion destroyed no data keys",
+		);
+		return 0;
+	}
+	return destroyDataKeys(userId, client);
 }

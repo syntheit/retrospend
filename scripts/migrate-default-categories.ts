@@ -194,7 +194,8 @@ async function processUser(
 			if (!DRY_RUN) {
 				await tx.category.update({
 					where: { id: oldCat.id },
-					data: { name: newName },
+					// The old name index no longer matches; the backfill makes a new one.
+					data: { name: newName, nameIndex: null },
 				});
 			}
 			actions.renames.push(`${oldName} → ${newName}`);

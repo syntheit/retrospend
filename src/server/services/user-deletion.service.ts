@@ -1,6 +1,8 @@
 import type { PrismaClient } from "~prisma";
+import { stashedIconPath } from "./accounts/icon";
 import { assertAnotherAdminRemains } from "./admin-guard.service";
 import { DELETED_USER_NAME, DELETED_USER_SENTINEL } from "./deleted-sentinels";
+import { destroyDataKeysIfStored } from "./keys/data-key.service";
 import {
 	repointSettlementParty,
 	syncPaymentHeaders,
@@ -12,7 +14,6 @@ import {
 	findSuccessorOrganizer,
 	handOverCreatedProjects,
 } from "./user-deletion-projects";
-import { stashedIconPath } from "./accounts/icon";
 import { removeUserFiles } from "./user-files.service";
 
 export * from "./deleted-sentinels";
@@ -478,11 +479,7 @@ export async function anonymizeAndDeleteUser(
 			data: { actorId: DELETED_USER_SENTINEL },
 		});
 
-		// TODO: Sanitize userId from AuditLogEntry.changes JSON fields.
-		// The changes field stores structural field diffs (old/new values), not
-		// user IDs as first-class values, so the risk is low. If needed, a raw
-		// UPDATE ... SET changes = replace(changes::text, userId, DELETED_USER_SENTINEL)::jsonb
-		// query can be added here.
+		// TODO: AuditLogEntry.changes may hold this userId in field diffs (low risk).
 
 		// Ghosts this user created: the ones in a project that goes on belong to its
 		// heir, the rest are detached before the cascade deletes them.
@@ -490,6 +487,10 @@ export async function anonymizeAndDeleteUser(
 
 		// Delete the user - cascades all personal data (expenses, budgets, sessions, etc.)
 		await tx.user.delete({ where: { id: userId } });
+
+		// Crypto-shred after the user row, in this transaction (race and trigger
+		// notes on destroyDataKeys in data-key.service.ts).
+		await destroyDataKeysIfStored(userId, tx);
 
 		// Clean up GuestSessions that used this user's email (pre-signup guest access)
 		await tx.guestSession.deleteMany({ where: { email: userEmail } });
