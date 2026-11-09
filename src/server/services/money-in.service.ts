@@ -66,7 +66,9 @@ export interface DueTemplate {
  * is the table rate for the due date at the user's default type (or the
  * `choice` a confirm makes: a type or a typed rate), with the home leg booked
  * like a saved expense (rate-types.ts); a missing rate throws
- * MissingRateError.
+ * MissingRateError. A template name that starts with U+0001 (an encrypted
+ * value that was not opened) throws SealedTextError: the post fails instead
+ * of titling an expense with the ciphertext.
  */
 export async function recurringEntryData(
 	db: PrismaClient | Prisma.TransactionClient,
@@ -77,6 +79,7 @@ export async function recurringEntryData(
 	/** The day it was really paid or received; the due date when omitted. */
 	paidOn?: Date,
 ): Promise<Prisma.ExpenseUncheckedCreateInput> {
+	const title = stripUserTextControls(template.name);
 	const bookedOn = paidOn ?? template.nextDueDate;
 	const asks = template.amountMode === "ASK";
 	if (asks !== (confirmedAmount !== undefined)) {
@@ -102,7 +105,7 @@ export async function recurringEntryData(
 	const isIncome = template.direction === "IN";
 	return {
 		userId: template.userId,
-		title: stripUserTextControls(template.name),
+		title,
 		amount,
 		currency: template.currency,
 		date: bookedOn,

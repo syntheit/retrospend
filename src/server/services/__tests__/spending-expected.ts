@@ -34,7 +34,7 @@ export const EXPECTED_READINGS = {
 	duplicateOfMoneyIn: { isDuplicate: false, existingTitle: null },
 	titlesOfMoneyIn: [],
 	// The probe is new to this ledger, so it imports.
-	csvImport: { count: 1, skippedDuplicates: 0 },
+	csvImport: { count: 1, skippedDuplicates: 0, rejected: [] },
 	categories: ["Groceries", "Rent"],
 };
 

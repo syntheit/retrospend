@@ -2,6 +2,7 @@ import { userTextOrEmpty } from "@retrospend/api-contract/common";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { db } from "~/server/db";
+import { userTransaction } from "~/server/db-tx";
 import { logEventAsync } from "~/server/services/audit.service";
 import { participantRefSchema } from "~/server/services/payments/input";
 import { sharesExpenseWith } from "~/server/services/people/co-participants";
@@ -43,9 +44,7 @@ export const paymentMethodRouter = createTRPCRouter({
 			const methods = input.methods.map((m, i) => ({ ...m, rank: i + 1 }));
 			const inputIds = methods.filter((m) => m.id).map((m) => m.id!);
 
-			await ctx.db.$transaction(async (tx) => {
-				await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true), set_config('role', 'retrospend_app', true)`;
-
+			await userTransaction(ctx.db, userId, async (tx) => {
 				// Delete methods not present in the input
 				if (inputIds.length > 0) {
 					await tx.paymentMethod.deleteMany({

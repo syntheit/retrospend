@@ -66,6 +66,23 @@ func ValidateTransaction(tx models.NormalizedTransaction) error {
 	return nil
 }
 
+// cleanText strips the controls the app refuses from the text fields. Text
+// that starts with U+0001 (the marker of an encrypted value) is an error, so
+// the row is skipped and its text is never written out or logged.
+func cleanText(tx *models.NormalizedTransaction) error {
+	var err error
+	if tx.Title, err = usertext.StripControls(tx.Title); err != nil {
+		return ValidationError{Field: "title", Message: "text starts with a reserved character (U+0001)"}
+	}
+	if tx.Location, err = usertext.StripControls(tx.Location); err != nil {
+		return ValidationError{Field: "location", Message: "text starts with a reserved character (U+0001)"}
+	}
+	if tx.Description, err = usertext.StripControls(tx.Description); err != nil {
+		return ValidationError{Field: "description", Message: "text starts with a reserved character (U+0001)"}
+	}
+	return nil
+}
+
 // ValidateTransactions validates all transactions and returns valid ones + warnings for invalid ones.
 // Invalid transactions are skipped and a warning is added to metadata.
 func ValidateTransactions(transactions []models.NormalizedTransaction, metadata *models.ImportMetadata) []models.NormalizedTransaction {
@@ -75,9 +92,13 @@ func ValidateTransactions(transactions []models.NormalizedTransaction, metadata 
 		// The app refuses control characters in these fields, so a row that
 		// holds one could never be edited. A title that was only controls is
 		// blank now and is skipped below.
-		tx.Title = usertext.StripControls(tx.Title)
-		tx.Location = usertext.StripControls(tx.Location)
-		tx.Description = usertext.StripControls(tx.Description)
+		if err := cleanText(&tx); err != nil {
+			warning := fmt.Sprintf("Skipped transaction #%d: %v (amount: %.2f, date: '%s')",
+				i+1, err, tx.Amount, tx.Date)
+			metadata.Warnings = append(metadata.Warnings, warning)
+			metadata.SkippedTransactions++
+			continue
+		}
 		if err := ValidateTransaction(tx); err != nil {
 			warning := fmt.Sprintf("Skipped transaction #%d: %v (title: '%s', amount: %.2f, date: '%s')",
 				i+1, err, tx.Title, tx.Amount, tx.Date)

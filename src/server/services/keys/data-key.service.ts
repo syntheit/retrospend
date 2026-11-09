@@ -15,13 +15,14 @@
  * has no transaction and no setting, so it refuses too.
  *
  * `destroyDataKeys` is the other kind: it runs on the owner connection, for
- * jobs with no user in scope.
+ * jobs with no user in scope. It runs on the raw base (`keystoreDb`), never
+ * through the client slot.
  *
  * Unwrapped keys only ever live inside a `Keyring`, which hides its bytes from
  * logs and serialization. This file logs nothing and no error names a key.
  */
 import { randomBytes } from "node:crypto";
-import { db } from "~/server/db";
+import { keystoreDb } from "~/server/db";
 import { Prisma } from "~prisma";
 import {
 	type FieldAad,
@@ -39,7 +40,14 @@ export type DataKeyErrorCode =
 	/** The transaction has no signed-in user, so there is no key to reach. */
 	| "no_user"
 	/** The app role lost its keystore grants, for example after a restore; see self-hosting.md. */
-	| "keystore_grants_missing";
+	| "keystore_grants_missing"
+	/**
+	 * The user had data keys once (`user."dataKeySince"` is set) and has none now,
+	 * for example after a main dump was restored without the keystore dump.
+	 * Making a new key would open nothing sealed before, so none is made; see
+	 * "Data key backups" in docs/self-hosting.md.
+	 */
+	| "keystore_lost";
 
 const MESSAGES: Record<DataKeyErrorCode, string> = {
 	master_key_missing: "The server master key is not configured",
@@ -48,6 +56,8 @@ const MESSAGES: Record<DataKeyErrorCode, string> = {
 	no_user: "There is no signed-in user for the key store",
 	keystore_grants_missing:
 		"The app cannot reach the key store. Re-apply the grants in Data key backups in docs/self-hosting.md",
+	keystore_lost:
+		"This user's data keys were made before and are gone from the key store. See Data key backups in docs/self-hosting.md",
 };
 
 export class DataKeyError extends Error {
@@ -88,7 +98,8 @@ function pgCode(error: unknown): string | undefined {
  * stable errors: 42P01 (no table), 3F000 (no schema) or 42883 (no function)
  * mean the keystore is missing; 28000 is the functions refusing a transaction
  * with no signed-in user (or a user that does not exist); 42501 is a missing
- * grant, which a restore leaves behind because the dumps carry no privileges.
+ * grant, which a restore leaves behind because the dumps carry no privileges;
+ * KS001 is create_first_data_key refusing to replace keys that were lost.
  */
 async function keystore<T>(query: () => Promise<T>): Promise<T> {
 	try {
@@ -99,6 +110,7 @@ async function keystore<T>(query: () => Promise<T>): Promise<T> {
 			throw new DataKeyError("keystore_missing");
 		if (code === "28000") throw new DataKeyError("no_user");
 		if (code === "42501") throw new DataKeyError("keystore_grants_missing");
+		if (code === "KS001") throw new DataKeyError("keystore_lost");
 		throw error;
 	}
 }
@@ -134,7 +146,8 @@ function unwrapAll(rows: KeyRow[], masterKeyring: Keyring): Keyring {
 
 /**
  * The signed-in user's data keys as a keyring (current key first), made on
- * first use. Safe to call from several requests at once: the insert is a no-op
+ * first use. A user that had keys and has none now gets `keystore_lost`, not a
+ * new key (the function checks `user."dataKeySince"`). Safe to call from several requests at once: the insert is a no-op
  * for the loser, and everyone then reads the key that won.
  */
 export async function getOrCreateDataKeyring(
@@ -179,7 +192,7 @@ export async function getOrCreateDataKeyring(
  */
 export async function destroyDataKeys(
 	userId: string,
-	client: Pick<Prisma.TransactionClient, "$executeRaw"> = db,
+	client: Pick<Prisma.TransactionClient, "$executeRaw"> = keystoreDb,
 ): Promise<number> {
 	return keystore(
 		() => client.$executeRaw`

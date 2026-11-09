@@ -249,7 +249,7 @@ export async function importReview(
 ): Promise<ImportReview> {
 	const job = await loadReviewableJob(db, userId, jobId);
 	const stored = storedRows(job.transactions);
-	const { rows, badDates } = prepareRows(stored, options);
+	const { rows, badDates, badText } = prepareRows(stored, options);
 	const rates = cachedRates(db);
 	const [ctx, categories, matches] = await Promise.all([
 		loadRateContext(rates, userId),
@@ -320,7 +320,7 @@ export async function importReview(
 		keyring: options.keyring,
 		window: options.suggestionWindow,
 	});
-	const unreadable = unreadableCount(job.warnings) + badDates;
+	const unreadable = unreadableCount(job.warnings) + badDates + badText;
 	return {
 		jobId: job.id,
 		fileName: job.fileName,

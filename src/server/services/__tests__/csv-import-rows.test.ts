@@ -119,6 +119,29 @@ describe("CsvService.importExpensesFromRows", () => {
 		expect(rows[0]).toMatchObject({ location: "BA", description: "one\r\ntwo\tthree" });
 		expect(rows[1]).toMatchObject({ location: "", description: undefined });
 	});
+	it("rejects a row whose text starts with U+0001 and imports the rest", async () => {
+		useExpenseTable(db, []);
+		const base = { amount: 100, currency: "ARS", date: OCT5_LOCAL, exchangeRate: 1560 };
+
+		const result = await service.importExpensesFromRows(
+			"user-1",
+			[
+				{ ...base, title: "Fine" },
+				{ ...base, title: "\u0001k1:AAAA" },
+				{ ...base, title: "Also fine", location: "\u0001k1:BBBB" },
+				{ ...base, title: "Last", description: "\u0001k1:CCCC" },
+				{ ...base, title: "Kept", location: "BA" },
+			],
+			{ timeZone: BA },
+		);
+
+		expect(result.count).toBe(2);
+		expect(created().map((e) => e.title)).toEqual(["Fine", "Kept"]);
+		expect(result.rejected.map((r) => r.row)).toEqual([1, 2, 3]);
+		expect(result.rejected[0]?.reason).toContain("U+0001");
+		expect(JSON.stringify(result)).not.toContain("k1:");
+	});
+
 	describe("a control character inside a title", () => {
 		const row = (title: string) => ({
 			title,

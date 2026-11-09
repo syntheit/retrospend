@@ -9,8 +9,10 @@ export interface UserTransactionOptions {
  * Runs `work` in one interactive transaction with RLS set for `userId`.
  * The RLS settings are the first statement inside it. Pass the global `db` or a
  * client from createUserScopedDb: the scoped client's `$transaction(callback)`
- * runs on the base client (one connection), so `tx` is never the per-query
- * wrapper that would split the work across connections.
+ * runs on the global client (one connection), so `tx` is never the per-query
+ * wrapper that would split the work across connections. The global client is
+ * the raw base plus the extension slot (db.ts), so the model calls in `tx` go
+ * through the slot.
  *
  * `userId` is who the whole transaction runs as, whatever scoped client was
  * passed: `userTransaction(scopedForAlice, bobId, ...)` runs every query as

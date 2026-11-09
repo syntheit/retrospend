@@ -15,8 +15,9 @@
  *   no signed-in user                  -> no key, no index
  *   key replaced, "Food" indexed       -> its index is stale: "Food " still refused by name
  *   recompute                          -> the stale row gets a current index, then 0 updated
- *   key store missing, grants lost,
+ *   key store missing, grants lost, keys lost,
  *   master key wrong                   -> the write goes through with a null index
+ *                                         (keys lost: and no new key is made)
  *   a create racing a backfill         -> that user is skipped and counted
  */
 import { randomBytes } from "node:crypto";
@@ -336,6 +337,8 @@ describe("category name index", () => {
 		const oldTag = blindIndexTag(await ringOf(a), CATEGORY_NAME_INDEX_LABEL);
 		// The key is lost and made again: key id 1 with other bytes.
 		await destroyDataKeys(a.user.id);
+		// The marker says A had a key; an operator who accepts the loss clears it.
+		await adminDb.$executeRaw`UPDATE "user" SET "dataKeySince" = NULL WHERE "id" = ${a.user.id}`;
 		const newTag = blindIndexTag(await ringOf(a), CATEGORY_NAME_INDEX_LABEL);
 		expect(newTag).not.toBe(oldTag);
 		// The new index of the same name differs, so an index compare would let
@@ -415,6 +418,19 @@ describe("category name index", () => {
 					'GRANT EXECUTE ON FUNCTION keystore."current_user_data_keys"() TO retrospend_app',
 				);
 			}
+		});
+
+		it("keeps writing when the user's keys were lost and not made again", async () => {
+			const a = await createTestUser();
+			const seed = await create(a, "Seed");
+			expect(await indexOf(seed.id)).not.toBeNull();
+			// The keystore lost A's rows; the marker in the main schema remembers them.
+			await destroyDataKeys(a.user.id);
+			await expectFallback(a, "keystore_lost");
+			// Nothing minted a new key behind the fallback.
+			const [row] = await adminDb.$queryRaw<{ n: bigint }[]>`
+				SELECT count(*) AS n FROM keystore."user_data_key" WHERE "userId" = ${a.user.id}`;
+			expect(Number(row?.n)).toBe(0);
 		});
 
 		it("keeps writing when the master key does not open the user's key", async () => {

@@ -201,15 +201,19 @@ docker compose up -d
 
 Never restore the keystore dump as the owner with `--clean`. It drops the `keystore` schema and the owner cannot create it again, which leaves the database with no key store. The superuser is not needed for any of these steps. The app's grants on the key table are applied on start.
 
-The delete removes keys of accounts that were deleted after the keystore dump was made, so a restore never brings a deleted account's key back. If you restore a keystore dump that is older than the main one, accounts created in between have no key yet; the server makes one on first use.
+The delete removes keys of accounts that were deleted after the keystore dump was made, so a restore never brings a deleted account's key back. If you restore a keystore dump that is older than the main one, an account whose key was made in between has lost it. The main dump remembers that the account had a key (the `dataKeySince` column), so the server reports that the user's keys are gone instead of making a new key, which would open nothing sealed with the old one. Accounts that never had a key still get one on first use. If nothing was sealed with the lost keys, allow new ones with the command at the end of this section.
 
-If you restore a main dump into a new database and have no keystore dump (it is older than `BACKUP_RETENTION_DAYS`, or was lost), the database lists the keystore migration as applied but the schema is missing, and the server reports that the key store is missing. Make an empty one and restart:
+If you restore a main dump into a new database and have no keystore dump (it is older than `BACKUP_RETENTION_DAYS`, or was lost), the database lists the keystore migrations as applied but the schema is missing, and the server reports that the key store is missing. Make an empty one and restart. Delete both rows: the second migration replaces a function the first one defines, so the first alone would bring back the old, unguarded version.
 
 ```sh
-docker exec retrospend-postgres psql -U retrospend_owner -d retrospend -c "DELETE FROM _prisma_migrations WHERE migration_name = '20261109100000_keystore'"
+docker exec retrospend-postgres psql -U retrospend_owner -d retrospend -c "DELETE FROM _prisma_migrations WHERE migration_name IN ('20261109100000_keystore', '20261109800000_keystore_lost_guard')"
 ```
 
-The migration runs again on start and is safe to repeat. An empty key store means every user gets a new key, so anything already sealed with the lost keys can no longer be read.
+Both migrations run again on start, in order, and are safe to repeat. An empty key store means every user who had a key has lost it, and the server reports that instead of making a new one. If nothing was sealed with the lost keys, clear the marker of every user whose key is gone, and the next request makes a new key. Anything already sealed with the lost keys can no longer be read.
+
+```sh
+docker exec retrospend-postgres psql -U retrospend_owner -d retrospend -c 'UPDATE "user" SET "dataKeySince" = NULL WHERE "dataKeySince" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM keystore.user_data_key k WHERE k."userId" = "user".id)'
+```
 
 ## Updating
 

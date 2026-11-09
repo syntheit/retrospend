@@ -2,11 +2,13 @@
 // hold text the app now refuses. It must see every column, count what it says
 // it counts, and print no value and no user id.
 import { Pool } from "pg";
-import { afterAll, describe, expect, it } from "vitest";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { adminDb, createTestUser, withSuperuser } from "~/test/pg-harness";
 import {
 	type ColumnCount,
 	formatScan,
+	hasBlockingRows,
+	runScan,
 	scanControlChars,
 } from "../../../scripts/scan-control-chars";
 
@@ -87,5 +89,92 @@ describe("scan-control-chars", () => {
 		expect(out).not.toContain("secret");
 		expect(out).not.toContain(user.id);
 		expect(out).not.toContain(user.email);
+	});
+});
+
+// The worker database is shared by every file, so other files' rows would
+// decide the exit code. The gate runs against a schema of its own that holds
+// one mapped table, which the scan finds through the pool's search path.
+describe("scan-control-chars --fail", () => {
+	const schema = "scan_fail_gate";
+	let gatePool: Pool;
+
+	const setRows = async (...titles: string[]) => {
+		await gatePool.query("DELETE FROM expense");
+		for (const title of titles)
+			await gatePool.query("INSERT INTO expense (title) VALUES ($1)", [title]);
+	};
+	const run = async (fail: boolean) => {
+		const lines: string[] = [];
+		const code = await runScan(gatePool, { fail }, (t) => lines.push(t));
+		return { code, out: lines.join("\n") };
+	};
+
+	beforeAll(async () => {
+		await withSuperuser(async (client) => {
+			await client.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
+			await client.query(`CREATE SCHEMA ${schema}`);
+			await client.query(`CREATE TABLE ${schema}.expense (title text)`);
+		});
+		gatePool = new Pool({
+			connectionString: process.env.PG_TEST_SUPER_URL,
+			options: `-c search_path=${schema}`,
+		});
+	});
+	afterAll(async () => {
+		await gatePool.end();
+		await withSuperuser((client) =>
+			client.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`),
+		);
+	});
+
+	it("passes on clean text, including tab, line feed, carriage return and U+FFFD", async () => {
+		await setRows(
+			"plain",
+			"a\tb\nc\r\nd",
+			"replaced \ufffd",
+			"\u00e9\u{1f600}",
+		);
+		expect((await run(true)).code).toBe(0);
+	});
+
+	it("fails on a value that starts with U+0001", async () => {
+		await setRows("plain", "\u0001k1:AAAA");
+		const { code, out } = await run(true);
+		expect(code).toBe(1);
+		expect(out).toContain("Blocked");
+	});
+
+	it("fails on a C0 control anywhere in a value", async () => {
+		await setRows("plain", "mid\u0007dle");
+		expect((await run(true)).code).toBe(1);
+	});
+
+	it("without --fail it reports the same rows and exits 0", async () => {
+		await setRows("\u0001k1:AAAA", "mid\u0007dle");
+		const { code, out } = await run(false);
+		expect(code).toBe(0);
+		expect(out).toContain("Rows starting with U+0001: 1");
+		expect(out).not.toContain("Blocked");
+	});
+
+	it("never prints a value", async () => {
+		await setRows("secret\u0007text");
+		expect((await run(true)).out).not.toContain("secret");
+	});
+
+	it("decides from the counts: a missing table does not block", () => {
+		const none: ColumnCount = {
+			table: "t",
+			column: "c",
+			rows: null,
+			controls: 0,
+			startsWithU0001: 0,
+			replacement: 3,
+		};
+		expect(hasBlockingRows([none])).toBe(false);
+		expect(hasBlockingRows([{ ...none, rows: 2, startsWithU0001: 1 }])).toBe(
+			true,
+		);
 	});
 });

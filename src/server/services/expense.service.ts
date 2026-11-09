@@ -9,6 +9,7 @@ import {
 	CUSTOM_RATE_TYPE,
 	rateTypeFromPricingSource,
 } from "~/lib/rate-selection";
+import { userTransaction } from "~/server/db-tx";
 import type { Prisma, PrismaClient } from "~prisma";
 import { refuseLegMoneyEdit } from "./accounts/leg-edits";
 import { AmortizationService } from "./amortization.service";
@@ -482,13 +483,7 @@ export class ExpenseService {
 		userId?: string,
 	): Promise<T> {
 		if ("$transaction" in this.db) {
-			if (userId) {
-				return await this.db.$transaction(async (tx) => {
-					await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true),
-					                            set_config('role', 'retrospend_app', true)`;
-					return await callback(tx);
-				});
-			}
+			if (userId) return await userTransaction(this.db, userId, callback);
 			return await this.db.$transaction(callback);
 		}
 		return await callback(this.db as Prisma.TransactionClient);

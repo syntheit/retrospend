@@ -24,7 +24,12 @@ const { mockPrismaInstance, mockTransaction, mockExecuteRaw } = vi.hoisted(
 			$extends: vi.fn(),
 			$transaction: mockTransaction,
 			$executeRaw: mockExecuteRaw,
+			$queryRaw: vi.fn(),
 		};
+		// The module extends the base once at load, for the slot, and a scoped
+		// client extends that client again. Until a test installs its own
+		// implementation, an extension returns the instance itself.
+		mockPrismaInstance.$extends.mockImplementation(() => mockPrismaInstance);
 		return { mockPrismaInstance, mockTransaction, mockExecuteRaw };
 	},
 );

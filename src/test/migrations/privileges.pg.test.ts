@@ -81,7 +81,7 @@ describe("retrospend_app privileges", () => {
 		expect(actual.columns.user?.INSERT).toBeUndefined();
 	});
 
-	it("reads every user column except the secret and the personal data", async () => {
+	it("reads every user column except the secret, the personal data and the key marker", async () => {
 		const { rows } = await client.query<{ name: string }>(
 			`SELECT attname AS name FROM pg_attribute
 			 WHERE attrelid = '"user"'::regclass AND attnum > 0 AND NOT attisdropped
@@ -91,6 +91,8 @@ describe("retrospend_app privileges", () => {
 		const readable = actual.columns.user?.SELECT ?? [];
 		expect(all.filter((c) => !readable.includes(c))).toEqual([
 			"consentIp",
+			// Only keystore.create_first_data_key reads or writes it, as the owner.
+			"dataKeySince",
 			"pendingEmailToken",
 		]);
 	});

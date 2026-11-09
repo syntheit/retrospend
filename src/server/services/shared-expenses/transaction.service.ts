@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { noticeChanges } from "~/server/services/notification-text";
+import { userTransaction } from "~/server/db-tx";
 import { findExchangeRate } from "~/server/exchange-rates";
 import { addGhostMembers } from "~/server/services/project/joining";
 import {
@@ -999,9 +1000,7 @@ export class SharedTransactionService {
 	): Promise<T> {
 		if (!("$transaction" in this.db)) return await callback(this.db);
 		const guest = this.actor.participantType !== "user"; // no RLS identity: write as the owner
-		return await this.db.$transaction(async (tx) => {
-			if (!guest) await tx.$executeRaw`SELECT set_config('app.current_user_id', ${this.actor.participantId}, true), set_config('role', 'retrospend_app', true)`;
-			return await callback(tx);
-		});
+		if (guest) return await this.db.$transaction(callback);
+		return await userTransaction(this.db, this.actor.participantId, callback);
 	}
 }

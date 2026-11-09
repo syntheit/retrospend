@@ -143,8 +143,20 @@ func ProcessRecurringExpenses(database *db.DB) error {
 	}
 
 	createdCount := 0
+	sealedCount := 0
 
 	for _, template := range templates {
+		// A name that starts with U+0001 is an encrypted value that was not
+		// opened. Posting it would title the expense with the ciphertext, so
+		// this template is not posted and not advanced. The log names the
+		// template id only, never its text.
+		title, err := usertext.StripControls(template.Name)
+		if err != nil {
+			log.Printf("[RECURRING] ERROR: template %s has a name that is an encrypted value, not posting it: %v", template.ID, err)
+			sealedCount++
+			continue
+		}
+
 		// Get exchange rate
 		exchangeRate, _, err := getBestExchangeRate(ctx, database, template.Currency, template.NextDueDate)
 		if err != nil {
@@ -201,7 +213,7 @@ func ProcessRecurringExpenses(database *db.DB) error {
 				gen_random_uuid()::text, $1, $2, $3::numeric, $4, $5, $6, $7, $8, 'RECURRING', $9, 'FINALIZED',
 				$10::"ExpenseDirection", $11::"InType", NOW(), NOW()
 			)
-		`, template.UserID, usertext.StripControls(template.Name), template.Amount, template.Currency, template.NextDueDate,
+		`, template.UserID, title, template.Amount, template.Currency, template.NextDueDate,
 			template.CategoryID, amountInUSD, exchangeRate, template.ID, post.Direction, post.InType)
 
 		if err != nil {
@@ -221,9 +233,12 @@ func ProcessRecurringExpenses(database *db.DB) error {
 	log.Printf("[RECURRING] ✓ Processed %d templates, created %d expenses", len(templates), createdCount)
 
 	// Update worker status
-	if err := database.UpdateWorkerStatus(ctx, "recurring_expenses", true); err != nil {
+	if err := database.UpdateWorkerStatus(ctx, "recurring_expenses", sealedCount == 0); err != nil {
 		log.Printf("[RECURRING] Failed to update worker status: %v", err)
 	}
 
+	if sealedCount > 0 {
+		return fmt.Errorf("%d recurring templates were not posted because their names are encrypted values", sealedCount)
+	}
 	return nil
 }

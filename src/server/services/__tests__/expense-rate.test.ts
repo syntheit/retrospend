@@ -6,9 +6,11 @@
  * Rates are DEFAULT_RATES (~/test/rate-table): ARS blue 1,560, official
  * 1,495; EUR official 0.8787; CLP has none. The user's home is ARS.
  */
+
+import { SealedTextError } from "@retrospend/api-contract/common";
+import { MissingRateError } from "@retrospend/domain/money";
 import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MissingRateError } from "@retrospend/domain/money";
 import { makeExpense } from "~/test/factories";
 import { createMockDb } from "~/test/mock-db";
 import { useRateTable } from "~/test/rate-table";
@@ -281,6 +283,20 @@ describe("the home leg an expense books", () => {
 			nextDueDate: DATE,
 		});
 		expect(row.title).toBe(" Netflix ");
+	});
+
+	it("a recurring post fails for a template name that is still encrypted", async () => {
+		await expect(
+			recurringEntryData(db as never, {
+				id: "t1",
+				userId: "u1",
+				name: "\u0001k1:AAAA",
+				amount: 12.99,
+				currency: "USD",
+				categoryId: null,
+				nextDueDate: DATE,
+			}),
+		).rejects.toThrow(SealedTextError);
 	});
 });
 

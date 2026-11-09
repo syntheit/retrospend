@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient, VerificationStatus } from "~prisma";
+import { userTransaction } from "~/server/db-tx";
 import { getImageUrl } from "~/server/storage";
 import { answerShareIn } from "./answer-share";
 import { logAudit } from "./audit-log";
@@ -504,11 +505,7 @@ export class VerificationService {
 	private async runInTransaction<T>(
 		callback: (tx: Prisma.TransactionClient) => Promise<T>,
 	): Promise<T> {
-		return await this.db.$transaction(async (tx) => {
-			await tx.$executeRaw`SELECT set_config('app.current_user_id', ${this.actor.participantId}, true),
-			                            set_config('role', 'retrospend_app', true)`;
-			return await callback(tx);
-		});
+		return await userTransaction(this.db, this.actor.participantId, callback);
 	}
 }
 
