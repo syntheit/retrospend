@@ -8,6 +8,7 @@ import {
 	readUserText,
 	searchesInApp,
 } from "./search-fold";
+import { compareText, sortByText } from "./text-order";
 
 type AppDb = typeof globalDb;
 
@@ -21,7 +22,8 @@ type AppDb = typeof globalDb;
  * (migration search_unaccent), so "cafe" finds "Café" and "MUNOZ" finds
  * "Muñoz". Expenses have two paths, picked by `searchesInApp`: the SQL match
  * above when no keyring is passed, and the same match in the app layer
- * (search-fold.ts) over a bounded window when text may be ciphertext.
+ * (search-fold.ts) over a bounded window when text may be ciphertext. People,
+ * projects and categories always match in the app layer (see below).
  */
 
 type Page<K> = { after: K | null; take: number };
@@ -178,7 +180,20 @@ export type PersonHitRow = {
 	username: string | null;
 };
 
+/** Whether `text` holds `q` the way `immutable_unaccent(text) ILIKE '%q%'` does. */
+function foldedMatcher(q: string): (text: string) => boolean {
+	const needle = foldUnaccentIlike(q);
+	return (text) => foldUnaccentIlike(text).includes(needle);
+}
+
 /**
+ * People, projects and categories are read as rows and matched, sorted and
+ * paged here, not in SQL: names may be ciphertext, so Postgres can neither
+ * match nor order them (docs/roadmap/e2ee-spike.md, lane D). These sets are
+ * bounded by who and what the caller is part of, never by how long the
+ * account has existed, so all of a set is read. Text columns come through
+ * model reads, which hand back plaintext; SQL only picks ids.
+ *
  * People: users the caller shares an expense or a project with, by name or
  * username, and the people they added by name (shadows RLS lets them see;
  * a claimed shadow shows as its user instead). By name.
@@ -189,40 +204,67 @@ export function searchPeople(
 	q: string,
 	page: Page<{ name: string; participantType: string; id: string }>,
 ): Promise<PersonHitRow[]> {
-	const p = containsPattern(q);
-	const after = page.after
-		? Prisma.sql`WHERE ("name", "participantType", "id") > (${page.after.name}, ${page.after.participantType}, ${page.after.id})`
-		: Prisma.empty;
-	return userTransaction(
-		db,
-		userId,
-		(tx) => tx.$queryRaw<PersonHitRow[]>`
-			SELECT * FROM (
-				SELECT 'user' AS "participantType", u."id", u."name", u."username"
-				FROM "user" u
-				WHERE u."id" <> ${userId}
-					AND (${matches(Prisma.sql`u."name"`, p)} OR ${matches(Prisma.sql`u."username"`, p)})
-					AND (
-						EXISTS (
-							SELECT 1 FROM "split_participant" me
-							JOIN "split_participant" them ON them."transactionId" = me."transactionId"
-							WHERE me."participantType" = 'user' AND me."participantId" = ${userId}
-								AND them."participantType" = 'user' AND them."participantId" = u."id")
-						OR EXISTS (
-							SELECT 1 FROM "project_participant" me
-							JOIN "project_participant" them ON them."projectId" = me."projectId"
-							WHERE me."participantType" = 'user' AND me."participantId" = ${userId}
-								AND them."participantType" = 'user' AND them."participantId" = u."id")
-					)
-				UNION ALL
-				SELECT 'shadow', s."id", s."name", NULL
-				FROM "shadow_profile" s
-				WHERE s."claimedById" IS NULL AND ${matches(Prisma.sql`s."name"`, p)}
-			) people
-			${after}
-			ORDER BY "name", "participantType", "id"
-			LIMIT ${page.take}`,
-	);
+	const match = foldedMatcher(q);
+	return userTransaction(db, userId, async (tx) => {
+		const known = await tx.$queryRaw<{ id: string }[]>`
+			SELECT u."id" FROM "user" u
+			WHERE u."id" <> ${userId}
+				AND (
+					EXISTS (
+						SELECT 1 FROM "split_participant" me
+						JOIN "split_participant" them ON them."transactionId" = me."transactionId"
+						WHERE me."participantType" = 'user' AND me."participantId" = ${userId}
+							AND them."participantType" = 'user' AND them."participantId" = u."id")
+					OR EXISTS (
+						SELECT 1 FROM "project_participant" me
+						JOIN "project_participant" them ON them."projectId" = me."projectId"
+						WHERE me."participantType" = 'user' AND me."participantId" = ${userId}
+							AND them."participantType" = 'user' AND them."participantId" = u."id")
+				)`;
+		const [users, shadows] = await Promise.all([
+			tx.user.findMany({
+				where: { id: { in: known.map((k) => k.id) } },
+				select: { id: true, name: true, username: true },
+			}),
+			tx.shadowProfile.findMany({
+				where: { claimedById: null },
+				select: { id: true, name: true },
+			}),
+		]);
+		const rows: PersonHitRow[] = [
+			...users
+				.filter((u) => match(u.name) || match(u.username))
+				.map((u) => ({
+					participantType: "user" as const,
+					id: u.id,
+					name: u.name,
+					username: u.username,
+				})),
+			...shadows
+				.filter((s) => match(s.name))
+				.map((s) => ({
+					participantType: "shadow" as const,
+					id: s.id,
+					name: s.name,
+					username: null,
+				})),
+		].sort(
+			(a, b) =>
+				compareText(a.name, b.name) ||
+				compareText(a.participantType, b.participantType) ||
+				compareText(a.id, b.id),
+		);
+		const cursor = page.after;
+		const later = cursor
+			? rows.filter(
+					(r) =>
+						(compareText(r.name, cursor.name) ||
+							compareText(r.participantType, cursor.participantType) ||
+							compareText(r.id, cursor.id)) > 0,
+				)
+			: rows;
+		return later.slice(0, page.take);
+	});
 }
 
 export type ProjectHitRow = {
@@ -238,26 +280,26 @@ export function searchProjects(
 	q: string,
 	page: Page<{ name: string; id: string }>,
 ): Promise<ProjectHitRow[]> {
-	const p = containsPattern(q);
-	const after = page.after
-		? Prisma.sql`AND (pr."name", pr."id") > (${page.after.name}, ${page.after.id})`
-		: Prisma.empty;
-	return userTransaction(
-		db,
-		userId,
-		(tx) => tx.$queryRaw<ProjectHitRow[]>`
-			SELECT pr."id", pr."name", pr."status"::text AS "status"
-			FROM "project" pr
-			WHERE EXISTS (
-					SELECT 1 FROM "project_participant" pp
-					WHERE pp."projectId" = pr."id"
-						AND pp."participantType" = 'user' AND pp."participantId" = ${userId})
-				AND (${matches(Prisma.sql`pr."name"`, p)}
-					OR ${matches(Prisma.sql`coalesce(pr."description", '')`, p)})
-				${after}
-			ORDER BY pr."name", pr."id"
-			LIMIT ${page.take}`,
-	);
+	const match = foldedMatcher(q);
+	return userTransaction(db, userId, async (tx) => {
+		const projects = await tx.project.findMany({
+			where: {
+				participants: {
+					some: { participantType: "user", participantId: userId },
+				},
+			},
+			select: { id: true, name: true, description: true, status: true },
+		});
+		const hits = sortByText(
+			projects.filter((p) => match(p.name) || match(p.description ?? "")),
+			(p) => p.name,
+		);
+		return afterNameCursor(hits, page).map((p) => ({
+			id: p.id,
+			name: p.name,
+			status: p.status,
+		}));
+	});
 }
 
 export type CategoryHitRow = { id: string; name: string; color: string };
@@ -269,19 +311,32 @@ export function searchCategories(
 	q: string,
 	page: Page<{ name: string; id: string }>,
 ): Promise<CategoryHitRow[]> {
-	const p = containsPattern(q);
-	const after = page.after
-		? Prisma.sql`AND ("name", "id") > (${page.after.name}, ${page.after.id})`
-		: Prisma.empty;
-	return userTransaction(
-		db,
-		userId,
-		(tx) => tx.$queryRaw<CategoryHitRow[]>`
-			SELECT "id", "name", "color"::text AS "color"
-			FROM "category"
-			WHERE "userId" = ${userId} AND ${matches(Prisma.sql`"name"`, p)}
-				${after}
-			ORDER BY "name", "id"
-			LIMIT ${page.take}`,
-	);
+	const match = foldedMatcher(q);
+	return userTransaction(db, userId, async (tx) => {
+		const categories = await tx.category.findMany({
+			where: { userId },
+			select: { id: true, name: true, color: true },
+		});
+		const hits = sortByText(
+			categories.filter((c) => match(c.name)),
+			(c) => c.name,
+		);
+		return afterNameCursor(hits, page);
+	});
+}
+
+/** Rows already sorted by name then id: the page after the cursor. */
+function afterNameCursor<T extends { id: string; name: string }>(
+	rows: readonly T[],
+	page: Page<{ name: string; id: string }>,
+): T[] {
+	const cursor = page.after;
+	const later = cursor
+		? rows.filter(
+				(r) =>
+					compareText(r.name, cursor.name) > 0 ||
+					(r.name === cursor.name && compareText(r.id, cursor.id) > 0),
+			)
+		: rows;
+	return later.slice(0, page.take);
 }
