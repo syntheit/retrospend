@@ -410,13 +410,23 @@ export async function importAccounts(
 ) {
 	let successCount = 0;
 	let errorCount = 0;
+	// Matched by name here, not in SQL: a name may be ciphertext in the database.
+	// An account made for one row is found by a later row with the same name.
+	const open = new Map<string, string>();
+	for (const a of await db.assetAccount.findMany({
+		where: { userId, closedAt: null },
+		select: { id: true, name: true },
+		orderBy: { createdAt: "asc" },
+	}))
+		if (!open.has(a.name)) open.set(a.name, a.id);
 	for (const row of rows) {
 		try {
-			const existing = await db.assetAccount.findFirst({
-				where: { userId, name: row.name, closedAt: null },
-			});
-			if (existing) await editAccount(db, userId, existing.id, row, timeZone);
-			else await createAccount(db, userId, row, timeZone);
+			const existingId = open.get(row.name);
+			if (existingId) await editAccount(db, userId, existingId, row, timeZone);
+			else {
+				const created = await createAccount(db, userId, row, timeZone);
+				open.set(row.name, created.id);
+			}
 			successCount++;
 		} catch (error) {
 			console.error("Failed to import a wealth row:", error);
