@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import {
+	SealedTextError,
 	stripUserTextControls,
 	userText,
 } from "@retrospend/api-contract/common";
@@ -12,13 +13,13 @@ import {
 	defaultBackgroundSettings,
 } from "~/lib/background-settings";
 import { db as globalDb } from "~/server/db";
+import { emailSubject } from "~/server/email-copy";
 import {
 	getEmailChangeAlertTemplate,
 	getEmailChangeVerificationTemplate,
 } from "~/server/email-templates";
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 import { hashToken } from "~/server/lib/tokens";
-import { emailSubject } from "~/server/email-copy";
 import { sendEmail } from "~/server/mailer";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
 import { changeUsername } from "~/server/services/username.service";
@@ -192,8 +193,14 @@ export async function updateProfile(
 	input: ProfileChanges,
 ): Promise<{ emailChangePending: boolean; user: UpdatedIdentity }> {
 	const userId = current.id;
-	const name =
-		input.name === undefined ? undefined : stripUserTextControls(input.name);
+	let name: string | undefined;
+	try {
+		name =
+			input.name === undefined ? undefined : stripUserTextControls(input.name);
+	} catch (error) {
+		if (!(error instanceof SealedTextError)) throw error;
+		throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid name" });
+	}
 	if (name !== undefined && !nameText.safeParse(name).success)
 		throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid name" });
 	const write: IdentityWrite = {

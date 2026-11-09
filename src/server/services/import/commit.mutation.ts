@@ -15,6 +15,7 @@ import { randomUUID } from "node:crypto";
 import { stripUserTextControls } from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
 import type { Money } from "~/server/figures/registry";
+import { userTimeZone } from "~/server/services/user-time-zone";
 import type { Prisma } from "~prisma";
 import { forgetMonthViews } from "../envelope/month-read";
 import { dec, toMinor } from "../envelope/units";
@@ -40,7 +41,6 @@ import {
 	storedRows,
 	unreadableCount,
 } from "./rows";
-import { userTimeZone } from "~/server/services/user-time-zone";
 
 type Tx = Prisma.TransactionClient;
 
@@ -212,7 +212,7 @@ export const commitImport: MoneyMutation<CommitImportInput, ImportSummary> = {
 		await claimJob(tx, userId, job.id);
 		const rates = cachedRates(tx);
 		const stored = storedRows(job.transactions);
-		const { rows, badDates } = prepareRows(stored, {
+		const { rows, badDates, badText } = prepareRows(stored, {
 			...input,
 			timeZone: zone,
 		});
@@ -292,7 +292,7 @@ export const commitImport: MoneyMutation<CommitImportInput, ImportSummary> = {
 				byKind: totals(created),
 				duplicates,
 				unchecked,
-				unreadable: unreadableCount(job.warnings) + badDates,
+				unreadable: unreadableCount(job.warnings) + badDates + badText,
 				noRate: noRate + noRateCount(job.warnings),
 				from: days[0] ?? null,
 				to: days.at(-1) ?? null,

@@ -3,6 +3,7 @@ import { categoryNameSchema, createCategorySchema } from "../categories";
 import {
 	hasForbiddenControl,
 	hasLoneSurrogate,
+	SealedTextError,
 	stripUserTextControls,
 	USER_TEXT_FIELDS,
 	userText,
@@ -119,6 +120,21 @@ describe("stripUserTextControls", () => {
 			"  Caf\u00e9 \u00d1 \u05e9\u05dc\u05d5\u05dd \u007f\u0085\r\n\t ";
 		expect(stripUserTextControls(text)).toBe(text);
 		expect(stripUserTextControls("ABC\u000bdef ")).toBe("ABCdef ");
+	});
+
+	it("refuses text that starts with U+0001 instead of stripping it", () => {
+		const sealed = "\u0001k1:AAAAAAAAAAAAAAAA";
+		expect(() => stripUserTextControls(sealed)).toThrow(SealedTextError);
+		expect(() => stripUserTextControls("\u0001")).toThrow(SealedTextError);
+		expect(() => stripUserTextControls("\u0001\u0007x")).toThrow(
+			SealedTextError,
+		);
+	});
+
+	it("still strips a U+0001 that is not first, and accepts empty text", () => {
+		expect(stripUserTextControls("a\u0001k1:b")).toBe("ak1:b");
+		expect(stripUserTextControls(" \u0001b")).toBe(" b");
+		expect(stripUserTextControls("")).toBe("");
 	});
 
 	it("leaves text that userText refuses acceptable to userText", () => {

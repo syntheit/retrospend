@@ -337,6 +337,35 @@ func TestValidateTransactions_StripsControlCharactersFromText(t *testing.T) {
 	}
 }
 
+func TestValidateTransactions_RefusesTextThatStartsWithU0001(t *testing.T) {
+	sealedTitle := validTx()
+	sealedTitle.Title = "\x01k1:AAAA"
+	sealedLocation := validTx()
+	sealedLocation.Location = "\x01k1:BBBB"
+	sealedDescription := validTx()
+	sealedDescription.Description = "\x01k1:CCCC"
+	meta := &models.ImportMetadata{}
+
+	valid := ValidateTransactions([]models.NormalizedTransaction{
+		validTx(), sealedTitle, sealedLocation, sealedDescription,
+	}, meta)
+
+	if len(valid) != 1 {
+		t.Fatalf("expected only the clean row, got %d", len(valid))
+	}
+	if meta.SkippedTransactions != 3 || len(meta.Warnings) != 3 {
+		t.Errorf("expected 3 skipped with 3 warnings, got %d and %d", meta.SkippedTransactions, len(meta.Warnings))
+	}
+	for _, w := range meta.Warnings {
+		if strings.Contains(w, "k1:") {
+			t.Errorf("a warning repeats the sealed text: %q", w)
+		}
+		if !strings.Contains(w, "U+0001") {
+			t.Errorf("a warning does not say why: %q", w)
+		}
+	}
+}
+
 func TestValidateTransactions_AllValid(t *testing.T) {
 	txs := []models.NormalizedTransaction{validTx(), validTx()}
 	meta := &models.ImportMetadata{}

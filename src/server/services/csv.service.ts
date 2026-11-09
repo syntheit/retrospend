@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { stripUserTextControls } from "@retrospend/api-contract/common";
-import { generateCsv } from "~/lib/csv";
+import {
+	SealedTextError,
+	stripUserTextControls,
+} from "@retrospend/api-contract/common";
 import {
 	computeAmountInUSD,
 	isValidRate,
@@ -9,9 +11,14 @@ import {
 	roundUSD,
 	USD,
 } from "@retrospend/domain/money";
-import type { Prisma, PrismaClient } from "~prisma";
-import { dayKey, startOfDayIn, startOfNextDayIn } from "@retrospend/domain/time-zone";
+import {
+	dayKey,
+	startOfDayIn,
+	startOfNextDayIn,
+} from "@retrospend/domain/time-zone";
+import { generateCsv } from "~/lib/csv";
 import { findExchangeRatesForDates } from "~/server/exchange-rates";
+import type { Prisma, PrismaClient } from "~prisma";
 import { AmortizationService } from "./amortization.service";
 import { listedEntryWhere } from "./spending";
 
@@ -131,7 +138,16 @@ export interface ImportExpenseRow {
 	excludeFromAnalytics?: boolean;
 }
 
-/** The row with the characters userText refuses taken out of its text. */
+/** An imported row the service refused, by its place in the rows it was given. */
+export interface RejectedImportRow {
+	row: number;
+	reason: string;
+}
+
+export const SEALED_TEXT_REASON =
+	"Text starts with a reserved character (U+0001)";
+
+/** The row with the characters userText refuses taken out of its text. Throws SealedTextError for text that starts with U+0001. */
 function withCleanText(row: ImportExpenseRow): ImportExpenseRow {
 	const clean = (text: string | null | undefined) =>
 		text ? stripUserTextControls(text) : text;
@@ -223,7 +239,20 @@ export class CsvService {
 	) {
 		const tz = options.timeZone;
 		// The text is stored cleaned; the duplicate check also reads the file's own.
-		const rows = incoming.map(withCleanText);
+		// A row whose text starts with U+0001 (the marker of an encrypted value)
+		// is refused, not cleaned: stripping it would store the ciphertext as text.
+		const rejected: RejectedImportRow[] = [];
+		const rows: ImportExpenseRow[] = [];
+		const sources: ImportExpenseRow[] = [];
+		for (const [at, row] of incoming.entries()) {
+			try {
+				rows.push(withCleanText(row));
+				sources.push(row);
+			} catch (error) {
+				if (!(error instanceof SealedTextError)) throw error;
+				rejected.push({ row: at, reason: SEALED_TEXT_REASON });
+			}
+		}
 		// Validate categories
 		const categoryIds = Array.from(
 			new Set(
@@ -324,7 +353,7 @@ export class CsvService {
 		for (const [at, row] of rows.entries()) {
 			const rowFingerprints = fingerprints(
 				row.date,
-				incoming[at]?.title ?? row.title,
+				sources[at]?.title ?? row.title,
 				row.amount,
 				row.currency,
 			);
@@ -400,7 +429,7 @@ export class CsvService {
 			);
 		}
 
-		return { count: totalCreated, skippedDuplicates };
+		return { count: totalCreated, skippedDuplicates, rejected };
 	}
 
 	private async runInTransaction<T>(

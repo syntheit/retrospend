@@ -398,7 +398,7 @@ describe("import.commit text", () => {
 						location: "BA\u0002",
 						description: "line one\r\nline\u0007two\ttabbed",
 					}),
-					row("\u0001\u0002", 100, "ARS", { description: "\u0007" }),
+					row("\u0002\u0001", 100, "ARS", { description: "\u0007" }),
 				] as unknown as Prisma.InputJsonValue,
 				warnings: [],
 				totalTransactions: 2,
@@ -419,5 +419,47 @@ describe("import.commit text", () => {
 		expect(rows[0]?.location).toBe("BA");
 		expect(rows[0]?.description).toBe("line one\r\nlinetwo\ttabbed");
 		expect(rows[1]?.description).toBeNull();
+	});
+});
+
+describe("import.commit text that starts with U+0001", () => {
+	it("leaves a row whose text is an encrypted value out, counts it unreadable, and imports the rest", async () => {
+		const { user } = await arsUser();
+		const job = await adminDb.importJob.create({
+			data: {
+				userId: user.id,
+				status: "READY_FOR_REVIEW",
+				type: "CSV",
+				fileName: "bank.csv",
+				fileSize: 100,
+				fileType: "csv",
+				transactions: [
+					row("Coffee", 3500, "ARS"),
+					row("\u0001k1:AAAA", 100, "ARS"),
+					row("Tea", 200, "ARS", { location: "\u0001k1:BBBB" }),
+					row("Juice", 300, "ARS", { description: "\u0001k1:CCCC" }),
+				] as unknown as Prisma.InputJsonValue,
+				warnings: [],
+				totalTransactions: 4,
+			},
+		});
+		const keep = (index: number) => ({
+			index,
+			keep: true,
+			categoryId: null,
+			kind: "expense" as const,
+		});
+		const input = { jobId: job.id, rows: [0, 1, 2, 3].map(keep) };
+
+		const applied = await forUser(user.id).apply(commitImport, input);
+
+		expect(applied.value).toMatchObject({
+			fileRows: 4,
+			created: 1,
+			unreadable: 3,
+		});
+		const rows = await adminDb.expense.findMany({ where: { userId: user.id } });
+		expect(rows.map((r) => r.title)).toEqual(["Coffee"]);
+		expect(JSON.stringify(rows)).not.toContain("k1:");
 	});
 });

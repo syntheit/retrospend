@@ -47,13 +47,30 @@ export function hasLoneSurrogate(text: string): boolean {
 }
 
 /**
+ * Thrown by `stripUserTextControls` for text that starts with U+0001, the
+ * marker of a field-encrypted value. Stripping it would turn a sealed value
+ * that reached a write path unopened into the plaintext "k1:<base64>", so the
+ * caller must refuse the row (an import) or fail loudly (a recurring post).
+ */
+export class SealedTextError extends Error {
+	constructor() {
+		super("Text starts with U+0001, the marker of an encrypted value");
+		this.name = "SealedTextError";
+	}
+}
+
+/**
  * The text with the characters `userText` refuses taken out: C0 controls
  * other than tab, line feed and carriage return, and lone surrogates.
  * Nothing else changes (no trim, no case folding, rule 11). For writes that
  * do not come from a form, such as imports and recurring posts, so one stray
  * control character in a file cannot make the row fail every later edit.
+ *
+ * Text that starts with U+0001 is not stripped: it throws `SealedTextError`.
+ * A U+0001 anywhere else is an ordinary control character and is stripped.
  */
 export function stripUserTextControls(text: string): string {
+	if (text.charCodeAt(0) === 0x01) throw new SealedTextError();
 	if (!hasForbiddenControl(text) && !hasLoneSurrogate(text)) return text;
 	let out = "";
 	for (let i = 0; i < text.length; i++) {
