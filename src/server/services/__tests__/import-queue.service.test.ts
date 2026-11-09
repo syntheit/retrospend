@@ -7,7 +7,7 @@ import { ImportQueueService } from "../import-queue.service";
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
 
 const mockImportExpensesFromRows = vi.hoisted(() =>
-	vi.fn().mockResolvedValue({ count: 3, skippedDuplicates: 0 }),
+	vi.fn().mockResolvedValue({ count: 3, skippedDuplicates: 0, rejected: [] }),
 );
 
 vi.mock("~/env", () => ({
@@ -360,6 +360,34 @@ describe("ImportQueueService", () => {
 				}),
 			);
 			expect(result).toMatchObject({ count: 3 });
+			// Nothing was refused, so the job's warnings are left alone.
+			expect(db.importJob.update.mock.calls[0]?.[0].data).not.toHaveProperty(
+				"warnings",
+			);
+		});
+
+		it("adds the rows the import refused to the job's warnings, with a count", async () => {
+			db.importJob.findUnique.mockResolvedValue(
+				makeJob({ status: "REVIEWING", warnings: ["Row 4: Missing date, skipping"] }),
+			);
+			db.importJob.update.mockResolvedValue(makeJob({ status: "COMPLETED" }));
+			mockImportExpensesFromRows.mockResolvedValueOnce({
+				count: 1,
+				skippedDuplicates: 0,
+				rejected: [
+					{ row: 1, reason: "Text starts with a reserved character (U+0001)" },
+					{ row: 4, reason: "Text starts with a reserved character (U+0001)" },
+				],
+			});
+
+			await service.finalizeImport("user-1", "job-1", {
+				selectedTransactions: TRANSACTIONS,
+			});
+
+			expect(db.importJob.update.mock.calls[0]?.[0].data.warnings).toEqual([
+				"Row 4: Missing date, skipping",
+				"2 rows were not imported: Text starts with a reserved character (U+0001) (selected rows 2, 5)",
+			]);
 		});
 	});
 

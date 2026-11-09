@@ -22,6 +22,7 @@ import {
 } from "./ai-access.service";
 import { CsvService } from "./csv.service";
 import { excelToCsv } from "./import/excel";
+import { completedJobData } from "./import/rejected-warnings";
 import { getAppSettings } from "./settings";
 
 // ── Types ─────────────────────────────────────────────────────────────
@@ -718,12 +719,8 @@ export class ImportQueueService {
 		// Mark job as COMPLETED
 		await this.db.importJob.update({
 			where: { id: jobId },
-			data: {
-				status: "COMPLETED",
-				completedAt: new Date(),
-				importedCount: result.count,
-				skippedDuplicates: result.skippedDuplicates,
-			},
+			// Rows the import refused go on the job's warnings, with a count.
+			data: completedJobData(job, result),
 		});
 
 		// Trigger global queue processing (job slot freed up)
