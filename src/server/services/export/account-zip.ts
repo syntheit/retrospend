@@ -4,6 +4,7 @@ import { generateCsv } from "~/lib/csv";
 import type { DecimalLike } from "~/server/services/envelope/types";
 import type { PrismaClient } from "~prisma";
 import { envelopeExportFiles } from "../envelope/envelope-export";
+import { sortByText } from "../text-order";
 import { exactCell } from "./amounts";
 
 /**
@@ -81,10 +82,11 @@ export async function exportAccountZip(
 	}
 
 	// 2. Categories
-	const categories = await db.category.findMany({
-		where: { userId },
-		orderBy: { name: "asc" },
-	});
+	// By name, sorted here: a name may be ciphertext in the database (text-order.ts).
+	const categories = sortByText(
+		await db.category.findMany({ where: { userId } }),
+		(c) => c.name,
+	);
 
 	if (categories.length > 0) {
 		const categoryHeader = ["id", "name", "color", "kind"];

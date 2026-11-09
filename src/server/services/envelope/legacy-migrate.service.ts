@@ -13,6 +13,7 @@
  */
 import { randomUUID } from "node:crypto";
 import type { Prisma } from "~prisma";
+import { sortByText } from "../text-order";
 import { userTimeZone } from "../user-time-zone";
 import { rateTypeFor, setupBook } from "./book.service";
 import { addMonths } from "./calendar";
@@ -240,11 +241,14 @@ async function plan(tx: Tx, userId: string, l: Loaded) {
 	const spending = pegs
 		? await spendingFor(tx, userId, l)
 		: { spentNow: new Map(), spentLast: new Map(), missing: [] as string[] };
-	const categories = await tx.category.findMany({
-		where: { userId, kind: "EXPENSE" },
-		orderBy: [{ name: "asc" }, { id: "asc" }],
-		select: { id: true, name: true, icon: true, color: true, isFixed: true },
-	});
+	// By name, sorted here: a name may be ciphertext in the database (text-order.ts).
+	const categories = sortByText(
+		await tx.category.findMany({
+			where: { userId, kind: "EXPENSE" },
+			select: { id: true, name: true, icon: true, color: true, isFixed: true },
+		}),
+		(c) => c.name,
+	);
 	const currencies = [...new Set(l.budgets.map((b) => b.currency))];
 	return planLegacyMigration({
 		currency: l.currency,
