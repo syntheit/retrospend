@@ -319,3 +319,44 @@ describe("category search matches the old SQL", () => {
 		expect(rows.every((r) => !r.name.includes("theirs"))).toBe(true);
 	});
 });
+
+describe("people search reads a bounded window", () => {
+	it("keeps the newest users and the newest ghosts, and drops the rest", async () => {
+		const owner = await arsUser();
+		const day = (n: number) => new Date(Date.UTC(2026, 0, n));
+		for (let n = 1; n <= 4; n++) {
+			const u = await userNamed(
+				`Window user ${n}`,
+				`d10_win_${n}_${owner.user.id.slice(0, 8)}`,
+			);
+			await adminDb.user.update({
+				where: { id: u.user.id },
+				data: { createdAt: day(n) },
+			});
+			await seedShare(ref(owner), ref(u), "10", "ARS");
+			await adminDb.shadowProfile.create({
+				data: {
+					createdById: owner.user.id,
+					name: `Window ghost ${n}`,
+					createdAt: day(n),
+				},
+			});
+		}
+		const hits = (window: number) =>
+			searchPeople(
+				owner.db,
+				owner.user.id,
+				"window",
+				{ after: null, take: 50 },
+				{ window },
+			).then((rows) => rows.map((r) => r.name));
+		expect(await hits(2)).toEqual([
+			"Window ghost 3",
+			"Window ghost 4",
+			"Window user 3",
+			"Window user 4",
+		]);
+		expect(await hits(4)).toHaveLength(8);
+		expect(await hits(20_000)).toHaveLength(8);
+	});
+});

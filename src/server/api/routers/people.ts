@@ -4,7 +4,7 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { getImageUrl } from "~/server/storage";
 import { addShadow, assertEmailCheck, renameShadow } from "~/server/services/shadow-profile.service";
 import { frequentSplitPartners } from "~/server/services/people/frequent-partners";
-import { ilikeContains } from "~/server/services/search-fold";
+import { APP_LAYER_WINDOW, ilikeContains } from "~/server/services/search-fold";
 import { buildContactVisibility } from "~/server/services/shared-expenses/contact-visibility";
 import { PeopleService } from "~/server/services/shared-expenses/people.service";
 import { peopleV2Procedures } from "./people-v2";
@@ -39,10 +39,18 @@ export const peopleRouter = createTRPCRouter({
 			// otherwise a substring search would leak the address bit by bit.
 			//
 			// A name may be ciphertext in the database, so Postgres cannot match it:
-			// the matching below runs here, over the ghosts the caller can see.
+			// the matching below runs here, over the newest APP_LAYER_WINDOW ghosts
+			// the caller can see (other project members can add ghosts, so the set
+			// can grow on its own; an older ghost is not found by this search).
+			// The match is a literal, case-insensitive substring, not
+			// `ilikeContains`: the old query only prefiltered with ILIKE and the
+			// literal check after it decided, so `%` and `_` never acted as
+			// wildcards for ghosts. The contacts below had no such second check.
 			const candidates = (
 				await ctx.db.shadowProfile.findMany({
 					where: { claimedById: null },
+					orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+					take: APP_LAYER_WINDOW,
 					select: { id: true, name: true, email: true },
 				})
 			)
@@ -103,6 +111,8 @@ export const peopleRouter = createTRPCRouter({
 					? (
 							await ctx.db.user.findMany({
 								where: { id: { in: [...contactIds] } },
+								orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+								take: APP_LAYER_WINDOW,
 								select: {
 									id: true,
 									name: true,

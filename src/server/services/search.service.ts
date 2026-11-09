@@ -189,21 +189,26 @@ function foldedMatcher(q: string): (text: string) => boolean {
 /**
  * People, projects and categories are read as rows and matched, sorted and
  * paged here, not in SQL: names may be ciphertext, so Postgres can neither
- * match nor order them (docs/roadmap/e2ee-spike.md, lane D). These sets are
- * bounded by who and what the caller is part of, never by how long the
- * account has existed, so all of a set is read. Text columns come through
- * model reads, which hand back plaintext; SQL only picks ids.
+ * match nor order them (docs/roadmap/e2ee-spike.md, lane D). Projects and
+ * categories are the caller's own, so all of them are read. Text columns come
+ * through model reads, which hand back plaintext; SQL only picks ids.
  *
  * People: users the caller shares an expense or a project with, by name or
  * username, and the people they added by name (shadows RLS lets them see;
- * a claimed shadow shows as its user instead). By name.
+ * a claimed shadow shows as its user instead). By name. Other project members
+ * can add ghosts and join projects, so this set can grow without the caller
+ * doing anything: the newest `window` users (by account creation) and the
+ * newest `window` ghosts are read, APP_LAYER_WINDOW each. A person beyond that
+ * is not found by search.
  */
 export function searchPeople(
 	db: AppDb,
 	userId: string,
 	q: string,
 	page: Page<{ name: string; participantType: string; id: string }>,
+	options: { window?: number } = {},
 ): Promise<PersonHitRow[]> {
+	const window = options.window ?? APP_LAYER_WINDOW;
 	const match = foldedMatcher(q);
 	return userTransaction(db, userId, async (tx) => {
 		const known = await tx.$queryRaw<{ id: string }[]>`
@@ -220,7 +225,9 @@ export function searchPeople(
 						JOIN "project_participant" them ON them."projectId" = me."projectId"
 						WHERE me."participantType" = 'user' AND me."participantId" = ${userId}
 							AND them."participantType" = 'user' AND them."participantId" = u."id")
-				)`;
+				)
+			ORDER BY u."createdAt" DESC, u."id" DESC
+			LIMIT ${window}`;
 		const [users, shadows] = await Promise.all([
 			tx.user.findMany({
 				where: { id: { in: known.map((k) => k.id) } },
@@ -228,6 +235,8 @@ export function searchPeople(
 			}),
 			tx.shadowProfile.findMany({
 				where: { claimedById: null },
+				orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+				take: window,
 				select: { id: true, name: true },
 			}),
 		]);
