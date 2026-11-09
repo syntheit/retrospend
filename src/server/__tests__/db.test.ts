@@ -26,8 +26,9 @@ const { mockPrismaInstance, mockTransaction, mockExecuteRaw } = vi.hoisted(
 			$executeRaw: mockExecuteRaw,
 			$queryRaw: vi.fn(),
 		};
-		// The module extends the base once at load, for the slot. Until a test
-		// installs its own, an extension returns the instance itself.
+		// The module extends the base once at load, for the slot, and a scoped
+		// client extends that client again. Until a test installs its own
+		// implementation, an extension returns the instance itself.
 		mockPrismaInstance.$extends.mockImplementation(() => mockPrismaInstance);
 		return { mockPrismaInstance, mockTransaction, mockExecuteRaw };
 	},
@@ -64,16 +65,10 @@ import { createUserScopedDb } from "../db";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-/** The slot extension createUserScopedDb puts on top returns the same fake. */
-function withSlot<T extends object>(fake: T): T {
-	return Object.assign(fake, { $extends: () => fake });
-}
-
 /**
  * Configures mockPrismaInstance.$extends to:
  * 1. Capture the $allOperations hook provided by createUserScopedDb
- * 2. Return a fake "extended" db whose model methods invoke the hook; the
- *    slot extension createUserScopedDb applies on top returns that same db
+ * 2. Return a fake "extended" db whose model methods invoke the hook
  */
 function setupExtendsMock(queryResult: unknown = ["result"]) {
 	type Hook = (opts: {
@@ -95,7 +90,7 @@ function setupExtendsMock(queryResult: unknown = ["result"]) {
 	mockPrismaInstance.$extends.mockImplementation(
 		(ext: { query: { $allModels: { $allOperations: Hook } } }) => {
 			capturedHook = ext.query.$allModels.$allOperations;
-			return withSlot(fakeExtendedDb);
+			return fakeExtendedDb;
 		},
 	);
 
@@ -186,7 +181,7 @@ describe("createUserScopedDb", () => {
 		mockPrismaInstance.$extends.mockImplementation(
 			(ext: { query: { $allModels: { $allOperations: Hook } } }) => {
 				capturedHook = ext.query.$allModels.$allOperations;
-				return withSlot(failingDb);
+				return failingDb;
 			},
 		);
 

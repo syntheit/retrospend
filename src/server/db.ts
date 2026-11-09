@@ -40,8 +40,10 @@ if (env.NODE_ENV !== "production") globalForPrisma.prisma = rawBase;
  * that reads or writes user text and on the transactions they open (an
  * interactive transaction's `tx` inherits its client's query extensions).
  * Today it does nothing: it passes every query on unchanged. On a scoped
- * client the slot is outside the per-query RLS batch, so a slot extension sees
- * the plain model call and never the `set_config` batch around it.
+ * client the slot is outside the per-query RLS batch (it is added first, and
+ * Prisma runs the first-added query extension outermost), so a slot extension
+ * sees the plain model call, wraps the whole batch, and can call `query` again
+ * to run another attempt under its own RLS context.
  */
 export type ClientSlot = (client: RawClient) => RawClient;
 
@@ -119,7 +121,9 @@ export function buildClients(
 	};
 
 	function createUserScopedDb(userId: string): RawClient {
-		const batched = base.$extends({
+		// Prisma runs the first query extension added outermost, so extending
+		// the global client (the slot first) puts the slot outside this batch.
+		const extended = global.$extends({
 			query: {
 				$allModels: {
 					async $allOperations({ args, query }) {
@@ -133,7 +137,6 @@ export function buildClients(
 				},
 			},
 		}) as unknown as RawClient;
-		const extended = slot(batched);
 
 		function scopedTransaction(first: unknown, ...rest: unknown[]) {
 			if (typeof first !== "function") {

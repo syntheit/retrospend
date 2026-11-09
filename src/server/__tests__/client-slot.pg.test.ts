@@ -8,7 +8,8 @@
  *
  *   userTransaction on the global client         -> its model calls pass the slot
  *   scoped $transaction(callback)                -> its model calls pass the slot
- *   one scoped model call                        -> passes the slot once, and not the RLS batch
+ *   one scoped model call                        -> passes the slot once, outside the RLS batch
+ *   a slot that calls `query` twice              -> two batches, each with its own set_config
  *   keystore facade                              -> never passes the slot
  *   RLS and the refusals of the scoped client    -> unchanged with a slot in place
  */
@@ -24,10 +25,18 @@ import { adminDb, createTestUser } from "~/test/pg-harness";
 import { PrismaClient } from "~prisma";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 4 });
-// The app's base also takes a log option, which only changes the type.
+// The app's base takes a different log option, which only changes the type.
+// This one reports each statement, so a test can count the RLS settings.
 const base = new PrismaClient({
 	adapter: new PrismaPg(pool),
+	log: [{ emit: "event", level: "query" }],
 }) as unknown as Parameters<typeof buildClients>[0];
+const statements: string[] = [];
+(
+	base as unknown as {
+		$on: (event: "query", run: (e: { query: string }) => void) => void;
+	}
+).$on("query", (e) => statements.push(e.query));
 afterAll(async () => {
 	await base.$disconnect();
 	await pool.end();
@@ -50,6 +59,7 @@ const countingSlot: ClientSlot = (client) =>
 const clients = buildClients(base, countingSlot);
 beforeEach(() => {
 	seen.length = 0;
+	statements.length = 0;
 });
 
 const category = (userId: string, name: string) =>
@@ -86,6 +96,46 @@ describe("the extension slot", () => {
 		expect(
 			await adminDb.category.count({ where: { userId: me.user.id } }),
 		).toBe(1);
+	});
+
+	it("sits outside the RLS batch: a slot that runs `query` twice gets a batch each time", async () => {
+		const me = await createTestUser();
+		await category(me.user.id, "Mine");
+		// The shape D11 needs: fieldCrypto reloads a key and retries once, and
+		// every attempt must still run as this user. That only holds when the
+		// slot wraps the batch. Inside the batch, `query` runs once per batch
+		// and a second call would not carry the RLS settings.
+		const retrying: ClientSlot = (client) =>
+			client.$extends({
+				name: "retrying-slot",
+				query: {
+					$allModels: {
+						async $allOperations({ args, query }) {
+							await query(args);
+							return query(args);
+						},
+					},
+				},
+			}) as unknown as typeof client;
+		const scoped = buildClients(base, retrying).createUserScopedDb(me.user.id);
+		statements.length = 0;
+
+		const rows = await scoped.category.findMany({});
+
+		expect(rows.map((r) => r.name)).toEqual(["Mine"]);
+		const rls = statements.filter((q) => q.includes("set_config"));
+		expect(rls).toHaveLength(2);
+		const selects = statements.filter((q) =>
+			q.includes('FROM "public"."category"'),
+		);
+		expect(selects).toHaveLength(2);
+		// Each select ran after its own set_config (BEGIN, set_config, select, COMMIT).
+		const order = statements.filter(
+			(q) => q.includes("set_config") || q.includes('FROM "public"."category"'),
+		);
+		expect(
+			order.map((q) => (q.includes("set_config") ? "rls" : "select")),
+		).toEqual(["rls", "select", "rls", "select"]);
 	});
 
 	it("runs one scoped model call through the slot once, outside the RLS batch", async () => {
