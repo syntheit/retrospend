@@ -103,11 +103,12 @@ function input(s: Seeded, visaBill?: string): SetupInput {
 	};
 }
 
-async function world(o: { bill?: boolean } = {}) {
+async function world(o: { bill?: boolean; fees?: boolean } = {}) {
 	const s = await seedUser();
-	await adminDb.category.create({
-		data: { name: "Fees", color: "red", userId: s.user.id },
-	});
+	if (o.fees !== false)
+		await adminDb.category.create({
+			data: { name: "Fees", color: "red", userId: s.user.id },
+		});
 	const checking = await openAccount(
 		s.user.id,
 		"Checking",
@@ -553,5 +554,106 @@ describe("figure budget.totalDebt", () => {
 				tx.payoffPlan.count({ where: { bookId: book.id } }),
 			),
 		).resolves.toBe(1);
+	});
+});
+
+describe("the interest category is the caller's own", () => {
+	/** Someone else's Fees category, readable by `w` through a shared expense. */
+	async function visibleFeesOfAnother(w: Awaited<ReturnType<typeof world>>) {
+		const other = await seedUser();
+		const theirs = await adminDb.category.create({
+			data: { name: "Fees", color: "red", userId: other.user.id },
+		});
+		await adminDb.sharedTransaction.create({
+			data: {
+				description: "Shared dinner",
+				amount: "30",
+				currency: "USD",
+				exchangeRate: "1",
+				date: new Date("2026-10-08"),
+				categoryId: theirs.id,
+				paidByType: "user",
+				paidById: other.user.id,
+				createdByType: "user",
+				createdById: other.user.id,
+				splitParticipants: {
+					create: [other.user.id, w.user.id].map((id) => ({
+						participantType: "user" as const,
+						participantId: id,
+						shareAmount: "15",
+						verificationStatus: "ACCEPTED" as const,
+					})),
+				},
+			},
+		});
+		// The setup is only a test if row level security does show it.
+		const seen = await userTransaction(adminDb, w.user.id, (tx) =>
+			tx.category.findMany({ where: { id: theirs.id } }),
+		);
+		expect(seen).toHaveLength(1);
+		return theirs.id;
+	}
+
+	const pay = (
+		w: Awaited<ReturnType<typeof world>>,
+		extra: { interestCategoryId?: string } = {},
+	) => {
+		const id = randomUUID();
+		return {
+			id,
+			run: () =>
+				forUser(w.user.id).apply(recordDebtPaymentMutation, {
+					id,
+					liabilityId: w.visa,
+					fromAccountId: w.checking,
+					envelopeId: w.id("Pay down Visa"),
+					principalMinor: 20_000,
+					interestMinor: 2_200,
+					...extra,
+				}),
+		};
+	};
+	const feeCategory = async (transferId: string) => {
+		const t = await adminDb.transfer.findUniqueOrThrow({
+			where: { id: transferId },
+		});
+		return (
+			await adminDb.expense.findUniqueOrThrow({
+				where: { id: t.feeExpenseId as string },
+			})
+		).categoryId;
+	};
+
+	it("books interest to the caller's Fees, not a visible one of someone else", async () => {
+		const w = await world();
+		await visibleFeesOfAnother(w);
+		const own = await adminDb.category.findFirstOrThrow({
+			where: { userId: w.user.id, name: "Fees" },
+		});
+		const p = pay(w);
+		await p.run();
+		expect(await feeCategory(p.id)).toBe(own.id);
+	});
+
+	it("leaves the interest uncategorized when the caller has no Fees", async () => {
+		const w = await world({ fees: false });
+		await visibleFeesOfAnother(w);
+		const p = pay(w);
+		await p.run();
+		expect(await feeCategory(p.id)).toBeNull();
+	});
+
+	it("refuses a given category that belongs to someone else", async () => {
+		const w = await world();
+		const theirs = await visibleFeesOfAnother(w);
+		await expect(pay(w, { interestCategoryId: theirs }).run()).rejects.toThrow(
+			"pick one of your spending categories",
+		);
+		const own = await adminDb.category.findFirstOrThrow({
+			where: { userId: w.user.id, name: "Fees" },
+		});
+		const p = pay(w, { interestCategoryId: own.id });
+		await p.run();
+		expect(await feeCategory(p.id)).toBe(own.id);
 	});
 });

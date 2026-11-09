@@ -47,8 +47,10 @@ async function interestCategory(
 	given: string | null | undefined,
 ) {
 	if (given) {
+		// The caller's own: row level security also shows a category another
+		// member used in a shared expense.
 		const ok = await tx.category.count({
-			where: { id: given, kind: "EXPENSE" },
+			where: { id: given, userId, kind: "EXPENSE" },
 		});
 		if (!ok) invalid("pick one of your spending categories");
 		return given;
