@@ -702,4 +702,60 @@ describe("keys that were lost", () => {
 			await client.query("ROLLBACK TO SAVEPOINT lost");
 		});
 	});
+
+	it("the documented recovery for a missing keystore ends with the guarded function", async () => {
+		// docs/self-hosting.md: delete these rows, and start the app, which runs
+		// the migrations again in order. The test replays exactly that list.
+		const doc = readFileSync(join(REPO_ROOT, "docs/self-hosting.md"), "utf8");
+		const listed =
+			/DELETE FROM _prisma_migrations WHERE migration_name IN \(([^)]*)\)/.exec(
+				doc,
+			)?.[1];
+		const names = [...(listed ?? "").matchAll(/'([^']+)'/g)].map((m) => m[1]);
+		expect(names).toEqual([
+			"20261109100000_keystore",
+			"20261109800000_keystore_lost_guard",
+		]);
+		const migration = (name: string) =>
+			readFileSync(
+				join(REPO_ROOT, "prisma/migrations", name, "migration.sql"),
+				"utf8",
+			);
+
+		const me = await createTestUser();
+		await keyringOf(me, master());
+		await inRolledBackTransaction(async (client) => {
+			const mint = async () => {
+				await client.query("SAVEPOINT mint");
+				await client.query(
+					"SELECT set_config('app.current_user_id', $1, true)",
+					[me.user.id],
+				);
+				try {
+					await client.query(
+						"SELECT * FROM keystore.create_first_data_key('x', 1::bigint)",
+					);
+					return "minted";
+				} catch (error) {
+					return (error as { code?: string }).code;
+				} finally {
+					await client.query("ROLLBACK TO SAVEPOINT mint");
+				}
+			};
+			// The keystore was lost: the key row is gone, the marker stays.
+			await client.query(
+				'DELETE FROM keystore."user_data_key" WHERE "userId" = $1',
+				[me.user.id],
+			);
+			expect(await mint()).toBe("KS001");
+
+			// Running only the first migration again brings back the old function.
+			await client.query(migration(names[0] ?? ""));
+			expect(await mint()).toBe("minted");
+
+			// The documented list runs both, in order, and the guard is back.
+			for (const name of names) await client.query(migration(name ?? ""));
+			expect(await mint()).toBe("KS001");
+		});
+	});
 });
