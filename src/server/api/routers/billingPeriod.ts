@@ -7,6 +7,7 @@ import {
 	guestOrProtectedProcedure,
 	protectedProcedure,
 } from "~/server/api/trpc";
+import { userTransaction } from "~/server/db-tx";
 import {
 	createNotification,
 	participantLabel,
@@ -82,11 +83,7 @@ async function runInBillingTransaction<T>(
 	userId: string,
 	callback: (tx: Prisma.TransactionClient) => Promise<T>,
 ): Promise<T> {
-	return db.$transaction(async (tx) => {
-		await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true),
-		                            set_config('role', 'retrospend_app', true)`;
-		return callback(tx);
-	});
+	return userTransaction(db, userId, callback);
 }
 
 // ── Auto-close utility ────────────────────────────────────────────────────────

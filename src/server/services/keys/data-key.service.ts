@@ -15,13 +15,15 @@
  * has no transaction and no setting, so it refuses too.
  *
  * `destroyDataKeys` is the other kind: it runs on the owner connection, for
- * jobs with no user in scope.
+ * jobs with no user in scope. It and `keystoreTransaction` run on the raw
+ * base (`keystoreDb`), never through the client slot.
  *
  * Unwrapped keys only ever live inside a `Keyring`, which hides its bytes from
  * logs and serialization. This file logs nothing and no error names a key.
  */
 import { randomBytes } from "node:crypto";
-import { db } from "~/server/db";
+import { keystoreDb } from "~/server/db";
+import { userTransaction } from "~/server/db-tx";
 import { Prisma } from "~prisma";
 import {
 	type FieldAad,
@@ -114,6 +116,20 @@ async function keystore<T>(query: () => Promise<T>): Promise<T> {
 	}
 }
 
+/**
+ * Runs `work` in a transaction on the raw base as `userId`: the one way to
+ * make keystore calls on a transaction of their own. It never goes through the
+ * client slot (see `KeystoreClient` in db.ts), so the extension that opens and
+ * seals user text can load keys with it without calling itself. Pass the
+ * transaction to `getOrCreateDataKeyring`.
+ */
+export function keystoreTransaction<T>(
+	userId: string,
+	work: (tx: Prisma.TransactionClient) => Promise<T>,
+): Promise<T> {
+	return userTransaction(keystoreDb, userId, work);
+}
+
 /** Newest first, so the first entry of the keyring is the current key. */
 const readRows = (tx: Prisma.TransactionClient) =>
 	keystore(
@@ -191,7 +207,7 @@ export async function getOrCreateDataKeyring(
  */
 export async function destroyDataKeys(
 	userId: string,
-	client: Pick<Prisma.TransactionClient, "$executeRaw"> = db,
+	client: Pick<Prisma.TransactionClient, "$executeRaw"> = keystoreDb,
 ): Promise<number> {
 	return keystore(
 		() => client.$executeRaw`

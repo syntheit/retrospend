@@ -17,6 +17,7 @@ import {
 	startOfNextDayIn,
 } from "@retrospend/domain/time-zone";
 import { generateCsv } from "~/lib/csv";
+import { userTransaction } from "~/server/db-tx";
 import { findExchangeRatesForDates } from "~/server/exchange-rates";
 import type { Prisma, PrismaClient } from "~prisma";
 import { AmortizationService } from "./amortization.service";
@@ -437,11 +438,7 @@ export class CsvService {
 		callback: (tx: Prisma.TransactionClient) => Promise<T>,
 	): Promise<T> {
 		if ("$transaction" in this.db) {
-			return await this.db.$transaction(async (tx) => {
-				await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true),
-				                            set_config('role', 'retrospend_app', true)`;
-				return await callback(tx);
-			});
+			return await userTransaction(this.db, userId, callback);
 		}
 		return await callback(this.db as Prisma.TransactionClient);
 	}
