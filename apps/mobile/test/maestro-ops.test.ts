@@ -80,8 +80,9 @@ describe("the emulator pool", () => {
 			( take_slot a 5; spawn child sleep 30; echo "$spawned" >"$T/child"; exit 0 )
 			take_slot b 2 && echo "reused=$slot"
 			kill_group "$(cat "$T/child")" test
-			sleep 0.3
-			kill -0 "$(cat "$T/child")" 2>/dev/null && echo "child alive" || echo "child gone"`);
+			# Poll rather than sleep once: a loaded machine can take a while to reap it.
+			gone=no; for _ in $(seq 50); do kill -0 "$(cat "$T/child")" 2>/dev/null || { gone=yes; break; }; sleep 0.1; done
+			[ "$gone" = yes ] && echo "child gone" || echo "child alive"`);
 		// The first run's lock was only on its own shell, so a child it left
 		// behind cannot hold the slot, and the next run finds a free one.
 		expect(result.stdout).toMatch(/reused=[01]/);
