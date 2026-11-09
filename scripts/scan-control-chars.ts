@@ -12,8 +12,14 @@
  * row (the owner role, as the other scripts use), or row-level security hides
  * rows from the counts.
  *
+ * With `--fail` it is the gate before the first at-rest encryption backfill
+ * (D11): it exits 1 when any column holds a C0 control character or a value
+ * that starts with U+0001. After the first sealed write, sealed values start
+ * with U+0001 by design, so the gate only means something before that.
+ * U+FFFD is information only and never fails the gate.
+ *
  * Usage:
- *   DATABASE_URL=... pnpm exec tsx scripts/scan-control-chars.ts
+ *   DATABASE_URL=... pnpm exec tsx scripts/scan-control-chars.ts [--fail]
  */
 import { pathToFileURL } from "node:url";
 import { Pool, type PoolClient } from "pg";
@@ -163,6 +169,27 @@ export function formatScan(counts: readonly ColumnCount[]): string {
 	].join("\n");
 }
 
+/** True when the gate must fail: a value starts with U+0001 or holds a control. */
+export function hasBlockingRows(counts: readonly ColumnCount[]): boolean {
+	return counts.some((c) => c.controls > 0 || c.startsWithU0001 > 0);
+}
+
+/**
+ * Scans, prints the table to `log`, and returns the process exit code: 1 when
+ * `fail` is set and the scan found a blocking row, otherwise 0.
+ */
+export async function runScan(
+	pool: Pool,
+	options: { fail: boolean },
+	log: (text: string) => void,
+): Promise<number> {
+	const counts = await scanControlChars(pool);
+	log(formatScan(counts));
+	if (!options.fail || !hasBlockingRows(counts)) return 0;
+	log("Blocked: clean these rows before turning encryption on.");
+	return 1;
+}
+
 async function main() {
 	const connectionString = process.env.DATABASE_URL;
 	if (!connectionString) {
@@ -171,7 +198,8 @@ async function main() {
 	}
 	const pool = new Pool({ connectionString });
 	try {
-		console.log(formatScan(await scanControlChars(pool)));
+		const fail = process.argv.slice(2).includes("--fail");
+		process.exitCode = await runScan(pool, { fail }, console.log);
 	} finally {
 		await pool.end();
 	}
