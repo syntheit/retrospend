@@ -10,8 +10,22 @@ from section 8.
 
 Audit base: `d8327c4e` (main with D1 to D8 merged). Done on branch
 `e2ee/d10-raw-sql-audit`, which also moves the readers marked "moved in D10".
-`src/test/userTextRawSql.test.ts` keeps section 3 true: raw SQL that names a
-user-text column may only sit in the three files listed there.
+Two tests keep section 3 true, in `src`, `scripts` and `packages`, outside
+tests:
+
+- `src/test/userTextRawSql.test.ts`: a tagged `$queryRaw`, `$executeRaw` or
+  `Prisma.sql` template that names a user-text column word may only sit in the
+  three files audited in 3B. It does not see SQL passed as a plain string (B12)
+  or Go (section 3D is by hand).
+- `src/test/userTextModelQueries.test.ts`: the argument of `where`, `orderBy`,
+  `having`, `cursor`, `distinct` or `by` (and an object assigned to a variable
+  named like `...where...`) may not name a column word as a key, a shorthand
+  key or, in `by` and `distinct`, a quoted string, except in the explicit
+  allow list, each with a reason: the kept SQL paths of A18 to A22 and token
+  `identifier` filters (section 11). It is a word match, not a type check. A
+  filter built under another name, or a `select`/`data` use, is not seen. Its
+  own tests show it catches the shapes of A1 to A17 (`orderBy name`, `contains`
+  with `mode: "insensitive"`, `equals`, plain equality, `groupBy`).
 
 ## 1. Method
 
@@ -79,9 +93,9 @@ current lines.
 | A11 | `src/server/services/claim.service.ts:341-344` | project people by `name` | b | Moved in D10 |
 | A12 | `scripts/sync-default-categories.ts:50-53` | sample print ordered by `name` | b | Moved in D10 |
 | A13 | `scripts/verify-categories.ts:38-41` | sample print ordered by `name` | b | Moved in D10 |
-| A14 | `src/server/api/routers/people.ts:39-44` | ghost search: `name contains` | b | Moved in D10: all visible ghosts read (RLS scopes them), matched in the app |
+| A14 | `src/server/api/routers/people.ts:39-44` | ghost search: `name contains` | b | Moved in D10: the newest 20,000 visible ghosts read (RLS scopes them), matched in the app |
 | A15 | `people.ts:96-102` | contact search: `name`, `email`, `username contains` | b | Moved in D10 (`ilikeContains`, so `%` and `_` act as before) |
-| A16 | `src/server/services/envelope/debt-payment.service.ts:51-54` | the Fees category found by `name` | b | Moved in D10. It now also filters by the caller's `userId` (see section 9) |
+| A16 | `src/server/services/envelope/debt-payment.service.ts:51-54` | the Fees category found by `name` | b | Moved in D10. It now filters by the caller's `userId`, and so does the `given` branch at `:50-53` (behavior change, section 9) |
 | A17 | `src/server/services/accounts/manage.ts:415` | account import finds an open account by `name` | b | Moved in D10: open accounts read once, matched in a map, one made for a row is found by a later row of the same name |
 | A18 | `src/server/services/title-suggestions.service.ts:111-118` | personal titles: `groupBy title`, `contains`, `orderBy _count title` | b | Moved in D6 (`personalInApp`), SQL path kept |
 | A19 | `title-suggestions.service.ts:122-134` | last use: `title in`, `distinct title` | b | Moved in D6, SQL path kept |
@@ -109,7 +123,7 @@ current lines.
 | B9 | `src/server/services/expense-list/search-scan.ts:99-101` | candidates: `ARRAY[title, description, location]` | a | Opened by `readUserText` in the same file |
 | B10 | `search-scan.ts:106-107` | candidates: `ARRAY[description, notes]` of shared rows | a | Same |
 | B11 | `search-scan.ts:114-123` | candidates: `array_agg(note)`, `min(paymentMethod)` of payment groups | a | Same |
-| B12 | `scripts/scan-control-chars.ts:112-117` | counts rows with control characters, a leading U+0001 and U+FFFD, per column | b | Intended: it runs before D11 and D12. After the backfill every row starts with U+0001, so its count then means "sealed". Document in the D12 runbook |
+| B12 | `scripts/scan-control-chars.ts:105-109` | counts rows with control characters, a leading U+0001 and U+FFFD, per column | b | Intended: it runs before D11 and D12. After the backfill every row starts with U+0001, so its count then means "sealed". Document in the D12 runbook |
 | B13 | `src/server/better-auth/config.ts:168` (adapter) | better-auth reads and writes `user.name` through the global client | a | D11 must apply the extension to that client too (section 8) |
 
 ### C. Database functions, triggers, defaults and policies
@@ -240,8 +254,9 @@ Choose between Go field crypto and posting in the app before D11.
 must pass the user's keyring wherever the callers below read text, or they run
 the SQL path over ciphertext and find nothing:
 
-- `searchExpenses` and `searchPeople` callers in `api-v1/search.ts` (people,
-  projects and categories need no keyring, they read through model reads).
+- The `searchExpenses` caller in `api-v1/search.ts`. `searchPeople`,
+  `searchProjects` and `searchCategories` need no keyring: they read text
+  through model reads, which the extension decrypts.
 - `listActivity` and `searchKeys` in `expense-list/` (`index.ts`, `query.ts`).
 - `titleSuggestions` (personal and shared).
 - `findDuplicateExpense`, `importReview`, `import/match.ts`,
@@ -287,18 +302,36 @@ is a product call for D11, not changed here.
   with no user id, relying on RLS. RLS lets a project participant read another
   member's categories (the category RLS fixes), so the old query could return
   someone else's Fees category. It now reads the caller's own categories and
-  matches the name in the app. It is the only change in what a query can return.
+  matches the name in the app. The `given` branch (an interest category the
+  caller passes) had the same hole: `category.count({ id, kind })` accepted
+  another member's category. It now requires the caller's own, so a request
+  that named someone else's category is refused with "pick one of your
+  spending categories" where it used to book the interest to it. These are the
+  only changes in what a query can return, and both are money writes; the pg
+  tests in `envelope/debts.pg.test.ts` cover a visible foreign Fees, no own
+  Fees, and the given branch.
 - A14: the old ghost query cut candidates at 50 rows before the privacy
-  filter; it now cuts after the name or email filter, and still answers at most
-  10. With more than 50 matches the old answer was an arbitrary subset.
+  filter; it now reads the newest `APP_LAYER_WINDOW` (20,000) visible ghosts,
+  cuts to 50 after the name or email filter, and still answers at most 10. With
+  more than 50 matches the old answer was an arbitrary subset. A ghost older
+  than the newest 20,000 visible ones is not found. Ghost matching stays a
+  literal, case-insensitive substring and does not use `ilikeContains`: the
+  old query only prefiltered with ILIKE and a literal check after it decided,
+  so `%` and `_` were never wildcards for ghosts (a test covers `_` and `%`).
 - A15: contacts are matched with `ilikeContains`, so `%` and `_` in the query
-  still act as pattern characters, as `contains` did. The shadow search already
-  filtered literally after the query, and still does.
+  still act as pattern characters, as `contains` did, because that query had
+  no second check. Read newest first, at most `APP_LAYER_WINDOW` contacts.
+  `people-search-cap.pg.test.ts` shows the cut with a window of 3.
 - A2: the v1 category page reads all of a user's categories each page. A user
   has dozens, so this is one small query.
-- B1: the people search reads every user the caller shares an expense or a
-  project with, and every ghost RLS lets them see, then filters. Those sets are
-  bounded by relationships, not by how long the account has existed.
+- B1: the people search reads the newest `window` (default `APP_LAYER_WINDOW`,
+  20,000) users the caller shares an expense or a project with (by account
+  creation) and the newest `window` ghosts RLS lets them see, then filters.
+  Other project members can add ghosts and join projects, so the set can grow
+  without the caller acting. A person beyond the window is not found by
+  search; lists and pickers are not affected. `search-names.pg.test.ts` checks
+  the cut with a window of 2. Projects and categories are the caller's own and
+  are read whole.
 
 ## 10. Copies of user text outside the declared columns
 
@@ -346,6 +379,10 @@ Commits on `e2ee/d10-raw-sql-audit`:
 5. Shared descriptions in title suggestions, A20 (cases added to
    `title-suggestions.pg.test.ts`).
 6. This document and `userTextRawSql.test.ts`.
+7. Review fixes: the interest category is the caller's own, given or default
+   (`envelope/debts.pg.test.ts`); a bounded window for people search
+   (`people-search-cap.pg.test.ts`, `search-names.pg.test.ts`); the model query
+   guard (`userTextModelQueries.test.ts`) and the wider raw SQL guard.
 
 Each move has a pg test that runs the old query as the oracle on mixed names
 (accents, case, `%`, `_`, backslash, emoji, U+E000), page by page for the

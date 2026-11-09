@@ -3,9 +3,12 @@
 // so SQL that matches, sorts, groups or compares it (or hands it to code that
 // does not decrypt) is wrong. docs/security/user-text-sql-audit.md lists every
 // reader and what happens to it. This test keeps that list true: outside tests,
-// a tagged `$queryRaw`, `$executeRaw` or `Prisma.sql` template that names a
-// user-text column may only sit in the files below, each audited there. A new
-// reader needs an audit entry first, then a line here.
+// a tagged `$queryRaw`, `$executeRaw` or `Prisma.sql` template in `src`,
+// `scripts` or `packages` that names a user-text column may only sit in the
+// files below, each audited there. A new reader needs an audit entry first,
+// then a line here. Not seen: SQL passed as a plain string (a pg client query,
+// as in scripts/scan-control-chars.ts, audited as B12) and Go. Model queries
+// are guarded by userTextModelQueries.test.ts.
 import { readFileSync } from "node:fs";
 import { relative } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -74,7 +77,7 @@ function templateBodies(source: string): string[] {
 
 describe("raw SQL that reads user text", () => {
 	const files = scanSources({
-		roots: ["src"],
+		roots: ["src", "scripts", "packages"],
 		include: /\.tsx?$/,
 		exclude: /\.test\.tsx?$|[\\/]__tests__[\\/]|[\\/]src[\\/]test[\\/]/,
 	});
