@@ -212,10 +212,8 @@ describe("category name index", () => {
 		await expect(create(a, "Legacy ")).rejects.toMatchObject(CONFLICT);
 		const fresh = await create(a, "Fresh");
 		// With the stored name unreadable to a name compare, the index decides.
-		await adminDb.category.update({
-			where: { id: fresh.id },
-			data: { name: "\u0001k1:opaque" },
-		});
+		// Raw SQL: the clients refuse a sealed value written as text.
+		await adminDb.$executeRaw`UPDATE "category" SET "name" = ${"\u0001k1:opaque"} WHERE "id" = ${fresh.id}`;
 		await expect(create(a, "Fresh")).rejects.toMatchObject(CONFLICT);
 	});
 

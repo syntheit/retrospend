@@ -25,7 +25,11 @@ import { createUserScopedDb, db } from "~/server/db";
 import { runtimeDataModel } from "~/server/db-core";
 import { evictInstanceKeyring } from "~/server/services/keys/instance-key.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
-import { newMasterKeyring, sealRow } from "~/test/sealed-fixture";
+import {
+	newMasterKeyring,
+	restoreCells,
+	sealRow,
+} from "~/test/sealed-fixture";
 
 const master = vi.hoisted(() => ({ ring: undefined as Keyring | undefined }));
 vi.mock("~/server/crypto/master-key", async (importOriginal) => ({
@@ -42,7 +46,10 @@ beforeAll(async () => {
 	await resetInstanceKey();
 	master.ring = newMasterKeyring();
 });
-afterAll(resetInstanceKey);
+afterAll(async () => {
+	await restoreCells();
+	await resetInstanceKey();
+});
 beforeEach(() => resetReloadsForTests());
 
 const day = new Date("2026-11-02T12:00:00Z");

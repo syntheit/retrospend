@@ -56,6 +56,7 @@ import { adminDb, createTestUser } from "~/test/pg-harness";
 import {
 	instanceKeyring,
 	newMasterKeyring,
+	restoreCells,
 	sealCell,
 	sealRow,
 	storedValue,
@@ -79,7 +80,10 @@ beforeAll(async () => {
 	await resetInstanceKey();
 	master.ring = MASTER;
 });
-afterAll(resetInstanceKey);
+afterAll(async () => {
+	await restoreCells();
+	await resetInstanceKey();
+});
 beforeEach(() => {
 	master.ring = MASTER;
 	resetReloadsForTests();
@@ -542,7 +546,7 @@ describe("integrity and lost keys", () => {
 
 	it("fails a user-class cell sealed with the instance key", async () => {
 		const row = await adminDb.category.create({
-			data: { userId: w.a, name: "x", color: "sky" },
+			data: { userId: w.a, name: "Instance sealed", color: "sky" },
 		});
 		await sealCell(
 			await instanceKeyring(MASTER),
@@ -579,7 +583,7 @@ describe("integrity and lost keys", () => {
 	it("reloads once on a key id the ring lacks, then fails an own cell and hides a foreign one", async () => {
 		const stranger = new Keyring([{ id: 7, key: randomBytes(32) }]);
 		const row = await adminDb.category.create({
-			data: { userId: w.a, name: "x", color: "sky" },
+			data: { userId: w.a, name: "Key seven", color: "sky" },
 		});
 		const cell = { table: "category", column: "name", rowId: row.id };
 		await sealCell(stranger, cell, "Clave 7");

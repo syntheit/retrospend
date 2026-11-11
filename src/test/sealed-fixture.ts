@@ -57,6 +57,17 @@ export async function storedValue(
 	return rows[0]?.value;
 }
 
+const setCell = (table: string, column: string, rowId: string, value: unknown) =>
+	adminDb.$executeRawUnsafe(
+		`UPDATE "${table}" SET "${column}" = $1 WHERE "id" = $2`,
+		value,
+		rowId,
+	);
+
+/** What each written cell held before, newest last, for `restoreCells`. */
+const written: { table: string; column: string; rowId: string; was: unknown }[] =
+	[];
+
 /** Writes a raw value into one cell. */
 export async function writeCell(
 	table: string,
@@ -65,12 +76,21 @@ export async function writeCell(
 	value: string,
 ): Promise<void> {
 	mappedCell(table, column);
-	const count = await adminDb.$executeRawUnsafe(
-		`UPDATE "${table}" SET "${column}" = $1 WHERE "id" = $2`,
-		value,
-		rowId,
-	);
-	if (count !== 1) throw new Error(`No ${table} row to seal`);
+	const was = await storedValue(table, column, rowId);
+	if ((await setCell(table, column, rowId, value)) !== 1)
+		throw new Error(`No ${table} row to seal`);
+	written.push({ table, column, rowId, was });
+}
+
+/**
+ * Puts back what every written cell held. A worker's database outlives the
+ * file, and the keys that sealed these cells do not: a later file that reads
+ * every user or project would meet ciphertext it cannot open. Call it in
+ * `afterAll`.
+ */
+export async function restoreCells(): Promise<void> {
+	for (const { table, column, rowId, was } of written.splice(0).reverse())
+		await setCell(table, column, rowId, was);
 }
 
 /** Seals `plaintext` into one cell with `ring` and checks it is stored sealed. */

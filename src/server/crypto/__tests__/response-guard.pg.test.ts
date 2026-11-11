@@ -18,7 +18,11 @@ import type { Keyring } from "~/server/crypto/field-crypto";
 import { evictDataKeyring } from "~/server/services/keys/data-key.service";
 import { evictInstanceKeyring } from "~/server/services/keys/instance-key.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
-import { newMasterKeyring, sealRow } from "~/test/sealed-fixture";
+import {
+	newMasterKeyring,
+	restoreCells,
+	sealRow,
+} from "~/test/sealed-fixture";
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -35,7 +39,10 @@ beforeAll(() => {
 	master.ring = newMasterKeyring();
 	evictInstanceKeyring();
 });
-afterAll(() => evictInstanceKeyring());
+afterAll(async () => {
+	await restoreCells();
+	evictInstanceKeyring();
+});
 
 const SEALED = "\u0001k1:AAAAAQ==";
 
