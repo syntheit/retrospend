@@ -9,6 +9,7 @@
  * `getMasterKeyring` in each test file (vi.mock cannot be shared).
  */
 import { randomBytes } from "node:crypto";
+import { afterAll, beforeAll } from "vitest";
 import {
 	type FieldAad,
 	Keyring,
@@ -22,7 +23,10 @@ import {
 import { keystoreDb } from "~/server/db-core";
 import { userTransaction } from "~/server/db-tx";
 import { getOrCreateDataKeyring } from "~/server/services/keys/data-key.service";
-import { getOrCreateInstanceKeyring } from "~/server/services/keys/instance-key.service";
+import {
+	evictInstanceKeyring,
+	getOrCreateInstanceKeyring,
+} from "~/server/services/keys/instance-key.service";
 import { adminDb } from "./pg-harness";
 
 export const newMasterKeyring = () =>
@@ -144,4 +148,47 @@ export async function sealRow(
 		plain[column] = value;
 	}
 	return plain;
+}
+
+/** Seals `plaintext` into one cell with the key its class names (the row owner's for a user-class cell). */
+export async function sealText(
+	master: Keyring,
+	cell: FieldAad,
+	plaintext: string,
+): Promise<string> {
+	const cls = keyClassOfColumn(cell.table, cell.column);
+	if (!cls)
+		throw new Error(`${cell.table}.${cell.column} is not a mapped cell`);
+	if (cls === "instance")
+		return sealCell(await instanceKeyring(master), cell, plaintext);
+	const [row] = await adminDb.$queryRawUnsafe<{ userId: string }[]>(
+		`SELECT "userId" FROM "${cell.table}" WHERE "id" = $1`,
+		cell.rowId,
+	);
+	if (!row) throw new Error(`No ${cell.table} row to seal`);
+	return sealCell(await userKeyring(row.userId, master), cell, plaintext);
+}
+
+/** No instance key and no instance key date, as on a new install. */
+export async function resetInstanceKey(): Promise<void> {
+	evictInstanceKeyring();
+	await adminDb.$executeRaw`DELETE FROM keystore."instance_text_key"`;
+	await adminDb.$executeRaw`UPDATE "app_settings" SET "instanceKeySince" = NULL`;
+}
+
+/**
+ * The hooks every file that seals needs: a fresh master key for the app's
+ * clients (through the file's `vi.mock` of getMasterKeyring, which reads
+ * `master.ring`) and a fresh instance key, and afterwards the cells put back
+ * and the instance key gone, so the next file in this database starts clean.
+ */
+export function sealedFile(master: { ring: Keyring | undefined }): void {
+	beforeAll(async () => {
+		await resetInstanceKey();
+		master.ring = newMasterKeyring();
+	});
+	afterAll(async () => {
+		await restoreCells();
+		await resetInstanceKey();
+	});
 }

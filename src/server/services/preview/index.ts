@@ -40,7 +40,6 @@
  * consistent view of other users' writes; apply runs at READ COMMITTED like
  * every other write.
  */
-import type { Keyring } from "~/server/crypto/field-crypto";
 import { db } from "~/server/db";
 import { type UserTransactionOptions, userTransaction } from "~/server/db-tx";
 import { type FigureDb, figures } from "~/server/figures/registry";
@@ -68,13 +67,10 @@ export function userTransactionRunner(
 		userTransaction(db, userId, work, TRANSACTION_OPTIONS[purpose]);
 }
 
-export function forUser(
-	userId: string,
-	keyring?: Keyring,
-): PreviewRunner<FigureDb> {
+export function forUser(userId: string): PreviewRunner<FigureDb> {
 	return createPreviewRunner({
 		figures,
-		actor: keyring ? { userId, keyring } : { userId },
+		actor: { userId },
 		transaction: userTransactionRunner(userId),
 		// Every applied mutation appends its event in its own transaction (the outbox).
 		onApplied: recordMutationEvent,

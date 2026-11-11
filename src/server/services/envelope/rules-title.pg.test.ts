@@ -1,8 +1,8 @@
 /**
  * TITLE income rules on Postgres with titles that may be ciphertext. The
- * match is the app's `fold` (no case, no accents, contains), applied after
- * both the rule's text and the money in's title are opened with
- * readUserText. USD book: starting money 1,000.00, Rent, Dining, Spending.
+ * match is the app's `fold` (no case, no accents, contains), applied to the
+ * rule's text (instance key) and the money in's title (the owner's key) as
+ * the client opened them on read (field-open.ts). USD book: starting money 1,000.00, Rent, Dining, Spending.
  *
  * Rules, oldest first: "Save" gives 10% of a match to Rent when the title
  * contains the sealed text "cafe"; "Tip" gives 5% to Dining when it contains
@@ -14,29 +14,33 @@
  *   D  sealed "Consulting"   matches none:  nothing
  *   E  plain  "Rent refund"  matches none:  nothing
  *
- * so Rent gets 200.00 and Dining 100.00. With no keyring the sealed rule text
- * is an error, never a silent non-match.
+ * so Rent gets 200.00 and Dining 100.00. A sealed title whose key is lost is
+ * an error, never a silent non-match.
  *
  * "Also apply to this month's money in" matches the same way: a sealed rule
  * "cafe" at 10% reaches an earlier sealed "CAFÉ" income (Rent 100.00) and
  * leaves an earlier sealed "Consulting" alone.
  */
 import { randomUUID } from "node:crypto";
-import { beforeAll, describe, expect, it } from "vitest";
-import {
-	FieldCryptoError,
-	Keyring,
-	sealField,
-} from "~/server/crypto/field-crypto";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import type { Keyring } from "~/server/crypto/field-crypto";
+import { TextUnavailableError } from "~/server/crypto/field-open";
 import { userTransaction } from "~/server/db-tx";
+import { evictDataKeyring } from "~/server/services/keys/data-key.service";
 import { forUser } from "~/server/services/preview";
 import { adminDb } from "~/test/pg-harness";
+import { sealedFile, sealText } from "~/test/sealed-fixture";
 import { addRow, seedUser, setupInput } from "./__tests__/pg-fixture";
 import { applyRuleToMonth } from "./rule-crud.service";
 import { runPendingRules } from "./rule.service";
 import { setupEnvelopeBook } from "./setup.mutation";
 
-const keyring = new Keyring([{ id: 1, key: Buffer.alloc(32, 5) }]);
+const master = vi.hoisted(() => ({ ring: undefined as Keyring | undefined }));
+vi.mock("~/server/crypto/master-key", async (importOriginal) => ({
+	...(await importOriginal<typeof import("~/server/crypto/master-key")>()),
+	getMasterKeyring: () => master.ring,
+}));
+sealedFile(master);
 
 type Seeded = Awaited<ReturnType<typeof seedUser>>;
 
@@ -73,17 +77,17 @@ async function titleRule(
 			envelopeId: b.id(envelope),
 			createdAt: new Date(Date.now() - 60_000),
 			matchKind: "TITLE",
-			matchTitle: sealed
-				? sealField(keyring, text, {
-						table: "income_rule",
-						column: "matchTitle",
-						rowId: id,
-					})
-				: text,
+			matchTitle: text,
 			action: "PERCENT",
 			value: percent,
 		},
 	});
+	if (sealed)
+		await sealText(
+			master.ring as Keyring,
+			{ table: "income_rule", column: "matchTitle", rowId: id },
+			text,
+		);
 	return id;
 }
 
@@ -94,29 +98,19 @@ async function income(s: Seeded, title: string, sealed: boolean) {
 		direction: "IN",
 		inType: "INCOME",
 	});
-	await adminDb.expense.update({
-		where: { id: row.id },
-		data: {
-			title: sealed
-				? sealField(keyring, title, {
-						table: "expense",
-						column: "title",
-						rowId: row.id,
-					})
-				: title,
-		},
-	});
+	await adminDb.expense.update({ where: { id: row.id }, data: { title } });
+	if (sealed)
+		await sealText(
+			master.ring as Keyring,
+			{ table: "expense", column: "title", rowId: row.id },
+			title,
+		);
 	return row.id;
 }
 
-const run = (s: Seeded, withKeyring: boolean) =>
+const run = (s: Seeded) =>
 	userTransaction(adminDb, s.user.id, (tx) =>
-		runPendingRules(
-			tx,
-			s.user.id,
-			new Date(),
-			withKeyring ? keyring : undefined,
-		),
+		runPendingRules(tx, s.user.id, new Date()),
 	);
 
 describe("TITLE income rules over sealed and plain text", () => {
@@ -138,17 +132,8 @@ describe("TITLE income rules over sealed and plain text", () => {
 		};
 	});
 
-	it("without a keyring, sealed text is an error and nothing is written", async () => {
-		await expect(run(s, false)).rejects.toBeInstanceOf(FieldCryptoError);
-		await expect(
-			adminDb.budgetMovement.count({
-				where: { bookId: b.bookId, kind: "RULE" },
-			}),
-		).resolves.toBe(0);
-	});
-
-	it("with a keyring, each money in runs the rules its title matches", async () => {
-		await run(s, true);
+	it("each money in runs the rules its title matches", async () => {
+		await run(s);
 		const rows = await adminDb.budgetMovement.findMany({
 			where: { bookId: b.bookId, kind: "RULE" },
 		});
@@ -183,7 +168,7 @@ describe("TITLE income rules over sealed and plain text", () => {
 		const before = await adminDb.budgetMovement.count({
 			where: { bookId: b.bookId, kind: "RULE" },
 		});
-		await run(s, true);
+		await run(s);
 		await expect(
 			adminDb.budgetMovement.count({
 				where: { bookId: b.bookId, kind: "RULE" },
@@ -210,7 +195,6 @@ describe("also apply a sealed TITLE rule to this month's money in", () => {
 				s.user.id,
 				{ ruleId, batchId: randomUUID() },
 				new Date(Date.now() + 2_000),
-				keyring,
 			),
 		);
 		expect(done.runs.map((r) => r.expenseId)).toEqual([matching]);
@@ -221,5 +205,25 @@ describe("also apply a sealed TITLE rule to this month's money in", () => {
 			[matching, 100],
 		]);
 		expect(rows.some((r) => r.sourceExpenseId === other)).toBe(false);
+	});
+});
+
+describe("a sealed title whose key is lost", () => {
+	it("fails the run and writes nothing, never a silent non-match", async () => {
+		const s = await seedUser();
+		const b = await book(s);
+		await titleRule(b, "Rent", 0, "cafe", true, 10);
+		await income(s, "CAFÉ", true);
+		await adminDb.$executeRaw`DELETE FROM keystore."user_data_key" WHERE "userId" = ${s.user.id}`;
+		evictDataKeyring(s.user.id);
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		const failure = await run(s).catch((e: unknown) => e);
+		expect((failure as TextUnavailableError).code).toBe("keystore_lost");
+		await expect(
+			adminDb.budgetMovement.count({
+				where: { bookId: b.bookId, kind: "RULE" },
+			}),
+		).resolves.toBe(0);
+		vi.restoreAllMocks();
 	});
 });

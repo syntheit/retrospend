@@ -211,9 +211,13 @@ describe("category name index", () => {
 		});
 		await expect(create(a, "Legacy ")).rejects.toMatchObject(CONFLICT);
 		const fresh = await create(a, "Fresh");
-		// With the stored name unreadable to a name compare, the index decides.
-		// Raw SQL: the clients refuse a sealed value written as text.
-		await adminDb.$executeRaw`UPDATE "category" SET "name" = ${"\u0001k1:opaque"} WHERE "id" = ${fresh.id}`;
+		// With a stored name that no longer compares equal, the index decides.
+		// The client opens real ciphertext on read (field-open.ts), so another
+		// plaintext stands in for an unreadable name here.
+		await adminDb.category.update({
+			where: { id: fresh.id },
+			data: { name: "Stand-in for an unreadable name" },
+		});
 		await expect(create(a, "Fresh")).rejects.toMatchObject(CONFLICT);
 	});
 

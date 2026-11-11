@@ -4,20 +4,36 @@
  * titles compared literally in any case: no trimming, no accent folding, and
  * `%`, `_` and backslash mean only themselves. Then the day edges in the
  * user's time zone, other currencies, other users, and sealed titles mixed
- * with plaintext.
+ * with plaintext. A keyring only picks the path: the client opens sealed text
+ * on read (field-open.ts), so rows are sealed with the keystore's keys.
  */
 import { randomUUID } from "node:crypto";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
 	FieldCryptoError,
 	Keyring,
 	sealField,
 } from "~/server/crypto/field-crypto";
+import { TextUnavailableError } from "~/server/crypto/field-open";
 import { findDuplicateExpense } from "~/server/services/expense-duplicate";
 import { ExpenseService } from "~/server/services/expense.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
+import {
+	sealedFile,
+	sealText,
+	userKeyring,
+	writeCell,
+} from "~/test/sealed-fixture";
 import type { PrismaClient } from "~prisma";
 
+const master = vi.hoisted(() => ({ ring: undefined as Keyring | undefined }));
+vi.mock("~/server/crypto/master-key", async (importOriginal) => ({
+	...(await importOriginal<typeof import("~/server/crypto/master-key")>()),
+	getMasterKeyring: () => master.ring,
+}));
+sealedFile(master);
+
+/** Picks the app-layer path; the client opens with the keystore's keys. */
 const keyring = new Keyring([{ id: 1, key: Buffer.alloc(32, 7) }]);
 const PATHS = [
 	["the SQL path (no keyring)", undefined],
@@ -56,8 +72,27 @@ async function seed(user: Who, rows: Row[]) {
 	});
 }
 
+/** Seals a stored row's title with its owner's key. */
 const seal = (id: string, title: string) =>
-	sealField(keyring, title, { table: "expense", column: "title", rowId: id });
+	sealText(
+		master.ring as Keyring,
+		{ table: "expense", column: "title", rowId: id },
+		title,
+	);
+
+/** A ring the keystore does not hold (key id 2). */
+const strayRing = new Keyring([{ id: 2, key: Buffer.alloc(32, 3) }]);
+const sealStray = (id: string) =>
+	writeCell(
+		"expense",
+		"title",
+		id,
+		sealField(strayRing, "Coffee", {
+			table: "expense",
+			column: "title",
+			rowId: id,
+		}),
+	);
 
 type Query = {
 	title: string;
@@ -194,7 +229,6 @@ describe("title comparison is literal and case-insensitive", () => {
 	}
 });
 
-
 for (const [label, ring] of PATHS) {
 	describe(`duplicate check: ${label}`, () => {
 		it("same day and amount with a different title is not a duplicate", async () => {
@@ -294,8 +328,7 @@ for (const [label, ring] of PATHS) {
 				},
 				{ title: "Taxi", amount: "10", extra: { entryKind: "ADJUSTMENT" } },
 			]);
-			const ask = (title: string) =>
-				find(me, ring, { title, amount: "10" });
+			const ask = (title: string) => find(me, ring, { title, amount: "10" });
 			expect(await ask("Coffee")).toBeNull();
 			expect(await ask("Taxi")).toBeNull();
 		});
@@ -347,10 +380,8 @@ describe("sealed titles (app-layer path)", () => {
 	it("a sealed title matches its plaintext, in any case, next to plaintext rows", async () => {
 		const me = await createTestUser();
 		const sealedId = randomUUID();
-		await seed(me, [
-			{ id: sealedId, title: seal(sealedId, "Coffee") },
-			{ title: "Taxi" },
-		]);
+		await seed(me, [{ id: sealedId, title: "Coffee" }, { title: "Taxi" }]);
+		await seal(sealedId, "Coffee");
 		expect(await find(me, keyring, { title: "coffee" })).toEqual({
 			id: sealedId,
 			title: "Coffee",
@@ -362,7 +393,8 @@ describe("sealed titles (app-layer path)", () => {
 	it("the SQL path cannot see a sealed title, which is why a keyring picks the other path", async () => {
 		const me = await createTestUser();
 		const id = randomUUID();
-		await seed(me, [{ id, title: seal(id, "Coffee") }]);
+		await seed(me, [{ id, title: "Coffee" }]);
+		await seal(id, "Coffee");
 		expect(await find(me, undefined, { title: "Coffee" })).toBeNull();
 		expect(await find(me, keyring, { title: "Coffee" })).not.toBeNull();
 	});
@@ -370,11 +402,9 @@ describe("sealed titles (app-layer path)", () => {
 	it("a sealed title is not matched by its ciphertext, or when the amount differs", async () => {
 		const me = await createTestUser();
 		const id = randomUUID();
-		const sealed = seal(id, "Coffee");
-		await seed(me, [{ id, title: sealed, amount: "20" }]);
-		expect(
-			await find(me, keyring, { title: sealed, amount: "20" }),
-		).toBeNull();
+		await seed(me, [{ id, title: "Coffee", amount: "20" }]);
+		const sealed = await seal(id, "Coffee");
+		expect(await find(me, keyring, { title: sealed, amount: "20" })).toBeNull();
 		expect(
 			await find(me, keyring, { title: "Coffee", amount: "21" }),
 		).toBeNull();
@@ -383,69 +413,53 @@ describe("sealed titles (app-layer path)", () => {
 	it("a sealed title of another day, currency or user is never opened", async () => {
 		const me = await createTestUser();
 		const other = await createTestUser();
-		const strayRing = new Keyring([{ id: 2, key: Buffer.alloc(32, 3) }]);
 		const rows = [
 			{ id: randomUUID(), date: new Date("2026-10-20T15:00:00Z") },
 			{ id: randomUUID(), currency: "USD" },
 		];
-		await adminDb.expense.createMany({
-			data: rows.map((r) => ({
-				userId: me.user.id,
-				id: r.id,
-				title: sealField(strayRing, "Coffee", {
-					table: "expense",
-					column: "title",
-					rowId: r.id,
-				}),
-				date: r.date ?? NOON,
-				amount: "1500.5",
-				currency: r.currency ?? "ARS",
-				amountInUSD: "1",
-				exchangeRate: "1000",
-				pricingSource: "MANUAL",
-			})),
-		});
+		await seed(
+			me,
+			rows.map((r) => ({ ...r, title: "Coffee" })),
+		);
 		const otherId = randomUUID();
-		await seed(other, [
-			{
-				id: otherId,
-				title: sealField(strayRing, "Coffee", {
-					table: "expense",
-					column: "title",
-					rowId: otherId,
-				}),
-			},
-		]);
-		// Ciphertext under a key this keyring lacks would throw if it were opened.
+		await seed(other, [{ id: otherId, title: "Coffee" }]);
+		for (const id of [...rows.map((r) => r.id), otherId]) await sealStray(id);
+		// Ciphertext under a key the keystore lacks would throw if it were read.
 		expect(await find(me, keyring, { title: "Coffee" })).toBeNull();
 	});
 
-	it("ciphertext the keyring cannot open is an error, never a silent non-match", async () => {
+	it("ciphertext under a key the keystore lacks is an error, never a silent non-match", async () => {
 		const me = await createTestUser();
 		const id = randomUUID();
-		const strayRing = new Keyring([{ id: 2, key: Buffer.alloc(32, 3) }]);
-		await seed(me, [
-			{
-				id,
-				title: sealField(strayRing, "Coffee", {
-					table: "expense",
-					column: "title",
-					rowId: id,
-				}),
-			},
-		]);
+		await seed(me, [{ id, title: "Coffee" }]);
+		await sealStray(id);
+		vi.spyOn(console, "error").mockImplementation(() => {});
 		await expect(find(me, keyring, { title: "Coffee" })).rejects.toThrow(
-			FieldCryptoError,
+			TextUnavailableError,
 		);
+		vi.restoreAllMocks();
 	});
 
 	it("a sealed value copied to another row does not open there", async () => {
 		const me = await createTestUser();
-		const home = randomUUID();
-		await seed(me, [{ id: randomUUID(), title: seal(home, "Coffee") }]);
+		const id = randomUUID();
+		await seed(me, [{ id, title: "Coffee" }]);
+		const ring = await userKeyring(me.user.id, master.ring as Keyring);
+		await writeCell(
+			"expense",
+			"title",
+			id,
+			sealField(ring, "Coffee", {
+				table: "expense",
+				column: "title",
+				rowId: randomUUID(),
+			}),
+		);
+		vi.spyOn(console, "error").mockImplementation(() => {});
 		await expect(find(me, keyring, { title: "Coffee" })).rejects.toThrow(
 			FieldCryptoError,
 		);
+		vi.restoreAllMocks();
 	});
 });
 
@@ -453,7 +467,8 @@ describe("ExpenseService.findDuplicate", () => {
 	it("passes the keyring through", async () => {
 		const me = await createTestUser();
 		const id = randomUUID();
-		await seed(me, [{ id, title: seal(id, "Coffee") }]);
+		await seed(me, [{ id, title: "Coffee" }]);
+		await seal(id, "Coffee");
 		const input = {
 			title: "Coffee",
 			amount: "1500.5",

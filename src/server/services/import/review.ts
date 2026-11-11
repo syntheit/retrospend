@@ -16,7 +16,6 @@ import { loadRateContext } from "../rate-types";
 import {
 	APP_LAYER_WINDOW,
 	pgLower,
-	readUserText,
 	searchesInApp,
 } from "../search-fold";
 import { bookImportRow, type ImportRate } from "./book";
@@ -166,8 +165,8 @@ async function usedInSql(
 }
 
 /**
- * The app-layer path, for titles that may be ciphertext: read the newest
- * categorized expenses, open each title, and keep those equal to one of
+ * The app-layer path, for titles SQL cannot read: read the newest
+ * categorized expenses (the client opens each title), and keep those equal to one of
  * `titles` after `pgLower`, the fold ILIKE applies to both sides, with no
  * pattern characters and no trimming. Counts are per (title, category), as
  * the SQL grouped them.
@@ -176,7 +175,6 @@ async function usedInApp(
 	db: Db,
 	userId: string,
 	titles: readonly string[],
-	keyring: Keyring,
 	window: number,
 ): Promise<Used[]> {
 	const wanted = new Set(titles.map(pgLower));
@@ -188,11 +186,7 @@ async function usedInApp(
 	});
 	const counts = new Map<string, Used>();
 	for (const r of rows) {
-		const title = readUserText(keyring, r.title, {
-			table: "expense",
-			column: "title",
-			rowId: r.id,
-		});
+		const { title } = r;
 		if (!wanted.has(pgLower(title))) continue;
 		const key = `${r.categoryId}\u0000${title}`;
 		const seen = counts.get(key);
@@ -218,7 +212,7 @@ async function suggestions(
 	if (titles.length === 0) return out;
 	const { keyring, window } = options;
 	const used = searchesInApp(keyring)
-		? await usedInApp(db, userId, titles, keyring, window ?? SUGGESTION_WINDOW)
+		? await usedInApp(db, userId, titles, window ?? SUGGESTION_WINDOW)
 		: await usedInSql(db, userId, titles);
 	for (const [name, names] of groups) {
 		const wanted = new Set(names.map((n) => n.toLowerCase()));
@@ -241,7 +235,7 @@ export async function importReview(
 	options: {
 		currency?: string | null;
 		timeZone?: string;
-		/** Opens ciphertext in titles; passing one picks the app-layer paths. */
+		/** Passing one picks the app-layer paths, which SQL cannot replace once titles are sealed. */
 		keyring?: Keyring;
 		/** App-layer suggestions only: rows read, for tests. */
 		suggestionWindow?: number;
@@ -263,7 +257,6 @@ export async function importReview(
 			rows,
 			(r) => r.proposed,
 			options.timeZone,
-			options.keyring,
 		),
 	]);
 	const home = ctx.homeCurrency;

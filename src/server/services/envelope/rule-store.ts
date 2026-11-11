@@ -8,17 +8,12 @@
 import { z } from "zod";
 import type { RuleActionInput, RuleMatchInput } from "~/lib/schemas/envelope";
 import type { IncomeRuleDto } from "~/lib/schemas/envelope-plan";
-import type { Keyring } from "~/server/crypto/field-crypto";
-import { readUserText } from "~/server/services/search-fold";
 import { Prisma, type IncomeRule as RuleRow } from "~prisma";
 import type { IncomeRule, RecordedRun, RuleAction, RuleMatch } from "./rules";
 import { dec, fromMinor, toMinor } from "./units";
 
-/**
- * A rule's match. The title it looks for may be ciphertext, so it is read
- * through `readUserText`; ciphertext with no keyring throws.
- */
-export function matchOf(r: RuleRow, keyring?: Keyring): RuleMatch {
+/** A rule's match. Its title comes opened by the client (field-open.ts). */
+export function matchOf(r: RuleRow): RuleMatch {
 	switch (r.matchKind) {
 		case "CATEGORY":
 			return { kind: "CATEGORY", categoryId: r.matchValue ?? "" };
@@ -27,11 +22,7 @@ export function matchOf(r: RuleRow, keyring?: Keyring): RuleMatch {
 		case "TITLE":
 			return {
 				kind: "TITLE",
-				contains: readUserText(keyring, r.matchTitle, {
-					table: "income_rule",
-					column: "matchTitle",
-					rowId: r.id,
-				}),
+				contains: r.matchTitle ?? "",
 			};
 		case "CURRENCY":
 			return { kind: "CURRENCY", currency: r.matchValue ?? "" };
@@ -54,30 +45,25 @@ export function actionOf(r: RuleRow, H: string): RuleAction {
 	return { kind: "REMAINDER" };
 }
 
-export function toRule(r: RuleRow, H: string, keyring?: Keyring): IncomeRule {
+export function toRule(r: RuleRow, H: string): IncomeRule {
 	return {
 		id: r.id,
 		sortOrder: r.sortOrder,
 		envelopeId: r.envelopeId,
 		active: r.active && r.archivedAt === null,
 		createdAtMs: r.createdAt.getTime(),
-		match: matchOf(r, keyring),
+		match: matchOf(r),
 		action: actionOf(r, H),
 	};
 }
 
-/** The keyring is for a sealed match text; the list callers pass none until D11. */
-export function toRuleDto(
-	r: RuleRow,
-	H: string,
-	keyring?: Keyring,
-): IncomeRuleDto {
+export function toRuleDto(r: RuleRow, H: string): IncomeRuleDto {
 	const a = actionOf(r, H);
 	return {
 		id: r.id,
 		name: r.name,
 		sortOrder: r.sortOrder,
-		match: matchOf(r, keyring),
+		match: matchOf(r),
 		action: {
 			kind: a.kind,
 			basisPoints: a.kind === "PERCENT" ? a.basisPoints : null,

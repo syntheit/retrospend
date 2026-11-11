@@ -57,7 +57,6 @@ export const applyRuleToMonthMutation: MoneyMutation<
 			actor.userId,
 			input,
 			new Date(),
-			actor.keyring,
 		);
 		return { value, undo: batchUndo(value.movement) };
 	},

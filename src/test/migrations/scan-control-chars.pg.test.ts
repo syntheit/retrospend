@@ -43,10 +43,14 @@ describe("scan-control-chars", () => {
 			data: [
 				{ ...base, title: "clean\nlines\r\n\ttabbed", description: "ok" },
 				{ ...base, title: "bad\u000bvertical tab", location: "BA\u0007" },
-				{ ...base, title: "\u0001k1:AAAA", description: "x\u001fy" },
+				{ ...base, title: "marker", description: "x\u001fy" },
 				{ ...base, title: "replaced �" },
 			],
 		});
+		// Raw SQL: the clients refuse a value that starts like ciphertext.
+		await adminDb.$executeRaw`
+			UPDATE "expense" SET "title" = ${"\u0001k1:AAAA"}
+			WHERE "userId" = ${user.id} AND "title" = 'marker'`;
 
 		const after = await scanControlChars(pool);
 		const delta = (table: string, column: string) => {

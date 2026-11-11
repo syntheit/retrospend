@@ -5,7 +5,7 @@ import {
 } from "@retrospend/domain/time-zone";
 import type { Keyring } from "~/server/crypto/field-crypto";
 import type { PrismaClient } from "~prisma";
-import { pgLower, readUserText, searchesInApp } from "./search-fold";
+import { pgLower, searchesInApp } from "./search-fold";
 import { listedEntryWhere } from "./spending";
 
 /** The value as an ILIKE pattern that matches only itself. */
@@ -20,14 +20,13 @@ const escapeLike = (text: string) => text.replace(/[\\%_]/g, "\\$&");
  * Titles may be ciphertext (docs/roadmap/e2ee-spike.md, lane D), so with a
  * `keyring` (the same switch as search and title suggestions, `searchesInApp`)
  * Postgres filters by user, amount, currency and day only, and the titles of
- * those few rows are opened and compared here. The candidates are one day of
+ * those few rows (opened by the client, field-open.ts) are compared here. The candidates are one day of
  * one amount in one currency, so no row window is needed. Without a keyring
  * Postgres compares the title too, as before. Both compare titles literally and
  * case-insensitively, per code point: no trimming, no accent folding, and `%`,
  * `_` and backslash are ordinary characters. Prisma's insensitive `equals` is
  * `ILIKE`, so the SQL path escapes those three first (`escapeLike`); the app
- * path compares `pgLower` text, the fold ILIKE applies. The `title` returned is
- * the opened text.
+ * path compares `pgLower` text, the fold ILIKE applies.
  */
 export async function findDuplicateExpense(
 	db: PrismaClient,
@@ -82,13 +81,5 @@ export async function findDuplicateExpense(
 		orderBy: [{ date: "desc" }, { id: "desc" }],
 		select: { id: true, title: true },
 	});
-	for (const row of rows) {
-		const title = readUserText(keyring, row.title, {
-			table: "expense",
-			column: "title",
-			rowId: row.id,
-		});
-		if (pgLower(title) === wanted) return { id: row.id, title };
-	}
-	return null;
+	return rows.find((row) => pgLower(row.title) === wanted) ?? null;
 }

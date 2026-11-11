@@ -175,7 +175,7 @@ describe("opening", () => {
 		expect(args).toEqual({ where: { id: "e1" }, select: { title: true } });
 	});
 
-	it("does the same inside a nested select under include, and for an omitted id", async () => {
+	it("does the same inside a nested select under include, and for an omitted id and owner", async () => {
 		const user = ring(1);
 		const handle = handlerFor(keysWith({ user }));
 		let sent: unknown;
@@ -183,7 +183,7 @@ describe("opening", () => {
 			model: "Expense",
 			operation: "findMany",
 			args: {
-				omit: { id: true },
+				omit: { id: true, userId: true },
 				include: { category: { select: { name: true } } },
 			},
 			query: async (a) => {
@@ -206,9 +206,7 @@ describe("opening", () => {
 			omit: {},
 			include: { category: { select: { name: true, id: true, userId: true } } },
 		});
-		expect(result).toEqual([
-			{ userId: ME, title: "Coffee", category: { name: "Food" } },
-		]);
+		expect(result).toEqual([{ title: "Coffee", category: { name: "Food" } }]);
 	});
 
 	it("leaves results of models with no path to a mapped cell untouched", async () => {

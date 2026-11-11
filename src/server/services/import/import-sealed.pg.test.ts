@@ -2,8 +2,8 @@
  * Import review with titles that may be ciphertext (ARS home): the
  * duplicate and "possibly already in Activity" matching (match.ts) and the
  * category suggestions (review.ts). Both compared titles in SQL or on
- * plaintext rows read from SQL; now stored titles are opened with
- * readUserText first, and suggestions have an app-layer path for a keyring.
+ * plaintext rows read from SQL; now the user's client opens stored titles on
+ * read (field-open.ts), and suggestions have an app-layer path for a keyring.
  *
  * One ledger is built twice, with plain titles and with every title sealed,
  * and the review must come out the same on both and equal what is derived
@@ -29,13 +29,13 @@
  *   "50%" x1 Health, "50 percent" x2 Transport         "50%" -> Health
  */
 import { randomUUID } from "node:crypto";
-import { beforeAll, describe, expect, it } from "vitest";
-import {
-	FieldCryptoError,
-	Keyring,
-	sealField,
-} from "~/server/crypto/field-crypto";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import { Keyring } from "~/server/crypto/field-crypto";
+import { TextUnavailableError } from "~/server/crypto/field-open";
+import { createUserScopedDb } from "~/server/db";
+import { evictDataKeyring } from "~/server/services/keys/data-key.service";
 import { adminDb } from "~/test/pg-harness";
+import { sealedFile, sealText } from "~/test/sealed-fixture";
 import type { Prisma } from "~prisma";
 import {
 	arsUser,
@@ -45,6 +45,14 @@ import {
 } from "../accounts/test-fixtures";
 import { importReview } from "./review";
 
+const master = vi.hoisted(() => ({ ring: undefined as Keyring | undefined }));
+vi.mock("~/server/crypto/master-key", async (importOriginal) => ({
+	...(await importOriginal<typeof import("~/server/crypto/master-key")>()),
+	getMasterKeyring: () => master.ring,
+}));
+sealedFile(master);
+
+/** Picks the app-layer path; the client opens with the keystore's keys. */
 const keyring = new Keyring([{ id: 1, key: Buffer.alloc(32, 3) }]);
 
 beforeAll(seedArsRates);
@@ -67,24 +75,22 @@ async function ledger(sealed: boolean) {
 			data: {
 				id,
 				userId,
-				title: sealed
-					? sealField(keyring, r.title, {
-							table: "expense",
-							column: "title",
-							rowId: id,
-						})
-					: r.title,
+				title: r.title,
 				amount: r.amount,
 				currency: "ARS",
-				date: new Date(
-					`${r.day ?? isoDay(daysAgo(daysBack))}T15:00:00.000Z`,
-				),
+				date: new Date(`${r.day ?? isoDay(daysAgo(daysBack))}T15:00:00.000Z`),
 				exchangeRate: 1468,
 				amountInUSD: 1,
 				pricingSource: "MANUAL",
 				categoryId: r.category ? cats[r.category] : null,
 			},
 		});
+		if (sealed)
+			await sealText(
+				master.ring as Keyring,
+				{ table: "expense", column: "title", rowId: id },
+				r.title,
+			);
 	};
 	for (const r of [
 		{ title: "Café Martínez", amount: 7800, day: D0 },
@@ -160,16 +166,17 @@ async function reviewOf(
 	l: Awaited<ReturnType<typeof ledger>>,
 	options: Parameters<typeof importReview>[3] = {},
 ) {
-	const r = await importReview(adminDb, l.userId, await job(l.userId), options);
+	const r = await importReview(
+		createUserScopedDb(l.userId),
+		l.userId,
+		await job(l.userId),
+		options,
+	);
 	const name = (id: string | null) =>
 		Object.entries(l.cats).find(([, v]) => v === id)?.[0] ?? null;
 	return {
 		rows: r.rows.map((x) => [x.title, x.duplicate, x.possible] as const),
-		unmatched: r.unmatched.map((u) => [
-			u.name,
-			u.rows,
-			name(u.suggestionId),
-		]),
+		unmatched: r.unmatched.map((u) => [u.name, u.rows, name(u.suggestionId)]),
 	};
 }
 
@@ -209,10 +216,15 @@ describe("import review over plain and sealed titles", () => {
 		expect(await reviewOf(await ledger(true), { keyring })).toEqual(EXPECTED);
 	});
 
-	it("sealed titles with no keyring are an error, not a missed duplicate", async () => {
-		await expect(reviewOf(await ledger(true))).rejects.toBeInstanceOf(
-			FieldCryptoError,
+	it("sealed titles whose key is lost are an error, not a missed duplicate", async () => {
+		const l = await ledger(true);
+		await adminDb.$executeRaw`DELETE FROM keystore."user_data_key" WHERE "userId" = ${l.userId}`;
+		evictDataKeyring(l.userId);
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		await expect(reviewOf(l, { keyring })).rejects.toBeInstanceOf(
+			TextUnavailableError,
 		);
+		vi.restoreAllMocks();
 	});
 
 	it("the app path reads only the newest rows for suggestions", async () => {

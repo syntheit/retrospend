@@ -2,7 +2,7 @@ import { ORPCError } from "@orpc/server";
 import type { ProblemCode } from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
 import { MissingRateError } from "@retrospend/domain/money";
-import { TextUnavailableError } from "~/server/crypto/field-open";
+import { isTextUnavailable } from "~/server/crypto/field-open";
 import { OverpayError } from "~/server/services/payments/procedures";
 import { RateOutOfRangeError } from "~/server/services/payments/rate-band";
 import { InvalidCursorError } from "~/server/services/api-v1/cursor";
@@ -47,10 +47,7 @@ export function toProblem(error: unknown, route?: string): unknown {
 		return problem("missing_rate", missing.message);
 	// A sealed text the caller may read whose key the server cannot load: the
 	// key store is lost or unreachable. The recorded code stays in the log.
-	const unavailable = [error, (error as { cause?: unknown } | null)?.cause].find(
-		(e) => e instanceof TextUnavailableError,
-	);
-	if (unavailable) return problem("encrypted_text_unavailable");
+	if (isTextUnavailable(error)) return problem("encrypted_text_unavailable");
 	// More than everything owed: a code of its own, so a client can say so.
 	if (error instanceof OverpayError) return problem("overpay", error.message);
 	// A typed rate far from the stored one: a slip, with a code a client can show.

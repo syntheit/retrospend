@@ -50,6 +50,19 @@ export class TextUnavailableError extends Error {
 	}
 }
 
+/**
+ * Whether an unavailable key is behind `error`, at any depth of `cause`: a
+ * figure, tRPC or a service may wrap it, and the stable API code must still
+ * reach the caller.
+ */
+export function isTextUnavailable(error: unknown): boolean {
+	for (let e = error, depth = 0; e && depth < 8; depth++) {
+		if (e instanceof TextUnavailableError) return true;
+		e = (e as { cause?: unknown }).cause;
+	}
+	return false;
+}
+
 type Row = Record<string, unknown>;
 
 const isRow = (value: unknown): value is Row =>
@@ -276,8 +289,10 @@ const WRITES_DATA = new Set([
  * copied sealed value would be stored under the wrong cell, and sealed twice
  * once PR 4 seals. Top-level writes only; nested writes are PR 4's. An
  * `updateMany` that sets a mapped column to plaintext still runs: two callers
- * do (export_job.fileName, split_participant.rejectionReason), and PR 4 must
- * move them before it refuses that shape.
+ * do, and PR 4 must move them to per-row writes before it refuses that shape
+ * (each row needs its own AAD and nonce): export_job.fileName in
+ * services/api-v1/export-run.ts:124, and split_participant.rejectionReason
+ * (set to null) in services/shared-expenses/transaction.service.ts:647.
  */
 function refuseWrites(model: string, operation: string, args: Row): void {
 	const columns = Object.keys(fieldsOfModel(model)?.columns ?? {});
