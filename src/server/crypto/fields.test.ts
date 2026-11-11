@@ -122,6 +122,7 @@ const STORED: Record<string, string[]> = {
 	"payment_method.identifier": ["payment_method.identifier"],
 	"payment_method.label": ["payment_method.label"],
 	"person.name": ["shadow_profile.name"],
+	"push_device.deviceName": ["push_device.deviceName"],
 	"project.description": ["project.description"],
 	"project.name": ["project.name"],
 	"recurring.name": ["recurring_template.name"],
@@ -154,8 +155,6 @@ const NO_DECLARED_FIELD: Record<string, string> = {
 		"a server copy of envelope.name taken before a rename; no input names it",
 	"export_job.fileName":
 		"derived by the server from a project or person name; no input names it",
-	"push_device.deviceName":
-		"declare it once the column is widened: VarChar(100) cannot hold the ciphertext of a 100 character name",
 };
 
 /**
@@ -254,6 +253,22 @@ describe("the field map and the Prisma schema", () => {
 			expect(id?.type, `${model} id type`).toBe("String");
 			expect(id?.list, `${model} id list`).toBe(false);
 		}
+	});
+
+	it("stores every mapped column as unbounded text, so a ciphertext fits", () => {
+		// A sealed value is 4 * plaintext limit + 48 characters (user-text-capacity.pg.test.ts
+		// holds the declared limits), so a VarChar(n) sized for plaintext fails the first write.
+		const bounded = Object.entries(FIELD_MAP).flatMap(([model, { columns }]) =>
+			Object.keys(columns)
+				.filter((column) => {
+					const field = modelByName
+						.get(model)
+						?.fields.find((f) => f.name === column);
+					return /@db\.(VarChar|Char)/.test(field?.attributes ?? "");
+				})
+				.map((column) => `${model}.${column}`),
+		);
+		expect(bounded).toEqual([]);
 	});
 
 	it("uses no @map on a field, so a column is its Prisma field name", () => {

@@ -181,8 +181,6 @@ function textProperties(inputs: Input[]) {
 const REASONS = {
 	profile:
 		"updateProfile strips the characters userText refuses before it writes (profile.service.ts), so Undo of an old name works",
-	narrow:
-		"push_device.deviceName is VarChar(100), too narrow for a ciphertext: widen the column, then declare the field (D11 review)",
 	crash:
 		"app-generated crash text, scrubbed by scrubReport, kept in error_report and feedback diagnostics, not a mapped column",
 } as const;
@@ -197,7 +195,6 @@ const NOT_TEXT_INPUTS: Record<string, keyof typeof REASONS> = {
 	"trpc feedback.submit:diagnostics.recentErrors[].message": "crash",
 	"v1 POST /feedback:diagnostics.recentErrors[].message": "crash",
 	"v1 POST /error-reports:reports[].message": "crash",
-	"v1 POST /push-devices:deviceName": "narrow",
 };
 
 describe("detector", () => {

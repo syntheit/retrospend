@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { USER_TEXT_FIELDS } from "@retrospend/api-contract";
 import { describe, expect, it } from "vitest";
 import { Keyring, sealField } from "~/server/crypto/field-crypto";
+import { mappedColumns } from "~/server/crypto/fields";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { USER_TEXT_COLUMNS } from "../../../scripts/scan-control-chars";
 import { REPO_ROOT } from "../uiRules/paths";
@@ -93,6 +94,7 @@ const STORED: Record<string, Column[]> = {
 	"import_job.fileName": [{ table: "import_job", column: "fileName" }],
 	"incomeRule.matchTitle": [{ table: "income_rule", column: "matchTitle" }],
 	"incomeRule.name": [{ table: "income_rule", column: "name" }],
+	"push_device.deviceName": [{ table: "push_device", column: "deviceName" }],
 	"payment.method": [
 		{ table: "payment", column: "paymentMethod" },
 		{ table: "settlement", column: "paymentMethod" },
@@ -210,6 +212,21 @@ describe("user-text columns hold their ciphertext", () => {
 			}
 		}
 		expect(tooSmall).toEqual([]);
+	});
+
+	it("stores every mapped column as TEXT, declared field or not", async () => {
+		// The field map names every column D11 seals. A bounded column would
+		// reject a ciphertext once a field has no declared limit to size it by.
+		const notText: string[] = [];
+		for (const [table, column] of mappedColumns()) {
+			const rows = await adminDb.$queryRaw<{ data_type: string }[]>`
+				SELECT data_type FROM information_schema.columns
+				WHERE table_schema = current_schema()
+					AND table_name = ${table} AND column_name = ${column}`;
+			expect(rows, `${table}.${column} exists`).toHaveLength(1);
+			if (rows[0]?.data_type !== "text") notText.push(`${table}.${column}`);
+		}
+		expect(notText).toEqual([]);
 	});
 
 	it("stores the longest category name ciphertext", async () => {

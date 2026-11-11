@@ -362,7 +362,7 @@ model Budget {
 // into another book.
 model BudgetBook {
   id                       String        @id @default(cuid())
-  name                     String        @default("Personal") @db.VarChar(64)
+  name                     String        @default("Personal") @db.Text
   isPersonal               Boolean       @default(true)
   currency                 String
   style                    BudgetStyle   @default(FLEX)
@@ -601,7 +601,7 @@ model BudgetMovement {
   revertsId       String?      @unique
   sourceExpenseId String?
   ruleId          String?
-  note            String?      @db.VarChar(200)
+  note            String?      @db.Text
   actorUserId     String
   createdAt       DateTime     @default(now())
   book            BudgetBook   @relation(fields: [bookId], references: [id], onDelete: Cascade)
@@ -886,7 +886,7 @@ model WealthTransfer {
   countOnly       Boolean                 @default(false)
   date            DateTime                @db.Date
   amount          Decimal                 @db.Decimal(19, 8)
-  note            String?                 @db.VarChar(200)
+  note            String?                 @db.Text
   actorUserId     String
   createdAt       DateTime                @default(now())
   book            BudgetBook              @relation(fields: [bookId], references: [id], onDelete: Cascade)
@@ -2282,7 +2282,7 @@ model ExportJob {
   params      Json
   timeZone    String          @db.VarChar(64)
   status      ExportJobStatus @default(QUEUED)
-  fileName    String?         @db.VarChar(255)
+  fileName    String?         @db.Text
   contentType String?         @db.VarChar(100)
   sizeBytes   Int?
   storagePath String?         @db.VarChar(512)
@@ -2324,7 +2324,7 @@ model PushDevice {
   addressHash String        @db.VarChar(64)
   apnsSandbox Boolean       @default(false)
   appVersion  String?       @db.VarChar(32)
-  deviceName  String?       @db.VarChar(100)
+  deviceName  String?       @db.Text
   /// The credential that registered the device; deleting it deletes the row.
   sessionId   String?
   apiKeyId    String?
