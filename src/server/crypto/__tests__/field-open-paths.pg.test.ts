@@ -802,7 +802,7 @@ describe("a key added since the ring was loaded, inside a transaction", () => {
 				},
 				{},
 			);
-		return { u, read, preview };
+		return { u, read, preview, wrapped };
 	}
 
 	it("fails with key_rotated in userTransaction without waiting for a key load", async () => {
@@ -834,17 +834,40 @@ describe("a key added since the ring was loaded, inside a transaction", () => {
 		vi.restoreAllMocks();
 	});
 
-	it("fails with keystore_lost once a finished reload still lacks the key", async () => {
-		const { u, read } = await rotated();
+	it("answers keystore_lost from a settled reload, however far apart the retries, until the key cache changes", async () => {
+		const { u, read, wrapped } = await rotated();
 		await adminDb.$executeRaw`
 			DELETE FROM keystore."user_data_key" WHERE "userId" = ${u} AND "keyId" = 2`;
 		vi.spyOn(console, "error").mockImplementation(() => {});
-		const first = await userTransaction(db, u, read).catch((e: unknown) => e);
-		expect(textUnavailableProblem(first)).toBe("key_rotated");
-		await vi.waitFor(async () => {
-			const next = await userTransaction(db, u, read).catch((e: unknown) => e);
-			expect((next as TextUnavailableError).code).toBe("keystore_lost");
-		});
-		vi.restoreAllMocks();
+		// Only the clock is fake: the throttle and the key caches read Date.now().
+		vi.useFakeTimers({ toFake: ["Date"] });
+		const start = Date.now();
+		const code = async () => {
+			const result = await userTransaction(db, u, read).catch(
+				(e: unknown) => e,
+			);
+			return result instanceof TextUnavailableError ? result.code : "opened";
+		};
+		try {
+			expect(await code()).toBe("key_rotated");
+			const loads = vi.spyOn(keystoreDb, "$transaction");
+			// The background reload settles; then each spaced retry answers from it.
+			await vi.waitFor(async () => expect(await code()).toBe("keystore_lost"));
+			loads.mockClear();
+			for (const later of [10_000, 60_000]) {
+				vi.setSystemTime(start + later);
+				expect(await code()).toBe("keystore_lost");
+			}
+			expect(loads).not.toHaveBeenCalled();
+			// The key comes back and the cached ring expires: a new ring opens it.
+			await adminDb.$executeRaw`
+				INSERT INTO keystore."user_data_key" ("userId", "keyId", "wrappedKey", "masterKeyId")
+				VALUES (${u}, 2, ${wrapped}, 1)`;
+			vi.setSystemTime(start + 6 * 60_000);
+			expect(await code()).toBe("opened");
+		} finally {
+			vi.useRealTimers();
+			vi.restoreAllMocks();
+		}
 	});
 });
