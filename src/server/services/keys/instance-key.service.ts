@@ -25,6 +25,7 @@
  */
 import { randomBytes } from "node:crypto";
 import { keystoreDb } from "~/server/db";
+import { userTransaction } from "~/server/db-tx";
 import type { Prisma } from "~prisma";
 import {
 	type FieldAad,
@@ -119,20 +120,26 @@ function unwrapAll(rows: KeyRow[], masterKeyring: Keyring): Keyring {
 	);
 }
 
-/** Sets the actor and drops to the app role for this transaction, as the scoped client does. */
-async function enterActor(
-	tx: Prisma.TransactionClient,
+/**
+ * Runs `work` in one keystore transaction as the actor, dropped to the app
+ * role as the scoped client does. A user goes through `userTransaction`, the
+ * one place that sets the RLS identity.
+ */
+async function asActor<T>(
 	actor: InstanceKeyActor,
-): Promise<void> {
+	work: (tx: Prisma.TransactionClient) => Promise<T>,
+): Promise<T> {
 	if (actor.kind === "user") {
 		if (!actor.userId) throw new InstanceKeyError("no_actor");
-		await tx.$executeRaw`SELECT set_config('app.current_user_id', ${actor.userId}, true),
-		                            set_config('role', 'retrospend_app', true)`;
-		return;
+		return userTransaction(keystoreDb, actor.userId, work);
 	}
-	if (!actor.guestSessionId) throw new InstanceKeyError("no_actor");
-	await tx.$executeRaw`SELECT set_config('app.guest_session_id', ${actor.guestSessionId}, true),
-	                            set_config('role', 'retrospend_app', true)`;
+	const { guestSessionId } = actor;
+	if (!guestSessionId) throw new InstanceKeyError("no_actor");
+	return keystoreDb.$transaction(async (tx) => {
+		await tx.$executeRaw`SELECT set_config('app.guest_session_id', ${guestSessionId}, true),
+		                            set_config('role', 'retrospend_app', true)`;
+		return work(tx);
+	});
 }
 
 async function loadOrMint(
@@ -140,8 +147,7 @@ async function loadOrMint(
 	masterKeyring: Keyring,
 ): Promise<Keyring> {
 	const rows = await keystore(() =>
-		keystoreDb.$transaction(async (tx) => {
-			await enterActor(tx, actor);
+		asActor(actor, async (tx) => {
 			const found = await tx.$queryRaw<KeyRow[]>`
 				SELECT "key_id" AS "keyId", "wrapped_key" AS "wrappedKey"
 				FROM keystore."instance_text_keys"()`;
@@ -151,8 +157,8 @@ async function loadOrMint(
 				randomBytes(INSTANCE_KEY_BYTES).toString("base64"),
 				instanceKeyAad(FIRST_KEY_ID),
 			);
-			// Two processes that mint together end up with one key: the function
-			// serializes them and keeps the first row, and both read it back.
+			// Two processes that mint together end up with one key: ON CONFLICT
+			// keeps the first row, and both read it back.
 			return tx.$queryRaw<KeyRow[]>`
 				SELECT "key_id" AS "keyId", "wrapped_key" AS "wrappedKey"
 				FROM keystore."create_first_instance_key"(${wrapped}, ${masterKeyring.currentId}::bigint)`;
