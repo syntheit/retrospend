@@ -1,15 +1,32 @@
 /**
  * Whether this process seals user text on write (E2EE D11 PR 4,
- * docs/roadmap/e2ee-d11-pr4.md section 1). False until the seal engine and
- * its gates exist (PR 4.2 and 4.3): until then nothing seals, and the callers
- * that act on it (the first-write key mint, the sign-in ensure) do nothing.
- * Tests flip it here instead of mocking the module.
+ * docs/roadmap/e2ee-d11-pr4.md sections 1 and 3): DATA_KEYS_WRITE, and in
+ * production only once sealing is released (release.ts). db.ts wires the
+ * setting, so this file reads no environment and a unit test seals nothing.
+ * The start-up check (field-encryption-start.ts) refuses a server with the
+ * flag on that lacks what sealing needs; the release rule here also covers
+ * scripts, which skip that check. Tests flip it here instead of mocking.
  */
-let current: () => boolean = () => false;
+import { SEALING_RELEASED } from "./release";
+
+/**
+ * What the setting asks for. Strictly `true`: with env validation skipped
+ * (the image build) the flag is the raw string, truthy whatever it says.
+ */
+export const sealingWanted = (flag: unknown, nodeEnv: unknown): boolean =>
+	flag === true && (SEALING_RELEASED || nodeEnv !== "production");
+
+let setting: () => boolean = () => false;
+let current: () => boolean = () => setting();
 
 export const sealing = (): boolean => current();
 
-/** Test hook: what `sealing()` answers; pass nothing to go back to false. */
+/** db.ts: where the setting comes from. */
+export function wireSealingSetting(read: () => boolean): void {
+	setting = read;
+}
+
+/** Test hook: what `sealing()` answers; pass nothing to go back to the setting. */
 export function setSealingForTests(answer?: () => boolean): void {
-	current = answer ?? (() => false);
+	current = answer ?? (() => setting());
 }

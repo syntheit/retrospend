@@ -23,13 +23,17 @@ const VARS = [
 	"EMAIL_FROM",
 	"UPLOAD_DIR",
 	"UNSUBSCRIBE_SECRET",
+	"DATA_KEYS_WRITE",
 	"SKIP_ENV_VALIDATION",
 ];
 
 async function loadEnv(vars: Record<string, string>) {
 	for (const name of VARS) vi.stubEnv(name, undefined);
 	vi.stubEnv("AUTH_SECRET", "secret");
-	vi.stubEnv("DATABASE_URL", "postgresql://user:pass@localhost:5434/retrospend");
+	vi.stubEnv(
+		"DATABASE_URL",
+		"postgresql://user:pass@localhost:5434/retrospend",
+	);
 	for (const [name, value] of Object.entries(vars)) vi.stubEnv(name, value);
 	vi.resetModules();
 	const mod = await import("~/env");
@@ -50,7 +54,9 @@ describe("env schema", () => {
 		const env = await loadEnv({});
 
 		expect(env.BETTER_AUTH_SECRET).toBe("secret");
-		expect(env.DATABASE_URL).toBe("postgresql://user:pass@localhost:5434/retrospend");
+		expect(env.DATABASE_URL).toBe(
+			"postgresql://user:pass@localhost:5434/retrospend",
+		);
 		expect(env.SIDECAR_URL).toBe("http://retrospend-sidecar:8080");
 		expect(env.UPLOAD_DIR).toBe("./uploads");
 		expect(env.NEXT_PUBLIC_APP_URL).toBe("http://localhost:1997");
@@ -77,8 +83,22 @@ describe("env schema", () => {
 		expect(env.SMTP_PORT).toBe(587);
 	});
 
+	it("keeps sealing off unless DATA_KEYS_WRITE is exactly true", async () => {
+		expect((await loadEnv({})).DATA_KEYS_WRITE).toBe(false);
+		expect((await loadEnv({ DATA_KEYS_WRITE: "false" })).DATA_KEYS_WRITE).toBe(
+			false,
+		);
+		expect((await loadEnv({ DATA_KEYS_WRITE: "true" })).DATA_KEYS_WRITE).toBe(
+			true,
+		);
+	});
+
 	it("treats empty strings as unset", async () => {
-		const env = await loadEnv({ SIDECAR_URL: "", SMTP_HOST: "", UPLOAD_DIR: "" });
+		const env = await loadEnv({
+			SIDECAR_URL: "",
+			SMTP_HOST: "",
+			UPLOAD_DIR: "",
+		});
 
 		expect(env.SIDECAR_URL).toBe("http://retrospend-sidecar:8080");
 		expect(env.SMTP_HOST).toBeUndefined();
@@ -91,7 +111,10 @@ describe("env schema", () => {
 		["an unknown landing page flag", { SHOW_LANDING_PAGE: "yes" }],
 		["a public URL without a scheme", { PUBLIC_URL: "money.example.com" }],
 		["a non-numeric SMTP port", { SMTP_PORT: "smtp" }],
+		["a sealing flag that is not true or false", { DATA_KEYS_WRITE: "1" }],
 	])("rejects %s", async (_label, vars) => {
-		await expect(loadEnv(vars)).rejects.toThrow("Invalid environment variables");
+		await expect(loadEnv(vars)).rejects.toThrow(
+			"Invalid environment variables",
+		);
 	});
 });

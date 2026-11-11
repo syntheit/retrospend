@@ -8,7 +8,10 @@
  * and is skipped under test. First it checks the server master key setting, so
  * a malformed key stops the server instead of leaving data unencrypted, and
  * then the key against the canary stored in the database, so a wrong key stops
- * it too (the first start with a key writes the canary).
+ * it too (the first start with a key writes the canary). With DATA_KEYS_WRITE
+ * on it then checks that sealing can work and sets the field encryption epoch
+ * (field-encryption-start.ts), so no worker runs on a server that would
+ * refuse to seal.
  */
 export async function register() {
 	if (process.env.NEXT_RUNTIME !== "nodejs") return;
@@ -18,6 +21,10 @@ export async function register() {
 		"~/server/services/keys/master-canary.service"
 	);
 	await assertMasterKeyCanary();
+	const { assertFieldEncryptionStart } = await import(
+		"~/server/services/keys/field-encryption-start"
+	);
+	await assertFieldEncryptionStart();
 	const [
 		{ startWebhookWorker },
 		{ startPushWorker },
