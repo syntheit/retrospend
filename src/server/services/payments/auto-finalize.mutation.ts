@@ -26,7 +26,7 @@ export class ReopenedError extends TRPCError {
 
 export const autoFinalizePayment: MoneyMutation<
 	{ readonly paymentId: string; readonly person: ParticipantRef },
-	ConfirmPaymentValue
+	ConfirmPaymentValue & { readonly automatic: true }
 > = {
 	id: "payment.autoFinalize",
 	touches: CONFIRM_FIGURES,
@@ -61,6 +61,9 @@ export const autoFinalizePayment: MoneyMutation<
 				paymentId: confirmed.paymentId,
 				counterparty: confirmed.counterparty,
 				allocation: null,
+				// Carried into the event, so webhook and feed readers can tell it from
+				// a confirm and the push planner stays quiet (push/recipients.ts).
+				automatic: true,
 			},
 			undo: confirmed.undo,
 		};

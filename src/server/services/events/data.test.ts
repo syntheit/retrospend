@@ -2,6 +2,21 @@ import { describe, expect, it } from "vitest";
 import { amountsOfChanges, extractEventData, toldPeople } from "./data";
 
 describe("extractEventData", () => {
+	it("flags a change the server made, and only then", () => {
+		expect(extractEventData({ automatic: true, paymentId: "p_1" }).data).toEqual({
+			ids: { paymentId: "p_1" },
+			amounts: [],
+			truncated: false,
+			automatic: true,
+		});
+		expect(extractEventData({ automatic: "yes" }).data).not.toHaveProperty(
+			"automatic",
+		);
+		expect(extractEventData({ paymentId: "p_1" }).data).not.toHaveProperty(
+			"automatic",
+		);
+	});
+
 	it("keeps ids and Money and drops every other string", () => {
 		const { entityId, data } = extractEventData({
 			id: "exp_1",

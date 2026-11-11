@@ -63,6 +63,9 @@ export async function fanOutPushEvents(
 					type,
 					actorUserId: event.actorUserId ?? event.userId,
 					entityId,
+					automatic:
+						(event.payload as { automatic?: unknown } | null)?.automatic ===
+						true,
 				});
 				for (const recipient of plan?.recipients ?? [])
 					drafts.push({

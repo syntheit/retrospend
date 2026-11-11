@@ -20,6 +20,14 @@ import {
 import { readEventFeed } from "~/server/services/events/feed";
 import { forUser } from "~/server/services/preview";
 import { computeBalance } from "~/server/services/shared-expenses/balance";
+import {
+	addDevice,
+	allSendersConfig,
+	recordingSenders,
+	sweepUntilPushed,
+} from "~/server/services/push/pg-fixtures";
+import { planPush } from "~/server/services/push/recipients";
+import { runPushWorker } from "~/server/services/push/worker";
 import { fanOutEvents } from "~/server/services/webhooks/worker";
 import { adminDb } from "~/test/pg-harness";
 import {
@@ -200,6 +208,61 @@ describe("auto-finalize of a payment pending for more than 7 days", () => {
 		});
 		const [theirs] = await confirmed(p.payer);
 		expect(theirs?.data.amounts).toEqual([]);
+		// The event says the server made the change; a manual confirm's does not.
+		expect(mine?.data.automatic).toBe(true);
+		const q = await pair();
+		const manual = await pay(q, "37100");
+		await forUser(q.payee.user.id).apply(confirmPayment, {
+			paymentId: manual,
+			person: ref(q.payer),
+		});
+		const [byHand] = (
+			await readEventFeed(adminDb, q.payee.user.id, { limit: 100 })
+		).items.filter(
+			(e) => e.type === "payment.confirmed" && e.data.ids.paymentId === manual,
+		);
+		expect(byHand).toBeDefined();
+		expect(byHand?.data).not.toHaveProperty("automatic");
+	});
+
+	it("plans no push for the sweep's event, and still plans one for a confirm", async () => {
+		const p = await pair();
+		const id = await pay(p, "37100");
+		await sweepStalePayments(NOW);
+		const event = {
+			type: "payment.confirmed" as const,
+			actorUserId: p.payee.user.id,
+			entityId: id,
+		};
+		expect(await planPush(adminDb, { ...event, automatic: true })).toBeNull();
+		const plan = await planPush(adminDb, event);
+		expect(plan?.recipients).toEqual([
+			{ userId: p.payer.user.id, amount: { minor: 3_710_000, currency: "ARS" } },
+		]);
+	});
+
+	it("sends the payer a push when the payee confirms, and none when the sweep does", async () => {
+		const config = allSendersConfig();
+		const toPayer = async (confirm: (p: Pair, id: string) => Promise<unknown>) => {
+			const p = await pair();
+			const device = (await addDevice(p.payer.user.id, "APNS")).device.id;
+			const id = await pay(p, "37100");
+			await confirm(p, id);
+			const { sent, senders } = recordingSenders();
+			await sweepUntilPushed(() => runPushWorker({ config, senders }));
+			return sent
+				.filter((s) => s.target.id === device)
+				.map((s) => s.message.data.type);
+		};
+		expect(
+			await toPayer((p, id) =>
+				forUser(p.payee.user.id).apply(confirmPayment, {
+					paymentId: id,
+					person: ref(p.payer),
+				}),
+			),
+		).toEqual(["payment.confirmed"]);
+		expect(await toPayer(() => sweepStalePayments(NOW))).toEqual([]);
 	});
 
 	it("does nothing the second time", async () => {
@@ -315,7 +378,7 @@ describe("auto-finalize of a payment pending for more than 7 days", () => {
 		expect(
 			(
 				await adminDb.auditLogEntry.findMany({
-					where: { targetId: reopened.rows[0]?.id },
+					where: { targetId: { in: reopened.rows.map((r) => r.id) } },
 				})
 			).map((e) => (e.context as { action: string }).action),
 		).toContain("settlement_unconfirmed");
