@@ -15,6 +15,7 @@
  * `pgLower` lowercases one code point at a time, as Postgres's lower() does:
  * no context (a final sigma stays sigma) and "I with dot" becomes a plain i.
  */
+import { epochActiveNow } from "../crypto/epoch";
 import {
 	FieldCryptoError,
 	type Keyring,
@@ -102,19 +103,20 @@ export function ilikeContains(query: string): (text: string) => boolean {
 export const APP_LAYER_WINDOW = 20_000;
 
 /**
- * The one switch between the two ways to match search text. Without a keyring
- * (field encryption is not active, the case today) Postgres matches in SQL
- * over every row. With one, text may be ciphertext, so candidates are read
- * and matched in the app layer over a bounded window: v1 search reads the
- * newest SEARCH_EXPENSE_WINDOW (20,000) expenses, Activity the newest
+ * The one switch between the two ways to match search text. Before the field
+ * encryption epoch (epoch.ts) Postgres matches in SQL over every row. Once
+ * it exists any text may be ciphertext, so candidates are read and matched in
+ * the app layer over a bounded window: v1 search reads the newest
+ * SEARCH_EXPENSE_WINDOW (20,000) expenses, Activity the newest
  * SEARCH_CANDIDATE_CAP (20,000) rows per source, so older rows are not found
- * on that path. D11 passes the user's keyring when DATA_KEYS_WRITE is on;
- * until then nothing supplies one.
+ * on that path. The SQL path would quietly miss sealed rows. A keyring picks
+ * the app path too (tests). The epoch is the cached answer: a process that
+ * has not loaded it yet takes the SQL path, and a model filter there is then
+ * refused (field-open.ts). Until PR 5 hands these paths every key, a raw read
+ * of a sealed cell fails (`readUserText`), which is loud, never a miss.
  */
-export function searchesInApp(
-	keyring: Keyring | undefined,
-): keyring is Keyring {
-	return keyring !== undefined;
+export function searchesInApp(keyring: Keyring | undefined): boolean {
+	return keyring !== undefined || epochActiveNow();
 }
 
 /** The text of a column that may hold ciphertext; null reads as empty. */

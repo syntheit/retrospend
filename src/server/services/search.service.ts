@@ -122,7 +122,7 @@ function searchExpensesInApp(
 	userId: string,
 	q: string,
 	page: Page<{ date: string; id: string }>,
-	keyring: Keyring,
+	keyring: Keyring | undefined,
 	windowSize: number = SEARCH_EXPENSE_WINDOW,
 ): Promise<ExpenseHitRow[]> {
 	const size = windowSize;
