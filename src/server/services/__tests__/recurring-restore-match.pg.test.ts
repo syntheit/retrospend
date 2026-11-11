@@ -17,7 +17,7 @@
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { Keyring } from "~/server/crypto/field-crypto";
-import { isTextUnavailable } from "~/server/crypto/field-open";
+import { textUnavailableProblem } from "~/server/crypto/field-open";
 import { evictDataKeyring } from "~/server/services/keys/data-key.service";
 import { forUser } from "~/server/services/preview";
 import { adminDb } from "~/test/pg-harness";
@@ -230,8 +230,13 @@ describe("restore twin check, mixed names", () => {
 		evictDataKeyring(u);
 		vi.spyOn(console, "error").mockImplementation(() => {});
 		// A figure reads the template first, and carries the error as its cause.
-		const failure = await restore(u, snap).catch((e: unknown) => e);
-		expect(isTextUnavailable(failure)).toBe(true);
+		// The first try is retryable while the keys reload in the background.
+		const first = await restore(u, snap).catch((e: unknown) => e);
+		expect(textUnavailableProblem(first)).toBe("key_rotated");
+		await vi.waitFor(async () => {
+			const again = await restore(u, snap).catch((e: unknown) => e);
+			expect(textUnavailableProblem(again)).toBe("encrypted_text_unavailable");
+		});
 		vi.restoreAllMocks();
 		await expect(
 			adminDb.recurringTemplate.count({ where: { userId: u } }),

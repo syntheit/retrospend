@@ -43,27 +43,42 @@ export interface TextKeys {
 	outcome(cls: KeyClass): KeyOutcome | undefined;
 	/** Loads the class past the caches and records it; throttled per process (see above). */
 	reload(cls: KeyClass): Promise<Keyring | undefined>;
+	/**
+	 * Starts `reload` without waiting for it. False when a reload of this ring
+	 * already finished within the throttle window, so retrying cannot help.
+	 */
+	reloadInBackground(cls: KeyClass): boolean;
 }
 
 const CLASSES: readonly KeyClass[] = ["user", "instance"];
 
 export const RELOAD_INTERVAL_MS = 5000;
 
+type Reload = { at: number; outcome: Promise<KeyOutcome>; settled: boolean };
+
 /** The last reload of each ring (the instance ring, or one user's), shared by every client. */
-const reloads = new Map<string, { at: number; outcome: Promise<KeyOutcome> }>();
+const reloads = new Map<string, Reload>();
+
+const recentReload = (ringId: string): Reload | undefined => {
+	const last = reloads.get(ringId);
+	return last && Date.now() - last.at < RELOAD_INTERVAL_MS ? last : undefined;
+};
 
 function throttledReload(
 	ringId: string,
 	run: () => Promise<KeyOutcome>,
-): Promise<KeyOutcome> {
+): Reload {
+	const recent = recentReload(ringId);
+	if (recent) return recent;
 	const now = Date.now();
-	const last = reloads.get(ringId);
-	if (last && now - last.at < RELOAD_INTERVAL_MS) return last.outcome;
 	for (const [id, { at }] of reloads)
 		if (now - at >= RELOAD_INTERVAL_MS) reloads.delete(id);
-	const outcome = run();
-	reloads.set(ringId, { at: now, outcome });
-	return outcome;
+	const entry: Reload = { at: now, outcome: run(), settled: false };
+	entry.outcome.then(() => {
+		entry.settled = true;
+	});
+	reloads.set(ringId, entry);
+	return entry;
 }
 
 /** Test hook: forget the reload throttle. */
@@ -126,6 +141,9 @@ export function textKeys(
 	userId?: string,
 ): TextKeys {
 	const outcomes = new Map<KeyClass, KeyOutcome>();
+	// The instance ring is one per process; a user ring is that user's.
+	const ringIdOf = (cls: KeyClass) =>
+		cls === "instance" ? "instance" : `user:${userId}`;
 	return {
 		userId,
 		async ready() {
@@ -144,13 +162,20 @@ export function textKeys(
 		async reload(cls) {
 			const load = loaders[cls];
 			if (!load) return undefined;
-			// The instance ring is one per process; a user ring is that user's.
-			const ringId = cls === "instance" ? "instance" : `user:${userId}`;
-			const outcome = await throttledReload(ringId, () =>
+			const outcome = await throttledReload(ringIdOf(cls), () =>
 				settle(cls, load, true),
-			);
+			).outcome;
 			outcomes.set(cls, outcome);
 			return ringOf(outcome);
+		},
+		reloadInBackground(cls) {
+			const load = loaders[cls];
+			if (!load) return false;
+			const recent = recentReload(ringIdOf(cls));
+			if (recent) return !recent.settled;
+			// settle() never rejects, so nothing is left unhandled.
+			throttledReload(ringIdOf(cls), () => settle(cls, load, true));
+			return true;
 		},
 	};
 }

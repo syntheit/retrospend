@@ -56,6 +56,7 @@
 							"id_taken",
 							"rate_limited",
 							"encrypted_text_unavailable",
+							"key_rotated",
 							"internal",
 							"not_implemented"
 						],

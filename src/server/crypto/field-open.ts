@@ -26,6 +26,7 @@
  * added, and they are removed from the result again.
  */
 import type { ClientSlot } from "~/server/db-core";
+import { inTransaction } from "~/server/db-tx";
 import { FieldCryptoError, isSealedField, openField } from "./field-crypto";
 import { fieldsOfModel, type KeyClass } from "./fields";
 import type { ModelGraph } from "./model-graph";
@@ -50,17 +51,25 @@ export class TextUnavailableError extends Error {
 	}
 }
 
+/** Code of the retryable failure: a key was added since the ring was loaded. */
+export const KEY_ROTATED = "key_rotated";
+
 /**
- * Whether an unavailable key is behind `error`, at any depth of `cause`: a
- * figure, tRPC or a service may wrap it, and the stable API code must still
- * reach the caller.
+ * The stable API code of an unavailable key behind `error`, at any depth of
+ * `cause` (a figure, tRPC or a service may wrap it): `key_rotated` when the
+ * request can simply be retried, `encrypted_text_unavailable` otherwise.
  */
-export function isTextUnavailable(error: unknown): boolean {
+export function textUnavailableProblem(
+	error: unknown,
+): "key_rotated" | "encrypted_text_unavailable" | null {
 	for (let e = error, depth = 0; e && depth < 8; depth++) {
-		if (e instanceof TextUnavailableError) return true;
+		if (e instanceof TextUnavailableError)
+			return e.code === KEY_ROTATED
+				? "key_rotated"
+				: "encrypted_text_unavailable";
 		e = (e as { cause?: unknown }).cause;
 	}
-	return false;
+	return null;
 }
 
 type Row = Record<string, unknown>;
@@ -270,9 +279,32 @@ async function openCells(keys: TextKeys, cells: Cell[]): Promise<void> {
 		await keys.ready();
 	const retry = entitled.filter((cell) => !tryOpen(keys, cell));
 	if (retry.length === 0) return;
+	if (inTransaction()) return failInTransaction(keys, retry);
 	for (const cls of new Set(retry.map((cell) => cell.cls)))
 		await keys.reload(cls);
 	for (const cell of retry) if (!tryOpen(keys, cell)) fail(keys, cell);
+}
+
+/**
+ * Inside a transaction no key loads: it would take a second pool connection
+ * while this one is held, and under a full pool both would wait for good.
+ * A ring that lacks the cell's key, or no key row at all, may be a cached
+ * answer from before a key was made or added: the reload starts in the
+ * background (throttled as always) and this request fails with the
+ * retryable `key_rotated`, so the next one opens it. Once a reload of that
+ * ring has finished within the throttle window and the key is still not
+ * there, the request fails with the recorded code, as it does at once for a
+ * keystore that could not be read or a missing master key.
+ */
+function failInTransaction(keys: TextKeys, cells: Cell[]): never {
+	const cell = cells[0] as Cell;
+	const outcome = keys.outcome(cell.cls);
+	const stale =
+		keys.ring(cell.cls) !== undefined ||
+		(outcome !== undefined && "none" in outcome && !outcome.code);
+	if (!stale || !keys.reloadInBackground(cell.cls)) fail(keys, cell);
+	logFailure(cell, KEY_ROTATED);
+	throw new TextUnavailableError(KEY_ROTATED);
 }
 
 const WRITES_DATA = new Set([

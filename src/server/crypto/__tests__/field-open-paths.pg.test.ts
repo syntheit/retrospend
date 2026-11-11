@@ -30,10 +30,15 @@ import {
 	it,
 	vi,
 } from "vitest";
-import { type FieldCryptoError, Keyring } from "~/server/crypto/field-crypto";
+import {
+	type FieldCryptoError,
+	Keyring,
+	sealField,
+} from "~/server/crypto/field-crypto";
 import {
 	fieldOpenSlot,
 	TextUnavailableError,
+	textUnavailableProblem,
 	unavailableFields,
 } from "~/server/crypto/field-open";
 import { buildModelGraph } from "~/server/crypto/model-graph";
@@ -42,7 +47,10 @@ import { createUserScopedDb, db } from "~/server/db";
 import { buildClients, keystoreDb, runtimeDataModel } from "~/server/db-core";
 import { userTransaction } from "~/server/db-tx";
 import { exportProjectExpenses } from "~/server/services/export/project-csv";
-import { evictDataKeyring } from "~/server/services/keys/data-key.service";
+import {
+	dataKeyAad,
+	evictDataKeyring,
+} from "~/server/services/keys/data-key.service";
 import {
 	evictInstanceKeyring,
 	findInstanceKeyring,
@@ -60,6 +68,7 @@ import {
 	sealCell,
 	sealRow,
 	storedValue,
+	userKeyring,
 	writeCell,
 } from "~/test/sealed-fixture";
 
@@ -753,5 +762,89 @@ describe("cold reads on the global client", () => {
 		);
 		expect(reads.map((r) => r?.name)).toEqual(Array(20).fill("Frío"));
 		expect(loads).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("a key added since the ring was loaded, inside a transaction", () => {
+	/**
+	 * A user whose ring {1} is cached, a key 2 added to the keystore as a
+	 * rotation elsewhere would, and a category sealed with key 2.
+	 */
+	async function rotated() {
+		const { user } = await createTestUser();
+		const u = user.id;
+		await userKeyring(u, MASTER);
+		const row = await adminDb.category.create({
+			data: { userId: u, name: "Rotada", color: "sky" },
+		});
+		await userTransaction(db, u, (tx) => tx.category.count());
+		const key = randomBytes(32);
+		const wrapped = sealField(MASTER, key.toString("base64"), dataKeyAad(u, 2));
+		await adminDb.$executeRaw`
+			INSERT INTO keystore."user_data_key" ("userId", "keyId", "wrappedKey", "masterKeyId")
+			VALUES (${u}, 2, ${wrapped}, 1)`;
+		await sealCell(
+			new Keyring([{ id: 2, key }]),
+			{ table: "category", column: "name", rowId: row.id },
+			"Rotada",
+		);
+		const read = (tx: Parameters<Parameters<typeof userTransaction>[2]>[0]) =>
+			tx.category.findUniqueOrThrow({ where: { id: row.id } });
+		const preview = () =>
+			forUser(u).preview(
+				{
+					id: "test.readName",
+					touches: [],
+					run: async (tx) => ({
+						value: (await read(tx)).name,
+						undo: { kind: "revert", mutation: "test.readName", rows: [] },
+					}),
+				},
+				{},
+			);
+		return { u, read, preview };
+	}
+
+	it("fails with key_rotated in userTransaction without waiting for a key load", async () => {
+		const { u, read } = await rotated();
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		// A key load that never ends: a transaction that waited for it would hang.
+		const loads = vi
+			.spyOn(keystoreDb, "$transaction")
+			.mockImplementation((() => new Promise(() => {})) as never);
+		const inTx = await userTransaction(db, u, read).catch((e: unknown) => e);
+		expect(textUnavailableProblem(inTx)).toBe("key_rotated");
+		// The one load is the background reload, which nothing waited for.
+		expect(loads).toHaveBeenCalledTimes(1);
+		vi.restoreAllMocks();
+		// The cache holds the endless load; drop it and the throttle.
+		evictDataKeyring(u);
+		resetReloadsForTests();
+	});
+
+	it("fails with key_rotated in a preview, and the next call opens it after the background reload", async () => {
+		const { u, read, preview } = await rotated();
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		const first = await preview().catch((e: unknown) => e);
+		expect(textUnavailableProblem(first)).toBe("key_rotated");
+		await vi.waitFor(async () =>
+			expect((await userTransaction(db, u, read)).name).toBe("Rotada"),
+		);
+		expect((await preview()).value).toBe("Rotada");
+		vi.restoreAllMocks();
+	});
+
+	it("fails with keystore_lost once a finished reload still lacks the key", async () => {
+		const { u, read } = await rotated();
+		await adminDb.$executeRaw`
+			DELETE FROM keystore."user_data_key" WHERE "userId" = ${u} AND "keyId" = 2`;
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		const first = await userTransaction(db, u, read).catch((e: unknown) => e);
+		expect(textUnavailableProblem(first)).toBe("key_rotated");
+		await vi.waitFor(async () => {
+			const next = await userTransaction(db, u, read).catch((e: unknown) => e);
+			expect((next as TextUnavailableError).code).toBe("keystore_lost");
+		});
+		vi.restoreAllMocks();
 	});
 });

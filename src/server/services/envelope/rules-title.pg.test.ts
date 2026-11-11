@@ -217,8 +217,14 @@ describe("a sealed title whose key is lost", () => {
 		await adminDb.$executeRaw`DELETE FROM keystore."user_data_key" WHERE "userId" = ${s.user.id}`;
 		evictDataKeyring(s.user.id);
 		vi.spyOn(console, "error").mockImplementation(() => {});
-		const failure = await run(s).catch((e: unknown) => e);
-		expect((failure as TextUnavailableError).code).toBe("keystore_lost");
+		// Inside the transaction the first try is retryable while the keys
+		// reload in the background; once that reload has found nothing, it fails.
+		const first = await run(s).catch((e: unknown) => e);
+		expect((first as TextUnavailableError).code).toBe("key_rotated");
+		await vi.waitFor(async () => {
+			const again = await run(s).catch((e: unknown) => e);
+			expect((again as TextUnavailableError).code).toBe("keystore_lost");
+		});
 		await expect(
 			adminDb.budgetMovement.count({
 				where: { bookId: b.bookId, kind: "RULE" },

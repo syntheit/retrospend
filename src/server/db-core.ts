@@ -3,7 +3,7 @@ import { Pool } from "pg";
 import { env } from "~/env";
 import type { RuntimeModels } from "~/server/crypto/model-graph";
 import type { TextKeys } from "~/server/crypto/text-keys";
-import { registerClient } from "~/server/db-tx";
+import { insideTransaction, registerClient } from "~/server/db-tx";
 import { type Prisma, PrismaClient } from "~prisma";
 
 const pool = new Pool({
@@ -174,10 +174,16 @@ export function buildClients(
 		return { client: slot(base, userKeys), ready: () => userKeys.ready() };
 	};
 
-	const globalTransaction = (...args: unknown[]) =>
-		keys.instance
+	const globalTransaction = (first: unknown, ...rest: unknown[]) => {
+		const arg =
+			typeof first === "function"
+				? (tx: unknown) =>
+						insideTransaction(() => (first as (tx: unknown) => Promise<unknown>)(tx))
+				: first;
+		return keys.instance
 			.ready()
-			.then(() => (extendedGlobal.$transaction as AnyTransaction)(...args));
+			.then(() => (extendedGlobal.$transaction as AnyTransaction)(arg, ...rest));
+	};
 
 	// A Proxy only for the `$transaction` override. better-auth receives this
 	// one too (`prismaAdapter(db)`), so its transactions wait for keys as well.
@@ -222,11 +228,12 @@ export function buildClients(
 			const work = first as (tx: Prisma.TransactionClient) => Promise<unknown>;
 			return crypto.ready().then(() =>
 				(crypto.client.$transaction as AnyTransaction)(
-					async (tx: Prisma.TransactionClient) => {
-						await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true),
-						                            set_config('role', 'retrospend_app', true)`;
-						return work(tx);
-					},
+					(tx: Prisma.TransactionClient) =>
+						insideTransaction(async () => {
+							await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true),
+							                            set_config('role', 'retrospend_app', true)`;
+							return work(tx);
+						}),
 					...rest,
 				),
 			);

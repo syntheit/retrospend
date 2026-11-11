@@ -22,7 +22,10 @@ import {
 } from "~/server/crypto/fields";
 import { keystoreDb } from "~/server/db-core";
 import { userTransaction } from "~/server/db-tx";
-import { getOrCreateDataKeyring } from "~/server/services/keys/data-key.service";
+import {
+	evictDataKeyring,
+	getOrCreateDataKeyring,
+} from "~/server/services/keys/data-key.service";
 import {
 	evictInstanceKeyring,
 	getOrCreateInstanceKeyring,
@@ -32,11 +35,17 @@ import { adminDb } from "./pg-harness";
 export const newMasterKeyring = () =>
 	new Keyring([{ id: 1, key: randomBytes(32) }]);
 
-/** The user's data keys, minted on first use. */
-export const userKeyring = (userId: string, master: Keyring) =>
-	userTransaction(keystoreDb, userId, (tx) =>
+/**
+ * The user's data keys, minted on first use. A mint drops the cached ring,
+ * as PR 4's seal path will, so a "no key" cached before it is not served.
+ */
+export async function userKeyring(userId: string, master: Keyring) {
+	const ring = await userTransaction(keystoreDb, userId, (tx) =>
 		getOrCreateDataKeyring(tx, master),
 	);
+	evictDataKeyring(userId);
+	return ring;
+}
 
 /** The instance key, minted on first use. */
 export const instanceKeyring = (master: Keyring) =>
