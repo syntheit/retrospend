@@ -20,6 +20,7 @@
  */
 
 import "dotenv/config";
+import { pathToFileURL } from "node:url";
 import { db } from "../src/server/db";
 import { userTransaction } from "../src/server/db-tx";
 import { categoryNameIndexFor } from "../src/server/services/category-name-index.service";
@@ -283,6 +284,12 @@ async function processUser(
 	return actions;
 }
 
+/** One user's migration, in one transaction as that user. */
+export async function migrateUserCategories(userId: string) {
+	await ensureUserKeyringWhenSealing(userId);
+	return userTransaction(db, userId, (tx) => processUser(tx, userId));
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -303,10 +310,7 @@ async function main() {
 		const user = users[i]!;
 
 		try {
-			await ensureUserKeyringWhenSealing(user.id);
-			const actions = await userTransaction(db, user.id, (tx) =>
-				processUser(tx, user.id),
-			);
+			const actions = await migrateUserCategories(user.id);
 
 			stats.usersProcessed++;
 
@@ -395,15 +399,17 @@ async function main() {
 	console.log("");
 }
 
-main()
-	.catch((err) => {
-		console.error("Script failed:", err);
-		process.exit(1);
-	})
-	.finally(async () => {
-		await db.$disconnect();
-		console.log("Database connection closed.");
-	});
+// Run only as a script, so a test can import migrateUserCategories.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
+	main()
+		.catch((err) => {
+			console.error("Script failed:", err);
+			process.exit(1);
+		})
+		.finally(async () => {
+			await db.$disconnect();
+			console.log("Database connection closed.");
+		});
 
 // ---------------------------------------------------------------------------
 // Test Scenarios (mental model)

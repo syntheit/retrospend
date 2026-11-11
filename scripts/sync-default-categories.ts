@@ -1,6 +1,11 @@
+import { pathToFileURL } from "node:url";
 import { db } from "../src/server/db";
 import { seedDefaultCategories } from "../src/server/services/category.service";
 import { compareText } from "../src/server/services/text-order";
+
+/** One user's missing defaults, as that user, each name with its index (the sign-up write). */
+export const syncUserCategories = (userId: string) =>
+	seedDefaultCategories(db, userId);
 
 async function main() {
 	console.log("Starting category sync for all users...");
@@ -16,8 +21,7 @@ async function main() {
 
 	for (const user of users) {
 		try {
-			// As that user, each name with its index (the same write as sign-up).
-			const created = await seedDefaultCategories(db, user.id);
+			const created = await syncUserCategories(user.id);
 
 			processed++;
 			totalCategoriesCreated += created;
@@ -59,12 +63,14 @@ async function main() {
 	}
 }
 
-main()
-	.catch((err) => {
-		console.error("Script failed:", err);
-		process.exit(1);
-	})
-	.finally(async () => {
-		await db.$disconnect();
-		console.log("Database connection closed.");
-	});
+// Run only as a script, so a test can import syncUserCategories.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
+	main()
+		.catch((err) => {
+			console.error("Script failed:", err);
+			process.exit(1);
+		})
+		.finally(async () => {
+			await db.$disconnect();
+			console.log("Database connection closed.");
+		});
