@@ -291,10 +291,11 @@ async function openCells(keys: TextKeys, cells: Cell[]): Promise<void> {
  * A ring that lacks the cell's key, or no key row at all, may be a cached
  * answer from before a key was made or added: the reload starts in the
  * background (throttled as always) and this request fails with the
- * retryable `key_rotated`, so the next one opens it. Once a reload of that
- * ring has finished within the throttle window and the key is still not
- * there, the request fails with the recorded code, as it does at once for a
- * keystore that could not be read or a missing master key.
+ * retryable `key_rotated`, so the next one opens it. Once a reload has
+ * settled on the ring this client holds and the key is still not there, every
+ * later request fails with the recorded code until the key cache changes, as
+ * it does at once for a keystore that could not be read or a missing master
+ * key. (A request that meets a reload still running also gets `key_rotated`.)
  */
 function failInTransaction(keys: TextKeys, cells: Cell[]): never {
 	const cell = cells[0] as Cell;

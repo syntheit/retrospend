@@ -44,8 +44,11 @@ export interface TextKeys {
 	/** Loads the class past the caches and records it; throttled per process (see above). */
 	reload(cls: KeyClass): Promise<Keyring | undefined>;
 	/**
-	 * Starts `reload` without waiting for it. False when a reload of this ring
-	 * already finished within the throttle window, so retrying cannot help.
+	 * Starts `reload` without waiting for it, for a caller that cannot wait (a
+	 * transaction). False when a reload already settled on the very ring this
+	 * client holds, so the key is not coming and a retry cannot help; that
+	 * answer holds until the key cache changes (a new ring is loaded, after an
+	 * eviction, a mint or the cache's own expiry).
 	 */
 	reloadInBackground(cls: KeyClass): boolean;
 }
@@ -58,6 +61,14 @@ type Reload = { at: number; outcome: Promise<KeyOutcome>; settled: boolean };
 
 /** The last reload of each ring (the instance ring, or one user's), shared by every client. */
 const reloads = new Map<string, Reload>();
+
+/**
+ * The ring the last settled reload of each ring id found (undefined for no
+ * key). A client whose recorded ring is this same object has nothing newer
+ * than that reload. Bounded like the user ring cache.
+ */
+const settledRings = new Map<string, { ring: Keyring | undefined }>();
+const SETTLED_LIMIT = 1000;
 
 const recentReload = (ringId: string): Reload | undefined => {
 	const last = reloads.get(ringId);
@@ -74,8 +85,13 @@ function throttledReload(
 	for (const [id, { at }] of reloads)
 		if (now - at >= RELOAD_INTERVAL_MS) reloads.delete(id);
 	const entry: Reload = { at: now, outcome: run(), settled: false };
-	entry.outcome.then(() => {
+	entry.outcome.then((outcome) => {
 		entry.settled = true;
+		settledRings.delete(ringId);
+		settledRings.set(ringId, { ring: ringOf(outcome) });
+		const oldest = settledRings.keys().next().value;
+		if (settledRings.size > SETTLED_LIMIT && oldest !== undefined)
+			settledRings.delete(oldest);
 	});
 	reloads.set(ringId, entry);
 	return entry;
@@ -84,6 +100,7 @@ function throttledReload(
 /** Test hook: forget the reload throttle. */
 export function resetReloadsForTests(): void {
 	reloads.clear();
+	settledRings.clear();
 }
 
 /** Errors already logged: a failed load stays cached for 30 seconds, and every `ready()` meanwhile sees the same error. */
@@ -171,11 +188,11 @@ export function textKeys(
 		reloadInBackground(cls) {
 			const load = loaders[cls];
 			if (!load) return false;
-			const recent = recentReload(ringIdOf(cls));
-			if (recent) return !recent.settled;
+			const ringId = ringIdOf(cls);
+			const settled = settledRings.get(ringId);
+			if (settled && settled.ring === ringOf(outcomes.get(cls))) return false;
 			// settle() never rejects, so nothing is left unhandled.
-			throttledReload(ringIdOf(cls), () => settle(cls, load, true));
-			return true;
+			return !throttledReload(ringId, () => settle(cls, load, true)).settled;
 		},
 	};
 }
