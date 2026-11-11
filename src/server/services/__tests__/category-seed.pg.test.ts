@@ -34,6 +34,7 @@ import {
 	destroyDataKeys,
 	ensureUserKeyring,
 	ensureUserKeyringWhenSealing,
+	findDataKeyring,
 } from "../keys/data-key.service";
 import { ensureIncomeCategories, INCOME_CATEGORIES } from "../money-in.service";
 
@@ -195,6 +196,14 @@ describe("the first-write key mint", () => {
 		expect(await keyCount(u.user.id)).toBe(1);
 		const [row] = (await categories(u.user.id)).filter((r) => r.id === made.id);
 		expect(row?.nameIndex?.startsWith(`${await currentTag(u)}:`)).toBe(true);
+	});
+
+	it("drops a cached 'no key' when a key is made inside a transaction (D9)", async () => {
+		const u = await createTestUser();
+		expect(await findDataKeyring(u.user.id, masterKey)).toBeUndefined();
+		// Sealing off: the name index mints the key in the create's transaction.
+		await createCategory(adminDb, u.user.id, { name: "Rent", color: "orange" });
+		expect(await findDataKeyring(u.user.id, masterKey)).toBeDefined();
 	});
 
 	it("makes no new key after a crypto-shred, and does not fail the caller", async () => {
