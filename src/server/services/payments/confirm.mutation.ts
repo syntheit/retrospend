@@ -166,13 +166,35 @@ export async function confirmClaim(
 	me: ParticipantRef,
 	input: ConfirmPaymentInput,
 ): Promise<ConfirmedClaim> {
+	// Read once to learn who the pair is, so the lock can come first; the core
+	// reads again under it.
 	const { header, rows } = await loadPayment(tx, input.paymentId);
 	assertAwaitingMe(groupRoles(rows, me.participantId));
 	const other = groupCounterparty(rows, me.participantId);
 	if (!other)
 		throw new TRPCError({ code: "NOT_FOUND", message: "Settlement not found" });
-	const counterparty = other as ParticipantRef;
+	return finalizeClaim(tx, me, other as ParticipantRef, header.id, input);
+}
+
+/**
+ * Turns a pending payment final as `me`, the payee, with `counterparty`
+ * the payer. The one write behind a manual confirm and the 7-day
+ * auto-finalize (auto-finalize.ts, which passes `automatic` and no amount,
+ * date or method, so it never reaches the re-allocation below). Takes the
+ * pair lock before it reads the payment, so the rows it checks are the rows
+ * it writes.
+ */
+export async function finalizeClaim(
+	tx: Tx,
+	me: ParticipantRef,
+	counterparty: ParticipantRef,
+	paymentId: string,
+	input: Omit<ConfirmPaymentInput, "paymentId">,
+	options: { readonly automatic?: boolean } = {},
+): Promise<ConfirmedClaim> {
 	await lockPair(tx, me, counterparty);
+	const { header, rows } = await loadPayment(tx, paymentId);
+	assertAwaitingMe(groupRoles(rows, me.participantId));
 
 	const now = new Date();
 	const paidOn = input.paidOn
@@ -253,8 +275,11 @@ export async function confirmClaim(
 	// The entry keeps the claim as it was, for an exact undo.
 	await logGroupAction(tx, me, written, {
 		action: "SETTLED",
-		context: "settlement_confirmed",
+		context: options.automatic
+			? "settlement_auto_finalized"
+			: "settlement_confirmed",
 		changes: {
+			...(options.automatic ? { automatic: true } : {}),
 			previous: previousOf(
 				header,
 				rows,
