@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Prisma, PrismaClient } from "~prisma";
-import { userTransaction } from "./db-tx";
+import {
+	inPreview,
+	insidePreview,
+	inTransaction,
+	outsideTransaction,
+	userTransaction,
+} from "./db-tx";
 
 /** A client whose transaction hands out a tx that records each statement and when it ran. */
 function fakeClient() {
@@ -63,5 +69,23 @@ describe("userTransaction", () => {
 			expect.any(Function),
 			options,
 		);
+	});
+
+	it("leaves the transaction scope for work outside it, and marks only preview work", async () => {
+		const { client } = fakeClient();
+		const seen: boolean[] = [];
+
+		await userTransaction(client, "user-1", () =>
+			insidePreview(async () => {
+				seen.push(inPreview(), inTransaction());
+				await outsideTransaction(async () => seen.push(inTransaction()));
+			}),
+		);
+		await userTransaction(client, "user-1", async () => {
+			seen.push(inPreview());
+		});
+
+		expect(seen).toEqual([true, true, false, false]);
+		expect(inPreview()).toBe(false);
 	});
 });

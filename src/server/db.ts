@@ -7,15 +7,21 @@
  */
 import { fieldOpenSlot } from "~/server/crypto/field-open";
 import { buildModelGraph, type ModelGraph } from "~/server/crypto/model-graph";
-import { type KeyLoader, textKeys } from "~/server/crypto/text-keys";
+import {
+	type KeyLoader,
+	type KeyMinter,
+	textKeys,
+} from "~/server/crypto/text-keys";
 import { buildClients, runtimeDataModel } from "~/server/db-core";
 import {
+	ensureUserKeyring,
 	evictDataKeyring,
 	findDataKeyring,
 } from "~/server/services/keys/data-key.service";
 import {
 	evictInstanceKeyring,
 	findInstanceKeyring,
+	getOrCreateInstanceKeyring,
 } from "~/server/services/keys/instance-key.service";
 
 const instance: KeyLoader = (fresh) => {
@@ -30,6 +36,11 @@ const userLoader =
 		return findDataKeyring(userId);
 	};
 
+// The seal path's first write makes the key (PR 4 section 1); the instance
+// key is the service's, whoever writes first.
+const mintInstance: KeyMinter = () =>
+	getOrCreateInstanceKeyring({ kind: "service" });
+
 // Built on the first query, not at import: a test that mocks the Prisma
 // client imports this file without a runtime data model.
 let graph: ModelGraph | undefined;
@@ -40,8 +51,12 @@ const modelGraph = () => {
 
 const clients = buildClients(
 	{
-		instance: textKeys({ instance }),
-		user: (userId) => textKeys({ user: userLoader(userId), instance }, userId),
+		instance: textKeys({ instance }, undefined, { instance: mintInstance }),
+		user: (userId) =>
+			textKeys({ user: userLoader(userId), instance }, userId, {
+				user: () => ensureUserKeyring(userId),
+				instance: mintInstance,
+			}),
 	},
 	undefined,
 	fieldOpenSlot(modelGraph),

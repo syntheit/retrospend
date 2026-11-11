@@ -13,7 +13,10 @@ const { userTransaction } = vi.hoisted(() => ({
 }));
 
 vi.mock("~/server/db", () => ({ db: { name: "global" } }));
-vi.mock("~/server/db-tx", () => ({ userTransaction }));
+vi.mock("~/server/db-tx", async (importOriginal) => ({
+	...(await importOriginal<typeof import("~/server/db-tx")>()),
+	userTransaction,
+}));
 
 const { forUser } = await import("./index");
 

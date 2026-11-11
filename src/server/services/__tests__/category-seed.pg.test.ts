@@ -4,8 +4,10 @@
  * Hand-derived expectations:
  *
  *   sign-up seed, master key set          -> every default name, each with a current-tag index; again: 0 more
- *   sign-up seed, no master key           -> every default name, no index, no key made (sealing off or on)
- *   sign-up seed, keystore grants revoked -> every default name, no index, no error (sealing off or on)
+ *   sign-up seed, no master key           -> sealing off: every default name, no index, no key made;
+ *                                            sealing on: master_key_missing, no name, no key
+ *   sign-up seed, keystore grants revoked -> sealing off: every default name, no index, no error;
+ *                                            sealing on: keystore_grants_missing, no name, no key
  *   income categories after the defaults  -> 6 - 1 ("Gifts" is taken) = 5, indexed; again: same rows, same bytes
  *   ensure, sealing off                   -> no key
  *   ensure, sealing on, 5 at once         -> one key, one ring
@@ -13,7 +15,15 @@
  *   ensure after a crypto-shred           -> no new key (keystore_lost), the caller is not failed
  *   a signed-in tRPC or v1 call           -> mints the caller's key only when sealing
  */
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
 import { DEFAULT_CATEGORIES } from "~/lib/constants";
 import {
 	createCallerFactory,
@@ -26,7 +36,12 @@ import type { Keyring } from "~/server/crypto/field-crypto";
 import { setSealingForTests } from "~/server/crypto/sealing";
 import { userTransaction } from "~/server/db-tx";
 import { adminDb, createTestUser } from "~/test/pg-harness";
-import { newMasterKeyring, userKeyring } from "~/test/sealed-fixture";
+import {
+	newMasterKeyring,
+	resetInstanceKey,
+	unsealAll,
+	userKeyring,
+} from "~/test/sealed-fixture";
 import { makeSession } from "~/test/trpc-test-utils";
 import { createCategory, seedDefaultCategories } from "../category.service";
 import { CATEGORY_NAME_INDEX_LABEL } from "../category-name-index.service";
@@ -58,6 +73,11 @@ afterEach(() => {
 	master.ring = masterKey;
 	setSealingForTests();
 	vi.restoreAllMocks();
+});
+// Writes with sealing on seal for real; their keys go with this file.
+afterAll(async () => {
+	await unsealAll();
+	await resetInstanceKey();
 });
 
 type TestUser = Awaited<ReturnType<typeof createTestUser>>;
@@ -98,38 +118,51 @@ describe("the sign-up seed", () => {
 		expect(await categories(u.user.id)).toEqual(rows);
 	});
 
+	// Sealing off seeds as before. Sealing on (PR 4.2 seals for real), the key
+	// step still never fails the caller, but names that cannot be sealed are
+	// not written: the seed fails closed with the recorded code (owner answer,
+	// design Revision 2 item 3), and no plaintext name is left behind.
 	for (const sealingOn of [false, true]) {
 		const label = sealingOn ? "sealing on" : "sealing off";
+		const seed = async (userId: string, code: string) => {
+			await ensureUserKeyringWhenSealing(userId);
+			const seeding = seedDefaultCategories(adminDb, userId);
+			if (!sealingOn) return void (await seeding);
+			await expect(seeding).rejects.toMatchObject({ code });
+		};
+		const expectSeeded = async (userId: string) => {
+			const rows = await categories(userId);
+			expect(rows.map((r) => r.name).sort()).toEqual(
+				sealingOn ? [] : defaultNames,
+			);
+			expect(rows.every((r) => r.nameIndex === null)).toBe(true);
+			expect(await keyCount(userId)).toBe(0);
+		};
 
 		it(`with no master key seeds as before, and makes no key (${label})`, async () => {
+			const u = await createTestUser();
 			setSealingForTests(() => sealingOn);
 			master.ring = undefined;
-			const u = await createTestUser();
-			await seedDefaultCategories(adminDb, u.user.id);
-			const rows = await categories(u.user.id);
-			expect(rows.map((r) => r.name).sort()).toEqual(defaultNames);
-			expect(rows.every((r) => r.nameIndex === null)).toBe(true);
-			expect(await keyCount(u.user.id)).toBe(0);
+			await seed(u.user.id, "master_key_missing");
+			await expectSeeded(u.user.id);
 		});
 
 		it(`with the keystore grants revoked seeds as before (${label})`, async () => {
-			setSealingForTests(() => sealingOn);
 			vi.spyOn(console, "warn").mockImplementation(() => {});
+			vi.spyOn(console, "error").mockImplementation(() => {});
 			const u = await createTestUser();
+			setSealingForTests(() => sealingOn);
 			await adminDb.$executeRawUnsafe(
 				'REVOKE EXECUTE ON FUNCTION keystore."current_user_data_keys"() FROM retrospend_app',
 			);
 			try {
-				await seedDefaultCategories(adminDb, u.user.id);
+				await seed(u.user.id, "keystore_grants_missing");
 			} finally {
 				await adminDb.$executeRawUnsafe(
 					'GRANT EXECUTE ON FUNCTION keystore."current_user_data_keys"() TO retrospend_app',
 				);
 			}
-			const rows = await categories(u.user.id);
-			expect(rows.map((r) => r.name).sort()).toEqual(defaultNames);
-			expect(rows.every((r) => r.nameIndex === null)).toBe(true);
-			expect(await keyCount(u.user.id)).toBe(0);
+			await expectSeeded(u.user.id);
 		});
 	}
 });

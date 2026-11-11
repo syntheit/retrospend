@@ -16,6 +16,28 @@ export const inTransaction = (): boolean =>
 export const insideTransaction = <T>(work: () => Promise<T>): Promise<T> =>
 	transactionScope.run(true, work);
 
+/**
+ * Runs `work` as if outside any transaction: for work a transaction starts
+ * and does not wait for, on a connection of its own (a background key mint).
+ */
+export const outsideTransaction = <T>(work: () => T): T =>
+	transactionScope.exit(work);
+
+const previewScope = new AsyncLocalStorage<true>();
+
+/**
+ * Whether the caller runs inside a preview's transaction, which always rolls
+ * back: the seal path makes no key there (E2EE D11 PR 4 section 1).
+ */
+export const inPreview = (): boolean => previewScope.getStore() === true;
+
+/**
+ * Runs a preview's work so `inPreview()` is true inside. The preview runner
+ * (preview/runner.ts) calls it, so every runner built on it is covered.
+ */
+export const insidePreview = <T>(work: () => Promise<T>): Promise<T> =>
+	previewScope.run(true, work);
+
 const verbatimScope = new AsyncLocalStorage<true>();
 
 /** Whether the caller runs inside `verbatim`. */

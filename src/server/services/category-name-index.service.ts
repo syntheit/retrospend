@@ -24,7 +24,12 @@ import { Prisma } from "~prisma";
 import { blindIndex, blindIndexTag } from "../crypto/blind-index";
 import { FieldCryptoError, type Keyring } from "../crypto/field-crypto";
 import { getMasterKeyring } from "../crypto/master-key";
-import { DataKeyError, getOrCreateDataKeyring } from "./keys/data-key.service";
+import { sealing } from "../crypto/sealing";
+import {
+	DataKeyError,
+	dataKeyringInTransaction,
+	getOrCreateDataKeyring,
+} from "./keys/data-key.service";
 
 export const CATEGORY_NAME_INDEX_LABEL = "retrospend category name index v1";
 
@@ -69,7 +74,10 @@ export const isUniqueViolation = (error: unknown): boolean =>
  * lost, keys lost, or a master key that does not open it). A null index is safe while
  * the old unique index and the name compare still protect, so a broken key
  * store never blocks a category write; the reason is logged without a user id
- * or a name. Postgres aborts a transaction on a failed statement, so the key
+ * or a name. While sealing it never makes a key: a preview of a user with
+ * none gets null (and writes the name plaintext, rolled back), and any other
+ * transaction fails with the retryable `key_rotated` (data-key.service.ts,
+ * `dataKeyringInTransaction`). Postgres aborts a transaction on a failed statement, so the key
  * work runs under a savepoint that is rolled back on failure.
  * `masterKeyring` defaults to the process's; null means none, for tests.
  */
@@ -91,9 +99,12 @@ export async function categoryNameIndexesFor(
 	if (!masterKeyring || names.length === 0) return names.map(() => null);
 	await tx.$executeRaw`SAVEPOINT category_name_index`;
 	try {
-		const keyring = await getOrCreateDataKeyring(tx, masterKeyring);
+		// While sealing, the key is made before the transaction, never in it.
+		const keyring = sealing()
+			? await dataKeyringInTransaction(tx, masterKeyring)
+			: await getOrCreateDataKeyring(tx, masterKeyring);
 		const indexes = names.map((name) =>
-			computeCategoryNameIndex(keyring, name),
+			keyring ? computeCategoryNameIndex(keyring, name) : null,
 		);
 		await tx.$executeRaw`RELEASE SAVEPOINT category_name_index`;
 		return indexes;

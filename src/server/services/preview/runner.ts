@@ -1,7 +1,8 @@
+import { insidePreview } from "~/server/db-tx";
 import {
 	convertedIn,
-	FigurePass,
 	type FigureDefinition,
+	FigurePass,
 	type FigureScope,
 	type FiguresRegistry,
 	readFiguresIn,
@@ -116,16 +117,22 @@ export function createPreviewRunner<Tx>({
 	): Promise<PreviewResult<Value>> {
 		const definitions = figuresFor(figures, mutation.touches);
 		try {
-			await transaction(async (tx) => {
-				const { undo: _rolledBack, ...result } = await runMeasured(
-					tx,
-					mutation,
-					input,
-					definitions,
-					actor,
-				);
-				throw new PreviewRollback(result);
-			}, "preview");
+			// Marked here, not by each runner's options, so no runner can forget:
+			// the seal path makes no key inside a preview.
+			await transaction(
+				(tx) =>
+					insidePreview(async () => {
+						const { undo: _rolledBack, ...result } = await runMeasured(
+							tx,
+							mutation,
+							input,
+							definitions,
+							actor,
+						);
+						throw new PreviewRollback(result);
+					}),
+				"preview",
+			);
 		} catch (error) {
 			if (error instanceof PreviewRollback) {
 				return error.result as PreviewResult<Value>;

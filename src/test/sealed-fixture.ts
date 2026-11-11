@@ -18,6 +18,7 @@ import {
 import {
 	FIELD_MAP,
 	keyClassOfColumn,
+	mappedColumns,
 	modelOfTable,
 } from "~/server/crypto/fields";
 import { keystoreDb } from "~/server/db-core";
@@ -113,6 +114,20 @@ export async function writeCell(
 export async function restoreCells(): Promise<void> {
 	for (const { table, column, rowId, was } of written.splice(0).reverse())
 		await setCell(table, column, rowId, was);
+}
+
+/**
+ * Replaces every sealed cell in the database with a placeholder, unique per
+ * row (a category name is unique per user). For files whose writes seal
+ * through the app: the keys go with the file, so a later file in this
+ * worker's database that reads every user or project would meet ciphertext
+ * it cannot open. Call it in `afterAll`.
+ */
+export async function unsealAll(): Promise<void> {
+	for (const [table, column] of mappedColumns())
+		await adminDb.$executeRawUnsafe(
+			`UPDATE "${table}" SET "${column}" = 'unsealed ' || "id" WHERE starts_with("${column}", E'\\x01')`,
+		);
 }
 
 /** Seals `plaintext` into one cell with `ring` and checks it is stored sealed. */

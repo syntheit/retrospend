@@ -51,7 +51,16 @@ export interface TextKeys {
 	 * eviction, a mint or the cache's own expiry).
 	 */
 	reloadInBackground(cls: KeyClass): boolean;
+	/**
+	 * Makes the class's key if there is none yet, records the outcome and
+	 * returns the ring; never throws. For the first write that seals, and only
+	 * outside a transaction: the mint takes a connection of its own.
+	 */
+	ensure(cls: KeyClass): Promise<Keyring | undefined>;
 }
+
+/** Makes the class's key if none exists (on its own connection) and returns the ring. */
+export type KeyMinter = () => Promise<Keyring>;
 
 const CLASSES: readonly KeyClass[] = ["user", "instance"];
 
@@ -151,11 +160,13 @@ const ringOf = (outcome: KeyOutcome | undefined) =>
 
 /**
  * Keys for `userId`'s clients, or for the global client with no `userId`. A
- * class with no loader (the user class on the global client) has no key.
+ * class with no loader (the user class on the global client) has no key, and
+ * one with no minter is never made here.
  */
 export function textKeys(
 	loaders: Partial<Record<KeyClass, KeyLoader>>,
 	userId?: string,
+	minters: Partial<Record<KeyClass, KeyMinter>> = {},
 ): TextKeys {
 	const outcomes = new Map<KeyClass, KeyOutcome>();
 	// The instance ring is one per process; a user ring is that user's.
@@ -193,6 +204,13 @@ export function textKeys(
 			if (settled && settled.ring === ringOf(outcomes.get(cls))) return false;
 			// settle() never rejects, so nothing is left unhandled.
 			return !throttledReload(ringId, () => settle(cls, load, true)).settled;
+		},
+		async ensure(cls) {
+			const mint = minters[cls];
+			if (!mint) return undefined;
+			const outcome = await settle(cls, mint, false);
+			outcomes.set(cls, outcome);
+			return ringOf(outcome);
 		},
 	};
 }

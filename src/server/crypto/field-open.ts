@@ -2,7 +2,8 @@
  * The field-open extension (E2EE D11 PR 3.2, docs/roadmap/e2ee-d11-pr3.md
  * sections 2 to 4): it sits in the client slot (db-core.ts) and opens every
  * sealed cell a model call returns, at any depth of `select` or `include`.
- * Plaintext passes untouched; nothing seals here (that is PR 4).
+ * Plaintext passes untouched. While `sealing()` is true it also seals what a
+ * write stores (field-seal.ts, PR 4.2), with keys picked by `sealingRing`.
  *
  * Who may open a sealed cell:
  * - An instance-class cell, or a user-class cell whose `userId` is the
@@ -26,11 +27,23 @@
  * added, and they are removed from the result again.
  */
 import type { ClientSlot } from "~/server/db-core";
-import { inTransaction, inVerbatim } from "~/server/db-tx";
-import { FieldCryptoError, isSealedField, openField } from "./field-crypto";
+import {
+	inPreview,
+	inTransaction,
+	inVerbatim,
+	outsideTransaction,
+} from "~/server/db-tx";
+import {
+	FieldCryptoError,
+	isSealedField,
+	type Keyring,
+	openField,
+} from "./field-crypto";
+import { applySeal, planSeal, type SealCell } from "./field-seal";
 import { fieldsOfModel, type KeyClass, keyClassOfColumn } from "./fields";
 import type { ModelGraph } from "./model-graph";
 import { hasSealedText } from "./response-guard";
+import { sealing } from "./sealing";
 import type { TextKeys } from "./text-keys";
 
 /** On a row: the fields that read "" because the reader holds no key for them. */
@@ -211,7 +224,10 @@ function hide(cell: Cell): void {
 		});
 }
 
-const logFailure = (cell: Cell, code: string) =>
+/** The cell a failure is about: logged by table and column only. */
+type Place = Pick<Cell, "table" | "column" | "cls">;
+
+const logFailure = (cell: Place, code: string) =>
 	console.error("Sealed text could not be opened", {
 		table: cell.table,
 		column: cell.column,
@@ -237,7 +253,7 @@ function tryOpen(keys: TextKeys, cell: Cell): boolean {
 	}
 }
 
-function fail(keys: TextKeys, cell: Cell): never {
+function fail(keys: TextKeys, cell: Place): never {
 	const outcome = keys.outcome(cell.cls);
 	const code =
 		outcome && "failed" in outcome
@@ -308,6 +324,57 @@ function failInTransaction(keys: TextKeys, cells: Cell[]): never {
 	throw new TextUnavailableError(KEY_ROTATED);
 }
 
+/**
+ * The ring a write seals `cell`'s class with (PR 4 section 1). With no key
+ * row yet, outside a transaction it is made now, on its own connection; inside
+ * one no key may load (see failInTransaction), so the mint starts in the
+ * background and the request fails with the retryable `key_rotated`, whose
+ * retry finds the key. A preview mints nothing: it writes plaintext, which
+ * rolls back with it. Any recorded failure (no master key, a keystore or
+ * grant lost, a key that cannot be made) fails the write: never plaintext.
+ */
+async function sealingRing(
+	keys: TextKeys,
+	cell: SealCell,
+): Promise<Keyring | undefined> {
+	const ring = keys.ring(cell.cls);
+	if (ring) return ring;
+	const outcome = keys.outcome(cell.cls);
+	if (!(outcome && "none" in outcome && !outcome.code)) fail(keys, cell);
+	if (inPreview()) return undefined;
+	if (!inTransaction())
+		return (await keys.ensure(cell.cls)) ?? fail(keys, cell);
+	void outsideTransaction(() => keys.ensure(cell.cls));
+	logFailure(cell, KEY_ROTATED);
+	throw new TextUnavailableError(KEY_ROTATED);
+}
+
+/** `args` with every mapped column it writes sealed (field-seal.ts). */
+async function sealWrite(
+	keys: TextKeys,
+	graph: ModelGraph,
+	model: string,
+	operation: string,
+	args: Row,
+): Promise<Row> {
+	const plan = planSeal(graph, keys.userId, model, operation, args);
+	if (plan.cells.length === 0) return plan.args;
+	// Outside a transaction the recorded outcome may be old (the global
+	// client's keys live as long as the process); the loaders' cache makes a
+	// fresh look cost no query. A transaction recorded them as it opened.
+	if (
+		!inTransaction() ||
+		plan.cells.some((cell) => keys.outcome(cell.cls) === undefined)
+	)
+		await keys.ready();
+	const rings = new Map<KeyClass, Keyring | undefined>();
+	for (const cell of plan.cells)
+		if (!rings.has(cell.cls))
+			rings.set(cell.cls, await sealingRing(keys, cell));
+	applySeal(plan.cells, (cls) => rings.get(cls));
+	return plan.args;
+}
+
 const CREATES = new Set(["create", "createMany", "createManyAndReturn"]);
 const BULK = new Set(["updateMany", "updateManyAndReturn"]);
 
@@ -345,11 +412,8 @@ function writesOf(operation: string, args: Row): Write[] {
 /**
  * A ciphertext written as if it were text is refused before it runs: a
  * copied sealed value would be stored under the wrong cell, and sealed twice
- * once PR 4 seals. Top-level writes only; nested writes are PR 4's. An
- * `updateMany` that sets a mapped column to plaintext still runs until PR 4.2
- * refuses that shape; the one caller left sets
- * split_participant.rejectionReason to null
- * (services/shared-expenses/transaction.service.ts), which seals nothing.
+ * by the seal path. Top-level writes only; while sealing, the seal path
+ * refuses one at any depth, and an `updateMany` that sets text at all.
  *
  * Inside `verbatim` (db-tx.ts) a sealed value is stored as it is when it
  * opens under the AAD of the row and column it is written to, by the rules
@@ -427,7 +491,10 @@ const WALKED = new Set([
 ]);
 
 /**
- * The slot for db.ts. `graph` is read on the first query. `count`,
+ * The slot for db.ts. `graph` is read on the first query. Writes are sealed
+ * after the refusals and before the query, outside the scoped client's RLS
+ * batch, so they are sealed once. Inside `verbatim` nothing is sealed: the
+ * values are stored as given, checked by `refuseWrites`. `count`,
  * `createMany`, `updateMany` and `deleteMany` return no text; `aggregate` and
  * `groupBy` cannot be opened (no row id), so a sealed value in one fails.
  */
@@ -440,6 +507,11 @@ export function fieldOpenSlot(graph: () => ModelGraph): ClientSlot {
 					async $allOperations({ model, operation, args, query }) {
 						const given = (args ?? {}) as Row;
 						await refuseWrites(keys, model, operation, given);
+						const models = graph();
+						const written =
+							sealing() && !inVerbatim()
+								? await sealWrite(keys, models, model, operation, given)
+								: given;
 						if (operation === "aggregate" || operation === "groupBy") {
 							const result = await query(args);
 							if (hasSealedText(result))
@@ -448,10 +520,9 @@ export function fieldOpenSlot(graph: () => ModelGraph): ClientSlot {
 								);
 							return result;
 						}
-						const models = graph();
 						if (!WALKED.has(operation) || !models.reaches(model))
-							return query(args);
-						const { node, added } = prepare(models, model, given);
+							return query(written as typeof args);
+						const { node, added } = prepare(models, model, written);
 						const result = await query(node as typeof args);
 						const cells: Cell[] = [];
 						collect(models, model, result, cells);
