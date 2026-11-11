@@ -173,6 +173,13 @@ describe("the first-write key mint", () => {
 		expect(await keyCount(u.user.id)).toBe(0);
 	});
 
+	it("makes no key when told there is no master key, even with one set", async () => {
+		setSealingForTests(() => true);
+		const u = await createTestUser();
+		await ensureUserKeyringWhenSealing(u.user.id, null);
+		expect(await keyCount(u.user.id)).toBe(0);
+	});
+
 	it("makes one key for concurrent first writes, outside any transaction", async () => {
 		setSealingForTests(() => true);
 		const u = await createTestUser();

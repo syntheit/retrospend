@@ -216,9 +216,10 @@ export async function ensureUserKeyringWhenSealing(
 	userId: string,
 	masterKeyring: Keyring | null | undefined = getMasterKeyring(),
 ): Promise<void> {
-	if (!sealing()) return;
+	// No master key, no key to make; the sealing write fails closed on its own.
+	if (!sealing() || !masterKeyring) return;
 	try {
-		await ensureUserKeyring(userId, masterKeyring ?? undefined);
+		await ensureUserKeyring(userId, masterKeyring);
 	} catch (error) {
 		if (!(error instanceof KeystoreError || error instanceof FieldCryptoError))
 			throw error;
