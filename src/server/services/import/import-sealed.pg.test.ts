@@ -30,6 +30,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { resetEpochForTests } from "~/server/crypto/epoch";
 import { Keyring } from "~/server/crypto/field-crypto";
 import { TextUnavailableError } from "~/server/crypto/field-open";
 import { createUserScopedDb } from "~/server/db";
@@ -214,6 +215,15 @@ describe("import review over plain and sealed titles", () => {
 
 	it("a sealed ledger reviews the same as the plain one", async () => {
 		expect(await reviewOf(await ledger(true), { keyring })).toEqual(EXPECTED);
+	});
+
+	it("follows the encryption epoch: a sealed ledger reviews the same with no keyring", async () => {
+		resetEpochForTests(true);
+		try {
+			expect(await reviewOf(await ledger(true))).toEqual(EXPECTED);
+		} finally {
+			resetEpochForTests();
+		}
 	});
 
 	it("sealed titles whose key is lost are an error, not a missed duplicate", async () => {

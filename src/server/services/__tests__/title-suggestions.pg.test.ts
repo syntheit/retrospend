@@ -9,12 +9,13 @@
  * keystore's keys (src/test/sealed-fixture.ts).
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { resetEpochForTests } from "~/server/crypto/epoch";
 import {
 	FieldCryptoError,
 	Keyring,
 	sealField,
 } from "~/server/crypto/field-crypto";
-import { TextUnavailableError } from "~/server/crypto/field-open";
+import type { TextUnavailableError } from "~/server/crypto/field-open";
 import { evictDataKeyring } from "~/server/services/keys/data-key.service";
 import { listedEntryWhere } from "~/server/services/spending";
 import {
@@ -550,6 +551,16 @@ describe("rows that hold ciphertext", () => {
 			(await ask("café")).map((s) => [s.title, s.count, s.lastAmount]),
 		).toEqual([["Café con leche", 1, 100]]);
 		expect(await ask("ÑANDÚ")).toEqual([]);
+	});
+
+	it("follows the encryption epoch: with no keyring it reads in the app, never in SQL", async () => {
+		resetEpochForTests(true);
+		try {
+			expect(await ask("café")).toEqual(await ask("café", keyring));
+			expect((await ask("ÑANDÚ")).map((s) => s.title)).toEqual(["Ñandú"]);
+		} finally {
+			resetEpochForTests();
+		}
 	});
 
 	it("fails when the key is lost, never as a non-match", async () => {

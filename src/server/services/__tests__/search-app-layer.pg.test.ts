@@ -9,6 +9,7 @@
 import { randomUUID } from "node:crypto";
 import { fromWallTime } from "@retrospend/domain/time-zone";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { resetEpochForTests } from "~/server/crypto/epoch";
 import {
 	FieldCryptoError,
 	Keyring,
@@ -562,6 +563,26 @@ describe("rows that hold ciphertext", () => {
 			take: 5,
 		});
 		expect(v1.map((h) => h.title)).toEqual(["Plain café"]);
+	});
+
+	it("once the encryption epoch exists, runs in the app with no keyring, so a sealed row fails loudly instead of going missing", async () => {
+		// Until PR 5 hands these paths every key, no keyring opens nothing.
+		resetEpochForTests(true);
+		try {
+			await expect(
+				userTransaction(adminDb, user.user.id, (tx) =>
+					pageKeys(tx, query("cafe", false), null, 50),
+				),
+			).rejects.toMatchObject({ code: "unknown_key" });
+			await expect(
+				searchExpensesWith(adminDb, user.user.id, "cafe", {
+					after: null,
+					take: 5,
+				}),
+			).rejects.toMatchObject({ code: "unknown_key" });
+		} finally {
+			resetEpochForTests();
+		}
 	});
 
 	it("fails loudly for a value sealed for another row, never skips it", async () => {

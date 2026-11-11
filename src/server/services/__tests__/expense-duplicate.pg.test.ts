@@ -9,14 +9,15 @@
  */
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { resetEpochForTests } from "~/server/crypto/epoch";
 import {
 	FieldCryptoError,
 	Keyring,
 	sealField,
 } from "~/server/crypto/field-crypto";
 import { TextUnavailableError } from "~/server/crypto/field-open";
-import { findDuplicateExpense } from "~/server/services/expense-duplicate";
 import { ExpenseService } from "~/server/services/expense.service";
+import { findDuplicateExpense } from "~/server/services/expense-duplicate";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import {
 	sealedFile,
@@ -397,6 +398,22 @@ describe("sealed titles (app-layer path)", () => {
 		await seal(id, "Coffee");
 		expect(await find(me, undefined, { title: "Coffee" })).toBeNull();
 		expect(await find(me, keyring, { title: "Coffee" })).not.toBeNull();
+	});
+
+	it("follows the encryption epoch: with no keyring a sealed title still matches", async () => {
+		const me = await createTestUser();
+		const id = randomUUID();
+		await seed(me, [{ id, title: "Coffee" }]);
+		await seal(id, "Coffee");
+		resetEpochForTests(true);
+		try {
+			expect(await find(me, undefined, { title: "COFFEE" })).toEqual({
+				id,
+				title: "Coffee",
+			});
+		} finally {
+			resetEpochForTests();
+		}
 	});
 
 	it("a sealed title is not matched by its ciphertext, or when the amount differs", async () => {
