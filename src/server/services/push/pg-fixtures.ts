@@ -4,6 +4,7 @@
  * they were given and answer as told.
  */
 import { randomUUID } from "node:crypto";
+import { createUserScopedDb } from "~/server/db";
 import { addressHash } from "~/server/services/push-device.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import type { PushTransport } from "~prisma";
@@ -45,7 +46,8 @@ export async function addDevice(
 ) {
 	const address = over.address ?? randomUUID().replaceAll("-", "").repeat(2);
 	const sub = newSubscription();
-	const device = await adminDb.pushDevice.create({
+	// As the owner, the way registerPushDevice writes it (E2EE D11).
+	const device = await createUserScopedDb(userId).pushDevice.create({
 		data:
 			transport === "UNIFIEDPUSH"
 				? {

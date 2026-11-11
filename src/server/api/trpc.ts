@@ -17,6 +17,7 @@ import type { Session } from "~/server/better-auth/config";
 import { assertNoSealedText } from "~/server/crypto/response-guard";
 import { getWebSession } from "~/server/better-auth/web-session";
 import { createUserScopedDb, db } from "~/server/db";
+import { ensureUserKeyringWhenSealing } from "~/server/services/keys/data-key.service";
 import {
 	type AdminListView,
 	isFirstPage,
@@ -223,6 +224,8 @@ export const protectedProcedure = baseProcedure
 			throw new TRPCError({ code: "UNAUTHORIZED" });
 		}
 
+		// When sealing, the user's key exists before any transaction needs it.
+		await ensureUserKeyringWhenSealing(ctx.session.user.id);
 		const userDb = createUserScopedDb(ctx.session.user.id);
 		const requestZone = requestTimeZone(ctx.headers);
 		const storedZone = ctx.session.user.timeZone;
@@ -311,6 +314,7 @@ export const guestOrProtectedProcedure = baseProcedure
 	.use(async ({ ctx, next }) => {
 		// Try regular user session first
 		if (ctx.session?.user && ctx.session.user.isActive) {
+			await ensureUserKeyringWhenSealing(ctx.session.user.id);
 			const userDb = createUserScopedDb(ctx.session.user.id);
 			return next({
 				ctx: {

@@ -49,6 +49,8 @@ const AUDITED: Record<string, string> = {
 		"Activity search: SQL path (no keyring)",
 	"src/server/services/expense-list/search-scan.ts":
 		"Activity search: app path, text read as raw columns and opened by readUserText",
+	"src/server/services/payments/confirm-restore.ts":
+		"B14: payment confirm keeps the stored text in its audit entry, never opened there",
 };
 
 const TAG = /(\$queryRaw|\$executeRaw|Prisma\.sql|\bsql)\s*(?:<[^>]*>)?\s*`/g;

@@ -49,6 +49,9 @@ const clients = buildClients(
 
 export const db = clients.db;
 
+/** The instance keys alone, for sealed text read outside a model call (audit JSON). */
+export const instanceTextKeys = () => textKeys({ instance });
+
 /** A user-scoped client for `userId`; see `buildClients` for what it refuses. */
 export const createUserScopedDb = clients.createUserScopedDb;
 

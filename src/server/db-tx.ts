@@ -16,6 +16,20 @@ export const inTransaction = (): boolean =>
 export const insideTransaction = <T>(work: () => Promise<T>): Promise<T> =>
 	transactionScope.run(true, work);
 
+const verbatimScope = new AsyncLocalStorage<true>();
+
+/** Whether the caller runs inside `verbatim`. */
+export const inVerbatim = (): boolean => verbatimScope.getStore() === true;
+
+/**
+ * Runs `work` so its writes store exactly the strings given: an undo putting
+ * back cells as an audit entry kept them, sealed or not. A sealed value is
+ * accepted only if it opens under the AAD of the very row and column it is
+ * written to (field-open.ts), so a cell copied from another row is refused.
+ */
+export const verbatim = <T>(work: () => Promise<T>): Promise<T> =>
+	verbatimScope.run(true, work);
+
 export interface UserTransactionOptions {
 	readonly timeout?: number;
 	readonly isolationLevel?: Prisma.TransactionIsolationLevel;

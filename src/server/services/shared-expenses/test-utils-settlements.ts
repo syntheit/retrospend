@@ -269,9 +269,17 @@ export function createSettlementModels({
 		}),
 
 		update: vi.fn(
-			(args: { where: { id: string }; data: Partial<SettlementRecord> }) => {
+			(args: {
+				where: { id: string } & Record<string, unknown>;
+				data: Partial<SettlementRecord>;
+			}) => {
 				const s = settlements.get(args.where.id);
-				if (!s) throw new Error(`Settlement ${args.where.id} not found`);
+				// Prisma's answer to a row the where does not match.
+				if (!s || !settlementWhereMatches(s, args.where))
+					throw Object.assign(
+						new Error(`Settlement ${args.where.id} not found`),
+						{ code: "P2025" },
+					);
 				const updated = { ...s, ...args.data };
 				settlements.set(args.where.id, updated);
 				return updated;
@@ -407,5 +415,17 @@ export function createSettlementModels({
 			return { count };
 		}),
 	};
-	return { settlementModel, paymentModel };
+	// The raw reads of storedText (payments/confirm-restore.ts), the only raw
+	// SQL the payment paths send.
+	const queryRaw = vi.fn((strings: TemplateStringsArray, id: string) => {
+		const sql = strings.join("?");
+		if (sql.includes('FROM "payment"')) {
+			const p = payments.get(id);
+			return p ? [{ paymentMethod: p.paymentMethod ?? null }] : [];
+		}
+		if (sql.includes('FROM "settlement"'))
+			return [...settlements.values()].filter((s) => s.paymentGroupId === id);
+		throw new Error(`The in-memory database cannot answer: ${sql}`);
+	});
+	return { settlementModel, paymentModel, queryRaw };
 }

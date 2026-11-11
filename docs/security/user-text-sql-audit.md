@@ -125,6 +125,7 @@ current lines.
 | B11 | `search-scan.ts:114-123` | candidates: `array_agg(note)`, `min(paymentMethod)` of payment groups | a | Same |
 | B12 | `scripts/scan-control-chars.ts:105-109` | counts rows with control characters, a leading U+0001 and U+FFFD, per column | b | Intended: it runs before D11 and D12. After the backfill every row starts with U+0001, so its count then means "sealed". Document in the D12 runbook |
 | B13 | `src/server/better-auth/config.ts:168` (adapter) | better-auth reads and writes `user.name` through the global client | a | D11 must apply the extension to that client too (section 8) |
+| B14 | `src/server/services/payments/confirm-restore.ts` (`storedText`) | payment confirm: `payment.paymentMethod` and every settlement column of the payment, read raw | a | Added in D11 PR 4.1, the fix of 7.1: the values go into the SETTLED entry's `previous` exactly as stored, never opened; `openAuditChanges` opens them when the entry is served |
 
 ### C. Database functions, triggers, defaults and policies
 

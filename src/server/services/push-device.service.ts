@@ -114,22 +114,17 @@ export async function registerPushDevice(
 	return userTransaction(client, userId, async (tx) => {
 		// Two registrations at once must not both see room for one more.
 		await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`push_device:${userId}`}, 0))`;
-		const device = await tx.pushDevice.upsert({
-			where: {
-				userId_transport_addressHash: {
-					userId,
-					transport: input.transport,
-					addressHash: hash,
-				},
-			},
-			create: {
-				userId,
-				transport: input.transport,
-				addressHash: hash,
-				...fields,
-			},
-			update: fields,
+		// Found by address, then written by id, not upserted on the address: a
+		// text cell (deviceName) is sealed under its row id (E2EE D11). The
+		// lock above keeps the find and the write together.
+		const key = { userId, transport: input.transport, addressHash: hash };
+		const known = await tx.pushDevice.findUnique({
+			where: { userId_transport_addressHash: key },
+			select: { id: true },
 		});
+		const device = known
+			? await tx.pushDevice.update({ where: { id: known.id }, data: fields })
+			: await tx.pushDevice.create({ data: { ...key, ...fields } });
 		const beyondCap = await tx.pushDevice.findMany({
 			where: { userId },
 			orderBy: [{ lastSeenAt: "desc" }, { id: "desc" }],

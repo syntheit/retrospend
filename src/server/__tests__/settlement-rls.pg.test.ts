@@ -19,6 +19,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
 	previousOf,
 	readPrevious,
+	storedText,
 } from "~/server/services/payments/confirm-restore";
 import { logAudit } from "~/server/services/shared-expenses/audit-log";
 import { adminDb, createTestUser } from "~/test/pg-harness";
@@ -125,9 +126,10 @@ const entry = (
  * SETTLED entry with the claim as it was, all in one transaction.
  */
 async function confirmWithEntry(p: { paymentId: string; row: { id: string } }) {
-	const [before, rows] = await Promise.all([
+	const [before, rows, stored] = await Promise.all([
 		adminDb.payment.findUniqueOrThrow({ where: { id: p.paymentId } }),
 		adminDb.settlement.findMany({ where: { paymentGroupId: p.paymentId } }),
+		storedText(adminDb, p.paymentId),
 	]);
 	await inTx(ben, async (tx) => {
 		await tx.settlement.updateMany({
@@ -152,6 +154,7 @@ async function confirmWithEntry(p: { paymentId: string; row: { id: string } }) {
 					previous: previousOf(
 						before,
 						rows,
+						stored,
 						"[]",
 					) as unknown as Prisma.InputJsonValue,
 				},

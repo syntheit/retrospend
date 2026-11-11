@@ -5,8 +5,9 @@
  * and, from "Same payment?", the amount ("Confirm ARS 18,000 instead"), in
  * which case the payment is allocated again from the receiver's side.
  */
-import { TRPCError } from "@trpc/server";
+
 import { currencyDecimals } from "@retrospend/domain/money";
+import { TRPCError } from "@trpc/server";
 import type { Money } from "~/server/figures/registry";
 import { fromMinor, toMinor } from "~/server/services/envelope/units";
 import type { MoneyMutation, UndoToken } from "~/server/services/preview/types";
@@ -25,6 +26,7 @@ import {
 	previousOf,
 	readPrevious,
 	restoreClaim,
+	storedText,
 } from "./confirm-restore";
 import type { Confirmation } from "./confirmation";
 import { ledgerLines, payerLines } from "./ledger";
@@ -195,6 +197,7 @@ export async function finalizeClaim(
 	await lockPair(tx, me, counterparty);
 	const { header, rows } = await loadPayment(tx, paymentId);
 	assertAwaitingMe(groupRoles(rows, me.participantId));
+	const stored = await storedText(tx, header.id);
 
 	const now = new Date();
 	const paidOn = input.paidOn
@@ -254,11 +257,14 @@ export async function finalizeClaim(
 			status: "FINALIZED",
 			settledAt: now,
 		});
+		// Row by row: each text cell is sealed under its own row id (E2EE D11).
 		if (input.paymentMethod) {
-			await tx.settlement.updateMany({
-				where: { paymentGroupId: header.id, isOffset: false },
-				data: { paymentMethod },
-			});
+			for (const row of rows.filter((r) => !r.isOffset))
+				await tx.settlement.update({
+					where: { id: row.id },
+					data: { paymentMethod },
+					select: { id: true },
+				});
 		}
 	}
 	await tx.payment.update({
@@ -266,7 +272,11 @@ export async function finalizeClaim(
 		data: {
 			status: "FINALIZED",
 			paidOn,
-			paymentMethod,
+			// Only a method the receiver gave: rewriting the same text would
+			// change the stored cell (a new seal) for nothing.
+			...(input.paymentMethod != null
+				? { paymentMethod: input.paymentMethod }
+				: {}),
 			...(allocation ? { amount: input.amount ?? undefined } : {}),
 		},
 	});
@@ -283,6 +293,7 @@ export async function finalizeClaim(
 			previous: previousOf(
 				header,
 				rows,
+				stored,
 				await ledgerFingerprint(tx, me, counterparty),
 			),
 			...(changed ? { confirmedAmount: input.amount } : {}),

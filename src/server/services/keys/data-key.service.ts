@@ -27,15 +27,17 @@
  */
 import { randomBytes } from "node:crypto";
 import { keystoreDb } from "~/server/db-core";
-import { userTransaction } from "~/server/db-tx";
+import { inTransaction, userTransaction } from "~/server/db-tx";
 import type { Prisma } from "~prisma";
 import {
 	type FieldAad,
+	FieldCryptoError,
 	Keyring,
 	openField,
 	sealField,
 } from "../../crypto/field-crypto";
 import { getMasterKeyring } from "../../crypto/master-key";
+import { sealing } from "../../crypto/sealing";
 import { type CachedRing, cacheRing, isFresh, RING_TTL_MS } from "./key-cache";
 import {
 	KeystoreError,
@@ -164,8 +166,64 @@ export async function getOrCreateDataKeyring(
 				SELECT "user_id" AS "userId", "key_id" AS "keyId", "wrapped_key" AS "wrappedKey"
 				FROM keystore."create_first_data_key"(${wrapped}, ${masterKeyring.currentId}::bigint)`,
 		);
+		// A cached "no key" would hide the new key from readers for 30 seconds.
+		evictDataKeyring(userId);
 	}
 	return unwrapAll(rows, masterKeyring);
+}
+
+const minting = new Map<string, Promise<Keyring>>();
+
+/**
+ * The user's data keys, made now if they have none (E2EE D11 PR 4 section
+ * 1): for the first write that seals, so a read, a preview or a script that
+ * only reads never mints. It runs on a connection of its own, never inside
+ * the caller's transaction (that would hold two pool connections at once),
+ * and shares one mint per user in this process; across processes the insert
+ * is a no-op for the loser. The cached ring answers first, so a user who has
+ * keys costs no query. The ring is evicted after the commit, so the next
+ * client load reads the new key.
+ */
+export function ensureUserKeyring(
+	userId: string,
+	masterKeyring: Keyring | undefined = getMasterKeyring(),
+): Promise<Keyring> {
+	if (inTransaction())
+		throw new Error("ensureUserKeyring runs before a transaction, not inside");
+	const running = minting.get(userId);
+	if (running) return running;
+	const mint = (async () => {
+		const found = await findDataKeyring(userId, masterKeyring);
+		if (found) return found;
+		const ring = await userTransaction(keystoreDb, userId, (tx) =>
+			getOrCreateDataKeyring(tx, masterKeyring),
+		);
+		evictDataKeyring(userId);
+		return ring;
+	})().finally(() => minting.delete(userId));
+	minting.set(userId, mint);
+	return mint;
+}
+
+/**
+ * `ensureUserKeyring` when this process seals, else nothing. A key that
+ * cannot be made (no master key, a lost keystore or grant) does not fail the
+ * caller here: reads and writes without text still work, and the write that
+ * needs the key fails closed with the recorded code. `masterKeyring` is for
+ * tests: null means none.
+ */
+export async function ensureUserKeyringWhenSealing(
+	userId: string,
+	masterKeyring: Keyring | null | undefined = getMasterKeyring(),
+): Promise<void> {
+	// No master key, no key to make; the sealing write fails closed on its own.
+	if (!sealing() || !masterKeyring) return;
+	try {
+		await ensureUserKeyring(userId, masterKeyring);
+	} catch (error) {
+		if (!(error instanceof KeystoreError || error instanceof FieldCryptoError))
+			throw error;
+	}
 }
 
 const USER_CACHE_SIZE = 1000;

@@ -8,6 +8,7 @@ import {
 	resolvePrincipal,
 } from "~/server/services/api-v1/principal.service";
 import { scopedDbFor } from "~/server/services/api-v1/scoped-db";
+import { ensureUserKeyringWhenSealing } from "~/server/services/keys/data-key.service";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import { requestTimeZone } from "~/server/time-zone";
 import { appOriginFrom, isCrossSiteWrite } from "./csrf";
@@ -73,6 +74,8 @@ const authenticate = os
 
 		let user: V1User | null = null;
 		if (principal) {
+			// When sealing, the user's key exists before any transaction needs it.
+			await ensureUserKeyringWhenSealing(principal.userId);
 			const db = scopedDbFor(principal.userId);
 			const zone = requestTimeZone(context.headers);
 			user = {

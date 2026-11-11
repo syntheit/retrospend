@@ -3,6 +3,7 @@
  * Everything is in USD, so no rate is seeded.
  */
 import { randomUUID } from "node:crypto";
+import { createUserScopedDb } from "~/server/db";
 import {
 	addRow,
 	seedUser,
@@ -83,7 +84,8 @@ export function recurring(
 	nextDueDate: Date,
 	o: Partial<{ ask: boolean; isActive: boolean; dir: "IN" | "OUT" }> = {},
 ) {
-	return adminDb.recurringTemplate.create({
+	// As the owner: the name is user text, written by its owner (E2EE D11).
+	return createUserScopedDb(userId).recurringTemplate.create({
 		data: {
 			userId,
 			name,
@@ -105,7 +107,7 @@ export function importJob(
 	rows: number,
 	ready: Date,
 ) {
-	return adminDb.importJob.create({
+	return createUserScopedDb(userId).importJob.create({
 		data: {
 			userId,
 			status,

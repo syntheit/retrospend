@@ -5,7 +5,10 @@
  */
 import { stripUserTextControls } from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
+import { userTransaction } from "~/server/db-tx";
 import type { Prisma, PrismaClient } from "~prisma";
+import { insertCategoriesOnce } from "./category.service";
+import { ensureUserKeyringWhenSealing } from "./keys/data-key.service";
 import { bookRate, loadRateContext, type RateChoice } from "./rate-types";
 import { sortByText } from "./text-order";
 
@@ -22,27 +25,33 @@ export const INCOME_CATEGORIES = [
 /**
  * Seeds a user's income categories, once. Seeded on first use rather than
  * in the migration, so today's category pickers, which do not filter by kind
- * yet, never show them to someone who has not recorded money in. Safe to
- * call concurrently: the (name, userId) unique key absorbs a second insert.
- * A name the user already has as an expense category is left alone.
+ * yet, never show them to someone who has not recorded money in. A name the
+ * user already has (as an expense category too) is left alone, and only a
+ * missing name costs the insert, which carries each name's index: the unique
+ * keys on the name and on its index absorb a concurrent second insert. A
+ * client (not a transaction) inserts in a user transaction of its own.
  */
 export async function ensureIncomeCategories(
 	db: PrismaClient | Prisma.TransactionClient,
 	userId: string,
 ) {
-	await db.category.createMany({
-		data: INCOME_CATEGORIES.map((category) => ({
-			...category,
-			kind: "INCOME" as const,
-			userId,
-		})),
-		skipDuplicates: true,
-	});
-	// By name, sorted here: a name may be ciphertext in the database (text-order.ts).
-	return sortByText(
-		await db.category.findMany({ where: { userId, kind: "INCOME" } }),
-		(c) => c.name,
+	const rows = await db.category.findMany({ where: { userId } });
+	const have = new Set(rows.map((c) => c.name));
+	const missing = INCOME_CATEGORIES.filter((c) => !have.has(c.name)).map(
+		(c) => ({ ...c, kind: "INCOME" as const }),
 	);
+	let income = rows.filter((c) => c.kind === "INCOME");
+	if (missing.length > 0) {
+		const insert = (tx: Prisma.TransactionClient) =>
+			insertCategoriesOnce(tx, userId, missing);
+		if ("$transaction" in db && typeof db.$transaction === "function") {
+			await ensureUserKeyringWhenSealing(userId);
+			await userTransaction(db, userId, insert);
+		} else await insert(db);
+		income = await db.category.findMany({ where: { userId, kind: "INCOME" } });
+	}
+	// By name, sorted here: a name may be ciphertext in the database (text-order.ts).
+	return sortByText(income, (c) => c.name);
 }
 
 /** The template fields a confirmed recurring entry is built from. */

@@ -78,13 +78,25 @@ export async function categoryNameIndexFor(
 	name: string,
 	masterKeyring: Keyring | null | undefined = getMasterKeyring(),
 ): Promise<string | null> {
-	if (!masterKeyring) return null;
+	const [index] = await categoryNameIndexesFor(tx, [name], masterKeyring);
+	return index ?? null;
+}
+
+/** `categoryNameIndexFor` for several names at once, with one key load: all null or none. */
+export async function categoryNameIndexesFor(
+	tx: Prisma.TransactionClient,
+	names: readonly string[],
+	masterKeyring: Keyring | null | undefined = getMasterKeyring(),
+): Promise<(string | null)[]> {
+	if (!masterKeyring || names.length === 0) return names.map(() => null);
 	await tx.$executeRaw`SAVEPOINT category_name_index`;
 	try {
 		const keyring = await getOrCreateDataKeyring(tx, masterKeyring);
-		const index = computeCategoryNameIndex(keyring, name);
+		const indexes = names.map((name) =>
+			computeCategoryNameIndex(keyring, name),
+		);
 		await tx.$executeRaw`RELEASE SAVEPOINT category_name_index`;
-		return index;
+		return indexes;
 	} catch (error) {
 		// Only what a broken key store looks like. no_user (no signed-in
 		// transaction) is a programming error and must surface.
@@ -99,7 +111,7 @@ export async function categoryNameIndexFor(
 		console.warn(
 			`Category name index skipped, the key store gave no usable key (${error.code})`,
 		);
-		return null;
+		return names.map(() => null);
 	}
 }
 

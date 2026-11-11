@@ -18,7 +18,10 @@
  */
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { previousOf } from "~/server/services/payments/confirm-restore";
+import {
+	previousOf,
+	storedText,
+} from "~/server/services/payments/confirm-restore";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import type { Prisma } from "~prisma";
 
@@ -381,7 +384,7 @@ async function pendingClaim(amounts: string[] = ["10"]) {
 		adminDb.payment.findUniqueOrThrow({ where: { id } }),
 		adminDb.settlement.findMany({ where: { paymentGroupId: id } }),
 	]);
-	return { id, before, rows };
+	return { id, before, rows, stored: await storedText(adminDb, id) };
 }
 
 type Claim = Awaited<ReturnType<typeof pendingClaim>>;
@@ -427,7 +430,7 @@ const settled = (
 	} as Prisma.InputJsonValue,
 });
 
-const honest = (p: Claim) => previousOf(p.before, p.rows, "[]");
+const honest = (p: Claim) => previousOf(p.before, p.rows, p.stored, "[]");
 
 describe("the SETTLED entry", () => {
 	it("is written by the receiver in the transaction that finalizes the rows", async () => {

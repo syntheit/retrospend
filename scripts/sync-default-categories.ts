@@ -1,6 +1,11 @@
-import { DEFAULT_CATEGORIES } from "../src/lib/constants";
+import { pathToFileURL } from "node:url";
 import { db } from "../src/server/db";
+import { seedDefaultCategories } from "../src/server/services/category.service";
 import { compareText } from "../src/server/services/text-order";
+
+/** One user's missing defaults, as that user, each name with its index (the sign-up write). */
+export const syncUserCategories = (userId: string) =>
+	seedDefaultCategories(db, userId);
 
 async function main() {
 	console.log("Starting category sync for all users...");
@@ -16,17 +21,10 @@ async function main() {
 
 	for (const user of users) {
 		try {
-			const result = await db.category.createMany({
-				data: DEFAULT_CATEGORIES.map((category) => ({
-					name: category.name,
-					color: category.color,
-					userId: user.id,
-				})),
-				skipDuplicates: true,
-			});
+			const created = await syncUserCategories(user.id);
 
 			processed++;
-			totalCategoriesCreated += result.count;
+			totalCategoriesCreated += created;
 
 			if (processed % 10 === 0) {
 				console.log(`Processed ${processed}/${users.length} users...`);
@@ -65,12 +63,14 @@ async function main() {
 	}
 }
 
-main()
-	.catch((err) => {
-		console.error("Script failed:", err);
-		process.exit(1);
-	})
-	.finally(async () => {
-		await db.$disconnect();
-		console.log("Database connection closed.");
-	});
+// Run only as a script, so a test can import syncUserCategories.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
+	main()
+		.catch((err) => {
+			console.error("Script failed:", err);
+			process.exit(1);
+		})
+		.finally(async () => {
+			await db.$disconnect();
+			console.log("Database connection closed.");
+		});

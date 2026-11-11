@@ -26,9 +26,9 @@
  * added, and they are removed from the result again.
  */
 import type { ClientSlot } from "~/server/db-core";
-import { inTransaction } from "~/server/db-tx";
+import { inTransaction, inVerbatim } from "~/server/db-tx";
 import { FieldCryptoError, isSealedField, openField } from "./field-crypto";
-import { fieldsOfModel, type KeyClass } from "./fields";
+import { fieldsOfModel, type KeyClass, keyClassOfColumn } from "./fields";
 import type { ModelGraph } from "./model-graph";
 import { hasSealedText } from "./response-guard";
 import type { TextKeys } from "./text-keys";
@@ -308,43 +308,108 @@ function failInTransaction(keys: TextKeys, cells: Cell[]): never {
 	throw new TextUnavailableError(KEY_ROTATED);
 }
 
-const WRITES_DATA = new Set([
-	"create",
-	"update",
-	"createMany",
-	"createManyAndReturn",
-	"updateMany",
-	"updateManyAndReturn",
-]);
+const CREATES = new Set(["create", "createMany", "createManyAndReturn"]);
+const BULK = new Set(["updateMany", "updateManyAndReturn"]);
+
+const idOf = (value: unknown): string | undefined =>
+	isRow(value) && typeof value.id === "string" ? value.id : undefined;
+
+interface Write {
+	values: unknown;
+	/** The row the values are stored in, when the args name it. */
+	rowId?: string;
+	creates: boolean;
+}
+
+/** Each data object a top-level write stores. */
+function writesOf(operation: string, args: Row): Write[] {
+	const whereId = idOf(args.where);
+	if (operation === "upsert")
+		// The create half inserts the id in its data, or a generated one, never
+		// the where's: a cell must be bound to the id actually inserted.
+		return [
+			{ values: args.create, rowId: idOf(args.create), creates: true },
+			{ values: args.update, rowId: whereId, creates: false },
+		];
+	if (operation === "update")
+		return [{ values: args.data, rowId: whereId, creates: false }];
+	if (CREATES.has(operation))
+		return [args.data]
+			.flat()
+			.map((values) => ({ values, rowId: idOf(values), creates: true }));
+	if (BULK.has(operation))
+		return [args.data].flat().map((values) => ({ values, creates: false }));
+	return [];
+}
 
 /**
  * A ciphertext written as if it were text is refused before it runs: a
  * copied sealed value would be stored under the wrong cell, and sealed twice
  * once PR 4 seals. Top-level writes only; nested writes are PR 4's. An
- * `updateMany` that sets a mapped column to plaintext still runs: two callers
- * do, and PR 4 must move them to per-row writes before it refuses that shape
- * (each row needs its own AAD and nonce): export_job.fileName in
- * services/api-v1/export-run.ts:124, and split_participant.rejectionReason
- * (set to null) in services/shared-expenses/transaction.service.ts:647.
+ * `updateMany` that sets a mapped column to plaintext still runs until PR 4.2
+ * refuses that shape; the one caller left sets
+ * split_participant.rejectionReason to null
+ * (services/shared-expenses/transaction.service.ts), which seals nothing.
+ *
+ * Inside `verbatim` (db-tx.ts) a sealed value is stored as it is when it
+ * opens under the AAD of the row and column it is written to, by the rules
+ * of a read: then it was sealed for this very cell, with the key its class
+ * names (a user-class cell with the client's user's key, and a create must
+ * name that user as the owner). Anything else is refused.
  */
-function refuseWrites(model: string, operation: string, args: Row): void {
-	const columns = Object.keys(fieldsOfModel(model)?.columns ?? {});
-	if (columns.length === 0) return;
-	const data =
-		operation === "upsert"
-			? [args.create, args.update]
-			: WRITES_DATA.has(operation)
-				? [args.data].flat()
-				: [];
-	for (const values of data) {
+async function refuseWrites(
+	keys: TextKeys,
+	model: string,
+	operation: string,
+	args: Row,
+): Promise<void> {
+	const fields = fieldsOfModel(model);
+	if (!fields) return;
+	const kept: Cell[] = [];
+	for (const { values, rowId, creates } of writesOf(operation, args)) {
 		if (!isRow(values)) continue;
-		for (const f of columns) {
-			const value = values[f];
+		for (const [column, cls] of Object.entries(fields.columns)) {
+			const value = values[column];
 			const text = isRow(value) ? value.set : value;
-			if (typeof text === "string" && isSealedField(text))
-				throw new FieldCryptoError("bad_plaintext");
+			if (typeof text !== "string" || !isSealedField(text)) continue;
+			const owner = cls === "user" ? keys.userId : undefined;
+			const ownCell =
+				inVerbatim() &&
+				rowId !== undefined &&
+				(cls === "instance" ||
+					(owner !== undefined && (!creates || values.userId === owner)));
+			if (!ownCell) throw new FieldCryptoError("bad_plaintext");
+			kept.push({
+				row: { id: rowId, userId: owner },
+				table: fields.table,
+				column,
+				cls,
+				sealed: text,
+			});
 		}
 	}
+	if (kept.length > 0) await openCells(keys, kept);
+}
+
+/**
+ * Opens sealed instance-class cells kept outside their table (the stored
+ * copies in an audit entry) by the rules of a model read: plaintext passes,
+ * a sealed cell opens in place or fails the request. Each `row` carries its
+ * cell's row id as `id`.
+ */
+export function openInstanceCells(
+	keys: TextKeys,
+	cells: readonly { row: Row; table: string; column: string }[],
+): Promise<void> {
+	const sealed: Cell[] = [];
+	for (const { row, table, column } of cells) {
+		if (keyClassOfColumn(table, column) !== "instance")
+			throw new Error(`${table}.${column} is not an instance-class cell`);
+		const value = row[column];
+		if (typeof value === "string" && isSealedField(value))
+			sealed.push({ row, table, column, cls: "instance", sealed: value });
+	}
+	return openCells(keys, sealed);
 }
 
 const WALKED = new Set([
@@ -374,7 +439,7 @@ export function fieldOpenSlot(graph: () => ModelGraph): ClientSlot {
 				$allModels: {
 					async $allOperations({ model, operation, args, query }) {
 						const given = (args ?? {}) as Row;
-						refuseWrites(model, operation, given);
+						await refuseWrites(keys, model, operation, given);
 						if (operation === "aggregate" || operation === "groupBy") {
 							const result = await query(args);
 							if (hasSealedText(result))

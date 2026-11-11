@@ -20,13 +20,18 @@
  */
 
 import "dotenv/config";
+import { pathToFileURL } from "node:url";
 import { db } from "../src/server/db";
+import { userTransaction } from "../src/server/db-tx";
+import { categoryNameIndexFor } from "../src/server/services/category-name-index.service";
+import { ensureUserKeyringWhenSealing } from "../src/server/services/keys/data-key.service";
+import type { Prisma } from "../generated/prisma/client";
 
 const DRY_RUN = process.argv.includes("--dry-run");
 
-// Prisma interactive transaction client type (same model methods as db,
-// minus connection/lifecycle methods)
-type TxClient = Parameters<Parameters<typeof db.$transaction>[0]>[0];
+// Each user's work runs as that user (userTransaction), so names are written
+// with that user's key and name index.
+type TxClient = Prisma.TransactionClient;
 
 // ---------------------------------------------------------------------------
 // Migration definitions
@@ -116,11 +121,17 @@ async function mergeCategoryReferences(
 		data: { categoryId: targetId },
 	});
 
-	// 4. SharedTransactions (no userId field, sourceId is globally unique)
+	// 4. SharedTransactions (no userId field, sourceId is globally unique).
+	// As the owner, as before the run moved into the user's transaction: RLS
+	// would skip expenses in projects the user left (they would lose the
+	// category when it is deleted) and refuse a VIEWER's. No text is written,
+	// so nothing here needs the user's key; the role comes back right after.
+	await tx.$executeRaw`SET LOCAL ROLE NONE`;
 	await tx.sharedTransaction.updateMany({
 		where: { categoryId: sourceId },
 		data: { categoryId: targetId },
 	});
+	await tx.$executeRaw`SELECT set_config('role', 'retrospend_app', true)`;
 
 	// 5. AnalyticsCategoryPreference, handle unique(userId, categoryId) conflicts
 	const existingTargetPref =
@@ -155,6 +166,7 @@ interface UserActions {
 async function processUser(
 	tx: TxClient,
 	userId: string,
+	dryRun: boolean,
 ): Promise<UserActions> {
 	const actions: UserActions = {
 		renames: [],
@@ -183,7 +195,7 @@ async function processUser(
 		if (existingNewCat) {
 			// User already has a category with the new name.
 			// Merge all references from old → existing, then delete old.
-			if (!DRY_RUN) {
+			if (!dryRun) {
 				await mergeCategoryReferences(tx, oldCat.id, existingNewCat.id, userId);
 				await tx.category.delete({ where: { id: oldCat.id } });
 			}
@@ -191,11 +203,13 @@ async function processUser(
 			catByName.delete(oldName);
 		} else {
 			// Simple rename
-			if (!DRY_RUN) {
+			if (!dryRun) {
 				await tx.category.update({
 					where: { id: oldCat.id },
-					// The old name index no longer matches; the backfill makes a new one.
-					data: { name: newName, nameIndex: null },
+					data: {
+						name: newName,
+						nameIndex: await categoryNameIndexFor(tx, newName),
+					},
 				});
 			}
 			actions.renames.push(`${oldName} → ${newName}`);
@@ -213,10 +227,11 @@ async function processUser(
 
 		// If target doesn't exist (user deleted it), recreate it
 		if (!targetCat) {
-			if (!DRY_RUN) {
+			if (!dryRun) {
 				const created = await tx.category.create({
 					data: {
 						name: targetName,
+						nameIndex: await categoryNameIndexFor(tx, targetName),
 						color: targetColor,
 						userId,
 					},
@@ -229,7 +244,7 @@ async function processUser(
 			catByName.set(targetName, targetCat);
 		}
 
-		if (!DRY_RUN) {
+		if (!dryRun) {
 			await mergeCategoryReferences(tx, sourceCat.id, targetCat.id, userId);
 			await tx.category.delete({ where: { id: sourceCat.id } });
 		}
@@ -241,9 +256,14 @@ async function processUser(
 	for (const { name, color } of ADDITIONS) {
 		if (catByName.has(name)) continue; // Already exists, skip
 
-		if (!DRY_RUN) {
+		if (!dryRun) {
 			const created = await tx.category.create({
-				data: { name, color, userId },
+				data: {
+					name,
+					nameIndex: await categoryNameIndexFor(tx, name),
+					color,
+					userId,
+				},
 				select: { id: true, name: true, color: true },
 			});
 			catByName.set(name, created);
@@ -259,7 +279,7 @@ async function processUser(
 		// Only fix if the color still matches the OLD default (user hasn't customized)
 		if (cat.color !== oldColor) continue;
 
-		if (!DRY_RUN) {
+		if (!dryRun) {
 			await tx.category.update({
 				where: { id: cat.id },
 				data: { color: newColor },
@@ -269,6 +289,12 @@ async function processUser(
 	}
 
 	return actions;
+}
+
+/** One user's migration, in one transaction as that user. A dry run writes nothing and makes no key. */
+export async function migrateUserCategories(userId: string, dryRun = DRY_RUN) {
+	if (!dryRun) await ensureUserKeyringWhenSealing(userId);
+	return userTransaction(db, userId, (tx) => processUser(tx, userId, dryRun));
 }
 
 // ---------------------------------------------------------------------------
@@ -291,9 +317,7 @@ async function main() {
 		const user = users[i]!;
 
 		try {
-			const actions = await db.$transaction(async (tx) => {
-				return processUser(tx, user.id);
-			});
+			const actions = await migrateUserCategories(user.id);
 
 			stats.usersProcessed++;
 
@@ -382,15 +406,17 @@ async function main() {
 	console.log("");
 }
 
-main()
-	.catch((err) => {
-		console.error("Script failed:", err);
-		process.exit(1);
-	})
-	.finally(async () => {
-		await db.$disconnect();
-		console.log("Database connection closed.");
-	});
+// Run only as a script, so a test can import migrateUserCategories.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
+	main()
+		.catch((err) => {
+			console.error("Script failed:", err);
+			process.exit(1);
+		})
+		.finally(async () => {
+			await db.$disconnect();
+			console.log("Database connection closed.");
+		});
 
 // ---------------------------------------------------------------------------
 // Test Scenarios (mental model)
