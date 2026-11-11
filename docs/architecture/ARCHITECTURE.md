@@ -119,7 +119,7 @@ Money is the part of the app that must never be wrong.
 - Balances are person-centric: everything owed between two people rolls up to one balance, across projects.
 - "Owed to you" and "You owe" are never netted in display; only net worth combines them.
 - A payment is one record in the currency paid. It clears same-currency debts first, then converts.
-- The receiver confirms. The sidecar finalizes proposals left unconfirmed for 7 days.
+- The receiver confirms. The app finalizes proposals left unconfirmed for 7 days (`payments/auto-finalize.ts`, hourly from `instrumentation.ts`), as the receiver, with the same writes as a confirm. A payment the receiver reopened stays pending.
 - Code: `src/server/services/payments/` (the allocator is `allocate.ts`), `people/`, `shared-expenses/`, `transfers/`.
 
 ## Events, push and webhooks
@@ -139,7 +139,6 @@ A single Go binary (`sidecar/main.go`) on port 8080, sharing the Postgres databa
 | Recurring expenses | every 15 minutes |
 | Database backup (`pg_dump`) with retention | `BACKUP_CRON`, default 03:00 |
 | Data retention cleanup (old events, tokens, stale guests) | daily 03:00 |
-| Auto-finalize settlements unconfirmed after 7 days | daily 04:00 |
 
 - **Bank statement importer:** `POST /process` takes a PDF or CSV and streams progress as NDJSON.
   - PDFs are parsed with poppler, CSVs with a cached schema detector.

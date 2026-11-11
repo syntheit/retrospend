@@ -101,16 +101,6 @@ func main() {
 		log.Fatalf("Failed to schedule data retention cleanup: %v", err)
 	}
 
-	// Schedule settlement auto-finalization: daily at 04:00 UTC
-	_, err = c.AddFunc("0 4 * * *", func() {
-		if err := tasks.AutoFinalizeSettlements(database); err != nil {
-			log.Printf("❌ Settlement auto-finalization failed: %v", err)
-		}
-	})
-	if err != nil {
-		log.Fatalf("Failed to schedule settlement auto-finalization: %v", err)
-	}
-
 	// Check for API key
 	apiKey := os.Getenv("WORKER_API_KEY")
 	if apiKey == "" {
@@ -435,7 +425,6 @@ func main() {
 			log.Printf("  - Backups encrypted to %d age recipient(s)", len(cfg.BackupAgeRecipients))
 		}
 		log.Println("  - Data retention cleanup: daily at 03:00 UTC")
-		log.Println("  - Settlement auto-finalize: daily at 04:00 UTC")
 		log.Println("  - HTTP Server: :8080")
 		if importerAvailable {
 			log.Println("  - Importer: available")
