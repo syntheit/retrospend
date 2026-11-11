@@ -1358,7 +1358,6 @@ export function createStatefulDb() {
 	};
 
 	// ── Assemble the full interface ───────────────────────────────────────────
-
 	const iface = {
 		$executeRaw: vi.fn().mockResolvedValue(undefined),
 		$queryRaw: queryRaw,
