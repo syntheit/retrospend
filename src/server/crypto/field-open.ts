@@ -33,6 +33,7 @@ import {
 	inVerbatim,
 	outsideTransaction,
 } from "~/server/db-tx";
+import { loadEpoch } from "./epoch";
 import {
 	FieldCryptoError,
 	isSealedField,
@@ -43,6 +44,7 @@ import { applySeal, planSeal, type SealCell } from "./field-seal";
 import { fieldsOfModel, type KeyClass, keyClassOfColumn } from "./fields";
 import type { ModelGraph } from "./model-graph";
 import { hasSealedText } from "./response-guard";
+import { filtersOnSealed } from "./sealed-filters";
 import { sealing } from "./sealing";
 import type { TextKeys } from "./text-keys";
 
@@ -491,6 +493,22 @@ const WALKED = new Set([
 ]);
 
 /**
+ * Once the field encryption epoch exists, a call that filters, sorts or
+ * groups on a mapped column is refused (sealed-filters.ts): Postgres would
+ * compare ciphertext and quietly miss rows. The scan reads only the
+ * arguments; only a hit looks at the epoch, loaded fresh outside a
+ * transaction and taken from the cache inside one (epoch.ts).
+ */
+async function refuseSealedFilters(
+	graph: ModelGraph,
+	model: string,
+	args: Row,
+): Promise<void> {
+	if (!filtersOnSealed(graph, model, args)) return;
+	if (await loadEpoch()) throw new FieldCryptoError("filter_on_sealed");
+}
+
+/**
  * The slot for db.ts. `graph` is read on the first query. Writes are sealed
  * after the refusals and before the query, outside the scoped client's RLS
  * batch, so they are sealed once. Inside `verbatim` nothing is sealed: the
@@ -506,8 +524,9 @@ export function fieldOpenSlot(graph: () => ModelGraph): ClientSlot {
 				$allModels: {
 					async $allOperations({ model, operation, args, query }) {
 						const given = (args ?? {}) as Row;
-						await refuseWrites(keys, model, operation, given);
 						const models = graph();
+						await refuseSealedFilters(models, model, given);
+						await refuseWrites(keys, model, operation, given);
 						const written =
 							sealing() && !inVerbatim()
 								? await sealWrite(keys, models, model, operation, given)

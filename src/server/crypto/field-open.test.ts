@@ -17,8 +17,9 @@
  */
 import { randomBytes } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { verbatim } from "../db-tx";
+import { insideTransaction, verbatim } from "../db-tx";
 import { KeystoreError } from "../services/keys/keystore-errors";
+import { resetEpochForTests, setEpochReader } from "./epoch";
 import {
 	type FieldAad,
 	FieldCryptoError,
@@ -614,5 +615,58 @@ describe("refusals", () => {
 		expect(await run("groupBy", [{ title: "Rent" }])).toEqual([
 			{ title: "Rent" },
 		]);
+	});
+	describe("filters on a mapped column", () => {
+		afterEach(() => {
+			resetEpochForTests();
+			setEpochReader(async () => false);
+		});
+		const filter = { where: { title: "Rent" } };
+
+		it("run before the epoch exists", async () => {
+			const query = vi.fn(async () => []);
+			await handle({
+				model: "Expense",
+				operation: "findMany",
+				args: filter,
+				query,
+			});
+			expect(query).toHaveBeenCalled();
+		});
+
+		it("are refused once it exists, before the query runs", async () => {
+			resetEpochForTests(true);
+			for (const operation of [
+				"findMany",
+				"count",
+				"updateMany",
+				"deleteMany",
+				"groupBy",
+			])
+				expect(
+					((await refused(operation, filter)) as FieldCryptoError).code,
+				).toBe("filter_on_sealed");
+		});
+
+		it("look only at the cached epoch inside a transaction", async () => {
+			const read = vi.fn(async () => true);
+			setEpochReader(read);
+			const query = vi.fn(async () => []);
+			await insideTransaction(() =>
+				handle({
+					model: "Expense",
+					operation: "findMany",
+					args: filter,
+					query,
+				}),
+			);
+			expect(read).not.toHaveBeenCalled();
+			expect(query).toHaveBeenCalled();
+			// Outside one, a hit loads it.
+			expect(
+				((await refused("findMany", filter)) as FieldCryptoError).code,
+			).toBe("filter_on_sealed");
+			expect(read).toHaveBeenCalledTimes(1);
+		});
 	});
 });
