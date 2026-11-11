@@ -23,8 +23,6 @@
  *   remove a pending payment             -> another payment's cells byte-identical
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import type { Keyring } from "~/server/crypto/field-crypto";
-import { setSealingForTests } from "~/server/crypto/sealing";
 import {
 	arsUser,
 	ref,
@@ -34,6 +32,9 @@ import {
 	type TestUser,
 } from "~/server/api/v1/__tests__/g3-fixtures";
 import { asMobile, call } from "~/server/api/v1/core/__tests__/harness";
+import type { Keyring } from "~/server/crypto/field-crypto";
+import { setSealingForTests } from "~/server/crypto/sealing";
+import { userTransaction } from "~/server/db-tx";
 import { forUser } from "~/server/services/preview";
 import { computeBalance } from "~/server/services/shared-expenses/balance";
 import { adminDb } from "~/test/pg-harness";
@@ -41,6 +42,7 @@ import { sealedFile, sealText } from "~/test/sealed-fixture";
 import { confirmPayment, unconfirmPayment } from "./confirm.mutation";
 import { recordPayment } from "./record.mutation";
 import { rejectPayment, removeRecordedPayment } from "./reverse.mutation";
+import { updateGroup } from "./write";
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -93,7 +95,12 @@ async function sealPayment(paymentId: string) {
 	const ring = master.ring as Keyring;
 	const { header, rows } = await cells(paymentId);
 	for (const [column, value] of Object.entries(header ?? {}))
-		if (value) await sealText(ring, { table: "payment", column, rowId: paymentId }, value);
+		if (value)
+			await sealText(
+				ring,
+				{ table: "payment", column, rowId: paymentId },
+				value,
+			);
 	for (const { id, ...text } of rows)
 		for (const [column, value] of Object.entries(text))
 			if (value)
@@ -262,6 +269,33 @@ describe("a confirm before sealing is switched on", () => {
 			"Mercado Pago",
 			"Octubre",
 		]);
+	});
+});
+
+describe("updateGroup, row by row", () => {
+	it("answers CONFLICT when a row has moved on, and writes nothing", async () => {
+		const p = await pair();
+		const paymentId = await record(p);
+		await confirm(p, paymentId);
+		const rows = await adminDb.settlement.findMany({
+			where: { paymentGroupId: paymentId },
+		});
+		await expect(
+			userTransaction(adminDb, p.martin.user.id, (tx) =>
+				updateGroup(tx, rows, ["PROPOSED"], {
+					status: "REJECTED",
+					rejectedAt: new Date(),
+					rejectedReason: "Tarde",
+				}),
+			),
+		).rejects.toMatchObject({ code: "CONFLICT" });
+		expect(
+			(
+				await adminDb.settlement.findMany({
+					where: { paymentGroupId: paymentId },
+				})
+			).map((r) => [r.status, r.rejectedReason]),
+		).toEqual(rows.map(() => ["FINALIZED", null]));
 	});
 });
 

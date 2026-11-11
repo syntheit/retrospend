@@ -63,9 +63,9 @@ describe("openAuditChanges", () => {
 			paymentMethod: "Mercado Pago",
 			rows: [row("s1", { note: "Octubre", paymentMethod: "Mercado Pago" })],
 		});
-		expect(await openAuditChanges(textKeys({ instance: load }), changes)).toEqual(
-			changes,
-		);
+		expect(
+			await openAuditChanges(textKeys({ instance: load }), changes),
+		).toEqual(changes);
 		expect(load).not.toHaveBeenCalled();
 	});
 

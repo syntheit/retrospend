@@ -484,7 +484,11 @@ describe("refusals", () => {
 				),
 			);
 		};
-		const ownProject = sealField(instance, "Viaje", cell("project", "name", "p1"));
+		const ownProject = sealField(
+			instance,
+			"Viaje",
+			cell("project", "name", "p1"),
+		);
 		const ownTitle = sealField(user, "Taxi", cell("expense", "title", "e1"));
 
 		it("stores a cell sealed for the very row and column it is written to", async () => {
@@ -511,13 +515,21 @@ describe("refusals", () => {
 		it("refuses a cell sealed for another row or column", async () => {
 			await keys.ready();
 			for (const [operation, model, args] of [
-				["update", "Project", { where: { id: "p2" }, data: { name: ownProject } }],
+				[
+					"update",
+					"Project",
+					{ where: { id: "p2" }, data: { name: ownProject } },
+				],
 				[
 					"update",
 					"Project",
 					{ where: { id: "p1" }, data: { description: ownProject } },
 				],
-				["create", "Expense", { data: { id: "e2", userId: ME, title: ownTitle } }],
+				[
+					"create",
+					"Expense",
+					{ data: { id: "e2", userId: ME, title: ownTitle } },
+				],
 			] as const) {
 				const failure = await run(operation, model, args).catch((e) => e);
 				expect(failure, `${model}.${operation}`).toBeInstanceOf(
@@ -532,7 +544,11 @@ describe("refusals", () => {
 			const global = handlerFor(keysWith({ instance }, null));
 			for (const write of [
 				// No row id.
-				() => run("updateMany", "Project", { where: {}, data: { name: ownProject } }),
+				() =>
+					run("updateMany", "Project", {
+						where: {},
+						data: { name: ownProject },
+					}),
 				() => run("create", "Project", { data: { name: ownProject } }),
 				// A user-class cell for another owner, or with no user at all.
 				() =>

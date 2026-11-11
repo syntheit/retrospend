@@ -75,7 +75,10 @@ const categories = (userId: string) =>
 	});
 
 const currentTag = async (u: TestUser) =>
-	blindIndexTag(await userKeyring(u.user.id, masterKey), CATEGORY_NAME_INDEX_LABEL);
+	blindIndexTag(
+		await userKeyring(u.user.id, masterKey),
+		CATEGORY_NAME_INDEX_LABEL,
+	);
 
 const defaultNames = DEFAULT_CATEGORIES.map((c) => c.name).sort();
 
@@ -142,7 +145,9 @@ describe("income categories", () => {
 				.sort(),
 		);
 		const tag = await currentTag(u);
-		const rows = (await categories(u.user.id)).filter((r) => r.kind === "INCOME");
+		const rows = (await categories(u.user.id)).filter(
+			(r) => r.kind === "INCOME",
+		);
 		expect(rows).toHaveLength(5);
 		expect(rows.every((r) => r.nameIndex?.startsWith(`${tag}:`))).toBe(true);
 		const stored = await adminDb.$queryRaw<{ id: string; name: string }[]>`
