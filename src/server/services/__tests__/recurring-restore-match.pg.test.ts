@@ -2,8 +2,8 @@
  * The "made again by hand" check when a deleted recurring template is
  * restored (recurring-delete.mutation.ts), on real Postgres. It used to be
  * `name equals ... mode insensitive` in SQL, which is an unescaped ILIKE; the
- * names are now compared in the app after opening them, so a name may be
- * ciphertext. SQL still narrows by user, active, amount, currency, frequency
+ * names are now compared in the app, as the client opened them on read
+ * (field-open.ts), so a stored name may be sealed. SQL still narrows by user, active, amount, currency, frequency
  * and direction.
  *
  * Case by case (ARS home, a monthly 8,000.00): case is ignored, trim and
@@ -12,17 +12,16 @@
  * "Rent_A" with "Rent-A", and `A\B` did not conflict with `a\b`. Another
  * amount, frequency, direction or an inactive twin does not count.
  * Each case runs for a plaintext and for a sealed name on both sides.
- * Preview equals the result, and a restore with no keyring refuses a sealed
- * twin instead of letting it through.
+ * Preview equals the result, and a sealed twin whose key is lost refuses the
+ * restore instead of letting it through.
  */
-import { beforeAll, describe, expect, it } from "vitest";
-import {
-	FieldCryptoError,
-	Keyring,
-	sealField,
-} from "~/server/crypto/field-crypto";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import type { Keyring } from "~/server/crypto/field-crypto";
+import { textUnavailableProblem } from "~/server/crypto/field-open";
+import { evictDataKeyring } from "~/server/services/keys/data-key.service";
 import { forUser } from "~/server/services/preview";
 import { adminDb } from "~/test/pg-harness";
+import { sealedFile, sealText } from "~/test/sealed-fixture";
 import { arsUser, seedArsRates } from "../accounts/test-fixtures";
 import {
 	deleteRecurring,
@@ -30,16 +29,14 @@ import {
 	type TemplateSnapshot,
 } from "../recurring-delete.mutation";
 
-const keyring = new Keyring([{ id: 1, key: Buffer.alloc(32, 7) }]);
+const master = vi.hoisted(() => ({ ring: undefined as Keyring | undefined }));
+vi.mock("~/server/crypto/master-key", async (importOriginal) => ({
+	...(await importOriginal<typeof import("~/server/crypto/master-key")>()),
+	getMasterKeyring: () => master.ring,
+}));
+sealedFile(master);
 
 beforeAll(seedArsRates);
-
-const seal = (text: string, id: string) =>
-	sealField(keyring, text, {
-		table: "recurring_template",
-		column: "name",
-		rowId: id,
-	});
 
 type Fields = {
 	amount?: string;
@@ -59,7 +56,7 @@ async function template(
 		data: {
 			id,
 			userId,
-			name: sealed ? seal(name, id) : name,
+			name,
 			amount: f.amount ?? "8000",
 			currency: "ARS",
 			frequency: f.frequency ?? "MONTHLY",
@@ -68,22 +65,26 @@ async function template(
 			isActive: f.isActive ?? true,
 		},
 	});
+	if (sealed)
+		await sealText(
+			master.ring as Keyring,
+			{ table: "recurring_template", column: "name", rowId: id },
+			name,
+		);
 	return id;
 }
 
 /** Deletes a template through the mutation and returns its snapshot. */
 async function deleted(userId: string, name: string, sealed: boolean) {
 	const id = await template(userId, name, sealed);
-	const done = await forUser(userId, keyring).apply(deleteRecurring, {
+	const done = await forUser(userId).apply(deleteRecurring, {
 		templateId: id,
 	});
 	return done.value as TemplateSnapshot;
 }
 
-const restore = (userId: string, t: TemplateSnapshot, withKeyring = true) =>
-	forUser(userId, withKeyring ? keyring : undefined).apply(restoreRecurring, {
-		template: t,
-	});
+const restore = (userId: string, t: TemplateSnapshot) =>
+	forUser(userId).apply(restoreRecurring, { template: t });
 
 describe.each([
 	["plaintext names", false],
@@ -189,21 +190,22 @@ describe("restore twin check, mixed names", () => {
 		});
 	});
 
-	it("restoring keeps the sealed name as it was, readable under the same row id", async () => {
+	it("restoring writes the name the delete read, opened, under the same row id", async () => {
 		const u = (await arsUser()).user.id;
 		const snap = await deleted(u, "Gym", true);
+		// The snapshot comes from a client read, which opened it; PR 4 seals writes.
+		expect(snap.name).toBe("Gym");
 		await restore(u, snap);
 		const row = await adminDb.recurringTemplate.findUniqueOrThrow({
 			where: { id: snap.id },
 		});
-		expect(row.name).toBe(snap.name);
-		expect(row.name.startsWith("\u0001")).toBe(true);
+		expect(row.name).toBe("Gym");
 	});
 
 	it("the preview equals the result and writes nothing", async () => {
 		const u = (await arsUser()).user.id;
 		const snap = await deleted(u, "Gym", true);
-		const preview = await forUser(u, keyring).preview(restoreRecurring, {
+		const preview = await forUser(u).preview(restoreRecurring, {
 			template: snap,
 		});
 		await expect(
@@ -214,19 +216,28 @@ describe("restore twin check, mixed names", () => {
 		expect(applied.unchanged).toEqual(preview.unchanged);
 		expect(applied.undo).toMatchObject({ mutation: "recurring.delete" });
 		// The undo of the restore deletes it again.
-		await forUser(u, keyring).apply(deleteRecurring, { templateId: snap.id });
+		await forUser(u).apply(deleteRecurring, { templateId: snap.id });
 		await expect(
 			adminDb.recurringTemplate.count({ where: { userId: u } }),
 		).resolves.toBe(0);
 	});
 
-	it("a sealed twin with no keyring is an error, never a silent pass", async () => {
+	it("a sealed twin whose key is lost is an error, never a silent pass", async () => {
 		const u = (await arsUser()).user.id;
 		const snap = await deleted(u, "Gym", false);
 		await template(u, "Gym", true);
-		await expect(restore(u, snap, false)).rejects.toBeInstanceOf(
-			FieldCryptoError,
-		);
+		await adminDb.$executeRaw`DELETE FROM keystore."user_data_key" WHERE "userId" = ${u}`;
+		evictDataKeyring(u);
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		// A figure reads the template first, and carries the error as its cause.
+		// The first try is retryable while the keys reload in the background.
+		const first = await restore(u, snap).catch((e: unknown) => e);
+		expect(textUnavailableProblem(first)).toBe("key_rotated");
+		await vi.waitFor(async () => {
+			const again = await restore(u, snap).catch((e: unknown) => e);
+			expect(textUnavailableProblem(again)).toBe("encrypted_text_unavailable");
+		});
+		vi.restoreAllMocks();
 		await expect(
 			adminDb.recurringTemplate.count({ where: { userId: u } }),
 		).resolves.toBe(1);

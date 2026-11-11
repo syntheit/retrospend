@@ -211,10 +211,12 @@ describe("category name index", () => {
 		});
 		await expect(create(a, "Legacy ")).rejects.toMatchObject(CONFLICT);
 		const fresh = await create(a, "Fresh");
-		// With the stored name unreadable to a name compare, the index decides.
+		// With a stored name that no longer compares equal, the index decides.
+		// The client opens real ciphertext on read (field-open.ts), so another
+		// plaintext stands in for an unreadable name here.
 		await adminDb.category.update({
 			where: { id: fresh.id },
-			data: { name: "\u0001k1:opaque" },
+			data: { name: "Stand-in for an unreadable name" },
 		});
 		await expect(create(a, "Fresh")).rejects.toMatchObject(CONFLICT);
 	});

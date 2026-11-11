@@ -16,12 +16,10 @@
  *
  * Title matching happens here only, in the app layer: SQL narrows the rows
  * (user, income, created after the oldest active rule, in the book), and
- * both the row title and the rule's text are read through readUserText.
+ * both the row title and the rule's text come opened by the client (field-open.ts).
  */
 import { randomUUID } from "node:crypto";
 import type { RuleRunDto } from "~/lib/schemas/envelope-plan";
-import type { Keyring } from "~/server/crypto/field-crypto";
-import { readUserText } from "~/server/services/search-fold";
 import type { Prisma } from "~prisma";
 import { EnvelopeError } from "./errors";
 import { findPersonalBook, type LoadedBook, loadBook } from "./inputs";
@@ -95,13 +93,12 @@ export async function activeRules(
 	tx: Tx,
 	bookId: string,
 	H: string,
-	keyring?: Keyring,
 ) {
 	const rows = await tx.incomeRule.findMany({
 		where: { bookId, active: true, archivedAt: null },
 		orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
 	});
-	return rows.map((r) => toRule(r, H, keyring));
+	return rows.map((r) => toRule(r, H));
 }
 
 async function pendingFor(
@@ -165,12 +162,11 @@ async function pendingFor(
 
 /**
  * A row as the allocator reads it: valued and dated by the load's valuer,
- * its title opened (it may be ciphertext, which Postgres cannot match).
+ * its title as the client opened it (Postgres cannot match a sealed title).
  */
 export function moneyInRow(
 	loaded: LoadedBook,
 	r: IncomeRow,
-	keyring?: Keyring,
 ): MoneyInWithMonth {
 	const { date, month } = loaded.valuer.dated(r.date);
 	return {
@@ -182,11 +178,7 @@ export function moneyInRow(
 		keptInWealth: !isBudgetIncome(r),
 		categoryId: r.categoryId,
 		templateId: r.recurringTemplateId,
-		title: readUserText(keyring, r.title, {
-			table: "expense",
-			column: "title",
-			rowId: r.id,
-		}),
+		title: r.title,
 		currency: r.currency,
 		bookValue: isBudgetIncome(r) ? loaded.valuer.value(r, date, month) : 0,
 		createdAtMs: r.createdAt.getTime(),
@@ -254,8 +246,6 @@ export interface RunInput {
 	rules: readonly IncomeRule[];
 	appliedToEarlier?: ReadonlySet<string>;
 	batchId?: string;
-	/** Opens the row's title for TITLE rules. */
-	keyring?: Keyring;
 }
 
 /**
@@ -268,7 +258,7 @@ export async function runOne(
 	userId: string,
 	p: RunInput,
 ): Promise<RuleRunDto | null> {
-	const row = p.row ? moneyInRow(loaded, p.row, p.keyring) : null;
+	const row = p.row ? moneyInRow(loaded, p.row) : null;
 	if (row && isBudgetIncome(p.row as IncomeRow) && row.bookValue === null)
 		return null;
 	const plan = planRuleRun({
@@ -363,14 +353,11 @@ async function previousOf(tx: Tx, expenseId: string) {
 /**
  * Runs the rules on every income row still waiting (sidecar rows, edits,
  * deletes): exactly once under the book lock. Cheap when nothing waits.
- * Callers without a keyring read sealed rule or row text as an error; D11
- * passes the user's keyring where it turns field encryption on.
  */
 export async function runPendingRules(
 	tx: Tx,
 	userId: string,
 	now: Date,
-	keyring?: Keyring,
 ): Promise<RuleRunDto[]> {
 	const b = await headOf(tx, userId);
 	if (!b || b.idle) return [];
@@ -378,12 +365,12 @@ export async function runPendingRules(
 	const quick = await pendingFor(
 		tx,
 		b,
-		await activeRules(tx, b.id, book.currency, keyring),
+		await activeRules(tx, b.id, book.currency),
 	);
 	if (quick.fresh.length === 0 && quick.changed.length === 0) return [];
 	await lockBook(tx, b.id);
 	// Again under the lock: a concurrent read may have run them.
-	const rules = await activeRules(tx, b.id, book.currency, keyring);
+	const rules = await activeRules(tx, b.id, book.currency);
 	const work = await pendingFor(tx, b, rules);
 	if (work.fresh.length === 0 && work.changed.length === 0) return [];
 	const loaded = await loadBook(tx, userId, { now });
@@ -395,7 +382,6 @@ export async function runPendingRules(
 			row,
 			previous: null,
 			rules,
-			keyring,
 		});
 		if (run) out.push(run);
 	}
@@ -405,7 +391,6 @@ export async function runPendingRules(
 			row: c.row,
 			previous: await previousOf(tx, c.expenseId),
 			rules,
-			keyring,
 		});
 		if (run) out.push(run);
 	}
@@ -424,9 +409,8 @@ export async function ruleTotalFor(
 	userId: string,
 	expenseId: string,
 	now: Date,
-	keyring?: Keyring,
 ): Promise<number> {
-	await runPendingRules(tx, userId, now, keyring);
+	await runPendingRules(tx, userId, now);
 	const run = await tx.incomeRuleRun.findUnique({ where: { expenseId } });
 	if (!run || run.skipped) return 0;
 	return loadRecord(run.record, false).net.reduce((s, l) => s + l.amount, 0);

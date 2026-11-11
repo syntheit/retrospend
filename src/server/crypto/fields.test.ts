@@ -4,66 +4,22 @@
 // the Prisma schema. A new text column, a renamed table or a new composite key
 // fails here until the map says what to do with it.
 //
-// The schema is read from prisma/schema.prisma, not from Prisma.dmmf: the
-// prisma-client generator of Prisma 7 does not expose the DMMF, and its
-// runtime data model carries no `@id` information.
+// The schema is read from prisma/schema.prisma (src/test/prisma-schema.ts).
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { USER_TEXT_FIELDS } from "@retrospend/api-contract";
 import { describe, expect, it } from "vitest";
 import { USER_TEXT_COLUMNS } from "../../../scripts/scan-control-chars";
+import { readSchema } from "../../test/prisma-schema";
 import { scanSources } from "../../test/source-scan";
-import { REPO_ROOT } from "../../test/uiRules/paths";
 import {
 	FIELD_MAP,
 	fieldsOfModel,
+	type KeyClass,
 	keyClassOfColumn,
 	keyClassOfField,
-	type KeyClass,
 	mappedColumns,
 	modelOfTable,
 } from "./fields";
-
-type SchemaField = {
-	name: string;
-	type: string;
-	list: boolean;
-	attributes: string;
-};
-type SchemaModel = {
-	name: string;
-	table: string;
-	fields: SchemaField[];
-	/** Field names that make the primary key. */
-	idFields: string[];
-};
-
-/** The models of prisma/schema.prisma: fields, `@@map` table and primary key. */
-function readSchema(): SchemaModel[] {
-	const source = readFileSync(join(REPO_ROOT, "prisma", "schema.prisma"), "utf8");
-	const models: SchemaModel[] = [];
-	for (const match of source.matchAll(/^model (\w+) \{\n([\s\S]*?)^\}/gm)) {
-		const [, name = "", body = ""] = match;
-		const fields: SchemaField[] = [];
-		let table = name;
-		let idFields: string[] = [];
-		for (const raw of body.split("\n")) {
-			const line = raw.trim();
-			const map = line.match(/^@@map\("([^"]+)"\)/);
-			if (map) table = map[1] ?? table;
-			const composite = line.match(/^@@id\(\[([^\]]+)\]/);
-			if (composite)
-				idFields = (composite[1] ?? "").split(",").map((part) => part.trim());
-			const field = line.match(/^(\w+)\s+(\w+)(\[\])?(\?)?\s*(.*)$/);
-			if (!field || line.startsWith("@@") || line.startsWith("//")) continue;
-			const [, fieldName = "", type = "", list, , attributes = ""] = field;
-			fields.push({ name: fieldName, type, list: Boolean(list), attributes });
-			if (/(^|\s)@id(\s|\(|$)/.test(attributes)) idFields = [fieldName];
-		}
-		models.push({ name, table, fields, idFields });
-	}
-	return models;
-}
 
 const schema = readSchema();
 const modelByName = new Map(schema.map((m) => [m.name, m]));
@@ -373,7 +329,9 @@ describe("key classes", () => {
 	// Revision 2 of docs/roadmap/e2ee-d11-design.md, final for PR 1, plus the
 	// review additions: envelope_change.previousName (a copy of envelope.name,
 	// instance) and export_job.fileName, import_job.fileName and
-	// push_device.deviceName (personal text, user).
+	// push_device.deviceName (personal text, user). income_rule and
+	// wealth_transfer moved to instance (docs/roadmap/e2ee-d11-pr3.md 2.1):
+	// every book member reads them, and income_rule has no owner column.
 	const USER: string[] = [
 		"expense.title",
 		"expense.description",
@@ -381,12 +339,9 @@ describe("key classes", () => {
 		"category.name",
 		"asset_account.name",
 		"transfer.note",
-		"wealth_transfer.note",
 		"recurring_template.name",
 		"recurring_template.paymentSource",
 		"recurring_template.websiteUrl",
-		"income_rule.name",
-		"income_rule.matchTitle",
 		"export_job.fileName",
 		"import_job.fileName",
 		"push_device.deviceName",
@@ -419,6 +374,9 @@ describe("key classes", () => {
 		"apikey.name",
 		"webhook.name",
 		"envelope_change.previousName",
+		"income_rule.name",
+		"income_rule.matchTitle",
+		"wealth_transfer.note",
 	];
 
 	const classOf = (keyClass: KeyClass) =>
@@ -433,6 +391,19 @@ describe("key classes", () => {
 
 	it("seals text other people read with the instance key", () => {
 		expect(classOf("instance")).toEqual([...INSTANCE].sort());
+	});
+
+	it("gives every model with a user-class cell a userId column, its owner", () => {
+		// A user-class cell opens with the row owner's key (field-open.ts reads
+		// `userId`), so there is no ownerless user-class cell.
+		for (const [model, { columns }] of Object.entries(FIELD_MAP)) {
+			if (!Object.values(columns).includes("user")) continue;
+			const owner = modelByName
+				.get(model)
+				?.fields.find((f) => f.name === "userId");
+			expect(owner?.type, `${model}.userId`).toBe("String");
+			expect(owner?.list, `${model}.userId`).toBe(false);
+		}
 	});
 
 	it("gives every cell exactly one class", () => {

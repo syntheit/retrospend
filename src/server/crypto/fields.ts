@@ -9,15 +9,22 @@
  * (no field uses `@map`), so the AAD for a cell is
  * `{ table, column, rowId }` with the table from here.
  *
- * Key classes, final per the owner's answers (design doc, Revision 2):
- * - `user`: personal text, sealed with the row owner's data key.
+ * Key classes, final per the owner's answers (design doc, Revision 2, and
+ * the 2026-11-11 change in docs/roadmap/e2ee-d11-pr3.md section 2.1):
+ * - `user`: personal text, sealed with the row owner's data key. Every model
+ *   with a user-class column has a `userId` column, and the reader opens the
+ *   cell with that owner's key; a reader who is not the owner gets a typed
+ *   fallback, never another key's attempt.
  * - `instance`: text other people read (shared expenses, projects, shared
- *   budget books, co-participant names, admin views, better-auth reads), sealed
- *   with the instance key.
+ *   budget books and their income rules and wealth moves, co-participant
+ *   names, admin views, better-auth reads), sealed with the instance key.
+ *   `income_rule` has no owner column and every book member reads it, so its
+ *   text and `wealth_transfer.note` are instance class.
  *
- * Nothing seals through this map yet. `fields.test.ts` holds it in step with
- * the control-character scan list, the declared contract fields and the Prisma
- * schema, so a new text column fails a test until it is placed here.
+ * Reads open sealed cells through this map (field-open.ts); nothing seals
+ * yet. `fields.test.ts` holds it in step with the control-character scan
+ * list, the declared contract fields and the Prisma schema, so a new text
+ * column fails a test until it is placed here.
  */
 
 export type KeyClass = "user" | "instance";
@@ -59,7 +66,7 @@ export const FIELD_MAP = {
 	ImportJob: { table: "import_job", columns: { fileName: "user" } },
 	IncomeRule: {
 		table: "income_rule",
-		columns: { name: "user", matchTitle: "user" },
+		columns: { name: "instance", matchTitle: "instance" },
 	},
 	Payment: {
 		table: "payment",
@@ -97,7 +104,7 @@ export const FIELD_MAP = {
 	},
 	Transfer: { table: "transfer", columns: { note: "user" } },
 	User: { table: "user", columns: { name: "instance" } },
-	WealthTransfer: { table: "wealth_transfer", columns: { note: "user" } },
+	WealthTransfer: { table: "wealth_transfer", columns: { note: "instance" } },
 	Webhook: { table: "webhook", columns: { name: "instance" } },
 } as const satisfies Record<string, ModelFields>;
 

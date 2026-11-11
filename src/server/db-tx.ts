@@ -1,4 +1,20 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import type { Prisma, PrismaClient } from "~prisma";
+
+const transactionScope = new AsyncLocalStorage<true>();
+
+/**
+ * Whether the caller runs inside an interactive transaction a client opened
+ * (userTransaction, a scoped or the global `$transaction`). The field-open
+ * extension then loads no key: it would take a second pool connection while
+ * the transaction holds one.
+ */
+export const inTransaction = (): boolean =>
+	transactionScope.getStore() === true;
+
+/** Runs a transaction callback so `inTransaction()` is true inside it. */
+export const insideTransaction = <T>(work: () => Promise<T>): Promise<T> =>
+	transactionScope.run(true, work);
 
 export interface UserTransactionOptions {
 	readonly timeout?: number;
@@ -49,9 +65,13 @@ export async function userTransaction<T>(
 ): Promise<T> {
 	const crypto = cryptoClients.get(client)?.(userId);
 	await crypto?.ready();
-	return (crypto?.client ?? client).$transaction(async (tx) => {
-		await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true),
-		                            set_config('role', 'retrospend_app', true)`;
-		return work(tx);
-	}, options);
+	return (crypto?.client ?? client).$transaction(
+		(tx) =>
+			insideTransaction(async () => {
+				await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true),
+				                            set_config('role', 'retrospend_app', true)`;
+				return work(tx);
+			}),
+		options,
+	);
 }

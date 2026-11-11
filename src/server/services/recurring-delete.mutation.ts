@@ -14,13 +14,12 @@
  * entry that was deleted or linked elsewhere, is not touched.
  */
 import { TRPCError } from "@trpc/server";
-import type { Keyring } from "~/server/crypto/field-crypto";
 import type { Prisma } from "~prisma";
 import { FIGURE_PLAN_COST } from "./envelope/figures";
 import { RECURRING_COST_FIGURES } from "./figures/recurring";
 import type { MoneyMutation } from "./preview/types";
 import { deleteTemplate } from "./recurring.service";
-import { pgLower, readUserText } from "./search-fold";
+import { pgLower } from "./search-fold";
 
 /** A template as the undo token carries it: dates as ISO text, the amount as decimal text. */
 export interface TemplateSnapshot {
@@ -125,17 +124,6 @@ export interface RestoreRecurringInput {
 	readonly template: TemplateSnapshot;
 }
 
-/** The name of a template row, opened: it may be ciphertext. */
-const nameOf = (
-	keyring: Keyring | undefined,
-	row: { id: string; name: string },
-) =>
-	readUserText(keyring, row.name, {
-		table: "recurring_template",
-		column: "name",
-		rowId: row.id,
-	});
-
 /**
  * Whether the user has an active template like `t`: the same amount,
  * currency, frequency and direction, and the same name ignoring case. The
@@ -145,13 +133,13 @@ const nameOf = (
  * is an unescaped ILIKE and read those three as pattern characters ("Gym 50%"
  * conflicted with "Gym 50% off"). SQL narrows by everything but the name, so
  * the names compared here are those of one user's active templates with that
- * exact money and schedule: a handful.
+ * exact money and schedule: a handful. The client opens them on read
+ * (field-open.ts), and the snapshot was taken from such a read.
  */
 async function sameByHand(
 	tx: Prisma.TransactionClient,
 	userId: string,
 	t: TemplateSnapshot,
-	keyring: Keyring | undefined,
 ): Promise<boolean> {
 	const candidates = await tx.recurringTemplate.findMany({
 		where: {
@@ -164,8 +152,8 @@ async function sameByHand(
 		},
 		select: { id: true, name: true },
 	});
-	const name = pgLower(nameOf(keyring, t));
-	return candidates.some((c) => pgLower(nameOf(keyring, c)) === name);
+	const name = pgLower(t.name);
+	return candidates.some((c) => pgLower(c.name) === name);
 }
 
 /** Puts a deleted template back, unless one with its id, or the same one by hand, exists. */
@@ -188,7 +176,7 @@ function restoreWith(
 				});
 			// Made again by hand since: restoring would run it twice.
 			const twin = t.isActive
-				? await sameByHand(tx, actor.userId, t, actor.keyring)
+				? await sameByHand(tx, actor.userId, t)
 				: false;
 			if (twin)
 				throw new TRPCError({

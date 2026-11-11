@@ -233,10 +233,15 @@ describe("user-text columns hold their ciphertext", () => {
 		const { user } = await createTestUser();
 		const limit = scanned.limits.get("category.name") ?? 0;
 		const sealed = sealField(keyring, "€".repeat(limit), aad);
+		// Raw SQL both ways: the clients refuse ciphertext written as text and
+		// open it on read.
 		const row = await adminDb.category.create({
-			data: { userId: user.id, name: sealed, color: "teal", kind: "EXPENSE" },
+			data: { userId: user.id, name: "x", color: "teal", kind: "EXPENSE" },
 		});
-		expect(row.name).toBe(sealed);
+		await adminDb.$executeRaw`UPDATE "category" SET "name" = ${sealed} WHERE "id" = ${row.id}`;
+		const [stored] = await adminDb.$queryRaw<{ name: string }[]>`
+			SELECT "name" FROM "category" WHERE "id" = ${row.id}`;
+		expect(stored?.name).toBe(sealed);
 		expect(sealed.length).toBe(4 * limit + 48);
 	});
 });

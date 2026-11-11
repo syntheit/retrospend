@@ -6,7 +6,8 @@
  * Personal titles have two paths, picked by `searchesInApp` (search-fold.ts):
  * Postgres groups and matches them in SQL when no keyring is passed (the case
  * today), and the same grouping happens in the app layer over decrypted
- * titles when one is, because a title may then be ciphertext
+ * titles when one is, because SQL cannot read a sealed title (the client
+ * opens it on read)
  * (docs/roadmap/e2ee-spike.md, lane D). Shared descriptions follow the same
  * two paths (the owner decided shared text is sealed too). Both paths hand
  * their groups to the same merge and ranking below, so the output is one
@@ -17,7 +18,6 @@ import type { PrismaClient } from "~prisma";
 import {
 	APP_LAYER_WINDOW,
 	ilikeContains,
-	readUserText,
 	searchesInApp,
 } from "./search-fold";
 import { listedEntryWhere } from "./spending";
@@ -59,10 +59,10 @@ export async function titleSuggestions(
 	const { keyring, window } = options;
 	const [personal, sharedGroups] = await Promise.all([
 		searchesInApp(keyring)
-			? personalInApp(db, userId, query, keyring, window)
+			? personalInApp(db, userId, query, window)
 			: personalInSql(db, userId, query),
 		searchesInApp(keyring)
-			? sharedInApp(db, userId, query, keyring, window)
+			? sharedInApp(db, userId, query, window)
 			: sharedInSql(db, userId, query),
 	]);
 
@@ -145,7 +145,8 @@ async function personalInSql(
 }
 
 /**
- * The app-layer path: read the newest expenses, open each title, and match
+ * The app-layer path: read the newest expenses (the client opens each title,
+ * field-open.ts) and match
  * and group here. `contains ... mode: insensitive` is `ILIKE '%q%'` with q
  * unescaped, which lowercases both sides one code point at a time, does not
  * fold accents and reads `%`, `_` and backslash in q as pattern characters;
@@ -156,7 +157,6 @@ async function personalInApp(
 	db: PrismaClient,
 	userId: string,
 	query: string,
-	keyring: Keyring,
 	window: number = TITLE_SUGGESTION_WINDOW,
 ): Promise<Personal> {
 	const matches = ilikeContains(query);
@@ -173,11 +173,7 @@ async function personalInApp(
 		},
 	});
 	const opened = rows.map((r) => ({
-		title: readUserText(keyring, r.title, {
-			table: "expense",
-			column: "title",
-			rowId: r.id,
-		}),
+		title: r.title,
 		categoryId: r.categoryId,
 		amount: Number(r.amount),
 		currency: r.currency,
@@ -204,13 +200,13 @@ async function personalInApp(
  * The app-layer path for shared descriptions, which are encrypted like
  * personal titles (the owner decided shared text is sealed with an
  * instance-wide key): the newest shared expenses the user is a participant
- * of are read, opened, matched and grouped here, as `personalInApp` does.
+ * of are read (opened by the client), matched and grouped here, as
+ * `personalInApp` does.
  */
 async function sharedInApp(
 	db: PrismaClient,
 	userId: string,
 	query: string,
-	keyring: Keyring,
 	window: number = TITLE_SUGGESTION_WINDOW,
 ): Promise<Group[]> {
 	const matches = ilikeContains(query);
@@ -226,11 +222,7 @@ async function sharedInApp(
 	});
 	const counts = new Map<string, number>();
 	for (const r of rows) {
-		const text = readUserText(keyring, r.description, {
-			table: "shared_transaction",
-			column: "description",
-			rowId: r.id,
-		});
+		const text = r.description;
 		if (matches(text)) counts.set(text, (counts.get(text) ?? 0) + 1);
 	}
 	return [...counts.entries()]

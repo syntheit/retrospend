@@ -14,6 +14,7 @@ import superjson from "superjson";
 import { MissingRateError } from "@retrospend/domain/money";
 import { errorFormatter } from "~/server/api/error-formatter";
 import type { Session } from "~/server/better-auth/config";
+import { assertNoSealedText } from "~/server/crypto/response-guard";
 import { getWebSession } from "~/server/better-auth/web-session";
 import { createUserScopedDb, db } from "~/server/db";
 import {
@@ -179,13 +180,26 @@ const timingMiddleware = t.middleware(async ({ next }) => {
 });
 
 /**
+ * In tests, fails any response that carries a sealed value (E2EE D11, design
+ * section 7.1): every text a procedure returns must have been opened.
+ */
+const sealedTextGuard = t.middleware(async ({ next }) => {
+	const result = await next();
+	if (result.ok) assertNoSealedText(result.data, "tRPC");
+	return result;
+});
+
+/** Every procedure builder starts here. */
+const baseProcedure = t.procedure.use(timingMiddleware).use(sealedTextGuard);
+
+/**
  * Public (unauthenticated) procedure
  *
  * This is the base piece you use to build new queries and mutations on your tRPC API. It does not
  * guarantee that a user querying is authorized, but you can still access user session data if they
  * are logged in.
  */
-export const publicProcedure = t.procedure.use(timingMiddleware);
+export const publicProcedure = baseProcedure;
 
 /**
  * Protected (authenticated) procedure
@@ -195,8 +209,7 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
  *
  * @see https://trpc.io/docs/procedures
  */
-export const protectedProcedure = t.procedure
-	.use(timingMiddleware)
+export const protectedProcedure = baseProcedure
 	.use(async ({ ctx, next }) => {
 		if (!ctx.session?.user) {
 			throw new TRPCError({ code: "UNAUTHORIZED" });
@@ -294,8 +307,7 @@ export const adminListProcedure = (view: AdminListView) =>
  * Procedures using this must call assertGuestProjectScope(ctx.participant, projectId)
  * before accessing any project data.
  */
-export const guestOrProtectedProcedure = t.procedure
-	.use(timingMiddleware)
+export const guestOrProtectedProcedure = baseProcedure
 	.use(async ({ ctx, next }) => {
 		// Try regular user session first
 		if (ctx.session?.user && ctx.session.user.isActive) {

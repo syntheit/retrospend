@@ -25,6 +25,8 @@ const TITLES: Record<ProblemCode, string> = {
 	rate_out_of_range: "Rate too far from the stored rate",
 	id_taken: "That id is already used",
 	rate_limited: "Too many requests",
+	encrypted_text_unavailable: "Encrypted text unavailable",
+	key_rotated: "Encryption key changed, try again",
 	internal: "Server error",
 	not_implemented: "Not implemented",
 };

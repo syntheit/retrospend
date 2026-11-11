@@ -6,6 +6,7 @@ import {
 	PROBLEM_CONTENT_TYPE,
 } from "@retrospend/api-contract/common";
 import { IMPORT_MAX_BYTES } from "@retrospend/api-contract";
+import { assertNoSealedText } from "~/server/crypto/response-guard";
 import { encodeProblem, problem } from "./errors";
 import type { V1InitialContext } from "./middleware";
 import { v1Router } from "./router";
@@ -59,6 +60,16 @@ function withProblemHeaders(res: Response): Response {
 	return new Response(res.body, { status: res.status, headers });
 }
 
+/**
+ * In tests, fails a JSON response that carries a sealed value (E2EE D11,
+ * design section 7.1). Does nothing outside tests, so no body is read twice.
+ */
+async function guardSealedText(res: Response): Promise<void> {
+	if (process.env.NODE_ENV !== "test") return;
+	if (!(res.headers.get("content-type") ?? "").includes("json")) return;
+	assertNoSealedText(await res.clone().json().catch(() => null), "v1");
+}
+
 /** Builds a fetch handler for a v1 router (tests pass their own router). */
 export function createV1Handler(
 	// biome-ignore lint/suspicious/noExplicitAny: oRPC routers are typed per contract
@@ -86,6 +97,7 @@ export function createV1Handler(
 		const res = matched
 			? response
 			: Response.json(encodeProblem(problem("not_found")), { status: 404 });
+		await guardSealedText(res);
 		return withProblemHeaders(res);
 	};
 }

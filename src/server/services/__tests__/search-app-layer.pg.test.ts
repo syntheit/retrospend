@@ -8,7 +8,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { fromWallTime } from "@retrospend/domain/time-zone";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
 	FieldCryptoError,
 	Keyring,
@@ -25,6 +25,7 @@ import {
 import { listV2Input } from "~/server/services/expense-list/types";
 import { searchExpenses as searchExpensesWith } from "~/server/services/search.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
+import { restoreCells, writeCell } from "~/test/sealed-fixture";
 import { Prisma } from "~prisma";
 
 const TZ = "America/Argentina/Buenos_Aires";
@@ -480,30 +481,21 @@ describe("rows that hold ciphertext", () => {
 			});
 			ids[title] = created.id;
 		}
+		// Raw SQL search opens with the keyring it is given, so these rows are
+		// sealed with that ring and written raw (the clients refuse ciphertext).
 		const seal = (column: string, rowId: string, text: string) =>
-			sealField(keyring, text, { table: "expense", column, rowId });
-		await adminDb.expense.update({
-			where: { id: ids["Café sealed"] },
-			data: { title: seal("title", ids["Café sealed"] ?? "", "Café sealed") },
-		});
-		await adminDb.expense.update({
-			where: { id: ids.Almuerzo },
-			data: {
-				description: seal(
-					"description",
-					ids.Almuerzo ?? "",
-					"Sealed café note",
-				),
-			},
-		});
-		await adminDb.expense.update({
-			where: { id: ids["Sealed Ñandú"] },
-			data: {
-				title: seal("title", ids["Sealed Ñandú"] ?? "", "Sealed Ñandú"),
-				location: seal("location", ids["Sealed Ñandú"] ?? "", "Plaza Ñuñoa"),
-			},
-		});
+			writeCell(
+				"expense",
+				column,
+				rowId,
+				sealField(keyring, text, { table: "expense", column, rowId }),
+			);
+		await seal("title", ids["Café sealed"] ?? "", "Café sealed");
+		await seal("description", ids.Almuerzo ?? "", "Sealed café note");
+		await seal("title", ids["Sealed Ñandú"] ?? "", "Sealed Ñandú");
+		await seal("location", ids["Sealed Ñandú"] ?? "", "Plaza Ñuñoa");
 	});
+	afterAll(restoreCells);
 
 	const query = (
 		q: string,
@@ -575,18 +567,19 @@ describe("rows that hold ciphertext", () => {
 	it("fails loudly for a value sealed for another row, never skips it", async () => {
 		const moved = randomUUID();
 		await adminDb.expense.create({
-			data: {
-				...base(user.user.id),
-				id: moved,
-				// Sealed for another row: the AAD check must refuse it.
-				title: sealField(keyring, "Moved café", {
-					table: "expense",
-					column: "title",
-					rowId: ids["Café sealed"] ?? "",
-				}),
-				date: day(20),
-			},
+			data: { ...base(user.user.id), id: moved, title: "x", date: day(20) },
 		});
+		// Sealed for another row: the AAD check must refuse it.
+		await writeCell(
+			"expense",
+			"title",
+			moved,
+			sealField(keyring, "Moved café", {
+				table: "expense",
+				column: "title",
+				rowId: ids["Café sealed"] ?? "",
+			}),
+		);
 		await expect(
 			userTransaction(adminDb, user.user.id, (tx) =>
 				pageKeys(tx, query("cafe"), null, 50),

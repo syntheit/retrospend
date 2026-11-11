@@ -4,22 +4,41 @@
  * suggestions in the same order, and the SQL path must still return what the
  * old code returned (copied below as the oracle) wherever the old order did
  * not depend on a database tie. Then rows that hold ciphertext, the row
- * window, and the failures.
+ * window, and the failures. A keyring only picks the path: the client opens
+ * sealed text on read (field-open.ts), so the rows are sealed with the
+ * keystore's keys (src/test/sealed-fixture.ts).
  */
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
 	FieldCryptoError,
 	Keyring,
 	sealField,
 } from "~/server/crypto/field-crypto";
+import { TextUnavailableError } from "~/server/crypto/field-open";
+import { evictDataKeyring } from "~/server/services/keys/data-key.service";
 import { listedEntryWhere } from "~/server/services/spending";
 import {
 	TITLE_SUGGESTION_WINDOW,
 	titleSuggestions,
 } from "~/server/services/title-suggestions.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
+import {
+	instanceKeyring,
+	sealedFile,
+	sealText,
+	userKeyring,
+	writeCell,
+} from "~/test/sealed-fixture";
 import type { PrismaClient } from "~prisma";
 
+const master = vi.hoisted(() => ({ ring: undefined as Keyring | undefined }));
+vi.mock("~/server/crypto/master-key", async (importOriginal) => ({
+	...(await importOriginal<typeof import("~/server/crypto/master-key")>()),
+	getMasterKeyring: () => master.ring,
+}));
+sealedFile(master);
+
+/** Picks the app-layer path; the client opens with the keystore's keys. */
 const keyring = new Keyring([{ id: 1, key: Buffer.alloc(32, 9) }]);
 const PATHS = [
 	["the SQL path (no keyring)", undefined],
@@ -463,8 +482,12 @@ describe("rows that hold ciphertext", () => {
 	let a: string;
 	let b: string;
 	let c: string;
-	const seal = (text: string, rowId: string, ring = keyring) =>
-		sealField(ring, text, { table: "expense", column: "title", rowId });
+	const seal = (text: string, rowId: string) =>
+		sealText(
+			master.ring as Keyring,
+			{ table: "expense", column: "title", rowId },
+			text,
+		);
 
 	beforeAll(async () => {
 		mixed = await createTestUser();
@@ -477,21 +500,24 @@ describe("rows that hold ciphertext", () => {
 			{ title: "Café con leche", date: 1, amount: "100", categoryId: a },
 			{
 				id: "mixsealed1",
-				title: seal("Café con leche", "mixsealed1"),
+				title: "Café con leche",
 				date: 2,
 				amount: "200",
 				categoryId: b,
 			},
 			{
 				id: "mixsealed2",
-				title: seal("CAFÉ CON LECHE", "mixsealed2"),
+				title: "CAFÉ CON LECHE",
 				date: 3,
 				amount: "300",
 				categoryId: c,
 			},
-			{ id: "mixsealed3", title: seal("Ñandú", "mixsealed3"), date: 4 },
+			{ id: "mixsealed3", title: "Ñandú", date: 4 },
 			{ title: "Pan", date: 5 },
 		]);
+		await seal("Café con leche", "mixsealed1");
+		await seal("CAFÉ CON LECHE", "mixsealed2");
+		await seal("Ñandú", "mixsealed3");
 	});
 	const ask = (q: string, ring?: Keyring) =>
 		titleSuggestions(mixed.db as PrismaClient, mixed.user.id, q, {
@@ -526,33 +552,58 @@ describe("rows that hold ciphertext", () => {
 		expect(await ask("ÑANDÚ")).toEqual([]);
 	});
 
-	it("fails on a key it does not hold, never as a non-match", async () => {
-		const stranger = new Keyring([{ id: 2, key: Buffer.alloc(32, 5) }]);
-		await expect(ask("pan", stranger)).rejects.toMatchObject({
-			code: "unknown_key",
-		});
+	it("fails when the key is lost, never as a non-match", async () => {
+		const lost = await createTestUser();
+		await seed(lost, [{ id: "lostrow1", title: "Pan", date: 1 }]);
+		await sealText(
+			master.ring as Keyring,
+			{ table: "expense", column: "title", rowId: "lostrow1" },
+			"Pan",
+		);
+		await adminDb.$executeRaw`DELETE FROM keystore."user_data_key" WHERE "userId" = ${lost.user.id}`;
+		evictDataKeyring(lost.user.id);
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		const failure = await titleSuggestions(
+			lost.db as PrismaClient,
+			lost.user.id,
+			"pan",
+			{ keyring },
+		).catch((e: unknown) => e);
+		expect((failure as TextUnavailableError).code).toBe("keystore_lost");
+		vi.restoreAllMocks();
 	});
 
 	it("fails on a title sealed for another row", async () => {
 		const bad = await createTestUser();
-		await seed(bad, [
-			{ id: "badrow1", title: seal("Pan", "someotherrow"), date: 1 },
-		]);
+		await seed(bad, [{ id: "badrow1", title: "Pan", date: 1 }]);
+		const ring = await userKeyring(bad.user.id, master.ring as Keyring);
+		await writeCell(
+			"expense",
+			"title",
+			"badrow1",
+			sealField(ring, "Pan", {
+				table: "expense",
+				column: "title",
+				rowId: "someotherrow",
+			}),
+		);
+		vi.spyOn(console, "error").mockImplementation(() => {});
 		const run = titleSuggestions(bad.db as PrismaClient, bad.user.id, "pan", {
 			keyring,
 		});
 		await expect(run).rejects.toBeInstanceOf(FieldCryptoError);
 		await expect(run).rejects.toMatchObject({ code: "auth_failed" });
+		vi.restoreAllMocks();
 	});
 });
 
 describe("shared descriptions on the app path", () => {
 	const sealShared = (text: string, rowId: string) =>
-		sealField(keyring, text, {
-			table: "shared_transaction",
-			column: "description",
-			rowId,
-		});
+		sealText(
+			master.ring as Keyring,
+			{ table: "shared_transaction", column: "description", rowId },
+			text,
+		);
 	const makeShared = (
 		id: string,
 		description: string,
@@ -589,18 +640,10 @@ describe("shared descriptions on the app path", () => {
 	it("counts sealed and plaintext descriptions of one text together", async () => {
 		const who = await createTestUser();
 		await makeShared("shsealed1", "Asado del domingo", who.user.id, 1);
-		await makeShared(
-			"shsealed2",
-			sealShared("ASADO del domingo", "shsealed2"),
-			who.user.id,
-			2,
-		);
-		await makeShared(
-			"shsealed3",
-			sealShared("Asado del domingo", "shsealed3"),
-			who.user.id,
-			3,
-		);
+		await makeShared("shsealed2", "ASADO del domingo", who.user.id, 2);
+		await makeShared("shsealed3", "Asado del domingo", who.user.id, 3);
+		await sealShared("ASADO del domingo", "shsealed2");
+		await sealShared("Asado del domingo", "shsealed3");
 		const got = await ask(who, "asado", { keyring });
 		expect(got.map((s) => [s.title, s.count])).toEqual([
 			["Asado del domingo", 3],
@@ -626,14 +669,21 @@ describe("shared descriptions on the app path", () => {
 
 	it("fails on a description sealed for another row", async () => {
 		const who = await createTestUser();
-		await makeShared(
+		await makeShared("shbad1", "Pan", who.user.id, 1);
+		await writeCell(
+			"shared_transaction",
+			"description",
 			"shbad1",
-			sealShared("Pan", "someotherrow"),
-			who.user.id,
-			1,
+			sealField(await instanceKeyring(master.ring as Keyring), "Pan", {
+				table: "shared_transaction",
+				column: "description",
+				rowId: "someotherrow",
+			}),
 		);
+		vi.spyOn(console, "error").mockImplementation(() => {});
 		await expect(ask(who, "pan", { keyring })).rejects.toMatchObject({
 			code: "auth_failed",
 		});
+		vi.restoreAllMocks();
 	});
 });

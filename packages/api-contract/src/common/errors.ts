@@ -24,6 +24,12 @@ export const PROBLEM_STATUS = {
 	rate_out_of_range: 422,
 	id_taken: 409,
 	rate_limited: 429,
+	// A sealed text the reader may open, whose key the server cannot load
+	// (key store lost or unreachable). Not a client fault; retrying later may work.
+	encrypted_text_unavailable: 503,
+	// A key was added since this server loaded its keys; it is loading them
+	// again, and a retry of the same request opens the text.
+	key_rotated: 503,
 	internal: 500,
 	not_implemented: 501,
 } as const satisfies Record<string, number>;

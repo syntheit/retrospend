@@ -14,7 +14,7 @@
  *   6 Cafe            ARS 3,500    already in Activity
  *   7 Sin marcar      ARS 1,000    unchecked
  */
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { forUser } from "~/server/services/preview";
 import { adminDb } from "~/test/pg-harness";
 import type { Prisma } from "~prisma";
@@ -467,12 +467,12 @@ describe("import.commit text that starts with U+0001", () => {
 
 describe("a stored title that starts with U+0001", () => {
 	// A row from before the rule is just text with a control character in it.
-	// Only incoming text is refused; the duplicate check reads stored titles
-	// without ever throwing. (The review's matcher reads stored text through
-	// readUserText, which treats a leading U+0001 as ciphertext by design, so
-	// the pre-backfill scan must find no such row; match.test.ts covers its key.)
-	it("does not stop a CSV import on its date, and still finds the duplicate", async () => {
-		const { user } = await arsUser();
+	// The user's client treats a leading U+0001 as ciphertext (field-open.ts)
+	// and fails the read, never hiding it (malformed with a key; here, with no
+	// master key set, master_key_missing), so the pre-upgrade scan
+	// (scripts/scan-control-chars.ts --fail) must find no such row.
+	it("fails the CSV import instead of reading it as text", async () => {
+		const { user, db } = await arsUser();
 		const legacy = {
 			userId: user.id,
 			currency: "ARS",
@@ -483,10 +483,13 @@ describe("a stored title that starts with U+0001", () => {
 			date: new Date(`${DAY}T15:00:00.000Z`),
 			status: "FINALIZED" as const,
 		};
-		await adminDb.expense.create({
-			data: { ...legacy, title: "\u0001Coffee" },
+		// Stored raw: the clients refuse a write that starts like ciphertext.
+		const stored = await adminDb.expense.create({
+			data: { ...legacy, title: "Coffee" },
 		});
-		const csv = await new CsvService(adminDb).importExpensesFromRows(
+		await adminDb.$executeRaw`UPDATE "expense" SET "title" = ${"\u0001Coffee"} WHERE "id" = ${stored.id}`;
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		const csv = new CsvService(db).importExpensesFromRows(
 			user.id,
 			[
 				{
@@ -506,6 +509,7 @@ describe("a stored title that starts with U+0001", () => {
 			],
 			{ timeZone: "UTC" },
 		);
-		expect(csv).toMatchObject({ count: 1, skippedDuplicates: 1, rejected: [] });
+		await expect(csv).rejects.toMatchObject({ code: "master_key_missing" });
+		vi.restoreAllMocks();
 	});
 });
