@@ -11,9 +11,13 @@
  *   no ring, master key missing                     -> TextUnavailableError master_key_missing
  *   a cell sealed for another row                   -> FieldCryptoError auth_failed
  *   a sealed value in any top-level write          -> refused before the query (bad_plaintext)
+ *   inside verbatim, the row's own sealed cell     -> written as it is
+ *   inside verbatim, another row's or column's cell -> FieldCryptoError auth_failed
+ *   inside verbatim, no row id, another owner, no user -> bad_plaintext
  */
 import { randomBytes } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { verbatim } from "../db-tx";
 import { KeystoreError } from "../services/keys/keystore-errors";
 import {
 	type FieldAad,
@@ -427,11 +431,17 @@ describe("refusals", () => {
 		return failure;
 	};
 
-	it("runs updateMany with plaintext or null in a mapped column (two callers do; PR 4 moves them)", async () => {
-		for (const data of [{ title: "x" }, { title: null }, { amount: 1 }]) {
+	it("runs updateMany with plaintext or null in a mapped column (PR 4.2 refuses the plaintext)", async () => {
+		for (const [model, data] of [
+			["Expense", { title: "x" }],
+			["Expense", { title: null }],
+			["Expense", { amount: 1 }],
+			// shared-expenses/transaction.service.ts clears a reason this way.
+			["SplitParticipant", { rejectionReason: null }],
+		] as const) {
 			const query = vi.fn(async () => ({ count: 1 }));
 			await handle({
-				model: "Expense",
+				model,
 				operation: "updateMany",
 				args: { where: {}, data },
 				query,
@@ -459,6 +469,101 @@ describe("refusals", () => {
 				"bad_plaintext",
 			);
 		}
+	});
+
+	describe("inside verbatim", () => {
+		const user = ring(1);
+		const instance = ring(1);
+		const keys = keysWith({ user, instance });
+		const inside = handlerFor(keys);
+		const run = (operation: string, model: string, args: unknown) => {
+			const query = vi.fn(async () => ({}));
+			return verbatim(() =>
+				inside({ model, operation, args, query }).then(
+					() => query.mock.calls.length > 0,
+				),
+			);
+		};
+		const ownProject = sealField(instance, "Viaje", cell("project", "name", "p1"));
+		const ownTitle = sealField(user, "Taxi", cell("expense", "title", "e1"));
+
+		it("stores a cell sealed for the very row and column it is written to", async () => {
+			await keys.ready();
+			expect(
+				await run("update", "Project", {
+					where: { id: "p1" },
+					data: { name: ownProject },
+				}),
+			).toBe(true);
+			expect(
+				await run("createMany", "Expense", {
+					data: [{ id: "e1", userId: ME, title: ownTitle }],
+				}),
+			).toBe(true);
+			expect(
+				await run("update", "Expense", {
+					where: { id: "e1" },
+					data: { title: "Taxi" },
+				}),
+			).toBe(true);
+		});
+
+		it("refuses a cell sealed for another row or column", async () => {
+			await keys.ready();
+			for (const [operation, model, args] of [
+				["update", "Project", { where: { id: "p2" }, data: { name: ownProject } }],
+				[
+					"update",
+					"Project",
+					{ where: { id: "p1" }, data: { description: ownProject } },
+				],
+				["create", "Expense", { data: { id: "e2", userId: ME, title: ownTitle } }],
+			] as const) {
+				const failure = await run(operation, model, args).catch((e) => e);
+				expect(failure, `${model}.${operation}`).toBeInstanceOf(
+					FieldCryptoError,
+				);
+				expect((failure as FieldCryptoError).code).toBe("auth_failed");
+			}
+		});
+
+		it("refuses a sealed value it cannot bind to a row of its own", async () => {
+			await keys.ready();
+			const global = handlerFor(keysWith({ instance }, null));
+			for (const write of [
+				// No row id.
+				() => run("updateMany", "Project", { where: {}, data: { name: ownProject } }),
+				() => run("create", "Project", { data: { name: ownProject } }),
+				// A user-class cell for another owner, or with no user at all.
+				() =>
+					run("create", "Expense", {
+						data: { id: "e1", userId: OTHER, title: ownTitle },
+					}),
+				() =>
+					verbatim(() =>
+						global({
+							model: "Expense",
+							operation: "update",
+							args: { where: { id: "e1" }, data: { title: ownTitle } },
+							query: async () => ({}),
+						}),
+					),
+			]) {
+				const failure = await write().catch((e) => e);
+				expect(failure).toBeInstanceOf(FieldCryptoError);
+				expect((failure as FieldCryptoError).code).toBe("bad_plaintext");
+			}
+		});
+
+		it("is a scope: outside it the same own cell is refused", async () => {
+			const failure = await inside({
+				model: "Project",
+				operation: "update",
+				args: { where: { id: "p1" }, data: { name: ownProject } },
+				query: async () => ({}),
+			}).catch((e) => e);
+			expect((failure as FieldCryptoError).code).toBe("bad_plaintext");
+		});
 	});
 
 	it("refuses an aggregate that returns a sealed value, and passes plaintext", async () => {
