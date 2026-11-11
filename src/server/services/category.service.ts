@@ -1,13 +1,16 @@
 import { TRPCError } from "@trpc/server";
+import { DEFAULT_CATEGORIES } from "~/lib/constants";
 import type { db as globalDb } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import type { CategoryColor, Prisma } from "~prisma";
 import type { Keyring } from "../crypto/field-crypto";
 import {
+	categoryNameIndexesFor,
 	categoryNameIndexFor,
 	comparableIndexes,
 	isUniqueViolation,
 } from "./category-name-index.service";
+import { ensureUserKeyringWhenSealing } from "./keys/data-key.service";
 import { byUsageThenName, compareText, sortByText } from "./text-order";
 
 type AppDb = typeof globalDb;
@@ -142,6 +145,7 @@ export async function createCategory(
 	input: CategoryInput,
 	options: CategoryWriteOptions = {},
 ): Promise<CategoryRow> {
+	await ensureUserKeyringWhenSealing(userId, options.masterKeyring);
 	try {
 		return await userTransaction(db, userId, async (tx) => {
 			const nameIndex = await categoryNameIndexFor(
@@ -179,6 +183,8 @@ export async function updateCategory(
 	const data = Object.fromEntries(
 		Object.entries(changes).filter(([, v]) => v !== undefined),
 	) as Prisma.CategoryUpdateInput;
+	if (changes.name !== undefined)
+		await ensureUserKeyringWhenSealing(userId, options.masterKeyring);
 	try {
 		return await userTransaction(db, userId, async (tx) => {
 			if (changes.name !== undefined) {
@@ -201,6 +207,45 @@ export async function updateCategory(
 	} catch (error) {
 		throw asNameTaken(error);
 	}
+}
+
+/**
+ * Inserts the categories the user does not have yet, each with its name
+ * index, so a name taken by name or by index is skipped. Runs in the caller's
+ * user transaction.
+ */
+export async function insertCategoriesOnce(
+	tx: Prisma.TransactionClient,
+	userId: string,
+	rows: readonly Omit<Prisma.CategoryCreateManyInput, "userId" | "nameIndex">[],
+	masterKeyring?: Keyring | null,
+): Promise<number> {
+	const indexes = await categoryNameIndexesFor(
+		tx,
+		rows.map((r) => r.name),
+		masterKeyring,
+	);
+	const { count } = await tx.category.createMany({
+		data: rows.map((row, i) => ({ ...row, userId, nameIndex: indexes[i] })),
+		skipDuplicates: true,
+	});
+	return count;
+}
+
+/**
+ * Gives a user the default categories they do not have: at sign-up and from
+ * scripts/sync-default-categories.ts. Runs as that user, so the names are
+ * the user's own writes (and sealed with their key once PR 4 seals).
+ */
+export async function seedDefaultCategories(
+	db: Pick<AppDb, "$transaction">,
+	userId: string,
+	options: CategoryWriteOptions = {},
+): Promise<number> {
+	await ensureUserKeyringWhenSealing(userId, options.masterKeyring);
+	return userTransaction(db, userId, (tx) =>
+		insertCategoriesOnce(tx, userId, DEFAULT_CATEGORIES, options.masterKeyring),
+	);
 }
 
 /**

@@ -13,7 +13,6 @@ import { bearer, deviceAuthorization, twoFactor } from "better-auth/plugins";
 import crypto from "crypto";
 import { headers } from "next/headers";
 import { env } from "~/env";
-import { DEFAULT_CATEGORIES } from "~/lib/constants";
 import {
 	capDeviceScopes,
 	DEFAULT_TOKEN_SCOPES,
@@ -30,6 +29,7 @@ import { getClientIp, InMemoryRateLimiter } from "~/server/lib/rate-limiter";
 import { emailSubject } from "~/server/email-copy";
 import { sendEmail } from "~/server/mailer";
 import { logEventAsync } from "~/server/services/audit.service";
+import { seedDefaultCategories } from "~/server/services/category.service";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
 import { isInviteOnlyEnabled } from "~/server/services/settings";
 import { USERNAME_RESERVATION_DAYS } from "~/server/services/username.service";
@@ -384,14 +384,8 @@ export const auth = betterAuth({
 						});
 					}
 
-					// Seed default categories for the new user
-					await db.category.createMany({
-						data: DEFAULT_CATEGORIES.map((category) => ({
-							name: category.name,
-							color: category.color,
-							userId: user.id,
-						})),
-					});
+					// Seed default categories for the new user, written as that user
+					await seedDefaultCategories(db, user.id);
 
 					// Email Verification Logic
 					if (!(await isEmailDeliveryEnabled())) {

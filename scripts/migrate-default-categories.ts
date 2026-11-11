@@ -21,12 +21,16 @@
 
 import "dotenv/config";
 import { db } from "../src/server/db";
+import { userTransaction } from "../src/server/db-tx";
+import { categoryNameIndexFor } from "../src/server/services/category-name-index.service";
+import { ensureUserKeyringWhenSealing } from "../src/server/services/keys/data-key.service";
+import type { Prisma } from "../generated/prisma/client";
 
 const DRY_RUN = process.argv.includes("--dry-run");
 
-// Prisma interactive transaction client type (same model methods as db,
-// minus connection/lifecycle methods)
-type TxClient = Parameters<Parameters<typeof db.$transaction>[0]>[0];
+// Each user's work runs as that user (userTransaction), so names are written
+// with that user's key and name index.
+type TxClient = Prisma.TransactionClient;
 
 // ---------------------------------------------------------------------------
 // Migration definitions
@@ -194,8 +198,10 @@ async function processUser(
 			if (!DRY_RUN) {
 				await tx.category.update({
 					where: { id: oldCat.id },
-					// The old name index no longer matches; the backfill makes a new one.
-					data: { name: newName, nameIndex: null },
+					data: {
+						name: newName,
+						nameIndex: await categoryNameIndexFor(tx, newName),
+					},
 				});
 			}
 			actions.renames.push(`${oldName} → ${newName}`);
@@ -217,6 +223,7 @@ async function processUser(
 				const created = await tx.category.create({
 					data: {
 						name: targetName,
+						nameIndex: await categoryNameIndexFor(tx, targetName),
 						color: targetColor,
 						userId,
 					},
@@ -243,7 +250,12 @@ async function processUser(
 
 		if (!DRY_RUN) {
 			const created = await tx.category.create({
-				data: { name, color, userId },
+				data: {
+					name,
+					nameIndex: await categoryNameIndexFor(tx, name),
+					color,
+					userId,
+				},
 				select: { id: true, name: true, color: true },
 			});
 			catByName.set(name, created);
@@ -291,9 +303,10 @@ async function main() {
 		const user = users[i]!;
 
 		try {
-			const actions = await db.$transaction(async (tx) => {
-				return processUser(tx, user.id);
-			});
+			await ensureUserKeyringWhenSealing(user.id);
+			const actions = await userTransaction(db, user.id, (tx) =>
+				processUser(tx, user.id),
+			);
 
 			stats.usersProcessed++;
 

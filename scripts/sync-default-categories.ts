@@ -1,5 +1,5 @@
-import { DEFAULT_CATEGORIES } from "../src/lib/constants";
 import { db } from "../src/server/db";
+import { seedDefaultCategories } from "../src/server/services/category.service";
 import { compareText } from "../src/server/services/text-order";
 
 async function main() {
@@ -16,17 +16,11 @@ async function main() {
 
 	for (const user of users) {
 		try {
-			const result = await db.category.createMany({
-				data: DEFAULT_CATEGORIES.map((category) => ({
-					name: category.name,
-					color: category.color,
-					userId: user.id,
-				})),
-				skipDuplicates: true,
-			});
+			// As that user, each name with its index (the same write as sign-up).
+			const created = await seedDefaultCategories(db, user.id);
 
 			processed++;
-			totalCategoriesCreated += result.count;
+			totalCategoriesCreated += created;
 
 			if (processed % 10 === 0) {
 				console.log(`Processed ${processed}/${users.length} users...`);
