@@ -1,24 +1,26 @@
-import { isValidRate, USD } from "@retrospend/domain/money";
+import {
+	type RateChoice,
+	type RateInput,
+	rateChoice as chooseRate,
+	type SavedRate,
+} from "@retrospend/domain/rate-booking";
 import {
 	dayKey,
 	parseDateOnlyIn,
 	startOfNextDayIn,
 } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
-import {
-	CUSTOM_RATE_TYPE,
-	rateTypeFromPricingSource,
-} from "~/lib/rate-selection";
+import { CUSTOM_RATE_TYPE } from "~/lib/rate-selection";
 import { userTransaction } from "~/server/db-tx";
 import type { Prisma, PrismaClient } from "~prisma";
 import { refuseLegMoneyEdit } from "./accounts/leg-edits";
 import { AmortizationService } from "./amortization.service";
 import { findDuplicateExpense } from "./expense-duplicate";
 import {
+	asBadRequest,
 	type BookedRate,
 	bookRate,
 	loadRateContext,
-	type RateChoice,
 } from "./rate-types";
 import { listedEntryWhere } from "./spending";
 import { sortByText } from "./text-order";
@@ -26,97 +28,15 @@ import { sortByText } from "./text-order";
 /** pricingSource of a rate the user typed in by hand. */
 export const CUSTOM_PRICING_SOURCE = CUSTOM_RATE_TYPE;
 
-function sameRate(a: number, b: number): boolean {
-	return Math.abs(a - b) <= Math.max(Math.abs(a), Math.abs(b)) * 1e-6;
-}
+export type { RateInput, SavedRate };
 
-/** What the form sends about an entry's rate. */
-export interface RateInput {
-	amount: number | string;
-	currency: string;
-	date: Date;
-	/** Entry leg in the stored convention: kept when custom or unchanged on edit. */
-	exchangeRate?: number;
-	/** Legacy: the entry leg's rate type, or a placeholder (MANUAL, IMPORT). */
-	pricingSource?: string | null;
-	/** The pair's rate type picked on the Add sheet (a table type or "custom"). */
-	rateType?: string;
-	/** A typed rate: 1 `base` = `value` of the other; `home` pins an undo's home. */
-	customRate?: { base: string; value: string; home?: string };
-}
-
-/** The rate an expense was saved with. */
-export interface SavedRate {
-	currency: string;
-	exchangeRate: number;
-	rateType: string | null;
-	homeCurrency: string | null;
-	homeRate: string | null;
-}
-
-/** Editing without touching the rate: same currency, same rate, same type. */
-function untouched(input: RateInput, saved: SavedRate): boolean {
-	return (
-		saved.currency === input.currency &&
-		isValidRate(saved.exchangeRate) &&
-		(input.exchangeRate === undefined ||
-			sameRate(input.exchangeRate, saved.exchangeRate)) &&
-		(input.rateType === undefined || input.rateType === saved.rateType)
-	);
-}
-
-/**
- * How an entry's rate is chosen (pure, so every rule is unit tested):
- * - a typed cross rate (the Add sheet's Custom) wins;
- * - an edit that leaves the rate alone keeps both legs (its home leg when it
- *   was booked in today's home, else the home leg is booked now);
- * - the old form's custom rate keeps its entry leg;
- * - anything else comes from the table for the entry date, of the picked
- *   type on both legs. Without one, the old form's pricingSource picks the
- *   entry leg only (it sends "official" for EUR and BRL on its own, and
- *   "official" for USD, whose leg has no type) and the home leg takes the
- *   user's default.
- */
+/** The domain's rateChoice, with bad input as a BAD_REQUEST. */
 export function rateChoice(
 	input: RateInput,
 	saved: SavedRate | null | undefined,
 	homeCurrency: string,
 ): RateChoice {
-	if (input.customRate) return { kind: "custom", ...input.customRate };
-	const legacyType = rateTypeFromPricingSource(input.pricingSource);
-	if (saved && untouched(input, saved)) {
-		if (saved.homeCurrency === homeCurrency && saved.homeRate) {
-			return {
-				kind: "kept",
-				exchangeRate: saved.exchangeRate,
-				homeRate: saved.homeRate,
-				rateType: saved.rateType,
-			};
-		}
-		return {
-			kind: "entryLeg",
-			exchangeRate: saved.exchangeRate,
-			rateType: saved.rateType ?? legacyType,
-		};
-	}
-	const entryType = input.currency === USD ? null : legacyType;
-	if ((input.rateType ?? entryType) === CUSTOM_RATE_TYPE) {
-		if (input.currency !== USD && isValidRate(input.exchangeRate)) {
-			return {
-				kind: "entryLeg",
-				exchangeRate: input.exchangeRate,
-				rateType: CUSTOM_RATE_TYPE,
-			};
-		}
-		throw new TRPCError({
-			code: "BAD_REQUEST",
-			message: "Enter the custom rate",
-		});
-	}
-	if (input.rateType !== undefined) {
-		return { kind: "table", rateType: input.rateType };
-	}
-	return { kind: "table", rateType: null, entryType };
+	return asBadRequest(() => chooseRate(input, saved, homeCurrency));
 }
 
 /**

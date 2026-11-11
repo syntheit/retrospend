@@ -16,23 +16,24 @@
  * (exchangeRate per USD, amountInUSD rounded to cents, @retrospend/domain/money).
  */
 
-import { Decimal } from "@prisma/client/runtime/index-browser";
+import { MissingRateError, USD } from "@retrospend/domain/money";
 import { type Money, money, toMinor } from "@retrospend/domain/money-minor";
-import { TRPCError } from "@trpc/server";
-import { isCrypto } from "@retrospend/domain/currency-format";
 import {
-	computeAmountInUSD,
-	currencyDecimals,
-	MissingRateError,
-	rateFromUsdPerUnit,
-	USD,
-} from "@retrospend/domain/money";
+	type BookContext,
+	type BookedRate,
+	bookRate as bookRateWith,
+	type EntryAmount,
+	isRateTypeKey,
+	parseRateDefaults,
+	preferredRateType,
+	type RateChoice,
+	RateInputError,
+} from "@retrospend/domain/rate-booking";
+import { TRPCError } from "@trpc/server";
 import {
 	CUSTOM_RATE_TYPE,
-	isRateTypeKey,
 	pairRateTypes,
 	pickDefaultRateType,
-	preferredRateType,
 } from "~/lib/rate-selection";
 import { findExchangeRate } from "~/server/exchange-rates";
 import type { Prisma, PrismaClient } from "~prisma";
@@ -42,12 +43,9 @@ type RateDb = Pick<
 	"exchangeRate" | "user"
 >;
 
-/** Enough digits for amount x rate at any scale we store, rounding half-even. */
-const Dec = Decimal.clone({ precision: 40, rounding: Decimal.ROUND_HALF_EVEN });
-
-/** Scale of expense.homeRate (DECIMAL(28,12)). */
-const HOME_RATE_DECIMALS = 12;
 const CURRENCY_KEY = /^[A-Z0-9]{3,10}$/;
+
+export type { BookedRate, EntryAmount, RateChoice };
 
 export interface RateContext {
 	userId: string;
@@ -56,59 +54,18 @@ export interface RateContext {
 	preferred: string | null;
 }
 
-/** An entry's rate, both legs, as stored on the expense row. */
-export interface BookedRate {
-	exchangeRate: number;
-	amountInUSD: number;
-	rateType: string | null;
-	homeCurrency: string;
-	/** Units of homeCurrency per 1 unit of the entry currency, as a decimal string. */
-	homeRate: string;
-	/** The booked home amount, at home minor units, as a decimal string. */
-	homeAmount: string;
-}
-
-/** How the rate of an entry is chosen. */
-export type RateChoice =
-	/**
-	 * Both legs from the rate table, of this type (null: the user's default).
-	 * `entryType` is the old form's pricingSource: it named the entry leg's
-	 * type only, so it never reaches the home leg.
-	 */
-	| { kind: "table"; rateType: string | null; entryType?: string | null }
-	/** The entry leg is given (a typed or kept rate); the home leg comes from the table. */
-	| { kind: "entryLeg"; exchangeRate: number; rateType: string | null }
-	/** Both legs kept from the saved row. */
-	| {
-			kind: "kept";
-			exchangeRate: number;
-			homeRate: string;
-			rateType: string | null;
-	  }
-	/** A typed rate as decimal text: 1 `base` = `value` of the other currency. */
-	| { kind: "custom"; base: string; value: string };
-
-export interface EntryAmount {
-	/** A decimal string keeps a typed amount exact (a transfer fee). */
-	amount: number | string;
-	currency: string;
-	date: Date;
+/** Bad rate input is a BAD_REQUEST to the form; everything else passes through. */
+export function asBadRequest<T>(run: () => T): T {
+	try {
+		return run();
+	} catch (error) {
+		if (error instanceof RateInputError)
+			throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+		throw error;
+	}
 }
 
 // ── The user's default ───────────────────────────────────────────────────────
-
-/** The saved defaults, keeping only well-formed pairs (the column is free JSON). */
-function parseDefaults(raw: unknown): Record<string, string> {
-	if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
-	return Object.fromEntries(
-		Object.entries(raw).filter(
-			([home, type]) =>
-				CURRENCY_KEY.test(home) &&
-				isRateTypeKey(type) &&
-				type !== CUSTOM_RATE_TYPE,
-		),
-	) as Record<string, string>;
-}
 
 async function loadUser(db: RateDb, userId: string) {
 	const user = await db.user.findUnique({
@@ -120,7 +77,7 @@ async function loadUser(db: RateDb, userId: string) {
 	}
 	return {
 		homeCurrency: user.homeCurrency,
-		defaults: parseDefaults(user.defaultRateTypes),
+		defaults: parseRateDefaults(user.defaultRateTypes),
 	};
 }
 
@@ -176,181 +133,24 @@ export async function loadRateContext(
 	};
 }
 
-// ── Legs ─────────────────────────────────────────────────────────────────────
-
-interface Leg {
-	rate: number;
-	/** The table type used; empty for USD, whose rate is always 1. */
-	type: string;
-}
-
-async function legOf(
-	db: RateDb,
-	currency: string,
-	date: Date,
-	rateType: string | null,
-): Promise<Leg> {
-	if (currency === USD) return { rate: 1, type: "" };
-	const picked = await findExchangeRate(db, currency, date, rateType);
-	if (!picked) throw new MissingRateError(currency);
-	return { rate: picked.rate, type: picked.type };
-}
-
-/** USD value of one unit of `currency` at its stored-convention rate. */
-function usdPerUnit(currency: string, rate: number): Decimal {
-	if (currency === USD) return new Dec(1);
-	return isCrypto(currency) ? new Dec(rate) : new Dec(1).div(new Dec(rate));
-}
-
-const roundRate = (value: Decimal) =>
-	value.toDecimalPlaces(HOME_RATE_DECIMALS, Decimal.ROUND_HALF_EVEN);
-
-/**
- * The type a booked rate is labeled with: the requested one when a leg used
- * it, else the first leg's type that is not Official (home leg first, as
- * payments label their quotes), else Official. Null with no table leg (USD
- * to USD). It never claims a type no leg used.
- */
-function labelFor(
-	requested: string | null,
-	legs: readonly Leg[],
-): string | null {
-	const types = legs.map((leg) => leg.type).filter(Boolean);
-	if (requested && types.includes(requested)) return requested;
-	return types.find((t) => t !== "official") ?? types[0] ?? null;
-}
-
-/**
- * The stored row for a cross rate. The home amount comes from the exact
- * rate, not its 12-decimal copy: a tiny rate (ARS into a BTC home) keeps too
- * few digits at 12 decimals for amounts in the millions.
- */
-function booked(
-	entry: EntryAmount,
-	ctx: RateContext,
-	exchangeRate: number,
-	exactRate: Decimal,
-	rateType: string | null,
-): BookedRate {
-	const decimals = currencyDecimals(ctx.homeCurrency);
-	return {
-		exchangeRate,
-		// The legacy USD column is a rounded float either way.
-		amountInUSD: computeAmountInUSD(
-			Number(entry.amount),
-			entry.currency,
-			exchangeRate,
-		),
-		rateType,
-		homeCurrency: ctx.homeCurrency,
-		homeRate: roundRate(exactRate).toFixed(),
-		homeAmount: new Dec(entry.amount)
-			.mul(exactRate)
-			.toDecimalPlaces(decimals, Decimal.ROUND_HALF_EVEN)
-			.toFixed(decimals),
-	};
-}
-
-/** Home leg for an entry leg: the same currency is 1, a USD home needs no table rate. */
-async function homeRateFor(
-	db: RateDb,
-	ctx: RateContext,
-	entry: EntryAmount,
-	entryLeg: Leg,
-	rateType: string | null,
-): Promise<{ homeRate: Decimal; legs: Leg[] }> {
-	const home = ctx.homeCurrency;
-	if (home === entry.currency) {
-		return { homeRate: new Dec(1), legs: [entryLeg] };
-	}
-	const homeLeg = await legOf(db, home, entry.date, rateType ?? ctx.preferred);
-	const homeRate = usdPerUnit(entry.currency, entryLeg.rate).div(
-		usdPerUnit(home, homeLeg.rate),
-	);
-	return { homeRate, legs: [homeLeg, entryLeg] };
-}
-
-/** A typed cross rate; the entry leg is derived from it through the home leg's table rate. */
-async function bookCustom(
-	db: RateDb,
-	ctx: RateContext,
-	entry: EntryAmount,
-	choice: { base: string; value: string },
-): Promise<BookedRate> {
-	const home = ctx.homeCurrency;
-	if (
-		entry.currency === home ||
-		![entry.currency, home].includes(choice.base)
-	) {
-		throw new TRPCError({
-			code: "BAD_REQUEST",
-			message: `A custom rate converts ${entry.currency} to ${home}`,
-		});
-	}
-	if (!/^(?=.*[1-9])\d+(\.\d+)?$/.test(choice.value)) {
-		throw new TRPCError({
-			code: "BAD_REQUEST",
-			message: "Enter a rate above 0",
-		});
-	}
-	const typed = new Dec(choice.value);
-	const perUnit =
-		choice.base === entry.currency ? typed : new Dec(1).div(typed);
-	const homeLeg = await legOf(db, home, entry.date, ctx.preferred);
-	// The entry leg comes from the typed rate itself, not its rounded copy.
-	const usd = perUnit.mul(usdPerUnit(home, homeLeg.rate));
-	const exchangeRate = rateFromUsdPerUnit(entry.currency, usd.toNumber());
-	return booked(entry, ctx, exchangeRate, perUnit, CUSTOM_RATE_TYPE);
-}
-
-/** Books an entry's rate under `choice` (see RateChoice). */
+/** Books an entry's rate under `choice` (see RateChoice), reading the rate table through `db`. */
 export async function bookRate(
 	db: RateDb,
 	ctx: RateContext,
 	entry: EntryAmount,
 	choice: RateChoice,
 ): Promise<BookedRate> {
-	switch (choice.kind) {
-		case "custom":
-			return bookCustom(db, ctx, entry, choice);
-		case "kept":
-			return booked(
-				entry,
-				ctx,
-				choice.exchangeRate,
-				new Dec(choice.homeRate),
-				choice.rateType,
-			);
-		case "entryLeg": {
-			const custom = choice.rateType === CUSTOM_RATE_TYPE;
-			const entryLeg = {
-				rate: choice.exchangeRate,
-				type: custom || entry.currency === USD ? "" : (choice.rateType ?? ""),
-			};
-			// A kept or typed entry leg says nothing about the home leg's type: the default applies.
-			const { homeRate, legs } = await homeRateFor(
-				db,
-				ctx,
-				entry,
-				entryLeg,
-				null,
-			);
-			const rateType = custom ? CUSTOM_RATE_TYPE : labelFor(null, legs);
-			return booked(entry, ctx, choice.exchangeRate, homeRate, rateType);
-		}
-		case "table": {
-			const type = choice.rateType ?? ctx.preferred;
-			const entryType = choice.rateType ?? choice.entryType ?? ctx.preferred;
-			const entryLeg = await legOf(db, entry.currency, entry.date, entryType);
-			const { homeRate, legs } = await homeRateFor(
-				db,
-				ctx,
-				entry,
-				entryLeg,
-				type,
-			);
-			return booked(entry, ctx, entryLeg.rate, homeRate, labelFor(type, legs));
-		}
+	const book: BookContext = {
+		homeCurrency: ctx.homeCurrency,
+		preferred: ctx.preferred,
+		find: (currency, date, type) => findExchangeRate(db, currency, date, type),
+	};
+	try {
+		return await bookRateWith(book, entry, choice);
+	} catch (error) {
+		return asBadRequest(() => {
+			throw error;
+		});
 	}
 }
 
