@@ -134,15 +134,26 @@ export function userTextOrEmpty(field: string, max: number) {
 
 /**
  * Text an Undo payload puts back into a user-text column (an expense, a shared
- * expense, a move, an income). The value was plain text when it was first
- * written, so it takes the same content rules as `userText`: no C0 control
- * character, which includes a leading U+0001, and no lone surrogate. A client
- * can therefore never store something that looks like a ciphertext through an
- * Undo. Rows written before the rules are covered by the scan-control-chars
- * `--fail` gate, not by this schema. It declares no field: the live write path
- * of the same column already does. "" is valid when `empty` is set, for a
- * column the form takes empty.
+ * expense, a move, an income). It is never a ciphertext: a value that starts
+ * with U+0001 is refused, and so is a lone surrogate. The other C0 controls
+ * are stripped, not refused, because the text may come from a row written
+ * before `userText` existed (a legacy title with a vertical tab), and Undo of
+ * a money action has to work for it. Tab, line feed and carriage return stay,
+ * as in `userText`, and nothing else changes (no trim, no case folding).
+ * It declares no field: the live write path of the same column already does.
+ * "" is valid when `empty` is set, for a column the form takes empty; a
+ * required value must still have text left after the strip.
  */
 export function restoreText(max: number, options?: { empty?: boolean }) {
-	return declare(null, max, !options?.empty);
+	const stripped = z
+		.string()
+		.max(max)
+		.refine((value) => value.charCodeAt(0) !== 0x01, {
+			message: "Text cannot start with an encryption marker",
+		})
+		.refine((value) => !hasLoneSurrogate(value), {
+			message: "Text is not valid Unicode",
+		})
+		.transform(stripUserTextControlsForKey);
+	return options?.empty ? stripped : stripped.pipe(z.string().min(1));
 }

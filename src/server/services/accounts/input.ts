@@ -128,8 +128,8 @@ export const createTransferSchema = z.object({
 
 /**
  * The undo of a delete brings the move back with its own id. Restore puts back
- * what was stored, and the note takes the same content rules as the form
- * (`restoreText`).
+ * what was stored; the note goes through `restoreText` (a leading U+0001 is
+ * refused, other controls are stripped).
  */
 export const recreateTransferSchema = createTransferSchema.extend({
 	id,
@@ -164,8 +164,8 @@ const storedDecimal = z.string().regex(/^-?\d{1,20}(\.\d{1,12})?$/);
 
 /**
  * income.delete's recreate input: the same row, at the rates it was booked at.
- * Restore puts back what was stored, and title and description take the same
- * content rules as the form (`restoreText`).
+ * Restore puts back what was stored; title and description go through
+ * `restoreText` (a leading U+0001 is refused, other controls are stripped).
  */
 export const recreateIncomeSchema = addIncomeSchema.extend({
 	id,

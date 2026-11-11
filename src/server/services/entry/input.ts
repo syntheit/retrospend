@@ -61,8 +61,8 @@ export function toExpenseInput(
 
 /**
  * What expense.update or expense.delete returned as `restore`. Restore puts
- * back what was stored, and its text takes the same content rules as the form
- * (`restoreText`), so an Undo can never write a value that starts with U+0001.
+ * back what was stored; its text goes through `restoreText`, which refuses a
+ * leading U+0001 and strips other controls, so a legacy title still comes back.
  */
 export const expenseRestoreSchema = z.object({
 	id,

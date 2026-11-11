@@ -21,6 +21,7 @@
 // schema built at request time.
 import { contract, listContractRoutes } from "@retrospend/api-contract";
 import {
+	hasForbiddenControl,
 	restoreText,
 	USER_TEXT_FIELDS,
 	userText,
@@ -99,9 +100,6 @@ function properties(root: unknown): Prop[] {
 	return out;
 }
 
-const parses = (schema: unknown, value: string) =>
-	(schema as z.ZodType).safeParse(value).success;
-
 /**
  * Each shape is a leading U+0001 and an inner BEL, each paired with the same
  * text without the control. The second shape is for a column that must be a
@@ -118,16 +116,30 @@ const PROBES: [bad: string, clean: string][][] = [
 	],
 ];
 
+const parsed = (schema: unknown, value: string) =>
+	(schema as z.ZodType).safeParse(value);
+
 /**
- * True when the property refuses a control character, and for that reason: in
- * some probe shape, each control is refused while the same text with the
- * control swapped for a letter is taken. A schema that only refuses short or
- * oddly formatted input (`min(5)`, a pattern) therefore does not pass.
+ * True when the property keeps a control character out of the stored value,
+ * and for that reason. In some probe shape, a leading U+0001 is refused (the
+ * ciphertext marker is never stripped), and an inner BEL is either refused or
+ * stripped from the parsed output, while the same text without the control is
+ * taken. A schema that only refuses short or oddly formatted input (`min(5)`,
+ * a pattern), or takes the BEL as it is, does not pass.
  */
 function refusesControls(schema: unknown) {
-	return PROBES.some((shape) =>
-		shape.every(([bad, clean]) => !parses(schema, bad) && parses(schema, clean)),
-	);
+	return PROBES.some(([leading, inner]) => {
+		const [leadBad, leadClean] = leading ?? ["", ""];
+		const [innerBad, innerClean] = inner ?? ["", ""];
+		if (parsed(schema, leadBad).success || !parsed(schema, leadClean).success)
+			return false;
+		const result = parsed(schema, innerBad);
+		if (!parsed(schema, innerClean).success) return false;
+		return (
+			!result.success ||
+			(typeof result.data === "string" && !hasForbiddenControl(result.data))
+		);
+	});
 }
 
 /** Keys a mapped column is written under that are not the column's own name. */
@@ -236,6 +248,25 @@ describe("detector", () => {
 				}),
 			),
 		).toEqual(["t:title", "t:name", "t:note", "t:websiteUrl"]);
+	});
+
+	it("needs the marker refused even when the schema strips the rest", () => {
+		expect(
+			flagged(
+				z.object({
+					title: z.string().transform((s) => s.replaceAll("\u0007", "")),
+					note: z.string().transform((s) => s.trim()),
+				}),
+			),
+		).toEqual(["t:title", "t:note"]);
+		expect(
+			flagged(
+				z.object({
+					title: restoreText(10),
+					note: restoreText(10, { empty: true }).nullable(),
+				}),
+			),
+		).toEqual([]);
 	});
 
 	it("passes userText and restoreText through wrappers and pipes, and ignores other keys", () => {

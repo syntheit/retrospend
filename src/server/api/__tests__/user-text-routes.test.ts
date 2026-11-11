@@ -454,18 +454,31 @@ describe("restore payloads", () => {
 		["income description", recreateIncomeSchema, income, "description"],
 	];
 
-	it.each(cases)("%s refuses a leading U+0001 and controls", (_l, schema, base, path) => {
-		for (const bad of ["\u0001k1:AAAA", "legacy\u000bimport", "a\u0007", "a\uD800"])
+	it.each(cases)("%s refuses a leading U+0001 and a lone surrogate", (_l, schema, base, path) => {
+		for (const bad of ["\u0001k1:AAAA", "\u0001", "a\uD800"])
 			expect(
 				schema.safeParse(withField(base, path, bad)).success,
 				JSON.stringify(bad),
 			).toBe(false);
 	});
 
+	it.each(cases)("%s strips other controls so Undo works on a legacy row", (_l, schema, base, path) => {
+		const result = schema.safeParse(withField(base, path, "a\u000bb\u0007\u0001"));
+		expect(result.error?.issues).toBeUndefined();
+		expect((result.data as Record<string, unknown>)[path]).toBe("ab");
+	});
+
 	it.each(cases)("%s keeps ordinary text as typed", (_l, schema, base, path) => {
 		const result = schema.safeParse(withField(base, path, text));
 		expect(result.error?.issues).toBeUndefined();
 		expect((result.data as Record<string, unknown>)[path]).toBe(text);
+	});
+
+	it("refuses a required title that is only controls", () => {
+		expect(
+			expenseRestoreSchema.safeParse(withField(expense, "title", "\u000b"))
+				.success,
+		).toBe(false);
 	});
 
 	it("still takes an empty optional field and refuses an empty title", () => {
