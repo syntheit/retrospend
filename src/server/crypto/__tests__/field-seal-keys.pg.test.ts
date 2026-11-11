@@ -24,15 +24,24 @@ import {
 	createFiguresRegistry,
 	type FigureDb,
 } from "~/server/figures/registry";
+import {
+	isoDay,
+	seedArsRates,
+	TODAY,
+} from "~/server/services/accounts/test-fixtures";
 import { createCategory } from "~/server/services/category.service";
 import { categoryNameIndexFor } from "~/server/services/category-name-index.service";
+import { commitImport } from "~/server/services/import/commit.mutation";
+import { importRunner } from "~/server/services/import/runner";
 import {
 	destroyDataKeys,
+	ensureUserKeyring,
 	evictDataKeyring,
 } from "~/server/services/keys/data-key.service";
 import { userTransactionRunner } from "~/server/services/preview";
 import { createPreviewRunner } from "~/server/services/preview/runner";
 import type { MoneyMutation } from "~/server/services/preview/types";
+import { anonymizeAndDeleteUser } from "~/server/services/user-deletion.service";
 import { ctxFor, SEEDERS } from "~/test/mapped-seeders";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { sealedFile, storedValue, unsealAll } from "~/test/sealed-fixture";
@@ -162,6 +171,64 @@ describe("making a user's key", () => {
 		expect(row.name).toBe("Fuel");
 		expect(await userKeys(me)).toBe(1n);
 		expect(sealed(await storedValue("category", "name", row.id))).toBe(true);
+	});
+
+	it("previews a cold user's import through the import runner with no key", async () => {
+		const me = (await createTestUser()).user.id;
+		await adminDb.user.update({
+			where: { id: me },
+			data: { homeCurrency: "ARS" },
+		});
+		await seedArsRates();
+		// The job is a row from before the flip, so making it mints nothing.
+		setSealingForTests();
+		const job = await adminDb.importJob.create({
+			data: {
+				userId: me,
+				status: "READY_FOR_REVIEW",
+				type: "CSV",
+				fileName: "galicia.csv",
+				fileSize: 1,
+				fileType: "csv",
+				transactions: [
+					{
+						title: "Panaderia",
+						amount: 4500,
+						currency: "ARS",
+						date: isoDay(TODAY),
+						location: "",
+						description: "",
+						pricingSource: "IMPORT",
+						category: "",
+					},
+				],
+			},
+		});
+		setSealingForTests(() => true);
+		const preview = await importRunner(me).preview(commitImport, {
+			jobId: job.id,
+			rows: [{ index: 0, keep: true, categoryId: null, kind: "expense" }],
+		});
+		expect(preview.value.created).toBe(1);
+		expect(await expenseCount(me)).toBe(0);
+		expect(await userKeys(me)).toBe(0n);
+	});
+
+	it("ends with no key when a background mint races the account's deletion", async () => {
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		const { user } = await createTestUser();
+		// The write's transaction may not mint: it starts one in the background.
+		const write = userTransaction(db, user.id, (tx) =>
+			tx.expense.create({ data: expenseData(user.id), select: { id: true } }),
+		);
+		const deletion = anonymizeAndDeleteUser(adminDb, user.id, user.email, null);
+		await expect(write).rejects.toMatchObject({ code: "key_rotated" });
+		await deletion;
+		// Wait for the background mint (or fail to start one): nothing escapes.
+		await ensureUserKeyring(user.id).catch(() => undefined);
+		expect(await userKeys(user.id)).toBe(0n);
+		expect(await adminDb.user.count({ where: { id: user.id } })).toBe(0);
+		vi.restoreAllMocks();
 	});
 });
 
