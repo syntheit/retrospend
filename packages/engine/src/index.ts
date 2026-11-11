@@ -12,6 +12,12 @@ export {
 } from "./changes";
 export { sameValue } from "./equal";
 export { ConflictError, NotFoundError } from "./errors";
+export {
+	type CreateExpenseInput,
+	createExpense,
+	EXPENSE_CREATE,
+	type ExpenseCategory,
+} from "./expense-create";
 export type { ExpenseAggregate, ExpenseRow } from "./expenses";
 export {
 	LocalDb,

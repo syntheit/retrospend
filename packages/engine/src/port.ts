@@ -32,6 +32,27 @@ export interface SettingsRow extends WithId {
 	readonly startDay: number;
 	/** Projects hidden from reports. */
 	readonly hiddenProjectIds: readonly string[];
+	/** The preferred rate type per home currency ({"ARS": "blue"}); absent or empty: the built-in default. */
+	readonly defaultRateTypes?: Readonly<Record<string, string>>;
+}
+
+/**
+ * What an expense row keeps beyond the fields the spending rules read: its
+ * text and both legs of its rate, as the server stores them. Optional, since
+ * rows of figures-only fixtures and older rows have none; a row the device
+ * creates has all the rate fields.
+ */
+export interface ExpenseDetail {
+	readonly title?: string;
+	readonly description?: string | null;
+	readonly location?: string | null;
+	readonly pricingSource?: string;
+	/** Entry leg, units per USD (crypto: USD per unit), at the column's 6 decimals. */
+	readonly exchangeRate?: string;
+	/** The rate type both legs were booked at, or null. */
+	readonly rateType?: string | null;
+	/** Units of homeCurrency per 1 unit of currency, at 12 decimals. */
+	readonly homeRate?: string | null;
 }
 
 /** One of your participations in an expense; `expenseId` ties it to the expense row it belongs to. */
@@ -40,7 +61,7 @@ export type ShareRow = Readonly<SpentShareRow> &
 
 /** Each table's row type. A new figure's loader adds its table here. */
 export interface TableRows {
-	expenses: Readonly<SpentExpenseRow> & WithId;
+	expenses: Readonly<SpentExpenseRow> & WithId & ExpenseDetail;
 	shares: ShareRow;
 	legs: LegRow;
 	snapshots: SnapshotRow & WithId;
