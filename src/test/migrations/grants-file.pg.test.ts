@@ -45,6 +45,8 @@ const AS_RESTORED = `
 	REVOKE USAGE ON SCHEMA keystore FROM retrospend_app;
 	REVOKE EXECUTE ON FUNCTION keystore."current_user_data_keys"(), keystore."create_first_data_key"(text, bigint) FROM retrospend_app;
 	GRANT EXECUTE ON FUNCTION keystore."current_user_data_keys"(), keystore."create_first_data_key"(text, bigint) TO PUBLIC;
+	REVOKE EXECUTE ON FUNCTION keystore."instance_text_keys"(), keystore."create_first_instance_key"(text, bigint) FROM retrospend_app;
+	GRANT EXECUTE ON FUNCTION keystore."instance_text_keys"(), keystore."create_first_instance_key"(text, bigint), keystore."require_instance_actor"() TO PUBLIC;
 	ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO retrospend_app;
 	ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO retrospend_app;
 	REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM retrospend_app;

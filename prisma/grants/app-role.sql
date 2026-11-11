@@ -246,6 +246,22 @@ BEGIN
     REVOKE EXECUTE ON FUNCTION keystore."create_first_data_key"(text, bigint) FROM PUBLIC;
     GRANT EXECUTE ON FUNCTION keystore."current_user_data_keys"() TO retrospend_app;
     GRANT EXECUTE ON FUNCTION keystore."create_first_data_key"(text, bigint) TO retrospend_app;
+    -- The instance key (20261111100000_instance_text_key): two doors for an
+    -- actor (a signed-in user or a live guest session); the actor check is for
+    -- those two to call as the owner. A keystore dump older than that migration
+    -- has none of the three, and the file must still run, so each is checked.
+    IF to_regprocedure('keystore.require_instance_actor()') IS NOT NULL THEN
+      REVOKE EXECUTE ON FUNCTION keystore."require_instance_actor"() FROM PUBLIC;
+      REVOKE EXECUTE ON FUNCTION keystore."require_instance_actor"() FROM retrospend_app;
+    END IF;
+    IF to_regprocedure('keystore.instance_text_keys()') IS NOT NULL THEN
+      REVOKE EXECUTE ON FUNCTION keystore."instance_text_keys"() FROM PUBLIC;
+      GRANT EXECUTE ON FUNCTION keystore."instance_text_keys"() TO retrospend_app;
+    END IF;
+    IF to_regprocedure('keystore.create_first_instance_key(text, bigint)') IS NOT NULL THEN
+      REVOKE EXECUTE ON FUNCTION keystore."create_first_instance_key"(text, bigint) FROM PUBLIC;
+      GRANT EXECUTE ON FUNCTION keystore."create_first_instance_key"(text, bigint) TO retrospend_app;
+    END IF;
   END IF;
 END
 $keystore$;

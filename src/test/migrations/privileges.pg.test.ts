@@ -156,7 +156,7 @@ describe("retrospend_app privileges", () => {
 		for (const owner of owners) expect(covered.has(owner.role)).toBe(true);
 	});
 
-	it("the keystore schema gives the app role nothing but USAGE and two functions", async () => {
+	it("the keystore schema gives the app role nothing but USAGE and four functions", async () => {
 		const { rows: tables } = await client.query<{ name: string; priv: string }>(
 			`SELECT c.relname AS name, p AS priv
 			 FROM pg_class c
@@ -173,9 +173,13 @@ describe("retrospend_app privileges", () => {
 			   AND has_function_privilege('retrospend_app', p.oid, 'EXECUTE')
 			 ORDER BY 1`,
 		);
+		// The user key doors and the instance key doors; require_instance_actor
+		// is the owner's helper and the app role may not call it.
 		expect(functions.map((f) => f.name)).toEqual([
 			"create_first_data_key",
+			"create_first_instance_key",
 			"current_user_data_keys",
+			"instance_text_keys",
 		]);
 		const { rows: usage } = await client.query<{
 			can: boolean;
