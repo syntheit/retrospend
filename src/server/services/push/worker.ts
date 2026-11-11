@@ -171,6 +171,9 @@ async function attempt(
 	// minutes or hours since the push was queued.
 	const device = await db.pushDevice.findUnique({
 		where: { id: delivery.deviceId },
+		// The device name is the owner's sealed text, which the global client
+		// never opens; delivery does not need it.
+		omit: { deviceName: true },
 		include: {
 			user: { select: { language: true, numberFormat: true, isActive: true } },
 		},

@@ -1,5 +1,6 @@
 import type { TRPCError } from "@trpc/server";
 import { ZodError, z } from "zod";
+import { TextUnavailableError } from "~/server/crypto/field-open";
 import { RateOutOfRangeError } from "~/server/services/payments/rate-band";
 
 /**
@@ -15,7 +16,10 @@ export function zodErrorData(error: TRPCError) {
  * code of the same name), not by the English message.
  */
 export function problemCode(error: TRPCError) {
-	return error instanceof RateOutOfRangeError ? "rate_out_of_range" : null;
+	if (error instanceof RateOutOfRangeError) return "rate_out_of_range";
+	if (error.cause instanceof TextUnavailableError)
+		return "encrypted_text_unavailable";
+	return null;
 }
 
 export function errorFormatter<TShape extends { data: object }>({
