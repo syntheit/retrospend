@@ -1,0 +1,101 @@
+/**
+ * The master key canary (docs/roadmap/e2ee-d11-design.md section 8, Revision 1
+ * item 7). A fixed text sealed under the server master key sits in
+ * `app_settings."masterKeyCanary"` (main schema; the app role has no privilege
+ * on that table, so this runs on the owner connection, `keystoreDb`). At start
+ * it is opened: a wrong DATA_MASTER_KEY fails the check and stops the server,
+ * instead of every later key unwrap failing, or new keys being wrapped by the
+ * wrong key. The first start with a master key writes it.
+ *
+ * With no master key configured the check is skipped: nothing is sealed then.
+ * Any other failure (the database is unreachable, the column is missing) also
+ * stops the start: an unchecked master key is the case this guards against.
+ *
+ * A master key rotation keeps the old entry until the rewrap job (D12) has
+ * run; D12 must rewrap this value too, or dropping the old entry stops the
+ * server here, which is the intended signal.
+ *
+ * Nothing here logs or names a key.
+ */
+import { keystoreDb } from "~/server/db";
+import {
+	type FieldAad,
+	FieldCryptoError,
+	type Keyring,
+	openField,
+	sealField,
+} from "../../crypto/field-crypto";
+import { getMasterKeyring } from "../../crypto/master-key";
+
+const SETTINGS_ID = "app_settings_singleton";
+/** Public and fixed: the canary proves the key, it hides nothing. */
+const CANARY_TEXT = "retrospend master key canary v1";
+
+const AAD: FieldAad = {
+	table: "app_settings",
+	column: "masterKeyCanary",
+	rowId: SETTINGS_ID,
+};
+
+export type MasterCanaryErrorCode =
+	/** The master key opens nothing sealed by the one this database was set up with. */
+	"master_key_mismatch";
+
+export class MasterCanaryError extends Error {
+	readonly code: MasterCanaryErrorCode;
+	constructor() {
+		super(
+			"DATA_MASTER_KEY does not match the key this database was set up with. Restore the original key (or the key file) and start again; see Data key backups in docs/self-hosting.md",
+		);
+		this.name = "MasterCanaryError";
+		this.code = "master_key_mismatch";
+	}
+}
+
+type CanaryClient = Pick<typeof keystoreDb, "$queryRaw" | "$executeRaw">;
+
+const readCanary = async (client: CanaryClient): Promise<string | null> => {
+	const [row] = await client.$queryRaw<{ canary: string | null }[]>`
+		SELECT "masterKeyCanary" AS "canary" FROM "app_settings" WHERE "id" = ${SETTINGS_ID}`;
+	return row?.canary ?? null;
+};
+
+function verify(sealed: string, keyring: Keyring): void {
+	let text: string;
+	try {
+		text = openField(keyring, sealed, AAD);
+	} catch (error) {
+		// Wrong key, unknown key id, or a value that is not a canary at all.
+		if (error instanceof FieldCryptoError) throw new MasterCanaryError();
+		throw error;
+	}
+	if (text !== CANARY_TEXT) throw new MasterCanaryError();
+}
+
+/**
+ * Opens the canary with the master key, writing it first when there is none.
+ * Returns what it did. Throws `MasterCanaryError` on a wrong key.
+ */
+export async function assertMasterKeyCanary(
+	masterKeyring: Keyring | undefined = getMasterKeyring(),
+	client: CanaryClient = keystoreDb,
+): Promise<"skipped" | "written" | "verified"> {
+	if (!masterKeyring) return "skipped";
+	const existing = await readCanary(client);
+	if (existing !== null) {
+		verify(existing, masterKeyring);
+		return "verified";
+	}
+	// The conditional update keeps the first writer's value when two servers
+	// start together; both then check what is stored.
+	const sealed = sealField(masterKeyring, CANARY_TEXT, AAD);
+	await client.$executeRaw`
+		INSERT INTO "app_settings" ("id", "updatedAt", "masterKeyCanary")
+		VALUES (${SETTINGS_ID}, now() AT TIME ZONE 'UTC', ${sealed})
+		ON CONFLICT ("id") DO UPDATE SET "masterKeyCanary" = EXCLUDED."masterKeyCanary"
+		WHERE "app_settings"."masterKeyCanary" IS NULL`;
+	const stored = await readCanary(client);
+	if (stored === null) throw new Error("The master key canary was not stored");
+	verify(stored, masterKeyring);
+	return stored === sealed ? "written" : "verified";
+}
