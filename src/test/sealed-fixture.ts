@@ -57,7 +57,12 @@ export async function storedValue(
 	return rows[0]?.value;
 }
 
-const setCell = (table: string, column: string, rowId: string, value: unknown) =>
+const setCell = (
+	table: string,
+	column: string,
+	rowId: string,
+	value: unknown,
+) =>
 	adminDb.$executeRawUnsafe(
 		`UPDATE "${table}" SET "${column}" = $1 WHERE "id" = $2`,
 		value,
@@ -65,8 +70,12 @@ const setCell = (table: string, column: string, rowId: string, value: unknown) =
 	);
 
 /** What each written cell held before, newest last, for `restoreCells`. */
-const written: { table: string; column: string; rowId: string; was: unknown }[] =
-	[];
+const written: {
+	table: string;
+	column: string;
+	rowId: string;
+	was: unknown;
+}[] = [];
 
 /** Writes a raw value into one cell. */
 export async function writeCell(

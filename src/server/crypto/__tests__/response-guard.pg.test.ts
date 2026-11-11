@@ -18,11 +18,7 @@ import type { Keyring } from "~/server/crypto/field-crypto";
 import { evictDataKeyring } from "~/server/services/keys/data-key.service";
 import { evictInstanceKeyring } from "~/server/services/keys/instance-key.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
-import {
-	newMasterKeyring,
-	restoreCells,
-	sealRow,
-} from "~/test/sealed-fixture";
+import { newMasterKeyring, restoreCells, sealRow } from "~/test/sealed-fixture";
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),

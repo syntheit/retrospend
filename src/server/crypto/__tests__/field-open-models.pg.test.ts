@@ -25,11 +25,7 @@ import { createUserScopedDb, db } from "~/server/db";
 import { runtimeDataModel } from "~/server/db-core";
 import { evictInstanceKeyring } from "~/server/services/keys/instance-key.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
-import {
-	newMasterKeyring,
-	restoreCells,
-	sealRow,
-} from "~/test/sealed-fixture";
+import { newMasterKeyring, restoreCells, sealRow } from "~/test/sealed-fixture";
 
 const master = vi.hoisted(() => ({ ring: undefined as Keyring | undefined }));
 vi.mock("~/server/crypto/master-key", async (importOriginal) => ({
@@ -407,7 +403,18 @@ const SEEDERS: Record<MappedModel, (c: Ctx) => Promise<Data>> = {
 	}),
 };
 
-type Delegate = Record<string, (args: unknown) => Promise<unknown>>;
+type Call = (args: unknown) => Promise<unknown>;
+type Delegate = Record<
+	| "findMany"
+	| "findFirst"
+	| "findUnique"
+	| "create"
+	| "createManyAndReturn"
+	| "update"
+	| "upsert"
+	| "delete",
+	Call
+>;
 const delegateOf = (client: unknown, model: string): Delegate =>
 	(client as Record<string, Delegate>)[
 		model[0]?.toLowerCase() + model.slice(1)
@@ -541,7 +548,7 @@ describe.each(Object.keys(FIELD_MAP) as MappedModel[])("%s", (model) => {
 			});
 			expect(row?.user).toEqual(plain);
 		} else if (model === "Payment") {
-			const child = (await adminDb.settlement.create({
+			const child = (await delegateOf(adminDb, "Settlement").create({
 				data: { ...(await SEEDERS.Settlement(ctx)), paymentGroupId: rowId },
 			})) as Data;
 			const row = await db.settlement.findUnique({
