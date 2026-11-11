@@ -55,6 +55,7 @@ const TRANSACTION_OPTIONS: Record<TransactionPurpose, UserTransactionOptions> =
 		preview: {
 			isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
 			timeout: 15_000,
+			preview: true,
 		},
 		apply: { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
 	};

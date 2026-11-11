@@ -16,6 +16,21 @@ export const inTransaction = (): boolean =>
 export const insideTransaction = <T>(work: () => Promise<T>): Promise<T> =>
 	transactionScope.run(true, work);
 
+/**
+ * Runs `work` as if outside any transaction: for work a transaction starts
+ * and does not wait for, on a connection of its own (a background key mint).
+ */
+export const outsideTransaction = <T>(work: () => T): T =>
+	transactionScope.exit(work);
+
+const previewScope = new AsyncLocalStorage<true>();
+
+/**
+ * Whether the caller runs inside a preview's transaction, which always rolls
+ * back: the seal path makes no key there (E2EE D11 PR 4 section 1).
+ */
+export const inPreview = (): boolean => previewScope.getStore() === true;
+
 const verbatimScope = new AsyncLocalStorage<true>();
 
 /** Whether the caller runs inside `verbatim`. */
@@ -33,6 +48,8 @@ export const verbatim = <T>(work: () => Promise<T>): Promise<T> =>
 export interface UserTransactionOptions {
 	readonly timeout?: number;
 	readonly isolationLevel?: Prisma.TransactionIsolationLevel;
+	/** A preview's dry run (preview/index.ts): `inPreview()` is true inside. */
+	readonly preview?: true;
 }
 
 type TransactionClient = Pick<PrismaClient, "$transaction">;
@@ -79,13 +96,14 @@ export async function userTransaction<T>(
 ): Promise<T> {
 	const crypto = cryptoClients.get(client)?.(userId);
 	await crypto?.ready();
+	const { preview, ...transactionOptions } = options ?? {};
 	return (crypto?.client ?? client).$transaction(
 		(tx) =>
 			insideTransaction(async () => {
 				await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true),
 				                            set_config('role', 'retrospend_app', true)`;
-				return work(tx);
+				return preview ? previewScope.run(true, () => work(tx)) : work(tx);
 			}),
-		options,
+		transactionOptions,
 	);
 }
