@@ -154,6 +154,6 @@ export function restoreText(max: number, options?: { empty?: boolean }) {
 		.refine((value) => !hasLoneSurrogate(value), {
 			message: "Text is not valid Unicode",
 		})
-		.transform(stripUserTextControlsForKey);
+		.transform(stripUserTextControls);
 	return options?.empty ? stripped : stripped.pipe(z.string().min(1));
 }
