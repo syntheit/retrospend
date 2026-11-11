@@ -75,7 +75,7 @@ const extensionCalls = () =>
 	mockPrismaInstance.$extends.mock.calls.map(([ext]) => ext as Extension);
 /** The RLS batch extensions: every extension but the slot's. */
 const rlsExtensions = () =>
-	extensionCalls().filter((ext) => ext.name !== "text-slot");
+	extensionCalls().filter((ext) => ext.name !== "field-open");
 
 /**
  * Configures mockPrismaInstance.$extends to:
@@ -105,7 +105,7 @@ function setupExtendsMock(queryResult: unknown = ["result"]) {
 			name?: string;
 			query: { $allModels: { $allOperations: Hook } };
 		}) => {
-			if (ext.name === "text-slot") return mockPrismaInstance;
+			if (ext.name === "field-open") return mockPrismaInstance;
 			capturedHook = ext.query.$allModels.$allOperations;
 			return fakeExtendedDb;
 		},
@@ -135,7 +135,7 @@ describe("createUserScopedDb", () => {
 
 		// The slot is added first, so Prisma runs it outside the batch.
 		expect(extensionCalls().map((ext) => ext.name ?? "rls")).toEqual([
-			"text-slot",
+			"field-open",
 			"rls",
 		]);
 		const [ext] = rlsExtensions();
@@ -202,7 +202,7 @@ describe("createUserScopedDb", () => {
 				name?: string;
 				query: { $allModels: { $allOperations: Hook } };
 			}) => {
-				if (ext.name === "text-slot") return mockPrismaInstance;
+				if (ext.name === "field-open") return mockPrismaInstance;
 				capturedHook = ext.query.$allModels.$allOperations;
 				return failingDb;
 			},

@@ -10,7 +10,7 @@
  *   ring lacks it after the reload                  -> TextUnavailableError keystore_lost
  *   no ring, master key missing                     -> TextUnavailableError master_key_missing
  *   a cell sealed for another row                   -> FieldCryptoError auth_failed
- *   updateMany setting a title, a sealed write      -> refused before the query
+ *   a sealed value in any top-level write          -> refused before the query (bad_plaintext)
  */
 import { randomBytes } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -429,24 +429,17 @@ describe("refusals", () => {
 		return failure;
 	};
 
-	it("refuses updateMany that sets a mapped column", async () => {
-		expect(
-			await refused("updateMany", { where: {}, data: { title: "x" } }),
-		).toBeInstanceOf(Error);
-		expect(
-			await refused("updateManyAndReturn", {
-				where: {},
-				data: { title: null },
-			}),
-		).toBeInstanceOf(Error);
-		const query = vi.fn(async () => ({ count: 1 }));
-		await handle({
-			model: "Expense",
-			operation: "updateMany",
-			args: { where: {}, data: { amount: 1 } },
-			query,
-		});
-		expect(query).toHaveBeenCalled();
+	it("runs updateMany with plaintext or null in a mapped column (two callers do; PR 4 moves them)", async () => {
+		for (const data of [{ title: "x" }, { title: null }, { amount: 1 }]) {
+			const query = vi.fn(async () => ({ count: 1 }));
+			await handle({
+				model: "Expense",
+				operation: "updateMany",
+				args: { where: {}, data },
+				query,
+			});
+			expect(query).toHaveBeenCalled();
+		}
 	});
 
 	it("refuses a sealed value written as text in every top-level write", async () => {
@@ -459,6 +452,8 @@ describe("refusals", () => {
 			],
 			["createMany", { data: [{ title: "ok" }, { title: sealed }] }],
 			["createManyAndReturn", { data: { title: sealed } }],
+			["updateMany", { where: {}, data: { title: sealed } }],
+			["updateManyAndReturn", { where: {}, data: { title: { set: sealed } } }],
 		] as const) {
 			const failure = await refused(operation, args);
 			expect(failure, operation).toBeInstanceOf(FieldCryptoError);

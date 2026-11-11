@@ -262,29 +262,30 @@ async function openCells(keys: TextKeys, cells: Cell[]): Promise<void> {
 	for (const cell of retry) if (!tryOpen(keys, cell)) fail(keys, cell);
 }
 
+const WRITES_DATA = new Set([
+	"create",
+	"update",
+	"createMany",
+	"createManyAndReturn",
+	"updateMany",
+	"updateManyAndReturn",
+]);
+
 /**
- * Writes that cannot be right with sealed columns, refused before they run:
- * an `updateMany` setting a mapped column (each row needs its own AAD and
- * nonce), and a ciphertext written as if it were text (a copied sealed value
- * would be sealed twice once PR 4 seals). Nested writes are PR 4's.
+ * A ciphertext written as if it were text is refused before it runs: a
+ * copied sealed value would be stored under the wrong cell, and sealed twice
+ * once PR 4 seals. Top-level writes only; nested writes are PR 4's. An
+ * `updateMany` that sets a mapped column to plaintext still runs: two callers
+ * do (export_job.fileName, split_participant.rejectionReason), and PR 4 must
+ * move them before it refuses that shape.
  */
 function refuseWrites(model: string, operation: string, args: Row): void {
 	const columns = Object.keys(fieldsOfModel(model)?.columns ?? {});
 	if (columns.length === 0) return;
-	if (
-		(operation === "updateMany" || operation === "updateManyAndReturn") &&
-		isRow(args.data) &&
-		columns.some((f) => (args.data as Row)[f] !== undefined)
-	)
-		throw new Error(
-			`${model}.${operation} cannot set encrypted text; update each row by id`,
-		);
 	const data =
 		operation === "upsert"
 			? [args.create, args.update]
-			: ["create", "update", "createMany", "createManyAndReturn"].includes(
-						operation,
-					)
+			: WRITES_DATA.has(operation)
 				? [args.data].flat()
 				: [];
 	for (const values of data) {
