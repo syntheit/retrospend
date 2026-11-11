@@ -113,6 +113,12 @@ export async function copyToOtherParties(
 		)
 			continue;
 		const actor = event.userId;
+		// A copy carries none of the actor's ids or amounts, but keeps whether
+		// the server made the change: every party needs that to read it right.
+		const payload: EventData =
+			eventDataSchema.safeParse(event.payload).data?.automatic === true
+				? { ...NOTHING, automatic: true }
+				: NOTHING;
 		const named = TELL_TYPES.has(event.type)
 			? await stillHere(
 					tx,
@@ -132,7 +138,7 @@ export async function copyToOtherParties(
 				type: event.type,
 				entityType: resource,
 				entityId,
-				payload: NOTHING,
+				payload,
 				createdAt: event.createdAt,
 				pushedAt: now,
 				sourceEventId: event.id,

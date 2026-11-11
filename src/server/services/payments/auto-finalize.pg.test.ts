@@ -210,8 +210,10 @@ describe("auto-finalize of a payment pending for more than 7 days", () => {
 		});
 		const [theirs] = await confirmed(p.payer);
 		expect(theirs?.data.amounts).toEqual([]);
-		// The event says the server made the change; a manual confirm's does not.
+		// The event says the server made the change, in the payer's copy too; a
+		// manual confirm's does not.
 		expect(mine?.data.automatic).toBe(true);
+		expect(theirs?.data.automatic).toBe(true);
 		const q = await pair();
 		const manual = await pay(q, "37100");
 		await forUser(q.payee.user.id).apply(confirmPayment, {
