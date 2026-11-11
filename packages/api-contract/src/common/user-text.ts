@@ -105,8 +105,8 @@ function removeForbidden(text: string): string {
 	return out;
 }
 
-function declare(field: string, max: number, required: boolean) {
-	fields.add(field);
+function declare(field: string | null, max: number, required: boolean) {
+	if (field !== null) fields.add(field);
 	const text = z.string();
 	return (required ? text.min(1) : text)
 		.max(max)
@@ -130,4 +130,30 @@ export function userText(field: string, max: number) {
  */
 export function userTextOrEmpty(field: string, max: number) {
 	return declare(field, max, false);
+}
+
+/**
+ * Text an Undo payload puts back into a user-text column (an expense, a shared
+ * expense, a move, an income). It is never a ciphertext: a value that starts
+ * with U+0001 is refused, and so is a lone surrogate. The other C0 controls
+ * are stripped, not refused, because the text may come from a row written
+ * before `userText` existed (a legacy title with a vertical tab), and Undo of
+ * a money action has to work for it. Tab, line feed and carriage return stay,
+ * as in `userText`, and nothing else changes (no trim, no case folding).
+ * It declares no field: the live write path of the same column already does.
+ * "" is valid when `empty` is set, for a column the form takes empty; a
+ * required value must still have text left after the strip.
+ */
+export function restoreText(max: number, options?: { empty?: boolean }) {
+	const stripped = z
+		.string()
+		.max(max)
+		.refine((value) => value.charCodeAt(0) !== 0x01, {
+			message: "Text cannot start with an encryption marker",
+		})
+		.refine((value) => !hasLoneSurrogate(value), {
+			message: "Text is not valid Unicode",
+		})
+		.transform(stripUserTextControls);
+	return options?.empty ? stripped : stripped.pipe(z.string().min(1));
 }

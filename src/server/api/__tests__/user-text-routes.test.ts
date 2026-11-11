@@ -416,53 +416,81 @@ describe("trimmed names", () => {
 });
 
 describe("restore payloads", () => {
-	it("accept any text the column holds, control characters included", () => {
-		const stored = "legacy\u000bimport\u0001";
-		expect(
-			expenseRestoreSchema.safeParse({
-				id: "e1",
-				title: stored,
-				amount: 5,
-				currency: "USD",
-				date: new Date(),
-				location: stored,
-				description: stored,
-			}).success,
-		).toBe(true);
-		expect(
-			sharedRestoreSchema.safeParse({
-				id: "t1",
-				amount: 5,
-				currency: "USD",
-				description: stored,
-				categoryId: null,
-				date: new Date(),
-				notes: stored,
-				projectId: null,
-				...split,
-			}).success,
-		).toBe(true);
+	const text = "Line one\r\nLine two\ttabbed \u{1F355}";
+	const expense = {
+		id: "e1",
+		title: "Lunch",
+		amount: 5,
+		currency: "USD",
+		date: new Date(),
+	};
+	const shared = {
+		id: "t1",
+		amount: 5,
+		currency: "USD",
+		description: "Dinner",
+		categoryId: null,
+		date: new Date(),
+		notes: null,
+		projectId: null,
+		...split,
+	};
+	const transfer = {
+		id: "m1",
+		fromAccountId: "a1",
+		toAccountId: "a2",
+		fromAmount: "5",
+	};
+	const income = { id: "i1", title: "Pay", amount: "5", currency: "ARS" };
+
+	const cases: [string, z.ZodType, object, string][] = [
+		["expense title", expenseRestoreSchema, expense, "title"],
+		["expense location", expenseRestoreSchema, expense, "location"],
+		["expense description", expenseRestoreSchema, expense, "description"],
+		["shared description", sharedRestoreSchema, shared, "description"],
+		["shared notes", sharedRestoreSchema, shared, "notes"],
+		["transfer note", recreateTransferSchema, transfer, "note"],
+		["income title", recreateIncomeSchema, income, "title"],
+		["income description", recreateIncomeSchema, income, "description"],
+	];
+
+	it.each(cases)("%s refuses a leading U+0001 and a lone surrogate", (_l, schema, base, path) => {
+		for (const bad of ["\u0001k1:AAAA", "\u0001", "a\uD800"])
+			expect(
+				schema.safeParse(withField(base, path, bad)).success,
+				JSON.stringify(bad),
+			).toBe(false);
 	});
 
-	it("accept a stored control character when an income or a move comes back", () => {
-		const stored = "legacy\u000bimport\u0001";
+	it.each(cases)("%s strips other controls so Undo works on a legacy row", (_l, schema, base, path) => {
+		const result = schema.safeParse(withField(base, path, "a\u000bb\u0007\u0001"));
+		expect(result.error?.issues).toBeUndefined();
+		expect((result.data as Record<string, unknown>)[path]).toBe("ab");
+	});
+
+	it.each(cases)("%s keeps ordinary text as typed", (_l, schema, base, path) => {
+		const result = schema.safeParse(withField(base, path, text));
+		expect(result.error?.issues).toBeUndefined();
+		expect((result.data as Record<string, unknown>)[path]).toBe(text);
+	});
+
+	it("refuses a required title that is only controls", () => {
 		expect(
-			recreateTransferSchema.safeParse({
-				id: "m1",
-				fromAccountId: "a1",
-				toAccountId: "a2",
-				fromAmount: "5",
-				note: stored,
-			}).success,
+			expenseRestoreSchema.safeParse(withField(expense, "title", "\u000b"))
+				.success,
+		).toBe(false);
+	});
+
+	it("still takes an empty optional field and refuses an empty title", () => {
+		expect(
+			expenseRestoreSchema.safeParse(withField(expense, "location", ""))
+				.success,
 		).toBe(true);
 		expect(
-			recreateIncomeSchema.safeParse({
-				id: "i1",
-				title: stored,
-				amount: "5",
-				currency: "ARS",
-				description: stored,
-			}).success,
+			expenseRestoreSchema.safeParse(withField(expense, "title", "")).success,
+		).toBe(false);
+		expect(
+			sharedRestoreSchema.safeParse(withField(shared, "notes", "")).success,
 		).toBe(true);
 	});
 });

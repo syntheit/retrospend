@@ -5,7 +5,11 @@
  * their number fields until stream 4 rebuilds them.
  */
 import { accountRateTextSchema } from "@retrospend/api-contract";
-import { userText, userTextOrEmpty } from "@retrospend/api-contract/common";
+import {
+	restoreText,
+	userText,
+	userTextOrEmpty,
+} from "@retrospend/api-contract/common";
 
 export { setAccountOrderSchema } from "@retrospend/api-contract";
 
@@ -124,12 +128,12 @@ export const createTransferSchema = z.object({
 
 /**
  * The undo of a delete brings the move back with its own id. Restore puts back
- * what was stored, so the note is a plain string: it must accept anything the
- * column holds, even a legacy row with a control character.
+ * what was stored; the note goes through `restoreText` (a leading U+0001 is
+ * refused, other controls are stripped).
  */
 export const recreateTransferSchema = createTransferSchema.extend({
 	id,
-	note: z.string().max(500).nullish(),
+	note: restoreText(500, { empty: true }).nullish(),
 });
 
 export const transferIdSchema = z.object({ transferId: id });
@@ -160,13 +164,13 @@ const storedDecimal = z.string().regex(/^-?\d{1,20}(\.\d{1,12})?$/);
 
 /**
  * income.delete's recreate input: the same row, at the rates it was booked at.
- * Restore puts back what was stored, so title and description are plain
- * strings: they must accept anything the column holds.
+ * Restore puts back what was stored; title and description go through
+ * `restoreText` (a leading U+0001 is refused, other controls are stripped).
  */
 export const recreateIncomeSchema = addIncomeSchema.extend({
 	id,
-	title: z.string().min(1).max(191),
-	description: z.string().max(1000).nullish(),
+	title: restoreText(191),
+	description: restoreText(1000, { empty: true }).nullish(),
 	restore: z
 		.object({
 			exchangeRate: storedDecimal,

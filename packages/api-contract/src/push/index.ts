@@ -1,5 +1,6 @@
 import * as z from "zod";
 import { v1 } from "../common/meta";
+import { userTextOrEmpty } from "../common/user-text";
 import { cursorQuerySchema, pageOf } from "../common/pagination";
 import { idParamsSchema, idSchema, okSchema, timestampSchema } from "../core";
 
@@ -7,7 +8,7 @@ export const PUSH_PLATFORMS = ["ios", "android"] as const;
 
 const deviceFields = {
 	appVersion: z.string().max(32).optional(),
-	deviceName: z.string().trim().max(100).optional(),
+	deviceName: userTextOrEmpty("push_device.deviceName", 100).optional(),
 };
 
 /** Web Push key material, base64url as the Push API hands it out. */

@@ -10,7 +10,7 @@ import { ImportQueueService } from "~/server/services/import-queue.service";
 // ── Input Schemas ─────────────────────────────────────────────────────
 
 const createJobSchema = z.object({
-	fileName: z.string().min(1).max(255),
+	fileName: userText("import_job.fileName", 255),
 	fileSize: z.number().int().positive(),
 	fileType: z.enum(["csv", "xlsx", "pdf"]),
 	type: z.enum(["CSV", "BANK_STATEMENT"]),
