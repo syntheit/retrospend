@@ -67,7 +67,17 @@ export type FieldCryptoErrorCode =
 	/** The value names a key id the keyring does not hold. */
 	| "unknown_key"
 	/** Wrong key, wrong cell (AAD) or altered bytes. */
-	| "auth_failed";
+	| "auth_failed"
+	/** A bulk write (updateMany) sets text: each cell needs its own row id. */
+	| "bulk_text_write"
+	/** A write of text names no row id to bind it to. */
+	| "missing_row_id"
+	/** A nested write of text names no row id to bind it to. */
+	| "unsealable_nested"
+	/** User-class text written for an owner whose key this client does not hold. */
+	| "foreign_owner"
+	/** A category name written without its name index (E2EE D9). */
+	| "category_index_missing";
 
 const MESSAGES: Record<FieldCryptoErrorCode, string> = {
 	bad_key: "The field encryption key is not valid",
@@ -77,6 +87,11 @@ const MESSAGES: Record<FieldCryptoErrorCode, string> = {
 	unsupported_version: "The encrypted value has an unsupported format version",
 	unknown_key: "The encrypted value names a key this server does not hold",
 	auth_failed: "The encrypted value did not verify",
+	bulk_text_write: "A bulk write cannot set encrypted text",
+	missing_row_id: "Encrypted text needs the id of the row it is written to",
+	unsealable_nested: "A nested write of encrypted text needs the id of its row",
+	foreign_owner: "Encrypted text can only be written for the client's own user",
+	category_index_missing: "A category name needs its name index",
 };
 
 export class FieldCryptoError extends Error {
