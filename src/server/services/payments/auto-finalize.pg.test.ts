@@ -184,13 +184,11 @@ describe("auto-finalize of a payment pending for more than 7 days", () => {
 					e.type === "payment.confirmed" &&
 					(e.entity?.id === id || e.data.ids.paymentId === id),
 			);
-		// An event shows up once every older open transaction on the server has
-		// finished (feed.ts), so give a busy test server time.
 		await vi.waitFor(async () => {
 			await fanOutEvents();
 			expect(await confirmed(p.payer)).toHaveLength(1);
 			expect(await confirmed(p.payee)).toHaveLength(1);
-		}, 45_000);
+		});
 		// The payee's own event carries the figures the payment moved (ARS 37,100
 		// stops being owed to them), as a manual confirm's does; the payer's copy
 		// carries none of the payee's amounts.
@@ -202,7 +200,7 @@ describe("auto-finalize of a payment pending for more than 7 days", () => {
 		});
 		const [theirs] = await confirmed(p.payer);
 		expect(theirs?.data.amounts).toEqual([]);
-	}, 60_000);
+	});
 
 	it("does nothing the second time", async () => {
 		const p = await pair();
@@ -257,7 +255,7 @@ describe("auto-finalize of a payment pending for more than 7 days", () => {
 		expect(await settledEntries(id)).toHaveLength(1);
 	});
 
-	it("lets only one replica sweep at a time and logs counts only", async () => {
+	it("finalizes once when two replicas sweep together, and logs counts only", async () => {
 		const p = await pair();
 		await pay(p, "37100");
 		const log = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -266,7 +264,7 @@ describe("auto-finalize of a payment pending for more than 7 days", () => {
 				finalizeStaleProposedPayments(NOW),
 				finalizeStaleProposedPayments(NOW),
 			]);
-			const total = results.reduce((t, r) => t + (r?.finalized ?? 0), 0);
+			const total = results.reduce((t, r) => t + r.finalized, 0);
 			expect(total).toBe(1);
 			const lines = log.mock.calls
 				.map((c) => String(c[0]))
@@ -351,23 +349,6 @@ describe("auto-finalize of a payment pending for more than 7 days", () => {
 			reopened: 1,
 		});
 		expect((await state(id)).header.status).toBe("PROPOSED");
-	});
-
-	it("stops the pass when the transaction holding the sweep lock is gone", async () => {
-		const p = await pair();
-		const id = await pay(p, "37100");
-		let calls = 0;
-		const source = {
-			$queryRaw: async (...args: Parameters<typeof adminDb.$queryRaw>) => {
-				calls += 1;
-				if (calls > 1) throw new Error("transaction is closed");
-				return adminDb.$queryRaw(...args);
-			},
-		} as unknown as Parameters<typeof sweepStalePayments>[1];
-		await expect(sweepStalePayments(NOW, source)).rejects.toThrow("closed");
-		expect((await state(id)).header.status).toBe("PROPOSED");
-		// Not stale any more, so later sweeps in this file leave it alone.
-		await age(id, 0);
 	});
 
 	it("leaves an over-claim pending and counts it", async () => {

@@ -35,8 +35,6 @@ export const AUTO_FINALIZE_AFTER_DAYS = 7;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const EVERY_MS = 60 * 60 * 1000;
-// The sweep holds one connection for its lock while each payment uses its own.
-const SWEEP_TIMEOUT_MS = 10 * 60 * 1000;
 
 export interface AutoFinalizeResult {
 	readonly finalized: number;
@@ -115,8 +113,10 @@ async function finalizeOne(c: Candidate): Promise<Outcome> {
 }
 
 /**
- * One pass over the stale payments, with no sweep-level lock: the pair lock
- * and the PROPOSED guard keep two passes from finalizing a payment twice.
+ * One pass over the stale payments. There is no lock across the pass (a
+ * transaction open that long would hold back every user's event feed, see
+ * feed.ts): each payment takes its pair lock and checks it is still pending,
+ * so two replicas, or a replica and a confirm, finalize it once.
  */
 export async function sweepStalePayments(
 	now = new Date(),
@@ -131,33 +131,18 @@ export async function sweepStalePayments(
 		failed: 0,
 	};
 	for (const candidate of await staleCandidates(source, cutoff)) {
-		// Each payment commits on its own connection, outside the sweep's lock.
-		// If the lock's transaction timed out or aborted this throws and ends
-		// the pass, rather than going on unlocked.
-		await source.$queryRaw`SELECT 1`;
 		counts[await finalizeOne(candidate)] += 1;
 	}
 	return counts;
 }
 
-/**
- * Finalizes every payment pending for more than 7 days. With several app
- * replicas one sweep runs at a time (an advisory lock held for the pass);
- * the others return null. Logs one line with counts only.
- */
+/** Finalizes every payment pending for more than 7 days. Logs one line with counts only. */
 export async function finalizeStaleProposedPayments(
 	now = new Date(),
-): Promise<AutoFinalizeResult | null> {
-	const result = await db.$transaction(
-		async (tx) => {
-			const [row] = await tx.$queryRaw<{ locked: boolean }[]>`
-				SELECT pg_try_advisory_xact_lock(hashtext('payment-auto-finalize'), 0) AS "locked"`;
-			return row?.locked ? sweepStalePayments(now, tx) : null;
-		},
-		{ timeout: SWEEP_TIMEOUT_MS, maxWait: 10_000 },
-	);
+): Promise<AutoFinalizeResult> {
+	const result = await sweepStalePayments(now);
 	// Over-claimed and reopened payments stay pending hour after hour: no line.
-	if (result && (result.finalized > 0 || result.failed > 0)) {
+	if (result.finalized > 0 || result.failed > 0) {
 		console.log(
 			`Auto-finalize: ${result.finalized} finalized, ${result.overClaimed} left pending (over-claimed), ${result.raced} changed meanwhile, ${result.reopened} reopened, ${result.failed} failed`,
 		);
