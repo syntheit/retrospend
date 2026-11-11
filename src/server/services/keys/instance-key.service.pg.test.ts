@@ -27,6 +27,7 @@ import {
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 import { REPO_ROOT } from "~/test/uiRules/paths";
+import { getOrCreateDataKeyring } from "./data-key.service";
 import {
 	evictInstanceKeyring,
 	getOrCreateInstanceKeyring,
@@ -276,6 +277,27 @@ describe("getOrCreateInstanceKeyring", () => {
 		expect(openField(ring, sealedOld, cell)).toBe("Old");
 	});
 
+	it("does not let an invalid caller that shares a load fail a valid one", async () => {
+		const mk = master();
+		evictInstanceKeyring();
+		const t0 = 2_000_000;
+		const bad: InstanceKeyActor = {
+			kind: "guest",
+			guestSessionId: randomUUID(),
+		};
+		const good = await asUser();
+		// Both start before either finishes, so the second shares the first's load.
+		const first = getOrCreateInstanceKeyring(bad, mk, t0);
+		const second = getOrCreateInstanceKeyring(good, mk, t0);
+		const [a, b] = await Promise.allSettled([first, second]);
+		expect(a.status).toBe("rejected");
+		expect((a as PromiseRejectedResult).reason).toMatchObject({
+			code: "no_actor",
+		});
+		expect(b.status).toBe("fulfilled");
+		expect(await rows()).toHaveLength(1);
+	});
+
 	it("caches the keyring for a short time and then asks the database again", async () => {
 		const actor = await asUser();
 		const mk = master();
@@ -486,6 +508,51 @@ describe("catalog", () => {
 });
 
 describe("assertMasterKeyCanary", () => {
+	// Other test files leave user keys wrapped by their own master keys; the
+	// canary's first write checks them, so start from none.
+	beforeEach(async () => {
+		await adminDb.$executeRaw`DELETE FROM keystore."user_data_key"`;
+	});
+
+	it("refuses to write the first canary under a master key that does not open an existing user key", async () => {
+		const right = master();
+		const who = await createTestUser();
+		await who.db.$transaction((tx) => getOrCreateDataKeyring(tx, right));
+
+		const error = await failure(assertMasterKeyCanary(master()));
+		expect(error).toBeInstanceOf(MasterCanaryError);
+		expect((await markers())?.canary ?? null).toBeNull();
+		// The right key writes it, and then it is the check.
+		expect(await assertMasterKeyCanary(right)).toBe("written");
+		expect(await failure(assertMasterKeyCanary(master()))).toBeInstanceOf(
+			MasterCanaryError,
+		);
+	});
+
+	it("refuses to write the first canary under a master key that does not open the instance key", async () => {
+		const right = master();
+		await load(await asUser(), right);
+
+		expect(await failure(assertMasterKeyCanary(master()))).toBeInstanceOf(
+			MasterCanaryError,
+		);
+		expect((await markers())?.canary ?? null).toBeNull();
+		expect(await assertMasterKeyCanary(right)).toBe("written");
+	});
+
+	it("accepts a rotated key set that still holds the id an existing key was wrapped with", async () => {
+		const old = randomBytes(32);
+		const who = await createTestUser();
+		await who.db.$transaction((tx) =>
+			getOrCreateDataKeyring(tx, new Keyring([{ id: 1, key: old }])),
+		);
+		const rotated = new Keyring([
+			{ id: 2, key: randomBytes(32) },
+			{ id: 1, key: old },
+		]);
+		expect(await assertMasterKeyCanary(rotated)).toBe("written");
+	});
+
 	it("writes the canary on the first start and verifies it after", async () => {
 		const mk = master();
 		expect(await assertMasterKeyCanary(mk)).toBe("written");

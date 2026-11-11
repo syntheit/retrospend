@@ -106,10 +106,10 @@ END
 $$;
 
 -- Makes key 1 when there is none, and returns the keys either way. The
--- app_settings row is locked first (and made, with every column at its default,
--- when it does not exist yet), so two processes that start together mint one
--- at a time; the insert is also ON CONFLICT DO NOTHING, so the loser's key is
--- dropped and both read the winner's. The marker is set in the same
+-- app_settings row is made first, with every column at its default, when it
+-- does not exist yet. Two processes that mint together end up with one key: the
+-- insert is ON CONFLICT DO NOTHING, so the loser waits for the winner's commit,
+-- drops its own key, and both read the winner's. The marker is set in the same
 -- transaction as the key.
 CREATE OR REPLACE FUNCTION keystore."create_first_instance_key"(
   "p_wrapped_key" text,
@@ -128,7 +128,7 @@ BEGIN
   VALUES ('app_settings_singleton', pg_catalog.now() AT TIME ZONE 'UTC')
   ON CONFLICT ("id") DO NOTHING;
   SELECT s."instanceKeySince" INTO since
-    FROM public."app_settings" s WHERE s."id" = 'app_settings_singleton' FOR UPDATE;
+    FROM public."app_settings" s WHERE s."id" = 'app_settings_singleton';
   IF since IS NOT NULL
      AND NOT EXISTS (SELECT 1 FROM keystore."instance_text_key") THEN
     RAISE EXCEPTION 'keystore: the instance key was made before and is gone'

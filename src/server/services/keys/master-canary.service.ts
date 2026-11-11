@@ -7,6 +7,12 @@
  * instead of every later key unwrap failing, or new keys being wrapped by the
  * wrong key. The first start with a master key writes it.
  *
+ * Before it writes the canary for the first time it opens one wrapped key that
+ * already exists (a user data key, or the instance key). An instance that made
+ * keys before this release has no canary yet, and writing one under a wrong
+ * master key would bless that key. With no wrapped key yet, there is nothing
+ * to check against, and the canary is written as is.
+ *
  * With no master key configured the check is skipped: nothing is sealed then.
  * Any other failure (the database is unreachable, the column is missing) also
  * stops the start: an unchecked master key is the case this guards against.
@@ -26,6 +32,8 @@ import {
 	sealField,
 } from "../../crypto/field-crypto";
 import { getMasterKeyring } from "../../crypto/master-key";
+import { dataKeyAad } from "./data-key.service";
+import { instanceKeyAad } from "./instance-key.service";
 
 const SETTINGS_ID = "app_settings_singleton";
 /** Public and fixed: the canary proves the key, it hides nothing. */
@@ -60,6 +68,42 @@ const readCanary = async (client: CanaryClient): Promise<string | null> => {
 	return row?.canary ?? null;
 };
 
+/**
+ * Opens one wrapped key that already exists, oldest first. Throws
+ * `MasterCanaryError` when it does not open under this master key.
+ */
+async function verifyExistingKeys(
+	client: CanaryClient,
+	keyring: Keyring,
+): Promise<void> {
+	// A missing table is not an error here (a database restored without the
+	// keystore); it only means there is nothing to check against.
+	const [present] = await client.$queryRaw<{ user: boolean; instance: boolean }[]>`
+		SELECT to_regclass('keystore.user_data_key') IS NOT NULL AS "user",
+		       to_regclass('keystore.instance_text_key') IS NOT NULL AS "instance"`;
+	const [user] = present?.user
+		? await client.$queryRaw<
+				{ userId: string; keyId: number; wrappedKey: string }[]
+			>`
+				SELECT "userId", "keyId", "wrappedKey" FROM keystore."user_data_key"
+				ORDER BY "createdAt", "userId", "keyId" LIMIT 1`
+		: [];
+	const [instance] = present?.instance
+		? await client.$queryRaw<{ keyId: number; wrappedKey: string }[]>`
+				SELECT "keyId", "wrappedKey" FROM keystore."instance_text_key"
+				ORDER BY "createdAt", "keyId" LIMIT 1`
+		: [];
+	try {
+		if (user)
+			openField(keyring, user.wrappedKey, dataKeyAad(user.userId, user.keyId));
+		if (instance)
+			openField(keyring, instance.wrappedKey, instanceKeyAad(instance.keyId));
+	} catch (error) {
+		if (error instanceof FieldCryptoError) throw new MasterCanaryError();
+		throw error;
+	}
+}
+
 function verify(sealed: string, keyring: Keyring): void {
 	let text: string;
 	try {
@@ -86,6 +130,7 @@ export async function assertMasterKeyCanary(
 		verify(existing, masterKeyring);
 		return "verified";
 	}
+	await verifyExistingKeys(client, masterKeyring);
 	// The conditional update keeps the first writer's value when two servers
 	// start together; both then check what is stored.
 	const sealed = sealField(masterKeyring, CANARY_TEXT, AAD);

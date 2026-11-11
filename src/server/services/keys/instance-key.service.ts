@@ -25,7 +25,7 @@
  */
 import { randomBytes } from "node:crypto";
 import { keystoreDb } from "~/server/db";
-import { Prisma } from "~prisma";
+import type { Prisma } from "~prisma";
 import {
 	type FieldAad,
 	Keyring,
@@ -33,6 +33,10 @@ import {
 	sealField,
 } from "../../crypto/field-crypto";
 import { getMasterKeyring } from "../../crypto/master-key";
+import {
+	type KeystoreFailure,
+	mapKeystoreErrors,
+} from "./keystore-errors";
 
 export type InstanceKeyErrorCode =
 	/** DATA_MASTER_KEY is not configured, so the key cannot be sealed or opened. */
@@ -81,7 +85,7 @@ const INSTANCE_KEY_BYTES = 32;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 /** Binds a wrapped key to its version: a copy under another id fails to open. */
-function wrapAad(keyId: number): FieldAad {
+export function instanceKeyAad(keyId: number): FieldAad {
 	return {
 		table: "keystore.instance_text_key",
 		column: "wrappedKey",
@@ -91,42 +95,24 @@ function wrapAad(keyId: number): FieldAad {
 
 type KeyRow = { keyId: number; wrappedKey: string };
 
-/** The Postgres error code of a failed raw query, as Prisma reports it. */
-function pgCode(error: unknown): string | undefined {
-	if (!(error instanceof Prisma.PrismaClientKnownRequestError))
-		return undefined;
-	const meta = error.meta as
-		| { driverAdapterError?: { cause?: { originalCode?: string } } }
-		| undefined;
-	return meta?.driverAdapterError?.cause?.originalCode;
-}
-
-/**
- * Runs one keystore query and turns the failures a caller can act on into
- * stable errors: 42P01, 3F000 or 42883 mean the keystore is missing; 28000 is
- * the functions refusing a missing or unknown actor; 42501 is a missing grant;
- * KS001 is the mint function refusing to replace a key that was lost.
- */
-async function keystore<T>(query: () => Promise<T>): Promise<T> {
-	try {
-		return await query();
-	} catch (error) {
-		const code = pgCode(error);
-		if (code === "42P01" || code === "3F000" || code === "42883")
-			throw new InstanceKeyError("keystore_missing");
-		if (code === "28000") throw new InstanceKeyError("no_actor");
-		if (code === "42501") throw new InstanceKeyError("keystore_grants_missing");
-		if (code === "KS001") throw new InstanceKeyError("keystore_lost");
-		throw error;
-	}
-}
+/** See keystore-errors.ts: the failures a caller can act on become stable errors. */
+const keystore = <T>(query: () => Promise<T>): Promise<T> =>
+	mapKeystoreErrors(query, (failure) => {
+		const code: Record<KeystoreFailure, InstanceKeyErrorCode> = {
+			missing: "keystore_missing",
+			refused: "no_actor",
+			grants: "keystore_grants_missing",
+			lost: "keystore_lost",
+		};
+		return new InstanceKeyError(code[failure]);
+	});
 
 function unwrapAll(rows: KeyRow[], masterKeyring: Keyring): Keyring {
 	return new Keyring(
 		rows.map(({ keyId, wrappedKey }) => ({
 			id: keyId,
 			key: Buffer.from(
-				openField(masterKeyring, wrappedKey, wrapAad(keyId)),
+				openField(masterKeyring, wrappedKey, instanceKeyAad(keyId)),
 				"base64",
 			),
 		})),
@@ -163,7 +149,7 @@ async function loadOrMint(
 			const wrapped = sealField(
 				masterKeyring,
 				randomBytes(INSTANCE_KEY_BYTES).toString("base64"),
-				wrapAad(FIRST_KEY_ID),
+				instanceKeyAad(FIRST_KEY_ID),
 			);
 			// Two processes that mint together end up with one key: the function
 			// serializes them and keeps the first row, and both read it back.
@@ -175,13 +161,26 @@ async function loadOrMint(
 	return unwrapAll(rows, masterKeyring);
 }
 
-type Cached = { master: Keyring; at: number; ring: Promise<Keyring> };
+type Cached = {
+	master: Keyring;
+	at: number;
+	/** Who started the load; another caller may be sharing it. */
+	actor: string;
+	ring: Promise<Keyring>;
+};
 let cached: Cached | undefined;
+
+const actorKey = (actor: InstanceKeyActor): string =>
+	actor.kind === "user"
+		? `user:${actor.userId}`
+		: `guest:${actor.guestSessionId}`;
 
 /**
  * The instance keyring (current key first), made on first use. A failure is
  * never cached. Safe to call from many requests at once: they share one load.
- * `now` is for tests.
+ * A caller that shares a load another actor started, and sees it refused for
+ * that actor, tries once more with its own actor, so one invalid caller cannot
+ * fail a valid one. `now` is for tests.
  */
 export function getOrCreateInstanceKeyring(
 	actor: InstanceKeyActor,
@@ -190,15 +189,24 @@ export function getOrCreateInstanceKeyring(
 ): Promise<Keyring> {
 	if (!masterKeyring)
 		return Promise.reject(new InstanceKeyError("master_key_missing"));
+	const who = actorKey(actor);
 	if (
 		cached &&
 		cached.master === masterKeyring &&
 		now - cached.at < CACHE_TTL_MS
-	)
-		return cached.ring;
+	) {
+		const shared = cached;
+		if (shared.actor === who) return shared.ring;
+		return shared.ring.catch((error: unknown) => {
+			if (error instanceof InstanceKeyError && error.code === "no_actor")
+				return getOrCreateInstanceKeyring(actor, masterKeyring, now);
+			throw error;
+		});
+	}
 	const entry: Cached = {
 		master: masterKeyring,
 		at: now,
+		actor: who,
 		ring: loadOrMint(actor, masterKeyring),
 	};
 	cached = entry;
