@@ -10,7 +10,7 @@
  * query, and an eviction (a crypto-shred) reaches every client at its next
  * `ready()`.
  */
-import { KeystoreError } from "../services/keys/keystore-errors";
+import { KeystoreError, pgCode } from "../services/keys/keystore-errors";
 import { FieldCryptoError, type Keyring } from "./field-crypto";
 import type { KeyClass } from "./fields";
 
@@ -35,17 +35,39 @@ export interface TextKeys {
 
 const CLASSES: readonly KeyClass[] = ["user", "instance"];
 
-async function settle(load: KeyLoader): Promise<KeyOutcome> {
+/** Errors already logged: a failed load stays cached for 30 seconds, and every `ready()` meanwhile sees the same error. */
+const logged = new WeakSet<object>();
+
+/**
+ * Logs an error that has no stable code, once. Only the key class, the error's
+ * name and its SQLSTATE: a message can carry a user id or query text.
+ */
+function logUnexpected(cls: KeyClass, error: unknown): void {
+	if (typeof error === "object" && error !== null) {
+		if (logged.has(error)) return;
+		logged.add(error);
+	}
+	console.error("Key load failed", {
+		keyClass: cls,
+		error: error instanceof Error ? error.name : typeof error,
+		sqlstate: pgCode(error) ?? null,
+	});
+}
+
+async function settle(cls: KeyClass, load: KeyLoader): Promise<KeyOutcome> {
 	try {
 		const ring = await load();
 		return ring ? { ring } : { none: true };
 	} catch (error) {
 		// Our own errors carry a stable code; anything else (the database is
-		// down) gets one generic code, and its text is never kept.
-		const code =
-			error instanceof KeystoreError || error instanceof FieldCryptoError
-				? error.code
-				: "keystore_unavailable";
+		// down) gets one generic code, and is logged without its text.
+		if (
+			!(error instanceof KeystoreError || error instanceof FieldCryptoError)
+		) {
+			logUnexpected(cls, error);
+			return { failed: "keystore_unavailable" };
+		}
+		const { code } = error;
 		return code === "master_key_missing"
 			? { none: true, code }
 			: { failed: code };
@@ -62,7 +84,7 @@ export function textKeys(
 			await Promise.all(
 				CLASSES.map(async (cls) => {
 					const load = loaders[cls];
-					outcomes.set(cls, load ? await settle(load) : { none: true });
+					outcomes.set(cls, load ? await settle(cls, load) : { none: true });
 				}),
 			);
 		},
