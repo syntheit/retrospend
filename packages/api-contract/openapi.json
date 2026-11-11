@@ -55,6 +55,7 @@
 							"rate_out_of_range",
 							"id_taken",
 							"rate_limited",
+							"encrypted_text_unavailable",
 							"internal",
 							"not_implemented"
 						],
