@@ -9,7 +9,15 @@
  * each read must return them, and nothing sealed at rest is read back raw.
  */
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterAll,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
 import type { Keyring } from "~/server/crypto/field-crypto";
 import { FIELD_MAP, type MappedModel } from "~/server/crypto/fields";
 import { resetReloadsForTests } from "~/server/crypto/text-keys";
@@ -60,41 +68,68 @@ const once = <T>(make: () => Promise<T>) => {
 };
 
 function ctxFor(owner: string): Ctx {
-	const project = once(async () =>
-		(await adminDb.project.create({ data: { name: "P", createdById: owner } })).id,
+	const project = once(
+		async () =>
+			(
+				await adminDb.project.create({
+					data: { name: "P", createdById: owner },
+				})
+			).id,
 	);
-	const book = once(async () =>
-		(
-			await adminDb.budgetBook.create({
-				data: { currency: "ARS", startDate: day, startMonth: 202611, createdById: owner },
-			})
-		).id,
+	const book = once(
+		async () =>
+			(
+				await adminDb.budgetBook.create({
+					data: {
+						currency: "ARS",
+						startDate: day,
+						startMonth: 202611,
+						createdById: owner,
+					},
+				})
+			).id,
 	);
-	const envelope = once(async () =>
-		(await adminDb.envelope.create({ data: { bookId: await book(), name: "E", sortOrder: 0 } })).id,
+	const envelope = once(
+		async () =>
+			(
+				await adminDb.envelope.create({
+					data: { bookId: await book(), name: "E", sortOrder: 0 },
+				})
+			).id,
 	);
-	const sharedTx = once(async () =>
-		(
-			await adminDb.sharedTransaction.create({
-				data: {
-					description: "S",
-					amount: "15000",
-					currency: "ARS",
-					date: day,
-					paidByType: "user",
-					paidById: owner,
-					createdByType: "user",
-					createdById: owner,
-					projectId: await project(),
-				},
-			})
-		).id,
+	const sharedTx = once(
+		async () =>
+			(
+				await adminDb.sharedTransaction.create({
+					data: {
+						description: "S",
+						amount: "15000",
+						currency: "ARS",
+						date: day,
+						paidByType: "user",
+						paidById: owner,
+						createdByType: "user",
+						createdById: owner,
+						projectId: await project(),
+					},
+				})
+			).id,
 	);
-	const shadow = once(async () =>
-		(await adminDb.shadowProfile.create({ data: { createdById: owner, name: "Ana" } })).id,
+	const shadow = once(
+		async () =>
+			(
+				await adminDb.shadowProfile.create({
+					data: { createdById: owner, name: "Ana" },
+				})
+			).id,
 	);
-	const magicLink = once(async () =>
-		(await adminDb.magicLink.create({ data: { projectId: await project(), createdById: owner } })).id,
+	const magicLink = once(
+		async () =>
+			(
+				await adminDb.magicLink.create({
+					data: { projectId: await project(), createdById: owner },
+				})
+			).id,
 	);
 	return { owner, project, book, envelope, sharedTx, shadow, magicLink };
 }
@@ -367,10 +402,14 @@ const SEEDERS: Record<MappedModel, (c: Ctx) => Promise<Data>> = {
 
 type Delegate = Record<string, (args: unknown) => Promise<unknown>>;
 const delegateOf = (client: unknown, model: string): Delegate =>
-	(client as Record<string, Delegate>)[model[0]?.toLowerCase() + model.slice(1)] as Delegate;
+	(client as Record<string, Delegate>)[
+		model[0]?.toLowerCase() + model.slice(1)
+	] as Delegate;
 
 const isUserClass = (model: MappedModel) =>
-	Object.values(FIELD_MAP[model].columns as Record<string, string>).includes("user");
+	Object.values(FIELD_MAP[model].columns as Record<string, string>).includes(
+		"user",
+	);
 
 /** The mapped values of a row, for comparison. */
 const mappedOf = (model: MappedModel, row: unknown) =>
@@ -385,14 +424,24 @@ const mappedOf = (model: MappedModel, row: unknown) =>
 function parentLink(model: string) {
 	const models = runtimeDataModel().models as unknown as Record<
 		string,
-		{ fields: { name: string; kind: string; type: string; relationName?: string }[] }
+		{
+			fields: {
+				name: string;
+				kind: string;
+				type: string;
+				relationName?: string;
+			}[];
+		}
 	>;
 	return (models[model]?.fields ?? [])
 		.filter((f) => f.kind === "object" && f.type !== model)
 		.flatMap((f) => {
 			const parent = models[f.type];
 			const back = parent?.fields.find(
-				(g) => g.kind === "object" && g.type === model && g.relationName === f.relationName,
+				(g) =>
+					g.kind === "object" &&
+					g.type === model &&
+					g.relationName === f.relationName,
 			);
 			return back && parent?.fields.some((g) => g.name === "id")
 				? [{ field: f.name, parent: f.type, back: back.name }]
@@ -420,7 +469,11 @@ describe.each(Object.keys(FIELD_MAP) as MappedModel[])("%s", (model) => {
 			data: await SEEDERS[model](ctx),
 		})) as Data;
 		rowId = created.id as string;
-		plain = await sealRow(master.ring as Keyring, FIELD_MAP[model].table, rowId);
+		plain = await sealRow(
+			master.ring as Keyring,
+			FIELD_MAP[model].table,
+			rowId,
+		);
 		expect(Object.keys(plain).sort()).toEqual(
 			Object.keys(FIELD_MAP[model].columns).sort(),
 		);
@@ -432,8 +485,12 @@ describe.each(Object.keys(FIELD_MAP) as MappedModel[])("%s", (model) => {
 	it("reads plaintext through findMany, findFirst and findUnique", async () => {
 		const [many] = (await d().findMany({ where: where() })) as Data[];
 		expect(mappedOf(model, many)).toEqual(plain);
-		expect(mappedOf(model, await d().findFirst({ where: where() }))).toEqual(plain);
-		expect(mappedOf(model, await d().findUnique({ where: where() }))).toEqual(plain);
+		expect(mappedOf(model, await d().findFirst({ where: where() }))).toEqual(
+			plain,
+		);
+		expect(mappedOf(model, await d().findUnique({ where: where() }))).toEqual(
+			plain,
+		);
 	});
 
 	it("reads a select without id, and adds nothing to the result", async () => {
@@ -489,9 +546,9 @@ describe.each(Object.keys(FIELD_MAP) as MappedModel[])("%s", (model) => {
 			// No relation of any model reaches it, so it cannot be read nested.
 			expect(model).toBe("GuestSession");
 			const models = Object.values(runtimeDataModel().models);
-			expect(
-				models.some((m) => m.fields.some((f) => f.type === model)),
-			).toBe(false);
+			expect(models.some((m) => m.fields.some((f) => f.type === model))).toBe(
+				false,
+			);
 		}
 	});
 
@@ -512,20 +569,24 @@ describe.each(Object.keys(FIELD_MAP) as MappedModel[])("%s", (model) => {
 			mappedOf(model, one),
 		);
 		const many = await SEEDERS[model](ctx);
-		const [returned] = (await d().createManyAndReturn({ data: [many] })) as Data[];
+		const [returned] = (await d().createManyAndReturn({
+			data: [many],
+		})) as Data[];
 		expect(mappedOf(model, returned)).toEqual(mappedOf(model, many));
 	});
 
 	it("opens the row returned by update, upsert and delete", async () => {
-		expect(mappedOf(model, await d().update({ where: where(), data: {} }))).toEqual(
-			plain,
-		);
+		expect(
+			mappedOf(model, await d().update({ where: where(), data: {} })),
+		).toEqual(plain);
 		const create = await SEEDERS[model](ctx);
 		expect(
 			mappedOf(model, await d().upsert({ where: where(), create, update: {} })),
 		).toEqual(plain);
 		// A user row is deleted through the global client; RLS has no policy for it.
 		const deleter = model === "User" ? delegateOf(db, model) : d();
-		expect(mappedOf(model, await deleter.delete({ where: where() }))).toEqual(plain);
+		expect(mappedOf(model, await deleter.delete({ where: where() }))).toEqual(
+			plain,
+		);
 	});
 });

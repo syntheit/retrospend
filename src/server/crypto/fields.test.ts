@@ -14,9 +14,9 @@ import { scanSources } from "../../test/source-scan";
 import {
 	FIELD_MAP,
 	fieldsOfModel,
+	type KeyClass,
 	keyClassOfColumn,
 	keyClassOfField,
-	type KeyClass,
 	mappedColumns,
 	modelOfTable,
 } from "./fields";

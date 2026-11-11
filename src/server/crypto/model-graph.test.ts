@@ -4,14 +4,17 @@
 // relations prisma/schema.prisma declares.
 import { describe, expect, it, vi } from "vitest";
 import { runtimeDataModel } from "~/server/db-core";
-
-// db-core builds the real client at load; it never connects here.
-vi.mock("~/env", () => ({
-	env: { DATABASE_URL: "postgresql://unused@127.0.0.1:1/unused", NODE_ENV: "test" },
-}));
 import { readSchema } from "~/test/prisma-schema";
 import { fieldsOfModel } from "./fields";
 import { buildModelGraph } from "./model-graph";
+
+// db-core builds the real client at load; it never connects here.
+vi.mock("~/env", () => ({
+	env: {
+		DATABASE_URL: "postgresql://unused@127.0.0.1:1/unused",
+		NODE_ENV: "test",
+	},
+}));
 
 const schema = readSchema();
 const modelNames = new Set(schema.map((m) => m.name));

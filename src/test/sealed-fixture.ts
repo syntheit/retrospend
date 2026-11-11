@@ -9,8 +9,16 @@
  * `getMasterKeyring` in each test file (vi.mock cannot be shared).
  */
 import { randomBytes } from "node:crypto";
-import { type FieldAad, Keyring, sealField } from "~/server/crypto/field-crypto";
-import { FIELD_MAP, keyClassOfColumn, modelOfTable } from "~/server/crypto/fields";
+import {
+	type FieldAad,
+	Keyring,
+	sealField,
+} from "~/server/crypto/field-crypto";
+import {
+	FIELD_MAP,
+	keyClassOfColumn,
+	modelOfTable,
+} from "~/server/crypto/fields";
 import { keystoreDb } from "~/server/db-core";
 import { userTransaction } from "~/server/db-tx";
 import { getOrCreateDataKeyring } from "~/server/services/keys/data-key.service";
@@ -22,7 +30,9 @@ export const newMasterKeyring = () =>
 
 /** The user's data keys, minted on first use. */
 export const userKeyring = (userId: string, master: Keyring) =>
-	userTransaction(keystoreDb, userId, (tx) => getOrCreateDataKeyring(tx, master));
+	userTransaction(keystoreDb, userId, (tx) =>
+		getOrCreateDataKeyring(tx, master),
+	);
 
 /** The instance key, minted on first use. */
 export const instanceKeyring = (master: Keyring) =>

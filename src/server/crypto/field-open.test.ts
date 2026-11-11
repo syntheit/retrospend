@@ -38,7 +38,11 @@ const ME = "user-me";
 const OTHER = "user-other";
 
 const scalar = (name: string) => ({ name, kind: "scalar", type: "String" });
-const relation = (name: string, type: string) => ({ name, kind: "object", type });
+const relation = (name: string, type: string) => ({
+	name,
+	kind: "object",
+	type,
+});
 const graph = buildModelGraph({
 	models: {
 		Expense: {
@@ -430,7 +434,10 @@ describe("refusals", () => {
 			await refused("updateMany", { where: {}, data: { title: "x" } }),
 		).toBeInstanceOf(Error);
 		expect(
-			await refused("updateManyAndReturn", { where: {}, data: { title: null } }),
+			await refused("updateManyAndReturn", {
+				where: {},
+				data: { title: null },
+			}),
 		).toBeInstanceOf(Error);
 		const query = vi.fn(async () => ({ count: 1 }));
 		await handle({
@@ -446,13 +453,18 @@ describe("refusals", () => {
 		for (const [operation, args] of [
 			["create", { data: { title: sealed } }],
 			["update", { where: { id: "e1" }, data: { title: { set: sealed } } }],
-			["upsert", { where: { id: "e1" }, create: {}, update: { title: sealed } }],
+			[
+				"upsert",
+				{ where: { id: "e1" }, create: {}, update: { title: sealed } },
+			],
 			["createMany", { data: [{ title: "ok" }, { title: sealed }] }],
 			["createManyAndReturn", { data: { title: sealed } }],
 		] as const) {
 			const failure = await refused(operation, args);
 			expect(failure, operation).toBeInstanceOf(FieldCryptoError);
-			expect((failure as FieldCryptoError).code, operation).toBe("bad_plaintext");
+			expect((failure as FieldCryptoError).code, operation).toBe(
+				"bad_plaintext",
+			);
 		}
 	});
 

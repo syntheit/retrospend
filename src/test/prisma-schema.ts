@@ -24,7 +24,10 @@ export type SchemaModel = {
 
 /** The models of prisma/schema.prisma: fields, `@@map` table and primary key. */
 export function readSchema(): SchemaModel[] {
-	const source = readFileSync(join(REPO_ROOT, "prisma", "schema.prisma"), "utf8");
+	const source = readFileSync(
+		join(REPO_ROOT, "prisma", "schema.prisma"),
+		"utf8",
+	);
 	const models: SchemaModel[] = [];
 	for (const match of source.matchAll(/^model (\w+) \{\n([\s\S]*?)^\}/gm)) {
 		const [, name = "", body = ""] = match;

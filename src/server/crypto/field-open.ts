@@ -165,7 +165,13 @@ function collect(
 		for (const [column, cls] of Object.entries(fields.columns)) {
 			const cell = value[column];
 			if (typeof cell === "string" && isSealedField(cell))
-				cells.push({ row: value, table: fields.table, column, cls, sealed: cell });
+				cells.push({
+					row: value,
+					table: fields.table,
+					column,
+					cls,
+					sealed: cell,
+				});
 		}
 	for (const [field, target] of graph.relations(model))
 		if (field in value) collect(graph, target, value[field], cells);
@@ -229,7 +235,9 @@ async function openCells(keys: TextKeys, cells: Cell[]): Promise<void> {
 		}
 		const owner = cell.row.userId;
 		if (typeof owner !== "string")
-			throw new Error(`A ${cell.table}.${cell.column} cell was read without its owner`);
+			throw new Error(
+				`A ${cell.table}.${cell.column} cell was read without its owner`,
+			);
 		if (owner === keys.userId) entitled.push(cell);
 		else {
 			hide(cell);
