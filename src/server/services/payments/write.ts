@@ -145,24 +145,31 @@ export async function writeRows(
 /**
  * Applies `data` to every row of a group, only while each row still has one
  * of `fromStatuses`. If another request changed the group first, the whole
- * action fails rather than touching part of it.
+ * action fails rather than touching part of it. Row by row, not one
+ * updateMany: a text cell (the reject reason) is sealed under its row id
+ * (E2EE D11).
  */
 export async function updateGroup(
 	tx: Prisma.TransactionClient,
 	rows: ReadonlyArray<{ id: string }>,
 	fromStatuses: SettlementStatus[],
-	data: Prisma.SettlementUpdateManyMutationInput,
+	data: Prisma.SettlementUpdateInput,
 ) {
-	const { count } = await tx.settlement.updateMany({
-		where: { id: { in: rows.map((r) => r.id) }, status: { in: fromStatuses } },
-		data,
-	});
-	if (count !== rows.length) {
-		throw new TRPCError({
-			code: "CONFLICT",
-			message:
-				"This payment was changed in the meantime. Refresh and try again.",
-		});
+	for (const row of rows) {
+		try {
+			await tx.settlement.update({
+				where: { id: row.id, status: { in: fromStatuses } },
+				data,
+				select: { id: true },
+			});
+		} catch (error) {
+			if ((error as { code?: string }).code !== "P2025") throw error;
+			throw new TRPCError({
+				code: "CONFLICT",
+				message:
+					"This payment was changed in the meantime. Refresh and try again.",
+			});
+		}
 	}
 }
 

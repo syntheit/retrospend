@@ -814,7 +814,7 @@ export function createStatefulDb() {
 		}),
 	};
 
-	const { settlementModel, paymentModel } = createSettlementModels({
+	const { settlementModel, paymentModel, queryRaw } = createSettlementModels({
 		settlements,
 		payments,
 		projects,
@@ -1361,6 +1361,7 @@ export function createStatefulDb() {
 
 	const iface = {
 		$executeRaw: vi.fn().mockResolvedValue(undefined),
+		$queryRaw: queryRaw,
 		exchangeRate: exchangeRateModel,
 		sharedTransaction: sharedTransactionModel,
 		splitParticipant: splitParticipantModel,

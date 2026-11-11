@@ -117,19 +117,26 @@ async function buildAndStore(jobId: string, userId: string) {
 		);
 		const path = newExportPath(userId, jobId);
 		await putExport(path, built.bytes);
-		const done = await db.exportJob.updateMany({
-			where: { id: jobId, userId },
-			data: {
-				status: "READY",
-				fileName: built.fileName.slice(0, 255),
-				contentType: built.contentType,
-				sizeBytes: built.bytes.length,
-				storagePath: path,
-				completedAt: new Date(),
-			},
-		});
-		// The owner deleted the job while it ran: nothing may keep the file.
-		if (done.count === 0) await removeExport(path).catch(() => {});
+		// update by id, not updateMany: the file name is user text, sealed under
+		// its row id (E2EE D11).
+		try {
+			await db.exportJob.update({
+				where: { id: jobId, userId },
+				data: {
+					status: "READY",
+					fileName: built.fileName.slice(0, 255),
+					contentType: built.contentType,
+					sizeBytes: built.bytes.length,
+					storagePath: path,
+					completedAt: new Date(),
+				},
+				select: { id: true },
+			});
+		} catch (error) {
+			if ((error as { code?: string }).code !== "P2025") throw error;
+			// The owner deleted the job while it ran: nothing may keep the file.
+			await removeExport(path).catch(() => {});
+		}
 	} catch (error) {
 		await db.exportJob
 			.updateMany({
