@@ -10,16 +10,31 @@
  *   sync             -> every default name, indexed; again: 0 more, rows unchanged
  *   sealing on       -> the same, and the user's key exists (made before the transaction)
  */
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
 import { DEFAULT_CATEGORIES } from "~/lib/constants";
 import { blindIndexTag } from "~/server/crypto/blind-index";
 import type { Keyring } from "~/server/crypto/field-crypto";
 import { setSealingForTests } from "~/server/crypto/sealing";
+import { createUserScopedDb } from "~/server/db";
 import { adminDb, createTestUser } from "~/test/pg-harness";
-import { newMasterKeyring, userKeyring } from "~/test/sealed-fixture";
+import {
+	newMasterKeyring,
+	resetInstanceKey,
+	unsealAll,
+	userKeyring,
+} from "~/test/sealed-fixture";
 import { migrateUserCategories } from "../../../../scripts/migrate-default-categories";
 import { syncUserCategories } from "../../../../scripts/sync-default-categories";
 import { CATEGORY_NAME_INDEX_LABEL } from "../category-name-index.service";
+import { sortByText } from "../text-order";
 
 const master = vi.hoisted(() => ({ ring: undefined as Keyring | undefined }));
 vi.mock("~/server/crypto/master-key", async (importOriginal) => ({
@@ -32,12 +47,21 @@ beforeAll(() => {
 });
 afterEach(() => setSealingForTests());
 
-const rowsOf = (userId: string) =>
-	adminDb.category.findMany({
-		where: { userId },
-		select: { id: true, name: true, color: true, nameIndex: true },
-		orderBy: { name: "asc" },
-	});
+// Writes with sealing on seal for real; their keys go with this file.
+afterAll(async () => {
+	await unsealAll();
+	await resetInstanceKey();
+});
+
+/** The user's categories read as the user (names may be sealed), by name. */
+const rowsOf = async (userId: string) =>
+	sortByText(
+		await createUserScopedDb(userId).category.findMany({
+			where: { userId },
+			select: { id: true, name: true, color: true, nameIndex: true },
+		}),
+		(r) => r.name,
+	);
 
 const keyCount = async (userId: string) => {
 	const [row] = await adminDb.$queryRaw<{ n: bigint }[]>`
@@ -111,11 +135,12 @@ describe("scripts/migrate-default-categories.ts, beyond the user's own rows", ()
 	});
 
 	it("as a dry run writes nothing and makes no key, sealing on", async () => {
-		setSealingForTests(() => true);
+		// The rows from before the flip are plaintext.
 		const { user } = await createTestUser();
 		await adminDb.category.create({
 			data: { userId: user.id, name: "Dining Out", color: "orange" },
 		});
+		setSealingForTests(() => true);
 		const before = await rowsOf(user.id);
 		expect(await migrateUserCategories(user.id, true)).toMatchObject({
 			renames: ["Dining Out → Restaurants"],
@@ -131,7 +156,6 @@ for (const sealingOn of [false, true]) {
 
 	describe(`scripts/migrate-default-categories.ts (${label})`, () => {
 		it("renames, merges and adds with an index, and a second run changes nothing", async () => {
-			setSealingForTests(() => sealingOn);
 			const { user } = await createTestUser();
 			await adminDb.category.createMany({
 				data: [
@@ -139,6 +163,7 @@ for (const sealingOn of [false, true]) {
 					{ userId: user.id, name: "Gas", color: "slate" },
 				],
 			});
+			setSealingForTests(() => sealingOn);
 
 			const actions = await migrateUserCategories(user.id);
 			expect(actions).toMatchObject({
@@ -171,8 +196,8 @@ for (const sealingOn of [false, true]) {
 
 	describe(`scripts/sync-default-categories.ts (${label})`, () => {
 		it("adds every default name with an index, once", async () => {
-			setSealingForTests(() => sealingOn);
 			const { user } = await createTestUser();
+			setSealingForTests(() => sealingOn);
 			expect(await syncUserCategories(user.id)).toBe(DEFAULT_CATEGORIES.length);
 			if (sealingOn) expect(await keyCount(user.id)).toBe(1);
 			const rows = await rowsOf(user.id);
