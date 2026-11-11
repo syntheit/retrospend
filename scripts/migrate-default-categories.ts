@@ -121,11 +121,17 @@ async function mergeCategoryReferences(
 		data: { categoryId: targetId },
 	});
 
-	// 4. SharedTransactions (no userId field, sourceId is globally unique)
+	// 4. SharedTransactions (no userId field, sourceId is globally unique).
+	// As the owner, as before the run moved into the user's transaction: RLS
+	// would skip expenses in projects the user left (they would lose the
+	// category when it is deleted) and refuse a VIEWER's. No text is written,
+	// so nothing here needs the user's key; the role comes back right after.
+	await tx.$executeRaw`SET LOCAL ROLE NONE`;
 	await tx.sharedTransaction.updateMany({
 		where: { categoryId: sourceId },
 		data: { categoryId: targetId },
 	});
+	await tx.$executeRaw`SELECT set_config('role', 'retrospend_app', true)`;
 
 	// 5. AnalyticsCategoryPreference, handle unique(userId, categoryId) conflicts
 	const existingTargetPref =
@@ -160,6 +166,7 @@ interface UserActions {
 async function processUser(
 	tx: TxClient,
 	userId: string,
+	dryRun: boolean,
 ): Promise<UserActions> {
 	const actions: UserActions = {
 		renames: [],
@@ -188,7 +195,7 @@ async function processUser(
 		if (existingNewCat) {
 			// User already has a category with the new name.
 			// Merge all references from old → existing, then delete old.
-			if (!DRY_RUN) {
+			if (!dryRun) {
 				await mergeCategoryReferences(tx, oldCat.id, existingNewCat.id, userId);
 				await tx.category.delete({ where: { id: oldCat.id } });
 			}
@@ -196,7 +203,7 @@ async function processUser(
 			catByName.delete(oldName);
 		} else {
 			// Simple rename
-			if (!DRY_RUN) {
+			if (!dryRun) {
 				await tx.category.update({
 					where: { id: oldCat.id },
 					data: {
@@ -220,7 +227,7 @@ async function processUser(
 
 		// If target doesn't exist (user deleted it), recreate it
 		if (!targetCat) {
-			if (!DRY_RUN) {
+			if (!dryRun) {
 				const created = await tx.category.create({
 					data: {
 						name: targetName,
@@ -237,7 +244,7 @@ async function processUser(
 			catByName.set(targetName, targetCat);
 		}
 
-		if (!DRY_RUN) {
+		if (!dryRun) {
 			await mergeCategoryReferences(tx, sourceCat.id, targetCat.id, userId);
 			await tx.category.delete({ where: { id: sourceCat.id } });
 		}
@@ -249,7 +256,7 @@ async function processUser(
 	for (const { name, color } of ADDITIONS) {
 		if (catByName.has(name)) continue; // Already exists, skip
 
-		if (!DRY_RUN) {
+		if (!dryRun) {
 			const created = await tx.category.create({
 				data: {
 					name,
@@ -272,7 +279,7 @@ async function processUser(
 		// Only fix if the color still matches the OLD default (user hasn't customized)
 		if (cat.color !== oldColor) continue;
 
-		if (!DRY_RUN) {
+		if (!dryRun) {
 			await tx.category.update({
 				where: { id: cat.id },
 				data: { color: newColor },
@@ -284,10 +291,10 @@ async function processUser(
 	return actions;
 }
 
-/** One user's migration, in one transaction as that user. */
-export async function migrateUserCategories(userId: string) {
-	await ensureUserKeyringWhenSealing(userId);
-	return userTransaction(db, userId, (tx) => processUser(tx, userId));
+/** One user's migration, in one transaction as that user. A dry run writes nothing and makes no key. */
+export async function migrateUserCategories(userId: string, dryRun = DRY_RUN) {
+	if (!dryRun) await ensureUserKeyringWhenSealing(userId);
+	return userTransaction(db, userId, (tx) => processUser(tx, userId, dryRun));
 }
 
 // ---------------------------------------------------------------------------

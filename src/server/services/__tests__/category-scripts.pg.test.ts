@@ -51,6 +51,81 @@ const tagOf = async (userId: string) =>
 		CATEGORY_NAME_INDEX_LABEL,
 	);
 
+describe("scripts/migrate-default-categories.ts, beyond the user's own rows", () => {
+	it("moves a shared expense the user can no longer see to the merged category", async () => {
+		const [{ user: ana }, { user: beto }] = [
+			await createTestUser(),
+			await createTestUser(),
+		];
+		const gas = await adminDb.category.create({
+			data: { userId: ana.id, name: "Gas", color: "slate" },
+		});
+		// Ana filed it, then left the project: RLS hides it from her now.
+		const trip = await adminDb.project.create({
+			data: { name: "Trip", createdById: beto.id, primaryCurrency: "ARS" },
+		});
+		await adminDb.projectParticipant.create({
+			data: {
+				projectId: trip.id,
+				participantType: "user",
+				participantId: beto.id,
+				role: "ORGANIZER",
+			},
+		});
+		const fuel = await adminDb.sharedTransaction.create({
+			data: {
+				description: "Nafta",
+				amount: "30000",
+				currency: "ARS",
+				date: new Date("2026-10-08"),
+				paidByType: "user",
+				paidById: beto.id,
+				createdByType: "user",
+				createdById: beto.id,
+				projectId: trip.id,
+				categoryId: gas.id,
+				splitParticipants: {
+					create: [
+						{
+							participantType: "user",
+							participantId: beto.id,
+							shareAmount: "30000",
+							verificationStatus: "ACCEPTED",
+						},
+					],
+				},
+			},
+		});
+
+		await migrateUserCategories(ana.id, false);
+		const transport = await adminDb.category.findFirstOrThrow({
+			where: { userId: ana.id, name: "Transport" },
+		});
+		expect(
+			(
+				await adminDb.sharedTransaction.findUniqueOrThrow({
+					where: { id: fuel.id },
+				})
+			).categoryId,
+		).toBe(transport.id);
+	});
+
+	it("as a dry run writes nothing and makes no key, sealing on", async () => {
+		setSealingForTests(() => true);
+		const { user } = await createTestUser();
+		await adminDb.category.create({
+			data: { userId: user.id, name: "Dining Out", color: "orange" },
+		});
+		const before = await rowsOf(user.id);
+		expect(await migrateUserCategories(user.id, true)).toMatchObject({
+			renames: ["Dining Out → Restaurants"],
+			additions: ["Clothing", "Entertainment", "Gifts"],
+		});
+		expect(await rowsOf(user.id)).toEqual(before);
+		expect(await keyCount(user.id)).toBe(0);
+	});
+});
+
 for (const sealingOn of [false, true]) {
 	const label = sealingOn ? "sealing on" : "sealing off";
 
