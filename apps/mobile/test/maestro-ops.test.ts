@@ -56,14 +56,24 @@ describe("the emulator pool", () => {
 			timeout: 30_000,
 			env: { ...process.env, HOME: home, POOL_POLL: "0.2" },
 		});
-	const prelude = `source '${join(ops, "pool.sh")}'; log() { :; }; T="$HOME"`;
+	// Every wait below is on an event (a file, a process state), never on a
+	// stretch of wall-clock time: a loaded host can starve any child for longer
+	// than any fixed sleep. await only bounds the wait so a broken run fails
+	// instead of hanging, far above anything a loaded host needs.
+	const prelude = `source '${join(ops, "pool.sh")}'; log() { :; }; T="$HOME"
+		await() { local i; for i in $(seq 1 600); do "$@" && return 0; sleep 0.05; done; return 1; }
+		alive() { local s; s=$(awk -F') ' '{print substr($NF,1,1)}' "/proc/$1/stat" 2>/dev/null); [[ -n $s && $s != Z ]]; }
+		gone() { ! alive "$1"; }
+		isgroup() { kill -0 -- "-$1" 2>/dev/null; }
+		cmd_has() { tr '\\0' ' ' <"/proc/$1/cmdline" 2>/dev/null | grep -qF -- "$2"; }`;
 
 	it("gives two runs two different slots and makes a third wait out its limit", () => {
 		const result = bash(`${prelude}
-			( take_slot a 5 && echo "$slot" >"$T/a"; sleep 4 ) &
-			( take_slot b 5 && echo "$slot" >"$T/b"; sleep 4 ) &
-			sleep 1.5
+			( take_slot a 5 && echo "$slot" >"$T/a"; await test -e "$T/release" ) &
+			( take_slot b 5 && echo "$slot" >"$T/b"; await test -e "$T/release" ) &
+			await test -e "$T/a"; await test -e "$T/b"
 			take_slot c 1; echo "third=$?"
+			touch "$T/release"
 			wait
 			echo "a=$(cat "$T/a") b=$(cat "$T/b")"`);
 		expect(result.stdout).toContain("third=1");
@@ -75,14 +85,14 @@ describe("the emulator pool", () => {
 		const result = bash(`${prelude}
 			export RS_MAESTRO_RUN=test
 			pgdir=$T/slot; mkdir -p "$pgdir"
-			( take_slot hold 5; sleep 6 ) &
-			sleep 0.5
+			( take_slot hold 5; touch "$T/held"; await test -e "$T/release" ) &
+			await test -e "$T/held"
 			( take_slot a 5; spawn child sleep 30; echo "$spawned" >"$T/child"; exit 0 )
 			take_slot b 2 && echo "reused=$slot"
 			kill_group "$(cat "$T/child")" test
-			# Poll rather than sleep once: a loaded machine can take a while to reap it.
-			gone=no; for _ in $(seq 50); do kill -0 "$(cat "$T/child")" 2>/dev/null || { gone=yes; break; }; sleep 0.1; done
-			[ "$gone" = yes ] && echo "child gone" || echo "child alive"`);
+			await gone "$(cat "$T/child")" && echo "child gone" || echo "child alive"
+			touch "$T/release"
+			wait`);
 		// The first run's lock was only on its own shell, so a child it left
 		// behind cannot hold the slot, and the next run finds a free one.
 		expect(result.stdout).toMatch(/reused=[01]/);
@@ -96,27 +106,42 @@ describe("the emulator pool", () => {
 			sleep 31 & other=$!
 			spawn emulator sleep 32
 			stop_slot_processes "$pgdir"
-			sleep 0.3
-			kill -0 "$spawned" 2>/dev/null && echo "own alive" || echo "own gone"
-			kill -0 "$other" 2>/dev/null && echo "other alive" || echo "other gone"
+			alive "$spawned" && echo "own alive" || echo "own gone"
+			alive "$other" && echo "other alive" || echo "other gone"
 			kill "$other"`);
 		expect(result.stdout).toContain("own gone");
 		expect(result.stdout).toContain("other alive");
+	});
+
+	// A starved child can take seconds to reach setsid. Until then its group
+	// does not exist, and a stop that came first used to find nothing and
+	// leave the child running. The stub makes that starvation certain.
+	it("stops a child that is slow to reach setsid", () => {
+		const result = bash(`${prelude}
+			export RS_MAESTRO_RUN=test
+			pgdir=$T/slot; mkdir -p "$pgdir" "$T/bin"
+			printf '#!/usr/bin/env bash\\nsleep 1\\nexec %s "$@"\\n' "$(command -v setsid)" >"$T/bin/setsid"
+			chmod +x "$T/bin/setsid"
+			PATH="$T/bin:$PATH"
+			spawn emulator sleep 32
+			stop_slot_processes "$pgdir"
+			alive "$spawned" && echo "own alive" || echo "own gone"
+			kill -KILL "$spawned" 2>/dev/null`);
+		expect(result.stdout).toContain("own gone");
 	});
 
 	it("leaves a group alone when it is not this slot's run", () => {
 		const result = bash(`${prelude}
 			export RS_MAESTRO_RUN=someone-else
 			setsid sleep 31 & other=$!
-			sleep 0.2
+			await isgroup "$other"
 			kill_group "$other" this-run
-			sleep 0.3
-			kill -0 "$other" 2>/dev/null && echo "other alive" || echo "other gone"
+			alive "$other" && echo "other alive" || echo "other gone"
 			unset RS_MAESTRO_RUN
 			setsid sleep 32 & bare=$!
-			sleep 0.2
+			await isgroup "$bare"
 			kill_group "$bare" this-run
-			kill -0 "$bare" 2>/dev/null && echo "bare alive" || echo "bare gone"
+			alive "$bare" && echo "bare alive" || echo "bare gone"
 			kill "$other" "$bare"`);
 		expect(result.stdout).toContain("other alive");
 		expect(result.stdout).toContain("bare alive");
@@ -126,14 +151,15 @@ describe("the emulator pool", () => {
 		const result = bash(`${prelude}
 			d=$T/slot; mkdir -p "$d/data"
 			sleep 31 & plain=$!
+			await cmd_has "$plain" "sleep 31"
 			echo "$plain" >"$d/data/postmaster.pid"
 			postgres_alive "$d" && echo "plain=yes" || echo "plain=no"
-			( exec -a "postgres -D $d/data" bash -c 'sleep 32; :' ) & real=$!
-			sleep 0.3
+			( exec -a "postgres -D $d/data" bash -c 'sleep 32; :' ) >/dev/null 2>&1 & real=$!
+			await cmd_has "$real" "postgres -D $d/data"
 			echo "$real" >"$d/data/postmaster.pid"
 			postgres_alive "$d" && echo "real=yes" || echo "real=no"
-			( exec -a "postgres -D /elsewhere/data" bash -c 'sleep 33; :' ) & other=$!
-			sleep 0.3
+			( exec -a "postgres -D /elsewhere/data" bash -c 'sleep 33; :' ) >/dev/null 2>&1 & other=$!
+			await cmd_has "$other" "postgres -D /elsewhere/data"
 			echo "$other" >"$d/data/postmaster.pid"
 			postgres_alive "$d" && echo "other=yes" || echo "other=no"
 			kill "$plain" "$real" "$other"`);
@@ -146,8 +172,8 @@ describe("the emulator pool", () => {
 		const result = bash(`${prelude}
 			export RS_MAESTRO_RUN=test POOL_PG_STOP_TRIES=3
 			d=$T/slot; mkdir -p "$d/data"
-			( trap '' INT; exec -a "postgres -D $d/data" bash -c 'sleep 34; :' ) & pm=$!
-			sleep 0.3
+			( trap '' INT; exec -a "postgres -D $d/data" bash -c 'sleep 34; :' ) >/dev/null 2>&1 & pm=$!
+			await cmd_has "$pm" "postgres -D $d/data"
 			echo "$pm" >"$d/data/postmaster.pid"
 			stop_slot_processes "$d"; echo "rc=$?"
 			test -d "$d/data" && echo "dir kept"
