@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { inPreview } from "~/server/db-tx";
 import {
 	createFiguresRegistry,
 	type FigureDefinition,
@@ -283,5 +284,26 @@ describe("figure failures", () => {
 		});
 		expect(database.book()).toEqual(START);
 		expect(database.commits()).toBe(0);
+	});
+});
+
+describe("the preview marker", () => {
+	it("marks a preview's work, whatever runner opened its transaction, and never an apply's", async () => {
+		const { runner } = setup(createFiguresRegistry<FakeTx>([]));
+		const seen: boolean[] = [];
+		const probe: MoneyMutation<null, null, FakeTx> = {
+			id: "test.probe",
+			touches: [],
+			run: async () => {
+				seen.push(inPreview());
+				return {
+					value: null,
+					undo: { kind: "revert", mutation: "test.probe", rows: [] },
+				};
+			},
+		};
+		await runner.preview(probe, null);
+		await runner.apply(probe, null);
+		expect(seen).toEqual([true, false]);
 	});
 });

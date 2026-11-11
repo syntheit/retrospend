@@ -13,7 +13,10 @@ const { userTransaction } = vi.hoisted(() => ({
 }));
 
 vi.mock("~/server/db", () => ({ db: { name: "global" } }));
-vi.mock("~/server/db-tx", () => ({ userTransaction }));
+vi.mock("~/server/db-tx", async (importOriginal) => ({
+	...(await importOriginal<typeof import("~/server/db-tx")>()),
+	userTransaction,
+}));
 
 const { forUser } = await import("./index");
 
@@ -27,7 +30,7 @@ const noop: MoneyMutation<null, null> = {
 };
 
 describe("forUser", () => {
-	it("previews at repeatable read with a longer timeout, marked as a preview, applies at read committed", async () => {
+	it("previews at repeatable read with a longer timeout, applies at read committed", async () => {
 		const runner = forUser("user-1");
 
 		await runner.preview(noop, null);
@@ -38,10 +41,7 @@ describe("forUser", () => {
 			options,
 		]);
 		expect(opened).toEqual([
-			[
-				"user-1",
-				{ isolationLevel: "RepeatableRead", timeout: 15_000, preview: true },
-			],
+			["user-1", { isolationLevel: "RepeatableRead", timeout: 15_000 }],
 			["user-1", { isolationLevel: "ReadCommitted" }],
 		]);
 	});

@@ -31,6 +31,13 @@ const previewScope = new AsyncLocalStorage<true>();
  */
 export const inPreview = (): boolean => previewScope.getStore() === true;
 
+/**
+ * Runs a preview's work so `inPreview()` is true inside. The preview runner
+ * (preview/runner.ts) calls it, so every runner built on it is covered.
+ */
+export const insidePreview = <T>(work: () => Promise<T>): Promise<T> =>
+	previewScope.run(true, work);
+
 const verbatimScope = new AsyncLocalStorage<true>();
 
 /** Whether the caller runs inside `verbatim`. */
@@ -48,8 +55,6 @@ export const verbatim = <T>(work: () => Promise<T>): Promise<T> =>
 export interface UserTransactionOptions {
 	readonly timeout?: number;
 	readonly isolationLevel?: Prisma.TransactionIsolationLevel;
-	/** A preview's dry run (preview/index.ts): `inPreview()` is true inside. */
-	readonly preview?: true;
 }
 
 type TransactionClient = Pick<PrismaClient, "$transaction">;
@@ -96,14 +101,13 @@ export async function userTransaction<T>(
 ): Promise<T> {
 	const crypto = cryptoClients.get(client)?.(userId);
 	await crypto?.ready();
-	const { preview, ...transactionOptions } = options ?? {};
 	return (crypto?.client ?? client).$transaction(
 		(tx) =>
 			insideTransaction(async () => {
 				await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true),
 				                            set_config('role', 'retrospend_app', true)`;
-				return preview ? previewScope.run(true, () => work(tx)) : work(tx);
+				return work(tx);
 			}),
-		transactionOptions,
+		options,
 	);
 }
