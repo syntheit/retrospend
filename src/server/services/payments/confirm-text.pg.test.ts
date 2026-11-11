@@ -145,7 +145,7 @@ describe("a confirm over sealed text", () => {
 		const p = await pair();
 		const paymentId = await record(p);
 		const sealed = await sealPayment(paymentId);
-		expect(sealed.header?.paymentMethod).toMatch(/^\u0001k1:/);
+		expect(sealed.header?.paymentMethod?.startsWith("\u0001k1:")).toBe(true);
 		expect(await martinView(p)).toEqual({ ARS: 18000 });
 
 		await confirm(p, paymentId);

@@ -108,9 +108,11 @@ describe("openAuditChanges", () => {
 		});
 		expect(JSON.stringify(opened)).not.toContain("\\u0001");
 		// The stored entry is not changed in place.
-		expect((changes.previous.rows[0] as { note: string }).note).toMatch(
-			/^\u0001k1:/,
-		);
+		expect(
+			(changes.previous.rows[0] as { note: string }).note.startsWith(
+				"\u0001k1:",
+			),
+		).toBe(true);
 	});
 
 	it("fails on a cell sealed for another row, never hiding it", async () => {
