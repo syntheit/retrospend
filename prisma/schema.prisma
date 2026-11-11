@@ -1179,6 +1179,9 @@ model AppSettings {
   // A fixed text sealed under the master key; a wrong master key fails to open
   // it at start (src/server/services/keys/master-canary.service.ts).
   masterKeyCanary String?
+  // When a server first started with DATA_KEYS_WRITE on; never cleared. From
+  // then on user text may be sealed (src/server/crypto/epoch.ts).
+  fieldEncryptionSince DateTime?
 
   @@map("app_settings")
 }
