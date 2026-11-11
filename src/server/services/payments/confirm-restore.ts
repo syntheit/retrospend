@@ -8,6 +8,10 @@
  * global db).
  */
 import { TRPCError } from "@trpc/server";
+import { openInstanceCells } from "~/server/crypto/field-open";
+import { fieldsOfModel } from "~/server/crypto/fields";
+import type { TextKeys } from "~/server/crypto/text-keys";
+import { verbatim } from "~/server/db-tx";
 import { computePairLedger } from "~/server/services/shared-expenses/balance";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import type { Payment, Prisma, Settlement } from "~prisma";
@@ -67,21 +71,90 @@ export async function ledgerFingerprint(
 	);
 }
 
+const SETTLEMENT_TEXT = Object.keys(fieldsOfModel("Settlement")?.columns ?? {});
+
+/** A payment's text cells exactly as stored, sealed or not. */
+export interface StoredText {
+	readonly paymentMethod: string | null;
+	/** Settlement id to its text columns. */
+	readonly rows: ReadonlyMap<string, Record<string, string | null>>;
+}
+
+/**
+ * Read raw, so nothing opens them: the database guards compare the audit
+ * entry's `previous` with the stored row (settled_entry_ok,
+ * claim_header_back_ok), and the undo puts these values back as they were.
+ */
+export async function storedText(
+	tx: Pick<Tx, "$queryRaw">,
+	paymentId: string,
+): Promise<StoredText> {
+	const [header] = await tx.$queryRaw<{ paymentMethod: string | null }[]>`
+		SELECT "paymentMethod" FROM "payment" WHERE "id" = ${paymentId}`;
+	const rows = await tx.$queryRaw<Record<string, string | null>[]>`
+		SELECT * FROM "settlement" WHERE "paymentGroupId" = ${paymentId}`;
+	return {
+		paymentMethod: header?.paymentMethod ?? null,
+		rows: new Map(
+			rows.map((row) => [
+				row.id as string,
+				Object.fromEntries(SETTLEMENT_TEXT.map((c) => [c, row[c] ?? null])),
+			]),
+		),
+	};
+}
+
 /** The claim before the confirm, plus the ledger after it, for the confirm's audit entry. */
 export function previousOf(
 	header: Payment,
 	rows: readonly Settlement[],
+	stored: StoredText,
 	ledger: string,
 ): ConfirmedOver {
 	return {
 		amount: header.amount.toString(),
 		paidOn: header.paidOn.toISOString().slice(0, 10),
-		paymentMethod: header.paymentMethod,
+		paymentMethod: stored.paymentMethod,
 		rateType: header.rateType,
 		rate: header.rate?.toString() ?? null,
 		rateCurrency: header.rateCurrency,
-		rows: rows.map(snapshotRow),
+		rows: rows.map((row) => {
+			const text = stored.rows.get(row.id);
+			if (!text) throw new Error("A settlement row changed while it was read");
+			return { ...snapshotRow(row), ...text };
+		}),
 		ledger,
+	};
+}
+
+/**
+ * A confirm's `previous` as a client may see it: the stored text it keeps
+ * opened with the instance key, under the AAD of the payment (the header's
+ * method) and of each settlement row. Plaintext passes; a sealed cell opens
+ * or fails the request, as on a model read. Other entries pass unchanged.
+ */
+export async function openAuditChanges(
+	keys: TextKeys,
+	changes: Record<string, unknown> | null,
+): Promise<Record<string, unknown> | null> {
+	const previous = changes?.previous;
+	const paymentId = changes?.paymentGroupId;
+	if (!changes || !isOver(previous) || typeof paymentId !== "string")
+		return changes;
+	const header: Record<string, unknown> = {
+		id: paymentId,
+		paymentMethod: previous.paymentMethod,
+	};
+	const rows = previous.rows.map((row) => ({ ...row }));
+	await openInstanceCells(keys, [
+		{ row: header, table: "payment", column: "paymentMethod" },
+		...rows.flatMap((row) =>
+			SETTLEMENT_TEXT.map((column) => ({ row, table: "settlement", column })),
+		),
+	]);
+	return {
+		...changes,
+		previous: { ...previous, paymentMethod: header.paymentMethod, rows },
 	};
 }
 
@@ -143,18 +216,22 @@ export async function restoreClaim(
 		});
 	}
 	await tx.settlement.deleteMany({ where: { paymentGroupId: header.id } });
-	await tx.settlement.createMany({ data: previous.rows.map(rowData) });
-	await tx.payment.update({
-		where: { id: header.id },
-		data: {
-			status: "PROPOSED",
-			amount: previous.amount,
-			paidOn: new Date(`${previous.paidOn}T00:00:00.000Z`),
-			paymentMethod: previous.paymentMethod,
-			rateType: previous.rateType,
-			rate: previous.rate,
-			rateCurrency: previous.rateCurrency,
-		},
+	// The text goes back as the entry kept it, sealed or not: verbatim stores
+	// a sealed cell only under the row and column it was sealed for.
+	await verbatim(async () => {
+		await tx.settlement.createMany({ data: previous.rows.map(rowData) });
+		await tx.payment.update({
+			where: { id: header.id },
+			data: {
+				status: "PROPOSED",
+				amount: previous.amount,
+				paidOn: new Date(`${previous.paidOn}T00:00:00.000Z`),
+				paymentMethod: previous.paymentMethod,
+				rateType: previous.rateType,
+				rate: previous.rate,
+				rateCurrency: previous.rateCurrency,
+			},
+		});
 	});
 	return tx.settlement.findMany({
 		where: { paymentGroupId: header.id },

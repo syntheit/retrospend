@@ -6,8 +6,9 @@ import {
 import type { activityQuerySchema } from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
-import { db as globalDb } from "~/server/db";
+import { db as globalDb, instanceTextKeys } from "~/server/db";
 import { toMinor } from "~/server/services/envelope/units";
+import { openAuditChanges } from "~/server/services/payments/confirm-restore";
 import type { LedgerCaller } from "./money-op";
 import { trpcAuditLog } from "./trpc-bridge";
 
@@ -47,21 +48,26 @@ function filtersOf(q: Query) {
 	};
 }
 
-/** The stored change records of entries the caller was already let read. */
+/**
+ * The stored change records of entries the caller was already let read, with
+ * the sealed text a payment confirm keeps opened (openAuditChanges).
+ */
 async function changesOf(ids: string[]): Promise<Map<string, Changes>> {
 	if (ids.length === 0) return new Map();
 	const rows = await globalDb.auditLogEntry.findMany({
 		where: { id: { in: ids } },
 		select: { id: true, changes: true },
 	});
-	return new Map(
-		rows.map((r) => [
-			r.id,
+	const keys = instanceTextKeys();
+	const changes = new Map<string, Changes>();
+	for (const r of rows) {
+		const stored =
 			r.changes && typeof r.changes === "object" && !Array.isArray(r.changes)
 				? (r.changes as Record<string, unknown>)
-				: null,
-		]),
-	);
+				: null;
+		changes.set(r.id, await openAuditChanges(keys, stored));
+	}
+	return changes;
 }
 
 /** Parameters the summary builder writes as "<decimal> <currency>" (see SUMMARY_FORMATS). */
