@@ -166,8 +166,10 @@ describe("auto-finalize of a payment pending for more than 7 days", () => {
 			context: { action: "settlement_auto_finalized" },
 			changes: { automatic: true, paymentGroupId: id },
 		});
+		const [entry] = entries;
+		if (!entry) throw new Error("no audit entry");
 		const previous = (
-			entries[0]?.changes as { previous: { amount: string; rows: unknown[] } }
+			entry.changes as { previous: { amount: string; rows: unknown[] } }
 		).previous;
 		expect(previous.amount).toBe("37100");
 		expect(previous.rows).toHaveLength(2);
