@@ -9,6 +9,7 @@
 		".": "./src/index.ts",
 		"./conformance": "./src/conformance.ts",
 		"./local-conformance": "./src/local-conformance.ts",
+		"./expense-create-conformance": "./src/expense-create-conformance.ts",
 		"./fixtures": "./src/fixtures.ts"
 	},
 	"scripts": {

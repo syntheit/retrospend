@@ -1,4 +1,11 @@
 import { isValidRate, RATE_TYPE_PRIORITY } from "@retrospend/domain/money";
+export {
+	CUSTOM_RATE_TYPE,
+	HOME_DEFAULT_RATE_TYPES,
+	isRateTypeKey,
+	preferredRateType,
+	rateTypeFromPricingSource,
+} from "@retrospend/domain/rate-booking";
 
 /**
  * Rate types (N73, ADD-EXPENSE-R2 T7). A rate type names one row kind of the
@@ -10,34 +17,8 @@ import { isValidRate, RATE_TYPE_PRIORITY } from "@retrospend/domain/money";
  * the ARS types (USD itself has none).
  */
 
-/** A rate the user typed in by hand. */
-export const CUSTOM_RATE_TYPE = "custom";
-
-/** Built-in default per home currency, until the user picks one (N73). */
-export const HOME_DEFAULT_RATE_TYPES: Readonly<Record<string, string>> = {
-	ARS: "blue",
-};
-
-/** Table rate types are lower-case keys (the sidecar's validType). */
-const RATE_TYPE_KEY = /^[a-z0-9_-]{1,32}$/;
-
 /** Picker order (ADD-EXPENSE-R2 §3.4); any other type follows A to Z. */
 const DISPLAY_ORDER = ["official", "blue", "card", "mep"];
-
-/**
- * pricingSource values that name no rate type: what the server, imports and
- * recurring posts write when no type was given.
- */
-const PLACEHOLDER_SOURCES = new Set([
-	"manual",
-	"import",
-	"imported",
-	"recurring",
-]);
-
-export function isRateTypeKey(value: unknown): value is string {
-	return typeof value === "string" && RATE_TYPE_KEY.test(value);
-}
 
 function displayRank(type: string): number {
 	const i = DISPLAY_ORDER.indexOf(type);
@@ -52,14 +33,6 @@ export function pairRateTypes(
 	return [...new Set([...entryTypes, ...homeTypes])].sort(
 		(a, b) => displayRank(a) - displayRank(b) || a.localeCompare(b),
 	);
-}
-
-/** The user's preferred type for conversions into `homeCurrency`, or null for none. */
-export function preferredRateType(
-	homeCurrency: string,
-	saved: Readonly<Record<string, string>>,
-): string | null {
-	return saved[homeCurrency] ?? HOME_DEFAULT_RATE_TYPES[homeCurrency] ?? null;
 }
 
 function priorityRank(type: string): number {
@@ -81,18 +54,6 @@ export function pickDefaultRateType(
 		(a, b) => priorityRank(a) - priorityRank(b) || a.localeCompare(b),
 	);
 	return ranked[0] ?? null;
-}
-
-/**
- * The rate type a legacy pricingSource names (the M2 backfill uses the same
- * rule in SQL). Placeholders and free text from imports name none.
- */
-export function rateTypeFromPricingSource(
-	source: string | null | undefined,
-): string | null {
-	const key = source?.trim().toLowerCase() ?? "";
-	if (PLACEHOLDER_SOURCES.has(key)) return null;
-	return isRateTypeKey(key) ? key : null;
 }
 
 interface RateChoice {
