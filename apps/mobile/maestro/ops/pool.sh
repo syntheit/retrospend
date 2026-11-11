@@ -34,6 +34,16 @@ spawn() {
 	mkdir -p "$pgdir/pids"
 	echo "$RS_MAESTRO_RUN" >"$pgdir/owner"
 	echo "$spawned" >"$pgdir/pids/$name.pid"
+	# The group exists only once the child has run setsid. A kill_group that
+	# came before then finds no group, returns, and leaves the child running
+	# for good, which a starved host makes likely. Wait for the group (bounded,
+	# and not past the child's own exit).
+	local i
+	for i in $(seq 1 1000); do
+		kill -0 -- "-$spawned" 2>/dev/null && return 0
+		kill -0 "$spawned" 2>/dev/null || return 0
+		sleep 0.01
+	done
 }
 
 # kill_group <pgid> <run id>: TERM, wait up to 10 s, then KILL. Only ever
