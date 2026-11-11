@@ -510,6 +510,13 @@ describe("refusals", () => {
 					data: { title: "Taxi" },
 				}),
 			).toBe(true);
+			expect(
+				await run("upsert", "Project", {
+					where: { id: "p1" },
+					create: { id: "p1", name: ownProject },
+					update: { name: ownProject },
+				}),
+			).toBe(true);
 		});
 
 		it("refuses a cell sealed for another row or column", async () => {
@@ -550,6 +557,14 @@ describe("refusals", () => {
 						data: { name: ownProject },
 					}),
 				() => run("create", "Project", { data: { name: ownProject } }),
+				// An upsert whose create half names no id inserts a new one,
+				// never the where's p1.
+				() =>
+					run("upsert", "Project", {
+						where: { id: "p1" },
+						create: { name: ownProject },
+						update: {},
+					}),
 				// A user-class cell for another owner, or with no user at all.
 				() =>
 					run("create", "Expense", {

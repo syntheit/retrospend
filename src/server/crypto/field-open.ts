@@ -325,12 +325,10 @@ interface Write {
 function writesOf(operation: string, args: Row): Write[] {
 	const whereId = idOf(args.where);
 	if (operation === "upsert")
+		// The create half inserts the id in its data, or a generated one, never
+		// the where's: a cell must be bound to the id actually inserted.
 		return [
-			{
-				values: args.create,
-				rowId: idOf(args.create) ?? whereId,
-				creates: true,
-			},
+			{ values: args.create, rowId: idOf(args.create), creates: true },
 			{ values: args.update, rowId: whereId, creates: false },
 		];
 	if (operation === "update")
