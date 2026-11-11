@@ -325,7 +325,7 @@ export interface ConfirmPaymentValue {
  * to, so the transport passes the counterparty it already resolved.
  */
 /** A confirmed payment to you returns held money to To assign (D8): the budget figures move. */
-const CONFIRM_FIGURES = [
+export const CONFIRM_FIGURES = [
 	"balance.person",
 	"owed.owedToYou",
 	"owed.youOwe",

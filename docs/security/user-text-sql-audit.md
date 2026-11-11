@@ -151,7 +151,7 @@ Migration files are in `prisma/migrations/`.
 | D1 | `sidecar/tasks/recurring.go:113` | `SELECT t.name` of due templates | a | Raw, so ciphertext. See D2 |
 | D2 | `sidecar/tasks/recurring.go:196-205` | inserts `usertext.StripControls(template.Name)` as `expense.title` | b | **Blocker for D11.** `StripControls` removes U+0001, so it would corrupt a ciphertext name. The ciphertext also binds to its row (AAD), so a verbatim copy to a new expense row does not open. The job needs either Go field crypto (decrypt the name, strip, seal for the new id) or to move recurring posting into the app, which already does it through the extension (`recurringEntryData`, `money-in.service.ts`). The spike table's "copies ciphertext verbatim" predates the AAD change |
 | D3 | `sidecar/tasks/cleanup.go:125-255` | guest anonymization rewrites participant ids to a sentinel | none | Checked: no text read. `guest_session.name` is deleted with the row |
-| D4 | `sidecar/tasks/settlement_autofinalize.go:22` | `UPDATE "Settlement"` with status columns | none | No text. Drive-by: the table is quoted `"Settlement"` but it is `settlement`, so check the job runs (not changed here) |
+| D4 | `sidecar/tasks/settlement_autofinalize.go:22` (deleted) | `UPDATE "Settlement"` with status columns | none | No text. The job never ran (wrong table name). Removed: the app now finalizes stale payments in `src/server/services/payments/auto-finalize.ts`, through the confirm core |
 
 ## 4. Collation
 

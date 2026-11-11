@@ -40,6 +40,7 @@ export const MUTATION_EVENTS: Readonly<Record<string, EventName>> = {
 	"transfer.delete": "transfer.deleted",
 	"payment.record": "payment.recorded",
 	"payment.confirm": "payment.confirmed",
+	"payment.autoFinalize": "payment.confirmed",
 	"payment.unconfirm": "payment.undone",
 	"payment.remove": "payment.undone",
 	"payment.reject": "payment.not_received",

@@ -4,9 +4,10 @@
  * count a pending payment for the payer; this makes it count for the payee
  * too, with the same header, split locks and audit entry a confirm writes.
  *
- * Each payment is finalized by the shared confirm core (`finalizeClaim`) in
- * its own transaction, run as the payee so row-level security stays on and
- * `lock_settled_splits` sees a party. Only the list of ids is read on the
+ * Each payment is finalized by `payment.autoFinalize` (the shared confirm
+ * core) through the preview runner, as the payee, so row-level security stays
+ * on, `lock_settled_splits` sees a party and the `payment.confirmed` event is
+ * appended in the same transaction. Only the list of ids is read on the
  * owner connection, like the other hourly sweeps (retention-sweep.ts).
  *
  * Every payment has a header: new ones are written with it, and the legacy
@@ -25,11 +26,10 @@
 import { TRPCError } from "@trpc/server";
 import { env } from "~/env";
 import { db } from "~/server/db";
-import { userTransaction } from "~/server/db-tx";
-import type { ParticipantRef } from "~/server/services/shared-expenses/types";
+import { forUser } from "~/server/services/preview";
 import type { ParticipantType, Prisma } from "~prisma";
-import { lockPair } from "./access";
-import { ConfirmInsteadError, finalizeClaim } from "./confirm.mutation";
+import { autoFinalizePayment, ReopenedError } from "./auto-finalize.mutation";
+import { ConfirmInsteadError } from "./confirm.mutation";
 
 export const AUTO_FINALIZE_AFTER_DAYS = 7;
 
@@ -87,44 +87,29 @@ function staleCandidates(source: RawSource, cutoff: Date) {
 		ORDER BY p."createdAt", p."id"`;
 }
 
-const errorName = (error: unknown) =>
-	error instanceof Error ? error.name : "unknown";
+/** What is safe to log about an error: its code or name, never its message (it can carry row values). */
+const errorCode = (error: unknown) => {
+	const code = (error as { code?: unknown } | null)?.code;
+	if (typeof code === "string") return code;
+	return error instanceof Error ? error.name : "unknown";
+};
 
 async function finalizeOne(c: Candidate): Promise<Outcome> {
-	const payee: ParticipantRef = {
-		participantType: "user",
-		participantId: c.payeeId,
-	};
-	const payer: ParticipantRef = {
-		participantType: c.payerType,
-		participantId: c.payerId,
-	};
 	try {
-		return await userTransaction(db, c.payeeId, async (tx) => {
-			// Locked before the unconfirm check, so a payee who reopens it between
-			// the id list and here has finished before this looks.
-			await lockPair(tx, payee, payer);
-			const reopened = await tx.auditLogEntry.findFirst({
-				where: {
-					targetType: "SETTLEMENT",
-					context: { path: ["action"], equals: "settlement_unconfirmed" },
-					changes: { path: ["paymentGroupId"], equals: c.id },
-				},
-				select: { id: true },
-			});
-			if (reopened) return "reopened" as const;
-			await finalizeClaim(tx, payee, payer, c.id, {}, { automatic: true });
-			return "finalized" as const;
+		await forUser(c.payeeId).apply(autoFinalizePayment, {
+			paymentId: c.id,
+			person: { participantType: c.payerType, participantId: c.payerId },
 		});
+		return "finalized";
 	} catch (error) {
+		if (error instanceof ReopenedError) return "reopened";
 		if (error instanceof ConfirmInsteadError) return "overClaimed";
 		if (
 			error instanceof TRPCError &&
 			["CONFLICT", "BAD_REQUEST", "NOT_FOUND"].includes(error.code)
 		)
 			return "raced";
-		// The name only: a database error's message can carry row values.
-		console.error("Auto-finalize failed for one payment:", errorName(error));
+		console.error("Auto-finalize failed for one payment:", errorCode(error));
 		return "failed";
 	}
 }
@@ -146,6 +131,10 @@ export async function sweepStalePayments(
 		failed: 0,
 	};
 	for (const candidate of await staleCandidates(source, cutoff)) {
+		// Each payment commits on its own connection, outside the sweep's lock.
+		// If the lock's transaction timed out or aborted this throws and ends
+		// the pass, rather than going on unlocked.
+		await source.$queryRaw`SELECT 1`;
 		counts[await finalizeOne(candidate)] += 1;
 	}
 	return counts;
@@ -167,7 +156,8 @@ export async function finalizeStaleProposedPayments(
 		},
 		{ timeout: SWEEP_TIMEOUT_MS, maxWait: 10_000 },
 	);
-	if (result && Object.values(result).some((n) => n > 0)) {
+	// Over-claimed and reopened payments stay pending hour after hour: no line.
+	if (result && (result.finalized > 0 || result.failed > 0)) {
 		console.log(
 			`Auto-finalize: ${result.finalized} finalized, ${result.overClaimed} left pending (over-claimed), ${result.raced} changed meanwhile, ${result.reopened} reopened, ${result.failed} failed`,
 		);
@@ -184,7 +174,7 @@ export function startAutoFinalizePayments(everyMs = EVERY_MS) {
 	if (g[started]) return;
 	const run = () =>
 		finalizeStaleProposedPayments().catch((error) => {
-			console.error("Auto-finalize sweep failed:", errorName(error));
+			console.error("Auto-finalize sweep failed:", errorCode(error));
 		});
 	const timer = setInterval(run, everyMs);
 	// A pending sweep must not keep the process alive.

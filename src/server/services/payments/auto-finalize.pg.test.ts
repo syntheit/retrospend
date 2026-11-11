@@ -17,8 +17,10 @@ import {
 	seedShare,
 	type TestUser,
 } from "~/server/api/v1/__tests__/g3-fixtures";
+import { readEventFeed } from "~/server/services/events/feed";
 import { forUser } from "~/server/services/preview";
 import { computeBalance } from "~/server/services/shared-expenses/balance";
+import { fanOutEvents } from "~/server/services/webhooks/worker";
 import { adminDb } from "~/test/pg-harness";
 import {
 	finalizeStaleProposedPayments,
@@ -169,6 +171,39 @@ describe("auto-finalize of a payment pending for more than 7 days", () => {
 		}
 	});
 
+	it("appends payment.confirmed once, to the payee's feed and, by fan-out, the payer's", async () => {
+		const p = await pair();
+		const id = await pay(p, "37100");
+		await sweepStalePayments(NOW);
+		await sweepStalePayments(NOW);
+		const confirmed = async (who: TestUser) =>
+			(
+				await readEventFeed(adminDb, who.user.id, { limit: 100 })
+			).items.filter(
+				(e) =>
+					e.type === "payment.confirmed" &&
+					(e.entity?.id === id || e.data.ids.paymentId === id),
+			);
+		// An event shows up once every older open transaction on the server has
+		// finished (feed.ts), so give a busy test server time.
+		await vi.waitFor(async () => {
+			await fanOutEvents();
+			expect(await confirmed(p.payer)).toHaveLength(1);
+			expect(await confirmed(p.payee)).toHaveLength(1);
+		}, 45_000);
+		// The payee's own event carries the figures the payment moved (ARS 37,100
+		// stops being owed to them), as a manual confirm's does; the payer's copy
+		// carries none of the payee's amounts.
+		const [mine] = await confirmed(p.payee);
+		expect(mine?.data.amounts).toContainEqual({
+			name: "owed.owedToYou",
+			minor: -3_710_000,
+			currency: "ARS",
+		});
+		const [theirs] = await confirmed(p.payer);
+		expect(theirs?.data.amounts).toEqual([]);
+	}, 60_000);
+
 	it("does nothing the second time", async () => {
 		const p = await pair();
 		const id = await pay(p, "37100");
@@ -288,6 +323,53 @@ describe("auto-finalize of a payment pending for more than 7 days", () => {
 		).toContain("settlement_unconfirmed");
 	});
 
+	it("re-checks under the lock: a payment reopened after the id list was built stays pending", async () => {
+		const p = await pair();
+		const id = await pay(p, "37100");
+		let reopenedAfterList = false;
+		// The id list is built while the payment has never been confirmed; the
+		// payee then confirms and reopens it before the sweep reaches it.
+		const source = {
+			$queryRaw: async (...args: Parameters<typeof adminDb.$queryRaw>) => {
+				const rows = await adminDb.$queryRaw(...args);
+				if (!reopenedAfterList) {
+					reopenedAfterList = true;
+					await forUser(p.payee.user.id).apply(confirmPayment, {
+						paymentId: id,
+						person: ref(p.payer),
+					});
+					await forUser(p.payee.user.id).apply(unconfirmPayment, {
+						paymentId: id,
+						person: ref(p.payer),
+					});
+				}
+				return rows;
+			},
+		} as unknown as Parameters<typeof sweepStalePayments>[1];
+		expect(await sweepStalePayments(NOW, source)).toEqual({
+			...NONE,
+			reopened: 1,
+		});
+		expect((await state(id)).header.status).toBe("PROPOSED");
+	});
+
+	it("stops the pass when the transaction holding the sweep lock is gone", async () => {
+		const p = await pair();
+		const id = await pay(p, "37100");
+		let calls = 0;
+		const source = {
+			$queryRaw: async (...args: Parameters<typeof adminDb.$queryRaw>) => {
+				calls += 1;
+				if (calls > 1) throw new Error("transaction is closed");
+				return adminDb.$queryRaw(...args);
+			},
+		} as unknown as Parameters<typeof sweepStalePayments>[1];
+		await expect(sweepStalePayments(NOW, source)).rejects.toThrow("closed");
+		expect((await state(id)).header.status).toBe("PROPOSED");
+		// Not stale any more, so later sweeps in this file leave it alone.
+		await age(id, 0);
+	});
+
 	it("leaves an over-claim pending and counts it", async () => {
 		const p = await pair(false);
 		// The payer claims ARS 4,000; the payee then records ARS 8,000 as
@@ -299,7 +381,19 @@ describe("auto-finalize of a payment pending for more than 7 days", () => {
 			currency: "ARS",
 			amount: "8000",
 		});
-		expect(await sweepStalePayments(NOW)).toEqual({ ...NONE, overClaimed: 1 });
+		// Left pending, and an hourly pass over it writes no log line.
+		const log = vi.spyOn(console, "log").mockImplementation(() => {});
+		try {
+			expect(await finalizeStaleProposedPayments(NOW)).toEqual({
+				...NONE,
+				overClaimed: 1,
+			});
+			expect(
+				log.mock.calls.filter((c) => String(c[0]).startsWith("Auto-finalize")),
+			).toEqual([]);
+		} finally {
+			log.mockRestore();
+		}
 		const { header, rows } = await state(id);
 		expect(header.status).toBe("PROPOSED");
 		expect(rows.map((r) => r.status)).toEqual(["PROPOSED"]);
