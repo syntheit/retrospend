@@ -23,7 +23,7 @@
  */
 import { randomBytes } from "node:crypto";
 import { keystoreDb } from "~/server/db";
-import { Prisma } from "~prisma";
+import type { Prisma } from "~prisma";
 import {
 	type FieldAad,
 	Keyring,
@@ -31,6 +31,10 @@ import {
 	sealField,
 } from "../../crypto/field-crypto";
 import { getMasterKeyring } from "../../crypto/master-key";
+import {
+	type KeystoreFailure,
+	mapKeystoreErrors,
+} from "./keystore-errors";
 
 export type DataKeyErrorCode =
 	/** DATA_MASTER_KEY is not configured, so keys cannot be sealed or opened. */
@@ -73,7 +77,7 @@ const FIRST_KEY_ID = 1;
 const DATA_KEY_BYTES = 32;
 
 /** Binds a wrapped key to its user and version: a copy elsewhere fails to open. */
-function wrapAad(userId: string, keyId: number): FieldAad {
+export function dataKeyAad(userId: string, keyId: number): FieldAad {
 	return {
 		table: "keystore.user_data_key",
 		column: "wrappedKey",
@@ -83,37 +87,23 @@ function wrapAad(userId: string, keyId: number): FieldAad {
 
 type KeyRow = { userId: string; keyId: number; wrappedKey: string };
 
-/** The Postgres error code of a failed raw query, as Prisma reports it. */
-function pgCode(error: unknown): string | undefined {
-	if (!(error instanceof Prisma.PrismaClientKnownRequestError))
-		return undefined;
-	const meta = error.meta as
-		| { driverAdapterError?: { cause?: { originalCode?: string } } }
-		| undefined;
-	return meta?.driverAdapterError?.cause?.originalCode;
-}
-
 /**
  * Runs one keystore query and turns the failures a caller can act on into
- * stable errors: 42P01 (no table), 3F000 (no schema) or 42883 (no function)
- * mean the keystore is missing; 28000 is the functions refusing a transaction
- * with no signed-in user (or a user that does not exist); 42501 is a missing
- * grant, which a restore leaves behind because the dumps carry no privileges;
- * KS001 is create_first_data_key refusing to replace keys that were lost.
+ * stable errors (see keystore-errors.ts): a missing keystore, the functions
+ * refusing a transaction with no signed-in user (or a user that does not
+ * exist), a missing grant, and create_first_data_key refusing to replace keys
+ * that were lost.
  */
-async function keystore<T>(query: () => Promise<T>): Promise<T> {
-	try {
-		return await query();
-	} catch (error) {
-		const code = pgCode(error);
-		if (code === "42P01" || code === "3F000" || code === "42883")
-			throw new DataKeyError("keystore_missing");
-		if (code === "28000") throw new DataKeyError("no_user");
-		if (code === "42501") throw new DataKeyError("keystore_grants_missing");
-		if (code === "KS001") throw new DataKeyError("keystore_lost");
-		throw error;
-	}
-}
+const keystore = <T>(query: () => Promise<T>): Promise<T> =>
+	mapKeystoreErrors(query, (failure) => {
+		const code: Record<KeystoreFailure, DataKeyErrorCode> = {
+			missing: "keystore_missing",
+			refused: "no_user",
+			grants: "keystore_grants_missing",
+			lost: "keystore_lost",
+		};
+		return new DataKeyError(code[failure]);
+	});
 
 /** Newest first, so the first entry of the keyring is the current key. */
 const readRows = (tx: Prisma.TransactionClient) =>
@@ -137,7 +127,7 @@ function unwrapAll(rows: KeyRow[], masterKeyring: Keyring): Keyring {
 		rows.map(({ userId, keyId, wrappedKey }) => ({
 			id: keyId,
 			key: Buffer.from(
-				openField(masterKeyring, wrappedKey, wrapAad(userId, keyId)),
+				openField(masterKeyring, wrappedKey, dataKeyAad(userId, keyId)),
 				"base64",
 			),
 		})),
@@ -161,7 +151,7 @@ export async function getOrCreateDataKeyring(
 		const wrapped = sealField(
 			masterKeyring,
 			randomBytes(DATA_KEY_BYTES).toString("base64"),
-			wrapAad(userId, FIRST_KEY_ID),
+			dataKeyAad(userId, FIRST_KEY_ID),
 		);
 		rows = await keystore(
 			() => tx.$queryRaw<KeyRow[]>`

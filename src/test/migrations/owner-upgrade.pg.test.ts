@@ -334,7 +334,8 @@ describe("an install from before the keystore migration", () => {
 			`SELECT pg_get_userbyid(relowner) AS owner FROM pg_class WHERE oid = 'keystore.user_data_key'::regclass`,
 		);
 		expect(rows[0]?.owner).toBe("retrospend_owner");
-		// The app role reaches its key through the two functions only.
+		// The app role reaches the keys through the four doors only (two for the
+		// user key, two for the instance key).
 		const { rows: fns } = await owner.query<{ name: string }>(`
 			SELECT p.proname AS name FROM pg_proc p
 			 WHERE p.pronamespace = 'keystore'::regnamespace
@@ -342,7 +343,9 @@ describe("an install from before the keystore migration", () => {
 			 ORDER BY 1`);
 		expect(fns.map((f) => f.name)).toEqual([
 			"create_first_data_key",
+			"create_first_instance_key",
 			"current_user_data_keys",
+			"instance_text_keys",
 		]);
 		expect(await ownerProblems(owner)).toEqual([]);
 		expect(await ownerCanCreateIn(old.superUrl)).toBe(false);

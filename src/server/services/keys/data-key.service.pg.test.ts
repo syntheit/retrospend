@@ -715,6 +715,7 @@ describe("keys that were lost", () => {
 		expect(names).toEqual([
 			"20261109100000_keystore",
 			"20261109800000_keystore_lost_guard",
+			"20261111100000_instance_text_key",
 		]);
 		const migration = (name: string) =>
 			readFileSync(

@@ -56,6 +56,21 @@ func TestKeystoreRestoreSteps(t *testing.T) {
 		mustExec(t, source, `INSERT INTO "user" (id, name, username, email) VALUES ($1::text, $1::text, $1::text, $1::text || '@sidecar-test.invalid')`, id)
 		mustExec(t, source, `INSERT INTO keystore."user_data_key" ("userId", "keyId", "wrappedKey", "masterKeyId") VALUES ($1, 1, 'sealed-for-test', 1)`, id)
 	}
+	// The instance key (shared text) lives in the same schema; its own key id
+	// keeps this clear of any real row in the test database.
+	const instanceKeyID = 9000001
+	mustExec(t, source, `INSERT INTO keystore."instance_text_key" ("keyId", "wrappedKey", "masterKeyId") VALUES ($1, 'sealed-instance-for-test', 1) ON CONFLICT DO NOTHING`, instanceKeyID)
+	// The source may already hold real instance keys: what comes back must be
+	// all of them, so count after our row is in and compare with that.
+	var sourceInstanceKeys int
+	if err := source.Pool.QueryRow(ctx, `SELECT count(*) FROM keystore."instance_text_key"`).Scan(&sourceInstanceKeys); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if _, err := source.Pool.Exec(ctx, `DELETE FROM keystore."instance_text_key" WHERE "keyId" = $1`, instanceKeyID); err != nil {
+			t.Logf("could not delete the test instance key: %v", err)
+		}
+	})
 	// The trigger takes the keys with the users.
 	t.Cleanup(func() {
 		if _, err := source.Pool.Exec(ctx, `DELETE FROM "user" WHERE id = ANY($1)`, mine); err != nil {
@@ -69,11 +84,11 @@ func TestKeystoreRestoreSteps(t *testing.T) {
 		t.Fatal(err)
 	}
 	mainDump, keysDump := findDump(t, dir, "retrospend-"), findDump(t, dir, "keystore-")
-	if list := pgRestore(t, "--list", mainDump); strings.Contains(list, "user_data_key") {
-		t.Fatal("main dump contains the keystore table")
+	if list := pgRestore(t, "--list", mainDump); strings.Contains(list, "user_data_key") || strings.Contains(list, "instance_text_key") {
+		t.Fatal("main dump contains a keystore table")
 	}
 	list := pgRestore(t, "--list", keysDump)
-	if !strings.Contains(list, "user_data_key") || strings.Contains(list, "TABLE public user ") {
+	if !strings.Contains(list, "user_data_key") || !strings.Contains(list, "instance_text_key") || strings.Contains(list, "TABLE public user ") {
 		t.Fatalf("keystore dump is not only the keystore:\n%s", list)
 	}
 
@@ -99,6 +114,17 @@ func TestKeystoreRestoreSteps(t *testing.T) {
 			args = append(args, "--clean", "--if-exists")
 		}
 		pgRestore(t, append(args, "--dbname="+scratchURL, file)...)
+	}
+	// All instance key rows in the scratch database, and ours among them.
+	instanceKeys := func() int {
+		var n, mine int
+		if err := scratch.Pool.QueryRow(ctx, `SELECT count(*), count(*) FILTER (WHERE "keyId" = $1) FROM keystore."instance_text_key"`, instanceKeyID).Scan(&n, &mine); err != nil {
+			t.Fatal(err)
+		}
+		if mine != 1 {
+			t.Fatalf("the test instance key is in the scratch database %d times, want 1", mine)
+		}
+		return n
 	}
 	keyOwners := func() []string {
 		rows, err := scratch.Pool.Query(ctx, `SELECT "userId" FROM keystore."user_data_key" WHERE "userId" = ANY($1) ORDER BY "userId"`, mine)
@@ -145,6 +171,9 @@ func TestKeystoreRestoreSteps(t *testing.T) {
 	if got := keyOwners(); strings.Join(got, ",") != userA+","+userB {
 		t.Fatalf("after keystore restore: %v", got)
 	}
+	if got := instanceKeys(); got != sourceInstanceKeys {
+		t.Fatalf("instance key rows after keystore restore: %d, want %d", got, sourceInstanceKeys)
+	}
 	mustExec(t, scratch, `DELETE FROM keystore.user_data_key k WHERE NOT EXISTS (SELECT 1 FROM public."user" u WHERE u.id = k."userId")`)
 	if got := keyOwners(); strings.Join(got, ",") != userA {
 		t.Fatalf("after the orphan delete, want only %s, got %v", userA, got)
@@ -183,6 +212,15 @@ func TestKeystoreRestoreSteps(t *testing.T) {
 	if _, err := asAppUserErr(scratch, userA, `SELECT count(*) FROM keystore.user_data_key`); err == nil {
 		t.Fatal("the app role can read the keystore table")
 	}
+	if got := asAppUser(t, scratch, userA, `SELECT count(*) FROM keystore.instance_text_keys()`); got != sourceInstanceKeys {
+		t.Fatalf("the app role sees %d instance keys through the function, want %d", got, sourceInstanceKeys)
+	}
+	if _, err := asAppUserErr(scratch, userA, `SELECT count(*) FROM keystore.instance_text_key`); err == nil {
+		t.Fatal("the app role can read the instance key table")
+	}
+	if _, err := asAppUserErr(scratch, userA, `SELECT count(*) FROM (SELECT keystore.require_instance_actor()) x`); err == nil {
+		t.Fatal("the app role can call the instance actor check directly")
+	}
 	// Applying it again changes nothing and does not fail.
 	mustExec(t, scratch, appRoleGrants(t))
 
@@ -207,6 +245,9 @@ func TestKeystoreRestoreSteps(t *testing.T) {
 	}
 	if got := keyOwners(); strings.Join(got, ",") != userA+","+userB {
 		t.Fatalf("keys after in-place restore: %v", got)
+	}
+	if got := instanceKeys(); got != sourceInstanceKeys {
+		t.Fatalf("instance key rows after in-place restore: %d, want %d", got, sourceInstanceKeys)
 	}
 }
 

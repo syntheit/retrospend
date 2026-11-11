@@ -1173,6 +1173,13 @@ model AppSettings {
   // Webhooks may target private, loopback and link-local addresses (self-hosters).
   webhooksAllowPrivateTargets Boolean         @default(false)
 
+  // When the instance text key was first made (keystore.create_first_instance_key
+  // sets it). Set with no key row means the keystore was lost.
+  instanceKeySince DateTime?
+  // A fixed text sealed under the master key; a wrong master key fails to open
+  // it at start (src/server/services/keys/master-canary.service.ts).
+  masterKeyCanary String?
+
   @@map("app_settings")
 }
 
