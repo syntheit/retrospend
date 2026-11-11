@@ -27,7 +27,12 @@
  */
 import { randomBytes } from "node:crypto";
 import { keystoreDb } from "~/server/db-core";
-import { inTransaction, userTransaction } from "~/server/db-tx";
+import {
+	inPreview,
+	inTransaction,
+	outsideTransaction,
+	userTransaction,
+} from "~/server/db-tx";
 import type { Prisma } from "~prisma";
 import {
 	type FieldAad,
@@ -36,6 +41,7 @@ import {
 	openField,
 	sealField,
 } from "../../crypto/field-crypto";
+import { KEY_ROTATED, TextUnavailableError } from "../../crypto/field-open";
 import { getMasterKeyring } from "../../crypto/master-key";
 import { sealing } from "../../crypto/sealing";
 import { type CachedRing, cacheRing, isFresh, RING_TTL_MS } from "./key-cache";
@@ -172,6 +178,29 @@ export async function getOrCreateDataKeyring(
 	return unwrapAll(rows, masterKeyring);
 }
 
+/**
+ * The signed-in user's data keys, read in their transaction and never made
+ * there: while this process seals, a key is made only outside transactions
+ * (E2EE D11 PR 4 section 1, for the D9 name index). With none, a preview gets
+ * undefined (its write rolls back); any other transaction starts the mint on
+ * a connection of its own and fails with the retryable `key_rotated`, so the
+ * retry finds the key.
+ */
+export async function dataKeyringInTransaction(
+	tx: Prisma.TransactionClient,
+	masterKeyring: Keyring | undefined = getMasterKeyring(),
+): Promise<Keyring | undefined> {
+	if (!masterKeyring) throw new DataKeyError("master_key_missing");
+	const rows = await readRows(tx);
+	if (rows.length > 0) return unwrapAll(rows, masterKeyring);
+	if (inPreview()) return undefined;
+	const userId = await sessionUserId(tx);
+	void outsideTransaction(() =>
+		ensureUserKeyring(userId, masterKeyring).catch(() => undefined),
+	);
+	throw new TextUnavailableError(KEY_ROTATED);
+}
+
 const minting = new Map<string, Promise<Keyring>>();
 
 /**
@@ -182,7 +211,10 @@ const minting = new Map<string, Promise<Keyring>>();
  * and shares one mint per user in this process; across processes the insert
  * is a no-op for the loser. The cached ring answers first, so a user who has
  * keys costs no query. The ring is evicted after the commit, so the next
- * client load reads the new key.
+ * client load reads the new key. A mint the keystore refuses (`keystore_lost`,
+ * a lost grant) is cached like a failed load: client loads then record that
+ * code, so a write in a transaction fails with it instead of asking for a
+ * retry, and the keystore is not asked again for 30 seconds.
  */
 export function ensureUserKeyring(
 	userId: string,
@@ -195,11 +227,20 @@ export function ensureUserKeyring(
 	const mint = (async () => {
 		const found = await findDataKeyring(userId, masterKeyring);
 		if (found) return found;
-		const ring = await userTransaction(keystoreDb, userId, (tx) =>
-			getOrCreateDataKeyring(tx, masterKeyring),
-		);
-		evictDataKeyring(userId);
-		return ring;
+		try {
+			const ring = await userTransaction(keystoreDb, userId, (tx) =>
+				getOrCreateDataKeyring(tx, masterKeyring),
+			);
+			evictDataKeyring(userId);
+			return ring;
+		} catch (error) {
+			if (error instanceof KeystoreError && masterKeyring)
+				userRings.set(
+					userId,
+					cacheRing(masterKeyring, Date.now(), Promise.reject(error)),
+				);
+			throw error;
+		}
 	})().finally(() => minting.delete(userId));
 	minting.set(userId, mint);
 	return mint;
