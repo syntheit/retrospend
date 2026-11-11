@@ -23,6 +23,8 @@ export type PushEvent = {
 	type: PushKind;
 	actorUserId: string;
 	entityId: string;
+	/** The server made the change, not a person (the event's `automatic` flag). */
+	automatic?: boolean;
 };
 
 export type PushRecipient = {
@@ -361,6 +363,9 @@ export function planPush(
 	db: Reader,
 	event: PushEvent,
 ): Promise<PushPlan | null> {
+	// A payment finalized after 7 days is not news the payee acted on: no push.
+	if (event.automatic && event.type === "payment.confirmed")
+		return Promise.resolve(null);
 	const plan = PLANNERS[event.type];
 	return plan ? plan(db, event) : Promise.resolve(null);
 }

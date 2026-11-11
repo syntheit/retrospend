@@ -37,6 +37,8 @@ export const eventDataSchema = z
 		amounts: z.array(eventAmountSchema).max(EVENT_DATA_LIMIT),
 		/** True when the write touched more than the event could list. */
 		truncated: z.boolean(),
+		/** True when the server made the change on its own (a payment finalized after 7 days), not a person. Absent otherwise. */
+		automatic: z.boolean().optional(),
 	})
 	.meta({ id: "EventData" });
 

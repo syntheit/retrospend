@@ -63802,6 +63802,9 @@
 																"maxItems": 32,
 																"type": "array"
 															},
+															"automatic": {
+																"type": "boolean"
+															},
 															"ids": {
 																"additionalProperties": {
 																	"pattern": "^[A-Za-z0-9_-]{1,64}$",

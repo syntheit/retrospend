@@ -155,7 +155,12 @@ export function extractEventData(value: unknown): Walked {
 		}
 		level = next;
 	}
-	return { entityId, data: { ids, amounts, truncated } };
+	// Set by the result itself: a change the server made, not a person.
+	const automatic = isPlainObject(value) && value.automatic === true;
+	return {
+		entityId,
+		data: { ids, amounts, truncated, ...(automatic ? { automatic } : {}) },
+	};
 }
 
 /** The signed movement of each figure a mutation changed, from its preview diff. */
