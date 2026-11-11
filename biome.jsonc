@@ -144,7 +144,12 @@
 							"options": {
 								"patterns": [
 									{
-										"group": ["**/server/db", "**/../db"],
+										"group": [
+											"**/server/db",
+											"**/../db",
+											"**/server/db-core",
+											"**/../db-core"
+										],
 										"message": "Use the tx you are given: the global db commits outside a preview's transaction."
 									}
 								]

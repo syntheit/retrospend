@@ -15,6 +15,18 @@ export type KeystoreFailure =
 	/** KS001: the mint function refusing to replace a key that was lost. */
 	| "lost";
 
+/**
+ * The base of DataKeyError and InstanceKeyError, so a caller that holds no
+ * service (the client key context, text-keys.ts) can read their stable code.
+ */
+export class KeystoreError extends Error {
+	readonly code: string;
+	constructor(code: string, message: string) {
+		super(message);
+		this.code = code;
+	}
+}
+
 /** The Postgres error code of a failed raw query, as Prisma reports it. */
 export function pgCode(error: unknown): string | undefined {
 	if (!(error instanceof Prisma.PrismaClientKnownRequestError))

@@ -1,7 +1,9 @@
-// The client layering (E2EE D11 prep): one raw base Prisma client, private to
-// db.ts, and every transaction that sets the RLS identity is built in one of
-// two files. A source scan keeps it that way, since a hand-rolled
-// set_config transaction or a second client would skip the extension slot.
+// The client layering (E2EE D11 prep, PR 3.1): one raw base Prisma client,
+// private to db-core.ts, and every transaction that sets the RLS identity is
+// built in one of two files. A source scan keeps it that way, since a
+// hand-rolled set_config transaction or a second client would skip the
+// extension slot. The instance key's service flag is set in one place too, so
+// no other code reaches for it by mistake.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { scanSources, withoutComments } from "~/test/source-scan";
@@ -23,16 +25,22 @@ const filesMatching = (pattern: RegExp) =>
 		.sort();
 
 describe("client layering", () => {
-	it("sets the RLS identity only in db.ts and db-tx.ts", () => {
+	it("sets the RLS identity only in db-core.ts and db-tx.ts", () => {
 		expect(filesMatching(/set_config\(\s*'app\.current_user_id'/)).toEqual([
+			"src/server/db-core.ts",
 			"src/server/db-tx.ts",
-			"src/server/db.ts",
 		]);
 	});
 
-	it("builds the raw Prisma client only in db.ts", () => {
+	it("builds the raw Prisma client only in db-core.ts", () => {
 		expect(filesMatching(/new\s+PrismaClient\s*\(/)).toEqual([
-			"src/server/db.ts",
+			"src/server/db-core.ts",
+		]);
+	});
+
+	it("sets the instance key's service flag only in the instance key service", () => {
+		expect(filesMatching(/app\.instance_service/)).toEqual([
+			"src/server/services/keys/instance-key.service.ts",
 		]);
 	});
 
