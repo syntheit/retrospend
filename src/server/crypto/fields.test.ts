@@ -111,6 +111,7 @@ const STORED: Record<string, string[]> = {
 	"fixRequest.reply": ["fix_request.reply"],
 	"guest_session.name": ["guest_session.name"],
 	// Money in is an expense row with an income direction.
+	"import_job.fileName": ["import_job.fileName"],
 	"income.description": ["expense.description"],
 	"income.title": ["expense.title"],
 	"incomeRule.matchTitle": ["income_rule.matchTitle"],
@@ -149,6 +150,12 @@ const NO_DECLARED_FIELD: Record<string, string> = {
 		"no write path sets a note today; one that does must declare its field",
 	"wealth_transfer.note":
 		"no write path sets a note today; one that does must declare its field",
+	"envelope_change.previousName":
+		"a server copy of envelope.name taken before a rename; no input names it",
+	"export_job.fileName":
+		"derived by the server from a project or person name; no input names it",
+	"push_device.deviceName":
+		"declare it once the column is widened: VarChar(100) cannot hold the ciphertext of a 100 character name",
 };
 
 /**
@@ -261,45 +268,75 @@ describe("the field map and the Prisma schema", () => {
 
 /** The words that make a String column look like text a person typed. */
 const TEXT_LOOKING =
-	/name|title|descr|note|label|message|reply|reason|location|comment|memo|text|identifier|method|url|email|phone|detail|address|metadata/i;
+	/name|title|descr|note|label|message|reply|reason|location|comment|memo|text|identifier|method|url|email|phone|detail|address|metadata|body|content|subject|summary|caption/i;
 
 /**
- * String columns on a mapped table that look like free text and are left out
- * of the map on purpose. A new entry needs a reason a reviewer accepts.
+ * String columns that look like free text and are left out of the map on
+ * purpose, over every model in the schema. A new entry needs a reason a
+ * reviewer accepts. Entries marked "owner call" are open decisions.
  */
 const NOT_SEALED: Record<string, string> = {
 	"user.username": "sign-in handle, unique and looked up as it is typed",
 	"user.email": "sign-in identity, written on the owner connection only",
 	"user.pendingEmail": "sign-in identity, written on the owner connection only",
 	"user.pendingEmailToken": "a one-time token, not text",
+	"username_history.previousUsername": "a sign-in handle, like user.username",
+	"verification.identifier": "an email or token key of a sign-in flow",
+	"verification_token.identifier": "an email or token key of a sign-in flow",
+	"password_reset_token.identifier": "an email or token key of a sign-in flow",
+	"session.ipAddress": "a network address, not typed text",
+	"event_log.ipAddress": "a network address, not typed text",
 	"category.nameIndex": "the D9 blind index of the name, an HMAC, not text",
+	"push_device.addressHash": "a hash of the device address, not text",
 	"shadow_profile.email":
-		"a contact address, outside the user-text list; owner call if it should be sealed",
+		"owner call: a contact address, outside the user-text list",
 	"shadow_profile.phone":
-		"a contact number, outside the user-text list; owner call if it should be sealed",
+		"owner call: a contact number, outside the user-text list",
 	"guest_session.email":
-		"a contact address, outside the user-text list; owner call if it should be sealed",
+		"owner call: a contact address, outside the user-text list",
 	"shared_transaction.receiptUrl": "a stored receipt path or link, not prose",
 	"settlement.autoConfirmedReason": "a system code set by the server",
 	"feedback.pageUrl": "the app route the feedback was sent from",
 	"webhook.url":
-		"a delivery address; owner call if it should be sealed, a URL can carry a secret",
+		"owner call: a delivery address, which can carry a secret in its path",
 	"webhook.disabledReason": "a system code from a fixed list",
 	"apikey.metadata": "a JSON string the key plugin writes, not typed text",
+	"notification.title":
+		"built from ids at read time or sealed with the JSON copies (D11 PR 8, Revision 1 item 8)",
+	"notification.body":
+		"built from ids at read time or sealed with the JSON copies (D11 PR 8, Revision 1 item 8)",
+	"error_report.message":
+		"owner call: app crash text, scrubbed by the app and the server, not typed",
+	"error_report.stack":
+		"owner call: app crash stack, scrubbed by the app and the server, not typed",
+	"import_job.fileData":
+		"owner call: the uploaded file as base64, cleared after processing, so it holds row text for a short time",
+	"import_job.errorMessage":
+		"owner call: server and sidecar progress text, which may quote a row",
+	"import_job.statusMessage":
+		"owner call: server and sidecar progress text, which may quote a row",
+	"export_job.contentType": "a MIME type, not text",
 };
 
-describe("free-text-looking columns on mapped tables", () => {
-	const found = Object.entries(FIELD_MAP).flatMap(([model, { table, columns }]) =>
-		(modelByName.get(model)?.fields ?? [])
+describe("free-text-looking columns anywhere in the schema", () => {
+	const found = schema.flatMap((model) =>
+		model.fields
 			.filter((f) => f.type === "String" && !f.list)
-			.filter((f) => !Object.hasOwn(columns, f.name))
+			.filter(
+				(f) => !Object.hasOwn(fieldsOfModel(model.name)?.columns ?? {}, f.name),
+			)
 			.filter(
 				(f) =>
-					f.name !== "id" &&
+					!model.idFields.includes(f.name) &&
 					(/@db\.Text/.test(f.attributes) || TEXT_LOOKING.test(f.name)),
 			)
-			.map((f) => `${table}.${f.name}`),
+			.map((f) => `${model.table}.${f.name}`),
 	);
+
+	it("scans the whole schema, not only mapped tables", () => {
+		expect(found).toContain("notification.title");
+		expect(found).toContain("error_report.message");
+	});
 
 	it("are mapped, or explained", () => {
 		expect(found.filter((cell) => !(cell in NOT_SEALED))).toEqual([]);
@@ -318,7 +355,10 @@ describe("free-text-looking columns on mapped tables", () => {
 });
 
 describe("key classes", () => {
-	// Revision 2 of docs/roadmap/e2ee-d11-design.md, final for PR 1.
+	// Revision 2 of docs/roadmap/e2ee-d11-design.md, final for PR 1, plus the
+	// review additions: envelope_change.previousName (a copy of envelope.name,
+	// instance) and export_job.fileName, import_job.fileName and
+	// push_device.deviceName (personal text, user).
 	const USER: string[] = [
 		"expense.title",
 		"expense.description",
@@ -332,6 +372,9 @@ describe("key classes", () => {
 		"recurring_template.websiteUrl",
 		"income_rule.name",
 		"income_rule.matchTitle",
+		"export_job.fileName",
+		"import_job.fileName",
+		"push_device.deviceName",
 	];
 	const INSTANCE: string[] = [
 		"shared_transaction.description",
@@ -360,6 +403,7 @@ describe("key classes", () => {
 		"feedback.adminNote",
 		"apikey.name",
 		"webhook.name",
+		"envelope_change.previousName",
 	];
 
 	const classOf = (keyClass: KeyClass) =>

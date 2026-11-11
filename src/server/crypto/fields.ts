@@ -38,10 +38,15 @@ export const FIELD_MAP = {
 	Category: { table: "category", columns: { name: "user" } },
 	Envelope: { table: "envelope", columns: { name: "instance" } },
 	EnvelopeGroup: { table: "envelope_group", columns: { name: "instance" } },
+	EnvelopeChange: {
+		table: "envelope_change",
+		columns: { previousName: "instance" },
+	},
 	Expense: {
 		table: "expense",
 		columns: { title: "user", description: "user", location: "user" },
 	},
+	ExportJob: { table: "export_job", columns: { fileName: "user" } },
 	Feedback: {
 		table: "feedback",
 		columns: { message: "instance", adminNote: "instance" },
@@ -51,6 +56,7 @@ export const FIELD_MAP = {
 		columns: { message: "instance", reply: "instance" },
 	},
 	GuestSession: { table: "guest_session", columns: { name: "instance" } },
+	ImportJob: { table: "import_job", columns: { fileName: "user" } },
 	IncomeRule: {
 		table: "income_rule",
 		columns: { name: "user", matchTitle: "user" },
@@ -71,6 +77,7 @@ export const FIELD_MAP = {
 		table: "recurring_template",
 		columns: { name: "user", paymentSource: "user", websiteUrl: "user" },
 	},
+	PushDevice: { table: "push_device", columns: { deviceName: "user" } },
 	Settlement: {
 		table: "settlement",
 		columns: {

@@ -90,6 +90,7 @@ const STORED: Record<string, Column[]> = {
 	"guest_session.name": [{ table: "guest_session", column: "name" }],
 	"income.description": [{ table: "expense", column: "description" }],
 	"income.title": [{ table: "expense", column: "title" }],
+	"import_job.fileName": [{ table: "import_job", column: "fileName" }],
 	"incomeRule.matchTitle": [{ table: "income_rule", column: "matchTitle" }],
 	"incomeRule.name": [{ table: "income_rule", column: "name" }],
 	"payment.method": [

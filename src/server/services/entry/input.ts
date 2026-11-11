@@ -5,7 +5,11 @@
  * expense service's input; undo inputs come back in the service's own shape
  * (what a mutation returned as `restore`), so they get their own schemas.
  */
-import { userText, userTextOrEmpty } from "@retrospend/api-contract/common";
+import {
+	restoreText,
+	userText,
+	userTextOrEmpty,
+} from "@retrospend/api-contract/common";
 import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { z } from "zod";
 import { customRateSchema } from "~/lib/schemas/rate";
@@ -57,12 +61,12 @@ export function toExpenseInput(
 
 /**
  * What expense.update or expense.delete returned as `restore`. Restore puts
- * back what was stored, so its text fields are plain strings: they must accept
- * anything the column holds, even a legacy row with a control character.
+ * back what was stored, and its text takes the same content rules as the form
+ * (`restoreText`), so an Undo can never write a value that starts with U+0001.
  */
 export const expenseRestoreSchema = z.object({
 	id,
-	title: z.string().min(1).max(500),
+	title: restoreText(500),
 	amount: z.union([z.number().positive(), decimal]),
 	currency,
 	date: z.date(),
@@ -76,8 +80,8 @@ export const expenseRestoreSchema = z.object({
 			home: currency.optional(),
 		})
 		.optional(),
-	location: z.string().max(191).optional(),
-	description: z.string().max(1000).optional(),
+	location: restoreText(191, { empty: true }).optional(),
+	description: restoreText(1000, { empty: true }).optional(),
 	categoryId: z.string().min(1).optional(),
 	amortizeOver: z.number().int().min(2).max(60).optional(),
 	excludeFromAnalytics: z.boolean().optional(),
@@ -134,17 +138,17 @@ export function toSharedInput<
 }
 
 /**
- * What sharedExpense.update returned as `restore`. Plain strings, like
- * expenseRestoreSchema: restore puts back what was stored.
+ * What sharedExpense.update returned as `restore`. Its text is `restoreText`,
+ * like expenseRestoreSchema.
  */
 export const sharedRestoreSchema = z.object({
 	id,
 	amount: z.number().positive(),
 	currency,
-	description: z.string().min(1).max(500),
+	description: restoreText(500),
 	categoryId: z.string().nullable(),
 	date: z.date(),
-	notes: z.string().max(5000).nullable(),
+	notes: restoreText(5000, { empty: true }).nullable(),
 	projectId: z.string().nullable(),
 	...splitFields,
 	// The fix requests the edit being undone had answered (`answered` of its result).

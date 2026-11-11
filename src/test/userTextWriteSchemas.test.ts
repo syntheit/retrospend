@@ -20,7 +20,11 @@
 // with stripUserTextControls, guarded by the leading U+0001 refusal), and a
 // schema built at request time.
 import { contract, listContractRoutes } from "@retrospend/api-contract";
-import { USER_TEXT_FIELDS, userText } from "@retrospend/api-contract/common";
+import {
+	restoreText,
+	USER_TEXT_FIELDS,
+	userText,
+} from "@retrospend/api-contract/common";
 import { describe, expect, it } from "vitest";
 import * as z from "zod";
 import { appRouter } from "~/server/api/root";
@@ -98,8 +102,33 @@ function properties(root: unknown): Prop[] {
 const parses = (schema: unknown, value: string) =>
 	(schema as z.ZodType).safeParse(value).success;
 
-/** True when the property refuses a control character, as `userText` does. */
-const refusesControls = (schema: unknown) => !parses(schema, "a\u0007b");
+/**
+ * Each shape is a leading U+0001 and an inner BEL, each paired with the same
+ * text without the control. The second shape is for a column that must be a
+ * URL after the text rules (`userText(...).pipe(z.url())`).
+ */
+const PROBES: [bad: string, clean: string][][] = [
+	[
+		["\u0001k1:xx", "xk1:xx"],
+		["ab\u0007cd", "abxcd"],
+	],
+	[
+		["\u0001https://a.example/x", "https://a.example/x"],
+		["https://a.example/\u0007x", "https://a.example/xx"],
+	],
+];
+
+/**
+ * True when the property refuses a control character, and for that reason: in
+ * some probe shape, each control is refused while the same text with the
+ * control swapped for a letter is taken. A schema that only refuses short or
+ * oddly formatted input (`min(5)`, a pattern) therefore does not pass.
+ */
+function refusesControls(schema: unknown) {
+	return PROBES.some((shape) =>
+		shape.every(([bad, clean]) => !parses(schema, bad) && parses(schema, clean)),
+	);
+}
 
 /** Keys a mapped column is written under that are not the column's own name. */
 const ALIASES = ["reason", "method"];
@@ -150,10 +179,10 @@ function textProperties(inputs: Input[]) {
 }
 
 const REASONS = {
-	restore:
-		"Undo payload: puts back the text the column held, which may predate the rule (expenseRestoreSchema, user-text-routes.test.ts)",
 	profile:
 		"updateProfile strips the characters userText refuses before it writes (profile.service.ts), so Undo of an old name works",
+	narrow:
+		"push_device.deviceName is VarChar(100), too narrow for a ciphertext: widen the column, then declare the field (D11 review)",
 	crash:
 		"app-generated crash text, scrubbed by scrubReport, kept in error_report and feedback diagnostics, not a mapped column",
 } as const;
@@ -163,19 +192,12 @@ const REASONS = {
  * safe. A new entry needs a reason a reviewer accepts.
  */
 const NOT_TEXT_INPUTS: Record<string, keyof typeof REASONS> = {
-	"trpc entry.expense.revert.save:title": "restore",
-	"trpc entry.expense.revert.save:location": "restore",
-	"trpc entry.expense.revert.save:description": "restore",
-	"trpc entry.shared.revert.save:description": "restore",
-	"trpc entry.shared.revert.save:notes": "restore",
-	"trpc wealth.transfers.recreate.save:note": "restore",
-	"trpc wealth.income.recreate.save:title": "restore",
-	"trpc wealth.income.recreate.save:description": "restore",
 	"trpc profile.update:name": "profile",
 	"v1 PATCH /profile:name": "profile",
 	"trpc feedback.submit:diagnostics.recentErrors[].message": "crash",
 	"v1 POST /feedback:diagnostics.recentErrors[].message": "crash",
 	"v1 POST /error-reports:reports[].message": "crash",
+	"v1 POST /push-devices:deviceName": "narrow",
 };
 
 describe("detector", () => {
@@ -206,15 +228,31 @@ describe("detector", () => {
 		]);
 	});
 
-	it("passes userText through wrappers and pipes, and ignores other keys", () => {
+	it("does not take a schema that refuses controls only by length or format", () => {
 		expect(
 			flagged(
 				z.object({
+					title: z.string().min(5).max(10),
+					name: z.string().min(6),
+					note: z.string().regex(/^[a-z]+$/),
+					websiteUrl: z.url(),
+				}),
+			),
+		).toEqual(["t:title", "t:name", "t:note", "t:websiteUrl"]);
+	});
+
+	it("passes userText and restoreText through wrappers and pipes, and ignores other keys", () => {
+		expect(
+			flagged(
+				z.object({
+					restored: restoreText(10),
+					description: restoreText(10, { empty: true }).nullish(),
 					title: userText("test.detector", 10),
 					notes: userText("test.detector", 10).nullable().optional(),
 					rows: z.array(
-						z.object({ name: z.string().trim().pipe(userText("test.d", 5)) }),
+						z.object({ name: z.string().trim().pipe(userText("test.d", 10)) }),
 					),
+					websiteUrl: userText("test.detector", 100).pipe(z.url()).optional(),
 					other: z.string(),
 					kind: z.enum(["name"]),
 					name: z.number(),

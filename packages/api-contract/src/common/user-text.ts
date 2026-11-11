@@ -105,8 +105,8 @@ function removeForbidden(text: string): string {
 	return out;
 }
 
-function declare(field: string, max: number, required: boolean) {
-	fields.add(field);
+function declare(field: string | null, max: number, required: boolean) {
+	if (field !== null) fields.add(field);
 	const text = z.string();
 	return (required ? text.min(1) : text)
 		.max(max)
@@ -130,4 +130,19 @@ export function userText(field: string, max: number) {
  */
 export function userTextOrEmpty(field: string, max: number) {
 	return declare(field, max, false);
+}
+
+/**
+ * Text an Undo payload puts back into a user-text column (an expense, a shared
+ * expense, a move, an income). The value was plain text when it was first
+ * written, so it takes the same content rules as `userText`: no C0 control
+ * character, which includes a leading U+0001, and no lone surrogate. A client
+ * can therefore never store something that looks like a ciphertext through an
+ * Undo. Rows written before the rules are covered by the scan-control-chars
+ * `--fail` gate, not by this schema. It declares no field: the live write path
+ * of the same column already does. "" is valid when `empty` is set, for a
+ * column the form takes empty.
+ */
+export function restoreText(max: number, options?: { empty?: boolean }) {
+	return declare(null, max, !options?.empty);
 }
