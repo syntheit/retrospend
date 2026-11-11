@@ -66,7 +66,7 @@ describe("bookRate with a BTC home (crypto rates are USD per unit)", () => {
 		});
 	});
 
-	it("ARS into BTC keeps a tiny rate exact: (1 / 1000) / 50000 = 0.00000002, so 123456789 ARS is 2.46913578 BTC", async () => {
+	it("ARS into BTC: (1 / 1000) / 50000 = 0.00000002, so 123456789 ARS is 2.46913578 BTC", async () => {
 		const ctx = table(
 			{
 				ARS: { rate: 1000, type: "official" },
@@ -79,6 +79,22 @@ describe("bookRate with a BTC home (crypto rates are USD per unit)", () => {
 		expect(booked.homeAmount).toBe("2.46913578");
 		// The home leg used crypto, the entry leg official: crypto is not official, so it labels.
 		expect(booked.rateType).toBe("crypto");
+	});
+
+	it("a tiny rate keeps its digits: ARS 10,000,000 in a BTC home", async () => {
+		// 1 / 1,560 / 64,545.9 = 1 / 100,691,604 = 9.931...e-9 BTC per ARS, stored
+		// as 0.000000009931. The amount uses the exact rate: 10,000,000 /
+		// 100,691,604 = 0.09931315 BTC, where the stored copy gives 0.09931000.
+		const ctx = table(
+			{
+				ARS: { rate: 1560, type: "blue" },
+				BTC: { rate: 64545.9, type: "crypto" },
+			},
+			"BTC",
+		);
+		const booked = await book(ctx, "10000000", "ARS");
+		expect(booked.homeRate).toBe("0.000000009931");
+		expect(booked.homeAmount).toBe("0.09931315");
 	});
 
 	it("a BTC home with no BTC rate throws, naming BTC", async () => {
