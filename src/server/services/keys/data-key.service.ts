@@ -210,6 +210,11 @@ export function findDataKeyring(
 	return entry.ring;
 }
 
+/** Forget the user's cached keyring, so the next load reads the keystore. */
+export function evictDataKeyring(userId: string): void {
+	userRings.delete(userId);
+}
+
 /**
  * Crypto-shred: delete every data key the user has, and return how many.
  * Anything sealed with them can never be read again. Only deletion and

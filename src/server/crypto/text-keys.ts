@@ -5,10 +5,15 @@
  *
  * `ready()` never throws: a missing master key, a missing keystore or a lost
  * grant is recorded as the class's outcome, so a plaintext ledger keeps
- * working, and only a sealed cell (lane D11 PR 3.2) looks at it. Each call
- * asks the loaders again; they cache in-process, so a warm call costs no
- * query, and an eviction (a crypto-shred) reaches every client at its next
- * `ready()`.
+ * working, and only a sealed cell (field-open.ts) looks at it. Each call asks
+ * the loaders again; they cache in-process, so a warm call costs no query,
+ * and an eviction (a crypto-shred) reaches every client at its next `ready()`.
+ *
+ * `reload` goes past the loader's cache, for a sealed cell whose key the
+ * recorded ring lacks (a key made or added elsewhere since). A crafted cell
+ * must not be able to hammer the keystore, so a process reloads one ring at
+ * most once per 5 seconds, whatever key id the cell names: callers in that
+ * window share the one reload's outcome.
  */
 import { KeystoreError, pgCode } from "../services/keys/keystore-errors";
 import { FieldCryptoError, type Keyring } from "./field-crypto";
@@ -21,19 +26,50 @@ export type KeyOutcome =
 	/** The keystore could not be read; the code says why. */
 	| { failed: string };
 
-/** Resolves to undefined when no key was ever made; never mints. */
-export type KeyLoader = () => Promise<Keyring | undefined>;
+/**
+ * Resolves to undefined when no key was ever made; never mints. `fresh` skips
+ * the loader's cache (and replaces its entry).
+ */
+export type KeyLoader = (fresh: boolean) => Promise<Keyring | undefined>;
 
 export interface TextKeys {
+	/** Whose user-class cells these keys open; undefined on the global client, which opens none. */
+	readonly userId: string | undefined;
 	/** Loads every class and records its outcome. Never throws. */
 	ready(): Promise<void>;
 	/** The ring `ready()` recorded for the class, if it found one. */
 	ring(cls: KeyClass): Keyring | undefined;
 	/** What `ready()` recorded for the class; undefined before the first call. */
 	outcome(cls: KeyClass): KeyOutcome | undefined;
+	/** Loads the class past the caches and records it; throttled per process (see above). */
+	reload(cls: KeyClass): Promise<Keyring | undefined>;
 }
 
 const CLASSES: readonly KeyClass[] = ["user", "instance"];
+
+export const RELOAD_INTERVAL_MS = 5000;
+
+/** The last reload of each ring (the instance ring, or one user's), shared by every client. */
+const reloads = new Map<string, { at: number; outcome: Promise<KeyOutcome> }>();
+
+function throttledReload(
+	ringId: string,
+	run: () => Promise<KeyOutcome>,
+): Promise<KeyOutcome> {
+	const now = Date.now();
+	const last = reloads.get(ringId);
+	if (last && now - last.at < RELOAD_INTERVAL_MS) return last.outcome;
+	for (const [id, { at }] of reloads)
+		if (now - at >= RELOAD_INTERVAL_MS) reloads.delete(id);
+	const outcome = run();
+	reloads.set(ringId, { at: now, outcome });
+	return outcome;
+}
+
+/** Test hook: forget the reload throttle. */
+export function resetReloadsForTests(): void {
+	reloads.clear();
+}
 
 /** Errors already logged: a failed load stays cached for 30 seconds, and every `ready()` meanwhile sees the same error. */
 const logged = new WeakSet<object>();
@@ -54,9 +90,13 @@ function logUnexpected(cls: KeyClass, error: unknown): void {
 	});
 }
 
-async function settle(cls: KeyClass, load: KeyLoader): Promise<KeyOutcome> {
+async function settle(
+	cls: KeyClass,
+	load: KeyLoader,
+	fresh: boolean,
+): Promise<KeyOutcome> {
 	try {
-		const ring = await load();
+		const ring = await load(fresh);
 		return ring ? { ring } : { none: true };
 	} catch (error) {
 		// Our own errors carry a stable code; anything else (the database is
@@ -74,24 +114,43 @@ async function settle(cls: KeyClass, load: KeyLoader): Promise<KeyOutcome> {
 	}
 }
 
-/** A class with no loader (the user class on the global client) has no key. */
+const ringOf = (outcome: KeyOutcome | undefined) =>
+	outcome && "ring" in outcome ? outcome.ring : undefined;
+
+/**
+ * Keys for `userId`'s clients, or for the global client with no `userId`. A
+ * class with no loader (the user class on the global client) has no key.
+ */
 export function textKeys(
 	loaders: Partial<Record<KeyClass, KeyLoader>>,
+	userId?: string,
 ): TextKeys {
 	const outcomes = new Map<KeyClass, KeyOutcome>();
 	return {
+		userId,
 		async ready() {
 			await Promise.all(
 				CLASSES.map(async (cls) => {
 					const load = loaders[cls];
-					outcomes.set(cls, load ? await settle(cls, load) : { none: true });
+					outcomes.set(
+						cls,
+						load ? await settle(cls, load, false) : { none: true },
+					);
 				}),
 			);
 		},
-		ring(cls) {
-			const outcome = outcomes.get(cls);
-			return outcome && "ring" in outcome ? outcome.ring : undefined;
-		},
+		ring: (cls) => ringOf(outcomes.get(cls)),
 		outcome: (cls) => outcomes.get(cls),
+		async reload(cls) {
+			const load = loaders[cls];
+			if (!load) return undefined;
+			// The instance ring is one per process; a user ring is that user's.
+			const ringId = cls === "instance" ? "instance" : `user:${userId}`;
+			const outcome = await throttledReload(ringId, () =>
+				settle(cls, load, true),
+			);
+			outcomes.set(cls, outcome);
+			return ringOf(outcome);
+		},
 	};
 }
