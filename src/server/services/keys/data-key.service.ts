@@ -36,7 +36,7 @@ import {
 	sealField,
 } from "../../crypto/field-crypto";
 import { getMasterKeyring } from "../../crypto/master-key";
-import { type CachedRing, cacheRing, isFresh } from "./key-cache";
+import { type CachedRing, cacheRing, isFresh, RING_TTL_MS } from "./key-cache";
 import {
 	KeystoreError,
 	type KeystoreFailure,
@@ -171,6 +171,13 @@ export async function getOrCreateDataKeyring(
 const USER_CACHE_SIZE = 1000;
 /** Least recently used first: a Map keeps insertion order. */
 const userRings = new Map<string, CachedRing>();
+/**
+ * Users whose keys this process shredded, and until when none of their rings
+ * is cached. A shred in a caller's transaction is final only at its commit,
+ * and a load before that still finds the keys; it must not keep them for five
+ * minutes. If the deletion rolls back, the user only costs uncached loads.
+ */
+const shredded = new Map<string, number>();
 
 /**
  * The user's data keys as a keyring, or undefined when they have none; never
@@ -185,18 +192,17 @@ export function findDataKeyring(
 ): Promise<Keyring | undefined> {
 	if (!masterKeyring)
 		return Promise.reject(new DataKeyError("master_key_missing"));
+	const load = () =>
+		userTransaction(keystoreDb, userId, async (tx) => {
+			const rows = await readRows(tx);
+			return rows.length > 0 ? unwrapAll(rows, masterKeyring) : undefined;
+		});
+	if ((shredded.get(userId) ?? 0) > now) return load();
 	const hit = userRings.get(userId);
 	userRings.delete(userId);
 	const entry = isFresh(hit, masterKeyring, now)
 		? hit
-		: cacheRing(
-				masterKeyring,
-				now,
-				userTransaction(keystoreDb, userId, async (tx) => {
-					const rows = await readRows(tx);
-					return rows.length > 0 ? unwrapAll(rows, masterKeyring) : undefined;
-				}),
-			);
+		: cacheRing(masterKeyring, now, load());
 	userRings.set(userId, entry);
 	const oldest = userRings.keys().next().value;
 	if (userRings.size > USER_CACHE_SIZE && oldest !== undefined)
@@ -226,15 +232,23 @@ export async function destroyDataKeys(
 	userId: string,
 	client: Pick<Prisma.TransactionClient, "$executeRaw"> = keystoreDb,
 ): Promise<number> {
+	// This process stops caching the keys at once, and for longer than any
+	// ring stays cached after the commit; other processes drop them when
+	// their cache entry expires.
+	const tombstone = () => {
+		const now = Date.now();
+		for (const [id, until] of shredded) if (until <= now) shredded.delete(id);
+		shredded.set(userId, now + 2 * RING_TTL_MS);
+		userRings.delete(userId);
+	};
+	tombstone();
 	try {
 		return await keystore(
 			() => client.$executeRaw`
 				DELETE FROM keystore."user_data_key" WHERE "userId" = ${userId}`,
 		);
 	} finally {
-		// This process stops using the keys at once; other processes drop them
-		// when their cache entry expires.
-		userRings.delete(userId);
+		tombstone();
 	}
 }
 

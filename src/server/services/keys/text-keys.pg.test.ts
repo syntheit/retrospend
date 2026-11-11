@@ -12,7 +12,9 @@
  *   50 cold ready() calls    -> one keystore load per class, one ring for all
  *   one instance load        -> serves the read and the mint, whatever the actor
  *   no key                   -> cached 30 s, then asked again; a ring is cached 5 minutes
- *   destroyDataKeys          -> the next load asks the keystore again
+ *   destroyDataKeys          -> the next load asks the keystore again; a ring loaded
+ *                               before the shred commits is not cached, and a
+ *                               rolled-back shred only costs uncached loads
  */
 import { randomBytes } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -240,6 +242,44 @@ describe("the key caches", () => {
 
 		expect(await destroyDataKeys(me.user.id)).toBe(1);
 		expect(await findDataKeyring(me.user.id, mk)).toBeUndefined();
+		expect(keystoreCalls).toHaveBeenCalledTimes(2);
+	});
+
+	it("does not cache a ring loaded while a shred waits to commit", async () => {
+		const mk = master();
+		const me = await createTestUser();
+		await userTransaction(keystoreDb, me.user.id, (tx) =>
+			getOrCreateDataKeyring(tx, mk),
+		);
+		expect(await findDataKeyring(me.user.id, mk)).toBeInstanceOf(Keyring);
+
+		await keystoreDb.$transaction(async (tx) => {
+			expect(await destroyDataKeys(me.user.id, tx)).toBe(1);
+			// Another request, before the deletion commits, still finds the key.
+			expect(await findDataKeyring(me.user.id, mk)).toBeInstanceOf(Keyring);
+		});
+
+		// After the commit the ring it found is not served from the cache.
+		expect(await findDataKeyring(me.user.id, mk)).toBeUndefined();
+	});
+
+	it("only costs uncached loads when the deletion rolls back", async () => {
+		const mk = master();
+		const me = await createTestUser();
+		await userTransaction(keystoreDb, me.user.id, (tx) =>
+			getOrCreateDataKeyring(tx, mk),
+		);
+		const rollback = new Error("deletion failed");
+		await expect(
+			keystoreDb.$transaction(async (tx) => {
+				await destroyDataKeys(me.user.id, tx);
+				throw rollback;
+			}),
+		).rejects.toBe(rollback);
+		keystoreCalls.mockClear();
+
+		expect(await findDataKeyring(me.user.id, mk)).toBeInstanceOf(Keyring);
+		expect(await findDataKeyring(me.user.id, mk)).toBeInstanceOf(Keyring);
 		expect(keystoreCalls).toHaveBeenCalledTimes(2);
 	});
 });
