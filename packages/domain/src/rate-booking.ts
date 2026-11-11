@@ -43,7 +43,8 @@ export const HOME_DEFAULT_RATE_TYPES: Readonly<Record<string, string>> = {
 
 /** Table rate types are lower-case keys (the sidecar's validType). */
 const RATE_TYPE_KEY = /^[a-z0-9_-]{1,32}$/;
-const CURRENCY_KEY = /^[A-Z0-9]{3,10}$/;
+/** A currency code as the rate table and the forms keep it. */
+export const CURRENCY_KEY = /^[A-Z0-9]{3,10}$/;
 
 /**
  * pricingSource values that name no rate type: what the server, imports and

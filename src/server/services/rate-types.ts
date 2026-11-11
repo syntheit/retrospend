@@ -22,6 +22,7 @@ import {
 	type BookContext,
 	type BookedRate,
 	bookRate as bookRateWith,
+	CURRENCY_KEY,
 	type EntryAmount,
 	isRateTypeKey,
 	parseRateDefaults,
@@ -42,8 +43,6 @@ type RateDb = Pick<
 	PrismaClient | Prisma.TransactionClient,
 	"exchangeRate" | "user"
 >;
-
-const CURRENCY_KEY = /^[A-Z0-9]{3,10}$/;
 
 export type { BookedRate, EntryAmount, RateChoice };
 

@@ -151,6 +151,26 @@ export const vectors: CreateVector[] = [
 			homeAmount: "96562.50",
 		}),
 	},
+	// EUR has both blue (0.9) and official (0.8) rows here. The old form's
+	// pricingSource "official" names the entry leg only: EUR official 0.8,
+	// while the home leg keeps the default, ARS blue 1545 (without the source
+	// the entry leg would be EUR blue 0.9). homeRate = 1.25 x 1545 =
+	// 1931.25, homeAmount = 50 x 1931.25 = 96562.50, USD value = 50 x 1.25 =
+	// 62.50. The home leg used blue, so the label is blue.
+	{
+		name: "ARS home: a legacy pricingSource picks the entry leg only",
+		seed: seed("ARS", BA, [...arsRates, rate("EUR", "blue", "0.9", D)]),
+		input: entry({ amount: "50", currency: "EUR", pricingSource: "official" }),
+		expect: money({
+			amount: "50",
+			amountInUSD: "62.50",
+			exchangeRate: "0.8",
+			rateType: "blue",
+			homeCurrency: "ARS",
+			homeRate: "1931.25",
+			homeAmount: "96562.50",
+		}),
+	},
 	// ARS blue rows 1545 (Mar 5), 1600 (Mar 8), 1700 (Mar 12); expense Mar 10
 	// 12:00Z. The newest on or before is 1600: homeAmount = 10 x 1600 = 16000.
 	{

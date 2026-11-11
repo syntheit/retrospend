@@ -157,7 +157,7 @@ async function runVector(
 			null,
 			null,
 			v.input.currency,
-			"MANUAL",
+			v.input.pricingSource ?? "MANUAL",
 			want.homeCurrency,
 			want.rateType,
 		],

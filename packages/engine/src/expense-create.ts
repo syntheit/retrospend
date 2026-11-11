@@ -29,6 +29,7 @@ import {
 import { Dec, dec } from "@retrospend/domain/precise-decimal";
 import {
 	bookRate,
+	CURRENCY_KEY,
 	parseRateDefaults,
 	preferredRateType,
 	RateInputError,
@@ -70,7 +71,6 @@ export interface CreateExpenseInput {
 	projectId?: string;
 }
 
-const CURRENCY = /^[A-Z0-9]{3,10}$/;
 /** Decimals of the amount column (DECIMAL(19,8)). */
 const AMOUNT_DECIMALS = 8;
 /** Decimals of the entry leg column (DECIMAL(18,6)). */
@@ -108,7 +108,7 @@ function parseAmount(amount: number | string) {
 /** The write function for `input`; pass it to LocalDb.write or LocalDb.preview. */
 export function createExpense(input: CreateExpenseInput): WriteFn<ExpenseRow> {
 	return async (r) => {
-		if (!CURRENCY.test(input.currency))
+		if (!CURRENCY_KEY.test(input.currency))
 			throw new InvalidInputError(`Unknown currency ${input.currency}`);
 		if (Number.isNaN(input.date.getTime()))
 			throw new InvalidInputError("Pick a valid date");
