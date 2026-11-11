@@ -23,7 +23,7 @@
  *
  * Nothing here logs or names a key.
  */
-import { keystoreDb } from "~/server/db";
+import { keystoreDb } from "~/server/db-core";
 import {
 	type FieldAad,
 	FieldCryptoError,

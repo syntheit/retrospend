@@ -910,7 +910,9 @@ function scanTs(file: string, text: string, out: Raw[]) {
 		if (
 			!typeOnly &&
 			target &&
-			(target === "src/server/db" || target.startsWith("src/server/db/"))
+			(target === "src/server/db" ||
+				target === "src/server/db-core" ||
+				target.startsWith("src/server/db/"))
 		)
 			out.push({ rule: "UI-151", line: line(at), match: src });
 		const ui = target ? /^src\/components\/ui\/([\w-]+)$/.exec(target) : null;

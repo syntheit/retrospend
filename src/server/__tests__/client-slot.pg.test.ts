@@ -18,7 +18,12 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { Keyring } from "~/server/crypto/field-crypto";
-import { type ClientSlot, buildClients } from "~/server/db";
+import { textKeys } from "~/server/crypto/text-keys";
+import {
+	buildClients,
+	type ClientSlot,
+	type KeySource,
+} from "~/server/db-core";
 import { userTransaction } from "~/server/db-tx";
 import { getOrCreateDataKeyring } from "~/server/services/keys/data-key.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
@@ -30,7 +35,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 4 });
 const base = new PrismaClient({
 	adapter: new PrismaPg(pool),
 	log: [{ emit: "event", level: "query" }],
-}) as unknown as Parameters<typeof buildClients>[0];
+}) as unknown as NonNullable<Parameters<typeof buildClients>[1]>;
 const statements: string[] = [];
 (
 	base as unknown as {
@@ -56,7 +61,9 @@ const countingSlot: ClientSlot = (client) =>
 		},
 	}) as unknown as typeof client;
 
-const clients = buildClients(base, countingSlot);
+// No loaders: every class has no key, and nothing asks the keystore.
+const noKeys: KeySource = { instance: textKeys({}), user: () => textKeys({}) };
+const clients = buildClients(noKeys, base, countingSlot);
 beforeEach(() => {
 	seen.length = 0;
 	statements.length = 0;
@@ -117,7 +124,9 @@ describe("the extension slot", () => {
 					},
 				},
 			}) as unknown as typeof client;
-		const scoped = buildClients(base, retrying).createUserScopedDb(me.user.id);
+		const scoped = buildClients(noKeys, base, retrying).createUserScopedDb(
+			me.user.id,
+		);
 		statements.length = 0;
 
 		const rows = await scoped.category.findMany({});

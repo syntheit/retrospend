@@ -74,7 +74,7 @@ function unsafeRawCalls(source: string): number[] {
 }
 
 /** The one file that names the methods without calling them: the scoped client's refusal list. */
-const NAMES_ONLY = join(REPO_ROOT, "src", "server", "db.ts");
+const NAMES_ONLY = join(REPO_ROOT, "src", "server", "db-core.ts");
 
 const isTestPath = /\.test\.tsx?$|[\\/]__tests__[\\/]|[\\/]src[\\/]test[\\/]/;
 
@@ -106,7 +106,7 @@ describe("raw Unsafe SQL", () => {
 		);
 	});
 
-	it("the refusal list in db.ts is the only place that names a method without calling it", () => {
+	it("the refusal list in db-core.ts is the only place that names a method without calling it", () => {
 		expect(unsafeRawCalls(readFileSync(NAMES_ONLY, "utf8"))).toHaveLength(2);
 	});
 });

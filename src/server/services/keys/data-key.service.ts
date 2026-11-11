@@ -18,11 +18,16 @@
  * jobs with no user in scope. It runs on the raw base (`keystoreDb`), never
  * through the client slot.
  *
+ * `findDataKeyring` is the read-only load the clients use (db.ts): it never
+ * mints, runs in a keystore transaction of its own before the caller's
+ * transaction opens, and is cached per user in-process (key-cache.ts).
+ *
  * Unwrapped keys only ever live inside a `Keyring`, which hides its bytes from
  * logs and serialization. This file logs nothing and no error names a key.
  */
 import { randomBytes } from "node:crypto";
-import { keystoreDb } from "~/server/db";
+import { keystoreDb } from "~/server/db-core";
+import { userTransaction } from "~/server/db-tx";
 import type { Prisma } from "~prisma";
 import {
 	type FieldAad,
@@ -31,7 +36,9 @@ import {
 	sealField,
 } from "../../crypto/field-crypto";
 import { getMasterKeyring } from "../../crypto/master-key";
+import { type CachedRing, cacheRing, isFresh, RING_TTL_MS } from "./key-cache";
 import {
+	KeystoreError,
 	type KeystoreFailure,
 	mapKeystoreErrors,
 } from "./keystore-errors";
@@ -64,12 +71,11 @@ const MESSAGES: Record<DataKeyErrorCode, string> = {
 		"This user's data keys were made before and are gone from the key store. See Data key backups in docs/self-hosting.md",
 };
 
-export class DataKeyError extends Error {
-	readonly code: DataKeyErrorCode;
+export class DataKeyError extends KeystoreError {
+	declare readonly code: DataKeyErrorCode;
 	constructor(code: DataKeyErrorCode) {
-		super(MESSAGES[code]);
+		super(code, MESSAGES[code]);
 		this.name = "DataKeyError";
-		this.code = code;
 	}
 }
 
@@ -162,6 +168,48 @@ export async function getOrCreateDataKeyring(
 	return unwrapAll(rows, masterKeyring);
 }
 
+const USER_CACHE_SIZE = 1000;
+/** Least recently used first: a Map keeps insertion order. */
+const userRings = new Map<string, CachedRing>();
+/**
+ * Users whose keys this process shredded, and until when none of their rings
+ * is cached. A shred in a caller's transaction is final only at its commit,
+ * and a load before that still finds the keys; it must not keep them for five
+ * minutes. If the deletion rolls back, the user only costs uncached loads.
+ */
+const shredded = new Map<string, number>();
+
+/**
+ * The user's data keys as a keyring, or undefined when they have none; never
+ * mints (a preview or a read must not). It runs as `userId` on its own
+ * connection, before the caller's transaction, and shares one load between
+ * concurrent callers. `now` is for tests.
+ */
+export function findDataKeyring(
+	userId: string,
+	masterKeyring: Keyring | undefined = getMasterKeyring(),
+	now: number = Date.now(),
+): Promise<Keyring | undefined> {
+	if (!masterKeyring)
+		return Promise.reject(new DataKeyError("master_key_missing"));
+	const load = () =>
+		userTransaction(keystoreDb, userId, async (tx) => {
+			const rows = await readRows(tx);
+			return rows.length > 0 ? unwrapAll(rows, masterKeyring) : undefined;
+		});
+	if ((shredded.get(userId) ?? 0) > now) return load();
+	const hit = userRings.get(userId);
+	userRings.delete(userId);
+	const entry = isFresh(hit, masterKeyring, now)
+		? hit
+		: cacheRing(masterKeyring, now, load());
+	userRings.set(userId, entry);
+	const oldest = userRings.keys().next().value;
+	if (userRings.size > USER_CACHE_SIZE && oldest !== undefined)
+		userRings.delete(oldest);
+	return entry.ring;
+}
+
 /**
  * Crypto-shred: delete every data key the user has, and return how many.
  * Anything sealed with them can never be read again. Only deletion and
@@ -184,10 +232,24 @@ export async function destroyDataKeys(
 	userId: string,
 	client: Pick<Prisma.TransactionClient, "$executeRaw"> = keystoreDb,
 ): Promise<number> {
-	return keystore(
-		() => client.$executeRaw`
-			DELETE FROM keystore."user_data_key" WHERE "userId" = ${userId}`,
-	);
+	// This process stops caching the keys at once, and for longer than any
+	// ring stays cached after the commit; other processes drop them when
+	// their cache entry expires.
+	const tombstone = () => {
+		const now = Date.now();
+		for (const [id, until] of shredded) if (until <= now) shredded.delete(id);
+		shredded.set(userId, now + 2 * RING_TTL_MS);
+		userRings.delete(userId);
+	};
+	tombstone();
+	try {
+		return await keystore(
+			() => client.$executeRaw`
+				DELETE FROM keystore."user_data_key" WHERE "userId" = ${userId}`,
+		);
+	} finally {
+		tombstone();
+	}
 }
 
 /**

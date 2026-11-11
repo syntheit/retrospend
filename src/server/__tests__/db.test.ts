@@ -26,8 +26,9 @@ const { mockPrismaInstance, mockTransaction, mockExecuteRaw } = vi.hoisted(
 			$executeRaw: mockExecuteRaw,
 			$queryRaw: vi.fn(),
 		};
-		// The module extends the base once at load, for the slot, and a scoped
-		// client extends that client again. Until a test installs its own
+		// The slot extends the base for the global client at load and for each
+		// user's crypto client, and a scoped client extends its crypto client
+		// again with the RLS batch. Until a test installs its own
 		// implementation, an extension returns the instance itself.
 		mockPrismaInstance.$extends.mockImplementation(() => mockPrismaInstance);
 		return { mockPrismaInstance, mockTransaction, mockExecuteRaw };
@@ -65,10 +66,22 @@ import { createUserScopedDb } from "../db";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
+type Extension = {
+	name?: string;
+	query: { $allModels: { $allOperations: unknown } };
+};
+
+const extensionCalls = () =>
+	mockPrismaInstance.$extends.mock.calls.map(([ext]) => ext as Extension);
+/** The RLS batch extensions: every extension but the slot's. */
+const rlsExtensions = () =>
+	extensionCalls().filter((ext) => ext.name !== "text-slot");
+
 /**
  * Configures mockPrismaInstance.$extends to:
- * 1. Capture the $allOperations hook provided by createUserScopedDb
- * 2. Return a fake "extended" db whose model methods invoke the hook
+ * 1. Pass the slot's extension through (the crypto client is the instance)
+ * 2. Capture the $allOperations hook of the RLS batch
+ * 3. Return a fake "extended" db whose model methods invoke the hook
  */
 function setupExtendsMock(queryResult: unknown = ["result"]) {
 	type Hook = (opts: {
@@ -88,7 +101,11 @@ function setupExtendsMock(queryResult: unknown = ["result"]) {
 	};
 
 	mockPrismaInstance.$extends.mockImplementation(
-		(ext: { query: { $allModels: { $allOperations: Hook } } }) => {
+		(ext: {
+			name?: string;
+			query: { $allModels: { $allOperations: Hook } };
+		}) => {
+			if (ext.name === "text-slot") return mockPrismaInstance;
 			capturedHook = ext.query.$allModels.$allOperations;
 			return fakeExtendedDb;
 		},
@@ -112,15 +129,17 @@ describe("createUserScopedDb", () => {
 		mockExecuteRaw.mockReturnValue(Promise.resolve(1));
 	});
 
-	it("calls db.$extends with a query extension containing $allOperations", () => {
+	it("extends the user's crypto client (slot first) with one RLS batch containing $allOperations", () => {
 		setupExtendsMock();
 		createUserScopedDb("user-1");
 
-		expect(mockPrismaInstance.$extends).toHaveBeenCalledTimes(1);
-		const [ext] = mockPrismaInstance.$extends.mock.calls[0] as [
-			{ query: { $allModels: { $allOperations: unknown } } },
-		];
-		expect(typeof ext.query.$allModels.$allOperations).toBe("function");
+		// The slot is added first, so Prisma runs it outside the batch.
+		expect(extensionCalls().map((ext) => ext.name ?? "rls")).toEqual([
+			"text-slot",
+			"rls",
+		]);
+		const [ext] = rlsExtensions();
+		expect(typeof ext?.query.$allModels.$allOperations).toBe("function");
 	});
 
 	it("returns a truthy extended db object", () => {
@@ -179,7 +198,11 @@ describe("createUserScopedDb", () => {
 		};
 
 		mockPrismaInstance.$extends.mockImplementation(
-			(ext: { query: { $allModels: { $allOperations: Hook } } }) => {
+			(ext: {
+				name?: string;
+				query: { $allModels: { $allOperations: Hook } };
+			}) => {
+				if (ext.name === "text-slot") return mockPrismaInstance;
 				capturedHook = ext.query.$allModels.$allOperations;
 				return failingDb;
 			},
@@ -233,7 +256,9 @@ describe("createUserScopedDb", () => {
 			unknown
 		>;
 		expect(() => userDb[name]).toThrow(name);
-		expect(mockPrismaInstance.$extends).toHaveBeenCalledTimes(1);
+		// Only the scoped client's own build (slot, then batch) extended anything.
+		expect(mockPrismaInstance.$extends).toHaveBeenCalledTimes(2);
+		expect(rlsExtensions()).toHaveLength(1);
 	});
 
 	it("still serves model delegates and inspection probes", () => {
@@ -257,7 +282,7 @@ describe("createUserScopedDb", () => {
 		expect(mockTransaction).not.toHaveBeenCalled();
 	});
 
-	it("runs an interactive transaction on the base client, RLS set first", async () => {
+	it("runs an interactive transaction on the user's crypto client, RLS set first", async () => {
 		setupExtendsMock();
 		const tx = { $executeRaw: vi.fn().mockResolvedValue(1) };
 		mockTransaction.mockImplementation(

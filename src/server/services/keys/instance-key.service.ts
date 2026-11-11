@@ -4,27 +4,30 @@
  * reads (shared expenses, people, projects, budget books). It lives in
  * `keystore."instance_text_key"`, wrapped by the server master key, and is read
  * through SECURITY DEFINER functions that require an actor: a signed-in user
- * (`app.current_user_id`) or a live guest session (`app.guest_session_id`).
- * Nothing seals with it yet, and no Prisma extension calls this yet.
+ * (`app.current_user_id`), a live guest session (`app.guest_session_id`), or
+ * the service (`app.instance_service`, on the owner connection only).
+ * Nothing seals with it yet.
  *
  * It always runs on the raw base through `keystoreDb`, in a transaction of its
  * own, never inside a caller's transaction: a keystore call there would join
- * the caller's RLS batch or preview, and a preview must never mint. The
- * transaction sets the actor and the app role itself, so the database checks
- * the grants and the actor the same way it does for a scoped client.
+ * the caller's RLS batch or preview, and a preview must never mint. A user or
+ * guest transaction sets the actor and the app role itself, so the database
+ * checks the grants and the actor the same way it does for a scoped client.
  *
- * The keyring is cached per process, with a short TTL so a rotation (a key
- * added by D12) reaches every process. The cache is keyed to the master keyring
- * it was unwrapped with. A cache hit does not check the actor again: the check
- * guards the database door, and the caller (a signed-in procedure, or a guest
- * procedure that has already verified the session token) is trusted in-process,
- * where the master key is anyway.
+ * The clients (db.ts) load it with `findInstanceKeyring`, read-only and as the
+ * service: the global client serves public pages, guests, viewer links,
+ * better-auth and the workers, none of which has a per-request actor.
+ *
+ * The keyring is cached per process in one entry (key-cache.ts) that the read
+ * and the mint share, whatever the actor. A cache hit does not check the actor
+ * again: the check guards the database door, and the caller is trusted
+ * in-process, where the master key is anyway.
  *
  * Unwrapped keys only live inside a `Keyring`. This file logs nothing and no
  * error names a key or an actor.
  */
 import { randomBytes } from "node:crypto";
-import { keystoreDb } from "~/server/db";
+import { keystoreDb } from "~/server/db-core";
 import { userTransaction } from "~/server/db-tx";
 import type { Prisma } from "~prisma";
 import {
@@ -34,7 +37,9 @@ import {
 	sealField,
 } from "../../crypto/field-crypto";
 import { getMasterKeyring } from "../../crypto/master-key";
+import { type CachedRing, cacheRing, isFresh } from "./key-cache";
 import {
+	KeystoreError,
 	type KeystoreFailure,
 	mapKeystoreErrors,
 } from "./keystore-errors";
@@ -66,24 +71,26 @@ const MESSAGES: Record<InstanceKeyErrorCode, string> = {
 		"The instance key was made before and is gone from the key store. See Data key backups in docs/self-hosting.md",
 };
 
-export class InstanceKeyError extends Error {
-	readonly code: InstanceKeyErrorCode;
+export class InstanceKeyError extends KeystoreError {
+	declare readonly code: InstanceKeyErrorCode;
 	constructor(code: InstanceKeyErrorCode) {
-		super(MESSAGES[code]);
+		super(code, MESSAGES[code]);
 		this.name = "InstanceKeyError";
-		this.code = code;
 	}
 }
 
-/** Who asks. The database checks it; nothing here trusts the id. */
+/**
+ * Who asks. The database checks it; nothing here trusts the id. The service
+ * actor is accepted only on the owner connection (no role set), so a scoped
+ * query or a userTransaction cannot use it by mistake.
+ */
 export type InstanceKeyActor =
 	| { kind: "user"; userId: string }
-	| { kind: "guest"; guestSessionId: string };
+	| { kind: "guest"; guestSessionId: string }
+	| { kind: "service" };
 
 const FIRST_KEY_ID = 1;
 const INSTANCE_KEY_BYTES = 32;
-/** Matches the design's cache window for user keys (section 2.1). */
-const CACHE_TTL_MS = 5 * 60 * 1000;
 
 /** Binds a wrapped key to its version: a copy under another id fails to open. */
 export function instanceKeyAad(keyId: number): FieldAad {
@@ -133,6 +140,11 @@ async function asActor<T>(
 		if (!actor.userId) throw new InstanceKeyError("no_actor");
 		return userTransaction(keystoreDb, actor.userId, work);
 	}
+	if (actor.kind === "service")
+		return keystoreDb.$transaction(async (tx) => {
+			await tx.$executeRaw`SELECT set_config('app.instance_service', 'on', true)`;
+			return work(tx);
+		});
 	const { guestSessionId } = actor;
 	if (!guestSessionId) throw new InstanceKeyError("no_actor");
 	return keystoreDb.$transaction(async (tx) => {
@@ -142,15 +154,24 @@ async function asActor<T>(
 	});
 }
 
+/** Newest first, so the first row is the current key. */
+const readRows = (tx: Prisma.TransactionClient) =>
+	tx.$queryRaw<KeyRow[]>`
+		SELECT "key_id" AS "keyId", "wrapped_key" AS "wrappedKey"
+		FROM keystore."instance_text_keys"()`;
+
+async function find(masterKeyring: Keyring): Promise<Keyring | undefined> {
+	const rows = await keystore(() => asActor({ kind: "service" }, readRows));
+	return rows.length > 0 ? unwrapAll(rows, masterKeyring) : undefined;
+}
+
 async function loadOrMint(
 	actor: InstanceKeyActor,
 	masterKeyring: Keyring,
 ): Promise<Keyring> {
 	const rows = await keystore(() =>
 		asActor(actor, async (tx) => {
-			const found = await tx.$queryRaw<KeyRow[]>`
-				SELECT "key_id" AS "keyId", "wrapped_key" AS "wrappedKey"
-				FROM keystore."instance_text_keys"()`;
+			const found = await readRows(tx);
 			if (found.length > 0) return found;
 			const wrapped = sealField(
 				masterKeyring,
@@ -167,59 +188,45 @@ async function loadOrMint(
 	return unwrapAll(rows, masterKeyring);
 }
 
-type Cached = {
-	master: Keyring;
-	at: number;
-	/** Who started the load; another caller may be sharing it. */
-	actor: string;
-	ring: Promise<Keyring>;
-};
-let cached: Cached | undefined;
-
-const actorKey = (actor: InstanceKeyActor): string =>
-	actor.kind === "user"
-		? `user:${actor.userId}`
-		: `guest:${actor.guestSessionId}`;
+/** The one process cache: the read, the mint and every actor share it. */
+let cached: CachedRing | undefined;
 
 /**
- * The instance keyring (current key first), made on first use. A failure is
- * never cached. Safe to call from many requests at once: they share one load.
- * A caller that shares a load another actor started, and sees it refused for
- * that actor, tries once more with its own actor, so one invalid caller cannot
+ * The instance keyring, or undefined when none was made yet; never mints. It
+ * asks as the service actor, so any caller gets the same answer, and
+ * concurrent callers share one load. `now` is for tests.
+ */
+export function findInstanceKeyring(
+	masterKeyring: Keyring | undefined = getMasterKeyring(),
+	now: number = Date.now(),
+): Promise<Keyring | undefined> {
+	if (!masterKeyring)
+		return Promise.reject(new InstanceKeyError("master_key_missing"));
+	if (!isFresh(cached, masterKeyring, now))
+		cached = cacheRing(masterKeyring, now, find(masterKeyring));
+	return cached.ring;
+}
+
+/**
+ * The instance keyring (current key first), made on first use. Safe to call
+ * from many requests at once. A cached keyring is returned as it is; a cached
+ * "no key", or a cached failure (perhaps another actor's refusal), is not
+ * trusted: this actor loads or mints for itself, so one invalid caller cannot
  * fail a valid one. `now` is for tests.
  */
-export function getOrCreateInstanceKeyring(
+export async function getOrCreateInstanceKeyring(
 	actor: InstanceKeyActor,
 	masterKeyring: Keyring | undefined = getMasterKeyring(),
 	now: number = Date.now(),
 ): Promise<Keyring> {
-	if (!masterKeyring)
-		return Promise.reject(new InstanceKeyError("master_key_missing"));
-	const who = actorKey(actor);
-	if (
-		cached &&
-		cached.master === masterKeyring &&
-		now - cached.at < CACHE_TTL_MS
-	) {
-		const shared = cached;
-		if (shared.actor === who) return shared.ring;
-		return shared.ring.catch((error: unknown) => {
-			if (error instanceof InstanceKeyError && error.code === "no_actor")
-				return getOrCreateInstanceKeyring(actor, masterKeyring, now);
-			throw error;
-		});
+	if (!masterKeyring) throw new InstanceKeyError("master_key_missing");
+	if (isFresh(cached, masterKeyring, now)) {
+		const found = await cached.ring.catch(() => undefined);
+		if (found) return found;
 	}
-	const entry: Cached = {
-		master: masterKeyring,
-		at: now,
-		actor: who,
-		ring: loadOrMint(actor, masterKeyring),
-	};
-	cached = entry;
-	entry.ring.catch(() => {
-		if (cached === entry) cached = undefined;
-	});
-	return entry.ring;
+	const ring = loadOrMint(actor, masterKeyring);
+	cached = cacheRing(masterKeyring, now, ring);
+	return ring;
 }
 
 /** Forget the cached keyring: a rotation job, or a test. */

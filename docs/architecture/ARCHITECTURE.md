@@ -80,7 +80,7 @@ Mobile uses v1, never tRPC, because an App Store or F-Droid build lives for mont
 
 ### Database access and row-level security
 
-- `src/server/db.ts`: one `pg` pool behind Prisma's `@prisma/adapter-pg` (no query engine binary).
+- `src/server/db-core.ts`: one `pg` pool behind Prisma's `@prisma/adapter-pg` (no query engine binary), and the one raw client every other client is built on. `src/server/db.ts` composes the app's clients with their encryption keys (E2EE D11).
 - `createUserScopedDb(userId)` runs every query in a transaction that sets `app.current_user_id` and the `retrospend_app` role, so Postgres RLS policies apply. `userTransaction()` in `src/server/db-tx.ts` does the same for explicit transactions.
 - Every table has an RLS policy and grants in the migration that creates it (pattern: `prisma/migrations/20260303000001_security_rls`).
 - Migrations run on container start (`docker-entrypoint.sh` runs `prisma migrate deploy`). Migrations already applied in production must stay byte-identical; `src/test/migrations/applied.test.ts` checksums them.
