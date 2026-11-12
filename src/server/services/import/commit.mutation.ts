@@ -182,7 +182,7 @@ function rowData(
 		id: randomUUID(),
 		userId,
 		title: c.row.title,
-		amount: c.row.rate.amount,
+		amount: c.rate.amount,
 		currency: c.row.rate.currency,
 		date: c.row.date,
 		categoryId: choice.categoryId,

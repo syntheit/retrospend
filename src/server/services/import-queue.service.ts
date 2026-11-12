@@ -7,7 +7,6 @@ import { generateId } from "~/lib/id";
 import {
 	computeAmountInUSD,
 	isValidRate,
-	rateFromUsdPerUnit,
 	roundUSD,
 	USD,
 } from "@retrospend/domain/money";
@@ -328,7 +327,7 @@ export class ImportQueueService {
 
 				// Calculate exchange rate and USD amount. Rates use the stored
 				// convention (fiat: units per USD, crypto: USD per coin).
-				let exchangeRate: number;
+				let exchangeRate: number | undefined;
 				let amountInUSD: number;
 				let fromTable = false;
 				if (currency === USD) {
@@ -351,8 +350,9 @@ export class ImportQueueService {
 						);
 						continue;
 					}
-					exchangeRate = rateFromUsdPerUnit(currency, amountInUSD / amount);
-					amountInUSD = roundUSD(amountInUSD);
+					// Kept as the file has it, with no rate: booking prices the row
+					// at exactly USD / amount (book.ts, csv.service.ts), where a
+					// float rate here would move a cent on a tie.
 				} else {
 					const picked = await findExchangeRate(this.db, currency, date);
 					if (!picked) {
@@ -370,7 +370,7 @@ export class ImportQueueService {
 					title,
 					amount,
 					currency,
-					exchangeRate,
+					...(exchangeRate === undefined ? {} : { exchangeRate }),
 					amountInUSD,
 					date: formatDateOnly(date),
 					location,
