@@ -22,13 +22,14 @@ export const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
 export const IDEMPOTENCY_KEY_PATTERN = /^[\x21-\x7e]{1,255}$/;
 
 /**
- * Prefixes of the keys the server writes for itself (an undo stash and the
- * files it keeps). A client may not use any of them, so a server row can
+ * Prefixes of the keys the server writes for itself (an undo stash, the
+ * files it keeps, and the spend marker of a v1 undo). A client may not use any of them, so a server row can
  * never be forged through the header. One list: a new server key goes here.
  */
 export const SERVER_KEY_PREFIX = {
 	undoStash: "undo-stash:",
 	undoIcon: "undo-icon:",
+	undoSpend: "undo:",
 } as const;
 
 export function isValidIdempotencyKey(key: string): boolean {
