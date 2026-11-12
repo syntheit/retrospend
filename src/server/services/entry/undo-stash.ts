@@ -29,7 +29,7 @@ const stashKey = (stash: string) => `${SERVER_KEY_PREFIX.undoStash}${stash}`;
 const STASH_HASH = "undo-stash";
 
 /** Marks a kept file's row: a client row's requestHash is a 64 hex digest. */
-export const UNDO_FILE_HASH = "undo-icon";
+const UNDO_FILE_HASH = "undo-icon";
 
 const fileKey = (stash: string, path = "") =>
 	`${SERVER_KEY_PREFIX.undoIcon}${stash}:${path}`;
@@ -38,13 +38,23 @@ const FILE_KEY = new RegExp(
 	`^${SERVER_KEY_PREFIX.undoIcon}[0-9a-f-]{36}:(.+)$`,
 );
 
-/** The file a kept-file row names; undefined for any other row. */
-export function undoFilePath(row: {
-	key: string;
-	requestHash: string;
-}): string | undefined {
-	if (row.requestHash !== UNDO_FILE_HASH) return undefined;
-	return FILE_KEY.exec(row.key)?.[1];
+/**
+ * The files kept by the stash rows `where` names (the expiry prune, account
+ * deletion). Only rows this module wrote: the marker and the key's shape.
+ */
+export async function keptUndoFiles(
+	db: Pick<Tx, "idempotencyKey">,
+	where: Prisma.IdempotencyKeyWhereInput,
+): Promise<string[]> {
+	const rows = await db.idempotencyKey.findMany({
+		where: {
+			...where,
+			key: { startsWith: SERVER_KEY_PREFIX.undoIcon },
+			requestHash: UNDO_FILE_HASH,
+		},
+		select: { key: true },
+	});
+	return rows.flatMap((row) => FILE_KEY.exec(row.key)?.[1] ?? []);
 }
 
 export const invalidUndo = () =>

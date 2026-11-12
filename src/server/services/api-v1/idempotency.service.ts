@@ -1,14 +1,8 @@
 import { createHash, createHmac } from "node:crypto";
-import {
-	IDEMPOTENCY_TTL_MS,
-	SERVER_KEY_PREFIX,
-} from "@retrospend/api-contract/common";
+import { IDEMPOTENCY_TTL_MS } from "@retrospend/api-contract/common";
 import { env } from "~/env";
 import { db, type db as globalDb } from "~/server/db";
-import {
-	UNDO_FILE_HASH,
-	undoFilePath,
-} from "~/server/services/entry/undo-stash";
+import { keptUndoFiles } from "~/server/services/entry/undo-stash";
 import { deleteFile } from "~/server/storage";
 import { Prisma } from "~prisma";
 
@@ -203,8 +197,9 @@ export async function completeIdempotentRequest(
 		json !== undefined &&
 		Buffer.byteLength(json, "utf8") <= MAX_STORED_RESPONSE_BYTES;
 	// An update by id: the body is sealed under this row's id, which a bulk
-	// write cannot name. Deleting the account removes its own key row, and the
-	// delete has committed by now, so a missing row is not an error.
+	// write cannot name. Deleting the account removes its own key row (and its
+	// keys, so the seal fails first), and the delete has committed by now, so
+	// a missing row is not an error.
 	try {
 		await userDb.idempotencyKey.update({
 			where: { id },
@@ -219,10 +214,7 @@ export async function completeIdempotentRequest(
 			select: { id: true },
 		});
 	} catch (error) {
-		if (
-			!(error instanceof Prisma.PrismaClientKnownRequestError) ||
-			error.code !== "P2025"
-		)
+		if ((await userDb.idempotencyKey.count({ where: { id } })) > 0)
 			throw error;
 	}
 }
@@ -236,19 +228,8 @@ export async function completeIdempotentRequest(
 export async function pruneExpiredKeys(now: Date = new Date()) {
 	// A deleted account's uploaded picture was kept for its undo; once the
 	// stash expires nothing can bring the account back, so the file goes too.
-	// Only rows the stash module wrote name a file (undo-stash.ts).
-	const kept = await db.idempotencyKey.findMany({
-		where: {
-			expiresAt: { lt: now },
-			key: { startsWith: SERVER_KEY_PREFIX.undoIcon },
-			requestHash: UNDO_FILE_HASH,
-		},
-		select: { key: true, requestHash: true },
-	});
-	for (const row of kept) {
-		const path = undoFilePath(row);
-		if (path) await deleteFile(path).catch(() => {});
-	}
+	for (const path of await keptUndoFiles(db, { expiresAt: { lt: now } }))
+		await deleteFile(path).catch(() => {});
 	const { count } = await db.idempotencyKey.deleteMany({
 		where: { expiresAt: { lt: now } },
 	});
