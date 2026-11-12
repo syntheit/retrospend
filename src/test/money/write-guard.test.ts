@@ -117,6 +117,39 @@ describe("guardMoneyWrites on a client", () => {
 		expect((failed as Error).name).toMatch(/^PrismaClient/);
 	});
 
+	it("refuses when Prisma gives no call site, even for a listed column", async () => {
+		// A stand-in client that hands back the extension, so the hook is called
+		// the way Prisma would call it after an upgrade that drops the call site.
+		type Hook = (params: {
+			model: string;
+			operation: string;
+			args: unknown;
+			query: (args: unknown) => Promise<unknown>;
+		}) => Promise<unknown>;
+		let hook: Hook | undefined;
+		guardMoneyWrites({
+			$extends: (extension: unknown) => {
+				hook = (
+					extension as { query: { $allModels: { $allOperations: Hook } } }
+				).query.$allModels.$allOperations;
+				return {};
+			},
+		});
+		const query = async () => "ran";
+		await expect(
+			hook?.({
+				model: "Expense",
+				operation: "update",
+				args: { where: { id: "e" }, data: { exchangeRate: 100 } },
+				query,
+			}),
+		).rejects.toThrow(/Expense\.exchangeRate at an unknown call site/);
+		// A read has no data to check and still runs.
+		await expect(
+			hook?.({ model: "Expense", operation: "findMany", args: {}, query }),
+		).resolves.toBe("ran");
+	});
+
 	it("lets test code write literal numbers", async () => {
 		const failed = await guardMoneyWrites(raw)
 			.expense.update({ where: { id: "e" }, data: { amountInUSD: 0.28 } })
