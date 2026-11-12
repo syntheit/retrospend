@@ -30,8 +30,9 @@ export default function RecurringExpensesPage() {
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
 				You create a recurring template with an amount, currency, category, frequency, and start date.
-				The sidecar service checks every 15 minutes for templates that are due. When one is due, it
-				generates an expense and advances the <code>nextDueDate</code> to the next occurrence.
+				The app checks every 15 minutes, in your saved time zone, for templates that are due. When one
+				is due, it posts an expense and advances the <code>nextDueDate</code> to the next occurrence.
+				Self-hosters can turn this off with <code>RECURRING_AUTO_POST</code>.
 			</p>
 
 			<h2 id="frequencies" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">

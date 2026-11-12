@@ -140,7 +140,7 @@ const FAQS: { q: string; a: React.ReactNode }[] = [
 	},
 	{
 		q: "What does the sidecar service do?",
-		a: "The sidecar is a Go service that handles background tasks: daily exchange rate sync, recurring expense generation, scheduled database backups, notification delivery, and AI-powered bank statement import.",
+		a: "The sidecar is a Go service that handles background tasks: daily exchange rate sync, scheduled database backups, data cleanup, and AI-powered bank statement import. The app itself posts recurring expenses.",
 	},
 ]
 
