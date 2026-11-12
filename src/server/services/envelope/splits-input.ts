@@ -131,7 +131,7 @@ async function loadRows(tx: Tx, userId: string, excluded: string[]) {
 	});
 	const categories = await tx.category.findMany({
 		where: { userId, kind: "EXPENSE" },
-		select: { id: true, name: true },
+		select: { id: true },
 	});
 	return { mine, fronts, settlements, categories };
 }
@@ -182,7 +182,6 @@ function forCategory(
 			t.category && t.categoryId
 				? {
 						id: t.categoryId,
-						name: t.category.name,
 						isMine: t.category.userId === userId,
 					}
 				: null,
@@ -202,7 +201,7 @@ export interface SplitInputRows {
 	mine: readonly MyShare[];
 	fronts: readonly SplitPart[];
 	settlements: readonly SettlementRowIn[];
-	categories: readonly { id: string; name: string }[];
+	categories: readonly { id: string }[];
 }
 
 export interface SplitInputContext {

@@ -184,7 +184,7 @@ export function shareParticipations(
 					projectId: true,
 					paidByType: true,
 					paidById: true,
-					category: { select: { userId: true, name: true } },
+					category: { select: { userId: true } },
 				},
 			},
 		},

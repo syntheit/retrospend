@@ -68,7 +68,7 @@ describe("S4 a split someone else made hits your envelope (Alex, USD)", () => {
 		expectInvariant(r);
 	});
 
-	it("Sam's category has your category's name: the smart default places it and asks to store it", () => {
+	it("Sam's category has your category's name: a name never crosses people, so the USD 70 lands in Everything else", () => {
 		const r = runSplits(
 			base(
 				mine(
@@ -81,10 +81,11 @@ describe("S4 a split someone else made hits your envelope (Alex, USD)", () => {
 				),
 			),
 		);
-		expect(r.left("groceries")).toBe(-7_000);
-		expect(r.splits.unsaved).toEqual([
-			{ shareId: "s-groc", categoryId: "c-groc", source: "NAME_MATCH" },
-		]);
+		// Sam's category is neutral to you (E2EE D11): no default, as unresolved.
+		expect(r.left("everything")).toBe(-7_000);
+		expect(r.left("groceries")).toBe(0);
+		expect(r.view.shares.unresolved).toBe(1);
+		expect(r.splits.unsaved).toEqual([]);
 		expectInvariant(r);
 	});
 });
@@ -180,6 +181,31 @@ describe("S5 a friend pays you back, and C14 a forgiven balance (Lucía, ARS)", 
 		"ARS",
 		"2026-10-11",
 	);
+
+	it("D19 Juan's ARS 24,000 dinner in his own Dining: a name never crosses people, so your 12,000 lands in Everything else", () => {
+		const dinner: TxSpec = {
+			id: "t-dinner",
+			currency: "ARS",
+			date: "2026-10-12",
+			paidBy: "user:juan",
+			category: { id: "juan-din", name: "Dining", owner: "juan" },
+		};
+		const r = runSplits({
+			...scenario([]),
+			// You have a Dining too: the same name, never matched across people.
+			categories: [{ id: "c-din", name: "Dining" }],
+			mine: [
+				mine("s-asado", asado, "30000"),
+				mine("s-dinner", dinner, "12000"),
+			],
+		});
+		// Your Dining has only the asado; the dinner share waits for a pick.
+		expect(r.left("dining")).toBe(-3_000_000);
+		expect(r.left("everything")).toBe(-1_200_000);
+		expect(r.view.shares.unresolved).toBe(1);
+		expect(r.splits.unsaved).toEqual([]);
+		expectInvariant(r);
+	});
 
 	it("S5 Dining -30,000 only; 60,000 fronted, Juan's 30,000 back: To assign 70,000, 30,000 held for Paz", () => {
 		const r = runSplits(scenario([juanPays]));
