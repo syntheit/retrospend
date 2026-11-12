@@ -49,10 +49,11 @@ const rowSchema = z.object({
  * Off when the setting turns it off. Stale when the last pass is older than
  * AUTO_POST_STALE_MS, or there is no readable row while it is on (the first
  * pass runs at start, so none means the timer never ran). Then, from the last
- * pass: failing when a template failed or still had periods due after the
- * per-pass cap, attention when a template skipped for a missing rate (the
- * person adds the rate; nothing is broken), else healthy. `retry` and `raced`
- * are normal and never change the state.
+ * pass: failing when a template failed, attention when a template skipped
+ * for a missing rate (the person adds the rate) or still had periods due
+ * after the per-pass cap (it catches up on the next pass); nothing is broken
+ * in either case. Else healthy. `retry` and `raced` are normal and never
+ * change the state.
  */
 export function autoPostStatus(
 	row: unknown,
@@ -75,8 +76,9 @@ export function autoPostStatus(
 	if (!enabled) return { state: "off", ...base };
 	if (!data || now.getTime() - Date.parse(data.lastRun) > AUTO_POST_STALE_MS)
 		return { state: "stale", ...base };
-	if (data.failed > 0 || data.capped > 0) return { state: "failing", ...base };
-	if (data.missingRate > 0) return { state: "attention", ...base };
+	if (data.failed > 0) return { state: "failing", ...base };
+	if (data.missingRate > 0 || data.capped > 0)
+		return { state: "attention", ...base };
 	return { state: "healthy", ...base };
 }
 

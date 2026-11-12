@@ -14,15 +14,16 @@
   "keystoreBackup": "Key backup",
   "autoPostLabel": "Recurring expenses",
   "autoPostHealthy": "Healthy",
-  "autoPostAttention": "Missing rates",
+  "autoPostAttention": "Needs a look",
   "autoPostFailing": "Failing",
   "autoPostStale": "Stale",
   "autoPostOff": "Off",
   "autoPostRan": "Last run {time} ago",
-  "autoPostPosted": "Last run {time} ago, {count} posted",
-  "autoPostMissingRate": "Last run {time} ago, {count} missing a rate",
-  "autoPostFailed": "Last run {time} ago, {count} failed",
-  "autoPostCapped": "Last run {time} ago, {count} still due",
+  "autoPostPosted": "{count} posted",
+  "autoPostMissingRate": "{count} missing a rate",
+  "autoPostFailed": "{count} failed",
+  "autoPostCapped": "{count} still catching up",
   "autoPostNoRun": "No run yet",
-  "autoPostOffBy": "Turned off by RECURRING_AUTO_POST"
+  "autoPostOffBy": "Turned off by RECURRING_AUTO_POST",
+  "autoPostJoin": "{head}, {tail}"
 }

@@ -14,15 +14,16 @@
   "keystoreBackup": "Backup das chaves",
   "autoPostLabel": "Despesas recorrentes",
   "autoPostHealthy": "Normal",
-  "autoPostAttention": "Faltam cotações",
+  "autoPostAttention": "Verificar",
   "autoPostFailing": "Com falhas",
   "autoPostStale": "Desatualizado",
   "autoPostOff": "Desligado",
   "autoPostRan": "Última execução há {time}",
-  "autoPostPosted": "Última execução há {time}, {count} lançadas",
-  "autoPostMissingRate": "Última execução há {time}, {count} sem cotação",
-  "autoPostFailed": "Última execução há {time}, {count} falharam",
-  "autoPostCapped": "Última execução há {time}, {count} ainda pendentes",
+  "autoPostPosted": "{count} lançadas",
+  "autoPostMissingRate": "{count} sem cotação",
+  "autoPostFailed": "{count} falharam",
+  "autoPostCapped": "{count} ainda se atualizando",
   "autoPostNoRun": "Nenhuma execução ainda",
-  "autoPostOffBy": "Desligado por RECURRING_AUTO_POST"
+  "autoPostOffBy": "Desligado por RECURRING_AUTO_POST",
+  "autoPostJoin": "{head}, {tail}"
 }

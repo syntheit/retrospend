@@ -14,15 +14,16 @@
   "keystoreBackup": "Respaldo de claves",
   "autoPostLabel": "Gastos recurrentes",
   "autoPostHealthy": "Correcto",
-  "autoPostAttention": "Faltan tasas",
+  "autoPostAttention": "Revisar",
   "autoPostFailing": "Con errores",
   "autoPostStale": "Desactualizado",
   "autoPostOff": "Apagado",
   "autoPostRan": "Última ejecución hace {time}",
-  "autoPostPosted": "Última ejecución hace {time}, {count} registrados",
-  "autoPostMissingRate": "Última ejecución hace {time}, a {count} les falta una tasa",
-  "autoPostFailed": "Última ejecución hace {time}, {count} fallaron",
-  "autoPostCapped": "Última ejecución hace {time}, {count} aún pendientes",
+  "autoPostPosted": "{count} registrados",
+  "autoPostMissingRate": "a {count} les falta una tasa",
+  "autoPostFailed": "{count} fallaron",
+  "autoPostCapped": "{count} se están poniendo al día",
   "autoPostNoRun": "Aún sin ejecuciones",
-  "autoPostOffBy": "Apagado por RECURRING_AUTO_POST"
+  "autoPostOffBy": "Apagado por RECURRING_AUTO_POST",
+  "autoPostJoin": "{head}, {tail}"
 }

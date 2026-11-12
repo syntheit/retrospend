@@ -14,15 +14,16 @@
   "keystoreBackup": "Schlüsselsicherung",
   "autoPostLabel": "Wiederkehrende Ausgaben",
   "autoPostHealthy": "In Ordnung",
-  "autoPostAttention": "Kurse fehlen",
+  "autoPostAttention": "Prüfen",
   "autoPostFailing": "Fehlerhaft",
   "autoPostStale": "Veraltet",
   "autoPostOff": "Aus",
   "autoPostRan": "Letzter Lauf vor {time}",
-  "autoPostPosted": "Letzter Lauf vor {time}, {count} gebucht",
-  "autoPostMissingRate": "Letzter Lauf vor {time}, bei {count} fehlt ein Kurs",
-  "autoPostFailed": "Letzter Lauf vor {time}, {count} fehlgeschlagen",
-  "autoPostCapped": "Letzter Lauf vor {time}, {count} noch fällig",
+  "autoPostPosted": "{count} gebucht",
+  "autoPostMissingRate": "bei {count} fehlt ein Kurs",
+  "autoPostFailed": "{count} fehlgeschlagen",
+  "autoPostCapped": "{count} holen noch auf",
   "autoPostNoRun": "Noch kein Lauf",
-  "autoPostOffBy": "Durch RECURRING_AUTO_POST ausgeschaltet"
+  "autoPostOffBy": "Durch RECURRING_AUTO_POST ausgeschaltet",
+  "autoPostJoin": "{head}, {tail}"
 }

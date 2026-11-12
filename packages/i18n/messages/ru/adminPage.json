@@ -14,15 +14,16 @@
   "keystoreBackup": "Резервная копия ключей",
   "autoPostLabel": "Регулярные расходы",
   "autoPostHealthy": "В порядке",
-  "autoPostAttention": "Нет курсов",
+  "autoPostAttention": "Проверить",
   "autoPostFailing": "Сбои",
   "autoPostStale": "Устарело",
   "autoPostOff": "Выключено",
   "autoPostRan": "Последний запуск {time} назад",
-  "autoPostPosted": "Последний запуск {time} назад, проведено: {count}",
-  "autoPostMissingRate": "Последний запуск {time} назад, без курса: {count}",
-  "autoPostFailed": "Последний запуск {time} назад, сбоев: {count}",
-  "autoPostCapped": "Последний запуск {time} назад, ещё к проведению: {count}",
+  "autoPostPosted": "проведено: {count}",
+  "autoPostMissingRate": "без курса: {count}",
+  "autoPostFailed": "сбоев: {count}",
+  "autoPostCapped": "ещё догоняют: {count}",
   "autoPostNoRun": "Запусков пока нет",
-  "autoPostOffBy": "Выключено через RECURRING_AUTO_POST"
+  "autoPostOffBy": "Выключено через RECURRING_AUTO_POST",
+  "autoPostJoin": "{head}, {tail}"
 }

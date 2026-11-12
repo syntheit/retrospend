@@ -58,8 +58,20 @@ describe("autoPostStatus", () => {
 		expect(autoPostStatus(row({ failed: 1 }), true, NOW).state).toBe("failing");
 	});
 
-	it("is failing when a template still had periods due after the cap", () => {
-		expect(autoPostStatus(row({ capped: 1 }), true, NOW).state).toBe("failing");
+	it("is attention, not failing, when a template is still catching up after the cap", () => {
+		expect(autoPostStatus(row({ capped: 1 }), true, NOW).state).toBe(
+			"attention",
+		);
+	});
+
+	it("is attention for capped and a missing rate together", () => {
+		const both = row({ capped: 1, missingRate: 2 });
+		expect(autoPostStatus(both, true, NOW).state).toBe("attention");
+	});
+
+	it("is failing for capped and a failure together", () => {
+		const both = row({ capped: 1, failed: 1 });
+		expect(autoPostStatus(both, true, NOW).state).toBe("failing");
 	});
 
 	it("is attention, not failing, for a missing rate alone", () => {

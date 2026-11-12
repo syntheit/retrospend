@@ -14,15 +14,16 @@
   "keystoreBackup": "Sauvegarde des clés",
   "autoPostLabel": "Dépenses récurrentes",
   "autoPostHealthy": "Normal",
-  "autoPostAttention": "Taux manquants",
+  "autoPostAttention": "À vérifier",
   "autoPostFailing": "En échec",
   "autoPostStale": "Obsolète",
   "autoPostOff": "Désactivé",
   "autoPostRan": "Dernière exécution il y a {time}",
-  "autoPostPosted": "Dernière exécution il y a {time}, {count} enregistrées",
-  "autoPostMissingRate": "Dernière exécution il y a {time}, {count} sans taux",
-  "autoPostFailed": "Dernière exécution il y a {time}, {count} en échec",
-  "autoPostCapped": "Dernière exécution il y a {time}, {count} encore dues",
+  "autoPostPosted": "{count} enregistrées",
+  "autoPostMissingRate": "{count} sans taux",
+  "autoPostFailed": "{count} en échec",
+  "autoPostCapped": "{count} en rattrapage",
   "autoPostNoRun": "Aucune exécution",
-  "autoPostOffBy": "Désactivé par RECURRING_AUTO_POST"
+  "autoPostOffBy": "Désactivé par RECURRING_AUTO_POST",
+  "autoPostJoin": "{head}, {tail}"
 }

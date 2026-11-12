@@ -15,7 +15,7 @@ const WORKER_FRESH_MS = 20 * 60 * 1000;
 /** Each state the server reports, as a kind of the one status map and its word. */
 const AUTO_POST_KIND: Record<AutoPostState, StatusKind> = {
 	healthy: "confirmed",
-	attention: "noRate",
+	attention: "review",
 	failing: "error",
 	stale: "overdue",
 	off: "notCounted",
@@ -82,14 +82,18 @@ export function AdminOverviewStats() {
 		if (!autoPost) return null;
 		if (autoPost.state === "off") return tp("autoPostOffBy");
 		if (!autoPost.lastRun || !autoPost.counts) return tp("autoPostNoRun");
+		const { posted, failed, missingRate, capped } = autoPost.counts;
+		const parts = [
+			posted > 0 && tp("autoPostPosted", { count: posted }),
+			failed > 0 && tp("autoPostFailed", { count: failed }),
+			missingRate > 0 && tp("autoPostMissingRate", { count: missingRate }),
+			capped > 0 && tp("autoPostCapped", { count: capped }),
+		].filter((part): part is string => part !== false);
 		const time = formatDistanceToNow(new Date(autoPost.lastRun));
-		const { failed, capped, missingRate, posted } = autoPost.counts;
-		if (failed > 0) return tp("autoPostFailed", { time, count: failed });
-		if (capped > 0) return tp("autoPostCapped", { time, count: capped });
-		if (missingRate > 0)
-			return tp("autoPostMissingRate", { time, count: missingRate });
-		if (posted > 0) return tp("autoPostPosted", { time, count: posted });
-		return tp("autoPostRan", { time });
+		return parts.reduce(
+			(head, tail) => tp("autoPostJoin", { head, tail }),
+			tp("autoPostRan", { time }),
+		);
 	};
 
 	const backupWord = backup?.running
