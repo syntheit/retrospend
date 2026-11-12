@@ -68,8 +68,8 @@ describe("ExpenseService", () => {
 			expect(db.expense.create).toHaveBeenCalledWith(
 				expect.objectContaining({
 					data: expect.objectContaining({
-						exchangeRate: 1,
-						amountInUSD: 10,
+						exchangeRate: "1",
+						amountInUSD: "10.00",
 						currency: "USD",
 					}),
 				}),
@@ -95,8 +95,8 @@ describe("ExpenseService", () => {
 			expect(db.expense.create).toHaveBeenCalledWith(
 				expect.objectContaining({
 					data: expect.objectContaining({
-						exchangeRate: 1000,
-						amountInUSD: 1,
+						exchangeRate: "1000",
+						amountInUSD: "1.00",
 						currency: "ARS",
 					}),
 				}),
@@ -113,8 +113,8 @@ describe("ExpenseService", () => {
 			expect(db.expense.create).toHaveBeenCalledWith(
 				expect.objectContaining({
 					data: expect.objectContaining({
-						exchangeRate: 1560,
-						amountInUSD: 1,
+						exchangeRate: "1560",
+						amountInUSD: "1.00",
 					}),
 				}),
 			);
@@ -147,7 +147,7 @@ describe("ExpenseService", () => {
 			expect(db.expense.create).toHaveBeenCalledWith(
 				expect.objectContaining({
 					data: expect.objectContaining({
-						amountInUSD: 5000, // 0.1 * 50000
+						amountInUSD: "5000.00", // 0.1 * 50000
 					}),
 				}),
 			);
@@ -166,9 +166,9 @@ describe("ExpenseService", () => {
 			});
 
 			const call = db.expense.create.mock.calls[0]![0] as {
-				data: { amountInUSD: number };
+				data: { amountInUSD: string };
 			};
-			expect(call.data.amountInUSD).toBeCloseTo(6000);
+			expect(call.data.amountInUSD).toBe("6000.00");
 		});
 
 		it("amortizeOver > 1: calls AmortizationService.syncAmortization", async () => {

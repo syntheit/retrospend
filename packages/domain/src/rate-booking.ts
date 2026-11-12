@@ -6,9 +6,11 @@
  *
  * - `rateChoice` decides how a form's rate input is booked (pure).
  * - `bookRate` books it: the cross rate (units of home per 1 unit of the
- *   entry currency, 12 decimals, half-even) and the home amount it gives
- *   (home minor units, half-even), in Decimal math. A rate that is not there
- *   throws MissingRateError; it is never 0 or 1.
+ *   entry currency, 12 decimals, half-even), the home amount it gives (home
+ *   minor units, half-even) and the USD value (cents, half-even), in Decimal
+ *   math, each one division of exact products. A rate that is not there
+ *   throws MissingRateError; it is never 0 or 1. An edit that moves no money
+ *   keeps the figures it was saved with.
  *
  * Rates come from a `find` the caller supplies, which may be async: the
  * server reads its table, a device its store. Everything else is shared.
@@ -16,15 +18,19 @@
  */
 import { isCrypto } from "./currency-format";
 import {
-	computeAmountInUSD,
 	currencyDecimals,
 	isValidRate,
 	MissingRateError,
 	type PickedRate,
-	rateFromUsdPerUnit,
 	USD,
 } from "./money";
-import { Dec, type Decimal, dec } from "./precise-decimal";
+import {
+	roundMoneyDec,
+	roundRateDec,
+	roundUSDDec,
+	usdFractionDec,
+} from "./money-dec";
+import { Dec, type Decimal, type DecimalInput, dec } from "./precise-decimal";
 
 /** The input is wrong (a rate to type, a rate above zero), not a rate missing. */
 export class RateInputError extends Error {
@@ -112,13 +118,17 @@ export interface RateInput {
 	customRate?: { base: string; value: string; home?: string };
 }
 
-/** The rate an expense was saved with. */
+/** The rate an expense was saved with, and the money it booked (decimal text). */
 export interface SavedRate {
 	currency: string;
 	exchangeRate: number;
 	rateType: string | null;
 	homeCurrency: string | null;
 	homeRate: string | null;
+	amount: string;
+	date: Date;
+	amountInUSD: string;
+	homeAmount: string | null;
 }
 
 /** Editing without touching the rate: same currency, same rate, same type. */
@@ -219,10 +229,16 @@ export interface BookContext {
 	find: RateFinder;
 }
 
-/** An entry's rate, both legs, as stored on the expense row. */
+/**
+ * An entry's rate, both legs, as stored on the expense row. Every figure is
+ * decimal text already at its column's scale, rounded half to even, so
+ * Postgres never rounds it again.
+ */
 export interface BookedRate {
-	exchangeRate: number;
-	amountInUSD: number;
+	/** The entry leg in the stored convention, at 6 decimals. */
+	exchangeRate: string;
+	/** The entry in USD, to cents. */
+	amountInUSD: string;
 	rateType: string | null;
 	homeCurrency: string;
 	/** Units of homeCurrency per 1 unit of the entry currency, as a decimal string. */
@@ -238,8 +254,21 @@ export interface EntryAmount {
 	date: Date;
 }
 
+/** Scale of expense.amount (DECIMAL(19,8)). */
+const AMOUNT_DECIMALS = 8;
+/** Scale of expense.exchangeRate (DECIMAL(18,6)). */
+const EXCHANGE_RATE_DECIMALS = 6;
 /** Scale of expense.homeRate (DECIMAL(28,12)). */
 const HOME_RATE_DECIMALS = 12;
+
+/**
+ * An amount as expense.amount stores it: 8 decimals, half to even. Writers
+ * store and book this text, so Postgres never rounds it (half away from
+ * zero) and the server and the device store the same row.
+ */
+export function storedAmount(amount: number | string): string {
+	return roundRateDec(amount, AMOUNT_DECIMALS).toFixed();
+}
 
 interface Leg {
 	rate: number;
@@ -259,14 +288,22 @@ async function legOf(
 	return { rate: picked.rate, type: picked.type };
 }
 
-/** USD value of one unit of `currency` at its stored-convention rate. */
-function usdPerUnit(currency: string, rate: number): Decimal {
-	if (currency === USD) return new Dec(1);
-	return isCrypto(currency) ? new Dec(rate) : new Dec(1).div(new Dec(rate));
+/** num / den, kept apart so a chain of rates divides once and an exact tie stays a tie. */
+type Fraction = readonly [Decimal, Decimal];
+
+const ONE: Fraction = [new Dec(1), new Dec(1)];
+
+/** An entry's rate as exact fractions: USD per entry unit, and home units per entry unit. */
+interface Exact {
+	usd: Fraction;
+	home: Fraction;
 }
 
-const roundRate = (value: Decimal) =>
-	value.toDecimalPlaces(HOME_RATE_DECIMALS, Dec.ROUND_HALF_EVEN);
+/** The stored-convention rate for a USD value per unit: fiat units per USD, crypto USD per unit. */
+function storedRate(currency: string, [num, den]: Fraction): Decimal {
+	if (currency === USD) return new Dec(1);
+	return isCrypto(currency) ? num.div(den) : den.div(num);
+}
 
 /**
  * The type a booked rate is labeled with: the requested one when a leg used
@@ -284,52 +321,56 @@ function labelFor(
 }
 
 /**
- * The stored row for a cross rate. The home amount comes from the exact
- * rate, not its 12-decimal copy: a tiny rate (ARS into a BTC home) keeps too
- * few digits at 12 decimals for amounts in the millions.
+ * The stored row for an entry's exact rate. Each figure is one division of
+ * exact products, rounded once, half to even: amountInUSD from the exact
+ * entry leg (D4, the same rate as the home amount, not the 6-decimal
+ * exchangeRate), the home amount from the exact cross rate, not its
+ * 12-decimal copy (a tiny rate, ARS into a BTC home, keeps too few digits at
+ * 12 decimals for amounts in the millions).
  */
 function booked(
 	entry: EntryAmount,
 	ctx: BookContext,
-	exchangeRate: number,
-	exactRate: Decimal,
+	{ usd, home }: Exact,
 	rateType: string | null,
 ): BookedRate {
-	const decimals = currencyDecimals(ctx.homeCurrency);
+	const amount = dec(entry.amount);
 	return {
-		exchangeRate,
-		// The legacy USD column is a rounded float either way.
-		amountInUSD: computeAmountInUSD(
-			Number(entry.amount),
-			entry.currency,
-			exchangeRate,
-		),
+		exchangeRate: roundRateDec(
+			storedRate(entry.currency, usd),
+			EXCHANGE_RATE_DECIMALS,
+		).toFixed(),
+		amountInUSD: roundUSDDec(amount.mul(usd[0]).div(usd[1])).toFixed(2),
 		rateType,
 		homeCurrency: ctx.homeCurrency,
-		homeRate: roundRate(exactRate).toFixed(),
-		homeAmount: dec(entry.amount)
-			.mul(exactRate)
-			.toDecimalPlaces(decimals, Dec.ROUND_HALF_EVEN)
-			.toFixed(decimals),
+		homeRate: roundRateDec(home[0].div(home[1]), HOME_RATE_DECIMALS).toFixed(),
+		homeAmount: roundMoneyDec(
+			amount.mul(home[0]).div(home[1]),
+			ctx.homeCurrency,
+		).toFixed(currencyDecimals(ctx.homeCurrency)),
 	};
 }
 
-/** Home leg for an entry leg: the same currency is 1, a USD home needs no table rate. */
-async function homeRateFor(
+/**
+ * Both fractions for an entry leg from a rate (table or kept): the home leg
+ * from the table, the same currency is 1, a USD home needs no table rate.
+ */
+async function exactFor(
 	ctx: BookContext,
 	entry: EntryAmount,
 	entryLeg: Leg,
 	rateType: string | null,
-): Promise<{ homeRate: Decimal; legs: Leg[] }> {
+): Promise<{ exact: Exact; legs: Leg[] }> {
+	const usd = usdFractionDec(entry.currency, entryLeg.rate);
 	const home = ctx.homeCurrency;
 	if (home === entry.currency) {
-		return { homeRate: new Dec(1), legs: [entryLeg] };
+		return { exact: { usd, home: ONE }, legs: [entryLeg] };
 	}
 	const homeLeg = await legOf(ctx, home, entry.date, rateType ?? ctx.preferred);
-	const homeRate = usdPerUnit(entry.currency, entryLeg.rate).div(
-		usdPerUnit(home, homeLeg.rate),
-	);
-	return { homeRate, legs: [homeLeg, entryLeg] };
+	const [homeNum, homeDen] = usdFractionDec(home, homeLeg.rate);
+	// (USD per entry unit) / (USD per home unit), as one fraction (D3).
+	const cross: Fraction = [usd[0].mul(homeDen), usd[1].mul(homeNum)];
+	return { exact: { usd, home: cross }, legs: [homeLeg, entryLeg] };
 }
 
 /** A typed cross rate; the entry leg is derived from it through the home leg's table rate. */
@@ -351,17 +392,20 @@ async function bookCustom(
 		throw new RateInputError("Enter a rate above 0");
 	}
 	const typed = new Dec(choice.value);
-	const perUnit =
-		choice.base === entry.currency ? typed : new Dec(1).div(typed);
+	// Home units per entry unit: the typed rate, or its inverse when quoted in home.
+	const perUnit: Fraction =
+		choice.base === entry.currency ? [typed, new Dec(1)] : [new Dec(1), typed];
 	const homeLeg = await legOf(ctx, home, entry.date, ctx.preferred);
-	// The entry leg comes from the typed rate itself, not its rounded copy.
-	const usd = perUnit.mul(usdPerUnit(home, homeLeg.rate));
-	const exchangeRate = rateFromUsdPerUnit(entry.currency, usd.toNumber());
-	return booked(entry, ctx, exchangeRate, perUnit, CUSTOM_RATE_TYPE);
+	const [homeNum, homeDen] = usdFractionDec(home, homeLeg.rate);
+	// The entry leg comes from the typed rate itself, not its rounded copy; USD is always 1.
+	const usd: Fraction =
+		entry.currency === USD
+			? ONE
+			: [perUnit[0].mul(homeNum), perUnit[1].mul(homeDen)];
+	return booked(entry, ctx, { usd, home: perUnit }, CUSTOM_RATE_TYPE);
 }
 
-/** Books an entry's rate under `choice` (see RateChoice). */
-export async function bookRate(
+async function bookChoice(
 	ctx: BookContext,
 	entry: EntryAmount,
 	choice: RateChoice,
@@ -369,14 +413,14 @@ export async function bookRate(
 	switch (choice.kind) {
 		case "custom":
 			return bookCustom(ctx, entry, choice);
-		case "kept":
-			return booked(
-				entry,
-				ctx,
-				choice.exchangeRate,
-				new Dec(choice.homeRate),
-				choice.rateType,
-			);
+		case "kept": {
+			// The saved 12-decimal home rate: there is no table pair to divide (D3).
+			const exact = {
+				usd: usdFractionDec(entry.currency, choice.exchangeRate),
+				home: [new Dec(choice.homeRate), new Dec(1)] as const,
+			};
+			return booked(entry, ctx, exact, choice.rateType);
+		}
 		case "entryLeg": {
 			const custom = choice.rateType === CUSTOM_RATE_TYPE;
 			const entryLeg = {
@@ -384,16 +428,61 @@ export async function bookRate(
 				type: custom || entry.currency === USD ? "" : (choice.rateType ?? ""),
 			};
 			// A kept or typed entry leg says nothing about the home leg's type: the default applies.
-			const { homeRate, legs } = await homeRateFor(ctx, entry, entryLeg, null);
+			const { exact, legs } = await exactFor(ctx, entry, entryLeg, null);
 			const rateType = custom ? CUSTOM_RATE_TYPE : labelFor(null, legs);
-			return booked(entry, ctx, choice.exchangeRate, homeRate, rateType);
+			return booked(entry, ctx, exact, rateType);
 		}
 		case "table": {
 			const type = choice.rateType ?? ctx.preferred;
 			const entryType = choice.rateType ?? choice.entryType ?? ctx.preferred;
 			const entryLeg = await legOf(ctx, entry.currency, entry.date, entryType);
-			const { homeRate, legs } = await homeRateFor(ctx, entry, entryLeg, type);
-			return booked(entry, ctx, entryLeg.rate, homeRate, labelFor(type, legs));
+			const { exact, legs } = await exactFor(ctx, entry, entryLeg, type);
+			return booked(entry, ctx, exact, labelFor(type, legs));
 		}
 	}
+}
+
+const sameDecimal = (a: DecimalInput, b: DecimalInput) => dec(a).eq(dec(b));
+
+/**
+ * The edit moves no money (D1): same amount, currency and date, and it books
+ * the rate it was saved with (both legs, into the same home). Rate choice is
+ * rateChoice's; this only decides whether the saved figures stand.
+ */
+function moneyUntouched(
+	entry: EntryAmount,
+	saved: SavedRate,
+	rate: BookedRate,
+): saved is SavedRate & { homeAmount: string } {
+	return (
+		saved.homeAmount !== null &&
+		saved.homeRate !== null &&
+		saved.currency === entry.currency &&
+		saved.date.getTime() === entry.date.getTime() &&
+		sameDecimal(saved.amount, entry.amount) &&
+		saved.homeCurrency === rate.homeCurrency &&
+		sameDecimal(saved.exchangeRate, rate.exchangeRate) &&
+		sameDecimal(saved.homeRate, rate.homeRate)
+	);
+}
+
+/**
+ * Books an entry's rate under `choice` (see RateChoice). An edit passes the
+ * row as saved: when the edit moves no money, the saved amountInUSD and
+ * homeAmount come back unchanged, so an edit never re-rounds a stored figure
+ * (a row booked half up before half even keeps its cent).
+ */
+export async function bookRate(
+	ctx: BookContext,
+	entry: EntryAmount,
+	choice: RateChoice,
+	saved?: SavedRate | null,
+): Promise<BookedRate> {
+	const rate = await bookChoice(ctx, entry, choice);
+	if (!saved || !moneyUntouched(entry, saved, rate)) return rate;
+	return {
+		...rate,
+		amountInUSD: saved.amountInUSD,
+		homeAmount: saved.homeAmount,
+	};
 }

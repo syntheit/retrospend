@@ -40,6 +40,7 @@ import {
 import { countedOnArrival, inBudget } from "../accounts/places";
 import { endOfDay } from "../accounts/series";
 import { homePerUnit } from "../accounts/valuation";
+import { type RestoreToken, readRowRestore } from "../entry/restore-token";
 import { bookRate, loadRateContext, type RateChoice } from "../rate-types";
 import { typedAmount } from "../transfers/plan";
 import { nextDueDay } from "./due-day";
@@ -80,10 +81,13 @@ export interface AddIncomeInput {
 	readonly usePlan?: boolean | null;
 	/** Where Use my plan puts the rest; Leave it when omitted. */
 	readonly planRest?: RestChoice | null;
-	/** Set only by the undo of a delete: the rates and units it was booked at. */
-	readonly restore?: IncomeRestore | null;
+	/** Set only by the undo of a delete: the rates and units it was booked at, signed (restore-token.ts). */
+	readonly restore?: RestoreToken | null;
 	readonly timeZone?: string;
 }
+
+/** The kind of signed restore income.delete's recreate carries. */
+export const INCOME_RESTORE = "income.delete";
 
 /** What income.delete read off the row and its leg, so its undo books nothing anew. */
 export interface IncomeRestore {
@@ -274,14 +278,14 @@ function restoredPrice(restore: IncomeRestore, home: string): Priced {
 
 /** Units the budget already counts: what the deleted leg still counted on an undo, else the arrival rule (D4). */
 function countedUnitsOf(
-	input: AddIncomeInput,
+	restore: IncomeRestore | null,
 	account: AccountRow,
 	kept: boolean,
 	home: string,
 	units: Decimal,
 ): Decimal | undefined {
-	if (input.restore) {
-		const counted = input.restore.countedUnits;
+	if (restore) {
+		const counted = restore.countedUnits;
 		return counted ? dec(counted) : undefined;
 	}
 	return countedOnArrival(account, kept, home) ? units : undefined;
@@ -313,8 +317,19 @@ export async function addIncomeIn(
 		});
 	}
 	const categoryId = await incomeCategory(tx, userId, input.categoryId);
-	const priced = input.restore
-		? restoredPrice(input.restore, home)
+	// A recreate's figures count only signed, for this row, under this home.
+	const restore = input.restore
+		? readRowRestore<IncomeRestore>(input.restore, INCOME_RESTORE, userId, {
+				id: input.id ?? "",
+				amount: amount.toString(),
+				currency: input.currency,
+				date: input.date ?? "",
+				home,
+				bound: { into: input.into ?? null, keep: input.keep ?? null },
+			})
+		: null;
+	const priced = restore
+		? restoredPrice(restore, home)
 		: await priceIncome(tx, userId, input, { amount, date, home, account });
 	const { booked } = priced;
 
@@ -364,7 +379,7 @@ export async function addIncomeIn(
 				source: "INCOME",
 				expenseId,
 				home: booked && { amount: booked, currency: home },
-				countedUnits: countedUnitsOf(input, account, kept, home, units),
+				countedUnits: countedUnitsOf(restore, account, kept, home, units),
 			})
 		: null;
 	// The budget read before this write (a preview's before side) is stale now.

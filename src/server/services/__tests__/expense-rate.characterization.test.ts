@@ -18,8 +18,8 @@ const DATE = new Date("2026-08-10T12:00:00Z");
 const BASE = { id: "exp-1", title: "Dinner", date: DATE };
 
 type Stored = {
-	exchangeRate: number;
-	amountInUSD: number;
+	exchangeRate: string;
+	amountInUSD: string;
 	pricingSource?: string;
 };
 
@@ -53,8 +53,8 @@ describe("expense rate on save today (characterization)", () => {
 			pricingSource: "official",
 		});
 		expect(created()).toMatchObject({
-			exchangeRate: 1,
-			amountInUSD: 12.99,
+			exchangeRate: "1",
+			amountInUSD: "12.99",
 			pricingSource: "official",
 		});
 	});
@@ -66,8 +66,8 @@ describe("expense rate on save today (characterization)", () => {
 			currency: "ARS",
 		});
 		expect(created()).toMatchObject({
-			exchangeRate: 1560,
-			amountInUSD: 10,
+			exchangeRate: "1560",
+			amountInUSD: "10.00",
 			pricingSource: "MANUAL",
 		});
 	});
@@ -80,8 +80,8 @@ describe("expense rate on save today (characterization)", () => {
 			pricingSource: "official",
 		});
 		expect(created()).toMatchObject({
-			exchangeRate: 1495,
-			amountInUSD: 10,
+			exchangeRate: "1495",
+			amountInUSD: "10.00",
 			pricingSource: "official",
 		});
 	});
@@ -95,8 +95,8 @@ describe("expense rate on save today (characterization)", () => {
 			pricingSource: "custom",
 		});
 		expect(created()).toMatchObject({
-			exchangeRate: 1500,
-			amountInUSD: 1,
+			exchangeRate: "1500",
+			amountInUSD: "1.00",
 			pricingSource: "custom",
 		});
 	});
@@ -110,8 +110,8 @@ describe("expense rate on save today (characterization)", () => {
 		});
 		// 100 / 0.8787 = 113.8045 -> 113.80
 		expect(created()).toMatchObject({
-			exchangeRate: 0.8787,
-			amountInUSD: 113.8,
+			exchangeRate: "0.8787",
+			amountInUSD: "113.80",
 		});
 	});
 
@@ -122,8 +122,8 @@ describe("expense rate on save today (characterization)", () => {
 			currency: "BTC",
 		});
 		expect(created()).toMatchObject({
-			exchangeRate: 64545.9,
-			amountInUSD: 645.46,
+			exchangeRate: "64545.9",
+			amountInUSD: "645.46",
 		});
 	});
 
@@ -160,7 +160,7 @@ describe("expense rate on save today (characterization)", () => {
 				exchangeRate: 1400,
 				pricingSource: "blue",
 			});
-			expect(updated()).toMatchObject({ exchangeRate: 1400, amountInUSD: 20 });
+			expect(updated()).toMatchObject({ exchangeRate: "1400", amountInUSD: "20.00" });
 		});
 
 		it("keeps the saved rate when the form sends none", async () => {
@@ -169,7 +169,7 @@ describe("expense rate on save today (characterization)", () => {
 				amount: 14_000,
 				currency: "ARS",
 			});
-			expect(updated()).toMatchObject({ exchangeRate: 1400, amountInUSD: 10 });
+			expect(updated()).toMatchObject({ exchangeRate: "1400", amountInUSD: "10.00" });
 		});
 
 		it("looks the rate up again when the currency changes", async () => {
@@ -180,8 +180,8 @@ describe("expense rate on save today (characterization)", () => {
 				exchangeRate: 1400,
 			});
 			expect(updated()).toMatchObject({
-				exchangeRate: 0.8787,
-				amountInUSD: 113.8,
+				exchangeRate: "0.8787",
+				amountInUSD: "113.80",
 			});
 		});
 	});

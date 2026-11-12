@@ -23,6 +23,11 @@ const isoDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a valid date");
 const currency = z.string().min(3).max(10);
 const id = z.string().min(1).max(64);
 const rateType = z.string().min(1).max(32);
+/** A signed undo payload as restore-token.ts writes it. */
+export const signedRestore = z.object({
+	data: z.string().min(2).max(200_000),
+	sig: z.string().regex(/^[0-9a-f]{64}$/),
+});
 
 const expenseFields = {
 	title: userText("expense.title", 500),
@@ -85,6 +90,8 @@ export const expenseRestoreSchema = z.object({
 	categoryId: z.string().min(1).optional(),
 	amortizeOver: z.number().int().min(2).max(60).optional(),
 	excludeFromAnalytics: z.boolean().optional(),
+	/** The figures it was saved with, signed by the edit (restore-token.ts); never plain figures. */
+	restore: signedRestore.nullish(),
 });
 
 const participant = z.object({
@@ -176,12 +183,7 @@ export const sharedDeleteSchema = z.object({
 export const sharedUndoSchema = z.object({ stash: z.string().min(1).max(200) });
 
 /** A signed undo payload (restore-token.ts). */
-export const restoreTokenSchema = z.object({
-	token: z.object({
-		data: z.string().min(2).max(200_000),
-		sig: z.string().regex(/^[0-9a-f]{64}$/),
-	}),
-});
+export const restoreTokenSchema = z.object({ token: signedRestore });
 
 export const rateOptionsSchema = z.object({
 	currency,

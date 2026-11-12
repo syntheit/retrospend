@@ -9,14 +9,24 @@
  *   expense.restore, which puts the stored rows back verbatim from a signed
  *   snapshot (expense-snapshot.ts): nothing is booked again.
  *
- * An edit's undo re-books the rate it had: a custom rate as the same cross
- * rate, a table type as that type on the entry's date (the day's rate does
- * not move), an untouched rate as both of its saved legs.
+ * An edit's undo carries the rate it had (a custom rate as the same cross
+ * rate, a table type as that type, an untouched rate as both saved legs) and
+ * the figures it was saved with, signed (restore-token.ts) so a client can
+ * carry them but never write its own, which the undo writes back as they
+ * were: booking again could land a cent apart (a row booked half up, a home
+ * amount from the 12-decimal rate).
  */
+import { dec } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import { CUSTOM_RATE_TYPE } from "~/lib/rate-selection";
 import type { Prisma } from "~prisma";
-import { type CreateExpenseInput, ExpenseService } from "../expense.service";
+import { homeCurrencyOf } from "../accounts/ledger";
+import {
+	type CreateExpenseInput,
+	EXPENSE_RESTORE,
+	ExpenseService,
+	type SavedFigures,
+} from "../expense.service";
 import { GLANCE_SPENT } from "../figures/spend-pace";
 import type { MoneyMutation } from "../preview/types";
 import {
@@ -24,11 +34,19 @@ import {
 	restoreExpense,
 	snapshotExpense,
 } from "./expense-snapshot";
-import { type RestoreToken, readRestore, signRestore } from "./restore-token";
+import {
+	type RestoreToken,
+	type RowRestore,
+	readRestore,
+	signRestore,
+} from "./restore-token";
 
 type Tx = Prisma.TransactionClient;
 
 export const EXPENSE_FIGURES = ["spent", GLANCE_SPENT];
+
+/** The kind of signed token expense.delete returns for its undo. */
+const EXPENSE_DELETE = "expense.delete";
 
 export type UpdateExpenseInput = Parameters<ExpenseService["updateExpense"]>[1];
 
@@ -65,12 +83,13 @@ export function rateInputOf(row: {
 	};
 }
 
-/** The fields the form saves, as `row` holds them now. */
-function fieldsOf(row: ExpenseRow) {
+/** The fields the form saves, as `row` holds them now, and its figures signed. */
+function fieldsOf(row: ExpenseRow, userId: string, home: string) {
+	const amount = row.amount.toFixed();
 	return {
 		title: row.title,
 		// Decimal text: every stored digit comes back.
-		amount: row.amount.toFixed(),
+		amount,
 		currency: row.currency,
 		date: row.date,
 		location: row.location ?? undefined,
@@ -79,6 +98,29 @@ function fieldsOf(row: ExpenseRow) {
 		amortizeOver: row.isAmortizedParent ? row.children.length : undefined,
 		excludeFromAnalytics: row.excludeFromAnalytics,
 		...rateInputOf(row),
+		restore: signRestore(EXPENSE_RESTORE, userId, {
+			id: row.id,
+			amount,
+			currency: row.currency,
+			date: row.date.toISOString(),
+			home,
+			bound: {},
+			figures: figuresOf(row),
+		} satisfies RowRestore<SavedFigures>),
+	};
+}
+
+/** The booked figures as stored, as plain decimal text (dec never writes an exponent). */
+function figuresOf(row: ExpenseRow): SavedFigures {
+	const text = (v: { toString(): string } | null) =>
+		v === null ? null : dec(v).toFixed();
+	return {
+		exchangeRate: dec(row.exchangeRate).toFixed(),
+		amountInUSD: dec(row.amountInUSD).toFixed(),
+		rateType: row.rateType,
+		homeCurrency: row.homeCurrency,
+		homeRate: text(row.homeRate),
+		homeAmount: text(row.homeAmount),
 	};
 }
 
@@ -132,9 +174,13 @@ export const updateExpenseEntry: MoneyMutation<
 	run: async (tx, input, actor) => {
 		const before = await ownExpense(tx, actor.userId, input.id);
 		await refuseOtherHome(tx, actor.userId, input.customRate?.home);
+		const home = await homeCurrencyOf(tx, actor.userId);
 		await new ExpenseService(tx).updateExpense(actor.userId, input);
 		return {
-			value: { id: input.id, restore: { id: input.id, ...fieldsOf(before) } },
+			value: {
+				id: input.id,
+				restore: { id: input.id, ...fieldsOf(before, actor.userId, home) },
+			},
 			undo: {
 				kind: "revert",
 				mutation: "expense.update",
@@ -167,7 +213,10 @@ export const deleteExpenseEntry: MoneyMutation<{ id: string }, DeletedExpense> =
 			const snapshot = await snapshotExpense(tx, actor.userId, input.id);
 			await new ExpenseService(tx).deleteExpense(actor.userId, input.id);
 			return {
-				value: { id: input.id, restore: signRestore(snapshot) },
+				value: {
+					id: input.id,
+					restore: signRestore(EXPENSE_DELETE, actor.userId, snapshot),
+				},
 				undo: {
 					kind: "revert",
 					mutation: "expense.restore",
@@ -185,7 +234,11 @@ export const restoreExpenseEntry: MoneyMutation<
 	id: "expense.restore",
 	touches: EXPENSE_FIGURES,
 	run: async (tx, input, actor) => {
-		const snapshot = readRestore<ExpenseSnapshot>(input.token);
+		const snapshot = readRestore<ExpenseSnapshot>(
+			input.token,
+			EXPENSE_DELETE,
+			actor.userId,
+		);
 		const id = await restoreExpense(tx, actor.userId, snapshot);
 		return {
 			value: { id },

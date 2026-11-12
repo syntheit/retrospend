@@ -3,6 +3,7 @@ import {
 	type RateInput,
 	rateChoice as chooseRate,
 	type SavedRate,
+	storedAmount,
 } from "@retrospend/domain/rate-booking";
 import {
 	dayKey,
@@ -15,6 +16,7 @@ import { userTransaction } from "~/server/db-tx";
 import type { Prisma, PrismaClient } from "~prisma";
 import { refuseLegMoneyEdit } from "./accounts/leg-edits";
 import { AmortizationService } from "./amortization.service";
+import { type RestoreToken, readRowRestore } from "./entry/restore-token";
 import { findDuplicateExpense } from "./expense-duplicate";
 import {
 	asBadRequest,
@@ -56,18 +58,40 @@ export async function resolveExpenseRate(
 	return bookRate(
 		db,
 		ctx,
-		{ amount: input.amount, currency: input.currency, date: input.date },
+		{
+			amount: storedAmount(input.amount),
+			currency: input.currency,
+			date: input.date,
+		},
 		rateChoice(input, saved, ctx.homeCurrency),
+		saved,
 	);
 }
 
-/** The rate columns of a saved expense row. */
+/** The kind of signed restore an expense edit's undo carries (restore-token.ts). */
+export const EXPENSE_RESTORE = "expense.update";
+
+/** The booked rate columns of a row as stored, as decimal text. */
+export interface SavedFigures {
+	exchangeRate: string;
+	amountInUSD: string;
+	rateType: string | null;
+	homeCurrency: string | null;
+	homeRate: string | null;
+	homeAmount: string | null;
+}
+
+/** The rate columns of a saved expense row, and the money it booked. */
 function savedRateOf(row: {
 	currency: string;
 	exchangeRate: Prisma.Decimal | number;
 	rateType: string | null;
 	homeCurrency: string | null;
 	homeRate: Prisma.Decimal | null;
+	amount: Prisma.Decimal;
+	date: Date;
+	amountInUSD: Prisma.Decimal;
+	homeAmount: Prisma.Decimal | null;
 }): SavedRate {
 	return {
 		currency: row.currency,
@@ -75,6 +99,10 @@ function savedRateOf(row: {
 		rateType: row.rateType,
 		homeCurrency: row.homeCurrency,
 		homeRate: row.homeRate?.toString() ?? null,
+		amount: row.amount.toString(),
+		date: row.date,
+		amountInUSD: row.amountInUSD.toString(),
+		homeAmount: row.homeAmount?.toString() ?? null,
 	};
 }
 
@@ -135,7 +163,7 @@ export async function createExpenseIn(
 			id: input.id,
 			userId,
 			title: input.title,
-			amount: input.amount,
+			amount: storedAmount(input.amount),
 			currency: input.currency,
 			...rate,
 			pricingSource: pricingSource,
@@ -188,6 +216,8 @@ export class ExpenseService {
 			categoryId?: string;
 			amortizeOver?: number;
 			excludeFromAnalytics?: boolean;
+			/** Set only by the undo of an edit: the figures it was saved with, signed, written back as they were. */
+			restore?: RestoreToken | null;
 		},
 	) {
 		const existingExpense = await (this.db as PrismaClient).expense.findFirst({
@@ -222,19 +252,22 @@ export class ExpenseService {
 			}
 		}
 
-		const rate = await resolveExpenseRate(
-			this.db,
-			userId,
-			input,
-			savedRateOf(existingExpense),
-		);
+		// An undo puts back what was stored; booking again could round differently.
+		const rate = input.restore
+			? await this.restoredFigures(userId, { ...input, restore: input.restore })
+			: await resolveExpenseRate(
+					this.db,
+					userId,
+					input,
+					savedRateOf(existingExpense),
+				);
 
 		return await this.runInTransaction(async (tx) => {
 			const expense = await tx.expense.update({
 				where: { id: input.id, userId },
 				data: {
 					title: input.title,
-					amount: input.amount,
+					amount: storedAmount(input.amount),
 					currency: input.currency,
 					...rate,
 					pricingSource: input.pricingSource,
@@ -396,6 +429,39 @@ export class ExpenseService {
 				usageCount: 0, // Usage count calculation remains client-side or simplified
 			})),
 		};
+	}
+
+	/**
+	 * The figures an edit's undo signed, once they prove to be this row's: its
+	 * id, amount, currency and date, under the home the user still has.
+	 */
+	private async restoredFigures(
+		userId: string,
+		input: {
+			id: string;
+			amount: number | string;
+			currency: string;
+			date: Date;
+			restore: RestoreToken;
+		},
+	): Promise<SavedFigures> {
+		const user = await (this.db as PrismaClient).user.findUnique({
+			where: { id: userId },
+			select: { homeCurrency: true },
+		});
+		return readRowRestore<SavedFigures>(
+			input.restore,
+			EXPENSE_RESTORE,
+			userId,
+			{
+				id: input.id,
+				amount: storedAmount(input.amount),
+				currency: input.currency,
+				date: input.date.toISOString(),
+				home: user?.homeCurrency ?? "",
+				bound: {},
+			},
+		);
 	}
 
 	private async runInTransaction<T>(

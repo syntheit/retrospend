@@ -8,12 +8,15 @@
  * and no home leg (the totals rule applies), never a rate of 1.
  */
 import {
-	computeAmountInUSD,
 	isValidRate,
 	MissingRateError,
 	rateFromUsdPerUnit,
 	USD,
 } from "@retrospend/domain/money";
+import {
+	computeAmountInUSDDec,
+	roundRateDec,
+} from "@retrospend/domain/money-dec";
 import { findExchangeRate } from "~/server/exchange-rates";
 import type { Prisma, PrismaClient } from "~prisma";
 import { type BookedRate, bookRate, type RateContext } from "../rate-types";
@@ -43,8 +46,9 @@ export interface HomeLeg {
 }
 
 export interface ImportRate {
-	exchangeRate: number;
-	amountInUSD: number;
+	/** Decimal text at the columns' scale, half to even. */
+	exchangeRate: string;
+	amountInUSD: string;
 	home: HomeLeg | null;
 }
 
@@ -105,9 +109,10 @@ export async function bookImportRow(
 			? 1
 			: (await findExchangeRate(db, currency, row.date))?.rate);
 	if (rate == null) return null;
+	// As bookRate stores them: the leg at 6 decimals, USD from the exact leg, half to even.
 	return {
-		exchangeRate: rate,
-		amountInUSD: computeAmountInUSD(row.amount, currency, rate),
+		exchangeRate: roundRateDec(rate, 6).toFixed(),
+		amountInUSD: computeAmountInUSDDec(row.amount, currency, rate).toFixed(2),
 		home: null,
 	};
 }

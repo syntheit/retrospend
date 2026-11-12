@@ -20,21 +20,20 @@
  * deletes the row), or LocalDb.preview, which is the same code rolled back.
  */
 import {
-	currencyDecimals,
 	pickBestRate,
 	rateRowsByCurrency,
 	rateWindow,
-	USD,
 } from "@retrospend/domain/money";
-import { Dec, dec } from "@retrospend/domain/precise-decimal";
+import { dec } from "@retrospend/domain/precise-decimal";
 import {
 	bookRate,
 	CURRENCY_KEY,
 	parseRateDefaults,
 	preferredRateType,
-	RateInputError,
 	type RateFinder,
+	RateInputError,
 	rateChoice,
+	storedAmount,
 } from "@retrospend/domain/rate-booking";
 import type { ExpenseRow } from "./expenses";
 import type { WriteFn } from "./local-db";
@@ -70,11 +69,6 @@ export interface CreateExpenseInput {
 	excludeFromAnalytics?: boolean;
 	projectId?: string;
 }
-
-/** Decimals of the amount column (DECIMAL(19,8)). */
-const AMOUNT_DECIMALS = 8;
-/** Decimals of the entry leg column (DECIMAL(18,6)). */
-const RATE_DECIMALS = 6;
 
 /** The best rate over the stored table, seeing the same window of rows the server's lookup does. */
 function finderOf(rates: readonly TableRows["rates"][]): RateFinder {
@@ -116,7 +110,8 @@ export function createExpense(input: CreateExpenseInput): WriteFn<ExpenseRow> {
 			throw new InvalidInputError("Spreading an expense is not on the device");
 		if (input.category && input.category.kind !== "EXPENSE")
 			throw new InvalidInputError("Category not found");
-		const amount = parseAmount(input.amount);
+		// Stored and booked at the column's 8 decimals, half to even, as the server does.
+		const amount = storedAmount(parseAmount(input.amount).toFixed());
 
 		const settings = r.settings.require();
 		const booked = await refusing(() =>
@@ -129,7 +124,7 @@ export function createExpense(input: CreateExpenseInput): WriteFn<ExpenseRow> {
 					),
 					find: finderOf(r.rates.list()),
 				},
-				{ amount: amount.toFixed(), currency: input.currency, date: input.date },
+				{ amount, currency: input.currency, date: input.date },
 				rateChoice(input, null, settings.homeCurrency),
 			),
 		);
@@ -151,19 +146,16 @@ export function createExpense(input: CreateExpenseInput): WriteFn<ExpenseRow> {
 			categoryId: input.category?.id ?? null,
 			date: new Date(input.date.getTime()),
 			currency: input.currency,
-			amount: amount
-				.toDecimalPlaces(AMOUNT_DECIMALS, Dec.ROUND_HALF_UP)
-				.toFixed(),
-			amountInUSD: booked.amountInUSD.toFixed(currencyDecimals(USD)),
+			amount,
+			// Booked figures are already at their columns' scale, half to even.
+			amountInUSD: booked.amountInUSD,
 			homeCurrency: booked.homeCurrency,
 			homeAmount: booked.homeAmount,
 			title: input.title,
 			description: input.description ?? null,
 			location: input.location ?? null,
 			pricingSource: input.pricingSource ?? "MANUAL",
-			exchangeRate: dec(booked.exchangeRate)
-				.toDecimalPlaces(RATE_DECIMALS, Dec.ROUND_HALF_UP)
-				.toFixed(),
+			exchangeRate: booked.exchangeRate,
 			rateType: booked.rateType,
 			homeRate: booked.homeRate,
 		};

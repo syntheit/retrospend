@@ -7,10 +7,15 @@
  * - A rate type applies to both legs; a leg whose currency lacks the type
  *   falls back to its best rate. With no type the home's default applies
  *   (ARS: blue, otherwise the best: blue, official, crypto, then A to Z).
- * - homeRate is kept at 12 decimals; homeAmount is amount x exact rate,
- *   rounded half to even at the home currency's decimals (JPY 0, KWD 3).
- * - amountInUSD is the entry in USD rounded to cents; exchangeRate is the
- *   entry leg at 6 decimals (1 for USD).
+ * - homeRate is kept at 12 decimals; homeAmount is one division from the
+ *   table rates (amount x entry USD value / home USD value, never amount x a
+ *   rounded 1 / rate), rounded half to even at the home currency's decimals
+ *   (JPY 0, KWD 3). A typed rate multiplies (or divides, quoted in home) by
+ *   the typed number.
+ * - amountInUSD is the entry in USD at the exact rate (the same one as the
+ *   home amount, not the 6-decimal exchangeRate), rounded half to even to
+ *   cents; exchangeRate is the entry leg at 6 decimals, half to even (1 for
+ *   USD). The amount is stored at 8 decimals, half to even.
  * - The rate is the newest row on or before the expense's instant (the
  *   earliest after it when none is before). It compares instants, not days.
  *
@@ -482,6 +487,99 @@ export const vectors: CreateVector[] = [
 			homeCurrency: "USD",
 			homeRate: "1",
 			homeAmount: "12.34",
+		}),
+	},
+
+	// Ties of the USD value round half to even on the magnitude. ARS home with
+	// only official 100 per USD: the default blue falls back to official on
+	// the one leg, so the label is official. ARS 28.5 / 100 = 0.285 USD: 8 is
+	// even, so 0.28 (half up gave 0.29). homeRate 1, homeAmount 28.50.
+	...(
+		[
+			["28.5", "0.28", "28.50"],
+			// -0.285: the mirror, -0.28.
+			["-28.5", "-0.28", "-28.50"],
+			// -1.5 / 100 = -0.015: 1 is odd, so -0.02 (half up gave -0.01).
+			["-1.5", "-0.02", "-1.50"],
+			// 0.5 / 100 = 0.005: 0 is even, so 0.00 (half up gave 0.01).
+			["0.5", "0.00", "0.50"],
+		] as const
+	).map(
+		([amount, usd, home]): CreateVector => ({
+			name: `ARS home: ARS ${amount} at official 100 is ${usd} USD, half to even`,
+			seed: seed("ARS", BA, [rate("ARS", "official", "100", D)]),
+			input: entry({ amount, currency: "ARS" }),
+			expect: money({
+				amount,
+				amountInUSD: usd,
+				exchangeRate: "100",
+				rateType: "official",
+				homeCurrency: "ARS",
+				homeRate: "1",
+				homeAmount: home,
+			}),
+		}),
+	),
+	// EUR 4.5 at 3 EUR per USD into a JPY home at 1 JPY per USD. The cross
+	// rate is (1 / 3) / (1 / 1), kept as 0.333333333333. The home amount is
+	// one division, 4.5 x 1 x 1 / (3 x 1) = 1.5 exactly, a tie at 0 decimals:
+	// 1 is odd, so 2 (4.5 x 0.333...3 gave 1.4999..., so 1). USD value 4.5 / 3
+	// = 1.50.
+	{
+		name: "JPY home: EUR 4.5 at 3 per USD divides once, 1.5 rounds to 2",
+		seed: seed("JPY", "Asia/Tokyo", [
+			rate("JPY", "official", "1", D),
+			rate("EUR", "official", "3", D),
+		]),
+		input: entry({ amount: "4.5", currency: "EUR" }),
+		expect: money({
+			amount: "4.5",
+			amountInUSD: "1.50",
+			exchangeRate: "3",
+			rateType: "official",
+			homeCurrency: "JPY",
+			homeRate: "0.333333333333",
+			homeAmount: "2",
+		}),
+	},
+	// Typed 1 EUR = 1546 ARS at blue 1545 per USD: 1546 / 1545 USD per EUR.
+	// EUR 100,000 is 154,600,000 / 1545 = 100,064.7249... USD, so 100,064.72.
+	// The stored leg is 1545 / 1546 = 0.9993531... to 6 decimals 0.999353,
+	// and 100,000 / 0.999353 = 100,064.7418... would give 100,064.74: the USD
+	// value comes from the exact rate. homeAmount = 100,000 x 1546.
+	{
+		name: "ARS home: a typed rate prices USD from the exact rate, not the stored 6 decimals",
+		seed: arsHome,
+		input: entry({
+			amount: "100000",
+			currency: "EUR",
+			customRate: { base: "EUR", value: "1546" },
+		}),
+		expect: money({
+			amount: "100000",
+			amountInUSD: "100064.72",
+			exchangeRate: "0.999353",
+			rateType: "custom",
+			homeCurrency: "ARS",
+			homeRate: "1546",
+			homeAmount: "154600000.00",
+		}),
+	},
+	// USD 1.000000005 has 9 decimals: the 8-decimal column keeps 1.00000000
+	// (a tie, 0 is even; Postgres alone would round away from zero to
+	// 1.00000001), and every figure books that stored amount: 1.00 USD.
+	{
+		name: "USD home: an amount past 8 decimals is stored half to even",
+		seed: seed("USD", "America/New_York", []),
+		input: entry({ amount: "1.000000005", currency: "USD" }),
+		expect: money({
+			amount: "1",
+			amountInUSD: "1.00",
+			exchangeRate: "1",
+			rateType: null,
+			homeCurrency: "USD",
+			homeRate: "1",
+			homeAmount: "1.00",
 		}),
 	},
 
