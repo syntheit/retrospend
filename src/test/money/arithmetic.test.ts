@@ -38,7 +38,10 @@ function linesOf(text: string, pattern: RegExp): number[] {
 }
 
 /** Every rule's hits in one file's source, by line. */
-function hitsIn(source: string): Record<string, number[]> {
+function hitsIn(source: string): {
+	number: number[];
+	"prisma-decimal": number[];
+} {
 	const code = withoutComments(source);
 	return {
 		number: linesOf(code, NUMBER),
