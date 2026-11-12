@@ -91,4 +91,43 @@ describe("the sealed sweep", () => {
 			await adminDb.idempotencyKey.delete({ where: { id } });
 		}
 	});
+
+	it("fails on a plaintext audit leaf or an unclassified string, and passes sealed leaves, no-text keys and a confirm's source-sealed text", async () => {
+		const { user } = await createTestUser();
+		const id = `sweep-${randomUUID()}`;
+		const set = (changes: unknown) =>
+			adminDb.$executeRaw`UPDATE "audit_log_entry" SET "changes" = ${JSON.stringify(changes)}::jsonb WHERE "id" = ${id}`;
+		await adminDb.$executeRaw`INSERT INTO "audit_log_entry"
+			("id", "actorType", "actorId", "action", "targetType", "targetId")
+			VALUES (${id}, 'user', ${user.id}, 'EDITED', 'PROJECT', 'sweep-target')`;
+		try {
+			const end = await startSweep();
+			const fine = {
+				description: { old: SEALED, new: SEALED },
+				splitParticipants: [{ id: "s1", rejectionReason: SEALED }],
+				projectId: { old: "p1", new: null },
+				currency: "ARS",
+				previous: { paymentMethod: SEALED, rows: [{ note: SEALED, currency: "ARS" }] },
+			};
+			await set(fine);
+			await expect(end()).resolves.toBeUndefined();
+
+			await set({ ...fine, description: { old: "Plain", new: SEALED } });
+			await expect(end()).rejects.toThrow(
+				/^Plaintext left in mapped columns with sealing on: audit_log_entry\.changes: 1 at description\.old$/,
+			);
+			await set({ ...fine, previous: { rows: [{ rejectedReason: "Plain" }] } });
+			await expect(end()).rejects.toThrow(
+				/audit_log_entry\.changes: 1 at previous\.rows\.0\.rejectedReason$/,
+			);
+			await set({ ...fine, title: "Cena" });
+			await expect(end()).rejects.toThrow(
+				/^Plaintext left in mapped columns with sealing on: audit_log_entry\.changes \(undeclared leaf\): 1 at title$/,
+			);
+			await set(null);
+			await expect(end()).resolves.toBeUndefined();
+		} finally {
+			await adminDb.$executeRaw`DELETE FROM "audit_log_entry" WHERE "id" = ${id}`;
+		}
+	});
 });
