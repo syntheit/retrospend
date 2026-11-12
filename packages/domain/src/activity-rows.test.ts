@@ -474,6 +474,31 @@ describe("shared rows", () => {
 		expect(o && "payerName" in o).toBe(false);
 	});
 
+	it("lists the payer first and the rest by key, whatever order the split rows come in", () => {
+		const user = (id: string) => ({
+			participantType: "user" as const,
+			participantId: id,
+		});
+		const a = tx({
+			id: "a",
+			splitParticipants: [user("cam"), user(ME), user("ben")],
+		});
+		const b = tx({
+			id: "b",
+			splitParticipants: [user("ben"), user(ME), user("cam")],
+		});
+		const rows = rowsOf(
+			{ shares: [share(a, "1"), share(b, "1")], who: people },
+			["shared:a", "shared:b"],
+		);
+		for (const row of rows)
+			expect(row.people?.map((p) => p.id)).toEqual([
+				"user:ben",
+				"user:cam",
+				`user:${ME}`,
+			]);
+	});
+
 	it("shows only your own category on a shared expense", () => {
 		const cat = (userId: string) => ({
 			id: "c",

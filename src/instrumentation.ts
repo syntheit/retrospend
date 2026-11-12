@@ -3,12 +3,14 @@
  * the server and to no request: the webhook and push workers, so deliveries
  * that were waiting when the process last stopped go out again, and the
  * hourly sweeps of expired API exports and of old support data
- * (error reports, screenshots of archived feedback), and the hourly
- * auto-finalize of payments pending for 7 days. Each starts once per process
- * and is skipped under test. First it checks the server master key setting, so
- * a malformed key stops the server instead of leaving data unencrypted, and
- * then the key against the canary stored in the database, so a wrong key stops
- * it too (the first start with a key writes the canary). With DATA_KEYS_WRITE
+ * (error reports, screenshots of archived feedback), the hourly
+ * auto-finalize of payments pending for 7 days, and the 15-minute auto-post
+ * of due recurring items (on in production unless RECURRING_AUTO_POST says
+ * otherwise). Each starts once per process and is skipped under test. First
+ * it checks the server master key setting, so a malformed key stops the
+ * server instead of leaving data unencrypted, and then the key against the
+ * canary stored in the database, so a wrong key stops it too (the first
+ * start with a key writes the canary). With DATA_KEYS_WRITE
  * on it then checks that sealing can work and sets the field encryption epoch
  * (field-encryption-start.ts), so no worker runs on a server that would
  * refuse to seal.
@@ -31,16 +33,19 @@ export async function register() {
 		{ startExportSweep },
 		{ startRetentionSweep },
 		{ startAutoFinalizePayments },
+		{ startRecurringAutoPost },
 	] = await Promise.all([
 		import("~/server/services/webhooks/worker"),
 		import("~/server/services/push/worker"),
 		import("~/server/services/api-v1/export-sweep"),
 		import("~/server/services/api-v1/retention-sweep"),
 		import("~/server/services/payments/auto-finalize"),
+		import("~/server/services/recurring-auto-post"),
 	]);
 	startWebhookWorker();
 	startPushWorker();
 	startExportSweep();
 	startRetentionSweep();
 	startAutoFinalizePayments();
+	startRecurringAutoPost();
 }

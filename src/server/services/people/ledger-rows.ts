@@ -6,6 +6,7 @@
  * your balance with this person: their share of what you paid, or minus
  * your share of what they paid.
  */
+import { inFaceOrder } from "@retrospend/domain/activity-rows";
 import { categoryTone } from "@retrospend/domain/category-tone";
 import { sumMinor, toMinor } from "~/server/services/envelope/units";
 import type { TransactionHistoryItem } from "~/server/services/shared-expenses/people.service";
@@ -112,7 +113,7 @@ export async function ledgerRows(
 						: "other",
 				payerName: item.paidBy.name,
 				payerId: payer,
-				people: item.splitParticipants.map((s) => ({
+				people: inFaceOrder(item.splitParticipants, keyOf, payer).map((s) => ({
 					id: keyOf(s),
 					name: s.name,
 					imageUrl: s.avatarUrl,

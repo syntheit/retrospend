@@ -33,6 +33,9 @@ vi.mock("~/server/services/api-v1/retention-sweep", () => ({
 vi.mock("~/server/services/payments/auto-finalize", () => ({
 	startAutoFinalizePayments: step("worker"),
 }));
+vi.mock("~/server/services/recurring-auto-post", () => ({
+	startRecurringAutoPost: step("worker"),
+}));
 
 const { register } = await import("./instrumentation");
 
@@ -50,7 +53,7 @@ describe("register", () => {
 			"master key config",
 			"canary",
 			"field encryption",
-			...Array(5).fill("worker"),
+			...Array(6).fill("worker"),
 		]);
 	});
 

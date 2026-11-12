@@ -331,10 +331,31 @@ function personalRow(e: PersonalRowInput, c: ShapeContext): ActivityRowDTO {
  * the payer, always on the transaction itself, is added when missing.
  */
 function peopleOf(t: SharedRowInput["transaction"], payerId: string): string[] {
-	const keys = t.splitParticipants.map((s) =>
-		personKeyOf(s.participantType, s.participantId),
+	const keys = inFaceOrder(
+		t.splitParticipants.map((s) =>
+			personKeyOf(s.participantType, s.participantId),
+		),
+		(key) => key,
+		payerId,
 	);
 	return keys.includes(payerId) ? keys : [payerId, ...keys];
+}
+
+/**
+ * A split's people in the one order every screen shows their faces: the
+ * payer first, then the rest by person key. The database returns split rows
+ * in no set order, and the server and a device must show the same faces.
+ */
+export function inFaceOrder<T>(
+	people: readonly T[],
+	keyOf: (person: T) => string,
+	payerKey: string,
+): T[] {
+	const rank = (key: string) => (key === payerKey ? "" : `~${key}`);
+	return [...people].sort((a, b) => {
+		const [x, y] = [rank(keyOf(a)), rank(keyOf(b))];
+		return x < y ? -1 : x > y ? 1 : 0;
+	});
 }
 
 type Lookup = ReturnType<typeof rateLookup>;

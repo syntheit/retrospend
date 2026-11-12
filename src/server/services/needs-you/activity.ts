@@ -12,9 +12,10 @@ import type { NeedsYouItem } from "./types";
 type Tx = Prisma.TransactionClient;
 
 /**
- * The sidecar posts "pay automatically" fixed items every 15 minutes. One
- * still due an hour after its time did not post (usually a missing rate),
- * so it waits for the person; before that it would only flash by.
+ * The app posts "pay automatically" fixed items every 15 minutes
+ * (recurring-auto-post.ts). One still due an hour after its time did not
+ * post (usually a missing rate), so it waits for the person; before that it
+ * would only flash by.
  */
 export const AUTO_POST_GRACE_MS = 60 * 60 * 1000;
 
@@ -29,7 +30,7 @@ interface Template {
 	nextDueDate: Date;
 }
 
-/** Due today or overdue in the viewer's calendar, unless the sidecar is about to post it. */
+/** Due today or overdue in the viewer's calendar, unless the auto-post is about to post it. */
 export function recurringItems(
 	templates: readonly Template[],
 	now: Date,

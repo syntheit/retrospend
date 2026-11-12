@@ -49,6 +49,10 @@ export const env = createEnv({
 			.enum(["true", "false"])
 			.default("false")
 			.transform((v) => v === "true"),
+		// Post due "pay automatically" recurring items every 15 minutes
+		// (recurring-auto-post.ts). Unset: on in production only, so dev,
+		// tests and e2e never post their seeded templates.
+		RECURRING_AUTO_POST: z.enum(["true", "false"]).optional(),
 
 		// Push senders. A sender with missing settings is off; nothing else
 		// changes. See docs/self-hosting for how to get each value.
@@ -125,6 +129,7 @@ export const env = createEnv({
 		DATA_MASTER_KEY: process.env.DATA_MASTER_KEY,
 		DATA_MASTER_KEY_FILE: process.env.DATA_MASTER_KEY_FILE,
 		DATA_KEYS_WRITE: process.env.DATA_KEYS_WRITE,
+		RECURRING_AUTO_POST: process.env.RECURRING_AUTO_POST,
 		APNS_KEY_ID: process.env.APNS_KEY_ID,
 		APNS_TEAM_ID: process.env.APNS_TEAM_ID,
 		APNS_BUNDLE_ID: process.env.APNS_BUNDLE_ID,

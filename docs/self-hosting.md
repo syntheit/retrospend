@@ -29,7 +29,7 @@ The app is available on port `1997`. Migrations run automatically on startup.
   docker exec local-ollama ollama pull qwen2.5:7b
   ```
 - AI import is opt-in per person: each user turns it on in Settings, and until then no file goes to Ollama or OpenRouter. The import screen names the provider and model that will read the file. On upgrade, accounts that used AI import are turned on; anyone who only ever used local reading before March 2026 is off and turns it on once in Settings.
-- The `ollama` service is optional. Remove it if you don't use bank statement import, or set `OPENROUTER_API_KEY` to use a cloud model instead. Keep the `sidecar`: it also runs exchange rates, recurring expenses and backups.
+- The `ollama` service is optional. Remove it if you don't use bank statement import, or set `OPENROUTER_API_KEY` to use a cloud model instead. Keep the `sidecar`: it also runs exchange rates and backups.
 
 ## Settings
 
@@ -45,8 +45,9 @@ Set these in `.env`. Runtime settings are read at start; nothing is baked into t
 | `DATABASE_URL` | **Yes** | | Full PostgreSQL connection string |
 | `WORKER_API_KEY` | **Yes** | | Shared secret between app, worker, and importer: `openssl rand -base64 32` |
 | `SHOW_LANDING_PAGE` | No | `false` | Show public landing page at `/` |
-| `DEFAULT_TIME_ZONE` | No | `America/Argentina/Buenos_Aires` | IANA zone for people with no saved zone. Set it on both the app and the sidecar, so recurring dates agree |
+| `DEFAULT_TIME_ZONE` | No | `America/Argentina/Buenos_Aires` | IANA zone for people with no saved zone |
 | `ENABLE_LEGAL_PAGES` | No | `true` | Show `/privacy` and `/terms` |
+| `RECURRING_AUTO_POST` | No | `true` in the image | Post due recurring expenses set to pay automatically, every 15 minutes. Set `false` to stop it |
 | `UNSUBSCRIBE_SECRET` | No | | Secret for signed one-click unsubscribe links in emails |
 | `SMTP_HOST` | No | | SMTP server hostname |
 | `SMTP_PORT` | No | | SMTP port (e.g. `587`) |
