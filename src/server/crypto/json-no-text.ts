@@ -84,7 +84,7 @@ export const AUDIT_NO_TEXT_KEYS: readonly NoTextKeys[] = [
 		"roleGranted",
 		"undoOf",
 	]),
-	noText("currency codes", ["currency", "budgetCurrency", "primaryCurrency"]),
+	noText("currency codes", ["currency"], ["Currency"]),
 	noText("dates, and decimals written as text", [
 		"date",
 		"createdAt",
