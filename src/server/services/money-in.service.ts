@@ -5,7 +5,7 @@
  */
 import { stripUserTextControls } from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
-import { userTransaction } from "~/server/db-tx";
+import { inTransaction, userTransaction } from "~/server/db-tx";
 import type { Prisma, PrismaClient } from "~prisma";
 import { insertCategoriesOnce } from "./category.service";
 import { ensureUserKeyringWhenSealing } from "./keys/data-key.service";
@@ -29,7 +29,9 @@ export const INCOME_CATEGORIES = [
  * user already has (as an expense category too) is left alone, and only a
  * missing name costs the insert, which carries each name's index: the unique
  * keys on the name and on its index absorb a concurrent second insert. A
- * client (not a transaction) inserts in a user transaction of its own.
+ * client inserts in a user transaction of its own, after the user's key is
+ * made; inside a transaction the insert joins it. A transaction client has a
+ * `$transaction` member too, so the open transaction is what decides.
  */
 export async function ensureIncomeCategories(
 	db: PrismaClient | Prisma.TransactionClient,
@@ -44,10 +46,11 @@ export async function ensureIncomeCategories(
 	if (missing.length > 0) {
 		const insert = (tx: Prisma.TransactionClient) =>
 			insertCategoriesOnce(tx, userId, missing);
-		if ("$transaction" in db && typeof db.$transaction === "function") {
+		if (inTransaction()) await insert(db as Prisma.TransactionClient);
+		else {
 			await ensureUserKeyringWhenSealing(userId);
-			await userTransaction(db, userId, insert);
-		} else await insert(db);
+			await userTransaction(db as PrismaClient, userId, insert);
+		}
 		income = await db.category.findMany({ where: { userId, kind: "INCOME" } });
 	}
 	// By name, sorted here: a name may be ciphertext in the database (text-order.ts).
