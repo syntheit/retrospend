@@ -19,14 +19,8 @@
 		"src/server/services/envelope/group.service.ts"
 	],
 	"Expense.amount": ["src/server/services/amortization.service.ts"],
-	"Expense.amountInUSD": [
-		"src/server/services/amortization.service.ts",
-		"src/server/services/envelope/adjustment.ts"
-	],
-	"Expense.exchangeRate": [
-		"src/server/services/amortization.service.ts",
-		"src/server/services/envelope/adjustment.ts"
-	],
+	"Expense.amountInUSD": ["src/server/services/amortization.service.ts"],
+	"Expense.exchangeRate": ["src/server/services/amortization.service.ts"],
 	"Expense.homeAmount": ["src/server/services/amortization.service.ts"],
 	"Expense.homeRate": ["src/server/services/amortization.service.ts"],
 	"IncomeRule.value": [
