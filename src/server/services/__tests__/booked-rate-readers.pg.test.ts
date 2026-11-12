@@ -122,9 +122,9 @@ async function read({ userId, db }: Awaited<ReturnType<typeof seed>>) {
 const EXPECTED = {
 	lifetime: 41_500,
 	profileLifetime: 41_500,
-	// 41,500 over 31 / 30.436875 months is 1,263,129.0625 / 31 = 40,746.0987...,
-	// sent in whole cents: 40,746.10.
-	runwayAverage: 40_746.1,
+	// 41,500 over 31 / 30.436875 months is 41,500 x 30.436875 / 31
+	// = 1,263,130.3125 / 31 = 40,746.1391..., sent in whole cents: 40,746.14.
+	runwayAverage: 40_746.14,
 	spentApril: 31_500,
 	// A 10,000.00, B 24,000.00, C 1,000.00 in minor units; D has none.
 	listedHome: {
