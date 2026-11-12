@@ -9,7 +9,7 @@
  * `asset_account.balance` stays the current balance every Wealth reader
  * already uses; legs explain how it got there (accounts/series.ts).
  */
-import type { Decimal } from "@prisma/client/runtime/index-browser";
+import type { Decimal } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import { findExchangeRatesForDates } from "~/server/exchange-rates";
 import { Dec, dec } from "~/server/services/envelope/units";

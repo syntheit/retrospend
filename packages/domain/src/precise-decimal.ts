@@ -32,3 +32,12 @@ export function dec(value: DecimalInput): Decimal {
 export function fromFloat(n: number): Decimal {
 	return dec(Number(n.toPrecision(15)));
 }
+
+/**
+ * A decimal read as the float a client that still takes numbers can hold: 15
+ * significant digits, the inverse of fromFloat. Display only; a figure rounds
+ * to its currency first (roundedMajor) or leaves as minor units.
+ */
+export function toFloat(value: Decimal): number {
+	return Number(value.toSignificantDigits(15).toString());
+}

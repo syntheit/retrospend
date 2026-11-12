@@ -1,15 +1,18 @@
+import { isValidRate } from "@retrospend/domain/money";
 import {
-	crossRate,
-	fromUSD,
-	isValidRate,
-	toUSD,
+	convertDec,
+	crossRateDec,
+	fromUSDDec,
+	roundUSDDec,
+	toUSDDec,
 	USD,
-} from "@retrospend/domain/money";
-import { roundUSDDec, toUSDDec } from "@retrospend/domain/money-dec";
+} from "@retrospend/domain/money-dec";
+import { roundedMajor } from "@retrospend/domain/money-minor";
 import {
 	type Decimal,
 	type DecimalInput,
 	dec,
+	toFloat,
 } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import { BASE_CURRENCY } from "~/lib/constants";
@@ -251,20 +254,26 @@ export class WealthService {
 
 		const { rateOf, assetRate, snapshotRate } = dashboardRates(rateFor);
 
-		const targetRateAt = (date: Date) =>
-			rateFor(targetCurrency, date)?.rate ?? null;
+		const targetRateAt = (date: Date) => {
+			const picked = rateFor(targetCurrency, date);
+			return picked ? dec(picked.rate) : null;
+		};
 
 		const targetRate = targetRateAt(now);
-		const convertToTarget = (usdVal: number) =>
-			fromUSD(usdVal, targetCurrency, targetRate);
 
-		let weightedAPR = 0;
-		let totalLiabilityBalanceUSD = 0;
+		let weightedAPR = dec(0);
+		let totalLiabilityBalanceUSD = dec(0);
 		const missingRateCurrencies = new Set<string>();
+		// Each counted account's exact value in the target currency: the totals
+		// add these and round once; an account's own row rounds alone.
+		const counted: { liability: boolean; liquid: boolean; value: Decimal }[] =
+			[];
 
 		const assetsWithUSD = assets.map((asset) => {
-			const balance = toNumberWithDefault(asset.balance);
+			const balance = dec(asset.balance);
 			const rate = assetRate(asset, now);
+			const interestRate = toNumberOrNull(asset.interestRate);
+			const shownBalance = toNumberWithDefault(asset.balance);
 
 			if (rate === null) {
 				// Left out of every total and reported, never valued at 1:1.
@@ -274,8 +283,8 @@ export class WealthService {
 				missingRateCurrencies.add(asset.currency);
 				return {
 					...asset,
-					interestRate: toNumberOrNull(asset.interestRate),
-					balance,
+					interestRate,
+					balance: shownBalance,
 					balanceInUSD: 0,
 					balanceInTargetCurrency: 0,
 					homePerUnit: null,
@@ -283,42 +292,51 @@ export class WealthService {
 				};
 			}
 
-			const balanceInUSD = toUSD(balance, asset.currency, rate);
+			const balanceInUSD = toUSDDec(balance, asset.currency, rate);
+			const liability = asset.type.startsWith("LIABILITY_");
 
-			if (asset.type.startsWith("LIABILITY_")) {
-				totalLiabilityBalanceUSD += balanceInUSD;
-				const apr = toNumberOrNull(asset.interestRate);
-				if (apr && balanceInUSD > 0) weightedAPR += apr * balanceInUSD;
+			if (liability) {
+				totalLiabilityBalanceUSD = totalLiabilityBalanceUSD.plus(balanceInUSD);
+				if (interestRate && balanceInUSD.gt(0)) {
+					weightedAPR = weightedAPR.plus(dec(interestRate).mul(balanceInUSD));
+				}
 			}
+			const inTarget = convertDec(
+				balance,
+				asset.currency,
+				rate,
+				targetCurrency,
+				targetRate,
+			);
+			counted.push({ liability, liquid: asset.isLiquid, value: inTarget });
 
 			return {
 				...asset,
-				interestRate: toNumberOrNull(asset.interestRate),
-				balance,
-				balanceInUSD,
-				balanceInTargetCurrency:
-					asset.currency === targetCurrency
-						? balance
-						: convertToTarget(balanceInUSD),
+				interestRate,
+				balance: shownBalance,
+				balanceInUSD: roundedMajor(balanceInUSD, USD),
+				balanceInTargetCurrency: roundedMajor(inTarget, targetCurrency),
 				// One unit of the account's currency in the target: the rate the account is valued at.
 				homePerUnit:
 					asset.currency === targetCurrency
 						? 1
-						: crossRate(asset.currency, rate, targetCurrency, targetRate),
+						: toFloat(
+								crossRateDec(asset.currency, rate, targetCurrency, targetRate),
+							),
 				rateMissing: false,
 			};
 		});
 
-		if (totalLiabilityBalanceUSD > 0) {
-			weightedAPR = weightedAPR / totalLiabilityBalanceUSD;
+		if (totalLiabilityBalanceUSD.gt(0)) {
+			weightedAPR = weightedAPR.div(totalLiabilityBalanceUSD);
 		}
 
 		/** Each account's latest snapshot so far, as it was recorded. */
 		const held = new Map<string, HeldSnapshot>();
 		const hold = (snap: {
 			accountId: string;
-			balance: unknown;
-			balanceInUSD: unknown;
+			balance: DecimalInput | null;
+			balanceInUSD: DecimalInput | null;
 			currency: string | null;
 			type: AssetType | null;
 			exchangeRateType: string | null;
@@ -330,8 +348,8 @@ export class WealthService {
 			// Rows older than the snapshot columns fall back to the account.
 			const recorded = Boolean(snap.currency);
 			held.set(snap.accountId, {
-				balance: toNumberWithDefault(snap.balance),
-				balanceInUSD: toNumberWithDefault(snap.balanceInUSD),
+				balance: dec(snap.balance ?? 0),
+				balanceInUSD: dec(snap.balanceInUSD ?? 0),
 				currency: snap.currency ?? asset.currency,
 				type: snap.type ?? asset.type,
 				exchangeRateType: recorded
@@ -373,8 +391,8 @@ export class WealthService {
 			const day = endOfSnapshotDay(dateStr);
 			const dayTargetRate = targetRateAt(day);
 
-			let assetsInTarget = 0;
-			let liabilitiesInTarget = 0;
+			let assetsInTarget = dec(0);
+			let liabilitiesInTarget = dec(0);
 
 			for (const [assetId, snap] of held.entries()) {
 				const asset = assetMap.get(assetId);
@@ -389,57 +407,64 @@ export class WealthService {
 				const rate =
 					switched === undefined
 						? snapshotRate(snap, asset, day)
-						: rateOf(
-								snap.currency,
-								switched,
-								toNumberOrNull(asset.exchangeRate),
-								day,
-							);
-				const balance =
-					snap.balance + legs.onTop(assetId, snap.type, snap, dateStr);
+						: rateOf(snap.currency, switched, asset.exchangeRate, day);
+				const balance = snap.balance.plus(
+					legs.onTop(assetId, snap.type, snap, dateStr),
+				);
+				// The same rule as today's rows: one conversion into the target.
 				// No rate for the asset: the recorded USD value, with the legs on top.
-				let balInUSD: number;
-				if (rate !== null) balInUSD = toUSD(balance, snap.currency, rate);
-				else {
-					const usd = usdWithoutRate(
-						snap,
+				let value: Decimal;
+				if (rate !== null) {
+					value = convertDec(
 						balance,
-						toNumberOrNull(asset.exchangeRate),
+						snap.currency,
+						rate,
+						targetCurrency,
+						dayTargetRate,
 					);
+				} else {
+					const usd = usdWithoutRate(snap, balance, asset.exchangeRate);
 					if (usd === null) missingRateCurrencies.add(snap.currency);
-					balInUSD = usd ?? snap.balanceInUSD;
+					value = fromUSDDec(
+						usd ?? snap.balanceInUSD,
+						targetCurrency,
+						dayTargetRate,
+					);
 				}
 
-				const value =
-					snap.currency === targetCurrency && rate !== null
-						? balance
-						: fromUSD(balInUSD, targetCurrency, dayTargetRate);
-
 				if (snap.type.startsWith("LIABILITY_")) {
-					liabilitiesInTarget += value;
+					liabilitiesInTarget = liabilitiesInTarget.plus(value);
 				} else {
-					assetsInTarget += value;
+					assetsInTarget = assetsInTarget.plus(value);
 				}
 			}
 
 			history.push({
 				date: dateStr,
-				amount: assetsInTarget - liabilitiesInTarget,
-				assets: assetsInTarget,
-				liabilities: liabilitiesInTarget,
+				amount: roundedMajor(
+					assetsInTarget.minus(liabilitiesInTarget),
+					targetCurrency,
+				),
+				assets: roundedMajor(assetsInTarget, targetCurrency),
+				liabilities: roundedMajor(liabilitiesInTarget, targetCurrency),
 			});
 		}
 
-		const sumTarget = (pick: (a: (typeof assetsWithUSD)[number]) => boolean) =>
-			assetsWithUSD
-				.filter((a) => !a.rateMissing && pick(a))
-				.reduce((total, a) => total + a.balanceInTargetCurrency, 0);
-		const totalAssets = sumTarget((a) => !a.type.startsWith("LIABILITY_"));
-		const totalLiabilities = sumTarget((a) => a.type.startsWith("LIABILITY_"));
-		const totalLiquidAssets = sumTarget(
-			(a) => !a.type.startsWith("LIABILITY_") && a.isLiquid,
+		// Added exact and rounded once, like the registered netWorth figure.
+		const sumTarget = (pick: (a: (typeof counted)[number]) => boolean) =>
+			counted.filter(pick).reduce((sum, a) => sum.plus(a.value), dec(0));
+		const assetsExact = sumTarget((a) => !a.liability);
+		const liabilitiesExact = sumTarget((a) => a.liability);
+		const totalAssets = roundedMajor(assetsExact, targetCurrency);
+		const totalLiabilities = roundedMajor(liabilitiesExact, targetCurrency);
+		const totalLiquidAssets = roundedMajor(
+			sumTarget((a) => !a.liability && a.liquid),
+			targetCurrency,
 		);
-		const totalNetWorth = totalAssets - totalLiabilities;
+		const totalNetWorth = roundedMajor(
+			assetsExact.minus(liabilitiesExact),
+			targetCurrency,
+		);
 
 		const todayStr = today.toISOString().split("T")[0] ?? "";
 		const lastEntry = history[history.length - 1];
@@ -476,7 +501,7 @@ export class WealthService {
 			totalAssets,
 			totalLiabilities,
 			totalLiquidAssets,
-			weightedAPR,
+			weightedAPR: toFloat(weightedAPR),
 			assets: assetsWithUSD,
 			history,
 			currency: targetCurrency,

@@ -23,8 +23,8 @@ import {
 	toUSDDec,
 	usdPerUnitDec,
 } from "./money-dec";
-import { roundedMinor } from "./money-minor";
-import { dec, fromFloat } from "./precise-decimal";
+import { roundedMajor, roundedMinor } from "./money-minor";
+import { dec, fromFloat, toFloat } from "./precise-decimal";
 
 const fixed = (d: { toFixed(): string }) => d.toFixed();
 
@@ -255,6 +255,23 @@ describe("the number edge", () => {
 		expect(roundedMinor("0.000000025", "BTC")).toBe(2); // 2.5 sat, 2 even
 		expect(roundedMinor("1257.5", "JPY")).toBe(1258);
 		expect(roundedMinor("-1.2345", "KWD")).toBe(-1234);
+	});
+
+	it("roundedMajor rounds half to even once, and never reads -0", () => {
+		expect(roundedMajor("1.545", "ARS")).toBe(1.54); // 154.5 cents, 154 even
+		expect(roundedMajor("4.635", "ARS")).toBe(4.64); // 463.5 cents, 464 even
+		expect(roundedMajor("-1.545", "ARS")).toBe(-1.54);
+		expect(Object.is(roundedMajor("-0.004", "USD"), 0)).toBe(true);
+		expect(roundedMajor("1257.5", "JPY")).toBe(1258);
+		expect(roundedMajor("0.016666666666", "BTC")).toBe(0.01666667);
+		// A 14 digit result survives the float; .345 is a tie, 4 even.
+		expect(roundedMajor("123456789012.345", "USD")).toBe(123456789012.34);
+	});
+
+	it("toFloat keeps 15 significant digits and no float noise", () => {
+		expect(toFloat(dec("0.1").plus("0.2"))).toBe(0.3);
+		expect(toFloat(dec("1544.9999999999999999"))).toBe(1545);
+		expect(toFloat(dec("10.3"))).toBe(10.3);
 	});
 
 	it("number wrappers follow the same rule", () => {

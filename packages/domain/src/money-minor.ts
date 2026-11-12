@@ -8,7 +8,7 @@
 import { currencyDecimals } from "./currency-decimals";
 import { isPrismaDecimal, type PrismaDecimal } from "./decimal";
 import { roundMoneyDec } from "./money-dec";
-import { type DecimalInput, fromFloat } from "./precise-decimal";
+import { type DecimalInput, fromFloat, toFloat } from "./precise-decimal";
 
 export interface Money {
 	/** Integer minor units, within Number.MAX_SAFE_INTEGER. */
@@ -103,6 +103,15 @@ function numberToMinor(amount: number, currency: string): number {
  */
 export function roundedMinor(value: DecimalInput, currency: string): number {
 	return toMinor(roundMoneyDec(value, currency).toFixed(), currency);
+}
+
+/**
+ * Major units as a number for a response that still carries one (the Wealth
+ * dashboard): rounded half to even to the currency's precision, once, so the
+ * client's minor units are the ones roundedMinor gives.
+ */
+export function roundedMajor(value: DecimalInput, currency: string): number {
+	return toFloat(roundMoneyDec(value, currency));
 }
 
 const DECIMAL_TEXT = /^([+-]?)(\d*)(?:\.(\d*))?(?:e([+-]?\d+))?$/i;

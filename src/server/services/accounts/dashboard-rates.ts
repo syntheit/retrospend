@@ -1,11 +1,15 @@
 /**
  * The rates the Wealth dashboard (wealth.service.ts) values accounts and
- * snapshots with, moved out of getDashboardSummary unchanged. Legacy float
- * rates in the stored convention (fiat per USD, USD per coin); the new
- * figures use accounts/valuation.ts, which follows the same rule in Decimal.
+ * snapshots with, in the stored convention (fiat per USD, USD per coin) as
+ * exact Decimals; the new figures use accounts/valuation.ts, which follows
+ * the same rule. A rate that is missing, zero or negative is null, never 1.
  */
-import { isValidRate, toUSD, USD } from "@retrospend/domain/money";
-import { toNumberOrNull } from "~/lib/utils";
+import { toUSDDec, USD } from "@retrospend/domain/money-dec";
+import {
+	type Decimal,
+	type DecimalInput,
+	dec,
+} from "@retrospend/domain/precise-decimal";
 import type { AssetType } from "~prisma";
 import { CUSTOM_RATE_TYPE, type RatePick } from "./valuation";
 
@@ -18,8 +22,8 @@ export interface SnapshotMeta {
 
 /** An account's latest snapshot while history is rebuilt, as recorded. */
 export interface HeldSnapshot extends SnapshotMeta {
-	balance: number;
-	balanceInUSD: number;
+	balance: Decimal;
+	balanceInUSD: Decimal;
 	date: Date;
 	recordedAt: Date;
 }
@@ -27,7 +31,16 @@ export interface HeldSnapshot extends SnapshotMeta {
 interface RatedAsset {
 	currency: string;
 	exchangeRateType: string | null;
-	exchangeRate: { toString(): string } | null;
+	exchangeRate: DecimalInput | null;
+}
+
+/** A stored rate as a Decimal when it is finite and above zero, else null. */
+export function usableRate(
+	rate: DecimalInput | null | undefined,
+): Decimal | null {
+	if (rate === null || rate === undefined) return null;
+	const r = dec(rate);
+	return r.isFinite() && r.gt(0) ? r : null;
 }
 
 export function dashboardRates(rateFor: RatePick) {
@@ -39,26 +52,20 @@ export function dashboardRates(rateFor: RatePick) {
 	const rateOf = (
 		currency: string,
 		rateType: string | null,
-		stored: number | null,
+		stored: DecimalInput | null,
 		date: Date,
-	) => {
-		if (currency === USD) return 1;
-		if (rateType === CUSTOM_RATE_TYPE && isValidRate(stored)) {
-			return stored;
-		}
+	): Decimal | null => {
+		if (currency === USD) return dec(1);
+		const own = usableRate(stored);
+		if (rateType === CUSTOM_RATE_TYPE && own) return own;
 		const picked = rateFor(currency, date, rateType);
-		if (picked) return picked.rate;
-		return isValidRate(stored) ? stored : null;
+		if (picked) return dec(picked.rate);
+		return own;
 	};
 
 	/** The rate that values `asset` on `date`, with its own stored rate. */
 	const assetRate = (asset: RatedAsset, date: Date) =>
-		rateOf(
-			asset.currency,
-			asset.exchangeRateType,
-			toNumberOrNull(asset.exchangeRate),
-			date,
-		);
+		rateOf(asset.currency, asset.exchangeRateType, asset.exchangeRate, date);
 
 	/**
 	 * The rate that values a snapshot on `date`. A snapshot taken when the
@@ -66,14 +73,18 @@ export function dashboardRates(rateFor: RatePick) {
 	 * account's current one. A custom rate typed back then only survives
 	 * in the recorded USD value, so that case returns null.
 	 */
-	const snapshotRate = (snap: HeldSnapshot, asset: RatedAsset, date: Date) => {
+	const snapshotRate = (
+		snap: HeldSnapshot,
+		asset: RatedAsset,
+		date: Date,
+	): Decimal | null => {
 		if (
 			snap.currency === asset.currency &&
 			snap.exchangeRateType === asset.exchangeRateType
 		) {
 			return assetRate(asset, date);
 		}
-		if (snap.currency === USD) return 1;
+		if (snap.currency === USD) return dec(1);
 		if (snap.exchangeRateType === CUSTOM_RATE_TYPE) return null;
 		return rateOf(snap.currency, snap.exchangeRateType, null, date);
 	};
@@ -90,11 +101,13 @@ export function dashboardRates(rateFor: RatePick) {
  */
 export function usdWithoutRate(
 	snap: HeldSnapshot,
-	balance: number,
-	storedRate: number | null,
-): number | null {
-	if (balance === snap.balance) return snap.balanceInUSD;
-	if (snap.balance !== 0) return (snap.balanceInUSD * balance) / snap.balance;
-	if (isValidRate(storedRate)) return toUSD(balance, snap.currency, storedRate);
-	return null;
+	balance: Decimal,
+	storedRate: DecimalInput | null,
+): Decimal | null {
+	if (balance.eq(snap.balance)) return snap.balanceInUSD;
+	if (!snap.balance.isZero()) {
+		return snap.balanceInUSD.mul(balance).div(snap.balance);
+	}
+	const stored = usableRate(storedRate);
+	return stored ? toUSDDec(balance, snap.currency, stored) : null;
 }
