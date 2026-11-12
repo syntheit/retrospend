@@ -19,7 +19,7 @@ import { randomBytes } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { insideTransaction, verbatim } from "../db-tx";
 import { KeystoreError } from "../services/keys/keystore-errors";
-import { resetEpochForTests, setEpochReader } from "./epoch";
+import { loadEpoch, resetEpochForTests, setEpochReader } from "./epoch";
 import {
 	type FieldAad,
 	FieldCryptoError,
@@ -648,24 +648,29 @@ describe("refusals", () => {
 				).toBe("filter_on_sealed");
 		});
 
-		it("look only at the cached epoch inside a transaction", async () => {
-			const read = vi.fn(async () => true);
+		it("look only at the cached epoch inside a transaction, an unknown one counting as set", async () => {
+			let set = false;
+			const read = vi.fn(async () => set);
 			setEpochReader(read);
 			const query = vi.fn(async () => []);
-			await insideTransaction(() =>
-				handle({
-					model: "Expense",
-					operation: "findMany",
-					args: filter,
-					query,
-				}),
-			);
+			const inTransaction = () =>
+				insideTransaction(() =>
+					handle({
+						model: "Expense",
+						operation: "findMany",
+						args: filter,
+						query,
+					}),
+				);
+			await expect(inTransaction()).rejects.toMatchObject({
+				code: "filter_on_sealed",
+			});
 			expect(read).not.toHaveBeenCalled();
-			expect(query).toHaveBeenCalled();
-			// Outside one, a hit loads it.
-			expect(
-				((await refused("findMany", filter)) as FieldCryptoError).code,
-			).toBe("filter_on_sealed");
+			// Loaded outside as not set: the transaction keeps that answer.
+			expect(await loadEpoch()).toBe(false);
+			set = true;
+			await inTransaction();
+			expect(query).toHaveBeenCalledTimes(1);
 			expect(read).toHaveBeenCalledTimes(1);
 		});
 	});

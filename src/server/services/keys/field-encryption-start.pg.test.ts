@@ -87,7 +87,7 @@ describe("with DATA_KEYS_WRITE off", () => {
 			expect(await start(tx, { flag: false, production: true })).toBe("off");
 			expect(await epochOf(tx)).toBeNull();
 		});
-		expect(epochActiveNow()).toBe(false);
+		expect(await loadEpoch()).toBe(false);
 	});
 });
 

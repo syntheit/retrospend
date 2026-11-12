@@ -8,11 +8,17 @@
  *
  * One cache per process, shared by every client. A set epoch is kept forever,
  * since it is never cleared; "not set" for 30 seconds, so a replica sees
- * another's first start soon. It loads with the keys (`TextKeys.ready()`),
- * outside transactions; inside one only the cached answer is used, since a
- * query there would take a second pool connection while the transaction
- * holds one. The reader is injected (db.ts), so this file never touches the
- * database.
+ * another's first start soon. So every process reads the column at most once
+ * per 30 seconds until it is set, whatever its own flag. It loads with the
+ * keys (`TextKeys.ready()`), outside transactions; inside one only the cached
+ * answer is used, since a query there would take a second pool connection
+ * while the transaction holds one. The reader is injected (db.ts), so this
+ * file never touches the database.
+ *
+ * An unknown epoch counts as set (fail closed): a read that failed is never
+ * cached as an answer, and until one succeeds, filters on mapped columns are
+ * refused and searches read in the app, so none can quietly miss a sealed
+ * row. The same holds inside a transaction whose client never loaded it.
  */
 import { inTransaction } from "~/server/db-tx";
 
@@ -22,20 +28,29 @@ export type EpochReader = () => Promise<boolean>;
 export const NOT_SET_TTL_MS = 30_000;
 
 let reader: EpochReader | undefined;
+/** The last successful read. */
 let known: { set: true } | { set: false; until: number } | undefined;
+/** The last read failed; cleared by the next one that succeeds. */
+let failed = false;
 let loading: Promise<boolean> | undefined;
 
-/** db.ts wires the database read once, at start. */
-export function setEpochReader(read: EpochReader): void {
+/** db.ts wires the database read once, at start; a test may unwire it. */
+export function setEpochReader(read: EpochReader | undefined): void {
 	reader = read;
 }
 
-/** The cached answer, without a query: false until a load has seen the epoch. */
-export const epochActiveNow = (): boolean => known?.set === true;
+/**
+ * The cached answer, without a query: true when the epoch is set or unknown
+ * (a read failed, or none ran yet). With no reader wired (a unit test, no
+ * database) nothing can be sealed, so it is false.
+ */
+export const epochActiveNow = (): boolean =>
+	known?.set === true ||
+	(reader !== undefined && (failed || known === undefined));
 
 /**
- * Whether the epoch is set, from the cache when it is fresh. Never throws:
- * an unreadable column is logged and read as not set.
+ * The answer `epochActiveNow` gives once a stale cache has been read again.
+ * Never throws: a failed read is logged and leaves the epoch unknown (true).
  * Inside a transaction, and with no reader wired, it answers from the cache.
  */
 export function loadEpoch(): Promise<boolean> {
@@ -43,19 +58,24 @@ export function loadEpoch(): Promise<boolean> {
 	if (fresh || !reader || inTransaction())
 		return Promise.resolve(epochActiveNow());
 	loading ??= reader()
-		.catch((error: unknown) => {
-			// The error's kind only: a message can carry query text.
-			console.error("Field encryption epoch read failed", {
-				error: error instanceof Error ? error.name : typeof error,
-			});
-			return false;
-		})
-		.then((set) => {
-			// A set epoch is never cleared, so a slow "not set" cannot undo one.
-			if (!epochActiveNow())
-				known = set
-					? { set: true }
-					: { set: false, until: Date.now() + NOT_SET_TTL_MS };
+		.then(
+			(set) => {
+				// A set epoch is never cleared, so a slow "not set" cannot undo one.
+				if (known?.set !== true)
+					known = set
+						? { set: true }
+						: { set: false, until: Date.now() + NOT_SET_TTL_MS };
+				failed = false;
+			},
+			(error: unknown) => {
+				// The error's kind only: a message can carry query text.
+				console.error("Field encryption epoch read failed", {
+					error: error instanceof Error ? error.name : typeof error,
+				});
+				failed = true;
+			},
+		)
+		.then(() => {
 			loading = undefined;
 			return epochActiveNow();
 		});
@@ -70,5 +90,6 @@ export function markEpochActive(): void {
 /** Test hook: forget the cache, or set it. */
 export function resetEpochForTests(set?: true): void {
 	known = set ? { set } : undefined;
+	failed = false;
 	loading = undefined;
 }

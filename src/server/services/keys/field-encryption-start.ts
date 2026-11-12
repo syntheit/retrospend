@@ -2,7 +2,8 @@
  * The start-up check for DATA_KEYS_WRITE and the field encryption epoch
  * (E2EE D11 PR 4.3, docs/roadmap/e2ee-d11-pr4.md section 3, owner answer 1).
  * instrumentation.ts runs it after the master key canary and before any
- * worker. With the flag off it does nothing: no query, no write.
+ * worker. With the flag off this check runs no query and writes nothing
+ * (every process still reads the epoch with its keys, epoch.ts).
  *
  * With the flag on, a server that could not seal or could store a broken
  * index stops here with an error that says what to fix, instead of failing

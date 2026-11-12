@@ -18,6 +18,7 @@ import {
 import { userTransaction } from "~/server/db-tx";
 import { readFieldEncryptionEpoch } from "~/server/services/keys/field-encryption-start";
 import { adminDb, createTestUser } from "~/test/pg-harness";
+import { failNextEpochRead } from "~/test/sealed-fixture";
 
 type Who = Awaited<ReturnType<typeof createTestUser>>;
 let me: Who;
@@ -155,6 +156,21 @@ describe("once the epoch exists", () => {
 		expect(rows).toEqual([{ title: "Rent", category: { name: "Food" } }]);
 	});
 
+	it("refuses while the epoch cannot be read, and after", async () => {
+		resetEpochForTests();
+		failNextEpochRead();
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		try {
+			for (let i = 0; i < 2; i++)
+				await expect(
+					me.db.expense.findMany({ where: { title: "Rent" } }),
+				).rejects.toMatchObject({ code: "filter_on_sealed" });
+		} finally {
+			vi.restoreAllMocks();
+			setEpochReader(() => readFieldEncryptionEpoch());
+		}
+	});
+
 	it("inside a transaction uses only the epoch its client loaded before it opened", async () => {
 		const read = vi.fn(() => readFieldEncryptionEpoch());
 		setEpochReader(read);
@@ -166,9 +182,12 @@ describe("once the epoch exists", () => {
 				await expect(
 					tx.expense.findMany({ where: { title: "Rent" } }),
 				).rejects.toMatchObject({ code: "filter_on_sealed" });
-				// A cache forgotten mid-transaction is not reloaded there.
+				// A cache forgotten mid-transaction is not reloaded there, and
+				// an unknown epoch counts as set.
 				resetEpochForTests();
-				expect(await tx.expense.count({ where: { title: "Rent" } })).toBe(1);
+				await expect(
+					tx.expense.count({ where: { title: "Rent" } }),
+				).rejects.toMatchObject({ code: "filter_on_sealed" });
 				expect(read.mock.calls.length).toBe(loaded);
 			});
 		} finally {
