@@ -5,7 +5,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { runtimeDataModel } from "~/server/db-core";
 import { readSchema } from "~/test/prisma-schema";
-import { fieldsOfModel } from "./fields";
+import { fieldsOfModel, jsonCellsOfModel } from "./fields";
 import { buildModelGraph } from "./model-graph";
 
 // db-core builds the real client at load; it never connects here.
@@ -50,6 +50,7 @@ describe("the model graph", () => {
 		const isolated = schema.filter(
 			(m) =>
 				fieldsOfModel(m.name) === undefined &&
+				jsonCellsOfModel(m.name) === undefined &&
 				!m.fields.some((f) => modelNames.has(f.type)),
 		);
 		expect(isolated.length).toBeGreaterThan(0);
