@@ -10,7 +10,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import { addMonths } from "./calendar";
 import { budgetMonthOf, isoDateIn } from "./months";
@@ -50,7 +50,7 @@ async function seedThreeYears() {
 
 	const cats = await Promise.all(
 		Array.from({ length: ENVELOPES - 1 }, (_, i) =>
-			adminDb.category.create({
+			fixtureDb.category.create({
 				data: { name: `Perf ${i}`, color: "blue", userId: user.id },
 			}),
 		),
@@ -132,8 +132,8 @@ async function seedThreeYears() {
 		),
 	);
 	for (let i = 0; i < spending.length; i += 1_000)
-		await adminDb.expense.createMany({ data: spending.slice(i, i + 1_000) });
-	await adminDb.expense.createMany({
+		await fixtureDb.expense.createMany({ data: spending.slice(i, i + 1_000) });
+	await fixtureDb.expense.createMany({
 		data: months.map((m, i) => ({
 			...row(m, 5, 2_400_000, false, i),
 			categoryId: null,

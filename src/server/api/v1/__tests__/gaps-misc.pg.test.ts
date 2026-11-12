@@ -21,6 +21,7 @@ import {
 	call,
 	expectBody,
 	expectProblem,
+	fixtureDb,
 } from "../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -345,11 +346,15 @@ describe("gap-closing reads and small writes", () => {
 			const id = income.income.id;
 			const counted = async () =>
 				(
-					await adminDb.assetAccount.findUniqueOrThrow({ where: { id: wise } })
+					await fixtureDb.assetAccount.findUniqueOrThrow({
+						where: { id: wise },
+					})
 				).countedUnits.toString();
 			const balance = async () =>
 				(
-					await adminDb.assetAccount.findUniqueOrThrow({ where: { id: wise } })
+					await fixtureDb.assetAccount.findUniqueOrThrow({
+						where: { id: wise },
+					})
 				).balance.toString();
 			const before = await balance();
 
@@ -419,8 +424,11 @@ describe("gap-closing reads and small writes", () => {
 				units: "100",
 			};
 			const before = Number(
-				(await adminDb.assetAccount.findUniqueOrThrow({ where: { id: wise } }))
-					.countedUnits,
+				(
+					await fixtureDb.assetAccount.findUniqueOrThrow({
+						where: { id: wise },
+					})
+				).countedUnits,
 			);
 			await expectBody(
 				await send("POST", "/income/move-in", as, move),
@@ -430,7 +438,7 @@ describe("gap-closing reads and small writes", () => {
 			expect(
 				Number(
 					(
-						await adminDb.assetAccount.findUniqueOrThrow({
+						await fixtureDb.assetAccount.findUniqueOrThrow({
 							where: { id: wise },
 						})
 					).countedUnits,

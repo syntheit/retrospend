@@ -32,7 +32,7 @@ import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { readFigures } from "~/server/figures/read";
 import { forUser } from "~/server/services/preview";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import {
 	addRow,
@@ -135,13 +135,13 @@ describe("style switching (SPEC §4.4)", () => {
 			haveNowMinor: 100_000,
 			leftovers: "STYLE_DEFAULT" as const,
 		};
-		const before = await adminDb.expense.count({
+		const before = await fixtureDb.expense.count({
 			where: { userId: s.user.id },
 		});
 		const p = await forUser(s.user.id).preview(setStyleMutation, input);
 		expect(p.value.adjustment?.amount).toEqual(usd(100_000));
 		await expect(
-			adminDb.expense.count({ where: { userId: s.user.id } }),
+			fixtureDb.expense.count({ where: { userId: s.user.id } }),
 		).resolves.toBe(before);
 		const r = await forUser(s.user.id).apply(setStyleMutation, input);
 		expect(r.value).toMatchObject({ style: "FLEX", fundingSource: "INCOME" });
@@ -214,7 +214,7 @@ describe("S26 Welcome back after four months away", () => {
 			where: { bookId: s.book.id },
 			data: { fromMonth: start },
 		});
-		await adminDb.expense.update({
+		await fixtureDb.expense.update({
 			where: { id: s.book.startingBalanceExpenseId as string },
 			data: { date: day(start, 1) },
 		});
@@ -334,7 +334,7 @@ describe("figure budget.holds", () => {
 			type: "CASH" | "LIABILITY_CREDIT_CARD" | "INVESTMENT",
 			balance: string,
 		) =>
-			adminDb.assetAccount.create({
+			fixtureDb.assetAccount.create({
 				data: {
 					userId: s.user.id,
 					name,

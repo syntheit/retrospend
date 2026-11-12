@@ -1,0 +1,6 @@
+{
+	"src/server/services/__tests__/money-in-leak.pg.test.ts": {
+		"column": "expense.title",
+		"reason": "Copies the Go sidecar's recurring insert, which stores the template name as a plaintext title until PR 6 posts through the app"
+	}
+}

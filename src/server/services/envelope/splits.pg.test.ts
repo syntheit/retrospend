@@ -1,8 +1,9 @@
 /**
  * Splits in the envelope budget on a real Postgres (P3), through RLS:
  * fronting and repayment (S5), the participant's own share category (D19)
- * with its smart default stored on read, project routing (D31), forgive
- * (C14) with preview, undo and retries, the budget's owed matching People
+ * with its smart default stored on read (never from the creator's category
+ * name), project routing (D31), forgive (C14) with preview, undo and
+ * retries, the budget's owed matching People
  * for FINALIZED-only settlements, Use my plan's rest, the held figure and
  * the splits_budget migration applied twice. USD book, so values need no
  * rate. Amounts are minor units.
@@ -17,7 +18,7 @@ import { deleteSharedExpense } from "~/server/services/entry/shared.mutation";
 import { applyPlanFor, undoPlan } from "~/server/services/income/plan-seam";
 import { forUser } from "~/server/services/preview";
 import { computeBalance } from "~/server/services/shared-expenses/balance";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 import { Prisma } from "~prisma";
 import { seedUser, setupInput } from "./__tests__/pg-fixture";
@@ -207,7 +208,7 @@ describe("splits in the envelope budget on Postgres", () => {
 	});
 
 	it("D19 a share in Sam's category is unresolved until you pick; preview writes nothing, undo puts it back", async () => {
-		const food = await adminDb.category.create({
+		const food = await fixtureDb.category.create({
 			data: { name: "Food", color: "red", userId: sam.id },
 		});
 		const t = await split({
@@ -253,7 +254,7 @@ describe("splits in the envelope budget on Postgres", () => {
 	});
 
 	it("D19 refuses someone else's category and a split you are not on", async () => {
-		const theirs = await adminDb.category.create({
+		const theirs = await fixtureDb.category.create({
 			data: { name: "Theirs", color: "red", userId: sam.id },
 		});
 		const t = await split({
@@ -286,29 +287,33 @@ describe("splits in the envelope budget on Postgres", () => {
 		await adminDb.sharedTransaction.delete({ where: { id: t.id } });
 	});
 
-	it("D19 the smart default (a category of the same name, in a shared project) is stored on read", async () => {
-		const dining = await adminDb.category.create({
-			data: { name: "dining", color: "red", userId: sam.id },
+	it("D19 Sam's category with your Rent's name never matches; the smart default is your last pick for what Sam paid, stored on read", async () => {
+		const rent = await fixtureDb.category.create({
+			data: { name: "rent", color: "red", userId: sam.id },
 		});
+		const before = await getMonth(me.user.id);
 		const t = await split({
 			paidBy: samP,
 			createdBy: samP,
 			amount: 10,
-			categoryId: dining.id,
+			categoryId: rent.id,
 			projectId: project,
 			shares: [
 				[samP, 5],
 				[meP, 5],
 			],
 		});
+		// The Food share Sam paid was placed in Dining (above), so PERSON
+		// picks Dining: -50 - 5 = -55; Rent is untouched.
 		const m = await getMonth(me.user.id);
 		expect(rowLeft(m, "Dining")).toBe(-5_500);
+		expect(rowLeft(m, "Rent")).toBe(rowLeft(before, "Rent"));
 		const row = await adminDb.splitParticipant.findFirst({
 			where: { transactionId: t.id, participantId: me.user.id },
 		});
 		expect(row).toMatchObject({
 			categoryId: me.dining,
-			categorySource: "NAME_MATCH",
+			categorySource: "PERSON",
 		});
 	});
 

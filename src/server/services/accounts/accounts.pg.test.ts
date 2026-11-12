@@ -8,7 +8,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { createCallerFactory } from "~/server/api/trpc";
 import { forUser } from "~/server/services/preview";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
 import { wealthRouter } from "../../api/routers/wealth";
 import { defaultAccounts, setDefaultAccount } from "./defaults";
@@ -37,7 +37,7 @@ describe("account.updateBalance", () => {
 		const id = await openAccount(user.id, "Savings", "CASH", "ARS", 1_000_000, {
 			exchangeRateType: "official",
 		});
-		await adminDb.assetAccount.update({
+		await fixtureDb.assetAccount.update({
 			where: { id },
 			data: { exchangeRate: 900 },
 		});
@@ -47,7 +47,7 @@ describe("account.updateBalance", () => {
 			balance: "1412000",
 		});
 
-		const account = await adminDb.assetAccount.findUniqueOrThrow({
+		const account = await fixtureDb.assetAccount.findUniqueOrThrow({
 			where: { id },
 		});
 		expect(account.exchangeRate?.toString()).toBe("1412");
@@ -235,7 +235,7 @@ describe("account.setRateType (D3)", () => {
 		});
 
 		expect(
-			(await adminDb.assetAccount.findUniqueOrThrow({ where: { id: wise } }))
+			(await fixtureDb.assetAccount.findUniqueOrThrow({ where: { id: wise } }))
 				.exchangeRateType,
 		).toBe("official");
 		expect(await figureMinor(user.id, "netWorth")).toBe(before);
@@ -287,7 +287,7 @@ describe("account set-up", () => {
 			inBudget: false,
 		});
 
-		const account = await adminDb.assetAccount.findUniqueOrThrow({
+		const account = await fixtureDb.assetAccount.findUniqueOrThrow({
 			where: { id },
 		});
 		expect(account).toMatchObject({ name: "Wallet", inBudget: false });

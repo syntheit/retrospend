@@ -7,7 +7,8 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { ImportQueueService } from "~/server/services/import-queue.service";
 import { forUser } from "~/server/services/preview";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { createUserScopedDb } from "~/server/db";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import type { Prisma } from "~prisma";
 import { isoDay, seedArsRates, TODAY } from "../accounts/test-fixtures";
 import { commitImport } from "./commit.mutation";
@@ -30,7 +31,7 @@ async function officialUser() {
 
 /** Reads `csv` the way the queue does, start to READY_FOR_REVIEW. */
 async function readCsv(userId: string, csv: string) {
-	const job = await adminDb.importJob.create({
+	const job = await fixtureDb.importJob.create({
 		data: {
 			userId,
 			status: "QUEUED",
@@ -41,8 +42,8 @@ async function readCsv(userId: string, csv: string) {
 			fileData: Buffer.from(csv).toString("base64"),
 		},
 	});
-	await new ImportQueueService(adminDb).processQueue(userId);
-	const read = await adminDb.importJob.findUniqueOrThrow({
+	await new ImportQueueService(createUserScopedDb(userId)).processQueue(userId);
+	const read = await fixtureDb.importJob.findUniqueOrThrow({
 		where: { id: job.id },
 	});
 	expect(read.status).toBe("READY_FOR_REVIEW");
@@ -69,7 +70,11 @@ describe("import through the CSV reader", () => {
 				",Sin fecha,100,ARS",
 			].join("\n"),
 		);
-		const review = await importReview(adminDb, userId, jobId);
+		const review = await importReview(
+			createUserScopedDb(userId),
+			userId,
+			jobId,
+		);
 		// ARS 14,120 at Official 1,412 = USD 10.00 (Blue would give 9.62).
 		expect(review.rows[0]).toMatchObject({
 			amount: { minor: 1_412_000, currency: "ARS" },
@@ -93,7 +98,7 @@ describe("import through the CSV reader", () => {
 			unreadable: 1,
 			noRate: 1,
 		});
-		const row = await adminDb.expense.findFirstOrThrow({
+		const row = await fixtureDb.expense.findFirstOrThrow({
 			where: { userId, title: "Cafe" },
 		});
 		expect(row.rateType).toBe("official");
@@ -127,7 +132,7 @@ describe("import.commit races", () => {
 			"already imported",
 		);
 		expect(
-			await adminDb.expense.count({
+			await fixtureDb.expense.count({
 				where: { userId, pricingSource: "IMPORT" },
 			}),
 		).toBe(2);
@@ -151,7 +156,7 @@ describe("a 5,000-row statement", () => {
 			pricingSource: "IMPORT",
 			category: "",
 		}));
-		const job = await adminDb.importJob.create({
+		const job = await fixtureDb.importJob.create({
 			data: {
 				userId: user.id,
 				status: "READY_FOR_REVIEW",

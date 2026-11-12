@@ -15,7 +15,7 @@
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import { readFigures } from "~/server/figures/read";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 
 const hrk = (minor: number) => ({ minor, currency: "HRK" });
 
@@ -64,7 +64,7 @@ beforeAll(async () => {
 		autoPay: false,
 		...extra,
 	});
-	await adminDb.recurringTemplate.createMany({
+	await fixtureDb.recurringTemplate.createMany({
 		data: [
 			t("rf_gym", "Gym", "620", "HRK", "MONTHLY"),
 			t("rf_netflix", "Netflix", "12.99", "USD", "MONTHLY"),

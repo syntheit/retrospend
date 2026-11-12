@@ -19,7 +19,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { SetupInput } from "~/lib/schemas/envelope";
 import { readFigures } from "~/server/figures/read";
 import { forUser } from "~/server/services/preview";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { addRow, invariantAt, seedUser } from "./__tests__/pg-fixture";
 import { revertLimitMutation, setLimitMutation } from "./book.mutation";
 import { addMonths } from "./calendar";
@@ -192,7 +192,7 @@ describe("A2 a Limits user on Postgres", () => {
 			startingMoneyMinor: 0,
 			timeZone: "UTC",
 		});
-		const env = await adminDb.envelope.findFirstOrThrow({
+		const env = await fixtureDb.envelope.findFirstOrThrow({
 			where: { book: { createdById: other.user.id }, name: "Dining" },
 		});
 		await expect(
@@ -213,7 +213,7 @@ describe("From now on and its undo put the target back exactly (findings 4 and 6
 			...limitsInput(s),
 			timeZone: "UTC",
 		});
-		const env = await adminDb.envelope.findFirstOrThrow({
+		const env = await fixtureDb.envelope.findFirstOrThrow({
 			where: { book: { createdById: s.user.id }, name: "Dining" },
 		});
 		return { s, env };

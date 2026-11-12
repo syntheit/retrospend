@@ -50,7 +50,7 @@ import type {
 import { beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { findExchangeRate } from "~/server/exchange-rates";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import { loadSpendPace, loadSpendPaceInputs } from "./spend-pace";
 
@@ -75,7 +75,7 @@ type Exp = {
 };
 
 async function addExpense(userId: string, e: Exp) {
-	await adminDb.expense.create({
+	await fixtureDb.expense.create({
 		data: {
 			id: randomUUID(),
 			userId,
@@ -142,7 +142,7 @@ async function addShare(
 /** The device loader's input: every row of the person, read raw, with nothing filtered. */
 async function rawRows(userId: string) {
 	const expenses = (
-		await adminDb.expense.findMany({
+		await fixtureDb.expense.findMany({
 			where: { userId },
 			include: { category: { select: { kind: true } } },
 		})
@@ -281,10 +281,10 @@ beforeAll(async () => {
 
 	ana = await seedUser("ARS", BA);
 	const { user: bob } = await createTestUser();
-	const groceries = await adminDb.category.create({
+	const groceries = await fixtureDb.category.create({
 		data: { name: "Groceries", color: "emerald", userId: ana.id },
 	});
-	const salary = await adminDb.category.create({
+	const salary = await fixtureDb.category.create({
 		data: { name: "Salary", color: "blue", userId: ana.id, kind: "INCOME" },
 	});
 	const own = (e: Exp) => addExpense(ana.id, e);

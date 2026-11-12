@@ -20,7 +20,7 @@ import { setSealingForTests } from "~/server/crypto/sealing";
 import { resetReloadsForTests } from "~/server/crypto/text-keys";
 import { createUserScopedDb } from "~/server/db";
 import { forUser } from "~/server/services/preview";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import {
 	sealedFile,
 	storedValue,
@@ -128,7 +128,9 @@ describe("copies between rows", () => {
 		const gone = await forUser(me).apply(deleteExpenseEntry, {
 			id: created.id,
 		});
-		expect(await adminDb.expense.count({ where: { id: created.id } })).toBe(0);
+		expect(await fixtureDb.expense.count({ where: { id: created.id } })).toBe(
+			0,
+		);
 		const back = await forUser(me).apply(restoreExpenseEntry, {
 			token: gone.value.restore,
 		});

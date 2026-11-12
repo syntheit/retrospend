@@ -13,7 +13,7 @@ import {
 	listLatestRates,
 } from "~/server/services/exchange-rate.service";
 import { ExpenseService } from "~/server/services/expense.service";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 
 describe("a user-scoped client", () => {
 	it("still runs a transaction callback, with model calls", async () => {
@@ -42,13 +42,13 @@ describe("getFilterOptions", () => {
 	it("returns the user's years newest first and their categories by name, no one else's", async () => {
 		const me = await createTestUser();
 		const other = await createTestUser();
-		const food = await adminDb.category.create({
+		const food = await fixtureDb.category.create({
 			data: { name: "Food", color: "blue", userId: me.user.id },
 		});
-		const bills = await adminDb.category.create({
+		const bills = await fixtureDb.category.create({
 			data: { name: "Bills", color: "pink", userId: me.user.id },
 		});
-		await adminDb.category.create({
+		await fixtureDb.category.create({
 			data: { name: "Theirs", color: "red", userId: other.user.id },
 		});
 		const expense = (userId: string, date: string) => ({
@@ -61,7 +61,7 @@ describe("getFilterOptions", () => {
 			exchangeRate: "1",
 			pricingSource: "MANUAL",
 		});
-		await adminDb.expense.createMany({
+		await fixtureDb.expense.createMany({
 			data: [
 				expense(me.user.id, "2024-06-15T12:00:00Z"),
 				expense(me.user.id, "2025-03-05T12:00:00Z"),

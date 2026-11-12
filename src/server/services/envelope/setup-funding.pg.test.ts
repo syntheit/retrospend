@@ -22,7 +22,7 @@ import { describe, expect, it } from "vitest";
 import type { SetupInput } from "~/lib/schemas/envelope";
 import { userTransaction } from "~/server/db-tx";
 import { forUser } from "~/server/services/preview";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { seedArsRates } from "../accounts/test-fixtures";
 import { addRow, seedUser, setupInput } from "./__tests__/pg-fixture";
 import { getMonth } from "./read.service";
@@ -244,7 +244,7 @@ describe("envelope.setup funds the amounts set in the wizard", () => {
 			adminDb.budgetMovement.count({ where: { bookId: book.id } }),
 		).resolves.toBe(0);
 		await expect(
-			adminDb.expense.count({ where: { userId: s.user.id } }),
+			fixtureDb.expense.count({ where: { userId: s.user.id } }),
 		).resolves.toBe(0);
 	});
 });

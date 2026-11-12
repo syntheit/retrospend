@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { SetupInput } from "~/lib/schemas/envelope";
 import { userTransaction } from "~/server/db-tx";
 import { forUser } from "~/server/services/preview";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import { computeBook } from "../engine";
 import { loadBook } from "../inputs";
@@ -25,7 +25,7 @@ export function invariantAt(userId: string, now = new Date()) {
 export async function seedUser() {
 	const { user, db } = await createTestUser();
 	const cat = (name: string) =>
-		adminDb.category
+		fixtureDb.category
 			.create({ data: { name, color: "blue", userId: user.id } })
 			.then((c) => c.id);
 	return { user, db, rent: await cat("Rent"), dining: await cat("Dining") };
@@ -90,7 +90,7 @@ type Row = {
 };
 
 export function addRow(userId: string, r: Row, date = new Date()) {
-	return adminDb.expense.create({
+	return fixtureDb.expense.create({
 		data: {
 			userId,
 			title: "Row",
@@ -128,7 +128,7 @@ export async function augustBook() {
 		where: { bookId: book.id },
 		data: { fromMonth: 202608 },
 	});
-	await adminDb.expense.update({
+	await fixtureDb.expense.update({
 		where: { id: book.startingBalanceExpenseId as string },
 		data: { date: new Date("2026-08-01T00:00:00Z") },
 	});

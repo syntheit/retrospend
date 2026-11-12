@@ -4,17 +4,52 @@
  *
  * `adminDb` is the app's global client: it connects as retrospend_owner (no
  * superuser rights, BYPASSRLS), exactly like admin and system code paths in
- * the app. A test that needs the superuser asks for `superUrl()` and opens its
- * own connection.
+ * the app; a test seeds user rows through `fixtureDb`. A test that needs the
+ * superuser asks for `superUrl()` and opens its own connection.
  * `createTestUser` returns the user together with `createUserScopedDb` for
  * them, so queries through `db` run as retrospend_app with RLS enforced.
  */
 import { randomUUID } from "node:crypto";
 import { Client } from "pg";
 import { createUserScopedDb, db } from "~/server/db";
+import { computeCategoryNameIndex } from "~/server/services/category-name-index.service";
+import {
+	ensureUserKeyring,
+	ensureUserKeyringWhenSealing,
+} from "~/server/services/keys/data-key.service";
 import type { UserRole } from "~prisma";
+import { fixtureClient } from "./fixture-db";
+
+/** `PG_TEST_SEALED=1`: the whole suite runs with sealing on (sealed-sweep.ts). */
+export const sealedSuite = process.env.PG_TEST_SEALED === "1";
+
+/**
+ * What a sealing write of user text for another user throws: in the sealed
+ * suite it comes before the row-level security a plain write meets.
+ */
+export const FOREIGN_OWNER = /client's own user/;
 
 export const adminDb = db;
+
+/**
+ * For a test's own writes and reads of user rows: `adminDb`, except that in
+ * the sealed suite user rows are written and read as their owner
+ * (fixture-db.ts). Never pass it to app code.
+ */
+export const fixtureDb = sealedSuite ? fixtureClient(db) : db;
+
+/**
+ * A category name's index for a test's own insert outside a transaction: in
+ * the sealed suite as category.service stores it (a sealed name needs one),
+ * otherwise null, as plain fixtures store it.
+ */
+export async function fixtureNameIndex(
+	userId: string,
+	name: string,
+): Promise<string | null> {
+	if (!sealedSuite) return null;
+	return computeCategoryNameIndex(await ensureUserKeyring(userId), name);
+}
 
 /**
  * The superuser's URL for this worker's database. Opt in per test, with a
@@ -38,6 +73,9 @@ export async function createTestUser(options: { role?: UserRole } = {}) {
 			role: options.role ?? "USER",
 		},
 	});
+	// A signed-in user's key is made before their first request's
+	// transaction (trpc.ts, v1 middleware); the sealed suite's users too.
+	if (sealedSuite) await ensureUserKeyringWhenSealing(id);
 	return { user, db: createUserScopedDb(user.id) };
 }
 

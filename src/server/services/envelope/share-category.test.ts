@@ -6,10 +6,10 @@ import {
 } from "./share-category";
 
 const MINE = [
-	{ id: "c-groc", name: "Groceries" },
-	{ id: "c-cafe", name: "Café" },
-	{ id: "c-trip", name: "Travel" },
-	{ id: "c-home", name: "Home" },
+	{ id: "c-groc" },
+	{ id: "c-cafe" },
+	{ id: "c-trip" },
+	{ id: "c-home" },
 ];
 
 const share = (
@@ -34,26 +34,21 @@ describe("share categories (D19)", () => {
 		const s = share("a", {
 			categoryId: "c-home",
 			categorySource: "USER",
-			creatorCategory: { id: "x", name: "Groceries", isMine: false },
+			creatorCategory: { id: "x", isMine: false },
 		});
 		expect(pick([s], "a")).toEqual({ categoryId: "c-home", source: "USER" });
 	});
 
 	it("a split you created in your own category keeps it", () => {
 		const s = share("a", {
-			creatorCategory: { id: "c-groc", name: "Groceries", isMine: true },
+			creatorCategory: { id: "c-groc", isMine: true },
 		});
 		expect(pick([s], "a")).toEqual({ categoryId: "c-groc", source: null });
 	});
 
-	it("NAME_MATCH: the creator's category name, ignoring case and accents", () => {
-		const s = share("a", {
-			creatorCategory: { id: "x", name: "  CAFE ", isMine: false },
-		});
-		expect(pick([s], "a")).toEqual({
-			categoryId: "c-cafe",
-			source: "NAME_MATCH",
-		});
+	it("another person's category is neutral: it never picks one of yours (E2EE D11)", () => {
+		const s = share("a", { creatorCategory: { id: "x", isMine: false } });
+		expect(pick([s], "a")).toEqual({ categoryId: null, source: null });
 	});
 
 	it("PROJECT: the category you last picked in the same project", () => {
@@ -113,11 +108,18 @@ describe("share categories (D19)", () => {
 		const s = share("a", {
 			categoryId: "deleted",
 			categorySource: "USER",
-			creatorCategory: { id: "x", name: "Groceries", isMine: false },
+			projectId: "trip",
+			creatorCategory: { id: "x", isMine: false },
 		});
-		expect(pick([s], "a")).toEqual({
-			categoryId: "c-groc",
-			source: "NAME_MATCH",
+		const earlier = share("e", {
+			projectId: "trip",
+			categoryId: "c-trip",
+			categorySource: "USER",
+			date: "2026-10-01",
+		});
+		expect(pick([earlier, s], "a")).toEqual({
+			categoryId: "c-trip",
+			source: "PROJECT",
 		});
 	});
 });

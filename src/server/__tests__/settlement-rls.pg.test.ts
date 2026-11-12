@@ -352,10 +352,15 @@ describe("status moves only the legal way", () => {
 					paymentMethod: "Cash",
 				},
 			});
-			await tx.settlement.updateMany({
+			// Row by row, as payment.confirm writes text.
+			for (const { id } of await tx.settlement.findMany({
 				where: { paymentGroupId: p.paymentId },
-				data: { paymentMethod: "Cash" },
-			});
+				select: { id: true },
+			}))
+				await tx.settlement.update({
+					where: { id },
+					data: { paymentMethod: "Cash" },
+				});
 		});
 		expect((await rowOf(p.row.id)).paymentMethod).toBe("Cash");
 	});

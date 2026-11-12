@@ -7,13 +7,13 @@ import { randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
-	adminDb,
 	asMobile,
 	BASE,
 	call,
 	createTestUser,
 	expectBody,
 	expectProblem,
+	fixtureDb,
 } from "../../core/__tests__/harness";
 import { handleV1Request } from "../../handler";
 
@@ -120,7 +120,7 @@ describe("/api/v1/imports", () => {
 			"bad_request",
 		);
 		await expect(
-			adminDb.importJob.count({ where: { userId: alice } }),
+			fixtureDb.importJob.count({ where: { userId: alice } }),
 		).resolves.toBe(1);
 	});
 
@@ -230,7 +230,7 @@ describe("/api/v1/imports", () => {
 		);
 		expect(preview.detail.result.created).toBe(1);
 		await expect(
-			adminDb.expense.count({ where: { userId: alice } }),
+			fixtureDb.expense.count({ where: { userId: alice } }),
 		).resolves.toBe(0);
 
 		const key = "finalize-once-1";
@@ -244,7 +244,9 @@ describe("/api/v1/imports", () => {
 			i.finalize,
 		);
 		expect(done).toMatchObject({ created: 1, unchecked: 1 });
-		const stored = await adminDb.expense.findMany({ where: { userId: alice } });
+		const stored = await fixtureDb.expense.findMany({
+			where: { userId: alice },
+		});
 		expect(stored.map((e) => e.title)).toEqual(["Coffee beans"]);
 
 		// The same key replays the first answer and writes nothing more.
@@ -257,7 +259,7 @@ describe("/api/v1/imports", () => {
 		expect(replay.headers.get("idempotent-replayed")).toBe("true");
 		expect((await replay.json()).created).toBe(1);
 		await expect(
-			adminDb.expense.count({ where: { userId: alice } }),
+			fixtureDb.expense.count({ where: { userId: alice } }),
 		).resolves.toBe(1);
 
 		// A new key cannot import the same file twice.
@@ -286,7 +288,7 @@ describe("/api/v1/imports", () => {
 		);
 		expect(preview.detail.result.removed).toBe(1);
 		await expect(
-			adminDb.expense.count({ where: { userId: alice } }),
+			fixtureDb.expense.count({ where: { userId: alice } }),
 		).resolves.toBe(1);
 
 		const undone = await expectBody<{ removed: number }>(
@@ -300,14 +302,14 @@ describe("/api/v1/imports", () => {
 		);
 		expect(undone.removed).toBe(1);
 		await expect(
-			adminDb.expense.count({ where: { userId: alice } }),
+			fixtureDb.expense.count({ where: { userId: alice } }),
 		).resolves.toBe(0);
 		expect((await untilReady(jobId)).state).toBe("ready");
 	});
 
 	it("cancels only a queued file and deletes a finished one", async () => {
 		// Hold a job in the queue: only a queued file can be cancelled.
-		const queued = await adminDb.importJob.create({
+		const queued = await fixtureDb.importJob.create({
 			data: {
 				userId: alice,
 				status: "QUEUED",

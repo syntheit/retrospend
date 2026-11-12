@@ -23,7 +23,7 @@
 import { describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { forUser } from "~/server/services/preview";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import {
 	addRow,
@@ -53,7 +53,7 @@ function usdRow(
 	day: string,
 	booked?: { rate: string; amount: string },
 ) {
-	return adminDb.expense.create({
+	return fixtureDb.expense.create({
 		data: {
 			userId,
 			title: "Row",
@@ -276,7 +276,7 @@ describe("rows first read after their day are frozen at the nearest rate (round 
 	it("a changed USD value values the row again (finding 2: it is part of the key)", async () => {
 		const b = await mdlBook({ rows: false });
 		// A BRL 500 dinner booked at USD 100: its book value goes through the USD value.
-		const r = await adminDb.expense.create({
+		const r = await fixtureDb.expense.create({
 			data: {
 				userId: b.user.id,
 				title: "Row",
@@ -290,7 +290,7 @@ describe("rows first read after their day are frozen at the nearest rate (round 
 			},
 		});
 		await getMonth(b.user.id, undefined, at("2026-11-03"));
-		await adminDb.expense.update({
+		await fixtureDb.expense.update({
 			where: { id: r.id },
 			data: { amountInUSD: new Prisma.Decimal(200) },
 		});
@@ -404,7 +404,7 @@ describe("moving a category keeps closed months as they closed (finding 7)", () 
 		const b = await augustBook();
 		const now = at("2026-11-20");
 		await getMonth(b.user.id, undefined, now);
-		const spending = await adminDb.envelope.findFirstOrThrow({
+		const spending = await fixtureDb.envelope.findFirstOrThrow({
 			where: { bookId: b.bookId, name: "Spending" },
 		});
 		await adminDb.envelopeCategory.updateMany({
@@ -516,7 +516,7 @@ describe("round 2: reconcile refuses while a rate is missing", () => {
 		const b = await mdlBook({ rows: false });
 		await adminDb.exchangeRate.delete({ where: { id: b.rateId } });
 		await usdRow(b.user.id, b.dining, 10, "2026-08-12");
-		const before = await adminDb.expense.count({
+		const before = await fixtureDb.expense.count({
 			where: { userId: b.user.id },
 		});
 		await expect(
@@ -533,7 +533,7 @@ describe("round 2: reconcile refuses while a rate is missing", () => {
 			}),
 		).rejects.toThrow("MDL");
 		await expect(
-			adminDb.expense.count({ where: { userId: b.user.id } }),
+			fixtureDb.expense.count({ where: { userId: b.user.id } }),
 		).resolves.toBe(before);
 	});
 });

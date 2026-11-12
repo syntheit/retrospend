@@ -10,7 +10,7 @@
 import { randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import {
 	ars,
 	arsUser,
@@ -219,7 +219,7 @@ describe("/api/v1/people", () => {
 		expect(again.headers.get("idempotent-replayed")).toBe("true");
 		expect(await again.json()).toEqual(await first.json());
 		await expect(
-			adminDb.shadowProfile.count({
+			fixtureDb.shadowProfile.count({
 				where: { createdById: sofia.user.id, name: "Dani" },
 			}),
 		).resolves.toBe(1);
@@ -239,7 +239,7 @@ describe("/api/v1/people", () => {
 			existing: true,
 		});
 		await expect(
-			adminDb.shadowProfile.count({ where: { name: "Marty" } }),
+			fixtureDb.shadowProfile.count({ where: { name: "Marty" } }),
 		).resolves.toBe(0);
 	});
 

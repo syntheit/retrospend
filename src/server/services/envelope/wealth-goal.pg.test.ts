@@ -17,7 +17,7 @@ import { describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { forUser } from "~/server/services/preview";
 import { recordBudgetSide } from "~/server/services/transfers/budget-side";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import { invariantAt, seedUser, setupInput } from "./__tests__/pg-fixture";
 import { budgetMonthOf, isoDateIn } from "./months";
@@ -97,7 +97,7 @@ describe("S12 Wealth moves both ways and goal progress", () => {
 			budget: 80_000,
 			ledger: 80_000,
 		});
-		const cash = await adminDb.assetAccount.create({
+		const cash = await fixtureDb.assetAccount.create({
 			data: {
 				userId: s.user.id,
 				name: "Vacation cash",

@@ -15,6 +15,7 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
+	fixtureDb,
 	sessionFor,
 } from "../../core/__tests__/harness";
 
@@ -93,7 +94,7 @@ describe("/api/v1/push-devices", () => {
 		const body = await up.text();
 		expect(body).not.toContain(UNIFIED.keys.auth);
 		expect(body).not.toContain("ntfy.example.org");
-		const row = await adminDb.pushDevice.findFirstOrThrow({
+		const row = await fixtureDb.pushDevice.findFirstOrThrow({
 			where: { userId: alice, transport: "UNIFIEDPUSH" },
 		});
 		expect(row).toMatchObject({
@@ -104,7 +105,7 @@ describe("/api/v1/push-devices", () => {
 	});
 
 	it("refreshes a known address instead of adding a row", async () => {
-		const before = await adminDb.pushDevice.findFirstOrThrow({
+		const before = await fixtureDb.pushDevice.findFirstOrThrow({
 			where: { userId: alice, transport: "APNS" },
 		});
 		const again = await expectBody<Device>(
@@ -122,7 +123,9 @@ describe("/api/v1/push-devices", () => {
 			before.lastSeenAt.getTime(),
 		);
 		await expect(
-			adminDb.pushDevice.count({ where: { userId: alice, transport: "APNS" } }),
+			fixtureDb.pushDevice.count({
+				where: { userId: alice, transport: "APNS" },
+			}),
 		).resolves.toBe(1);
 	});
 
@@ -157,7 +160,7 @@ describe("/api/v1/push-devices", () => {
 
 	it("keeps the address check in the table itself", async () => {
 		await expect(
-			adminDb.pushDevice.create({
+			fixtureDb.pushDevice.create({
 				data: {
 					userId: alice,
 					platform: "ANDROID",
@@ -179,7 +182,7 @@ describe("/api/v1/push-devices", () => {
 		expect(second.headers.get("idempotent-replayed")).toBe("true");
 		expect(await second.json()).toEqual(await first.json());
 		await expect(
-			adminDb.pushDevice.count({ where: { userId: user } }),
+			fixtureDb.pushDevice.count({ where: { userId: user } }),
 		).resolves.toBe(1);
 	});
 
@@ -222,7 +225,7 @@ describe("/api/v1/push-devices", () => {
 			p.remove,
 		);
 		await expect(
-			adminDb.pushDevice.count({ where: { id: target } }),
+			fixtureDb.pushDevice.count({ where: { id: target } }),
 		).resolves.toBe(0);
 	});
 
@@ -243,7 +246,7 @@ describe("/api/v1/push-devices", () => {
 			);
 		}
 		await expect(
-			adminDb.pushDevice.count({
+			fixtureDb.pushDevice.count({
 				where: { userId: alice, endpoint: { not: UNIFIED.endpoint } },
 			}),
 		).resolves.toBe(0);
@@ -260,16 +263,16 @@ describe("/api/v1/push-devices", () => {
 		for (let n = 0; n < 20; n++)
 			await expectBody(await register(as, fcm(n)), p.register);
 		// Device 7 has not been seen for a while; device 0 is the oldest row.
-		const stale = await adminDb.pushDevice.findFirstOrThrow({
+		const stale = await fixtureDb.pushDevice.findFirstOrThrow({
 			where: { userId: user, token: "fcm:cap:7" },
 		});
-		await adminDb.pushDevice.update({
+		await fixtureDb.pushDevice.update({
 			where: { id: stale.id },
 			data: { lastSeenAt: new Date(Date.now() - 86_400_000) },
 		});
 		await expectBody(await register(as, fcm(20)), p.register);
 		const tokens = (
-			await adminDb.pushDevice.findMany({
+			await fixtureDb.pushDevice.findMany({
 				where: { userId: user },
 				select: { token: true },
 			})
@@ -281,14 +284,14 @@ describe("/api/v1/push-devices", () => {
 		// Refreshing a known device never drops another.
 		await expectBody(await register(as, fcm(0)), p.register);
 		await expect(
-			adminDb.pushDevice.count({ where: { userId: user } }),
+			fixtureDb.pushDevice.count({ where: { userId: user } }),
 		).resolves.toBe(20);
 	});
 
 	describe("a device lives as long as the credential that registered it", () => {
 		const fcm = { transport: "fcm", platform: "android" };
 		const deviceOf = (userId: string, token: string) =>
-			adminDb.pushDevice.findFirst({ where: { userId, token } });
+			fixtureDb.pushDevice.findFirst({ where: { userId, token } });
 
 		it("goes on sign out", async () => {
 			const user = (await createTestUser()).user.id;

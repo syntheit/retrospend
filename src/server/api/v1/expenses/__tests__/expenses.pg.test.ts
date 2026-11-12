@@ -10,14 +10,15 @@ import { contract } from "@retrospend/api-contract";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { defaultTimeZone } from "~/server/services/user-time-zone";
+import { sealedSuite } from "~/test/pg-harness";
 import {
-	adminDb,
 	asKey,
 	asMobile,
 	call,
 	createTestUser,
 	expectBody,
 	expectProblem,
+	fixtureDb,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -53,7 +54,7 @@ type Preview = {
 const today = () => dayKey(new Date(), defaultTimeZone());
 
 async function category(userId: string, name = "Food") {
-	return adminDb.category.create({
+	return fixtureDb.category.create({
 		data: {
 			userId,
 			name: `${name} ${randomUUID().slice(0, 6)}`,
@@ -135,7 +136,7 @@ describe("/api/v1/expenses", () => {
 	});
 
 	it("answers missing_rate, a 422, when the currency has no rate, and writes nothing", async () => {
-		const before = await adminDb.expense.count({ where: { userId: alice } });
+		const before = await fixtureDb.expense.count({ where: { userId: alice } });
 		const data = body(food, {
 			title: "No rate",
 			amount: "30",
@@ -153,7 +154,7 @@ describe("/api/v1/expenses", () => {
 				"missing_rate",
 			);
 		}
-		expect(await adminDb.expense.count({ where: { userId: alice } })).toBe(
+		expect(await fixtureDb.expense.count({ where: { userId: alice } })).toBe(
 			before,
 		);
 	});
@@ -179,7 +180,7 @@ describe("/api/v1/expenses", () => {
 		expect(second.headers.get("idempotent-replayed")).toBe("true");
 		expect(await second.json()).toEqual(await first.json());
 		await expect(
-			adminDb.expense.count({ where: { userId: alice, title: "Replay me" } }),
+			fixtureDb.expense.count({ where: { userId: alice, title: "Replay me" } }),
 		).resolves.toBe(1);
 		await expectProblem(
 			await create(asAlice, body(food, { title: "Other body" }), key),
@@ -209,7 +210,7 @@ describe("/api/v1/expenses", () => {
 	});
 
 	it("answers not_found for a category that is missing or someone else's, on create, preview and replace", async () => {
-		const before = await adminDb.expense.count({ where: { userId: alice } });
+		const before = await fixtureDb.expense.count({ where: { userId: alice } });
 		const theirs = (await category(bob)).id;
 		const mine = await add(body(food, { title: "Keeps its category" }));
 		const routes = [
@@ -230,17 +231,17 @@ describe("/api/v1/expenses", () => {
 					404,
 					"not_found",
 				);
-		expect(await adminDb.expense.count({ where: { userId: alice } })).toBe(
+		expect(await fixtureDb.expense.count({ where: { userId: alice } })).toBe(
 			before + 1,
 		);
-		const kept = await adminDb.expense.findUniqueOrThrow({
+		const kept = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: mine.expense.id },
 		});
 		expect(kept.categoryId).toBe(food);
 	});
 
 	it("previews a create without writing, and the preview equals the result", async () => {
-		const before = await adminDb.expense.count({ where: { userId: alice } });
+		const before = await fixtureDb.expense.count({ where: { userId: alice } });
 		const data = body(food, { title: "Preview me", amount: "40" });
 		const preview = await expectBody<Preview>(
 			await call("/expenses/preview", {
@@ -251,7 +252,7 @@ describe("/api/v1/expenses", () => {
 			}),
 			c.previewCreate,
 		);
-		expect(await adminDb.expense.count({ where: { userId: alice } })).toBe(
+		expect(await fixtureDb.expense.count({ where: { userId: alice } })).toBe(
 			before,
 		);
 		const spent = preview.changes.find((x) => x.id === "spent");
@@ -282,7 +283,7 @@ describe("/api/v1/expenses", () => {
 			currency: "USD",
 		});
 		expect(
-			(await adminDb.expense.findUniqueOrThrow({ where: { id } })).title,
+			(await fixtureDb.expense.findUniqueOrThrow({ where: { id } })).title,
 		).toBe("Before");
 
 		const done = await expectBody<Write>(
@@ -309,7 +310,7 @@ describe("/api/v1/expenses", () => {
 			c.undo,
 		);
 		expect(undone.id).toBe(id);
-		const row = await adminDb.expense.findUniqueOrThrow({ where: { id } });
+		const row = await fixtureDb.expense.findUniqueOrThrow({ where: { id } });
 		expect(row.title).toBe("Before");
 		expect(row.amount.toString()).toBe("10");
 
@@ -324,7 +325,7 @@ describe("/api/v1/expenses", () => {
 			c.undo,
 		);
 		expect(
-			(await adminDb.expense.findUniqueOrThrow({ where: { id } })).title,
+			(await fixtureDb.expense.findUniqueOrThrow({ where: { id } })).title,
 		).toBe("After");
 	});
 
@@ -344,7 +345,7 @@ describe("/api/v1/expenses", () => {
 			minor: -700,
 			currency: "USD",
 		});
-		await expect(adminDb.expense.count({ where: { id } })).resolves.toBe(1);
+		await expect(fixtureDb.expense.count({ where: { id } })).resolves.toBe(1);
 
 		const deleted = await expectBody<{ id: string; undo: string }>(
 			await call(`/expenses/${id}`, {
@@ -354,7 +355,7 @@ describe("/api/v1/expenses", () => {
 			}),
 			c.delete,
 		);
-		await expect(adminDb.expense.count({ where: { id } })).resolves.toBe(0);
+		await expect(fixtureDb.expense.count({ where: { id } })).resolves.toBe(0);
 
 		const undo = await call("/expenses/undo", {
 			method: "POST",
@@ -363,7 +364,7 @@ describe("/api/v1/expenses", () => {
 			idempotent: true,
 		});
 		await expectBody(undo, c.undo);
-		const back = await adminDb.expense.findUniqueOrThrow({ where: { id } });
+		const back = await fixtureDb.expense.findUniqueOrThrow({ where: { id } });
 		expect(back.title).toBe("Gone soon");
 		expect(back.amount.toString()).toBe("7");
 	});
@@ -393,7 +394,7 @@ describe("/api/v1/expenses", () => {
 			c.undo,
 		);
 		await expect(
-			adminDb.expense.count({ where: { id: made.expense.id } }),
+			fixtureDb.expense.count({ where: { id: made.expense.id } }),
 		).resolves.toBe(0);
 	});
 
@@ -407,7 +408,7 @@ describe("/api/v1/expenses", () => {
 		});
 		await expectProblem(bobsTry, 400, "bad_request");
 		await expect(
-			adminDb.expense.count({ where: { id: made.expense.id } }),
+			fixtureDb.expense.count({ where: { id: made.expense.id } }),
 		).resolves.toBe(1);
 		for (const token of ["nope", `${made.undo}x`, "a.b.c"])
 			await expectProblem(
@@ -448,7 +449,7 @@ describe("/api/v1/expenses", () => {
 				"not_found",
 			);
 		await expect(
-			adminDb.expense.count({ where: { id, title: "Alice private" } }),
+			fixtureDb.expense.count({ where: { id, title: "Alice private" } }),
 		).resolves.toBe(1);
 	});
 
@@ -484,7 +485,10 @@ describe("/api/v1/expenses", () => {
 		);
 	});
 
-	it("lists newest first with the filter grammar, a cursor, and totals", async () => {
+	it("lists newest first with the filter grammar, a cursor, and totals", async ({
+		skip,
+	}) => {
+		skip(sealedSuite, "PR 5: search reads sealed text without the user's keys");
 		const user = (await createTestUser()).user.id;
 		const as = await asMobile(user);
 		const cat = (await category(user, "Coffee")).id;
@@ -583,14 +587,14 @@ describe("/api/v1/expenses", () => {
 		expect(res.updated).toBe(1);
 		expect(
 			(
-				await adminDb.expense.findUniqueOrThrow({
+				await fixtureDb.expense.findUniqueOrThrow({
 					where: { id: mine.expense.id },
 				})
 			).categoryId,
 		).toBe(target);
 		expect(
 			(
-				await adminDb.expense.findUniqueOrThrow({
+				await fixtureDb.expense.findUniqueOrThrow({
 					where: { id: bobs.expense.id },
 				})
 			).categoryId,

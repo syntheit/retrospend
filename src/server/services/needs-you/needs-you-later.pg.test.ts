@@ -17,7 +17,7 @@ import { homeRouter } from "~/server/api/routers/home";
 import { createCallerFactory } from "~/server/api/trpc";
 import { userTransaction } from "~/server/db-tx";
 import { augustBook } from "~/server/services/envelope/__tests__/pg-fixture";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { needsYou } from "./index";
 import { snooze, snoozeIn, unsnooze } from "./snooze";
 
@@ -111,7 +111,7 @@ beforeAll(async () => {
 		"other",
 	);
 	dueId = (
-		await adminDb.recurringTemplate.create({
+		await fixtureDb.recurringTemplate.create({
 			data: {
 				userId: lola.user.id,
 				name: "Gym",
@@ -319,7 +319,7 @@ describe("home router", () => {
 			where: { id: user.id },
 			data: { emailVerified: true },
 		});
-		const t = await adminDb.recurringTemplate.create({
+		const t = await fixtureDb.recurringTemplate.create({
 			data: {
 				userId: user.id,
 				name: "Rent",

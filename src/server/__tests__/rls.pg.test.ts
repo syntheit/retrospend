@@ -6,7 +6,12 @@
  * src/test/migrations/privileges.pg.test.ts.
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import {
+	createTestUser,
+	FOREIGN_OWNER,
+	fixtureDb,
+	sealedSuite,
+} from "~/test/pg-harness";
 
 type TestUser = Awaited<ReturnType<typeof createTestUser>>;
 
@@ -18,10 +23,10 @@ describe("category RLS through createUserScopedDb", () => {
 	beforeAll(async () => {
 		alice = await createTestUser();
 		bob = await createTestUser();
-		await adminDb.category.create({
+		await fixtureDb.category.create({
 			data: { name: "Groceries", color: "emerald", userId: alice.user.id },
 		});
-		const bobCategory = await adminDb.category.create({
+		const bobCategory = await fixtureDb.category.create({
 			data: { name: "Rent", color: "blue", userId: bob.user.id },
 		});
 		bobCategoryId = bobCategory.id;
@@ -42,9 +47,10 @@ describe("category RLS through createUserScopedDb", () => {
 	});
 
 	it("cannot change or delete another user's row", async () => {
+		// A column with no text: a bulk write may not set sealed text.
 		const updated = await alice.db.category.updateMany({
 			where: { id: bobCategoryId },
-			data: { name: "Hijacked" },
+			data: { color: "red" },
 		});
 		const deleted = await alice.db.category.deleteMany({
 			where: { id: bobCategoryId },
@@ -53,7 +59,7 @@ describe("category RLS through createUserScopedDb", () => {
 		expect(updated.count).toBe(0);
 		expect(deleted.count).toBe(0);
 		await expect(
-			adminDb.category.findUnique({ where: { id: bobCategoryId } }),
+			fixtureDb.category.findUnique({ where: { id: bobCategoryId } }),
 		).resolves.toMatchObject({ name: "Rent", userId: bob.user.id });
 	});
 
@@ -62,14 +68,14 @@ describe("category RLS through createUserScopedDb", () => {
 			alice.db.category.create({
 				data: { name: "Planted", color: "pink", userId: bob.user.id },
 			}),
-		).rejects.toThrow(/row-level security/);
+		).rejects.toThrow(sealedSuite ? FOREIGN_OWNER : /row-level security/);
 	});
 
 	it("leaves the admin client unscoped", async () => {
-		const names = await adminDb.category.findMany({
+		const names = await fixtureDb.category.findMany({
 			where: { userId: { in: [alice.user.id, bob.user.id] } },
-			orderBy: { name: "asc" },
 		});
-		expect(names.map((c) => c.name)).toEqual(["Groceries", "Rent"]);
+		// Sorted here: names may be sealed.
+		expect(names.map((c) => c.name).sort()).toEqual(["Groceries", "Rent"]);
 	});
 });

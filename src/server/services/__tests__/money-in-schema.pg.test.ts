@@ -14,7 +14,7 @@ import {
 	ensureIncomeCategories,
 	INCOME_CATEGORIES,
 } from "~/server/services/money-in.service";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { createTestUser, fixtureDb } from "~/test/pg-harness";
 import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 import { at, expenseData } from "./spending-fixture";
 
@@ -34,7 +34,7 @@ function moneyInSql(): string {
 describe("money_in migration", () => {
 	it("applies a second time without error or change", async () => {
 		const { user } = await createTestUser();
-		await adminDb.expense.create({
+		await fixtureDb.expense.create({
 			data: expenseData(user.id, {
 				title: "Before",
 				amount: 10,
@@ -61,10 +61,10 @@ describe("money_in migration", () => {
 
 	it("gives existing categories and templates the spending defaults", async () => {
 		const { user } = await createTestUser();
-		await adminDb.category.create({
+		await fixtureDb.category.create({
 			data: { name: "Groceries", color: "emerald", userId: user.id },
 		});
-		const template = await adminDb.recurringTemplate.create({
+		const template = await fixtureDb.recurringTemplate.create({
 			data: {
 				userId: user.id,
 				name: "Gym",
@@ -75,7 +75,7 @@ describe("money_in migration", () => {
 			},
 		});
 		await expect(
-			adminDb.category.findMany({
+			fixtureDb.category.findMany({
 				where: { userId: user.id },
 				select: { kind: true },
 			}),
@@ -91,7 +91,7 @@ describe("money_in migration", () => {
 			userId = (await createTestUser()).user.id;
 		});
 		const insert = (row: Parameters<typeof expenseData>[1]) =>
-			adminDb.expense.create({ data: expenseData(userId, row) });
+			fixtureDb.expense.create({ data: expenseData(userId, row) });
 		const base = { title: "Row", amount: 1, date: at("2026-03-01") };
 
 		it("rejects money in without a type", async () => {
@@ -136,13 +136,13 @@ describe("ensureIncomeCategories", () => {
 		expect(first.map((c) => c.name)).toEqual(names);
 		expect(second.map((c) => c.name)).toEqual(names);
 		await expect(
-			adminDb.category.count({ where: { userId: user.id, kind: "INCOME" } }),
+			fixtureDb.category.count({ where: { userId: user.id, kind: "INCOME" } }),
 		).resolves.toBe(INCOME_CATEGORIES.length);
 	});
 
 	it("leaves an expense category with an income name alone", async () => {
 		const { user, db } = await createTestUser();
-		await adminDb.category.create({
+		await fixtureDb.category.create({
 			data: { name: "Gifts", color: "rose", userId: user.id },
 		});
 
@@ -150,7 +150,9 @@ describe("ensureIncomeCategories", () => {
 
 		expect(income.map((c) => c.name)).not.toContain("Gifts");
 		await expect(
-			adminDb.category.findFirst({ where: { userId: user.id, name: "Gifts" } }),
+			fixtureDb.category.findFirst({
+				where: { userId: user.id, name: "Gifts" },
+			}),
 		).resolves.toMatchObject({ kind: "EXPENSE", color: "rose" });
 	});
 });
@@ -174,7 +176,7 @@ describe("budget and report spending by amortization mode", () => {
 				isAmortizedChild: true,
 				parentId,
 			});
-		await adminDb.expense.createMany({
+		await fixtureDb.expense.createMany({
 			data: [
 				expenseData(userId, {
 					id: laptop,
@@ -215,7 +217,7 @@ describe("budget and report spending by amortization mode", () => {
 				}),
 			],
 		});
-		await adminDb.expense.createMany({
+		await fixtureDb.expense.createMany({
 			data: [
 				part(laptop, 40_000, "2026-02-15"),
 				part(laptop, 40_000, "2026-03-15"),
@@ -238,7 +240,7 @@ describe("budget and report spending by amortization mode", () => {
 		const [salary] = await ensureIncomeCategories(db, user.id).then((all) =>
 			all.filter((c) => c.name === "Salary"),
 		);
-		await adminDb.expense.createMany({
+		await fixtureDb.expense.createMany({
 			data: [
 				expenseData(user.id, {
 					title: "Lunch",

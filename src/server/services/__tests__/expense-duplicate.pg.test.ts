@@ -17,7 +17,7 @@ import {
 import { TextUnavailableError } from "~/server/crypto/field-open";
 import { ExpenseService } from "~/server/services/expense.service";
 import { findDuplicateExpense } from "~/server/services/expense-duplicate";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import {
 	failNextEpochRead,
 	sealedFile,
@@ -58,7 +58,7 @@ type Row = {
 };
 
 async function seed(user: Who, rows: Row[]) {
-	await adminDb.expense.createMany({
+	await fixtureDb.expense.createMany({
 		data: rows.map((r) => ({
 			userId: user.user.id,
 			title: r.title,

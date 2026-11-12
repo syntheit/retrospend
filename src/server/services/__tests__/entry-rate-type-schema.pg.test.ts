@@ -12,7 +12,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { inRolledBackPrismaTransaction } from "~/test/rolled-back-sql";
 import { Prisma } from "~prisma";
 
@@ -96,7 +96,7 @@ describe("entry_rate_type migration", () => {
 			],
 			skipDuplicates: true,
 		});
-		await adminDb.expense.createMany({
+		await fixtureDb.expense.createMany({
 			data: [
 				legacy("namedType", "ZZA", "blue", 1560),
 				legacy("namedTypeCase", "ZZA", " Blue ", 1560),
@@ -161,13 +161,13 @@ describe("entry_rate_type migration", () => {
 
 	it("refuses a half-booked home leg", async () => {
 		await expect(
-			adminDb.expense.update({
+			fixtureDb.expense.update({
 				where: { id: ids.namedType },
 				data: { homeCurrency: "USD", homeRate: null, homeAmount: null },
 			}),
 		).rejects.toThrow(/expense_home_leg_check/);
 		await expect(
-			adminDb.expense.update({
+			fixtureDb.expense.update({
 				where: { id: ids.namedType },
 				data: { homeCurrency: "USD", homeRate: 0, homeAmount: 0 },
 			}),
@@ -176,7 +176,7 @@ describe("entry_rate_type migration", () => {
 
 	it("refuses a rate type that is not a table key", async () => {
 		await expect(
-			adminDb.expense.update({
+			fixtureDb.expense.update({
 				where: { id: ids.namedType },
 				data: { rateType: "Blue rate" },
 			}),

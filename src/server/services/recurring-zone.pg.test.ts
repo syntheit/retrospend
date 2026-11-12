@@ -16,7 +16,7 @@ import {
 	vi,
 } from "vitest";
 import { forUser } from "~/server/services/preview";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { seedArsRatesOn } from "./accounts/test-fixtures";
 import {
 	confirmRecurringExpense,
@@ -62,7 +62,7 @@ async function userWithTemplate(anchorDay: number | null, firstDue: string) {
 		where: { id: user.id },
 		data: { homeCurrency: "ARS", timeZone: BUENOS_AIRES },
 	});
-	const template = await adminDb.recurringTemplate.create({
+	const template = await fixtureDb.recurringTemplate.create({
 		data: {
 			userId: user.id,
 			name: "Rent",
@@ -78,7 +78,7 @@ async function userWithTemplate(anchorDay: number | null, firstDue: string) {
 }
 
 const dueOf = async (id: string) =>
-	(await adminDb.recurringTemplate.findUniqueOrThrow({ where: { id } }))
+	(await fixtureDb.recurringTemplate.findUniqueOrThrow({ where: { id } }))
 		.nextDueDate;
 
 describe("recurring.confirm in a Buenos Aires user's zone", () => {
@@ -95,7 +95,7 @@ describe("recurring.confirm in a Buenos Aires user's zone", () => {
 			"2027-04-30T03:00:00.000Z",
 			"2027-05-31T03:00:00.000Z",
 		]);
-		const expenses = await adminDb.expense.findMany({
+		const expenses = await fixtureDb.expense.findMany({
 			where: { userId },
 			orderBy: { date: "asc" },
 		});
@@ -117,7 +117,7 @@ describe("recurring.confirm in a Buenos Aires user's zone", () => {
 	it("stores the template's own day as the anchor when it had none", async () => {
 		const { userId, id } = await userWithTemplate(null, "2027-01-31");
 		await forUser(userId).apply(confirmRecurringExpense, { templateId: id });
-		const row = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const row = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id },
 		});
 		expect(row.anchorDay).toBe(31);
@@ -179,7 +179,7 @@ describe("a request from another zone than the saved one", () => {
 			templateId: id,
 			timeZone: LOS_ANGELES,
 		});
-		const row = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const row = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id },
 		});
 		expect(iso(row.nextDueDate)).toBe("2027-02-28T03:00:00.000Z");
@@ -220,7 +220,7 @@ describe("recurring.confirm on an income template", () => {
 		});
 		// Income keeps its day as UTC midnight: Jan 31 00:00Z is Jan 30 21:00 in
 		// Buenos Aires, where stepping would give Feb 28 03:00Z and anchor 30.
-		const { id } = await adminDb.recurringTemplate.create({
+		const { id } = await fixtureDb.recurringTemplate.create({
 			data: {
 				userId: user.id,
 				name: "Salary",
@@ -234,7 +234,7 @@ describe("recurring.confirm on an income template", () => {
 			},
 		});
 		await forUser(user.id).apply(confirmRecurringExpense, { templateId: id });
-		const row = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const row = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id },
 		});
 		expect(iso(row.nextDueDate)).toBe("2027-02-28T00:00:00.000Z");
@@ -260,7 +260,7 @@ describe("recurring.unconfirm", () => {
 			}),
 		).rejects.toMatchObject({ code: "CONFLICT" });
 		expect(iso(await dueOf(id))).toBe("2027-02-28T03:00:00.000Z");
-		expect(await adminDb.expense.count({ where: { userId } })).toBe(1);
+		expect(await fixtureDb.expense.count({ where: { userId } })).toBe(1);
 	});
 
 	it("puts a null anchor back, so the undo is exact", async () => {
@@ -274,7 +274,7 @@ describe("recurring.unconfirm", () => {
 			dueDate: value.dueAt,
 			anchorDay: value.anchorDay,
 		});
-		const row = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const row = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id },
 		});
 		expect(row.anchorDay).toBeNull();
@@ -290,7 +290,7 @@ describe("recurring.unconfirm", () => {
 			expenseId: value.expenseId,
 			dueDate: value.dueAt,
 		});
-		const row = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const row = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id },
 		});
 		expect(row.anchorDay).toBe(31);

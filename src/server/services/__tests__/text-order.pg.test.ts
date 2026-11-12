@@ -15,7 +15,12 @@ import {
 } from "~/server/services/category.service";
 import { entryCatalog } from "~/server/services/entry/catalog";
 import { ensureIncomeCategories } from "~/server/services/money-in.service";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import {
+	adminDb,
+	createTestUser,
+	fixtureDb,
+	sealedSuite,
+} from "~/test/pg-harness";
 import { compareText, sortByText } from "../text-order";
 
 const NAMES = [
@@ -126,7 +131,7 @@ describe("compareText", () => {
 async function seedCategories(userId: string) {
 	const made = await Promise.all(
 		NAMES.map((name) =>
-			adminDb.category.create({ data: { name, color: "teal", userId } }),
+			fixtureDb.category.create({ data: { name, color: "teal", userId } }),
 		),
 	);
 	const byName = new Map(made.map((c) => [c.name, c.id]));
@@ -138,7 +143,7 @@ async function seedCategories(userId: string) {
 	];
 	for (const [name, count] of uses)
 		for (let i = 0; i < count; i++)
-			await adminDb.expense.create({
+			await fixtureDb.expense.create({
 				data: {
 					userId,
 					title: `${name} ${i}`,
@@ -152,6 +157,11 @@ async function seedCategories(userId: string) {
 				},
 			});
 }
+
+// The oracle is the old SQL over stored names, which the sealed suite
+// (PG_TEST_SEALED) seals: it is compared only where the names are plaintext.
+// The orders written out by hand hold in both.
+const oracle = !sealedSuite;
 
 describe("category lists", () => {
 	it("by name pages like ORDER BY name, id with a keyset cursor", async () => {
@@ -172,7 +182,7 @@ describe("category lists", () => {
 		let pages = 0;
 		for (;;) {
 			const page = await listCategoriesByName(db, user.id, { after, take: 4 });
-			expect(ids(page)).toEqual(ids(await old(after, 4)));
+			if (oracle) expect(ids(page)).toEqual(ids(await old(after, 4)));
 			pages++;
 			const last = page.at(-1);
 			if (page.length < 4 || !last) break;
@@ -191,7 +201,7 @@ describe("category lists", () => {
 			ORDER BY (SELECT count(*) FROM expense e WHERE e."categoryId" = c.id) DESC,
 				c.name`;
 		const rows = await listCategoriesByUsage(db, user.id);
-		expect(ids(rows)).toEqual(ids(old));
+		if (oracle) expect(ids(rows)).toEqual(ids(old));
 		expect(rows.slice(0, 3).map((r) => r.name)).toEqual([
 			"Zebra",
 			"banana",
@@ -215,7 +225,7 @@ describe("category lists", () => {
 			made.set(
 				name,
 				(
-					await adminDb.assetAccount.create({
+					await fixtureDb.assetAccount.create({
 						data: {
 							userId: user.id,
 							name,
@@ -233,13 +243,13 @@ describe("category lists", () => {
 			SELECT c.id FROM category c WHERE c."userId" = ${user.id}
 			ORDER BY (SELECT count(*) FROM expense e WHERE e."categoryId" = c.id) DESC,
 				c.name`;
-		expect(ids(catalog.categories)).toEqual(ids(oldCategories));
+		if (oracle) expect(ids(catalog.categories)).toEqual(ids(oldCategories));
 		expect(catalog.categories.some((c) => "_count" in c)).toBe(false);
 
 		const oldPlaces = await adminDb.$queryRaw<Id[]>`
 			SELECT id FROM asset_account WHERE "userId" = ${user.id} AND "closedAt" IS NULL
 			ORDER BY type, name`;
-		expect(ids(catalog.places)).toEqual(ids(oldPlaces));
+		if (oracle) expect(ids(catalog.places)).toEqual(ids(oldPlaces));
 		expect(catalog.places.length).toBe(accounts.length);
 		expect(catalog.places.map((p) => p.id)).toEqual(
 			["Bank", "wallet", "alpha fund", "Émile fund", "Car loan", "😀 loan"].map(
@@ -254,7 +264,7 @@ describe("category lists", () => {
 		const old = await adminDb.$queryRaw<Id[]>`
 			SELECT id FROM category WHERE "userId" = ${user.id} AND kind = 'INCOME'
 			ORDER BY name`;
-		expect(ids(rows)).toEqual(ids(old));
+		if (oracle) expect(ids(rows)).toEqual(ids(old));
 		expect(rows).toHaveLength(6);
 	});
 });

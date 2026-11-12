@@ -23,7 +23,7 @@ import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { readFigures } from "~/server/figures/read";
 import { forUser } from "~/server/services/preview";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import { arsUser, seedArsRates } from "../accounts/test-fixtures";
 import { setupInput } from "./__tests__/pg-fixture";
@@ -36,7 +36,7 @@ import { setupEnvelopeBook } from "./setup.mutation";
 beforeAll(seedArsRates);
 
 const income = (userId: string, date: Date) =>
-	adminDb.expense.create({
+	fixtureDb.expense.create({
 		data: {
 			id: randomUUID(),
 			userId,
@@ -59,7 +59,7 @@ const income = (userId: string, date: Date) =>
 async function arsBook() {
 	const { user } = await arsUser();
 	const cat = (name: string) =>
-		adminDb.category
+		fixtureDb.category
 			.create({ data: { name, color: "blue", userId: user.id } })
 			.then((c) => c.id);
 	const ids = { rent: await cat("Rent"), dining: await cat("Dining") };
@@ -86,7 +86,7 @@ describe("Money in leaves the starting balance out", () => {
 
 	it("with an income of 100,000.00: Money in is that income alone, To assign both", async () => {
 		const id = await arsBook();
-		await adminDb.expense.create({
+		await fixtureDb.expense.create({
 			data: {
 				id: randomUUID(),
 				userId: id,
@@ -118,7 +118,7 @@ describe("a starting balance confirmed after the first month", () => {
 	it("stays out of the month before it, and shows in the month it is dated in", async () => {
 		const { user } = await arsUser();
 		const cat = (name: string) =>
-			adminDb.category
+			fixtureDb.category
 				.create({ data: { name, color: "blue", userId: user.id } })
 				.then((c) => c.id);
 		const ids = { rent: await cat("Rent"), dining: await cat("Dining") };
@@ -153,7 +153,7 @@ describe("a starting balance confirmed after the first month", () => {
 			id: randomUUID(),
 			amountMinor: 60_000_000,
 		});
-		const row = await adminDb.expense.findUniqueOrThrow({
+		const row = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: a.value.expenseId as string },
 		});
 		expect(row.amount).toEqual(new Prisma.Decimal(500_000));

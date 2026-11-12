@@ -57,7 +57,7 @@ import {
 	loadRecurringInputs,
 	readRecurringBody,
 } from "~/server/services/recurring-view.service";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 
 const NOW = new Date("2026-10-15T15:00:00Z");
@@ -115,7 +115,7 @@ type Tpl = {
 };
 
 const addTemplate = (userId: string, t: Tpl) =>
-	adminDb.recurringTemplate.create({
+	fixtureDb.recurringTemplate.create({
 		data: {
 			id: t.id,
 			userId,
@@ -132,14 +132,19 @@ const addTemplate = (userId: string, t: Tpl) =>
 		},
 	});
 
+// As the owner: the category names are the owner's text.
 const rawTemplates = async (userId: string) =>
 	(
-		await adminDb.recurringTemplate.findMany({
-			where: { userId },
-			include: {
-				category: { select: { id: true, name: true, color: true, icon: true } },
-			},
-		})
+		await userTransaction(adminDb, userId, (tx) =>
+			tx.recurringTemplate.findMany({
+				where: { userId },
+				include: {
+					category: {
+						select: { id: true, name: true, color: true, icon: true },
+					},
+				},
+			}),
+		)
 	).reverse();
 
 const deviceRecurring = async (
@@ -222,7 +227,7 @@ describe("recurring: the same templates through both loaders", () => {
 
 	beforeAll(async () => {
 		ana = await seedUser("ARS", BA);
-		const groceries = await adminDb.category.create({
+		const groceries = await fixtureDb.category.create({
 			data: { name: "Groceries", color: "emerald", userId: ana.id },
 		});
 		const next = ba("2026-11-01");
@@ -471,7 +476,7 @@ type Exp = {
 };
 
 const addExpense = (userId: string, e: Exp) =>
-	adminDb.expense.create({
+	fixtureDb.expense.create({
 		data: {
 			id: e.id,
 			userId,
@@ -680,13 +685,13 @@ describe("activity rows: the same ledger through both loaders", () => {
 		ana = await seedUser("ARS", BA, "Ana Ruiz");
 		ben = await seedUser("ARS", BA, "Ben Martin");
 		cam = await seedUser("ARS", BA, "Cam Ortiz");
-		const food = await adminDb.category.create({
+		const food = await fixtureDb.category.create({
 			data: { name: "Food", color: "amber", userId: ana.id },
 		});
-		const pay = await adminDb.category.create({
+		const pay = await fixtureDb.category.create({
 			data: { name: "Pay", color: "blue", userId: ana.id, kind: "INCOME" },
 		});
-		const bensCat = await adminDb.category.create({
+		const bensCat = await fixtureDb.category.create({
 			data: { name: "Bens", color: "red", userId: ben.id },
 		});
 		const own = (e: Exp) => addExpense(ana.id, e);
@@ -931,7 +936,7 @@ describe("activity rows: the same ledger through both loaders", () => {
 
 		keys = [
 			...(
-				await adminDb.expense.findMany({
+				await fixtureDb.expense.findMany({
 					where: { userId: ana.id },
 					select: { id: true },
 				})

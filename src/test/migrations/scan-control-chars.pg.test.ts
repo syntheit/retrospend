@@ -3,7 +3,13 @@
 // it counts, and print no value and no user id.
 import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { adminDb, createTestUser, withSuperuser } from "~/test/pg-harness";
+import {
+	adminDb,
+	createTestUser,
+	fixtureDb,
+	sealedSuite,
+	withSuperuser,
+} from "~/test/pg-harness";
 import {
 	type ColumnCount,
 	formatScan,
@@ -27,7 +33,12 @@ describe("scan-control-chars", () => {
 		expect(counts.filter((c) => c.rows === null)).toEqual([]);
 	});
 
-	it("counts controls and the U+0001 marker, and keeps tab, line feed and carriage return", async () => {
+	it("counts controls and the U+0001 marker, and keeps tab, line feed and carriage return", async ({
+		skip,
+	}) => {
+		// It seeds plaintext through the app's clients, as a ledger before
+		// sealing holds it; the sealed suite seals what they write.
+		skip(sealedSuite, "needs plaintext at rest");
 		const before = await scanControlChars(pool);
 		const { user } = await createTestUser();
 		const base = {
@@ -39,7 +50,7 @@ describe("scan-control-chars", () => {
 			amountInUSD: 0.07,
 			date: new Date("2026-11-01T12:00:00Z"),
 		};
-		await adminDb.expense.createMany({
+		await fixtureDb.expense.createMany({
 			data: [
 				{ ...base, title: "clean\nlines\r\n\ttabbed", description: "ok" },
 				{ ...base, title: "bad\u000bvertical tab", location: "BA\u0007" },
@@ -76,7 +87,7 @@ describe("scan-control-chars", () => {
 
 	it("prints counts only", async () => {
 		const { user } = await createTestUser();
-		await adminDb.expense.create({
+		await fixtureDb.expense.create({
 			data: {
 				userId: user.id,
 				title: "secret\u000btitle",

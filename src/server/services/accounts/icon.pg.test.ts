@@ -9,7 +9,7 @@ import sharp from "sharp";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createCallerFactory } from "~/server/api/trpc";
 import { accountItemIn } from "~/server/services/api-v1/accounts/items";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
 import { wealthRouter } from "../../api/routers/wealth";
 
@@ -37,7 +37,7 @@ beforeEach(() => {
 });
 
 const row = (id: string) =>
-	adminDb.assetAccount.findUniqueOrThrow({ where: { id } });
+	fixtureDb.assetAccount.findUniqueOrThrow({ where: { id } });
 
 const png = () =>
 	sharp({

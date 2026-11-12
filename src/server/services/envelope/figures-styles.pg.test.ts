@@ -35,7 +35,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { readFigures } from "~/server/figures/read";
 import { seedArsRatesOn } from "~/server/services/accounts/test-fixtures";
 import { forUser } from "~/server/services/preview";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import { seedUser, setupInput } from "./__tests__/pg-fixture";
 import { budgetMonthOf, isoDateIn } from "./months";
@@ -91,7 +91,7 @@ function arsRow(
 		inType?: "REFUND";
 	},
 ) {
-	return adminDb.expense.create({
+	return fixtureDb.expense.create({
 		data: {
 			userId,
 			title: "Row",
@@ -211,7 +211,7 @@ describe("budget figures with a rate missing", () => {
 			where: { book: { createdById: s.user.id } },
 			data: { rateType: "xq-missing" },
 		});
-		await adminDb.expense.create({
+		await fixtureDb.expense.create({
 			data: {
 				userId: s.user.id,
 				title: "Row",

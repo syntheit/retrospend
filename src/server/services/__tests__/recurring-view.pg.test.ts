@@ -8,7 +8,7 @@
 import { fromWallTime } from "@retrospend/domain/time-zone";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { listRecurringView } from "~/server/services/recurring-view.service";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 
 const TZ = "America/Argentina/Buenos_Aires";
 const day = (d: number, m = 10) =>
@@ -46,7 +46,7 @@ beforeAll(async () => {
 		autoPay: false,
 		...extra,
 	});
-	await adminDb.recurringTemplate.createMany({
+	await fixtureDb.recurringTemplate.createMany({
 		data: [
 			t("rv_gym", "Gym", "62000", "ARS", "MONTHLY", day(19)),
 			t("rv_netflix", "Netflix", "12.99", "USD", "MONTHLY", day(21), {
@@ -74,7 +74,7 @@ beforeAll(async () => {
 		date,
 		recurringTemplateId,
 	});
-	await adminDb.expense.createMany({
+	await fixtureDb.expense.createMany({
 		data: [
 			e("Netflix", "rv_netflix", day(15)),
 			e("Netflix", "rv_netflix", day(15, 9)),
@@ -87,7 +87,7 @@ beforeAll(async () => {
 		where: { id: chile.user.id },
 		data: { homeCurrency: "CLP" },
 	});
-	await adminDb.recurringTemplate.createMany({
+	await fixtureDb.recurringTemplate.createMany({
 		data: [
 			{
 				...t("rv_cl_usd", "Spotify", "5", "USD", "MONTHLY", day(25)),

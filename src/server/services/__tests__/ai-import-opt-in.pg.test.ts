@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { isAiImportEnabled } from "~/server/services/ai-access.service";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { inRolledBackPrismaTransaction } from "~/test/rolled-back-sql";
 
 const MIGRATION = readFileSync(
@@ -22,7 +22,7 @@ const MIGRATION = readFileSync(
 );
 
 async function importJob(userId: string, type: "CSV" | "BANK_STATEMENT") {
-	await adminDb.importJob.create({
+	await fixtureDb.importJob.create({
 		data: {
 			id: randomUUID(),
 			userId,

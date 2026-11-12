@@ -18,6 +18,7 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
+	fixtureDb,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -128,7 +129,7 @@ describe("/api/v1/recurring", () => {
 			nextDueDate: "2027-02-28",
 			anchorDay: 31,
 		});
-		const row = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const row = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id: item.id },
 		});
 		expect(row.anchorDay).toBe(31);
@@ -160,7 +161,7 @@ describe("/api/v1/recurring", () => {
 
 	it("without anchorDay the anchor is the day of the first date", async () => {
 		const item = await make({ name: "Unanchored", nextDueDate: "2027-02-28" });
-		const row = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const row = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id: item.id },
 		});
 		expect(row.anchorDay).toBe(28);
@@ -187,7 +188,7 @@ describe("/api/v1/recurring", () => {
 			["recurring.cost.out.year", 10800],
 		]);
 		await expect(
-			adminDb.recurringTemplate.count({ where: { userId: user } }),
+			fixtureDb.recurringTemplate.count({ where: { userId: user } }),
 		).resolves.toBe(0);
 		const made = await expectBody<Item>(
 			await send("POST", "/recurring", body, mine),
@@ -196,7 +197,7 @@ describe("/api/v1/recurring", () => {
 		);
 		expect(made.title).toBe("Preview only");
 		await expect(
-			adminDb.recurringTemplate.count({ where: { userId: user } }),
+			fixtureDb.recurringTemplate.count({ where: { userId: user } }),
 		).resolves.toBe(1);
 	});
 
@@ -216,7 +217,7 @@ describe("/api/v1/recurring", () => {
 		expect(second.headers.get("idempotent-replayed")).toBe("true");
 		expect(await second.json()).toEqual(await first.json());
 		await expect(
-			adminDb.recurringTemplate.count({ where: { userId: user } }),
+			fixtureDb.recurringTemplate.count({ where: { userId: user } }),
 		).resolves.toBe(1);
 		const readOnly = await asKey(user, ["read"]);
 		await expectProblem(
@@ -227,7 +228,7 @@ describe("/api/v1/recurring", () => {
 	});
 
 	it("refuses another person's category on a create and its preview", async () => {
-		const theirs = await adminDb.category.create({
+		const theirs = await fixtureDb.category.create({
 			data: { userId: otherId, name: "Theirs", color: "teal" },
 		});
 		const body = {
@@ -249,7 +250,7 @@ describe("/api/v1/recurring", () => {
 			"forbidden",
 		);
 		await expect(
-			adminDb.recurringTemplate.count({ where: { name: "Not mine" } }),
+			fixtureDb.recurringTemplate.count({ where: { name: "Not mine" } }),
 		).resolves.toBe(0);
 	});
 
@@ -317,7 +318,7 @@ describe("/api/v1/recurring", () => {
 		});
 		await expectBody(await send("DELETE", `/recurring/${item.id}`), c.delete);
 		await expect(
-			adminDb.recurringTemplate.count({ where: { id: item.id } }),
+			fixtureDb.recurringTemplate.count({ where: { id: item.id } }),
 		).resolves.toBe(0);
 		await expectProblem(
 			await send("DELETE", `/recurring/${item.id}`),
@@ -342,7 +343,7 @@ describe("/api/v1/recurring", () => {
 		);
 		expect(weekly?.delta.minor).toBeLessThan(0);
 		await expect(
-			adminDb.recurringTemplate.count({ where: { id: item.id } }),
+			fixtureDb.recurringTemplate.count({ where: { id: item.id } }),
 		).resolves.toBe(1);
 
 		const done = await expectBody<{ ok: true; undo: string }>(
@@ -350,7 +351,7 @@ describe("/api/v1/recurring", () => {
 			c.delete,
 		);
 		await expect(
-			adminDb.recurringTemplate.count({ where: { id: item.id } }),
+			fixtureDb.recurringTemplate.count({ where: { id: item.id } }),
 		).resolves.toBe(0);
 
 		await expectBody(
@@ -395,7 +396,7 @@ describe("/api/v1/recurring", () => {
 			await send("POST", `/recurring/${item.id}/confirm`, {}, mine),
 			c.confirm,
 		);
-		const before = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const before = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id: item.id },
 		});
 
@@ -419,7 +420,7 @@ describe("/api/v1/recurring", () => {
 			adminDb.envelope.findUniqueOrThrow({ where: { id: rent } }),
 		).resolves.toMatchObject({ targetTemplateId: null });
 		await expect(
-			adminDb.expense.findUniqueOrThrow({
+			fixtureDb.expense.findUniqueOrThrow({
 				where: { id: confirmed.confirmed.expenseId },
 			}),
 		).resolves.toMatchObject({ recurringTemplateId: null });
@@ -428,7 +429,7 @@ describe("/api/v1/recurring", () => {
 			await send("POST", "/recurring/delete/undo", { token: done.undo }, mine),
 			c.undoDelete,
 		);
-		const after = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const after = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id: item.id },
 		});
 		expect(after.createdAt).toEqual(before.createdAt);
@@ -436,7 +437,7 @@ describe("/api/v1/recurring", () => {
 			adminDb.envelope.findUniqueOrThrow({ where: { id: rent } }),
 		).resolves.toMatchObject({ targetTemplateId: item.id });
 		await expect(
-			adminDb.expense.findUniqueOrThrow({
+			fixtureDb.expense.findUniqueOrThrow({
 				where: { id: confirmed.confirmed.expenseId },
 			}),
 		).resolves.toMatchObject({ recurringTemplateId: item.id });
@@ -489,7 +490,7 @@ describe("/api/v1/recurring", () => {
 			"conflict",
 		);
 		await expect(
-			adminDb.recurringTemplate.count({ where: { userId: user } }),
+			fixtureDb.recurringTemplate.count({ where: { userId: user } }),
 		).resolves.toBe(1);
 	});
 
@@ -515,7 +516,7 @@ describe("/api/v1/recurring", () => {
 			"bad_request",
 		);
 		await expect(
-			adminDb.recurringTemplate.count({ where: { id: item.id } }),
+			fixtureDb.recurringTemplate.count({ where: { id: item.id } }),
 		).resolves.toBe(0);
 	});
 
@@ -532,7 +533,7 @@ describe("/api/v1/recurring", () => {
 			currency: "USD",
 		});
 		await expect(
-			adminDb.expense.count({ where: { recurringTemplateId: item.id } }),
+			fixtureDb.expense.count({ where: { recurringTemplateId: item.id } }),
 		).resolves.toBe(0);
 
 		const done = await expectBody<Confirm>(
@@ -545,12 +546,12 @@ describe("/api/v1/recurring", () => {
 			templateId: item.id,
 			direction: "out",
 		});
-		const row = await adminDb.expense.findUniqueOrThrow({
+		const row = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: done.confirmed.expenseId },
 		});
 		expect(row.amount.toString()).toBe("15");
 		expect(row.recurringTemplateId).toBe(item.id);
-		const moved = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const moved = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id: item.id },
 		});
 		expect(moved.nextDueDate.getTime()).toBeGreaterThan(
@@ -587,7 +588,7 @@ describe("/api/v1/recurring", () => {
 		expect(second.headers.get("idempotent-replayed")).toBe("true");
 		expect(await second.json()).toEqual(await first.json());
 		await expect(
-			adminDb.expense.count({ where: { recurringTemplateId: item.id } }),
+			fixtureDb.expense.count({ where: { recurringTemplateId: item.id } }),
 		).resolves.toBe(1);
 	});
 
@@ -603,7 +604,7 @@ describe("/api/v1/recurring", () => {
 			await send("POST", `/recurring/${item.id}/confirm`, { amount: "22.5" }),
 			c.confirm,
 		);
-		const row = await adminDb.expense.findUniqueOrThrow({
+		const row = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: done.confirmed.expenseId },
 		});
 		expect(row.amount.toString()).toBe("22.5");
@@ -638,9 +639,9 @@ describe("/api/v1/recurring", () => {
 		);
 		expect(undone.redo).toBeNull();
 		await expect(
-			adminDb.expense.count({ where: { id: done.confirmed.expenseId } }),
+			fixtureDb.expense.count({ where: { id: done.confirmed.expenseId } }),
 		).resolves.toBe(0);
-		const back = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const back = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id: item.id },
 		});
 		expect(back.nextDueDate.toISOString()).toBe(item.dueAt);
@@ -656,7 +657,7 @@ describe("/api/v1/recurring", () => {
 			c.confirm,
 		);
 		expect(done.confirmed.direction).toBe("in");
-		const row = await adminDb.expense.findUniqueOrThrow({
+		const row = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: done.confirmed.expenseId },
 		});
 		expect(row).toMatchObject({ direction: "IN", inType: "INCOME" });
@@ -666,7 +667,7 @@ describe("/api/v1/recurring", () => {
 			c.undo,
 		);
 		await expect(
-			adminDb.expense.count({ where: { id: done.confirmed.expenseId } }),
+			fixtureDb.expense.count({ where: { id: done.confirmed.expenseId } }),
 		).resolves.toBe(0);
 	});
 
@@ -691,10 +692,10 @@ describe("/api/v1/recurring", () => {
 			const second = await confirm();
 			const third = await confirm();
 			const rows = () =>
-				adminDb.expense.count({ where: { recurringTemplateId: item.id } });
+				fixtureDb.expense.count({ where: { recurringTemplateId: item.id } });
 			const dueAt = async () =>
 				(
-					await adminDb.recurringTemplate.findUniqueOrThrow({
+					await fixtureDb.recurringTemplate.findUniqueOrThrow({
 						where: { id: item.id },
 					})
 				).nextDueDate.toISOString();
@@ -750,7 +751,7 @@ describe("/api/v1/recurring", () => {
 			tokyo,
 		);
 		const stored = () =>
-			adminDb.recurringTemplate.findUniqueOrThrow({ where: { id: item.id } });
+			fixtureDb.recurringTemplate.findUniqueOrThrow({ where: { id: item.id } });
 		expect((await stored()).nextDueDate.toISOString()).toBe(
 			`${due}T00:00:00.000Z`,
 		);
@@ -775,7 +776,7 @@ describe("/api/v1/recurring", () => {
 			await send("POST", `/recurring/${item.id}/confirm`, {}, tokyo),
 			c.confirm,
 		);
-		const row = await adminDb.expense.findUniqueOrThrow({
+		const row = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: done.confirmed.expenseId },
 		});
 		expect(row.date.toISOString().slice(0, 10)).toBe(moved);
@@ -783,7 +784,7 @@ describe("/api/v1/recurring", () => {
 		// An expense template keeps the start of the day in the user's own zone
 		// (no zone saved here: the default), not the request's Tokyo.
 		const expense = await make({ name: "Tokyo bill", nextDueDate: due }, tokyo);
-		const bill = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const bill = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id: expense.id },
 		});
 		expect(bill.nextDueDate.toISOString()).toBe(
@@ -807,7 +808,7 @@ describe("/api/v1/recurring", () => {
 			"bad_request",
 		);
 		await expect(
-			adminDb.expense.count({ where: { recurringTemplateId: item.id } }),
+			fixtureDb.expense.count({ where: { recurringTemplateId: item.id } }),
 		).resolves.toBe(0);
 		const done = await expectBody<Confirm>(
 			await send("POST", `/recurring/${item.id}/confirm`, {
@@ -816,11 +817,11 @@ describe("/api/v1/recurring", () => {
 			}),
 			c.confirm,
 		);
-		const row = await adminDb.expense.findUniqueOrThrow({
+		const row = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: done.confirmed.expenseId },
 		});
 		expect(row.date.toISOString().slice(0, 10)).toBe(paidOn);
-		const moved = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const moved = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id: item.id },
 		});
 		// The template moves on from its due date, not from the day it was paid.
@@ -832,9 +833,9 @@ describe("/api/v1/recurring", () => {
 			c.undo,
 		);
 		await expect(
-			adminDb.expense.count({ where: { id: done.confirmed.expenseId } }),
+			fixtureDb.expense.count({ where: { id: done.confirmed.expenseId } }),
 		).resolves.toBe(0);
-		const back = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const back = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id: item.id },
 		});
 		expect(back.nextDueDate.toISOString()).toBe(item.dueAt);
@@ -860,7 +861,7 @@ describe("/api/v1/recurring", () => {
 				"bad_request",
 			);
 			await expect(
-				adminDb.expense.count({ where: { recurringTemplateId: item.id } }),
+				fixtureDb.expense.count({ where: { recurringTemplateId: item.id } }),
 			).resolves.toBe(0);
 			// The first allowed day books.
 			const done = await expectBody<Confirm>(
@@ -882,7 +883,7 @@ describe("/api/v1/recurring", () => {
 			"validation_failed",
 		);
 		await expect(
-			adminDb.recurringTemplate.findUniqueOrThrow({ where: { id: item.id } }),
+			fixtureDb.recurringTemplate.findUniqueOrThrow({ where: { id: item.id } }),
 		).resolves.toMatchObject({ nextDueDate: new Date(item.dueAt) });
 	});
 
@@ -898,7 +899,7 @@ describe("/api/v1/recurring", () => {
 			await send("POST", `/recurring/${item.id}/confirm`, { paidOn }),
 			c.confirm,
 		);
-		const row = await adminDb.expense.findUniqueOrThrow({
+		const row = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: done.confirmed.expenseId },
 		});
 		expect(row.date.toISOString()).toBe(`${paidOn}T00:00:00.000Z`);
@@ -906,7 +907,7 @@ describe("/api/v1/recurring", () => {
 			await send("POST", "/recurring/undo", { token: done.undo }),
 			c.undo,
 		);
-		const back = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const back = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id: item.id },
 		});
 		expect(back.nextDueDate.toISOString()).toBe(item.dueAt);
@@ -927,7 +928,7 @@ describe("/api/v1/recurring", () => {
 			}),
 			c.confirm,
 		);
-		const row = await adminDb.expense.findUniqueOrThrow({
+		const row = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: done.confirmed.expenseId },
 		});
 		expect(row.amount.toString()).toBe("31.25");
@@ -953,7 +954,9 @@ describe("/api/v1/recurring", () => {
 			);
 			expect(preview.changes).toEqual([]);
 			await expect(
-				adminDb.recurringTemplate.findUniqueOrThrow({ where: { id: item.id } }),
+				fixtureDb.recurringTemplate.findUniqueOrThrow({
+					where: { id: item.id },
+				}),
 			).resolves.toMatchObject({ nextDueDate: new Date(item.dueAt) });
 
 			const done = await expectBody<{
@@ -967,7 +970,7 @@ describe("/api/v1/recurring", () => {
 				templateId: item.id,
 				skippedAt: item.dueAt,
 			});
-			const moved = await adminDb.recurringTemplate.findUniqueOrThrow({
+			const moved = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 				where: { id: item.id },
 			});
 			expect(moved.nextDueDate.toISOString()).toBe(done.skipped.nextDueAt);
@@ -975,7 +978,7 @@ describe("/api/v1/recurring", () => {
 				new Date(item.dueAt).getTime(),
 			);
 			await expect(
-				adminDb.expense.count({ where: { recurringTemplateId: item.id } }),
+				fixtureDb.expense.count({ where: { recurringTemplateId: item.id } }),
 			).resolves.toBe(0);
 
 			// The same skip again is refused, not applied to the next period.
@@ -995,7 +998,7 @@ describe("/api/v1/recurring", () => {
 				await send("POST", "/recurring/skip/undo", { token: done.undo }),
 				c.undoSkip,
 			);
-			const back = await adminDb.recurringTemplate.findUniqueOrThrow({
+			const back = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 				where: { id: item.id },
 			});
 			expect(back.nextDueDate.toISOString()).toBe(item.dueAt);

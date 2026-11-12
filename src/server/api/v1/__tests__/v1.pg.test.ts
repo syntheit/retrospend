@@ -15,7 +15,12 @@ import { env } from "~/env";
 import { auth } from "~/server/better-auth";
 import { pruneExpiredKeys } from "~/server/services/api-v1/idempotency.service";
 import { getAppSettings, updateAppSettings } from "~/server/services/settings";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import {
+	adminDb,
+	createTestUser,
+	fixtureDb,
+	fixtureNameIndex,
+} from "~/test/pg-harness";
 import { createV1Handler, handleV1Request } from "../handler";
 import { signedIn, type V1InitialContext, v1Middleware } from "../middleware";
 import { RATE_LIMITS } from "../rate-limit";
@@ -76,8 +81,14 @@ async function writeCategory(
 	name: string,
 ) {
 	const user = signedIn(context);
+	const userId = user.principal.userId;
 	await user.db.category.create({
-		data: { name, color: "blue", userId: user.principal.userId },
+		data: {
+			name,
+			nameIndex: await fixtureNameIndex(userId, name),
+			color: "blue",
+			userId,
+		},
 	});
 }
 const t = implement(testContract)
@@ -89,18 +100,19 @@ const probeHandler = createV1Handler(
 		...v1Router,
 		probe: {
 			list: t.probe.list.handler(async ({ context }) => {
-				const rows = await signedIn(context).db.category.findMany({
-					orderBy: { name: "asc" },
-				});
-				return { names: rows.map((r) => r.name) };
+				// Sorted here: names may be sealed.
+				const rows = await signedIn(context).db.category.findMany();
+				return { names: rows.map((r) => r.name).sort() };
 			}),
 			create: t.probe.create.handler(async ({ context, input }) => {
 				const user = signedIn(context);
+				const userId = user.principal.userId;
 				return user.db.category.create({
 					data: {
 						name: input.name,
+						nameIndex: await fixtureNameIndex(userId, input.name),
 						color: "blue",
-						userId: user.principal.userId,
+						userId,
 					},
 					select: { id: true, name: true },
 				});
@@ -191,7 +203,7 @@ describe("/api/v1 on Postgres", () => {
 		alice = await createTestUser();
 		bob = await createTestUser();
 		admin = await createTestUser({ role: "ADMIN" });
-		await adminDb.category.createMany({
+		await fixtureDb.category.createMany({
 			data: [
 				{ name: "Groceries", color: "emerald", userId: alice.user.id },
 				{ name: "Rent", color: "blue", userId: bob.user.id },
@@ -469,7 +481,7 @@ describe("/api/v1 on Postgres", () => {
 				requiredScope: "write:expenses",
 			});
 			await expect(
-				adminDb.category.count({
+				fixtureDb.category.count({
 					where: { userId: alice.user.id, name: "Nope" },
 				}),
 			).resolves.toBe(0);
@@ -538,7 +550,7 @@ describe("/api/v1 on Postgres", () => {
 			expect(second.headers.get("idempotent-replayed")).toBe("true");
 			expect(await second.json()).toEqual(await first.json());
 			await expect(
-				adminDb.category.count({
+				fixtureDb.category.count({
 					where: { userId: alice.user.id, name: "Travel" },
 				}),
 			).resolves.toBe(1);
@@ -584,7 +596,7 @@ describe("/api/v1 on Postgres", () => {
 			expect(retry.status).toBe(409);
 			expect((await retry.json()).code).toBe("idempotency_in_progress");
 			await expect(
-				adminDb.category.count({
+				fixtureDb.category.count({
 					where: { userId: alice.user.id, name: "Committed once" },
 				}),
 			).resolves.toBe(1);
@@ -611,7 +623,7 @@ describe("/api/v1 on Postgres", () => {
 			expect(replay.status).toBe(409);
 			expect((await replay.json()).code).toBe("idempotency_replay_unavailable");
 			await expect(
-				adminDb.category.count({
+				fixtureDb.category.count({
 					where: { userId: alice.user.id, name: "Big body" },
 				}),
 			).resolves.toBe(1);
