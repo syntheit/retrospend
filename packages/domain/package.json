@@ -27,6 +27,7 @@
 		"./glance-pace": "./src/glance-pace.ts",
 		"./insights": "./src/insights.ts",
 		"./money": "./src/money.ts",
+		"./money-dec": "./src/money-dec.ts",
 		"./money-minor": "./src/money-minor.ts",
 		"./month-key": "./src/month-key.ts",
 		"./parse": "./src/parse.ts",

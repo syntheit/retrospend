@@ -11,7 +11,9 @@
  * Crypto vs fiat is decided by the currency code (isCrypto), never by the
  * rate "type": ARS has a "crypto" rate type that is still ARS per USD.
  *
- * amountInUSD = toUSD(amount, currency, exchangeRate), rounded to cents.
+ * amountInUSD = toUSD(amount, currency, exchangeRate), rounded half to even
+ * to cents. The exact math lives in money-dec.ts; the number functions here
+ * wrap it for display and form drafts.
  * Converting between two non-USD currencies always goes through USD. A rate
  * shown to the user ("1 EUR = 1775 ARS") is a display quote built with
  * quoteRate(); it is never stored.
@@ -28,51 +30,46 @@
  * period (sumIn). The period's rate is the one for its last day, or today
  * while the period is still running (periodRateDate).
  */
-import { getDecimalDigits, isCrypto } from "./currency-format";
+import { currencyDecimals } from "./currency-decimals";
+import { isCrypto } from "./currency-format";
+import {
+	computeAmountInUSDDec,
+	convertDec,
+	crossRateDec,
+	fromUSDDec,
+	MissingRateError,
+	rateFromUsdPerUnitDec,
+	roundMoneyDec,
+	toUSDDec,
+	USD,
+	usdPerUnitDec,
+} from "./money-dec";
+import { roundedMinor } from "./money-minor";
+import { dec, fromFloat } from "./precise-decimal";
 
-export const USD = "USD";
-
-export class MissingRateError extends Error {
-	/** Every currency that could not convert, sorted; `currency` is the first. */
-	public readonly currencies: readonly string[];
-
-	constructor(
-		public readonly currency: string,
-		currencies: readonly string[] = [currency],
-	) {
-		const all = [...new Set([currency, ...currencies])].sort();
-		super(`No exchange rate available for ${all.join(", ")}`);
-		this.name = "MissingRateError";
-		this.currencies = all;
-	}
-}
+export { currencyDecimals, MissingRateError, USD };
 
 export function isValidRate(rate: unknown): rate is number {
 	return typeof rate === "number" && Number.isFinite(rate) && rate > 0;
 }
 
-function assertRate(currency: string, rate: number | null | undefined): number {
-	if (!isValidRate(rate)) throw new MissingRateError(currency);
-	return rate;
-}
-
 // ── Conversion ───────────────────────────────────────────────────────────────
+// The number functions below wrap money-dec.ts, the one implementation. They
+// are for display and form drafts only; stored figures and totals use
+// money-dec. An amount enters through fromFloat, the one float-noise trim; a
+// rate as its shortest decimal, exact for the 6-decimal column.
 
 /** USD value of one unit of `currency`, given its stored rate. */
 export function usdPerUnit(
 	currency: string,
 	rate: number | null | undefined,
 ): number {
-	if (currency === USD) return 1;
-	const r = assertRate(currency, rate);
-	return isCrypto(currency) ? r : 1 / r;
+	return Number(usdPerUnitDec(currency, rate));
 }
 
 /** Stored rate for `currency` given the USD value of one unit. */
 export function rateFromUsdPerUnit(currency: string, usdValue: number): number {
-	if (currency === USD) return 1;
-	const v = assertRate(currency, usdValue);
-	return isCrypto(currency) ? v : 1 / v;
+	return Number(rateFromUsdPerUnitDec(currency, usdValue));
 }
 
 /** Converts an amount to USD (unrounded). */
@@ -81,8 +78,7 @@ export function toUSD(
 	currency: string,
 	rate: number | null | undefined,
 ): number {
-	if (currency === USD) return amount;
-	return amount * usdPerUnit(currency, rate);
+	return Number(toUSDDec(fromFloat(amount), currency, rate));
 }
 
 /** Converts a USD amount to `currency` (unrounded). */
@@ -91,8 +87,7 @@ export function fromUSD(
 	currency: string,
 	rate: number | null | undefined,
 ): number {
-	if (currency === USD) return usdAmount;
-	return usdAmount / usdPerUnit(currency, rate);
+	return Number(fromUSDDec(fromFloat(usdAmount), currency, rate));
 }
 
 /** Converts between any two currencies through USD (unrounded). */
@@ -103,8 +98,7 @@ export function convertAmount(
 	to: string,
 	toRate: number | null | undefined,
 ): number {
-	if (from === to) return amount;
-	return fromUSD(toUSD(amount, from, fromRate), to, toRate);
+	return Number(convertDec(fromFloat(amount), from, fromRate, to, toRate));
 }
 
 /**
@@ -133,16 +127,16 @@ export function crossRate(
 	to: string,
 	toRate: number | null | undefined,
 ): number {
-	return convertAmount(1, from, fromRate, to, toRate);
+	return Number(crossRateDec(from, fromRate, to, toRate));
 }
 
-/** amountInUSD as stored on expenses: converted and rounded to cents. */
+/** amountInUSD as stored on expenses: converted and rounded to cents, half to even. */
 export function computeAmountInUSD(
 	amount: number,
 	currency: string,
 	rate: number | null | undefined,
 ): number {
-	return roundUSD(toUSD(amount, currency, rate));
+	return Number(computeAmountInUSDDec(fromFloat(amount), currency, rate));
 }
 
 /**
@@ -266,11 +260,15 @@ export function quoteRate(
 	home: string,
 	homeRate: number | null | undefined,
 ): RateQuote {
-	const homePerForeign = crossRate(foreign, foreignRate, home, homeRate);
-	if (homePerForeign >= 1) {
-		return { base: foreign, quote: home, value: homePerForeign };
+	const homePerForeign = crossRateDec(foreign, foreignRate, home, homeRate);
+	if (homePerForeign.gte(1)) {
+		return { base: foreign, quote: home, value: Number(homePerForeign) };
 	}
-	return { base: home, quote: foreign, value: 1 / homePerForeign };
+	return {
+		base: home,
+		quote: foreign,
+		value: Number(dec(1).div(homePerForeign)),
+	};
 }
 
 /**
@@ -283,73 +281,28 @@ export function rateFromQuote(
 	home: string,
 	homeRate: number | null | undefined,
 ): number {
-	const value = assertRate(foreign, quote.value);
-	const homeUsd = usdPerUnit(home, homeRate);
-	const foreignUsd = quote.base === foreign ? value * homeUsd : homeUsd / value;
-	return rateFromUsdPerUnit(foreign, foreignUsd);
+	if (!isValidRate(quote.value)) throw new MissingRateError(foreign);
+	const value = dec(quote.value);
+	const homeUsd = usdPerUnitDec(home, homeRate);
+	const foreignUsd =
+		quote.base === foreign ? value.mul(homeUsd) : homeUsd.div(value);
+	return Number(rateFromUsdPerUnitDec(foreign, foreignUsd));
 }
 
-// ── Decimals and rounding ────────────────────────────────────────────────────
+// ── Decimals and rounding (number edge) ──────────────────────────────────────
 
-// ISO 4217 minor units that differ from the default of 2.
-const ZERO_DECIMAL = new Set([
-	"BIF",
-	"CLP",
-	"DJF",
-	"GNF",
-	"ISK",
-	"JPY",
-	"KMF",
-	"KRW",
-	"PYG",
-	"RWF",
-	"UGX",
-	"UYI",
-	"VND",
-	"VUV",
-	"XAF",
-	"XOF",
-	"XPF",
-]);
-const THREE_DECIMAL = new Set([
-	"BHD",
-	"IQD",
-	"JOD",
-	"KWD",
-	"LYD",
-	"OMR",
-	"TND",
-]);
-// Unidad de Fomento and Unidad Previsional, indexed units of account.
-const FOUR_DECIMAL = new Set(["CLF", "UYW"]);
-
-/**
- * Decimal places money in `currency` is kept to. ISO 4217 for fiat, 8 for
- * crypto (2 for stablecoins). Display formatting may show fewer.
- */
-export function currencyDecimals(currency: string): number {
-	const code = currency.toUpperCase();
-	if (isCrypto(code)) return getDecimalDigits(code, false);
-	if (ZERO_DECIMAL.has(code)) return 0;
-	if (THREE_DECIMAL.has(code)) return 3;
-	if (FOUR_DECIMAL.has(code)) return 4;
-	return 2;
-}
-
-/** Amount in integer minor units (cents, satoshis, fils). */
+/** Amount in integer minor units (cents, satoshis, fils), half to even. */
 export function toMinorUnits(amount: number, currency: string): number {
-	const factor = 10 ** currencyDecimals(currency);
-	// toPrecision trims float noise such as 1.005 * 100 = 100.49999999999999.
-	return Math.round(Number((amount * factor).toPrecision(15)));
+	return roundedMinor(fromFloat(amount), currency);
 }
 
 export function fromMinorUnits(units: number, currency: string): number {
-	const decimals = currencyDecimals(currency);
-	return Number((units / 10 ** decimals).toFixed(decimals));
+	return Number(dec(units).div(10 ** currencyDecimals(currency)));
 }
 
+/** An amount at its currency's precision, half to even. */
 export function roundMoney(amount: number, currency: string): number {
-	return fromMinorUnits(toMinorUnits(amount, currency), currency);
+	return Number(roundMoneyDec(fromFloat(amount), currency));
 }
 
 /**
@@ -360,7 +313,7 @@ export function roundMoney(amount: number, currency: string): number {
  */
 export function toAmountString(amount: number, currency: string): string {
 	const decimals = currencyDecimals(currency);
-	const fixed = roundMoney(amount, currency).toFixed(decimals);
+	const fixed = roundMoneyDec(fromFloat(amount), currency).toFixed(decimals);
 	if (!isCrypto(currency) || decimals === 0) return fixed;
 	return fixed.replace(/\.?0+$/, "");
 }

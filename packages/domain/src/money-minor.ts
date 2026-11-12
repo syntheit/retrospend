@@ -5,8 +5,10 @@
  * 12.34 and 400000 ETH minor is 0.004. Integers keep sums exact; a safe
  * integer covers BTC 21M (2.1e15 satoshis) and ARS 1e12 (1e14 cents).
  */
+import { currencyDecimals } from "./currency-decimals";
 import { isPrismaDecimal, type PrismaDecimal } from "./decimal";
-import { currencyDecimals } from "./money";
+import { roundMoneyDec } from "./money-dec";
+import { type DecimalInput, fromFloat } from "./precise-decimal";
 
 export interface Money {
 	/** Integer minor units, within Number.MAX_SAFE_INTEGER. */
@@ -55,9 +57,8 @@ export function money(minor: number, currency: string): Money {
 /**
  * Minor units for an amount in major units.
  *
- * A number is scaled with float noise trimmed (1.005 * 100 is
- * 100.49999999999999 as a float, read as 100.5), then rounded half to even
- * on its magnitude, so 1.005 and -1.005 USD give 100 and -100. A number at
+ * A number is read with float noise trimmed (fromFloat, 15 significant
+ * digits), then rounded half to even on its magnitude, so 1.005 and -1.005 USD give 100 and -100. A number at
  * or above 1e15 minor units is refused: a float cannot hold that many digits
  * (12345678.12345678 BTC reads back as ...680 satoshis). Pass a string or a
  * Prisma Decimal instead; those are read exactly, and refused when they are
@@ -80,18 +81,28 @@ function numberToMinor(amount: number, currency: string): number {
 	if (!Number.isFinite(amount)) {
 		throw new RangeError(`Amount must be finite, got ${amount}`);
 	}
-	const factor = 10 ** currencyDecimals(currency);
-	const scaled = Number((Math.abs(amount) * factor).toPrecision(15));
-	if (scaled >= FLOAT_DIGITS_LIMIT) {
+	const exact = fromFloat(amount);
+	if (
+		exact
+			.abs()
+			.mul(10 ** currencyDecimals(currency))
+			.gte(FLOAT_DIGITS_LIMIT)
+	) {
 		throw new RangeError(
 			`${amount} ${currency} has more digits than a float keeps; pass it as a string`,
 		);
 	}
-	const whole = Math.floor(scaled);
-	const rest = scaled - whole;
-	const rounded =
-		rest > 0.5 || (rest === 0.5 && whole % 2 === 1) ? whole + 1 : whole;
-	return amount < 0 && rounded !== 0 ? -rounded : rounded;
+	return roundedMinor(exact, currency);
+}
+
+/**
+ * Minor units for an exact decimal that may be more precise than its
+ * currency (a stored column keeps 8 decimals for every currency, so a share
+ * split three ways is 12.73333333): rounded half to even first, the
+ * domain's one rule, since toMinor refuses to round a string itself.
+ */
+export function roundedMinor(value: DecimalInput, currency: string): number {
+	return toMinor(roundMoneyDec(value, currency).toFixed(), currency);
 }
 
 const DECIMAL_TEXT = /^([+-]?)(\d*)(?:\.(\d*))?(?:e([+-]?\d+))?$/i;

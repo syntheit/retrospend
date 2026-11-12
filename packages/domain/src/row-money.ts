@@ -5,9 +5,9 @@
  * only format what comes out.
  */
 import { categoryTone } from "./category-tone";
-import { currencyDecimals, fromUSD, isValidRate, toUSD, USD } from "./money";
-import { type Money, toMinor } from "./money-minor";
-import { Dec, type DecimalInput, dec } from "./precise-decimal";
+import { fromUSD, isValidRate, toUSD, USD } from "./money";
+import { type Money, roundedMinor, toMinor } from "./money-minor";
+import type { DecimalInput } from "./precise-decimal";
 
 /** A category as rows show it: the color is a category-n token number. */
 export type CategoryRefDTO = {
@@ -17,17 +17,9 @@ export type CategoryRefDTO = {
 	tone: number;
 };
 
-/**
- * A stored amount as Money. Columns keep 8 decimals for every currency, so
- * a share split three ways (12.73333333) is rounded half to even to the
- * currency first, the domain's one rule; toMinor refuses to round itself.
- */
+/** A stored amount as Money, rounded half to even to its currency (roundedMinor). */
 export function decimalMoney(value: DecimalInput, currency: string): Money {
-	const rounded = dec(value).toDecimalPlaces(
-		currencyDecimals(currency),
-		Dec.ROUND_HALF_EVEN,
-	);
-	return { minor: toMinor(rounded.toFixed(), currency), currency };
+	return { minor: roundedMinor(value, currency), currency };
 }
 
 /** A converted major-units value as Money (half to even). */
