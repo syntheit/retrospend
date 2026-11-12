@@ -14,7 +14,7 @@
 import type { Decimal } from "@prisma/client/runtime/index-browser";
 import { TRPCError } from "@trpc/server";
 import type { Money } from "~/server/figures/registry";
-import { dec, toMinor } from "~/server/services/envelope/units";
+import { Dec, dec, toMinor } from "~/server/services/envelope/units";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import type { Prisma } from "~prisma";
 import { moveDay, rowDateOf } from "../accounts/dates";
@@ -93,7 +93,7 @@ const homeOfPart = (
 	dec(leg.homeAmount.toString())
 		.mul(units)
 		.div(leg.amount.toString())
-		.toDecimalPlaces(8);
+		.toDecimalPlaces(8, Dec.ROUND_HALF_EVEN);
 
 async function incomeSide(
 	tx: Tx,

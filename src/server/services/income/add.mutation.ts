@@ -20,7 +20,7 @@ import { TRPCError } from "@trpc/server";
 import type { RestChoice } from "~/lib/schemas/envelope";
 import type { Money } from "~/server/figures/registry";
 import { forgetMonthViews } from "~/server/services/envelope/month-read";
-import { dec, toMinor } from "~/server/services/envelope/units";
+import { Dec, dec, toMinor } from "~/server/services/envelope/units";
 import {
 	FIGURE_LEFT_TO_SPEND,
 	FIGURE_NOT_PLANNED_YET,
@@ -167,7 +167,10 @@ function unitsInAccount(
 			message: `No exchange rate to put ${income.currency} into a ${account.currency} account`,
 		});
 	}
-	return income.booked.div(perUnit).toDecimalPlaces(8);
+	// The leg's amount column holds 8 decimals; rounded here, half to even.
+	return dec(income.booked)
+		.div(perUnit)
+		.toDecimalPlaces(8, Dec.ROUND_HALF_EVEN);
 }
 
 async function createTemplate(
