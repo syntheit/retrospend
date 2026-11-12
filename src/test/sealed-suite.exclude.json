@@ -24,6 +24,7 @@
 	"src/server/services/__tests__/recurring-restore-match.pg.test.ts": "Mocks the master key",
 	"src/server/services/__tests__/sealed-copies.pg.test.ts": "Mocks the master key and turns sealing on and off",
 	"src/server/services/__tests__/search-app-layer.pg.test.ts": "Builds its own keys and sets and clears the epoch",
+	"src/server/services/__tests__/search-sealed.perf.pg.test.ts": "Mocks the master key, builds its own keys and sets and clears the epoch",
 	"src/server/services/__tests__/title-suggestions.pg.test.ts": "Mocks the master key, builds its own keys and sets and clears the epoch",
 	"src/server/__tests__/client-keys.pg.test.ts": "Builds its own keys",
 	"src/server/__tests__/client-slot.pg.test.ts": "Builds its own keys",
