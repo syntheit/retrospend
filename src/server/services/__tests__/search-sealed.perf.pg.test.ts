@@ -74,7 +74,7 @@ sealedFile(master);
 
 const TZ = "America/Argentina/Buenos_Aires";
 const NOW = new Date();
-/** Measured on harbor with no cache; see the comment on each. */
+/** Budgets below were measured on harbor with no cache (3 runs, 2026-11-12). */
 const ENFORCE = process.env.PERF_BUDGET === "harbor";
 /** The plan's go/no-go line for building the cache (7.0). */
 const STALL_LIMIT_MS = 120;
@@ -207,7 +207,7 @@ const p95 = (xs: number[]) =>
 
 /**
  * The time budget: asserted only under PERF_BUDGET=harbor, as 3x the median of
- * the harbor runs rounded up to 100 ms (the measured median is in the comment
+ * the harbor runs rounded up to 100 ms (the measured number is in the comment
  * at each call). The event loop stall is held to the plan's line.
  */
 function withinBudget(t: Timing, budgetMs: number, typing = false) {
@@ -435,8 +435,8 @@ describe("Activity", () => {
 			expect(r.items).toHaveLength(50);
 			expect(r.nextCursor).not.toBeNull();
 		}
-		// budget: 3x median 0 ms, rounded up to 100 ms
-		withinBudget(timing, 100);
+		// budget: 3x the median of the harbor runs (65 ms), rounded up to 100 ms
+		withinBudget(timing, 200);
 	});
 
 	it("a no-match search reads and opens every row and finds nothing", async () => {
@@ -449,8 +449,8 @@ describe("Activity", () => {
 		}
 		// A scan that reads nothing could not tell: it must have opened the ledger.
 		expect(timing.opens).toBeGreaterThanOrEqual(EXPENSES + SHARED);
-		// budget: 3x median 0 ms, rounded up to 100 ms
-		withinBudget(timing, 100);
+		// budget: 3x the median of the harbor runs (224 ms), rounded up to 100 ms
+		withinBudget(timing, 700);
 	});
 
 	it("a matching search counts what the seed holds", async () => {
@@ -479,8 +479,8 @@ describe("Activity", () => {
 				true,
 			);
 		}
-		// budget: 3x median 0 ms, rounded up to 100 ms
-		withinBudget(timing, 100);
+		// budget: 3x the median of the harbor runs (226 ms), rounded up to 100 ms
+		withinBudget(timing, 700);
 	});
 
 	it("typing: five different no-match needles, one after the other", async () => {
@@ -491,8 +491,8 @@ describe("Activity", () => {
 			false,
 		);
 		for (const r of results) expect(r.items).toEqual([]);
-		// budget (p95): 3x median 0 ms, rounded up to 100 ms
-		withinBudget(timing, 100, true);
+		// budget: 3x the p95 of the harbor runs (238 ms), rounded up to 100 ms
+		withinBudget(timing, 800, true);
 	});
 
 	it("the unique needle finds exactly its row", async () => {
@@ -512,8 +512,8 @@ describe("v1 expense search", () => {
 		);
 		for (const r of results) expect(r).toEqual([]);
 		expect(timing.opens).toBeGreaterThanOrEqual(EXPENSES);
-		// budget: 3x median 0 ms, rounded up to 100 ms
-		withinBudget(timing, 100);
+		// budget: 3x the median of the harbor runs (145 ms), rounded up to 100 ms
+		withinBudget(timing, 500);
 	});
 
 	it("the unique needle returns exactly its row", async () => {
@@ -571,8 +571,8 @@ describe("title suggestions while typing", () => {
 			const want = expectedTop(query).slice(0, 8);
 			expect(got.map((g) => [g.title, g.count])).toEqual(want);
 		}
-		// budget (p95): 3x median 0 ms, rounded up to 100 ms
-		withinBudget(timing, 100, true);
+		// budget: 3x the p95 of the harbor runs (129 ms), rounded up to 100 ms
+		withinBudget(timing, 400, true);
 	});
 
 	it("a no-match keystroke returns nothing", async () => {
@@ -603,7 +603,7 @@ describe("global search over people and projects", () => {
 			);
 			expect(none).toEqual([]);
 		}
-		// budget: 3x median 0 ms, rounded up to 100 ms
+		// budget: 3x the median of the harbor runs (18 ms), rounded up to 100 ms
 		withinBudget(timing, 100);
 	});
 
@@ -629,7 +629,7 @@ describe("global search over people and projects", () => {
 			expect(hit).toHaveLength(want.length);
 			expect(none).toEqual([]);
 		}
-		// budget: 3x median 0 ms, rounded up to 100 ms
+		// budget: 3x the median of the harbor runs (4 ms), rounded up to 100 ms
 		withinBudget(timing, 100);
 	});
 });
@@ -683,7 +683,7 @@ describe("import review against the ledger", () => {
 				copied.map((i) => titleOf(i)),
 			);
 		}
-		// budget: 3x median 0 ms, rounded up to 100 ms
-		withinBudget(timing, 100);
+		// budget: 3x the median of the harbor runs (50 ms), rounded up to 100 ms
+		withinBudget(timing, 200);
 	});
 });
