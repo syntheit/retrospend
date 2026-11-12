@@ -14,6 +14,7 @@ import type { JsonModel, MappedModel } from "./fields";
 export const ID_DEFAULT: Record<MappedModel | JsonModel, "cuid" | "none"> = {
 	Apikey: "none",
 	AssetAccount: "cuid",
+	AuditLogEntry: "cuid",
 	BillingPeriod: "cuid",
 	BudgetBook: "cuid",
 	BudgetMovement: "none",

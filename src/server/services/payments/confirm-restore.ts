@@ -132,6 +132,11 @@ export function previousOf(
  * opened with the instance key, under the AAD of the payment (the header's
  * method) and of each settlement row. Plaintext passes; a sealed cell opens
  * or fails the request, as on a model read. Other entries pass unchanged.
+ *
+ * Only `previous` is opened here. Every other text leaf of `changes` is
+ * declared in JSON_CELLS (fields.ts) and sealed and opened by the extension
+ * under the entry's own id, so nothing under `previous` is a declared leaf
+ * and no string is handled twice.
  */
 export async function openAuditChanges(
 	keys: TextKeys,
