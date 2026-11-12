@@ -177,7 +177,8 @@ describe("ExpenseService money (server side)", () => {
 			["EUR", 100, 113.8],
 			["BRL", 100, 19.54],
 			["JPY", 10000, 61.04],
-			["ETH", 0.5, 958.31],
+			// 0.5 x 1916.61 = 958.305 USD, a tie at cents: half to even gives 958.30.
+			["ETH", 0.5, 958.3],
 		])("%s: amountInUSD always comes from the stored rate", async (currency, amount, usd) => {
 			await service.createExpense("user-1", {
 				...BASE,
