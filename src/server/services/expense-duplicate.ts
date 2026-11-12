@@ -5,7 +5,7 @@ import {
 } from "@retrospend/domain/time-zone";
 import type { Keyring } from "~/server/crypto/field-crypto";
 import type { PrismaClient } from "~prisma";
-import { pgLower, searchesInApp } from "./search-fold";
+import { pgLower, searchesInAppLoaded } from "./search-fold";
 import { listedEntryWhere } from "./spending";
 
 /** The value as an ILIKE pattern that matches only itself. */
@@ -66,7 +66,7 @@ export async function findDuplicateExpense(
 		date: { gte: startOfDay, lte: endOfDay },
 	};
 
-	if (!searchesInApp(keyring))
+	if (!(await searchesInAppLoaded(keyring)))
 		return await db.expense.findFirst({
 			where: {
 				...where,

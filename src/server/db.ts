@@ -5,8 +5,11 @@
  * services import `keystoreDb` from db-core, never from here, so this file can
  * use them without an import cycle.
  */
+import { env } from "~/env";
+import { setEpochReader } from "~/server/crypto/epoch";
 import { fieldOpenSlot } from "~/server/crypto/field-open";
 import { buildModelGraph, type ModelGraph } from "~/server/crypto/model-graph";
+import { sealingWanted, wireSealingSetting } from "~/server/crypto/sealing";
 import {
 	type KeyLoader,
 	type KeyMinter,
@@ -18,6 +21,7 @@ import {
 	evictDataKeyring,
 	findDataKeyring,
 } from "~/server/services/keys/data-key.service";
+import { readFieldEncryptionEpoch } from "~/server/services/keys/field-encryption-start";
 import {
 	evictInstanceKeyring,
 	findInstanceKeyring,
@@ -40,6 +44,11 @@ const userLoader =
 // key is the service's, whoever writes first.
 const mintInstance: KeyMinter = () =>
 	getOrCreateInstanceKeyring({ kind: "service" });
+
+// DATA_KEYS_WRITE turns sealing on (sealing.ts), and every client's
+// `ready()` loads the epoch through this reader (epoch.ts).
+wireSealingSetting(() => sealingWanted(env.DATA_KEYS_WRITE, env.NODE_ENV));
+setEpochReader(() => readFieldEncryptionEpoch());
 
 // Built on the first query, not at import: a test that mocks the Prisma
 // client imports this file without a runtime data model.

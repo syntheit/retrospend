@@ -15,6 +15,7 @@
  * `pgLower` lowercases one code point at a time, as Postgres's lower() does:
  * no context (a final sigma stays sigma) and "I with dot" becomes a plain i.
  */
+import { epochActiveNow, loadEpoch } from "../crypto/epoch";
 import {
 	FieldCryptoError,
 	type Keyring,
@@ -102,19 +103,29 @@ export function ilikeContains(query: string): (text: string) => boolean {
 export const APP_LAYER_WINDOW = 20_000;
 
 /**
- * The one switch between the two ways to match search text. Without a keyring
- * (field encryption is not active, the case today) Postgres matches in SQL
- * over every row. With one, text may be ciphertext, so candidates are read
- * and matched in the app layer over a bounded window: v1 search reads the
- * newest SEARCH_EXPENSE_WINDOW (20,000) expenses, Activity the newest
+ * The one switch between the two ways to match search text. Before the field
+ * encryption epoch (epoch.ts) Postgres matches in SQL over every row. Once
+ * it exists any text may be ciphertext, so candidates are read and matched in
+ * the app layer over a bounded window: v1 search reads the newest
+ * SEARCH_EXPENSE_WINDOW (20,000) expenses, Activity the newest
  * SEARCH_CANDIDATE_CAP (20,000) rows per source, so older rows are not found
- * on that path. D11 passes the user's keyring when DATA_KEYS_WRITE is on;
- * until then nothing supplies one.
+ * on that path. The SQL path would quietly miss sealed rows. A keyring picks
+ * the app path too (tests). An epoch that is not known (no read yet, or a
+ * failed one) counts as set. This reads only the cache, for callers inside a
+ * transaction (whose client loaded it as it opened); a caller outside one
+ * uses `searchesInAppLoaded`, so a cold process does not guess. Until PR 5
+ * hands these paths every key, a raw read of a sealed cell fails
+ * (`readUserText`), which is loud, never a miss.
  */
-export function searchesInApp(
+export function searchesInApp(keyring: Keyring | undefined): boolean {
+	return keyring !== undefined || epochActiveNow();
+}
+
+/** `searchesInApp` after loading the epoch (no query inside a transaction). */
+export async function searchesInAppLoaded(
 	keyring: Keyring | undefined,
-): keyring is Keyring {
-	return keyring !== undefined;
+): Promise<boolean> {
+	return keyring !== undefined || (await loadEpoch());
 }
 
 /** The text of a column that may hold ciphertext; null reads as empty. */

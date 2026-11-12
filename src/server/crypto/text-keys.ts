@@ -16,6 +16,7 @@
  * window share the one reload's outcome.
  */
 import { KeystoreError, pgCode } from "../services/keys/keystore-errors";
+import { loadEpoch } from "./epoch";
 import { FieldCryptoError, type Keyring } from "./field-crypto";
 import type { KeyClass } from "./fields";
 
@@ -35,7 +36,11 @@ export type KeyLoader = (fresh: boolean) => Promise<Keyring | undefined>;
 export interface TextKeys {
 	/** Whose user-class cells these keys open; undefined on the global client, which opens none. */
 	readonly userId: string | undefined;
-	/** Loads every class and records its outcome. Never throws. */
+	/**
+	 * Loads every class and records its outcome, and loads the field
+	 * encryption epoch (epoch.ts) with them, so a transaction opened after it
+	 * finds the epoch cached. Never throws.
+	 */
 	ready(): Promise<void>;
 	/** The ring `ready()` recorded for the class, if it found one. */
 	ring(cls: KeyClass): Keyring | undefined;
@@ -175,15 +180,16 @@ export function textKeys(
 	return {
 		userId,
 		async ready() {
-			await Promise.all(
-				CLASSES.map(async (cls) => {
+			await Promise.all([
+				...CLASSES.map(async (cls) => {
 					const load = loaders[cls];
 					outcomes.set(
 						cls,
 						load ? await settle(cls, load, false) : { none: true },
 					);
 				}),
-			);
+				loadEpoch(),
+			]);
 		},
 		ring: (cls) => ringOf(outcomes.get(cls)),
 		outcome: (cls) => outcomes.get(cls),

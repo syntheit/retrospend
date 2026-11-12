@@ -15,14 +15,16 @@ import {
 	sealField,
 } from "~/server/crypto/field-crypto";
 import { TextUnavailableError } from "~/server/crypto/field-open";
-import { findDuplicateExpense } from "~/server/services/expense-duplicate";
 import { ExpenseService } from "~/server/services/expense.service";
+import { findDuplicateExpense } from "~/server/services/expense-duplicate";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import {
+	failNextEpochRead,
 	sealedFile,
 	sealText,
 	userKeyring,
 	writeCell,
+	writeEpoch,
 } from "~/test/sealed-fixture";
 import type { PrismaClient } from "~prisma";
 
@@ -397,6 +399,29 @@ describe("sealed titles (app-layer path)", () => {
 		await seal(id, "Coffee");
 		expect(await find(me, undefined, { title: "Coffee" })).toBeNull();
 		expect(await find(me, keyring, { title: "Coffee" })).not.toBeNull();
+	});
+
+	it("follows the encryption epoch: with no keyring a sealed title still matches", async () => {
+		const me = await createTestUser();
+		const id = randomUUID();
+		await seed(me, [{ id, title: "Coffee" }]);
+		await seal(id, "Coffee");
+		await writeEpoch(true);
+		try {
+			expect(await find(me, undefined, { title: "COFFEE" })).toEqual({
+				id,
+				title: "Coffee",
+			});
+			// An epoch that cannot be read counts as set: still never SQL.
+			await writeEpoch(true);
+			failNextEpochRead();
+			vi.spyOn(console, "error").mockImplementation(() => {});
+			for (let i = 0; i < 2; i++)
+				expect((await find(me, undefined, { title: "coffee" }))?.id).toBe(id);
+		} finally {
+			vi.restoreAllMocks();
+			await writeEpoch(false);
+		}
 	});
 
 	it("a sealed title is not matched by its ciphertext, or when the amount differs", async () => {

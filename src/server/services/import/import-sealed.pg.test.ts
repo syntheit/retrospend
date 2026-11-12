@@ -35,7 +35,12 @@ import { TextUnavailableError } from "~/server/crypto/field-open";
 import { createUserScopedDb } from "~/server/db";
 import { evictDataKeyring } from "~/server/services/keys/data-key.service";
 import { adminDb } from "~/test/pg-harness";
-import { sealedFile, sealText } from "~/test/sealed-fixture";
+import {
+	failNextEpochRead,
+	sealedFile,
+	sealText,
+	writeEpoch,
+} from "~/test/sealed-fixture";
 import type { Prisma } from "~prisma";
 import {
 	arsUser,
@@ -214,6 +219,23 @@ describe("import review over plain and sealed titles", () => {
 
 	it("a sealed ledger reviews the same as the plain one", async () => {
 		expect(await reviewOf(await ledger(true), { keyring })).toEqual(EXPECTED);
+	});
+
+	it("follows the encryption epoch: a sealed ledger reviews the same with no keyring", async () => {
+		await writeEpoch(true);
+		try {
+			const l = await ledger(true);
+			expect(await reviewOf(l)).toEqual(EXPECTED);
+			// An epoch that cannot be read counts as set: still never SQL.
+			await writeEpoch(true);
+			failNextEpochRead();
+			vi.spyOn(console, "error").mockImplementation(() => {});
+			expect(await reviewOf(l)).toEqual(EXPECTED);
+			expect(await reviewOf(l)).toEqual(EXPECTED);
+		} finally {
+			vi.restoreAllMocks();
+			await writeEpoch(false);
+		}
 	});
 
 	it("sealed titles whose key is lost are an error, not a missed duplicate", async () => {

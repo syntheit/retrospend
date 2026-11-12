@@ -14,7 +14,7 @@ import {
 	Keyring,
 	sealField,
 } from "~/server/crypto/field-crypto";
-import { TextUnavailableError } from "~/server/crypto/field-open";
+import type { TextUnavailableError } from "~/server/crypto/field-open";
 import { evictDataKeyring } from "~/server/services/keys/data-key.service";
 import { listedEntryWhere } from "~/server/services/spending";
 import {
@@ -23,11 +23,13 @@ import {
 } from "~/server/services/title-suggestions.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import {
+	failNextEpochRead,
 	instanceKeyring,
 	sealedFile,
 	sealText,
 	userKeyring,
 	writeCell,
+	writeEpoch,
 } from "~/test/sealed-fixture";
 import type { PrismaClient } from "~prisma";
 
@@ -550,6 +552,23 @@ describe("rows that hold ciphertext", () => {
 			(await ask("café")).map((s) => [s.title, s.count, s.lastAmount]),
 		).toEqual([["Café con leche", 1, 100]]);
 		expect(await ask("ÑANDÚ")).toEqual([]);
+	});
+
+	it("follows the encryption epoch: with no keyring it reads in the app, never in SQL", async () => {
+		await writeEpoch(true);
+		try {
+			expect(await ask("café")).toEqual(await ask("café", keyring));
+			expect((await ask("ÑANDÚ")).map((s) => s.title)).toEqual(["Ñandú"]);
+			// An epoch that cannot be read counts as set: still never SQL.
+			await writeEpoch(true);
+			failNextEpochRead();
+			vi.spyOn(console, "error").mockImplementation(() => {});
+			expect(await ask("café")).toEqual(await ask("café", keyring));
+			expect(await ask("café")).toEqual(await ask("café", keyring));
+		} finally {
+			vi.restoreAllMocks();
+			await writeEpoch(false);
+		}
 	});
 
 	it("fails when the key is lost, never as a non-match", async () => {

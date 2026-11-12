@@ -41,6 +41,14 @@ export const env = createEnv({
 		// malformed value stops the server at start (src/server/crypto/master-key.ts).
 		DATA_MASTER_KEY: z.string().optional(),
 		DATA_MASTER_KEY_FILE: z.string().optional(),
+		// Seal user text on write (E2EE D11). Development and tests only until
+		// sealing is released (src/server/crypto/release.ts); the server will
+		// not start with it on unless the master key, the key store grants and
+		// every category's name index are in place.
+		DATA_KEYS_WRITE: z
+			.enum(["true", "false"])
+			.default("false")
+			.transform((v) => v === "true"),
 
 		// Push senders. A sender with missing settings is off; nothing else
 		// changes. See docs/self-hosting for how to get each value.
@@ -116,6 +124,7 @@ export const env = createEnv({
 		PUSH_ENDPOINT_ALLOW_HOSTS: process.env.PUSH_ENDPOINT_ALLOW_HOSTS,
 		DATA_MASTER_KEY: process.env.DATA_MASTER_KEY,
 		DATA_MASTER_KEY_FILE: process.env.DATA_MASTER_KEY_FILE,
+		DATA_KEYS_WRITE: process.env.DATA_KEYS_WRITE,
 		APNS_KEY_ID: process.env.APNS_KEY_ID,
 		APNS_TEAM_ID: process.env.APNS_TEAM_ID,
 		APNS_BUNDLE_ID: process.env.APNS_BUNDLE_ID,

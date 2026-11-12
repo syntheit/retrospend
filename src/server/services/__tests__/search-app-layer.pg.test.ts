@@ -25,7 +25,7 @@ import {
 import { listV2Input } from "~/server/services/expense-list/types";
 import { searchExpenses as searchExpensesWith } from "~/server/services/search.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
-import { restoreCells, writeCell } from "~/test/sealed-fixture";
+import { restoreCells, writeCell, writeEpoch } from "~/test/sealed-fixture";
 import { Prisma } from "~prisma";
 
 const TZ = "America/Argentina/Buenos_Aires";
@@ -562,6 +562,26 @@ describe("rows that hold ciphertext", () => {
 			take: 5,
 		});
 		expect(v1.map((h) => h.title)).toEqual(["Plain café"]);
+	});
+
+	it("once the encryption epoch exists, runs in the app with no keyring, so a sealed row fails loudly instead of going missing", async () => {
+		// Until PR 5 hands these paths every key, no keyring opens nothing.
+		await writeEpoch(true);
+		try {
+			await expect(
+				userTransaction(adminDb, user.user.id, (tx) =>
+					pageKeys(tx, query("cafe", false), null, 50),
+				),
+			).rejects.toMatchObject({ code: "unknown_key" });
+			await expect(
+				searchExpensesWith(adminDb, user.user.id, "cafe", {
+					after: null,
+					take: 5,
+				}),
+			).rejects.toMatchObject({ code: "unknown_key" });
+		} finally {
+			await writeEpoch(false);
+		}
 	});
 
 	it("fails loudly for a value sealed for another row, never skips it", async () => {

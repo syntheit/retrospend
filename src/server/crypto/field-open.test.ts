@@ -17,8 +17,9 @@
  */
 import { randomBytes } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { verbatim } from "../db-tx";
+import { insideTransaction, verbatim } from "../db-tx";
 import { KeystoreError } from "../services/keys/keystore-errors";
+import { loadEpoch, resetEpochForTests, setEpochReader } from "./epoch";
 import {
 	type FieldAad,
 	FieldCryptoError,
@@ -614,5 +615,63 @@ describe("refusals", () => {
 		expect(await run("groupBy", [{ title: "Rent" }])).toEqual([
 			{ title: "Rent" },
 		]);
+	});
+	describe("filters on a mapped column", () => {
+		afterEach(() => {
+			resetEpochForTests();
+			setEpochReader(async () => false);
+		});
+		const filter = { where: { title: "Rent" } };
+
+		it("run before the epoch exists", async () => {
+			const query = vi.fn(async () => []);
+			await handle({
+				model: "Expense",
+				operation: "findMany",
+				args: filter,
+				query,
+			});
+			expect(query).toHaveBeenCalled();
+		});
+
+		it("are refused once it exists, before the query runs", async () => {
+			resetEpochForTests(true);
+			for (const operation of [
+				"findMany",
+				"count",
+				"updateMany",
+				"deleteMany",
+				"groupBy",
+			])
+				expect(
+					((await refused(operation, filter)) as FieldCryptoError).code,
+				).toBe("filter_on_sealed");
+		});
+
+		it("look only at the cached epoch inside a transaction, an unknown one counting as set", async () => {
+			let set = false;
+			const read = vi.fn(async () => set);
+			setEpochReader(read);
+			const query = vi.fn(async () => []);
+			const inTransaction = () =>
+				insideTransaction(() =>
+					handle({
+						model: "Expense",
+						operation: "findMany",
+						args: filter,
+						query,
+					}),
+				);
+			await expect(inTransaction()).rejects.toMatchObject({
+				code: "filter_on_sealed",
+			});
+			expect(read).not.toHaveBeenCalled();
+			// Loaded outside as not set: the transaction keeps that answer.
+			expect(await loadEpoch()).toBe(false);
+			set = true;
+			await inTransaction();
+			expect(query).toHaveBeenCalledTimes(1);
+			expect(read).toHaveBeenCalledTimes(1);
+		});
 	});
 });

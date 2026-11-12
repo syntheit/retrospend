@@ -13,11 +13,7 @@ import type { Money } from "~/server/figures/registry";
 import type { Prisma, PrismaClient } from "~prisma";
 import { toMinor } from "../envelope/units";
 import { loadRateContext } from "../rate-types";
-import {
-	APP_LAYER_WINDOW,
-	pgLower,
-	searchesInApp,
-} from "../search-fold";
+import { APP_LAYER_WINDOW, pgLower, searchesInAppLoaded } from "../search-fold";
 import { bookImportRow, type ImportRate } from "./book";
 import { matchFile } from "./match";
 import { prepareRows } from "./prepare";
@@ -211,7 +207,7 @@ async function suggestions(
 	const out = new Map<string, string>();
 	if (titles.length === 0) return out;
 	const { keyring, window } = options;
-	const used = searchesInApp(keyring)
+	const used = (await searchesInAppLoaded(keyring))
 		? await usedInApp(db, userId, titles, window ?? SUGGESTION_WINDOW)
 		: await usedInSql(db, userId, titles);
 	for (const [name, names] of groups) {
