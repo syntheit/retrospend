@@ -11,5 +11,18 @@
   "invitesUsed": "Invitations utilisées",
   "invitesOpen": "{count} ouvertes",
   "tabServer": "Serveur",
-  "keystoreBackup": "Sauvegarde des clés"
+  "keystoreBackup": "Sauvegarde des clés",
+  "autoPostLabel": "Dépenses récurrentes",
+  "autoPostHealthy": "Normal",
+  "autoPostAttention": "Taux manquants",
+  "autoPostFailing": "En échec",
+  "autoPostStale": "Obsolète",
+  "autoPostOff": "Désactivé",
+  "autoPostRan": "Dernière exécution il y a {time}",
+  "autoPostPosted": "Dernière exécution il y a {time}, {count} enregistrées",
+  "autoPostMissingRate": "Dernière exécution il y a {time}, {count} sans taux",
+  "autoPostFailed": "Dernière exécution il y a {time}, {count} en échec",
+  "autoPostCapped": "Dernière exécution il y a {time}, {count} encore dues",
+  "autoPostNoRun": "Aucune exécution",
+  "autoPostOffBy": "Désactivé par RECURRING_AUTO_POST"
 }

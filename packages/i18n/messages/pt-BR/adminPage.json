@@ -11,5 +11,18 @@
   "invitesUsed": "Convites usados",
   "invitesOpen": "{count} abertos",
   "tabServer": "Servidor",
-  "keystoreBackup": "Backup das chaves"
+  "keystoreBackup": "Backup das chaves",
+  "autoPostLabel": "Despesas recorrentes",
+  "autoPostHealthy": "Normal",
+  "autoPostAttention": "Faltam cotações",
+  "autoPostFailing": "Com falhas",
+  "autoPostStale": "Desatualizado",
+  "autoPostOff": "Desligado",
+  "autoPostRan": "Última execução há {time}",
+  "autoPostPosted": "Última execução há {time}, {count} lançadas",
+  "autoPostMissingRate": "Última execução há {time}, {count} sem cotação",
+  "autoPostFailed": "Última execução há {time}, {count} falharam",
+  "autoPostCapped": "Última execução há {time}, {count} ainda pendentes",
+  "autoPostNoRun": "Nenhuma execução ainda",
+  "autoPostOffBy": "Desligado por RECURRING_AUTO_POST"
 }
