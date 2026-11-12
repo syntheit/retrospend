@@ -65,10 +65,7 @@ export const peopleRouter = createTRPCRouter({
 			const shadows = candidates
 				.map((s) => ({
 					...s,
-					email: contactVisible({
-						participantType: "shadow",
-						participantId: s.id,
-					})
+					email: contactVisible({ participantType: "shadow", participantId: s.id })
 						? s.email
 						: null,
 				}))
@@ -96,7 +93,9 @@ export const peopleRouter = createTRPCRouter({
 				select: { participantId: true },
 				distinct: ["participantId"],
 			});
-			const contactIds = new Set(contactUserIds.map((c) => c.participantId));
+			const contactIds = new Set(
+				contactUserIds.map((c) => c.participantId),
+			);
 
 			// Contacts: fuzzy search by name or email
 			// Matched here, not in SQL: a name may be ciphertext in the database.
@@ -115,20 +114,16 @@ export const peopleRouter = createTRPCRouter({
 				where: {
 					id: {
 						not: userId,
-						...(contactIds.size > 0 ? { notIn: [...contactIds] } : {}),
+						...(contactIds.size > 0
+							? { notIn: [...contactIds] }
+							: {}),
 					},
 					OR: [
 						{ username: { equals: query, mode: "insensitive" } },
 						{ email: { equals: query, mode: "insensitive" } },
 					],
 				},
-				select: {
-					id: true,
-					name: true,
-					username: true,
-					image: true,
-					avatarPath: true,
-				},
+				select: { id: true, name: true, username: true, image: true, avatarPath: true },
 				take: 5,
 			});
 
@@ -238,4 +233,5 @@ export const peopleRouter = createTRPCRouter({
 		frequentSplitPartners(ctx.db, ctx.session.user.id),
 	),
 	...peopleV2Procedures,
+
 });
