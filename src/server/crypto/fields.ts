@@ -212,6 +212,11 @@ const AUDIT_CHANGES_LEAVES = [
 	"previousLabel",
 	"newLabel",
 	"splitParticipants.*.rejectionReason",
+	// A link the user types (shared-transaction.ts accepts any URL), copied
+	// into create and delete snapshots and the edit diff.
+	"receiptUrl",
+	"receiptUrl.old",
+	"receiptUrl.new",
 ] as const;
 
 export const JSON_CELLS = {

@@ -7,7 +7,7 @@
 // The schema is read from prisma/schema.prisma (src/test/prisma-schema.ts).
 import { describe, expect, it } from "vitest";
 import { readSchema } from "../../test/prisma-schema";
-import { jsonCellsOfModel, JSON_CELLS } from "./fields";
+import { JSON_CELLS, jsonCellsOfModel } from "./fields";
 import {
 	AUDIT_NO_TEXT_KEYS,
 	classifyAuditLeaf,
@@ -88,6 +88,9 @@ describe("the leaves of an audit entry's changes", () => {
 			"reason",
 			"previousLabel",
 			"newLabel",
+			"receiptUrl",
+			"receiptUrl.old",
+			"receiptUrl.new",
 		])
 			expect(classify(path), path).toBe("declared");
 	});

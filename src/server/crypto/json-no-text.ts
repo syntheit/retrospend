@@ -100,10 +100,7 @@ export const AUDIT_NO_TEXT_KEYS: readonly NoTextKeys[] = [
 		"shareAmount",
 		"sharePercentage",
 	]),
-	noText("a server-made file name or storage path", [
-		"imagePath",
-		"receiptUrl",
-	]),
+	noText("a server-made file name or storage path", ["imagePath"]),
 	noText(
 		"a fixed English sentence the server writes (user-deletion.service.ts, members.service.ts)",
 		["message"],

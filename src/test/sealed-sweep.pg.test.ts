@@ -7,10 +7,11 @@ import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { adminDb, createTestUser } from "./pg-harness";
 import { restoreCells, writeCell } from "./sealed-fixture";
-import { startSweep, SWEEP_ALLOWED } from "./sealed-sweep";
+import { SWEEP_ALLOWED, startSweep } from "./sealed-sweep";
 
 const SEALED = "\u0001k1:sealed";
-const LEFT = /^Plaintext left in mapped columns with sealing on: user\.name: 1$/;
+const LEFT =
+	/^Plaintext left in mapped columns with sealing on: user\.name: 1$/;
 
 async function userName(value: string) {
 	const { user } = await createTestUser();
@@ -107,7 +108,10 @@ describe("the sealed sweep", () => {
 				splitParticipants: [{ id: "s1", rejectionReason: SEALED }],
 				projectId: { old: "p1", new: null },
 				currency: "ARS",
-				previous: { paymentMethod: SEALED, rows: [{ note: SEALED, currency: "ARS" }] },
+				previous: {
+					paymentMethod: SEALED,
+					rows: [{ note: SEALED, currency: "ARS" }],
+				},
 			};
 			await set(fine);
 			await expect(end()).resolves.toBeUndefined();
@@ -115,6 +119,14 @@ describe("the sealed sweep", () => {
 			await set({ ...fine, description: { old: "Plain", new: SEALED } });
 			await expect(end()).rejects.toThrow(
 				/^Plaintext left in mapped columns with sealing on: audit_log_entry\.changes: 1 at description\.old$/,
+			);
+			// A receipt link is typed by the user, so a plaintext one fails too.
+			await set({
+				...fine,
+				receiptUrl: { old: "https://docs.example/Cena-con-Ana", new: SEALED },
+			});
+			await expect(end()).rejects.toThrow(
+				/audit_log_entry\.changes: 1 at receiptUrl\.old$/,
 			);
 			await set({ ...fine, previous: { rows: [{ rejectedReason: "Plain" }] } });
 			await expect(end()).rejects.toThrow(
