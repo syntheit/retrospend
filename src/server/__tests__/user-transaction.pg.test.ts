@@ -12,6 +12,7 @@ import {
 	protectedProcedure,
 } from "~/server/api/trpc";
 import { userTransaction } from "~/server/db-tx";
+import { categoryNameIndexFor } from "~/server/services/category-name-index.service";
 import {
 	arsUser,
 	balanceOf,
@@ -20,7 +21,13 @@ import {
 } from "~/server/services/accounts/test-fixtures";
 import { updateBalance } from "~/server/services/accounts/update-balance.mutation";
 import { forUser } from "~/server/services/preview";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import {
+	adminDb,
+	createTestUser,
+	FOREIGN_OWNER,
+	fixtureDb,
+	sealedSuite,
+} from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
 import { wealthRouter } from "../api/routers/wealth";
 
@@ -28,11 +35,22 @@ const probe = createTRPCRouter({
 	writeTwoThenThrow: protectedProcedure.mutation(({ ctx }) =>
 		userTransaction(ctx.db, ctx.session.user.id, async (tx) => {
 			const userId = ctx.session.user.id;
+			// Each insert carries its name index, as category.service writes it.
 			await tx.category.create({
-				data: { name: "First", color: "blue", userId },
+				data: {
+					name: "First",
+					nameIndex: await categoryNameIndexFor(tx, "First"),
+					color: "blue",
+					userId,
+				},
 			});
 			await tx.category.create({
-				data: { name: "Second", color: "pink", userId },
+				data: {
+					name: "Second",
+					nameIndex: await categoryNameIndexFor(tx, "Second"),
+					color: "pink",
+					userId,
+				},
 			});
 			throw new TRPCError({ code: "BAD_REQUEST", message: "midway failure" });
 		}),
@@ -41,12 +59,20 @@ const probe = createTRPCRouter({
 		userTransaction(ctx.db, ctx.session.user.id, async (tx) => {
 			const userId = ctx.session.user.id;
 			const made = await tx.category.create({
-				data: { name: "Mine", color: "blue", userId },
+				data: {
+					name: "Mine",
+					nameIndex: await categoryNameIndexFor(tx, "Mine"),
+					color: "blue",
+					userId,
+				},
 			});
 			const seen = await tx.category.findUnique({ where: { id: made.id } });
 			await tx.category.update({
 				where: { id: made.id },
-				data: { name: "Renamed" },
+				data: {
+					name: "Renamed",
+					nameIndex: await categoryNameIndexFor(tx, "Renamed"),
+				},
 			});
 			const renamed = await tx.category.findUnique({ where: { id: made.id } });
 			const counted = await tx.category.count({ where: { userId } });
@@ -72,9 +98,10 @@ const probe = createTRPCRouter({
 				const peeked = await tx.category.findUnique({
 					where: { id: input.otherCategoryId },
 				});
+				// A column with no text: a bulk write may not set sealed text.
 				const updated = await tx.category.updateMany({
 					where: { id: input.otherCategoryId },
-					data: { name: "Hijacked" },
+					data: { color: "red" },
 				});
 				return { role: role[0]?.role, peeked, updated: updated.count };
 			}),
@@ -97,10 +124,11 @@ const callerFor = (userId: string) =>
 		headers: new Headers(),
 	});
 
+// Sorted here: names may be sealed, and the database cannot sort those.
 const namesOf = (userId: string) =>
-	adminDb.category
-		.findMany({ where: { userId }, orderBy: { name: "asc" } })
-		.then((rows) => rows.map((row) => row.name));
+	fixtureDb.category
+		.findMany({ where: { userId } })
+		.then((rows) => rows.map((row) => row.name).sort());
 
 describe("userTransaction on the protected procedure's scoped client", () => {
 	it("leaves no rows when the work throws after two writes", async () => {
@@ -130,7 +158,7 @@ describe("userTransaction on the protected procedure's scoped client", () => {
 	it("still enforces RLS on every query inside it", async () => {
 		const alice = await createTestUser();
 		const bob = await createTestUser();
-		const bobCategory = await adminDb.category.create({
+		const bobCategory = await fixtureDb.category.create({
 			data: { name: "Rent", color: "blue", userId: bob.user.id },
 		});
 
@@ -145,7 +173,7 @@ describe("userTransaction on the protected procedure's scoped client", () => {
 		});
 		await expect(
 			callerFor(alice.user.id).plantForOther({ otherUserId: bob.user.id }),
-		).rejects.toThrow(/row-level security/);
+		).rejects.toThrow(sealedSuite ? FOREIGN_OWNER : /row-level security/);
 		expect(await namesOf(bob.user.id)).toEqual(["Rent"]);
 	});
 });
@@ -173,7 +201,7 @@ describe("account edits through the web router", () => {
 		});
 
 		expect(Date.now() - started).toBeLessThan(3000);
-		const account = await adminDb.assetAccount.findUniqueOrThrow({
+		const account = await fixtureDb.assetAccount.findUniqueOrThrow({
 			where: { id },
 		});
 		expect(account.name).toBe("Renamed savings");

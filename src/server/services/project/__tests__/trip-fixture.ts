@@ -19,7 +19,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { projectRouter } from "~/server/api/routers/project";
 import { createCallerFactory } from "~/server/api/trpc";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import type {
 	ParticipantType,
 	ProjectRole,
@@ -155,7 +155,7 @@ export async function seedTrip() {
 	await addMember(pid, "user", cam.user.id, "CONTRIBUTOR");
 	await addMember(pid, "shadow", sam.id, "CONTRIBUTOR");
 
-	const travel = await adminDb.category.create({
+	const travel = await fixtureDb.category.create({
 		data: { name: "Travel", color: "blue", userId: ana.user.id },
 	});
 

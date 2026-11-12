@@ -26,7 +26,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { needsYou, needsYouIn } from "~/server/services/needs-you";
 import { forUser } from "~/server/services/preview";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import { addRow, at, invariantAt } from "./__tests__/pg-fixture";
 import { addMonths } from "./calendar";
@@ -71,7 +71,7 @@ async function person(home = "USD") {
 		data: { homeCurrency: home, timeZone: "UTC", fiscalMonthStartDay: 1 },
 	});
 	const cat = (name: string, isFixed = false) =>
-		adminDb.category
+		fixtureDb.category
 			.create({
 				data: { name, color: "blue", icon: "tag", isFixed, userId: t.user.id },
 			})
@@ -612,7 +612,7 @@ describe("Cris: rows the old budget hid", () => {
 		});
 		expect(await left()).toBe(-1_000);
 		expect(
-			await adminDb.expense.findUniqueOrThrow({ where: { id: hidden } }),
+			await fixtureDb.expense.findUniqueOrThrow({ where: { id: hidden } }),
 		).toMatchObject({ excludeFromAnalytics: false, entryKind: "STANDARD" });
 		await expect(
 			forUser(cris.user.id).apply(resolveHiddenMutation, {
@@ -630,7 +630,7 @@ describe("Cris: rows the old budget hid", () => {
 		).rejects.toThrow();
 		// The older row was never touched.
 		expect(
-			await adminDb.expense.findUniqueOrThrow({ where: { id: older } }),
+			await fixtureDb.expense.findUniqueOrThrow({ where: { id: older } }),
 		).toMatchObject({ excludeFromAnalytics: true, entryKind: "STANDARD" });
 	});
 
@@ -929,7 +929,7 @@ describe("rolling a run back", () => {
 		expect(out.removed).toEqual([p.user.id]);
 		for (const id of [keep, drop]) {
 			expect(
-				await adminDb.expense.findUniqueOrThrow({ where: { id } }),
+				await fixtureDb.expense.findUniqueOrThrow({ where: { id } }),
 			).toMatchObject({
 				excludeFromAnalytics: true,
 				entryKind: "STANDARD",

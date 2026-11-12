@@ -10,7 +10,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { readFigures } from "~/server/figures/read";
 import { dec } from "~/server/services/envelope/units";
 import { forUser } from "~/server/services/preview";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { ExpenseService } from "~/server/services/expense.service";
 import { closeAccount, deleteAccount } from "../accounts/manage";
 import {
@@ -318,7 +318,7 @@ describe("money moves invariants (MONEY-MOVES §3)", () => {
 			fromAmount: "442500",
 			toAmount: "300",
 		});
-		const stored = await adminDb.transfer.findUniqueOrThrow({
+		const stored = await fixtureDb.transfer.findUniqueOrThrow({
 			where: { id: value.transferId },
 		});
 		expect([
@@ -341,9 +341,9 @@ describe("preview and undo (R30)", () => {
 			toAmount: "300",
 		};
 		const preview = await forUser(p.userId).preview(createTransfer, input);
-		expect(await adminDb.transfer.count({ where: { userId: p.userId } })).toBe(
-			0,
-		);
+		expect(
+			await fixtureDb.transfer.count({ where: { userId: p.userId } }),
+		).toBe(0);
 		expect(await balanceOf(p.wallet)).toBe("1000000");
 
 		const applied = await forUser(p.userId).apply(createTransfer, input);
@@ -375,7 +375,7 @@ describe("preview and undo (R30)", () => {
 		expect(
 			await adminDb.accountLeg.count({ where: { userId: p.userId } }),
 		).toBe(0);
-		expect(await adminDb.expense.count({ where: { userId: p.userId } })).toBe(
+		expect(await fixtureDb.expense.count({ where: { userId: p.userId } })).toBe(
 			0,
 		);
 
@@ -383,7 +383,7 @@ describe("preview and undo (R30)", () => {
 		expect(await balanceOf(p.wallet)).toBe("556000");
 		expect(await balanceOf(p.usdCash)).toBe("300");
 		expect(
-			await adminDb.transfer.findUnique({ where: { id: value.transferId } }),
+			await fixtureDb.transfer.findUnique({ where: { id: value.transferId } }),
 		).not.toBeNull();
 	});
 });

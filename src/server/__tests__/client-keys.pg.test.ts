@@ -46,7 +46,7 @@ import {
 	getOrCreateDataKeyring,
 } from "~/server/services/keys/data-key.service";
 import { findInstanceKeyring } from "~/server/services/keys/instance-key.service";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { createTestUser, fixtureDb } from "~/test/pg-harness";
 import { PrismaClient } from "~prisma";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 4 });
@@ -108,7 +108,7 @@ const firstSql = () => events.findIndex((e) => e.startsWith("sql "));
 const readyIndex = (who: string) => events.indexOf(`ready ${who}`);
 
 const category = (userId: string, name: string) =>
-	adminDb.category.create({ data: { userId, name, color: "blue" } });
+	fixtureDb.category.create({ data: { userId, name, color: "blue" } });
 
 describe("userTransaction", () => {
 	it("runs on the user's crypto client when handed their scoped client", async () => {

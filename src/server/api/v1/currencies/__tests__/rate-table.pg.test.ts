@@ -14,6 +14,7 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
+	fixtureDb,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -87,7 +88,7 @@ describe("/api/v1 rate table and converter", () => {
 				where: { currency: "PYG", type: "official" },
 			})
 		).id;
-		await adminDb.assetAccount.createMany({
+		await fixtureDb.assetAccount.createMany({
 			data: [
 				{
 					userId: user.id,

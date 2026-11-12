@@ -12,7 +12,7 @@ import { makeSignature } from "better-auth/crypto";
 import { expect } from "vitest";
 import { env } from "~/env";
 import { auth } from "~/server/better-auth";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { handleV1Request } from "../../handler";
 
 export const BASE = "http://localhost:3101/api/v1";
@@ -125,4 +125,4 @@ export async function expectProblem(
 	expect(JSON.parse(text)).toMatchObject({ status, code });
 }
 
-export { adminDb, createTestUser };
+export { adminDb, createTestUser, fixtureDb };

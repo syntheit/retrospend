@@ -56,7 +56,7 @@ function txOf(t: TxSpec) {
 		paidByType: payer.participantType,
 		paidById: payer.participantId,
 		category: t.category
-			? { userId: t.category.owner, name: t.category.name }
+			? { userId: t.category.owner }
 			: null,
 	};
 }

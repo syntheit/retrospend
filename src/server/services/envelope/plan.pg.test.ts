@@ -30,7 +30,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { readFigures } from "~/server/figures/read";
 import { forUser } from "~/server/services/preview";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import {
 	addRow,
 	at,
@@ -117,7 +117,7 @@ describe("Plan next month: a draft until payday (owner r5 Q1)", () => {
 			adminDb.budgetMovement.count({ where: { bookId: b.bookId } }),
 		).resolves.toBe(before);
 		await expect(
-			adminDb.expense.count({
+			fixtureDb.expense.count({
 				where: { userId: s.user.id, direction: "IN", entryKind: "STANDARD" },
 			}),
 		).resolves.toBe(0);
@@ -306,7 +306,9 @@ describe("What if writes only its moves (D54)", () => {
 			["PLAN_APPLY", 50],
 		]);
 		await expect(
-			adminDb.expense.count({ where: { userId: s.user.id, direction: "OUT" } }),
+			fixtureDb.expense.count({
+				where: { userId: s.user.id, direction: "OUT" },
+			}),
 		).resolves.toBe(0);
 	});
 });

@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { createExpense } from "~/server/services/expense-create.mutation";
 import { forUser } from "~/server/services/preview";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { createTestUser, fixtureDb } from "~/test/pg-harness";
 import { expenseData } from "./spending-fixture";
 
 const usd = (minor: number) => ({ minor, currency: "USD" });
@@ -15,7 +15,7 @@ const usd = (minor: number) => ({ minor, currency: "USD" });
 async function userWithLunch() {
 	const { user } = await createTestUser();
 	// USD 10.00 already spent this month.
-	await adminDb.expense.create({
+	await fixtureDb.expense.create({
 		data: expenseData(user.id, {
 			title: "Lunch",
 			amount: 10,
@@ -63,7 +63,7 @@ describe("expense.create preview", () => {
 		]);
 		expect(preview.value).toMatchObject({ id: books.id, direction: "OUT" });
 		await expect(
-			adminDb.expense.findUnique({ where: { id: books.id } }),
+			fixtureDb.expense.findUnique({ where: { id: books.id } }),
 		).resolves.toBeNull();
 	});
 
@@ -81,7 +81,9 @@ describe("expense.create preview", () => {
 			mutation: "expense.create",
 			rows: [{ table: "expense", id: books.id }],
 		});
-		const saved = await adminDb.expense.findUnique({ where: { id: books.id } });
+		const saved = await fixtureDb.expense.findUnique({
+			where: { id: books.id },
+		});
 		expect(saved?.amount.toString()).toBe("12.34");
 		expect(saved?.userId).toBe(userId);
 	});
@@ -106,7 +108,7 @@ describe("expense.create preview", () => {
 
 	it("refuses an income category", async () => {
 		const { user } = await createTestUser();
-		const salary = await adminDb.category.create({
+		const salary = await fixtureDb.category.create({
 			data: {
 				name: "Salary",
 				color: "emerald",

@@ -28,7 +28,7 @@ import {
 } from "~/server/api/v1/core/__tests__/harness";
 import { createCallerFactory, createTRPCContext } from "~/server/api/trpc";
 import { forUser } from "~/server/services/preview";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { seedArsRatesOn } from "./accounts/test-fixtures";
 import { confirmRecurringExpense } from "./recurring-confirm.mutation";
 import { createRecurring } from "./recurring-create.mutation";
@@ -69,7 +69,7 @@ async function userIn(zone: string) {
 }
 
 const templateOf = (id: string) =>
-	adminDb.recurringTemplate.findUniqueOrThrow({ where: { id } });
+	fixtureDb.recurringTemplate.findUniqueOrThrow({ where: { id } });
 
 /** v1 POST /recurring from a request in `requestZone`. */
 async function createViaV1(
@@ -136,7 +136,7 @@ async function confirmOnce(userId: string, id: string) {
 	vi.useFakeTimers({ toFake: ["Date"], now: NOW });
 	await forUser(userId).apply(confirmRecurringExpense, { templateId: id });
 	vi.useRealTimers();
-	return adminDb.expense.findFirstOrThrow({
+	return fixtureDb.expense.findFirstOrThrow({
 		where: { userId, recurringTemplateId: id },
 	});
 }

@@ -23,7 +23,7 @@ import {
 	searchPeople,
 	searchProjects,
 } from "~/server/services/search.service";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb, sealedSuite } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 
 type Page<K> = { after: K | null; take: number };
@@ -223,10 +223,10 @@ beforeAll(async () => {
 		data: { name: "Muñoz not mine", createdById: stranger.user.id },
 	});
 	for (const name of NAMES)
-		await adminDb.category.create({
+		await fixtureDb.category.create({
 			data: { name, color: "teal", userId: me.user.id },
 		});
-	await adminDb.category.create({
+	await fixtureDb.category.create({
 		data: { name: "Muñoz theirs", color: "teal", userId: stranger.user.id },
 	});
 });
@@ -252,7 +252,9 @@ async function walk<Row extends { id: string; name: string }, K>(
 	}
 }
 
-describe("people search matches the old SQL", () => {
+// The oracle is the old SQL over stored names, which the sealed suite
+// (PG_TEST_SEALED) seals: it runs only where the names are plaintext.
+describe.skipIf(sealedSuite)("people search matches the old SQL", () => {
 	it.each(QUERIES)("for %j, page by page", async (q) => {
 		const rows = await walk<
 			PersonHitRow,
@@ -288,7 +290,7 @@ describe("people search matches the old SQL", () => {
 	});
 });
 
-describe("project search matches the old SQL", () => {
+describe.skipIf(sealedSuite)("project search matches the old SQL", () => {
 	it.each(QUERIES)("for %j, page by page", async (q) => {
 		const rows = await walk<ProjectHitRow, { name: string; id: string }>(
 			(page) => oldProjects(me.user.id, q, page),
@@ -308,7 +310,7 @@ describe("project search matches the old SQL", () => {
 	});
 });
 
-describe("category search matches the old SQL", () => {
+describe.skipIf(sealedSuite)("category search matches the old SQL", () => {
 	it.each(QUERIES)("for %j, page by page", async (q) => {
 		const rows = await walk<CategoryHitRow, { name: string; id: string }>(
 			(page) => oldCategories(me.user.id, q, page),

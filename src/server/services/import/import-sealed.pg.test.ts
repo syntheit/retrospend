@@ -34,7 +34,7 @@ import { Keyring } from "~/server/crypto/field-crypto";
 import { TextUnavailableError } from "~/server/crypto/field-open";
 import { createUserScopedDb } from "~/server/db";
 import { evictDataKeyring } from "~/server/services/keys/data-key.service";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import {
 	failNextEpochRead,
 	sealedFile,
@@ -72,11 +72,11 @@ async function ledger(sealed: boolean) {
 	const cats: Record<string, string> = {};
 	for (const name of ["Groceries", "Health", "Transport"])
 		cats[name] = (
-			await adminDb.category.create({ data: { userId, name, color: "teal" } })
+			await fixtureDb.category.create({ data: { userId, name, color: "teal" } })
 		).id;
 	const store = async (r: Seed, daysBack: number) => {
 		const id = randomUUID();
-		await adminDb.expense.create({
+		await fixtureDb.expense.create({
 			data: {
 				id,
 				userId,
@@ -152,7 +152,7 @@ async function job(userId: string) {
 		fileRow("50%", 9005, D0, "Percent"),
 	];
 	return (
-		await adminDb.importJob.create({
+		await fixtureDb.importJob.create({
 			data: {
 				userId,
 				status: "READY_FOR_REVIEW",

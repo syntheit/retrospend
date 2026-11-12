@@ -19,6 +19,7 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
+	fixtureDb,
 } from "../../core/__tests__/harness";
 
 // A real directory, outside the upload store, for this file's exports.
@@ -117,7 +118,7 @@ describe("/api/v1/exports", () => {
 
 	it("exports expenses as a CSV, all or only the ones named", async () => {
 		const make = (title: string) =>
-			adminDb.expense.create({
+			fixtureDb.expense.create({
 				data: {
 					userId: alice,
 					title,
@@ -161,7 +162,7 @@ describe("/api/v1/exports", () => {
 			202,
 		);
 		const ready = await untilDone(made.id);
-		const row = await adminDb.exportJob.findUniqueOrThrow({
+		const row = await fixtureDb.exportJob.findUniqueOrThrow({
 			where: { id: made.id },
 		});
 		// The store was cleared (a container's /tmp after a restart).
@@ -180,7 +181,7 @@ describe("/api/v1/exports", () => {
 			download: null,
 			fileName: null,
 		});
-		const stored = await adminDb.exportJob.findUniqueOrThrow({
+		const stored = await fixtureDb.exportJob.findUniqueOrThrow({
 			where: { id: made.id },
 		});
 		expect(stored.expiresAt.getTime()).toBeLessThanOrEqual(Date.now());
@@ -288,13 +289,13 @@ describe("/api/v1/exports", () => {
 	});
 
 	it("replays a repeated request key without starting a second job", async () => {
-		const before = await adminDb.exportJob.count({ where: { userId: alice } });
+		const before = await fixtureDb.exportJob.count({ where: { userId: alice } });
 		const first = await request(asAlice, { kind: "data" }, "export-key-1");
 		const again = await request(asAlice, { kind: "data" }, "export-key-1");
 		expect(again.headers.get("idempotent-replayed")).toBe("true");
 		expect((await again.json()).id).toBe((await first.json()).id);
 		await expect(
-			adminDb.exportJob.count({ where: { userId: alice } }),
+			fixtureDb.exportJob.count({ where: { userId: alice } }),
 		).resolves.toBe(before + 1);
 	});
 
@@ -316,7 +317,7 @@ describe("/api/v1/exports", () => {
 	it("limits how many exports wait at once", async () => {
 		const bob = (await createTestUser()).user.id;
 		const asB = await asMobile(bob);
-		await adminDb.exportJob.createMany({
+		await fixtureDb.exportJob.createMany({
 			data: Array.from({ length: 3 }, () => ({
 				userId: bob,
 				kind: "data",
@@ -329,7 +330,7 @@ describe("/api/v1/exports", () => {
 	});
 
 	it("deletes the job and its file, and purges expired ones", async () => {
-		const row = await adminDb.exportJob.findUniqueOrThrow({
+		const row = await fixtureDb.exportJob.findUniqueOrThrow({
 			where: { id: job.id },
 		});
 		expect(onDisk(row.storagePath ?? "")).toBe(true);
@@ -347,7 +348,7 @@ describe("/api/v1/exports", () => {
 		);
 
 		// An expired job is hidden at once and removed by the next request.
-		const old = await adminDb.exportJob.create({
+		const old = await fixtureDb.exportJob.create({
 			data: {
 				userId: alice,
 				kind: "data",
@@ -367,7 +368,7 @@ describe("/api/v1/exports", () => {
 		expect(listed.items.map((j) => j.id)).not.toContain(old.id);
 		await request(asAlice, { kind: "data" });
 		await expect(
-			adminDb.exportJob.findUnique({ where: { id: old.id } }),
+			fixtureDb.exportJob.findUnique({ where: { id: old.id } }),
 		).resolves.toBeNull();
 		expect(onDisk(`${alice}/oldrandom/old`)).toBe(false);
 	});
@@ -379,7 +380,7 @@ describe("/api/v1/exports", () => {
 			202,
 		);
 		await untilDone(queued.id);
-		const row = await adminDb.exportJob.findUniqueOrThrow({
+		const row = await fixtureDb.exportJob.findUniqueOrThrow({
 			where: { id: queued.id },
 		});
 		expect(row.storagePath).toMatch(
@@ -403,7 +404,7 @@ describe("/api/v1/exports", () => {
 		const make = async (userId: string, expiresAt: Date, tag: string) => {
 			const path = `${userId}/${tag}/job`;
 			putOnDisk(path);
-			return adminDb.exportJob.create({
+			return fixtureDb.exportJob.create({
 				data: {
 					userId,
 					kind: "data",
@@ -424,12 +425,12 @@ describe("/api/v1/exports", () => {
 		expect(await sweepExpiredExports()).toBeGreaterThanOrEqual(2);
 		for (const gone of [oldA, oldB]) {
 			await expect(
-				adminDb.exportJob.findUnique({ where: { id: gone.id } }),
+				fixtureDb.exportJob.findUnique({ where: { id: gone.id } }),
 			).resolves.toBeNull();
 			expect(onDisk(gone.storagePath ?? "")).toBe(false);
 		}
 		await expect(
-			adminDb.exportJob.findUnique({ where: { id: keep.id } }),
+			fixtureDb.exportJob.findUnique({ where: { id: keep.id } }),
 		).resolves.not.toBeNull();
 		expect(onDisk(keep.storagePath ?? "")).toBe(true);
 	});

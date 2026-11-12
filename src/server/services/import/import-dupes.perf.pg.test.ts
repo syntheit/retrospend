@@ -4,7 +4,8 @@
  * workers cannot skew it. The budget is never loosened. ARS home.
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { adminDb } from "~/test/pg-harness";
+import { createUserScopedDb } from "~/server/db";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import {
 	arsUser,
 	daysAgo,
@@ -37,7 +38,7 @@ describe("a large ledger", () => {
 		const u = await user();
 		// 20 days, 40 amounts: every amount bucket holds hundreds of rows.
 		const day = (i: number) => isoDay(daysAgo(5 + (i % 20)));
-		await adminDb.expense.createMany({
+		await fixtureDb.expense.createMany({
 			data: Array.from({ length: 20_000 }, (_, i) => ({
 				userId: u,
 				title: `Ledger ${i}`,
@@ -61,7 +62,12 @@ describe("a large ledger", () => {
 		).rows;
 
 		const started = performance.now();
-		const matches = await matchFile(adminDb, u, prepared, (r) => r.proposed);
+		const matches = await matchFile(
+			createUserScopedDb(u),
+			u,
+			prepared,
+			(r) => r.proposed,
+		);
 		const ms = performance.now() - started;
 		process.stderr.write(`match 5,000 x 20,000: ${Math.round(ms)} ms\n`);
 		expect(ms).toBeLessThan(2000);

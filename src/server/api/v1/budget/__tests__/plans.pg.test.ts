@@ -16,7 +16,7 @@ import { addMonths } from "~/server/services/envelope/calendar";
 import { budgetMonthOf, isoDateIn } from "~/server/services/envelope/months";
 import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
 import { forUser } from "~/server/services/preview";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import {
 	call,
 	expectBody,
@@ -99,7 +99,7 @@ describe("/api/v1/budget month-following writes", () => {
 				data: { fromMonth: start },
 			});
 			if (b.book.startingBalanceExpenseId)
-				await adminDb.expense.update({
+				await fixtureDb.expense.update({
 					where: { id: b.book.startingBalanceExpenseId },
 					data: { date: firstDay(start) },
 				});

@@ -35,7 +35,7 @@ import { blindIndexTag } from "~/server/crypto/blind-index";
 import type { Keyring } from "~/server/crypto/field-crypto";
 import { setSealingForTests } from "~/server/crypto/sealing";
 import { userTransaction } from "~/server/db-tx";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import {
 	newMasterKeyring,
 	resetInstanceKey,
@@ -89,7 +89,7 @@ const keyCount = async (userId: string) => {
 };
 
 const categories = (userId: string) =>
-	adminDb.category.findMany({
+	fixtureDb.category.findMany({
 		where: { userId },
 		select: { id: true, name: true, nameIndex: true, kind: true },
 		orderBy: { name: "asc" },

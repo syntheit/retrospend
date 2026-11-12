@@ -33,7 +33,7 @@ import { listActivity } from "~/server/services/expense-list";
 import { listV2Input } from "~/server/services/expense-list/types";
 import { forUser } from "~/server/services/preview";
 import { userTimeZone } from "~/server/services/user-time-zone";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import { glance } from "./glance";
 
@@ -62,7 +62,7 @@ function row(
 	}> = {},
 ) {
 	const currency = o.currency ?? "MXN";
-	return adminDb.expense.create({
+	return fixtureDb.expense.create({
 		data: {
 			userId,
 			title: "Row",

@@ -8,7 +8,7 @@ import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { addRow } from "~/server/services/envelope/__tests__/pg-fixture";
 import { migrateUsers } from "~/server/services/envelope/legacy-migrate.batch";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import {
 	call,
@@ -59,7 +59,7 @@ describe("/api/v1/budget migration", () => {
 			data: { homeCurrency: "USD", timeZone: "UTC", fiscalMonthStartDay: 1 },
 		});
 		const cat = (name: string, isFixed = false) =>
-			adminDb.category
+			fixtureDb.category
 				.create({ data: { name, color: "blue", isFixed, userId } })
 				.then((x) => x.id);
 		const diningId = await cat("Dining");
@@ -148,7 +148,7 @@ describe("/api/v1/budget migration", () => {
 			}),
 			c.resolveHidden,
 		);
-		await adminDb.expense.update({
+		await fixtureDb.expense.update({
 			where: { id: hidden },
 			data: { title: "Edited" },
 		});

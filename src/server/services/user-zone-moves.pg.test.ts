@@ -17,7 +17,7 @@ import {
 } from "vitest";
 import { forUser } from "~/server/services/preview";
 import { createAccount, editAccount } from "./accounts/manage";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { openAccount, seedArsRatesOn } from "./accounts/test-fixtures";
 import { setRateType } from "./accounts/rate-type.mutation";
 import { addIncome } from "./income/add.mutation";
@@ -76,7 +76,7 @@ describe("transfer.create", () => {
 			fee: { amount: "1500" },
 			...(timeZone ? { timeZone } : {}),
 		});
-		const transfer = await adminDb.transfer.findUniqueOrThrow({
+		const transfer = await fixtureDb.transfer.findUniqueOrThrow({
 			where: { id: value.transferId },
 			include: { feeExpense: { select: { date: true } } },
 		});
@@ -144,7 +144,7 @@ describe("income.moveIn", () => {
 			expenseId: income.expenseId,
 			...(moveZone ? { timeZone: moveZone } : {}),
 		});
-		const row = await adminDb.expense.findUniqueOrThrow({
+		const row = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: income.expenseId },
 		});
 		return row.movedInAt;
@@ -170,7 +170,7 @@ describe("income.delete", () => {
 			amount: "1000",
 			currency: "ARS",
 		});
-		await adminDb.expense.update({
+		await fixtureDb.expense.update({
 			where: { id: value.expenseId },
 			data: { date: lateRow },
 		});

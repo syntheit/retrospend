@@ -14,6 +14,7 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
+	fixtureDb,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -95,7 +96,7 @@ describe("/api/v1 rate series and currency spending", () => {
 				},
 			],
 		});
-		await adminDb.expense.create({
+		await fixtureDb.expense.create({
 			data: {
 				userId: user.id,
 				title: "Kabul bazaar",

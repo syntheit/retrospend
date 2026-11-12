@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
 	defineConfig,
@@ -22,6 +23,19 @@ import {
 // database. The root setup sizes its clones from this root `maxWorkers`; the
 // perf project never needs more than the first of them.
 const workers = Number(process.env.PG_TEST_WORKERS ?? 4);
+
+// `PG_TEST_SEALED=1`: the sealed suite (src/test/sealed-sweep.ts), every file
+// with sealing on, except the files listed in sealed-suite.exclude.json: they
+// set a master key, sealing or the epoch themselves, which the suite's would
+// override. src/test/sealed-suite.test.ts keeps the list exact.
+const keyStateFiles =
+	process.env.PG_TEST_SEALED === "1"
+		? Object.keys(
+				JSON.parse(
+					readFileSync("src/test/sealed-suite.exclude.json", "utf8"),
+				) as Record<string, string>,
+			)
+		: [];
 
 const shared: NonNullable<TestProjectInlineConfiguration["test"]> = {
 	environment: "node",
@@ -48,7 +62,11 @@ export default defineConfig({
 					...shared,
 					name: "pg",
 					include: ["src/**/*.pg.test.ts"],
-					exclude: ["**/node_modules/**", "src/**/*.perf.pg.test.ts"],
+					exclude: [
+						"**/node_modules/**",
+						"src/**/*.perf.pg.test.ts",
+						...keyStateFiles,
+					],
 					maxWorkers: workers,
 					sequence: { groupOrder: 0 },
 				},
@@ -59,6 +77,7 @@ export default defineConfig({
 					...shared,
 					name: "pg-perf",
 					include: ["src/**/*.perf.pg.test.ts"],
+					exclude: keyStateFiles,
 					maxWorkers: 1,
 					fileParallelism: false,
 					sequence: { groupOrder: 1 },

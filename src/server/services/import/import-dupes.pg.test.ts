@@ -7,7 +7,8 @@
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import { forUser } from "~/server/services/preview";
-import { adminDb } from "~/test/pg-harness";
+import { createUserScopedDb } from "~/server/db";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import type { Prisma } from "~prisma";
 import {
 	arsUser,
@@ -42,7 +43,7 @@ const fileRow = (r: FileRow) => ({
 });
 
 async function job(userId: string, rows: FileRow[]) {
-	const created = await adminDb.importJob.create({
+	const created = await fixtureDb.importJob.create({
 		data: {
 			userId,
 			status: "READY_FOR_REVIEW",
@@ -64,7 +65,7 @@ async function typed(
 	day: string,
 	refund = false,
 ) {
-	await adminDb.expense.create({
+	await fixtureDb.expense.create({
 		data: {
 			userId,
 			title,
@@ -104,7 +105,11 @@ describe("import duplicates", () => {
 			jobId: await job(u, rows),
 			rows: keepAll(2),
 		});
-		const again = await importReview(adminDb, u, await job(u, rows));
+		const again = await importReview(
+			createUserScopedDb(u),
+			u,
+			await job(u, rows),
+		);
 		expect(again.rows.map((r) => r.duplicate)).toEqual([true, true]);
 		expect(again.counts.duplicates).toBe(2);
 	});
@@ -116,11 +121,15 @@ describe("import duplicates", () => {
 			jobId: await job(u, rows),
 			rows: keepAll(1),
 		});
-		const stored = await adminDb.expense.findFirstOrThrow({
+		const stored = await fixtureDb.expense.findFirstOrThrow({
 			where: { userId: u },
 		});
 		expect(stored.title).toBe("COFFEESHOP 123");
-		const again = await importReview(adminDb, u, await job(u, rows));
+		const again = await importReview(
+			createUserScopedDb(u),
+			u,
+			await job(u, rows),
+		);
 		expect(again.rows.map((r) => r.duplicate)).toEqual([true]);
 	});
 
@@ -140,14 +149,22 @@ describe("import duplicates", () => {
 			{ timeZone: "UTC" },
 		).rows[0];
 		if (!spaced) throw new Error("no row");
-		await adminDb.expense.updateMany({
+		// Row by row: a bulk write may not set sealed text.
+		for (const { id } of await fixtureDb.expense.findMany({
 			where: { userId: u },
-			data: {
-				title: "COFFEE\u000bSHOP 123",
-				importFingerprint: fileFingerprint(spaced),
-			},
-		});
-		const again = await importReview(adminDb, u, await job(u, rows));
+		}))
+			await fixtureDb.expense.update({
+				where: { id },
+				data: {
+					title: "COFFEE\u000bSHOP 123",
+					importFingerprint: fileFingerprint(spaced),
+				},
+			});
+		const again = await importReview(
+			createUserScopedDb(u),
+			u,
+			await job(u, rows),
+		);
 		expect(again.rows.map((r) => r.duplicate)).toEqual([true]);
 	});
 
@@ -155,7 +172,7 @@ describe("import duplicates", () => {
 		const u = await user();
 		await typed(u, "COFFEE\u000bSHOP 123", 2500, D0);
 		const review = await importReview(
-			adminDb,
+			createUserScopedDb(u),
 			u,
 			await job(u, [{ title: "COFFEE\u000bSHOP 123", amount: 2500, day: D0 }]),
 		);
@@ -179,7 +196,11 @@ describe("import duplicates", () => {
 		});
 		// The sidecar strips before it stores the job.
 		const cleaned = { title: "COFFEESHOP 123", amount: 2500, day: D0 };
-		const review = await importReview(adminDb, u, await job(u, [cleaned]));
+		const review = await importReview(
+			createUserScopedDb(u),
+			u,
+			await job(u, [cleaned]),
+		);
 		expect(review.rows.map((r) => r.duplicate)).toEqual([true]);
 	});
 
@@ -187,7 +208,7 @@ describe("import duplicates", () => {
 		const u = await user();
 		await typed(u, "COFFEE\u000bSHOP 123", 2500, D0);
 		const review = await importReview(
-			adminDb,
+			createUserScopedDb(u),
 			u,
 			await job(u, [{ title: "COFFEESHOP 123", amount: 2500, day: D0 }]),
 		);
@@ -200,7 +221,7 @@ describe("import duplicates", () => {
 		await typed(u, "C D", 4100, D0);
 		await typed(u, "E\u000bF", 5300, D0);
 		const review = await importReview(
-			adminDb,
+			createUserScopedDb(u),
 			u,
 			await job(u, [
 				{ title: "A B", amount: 2500, day: D0 },
@@ -222,7 +243,7 @@ describe("import duplicates", () => {
 			{ title: "MERPAGO*CAFE MARTINEZ", amount: 2500, day: D1 },
 			{ title: "CAFE MARTINEZ", amount: 7800, day: D0 },
 		]);
-		const review = await importReview(adminDb, u, jobId);
+		const review = await importReview(createUserScopedDb(u), u, jobId);
 		expect(review.rows[0]).toMatchObject({
 			duplicate: false,
 			possible: { title: "Coffee", date: D0 },
@@ -241,7 +262,7 @@ describe("import duplicates", () => {
 		const u = await user();
 		await typed(u, "SUBE", 1000, D_1);
 		const jobId = await job(u, [{ title: "SUBE", amount: 1000, day: D0 }]);
-		const review = await importReview(adminDb, u, jobId);
+		const review = await importReview(createUserScopedDb(u), u, jobId);
 		expect(review.rows[0]).toMatchObject({
 			duplicate: false,
 			possible: { title: "SUBE", date: D_1 },
@@ -257,7 +278,7 @@ describe("import duplicates", () => {
 		const u = await user();
 		await typed(u, "Zapatillas", 52000, D0, true);
 		const review = await importReview(
-			adminDb,
+			createUserScopedDb(u),
 			u,
 			await job(u, [{ title: "Zapatillas", amount: 52000, day: D0 }]),
 		);
@@ -270,7 +291,7 @@ describe("import duplicates", () => {
 			{ title: "UBER TRIP", amount: 8400, day: D0 },
 			{ title: "UBER TRIP", amount: 8400, day: D0 },
 		]);
-		const review = await importReview(adminDb, u, jobId);
+		const review = await importReview(createUserScopedDb(u), u, jobId);
 		expect(review.rows.map((r) => [r.duplicate, r.possible])).toEqual([
 			[false, null],
 			[false, null],
@@ -289,7 +310,7 @@ describe("import duplicates", () => {
 			{ title: "SUBE", amount: 1000, day: D0 },
 			{ title: "SUBE", amount: 1000, day: D0 },
 		]);
-		const review = await importReview(adminDb, u, jobId);
+		const review = await importReview(createUserScopedDb(u), u, jobId);
 		expect(review.rows.map((r) => [r.duplicate, r.possible])).toEqual([
 			[true, null],
 			[false, null],
@@ -308,11 +329,18 @@ describe("import duplicates", () => {
 			jobId: await job(u, rows),
 			rows: keepAll(1),
 		});
-		await adminDb.expense.updateMany({
+		const imported = await fixtureDb.expense.findFirstOrThrow({
 			where: { userId: u, title: "LA ESQUINA PARRILLA" },
+		});
+		await fixtureDb.expense.update({
+			where: { id: imported.id },
 			data: { title: "Cena con Lucía", date: new Date(`${D1}T15:00:00.000Z`) },
 		});
-		const again = await importReview(adminDb, u, await job(u, rows));
+		const again = await importReview(
+			createUserScopedDb(u),
+			u,
+			await job(u, rows),
+		);
 		expect(again.rows[0]).toMatchObject({ duplicate: true });
 	});
 });

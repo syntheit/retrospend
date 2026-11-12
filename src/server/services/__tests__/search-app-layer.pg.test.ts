@@ -24,7 +24,7 @@ import {
 } from "~/server/services/expense-list/search";
 import { listV2Input } from "~/server/services/expense-list/types";
 import { searchExpenses as searchExpensesWith } from "~/server/services/search.service";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { restoreCells, writeCell, writeEpoch } from "~/test/sealed-fixture";
 import { Prisma } from "~prisma";
 
@@ -164,7 +164,7 @@ beforeAll(async () => {
 		date: Date,
 		extra: Record<string, unknown> = {},
 	) => ({ ...base(me.user.id), title, date, ...extra });
-	await adminDb.expense.createMany({
+	await fixtureDb.expense.createMany({
 		data: [
 			row("Café con leche", day(1)),
 			row("CAFE molido", day(2)),
@@ -187,12 +187,12 @@ beforeAll(async () => {
 	});
 	// Six rows with the same date and the same createdAt: the id breaks the tie.
 	const same = new Date("2026-10-11T15:00:00Z");
-	await adminDb.expense.createMany({
+	await fixtureDb.expense.createMany({
 		data: Array.from({ length: 6 }, (_, i) =>
 			row(`Tie café ${i}`, day(11), { createdAt: same }),
 		),
 	});
-	await adminDb.expense.create({
+	await fixtureDb.expense.create({
 		data: { ...base(other.user.id), title: "Café de Bob", date: day(5) },
 	});
 	await adminDb.sharedTransaction.create({
@@ -470,7 +470,7 @@ describe("rows that hold ciphertext", () => {
 			["Other", null, null],
 		];
 		for (const [i, [title, description, location]] of titles.entries()) {
-			const created = await adminDb.expense.create({
+			const created = await fixtureDb.expense.create({
 				data: {
 					...base(user.user.id),
 					title,
@@ -586,7 +586,7 @@ describe("rows that hold ciphertext", () => {
 
 	it("fails loudly for a value sealed for another row, never skips it", async () => {
 		const moved = randomUUID();
-		await adminDb.expense.create({
+		await fixtureDb.expense.create({
 			data: { ...base(user.user.id), id: moved, title: "x", date: day(20) },
 		});
 		// Sealed for another row: the AAD check must refuse it.
@@ -614,7 +614,7 @@ describe("the app-layer path: candidate bound and query count", () => {
 
 	beforeAll(async () => {
 		user = await createTestUser();
-		await adminDb.expense.createMany({
+		await fixtureDb.expense.createMany({
 			data: [
 				...Array.from({ length: 60 }, (_, i) => ({
 					...base(user.user.id),
@@ -692,7 +692,7 @@ describe("the app-layer path: candidate bound and query count", () => {
 		);
 		// The newest ten rows of the account, all dated the 28th down to the 22nd.
 		expect(found).toHaveLength(10);
-		const newest = await adminDb.expense.findMany({
+		const newest = await fixtureDb.expense.findMany({
 			where: { userId: user.user.id },
 			orderBy: [{ date: "desc" }, { createdAt: "desc" }, { id: "desc" }],
 			take: 10,

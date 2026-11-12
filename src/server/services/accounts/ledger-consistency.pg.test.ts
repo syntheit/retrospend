@@ -18,7 +18,7 @@ import { forUser } from "~/server/services/preview";
 import { createTransfer } from "~/server/services/transfers/create.mutation";
 import { deleteTransfer } from "~/server/services/transfers/delete.mutation";
 import { WealthService } from "~/server/services/wealth.service";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { inRolledBackPrismaTransaction } from "~/test/rolled-back-sql";
 import { editAccount } from "./manage";
 import { revertRateType, setRateType } from "./rate-type.mutation";
@@ -64,7 +64,7 @@ beforeAll(seedArsRates);
 describe("M4 on a database with balance updates from before it", () => {
 	it("backfills recordedAt to each snapshot's day, so an old update is not Not logged from zero", async () => {
 		const { user } = await todayUser();
-		const account = await adminDb.assetAccount.create({
+		const account = await fixtureDb.assetAccount.create({
 			data: {
 				userId: user.id,
 				name: "Checking",
@@ -234,7 +234,7 @@ describe("USD values follow the legs", () => {
 
 	it("the Wealth history counts legs on an account no rate values", async () => {
 		const { user } = await todayUser();
-		const account = await adminDb.assetAccount.create({
+		const account = await fixtureDb.assetAccount.create({
 			data: {
 				userId: user.id,
 				name: "Tokens",
@@ -402,7 +402,7 @@ describe("an account with legs keeps its side of net worth", () => {
 			...fields,
 			type: "INVESTMENT",
 		});
-		const account = await adminDb.assetAccount.findUniqueOrThrow({
+		const account = await fixtureDb.assetAccount.findUniqueOrThrow({
 			where: { id: checking },
 		});
 		expect(account.type).toBe("INVESTMENT");
@@ -415,7 +415,7 @@ describe("undo puts back exactly what it took", () => {
 		const id = await openAccount(user.id, "Savings", "CASH", "ARS", 900_000, {
 			exchangeRateType: "official",
 		});
-		await adminDb.assetAccount.update({
+		await fixtureDb.assetAccount.update({
 			where: { id },
 			data: { exchangeRate: 900 },
 		});
@@ -432,7 +432,7 @@ describe("undo puts back exactly what it took", () => {
 			previousRate: value.previousRate,
 		});
 
-		const account = await adminDb.assetAccount.findUniqueOrThrow({
+		const account = await fixtureDb.assetAccount.findUniqueOrThrow({
 			where: { id },
 		});
 		expect(account.balance.toString()).toBe("900000");
@@ -476,7 +476,7 @@ describe("undo puts back exactly what it took", () => {
 			rateType: "mep",
 		});
 		const typeNow = async () =>
-			(await adminDb.assetAccount.findUniqueOrThrow({ where: { id } }))
+			(await fixtureDb.assetAccount.findUniqueOrThrow({ where: { id } }))
 				.exchangeRateType;
 
 		await forUser(user.id).apply(revertRateType, {
@@ -507,7 +507,7 @@ describe("undo puts back exactly what it took", () => {
 			rateType: "card",
 		});
 
-		const account = await adminDb.assetAccount.findUniqueOrThrow({
+		const account = await fixtureDb.assetAccount.findUniqueOrThrow({
 			where: { id },
 		});
 		const switches = await adminDb.assetRateType.findMany({

@@ -99,6 +99,48 @@ jobs:
       - name: Postgres tests
         run: pnpm test:pg
 
+  # The same suite with user text sealed on write, failing a file that leaves
+  # plaintext in a mapped column (src/test/sealed-sweep.ts).
+  pg-sealed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: retrospend_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:testpassword@localhost:5432/retrospend_test
+      DATABASE_URL: postgresql://postgres:testpassword@localhost:5432/retrospend_test
+      BETTER_AUTH_SECRET: ci-only-placeholder-secret-not-used-for-anything
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma generate
+        run: pnpm exec prisma generate
+
+      - name: Sealed Postgres tests
+        run: pnpm test:pg:sealed
+
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 20

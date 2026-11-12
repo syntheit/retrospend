@@ -31,7 +31,7 @@
  * Budgets for March: Groceries ARS 100,000, Rent ARS 300,000.
  */
 import { randomUUID } from "node:crypto";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 
 export const NOW = new Date("2026-04-10T12:00:00.000Z");
@@ -120,13 +120,13 @@ export async function seedSpendingFixture() {
 		},
 	});
 
-	const groceries = await adminDb.category.create({
+	const groceries = await fixtureDb.category.create({
 		data: { name: "Groceries", color: "emerald", userId },
 	});
-	const rent = await adminDb.category.create({
+	const rent = await fixtureDb.category.create({
 		data: { name: "Rent", color: "blue", userId, isFixed: true },
 	});
-	const bobFood = await adminDb.category.create({
+	const bobFood = await fixtureDb.category.create({
 		data: { name: "Food", color: "amber", userId: bob.id },
 	});
 
@@ -197,10 +197,10 @@ export async function seedSpendingFixture() {
 			isAmortizedParent: true,
 		},
 	];
-	await adminDb.expense.createMany({
+	await fixtureDb.expense.createMany({
 		data: rows.map((r) => expenseData(userId, r)),
 	});
-	await adminDb.expense.createMany({
+	await fixtureDb.expense.createMany({
 		data: ["2026-02-15", "2026-03-15", "2026-04-15"].map((day, i) =>
 			expenseData(userId, {
 				title: `Laptop (${i + 1}/3)`,

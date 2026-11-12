@@ -26,7 +26,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { blindIndexTag } from "~/server/crypto/blind-index";
 import { Keyring } from "~/server/crypto/field-crypto";
 import { userTransaction } from "~/server/db-tx";
-import { adminDb, createTestUser, withSuperuser } from "~/test/pg-harness";
+import {
+	adminDb,
+	createTestUser,
+	fixtureDb,
+	withSuperuser,
+} from "~/test/pg-harness";
 import {
 	type CategoryWriteOptions,
 	createCategory,
@@ -53,7 +58,7 @@ type TestUser = Awaited<ReturnType<typeof createTestUser>>;
 
 const indexOf = async (id: string) =>
 	(
-		await adminDb.category.findUniqueOrThrow({
+		await fixtureDb.category.findUniqueOrThrow({
 			where: { id },
 			select: { nameIndex: true },
 		})
@@ -100,21 +105,21 @@ describe("category name index", () => {
 		await expect(create(a, "Food")).rejects.toMatchObject(CONFLICT);
 		await expect(create(a, "Food ")).rejects.toMatchObject(CONFLICT);
 		await expect(create(a, "Food")).rejects.toBeInstanceOf(TRPCError);
-		expect(await adminDb.category.count({ where: { userId: a.user.id } })).toBe(
-			1,
-		);
+		expect(
+			await fixtureDb.category.count({ where: { userId: a.user.id } }),
+		).toBe(1);
 	});
 
 	it("compares names exactly apart from edge spaces: food and Food coexist", async () => {
 		const a = await createTestUser();
 		await create(a, "Food");
 		await create(a, "food");
-		expect(await adminDb.category.count({ where: { userId: a.user.id } })).toBe(
-			2,
-		);
+		expect(
+			await fixtureDb.category.count({ where: { userId: a.user.id } }),
+		).toBe(2);
 		const upper = await create(a, "FOOD");
 		// Renaming "food" to "Food" is refused: that exact name exists.
-		const lower = await adminDb.category.findFirstOrThrow({
+		const lower = await fixtureDb.category.findFirstOrThrow({
 			where: { userId: a.user.id, name: "food" },
 		});
 		await expect(
@@ -166,7 +171,7 @@ describe("category name index", () => {
 		const failed = results.find((r) => r.status === "rejected");
 		expect(failed).toMatchObject({ reason: CONFLICT });
 		expect(
-			await adminDb.category.count({
+			await fixtureDb.category.count({
 				where: { userId: a.user.id, name: { in: ["Race", "Race "] } },
 			}),
 		).toBe(1);
@@ -176,17 +181,17 @@ describe("category name index", () => {
 		const a = await createTestUser();
 		const base = { userId: a.user.id, color: "orange" as const };
 		const same = `0123456789abcdef:${"ab".repeat(32)}`;
-		await adminDb.category.create({
+		await fixtureDb.category.create({
 			data: { ...base, name: "One", nameIndex: same },
 		});
 		await expect(
-			adminDb.category.create({
+			fixtureDb.category.create({
 				data: { ...base, name: "Two", nameIndex: same },
 			}),
 		).rejects.toMatchObject({ code: "P2002" });
 		// Rows with no index never collide.
-		await adminDb.category.create({ data: { ...base, name: "Three" } });
-		await adminDb.category.create({ data: { ...base, name: "Four" } });
+		await fixtureDb.category.create({ data: { ...base, name: "Three" } });
+		await fixtureDb.category.create({ data: { ...base, name: "Four" } });
 	});
 
 	it("with no master key keeps names unique by name and the index empty", async () => {
@@ -196,7 +201,7 @@ describe("category name index", () => {
 		expect(await indexOf(food.id)).toBeNull();
 		await expect(create(a, "Food ", none)).rejects.toMatchObject(CONFLICT);
 		// A rename with no key clears an index an earlier key made.
-		await adminDb.category.update({
+		await fixtureDb.category.update({
 			where: { id: food.id },
 			data: { nameIndex: "stale" },
 		});
@@ -206,7 +211,7 @@ describe("category name index", () => {
 
 	it("matches an unindexed row by name and an indexed one by index", async () => {
 		const a = await createTestUser();
-		await adminDb.category.create({
+		await fixtureDb.category.create({
 			data: { userId: a.user.id, name: "Legacy", color: "orange" },
 		});
 		await expect(create(a, "Legacy ")).rejects.toMatchObject(CONFLICT);
@@ -214,7 +219,7 @@ describe("category name index", () => {
 		// With a stored name that no longer compares equal, the index decides.
 		// The client opens real ciphertext on read (field-open.ts), so another
 		// plaintext stands in for an unreadable name here.
-		await adminDb.category.update({
+		await fixtureDb.category.update({
 			where: { id: fresh.id },
 			data: { name: "Stand-in for an unreadable name" },
 		});
@@ -228,7 +233,7 @@ describe("category name index", () => {
 			{ userId: a.user.id, name: "Rent" },
 			{ userId: b.user.id, name: "Food" },
 		];
-		await adminDb.category.createMany({
+		await fixtureDb.category.createMany({
 			data: rows.map((r) => ({ ...r, color: "orange" as const })),
 		});
 		// Only these users: earlier files in this worker's database may have
@@ -241,7 +246,7 @@ describe("category name index", () => {
 			stale: 0,
 			skippedUsers: 0,
 		});
-		const mine = await adminDb.category.findMany({
+		const mine = await fixtureDb.category.findMany({
 			where: { userId: { in: [a.user.id, b.user.id] } },
 			select: { userId: true, name: true, nameIndex: true },
 		});
@@ -272,7 +277,7 @@ describe("category name index", () => {
 
 	it("leaves a row whose trimmed name is taken without an index and counts it", async () => {
 		const a = await createTestUser();
-		await adminDb.category.createMany({
+		await fixtureDb.category.createMany({
 			data: [
 				{ userId: a.user.id, name: "Food", color: "orange" },
 				{ userId: a.user.id, name: "Food ", color: "orange" },
@@ -285,7 +290,7 @@ describe("category name index", () => {
 			master,
 		);
 		expect(result).toEqual({ updated: 2, conflicts: 1, stale: 0 });
-		const nulls = await adminDb.category.count({
+		const nulls = await fixtureDb.category.count({
 			where: { userId: a.user.id, nameIndex: null },
 		});
 		expect(nulls).toBe(1);
@@ -460,7 +465,7 @@ describe("category name index", () => {
 		const [a, b] = await Promise.all([createTestUser(), createTestUser()]);
 		const foods = await Promise.all(
 			[a, b].map((who) =>
-				adminDb.category.create({
+				fixtureDb.category.create({
 					data: { userId: who.user.id, name: "Food", color: "orange" },
 				}),
 			),
@@ -483,7 +488,7 @@ describe("category name index", () => {
 								return async (args: { where: { id: string } }) => {
 									if (!raced && args.where.id === foodA.id) {
 										raced = true;
-										await adminDb.category.create({
+										await fixtureDb.category.create({
 											data: {
 												userId: a.user.id,
 												name: "Elsewhere",
@@ -523,7 +528,7 @@ describe("category name index", () => {
 		// Nothing of A's run was written; B's row got its index.
 		expect(await indexOf(foodA.id)).toBeNull();
 		expect(
-			await adminDb.category.count({
+			await fixtureDb.category.count({
 				where: { userId: b.user.id, nameIndex: null },
 			}),
 		).toBe(0);

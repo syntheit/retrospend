@@ -18,7 +18,7 @@
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import { forUser } from "~/server/services/preview";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import {
 	arsUser,
 	isoDay,
@@ -53,7 +53,7 @@ async function arsUserId() {
 }
 
 async function category(userId: string) {
-	const c = await adminDb.category.create({
+	const c = await fixtureDb.category.create({
 		data: { userId, name: "Travel", color: "teal", kind: "EXPENSE" },
 	});
 	return c.id;
@@ -86,7 +86,7 @@ async function bookEuros(userId: string, customRate: string, amount?: string) {
 }
 
 const leg = (id: string) =>
-	adminDb.expense.findUniqueOrThrow({
+	fixtureDb.expense.findUniqueOrThrow({
 		where: { id },
 		select: {
 			rateType: true,
@@ -137,7 +137,7 @@ describe("a typed rate keeps every digit", () => {
 		const userId = await arsUserId();
 		const id = await bookEuros(userId, LONG);
 		const before = await leg(id);
-		const { categoryId } = await adminDb.expense.findUniqueOrThrow({
+		const { categoryId } = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id },
 		});
 		const edited = await forUser(userId).apply(updateExpenseEntry, {
@@ -185,7 +185,7 @@ describe("a typed rate keeps every digit", () => {
 	it("the undo of an edit puts back every digit of the amount", async () => {
 		const userId = await usdUser();
 		const id = await bookEuros(userId, "0.5", "12345678901.12345678");
-		const row = () => adminDb.expense.findUniqueOrThrow({ where: { id } });
+		const row = () => fixtureDb.expense.findUniqueOrThrow({ where: { id } });
 		const before = await row();
 		// 12,345,678,901.12345678 x 0.5 = 6,172,839,450.56172839
 		expect(before.homeAmount?.toFixed(2)).toBe("6172839450.56");
@@ -204,7 +204,7 @@ describe("a typed rate keeps every digit", () => {
 	it("refuses the undo of an edit once the home currency changed", async () => {
 		const userId = await arsUserId();
 		const id = await bookEuros(userId, "1234.567890123");
-		const { categoryId } = await adminDb.expense.findUniqueOrThrow({
+		const { categoryId } = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id },
 		});
 		const edited = await forUser(userId).apply(updateExpenseEntry, {

@@ -26,7 +26,7 @@ import {
 } from "~/server/db-core";
 import { userTransaction } from "~/server/db-tx";
 import { getOrCreateDataKeyring } from "~/server/services/keys/data-key.service";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { createTestUser, fixtureDb } from "~/test/pg-harness";
 import { PrismaClient } from "~prisma";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 4 });
@@ -70,7 +70,7 @@ beforeEach(() => {
 });
 
 const category = (userId: string, name: string) =>
-	adminDb.category.create({ data: { userId, name, color: "blue" } });
+	fixtureDb.category.create({ data: { userId, name, color: "blue" } });
 
 describe("the extension slot", () => {
 	it("sees the model calls of userTransaction on the global client", async () => {
@@ -101,7 +101,7 @@ describe("the extension slot", () => {
 
 		expect(seen).toEqual(["Category.create", "Category.findFirst"]);
 		expect(
-			await adminDb.category.count({ where: { userId: me.user.id } }),
+			await fixtureDb.category.count({ where: { userId: me.user.id } }),
 		).toBe(1);
 	});
 
@@ -172,7 +172,7 @@ describe("the extension slot", () => {
 			}),
 		).rejects.toThrow("midway");
 		expect(
-			await adminDb.category.count({ where: { userId: me.user.id } }),
+			await fixtureDb.category.count({ where: { userId: me.user.id } }),
 		).toBe(0);
 		expect(seen).toEqual(["Category.create"]);
 	});

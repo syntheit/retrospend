@@ -12,7 +12,7 @@ import { dayKey, fromWallTime } from "@retrospend/domain/time-zone";
 import { appRouter } from "~/server/api/root";
 import { createCallerFactory, createTRPCContext } from "~/server/api/trpc";
 import { spentFigure } from "~/server/services/figures/spent";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -139,7 +139,7 @@ describe("two users, same instant, their own calendar days", () => {
 				amount: "100",
 				currency: "USD",
 			});
-			const row = await adminDb.expense.findUniqueOrThrow({
+			const row = await fixtureDb.expense.findUniqueOrThrow({
 				where: { id: out.value.expenseId },
 				select: { date: true },
 			});
@@ -153,10 +153,10 @@ describe("two users, same instant, their own calendar days", () => {
 
 	it("puts the same instant in each user's own spent() month", async () => {
 		for (const who of [tokyo, ba]) {
-			const category = await adminDb.category.create({
+			const category = await fixtureDb.category.create({
 				data: { name: "Food", color: "orange", userId: who.user.id },
 			});
-			await adminDb.expense.create({
+			await fixtureDb.expense.create({
 				data: {
 					userId: who.user.id,
 					title: "Dinner",
@@ -192,7 +192,7 @@ describe("recurring templates are due on the user's own day", () => {
 	let tokyo: TestUser;
 	let ba: TestUser;
 	const templateFor = (who: TestUser, zone: string) =>
-		adminDb.recurringTemplate.create({
+		fixtureDb.recurringTemplate.create({
 			data: {
 				userId: who.user.id,
 				name: "Rent",

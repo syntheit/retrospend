@@ -25,7 +25,7 @@ vi.mock("~/server/better-auth", () => ({
 import { ExpenseService } from "~/server/services/expense.service";
 import { spentIn } from "~/server/services/figures/spent";
 import { StatsService } from "~/server/services/stats.service";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import { callers } from "./spending-readers";
 
@@ -60,7 +60,7 @@ async function seed() {
 		where: { id: userId },
 		data: { homeCurrency: HOME },
 	});
-	const groceries = await adminDb.category.create({
+	const groceries = await fixtureDb.category.create({
 		data: { name: "Groceries", color: "emerald", userId },
 	});
 
@@ -77,7 +77,7 @@ async function seed() {
 	await save("A", 10, "USD", "2026-03-10");
 	await save("B", 20, "USD", "2026-04-05");
 	await save("C", 1000, HOME, "2026-04-02");
-	await adminDb.expense.create({
+	await fixtureDb.expense.create({
 		data: {
 			userId,
 			title: "D",

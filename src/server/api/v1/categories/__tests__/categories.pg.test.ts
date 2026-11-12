@@ -13,6 +13,7 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
+	fixtureDb,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -24,7 +25,7 @@ const c = contract.categories;
 type Category = { id: string; name: string; expenseCount: number };
 
 async function expense(userId: string, categoryId: string | null) {
-	return adminDb.expense.create({
+	return fixtureDb.expense.create({
 		data: {
 			userId,
 			title: "Lunch",
@@ -190,7 +191,7 @@ describe("/api/v1/categories", () => {
 		expect(second.headers.get("idempotent-replayed")).toBe("true");
 		expect(await second.json()).toEqual(await first.json());
 		await expect(
-			adminDb.category.count({ where: { userId: alice, name: "Travel" } }),
+			fixtureDb.category.count({ where: { userId: alice, name: "Travel" } }),
 		).resolves.toBe(1);
 	});
 
@@ -220,12 +221,12 @@ describe("/api/v1/categories", () => {
 			}),
 			c.delete,
 		);
-		const after = await adminDb.expense.findUniqueOrThrow({
+		const after = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: spent.id },
 		});
 		expect(after.categoryId).toBeNull();
 		await expect(
-			adminDb.category.count({ where: { id: cat.id } }),
+			fixtureDb.category.count({ where: { id: cat.id } }),
 		).resolves.toBe(0);
 	});
 
@@ -251,7 +252,7 @@ describe("/api/v1/categories", () => {
 				{ userId: alice, categoryId: into.id, period: october, amount: "200" },
 			],
 		});
-		await adminDb.recurringTemplate.create({
+		await fixtureDb.recurringTemplate.create({
 			data: {
 				userId: alice,
 				name: "Coffee club",
@@ -279,10 +280,10 @@ describe("/api/v1/categories", () => {
 		// October keeps the target's own budget; November moves over.
 		expect(budgets.map((b) => b.amount.toString())).toEqual(["200", "60"]);
 		await expect(
-			adminDb.recurringTemplate.count({ where: { categoryId: into.id } }),
+			fixtureDb.recurringTemplate.count({ where: { categoryId: into.id } }),
 		).resolves.toBe(1);
 		await expect(
-			adminDb.category.count({ where: { id: from.id } }),
+			fixtureDb.category.count({ where: { id: from.id } }),
 		).resolves.toBe(0);
 
 		await expectProblem(
@@ -333,7 +334,7 @@ describe("/api/v1/categories", () => {
 		);
 		expect(bobsList.items.map((x) => x.id)).not.toContain(mine.id);
 		await expect(
-			adminDb.category.findUnique({ where: { id: mine.id } }),
+			fixtureDb.category.findUnique({ where: { id: mine.id } }),
 		).resolves.toMatchObject({
 			name: "Private",
 		});

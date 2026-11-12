@@ -18,7 +18,7 @@ import {
 	vi,
 } from "vitest";
 import { forUser } from "~/server/services/preview";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import type { Prisma } from "~prisma";
 import { seedArsRatesOn } from "../accounts/test-fixtures";
 import { commitImport } from "./commit.mutation";
@@ -54,7 +54,7 @@ async function commit(timeZone?: string, title = "COTO SUPERMERCADO") {
 		where: { id: user.id },
 		data: { homeCurrency: "ARS", timeZone: BUENOS_AIRES },
 	});
-	await adminDb.expense.create({
+	await fixtureDb.expense.create({
 		data: {
 			userId: user.id,
 			title: "COTO SUPERMERCADO",
@@ -66,7 +66,7 @@ async function commit(timeZone?: string, title = "COTO SUPERMERCADO") {
 			pricingSource: "MANUAL",
 		},
 	});
-	const job = await adminDb.importJob.create({
+	const job = await fixtureDb.importJob.create({
 		data: {
 			userId: user.id,
 			status: "READY_FOR_REVIEW",
@@ -105,7 +105,7 @@ describe("import commit", () => {
 	it("matches on the input zone's days when one is given: a day apart, imported", async () => {
 		const { value, userId } = await commit("UTC");
 		expect(value).toMatchObject({ created: 1, duplicates: 0 });
-		const imported = await adminDb.expense.findFirstOrThrow({
+		const imported = await fixtureDb.expense.findFirstOrThrow({
 			where: { userId, importFingerprint: { not: null } },
 		});
 		expect(imported.date).toEqual(new Date("2026-11-02T00:00:00Z"));
@@ -113,7 +113,7 @@ describe("import commit", () => {
 
 	it("dates an imported row at its day's midnight in the saved zone", async () => {
 		const { userId } = await commit(undefined, "FARMACITY");
-		const imported = await adminDb.expense.findFirstOrThrow({
+		const imported = await fixtureDb.expense.findFirstOrThrow({
 			where: { userId, importFingerprint: { not: null } },
 		});
 		expect(imported.date).toEqual(new Date("2026-11-02T03:00:00Z"));

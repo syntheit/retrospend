@@ -26,7 +26,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { SetupInput } from "~/lib/schemas/envelope";
 import { userTransaction } from "~/server/db-tx";
 import { forUser } from "~/server/services/preview";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { openAccount } from "../accounts/test-fixtures";
 import { budgetItems } from "../needs-you/budget";
 import { deleteTransfer } from "../transfers/delete.mutation";
@@ -106,7 +106,7 @@ function input(s: Seeded, visaBill?: string): SetupInput {
 async function world(o: { bill?: boolean; fees?: boolean } = {}) {
 	const s = await seedUser();
 	if (o.fees !== false)
-		await adminDb.category.create({
+		await fixtureDb.category.create({
 			data: { name: "Fees", color: "red", userId: s.user.id },
 		});
 	const checking = await openAccount(
@@ -164,7 +164,7 @@ async function world(o: { bill?: boolean; fees?: boolean } = {}) {
 
 const balance = async (id: string) =>
 	(
-		await adminDb.assetAccount.findUniqueOrThrow({ where: { id } })
+		await fixtureDb.assetAccount.findUniqueOrThrow({ where: { id } })
 	).balance.toString();
 const rowOf = (m: Awaited<ReturnType<typeof getMonth>>, id: string) =>
 	m?.groups.flatMap((g) => g.envelopes).find((e) => e.id === id);
@@ -186,7 +186,7 @@ describe("S14 a card payment with old debt and interest", () => {
 	});
 
 	it("the preview writes nothing", async () => {
-		const before = await adminDb.transfer.count({
+		const before = await fixtureDb.transfer.count({
 			where: { userId: w.user.id },
 		});
 		const p = await forUser(w.user.id).preview(
@@ -198,7 +198,7 @@ describe("S14 a card payment with old debt and interest", () => {
 			after: usd(100_000),
 		});
 		await expect(
-			adminDb.transfer.count({ where: { userId: w.user.id } }),
+			fixtureDb.transfer.count({ where: { userId: w.user.id } }),
 		).resolves.toBe(before);
 		expect(await balance(w.visa)).toBe("1200");
 	});
@@ -232,7 +232,7 @@ describe("S14 a card payment with old debt and interest", () => {
 	it("a retry with the same id writes nothing more", async () => {
 		await forUser(w.user.id).apply(recordDebtPaymentMutation, payment);
 		await expect(
-			adminDb.transfer.count({ where: { userId: w.user.id } }),
+			fixtureDb.transfer.count({ where: { userId: w.user.id } }),
 		).resolves.toBe(1);
 		expect(await balance(w.visa)).toBe("1000");
 	});
@@ -481,7 +481,7 @@ describe("a bill that follows the Visa minimum, and Debt payment due", () => {
 describe("figure budget.totalDebt", () => {
 	it("the plan: first month 1,074.00; the extra goes to its envelope's target; a rateless debt is listed, not valued", async () => {
 		const w = await world();
-		await adminDb.assetAccount.update({
+		await fixtureDb.assetAccount.update({
 			where: { id: w.loan },
 			data: { closedAt: new Date() },
 		});
@@ -505,7 +505,7 @@ describe("figure budget.totalDebt", () => {
 		expect(p.totalDebt).toEqual(usd(120_000));
 		expect(p.debtFreeMonth).not.toBeNull();
 		// The account service refuses a currency with no rate, so it is written directly.
-		await adminDb.assetAccount.create({
+		await fixtureDb.assetAccount.create({
 			data: {
 				userId: w.user.id,
 				name: "Odd",
@@ -561,7 +561,7 @@ describe("the interest category is the caller's own", () => {
 	/** Someone else's Fees category, readable by `w` through a shared expense. */
 	async function visibleFeesOfAnother(w: Awaited<ReturnType<typeof world>>) {
 		const other = await seedUser();
-		const theirs = await adminDb.category.create({
+		const theirs = await fixtureDb.category.create({
 			data: { name: "Fees", color: "red", userId: other.user.id },
 		});
 		await adminDb.sharedTransaction.create({
@@ -614,11 +614,11 @@ describe("the interest category is the caller's own", () => {
 		};
 	};
 	const feeCategory = async (transferId: string) => {
-		const t = await adminDb.transfer.findUniqueOrThrow({
+		const t = await fixtureDb.transfer.findUniqueOrThrow({
 			where: { id: transferId },
 		});
 		return (
-			await adminDb.expense.findUniqueOrThrow({
+			await fixtureDb.expense.findUniqueOrThrow({
 				where: { id: t.feeExpenseId as string },
 			})
 		).categoryId;
@@ -627,7 +627,7 @@ describe("the interest category is the caller's own", () => {
 	it("books interest to the caller's Fees, not a visible one of someone else", async () => {
 		const w = await world();
 		await visibleFeesOfAnother(w);
-		const own = await adminDb.category.findFirstOrThrow({
+		const own = await fixtureDb.category.findFirstOrThrow({
 			where: { userId: w.user.id, name: "Fees" },
 		});
 		const p = pay(w);
@@ -649,7 +649,7 @@ describe("the interest category is the caller's own", () => {
 		await expect(pay(w, { interestCategoryId: theirs }).run()).rejects.toThrow(
 			"pick one of your spending categories",
 		);
-		const own = await adminDb.category.findFirstOrThrow({
+		const own = await fixtureDb.category.findFirstOrThrow({
 			where: { userId: w.user.id, name: "Fees" },
 		});
 		const p = pay(w, { interestCategoryId: own.id });

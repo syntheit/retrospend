@@ -8,7 +8,7 @@
  */
 import { dayKey } from "@retrospend/domain/time-zone";
 import { readFigures } from "~/server/figures/read";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import type { AssetType } from "~prisma";
 import { type AccountFields, createAccount } from "./manage";
 
@@ -120,7 +120,7 @@ export async function openAccount(
 }
 
 export async function balanceOf(accountId: string): Promise<string> {
-	const account = await adminDb.assetAccount.findUniqueOrThrow({
+	const account = await fixtureDb.assetAccount.findUniqueOrThrow({
 		where: { id: accountId },
 		select: { balance: true },
 	});

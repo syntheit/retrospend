@@ -20,7 +20,7 @@ import type { Keyring } from "~/server/crypto/field-crypto";
 import { textUnavailableProblem } from "~/server/crypto/field-open";
 import { evictDataKeyring } from "~/server/services/keys/data-key.service";
 import { forUser } from "~/server/services/preview";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { sealedFile, sealText } from "~/test/sealed-fixture";
 import { arsUser, seedArsRates } from "../accounts/test-fixtures";
 import {
@@ -52,7 +52,7 @@ async function template(
 	f: Fields = {},
 ) {
 	const id = crypto.randomUUID();
-	await adminDb.recurringTemplate.create({
+	await fixtureDb.recurringTemplate.create({
 		data: {
 			id,
 			userId,
@@ -98,7 +98,7 @@ describe.each([
 			code: "CONFLICT",
 		});
 		await expect(
-			adminDb.recurringTemplate.count({ where: { userId: u } }),
+			fixtureDb.recurringTemplate.count({ where: { userId: u } }),
 		).resolves.toBe(1);
 	});
 
@@ -109,7 +109,7 @@ describe.each([
 		await template(u, "Streamlý", sealed);
 		await restore(u, snap);
 		await expect(
-			adminDb.recurringTemplate.count({ where: { userId: u } }),
+			fixtureDb.recurringTemplate.count({ where: { userId: u } }),
 		).resolves.toBe(3);
 	});
 
@@ -122,7 +122,7 @@ describe.each([
 		await template(u, "streamly", sealed, { isActive: false });
 		await restore(u, snap);
 		await expect(
-			adminDb.recurringTemplate.count({ where: { userId: u } }),
+			fixtureDb.recurringTemplate.count({ where: { userId: u } }),
 		).resolves.toBe(5);
 	});
 
@@ -136,7 +136,7 @@ describe.each([
 		await restore(u, gym);
 		await restore(u, rent);
 		await expect(
-			adminDb.recurringTemplate.count({ where: { userId: u } }),
+			fixtureDb.recurringTemplate.count({ where: { userId: u } }),
 		).resolves.toBe(4);
 		// Twins: the same characters, any case.
 		const v = (await arsUser()).user.id;
@@ -156,7 +156,7 @@ describe.each([
 		await template(other, "Streamly", sealed);
 		await restore(u, snap);
 		await expect(
-			adminDb.recurringTemplate.count({ where: { userId: u } }),
+			fixtureDb.recurringTemplate.count({ where: { userId: u } }),
 		).resolves.toBe(1);
 	});
 
@@ -166,7 +166,7 @@ describe.each([
 		await template(u, "Streamly", sealed);
 		await restore(u, snap);
 		await expect(
-			adminDb.recurringTemplate.count({ where: { userId: u } }),
+			fixtureDb.recurringTemplate.count({ where: { userId: u } }),
 		).resolves.toBe(2);
 	});
 });
@@ -196,7 +196,7 @@ describe("restore twin check, mixed names", () => {
 		// The snapshot comes from a client read, which opened it; PR 4 seals writes.
 		expect(snap.name).toBe("Gym");
 		await restore(u, snap);
-		const row = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const row = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id: snap.id },
 		});
 		expect(row.name).toBe("Gym");
@@ -209,7 +209,7 @@ describe("restore twin check, mixed names", () => {
 			template: snap,
 		});
 		await expect(
-			adminDb.recurringTemplate.count({ where: { userId: u } }),
+			fixtureDb.recurringTemplate.count({ where: { userId: u } }),
 		).resolves.toBe(0);
 		const applied = await restore(u, snap);
 		expect(applied.changes).toEqual(preview.changes);
@@ -218,7 +218,7 @@ describe("restore twin check, mixed names", () => {
 		// The undo of the restore deletes it again.
 		await forUser(u).apply(deleteRecurring, { templateId: snap.id });
 		await expect(
-			adminDb.recurringTemplate.count({ where: { userId: u } }),
+			fixtureDb.recurringTemplate.count({ where: { userId: u } }),
 		).resolves.toBe(0);
 	});
 
@@ -239,7 +239,7 @@ describe("restore twin check, mixed names", () => {
 		});
 		vi.restoreAllMocks();
 		await expect(
-			adminDb.recurringTemplate.count({ where: { userId: u } }),
+			fixtureDb.recurringTemplate.count({ where: { userId: u } }),
 		).resolves.toBe(1);
 	});
 });

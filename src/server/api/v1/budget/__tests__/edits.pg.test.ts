@@ -5,7 +5,7 @@
  */
 import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { adminDb } from "~/test/pg-harness";
+import { fixtureDb } from "~/test/pg-harness";
 import {
 	call,
 	expectBody,
@@ -260,7 +260,7 @@ describe("/api/v1/budget edits", () => {
 		expect(bank.difference).toBeTruthy();
 		await expectBody(await undo(rec.written.undo), c.undo);
 		await expect(
-			adminDb.expense.count({
+			fixtureDb.expense.count({
 				where: { id: rec.written.result.expenseId as string },
 			}),
 		).resolves.toBe(0);

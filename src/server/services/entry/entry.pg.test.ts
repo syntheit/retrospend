@@ -13,7 +13,8 @@
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import { forUser } from "~/server/services/preview";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { createUserScopedDb } from "~/server/db";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import {
 	arsUser,
 	isoDay,
@@ -50,7 +51,7 @@ const delta = (
 ) => r.changes.find((c) => c.id === id)?.delta ?? null;
 
 async function category(userId: string, name = "Subscriptions") {
-	return adminDb.category.create({
+	return fixtureDb.category.create({
 		data: { userId, name, color: "teal", kind: "EXPENSE" },
 	});
 }
@@ -155,20 +156,20 @@ describe("Add expense: rate per entry", () => {
 				TODAY_ZONE,
 			),
 		);
-		const saved = await adminDb.expense.findUniqueOrThrow({ where: { id } });
+		const saved = await fixtureDb.expense.findUniqueOrThrow({ where: { id } });
 		expect(saved).toMatchObject({ rateType: "custom" });
 		expect(saved.homeAmount?.toString()).toBe("147500");
 
 		const preview = await forUser(user.id).preview(deleteExpenseEntry, { id });
 		expect(delta(preview, "spent")).toEqual(USD(-10_000));
-		expect(await adminDb.expense.count({ where: { id } })).toBe(1);
+		expect(await fixtureDb.expense.count({ where: { id } })).toBe(1);
 
 		const gone = await forUser(user.id).apply(deleteExpenseEntry, { id });
-		expect(await adminDb.expense.count({ where: { id } })).toBe(0);
+		expect(await fixtureDb.expense.count({ where: { id } })).toBe(0);
 		await forUser(user.id).apply(restoreExpenseEntry, {
 			token: gone.value.restore,
 		});
-		const back = await adminDb.expense.findUniqueOrThrow({ where: { id } });
+		const back = await fixtureDb.expense.findUniqueOrThrow({ where: { id } });
 		expect(back.homeAmount?.toString()).toBe("147500");
 		expect(back.homeRate?.toString()).toBe(saved.homeRate?.toString());
 		expect(back.rateType).toBe("custom");
@@ -183,12 +184,12 @@ describe("Add expense: rate per entry", () => {
 			...usd100(id, cat.id, "official"),
 			amount: 120,
 		});
-		const mid = await adminDb.expense.findUniqueOrThrow({ where: { id } });
+		const mid = await fixtureDb.expense.findUniqueOrThrow({ where: { id } });
 		expect(mid.homeAmount?.toString()).toBe("169440");
 		expect(delta(edited, "spent")).toEqual(USD(2_000));
 
 		await forUser(user.id).apply(updateExpenseEntry, edited.value.restore);
-		const back = await adminDb.expense.findUniqueOrThrow({ where: { id } });
+		const back = await fixtureDb.expense.findUniqueOrThrow({ where: { id } });
 		expect(back.amount.toString()).toBe("100");
 		expect(back.rateType).toBe("blue");
 		expect(back.homeAmount?.toString()).toBe("146800");
@@ -322,7 +323,7 @@ describe("entry catalog", () => {
 			usd100(crypto.randomUUID(), cat.id, "blue"),
 		);
 		await openAccount(user.id, "Wallet", "CASH", "ARS", 1_000);
-		const c = await entryCatalog(adminDb, user.id);
+		const c = await entryCatalog(createUserScopedDb(user.id), user.id);
 		expect(c.homeCurrency).toBe("ARS");
 		expect(c.recentCategoryIds).toEqual([cat.id]);
 		expect(c.categories.some((x) => x.kind === "INCOME")).toBe(true);

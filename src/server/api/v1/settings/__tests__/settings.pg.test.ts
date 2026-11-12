@@ -13,6 +13,7 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
+	fixtureDb,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -244,10 +245,10 @@ describe("/api/v1/settings", () => {
 
 	describe("category preferences", () => {
 		it("seeds, sets and deletes, only for the caller's categories", async () => {
-			const mine = await adminDb.category.create({
+			const mine = await fixtureDb.category.create({
 				data: { name: "Groceries", color: "emerald", userId: alice },
 			});
-			const theirs = await adminDb.category.create({
+			const theirs = await fixtureDb.category.create({
 				data: { name: "Rent", color: "blue", userId: bob },
 			});
 			const listed = await expectBody<{ items: { categoryId: string }[] }>(

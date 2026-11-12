@@ -15,7 +15,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { normalizeDate } from "~/lib/date";
 import { readFigures } from "~/server/figures/read";
 import { WealthService } from "~/server/services/wealth.service";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 
 type TestUser = Awaited<ReturnType<typeof createTestUser>>;
 
@@ -48,7 +48,7 @@ async function account(
 	},
 ) {
 	const last = data.snapshots[data.snapshots.length - 1]?.[1] ?? "0";
-	const created = await adminDb.assetAccount.create({
+	const created = await fixtureDb.assetAccount.create({
 		data: {
 			userId: u.user.id,
 			name: data.name,

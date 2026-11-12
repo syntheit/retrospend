@@ -8,7 +8,12 @@ import { fromWallTime } from "@retrospend/domain/time-zone";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { activityRow, listActivity } from "~/server/services/expense-list";
 import { listV2Input, NO_CATEGORY } from "~/server/services/expense-list/types";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import {
+	adminDb,
+	createTestUser,
+	fixtureDb,
+	sealedSuite,
+} from "~/test/pg-harness";
 
 const TZ = "America/Argentina/Buenos_Aires";
 const day = (d: number, m = 10) =>
@@ -38,7 +43,7 @@ beforeAll(async () => {
 		data: { date: day(1), currency: "ARS", type: "official", rate: "1000" },
 	});
 	subs = (
-		await adminDb.category.create({
+		await fixtureDb.category.create({
 			data: { name: "Subscriptions", color: "violet", userId: me.user.id },
 		})
 	).id;
@@ -60,7 +65,7 @@ beforeAll(async () => {
 		date,
 		categoryId,
 	});
-	await adminDb.expense.createMany({
+	await fixtureDb.expense.createMany({
 		data: [
 			expense("Almacén Don José", "64000", "ARS", "64", day(5)),
 			expense("Netflix", "12.99", "USD", "12.99", day(3), subs),
@@ -186,7 +191,7 @@ async function seedMover() {
 		homeRate: "1000",
 		homeAmount: "100000",
 	});
-	await adminDb.expense.createMany({
+	await fixtureDb.expense.createMany({
 		data: [
 			row("Saldo inicial", "900000", aug(1), {
 				direction: "IN",
@@ -320,7 +325,10 @@ describe("expense.listV2", () => {
 		expect(cena?.people).toHaveLength(2);
 	});
 
-	it("searches across months, ignoring case and accents, and by amount", async () => {
+	it("searches across months, ignoring case and accents, and by amount", async ({
+		skip,
+	}) => {
+		skip(sealedSuite, "PR 5: search reads sealed text without the user's keys");
 		for (const q of [
 			"almacen",
 			"ALMACÉN",
@@ -543,7 +551,10 @@ describe("expense.listV2 entry kinds (M1, M2)", () => {
 		expect(azul).not.toHaveProperty("rateType");
 	});
 
-	it("finds Cyrillic titles in any case (SQL and JS fold alike)", async () => {
+	it("finds Cyrillic titles in any case (SQL and JS fold alike)", async ({
+		skip,
+	}) => {
+		skip(sealedSuite, "PR 5: search reads sealed text without the user's keys");
 		for (const q of ["чай", "Чай", "ЧАЙ"])
 			expect(
 				(await list(mover, { q })).items.map((i) => i.title),
@@ -558,7 +569,7 @@ describe("expense.listV2 entry kinds (M1, M2)", () => {
 			where: { id: guest.user.id },
 			data: { homeCurrency: "ARS" },
 		});
-		const theirs = await adminDb.category.create({
+		const theirs = await fixtureDb.category.create({
 			data: { name: "Theirs", color: "blue", userId: owner.user.id },
 		});
 		await adminDb.sharedTransaction.create({
@@ -727,7 +738,7 @@ describe("expense.listV2 rows the footer leaves out", () => {
 			where: { id: guest.user.id },
 			data: { homeCurrency: "ARS" },
 		});
-		const food = await adminDb.category.create({
+		const food = await fixtureDb.category.create({
 			data: { name: "Food", color: "blue", userId: guest.user.id },
 		});
 		const row = (title: string, amount: string, hidden: boolean) => ({
@@ -742,7 +753,7 @@ describe("expense.listV2 rows the footer leaves out", () => {
 			categoryId: food.id,
 			excludeFromAnalytics: hidden,
 		});
-		await adminDb.expense.createMany({
+		await fixtureDb.expense.createMany({
 			data: [row("Counted", "1000", false), row("Hidden", "500", true)],
 		});
 		await adminDb.sharedTransaction.create({
@@ -812,10 +823,10 @@ describe("expense.listV2 rows the footer leaves out", () => {
 			data: { homeCurrency: "ARS" },
 		});
 		const [food, salary] = await Promise.all([
-			adminDb.category.create({
+			fixtureDb.category.create({
 				data: { name: "Food", color: "blue", userId: u.user.id },
 			}),
-			adminDb.category.create({
+			fixtureDb.category.create({
 				data: {
 					name: "Salary",
 					color: "violet",
@@ -842,13 +853,13 @@ describe("expense.listV2 rows the footer leaves out", () => {
 		});
 		// Phone: ARS 3,000 over three months. The parent is listed; its three
 		// parts of ARS 1,000 (Oct 14, Nov 14, Dec 14) are hidden and counted.
-		const phone = await adminDb.expense.create({
+		const phone = await fixtureDb.expense.create({
 			data: row("Phone", "3000", day(14), {
 				isAmortizedParent: true,
 				categoryId: food.id,
 			}),
 		});
-		await adminDb.expense.createMany({
+		await fixtureDb.expense.createMany({
 			data: [10, 11, 12].map((m) =>
 				row("Phone", "1000", day(14, m), {
 					isAmortizedChild: true,
@@ -857,7 +868,7 @@ describe("expense.listV2 rows the footer leaves out", () => {
 				}),
 			),
 		});
-		await adminDb.expense.createMany({
+		await fixtureDb.expense.createMany({
 			data: [
 				row("Groceries", "1000", day(14), { categoryId: food.id }),
 				row("Filed as income", "700", day(14), { categoryId: salary.id }),
@@ -921,7 +932,7 @@ describe("expense.listV2 order inside a day", () => {
 			createdAt: at(min),
 		});
 		// Ids that sort against the creation order, as random ids can.
-		await adminDb.expense.createMany({
+		await fixtureDb.expense.createMany({
 			data: [
 				row("zzz-first", "McDonalds", 1),
 				row("mmm-second", "Agua con gas", 2),

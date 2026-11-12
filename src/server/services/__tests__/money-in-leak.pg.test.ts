@@ -12,7 +12,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { ensureIncomeCategories } from "~/server/services/money-in.service";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import {
 	EXPECTED_LISTED,
 	EXPECTED_READINGS,
@@ -38,7 +38,7 @@ vi.mock("~/server/better-auth", () => ({
 type Readings = Awaited<ReturnType<typeof readAllSpendingReaders>>;
 
 async function addRows(fixture: SpendingFixture, rows: Row[]) {
-	await adminDb.expense.createMany({
+	await fixtureDb.expense.createMany({
 		data: rows.map((row) => expenseData(fixture.userId, row)),
 	});
 }
@@ -138,7 +138,7 @@ async function addMoneyIn(fixture: SpendingFixture) {
 
 /** Recurring income as the Go sidecar posts it (sidecar/tasks/recurring.go), raw SQL included. */
 async function addSidecarIncome(userId: string) {
-	const template = await adminDb.recurringTemplate.create({
+	const template = await fixtureDb.recurringTemplate.create({
 		data: {
 			userId,
 			name: "Acme salary",
@@ -216,7 +216,7 @@ describe("money in never reaches a spending reader", () => {
 
 	it("posts the sidecar row the way the Go job does", async () => {
 		await expect(
-			adminDb.expense.count({
+			fixtureDb.expense.count({
 				where: {
 					pricingSource: "RECURRING",
 					direction: "IN",
@@ -276,7 +276,7 @@ describe("a user with only money in", () => {
 
 	it("has no expenses: the lists stay empty", async () => {
 		const { user } = await createTestUser();
-		await adminDb.expense.createMany({
+		await fixtureDb.expense.createMany({
 			data: [
 				expenseData(user.id, {
 					...MONEY_IN_PROBE,

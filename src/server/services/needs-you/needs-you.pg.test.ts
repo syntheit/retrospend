@@ -244,9 +244,15 @@ describe("needsYou on Postgres", () => {
 
 	it("a share in a currency with no rate: the budget names it and shows no amounts (R14)", async () => {
 		const s = await seedUser();
-		await shared("Hverir", martin.user.id, s.user.id, "9000", "ACCEPTED");
-		await adminDb.sharedTransaction.updateMany({
-			where: { description: "Hverir" },
+		const hverir = await shared(
+			"Hverir",
+			martin.user.id,
+			s.user.id,
+			"9000",
+			"ACCEPTED",
+		);
+		await adminDb.sharedTransaction.update({
+			where: { id: hverir.id },
 			data: { currency: "ISK" },
 		});
 		await seedBudget(s);
