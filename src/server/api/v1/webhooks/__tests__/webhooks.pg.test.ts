@@ -22,6 +22,7 @@ import {
 	processDueDeliveries,
 	runWebhookWorker,
 } from "~/server/services/webhooks/worker";
+import { openTransactionsEnded } from "~/test/pg-harness";
 import {
 	adminDb,
 	asKey,
@@ -149,6 +150,7 @@ describe("/api/v1/webhooks", () => {
 		done: () => Promise<boolean>,
 		options: Parameters<typeof runWebhookWorker>[0] = {},
 	) {
+		await openTransactionsEnded();
 		for (let i = 0; i < 60; i++) {
 			await runWebhookWorker(options);
 			if (await done()) return;
