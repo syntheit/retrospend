@@ -234,6 +234,23 @@ export const JSON_CELLS = {
 		table: "idempotency_key",
 		columns: { responseBody: { mode: "body", cls: "user" } },
 	},
+	// The parsed rows and the parser's warnings of an import job (PR 8.2).
+	// The file name, `fileData`, `errorMessage` and `statusMessage` are not
+	// sealed by this: until the Revision 3 PR seals the last two, the first
+	// warnings are still copied into `errorMessage` (import-queue.service.ts),
+	// so sealing these two columns alone does not make import text private.
+	ImportJob: {
+		table: "import_job",
+		columns: {
+			transactions: { mode: "body", cls: "user" },
+			warnings: { mode: "body", cls: "user" },
+		},
+	},
+	// Copies of error report text; the admin reads them like the message.
+	Feedback: {
+		table: "feedback",
+		columns: { diagnostics: { mode: "body", cls: "instance" } },
+	},
 } as const satisfies Record<string, ModelJsonCells>;
 
 export type JsonModel = keyof typeof JSON_CELLS;

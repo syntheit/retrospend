@@ -23,17 +23,6 @@ const jsonFields = schema.flatMap((model) =>
 );
 const named = (model: string, field: string) => `${model}.${field}`;
 
-/**
- * Columns PR 8.2 maps (import rows, their warnings, feedback diagnostics).
- * Until it lands they may be in neither list; once mapped they must be in
- * JSON_CELLS. Remove this set when 8.2 is merged.
- */
-const SEALED_BY_PR_8_2 = new Set([
-	"ImportJob.transactions",
-	"ImportJob.warnings",
-	"Feedback.diagnostics",
-]);
-
 describe("every Json column", () => {
 	it("is read from the schema (28 today)", () => {
 		expect(jsonFields.length).toBe(28);
@@ -50,7 +39,7 @@ describe("every Json column", () => {
 			const mapped = Boolean(jsonCellsOfModel(f.model)?.columns[f.name]);
 			const listed = Object.hasOwn(NO_TEXT_JSON, key);
 			if (mapped && listed) both.push(key);
-			if (!mapped && !listed && !SEALED_BY_PR_8_2.has(key)) unplaced.push(key);
+			if (!mapped && !listed) unplaced.push(key);
 		}
 		expect(unplaced, "classify in JSON_CELLS or NO_TEXT_JSON").toEqual([]);
 		expect(both).toEqual([]);
