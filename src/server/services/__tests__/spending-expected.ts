@@ -19,7 +19,9 @@ export const EXPECTED_READINGS = {
 	runway: {
 		// Oct 10 to now: 538,000 - the future laptop part 40,000 + dinner 20,000,
 		// over 80 days since Jan 20 in months of 30.436875 days
-		averageMonthlySpend: 518_000 / (80 / 30.436875),
+		// 518,000 x 30.436875 / 80 = 197,078.765625, sent rounded to the
+		// currency's cents: 197,078.77.
+		averageMonthlySpend: 197_078.77,
 		monthsActive: 3,
 	},
 	byDate: [["Super Mar", 12_000, "ARS", "2026-03-05T12:00:00.000Z"]],

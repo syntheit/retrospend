@@ -15,10 +15,7 @@ import { ensureIncomeCategories } from "~/server/services/money-in.service";
 import { forUser } from "~/server/services/preview";
 import { confirmRecurringExpense } from "~/server/services/recurring-confirm.mutation";
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
-import {
-	EXPECTED_LISTED,
-	EXPECTED_READINGS,
-} from "./spending-expected";
+import { EXPECTED_LISTED, EXPECTED_READINGS } from "./spending-expected";
 import {
 	at,
 	expenseData,
@@ -249,7 +246,8 @@ describe("money in never reaches a spending reader", () => {
 				lifetime: { totalSpent: 536_500, totalTransactions: 10 },
 				profileLifetime: { lifetimeSpend: 536_500, totalEntries: 12 },
 				runway: {
-					averageMonthlySpend: 516_500 / (80 / 30.436875),
+					// 516,500 x 30.436875 / 80 = 196,508.07421875, in cents.
+					averageMonthlySpend: 196_508.07,
 					monthsActive: 3,
 				},
 				// April, the running month, has no refund.

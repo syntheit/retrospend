@@ -98,10 +98,14 @@ async function read({ userId, db }: Awaited<ReturnType<typeof seed>>) {
 	const c = callers(userId);
 	const runway = await c.wealth.getRunwayStats({ currency: HOME });
 	return {
-		lifetime: (await stats.getLifetimeStats(userId, HOME)).totalSpent,
+		lifetime: (
+			await stats.getLifetimeStats(userId, HOME)
+		).totalSpent.toNumber(),
 		profileLifetime: (await c.profile.getLifetimeStats()).lifetimeSpend,
 		runwayTimesMonths: runway.averageMonthlySpend * MONTHS_ACTIVE,
-		spentApril: await spentIn(db, { userId, date: APRIL_RANGE }, HOME, 1300),
+		spentApril: (
+			await spentIn(db, { userId, date: APRIL_RANGE }, HOME, 1300)
+		).toNumber(),
 		// The lists send the booked value; the client shows it as is.
 		listedHome: Object.fromEntries(
 			(await c.expense.listFinalized()).map((e) => [e.title, e.home]),
@@ -143,7 +147,14 @@ describe("spending readers when the rate moves", () => {
 	for (const [reader, expected] of Object.entries(EXPECTED)) {
 		it(`pins ${reader}`, () => {
 			const value = readings[reader as keyof typeof readings];
-			if (typeof expected === "number") {
+			if (reader === "runwayTimesMonths") {
+				// The runway sends its average in whole cents: 41,500 over
+				// 31/30.436875 months is 40,746.0987903...; in cents 40,746.10, and
+				// x 1.0185... months is 41,500.0009, within half a cent x months.
+				expect(Math.abs((value as number) - (expected as number))).toBeLessThan(
+					0.005 * MONTHS_ACTIVE,
+				);
+			} else if (typeof expected === "number") {
 				expect(value).toBeCloseTo(expected, 6);
 			} else {
 				expect(value).toEqual(expected);
