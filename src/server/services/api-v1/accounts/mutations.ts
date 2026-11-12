@@ -222,7 +222,14 @@ export const deleteAccountMutation: MoneyMutation<
 	run: async (tx, input, actor) => {
 		const snapshot = await snapshotAccount(tx, actor.userId, input.id);
 		await deleteAccountIn(tx, actor.userId, input.id);
-		const stash = await putUndoStash(tx, actor.userId, snapshot);
+		// The uploaded picture stays while the undo can bring the account back.
+		const { iconKind, iconValue } = snapshot.account;
+		const stash = await putUndoStash(
+			tx,
+			actor.userId,
+			snapshot,
+			iconKind === "IMAGE" && typeof iconValue === "string" ? [iconValue] : [],
+		);
 		return {
 			value: { id: input.id, stash },
 			undo: { kind: "revert", mutation: "account.undelete", rows: [] },

@@ -22,13 +22,17 @@ vi.mock("~/server/storage", async () => {
 	};
 });
 
-import { deleteFile, uploadFile } from "~/server/storage";
+import { randomUUID } from "node:crypto";
+import {
+	deleteAccountMutation,
+	undeleteAccountMutation,
+} from "~/server/services/api-v1/accounts/mutations";
 import { pruneExpiredKeys } from "~/server/services/api-v1/idempotency.service";
-import { putUndoStash } from "~/server/services/entry/undo-stash";
+import { forUser } from "~/server/services/preview";
 import { anonymizeAndDeleteUser } from "~/server/services/user-deletion.service";
-import { snapshotAccount } from "./delete-snapshot";
-import { deleteAccount, editAccount } from "./manage";
+import { deleteFile, uploadFile } from "~/server/storage";
 import { replaceAccountImage, setAccountIcon } from "./icon";
+import { deleteAccount, editAccount } from "./manage";
 import { arsUser, openAccount, seedArsRates } from "./test-fixtures";
 
 beforeAll(seedArsRates);
@@ -103,7 +107,10 @@ describe("setAccountIcon", () => {
 		const { user } = await arsUser();
 		const id = await openAccount(user.id, "Wise", "CASH", "ARS", 1000);
 		const before = (await row(id)).updatedAt;
-		await setAccountIcon(adminDb, user.id, id, { kind: "BRAND", value: "wise" });
+		await setAccountIcon(adminDb, user.id, id, {
+			kind: "BRAND",
+			value: "wise",
+		});
 		expect((await row(id)).updatedAt).toEqual(before);
 	});
 
@@ -159,7 +166,9 @@ describe("replaceAccountImage", () => {
 
 		const saved = await row(id);
 		expect(saved.iconKind).toBe("IMAGE");
-		expect(saved.iconValue).toMatch(new RegExp(`^accounts/${id}-\\d+-[0-9a-f]{8}\\.webp$`));
+		expect(saved.iconValue).toMatch(
+			new RegExp(`^accounts/${id}-\\d+-[0-9a-f]{8}\\.webp$`),
+		);
 		expect(icon).toEqual({
 			kind: "IMAGE",
 			value: `/api/images/${saved.iconValue}`,
@@ -182,7 +191,10 @@ describe("replaceAccountImage", () => {
 		const second = (await row(id)).iconValue;
 		expect(second).not.toBe(first);
 
-		await setAccountIcon(adminDb, user.id, id, { kind: "BRAND", value: "wise" });
+		await setAccountIcon(adminDb, user.id, id, {
+			kind: "BRAND",
+			value: "wise",
+		});
 		expect(deleteFile).toHaveBeenCalledWith(second);
 	});
 
@@ -236,41 +248,68 @@ describe("the picture's files", () => {
 		expect(deleteFile).toHaveBeenCalledWith(path);
 	});
 
+	/** An account with an uploaded picture, deleted with an undo: its picture and stash. */
+	async function deletedWithPicture(userId: string, name = "Mine") {
+		const id = await openAccount(userId, name, "CASH", "ARS", 1000);
+		await replaceAccountImage(adminDb, userId, id, await png());
+		const path = (await row(id)).iconValue as string;
+		const gone = await forUser(userId).apply(deleteAccountMutation, { id });
+		vi.mocked(deleteFile).mockClear();
+		return { path, stash: gone.value.stash };
+	}
+
+	const expire = (userId: string) =>
+		adminDb.idempotencyKey.updateMany({
+			where: { userId },
+			data: { expiresAt: new Date(Date.now() - 1000) },
+		});
+
 	it("keeps the picture while an undo can bring the account back, then prunes it", async () => {
 		const { user } = await arsUser();
-		const id = await openAccount(user.id, "Mine", "CASH", "ARS", 1000);
-		await replaceAccountImage(adminDb, user.id, id, await png());
-		const path = (await row(id)).iconValue;
-		vi.mocked(deleteFile).mockClear();
-		const stash = await adminDb.$transaction(async (tx) => {
-			const snapshot = await snapshotAccount(tx, user.id, id);
-			await tx.assetAccount.delete({ where: { id } });
-			return putUndoStash(tx, user.id, snapshot);
-		});
+		const { path } = await deletedWithPicture(user.id);
 		await pruneExpiredKeys();
 		expect(deleteFile).not.toHaveBeenCalledWith(path);
 
-		await adminDb.idempotencyKey.updateMany({
-			where: { userId: user.id, key: `undo-stash:${stash}` },
-			data: { expiresAt: new Date(Date.now() - 1000) },
-		});
+		await expire(user.id);
 		await pruneExpiredKeys();
 		expect(deleteFile).toHaveBeenCalledWith(path);
+	});
+
+	it("an undo takes the kept file with it, so the restored picture is never pruned", async () => {
+		const { user } = await arsUser();
+		const { path, stash } = await deletedWithPicture(user.id);
+		await forUser(user.id).apply(undeleteAccountMutation, { stash });
+		await expire(user.id);
+		await pruneExpiredKeys();
+		expect(deleteFile).not.toHaveBeenCalledWith(path);
+	});
+
+	it("deletes files only for rows the stash module wrote", async () => {
+		const { user } = await arsUser();
+		const path = "accounts/forged.webp";
+		// A row shaped like a kept file without the server's marker, as an
+		// Idempotency-Key from a client would be stored.
+		await adminDb.idempotencyKey.create({
+			data: {
+				userId: user.id,
+				key: `undo-icon:${randomUUID()}:${path}`,
+				requestHash: "a".repeat(64),
+				expiresAt: new Date(Date.now() - 1000),
+			},
+		});
+		await pruneExpiredKeys();
+		expect(deleteFile).not.toHaveBeenCalledWith(path);
+		await expect(
+			adminDb.idempotencyKey.count({ where: { userId: user.id } }),
+		).resolves.toBe(0);
 	});
 
 	it("deleting the user deletes live and stashed pictures", async () => {
 		const { user } = await arsUser();
 		const live = await openAccount(user.id, "Live", "CASH", "ARS", 1000);
-		const gone = await openAccount(user.id, "Gone", "CASH", "ARS", 1000);
 		await replaceAccountImage(adminDb, user.id, live, await png());
-		await replaceAccountImage(adminDb, user.id, gone, await png());
-		const paths = [(await row(live)).iconValue, (await row(gone)).iconValue];
-		await adminDb.$transaction(async (tx) => {
-			const snapshot = await snapshotAccount(tx, user.id, gone);
-			await tx.assetAccount.delete({ where: { id: gone } });
-			await putUndoStash(tx, user.id, snapshot);
-		});
-		vi.mocked(deleteFile).mockClear();
+		const { path } = await deletedWithPicture(user.id, "Gone");
+		const paths = [(await row(live)).iconValue, path];
 		await anonymizeAndDeleteUser(adminDb, user.id, user.email, null);
 		for (const p of paths) expect(deleteFile).toHaveBeenCalledWith(p);
 	});

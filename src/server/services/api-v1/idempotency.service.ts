@@ -1,8 +1,14 @@
 import { createHash, createHmac } from "node:crypto";
-import { IDEMPOTENCY_TTL_MS } from "@retrospend/api-contract/common";
+import {
+	IDEMPOTENCY_TTL_MS,
+	SERVER_KEY_PREFIX,
+} from "@retrospend/api-contract/common";
 import { env } from "~/env";
 import { db, type db as globalDb } from "~/server/db";
-import { stashedIconPath } from "~/server/services/accounts/icon";
+import {
+	UNDO_FILE_HASH,
+	undoFilePath,
+} from "~/server/services/entry/undo-stash";
 import { deleteFile } from "~/server/storage";
 import { Prisma } from "~prisma";
 
@@ -196,19 +202,29 @@ export async function completeIdempotentRequest(
 	const keep =
 		json !== undefined &&
 		Buffer.byteLength(json, "utf8") <= MAX_STORED_RESPONSE_BYTES;
-	// updateMany: deleting the account removes its own key row, and the delete
-	// has committed by now, so a missing row is not an error.
-	await userDb.idempotencyKey.updateMany({
-		where: { id },
-		data: {
-			completedAt: new Date(),
-			status,
-			responseBody:
-				keep && json !== undefined
-					? (JSON.parse(json) as Prisma.InputJsonValue)
-					: Prisma.DbNull,
-		},
-	});
+	// An update by id: the body is sealed under this row's id, which a bulk
+	// write cannot name. Deleting the account removes its own key row, and the
+	// delete has committed by now, so a missing row is not an error.
+	try {
+		await userDb.idempotencyKey.update({
+			where: { id },
+			data: {
+				completedAt: new Date(),
+				status,
+				responseBody:
+					keep && json !== undefined
+						? (JSON.parse(json) as Prisma.InputJsonValue)
+						: Prisma.DbNull,
+			},
+			select: { id: true },
+		});
+	} catch (error) {
+		if (
+			!(error instanceof Prisma.PrismaClientKnownRequestError) ||
+			error.code !== "P2025"
+		)
+			throw error;
+	}
 }
 
 /**
@@ -220,12 +236,17 @@ export async function completeIdempotentRequest(
 export async function pruneExpiredKeys(now: Date = new Date()) {
 	// A deleted account's uploaded picture was kept for its undo; once the
 	// stash expires nothing can bring the account back, so the file goes too.
-	const stashes = await db.idempotencyKey.findMany({
-		where: { expiresAt: { lt: now }, key: { startsWith: "undo-stash:" } },
-		select: { responseBody: true },
+	// Only rows the stash module wrote name a file (undo-stash.ts).
+	const kept = await db.idempotencyKey.findMany({
+		where: {
+			expiresAt: { lt: now },
+			key: { startsWith: SERVER_KEY_PREFIX.undoIcon },
+			requestHash: UNDO_FILE_HASH,
+		},
+		select: { key: true, requestHash: true },
 	});
-	for (const { responseBody } of stashes) {
-		const path = stashedIconPath(responseBody);
+	for (const row of kept) {
+		const path = undoFilePath(row);
 		if (path) await deleteFile(path).catch(() => {});
 	}
 	const { count } = await db.idempotencyKey.deleteMany({

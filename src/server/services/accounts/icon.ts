@@ -72,15 +72,6 @@ async function swapIcon(
 	});
 }
 
-/** The uploaded picture an undo stash of a deleted account holds, if any. */
-export function stashedIconPath(body: unknown): string | null {
-	const account = (body as { account?: Record<string, unknown> } | null)
-		?.account;
-	return account?.iconKind === "IMAGE" && typeof account.iconValue === "string"
-		? account.iconValue
-		: null;
-}
-
 /** A logo, a monogram color or none. An uploaded image goes through replaceAccountImage. */
 export async function setAccountIcon(
 	db: AppDb,
