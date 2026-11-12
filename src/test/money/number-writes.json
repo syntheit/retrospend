@@ -1,0 +1,75 @@
+{
+	"AssetAccount.balance": ["src/server/services/accounts/manage.ts"],
+	"AssetAccount.exchangeRate": [
+		"src/server/services/accounts/checkpoint.ts",
+		"src/server/services/accounts/manage.ts"
+	],
+	"AssetAccount.interestRate": ["src/server/services/envelope/debt.service.ts"],
+	"AssetAccount.minimumPayment": [
+		"src/server/services/envelope/debt.service.ts"
+	],
+	"AssetHistory.balance": ["src/server/services/wealth.service.ts"],
+	"AssetSnapshot.balance": ["src/server/services/wealth.service.ts"],
+	"AssetSnapshot.balanceInUSD": ["src/server/services/wealth.service.ts"],
+	"Envelope.targetAmount": [
+		"src/server/services/envelope/book.service.ts",
+		"src/server/services/envelope/crud.service.ts",
+		"src/server/services/envelope/debt.service.ts",
+		"src/server/services/envelope/limits.service.ts",
+		"src/server/services/envelope/target.service.ts"
+	],
+	"EnvelopeGroup.targetValue": [
+		"src/server/services/envelope/book.service.ts",
+		"src/server/services/envelope/group.service.ts"
+	],
+	"Expense.amount": [
+		"src/server/services/amortization.service.ts",
+		"src/server/services/csv.service.ts",
+		"src/server/services/expense.service.ts",
+		"src/server/services/import/commit.mutation.ts",
+		"src/server/services/income/confirm-recurring.mutation.ts",
+		"src/server/services/recurring-confirm.mutation.ts"
+	],
+	"Expense.amountInUSD": [
+		"src/server/services/amortization.service.ts",
+		"src/server/services/csv.service.ts",
+		"src/server/services/envelope/adjustment.ts",
+		"src/server/services/expense.service.ts",
+		"src/server/services/import/commit.mutation.ts",
+		"src/server/services/income/confirm-recurring.mutation.ts",
+		"src/server/services/recurring-confirm.mutation.ts"
+	],
+	"Expense.exchangeRate": [
+		"src/server/services/amortization.service.ts",
+		"src/server/services/csv.service.ts",
+		"src/server/services/envelope/adjustment.ts",
+		"src/server/services/expense.service.ts",
+		"src/server/services/import/commit.mutation.ts",
+		"src/server/services/income/confirm-recurring.mutation.ts",
+		"src/server/services/recurring-confirm.mutation.ts"
+	],
+	"Expense.homeAmount": ["src/server/services/amortization.service.ts"],
+	"Expense.homeRate": ["src/server/services/amortization.service.ts"],
+	"IncomeRule.value": [
+		"src/server/services/envelope/rule-crud.service.ts",
+		"src/server/services/envelope/setup-p5.ts"
+	],
+	"PayoffPlan.extraMonthly": ["src/server/services/envelope/debt.service.ts"],
+	"Project.budgetAmount": [
+		"src/server/services/project/project-write.service.ts"
+	],
+	"SharedTransaction.amount": [
+		"src/server/services/shared-expenses/transaction.service.ts"
+	],
+	"SharedTransaction.exchangeRate": [
+		"src/server/services/corrections/correct.service.ts",
+		"src/server/services/shared-expenses/transaction.service.ts"
+	],
+	"SplitParticipant.shareAmount": [
+		"src/server/services/project/rebalance.mutation.ts",
+		"src/server/services/shared-expenses/transaction.service.ts"
+	],
+	"SplitParticipant.sharePercentage": [
+		"src/server/services/shared-expenses/transaction.service.ts"
+	]
+}

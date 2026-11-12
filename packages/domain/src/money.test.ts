@@ -144,10 +144,12 @@ describe("decimals", () => {
 	});
 
 	it("converts to and from minor units without float noise", () => {
-		expect(toMinorUnits(1.005, "USD")).toBe(101);
+		// 1.005 USD is 100.5 cents, a tie: half to even keeps 100 (100 is even).
+		expect(toMinorUnits(1.005, "USD")).toBe(100);
 		expect(toMinorUnits(0.003, "BTC")).toBe(300000);
 		expect(fromMinorUnits(100000, "BTC")).toBe(0.001);
-		expect(toMinorUnits(1.2345, "KWD")).toBe(1235);
+		// 1.2345 KWD is 1234.5 fils, a tie: half to even keeps 1234.
+		expect(toMinorUnits(1.2345, "KWD")).toBe(1234);
 		expect(roundMoney(1234.6, "JPY")).toBe(1235);
 	});
 });

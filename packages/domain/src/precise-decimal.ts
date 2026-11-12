@@ -23,3 +23,12 @@ export type DecimalInput = string | number | { toString(): string };
 export function dec(value: DecimalInput): Decimal {
 	return new Dec(typeof value === "number" ? value : value.toString());
 }
+
+/**
+ * A float read as the decimal it was meant to be: 15 significant digits, all
+ * a float reliably keeps, so 1.005 * 100 (100.49999999999999) reads as 100.5.
+ * The one float-noise trim, used wherever a number enters money math.
+ */
+export function fromFloat(n: number): Decimal {
+	return dec(Number(n.toPrecision(15)));
+}
