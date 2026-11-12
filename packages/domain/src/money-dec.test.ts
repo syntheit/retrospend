@@ -15,6 +15,7 @@ import {
 	crossRateDec,
 	fromUSDDec,
 	MissingRateError,
+	rateFromUsdAmountDec,
 	rateFromUsdPerUnitDec,
 	roundMoneyDec,
 	roundRateDec,
@@ -175,6 +176,47 @@ describe("conversion", () => {
 		expect(fixed(usdPerUnitDec("USD", null))).toBe("1");
 		expect(fixed(rateFromUsdPerUnitDec("ARS", "0.0005"))).toBe("2000"); // 1 / 0.0005
 		expect(fixed(rateFromUsdPerUnitDec("BTC", 64545))).toBe("64545");
+	});
+});
+
+describe("a rate from a USD amount", () => {
+	it("divides once: fiat amount / USD, crypto USD / amount", () => {
+		// ARS blue: 15465.45 ARS for 10.01 USD is 15465.45 / 10.01 = 1545.
+		expect(fixed(rateFromUsdAmountDec("ARS", "10.01", "15465.45"))).toBe(
+			"1545",
+		);
+		// JPY: 1500 JPY for 10 USD is 150 per USD.
+		expect(fixed(rateFromUsdAmountDec("JPY", 10, 1500))).toBe("150");
+		// KWD: 3.075 KWD for 10 USD is 0.3075 KWD per USD.
+		expect(fixed(rateFromUsdAmountDec("KWD", 10, "3.075"))).toBe("0.3075");
+		// BTC: 32272.95 USD for 0.5 BTC is 64545.9 USD per coin.
+		expect(fixed(rateFromUsdAmountDec("BTC", "32272.95", "0.5"))).toBe(
+			"64545.9",
+		);
+		// A refund prices the same: -28.5 ARS for -0.285 USD is 100 per USD.
+		expect(fixed(rateFromUsdAmountDec("ARS", "-0.285", "-28.5"))).toBe("100");
+		expect(fixed(rateFromUsdAmountDec("USD", 5, 7))).toBe("1");
+	});
+
+	it("keeps the quotient to 40 digits, rounded once at the column", () => {
+		// 7 ARS for 0.015 USD: 7 / 0.015 = 466.666..., 466.666667 at 6
+		// decimals (the 7th digit 6 rounds up).
+		const rate = rateFromUsdAmountDec("ARS", "0.015", 7);
+		expect(rate.toFixed(6)).toBe("466.666667");
+		expect(rate.precision()).toBe(40);
+	});
+
+	it("no finite rate above zero is MissingRateError, never 1", () => {
+		for (const [usd, amount] of [
+			[0, 10], // 10 / 0
+			[10, 0], // 0 / 10 is a rate of 0
+			[0, 0],
+			["-1", 10], // signs differ
+		] as const)
+			expect(() => rateFromUsdAmountDec("ARS", usd, amount)).toThrow(
+				MissingRateError,
+			);
+		expect(() => rateFromUsdAmountDec("BTC", 10, 0)).toThrow(MissingRateError);
 	});
 });
 

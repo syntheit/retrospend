@@ -7,8 +7,12 @@
  * assign, OUT lowers it. Reports ignore both kinds.
  */
 import { MissingRateError, USD } from "@retrospend/domain/money";
+import {
+	computeAmountInUSDDec,
+	roundRateDec,
+} from "@retrospend/domain/money-dec";
 import type { Adjustment } from "~/lib/schemas/envelope-book";
-import { Prisma } from "~prisma";
+import type { Prisma } from "~prisma";
 import { EnvelopeError } from "./errors";
 import { forgetMonthViews } from "./month-read";
 import { loadRateBook } from "./rate-book";
@@ -31,10 +35,14 @@ export interface EntryRow {
 	entryKind: "STARTING_BALANCE" | "ADJUSTMENT";
 }
 
-/** Writes one budget money-in row; a missing USD rate refuses (never 1). */
+/**
+ * Writes one budget money-in row; a missing USD rate refuses (never 1). The
+ * USD value comes from the exact rate, cents half to even, and the rate is
+ * stored at 6 decimals half to even, both as decimal text.
+ */
 export async function writeEntryRow(tx: Tx, userId: string, p: EntryRow) {
 	const amount = fromMinor(p.minor, p.currency);
-	let rate = new Prisma.Decimal(1);
+	let rate = "1";
 	if (p.currency !== USD) {
 		const rates = await loadRateBook(tx, {
 			bookCurrency: p.currency,
@@ -45,7 +53,7 @@ export async function writeEntryRow(tx: Tx, userId: string, p: EntryRow) {
 			rates.lookup(p.currency, p.rateType, p.today) ??
 			rates.lookup(p.currency, "official", p.today);
 		if (!found) throw new MissingRateError(p.currency);
-		rate = new Prisma.Decimal(found.toString());
+		rate = found.toString();
 	}
 	const row = await tx.expense.create({
 		data: {
@@ -56,10 +64,8 @@ export async function writeEntryRow(tx: Tx, userId: string, p: EntryRow) {
 			amount: amount.toString(),
 			currency: p.currency,
 			date: p.date,
-			amountInUSD: new Prisma.Decimal(amount.toString())
-				.div(rate)
-				.toDecimalPlaces(2),
-			exchangeRate: rate.toDecimalPlaces(6),
+			amountInUSD: computeAmountInUSDDec(amount, p.currency, rate).toFixed(2),
+			exchangeRate: roundRateDec(rate, 6).toFixed(),
 			pricingSource: p.rateType,
 			status: "FINALIZED",
 			direction: p.direction,

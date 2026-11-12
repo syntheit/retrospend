@@ -264,7 +264,7 @@ describe("ImportQueueService", () => {
 			expect(txs[0]!.amountInUSD).toBeCloseTo(1); // 1000 / 1000
 		});
 
-		it("row with amountInUSD provided: exchangeRate = amount / amountInUSD", async () => {
+		it("row with amountInUSD provided: kept as the file has it, with no float rate", async () => {
 			const csvBase64 = Buffer.from(
 				"title,amount,currency,date,amountInUSD\nFactura,1000,ARS,2024-06-15,1",
 			).toString("base64");
@@ -279,8 +279,9 @@ describe("ImportQueueService", () => {
 				(c) => ((c[0] as { data: { status?: string } }).data.status) === "READY_FOR_REVIEW",
 			);
 			const txs = (reviewCall![0] as { data: { transactions: Array<{ exchangeRate: number; amountInUSD: number }> } }).data.transactions;
-			expect(txs[0]!.exchangeRate).toBeCloseTo(1000); // 1000 / 1
-			expect(txs[0]!.amountInUSD).toBeCloseTo(1);
+			// Booking prices it at exactly 1 / 1000 USD per ARS (book.ts).
+			expect(txs[0]).not.toHaveProperty("exchangeRate");
+			expect(txs[0]!.amountInUSD).toBe(1);
 		});
 
 		it("non-USD row without exchangeRate or amountInUSD: row skipped with warning", async () => {
@@ -551,12 +552,17 @@ describe("ImportQueueService CSV conversion", () => {
 		expect(txs[0]!.amountInUSD).toBe(5000);
 	});
 
-	it("crypto USD amount derives USD per coin: 2 ETH for 6,000 USD is 3,000", async () => {
+	it("a USD amount stays as the file has it, a tie unrounded: booking prices it", async () => {
+		// 2 ETH for 6,000 USD is 3,000 USD per coin at booking; ARS 7 for USD
+		// 0.015 keeps 0.015, so booking stores 0.02 (half even), not 0.01 from
+		// a float rate.
 		const txs = await importCsv(
-			"title,amount,currency,date,amountInUSD\nCoin,2,ETH,2026-08-01,6000",
+			"title,amount,currency,date,amountInUSD\nCoin,2,ETH,2026-08-01,6000\nMate,7,ARS,2026-08-01,0.015",
 		);
-		expect(txs[0]!.exchangeRate).toBeCloseTo(3000, 8);
+		expect(txs[0]).not.toHaveProperty("exchangeRate");
 		expect(txs[0]!.amountInUSD).toBe(6000);
+		expect(txs[1]).not.toHaveProperty("exchangeRate");
+		expect(txs[1]!.amountInUSD).toBe(0.015);
 	});
 
 	it("4-letter crypto codes such as USDT are accepted", async () => {

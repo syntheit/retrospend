@@ -5,18 +5,19 @@
  * is the entry leg; otherwise both legs come from the table at the user's
  * default rate type, like the Add sheet. The home leg is booked with
  * `bookRate`; when the table has no home rate the row keeps its entry leg
- * and no home leg (the totals rule applies), never a rate of 1.
+ * and no home leg (the totals rule applies), never a rate of 1. A USD amount
+ * books as the exact fraction USD / amount, so the stored amountInUSD is
+ * the file's USD to cents. The amount is stored and booked at the column's
+ * 8 decimals, half to even.
  */
-import {
-	isValidRate,
-	MissingRateError,
-	rateFromUsdPerUnit,
-	USD,
-} from "@retrospend/domain/money";
+import { isValidRate, MissingRateError, USD } from "@retrospend/domain/money";
 import {
 	computeAmountInUSDDec,
+	rateFromUsdAmountDec,
 	roundRateDec,
+	roundUSDDec,
 } from "@retrospend/domain/money-dec";
+import { type RateChoice, storedAmount } from "@retrospend/domain/rate-booking";
 import { findExchangeRate } from "~/server/exchange-rates";
 import type { Prisma, PrismaClient } from "~prisma";
 import { type BookedRate, bookRate, type RateContext } from "../rate-types";
@@ -47,25 +48,65 @@ export interface HomeLeg {
 
 export interface ImportRate {
 	/** Decimal text at the columns' scale, half to even. */
+	amount: string;
 	exchangeRate: string;
 	amountInUSD: string;
 	home: HomeLeg | null;
 }
 
-/** The entry leg the file brings: its rate, or one derived from its USD amount. */
-export function fileRateOf(row: ImportRateInput): number | null {
+type FileLeg = Extract<RateChoice, { kind: "entryLeg" | "usdValue" }>;
+
+/**
+ * The entry leg alone, as bookRate stores it: the leg at 6 decimals and the
+ * USD value from the exact leg, half to even, as decimal text. From a USD
+ * amount the exact rate is USD / amount, so the USD value is that amount.
+ * A leg that prices no rate (an amount of 0 at 8 decimals) throws
+ * MissingRateError. The CSV import and a row with no home leg both use it.
+ */
+export function entryLegOnly(
+	currency: string,
+	amount: string,
+	leg: FileLeg,
+): { exchangeRate: string; amountInUSD: string } {
+	if (leg.kind === "entryLeg") {
+		return {
+			exchangeRate: roundRateDec(leg.exchangeRate, 6).toFixed(),
+			amountInUSD: computeAmountInUSDDec(
+				amount,
+				currency,
+				leg.exchangeRate,
+			).toFixed(2),
+		};
+	}
+	const rate = rateFromUsdAmountDec(currency, leg.usd, amount);
+	return {
+		exchangeRate: roundRateDec(rate, 6).toFixed(),
+		amountInUSD: roundUSDDec(leg.usd).toFixed(2),
+	};
+}
+
+/** A rate as an entry leg with no type of its own. */
+export const legAt = (exchangeRate: number): FileLeg => ({
+	kind: "entryLeg",
+	exchangeRate,
+	rateType: null,
+});
+
+/** The entry leg the file brings: its rate, or its USD amount. */
+export function fileLegOf(row: ImportRateInput): FileLeg | null {
 	const currency = row.currency.toUpperCase();
 	// A rate the reader looked up (at no rate type) is not the file's: the
 	// table books it again at the user's default type.
 	if (currency === USD || row.rateSource === "table") return null;
-	if (isValidRate(row.exchangeRate)) return row.exchangeRate;
+	if (isValidRate(row.exchangeRate)) return legAt(row.exchangeRate);
 	if (isValidRate(row.amountInUSD) && row.amount > 0)
-		return rateFromUsdPerUnit(currency, row.amountInUSD / row.amount);
+		return { kind: "usdValue", usd: row.amountInUSD };
 	return null;
 }
 
-function split(booked: BookedRate): ImportRate {
+function split(amount: string, booked: BookedRate): ImportRate {
 	return {
+		amount,
 		exchangeRate: booked.exchangeRate,
 		amountInUSD: booked.amountInUSD,
 		home: {
@@ -87,32 +128,29 @@ export async function bookImportRow(
 	row: ImportRateInput,
 ): Promise<ImportRate | null> {
 	const currency = row.currency.toUpperCase();
-	const entry = { amount: row.amount, currency, date: row.date };
-	const fileRate = fileRateOf(row);
+	const amount = storedAmount(row.amount);
+	const entry = { amount, currency, date: row.date };
+	const fileLeg = fileLegOf(row);
 	try {
-		const booked =
-			fileRate != null
-				? await bookRate(db, ctx, entry, {
-						kind: "entryLeg",
-						exchangeRate: fileRate,
-						rateType: null,
-					})
-				: await bookRate(db, ctx, entry, { kind: "table", rateType: null });
-		return split(booked);
+		const choice: RateChoice = fileLeg ?? { kind: "table", rateType: null };
+		return split(amount, await bookRate(db, ctx, entry, choice));
 	} catch (error) {
 		if (!(error instanceof MissingRateError)) throw error;
 	}
 	// No home rate in the table: keep the entry leg alone, if there is one.
 	const rate =
-		fileRate ??
-		(currency === USD
+		currency === USD
 			? 1
-			: (await findExchangeRate(db, currency, row.date))?.rate);
-	if (rate == null) return null;
-	// As bookRate stores them: the leg at 6 decimals, USD from the exact leg, half to even.
-	return {
-		exchangeRate: roundRateDec(rate, 6).toFixed(),
-		amountInUSD: computeAmountInUSDDec(row.amount, currency, rate).toFixed(2),
-		home: null,
-	};
+			: fileLeg
+				? null
+				: (await findExchangeRate(db, currency, row.date))?.rate;
+	const leg = fileLeg ?? (rate == null ? null : legAt(rate));
+	if (!leg) return null;
+	try {
+		return { amount, ...entryLegOnly(currency, amount, leg), home: null };
+	} catch (error) {
+		// An amount of 0 at 8 decimals prices no rate: only this row is skipped.
+		if (error instanceof MissingRateError) return null;
+		throw error;
+	}
 }

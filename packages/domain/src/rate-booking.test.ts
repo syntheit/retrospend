@@ -295,6 +295,68 @@ describe("bookRate rounds half to even from the exact rate", () => {
 	});
 });
 
+describe("bookRate from a USD value (a file's USD column)", () => {
+	const ars = table({ ARS: { rate: 1545, type: "blue" } }, "ARS", "blue");
+	const usdValue = (usd: string): RateChoice => ({ kind: "usdValue", usd });
+
+	it("ARS 7 for USD 0.015 stores 0.02: USD per unit is 0.015 / 7, never a rounded rate", async () => {
+		// 7 x 0.015 / 7 = 0.015 USD exactly, a tie: 1 is odd, so 0.02. No
+		// rate 7 / 0.015 = 466.666... (cut at 40 digits) stands in between.
+		// The leg is 466.666667 at 6 decimals; ARS is the home, so 7.00.
+		expect(await book(ars, "7", "ARS", usdValue("0.015"))).toEqual({
+			exchangeRate: "466.666667",
+			amountInUSD: "0.02",
+			rateType: null,
+			homeCurrency: "ARS",
+			homeRate: "1",
+			homeAmount: "7.00",
+		});
+	});
+
+	it("EUR 7 for USD 0.015 into ARS blue: one division keeps the home tie", async () => {
+		// Home units per EUR = (0.015 / 7) x 1545 = 23.175 / 7, so EUR 7 is
+		// 23.175 ARS exactly, a tie: 7 is odd, so 23.18. The home rate
+		// 3.310714285714|2857... is 3.310714285714 at 12 decimals. The home leg
+		// is blue, the file's leg has no type: labeled blue.
+		expect(await book(ars, "7", "EUR", usdValue("0.015"))).toEqual({
+			exchangeRate: "466.666667",
+			amountInUSD: "0.02",
+			rateType: "blue",
+			homeCurrency: "ARS",
+			homeRate: "3.310714285714",
+			homeAmount: "23.18",
+		});
+	});
+
+	it("BTC 0.00000025 for USD 0.015 into a USD home is 60000 per coin and 0.02", async () => {
+		// Crypto leg: USD / amount = 0.015 / 0.00000025 = 60000 USD per coin.
+		// 0.015 USD is a tie at cents: 0.02 both as amountInUSD and home.
+		const usd = table({}, "USD");
+		expect(
+			await book(usd, "0.00000025", "BTC", usdValue("0.015")),
+		).toMatchObject({
+			exchangeRate: "60000",
+			amountInUSD: "0.02",
+			homeRate: "60000",
+			homeAmount: "0.02",
+		});
+	});
+
+	it("a USD value of 0 prices no rate: MissingRateError, never 1", async () => {
+		await expect(
+			book(ars, "7", "EUR", usdValue("0")),
+		).rejects.toBeInstanceOf(MissingRateError);
+		// An amount of 0 prices none either: fiat 0 / 5 is a rate of 0, crypto
+		// 5 / 0 has none.
+		await expect(
+			book(ars, "0", "ARS", usdValue("5")),
+		).rejects.toBeInstanceOf(MissingRateError);
+		await expect(
+			book(table({}, "USD"), "0", "BTC", usdValue("5")),
+		).rejects.toBeInstanceOf(MissingRateError);
+	});
+});
+
 describe("bookRate keeps the figures of an edit that moves no money (D1)", () => {
 	const ars = table({ ARS: { rate: 100, type: "official" } }, "ARS");
 	// ARS 28.5 booked half up before half even: 0.285 USD was saved as 0.29.

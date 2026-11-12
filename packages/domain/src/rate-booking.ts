@@ -152,6 +152,12 @@ export type RateChoice =
 	| { kind: "table"; rateType: string | null; entryType?: string | null }
 	/** The entry leg is given (a typed or kept rate); the home leg comes from the table. */
 	| { kind: "entryLeg"; exchangeRate: number; rateType: string | null }
+	/**
+	 * The entry leg is the entry's USD value (a file's USD column): USD per
+	 * unit is exactly `usd` / amount, so amountInUSD is `usd` to cents and
+	 * no rounded rate stands between them. The home leg comes from the table.
+	 */
+	| { kind: "usdValue"; usd: DecimalInput }
 	/** Both legs kept from the saved row. */
 	| {
 			kind: "kept";
@@ -270,8 +276,14 @@ export function storedAmount(amount: number | string): string {
 	return roundRateDec(amount, AMOUNT_DECIMALS).toFixed();
 }
 
+/** num / den, kept apart so a chain of rates divides once and an exact tie stays a tie. */
+type Fraction = readonly [Decimal, Decimal];
+
+const ONE: Fraction = [new Dec(1), new Dec(1)];
+
 interface Leg {
-	rate: number;
+	/** USD per unit of the leg's currency, as an exact fraction. */
+	usd: Fraction;
 	/** The table type used; empty for USD, whose rate is always 1. */
 	type: string;
 }
@@ -282,16 +294,11 @@ async function legOf(
 	date: Date,
 	rateType: string | null,
 ): Promise<Leg> {
-	if (currency === USD) return { rate: 1, type: "" };
+	if (currency === USD) return { usd: ONE, type: "" };
 	const picked = await ctx.find(currency, date, rateType);
 	if (!picked) throw new MissingRateError(currency);
-	return { rate: picked.rate, type: picked.type };
+	return { usd: usdFractionDec(currency, picked.rate), type: picked.type };
 }
-
-/** num / den, kept apart so a chain of rates divides once and an exact tie stays a tie. */
-type Fraction = readonly [Decimal, Decimal];
-
-const ONE: Fraction = [new Dec(1), new Dec(1)];
 
 /** An entry's rate as exact fractions: USD per entry unit, and home units per entry unit. */
 interface Exact {
@@ -299,10 +306,16 @@ interface Exact {
 	home: Fraction;
 }
 
-/** The stored-convention rate for a USD value per unit: fiat units per USD, crypto USD per unit. */
+/**
+ * The stored-convention rate for a USD value per unit: fiat units per USD,
+ * crypto USD per unit. A leg that prices no rate above zero (a USD value of
+ * 0, an amount of 0) is a missing rate, never 1.
+ */
 function storedRate(currency: string, [num, den]: Fraction): Decimal {
 	if (currency === USD) return new Dec(1);
-	return isCrypto(currency) ? num.div(den) : den.div(num);
+	const rate = isCrypto(currency) ? num.div(den) : den.div(num);
+	if (!rate.isFinite() || !rate.gt(0)) throw new MissingRateError(currency);
+	return rate;
 }
 
 /**
@@ -361,13 +374,13 @@ async function exactFor(
 	entryLeg: Leg,
 	rateType: string | null,
 ): Promise<{ exact: Exact; legs: Leg[] }> {
-	const usd = usdFractionDec(entry.currency, entryLeg.rate);
+	const usd = entryLeg.usd;
 	const home = ctx.homeCurrency;
 	if (home === entry.currency) {
 		return { exact: { usd, home: ONE }, legs: [entryLeg] };
 	}
 	const homeLeg = await legOf(ctx, home, entry.date, rateType ?? ctx.preferred);
-	const [homeNum, homeDen] = usdFractionDec(home, homeLeg.rate);
+	const [homeNum, homeDen] = homeLeg.usd;
 	// (USD per entry unit) / (USD per home unit), as one fraction (D3).
 	const cross: Fraction = [usd[0].mul(homeDen), usd[1].mul(homeNum)];
 	return { exact: { usd, home: cross }, legs: [homeLeg, entryLeg] };
@@ -396,7 +409,7 @@ async function bookCustom(
 	const perUnit: Fraction =
 		choice.base === entry.currency ? [typed, new Dec(1)] : [new Dec(1), typed];
 	const homeLeg = await legOf(ctx, home, entry.date, ctx.preferred);
-	const [homeNum, homeDen] = usdFractionDec(home, homeLeg.rate);
+	const [homeNum, homeDen] = homeLeg.usd;
 	// The entry leg comes from the typed rate itself, not its rounded copy; USD is always 1.
 	const usd: Fraction =
 		entry.currency === USD
@@ -424,13 +437,25 @@ async function bookChoice(
 		case "entryLeg": {
 			const custom = choice.rateType === CUSTOM_RATE_TYPE;
 			const entryLeg = {
-				rate: choice.exchangeRate,
+				usd: usdFractionDec(entry.currency, choice.exchangeRate),
 				type: custom || entry.currency === USD ? "" : (choice.rateType ?? ""),
 			};
 			// A kept or typed entry leg says nothing about the home leg's type: the default applies.
 			const { exact, legs } = await exactFor(ctx, entry, entryLeg, null);
 			const rateType = custom ? CUSTOM_RATE_TYPE : labelFor(null, legs);
 			return booked(entry, ctx, exact, rateType);
+		}
+		case "usdValue": {
+			// booked() refuses a leg that prices no rate (storedRate).
+			const entryLeg: Leg = {
+				usd:
+					entry.currency === USD
+						? ONE
+						: [dec(choice.usd), dec(entry.amount)],
+				type: "",
+			};
+			const { exact, legs } = await exactFor(ctx, entry, entryLeg, null);
+			return booked(entry, ctx, exact, labelFor(null, legs));
 		}
 		case "table": {
 			const type = choice.rateType ?? ctx.preferred;

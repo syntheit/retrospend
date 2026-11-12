@@ -4,14 +4,8 @@ import {
 	stripUserTextControls,
 	stripUserTextControlsForKey,
 } from "@retrospend/api-contract/common";
-import {
-	computeAmountInUSD,
-	isValidRate,
-	type PickedRate,
-	rateFromUsdPerUnit,
-	roundUSD,
-	USD,
-} from "@retrospend/domain/money";
+import { isValidRate, type PickedRate, USD } from "@retrospend/domain/money";
+import { storedAmount } from "@retrospend/domain/rate-booking";
 import {
 	dayKey,
 	startOfDayIn,
@@ -22,12 +16,15 @@ import { userTransaction } from "~/server/db-tx";
 import { findExchangeRatesForDates } from "~/server/exchange-rates";
 import type { Prisma, PrismaClient } from "~prisma";
 import { AmortizationService } from "./amortization.service";
+import { entryLegOnly, fileLegOf, legAt } from "./import/book";
 import { listedEntryWhere } from "./spending";
 
 /**
  * Stored rate and USD amount of an imported row. A rate in the file wins
  * (amountInUSD is recomputed from it), then a USD amount (the rate is derived
- * from it), then the rate table for the row's date. Never a rate of 1.
+ * from it), then the rate table for the row's date. Never a rate of 1. Both
+ * are decimal text at the columns' scale (6 and 2 decimals), half to even,
+ * the USD value from the exact rate, not its 6-decimal copy.
  */
 export function resolveImportRate(
 	row: {
@@ -39,33 +36,19 @@ export function resolveImportRate(
 		amountInUSD?: number;
 	},
 	rateFor: (currency: string, date: Date) => PickedRate | null,
-): { exchangeRate: number; amountInUSD: number } {
+): { exchangeRate: string; amountInUSD: string } {
 	const currency = row.currency.toUpperCase();
-	if (currency === USD) {
-		return { exchangeRate: 1, amountInUSD: roundUSD(row.amount) };
-	}
-	if (isValidRate(row.exchangeRate)) {
-		return {
-			exchangeRate: row.exchangeRate,
-			amountInUSD: computeAmountInUSD(row.amount, currency, row.exchangeRate),
-		};
-	}
-	if (isValidRate(row.amountInUSD)) {
-		return {
-			exchangeRate: rateFromUsdPerUnit(currency, row.amountInUSD / row.amount),
-			amountInUSD: roundUSD(row.amountInUSD),
-		};
-	}
+	const amount = storedAmount(row.amount);
+	if (currency === USD) return entryLegOnly(currency, amount, legAt(1));
+	const fileLeg = fileLegOf(row);
+	if (fileLeg) return entryLegOnly(currency, amount, fileLeg);
 	const picked = rateFor(currency, row.date);
 	if (!picked) {
 		throw new Error(
 			`Missing exchange rate or USD amount for ${row.currency} on row: ${row.title}`,
 		);
 	}
-	return {
-		exchangeRate: picked.rate,
-		amountInUSD: computeAmountInUSD(row.amount, currency, picked.rate),
-	};
+	return entryLegOnly(currency, amount, legAt(picked.rate));
 }
 
 /** C0 controls other than tab, line feed and carriage return. */
@@ -328,8 +311,8 @@ export class CsvService {
 
 		type PreparedRow = {
 			data: ImportExpenseRow;
-			exchangeRate: number;
-			amountInUSD: number;
+			exchangeRate: string;
+			amountInUSD: string;
 			categoryId: string | null;
 			excludeFromAnalytics: boolean;
 		};
@@ -338,7 +321,7 @@ export class CsvService {
 			id: randomUUID(),
 			userId: userId,
 			title: r.data.title,
-			amount: r.data.amount,
+			amount: storedAmount(r.data.amount),
 			currency: r.data.currency.toUpperCase(),
 			date: r.data.date,
 			categoryId: r.categoryId ?? undefined,

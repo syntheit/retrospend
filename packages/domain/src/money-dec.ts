@@ -68,6 +68,23 @@ export function rateFromUsdPerUnitDec(
 	return isCrypto(currency) ? v : new Dec(1).div(v);
 }
 
+/**
+ * Stored rate for `currency` from a USD amount and the amount of `currency`
+ * it prices (a file's USD column): one division, fiat amount / USD, crypto
+ * USD / amount, never amount x (1 / USD). No finite rate above zero (a zero
+ * amount or USD, or signs that differ) throws MissingRateError, never 1.
+ */
+export function rateFromUsdAmountDec(
+	currency: string,
+	amountInUSD: DecimalInput,
+	amount: DecimalInput,
+): Decimal {
+	if (currency === USD) return new Dec(1);
+	const usd = dec(amountInUSD);
+	const units = dec(amount);
+	return rateOf(currency, isCrypto(currency) ? usd.div(units) : units.div(usd));
+}
+
 /** An amount in USD (unrounded). */
 export function toUSDDec(
 	amount: DecimalInput,

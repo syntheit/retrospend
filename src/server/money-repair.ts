@@ -22,6 +22,12 @@
  * amount and gets a rate derived from it. The rate table only keeps the
  * latest rate, so old expenses are compared with today's rate: thresholds are
  * wide on purpose, and the script prints the worst cases for review.
+ *
+ * Detection compares numbers with wide tolerances (a cent or two), so a row
+ * stored half up before half even is never flagged for its tie. The new
+ * values are exact decimals at the columns' scale, half to even: the
+ * rate at 6 decimals, USD from the exact rate (a median of two stored rates
+ * can need a 7th decimal), never from its rounded copy.
  */
 import { isCrypto } from "@retrospend/domain/currency-format";
 import {
@@ -29,11 +35,16 @@ import {
 	isValidRate,
 	pickBestRate,
 	type RateRow,
-	rateFromUsdPerUnit,
-	roundUSD,
 	toUSD,
 	USD,
 } from "@retrospend/domain/money";
+import {
+	computeAmountInUSDDec,
+	rateFromUsdAmountDec,
+	roundRateDec,
+	roundUSDDec,
+} from "@retrospend/domain/money-dec";
+import { type Decimal, dec } from "@retrospend/domain/precise-decimal";
 
 export type RepairReason =
 	| "usd-rate"
@@ -59,8 +70,10 @@ export interface RepairFinding {
 	row: RepairExpense;
 	home: string;
 	reason: RepairReason;
-	newRate: number;
-	newUSD: number;
+	/** At 6 decimals, half to even (the script writes it as text). */
+	newRate: Decimal;
+	/** To cents, half to even. */
+	newUSD: Decimal;
 }
 
 const IMPLAUSIBLE_FACTOR = 10;
@@ -69,13 +82,26 @@ const REFERENCE_WINDOW_MS = 30 * 86_400_000;
 
 const logDistance = (a: number, b: number) => Math.abs(Math.log(a / b));
 
-function median(values: number[]): number | null {
+function median(values: number[]): Decimal | null {
 	if (values.length === 0) return null;
 	const sorted = [...values].sort((a, b) => a - b);
 	const mid = Math.floor(sorted.length / 2);
 	return sorted.length % 2
-		? sorted[mid]!
-		: (sorted[mid - 1]! + sorted[mid]!) / 2;
+		? dec(sorted[mid]!)
+		: dec(sorted[mid - 1]!)
+				.plus(sorted[mid]!)
+				.div(2);
+}
+
+/** The values a rate gives a row: the rate at 6 decimals, USD from the exact rate. */
+function repaired(
+	row: RepairExpense,
+	rate: Decimal | number,
+): { newRate: Decimal; newUSD: Decimal } {
+	return {
+		newRate: roundRateDec(rate, 6),
+		newUSD: computeAmountInUSDDec(row.amount, row.currency, rate),
+	};
 }
 
 function usdMatches(row: RepairExpense, rate: number): boolean {
@@ -162,7 +188,7 @@ export function findInconsistentExpenses(args: {
 		list.push(row);
 		healthy.set(row.currency, list);
 	}
-	const referenceRate = (row: RepairExpense): number | null => {
+	const referenceRate = (row: RepairExpense): Decimal | number | null => {
 		const near = (healthy.get(row.currency) ?? [])
 			.filter(
 				(h) =>
@@ -181,13 +207,13 @@ export function findInconsistentExpenses(args: {
 		const reason = rateReason.get(row.id);
 
 		if (row.currency === USD) {
-			const usd = roundUSD(row.amount);
-			if (reason || Math.abs(usd - row.amountInUSD) > 0.01) {
+			const usd = roundUSDDec(row.amount);
+			if (reason || usd.minus(row.amountInUSD).abs().gt("0.01")) {
 				findings.push({
 					row,
 					home,
 					reason: reason ?? "usd-amount",
-					newRate: 1,
+					newRate: dec(1),
 					newUSD: usd,
 				});
 			}
@@ -203,27 +229,24 @@ export function findInconsistentExpenses(args: {
 				logDistance(row.amountInUSD, toUSD(row.amount, row.currency, table)) <
 					Math.log(IMPLAUSIBLE_FACTOR)
 			) {
+				// The exact rate is amountInUSD / amount, so USD stays as stored.
+				const rate = rateFromUsdAmountDec(
+					row.currency,
+					row.amountInUSD,
+					row.amount,
+				);
 				findings.push({
 					row,
 					home,
 					reason,
-					newRate: rateFromUsdPerUnit(
-						row.currency,
-						row.amountInUSD / row.amount,
-					),
-					newUSD: row.amountInUSD,
+					newRate: roundRateDec(rate, 6),
+					newUSD: roundUSDDec(row.amountInUSD),
 				});
 				continue;
 			}
 			const ref = referenceRate(row);
 			if (ref === null) continue;
-			findings.push({
-				row,
-				home,
-				reason,
-				newRate: ref,
-				newUSD: computeAmountInUSD(row.amount, row.currency, ref),
-			});
+			findings.push({ row, home, reason, ...repaired(row, ref) });
 			continue;
 		}
 
@@ -232,8 +255,7 @@ export function findInconsistentExpenses(args: {
 				row,
 				home,
 				reason: "usd-mismatch",
-				newRate: row.exchangeRate,
-				newUSD: computeAmountInUSD(row.amount, row.currency, row.exchangeRate),
+				...repaired(row, row.exchangeRate),
 			});
 		}
 	}
