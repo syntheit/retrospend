@@ -49,6 +49,13 @@ describe("sharedPageView for a viewer link", () => {
 		for (const e of v.expenses) expect(e.share).toBeNull();
 	});
 
+	it("shows a split's faces payer first, then the rest by key", async () => {
+		const v = await link().sharedPageView({ id: trip.project.id });
+		// Car: Ben paid, split rows Ana, Ben, Sam; "shadow:" sorts before "user:".
+		const car = v.expenses.find((e) => e.title === "Car");
+		expect(car?.people.map((p) => p.name)).toEqual(["Ben", "Sam", "Ana"]);
+	});
+
 	it("is refused the summary, the plan and every balance read", async () => {
 		const id = trip.project.id;
 		const calls = [
@@ -72,9 +79,9 @@ describe("sharedPageView for a viewer link", () => {
 		const other = await adminDb.project.create({
 			data: { name: "Other", createdById: trip.ana.user.id },
 		});
-		await expect(
-			link().sharedPageView({ id: other.id }),
-		).rejects.toMatchObject({ code: "FORBIDDEN" });
+		await expect(link().sharedPageView({ id: other.id })).rejects.toMatchObject(
+			{ code: "FORBIDDEN" },
+		);
 	});
 
 	it("stops working when the link expires or is revoked", async () => {

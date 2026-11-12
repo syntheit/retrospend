@@ -10,6 +10,7 @@
  * rows and reads its totals from aggregates.
  */
 
+import { inFaceOrder } from "@retrospend/domain/activity-rows";
 import { categoryTone } from "@retrospend/domain/category-tone";
 import { currencyDecimals } from "@retrospend/domain/money";
 import { dayKey } from "@retrospend/domain/time-zone";
@@ -229,7 +230,9 @@ function expenseRow(
 					currency: e.currency,
 				}
 			: null,
-		people: e.splitParticipants.map((sp) => person(refKey(sp), people)),
+		people: inFaceOrder(e.splitParticipants, refKey, payerKey).map((sp) =>
+			person(refKey(sp), people),
+		),
 		payerId: payerKey,
 		payerName: isMe(payer) ? null : person(payerKey, people).name,
 		payerIsMe: isMe(payer),
