@@ -16,6 +16,7 @@ import type { JsonCell } from "./fields";
 import {
 	isSealedBody,
 	jsonFilterAllowed,
+	leafPathMatches,
 	plainPieces,
 	sealedPieces,
 } from "./json-cells";
@@ -195,5 +196,28 @@ describe("jsonFilterAllowed", () => {
 		expect(allowed({ equals: {} })).toBe(false);
 		expect(allowed("asc")).toBe(false);
 		expect(jsonFilterAllowed(BODY, { path: ["a"], equals: 1 })).toBe(false);
+	});
+});
+
+describe("leafPathMatches", () => {
+	it("matches a pattern segment by segment, `*` for an array index only", () => {
+		const match = (pattern: string, path: string) =>
+			leafPathMatches(pattern, path.split("."));
+		expect(match("description.new", "description.new")).toBe(true);
+		expect(
+			match(
+				"splitParticipants.*.rejectionReason",
+				"splitParticipants.4.rejectionReason",
+			),
+		).toBe(true);
+		expect(
+			match(
+				"splitParticipants.*.rejectionReason",
+				"splitParticipants.old.rejectionReason",
+			),
+		).toBe(false);
+		expect(match("description", "description.new")).toBe(false);
+		expect(match("description.new", "description")).toBe(false);
+		expect(match("reason", "x.reason")).toBe(false);
 	});
 });

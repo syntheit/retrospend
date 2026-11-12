@@ -185,7 +185,46 @@ export interface ModelJsonCells {
 	readonly columns: Readonly<Record<string, JsonCell>>;
 }
 
+/**
+ * The text leaves of an audit entry's `changes` (PR 8.3), per writer:
+ * - the CREATED and DELETED snapshot of a shared expense (`serializeTransaction`):
+ *   `description`, `notes`, each split's `rejectionReason`;
+ * - the EDITED diff of an expense or a project (`{ old, new }` per field):
+ *   `description`, `notes`, project `name`;
+ * - a project's CREATED and DELETED `name`;
+ * - a dispute's `reason` (answer-share.ts) and a billing period relabel.
+ * Everything else in `changes` is an id, a code or an amount that SQL reads
+ * (the payment guards, the path filters), so the entry cannot be sealed whole.
+ * `previous` of a payment confirm keeps the source cells' own ciphertext and
+ * is opened by openAuditChanges (confirm-restore.ts), not from here.
+ */
+const AUDIT_CHANGES_LEAVES = [
+	"description",
+	"description.old",
+	"description.new",
+	"notes",
+	"notes.old",
+	"notes.new",
+	"name",
+	"name.old",
+	"name.new",
+	"reason",
+	"previousLabel",
+	"newLabel",
+	"splitParticipants.*.rejectionReason",
+] as const;
+
 export const JSON_CELLS = {
+	AuditLogEntry: {
+		table: "audit_log_entry",
+		columns: {
+			changes: {
+				mode: "leaves",
+				cls: "instance",
+				paths: AUDIT_CHANGES_LEAVES,
+			},
+		},
+	},
 	IdempotencyKey: {
 		table: "idempotency_key",
 		columns: { responseBody: { mode: "body", cls: "user" } },

@@ -173,6 +173,21 @@ export function sealedPieces(
 	return pieces;
 }
 
+/** Whether a concrete path (`splitParticipants`, `0`, `rejectionReason`) is an instance of a declared pattern. */
+export function leafPathMatches(
+	pattern: string,
+	path: readonly string[],
+): boolean {
+	const parts = pattern.split(".");
+	return (
+		parts.length === path.length &&
+		parts.every(
+			(part, i) =>
+				part === path[i] || (part === "*" && /^\d+$/.test(path[i] as string)),
+		)
+	);
+}
+
 /**
  * Whether a filter on a JSON cell reads only what stays plaintext: a JSON
  * `path` filter on a leaves cell that is neither inside a declared leaf nor
