@@ -24,16 +24,14 @@ describe("deleteFile", () => {
 		expect(existsSync(file)).toBe(false);
 	});
 
-	it.each([
-		"../outside.txt",
-		"accounts/../../outside.txt",
-		"",
-		".",
-	])("never deletes outside it (%j)", async (path) => {
-		const outside = join(root.dir, "..", "outside.txt");
-		writeFileSync(outside, "keep");
-		await expect(deleteFile(path)).rejects.toThrow(/outside the upload/);
-		expect(existsSync(outside)).toBe(true);
-		expect(existsSync(root.dir)).toBe(true);
-	});
+	it.each(["../outside.txt", "accounts/../../outside.txt", "", "."])(
+		"never deletes outside it (%j)",
+		async (path) => {
+			const outside = join(root.dir, "..", "outside.txt");
+			writeFileSync(outside, "keep");
+			await expect(deleteFile(path)).rejects.toThrow(/outside the upload/);
+			expect(existsSync(outside)).toBe(true);
+			expect(existsSync(root.dir)).toBe(true);
+		},
+	);
 });
