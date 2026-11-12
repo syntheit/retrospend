@@ -19,7 +19,6 @@ import {
 } from "~/server/api/v1/__tests__/g3-fixtures";
 import { readEventFeed } from "~/server/services/events/feed";
 import { forUser } from "~/server/services/preview";
-import { computeBalance } from "~/server/services/shared-expenses/balance";
 import {
 	addDevice,
 	allSendersConfig,
@@ -28,8 +27,9 @@ import {
 } from "~/server/services/push/pg-fixtures";
 import { planPush } from "~/server/services/push/recipients";
 import { runPushWorker } from "~/server/services/push/worker";
+import { computeBalance } from "~/server/services/shared-expenses/balance";
 import { fanOutEvents } from "~/server/services/webhooks/worker";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, openTransactionsEnded } from "~/test/pg-harness";
 import {
 	finalizeStaleProposedPayments,
 	sweepStalePayments,
@@ -187,13 +187,12 @@ describe("auto-finalize of a payment pending for more than 7 days", () => {
 		await sweepStalePayments(NOW);
 		await sweepStalePayments(NOW);
 		const confirmed = async (who: TestUser) =>
-			(
-				await readEventFeed(adminDb, who.user.id, { limit: 100 })
-			).items.filter(
+			(await readEventFeed(adminDb, who.user.id, { limit: 100 })).items.filter(
 				(e) =>
 					e.type === "payment.confirmed" &&
 					(e.entity?.id === id || e.data.ids.paymentId === id),
 			);
+		await openTransactionsEnded();
 		await vi.waitFor(async () => {
 			await fanOutEvents();
 			expect(await confirmed(p.payer)).toHaveLength(1);
@@ -241,13 +240,18 @@ describe("auto-finalize of a payment pending for more than 7 days", () => {
 		expect(await planPush(adminDb, { ...event, automatic: true })).toBeNull();
 		const plan = await planPush(adminDb, event);
 		expect(plan?.recipients).toEqual([
-			{ userId: p.payer.user.id, amount: { minor: 3_710_000, currency: "ARS" } },
+			{
+				userId: p.payer.user.id,
+				amount: { minor: 3_710_000, currency: "ARS" },
+			},
 		]);
 	});
 
 	it("sends the payer a push when the payee confirms, and none when the sweep does", async () => {
 		const config = allSendersConfig();
-		const toPayer = async (confirm: (p: Pair, id: string) => Promise<unknown>) => {
+		const toPayer = async (
+			confirm: (p: Pair, id: string) => Promise<unknown>,
+		) => {
 			const p = await pair();
 			const device = (await addDevice(p.payer.user.id, "APNS")).device.id;
 			const id = await pay(p, "37100");

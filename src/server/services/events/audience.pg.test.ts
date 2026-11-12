@@ -20,7 +20,7 @@ import {
 } from "~/server/api/v1/__tests__/g3-fixtures";
 import { encryptSecret } from "~/server/services/webhooks/secret";
 import { fanOutEvents } from "~/server/services/webhooks/worker";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, openTransactionsEnded } from "~/test/pg-harness";
 import { readEventFeed } from "./feed";
 
 let sofia: TestUser;
@@ -66,6 +66,8 @@ async function write(actor: TestUser, type: string, entityId: string | null) {
 			payload: SECRET_AMOUNTS,
 		},
 	});
+	await openTransactionsEnded();
+
 	for (let n = 0; n < 50; n++) {
 		await fanOutEvents();
 		const done = await adminDb.apiEvent.findUniqueOrThrow({
@@ -85,6 +87,8 @@ async function write(actor: TestUser, type: string, entityId: string | null) {
  * wait for copies of that type rather than for any item.
  */
 async function feedOf(user: TestUser, expected: number, type?: string) {
+	await openTransactionsEnded();
+
 	for (let n = 0; n < 50; n++) {
 		const feed = await readEventFeed(adminDb, user.user.id, { limit: 200 });
 		const seen = type
@@ -171,6 +175,8 @@ describe("events reach the other people on a shared entity", () => {
 		});
 		await write(sofia, "shared_expense.updated", dinner);
 		await feedOf(martin, 1);
+		await openTransactionsEnded();
+
 		for (let n = 0; n < 50; n++) {
 			await fanOutEvents();
 			if (
@@ -344,6 +350,8 @@ describe("a deleted expense still reaches the people who were on it", () => {
 				payload: { ids, amounts: [], truncated: false },
 			},
 		});
+		await openTransactionsEnded();
+
 		for (let n = 0; n < 50; n++) {
 			await fanOutEvents();
 			const row = await adminDb.apiEvent.findUniqueOrThrow({
@@ -425,6 +433,8 @@ describe("who may write an event", () => {
 				payload: SECRET_AMOUNTS,
 			},
 		});
+		await openTransactionsEnded();
+
 		for (let n = 0; n < 50; n++) {
 			await fanOutEvents();
 			const row = await adminDb.apiEvent.findUniqueOrThrow({

@@ -3,7 +3,9 @@ import { amountsOfChanges, extractEventData, toldPeople } from "./data";
 
 describe("extractEventData", () => {
 	it("flags a change the server made, and only then", () => {
-		expect(extractEventData({ automatic: true, paymentId: "p_1" }).data).toEqual({
+		expect(
+			extractEventData({ automatic: true, paymentId: "p_1" }).data,
+		).toEqual({
 			ids: { paymentId: "p_1" },
 			amounts: [],
 			truncated: false,

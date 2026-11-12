@@ -21,7 +21,11 @@ import {
 } from "~/server/services/entry/shared.mutation";
 import { forUser } from "~/server/services/preview";
 import { fanOutEvents } from "~/server/services/webhooks/worker";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import {
+	adminDb,
+	createTestUser,
+	openTransactionsEnded,
+} from "~/test/pg-harness";
 import { readEventFeed } from "./feed";
 
 beforeAll(seedArsRates);
@@ -60,6 +64,8 @@ const eventsOf = (userId: string, type: string) =>
 	adminDb.apiEvent.findMany({ where: { userId, type, sourceEventId: null } });
 
 async function fanOutUntilDone(eventId: string) {
+	await openTransactionsEnded();
+
 	for (let n = 0; n < 50; n++) {
 		await fanOutEvents();
 		const row = await adminDb.apiEvent.findUniqueOrThrow({
@@ -76,6 +82,8 @@ async function fanOutUntilDone(eventId: string) {
 // too, so the copy can show a moment after the fan-out marked the event done.
 async function deletedInFeed(userId: string) {
 	let deleted: Awaited<ReturnType<typeof readEventFeed>>["items"] = [];
+	await openTransactionsEnded();
+
 	for (let n = 0; n < 50 && deleted.length === 0; n++) {
 		const feed = await readEventFeed(adminDb, userId, { limit: 50 });
 		deleted = feed.items.filter((e) => e.type === "shared_expense.deleted");
