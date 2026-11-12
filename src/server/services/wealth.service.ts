@@ -5,14 +5,8 @@ import {
 	toUSD,
 	USD,
 } from "@retrospend/domain/money";
+import { roundUSDDec, toUSDDec } from "@retrospend/domain/money-dec";
 import {
-	MissingRateError,
-	type RateInput,
-	roundUSDDec,
-	toUSDDec,
-} from "@retrospend/domain/money-dec";
-import {
-	Dec,
 	type Decimal,
 	type DecimalInput,
 	dec,
@@ -99,21 +93,16 @@ export class WealthService {
 		});
 	}
 
-	/** Balance in USD, exact and unrounded. Negative balances convert like any other. */
+	/**
+	 * Balance in USD, exact and unrounded; negative balances convert like any
+	 * other. No usable rate throws MissingRateError, never 1.
+	 */
 	calculateBalanceInUSD(
 		balance: DecimalInput,
-		rate: RateInput,
+		rate: DecimalInput | null,
 		currency: string,
 	): Decimal {
-		try {
-			return toUSDDec(balance, currency, rate);
-		} catch (error) {
-			if (!(error instanceof MissingRateError)) throw error;
-			throw new TRPCError({
-				code: "INTERNAL_SERVER_ERROR",
-				message: `Invalid exchange rate: ${rate}. Rate must be positive.`,
-			});
-		}
+		return toUSDDec(balance, currency, rate);
 	}
 
 	/**
@@ -122,11 +111,9 @@ export class WealthService {
 	 * This method must be called within a Prisma transaction context.
 	 * It creates/updates the daily snapshot and appends to the history log.
 	 * The snapshot keeps the account's currency, type and rate type, so a
-	 * later edit of the account does not revalue it.
-	 *
-	 * Both values are rounded here, half to even, to their columns' scale
-	 * (balance 8 decimals, USD cents), as the account leg trigger rounds:
-	 * Postgres would round a longer value half away from zero.
+	 * later edit of the account does not revalue it. The USD value is rounded
+	 * here to cents, half to even like the account leg trigger: the column
+	 * would round half away from zero.
 	 */
 	async recordAssetSnapshot(
 		tx: Prisma.TransactionClient,
@@ -137,10 +124,7 @@ export class WealthService {
 		userId: string,
 		meta: SnapshotMeta,
 	): Promise<void> {
-		const balance = dec(units)
-			.toDecimalPlaces(8, Dec.ROUND_HALF_EVEN)
-			.plus(0)
-			.toFixed();
+		const balance = dec(units).toFixed();
 		const balanceInUSD = roundUSDDec(usd).toFixed(2);
 		// recordedAt orders this balance against legs of the same day (accounts/series.ts).
 		const snapshotMeta = {

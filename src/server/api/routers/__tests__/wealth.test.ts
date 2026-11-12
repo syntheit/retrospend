@@ -134,8 +134,8 @@ describe("closing and deleting accounts", () => {
 			date: today,
 		});
 		expect(snapshotCall().create).toMatchObject({
-			balance: 0,
-			balanceInUSD: 0,
+			balance: "0",
+			balanceInUSD: "0.00",
 			currency: "ARS",
 			type: "CASH",
 			exchangeRateType: "blue",
@@ -168,8 +168,11 @@ describe("closing and deleting accounts", () => {
 			data: { closedAt: null },
 		});
 		expect(snapshotCall().where.accountId_date.date).toEqual(today);
-		expect(snapshotCall().create).toMatchObject({ balance: 1560000 });
-		expect(snapshotCall().create.balanceInUSD as number).toBeCloseTo(1000);
+		// Written as decimal text: 1,560,000 ARS at blue 1,560 is 1,000.00 USD.
+		expect(snapshotCall().create).toMatchObject({
+			balance: "1560000",
+			balanceInUSD: "1000.00",
+		});
 	});
 
 	it("deleteAssetPermanently deletes the account, scoped to the user", async () => {

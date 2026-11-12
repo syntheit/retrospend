@@ -1,4 +1,3 @@
-import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MissingRateError } from "@retrospend/domain/money";
 import { createMockDb } from "~/test/mock-db";
@@ -37,10 +36,10 @@ describe("WealthService.calculateBalanceInUSD", () => {
 		expect(svc.calculateBalanceInUSD("-5000", "163.83", "JPY").toFixed(2)).toBe("-30.52");
 	});
 
-	it("throws for a zero, negative or missing rate, never 1", () => {
-		expect(() => svc.calculateBalanceInUSD("100", 0, "ARS")).toThrow(TRPCError);
-		expect(() => svc.calculateBalanceInUSD("100", -1, "ARS")).toThrow(TRPCError);
-		expect(() => svc.calculateBalanceInUSD("100", null, "ARS")).toThrow(TRPCError);
+	it("throws MissingRateError for a zero, negative or missing rate, never 1", () => {
+		expect(() => svc.calculateBalanceInUSD("100", 0, "ARS")).toThrow(MissingRateError);
+		expect(() => svc.calculateBalanceInUSD("100", -1, "ARS")).toThrow(MissingRateError);
+		expect(() => svc.calculateBalanceInUSD("100", null, "ARS")).toThrow(MissingRateError);
 	});
 });
 
