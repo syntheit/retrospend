@@ -86,10 +86,14 @@ describe("scanBatches", () => {
 describe("readInChunks", () => {
 	it("reads the ids in chunks of at most the size, in order", async () => {
 		const calls: string[][] = [];
-		const out = await readInChunks(["a", "b", "c", "d", "e"], 2, async (ids) => {
-			calls.push(ids);
-			return ids.map((id) => id.toUpperCase());
-		});
+		const out = await readInChunks(
+			["a", "b", "c", "d", "e"],
+			2,
+			async (ids) => {
+				calls.push(ids);
+				return ids.map((id) => id.toUpperCase());
+			},
+		);
 		expect(calls).toEqual([["a", "b"], ["c", "d"], ["e"]]);
 		expect(out).toEqual(["A", "B", "C", "D", "E"]);
 	});

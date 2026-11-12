@@ -17,8 +17,8 @@ import {
 	type PersonalRowInput,
 	personKeyOf,
 	type RowKey,
-	type SharedRowInput,
 	type ShapeContext,
+	type SharedRowInput,
 	splitPaymentKey,
 } from "@retrospend/domain/activity-rows";
 import { findRateRows } from "~/server/exchange-rates";

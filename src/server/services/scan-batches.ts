@@ -42,7 +42,9 @@ export async function scanBatches<Row, Cursor>(
 	scan: Scan<Row, Cursor>,
 ): Promise<void> {
 	if (inTransaction())
-		throw new Error("scanBatches opens its own transactions; call it outside one");
+		throw new Error(
+			"scanBatches opens its own transactions; call it outside one",
+		);
 	const take = scan.batch ?? SCAN_BATCH;
 	let after = scan.start;
 	for (;;) {

@@ -70,6 +70,16 @@ export function amountCandidates(q: string): string[] {
  */
 export type CursorKey = { date: Date; created: Date; src: string; id: string };
 
+/** Descending by the page's sort key; the same order the cursor is read in. */
+export function byKeyDesc(a: CursorKey, b: CursorKey): number {
+	return (
+		b.date.getTime() - a.date.getTime() ||
+		b.created.getTime() - a.created.getTime() ||
+		(a.src === b.src ? 0 : a.src < b.src ? 1 : -1) ||
+		(a.id === b.id ? 0 : a.id < b.id ? 1 : -1)
+	);
+}
+
 /** Cursors made before `created` joined the key carry none; they page from the day's top. */
 const NO_CREATED = new Date("9999-12-31T00:00:00.000Z");
 
