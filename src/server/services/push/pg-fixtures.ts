@@ -6,7 +6,7 @@
 import { randomUUID } from "node:crypto";
 import { createUserScopedDb } from "~/server/db";
 import { addressHash } from "~/server/services/push-device.service";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import type { PushTransport } from "~prisma";
 import { loadPushConfig, type PushConfig } from "./config";
 import type {
@@ -22,7 +22,7 @@ import {
 	newVapidEnv,
 } from "./test-helpers";
 
-export { adminDb, createTestUser };
+export { adminDb, createTestUser, fixtureDb };
 
 /** Every sender on, with throwaway keys. */
 export function allSendersConfig(

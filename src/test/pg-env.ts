@@ -3,7 +3,8 @@
  * `~/env` and `~/server/db` read process.env when first imported, so the
  * worker's database has to be in place before any test imports them.
  */
-import { beforeAll, inject } from "vitest";
+import { createHash } from "node:crypto";
+import { afterAll, beforeAll, inject } from "vitest";
 
 // Vitest numbers its workers 1..maxWorkers; the global setup cloned one
 // database for each, so no two workers (and no two files at once) share one.
@@ -21,6 +22,17 @@ process.env.PG_TEST_SUPER_URL = superUrl;
 // env validation requires a secret; pg tests never sign anything.
 process.env.BETTER_AUTH_SECRET ??= "pg-test-placeholder-not-a-secret";
 
+// The sealed suite (sealed-sweep.ts): sealing on, with a master key per
+// worker database, so the keys one file mints still open in the next. The
+// database name is random per run, so no run shares a key.
+const sealed = process.env.PG_TEST_SEALED === "1";
+if (sealed) {
+	process.env.DATA_KEYS_WRITE = "true";
+	process.env.DATA_MASTER_KEY = createHash("sha256")
+		.update(databaseUrl)
+		.digest("hex");
+}
+
 // A worker's database outlives the files it runs, and these tables are shared
 // by every user in it: a rate or setting one file wrote would change the next
 // file's figures. Each file starts from the template's state (all empty).
@@ -30,4 +42,13 @@ beforeAll(async () => {
 	await db.$transaction(
 		SHARED_TABLES.map((table) => db.$executeRawUnsafe(`DELETE FROM "${table}"`)),
 	);
+	if (!sealed) return;
+	// What the start-up check writes before the first sealing write.
+	const { writeEpoch } = await import("./sealed-fixture");
+	await writeEpoch(true);
+	const { startSweep } = await import("./sealed-sweep");
+	endSweep = await startSweep();
 });
+
+let endSweep: (() => Promise<void>) | undefined;
+afterAll(() => endSweep?.());

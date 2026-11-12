@@ -1,3 +1,4 @@
+import { globSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
 	defineConfig,
@@ -22,6 +23,18 @@ import {
 // database. The root setup sizes its clones from this root `maxWorkers`; the
 // perf project never needs more than the first of them.
 const workers = Number(process.env.PG_TEST_WORKERS ?? 4);
+
+// `PG_TEST_SEALED=1`: the sealed suite (src/test/sealed-sweep.ts), every file
+// with sealing on, except the files that set a master key, sealing or the
+// epoch themselves: they test those states, which the suite's would override.
+const SETS_KEY_STATE =
+	/newMasterKeyring|crypto\/master-key"|new Keyring\(|setSealingForTests|writeEpoch|"fieldEncryptionSince"/;
+const keyStateFiles =
+	process.env.PG_TEST_SEALED === "1"
+		? globSync("src/**/*.pg.test.ts").filter((file) =>
+				SETS_KEY_STATE.test(readFileSync(file, "utf8")),
+			)
+		: [];
 
 const shared: NonNullable<TestProjectInlineConfiguration["test"]> = {
 	environment: "node",
@@ -48,7 +61,11 @@ export default defineConfig({
 					...shared,
 					name: "pg",
 					include: ["src/**/*.pg.test.ts"],
-					exclude: ["**/node_modules/**", "src/**/*.perf.pg.test.ts"],
+					exclude: [
+						"**/node_modules/**",
+						"src/**/*.perf.pg.test.ts",
+						...keyStateFiles,
+					],
 					maxWorkers: workers,
 					sequence: { groupOrder: 0 },
 				},
@@ -59,6 +76,7 @@ export default defineConfig({
 					...shared,
 					name: "pg-perf",
 					include: ["src/**/*.perf.pg.test.ts"],
+					exclude: keyStateFiles,
 					maxWorkers: 1,
 					fileParallelism: false,
 					sequence: { groupOrder: 1 },

@@ -189,6 +189,7 @@ Run from the repo root. On NixOS, run inside `nix develop` (it provides Node, pn
 | `pnpm dev` | Apply migrations and start the dev server on port 2997 |
 | `pnpm check` | Typecheck, lint, unit tests (includes the UI ratchet and i18n catalog checks). **Required before every merge.** |
 | `pnpm test:pg` | Real-Postgres tests (`*.pg.test.ts`). Needs `TEST_DATABASE_URL`; `docker-compose.test.yml` provides one on port 5436. Required for server and money changes. |
+| `pnpm test:pg:sealed` | The same suite with sealing on, failing any file that leaves plaintext in a mapped column (`src/test/sealed-sweep.ts`). Run it for changes that write user text. |
 | `pnpm build` | Production build. Run for routing, config or dependency changes. |
 | `pnpm test:e2e` | Playwright flows on a seeded database (refuses a non-e2e database). `docker-compose.test.yml` provides its own Postgres on port 5437. |
 | `bash e2e/visual/run.sh` | Visual regression in the pinned Playwright image (`--update-snapshots` to rewrite) |
