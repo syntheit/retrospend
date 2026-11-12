@@ -159,8 +159,11 @@ async function seedCategories(userId: string) {
 }
 
 // The oracle is the old SQL over stored names, which the sealed suite
-// (PG_TEST_SEALED) seals: it runs only where the names are plaintext.
-describe.skipIf(sealedSuite)("category lists", () => {
+// (PG_TEST_SEALED) seals: it is compared only where the names are plaintext.
+// The orders written out by hand hold in both.
+const oracle = !sealedSuite;
+
+describe("category lists", () => {
 	it("by name pages like ORDER BY name, id with a keyset cursor", async () => {
 		const { user, db } = await createTestUser();
 		await seedCategories(user.id);
@@ -179,7 +182,7 @@ describe.skipIf(sealedSuite)("category lists", () => {
 		let pages = 0;
 		for (;;) {
 			const page = await listCategoriesByName(db, user.id, { after, take: 4 });
-			expect(ids(page)).toEqual(ids(await old(after, 4)));
+			if (oracle) expect(ids(page)).toEqual(ids(await old(after, 4)));
 			pages++;
 			const last = page.at(-1);
 			if (page.length < 4 || !last) break;
@@ -198,7 +201,7 @@ describe.skipIf(sealedSuite)("category lists", () => {
 			ORDER BY (SELECT count(*) FROM expense e WHERE e."categoryId" = c.id) DESC,
 				c.name`;
 		const rows = await listCategoriesByUsage(db, user.id);
-		expect(ids(rows)).toEqual(ids(old));
+		if (oracle) expect(ids(rows)).toEqual(ids(old));
 		expect(rows.slice(0, 3).map((r) => r.name)).toEqual([
 			"Zebra",
 			"banana",
@@ -240,13 +243,13 @@ describe.skipIf(sealedSuite)("category lists", () => {
 			SELECT c.id FROM category c WHERE c."userId" = ${user.id}
 			ORDER BY (SELECT count(*) FROM expense e WHERE e."categoryId" = c.id) DESC,
 				c.name`;
-		expect(ids(catalog.categories)).toEqual(ids(oldCategories));
+		if (oracle) expect(ids(catalog.categories)).toEqual(ids(oldCategories));
 		expect(catalog.categories.some((c) => "_count" in c)).toBe(false);
 
 		const oldPlaces = await adminDb.$queryRaw<Id[]>`
 			SELECT id FROM asset_account WHERE "userId" = ${user.id} AND "closedAt" IS NULL
 			ORDER BY type, name`;
-		expect(ids(catalog.places)).toEqual(ids(oldPlaces));
+		if (oracle) expect(ids(catalog.places)).toEqual(ids(oldPlaces));
 		expect(catalog.places.length).toBe(accounts.length);
 		expect(catalog.places.map((p) => p.id)).toEqual(
 			["Bank", "wallet", "alpha fund", "Émile fund", "Car loan", "😀 loan"].map(
@@ -261,7 +264,7 @@ describe.skipIf(sealedSuite)("category lists", () => {
 		const old = await adminDb.$queryRaw<Id[]>`
 			SELECT id FROM category WHERE "userId" = ${user.id} AND kind = 'INCOME'
 			ORDER BY name`;
-		expect(ids(rows)).toEqual(ids(old));
+		if (oracle) expect(ids(rows)).toEqual(ids(old));
 		expect(rows).toHaveLength(6);
 	});
 });

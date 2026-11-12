@@ -1,4 +1,4 @@
-import { globSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
 	defineConfig,
@@ -25,14 +25,15 @@ import {
 const workers = Number(process.env.PG_TEST_WORKERS ?? 4);
 
 // `PG_TEST_SEALED=1`: the sealed suite (src/test/sealed-sweep.ts), every file
-// with sealing on, except the files that set a master key, sealing or the
-// epoch themselves: they test those states, which the suite's would override.
-const SETS_KEY_STATE =
-	/newMasterKeyring|crypto\/master-key"|new Keyring\(|setSealingForTests|writeEpoch|"fieldEncryptionSince"/;
+// with sealing on, except the files listed in sealed-suite.exclude.json: they
+// set a master key, sealing or the epoch themselves, which the suite's would
+// override. src/test/sealed-suite.test.ts keeps the list exact.
 const keyStateFiles =
 	process.env.PG_TEST_SEALED === "1"
-		? globSync("src/**/*.pg.test.ts").filter((file) =>
-				SETS_KEY_STATE.test(readFileSync(file, "utf8")),
+		? Object.keys(
+				JSON.parse(
+					readFileSync("src/test/sealed-suite.exclude.json", "utf8"),
+				) as Record<string, string>,
 			)
 		: [];
 
