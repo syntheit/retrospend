@@ -526,13 +526,20 @@ describe("rows that hold ciphertext", () => {
 		await adminDb.$executeRaw`DELETE FROM keystore."user_data_key" WHERE "userId" = ${lost.user.id}`;
 		evictDataKeyring(lost.user.id);
 		vi.spyOn(console, "error").mockImplementation(() => {});
-		const failure = await titleSuggestions(
-			lost.db as PrismaClient,
-			lost.user.id,
-			"pan",
-			{ keyring },
-		).catch((e: unknown) => e);
-		expect((failure as TextUnavailableError).code).toBe("keystore_lost");
+		const code = async () =>
+			(
+				(await titleSuggestions(
+					lost.db as PrismaClient,
+					lost.user.id,
+					"pan",
+					{ keyring },
+				).catch((e: unknown) => e)) as TextUnavailableError
+			).code;
+		// The scan reads in a transaction, where no key loads: the first call
+		// is the retryable key_rotated while the reload runs in the background,
+		// and once it settles every call answers keystore_lost.
+		expect(await code()).toBe("key_rotated");
+		await vi.waitFor(async () => expect(await code()).toBe("keystore_lost"));
 		vi.restoreAllMocks();
 	});
 
