@@ -272,6 +272,30 @@ describe("the home leg an expense books", () => {
 		});
 	});
 
+	it("a recurring post stores and books an amount past 8 decimals half to even", async () => {
+		// USD 12.990000015 is a tie at 8 decimals: 1 is odd, so 12.99000002.
+		// USD 12.99; at blue 1,560 that is 20,264.4000312, so ARS 20,264.40.
+		const row = await recurringEntryData(
+			db as never,
+			{
+				id: "t1",
+				userId: "u1",
+				name: "Netflix",
+				amount: 12.99,
+				currency: "USD",
+				categoryId: null,
+				nextDueDate: DATE,
+				amountMode: "ASK",
+			},
+			"12.990000015",
+		);
+		expect(row).toMatchObject({
+			amount: "12.99000002",
+			amountInUSD: "12.99",
+			homeAmount: "20264.40",
+		});
+	});
+
 	it("a recurring post leaves control characters of a legacy name out of the title", async () => {
 		const row = await recurringEntryData(db as never, {
 			id: "t1",

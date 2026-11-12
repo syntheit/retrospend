@@ -268,7 +268,7 @@ describe("recurring money in and amounts that vary", () => {
 			title: "Salary",
 			direction: "IN",
 			inType: "INCOME",
-			amount: 100000,
+			amount: "100000",
 		});
 	});
 

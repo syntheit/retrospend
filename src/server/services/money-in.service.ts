@@ -4,6 +4,7 @@
  * confirm posts.
  */
 import { stripUserTextControls } from "@retrospend/api-contract/common";
+import { storedAmount } from "@retrospend/domain/rate-booking";
 import { TRPCError } from "@trpc/server";
 import { inTransaction, userTransaction } from "~/server/db-tx";
 import type { Prisma, PrismaClient } from "~prisma";
@@ -85,7 +86,7 @@ export interface DueTemplate {
 export async function recurringEntryData(
 	db: PrismaClient | Prisma.TransactionClient,
 	template: DueTemplate,
-	/** A decimal string is stored exactly as typed. */
+	/** A decimal string is stored as typed, to the column's 8 decimals. */
 	confirmedAmount?: number | string,
 	choice: RateChoice = { kind: "table", rateType: null },
 	/** The day it was really paid or received; the due date when omitted. */
@@ -102,13 +103,16 @@ export async function recurringEntryData(
 				: "This recurring amount is fixed",
 		});
 	}
-	const amount = confirmedAmount ?? template.amount;
+	const given = confirmedAmount ?? template.amount;
+	// Stored and booked at the column's 8 decimals, half to even, as an expense is.
+	const amount = storedAmount(
+		typeof given === "object" ? given.toString() : given,
+	);
 	const rate = await bookRate(
 		db,
 		await loadRateContext(db, template.userId),
 		{
-			// Decimal text keeps the home amount exact (a Decimal's toString never rounds).
-			amount: typeof amount === "object" ? amount.toFixed() : amount,
+			amount,
 			currency: template.currency,
 			date: bookedOn,
 		},
