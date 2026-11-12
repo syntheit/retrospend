@@ -66,6 +66,7 @@ export const feedbackRouter = createTRPCRouter({
 							}
 						: undefined,
 				},
+				select: { id: true, createdAt: true },
 			});
 
 			// Send email notification to admins (skip if submitter is admin)
@@ -161,6 +162,7 @@ export const feedbackRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			await ctx.db.feedback.update({
 				where: { id: input.id },
+				select: { id: true },
 				data: { status: input.status },
 			});
 			return { success: true };
@@ -176,6 +178,7 @@ export const feedbackRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			await ctx.db.feedback.update({
 				where: { id: input.id },
+				select: { id: true },
 				data: { adminNote: input.note.trim() || null },
 			});
 			return { success: true };
@@ -188,7 +191,10 @@ export const feedbackRouter = createTRPCRouter({
 				where: { id: input.id },
 				select: { screenshotPath: true },
 			});
-			await ctx.db.feedback.delete({ where: { id: input.id } });
+			await ctx.db.feedback.delete({
+				where: { id: input.id },
+				select: { id: true },
+			});
 			// The picture goes with the entry; a failed delete never fails this.
 			if (row?.screenshotPath) {
 				try {

@@ -70,6 +70,7 @@ export async function attachScreenshot(
 	await uploadFile(path, processed, "image/webp");
 	await caller.db.feedback.update({
 		where: { id: row.id },
+		select: { id: true },
 		data: { screenshotPath: path },
 	});
 	return { ok: true as const };
@@ -260,6 +261,7 @@ export async function setNote(
 	await requireFeedback(input.id);
 	await db.feedback.update({
 		where: { id: input.id },
+		select: { id: true },
 		data: { adminNote: input.note },
 	});
 	return { ok: true as const };

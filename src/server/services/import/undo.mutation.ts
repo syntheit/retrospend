@@ -83,6 +83,7 @@ export const undoImport: MoneyMutation<UndoImportInput, UndoImportValue> = {
 		const transactions = stored.map(({ expenseId: _id, ...rest }) => rest);
 		await tx.importJob.update({
 			where: { id: job.id },
+			select: { id: true },
 			data: {
 				importedCount: null,
 				skippedDuplicates: null,

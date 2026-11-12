@@ -71,6 +71,14 @@ export class ImportQueueService {
 	constructor(private db: PrismaClient | Prisma.TransactionClient) {}
 
 	/**
+	 * A write that discards its row. A returned row is opened, and
+	 * `transactions` and `warnings` are sealed (PR 8.2), so only `id` comes back.
+	 */
+	private async write(id: string, data: Prisma.ImportJobUpdateInput) {
+		await this.db.importJob.update({ where: { id }, select: { id: true }, data });
+	}
+
+	/**
 	 * Creates a new import job and triggers queue processing.
 	 */
 	async createJob(userId: string, input: CreateJobInput) {
@@ -161,12 +169,9 @@ export class ImportQueueService {
 
 		try {
 			// Update to PROCESSING
-			await this.db.importJob.update({
-				where: { id: job.id },
-				data: {
-					status: "PROCESSING",
-					processingAt: new Date(),
-				},
+			await this.write(job.id, {
+				status: "PROCESSING",
+				processingAt: new Date(),
 			});
 
 			// Process based on type
@@ -182,17 +187,14 @@ export class ImportQueueService {
 			console.error(`Job processing error for ${job.id}:`, error);
 
 			// Mark as FAILED
-			await this.db.importJob.update({
-				where: { id: job.id },
-				data: {
-					status: "FAILED",
-					errorMessage:
-						error instanceof Error
-							? error.message.substring(0, 1000)
-							: "Unknown error",
-					failedAt: new Date(),
-					fileData: null, // Clear file data
-				},
+			await this.write(job.id, {
+				status: "FAILED",
+				errorMessage:
+					error instanceof Error
+						? error.message.substring(0, 1000)
+						: "Unknown error",
+				failedAt: new Date(),
+				fileData: null, // Clear file data
 			});
 
 			// Trigger global queue processing (job slot freed up)
@@ -398,19 +400,16 @@ export class ImportQueueService {
 		}
 
 		// Store transactions and clear file data
-		await this.db.importJob.update({
-			where: { id: job.id },
-			data: {
-				status: "READY_FOR_REVIEW",
-				transactions: transactions as unknown as Prisma.InputJsonValue,
-				warnings:
-					warnings.length > 0
-						? (warnings as unknown as Prisma.InputJsonValue)
-						: undefined,
-				totalTransactions: transactions.length,
-				readyForReviewAt: new Date(),
-				fileData: null, // Clear file data after processing
-			},
+		await this.write(job.id, {
+			status: "READY_FOR_REVIEW",
+			transactions: transactions as unknown as Prisma.InputJsonValue,
+			warnings:
+				warnings.length > 0
+					? (warnings as unknown as Prisma.InputJsonValue)
+					: undefined,
+			totalTransactions: transactions.length,
+			readyForReviewAt: new Date(),
+			fileData: null, // Clear file data after processing
 		});
 	}
 
@@ -534,12 +533,9 @@ export class ImportQueueService {
 
 						if (data.type === "progress") {
 							// Update job progress
-							await this.db.importJob.update({
-								where: { id: job.id },
-								data: {
-									progressPercent: data.percent / 100,
-									statusMessage: data.message,
-								},
+							await this.write(job.id, {
+								progressPercent: data.percent / 100,
+								statusMessage: data.message,
 							});
 						} else if (data.type === "warning") {
 							warnings.push(data.message);
@@ -582,21 +578,18 @@ export class ImportQueueService {
 			}
 
 			// Store results in job
-			await this.db.importJob.update({
-				where: { id: job.id },
-				data: {
-					status: "READY_FOR_REVIEW",
-					transactions: transactions as unknown as Prisma.InputJsonValue,
-					warnings:
-						warnings.length > 0
-							? (warnings as unknown as Prisma.InputJsonValue)
-							: undefined,
-					totalTransactions: transactions.length,
-					readyForReviewAt: new Date(),
-					fileData: null, // Clear file data after processing
-					progressPercent: 1,
-					statusMessage: "Complete",
-				},
+			await this.write(job.id, {
+				status: "READY_FOR_REVIEW",
+				transactions: transactions as unknown as Prisma.InputJsonValue,
+				warnings:
+					warnings.length > 0
+						? (warnings as unknown as Prisma.InputJsonValue)
+						: undefined,
+				totalTransactions: transactions.length,
+				readyForReviewAt: new Date(),
+				fileData: null, // Clear file data after processing
+				progressPercent: 1,
+				statusMessage: "Complete",
 			});
 
 			// Record token usage for both local and external providers
@@ -717,11 +710,8 @@ export class ImportQueueService {
 		});
 
 		// Mark job as COMPLETED
-		await this.db.importJob.update({
-			where: { id: jobId },
-			// Rows the import refused go on the job's warnings, with a count.
-			data: completedJobData(job, result),
-		});
+		// Rows the import refused go on the job's warnings, with a count.
+		await this.write(jobId, completedJobData(job, result));
 
 		// Trigger global queue processing (job slot freed up)
 		void this.processGlobalQueue().catch((err) => {
@@ -956,6 +946,7 @@ export class ImportQueueService {
 
 		await this.db.importJob.delete({
 			where: { id: jobId },
+			select: { id: true },
 		});
 
 		// Trigger global queue processing (in case job was stuck in PROCESSING)

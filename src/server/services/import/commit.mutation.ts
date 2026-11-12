@@ -271,6 +271,7 @@ export const commitImport: MoneyMutation<CommitImportInput, ImportSummary> = {
 		});
 		await tx.importJob.update({
 			where: { id: job.id },
+			select: { id: true },
 			data: {
 				importedCount: data.length,
 				skippedDuplicates: duplicates,

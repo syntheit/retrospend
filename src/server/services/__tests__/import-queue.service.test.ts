@@ -483,7 +483,10 @@ describe("ImportQueueService", () => {
 
 			const result = await service.deleteJob("user-1", "job-1");
 
-			expect(db.importJob.delete).toHaveBeenCalledWith({ where: { id: "job-1" } });
+			expect(db.importJob.delete).toHaveBeenCalledWith({
+				where: { id: "job-1" },
+				select: { id: true },
+			});
 			expect(result).toEqual({ success: true });
 		});
 
