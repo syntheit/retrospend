@@ -5,12 +5,6 @@ import {
 	stripUserTextControlsForKey,
 } from "@retrospend/api-contract/common";
 import { isValidRate, type PickedRate, USD } from "@retrospend/domain/money";
-import {
-	computeAmountInUSDDec,
-	rateFromUsdAmountDec,
-	roundRateDec,
-	roundUSDDec,
-} from "@retrospend/domain/money-dec";
 import { storedAmount } from "@retrospend/domain/rate-booking";
 import {
 	dayKey,
@@ -22,6 +16,7 @@ import { userTransaction } from "~/server/db-tx";
 import { findExchangeRatesForDates } from "~/server/exchange-rates";
 import type { Prisma, PrismaClient } from "~prisma";
 import { AmortizationService } from "./amortization.service";
+import { entryLegOnly, fileLegOf, legAt } from "./import/book";
 import { listedEntryWhere } from "./spending";
 
 /**
@@ -44,29 +39,16 @@ export function resolveImportRate(
 ): { exchangeRate: string; amountInUSD: string } {
 	const currency = row.currency.toUpperCase();
 	const amount = storedAmount(row.amount);
-	const atRate = (rate: number) => ({
-		exchangeRate: roundRateDec(rate, 6).toFixed(),
-		amountInUSD: computeAmountInUSDDec(amount, currency, rate).toFixed(2),
-	});
-	if (currency === USD) {
-		return { exchangeRate: "1", amountInUSD: roundUSDDec(amount).toFixed(2) };
-	}
-	if (isValidRate(row.exchangeRate)) return atRate(row.exchangeRate);
-	if (isValidRate(row.amountInUSD)) {
-		// The exact rate is USD / amount, so the USD value is the file's own.
-		const rate = rateFromUsdAmountDec(currency, row.amountInUSD, amount);
-		return {
-			exchangeRate: roundRateDec(rate, 6).toFixed(),
-			amountInUSD: roundUSDDec(row.amountInUSD).toFixed(2),
-		};
-	}
+	if (currency === USD) return entryLegOnly(currency, amount, legAt(1));
+	const fileLeg = fileLegOf(row);
+	if (fileLeg) return entryLegOnly(currency, amount, fileLeg);
 	const picked = rateFor(currency, row.date);
 	if (!picked) {
 		throw new Error(
 			`Missing exchange rate or USD amount for ${row.currency} on row: ${row.title}`,
 		);
 	}
-	return atRate(picked.rate);
+	return entryLegOnly(currency, amount, legAt(picked.rate));
 }
 
 /** C0 controls other than tab, line feed and carriage return. */

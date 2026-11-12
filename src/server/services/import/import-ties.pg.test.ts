@@ -15,6 +15,8 @@
  * - Coin, BTC 0.0000005 for the file's USD 0.025: 0.025 / 0.0000005 = 50,000
  *   USD per coin; USD 0.025 is 2.5 cents, 2 even, so 0.02 (half up 0.03).
  *   Home 0.025 x 1468 = 36.70, rate 36.7 / 0.0000005 = 73,400,000.
+ * - Polvo, ARS 0.000000004 for the file's USD 5: 0 at 8 decimals, so no
+ *   rate (0 / 5 is 0): only this row is skipped as no rate, never rate 1.
  * - Dinar, KWD 0.3075 at 0.3 per USD: 1.025 USD, 2 even, so 1.02. Home
  *   0.3075 x 1468 / 0.3 = 1,504.70, rate 1468 / 0.3 = 4,893.333...,
  *   4893.333333333333 at 12 decimals.
@@ -81,6 +83,7 @@ describe("import ties round half to even", () => {
 			row("Bolsillo", 0.375, "EUR", { exchangeRate: 100 }),
 			row("Coin", 0.0000005, "BTC", { amountInUSD: 0.025 }),
 			row("Dinar", 0.3075, "KWD", { exchangeRate: 0.3 }),
+			row("Polvo", 0.000000004, "ARS", { amountInUSD: 5 }),
 		];
 		const job = await fixtureDb.importJob.create({
 			data: {
@@ -95,7 +98,7 @@ describe("import ties round half to even", () => {
 				totalTransactions: file.length,
 			},
 		});
-		await forUser(user.id).apply(commitImport, {
+		const summary = await forUser(user.id).apply(commitImport, {
 			jobId: job.id,
 			rows: file.map((_, index) => ({
 				index,
@@ -105,6 +108,7 @@ describe("import ties round half to even", () => {
 			})),
 		});
 
+		expect(summary.value).toMatchObject({ noRate: 1 });
 		expect(await storedOf(user.id)).toEqual({
 			Mate: {
 				amount: "7",
