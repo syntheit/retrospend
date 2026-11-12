@@ -4,14 +4,14 @@ import {
 	stripUserTextControls,
 	stripUserTextControlsForKey,
 } from "@retrospend/api-contract/common";
+import { isValidRate, type PickedRate, USD } from "@retrospend/domain/money";
 import {
-	computeAmountInUSD,
-	isValidRate,
-	type PickedRate,
-	rateFromUsdPerUnit,
-	roundUSD,
-	USD,
-} from "@retrospend/domain/money";
+	computeAmountInUSDDec,
+	rateFromUsdAmountDec,
+	roundRateDec,
+	roundUSDDec,
+} from "@retrospend/domain/money-dec";
+import { storedAmount } from "@retrospend/domain/rate-booking";
 import {
 	dayKey,
 	startOfDayIn,
@@ -27,7 +27,9 @@ import { listedEntryWhere } from "./spending";
 /**
  * Stored rate and USD amount of an imported row. A rate in the file wins
  * (amountInUSD is recomputed from it), then a USD amount (the rate is derived
- * from it), then the rate table for the row's date. Never a rate of 1.
+ * from it), then the rate table for the row's date. Never a rate of 1. Both
+ * are decimal text at the columns' scale (6 and 2 decimals), half to even,
+ * the USD value from the exact rate, not its 6-decimal copy.
  */
 export function resolveImportRate(
 	row: {
@@ -39,21 +41,23 @@ export function resolveImportRate(
 		amountInUSD?: number;
 	},
 	rateFor: (currency: string, date: Date) => PickedRate | null,
-): { exchangeRate: number; amountInUSD: number } {
+): { exchangeRate: string; amountInUSD: string } {
 	const currency = row.currency.toUpperCase();
+	const amount = storedAmount(row.amount);
+	const atRate = (rate: number) => ({
+		exchangeRate: roundRateDec(rate, 6).toFixed(),
+		amountInUSD: computeAmountInUSDDec(amount, currency, rate).toFixed(2),
+	});
 	if (currency === USD) {
-		return { exchangeRate: 1, amountInUSD: roundUSD(row.amount) };
+		return { exchangeRate: "1", amountInUSD: roundUSDDec(amount).toFixed(2) };
 	}
-	if (isValidRate(row.exchangeRate)) {
-		return {
-			exchangeRate: row.exchangeRate,
-			amountInUSD: computeAmountInUSD(row.amount, currency, row.exchangeRate),
-		};
-	}
+	if (isValidRate(row.exchangeRate)) return atRate(row.exchangeRate);
 	if (isValidRate(row.amountInUSD)) {
+		// The exact rate is USD / amount, so the USD value is the file's own.
+		const rate = rateFromUsdAmountDec(currency, row.amountInUSD, amount);
 		return {
-			exchangeRate: rateFromUsdPerUnit(currency, row.amountInUSD / row.amount),
-			amountInUSD: roundUSD(row.amountInUSD),
+			exchangeRate: roundRateDec(rate, 6).toFixed(),
+			amountInUSD: roundUSDDec(row.amountInUSD).toFixed(2),
 		};
 	}
 	const picked = rateFor(currency, row.date);
@@ -62,10 +66,7 @@ export function resolveImportRate(
 			`Missing exchange rate or USD amount for ${row.currency} on row: ${row.title}`,
 		);
 	}
-	return {
-		exchangeRate: picked.rate,
-		amountInUSD: computeAmountInUSD(row.amount, currency, picked.rate),
-	};
+	return atRate(picked.rate);
 }
 
 /** C0 controls other than tab, line feed and carriage return. */
@@ -328,8 +329,8 @@ export class CsvService {
 
 		type PreparedRow = {
 			data: ImportExpenseRow;
-			exchangeRate: number;
-			amountInUSD: number;
+			exchangeRate: string;
+			amountInUSD: string;
 			categoryId: string | null;
 			excludeFromAnalytics: boolean;
 		};
@@ -338,7 +339,7 @@ export class CsvService {
 			id: randomUUID(),
 			userId: userId,
 			title: r.data.title,
-			amount: r.data.amount,
+			amount: storedAmount(r.data.amount),
 			currency: r.data.currency.toUpperCase(),
 			date: r.data.date,
 			categoryId: r.categoryId ?? undefined,
