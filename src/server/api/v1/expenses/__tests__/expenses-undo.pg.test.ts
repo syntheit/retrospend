@@ -15,7 +15,6 @@ import { listExpenses } from "~/server/services/api-v1/expenses";
 import { MAX_STORED_RESPONSE_BYTES } from "~/server/services/api-v1/idempotency.service";
 import { listActivity } from "~/server/services/expense-list";
 import { defaultTimeZone } from "~/server/services/user-time-zone";
-import { sealedSuite } from "~/test/pg-harness";
 import {
 	adminDb,
 	asMobile,
@@ -157,10 +156,7 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 		await expectProblem(await undo(made.undo), 404, "not_found");
 	});
 
-	it("reads no dates as this month like the web, and range=all as every date", async ({
-		skip,
-	}) => {
-		skip(sealedSuite, "PR 5: search reads sealed text without the user's keys");
+	it("reads no dates as this month like the web, and range=all as every date", async () => {
 		const user = (await createTestUser()).user.id;
 		const mine = await asMobile(user);
 		const cat = (await newCategory(user)).id;

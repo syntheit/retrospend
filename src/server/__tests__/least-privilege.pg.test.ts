@@ -8,7 +8,6 @@
  */
 import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { sealedSuite } from "~/test/pg-harness";
 import {
 	adminDb,
 	asMobile,
@@ -502,8 +501,7 @@ describe("what scoped paths still do", () => {
 		expect(legs.length).toBeGreaterThan(0);
 	});
 
-	it("v1 search finds the caller's own expenses", async ({ skip }) => {
-		skip(sealedSuite, "PR 5: search reads sealed text without the user's keys");
+	it("v1 search finds the caller's own expenses", async () => {
 		const erin = await createTestUser();
 		await fixtureDb.expense.create({
 			data: {
