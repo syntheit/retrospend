@@ -8,13 +8,13 @@
  * cannot be valued: a missing rate is never 1 (R14).
  */
 import { previousSpan, type Span } from "@retrospend/domain/insights";
+import { periodRateDate } from "@retrospend/domain/money";
 import {
-	type MoneyItem,
+	type MoneyItemDec,
 	missingRatesIn,
-	periodRateDate,
-	sumIn,
-} from "@retrospend/domain/money";
-import { type Money, toMinor } from "@retrospend/domain/money-minor";
+	sumInDec,
+} from "@retrospend/domain/money-dec";
+import { type Money, roundedMinor } from "@retrospend/domain/money-minor";
 import {
 	dayKey,
 	parseDateOnlyIn,
@@ -131,14 +131,17 @@ export type Valued =
  * minor units.
  */
 export function valueIn(
-	items: readonly MoneyItem[],
+	items: readonly MoneyItemDec[],
 	currency: string,
 	rate: number | null,
 ): Valued {
 	const missing = missingRatesIn(items, currency, rate);
 	if (missing.length) return { money: null, missing };
 	return {
-		money: { minor: toMinor(sumIn(items, currency, rate), currency), currency },
+		money: {
+			minor: roundedMinor(sumInDec(items, currency, rate), currency),
+			currency,
+		},
 		missing: [],
 	};
 }

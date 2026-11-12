@@ -64,7 +64,8 @@ describe("StatsService", () => {
 
 			const result = await service.getLifetimeStats("user-1", "USD");
 
-			expect(result).toEqual({ totalSpent: 500, totalTransactions: 2 });
+			expect(result.totalSpent.toFixed()).toBe("500");
+			expect(result.totalTransactions).toBe(2);
 		});
 
 		it("ARS home: ARS counts as entered, USD at today's rate", async () => {
@@ -75,7 +76,8 @@ describe("StatsService", () => {
 
 			const result = await service.getLifetimeStats("user-1", "ARS");
 
-			expect(result.totalSpent).toBeCloseTo(100000 + 200 * ARS);
+			// 100,000 as entered + 200 USD x 1,560 = 312,000: 412,000 exactly.
+			expect(result.totalSpent.toFixed()).toBe(String(100000 + 200 * ARS));
 		});
 
 		it("returns 0 when no expenses", async () => {
@@ -83,7 +85,8 @@ describe("StatsService", () => {
 
 			const result = await service.getLifetimeStats("user-1", "USD");
 
-			expect(result).toEqual({ totalSpent: 0, totalTransactions: 0 });
+			expect(result.totalSpent.toFixed()).toBe("0");
+			expect(result.totalTransactions).toBe(0);
 		});
 	});
 });

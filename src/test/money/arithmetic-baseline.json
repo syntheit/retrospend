@@ -5,7 +5,6 @@
 		"packages/domain/src/envelope/units.ts": 2,
 		"packages/domain/src/insights.ts": 1,
 		"packages/domain/src/shared-split-computation.ts": 1,
-		"packages/domain/src/spent.ts": 4,
 		"src/server/api/routers/audit-log.ts": 3,
 		"src/server/api/routers/billingPeriod.ts": 3,
 		"src/server/api/routers/entry.ts": 2,
@@ -56,7 +55,6 @@
 		"src/server/services/import/match.ts": 2,
 		"src/server/services/income/move-in.mutation.ts": 1,
 		"src/server/services/payments/rate-band.ts": 4,
-		"src/server/services/shared-expense-integration.ts": 1,
 		"src/server/services/transfers/create.mutation.ts": 9,
 		"src/server/services/transfers/delete.mutation.ts": 1,
 		"src/server/services/transfers/plan.ts": 11

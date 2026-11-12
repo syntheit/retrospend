@@ -1,8 +1,8 @@
-import { missingRatesIn, sumIn } from "@retrospend/domain/money";
+import { missingRatesIn, sumInDec } from "@retrospend/domain/money-dec";
 import type { Money } from "@retrospend/domain/money-minor";
 import { userTransaction } from "~/server/db-tx";
 import { findExchangeRate } from "~/server/exchange-rates";
-import { numberMoney } from "~/server/services/expense-list/money";
+import { decimalMoney } from "~/server/services/expense-list/money";
 import { spentByCurrency, spentItems } from "~/server/services/figures/spent";
 import type { PrismaClient } from "~prisma";
 
@@ -56,7 +56,7 @@ export async function readCurrencySpending(
 			original,
 			inHome: missing.length
 				? null
-				: numberMoney(sumIn(items, home, rate), home),
+				: decimalMoney(sumInDec(items, home, rate), home),
 		};
 	});
 }

@@ -1,11 +1,11 @@
-import { sumIn } from "@retrospend/domain/money";
+import { sumInDec } from "@retrospend/domain/money-dec";
 import type { PrismaClient } from "~prisma";
 import { getBestExchangeRate } from "../api/routers/shared-currency";
 import { spentItems } from "./figures/spent";
 
 /**
  * Lifetime spending in the home currency. The total follows the totals rule
- * in @retrospend/domain/money: home-currency expenses count as entered, the rest convert
+ * in @retrospend/domain/money-dec: home-currency expenses count as entered, the rest convert
  * from amountInUSD at today's home rate.
  */
 export class StatsService {
@@ -24,7 +24,7 @@ export class StatsService {
 		]);
 
 		return {
-			totalSpent: sumIn(items, homeCurrency, rate),
+			totalSpent: sumInDec(items, homeCurrency, rate),
 			totalTransactions: items.reduce((n, item) => n + item.count, 0),
 		};
 	}

@@ -1,3 +1,5 @@
+import { fromMinorUnits } from "@retrospend/domain/money";
+import { roundedMinor } from "@retrospend/domain/money-minor";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
@@ -234,7 +236,11 @@ export const profileRouter = createTRPCRouter({
 		]);
 
 		return {
-			lifetimeSpend,
+			// The exact total rounds once, at the home currency's precision.
+			lifetimeSpend: fromMinorUnits(
+				roundedMinor(lifetimeSpend, user.homeCurrency),
+				user.homeCurrency,
+			),
 			totalEntries,
 			joinedAt: user.createdAt,
 			homeCurrency: user.homeCurrency,

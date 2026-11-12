@@ -14,7 +14,7 @@
  * the currency, never a guess (R14). Figures read days in the zone the server
  * decides for the user (userTimeZone), as glance() does without a request zone.
  */
-import type { MoneyItem } from "@retrospend/domain/money";
+import type { MoneyItemDec } from "@retrospend/domain/money-dec";
 import type { Money } from "@retrospend/domain/money-minor";
 import {
 	incomeItemsOf,
@@ -91,7 +91,7 @@ export async function incomeItems(
 	db: FigureDb,
 	userId: string,
 	range: { start: Date; end: Date },
-): Promise<MoneyItem[]> {
+): Promise<MoneyItemDec[]> {
 	return incomeItemsOf(await incomeGroups(db, userId, range));
 }
 
