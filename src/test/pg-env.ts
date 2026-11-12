@@ -4,6 +4,7 @@
  * worker's database has to be in place before any test imports them.
  */
 import { createHash } from "node:crypto";
+import { appendFileSync } from "node:fs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, inject } from "vitest";
 import { PrismaClient } from "~prisma";
@@ -40,7 +41,9 @@ if (sealed) {
 // (money/write-guard.ts). db-core builds every client on the one it finds
 // here, its dev-reload cache, so the guard sits under all of them. The pool
 // matches db-core's. Later files in this worker reuse it, as they did
-// db-core's own client, so no file leaves a pool open.
+// db-core's own client, so no file leaves a pool open. The allowlist entries
+// it lets through are noted for number-writes-setup.ts.
+const usedFile = inject("moneyGuardUsedFile");
 (globalThis as { prisma?: unknown }).prisma ??= guardMoneyWrites(
 	new PrismaClient({
 		adapter: new PrismaPg({
@@ -50,6 +53,7 @@ if (sealed) {
 			connectionTimeoutMillis: 5000,
 		}),
 	}),
+	{ used: (entry) => appendFileSync(usedFile, `${entry}\n`) },
 );
 
 // A worker's database outlives the files it runs, and these tables are shared

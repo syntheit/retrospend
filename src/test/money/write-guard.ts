@@ -6,8 +6,11 @@
  *
  * pg-env.ts puts it on the client every pg test runs through. The writers
  * that still wrote numbers when the guard landed are listed in
- * number-writes.json, by column and file; each comes off the list when it
- * moves to Decimal, and the list only shrinks.
+ * number-writes.json, by column and file, and the list only shrinks:
+ * - a full, passing `pnpm test:pg` fails at the end on an entry no write
+ *   used (number-writes-setup.ts). When a writer moves to Decimal, remove its
+ *   entry (a column with no files left goes too);
+ * - write-guard.test.ts fails on an entry that main does not have.
  */
 import { relative } from "node:path";
 import type { RuntimeModels } from "~/server/crypto/model-graph";
@@ -90,6 +93,15 @@ const TEST_CODE = /\.test\.tsx?$|\/__tests__\/|\/src\/test\//;
 /** Files still allowed to write a number, by `Model.column`. */
 export type NumberWriters = Readonly<Record<string, readonly string[]>>;
 
+export interface GuardOptions {
+	/** Defaults to number-writes.json. */
+	allow?: NumberWriters;
+	/** Defaults to test files, `__tests__` and src/test. */
+	isTestCode?: (file: string) => boolean;
+	/** Told each `Model.column<TAB>file` entry a write was let through by. */
+	used?: (entry: string) => void;
+}
+
 /**
  * `client` with every write checked. A write called from test code passes,
  * and so does one `allow` lists for its column and file. The call site is
@@ -101,8 +113,11 @@ export type NumberWriters = Readonly<Record<string, readonly string[]>>;
  */
 export function guardMoneyWrites<C extends Extendable>(
 	client: C,
-	allow: NumberWriters = allowed,
-	isTestCode: (file: string) => boolean = (file) => TEST_CODE.test(file),
+	{
+		allow = allowed,
+		isTestCode = (file) => TEST_CODE.test(file),
+		used,
+	}: GuardOptions = {},
 ): C {
 	return client.$extends({
 		name: "money-write-guard",
@@ -122,9 +137,12 @@ export function guardMoneyWrites<C extends Extendable>(
 					const file =
 						at && relative(REPO_ROOT, at.fileName).split("\\").join("/");
 					const { runtimeDataModel } = await import("~/server/db-core");
-					const bad = numberWrites(runtimeDataModel(), model, args).filter(
-						(column) => !(file && allow[column]?.includes(file)),
-					);
+					const bad: string[] = [];
+					for (const column of numberWrites(runtimeDataModel(), model, args)) {
+						if (file && allow[column]?.includes(file))
+							used?.(`${column}\t${file}`);
+						else bad.push(column);
+					}
 					if (bad.length > 0)
 						throw new Error(
 							`A JS number was written to ${bad.join(", ")} at ${at ? `${file}:${at.lineNumber}` : "an unknown call site"}: write a string from @retrospend/domain/money-dec (src/test/money/write-guard.ts)`,

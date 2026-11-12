@@ -2,7 +2,13 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { describe, expect, it } from "vitest";
 import { runtimeDataModel } from "~/server/db-core";
 import { PrismaClient } from "~prisma";
-import { guardMoneyWrites, numberWrites } from "./write-guard";
+import { runGit } from "../logHygiene/repo";
+import allowed from "./number-writes.json";
+import {
+	guardMoneyWrites,
+	type NumberWriters,
+	numberWrites,
+} from "./write-guard";
 
 const data = runtimeDataModel();
 const writes = (model: string, args: unknown) =>
@@ -86,14 +92,15 @@ describe("guardMoneyWrites on a client", () => {
 
 	it("refuses a number before the query runs, and lets a listed writer through", async () => {
 		// Count this file as app code, so its writes are checked.
-		const guarded = guardMoneyWrites(
-			raw,
-			{
+		const used: string[] = [];
+		const guarded = guardMoneyWrites(raw, {
+			allow: {
 				"Expense.exchangeRate": ["src/test/money/write-guard.test.ts"],
 				"Expense.amount": ["src/server/services/expense.service.ts"],
 			},
-			() => false,
-		);
+			isTestCode: () => false,
+			used: (entry) => used.push(entry),
+		});
 		await expect(
 			guarded.expense.update({
 				where: { id: "e" },
@@ -115,6 +122,10 @@ describe("guardMoneyWrites on a client", () => {
 			);
 		// Prisma's own error (no server), not the guard's plain Error.
 		expect((failed as Error).name).toMatch(/^PrismaClient/);
+		// Only the entry that let a write through is reported as used.
+		expect(used).toEqual([
+			"Expense.exchangeRate\tsrc/test/money/write-guard.test.ts",
+		]);
 	});
 
 	it("refuses when Prisma gives no call site, even for a listed column", async () => {
@@ -167,5 +178,30 @@ describe("guardMoneyWrites on a client", () => {
 		expect(guarded._runtimeDataModel).toBe(
 			(raw as unknown as { _runtimeDataModel: unknown })._runtimeDataModel,
 		);
+	});
+});
+
+describe("number-writes.json", () => {
+	const entries = (list: NumberWriters) =>
+		Object.entries(list).flatMap(([column, files]) =>
+			files.map((file) => `${column} ${file}`),
+		);
+
+	it("only shrinks: every entry is on main too", () => {
+		const base = (
+			runGit(["merge-base", "HEAD", "main"]) ??
+			runGit(["merge-base", "HEAD", "origin/main"])
+		)?.trim();
+		const was =
+			base && runGit(["show", `${base}:src/test/money/number-writes.json`]);
+		if (!was) {
+			console.warn("number-writes.json: no copy on main to compare with");
+			return;
+		}
+		const onMain = new Set(entries(JSON.parse(was) as NumberWriters));
+		expect(
+			entries(allowed).filter((entry) => !onMain.has(entry)),
+			"New number writers: write a string from money-dec instead",
+		).toEqual([]);
 	});
 });
