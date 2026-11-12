@@ -25,7 +25,7 @@
  *
  * Detection compares numbers with wide tolerances (a cent or two), so a row
  * stored half up before half even is never flagged for its tie. The new
- * values are exact decimal text at the columns' scale, half to even: the
+ * values are exact decimals at the columns' scale, half to even: the
  * rate at 6 decimals, USD from the exact rate (a median of two stored rates
  * can need a 7th decimal), never from its rounded copy.
  */
@@ -70,10 +70,10 @@ export interface RepairFinding {
 	row: RepairExpense;
 	home: string;
 	reason: RepairReason;
-	/** Decimal text at 6 decimals, half to even. */
-	newRate: string;
-	/** Decimal text to cents, half to even. */
-	newUSD: string;
+	/** At 6 decimals, half to even (the script writes it as text). */
+	newRate: Decimal;
+	/** To cents, half to even. */
+	newUSD: Decimal;
 }
 
 const IMPLAUSIBLE_FACTOR = 10;
@@ -97,10 +97,10 @@ function median(values: number[]): Decimal | null {
 function repaired(
 	row: RepairExpense,
 	rate: Decimal | number,
-): { newRate: string; newUSD: string } {
+): { newRate: Decimal; newUSD: Decimal } {
 	return {
-		newRate: roundRateDec(rate, 6).toFixed(),
-		newUSD: computeAmountInUSDDec(row.amount, row.currency, rate).toFixed(2),
+		newRate: roundRateDec(rate, 6),
+		newUSD: computeAmountInUSDDec(row.amount, row.currency, rate),
 	};
 }
 
@@ -213,8 +213,8 @@ export function findInconsistentExpenses(args: {
 					row,
 					home,
 					reason: reason ?? "usd-amount",
-					newRate: "1",
-					newUSD: usd.toFixed(2),
+					newRate: dec(1),
+					newUSD: usd,
 				});
 			}
 			continue;
@@ -239,8 +239,8 @@ export function findInconsistentExpenses(args: {
 					row,
 					home,
 					reason,
-					newRate: roundRateDec(rate, 6).toFixed(),
-					newUSD: roundUSDDec(row.amountInUSD).toFixed(2),
+					newRate: roundRateDec(rate, 6),
+					newUSD: roundUSDDec(row.amountInUSD),
 				});
 				continue;
 			}

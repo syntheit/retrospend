@@ -93,7 +93,7 @@ function report(
 	}
 
 	const change = (f: RepairFinding) =>
-		dec(f.newUSD).minus(f.row.amountInUSD).abs();
+		f.newUSD.minus(f.row.amountInUSD).abs();
 	const worst = [...findings]
 		.sort((a, b) => change(b).comparedTo(change(a)))
 		.slice(0, 15);
@@ -104,8 +104,8 @@ function report(
 			console.log(
 				`  ${r.id}  ${r.date.toISOString().slice(0, 10)}  ${r.amount} ${r.currency}` +
 					` (home ${f.home}, ${r.pricingSource ?? "-"}${r.isAmortizedChild ? ", child" : ""})` +
-					`  ${f.reason}: rate ${r.exchangeRate} -> ${f.newRate},` +
-					` USD ${r.amountInUSD.toFixed(2)} -> ${f.newUSD}`,
+					`  ${f.reason}: rate ${r.exchangeRate} -> ${f.newRate.toFixed()},` +
+					` USD ${r.amountInUSD.toFixed(2)} -> ${f.newUSD.toFixed(2)}`,
 			);
 		}
 		console.log("");
@@ -186,7 +186,10 @@ async function main() {
 			db.expense.update({
 				where: { id: f.row.id },
 				// Decimal text at the columns' scale: Postgres rounds nothing.
-				data: { exchangeRate: f.newRate, amountInUSD: f.newUSD },
+				data: {
+					exchangeRate: f.newRate.toFixed(),
+					amountInUSD: f.newUSD.toFixed(2),
+				},
 			}),
 		),
 	);

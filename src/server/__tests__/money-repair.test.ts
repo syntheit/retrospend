@@ -33,12 +33,17 @@ const HOMES: Record<string, string> = {
 	"brl-user": "BRL",
 };
 
+/** Findings with the new values as the text the script writes. */
 function run(expenses: RepairExpense[]) {
 	return findInconsistentExpenses({
 		expenses,
 		homeCurrencyOf: (id) => HOMES[id] ?? "USD",
 		rates: DEFAULT_RATES,
-	}).findings;
+	}).findings.map((f) => ({
+		...f,
+		newRate: f.newRate.toFixed(),
+		newUSD: f.newUSD.toFixed(2),
+	}));
 }
 
 describe("findInconsistentExpenses", () => {
