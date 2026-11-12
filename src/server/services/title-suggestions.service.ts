@@ -18,7 +18,7 @@ import type { PrismaClient } from "~prisma";
 import {
 	APP_LAYER_WINDOW,
 	ilikeContains,
-	searchesInApp,
+	searchesInAppLoaded,
 } from "./search-fold";
 import { listedEntryWhere } from "./spending";
 
@@ -57,11 +57,12 @@ export async function titleSuggestions(
 	} = {},
 ) {
 	const { keyring, window } = options;
+	const inApp = await searchesInAppLoaded(keyring);
 	const [personal, sharedGroups] = await Promise.all([
-		searchesInApp(keyring)
+		inApp
 			? personalInApp(db, userId, query, window)
 			: personalInSql(db, userId, query),
-		searchesInApp(keyring)
+		inApp
 			? sharedInApp(db, userId, query, window)
 			: sharedInSql(db, userId, query),
 	]);

@@ -9,7 +9,6 @@
 import { randomUUID } from "node:crypto";
 import { fromWallTime } from "@retrospend/domain/time-zone";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { resetEpochForTests } from "~/server/crypto/epoch";
 import {
 	FieldCryptoError,
 	Keyring,
@@ -26,7 +25,7 @@ import {
 import { listV2Input } from "~/server/services/expense-list/types";
 import { searchExpenses as searchExpensesWith } from "~/server/services/search.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
-import { restoreCells, writeCell } from "~/test/sealed-fixture";
+import { restoreCells, writeCell, writeEpoch } from "~/test/sealed-fixture";
 import { Prisma } from "~prisma";
 
 const TZ = "America/Argentina/Buenos_Aires";
@@ -567,7 +566,7 @@ describe("rows that hold ciphertext", () => {
 
 	it("once the encryption epoch exists, runs in the app with no keyring, so a sealed row fails loudly instead of going missing", async () => {
 		// Until PR 5 hands these paths every key, no keyring opens nothing.
-		resetEpochForTests(true);
+		await writeEpoch(true);
 		try {
 			await expect(
 				userTransaction(adminDb, user.user.id, (tx) =>
@@ -581,7 +580,7 @@ describe("rows that hold ciphertext", () => {
 				}),
 			).rejects.toMatchObject({ code: "unknown_key" });
 		} finally {
-			resetEpochForTests();
+			await writeEpoch(false);
 		}
 	});
 

@@ -30,13 +30,17 @@
  */
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { resetEpochForTests } from "~/server/crypto/epoch";
 import { Keyring } from "~/server/crypto/field-crypto";
 import { TextUnavailableError } from "~/server/crypto/field-open";
 import { createUserScopedDb } from "~/server/db";
 import { evictDataKeyring } from "~/server/services/keys/data-key.service";
 import { adminDb } from "~/test/pg-harness";
-import { sealedFile, sealText } from "~/test/sealed-fixture";
+import {
+	failNextEpochRead,
+	sealedFile,
+	sealText,
+	writeEpoch,
+} from "~/test/sealed-fixture";
 import type { Prisma } from "~prisma";
 import {
 	arsUser,
@@ -218,11 +222,19 @@ describe("import review over plain and sealed titles", () => {
 	});
 
 	it("follows the encryption epoch: a sealed ledger reviews the same with no keyring", async () => {
-		resetEpochForTests(true);
+		await writeEpoch(true);
 		try {
-			expect(await reviewOf(await ledger(true))).toEqual(EXPECTED);
+			const l = await ledger(true);
+			expect(await reviewOf(l)).toEqual(EXPECTED);
+			// An epoch that cannot be read counts as set: still never SQL.
+			await writeEpoch(true);
+			failNextEpochRead();
+			vi.spyOn(console, "error").mockImplementation(() => {});
+			expect(await reviewOf(l)).toEqual(EXPECTED);
+			expect(await reviewOf(l)).toEqual(EXPECTED);
 		} finally {
-			resetEpochForTests();
+			vi.restoreAllMocks();
+			await writeEpoch(false);
 		}
 	});
 

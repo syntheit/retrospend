@@ -9,7 +9,6 @@
  */
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { resetEpochForTests } from "~/server/crypto/epoch";
 import {
 	FieldCryptoError,
 	Keyring,
@@ -20,10 +19,12 @@ import { ExpenseService } from "~/server/services/expense.service";
 import { findDuplicateExpense } from "~/server/services/expense-duplicate";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import {
+	failNextEpochRead,
 	sealedFile,
 	sealText,
 	userKeyring,
 	writeCell,
+	writeEpoch,
 } from "~/test/sealed-fixture";
 import type { PrismaClient } from "~prisma";
 
@@ -405,14 +406,21 @@ describe("sealed titles (app-layer path)", () => {
 		const id = randomUUID();
 		await seed(me, [{ id, title: "Coffee" }]);
 		await seal(id, "Coffee");
-		resetEpochForTests(true);
+		await writeEpoch(true);
 		try {
 			expect(await find(me, undefined, { title: "COFFEE" })).toEqual({
 				id,
 				title: "Coffee",
 			});
+			// An epoch that cannot be read counts as set: still never SQL.
+			await writeEpoch(true);
+			failNextEpochRead();
+			vi.spyOn(console, "error").mockImplementation(() => {});
+			for (let i = 0; i < 2; i++)
+				expect((await find(me, undefined, { title: "coffee" }))?.id).toBe(id);
 		} finally {
-			resetEpochForTests();
+			vi.restoreAllMocks();
+			await writeEpoch(false);
 		}
 	});
 

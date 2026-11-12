@@ -15,7 +15,7 @@
  * `pgLower` lowercases one code point at a time, as Postgres's lower() does:
  * no context (a final sigma stays sigma) and "I with dot" becomes a plain i.
  */
-import { epochActiveNow } from "../crypto/epoch";
+import { epochActiveNow, loadEpoch } from "../crypto/epoch";
 import {
 	FieldCryptoError,
 	type Keyring,
@@ -110,13 +110,22 @@ export const APP_LAYER_WINDOW = 20_000;
  * SEARCH_EXPENSE_WINDOW (20,000) expenses, Activity the newest
  * SEARCH_CANDIDATE_CAP (20,000) rows per source, so older rows are not found
  * on that path. The SQL path would quietly miss sealed rows. A keyring picks
- * the app path too (tests). The epoch is the cached answer: a process that
- * has not loaded it yet takes the SQL path, and a model filter there is then
- * refused (field-open.ts). Until PR 5 hands these paths every key, a raw read
- * of a sealed cell fails (`readUserText`), which is loud, never a miss.
+ * the app path too (tests). An epoch that is not known (no read yet, or a
+ * failed one) counts as set. This reads only the cache, for callers inside a
+ * transaction (whose client loaded it as it opened); a caller outside one
+ * uses `searchesInAppLoaded`, so a cold process does not guess. Until PR 5
+ * hands these paths every key, a raw read of a sealed cell fails
+ * (`readUserText`), which is loud, never a miss.
  */
 export function searchesInApp(keyring: Keyring | undefined): boolean {
 	return keyring !== undefined || epochActiveNow();
+}
+
+/** `searchesInApp` after loading the epoch (no query inside a transaction). */
+export async function searchesInAppLoaded(
+	keyring: Keyring | undefined,
+): Promise<boolean> {
+	return keyring !== undefined || (await loadEpoch());
 }
 
 /** The text of a column that may hold ciphertext; null reads as empty. */

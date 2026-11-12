@@ -6,7 +6,7 @@ import {
 	APP_LAYER_WINDOW,
 	foldUnaccentIlike,
 	readUserText,
-	searchesInApp,
+	searchesInAppLoaded,
 } from "./search-fold";
 import { compareText, sortByText } from "./text-order";
 
@@ -65,7 +65,7 @@ type ExpenseCandidate = ExpenseHitRow & {
  * keyring Postgres matches every row; with one the text may be ciphertext and
  * is matched in the app layer (searchExpensesInApp).
  */
-export function searchExpenses(
+export async function searchExpenses(
 	db: AppDb,
 	userId: string,
 	q: string,
@@ -78,7 +78,7 @@ export function searchExpenses(
 	} = {},
 ): Promise<ExpenseHitRow[]> {
 	const { keyring, window } = options;
-	return searchesInApp(keyring)
+	return (await searchesInAppLoaded(keyring))
 		? searchExpensesInApp(db, userId, q, page, keyring, window)
 		: searchExpensesInSql(db, userId, q, page);
 }

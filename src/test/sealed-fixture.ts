@@ -10,6 +10,7 @@
  */
 import { randomBytes } from "node:crypto";
 import { afterAll, beforeAll } from "vitest";
+import { resetEpochForTests, setEpochReader } from "~/server/crypto/epoch";
 import {
 	type FieldAad,
 	Keyring,
@@ -27,6 +28,7 @@ import {
 	evictDataKeyring,
 	getOrCreateDataKeyring,
 } from "~/server/services/keys/data-key.service";
+import { readFieldEncryptionEpoch } from "~/server/services/keys/field-encryption-start";
 import {
 	evictInstanceKeyring,
 	getOrCreateInstanceKeyring,
@@ -191,6 +193,33 @@ export async function sealText(
 	);
 	if (!row) throw new Error(`No ${cell.table} row to seal`);
 	return sealCell(await userKeyring(row.userId, master), cell, plaintext);
+}
+
+/**
+ * Sets or clears the field encryption epoch in the database and forgets the
+ * process cache, so the next caller loads it cold, as a fresh process would.
+ */
+export async function writeEpoch(set: boolean): Promise<void> {
+	const since = set ? new Date("2026-11-11T00:00:00Z") : null;
+	await adminDb.$executeRaw`
+		INSERT INTO "app_settings" ("id", "updatedAt", "fieldEncryptionSince")
+		VALUES ('app_settings_singleton', now(), ${since})
+		ON CONFLICT ("id") DO UPDATE SET "fieldEncryptionSince" = EXCLUDED."fieldEncryptionSince"`;
+	resetEpochForTests();
+}
+
+/**
+ * The next epoch read fails (the column unreadable for a moment); later
+ * reads go to the database again. Call `writeEpoch` first: it forgets the
+ * cache, so the next caller reads.
+ */
+export function failNextEpochRead(): void {
+	let fail = true;
+	setEpochReader(() => {
+		if (!fail) return readFieldEncryptionEpoch();
+		fail = false;
+		return Promise.reject(new Error("epoch unreadable"));
+	});
 }
 
 /** No instance key and no instance key date, as on a new install. */

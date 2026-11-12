@@ -9,7 +9,6 @@
  * keystore's keys (src/test/sealed-fixture.ts).
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { resetEpochForTests } from "~/server/crypto/epoch";
 import {
 	FieldCryptoError,
 	Keyring,
@@ -24,11 +23,13 @@ import {
 } from "~/server/services/title-suggestions.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import {
+	failNextEpochRead,
 	instanceKeyring,
 	sealedFile,
 	sealText,
 	userKeyring,
 	writeCell,
+	writeEpoch,
 } from "~/test/sealed-fixture";
 import type { PrismaClient } from "~prisma";
 
@@ -554,12 +555,19 @@ describe("rows that hold ciphertext", () => {
 	});
 
 	it("follows the encryption epoch: with no keyring it reads in the app, never in SQL", async () => {
-		resetEpochForTests(true);
+		await writeEpoch(true);
 		try {
 			expect(await ask("café")).toEqual(await ask("café", keyring));
 			expect((await ask("ÑANDÚ")).map((s) => s.title)).toEqual(["Ñandú"]);
+			// An epoch that cannot be read counts as set: still never SQL.
+			await writeEpoch(true);
+			failNextEpochRead();
+			vi.spyOn(console, "error").mockImplementation(() => {});
+			expect(await ask("café")).toEqual(await ask("café", keyring));
+			expect(await ask("café")).toEqual(await ask("café", keyring));
 		} finally {
-			resetEpochForTests();
+			vi.restoreAllMocks();
+			await writeEpoch(false);
 		}
 	});
 
