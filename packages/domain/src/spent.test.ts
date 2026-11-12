@@ -5,7 +5,8 @@
  * each other.
  */
 import { describe, expect, it } from "vitest";
-import { MissingRateError, sumIn } from "./money";
+import { MissingRateError, sumInDec } from "./money-dec";
+import { roundedMinor } from "./money-minor";
 import {
 	type SpentExpenseRow,
 	type SpentShareRow,
@@ -237,9 +238,9 @@ describe("spent on rows in memory", () => {
 		it("sums in ARS at the booked and own values, in USD at the USD values", () => {
 			const items = spentItemsOf(inputs());
 			// 150,000 booked + 30,000 - 15,000 + 75,000
-			expect(sumIn(items, "ARS", 1500)).toBe(240_000);
+			expect(sumInDec(items, "ARS", 1500).toFixed()).toBe("240000");
 			// 100 + 20 - 10 + 50
-			expect(sumIn(items, "USD", 1)).toBe(160);
+			expect(sumInDec(items, "USD", 1).toFixed()).toBe("160");
 			expect(spentMinorByCurrency(inputs())).toEqual([
 				{ minor: 10_000, currency: "USD" },
 				{ minor: 9_000_000, currency: "ARS" },
@@ -253,9 +254,9 @@ describe("spent on rows in memory", () => {
 				hiddenProjectIds: [],
 				range: WIDE,
 			});
-			expect(Number.isNaN(unpriced.shares[0]?.amountInUSD)).toBe(true);
-			expect(sumIn(spentItemsOf(unpriced), "XQZ", 3)).toBe(500);
-			expect(() => sumIn(spentItemsOf(unpriced), "ARS", 1500)).toThrow(
+			expect(unpriced.shares[0]?.amountInUSD).toBeNull();
+			expect(sumInDec(spentItemsOf(unpriced), "XQZ", 3).toFixed()).toBe("500");
+			expect(() => sumInDec(spentItemsOf(unpriced), "ARS", 1500)).toThrow(
 				MissingRateError,
 			);
 			expect(spentMinorByCurrency(unpriced)).toEqual([
@@ -264,9 +265,48 @@ describe("spent on rows in memory", () => {
 		});
 
 		it("a home currency with no rate throws, never 1", () => {
-			expect(() => sumIn(spentItemsOf(inputs()), "EUR", null)).toThrow(
+			expect(() => sumInDec(spentItemsOf(inputs()), "EUR", null)).toThrow(
 				MissingRateError,
 			);
+		});
+
+		it("a share's USD value stays exact text, never rounded to cents", () => {
+			const exact = spentInputsFromRows({
+				expenses: [],
+				shares: [
+					// 28.5 ARS at 100 per USD = 0.285 USD, half a cent that a cents
+					// round would decide; 12.73333333 USD at the USD rate of 1.
+					share({ shareAmount: "28.5", exchangeRate: "100" }),
+					share({ shareAmount: "12.73333333", currency: "USD" }),
+				],
+				hiddenProjectIds: [],
+				range: WIDE,
+			});
+			expect(exact.shares.map((s) => s.amountInUSD)).toEqual([
+				"0.285",
+				"12.73333333",
+			]);
+			// In a USD home the two add to 13.01833333 exactly, 1302 cents once.
+			const total = sumInDec(spentItemsOf(exact), "USD", 1);
+			expect(total.toFixed()).toBe("13.01833333");
+			expect(roundedMinor(total, "USD")).toBe(1302);
+		});
+
+		it("a refund of nothing is zero, never -0", () => {
+			const zero = spentInputsFromRows({
+				expenses: [
+					row({
+						amount: "0",
+						amountInUSD: "0",
+						direction: "IN",
+						inType: "REFUND",
+					}),
+				],
+				shares: [],
+				hiddenProjectIds: [],
+				range: WIDE,
+			});
+			expect(spentItemsOf(zero)[0]?.amount.toFixed()).toBe("0");
 		});
 	});
 });

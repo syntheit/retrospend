@@ -7,12 +7,13 @@
  * IMPORTANT: These functions return the CURRENT USER'S SHARE only,
  * never the full transaction amount.
  */
+import { USD } from "@retrospend/domain/money";
 import {
-	computeAmountInUSD,
-	sumIn,
-	toUSD,
-	USD,
-} from "@retrospend/domain/money";
+	computeAmountInUSDDec,
+	type RateInput,
+	toUSDDec,
+} from "@retrospend/domain/money-dec";
+import { dec } from "@retrospend/domain/precise-decimal";
 import type { Prisma, PrismaClient } from "~prisma";
 import { findExchangeRatesForDates } from "../exchange-rates";
 import type { RateCache } from "./rate-cache";
@@ -69,34 +70,32 @@ export async function shareRateResolver(db: AppDb, rows: ShareRateSource[]) {
 			.filter((r) => r.exchangeRate === null && r.currency !== USD)
 			.map((r) => r.currency),
 	);
-	return (row: ShareRateSource): number | null => {
+	return (row: ShareRateSource): RateInput => {
 		if (row.currency === USD) return 1;
-		if (row.exchangeRate !== null) return Number(row.exchangeRate);
+		// The stored 18,6 rate crosses as exact text, never a float.
+		if (row.exchangeRate !== null) return dec(row.exchangeRate).toFixed();
 		return lookup(row.currency, row.date)?.rate ?? null;
 	};
 }
 
 /**
- * USD value of a share. A currency with no rate at all leaves the share
- * unpriced (NaN): it still counts in its own currency, and any total in
- * another currency names it as missing (sumIn, MissingRateError) instead
- * of counting it as 0 or failing the whole load.
+ * USD value of a share for totals, kept exact as decimal text. A share is a
+ * slice of an amount, not a stored entry, so there is no cents column to
+ * match; rounding to USD cents here and again in the home currency made a
+ * day total drift a few units from the row's own conversion (Activity, ARS
+ * home). Totals round once, at the end, in the currency they show
+ * (sumInDec). A currency with no rate at all leaves the share unpriced
+ * (null): it still counts in its own currency, and any total in another
+ * currency names it as missing (MissingRateError) instead of counting it as
+ * 0 or failing the whole load.
  */
-function shareToUSD(amount: number, currency: string, rate: number | null) {
-	if (rate === null) return Number.NaN;
-	return computeAmountInUSD(amount, currency, rate);
-}
-
-/**
- * USD value of a share for totals, kept exact. A share is a slice of an
- * amount, not a stored entry, so there is no cents column to match; rounding
- * to USD cents here and again in the home currency made a day total drift a
- * few units from the row's own conversion (Activity, ARS home). Totals
- * round once, at the end, in the currency they show (sumIn).
- */
-function exactShareUSD(amount: number, currency: string, rate: number | null) {
-	if (rate === null) return Number.NaN;
-	return toUSD(amount, currency, rate);
+function exactShareUSD(
+	amount: string,
+	currency: string,
+	rate: RateInput,
+): string | null {
+	if (rate === null) return null;
+	return toUSDDec(amount, currency, rate).toFixed();
 }
 
 /**
@@ -104,12 +103,11 @@ function exactShareUSD(amount: number, currency: string, rate: number | null) {
  * the budget/stats aggregation format (same fields as personal expenses).
  */
 export interface SharedExpenseShare {
-	amount: number;
-	/** The stored amount as exact decimal text (spentMinorByCurrency reads it). */
-	amountExact: string;
+	/** The stored amount as exact decimal text. */
+	amount: string;
 	currency: string;
-	/** NaN when the share's currency has no rate at all (unpriced, see shareToUSD). */
-	amountInUSD: number;
+	/** Exact decimal text; null when the share's currency has no rate at all (unpriced, see exactShareUSD). */
+	amountInUSD: string | null;
 	categoryId: string | null;
 	date: Date;
 }
@@ -223,14 +221,13 @@ export async function getSharedExpenseShares(
 	);
 
 	return participations.map((p) => {
-		const shareAmount = Number(p.shareAmount);
+		const amount = dec(p.shareAmount).toFixed();
 		const currency = p.transaction.currency;
 
 		return {
-			amount: shareAmount,
-			amountExact: p.shareAmount.toFixed(),
+			amount,
 			currency,
-			amountInUSD: exactShareUSD(shareAmount, currency, rateFor(p.transaction)),
+			amountInUSD: exactShareUSD(amount, currency, rateFor(p.transaction)),
 			// The category belongs to whoever created the expense. Another
 			// participant's budgets and breakdowns cannot use it: uncategorized.
 			categoryId:
@@ -395,7 +392,9 @@ export async function listSharedParticipationsForUser(
 		// The feed lists every share; one with no rate shows as "no rate"
 		// (null, as for personal expenses) instead of failing the whole list.
 		const amountInUSD =
-			rate === null ? null : shareToUSD(shareAmount, currency, rate);
+			rate === null
+				? null
+				: computeAmountInUSDDec(shareAmount, currency, rate).toNumber();
 
 		const payerKey = `${tx.paidByType}:${tx.paidById}`;
 		const paidByName = nameMap.get(payerKey) ?? "Unknown";
@@ -419,7 +418,7 @@ export async function listSharedParticipationsForUser(
 			description: tx.description,
 			amount: shareAmount,
 			currency,
-			exchangeRate: currency === USD ? null : rate,
+			exchangeRate: currency === USD || rate === null ? null : Number(rate),
 			amountInUSD,
 			date: tx.date,
 			categoryId: tx.categoryId,

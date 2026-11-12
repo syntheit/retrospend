@@ -9,12 +9,9 @@
  * Sep 5 2026 and ends at 24:00 on Saturday Apr 4 2026).
  */
 import { describe, expect, it } from "vitest";
-import {
-	MissingRateError,
-	RATE_ROWS_PER_SIDE,
-	rateWindow,
-	sumIn,
-} from "./money";
+import { RATE_ROWS_PER_SIDE, rateWindow } from "./money";
+import { MissingRateError, sumInDec } from "./money-dec";
+import { dec } from "./precise-decimal";
 import {
 	homeRateOn,
 	lastToDate,
@@ -454,7 +451,11 @@ describe("spend pace edges", () => {
 
 	it("a missing rate is the totals rule's MissingRateError underneath", () => {
 		expect(() =>
-			sumIn([{ currency: "USD", amount: 1, amountInUSD: 1 }], "ARS", null),
+			sumInDec(
+				[{ currency: "USD", amount: dec(1), amountInUSD: dec(1) }],
+				"ARS",
+				null,
+			),
 		).toThrow(MissingRateError);
 	});
 });
