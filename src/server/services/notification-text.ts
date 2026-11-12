@@ -208,7 +208,9 @@ const noticeSchema = z.object({
 	amount: z
 		.object({
 			money: moneySchema,
-			currencies: z.number().int().positive().optional(),
+			// A settle-all made only of offsets counts 0 currencies; it reads
+			// like one, as it did when the text was stored.
+			currencies: z.number().int().nonnegative().optional(),
 			offset: z.boolean().optional(),
 		})
 		.nullish(),

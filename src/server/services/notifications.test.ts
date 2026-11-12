@@ -126,6 +126,44 @@ describe("createNotification", () => {
 		expect(row.data.notice).toEqual({ kind: "expenseEdited", actor, changes });
 	});
 
+	it("stores the notice as read back: a key a caller adds is dropped, a settle-all of offsets keeps 0", async () => {
+		users({ email: null, language: "en", numberFormat: null });
+		const money = { minor: 0, currency: "ARS" };
+		await createNotification({
+			userId: "u5",
+			type: "SETTLEMENT_RECEIVED",
+			notice: {
+				kind: "settlementReceived",
+				actor: { ...actor, name: "Ana" },
+				amount: { money: { ...money, title: "Cena" }, currencies: 0 },
+			} as never,
+		});
+		const row = mocks.create.mock.calls[0]?.[0].data;
+		expect(row.data.notice).toEqual({
+			kind: "settlementReceived",
+			actor,
+			amount: { money, currencies: 0 },
+		});
+		expect(JSON.stringify(row.data)).not.toMatch(/Ana|Cena/);
+	});
+
+	it("refuses a notice that does not match its schema: no row, no email, no throw", async () => {
+		users({ email: "reader@example.com", language: "en", numberFormat: null });
+		await expect(
+			createNotification({
+				userId: "u6",
+				type: "SETTLEMENT_RECEIVED",
+				notice: {
+					kind: "settlementReceived",
+					actor,
+					amount: { money: { minor: 1.5, currency: "ARS" } },
+				},
+			}),
+		).resolves.toBeUndefined();
+		expect(mocks.create).not.toHaveBeenCalled();
+		expect(mocks.sendEmail).not.toHaveBeenCalled();
+	});
+
 	it("writes nothing when the person switched the app notification off, and still never throws", async () => {
 		mocks.preference.mockResolvedValue({ inApp: false, email: false });
 		users({ email: null, language: "en", numberFormat: null });
@@ -177,11 +215,34 @@ describe("presentNotifications", () => {
 		]);
 	});
 
-	it("leaves a row without a notice, or with one it cannot read, as stored", async () => {
+	it("leaves a row without a notice as stored, and never hands out a notice it cannot read", async () => {
 		const legacy = { id: "l", title: "Old", body: "Old body", data: { transactionId: "l" } };
-		const broken = { id: "x", title: "", body: "", data: { notice: { kind: "gone" } } };
+		const broken = {
+			id: "x",
+			title: "",
+			body: "",
+			data: { transactionId: "x", notice: { kind: "gone", actor: { type: "user", id: "a" } } },
+		};
 		const out = await presentNotifications([legacy, broken], { language: "en" });
-		expect(out).toEqual([legacy, broken]);
+		expect(out).toEqual([legacy, { ...broken, data: { transactionId: "x" } }]);
 		expect(mocks.users).not.toHaveBeenCalled();
+	});
+
+	it("reads a settle-all of offsets (0 currencies) like a payment in one currency", async () => {
+		mocks.users.mockResolvedValue([{ id: "a", name: "Ana" }]);
+		const amount = (currencies?: number) => ({
+			money: { minor: 0, currency: "ARS" },
+			...(currencies === undefined ? {} : { currencies }),
+		});
+		const [zero, one] = await presentNotifications(
+			[
+				row("z", { kind: "settlementReceived", amount: amount(0) }, "a"),
+				row("o", { kind: "settlementReceived", amount: amount() }, "a"),
+			],
+			{ language: "en" },
+		);
+		expect(zero?.body).not.toBe("");
+		expect(zero?.body).toBe(one?.body);
+		expect(plain(zero?.body ?? "")).toMatch(/^Ana .*ARS\s?0/);
 	});
 });

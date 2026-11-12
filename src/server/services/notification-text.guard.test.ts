@@ -185,5 +185,7 @@ describe("notification text guard", () => {
 				?.source ?? "";
 		expect(source).toMatch(/title: "",\s+body: "",/);
 		expect(source).toMatch(/\bnotice,\s*\};/);
+		// The notice stored is the parsed one, never the caller's object.
+		expect(source).toMatch(/const notice = parseStoredNotice\(params\.notice\)/);
 	});
 });

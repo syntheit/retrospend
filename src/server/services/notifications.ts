@@ -52,7 +52,14 @@ export interface CreateNotificationParams {
 export async function createNotification(
 	params: CreateNotificationParams,
 ): Promise<void> {
-	const { userId, type, notice, data } = params;
+	const { userId, type, data } = params;
+	// The stored notice is the one read back: the same schema at both ends,
+	// so a row never reads blank, and a key a caller adds is never stored.
+	const notice = parseStoredNotice(params.notice);
+	if (!notice) {
+		console.error("[Notification Error] Refused a notice that does not match its schema:", type);
+		return;
+	}
 
 	try {
 		// Look up the user's preference for this notification type
@@ -330,7 +337,13 @@ export async function presentNotifications<
 		actors.length > 0 ? await loadActorNames(actors) : new Map<string, string>();
 	return Promise.all(
 		parsed.map(async ({ row, data, notice }) => {
-			if (!notice || !data) return row;
+			if (!notice || !data) {
+				// A notice this server cannot read is never handed out raw.
+				if (!data || !("notice" in data)) return row;
+				const ids = { ...data };
+				delete ids.notice;
+				return { ...row, data: ids };
+			}
 			const text = await buildNoticeText(
 				notice,
 				reader,
