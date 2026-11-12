@@ -1,8 +1,8 @@
 /**
  * Text matching for search, in the app layer. Titles and notes can hold
  * ciphertext (docs/roadmap/e2ee-spike.md, lane D), so Postgres cannot match
- * them; the services fetch candidate rows by the plain filters, read the text
- * through `readUserText`, and match here.
+ * them; the services pick rows by the plain filters, read the text through
+ * model reads (which open it), and match here.
  *
  * Each fold reproduces what its SQL did, so results for plaintext data are the
  * same as before:
@@ -15,12 +15,8 @@
  * `pgLower` lowercases one code point at a time, as Postgres's lower() does:
  * no context (a final sigma stays sigma) and "I with dot" becomes a plain i.
  */
-import { epochActiveNow, loadEpoch } from "../crypto/epoch";
-import {
-	FieldCryptoError,
-	type Keyring,
-	readField,
-} from "../crypto/field-crypto";
+import { loadEpoch } from "../crypto/epoch";
+import type { Keyring } from "../crypto/field-crypto";
 import { UNACCENT_RULES } from "./search-unaccent-rules";
 
 const RULES: ReadonlyMap<string, string> = new Map(
@@ -97,46 +93,23 @@ export function ilikeContains(query: string): (text: string) => boolean {
 }
 
 /**
- * How many of the newest rows the app-layer path reads, for v1 search,
- * Activity search and title suggestions alike, so the windows cannot drift.
+ * How many of the newest rows title suggestions, import review and the people
+ * pickers read on the app-layer path, so the windows cannot drift. PR 5.2
+ * moves them to scan-batches.ts and removes it.
  */
 export const APP_LAYER_WINDOW = 20_000;
 
 /**
- * The one switch between the two ways to match search text. Before the field
- * encryption epoch (epoch.ts) Postgres matches in SQL over every row. Once
- * it exists any text may be ciphertext, so candidates are read and matched in
- * the app layer over a bounded window: v1 search reads the newest
- * SEARCH_EXPENSE_WINDOW (20,000) expenses, Activity the newest
- * SEARCH_CANDIDATE_CAP (20,000) rows per source, so older rows are not found
- * on that path. The SQL path would quietly miss sealed rows. A keyring picks
- * the app path too (tests). An epoch that is not known (no read yet, or a
- * failed one) counts as set. This reads only the cache, for callers inside a
- * transaction (whose client loaded it as it opened); a caller outside one
- * uses `searchesInAppLoaded`, so a cold process does not guess. Until PR 5
- * hands these paths every key, a raw read of a sealed cell fails
- * (`readUserText`), which is loud, never a miss.
+ * The one switch between the two ways to match search text, read outside any
+ * transaction and once per request: the caller carries the answer (Activity
+ * puts it on its KeyQuery), so a flip mid-request cannot mix the two. Before
+ * the field encryption epoch (epoch.ts) Postgres matches in SQL over every
+ * row. Once it exists any text may be ciphertext, so rows are read and matched
+ * in the app: v1 expense search and Activity scan every row in batches
+ * (scan-batches.ts). An epoch that is not known (no read yet, or a failed one)
+ * counts as set. A keyring picks the app path too (title suggestions,
+ * duplicates and import review, in tests).
  */
-export function searchesInApp(keyring: Keyring | undefined): boolean {
-	return keyring !== undefined || epochActiveNow();
-}
-
-/** `searchesInApp` after loading the epoch (no query inside a transaction). */
-export async function searchesInAppLoaded(
-	keyring: Keyring | undefined,
-): Promise<boolean> {
+export async function searchesInAppLoaded(keyring?: Keyring): Promise<boolean> {
 	return keyring !== undefined || (await loadEpoch());
-}
-
-/** The text of a column that may hold ciphertext; null reads as empty. */
-export function readUserText(
-	keyring: Keyring | undefined,
-	value: string | null | undefined,
-	aad: { table: string; column: string; rowId: string },
-): string {
-	if (value === null || value === undefined) return "";
-	if (!value.startsWith("\u0001")) return value;
-	// Ciphertext with no key to open it is an error, never a silent non-match.
-	if (!keyring) throw new FieldCryptoError("unknown_key");
-	return readField(keyring, value, aad);
 }

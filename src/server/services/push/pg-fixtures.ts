@@ -6,7 +6,12 @@
 import { randomUUID } from "node:crypto";
 import { createUserScopedDb } from "~/server/db";
 import { addressHash } from "~/server/services/push-device.service";
-import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
+import {
+	adminDb,
+	createTestUser,
+	fixtureDb,
+	openTransactionsEnded,
+} from "~/test/pg-harness";
 import type { PushTransport } from "~prisma";
 import { loadPushConfig, type PushConfig } from "./config";
 import type {
@@ -141,6 +146,7 @@ export const deliveriesOf = (userId: string) =>
  * re-arms after two seconds for the same reason.
  */
 export async function sweepUntilPushed(sweep: () => Promise<unknown>) {
+	await openTransactionsEnded();
 	for (let n = 0; n < 50; n++) {
 		await sweep();
 		if ((await adminDb.apiEvent.count({ where: { pushedAt: null } })) === 0)

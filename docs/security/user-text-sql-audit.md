@@ -116,13 +116,13 @@ current lines.
 | B2 | `search.service.ts:243-256` (base) | v1 project search: `name`, `description ILIKE`, `ORDER BY name` | b | Moved in D10 (`searchProjects`) |
 | B3 | `search.service.ts:274-282` (base) | v1 category search: `name ILIKE`, `ORDER BY name` | b | Moved in D10 (`searchCategories`) |
 | B4 | `src/server/services/search.service.ts:87-118` | v1 expense search, SQL path: `title`, `description`, `location` | b | Moved in D5 (`searchExpensesInApp`), SQL path kept |
-| B5 | `search.service.ts:120-170` | v1 expense search, app path: reads `title`, `description`, `location` | a | Raw columns opened by `readUserText`. Never runs without a keyring when D11 is on |
+| B5 | `search.service.ts:120-170` | v1 expense search, app path: reads `title`, `description`, `location` | a | Moved in D11 PR 5.1: a model keyset on `(date, id)` in batches (`scan-batches.ts`), the text opened by the model read |
 | B6 | `src/server/services/expense-list/query-parts.ts:52,161-163` | Activity search over personal `title`, `description`, `location` (`lower(translate())`) | b | Moved in D5, SQL path kept |
 | B7 | `query-parts.ts:211` | Activity search over shared `description`, `notes` | b | Moved in D5, SQL path kept |
 | B8 | `query-parts.ts:253` | Activity search over payment `note`, `paymentMethod` (concatenated) | b | Moved in D5, SQL path kept |
-| B9 | `src/server/services/expense-list/search-scan.ts:99-101` | candidates: `ARRAY[title, description, location]` | a | Opened by `readUserText` in the same file |
+| B9 | `src/server/services/expense-list/search-scan.ts:99-101` | candidates: `ARRAY[title, description, location]` | a | Moved in D11 PR 5.1: candidates carry ids only, the text comes from model reads by id |
 | B10 | `search-scan.ts:106-107` | candidates: `ARRAY[description, notes]` of shared rows | a | Same |
-| B11 | `search-scan.ts:114-123` | candidates: `array_agg(note)`, `min(paymentMethod)` of payment groups | a | Same |
+| B11 | `search-scan.ts:114-123` | candidates: `array_agg(note)`, `min(paymentMethod)` of payment groups | a | Same; `paymentMethod`, which was never opened, now is |
 | B12 | `scripts/scan-control-chars.ts:105-109` | counts rows with control characters, a leading U+0001 and U+FFFD, per column | b | Intended: it runs before D11 and D12. After the backfill every row starts with U+0001, so its count then means "sealed". Document in the D12 runbook |
 | B13 | `src/server/better-auth/config.ts:168` (adapter) | better-auth reads and writes `user.name` through the global client | a | D11 must apply the extension to that client too (section 8) |
 | B14 | `src/server/services/payments/confirm-restore.ts` (`storedText`) | payment confirm: `payment.paymentMethod` and every settlement column of the payment, read raw | a | Added in D11 PR 4.1, the fix of 7.1: the values go into the SETTLED entry's `previous` exactly as stored, never opened; `openAuditChanges` opens them when the entry is served |
@@ -270,17 +270,17 @@ After D12 finishes the backfill, the SQL paths are dead code. Delete them with
 `immutable_unaccent`'s callers, and drop the `AUDITED` entries in
 `userTextRawSql.test.ts` that no longer hold.
 
-The app-layer search reads a bounded window (`APP_LAYER_WINDOW`, 20,000 newest
-rows per source). On an account with more, older rows are not found. That limit
-is a product call for D11, not changed here.
+v1 expense search and Activity scan every row in batches (D11 PR 5.1). Title
+suggestions, import review and the people pickers still read a bounded window
+(`APP_LAYER_WINDOW`, 20,000 newest rows) until PR 5.2.
 
 ## 8. D11 checklist
 
 1. Apply the extension to every client that touches these tables: the
    scoped client, the global client, the better-auth adapter (B13) and the
    sidecar (D1, D2).
-2. Raw SQL results are not decrypted. Open B5, B9, B10, B11 with `readUserText`
-   (they do) and keep any new raw reader on that rule.
+2. Raw SQL results are not decrypted. B5, B9, B10 and B11 read text through
+   model reads (PR 5.1); keep any new reader on that rule.
 3. Fix section 7.1 before turning on writes for `settlement` and `payment`.
 4. Decide D2 (sidecar recurring).
 5. Pass the keyring to the callers in 7.3.
@@ -290,7 +290,7 @@ is a product call for D11, not changed here.
    is D2.
 7. Never re-seal a column an update does not change (C4, C5), or the guards see
    a change.
-8. Mixed mode: plaintext rows stay readable. `readUserText` already returns
+8. Mixed mode: plaintext rows stay readable. The model reads return
    plaintext as is.
 9. Unique and indexed text: `category.name` (A26, D9) and the title index (A27,
    D7 drop). Category creation depends on the unique key in three callers (A26).

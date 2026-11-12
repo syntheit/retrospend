@@ -22,7 +22,11 @@ import {
 	previousOf,
 	storedText,
 } from "~/server/services/payments/confirm-restore";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import {
+	adminDb,
+	createTestUser,
+	openTransactionsEnded,
+} from "~/test/pg-harness";
 import type { Prisma } from "~prisma";
 
 type TestUser = Awaited<ReturnType<typeof createTestUser>>;
@@ -896,6 +900,7 @@ describe("the marker of a rewrite", () => {
 		// a transaction another worker's test has open can delay the sweep by a
 		// write or two.
 		const first = await write();
+		await openTransactionsEnded();
 		for (let n = 0; n < 50; n++) {
 			await write();
 			if ((await marks(first)) === 0) break;

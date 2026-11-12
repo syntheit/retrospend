@@ -1,15 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { Keyring, sealField } from "../crypto/field-crypto";
 import {
 	foldUnaccentIlike,
 	ilikeContains,
 	pgLower,
-	readUserText,
 	unaccent,
 } from "./search-fold";
-
-const keyring = new Keyring([{ id: 1, key: Buffer.alloc(32, 7) }]);
-const aad = { table: "expense", column: "title", rowId: "row1" };
 
 describe("unaccent", () => {
 	it("strips accents and expands ligatures like Postgres unaccent", () => {
@@ -76,25 +71,5 @@ describe("ilikeContains", () => {
 		const started = Date.now();
 		expect(has("a".repeat(5000))).toBe(false);
 		expect(Date.now() - started).toBeLessThan(500);
-	});
-});
-
-describe("readUserText", () => {
-	it("passes plaintext and null through without a key", () => {
-		expect(readUserText(undefined, "Café", aad)).toBe("Café");
-		expect(readUserText(undefined, null, aad)).toBe("");
-	});
-
-	it("opens ciphertext with the key", () => {
-		const sealed = sealField(keyring, "Café con leche", aad);
-		expect(readUserText(keyring, sealed, aad)).toBe("Café con leche");
-	});
-
-	it("throws on ciphertext with no key, or for another row", () => {
-		const sealed = sealField(keyring, "Café", aad);
-		expect(() => readUserText(undefined, sealed, aad)).toThrow();
-		expect(() =>
-			readUserText(keyring, sealed, { ...aad, rowId: "row2" }),
-		).toThrow();
 	});
 });

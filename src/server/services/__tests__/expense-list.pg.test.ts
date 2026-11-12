@@ -8,12 +8,7 @@ import { fromWallTime } from "@retrospend/domain/time-zone";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { activityRow, listActivity } from "~/server/services/expense-list";
 import { listV2Input, NO_CATEGORY } from "~/server/services/expense-list/types";
-import {
-	adminDb,
-	createTestUser,
-	fixtureDb,
-	sealedSuite,
-} from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 
 const TZ = "America/Argentina/Buenos_Aires";
 const day = (d: number, m = 10) =>
@@ -325,10 +320,7 @@ describe("expense.listV2", () => {
 		expect(cena?.people).toHaveLength(2);
 	});
 
-	it("searches across months, ignoring case and accents, and by amount", async ({
-		skip,
-	}) => {
-		skip(sealedSuite, "PR 5: search reads sealed text without the user's keys");
+	it("searches across months, ignoring case and accents, and by amount", async () => {
 		for (const q of [
 			"almacen",
 			"ALMACÉN",
@@ -551,10 +543,7 @@ describe("expense.listV2 entry kinds (M1, M2)", () => {
 		expect(azul).not.toHaveProperty("rateType");
 	});
 
-	it("finds Cyrillic titles in any case (SQL and JS fold alike)", async ({
-		skip,
-	}) => {
-		skip(sealedSuite, "PR 5: search reads sealed text without the user's keys");
+	it("finds Cyrillic titles in any case (SQL and JS fold alike)", async () => {
 		for (const q of ["чай", "Чай", "ЧАЙ"])
 			expect(
 				(await list(mover, { q })).items.map((i) => i.title),

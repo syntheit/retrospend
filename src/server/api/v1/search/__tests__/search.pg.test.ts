@@ -5,7 +5,6 @@
  */
 import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { sealedSuite } from "~/test/pg-harness";
 import {
 	adminDb,
 	asMobile,
@@ -49,8 +48,7 @@ async function expense(userId: string, title: string, date: string) {
 	});
 }
 
-// PR 5: search reads sealed text without the user's keys (sealed suite only).
-describe.skipIf(sealedSuite)("/api/v1/search", () => {
+describe("/api/v1/search", () => {
 	let alice: string;
 	let asAlice: Record<string, string>;
 	let asBob: Record<string, string>;

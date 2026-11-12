@@ -91,3 +91,37 @@ export async function withSuperuser<T>(
 		await client.end();
 	}
 }
+
+/**
+ * Waits until every transaction open on the Postgres server right now has
+ * ended. The event outbox (events/feed.ts) releases a row only once its
+ * transaction is older than every open one, server wide, so a sweep right
+ * after a write waits for this first: for as long as another file's or
+ * another run's transaction (a DROP DATABASE, a migration) holds it, not for
+ * a fixed number of tries. After 30 s it throws and names the transactions
+ * still open, so a stuck one is found by name instead of a bare test timeout.
+ */
+export async function openTransactionsEnded(): Promise<void> {
+	const [start] = await adminDb.$queryRaw<{ xmax: string }[]>`
+		SELECT pg_snapshot_xmax(pg_current_snapshot())::text AS xmax`;
+	const deadline = Date.now() + 30_000;
+	while (Date.now() < deadline) {
+		const [now] = await adminDb.$queryRaw<{ ended: boolean }[]>`
+			SELECT pg_snapshot_xmin(pg_current_snapshot()) >= ${start?.xmax}::xid8 AS ended`;
+		if (now?.ended) return;
+		await new Promise((r) => setTimeout(r, 50));
+	}
+	const open = await adminDb.$queryRaw<
+		{
+			pid: number;
+			datname: string | null;
+			xact_start: Date | null;
+			state: string | null;
+		}[]
+	>`
+		SELECT pid, datname, xact_start, state FROM pg_stat_activity
+		WHERE backend_xid IS NOT NULL AND backend_xid::text::xid8 < ${start?.xmax}::xid8`;
+	throw new Error(
+		`transactions still open after 30 s: ${JSON.stringify(open)}`,
+	);
+}

@@ -3,20 +3,21 @@
  * are copied here as the oracle: Activity folded with `lower(translate())`,
  * v1 search with `immutable_unaccent() ILIKE`. On a plaintext ledger the new
  * code must return the same rows in the same order, page by page. Then the
- * same searches over rows that hold ciphertext, the candidate bound, and a
- * guard that the number of queries does not grow with the hits.
+ * same searches over rows that hold ciphertext, sealed with the owner's key
+ * and opened by the model reads. The app-layer path is the one taken once the
+ * field encryption epoch exists; its batches are covered in
+ * search-batches.pg.test.ts.
  */
 import { randomUUID } from "node:crypto";
 import { fromWallTime } from "@retrospend/domain/time-zone";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
 	FieldCryptoError,
-	Keyring,
+	type Keyring,
 	sealField,
 } from "~/server/crypto/field-crypto";
 import { userTransaction } from "~/server/db-tx";
 import { listActivity } from "~/server/services/expense-list";
-import { countKeys, pageKeys } from "~/server/services/expense-list/query";
 import {
 	amountCandidates,
 	FOLD_FROM,
@@ -25,33 +26,36 @@ import {
 import { listV2Input } from "~/server/services/expense-list/types";
 import { searchExpenses as searchExpensesWith } from "~/server/services/search.service";
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
-import { restoreCells, writeCell, writeEpoch } from "~/test/sealed-fixture";
+import {
+	sealedFile,
+	sealText,
+	userKeyring,
+	writeCell,
+	writeEpoch,
+} from "~/test/sealed-fixture";
 import { Prisma } from "~prisma";
+
+const master = vi.hoisted(() => ({ ring: undefined as Keyring | undefined }));
+vi.mock("~/server/crypto/master-key", async (importOriginal) => ({
+	...(await importOriginal<typeof import("~/server/crypto/master-key")>()),
+	getMasterKeyring: () => master.ring,
+}));
+sealedFile(master);
 
 const TZ = "America/Argentina/Buenos_Aires";
 const day = (d: number, m = 10) =>
 	fromWallTime({ year: 2026, month: m - 1, day: d }, TZ);
 const NOW = new Date("2026-10-21T15:00:00Z");
-const keyring = new Keyring([{ id: 1, key: Buffer.alloc(32, 9) }]);
-/** Both ways to match text. Plaintext rows must give the same answer on each. */
+/** Both ways to match text, picked by the epoch. Plaintext rows must give the same answer on each. */
 const PATHS = [
-	["the SQL path (no keyring)", undefined],
-	["the app-layer path (keyring)", keyring],
+	["the SQL path (no epoch)", false],
+	["the app-layer path (epoch)", true],
 ] as const;
 
-/** Counts $queryRaw calls on a transaction client. */
-function counted(tx: Prisma.TransactionClient, count: { n: number }) {
-	return new Proxy(tx, {
-		get(target, prop, receiver) {
-			const value = Reflect.get(target, prop, receiver);
-			if (prop === "$queryRaw")
-				return (...args: unknown[]) => {
-					count.n++;
-					return (value as (...a: unknown[]) => unknown).apply(target, args);
-				};
-			return typeof value === "function" ? value.bind(target) : value;
-		},
-	});
+/** The block's path; no epoch again after it. */
+function onPath(epoch: boolean) {
+	beforeAll(() => writeEpoch(epoch));
+	afterAll(() => writeEpoch(false));
 }
 
 type Who = Awaited<ReturnType<typeof createTestUser>>;
@@ -289,23 +293,11 @@ const ACTIVITY_QUERIES = [
 	"zzz",
 ];
 
-const activityWith = (
-	ring: Keyring | undefined,
-	q: string,
-	extra: object = {},
-) =>
-	listActivity(
-		me.db,
-		me.user.id,
-		listV2Input.parse({ q, ...extra }),
-		TZ,
-		NOW,
-		ring,
-	);
+const activity = (q: string, extra: object = {}) =>
+	listActivity(me.db, me.user.id, listV2Input.parse({ q, ...extra }), TZ, NOW);
 
-describe.each(PATHS)("Activity search on %s vs the old SQL", (_name, ring) => {
-	const activity = (q: string, extra: object = {}) =>
-		activityWith(ring, q, extra);
+describe.each(PATHS)("Activity search on %s vs the old SQL", (_name, epoch) => {
+	onPath(epoch);
 
 	it.each(ACTIVITY_QUERIES)(
 		"returns the old rows in the old order for %j",
@@ -385,13 +377,9 @@ describe.each(PATHS)("Activity search on %s vs the old SQL", (_name, ring) => {
 
 describe.each(PATHS)(
 	"v1 expense search on %s vs the old SQL",
-	(_name, ring) => {
-		const searchExpenses = (
-			db: typeof adminDb,
-			userId: string,
-			q: string,
-			page: { after: { date: string; id: string } | null; take: number },
-		) => searchExpensesWith(db, userId, q, page, ring ? { keyring: ring } : {});
+	(_name, epoch) => {
+		onPath(epoch);
+		const searchExpenses = searchExpensesWith;
 
 		const V1_QUERIES = [
 			"cafe",
@@ -450,7 +438,8 @@ describe.each(PATHS)(
 				after: null,
 				take: 1,
 			});
-			expect(hit).toMatchObject({ amount: "64000.00000000", currency: "ARS" });
+			expect(hit?.currency).toBe("ARS");
+			expect(new Prisma.Decimal(hit?.amount ?? "0").equals("64000")).toBe(true);
 		});
 	},
 );
@@ -458,6 +447,7 @@ describe.each(PATHS)(
 describe("rows that hold ciphertext", () => {
 	let user: Who;
 	const ids: Record<string, string> = {};
+	onPath(true);
 
 	beforeAll(async () => {
 		user = await createTestUser();
@@ -481,38 +471,32 @@ describe("rows that hold ciphertext", () => {
 			});
 			ids[title] = created.id;
 		}
-		// Raw SQL search opens with the keyring it is given, so these rows are
-		// sealed with that ring and written raw (the clients refuse ciphertext).
+		// Sealed with the owner's key and written raw; no keyring is passed
+		// anywhere, the model reads open them.
 		const seal = (column: string, rowId: string, text: string) =>
-			writeCell(
-				"expense",
-				column,
-				rowId,
-				sealField(keyring, text, { table: "expense", column, rowId }),
+			sealText(
+				master.ring as Keyring,
+				{ table: "expense", column, rowId },
+				text,
 			);
 		await seal("title", ids["Café sealed"] ?? "", "Café sealed");
 		await seal("description", ids.Almuerzo ?? "", "Sealed café note");
 		await seal("title", ids["Sealed Ñandú"] ?? "", "Sealed Ñandú");
 		await seal("location", ids["Sealed Ñandú"] ?? "", "Plaza Ñuñoa");
 	});
-	afterAll(restoreCells);
 
-	const query = (
-		q: string,
-		withKey = true,
-	): Parameters<typeof pageKeys>[1] => ({
-		userId: user.user.id,
-		filter: listV2Input.parse({ q }),
-		bounds: {},
-		excludedProjectIds: [],
-		...(withKey ? { keyring } : {}),
-	});
-	const keys = (q: string) =>
-		userTransaction(adminDb, user.user.id, async (tx) =>
-			(await pageKeys(tx, query(q), null, 50)).map((k) => k.id),
-		);
+	const keys = async (q: string) =>
+		(
+			await listActivity(
+				adminDb,
+				user.user.id,
+				listV2Input.parse({ q, limit: 50 }),
+				TZ,
+				NOW,
+			)
+		).items.map((i) => i.id);
 
-	it("Activity matches sealed and plain titles, notes and places together", async () => {
+	it("with the epoch, Activity matches sealed and plain titles, notes and places together", async () => {
 		expect(await keys("cafe")).toEqual([
 			ids.Almuerzo,
 			ids["Plain café"],
@@ -537,14 +521,11 @@ describe("rows that hold ciphertext", () => {
 		expect(row?.n).toBe(0);
 	});
 
-	it("v1 search matches them and returns the title in the clear", async () => {
-		const hits = await searchExpensesWith(
-			adminDb,
-			user.user.id,
-			"CAFE",
-			{ after: null, take: 10 },
-			{ keyring },
-		);
+	it("with the epoch, v1 search matches them and returns the title in the clear", async () => {
+		const hits = await searchExpensesWith(adminDb, user.user.id, "CAFE", {
+			after: null,
+			take: 10,
+		});
 		expect(hits.map((h) => h.title)).toEqual([
 			"Almuerzo",
 			"Plain café",
@@ -552,35 +533,17 @@ describe("rows that hold ciphertext", () => {
 		]);
 	});
 
-	it("without a keyring the SQL path runs and sealed rows are not found", async () => {
-		const noKey = await userTransaction(adminDb, user.user.id, async (tx) =>
-			(await pageKeys(tx, query("cafe", false), null, 50)).map((k) => k.id),
-		);
-		expect(noKey).toEqual([ids["Plain café"]]);
-		const v1 = await searchExpensesWith(adminDb, user.user.id, "cafe", {
-			after: null,
-			take: 5,
-		});
-		expect(v1.map((h) => h.title)).toEqual(["Plain café"]);
-	});
-
-	it("once the encryption epoch exists, runs in the app with no keyring, so a sealed row fails loudly instead of going missing", async () => {
-		// Until PR 5 hands these paths every key, no keyring opens nothing.
-		await writeEpoch(true);
+	it("before the epoch the SQL path runs and sealed rows are not found", async () => {
+		await writeEpoch(false);
 		try {
-			await expect(
-				userTransaction(adminDb, user.user.id, (tx) =>
-					pageKeys(tx, query("cafe", false), null, 50),
-				),
-			).rejects.toMatchObject({ code: "unknown_key" });
-			await expect(
-				searchExpensesWith(adminDb, user.user.id, "cafe", {
-					after: null,
-					take: 5,
-				}),
-			).rejects.toMatchObject({ code: "unknown_key" });
+			expect(await keys("cafe")).toEqual([ids["Plain café"]]);
+			const v1 = await searchExpensesWith(adminDb, user.user.id, "cafe", {
+				after: null,
+				take: 5,
+			});
+			expect(v1.map((h) => h.title)).toEqual(["Plain café"]);
 		} finally {
-			await writeEpoch(false);
+			await writeEpoch(true);
 		}
 	});
 
@@ -589,179 +552,26 @@ describe("rows that hold ciphertext", () => {
 		await fixtureDb.expense.create({
 			data: { ...base(user.user.id), id: moved, title: "x", date: day(20) },
 		});
-		// Sealed for another row: the AAD check must refuse it.
+		// Sealed with the owner's key for another row: the AAD check refuses it.
+		const ring = await userKeyring(user.user.id, master.ring as Keyring);
 		await writeCell(
 			"expense",
 			"title",
 			moved,
-			sealField(keyring, "Moved café", {
+			sealField(ring, "Moved café", {
 				table: "expense",
 				column: "title",
 				rowId: ids["Café sealed"] ?? "",
 			}),
 		);
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		await expect(keys("cafe")).rejects.toBeInstanceOf(FieldCryptoError);
 		await expect(
-			userTransaction(adminDb, user.user.id, (tx) =>
-				pageKeys(tx, query("cafe"), null, 50),
-			),
+			searchExpensesWith(adminDb, user.user.id, "cafe", {
+				after: null,
+				take: 5,
+			}),
 		).rejects.toBeInstanceOf(FieldCryptoError);
-		await adminDb.expense.delete({ where: { id: moved } });
-	});
-});
-
-describe("the app-layer path: candidate bound and query count", () => {
-	let user: Who;
-
-	beforeAll(async () => {
-		user = await createTestUser();
-		await fixtureDb.expense.createMany({
-			data: [
-				...Array.from({ length: 60 }, (_, i) => ({
-					...base(user.user.id),
-					title: `volumen ${i}`,
-					date: day(1 + (i % 28)),
-				})),
-				...Array.from({ length: 2 }, (_, i) => ({
-					...base(user.user.id),
-					title: `raro ${i}`,
-					date: day(1 + i),
-				})),
-			],
-		});
-	});
-
-	const activityQueries = async (q: string) => {
-		const count = { n: 0 };
-		const k = {
-			userId: user.user.id,
-			filter: listV2Input.parse({ q }),
-			bounds: {},
-			excludedProjectIds: [],
-			keyring,
-		};
-		const found = await userTransaction(adminDb, user.user.id, async (tx) => {
-			const t = counted(tx, count);
-			const page = await pageKeys(t, k, null, 51);
-			const all = await countKeys(t, k);
-			return { page: page.length, all };
-		});
-		return { ...found, queries: count.n };
-	};
-
-	it("Activity reads one query per source, however many rows match", async () => {
-		const many = await activityQueries("volumen");
-		const few = await activityQueries("raro");
-		expect(many).toMatchObject({ page: 51, all: 60 });
-		expect(few).toMatchObject({ page: 2, all: 2 });
-		// Personal, shared and payments; the count reuses the page's candidates.
-		expect(many.queries).toBe(3);
-		expect(few.queries).toBe(3);
-	});
-
-	it("v1 search reads one query, however many rows match", async () => {
-		for (const q of ["volumen", "raro"]) {
-			const count = { n: 0 };
-			const client = {
-				$transaction: (
-					fn: (tx: Prisma.TransactionClient) => Promise<unknown>,
-					options: object,
-				) => adminDb.$transaction((tx) => fn(counted(tx, count)), options),
-			} as unknown as typeof adminDb;
-			await searchExpensesWith(
-				client,
-				user.user.id,
-				q,
-				{ after: null, take: 51 },
-				{ keyring },
-			);
-			expect(count.n, q).toBe(1);
-		}
-	});
-
-	it("Activity searches only the newest candidates per source", async () => {
-		const k = {
-			userId: user.user.id,
-			filter: listV2Input.parse({ q: "volumen" }),
-			bounds: {},
-			excludedProjectIds: [],
-			candidateCap: 10,
-			keyring,
-		};
-		const found = await userTransaction(adminDb, user.user.id, (tx) =>
-			pageKeys(tx, k, null, 50),
-		);
-		// The newest ten rows of the account, all dated the 28th down to the 22nd.
-		expect(found).toHaveLength(10);
-		const newest = await fixtureDb.expense.findMany({
-			where: { userId: user.user.id },
-			orderBy: [{ date: "desc" }, { createdAt: "desc" }, { id: "desc" }],
-			take: 10,
-		});
-		expect(found.map((f) => f.id).sort()).toEqual(
-			newest.map((n) => n.id).sort(),
-		);
-	});
-
-	it("v1 search reads a window of the newest expenses and cuts the cursor inside it", async () => {
-		const all = await searchExpensesWith(adminDb, user.user.id, "volumen", {
-			after: null,
-			take: 100,
-		});
-		expect(all).toHaveLength(60);
-		const windowed = await searchExpensesWith(
-			adminDb,
-			user.user.id,
-			"volumen",
-			{ after: null, take: 100 },
-			{ keyring, window: 10 },
-		);
-		expect(windowed.map((r) => r.id)).toEqual(
-			all.slice(0, 10).map((r) => r.id),
-		);
-		const last = all[5];
-		const after = last ? { date: last.date.toISOString(), id: last.id } : null;
-		const next = await searchExpensesWith(
-			adminDb,
-			user.user.id,
-			"volumen",
-			{ after, take: 100 },
-			{ keyring, window: 10 },
-		);
-		expect(next.map((r) => r.id)).toEqual(all.slice(6, 10).map((r) => r.id));
-	});
-
-	it("picks the path by the keyring: the SQL path has no cap, the app layer does", async () => {
-		const run = async (ring?: Keyring) => {
-			const count = { n: 0 };
-			const k = {
-				userId: user.user.id,
-				filter: listV2Input.parse({ q: "volumen" }),
-				bounds: {},
-				excludedProjectIds: [],
-				candidateCap: 10,
-				...(ring ? { keyring: ring } : {}),
-			};
-			const found = await userTransaction(adminDb, user.user.id, (tx) =>
-				pageKeys(counted(tx, count), k, null, 100),
-			);
-			return { found: found.length, queries: count.n };
-		};
-		// One UNION query over every row: older than the cap, still found.
-		expect(await run()).toEqual({ found: 60, queries: 1 });
-		// One candidate query per source, cut at the cap.
-		expect(await run(keyring)).toEqual({ found: 10, queries: 3 });
-
-		const v1 = async (options: { keyring?: Keyring; window: number }) =>
-			(
-				await searchExpensesWith(
-					adminDb,
-					user.user.id,
-					"volumen",
-					{ after: null, take: 100 },
-					options,
-				)
-			).length;
-		expect(await v1({ window: 10 })).toBe(60);
-		expect(await v1({ keyring, window: 10 })).toBe(10);
+		await adminDb.$executeRaw`DELETE FROM expense WHERE id = ${moved}`;
 	});
 });

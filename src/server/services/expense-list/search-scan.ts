@@ -1,17 +1,18 @@
 /**
- * The app-layer path of the Activity text search, used when a keyring is set
- * (`searchesInApp`: field encryption is active). Without one, Postgres
- * matches in SQL (query-parts.ts, no row limit). Titles, descriptions and
- * notes may be ciphertext, which Postgres cannot match. A search reads
- * candidate rows with every other filter applied in SQL (one query per
- * source, the newest SEARCH_CANDIDATE_CAP each), reads the text through
- * readUserText and matches it here, then query.ts cuts the cursor and the
- * page from the matches. The SQL path matches with
- * `lower(translate(col, FOLD_FROM, FOLD_TO)) LIKE '%q%'`; foldColumn is that.
+ * The app-layer path of the Activity text search, taken once the field
+ * encryption epoch exists (`searchesInAppLoaded`, decided once per request in
+ * index.ts): titles, descriptions and notes may be ciphertext, which Postgres
+ * cannot match. Each source is scanned newest first by the page's own key, in
+ * batches (scan-batches.ts), over every row: SQL picks the rows by every other
+ * filter and says which typed amounts hit, model reads open the text by id
+ * (each cell with its own key), and the match runs here. listActivity runs it
+ * before its main transaction and hands the keys over as `KeyQuery.matched`.
+ * The SQL path matches with `lower(translate(col, FOLD_FROM, FOLD_TO)) LIKE
+ * '%q%'`; foldColumn is that.
  */
-import type { Keyring } from "~/server/crypto/field-crypto";
 import { Prisma } from "~prisma";
-import { APP_LAYER_WINDOW, readUserText, searchesInApp } from "../search-fold";
+import { readInChunks, type ScanClient, scanBatches } from "../scan-batches";
+import { type Page, pageOf } from "./query";
 import {
 	all,
 	type KeyQuery,
@@ -25,25 +26,20 @@ import {
 } from "./query-parts";
 import {
 	amountCandidates,
+	byKeyDesc,
 	type CursorKey,
 	foldColumn,
 	foldText,
 } from "./search";
 
-type Db = Prisma.TransactionClient;
+type Tx = Prisma.TransactionClient;
 
-/**
- * What a search looks for: the folded text, and the numbers a typed amount
- * can mean. Null when there is no search (blank counts as none) and when
- * there is no keyring, which leaves the text to the SQL path.
- */
-export function searchOf(
-	k: KeyQuery,
-): { needle: string; amounts: string[] } | null {
-	const q = k.filter.q?.trim();
-	if (!q || !searchesInApp(k.keyring)) return null;
-	return { needle: foldText(q), amounts: amountCandidates(q) };
-}
+/** A row of a source: its key, whether a typed amount hits, and the rows its text is on. */
+type Candidate = RowKey & { ids: string[]; amountHit: boolean };
+
+type Texts = { id: string; texts: string[] };
+
+type Search = { needle: string; amounts: string[] };
 
 /** Whether `col` equals any amount a typed number can mean. */
 function amountHit(cols: Prisma.Sql[], amounts: string[]): Prisma.Sql {
@@ -54,150 +50,200 @@ function amountHit(cols: Prisma.Sql[], amounts: string[]): Prisma.Sql {
 	)})`;
 }
 
+const cut = (parts: Prisma.Sql[], where: Prisma.Sql | null) =>
+	all(where ? [...parts, where] : parts);
+
 /**
- * How many rows of each source a text search reads: the newest ones that pass
- * every other filter. Rows beyond that are not searched, so someone with more
- * than this many expenses (or shares, or payments) in the filtered range
- * finds only the newest. A date filter narrows the window.
+ * Per source: one batch of candidates (no text column), and the text of the
+ * rows they name, read through the model so it is opened. A payment's words
+ * are per settlement row, its note, a space and its method, as the SQL path
+ * builds them from min(note) and min(method), so every payment the SQL path
+ * matches is matched here too.
  */
-export const SEARCH_CANDIDATE_CAP = APP_LAYER_WINDOW;
-
-type Candidate = RowKey & {
-	/** The text columns to match, in the order of the column list for the source. */
-	texts: (string | null)[];
-	amountHit: boolean;
+const SOURCES = {
+	personal: {
+		candidates(k: KeyQuery, page: Page, amounts: string[]) {
+			const pg = pageOf(
+				"p",
+				Prisma.sql`e.date`,
+				Prisma.sql`e."createdAt"`,
+				Prisma.sql`e.id`,
+				page,
+			);
+			return Prisma.sql`
+				SELECT 'p'::text AS src, e.id AS id, e.date AS date, e."createdAt" AS created,
+					ARRAY[e.id] AS ids, ${amountHit([Prisma.sql`e.amount`], amounts)} AS "amountHit"
+				FROM expense e WHERE ${cut(personalParts(k), pg.where)} ${pg.tail}`;
+		},
+		async texts(tx: Tx, userId: string, ids: string[]): Promise<Texts[]> {
+			const rows = await tx.expense.findMany({
+				where: { id: { in: ids }, userId },
+				select: { id: true, title: true, description: true, location: true },
+			});
+			return rows.map((e) => ({
+				id: e.id,
+				texts: [e.title, e.description ?? "", e.location ?? ""],
+			}));
+		},
+	},
+	shared: {
+		candidates(k: KeyQuery, page: Page, amounts: string[]) {
+			const pg = pageOf(
+				"s",
+				Prisma.sql`st.date`,
+				Prisma.sql`st."createdAt"`,
+				Prisma.sql`st.id`,
+				page,
+			);
+			return Prisma.sql`
+				SELECT 's'::text AS src, st.id AS id, st.date AS date, st."createdAt" AS created,
+					ARRAY[st.id] AS ids,
+					${amountHit([Prisma.sql`st.amount`, Prisma.sql`sp."shareAmount"`], amounts)} AS "amountHit"
+				${SHARED_JOIN(k.userId)}
+				WHERE ${cut(sharedParts(k), pg.where)} ${pg.tail}`;
+		},
+		async texts(tx: Tx, _userId: string, ids: string[]): Promise<Texts[]> {
+			const rows = await tx.sharedTransaction.findMany({
+				where: { id: { in: ids } },
+				select: { id: true, description: true, notes: true },
+			});
+			return rows.map((t) => ({
+				id: t.id,
+				texts: [t.description, t.notes ?? ""],
+			}));
+		},
+	},
+	payment: {
+		candidates(k: KeyQuery, page: Page, amounts: string[]) {
+			const pg = pageOf(
+				"g",
+				Prisma.sql`g.date`,
+				Prisma.sql`g.date`,
+				Prisma.sql`g.key`,
+				page,
+			);
+			return Prisma.sql`
+				SELECT 'g'::text AS src, g.key AS id, g.date AS date, g.date AS created,
+					g.ids, ${amountHit([Prisma.sql`g.amount`], amounts)} AS "amountHit"
+				FROM ${paymentGroups(k, Prisma.sql`, array_agg(s.id ORDER BY s.id) AS ids`)}
+				WHERE ${cut(paymentParts(k), pg.where)} ${pg.tail}`;
+		},
+		async texts(tx: Tx, _userId: string, ids: string[]): Promise<Texts[]> {
+			const rows = await tx.settlement.findMany({
+				where: { id: { in: ids } },
+				select: { id: true, note: true, paymentMethod: true },
+			});
+			return rows.map((s) => ({
+				id: s.id,
+				texts: [`${s.note ?? ""} ${s.paymentMethod ?? ""}`],
+			}));
+		},
+	},
 };
 
-type PaymentCandidate = RowKey & {
-	ids: string[];
-	notes: (string | null)[];
-	method: string | null;
-	amountHit: boolean;
-};
+type SourceName = keyof typeof SOURCES;
 
-const newestFirst = (
+/**
+ * One source's matches after `start`, newest first, until `stop` of them.
+ * Payments re-aggregate the caller's settlements for every batch; a person
+ * has hundreds to low thousands of them, so that is one or two batches. A row
+ * read twice (its date edited between batches) counts once.
+ */
+async function scanSource(
+	db: ScanClient,
 	k: KeyQuery,
-	date: Prisma.Sql,
-	created: Prisma.Sql,
-	id: Prisma.Sql,
-) =>
-	Prisma.sql`ORDER BY ${date} DESC, ${created} DESC, ${id} DESC LIMIT ${k.candidateCap ?? SEARCH_CANDIDATE_CAP}`;
-
-const personalColumns = ["title", "description", "location"] as const;
-const sharedColumns = ["description", "notes"] as const;
-
-/** A search's candidates from each wanted source, with their text still unread. */
-async function candidates(db: Db, k: KeyQuery, amounts: string[]) {
-	const w = sources(k);
-	const rows = {
-		personal: [] as Candidate[],
-		shared: [] as Candidate[],
-		payment: [] as PaymentCandidate[],
-	};
-	// One at a time: a transaction runs one query at once.
-	if (w.personal)
-		rows.personal = await db.$queryRaw<Candidate[]>`
-			SELECT 'p'::text AS src, e.id AS id, e.date AS date, e."createdAt" AS created,
-				ARRAY[e.title::text, e.description::text, e.location::text] AS texts,
-				${amountHit([Prisma.sql`e.amount`], amounts)} AS "amountHit"
-			FROM expense e WHERE ${all(personalParts(k))}
-			${newestFirst(k, Prisma.sql`e.date`, Prisma.sql`e."createdAt"`, Prisma.sql`e.id`)}`;
-	if (w.shared)
-		rows.shared = await db.$queryRaw<Candidate[]>`
-			SELECT 's'::text AS src, st.id AS id, st.date AS date, st."createdAt" AS created,
-				ARRAY[st.description::text, st.notes::text] AS texts,
-				${amountHit([Prisma.sql`st.amount`, Prisma.sql`sp."shareAmount"`], amounts)} AS "amountHit"
-			${SHARED_JOIN(k.userId)}
-			WHERE ${all(sharedParts(k))}
-			${newestFirst(k, Prisma.sql`st.date`, Prisma.sql`st."createdAt"`, Prisma.sql`st.id`)}`;
-	if (w.payment)
-		rows.payment = await db.$queryRaw<PaymentCandidate[]>`
-			SELECT 'g'::text AS src, g.key AS id, g.date AS date, g.date AS created,
-				g.ids, g.notes, g.method,
-				${amountHit([Prisma.sql`g.amount`], amounts)} AS "amountHit"
-			FROM ${paymentGroups(
-				k,
-				Prisma.sql`,
-					array_agg(s.id ORDER BY s.id) AS ids,
-					array_agg(s.note::text ORDER BY s.id) AS notes,
-					min(s."paymentMethod") AS method`,
-			)}
-			WHERE ${all(paymentParts(k))}
-			${newestFirst(k, Prisma.sql`g.date`, Prisma.sql`g.date`, Prisma.sql`g.key`)}`;
-	return rows;
-}
-
-/** A payment's words as the old SQL built them: its note, a space, its method. */
-function paymentWords(c: PaymentCandidate, keyring: Keyring | undefined) {
-	const notes = c.notes.flatMap((note, i) =>
-		note === null
-			? []
-			: [
-					readUserText(keyring, note, {
-						table: "settlement",
-						column: "note",
-						rowId: c.ids[i] ?? "",
-					}),
-				],
-	);
-	// Every row of a payment carries the same note; none means an empty one.
-	return (notes.length ? notes : [""]).map((n) => `${n} ${c.method ?? ""}`);
-}
-
-/** Descending by the page's sort key; the same order the cursor is read in. */
-export function byKeyDesc(a: CursorKey, b: CursorKey): number {
-	return (
-		b.date.getTime() - a.date.getTime() ||
-		b.created.getTime() - a.created.getTime() ||
-		(a.src === b.src ? 0 : a.src < b.src ? 1 : -1) ||
-		(a.id === b.id ? 0 : a.id < b.id ? 1 : -1)
-	);
-}
-
-/** Every key a search matches, newest first. Memoized per query object. */
-const searchMemo = new WeakMap<KeyQuery, Promise<RowKey[]>>();
-
-export function searchKeys(
-	db: Db,
-	k: KeyQuery,
-	search: { needle: string; amounts: string[] },
+	name: SourceName,
+	search: Search,
+	scan: { start: CursorKey | null; stop: number; batch?: number },
 ): Promise<RowKey[]> {
-	let found = searchMemo.get(k);
-	if (!found) {
-		found = (async () => {
-			const rows = await candidates(db, k, search.amounts);
-			const anyMatch = (texts: string[]) =>
-				texts.some((t) => foldColumn(t).includes(search.needle));
-			const column =
-				(table: string, id: string, columns: readonly string[]) =>
-				(value: string | null, i: number) =>
-					readUserText(k.keyring, value, {
-						table,
-						column: columns[i] ?? "",
-						rowId: id,
-					});
-			const keep = [
-				...rows.personal.filter(
-					(c) =>
-						c.amountHit ||
-						anyMatch(c.texts.map(column("expense", c.id, personalColumns))),
-				),
-				...rows.shared.filter(
-					(c) =>
-						c.amountHit ||
-						anyMatch(
-							c.texts.map(column("shared_transaction", c.id, sharedColumns)),
-						),
-				),
-				...rows.payment.filter(
-					(c) => c.amountHit || anyMatch(paymentWords(c, k.keyring)),
-				),
-			];
-			return keep
-				.map(({ src, id, date, created }) => ({ src, id, date, created }))
-				.sort(byKeyDesc);
-		})();
-		searchMemo.set(k, found);
+	const source = SOURCES[name];
+	const found = new Map<string, RowKey>();
+	await scanBatches(db, k.userId, {
+		batch: scan.batch,
+		start: scan.start,
+		read: async (tx, after, take) => {
+			const rows = await tx.$queryRaw<Candidate[]>(
+				source.candidates(k, { after, take }, search.amounts),
+			);
+			const unread = rows.flatMap((r) => (r.amountHit ? [] : r.ids));
+			const texts = new Map(
+				(
+					await readInChunks(unread, take, (ids) =>
+						source.texts(tx, k.userId, ids),
+					)
+				).map((t) => [t.id, t.texts]),
+			);
+			return rows.map(({ ids, amountHit, ...key }) => ({
+				key,
+				hit:
+					amountHit ||
+					ids.some((id) =>
+						texts.get(id)?.some((t) => foldColumn(t).includes(search.needle)),
+					),
+			}));
+		},
+		cursorOf: (row) => row.key,
+		visit: (rows) => {
+			for (const { key, hit } of rows)
+				if (hit && !found.has(key.id)) found.set(key.id, key);
+			return found.size >= scan.stop;
+		},
+	});
+	return [...found.values()];
+}
+
+/**
+ * The wanted sources with the query's text taken out of the SQL (every other
+ * filter stays there), and what the text search looks for.
+ */
+function prepare(k: KeyQuery) {
+	const q = k.filter.q?.trim() ?? "";
+	const w = sources(k);
+	return {
+		plain: { ...k, filter: { ...k.filter, q: undefined } },
+		search: { needle: foldText(q), amounts: amountCandidates(q) },
+		names: (Object.keys(SOURCES) as SourceName[]).filter((name) => w[name]),
+	};
+}
+
+/**
+ * Every key the search matches after `after`, newest first, with at least
+ * the first `stop` of each source: the top N of the union lie in the top N
+ * of each source. One source after another, so a request holds one
+ * connection at a time.
+ */
+export async function scanKeys(
+	db: ScanClient,
+	k: KeyQuery,
+	scan: { after: CursorKey | null; stop: number; batch?: number },
+): Promise<RowKey[]> {
+	const { plain, search, names } = prepare(k);
+	const keys: RowKey[] = [];
+	for (const name of names)
+		keys.push(
+			...(await scanSource(db, plain, name, search, {
+				start: scan.after,
+				stop: scan.stop,
+				batch: scan.batch,
+			})),
+		);
+	return keys.sort(byKeyDesc);
+}
+
+/** Whether the search matches anything at all; stops at the first match. */
+export async function scanAny(
+	db: ScanClient,
+	k: KeyQuery,
+	batch?: number,
+): Promise<boolean> {
+	const { plain, search, names } = prepare(k);
+	for (const name of names) {
+		const hits = await scanSource(db, plain, name, search, {
+			start: null,
+			stop: 1,
+			batch,
+		});
+		if (hits.length) return true;
 	}
-	return found;
+	return false;
 }

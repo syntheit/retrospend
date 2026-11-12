@@ -1,11 +1,10 @@
-import type { Keyring } from "~/server/crypto/field-crypto";
 import type { db as globalDb } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import { Prisma } from "~prisma";
+import { scanBatches } from "./scan-batches";
 import {
 	APP_LAYER_WINDOW,
 	foldUnaccentIlike,
-	readUserText,
 	searchesInAppLoaded,
 } from "./search-fold";
 import { compareText, sortByText } from "./text-order";
@@ -20,9 +19,9 @@ type AppDb = typeof globalDb;
  * projects, the user table). Matching is
  * `immutable_unaccent(column) ILIKE '%' || immutable_unaccent(q) || '%'`
  * (migration search_unaccent), so "cafe" finds "Café" and "MUNOZ" finds
- * "Muñoz". Expenses have two paths, picked by `searchesInApp`: the SQL match
- * above when no keyring is passed, and the same match in the app layer
- * (search-fold.ts) over a bounded window when text may be ciphertext. People,
+ * "Muñoz". Expenses have two paths, picked by `searchesInAppLoaded`: the SQL
+ * match above before the field encryption epoch, and the same match in the
+ * app layer (search-fold.ts) over every row once text may be ciphertext. People,
  * projects and categories always match in the app layer (see below).
  */
 
@@ -47,39 +46,20 @@ export type ExpenseHitRow = {
 };
 
 /**
- * How many of the newest finalized expenses the app-layer path reads (the
- * path used when a keyring is passed). Titles, descriptions and places may be
- * ciphertext there, so they are matched in the app and not in SQL; an older
- * expense than the newest SEARCH_EXPENSE_WINDOW is not found. One query per
- * call whatever the page or the hit count. The SQL path has no such limit.
- */
-export const SEARCH_EXPENSE_WINDOW = APP_LAYER_WINDOW;
-
-type ExpenseCandidate = ExpenseHitRow & {
-	description: string | null;
-	location: string | null;
-};
-
-/**
- * Finalized expenses by title, description or place, newest first. Without a
- * keyring Postgres matches every row; with one the text may be ciphertext and
- * is matched in the app layer (searchExpensesInApp).
+ * Finalized expenses by title, description or place, newest first. Before
+ * the field encryption epoch Postgres matches every row; after it the text
+ * may be ciphertext and is matched in the app layer (searchExpensesInApp).
  */
 export async function searchExpenses(
 	db: AppDb,
 	userId: string,
 	q: string,
 	page: Page<{ date: string; id: string }>,
-	options: {
-		/** Opens ciphertext in text fields; passing one picks the app-layer path. */
-		keyring?: Keyring;
-		/** App-layer path only: rows read, for tests; SEARCH_EXPENSE_WINDOW otherwise. */
-		window?: number;
-	} = {},
+	/** App-layer path only: rows per batch, for tests. */
+	options: { batch?: number } = {},
 ): Promise<ExpenseHitRow[]> {
-	const { keyring, window } = options;
-	return (await searchesInAppLoaded(keyring))
-		? searchExpensesInApp(db, userId, q, page, keyring, window)
+	return (await searchesInAppLoaded())
+		? searchExpensesInApp(db, userId, q, page, options.batch)
 		: searchExpensesInSql(db, userId, q, page);
 }
 
@@ -113,64 +93,71 @@ function searchExpensesInSql(
 }
 
 /**
- * The app-layer path, for text that may be ciphertext. The window and the
- * cursor are cut in SQL (so ordering and the cursor compare exactly as
- * before); the text is matched here.
+ * The app-layer path, for text that may be ciphertext: every expense from the
+ * cursor on, newest first, in batches (scan-batches.ts) keyed on the unmapped
+ * (date, id), the text opened by the model read and matched here, until the
+ * page is full. A row read twice (its date edited mid-scan) counts once.
  */
-function searchExpensesInApp(
+async function searchExpensesInApp(
 	db: AppDb,
 	userId: string,
 	q: string,
 	page: Page<{ date: string; id: string }>,
-	keyring: Keyring | undefined,
-	windowSize: number = SEARCH_EXPENSE_WINDOW,
+	batch: number | undefined,
 ): Promise<ExpenseHitRow[]> {
-	const size = windowSize;
 	const needle = foldUnaccentIlike(q);
-	const after = page.after
-		? Prisma.sql`WHERE ("date", "id") < (${new Date(page.after.date)}, ${page.after.id})`
-		: Prisma.empty;
-	return userTransaction(db, userId, async (tx) => {
-		const newest = await tx.$queryRaw<ExpenseCandidate[]>`
-			SELECT * FROM (
-				SELECT "id", "title", "date", "amount"::text AS "amount", "currency", "categoryId",
-					"description", "location"
-				FROM "expense"
-				WHERE "userId" = ${userId}
-					AND "status" = 'FINALIZED'
-					AND "isAmortizedChild" = false
-				ORDER BY "date" DESC, "id" DESC
-				LIMIT ${size}
-			) newest
-			${after}
-			ORDER BY "date" DESC, "id" DESC`;
-		const hits: ExpenseHitRow[] = [];
-		for (const row of newest) {
-			const text = (column: string, value: string | null) =>
-				readUserText(keyring, value, {
-					table: "expense",
-					column,
-					rowId: row.id,
+	const hits = new Map<string, ExpenseHitRow>();
+	await scanBatches(db, userId, {
+		batch,
+		start: page.after
+			? { date: new Date(page.after.date), id: page.after.id }
+			: null,
+		read: (tx, after, take) =>
+			tx.expense.findMany({
+				where: {
+					userId,
+					status: "FINALIZED",
+					isAmortizedChild: false,
+					...(after && {
+						OR: [
+							{ date: { lt: after.date } },
+							{ date: after.date, id: { lt: after.id } },
+						],
+					}),
+				},
+				orderBy: [{ date: "desc" }, { id: "desc" }],
+				take,
+				select: {
+					id: true,
+					title: true,
+					description: true,
+					location: true,
+					date: true,
+					amount: true,
+					currency: true,
+					categoryId: true,
+				},
+			}),
+		cursorOf: (row) => ({ date: row.date, id: row.id }),
+		visit: (rows) => {
+			for (const row of rows) {
+				if (hits.has(row.id)) continue;
+				const texts = [row.title, row.description ?? "", row.location ?? ""];
+				if (!texts.some((t) => foldUnaccentIlike(t).includes(needle))) continue;
+				hits.set(row.id, {
+					id: row.id,
+					title: row.title,
+					date: row.date,
+					amount: row.amount.toString(),
+					currency: row.currency,
+					categoryId: row.categoryId,
 				});
-			const title = text("title", row.title);
-			const found = [
-				title,
-				text("description", row.description),
-				text("location", row.location),
-			].some((t) => foldUnaccentIlike(t).includes(needle));
-			if (!found) continue;
-			hits.push({
-				id: row.id,
-				title,
-				date: row.date,
-				amount: row.amount,
-				currency: row.currency,
-				categoryId: row.categoryId,
-			});
-			if (hits.length === page.take) break;
-		}
-		return hits;
+				if (hits.size === page.take) return true;
+			}
+			return false;
+		},
 	});
+	return [...hits.values()];
 }
 
 export type PersonHitRow = {

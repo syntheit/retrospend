@@ -4,10 +4,11 @@
  * cursor and the count are exact across sources. The rows themselves are
  * read afterwards (rows.ts), only for the page.
  *
- * A text search has two paths (`searchesInApp`). Without a keyring it is one
- * more WHERE part in the SQL (query-parts.ts), over every row. With a keyring
- * the text may be ciphertext, so it matches in the app layer (search-scan.ts)
- * and this file only cuts the page.
+ * A text search has two paths, picked once per request (index.ts). Before
+ * the field encryption epoch it is one more WHERE part in the SQL
+ * (query-parts.ts), over every row. After it the text may be ciphertext, so
+ * search-scan.ts matches it in the app layer first, the keys arrive as
+ * `KeyQuery.matched`, and this file only cuts the page from them.
  */
 import { Prisma } from "~prisma";
 import {
@@ -21,8 +22,7 @@ import {
 	sharedParts,
 	sources,
 } from "./query-parts";
-import type { CursorKey } from "./search";
-import { byKeyDesc, searchKeys, searchOf } from "./search-scan";
+import { byKeyDesc, type CursorKey } from "./search";
 
 export type { KeyQuery, ListBounds, RowKey } from "./query-parts";
 
@@ -31,7 +31,7 @@ type Db = Prisma.TransactionClient;
 /** One branch's page: its cursor test and its own ORDER BY and LIMIT. */
 export type Page = { after: CursorKey | null; take: number };
 
-function pageOf(
+export function pageOf(
 	src: RowKey["src"],
 	date: Prisma.Sql,
 	created: Prisma.Sql,
@@ -103,8 +103,8 @@ function union(k: KeyQuery, page?: Page): Prisma.Sql | null {
 /**
  * One page of row keys after `after`, newest first (by date, then by when it was added). Each branch applies the
  * cursor and the limit itself, so Postgres never sorts more than `take` rows
- * per source; the outer sort merges them. A text search reads its candidates
- * instead (see the top of this file).
+ * per source; the outer sort merges them. An app-layer search cuts its
+ * matched keys instead (see the top of this file).
  */
 export async function pageKeys(
 	db: Db,
@@ -112,13 +112,10 @@ export async function pageKeys(
 	after: CursorKey | null,
 	take: number,
 ): Promise<RowKey[]> {
-	const search = searchOf(k);
-	if (search) {
-		const all = await searchKeys(db, k, search);
-		return all
+	if (k.matched)
+		return k.matched
 			.filter((row) => !after || byKeyDesc(row, after) > 0)
 			.slice(0, take);
-	}
 	const u = union(k, { after, take });
 	if (!u) return [];
 	return db.$queryRaw<
@@ -129,8 +126,7 @@ export async function pageKeys(
 
 /** How many rows the filter matches across every page. */
 export async function countKeys(db: Db, k: KeyQuery): Promise<number> {
-	const search = searchOf(k);
-	if (search) return (await searchKeys(db, k, search)).length;
+	if (k.matched) return k.matched.length;
 	const u = union(k);
 	if (!u) return 0;
 	const [row] = await db.$queryRaw<

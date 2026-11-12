@@ -10,7 +10,6 @@ import { contract } from "@retrospend/api-contract";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { defaultTimeZone } from "~/server/services/user-time-zone";
-import { sealedSuite } from "~/test/pg-harness";
 import {
 	asKey,
 	asMobile,
@@ -485,10 +484,7 @@ describe("/api/v1/expenses", () => {
 		);
 	});
 
-	it("lists newest first with the filter grammar, a cursor, and totals", async ({
-		skip,
-	}) => {
-		skip(sealedSuite, "PR 5: search reads sealed text without the user's keys");
+	it("lists newest first with the filter grammar, a cursor, and totals", async () => {
 		const user = (await createTestUser()).user.id;
 		const as = await asMobile(user);
 		const cat = (await category(user, "Coffee")).id;

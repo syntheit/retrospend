@@ -39,16 +39,14 @@ const READS_TEXT = new RegExp(`\\b(?:${COLUMNS.join("|")})\\b`);
 
 /**
  * The audited files, with the audit section that covers them. The search ones
- * keep a SQL path for a database without field encryption and an app-layer path
- * for one with it (search-fold.ts, `searchesInApp`).
+ * keep a SQL path for a database before the field encryption epoch; after it
+ * they read text through model reads (search-fold.ts, `searchesInAppLoaded`).
  */
 const AUDITED: Record<string, string> = {
 	"src/server/services/search.service.ts":
-		"expense search: SQL path (no keyring) and app path (candidate read)",
+		"expense search: SQL path, before the field encryption epoch",
 	"src/server/services/expense-list/query-parts.ts":
-		"Activity search: SQL path (no keyring)",
-	"src/server/services/expense-list/search-scan.ts":
-		"Activity search: app path, text read as raw columns and opened by readUserText",
+		"Activity search: SQL path, before the field encryption epoch",
 	"src/server/services/payments/confirm-restore.ts":
 		"B14: payment confirm keeps the stored text in its audit entry, never opened there",
 };

@@ -5,9 +5,7 @@
  * search-scan.ts the candidate rows of an app-layer text search.
  */
 
-import type { Keyring } from "~/server/crypto/field-crypto";
 import { Prisma } from "~prisma";
-import { searchesInApp } from "../search-fold";
 import { amountCandidates, FOLD_FROM, FOLD_TO, likePattern } from "./search";
 import type { ActivityKind, ListV2Filter } from "./types";
 import { NO_CATEGORY } from "./types";
@@ -22,10 +20,13 @@ export type KeyQuery = {
 	excludedProjectIds: string[];
 	/** One row only, by its source and key (GET /expenses/row). */
 	only?: { src: RowKey["src"]; id: string };
-	/** Opens ciphertext in text fields while searching; plaintext needs none. */
-	keyring?: Keyring;
-	/** Candidates read per source, for tests; SEARCH_CANDIDATE_CAP otherwise. */
-	candidateCap?: number;
+	/**
+	 * Set when the text search ran in the app layer (search-scan.ts): every
+	 * key it matched, newest first. The path is picked once per request
+	 * (index.ts), and these parts read only this, never the epoch, so a flip
+	 * mid-request cannot drop the text filter.
+	 */
+	matched?: RowKey[];
 };
 
 /** `created` breaks ties inside a date: the entry added last comes first. */
@@ -51,19 +52,22 @@ export const has = (list?: readonly unknown[]) => !!list && list.length > 0;
 const fold = (col: Prisma.Sql) =>
 	Prisma.sql`lower(translate(${col}, ${FOLD_FROM}, ${FOLD_TO}))`;
 
+/** The text a search matches in SQL: none when blank or matched in the app. */
+const sqlSearch = (k: KeyQuery) =>
+	k.matched ? undefined : k.filter.q?.trim() ? k.filter.q : undefined;
+
 /**
  * The SQL path of a text search: text columns that fold-match, or an amount
- * equal to a typed number. Null when there is no search, and also when a
- * keyring is set: then the text may be ciphertext and search-scan.ts matches
- * it in the app layer (see searchesInApp).
+ * equal to a typed number. Null when there is no search, and also when it ran
+ * in the app layer (`matched`): the text may be ciphertext there.
  */
 function sqlSearchPart(
 	k: KeyQuery,
 	texts: Prisma.Sql[],
 	amounts: Prisma.Sql[],
 ): Prisma.Sql | null {
-	const q = k.filter.q;
-	if (searchesInApp(k.keyring) || !q?.trim()) return null;
+	const q = sqlSearch(k);
+	if (!q) return null;
 	const pattern = likePattern(q);
 	const nums = amountCandidates(q);
 	const ors = texts.map((t) => Prisma.sql`${fold(t)} LIKE ${pattern}`);
@@ -232,7 +236,7 @@ export const PAYMENT_ROW = Prisma.sql`s."isOffset" = false AND s.kind = 'PAYMENT
  * One row per payment (MONEY-MOVES I4): the settlement rows of a payment
  * group in one currency. Offsets and forgiven balances move no cash, so they
  * are left out; a payment wholly inside projects you hide is left out like
- * their expenses. `extra` adds select columns (a search needs the notes).
+ * their expenses. `extra` adds select columns (a search needs the row ids).
  */
 export function paymentGroups(k: KeyQuery, extra: Prisma.Sql): Prisma.Sql {
 	const f = k.filter;
@@ -246,11 +250,11 @@ export function paymentGroups(k: KeyQuery, extra: Prisma.Sql): Prisma.Sql {
 		Prisma.sql`s."toParticipantId"`,
 	);
 	// The SQL path matches note and method as one string; the app-layer path
-	// reads the notes itself (they may be ciphertext).
-	const words = searchesInApp(k.keyring)
-		? Prisma.empty
-		: Prisma.sql`,
-			coalesce(min(s.note), '') || ' ' || coalesce(min(s."paymentMethod"), '') AS words`;
+	// reads them itself (they may be ciphertext).
+	const words = sqlSearch(k)
+		? Prisma.sql`,
+			coalesce(min(s.note), '') || ' ' || coalesce(min(s."paymentMethod"), '') AS words`
+		: Prisma.empty;
 	return Prisma.sql`(
 		SELECT coalesce(s."paymentGroupId", s.id) || '|' || s.currency AS key,
 			min(s.currency) AS currency,
