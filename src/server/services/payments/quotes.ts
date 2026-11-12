@@ -10,9 +10,9 @@
  * it untouched and names it (a missing rate is never 1).
  */
 
-import type { Decimal } from "@prisma/client/runtime/index-browser";
 import { isCrypto } from "@retrospend/domain/currency-format";
 import { USD } from "@retrospend/domain/money";
+import type { Decimal } from "@retrospend/domain/precise-decimal";
 import { findExchangeRate } from "~/server/exchange-rates";
 import { dec } from "~/server/services/envelope/units";
 import type { Prisma } from "~prisma";

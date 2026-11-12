@@ -4,7 +4,7 @@
  * Decimals. Scopes are a project id, or null for "Outside projects" (the
  * direct bucket).
  */
-import type { Decimal } from "@prisma/client/runtime/index-browser";
+import type { Decimal } from "@retrospend/domain/precise-decimal";
 import type { IsoDate, Minor } from "~/server/services/envelope/types";
 
 export type { IsoDate, Minor };
