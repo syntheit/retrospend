@@ -10,7 +10,9 @@
  * fails the file with its table, column and count.
  *
  * Plaintext is any text, "" too, that is not sealed; the one exception is
- * the `budget_book.name` default ("Personal"). The only escape is
+ * the `budget_book.name` default ("Personal"). A JSON body cell
+ * (`jsonColumns()`) holds plaintext unless it is null or a `{ sealed }`
+ * envelope; leaves cells are swept from the PR that maps the first one. The only escape is
  * `sealed-sweep.allow.json`: a file may leave plaintext in the one column its
  * entry names, and must still leave it there, so the list only shrinks
  * (sealed-suite.test.ts caps and checks it).
@@ -18,7 +20,7 @@
 import { readFileSync } from "node:fs";
 import { relative } from "node:path";
 import { expect } from "vitest";
-import { mappedColumns } from "~/server/crypto/fields";
+import { jsonColumns, mappedColumns } from "~/server/crypto/fields";
 import { adminDb } from "./pg-harness";
 
 export { sealedSuite } from "./pg-harness";
@@ -34,15 +36,23 @@ const plain = (table: string, column: string) =>
 	`"${column}" IS NOT NULL AND NOT starts_with("${column}", E'\\x01k1:')
 	${table === "budget_book" ? `AND "${column}" <> 'Personal'` : ""}`;
 
+const plainBody = (column: string) =>
+	`"${column}" IS NOT NULL AND jsonb_typeof("${column}") <> 'null'
+	AND NOT starts_with(COALESCE("${column}"->>'sealed', ''), E'\\x01k1:')`;
+
 /** Every mapped cell holding plaintext now: `table.column` to row id to value. */
 async function plaintextCells(): Promise<Map<string, Map<string, string>>> {
 	const cells = new Map<string, Map<string, string>>();
-	for (const [table, column] of mappedColumns()) {
+	const sweep = async (table: string, column: string, where: string) => {
 		const rows = await adminDb.$queryRawUnsafe<{ id: string; v: string }[]>(
-			`SELECT "id", "${column}" AS "v" FROM "${table}" WHERE ${plain(table, column)}`,
+			`SELECT "id", "${column}"::text AS "v" FROM "${table}" WHERE ${where}`,
 		);
 		cells.set(`${table}.${column}`, new Map(rows.map((r) => [r.id, r.v])));
-	}
+	};
+	for (const [table, column] of mappedColumns())
+		await sweep(table, column, plain(table, column));
+	for (const [table, column, cell] of jsonColumns())
+		if (cell.mode === "body") await sweep(table, column, plainBody(column));
 	return cells;
 }
 

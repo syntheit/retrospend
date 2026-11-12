@@ -3,8 +3,9 @@
  * mapped column, a new row or a new value, "" included, and nothing an
  * earlier file left or a sealed value; an allowed file only in its column.
  */
+import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
-import { createTestUser } from "./pg-harness";
+import { adminDb, createTestUser } from "./pg-harness";
 import { restoreCells, writeCell } from "./sealed-fixture";
 import { startSweep, SWEEP_ALLOWED } from "./sealed-sweep";
 
@@ -61,6 +62,33 @@ describe("the sealed sweep", () => {
 			);
 		} finally {
 			delete SWEEP_ALLOWED[file];
+		}
+	});
+
+	it("fails on a plaintext JSON body a file wrote, and passes a sealed one or a null", async () => {
+		const { user } = await createTestUser();
+		const { id } = await adminDb.idempotencyKey.create({
+			data: {
+				userId: user.id,
+				key: randomUUID(),
+				requestHash: "x",
+				expiresAt: new Date(Date.now() + 60_000),
+			},
+		});
+		const set = (json: string) =>
+			adminDb.$executeRaw`UPDATE "idempotency_key" SET "responseBody" = ${json}::jsonb WHERE "id" = ${id}`;
+		try {
+			const end = await startSweep();
+			await set('{"name":"Plain"}');
+			await expect(end()).rejects.toThrow(
+				/^Plaintext left in mapped columns with sealing on: idempotency_key\.responseBody: 1$/,
+			);
+			await set(JSON.stringify({ sealed: SEALED }));
+			await expect(end()).resolves.toBeUndefined();
+			await set("null");
+			await expect(end()).resolves.toBeUndefined();
+		} finally {
+			await adminDb.idempotencyKey.delete({ where: { id } });
 		}
 	});
 });

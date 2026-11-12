@@ -25,6 +25,9 @@
  * A cell's AAD needs its row id, and a user-class cell its owner, so a
  * `select` that names a mapped field without them gets `id` (and `userId`)
  * added, and they are removed from the result again.
+ *
+ * JSON cells (PR 8.1, json-cells.ts) follow the same rules piece by piece; a
+ * body a reader holds no key for reads as null.
  */
 import type { ClientSlot } from "~/server/db-core";
 import {
@@ -41,7 +44,14 @@ import {
 	openField,
 } from "./field-crypto";
 import { applySeal, planSeal, type SealCell } from "./field-seal";
-import { fieldsOfModel, type KeyClass, keyClassOfColumn } from "./fields";
+import {
+	cellClassesOfModel,
+	fieldsOfModel,
+	jsonCellsOfModel,
+	type KeyClass,
+	keyClassOfColumn,
+} from "./fields";
+import { sealedPieces } from "./json-cells";
 import type { ModelGraph } from "./model-graph";
 import { hasSealedText } from "./response-guard";
 import { filtersOnSealed } from "./sealed-filters";
@@ -100,7 +110,7 @@ interface Added {
 
 /** `id` for the AAD, and `userId` when a user-class cell is among `named`. */
 function needed(model: string, named: string[]): string[] {
-	const columns = fieldsOfModel(model)?.columns ?? {};
+	const columns = cellClassesOfModel(model);
 	return named.some((f) => columns[f] === "user") ? ["id", "userId"] : ["id"];
 }
 
@@ -114,7 +124,7 @@ function prepare(
 	model: string,
 	node: Row,
 ): { node: Row; added?: Added } {
-	const mapped = Object.keys(fieldsOfModel(model)?.columns ?? {});
+	const mapped = Object.keys(cellClassesOfModel(model));
 	const added: Added = { fields: [], children: new Map() };
 	const next = { ...node };
 	if (isRow(node.select)) {
@@ -180,10 +190,17 @@ function strip(value: unknown, added: Added): void {
 interface Cell {
 	row: Row;
 	table: string;
+	/** The AAD column: a JSON piece's own (json-cells.ts). */
 	column: string;
 	cls: KeyClass;
 	sealed: string;
+	/** A JSON piece: the row's field, and where the text or the fallback goes. */
+	json?: { field: string; put: (text: string) => void; hide: () => void };
 }
+
+/** The row field a cell is read from. */
+const fieldOf = (cell: Pick<Cell, "column" | "json">) =>
+	cell.json?.field ?? cell.column;
 
 /** Every sealed cell in a result, through every relation the graph names. */
 function collect(
@@ -210,18 +227,30 @@ function collect(
 					sealed: cell,
 				});
 		}
+	const json = jsonCellsOfModel(model);
+	if (json)
+		for (const [field, spec] of Object.entries(json.columns))
+			for (const { put, hide, ...piece } of sealedPieces(value, field, spec))
+				cells.push({
+					...piece,
+					row: value,
+					table: json.table,
+					cls: spec.cls,
+					json: { field, put, hide },
+				});
 	for (const [field, target] of graph.relations(model))
 		if (field in value) collect(graph, target, value[field], cells);
 }
 
 function hide(cell: Cell): void {
-	cell.row[cell.column] = "";
+	if (cell.json) cell.json.hide();
+	else cell.row[cell.column] = "";
 	const row = cell.row as { [UNAVAILABLE_FIELDS]?: string[] };
 	const list = row[UNAVAILABLE_FIELDS];
-	if (list) list.push(cell.column);
+	if (list) list.push(fieldOf(cell));
 	else
 		Object.defineProperty(row, UNAVAILABLE_FIELDS, {
-			value: [cell.column],
+			value: [fieldOf(cell)],
 			enumerable: false,
 		});
 }
@@ -241,11 +270,13 @@ function tryOpen(keys: TextKeys, cell: Cell): boolean {
 	const ring = keys.ring(cell.cls);
 	if (!ring) return false;
 	try {
-		cell.row[cell.column] = openField(ring, cell.sealed, {
+		const text = openField(ring, cell.sealed, {
 			table: cell.table,
 			column: cell.column,
 			rowId: cell.row.id as string,
 		});
+		if (cell.json) cell.json.put(text);
+		else cell.row[cell.column] = text;
 		return true;
 	} catch (error) {
 		if (error instanceof FieldCryptoError && error.code === "unknown_key")
@@ -276,12 +307,12 @@ async function openCells(keys: TextKeys, cells: Cell[]): Promise<void> {
 		const owner = cell.row.userId;
 		if (typeof owner !== "string")
 			throw new Error(
-				`A ${cell.table}.${cell.column} cell was read without its owner`,
+				`A ${cell.table}.${fieldOf(cell)} cell was read without its owner`,
 			);
 		if (owner === keys.userId) entitled.push(cell);
 		else {
 			hide(cell);
-			hidden.add(`${cell.table}.${cell.column}`);
+			hidden.add(`${cell.table}.${fieldOf(cell)}`);
 		}
 	}
 	// One line per column per call, not per row: a list of shared expenses
@@ -430,28 +461,43 @@ async function refuseWrites(
 	args: Row,
 ): Promise<void> {
 	const fields = fieldsOfModel(model);
-	if (!fields) return;
+	const json = jsonCellsOfModel(model);
+	if (!fields && !json) return;
 	const kept: Cell[] = [];
 	for (const { values, rowId, creates } of writesOf(operation, args)) {
 		if (!isRow(values)) continue;
-		for (const [column, cls] of Object.entries(fields.columns)) {
-			const value = values[column];
-			const text = isRow(value) ? value.set : value;
-			if (typeof text !== "string" || !isSealedField(text)) continue;
-			const owner = cls === "user" ? keys.userId : undefined;
+		const sealed: Omit<Cell, "row">[] = [];
+		if (fields)
+			for (const [column, cls] of Object.entries(fields.columns)) {
+				const value = values[column];
+				const text = isRow(value) ? value.set : value;
+				if (typeof text === "string" && isSealedField(text))
+					sealed.push({ table: fields.table, column, cls, sealed: text });
+			}
+		// A JSON piece is only checked: opening it must not write into the caller's value.
+		if (json)
+			for (const [field, spec] of Object.entries(json.columns))
+				for (const piece of sealedPieces(
+					{ [field]: values[field] },
+					field,
+					spec,
+				))
+					sealed.push({
+						table: json.table,
+						column: piece.column,
+						cls: spec.cls,
+						sealed: piece.sealed,
+						json: { field, put: () => {}, hide: () => {} },
+					});
+		for (const cell of sealed) {
+			const owner = cell.cls === "user" ? keys.userId : undefined;
 			const ownCell =
 				inVerbatim() &&
 				rowId !== undefined &&
-				(cls === "instance" ||
+				(cell.cls === "instance" ||
 					(owner !== undefined && (!creates || values.userId === owner)));
 			if (!ownCell) throw new FieldCryptoError("bad_plaintext");
-			kept.push({
-				row: { id: rowId, userId: owner },
-				table: fields.table,
-				column,
-				cls,
-				sealed: text,
-			});
+			kept.push({ ...cell, row: { id: rowId, userId: owner } });
 		}
 	}
 	if (kept.length > 0) await openCells(keys, kept);

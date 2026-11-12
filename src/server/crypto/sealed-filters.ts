@@ -15,7 +15,8 @@
  * as well. A null test is refused too: it never needs to, but no caller makes
  * one (userTextModelQueries.test.ts) and one rule is simpler.
  */
-import { fieldsOfModel } from "./fields";
+import { cellClassesOfModel, jsonCellsOfModel } from "./fields";
+import { jsonFilterAllowed } from "./json-cells";
 import type { ModelGraph } from "./model-graph";
 
 type Row = Record<string, unknown>;
@@ -24,7 +25,13 @@ const isRow = (value: unknown): value is Row =>
 	typeof value === "object" && value !== null && !Array.isArray(value);
 
 const isMapped = (model: string, field: string) =>
-	Object.hasOwn(fieldsOfModel(model)?.columns ?? {}, field);
+	Object.hasOwn(cellClassesOfModel(model), field);
+
+/** A JSON path filter on a leaves cell that reads no sealed leaf (json-cells.ts). */
+function allowedJsonFilter(model: string, field: string, filter: unknown) {
+	const cell = jsonCellsOfModel(model)?.columns[field];
+	return cell !== undefined && jsonFilterAllowed(cell, filter);
+}
 
 /** Arguments whose keys are columns of the model, at any depth. */
 const FILTERS = ["where", "cursor", "having", "orderBy", "_min", "_max"];
@@ -53,7 +60,10 @@ function filterNames(graph: ModelGraph, model: string, node: unknown): boolean {
 	const relations = graph.relations(model);
 	for (const [key, value] of Object.entries(node)) {
 		if (value === undefined) continue;
-		if (isMapped(model, key)) return true;
+		if (isMapped(model, key)) {
+			if (allowedJsonFilter(model, key, value)) continue;
+			return true;
+		}
 		if (filterNames(graph, relations.get(key) ?? model, value)) return true;
 	}
 	return false;

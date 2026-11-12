@@ -18,6 +18,7 @@ import {
 } from "~/server/crypto/field-crypto";
 import {
 	FIELD_MAP,
+	jsonColumns,
 	keyClassOfColumn,
 	mappedColumns,
 	modelOfTable,
@@ -129,6 +130,10 @@ export async function unsealAll(): Promise<void> {
 	for (const [table, column] of mappedColumns())
 		await adminDb.$executeRawUnsafe(
 			`UPDATE "${table}" SET "${column}" = 'unsealed ' || "id" WHERE starts_with("${column}", E'\\x01')`,
+		);
+	for (const [table, column] of jsonColumns())
+		await adminDb.$executeRawUnsafe(
+			`UPDATE "${table}" SET "${column}" = jsonb_build_object('unsealed', "id") WHERE starts_with(COALESCE("${column}"->>'sealed', ''), E'\\x01')`,
 		);
 }
 

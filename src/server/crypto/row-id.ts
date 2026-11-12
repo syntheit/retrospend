@@ -8,10 +8,10 @@
  */
 import { randomBytes } from "node:crypto";
 import { FieldCryptoError } from "./field-crypto";
-import type { MappedModel } from "./fields";
+import type { JsonModel, MappedModel } from "./fields";
 
 /** `cuid`: the id is `@default(cuid())`. `none`: callers always name it. */
-export const ID_DEFAULT: Record<MappedModel, "cuid" | "none"> = {
+export const ID_DEFAULT: Record<MappedModel | JsonModel, "cuid" | "none"> = {
 	Apikey: "none",
 	AssetAccount: "cuid",
 	BillingPeriod: "cuid",
@@ -26,6 +26,7 @@ export const ID_DEFAULT: Record<MappedModel, "cuid" | "none"> = {
 	Feedback: "cuid",
 	FixRequest: "none",
 	GuestSession: "cuid",
+	IdempotencyKey: "cuid",
 	ImportJob: "cuid",
 	IncomeRule: "none",
 	Payment: "none",

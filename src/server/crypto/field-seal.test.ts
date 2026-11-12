@@ -17,6 +17,7 @@ const graph = buildModelGraph({
 		Category: { fields: [rel("user", "User")] },
 		Expense: { fields: [rel("user", "User")] },
 		Payment: { fields: [] },
+		IdempotencyKey: { fields: [rel("user", "User")] },
 		User: { fields: [rel("categories", "Category")] },
 	},
 });
@@ -346,5 +347,73 @@ describe("planSeal and applySeal", () => {
 			"update",
 		).data as Row;
 		expect(open(indexed.name, "category", "name", "c1")).toBe("Fuel");
+	});
+});
+
+describe("a JSON body cell", () => {
+	const body = { result: { id: "a1", name: "Caja fuerte" } };
+	const openBody = (stored: unknown, rowId: unknown) =>
+		JSON.parse(
+			open(
+				(stored as { sealed: string }).sealed,
+				"idempotency_key",
+				"responseBody",
+				rowId,
+			),
+		);
+
+	it("seals a create under its new id and an update under where.id, leaving the caller's args", () => {
+		const args = { data: { userId: ALICE, key: "k", responseBody: body } };
+		const made = sealedIn(args, "IdempotencyKey", "create").data as Row;
+		expect(z.cuid().safeParse(made.id).success).toBe(true);
+		expect(made.key).toBe("k");
+		expect(openBody(made.responseBody, made.id)).toEqual(body);
+		expect(args.data.responseBody).toBe(body);
+
+		const updated = sealedIn(
+			{ where: { id: "k1" }, data: { status: 200, responseBody: body } },
+			"IdempotencyKey",
+			"update",
+		).data as Row;
+		expect(openBody(updated.responseBody, "k1")).toEqual(body);
+	});
+
+	it("seals nothing for a null or a Prisma null marker", () => {
+		class DbNull {}
+		const marker = new DbNull();
+		for (const responseBody of [null, marker]) {
+			const plan = planSeal(graph, ALICE, "IdempotencyKey", "update", {
+				where: { id: "k1" },
+				data: { responseBody },
+			});
+			expect(plan.cells).toEqual([]);
+		}
+	});
+
+	it("refuses a bulk write, an update with no id and a client with no user", () => {
+		const data = { responseBody: body };
+		expect(
+			code(() =>
+				planSeal(graph, ALICE, "IdempotencyKey", "updateMany", {
+					where: { id: "k1" },
+					data,
+				}),
+			),
+		).toBe("bulk_text_write");
+		expect(
+			code(() =>
+				planSeal(graph, ALICE, "IdempotencyKey", "update", {
+					where: { userId_key: { userId: ALICE, key: "k" } },
+					data,
+				}),
+			),
+		).toBe("missing_row_id");
+		expect(
+			code(() =>
+				planSeal(graph, undefined, "IdempotencyKey", "create", {
+					data: { userId: ALICE, ...data },
+				}),
+			),
+		).toBe("foreign_owner");
 	});
 });
