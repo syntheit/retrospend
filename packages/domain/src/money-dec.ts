@@ -160,3 +160,106 @@ export function computeAmountInUSDDec(
 ): Decimal {
 	return roundUSDDec(toUSDDec(amount, currency, rate));
 }
+
+// ── Totals in a display currency ─────────────────────────────────────────────
+
+/** Anything with an original amount and its stored USD value, in exact decimals. */
+export interface MoneyItemDec {
+	amount: Decimal;
+	currency: string;
+	/** Null for an unpriced item (no rate at all when loaded): it counts only in its own currency. */
+	amountInUSD: Decimal | null;
+	/**
+	 * The home value booked when the entry was saved (expense.homeAmount,
+	 * M2). It never moves with later rates, so it wins in its own currency.
+	 */
+	booked?: { currency: string; amount: Decimal } | null;
+}
+
+/** What missingRatesIn reads: the number items of the pace series carry NaN where these carry null. */
+export interface PricedItem {
+	currency: string;
+	amountInUSD: Decimal | number | null;
+	booked?: { currency: string } | null;
+}
+
+const isPriced = (item: PricedItem): boolean =>
+	typeof item.amountInUSD === "number"
+		? Number.isFinite(item.amountInUSD)
+		: item.amountInUSD !== null;
+
+/** Whether the item is already in `currency`, as entered or as booked. */
+const isIn = (item: PricedItem, currency: string): boolean =>
+	item.currency === currency || item.booked?.currency === currency;
+
+const hasRate = (currency: string, rate: RateInput): boolean => {
+	if (currency === USD) return true;
+	const r = rate === null || rate === undefined ? null : dec(rate);
+	return !!r?.isFinite() && r.gt(0);
+};
+
+/**
+ * The currencies that keep `items` from totaling in `currency`: unpriced
+ * items (no rate when loaded) in another currency, and `currency` itself
+ * when something needs its missing rate. Empty when the total can be made.
+ */
+export function missingRatesIn(
+	items: Iterable<PricedItem>,
+	currency: string,
+	rate: RateInput,
+): string[] {
+	const missing = new Set<string>();
+	const rateless = !hasRate(currency, rate);
+	for (const item of items) {
+		if (isIn(item, currency)) continue;
+		if (!isPriced(item)) missing.add(item.currency);
+		if (rateless) missing.add(currency);
+	}
+	return [...missing].sort();
+}
+
+/**
+ * One item in `currency` under the totals rule: its own amount when it is
+ * already in `currency`, its booked value when it was booked in `currency`,
+ * else its USD value converted at `rate` (unrounded).
+ */
+export function amountInDec(
+	item: MoneyItemDec,
+	currency: string,
+	rate: RateInput,
+): Decimal {
+	if (item.currency === currency) return item.amount;
+	if (item.booked?.currency === currency) return item.booked.amount;
+	if (item.amountInUSD === null) throw new MissingRateError(item.currency);
+	return fromUSDDec(item.amountInUSD, currency, rate);
+}
+
+/**
+ * Sum of `items` in `currency` under the totals rule (unrounded). Amounts
+ * already in `currency` and USD values are each added first and converted
+ * once: sum(x x r) = sum(x) x r exactly, and 10,000 items cost one
+ * multiplication, not 10,000. Throws one MissingRateError naming every
+ * currency that cannot convert, never counting a missing rate as 1.
+ */
+export function sumInDec(
+	items: Iterable<MoneyItemDec>,
+	currency: string,
+	rate: RateInput,
+): Decimal {
+	const list = [...items];
+	const missing = missingRatesIn(list, currency, rate);
+	if (missing[0]) throw new MissingRateError(missing[0], missing);
+	let own = new Dec(0);
+	let usd = new Dec(0);
+	let converted = false;
+	for (const item of list) {
+		if (item.currency === currency) own = own.plus(item.amount);
+		else if (item.booked?.currency === currency)
+			own = own.plus(item.booked.amount);
+		else if (item.amountInUSD) {
+			usd = usd.plus(item.amountInUSD);
+			converted = true;
+		}
+	}
+	return converted ? own.plus(fromUSDDec(usd, currency, rate)) : own;
+}
