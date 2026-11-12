@@ -34,7 +34,10 @@ import {
 	it,
 	vi,
 } from "vitest";
-import { AUTO_POST_GRACE_MS, recurringItems } from "~/server/services/needs-you/activity";
+import {
+	AUTO_POST_GRACE_MS,
+	recurringItems,
+} from "~/server/services/needs-you/activity";
 import { forUser } from "~/server/services/preview";
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import type { Prisma } from "~prisma";
@@ -329,9 +332,7 @@ describe("what does not post", () => {
 			where: { id },
 		});
 		const later = new Date(due.getTime() + AUTO_POST_GRACE_MS + 60_000);
-		expect(
-			recurringItems([row], later, "America/Montevideo").length,
-		).toBe(1);
+		expect(recurringItems([row], later, "America/Montevideo").length).toBe(1);
 		await adminDb.exchangeRate.create({
 			data: { date: due, currency: "UYU", type: "official", rate: "40" },
 		});

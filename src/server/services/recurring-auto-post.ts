@@ -82,7 +82,10 @@ function outcomeOf(error: unknown): Outcome {
 		return "raced";
 	if (error instanceof MissingRateError) return "missingRate";
 	if (textUnavailableProblem(error) === "key_rotated") return "retry";
-	console.error("Recurring auto-post failed for one template:", errorCode(error));
+	console.error(
+		"Recurring auto-post failed for one template:",
+		errorCode(error),
+	);
 	return "failed";
 }
 
