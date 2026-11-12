@@ -93,22 +93,16 @@ export function ilikeContains(query: string): (text: string) => boolean {
 }
 
 /**
- * How many of the newest rows title suggestions, import review and the people
- * pickers read on the app-layer path, so the windows cannot drift. PR 5.2
- * moves them to scan-batches.ts and removes it.
- */
-export const APP_LAYER_WINDOW = 20_000;
-
-/**
  * The one switch between the two ways to match search text, read outside any
  * transaction and once per request: the caller carries the answer (Activity
  * puts it on its KeyQuery), so a flip mid-request cannot mix the two. Before
  * the field encryption epoch (epoch.ts) Postgres matches in SQL over every
  * row. Once it exists any text may be ciphertext, so rows are read and matched
- * in the app: v1 expense search and Activity scan every row in batches
- * (scan-batches.ts). An epoch that is not known (no read yet, or a failed one)
- * counts as set. A keyring picks the app path too (title suggestions,
- * duplicates and import review, in tests).
+ * in the app, with no cap: every scan reads every row in batches
+ * (scan-batches.ts), and the duplicate check reads one day of one amount. An
+ * epoch that is not known (no read yet, or a failed one) counts as set. A
+ * keyring picks the app path too (title suggestions, duplicates and import
+ * review, in tests).
  */
 export async function searchesInAppLoaded(keyring?: Keyring): Promise<boolean> {
 	return keyring !== undefined || (await loadEpoch());

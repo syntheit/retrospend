@@ -18,6 +18,10 @@ const state = vi.hoisted(() => ({
 }));
 
 const mockDb = vi.hoisted(() => ({
+	// The ghost and contact scans run in short user transactions.
+	$transaction: (work: (tx: unknown) => Promise<unknown>): Promise<unknown> =>
+		work(mockDb),
+	$executeRaw: vi.fn().mockResolvedValue(0),
 	shadowProfile: { findMany: vi.fn() },
 	projectParticipant: { findMany: vi.fn() },
 	guestSession: { findMany: vi.fn().mockResolvedValue([]) },

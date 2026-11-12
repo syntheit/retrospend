@@ -3,31 +3,20 @@
  * shared transactions the user is in, grouped case-insensitively and ordered
  * by use, each with the category and amount it was last used with.
  *
- * Personal titles have two paths, picked by `searchesInApp` (search-fold.ts):
- * Postgres groups and matches them in SQL when no keyring is passed (the case
- * today), and the same grouping happens in the app layer over decrypted
- * titles when one is, because SQL cannot read a sealed title (the client
- * opens it on read)
- * (docs/roadmap/e2ee-spike.md, lane D). Shared descriptions follow the same
- * two paths (the owner decided shared text is sealed too). Both paths hand
- * their groups to the same merge and ranking below, so the output is one
- * function of the groups.
+ * Personal titles have two paths, picked by `searchesInAppLoaded`
+ * (search-fold.ts): Postgres groups and matches them in SQL before the field
+ * encryption epoch, and the same grouping happens in the app layer over
+ * opened titles once a title may be sealed (docs/roadmap/e2ee-spike.md, lane
+ * D), over every row in batches (scan-batches.ts). Shared descriptions follow
+ * the same two paths (the owner decided shared text is sealed too). Both
+ * paths hand their groups to the same merge and ranking below, so the output
+ * is one function of the groups.
  */
 import type { Keyring } from "~/server/crypto/field-crypto";
 import type { PrismaClient } from "~prisma";
-import {
-	APP_LAYER_WINDOW,
-	ilikeContains,
-	searchesInAppLoaded,
-} from "./search-fold";
+import { dateIdOf, olderThan, scanBatches } from "./scan-batches";
+import { ilikeContains, searchesInAppLoaded } from "./search-fold";
 import { listedEntryWhere } from "./spending";
-
-/**
- * How many of the newest personal expenses the app-layer path reads. Titles
- * older than that are neither counted nor offered on that path; the SQL path
- * has no such limit. One query per call.
- */
-export const TITLE_SUGGESTION_WINDOW = APP_LAYER_WINDOW;
 
 /** Distinct titles kept per source, and suggestions returned. */
 const GROUPS_PER_SOURCE = 15;
@@ -50,22 +39,18 @@ export async function titleSuggestions(
 	userId: string,
 	query: string,
 	options: {
-		/** Opens ciphertext in titles; passing one picks the app-layer path. */
+		/** Passing one picks the app-layer path, in tests. */
 		keyring?: Keyring;
-		/** App-layer path only: rows read, for tests; TITLE_SUGGESTION_WINDOW otherwise. */
-		window?: number;
 	} = {},
 ) {
-	const { keyring, window } = options;
-	const inApp = await searchesInAppLoaded(keyring);
-	const [personal, sharedGroups] = await Promise.all([
-		inApp
-			? personalInApp(db, userId, query, window)
-			: personalInSql(db, userId, query),
-		inApp
-			? sharedInApp(db, userId, query, window)
-			: sharedInSql(db, userId, query),
-	]);
+	const inApp = await searchesInAppLoaded(options.keyring);
+	// One after the other: a request holds one connection at a time.
+	const personal = await (inApp
+		? personalInApp(db, userId, query)
+		: personalInSql(db, userId, query));
+	const sharedGroups = await (inApp
+		? sharedInApp(db, userId, query)
+		: sharedInSql(db, userId, query));
 
 	// Merge counts by title (case-insensitive), preserving canonical casing
 	const countMap = new Map<string, number>();
@@ -146,43 +131,56 @@ async function personalInSql(
 }
 
 /**
- * The app-layer path: read the newest expenses (the client opens each title,
- * field-open.ts) and match
- * and group here. `contains ... mode: insensitive` is `ILIKE '%q%'` with q
- * unescaped, which lowercases both sides one code point at a time, does not
- * fold accents and reads `%`, `_` and backslash in q as pattern characters;
- * `ilikeContains` does the same. Rows come in the same (date, id) order the
- * SQL path uses for the last use of a title.
+ * The app-layer path: every listed expense, newest first by (date, id), in
+ * batches (the client opens each title, field-open.ts), matched and grouped
+ * here; each batch keeps only the counts and the newest use of each matching
+ * title. `contains ... mode: insensitive` is `ILIKE '%q%'` with q unescaped,
+ * which lowercases both sides one code point at a time, does not fold accents
+ * and reads `%`, `_` and backslash in q as pattern characters; `ilikeContains`
+ * does the same. The SQL path's last use is the newest row of the exact title
+ * in the same order. A row read twice (its date edited mid-scan) counts once.
  */
 async function personalInApp(
 	db: PrismaClient,
 	userId: string,
 	query: string,
-	window: number = TITLE_SUGGESTION_WINDOW,
 ): Promise<Personal> {
 	const matches = ilikeContains(query);
-	const rows = await db.expense.findMany({
-		where: listedEntryWhere(userId),
-		orderBy: [{ date: "desc" }, { id: "desc" }],
-		take: window,
-		select: {
-			id: true,
-			title: true,
-			categoryId: true,
-			amount: true,
-			currency: true,
+	const counts = new Map<string, number>();
+	const newest = new Map<string, LastUsed>();
+	const seen = new Set<string>();
+	await scanBatches(db, userId, {
+		start: null,
+		read: (tx, after, take) =>
+			tx.expense.findMany({
+				where: { ...listedEntryWhere(userId), ...olderThan(after) },
+				orderBy: [{ date: "desc" }, { id: "desc" }],
+				take,
+				select: {
+					id: true,
+					date: true,
+					title: true,
+					categoryId: true,
+					amount: true,
+					currency: true,
+				},
+			}),
+		cursorOf: dateIdOf,
+		visit: (rows) => {
+			for (const r of rows) {
+				if (seen.has(r.id) || !matches(r.title)) continue;
+				seen.add(r.id);
+				counts.set(r.title, (counts.get(r.title) ?? 0) + 1);
+				if (!newest.has(r.title))
+					newest.set(r.title, {
+						categoryId: r.categoryId,
+						amount: Number(r.amount),
+						currency: r.currency,
+					});
+			}
+			return false;
 		},
 	});
-	const opened = rows.map((r) => ({
-		title: r.title,
-		categoryId: r.categoryId,
-		amount: Number(r.amount),
-		currency: r.currency,
-	}));
-
-	const counts = new Map<string, number>();
-	for (const r of opened)
-		if (matches(r.title)) counts.set(r.title, (counts.get(r.title) ?? 0) + 1);
 	const groups = [...counts.entries()]
 		.map(([text, count]) => ({ text, count }))
 		.sort(byUse)
@@ -190,42 +188,56 @@ async function personalInApp(
 
 	return {
 		groups,
-		lastUsed: async (titles) => {
-			const wanted = new Set(titles);
-			return firstPerKey(opened.filter((r) => wanted.has(r.title)));
-		},
+		lastUsed: async (titles) =>
+			firstPerKey(
+				titles.flatMap((title) => {
+					const last = newest.get(title);
+					return last ? [{ title, ...last }] : [];
+				}),
+			),
 	};
 }
 
 /**
  * The app-layer path for shared descriptions, which are encrypted like
  * personal titles (the owner decided shared text is sealed with an
- * instance-wide key): the newest shared expenses the user is a participant
- * of are read (opened by the client), matched and grouped here, as
- * `personalInApp` does.
+ * instance-wide key): every shared expense the user is a participant of, in
+ * batches as `personalInApp` reads, opened by the client, matched and grouped
+ * here.
  */
 async function sharedInApp(
 	db: PrismaClient,
 	userId: string,
 	query: string,
-	window: number = TITLE_SUGGESTION_WINDOW,
 ): Promise<Group[]> {
 	const matches = ilikeContains(query);
-	const rows = await db.sharedTransaction.findMany({
-		where: {
-			splitParticipants: {
-				some: { participantType: "user", participantId: userId },
-			},
-		},
-		orderBy: [{ date: "desc" }, { id: "desc" }],
-		take: window,
-		select: { id: true, description: true },
-	});
 	const counts = new Map<string, number>();
-	for (const r of rows) {
-		const text = r.description;
-		if (matches(text)) counts.set(text, (counts.get(text) ?? 0) + 1);
-	}
+	const seen = new Set<string>();
+	await scanBatches(db, userId, {
+		start: null,
+		read: (tx, after, take) =>
+			tx.sharedTransaction.findMany({
+				where: {
+					splitParticipants: {
+						some: { participantType: "user", participantId: userId },
+					},
+					...olderThan(after),
+				},
+				orderBy: [{ date: "desc" }, { id: "desc" }],
+				take,
+				select: { id: true, date: true, description: true },
+			}),
+		cursorOf: dateIdOf,
+		visit: (rows) => {
+			for (const r of rows) {
+				const text = r.description;
+				if (seen.has(r.id) || !matches(text)) continue;
+				seen.add(r.id);
+				counts.set(text, (counts.get(text) ?? 0) + 1);
+			}
+			return false;
+		},
+	});
 	return [...counts.entries()]
 		.map(([text, count]) => ({ text, count }))
 		.sort(byUse)

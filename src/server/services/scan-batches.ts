@@ -31,9 +31,14 @@ export interface Scan<Row, Cursor> {
 		after: Cursor | null,
 		take: number,
 	): Promise<Row[]>;
-	cursorOf(row: Row): Cursor;
+	cursorOf(row: NoInfer<Row>): Cursor;
 	/** Keeps what it needs from one batch; true stops the scan. */
 	visit(rows: Row[]): boolean;
+}
+
+function refuseInTransaction(): void {
+	if (inTransaction())
+		throw new Error("a scan opens its own transactions; call it outside one");
 }
 
 export async function scanBatches<Row, Cursor>(
@@ -41,10 +46,7 @@ export async function scanBatches<Row, Cursor>(
 	userId: string,
 	scan: Scan<Row, Cursor>,
 ): Promise<void> {
-	if (inTransaction())
-		throw new Error(
-			"scanBatches opens its own transactions; call it outside one",
-		);
+	refuseInTransaction();
 	const take = scan.batch ?? SCAN_BATCH;
 	let after = scan.start;
 	for (;;) {
@@ -55,6 +57,43 @@ export async function scanBatches<Row, Cursor>(
 		if (scan.visit(rows) || rows.length < take || !last) return;
 		after = scan.cursorOf(last);
 	}
+}
+
+/** A row's place in a scan newest first by the unmapped (date, id). */
+export type DateId = { date: Date; id: string };
+
+export const dateIdOf = (row: DateId): DateId => ({
+	date: row.date,
+	id: row.id,
+});
+
+/** The rows after `after` in (date desc, id desc) order, as a where clause. */
+export function olderThan(after: DateId | null) {
+	return after
+		? {
+				OR: [
+					{ date: { lt: after.date } },
+					{ date: after.date, id: { lt: after.id } },
+				],
+			}
+		: {};
+}
+
+/**
+ * Rows picked by id, `size` ids at a time, each chunk its own
+ * userTransaction as in scanBatches; `read` keeps only what the caller needs.
+ */
+export async function scanIds<T>(
+	db: ScanClient,
+	userId: string,
+	ids: readonly string[],
+	read: (tx: Prisma.TransactionClient, ids: string[]) => Promise<T[]>,
+	size = SCAN_BATCH,
+): Promise<T[]> {
+	refuseInTransaction();
+	return readInChunks(ids, size, (chunk) =>
+		userTransaction(db, userId, (tx) => read(tx, chunk)),
+	);
 }
 
 /** `read` over `ids` in chunks of at most `size`, one query each. */

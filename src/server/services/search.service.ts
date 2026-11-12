@@ -1,12 +1,14 @@
 import type { db as globalDb } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import { Prisma } from "~prisma";
-import { scanBatches } from "./scan-batches";
 import {
-	APP_LAYER_WINDOW,
-	foldUnaccentIlike,
-	searchesInAppLoaded,
-} from "./search-fold";
+	dateIdOf,
+	olderThan,
+	type ScanClient,
+	scanBatches,
+	scanIds,
+} from "./scan-batches";
+import { foldUnaccentIlike, searchesInAppLoaded } from "./search-fold";
 import { compareText, sortByText } from "./text-order";
 
 type AppDb = typeof globalDb;
@@ -118,12 +120,7 @@ async function searchExpensesInApp(
 					userId,
 					status: "FINALIZED",
 					isAmortizedChild: false,
-					...(after && {
-						OR: [
-							{ date: { lt: after.date } },
-							{ date: after.date, id: { lt: after.id } },
-						],
-					}),
+					...olderThan(after),
 				},
 				orderBy: [{ date: "desc" }, { id: "desc" }],
 				take,
@@ -138,7 +135,7 @@ async function searchExpensesInApp(
 					categoryId: true,
 				},
 			}),
-		cursorOf: (row) => ({ date: row.date, id: row.id }),
+		cursorOf: dateIdOf,
 		visit: (rows) => {
 			for (const row of rows) {
 				if (hits.has(row.id)) continue;
@@ -184,21 +181,19 @@ function foldedMatcher(q: string): (text: string) => boolean {
  * username, and the people they added by name (shadows RLS lets them see;
  * a claimed shadow shows as its user instead). By name. Other project members
  * can add ghosts and join projects, so this set can grow without the caller
- * doing anything: the newest `window` users (by account creation) and the
- * newest `window` ghosts are read, APP_LAYER_WINDOW each. A person beyond that
- * is not found by search.
+ * doing anything: every one is read, in batches (scan-batches.ts).
  */
-export function searchPeople(
+export async function searchPeople(
 	db: AppDb,
 	userId: string,
 	q: string,
 	page: Page<{ name: string; participantType: string; id: string }>,
-	options: { window?: number } = {},
 ): Promise<PersonHitRow[]> {
-	const window = options.window ?? APP_LAYER_WINDOW;
 	const match = foldedMatcher(q);
-	return userTransaction(db, userId, async (tx) => {
-		const known = await tx.$queryRaw<{ id: string }[]>`
+	const known = await userTransaction(
+		db,
+		userId,
+		(tx) => tx.$queryRaw<{ id: string }[]>`
 			SELECT u."id" FROM "user" u
 			WHERE u."id" <> ${userId}
 				AND (
@@ -212,55 +207,135 @@ export function searchPeople(
 						JOIN "project_participant" them ON them."projectId" = me."projectId"
 						WHERE me."participantType" = 'user' AND me."participantId" = ${userId}
 							AND them."participantType" = 'user' AND them."participantId" = u."id")
-				)
-			ORDER BY u."createdAt" DESC, u."id" DESC
-			LIMIT ${window}`;
-		const [users, shadows] = await Promise.all([
-			tx.user.findMany({
-				where: { id: { in: known.map((k) => k.id) } },
-				select: { id: true, name: true, username: true },
-			}),
+				)`,
+	);
+	const users = await usersMatching(
+		db,
+		userId,
+		known.map((k) => k.id),
+		(u) => match(u.name) || match(u.username),
+	);
+	const shadows = await shadowsMatching(db, userId, (s) => match(s.name));
+	const rows: PersonHitRow[] = [
+		...users.map((u) => ({
+			participantType: "user" as const,
+			id: u.id,
+			name: u.name,
+			username: u.username,
+		})),
+		...shadows.map((s) => ({
+			participantType: "shadow" as const,
+			id: s.id,
+			name: s.name,
+			username: null,
+		})),
+	].sort(
+		(a, b) =>
+			compareText(a.name, b.name) ||
+			compareText(a.participantType, b.participantType) ||
+			compareText(a.id, b.id),
+	);
+	const cursor = page.after;
+	const later = cursor
+		? rows.filter(
+				(r) =>
+					(compareText(r.name, cursor.name) ||
+						compareText(r.participantType, cursor.participantType) ||
+						compareText(r.id, cursor.id)) > 0,
+			)
+		: rows;
+	return later.slice(0, page.take);
+}
+
+type ShadowHit = { id: string; name: string; email: string | null };
+
+/**
+ * Unclaimed ghosts the caller can see that `keep` accepts, newest first, at
+ * most `limit`: (createdAt, id) batches, each opened, matched and dropped but
+ * for the hits. createdAt never changes, so no ghost is read twice.
+ */
+export async function shadowsMatching(
+	db: ScanClient,
+	userId: string,
+	keep: (s: ShadowHit) => boolean,
+	limit = Number.POSITIVE_INFINITY,
+): Promise<ShadowHit[]> {
+	const hits: ShadowHit[] = [];
+	await scanBatches(db, userId, {
+		start: null as { createdAt: Date; id: string } | null,
+		read: (tx, after, take) =>
 			tx.shadowProfile.findMany({
-				where: { claimedById: null },
+				where: {
+					claimedById: null,
+					...(after && {
+						OR: [
+							{ createdAt: { lt: after.createdAt } },
+							{ createdAt: after.createdAt, id: { lt: after.id } },
+						],
+					}),
+				},
 				orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-				take: window,
-				select: { id: true, name: true },
+				take,
+				select: { id: true, name: true, email: true, createdAt: true },
 			}),
-		]);
-		const rows: PersonHitRow[] = [
-			...users
-				.filter((u) => match(u.name) || match(u.username))
-				.map((u) => ({
-					participantType: "user" as const,
-					id: u.id,
-					name: u.name,
-					username: u.username,
-				})),
-			...shadows
-				.filter((s) => match(s.name))
-				.map((s) => ({
-					participantType: "shadow" as const,
-					id: s.id,
-					name: s.name,
-					username: null,
-				})),
-		].sort(
-			(a, b) =>
-				compareText(a.name, b.name) ||
-				compareText(a.participantType, b.participantType) ||
-				compareText(a.id, b.id),
-		);
-		const cursor = page.after;
-		const later = cursor
-			? rows.filter(
-					(r) =>
-						(compareText(r.name, cursor.name) ||
-							compareText(r.participantType, cursor.participantType) ||
-							compareText(r.id, cursor.id)) > 0,
-				)
-			: rows;
-		return later.slice(0, page.take);
+		cursorOf: (s) => ({ createdAt: s.createdAt, id: s.id }),
+		visit: (rows) => {
+			for (const s of rows) {
+				if (!keep(s)) continue;
+				hits.push({ id: s.id, name: s.name, email: s.email });
+				if (hits.length >= limit) return true;
+			}
+			return false;
+		},
 	});
+	return hits;
+}
+
+type UserHit = {
+	id: string;
+	name: string;
+	email: string;
+	username: string;
+	image: string | null;
+	avatarPath: string | null;
+};
+
+/**
+ * The users among `ids` that `keep` accepts, newest account first, at most
+ * `limit`. Ids are read in chunks (scanIds), each opened, matched and dropped
+ * but for the hits; the order is only known once every chunk is read.
+ */
+export async function usersMatching(
+	db: ScanClient,
+	userId: string,
+	ids: readonly string[],
+	keep: (u: UserHit) => boolean,
+	limit = Number.POSITIVE_INFINITY,
+): Promise<UserHit[]> {
+	const hits = await scanIds(db, userId, ids, async (tx, chunk) =>
+		(
+			await tx.user.findMany({
+				where: { id: { in: chunk } },
+				select: {
+					id: true,
+					name: true,
+					email: true,
+					username: true,
+					image: true,
+					avatarPath: true,
+					createdAt: true,
+				},
+			})
+		).filter(keep),
+	);
+	return hits
+		.sort(
+			(a, b) =>
+				b.createdAt.getTime() - a.createdAt.getTime() ||
+				(a.id < b.id ? 1 : a.id > b.id ? -1 : 0),
+		)
+		.slice(0, limit)
+		.map(({ createdAt: _, ...u }) => u);
 }
 
 export type ProjectHitRow = {

@@ -93,7 +93,7 @@ current lines.
 | A11 | `src/server/services/claim.service.ts:341-344` | project people by `name` | b | Moved in D10 |
 | A12 | `scripts/sync-default-categories.ts:50-53` | sample print ordered by `name` | b | Moved in D10 |
 | A13 | `scripts/verify-categories.ts:38-41` | sample print ordered by `name` | b | Moved in D10 |
-| A14 | `src/server/api/routers/people.ts:39-44` | ghost search: `name contains` | b | Moved in D10: the newest 20,000 visible ghosts read (RLS scopes them), matched in the app |
+| A14 | `src/server/api/routers/people.ts:39-44` | ghost search: `name contains` | b | Moved in D10: visible ghosts read (RLS scopes them), matched in the app; every one, in batches, since D11 PR 5.2 |
 | A15 | `people.ts:96-102` | contact search: `name`, `email`, `username contains` | b | Moved in D10 (`ilikeContains`, so `%` and `_` act as before) |
 | A16 | `src/server/services/envelope/debt-payment.service.ts:51-54` | the Fees category found by `name` | b | Moved in D10. It now filters by the caller's `userId`, and so does the `given` branch at `:50-53` (behavior change, section 9) |
 | A17 | `src/server/services/accounts/manage.ts:415` | account import finds an open account by `name` | b | Moved in D10: open accounts read once, matched in a map, one made for a row is found by a later row of the same name |
@@ -270,9 +270,9 @@ After D12 finishes the backfill, the SQL paths are dead code. Delete them with
 `immutable_unaccent`'s callers, and drop the `AUDITED` entries in
 `userTextRawSql.test.ts` that no longer hold.
 
-v1 expense search and Activity scan every row in batches (D11 PR 5.1). Title
-suggestions, import review and the people pickers still read a bounded window
-(`APP_LAYER_WINDOW`, 20,000 newest rows) until PR 5.2.
+v1 expense search and Activity (D11 PR 5.1), title suggestions, import review
+and the people pickers (PR 5.2) scan every row in batches (`scan-batches.ts`),
+with no window or cap. The duplicate check reads one day of one amount.
 
 ## 8. D11 checklist
 
@@ -312,27 +312,24 @@ suggestions, import review and the people pickers still read a bounded window
   tests in `envelope/debts.pg.test.ts` cover a visible foreign Fees, no own
   Fees, and the given branch.
 - A14: the old ghost query cut candidates at 50 rows before the privacy
-  filter; it now reads the newest `APP_LAYER_WINDOW` (20,000) visible ghosts,
-  cuts to 50 after the name or email filter, and still answers at most 10. With
-  more than 50 matches the old answer was an arbitrary subset. A ghost older
-  than the newest 20,000 visible ones is not found. Ghost matching stays a
+  filter; it now reads visible ghosts newest first, in batches, until 50 match
+  the name or email filter, and still answers at most 10. With more than 50
+  matches the old answer was an arbitrary subset. Ghost matching stays a
   literal, case-insensitive substring and does not use `ilikeContains`: the
   old query only prefiltered with ILIKE and a literal check after it decided,
   so `%` and `_` were never wildcards for ghosts (a test covers `_` and `%`).
 - A15: contacts are matched with `ilikeContains`, so `%` and `_` in the query
   still act as pattern characters, as `contains` did, because that query had
-  no second check. Read newest first, at most `APP_LAYER_WINDOW` contacts.
-  `people-search-cap.pg.test.ts` shows the cut with a window of 3.
+  no second check. Every contact is read, in id chunks; the newest 10 that
+  match are answered (`text-scans.pg.test.ts`).
 - A2: the v1 category page reads all of a user's categories each page. A user
   has dozens, so this is one small query.
-- B1: the people search reads the newest `window` (default `APP_LAYER_WINDOW`,
-  20,000) users the caller shares an expense or a project with (by account
-  creation) and the newest `window` ghosts RLS lets them see, then filters.
-  Other project members can add ghosts and join projects, so the set can grow
-  without the caller acting. A person beyond the window is not found by
-  search; lists and pickers are not affected. `search-names.pg.test.ts` checks
-  the cut with a window of 2. Projects and categories are the caller's own and
-  are read whole.
+- B1: the people search reads every user the caller shares an expense or a
+  project with (ids by SQL, then id chunks) and every ghost RLS lets them see
+  (batches), then filters. Other project members can add ghosts and join
+  projects, so the set can grow without the caller acting; there is no window
+  since D11 PR 5.2 (`text-scans.pg.test.ts`). Projects and categories are the
+  caller's own and are read whole.
 
 ## 10. Copies of user text outside the declared columns
 
@@ -381,8 +378,8 @@ Commits on `e2ee/d10-raw-sql-audit`:
    `title-suggestions.pg.test.ts`).
 6. This document and `userTextRawSql.test.ts`.
 7. Review fixes: the interest category is the caller's own, given or default
-   (`envelope/debts.pg.test.ts`); a bounded window for people search
-   (`people-search-cap.pg.test.ts`, `search-names.pg.test.ts`); the model query
+   (`envelope/debts.pg.test.ts`); a bounded window for people search, removed
+   in D11 PR 5.2 (`text-scans.pg.test.ts`); the model query
    guard (`userTextModelQueries.test.ts`) and the wider raw SQL guard.
 
 Each move has a pg test that runs the old query as the oracle on mixed names

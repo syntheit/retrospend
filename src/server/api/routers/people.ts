@@ -4,7 +4,8 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { getImageUrl } from "~/server/storage";
 import { addShadow, assertEmailCheck, renameShadow } from "~/server/services/shadow-profile.service";
 import { frequentSplitPartners } from "~/server/services/people/frequent-partners";
-import { APP_LAYER_WINDOW, ilikeContains } from "~/server/services/search-fold";
+import { ilikeContains } from "~/server/services/search-fold";
+import { shadowsMatching, usersMatching } from "~/server/services/search.service";
 import { buildContactVisibility } from "~/server/services/shared-expenses/contact-visibility";
 import { PeopleService } from "~/server/services/shared-expenses/people.service";
 import { peopleV2Procedures } from "./people-v2";
@@ -39,27 +40,20 @@ export const peopleRouter = createTRPCRouter({
 			// otherwise a substring search would leak the address bit by bit.
 			//
 			// A name may be ciphertext in the database, so Postgres cannot match it:
-			// the matching below runs here, over the newest APP_LAYER_WINDOW ghosts
-			// the caller can see (other project members can add ghosts, so the set
-			// can grow on its own; an older ghost is not found by this search).
+			// the matching runs in the app over every ghost the caller can see,
+			// newest first, until 50 match (search.service.ts).
 			// The match is a literal, case-insensitive substring, not
 			// `ilikeContains`: the old query only prefiltered with ILIKE and the
 			// literal check after it decided, so `%` and `_` never acted as
 			// wildcards for ghosts. The contacts below had no such second check.
-			const candidates = (
-				await ctx.db.shadowProfile.findMany({
-					where: { claimedById: null },
-					orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-					take: APP_LAYER_WINDOW,
-					select: { id: true, name: true, email: true },
-				})
-			)
-				.filter(
-					(s) =>
-						s.name.toLowerCase().includes(query) ||
-						(s.email?.toLowerCase().includes(query) ?? false),
-				)
-				.slice(0, 50);
+			const candidates = await shadowsMatching(
+				ctx.db,
+				userId,
+				(s) =>
+					s.name.toLowerCase().includes(query) ||
+					(s.email?.toLowerCase().includes(query) ?? false),
+				50,
+			);
 			const contactVisible = await buildContactVisibility(
 				ctx.db,
 				{ participantType: "user", participantId: userId },
@@ -106,31 +100,14 @@ export const peopleRouter = createTRPCRouter({
 			// Contacts: fuzzy search by name or email
 			// Matched here, not in SQL: a name may be ciphertext in the database.
 			const inContains = ilikeContains(query);
-			const contactUsers =
-				contactIds.size > 0
-					? (
-							await ctx.db.user.findMany({
-								where: { id: { in: [...contactIds] } },
-								orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-								take: APP_LAYER_WINDOW,
-								select: {
-									id: true,
-									name: true,
-									email: true,
-									username: true,
-									image: true,
-									avatarPath: true,
-								},
-							})
-						)
-							.filter(
-								(u) =>
-									inContains(u.name) ||
-									inContains(u.email) ||
-									inContains(u.username),
-							)
-							.slice(0, 10)
-					: [];
+			const contactUsers = await usersMatching(
+				ctx.db,
+				userId,
+				[...contactIds],
+				(u) =>
+					inContains(u.name) || inContains(u.email) || inContains(u.username),
+				10,
+			);
 
 			// Non-contacts: match by exact username or exact email
 			const nonContactUsers = await ctx.db.user.findMany({
