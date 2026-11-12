@@ -328,13 +328,16 @@ function personalRow(e: PersonalRowInput, c: ShapeContext): ActivityRowDTO {
  * Everyone in a split, the payer included. RLS hides the other split rows
  * of a standalone expense from a participant who did not create it (only
  * the creator, project members and each person's own row are visible), so
- * the payer, always on the transaction itself, is added when missing.
+ * the payer, always on the transaction itself, is added when missing. The
+ * payer comes first and the rest by key: the database returns split rows in
+ * no set order, and the server and a device must show the same faces.
  */
 function peopleOf(t: SharedRowInput["transaction"], payerId: string): string[] {
-	const keys = t.splitParticipants.map((s) =>
-		personKeyOf(s.participantType, s.participantId),
-	);
-	return keys.includes(payerId) ? keys : [payerId, ...keys];
+	const others = t.splitParticipants
+		.map((s) => personKeyOf(s.participantType, s.participantId))
+		.filter((key) => key !== payerId)
+		.sort();
+	return [payerId, ...others];
 }
 
 type Lookup = ReturnType<typeof rateLookup>;
