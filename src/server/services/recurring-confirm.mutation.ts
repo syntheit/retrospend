@@ -23,6 +23,12 @@ export interface ConfirmRecurringExpenseInput {
 	/** The day it was really paid (yyyy-MM-dd); the due date when omitted. */
 	readonly paidOn?: string | null;
 	readonly timeZone?: string;
+	/**
+	 * Set only by the auto-post sweep (recurring-auto-post.ts), never by a
+	 * transport: the template must still pay automatically with a fixed
+	 * amount, since the sweep read it before this transaction.
+	 */
+	readonly auto?: boolean;
 }
 
 export interface ConfirmedExpense {
@@ -51,6 +57,7 @@ export const confirmRecurringExpense: MoneyMutation<
 				isActive: true,
 				// Either direction: the web's older confirm still posts recurring
 				// income through here. /api/v1 sends income to its own mutation.
+				...(input.auto && { autoPay: true, amountMode: "FIXED" }),
 			},
 		});
 		if (!template)
