@@ -13,10 +13,22 @@ import {
 	noticeMoney,
 } from "./notification-text";
 
+/** A notice with the actor's display name, as the readers look it up. */
+type Named = Omit<Notice, "actor"> & { actor?: string | null };
+const build = (
+	{ actor, ...notice }: Named,
+	reader: Parameters<typeof buildNoticeText>[1] = {},
+) =>
+	buildNoticeText(
+		{ ...notice, actor: actor === undefined ? null : { type: "user", id: "a" } },
+		reader,
+		actor ?? null,
+	);
+
 /** The money formatter joins the code and the number with a no-break space. */
 const plain = (text: string) => text.replaceAll(" ", " ");
-const text = async (notice: Notice, reader = {}) =>
-	plain((await buildNoticeText(notice, reader)).body);
+const text = async (notice: Named, reader = {}) =>
+	plain((await build(notice, reader)).body);
 
 // Hand-derived: ARS 12,345.50 is 1_234_550 minor units (2 decimals), and
 // JPY has none, so 4_500 minor is JPY 4,500.
@@ -98,7 +110,7 @@ describe("buildNoticeText amounts", () => {
 	});
 
 	it("reads the amount in the reader's language and number format", async () => {
-		const notice: Notice = {
+		const notice: Named = {
 			kind: "settlementRejected",
 			actor: "Ana",
 			amount: { money: ars },
@@ -130,8 +142,8 @@ describe("buildNoticeText never carries free text", () => {
 			projectName: "Viaje a Bariloche",
 			periodLabel: "Marzo",
 			notes: "SECRET NOTE",
-		} as unknown as Notice;
-		const { title, body } = await buildNoticeText(smuggled);
+		} as unknown as Named;
+		const { title, body } = await build(smuggled);
 		const all = JSON.stringify([title, body]);
 		for (const word of ["Chez", "Bariloche", "Marzo", "SECRET"])
 			expect(all).not.toContain(word);
@@ -140,7 +152,7 @@ describe("buildNoticeText never carries free text", () => {
 	it("words every kind in every language from the actor alone", async () => {
 		for (const language of SUPPORTED_LOCALES)
 			for (const kind of KINDS) {
-				const out = await buildNoticeText(
+				const out = await build(
 					{ kind, actor: "Ana", amount: { money: jpy } },
 					{ language },
 				);
@@ -172,7 +184,7 @@ describe("buildNoticeText never carries free text", () => {
 					{ hasLink: true },
 					{ changes: everything },
 				]) {
-					const out = await buildNoticeText(
+					const out = await build(
 						{ kind, actor: "Ana", ...variant },
 						{ language },
 					);
@@ -213,7 +225,7 @@ describe("buildNoticeText never carries free text", () => {
 	});
 
 	it("gives an email its button label and says what the link leads to", async () => {
-		const invite = await buildNoticeText({
+		const invite = await build({
 			kind: "projectInvite",
 			actor: "Ana",
 			hasLink: true,
@@ -222,12 +234,12 @@ describe("buildNoticeText never carries free text", () => {
 		expect(invite.body).toBe(
 			"Ana added you to a project on Retrospend. Join to see the shared expenses.",
 		);
-		const noLink = await buildNoticeText({
+		const noLink = await build({
 			kind: "projectInvite",
 			actor: "Ana",
 		});
 		expect(noLink.body).toBe("Ana added you to a project on Retrospend");
-		expect((await buildNoticeText({ kind: "expenseEdited" })).cta).toBeNull();
+		expect((await build({ kind: "expenseEdited" })).cta).toBeNull();
 	});
 });
 
@@ -295,11 +307,11 @@ describe("what an edit changed", () => {
 			payer: true,
 			date: true,
 		});
-		const notice: Notice = { kind: "expenseEdited", actor: "Ana", changes };
-		expect(plain((await buildNoticeText(notice)).changes ?? "")).toBe(
+		const notice: Named = { kind: "expenseEdited", actor: "Ana", changes };
+		expect(plain((await build(notice)).changes ?? "")).toBe(
 			"amount: ARS 1,000 to ARS 1,500, date changed, payer changed",
 		);
-		const es = await buildNoticeText(notice, { language: "es-AR" });
+		const es = await build(notice, { language: "es-AR" });
 		expect(plain(es.changes ?? "")).toBe(
 			"monto: ARS 1.000 a ARS 1.500, fecha modificada, quien pagó modificado",
 		);
@@ -324,10 +336,10 @@ describe("what an edit changed", () => {
 			before,
 		);
 		expect(changes).toEqual({ other: true });
-		const edited = await buildNoticeText({ kind: "expenseEdited", changes });
+		const edited = await build({ kind: "expenseEdited", changes });
 		expect(edited.changes).toBe("other changes");
 		expect(
-			(await buildNoticeText({ kind: "expenseEdited" })).changes,
+			(await build({ kind: "expenseEdited" })).changes,
 		).toBeNull();
 	});
 });

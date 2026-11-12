@@ -11,7 +11,6 @@ import { userTransaction } from "~/server/db-tx";
 import {
 	createNotification,
 	participantLabel,
-	resolveParticipantName,
 } from "~/server/services/notifications";
 import { logAudit } from "~/server/services/shared-expenses/audit-log";
 import { computePeriodSettleStatus } from "~/server/services/shared-expenses/billing-period-settle";
@@ -192,8 +191,6 @@ async function notifyPeriodClosed(
 	actorUserId: string,
 	periodId: string,
 ) {
-	const actorName = await resolveParticipantName("user", actorUserId);
-
 	const participants = await db.projectParticipant.findMany({
 		where: { projectId, participantType: "user" },
 	});
@@ -203,7 +200,10 @@ async function notifyPeriodClosed(
 		await createNotification({
 			userId: p.participantId,
 			type: "PERIOD_CLOSED",
-			notice: { kind: "periodClosed", actor: actorName },
+			notice: {
+				kind: "periodClosed",
+				actor: { type: "user", id: actorUserId },
+			},
 			data: { projectId, periodId },
 		});
 	}

@@ -149,11 +149,13 @@ async function notifyAddedUser(
 	projectId: string,
 	addedUserId: string,
 ) {
-	const actorName = await resolveParticipantName("user", userId);
 	createNotification({
 		userId: addedUserId,
 		type: "PARTICIPANT_ADDED",
-		notice: { kind: "addedToProject", actor: actorName },
+		notice: {
+			kind: "addedToProject",
+			actor: { type: "user", id: userId },
+		},
 		data: { projectId },
 	}).catch((err) =>
 		console.error("[Notification Error] PARTICIPANT_ADDED:", err),
@@ -202,11 +204,11 @@ async function inviteAddedGhost(
 	}
 
 	// A person without an account has no language on file: English.
-	const text = await buildNoticeText({
-		kind: "projectInvite",
-		actor: actorName,
-		hasLink: Boolean(joinUrl),
-	}).catch((err) => {
+	const text = await buildNoticeText(
+		{ kind: "projectInvite", hasLink: Boolean(joinUrl) },
+		{},
+		actorName,
+	).catch((err) => {
 		console.error("[Invitation] Could not word the invite email:", err);
 		return null;
 	});
@@ -386,11 +388,13 @@ export async function transferOwnership(
 		return { success: true };
 	});
 
-	const callerName = await resolveParticipantName("user", userId);
 	void createNotification({
 		userId: newOwnerId,
 		type: "PARTICIPANT_ADDED",
-		notice: { kind: "ownershipTransferred", actor: callerName },
+		notice: {
+			kind: "ownershipTransferred",
+			actor: { type: "user", id: userId },
+		},
 		data: { projectId },
 	});
 	return result;

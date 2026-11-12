@@ -8,9 +8,11 @@ import {
 	countUnreadNotifications,
 	getNotificationPreferences,
 	listNotifications,
+	loadNoticeReader,
 	markAllNotificationsRead,
 	markNotificationRead,
 	NOTIFICATION_TYPES,
+	presentNotifications,
 	updateNotificationPreferences,
 } from "~/server/services/notifications";
 import type { NotificationType } from "~prisma";
@@ -33,11 +35,16 @@ export const notificationRouter = createTRPCRouter({
 			}),
 		)
 		.query(async ({ ctx, input }) => {
-			const items = await listNotifications(ctx.db, ctx.session.user.id, {
+			const userId = ctx.session.user.id;
+			const found = await listNotifications(ctx.db, userId, {
 				unreadOnly: input.unreadOnly,
 				take: input.limit + 1,
 				afterId: input.cursor,
 			});
+			const items = await presentNotifications(
+				found,
+				await loadNoticeReader(ctx.db, userId),
+			);
 			const nextCursor =
 				items.length > input.limit ? items[input.limit - 1]?.id : undefined;
 			return { items: items.slice(0, input.limit), nextCursor };

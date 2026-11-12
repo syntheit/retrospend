@@ -7,7 +7,6 @@ import { noticeMoney } from "~/server/services/notification-text";
 import {
 	createNotification,
 	participantLabel,
-	resolveParticipantName,
 } from "~/server/services/notifications";
 import { assertRelationship } from "~/server/services/payments/access";
 import { claimMatchError } from "~/server/services/payments/claim-match";
@@ -547,12 +546,13 @@ export class SettlementService {
 			});
 		}
 
-		const myName = await resolveParticipantName("user", this.userId);
-
 		createNotification({
 			userId: input.participantId,
 			type: "PAYMENT_REMINDER",
-			notice: { kind: "balanceReminder", actor: myName },
+			notice: {
+				kind: "balanceReminder",
+				actor: { type: "user", id: this.userId },
+			},
 			data: {
 				fromParticipantType: "user",
 				fromParticipantId: this.userId,

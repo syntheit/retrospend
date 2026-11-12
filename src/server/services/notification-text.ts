@@ -4,6 +4,7 @@ import {
 	withNumberFormat,
 } from "@retrospend/domain/format-locale";
 import { type Money, toMinor } from "@retrospend/domain/money-minor";
+import { z } from "zod";
 import { DEFAULT_LOCALE, matchSupportedLocale } from "~/i18n/locales";
 import { serverTranslator } from "~/server/services/server-translator";
 
@@ -20,27 +21,36 @@ import { serverTranslator } from "~/server/services/server-translator";
  * reader's language and number format.
  */
 
-export type NoticeKind =
-	| "expenseSplit"
-	| "expenseEdited"
-	| "expenseDeleted"
-	| "paymentRecordedByPayee"
-	| "settlementReceived"
-	| "settlementConfirmed"
-	| "settlementRejected"
-	| "settlementReminder"
-	| "balanceReminder"
-	| "squaredUp"
-	| "periodClosed"
-	| "addedToProject"
-	| "ownershipTransferred"
-	| "profileClaimed"
-	| "fixRequested"
-	| "fixAccepted"
-	| "fixDeclined"
-	| "splitCorrected"
-	| "projectInvite"
-	| "guestResume";
+export const NOTICE_KINDS = [
+	"expenseSplit",
+	"expenseEdited",
+	"expenseDeleted",
+	"paymentRecordedByPayee",
+	"settlementReceived",
+	"settlementConfirmed",
+	"settlementRejected",
+	"settlementReminder",
+	"balanceReminder",
+	"squaredUp",
+	"periodClosed",
+	"addedToProject",
+	"ownershipTransferred",
+	"profileClaimed",
+	"fixRequested",
+	"fixAccepted",
+	"fixDeclined",
+	"splitCorrected",
+	"projectInvite",
+	"guestResume",
+] as const;
+
+export type NoticeKind = (typeof NOTICE_KINDS)[number];
+
+/** Who did it, by reference. The name is looked up when the text is made. */
+export interface ActorRef {
+	type: "user" | "shadow" | "guest";
+	id: string;
+}
 
 /** An amount the text names, and the shape of the payment behind it. */
 export interface NoticeAmount {
@@ -114,8 +124,8 @@ export const NOTICE_DATA_KEYS: ReadonlySet<string> = new Set<keyof NoticeData>([
 
 export interface Notice {
 	kind: NoticeKind;
-	/** The display name of who did it; null reads as "Someone". */
-	actor?: string | null;
+	/** Who did it; a person who is gone, or none, reads as "Someone". */
+	actor?: ActorRef | null;
 	amount?: NoticeAmount | null;
 	/** The whole amount, when `amount` is a share of it. */
 	total?: Money | null;
@@ -186,10 +196,54 @@ export function noticeChanges(
 	return out;
 }
 
-/** The text of one notice, for the person it goes to. */
+const moneySchema = z.object({
+	minor: z.number().int().safe(),
+	currency: z.string().min(1).max(12),
+});
+const noticeSchema = z.object({
+	kind: z.enum(NOTICE_KINDS),
+	actor: z
+		.object({ type: z.enum(["user", "shadow", "guest"]), id: z.string() })
+		.nullish(),
+	amount: z
+		.object({
+			money: moneySchema,
+			// A settle-all made only of offsets counts 0 currencies; it reads
+			// like one, as it did when the text was stored.
+			currencies: z.number().int().nonnegative().optional(),
+			offset: z.boolean().optional(),
+		})
+		.nullish(),
+	total: moneySchema.nullish(),
+	hasLink: z.boolean().optional(),
+	changes: z
+		.object({
+			amount: z.object({ from: moneySchema, to: moneySchema }).optional(),
+			date: z.boolean().optional(),
+			payer: z.boolean().optional(),
+			split: z.boolean().optional(),
+			category: z.boolean().optional(),
+			project: z.boolean().optional(),
+			other: z.boolean().optional(),
+		})
+		.nullish(),
+});
+
+/** A notice read back from `data.notice`, or null when it is not one. */
+export function parseStoredNotice(value: unknown): Notice | null {
+	const parsed = noticeSchema.safeParse(value);
+	return parsed.success ? (parsed.data as Notice) : null;
+}
+
+/**
+ * The text of one notice, for the person it goes to. `actorName` is the
+ * display name of `notice.actor`, looked up by the caller at the moment the
+ * text is made; null or empty reads as "Someone".
+ */
 export async function buildNoticeText(
 	notice: Notice,
 	reader: NoticeReader = {},
+	actorName: string | null = null,
 ): Promise<NoticeText> {
 	const locale = matchSupportedLocale(reader.language) ?? DEFAULT_LOCALE;
 	const t = await serverTranslator(locale, "notificationText");
@@ -200,7 +254,7 @@ export async function buildNoticeText(
 		});
 	const key = notice.kind;
 	const values: Record<string, string> = {
-		actor: notice.actor?.trim() || t("actorUnknown"),
+		actor: actorName?.trim() || t("actorUnknown"),
 	};
 	let body = `${key}.body`;
 	const amount = notice.amount;

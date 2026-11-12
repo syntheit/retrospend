@@ -243,8 +243,9 @@ describe("notice emails in every language", () => {
 			expect(chrome.locale).toBe(locale);
 			for (const kind of kinds) {
 				const text = await buildNoticeText(
-					{ kind, actor: "Sofia", hasLink: true },
+					{ kind, actor: { type: "user", id: "u1" }, hasLink: true },
 					reader,
+					"Sofia",
 				);
 				const subject = emailSubject.notification(text.title);
 				const { locale: lang, ...rest } = chrome;

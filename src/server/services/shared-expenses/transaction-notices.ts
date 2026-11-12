@@ -5,14 +5,20 @@
  * Split from transaction.service.ts.
  */
 import {
+	type ActorRef,
 	type NoticeChanges,
 	noticeMoney,
 } from "~/server/services/notification-text";
-import {
-	createNotification,
-	resolveParticipantName,
-} from "~/server/services/notifications";
+import { createNotification } from "~/server/services/notifications";
 import type { ParticipantRef } from "./types";
+
+/** The actor as a notice names them: a reference, never a name. */
+function actorRef(actor: ParticipantRef): ActorRef {
+	return {
+		type: actor.participantType as ActorRef["type"],
+		id: actor.participantId,
+	};
+}
 
 export async function notifyExpenseSplit(
 	actor: ParticipantRef,
@@ -29,10 +35,6 @@ export async function notifyExpenseSplit(
 		}>;
 	},
 ) {
-	const actorName = await resolveParticipantName(
-		actor.participantType,
-		actor.participantId,
-	);
 	const currency = transaction.currency;
 	const total = noticeMoney(transaction.amount, currency);
 
@@ -51,7 +53,7 @@ export async function notifyExpenseSplit(
 			type: "EXPENSE_SPLIT",
 			notice: {
 				kind: "expenseSplit",
-				actor: actorName,
+				actor: actorRef(actor),
 				amount: share && { money: share },
 				total,
 			},
@@ -75,10 +77,6 @@ export async function notifyExpenseEdited(
 	},
 	changes: NoticeChanges,
 ) {
-	const actorName = await resolveParticipantName(
-		actor.participantType,
-		actor.participantId,
-	);
 
 	for (const sp of updated.splitParticipants) {
 		if (sp.participantType !== "user") continue;
@@ -91,7 +89,7 @@ export async function notifyExpenseEdited(
 		await createNotification({
 			userId: sp.participantId,
 			type: "EXPENSE_EDITED",
-			notice: { kind: "expenseEdited", actor: actorName, changes },
+			notice: { kind: "expenseEdited", actor: actorRef(actor), changes },
 			data: {
 				transactionId: updated.id,
 				actorType: actor.participantType,
@@ -113,10 +111,6 @@ export async function notifyExpenseDeleted(
 		}>;
 	},
 ) {
-	const actorName = await resolveParticipantName(
-		actor.participantType,
-		actor.participantId,
-	);
 	const amount = noticeMoney(existing.amount, existing.currency);
 
 	for (const sp of existing.splitParticipants) {
@@ -132,7 +126,7 @@ export async function notifyExpenseDeleted(
 			type: "EXPENSE_DELETED",
 			notice: {
 				kind: "expenseDeleted",
-				actor: actorName,
+				actor: actorRef(actor),
 				amount: amount && { money: amount },
 			},
 			data: {

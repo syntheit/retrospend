@@ -152,7 +152,7 @@ describe("initiateSettlement", () => {
 				type: "SETTLEMENT_RECEIVED",
 				notice: {
 					kind: "settlementReceived",
-					actor: "Test User",
+					actor: { type: "user", id: ALICE },
 					amount: { money: { minor: 3000, currency: "USD" }, currencies: 1 },
 				},
 			}),
@@ -174,7 +174,7 @@ describe("initiateSettlement", () => {
 		const call = vi.mocked(createNotification).mock.calls[0]?.[0];
 		expect(call?.notice).toEqual({
 			kind: "settlementReceived",
-			actor: "Test User",
+			actor: { type: "user", id: ALICE },
 			amount: { money: { minor, currency }, currencies: 1 },
 		});
 		expect(Object.keys(call ?? {}).sort()).toEqual(["data", "notice", "type", "userId"]);

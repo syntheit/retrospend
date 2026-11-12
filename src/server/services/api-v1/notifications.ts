@@ -5,8 +5,10 @@ import {
 	countUnreadNotifications,
 	getNotificationPreferences,
 	listNotifications,
+	loadNoticeReader,
 	markAllNotificationsRead,
 	markNotificationRead,
+	presentNotifications,
 	updateNotificationPreferences,
 } from "~/server/services/notifications";
 import type { NotificationType } from "~prisma";
@@ -28,11 +30,16 @@ export async function listNotificationPage(
 	q: CursorQuery & { unreadOnly?: "true" | "false" },
 ) {
 	const after = decodeCursor(q.cursor, idCursor);
-	const rows = await listNotifications(caller.db, caller.principal.userId, {
+	const { userId } = caller.principal;
+	const found = await listNotifications(caller.db, userId, {
 		unreadOnly: q.unreadOnly === "true",
 		take: q.limit + 1,
 		afterId: after?.id,
 	});
+	const rows = await presentNotifications(
+		found,
+		await loadNoticeReader(caller.db, userId),
+	);
 	return toPage(
 		rows,
 		q.limit,
