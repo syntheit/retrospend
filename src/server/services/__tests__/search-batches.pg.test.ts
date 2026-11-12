@@ -234,6 +234,41 @@ describe("a match only in the third batch", () => {
 	});
 });
 
+describe("outside the dates", () => {
+	const october = { from: "2026-10-01", to: "2026-10-31" };
+
+	it("an empty month says whether the search matches at other dates", async () => {
+		const who = await createTestUser();
+		// The September match sits in the third batch of the scan without dates.
+		await thirdBatch(who, () =>
+			expense(who, "Mate viejo", new Date("2026-09-01T12:00:00Z")),
+		);
+		const hit = await activity(who, "mate", october);
+		expect(hit.items).toEqual([]);
+		expect(hit.count).toBe(0);
+		expect(hit.elsewhere).toBe(true);
+		const none = await activity(who, "zzz", october);
+		expect(none.items).toEqual([]);
+		expect(none.elsewhere).toBe(false);
+	});
+
+	it("a month with no search opens one transaction", async () => {
+		const who = await createTestUser();
+		await expense(who, "Filler", at(20));
+		const plain = await counted(() =>
+			listActivity(
+				adminDb,
+				who.user.id,
+				listV2Input.parse(october),
+				"UTC",
+				new Date("2026-10-21T15:00:00Z"),
+			),
+		);
+		expect(plain.result.items).toHaveLength(1);
+		expect(plain.txs).toBe(1);
+	});
+});
+
 describe("across batch boundaries", () => {
 	let who: Who;
 	/** Every "tie" match in page order. */
@@ -344,18 +379,20 @@ describe("rows that change while a scan runs", () => {
 		const who = await createTestUser();
 		const match = await expense(who, "Flip match", at(20));
 		for (let i = 0; i < 4; i++) await expense(who, `Other ${i}`, at(19 - i));
-		// The plain suite starts this request on the SQL path; the sealed one
-		// on the app path, where the flip changes nothing.
+		// The plain suite starts this request on the SQL path, whose one
+		// transaction opens after the path is picked; the sealed one on the
+		// app path, where the flip changes nothing.
 		resetEpochForTests();
 		try {
-			const { result } = await counted(
+			const { result, txs: opened } = await counted(
 				() => activity(who, "flip"),
 				(n) => {
-					if (n === 2) markEpochActive();
+					if (n === 1) markEpochActive();
 				},
 			);
 			expect(result.items.map((i) => i.id)).toEqual([match]);
 			expect(result.count).toBe(1);
+			if (!sealedSuite) expect(opened).toBe(1);
 		} finally {
 			markEpochActive();
 		}
