@@ -25,7 +25,6 @@
 	"Expense.amount": [
 		"src/server/services/amortization.service.ts",
 		"src/server/services/csv.service.ts",
-		"src/server/services/expense.service.ts",
 		"src/server/services/import/commit.mutation.ts",
 		"src/server/services/income/confirm-recurring.mutation.ts",
 		"src/server/services/recurring-confirm.mutation.ts"
@@ -33,20 +32,12 @@
 	"Expense.amountInUSD": [
 		"src/server/services/amortization.service.ts",
 		"src/server/services/csv.service.ts",
-		"src/server/services/envelope/adjustment.ts",
-		"src/server/services/expense.service.ts",
-		"src/server/services/import/commit.mutation.ts",
-		"src/server/services/income/confirm-recurring.mutation.ts",
-		"src/server/services/recurring-confirm.mutation.ts"
+		"src/server/services/envelope/adjustment.ts"
 	],
 	"Expense.exchangeRate": [
 		"src/server/services/amortization.service.ts",
 		"src/server/services/csv.service.ts",
-		"src/server/services/envelope/adjustment.ts",
-		"src/server/services/expense.service.ts",
-		"src/server/services/import/commit.mutation.ts",
-		"src/server/services/income/confirm-recurring.mutation.ts",
-		"src/server/services/recurring-confirm.mutation.ts"
+		"src/server/services/envelope/adjustment.ts"
 	],
 	"Expense.homeAmount": ["src/server/services/amortization.service.ts"],
 	"Expense.homeRate": ["src/server/services/amortization.service.ts"],
