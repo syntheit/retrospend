@@ -11,7 +11,7 @@ import (
 )
 
 // TestRecordRateHistory writes against a migrated test database and skips
-// unless SIDECAR_TEST_DATABASE_URL names one (see recurring_db_test.go).
+// unless SIDECAR_TEST_DATABASE_URL names one.
 func TestRecordRateHistory(t *testing.T) {
 	url := os.Getenv("SIDECAR_TEST_DATABASE_URL")
 	if url == "" {

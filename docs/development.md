@@ -38,7 +38,7 @@ Or use Nix: `nix develop` provides all of the above, plus the Prisma schema engi
    pnpm dev
    ```
 
-5. Optional: start the sidecar for exchange rates, recurring expenses and bank import.
+5. Optional: start the sidecar for exchange rates, backups and bank import.
 
    ```bash
    cd sidecar && go run .
