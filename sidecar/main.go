@@ -68,14 +68,15 @@ func main() {
 		log.Fatalf("Failed to schedule exchange rate sync: %v", err)
 	}
 
-	// Schedule recurring expense processing: every 15 minutes
+	// Heartbeat every 15 minutes, for the admin page. The app posts recurring
+	// expenses itself (src/server/services/recurring-auto-post.ts).
 	_, err = c.AddFunc("*/15 * * * *", func() {
-		if err := tasks.ProcessRecurringExpenses(database); err != nil {
-			log.Printf("❌ Recurring expense processing failed: %v", err)
+		if err := tasks.Heartbeat(database); err != nil {
+			log.Printf("❌ Heartbeat failed: %v", err)
 		}
 	})
 	if err != nil {
-		log.Fatalf("Failed to schedule recurring expense processing: %v", err)
+		log.Fatalf("Failed to schedule the heartbeat: %v", err)
 	}
 
 	// Schedule database backup
@@ -419,7 +420,7 @@ func main() {
 		c.Start()
 		log.Println("✓ Scheduler started")
 		log.Println("  - Exchange rates: daily at 09:05 UTC")
-		log.Println("  - Recurring expenses: every 15 minutes")
+		log.Println("  - Heartbeat: every 15 minutes")
 		log.Printf("  - Database backup: %s (retention: %d days)", cfg.BackupCron, cfg.BackupRetentionDays)
 		if len(cfg.BackupAgeRecipients) > 0 {
 			log.Printf("  - Backups encrypted to %d age recipient(s)", len(cfg.BackupAgeRecipients))
