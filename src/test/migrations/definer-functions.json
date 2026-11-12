@@ -73,6 +73,7 @@
 		"currency_step",
 		"immutable_unaccent",
 		"project_participant_guard_update",
+		"round_half_even",
 		"shared_transaction_guard_update",
 		"split_participant_guard_update"
 	]

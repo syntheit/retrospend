@@ -2,8 +2,9 @@
  * What the Postgres trigger `account_leg_moves_balance` does to an account's
  * stored balance, its balance updates (snapshots) and its counted units when a
  * leg is inserted, updated or deleted, in pure code. The source of truth is
- * `account_leg_apply` and `account_leg_moves_balance` in
- * prisma/migrations/20261024300000_accounts_legs_transfers; the real-Postgres
+ * `account_leg_apply` (prisma/migrations/20261112100000_account_leg_half_even)
+ * and `account_leg_moves_balance`
+ * (prisma/migrations/20261024300000_accounts_legs_transfers); the real-Postgres
  * parity test (src/server/services/accounts/apply-legs.parity.pg.test.ts)
  * compares the two on random leg sequences. When the trigger changes, change
  * this with it.
@@ -11,18 +12,19 @@
  * The trigger is not idempotent: it moves the balance by the leg each time it
  * fires. Apply each change once, in the order the database saw it.
  *
- * Arithmetic follows Postgres numeric: sums and products are exact, ROUND and
- * the cast into a numeric(12,2) column round half away from zero, and a
- * division keeps the digits Postgres picks (select_div_scale: at least 16
- * significant digits, never fewer decimals than either side) before it is
- * rounded again, so a quotient that lands next to a tie rounds the way the
- * database rounds it.
+ * Arithmetic follows Postgres numeric: sums and products are exact, a USD
+ * value is rounded to cents half to even (`round_half_even`), and a division
+ * keeps the digits Postgres picks (select_div_scale: at least 16 significant
+ * digits, never fewer decimals than either side, the last one rounded half
+ * away from zero) before it is rounded to cents, so a quotient that lands
+ * next to a tie rounds the way the database rounds it.
  */
 import { Dec, type Decimal } from "../precise-decimal";
 
-/** Postgres numeric: exact at any size the columns allow, ties away from zero. */
+/** Postgres numeric: exact at any size the columns allow; its division rounds ties away from zero. */
 const Num = Dec.clone({ precision: 200, rounding: Dec.ROUND_HALF_UP });
 const HALF_UP = Dec.ROUND_HALF_UP;
+const HALF_EVEN = Dec.ROUND_HALF_EVEN;
 const ZERO = new Num(0);
 
 export type AccountLegSource = "INCOME" | "TRANSFER" | "FEE" | "BALANCE_UPDATE";
@@ -69,12 +71,10 @@ export interface LegSnapshot {
 export interface LegState {
 	accounts: ReadonlyMap<string, LegAccount>;
 	/**
-	 * In the order Postgres visits them: by date, through the unique index on
-	 * (accountId, date), which is the plan it uses for the trigger's UPDATE. A
-	 * zero-balance snapshot is valued from the nearest other snapshot that holds
-	 * something, and one the same change already moved counts at its new value,
-	 * so the order can show in the result. A different query plan could visit
-	 * them in another order.
+	 * Any order: a leg moves its snapshots oldest first, as the trigger does. A
+	 * zero-balance snapshot is valued from the nearest other snapshot that
+	 * holds something, and one the same change already moved counts at its new
+	 * value, so the order shows in the result. The result keeps this order.
 	 */
 	snapshots: readonly LegSnapshot[];
 }
@@ -121,9 +121,13 @@ function fits(value: Decimal, limit: Decimal, column: string): Decimal {
 	return value;
 }
 
-/** Cast into numeric(12,2): rounds to cents, ties away from zero. */
+/** `round_half_even(value, 2)` into numeric(12,2): cents, ties to even. */
 function toUsd(value: Decimal): Decimal {
-	return fits(value.toDecimalPlaces(2, HALF_UP), USD_LIMIT, "balanceInUSD");
+	return fits(
+		value.toDecimalPlaces(2, HALF_EVEN).plus(0),
+		USD_LIMIT,
+		"balanceInUSD",
+	);
 }
 
 function toBalance(value: Decimal): Decimal {
@@ -199,6 +203,15 @@ function usdPerUnit(
 	return pgDivide("1", rate, 0, 6);
 }
 
+/**
+ * Snapshot positions oldest first (the trigger's ORDER BY date). An account
+ * has one snapshot a day (unique accountId, date), and a leg moves one account.
+ */
+function byDate(snapshots: readonly WorkSnapshot[]): number[] {
+	const time = (i: number) => (snapshots[i] as WorkSnapshot).date.getTime();
+	return snapshots.map((_, i) => i).sort((a, b) => time(a) - time(b));
+}
+
 /** The snapshot after `effect` moved its account. */
 function moveSnapshot(
 	work: Work,
@@ -243,7 +256,7 @@ function applyOne(
 			balance: toBalance(account.balance.plus(effect)),
 		};
 		work.accounts.set(leg.accountId, moved);
-		for (let i = 0; i < work.snapshots.length; i++) {
+		for (const i of byDate(work.snapshots)) {
 			const snapshot = work.snapshots[i] as WorkSnapshot;
 			if (
 				snapshot.accountId === leg.accountId &&

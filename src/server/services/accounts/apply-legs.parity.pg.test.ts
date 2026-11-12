@@ -5,6 +5,8 @@
  * writes between them) runs through the real trigger and through applyLegs in
  * memory; after every step each account's balance and counted units, and each
  * balance update's balance and USD value, must be equal to the last digit.
+ * Some runs turn index scans off, so the trigger reads snapshots in heap
+ * order: the result must not depend on the plan.
  *
  * Accounts cover ARS, USD, JPY, KWD (0, 2 and 3 decimals), a crypto account
  * and two liabilities. Legs carry mismatched currencies on purpose: the
@@ -21,7 +23,9 @@ import {
 import { Dec } from "@retrospend/domain/precise-decimal";
 import { afterAll, describe, expect, it } from "vitest";
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
-import type { AccountLegSource, AssetType } from "~prisma";
+import type { AccountLegSource, AssetType, Prisma } from "~prisma";
+
+type Tx = Prisma.TransactionClient;
 
 const SEED = 20261108;
 const OPERATIONS = 400;
@@ -237,7 +241,32 @@ async function readDb() {
 	return { accounts, snapshots };
 }
 
-async function runSequence(seed: number, operations: number, ties = false) {
+interface RunOptions {
+	/** Small whole amounts against small balances, so cents land on ties. */
+	ties?: boolean;
+	/**
+	 * Index scans off for every leg write, so the trigger's queries read
+	 * asset_snapshot in heap order, not through the (accountId, date) index.
+	 */
+	heap?: boolean;
+}
+
+/** A leg write, with index scans off for its statement when `heap` is set. */
+function legWrite(heap: boolean, write: (tx: Tx) => Promise<unknown>) {
+	if (!heap) return write(adminDb);
+	return adminDb.$transaction(async (tx) => {
+		await tx.$executeRaw`SET LOCAL enable_indexscan = off`;
+		await tx.$executeRaw`SET LOCAL enable_indexonlyscan = off`;
+		await tx.$executeRaw`SET LOCAL enable_bitmapscan = off`;
+		return write(tx);
+	});
+}
+
+async function runSequence(
+	seed: number,
+	operations: number,
+	{ ties = false, heap = false }: RunOptions = {},
+) {
 	await seedWorld();
 	const random = prng(seed);
 	const int = (lo: number, hi: number) =>
@@ -389,17 +418,11 @@ async function runSequence(seed: number, operations: number, ties = false) {
 	}
 
 	/**
-	 * Snapshots by date: the order the trigger's UPDATE visits them through the
-	 * (accountId, date) unique index, which is the plan Postgres picks here
-	 * (EXPLAIN shows an index scan). Another plan could visit them in another
-	 * order; that only matters when a zero-balance snapshot is valued from one
-	 * the same change already moved.
+	 * Snapshots in the order they were written, not by date: applyLegs and the
+	 * trigger both move them oldest first, so the order given must not matter.
 	 */
 	function memoryState(): LegState {
-		const sorted = [...snapshots].sort(
-			(a, b) => a.date.getTime() - b.date.getTime(),
-		);
-		return { accounts, snapshots: sorted };
+		return { accounts, snapshots };
 	}
 
 	async function compare(step: number, what: string) {
@@ -510,7 +533,8 @@ async function runSequence(seed: number, operations: number, ties = false) {
 				step,
 				`insert ${row.source} ${row.amount} acct ${row.accountId?.slice(prefix.length + 1)} counted ${row.countedUnits}`,
 				{ op: "insert", leg: toLeg(row) },
-				() => adminDb.accountLeg.create({ data: dbLeg(row) }),
+				() =>
+					legWrite(heap, (tx) => tx.accountLeg.create({ data: dbLeg(row) })),
 				() => legs.set(row.id, row),
 			);
 		} else if (roll < 0.7) {
@@ -522,10 +546,12 @@ async function runSequence(seed: number, operations: number, ties = false) {
 				`update ${old.id} ${old.amount}->${row.amount}`,
 				{ op: "update", old: toLeg(old), next: toLeg(row) },
 				() =>
-					adminDb.accountLeg.update({
-						where: { id: old.id },
-						data: dbLeg(row),
-					}),
+					legWrite(heap, (tx) =>
+						tx.accountLeg.update({
+							where: { id: old.id },
+							data: dbLeg(row),
+						}),
+					),
 				() => legs.set(row.id, row),
 			);
 		} else if (roll < 0.82) {
@@ -535,7 +561,10 @@ async function runSequence(seed: number, operations: number, ties = false) {
 				step,
 				`delete ${old.id}`,
 				{ op: "delete", leg: toLeg(old) },
-				() => adminDb.accountLeg.delete({ where: { id: old.id } }),
+				() =>
+					legWrite(heap, (tx) =>
+						tx.accountLeg.delete({ where: { id: old.id } }),
+					),
 				() => legs.delete(old.id),
 			);
 		} else if (roll < 0.94) {
@@ -640,10 +669,30 @@ describe("applyLegs parity with the account_leg trigger", () => {
 	it(`matches on small whole amounts, where cents land on ties (seed ${SEED + 1})`, async () => {
 		// Balances of 2, 4, 8, 16, 40, 80 against moves of up to 12 make
 		// x.xx5 quotients common, so half-even and half-up part ways here.
-		const stats = await runSequence(SEED + 1, OPERATIONS, true);
+		const stats = await runSequence(SEED + 1, OPERATIONS, { ties: true });
 		expect(stats.insert).toBeGreaterThan(100);
 		expect(stats.snapshot).toBeGreaterThan(10);
 	}, 120_000);
+
+	// With index scans off the trigger's queries read asset_snapshot in heap
+	// order. Before the trigger moved snapshots oldest first, 21 of 60 seeds
+	// diverged this way (seed 1004 at step 72: 2179.79 against 2179.84).
+	const HEAP_SEEDS = Array.from({ length: 24 }, (_, i) => 1000 + i);
+	it.each(HEAP_SEEDS)(
+		"matches when the trigger reads snapshots in heap order (seed %i)",
+		async (seed) => {
+			await runSequence(seed, 150, { heap: true });
+		},
+		60_000,
+	);
+
+	it.each(HEAP_SEEDS.slice(0, 12))(
+		"matches in heap order on ties (seed %i + 100)",
+		async (seed) => {
+			await runSequence(seed + 100, 150, { heap: true, ties: true });
+		},
+		60_000,
+	);
 
 	it("agrees with the database that a balance past numeric(19,8) is refused", async () => {
 		await seedWorld();
