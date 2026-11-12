@@ -260,8 +260,8 @@ async function seedLedger(): Promise<Seeded> {
 	}
 
 	const sharedIds = Array.from({ length: SHARED }, () => randomUUID());
-	for (const ids of chunks(sharedIds, 1000)) {
-		const offset = sharedIds.indexOf(ids[0] ?? "");
+	for (const [c, ids] of chunks(sharedIds, 1000).entries()) {
+		const offset = c * 1000;
 		await adminDb.sharedTransaction.createMany({
 			data: ids.map((id, k) => ({
 				id,
