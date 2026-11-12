@@ -1,5 +1,4 @@
 {
-	"AssetAccount.balance": ["src/server/services/accounts/manage.ts"],
 	"AssetAccount.exchangeRate": [
 		"src/server/services/accounts/checkpoint.ts",
 		"src/server/services/accounts/manage.ts"
@@ -8,9 +7,6 @@
 	"AssetAccount.minimumPayment": [
 		"src/server/services/envelope/debt.service.ts"
 	],
-	"AssetHistory.balance": ["src/server/services/wealth.service.ts"],
-	"AssetSnapshot.balance": ["src/server/services/wealth.service.ts"],
-	"AssetSnapshot.balanceInUSD": ["src/server/services/wealth.service.ts"],
 	"Envelope.targetAmount": [
 		"src/server/services/envelope/book.service.ts",
 		"src/server/services/envelope/crud.service.ts",

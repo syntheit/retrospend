@@ -9,26 +9,38 @@ import { WealthService } from "../wealth.service";
 const svc = new WealthService({} as never);
 
 describe("WealthService.calculateBalanceInUSD", () => {
-	it("crypto multiplies by the USD price", () => {
-		expect(svc.calculateBalanceInUSD(0.5, 50000, "BTC")).toBe(25000);
-		expect(svc.calculateBalanceInUSD(1000, 0.08, "DOGE")).toBeCloseTo(80);
+	const usd = (...args: Parameters<typeof svc.calculateBalanceInUSD>) =>
+		svc.calculateBalanceInUSD(...args).toFixed();
+
+	it("crypto multiplies by the USD price, exactly", () => {
+		expect(usd("0.5", "50000", "BTC")).toBe("25000");
+		expect(usd("1000", "0.08", "DOGE")).toBe("80");
+		// 0.00000001 BTC x 64545.123456 = 0.00064545123456, left unrounded.
+		expect(usd("0.00000001", "64545.123456", "BTC")).toBe("0.00064545123456");
 	});
 
-	it("fiat divides by units per USD, strong or weak", () => {
-		expect(svc.calculateBalanceInUSD(5000, 1415, "ARS")).toBeCloseTo(3.534, 3);
-		expect(svc.calculateBalanceInUSD(1000, 0.92, "EUR")).toBeCloseTo(1087, 0);
-		expect(svc.calculateBalanceInUSD(100, 0.3102, "KWD")).toBeCloseTo(322.4, 1);
-		expect(svc.calculateBalanceInUSD(100, 1, "USD")).toBe(100);
+	it("fiat divides by units per USD, strong or weak, once", () => {
+		// 5000 / 1415 = 1000 / 283 = 3.533568...; 1000 / 0.92 = 1086.9565...;
+		// 100 / 0.3102 = 322.3726...
+		expect(svc.calculateBalanceInUSD("5000", "1415", "ARS").toFixed(4)).toBe("3.5336");
+		expect(svc.calculateBalanceInUSD("1000", "0.92", "EUR").toFixed(2)).toBe("1086.96");
+		expect(svc.calculateBalanceInUSD("100", "0.3102", "KWD").toFixed(2)).toBe("322.37");
+		expect(usd("100", 1, "USD")).toBe("100");
+		// ARS blue at 100 per USD: 28.5 is exactly 0.285, a tie the snapshot
+		// write rounds, not this.
+		expect(usd("28.5", "100", "ARS")).toBe("0.285");
 	});
 
 	it("negative balances (overdrafts) convert instead of throwing", () => {
-		expect(svc.calculateBalanceInUSD(-156000, 1560, "ARS")).toBeCloseTo(-100);
-		expect(svc.calculateBalanceInUSD(-5000, 163.83, "JPY")).toBeCloseTo(-30.52, 2);
+		expect(usd("-156000", "1560", "ARS")).toBe("-100");
+		// 5000 / 163.83 = 30.5194...
+		expect(svc.calculateBalanceInUSD("-5000", "163.83", "JPY").toFixed(2)).toBe("-30.52");
 	});
 
-	it("throws for a zero or negative rate", () => {
-		expect(() => svc.calculateBalanceInUSD(100, 0, "ARS")).toThrow(TRPCError);
-		expect(() => svc.calculateBalanceInUSD(100, -1, "ARS")).toThrow(TRPCError);
+	it("throws for a zero, negative or missing rate, never 1", () => {
+		expect(() => svc.calculateBalanceInUSD("100", 0, "ARS")).toThrow(TRPCError);
+		expect(() => svc.calculateBalanceInUSD("100", -1, "ARS")).toThrow(TRPCError);
+		expect(() => svc.calculateBalanceInUSD("100", null, "ARS")).toThrow(TRPCError);
 	});
 });
 

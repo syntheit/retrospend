@@ -9,7 +9,7 @@ import { TRPCError } from "@trpc/server";
 import { CsvNumber, generateCsv } from "~/lib/csv";
 import { isCrypto } from "@retrospend/domain/currency-format";
 import { normalizeDate } from "~/lib/date";
-import { isValidRate, toUSD, USD } from "@retrospend/domain/money";
+import { isValidRate, MissingRateError, USD } from "@retrospend/domain/money";
 import { toNumberOrNull } from "~/lib/utils";
 import { userTransaction } from "~/server/db-tx";
 import { deleteFile } from "~/server/storage";
@@ -79,8 +79,9 @@ export async function createAccountIn(
 	const today = checkpointDay(await userTimeZone(tx, userId, timeZone));
 	const service = new WealthService(tx);
 	const { rate, rateType } = await accountRate(service, input, today);
+	const balance = dec(input.balance);
 	const balanceInUSD = service.calculateBalanceInUSD(
-		input.balance,
+		balance,
 		rate,
 		input.currency,
 	);
@@ -89,7 +90,7 @@ export async function createAccountIn(
 			...(input.id ? { id: input.id } : {}),
 			userId,
 			...otherFields(input),
-			balance: input.balance,
+			balance: balance.toFixed(),
 			exchangeRate: rate,
 			exchangeRateType: rateType,
 		},
@@ -98,7 +99,7 @@ export async function createAccountIn(
 		tx,
 		account.id,
 		today,
-		input.balance,
+		balance,
 		balanceInUSD,
 		userId,
 		{
@@ -245,7 +246,8 @@ export const closeAccount = (db: Db, userId: string, id: string) =>
 /**
  * Reopens a closed account with the balance it had. That balance is recorded
  * for today, so the history picks the account up again from the day it was
- * reopened (the closed days stay at 0).
+ * reopened (the closed days stay at 0). With no rate to value it, nothing is
+ * written: a missing rate is never a USD value of 0.
  */
 export async function reopenAccountIn(
 	tx: Prisma.TransactionClient,
@@ -256,7 +258,7 @@ export async function reopenAccountIn(
 	const asset = await ownAccount(tx, userId, id);
 	if (!asset.closedAt) return { success: true };
 	const service = new WealthService(tx);
-	const balance = Number(asset.balance);
+	const balance = dec(asset.balance.toString());
 	const stored = toNumberOrNull(asset.exchangeRate);
 	let rate: number | null;
 	try {
@@ -268,7 +270,12 @@ export async function reopenAccountIn(
 		// No table rate: the account's own stored rate, if any
 		rate = isValidRate(stored) ? stored : null;
 	}
-	const balanceInUSD = rate === null ? 0 : toUSD(balance, asset.currency, rate);
+	if (rate === null) throw new MissingRateError(asset.currency);
+	const balanceInUSD = service.calculateBalanceInUSD(
+		balance,
+		rate,
+		asset.currency,
+	);
 	await tx.assetAccount.update({
 		where: { id: asset.id },
 		data: { closedAt: null },
