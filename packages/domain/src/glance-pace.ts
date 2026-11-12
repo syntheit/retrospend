@@ -4,13 +4,18 @@
  * (@retrospend/domain/money-dec sumInDec), the running total day by day in minor units, and
  * whether this period runs faster than the last by the same day.
  *
- * Sums stay unrounded until each running total is turned into minor units
- * once (half to even), the way the Activity footer rounds its total, so the
- * last point of a full period equals the period's total exactly.
+ * Sums are exact Decimals until each running total is turned into minor
+ * units once (half to even), the way the Activity footer rounds its total, so
+ * the last point of a full period equals the period's total.
  */
-import { amountIn, type MoneyItem } from "./money";
-import { missingRatesIn } from "./money-dec";
-import { toMinor } from "./money-minor";
+import {
+	type MoneyItemDec,
+	missingRatesIn,
+	type RateInput,
+	sumInDec,
+} from "./money-dec";
+import { roundedMinor } from "./money-minor";
+import { Dec, type Decimal } from "./precise-decimal";
 
 export type IsoDate = string;
 
@@ -37,7 +42,7 @@ export function spanOf(from: IsoDate, to: IsoDate): PeriodSpan {
 export interface DatedItem {
 	/** The calendar day of the row in the viewer's zone. */
 	readonly day: IsoDate;
-	readonly item: MoneyItem;
+	readonly item: MoneyItemDec;
 }
 
 const inSpan = (rows: readonly DatedItem[], span: PeriodSpan) =>
@@ -51,7 +56,7 @@ export function missingIn(
 	rows: readonly DatedItem[],
 	span: PeriodSpan,
 	home: string,
-	rate: number | null,
+	rate: RateInput,
 ): string[] {
 	return missingRatesIn(
 		inSpan(rows, span).map((r) => r.item),
@@ -61,38 +66,38 @@ export function missingIn(
 }
 
 /**
- * Spending per day of `span` (index 0 = day 1) in `home`, unrounded; rows
- * outside the span are ignored. Null when missingIn names anything: a
- * missing rate is never 1 (R14).
+ * The running total at the end of each day of `span` (index 0 = day 1) in
+ * `home`, exact and unrounded; rows outside the span are ignored. Each point
+ * is one sumInDec over every row up to that day, not a sum of per-day
+ * conversions: a share converts from its amount and rate in one division per
+ * currency and rate, so the last point is exactly the period total and an
+ * exact tie stays a tie however the rows fall across days. Null when
+ * missingIn names anything: a missing rate is never 1 (R14).
  */
-export function dailyHome(
+export function runningHome(
 	rows: readonly DatedItem[],
 	span: PeriodSpan,
 	home: string,
-	rate: number | null,
-): number[] | null {
+	rate: RateInput,
+): Decimal[] | null {
 	if (missingIn(rows, span, home, rate).length) return null;
-	const daily = new Array<number>(span.days).fill(0);
-	for (const { day, item } of inSpan(rows, span)) {
-		const i = daysBetween(span.from, day);
-		daily[i] = (daily[i] ?? 0) + amountIn(item, home, rate);
-	}
-	return daily;
+	const days = Array.from({ length: span.days }, (): MoneyItemDec[] => []);
+	for (const { day, item } of inSpan(rows, span))
+		days[daysBetween(span.from, day)]?.push(item);
+	const upToToday: MoneyItemDec[] = [];
+	return days.map((items) => {
+		for (const item of items) upToToday.push(item);
+		return upToToday.length ? sumInDec(upToToday, home, rate) : new Dec(0);
+	});
 }
 
-/** Running totals for days 1..upTo, each rounded once to minor units. */
+/** The running totals of days 1..upTo, each rounded once to minor units. */
 export function cumulativeMinor(
-	daily: readonly number[],
+	running: readonly Decimal[],
 	upTo: number,
 	currency: string,
 ): number[] {
-	const out: number[] = [];
-	let total = 0;
-	for (let i = 0; i < Math.min(upTo, daily.length); i++) {
-		total += daily[i] ?? 0;
-		out.push(toMinor(total, currency));
-	}
-	return out;
+	return running.slice(0, upTo).map((total) => roundedMinor(total, currency));
 }
 
 /**

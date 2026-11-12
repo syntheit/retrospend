@@ -183,23 +183,21 @@ export interface MoneyItemDec {
 	booked?: { currency: string; amount: Decimal } | null;
 }
 
-/** What missingRatesIn reads: the number items of the pace series carry NaN where these carry null. */
+/** What missingRatesIn reads of an item. */
 export interface PricedItem {
 	currency: string;
-	amountInUSD: Decimal | number | null;
+	amountInUSD: Decimal | null;
 	booked?: { currency: string } | null;
 }
 
-const isPriced = (item: PricedItem): boolean =>
-	typeof item.amountInUSD === "number"
-		? Number.isFinite(item.amountInUSD)
-		: item.amountInUSD !== null;
+const isPriced = (item: PricedItem): boolean => item.amountInUSD !== null;
 
 /** Whether the item is already in `currency`, as entered or as booked. */
 const isIn = (item: PricedItem, currency: string): boolean =>
 	item.currency === currency || item.booked?.currency === currency;
 
-const hasRate = (currency: string, rate: RateInput): boolean => {
+/** Whether `currency` converts: USD always, else a finite rate above zero. */
+export const hasRate = (currency: string, rate: RateInput): boolean => {
 	if (currency === USD) return true;
 	const r = rate === null || rate === undefined ? null : dec(rate);
 	return !!r?.isFinite() && r.gt(0);

@@ -38,7 +38,6 @@ import {
 	crossRateDec,
 	fromUSDDec,
 	MissingRateError,
-	type MoneyItemDec,
 	rateFromUsdPerUnitDec,
 	roundMoneyDec,
 	toUSDDec,
@@ -167,50 +166,7 @@ export function expenseAmounts(args: {
 }
 
 // ── Totals in a display currency ─────────────────────────────────────────────
-// Totals are exact (money-dec: sumInDec, missingRatesIn). What stays here is
-// the number view the spend pace still sums in floats (glance-pace,
-// spend-pace); the next PR moves it to Decimals and deletes this block.
-
-/** A MoneyItemDec as numbers, for the pace series only. */
-export interface MoneyItem {
-	amount: number;
-	currency: string;
-	/** NaN for an unpriced item (no rate at all when loaded): it counts only in its own currency. */
-	amountInUSD: number;
-	booked?: { currency: string; amount: number } | null;
-}
-
-/** The number view of an exact item; null USD value becomes NaN. */
-export function numberItem(item: MoneyItemDec): MoneyItem {
-	return {
-		amount: item.amount.toNumber(),
-		currency: item.currency,
-		amountInUSD: item.amountInUSD ? item.amountInUSD.toNumber() : Number.NaN,
-		booked: item.booked
-			? {
-					currency: item.booked.currency,
-					amount: item.booked.amount.toNumber(),
-				}
-			: null,
-	};
-}
-
-/**
- * One item in `currency` under the totals rule: its own amount when it is
- * already in `currency`, its booked value when it was booked in `currency`,
- * else its USD value converted at `rate`.
- */
-export function amountIn(
-	item: MoneyItem,
-	currency: string,
-	rate: number | null | undefined,
-): number {
-	if (item.currency === currency) return item.amount;
-	if (item.booked?.currency === currency) return item.booked.amount;
-	if (!Number.isFinite(item.amountInUSD))
-		throw new MissingRateError(item.currency);
-	return fromUSD(item.amountInUSD, currency, rate);
-}
+// Totals are exact: money-dec sumInDec and missingRatesIn.
 
 /** The date whose rate converts a period's totals: its end, or now if sooner. */
 export function periodRateDate(periodEnd: Date, now: Date = new Date()): Date {

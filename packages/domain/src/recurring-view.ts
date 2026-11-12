@@ -15,7 +15,7 @@
 import { NO_CATEGORY_TONE } from "./category-tone";
 import { isValidRate, pickBestRate, type RateRow, USD } from "./money";
 import type { Money } from "./money-minor";
-import type { DecimalInput } from "./precise-decimal";
+import { Dec, type Decimal, type DecimalInput } from "./precise-decimal";
 import {
 	nextDueAfter,
 	previousDueDay,
@@ -26,9 +26,7 @@ import {
 	categoryRef,
 	decimalMoney,
 	type HomeRates,
-	homeMajor,
-	numberMoney,
-	numberOf,
+	homeDec,
 } from "./row-money";
 import { dayKey } from "./time-zone";
 
@@ -116,33 +114,38 @@ export interface RecurringInputs {
 	rates: Record<string, number | null>;
 }
 
-/** How many times a frequency happens in an average month. */
-const PER_MONTH: Record<RecurringFrequency, number> = {
-	WEEKLY: 52 / 12,
-	BIWEEKLY: 26 / 12,
-	MONTHLY: 1,
-	QUARTERLY: 1 / 3,
-	YEARLY: 1 / 12,
+/** How many times a frequency happens in an average month, as a fraction so a cost divides once. */
+const PER_MONTH: Record<RecurringFrequency, readonly [number, number]> = {
+	WEEKLY: [52, 12],
+	BIWEEKLY: [26, 12],
+	MONTHLY: [1, 1],
+	QUARTERLY: [1, 3],
+	YEARLY: [1, 12],
 };
+
+function perMonthOf(amount: Decimal, frequency: RecurringFrequency): Decimal {
+	const [times, months] = PER_MONTH[frequency];
+	return amount.mul(times).div(months);
+}
 
 function stateOf(next: string, today: string): RecurringItemDTO["state"] {
 	if (next < today) return "overdue";
 	return next === today ? "due" : "upcoming";
 }
 
-type CostLine = { perMonth: number | null; missing: string[] };
+type CostLine = { perMonth: Decimal | null; missing: string[] };
 
 function costOf(list: CostLine[], home: string): RecurringCost {
-	let month = 0;
+	let month = new Dec(0);
 	const missing = new Set<string>();
 	for (const x of list) {
 		if (x.perMonth === null) for (const c of x.missing) missing.add(c);
-		else month += x.perMonth;
+		else month = month.plus(x.perMonth);
 	}
 	return {
-		month: numberMoney(month, home),
-		quarter: numberMoney(month * 3, home),
-		year: numberMoney(month * 12, home),
+		month: decimalMoney(month, home),
+		quarter: decimalMoney(month.mul(3), home),
+		year: decimalMoney(month.mul(12), home),
 		missingRate: [...missing].sort(),
 	};
 }
@@ -224,14 +227,14 @@ export function recurringBodyFrom(args: {
 	const items = inputs.templates.map((t): RecurringItemDTO => {
 		const amount = decimalMoney(t.amount, t.currency);
 		const rate = rateOf(t.currency);
-		const major = homeMajor(numberOf(t.amount), t.currency, rate, rates);
-		const homeValue = major === null ? null : numberMoney(major, home);
+		const major = homeDec(t.amount, t.currency, rate, rates);
+		const homeValue = major === null ? null : decimalMoney(major, home);
 		const direction = t.direction === "IN" ? "in" : "out";
 		const next = dayKey(t.nextDueDate, timeZone);
 		if (t.isActive)
 			costs[direction].push({
 				missing: missingRates(t.currency, rate, rates),
-				perMonth: major === null ? null : major * PER_MONTH[t.frequency],
+				perMonth: major === null ? null : perMonthOf(major, t.frequency),
 			});
 		return {
 			id: t.id,
