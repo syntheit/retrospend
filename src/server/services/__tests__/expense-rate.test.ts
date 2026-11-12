@@ -54,8 +54,8 @@ describe("the home leg an expense books", () => {
 				pricingSource: "official",
 			});
 			expect(created()).toMatchObject({
-				exchangeRate: 1,
-				amountInUSD: 12.99,
+				exchangeRate: "1",
+				amountInUSD: "12.99",
 				pricingSource: "official",
 				rateType: "blue",
 				homeCurrency: "ARS",
@@ -75,8 +75,8 @@ describe("the home leg an expense books", () => {
 				pricingSource: "official",
 			});
 			expect(created()).toMatchObject({
-				exchangeRate: 0.8787,
-				amountInUSD: 113.8,
+				exchangeRate: "0.8787",
+				amountInUSD: "113.80",
 				rateType: "blue",
 				homeAmount: "177534.99",
 			});
@@ -114,7 +114,7 @@ describe("the home leg an expense books", () => {
 				customRate: { base: "USD", value: "1500" },
 			});
 			expect(created()).toMatchObject({
-				exchangeRate: 1,
+				exchangeRate: "1",
 				rateType: "custom",
 				homeRate: "1500",
 				homeAmount: "19485.00",
@@ -186,7 +186,7 @@ describe("the home leg an expense books", () => {
 				pricingSource: "official",
 			});
 			expect(updated()).toMatchObject({
-				exchangeRate: 0.8787,
+				exchangeRate: "0.8787",
 				rateType: "blue",
 				homeAmount: "177534.99",
 			});
@@ -216,7 +216,7 @@ describe("the home leg an expense books", () => {
 				currency: "USD",
 			});
 			expect(updated()).toMatchObject({
-				exchangeRate: 1,
+				exchangeRate: "1",
 				rateType: "blue",
 				homeCurrency: "ARS",
 				homeAmount: "15600.00",
@@ -246,7 +246,7 @@ describe("the home leg an expense books", () => {
 				currency: "ARS",
 			});
 			expect(updated()).toMatchObject({
-				exchangeRate: 1560,
+				exchangeRate: "1560",
 				homeCurrency: "USD",
 				homeAmount: "10.00",
 			});
@@ -265,7 +265,7 @@ describe("the home leg an expense books", () => {
 		});
 		expect(row).toMatchObject({
 			pricingSource: "RECURRING",
-			exchangeRate: 1,
+			exchangeRate: "1",
 			rateType: "blue",
 			homeCurrency: "ARS",
 			homeAmount: "20264.40",
@@ -308,6 +308,10 @@ describe("rateChoice", () => {
 		rateType: "blue",
 		homeCurrency: "ARS",
 		homeRate: "1",
+		amount: "10",
+		date: DATE,
+		amountInUSD: "0.01",
+		homeAmount: "10.00",
 	};
 
 	it("takes the old form's type for the entry leg only", () => {

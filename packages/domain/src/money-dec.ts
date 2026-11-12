@@ -43,7 +43,10 @@ function rateOf(currency: string, rate: RateInput): Decimal {
  * A currency's rate as a fraction of USD per unit: fiat 1 / rate, crypto
  * rate / 1, USD 1 / 1. Kept apart so a chain of conversions divides once.
  */
-function usdFraction(currency: string, rate: RateInput): [Decimal, Decimal] {
+export function usdFractionDec(
+	currency: string,
+	rate: RateInput,
+): [Decimal, Decimal] {
 	if (currency === USD) return [new Dec(1), new Dec(1)];
 	const r = rateOf(currency, rate);
 	return isCrypto(currency) ? [r, new Dec(1)] : [new Dec(1), r];
@@ -51,7 +54,7 @@ function usdFraction(currency: string, rate: RateInput): [Decimal, Decimal] {
 
 /** USD value of one unit of `currency`, given its stored rate. */
 export function usdPerUnitDec(currency: string, rate: RateInput): Decimal {
-	const [num, den] = usdFraction(currency, rate);
+	const [num, den] = usdFractionDec(currency, rate);
 	return num.div(den);
 }
 
@@ -96,8 +99,8 @@ export function convertDec(
 	toRate: RateInput,
 ): Decimal {
 	if (from === to) return dec(amount);
-	const [fromNum, fromDen] = usdFraction(from, fromRate);
-	const [toNum, toDen] = usdFraction(to, toRate);
+	const [fromNum, fromDen] = usdFractionDec(from, fromRate);
+	const [toNum, toDen] = usdFractionDec(to, toRate);
 	return dec(amount).mul(fromNum).mul(toDen).div(fromDen.mul(toNum));
 }
 

@@ -12,8 +12,8 @@
  *   amount it gives (home minor units, half-even), in Decimal math. A rate
  *   that is not there throws MissingRateError; it is never 0 or 1.
  *
- * The entry leg keeps today's stored convention and float math
- * (exchangeRate per USD, amountInUSD rounded to cents, @retrospend/domain/money).
+ * The entry leg keeps today's stored convention (exchangeRate per USD at 6
+ * decimals, amountInUSD to cents, half-even, @retrospend/domain/rate-booking).
  */
 
 import { MissingRateError, USD } from "@retrospend/domain/money";
@@ -29,6 +29,7 @@ import {
 	preferredRateType,
 	type RateChoice,
 	RateInputError,
+	type SavedRate,
 } from "@retrospend/domain/rate-booking";
 import { TRPCError } from "@trpc/server";
 import {
@@ -132,12 +133,17 @@ export async function loadRateContext(
 	};
 }
 
-/** Books an entry's rate under `choice` (see RateChoice), reading the rate table through `db`. */
+/**
+ * Books an entry's rate under `choice` (see RateChoice), reading the rate
+ * table through `db`. An edit passes the row as saved, so an edit that moves
+ * no money keeps its saved figures.
+ */
 export async function bookRate(
 	db: RateDb,
 	ctx: RateContext,
 	entry: EntryAmount,
 	choice: RateChoice,
+	saved?: SavedRate | null,
 ): Promise<BookedRate> {
 	const book: BookContext = {
 		homeCurrency: ctx.homeCurrency,
@@ -145,7 +151,7 @@ export async function bookRate(
 		find: (currency, date, type) => findExchangeRate(db, currency, date, type),
 	};
 	try {
-		return await bookRateWith(book, entry, choice);
+		return await bookRateWith(book, entry, choice, saved);
 	} catch (error) {
 		return asBadRequest(() => {
 			throw error;

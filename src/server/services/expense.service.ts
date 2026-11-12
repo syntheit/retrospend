@@ -3,6 +3,7 @@ import {
 	type RateInput,
 	rateChoice as chooseRate,
 	type SavedRate,
+	storedAmount,
 } from "@retrospend/domain/rate-booking";
 import {
 	dayKey,
@@ -56,18 +57,27 @@ export async function resolveExpenseRate(
 	return bookRate(
 		db,
 		ctx,
-		{ amount: input.amount, currency: input.currency, date: input.date },
+		{
+			amount: storedAmount(input.amount),
+			currency: input.currency,
+			date: input.date,
+		},
 		rateChoice(input, saved, ctx.homeCurrency),
+		saved,
 	);
 }
 
-/** The rate columns of a saved expense row. */
+/** The rate columns of a saved expense row, and the money it booked. */
 function savedRateOf(row: {
 	currency: string;
 	exchangeRate: Prisma.Decimal | number;
 	rateType: string | null;
 	homeCurrency: string | null;
 	homeRate: Prisma.Decimal | null;
+	amount: Prisma.Decimal;
+	date: Date;
+	amountInUSD: Prisma.Decimal;
+	homeAmount: Prisma.Decimal | null;
 }): SavedRate {
 	return {
 		currency: row.currency,
@@ -75,6 +85,10 @@ function savedRateOf(row: {
 		rateType: row.rateType,
 		homeCurrency: row.homeCurrency,
 		homeRate: row.homeRate?.toString() ?? null,
+		amount: row.amount.toString(),
+		date: row.date,
+		amountInUSD: row.amountInUSD.toString(),
+		homeAmount: row.homeAmount?.toString() ?? null,
 	};
 }
 
@@ -135,7 +149,7 @@ export async function createExpenseIn(
 			id: input.id,
 			userId,
 			title: input.title,
-			amount: input.amount,
+			amount: storedAmount(input.amount),
 			currency: input.currency,
 			...rate,
 			pricingSource: pricingSource,
@@ -234,7 +248,7 @@ export class ExpenseService {
 				where: { id: input.id, userId },
 				data: {
 					title: input.title,
-					amount: input.amount,
+					amount: storedAmount(input.amount),
 					currency: input.currency,
 					...rate,
 					pricingSource: input.pricingSource,

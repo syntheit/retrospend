@@ -57,8 +57,8 @@ describe("rate types", () => {
 		it("a USD expense in an ARS home books blue by default (T7)", async () => {
 			// 12.99 x 1,560 = 20,264.40
 			await expect(book(12.99, "USD")).resolves.toEqual({
-				exchangeRate: 1,
-				amountInUSD: 12.99,
+				exchangeRate: "1",
+				amountInUSD: "12.99",
 				rateType: "blue",
 				homeCurrency: "ARS",
 				homeRate: "1560",
@@ -87,8 +87,8 @@ describe("rate types", () => {
 		it("an ARS expense in a USD home: 1 / 1,560 = 0.000641025641, ARS 15,600 = USD 10.00", async () => {
 			asUser("USD");
 			await expect(book(15_600, "ARS")).resolves.toEqual({
-				exchangeRate: 1560,
-				amountInUSD: 10,
+				exchangeRate: "1560",
+				amountInUSD: "10.00",
 				rateType: "blue",
 				homeCurrency: "USD",
 				homeRate: "0.000641025641",
@@ -100,8 +100,8 @@ describe("rate types", () => {
 			// 1,775.349948787982... x 100 = 177,534.99. EUR has no blue, so its
 			// leg falls back to official; the label is the home leg's blue.
 			await expect(book(100, "EUR")).resolves.toMatchObject({
-				exchangeRate: 0.8787,
-				amountInUSD: 113.8,
+				exchangeRate: "0.8787",
+				amountInUSD: "113.80",
 				rateType: "blue",
 				homeRate: "1775.349948787982",
 				homeAmount: "177534.99",
@@ -110,7 +110,7 @@ describe("rate types", () => {
 
 		it("crypto multiplies: BTC 0.01 at 64,545.9 x 1,560 = ARS 1,006,916.04", async () => {
 			await expect(book(0.01, "BTC")).resolves.toMatchObject({
-				exchangeRate: 64545.9,
+				exchangeRate: "64545.9",
 				rateType: "blue",
 				homeRate: "100691604",
 				homeAmount: "1006916.04",
@@ -130,8 +130,8 @@ describe("rate types", () => {
 
 		it("a home-currency expense books itself: rate 1, its own amount", async () => {
 			await expect(book(1000, "ARS")).resolves.toEqual({
-				exchangeRate: 1560,
-				amountInUSD: 0.64,
+				exchangeRate: "1560",
+				amountInUSD: "0.64",
 				rateType: "blue",
 				homeCurrency: "ARS",
 				homeRate: "1",
@@ -165,8 +165,8 @@ describe("rate types", () => {
 			await expect(
 				book(12.99, "USD", { kind: "custom", base: "USD", value: "1500" }),
 			).resolves.toEqual({
-				exchangeRate: 1,
-				amountInUSD: 12.99,
+				exchangeRate: "1",
+				amountInUSD: "12.99",
 				rateType: "custom",
 				homeCurrency: "ARS",
 				homeRate: "1500",
@@ -181,13 +181,13 @@ describe("rate types", () => {
 				base: "USD",
 				value: "1500",
 			});
-			// 1 / 1,500 = 0.000666666667; 15,000 x that = 10.000000005 -> 10.00
+			// 15,000 / 1,500 = 10.00 in one division; the home rate 1 / 1,500 = 0.000666666667
 			expect(rate).toMatchObject({
-				amountInUSD: 10,
+				amountInUSD: "10.00",
 				homeRate: "0.000666666667",
 				homeAmount: "10.00",
 			});
-			expect(rate.exchangeRate).toBeCloseTo(1500, 6);
+			expect(rate.exchangeRate).toBe("1500");
 		});
 
 		it("derives the entry leg through the home's default rate: EUR 100 at 1 EUR = 1,800 ARS", async () => {
@@ -198,11 +198,12 @@ describe("rate types", () => {
 				value: "1800",
 			});
 			expect(rate).toMatchObject({
-				amountInUSD: 115.38,
+				amountInUSD: "115.38",
 				homeRate: "1800",
 				homeAmount: "180000.00",
 			});
-			expect(rate.exchangeRate).toBeCloseTo(1560 / 1800, 6);
+			// The stored leg is 1,560 / 1,800 = 0.8666... to 6 decimals.
+			expect(rate.exchangeRate).toBe("0.866667");
 		});
 
 		it("refuses a custom rate within one currency or of zero", async () => {
@@ -229,8 +230,8 @@ describe("rate types", () => {
 					rateType: "custom",
 				}),
 			).resolves.toMatchObject({
-				exchangeRate: 1500,
-				amountInUSD: 1,
+				exchangeRate: "1500",
+				amountInUSD: "1.00",
 				rateType: "custom",
 				homeRate: "0.000666666667",
 				homeAmount: "1.00",

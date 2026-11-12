@@ -10,6 +10,7 @@ import {
 	rateChoice,
 	rateTypeFromPricingSource,
 	type SavedRate,
+	storedAmount,
 } from "./rate-booking";
 
 const DATE = new Date("2026-03-05T12:00:00Z");
@@ -40,8 +41,8 @@ describe("bookRate with a BTC home (crypto rates are USD per unit)", () => {
 
 	it("USD 100 into BTC: homeRate 1 / 50000 = 0.00002, home amount 100 x 0.00002 = 0.002 at 8 decimals", async () => {
 		expect(await book(btc, "100", "USD")).toEqual({
-			exchangeRate: 1,
-			amountInUSD: 100,
+			exchangeRate: "1",
+			amountInUSD: "100.00",
 			rateType: "crypto",
 			homeCurrency: "BTC",
 			homeRate: "0.00002",
@@ -57,8 +58,8 @@ describe("bookRate with a BTC home (crypto rates are USD per unit)", () => {
 				"BTC",
 			),
 		).toEqual({
-			exchangeRate: 50000,
-			amountInUSD: 25000,
+			exchangeRate: "50000",
+			amountInUSD: "25000.00",
 			rateType: "crypto",
 			homeCurrency: "USD",
 			homeRate: "50000",
@@ -147,8 +148,8 @@ describe("bookRate choices", () => {
 				rateType: "custom",
 			}),
 		).toMatchObject({
-			exchangeRate: 0.5,
-			amountInUSD: 200,
+			exchangeRate: "0.5",
+			amountInUSD: "200.00",
 			rateType: "custom",
 			homeRate: "3090",
 			homeAmount: "309000.00",
@@ -186,6 +187,195 @@ describe("bookRate choices", () => {
 	});
 });
 
+describe("bookRate rounds half to even from the exact rate", () => {
+	const ars = table({ ARS: { rate: 100, type: "official" } }, "ARS");
+
+	it("ARS ties at 100 per USD: 28.5 is 0.285 USD, so 0.28 (8 is even); refunds mirror", async () => {
+		expect(await book(ars, "28.5", "ARS")).toMatchObject({
+			exchangeRate: "100",
+			amountInUSD: "0.28",
+			homeRate: "1",
+			homeAmount: "28.50",
+		});
+		expect((await book(ars, "-28.5", "ARS")).amountInUSD).toBe("-0.28");
+		// -1.5 / 100 = -0.015: 1 is odd, so -0.02 (half up gave -0.01).
+		expect((await book(ars, "-1.5", "ARS")).amountInUSD).toBe("-0.02");
+		// 0.5 / 100 = 0.005 rounds to 0.00, and its refund never reads "-0.00".
+		expect((await book(ars, "0.5", "ARS")).amountInUSD).toBe("0.00");
+		expect((await book(ars, "-0.5", "ARS")).amountInUSD).toBe("0.00");
+	});
+
+	it("KWD 1.0035 at 0.3 per USD is 3.345 USD, one division: 3.34", async () => {
+		const kwd = table({ KWD: { rate: 0.3, type: "official" } }, "KWD");
+		expect(await book(kwd, "1.0035", "KWD")).toMatchObject({
+			amountInUSD: "3.34",
+			homeAmount: "1.004",
+		});
+		// The home amount 1.0035 is a tie at 3 decimals too: 3 is odd, so 1.004.
+	});
+
+	it("BTC 0.0000001 at 50000 USD per coin is 0.005 USD: 0.00", async () => {
+		const usd = table({ BTC: { rate: 50000, type: "crypto" } }, "USD");
+		expect(await book(usd, "0.0000001", "BTC")).toMatchObject({
+			amountInUSD: "0.00",
+			homeAmount: "0.00",
+		});
+	});
+
+	it("a BTC home: USD 0.0006 at 40000 is 0.000000015 BTC, a tie at 8 decimals: 0.00000002", async () => {
+		const btc = table({ BTC: { rate: 40000, type: "crypto" } }, "BTC");
+		// 0.0006 x 1 / (1 x 40000) = 0.000000015; 1 is odd, so 2 at the 8th decimal.
+		expect((await book(btc, "0.0006", "USD")).homeAmount).toBe("0.00000002");
+	});
+
+	it("EUR 4.5 at 3 per USD into a JPY home at 1 per USD: one division gives 1.5, so 2 JPY (D3)", async () => {
+		const jpy = table(
+			{
+				EUR: { rate: 3, type: "official" },
+				JPY: { rate: 1, type: "official" },
+			},
+			"JPY",
+		);
+		// cross = (1 / 3) / (1 / 1) = 0.333...; 4.5 x 1 x 1 / (3 x 1) = 1.5 exactly,
+		// a tie at 0 decimals: 1 is odd, so 2. 4.5 x 0.333...3 (40 digits) gave 1.
+		// USD value 4.5 / 3 = 1.50.
+		expect(await book(jpy, "4.5", "EUR")).toEqual({
+			exchangeRate: "3",
+			amountInUSD: "1.50",
+			rateType: "official",
+			homeCurrency: "JPY",
+			homeRate: "0.333333333333",
+			homeAmount: "2",
+		});
+	});
+
+	it("a typed rate prices USD from the exact rate, not the 6-decimal exchangeRate (D4)", async () => {
+		const ctx = table({ ARS: { rate: 1545, type: "blue" } }, "ARS", "blue");
+		// 1 EUR = 1546 ARS at blue 1545 per USD: 1546 / 1545 USD per EUR. EUR
+		// 100,000 is 154,600,000 / 1545 = 100,064.7249... USD, so 100,064.72.
+		// The stored leg is 1545 / 1546 = 0.99935316... to 6 decimals 0.999353,
+		// which would give 100,000 / 0.999353 = 100,064.7418... = 100,064.74.
+		expect(
+			await book(ctx, "100000", "EUR", {
+				kind: "custom",
+				base: "EUR",
+				value: "1546",
+			}),
+		).toEqual({
+			exchangeRate: "0.999353",
+			amountInUSD: "100064.72",
+			rateType: "custom",
+			homeCurrency: "ARS",
+			homeRate: "1546",
+			homeAmount: "154600000.00",
+		});
+	});
+
+	it("a typed rate quoted in the home currency divides once: 1 JPY = 3 ARS makes ARS 4.5 into 2 JPY", async () => {
+		const jpy = table(
+			{
+				ARS: { rate: 1000, type: "official" },
+				JPY: { rate: 1, type: "official" },
+			},
+			"JPY",
+		);
+		// 1 JPY = 3 ARS, so ARS 4.5 is 4.5 / 3 = 1.5 JPY exactly: 2. The home
+		// rate is 1 / 3 to 12 decimals. USD = 1.5 JPY at 1 per USD = 1.50.
+		expect(
+			await book(jpy, "4.5", "ARS", {
+				kind: "custom",
+				base: "JPY",
+				value: "3",
+			}),
+		).toMatchObject({
+			amountInUSD: "1.50",
+			homeRate: "0.333333333333",
+			homeAmount: "2",
+		});
+	});
+});
+
+describe("bookRate keeps the figures of an edit that moves no money (D1)", () => {
+	const ars = table({ ARS: { rate: 100, type: "official" } }, "ARS");
+	// ARS 28.5 booked half up before half even: 0.285 USD was saved as 0.29.
+	const saved: SavedRate = {
+		currency: "ARS",
+		exchangeRate: 100,
+		rateType: "official",
+		homeCurrency: "ARS",
+		homeRate: "1",
+		amount: "28.5",
+		date: DATE,
+		amountInUSD: "0.29",
+		homeAmount: "28.50",
+	};
+	const kept: RateChoice = {
+		kind: "kept",
+		exchangeRate: 100,
+		homeRate: "1",
+		rateType: "official",
+	};
+	const edit = (amount: string, date = DATE, choice: RateChoice = kept) =>
+		bookRate(ars, { amount, currency: "ARS", date }, choice, saved);
+
+	it("an untouched edit returns the saved USD value and home amount", async () => {
+		expect(await edit("28.5")).toMatchObject({
+			amountInUSD: "0.29",
+			homeAmount: "28.50",
+		});
+		// The same decimal written longer is the same amount.
+		expect((await edit("28.50000000")).amountInUSD).toBe("0.29");
+		// A table booking of the same rate keeps them too.
+		expect(
+			(await edit("28.5", DATE, { kind: "table", rateType: null })).amountInUSD,
+		).toBe("0.29");
+	});
+
+	it("a new amount re-books: 30 / 100 = 0.30", async () => {
+		expect(await edit("30")).toMatchObject({
+			amountInUSD: "0.30",
+			homeAmount: "30.00",
+		});
+	});
+
+	it("a new date re-books at the kept rate: 28.5 / 100 = 0.285, so 0.28", async () => {
+		const later = new Date("2026-03-06T12:00:00Z");
+		expect((await edit("28.5", later)).amountInUSD).toBe("0.28");
+	});
+
+	it("a different rate re-books: 28.5 / 95 = 0.30", async () => {
+		const moved = table({ ARS: { rate: 95, type: "official" } }, "ARS");
+		const rate = await bookRate(
+			moved,
+			{ amount: "28.5", currency: "ARS", date: DATE },
+			{ kind: "table", rateType: null },
+			saved,
+		);
+		expect(rate).toMatchObject({ exchangeRate: "95", amountInUSD: "0.30" });
+	});
+
+	it("a row saved before home amounts existed re-books", async () => {
+		const rate = await bookRate(
+			ars,
+			{ amount: "28.5", currency: "ARS", date: DATE },
+			kept,
+			{ ...saved, homeAmount: null },
+		);
+		expect(rate).toMatchObject({ amountInUSD: "0.28", homeAmount: "28.50" });
+	});
+});
+
+describe("storedAmount", () => {
+	it("keeps 8 decimals, half to even, sign symmetric", () => {
+		// 1.000000005 is a tie at 8 decimals: 0 is even, so 1.00000000.
+		expect(storedAmount("1.000000005")).toBe("1");
+		// 1.000000015: 1 is odd, so 1.00000002; the refund mirrors it.
+		expect(storedAmount("1.000000015")).toBe("1.00000002");
+		expect(storedAmount("-1.000000015")).toBe("-1.00000002");
+		expect(storedAmount("12.34")).toBe("12.34");
+	});
+});
+
 describe("rateChoice", () => {
 	const input = { amount: "10", currency: "USD", date: DATE };
 	const saved: SavedRate = {
@@ -194,6 +384,10 @@ describe("rateChoice", () => {
 		rateType: "blue",
 		homeCurrency: "ARS",
 		homeRate: "1545",
+		amount: "10",
+		date: DATE,
+		amountInUSD: "10.00",
+		homeAmount: "15450.00",
 	};
 
 	it("a typed rate wins over everything", () => {

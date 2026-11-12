@@ -4,7 +4,6 @@
 		"packages/domain/src/decimal.ts": 1,
 		"packages/domain/src/envelope/units.ts": 2,
 		"packages/domain/src/insights.ts": 1,
-		"packages/domain/src/rate-booking.ts": 2,
 		"packages/domain/src/shared-split-computation.ts": 1,
 		"packages/domain/src/spent.ts": 4,
 		"src/server/api/routers/audit-log.ts": 3,

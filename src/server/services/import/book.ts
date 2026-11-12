@@ -43,8 +43,9 @@ export interface HomeLeg {
 }
 
 export interface ImportRate {
-	exchangeRate: number;
-	amountInUSD: number;
+	/** Decimal text when booked (bookRate); a number on the entry-leg-only path until it moves to Decimal. */
+	exchangeRate: number | string;
+	amountInUSD: number | string;
 	home: HomeLeg | null;
 }
 
