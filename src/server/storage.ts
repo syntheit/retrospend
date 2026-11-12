@@ -1,6 +1,6 @@
 import { createReadStream, createWriteStream } from "node:fs";
 import { access, mkdir, rename, rm, stat } from "node:fs/promises";
-import { join, dirname } from "node:path";
+import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { readdir } from "node:fs/promises";
@@ -37,8 +37,21 @@ export async function uploadFile(
 	return path;
 }
 
+/**
+ * Deletes one stored file. The path must name a file inside UPLOAD_DIR:
+ * paths come from database rows, and a row a client could shape (an
+ * idempotency key, say) must never reach a file outside it.
+ */
 export async function deleteFile(path: string): Promise<void> {
 	const fullPath = join(UPLOAD_DIR, path);
+	const inside = relative(UPLOAD_DIR, fullPath);
+	if (
+		inside === "" ||
+		inside === ".." ||
+		inside.startsWith(`..${sep}`) ||
+		isAbsolute(inside)
+	)
+		throw new Error("Failed to delete file: outside the upload directory");
 	try {
 		await rm(fullPath, { force: true });
 	} catch (err) {

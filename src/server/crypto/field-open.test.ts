@@ -62,6 +62,9 @@ const graph = buildModelGraph({
 			fields: [scalar("id"), scalar("userId"), scalar("name")],
 		},
 		Project: { fields: [scalar("id"), scalar("name")] },
+		IdempotencyKey: {
+			fields: [scalar("id"), scalar("userId"), scalar("responseBody")],
+		},
 		ExchangeRate: { fields: [scalar("id"), scalar("currency")] },
 	},
 });
@@ -673,5 +676,96 @@ describe("refusals", () => {
 			expect(query).toHaveBeenCalledTimes(1);
 			expect(read).toHaveBeenCalledTimes(1);
 		});
+	});
+});
+
+describe("a JSON body cell", () => {
+	const body = (r: Keyring, value: unknown, rowId: string) => ({
+		sealed: sealField(
+			r,
+			JSON.stringify(value),
+			cell("idempotency_key", "responseBody", rowId),
+		),
+	});
+	const read = (keys: TextKeys, row: unknown, args: unknown = {}) =>
+		handlerFor(keys)({
+			model: "IdempotencyKey",
+			operation: "findUnique",
+			args,
+			query: async () => row,
+		});
+
+	it("opens the owner's body to its value, passes plaintext, and adds the id and owner to a select", async () => {
+		const user = ring(1);
+		const value = { id: "a1", name: "Caja fuerte" };
+		const query = vi.fn(async () => ({
+			id: "k1",
+			userId: ME,
+			responseBody: body(user, value, "k1"),
+		}));
+		const result = await handlerFor(keysWith({ user }))({
+			model: "IdempotencyKey",
+			operation: "findUnique",
+			args: { where: { id: "k1" }, select: { responseBody: true } },
+			query,
+		});
+		expect(query).toHaveBeenCalledWith({
+			where: { id: "k1" },
+			select: { responseBody: true, id: true, userId: true },
+		});
+		expect(result).toEqual({ responseBody: value });
+		const plain = { id: "k2", userId: ME, responseBody: { name: "Plain" } };
+		expect(await read(keysWith({ user }), plain)).toEqual(plain);
+	});
+
+	it("reads as null for another owner, listed as unavailable and never tried", async () => {
+		const load = vi.fn(async () => ring(1));
+		const result = (await read(keysWith({ user: load }), {
+			id: "k1",
+			userId: OTHER,
+			responseBody: body(ring(1), { name: "Theirs" }, "k1"),
+		})) as object;
+		expect(result).toEqual({ id: "k1", userId: OTHER, responseBody: null });
+		expect(unavailableFields(result)).toEqual(["responseBody"]);
+		expect(load).not.toHaveBeenCalled();
+		expect(warn).toHaveBeenCalledWith("encrypted_text_unavailable", {
+			table: "idempotency_key",
+			column: "responseBody",
+		});
+	});
+
+	it("fails a body sealed for another row", async () => {
+		const user = ring(1);
+		const failure = await read(keysWith({ user }), {
+			id: "k1",
+			userId: ME,
+			responseBody: body(user, { name: "Moved" }, "k2"),
+		}).catch((e: unknown) => e);
+		expect((failure as FieldCryptoError).code).toBe("auth_failed");
+	});
+
+	it("refuses a sealed body as a write's plaintext, and in verbatim takes only the row's own", async () => {
+		const user = ring(1);
+		const keys = keysWith({ user });
+		const handle = handlerFor(keys);
+		const write = (rowId: string, sealedFor: string) => {
+			const query = vi.fn(async () => ({}));
+			return handle({
+				model: "IdempotencyKey",
+				operation: "update",
+				args: {
+					where: { id: rowId },
+					data: { responseBody: body(user, { a: 1 }, sealedFor) },
+				},
+				query,
+			}).then(
+				() => query.mock.calls.length > 0,
+				(e: { code?: string }) => e.code,
+			);
+		};
+		expect(await write("k1", "k1")).toBe("bad_plaintext");
+		await keys.ready();
+		expect(await verbatim(() => write("k1", "k1"))).toBe(true);
+		expect(await verbatim(() => write("k1", "k2"))).toBe("auth_failed");
 	});
 });

@@ -3,14 +3,14 @@ import { z } from "zod";
 import { editAccountSchema } from "~/server/services/accounts/input";
 import { readSchema } from "~/test/prisma-schema";
 import { FieldCryptoError } from "./field-crypto";
-import { FIELD_MAP } from "./fields";
+import { FIELD_MAP, JSON_CELLS } from "./fields";
 import { ID_DEFAULT, newCuid, newRowId } from "./row-id";
 
 describe("ID_DEFAULT", () => {
-	it("says cuid exactly for the mapped models whose id is @default(cuid())", () => {
+	it("says cuid exactly for the mapped and JSON models whose id is @default(cuid())", () => {
 		const models = new Map(readSchema().map((m) => [m.name, m]));
 		const expected = Object.fromEntries(
-			Object.keys(FIELD_MAP).map((name) => {
+			[...Object.keys(FIELD_MAP), ...Object.keys(JSON_CELLS)].map((name) => {
 				const id = models.get(name)?.fields.find((f) => f.name === "id");
 				if (!id) throw new Error(`${name} has no id field`);
 				return [

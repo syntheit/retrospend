@@ -6,7 +6,7 @@
  * their target model, and nothing more. model-graph.test.ts compares the graph
  * with prisma/schema.prisma, so a Prisma upgrade that moves it fails there.
  */
-import { fieldsOfModel } from "./fields";
+import { fieldsOfModel, jsonCellsOfModel } from "./fields";
 
 /** The part of Prisma's runtime data model the graph reads. */
 export interface RuntimeModels {
@@ -48,7 +48,10 @@ export function buildModelGraph(data: RuntimeModels): ModelGraph {
 	// A model reaches a mapped cell when it holds one or links to a model that
 	// does; grow the set until no model joins.
 	const reaching = new Set(
-		[...relations.keys()].filter((m) => fieldsOfModel(m) !== undefined),
+		[...relations.keys()].filter(
+			(m) =>
+				fieldsOfModel(m) !== undefined || jsonCellsOfModel(m) !== undefined,
+		),
 	);
 	let grew = true;
 	while (grew) {

@@ -30,6 +30,9 @@ const graph = buildModelGraph({
 			],
 		},
 		Notification: { fields: [scalar("id"), scalar("data")] },
+		IdempotencyKey: {
+			fields: [scalar("id"), scalar("key"), scalar("responseBody")],
+		},
 	},
 });
 
@@ -187,6 +190,24 @@ describe("filtersOnSealed", () => {
 	it("never reads a JSON value as arguments", () => {
 		expect(
 			refused("Notification", { data: { data: { where: { title: "x" } } } }),
+		).toBe(false);
+	});
+});
+
+describe("filters on a JSON body cell", () => {
+	it("refuses any filter, sort or pick of the body and allows its row's other columns", () => {
+		for (const args of [
+			{ where: { responseBody: { path: ["name"], equals: "x" } } },
+			{ where: { responseBody: { equals: {} } } },
+			{ orderBy: { responseBody: "asc" } },
+			{ distinct: ["responseBody"] },
+		])
+			expect(refused("IdempotencyKey", args)).toBe(true);
+		expect(
+			refused("IdempotencyKey", {
+				where: { key: { startsWith: "undo-icon:" } },
+				select: { responseBody: true },
+			}),
 		).toBe(false);
 	});
 });

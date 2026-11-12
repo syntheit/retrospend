@@ -159,3 +159,84 @@ export function mappedColumns(): ReadonlyArray<
 		);
 	});
 }
+
+/**
+ * A JSON column that holds user text (E2EE D11 PR 8, docs/roadmap/
+ * e2ee-d11-pr7-8.md), sealed by the same extension under the AAD of the
+ * row's own id (json-cells.ts):
+ * - `body`: the whole value, stored as `{ "sealed": "<ciphertext>" }`;
+ * - `leaves`: only the strings at `paths` (dot paths, `*` for each array
+ *   item), each in place under the column `<column>:<concrete path>`, so the
+ *   rest stays readable by SQL.
+ * Kept apart from FIELD_MAP, whose columns are text. A server older than
+ * PR 8.1 reads a sealed body as `{ sealed }` (a replay returns it, an undo
+ * fails), so once one is written that is the rollback floor.
+ */
+export type JsonCell =
+	| { readonly mode: "body"; readonly cls: KeyClass }
+	| {
+			readonly mode: "leaves";
+			readonly cls: KeyClass;
+			readonly paths: readonly string[];
+	  };
+
+export interface ModelJsonCells {
+	readonly table: string;
+	readonly columns: Readonly<Record<string, JsonCell>>;
+}
+
+export const JSON_CELLS = {
+	IdempotencyKey: {
+		table: "idempotency_key",
+		columns: { responseBody: { mode: "body", cls: "user" } },
+	},
+} as const satisfies Record<string, ModelJsonCells>;
+
+export type JsonModel = keyof typeof JSON_CELLS;
+
+const JSON_MODELS: Readonly<Record<string, ModelJsonCells | undefined>> =
+	JSON_CELLS;
+
+/** The JSON cells of a Prisma model, or undefined when it has none. */
+export function jsonCellsOfModel(model: string): ModelJsonCells | undefined {
+	return Object.hasOwn(JSON_MODELS, model) ? JSON_MODELS[model] : undefined;
+}
+
+const CELL_CLASSES: ReadonlyMap<
+	string,
+	Readonly<Record<string, KeyClass>>
+> = new Map(
+	[...new Set([...Object.keys(MODELS), ...Object.keys(JSON_MODELS)])].map(
+		(model) => [
+			model,
+			{
+				...fieldsOfModel(model)?.columns,
+				...Object.fromEntries(
+					Object.entries(jsonCellsOfModel(model)?.columns ?? {}).map(
+						([column, cell]) => [column, cell.cls],
+					),
+				),
+			},
+		],
+	),
+);
+
+/** Every sealed field of a model, text and JSON, to its key class. */
+export function cellClassesOfModel(
+	model: string,
+): Readonly<Record<string, KeyClass>> {
+	return CELL_CLASSES.get(model) ?? {};
+}
+
+/** Every JSON cell as `[table, column, cell]`, in map order. */
+export function jsonColumns(): ReadonlyArray<
+	readonly [table: string, column: string, cell: JsonCell]
+> {
+	return Object.values(JSON_MODELS).flatMap((model) =>
+		model
+			? Object.entries(model.columns).map(
+					([column, cell]) => [model.table, column, cell] as const,
+				)
+			: [],
+	);
+}

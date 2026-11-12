@@ -5,6 +5,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
+import { createUserScopedDb } from "~/server/db";
 import {
 	arsUser,
 	seedArsRates,
@@ -113,7 +114,8 @@ describe("Undo of a shared expense delete", () => {
 	it("takes only rows the stash module wrote, not a client key", async () => {
 		const { user } = await arsUser();
 		const stash = randomUUID();
-		await adminDb.idempotencyKey.create({
+		// The owner's own client: a body is sealed with their key.
+		await createUserScopedDb(user.id).idempotencyKey.create({
 			data: {
 				userId: user.id,
 				key: `undo-stash:${stash}`,

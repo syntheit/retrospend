@@ -5,6 +5,7 @@ import {
 	IDEMPOTENT_REPLAYED_HEADER,
 	isValidIdempotencyKey,
 	isWriteMethod,
+	SERVER_KEY_PREFIX,
 } from "@retrospend/api-contract/common";
 import {
 	completeIdempotentRequest,
@@ -41,7 +42,7 @@ export const idempotency = os
 		if (!isValidIdempotencyKey(key))
 			throw problem(
 				"bad_request",
-				"Idempotency-Key must be 1 to 255 printable characters and not start with undo-stash:",
+				`Idempotency-Key must be 1 to 255 printable characters and not start with ${Object.values(SERVER_KEY_PREFIX).join(" or ")}`,
 			);
 
 		const start = await startIdempotentRequest(user.db, {

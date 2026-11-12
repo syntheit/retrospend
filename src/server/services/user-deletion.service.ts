@@ -1,7 +1,7 @@
 import type { PrismaClient } from "~prisma";
-import { stashedIconPath } from "./accounts/icon";
 import { assertAnotherAdminRemains } from "./admin-guard.service";
 import { DELETED_USER_NAME, DELETED_USER_SENTINEL } from "./deleted-sentinels";
+import { keptUndoFiles } from "./entry/undo-stash";
 import { destroyDataKeysIfStored } from "./keys/data-key.service";
 import {
 	repointSettlementParty,
@@ -396,15 +396,11 @@ export async function anonymizeAndDeleteUser(
 				where: { userId, iconKind: "IMAGE" },
 				select: { iconValue: true },
 			}),
-			tx.idempotencyKey.findMany({
-				where: { userId, key: { startsWith: "undo-stash:" } },
-				select: { responseBody: true },
-			}),
+			keptUndoFiles(tx, { userId }),
 		]);
-		iconPaths = [
-			...accounts.map((a) => a.iconValue),
-			...stashes.map((s) => stashedIconPath(s.responseBody)),
-		].filter((p): p is string => !!p);
+		iconPaths = [...accounts.map((a) => a.iconValue), ...stashes].filter(
+			(p): p is string => !!p,
+		);
 		// ── Pre-deletion cleanup: resolve functional dependencies ─────────────
 		await preDeletionCleanup(tx as unknown as PrismaTx, userId);
 

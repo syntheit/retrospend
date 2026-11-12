@@ -21,7 +21,8 @@
  * Plain strings and `{ set }` are text; "" is sealed like any text. A value
  * that already looks sealed is refused here: field-open.ts lets one through
  * only inside `verbatim`, and nothing is sealed there, so nothing is sealed
- * twice.
+ * twice. A JSON cell (PR 8.1) is sealed by the same rules, piece by piece
+ * (json-cells.ts).
  */
 import {
 	FieldCryptoError,
@@ -29,7 +30,8 @@ import {
 	type Keyring,
 	sealField,
 } from "./field-crypto";
-import { fieldsOfModel, type KeyClass } from "./fields";
+import { fieldsOfModel, jsonCellsOfModel, type KeyClass } from "./fields";
+import { plainPieces } from "./json-cells";
 import type { ModelGraph } from "./model-graph";
 import { newRowId } from "./row-id";
 
@@ -52,7 +54,11 @@ export interface SealCell {
 	text: string;
 	/** Written as `{ set: text }`. */
 	wrapped: boolean;
+	/** Stores the ciphertext of a JSON cell's piece; `column` is then its AAD column. */
+	put?: (sealed: string) => void;
 }
+
+type Text = Omit<SealCell, "data" | "model" | "rowId">;
 
 interface Walk {
 	graph: ModelGraph;
@@ -74,16 +80,32 @@ function textOf(
 	return undefined;
 }
 
-/** The mapped columns of `model` that `data` sets to text. */
-function textsOf(model: string, data: Row) {
+/**
+ * The mapped columns of `model` that `data` sets to text, and the pieces of
+ * the JSON cells it sets. `data` must be the walk's own copy.
+ */
+function textsOf(model: string, data: Row): Text[] {
 	const fields = fieldsOfModel(model);
-	if (!fields) return [];
-	return Object.entries(fields.columns).flatMap(([column, cls]) => {
-		const found = textOf(data[column]);
-		if (!found) return [];
-		if (isSealedField(found.text)) throw new FieldCryptoError("bad_plaintext");
-		return [{ ...found, column, cls, table: fields.table }];
-	});
+	const texts: Text[] = fields
+		? Object.entries(fields.columns).flatMap(([column, cls]) => {
+				const found = textOf(data[column]);
+				if (!found) return [];
+				if (isSealedField(found.text))
+					throw new FieldCryptoError("bad_plaintext");
+				return [{ ...found, column, cls, table: fields.table }];
+			})
+		: [];
+	const json = jsonCellsOfModel(model);
+	if (json)
+		for (const [column, cell] of Object.entries(json.columns))
+			for (const piece of plainPieces(data, column, cell))
+				texts.push({
+					...piece,
+					wrapped: false,
+					cls: cell.cls,
+					table: json.table,
+				});
+	return texts;
 }
 
 function queue(
@@ -91,7 +113,7 @@ function queue(
 	model: string,
 	data: Row,
 	rowId: string,
-	texts: ReturnType<typeof textsOf>,
+	texts: Text[],
 ): void {
 	for (const t of texts) w.cells.push({ ...t, data, model, rowId });
 }
@@ -152,7 +174,7 @@ function upsert(w: Walk, model: string, args: Row, isNested: boolean): Row {
 
 function refuseBulkText(model: string, data: unknown): void {
 	for (const item of [data].flat())
-		if (isRow(item) && textsOf(model, item).length > 0)
+		if (isRow(item) && textsOf(model, { ...item }).length > 0)
 			throw new FieldCryptoError("bulk_text_write");
 }
 
@@ -247,6 +269,7 @@ export function applySeal(
 			column: cell.column,
 			rowId: cell.rowId,
 		});
-		cell.data[cell.column] = cell.wrapped ? { set: sealed } : sealed;
+		if (cell.put) cell.put(sealed);
+		else cell.data[cell.column] = cell.wrapped ? { set: sealed } : sealed;
 	}
 }
