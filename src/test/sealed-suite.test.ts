@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 import { mappedColumns } from "~/server/crypto/fields";
 
 /** Lower it as entries go; never raise it. */
-const MAX_ALLOWED = 1;
+const MAX_ALLOWED = 0;
 
 const SETS_KEY_STATE =
 	/newMasterKeyring|crypto\/master-key"|new Keyring\(|setSealingForTests|writeEpoch|"fieldEncryptionSince"/;

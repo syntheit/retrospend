@@ -12,6 +12,8 @@
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { ensureIncomeCategories } from "~/server/services/money-in.service";
+import { forUser } from "~/server/services/preview";
+import { confirmRecurringExpense } from "~/server/services/recurring-confirm.mutation";
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import {
 	EXPECTED_LISTED,
@@ -133,32 +135,27 @@ async function addMoneyIn(fixture: SpendingFixture) {
 			inType: "INCOME",
 		},
 	]);
-	await addSidecarIncome(fixture.userId);
+	await addRecurringIncome(fixture.userId);
 }
 
-/** Recurring income as the Go sidecar posts it (sidecar/tasks/recurring.go), raw SQL included. */
-async function addSidecarIncome(userId: string) {
+/** Recurring income as the auto-post books it (recurring-auto-post.ts). */
+async function addRecurringIncome(userId: string) {
 	const template = await fixtureDb.recurringTemplate.create({
 		data: {
 			userId,
 			name: "Acme salary",
-			amount: 900_000,
+			amount: "900000",
 			currency: "ARS",
 			frequency: "MONTHLY",
-			nextDueDate: at("2026-04-05"),
+			nextDueDate: at("2026-03-05"),
 			direction: "IN",
 		},
 	});
-	await adminDb.$executeRaw`
-		INSERT INTO expense (
-			id, "userId", title, amount, currency, date, "categoryId",
-			"amountInUSD", "exchangeRate", "pricingSource", "recurringTemplateId",
-			status, direction, "inType", "createdAt", "updatedAt"
-		) VALUES (
-			gen_random_uuid()::text, ${userId}, ${template.name}, ${"900000.00000000"}::numeric, 'ARS',
-			${at("2026-03-05")}, NULL, 900, 1000, 'RECURRING', ${template.id}, 'FINALIZED',
-			${"IN"}::"ExpenseDirection", ${"INCOME"}::"InType", NOW(), NOW()
-		)`;
+	await forUser(userId).apply(confirmRecurringExpense, {
+		templateId: template.id,
+		dueDate: template.nextDueDate,
+		auto: true,
+	});
 }
 
 describe("money in never reaches a spending reader", () => {
@@ -214,7 +211,7 @@ describe("money in never reaches a spending reader", () => {
 		});
 	}
 
-	it("posts the sidecar row the way the Go job does", async () => {
+	it("posts the recurring income row", async () => {
 		await expect(
 			fixtureDb.expense.count({
 				where: {
@@ -299,7 +296,7 @@ describe("a user with only money in", () => {
 				}),
 			],
 		});
-		await addSidecarIncome(user.id);
+		await addRecurringIncome(user.id);
 		const c = callers(user.id);
 
 		await expect(c.expense.listFinalized()).resolves.toEqual([]);
