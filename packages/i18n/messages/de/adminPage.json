@@ -11,5 +11,20 @@
   "invitesUsed": "Genutzte Einladungen",
   "invitesOpen": "{count} offen",
   "tabServer": "Server",
-  "keystoreBackup": "Schlüsselsicherung"
+  "keystoreBackup": "Schlüsselsicherung",
+  "autoPostLabel": "Wiederkehrende Ausgaben",
+  "autoPostHealthy": "In Ordnung",
+  "autoPostAttention": "Prüfen",
+  "autoPostFailing": "Fehlerhaft",
+  "autoPostStale": "Veraltet",
+  "autoPostOff": "Aus",
+  "autoPostRan": "Letzter Lauf vor {time}",
+  "autoPostPosted": "{count} gebucht",
+  "autoPostMissingRate": "{count} ohne Kurs",
+  "autoPostFailed": "{count} fehlgeschlagen",
+  "autoPostCapped": "{count, plural, one {# holt noch auf} other {# holen noch auf}}",
+  "autoPostNoRun": "Noch kein Lauf",
+  "autoPostOffBy": "Durch RECURRING_AUTO_POST ausgeschaltet",
+  "autoPostJoin": "{head}, {tail}",
+  "autoPostOffEnv": "Außerhalb der Produktion aus"
 }

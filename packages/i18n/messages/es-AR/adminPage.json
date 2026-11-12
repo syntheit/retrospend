@@ -11,5 +11,20 @@
   "invitesUsed": "Invitaciones usadas",
   "invitesOpen": "{count} abiertas",
   "tabServer": "Servidor",
-  "keystoreBackup": "Respaldo de claves"
+  "keystoreBackup": "Respaldo de claves",
+  "autoPostLabel": "Gastos recurrentes",
+  "autoPostHealthy": "Correcto",
+  "autoPostAttention": "Revisar",
+  "autoPostFailing": "Con errores",
+  "autoPostStale": "Desactualizado",
+  "autoPostOff": "Apagado",
+  "autoPostRan": "Última ejecución hace {time}",
+  "autoPostPosted": "{count, plural, one {# registrado} other {# registrados}}",
+  "autoPostMissingRate": "{count, plural, one {a # le falta una cotización} other {a # les falta una cotización}}",
+  "autoPostFailed": "{count, plural, one {# falló} other {# fallaron}}",
+  "autoPostCapped": "{count, plural, one {# se está poniendo al día} other {# se están poniendo al día}}",
+  "autoPostNoRun": "Todavía sin ejecuciones",
+  "autoPostOffBy": "Apagado por RECURRING_AUTO_POST",
+  "autoPostJoin": "{head}, {tail}",
+  "autoPostOffEnv": "Apagado fuera de producción"
 }

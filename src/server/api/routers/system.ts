@@ -1,5 +1,11 @@
 import { env } from "~/env";
-import { createTRPCRouter, protectedProcedure, publicProcedure } from "~/server/api/trpc";
+import {
+	adminProcedure,
+	createTRPCRouter,
+	protectedProcedure,
+	publicProcedure,
+} from "~/server/api/trpc";
+import { readAutoPostStatus } from "~/server/services/recurring-auto-post-status";
 import { getAppSettings } from "~/server/services/settings";
 
 // ── Sidecar health check cache ──────────────────────────────────────────
@@ -32,6 +38,11 @@ export const systemRouter = createTRPCRouter({
 			task: string;
 		};
 	}),
+
+	/** The state of recurring auto-post, decided here; the admin page draws it. */
+	getAutoPostStatus: adminProcedure.query(({ ctx }) =>
+		readAutoPostStatus(ctx.db),
+	),
 
 	checkSidecarStatus: protectedProcedure.query(async () => {
 		if (sidecarCache && Date.now() < sidecarCache.expiry) {

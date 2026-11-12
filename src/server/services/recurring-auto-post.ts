@@ -164,12 +164,23 @@ export async function sweepRecurringAutoPost(
 	return counts;
 }
 
+/** Why auto-post is off: the setting says so, or it is unset outside production. Null when on. */
+export type AutoPostOffReason = "setting" | "environment";
+
+export function autoPostOffReason(
+	setting = env.RECURRING_AUTO_POST,
+	nodeEnv = env.NODE_ENV,
+): AutoPostOffReason | null {
+	if (setting) return setting === "true" ? null : "setting";
+	return nodeEnv === "production" ? null : "environment";
+}
+
 /** RECURRING_AUTO_POST, or when unset, on in production only. */
 export function autoPostEnabled(
 	setting = env.RECURRING_AUTO_POST,
 	nodeEnv = env.NODE_ENV,
 ): boolean {
-	return setting ? setting === "true" : nodeEnv === "production";
+	return autoPostOffReason(setting, nodeEnv) === null;
 }
 
 const started = Symbol.for("retrospend.recurringAutoPost");

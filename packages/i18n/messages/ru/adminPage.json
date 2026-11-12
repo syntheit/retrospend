@@ -11,5 +11,20 @@
   "invitesUsed": "Использовано приглашений",
   "invitesOpen": "Открыто: {count}",
   "tabServer": "Сервер",
-  "keystoreBackup": "Резервная копия ключей"
+  "keystoreBackup": "Резервная копия ключей",
+  "autoPostLabel": "Регулярные расходы",
+  "autoPostHealthy": "В порядке",
+  "autoPostAttention": "Проверить",
+  "autoPostFailing": "Сбои",
+  "autoPostStale": "Устарело",
+  "autoPostOff": "Выключено",
+  "autoPostRan": "Последний запуск {time} назад",
+  "autoPostPosted": "проведено: {count}",
+  "autoPostMissingRate": "без курса: {count}",
+  "autoPostFailed": "сбоев: {count}",
+  "autoPostCapped": "ещё догоняют: {count}",
+  "autoPostNoRun": "Запусков пока нет",
+  "autoPostOffBy": "Выключено через RECURRING_AUTO_POST",
+  "autoPostJoin": "{head}, {tail}",
+  "autoPostOffEnv": "Выключено вне продакшена"
 }

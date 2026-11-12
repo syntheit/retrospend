@@ -11,5 +11,20 @@
   "invitesUsed": "Invites used",
   "invitesOpen": "{count} open",
   "tabServer": "Server",
-  "keystoreBackup": "Key backup"
+  "keystoreBackup": "Key backup",
+  "autoPostLabel": "Recurring expenses",
+  "autoPostHealthy": "Healthy",
+  "autoPostAttention": "Needs a look",
+  "autoPostFailing": "Failing",
+  "autoPostStale": "Stale",
+  "autoPostOff": "Off",
+  "autoPostRan": "Last run {time} ago",
+  "autoPostPosted": "{count} posted",
+  "autoPostMissingRate": "{count} missing a rate",
+  "autoPostFailed": "{count} failed",
+  "autoPostCapped": "{count} still catching up",
+  "autoPostNoRun": "No run yet",
+  "autoPostOffBy": "Turned off by RECURRING_AUTO_POST",
+  "autoPostJoin": "{head}, {tail}",
+  "autoPostOffEnv": "Off outside production"
 }
