@@ -231,13 +231,10 @@ describe("missingRatesIn", () => {
 		expect(missingRatesIn([item("5", "EUR", "5.5")], "ARS", 1545)).toEqual([]);
 	});
 
-	it("reads the number items of the pace series too (NaN is unpriced)", () => {
-		const numberItems = [
-			{ currency: "ISK", amountInUSD: Number.NaN },
-			{ currency: "USD", amountInUSD: 20 },
-		];
-		expect(missingRatesIn(numberItems, "USD", 1)).toEqual(["ISK"]);
-		expect(missingRatesIn(numberItems, "ARS", null)).toEqual(["ARS", "ISK"]);
+	it("names an unpriced item (no USD value) and the home rate when it is missing", () => {
+		const unpriced = [item("900", "ISK", null), item("20", "USD", "20")];
+		expect(missingRatesIn(unpriced, "USD", 1)).toEqual(["ISK"]);
+		expect(missingRatesIn(unpriced, "ARS", null)).toEqual(["ARS", "ISK"]);
 	});
 
 	it("skips an item booked in the currency, whatever its USD value", () => {

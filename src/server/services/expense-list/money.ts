@@ -9,7 +9,6 @@ export {
 	decimalMoney,
 	type HomeRates,
 	homeFromUSD,
-	homeMajor,
+	homeDec,
 	homeOf,
-	numberMoney,
 } from "@retrospend/domain/row-money";

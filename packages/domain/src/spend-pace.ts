@@ -20,14 +20,13 @@ import {
 import {
 	cumulativeMinor,
 	type DatedItem,
-	dailyHome,
 	type IsoDate,
 	missingIn,
 	type PeriodSpan,
+	runningHome,
 	spanOf,
 } from "./glance-pace";
 import {
-	numberItem,
 	periodRateDate,
 	pickBestRate,
 	rateWindow,
@@ -41,6 +40,7 @@ import {
 	sumInDec,
 } from "./money-dec";
 import { roundedMinor } from "./money-minor";
+import type { Decimal } from "./precise-decimal";
 import {
 	countsAsIncome,
 	groupSpentRows,
@@ -178,27 +178,13 @@ export function spendPaceInputsFromRows(args: {
 }
 
 /**
- * Rows as dated items in a fixed order. The sums are floats, so the order
- * they are added in must not depend on how a loader happened to return them.
+ * Rows as dated items. Decimal sums are exact, so the order a loader returns
+ * rows in cannot change a figure.
  */
 function datedRows(inputs: SpentInputs, timeZone: string): DatedItem[] {
-	const rows = spentItemsOf(inputs).flatMap((item) =>
-		item.date
-			? [{ day: dayKey(item.date, timeZone), item: numberItem(item) }]
-			: [],
+	return spentItemsOf(inputs).flatMap((item) =>
+		item.date ? [{ day: dayKey(item.date, timeZone), item }] : [],
 	);
-	const key = (r: DatedItem) =>
-		[
-			r.day,
-			r.item.currency,
-			r.item.booked?.currency ?? "",
-			String(r.item.amount),
-			String(r.item.amountInUSD),
-		].join("|");
-	return rows
-		.map((r) => ({ r, k: key(r) }))
-		.sort((a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : 0))
-		.map(({ r }) => r);
 }
 
 /** The glance's spending numbers at `now`, from a loader's inputs. */
@@ -213,8 +199,8 @@ export function spendPaceFrom(args: {
 	const p = spendPacePeriods(args.now, args.startDay, args.timeZone);
 	const rows = datedRows(inputs.spending, args.timeZone);
 	const { thisRate, lastRate } = inputs;
-	const thisDaily = dailyHome(rows, p.period, home, thisRate);
-	const lastDaily = dailyHome(rows, p.last, home, lastRate);
+	const thisRunning = runningHome(rows, p.period, home, thisRate);
+	const lastRunning = runningHome(rows, p.last, home, lastRate);
 	const income = incomeItemsOf(inputs.income);
 	const incomeMissing = missingRatesIn(income, home, thisRate);
 	const missing = new Set([
@@ -222,17 +208,17 @@ export function spendPaceFrom(args: {
 		...missingIn(rows, p.last, home, lastRate),
 		...incomeMissing,
 	]);
-	const total = (daily: number[] | null) =>
-		daily ? (cumulativeMinor(daily, daily.length, home).at(-1) ?? 0) : null;
+	const total = (running: Decimal[] | null) =>
+		running ? roundedMinor(running.at(-1) ?? 0, home) : null;
 	return {
 		home,
 		today: p.today,
 		period: p.period,
 		last: p.last,
-		thisSeries: thisDaily && cumulativeMinor(thisDaily, p.period.day, home),
-		lastSeries: lastDaily && cumulativeMinor(lastDaily, p.last.days, home),
-		thisTotal: total(thisDaily),
-		lastTotal: total(lastDaily),
+		thisSeries: thisRunning && cumulativeMinor(thisRunning, p.period.day, home),
+		lastSeries: lastRunning && cumulativeMinor(lastRunning, p.last.days, home),
+		thisTotal: total(thisRunning),
+		lastTotal: total(lastRunning),
 		moneyIn: incomeMissing.length
 			? null
 			: roundedMinor(sumInDec(income, home, thisRate), home),

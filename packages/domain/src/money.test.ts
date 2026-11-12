@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-	amountIn,
 	computeAmountInUSD,
 	convertAmount,
 	crossRate,
@@ -8,7 +7,6 @@ import {
 	fromMinorUnits,
 	fromUSD,
 	MissingRateError,
-	numberItem,
 	periodRateDate,
 	pickBestRate,
 	quoteRate,
@@ -219,43 +217,7 @@ describe("pickBestRate", () => {
 	});
 });
 
-describe("totals rule, number view (the pace series)", () => {
-	it("an item booked in the total's currency counts its booked value (M2)", () => {
-		// USD 20 booked at ARS 1,200 when it was saved: ARS 24,000 whatever
-		// today's rate is; in USD it still counts its USD value.
-		const booked = {
-			amount: 20,
-			currency: "USD",
-			amountInUSD: 20,
-			booked: { currency: "ARS", amount: 24_000 },
-		};
-		expect(amountIn(booked, "ARS", 1300)).toBe(24_000);
-		expect(amountIn(booked, "ARS", undefined)).toBe(24_000);
-		expect(amountIn(booked, "USD", 1)).toBe(20);
-		expect(amountIn(booked, "EUR", 0.9)).toBeCloseTo(18, 8);
-	});
-
-	it("an unpriced item (NaN) throws when it must convert", () => {
-		const isk = { amount: 900, currency: "ISK", amountInUSD: Number.NaN };
-		expect(amountIn(isk, "ISK", undefined)).toBe(900);
-		expect(() => amountIn(isk, "USD", 1)).toThrow(MissingRateError);
-	});
-
-	it("numberItem reads an exact item as numbers, null USD as NaN", () => {
-		const exact = {
-			amount: dec("12.5"),
-			currency: "USD",
-			amountInUSD: null,
-			booked: { currency: "ARS", amount: dec("19312.5") },
-		};
-		expect(numberItem(exact)).toEqual({
-			amount: 12.5,
-			currency: "USD",
-			amountInUSD: Number.NaN,
-			booked: { currency: "ARS", amount: 19312.5 },
-		});
-	});
-
+describe("period rate date", () => {
 	it("periodRateDate is the period end, or now while it runs", () => {
 		const now = new Date("2026-10-21T12:00:00Z");
 		const pastEnd = new Date("2026-09-30T23:59:59Z");

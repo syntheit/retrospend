@@ -24,7 +24,6 @@ import {
 	type HomeRates,
 	homeFromUSD,
 	homeOf,
-	numberOf,
 } from "./row-money";
 import { dayKey } from "./time-zone";
 
@@ -293,7 +292,7 @@ function personalRow(e: PersonalRowInput, c: ShapeContext): ActivityRowDTO {
 		? amount
 		: e.homeCurrency === c.rates.home && e.homeAmount !== null
 			? decimalMoney(e.homeAmount, c.rates.home)
-			: homeFromUSD(numberOf(e.amountInUSD), c.rates);
+			: homeFromUSD(e.amountInUSD, c.rates);
 	// A type is named only with its number: no booked rate, no type.
 	const bookedAt = foreign ? bookedRate(e, c.rates.home) : null;
 	const named =
@@ -374,11 +373,11 @@ function sharedRow(
 		t.currency === USD
 			? 1
 			: t.exchangeRate !== null
-				? numberOf(t.exchangeRate)
+				? t.exchangeRate
 				: (x.lookup(t.currency, t.date)?.rate ?? null);
-	const home = homeOf(numberOf(t.amount), t.currency, rate, x.c.rates);
+	const home = homeOf(t.amount, t.currency, rate, x.c.rates);
 	const share =
-		homeOf(numberOf(shareAmount), t.currency, rate, x.c.rates) ??
+		homeOf(shareAmount, t.currency, rate, x.c.rates) ??
 		decimalMoney(shareAmount, t.currency);
 	const payerId = personKeyOf(t.paidByType, t.paidById);
 	const mine = t.createdByType === "user" && t.createdById === x.c.userId;
@@ -442,7 +441,7 @@ function paymentRow(
 	const total = group.reduce((s, r) => s.plus(dec(r.amount)), dec(0));
 	const amount = decimalMoney(total, first.currency);
 	const rate = x.lookup(first.currency, first.initiatedAt)?.rate ?? null;
-	const home = homeOf(numberOf(total), first.currency, rate, x.c.rates);
+	const home = homeOf(total, first.currency, rate, x.c.rates);
 	const projects = new Map(
 		group.flatMap((r) => (r.project ? [[r.project.id, r.project]] : [])),
 	);
