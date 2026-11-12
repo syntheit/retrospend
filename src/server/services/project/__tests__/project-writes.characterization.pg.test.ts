@@ -179,7 +179,10 @@ describe("project.addParticipant", () => {
 		expect(createNotification).toHaveBeenCalledWith({
 			userId: trip.outsider.user.id,
 			type: "PARTICIPANT_ADDED",
-			notice: { kind: "addedToProject", actor: "Ana" },
+			notice: {
+				kind: "addedToProject",
+				actor: { type: "user", id: trip.ana.user.id },
+			},
 			data: { projectId: trip.project.id },
 		});
 	});
@@ -418,7 +421,10 @@ describe("project.transferOwnership", () => {
 			expect(createNotification).toHaveBeenCalledWith({
 				userId: trip.ben.user.id,
 				type: "PARTICIPANT_ADDED",
-				notice: { kind: "ownershipTransferred", actor: "Ana" },
+				notice: {
+					kind: "ownershipTransferred",
+					actor: { type: "user", id: trip.ana.user.id },
+				},
 				data: { projectId: trip.project.id },
 			}),
 		);
