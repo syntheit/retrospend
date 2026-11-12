@@ -8,13 +8,23 @@ import { dec } from "~/server/services/envelope/units";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import type { Prisma } from "~prisma";
 import { rowDayOf } from "../accounts/dates";
-import { type AccountChange, reverseLegs } from "../accounts/ledger";
+import {
+	type AccountChange,
+	homeCurrencyOf,
+	reverseLegs,
+} from "../accounts/ledger";
+import { type RowRestore, signRestore } from "../entry/restore-token";
 import { forgetMonthViews } from "../envelope/month-read";
 import {
 	FIGURE_LEFT_TO_SPEND,
 	FIGURE_NOT_PLANNED_YET,
 } from "../envelope/verdict";
-import { type AddIncomeInput, INCOME_FIGURES } from "./add.mutation";
+import {
+	type AddIncomeInput,
+	INCOME_FIGURES,
+	INCOME_RESTORE,
+	type IncomeRestore,
+} from "./add.mutation";
 import { undoPlan } from "./plan-seam";
 import { withUserZone } from "~/server/services/user-time-zone";
 
@@ -94,32 +104,43 @@ export async function deleteIncomeIn(
 				})
 			: null;
 	const leg = row.accountLegs[0];
+	const amount = row.amount.toString();
+	// The leg keeps the ledger's UTC-midnight day; a row without one is read in the zone.
+	const date = leg
+		? leg.date.toISOString().slice(0, 10)
+		: rowDayOf(row.date, input.timeZone);
 	const recreate: AddIncomeInput = {
 		id: row.id,
 		title: row.title,
-		amount: row.amount.toString(),
+		amount,
 		currency: row.currency,
 		rateType: row.pricingSource === "MANUAL" ? null : row.pricingSource,
 		categoryId: row.categoryId,
 		description: row.description,
-		// The leg keeps the ledger's UTC-midnight day; a row without one is read in the zone.
-		date: leg
-			? leg.date.toISOString().slice(0, 10)
-			: rowDayOf(row.date, input.timeZone),
+		date,
 		into: leg?.accountId ?? null,
 		keep: row.keepInWealth,
-		restore: {
-			exchangeRate: row.exchangeRate.toString(),
-			amountInUSD: row.amountInUSD.toString(),
-			rateType: row.rateType,
-			homeRate: row.homeRate?.toString() ?? null,
-			units: leg ? leg.amount.toString() : null,
-			// The row's booked home leg; rows from before it was booked keep the leg's.
-			homeAmount:
-				row.homeAmount?.toString() ?? leg?.homeAmount?.toString() ?? null,
-			homeCurrency: row.homeCurrency ?? leg?.homeCurrency ?? null,
-			countedUnits: leg ? stillCounted(leg).toString() : null,
-		},
+		// Signed, bound to this row: a client carries it back but never writes its own figures.
+		restore: signRestore({
+			kind: INCOME_RESTORE,
+			id: row.id,
+			amount,
+			currency: row.currency,
+			date,
+			home: await homeCurrencyOf(tx, userId),
+			figures: {
+				exchangeRate: row.exchangeRate.toString(),
+				amountInUSD: row.amountInUSD.toString(),
+				rateType: row.rateType,
+				homeRate: row.homeRate?.toString() ?? null,
+				units: leg ? leg.amount.toString() : null,
+				// The row's booked home leg; rows from before it was booked keep the leg's.
+				homeAmount:
+					row.homeAmount?.toString() ?? leg?.homeAmount?.toString() ?? null,
+				homeCurrency: row.homeCurrency ?? leg?.homeCurrency ?? null,
+				countedUnits: leg ? stillCounted(leg).toString() : null,
+			},
+		} satisfies RowRestore<IncomeRestore>),
 		repeats: template
 			? {
 					frequency: template.frequency,

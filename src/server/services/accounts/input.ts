@@ -16,6 +16,7 @@ export { setAccountOrderSchema } from "@retrospend/api-contract";
 import { z } from "zod";
 import { restChoiceSchema } from "~/lib/schemas/envelope";
 import { customRateSchema } from "~/lib/schemas/rate";
+import { signedRestore } from "~/server/services/entry/input";
 import { AssetType, RecurringFrequency, TransferKind } from "~prisma";
 
 const decimal = z
@@ -160,8 +161,6 @@ export const addIncomeSchema = z.object({
 	planRest: restChoiceSchema.optional(),
 });
 
-const storedDecimal = z.string().regex(/^-?\d{1,20}(\.\d{1,12})?$/);
-
 /**
  * income.delete's recreate input: the same row, at the rates it was booked at.
  * Restore puts back what was stored; title and description go through
@@ -171,18 +170,8 @@ export const recreateIncomeSchema = addIncomeSchema.extend({
 	id,
 	title: restoreText(191),
 	description: restoreText(1000, { empty: true }).nullish(),
-	restore: z
-		.object({
-			exchangeRate: storedDecimal,
-			amountInUSD: storedDecimal,
-			rateType: rateType.nullish(),
-			homeRate: storedDecimal.nullish(),
-			units: storedDecimal.nullable(),
-			homeAmount: storedDecimal.nullable(),
-			homeCurrency: currency.nullable(),
-			countedUnits: storedDecimal.nullish(),
-		})
-		.nullish(),
+	/** The rates and units it was booked at, signed by the delete (restore-token.ts); never plain figures. */
+	restore: signedRestore.nullish(),
 });
 
 export const deleteIncomeSchema = z.object({
