@@ -125,6 +125,23 @@ describe("reopening an account", () => {
 		expect(await latest(id)).toBe("0 / 0.00");
 	});
 
+	it("with a balance of exactly 0 needs no rate: 0 of anything is 0 USD", async () => {
+		const id = await open("XYZ", 0, 10);
+		await fixtureDb.assetAccount.update({
+			where: { id },
+			data: { exchangeRate: null, exchangeRateType: null },
+		});
+		await closeAccount(adminDb, userId, id);
+
+		await reopenAccount(adminDb, userId, id);
+
+		const row = await fixtureDb.assetAccount.findUniqueOrThrow({
+			where: { id },
+		});
+		expect(row.closedAt).toBeNull();
+		expect(await latest(id)).toBe("0 / 0.00");
+	});
+
 	it("tells the user through the router as a bad request, not a crash", async () => {
 		const id = await open("XYZ", 5, 10);
 		await fixtureDb.assetAccount.update({
