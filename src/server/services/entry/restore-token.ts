@@ -7,6 +7,7 @@
  * rates from the client.
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { dec } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import { env } from "~/env";
 
@@ -41,4 +42,48 @@ export function readRestore<T>(token: RestoreToken): T {
 		});
 	}
 	return JSON.parse(token.data) as T;
+}
+
+/**
+ * The signed figures an undo writes back to one row (an expense edit's
+ * undo, an income delete's recreate), bound to that row: its id, amount,
+ * currency, date and the home currency it was booked under. Booking again
+ * could land a cent apart, and figures in plain input would let a client
+ * store any amountInUSD it likes, so the figures only travel signed.
+ */
+export interface RowRestore<F> {
+	readonly kind: string;
+	readonly id: string;
+	readonly amount: string;
+	readonly currency: string;
+	/** The row's instant (ISO) or day (YYYY-MM-DD), as its undo input carries it. */
+	readonly date: string;
+	/** The user's home currency when it was signed. */
+	readonly home: string;
+	readonly figures: F;
+}
+
+/**
+ * The figures of a signed row restore, after checking it is this row's: a
+ * token for another row, kind, amount, currency or date, or one signed under
+ * another home currency, is refused like a forged one.
+ */
+export function readRowRestore<F>(
+	token: RestoreToken,
+	want: Omit<RowRestore<F>, "figures">,
+): F {
+	const got = readRestore<RowRestore<F>>(token);
+	const same =
+		got.kind === want.kind &&
+		got.id === want.id &&
+		got.currency === want.currency &&
+		got.date === want.date &&
+		got.home === want.home &&
+		dec(got.amount).eq(dec(want.amount));
+	if (!same)
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: "This undo is not valid anymore",
+		});
+	return got.figures;
 }

@@ -11,16 +11,19 @@
  *
  * An edit's undo carries the rate it had (a custom rate as the same cross
  * rate, a table type as that type, an untouched rate as both saved legs) and
- * the figures it was saved with, which the undo writes back as they were:
- * booking again could land a cent apart (a row booked half up, a home
+ * the figures it was saved with, signed (restore-token.ts) so a client can
+ * carry them but never write its own, which the undo writes back as they
+ * were: booking again could land a cent apart (a row booked half up, a home
  * amount from the 12-decimal rate).
  */
 import { dec } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import { CUSTOM_RATE_TYPE } from "~/lib/rate-selection";
 import type { Prisma } from "~prisma";
+import { homeCurrencyOf } from "../accounts/ledger";
 import {
 	type CreateExpenseInput,
+	EXPENSE_RESTORE,
 	ExpenseService,
 	type SavedFigures,
 } from "../expense.service";
@@ -31,7 +34,12 @@ import {
 	restoreExpense,
 	snapshotExpense,
 } from "./expense-snapshot";
-import { type RestoreToken, readRestore, signRestore } from "./restore-token";
+import {
+	type RestoreToken,
+	type RowRestore,
+	readRestore,
+	signRestore,
+} from "./restore-token";
 
 type Tx = Prisma.TransactionClient;
 
@@ -72,12 +80,13 @@ export function rateInputOf(row: {
 	};
 }
 
-/** The fields the form saves, as `row` holds them now. */
-function fieldsOf(row: ExpenseRow) {
+/** The fields the form saves, as `row` holds them now, and its figures signed. */
+function fieldsOf(row: ExpenseRow, home: string) {
+	const amount = row.amount.toFixed();
 	return {
 		title: row.title,
 		// Decimal text: every stored digit comes back.
-		amount: row.amount.toFixed(),
+		amount,
 		currency: row.currency,
 		date: row.date,
 		location: row.location ?? undefined,
@@ -86,7 +95,15 @@ function fieldsOf(row: ExpenseRow) {
 		amortizeOver: row.isAmortizedParent ? row.children.length : undefined,
 		excludeFromAnalytics: row.excludeFromAnalytics,
 		...rateInputOf(row),
-		restore: figuresOf(row),
+		restore: signRestore({
+			kind: EXPENSE_RESTORE,
+			id: row.id,
+			amount,
+			currency: row.currency,
+			date: row.date.toISOString(),
+			home,
+			figures: figuresOf(row),
+		} satisfies RowRestore<SavedFigures>),
 	};
 }
 
@@ -154,9 +171,13 @@ export const updateExpenseEntry: MoneyMutation<
 	run: async (tx, input, actor) => {
 		const before = await ownExpense(tx, actor.userId, input.id);
 		await refuseOtherHome(tx, actor.userId, input.customRate?.home);
+		const home = await homeCurrencyOf(tx, actor.userId);
 		await new ExpenseService(tx).updateExpense(actor.userId, input);
 		return {
-			value: { id: input.id, restore: { id: input.id, ...fieldsOf(before) } },
+			value: {
+				id: input.id,
+				restore: { id: input.id, ...fieldsOf(before, home) },
+			},
 			undo: {
 				kind: "revert",
 				mutation: "expense.update",

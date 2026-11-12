@@ -16,6 +16,7 @@ import { userTransaction } from "~/server/db-tx";
 import type { Prisma, PrismaClient } from "~prisma";
 import { refuseLegMoneyEdit } from "./accounts/leg-edits";
 import { AmortizationService } from "./amortization.service";
+import { type RestoreToken, readRowRestore } from "./entry/restore-token";
 import { findDuplicateExpense } from "./expense-duplicate";
 import {
 	asBadRequest,
@@ -66,6 +67,9 @@ export async function resolveExpenseRate(
 		saved,
 	);
 }
+
+/** The kind of signed restore an expense edit's undo carries (restore-token.ts). */
+export const EXPENSE_RESTORE = "expense.update";
 
 /** The booked rate columns of a row as stored, as decimal text. */
 export interface SavedFigures {
@@ -212,8 +216,8 @@ export class ExpenseService {
 			categoryId?: string;
 			amortizeOver?: number;
 			excludeFromAnalytics?: boolean;
-			/** Set only by the undo of an edit: the figures it was saved with, written back as they were. */
-			restore?: SavedFigures | null;
+			/** Set only by the undo of an edit: the figures it was saved with, signed, written back as they were. */
+			restore?: RestoreToken | null;
 		},
 	) {
 		const existingExpense = await (this.db as PrismaClient).expense.findFirst({
@@ -249,14 +253,14 @@ export class ExpenseService {
 		}
 
 		// An undo puts back what was stored; booking again could round differently.
-		const rate =
-			input.restore ??
-			(await resolveExpenseRate(
-				this.db,
-				userId,
-				input,
-				savedRateOf(existingExpense),
-			));
+		const rate = input.restore
+			? await this.restoredFigures(userId, { ...input, restore: input.restore })
+			: await resolveExpenseRate(
+					this.db,
+					userId,
+					input,
+					savedRateOf(existingExpense),
+				);
 
 		return await this.runInTransaction(async (tx) => {
 			const expense = await tx.expense.update({
@@ -425,6 +429,34 @@ export class ExpenseService {
 				usageCount: 0, // Usage count calculation remains client-side or simplified
 			})),
 		};
+	}
+
+	/**
+	 * The figures an edit's undo signed, once they prove to be this row's: its
+	 * id, amount, currency and date, under the home the user still has.
+	 */
+	private async restoredFigures(
+		userId: string,
+		input: {
+			id: string;
+			amount: number | string;
+			currency: string;
+			date: Date;
+			restore: RestoreToken;
+		},
+	): Promise<SavedFigures> {
+		const user = await (this.db as PrismaClient).user.findUnique({
+			where: { id: userId },
+			select: { homeCurrency: true },
+		});
+		return readRowRestore<SavedFigures>(input.restore, {
+			kind: EXPENSE_RESTORE,
+			id: input.id,
+			amount: storedAmount(input.amount),
+			currency: input.currency,
+			date: input.date.toISOString(),
+			home: user?.homeCurrency ?? "",
+		});
 	}
 
 	private async runInTransaction<T>(

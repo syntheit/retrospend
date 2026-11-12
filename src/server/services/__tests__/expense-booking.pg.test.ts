@@ -19,6 +19,7 @@
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { updateExpenseEntry } from "~/server/services/entry/expense.mutation";
+import { expenseRestoreSchema } from "~/server/services/entry/input";
 import { createExpense } from "~/server/services/expense-create.mutation";
 import { forUser } from "~/server/services/preview";
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
@@ -98,8 +99,8 @@ describe("booking an expense rounds half to even", () => {
 
 describe("an edit that moves no money keeps the saved figures (D1)", () => {
 	/** ARS 28.5 as a half-up booking saved it: 0.285 USD stored as 0.29. */
-	async function oldTieRow(date = DAY) {
-		const userId = await arsUser();
+	async function oldTieRow(date = DAY, owner?: string) {
+		const userId = owner ?? (await arsUser());
 		const id = randomUUID();
 		await fixtureDb.expense.create({
 			data: {
@@ -197,6 +198,77 @@ describe("an edit that moves no money keeps the saved figures (D1)", () => {
 			amountInUSD: "0.29",
 			exchangeRate: "100",
 			homeAmount: "28.5",
+		});
+	});
+
+	describe("an undo writes only the figures the edit signed for this row", () => {
+		const refused = /This undo is not valid anymore/;
+
+		async function editedRow() {
+			const { userId, id } = await oldTieRow();
+			const edited = await forUser(userId).apply(
+				updateExpenseEntry,
+				edit(id, { amount: "30" }),
+			);
+			return { userId, id, restore: edited.value.restore };
+		}
+
+		it("plain figures never pass the revert input, and a forged token is refused", async () => {
+			const { userId, id, restore } = await editedRow();
+			const figures = { exchangeRate: "100", amountInUSD: "999" };
+			expect(
+				expenseRestoreSchema.safeParse({ ...restore, restore: figures })
+					.success,
+			).toBe(false);
+			const forged = {
+				data: JSON.stringify({
+					kind: "expense.update",
+					id,
+					amount: "28.5",
+					currency: "ARS",
+					date: DAY.toISOString(),
+					home: "ARS",
+					figures: { ...figures, rateType: null },
+				}),
+				sig: "0".repeat(64),
+			};
+			await expect(
+				forUser(userId).apply(updateExpenseEntry, {
+					...restore,
+					restore: forged,
+				}),
+			).rejects.toThrow(refused);
+			expect((await money(id)).amountInUSD).toBe("0.3");
+		});
+
+		it("a token for another row, or with a changed amount, is refused", async () => {
+			const a = await editedRow();
+			const b = await oldTieRow(DAY, a.userId);
+			await expect(
+				forUser(a.userId).apply(updateExpenseEntry, {
+					...a.restore,
+					id: b.id,
+				}),
+			).rejects.toThrow(refused);
+			await expect(
+				forUser(a.userId).apply(updateExpenseEntry, {
+					...a.restore,
+					amount: "28.6",
+				}),
+			).rejects.toThrow(refused);
+			expect((await money(a.id)).amountInUSD).toBe("0.3");
+		});
+
+		it("a token signed under another home currency is refused", async () => {
+			const { userId, id, restore } = await editedRow();
+			await adminDb.user.update({
+				where: { id: userId },
+				data: { homeCurrency: "USD" },
+			});
+			await expect(
+				forUser(userId).apply(updateExpenseEntry, restore),
+			).rejects.toThrow(refused);
+			expect((await money(id)).amountInUSD).toBe("0.3");
 		});
 	});
 });
