@@ -214,8 +214,7 @@ export async function completeIdempotentRequest(
 			select: { id: true },
 		});
 	} catch (error) {
-		if ((await userDb.idempotencyKey.count({ where: { id } })) > 0)
-			throw error;
+		if ((await userDb.idempotencyKey.count({ where: { id } })) > 0) throw error;
 	}
 }
 
