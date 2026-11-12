@@ -45,7 +45,7 @@ Set these in `.env`. Runtime settings are read at start; nothing is baked into t
 | `DATABASE_URL` | **Yes** | | Full PostgreSQL connection string |
 | `WORKER_API_KEY` | **Yes** | | Shared secret between app, worker, and importer: `openssl rand -base64 32` |
 | `SHOW_LANDING_PAGE` | No | `false` | Show public landing page at `/` |
-| `DEFAULT_TIME_ZONE` | No | `America/Argentina/Buenos_Aires` | IANA zone for people with no saved zone. Set it on both the app and the sidecar, so recurring dates agree |
+| `DEFAULT_TIME_ZONE` | No | `America/Argentina/Buenos_Aires` | IANA zone for people with no saved zone |
 | `ENABLE_LEGAL_PAGES` | No | `true` | Show `/privacy` and `/terms` |
 | `RECURRING_AUTO_POST` | No | `true` in the image | Post due recurring expenses set to pay automatically, every 15 minutes. Set `false` to stop it |
 | `UNSUBSCRIBE_SECRET` | No | | Secret for signed one-click unsubscribe links in emails |
