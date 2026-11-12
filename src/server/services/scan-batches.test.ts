@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { insideTransaction } from "~/server/db-tx";
-import { readInChunks, type ScanClient, scanBatches } from "./scan-batches";
+import {
+	readInChunks,
+	type ScanClient,
+	scanBatches,
+	scanIds,
+} from "./scan-batches";
 
 /** A client whose transactions only count themselves. */
 function fakeClient() {
@@ -96,5 +101,28 @@ describe("readInChunks", () => {
 		);
 		expect(calls).toEqual([["a", "b"], ["c", "d"], ["e"]]);
 		expect(out).toEqual(["A", "B", "C", "D", "E"]);
+	});
+});
+
+describe("scanIds", () => {
+	it("reads the ids in chunks, one transaction each, keeping what read returns", async () => {
+		const { db, opened } = fakeClient();
+		const out = await scanIds(
+			db,
+			"u1",
+			["a", "b", "c", "d", "e"],
+			async (_tx, ids) => ids.filter((id) => id !== "c"),
+			2,
+		);
+		expect(out).toEqual(["a", "b", "d", "e"]);
+		expect(opened.n).toBe(3);
+	});
+
+	it("refuses to run inside a transaction", async () => {
+		const { db, opened } = fakeClient();
+		await expect(
+			insideTransaction(() => scanIds(db, "u1", ["a"], async () => [])),
+		).rejects.toThrow(/outside one/);
+		expect(opened.n).toBe(0);
 	});
 });
