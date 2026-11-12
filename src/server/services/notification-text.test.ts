@@ -142,7 +142,7 @@ describe("buildNoticeText never carries free text", () => {
 			projectName: "Viaje a Bariloche",
 			periodLabel: "Marzo",
 			notes: "SECRET NOTE",
-		} as unknown as Notice;
+		} as unknown as Named;
 		const { title, body } = await build(smuggled);
 		const all = JSON.stringify([title, body]);
 		for (const word of ["Chez", "Bariloche", "Marzo", "SECRET"])
