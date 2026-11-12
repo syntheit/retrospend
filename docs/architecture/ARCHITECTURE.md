@@ -136,7 +136,7 @@ A single Go binary (`sidecar/main.go`) on port 8080, sharing the Postgres databa
 | Job | Schedule |
 |---|---|
 | Exchange rates from [syntheit/exchange-rates](https://github.com/syntheit/exchange-rates) | daily 09:05 UTC |
-| Recurring expenses | every 15 minutes |
+| Heartbeat for the admin page | every 15 minutes |
 | Database backup (`pg_dump`) with retention | `BACKUP_CRON`, default 03:00 |
 | Data retention cleanup (old events, tokens, stale guests) | daily 03:00 |
 
@@ -146,6 +146,7 @@ A single Go binary (`sidecar/main.go`) on port 8080, sharing the Postgres databa
 - **How the app and the sidecar talk:**
   - The app calls the sidecar at `SIDECAR_URL` with `Authorization: Bearer $WORKER_API_KEY` (`src/server/services/integration.service.ts`).
   - The scheduler calls back into the app at `/api/internal/webhooks` with the same key.
+- **Recurring expenses are posted by the app** (`src/server/services/recurring-auto-post.ts`), never by the sidecar. A Go test fails if any sidecar file inserts an expense or moves a template.
 - **The sidecar copies text it is given and never composes user-facing text.**
 
 ## Mobile app (`apps/mobile`)

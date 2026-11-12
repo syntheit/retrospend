@@ -13,9 +13,6 @@ import (
 // expense or moves a template, which would copy a name it cannot seal.
 var forbiddenSQL = []string{"INSERT INTO expense", "UPDATE recurring_template", "ProcessRecurring"}
 
-// recurring.go is no longer scheduled; PR 6.2 deletes it.
-var deletedNext = map[string]bool{"tasks/recurring.go": true}
-
 func TestSidecarNeverPostsExpenses(t *testing.T) {
 	root := ".."
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
@@ -24,7 +21,7 @@ func TestSidecarNeverPostsExpenses(t *testing.T) {
 		}
 		rel, _ := filepath.Rel(root, path)
 		rel = filepath.ToSlash(rel)
-		if d.IsDir() || !strings.HasSuffix(rel, ".go") || strings.HasSuffix(rel, "_test.go") || deletedNext[rel] {
+		if d.IsDir() || !strings.HasSuffix(rel, ".go") || strings.HasSuffix(rel, "_test.go") {
 			return nil
 		}
 		src, err := os.ReadFile(path)
