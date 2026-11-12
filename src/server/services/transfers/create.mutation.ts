@@ -9,7 +9,7 @@
 import { randomUUID } from "node:crypto";
 import type { Decimal } from "@prisma/client/runtime/index-browser";
 import { TRPCError } from "@trpc/server";
-import { currencyDecimals } from "@retrospend/domain/money";
+import { roundMoneyDec } from "@retrospend/domain/money-dec";
 import type { Money } from "~/server/figures/registry";
 import { dec, toMinor } from "~/server/services/envelope/units";
 import { createExpenseIn } from "~/server/services/expense.service";
@@ -145,7 +145,7 @@ function atReference(
 			message: `No exchange rate for ${from} to ${to}. Type what arrived.`,
 		});
 	}
-	return amount.mul(fromHome).toDecimalPlaces(currencyDecimals(to));
+	return roundMoneyDec(dec(amount).mul(fromHome), to);
 }
 
 const placeFacts = (side: Side) =>

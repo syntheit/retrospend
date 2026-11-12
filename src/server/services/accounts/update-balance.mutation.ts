@@ -4,7 +4,8 @@
  * Undo (account.revertBalanceUpdate) puts today's balance and type back.
  */
 import { TRPCError } from "@trpc/server";
-import { isValidRate, USD } from "@retrospend/domain/money";
+import { USD } from "@retrospend/domain/money";
+import type { Decimal } from "@retrospend/domain/precise-decimal";
 import { dec } from "~/server/services/envelope/units";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import { WealthService } from "~/server/services/wealth.service";
@@ -136,13 +137,13 @@ export interface RevertBalanceUpdateInput {
 /** A snapshot's USD value at a stored rate; a missing rate is never 1. */
 function usdAt(
 	service: WealthService,
-	balance: number,
+	balance: Decimal,
 	currency: string,
 	rate: { toString(): string } | null,
-): number {
+): Decimal {
 	if (currency === USD) return balance;
-	const value = rate === null ? null : Number(rate.toString());
-	if (!isValidRate(value)) {
+	const value = rate === null ? null : dec(rate.toString());
+	if (!value?.isFinite() || !value.gt(0)) {
 		throw new TRPCError({
 			code: "BAD_REQUEST",
 			message: `No exchange rate for ${currency}. Update the balance again.`,
@@ -202,8 +203,8 @@ export async function revertBalanceUpdateIn(
 		tx,
 		account.id,
 		today,
-		balance.toNumber(),
-		usdAt(service, balance.toNumber(), account.currency, reverted.exchangeRate),
+		balance,
+		usdAt(service, balance, account.currency, reverted.exchangeRate),
 		userId,
 		{
 			currency: account.currency,

@@ -14,7 +14,7 @@ import { TRPCError } from "@trpc/server";
 import type { RestChoice } from "~/lib/schemas/envelope";
 import type { Money } from "~/server/figures/registry";
 import { forgetMonthViews } from "~/server/services/envelope/month-read";
-import { dec, toMinor } from "~/server/services/envelope/units";
+import { Dec, dec, toMinor } from "~/server/services/envelope/units";
 import {
 	FIGURE_LEFT_TO_SPEND,
 	FIGURE_NOT_PLANNED_YET,
@@ -197,7 +197,9 @@ export async function confirmRecurringIncomeIn(
 			});
 		}
 		const units =
-			perUnit && booked ? booked.div(perUnit).toDecimalPlaces(8) : amount;
+			perUnit && booked
+				? booked.div(perUnit).toDecimalPlaces(8, Dec.ROUND_HALF_EVEN)
+				: amount;
 		into = await writeLeg(tx, userId, {
 			account,
 			currency: account.currency,

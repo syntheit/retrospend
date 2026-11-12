@@ -12,7 +12,7 @@
 import type { Decimal } from "@prisma/client/runtime/index-browser";
 import { TRPCError } from "@trpc/server";
 import { findExchangeRatesForDates } from "~/server/exchange-rates";
-import { dec } from "~/server/services/envelope/units";
+import { Dec, dec } from "~/server/services/envelope/units";
 import type { AccountLegSource, AssetType, Prisma } from "~prisma";
 import { balanceEffect } from "./places";
 import { homeValue, type RatePick } from "./valuation";
@@ -143,7 +143,12 @@ export function bookHome(
 			}
 		: { currency: place.currency, rateType: null, storedRate: null };
 	const value = homeValue(pick, valued, amount, homeCurrency, endOfDayOf(date));
-	return value && { amount: value.toDecimalPlaces(8), currency: homeCurrency };
+	return (
+		value && {
+			amount: value.toDecimalPlaces(8, Dec.ROUND_HALF_EVEN),
+			currency: homeCurrency,
+		}
+	);
 }
 
 const endOfDayOf = (date: Date) =>

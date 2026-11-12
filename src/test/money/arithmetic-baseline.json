@@ -11,10 +11,7 @@
 		"src/server/api/routers/entry.ts": 2,
 		"src/server/api/routers/recurring.ts": 2,
 		"src/server/api/routers/shared-transaction.ts": 2,
-		"src/server/services/accounts/checkpoint.ts": 2,
 		"src/server/services/accounts/dashboard-legs.ts": 1,
-		"src/server/services/accounts/manage.ts": 1,
-		"src/server/services/accounts/update-balance.mutation.ts": 2,
 		"src/server/services/amortization.service.ts": 3,
 		"src/server/services/corrections/correct.service.ts": 2,
 		"src/server/services/corrections/locks.ts": 1,
@@ -58,11 +55,10 @@
 		"src/server/services/envelope/split-events.ts": 1,
 		"src/server/services/exchange-rate.service.ts": 1,
 		"src/server/services/import/match.ts": 2,
-		"src/server/services/income/add.mutation.ts": 2,
 		"src/server/services/income/move-in.mutation.ts": 1,
 		"src/server/services/payments/rate-band.ts": 4,
 		"src/server/services/shared-expense-integration.ts": 1,
-		"src/server/services/transfers/create.mutation.ts": 11,
+		"src/server/services/transfers/create.mutation.ts": 9,
 		"src/server/services/transfers/delete.mutation.ts": 1,
 		"src/server/services/transfers/plan.ts": 11
 	}

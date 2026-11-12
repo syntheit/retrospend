@@ -303,6 +303,7 @@ DECLARE
     'payment_tx_note_has',
     'project_participant_guard_update',
     'project_role',
+    'round_half_even',
     'settled_entry_ok',
     'settlement_created_for',
     'settlement_delete_ok',

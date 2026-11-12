@@ -95,9 +95,9 @@ export async function writeCheckpoint(
 		tx,
 		account.id,
 		next.date,
-		next.balance.toNumber(),
+		next.balance,
 		service.calculateBalanceInUSD(
-			next.balance.toNumber(),
+			next.balance,
 			next.rate.rate,
 			account.currency,
 		),

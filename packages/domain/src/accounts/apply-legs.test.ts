@@ -420,26 +420,87 @@ describe("applyLegs: balance updates already holding the leg", () => {
 		expect(snapOf(out, "s")).toBe("200000 / 133.33");
 	});
 
-	it("rounds a USD value that lands on a tie away from zero, not to even", () => {
+	it("rounds a USD value that lands on a tie to even", () => {
 		const out = applyLegs(
 			state({ a: account({ balance: "8" }) }, [
 				snapshot({ id: "s", balance: "8", balanceInUSD: "1" }),
 			]),
 			[{ op: "insert", leg: leg({ amount: "1" }) }],
 		);
-		// 1 * 9 / 8 = 1.125: half-even would give 1.12.
-		expect(snapOf(out, "s")).toBe("9 / 1.13");
+		// 1 * 9 / 8 = 1.125: 2 is even, so 1.12 (half away from zero gave 1.13).
+		expect(snapOf(out, "s")).toBe("9 / 1.12");
 	});
 
-	it("rounds a negative tie away from zero", () => {
+	it("rounds a tie whose lower neighbor is odd up", () => {
+		const out = applyLegs(
+			state({ a: account({ balance: "8" }) }, [
+				snapshot({ id: "s", balance: "8", balanceInUSD: "1" }),
+			]),
+			[{ op: "insert", leg: leg({ amount: "-1" }) }],
+		);
+		// 1 * 7 / 8 = 0.875: 7 is odd, so 0.88.
+		expect(snapOf(out, "s")).toBe("7 / 0.88");
+	});
+
+	it("rounds a negative tie to even, by its magnitude", () => {
 		const out = applyLegs(
 			state({ a: account({ type: "LIABILITY_LOAN", balance: "8" }) }, [
 				snapshot({ id: "s", balance: "8", balanceInUSD: "-1" }),
 			]),
-			// A payment of 1 on a liability: effect -1, balance 7, -1 * 7 / 8.
+			// A payment of 3 on a liability: effect -3, balance 5, -1 * 5 / 8.
+			[{ op: "insert", leg: leg({ amount: "3" }) }],
+		);
+		// -0.625: 2 is even, so -0.62 (half away from zero gave -0.63).
+		expect(snapOf(out, "s")).toBe("5 / -0.62");
+	});
+
+	it("rounds a negative tie whose lower magnitude is odd away from zero", () => {
+		const out = applyLegs(
+			state({ a: account({ type: "LIABILITY_LOAN", balance: "8" }) }, [
+				snapshot({ id: "s", balance: "8", balanceInUSD: "-1" }),
+			]),
+			// Effect -1, balance 7: -1 * 7 / 8 = -0.875, 7 is odd, so -0.88.
 			[{ op: "insert", leg: leg({ amount: "1" }) }],
 		);
 		expect(snapOf(out, "s")).toBe("7 / -0.88");
+	});
+
+	it("rounds a USD snapshot's 8-decimal balance to cents, ties to even", () => {
+		const out = applyLegs(
+			state({ a: account({ currency: "USD", balance: "1" }) }, [
+				snapshot({ id: "up", balance: "1", balanceInUSD: "1" }),
+				snapshot({
+					id: "down",
+					date: day(11),
+					balance: "-1.03",
+					balanceInUSD: "-1.03",
+				}),
+			]),
+			[{ op: "insert", leg: leg({ amount: "0.005" }) }],
+		);
+		// 1.005 to 1.00 and -1.025 to -1.02 (2 even); the old cast gave 1.01
+		// and -1.03.
+		expect(snapOf(out, "up")).toBe("1.005 / 1");
+		expect(snapOf(out, "down")).toBe("-1.025 / -1.02");
+	});
+
+	it("a JPY tie and a KWD tie round to even too", () => {
+		const jpy = applyLegs(
+			state({ a: account({ currency: "JPY", balance: "2" }) }, [
+				snapshot({ id: "s", balance: "2", balanceInUSD: "0.05" }),
+			]),
+			[{ op: "insert", leg: leg({ amount: "3" }) }],
+		);
+		// 0.05 * 5 / 2 = 0.125 to 0.12.
+		expect(snapOf(jpy, "s")).toBe("5 / 0.12");
+		const kwd = applyLegs(
+			state({ a: account({ currency: "KWD", balance: "0.002" }) }, [
+				snapshot({ id: "s", balance: "0.002", balanceInUSD: "0.05" }),
+			]),
+			[{ op: "insert", leg: leg({ amount: "0.003" }) }],
+		);
+		// 0.05 * 0.005 / 0.002 = 0.125 to 0.12.
+		expect(snapOf(kwd, "s")).toBe("0.005 / 0.12");
 	});
 
 	it("a JPY snapshot (no decimals) scales the same way", () => {
@@ -571,6 +632,65 @@ describe("applyLegs: a snapshot that held nothing", () => {
 		// 'held' becomes 200 / 2.00 first; zero reads 2/200 = 0.01 USD per unit.
 		expect(snapOf(out, "held")).toBe("200 / 2");
 		expect(snapOf(out, "zero")).toBe("100 / 1");
+	});
+
+	it("moves snapshots oldest first, whatever order they come in", () => {
+		const snaps = [
+			snapshot({
+				id: "later",
+				date: day(11),
+				balance: "2",
+				balanceInUSD: "0.01",
+				recordedAt: at(11, 12),
+			}),
+			snapshot({ id: "zero", date: day(10), recordedAt: at(10, 12) }),
+		];
+		for (const order of [snaps, [...snaps].reverse()]) {
+			const out = applyLegs(state({ a: account({ balance: "2" }) }, order), [
+				{ op: "insert", leg: leg({ amount: "1" }) },
+			]);
+			// 'zero' first: 0.01 / 2 = 0.005 USD per unit, 1 x 0.005 = 0.005 to
+			// 0.00 (even). Then 'later': 0.01 * 3 / 2 = 0.015 to 0.02. Valuing
+			// 'zero' after 'later' would read 0.02 / 3 and give 0.01.
+			expect(snapOf(out, "zero")).toBe("1 / 0");
+			expect(snapOf(out, "later")).toBe("3 / 0.02");
+			expect(out.snapshots.map((x) => x.id)).toEqual(order.map((x) => x.id));
+		}
+	});
+
+	it("a tie from 1 / rate rounds to even, either sign", () => {
+		const run = (amount: string) =>
+			applyLegs(
+				state({ a: account({ balance: "0", exchangeRate: "200" }) }, [
+					snapshot({ id: "zero", balance: "0", balanceInUSD: "0" }),
+				]),
+				[{ op: "insert", leg: leg({ amount }) }],
+			);
+		// 1 / 200 = 0.005 USD per unit: 1 gives 0.005 to 0.00, 3 gives 0.015
+		// to 0.02, -5 gives -0.025 to -0.02, -7 gives -0.035 to -0.04.
+		expect(snapOf(run("1"), "zero")).toBe("1 / 0");
+		expect(snapOf(run("3"), "zero")).toBe("3 / 0.02");
+		expect(snapOf(run("-5"), "zero")).toBe("-5 / -0.02");
+		expect(snapOf(run("-7"), "zero")).toBe("-7 / -0.04");
+	});
+
+	it("a crypto tie from the rate itself rounds to even", () => {
+		const out = applyLegs(
+			state(
+				{
+					a: account({
+						type: "CRYPTO",
+						currency: "BTC",
+						balance: "0",
+						exchangeRate: "50",
+					}),
+				},
+				[snapshot({ id: "zero", balance: "0", balanceInUSD: "0" })],
+			),
+			[{ op: "insert", leg: leg({ amount: "0.0001" }) }],
+		);
+		// 0.0001 BTC x 50 USD = 0.005 to 0.00.
+		expect(snapOf(out, "zero")).toBe("0.0001 / 0");
 	});
 
 	it("falls back to 1 / rate on a cash account", () => {

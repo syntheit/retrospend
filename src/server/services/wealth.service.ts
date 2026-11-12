@@ -5,6 +5,12 @@ import {
 	toUSD,
 	USD,
 } from "@retrospend/domain/money";
+import { roundUSDDec, toUSDDec } from "@retrospend/domain/money-dec";
+import {
+	type Decimal,
+	type DecimalInput,
+	dec,
+} from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { normalizeDate } from "~/lib/date";
@@ -87,19 +93,16 @@ export class WealthService {
 		});
 	}
 
-	/** Balance in USD (unrounded). Negative balances convert like any other. */
+	/**
+	 * Balance in USD, exact and unrounded; negative balances convert like any
+	 * other. No usable rate throws MissingRateError, never 1.
+	 */
 	calculateBalanceInUSD(
-		balance: number,
-		rate: number,
+		balance: DecimalInput,
+		rate: DecimalInput | null,
 		currency: string,
-	): number {
-		if (currency !== USD && !isValidRate(rate)) {
-			throw new TRPCError({
-				code: "INTERNAL_SERVER_ERROR",
-				message: `Invalid exchange rate: ${rate}. Rate must be positive.`,
-			});
-		}
-		return toUSD(balance, currency, rate);
+	): Decimal {
+		return toUSDDec(balance, currency, rate);
 	}
 
 	/**
@@ -108,17 +111,21 @@ export class WealthService {
 	 * This method must be called within a Prisma transaction context.
 	 * It creates/updates the daily snapshot and appends to the history log.
 	 * The snapshot keeps the account's currency, type and rate type, so a
-	 * later edit of the account does not revalue it.
+	 * later edit of the account does not revalue it. The USD value is rounded
+	 * here to cents, half to even like the account leg trigger: the column
+	 * would round half away from zero.
 	 */
 	async recordAssetSnapshot(
 		tx: Prisma.TransactionClient,
 		assetId: string,
 		date: Date,
-		balance: number,
-		balanceInUSD: number,
+		units: DecimalInput,
+		usd: DecimalInput,
 		userId: string,
 		meta: SnapshotMeta,
 	): Promise<void> {
+		const balance = dec(units).toFixed();
+		const balanceInUSD = roundUSDDec(usd).toFixed(2);
 		// recordedAt orders this balance against legs of the same day (accounts/series.ts).
 		const snapshotMeta = {
 			currency: meta.currency,
