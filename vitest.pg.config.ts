@@ -53,7 +53,10 @@ export default defineConfig({
 		},
 	},
 	test: {
-		globalSetup: ["src/test/pg-global-setup.ts"],
+		globalSetup: [
+			"src/test/pg-global-setup.ts",
+			"src/test/money/number-writes-setup.ts",
+		],
 		maxWorkers: workers,
 		projects: [
 			{

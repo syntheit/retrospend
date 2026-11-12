@@ -4,7 +4,11 @@
  * worker's database has to be in place before any test imports them.
  */
 import { createHash } from "node:crypto";
+import { appendFileSync } from "node:fs";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, inject } from "vitest";
+import { PrismaClient } from "~prisma";
+import { guardMoneyWrites } from "./money/write-guard";
 
 // Vitest numbers its workers 1..maxWorkers; the global setup cloned one
 // database for each, so no two workers (and no two files at once) share one.
@@ -33,14 +37,39 @@ if (sealed) {
 		.digest("hex");
 }
 
+// The app's raw client, with JS numbers refused on Decimal columns
+// (money/write-guard.ts). db-core builds every client on the one it finds
+// here, its dev-reload cache, so the guard sits under all of them. The pool
+// matches db-core's. Later files in this worker reuse it, as they did
+// db-core's own client, so no file leaves a pool open. The allowlist entries
+// it lets through are noted for number-writes-setup.ts.
+const usedFile = inject("moneyGuardUsedFile");
+(globalThis as { prisma?: unknown }).prisma ??= guardMoneyWrites(
+	new PrismaClient({
+		adapter: new PrismaPg({
+			connectionString: databaseUrl,
+			max: 20,
+			idleTimeoutMillis: 30000,
+			connectionTimeoutMillis: 5000,
+		}),
+	}),
+	{ used: (entry) => appendFileSync(usedFile, `${entry}\n`) },
+);
+
 // A worker's database outlives the files it runs, and these tables are shared
 // by every user in it: a rate or setting one file wrote would change the next
 // file's figures. Each file starts from the template's state (all empty).
-const SHARED_TABLES = ["exchange_rate", "exchange_rate_history", "app_settings"];
+const SHARED_TABLES = [
+	"exchange_rate",
+	"exchange_rate_history",
+	"app_settings",
+];
 beforeAll(async () => {
 	const { db } = await import("~/server/db");
 	await db.$transaction(
-		SHARED_TABLES.map((table) => db.$executeRawUnsafe(`DELETE FROM "${table}"`)),
+		SHARED_TABLES.map((table) =>
+			db.$executeRawUnsafe(`DELETE FROM "${table}"`),
+		),
 	);
 	if (!sealed) return;
 	// What the start-up check writes before the first sealing write.

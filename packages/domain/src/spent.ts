@@ -12,9 +12,9 @@
  * the loader supplies, and a missing one stays NaN so sumIn names it.
  */
 import { getCurrentFiscalMonth, getFiscalMonthRange } from "./fiscal-month";
-import { currencyDecimals, type MoneyItem, toUSD, USD } from "./money";
-import { type Money, toMinor } from "./money-minor";
-import { Dec, type Decimal, type DecimalInput, dec } from "./precise-decimal";
+import { type MoneyItem, toUSD, USD } from "./money";
+import { type Money, roundedMinor, toMinor } from "./money-minor";
+import { type Decimal, type DecimalInput, dec } from "./precise-decimal";
 
 /** The sums of rows that share a currency and a booked home currency (rows booked when saved, M2, are split from the rest). */
 export interface SpentGroup {
@@ -276,20 +276,6 @@ export function spentItemsOf(inputs: SpentInputs): SpentItem[] {
 }
 
 /**
- * A summed amount in minor units, exactly (no float step). The column keeps 8
- * decimals for every currency, so a legacy row can be more precise than its
- * currency: that sum is first rounded half to even, the domain's one rule,
- * because toMinor refuses to round a string itself.
- */
-const groupMinor = (value: DecimalInput, currency: string) =>
-	toMinor(
-		dec(value)
-			.toDecimalPlaces(currencyDecimals(currency), Dec.ROUND_HALF_EVEN)
-			.toFixed(),
-		currency,
-	);
-
-/**
  * Spending per original currency, in minor units and never converted (the
  * figure shape). Each group rounds on its own, as a legacy row's sum always
  * has; currencies that net to zero are dropped, so "nothing spent" reads the
@@ -300,15 +286,15 @@ export function spentMinorByCurrency(inputs: SpentInputs): Money[] {
 	const add = (currency: string, units: number) =>
 		minor.set(currency, (minor.get(currency) ?? 0) + units);
 	for (const g of inputs.spending)
-		add(g.currency, groupMinor(g.amount, g.currency));
+		add(g.currency, roundedMinor(g.amount, g.currency));
 	for (const g of inputs.refunds)
-		add(g.currency, -groupMinor(g.amount, g.currency));
+		add(g.currency, -roundedMinor(g.amount, g.currency));
 	for (const s of inputs.shares)
 		add(
 			s.currency,
 			s.amountExact === undefined
 				? toMinor(s.amount, s.currency)
-				: groupMinor(s.amountExact, s.currency),
+				: roundedMinor(s.amountExact, s.currency),
 		);
 	return [...minor]
 		.filter(([, units]) => units !== 0)
