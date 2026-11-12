@@ -431,7 +431,7 @@ describe("notifications are worded at read time", () => {
 				data: { language: "es" },
 			});
 			expect(await body("by-bea")).toBe(
-				"Alguien cerró un período en un proyecto en el que estás",
+				"Alguien cerró un período en un proyecto en el que participas",
 			);
 		});
 	}
