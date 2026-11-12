@@ -13,7 +13,13 @@ import type { Money } from "~/server/figures/registry";
 import type { Prisma, PrismaClient } from "~prisma";
 import { toMinor } from "../envelope/units";
 import { loadRateContext } from "../rate-types";
-import { APP_LAYER_WINDOW, pgLower, searchesInAppLoaded } from "../search-fold";
+import {
+	dateIdOf,
+	olderThan,
+	type ScanClient,
+	scanBatches,
+} from "../scan-batches";
+import { pgLower, searchesInAppLoaded } from "../search-fold";
 import { bookImportRow, type ImportRate } from "./book";
 import { matchFile } from "./match";
 import { prepareRows } from "./prepare";
@@ -119,13 +125,6 @@ function rateView(rate: ImportRate | null, currency: string, home: string) {
 	};
 }
 
-/**
- * How many of the newest categorized expenses the app-layer path reads for
- * suggestions. Titles older than that are not counted on that path; the SQL
- * path has no such limit. One query per review.
- */
-export const SUGGESTION_WINDOW = APP_LAYER_WINDOW;
-
 /** The value as an ILIKE pattern that matches only itself. */
 const escapeLike = (text: string) => text.replace(/[\\%_]/g, "\\$&");
 
@@ -161,44 +160,54 @@ async function usedInSql(
 }
 
 /**
- * The app-layer path, for titles SQL cannot read: read the newest
- * categorized expenses (the client opens each title), and keep those equal to one of
- * `titles` after `pgLower`, the fold ILIKE applies to both sides, with no
- * pattern characters and no trimming. Counts are per (title, category), as
- * the SQL grouped them.
+ * The app-layer path, for titles SQL cannot read: every categorized expense,
+ * in batches (scan-batches.ts; the client opens each title), keeping those
+ * equal to one of `titles` after `pgLower`, the fold ILIKE applies to both
+ * sides, with no pattern characters and no trimming. Counts are per (title,
+ * category), as the SQL grouped them. A row read twice (its date edited
+ * mid-scan) counts once.
  */
 async function usedInApp(
-	db: Db,
+	db: ScanClient,
 	userId: string,
 	titles: readonly string[],
-	window: number,
 ): Promise<Used[]> {
 	const wanted = new Set(titles.map(pgLower));
-	const rows = await db.expense.findMany({
-		where: { userId, categoryId: { not: null } },
-		orderBy: [{ date: "desc" }, { id: "desc" }],
-		take: window,
-		select: { id: true, title: true, categoryId: true },
-	});
 	const counts = new Map<string, Used>();
-	for (const r of rows) {
-		const { title } = r;
-		if (!wanted.has(pgLower(title))) continue;
-		const key = `${r.categoryId}\u0000${title}`;
-		const seen = counts.get(key);
-		if (seen) seen.count++;
-		else counts.set(key, { title, categoryId: r.categoryId, count: 1 });
-	}
+	const seen = new Set<string>();
+	await scanBatches(db, userId, {
+		start: null,
+		read: (tx, after, take) =>
+			tx.expense.findMany({
+				where: { userId, categoryId: { not: null }, ...olderThan(after) },
+				orderBy: [{ date: "desc" }, { id: "desc" }],
+				take,
+				select: { id: true, date: true, title: true, categoryId: true },
+			}),
+		cursorOf: dateIdOf,
+		visit: (rows) => {
+			for (const r of rows) {
+				const { title } = r;
+				if (seen.has(r.id) || !wanted.has(pgLower(title))) continue;
+				seen.add(r.id);
+				const key = `${r.categoryId}\u0000${title}`;
+				const used = counts.get(key);
+				if (used) used.count++;
+				else counts.set(key, { title, categoryId: r.categoryId, count: 1 });
+			}
+			return false;
+		},
+	});
 	return [...counts.values()];
 }
 
 /** For each unmatched name, the category its titles were filed under most often. */
 async function suggestions(
-	db: Db,
+	db: PrismaClient,
 	userId: string,
 	groups: Map<string, string[]>,
 	allowed: ReadonlySet<string>,
-	options: { keyring?: Keyring; window?: number } = {},
+	keyring: Keyring | undefined,
 ): Promise<Map<string, string>> {
 	const titles = [...new Set([...groups.values()].flat())].slice(
 		0,
@@ -206,9 +215,8 @@ async function suggestions(
 	);
 	const out = new Map<string, string>();
 	if (titles.length === 0) return out;
-	const { keyring, window } = options;
 	const used = (await searchesInAppLoaded(keyring))
-		? await usedInApp(db, userId, titles, window ?? SUGGESTION_WINDOW)
+		? await usedInApp(db, userId, titles)
 		: await usedInSql(db, userId, titles);
 	for (const [name, names] of groups) {
 		const wanted = new Set(names.map((n) => n.toLowerCase()));
@@ -225,7 +233,7 @@ async function suggestions(
 }
 
 export async function importReview(
-	db: Db,
+	db: PrismaClient,
 	userId: string,
 	jobId: string,
 	options: {
@@ -233,8 +241,6 @@ export async function importReview(
 		timeZone?: string;
 		/** Passing one picks the app-layer paths, which SQL cannot replace once titles are sealed. */
 		keyring?: Keyring;
-		/** App-layer suggestions only: rows read, for tests. */
-		suggestionWindow?: number;
 	} = {},
 ): Promise<ImportReview> {
 	const job = await loadReviewableJob(db, userId, jobId);
@@ -305,10 +311,13 @@ export async function importReview(
 	const expenseIds = new Set(
 		categories.filter((c) => c.kind === "EXPENSE").map((c) => c.id),
 	);
-	const suggested = await suggestions(db, userId, unmatched, expenseIds, {
-		keyring: options.keyring,
-		window: options.suggestionWindow,
-	});
+	const suggested = await suggestions(
+		db,
+		userId,
+		unmatched,
+		expenseIds,
+		options.keyring,
+	);
 	const unreadable = unreadableCount(job.warnings) + badDates + badText;
 	return {
 		jobId: job.id,

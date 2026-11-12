@@ -104,7 +104,6 @@ async function ledger(sealed: boolean) {
 		{ title: "Libreria", amount: 1000, day: D0 },
 	])
 		await store(r, 0);
-	// Newest first, so a small window sees the Transport decoys only.
 	const filed: Seed[] = [
 		{ title: "Coto ", amount: 11, category: "Transport" },
 		{ title: "Coto ", amount: 12, category: "Transport" },
@@ -247,23 +246,5 @@ describe("import review over plain and sealed titles", () => {
 			TextUnavailableError,
 		);
 		vi.restoreAllMocks();
-	});
-
-	it("the app path reads only the newest rows for suggestions", async () => {
-		// The newest three categorized rows are the Transport decoys, which
-		// match nothing equal to "COTO", "ñandú" or "nandu".
-		const r = await reviewOf(await ledger(true), {
-			keyring,
-			suggestionWindow: 3,
-		});
-		expect(r.rows).toEqual(EXPECTED.rows);
-		expect(r.unmatched).toEqual([
-			["Super", 1, null],
-			["Fiesta", 1, null],
-			["Otros", 1, null],
-			["Slash", 1, null],
-			["Under", 1, null],
-			["Percent", 1, null],
-		]);
 	});
 });
