@@ -3,8 +3,8 @@
  * (keyring), over one mixed ledger. On plaintext the two must return the same
  * suggestions in the same order, and the SQL path must still return what the
  * old code returned (copied below as the oracle) wherever the old order did
- * not depend on a database tie. Then rows that hold ciphertext, the row
- * window, and the failures. A keyring only picks the path: the client opens
+ * not depend on a database tie. Then rows that hold ciphertext and the
+ * failures (text-scans.pg.test.ts covers the batches). A keyring only picks the path: the client opens
  * sealed text on read (field-open.ts), so the rows are sealed with the
  * keystore's keys (src/test/sealed-fixture.ts).
  */
@@ -17,10 +17,7 @@ import {
 import type { TextUnavailableError } from "~/server/crypto/field-open";
 import { evictDataKeyring } from "~/server/services/keys/data-key.service";
 import { listedEntryWhere } from "~/server/services/spending";
-import {
-	TITLE_SUGGESTION_WINDOW,
-	titleSuggestions,
-} from "~/server/services/title-suggestions.service";
+import { titleSuggestions } from "~/server/services/title-suggestions.service";
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import {
 	failNextEpochRead,
@@ -426,59 +423,6 @@ describe("both paths agree on plaintext", () => {
 	});
 });
 
-describe("the row window", () => {
-	let capped: Who;
-	beforeAll(async () => {
-		capped = await createTestUser();
-		await seed(capped, [
-			...times(3, (i) => ({ title: "Cap new", date: 1 + i, amount: "10" })),
-			...times(4, (i) => ({ title: "Cap old", date: 4 + i, amount: "20" })),
-			{ title: "Cap mid", date: 8, amount: "30" },
-			{ title: "Cap mid", date: 9, amount: "31" },
-			...times(3, (i) => ({ title: "Cap new", date: 10 + i, amount: "40" })),
-			{
-				title: "Cap new",
-				date: 20,
-				extra: { direction: "IN", inType: "INCOME" },
-			},
-		]);
-	});
-	const ask = (extra: object) =>
-		titleSuggestions(capped.db as PrismaClient, capped.user.id, "cap", extra);
-
-	it("is 20,000 rows by default", () => {
-		expect(TITLE_SUGGESTION_WINDOW).toBe(20_000);
-	});
-
-	it("reads only the newest listed rows on the app path", async () => {
-		// The newest five listed rows are days 12, 11, 10 ("Cap new") and 9, 8
-		// ("Cap mid"); the money-in row on day 20 does not use a slot.
-		const got = await ask({ keyring, window: 5 });
-		expect(got.map((s) => [s.title, s.count, s.lastAmount])).toEqual([
-			["Cap new", 3, 40],
-			["Cap mid", 2, 31],
-		]);
-	});
-
-	it("matches the SQL path once the window holds every row", async () => {
-		const all = await ask({ keyring, window: 12 });
-		expect(all.map((s) => [s.title, s.count, s.lastAmount])).toEqual([
-			["Cap new", 6, 40],
-			["Cap old", 4, 20],
-			["Cap mid", 2, 31],
-		]);
-		expect(all).toEqual(await ask({}));
-	});
-
-	it("does not limit the SQL path", async () => {
-		expect((await ask({ window: 5 })).map((s) => [s.title, s.count])).toEqual([
-			["Cap new", 6],
-			["Cap old", 4],
-			["Cap mid", 2],
-		]);
-	});
-});
-
 describe("rows that hold ciphertext", () => {
 	let mixed: Who;
 	let a: string;
@@ -669,21 +613,6 @@ describe("shared descriptions on the app path", () => {
 		]);
 		// The SQL path cannot read the sealed rows.
 		expect((await ask(who, "asado")).map((s) => s.count)).toEqual([1]);
-	});
-
-	it("reads only the newest shared rows when the window is small", async () => {
-		const who = await createTestUser();
-		await makeShared("shwin1", "Window old", who.user.id, 1);
-		await makeShared("shwin2", "Window old", who.user.id, 2);
-		await makeShared("shwin3", "Window new", who.user.id, 3);
-		const got = await ask(who, "window", { keyring, window: 1 });
-		expect(got.map((s) => [s.title, s.count])).toEqual([["Window new", 1]]);
-		const all = await ask(who, "window", { keyring, window: 10 });
-		expect(all.map((s) => [s.title, s.count])).toEqual([
-			["Window old", 2],
-			["Window new", 1],
-		]);
-		expect(all).toEqual(await ask(who, "window"));
 	});
 
 	it("fails on a description sealed for another row", async () => {
