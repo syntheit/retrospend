@@ -155,8 +155,8 @@ describe("recurring.confirmAndCreate", () => {
 
 		expect(state.expenses).toHaveLength(1);
 		expect(state.expenses[0]).toMatchObject({
-			exchangeRate: 1560,
-			amountInUSD: 64.1,
+			exchangeRate: "1560",
+			amountInUSD: "64.10",
 			currency: "ARS",
 		});
 		const next = state.template!.nextDueDate;
@@ -218,7 +218,7 @@ describe("recurring.confirmAndCreate", () => {
 		);
 
 		expect(RATE_DATE > local(2025, 6, 10)).toBe(true);
-		expect(state.expenses[0]).toMatchObject({ exchangeRate: 1560 });
+		expect(state.expenses[0]).toMatchObject({ exchangeRate: "1560" });
 	});
 
 	it("a currency without any rate fails and books nothing", async () => {
@@ -234,9 +234,9 @@ describe("recurring.confirmAndCreate", () => {
 	});
 
 	it.each([
-		["BRL", 51.178, 10],
-		["BTC", 0.001, 64.55],
-		["USD", 12.5, 12.5],
+		["BRL", 51.178, "10.00"],
+		["BTC", 0.001, "64.55"],
+		["USD", 12.5, "12.50"],
 	])(
 		"%s templates convert with the stored convention",
 		async (currency, amount, usd) => {
@@ -279,7 +279,7 @@ describe("recurring money in and amounts that vary", () => {
 		expect(state.expenses[0]).toMatchObject({
 			// Stored as typed: the amount travels as decimal text.
 			amount: "123456",
-			amountInUSD: 79.14,
+			amountInUSD: "79.14",
 		});
 	});
 

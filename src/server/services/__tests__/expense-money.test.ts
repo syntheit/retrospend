@@ -33,13 +33,13 @@ const BASE = {
 
 function createdData(db: ReturnType<typeof createMockDb>) {
 	return (db.expense.create.mock.calls[0]![0] as {
-		data: { exchangeRate: number; amountInUSD: number };
+		data: { exchangeRate: string; amountInUSD: string };
 	}).data;
 }
 
 function updatedData(db: ReturnType<typeof createMockDb>) {
 	return (db.expense.update.mock.calls[0]![0] as {
-		data: { exchangeRate: number; amountInUSD: number };
+		data: { exchangeRate: string; amountInUSD: string };
 	}).data;
 }
 
@@ -153,8 +153,8 @@ describe("ExpenseService money (server side)", () => {
 				pricingSource: "official",
 			});
 			expect(createdData(db)).toMatchObject({
-				exchangeRate: 0.8787,
-				amountInUSD: 113.8,
+				exchangeRate: "0.8787",
+				amountInUSD: "113.80",
 			});
 		});
 
@@ -168,17 +168,17 @@ describe("ExpenseService money (server side)", () => {
 				pricingSource: "crypto",
 			});
 			expect(createdData(db)).toMatchObject({
-				exchangeRate: 64545.9,
-				amountInUSD: 645.46,
+				exchangeRate: "64545.9",
+				amountInUSD: "645.46",
 			});
 		});
 
 		it.each([
-			["EUR", 100, 113.8],
-			["BRL", 100, 19.54],
-			["JPY", 10000, 61.04],
+			["EUR", 100, "113.80"],
+			["BRL", 100, "19.54"],
+			["JPY", 10000, "61.04"],
 			// 0.5 x 1916.61 = 958.305 USD, a tie at cents: half to even gives 958.30.
-			["ETH", 0.5, 958.3],
+			["ETH", 0.5, "958.30"],
 		])("%s: amountInUSD always comes from the stored rate", async (currency, amount, usd) => {
 			await service.createExpense("user-1", {
 				...BASE,
@@ -199,8 +199,8 @@ describe("ExpenseService money (server side)", () => {
 				pricingSource: "custom",
 			});
 			expect(createdData(db)).toMatchObject({
-				exchangeRate: 0.9,
-				amountInUSD: 111.11,
+				exchangeRate: "0.9",
+				amountInUSD: "111.11",
 			});
 		});
 
@@ -212,8 +212,8 @@ describe("ExpenseService money (server side)", () => {
 				pricingSource: "official",
 			});
 			expect(createdData(db)).toMatchObject({
-				exchangeRate: 1495,
-				amountInUSD: 10,
+				exchangeRate: "1495",
+				amountInUSD: "10.00",
 			});
 		});
 	});
@@ -229,14 +229,14 @@ describe("ExpenseService money (server side)", () => {
 				pricingSource: "blue",
 			});
 			expect(createdData(db)).toMatchObject({
-				exchangeRate: 1560,
-				amountInUSD: 64.1,
+				exchangeRate: "1560",
+				amountInUSD: "64.10",
 			});
 		});
 
 		it.each([
-			["BRL", 1000, 195.4],
-			["BTC", 0.001, 64.55],
+			["BRL", 1000, "195.40"],
+			["BTC", 0.001, "64.55"],
 		])("%s home currency: never rate 1", async (currency, amount, usd) => {
 			await service.createExpense("user-1", {
 				...BASE,
@@ -247,7 +247,7 @@ describe("ExpenseService money (server side)", () => {
 				pricingSource: "official",
 			});
 			expect(createdData(db).amountInUSD).toBe(usd);
-			expect(createdData(db).exchangeRate).not.toBe(1);
+			expect(createdData(db).exchangeRate).not.toBe("1");
 		});
 
 		it("USD stays at rate 1 for every home", async () => {
@@ -257,7 +257,7 @@ describe("ExpenseService money (server side)", () => {
 				currency: "USD",
 				exchangeRate: 1560,
 			});
-			expect(createdData(db)).toMatchObject({ exchangeRate: 1, amountInUSD: 42.5 });
+			expect(createdData(db)).toMatchObject({ exchangeRate: "1", amountInUSD: "42.50" });
 		});
 	});
 
@@ -283,8 +283,8 @@ describe("ExpenseService money (server side)", () => {
 			});
 
 			expect(updatedData(db)).toMatchObject({
-				exchangeRate: 1250,
-				amountInUSD: 4,
+				exchangeRate: "1250",
+				amountInUSD: "4.00",
 			});
 		});
 
@@ -301,8 +301,8 @@ describe("ExpenseService money (server side)", () => {
 			});
 
 			expect(updatedData(db)).toMatchObject({
-				exchangeRate: 1250,
-				amountInUSD: 2,
+				exchangeRate: "1250",
+				amountInUSD: "2.00",
 			});
 		});
 
@@ -316,8 +316,8 @@ describe("ExpenseService money (server side)", () => {
 			});
 
 			expect(updatedData(db)).toMatchObject({
-				exchangeRate: 0.8787,
-				amountInUSD: 113.8,
+				exchangeRate: "0.8787",
+				amountInUSD: "113.80",
 			});
 		});
 
@@ -330,7 +330,7 @@ describe("ExpenseService money (server side)", () => {
 				currency: "USD",
 			});
 
-			expect(updatedData(db)).toMatchObject({ exchangeRate: 1, amountInUSD: 20 });
+			expect(updatedData(db)).toMatchObject({ exchangeRate: "1", amountInUSD: "20.00" });
 		});
 
 		it("picking another rate type uses the table rate of that type", async () => {
@@ -345,8 +345,8 @@ describe("ExpenseService money (server side)", () => {
 			});
 
 			expect(updatedData(db)).toMatchObject({
-				exchangeRate: 1495,
-				amountInUSD: 10,
+				exchangeRate: "1495",
+				amountInUSD: "10.00",
 			});
 		});
 	});
@@ -359,7 +359,7 @@ describe("ExpenseService money (server side)", () => {
 				amount: 1560,
 				currency: "ARS",
 			});
-			expect(createdData(db)).toMatchObject({ exchangeRate: 1560, amountInUSD: 1 });
+			expect(createdData(db)).toMatchObject({ exchangeRate: "1560", amountInUSD: "1.00" });
 		});
 
 		it("a currency without any rate fails instead of using 1", async () => {
