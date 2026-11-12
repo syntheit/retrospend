@@ -87,8 +87,10 @@ describe("idempotency", () => {
 });
 
 describe("reserved idempotency keys", () => {
-	it("rejects the undo stash prefix and accepts other keys", () => {
+	it("rejects every server prefix and accepts other keys", () => {
 		expect(isValidIdempotencyKey("undo-stash:abc")).toBe(false);
+		expect(isValidIdempotencyKey("undo-icon:accounts/a.webp")).toBe(false);
 		expect(isValidIdempotencyKey("my-undo-stash:abc")).toBe(true);
+		expect(isValidIdempotencyKey("my-undo-icon:abc")).toBe(true);
 	});
 });

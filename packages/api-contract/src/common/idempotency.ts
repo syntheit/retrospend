@@ -21,12 +21,20 @@ export const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
 /** Printable ASCII without spaces, as Stripe and the IETF draft allow. */
 export const IDEMPOTENCY_KEY_PATTERN = /^[\x21-\x7e]{1,255}$/;
 
-/** Keys the server keeps for undo stashes; a client may not use them. */
-export const RESERVED_KEY_PREFIX = "undo-stash:";
+/**
+ * Prefixes of the keys the server writes for itself (an undo stash and the
+ * files it keeps). A client may not use any of them, so a server row can
+ * never be forged through the header. One list: a new server key goes here.
+ */
+export const SERVER_KEY_PREFIX = {
+	undoStash: "undo-stash:",
+	undoIcon: "undo-icon:",
+} as const;
 
 export function isValidIdempotencyKey(key: string): boolean {
 	return (
-		IDEMPOTENCY_KEY_PATTERN.test(key) && !key.startsWith(RESERVED_KEY_PREFIX)
+		IDEMPOTENCY_KEY_PATTERN.test(key) &&
+		!Object.values(SERVER_KEY_PREFIX).some((prefix) => key.startsWith(prefix))
 	);
 }
 
