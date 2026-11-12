@@ -8,12 +8,13 @@
  *
  * The row rules are the JS twins of the where clauses in
  * server/services/spending.ts (reports basis) and shared-expense-integration.ts.
- * Nothing here converts: a rate enters only through a share's USD value, which
- * the loader supplies, and a missing one stays NaN so sumIn names it.
+ * Nothing here converts but a share's USD value, kept exact (toUSDDec); a
+ * missing rate leaves it null so sumInDec names the currency. Every amount is
+ * an exact Decimal until the figure rounds it once, at the edge.
  */
 import { getCurrentFiscalMonth, getFiscalMonthRange } from "./fiscal-month";
-import { type MoneyItem, toUSD, USD } from "./money";
-import { type Money, roundedMinor, toMinor } from "./money-minor";
+import { type MoneyItemDec, type RateInput, toUSDDec, USD } from "./money-dec";
+import { type Money, roundedMinor } from "./money-minor";
 import { type Decimal, type DecimalInput, dec } from "./precise-decimal";
 
 /** The sums of rows that share a currency and a booked home currency (rows booked when saved, M2, are split from the rest). */
@@ -29,20 +30,24 @@ export interface SpentGroup {
 }
 
 /** A slice of spending. Refunds come as negative amounts, so a plain sum nets them. */
-export interface SpentItem extends MoneyItem {
+export interface SpentItem extends MoneyItemDec {
 	categoryId: string | null;
 	date: Date | null;
 	/** Spending entries behind this item; a refund nets the amount but is not an expense, so it counts 0. */
 	count: number;
 }
 
-/** Your share of a shared expense, with its USD value (NaN when its currency has no rate at all). */
+/**
+ * Your share of a shared expense with the rate it converts at and its USD
+ * value (both null when its currency has no rate at all). All exact decimal
+ * text. Totals convert from the amount and the rate in one division; the USD
+ * value is the same conversion, for readers that need one.
+ */
 export interface SpentShare {
-	amount: number;
-	/** The stored amount as exact decimal text; the minor units read it, so a huge share never goes through a float. */
-	amountExact?: string;
+	amount: string;
 	currency: string;
-	amountInUSD: number;
+	rate: string | null;
+	amountInUSD: string | null;
 	categoryId: string | null;
 	date: Date;
 }
@@ -191,12 +196,8 @@ export function groupSpentRows(
 }
 
 /** A share's rate as the server resolves it before the table: USD is 1, else the one captured when saved. Null when neither (the device looks it up in its rates). */
-const capturedRate = (s: SpentShareRow): number | null =>
-	s.currency === USD
-		? 1
-		: s.exchangeRate !== null
-			? Number(s.exchangeRate.toString())
-			: null;
+const capturedRate = (s: SpentShareRow): RateInput =>
+	s.currency === USD ? 1 : s.exchangeRate;
 
 /**
  * The figure's inputs from rows held in memory, in the range: what a device
@@ -209,7 +210,7 @@ export function spentInputsFromRows(args: {
 	shares: readonly SpentShareRow[];
 	hiddenProjectIds: readonly string[];
 	range: SpentRange;
-	rateFor?: (s: SpentShareRow) => number | null;
+	rateFor?: (s: SpentShareRow) => RateInput;
 	/** "day" keeps each entry instant and category apart, for the readers that bucket by day. */
 	by?: SpentRowGrouping;
 }): SpentInputs {
@@ -233,14 +234,11 @@ export function spentInputsFromRows(args: {
 						!args.hiddenProjectIds.includes(s.projectId)),
 			)
 			.map((s) => {
-				const amount = Number(s.shareAmount.toString());
-				const rate = rateFor(s);
+				const amount = dec(s.shareAmount).toFixed();
 				return {
 					amount,
-					amountExact: dec(s.shareAmount).toFixed(),
 					currency: s.currency,
-					amountInUSD:
-						rate === null ? Number.NaN : toUSD(amount, s.currency, rate),
+					...priceShare(amount, s.currency, rateFor(s)),
 					categoryId: s.categoryId,
 					date: s.date,
 				};
@@ -248,17 +246,39 @@ export function spentInputsFromRows(args: {
 	};
 }
 
-/** A group as an item to total with sumIn. */
+/**
+ * A share's rate and USD value, the one way both are made (server and
+ * device). The USD value is exact, never rounded to cents: a share is a slice
+ * of an amount, not a stored entry. No rate leaves it unpriced (nulls).
+ */
+export function priceShare(
+	amount: string,
+	currency: string,
+	rate: RateInput,
+): { rate: string | null; amountInUSD: string | null } {
+	if (rate === null || rate === undefined)
+		return { rate: null, amountInUSD: null };
+	return {
+		rate: dec(rate).toFixed(),
+		amountInUSD: toUSDDec(amount, currency, rate).toFixed(),
+	};
+}
+
+/** A decimal with its sign flipped for a refund; zero stays "0", never "-0". */
+const signed = (value: DecimalInput, sign: 1 | -1): Decimal =>
+	sign === 1 ? dec(value) : dec(value).neg().plus(0);
+
+/** A group as an item to total with sumInDec. */
 export const spentItemOf =
 	(sign: 1 | -1) =>
 	(g: SpentGroup): SpentItem => ({
 		currency: g.currency,
-		amount: sign * Number(g.amount.toString()),
-		amountInUSD: sign * Number(g.amountInUSD.toString()),
+		amount: signed(g.amount, sign),
+		amountInUSD: signed(g.amountInUSD, sign),
 		booked: g.homeCurrency
 			? {
 					currency: g.homeCurrency,
-					amount: sign * Number(g.homeAmount.toString()),
+					amount: signed(g.homeAmount, sign),
 				}
 			: null,
 		categoryId: g.categoryId ?? null,
@@ -271,7 +291,15 @@ export function spentItemsOf(inputs: SpentInputs): SpentItem[] {
 	return [
 		...inputs.spending.map(spentItemOf(1)),
 		...inputs.refunds.map(spentItemOf(-1)),
-		...inputs.shares.map((s) => ({ ...s, count: 1 })),
+		...inputs.shares.map((s) => ({
+			amount: dec(s.amount),
+			currency: s.currency,
+			amountInUSD: s.amountInUSD === null ? null : dec(s.amountInUSD),
+			rate: s.rate === null ? null : dec(s.rate),
+			categoryId: s.categoryId,
+			date: s.date,
+			count: 1,
+		})),
 	];
 }
 
@@ -290,12 +318,7 @@ export function spentMinorByCurrency(inputs: SpentInputs): Money[] {
 	for (const g of inputs.refunds)
 		add(g.currency, -roundedMinor(g.amount, g.currency));
 	for (const s of inputs.shares)
-		add(
-			s.currency,
-			s.amountExact === undefined
-				? toMinor(s.amount, s.currency)
-				: roundedMinor(s.amountExact, s.currency),
-		);
+		add(s.currency, roundedMinor(s.amount, s.currency));
 	return [...minor]
 		.filter(([, units]) => units !== 0)
 		.map(([currency, units]) => ({ minor: units, currency }));

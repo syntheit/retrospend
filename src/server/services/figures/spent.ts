@@ -9,14 +9,15 @@
  *
  * Every reader (dashboard, stats, budget page, runway, profile, suggestions)
  * takes its items from here and only picks the currency and rate to total
- * them in (sumIn, the totals rule in @retrospend/domain/money). A personal row saved with
+ * them in (sumInDec, the totals rule in @retrospend/domain/money-dec). A personal row saved with
  * a booked home value (M2) counts that value in its home currency, so it
  * never moves with later rates; rows with none, and shares, keep the period
  * rate. Runs on whatever client it is given, a preview's transaction
  * included, so it never imports the db.
  */
 
-import { sumIn } from "@retrospend/domain/money";
+import { type RateInput, sumInDec } from "@retrospend/domain/money-dec";
+import type { Decimal } from "@retrospend/domain/precise-decimal";
 import {
 	type SpentGroup,
 	type SpentInputs,
@@ -203,7 +204,7 @@ async function sharesFor(db: AppDb, filter: SpentFilter) {
 	);
 }
 
-/** Your spending matching `filter`, as items to total with sumIn. */
+/** Your spending matching `filter`, as items to total with sumInDec. */
 export async function spentItems(
 	db: AppDb,
 	filter: SpentFilter,
@@ -212,14 +213,14 @@ export async function spentItems(
 	return spentItemsOf(await loadSpentInputs(db, filter, by));
 }
 
-/** Your spending matching `filter` in `currency` at `rate`, by the totals rule. */
+/** Your spending matching `filter` in `currency` at `rate`, by the totals rule: an exact Decimal, rounded once by whoever shows it. */
 export async function spentIn(
 	db: AppDb,
 	filter: SpentFilter,
 	currency: string,
-	rate: number | null | undefined,
-): Promise<number> {
-	return sumIn(await spentItems(db, filter), currency, rate);
+	rate: RateInput,
+): Promise<Decimal> {
+	return sumInDec(await spentItems(db, filter), currency, rate);
 }
 
 /** The figure's inputs, read with SQL: the server loader (spentInputsFromRows is the device's). By currency unless a reader buckets differently. */

@@ -27,7 +27,7 @@
  * as entered, amounts booked in that currency when they were saved at their
  * booked value (expense.homeAmount, M2: it never drifts), and converts every
  * other amount from its stored amountInUSD at that currency's rate for the
- * period (sumIn). The period's rate is the one for its last day, or today
+ * period (sumInDec). The period's rate is the one for its last day, or today
  * while the period is still running (periodRateDate).
  */
 import { currencyDecimals } from "./currency-decimals";
@@ -38,6 +38,7 @@ import {
 	crossRateDec,
 	fromUSDDec,
 	MissingRateError,
+	type MoneyItemDec,
 	rateFromUsdPerUnitDec,
 	roundMoneyDec,
 	toUSDDec,
@@ -166,18 +167,32 @@ export function expenseAmounts(args: {
 }
 
 // ── Totals in a display currency ─────────────────────────────────────────────
+// Totals are exact (money-dec: sumInDec, missingRatesIn). What stays here is
+// the number view the spend pace still sums in floats (glance-pace,
+// spend-pace); the next PR moves it to Decimals and deletes this block.
 
-/** Anything with an original amount and its stored USD value. */
+/** A MoneyItemDec as numbers, for the pace series only. */
 export interface MoneyItem {
 	amount: number;
 	currency: string;
 	/** NaN for an unpriced item (no rate at all when loaded): it counts only in its own currency. */
 	amountInUSD: number;
-	/**
-	 * The home value booked when the entry was saved (expense.homeAmount,
-	 * M2). It never moves with later rates, so it wins in its own currency.
-	 */
 	booked?: { currency: string; amount: number } | null;
+}
+
+/** The number view of an exact item; null USD value becomes NaN. */
+export function numberItem(item: MoneyItemDec): MoneyItem {
+	return {
+		amount: item.amount.toNumber(),
+		currency: item.currency,
+		amountInUSD: item.amountInUSD ? item.amountInUSD.toNumber() : Number.NaN,
+		booked: item.booked
+			? {
+					currency: item.booked.currency,
+					amount: item.booked.amount.toNumber(),
+				}
+			: null,
+	};
 }
 
 /**
@@ -195,44 +210,6 @@ export function amountIn(
 	if (!Number.isFinite(item.amountInUSD))
 		throw new MissingRateError(item.currency);
 	return fromUSD(item.amountInUSD, currency, rate);
-}
-
-/**
- * The currencies that keep `items` from totaling in `currency`: unpriced
- * items (no rate when loaded) in another currency, and `currency` itself
- * when something needs its missing rate. Empty when the total can be made.
- */
-export function missingRatesIn(
-	items: Iterable<MoneyItem>,
-	currency: string,
-	rate: number | null | undefined,
-): string[] {
-	const missing = new Set<string>();
-	const rateless = currency !== USD && !isValidRate(rate);
-	for (const item of items) {
-		if (item.currency === currency || item.booked?.currency === currency)
-			continue;
-		if (!Number.isFinite(item.amountInUSD)) missing.add(item.currency);
-		if (rateless) missing.add(currency);
-	}
-	return [...missing].sort();
-}
-
-/**
- * Sum of `items` in `currency` under the totals rule (unrounded). Throws
- * one MissingRateError naming every currency that cannot convert.
- */
-export function sumIn(
-	items: Iterable<MoneyItem>,
-	currency: string,
-	rate: number | null | undefined,
-): number {
-	const list = [...items];
-	const missing = missingRatesIn(list, currency, rate);
-	if (missing[0]) throw new MissingRateError(missing[0], missing);
-	let total = 0;
-	for (const item of list) total += amountIn(item, currency, rate);
-	return total;
 }
 
 /** The date whose rate converts a period's totals: its end, or now if sooner. */

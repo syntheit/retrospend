@@ -4,7 +4,10 @@
  * as every other total: finalized, not excluded, amortized purchases counted
  * once through their monthly parts.
  */
-import { sumIn } from "@retrospend/domain/money";
+import { fromMinorUnits } from "@retrospend/domain/money";
+import { sumInDec } from "@retrospend/domain/money-dec";
+import { roundedMinor } from "@retrospend/domain/money-minor";
+import { dec } from "@retrospend/domain/precise-decimal";
 import { addMonthsClamped } from "@retrospend/domain/recurring";
 import { findExchangeRate } from "~/server/exchange-rates";
 import { spentItems } from "~/server/services/figures/spent";
@@ -46,9 +49,16 @@ export async function runwayStats(
 		findExchangeRate(db, targetCurrency, today),
 	]);
 
+	// monthsActive is a count of months, not money; the exact average rounds
+	// once to the currency's minor units, which is what the wire carries.
+	const average = sumInDec(items, targetCurrency, targetRate?.rate).div(
+		dec(monthsActive),
+	);
 	return {
-		averageMonthlySpend:
-			sumIn(items, targetCurrency, targetRate?.rate) / monthsActive,
+		averageMonthlySpend: fromMinorUnits(
+			roundedMinor(average, targetCurrency),
+			targetCurrency,
+		),
 		monthsActive: Math.round(monthsActive),
 	};
 }

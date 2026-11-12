@@ -3,12 +3,15 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "~/test/mock-db";
-import { MissingRateError, missingRatesIn, sumIn } from "@retrospend/domain/money";
-import { RATE_DATE, useRateTable } from "~/test/rate-table";
 import {
-	createStatefulDb,
-	makeUserRef,
-} from "../shared-expenses/test-utils";
+	MissingRateError,
+	missingRatesIn,
+	sumInDec,
+} from "@retrospend/domain/money-dec";
+import { dec } from "@retrospend/domain/precise-decimal";
+import { spentItemsOf } from "@retrospend/domain/spent";
+import { RATE_DATE, useRateTable } from "~/test/rate-table";
+import { createStatefulDb, makeUserRef } from "../shared-expenses/test-utils";
 import { SharedTransactionService } from "../shared-expenses/transaction.service";
 import {
 	getSharedExpenseShares,
@@ -67,7 +70,9 @@ describe("getSharedExpenseShares", () => {
 		]);
 		const [share] = await getSharedExpenseShares(db as never, "user-1");
 		// 12,000 ARS at 1,200 = 10 USD (today's 1,560 would give 7.69)
-		expect(share!.amountInUSD).toBe(10);
+		expect(share!.amountInUSD).toBe("10");
+		// The share keeps its rate as exact text, for totals to convert from.
+		expect(share!.rate).toBe("1200");
 	});
 
 	it("a legacy share without a captured rate uses the nearest rate for its date", async () => {
@@ -75,7 +80,8 @@ describe("getSharedExpenseShares", () => {
 			participation(15600, "ARS", null),
 		]);
 		const [share] = await getSharedExpenseShares(db as never, "user-1");
-		expect(share!.amountInUSD).toBe(10);
+		// 15,600 / 1,560 = 10
+		expect(share!.amountInUSD).toBe("10");
 	});
 
 	it("crypto shares multiply by USD per coin", async () => {
@@ -84,9 +90,10 @@ describe("getSharedExpenseShares", () => {
 			participation(0.5, "ETH", null),
 		]);
 		const shares = await getSharedExpenseShares(db as never, "user-1");
-		expect(shares[0]?.amountInUSD).toBe(60);
-		// 0.5 ETH x 1916.61 USD per coin, kept exact.
-		expect(shares[1]?.amountInUSD).toBe(958.305);
+		// 0.001 BTC x 60,000 = 60
+		expect(shares[0]?.amountInUSD).toBe("60");
+		// 0.5 ETH x 1916.61 USD per coin = 958.305, kept exact.
+		expect(shares[1]?.amountInUSD).toBe("958.305");
 	});
 
 	it("a share's USD value is exact: 123.45 BRL at 5.4 is not 22.86", async () => {
@@ -94,8 +101,8 @@ describe("getSharedExpenseShares", () => {
 			participation(123.45, "BRL", 5.4),
 		]);
 		const [share] = await getSharedExpenseShares(db as never, "user-1");
-		// 123.45 / 5.4 = 22.8611111...
-		expect(share!.amountInUSD).toBeCloseTo(22.861111111, 9);
+		// 123.45 / 5.4 = 1234.5 / 54 = 22.8611111...
+		expect(dec(share!.amountInUSD ?? "NaN").toFixed(9)).toBe("22.861111111");
 	});
 
 	it("a currency with no rate at all is unpriced: it counts as entered, and a total elsewhere names it, never 0 or 1", async () => {
@@ -104,10 +111,12 @@ describe("getSharedExpenseShares", () => {
 			participation(25, "USD", null),
 		]);
 		const shares = await getSharedExpenseShares(db as never, "user-1");
-		expect(shares[0]?.amountInUSD).toBeNaN();
-		expect(sumIn(shares.slice(0, 1), "XAU", null)).toBe(1000);
-		expect(() => sumIn(shares, "USD", 1)).toThrow(MissingRateError);
-		expect(missingRatesIn(shares, "USD", 1)).toEqual(["XAU"]);
+		expect(shares[0]?.amountInUSD).toBeNull();
+		expect(shares[0]?.rate).toBeNull();
+		const items = spentItemsOf({ spending: [], refunds: [], shares });
+		expect(sumInDec(items.slice(0, 1), "XAU", null).toFixed()).toBe("1000");
+		expect(() => sumInDec(items, "USD", 1)).toThrow(MissingRateError);
+		expect(missingRatesIn(items, "USD", 1)).toEqual(["XAU"]);
 	});
 
 	it("keeps the category only when it is the participant's own", async () => {
@@ -195,6 +204,8 @@ describe("SharedTransactionService captures the rate", () => {
 		expect(shares).toEqual([0.001, 0.001, 0.001]);
 
 		await service.update({ id: transaction.id, currency: "EUR", amount: 30 });
-		expect(db._stores.transactions.get(transaction.id)!.exchangeRate).toBe(0.8787);
+		expect(db._stores.transactions.get(transaction.id)!.exchangeRate).toBe(
+			0.8787,
+		);
 	});
 });

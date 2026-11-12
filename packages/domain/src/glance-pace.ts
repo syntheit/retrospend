@@ -1,14 +1,15 @@
 /**
  * Pure pieces of Home's spending glance (kit `pace()` and `cumulative()`):
  * spending per day of a period in the home currency under the totals rule
- * (@retrospend/domain/money sumIn), the running total day by day in minor units, and
+ * (@retrospend/domain/money-dec sumInDec), the running total day by day in minor units, and
  * whether this period runs faster than the last by the same day.
  *
  * Sums stay unrounded until each running total is turned into minor units
  * once (half to even), the way the Activity footer rounds its total, so the
  * last point of a full period equals the period's total exactly.
  */
-import { amountIn, type MoneyItem, missingRatesIn } from "./money";
+import { amountIn, type MoneyItem } from "./money";
+import { missingRatesIn } from "./money-dec";
 import { toMinor } from "./money-minor";
 
 export type IsoDate = string;

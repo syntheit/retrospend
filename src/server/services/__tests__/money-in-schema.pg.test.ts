@@ -227,7 +227,9 @@ describe("budget and report spending by amortization mode", () => {
 		});
 
 		const march = (basis: "report" | "budget") =>
-			spentIn(db, { userId, date: MARCH, basis }, "ARS", 1000);
+			spentIn(db, { userId, date: MARCH, basis }, "ARS", 1000).then((d) =>
+				d.toNumber(),
+			);
 
 		// Reports spread both purchases: laptop part 40,000 + phone part 30,000.
 		await expect(march("report")).resolves.toBe(70_000);
@@ -258,9 +260,13 @@ describe("budget and report spending by amortization mode", () => {
 		});
 
 		for (const basis of ["report", "budget"] as const) {
-			await expect(
-				spentIn(db, { userId: user.id, date: MARCH, basis }, "ARS", 1000),
-			).resolves.toBe(5_000);
+			const total = await spentIn(
+				db,
+				{ userId: user.id, date: MARCH, basis },
+				"ARS",
+				1000,
+			);
+			expect(total.toNumber()).toBe(5_000);
 		}
 	});
 });

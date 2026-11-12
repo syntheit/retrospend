@@ -65,22 +65,30 @@ async function serviceReaders(fixture: SpendingFixture) {
 		undefined,
 		excluded,
 	);
+	const lifetime = await stats.getLifetimeStats(userId, HOME);
 	return {
-		lifetime: await stats.getLifetimeStats(userId, HOME),
-		spendingTotalMarch: await spentIn(
-			db,
-			{
-				userId,
-				date: {
-					gte: new Date("2026-03-01T00:00:00.000Z"),
-					lte: new Date("2026-03-31T23:59:59.999Z"),
+		lifetime: {
+			totalSpent: lifetime.totalSpent.toNumber(),
+			totalTransactions: lifetime.totalTransactions,
+		},
+		spendingTotalMarch: (
+			await spentIn(
+				db,
+				{
+					userId,
+					date: {
+						gte: new Date("2026-03-01T00:00:00.000Z"),
+						lte: new Date("2026-03-31T23:59:59.999Z"),
+					},
 				},
-			},
-			HOME,
-			1000,
-		),
+				HOME,
+				1000,
+			)
+		).toNumber(),
 		spentFigure: (await readFigures(userId, ["spent"])).get("spent"),
-		shares: shares.map((s) => [s.amount, s.currency, iso(s.date)]).sort(),
+		shares: shares
+			.map((s) => [Number(s.amount), s.currency, iso(s.date)])
+			.sort(),
 	};
 }
 

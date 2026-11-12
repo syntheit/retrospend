@@ -36,8 +36,7 @@ const APRIL_RANGE = {
 	gte: new Date("2026-04-01T00:00:00.000Z"),
 	lte: new Date("2026-04-30T23:59:59.999Z"),
 };
-// 31 days from A (Mar 10 12:00) to now, in the runway's 30.436875-day months.
-const MONTHS_ACTIVE = 31 / 30.436875;
+// 31 days from A (Mar 10 12:00) to now, in the runway's 30.436875-day months (see runwayAverage).
 
 async function seed() {
 	await adminDb.exchangeRate.createMany({
@@ -98,10 +97,14 @@ async function read({ userId, db }: Awaited<ReturnType<typeof seed>>) {
 	const c = callers(userId);
 	const runway = await c.wealth.getRunwayStats({ currency: HOME });
 	return {
-		lifetime: (await stats.getLifetimeStats(userId, HOME)).totalSpent,
+		lifetime: (
+			await stats.getLifetimeStats(userId, HOME)
+		).totalSpent.toNumber(),
 		profileLifetime: (await c.profile.getLifetimeStats()).lifetimeSpend,
-		runwayTimesMonths: runway.averageMonthlySpend * MONTHS_ACTIVE,
-		spentApril: await spentIn(db, { userId, date: APRIL_RANGE }, HOME, 1300),
+		runwayAverage: runway.averageMonthlySpend,
+		spentApril: (
+			await spentIn(db, { userId, date: APRIL_RANGE }, HOME, 1300)
+		).toNumber(),
 		// The lists send the booked value; the client shows it as is.
 		listedHome: Object.fromEntries(
 			(await c.expense.listFinalized()).map((e) => [e.title, e.home]),
@@ -119,7 +122,9 @@ async function read({ userId, db }: Awaited<ReturnType<typeof seed>>) {
 const EXPECTED = {
 	lifetime: 41_500,
 	profileLifetime: 41_500,
-	runwayTimesMonths: 41_500,
+	// 41,500 over 31 / 30.436875 months is 41,500 x 30.436875 / 31
+	// = 1,263,130.3125 / 31 = 40,746.1391..., sent in whole cents: 40,746.14.
+	runwayAverage: 40_746.14,
 	spentApril: 31_500,
 	// A 10,000.00, B 24,000.00, C 1,000.00 in minor units; D has none.
 	listedHome: {

@@ -7,7 +7,7 @@
  * holds the two loaders to each other digit for digit.
  *
  * Spending is the one definition (spent.ts) grouped per entry instant, and
- * the totals rule (money.ts sumIn) prices it: a foreign row without a home
+ * the totals rule (money-dec.ts sumInDec) prices it: a foreign row without a home
  * rate makes a number unavailable and names the currency, never a guess.
  * Days are read in the zone the caller decides, the user's saved one for a
  * figure.
@@ -27,16 +27,20 @@ import {
 	spanOf,
 } from "./glance-pace";
 import {
-	type MoneyItem,
-	missingRatesIn,
+	numberItem,
 	periodRateDate,
 	pickBestRate,
 	rateWindow,
 	type RateRow,
-	sumIn,
 	USD,
 } from "./money";
-import { toMinor } from "./money-minor";
+import {
+	type MoneyItemDec,
+	missingRatesIn,
+	type RateInput,
+	sumInDec,
+} from "./money-dec";
+import { roundedMinor } from "./money-minor";
 import {
 	countsAsIncome,
 	groupSpentRows,
@@ -136,7 +140,7 @@ export function homeRateOn(
 }
 
 /** Income groups as items for the totals rule. */
-export const incomeItemsOf = (groups: readonly SpentGroup[]): MoneyItem[] =>
+export const incomeItemsOf = (groups: readonly SpentGroup[]): MoneyItemDec[] =>
 	groups.map(spentItemOf(1));
 
 /**
@@ -152,7 +156,7 @@ export function spendPaceInputsFromRows(args: {
 	now: Date;
 	startDay: number;
 	timeZone: string;
-	rateFor?: (s: SpentShareRow) => number | null;
+	rateFor?: (s: SpentShareRow) => RateInput;
 }): SpendPaceInputs {
 	const p = spendPacePeriods(args.now, args.startDay, args.timeZone);
 	const dates = spendPaceRateDates(p, args.now);
@@ -179,7 +183,9 @@ export function spendPaceInputsFromRows(args: {
  */
 function datedRows(inputs: SpentInputs, timeZone: string): DatedItem[] {
 	const rows = spentItemsOf(inputs).flatMap((item) =>
-		item.date ? [{ day: dayKey(item.date, timeZone), item }] : [],
+		item.date
+			? [{ day: dayKey(item.date, timeZone), item: numberItem(item) }]
+			: [],
 	);
 	const key = (r: DatedItem) =>
 		[
@@ -229,7 +235,7 @@ export function spendPaceFrom(args: {
 		lastTotal: total(lastDaily),
 		moneyIn: incomeMissing.length
 			? null
-			: toMinor(sumIn(income, home, thisRate), home),
+			: roundedMinor(sumInDec(income, home, thisRate), home),
 		missingRates: [...missing].sort(),
 	};
 }

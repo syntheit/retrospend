@@ -221,6 +221,48 @@ describe("publicPageView", () => {
 		);
 	});
 
+	it("rounds each stored row half to even, exact in the database, never half up in SQL", async () => {
+		const project = await adminDb.project.create({
+			data: {
+				name: "Legacy precision",
+				primaryCurrency: "USD",
+				visibility: "PUBLIC",
+				createdById: trip.ana.user.id,
+			},
+		});
+		const row = (amount: string, currency: string, i: number) => ({
+			description: `Legacy ${i}`,
+			amount,
+			currency,
+			date: new Date("2026-03-01T12:00:00.000Z"),
+			paidByType: "user" as const,
+			paidById: trip.ana.user.id,
+			createdByType: "user" as const,
+			createdById: trip.ana.user.id,
+			projectId: project.id,
+		});
+		await adminDb.sharedTransaction.createMany({
+			data: [
+				// Stored at 8 decimals: each row is 1273.333333 cents, so 1273
+				// each and 3819 together, the member page's per-row total.
+				// Adding first would give 38.19999999 = 3820, a unit the member
+				// page never shows.
+				...["12.73333333", "12.73333333", "12.73333333"].map((a, i) =>
+					row(a, "USD", i),
+				),
+				// Ties: 12.5 cents is 12 (even), twice: 24. Half up gave 26.
+				...["0.125", "0.125"].map((a, i) => row(a, "USD", i + 3)),
+				// 100.5 is 100 (even) twice, 101.5 is 102: 302. Half up gave 304.
+				...["100.5", "100.5", "101.5"].map((a, i) => row(a, "JPY", i + 5)),
+			],
+		});
+		const v = await anonymousCaller().publicPageView({ id: project.id });
+		expect(v?.total).toEqual([
+			{ minor: 302, currency: "JPY" },
+			{ minor: 3843, currency: "USD" },
+		]);
+	});
+
 	it("answers one address a limited number of times a minute", async () => {
 		const caller = anonymousCaller({ "x-forwarded-for": "203.0.113.77" });
 		const id = (

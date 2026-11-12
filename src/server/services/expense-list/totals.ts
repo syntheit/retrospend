@@ -4,7 +4,8 @@
  * sums rows of its own: the list only picks the filter and the currency.
  * Money in and transfers add nothing; refunds subtract; shares count yours.
  */
-import { missingRatesIn, sumIn } from "@retrospend/domain/money";
+import { missingRatesIn, sumInDec } from "@retrospend/domain/money-dec";
+import type { Decimal } from "@retrospend/domain/precise-decimal";
 import {
 	dayKey,
 	parseDateOnlyIn,
@@ -12,7 +13,7 @@ import {
 } from "@retrospend/domain/time-zone";
 import type { Prisma } from "~prisma";
 import { type SpentFilter, type SpentItem, spentItems } from "../figures/spent";
-import { numberMoney } from "./money";
+import { decimalMoney } from "./money";
 import type { ListBounds, RowKey } from "./query";
 import { type ActivityTotalDTO, type ListV2Filter, NO_CATEGORY } from "./types";
 
@@ -75,10 +76,10 @@ function spentFilter(
  * rate for a foreign row, or any rate for an unpriced share. A missing rate
  * is never 1 (GUIDELINE §7): no total shows and the currencies are named.
  */
-function homeSum(items: SpentItem[], c: TotalsContext): number | null {
+function homeSum(items: SpentItem[], c: TotalsContext): Decimal | null {
 	const missing = missingRatesIn(items, c.home, c.homeRate);
 	for (const currency of missing) c.missingRates.add(currency);
-	return missing.length ? null : sumIn(items, c.home, c.homeRate);
+	return missing.length ? null : sumInDec(items, c.home, c.homeRate);
 }
 
 /** Your spending for the filter's dates and categories, in the home currency. */
@@ -89,7 +90,9 @@ export async function activitySpent(
 	bounds: ListBounds,
 ): Promise<ActivityTotalDTO | null> {
 	const v = homeSum(await spentItems(db, spentFilter(c, filter, bounds)), c);
-	return v === null ? null : { figure: "spent", value: numberMoney(v, c.home) };
+	return v === null
+		? null
+		: { figure: "spent", value: decimalMoney(v, c.home) };
 }
 
 /**
@@ -124,7 +127,7 @@ export async function activityDayTotals(
 	for (const day of new Set(days)) {
 		const v = homeSum(byDay.get(day) ?? [], c);
 		if (v === null) return null;
-		out[day] = numberMoney(v, c.home);
+		out[day] = decimalMoney(v, c.home);
 	}
 	return out;
 }

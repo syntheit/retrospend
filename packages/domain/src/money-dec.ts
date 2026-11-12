@@ -160,3 +160,118 @@ export function computeAmountInUSDDec(
 ): Decimal {
 	return roundUSDDec(toUSDDec(amount, currency, rate));
 }
+
+// ── Totals in a display currency ─────────────────────────────────────────────
+
+/** Anything with an original amount and its stored USD value, in exact decimals. */
+export interface MoneyItemDec {
+	amount: Decimal;
+	currency: string;
+	/** Null for an unpriced item (no rate at all when loaded): it counts only in its own currency. */
+	amountInUSD: Decimal | null;
+	/**
+	 * The rate (stored convention) the amount converts at, for an item whose
+	 * USD value is not a stored figure (a share of a shared expense). Such an
+	 * item converts straight from its amount and this rate in one division
+	 * (D3), never through a cut USD quotient. Absent for a stored entry.
+	 */
+	rate?: Decimal | null;
+	/**
+	 * The home value booked when the entry was saved (expense.homeAmount,
+	 * M2). It never moves with later rates, so it wins in its own currency.
+	 */
+	booked?: { currency: string; amount: Decimal } | null;
+}
+
+/** What missingRatesIn reads: the number items of the pace series carry NaN where these carry null. */
+export interface PricedItem {
+	currency: string;
+	amountInUSD: Decimal | number | null;
+	booked?: { currency: string } | null;
+}
+
+const isPriced = (item: PricedItem): boolean =>
+	typeof item.amountInUSD === "number"
+		? Number.isFinite(item.amountInUSD)
+		: item.amountInUSD !== null;
+
+/** Whether the item is already in `currency`, as entered or as booked. */
+const isIn = (item: PricedItem, currency: string): boolean =>
+	item.currency === currency || item.booked?.currency === currency;
+
+const hasRate = (currency: string, rate: RateInput): boolean => {
+	if (currency === USD) return true;
+	const r = rate === null || rate === undefined ? null : dec(rate);
+	return !!r?.isFinite() && r.gt(0);
+};
+
+/**
+ * The currencies that keep `items` from totaling in `currency`: unpriced
+ * items (no rate when loaded) in another currency, and `currency` itself
+ * when something needs its missing rate. Empty when the total can be made.
+ */
+export function missingRatesIn(
+	items: Iterable<PricedItem>,
+	currency: string,
+	rate: RateInput,
+): string[] {
+	const missing = new Set<string>();
+	const rateless = !hasRate(currency, rate);
+	for (const item of items) {
+		if (isIn(item, currency)) continue;
+		if (!isPriced(item)) missing.add(item.currency);
+		if (rateless) missing.add(currency);
+	}
+	return [...missing].sort();
+}
+
+/**
+ * Sum of `items` in `currency` under the totals rule (unrounded). Amounts
+ * already in `currency` and stored USD values are each added first and
+ * converted once: sum(x x r) = sum(x) x r exactly, and 10,000 items cost one
+ * multiplication, not 10,000. Items that carry their own rate (shares) are
+ * added per currency and rate, then converted from amount to `currency` in
+ * one division each, so an exact tie stays a tie. Throws one MissingRateError
+ * naming every currency that cannot convert, never counting a missing rate
+ * as 1.
+ */
+export function sumInDec(
+	items: Iterable<MoneyItemDec>,
+	currency: string,
+	rate: RateInput,
+): Decimal {
+	const list = [...items];
+	const missing = missingRatesIn(list, currency, rate);
+	if (missing[0]) throw new MissingRateError(missing[0], missing);
+	let own = new Dec(0);
+	let usd = new Dec(0);
+	let converted = false;
+	const byRate = new Map<
+		string,
+		{ currency: string; rate: Decimal; amount: Decimal }
+	>();
+	for (const item of list) {
+		if (item.currency === currency) own = own.plus(item.amount);
+		else if (item.booked?.currency === currency)
+			own = own.plus(item.booked.amount);
+		else if (item.rate && item.currency !== USD) {
+			const key = `${item.currency} ${item.rate.toFixed()}`;
+			const group = byRate.get(key) ?? {
+				currency: item.currency,
+				rate: item.rate,
+				amount: new Dec(0),
+			};
+			group.amount = group.amount.plus(item.amount);
+			byRate.set(key, group);
+		} else if (item.amountInUSD) {
+			usd = usd.plus(item.amountInUSD);
+			converted = true;
+		}
+	}
+	let total = converted ? own.plus(fromUSDDec(usd, currency, rate)) : own;
+	for (const g of byRate.values())
+		total = total.plus(
+			convertDec(g.amount, g.currency, g.rate, currency, rate),
+		);
+	return total;
+}

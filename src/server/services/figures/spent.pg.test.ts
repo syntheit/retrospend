@@ -22,7 +22,7 @@
  * -> 66,000 = 341,726.75.
  */
 import { randomUUID } from "node:crypto";
-import { MissingRateError, sumIn } from "@retrospend/domain/money";
+import { MissingRateError, sumInDec } from "@retrospend/domain/money-dec";
 import {
 	type SpentExpenseRow,
 	type SpentGroup,
@@ -187,7 +187,8 @@ const groups = (l: SpentGroup[]) =>
 	l.map(exact).sort((a, b) => byKey(a).localeCompare(byKey(b)));
 const shares = (l: SpentInputs["shares"]) =>
 	[...l].sort(
-		(a, b) => a.amount - b.amount || a.currency.localeCompare(b.currency),
+		(a, b) =>
+			dec(a.amount).cmp(b.amount) || a.currency.localeCompare(b.currency),
 	);
 const figureOrder = <T extends { currency: string }>(l: T[]) =>
 	[...l].sort((a, b) => a.currency.localeCompare(b.currency));
@@ -341,8 +342,8 @@ describe.each([BA, "UTC"])("spent loaders in %s", (zone) => {
 			figureOrder(spentMinorByCurrency(b)),
 		);
 		expect(spentItemsOf(a).length).toBe(spentItemsOf(b).length);
-		expect(sumIn(spentItemsOf(a), "ARS", 1500)).toBe(
-			sumIn(spentItemsOf(b), "ARS", 1500),
+		expect(sumInDec(spentItemsOf(a), "ARS", 1500).toFixed()).toBe(
+			sumInDec(spentItemsOf(b), "ARS", 1500).toFixed(),
 		);
 	});
 });
@@ -392,10 +393,13 @@ describe("home totals through the totals rule", () => {
 				1500,
 			),
 		);
-		expect(total).toBeCloseTo(341_726.75, 6);
-		expect(sumIn(spentItemsOf(await device(userId, BA)), "ARS", 1500)).toBe(
-			total,
-		);
+		// Own and booked ARS: 250.25 + 10,000 + 150,000 + 3,706.50 - 1,500
+		// + 75,000 + 20 = 237,476.75. USD of the rest: JPY 8 + 5, KWD 40 + 4,
+		// a USD share 12.50 = 69.5; x 1,500 = 104,250. Exact: 341,726.75.
+		expect(total.toFixed()).toBe("341726.75");
+		expect(
+			sumInDec(spentItemsOf(await device(userId, BA)), "ARS", 1500).toFixed(),
+		).toBe("341726.75");
 	});
 
 	it("a share with no rate at all throws on both, and counts in its own currency", async () => {
@@ -409,7 +413,9 @@ describe("home totals through the totals rule", () => {
 			),
 		).rejects.toThrow(MissingRateError);
 		const b = await device(rateless, "UTC");
-		expect(() => sumIn(spentItemsOf(b), "ARS", 1500)).toThrow(MissingRateError);
+		expect(() => sumInDec(spentItemsOf(b), "ARS", 1500)).toThrow(
+			MissingRateError,
+		);
 		expect(spentMinorByCurrency(b)).toEqual([
 			{ minor: 10_000, currency: "ARS" },
 			{ minor: 50_000, currency: "XQZ" },

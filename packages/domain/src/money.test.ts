@@ -8,18 +8,19 @@ import {
 	fromMinorUnits,
 	fromUSD,
 	MissingRateError,
+	numberItem,
 	periodRateDate,
 	pickBestRate,
 	quoteRate,
 	rateFromQuote,
 	rateFromUsdPerUnit,
 	roundMoney,
-	sumIn,
 	toAmountString,
 	toMinorUnits,
 	toUSD,
 	tryConvertAmount,
 } from "./money";
+import { dec } from "./precise-decimal";
 
 // Stored rates: fiat = units per USD, crypto = USD per coin.
 const RATES: Record<string, number> = {
@@ -218,86 +219,7 @@ describe("pickBestRate", () => {
 	});
 });
 
-describe("totals rule (sumIn)", () => {
-	const items = [
-		// 100000 ARS logged at 1000 ARS/USD: stored 100 USD
-		{ amount: 100000, currency: "ARS", amountInUSD: 100 },
-		{ amount: 20, currency: "USD", amountInUSD: 20 },
-		{ amount: 10, currency: "EUR", amountInUSD: 11.38 },
-		{ amount: 0.001, currency: "BTC", amountInUSD: 64.55 },
-	];
-
-	it("ARS home: ARS as entered, the rest from USD at the home rate", () => {
-		expect(sumIn(items, "ARS", RATES.ARS)).toBeCloseTo(
-			100000 + (20 + 11.38 + 64.55) * 1560,
-			6,
-		);
-	});
-
-	it("USD home: USD as entered, the rest from their stored USD", () => {
-		expect(sumIn(items, "USD", 1)).toBeCloseTo(100 + 20 + 11.38 + 64.55, 6);
-	});
-
-	it("EUR, JPY and BRL homes use their own rate", () => {
-		expect(sumIn(items, "EUR", RATES.EUR)).toBeCloseTo(
-			10 + (100 + 20 + 64.55) * 0.8787,
-			6,
-		);
-		expect(sumIn(items, "JPY", RATES.JPY)).toBeCloseTo(
-			(100 + 20 + 11.38 + 64.55) * 163.83,
-			6,
-		);
-		expect(sumIn(items, "BRL", RATES.BRL)).toBeCloseTo(
-			(100 + 20 + 11.38 + 64.55) * 5.1178,
-			6,
-		);
-	});
-
-	it("crypto home divides by the coin price", () => {
-		expect(sumIn(items, "BTC", RATES.BTC)).toBeCloseTo(
-			0.001 + (100 + 20 + 11.38) / 64545.9,
-			12,
-		);
-	});
-
-	it("a missing rate throws only when something needs converting", () => {
-		expect(() => sumIn(items, "ARS", undefined)).toThrow(MissingRateError);
-		expect(sumIn([items[0]!], "ARS", undefined)).toBe(100000);
-		expect(amountIn(items[1]!, "USD", null)).toBe(20);
-	});
-
-	it("an unpriced item (no rate when loaded) counts only in its own currency", () => {
-		const isk = { amount: 900, currency: "ISK", amountInUSD: Number.NaN };
-		expect(sumIn([isk], "ISK", undefined)).toBe(900);
-		expect(() => amountIn(isk, "USD", 1)).toThrow(MissingRateError);
-	});
-
-	it("a missing rate names every currency that cannot convert", () => {
-		const unpriced = [
-			{ amount: 900, currency: "ISK", amountInUSD: Number.NaN },
-			{ amount: 5, currency: "CLF", amountInUSD: Number.NaN },
-			{ amount: 7, currency: "ISK", amountInUSD: Number.NaN },
-		];
-		try {
-			sumIn([...unpriced, items[1]!], "USD", 1);
-			expect.unreachable();
-		} catch (error) {
-			expect(error).toBeInstanceOf(MissingRateError);
-			expect((error as MissingRateError).currencies).toEqual(["CLF", "ISK"]);
-		}
-		// The total's own rate missing too: it is named with the rest.
-		try {
-			sumIn([...unpriced, items[1]!], "ARS", undefined);
-			expect.unreachable();
-		} catch (error) {
-			expect((error as MissingRateError).currencies).toEqual([
-				"ARS",
-				"CLF",
-				"ISK",
-			]);
-		}
-	});
-
+describe("totals rule, number view (the pace series)", () => {
 	it("an item booked in the total's currency counts its booked value (M2)", () => {
 		// USD 20 booked at ARS 1,200 when it was saved: ARS 24,000 whatever
 		// today's rate is; in USD it still counts its USD value.
@@ -311,9 +233,27 @@ describe("totals rule (sumIn)", () => {
 		expect(amountIn(booked, "ARS", undefined)).toBe(24_000);
 		expect(amountIn(booked, "USD", 1)).toBe(20);
 		expect(amountIn(booked, "EUR", 0.9)).toBeCloseTo(18, 8);
-		// A row with no booked value keeps the period rate: 5 x 1,300.
-		const legacy = { amount: 5, currency: "USD", amountInUSD: 5, booked: null };
-		expect(sumIn([booked, legacy], "ARS", 1300)).toBe(24_000 + 6_500);
+	});
+
+	it("an unpriced item (NaN) throws when it must convert", () => {
+		const isk = { amount: 900, currency: "ISK", amountInUSD: Number.NaN };
+		expect(amountIn(isk, "ISK", undefined)).toBe(900);
+		expect(() => amountIn(isk, "USD", 1)).toThrow(MissingRateError);
+	});
+
+	it("numberItem reads an exact item as numbers, null USD as NaN", () => {
+		const exact = {
+			amount: dec("12.5"),
+			currency: "USD",
+			amountInUSD: null,
+			booked: { currency: "ARS", amount: dec("19312.5") },
+		};
+		expect(numberItem(exact)).toEqual({
+			amount: 12.5,
+			currency: "USD",
+			amountInUSD: Number.NaN,
+			booked: { currency: "ARS", amount: 19312.5 },
+		});
 	});
 
 	it("periodRateDate is the period end, or now while it runs", () => {
