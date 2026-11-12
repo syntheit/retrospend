@@ -18,6 +18,8 @@ const graph = buildModelGraph({
 		Expense: { fields: [rel("user", "User")] },
 		Payment: { fields: [] },
 		IdempotencyKey: { fields: [rel("user", "User")] },
+		ImportJob: { fields: [rel("user", "User")] },
+		Feedback: { fields: [rel("user", "User")] },
 		User: { fields: [rel("categories", "Category")] },
 	},
 });
@@ -415,5 +417,84 @@ describe("a JSON body cell", () => {
 				}),
 			),
 		).toBe("foreign_owner");
+	});
+});
+
+describe("an import job's and a feedback entry's JSON cells", () => {
+	const rows = [{ title: "Farmacia del Pueblo", amount: 12500 }];
+	const warnings = ['Row 3: Invalid date "ayer-mismo", skipping'];
+	const openAt = (stored: unknown, table: string, column: string, id: string) =>
+		JSON.parse(open((stored as { sealed: string }).sealed, table, column, id));
+
+	it("seals rows and warnings each under its own column, on the owner's key", () => {
+		const made = sealedIn(
+			{ data: { userId: ALICE, transactions: rows, warnings } },
+			"ImportJob",
+			"create",
+		).data as Row;
+		const id = made.id as string;
+		expect(openAt(made.transactions, "import_job", "transactions", id)).toEqual(
+			rows,
+		);
+		expect(openAt(made.warnings, "import_job", "warnings", id)).toEqual(
+			warnings,
+		);
+		// A body cannot be read back under the other column's name.
+		expect(() =>
+			openAt(made.warnings, "import_job", "transactions", id),
+		).toThrow();
+	});
+
+	it("seals an update by id, leaves an undefined warnings alone, and refuses a bulk set", () => {
+		const updated = sealedIn(
+			{
+				where: { id: "j1" },
+				data: {
+					status: "READY_FOR_REVIEW",
+					transactions: rows,
+					warnings: undefined,
+				},
+			},
+			"ImportJob",
+			"update",
+		).data as Row;
+		expect(
+			openAt(updated.transactions, "import_job", "transactions", "j1"),
+		).toEqual(rows);
+		expect(updated.warnings).toBeUndefined();
+		expect(
+			code(() =>
+				planSeal(graph, ALICE, "ImportJob", "updateMany", {
+					where: { id: "j1" },
+					data: { warnings },
+				}),
+			),
+		).toBe("bulk_text_write");
+		// A claim that sets no JSON cell stays a bulk write.
+		expect(
+			planSeal(graph, ALICE, "ImportJob", "updateMany", {
+				where: { id: "j1", status: "READY_FOR_REVIEW" },
+				data: { status: "COMPLETED" },
+			}).cells,
+		).toEqual([]);
+	});
+
+	it("refuses another user's import rows, and seals diagnostics for any client", () => {
+		expect(
+			code(() =>
+				planSeal(graph, undefined, "ImportJob", "create", {
+					data: { userId: ALICE, transactions: rows },
+				}),
+			),
+		).toBe("foreign_owner");
+		const diagnostics = { os: "Android 15", device: "Pixel 8" };
+		const plan = planSeal(graph, undefined, "Feedback", "create", {
+			data: { userId: ALICE, message: "Hola", diagnostics },
+		});
+		applySeal(plan.cells, () => ring);
+		const made = plan.args.data as Row;
+		expect(
+			openAt(made.diagnostics, "feedback", "diagnostics", made.id as string),
+		).toEqual(diagnostics);
 	});
 });

@@ -17,7 +17,11 @@
  * global client still fails.
  */
 import { unavailableFields } from "~/server/crypto/field-open";
-import { mappedColumns, modelOfTable } from "~/server/crypto/fields";
+import {
+	jsonColumns,
+	mappedColumns,
+	modelOfTable,
+} from "~/server/crypto/fields";
 import { createUserScopedDb, type db } from "~/server/db";
 import { outsideTransaction } from "~/server/db-tx";
 import { computeCategoryNameIndex } from "~/server/services/category-name-index.service";
@@ -44,6 +48,17 @@ for (const [table, column, keyClass] of mappedColumns()) {
 	const entry = MODELS.get(key) ?? { table, columns: [], userColumns: [] };
 	entry.columns.push(column);
 	if (keyClass === "user") entry.userColumns.push(column);
+	MODELS.set(key, entry);
+}
+// A user-class JSON cell is sealed with its owner's key like a text cell, so a
+// write of one runs as the owner; it is no `columns` entry (a string filter).
+// Only models that also hold text columns are proxied.
+for (const [table, column, cell] of jsonColumns()) {
+	const model = modelOfTable(table);
+	if (cell.cls !== "user" || !model) continue;
+	const key = model.charAt(0).toLowerCase() + model.slice(1);
+	const entry = MODELS.get(key) ?? { table, columns: [], userColumns: [] };
+	entry.userColumns.push(column);
 	MODELS.set(key, entry);
 }
 const mapped = (model: string): Mapped =>
