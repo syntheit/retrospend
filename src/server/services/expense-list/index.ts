@@ -71,14 +71,15 @@ export async function listActivity(
 	const client = db as PrismaClient;
 	const first = !after;
 
-	// Read first, on its own: an app-layer search scans before the page.
-	const excludedProjectIds = await userTransaction(client, userId, (tx) =>
-		getExcludedProjectIds(tx, userId),
-	);
-	const k: KeyQuery = { userId, filter, bounds, excludedProjectIds };
 	// The path is picked here, once; the key parts never read the epoch.
 	const inApp = !!filter.q?.trim() && (await searchesInAppLoaded());
-	if (inApp)
+	const k: KeyQuery = { userId, filter, bounds, excludedProjectIds: [] };
+	if (inApp) {
+		// The scan runs before the page, so it reads the hidden projects
+		// first, on their own; the SQL path reads them inside the page.
+		k.excludedProjectIds = await userTransaction(client, userId, (tx) =>
+			getExcludedProjectIds(tx, userId),
+		);
 		// The first page scans every row (its count and "more" need them), a
 		// later one stops once each source has the page and one more.
 		k.matched = await scanKeys(client, k, {
@@ -86,6 +87,7 @@ export async function listActivity(
 			stop: first ? Number.POSITIVE_INFINITY : filter.limit + 1,
 			batch: options.batch,
 		});
+	}
 
 	const list: ListV2Result = await userTransaction(
 		client,
@@ -96,10 +98,12 @@ export async function listActivity(
 				select: { homeCurrency: true },
 			});
 			const home = user?.homeCurrency ?? "USD";
-			const [homeRate, defaults] = await Promise.all([
+			const [homeRate, defaults, excludedProjectIds] = await Promise.all([
 				findExchangeRate(tx, home, now),
 				getDefaultRateTypes(tx, userId),
+				inApp ? k.excludedProjectIds : getExcludedProjectIds(tx, userId),
 			]);
+			k.excludedProjectIds = excludedProjectIds;
 			// A key whose row was deleted since the scan has no row here and is
 			// dropped (activityRowsFrom); the count may be one high this once.
 			const keys = await pageKeys(tx, k, after, filter.limit + 1);
