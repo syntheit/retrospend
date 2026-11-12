@@ -226,4 +226,22 @@ describe("the number edge", () => {
 		// 4.5 / 3 x 1 = 1.5 JPY, rounded to 2.
 		expect(roundMoney(convertAmount(4.5, "EUR", 3, "JPY", 1), "JPY")).toBe(2);
 	});
+
+	it("a negative that rounds to zero is 0, never -0", () => {
+		// -0.004 USD is -0.4 cents: rounds to 0, which must not keep its sign.
+		expect(Object.is(roundMoney(-0.004, "USD"), 0)).toBe(true);
+		// -0.4 ARS / 100 = -0.004 USD: the stored value is 0, not -0.
+		expect(Object.is(computeAmountInUSD(-0.4, "ARS", 100), 0)).toBe(true);
+		// -0.4 JPY is 0 yen; -0.000000004 BTC is 0 satoshis.
+		expect(Object.is(roundMoney(-0.4, "JPY"), 0)).toBe(true);
+		expect(toAmountString(-0.000000004, "BTC")).toBe("0");
+		for (const d of [
+			roundUSDDec("-0.004"),
+			roundMoneyDec("-0.4", "JPY"),
+			roundMoneyDec("-0.0004", "KWD"),
+			roundRateDec("-0.0000004", 6),
+			computeAmountInUSDDec("-0.4", "ARS", 100),
+		])
+			expect(d.isNegative(), d.toString()).toBe(false);
+	});
 });
