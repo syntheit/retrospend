@@ -183,6 +183,7 @@ describe("the allowlist", () => {
 		"VITEST_POOL_ID", // tests
 		"VERCEL_URL", // not hosted there
 		"PG_TEST_SUPER_URL", // tests
+		"PG_TEST_SEALED", // tests
 		// Development and tests only until sealing is released
 		// (src/server/crypto/release.ts); PR 9 moves it into the app's list.
 		"DATA_KEYS_WRITE",
