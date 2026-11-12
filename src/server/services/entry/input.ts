@@ -23,6 +23,8 @@ const isoDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a valid date");
 const currency = z.string().min(3).max(10);
 const id = z.string().min(1).max(64);
 const rateType = z.string().min(1).max(32);
+/** A stored Decimal column as plain text (expense.amountInUSD and the rates). */
+const storedDecimal = z.string().regex(/^-?\d{1,20}(\.\d{1,12})?$/);
 
 const expenseFields = {
 	title: userText("expense.title", 500),
@@ -85,6 +87,17 @@ export const expenseRestoreSchema = z.object({
 	categoryId: z.string().min(1).optional(),
 	amortizeOver: z.number().int().min(2).max(60).optional(),
 	excludeFromAnalytics: z.boolean().optional(),
+	/** The booked figures it was saved with, written back as they were (as income's recreate does). */
+	restore: z
+		.object({
+			exchangeRate: storedDecimal,
+			amountInUSD: storedDecimal,
+			rateType: rateType.nullable(),
+			homeCurrency: currency.nullable(),
+			homeRate: storedDecimal.nullable(),
+			homeAmount: storedDecimal.nullable(),
+		})
+		.nullish(),
 });
 
 const participant = z.object({

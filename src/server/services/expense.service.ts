@@ -67,6 +67,16 @@ export async function resolveExpenseRate(
 	);
 }
 
+/** The booked rate columns of a row as stored, as decimal text. */
+export interface SavedFigures {
+	exchangeRate: string;
+	amountInUSD: string;
+	rateType: string | null;
+	homeCurrency: string | null;
+	homeRate: string | null;
+	homeAmount: string | null;
+}
+
 /** The rate columns of a saved expense row, and the money it booked. */
 function savedRateOf(row: {
 	currency: string;
@@ -202,6 +212,8 @@ export class ExpenseService {
 			categoryId?: string;
 			amortizeOver?: number;
 			excludeFromAnalytics?: boolean;
+			/** Set only by the undo of an edit: the figures it was saved with, written back as they were. */
+			restore?: SavedFigures | null;
 		},
 	) {
 		const existingExpense = await (this.db as PrismaClient).expense.findFirst({
@@ -236,12 +248,15 @@ export class ExpenseService {
 			}
 		}
 
-		const rate = await resolveExpenseRate(
-			this.db,
-			userId,
-			input,
-			savedRateOf(existingExpense),
-		);
+		// An undo puts back what was stored; booking again could round differently.
+		const rate =
+			input.restore ??
+			(await resolveExpenseRate(
+				this.db,
+				userId,
+				input,
+				savedRateOf(existingExpense),
+			));
 
 		return await this.runInTransaction(async (tx) => {
 			const expense = await tx.expense.update({

@@ -9,14 +9,21 @@
  *   expense.restore, which puts the stored rows back verbatim from a signed
  *   snapshot (expense-snapshot.ts): nothing is booked again.
  *
- * An edit's undo re-books the rate it had: a custom rate as the same cross
- * rate, a table type as that type on the entry's date (the day's rate does
- * not move), an untouched rate as both of its saved legs.
+ * An edit's undo carries the rate it had (a custom rate as the same cross
+ * rate, a table type as that type, an untouched rate as both saved legs) and
+ * the figures it was saved with, which the undo writes back as they were:
+ * booking again could land a cent apart (a row booked half up, a home
+ * amount from the 12-decimal rate).
  */
+import { dec } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import { CUSTOM_RATE_TYPE } from "~/lib/rate-selection";
 import type { Prisma } from "~prisma";
-import { type CreateExpenseInput, ExpenseService } from "../expense.service";
+import {
+	type CreateExpenseInput,
+	ExpenseService,
+	type SavedFigures,
+} from "../expense.service";
 import { GLANCE_SPENT } from "../figures/spend-pace";
 import type { MoneyMutation } from "../preview/types";
 import {
@@ -79,6 +86,21 @@ function fieldsOf(row: ExpenseRow) {
 		amortizeOver: row.isAmortizedParent ? row.children.length : undefined,
 		excludeFromAnalytics: row.excludeFromAnalytics,
 		...rateInputOf(row),
+		restore: figuresOf(row),
+	};
+}
+
+/** The booked figures as stored, as plain decimal text (dec never writes an exponent). */
+function figuresOf(row: ExpenseRow): SavedFigures {
+	const text = (v: { toString(): string } | null) =>
+		v === null ? null : dec(v).toFixed();
+	return {
+		exchangeRate: dec(row.exchangeRate).toFixed(),
+		amountInUSD: dec(row.amountInUSD).toFixed(),
+		rateType: row.rateType,
+		homeCurrency: row.homeCurrency,
+		homeRate: text(row.homeRate),
+		homeAmount: text(row.homeAmount),
 	};
 }
 

@@ -10,7 +10,11 @@
  *   ties are the domain's tests: the schema keeps expense amounts above 0.
  * - A row booked half up before this change holds 0.29 for ARS 28.5. A title
  *   edit keeps 0.29; an edit to ARS 30 books 30 / 100 = 0.30; moving it a
- *   day re-books at its kept rate, 28.5 / 100 = 0.28.
+ *   day re-books at its kept rate, 28.5 / 100 = 0.28. Undoing the ARS 30
+ *   edit gives back 0.29.
+ * - JPY home, EUR 3 and JPY 1 per USD that day: EUR 4.5 books 2 JPY (1.5, a
+ *   tie). After an edit to EUR 6 its undo gives back 2, where booking again
+ *   at the kept 12-decimal rate would give 1.
  */
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -23,11 +27,16 @@ const DAY = new Date("2019-03-07T00:00:00.000Z");
 const NEXT_DAY = new Date("2019-03-08T00:00:00.000Z");
 
 beforeAll(async () => {
-	await adminDb.exchangeRate.upsert({
-		where: { date_currency_type: { date: DAY, currency: "ARS", type: "blue" } },
-		create: { date: DAY, currency: "ARS", type: "blue", rate: "100" },
-		update: { rate: "100" },
-	});
+	for (const [currency, type, rate] of [
+		["ARS", "blue", "100"],
+		["EUR", "official", "3"],
+		["JPY", "official", "1"],
+	] as const)
+		await adminDb.exchangeRate.upsert({
+			where: { date_currency_type: { date: DAY, currency, type } },
+			create: { date: DAY, currency, type, rate },
+			update: { rate },
+		});
 });
 
 async function arsUser() {
@@ -38,6 +47,9 @@ async function arsUser() {
 	});
 	return user.id;
 }
+
+const row = (id: string) =>
+	fixtureDb.expense.findUniqueOrThrow({ where: { id } });
 
 const money = async (id: string) => {
 	const r = await fixtureDb.expense.findUniqueOrThrow({ where: { id } });
@@ -86,7 +98,7 @@ describe("booking an expense rounds half to even", () => {
 
 describe("an edit that moves no money keeps the saved figures (D1)", () => {
 	/** ARS 28.5 as a half-up booking saved it: 0.285 USD stored as 0.29. */
-	async function oldTieRow() {
+	async function oldTieRow(date = DAY) {
 		const userId = await arsUser();
 		const id = randomUUID();
 		await fixtureDb.expense.create({
@@ -96,7 +108,7 @@ describe("an edit that moves no money keeps the saved figures (D1)", () => {
 				title: "Kiosk",
 				amount: "28.5",
 				currency: "ARS",
-				date: DAY,
+				date,
 				exchangeRate: "100",
 				amountInUSD: "0.29",
 				pricingSource: "MANUAL",
@@ -130,8 +142,8 @@ describe("an edit that moves no money keeps the saved figures (D1)", () => {
 			exchangeRate: "100",
 			homeAmount: "28.5",
 		});
-		const row = await fixtureDb.expense.findUniqueOrThrow({ where: { id } });
-		expect(row.title).toBe("Corner kiosk");
+		const saved = await row(id);
+		expect(saved.title).toBe("Corner kiosk");
 	});
 
 	it("a new amount re-books: ARS 30 is 0.30 USD", async () => {
@@ -152,6 +164,88 @@ describe("an edit that moves no money keeps the saved figures (D1)", () => {
 		expect(await money(id)).toMatchObject({
 			amountInUSD: "0.28",
 			homeAmount: "28.5",
+		});
+	});
+
+	it("the undo of an edit gives back 0.29, its preview first", async () => {
+		// Dated today so the undo moves this month's spent: ARS 30.00 back to
+		// 28.50 is -1.50 ARS, -150 minor. The edit and the undo read no rate.
+		const { userId, id } = await oldTieRow(new Date());
+		const edited = await forUser(userId).apply(
+			updateExpenseEntry,
+			edit(id, { amount: "30", date: (await row(id)).date }),
+		);
+		expect((await money(id)).amountInUSD).toBe("0.3");
+
+		const preview = await forUser(userId).preview(
+			updateExpenseEntry,
+			edited.value.restore,
+		);
+		const undone = await forUser(userId).apply(
+			updateExpenseEntry,
+			edited.value.restore,
+		);
+		expect(undone.changes).toEqual(preview.changes);
+		expect(preview.changes).toContainEqual(
+			expect.objectContaining({
+				id: "spent",
+				delta: { minor: -150, currency: "ARS" },
+			}),
+		);
+		expect(await money(id)).toEqual({
+			amount: "28.5",
+			amountInUSD: "0.29",
+			exchangeRate: "100",
+			homeAmount: "28.5",
+		});
+	});
+});
+
+describe("the undo of an edit writes back the saved figures", () => {
+	it("JPY home: EUR 4.5 at 3 per USD books 2, an edit to 6 and its undo give back 2", async () => {
+		const { user } = await createTestUser();
+		await adminDb.user.update({
+			where: { id: user.id },
+			data: { homeCurrency: "JPY", defaultRateTypes: {} },
+		});
+		const id = randomUUID();
+		const input = {
+			id,
+			title: "Museum",
+			amount: "4.5",
+			currency: "EUR",
+			date: DAY,
+		};
+		// 4.5 x 1 x 1 / (3 x 1) = 1.5 JPY, a tie: 2. Home rate 1 / 3 to 12
+		// decimals, 0.333333333333; USD 4.5 / 3 = 1.50.
+		await forUser(user.id).apply(createExpense, input);
+		expect(await money(id)).toEqual({
+			amount: "4.5",
+			amountInUSD: "1.5",
+			exchangeRate: "3",
+			homeAmount: "2",
+		});
+		// The edit keeps the rate: 6 x 0.333333333333 = 1.999999999998, so 2;
+		// USD 6 / 3 = 2.00.
+		const edited = await forUser(user.id).apply(updateExpenseEntry, {
+			...input,
+			amount: "6",
+			exchangeRate: 3,
+			pricingSource: "MANUAL",
+			rateType: "official",
+		});
+		expect(await money(id)).toMatchObject({
+			amountInUSD: "2",
+			homeAmount: "2",
+		});
+		// Booking the undo again at the kept rate would give 4.5 x
+		// 0.333333333333 = 1.4999999999985, so 1. It writes back 2.
+		await forUser(user.id).apply(updateExpenseEntry, edited.value.restore);
+		expect(await money(id)).toEqual({
+			amount: "4.5",
+			amountInUSD: "1.5",
+			exchangeRate: "3",
+			homeAmount: "2",
 		});
 	});
 });
