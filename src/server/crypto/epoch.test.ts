@@ -59,7 +59,6 @@ describe("the field encryption epoch cache", () => {
 		expect(await loadEpoch()).toBe(false);
 		expect(error).toHaveBeenCalledWith("Field encryption epoch read failed", {
 			error: "Error",
-			sqlstate: null,
 		});
 	});
 

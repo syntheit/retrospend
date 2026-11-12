@@ -15,7 +15,6 @@
  * database.
  */
 import { inTransaction } from "~/server/db-tx";
-import { pgCode } from "../services/keys/keystore-errors";
 
 /** Whether the epoch is set in the database. */
 export type EpochReader = () => Promise<boolean>;
@@ -36,7 +35,7 @@ export const epochActiveNow = (): boolean => known?.set === true;
 
 /**
  * Whether the epoch is set, from the cache when it is fresh. Never throws:
- * an unreadable column is logged (its SQLSTATE only) and read as not set.
+ * an unreadable column is logged and read as not set.
  * Inside a transaction, and with no reader wired, it answers from the cache.
  */
 export function loadEpoch(): Promise<boolean> {
@@ -45,9 +44,9 @@ export function loadEpoch(): Promise<boolean> {
 		return Promise.resolve(epochActiveNow());
 	loading ??= reader()
 		.catch((error: unknown) => {
+			// The error's kind only: a message can carry query text.
 			console.error("Field encryption epoch read failed", {
 				error: error instanceof Error ? error.name : typeof error,
-				sqlstate: pgCode(error) ?? null,
 			});
 			return false;
 		})
