@@ -48,7 +48,6 @@
 		"src/server/services/accounts/manage.ts": 2,
 		"src/server/services/api-v1/currencies.ts": 1,
 		"src/server/services/entry/expense.mutation.ts": 1,
-		"src/server/services/envelope/adjustment.ts": 3,
 		"src/server/services/envelope/inputs-source.ts": 1,
 		"src/server/services/envelope/rule-store.ts": 1,
 		"src/server/services/envelope/setup-p5.ts": 1,
