@@ -10,6 +10,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { appendEvent } from "~/server/services/events/outbox";
 import { forUser } from "~/server/services/preview";
+import { openTransactionsEnded } from "~/test/pg-harness";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import {
 	adminDb,
@@ -62,13 +63,15 @@ describe("event outbox", () => {
 	/**
 	 * The feed holds an event back until every older open transaction on the
 	 * Postgres server has ended, and these tests share a server with other
-	 * runs, so a read that expects items polls briefly.
+	 * runs, so a read that expects items first waits for those to end, then
+	 * polls briefly.
 	 */
 	const feed = async (
 		headers: Record<string, string>,
 		query = "",
 		expectAtLeast = 0,
 	) => {
+		if (expectAtLeast > 0) await openTransactionsEnded();
 		for (let tries = 0; ; tries++) {
 			const page = await expectBody<Feed>(
 				await call(`/events${query}`, { headers }),
