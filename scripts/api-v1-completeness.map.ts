@@ -565,6 +565,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	// ── system ───────────────────────────────────────────────────────────
 	"system.checkImporterStatus": webOnly("a diagnostic banner in the web app"),
 	"system.checkSidecarStatus": webOnly("a diagnostic banner in the web app"),
+	"system.getAutoPostStatus": webOnly("a diagnostic row on the web admin page"),
 	"system.getFeatureFlags": to("GET /server-info"),
 	"system.getWorkerStatus": webOnly("a diagnostic banner in the web app"),
 
