@@ -61,6 +61,47 @@ const expenseData = (userId: string, r: Row) => ({
 
 let userId: string;
 let bigUserId: string;
+let oneShareUser: string;
+let twoSharesUser: string;
+let bobId: string;
+
+/** A share of `amount` EUR saved with `rate` EUR per USD, in the user's name. */
+const eurShare = (id: string, amount: string, rate: string) =>
+	adminDb.sharedTransaction.create({
+		data: {
+			id: randomUUID(),
+			description: "lunch",
+			amount: D(amount),
+			currency: "EUR",
+			date: MID,
+			exchangeRate: D(rate),
+			paidByType: "user",
+			paidById: bobId,
+			createdByType: "user",
+			createdById: bobId,
+			splitParticipants: {
+				create: {
+					participantType: "user",
+					participantId: id,
+					shareAmount: D(amount),
+					verificationStatus: "PENDING",
+				},
+			},
+		},
+	});
+
+/** Spending in `home` at `rate` for the Buenos Aires October of the ledger. */
+const totalIn = (id: string, home: string, rate: number) => {
+	const range = spentRange(NOW, 1, BA);
+	return userTransaction(adminDb, id, (tx) =>
+		spentIn(
+			tx,
+			{ userId: id, date: { gte: range.start, lte: range.end } },
+			home,
+			rate,
+		),
+	);
+};
 
 const total = (id: string) => {
 	const range = spentRange(NOW, 1, BA);
@@ -78,8 +119,13 @@ beforeAll(async () => {
 	const { user } = await createTestUser();
 	const { user: bob } = await createTestUser();
 	const { user: big } = await createTestUser();
+	const { user: one } = await createTestUser();
+	const { user: two } = await createTestUser();
 	userId = user.id;
 	bigUserId = big.id;
+	oneShareUser = one.id;
+	twoSharesUser = two.id;
+	bobId = bob.id;
 	for (const id of [userId, bigUserId])
 		await adminDb.user.update({
 			where: { id },
@@ -131,6 +177,15 @@ beforeAll(async () => {
 		},
 	});
 
+	for (const id of [oneShareUser, twoSharesUser])
+		await adminDb.user.update({
+			where: { id },
+			data: { homeCurrency: "JPY", timeZone: BA },
+		});
+	await eurShare(oneShareUser, "1", "7");
+	await eurShare(twoSharesUser, "1", "13");
+	await eurShare(twoSharesUser, "1", "13");
+
 	// 1,000 rows of the largest amount a Decimal(19,8) column holds in ARS.
 	await fixtureDb.expense.createMany({
 		data: Array.from({ length: 1000 }, () =>
@@ -139,6 +194,28 @@ beforeAll(async () => {
 				amountInUSD: "64724919.09",
 			}),
 		),
+	});
+});
+
+describe("shares total from their amount and rate in a JPY home", () => {
+	it("1 EUR saved at 7 per USD, JPY at 17.5: 2.5 JPY is a tie and rounds to 2", async () => {
+		// 1 / 7 USD x 17.5 = 17.5 / 7 = 2.5 exactly, one division; 2 is even.
+		const sum = await totalIn(oneShareUser, "JPY", 17.5);
+		expect(sum.toFixed()).toBe("2.5");
+		expect(roundedMinor(sum, "JPY")).toBe(2);
+	});
+
+	it("two shares of 1 EUR at 13, JPY at 22.75: 3.5 JPY is a tie and rounds to 4", async () => {
+		// Each 22.75 / 13 = 1.75; together 3.5 exactly; 4 is even.
+		const sum = await totalIn(twoSharesUser, "JPY", 22.75);
+		expect(sum.toFixed()).toBe("3.5");
+		expect(roundedMinor(sum, "JPY")).toBe(4);
+	});
+
+	it("control, not a tie: 1 EUR at 7, JPY at 17.6 is 2.5142857... and rounds to 3", async () => {
+		const sum = await totalIn(oneShareUser, "JPY", 17.6); // 17.6 / 7
+		expect(sum.toFixed(7)).toBe("2.5142857");
+		expect(roundedMinor(sum, "JPY")).toBe(3);
 	});
 });
 

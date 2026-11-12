@@ -71,6 +71,8 @@ describe("getSharedExpenseShares", () => {
 		const [share] = await getSharedExpenseShares(db as never, "user-1");
 		// 12,000 ARS at 1,200 = 10 USD (today's 1,560 would give 7.69)
 		expect(share!.amountInUSD).toBe("10");
+		// The share keeps its rate as exact text, for totals to convert from.
+		expect(share!.rate).toBe("1200");
 	});
 
 	it("a legacy share without a captured rate uses the nearest rate for its date", async () => {
@@ -110,6 +112,7 @@ describe("getSharedExpenseShares", () => {
 		]);
 		const shares = await getSharedExpenseShares(db as never, "user-1");
 		expect(shares[0]?.amountInUSD).toBeNull();
+		expect(shares[0]?.rate).toBeNull();
 		const items = spentItemsOf({ spending: [], refunds: [], shares });
 		expect(sumInDec(items.slice(0, 1), "XAU", null).toFixed()).toBe("1000");
 		expect(() => sumInDec(items, "USD", 1)).toThrow(MissingRateError);

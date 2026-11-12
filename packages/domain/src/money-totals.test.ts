@@ -1,10 +1,9 @@
-// Totals in exact decimals (sumInDec, amountInDec, missingRatesIn). Every
+// Totals in exact decimals (sumInDec, missingRatesIn). Every
 // expected value is derived by hand in its comment, never copied from the
 // code's output. Rates follow the stored convention: fiat in units per USD,
 // crypto in USD per coin.
 import { describe, expect, it } from "vitest";
 import {
-	amountInDec,
 	MissingRateError,
 	type MoneyItemDec,
 	missingRatesIn,
@@ -12,6 +11,7 @@ import {
 } from "./money-dec";
 import { roundedMinor } from "./money-minor";
 import { dec } from "./precise-decimal";
+import { priceShare } from "./spent";
 
 const item = (
 	amount: string,
@@ -95,9 +95,9 @@ describe("sumInDec", () => {
 			amount: "24000",
 		});
 		const legacy = item("5", "USD", "5");
-		expect(fixed(amountInDec(booked, "ARS", 1300))).toBe("24000");
-		expect(fixed(amountInDec(booked, "ARS", undefined))).toBe("24000");
-		expect(fixed(amountInDec(booked, "USD", 1))).toBe("20");
+		expect(fixed(sumInDec([booked], "ARS", 1300))).toBe("24000");
+		expect(fixed(sumInDec([booked], "ARS", undefined))).toBe("24000");
+		expect(fixed(sumInDec([booked], "USD", 1))).toBe("20");
 		// A row with no booked value keeps the period rate: 5 x 1300.
 		expect(fixed(sumInDec([booked, legacy], "ARS", 1300))).toBe("30500");
 	});
@@ -117,7 +117,61 @@ describe("sumInDec", () => {
 	it("an unpriced item counts only in its own currency", () => {
 		const isk = item("900", "ISK", null);
 		expect(fixed(sumInDec([isk], "ISK", undefined))).toBe("900");
-		expect(() => amountInDec(isk, "USD", 1)).toThrow(MissingRateError);
+		expect(() => sumInDec([isk], "USD", 1)).toThrow(MissingRateError);
+	});
+
+	describe("shares convert from their amount and rate in one division", () => {
+		const share = (amount: string, currency: string, rate: string) => {
+			const priced = priceShare(amount, currency, rate);
+			return {
+				...item(amount, currency, priced.amountInUSD),
+				rate: dec(rate),
+			};
+		};
+
+		it("1 EUR at 7 per USD into JPY at 17.5 is 2.5 JPY, a tie that rounds to 2", () => {
+			// 1 / 7 USD x 17.5 = 17.5 / 7 = 2.5 exactly; 2 is even. Through the
+			// cut USD quotient (0.142857...) it came out 2.5000...01 and showed 3.
+			const total = sumInDec([share("1", "EUR", "7")], "JPY", 17.5);
+			expect(fixed(total)).toBe("2.5");
+			expect(roundedMinor(total, "JPY")).toBe(2);
+		});
+
+		it("two shares of 1 EUR at 13 into JPY at 22.75 are 3.5 JPY, a tie that rounds to 4", () => {
+			// Each is 22.75 / 13 = 1.75; together 3.5 exactly; 4 is even. The
+			// cut quotient gave 3.4999...9 and showed 3.
+			const total = sumInDec(
+				[share("1", "EUR", "13"), share("1", "EUR", "13")],
+				"JPY",
+				22.75,
+			);
+			expect(fixed(total)).toBe("3.5");
+			expect(roundedMinor(total, "JPY")).toBe(4);
+		});
+
+		it("control, not a tie: 1 EUR at 7 into JPY at 17.6 is 2.514... and rounds to 3", () => {
+			// 17.6 / 7 = 2.5142857...
+			const total = sumInDec([share("1", "EUR", "7")], "JPY", 17.6);
+			expect(total.toFixed(7)).toBe("2.5142857");
+			expect(roundedMinor(total, "JPY")).toBe(3);
+		});
+
+		it("shares at different rates add each group's own conversion", () => {
+			// 2 EUR at 8: 2 / 8 = 0.25 USD; 3 EUR at 6: 3 / 6 = 0.5 USD; into ARS at
+			// 1545: 0.25 x 1545 = 386.25 and 0.5 x 1545 = 772.5; total 1158.75.
+			const total = sumInDec(
+				[share("2", "EUR", "8"), share("3", "EUR", "6")],
+				"ARS",
+				1545,
+			);
+			expect(fixed(total)).toBe("1158.75");
+		});
+
+		it("a share in the total's own currency counts as entered", () => {
+			expect(fixed(sumInDec([share("12.5", "JPY", "150")], "JPY", 17.5))).toBe(
+				"12.5",
+			);
+		});
 	});
 
 	it("one MissingRateError names every currency that cannot convert", () => {

@@ -292,6 +292,24 @@ describe("spent on rows in memory", () => {
 			expect(roundedMinor(total, "USD")).toBe(1302);
 		});
 
+		it("shares total from their amount and rate, so a true tie rounds half even", () => {
+			const inputs = spentInputsFromRows({
+				expenses: [],
+				shares: [
+					share({ shareAmount: "1", currency: "EUR", exchangeRate: "13" }),
+					share({ shareAmount: "1", currency: "EUR", exchangeRate: "13" }),
+				],
+				hiddenProjectIds: [],
+				range: WIDE,
+			});
+			expect(inputs.shares.map((s) => s.rate)).toEqual(["13", "13"]);
+			// Each is 22.75 / 13 = 1.75 JPY; together 3.5, a tie: 4 is even. A
+			// total through the USD quotient (0.0769230...) gave 3.4999...9, 3.
+			const total = sumInDec(spentItemsOf(inputs), "JPY", 22.75);
+			expect(total.toFixed()).toBe("3.5");
+			expect(roundedMinor(total, "JPY")).toBe(4);
+		});
+
 		it("a refund of nothing is zero, never -0", () => {
 			const zero = spentInputsFromRows({
 				expenses: [

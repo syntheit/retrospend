@@ -37,10 +37,16 @@ export interface SpentItem extends MoneyItemDec {
 	count: number;
 }
 
-/** Your share of a shared expense, with its USD value (null when its currency has no rate at all). Both are exact decimal text. */
+/**
+ * Your share of a shared expense with the rate it converts at and its USD
+ * value (both null when its currency has no rate at all). All exact decimal
+ * text. Totals convert from the amount and the rate in one division; the USD
+ * value is the same conversion, for readers that need one.
+ */
 export interface SpentShare {
 	amount: string;
 	currency: string;
+	rate: string | null;
 	amountInUSD: string | null;
 	categoryId: string | null;
 	date: Date;
@@ -229,18 +235,32 @@ export function spentInputsFromRows(args: {
 			)
 			.map((s) => {
 				const amount = dec(s.shareAmount).toFixed();
-				const rate = rateFor(s);
 				return {
 					amount,
 					currency: s.currency,
-					amountInUSD:
-						rate === null || rate === undefined
-							? null
-							: toUSDDec(amount, s.currency, rate).toFixed(),
+					...priceShare(amount, s.currency, rateFor(s)),
 					categoryId: s.categoryId,
 					date: s.date,
 				};
 			}),
+	};
+}
+
+/**
+ * A share's rate and USD value, the one way both are made (server and
+ * device). The USD value is exact, never rounded to cents: a share is a slice
+ * of an amount, not a stored entry. No rate leaves it unpriced (nulls).
+ */
+export function priceShare(
+	amount: string,
+	currency: string,
+	rate: RateInput,
+): { rate: string | null; amountInUSD: string | null } {
+	if (rate === null || rate === undefined)
+		return { rate: null, amountInUSD: null };
+	return {
+		rate: dec(rate).toFixed(),
+		amountInUSD: toUSDDec(amount, currency, rate).toFixed(),
 	};
 }
 
@@ -275,6 +295,7 @@ export function spentItemsOf(inputs: SpentInputs): SpentItem[] {
 			amount: dec(s.amount),
 			currency: s.currency,
 			amountInUSD: s.amountInUSD === null ? null : dec(s.amountInUSD),
+			rate: s.rate === null ? null : dec(s.rate),
 			categoryId: s.categoryId,
 			date: s.date,
 			count: 1,

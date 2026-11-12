@@ -11,9 +11,9 @@ import { USD } from "@retrospend/domain/money";
 import {
 	computeAmountInUSDDec,
 	type RateInput,
-	toUSDDec,
 } from "@retrospend/domain/money-dec";
 import { dec } from "@retrospend/domain/precise-decimal";
+import { priceShare } from "@retrospend/domain/spent";
 import type { Prisma, PrismaClient } from "~prisma";
 import { findExchangeRatesForDates } from "../exchange-rates";
 import type { RateCache } from "./rate-cache";
@@ -79,26 +79,6 @@ export async function shareRateResolver(db: AppDb, rows: ShareRateSource[]) {
 }
 
 /**
- * USD value of a share for totals, kept exact as decimal text. A share is a
- * slice of an amount, not a stored entry, so there is no cents column to
- * match; rounding to USD cents here and again in the home currency made a
- * day total drift a few units from the row's own conversion (Activity, ARS
- * home). Totals round once, at the end, in the currency they show
- * (sumInDec). A currency with no rate at all leaves the share unpriced
- * (null): it still counts in its own currency, and any total in another
- * currency names it as missing (MissingRateError) instead of counting it as
- * 0 or failing the whole load.
- */
-function exactShareUSD(
-	amount: string,
-	currency: string,
-	rate: RateInput,
-): string | null {
-	if (rate === null) return null;
-	return toUSDDec(amount, currency, rate).toFixed();
-}
-
-/**
  * Represents a user's share of a shared expense, compatible with
  * the budget/stats aggregation format (same fields as personal expenses).
  */
@@ -106,7 +86,13 @@ export interface SharedExpenseShare {
 	/** The stored amount as exact decimal text. */
 	amount: string;
 	currency: string;
-	/** Exact decimal text; null when the share's currency has no rate at all (unpriced, see exactShareUSD). */
+	/**
+	 * The rate the share converts at and its exact USD value, as decimal text,
+	 * both from priceShare; null when the share's currency has no rate at all
+	 * (unpriced: it counts in its own currency, and any total elsewhere names
+	 * it as missing instead of counting it as 0 or 1).
+	 */
+	rate: string | null;
 	amountInUSD: string | null;
 	categoryId: string | null;
 	date: Date;
@@ -227,7 +213,7 @@ export async function getSharedExpenseShares(
 		return {
 			amount,
 			currency,
-			amountInUSD: exactShareUSD(amount, currency, rateFor(p.transaction)),
+			...priceShare(amount, currency, rateFor(p.transaction)),
 			// The category belongs to whoever created the expense. Another
 			// participant's budgets and breakdowns cannot use it: uncategorized.
 			categoryId:

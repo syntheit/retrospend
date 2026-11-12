@@ -153,6 +153,7 @@ describe("figure spent", () => {
 			{
 				amount: "20000",
 				currency: "ARS",
+				rate: "1000",
 				amountInUSD: "20",
 				categoryId: null,
 				date: day(20),
@@ -173,6 +174,7 @@ describe("figure spent", () => {
 			{
 				amount: "20000",
 				currency: "ARS",
+				rate: "1000",
 				amountInUSD: "20",
 				categoryId: null,
 				date: day(20),
@@ -180,6 +182,7 @@ describe("figure spent", () => {
 			{
 				amount: "1000",
 				currency: "ARS",
+				rate: "1000",
 				amountInUSD: "1",
 				categoryId: "groceries",
 				date: day(21),
@@ -229,6 +232,7 @@ describe("figure spent", () => {
 			{
 				amount: "0.5",
 				currency: "USD",
+				rate: "1",
 				amountInUSD: "0.5",
 				categoryId: null,
 				date: day(7),

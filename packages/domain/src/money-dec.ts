@@ -170,6 +170,13 @@ export interface MoneyItemDec {
 	/** Null for an unpriced item (no rate at all when loaded): it counts only in its own currency. */
 	amountInUSD: Decimal | null;
 	/**
+	 * The rate (stored convention) the amount converts at, for an item whose
+	 * USD value is not a stored figure (a share of a shared expense). Such an
+	 * item converts straight from its amount and this rate in one division
+	 * (D3), never through a cut USD quotient. Absent for a stored entry.
+	 */
+	rate?: Decimal | null;
+	/**
 	 * The home value booked when the entry was saved (expense.homeAmount,
 	 * M2). It never moves with later rates, so it wins in its own currency.
 	 */
@@ -219,27 +226,14 @@ export function missingRatesIn(
 }
 
 /**
- * One item in `currency` under the totals rule: its own amount when it is
- * already in `currency`, its booked value when it was booked in `currency`,
- * else its USD value converted at `rate` (unrounded).
- */
-export function amountInDec(
-	item: MoneyItemDec,
-	currency: string,
-	rate: RateInput,
-): Decimal {
-	if (item.currency === currency) return item.amount;
-	if (item.booked?.currency === currency) return item.booked.amount;
-	if (item.amountInUSD === null) throw new MissingRateError(item.currency);
-	return fromUSDDec(item.amountInUSD, currency, rate);
-}
-
-/**
  * Sum of `items` in `currency` under the totals rule (unrounded). Amounts
- * already in `currency` and USD values are each added first and converted
- * once: sum(x x r) = sum(x) x r exactly, and 10,000 items cost one
- * multiplication, not 10,000. Throws one MissingRateError naming every
- * currency that cannot convert, never counting a missing rate as 1.
+ * already in `currency` and stored USD values are each added first and
+ * converted once: sum(x x r) = sum(x) x r exactly, and 10,000 items cost one
+ * multiplication, not 10,000. Items that carry their own rate (shares) are
+ * added per currency and rate, then converted from amount to `currency` in
+ * one division each, so an exact tie stays a tie. Throws one MissingRateError
+ * naming every currency that cannot convert, never counting a missing rate
+ * as 1.
  */
 export function sumInDec(
 	items: Iterable<MoneyItemDec>,
@@ -252,14 +246,32 @@ export function sumInDec(
 	let own = new Dec(0);
 	let usd = new Dec(0);
 	let converted = false;
+	const byRate = new Map<
+		string,
+		{ currency: string; rate: Decimal; amount: Decimal }
+	>();
 	for (const item of list) {
 		if (item.currency === currency) own = own.plus(item.amount);
 		else if (item.booked?.currency === currency)
 			own = own.plus(item.booked.amount);
-		else if (item.amountInUSD) {
+		else if (item.rate && item.currency !== USD) {
+			const key = `${item.currency} ${item.rate.toFixed()}`;
+			const group = byRate.get(key) ?? {
+				currency: item.currency,
+				rate: item.rate,
+				amount: new Dec(0),
+			};
+			group.amount = group.amount.plus(item.amount);
+			byRate.set(key, group);
+		} else if (item.amountInUSD) {
 			usd = usd.plus(item.amountInUSD);
 			converted = true;
 		}
 	}
-	return converted ? own.plus(fromUSDDec(usd, currency, rate)) : own;
+	let total = converted ? own.plus(fromUSDDec(usd, currency, rate)) : own;
+	for (const g of byRate.values())
+		total = total.plus(
+			convertDec(g.amount, g.currency, g.rate, currency, rate),
+		);
+	return total;
 }
