@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import {
-	readRestore,
-	signRestore,
+	readPayload,
+	signPayload,
 } from "~/server/services/entry/restore-token";
 
 /**
@@ -55,7 +55,7 @@ export function mintUndo(
 		input,
 		exp: now + UNDO_TTL_MS,
 	};
-	const { data, sig } = signRestore(payload);
+	const { data, sig } = signPayload(payload);
 	return `${Buffer.from(data, "utf8").toString("base64url")}.${sig}`;
 }
 
@@ -68,10 +68,10 @@ export function readUndo(
 	const [encoded, sig, extra] = token.split(".");
 	if (!encoded || !sig || extra !== undefined || !/^[0-9a-f]{64}$/.test(sig))
 		throw invalid();
-	const payload = readRestore<Payload>({
+	const payload = readPayload({
 		data: Buffer.from(encoded, "base64url").toString("utf8"),
 		sig,
-	});
+	}) as Payload;
 	if (
 		payload.v !== 1 ||
 		payload.userId !== userId ||

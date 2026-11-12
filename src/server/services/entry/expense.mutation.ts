@@ -45,6 +45,9 @@ type Tx = Prisma.TransactionClient;
 
 export const EXPENSE_FIGURES = ["spent", GLANCE_SPENT];
 
+/** The kind of signed token expense.delete returns for its undo. */
+const EXPENSE_DELETE = "expense.delete";
+
 export type UpdateExpenseInput = Parameters<ExpenseService["updateExpense"]>[1];
 
 type ExpenseRow = Prisma.ExpenseGetPayload<{
@@ -81,7 +84,7 @@ export function rateInputOf(row: {
 }
 
 /** The fields the form saves, as `row` holds them now, and its figures signed. */
-function fieldsOf(row: ExpenseRow, home: string) {
+function fieldsOf(row: ExpenseRow, userId: string, home: string) {
 	const amount = row.amount.toFixed();
 	return {
 		title: row.title,
@@ -95,13 +98,13 @@ function fieldsOf(row: ExpenseRow, home: string) {
 		amortizeOver: row.isAmortizedParent ? row.children.length : undefined,
 		excludeFromAnalytics: row.excludeFromAnalytics,
 		...rateInputOf(row),
-		restore: signRestore({
-			kind: EXPENSE_RESTORE,
+		restore: signRestore(EXPENSE_RESTORE, userId, {
 			id: row.id,
 			amount,
 			currency: row.currency,
 			date: row.date.toISOString(),
 			home,
+			bound: {},
 			figures: figuresOf(row),
 		} satisfies RowRestore<SavedFigures>),
 	};
@@ -176,7 +179,7 @@ export const updateExpenseEntry: MoneyMutation<
 		return {
 			value: {
 				id: input.id,
-				restore: { id: input.id, ...fieldsOf(before, home) },
+				restore: { id: input.id, ...fieldsOf(before, actor.userId, home) },
 			},
 			undo: {
 				kind: "revert",
@@ -210,7 +213,10 @@ export const deleteExpenseEntry: MoneyMutation<{ id: string }, DeletedExpense> =
 			const snapshot = await snapshotExpense(tx, actor.userId, input.id);
 			await new ExpenseService(tx).deleteExpense(actor.userId, input.id);
 			return {
-				value: { id: input.id, restore: signRestore(snapshot) },
+				value: {
+					id: input.id,
+					restore: signRestore(EXPENSE_DELETE, actor.userId, snapshot),
+				},
 				undo: {
 					kind: "revert",
 					mutation: "expense.restore",
@@ -228,7 +234,11 @@ export const restoreExpenseEntry: MoneyMutation<
 	id: "expense.restore",
 	touches: EXPENSE_FIGURES,
 	run: async (tx, input, actor) => {
-		const snapshot = readRestore<ExpenseSnapshot>(input.token);
+		const snapshot = readRestore<ExpenseSnapshot>(
+			input.token,
+			EXPENSE_DELETE,
+			actor.userId,
+		);
 		const id = await restoreExpense(tx, actor.userId, snapshot);
 		return {
 			value: { id },

@@ -121,13 +121,14 @@ export async function deleteIncomeIn(
 		into: leg?.accountId ?? null,
 		keep: row.keepInWealth,
 		// Signed, bound to this row: a client carries it back but never writes its own figures.
-		restore: signRestore({
-			kind: INCOME_RESTORE,
+		restore: signRestore(INCOME_RESTORE, userId, {
 			id: row.id,
 			amount,
 			currency: row.currency,
 			date,
 			home: await homeCurrencyOf(tx, userId),
+			// The units only fit the account and the place they were booked into.
+			bound: { into: leg?.accountId ?? null, keep: row.keepInWealth },
 			figures: {
 				exchangeRate: row.exchangeRate.toString(),
 				amountInUSD: row.amountInUSD.toString(),

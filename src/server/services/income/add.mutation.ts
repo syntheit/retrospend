@@ -319,13 +319,13 @@ export async function addIncomeIn(
 	const categoryId = await incomeCategory(tx, userId, input.categoryId);
 	// A recreate's figures count only signed, for this row, under this home.
 	const restore = input.restore
-		? readRowRestore<IncomeRestore>(input.restore, {
-				kind: INCOME_RESTORE,
+		? readRowRestore<IncomeRestore>(input.restore, INCOME_RESTORE, userId, {
 				id: input.id ?? "",
 				amount: amount.toString(),
 				currency: input.currency,
 				date: input.date ?? "",
 				home,
+				bound: { into: input.into ?? null, keep: input.keep ?? null },
 			})
 		: null;
 	const priced = restore

@@ -18,8 +18,13 @@
  */
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
-import { updateExpenseEntry } from "~/server/services/entry/expense.mutation";
+import {
+	deleteExpenseEntry,
+	restoreExpenseEntry,
+	updateExpenseEntry,
+} from "~/server/services/entry/expense.mutation";
 import { expenseRestoreSchema } from "~/server/services/entry/input";
+import type { RestoreToken } from "~/server/services/entry/restore-token";
 import { createExpense } from "~/server/services/expense-create.mutation";
 import { forUser } from "~/server/services/preview";
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
@@ -257,6 +262,25 @@ describe("an edit that moves no money keeps the saved figures (D1)", () => {
 				}),
 			).rejects.toThrow(refused);
 			expect((await money(a.id)).amountInUSD).toBe("0.3");
+		});
+
+		it("another user's token, or a token of another kind, is refused cleanly", async () => {
+			const { userId, id, restore } = await editedRow();
+			// An edit's token sent to the undo of a delete: a BAD_REQUEST, not a crash.
+			await expect(
+				forUser(userId).apply(restoreExpenseEntry, {
+					token: restore.restore as RestoreToken,
+				}),
+			).rejects.toMatchObject({ code: "BAD_REQUEST", message: refused });
+			// A delete's token taken back by another user.
+			const gone = await forUser(userId).apply(deleteExpenseEntry, { id });
+			const other = await arsUser();
+			await expect(
+				forUser(other).apply(restoreExpenseEntry, {
+					token: gone.value.restore,
+				}),
+			).rejects.toMatchObject({ code: "BAD_REQUEST", message: refused });
+			expect(await fixtureDb.expense.count({ where: { id } })).toBe(0);
 		});
 
 		it("a token signed under another home currency is refused", async () => {

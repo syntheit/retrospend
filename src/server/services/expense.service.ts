@@ -449,14 +449,19 @@ export class ExpenseService {
 			where: { id: userId },
 			select: { homeCurrency: true },
 		});
-		return readRowRestore<SavedFigures>(input.restore, {
-			kind: EXPENSE_RESTORE,
-			id: input.id,
-			amount: storedAmount(input.amount),
-			currency: input.currency,
-			date: input.date.toISOString(),
-			home: user?.homeCurrency ?? "",
-		});
+		return readRowRestore<SavedFigures>(
+			input.restore,
+			EXPENSE_RESTORE,
+			userId,
+			{
+				id: input.id,
+				amount: storedAmount(input.amount),
+				currency: input.currency,
+				date: input.date.toISOString(),
+				home: user?.homeCurrency ?? "",
+				bound: {},
+			},
+		);
 	}
 
 	private async runInTransaction<T>(
