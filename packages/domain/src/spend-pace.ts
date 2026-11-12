@@ -7,7 +7,7 @@
  * holds the two loaders to each other digit for digit.
  *
  * Spending is the one definition (spent.ts) grouped per entry instant, and
- * the totals rule (money.ts sumIn) prices it: a foreign row without a home
+ * the totals rule (money-dec.ts sumInDec) prices it: a foreign row without a home
  * rate makes a number unavailable and names the currency, never a guess.
  * Days are read in the zone the caller decides, the user's saved one for a
  * figure.
