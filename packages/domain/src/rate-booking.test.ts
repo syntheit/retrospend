@@ -346,6 +346,14 @@ describe("bookRate from a USD value (a file's USD column)", () => {
 		await expect(
 			book(ars, "7", "EUR", usdValue("0")),
 		).rejects.toBeInstanceOf(MissingRateError);
+		// An amount of 0 prices none either: fiat 0 / 5 is a rate of 0, crypto
+		// 5 / 0 has none.
+		await expect(
+			book(ars, "0", "ARS", usdValue("5")),
+		).rejects.toBeInstanceOf(MissingRateError);
+		await expect(
+			book(table({}, "USD"), "0", "BTC", usdValue("5")),
+		).rejects.toBeInstanceOf(MissingRateError);
 	});
 });
 

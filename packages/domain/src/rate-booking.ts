@@ -25,7 +25,6 @@ import {
 	USD,
 } from "./money";
 import {
-	rateFromUsdAmountDec,
 	roundMoneyDec,
 	roundRateDec,
 	roundUSDDec,
@@ -307,10 +306,16 @@ interface Exact {
 	home: Fraction;
 }
 
-/** The stored-convention rate for a USD value per unit: fiat units per USD, crypto USD per unit. */
+/**
+ * The stored-convention rate for a USD value per unit: fiat units per USD,
+ * crypto USD per unit. A leg that prices no rate above zero (a USD value of
+ * 0, an amount of 0) is a missing rate, never 1.
+ */
 function storedRate(currency: string, [num, den]: Fraction): Decimal {
 	if (currency === USD) return new Dec(1);
-	return isCrypto(currency) ? num.div(den) : den.div(num);
+	const rate = isCrypto(currency) ? num.div(den) : den.div(num);
+	if (!rate.isFinite() || !rate.gt(0)) throw new MissingRateError(currency);
+	return rate;
 }
 
 /**
@@ -441,8 +446,7 @@ async function bookChoice(
 			return booked(entry, ctx, exact, rateType);
 		}
 		case "usdValue": {
-			// Refuses a USD value that prices no rate above zero (MissingRateError).
-			rateFromUsdAmountDec(entry.currency, choice.usd, entry.amount);
+			// booked() refuses a leg that prices no rate (storedRate).
 			const entryLeg: Leg = {
 				usd:
 					entry.currency === USD
