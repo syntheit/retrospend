@@ -85,7 +85,6 @@ async function resolveClaimTokenOrThrow(token: string) {
 async function notifyGhostClaimedByGuest(
 	db: PrismaClient,
 	projectId: string,
-	guestName: string,
 	guestSessionId: string,
 	shadowId: string,
 ) {
@@ -98,7 +97,7 @@ async function notifyGhostClaimedByGuest(
 		await createNotification({
 			userId: organizer.participantId,
 			type: "PARTICIPANT_ADDED",
-			notice: { kind: "profileClaimed", actor: guestName },
+			notice: { kind: "profileClaimed", actor: { type: "guest", id: guestSessionId } },
 			data: { projectId, shadowId, guestSessionId },
 		});
 	}
@@ -308,7 +307,6 @@ export const claimRouter = createTRPCRouter({
 					await notifyGhostClaimedByGuest(
 						globalDb,
 						guestSession.projectId,
-						guestSession.name,
 						guestSession.id,
 						input.shadowId,
 					);

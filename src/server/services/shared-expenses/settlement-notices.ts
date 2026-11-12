@@ -13,7 +13,6 @@ import type {
 import {
 	type CreateNotificationParams,
 	createNotification,
-	resolveParticipantName,
 } from "~/server/services/notifications";
 import type { NotificationType } from "~prisma";
 import {
@@ -42,7 +41,7 @@ export async function tellSettlementRecorded(
 	ids: NoticeData,
 	currencies = 1,
 ): Promise<void> {
-	const actor = await resolveParticipantName("user", userId);
+	const actor = { type: "user", id: userId } as const;
 	const amount = paid && { money: paid, currencies };
 	const notification: CreateNotificationParams = sides.recordedByPayee
 		? {
@@ -78,13 +77,12 @@ export async function tellGroupCounterparty(
 ): Promise<void> {
 	const other = groupCounterparty(rows, senderId);
 	if (other?.participantType !== "user") return;
-	const actor = await resolveParticipantName("user", senderId);
 	createNotification({
 		userId: other.participantId,
 		type: notice.type,
 		notice: {
 			kind: notice.kind,
-			actor,
+			actor: { type: "user", id: senderId },
 			amount: groupNoticeAmount(rows, other.participantId),
 		},
 		data: notice.data,

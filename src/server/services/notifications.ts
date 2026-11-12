@@ -4,10 +4,13 @@ import { db } from "~/server/db";
 import { renderNoticeEmail } from "~/server/services/notice-email";
 import { sendEmail } from "~/server/mailer";
 import {
+	type ActorRef,
 	buildNoticeText,
 	NOTICE_DATA_KEYS,
 	type Notice,
 	type NoticeData,
+	type NoticeReader,
+	parseStoredNotice,
 } from "~/server/services/notification-text";
 import { InvalidCursorError } from "~/server/services/api-v1/cursor";
 import type { NotificationType } from "~prisma";
@@ -29,7 +32,11 @@ const EMAIL_ON_BY_DEFAULT = new Set<NotificationType>([
 export interface CreateNotificationParams {
 	userId: string;
 	type: NotificationType;
-	/** What happened. The text is made from it in notification-text.ts, never passed in. */
+	/**
+	 * What happened. It is stored as ids, codes and minor amounts, and the
+	 * in-app text is made from it when the notification is read
+	 * (presentNotifications); the email text is made here, at send time.
+	 */
 	notice: Notice;
 	/** Ids the app opens the notification by. No names or free text. */
 	data?: NoticeData;
@@ -62,15 +69,15 @@ export async function createNotification(
 			where: { id: userId },
 			select: { email: true, language: true, numberFormat: true },
 		});
-		const text = await buildNoticeText(notice, user ?? {});
-		const { title, body } = text;
-		// Only the listed ids, whatever a caller handed over; the edit summary
-		// is made here from the notice, never passed in.
+		// Only the listed ids, whatever a caller handed over, and the notice
+		// itself: no name and no sentence is stored. The columns stay NOT NULL
+		// and hold "", so a server that reads them older than this one shows
+		// blank text instead of failing.
 		const stored = {
 			...Object.fromEntries(
 				Object.entries(data ?? {}).filter(([key]) => NOTICE_DATA_KEYS.has(key)),
 			),
-			...(text.changes ? { changes: text.changes } : {}),
+			notice,
 		};
 
 		if (inApp) {
@@ -78,12 +85,10 @@ export async function createNotification(
 				data: {
 					userId,
 					type,
-					title,
-					body,
+					title: "",
+					body: "",
 					// JSON.parse(JSON.stringify(...)) ensures a pure JSON value for Prisma
-					...(Object.keys(stored).length > 0
-						? { data: JSON.parse(JSON.stringify(stored)) as object }
-						: {}),
+					data: JSON.parse(JSON.stringify(stored)) as object,
 				},
 			});
 		}
@@ -105,6 +110,10 @@ export async function createNotification(
 					};
 				}
 
+				const actorName = notice.actor
+					? await resolveParticipantName(notice.actor.type, notice.actor.id)
+					: null;
+				const text = await buildNoticeText(notice, user, actorName);
 				const email = await renderNoticeEmail(text, user, { unsubscribeUrl });
 				await sendEmail(
 					user.email,
@@ -233,6 +242,110 @@ export async function listNotifications(
 		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 		take: page.take,
 	});
+}
+
+/** The language and number format the reader sees text in right now. */
+export async function loadNoticeReader(
+	userDb: UserDb,
+	userId: string,
+): Promise<NoticeReader> {
+	const user = await userDb.user.findUnique({
+		where: { id: userId },
+		select: { language: true, numberFormat: true },
+	});
+	return user ?? {};
+}
+
+/** Display names by "type:id". A missing key is a person who is gone. */
+async function loadActorNames(
+	actors: readonly ActorRef[],
+): Promise<Map<string, string>> {
+	const ids = (type: ActorRef["type"]) => [
+		...new Set(
+			actors
+				.filter(
+					(a) =>
+						a.type === type &&
+						a.id !== "DELETED_USER" &&
+						a.id !== "DELETED_GUEST",
+				)
+				.map((a) => a.id),
+		),
+	];
+	const [userIds, shadowIds, guestIds] = [
+		ids("user"),
+		ids("shadow"),
+		ids("guest"),
+	];
+	const [users, shadows, guests] = await Promise.all([
+		userIds.length > 0
+			? db.user.findMany({
+					where: { id: { in: userIds } },
+					select: { id: true, name: true },
+				})
+			: [],
+		shadowIds.length > 0
+			? db.shadowProfile.findMany({
+					where: { id: { in: shadowIds } },
+					select: { id: true, name: true },
+				})
+			: [],
+		guestIds.length > 0
+			? db.guestSession.findMany({
+					where: { id: { in: guestIds } },
+					select: { id: true, name: true },
+				})
+			: [],
+	]);
+	const names = new Map<string, string>();
+	for (const [type, rows] of [
+		["user", users],
+		["shadow", shadows],
+		["guest", guests],
+	] as const)
+		for (const row of rows) if (row.name) names.set(`${type}:${row.id}`, row.name);
+	return names;
+}
+
+/**
+ * Notification rows as the reader sees them. A row made by createNotification
+ * keeps no text: its title and body are worded here, from `data.notice`, with
+ * the actor's current name ("Someone" once that person is gone) in the
+ * reader's current language and number format. The edit summary goes back
+ * into `data.changes` and `data.notice` is not returned. A row from before
+ * that (no `data.notice`) comes back as stored.
+ */
+export async function presentNotifications<
+	T extends { title: string; body: string; data: unknown },
+>(rows: T[], reader: NoticeReader): Promise<T[]> {
+	const parsed = rows.map((row) => {
+		const data =
+			row.data && typeof row.data === "object" && !Array.isArray(row.data)
+				? (row.data as Record<string, unknown>)
+				: null;
+		return { row, data, notice: parseStoredNotice(data?.notice) };
+	});
+	const actors = parsed.flatMap((p) => (p.notice?.actor ? [p.notice.actor] : []));
+	const names =
+		actors.length > 0 ? await loadActorNames(actors) : new Map<string, string>();
+	return Promise.all(
+		parsed.map(async ({ row, data, notice }) => {
+			if (!notice || !data) return row;
+			const text = await buildNoticeText(
+				notice,
+				reader,
+				notice.actor ? (names.get(`${notice.actor.type}:${notice.actor.id}`) ?? null) : null,
+			);
+			const ids = { ...data };
+			delete ids.notice;
+			return {
+				...row,
+				title: text.title,
+				body: text.body,
+				data: text.changes ? { ...ids, changes: text.changes } : ids,
+			};
+		}),
+	);
 }
 
 export function countUnreadNotifications(userDb: UserDb, userId: string) {

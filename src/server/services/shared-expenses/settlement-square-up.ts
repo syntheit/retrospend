@@ -6,10 +6,7 @@
 import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { noticeMoney } from "~/server/services/notification-text";
-import {
-	createNotification,
-	resolveParticipantName,
-} from "~/server/services/notifications";
+import { createNotification } from "~/server/services/notifications";
 import {
 	assertRelationship,
 	lockPair,
@@ -190,14 +187,13 @@ export async function notifySquaredUp(
 	done: SquaredUp,
 ) {
 	if (input.toParticipant.participantType !== "user") return;
-	const myName = await resolveParticipantName("user", me.participantId);
 	const offset = noticeMoney(done.offset, input.currency);
 	createNotification({
 		userId: input.toParticipant.participantId,
 		type: "SETTLEMENT_RECEIVED",
 		notice: {
 			kind: "squaredUp",
-			actor: myName,
+			actor: { type: "user", id: me.participantId },
 			amount: offset && { money: offset, offset: true },
 		},
 		data: {

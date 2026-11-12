@@ -5,10 +5,7 @@
  * only after the undo commits.
  */
 import { noticeMoney } from "~/server/services/notification-text";
-import {
-	createNotification,
-	resolveParticipantName,
-} from "~/server/services/notifications";
+import { createNotification } from "~/server/services/notifications";
 
 interface Restored {
 	id: string;
@@ -25,7 +22,6 @@ export async function noticeRestored(
 	restored: Restored,
 	actorUserId: string,
 ): Promise<void> {
-	const actorName = await resolveParticipantName("user", actorUserId);
 	const { currency } = restored;
 	const total = noticeMoney(restored.amount, currency);
 	for (const sp of restored.splitParticipants) {
@@ -37,7 +33,7 @@ export async function noticeRestored(
 			type: "EXPENSE_SPLIT",
 			notice: {
 				kind: "expenseSplit",
-				actor: actorName,
+				actor: { type: "user", id: actorUserId },
 				amount: share && { money: share },
 				total,
 			},

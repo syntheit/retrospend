@@ -10,10 +10,7 @@
  * commits, so a preview tells nobody.
  */
 import type { NoticeKind } from "~/server/services/notification-text";
-import {
-	createNotification,
-	resolveParticipantName,
-} from "~/server/services/notifications";
+import { createNotification } from "~/server/services/notifications";
 
 export type CorrectionNoticeKind =
 	| "FIX_REQUESTED"
@@ -49,11 +46,10 @@ export interface CorrectionNotice {
 export function noticeSender(notice: CorrectionNotice): () => Promise<void> {
 	return async () => {
 		const { type, kind } = NOTICE[notice.kind];
-		const name = await resolveParticipantName("user", notice.from);
 		await createNotification({
 			userId: notice.to,
 			type,
-			notice: { kind, actor: name },
+			notice: { kind, actor: { type: "user", id: notice.from } },
 			data: {
 				kind: notice.kind,
 				transactionId: notice.transactionId,

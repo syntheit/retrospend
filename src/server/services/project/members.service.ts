@@ -149,11 +149,13 @@ async function notifyAddedUser(
 	projectId: string,
 	addedUserId: string,
 ) {
-	const actorName = await resolveParticipantName("user", userId);
 	createNotification({
 		userId: addedUserId,
 		type: "PARTICIPANT_ADDED",
-		notice: { kind: "addedToProject", actor: actorName },
+		notice: {
+			kind: "addedToProject",
+			actor: { type: "user", id: userId },
+		},
 		data: { projectId },
 	}).catch((err) =>
 		console.error("[Notification Error] PARTICIPANT_ADDED:", err),
@@ -386,11 +388,13 @@ export async function transferOwnership(
 		return { success: true };
 	});
 
-	const callerName = await resolveParticipantName("user", userId);
 	void createNotification({
 		userId: newOwnerId,
 		type: "PARTICIPANT_ADDED",
-		notice: { kind: "ownershipTransferred", actor: callerName },
+		notice: {
+			kind: "ownershipTransferred",
+			actor: { type: "user", id: userId },
+		},
 		data: { projectId },
 	});
 	return result;
