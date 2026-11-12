@@ -14,13 +14,13 @@ import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
 import { forUser } from "~/server/services/preview";
 import { defaultTimeZone } from "~/server/services/user-time-zone";
 import {
-	adminDb,
 	asKey,
 	asMobile,
 	call,
 	createTestUser,
 	expectBody,
 	expectProblem,
+	fixtureDb,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -67,7 +67,7 @@ describe("Home reads over v1", () => {
 		);
 		expect(empty.items.some((i) => i.type === "recurring.overdue")).toBe(false);
 
-		await adminDb.recurringTemplate.create({
+		await fixtureDb.recurringTemplate.create({
 			data: {
 				userId,
 				name: "Overdue rent",
@@ -102,7 +102,7 @@ describe("Home reads over v1", () => {
 	it("reads the glance with tagged figures and no budget part without a book", async () => {
 		const user = (await createTestUser()).user.id;
 		const mine = await asMobile(user);
-		const cat = await adminDb.category.create({
+		const cat = await fixtureDb.category.create({
 			data: { userId: user, name: "Food", color: "teal" },
 		});
 		const made = await call("/expenses", {

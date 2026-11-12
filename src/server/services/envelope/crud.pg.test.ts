@@ -34,7 +34,7 @@ import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { forUser } from "~/server/services/preview";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import {
 	addRow,
 	augustBook,
@@ -326,7 +326,7 @@ describe("create and update an envelope", () => {
 	beforeAll(async () => {
 		b = await thisMonth();
 		cafe = (
-			await adminDb.category.create({
+			await fixtureDb.category.create({
 				data: { name: "Cafe", color: "blue", userId: b.user.id },
 			})
 		).id;

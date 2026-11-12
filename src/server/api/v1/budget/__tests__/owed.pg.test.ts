@@ -8,7 +8,7 @@ import { randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { getOwed } from "~/server/services/envelope/read.service";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import {
 	call,
@@ -241,7 +241,7 @@ describe("/api/v1/budget owed and splits", () => {
 
 	it("picks the category of a share and refuses a stale undo", async () => {
 		const sam = (await createTestUser()).user;
-		const food = await adminDb.category.create({
+		const food = await fixtureDb.category.create({
 			data: { name: "Food", color: "red", userId: sam.id },
 		});
 		const t = await split({

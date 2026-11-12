@@ -16,7 +16,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { createCallerFactory } from "~/server/api/trpc";
 import { arsUser, seedArsRates, TODAY } from "~/server/services/accounts/test-fixtures";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
 import { expenseRouter } from "../expense";
 import { wealthRouter } from "../wealth";
@@ -30,7 +30,7 @@ async function setup() {
 		db: adminDb,
 		headers: new Headers(),
 	};
-	const category = await adminDb.category.create({
+	const category = await fixtureDb.category.create({
 		data: { userId: user.id, name: "Travel", color: "teal", kind: "EXPENSE" },
 	});
 	return {
@@ -50,7 +50,7 @@ const hotel = (categoryId: string) => ({
 });
 
 const booked = (id: string) =>
-	adminDb.expense.findUniqueOrThrow({
+	fixtureDb.expense.findUniqueOrThrow({
 		where: { id },
 		select: { rateType: true, homeRate: true, homeAmount: true },
 	});
@@ -108,7 +108,7 @@ describe("a wealth account's rate", () => {
 			exchangeRate: "1560.123456",
 		});
 		const stored = () =>
-			adminDb.assetAccount.findUniqueOrThrow({ where: { id: made.id } });
+			fixtureDb.assetAccount.findUniqueOrThrow({ where: { id: made.id } });
 		expect((await stored()).exchangeRate?.toString()).toBe("1560.123456");
 
 		// The old Update balance dialog sends the stored rate back with the balance.

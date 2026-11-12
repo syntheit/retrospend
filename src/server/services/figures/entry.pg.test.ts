@@ -11,7 +11,7 @@
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import { readFigures } from "~/server/figures/read";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 
 let ana: Awaited<ReturnType<typeof createTestUser>>;
 let ben: Awaited<ReturnType<typeof createTestUser>>;
@@ -28,7 +28,7 @@ beforeAll(async () => {
 			where: { id: u.user.id },
 			data: { homeCurrency: "ARS" },
 		});
-	const expense = await adminDb.expense.create({
+	const expense = await fixtureDb.expense.create({
 		data: {
 			userId: ana.user.id,
 			title: "Cafe",

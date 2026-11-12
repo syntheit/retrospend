@@ -30,6 +30,7 @@ import {
 	allSendersConfig,
 	appendOutboxEvent,
 	deliveriesOf,
+	fixtureDb,
 	recordingSenders,
 	sweepUntilPushed,
 } from "./pg-fixtures";
@@ -337,14 +338,18 @@ describe("push worker", () => {
 			await processDuePushes({ config, senders, now: T0 });
 
 			expect(
-				await adminDb.pushDevice.findUnique({ where: { id: dead.device.id } }),
+				await fixtureDb.pushDevice.findUnique({
+					where: { id: dead.device.id },
+				}),
 			).toBeNull();
 			expect(
 				await adminDb.pushDelivery.findUnique({ where: { id: gone.id } }),
 			).toBeNull();
 			expect((await fresh(kept.id)).status).toBe("SENT");
 			expect(
-				await adminDb.pushDevice.findUnique({ where: { id: alive.device.id } }),
+				await fixtureDb.pushDevice.findUnique({
+					where: { id: alive.device.id },
+				}),
 			).not.toBeNull();
 		});
 
@@ -432,7 +437,7 @@ describe("push worker", () => {
 			const waiting = await fresh(delivery.id);
 
 			// The app registered a new token for the same device row.
-			await adminDb.pushDevice.update({
+			await fixtureDb.pushDevice.update({
 				where: { id: device.id },
 				data: { token: "ab".repeat(32) },
 			});
@@ -492,7 +497,7 @@ describe("push worker", () => {
 					expiresAt: new Date(T0.getTime() + 60_000),
 				},
 			});
-			await adminDb.pushDevice.update({
+			await fixtureDb.pushDevice.update({
 				where: { id: device.id },
 				data: { sessionId: session.id },
 			});
@@ -863,7 +868,7 @@ describe("push worker", () => {
 		});
 
 		const template = (over: Record<string, unknown>) =>
-			adminDb.recurringTemplate.create({
+			fixtureDb.recurringTemplate.create({
 				data: {
 					userId: person.user.id,
 					name: "Netflix, a very private name",

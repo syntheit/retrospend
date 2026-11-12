@@ -16,12 +16,12 @@ import { setupInput } from "~/server/services/envelope/__tests__/pg-fixture";
 import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
 import { forUser } from "~/server/services/preview";
 import {
-	adminDb,
 	asKey,
 	asMobile,
 	call,
 	expectBody,
 	expectProblem,
+	fixtureDb,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -106,13 +106,13 @@ describe("/api/v1/income", () => {
 
 	it("previews the same write without booking it", async () => {
 		const before = await balanceOf(savings);
-		const rows = await adminDb.expense.count({ where: { userId } });
+		const rows = await fixtureDb.expense.count({ where: { userId } });
 		const preview = await expectBody<Preview>(
 			await post("/income/preview", input({ title: "Bonus", amount: "300" })),
 			c.previewCreate,
 		);
 		expect(await balanceOf(savings)).toBe(before);
-		expect(await adminDb.expense.count({ where: { userId } })).toBe(rows);
+		expect(await fixtureDb.expense.count({ where: { userId } })).toBe(rows);
 		const worth = preview.changes.find((x) => x.id === "netWorth");
 		expect(worth?.delta).toEqual({ minor: 30_000, currency: "ARS" });
 
@@ -146,7 +146,7 @@ describe("/api/v1/income", () => {
 		const planned = (await arsUser()).user.id;
 		const wallet = await openAccount(planned, "Wallet", "CASH", "ARS", 0);
 		const category = (name: string) =>
-			adminDb.category
+			fixtureDb.category
 				.create({ data: { name, color: "blue", userId: planned } })
 				.then((made) => made.id);
 		await forUser(planned).apply(setupEnvelopeBook, {
@@ -203,7 +203,7 @@ describe("/api/v1/income", () => {
 		expect(second.headers.get("idempotent-replayed")).toBe("true");
 		expect(await second.json()).toEqual(await first.json());
 		await expect(
-			adminDb.expense.count({ where: { userId, title: "Once only" } }),
+			fixtureDb.expense.count({ where: { userId, title: "Once only" } }),
 		).resolves.toBe(1);
 	});
 
@@ -222,14 +222,14 @@ describe("/api/v1/income", () => {
 			redo: string;
 		}>(await post("/income/undo", { token: made.undo }), c.undo);
 		expect(undone.id).toBe(id);
-		await expect(adminDb.expense.count({ where: { id } })).resolves.toBe(0);
+		await expect(fixtureDb.expense.count({ where: { id } })).resolves.toBe(0);
 		expect(Number(await balanceOf(savings))).toBe(Number(after) - 100);
 
 		await expectBody(
 			await post("/income/undo", { token: undone.redo }),
 			c.undo,
 		);
-		await expect(adminDb.expense.count({ where: { id } })).resolves.toBe(1);
+		await expect(fixtureDb.expense.count({ where: { id } })).resolves.toBe(1);
 		expect(await balanceOf(savings)).toBe(after);
 	});
 
@@ -247,7 +247,7 @@ describe("/api/v1/income", () => {
 		);
 		const templateId = made.income.templateId;
 		expect(templateId).toBeTruthy();
-		const template = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const template = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id: templateId as string },
 		});
 		expect(template.direction).toBe("IN");
@@ -266,7 +266,9 @@ describe("/api/v1/income", () => {
 		});
 		await expectBody(res, c.delete);
 		await expect(
-			adminDb.recurringTemplate.count({ where: { id: templateId as string } }),
+			fixtureDb.recurringTemplate.count({
+				where: { id: templateId as string },
+			}),
 		).resolves.toBe(0);
 	});
 
@@ -285,13 +287,13 @@ describe("/api/v1/income", () => {
 			c.delete,
 		);
 		await expect(
-			adminDb.expense.count({ where: { id: deleted.id } }),
+			fixtureDb.expense.count({ where: { id: deleted.id } }),
 		).resolves.toBe(0);
 		await expectBody(
 			await post("/income/undo", { token: deleted.undo }),
 			c.undo,
 		);
-		const back = await adminDb.expense.findUniqueOrThrow({
+		const back = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: deleted.id },
 		});
 		expect(back.title).toBe("Delete me");

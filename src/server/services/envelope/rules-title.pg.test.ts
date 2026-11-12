@@ -28,7 +28,7 @@ import { TextUnavailableError } from "~/server/crypto/field-open";
 import { userTransaction } from "~/server/db-tx";
 import { evictDataKeyring } from "~/server/services/keys/data-key.service";
 import { forUser } from "~/server/services/preview";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { sealedFile, sealText } from "~/test/sealed-fixture";
 import { addRow, seedUser, setupInput } from "./__tests__/pg-fixture";
 import { applyRuleToMonth } from "./rule-crud.service";
@@ -98,7 +98,7 @@ async function income(s: Seeded, title: string, sealed: boolean) {
 		direction: "IN",
 		inType: "INCOME",
 	});
-	await adminDb.expense.update({ where: { id: row.id }, data: { title } });
+	await fixtureDb.expense.update({ where: { id: row.id }, data: { title } });
 	if (sealed)
 		await sealText(
 			master.ring as Keyring,

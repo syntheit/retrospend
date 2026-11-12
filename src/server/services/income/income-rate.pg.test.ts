@@ -10,7 +10,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { forUser } from "~/server/services/preview";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { type AddIncomeInput, addIncome } from "./add.mutation";
 import { deleteIncome } from "./delete.mutation";
 
@@ -24,7 +24,7 @@ async function usdUser() {
 }
 
 const row = (id: string) =>
-	adminDb.expense.findUniqueOrThrow({
+	fixtureDb.expense.findUniqueOrThrow({
 		where: { id },
 		select: {
 			rateType: true,
@@ -65,7 +65,7 @@ describe("income.add with a typed rate", () => {
 		};
 		await expect(forUser(userId).apply(addIncome, mnt)).rejects.toThrow();
 		expect(
-			await adminDb.expense.count({ where: { userId, title: "Feria" } }),
+			await fixtureDb.expense.count({ where: { userId, title: "Feria" } }),
 		).toBe(0);
 
 		const typed = await forUser(userId).apply(addIncome, {

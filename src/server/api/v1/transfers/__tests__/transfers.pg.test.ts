@@ -14,12 +14,12 @@ import {
 	seedArsRates,
 } from "~/server/services/accounts/test-fixtures";
 import {
-	adminDb,
 	asKey,
 	asMobile,
 	call,
 	expectBody,
 	expectProblem,
+	fixtureDb,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -220,7 +220,7 @@ describe("/api/v1/transfers", () => {
 		// Between two of your own accounts, net worth stays put.
 		expect(preview.changes.find((x) => x.id === "netWorth")).toBeUndefined();
 		expect(preview.unchanged.map((x) => x.id)).toContain("netWorth");
-		await expect(adminDb.transfer.count({ where: { id } })).resolves.toBe(1);
+		await expect(fixtureDb.transfer.count({ where: { id } })).resolves.toBe(1);
 
 		const deleted = await expectBody<{ id: string; undo: string }>(
 			await call(`/transfers/${id}`, {
@@ -230,12 +230,12 @@ describe("/api/v1/transfers", () => {
 			}),
 			c.delete,
 		);
-		await expect(adminDb.transfer.count({ where: { id } })).resolves.toBe(0);
+		await expect(fixtureDb.transfer.count({ where: { id } })).resolves.toBe(0);
 		await expectBody(
 			await post("/transfers/undo", { token: deleted.undo }),
 			c.undo,
 		);
-		await expect(adminDb.transfer.count({ where: { id } })).resolves.toBe(1);
+		await expect(fixtureDb.transfer.count({ where: { id } })).resolves.toBe(1);
 	});
 
 	it("keeps accounts and transfers to their owner", async () => {

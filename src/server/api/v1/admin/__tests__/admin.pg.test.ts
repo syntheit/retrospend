@@ -16,6 +16,7 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
+	fixtureDb,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -48,7 +49,7 @@ describe("/api/v1/admin", () => {
 		bob = (await createTestUser()).user.id;
 		asAdmin = await asKey(admin, ["admin"]);
 		asBob = await asKey(bob, ["read", "write:settings"]);
-		await adminDb.expense.create({
+		await fixtureDb.expense.create({
 			data: {
 				userId: bob,
 				title: SECRET,

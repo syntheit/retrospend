@@ -8,7 +8,7 @@
 import { randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import {
 	call,
 	expectBody,
@@ -55,7 +55,7 @@ describe("deleting an account is undoable", () => {
 	};
 	/** Everything the account owns and everything that points at it. */
 	const state = async (id: string) => ({
-		account: await adminDb.assetAccount.findUnique({ where: { id } }),
+		account: await fixtureDb.assetAccount.findUnique({ where: { id } }),
 		snapshots: await adminDb.assetSnapshot.findMany({
 			where: { accountId: id },
 			orderBy: { date: "asc" },
@@ -72,7 +72,7 @@ describe("deleting an account is undoable", () => {
 			where: { accountId: id },
 			orderBy: { id: "asc" },
 		}),
-		transfers: await adminDb.transfer.findMany({
+		transfers: await fixtureDb.transfer.findMany({
 			where: { OR: [{ fromAccountId: id }, { toAccountId: id }] },
 			orderBy: { id: "asc" },
 		}),
@@ -119,7 +119,7 @@ describe("deleting an account is undoable", () => {
 		const otherBefore = await state(other);
 		expect(before.legs.length).toBeGreaterThan(1);
 		expect(before.transfers.length).toBe(2);
-		const worth = await adminDb.assetAccount.findUniqueOrThrow({
+		const worth = await fixtureDb.assetAccount.findUniqueOrThrow({
 			where: { id },
 		});
 
@@ -141,7 +141,7 @@ describe("deleting an account is undoable", () => {
 			c.previewUndo,
 		);
 		expect(dry.detail?.kind).toBe("account.undelete");
-		expect(await adminDb.assetAccount.count({ where: { id } })).toBe(0);
+		expect(await fixtureDb.assetAccount.count({ where: { id } })).toBe(0);
 
 		const undone = await expectBody<{
 			result: { kind: string; result: { id: string } };
@@ -152,7 +152,8 @@ describe("deleting an account is undoable", () => {
 		expect(await state(id)).toEqual(before);
 		expect(await state(other)).toEqual(otherBefore);
 		expect(
-			(await adminDb.assetAccount.findUniqueOrThrow({ where: { id } })).balance,
+			(await fixtureDb.assetAccount.findUniqueOrThrow({ where: { id } }))
+				.balance,
 		).toEqual(worth.balance);
 		expect((await items()).find((a) => a.id === id)).toBeDefined();
 	});
@@ -178,19 +179,19 @@ describe("deleting an account is undoable", () => {
 			400,
 			"bad_request",
 		);
-		expect(await adminDb.assetAccount.count({ where: { id } })).toBe(0);
+		expect(await fixtureDb.assetAccount.count({ where: { id } })).toBe(0);
 
 		await expectBody(
 			await send("POST", "/accounts/undo", { token: deleted.undo }),
 			c.undo,
 		);
-		expect(await adminDb.assetAccount.count({ where: { id } })).toBe(1);
+		expect(await fixtureDb.assetAccount.count({ where: { id } })).toBe(1);
 		await expectProblem(
 			await send("POST", "/accounts/undo", { token: deleted.undo }),
 			409,
 			"conflict",
 		);
-		expect(await adminDb.assetAccount.count({ where: { id } })).toBe(1);
+		expect(await fixtureDb.assetAccount.count({ where: { id } })).toBe(1);
 	});
 
 	it("refuses an undo whose stash is gone or whose moves are gone since", async () => {
@@ -200,7 +201,7 @@ describe("deleting an account is undoable", () => {
 			c.delete,
 		);
 		// The move between the two is deleted from the other side meanwhile.
-		const move = await adminDb.transfer.findFirstOrThrow({
+		const move = await fixtureDb.transfer.findFirstOrThrow({
 			where: { OR: [{ fromAccountId: null }, { toAccountId: null }], userId },
 			orderBy: { createdAt: "desc" },
 		});
@@ -210,7 +211,7 @@ describe("deleting an account is undoable", () => {
 			409,
 			"conflict",
 		);
-		expect(await adminDb.assetAccount.count({ where: { id } })).toBe(0);
+		expect(await fixtureDb.assetAccount.count({ where: { id } })).toBe(0);
 		// The refusal frees the stash and the token: nothing was taken.
 		await adminDb.idempotencyKey.deleteMany({
 			where: { userId, key: { startsWith: "undo-stash:" } },
@@ -246,16 +247,19 @@ describe("deleting an account is undoable", () => {
 				await send("POST", `/accounts/${id}/delete`, { id }),
 				c.delete,
 			);
-			const income = await adminDb.expense.findFirstOrThrow({
+			const income = await fixtureDb.expense.findFirstOrThrow({
 				where: { userId, title: `Pay ${what}` },
 			});
-			await adminDb.expense.update({ where: { id: income.id }, data: change });
+			await fixtureDb.expense.update({
+				where: { id: income.id },
+				data: change,
+			});
 			await expectProblem(
 				await send("POST", "/accounts/undo", { token: deleted.undo }),
 				409,
 				"conflict",
 			);
-			expect(await adminDb.assetAccount.count({ where: { id } })).toBe(0);
+			expect(await fixtureDb.assetAccount.count({ where: { id } })).toBe(0);
 		},
 	);
 });

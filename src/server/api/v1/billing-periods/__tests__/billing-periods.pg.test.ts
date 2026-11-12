@@ -8,7 +8,7 @@
 import { randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import {
 	arsUser,
 	ref,
@@ -75,7 +75,7 @@ describe("/api/v1 billing periods", () => {
 			["Rent", "1000", "ARS", "Home"],
 			["Fee", "20", "USD", "Home"],
 		] as const) {
-			const category = await adminDb.category.upsert({
+			const category = await fixtureDb.category.upsert({
 				where: { id: `${sofia.user.id}-home` },
 				create: {
 					id: `${sofia.user.id}-home`,

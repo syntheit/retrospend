@@ -19,7 +19,7 @@ import {
 	type FigureDb,
 } from "~/server/figures/registry";
 import { evictInstanceKeyring } from "~/server/services/keys/instance-key.service";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { userTransactionRunner } from "./index";
 import { createPreviewRunner } from "./runner";
 import type { MoneyMutation } from "./types";
@@ -73,7 +73,7 @@ afterEach(() => vi.restoreAllMocks());
 describe("a preview with a master key", () => {
 	it("loads keys read-only before it opens, and mints nothing", async () => {
 		const me = await createTestUser();
-		const category = await adminDb.category.create({
+		const category = await fixtureDb.category.create({
 			data: { userId: me.user.id, name: `Seed ${randomUUID()}`, color: "blue" },
 		});
 		const runner = createPreviewRunner({

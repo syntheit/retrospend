@@ -10,7 +10,7 @@
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import { forUser } from "~/server/services/preview";
-import { adminDb } from "~/test/pg-harness";
+import { fixtureDb } from "~/test/pg-harness";
 import {
 	arsUser,
 	isoDay,
@@ -24,7 +24,7 @@ beforeAll(seedArsRates);
 
 async function form(over: Partial<ExpenseForm>) {
 	const { user } = await arsUser();
-	const c = await adminDb.category.create({
+	const c = await fixtureDb.category.create({
 		data: { userId: user.id, name: "Travel", color: "teal", kind: "EXPENSE" },
 	});
 	const id = crypto.randomUUID();
@@ -61,7 +61,7 @@ describe("expense preview: spending in the home currency", () => {
 			delta: { minor: 123_456_789 },
 		});
 		await forUser(userId).apply(createExpense, input);
-		const row = await adminDb.expense.findUniqueOrThrow({ where: { id } });
+		const row = await fixtureDb.expense.findUniqueOrThrow({ where: { id } });
 		expect(row.homeCurrency).toBe("ARS");
 		expect(row.homeAmount?.toString()).toBe("1234567.89");
 	});

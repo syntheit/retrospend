@@ -23,7 +23,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { forUser } from "~/server/services/preview";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import {
 	addRow,
@@ -181,7 +181,7 @@ describe("set a target", () => {
 		await expect(
 			adminDb.envelope.findUniqueOrThrow({ where: { id: b.diningEnv } }),
 		).resolves.toMatchObject({ kind: "BILL", targetRepeat: "MONTHLY" });
-		const spending = await adminDb.envelope.findFirstOrThrow({
+		const spending = await fixtureDb.envelope.findFirstOrThrow({
 			where: { bookId: b.bookId, name: "Spending" },
 		});
 		await expect(
@@ -268,7 +268,7 @@ describe("starting money", () => {
 		expect(b.startingMoneyConfirmedAt).not.toBeNull();
 		expect(b.startingBalanceExpenseId).toBe(a.value.expenseId);
 		await expect(
-			adminDb.expense.findUniqueOrThrow({
+			fixtureDb.expense.findUniqueOrThrow({
 				where: { id: a.value.expenseId as string },
 			}),
 		).resolves.toMatchObject({
@@ -328,7 +328,7 @@ describe("starting money", () => {
 		expect(sides.budget).toBe(sides.ledger);
 		// What the budget holds is what was said: 40,300 - 15,300.
 		expect(sides.budget).toBe(25_000);
-		const row = await adminDb.expense.findUniqueOrThrow({
+		const row = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: a.value.expenseId as string },
 		});
 		expect(row.date.toISOString()).toBe(`${p.value.since}T12:00:00.000Z`);
@@ -357,7 +357,7 @@ describe("starting money", () => {
 			alreadySpent: usd(-50_000),
 			expenseId: null,
 		});
-		const adj = await adminDb.expense.findUniqueOrThrow({
+		const adj = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: a.value.adjustmentId as string },
 		});
 		expect(adj).toMatchObject({ entryKind: "ADJUSTMENT", direction: "OUT" });
@@ -373,7 +373,7 @@ describe("starting money", () => {
 
 		await forUser(s.user.id).apply(undoChangeMutation, { id });
 		await expect(
-			adminDb.expense.count({ where: { id: adj.id } }),
+			fixtureDb.expense.count({ where: { id: adj.id } }),
 		).resolves.toBe(0);
 		expect(
 			(
@@ -529,7 +529,7 @@ describe("shares with no envelope", () => {
 				},
 			],
 		});
-		const spending = await adminDb.envelope.findFirstOrThrow({
+		const spending = await fixtureDb.envelope.findFirstOrThrow({
 			where: { book: { createdById: s.user.id }, name: "Spending" },
 		});
 		expect(read?.defaultEnvelopeId).toBe(spending.id);

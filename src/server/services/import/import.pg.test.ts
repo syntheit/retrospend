@@ -16,7 +16,8 @@
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { forUser } from "~/server/services/preview";
-import { adminDb } from "~/test/pg-harness";
+import { createUserScopedDb } from "~/server/db";
+import { adminDb, fixtureDb, sealedSuite } from "~/test/pg-harness";
 import type { Prisma } from "~prisma";
 import { CsvService } from "../csv.service";
 import {
@@ -68,10 +69,10 @@ const WARNINGS = [
 async function setup() {
 	const { user } = await arsUser();
 	const userId = user.id;
-	const groceries = await adminDb.category.create({
+	const groceries = await fixtureDb.category.create({
 		data: { userId, name: "Groceries", color: "emerald" },
 	});
-	const salary = await adminDb.category.create({
+	const salary = await fixtureDb.category.create({
 		data: { userId, name: "Salary", color: "teal", kind: "INCOME" },
 	});
 	const base = {
@@ -81,7 +82,7 @@ async function setup() {
 		pricingSource: "MANUAL",
 	};
 	// History: Coto was filed under Groceries; Cafe is already in Activity.
-	await adminDb.expense.createMany({
+	await fixtureDb.expense.createMany({
 		data: [
 			{
 				...base,
@@ -100,7 +101,7 @@ async function setup() {
 			},
 		],
 	});
-	const job = await adminDb.importJob.create({
+	const job = await fixtureDb.importJob.create({
 		data: {
 			userId,
 			status: "READY_FOR_REVIEW",
@@ -132,12 +133,16 @@ function choices(
 }
 
 const importedCount = (userId: string) =>
-	adminDb.expense.count({ where: { userId, pricingSource: "IMPORT" } });
+	fixtureDb.expense.count({ where: { userId, pricingSource: "IMPORT" } });
 
 describe("importReview", () => {
 	it("counts add up and every row carries what the import will save", async () => {
 		const s = await setup();
-		const review = await importReview(adminDb, s.userId, s.jobId);
+		const review = await importReview(
+			createUserScopedDb(s.userId),
+			s.userId,
+			s.jobId,
+		);
 
 		expect(review.counts).toEqual({
 			fileRows: 10,
@@ -181,10 +186,14 @@ describe("importReview", () => {
 
 	it("a file's category finds one saved with surrounding spaces or other case", async () => {
 		const s = await setup();
-		const typed = await adminDb.category.create({
+		const typed = await fixtureDb.category.create({
 			data: { userId: s.userId, name: " supermercado ", color: "teal" },
 		});
-		const review = await importReview(adminDb, s.userId, s.jobId);
+		const review = await importReview(
+			createUserScopedDb(s.userId),
+			s.userId,
+			s.jobId,
+		);
 		expect(review.rows.find((r) => r.index === 0)).toMatchObject({
 			categoryId: typed.id,
 			fileCategory: "Supermercado",
@@ -194,9 +203,14 @@ describe("importReview", () => {
 
 	it("a currency for every row drops the file's rates and books from the table", async () => {
 		const s = await setup();
-		const review = await importReview(adminDb, s.userId, s.jobId, {
-			currency: "usd",
-		});
+		const review = await importReview(
+			createUserScopedDb(s.userId),
+			s.userId,
+			s.jobId,
+			{
+				currency: "usd",
+			},
+		);
 		expect(review.currency).toBe("USD");
 		// Coto ARS 38,200 read as USD 38,200 at Blue: ARS 56,077,600.
 		expect(review.rows[0]).toMatchObject({
@@ -257,9 +271,8 @@ describe("import.commit", () => {
 			},
 		]);
 
-		const rows = await adminDb.expense.findMany({
+		const rows = await fixtureDb.expense.findMany({
 			where: { userId: s.userId, pricingSource: "IMPORT" },
-			orderBy: { title: "asc" },
 		});
 		const get = (title: string) => rows.find((r) => r.title === title);
 		expect(get("Amazon")).toMatchObject({
@@ -286,7 +299,7 @@ describe("import.commit", () => {
 		});
 		expect(get("Coto")?.categoryId).toBe(s.groceries);
 
-		const job = await adminDb.importJob.findUniqueOrThrow({
+		const job = await fixtureDb.importJob.findUniqueOrThrow({
 			where: { id: s.jobId },
 		});
 		expect(job).toMatchObject({
@@ -311,7 +324,7 @@ describe("import.commit", () => {
 			"already imported",
 		);
 
-		const again = await adminDb.importJob.create({
+		const again = await fixtureDb.importJob.create({
 			data: {
 				userId: s.userId,
 				status: "READY_FOR_REVIEW",
@@ -322,7 +335,11 @@ describe("import.commit", () => {
 				transactions: FILE as unknown as Prisma.InputJsonValue,
 			},
 		});
-		const review = await importReview(adminDb, s.userId, again.id);
+		const review = await importReview(
+			createUserScopedDb(s.userId),
+			s.userId,
+			again.id,
+		);
 		// The five created plus the coffee that was there before.
 		expect(review.counts.duplicates).toBe(6);
 	});
@@ -375,7 +392,11 @@ describe("import.undo", () => {
 				.map((c) => `${c.currency} ${c.delta.minor}`);
 		expect(spentOf(undone)).toEqual(["ARS -3320000", "USD -1000"]);
 		expect(spentOf(applied)).toEqual(["ARS 3320000", "USD 1000"]);
-		const review = await importReview(adminDb, s.userId, s.jobId);
+		const review = await importReview(
+			createUserScopedDb(s.userId),
+			s.userId,
+			s.jobId,
+		);
 		expect(review.counts.duplicates).toBe(1);
 		await expect(
 			forUser(s.userId).apply(undoImport, { jobId: s.jobId }),
@@ -386,7 +407,7 @@ describe("import.undo", () => {
 describe("import.commit text", () => {
 	it("stores the file's text without control characters, and nothing else changed", async () => {
 		const { user } = await arsUser();
-		const job = await adminDb.importJob.create({
+		const job = await fixtureDb.importJob.create({
 			data: {
 				userId: user.id,
 				status: "READY_FOR_REVIEW",
@@ -412,7 +433,7 @@ describe("import.commit text", () => {
 				{ index: 1, keep: true, categoryId: null, kind: "expense" },
 			],
 		});
-		const rows = await adminDb.expense.findMany({
+		const rows = await fixtureDb.expense.findMany({
 			where: { userId: user.id },
 			orderBy: { amount: "desc" },
 		});
@@ -426,7 +447,7 @@ describe("import.commit text", () => {
 describe("import.commit text that starts with U+0001", () => {
 	it("leaves a row whose text is an encrypted value out, counts it unreadable, and imports the rest", async () => {
 		const { user } = await arsUser();
-		const job = await adminDb.importJob.create({
+		const job = await fixtureDb.importJob.create({
 			data: {
 				userId: user.id,
 				status: "READY_FOR_REVIEW",
@@ -459,7 +480,9 @@ describe("import.commit text that starts with U+0001", () => {
 			created: 1,
 			unreadable: 3,
 		});
-		const rows = await adminDb.expense.findMany({ where: { userId: user.id } });
+		const rows = await fixtureDb.expense.findMany({
+			where: { userId: user.id },
+		});
 		expect(rows.map((r) => r.title)).toEqual(["Coffee"]);
 		expect(JSON.stringify(rows)).not.toContain("k1:");
 	});
@@ -468,8 +491,8 @@ describe("import.commit text that starts with U+0001", () => {
 describe("a stored title that starts with U+0001", () => {
 	// A row from before the rule is just text with a control character in it.
 	// The user's client treats a leading U+0001 as ciphertext (field-open.ts)
-	// and fails the read, never hiding it (malformed with a key; here, with no
-	// master key set, master_key_missing), so the pre-upgrade scan
+	// and fails the read, never hiding it (malformed with a key, as in the
+	// sealed suite; with no master key set, master_key_missing), so the pre-upgrade scan
 	// (scripts/scan-control-chars.ts --fail) must find no such row.
 	it("fails the CSV import instead of reading it as text", async () => {
 		const { user, db } = await arsUser();
@@ -484,7 +507,7 @@ describe("a stored title that starts with U+0001", () => {
 			status: "FINALIZED" as const,
 		};
 		// Stored raw: the clients refuse a write that starts like ciphertext.
-		const stored = await adminDb.expense.create({
+		const stored = await fixtureDb.expense.create({
 			data: { ...legacy, title: "Coffee" },
 		});
 		await adminDb.$executeRaw`UPDATE "expense" SET "title" = ${"\u0001Coffee"} WHERE "id" = ${stored.id}`;
@@ -509,7 +532,11 @@ describe("a stored title that starts with U+0001", () => {
 			],
 			{ timeZone: "UTC" },
 		);
-		await expect(csv).rejects.toMatchObject({ code: "master_key_missing" });
+		await expect(csv).rejects.toMatchObject({
+			code: sealedSuite ? "malformed" : "master_key_missing",
+		});
 		vi.restoreAllMocks();
+		// The planted value is no sealed cell: gone before the sealed sweep.
+		await adminDb.expense.delete({ where: { id: stored.id } });
 	});
 });

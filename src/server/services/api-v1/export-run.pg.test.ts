@@ -4,7 +4,7 @@
  * was built leaves no row and no file; a live one ends READY with its name.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { runExportJob } from "./export-run";
 
 const storage = vi.hoisted(() => ({
@@ -33,7 +33,7 @@ beforeEach(() => {
 
 async function queuedJob() {
 	const { user } = await createTestUser();
-	const job = await adminDb.exportJob.create({
+	const job = await fixtureDb.exportJob.create({
 		data: {
 			userId: user.id,
 			kind: "data",
@@ -49,7 +49,7 @@ describe("runExportJob", () => {
 	it("marks a live job READY with its file name", async () => {
 		const { userId, jobId } = await queuedJob();
 		await runExportJob(jobId, userId);
-		const job = await adminDb.exportJob.findUniqueOrThrow({
+		const job = await fixtureDb.exportJob.findUniqueOrThrow({
 			where: { id: jobId },
 		});
 		expect(job.status).toBe("READY");
@@ -62,7 +62,7 @@ describe("runExportJob", () => {
 		storage.deleteJobOnPut = true;
 		await runExportJob(jobId, userId);
 		expect(
-			await adminDb.exportJob.findUnique({ where: { id: jobId } }),
+			await fixtureDb.exportJob.findUnique({ where: { id: jobId } }),
 		).toBeNull();
 		expect(storage.removed).toEqual([`${userId}/${jobId}/file`]);
 	});

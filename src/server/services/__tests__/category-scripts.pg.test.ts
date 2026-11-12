@@ -24,7 +24,7 @@ import { blindIndexTag } from "~/server/crypto/blind-index";
 import type { Keyring } from "~/server/crypto/field-crypto";
 import { setSealingForTests } from "~/server/crypto/sealing";
 import { createUserScopedDb } from "~/server/db";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import {
 	newMasterKeyring,
 	resetInstanceKey,
@@ -81,7 +81,7 @@ describe("scripts/migrate-default-categories.ts, beyond the user's own rows", ()
 			await createTestUser(),
 			await createTestUser(),
 		];
-		const gas = await adminDb.category.create({
+		const gas = await fixtureDb.category.create({
 			data: { userId: ana.id, name: "Gas", color: "slate" },
 		});
 		// Ana filed it, then left the project: RLS hides it from her now.
@@ -122,7 +122,7 @@ describe("scripts/migrate-default-categories.ts, beyond the user's own rows", ()
 		});
 
 		await migrateUserCategories(ana.id, false);
-		const transport = await adminDb.category.findFirstOrThrow({
+		const transport = await fixtureDb.category.findFirstOrThrow({
 			where: { userId: ana.id, name: "Transport" },
 		});
 		expect(
@@ -137,7 +137,7 @@ describe("scripts/migrate-default-categories.ts, beyond the user's own rows", ()
 	it("as a dry run writes nothing and makes no key, sealing on", async () => {
 		// The rows from before the flip are plaintext.
 		const { user } = await createTestUser();
-		await adminDb.category.create({
+		await fixtureDb.category.create({
 			data: { userId: user.id, name: "Dining Out", color: "orange" },
 		});
 		setSealingForTests(() => true);
@@ -157,7 +157,7 @@ for (const sealingOn of [false, true]) {
 	describe(`scripts/migrate-default-categories.ts (${label})`, () => {
 		it("renames, merges and adds with an index, and a second run changes nothing", async () => {
 			const { user } = await createTestUser();
-			await adminDb.category.createMany({
+			await fixtureDb.category.createMany({
 				data: [
 					{ userId: user.id, name: "Dining Out", color: "orange" },
 					{ userId: user.id, name: "Gas", color: "slate" },

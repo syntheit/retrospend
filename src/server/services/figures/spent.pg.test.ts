@@ -37,7 +37,7 @@ import { dec } from "@retrospend/domain/precise-decimal";
 import { beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { ensureIncomeCategories } from "~/server/services/money-in.service";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import { loadSpentInputs, spentAt, spentIn } from "./spent";
 
@@ -62,7 +62,7 @@ type Exp = {
 };
 
 async function addExpense(userId: string, e: Exp) {
-	await adminDb.expense.create({
+	await fixtureDb.expense.create({
 		data: {
 			id: randomUUID(),
 			userId,
@@ -133,7 +133,7 @@ async function addShare(
 /** The device loader's input: every row of the person, read raw, with nothing filtered. */
 async function rawRows(userId: string) {
 	const expenses = (
-		await adminDb.expense.findMany({
+		await fixtureDb.expense.findMany({
 			where: { userId },
 			include: { category: { select: { kind: true } } },
 		})
@@ -203,7 +203,9 @@ beforeAll(async () => {
 		where: { id: userId },
 		data: { homeCurrency: "ARS", timeZone: BA },
 	});
-	const income = await ensureIncomeCategories(adminDb, userId);
+	const income = await userTransaction(adminDb, userId, (tx) =>
+		ensureIncomeCategories(tx, userId),
+	);
 	const salary = income.find((c) => c.name === "Salary")?.id;
 
 	const own = (e: Exp) => addExpense(userId, e);

@@ -3,7 +3,7 @@
  * no other pg file prices it, so the rates seeded here never move another
  * file's numbers in the shared run database.
  */
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 
 export const dkk = (minor: number) => ({ minor, currency: "DKK" });
@@ -40,7 +40,7 @@ export async function insightsUser(
 }
 
 export function category(userId: string, name: string) {
-	return adminDb.category
+	return fixtureDb.category
 		.create({ data: { name, color: "emerald", userId } })
 		.then((c) => c.id);
 }
@@ -59,7 +59,7 @@ export interface Row {
 export function row(userId: string, r: Row) {
 	const currency = r.currency ?? "DKK";
 	const kind = r.kind ?? "spending";
-	return adminDb.expense.create({
+	return fixtureDb.expense.create({
 		data: {
 			userId,
 			title: "Row",

@@ -15,7 +15,12 @@ import {
 } from "~/server/services/category.service";
 import { entryCatalog } from "~/server/services/entry/catalog";
 import { ensureIncomeCategories } from "~/server/services/money-in.service";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import {
+	adminDb,
+	createTestUser,
+	fixtureDb,
+	sealedSuite,
+} from "~/test/pg-harness";
 import { compareText, sortByText } from "../text-order";
 
 const NAMES = [
@@ -126,7 +131,7 @@ describe("compareText", () => {
 async function seedCategories(userId: string) {
 	const made = await Promise.all(
 		NAMES.map((name) =>
-			adminDb.category.create({ data: { name, color: "teal", userId } }),
+			fixtureDb.category.create({ data: { name, color: "teal", userId } }),
 		),
 	);
 	const byName = new Map(made.map((c) => [c.name, c.id]));
@@ -138,7 +143,7 @@ async function seedCategories(userId: string) {
 	];
 	for (const [name, count] of uses)
 		for (let i = 0; i < count; i++)
-			await adminDb.expense.create({
+			await fixtureDb.expense.create({
 				data: {
 					userId,
 					title: `${name} ${i}`,
@@ -153,7 +158,9 @@ async function seedCategories(userId: string) {
 			});
 }
 
-describe("category lists", () => {
+// The oracle is the old SQL over stored names, which the sealed suite
+// (PG_TEST_SEALED) seals: it runs only where the names are plaintext.
+describe.skipIf(sealedSuite)("category lists", () => {
 	it("by name pages like ORDER BY name, id with a keyset cursor", async () => {
 		const { user, db } = await createTestUser();
 		await seedCategories(user.id);
@@ -215,7 +222,7 @@ describe("category lists", () => {
 			made.set(
 				name,
 				(
-					await adminDb.assetAccount.create({
+					await fixtureDb.assetAccount.create({
 						data: {
 							userId: user.id,
 							name,

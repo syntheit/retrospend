@@ -13,7 +13,7 @@ import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
 import { ExpenseService } from "~/server/services/expense.service";
 import { forUser } from "~/server/services/preview";
 import { createTransfer } from "~/server/services/transfers/create.mutation";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import {
 	arsUser,
 	balanceOf,
@@ -84,7 +84,7 @@ describe("income.add", () => {
 		});
 		expect(await balanceOf(p.savings)).toBe("7950000");
 		expect(delta(result, "netWorth")).toEqual(ARS(295_000_000));
-		const row = await adminDb.expense.findUniqueOrThrow({
+		const row = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: result.value.expenseId },
 		});
 		expect(row).toMatchObject({
@@ -149,7 +149,7 @@ describe("income.add", () => {
 			repeats: { frequency: "MONTHLY" },
 		});
 
-		const template = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const template = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id: value.templateId ?? "" },
 		});
 		expect(template).toMatchObject({
@@ -157,7 +157,7 @@ describe("income.add", () => {
 			frequency: "MONTHLY",
 			name: "Salary",
 		});
-		const row = await adminDb.expense.findUniqueOrThrow({
+		const row = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: value.expenseId },
 		});
 		// The row sits at the zone's midnight (rowDateOf); its calendar day is read there.
@@ -188,17 +188,17 @@ describe("income.add", () => {
 		});
 
 		expect(await balanceOf(p.savings)).toBe("5000000");
-		expect(await adminDb.expense.count({ where: { userId: p.userId } })).toBe(
+		expect(await fixtureDb.expense.count({ where: { userId: p.userId } })).toBe(
 			0,
 		);
 		expect(
-			await adminDb.recurringTemplate.count({ where: { userId: p.userId } }),
+			await fixtureDb.recurringTemplate.count({ where: { userId: p.userId } }),
 		).toBe(0);
 
 		await forUser(p.userId).apply(addIncome, removed.value.recreate);
 		expect(await balanceOf(p.savings)).toBe("7950000");
 		expect(
-			await adminDb.expense.findUnique({ where: { id: value.expenseId } }),
+			await fixtureDb.expense.findUnique({ where: { id: value.expenseId } }),
 		).not.toBeNull();
 	});
 });
@@ -277,7 +277,7 @@ describe("income.moveIn (count only)", () => {
 		);
 		expect(await balanceOf(p.wise)).toBe("3840.55");
 		expect(await figureMinor(p.userId, "netWorth")).toBe(before);
-		const account = await adminDb.assetAccount.findUniqueOrThrow({
+		const account = await fixtureDb.assetAccount.findUniqueOrThrow({
 			where: { id: p.wise },
 		});
 		expect(account.countedUnits.toString()).toBe("0");
@@ -296,7 +296,7 @@ describe("income.moveIn (count only)", () => {
 		// Booked at MEP (2,898,000), though Wise values the dollars at Official (2,824,000).
 		expect(moved.value.amount).toEqual(income.booked);
 		expect(moved.value.amount).toEqual(ARS(289_800_000));
-		const row = await adminDb.expense.findUniqueOrThrow({
+		const row = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: income.expenseId },
 		});
 		// Dated today, in the same zone as the income itself.
@@ -335,7 +335,7 @@ describe("income.moveIn (count only)", () => {
 			effect: "enters",
 			minor: 73_000_000,
 		});
-		const wise = await adminDb.assetAccount.findUniqueOrThrow({
+		const wise = await fixtureDb.assetAccount.findUniqueOrThrow({
 			where: { id: p.wise },
 		});
 		expect(wise.countedUnits.toString()).toBe("0");
@@ -367,7 +367,7 @@ describe("income.moveIn (count only)", () => {
 	it("with an envelope budget, undoing one of two Move ins of the same account removes exactly that one", async () => {
 		const p = await places();
 		const cat = (name: string) =>
-			adminDb.category
+			fixtureDb.category
 				.create({ data: { name, color: "blue", userId: p.userId } })
 				.then((c) => c.id);
 		await forUser(p.userId).apply(setupEnvelopeBook, {
@@ -393,7 +393,7 @@ describe("income.moveIn (count only)", () => {
 		// A retry of the second Move in replays it: nothing counted twice.
 		const counted = async () =>
 			(
-				await adminDb.assetAccount.findUniqueOrThrow({ where: { id: p.wise } })
+				await fixtureDb.assetAccount.findUniqueOrThrow({ where: { id: p.wise } })
 			).countedUnits.toString();
 		const before = await counted();
 		const again = await forUser(p.userId).apply(moveIn, second);
@@ -411,7 +411,7 @@ describe("income.moveIn (count only)", () => {
 	it("with an envelope budget, Move in and a transfer out of the budget preview their budget change (R30)", async () => {
 		const p = await places();
 		const cat = (name: string) =>
-			adminDb.category
+			fixtureDb.category
 				.create({ data: { name, color: "blue", userId: p.userId } })
 				.then((c) => c.id);
 		await forUser(p.userId).apply(setupEnvelopeBook, {
@@ -453,7 +453,7 @@ describe("income.moveIn (count only)", () => {
 			vi.setSystemTime(new Date(now));
 			const p = await places();
 			const cat = (name: string) =>
-				adminDb.category
+				fixtureDb.category
 					.create({ data: { name, color: "blue", userId: p.userId } })
 					.then((c) => c.id);
 			await forUser(p.userId).apply(setupEnvelopeBook, {
@@ -480,7 +480,7 @@ describe("income.confirmRecurring", () => {
 		userId: string,
 		amountMode: "FIXED" | "ASK" = "FIXED",
 	) {
-		return adminDb.recurringTemplate.create({
+		return fixtureDb.recurringTemplate.create({
 			data: {
 				userId,
 				name: "Salary",
@@ -517,7 +517,7 @@ describe("income.confirmRecurring", () => {
 			reason: "no_envelope_budget",
 		});
 		expect(await balanceOf(p.wallet)).toBe("1850000");
-		const row = await adminDb.expense.findUniqueOrThrow({
+		const row = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: result.value.expenseId },
 		});
 		expect(row).toMatchObject({
@@ -525,7 +525,7 @@ describe("income.confirmRecurring", () => {
 			inType: "INCOME",
 			recurringTemplateId: template.id,
 		});
-		const advanced = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const advanced = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id: template.id },
 		});
 		expect(advanced.nextDueDate.getTime()).toBeGreaterThan(TODAY.getTime());
@@ -551,10 +551,10 @@ describe("income.confirmRecurring", () => {
 		});
 
 		expect(await balanceOf(p.wallet)).toBe("1000000");
-		expect(await adminDb.expense.count({ where: { userId: p.userId } })).toBe(
+		expect(await fixtureDb.expense.count({ where: { userId: p.userId } })).toBe(
 			0,
 		);
-		const back = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const back = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id: template.id },
 		});
 		expect(back.nextDueDate.getTime()).toBe(TODAY.getTime());

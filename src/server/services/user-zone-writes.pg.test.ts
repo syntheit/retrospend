@@ -16,7 +16,7 @@ import {
 	vi,
 } from "vitest";
 import { forUser } from "~/server/services/preview";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { openAccount, seedArsRatesOn } from "./accounts/test-fixtures";
 import {
 	revertBalanceUpdate,
@@ -64,7 +64,7 @@ describe("recurring.skip", () => {
 	const dueDate = new Date("2026-11-03T03:00:00Z");
 
 	async function template(userId: string) {
-		return adminDb.recurringTemplate.create({
+		return fixtureDb.recurringTemplate.create({
 			data: {
 				userId,
 				name: "Rent",
@@ -82,7 +82,7 @@ describe("recurring.skip", () => {
 		await expect(
 			forUser(userId).apply(skipRecurring, { templateId: id }),
 		).rejects.toMatchObject({ code: "CONFLICT" });
-		const row = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const row = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id },
 		});
 		expect(row.nextDueDate).toEqual(dueDate);
@@ -107,7 +107,7 @@ describe("income.add", () => {
 			currency: "ARS",
 			...(timeZone ? { timeZone } : {}),
 		});
-		const row = await adminDb.expense.findUniqueOrThrow({
+		const row = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: value.expenseId },
 		});
 		return row.date;
@@ -171,7 +171,7 @@ describe("recurring.create", () => {
 				nextDueDate: "2026-11-03",
 			},
 		});
-		const row = await adminDb.recurringTemplate.findUniqueOrThrow({
+		const row = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id: value.id },
 		});
 		return row.nextDueDate;
@@ -187,7 +187,7 @@ describe("recurring.confirm", () => {
 	const dueDate = new Date("2026-11-03T03:00:00Z");
 
 	async function template(userId: string) {
-		return adminDb.recurringTemplate.create({
+		return fixtureDb.recurringTemplate.create({
 			data: {
 				userId,
 				name: "Rent",
@@ -205,8 +205,8 @@ describe("recurring.confirm", () => {
 		await expect(
 			forUser(userId).apply(confirmRecurringExpense, { templateId: id }),
 		).rejects.toMatchObject({ code: "CONFLICT" });
-		expect(await adminDb.expense.count({ where: { userId } })).toBe(0);
-		const row = await adminDb.recurringTemplate.findUniqueOrThrow({
+		expect(await fixtureDb.expense.count({ where: { userId } })).toBe(0);
+		const row = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id },
 		});
 		expect(row.nextDueDate).toEqual(dueDate);
@@ -220,7 +220,7 @@ describe("recurring.confirm", () => {
 			timeZone: "Asia/Tokyo",
 		});
 		expect(value.dueAt).toEqual(dueDate);
-		expect(await adminDb.expense.count({ where: { userId } })).toBe(1);
+		expect(await fixtureDb.expense.count({ where: { userId } })).toBe(1);
 	});
 });
 
@@ -229,7 +229,7 @@ describe("income.confirmRecurring", () => {
 	const dueDate = new Date("2026-11-03T00:00:00Z");
 
 	async function template(userId: string) {
-		return adminDb.recurringTemplate.create({
+		return fixtureDb.recurringTemplate.create({
 			data: {
 				userId,
 				name: "Salary",
@@ -248,7 +248,7 @@ describe("income.confirmRecurring", () => {
 		await expect(
 			forUser(userId).apply(confirmRecurringIncome, { templateId: id }),
 		).rejects.toMatchObject({ code: "CONFLICT" });
-		expect(await adminDb.expense.count({ where: { userId } })).toBe(0);
+		expect(await fixtureDb.expense.count({ where: { userId } })).toBe(0);
 	});
 
 	it("is due when the input zone says it is Nov 3 there", async () => {
@@ -259,7 +259,7 @@ describe("income.confirmRecurring", () => {
 			timeZone: "UTC",
 		});
 		expect(value.dueAt).toEqual(dueDate);
-		expect(await adminDb.expense.count({ where: { userId } })).toBe(1);
+		expect(await fixtureDb.expense.count({ where: { userId } })).toBe(1);
 	});
 });
 

@@ -8,7 +8,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { readCurrencySpending } from "~/server/services/currency-spending.service";
 import { readRateHistory } from "~/server/services/rate-history.service";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 
 const day = (d: string) => new Date(`${d}T00:00:00Z`);
 const NOW = new Date("2026-10-04T12:00:00Z");
@@ -68,7 +68,7 @@ beforeAll(async () => {
 			},
 		],
 	});
-	await adminDb.expense.createMany({
+	await fixtureDb.expense.createMany({
 		data: [
 			{
 				userId: me.user.id,

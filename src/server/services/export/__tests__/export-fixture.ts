@@ -22,7 +22,7 @@
 import { randomUUID } from "node:crypto";
 import { exportRouter } from "~/server/api/routers/export";
 import { createCallerFactory } from "~/server/api/trpc";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import type { ParticipantType, SplitMode, VerificationStatus } from "~prisma";
 
 const createCaller = createCallerFactory(exportRouter);
@@ -141,7 +141,7 @@ export async function seedCordoba() {
 	await member("user", cam.user.id, "CONTRIBUTOR");
 	await member("shadow", sam.id, "CONTRIBUTOR");
 
-	const food = await adminDb.category.create({
+	const food = await fixtureDb.category.create({
 		data: { name: "Food", color: "blue", userId: ana.user.id },
 	});
 	const period = await adminDb.billingPeriod.create({
@@ -291,7 +291,7 @@ export async function seedCordoba() {
  * red (negative), and a wallet holding one satoshi-sized amount of ETH.
  */
 async function seedPersonalBook(userId: string, categoryId: string) {
-	await adminDb.expense.create({
+	await fixtureDb.expense.create({
 		data: {
 			userId,
 			title: "Alquiler",
@@ -305,7 +305,7 @@ async function seedPersonalBook(userId: string, categoryId: string) {
 		},
 	});
 	// 23:30 on Oct 7 in Buenos Aires (UTC-3) is already Oct 8 in UTC.
-	await adminDb.expense.create({
+	await fixtureDb.expense.create({
 		data: {
 			userId,
 			title: "Cena tarde",
@@ -318,7 +318,7 @@ async function seedPersonalBook(userId: string, categoryId: string) {
 			pricingSource: "manual",
 		},
 	});
-	const card = await adminDb.assetAccount.create({
+	const card = await fixtureDb.assetAccount.create({
 		data: {
 			userId,
 			name: "Visa",
@@ -327,7 +327,7 @@ async function seedPersonalBook(userId: string, categoryId: string) {
 			balance: "-150000.25",
 		},
 	});
-	await adminDb.assetAccount.create({
+	await fixtureDb.assetAccount.create({
 		data: {
 			userId,
 			name: "Wallet",
@@ -346,7 +346,7 @@ async function seedPersonalBook(userId: string, categoryId: string) {
 			balanceInUSD: "-60.02",
 		},
 	});
-	await adminDb.recurringTemplate.create({
+	await fixtureDb.recurringTemplate.create({
 		data: {
 			userId,
 			name: "Gym",

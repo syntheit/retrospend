@@ -14,7 +14,7 @@
 import { dayKey, parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { beforeAll, describe, expect, it } from "vitest";
 import { forUser } from "~/server/services/preview";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import {
 	arsUser,
 	isoDay,
@@ -37,7 +37,7 @@ import {
 } from "./shared.mutation";
 
 async function category(userId: string) {
-	return adminDb.category.create({
+	return fixtureDb.category.create({
 		data: { userId, name: "Travel", color: "teal", kind: "EXPENSE" },
 	});
 }
@@ -124,7 +124,7 @@ describe.each(["America/Argentina/Buenos_Aires", "Asia/Tokyo"])(
 				into: wallet,
 				timeZone,
 			});
-			const row = await adminDb.expense.findUniqueOrThrow({
+			const row = await fixtureDb.expense.findUniqueOrThrow({
 				where: { id: r.value.expenseId },
 				include: { accountLegs: true },
 			});
@@ -169,7 +169,7 @@ describe.each(["America/Argentina/Buenos_Aires", "Asia/Tokyo"])(
 				date: day,
 				timeZone,
 			});
-			const fee = await adminDb.expense.findUniqueOrThrow({
+			const fee = await fixtureDb.expense.findUniqueOrThrow({
 				where: { id: r.value.feeExpenseId ?? "" },
 			});
 			expect(dayKey(fee.date, timeZone)).toBe(day);
@@ -285,7 +285,7 @@ describe("repeated saves with a client id", () => {
 		const income = { id, title: "Gift", amount: "10", currency: "USD" };
 		await forUser(user.id).apply(addIncome, income);
 		await expect(forUser(user.id).apply(addIncome, income)).rejects.toThrow();
-		expect(await adminDb.expense.count({ where: { id } })).toBe(1);
+		expect(await fixtureDb.expense.count({ where: { id } })).toBe(1);
 
 		const tid = crypto.randomUUID();
 		const move = { id: tid, fromAccountId: a, toAccountId: b, fromAmount: "5" };
@@ -293,14 +293,14 @@ describe("repeated saves with a client id", () => {
 		await expect(
 			forUser(user.id).apply(createTransfer, move),
 		).rejects.toThrow();
-		expect(await adminDb.transfer.count({ where: { id: tid } })).toBe(1);
+		expect(await fixtureDb.transfer.count({ where: { id: tid } })).toBe(1);
 	});
 });
 
 describe("the undo of a delete", () => {
 	it("puts a legacy row back verbatim: no rate type, template link, status, timestamps", async () => {
 		const { user } = await arsUser();
-		const template = await adminDb.recurringTemplate.create({
+		const template = await fixtureDb.recurringTemplate.create({
 			data: {
 				userId: user.id,
 				name: "Streamly",
@@ -313,7 +313,7 @@ describe("the undo of a delete", () => {
 			},
 		});
 		const id = crypto.randomUUID();
-		await adminDb.expense.create({
+		await fixtureDb.expense.create({
 			data: {
 				id,
 				userId: user.id,
@@ -329,14 +329,14 @@ describe("the undo of a delete", () => {
 				createdAt: new Date("2025-03-05T12:00:00.000Z"),
 			},
 		});
-		const before = await adminDb.expense.findUniqueOrThrow({ where: { id } });
+		const before = await fixtureDb.expense.findUniqueOrThrow({ where: { id } });
 		expect(before.rateType).toBeNull();
 
 		const gone = await forUser(user.id).apply(deleteExpenseEntry, { id });
 		await forUser(user.id).apply(restoreExpenseEntry, {
 			token: gone.value.restore,
 		});
-		const back = await adminDb.expense.findUniqueOrThrow({ where: { id } });
+		const back = await fixtureDb.expense.findUniqueOrThrow({ where: { id } });
 		expect(back).toEqual(before);
 	});
 

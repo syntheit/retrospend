@@ -8,7 +8,7 @@
 import { randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { createTestUser, fixtureDb } from "~/test/pg-harness";
 import {
 	call,
 	expectBody,
@@ -147,7 +147,7 @@ describe("/api/v1/accounts", () => {
 			JSON.parse(await first.text()),
 		);
 		await expect(
-			adminDb.assetAccount.count({ where: { userId, name: "Cash box" } }),
+			fixtureDb.assetAccount.count({ where: { userId, name: "Cash box" } }),
 		).resolves.toBe(1);
 	});
 

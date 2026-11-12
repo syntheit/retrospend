@@ -87,7 +87,7 @@ import { userTransaction } from "~/server/db-tx";
 import { readFigures } from "~/server/figures/read";
 import { FigureUnavailable } from "~/server/figures/unavailable";
 import { owedRead } from "~/server/services/payments/figures";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { loadNetWorthInputs, netWorthChangeFor, netWorthFor } from "./figures";
 import { loadAccountRows, loadAccountsLedger } from "./load";
 
@@ -325,7 +325,7 @@ async function buildWorld(
 		where: { id: userId },
 		data: { homeCurrency: home, timeZone },
 	});
-	const transfer = await adminDb.transfer.create({
+	const transfer = await fixtureDb.transfer.create({
 		data: {
 			userId,
 			kind: "TRANSFER",
@@ -336,7 +336,7 @@ async function buildWorld(
 			toCurrency: "ARS",
 		},
 	});
-	const expense = await adminDb.expense.create({
+	const expense = await fixtureDb.expense.create({
 		data: {
 			userId,
 			title: "p9",
@@ -360,7 +360,7 @@ async function buildWorld(
 	const snapshots: LegSnapshot[] = [];
 	for (const [i, a] of accounts.entries()) {
 		const createdAt = new Date(opened.getTime() + i * 1000);
-		await adminDb.assetAccount.create({
+		await fixtureDb.assetAccount.create({
 			data: {
 				id: idOf(a.key),
 				userId,
@@ -429,7 +429,7 @@ async function buildWorld(
 			const recordedAt = at(step.recordedAt);
 			// What the balance update service writes: the new balance on the
 			// account and a snapshot, plus the leg that records the difference.
-			await adminDb.assetAccount.update({
+			await fixtureDb.assetAccount.update({
 				where: { id },
 				data: { balance: step.balance },
 			});
@@ -775,7 +775,7 @@ afterAll(async () => {
 
 describe("the ledger replayed through applyLegs matches the trigger", () => {
 	it("every account balance and balance update, to the last digit", async () => {
-		const accounts = await adminDb.assetAccount.findMany({
+		const accounts = await fixtureDb.assetAccount.findMany({
 			where: { userId: anaId },
 		});
 		const snapshots = await adminDb.assetSnapshot.findMany({

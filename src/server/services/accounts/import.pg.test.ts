@@ -8,7 +8,7 @@
  * made, and a row that fails counts as an error.
  */
 import { describe, expect, it } from "vitest";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import {
 	type ImportRow,
 	closeAccount,
@@ -23,7 +23,7 @@ async function oldImportAccounts(userId: string, rows: readonly ImportRow[]) {
 	let errorCount = 0;
 	for (const row of rows) {
 		try {
-			const existing = await adminDb.assetAccount.findFirst({
+			const existing = await fixtureDb.assetAccount.findFirst({
 				where: { userId, name: row.name, closedAt: null },
 			});
 			if (existing)
@@ -68,7 +68,7 @@ const ROWS: ImportRow[] = [
 ];
 
 async function snapshot(userId: string) {
-	const accounts = await adminDb.assetAccount.findMany({
+	const accounts = await fixtureDb.assetAccount.findMany({
 		where: { userId },
 		select: { name: true, balance: true, closedAt: true },
 	});
@@ -86,7 +86,8 @@ describe("importAccounts", () => {
 		await seed(a.user.id);
 		await seed(b.user.id);
 
-		const got = await importAccounts(adminDb, a.user.id, ROWS, TODAY_ZONE);
+		// As the router calls it: on the user's own client.
+		const got = await importAccounts(a.db, a.user.id, ROWS, TODAY_ZONE);
 		const expected = await oldImportAccounts(b.user.id, ROWS);
 
 		expect(got).toEqual(expected);

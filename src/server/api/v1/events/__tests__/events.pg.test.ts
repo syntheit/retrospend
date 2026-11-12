@@ -19,6 +19,7 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
+	fixtureDb,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -250,7 +251,7 @@ describe("event outbox", () => {
 		it("shows a v1 write as one event with ids and amounts, never its title", async () => {
 			const user = (await createTestUser()).user.id;
 			const headers = await asMobile(user);
-			const category = await adminDb.category.create({
+			const category = await fixtureDb.category.create({
 				data: { userId: user, name: "Food", color: "teal" },
 			});
 			const res = await call("/expenses", {

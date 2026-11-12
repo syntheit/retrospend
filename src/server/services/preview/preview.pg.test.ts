@@ -12,7 +12,8 @@ import {
 	type FigureDb,
 	type FigureDefinition,
 } from "~/server/figures/registry";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { categoryNameIndexFor } from "~/server/services/category-name-index.service";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { userTransactionRunner } from "./index";
 import { createPreviewRunner } from "./runner";
 import type { MoneyMutation } from "./types";
@@ -51,9 +52,11 @@ const addCategory: MoneyMutation<AddInput, AddValue> = {
 		const foreign = input.foreignId
 			? await tx.category.findUnique({ where: { id: input.foreignId } })
 			: null;
+		const name = `Preview ${randomUUID()}`;
 		const row = await tx.category.create({
 			data: {
-				name: `Preview ${randomUUID()}`,
+				name,
+				nameIndex: await categoryNameIndexFor(tx, name),
 				color: "blue",
 				userId: actor.userId,
 			},
@@ -78,10 +81,10 @@ const runnerFor = (user: TestUser) =>
 	});
 
 const countFor = (user: TestUser) =>
-	adminDb.category.count({ where: { userId: user.user.id } });
+	fixtureDb.category.count({ where: { userId: user.user.id } });
 
 const addCategoryTo = (user: TestUser) =>
-	adminDb.category.create({
+	fixtureDb.category.create({
 		data: {
 			name: `Seed ${randomUUID()}`,
 			color: "emerald",
@@ -108,9 +111,11 @@ describe("preview on Postgres", () => {
 		const before = await countFor(alice);
 
 		const thrown = await userTransaction(adminDb, alice.user.id, async (tx) => {
+			const name = `Doomed ${randomUUID()}`;
 			await tx.category.create({
 				data: {
-					name: `Doomed ${randomUUID()}`,
+					name,
+					nameIndex: await categoryNameIndexFor(tx, name),
 					color: "orange",
 					userId: alice.user.id,
 				},

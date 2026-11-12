@@ -8,6 +8,7 @@
  */
 import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { sealedSuite } from "~/test/pg-harness";
 import {
 	adminDb,
 	asMobile,
@@ -24,7 +25,7 @@ import {
 } from "~/server/services/accounts/test-fixtures";
 import { updateBalance } from "~/server/services/accounts/update-balance.mutation";
 import { forUser } from "~/server/services/preview";
-import { createTestUser } from "~/test/pg-harness";
+import { createTestUser, fixtureDb } from "~/test/pg-harness";
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -83,9 +84,10 @@ describe("the user table", () => {
 
 	it("cannot change another user's row, even a column it may write", async () => {
 		const result = await asApp(alice, (tx) =>
+			// A column with no text: a bulk write may not set sealed text.
 			tx.user.updateMany({
 				where: { id: bob.user.id },
-				data: { name: "Hijacked" },
+				data: { language: "es" },
 			}),
 		);
 		expect(result.count).toBe(0);
@@ -101,6 +103,7 @@ describe("the user table", () => {
 			where: { id: bob.user.id },
 		});
 		expect(stored.name).toBe(bob.user.name);
+		expect(stored.language).toBe(bob.user.language);
 		expect(stored.homeCurrency).toBe("USD");
 	});
 
@@ -499,9 +502,10 @@ describe("what scoped paths still do", () => {
 		expect(legs.length).toBeGreaterThan(0);
 	});
 
-	it("v1 search finds the caller's own expenses", async () => {
+	it("v1 search finds the caller's own expenses", async ({ skip }) => {
+		skip(sealedSuite, "PR 5: search reads sealed text without the user's keys");
 		const erin = await createTestUser();
-		await adminDb.expense.create({
+		await fixtureDb.expense.create({
 			data: {
 				userId: erin.user.id,
 				title: "Café con leche",

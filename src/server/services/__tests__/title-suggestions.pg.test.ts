@@ -21,7 +21,7 @@ import {
 	TITLE_SUGGESTION_WINDOW,
 	titleSuggestions,
 } from "~/server/services/title-suggestions.service";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import {
 	failNextEpochRead,
 	instanceKeyring,
@@ -68,7 +68,7 @@ type Row = {
 };
 
 async function seed(user: Who, rows: Row[]) {
-	await adminDb.expense.createMany({
+	await fixtureDb.expense.createMany({
 		data: rows.map((r) => ({
 			...base(user.user.id),
 			title: r.title,
@@ -86,7 +86,7 @@ const times = (n: number, make: (i: number) => Row): Row[] =>
 
 async function category(user: Who, name: string) {
 	return (
-		await adminDb.category.create({
+		await fixtureDb.category.create({
 			data: { name, color: "emerald", userId: user.user.id },
 		})
 	).id;

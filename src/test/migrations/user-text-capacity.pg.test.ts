@@ -11,7 +11,7 @@ import { USER_TEXT_FIELDS } from "@retrospend/api-contract";
 import { describe, expect, it } from "vitest";
 import { Keyring, sealField } from "~/server/crypto/field-crypto";
 import { mappedColumns } from "~/server/crypto/fields";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { USER_TEXT_COLUMNS } from "../../../scripts/scan-control-chars";
 import { REPO_ROOT } from "../uiRules/paths";
 
@@ -235,7 +235,7 @@ describe("user-text columns hold their ciphertext", () => {
 		const sealed = sealField(keyring, "€".repeat(limit), aad);
 		// Raw SQL both ways: the clients refuse ciphertext written as text and
 		// open it on read.
-		const row = await adminDb.category.create({
+		const row = await fixtureDb.category.create({
 			data: { userId: user.id, name: "x", color: "teal", kind: "EXPENSE" },
 		});
 		await adminDb.$executeRaw`UPDATE "category" SET "name" = ${sealed} WHERE "id" = ${row.id}`;

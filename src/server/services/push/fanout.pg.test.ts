@@ -25,6 +25,7 @@ import {
 	allSendersConfig,
 	appendOutboxEvent,
 	deliveriesOf,
+	fixtureDb,
 	sweepUntilPushed,
 } from "./pg-fixtures";
 
@@ -502,7 +503,7 @@ describe("push fan-out", () => {
 				});
 			const withCredential = async (credential: object) => {
 				const { device } = await addDevice(person.user.id, "APNS");
-				return adminDb.pushDevice.update({
+				return fixtureDb.pushDevice.update({
 					where: { id: device.id },
 					data: credential,
 				});

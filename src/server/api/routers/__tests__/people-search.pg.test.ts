@@ -14,7 +14,7 @@ import {
 	seedShare,
 	type TestUser,
 } from "~/server/api/v1/__tests__/g3-fixtures";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, sealedSuite } from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
 import { peopleRouter } from "../people";
 
@@ -123,7 +123,9 @@ beforeAll(async () => {
 		});
 });
 
-describe("people.search matches the old queries", () => {
+// The oracle is the old SQL over stored names, which the sealed suite
+// (PG_TEST_SEALED) seals: it runs only where the names are plaintext.
+describe.skipIf(sealedSuite)("people.search matches the old queries", () => {
 	it.each(QUERIES)("for %j", async (q) => {
 		const out = await as(me).search({ query: q });
 		const query = q.toLowerCase();

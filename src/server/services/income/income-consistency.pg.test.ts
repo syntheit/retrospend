@@ -17,7 +17,7 @@ import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
 import { ExpenseService } from "~/server/services/expense.service";
 import { forUser } from "~/server/services/preview";
 import { createTransfer } from "~/server/services/transfers/create.mutation";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import {
 	arsUser,
 	balanceOf,
@@ -37,7 +37,7 @@ import { moveIn } from "./move-in.mutation";
 
 const countedOn = async (accountId: string) =>
 	(
-		await adminDb.assetAccount.findUniqueOrThrow({ where: { id: accountId } })
+		await fixtureDb.assetAccount.findUniqueOrThrow({ where: { id: accountId } })
 	).countedUnits.toString();
 
 beforeAll(async () => {
@@ -119,7 +119,7 @@ describe("counted units follow what the account holds (D4)", () => {
 		});
 		expect(await countedOn(p.wise)).toBe("2000");
 
-		const template = await adminDb.recurringTemplate.create({
+		const template = await fixtureDb.recurringTemplate.create({
 			data: {
 				userId: p.userId,
 				name: "Retainer",
@@ -240,7 +240,7 @@ describe("an undone delete books the income at its original rates", () => {
 			where: { expenseId: back.value.expenseId },
 		});
 		expect(leg.amount.toString()).toBe("144900");
-		const row = await adminDb.expense.findUniqueOrThrow({
+		const row = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: back.value.expenseId },
 		});
 		expect(row.amountInUSD.toString()).toBe("100");
@@ -261,7 +261,7 @@ describe("typed amounts stay exact end to end", () => {
 			fee: { amount: "75347129.80735802" },
 		});
 
-		const fee = await adminDb.expense.findUniqueOrThrow({
+		const fee = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: value.feeExpenseId as string },
 		});
 		expect(fee.amount.toString()).toBe("75347129.80735802");
@@ -270,7 +270,7 @@ describe("typed amounts stay exact end to end", () => {
 	it("a confirmed recurring amount is a decimal string, stored as typed", async () => {
 		// Due TODAY in the user's zone, the day the confirm checks.
 		const { user } = await todayUser();
-		const template = await adminDb.recurringTemplate.create({
+		const template = await fixtureDb.recurringTemplate.create({
 			data: {
 				userId: user.id,
 				name: "Staking",
@@ -294,7 +294,7 @@ describe("typed amounts stay exact end to end", () => {
 			input,
 		);
 
-		const row = await adminDb.expense.findUniqueOrThrow({
+		const row = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: value.expenseId },
 		});
 		expect(row.amount.toString()).toBe("75347129.80735802");
@@ -310,7 +310,7 @@ describe("a row with a leg keeps its money", () => {
 			currency: "ARS",
 			into: p.savings,
 		});
-		const row = await adminDb.expense.findUniqueOrThrow({
+		const row = await fixtureDb.expense.findUniqueOrThrow({
 			where: { id: value.expenseId },
 		});
 		const edit = {
@@ -349,7 +349,7 @@ describe("Use my plan on a recurring income confirm", () => {
 			startingMoneyMinor: 0,
 			timeZone: "UTC",
 		});
-		const template = await adminDb.recurringTemplate.create({
+		const template = await fixtureDb.recurringTemplate.create({
 			data: {
 				userId: s.user.id,
 				name: "Salary",

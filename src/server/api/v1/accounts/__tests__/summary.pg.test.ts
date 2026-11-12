@@ -7,7 +7,7 @@
  */
 import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { createTestUser, fixtureDb } from "~/test/pg-harness";
 import {
 	apiKeyFor,
 	call,
@@ -54,7 +54,7 @@ describe("GET /api/v1/accounts/summary", () => {
 			isLiquid?: boolean;
 		},
 	) =>
-		adminDb.assetAccount.create({
+		fixtureDb.assetAccount.create({
 			data: {
 				userId: owner,
 				name: a.name,
@@ -101,7 +101,7 @@ describe("GET /api/v1/accounts/summary", () => {
 			currency: "XTS",
 		});
 		// Cash withdrawn and put in no account: 40 of Wallet's 540 is Not tracked.
-		const wallet = await adminDb.assetAccount.findFirstOrThrow({
+		const wallet = await fixtureDb.assetAccount.findFirstOrThrow({
 			where: { userId, name: "Wallet" },
 		});
 		const moved = await call("/transfers", {

@@ -15,6 +15,7 @@ import { listExpenses } from "~/server/services/api-v1/expenses";
 import { MAX_STORED_RESPONSE_BYTES } from "~/server/services/api-v1/idempotency.service";
 import { listActivity } from "~/server/services/expense-list";
 import { defaultTimeZone } from "~/server/services/user-time-zone";
+import { sealedSuite } from "~/test/pg-harness";
 import {
 	adminDb,
 	asMobile,
@@ -22,6 +23,7 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
+	fixtureDb,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -53,7 +55,7 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 	});
 
 	const newCategory = (user: string, name = "Food") =>
-		adminDb.category.create({
+		fixtureDb.category.create({
 			data: {
 				userId: user,
 				name: `${name} ${randomUUID().slice(0, 6)}`,
@@ -96,7 +98,7 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 		await put(id, body(food, { title: "v3", amount: "10" }));
 		await expectProblem(await undo(first.undo), 409, "conflict");
 		expect(
-			(await adminDb.expense.findUniqueOrThrow({ where: { id } })).title,
+			(await fixtureDb.expense.findUniqueOrThrow({ where: { id } })).title,
 		).toBe("v3");
 	});
 
@@ -105,7 +107,7 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 		await put(made.expense.id, body(food, { title: "Edited" }));
 		await expectProblem(await undo(made.undo), 409, "conflict");
 		await expect(
-			adminDb.expense.count({ where: { id: made.expense.id } }),
+			fixtureDb.expense.count({ where: { id: made.expense.id } }),
 		).resolves.toBe(1);
 	});
 
@@ -118,11 +120,11 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 			c.undo,
 		);
 		expect(
-			(await adminDb.expense.findUniqueOrThrow({ where: { id } })).title,
+			(await fixtureDb.expense.findUniqueOrThrow({ where: { id } })).title,
 		).toBe("Before");
 		await expectBody(await undo(undone.redo), c.undo);
 		expect(
-			(await adminDb.expense.findUniqueOrThrow({ where: { id } })).title,
+			(await fixtureDb.expense.findUniqueOrThrow({ where: { id } })).title,
 		).toBe("After");
 	});
 
@@ -143,7 +145,7 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 		await expectBody(await undo(deleted.undo), c.undo);
 		await expectProblem(await undo(deleted.undo), 409, "conflict");
 		await expect(
-			adminDb.expense.count({ where: { id: other.expense.id } }),
+			fixtureDb.expense.count({ where: { id: other.expense.id } }),
 		).resolves.toBe(1);
 	});
 
@@ -155,7 +157,10 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 		await expectProblem(await undo(made.undo), 404, "not_found");
 	});
 
-	it("reads no dates as this month like the web, and range=all as every date", async () => {
+	it("reads no dates as this month like the web, and range=all as every date", async ({
+		skip,
+	}) => {
+		skip(sealedSuite, "PR 5: search reads sealed text without the user's keys");
 		const user = (await createTestUser()).user.id;
 		const mine = await asMobile(user);
 		const cat = (await newCategory(user)).id;
@@ -210,7 +215,7 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 	it("reads no dates as this month in the caller's zone at a month's end, not the UTC one", async () => {
 		const user = (await createTestUser()).user.id;
 		const cat = (await newCategory(user)).id;
-		await adminDb.expense.createMany({
+		await fixtureDb.expense.createMany({
 			data: [
 				["Oct 31", "2026-10-31"],
 				["Nov 1", "2026-11-01"],
@@ -275,7 +280,7 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 		const two = await add(body(from, { title: "Bulk B" }));
 		const input = { ids: [one.expense.id, two.expense.id], categoryId: to };
 		const categoryOf = async (id: string) =>
-			(await adminDb.expense.findUniqueOrThrow({ where: { id } })).categoryId;
+			(await fixtureDb.expense.findUniqueOrThrow({ where: { id } })).categoryId;
 
 		await expectBody(
 			await post("/expenses/bulk-category/preview", input),
@@ -304,7 +309,7 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 		);
 		const ids = [one.expense.id, two.expense.id, theirs.expense.id];
 		const count = () =>
-			adminDb.expense.count({
+			fixtureDb.expense.count({
 				where: { id: { in: [one.expense.id, two.expense.id] } },
 			});
 
@@ -334,7 +339,7 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 		expect(done).toMatchObject({ deleted: 2, skipped: [theirs.expense.id] });
 		await expect(count()).resolves.toBe(0);
 		await expect(
-			adminDb.expense.count({ where: { id: theirs.expense.id } }),
+			fixtureDb.expense.count({ where: { id: theirs.expense.id } }),
 		).resolves.toBe(1);
 
 		const undone = await expectBody<{ id: string | null; redo: string }>(
@@ -364,7 +369,7 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 			ids.push(made.expense.id);
 		}
 		await expect(
-			adminDb.expense.count({ where: { parentId: { in: ids } } }),
+			fixtureDb.expense.count({ where: { parentId: { in: ids } } }),
 		).resolves.toBe(BULK_DELETE_MAX * 24);
 		const key = randomUUID();
 		const first = await post("/expenses/bulk-delete", { ids }, as, key);
@@ -382,7 +387,7 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 		expect(done.deleted).toBe(BULK_DELETE_MAX);
 		await expectBody(await undo(done.undo), c.undo);
 		await expect(
-			adminDb.expense.count({
+			fixtureDb.expense.count({
 				where: { OR: [{ id: { in: ids } }, { parentId: { in: ids } }] },
 			}),
 		).resolves.toBe(BULK_DELETE_MAX * 25);
@@ -401,7 +406,7 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 		])
 			await expectProblem(await post(path, input), 400, "bad_request");
 		await expect(
-			adminDb.expense.count({ where: { id: theirs.expense.id } }),
+			fixtureDb.expense.count({ where: { id: theirs.expense.id } }),
 		).resolves.toBe(1);
 	});
 
@@ -412,7 +417,7 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 			await expectProblem(res, 400, "validation_failed");
 		}
 		await expect(
-			adminDb.expense.count({ where: { userId, title: "Huge" } }),
+			fixtureDb.expense.count({ where: { userId, title: "Huge" } }),
 		).resolves.toBe(0);
 		// The largest amount that fits still saves.
 		await add(body(food, { title: "Big", amount: "9999999999" }));

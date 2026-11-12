@@ -10,7 +10,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import type { ProjectRole } from "~prisma";
 
 type TestUser = Awaited<ReturnType<typeof createTestUser>>;
@@ -225,7 +225,7 @@ describe("changing your own share", () => {
 	it("lets you change only the review columns", async () => {
 		const id = await expense(ana);
 		const mine = await adminDb.splitParticipant.create({ data: share(ben, id) });
-		const category = await adminDb.category.create({
+		const category = await fixtureDb.category.create({
 			data: { name: "Food", color: "blue", userId: ben.user.id },
 		});
 		const updated = await ben.db.splitParticipant.update({

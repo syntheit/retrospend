@@ -20,7 +20,7 @@ import {
 } from "@retrospend/domain/accounts/apply-legs";
 import { Dec } from "@retrospend/domain/precise-decimal";
 import { afterAll, describe, expect, it } from "vitest";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import type { AccountLegSource, AssetType } from "~prisma";
 
 const SEED = 20261108;
@@ -146,7 +146,7 @@ async function seedWorld() {
 	userId = user.id;
 	worlds.push(userId);
 	for (const spec of SPECS) {
-		await adminDb.assetAccount.create({
+		await fixtureDb.assetAccount.create({
 			data: {
 				id: accountId(spec),
 				userId,
@@ -158,7 +158,7 @@ async function seedWorld() {
 			},
 		});
 	}
-	const transfer = await adminDb.transfer.create({
+	const transfer = await fixtureDb.transfer.create({
 		data: {
 			userId,
 			kind: "TRANSFER",
@@ -170,7 +170,7 @@ async function seedWorld() {
 		},
 	});
 	transferId = transfer.id;
-	const expense = await adminDb.expense.create({
+	const expense = await fixtureDb.expense.create({
 		data: {
 			userId,
 			title: "p8",
@@ -232,7 +232,7 @@ const isOverflow = (error: unknown) =>
 	/numeric field overflow|out of range/i.test(String(error));
 
 async function readDb() {
-	const accounts = await adminDb.assetAccount.findMany({ where: { userId } });
+	const accounts = await fixtureDb.assetAccount.findMany({ where: { userId } });
 	const snapshots = await adminDb.assetSnapshot.findMany({ where: { userId } });
 	return { accounts, snapshots };
 }
@@ -561,7 +561,7 @@ async function runSequence(seed: number, operations: number, ties = false) {
 			const spec = pick(specs);
 			const balance = amountOf(int(0, spec.max * 10 ** spec.dp), spec.dp);
 			stats.balance++;
-			await adminDb.assetAccount.update({
+			await fixtureDb.assetAccount.update({
 				where: { id: spec.id },
 				data: { balance },
 			});
@@ -648,7 +648,7 @@ describe("applyLegs parity with the account_leg trigger", () => {
 	it("agrees with the database that a balance past numeric(19,8) is refused", async () => {
 		await seedWorld();
 		const id = `${prefix}-big`;
-		await adminDb.assetAccount.create({
+		await fixtureDb.assetAccount.create({
 			data: {
 				id,
 				userId,
@@ -700,7 +700,7 @@ describe("applyLegs parity with the account_leg trigger", () => {
 				},
 			}),
 		).rejects.toThrow();
-		const after = await adminDb.assetAccount.findUniqueOrThrow({
+		const after = await fixtureDb.assetAccount.findUniqueOrThrow({
 			where: { id },
 		});
 		expect(after.balance.toString()).toBe("99999999999");

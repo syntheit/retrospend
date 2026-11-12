@@ -24,7 +24,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import {
 	addMember,
 	callerFor,
@@ -187,10 +187,10 @@ describe("project.pageView", () => {
 	});
 
 	it("sends the category token on an expense row, like the other lists", async () => {
-		const sky = await adminDb.category.create({
+		const sky = await fixtureDb.category.create({
 			data: { name: "Sky blue", color: "sky", userId: ana.user.id },
 		});
-		const groceries = await adminDb.sharedTransaction.findFirstOrThrow({
+		const groceries = await fixtureDb.sharedTransaction.findFirstOrThrow({
 			where: { projectId: pid, description: "Groceries" },
 		});
 		await adminDb.sharedTransaction.update({

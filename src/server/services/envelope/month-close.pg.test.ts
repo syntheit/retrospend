@@ -16,7 +16,7 @@ import {
 	recordBudgetSide,
 	removeBudgetSide,
 } from "~/server/services/transfers/budget-side";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 import { addRow, seedUser, setupInput } from "./__tests__/pg-fixture";
 import { addMonths } from "./calendar";
@@ -64,7 +64,7 @@ async function bookTwoMonthsBack(funding: "INCOME" | "TARGETS" = "INCOME") {
 		data: { fromMonth: start },
 	});
 	if (book.startingBalanceExpenseId)
-		await adminDb.expense.update({
+		await fixtureDb.expense.update({
 			where: { id: book.startingBalanceExpenseId },
 			data: { date: firstDay(start) },
 		});
@@ -321,7 +321,7 @@ describe("the budget side of Wealth moves on Postgres", () => {
 			timeZone: "UTC",
 		});
 		const dining = (
-			await adminDb.envelope.findFirstOrThrow({
+			await fixtureDb.envelope.findFirstOrThrow({
 				where: { name: "Dining", book: { createdById: s.user.id } },
 			})
 		).id;
@@ -331,7 +331,7 @@ describe("the budget side of Wealth moves on Postgres", () => {
 			direction: "IN",
 			inType: "INCOME",
 		});
-		await adminDb.expense.update({
+		await fixtureDb.expense.update({
 			where: { id: kept.id },
 			data: { keepInWealth: true },
 		});

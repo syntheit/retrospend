@@ -5,6 +5,7 @@
  */
 import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { sealedSuite } from "~/test/pg-harness";
 import {
 	adminDb,
 	asMobile,
@@ -12,6 +13,7 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
+	fixtureDb,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -33,7 +35,7 @@ const group = (r: Result, type: string) =>
 	r.groups.find((g) => g.type === type)?.items ?? [];
 
 async function expense(userId: string, title: string, date: string) {
-	return adminDb.expense.create({
+	return fixtureDb.expense.create({
 		data: {
 			userId,
 			title,
@@ -47,7 +49,8 @@ async function expense(userId: string, title: string, date: string) {
 	});
 }
 
-describe("/api/v1/search", () => {
+// PR 5: search reads sealed text without the user's keys (sealed suite only).
+describe.skipIf(sealedSuite)("/api/v1/search", () => {
 	let alice: string;
 	let asAlice: Record<string, string>;
 	let asBob: Record<string, string>;
@@ -131,7 +134,7 @@ describe("/api/v1/search", () => {
 				role: "ORGANIZER",
 			},
 		});
-		await adminDb.category.create({
+		await fixtureDb.category.create({
 			data: { name: "Cafés y bares", color: "amber", userId: alice },
 		});
 	});

@@ -23,7 +23,7 @@ import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { forUser } from "~/server/services/preview";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import {
 	addRow,
@@ -119,7 +119,7 @@ describe("rules on sidecar income run exactly once (rules-sidecar)", () => {
 	});
 
 	it("an edit to 2,500.00 writes a +10,000 delta; reading again writes nothing", async () => {
-		await adminDb.expense.update({
+		await fixtureDb.expense.update({
 			where: { id: salary.id },
 			data: {
 				amount: new Prisma.Decimal(2_500),
@@ -182,7 +182,7 @@ describe("undo, Use my plan and Also apply", () => {
 		).resolves.toMatchObject({
 			skipped: true,
 		});
-		await adminDb.expense.update({
+		await fixtureDb.expense.update({
 			where: { id: row.id },
 			data: { amount: new Prisma.Decimal(1_500) },
 		});
@@ -263,7 +263,9 @@ describe("a money in that goes away and comes back (review round 1)", () => {
 			where: { id: row.id },
 		});
 		await expect(state(s, b.id("Rent"))).resolves.toEqual([0, 100_000]);
-		await adminDb.expense.create({ data: { ...data, id, createdAt } as never });
+		await fixtureDb.expense.create({
+			data: { ...data, id, createdAt } as never,
+		});
 		await expect(state(s, b.id("Rent"))).resolves.toEqual([20_000, 180_000]);
 		const sides = await invariantAt(s.user.id);
 		expect(sides.budget).toBe(sides.ledger);
@@ -275,12 +277,12 @@ describe("a money in that goes away and comes back (review round 1)", () => {
 		await rule(s, b.id("Rent"), 2_000);
 		const row = await income(s, 1_000);
 		await expect(state(s, b.id("Rent"))).resolves.toEqual([20_000, 180_000]);
-		await adminDb.expense.update({
+		await fixtureDb.expense.update({
 			where: { id: row.id },
 			data: { keepInWealth: true },
 		});
 		await expect(state(s, b.id("Rent"))).resolves.toEqual([0, 100_000]);
-		await adminDb.expense.update({
+		await fixtureDb.expense.update({
 			where: { id: row.id },
 			data: { keepInWealth: false },
 		});
@@ -293,7 +295,7 @@ describe("a money in that goes away and comes back (review round 1)", () => {
 		await rule(s, b.id("Rent"), 2_000);
 		const row = await income(s, 1_000);
 		await getMonth(s.user.id);
-		await adminDb.expense.update({
+		await fixtureDb.expense.update({
 			where: { id: row.id },
 			data: {
 				amount: new Prisma.Decimal(1_500),
@@ -339,7 +341,7 @@ describe("undoing a next-month rule batch (review round 2)", () => {
 			day,
 		);
 		await getMonth(s.user.id);
-		await adminDb.expense.update({
+		await fixtureDb.expense.update({
 			where: { id: row.id },
 			data: {
 				amount: new Prisma.Decimal(1_500),

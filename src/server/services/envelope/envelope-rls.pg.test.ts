@@ -156,9 +156,10 @@ describe("envelope RLS", () => {
 			alice.db.budgetMovement.deleteMany({ where: { bookId: a.book.id } }),
 		).rejects.toThrow(/permission denied/);
 		await expect(
+			// A column with no text: a bulk write may not set sealed text.
 			alice.db.budgetMovement.updateMany({
 				where: { bookId: a.book.id },
-				data: { note: "x" },
+				data: { amount: "1" },
 			}),
 		).rejects.toThrow(/permission denied/);
 	});
