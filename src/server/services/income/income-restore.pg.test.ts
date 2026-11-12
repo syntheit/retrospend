@@ -4,17 +4,25 @@
  * user still has. USD home; EUR 1,000 at a typed 1 EUR = 1.0834 USD books
  * USD 1,083.40 (1,000 x 1.0834), and the honest recreate gives back exactly
  * that. A plain figures object never passes the input, a forged token, a
- * token for another row or a changed amount is refused, and so is a token
- * signed before the home currency changed.
+ * token for another row or user or a changed amount is refused, and so is a
+ * token signed before the home currency changed, or one sent with another
+ * account or keep flag (the units only fit where they were booked).
  */
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { recreateIncomeSchema } from "~/server/services/accounts/input";
+import {
+	arsUser,
+	openAccount,
+	seedArsRates,
+} from "~/server/services/accounts/test-fixtures";
 import { forUser } from "~/server/services/preview";
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { type AddIncomeInput, addIncome } from "./add.mutation";
 import { deleteIncome } from "./delete.mutation";
 
 const refused = /This undo is not valid anymore/;
+
+beforeAll(seedArsRates);
 
 async function usdUser() {
 	const { user } = await createTestUser();
@@ -105,6 +113,42 @@ describe("an income recreate writes only the figures its delete signed", () => {
 			forUser(userId).apply(addIncome, { ...first, amount: "1001" }),
 		).rejects.toThrow(refused);
 		expect(await stored(userId)).toEqual([]);
+	});
+
+	it("another user's token is refused", async () => {
+		const owner = await usdUser();
+		const recreate = await deleted(owner);
+		const other = await usdUser();
+		await expect(forUser(other).apply(addIncome, recreate)).rejects.toThrow(
+			refused,
+		);
+		expect(await stored(other)).toEqual([]);
+	});
+
+	it("the units go back only into the account and place they were booked into", async () => {
+		// ARS home, ARS 1,000 into a cash account: 1,000 units. Its recreate
+		// into another account, or with the keep flag flipped, is refused.
+		const { user } = await arsUser();
+		const wallet = await openAccount(user.id, "Wallet", "CASH", "ARS", 0);
+		const other = await openAccount(user.id, "Other", "CASH", "ARS", 0);
+		const saved = await forUser(user.id).apply(addIncome, {
+			title: "Sale",
+			amount: "1000",
+			currency: "ARS",
+			into: wallet,
+		});
+		const gone = await forUser(user.id).apply(deleteIncome, {
+			expenseId: saved.value.expenseId,
+		});
+		const recreate = gone.value.recreate;
+		await expect(
+			forUser(user.id).apply(addIncome, { ...recreate, into: other }),
+		).rejects.toThrow(refused);
+		await expect(
+			forUser(user.id).apply(addIncome, { ...recreate, keep: !recreate.keep }),
+		).rejects.toThrow(refused);
+		const back = await forUser(user.id).apply(addIncome, recreate);
+		expect(back.value.into).toMatchObject({ accountId: wallet });
 	});
 
 	it("a token signed under another home currency is refused", async () => {
