@@ -19,11 +19,12 @@
   "autoPostStale": "Desactualizado",
   "autoPostOff": "Apagado",
   "autoPostRan": "Última ejecución hace {time}",
-  "autoPostPosted": "{count} registrados",
-  "autoPostMissingRate": "a {count} les falta una tasa",
-  "autoPostFailed": "{count} fallaron",
-  "autoPostCapped": "{count} se están poniendo al día",
+  "autoPostPosted": "{count, plural, one {# registrado} other {# registrados}}",
+  "autoPostMissingRate": "{count, plural, one {a # le falta una tasa} other {a # les falta una tasa}}",
+  "autoPostFailed": "{count, plural, one {# falló} other {# fallaron}}",
+  "autoPostCapped": "{count, plural, one {# se está poniendo al día} other {# se están poniendo al día}}",
   "autoPostNoRun": "Aún sin ejecuciones",
   "autoPostOffBy": "Apagado por RECURRING_AUTO_POST",
-  "autoPostJoin": "{head}, {tail}"
+  "autoPostJoin": "{head}, {tail}",
+  "autoPostOffEnv": "Apagado fuera de producción"
 }

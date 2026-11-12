@@ -25,5 +25,6 @@
   "autoPostCapped": "ещё догоняют: {count}",
   "autoPostNoRun": "Запусков пока нет",
   "autoPostOffBy": "Выключено через RECURRING_AUTO_POST",
-  "autoPostJoin": "{head}, {tail}"
+  "autoPostJoin": "{head}, {tail}",
+  "autoPostOffEnv": "Выключено вне продакшена"
 }

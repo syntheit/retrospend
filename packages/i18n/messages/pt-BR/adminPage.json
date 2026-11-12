@@ -19,11 +19,12 @@
   "autoPostStale": "Desatualizado",
   "autoPostOff": "Desligado",
   "autoPostRan": "Última execução há {time}",
-  "autoPostPosted": "{count} lançadas",
+  "autoPostPosted": "{count, plural, one {# lançada} other {# lançadas}}",
   "autoPostMissingRate": "{count} sem cotação",
-  "autoPostFailed": "{count} falharam",
+  "autoPostFailed": "{count, plural, one {# falhou} other {# falharam}}",
   "autoPostCapped": "{count} ainda se atualizando",
   "autoPostNoRun": "Nenhuma execução ainda",
   "autoPostOffBy": "Desligado por RECURRING_AUTO_POST",
-  "autoPostJoin": "{head}, {tail}"
+  "autoPostJoin": "{head}, {tail}",
+  "autoPostOffEnv": "Desligado fora de produção"
 }

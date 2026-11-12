@@ -4,7 +4,11 @@
  * recurring-auto-post.ts) and the switch; the page only draws it.
  */
 import { z } from "zod";
-import { AUTO_POST_STATUS_KEY, autoPostEnabled } from "./recurring-auto-post";
+import {
+	AUTO_POST_STATUS_KEY,
+	type AutoPostOffReason,
+	autoPostOffReason,
+} from "./recurring-auto-post";
 
 /** The sweep runs every 15 minutes. */
 const SWEEP_MS = 15 * 60 * 1000;
@@ -25,6 +29,8 @@ export type AutoPostState =
 
 export interface AutoPostStatus {
 	state: AutoPostState;
+	/** Why it is off, null unless the state is off. */
+	offReason: AutoPostOffReason | null;
 	/** ISO time of the last pass, null when there is no readable row. */
 	lastRun: string | null;
 	/** The last pass's counts, null when there is no readable row. */
@@ -46,7 +52,8 @@ const rowSchema = z.object({
 });
 
 /**
- * Off when the setting turns it off. Stale when the last pass is older than
+ * Off when `offReason` is set (the setting says false, or it is unset outside
+ * production). Stale when the last pass is older than
  * AUTO_POST_STALE_MS, or there is no readable row while it is on (the first
  * pass runs at start, so none means the timer never ran). Then, from the last
  * pass: failing when a template failed, attention when a template skipped
@@ -57,7 +64,7 @@ const rowSchema = z.object({
  */
 export function autoPostStatus(
 	row: unknown,
-	enabled: boolean,
+	offReason: AutoPostOffReason | null,
 	now: Date,
 ): AutoPostStatus {
 	const parsed = rowSchema.safeParse(row);
@@ -73,13 +80,14 @@ export function autoPostStatus(
 				},
 			}
 		: { lastRun: null, counts: null };
-	if (!enabled) return { state: "off", ...base };
+	const on = { offReason: null, ...base };
+	if (offReason) return { state: "off", ...base, offReason };
 	if (!data || now.getTime() - Date.parse(data.lastRun) > AUTO_POST_STALE_MS)
-		return { state: "stale", ...base };
-	if (data.failed > 0) return { state: "failing", ...base };
+		return { state: "stale", ...on };
+	if (data.failed > 0) return { state: "failing", ...on };
 	if (data.missingRate > 0 || data.capped > 0)
-		return { state: "attention", ...base };
-	return { state: "healthy", ...base };
+		return { state: "attention", ...on };
+	return { state: "healthy", ...on };
 }
 
 interface StatusReader {
@@ -93,10 +101,10 @@ interface StatusReader {
 export async function readAutoPostStatus(
 	db: StatusReader,
 	now = new Date(),
-	enabled = autoPostEnabled(),
+	offReason = autoPostOffReason(),
 ): Promise<AutoPostStatus> {
 	const row = await db.systemStatus.findUnique({
 		where: { key: AUTO_POST_STATUS_KEY },
 	});
-	return autoPostStatus(row?.value, enabled, now);
+	return autoPostStatus(row?.value, offReason, now);
 }

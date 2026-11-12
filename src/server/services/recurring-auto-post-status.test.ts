@@ -30,7 +30,7 @@ const row = (over: Record<string, unknown> = {}, ranAgo = 5 * MIN) => ({
 
 describe("autoPostStatus", () => {
 	it("is healthy after a clean pass, and posted, raced and retry change nothing", () => {
-		const status = autoPostStatus(row({ retry: 3, raced: 4 }), true, NOW);
+		const status = autoPostStatus(row({ retry: 3, raced: 4 }), null, NOW);
 		expect(status.state).toBe("healthy");
 		expect(status.lastRun).toBe(ago(5 * MIN));
 		expect(status.counts).toEqual({
@@ -43,58 +43,75 @@ describe("autoPostStatus", () => {
 
 	it("keeps 45 minutes healthy and turns stale one millisecond later", () => {
 		expect(AUTO_POST_STALE_MS).toBe(45 * MIN);
-		expect(autoPostStatus(row({}, 45 * MIN), true, NOW).state).toBe("healthy");
-		expect(autoPostStatus(row({}, 45 * MIN + 1), true, NOW).state).toBe(
+		expect(autoPostStatus(row({}, 45 * MIN), null, NOW).state).toBe("healthy");
+		expect(autoPostStatus(row({}, 45 * MIN + 1), null, NOW).state).toBe(
 			"stale",
 		);
 	});
 
 	it("is stale before it is failing, since old counts say nothing about now", () => {
 		const old = row({ failed: 2 }, 120 * MIN);
-		expect(autoPostStatus(old, true, NOW).state).toBe("stale");
+		expect(autoPostStatus(old, null, NOW).state).toBe("stale");
 	});
 
 	it("is failing when a template failed", () => {
-		expect(autoPostStatus(row({ failed: 1 }), true, NOW).state).toBe("failing");
+		expect(autoPostStatus(row({ failed: 1 }), null, NOW).state).toBe("failing");
 	});
 
 	it("is attention, not failing, when a template is still catching up after the cap", () => {
-		expect(autoPostStatus(row({ capped: 1 }), true, NOW).state).toBe(
+		expect(autoPostStatus(row({ capped: 1 }), null, NOW).state).toBe(
 			"attention",
 		);
 	});
 
 	it("is attention for capped and a missing rate together", () => {
 		const both = row({ capped: 1, missingRate: 2 });
-		expect(autoPostStatus(both, true, NOW).state).toBe("attention");
+		expect(autoPostStatus(both, null, NOW).state).toBe("attention");
 	});
 
 	it("is failing for capped and a failure together", () => {
 		const both = row({ capped: 1, failed: 1 });
-		expect(autoPostStatus(both, true, NOW).state).toBe("failing");
+		expect(autoPostStatus(both, null, NOW).state).toBe("failing");
 	});
 
 	it("is attention, not failing, for a missing rate alone", () => {
-		expect(autoPostStatus(row({ missingRate: 2 }), true, NOW).state).toBe(
+		expect(autoPostStatus(row({ missingRate: 2 }), null, NOW).state).toBe(
 			"attention",
 		);
 	});
 
 	it("is failing when a failure and a missing rate come together", () => {
 		const both = row({ failed: 1, missingRate: 2 });
-		expect(autoPostStatus(both, true, NOW).state).toBe("failing");
+		expect(autoPostStatus(both, null, NOW).state).toBe("failing");
 	});
 
-	it("is off when the setting is off, whatever the row says", () => {
-		expect(autoPostStatus(row({ failed: 5 }), false, NOW).state).toBe("off");
-		expect(autoPostStatus(undefined, false, NOW).state).toBe("off");
+	it("is off when the setting is off, whatever the row says, and says why", () => {
+		const off = autoPostStatus(row({ failed: 5 }), "setting", NOW);
+		expect(off.state).toBe("off");
+		expect(off.offReason).toBe("setting");
+		expect(autoPostStatus(undefined, "setting", NOW).state).toBe("off");
+	});
+
+	it("is off outside production when the setting is unset, and says so", () => {
+		const off = autoPostStatus(row(), "environment", NOW);
+		expect(off.state).toBe("off");
+		expect(off.offReason).toBe("environment");
+	});
+
+	it("has no off reason while it is on", () => {
+		expect(autoPostStatus(row(), null, NOW).offReason).toBeNull();
 	});
 
 	it("is stale with no row while on, and with one that cannot be read", () => {
-		const none = { state: "stale", lastRun: null, counts: null };
-		expect(autoPostStatus(undefined, true, NOW)).toEqual(none);
-		expect(autoPostStatus({ lastRun: "not a date" }, true, NOW)).toEqual(none);
-		expect(autoPostStatus({ ...row(), failed: "1" }, true, NOW)).toEqual(none);
+		const none = {
+			state: "stale",
+			offReason: null,
+			lastRun: null,
+			counts: null,
+		};
+		expect(autoPostStatus(undefined, null, NOW)).toEqual(none);
+		expect(autoPostStatus({ lastRun: "not a date" }, null, NOW)).toEqual(none);
+		expect(autoPostStatus({ ...row(), failed: "1" }, null, NOW)).toEqual(none);
 	});
 });
 
@@ -104,7 +121,7 @@ describe("readAutoPostStatus", () => {
 		const status = await readAutoPostStatus(
 			{ systemStatus: { findUnique } },
 			NOW,
-			true,
+			null,
 		);
 		expect(findUnique).toHaveBeenCalledWith({
 			where: { key: "recurring_auto_post" },
@@ -116,7 +133,7 @@ describe("readAutoPostStatus", () => {
 		const status = await readAutoPostStatus(
 			{ systemStatus: { findUnique: async () => null } },
 			NOW,
-			true,
+			null,
 		);
 		expect(status.state).toBe("stale");
 	});

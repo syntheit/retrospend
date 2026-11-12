@@ -17,9 +17,8 @@ vi.mock("~/env", () => ({ env }));
 vi.mock("~/server/db", () => ({ db }));
 vi.mock("~/server/services/preview", () => ({ forUser: vi.fn() }));
 
-const { autoPostEnabled, startRecurringAutoPost } = await import(
-	"./recurring-auto-post"
-);
+const { autoPostEnabled, autoPostOffReason, startRecurringAutoPost } =
+	await import("./recurring-auto-post");
 
 describe("autoPostEnabled", () => {
 	it("is on by default only in production", () => {
@@ -31,6 +30,23 @@ describe("autoPostEnabled", () => {
 	it("follows the setting when set", () => {
 		expect(autoPostEnabled("false", "production")).toBe(false);
 		expect(autoPostEnabled("true", "development")).toBe(true);
+	});
+});
+
+describe("autoPostOffReason", () => {
+	it("names the setting when it says false", () => {
+		expect(autoPostOffReason("false", "production")).toBe("setting");
+		expect(autoPostOffReason("false", "development")).toBe("setting");
+	});
+
+	it("names the environment when unset outside production", () => {
+		expect(autoPostOffReason(undefined, "development")).toBe("environment");
+		expect(autoPostOffReason(undefined, "test")).toBe("environment");
+	});
+
+	it("is null when on", () => {
+		expect(autoPostOffReason(undefined, "production")).toBeNull();
+		expect(autoPostOffReason("true", "development")).toBeNull();
 	});
 });
 

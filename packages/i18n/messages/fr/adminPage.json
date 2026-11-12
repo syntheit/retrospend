@@ -19,11 +19,12 @@
   "autoPostStale": "Obsolète",
   "autoPostOff": "Désactivé",
   "autoPostRan": "Dernière exécution il y a {time}",
-  "autoPostPosted": "{count} enregistrées",
+  "autoPostPosted": "{count, plural, one {# enregistrée} other {# enregistrées}}",
   "autoPostMissingRate": "{count} sans taux",
   "autoPostFailed": "{count} en échec",
   "autoPostCapped": "{count} en rattrapage",
   "autoPostNoRun": "Aucune exécution",
   "autoPostOffBy": "Désactivé par RECURRING_AUTO_POST",
-  "autoPostJoin": "{head}, {tail}"
+  "autoPostJoin": "{head}, {tail}",
+  "autoPostOffEnv": "Désactivé hors production"
 }

@@ -25,5 +25,6 @@
   "autoPostCapped": "{count} still catching up",
   "autoPostNoRun": "No run yet",
   "autoPostOffBy": "Turned off by RECURRING_AUTO_POST",
-  "autoPostJoin": "{head}, {tail}"
+  "autoPostJoin": "{head}, {tail}",
+  "autoPostOffEnv": "Off outside production"
 }

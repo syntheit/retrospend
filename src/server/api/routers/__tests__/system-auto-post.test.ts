@@ -78,6 +78,7 @@ describe("system.getAutoPostStatus", () => {
 		);
 		expect(result).toEqual({
 			state: "failing",
+			offReason: null,
 			lastRun: "2026-11-12T11:50:00.000Z",
 			counts: { posted: 3, missingRate: 0, capped: 0, failed: 2 },
 		});

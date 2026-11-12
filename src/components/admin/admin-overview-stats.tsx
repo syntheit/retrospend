@@ -80,7 +80,12 @@ export function AdminOverviewStats() {
 
 	const autoPostMeta = () => {
 		if (!autoPost) return null;
-		if (autoPost.state === "off") return tp("autoPostOffBy");
+		if (autoPost.state === "off")
+			return tp(
+				autoPost.offReason === "environment"
+					? "autoPostOffEnv"
+					: "autoPostOffBy",
+			);
 		if (!autoPost.lastRun || !autoPost.counts) return tp("autoPostNoRun");
 		const { posted, failed, missingRate, capped } = autoPost.counts;
 		const parts = [
