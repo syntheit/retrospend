@@ -14,6 +14,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { USD } from "@retrospend/domain/money";
+import { type Decimal, dec } from "@retrospend/domain/precise-decimal";
 import {
 	findInconsistentExpenses,
 	type RepairFinding,
@@ -65,13 +66,17 @@ function report(
 
 	const byCurrency = new Map<
 		string,
-		{ count: number; before: number; after: number }
+		{ count: number; before: Decimal; after: Decimal }
 	>();
 	for (const f of findings) {
-		const c = byCurrency.get(f.row.currency) ?? { count: 0, before: 0, after: 0 };
+		const c = byCurrency.get(f.row.currency) ?? {
+			count: 0,
+			before: dec(0),
+			after: dec(0),
+		};
 		c.count++;
-		c.before += f.row.amountInUSD;
-		c.after += f.newUSD;
+		c.before = c.before.plus(f.row.amountInUSD);
+		c.after = c.after.plus(f.newUSD);
 		byCurrency.set(f.row.currency, c);
 	}
 	if (byCurrency.size > 0) {
@@ -87,12 +92,10 @@ function report(
 		console.log("");
 	}
 
+	const change = (f: RepairFinding) =>
+		dec(f.newUSD).minus(f.row.amountInUSD).abs();
 	const worst = [...findings]
-		.sort(
-			(a, b) =>
-				Math.abs(b.newUSD - b.row.amountInUSD) -
-				Math.abs(a.newUSD - a.row.amountInUSD),
-		)
+		.sort((a, b) => change(b).comparedTo(change(a)))
 		.slice(0, 15);
 	if (worst.length > 0) {
 		console.log("Worst examples (by USD change):");
@@ -101,8 +104,8 @@ function report(
 			console.log(
 				`  ${r.id}  ${r.date.toISOString().slice(0, 10)}  ${r.amount} ${r.currency}` +
 					` (home ${f.home}, ${r.pricingSource ?? "-"}${r.isAmortizedChild ? ", child" : ""})` +
-					`  ${f.reason}: rate ${r.exchangeRate} -> ${Number(f.newRate.toFixed(6))},` +
-					` USD ${r.amountInUSD.toFixed(2)} -> ${f.newUSD.toFixed(2)}`,
+					`  ${f.reason}: rate ${r.exchangeRate} -> ${f.newRate},` +
+					` USD ${r.amountInUSD.toFixed(2)} -> ${f.newUSD}`,
 			);
 		}
 		console.log("");
@@ -182,10 +185,8 @@ async function main() {
 		findings.map((f) =>
 			db.expense.update({
 				where: { id: f.row.id },
-				data: {
-					exchangeRate: Number(f.newRate.toFixed(6)),
-					amountInUSD: f.newUSD,
-				},
+				// Decimal text at the columns' scale: Postgres rounds nothing.
+				data: { exchangeRate: f.newRate, amountInUSD: f.newUSD },
 			}),
 		),
 	);
