@@ -79,6 +79,7 @@ export async function migrateGuestSessionsToUser(
 ): Promise<MigrationResult> {
 	const guestSessions = await db.guestSession.findMany({
 		where: { email: userEmail.toLowerCase() },
+		select: { id: true, projectId: true },
 	});
 
 	if (guestSessions.length === 0) {
@@ -125,7 +126,7 @@ export async function migrateGuestSessionsToUser(
 			});
 
 			// ─── 8. Delete GuestSession ────────────────────────────────────
-			await tx.guestSession.delete({ where: { id: guestId } });
+			await tx.guestSession.delete({ where: { id: guestId }, select: { id: true } });
 		}
 	});
 

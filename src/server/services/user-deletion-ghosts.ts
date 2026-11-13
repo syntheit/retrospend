@@ -108,6 +108,7 @@ export async function retireGhosts(
 		if (heirId) {
 			await tx.shadowProfile.update({
 				where: { id },
+				select: { id: true },
 				data: { createdById: heirId },
 			});
 		} else {

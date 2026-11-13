@@ -29,7 +29,7 @@ export async function deleteShadowProfileAsAdmin(
 	await db.$transaction(async (tx) => {
 		const affectedUserIds = await usersSharingWithParticipant(tx, "shadow", profile.id);
 		await anonymizeParticipantReferences(tx, "shadow", profile.id, deletedShadowSentinel(profile.id));
-		await tx.shadowProfile.delete({ where: { id: profile.id } });
+		await tx.shadowProfile.delete({ where: { id: profile.id }, select: { id: true } });
 		await recordParticipantRemoval(tx, {
 			adminId: params.adminId,
 			ownerId: profile.createdById,
@@ -54,7 +54,7 @@ export async function deleteGuestSessionAsAdmin(
 	await db.$transaction(async (tx) => {
 		const affectedUserIds = await usersSharingWithParticipant(tx, "guest", guest.id);
 		await anonymizeParticipantReferences(tx, "guest", guest.id, DELETED_GUEST_SENTINEL);
-		await tx.guestSession.delete({ where: { id: guest.id } });
+		await tx.guestSession.delete({ where: { id: guest.id }, select: { id: true } });
 		await recordParticipantRemoval(tx, { adminId: params.adminId, affectedUserIds });
 	});
 	return { name: guest.name, email: guest.email };
