@@ -59,6 +59,34 @@ function wrapper(value: Prisma.Decimal) {
 	return toFloat(value);
 }
 
+/** Returns only an edge call or 0, through an if: still an edge. */
+function guarded(x: Prisma.Decimal | null) {
+	if (!x) return 0;
+	return toFloat(x);
+}
+
+/** Returns an edge call or null through a conditional, and one through try/catch. */
+const nullable = (x: Prisma.Decimal | null) => (x == null ? null : toFloat(x));
+const tried = (x: Prisma.Decimal) => {
+	try {
+		return toFloat(x);
+	} catch {
+		return undefined;
+	}
+};
+/** A method of an object literal. */
+const holder = {
+	read(x: Prisma.Decimal) {
+		return toFloat(x);
+	},
+};
+
+/** Returns something else too: not a wrapper. */
+function mixed(x: Prisma.Decimal) {
+	if (x.isZero()) return "none";
+	return toFloat(x);
+}
+
 /** The edge helpers: a property value or a return value, nowhere else. */
 export function edges(cost: Prisma.Decimal, rows: Prisma.Decimal[]) {
 	const ok = { amount: toFloat(cost), shown: roundedMajor(cost, "USD") }; // nothing: property values
@@ -73,7 +101,11 @@ export function edges(cost: Prisma.Decimal, rows: Prisma.Decimal[]) {
 	const second = formatCurrency(1, String(toFloat(cost))); // float: not the amount argument
 	const both = wrapper(cost) + wrapper(cost); // float x2: a wrapper in arithmetic
 	const kept = { value: wrapper(cost) }; // nothing: a wrapper as a property value
-	return [ok, maybe, mapped, viaVariable, rounded, sum, total, asArgument, text, second, both, kept];
+	const more = guarded(cost) + guarded(cost); // float x2: an if with 0 and an edge call
+	const orNull = (nullable(cost) ?? 0) + (tried(cost) ?? 0); // float x2: a conditional, a try/catch
+	const method = holder.read(cost) + 1; // float: an object method
+	const other = `${mixed(cost)}`; // nothing: it also returns text
+	return [ok, maybe, mapped, viaVariable, rounded, sum, total, asArgument, text, second, both, kept, more, orNull, method, other];
 }
 
 /** A hit that is not money, excused by a named entry in the test. */

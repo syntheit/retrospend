@@ -43,6 +43,8 @@ import {
 	isFunctionDeclaration,
 	isFunctionExpression,
 	isIdentifier,
+	isMethodDeclaration,
+	isNumericLiteral,
 	isNonNullExpression,
 	isParenthesizedExpression,
 	isPrefixUnaryExpression,
@@ -140,22 +142,80 @@ const isEdgeCall = (expression: Node) => {
 	return !!call && isIdentifier(call.expression) && isEdgeName(call.expression.text);
 };
 
-/** Learns the functions of these files whose body only returns an edge helper. */
-function learnWrappers(paths: string[]): void {
-	const returnsEdge = (fn: Node & { body?: Node }) => {
-		const body = fn.body;
-		if (!body) return false;
-		if (!isBlock(body))
-			return isEdgeCall(body);
-		const [only, ...more] = body.statements;
-		return (
-			more.length === 0 &&
-			!!only &&
-			isReturnStatement(only) &&
-			!!only.expression &&
-			isEdgeCall(only.expression)
-		);
+/** A value a wrapper may return besides an edge call: null, undefined or 0. */
+const isEmptyValue = (node: Node) =>
+	node.kind === SyntaxKind.NullKeyword ||
+	(isIdentifier(node) && node.text === "undefined") ||
+	(isNumericLiteral(node) && node.text === "0");
+
+/** An expression that is an edge call, or null, undefined or 0, through `? :`, parentheses and casts. */
+function isEdgeOrEmpty(expression: Node): boolean {
+	let node = expression;
+	while (
+		isParenthesizedExpression(node) ||
+		isAsExpression(node) ||
+		isSatisfiesExpression(node) ||
+		isNonNullExpression(node)
+	)
+		node = node.expression;
+	if (isConditionalExpression(node))
+		return isEdgeOrEmpty(node.whenTrue) && isEdgeOrEmpty(node.whenFalse);
+	return isEdgeCall(node) || isEmptyValue(node);
+}
+
+const isFunctionLike = (node: Node) =>
+	isFunctionDeclaration(node) ||
+	isFunctionExpression(node) ||
+	isArrowFunction(node) ||
+	isMethodDeclaration(node);
+
+/**
+ * Whether every value a function returns is an edge call or null, undefined
+ * or 0 (looking through `? :`, if/else and try/catch), and at least one is an
+ * edge call.
+ */
+function returnsOnlyEdge(fn: Node & { body?: Node }): boolean {
+	const body = fn.body;
+	if (!body) return false;
+	if (!isBlock(body)) return isEdgeOrEmpty(body) && hasEdgeCall(body);
+	let edge = false;
+	let other = false;
+	const visit = (node: Node): void => {
+		if (isFunctionLike(node)) return;
+		if (isReturnStatement(node)) {
+			if (!node.expression) return;
+			if (!isEdgeOrEmpty(node.expression)) other = true;
+			else if (hasEdgeCall(node.expression)) edge = true;
+			return;
+		}
+		node.forEachChild(visit);
 	};
+	body.forEachChild(visit);
+	return edge && !other;
+}
+
+/** Whether an edge-or-empty expression has an edge call in it. */
+function hasEdgeCall(expression: Node): boolean {
+	let node = expression;
+	while (
+		isParenthesizedExpression(node) ||
+		isAsExpression(node) ||
+		isSatisfiesExpression(node) ||
+		isNonNullExpression(node)
+	)
+		node = node.expression;
+	if (isConditionalExpression(node))
+		return hasEdgeCall(node.whenTrue) || hasEdgeCall(node.whenFalse);
+	return isEdgeCall(node);
+}
+
+/** Learns the functions of exactly these files that return only an edge helper; the fixture's names never reach the scan. */
+function learnWrappers(paths: string[]): void {
+	wrappers.clear();
+	const bodyReturnsEdge = (fn: Node & { body?: Node }) =>
+		fn.body && !isBlock(fn.body)
+			? isEdgeOrEmpty(fn.body) && hasEdgeCall(fn.body)
+			: returnsOnlyEdge(fn);
 	for (let again = true; again; ) {
 		again = false;
 		for (const path of paths) {
@@ -163,16 +223,18 @@ function learnWrappers(paths: string[]): void {
 			if (!file) continue;
 			const visit = (node: Node): void => {
 				const named =
-					isFunctionDeclaration(node) && node.name
+					(isFunctionDeclaration(node) || isMethodDeclaration(node)) &&
+					node.name &&
+					isIdentifier(node.name)
 						? { name: node.name.text, fn: node }
-						: isVariableDeclaration(node) &&
+						: (isVariableDeclaration(node) || isPropertyAssignment(node)) &&
 								isIdentifier(node.name) &&
 								node.initializer &&
 								(isArrowFunction(node.initializer) ||
 									isFunctionExpression(node.initializer))
 							? { name: node.name.text, fn: node.initializer }
 							: null;
-				if (named && !wrappers.has(named.name) && returnsEdge(named.fn)) {
+				if (named && !wrappers.has(named.name) && bodyReturnsEdge(named.fn)) {
 					wrappers.add(named.name);
 					// A wrapper of a wrapper is found on the next pass.
 					again = true;
@@ -287,8 +349,10 @@ function hitsIn(path: string): Record<Rule, number[]> {
 			)
 				helpers.push(node);
 			if (
-				isIdentifier(node.expression) &&
-				isEdgeName(node.expression.text)
+				(isIdentifier(node.expression) &&
+					isEdgeName(node.expression.text)) ||
+				(isPropertyAccessExpression(node.expression) &&
+					wrappers.has(node.expression.name.text))
 			)
 				edges.push(node);
 		}
@@ -391,10 +455,11 @@ describe("money arithmetic ratchet", () => {
 			// standIns(): the stand-in types, then the three helpers by name
 			41, 42, 43, 44, 45, 46, 47, 48, 49,
 			// edges(): a variable (x2), arithmetic, a reduce, an argument (x2),
-			// a wrapper in arithmetic (x2)
-			67, 68, 69, 70, 71, 73, 74, 74,
+			// a wrapper in arithmetic (x2), an if with 0 (x2), a conditional
+			// and a try/catch (x2), an object method
+			95, 96, 97, 98, 99, 101, 102, 102, 104, 104, 105, 105, 106,
 			// paged(): a money name, until the list excuses it
-			81,
+			113,
 		]);
 	});
 
@@ -415,7 +480,7 @@ describe("money arithmetic ratchet", () => {
 		};
 		const used = new Set<NotMoney>();
 		const left = withoutNotMoney(file, path, hits, [page, stale], used);
-		expect(left).toEqual(hits.filter((n) => n !== 81));
+		expect(left).toEqual(hits.filter((n) => n !== 113));
 		expect([...used]).toEqual([page]);
 		// Another file's entry excuses nothing, and neither does part of the line.
 		const other = { ...page, file: "x.ts" };
