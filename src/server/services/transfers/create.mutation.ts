@@ -7,9 +7,9 @@
  * there, so net worth never jumps.
  */
 import { randomUUID } from "node:crypto";
-import type { Decimal } from "@prisma/client/runtime/index-browser";
 import { TRPCError } from "@trpc/server";
-import { roundMoneyDec } from "@retrospend/domain/money-dec";
+import { roundMoneyDec, roundRateDec } from "@retrospend/domain/money-dec";
+import type { Decimal } from "@retrospend/domain/precise-decimal";
 import type { Money } from "~/server/figures/registry";
 import { dec, toMinor } from "~/server/services/envelope/units";
 import { createExpenseIn } from "~/server/services/expense.service";
@@ -199,7 +199,7 @@ function reference(
 		referenceRate: {
 			base: foreign,
 			quote: home,
-			value: ratePerUnit(fraction).toFixed(6),
+			value: roundRateDec(ratePerUnit(fraction), 6).toFixed(6),
 		},
 	};
 }

@@ -5,6 +5,7 @@
  * payment.record and by confirm's re-allocation; through `tx` only.
  */
 import { TRPCError } from "@trpc/server";
+import { roundRateDec } from "@retrospend/domain/money-dec";
 import { fromMinor } from "~/server/services/envelope/units";
 import { logAudit } from "~/server/services/shared-expenses/audit-log";
 import {
@@ -55,7 +56,7 @@ function headerRate(allocation: Allocation) {
 	const [[currency, quote]] = [...quoted.entries()] as [[string, Quote]];
 	return {
 		rateType: quote.rateType,
-		rate: quote.perUnit.toDecimalPlaces(12).toString(),
+		rate: roundRateDec(quote.perUnit, 12).toString(),
 		rateCurrency: currency,
 	};
 }
@@ -85,7 +86,7 @@ function rowData(
 		convertedAmount: converted ? decimal(row.paid, P) : null,
 		convertedCurrency: converted ? P : null,
 		exchangeRateUsed: row.quote
-			? row.quote.perUnit.toDecimalPlaces(6).toString()
+			? roundRateDec(row.quote.perUnit, 6).toString()
 			: null,
 		rateType: row.quote?.rateType ?? null,
 		paymentMethod: row.isOffset ? null : args.paymentMethod,

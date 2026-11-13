@@ -6,10 +6,10 @@
  */
 import { randomUUID } from "node:crypto";
 import type { GroupTargetInput, SetupInput } from "~/lib/schemas/envelope";
-import { Prisma } from "~prisma";
+import type { Prisma } from "~prisma";
 import { EnvelopeError } from "./errors";
 import { ruleColumns } from "./rule-store";
-import { fromMinor } from "./units";
+import { dec, fromMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
 
@@ -25,8 +25,8 @@ export function groupTargetColumns(t: GroupTargetInput | undefined, H: string) {
 		targetKind: t.kind,
 		targetValue:
 			t.kind === "AMOUNT"
-				? new Prisma.Decimal(fromMinor(t.amountMinor, H).toString())
-				: new Prisma.Decimal(t.basisPoints).dividedBy(100),
+				? fromMinor(t.amountMinor, H).toFixed()
+				: dec(t.basisPoints).div(100).toFixed(),
 	};
 }
 

@@ -36,20 +36,5 @@
 		"src/server/services/shared-expenses/settlement.service.ts": 5,
 		"src/server/services/shared-expenses/verification.service.ts": 1,
 		"src/server/services/title-suggestions.service.ts": 2
-	},
-	"prisma-decimal": {
-		"src/server/services/api-v1/currencies.ts": 1,
-		"src/server/services/entry/expense.mutation.ts": 1,
-		"src/server/services/envelope/inputs-source.ts": 1,
-		"src/server/services/envelope/rule-store.ts": 1,
-		"src/server/services/envelope/setup-p5.ts": 1,
-		"src/server/services/envelope/split-events.ts": 1,
-		"src/server/services/exchange-rate.service.ts": 1,
-		"src/server/services/import/match.ts": 2,
-		"src/server/services/income/move-in.mutation.ts": 1,
-		"src/server/services/payments/rate-band.ts": 4,
-		"src/server/services/transfers/create.mutation.ts": 6,
-		"src/server/services/transfers/delete.mutation.ts": 1,
-		"src/server/services/transfers/plan.ts": 11
 	}
 }

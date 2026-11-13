@@ -21,6 +21,7 @@
 import { createHash } from "node:crypto";
 import { stripUserTextControlsForKey } from "@retrospend/api-contract/common";
 import { currencyDecimals } from "@retrospend/domain/money";
+import { Dec, dec } from "@retrospend/domain/precise-decimal";
 import {
 	dayKey,
 	startOfDayIn,
@@ -59,8 +60,10 @@ export function normalizeTitle(title: string): string {
  */
 export function minorKey(amount: number | Prisma.Decimal, currency: string) {
 	const decimals = currencyDecimals(currency);
-	return new Prisma.Decimal(amount.toString())
-		.toDecimalPlaces(decimals, Prisma.Decimal.ROUND_HALF_EVEN)
+	// Not roundMoneyDec: its -0 trim would change the persisted fingerprint
+	// of a tiny negative amount ("-0.00").
+	return dec(amount.toString())
+		.toDecimalPlaces(decimals, Dec.ROUND_HALF_EVEN)
 		.toFixed(decimals);
 }
 

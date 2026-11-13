@@ -16,6 +16,7 @@ import {
 	budgetSpendingWhere,
 } from "../spending";
 import { loadRateRows } from "./rate-book";
+import { dec } from "./units";
 
 type Tx = Prisma.TransactionClient;
 
@@ -76,7 +77,7 @@ export function prismaBudgetInputs(
 					month: g.month,
 					fromEnvelopeId: g.fromEnvelopeId,
 					toEnvelopeId: g.toEnvelopeId,
-					amount: g._sum.amount?.toFixed() ?? "0",
+					amount: g._sum.amount ? dec(g._sum.amount).toFixed() : "0",
 				})),
 			};
 		},

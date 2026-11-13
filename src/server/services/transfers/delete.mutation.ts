@@ -4,6 +4,7 @@
  * transfer.create with `recreate`, the same id and the amounts as typed.
  */
 import { TRPCError } from "@trpc/server";
+import { dec } from "~/server/services/envelope/units";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import type { Prisma } from "~prisma";
 import { type AccountChange, reverseLegs } from "../accounts/ledger";
@@ -44,7 +45,7 @@ async function recreateInput(
 		date: transfer.date.toISOString().slice(0, 10),
 		note: transfer.note,
 		fee: feeLeg
-			? { amount: feeLeg.amount.abs().toString(), accountId: feeLeg.accountId }
+			? { amount: dec(feeLeg.amount.toString()).abs().toString(), accountId: feeLeg.accountId }
 			: null,
 	};
 }

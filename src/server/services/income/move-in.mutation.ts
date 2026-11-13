@@ -11,7 +11,7 @@
  *
  * Undo is income.undoMoveIn with the same input.
  */
-import type { Decimal } from "@prisma/client/runtime/index-browser";
+import type { Decimal } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import type { Money } from "~/server/figures/registry";
 import { Dec, dec, toMinor } from "~/server/services/envelope/units";
