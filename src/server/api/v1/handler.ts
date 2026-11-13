@@ -7,6 +7,7 @@ import {
 } from "@retrospend/api-contract/common";
 import { IMPORT_MAX_BYTES } from "@retrospend/api-contract";
 import { assertNoSealedText } from "~/server/crypto/response-guard";
+import { notModifiedFor } from "./core/etag";
 import { encodeProblem, problem } from "./errors";
 import type { V1InitialContext } from "./middleware";
 import { v1Router } from "./router";
@@ -98,7 +99,7 @@ export function createV1Handler(
 			? response
 			: Response.json(encodeProblem(problem("not_found")), { status: 404 });
 		await guardSealedText(res);
-		return withProblemHeaders(res);
+		return withProblemHeaders(notModifiedFor(request, res) ?? res);
 	};
 }
 

@@ -3,6 +3,7 @@ import {
 	convertAmount,
 	readRateTable,
 } from "~/server/services/api-v1/currency-table";
+import * as rateSync from "~/server/services/api-v1/rate-sync";
 import { readCurrencySpending } from "~/server/services/currency-spending.service";
 import { readRateHistory } from "~/server/services/rate-history.service";
 import { serve } from "../core/serve";
@@ -38,6 +39,20 @@ export const currenciesRouter = {
 				query,
 			);
 		}),
+	),
+	dailyRates: c.dailyRates.handler(
+		serve(async ({ context }) => {
+			const { body, etag } = await rateSync.readDailyRates(
+				signedIn(context).db,
+			);
+			context.resHeaders?.set("etag", etag);
+			return body;
+		}),
+	),
+	historyRates: c.historyRates.handler(
+		serve(({ context, input }) =>
+			rateSync.listHistoryRatePage(signedIn(context).db, input),
+		),
 	),
 	bestRate: c.bestRate.handler(
 		serve(({ context, input }) => {

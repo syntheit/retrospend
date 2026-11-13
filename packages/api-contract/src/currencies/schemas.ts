@@ -24,6 +24,50 @@ export const exchangeRateSchema = z
 
 export type ExchangeRateDto = z.infer<typeof exchangeRateSchema>;
 
+/**
+ * A row of the daily rate table exactly as stored: `date` is the stored
+ * instant, not just its day, so a device picks the same rate for an expense
+ * as the server does. Rows carry what the server prices with and nothing
+ * derived (USD has no row; it is 1 by definition).
+ */
+export const dailyRateSchema = z
+	.object({
+		id: idSchema,
+		currency: currencyCodeSchema,
+		type: rateTypeSchema,
+		date: timestampSchema,
+		unitsPerUsd: decimalStringSchema,
+		updatedAt: timestampSchema,
+	})
+	.meta({ id: "DailyRate" });
+
+export type DailyRateDto = z.infer<typeof dailyRateSchema>;
+
+/**
+ * The whole rate table in one body. `asOf` is the newest `updatedAt` among
+ * the rows (null when there are none).
+ */
+export const dailyRatesSchema = z
+	.object({
+		asOf: timestampSchema.nullable(),
+		rates: z.array(dailyRateSchema),
+	})
+	.meta({ id: "DailyRates" });
+
+export type DailyRatesDto = z.infer<typeof dailyRatesSchema>;
+
+/** One stored day of one currency and rate type, from the rate history. */
+export const historyRateSchema = z
+	.object({
+		date: z.iso.date(),
+		currency: currencyCodeSchema,
+		type: rateTypeSchema,
+		unitsPerUsd: decimalStringSchema,
+	})
+	.meta({ id: "HistoryRate" });
+
+export type HistoryRateDto = z.infer<typeof historyRateSchema>;
+
 export const currencySchema = z
 	.object({
 		code: currencyCodeSchema,

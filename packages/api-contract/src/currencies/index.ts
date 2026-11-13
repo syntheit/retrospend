@@ -13,8 +13,10 @@ import {
 	convertDirectionSchema,
 	currencySchema,
 	currencySpendingSchema,
+	dailyRatesSchema,
 	exchangeRateSchema,
 	historyRangeSchema,
+	historyRateSchema,
 	rateHistorySchema,
 	rateTableSchema,
 } from "./schemas";
@@ -38,6 +40,38 @@ export const rateHistoryQuerySchema = cursorQuerySchema.extend({
 	from: z.iso.date().optional(),
 	to: z.iso.date().optional(),
 });
+
+/** The longest span GET /rates/history serves in one request, in days. */
+export const RATE_DAYS_MAX_SPAN = 366;
+export const RATE_DAYS_DEFAULT_LIMIT = 1000;
+export const RATE_DAYS_MAX_LIMIT = 2000;
+
+const DAY_MS = 86_400_000;
+
+export const rateDaysQuerySchema = z
+	.object({
+		cursor: cursorQuerySchema.shape.cursor,
+		limit: z.coerce
+			.number()
+			.int()
+			.min(1)
+			.max(RATE_DAYS_MAX_LIMIT)
+			.default(RATE_DAYS_DEFAULT_LIMIT),
+		from: z.iso.date().meta({ description: "First day, inclusive." }),
+		to: z.iso.date().meta({
+			description: `Last day, inclusive; at most ${RATE_DAYS_MAX_SPAN} days after from.`,
+		}),
+	})
+	.refine(
+		(q) => {
+			const span = (Date.parse(q.to) - Date.parse(q.from)) / DAY_MS;
+			return span >= 0 && span <= RATE_DAYS_MAX_SPAN;
+		},
+		{
+			error: `to must be on or after from, and at most ${RATE_DAYS_MAX_SPAN} days later`,
+			path: ["to"],
+		},
+	);
 
 export const rateSeriesQuerySchema = z.object({
 	range: historyRangeSchema.default("3M").meta({
@@ -121,11 +155,37 @@ export const currenciesContract = {
 			path: "/rates/{currency}/history",
 			operationId: "getRateHistory",
 			tags: TAG,
-			summary: "Stored rates for one currency, newest first",
+			summary: "The stored rate rows of one currency",
+			description:
+				"Reads exchange_rate, which keeps the newest row of each rate type and rewrites it in place, so this is the current rates (newest first), not a daily history. Daily rows for every currency: GET /rates/history. A currency's chart: GET /rates/{currency}/series.",
 		})
 		.meta({ scope: "read" })
 		.input(currencyParamsSchema.extend(rateHistoryQuerySchema.shape))
 		.output(pageOf(exchangeRateSchema)),
+	dailyRates: v1
+		.route({
+			method: "GET",
+			path: "/rates/daily",
+			operationId: "getDailyRates",
+			tags: TAG,
+			summary: "The whole rate table, as stored",
+			description:
+				"Every exchange_rate row of every currency except USD (1 by definition, never a row), in one body read in one statement, so a rate the sidecar rewrites in place never shows half old and half new. No date parameter and no pick per type: a device prices with all rows, as the server's figures do. A currency with no row is absent, never a row at 1. The ETag is a hash of the body; send it as If-None-Match for 304 with no body.",
+		})
+		.meta({ scope: "read" })
+		.output(dailyRatesSchema),
+	historyRates: v1
+		.route({
+			method: "GET",
+			path: "/rates/history",
+			operationId: "listHistoryRates",
+			tags: TAG,
+			summary: "Stored rate days for every currency",
+			description: `Raw exchange_rate_history rows, oldest first by (date, currency, type), for charts only: a price never reads them. The range is at most ${RATE_DAYS_MAX_SPAN} days; pages default to ${RATE_DAYS_DEFAULT_LIMIT} rows, at most ${RATE_DAYS_MAX_LIMIT}.`,
+		})
+		.meta({ scope: "read" })
+		.input(rateDaysQuerySchema)
+		.output(pageOf(historyRateSchema)),
 	bestRate: v1
 		.route({
 			method: "GET",

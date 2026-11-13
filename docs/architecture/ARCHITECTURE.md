@@ -76,6 +76,7 @@ Mobile uses v1, never tRPC, because an App Store or F-Droid build lives for mont
 - **Rate limits:** per IP and per token, stored in Postgres.
 - **Previews:** every money write has a `.../preview` twin returning what changes and what does not.
 - **Sync:** cursor pagination, `updatedSince` deltas, and an events feed (`/api/v1/events`).
+- **Rates for devices:** `GET /rates/daily` is the whole `exchange_rate` table in one body with an ETag (304 on `If-None-Match`); a device prices with all its rows, like the server's figures. `GET /rates/history` pages the raw daily history for charts only, kept outside the engine's figure inputs.
 - **Completeness:** `src/server/api/v1/__tests__/completeness.test.ts` fails if any tRPC procedure has no v1 route and no written reason.
 
 ### Database access and row-level security
