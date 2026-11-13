@@ -6,6 +6,10 @@
  * it waits for the open insert and then stamps that row too, or the insert
  * waits and its own trigger sees the new state. Without the lock the row is
  * never stamped (or keeps a U in a shared book).
+ *
+ * A perf-named file only for where it runs: alone, after every other file. Its
+ * open insert holds back the commit cut of the sync feed for every worker, which
+ * would make other files' paging tests see a stamp late.
  */
 import { randomUUID } from "node:crypto";
 import { Client } from "pg";
