@@ -54,6 +54,11 @@ export function standIns(
 	return [a, b, c, d, e, f, g, h, i, j, k, l, m];
 }
 
+/** A function that only returns an edge helper holds the edge value too. */
+function wrapper(value: Prisma.Decimal) {
+	return toFloat(value);
+}
+
 /** The edge helpers: a property value or a return value, nowhere else. */
 export function edges(cost: Prisma.Decimal, rows: Prisma.Decimal[]) {
 	const ok = { amount: toFloat(cost), shown: roundedMajor(cost, "USD") }; // nothing: property values
@@ -66,10 +71,12 @@ export function edges(cost: Prisma.Decimal, rows: Prisma.Decimal[]) {
 	const asArgument = Math.max(toFloat(cost), 0); // float: an argument
 	const text = formatCurrency(toFloat(cost), "USD"); // nothing: the amount handed to the formatter
 	const second = formatCurrency(1, String(toFloat(cost))); // float: not the amount argument
-	return [ok, maybe, mapped, viaVariable, rounded, sum, total, asArgument, text, second];
+	const both = wrapper(cost) + wrapper(cost); // float x2: a wrapper in arithmetic
+	const kept = { value: wrapper(cost) }; // nothing: a wrapper as a property value
+	return [ok, maybe, mapped, viaVariable, rounded, sum, total, asArgument, text, second, both, kept];
 }
 
 /** A hit that is not money, excused by a named entry in the test. */
 export function paged(page: { total: number }) {
-	return { pages: Number(page.total) }; // float: names a money value, excused by the self-test's list
+	return { pages: Number(page.total) }; // float: a money name, excused by the self-test
 }

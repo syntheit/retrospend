@@ -11,7 +11,8 @@
 //   `toNumber`, `toNumberWithDefault` or `toNumberOrNull` helper, and an edge
 //   helper (`toFloat`, `roundedMajor`) anywhere but as an object literal
 //   property value or a return value: in arithmetic, a reduce or a variable
-//   it is a figure computed in floats. A hit that is not money (a count, a
+//   it is a figure computed in floats. A function whose body only returns an
+//   edge helper is an edge helper too (found by name, in any scanned file). A hit that is not money (a count, a
 //   percentage) goes in NOT_MONEY below with its reason; a match is never
 //   narrowed to drop one.
 // - prisma-decimal: an arithmetic or rounding call (div, mul, plus,
@@ -36,8 +37,11 @@ import {
 import {
 	isArrowFunction,
 	isAsExpression,
+	isBlock,
 	isCallExpression,
 	isConditionalExpression,
+	isFunctionDeclaration,
+	isFunctionExpression,
 	isIdentifier,
 	isNonNullExpression,
 	isParenthesizedExpression,
@@ -46,6 +50,7 @@ import {
 	isPropertyAssignment,
 	isReturnStatement,
 	isSatisfiesExpression,
+	isVariableDeclaration,
 } from "typescript/unstable/ast/is";
 import { API, type Checker, type Type } from "typescript/unstable/sync";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -85,34 +90,99 @@ const NUMBER_HELPERS = new Set([
 ]);
 /** The edges: a Decimal becomes a number only here (precise-decimal.ts, money-minor.ts). */
 const EDGE_HELPERS = new Set(["toFloat", "roundedMajor"]);
+/** Functions whose body only returns an edge helper: they hold the edge value too. */
+const wrappers = new Set<string>();
+const isEdgeName = (name: string) => EDGE_HELPERS.has(name) || wrappers.has(name);
 
 /** A hit that is not money, kept out of the count with its reason. An entry that matches nothing fails. */
 interface NotMoney {
 	readonly file: string;
-	/** Text the hit's source line contains. */
-	readonly includes: string;
+	/** The hit's whole source line, trimmed: nothing else on the line is excused. */
+	readonly line: string;
 	readonly reason: string;
 }
 const NOT_MONEY: readonly NotMoney[] = [
 	{
 		file: "packages/domain/src/envelope/units.ts",
-		includes: "scaled.toNumber()",
+		line: "return assertMinor(scaled.toNumber(), `${currency} amount`);",
 		reason:
 			"A rounded whole number of minor units, checked safe by assertMinor on the same line",
 	},
 	{
 		file: "packages/domain/src/envelope/units.ts",
-		includes: "Number(total)",
+		line: 'return assertMinor(Number(total), "sum");',
 		reason:
 			"A BigInt sum of whole minor units, checked safe by assertMinor on the same line",
 	},
 	{
 		file: "packages/domain/src/insights.ts",
-		includes: "Number(divideHalfEven(",
+		line: "return Number(divideHalfEven(BigInt(total), BigInt(divisor))) || 0;",
 		reason:
 			"A whole-number average of minor units from exact BigInt division, never a fraction",
 	},
 ];
+
+/** The call an expression is, through parentheses and casts. */
+function callOf(expression: Node): CallExpression | null {
+	let node = expression;
+	while (
+		isParenthesizedExpression(node) ||
+		isAsExpression(node) ||
+		isSatisfiesExpression(node) ||
+		isNonNullExpression(node)
+	)
+		node = node.expression;
+	return isCallExpression(node) ? node : null;
+}
+
+const isEdgeCall = (expression: Node) => {
+	const call = callOf(expression);
+	return !!call && isIdentifier(call.expression) && isEdgeName(call.expression.text);
+};
+
+/** Learns the functions of these files whose body only returns an edge helper. */
+function learnWrappers(paths: string[]): void {
+	const returnsEdge = (fn: Node & { body?: Node }) => {
+		const body = fn.body;
+		if (!body) return false;
+		if (!isBlock(body))
+			return isEdgeCall(body);
+		const [only, ...more] = body.statements;
+		return (
+			more.length === 0 &&
+			!!only &&
+			isReturnStatement(only) &&
+			!!only.expression &&
+			isEdgeCall(only.expression)
+		);
+	};
+	for (let again = true; again; ) {
+		again = false;
+		for (const path of paths) {
+			const file = project.program.getSourceFile(path);
+			if (!file) continue;
+			const visit = (node: Node): void => {
+				const named =
+					isFunctionDeclaration(node) && node.name
+						? { name: node.name.text, fn: node }
+						: isVariableDeclaration(node) &&
+								isIdentifier(node.name) &&
+								node.initializer &&
+								(isArrowFunction(node.initializer) ||
+									isFunctionExpression(node.initializer))
+							? { name: node.name.text, fn: node.initializer }
+							: null;
+				if (named && !wrappers.has(named.name) && returnsEdge(named.fn)) {
+					wrappers.add(named.name);
+					// A wrapper of a wrapper is found on the next pass.
+					again = true;
+				}
+				node.forEachChild(visit);
+			};
+			visit(file);
+		}
+	}
+}
 
 /**
  * Whether an edge helper call is an object literal property value or a return
@@ -218,7 +288,7 @@ function hitsIn(path: string): Record<Rule, number[]> {
 				helpers.push(node);
 			if (
 				isIdentifier(node.expression) &&
-				EDGE_HELPERS.has(node.expression.text)
+				isEdgeName(node.expression.text)
 			)
 				edges.push(node);
 		}
@@ -266,7 +336,7 @@ function withoutNotMoney(
 	const text = project.program.getSourceFile(path)?.text.split("\n") ?? [];
 	return lines.filter((n) => {
 		const entry = list.find(
-			(e) => e.file === file && (text[n - 1] ?? "").includes(e.includes),
+			(e) => e.file === file && (text[n - 1] ?? "").trim() === e.line,
 		);
 		if (entry) used.add(entry);
 		return !entry;
@@ -285,6 +355,7 @@ function scan(): {
 		exclude:
 			/\.test\.tsx?$|__tests__|test-fixtures|packages\/domain\/src\/money\.ts$/,
 	});
+	learnWrappers(files);
 	const counts: Counts = {};
 	const lines: Record<string, string[]> = {};
 	for (const path of files) {
@@ -310,43 +381,47 @@ function scan(): {
 describe("money arithmetic ratchet", () => {
 	it("counts by type what each rule names, and nothing else", () => {
 		// arithmetic.fixture.ts marks each line with what it must count.
-		const hits = hitsIn(
-			join(REPO_ROOT, "src/test/money/arithmetic.fixture.ts"),
-		);
+		const fixture = join(REPO_ROOT, "src/test/money/arithmetic.fixture.ts");
+		learnWrappers([fixture]);
+		const hits = hitsIn(fixture);
 		expect(hits["prisma-decimal"]).toEqual([19, 20, 20]);
 		expect(hits.float.sort((a, b) => a - b)).toEqual([
 			// fixture(): unary plus, toNumber(), parseFloat, a money name
 			22, 23, 24, 25,
 			// standIns(): the stand-in types, then the three helpers by name
 			41, 42, 43, 44, 45, 46, 47, 48, 49,
-			// edges(): a variable (x2), arithmetic, a reduce, an argument (x2)
-			62, 63, 64, 65, 66, 68,
+			// edges(): a variable (x2), arithmetic, a reduce, an argument (x2),
+			// a wrapper in arithmetic (x2)
+			67, 68, 69, 70, 71, 73, 74, 74,
 			// paged(): a money name, until the list excuses it
-			74,
+			81,
 		]);
 	});
 
 	it("excuses a hit that is not money only through a named entry, and reports an unused one", () => {
 		const path = join(REPO_ROOT, "src/test/money/arithmetic.fixture.ts");
 		const file = "src/test/money/arithmetic.fixture.ts";
+		learnWrappers([path]);
 		const hits = hitsIn(path).float.sort((a, b) => a - b);
 		const page: NotMoney = {
 			file,
-			includes: "Number(page.total)",
+			line: "return { pages: Number(page.total) }; // float: a money name, excused by the self-test",
 			reason: "A page count named total, not an amount",
 		};
 		const stale: NotMoney = {
 			file,
-			includes: "Number(nothing here)",
+			line: "Number(nothing here)",
 			reason: "x",
 		};
 		const used = new Set<NotMoney>();
 		const left = withoutNotMoney(file, path, hits, [page, stale], used);
-		expect(left).toEqual(hits.filter((n) => n !== 74));
+		expect(left).toEqual(hits.filter((n) => n !== 81));
 		expect([...used]).toEqual([page]);
-		// Another file's entry excuses nothing.
+		// Another file's entry excuses nothing, and neither does part of the line.
 		const other = { ...page, file: "x.ts" };
 		expect(withoutNotMoney(file, path, hits, [other], new Set())).toEqual(hits);
+		const part = { ...page, line: "Number(page.total)" };
+		expect(withoutNotMoney(file, path, hits, [part], new Set())).toEqual(hits);
 	});
 
 	it("stays at the baseline", () => {
@@ -373,7 +448,7 @@ describe("money arithmetic ratchet", () => {
 		}
 		for (const e of unused)
 			problems.push(
-				`not-money entry matches nothing, remove it: ${e.file} "${e.includes}"`,
+				`not-money entry matches nothing, remove it: ${e.file} "${e.line}"`,
 			);
 		expect(problems, `\n${problems.join("\n")}\n`).toEqual([]);
 	}, 60_000);
