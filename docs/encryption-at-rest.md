@@ -17,7 +17,7 @@ Only text columns, and a few JSON columns, listed in `src/server/crypto/fields.t
 Two key classes decide who can open a cell:
 
 - **User key:** only that person's text. Expense title, description and location; category names; account names; transfer notes; recurring template name, payment source and website; export and import file names; the uploaded import file and its failure text; push device names; the email and phone of a person you added without an account (a ghost), which only the person who added it can read.
-- **Instance key:** text that more than one person reads. Shared expense description, notes and receipt link; split rejection reasons; settlement and payment notes, methods and reasons; fix requests and replies; project names and descriptions; billing period labels; payment method labels and identifiers; a ghost's name; guest names and guest email; display names; budget book, envelope and group names, budget movement notes, income rule names and match text, wealth transfer notes; feedback and admin notes; error report messages and stacks; API key and webhook names; webhook URLs.
+- **Instance key:** text that more than one person reads. Shared expense description, notes and receipt link; split rejection reasons; settlement and payment notes, methods and reasons; fix requests and replies; project names and descriptions; billing period labels; payment method labels and identifiers; a ghost's name; guest names and guest email; display names; budget book, envelope and group names, budget movement notes, envelope change previous names, income rule names and match text, wealth transfer notes; feedback and admin notes; error report messages and stacks; API key and webhook names; webhook URLs.
 
 JSON columns:
 
@@ -66,7 +66,7 @@ The checks run in this order: the master key setting (a malformed key stops the 
 | `sealing_unreleased` | Flag on in a production build that does not allow sealing yet | Use a build that allows it, or unset `DATA_KEYS_WRITE` |
 | `master_key_missing` | Flag on, no master key set, and the epoch is not set yet | Set the master key, or unset the flag |
 | `epoch_without_master_key` | The epoch is set and no master key is set, with the flag on or off | Restore the original key (or the key file) and start again. Do not start without it |
-| `master_key_mismatch` | The master key does not open the canary, or opens none of the wrapped keys that exist. The canary is checked before the instance key, so a wrong key gives this code, not `instance_key_lost` | Start with the original key. Never write a canary by hand. If that key is gone, sealed text is gone |
+| `master_key_mismatch` | The master key does not open the stored canary or, when none is stored yet, does not open the oldest existing user key or instance key. The canary is checked before the instance key, so a wrong key gives this code, not `instance_key_lost`. The canary is never written once the epoch is set | Start with the original key. Never write a canary by hand. If that key is gone, sealed text is gone |
 | `instance_key_lost` | The epoch is set and the instance key is missing from the key store, its marker is null, or the key does not open under the master key | Check the master key first. Then restore the keystore dump that matches this database dump (see [Data key backups](self-hosting.md#data-key-backups)). Do not clear the marker: a new key opens nothing sealed before |
 | `keystore_grants_missing` | Flag on, and the app role cannot use the `keystore` schema or its four functions, usually after a restore | Restart: the grants are applied at every start. If it persists, the restore was not run as `retrospend_owner`; restore again as that role |
 | `category_index_missing` | Flag on, and some category has no name index | Run `scripts/backfill-category-name-index.ts --apply`, then start |
@@ -117,7 +117,7 @@ Run `scripts/verify-sealing.ts` right away and compare with the baseline. It rep
 
 Once people edit old rows for other reasons (a changed amount makes `updatedAt` newer while the old title is still plaintext), the second group is expected, so run `verify-sealing.ts --created-only`. It still fails on plaintext in a row created after the epoch. Tables with no `createdAt` or `updatedAt` are listed as exceptions and are covered by the baseline comparison only.
 
-Then, on the owner connection (read only):
+Then, on the owner connection (read only). The commands use the container name `retrospend-postgres` and the database name `retrospend`; use your own `POSTGRES_DB_NAME` if it differs:
 
 ```sh
 docker exec -i retrospend-postgres psql -U retrospend_owner -d retrospend <<'SQL'
@@ -136,11 +136,9 @@ SQL
 
 `sealingFloor` must equal the floor of the build you run. The app must show the probe expense with its plain title. The log must have no `encrypted_text_unavailable`, `auth_failed` or `keystore_lost` lines.
 
-## Staging copies and rehearsal
+## Rehearsal on a scratch copy
 
-If you keep a staging instance and copy its rows back into production, keep sealing off there until that copy-back is done. Rows sealed under the staging keys cannot be opened in production. A copy-back must refuse a source whose epoch is set.
-
-Rehearse sealing on a scratch copy instead: restore a backup into its own database, container, network and volumes, with its own environment file and no shared backup volume, and run this whole page against it, ending with a restore of the pre-flag pair (the way back) once. Do not use a staging deploy script that retags your images, restarts the staging instance or reuses its environment file.
+Rehearse sealing on a scratch copy before production: restore a backup into its own database, container, network and volumes, with its own environment file and no shared backup volume, and run this whole page against it, ending with a restore of the pre-flag pair (the way back) once.
 
 The scratch app needs the master key the copy was made under, because a copy that already holds wrapped keys and a canary refuses any other key (`master_key_mismatch`). A throwaway key works only for a copy made before any key existed. Throw the scratch copy away afterward, and never send an image from before the floor back to it.
 
@@ -169,7 +167,7 @@ What an older build does with sealed data, which is why the floor exists:
 - **Stuck import files** are cleared within about two hours (an hourly sweep, a one hour cutoff), and the job shows as failed with no reason text.
 - **Turkish locale.** Before the epoch, ghost email matching uses the database's case folding for plaintext, and a `tr_TR` collation can miss a dotted capital I. After the epoch the hash path is exact.
 - **Contact normalization is ASCII only.** The hash folds A to Z and trims. An input path that accepts non-ASCII addresses must change the hash label and refill.
-- **Contact hashes depend on instance key id 1** until D12. D12 keeps that key or re-hashes every contact.
+- **Contact hashes depend on the oldest (lowest id) instance key** until D12. D12 keeps that key or re-hashes every contact.
 - **The contact hash links people in a dump.** One key hashes every address, so a dump without any key shows which ghosts, whoever added them, share an address, and which guest rows share one. With the instance key, a candidate address can be tested. The hash is not removed with a deleted account.
 - **Mixed mode.** Until D12, a database can hold plaintext beside ciphertext. Someone who can write to the database can substitute plaintext in a row and it will be accepted, and deleting an account destroys nothing for rows that are still plaintext.
 - **Escape hatches in self-hosting.md** that clear a key marker are valid only while the epoch is not set.

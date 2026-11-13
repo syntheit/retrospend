@@ -148,6 +148,8 @@ Stop it when you are done. Never put it behind a public address, and never publi
 
 The sidecar service handles scheduled database backups on the schedule set by `BACKUP_CRON` (default: daily at 3 AM UTC). Retention is controlled by `BACKUP_RETENTION_DAYS` (default: 30).
 
+The commands in this section and in [encryption-at-rest.md](encryption-at-rest.md) use the container name `retrospend-postgres` and the database name `retrospend`; use your own container name and `POSTGRES_DB_NAME` if they differ.
+
 Backup files are written inside the sidecar container. They go to `BACKUP_DIR` (default `/backups`), which the example compose file mounts as the `backup_data` volume.
 
 ### Encrypted backups

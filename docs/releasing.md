@@ -55,7 +55,7 @@ For the release that first allows `DATA_KEYS_WRITE` in production. The maintaine
 **Changed**
 
 - The account deletion preview in API v1 can give a null `name` and `newOrganizerName` when the server cannot open a name. The apps show "A project" or "another member".
-- `shared_transaction.receiptUrl` is sealed with the other shared text. No client reads it. An app build older than this release shows ciphertext for it.
+- `shared_transaction.receiptUrl` is sealed with the other shared text. No client reads it. An older server build shows ciphertext for it.
 - Error reports are kept 30 days, not 90. The first sweep deletes reports 30 to 90 days old.
 - A stuck import has its file cleared within about two hours, and the job shows as failed with no reason text.
 - While sealing is on, a person whose data key is lost cannot write through API v1 until it is restored, and their sealed text reads as unavailable.
