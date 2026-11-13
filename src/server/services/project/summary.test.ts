@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { computeSettlementPlan } from "~/server/services/shared-expenses/group-settlement";
-import { type SummaryLedger, summarizeLedger } from "./summary";
+import type { PostingLedger } from "~/server/services/shared-expenses/ledger-posting";
+import { summarizeLedger } from "./summary";
 
 const A = { participantType: "user" as const, participantId: "a" };
 const B = { participantType: "user" as const, participantId: "b" };
@@ -31,7 +32,7 @@ const pay = (from: Ref, to: Ref, amount: string, currency: string) => ({
 });
 
 /** The trip from __tests__/trip-fixture.ts. */
-const trip: SummaryLedger = {
+const trip: PostingLedger = {
 	transactions: [
 		tx("BRL", "300", A, [
 			[A, "100"],

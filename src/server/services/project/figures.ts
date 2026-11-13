@@ -14,7 +14,7 @@ import type {
 	Money,
 } from "~/server/figures/registry";
 import { readProjectNumbers } from "./numbers";
-import type { MemberLine } from "./summary";
+import type { MemberLine } from "~/server/services/shared-expenses/ledger-posting";
 
 function projectOf(scope: FigureScope): string {
 	if (!scope.projectId) {

@@ -5,6 +5,7 @@ import type {
 	rateHistoryQuerySchema,
 	ratesQuerySchema,
 } from "@retrospend/api-contract";
+import { dec } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import * as z from "zod";
 import type { db as globalDb } from "~/server/db";
@@ -17,7 +18,6 @@ import {
 	RateSyncUnavailable,
 	requestRateSync,
 } from "~/server/services/exchange-rate.service";
-import { Prisma } from "~prisma";
 import { isoDay } from "./caller";
 import { decodeCursor, toPage } from "./cursor";
 
@@ -39,7 +39,7 @@ export function toExchangeRate(row: {
 		type: row.type,
 		date: isoDay(row.date),
 		// Plain notation, never an exponent ("0.000011", not "1.1e-5").
-		unitsPerUsd: new Prisma.Decimal(row.rate.toString()).toFixed(),
+		unitsPerUsd: dec(row.rate).toFixed(),
 		updatedAt: row.updatedAt.toISOString(),
 	};
 }

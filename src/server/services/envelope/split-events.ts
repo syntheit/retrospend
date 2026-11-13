@@ -26,7 +26,7 @@ import type {
 	ShareStatus,
 } from "./splits-replay";
 import type { IsoDate, Minor, MonthKey } from "./types";
-import { toMinor } from "./units";
+import { dec, toMinor } from "./units";
 
 export interface PartyRef {
 	participantType: "user" | "guest" | "shadow";
@@ -199,7 +199,7 @@ function txEvents(ctx: SplitContext, rows: SplitRows): ReplayEvent[] {
 			const value = bookValue(
 				ctx,
 				p.id,
-				p.shareAmount.neg(),
+				dec(p.shareAmount.toString()).neg(),
 				t.currency,
 				at,
 				t.exchangeRate,

@@ -18,9 +18,10 @@
  * held to the band in the database (a small pair, KRW into ETH, rounds its
  * rate to 0), so without offsets it is allowed.
  */
-import type { Decimal } from "@prisma/client/runtime/index-browser";
 import { isCrypto } from "@retrospend/domain/currency-format";
 import { USD } from "@retrospend/domain/money";
+import { roundRateDec } from "@retrospend/domain/money-dec";
+import type { Decimal } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import { dec } from "~/server/services/envelope/units";
 import type { Prisma } from "~prisma";
@@ -128,7 +129,7 @@ export async function assertTypedRate(
 	if (band) {
 		// The payment keeps the rate as typed; an offset row keeps six decimals.
 		const typed = dec(custom.rate);
-		const stored = typed.toDecimalPlaces(6);
+		const stored = roundRateDec(typed, 6);
 		if (
 			outside(typed, band) ||
 			(used.some((r) => r.isOffset) && outside(stored, band))

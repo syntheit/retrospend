@@ -1,23 +1,27 @@
 import { currencyDecimals, fromMinorUnits } from "@retrospend/domain/money";
-import { roundMoneyDec } from "@retrospend/domain/money-dec";
-import { roundedMinor } from "@retrospend/domain/money-minor";
-import { Dec, type Decimal, dec } from "@retrospend/domain/precise-decimal";
 import type { ParticipantType } from "~prisma";
+import {
+	Accounts,
+	type Amount,
+	ledgerOrder,
+	post,
+	refKey,
+} from "./ledger-posting";
 
 // ── input types ───────────────────────────────────────────────────────────────
 
 /** Minimal transaction shape needed for settlement plan computation. */
 export interface TxForSettlement {
 	currency: string;
-	/** Full amount paid by the payer. Accepts Decimal or number. */
-	amount: number | { toString(): string };
+	/** Full amount paid by the payer. */
+	amount: Amount;
 	paidByType: ParticipantType;
 	paidById: string;
 	splitParticipants: Array<{
 		participantType: ParticipantType;
 		participantId: string;
-		/** This participant's share of the transaction. Accepts Decimal or number. */
-		shareAmount: number | { toString(): string };
+		/** This participant's share of the transaction. */
+		shareAmount: Amount;
 	}>;
 }
 
@@ -27,8 +31,8 @@ export interface SettlementForPlan {
 	fromParticipantId: string;
 	toParticipantType: ParticipantType;
 	toParticipantId: string;
-	/** Settlement amount. Accepts Decimal or number. */
-	amount: number | { toString(): string };
+	/** Settlement amount. */
+	amount: Amount;
 	currency: string;
 }
 
@@ -70,42 +74,12 @@ export interface SettlementPlanResult {
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-const ZERO = dec(0);
-
-/** Adds `amount` to a key's running Decimal total (exact: no float sums). */
-function addTo(map: Map<string, Decimal>, key: string, amount: Decimal) {
-	map.set(key, (map.get(key) ?? ZERO).plus(amount));
-}
-
-function pkey(type: string, id: string): string {
-	return `${type}:${id}`;
-}
-
 /**
  * Balances below half of the currency's smallest unit (in absolute value) are
  * treated as zero: 0.005 USD, 0.5 JPY, 0.000000005 BTC.
  */
 function zeroTolerance(currency: string): number {
 	return 0.5 * 10 ** -currencyDecimals(currency);
-}
-
-/**
- * The part of an expense that no share covers, in the expense's currency.
- * "Remove me" deletes the leaver's own share and leaves the others as they
- * were, so the gap is real: the payer paid it and nobody owes it back (the
- * pairwise balances already see it that way). Zero when the shares cover the
- * amount or exceed it: shares above the amount are a data fault that stays
- * visible in the sanity check instead of being papered over.
- */
-function unassignedAmount(tx: TxForSettlement): Decimal {
-	const shares = tx.splitParticipants.reduce(
-		(sum, sp) => sum.plus(dec(sp.shareAmount)),
-		ZERO,
-	);
-	return Dec.max(
-		ZERO,
-		roundMoneyDec(dec(tx.amount).minus(shares), tx.currency),
-	);
 }
 
 // ── algorithm ─────────────────────────────────────────────────────────────────
@@ -154,14 +128,18 @@ export function planGreedyTransfers<Ref>(
 /**
  * Compute an optimal greedy settlement plan for a set of shared transactions.
  *
- * Step 1: Group transactions by currency. Each currency is processed independently.
+ * Step 1: Group transactions and payments by currency. Each currency is
+ *   processed independently.
  *
- * Step 2: For each currency, compute net balance per participant, summed as
- *   exact Decimals and rounded half to even to the currency's minor unit once:
- *   net = totalPaid − fairShare + settlementsOutgoing − settlementsIncoming
- *   Any part of an expense that no share covers (someone used "Remove me")
- *   counts as the payer's own share, so the balances still add up to zero.
- *   Positive net = creditor (is owed money). Negative net = debtor (owes money).
+ * Step 2: For each currency, post the ledger into integer minor units with
+ *   the posting the project summary uses (ledger-posting.ts): each expense
+ *   amount, share and payment is rounded once, half to even, and
+ *   net = paid - share - received + sent. Any part of an expense that no
+ *   share covers (someone used "Remove me") counts as the payer's own share,
+ *   and so does a rounding excess, so the nets add up to zero unless the
+ *   shares exceed their expense exactly (a data fault, shown as the
+ *   summary's `imbalance`). Positive net = creditor (is
+ *   owed money). Negative net = debtor (owes money).
  *
  * Step 3: Greedy settlement on those integer minor-unit balances (the matcher
  *   the project summary runs), so every payment is exact and the plan settles
@@ -178,101 +156,47 @@ export function computeSettlementPlan(
 	transactions: TxForSettlement[],
 	existingSettlements: SettlementForPlan[],
 ): SettlementPlanResult {
-	// Step 1: collect currencies
-	const currencies = new Set<string>();
-	for (const tx of transactions) currencies.add(tx.currency);
-
-	if (currencies.size === 0) {
-		return { byCurrency: {}, participantCount: 0 };
+	// Currencies come from the expenses and from the payments: a payment in a
+	// currency with no expense is money that has to go back, as in the summary.
+	const currencies = new Set([
+		...transactions.map((tx) => tx.currency),
+		...existingSettlements.map((s) => s.currency),
+	]);
+	const people = new Set<string>();
+	for (const tx of transactions) {
+		people.add(
+			refKey({ participantType: tx.paidByType, participantId: tx.paidById }),
+		);
+		for (const sp of tx.splitParticipants) people.add(refKey(sp));
 	}
 
-	const allParticipantKeys = new Set<string>();
 	const byCurrency: Record<string, CurrencyBreakdown> = {};
-
 	for (const currency of currencies) {
-		const currencyTxns = transactions.filter((tx) => tx.currency === currency);
+		const ledger = {
+			transactions: transactions.filter((tx) => tx.currency === currency),
+			settlements: existingSettlements.filter((s) => s.currency === currency),
+		};
+		const accounts = new Accounts();
+		post(ledger, accounts);
 
-		// Step 2: accumulate paid / share totals per participant
-		const paidMap = new Map<string, Decimal>();
-		const shareMap = new Map<string, Decimal>();
-		const refMap = new Map<string, ParticipantRef>();
-
-		for (const tx of currencyTxns) {
-			const payerKey = pkey(tx.paidByType, tx.paidById);
-			refMap.set(payerKey, {
-				participantType: tx.paidByType,
-				participantId: tx.paidById,
-			});
-			addTo(paidMap, payerKey, dec(tx.amount));
-			const unassigned = unassignedAmount(tx);
-			if (unassigned.gt(0)) addTo(shareMap, payerKey, unassigned);
-
-			for (const sp of tx.splitParticipants) {
-				const spKey = pkey(sp.participantType, sp.participantId);
-				refMap.set(spKey, {
-					participantType: sp.participantType,
-					participantId: sp.participantId,
-				});
-				addTo(shareMap, spKey, dec(sp.shareAmount));
-			}
-		}
-
-		// Subtract counted settlements between project participants.
-		// Settlement from P→Q: P paid Q, so P's net goes up, Q's net goes down.
-		const settlementOut = new Map<string, Decimal>(); // paid out by key
-		const settlementIn = new Map<string, Decimal>(); // received by key
-
-		for (const s of existingSettlements) {
-			if (s.currency !== currency) continue;
-			const fromKey = pkey(s.fromParticipantType, s.fromParticipantId);
-			const toKey = pkey(s.toParticipantType, s.toParticipantId);
-			// Skip if neither party is a transaction participant in this currency
-			if (!refMap.has(fromKey) && !refMap.has(toKey)) continue;
-			const amt = dec(s.amount);
-			addTo(settlementOut, fromKey, amt);
-			addTo(settlementIn, toKey, amt);
-		}
-
-		// Compute net balance for each participant, rounded once to minor units
-		const allKeys = new Set([...paidMap.keys(), ...shareMap.keys()]);
-		for (const k of allKeys) allParticipantKeys.add(k);
-
-		const netMinor = new Map<string, number>();
 		const balances: ParticipantBalance[] = [];
-
-		for (const key of allKeys) {
-			const paid = paidMap.get(key) ?? ZERO;
-			const share = shareMap.get(key) ?? ZERO;
-			const net = paid
-				.minus(share)
-				.plus(settlementOut.get(key) ?? ZERO)
-				.minus(settlementIn.get(key) ?? ZERO);
-			const minor = roundedMinor(net, currency);
-			netMinor.set(key, minor);
+		const signed: Array<{ ref: ParticipantRef; balance: number }> = [];
+		for (const key of ledgerOrder(ledger, currency)) {
+			const line = accounts.lines.get(key)?.get(currency);
+			const participant = accounts.refs.get(key);
+			if (!line || !participant) continue;
+			signed.push({ ref: participant, balance: line.balance });
 			balances.push({
-				participant: refMap.get(key)!,
-				totalPaid: fromMinorUnits(roundedMinor(paid, currency), currency),
-				fairShare: fromMinorUnits(roundedMinor(share, currency), currency),
-				netBalance: fromMinorUnits(minor, currency),
+				participant,
+				totalPaid: fromMinorUnits(line.paid, currency),
+				fairShare: fromMinorUnits(line.share, currency),
+				netBalance: fromMinorUnits(line.balance, currency),
 			});
 		}
 
-		// Sanity check: balances should sum to ~0
-		let balanceSum = 0;
-		for (const minor of netMinor.values()) balanceSum += minor;
-		if (Math.abs(balanceSum) > 1) {
-			console.warn(
-				`[group-settlement] Balances for ${currency} do not sum to zero`,
-			);
-		}
-
-		// Step 3: greedy settlement, on integer minor units (half a unit
-		// separates zero from one)
+		// Integer balances: half a unit separates zero from one.
 		const plan: SettlementStep[] = planGreedyTransfers(
-			[...netMinor.entries()].map(([key, balance]) => ({
-				ref: refMap.get(key)!,
-				balance,
-			})),
+			signed,
 			0.5,
 			(amount) => amount,
 		).map((step) => ({
@@ -280,11 +204,10 @@ export function computeSettlementPlan(
 			amount: fromMinorUnits(step.amount, currency),
 			currency,
 		}));
-
 		byCurrency[currency] = { plan, balances };
 	}
 
-	return { byCurrency, participantCount: allParticipantKeys.size };
+	return { byCurrency, participantCount: people.size };
 }
 
 /** Returns true when there are no outstanding payments in any currency. */
@@ -334,18 +257,12 @@ export function computePeriodOutstanding(
 		const ZERO_TOLERANCE = zeroTolerance(currency);
 		const afterNet = new Map<string, number>();
 		for (const b of after.byCurrency[currency]?.balances ?? []) {
-			afterNet.set(
-				pkey(b.participant.participantType, b.participant.participantId),
-				b.netBalance,
-			);
+			afterNet.set(refKey(b.participant), b.netBalance);
 		}
 
 		for (const b of breakdown.balances) {
 			const owedBefore = b.netBalance;
-			const net =
-				afterNet.get(
-					pkey(b.participant.participantType, b.participant.participantId),
-				) ?? owedBefore;
+			const net = afterNet.get(refKey(b.participant)) ?? owedBefore;
 			const stillOwes = owedBefore < -ZERO_TOLERANCE && net < -ZERO_TOLERANCE;
 			const stillOwed = owedBefore > ZERO_TOLERANCE && net > ZERO_TOLERANCE;
 			if (stillOwes || stillOwed) {
@@ -355,4 +272,28 @@ export function computePeriodOutstanding(
 	}
 
 	return outstanding.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+}
+
+/**
+ * What is open in currencies that have payments but no expense anywhere in
+ * the project: nothing in any period explains them, so no period is settled
+ * while they stand. `allTxs` is every expense of the project.
+ */
+export function computePaymentOnlyOutstanding(
+	allTxs: TxForSettlement[],
+	settlements: SettlementForPlan[],
+): PeriodOutstanding[] {
+	const withExpenses = new Set(allTxs.map((tx) => tx.currency));
+	const plan = computeSettlementPlan(allTxs, settlements);
+	return Object.entries(plan.byCurrency).flatMap(([currency, breakdown]) =>
+		withExpenses.has(currency)
+			? []
+			: breakdown.balances
+					.filter((b) => Math.abs(b.netBalance) > zeroTolerance(currency))
+					.map((b) => ({
+						participant: b.participant,
+						currency,
+						amount: b.netBalance,
+					})),
+	);
 }

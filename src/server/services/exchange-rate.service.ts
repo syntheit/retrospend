@@ -1,5 +1,6 @@
 import { CRYPTO_CURRENCIES, CURRENCIES } from "@retrospend/domain/currencies";
 import { currencyDecimals } from "@retrospend/domain/money";
+import { dec } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import { env } from "~/env";
 import { db as globalDb } from "~/server/db";
@@ -27,7 +28,7 @@ export type RateRow = {
 
 /** Decimal text without exponent or trailing zeros ("1450.25", "0.000011"). */
 function plain(value: Prisma.Decimal | string): string {
-	return new Prisma.Decimal(value).toFixed();
+	return dec(value).toFixed();
 }
 
 /**

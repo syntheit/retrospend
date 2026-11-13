@@ -1,7 +1,8 @@
 import { PrismaPg } from "@prisma/adapter-pg";
+import { dec } from "@retrospend/domain/precise-decimal";
 import { describe, expect, it } from "vitest";
 import { runtimeDataModel } from "~/server/db-core";
-import { PrismaClient } from "~prisma";
+import { Prisma, PrismaClient } from "~prisma";
 import { runGit } from "../logHygiene/repo";
 import allowed from "./number-writes.json";
 import {
@@ -79,6 +80,37 @@ describe("numberWrites", () => {
 			}),
 		).toEqual([]);
 		expect(writes("User", { data: { fiscalMonthStartDay: 5 } })).toEqual([]);
+	});
+
+	it("passes a Prisma Decimal and a domain Dec instance, which carry numeric fields", () => {
+		// Both hold a numeric sign and exponent (1.5 is s 1, e 0): they are
+		// values, not JS numbers.
+		expect(
+			writes("Expense", {
+				data: {
+					amount: new Prisma.Decimal("1.5"),
+					exchangeRate: dec("1450.25"),
+					amountInUSD: { set: dec("2") },
+				},
+			}),
+		).toEqual([]);
+	});
+
+	it("tells an operation on a number from one on a Decimal", () => {
+		expect(writes("Expense", { data: { amount: { increment: 1 } } })).toEqual([
+			"Expense.amount",
+		]);
+		expect(
+			writes("Expense", {
+				data: { amount: { increment: new Prisma.Decimal("1") } },
+			}),
+		).toEqual([]);
+		expect(
+			writes("Expense", { data: { amount: { increment: dec("1") } } }),
+		).toEqual([]);
+		expect(
+			writes("Expense", { data: { amount: { decrement: "1.50" } } }),
+		).toEqual([]);
 	});
 });
 

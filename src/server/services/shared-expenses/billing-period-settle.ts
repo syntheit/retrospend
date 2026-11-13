@@ -2,6 +2,7 @@ import type { Prisma, PrismaClient } from "~prisma";
 import { logAudit } from "./audit-log";
 import { BALANCE_SETTLEMENT_STATUSES } from "./balance";
 import {
+	computePaymentOnlyOutstanding,
 	computePeriodOutstanding,
 	computeSettlementPlan,
 	isFullySettled,
@@ -93,7 +94,10 @@ export async function computePeriodSettleStatus(
 		(tx) => tx.billingPeriodId === null || throughIds.has(tx.billingPeriodId),
 	);
 
-	const outstanding = computePeriodOutstanding(throughPeriodTxs, settlements);
+	const outstanding = [
+		...computePeriodOutstanding(throughPeriodTxs, settlements),
+		...computePaymentOnlyOutstanding(allProjectTxs, settlements),
+	].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
 	const projectSettled =
 		outstanding.length === 0 ||
 		isFullySettled(computeSettlementPlan(allProjectTxs, settlements));

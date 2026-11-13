@@ -54,7 +54,6 @@ describe("project.list", () => {
 				"participants",
 				"primaryCurrency",
 				"status",
-				"totalSpent",
 				"updatedAt",
 				"visibility",
 			].sort(),
@@ -62,8 +61,6 @@ describe("project.list", () => {
 		expect(p).toMatchObject({
 			id: trip.project.id,
 			myRole: "ORGANIZER",
-			// Today's figure sums every currency together: 300 + 90 + 50 + 60.
-			totalSpent: 500,
 			isSettled: false,
 			excludeFromAnalytics: false,
 			currentBillingPeriod: null,
@@ -93,7 +90,7 @@ describe("project.list", () => {
 });
 
 describe("project.detail", () => {
-	it("returns members, category stats and review counts", async () => {
+	it("returns members and review counts, and no cross-currency totals", async () => {
 		const d = await callerFor(trip.ana.user).detail({ id: trip.project.id });
 		expect(Object.keys(d).sort()).toEqual(
 			[
@@ -106,7 +103,6 @@ describe("project.detail", () => {
 				"billingPeriods",
 				"budgetAmount",
 				"budgetCurrency",
-				"categoryStats",
 				"createdAt",
 				"createdById",
 				"currentBillingPeriod",
@@ -122,14 +118,12 @@ describe("project.detail", () => {
 				"pendingVerificationCount",
 				"primaryCurrency",
 				"status",
-				"totalSpent",
 				"unseenChangesCount",
 				"updatedAt",
 				"visibility",
 			].sort(),
 		);
 		expect(d).toMatchObject({
-			totalSpent: 500,
 			unseenChangesCount: 0,
 			pendingVerificationCount: 1,
 			myRole: "ORGANIZER",
@@ -139,12 +133,6 @@ describe("project.detail", () => {
 			currentBillingPeriod: null,
 			billingPeriods: [],
 		});
-		expect(
-			[...d.categoryStats].sort(byName).map((c) => [c.name, c.total, c.count]),
-		).toEqual([
-			["Travel", 300, 1],
-			["Uncategorized", 200, 3],
-		]);
 		expect(
 			[...d.participants]
 				.sort(byName)

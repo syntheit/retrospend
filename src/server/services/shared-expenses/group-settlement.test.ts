@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
 	computePeriodOutstanding,
 	computeSettlementPlan,
@@ -20,13 +20,13 @@ function tx(
 ): TxForSettlement {
 	return {
 		currency,
-		amount,
+		amount: String(amount),
 		paidByType: "user",
 		paidById: payer,
 		splitParticipants: shares.map((s) => ({
 			participantType: "user",
 			participantId: s.id,
-			shareAmount: s.amount,
+			shareAmount: String(s.amount),
 		})),
 	};
 }
@@ -42,7 +42,7 @@ function settlement(
 		fromParticipantId: from,
 		toParticipantType: "user",
 		toParticipantId: to,
-		amount,
+		amount: String(amount),
 		currency,
 	};
 }
@@ -559,7 +559,6 @@ describe("an expense with part of its amount unassigned", () => {
 	];
 
 	it("charges the unassigned 22.56 to the payer and balances to zero", () => {
-		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 		const usd = computeSettlementPlan(ledger, []).byCurrency.USD!;
 		// Ana: paid 87.67, share 22.56 + 22.56 (unassigned) + 0 = 45.12,
 		// net 42.55. Cam: share 22.55 + 20 = 42.55, net -42.55.
@@ -572,12 +571,9 @@ describe("an expense with part of its amount unassigned", () => {
 		});
 		expect(cam).toMatchObject({ fairShare: 42.55, netBalance: -42.55 });
 		expect(usd.plan).toMatchObject([{ amount: 42.55, currency: "USD" }]);
-		expect(warn).not.toHaveBeenCalled();
-		warn.mockRestore();
 	});
 
 	it("leaves a negative gap alone: shares above the amount are a data fault", () => {
-		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 		const usd = computeSettlementPlan(
 			[
 				tx("ana", 10, "USD", [
@@ -588,14 +584,17 @@ describe("an expense with part of its amount unassigned", () => {
 			[],
 		).byCurrency.USD!;
 		expect(usd.balances.map((b) => b.fairShare)).toEqual([5, 6]);
-		expect(warn).toHaveBeenCalledOnce();
-		warn.mockRestore();
+		// Ana paid 10 and owes 5: +5. Cam owes 6: -6. The one unit nobody can
+		// be paid is the data fault (the summary lists it as the imbalance).
+		expect(usd.balances.map((b) => b.netBalance)).toEqual([5, -6]);
+		expect(usd.plan).toMatchObject([{ amount: 5 }]);
 	});
 });
 
-// Sums are exact Decimals, rounded half to even to the currency's minor unit
-// once per balance, and the plan runs on those integer balances.
-describe("settlement sums are exact and round once", () => {
+// Each expense amount, share and payment rounds once, half to even, to the
+// currency's minor unit (the posting the summary and People use), and the
+// plan runs on those integer balances.
+describe("settlement rounds every row once, half to even", () => {
 	const plan = (txs: TxForSettlement[], currency: string) =>
 		computeSettlementPlan(txs, []).byCurrency[currency]!;
 	const netOf = (c: ReturnType<typeof plan>, id: string): number | undefined =>
@@ -619,6 +618,10 @@ describe("settlement sums are exact and round once", () => {
 	});
 
 	it("ARS tie with an odd lower neighbor rounds up: 0.295 is 29.5, half even gives 30", () => {
+		// Ana paid 0.59 = 59 centavos; each share rounds to 30, 60 of 59. The
+		// exact shares (0.59) do not exceed the amount, so the payer absorbs the
+		// extra centavo: Ana's share is 30 - 1 = 29, her net 59 - 29 = 30, and
+		// Bob's is -30. The nets add to zero and the plan pays 0.30.
 		const ars = plan(
 			[
 				tx("ana", "0.59", "ARS", [
@@ -628,11 +631,15 @@ describe("settlement sums are exact and round once", () => {
 			],
 			"ARS",
 		);
+		expect(netOf(ars, "ana")).toBe(0.3);
 		expect(netOf(ars, "bob")).toBe(-0.3);
 		expect(ars.plan).toMatchObject([{ amount: 0.3 }]);
 	});
 
 	it("JPY tie: 1257.5 yen rounds to the even 1258", () => {
+		// Ana paid 2515 yen; each share 1257.5 rounds to 1258 (1257 is odd),
+		// 2516 of 2515. Ana absorbs the extra yen: share 1258 - 1 = 1257, net
+		// 2515 - 1257 = 1258. Bob's is -1258.
 		const jpy = plan(
 			[
 				tx("ana", "2515", "JPY", [
@@ -647,10 +654,12 @@ describe("settlement sums are exact and round once", () => {
 		expect(jpy.plan).toMatchObject([{ amount: 1258 }]);
 	});
 
-	it("adds 8 dp shares before rounding, not after", () => {
+	it("rounds each 8 dp share on its own row, and the payer takes the cent left over", () => {
 		// Three USD 10.00 expenses Ana paid, split 3.33333333 (Bob), 3.33333333
-		// (Cam), 3.33333334 (Ana). Bob's shares add to 9.99999999, which is
-		// -10.00; rounding each share first would give 3 x 3.33 = -9.99.
+		// (Cam), 3.33333334 (Ana). Per row the shares are 3.33 each, 9.99 of
+		// 10.00, so the 0.01 left over is Ana's own share: 3.34 a row.
+		// Bob: -3 x 3.33 = -9.99. Cam: -9.99. Ana: paid 30.00, share
+		// 3 x 3.34 = 10.02, net 19.98. The nets add to zero.
 		const usd = plan(
 			Array.from({ length: 3 }, () =>
 				tx("ana", "10.00", "USD", [
@@ -661,18 +670,17 @@ describe("settlement sums are exact and round once", () => {
 			),
 			"USD",
 		);
-		// Ana paid 30.00, share 10.00000002: net 19.99999998 is 20.00.
-		expect(netOf(usd, "ana")).toBe(20);
-		expect(netOf(usd, "bob")).toBe(-10);
-		expect(netOf(usd, "cam")).toBe(-10);
-		expect(usd.plan.map((p) => p.amount)).toEqual([10, 10]);
+		expect(netOf(usd, "ana")).toBe(19.98);
+		expect(netOf(usd, "bob")).toBe(-9.99);
+		expect(netOf(usd, "cam")).toBe(-9.99);
+		expect(usd.plan.map((p) => p.amount)).toEqual([9.99, 9.99]);
 	});
 
-	it("the plan pays exactly the debtors' listed balances", () => {
-		// USD 100.00 over three at 33.33333333: Ana net 66.66666667 is 66.67,
-		// Bob and Cam -33.33333333 are -33.33. The leftover 0.01 stays open
-		// with Ana; no payment is invented for it.
-		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+	it("the plan settles every net it lists to zero", () => {
+		// USD 100.00 over three at 33.33333333: each share is 33.33 on its row,
+		// 99.99 of 100.00, so Ana's share is 33.33 + the 0.01 left over =
+		// 33.34 and her net is 100.00 - 33.34 = 66.66. Bob and Cam are -33.33.
+		// 66.66 - 33.33 - 33.33 = 0, and the plan pays 33.33 twice.
 		const usd = plan(
 			[
 				tx("ana", "100.00", "USD", [
@@ -683,10 +691,8 @@ describe("settlement sums are exact and round once", () => {
 			],
 			"USD",
 		);
-		expect(netOf(usd, "ana")).toBe(66.67);
+		expect(netOf(usd, "ana")).toBe(66.66);
 		expect(usd.plan.map((p) => p.amount)).toEqual([33.33, 33.33]);
-		expect(warn).not.toHaveBeenCalled();
-		warn.mockRestore();
 	});
 
 	it("a three-way USD 100.00 in whole cents settles to the cent", () => {

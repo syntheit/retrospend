@@ -329,54 +329,9 @@ export const billingPeriodRouter = createTRPCRouter({
 				});
 			}
 
-			// Summary stats
-			const totalSpent = period.sharedTransactions.reduce(
-				(sum, tx) => sum + Number(tx.amount),
-				0,
-			);
-
-			const categoryBreakdown: Record<
-				string,
-				{ name: string; color: string; total: number }
-			> = {};
-			for (const tx of period.sharedTransactions) {
-				if (tx.categoryId && tx.category) {
-					const key = tx.categoryId;
-					if (!categoryBreakdown[key]) {
-						categoryBreakdown[key] = {
-							name: tx.category.name,
-							color: tx.category.color,
-							total: 0,
-						};
-					}
-					categoryBreakdown[key]!.total += Number(tx.amount);
-				}
-			}
-
-			const participantTotals: Record<string, number> = {};
-			for (const tx of period.sharedTransactions) {
-				for (const sp of tx.splitParticipants) {
-					const key = `${sp.participantType}:${sp.participantId}`;
-					participantTotals[key] =
-						(participantTotals[key] ?? 0) + Number(sp.shareAmount);
-				}
-			}
-
-			return {
-				...period,
-				totalSpent,
-				categoryBreakdown: Object.entries(categoryBreakdown).map(
-					([categoryId, v]) => ({ categoryId, ...v }),
-				),
-				participantTotals: Object.entries(participantTotals).map((entry) => {
-					const [key, total] = entry as [string, number];
-					const [participantType, participantId] = key.split(":") as [
-						string,
-						string,
-					];
-					return { participantType, participantId, total };
-				}),
-			};
+			// No total here: expenses are in different currencies, so a sum of their
+			// amounts means nothing. The period's figures come from the registry.
+			return period;
 		}),
 
 	closeCurrent: protectedProcedure

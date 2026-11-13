@@ -85,7 +85,7 @@ export function rateInputOf(row: {
 
 /** The fields the form saves, as `row` holds them now, and its figures signed. */
 function fieldsOf(row: ExpenseRow, userId: string, home: string) {
-	const amount = row.amount.toFixed();
+	const amount = dec(row.amount).toFixed();
 	return {
 		title: row.title,
 		// Decimal text: every stored digit comes back.

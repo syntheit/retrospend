@@ -17,7 +17,7 @@ import {
 	type MembershipDates,
 	membershipOf,
 } from "./membership";
-import { refKey } from "./summary";
+import { refKey } from "~/server/services/shared-expenses/ledger-posting";
 import type { MemberRef, ProjectRoleName } from "./types";
 
 export interface SetMembershipInput extends MemberRef {

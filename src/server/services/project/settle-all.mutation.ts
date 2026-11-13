@@ -25,7 +25,7 @@ import type { MoneyMutation, RowRef } from "~/server/services/preview/types";
 import { computeBalanceBatch } from "~/server/services/shared-expenses/balance-batch";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
-import { refKey } from "./summary";
+import { refKey } from "~/server/services/shared-expenses/ledger-posting";
 
 /** One planned payment as the sheet shows it: the person, and what is open in one currency. */
 export interface PlannedLine {

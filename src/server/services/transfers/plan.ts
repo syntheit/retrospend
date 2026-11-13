@@ -12,9 +12,10 @@
  *   and never enters the budget again; it follows the money to another place
  *   outside the budget.
  */
-import type { Decimal } from "@prisma/client/runtime/index-browser";
 import { TRPCError } from "@trpc/server";
 import { currencyDecimals } from "@retrospend/domain/money";
+import { roundRateDec } from "@retrospend/domain/money-dec";
+import type { Decimal } from "@retrospend/domain/precise-decimal";
 import { dec, toMinor } from "~/server/services/envelope/units";
 import type { AssetType, TransferKind } from "~prisma";
 import { placeInBudget } from "../accounts/places";
@@ -125,11 +126,11 @@ export function planTransfer(input: TransferPlanInput): TransferPlan {
 	const toIn = inBudgetOf(input, "to");
 	const counted =
 		input.from && !fromIn
-			? Decimal8(minDec(input.from.countedUnits, input.fromAmount))
+			? units8(minDec(input.from.countedUnits, input.fromAmount))
 			: dec(0);
 	const countedTo =
 		counted.gt(0) && input.to && !toIn
-			? Decimal8(input.toAmount.mul(counted).div(input.fromAmount))
+			? units8(input.toAmount.mul(counted).div(input.fromAmount))
 			: dec(0);
 	return {
 		kind,
@@ -140,7 +141,8 @@ export function planTransfer(input: TransferPlanInput): TransferPlan {
 }
 
 const minDec = (a: Decimal, b: Decimal) => (a.lt(b) ? a : b);
-const Decimal8 = (d: Decimal) => d.toDecimalPlaces(8);
+/** Units are kept at the 8 decimals the columns hold, half to even. */
+const units8 = (d: Decimal) => roundRateDec(d, 8);
 
 /**
  * The budget's half (I14, I15): the in-budget leg's booked home value when
@@ -201,7 +203,7 @@ export function derivedRate(
 				input.toCurrency,
 				input.toAmount.div(input.fromAmount),
 			];
-	return { base, quote, value: value.toFixed(6) };
+	return { base, quote, value: roundRateDec(value, 6).toFixed(6) };
 }
 
 /** An amount the user typed, checked against its currency's minor units. */

@@ -22,6 +22,17 @@ type Row = Record<string, unknown>;
 const isRow = (value: unknown): value is Row =>
 	typeof value === "object" && value !== null && !Array.isArray(value);
 
+/**
+ * An object literal, as opposed to a class instance: a Prisma Decimal or a
+ * decimal.js Decimal carries numeric fields (its sign `s`, its exponent `e`)
+ * and is a value, not an operation on one.
+ */
+const isOperation = (value: unknown): value is Row => {
+	if (!isRow(value)) return false;
+	const proto = Object.getPrototypeOf(value);
+	return proto === Object.prototype || proto === null;
+};
+
 const WRITES = new Set([
 	"create",
 	"createMany",
@@ -43,10 +54,11 @@ const WRITE_KEYS = new Set([
 	"connectOrCreate",
 ]);
 
-/** A value, or an operation on it (`{ set }`, `{ increment }`), that is a JS number. */
+/** A value, or an operation on it (`{ set }`, `{ increment }`), that is a JS number. A Decimal instance is not. */
 const holdsNumber = (value: unknown) =>
 	typeof value === "number" ||
-	(isRow(value) && Object.values(value).some((v) => typeof v === "number"));
+	(isOperation(value) &&
+		Object.values(value).some((v) => typeof v === "number"));
 
 /**
  * The `Model.column` of every Decimal column `args` writes a JS number to, at

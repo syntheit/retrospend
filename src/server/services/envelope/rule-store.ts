@@ -8,7 +8,7 @@
 import { z } from "zod";
 import type { RuleActionInput, RuleMatchInput } from "~/lib/schemas/envelope";
 import type { IncomeRuleDto } from "~/lib/schemas/envelope-plan";
-import { Prisma, type IncomeRule as RuleRow } from "~prisma";
+import type { Prisma, IncomeRule as RuleRow } from "~prisma";
 import type { IncomeRule, RecordedRun, RuleAction, RuleMatch } from "./rules";
 import { dec, fromMinor, toMinor } from "./units";
 
@@ -100,9 +100,9 @@ export function ruleColumns(
 				action: a.kind,
 				value:
 					a.kind === "PERCENT"
-						? new Prisma.Decimal(a.basisPoints).dividedBy(100)
+						? dec(a.basisPoints).div(100).toFixed()
 						: a.kind === "AMOUNT"
-							? new Prisma.Decimal(fromMinor(a.amountMinor, H).toString())
+							? fromMinor(a.amountMinor, H).toFixed()
 							: null,
 			}
 		: {};
