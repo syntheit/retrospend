@@ -1369,7 +1369,7 @@ describe("Suite 1I: Project-scoped settlements", () => {
 			.filter((tx) => tx.projectId === "A")
 			.map((tx) => ({
 				currency: tx.currency,
-				amount: tx.amount,
+				amount: String(tx.amount),
 				paidByType: tx.paidByType as "user",
 				paidById: tx.paidById,
 				splitParticipants: [...db._stores.splits.values()]
@@ -1377,7 +1377,7 @@ describe("Suite 1I: Project-scoped settlements", () => {
 					.map((sp) => ({
 						participantType: sp.participantType as "user" | "shadow",
 						participantId: sp.participantId,
-						shareAmount: sp.shareAmount,
+						shareAmount: String(sp.shareAmount),
 					})),
 			}));
 		const settlements = [...db._stores.settlements.values()]
@@ -1387,7 +1387,7 @@ describe("Suite 1I: Project-scoped settlements", () => {
 				fromParticipantId: st.fromParticipantId,
 				toParticipantType: st.toParticipantType as "user",
 				toParticipantId: st.toParticipantId,
-				amount: st.amount,
+				amount: String(st.amount),
 				currency: st.currency,
 			}));
 
@@ -1400,10 +1400,11 @@ describe("Suite 1I: Project-scoped settlements", () => {
 			);
 
 		// Raw refs: the debt sits on the shadow and the payment on the user, so
-		// the shadow still shows as owing (and the balances no longer add up).
+		// the shadow still shows as owing 30 and the user as owed the 30 he sent.
 		expect(nets(computeSettlementPlan(txs, settlements))).toEqual({
 			"user:alice": 0,
 			"shadow:shadow-bob": -30,
+			"user:bob": 30,
 		});
 
 		// Canonicalized: one person, settled.

@@ -7,6 +7,7 @@ import { vi, describe, expect, it } from "vitest";
 
 // The in-memory database has no lock query (see ~/test/locks-stub).
 vi.mock("~/server/services/corrections/locks", () => import("~/test/locks-stub"));
+import { fromMinor } from "~/server/services/envelope/units";
 import { computeBalance } from "~/server/services/shared-expenses/balance";
 import { computeSettlementPlan } from "~/server/services/shared-expenses/group-settlement";
 import { createStatefulDb } from "~/server/services/shared-expenses/test-utils";
@@ -421,22 +422,22 @@ describe("money moves invariants", () => {
 				{
 					paidByType: "user",
 					paidById: "martin",
-					amount: 900,
+					amount: "900",
 					currency: "BRL",
 					splitParticipants: [
-						{ ...me, shareAmount: 300 },
-						{ ...him, shareAmount: 300 },
-						{ ...paz, shareAmount: 300 },
+						{ ...me, shareAmount: "300" },
+						{ ...him, shareAmount: "300" },
+						{ ...paz, shareAmount: "300" },
 					],
 				},
 				{
 					paidByType: "user",
 					paidById: "sofia",
-					amount: 375,
+					amount: "375",
 					currency: "BRL",
 					splitParticipants: [
-						{ ...him, shareAmount: 187.5 },
-						{ ...me, shareAmount: 187.5 },
+						{ ...him, shareAmount: "187.5" },
+						{ ...me, shareAmount: "187.5" },
 					],
 				},
 			],
@@ -445,7 +446,7 @@ describe("money moves invariants", () => {
 				fromParticipantId: "sofia",
 				toParticipantType: "user",
 				toParticipantId: "martin",
-				amount: r.amount / 100,
+				amount: fromMinor(r.amount, r.currency).toString(),
 				currency: r.currency,
 			})),
 		);
