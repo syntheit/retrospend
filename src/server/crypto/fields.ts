@@ -62,7 +62,10 @@ export const FIELD_MAP = {
 		table: "fix_request",
 		columns: { message: "instance", reply: "instance" },
 	},
-	GuestSession: { table: "guest_session", columns: { name: "instance" } },
+	GuestSession: {
+		table: "guest_session",
+		columns: { name: "instance", email: "instance" },
+	},
 	ImportJob: { table: "import_job", columns: { fileName: "user" } },
 	IncomeRule: {
 		table: "income_rule",

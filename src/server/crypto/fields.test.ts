@@ -111,6 +111,8 @@ const NO_DECLARED_FIELD: Record<string, string> = {
 		"a server copy of envelope.name taken before a rename; no input names it",
 	"export_job.fileName":
 		"derived by the server from a project or person name; no input names it",
+	"guest_session.email":
+		"typed through z.email(), which refuses a leading U+0001 (userTextWriteSchemas.test.ts probes an address shape)",
 };
 
 /**
@@ -265,8 +267,6 @@ const NOT_SEALED: Record<string, string> = {
 		"owner call: a contact address, outside the user-text list",
 	"shadow_profile.phone":
 		"owner call: a contact number, outside the user-text list",
-	"guest_session.email":
-		"owner call: a contact address, outside the user-text list",
 	"shared_transaction.receiptUrl": "a stored receipt path or link, not prose",
 	"settlement.autoConfirmedReason": "a system code set by the server",
 	"feedback.pageUrl": "the app route the feedback was sent from",
@@ -366,6 +366,7 @@ describe("key classes", () => {
 		"payment_method.identifier",
 		"shadow_profile.name",
 		"guest_session.name",
+		"guest_session.email",
 		"user.name",
 		"budget_book.name",
 		"envelope.name",

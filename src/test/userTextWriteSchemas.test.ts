@@ -103,7 +103,8 @@ function properties(root: unknown): Prop[] {
 /**
  * Each shape is a leading U+0001 and an inner BEL, each paired with the same
  * text without the control. The second shape is for a column that must be a
- * URL after the text rules (`userText(...).pipe(z.url())`).
+ * URL after the text rules (`userText(...).pipe(z.url())`); the third, for an
+ * address column (`z.email()`).
  */
 const PROBES: [bad: string, clean: string][][] = [
 	[
@@ -113,6 +114,11 @@ const PROBES: [bad: string, clean: string][][] = [
 	[
 		["\u0001https://a.example/x", "https://a.example/x"],
 		["https://a.example/\u0007x", "https://a.example/xx"],
+	],
+	// An address column (guest_session.email), typed through z.email().
+	[
+		["\u0001a@b.example", "a@b.example"],
+		["a\u0007b@b.example", "axb@b.example"],
 	],
 ];
 

@@ -9,6 +9,7 @@
 	"src/server/services/envelope/rules-title.pg.test.ts": "Mocks the master key",
 	"src/server/services/import/import-sealed.pg.test.ts": "Mocks the master key, builds its own keys and sets and clears the epoch",
 	"src/server/services/keys/contact-hash.pg.test.ts": "Mocks the master key, builds its own keys and sets and clears the epoch",
+	"src/server/services/keys/guest-email.pg.test.ts": "Mocks the master key, builds its own keys, turns sealing on and off and sets and clears the epoch",
 	"src/server/services/keys/crypto-shred.pg.test.ts": "Builds its own keys",
 	"src/server/services/keys/data-key.service.pg.test.ts": "Builds its own keys",
 	"src/server/services/keys/field-encryption-start.pg.test.ts": "Builds its own keys and sets and clears the epoch",
