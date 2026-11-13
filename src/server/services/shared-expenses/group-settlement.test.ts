@@ -14,9 +14,9 @@ function userRef(id: string) {
 
 function tx(
 	payer: string,
-	amount: number,
+	amount: number | string,
 	currency: string,
-	shares: { id: string; amount: number }[],
+	shares: { id: string; amount: number | string }[],
 ): TxForSettlement {
 	return {
 		currency,
@@ -590,5 +590,117 @@ describe("an expense with part of its amount unassigned", () => {
 		expect(usd.balances.map((b) => b.fairShare)).toEqual([5, 6]);
 		expect(warn).toHaveBeenCalledOnce();
 		warn.mockRestore();
+	});
+});
+
+// Sums are exact Decimals, rounded half to even to the currency's minor unit
+// once per balance, and the plan runs on those integer balances.
+describe("settlement sums are exact and round once", () => {
+	const plan = (txs: TxForSettlement[], currency: string) =>
+		computeSettlementPlan(txs, []).byCurrency[currency]!;
+	const netOf = (c: ReturnType<typeof plan>, id: string): number | undefined =>
+		c.balances.find((b) => b.participant.participantId === id)?.netBalance;
+
+	it("ARS tie: 0.285 is 28.5 centavos, half even gives 28 on both sides", () => {
+		// Ana paid ARS 0.57, shares 0.285 each. Ana net 0.285 = 28.5: the
+		// neighbors are 28 (even) and 29, so 28. Bob net -0.285 = -28.5 gives -28.
+		const ars = plan(
+			[
+				tx("ana", "0.57", "ARS", [
+					{ id: "ana", amount: "0.285" },
+					{ id: "bob", amount: "0.285" },
+				]),
+			],
+			"ARS",
+		);
+		expect(netOf(ars, "ana")).toBe(0.28);
+		expect(netOf(ars, "bob")).toBe(-0.28);
+		expect(ars.plan).toMatchObject([{ amount: 0.28, currency: "ARS" }]);
+	});
+
+	it("ARS tie with an odd lower neighbor rounds up: 0.295 is 29.5, half even gives 30", () => {
+		const ars = plan(
+			[
+				tx("ana", "0.59", "ARS", [
+					{ id: "ana", amount: "0.295" },
+					{ id: "bob", amount: "0.295" },
+				]),
+			],
+			"ARS",
+		);
+		expect(netOf(ars, "bob")).toBe(-0.3);
+		expect(ars.plan).toMatchObject([{ amount: 0.3 }]);
+	});
+
+	it("JPY tie: 1257.5 yen rounds to the even 1258", () => {
+		const jpy = plan(
+			[
+				tx("ana", "2515", "JPY", [
+					{ id: "ana", amount: "1257.5" },
+					{ id: "bob", amount: "1257.5" },
+				]),
+			],
+			"JPY",
+		);
+		expect(netOf(jpy, "ana")).toBe(1258);
+		expect(netOf(jpy, "bob")).toBe(-1258);
+		expect(jpy.plan).toMatchObject([{ amount: 1258 }]);
+	});
+
+	it("adds 8 dp shares before rounding, not after", () => {
+		// Three USD 10.00 expenses Ana paid, split 3.33333333 (Bob), 3.33333333
+		// (Cam), 3.33333334 (Ana). Bob's shares add to 9.99999999, which is
+		// -10.00; rounding each share first would give 3 x 3.33 = -9.99.
+		const usd = plan(
+			Array.from({ length: 3 }, () =>
+				tx("ana", "10.00", "USD", [
+					{ id: "bob", amount: "3.33333333" },
+					{ id: "cam", amount: "3.33333333" },
+					{ id: "ana", amount: "3.33333334" },
+				]),
+			),
+			"USD",
+		);
+		// Ana paid 30.00, share 10.00000002: net 19.99999998 is 20.00.
+		expect(netOf(usd, "ana")).toBe(20);
+		expect(netOf(usd, "bob")).toBe(-10);
+		expect(netOf(usd, "cam")).toBe(-10);
+		expect(usd.plan.map((p) => p.amount)).toEqual([10, 10]);
+	});
+
+	it("the plan pays exactly the debtors' listed balances", () => {
+		// USD 100.00 over three at 33.33333333: Ana net 66.66666667 is 66.67,
+		// Bob and Cam -33.33333333 are -33.33. The leftover 0.01 stays open
+		// with Ana; no payment is invented for it.
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const usd = plan(
+			[
+				tx("ana", "100.00", "USD", [
+					{ id: "ana", amount: "33.33333333" },
+					{ id: "bob", amount: "33.33333333" },
+					{ id: "cam", amount: "33.33333333" },
+				]),
+			],
+			"USD",
+		);
+		expect(netOf(usd, "ana")).toBe(66.67);
+		expect(usd.plan.map((p) => p.amount)).toEqual([33.33, 33.33]);
+		expect(warn).not.toHaveBeenCalled();
+		warn.mockRestore();
+	});
+
+	it("a three-way USD 100.00 in whole cents settles to the cent", () => {
+		const usd = plan(
+			[
+				tx("ana", "100.00", "USD", [
+					{ id: "ana", amount: "33.34" },
+					{ id: "bob", amount: "33.33" },
+					{ id: "cam", amount: "33.33" },
+				]),
+			],
+			"USD",
+		);
+		expect(netOf(usd, "ana")).toBe(66.66);
+		expect(usd.plan.map((p) => p.amount)).toEqual([33.33, 33.33]);
 	});
 });
