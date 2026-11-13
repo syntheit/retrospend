@@ -4,7 +4,14 @@
  * guest (`guest_session`) by address once the address is ciphertext.
  *
  *   emailHash = "<tag>:<hex>"   (see blind-index.ts)
- *   normalized = email.trim().toLowerCase()
+ *   normalized = email.trim() with A to Z folded to a to z
+ *
+ * Only ASCII letters fold. Both lookup paths must agree on what "the same
+ * address" means, and Postgres folds non-ASCII letters by its own rules (the
+ * database locale, not JavaScript's), so a fold that goes further would make
+ * the hash path and the plaintext path disagree on an address with an
+ * accented capital. The plaintext path asks Postgres for a superset
+ * (`mode: insensitive`) and `matchesContact` makes the answer exact in JS.
  *
  * The ring is the INSTANCE ring, and `blindIndex` signs with its lowest key
  * id, so adding a key never changes a hash. The label differs per table: the
@@ -45,7 +52,7 @@ const LABELS: Record<ContactTable, string> = {
 
 /** The text two addresses are compared by, on the hash path and the plaintext path. */
 export const normalizeContactEmail = (email: string): string =>
-	email.trim().toLowerCase();
+	email.trim().replace(/[A-Z]/g, (c) => c.toLowerCase());
 
 /** The key tag a table's hashes are made with; a stored hash counts only while its tag is this. */
 export const contactHashTag = (ring: Keyring, table: ContactTable): string =>
@@ -117,10 +124,31 @@ export type ContactWhere =
 	| { email: { equals: string; mode: "insensitive" } };
 
 /**
+ * Whether a row read through `where` (from `contactLookup`) is a match for
+ * `email`. The hash path matched exactly in SQL, so every row is. The
+ * plaintext path matched a superset (Postgres folds case by its own locale),
+ * so the stored address is compared again with the one normalization both
+ * paths share. The row must be read with its `email` on the plaintext path.
+ */
+export function matchesContact(
+	where: ContactWhere,
+	email: string,
+	stored: string | null | undefined,
+): boolean {
+	if ("emailHash" in where) return true;
+	return (
+		stored !== null &&
+		stored !== undefined &&
+		normalizeContactEmail(stored) === normalizeContactEmail(email)
+	);
+}
+
+/**
  * The only lookup of a ghost or a guest by address. With the epoch set and a
  * master key it matches the hash (rule 2 for the ring); otherwise the
  * normalized plaintext address, ignoring case, so matching does not depend on
- * the epoch. Resolve it before opening a transaction.
+ * the epoch. Resolve it before opening a transaction, and filter the rows it
+ * finds with `matchesContact`.
  */
 export async function contactLookup(
 	table: ContactTable,

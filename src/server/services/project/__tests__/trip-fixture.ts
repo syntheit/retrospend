@@ -131,7 +131,7 @@ export async function seedTrip() {
 	const cam = await namedUser("Cam");
 	const outsider = await namedUser("Olga");
 
-	const sam = await adminDb.shadowProfile.create({
+	const sam = await fixtureDb.shadowProfile.create({
 		data: {
 			createdById: ana.user.id,
 			name: "Sam",

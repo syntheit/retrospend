@@ -269,7 +269,7 @@ describe("/api/v1/people", () => {
 		expect(unknown.type).toBe("shadow");
 		expect(known.id).not.toBe(stranger.user.id);
 		await expect(
-			adminDb.shadowProfile.findUnique({ where: { id } }),
+			fixtureDb.shadowProfile.findUnique({ where: { id } }),
 		).resolves.toMatchObject({
 			createdById: sofia.user.id,
 			email: typed,

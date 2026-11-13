@@ -3,6 +3,7 @@ import type { Prisma, PrismaClient } from "~prisma";
 import { logEventAsync } from "./audit.service";
 import { AlreadyClaimedError, claimShadowProfile } from "./claim.service";
 import { repointSettlementParty } from "./payments/participants";
+import { contactLookup, matchesContact } from "./keys/contact-hash";
 import { mergeOverlappingSplitRows } from "./shared-expenses/split-merge";
 
 interface MigrationResult {
@@ -254,13 +255,21 @@ async function claimShadowProfiles(
 	userId: string,
 	userEmail: string,
 ): Promise<number> {
-	const shadows = await db.shadowProfile.findMany({
-		where: {
-			email: userEmail.toLowerCase(),
-			claimedById: null,
-		},
-		select: { id: true },
+	// The only lookup of a ghost by address (contact-hash.ts): the hash once
+	// ghost addresses are sealed, the normalized plaintext before. Resolved
+	// outside any transaction; a key that cannot be had fails the migration,
+	// which runs again at the next verification.
+	const lookup = await contactLookup("shadow_profile", userEmail);
+	const byHash = "emailHash" in lookup;
+	const found = await db.shadowProfile.findMany({
+		where: { ...lookup, claimedById: null },
+		// The plaintext path asked Postgres for a superset; the stored address
+		// is read to make it exact. The hash path matched exactly.
+		select: { id: true, email: !byHash },
 	});
+	const shadows = found.filter((s) =>
+		matchesContact(lookup, userEmail, s.email),
+	);
 
 	let claimed = 0;
 	for (const shadow of shadows) {

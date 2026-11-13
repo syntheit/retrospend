@@ -126,6 +126,10 @@ const NO_DECLARED_FIELD: Record<string, string> = {
 		"app crash stack scrubbed by scrubReport and stripped by the writer; no userText input names it",
 	"webhook.url":
 		"a typed url (z.url with a control check), not declared through userText: it holds no prose",
+	"shadow_profile.email":
+		"typed as an email address (z.email), not free text: a leading U+0001 is no address",
+	"shadow_profile.phone":
+		"no write path sets a phone today; one that does must declare its field",
 };
 
 /**
@@ -276,10 +280,6 @@ const NOT_SEALED: Record<string, string> = {
 	"push_device.addressHash": "a hash of the device address, not text",
 	"shadow_profile.emailHash": "a keyed hash of the address, not text",
 	"guest_session.emailHash": "a keyed hash of the address, not text",
-	"shadow_profile.email":
-		"owner call: a contact address, outside the user-text list",
-	"shadow_profile.phone":
-		"owner call: a contact number, outside the user-text list",
 	"guest_session.email":
 		"owner call: a contact address, outside the user-text list",
 	"settlement.autoConfirmedReason": "a system code set by the server",
@@ -353,6 +353,8 @@ describe("key classes", () => {
 		"import_job.fileData",
 		"import_job.errorMessage",
 		"push_device.deviceName",
+		"shadow_profile.email",
+		"shadow_profile.phone",
 	];
 	const INSTANCE: string[] = [
 		"shared_transaction.description",

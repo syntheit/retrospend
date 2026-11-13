@@ -15,6 +15,7 @@
 	"src/server/services/keys/field-encryption-start.pg.test.ts": "Builds its own keys and sets and clears the epoch",
 	"src/server/services/keys/instance-key-service-actor.pg.test.ts": "Builds its own keys",
 	"src/server/services/keys/instance-key.service.pg.test.ts": "Builds its own keys",
+	"src/server/services/__tests__/shadow-contact.pg.test.ts": "Mocks the master key, builds its own keys and turns sealing and the epoch on and off",
 	"src/server/services/keys/text-keys.pg.test.ts": "Builds its own keys",
 	"src/server/services/payments/confirm-text.pg.test.ts": "Mocks the master key and turns sealing on and off",
 	"src/server/services/preview/preview-keys.pg.test.ts": "Mocks the master key and builds its own keys",

@@ -14,7 +14,7 @@ import {
 	seedShare,
 	type TestUser,
 } from "~/server/api/v1/__tests__/g3-fixtures";
-import { adminDb, sealedSuite } from "~/test/pg-harness";
+import { adminDb, fixtureDb, sealedSuite } from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
 import { peopleRouter } from "../people";
 
@@ -118,7 +118,7 @@ beforeAll(async () => {
 		else await seedProject(me, [{ user: u, role: "EDITOR" }]);
 	}
 	for (const [name, email] of SHADOWS)
-		await adminDb.shadowProfile.create({
+		await fixtureDb.shadowProfile.create({
 			data: { createdById: me.user.id, name, email },
 		});
 });
@@ -179,7 +179,7 @@ describe.skipIf(sealedSuite)("people.search matches the old queries", () => {
 
 	it("does not match a ghost by an email the caller may not see", async () => {
 		const owner = await arsUser();
-		const ghost = await adminDb.shadowProfile.create({
+		const ghost = await fixtureDb.shadowProfile.create({
 			data: {
 				createdById: owner.user.id,
 				name: "Hidden mail",

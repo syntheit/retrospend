@@ -31,7 +31,7 @@ import { instanceKeyring, resetInstanceKey } from "~/test/sealed-fixture";
 import { REPO_ROOT } from "~/test/uiRules/paths";
 import type { Prisma } from "~prisma";
 import { contactHashTag } from "./contact-hash";
-import { contactHashMissing, fillContactHashes } from "./contact-hash-fill";
+import { countMissingContactHashes, fillContactHashes } from "./contact-hash-fill";
 import {
 	assertFieldEncryptionStart,
 	type FieldEncryptionStartOptions,
@@ -309,14 +309,21 @@ describe("the contact hash fill and gate", () => {
 
 	it("a stale tag counts as missing until the fill has made it current", async () => {
 		await inRolledBackPrismaTransaction(async (tx) => {
+			// Other files' rows may share the database: count the difference.
+			const shadowsBefore = await countMissingContactHashes(tx, ring, "shadow_profile");
+			const guestsBefore = await countMissingContactHashes(tx, ring, "guest_session");
 			const id = await ghost(tx, "stale@example.com", STALE);
 			const g = await guest(tx, "gone@example.com", STALE);
-			expect(await contactHashMissing(tx, ring, "shadow_profile")).toBe(true);
-			expect(await contactHashMissing(tx, ring, "guest_session")).toBe(true);
+			expect(await countMissingContactHashes(tx, ring, "shadow_profile")).toBe(
+				shadowsBefore + 1,
+			);
+			expect(await countMissingContactHashes(tx, ring, "guest_session")).toBe(
+				guestsBefore + 1,
+			);
 			await fillContactHashes(tx, ring, "shadow_profile");
 			await fillContactHashes(tx, ring, "guest_session");
-			expect(await contactHashMissing(tx, ring, "shadow_profile")).toBe(false);
-			expect(await contactHashMissing(tx, ring, "guest_session")).toBe(false);
+			expect(await countMissingContactHashes(tx, ring, "shadow_profile")).toBe(0);
+			expect(await countMissingContactHashes(tx, ring, "guest_session")).toBe(0);
 			expect((await row(tx, "shadow_profile", id))?.emailHash).toBe(
 				hash(SHADOW_LABEL, "stale@example.com"),
 			);
@@ -334,6 +341,9 @@ describe("the contact hash fill and gate", () => {
 			const error = await refusal(tx);
 			expect(error?.code).toBe("contact_hash_missing");
 			expect(error?.message).toMatch(/no hash/);
+			// Counts per table, no address: the fillable row was made, the sealed one counts.
+			expect(error?.message).toMatch(/shadow_profile: [1-9]\d*/);
+			expect(error?.message).not.toContain("example.com");
 			expect(await epochOf(tx)).toBeNull();
 			// The fill ran before the gate.
 			expect((await row(tx, "shadow_profile", fillable))?.emailHash).toBe(
@@ -356,7 +366,9 @@ describe("the contact hash fill and gate", () => {
 		await inRolledBackPrismaTransaction(async (tx) => {
 			await indexAll(tx);
 			await guest(tx, SEALED_EMAIL, null);
-			expect((await refusal(tx))?.code).toBe("contact_hash_missing");
+			const error = await refusal(tx);
+			expect(error?.code).toBe("contact_hash_missing");
+			expect(error?.message).toMatch(/guest_session: [1-9]\d*/);
 			expect(await epochOf(tx)).toBeNull();
 		});
 	});

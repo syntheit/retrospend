@@ -24,6 +24,7 @@ import { fanOutEvents } from "~/server/services/webhooks/worker";
 import {
 	adminDb,
 	createTestUser,
+	fixtureDb,
 	openTransactionsEnded,
 } from "~/test/pg-harness";
 import { readEventFeed } from "./feed";
@@ -33,7 +34,7 @@ beforeAll(seedArsRates);
 async function book() {
 	const { user } = await arsUser();
 	const { user: ben } = await createTestUser();
-	const sam = await adminDb.shadowProfile.create({
+	const sam = await fixtureDb.shadowProfile.create({
 		data: {
 			createdById: user.id,
 			name: "Sam",

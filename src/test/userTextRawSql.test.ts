@@ -38,6 +38,7 @@ const COLUMNS = [
 	// Import job text outside the declared fields (D11 Revision 3).
 	"fileData",
 	"errorMessage",
+	"phone",
 ];
 const READS_TEXT = new RegExp(`\\b(?:${COLUMNS.join("|")})\\b`);
 
@@ -53,6 +54,8 @@ const AUDITED: Record<string, string> = {
 		"Activity search: SQL path, before the field encryption epoch",
 	"src/server/services/payments/confirm-restore.ts":
 		"B14: payment confirm keeps the stored text in its audit entry, never opened there",
+	"src/server/services/user-deletion-ghosts.ts":
+		"B15: a handed-over ghost has its sealed email and phone set to null by a prefix test, nothing is read",
 };
 
 const TAG = /(\$queryRaw|\$executeRaw|Prisma\.sql|\bsql)\s*(?:<[^>]*>)?\s*`/g;

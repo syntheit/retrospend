@@ -9,14 +9,17 @@ import type { ParticipantRef } from "./types";
  * a reason to see them. The one rule, used everywhere these details leave the
  * server (project views, people list/detail, people search):
  *
- *   - Ghost (shadow): visible to its creator, and to anyone who is EDITOR or
- *     ORGANIZER in a project the ghost belongs to.
+ *   - Ghost (shadow): visible to its creator only. A ghost's email and phone
+ *     are sealed with the creator's key (E2EE D11 Revision 3), so no one else
+ *     can read them, an EDITOR or ORGANIZER of its projects included; rows
+ *     saved before sealing are hidden from them by this rule too.
  *   - Guest: visible to the guest themself, and to EDITOR or ORGANIZER members
  *     of the guest's project.
  *   - Registered users: never exposed through these views (callers already
  *     return null for them).
  *
- * Everyone else (contributors, viewers, viewer links, other guests) gets null.
+ * Everyone else (contributors, viewers, viewer links, other guests, and for a
+ * ghost every manager who did not add it) gets null.
  */
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -27,6 +30,12 @@ export type ContactVisibility = (ref: Ref) => boolean;
 const MANAGER_ROLES = ["EDITOR", "ORGANIZER"] as const;
 
 const NOBODY: ContactVisibility = () => false;
+
+/** The one ghost rule: the person who added it, and no one else. */
+export const canSeeGhostContact = (
+	viewerUserId: string | undefined,
+	createdById: string,
+): boolean => viewerUserId !== undefined && viewerUserId === createdById;
 
 /**
  * Resolves, in a few batched queries, which of `refs` the viewer may see
@@ -73,25 +82,12 @@ export async function buildContactVisibility(
 		});
 		const managedProjectIds = [...new Set(managed.map((m) => m.projectId))];
 
-		if (shadowIds.length > 0) {
-			if (viewer.participantType === "user") {
-				const created = await db.shadowProfile.findMany({
-					where: { id: { in: shadowIds }, createdById: viewer.participantId },
-					select: { id: true },
-				});
-				for (const s of created) visibleShadows.add(s.id);
-			}
-			if (managedProjectIds.length > 0) {
-				const inManaged = await db.projectParticipant.findMany({
-					where: {
-						participantType: "shadow",
-						participantId: { in: shadowIds },
-						projectId: { in: managedProjectIds },
-					},
-					select: { participantId: true },
-				});
-				for (const m of inManaged) visibleShadows.add(m.participantId);
-			}
+		if (shadowIds.length > 0 && viewer.participantType === "user") {
+			const created = await db.shadowProfile.findMany({
+				where: { id: { in: shadowIds }, createdById: viewer.participantId },
+				select: { id: true },
+			});
+			for (const s of created) visibleShadows.add(s.id);
 		}
 
 		if (guestIds.length > 0 && managedProjectIds.length > 0) {

@@ -110,7 +110,7 @@ export async function seedCordoba() {
 	const ana = await namedUser("Ana");
 	const ben = await namedUser("Ben");
 	const cam = await namedUser("Cam");
-	const sam = await adminDb.shadowProfile.create({
+	const sam = await fixtureDb.shadowProfile.create({
 		data: {
 			createdById: ana.user.id,
 			name: "Sam",

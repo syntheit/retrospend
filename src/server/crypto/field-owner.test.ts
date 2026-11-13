@@ -25,6 +25,7 @@ import { fieldOpenSlot, unavailableFields } from "./field-open";
 import {
 	addModelsForTests,
 	keyClassOfColumn,
+	modelOfTable,
 	nullWhenHidden,
 	ownerOfModel,
 	ownerOfTable,
@@ -144,6 +145,16 @@ describe("the owner lookups", () => {
 				Settlement: { table: "settlement", columns: {} },
 			} as never),
 		).toThrow(/may not replace Settlement/);
+	});
+
+	it("refuse a second model on a table that is already mapped, and leave the map as it was", () => {
+		expect(() =>
+			addModelsForTests({
+				Twin: { table: "settlement", columns: { note: "user" } },
+			}),
+		).toThrow(/already mapped: Twin \(settlement\)/);
+		expect(modelOfTable("settlement")).toBe("Settlement");
+		expect(keyClassOfColumn("settlement", "note")).toBe("instance");
 	});
 });
 

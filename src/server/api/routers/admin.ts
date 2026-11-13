@@ -648,11 +648,11 @@ export const adminRouter = createTRPCRouter({
 	listShadowProfiles: adminListProcedure("shadow_profiles").query(async ({ ctx }) => {
 		const { db } = ctx;
 
+		// No email: the creator's sealed text, never read on the global client (Q2).
 		const profiles = await db.shadowProfile.findMany({
 			select: {
 				id: true,
 				name: true,
-				email: true,
 				claimedById: true,
 				claimedAt: true,
 				createdAt: true,
@@ -682,7 +682,7 @@ export const adminRouter = createTRPCRouter({
 		return profiles.map((p) => ({
 			id: p.id,
 			name: p.name,
-			email: p.email,
+			email: null,
 			createdByUsername: p.createdBy.username,
 			claimedByUsername: p.claimedBy?.username ?? null,
 			claimedAt: p.claimedAt,

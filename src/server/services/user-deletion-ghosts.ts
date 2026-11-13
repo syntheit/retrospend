@@ -82,6 +82,27 @@ export async function anonymizeParticipantReferences(
 
 const ANY_ROLE = ["ORGANIZER", "EDITOR", "CONTRIBUTOR", "VIEWER"] as const;
 
+/** A sealed cell starts with U+0001; a person's own text never can (field-crypto.ts). */
+const SEALED = "\u0001";
+
+/**
+ * Nulls the ghost's email and phone when they are sealed. They are the
+ * creator's sealed text and unreadable once that user's key is shredded, and
+ * the heir's key cannot open them (key ids are small integers, so a cell of
+ * another owner would fail its tag as if it were corrupt). `emailHash` stays,
+ * so the ghost still auto-claims by address. A cell that is still plaintext
+ * (saved before sealing) is left as it is: nothing to repair, and no rewrite
+ * beyond what sealing needs. Raw SQL on purpose: a model write would seal or
+ * open the cells.
+ */
+async function clearSealedContact(tx: PrismaTx, id: string): Promise<void> {
+	await tx.$executeRaw`
+		UPDATE "shadow_profile" SET
+			"email" = CASE WHEN starts_with("email", ${SEALED}) THEN NULL ELSE "email" END,
+			"phone" = CASE WHEN starts_with("phone", ${SEALED}) THEN NULL ELSE "phone" END
+		WHERE "id" = ${id}`;
+}
+
 /** Gives each ghost of `userId` to the heir of a project it is in, or detaches it. */
 export async function retireGhosts(
 	tx: PrismaTx,
@@ -106,6 +127,8 @@ export async function retireGhosts(
 			}
 		}
 		if (heirId) {
+			// Before the owner changes: the deleting user still owns the row (RLS).
+			await clearSealedContact(tx, id);
 			await tx.shadowProfile.update({
 				where: { id },
 				select: { id: true },

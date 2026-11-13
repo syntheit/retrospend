@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { env } from "~/env";
 import { signClaimToken } from "~/lib/claim-token";
+import { textUnavailableProblem } from "~/server/crypto/field-open";
 import { getShadowInviteEmailTemplate } from "~/server/email-templates";
 import { emailSubject } from "~/server/email-copy";
 import { sendEmail } from "~/server/mailer";
@@ -132,13 +133,16 @@ export async function addShadow(
 			emailHash,
 			createdById: creator.id,
 		},
-		select: { id: true, name: true, email: true },
+		// Not the email: it is the creator's sealed text, and a write that has
+		// committed must not fail while the response opens it. It is the address
+		// just written, so the caller gets it from the input.
+		select: { id: true, name: true },
 	});
 	// The address of an account holder is not a stranger to invite.
 	if (input.email && !accountExists) {
 		inviteByEmail(creator.name ?? "Someone", input.name, input.email);
 	}
-	return { kind: "shadow", ...profile };
+	return { kind: "shadow", ...profile, email: input.email ?? null };
 }
 
 /** Fire and forget: a mail failure never fails the add. */
@@ -198,14 +202,41 @@ export async function renameShadow(
 		input.email !== undefined
 			? await contactHashFor("shadow_profile", input.email)
 			: undefined;
-	return db.shadowProfile.update({
+	// The write returns no sealed cell: once it has committed, opening the
+	// creator's email must not be able to fail it (a lost key would turn a
+	// done rename into an error the caller retries).
+	const updated = await db.shadowProfile.update({
 		where: { id: shadow.id },
 		data: {
 			name: input.name,
 			...(input.email !== undefined ? { email: input.email, emailHash } : {}),
 		},
-		select: { id: true, name: true, email: true },
+		select: { id: true, name: true },
 	});
+	return {
+		...updated,
+		email:
+			input.email === undefined
+				? await storedEmail(db, shadow.id)
+				: input.email,
+	};
+}
+
+/**
+ * The address the creator stored, for a response; null when its key cannot be
+ * had, since the rename it follows has already happened.
+ */
+async function storedEmail(db: PrismaClient, id: string): Promise<string | null> {
+	try {
+		const row = await db.shadowProfile.findUnique({
+			where: { id },
+			select: { email: true },
+		});
+		return row?.email ?? null;
+	} catch (error) {
+		if (textUnavailableProblem(error)) return null;
+		throw error;
+	}
 }
 
 /**

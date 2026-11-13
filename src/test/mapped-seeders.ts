@@ -312,6 +312,8 @@ export const SEEDERS: Record<MappedModel, (c: Ctx) => Promise<Data>> = {
 		id: randomUUID(),
 		createdById: c.owner,
 		name: text("Luis"),
+		email: `${randomUUID().slice(0, 8)}@example.com`,
+		phone: text("+54 11 5555"),
 	}),
 	SharedTransaction: async (c) => ({
 		id: randomUUID(),

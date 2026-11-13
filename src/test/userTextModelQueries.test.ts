@@ -48,6 +48,7 @@ const COLUMNS = [
 	// Import job text outside the declared fields (D11 Revision 3).
 	"fileData",
 	"errorMessage",
+	"phone",
 ];
 const WORD = COLUMNS.join("|");
 const KEY = new RegExp(`(?:^|[{,\\s])["']?(${WORD})["']?\\s*:`, "g");

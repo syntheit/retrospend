@@ -134,11 +134,13 @@ describe("people.search ghost emails", () => {
 		expect(result.shadows.map((s) => s.participantId)).toEqual(["g-mine"]);
 	});
 
-	it("shows and matches the email for an editor of the ghost's project", async () => {
+	it("still hides and does not match the email for an editor of the ghost's project", async () => {
 		state.members[0]!.role = "EDITOR";
-		const result = await search("me", "erin@secret");
-		expect(result.shadows).toEqual([
-			expect.objectContaining({ participantId: "g-theirs", email: "erin@secret.test" }),
+		const byEmail = await search("me", "erin@secret");
+		expect(byEmail.shadows).toEqual([]);
+		const byName = await search("me", "erin");
+		expect(byName.shadows).toEqual([
+			expect.objectContaining({ participantId: "g-theirs", email: null }),
 		]);
 	});
 });

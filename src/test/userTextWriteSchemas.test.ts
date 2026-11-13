@@ -145,9 +145,26 @@ function refusesControls(schema: unknown) {
 /** Keys a mapped column is written under that are not the column's own name. */
 const ALIASES = ["reason", "method"];
 
+/**
+ * Column names that are also an input key of sign-in and account code (`email`
+ * of a sign-up, a reset, the profile), where they are not a mapped column. They
+ * count only for the inputs named in WORD_INPUTS.
+ */
+const SCOPED_WORDS = new Set(["email"]);
+
+/** The inputs that write a scoped word's column: a ghost's address (shadow_profile.email). */
+const WORD_INPUTS = new Set([
+	"trpc people.createShadow",
+	"trpc people.updateShadow",
+	"v1 POST /people",
+	"v1 PATCH /people/shadow/{id}",
+]);
+
 /** The key words: mapped column names, declared field names and the aliases. */
 const WORDS: ReadonlySet<string> = new Set([
-	...mappedColumns().map(([, column]) => column),
+	...mappedColumns()
+		.map(([, column]) => column)
+		.filter((column) => !SCOPED_WORDS.has(column)),
 	...[...USER_TEXT_FIELDS]
 		.filter((field) => !field.startsWith("test."))
 		.map((field) => field.slice(field.indexOf(".") + 1)),
@@ -185,7 +202,11 @@ function textProperties(inputs: Input[]) {
 	const checked = new Map<string, boolean>();
 	for (const { source, schema } of inputs)
 		for (const prop of properties(schema))
-			if (WORDS.has(prop.key) && takesString(prop.schema))
+			if (
+				(WORDS.has(prop.key) ||
+					(SCOPED_WORDS.has(prop.key) && WORD_INPUTS.has(source))) &&
+				takesString(prop.schema)
+			)
 				checked.set(`${source}:${prop.path}`, refusesControls(prop.schema));
 	return checked;
 }
@@ -196,6 +217,8 @@ const REASONS = {
 	crash:
 		"app-generated crash text, scrubbed by scrubReport; error_report.message and stack are stripped of controls and refused with a leading U+0001 by submitErrorReports, and feedback diagnostics are one sealed JSON body",
 	file: "a file as base64: the pattern admits no control character, and the column is written by the queue, which seals it",
+	address:
+		"z.email() takes only an address, which cannot start with U+0001 or hold a control character, so it can never read as a ciphertext",
 } as const;
 
 /**
@@ -212,6 +235,10 @@ const NOT_TEXT_INPUTS: Record<string, keyof typeof REASONS> = {
 	"v1 POST /feedback:diagnostics.recentErrors[].stack": "crash",
 	"v1 POST /error-reports:reports[].stack": "crash",
 	"trpc importQueue.createJob:fileData": "file",
+	"trpc people.createShadow:email": "address",
+	"trpc people.updateShadow:email": "address",
+	"v1 POST /people:email": "address",
+	"v1 PATCH /people/shadow/{id}:email": "address",
 };
 
 describe("detector", () => {

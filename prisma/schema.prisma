@@ -1540,10 +1540,10 @@ model ShadowProfile {
   id          String    @id @default(cuid())
   createdById String
   name        String    @db.Text
-  email       String?   @db.VarChar(255)
+  email       String?   @db.Text
   // Keyed hash of the normalized email, "<tag>:<hex>" (contact-hash.ts). Derived, server only.
   emailHash   String?
-  phone       String?   @db.VarChar(64)
+  phone       String?   @db.Text
   claimedById String?
   claimedAt   DateTime?
   createdAt   DateTime  @default(now())
