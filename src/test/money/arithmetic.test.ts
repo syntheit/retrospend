@@ -88,7 +88,9 @@ function decimalLike(type: Type | undefined, checker: Checker): boolean {
 	if (declaredIn(type, ANY_DECIMAL) || declaredIn(type, DECIMAL_TS))
 		return true;
 	if (type.getAliasSymbol()?.name === "DecimalInput") return true;
-	const properties = type.isObjectType() ? checker.getPropertiesOfType(type) : [];
+	const properties = type.isObjectType()
+		? checker.getPropertiesOfType(type)
+		: [];
 	return (
 		type.getSymbol()?.name === "__type" &&
 		properties.length === 1 &&

@@ -3,26 +3,6 @@
 		"src/server/services/accounts/checkpoint.ts",
 		"src/server/services/accounts/manage.ts"
 	],
-	"AssetAccount.interestRate": ["src/server/services/envelope/debt.service.ts"],
-	"AssetAccount.minimumPayment": [
-		"src/server/services/envelope/debt.service.ts"
-	],
-	"Envelope.targetAmount": [
-		"src/server/services/envelope/book.service.ts",
-		"src/server/services/envelope/crud.service.ts",
-		"src/server/services/envelope/debt.service.ts",
-		"src/server/services/envelope/limits.service.ts",
-		"src/server/services/envelope/target.service.ts"
-	],
-	"EnvelopeGroup.targetValue": [
-		"src/server/services/envelope/book.service.ts",
-		"src/server/services/envelope/group.service.ts"
-	],
-	"IncomeRule.value": [
-		"src/server/services/envelope/rule-crud.service.ts",
-		"src/server/services/envelope/setup-p5.ts"
-	],
-	"PayoffPlan.extraMonthly": ["src/server/services/envelope/debt.service.ts"],
 	"Project.budgetAmount": [
 		"src/server/services/project/project-write.service.ts"
 	],
@@ -30,7 +10,6 @@
 		"src/server/services/shared-expenses/transaction.service.ts"
 	],
 	"SharedTransaction.exchangeRate": [
-		"src/server/services/corrections/correct.service.ts",
 		"src/server/services/shared-expenses/transaction.service.ts"
 	],
 	"SplitParticipant.shareAmount": [
