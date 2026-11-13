@@ -1,5 +1,7 @@
 # User text in SQL: audit for field encryption (lane D10)
 
+Status (2026-11-13): D11 is built behind `DATA_KEYS_WRITE`; rows and counts are as of D10 unless marked with a PR number. Sections 7 and 8 are closed, with the PR for each. Section 10 has an outcome per copy. Section 3E lists the readers added after D10. Operator steps are in `docs/encryption-at-rest.md`.
+
 Lane D11 encrypts the columns in `USER_TEXT_FIELDS`
 (`packages/api-contract/src/common/user-text.ts`) with a server key. After
 that, a column holds ciphertext (`"\u0001k1:" + base64`, with a random nonce
@@ -123,7 +125,7 @@ current lines.
 | B9 | `src/server/services/expense-list/search-scan.ts:99-101` | candidates: `ARRAY[title, description, location]` | a | Moved in D11 PR 5.1: candidates carry ids only, the text comes from model reads by id |
 | B10 | `search-scan.ts:106-107` | candidates: `ARRAY[description, notes]` of shared rows | a | Same |
 | B11 | `search-scan.ts:114-123` | candidates: `array_agg(note)`, `min(paymentMethod)` of payment groups | a | Same; `paymentMethod`, which was never opened, now is |
-| B12 | `scripts/scan-control-chars.ts:105-109` | counts rows with control characters, a leading U+0001 and U+FFFD, per column | b | Intended: it runs before D11 and D12. After the backfill every row starts with U+0001, so its count then means "sealed". Document in the D12 runbook |
+| B12 | `scripts/scan-control-chars.ts:105-109` | counts rows with control characters, a leading U+0001 and U+FFFD, per column | b | Intended: it runs before D11 and D12. With `--fail` it is the one-time gate in the flag-on runbook (`docs/encryption-at-rest.md`). After the first sealed write every sealed row starts with U+0001, so its count then means "sealed"; `scripts/verify-sealing.ts` is the check to use then. Document in the D12 runbook |
 | B13 | `src/server/better-auth/config.ts:168` (adapter) | better-auth reads and writes `user.name` through the global client | a | D11 must apply the extension to that client too (section 8) |
 | B14 | `src/server/services/payments/confirm-restore.ts` (`storedText`) | payment confirm: `payment.paymentMethod` and every settlement column of the payment, read raw | a | Added in D11 PR 4.1, the fix of 7.1: the values go into the SETTLED entry's `previous` exactly as stored, never opened; `openAuditChanges` opens them when the entry is served |
 | B15 | `src/server/services/user-deletion-ghosts.ts` (`clearSealedContact`) | account deletion hands a ghost to a project's heir: `UPDATE shadow_profile SET email = CASE WHEN starts_with(email, U+0001) THEN NULL ...`, same for `phone` | a | Added in E2EE D11 Revision 3 PR 3b: a sealed cell is the deleted user's text under a key that is shredded with them, and the heir's key cannot open it; it is set to null by a prefix test, nothing is read, and `emailHash` stays so the ghost still claims by address. A plaintext cell (saved before sealing) is not touched |
@@ -154,6 +156,16 @@ Migration files are in `prisma/migrations/`.
 | D2 | `sidecar/tasks/recurring.go:196-205` | inserts `usertext.StripControls(template.Name)` as `expense.title` | b | **Blocker for D11.** `StripControls` removes U+0001, so it would corrupt a ciphertext name. The ciphertext also binds to its row (AAD), so a verbatim copy to a new expense row does not open. The job needs either Go field crypto (decrypt the name, strip, seal for the new id) or to move recurring posting into the app, which already does it through the extension (`recurringEntryData`, `money-in.service.ts`). The spike table's "copies ciphertext verbatim" predates the AAD change |
 | D3 | `sidecar/tasks/cleanup.go:125-255` | guest anonymization rewrites participant ids to a sentinel | none | Checked: no text read. `guest_session.name` is deleted with the row |
 | D4 | `sidecar/tasks/settlement_autofinalize.go:22` (deleted) | `UPDATE "Settlement"` with status columns | none | No text. The job never ran (wrong table name). Removed: the app now finalizes stale payments in `src/server/services/payments/auto-finalize.ts`, through the confirm core |
+
+### E. Readers added after D10
+
+| # | Where | What it reads | Class | Action |
+|---|---|---|---|---|
+| E1 | `services/keys/contact-hash-fill.ts` | ghost and guest `email` in plaintext, on the owner connection, in batches of 500 | a | Added in Revision 3 PR 3a: the flag-on start reads a readable address only to write its `emailHash`, and skips sealed cells. Nothing else is written |
+| E2 | `services/keys/contact-hash.ts` (`contactLookup`) | `shadow_profile.email` and `guest_session.email` by `emailHash` once the epoch is set, by a case-insensitive `equals` plus an exact check before it | a | Revision 3 PR 3a, 3b, 4: the only lookup. `userTextShadowEmail.test.ts` fails on any other `where` on `shadowProfile.email` |
+| E3 | `services/api-v1/retention-sweep.ts` (`sweepStaleImportFiles`) | no text: an `updateMany` on `status` and `createdAt` that sets `fileData` to null | a | Revision 3 PR 5: never a filter on `fileData`, which may be ciphertext |
+| E4 | `services/webhooks/worker.ts` (`pickDue`) | `webhook.url`, opened with the instance key on the global client | a | Revision 3 PR 2: the host is taken from the opened url, so the per-host cap still works; a url that cannot be opened ends in the terminal failure `url_unreadable` |
+| E5 | `services/user-deletion-ghosts.ts` (`retireGhosts`, B15) | nothing is read: sealed ghost email and phone are set to null by a prefix test | a | See B15 |
 
 ## 4. Collation
 
@@ -213,6 +225,14 @@ These columns are read by people other than the writer. They are encrypted too
 `fix_request.message`, `fix_request.reply`, and `category.name` (readable by
 project participants through the category RLS fixes).
 
+Added after D10 (instance key, D11 Revision 3 unless noted): `shared_transaction.receiptUrl`
+(PR 6; typed input that any editor diffs and co-participants and guests read),
+`error_report.message` and `error_report.stack` (PR 1; the admin reads every user's
+reports), `webhook.url` and `webhook.name` (PR 2; the worker reads them on the global
+client), `guest_session.email` (PR 4). Ghost `email` and `phone` are the creator's own
+(user key), and every other reader gets null (PR 3b). `category.name` is on the user
+key: a co-participant's read gets the neutral fallback, not the name.
+
 Each reader of them in section 3 is in the table above (A11, A14, A15, A20,
 B1, B2, B7, B8, B10, B11, C1 to C5). The D11 key choice per table (user key
 for personal rows, instance key for these) belongs in D11's field map.
@@ -220,6 +240,8 @@ for personal rows, instance key for these) belongs in D11's field map.
 ## 7. Blockers for D11
 
 ### 7.1 Confirm and undo compare `paymentMethod` in SQL (C1, C2, C3)
+
+Done in D11 PR 4.1 (see B14): the confirm stores the values as stored and the undo writes them back verbatim.
 
 `payments/confirm-restore.ts:71-83` (`previousOf`) puts `header.paymentMethod`
 into the SETTLED audit entry's `previous`. `settled_entry_ok` (C1) requires
@@ -247,10 +269,14 @@ that a status change does not re-seal `paymentMethod`, `note` or
 
 ### 7.2 The sidecar recurring job (D1, D2)
 
+Done in D11 PR 6: recurring auto-post runs in the app and the Go code that copied text was removed (6.1, 6.2).
+
 See D2. It is the only writer that copies a text column between rows in SQL.
 Choose between Go field crypto and posting in the app before D11.
 
 ### 7.3 Pass the keyring (kept SQL paths)
+
+Done in D11 PR 5 (5.1 and 5.2): the search path follows the field encryption epoch, and every caller below reads through model reads once it is set.
 
 `searchesInApp(keyring)` picks the app path. Nothing supplies a keyring yet. D11
 must pass the user's keyring wherever the callers below read text, or they run
@@ -277,26 +303,29 @@ with no window or cap. The duplicate check reads one day of one amount.
 
 ## 8. D11 checklist
 
-1. Apply the extension to every client that touches these tables: the
+All ten items are done. The PR that closed each is in brackets.
+
+1. [PR 3.1, 3.2] Apply the extension to every client that touches these tables: the
    scoped client, the global client, the better-auth adapter (B13) and the
    sidecar (D1, D2).
-2. Raw SQL results are not decrypted. B5, B9, B10 and B11 read text through
+2. [PR 5.1] Raw SQL results are not decrypted. B5, B9, B10 and B11 read text through
    model reads (PR 5.1); keep any new reader on that rule.
-3. Fix section 7.1 before turning on writes for `settlement` and `payment`.
-4. Decide D2 (sidecar recurring).
-5. Pass the keyring to the callers in 7.3.
-6. A copy of a value between rows must decrypt and seal again for the new row.
+3. [PR 4.1] Fix section 7.1 before turning on writes for `settlement` and `payment`.
+4. [PR 6] Decide D2 (sidecar recurring): posting moved into the app.
+5. [PR 5] Pass the keyring to the callers in 7.3.
+6. [PR 4] A copy of a value between rows must decrypt and seal again for the new row.
    App copies that do (through the extension): recurring template to expense
    (`money-in.service.ts`), import queue to expense, duplicate. The only SQL copy
-   is D2.
-7. Never re-seal a column an update does not change (C4, C5), or the guards see
+   was D2, removed in PR 6.
+7. [PR 4] Never re-seal a column an update does not change (C4, C5), or the guards see
    a change.
-8. Mixed mode: plaintext rows stay readable. The model reads return
+8. [PR 3.2] Mixed mode: plaintext rows stay readable. The model reads return
    plaintext as is.
-9. Unique and indexed text: `category.name` (A26, D9) and the title index (A27,
+9. [D9, PR 4.3] Unique and indexed text: `category.name` (A26, D9) and the title index (A27,
    D7 drop). Category creation depends on the unique key in three callers (A26).
-10. The pre-backfill scan is B12. Run it before D12, then expect every row to
-    start with U+0001.
+10. [PR 9] The pre-backfill scan is B12. Run it before D12, then expect every row to
+    start with U+0001. Before the flag it is the one-time `--fail` gate in the runbook
+    (`docs/encryption-at-rest.md`).
 
 ## 9. Notes and one behavior change
 
@@ -338,16 +367,17 @@ Not SQL readers, but plaintext copies that D11's field map will not seal. Each
 needs an owner decision (seal, strip or accept) before the whitepaper says
 "titles are encrypted".
 
-| Where | What it holds | Source |
-|---|---|---|
-| `audit_log_entry.changes` | SETTLED entry: `previous.paymentMethod` and every settlement row column (`note`, `paymentMethod`, `rejectedReason`) | `payments/confirm-restore.ts:36-83`; fix in 7.1 |
-| `audit_log_entry.changes` | project name on create and rename | `project/project-write.service.ts:120,242` |
-| Idempotency records keyed `undo-stash:` | before-images of deleted or changed rows, so titles and notes | `entry/undo-stash.ts:18` |
-| `envelope_change.previousName`, `envelope_change.before` | envelope and group names, before-images | `envelope/envelope-change.ts:102`, `crud.service.ts:185`, `combine.service.ts:345` |
-| `import_job.fileData`, `import_job.fileName` | the uploaded file, which is all user text | `prisma/schema.prisma` `ImportJob` |
-| `expense.importFingerprint` | SHA-256 of day, currency, amount, kind and the normalized title: unkeyed, so guessable for common merchant names | `import/match.ts:93-102`, `commit.mutation.ts:200` |
-| `notification.title`, `notification.body` | generic text from lane A4 | `notification-text.ts` |
-| `payment_tx_note.data` | row snapshots, one transaction, owner-only | C7 |
+| Where | What it holds | Source | Outcome |
+|---|---|---|---|
+| `audit_log_entry.changes` | SETTLED entry: `previous.paymentMethod` and every settlement row column (`note`, `paymentMethod`, `rejectedReason`) | `payments/confirm-restore.ts:36-83`; fix in 7.1 | Kept as stored (ciphertext when the source cells are), opened when served (PR 4.1). Its text leaves are declared in `fields.ts` (PR 8.3) |
+| `audit_log_entry.changes` | project name on create and rename | `project/project-write.service.ts:120,242` | Sealed leaf by leaf under the instance key (PR 8.3) |
+| Idempotency records keyed `undo-stash:` | before-images of deleted or changed rows, so titles and notes | `entry/undo-stash.ts:18` | Sealed whole as JSON, with replayed v1 responses (PR 8.1) |
+| `envelope_change.previousName`, `envelope_change.before` | envelope and group names, before-images | `envelope/envelope-change.ts:102`, `crud.service.ts:185`, `combine.service.ts:345` | `previousName` is a mapped instance-class column. `before` holds ids, amounts and flags and is listed in `json-no-text.ts` |
+| `import_job.fileData`, `import_job.fileName` | the uploaded file, which is all user text | `prisma/schema.prisma` `ImportJob` | Both sealed under the user key (D11 Revision 3 PR 5); parsed rows and warnings sealed as JSON (PR 8.2); stuck jobs lose the file within about two hours |
+| `expense.importFingerprint` | SHA-256 of day, currency, amount, kind and the normalized title: unkeyed, so guessable for common merchant names | `import/match.ts:93-102`, `commit.mutation.ts:200` | Accepted and still unkeyed: a dump lets someone test a guess at a title for a known day and amount. Not shredded with a key |
+| `notification.title`, `notification.body` | generic text from lane A4 | `notification-text.ts` | New notices are built when read, from ids and types, with no stored names (PR 8.4). Older rows keep what they held until D12 |
+| `payment_tx_note.data` | row snapshots, one transaction, owner-only | C7 | No change (C7): it copies stored values, and only definer functions read it |
+| `idempotency_key.responseBody`, `import_job.transactions`, `import_job.warnings`, `feedback.diagnostics` | JSON bodies | `fields.ts` `JSON_CELLS` | Sealed whole (PR 8.1, 8.2) |
 
 Text columns that exist but are not declared through `userText()`, so the field
 map built from `USER_TEXT_FIELDS` will miss them: `budget_book.name`,
@@ -358,6 +388,11 @@ declared), `envelope_change.previousName`, `import_job.fileName`,
 `apikey.metadata`, `feedback.pageUrl`. Declare the ones that hold what a
 person typed (the first three, `previousName`, `deviceName`) before D11, or
 record why each stays plain.
+
+Outcome: the first three, `previousName`, `fileName`, `deviceName`, `error_report.message`
+and `error_report.stack` are mapped columns in `fields.ts`. `apikey.metadata` and
+`feedback.pageUrl` stay plain, each with a reason in `fields.test.ts` (`NOT_SEALED`).
+`shared_transaction.receiptUrl` is typed input and is mapped (Revision 3 PR 6).
 
 ## 11. Checked and not user text
 
