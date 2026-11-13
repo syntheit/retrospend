@@ -93,10 +93,7 @@ describe("applyDailyTable", () => {
 
 		const later = "2026-03-06T09:05:00.000Z";
 		await store.transaction((tx) =>
-			applyDailyTable(
-				tx,
-				daily([row("ARS", "blue", "1600", later)], later),
-			),
+			applyDailyTable(tx, daily([row("ARS", "blue", "1600", later)], later)),
 		);
 		// official and EUR are gone: nothing is kept from the old table.
 		expect(store.list("rates")).toEqual([
@@ -165,7 +162,9 @@ describe("applyDailyTable", () => {
 	it("keeps the rateSync row to one, with id rates", async () => {
 		const store = new MemoryStore();
 		await expect(
-			store.transaction((tx) => tx.put("rateSync", { id: "other", asOf: null })),
+			store.transaction((tx) =>
+				tx.put("rateSync", { id: "other", asOf: null }),
+			),
 		).rejects.toBeInstanceOf(InvalidInputError);
 	});
 });
@@ -225,10 +224,7 @@ describe("a device prices from the applied daily table", () => {
 		const store = await arsStore();
 		expect(store.list("rates").some((r) => r.currency === "BRL")).toBe(false);
 		expect(
-			rateLookup(rateRowsByCurrency(store.list("rates"), ["BRL"]))(
-				"BRL",
-				WHEN,
-			),
+			rateLookup(rateRowsByCurrency(store.list("rates"), ["BRL"]))("BRL", WHEN),
 		).toBeNull();
 		await expect(
 			book(store, { currency: "BRL", amount: "10" }),
@@ -319,17 +315,32 @@ describe("the rate history is outside figure inputs", () => {
 		const chart = new RateHistoryStore();
 		chart.merge(history);
 		chart.merge([
-			{ date: "2026-03-04", currency: "ARS", type: "blue", unitsPerUsd: "1550" },
+			{
+				date: "2026-03-04",
+				currency: "ARS",
+				type: "blue",
+				unitsPerUsd: "1550",
+			},
 		]);
 		expect(
 			chart.list({ from: "2026-03-04", to: "2026-03-04", type: "blue" }),
 		).toEqual([
-			{ date: "2026-03-04", currency: "ARS", type: "blue", unitsPerUsd: "1550" },
+			{
+				date: "2026-03-04",
+				currency: "ARS",
+				type: "blue",
+				unitsPerUsd: "1550",
+			},
 		]);
 		expect(() =>
 			chart.merge([
 				{ date: "2026-03-10", currency: "ARS", type: "blue", unitsPerUsd: "7" },
-				{ date: "2026-03-10", currency: "EUR", type: "official", unitsPerUsd: "0" },
+				{
+					date: "2026-03-10",
+					currency: "EUR",
+					type: "official",
+					unitsPerUsd: "0",
+				},
 			]),
 		).toThrow(InvalidInputError);
 		expect(chart.list({ from: "2026-03-10" })).toEqual([]);
