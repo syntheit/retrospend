@@ -1,3 +1,4 @@
+import { textUnavailableProblem } from "~/server/crypto/field-open";
 import type { Prisma, PrismaClient } from "~prisma";
 import { logEventAsync } from "./audit.service";
 import { AlreadyClaimedError, claimShadowProfile } from "./claim.service";
@@ -52,7 +53,14 @@ export async function migrateGuestDataForVerifiedUser(
 		}
 		return result;
 	} catch (err) {
-		console.error("[Guest Migration Error]", err);
+		// A code only: an error from a query can carry the address. A hash that
+		// cannot be made (encrypted_text_unavailable) lands here too; the
+		// migration is idempotent and runs again at the next verification.
+		console.error(
+			"[Guest Migration Error]",
+			textUnavailableProblem(err) ??
+				(err instanceof Error ? err.name : typeof err),
+		);
 		return null;
 	}
 }

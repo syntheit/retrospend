@@ -9,6 +9,7 @@ vi.mock("../claim.service", () => ({
 	claimShadowProfile: mockClaimShadowProfile,
 }));
 
+import { TextUnavailableError } from "~/server/crypto/field-open";
 import { migrateGuestDataForVerifiedUser } from "../guest-migration.service";
 
 function makeDb(user: { email: string; emailVerified: boolean } | null) {
@@ -64,6 +65,30 @@ describe("migrateGuestDataForVerifiedUser", () => {
 		await expect(
 			migrateGuestDataForVerifiedUser(db as never, "user-1"),
 		).resolves.toBeNull();
+		spy.mockRestore();
+	});
+
+	it("logs a stable code, never the address, when a hash cannot be made", async () => {
+		const db = makeDb({ email: "owner@example.com", emailVerified: true });
+		db.guestSession.findMany.mockRejectedValue(
+			new TextUnavailableError("keystore_lost"),
+		);
+		const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+		await expect(
+			migrateGuestDataForVerifiedUser(db as never, "user-1"),
+		).resolves.toBeNull();
+		expect(spy).toHaveBeenCalledWith(
+			"[Guest Migration Error]",
+			"encrypted_text_unavailable",
+		);
+
+		db.guestSession.findMany.mockRejectedValue(
+			new Error('no row for "owner@example.com"'),
+		);
+		await migrateGuestDataForVerifiedUser(db as never, "user-1");
+		expect(spy).toHaveBeenLastCalledWith("[Guest Migration Error]", "Error");
+		expect(JSON.stringify(spy.mock.calls)).not.toContain("owner@example.com");
 		spy.mockRestore();
 	});
 });
