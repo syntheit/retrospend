@@ -5,7 +5,7 @@
  */
 import { dayKey } from "@retrospend/domain/time-zone";
 import { beforeAll, describe, expect, it } from "vitest";
-import { adminDb, createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { ExpenseService } from "./expense.service";
 
 const today = new Date(`${dayKey(new Date())}T00:00:00.000Z`);
@@ -27,7 +27,7 @@ describe("amortization on a booked expense", () => {
 			where: { id: u.user.id },
 			data: { homeCurrency: "ARS" },
 		});
-		const category = await adminDb.category.create({
+		const category = await fixtureDb.category.create({
 			data: { userId: u.user.id, name: "Rent", color: "teal" },
 		});
 		const parent = await new ExpenseService(u.db).createExpense(u.user.id, {
