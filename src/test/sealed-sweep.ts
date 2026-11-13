@@ -24,13 +24,16 @@
 import { readFileSync } from "node:fs";
 import { relative } from "node:path";
 import { expect } from "vitest";
-import { isSealedField } from "~/server/crypto/field-crypto";
 import {
 	type JsonCell,
 	jsonColumns,
 	mappedColumns,
 } from "~/server/crypto/fields";
-import { classifyAuditLeaf } from "~/server/crypto/json-no-text";
+import {
+	plainBodySql,
+	plainTextSql,
+	textLeaves,
+} from "~/server/crypto/plaintext-sql";
 import { adminDb } from "./pg-harness";
 
 export { sealedSuite } from "./pg-harness";
@@ -41,28 +44,6 @@ export type SweepAllowance = { column: string; reason: string };
 export const SWEEP_ALLOWED: Record<string, SweepAllowance> = JSON.parse(
 	readFileSync(new URL("./sealed-sweep.allow.json", import.meta.url), "utf8"),
 );
-
-const plain = (table: string, column: string) =>
-	`"${column}" IS NOT NULL AND NOT starts_with("${column}", E'\\x01k1:')
-	${table === "budget_book" ? `AND "${column}" <> 'Personal'` : ""}`;
-
-const plainBody = (column: string) =>
-	`"${column}" IS NOT NULL AND jsonb_typeof("${column}") <> 'null'
-	AND NOT starts_with(COALESCE("${column}"->>'sealed', ''), E'\\x01k1:')`;
-
-/** Every string of a JSON value with the path to it, arrays by index. */
-function* stringLeaves(
-	value: unknown,
-	path: string[] = [],
-): Generator<[string[], string]> {
-	if (typeof value === "string") yield [path, value];
-	else if (Array.isArray(value))
-		for (const [i, item] of value.entries())
-			yield* stringLeaves(item, [...path, String(i)]);
-	else if (typeof value === "object" && value !== null)
-		for (const [key, item] of Object.entries(value))
-			yield* stringLeaves(item, [...path, key]);
-}
 
 /**
  * The leaves of a leaves cell that leave plaintext: a declared leaf (or one
@@ -84,11 +65,10 @@ async function sweepLeaves(
 	const plain = new Map<string, string>();
 	const undeclared = new Map<string, string>();
 	for (const { id, v } of rows)
-		for (const [path, text] of stringLeaves(v)) {
+		for (const { path, text, state } of textLeaves(v, cell)) {
 			const at = `${id}#${path.join(".")}`;
-			const kind = classifyAuditLeaf(path, cell);
-			if (kind === "undeclared") undeclared.set(at, text);
-			else if (kind !== "no_text" && !isSealedField(text)) plain.set(at, text);
+			if (state === "undeclared") undeclared.set(at, text);
+			else if (state === "plaintext") plain.set(at, text);
 		}
 	cells.set(`${table}.${column}`, plain);
 	cells.set(`${table}.${column} (undeclared leaf)`, undeclared);
@@ -104,9 +84,9 @@ async function plaintextCells(): Promise<Map<string, Map<string, string>>> {
 		cells.set(`${table}.${column}`, new Map(rows.map((r) => [r.id, r.v])));
 	};
 	for (const [table, column] of mappedColumns())
-		await sweep(table, column, plain(table, column));
+		await sweep(table, column, plainTextSql(table, column));
 	for (const [table, column, cell] of jsonColumns())
-		if (cell.mode === "body") await sweep(table, column, plainBody(column));
+		if (cell.mode === "body") await sweep(table, column, plainBodySql(column));
 		else await sweepLeaves(table, column, cell, cells);
 	return cells;
 }

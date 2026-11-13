@@ -32,6 +32,7 @@ import { userTransaction } from "~/server/db-tx";
 import type { Prisma } from "~prisma";
 import {
 	type FieldAad,
+	FieldCryptoError,
 	Keyring,
 	openField,
 	sealField,
@@ -227,6 +228,33 @@ export async function getOrCreateInstanceKeyring(
 	const ring = loadOrMint(actor, masterKeyring);
 	cached = cacheRing(masterKeyring, now, ring);
 	return ring;
+}
+
+/**
+ * Whether the instance key is there and opens, for the start gates
+ * (floor.ts). It reads the key rows on the owner connection and opens only
+ * them: no user key, no actor, no cache, nothing is minted. A missing
+ * keystore schema counts as no rows. Every row is opened, so a key that only
+ * an older row of a rotation holds is not missed.
+ */
+export async function checkInstanceKey(
+	client: Pick<typeof keystoreDb, "$queryRaw">,
+	masterKeyring: Keyring,
+): Promise<"ok" | "missing" | "unopenable"> {
+	const [present] = await client.$queryRaw<{ table: boolean }[]>`
+		SELECT to_regclass('keystore.instance_text_key') IS NOT NULL AS "table"`;
+	if (!present?.table) return "missing";
+	const rows = await client.$queryRaw<KeyRow[]>`
+		SELECT "keyId", "wrappedKey" FROM keystore."instance_text_key"
+		ORDER BY "keyId"`;
+	if (rows.length === 0) return "missing";
+	try {
+		unwrapAll(rows, masterKeyring);
+	} catch (error) {
+		if (error instanceof FieldCryptoError) return "unopenable";
+		throw error;
+	}
+	return "ok";
 }
 
 /** Forget the cached keyring: a rotation job, or a test. */

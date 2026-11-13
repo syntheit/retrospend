@@ -33,5 +33,7 @@
 	"src/server/services/__tests__/title-suggestions.pg.test.ts": "Mocks the master key, builds its own keys and sets and clears the epoch",
 	"src/server/__tests__/client-keys.pg.test.ts": "Builds its own keys",
 	"src/server/__tests__/client-slot.pg.test.ts": "Builds its own keys",
-	"src/test/migrations/user-text-capacity.pg.test.ts": "Builds its own keys"
+	"src/test/migrations/user-text-capacity.pg.test.ts": "Builds its own keys",
+	"src/server/services/keys/floor.pg.test.ts": "Builds its own keys and sets the epoch and the instance key state",
+	"src/test/verify-sealing.pg.test.ts": "Sets and clears the epoch"
 }

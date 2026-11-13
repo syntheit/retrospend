@@ -22,6 +22,9 @@ services:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       DATA_MASTER_KEY: ${DATA_MASTER_KEY:-}
       DATA_MASTER_KEY_FILE: ${DATA_MASTER_KEY_FILE:-}
+      # Optional: "true" seals new text on write. Needs the master key; read the
+      # encryption notes in docs/self-hosting.md before turning it on.
+      DATA_KEYS_WRITE: ${DATA_KEYS_WRITE:-}
       # Optional: "false" stops the 15-minute auto-post of recurring expenses.
       RECURRING_AUTO_POST: ${RECURRING_AUTO_POST:-}
       UPLOAD_DIR: /data/uploads
