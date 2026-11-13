@@ -49,9 +49,15 @@ const NONCE_BYTES = 12;
 const TAG_BYTES = 16;
 const KEY_ID_BYTES = 4;
 const MAX_KEY_ID = 0xffffffff;
-/** Strict standard base64 with padding. Buffer.from alone accepts junk. */
-const BASE64 =
-	/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+/**
+ * Strict standard base64 with padding. Buffer.from alone accepts junk. A
+ * repeated group such as `(?:[A-Za-z0-9+/]{4})*` overflows V8's regex stack on
+ * a megabyte value (an import file is up to 14 million characters), so the
+ * pattern is a plain character run and the length rule is checked apart.
+ */
+const BASE64_CHARS = /^[A-Za-z0-9+/]*={0,2}$/;
+const isBase64 = (text: string) =>
+	text.length % 4 === 0 && BASE64_CHARS.test(text);
 
 export type FieldCryptoErrorCode =
 	/** A key or the key setting is not usable. */
@@ -233,7 +239,7 @@ export function openField(
 		);
 	}
 	const encoded = sealed.slice(PREFIX.length);
-	if (!BASE64.test(encoded)) throw new FieldCryptoError("malformed");
+	if (!isBase64(encoded)) throw new FieldCryptoError("malformed");
 	const raw = Buffer.from(encoded, "base64");
 	if (raw.length < KEY_ID_BYTES + NONCE_BYTES + TAG_BYTES)
 		throw new FieldCryptoError("malformed");

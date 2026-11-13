@@ -195,6 +195,7 @@ const REASONS = {
 		"updateProfile strips the characters userText refuses before it writes (profile.service.ts), so Undo of an old name works",
 	crash:
 		"app-generated crash text, scrubbed by scrubReport; error_report.message and stack are stripped of controls and refused with a leading U+0001 by submitErrorReports, and feedback diagnostics are one sealed JSON body",
+	file: "a file as base64: the pattern admits no control character, and the column is written by the queue, which seals it",
 } as const;
 
 /**
@@ -210,6 +211,7 @@ const NOT_TEXT_INPUTS: Record<string, keyof typeof REASONS> = {
 	"trpc feedback.submit:diagnostics.recentErrors[].stack": "crash",
 	"v1 POST /feedback:diagnostics.recentErrors[].stack": "crash",
 	"v1 POST /error-reports:reports[].stack": "crash",
+	"trpc importQueue.createJob:fileData": "file",
 };
 
 describe("detector", () => {

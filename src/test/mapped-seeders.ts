@@ -233,6 +233,8 @@ export const SEEDERS: Record<MappedModel, (c: Ctx) => Promise<Data>> = {
 		userId: c.owner,
 		type: "CSV",
 		fileName: text("bank.csv"),
+		fileData: text("ZmlsZQ"),
+		errorMessage: text("Row 2 broke"),
 		fileSize: 1,
 		fileType: "text/csv",
 	}),

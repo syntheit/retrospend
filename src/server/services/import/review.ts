@@ -94,7 +94,10 @@ export interface ImportReview {
 }
 
 export async function loadReviewableJob(db: Db, userId: string, jobId: string) {
-	const job = await db.importJob.findFirst({ where: { id: jobId, userId } });
+	const job = await db.importJob.findFirst({
+		where: { id: jobId, userId },
+		omit: { fileData: true },
+	});
 	if (!job) {
 		throw new TRPCError({ code: "NOT_FOUND", message: "Import not found" });
 	}

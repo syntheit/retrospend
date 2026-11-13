@@ -1,5 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { FieldCryptoError } from "~/server/crypto/field-crypto";
+import { TextUnavailableError } from "~/server/crypto/field-open";
 import { createMockDb } from "~/test/mock-db";
 import { useRateTable } from "~/test/rate-table";
 import { ImportQueueService } from "../import-queue.service";
@@ -168,7 +170,7 @@ describe("ImportQueueService", () => {
 			// Should have been called to set PROCESSING
 			expect(db.importJob.update).toHaveBeenCalledWith(
 				expect.objectContaining({
-					where: { id: "job-1" },
+					where: { id: "job-1", status: "QUEUED" },
 					data: expect.objectContaining({ status: "PROCESSING" }),
 				}),
 			);
@@ -582,5 +584,200 @@ describe("ImportQueueService CSV conversion", () => {
 		);
 		expect(txs[0]).toMatchObject({ exchangeRate: 1560, amountInUSD: 100 });
 		expect(txs[1]).toMatchObject({ exchangeRate: 0.8787, amountInUSD: 113.8 });
+	});
+});
+
+describe("a job the sweep or a cancel got to first", () => {
+	let db: ReturnType<typeof createMockDb>;
+	let service: ImportQueueService;
+	const missing = Object.assign(new Error("not found"), { code: "P2025" });
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		db = createMockDb();
+		service = new ImportQueueService(db as never);
+	});
+
+	const updates = () =>
+		db.importJob.update.mock.calls.map(
+			(c) => c[0] as { where: object; data: Record<string, unknown> },
+		);
+
+	it("is not processed when it left QUEUED after it was read", async () => {
+		db.importJob.findFirst
+			.mockResolvedValueOnce(makeJob({ fileData: VALID_CSV_BASE64 }))
+			.mockResolvedValueOnce(null);
+		db.importJob.update.mockRejectedValueOnce(missing);
+
+		await service.processQueue("user-1");
+
+		expect(updates()).toHaveLength(1);
+		expect(updates()[0]?.where).toEqual({ id: "job-1", status: "QUEUED" });
+	});
+
+	it("is not brought back to review by a late result", async () => {
+		db.importJob.findFirst
+			.mockResolvedValueOnce(makeJob({ fileData: VALID_CSV_BASE64 }))
+			.mockResolvedValueOnce(null);
+		db.importJob.update
+			.mockResolvedValueOnce({}) // claimed
+			.mockRejectedValueOnce(missing); // the sweep failed it meanwhile
+
+		await expect(service.processQueue("user-1")).resolves.toBeUndefined();
+
+		const written = updates();
+		expect(written).toHaveLength(2);
+		expect(written[1]?.where).toEqual({ id: "job-1", status: "PROCESSING" });
+		expect(written[1]?.data).toMatchObject({
+			status: "READY_FOR_REVIEW",
+			fileData: null,
+		});
+	});
+
+	it("is not failed a second time, and the run goes on", async () => {
+		db.importJob.findFirst
+			.mockResolvedValueOnce(makeJob({ fileData: null }))
+			.mockResolvedValueOnce(null);
+		db.importJob.update
+			.mockResolvedValueOnce({}) // claimed, then "No file data" throws
+			.mockRejectedValueOnce(missing);
+
+		await expect(service.processQueue("user-1")).resolves.toBeUndefined();
+		expect(updates()[1]?.where).toEqual({
+			id: "job-1",
+			status: { in: ["QUEUED", "PROCESSING"] },
+		});
+	});
+
+	it("fails a job whose claim failed for another reason, so it is not picked again for ever", async () => {
+		db.importJob.findFirst
+			.mockResolvedValueOnce(makeJob({ fileData: VALID_CSV_BASE64 }))
+			.mockResolvedValueOnce(null);
+		db.importJob.update
+			.mockRejectedValueOnce(new Error("connection reset"))
+			.mockResolvedValueOnce({});
+
+		await service.processQueue("user-1");
+
+		expect(updates()).toHaveLength(2);
+		expect(updates()[1]?.data).toMatchObject({
+			status: "FAILED",
+			errorMessage: "connection reset",
+			fileData: null,
+		});
+	});
+
+	it("fails at once a job whose file cannot be opened, with no reason text, and goes on", async () => {
+		db.importJob.findFirst
+			.mockRejectedValueOnce(new TextUnavailableError("keystore_lost"))
+			.mockResolvedValueOnce({ id: "job-1" }) // the same job, by id only
+			.mockResolvedValueOnce(null);
+		db.importJob.update.mockResolvedValue({});
+
+		await expect(service.processQueue("user-1")).resolves.toBeUndefined();
+
+		expect(updates()).toHaveLength(1);
+		expect(updates()[0]?.where).toEqual({
+			id: "job-1",
+			status: "QUEUED",
+		});
+		expect(updates()[0]?.data).toMatchObject({ status: "FAILED", fileData: null });
+		expect(updates()[0]?.data).not.toHaveProperty("errorMessage");
+	});
+
+	it.each(["keystore_unavailable", "master_key_missing", "key_rotated"])(
+		"leaves the queue alone when the file cannot be opened for %s, which may pass",
+		async (code) => {
+			db.importJob.findFirst.mockRejectedValueOnce(new TextUnavailableError(code));
+
+			await expect(service.processQueue("user-1")).resolves.toBeUndefined();
+
+			expect(db.importJob.findFirst).toHaveBeenCalledTimes(1);
+			expect(db.importJob.update).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each(["auth_failed", "malformed", "unsupported_version", "unknown_key"] as const)(
+		"fails the job at once for a damaged file (%s)",
+		async (code) => {
+			db.importJob.findFirst
+				.mockRejectedValueOnce(new FieldCryptoError(code))
+				.mockResolvedValueOnce({ id: "job-1" })
+				.mockResolvedValueOnce(null);
+			db.importJob.update.mockResolvedValue({});
+
+			await service.processQueue("user-1");
+
+			expect(updates()[0]?.data).toMatchObject({ status: "FAILED", fileData: null });
+		},
+	);
+
+	it("does not take a write or filter code for a damaged file", async () => {
+		db.importJob.findFirst.mockRejectedValueOnce(
+			new FieldCryptoError("filter_on_sealed"),
+		);
+		await expect(service.processQueue("user-1")).rejects.toMatchObject({
+			code: "filter_on_sealed",
+		});
+		expect(db.importJob.update).not.toHaveBeenCalled();
+	});
+
+	it("rethrows a queue read failure that is not an unreadable cell", async () => {
+		db.importJob.findFirst.mockRejectedValueOnce(new Error("connection lost"));
+		await expect(service.processQueue("user-1")).rejects.toThrow(
+			"connection lost",
+		);
+	});
+
+	it("rethrows a write failure that is not a missing row", async () => {
+		db.importJob.findFirst.mockResolvedValueOnce(makeJob({ fileData: null }));
+		db.importJob.update
+			.mockResolvedValueOnce({}) // claimed, then "No file data" throws
+			.mockRejectedValueOnce(new Error("connection lost"));
+		await expect(service.processQueue("user-1")).rejects.toThrow(
+			"connection lost",
+		);
+	});
+});
+
+describe("the text a failed job keeps", () => {
+	let db: ReturnType<typeof createMockDb>;
+	let service: ImportQueueService;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		db = createMockDb();
+		service = new ImportQueueService(db as never);
+	});
+
+	async function failureOf(csv: string) {
+		db.importJob.findFirst
+			.mockResolvedValueOnce(
+				makeJob({ fileData: Buffer.from(csv).toString("base64") }),
+			)
+			.mockResolvedValueOnce(null);
+		db.importJob.update.mockResolvedValue({});
+		await service.processQueue("user-1");
+		return db.importJob.update.mock.calls
+			.map((c) => c[0] as { where: object; data: Record<string, unknown> })
+			.find((c) => c.data.status === "FAILED");
+	}
+
+	it("is capped at 1000 characters, cleaned of control characters, and the file is cleared", async () => {
+		// The message quotes the first bad rows, cell by cell: a 1500 character
+		// amount with a BEL in it is far over the cap.
+		const amount = `x\u0007${"y".repeat(1500)}`;
+		const failed = await failureOf(
+			`title,amount,currency,date\nCompra,${amount},ARS,2026-08-01\n`,
+		);
+		const text = failed?.data.errorMessage as string;
+		expect(failed?.where).toEqual({
+			id: "job-1",
+			status: { in: ["QUEUED", "PROCESSING"] },
+		});
+		expect(failed?.data.fileData).toBeNull();
+		// Cut to 1000, then the BEL is taken out.
+		expect(text).toHaveLength(999);
+		expect(text).not.toContain("\u0007");
 	});
 });

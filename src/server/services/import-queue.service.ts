@@ -1,17 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { env } from "~/env";
 import { parseRawCsv } from "~/lib/csv";
-import { formatDateOnly, parseDateOnly } from "~/lib/date";
 import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { generateId } from "~/lib/id";
-import {
-	computeAmountInUSD,
-	isValidRate,
-	roundUSD,
-	USD,
-} from "@retrospend/domain/money";
 import type { ImportJobStatus, Prisma, PrismaClient } from "~prisma";
-import { findExchangeRate } from "../exchange-rates";
 import {
 	AI_IMPORT_OFF_MESSAGE,
 	isAiImportEnabled,
@@ -21,6 +13,17 @@ import {
 } from "./ai-access.service";
 import { CsvService } from "./csv.service";
 import { excelToCsv } from "./import/excel";
+import { progressCode } from "./import/progress-code";
+import { readCsvRows } from "./import/csv-rows";
+import {
+	errorText,
+	GUARD,
+	JOB_CREATED,
+	NO_FILE,
+	nextQueuedJob,
+	STATE,
+	writeJob,
+} from "./import/job-selects";
 import { completedJobData } from "./import/rejected-warnings";
 import { getAppSettings } from "./settings";
 
@@ -69,12 +72,12 @@ const COMPLETED_JOB_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 export class ImportQueueService {
 	constructor(private db: PrismaClient | Prisma.TransactionClient) {}
 
-	/**
-	 * A write that discards its row. A returned row is opened, and
-	 * `transactions` and `warnings` are sealed (PR 8.2), so only `id` comes back.
-	 */
-	private async write(id: string, data: Prisma.ImportJobUpdateInput) {
-		await this.db.importJob.update({ where: { id }, select: { id: true }, data });
+	private write(
+		id: string,
+		data: Prisma.ImportJobUpdateInput,
+		only?: ImportJobStatus | ImportJobStatus[],
+	) {
+		return writeJob(this.db, id, data, only);
 	}
 
 	/**
@@ -117,6 +120,8 @@ export class ImportQueueService {
 				fileType: input.fileType,
 				fileData: input.fileData,
 			},
+			// The file (up to 14 MB) never comes back in the response.
+			select: JOB_CREATED,
 		});
 
 		// Trigger queue processing asynchronously (don't await)
@@ -157,21 +162,21 @@ export class ImportQueueService {
 		}
 
 		// Get next QUEUED job for this user
-		const job = await this.db.importJob.findFirst({
-			where: { userId, status: "QUEUED" },
-			orderBy: { createdAt: "asc" },
-		});
-
+		const job = await nextQueuedJob(this.db, userId);
+		if (job === "failed") return await this.processQueue(userId);
 		if (!job) {
 			return; // Queue empty
 		}
 
 		try {
-			// Update to PROCESSING
-			await this.write(job.id, {
-				status: "PROCESSING",
-				processingAt: new Date(),
-			});
+			// Claim it. A job cancelled or swept since it was read is not
+			// processed, and not brought back.
+			const claimed = await this.write(
+				job.id,
+				{ status: "PROCESSING", processingAt: new Date() },
+				"QUEUED",
+			);
+			if (!claimed) return await this.processQueue(userId);
 
 			// Process based on type
 			if (job.type === "CSV") {
@@ -185,16 +190,19 @@ export class ImportQueueService {
 		} catch (error) {
 			console.error(`Job processing error for ${job.id}:`, error);
 
-			// Mark as FAILED
-			await this.write(job.id, {
-				status: "FAILED",
-				errorMessage:
-					error instanceof Error
-						? error.message.substring(0, 1000)
-						: "Unknown error",
-				failedAt: new Date(),
-				fileData: null, // Clear file data
-			});
+			// Mark as FAILED, unless the sweep already did (it leaves no reason).
+			await this.write(
+				job.id,
+				{
+					status: "FAILED",
+					errorMessage: errorText(error),
+					failedAt: new Date(),
+					fileData: null, // Clear file data
+				},
+				// QUEUED too: a failed claim leaves the job there, and a job left
+				// queued would be picked again for ever.
+				["QUEUED", "PROCESSING"],
+			);
 
 			// Trigger global queue processing (job slot freed up)
 			void this.processGlobalQueue().catch((err) => {
@@ -263,132 +271,11 @@ export class ImportQueueService {
 		}
 
 		// Convert to ImporterTransaction format
-		const transactions: ImporterTransaction[] = [];
-		const warnings: string[] = [...additionalWarnings];
-
-		for (let i = 0; i < rawRows.length; i++) {
-			const row = rawRows[i]!;
-
-			try {
-				// Extract and validate required fields
-				const title = row.title?.trim();
-				const amountStr = row.amount?.trim();
-				const currency = row.currency?.trim().toUpperCase();
-				const dateStr = row.date?.trim();
-
-				if (!title) {
-					warnings.push(`Row ${i + 1}: Missing title, skipping`);
-					continue;
-				}
-
-				if (!amountStr) {
-					warnings.push(`Row ${i + 1}: Missing amount, skipping`);
-					continue;
-				}
-
-				const amount = parseFloat(amountStr);
-				if (isNaN(amount) || amount <= 0) {
-					warnings.push(
-						`Row ${i + 1}: Invalid amount "${amountStr}", skipping`,
-					);
-					continue;
-				}
-
-				if (!currency || !/^[A-Z0-9]{3,10}$/.test(currency)) {
-					warnings.push(
-						`Row ${i + 1}: Invalid currency "${currency}", skipping`,
-					);
-					continue;
-				}
-
-				if (!dateStr) {
-					warnings.push(`Row ${i + 1}: Missing date, skipping`);
-					continue;
-				}
-
-				let date: Date;
-				try {
-					date = parseDateOnly(dateStr);
-				} catch {
-					warnings.push(`Row ${i + 1}: Invalid date "${dateStr}", skipping`);
-					continue;
-				}
-
-				// Extract optional fields
-				const exchangeRateStr = row.exchangerate?.trim();
-				const amountInUSDStr = row.amountinusd?.trim();
-				const location = row.location?.trim() || "";
-				const description = row.description?.trim() || "";
-				const category = row.category?.trim() || "";
-				const pricingSource = row.pricingsource?.trim() || "IMPORT";
-				const excludeCell = row.excludefromanalytics?.trim().toLowerCase();
-				const excludeFromAnalytics =
-					excludeCell === undefined || excludeCell === ""
-						? undefined
-						: ["true", "yes", "1"].includes(excludeCell);
-
-				// Calculate exchange rate and USD amount. Rates use the stored
-				// convention (fiat: units per USD, crypto: USD per coin).
-				let exchangeRate: number | undefined;
-				let amountInUSD: number;
-				let fromTable = false;
-				if (currency === USD) {
-					exchangeRate = 1;
-					amountInUSD = roundUSD(amount);
-				} else if (exchangeRateStr) {
-					exchangeRate = parseFloat(exchangeRateStr);
-					if (!isValidRate(exchangeRate)) {
-						warnings.push(
-							`Row ${i + 1}: Invalid exchange rate "${exchangeRateStr}", skipping`,
-						);
-						continue;
-					}
-					amountInUSD = computeAmountInUSD(amount, currency, exchangeRate);
-				} else if (amountInUSDStr) {
-					amountInUSD = parseFloat(amountInUSDStr);
-					if (!isValidRate(amountInUSD)) {
-						warnings.push(
-							`Row ${i + 1}: Invalid USD amount "${amountInUSDStr}", skipping`,
-						);
-						continue;
-					}
-					// Kept as the file has it, with no rate: booking prices the row
-					// at exactly USD / amount (book.ts, csv.service.ts), where a
-					// float rate here would move a cent on a tie.
-				} else {
-					const picked = await findExchangeRate(this.db, currency, date);
-					if (!picked) {
-						warnings.push(
-							`Row ${i + 1}: No exchange rate or USD amount for ${currency}, skipping`,
-						);
-						continue;
-					}
-					exchangeRate = picked.rate;
-					amountInUSD = computeAmountInUSD(amount, currency, exchangeRate);
-					fromTable = true;
-				}
-
-				transactions.push({
-					title,
-					amount,
-					currency,
-					...(exchangeRate === undefined ? {} : { exchangeRate }),
-					amountInUSD,
-					date: formatDateOnly(date),
-					location,
-					description,
-					pricingSource,
-					category,
-					...(excludeFromAnalytics === undefined ? {} : { excludeFromAnalytics }),
-					...(row.kind?.trim() ? { kind: row.kind.trim() } : {}),
-					...(fromTable ? { rateSource: "table" as const } : {}),
-				});
-			} catch (error) {
-				warnings.push(
-					`Row ${i + 1}: ${error instanceof Error ? error.message : "Unknown error"}`,
-				);
-			}
-		}
+		const { transactions, warnings } = await readCsvRows(
+			this.db,
+			rawRows,
+			additionalWarnings,
+		);
 
 		if (transactions.length === 0) {
 			throw new Error(
@@ -400,17 +287,21 @@ export class ImportQueueService {
 		}
 
 		// Store transactions and clear file data
-		await this.write(job.id, {
-			status: "READY_FOR_REVIEW",
-			transactions: transactions as unknown as Prisma.InputJsonValue,
-			warnings:
-				warnings.length > 0
-					? (warnings as unknown as Prisma.InputJsonValue)
-					: undefined,
-			totalTransactions: transactions.length,
-			readyForReviewAt: new Date(),
-			fileData: null, // Clear file data after processing
-		});
+		await this.write(
+			job.id,
+			{
+				status: "READY_FOR_REVIEW",
+				transactions: transactions as unknown as Prisma.InputJsonValue,
+				warnings:
+					warnings.length > 0
+						? (warnings as unknown as Prisma.InputJsonValue)
+						: undefined,
+				totalTransactions: transactions.length,
+				readyForReviewAt: new Date(),
+				fileData: null, // Clear file data after processing
+			},
+			"PROCESSING",
+		);
 	}
 
 	/**
@@ -437,7 +328,8 @@ export class ImportQueueService {
 		}
 
 		const importerUrl = env.SIDECAR_URL;
-		if (!importerUrl) throw new Error("Import service URL (SIDECAR_URL) is not configured");
+		if (!importerUrl)
+			throw new Error("Import service URL (SIDECAR_URL) is not configured");
 
 		const apiKey = env.WORKER_API_KEY;
 		if (!apiKey) {
@@ -533,10 +425,15 @@ export class ImportQueueService {
 
 						if (data.type === "progress") {
 							// Update job progress
-							await this.write(job.id, {
-								progressPercent: data.percent / 100,
-								statusMessage: data.message,
-							});
+							await this.write(
+								job.id,
+								{
+									progressPercent: data.percent / 100,
+									// A code from a fixed list, never the sidecar's text.
+									statusMessage: progressCode(data.message),
+								},
+								"PROCESSING",
+							);
 						} else if (data.type === "warning") {
 							warnings.push(data.message);
 						} else if (data.type === "result") {
@@ -569,7 +466,10 @@ export class ImportQueueService {
 						throw new Error(data.message);
 					}
 				} catch (error) {
-					console.error(`Failed to parse the final buffer (${buffer.length} chars)`, error);
+					console.error(
+						`Failed to parse the final buffer (${buffer.length} chars)`,
+						error,
+					);
 				}
 			}
 
@@ -578,24 +478,27 @@ export class ImportQueueService {
 			}
 
 			// Store results in job
-			await this.write(job.id, {
-				status: "READY_FOR_REVIEW",
-				transactions: transactions as unknown as Prisma.InputJsonValue,
-				warnings:
-					warnings.length > 0
-						? (warnings as unknown as Prisma.InputJsonValue)
-						: undefined,
-				totalTransactions: transactions.length,
-				readyForReviewAt: new Date(),
-				fileData: null, // Clear file data after processing
-				progressPercent: 1,
-				statusMessage: "Complete",
-			});
+			await this.write(
+				job.id,
+				{
+					status: "READY_FOR_REVIEW",
+					transactions: transactions as unknown as Prisma.InputJsonValue,
+					warnings:
+						warnings.length > 0
+							? (warnings as unknown as Prisma.InputJsonValue)
+							: undefined,
+					totalTransactions: transactions.length,
+					readyForReviewAt: new Date(),
+					fileData: null, // Clear file data after processing
+					progressPercent: 1,
+					statusMessage: "complete",
+				},
+				"PROCESSING",
+			);
 
 			// Record token usage for both local and external providers
 			if (totalTokensUsed > 0) {
-				const providerType =
-					provider === "openrouter" ? "external" : "local";
+				const providerType = provider === "openrouter" ? "external" : "local";
 				await recordTokenUsage(
 					this.db,
 					job.userId,
@@ -621,6 +524,7 @@ export class ImportQueueService {
 	async startReview(userId: string, jobId: string) {
 		const job = await this.db.importJob.findUnique({
 			where: { id: jobId },
+			select: GUARD,
 		});
 
 		if (!job) {
@@ -646,6 +550,7 @@ export class ImportQueueService {
 
 		return await this.db.importJob.update({
 			where: { id: jobId },
+			select: STATE,
 			data: {
 				status: "REVIEWING",
 				reviewingAt: new Date(),
@@ -664,6 +569,7 @@ export class ImportQueueService {
 	) {
 		const job = await this.db.importJob.findUnique({
 			where: { id: jobId },
+			omit: NO_FILE,
 		});
 
 		if (!job) {
@@ -727,6 +633,7 @@ export class ImportQueueService {
 	async getJob(userId: string, jobId: string) {
 		const job = await this.db.importJob.findUnique({
 			where: { id: jobId },
+			omit: NO_FILE,
 		});
 
 		if (!job) {
@@ -751,7 +658,11 @@ export class ImportQueueService {
 	 * Keeps at most MAX_COMPLETED_JOBS and removes any older than COMPLETED_JOB_TTL_MS.
 	 */
 	private async cleanupOldCompletedJobs(userId: string) {
-		const terminalStatuses: ImportJobStatus[] = ["COMPLETED", "FAILED", "CANCELLED"];
+		const terminalStatuses: ImportJobStatus[] = [
+			"COMPLETED",
+			"FAILED",
+			"CANCELLED",
+		];
 		const cutoff = new Date(Date.now() - COMPLETED_JOB_TTL_MS);
 
 		// Delete jobs older than the TTL
@@ -806,6 +717,7 @@ export class ImportQueueService {
 			},
 			orderBy: { createdAt: "desc" },
 			take: limit,
+			omit: NO_FILE,
 		});
 
 		return jobs;
@@ -823,6 +735,7 @@ export class ImportQueueService {
 				},
 			},
 			orderBy: { createdAt: "asc" },
+			omit: NO_FILE,
 		});
 
 		const processing = jobs.filter((j) => j.status === "PROCESSING");
@@ -868,6 +781,7 @@ export class ImportQueueService {
 	async cancelJob(userId: string, jobId: string) {
 		const job = await this.db.importJob.findUnique({
 			where: { id: jobId },
+			select: GUARD,
 		});
 
 		if (!job) {
@@ -893,6 +807,7 @@ export class ImportQueueService {
 
 		const cancelled = await this.db.importJob.update({
 			where: { id: jobId },
+			select: STATE,
 			data: {
 				status: "CANCELLED",
 				fileData: null, // Clear file data
@@ -913,6 +828,7 @@ export class ImportQueueService {
 	async deleteJob(userId: string, jobId: string) {
 		const job = await this.db.importJob.findUnique({
 			where: { id: jobId },
+			select: GUARD,
 		});
 
 		if (!job) {

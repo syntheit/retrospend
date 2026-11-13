@@ -288,6 +288,32 @@ describe("damaged values", () => {
 		).toBe("malformed");
 	});
 
+	it("opens a value of 14 million characters (an import file) without overflowing the regex stack", () => {
+		const big = "a".repeat(14_000_000);
+		const wire = sealField(keyring, big, CELL);
+		expect(openField(keyring, wire, CELL)).toBe(big);
+		// A damaged byte near the end of the same value still fails the tag.
+		expect(codeOf(() => openField(keyring, flip(wire, 100), CELL))).toBe(
+			"auth_failed",
+		);
+	});
+
+	it("holds the base64 rules the grouped pattern held: length a multiple of 4, at most two pads, only at the end", () => {
+		const ok = sealField(keyring, "Groceries", CELL).slice(4);
+		const cases = [
+			ok.slice(0, -1), // one character short
+			`${ok}=`, // an extra pad
+			`${ok.slice(0, 20)}=${ok.slice(21)}`, // a pad in the middle
+			`${ok.slice(0, -4)}====`, // four pads
+			`${ok.slice(0, -3)}===`, // three pads
+		];
+		for (const tail of cases)
+			expect(
+				codeOf(() => openField(keyring, `\u0001k1:${tail}`, CELL)),
+				tail,
+			).toBe("malformed");
+	});
+
 	it("rejects bad base64 and plaintext handed to openField", () => {
 		expect(
 			codeOf(() => openField(keyring, `\u0001k1:${"!".repeat(60)}`, CELL)),

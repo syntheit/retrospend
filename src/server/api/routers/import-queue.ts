@@ -14,7 +14,13 @@ const createJobSchema = z.object({
 	fileSize: z.number().int().positive(),
 	fileType: z.enum(["csv", "xlsx", "pdf"]),
 	type: z.enum(["CSV", "BANK_STATEMENT"]),
-	fileData: z.string().min(1).max(14_000_000), // base64 encoded, ~10MB file limit
+	// Base64 only (what the client's btoa makes): the file is sealed at rest as
+	// text, and a leading U+0001 would pass for an already sealed value.
+	fileData: z
+		.string()
+		.min(1)
+		.max(14_000_000) // ~10MB file limit
+		.regex(/^[A-Za-z0-9+/]*={0,2}$/),
 });
 
 const importerTransactionSchema = z.object({

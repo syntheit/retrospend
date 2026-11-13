@@ -84,7 +84,10 @@ export const FIELD_MAP = {
 		columns: { message: "instance", reply: "instance" },
 	},
 	GuestSession: { table: "guest_session", columns: { name: "instance" } },
-	ImportJob: { table: "import_job", columns: { fileName: "user" } },
+	ImportJob: {
+		table: "import_job",
+		columns: { fileName: "user", fileData: "user", errorMessage: "user" },
+	},
 	IncomeRule: {
 		table: "income_rule",
 		columns: { name: "instance", matchTitle: "instance" },
@@ -322,10 +325,9 @@ export const JSON_CELLS = {
 		columns: { responseBody: { mode: "body", cls: "user" } },
 	},
 	// The parsed rows and the parser's warnings of an import job (PR 8.2).
-	// The file name, `fileData`, `errorMessage` and `statusMessage` are not
-	// sealed by this: until the Revision 3 PR seals the last two, the first
-	// warnings are still copied into `errorMessage` (import-queue.service.ts),
-	// so sealing these two columns alone does not make import text private.
+	// The file name, the uploaded file (`fileData`) and the failure text
+	// (`errorMessage`) are text cells in FIELD_MAP; `statusMessage` is a
+	// progress code, not text (import/progress-code.ts).
 	ImportJob: {
 		table: "import_job",
 		columns: {

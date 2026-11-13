@@ -11,6 +11,8 @@ import {
 	type CommitImportInput,
 	commitImport,
 } from "~/server/services/import/commit.mutation";
+import { isUnreadableText } from "~/server/services/import/job-selects";
+import { progressText } from "~/server/services/import/progress-code";
 import { importReview } from "~/server/services/import/review";
 import { importRunner } from "~/server/services/import/runner";
 import { undoImport } from "~/server/services/import/undo.mutation";
@@ -63,6 +65,21 @@ const jobSelect = {
 	completedAt: true,
 } satisfies Prisma.ImportJobSelect;
 
+/** The job's columns that hold no text, so they open with any key. */
+const plainSelect = {
+	id: true,
+	status: true,
+	type: true,
+	fileType: true,
+	totalTransactions: true,
+	importedCount: true,
+	skippedDuplicates: true,
+	progressPercent: true,
+	statusMessage: true,
+	createdAt: true,
+	completedAt: true,
+} satisfies Prisma.ImportJobSelect;
+
 type JobRow = Prisma.ImportJobGetPayload<{ select: typeof jobSelect }>;
 
 function toDto(row: JobRow): ImportJobDto {
@@ -77,7 +94,7 @@ function toDto(row: JobRow): ImportJobDto {
 			row.status === "PROCESSING" && row.progressPercent != null
 				? Math.round(row.progressPercent * 100)
 				: null,
-		message: row.statusMessage,
+		message: progressText(row.statusMessage),
 		rowCount: row.totalTransactions,
 		importedCount: row.importedCount,
 		skippedDuplicates: row.skippedDuplicates,
@@ -100,6 +117,15 @@ async function readJob(caller: LedgerCaller, id: string): Promise<JobRow> {
 	});
 	if (!row) throw notFound();
 	return row;
+}
+
+/** The job exists and is the caller's, reading no text (a write must not depend on opening a cell). */
+async function requireJob(caller: LedgerCaller, id: string): Promise<void> {
+	const row = await caller.db.importJob.findFirst({
+		where: { id, userId: caller.principal.userId },
+		select: { id: true },
+	});
+	if (!row) throw notFound();
 }
 
 const createdCursor = z.object({ createdAt: z.iso.datetime(), id: z.string() });
@@ -249,16 +275,31 @@ function withResult<V>(
 }
 
 export async function cancel(caller: LedgerCaller, id: string) {
-	await readJob(caller, id);
+	await requireJob(caller, id);
 	await new ImportQueueService(caller.db).cancelJob(
 		caller.principal.userId,
 		id,
 	);
-	return toDto(await readJob(caller, id));
+	// The cancel has committed: a cell that cannot be opened (the owner's key
+	// is gone, or it is damaged) must not turn it into an error the caller
+	// retries into "only queued jobs can be cancelled". The name, warnings and
+	// error are then left empty, the least surprising value for text nobody
+	// can read.
+	try {
+		return toDto(await readJob(caller, id));
+	} catch (error) {
+		if (!isUnreadableText(error)) throw error;
+		const row = await caller.db.importJob.findFirst({
+			where: { id, userId: caller.principal.userId },
+			select: plainSelect,
+		});
+		if (!row) throw notFound();
+		return toDto({ ...row, fileName: "", warnings: null, errorMessage: null });
+	}
 }
 
 export async function remove(caller: LedgerCaller, id: string) {
-	await readJob(caller, id);
+	await requireJob(caller, id);
 	await new ImportQueueService(caller.db).deleteJob(
 		caller.principal.userId,
 		id,
