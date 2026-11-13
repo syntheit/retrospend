@@ -1182,6 +1182,10 @@ model AppSettings {
   // When a server first started with DATA_KEYS_WRITE on; never cleared. From
   // then on user text may be sealed (src/server/crypto/epoch.ts).
   fieldEncryptionSince DateTime?
+  // The lowest build floor (SEALING_FLOOR in src/server/crypto/release.ts) that
+  // may start once the epoch is set; raised by every flag-on start, never
+  // lowered. A missing row or null reads as 0.
+  sealingFloor Int?
 
   @@map("app_settings")
 }
