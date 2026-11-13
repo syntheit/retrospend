@@ -253,6 +253,7 @@ describe("organizer hand-over on account deletion", () => {
 		expect(pp.update).toHaveBeenCalledTimes(1);
 		expect(pp.update).toHaveBeenCalledWith({
 			where: { id: "pp-bob" },
+			select: { id: true },
 			data: { role: "ORGANIZER" },
 		});
 		expect(projectDelete).not.toHaveBeenCalled();
@@ -281,7 +282,10 @@ describe("organizer hand-over on account deletion", () => {
 		await anonymizeAndDeleteUser(db as never, "user-1", "u@example.com", null);
 
 		expect(pp.update).not.toHaveBeenCalled();
-		expect(projectDelete).toHaveBeenCalledWith({ where: { id: "p1" } });
+		expect(projectDelete).toHaveBeenCalledWith({
+			where: { id: "p1" },
+			select: { id: true },
+		});
 	});
 
 	it("falls back to a VIEWER user before deleting the project", async () => {
@@ -312,6 +316,7 @@ describe("organizer hand-over on account deletion", () => {
 
 		expect(pp.update).toHaveBeenCalledWith({
 			where: { id: "pp-vic" },
+			select: { id: true },
 			data: { role: "ORGANIZER" },
 		});
 	});
