@@ -19,7 +19,7 @@ export const FAN_OUT_BATCH = 200;
  * Prisma's default five seconds, or a slow database would roll the batch back
  * for good.
  */
-const FAN_OUT_TIMEOUT_MS = 30_000;
+export const FAN_OUT_TIMEOUT_MS = 30_000;
 /** `[]` matches everything; an entry is a full type or `<resource>.*`. */
 export function matchesEventFilter(filter: readonly string[], type: string) {
 	if (filter.length === 0) return true;

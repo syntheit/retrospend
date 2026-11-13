@@ -6,6 +6,7 @@
 import { createHash } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, inject } from "vitest";
+import { appPoolConfig } from "~/server/db-pool-config";
 import { PrismaClient } from "~prisma";
 import { guardMoneyWrites } from "./money/write-guard";
 
@@ -43,12 +44,7 @@ if (sealed) {
 // db-core's own client, so no file leaves a pool open.
 (globalThis as { prisma?: unknown }).prisma ??= guardMoneyWrites(
 	new PrismaClient({
-		adapter: new PrismaPg({
-			connectionString: databaseUrl,
-			max: 20,
-			idleTimeoutMillis: 30000,
-			connectionTimeoutMillis: 5000,
-		}),
+		adapter: new PrismaPg(appPoolConfig(databaseUrl)),
 	}),
 );
 

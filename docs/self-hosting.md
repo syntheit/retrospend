@@ -118,6 +118,10 @@ A brand-new install is migrated by a one-shot role that holds `CREATE` on the da
 
 If `DATABASE_URL` names a user that is not a superuser (a managed Postgres, or a setup you made by hand), nothing is created or changed and the app connects as that user. Keeping its ownership and grants right is then up to you.
 
+### Shared Postgres clusters
+
+The app and the sidecar end any of their own connections that sit idle inside a transaction for 2 minutes. They cannot do that for other apps: on a Postgres cluster you share, a transaction another app leaves open for a long time can delay sync and the events feed for everyone until it ends.
+
 ### Password-less superuser connections
 
 If the superuser has no password (Postgres started with `POSTGRES_HOST_AUTH_METHOD=trust`, or a `DATABASE_URL` without one), a derived password would be guessable. The app logs a warning and keeps connecting as the superuser, with none of the protection above. Give the database user a password, or set `DATABASE_OWNER_PASSWORD` on the app and the sidecar. Do not publish the Postgres port beyond the machine either way: the sample compose file binds it to `127.0.0.1` or leaves it unpublished.

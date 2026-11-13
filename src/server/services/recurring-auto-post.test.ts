@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 const env = vi.hoisted(() => ({
 	NODE_ENV: "production",
+	DATABASE_URL: "postgresql://u:p@localhost:5432/d",
 	RECURRING_AUTO_POST: undefined as string | undefined,
 }));
 const db = vi.hoisted(() => ({

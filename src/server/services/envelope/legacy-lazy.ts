@@ -23,7 +23,7 @@ type Client = Pick<PrismaClient, "$transaction" | "budgetBook" | "budget">;
 const RETRY_NO_RATE_MS = 10 * 60_000;
 /** An error needs a person to look; do not hammer the database meanwhile. */
 const RETRY_ERROR_MS = 30 * 60_000;
-const MOVE_TIMEOUT_MS = 60_000;
+export const MOVE_TIMEOUT_MS = 60_000;
 
 const notMoved = new Map<string, { at: number; wait: number }>();
 

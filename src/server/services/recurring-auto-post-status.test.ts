@@ -5,7 +5,11 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("~/env", () => ({
-	env: { NODE_ENV: "production", RECURRING_AUTO_POST: undefined },
+	env: {
+		NODE_ENV: "production",
+		DATABASE_URL: "postgresql://u:p@localhost:5432/d",
+		RECURRING_AUTO_POST: undefined,
+	},
 }));
 vi.mock("~/server/db", () => ({ db: {} }));
 vi.mock("~/server/services/preview", () => ({ forUser: vi.fn() }));

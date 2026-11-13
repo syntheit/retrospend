@@ -13,7 +13,16 @@ type DB struct {
 	Pool *pgxpool.Pool
 }
 
-func Connect(databaseURL string) (*DB, error) {
+// IdleInTransactionTimeoutMs is how long Postgres lets a connection sit inside
+// an open transaction without a statement before it ends the connection. A
+// transaction left open holds back pg_snapshot_xmin, which stalls the app's
+// events feed and sync cursor for every user. It fires only between
+// statements, so a long statement is never cut. The migration and bootstrap
+// connections do not use this pool.
+const IdleInTransactionTimeoutMs = "120000"
+
+// poolConfig parses the URL and applies the pool settings, without connecting.
+func poolConfig(databaseURL string) (*pgxpool.Config, error) {
 	config, err := pgxpool.ParseConfig(databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse database URL: %w", err)
@@ -25,6 +34,16 @@ func Connect(databaseURL string) (*DB, error) {
 	config.MaxConnLifetime = time.Hour
 	config.MaxConnIdleTime = 30 * time.Minute
 	config.HealthCheckPeriod = time.Minute
+	config.ConnConfig.RuntimeParams["idle_in_transaction_session_timeout"] = IdleInTransactionTimeoutMs
+
+	return config, nil
+}
+
+func Connect(databaseURL string) (*DB, error) {
+	config, err := poolConfig(databaseURL)
+	if err != nil {
+		return nil, err
+	}
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
