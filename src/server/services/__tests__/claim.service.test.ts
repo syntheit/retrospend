@@ -85,7 +85,10 @@ describe("mergeShadowIntoGuest", () => {
 		expect(tx.projectParticipant.delete).toHaveBeenCalledWith({
 			where: { id: "pp-shadow" },
 		});
-		expect(tx.shadowProfile.delete).toHaveBeenCalledWith({ where: { id: "shadow-1" } });
+		expect(tx.shadowProfile.delete).toHaveBeenCalledWith({
+			where: { id: "shadow-1" },
+			select: { id: true },
+		});
 	});
 
 	it("refuses when the guest is no longer a member of the project", async () => {
