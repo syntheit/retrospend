@@ -130,6 +130,8 @@ const NO_DECLARED_FIELD: Record<string, string> = {
 		"typed as an email address (z.email), not free text: a leading U+0001 is no address",
 	"shadow_profile.phone":
 		"no write path sets a phone today; one that does must declare its field",
+	"guest_session.email":
+		"typed through z.email(), which refuses a leading U+0001 (userTextWriteSchemas.test.ts probes an address shape)",
 };
 
 /**
@@ -280,8 +282,6 @@ const NOT_SEALED: Record<string, string> = {
 	"push_device.addressHash": "a hash of the device address, not text",
 	"shadow_profile.emailHash": "a keyed hash of the address, not text",
 	"guest_session.emailHash": "a keyed hash of the address, not text",
-	"guest_session.email":
-		"owner call: a contact address, outside the user-text list",
 	"settlement.autoConfirmedReason": "a system code set by the server",
 	"feedback.pageUrl": "the app route the feedback was sent from",
 	"webhook.disabledReason": "a system code from a fixed list",
@@ -375,6 +375,7 @@ describe("key classes", () => {
 		"payment_method.identifier",
 		"shadow_profile.name",
 		"guest_session.name",
+		"guest_session.email",
 		"user.name",
 		"budget_book.name",
 		"envelope.name",

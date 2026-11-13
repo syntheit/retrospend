@@ -2291,6 +2291,8 @@
 			"nothing": "Nothing changes for anyone else.",
 			"transfer": "{project} goes to {name}",
 			"deleteProject": "{project} is deleted, nobody else can run it",
+			"projectUnnamed": "A project",
+			"organizerUnnamed": "another member",
 			"confirm": "{count, plural, one {# payment waiting for you is confirmed} other {# payments waiting for you are confirmed}}",
 			"cancel": "{count, plural, one {# payment nobody confirmed is canceled} other {# payments nobody confirmed are canceled}}",
 			"accept": "{count, plural, one {# share waiting for your answer is accepted} other {# shares waiting for your answer are accepted}}",

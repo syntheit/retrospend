@@ -103,7 +103,8 @@ function properties(root: unknown): Prop[] {
 /**
  * Each shape is a leading U+0001 and an inner BEL, each paired with the same
  * text without the control. The second shape is for a column that must be a
- * URL after the text rules (`userText(...).pipe(z.url())`).
+ * URL after the text rules (`userText(...).pipe(z.url())`); the third, for an
+ * address column (`z.email()`).
  */
 const PROBES: [bad: string, clean: string][][] = [
 	[
@@ -113,6 +114,11 @@ const PROBES: [bad: string, clean: string][][] = [
 	[
 		["\u0001https://a.example/x", "https://a.example/x"],
 		["https://a.example/\u0007x", "https://a.example/xx"],
+	],
+	// An address column (guest_session.email), typed through z.email().
+	[
+		["\u0001a@b.example", "a@b.example"],
+		["a\u0007b@b.example", "axb@b.example"],
 	],
 ];
 
@@ -217,8 +223,6 @@ const REASONS = {
 	crash:
 		"app-generated crash text, scrubbed by scrubReport; error_report.message and stack are stripped of controls and refused with a leading U+0001 by submitErrorReports, and feedback diagnostics are one sealed JSON body",
 	file: "a file as base64: the pattern admits no control character, and the column is written by the queue, which seals it",
-	address:
-		"z.email() takes only an address, which cannot start with U+0001 or hold a control character, so it can never read as a ciphertext",
 } as const;
 
 /**
@@ -235,10 +239,6 @@ const NOT_TEXT_INPUTS: Record<string, keyof typeof REASONS> = {
 	"v1 POST /feedback:diagnostics.recentErrors[].stack": "crash",
 	"v1 POST /error-reports:reports[].stack": "crash",
 	"trpc importQueue.createJob:fileData": "file",
-	"trpc people.createShadow:email": "address",
-	"trpc people.updateShadow:email": "address",
-	"v1 POST /people:email": "address",
-	"v1 PATCH /people/shadow/{id}:email": "address",
 };
 
 describe("detector", () => {

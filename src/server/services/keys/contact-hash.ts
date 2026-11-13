@@ -50,6 +50,15 @@ const LABELS: Record<ContactTable, string> = {
 	guest_session: "retrospend guest email hash v1",
 };
 
+/**
+ * Prisma compiles `equals` with `mode: "insensitive"` to ILIKE and does not
+ * escape the value (search-fold.ts), so `_` and `%` in an address would be
+ * wildcards. Postgres's default LIKE escape is the backslash: escaping all
+ * three makes the database match case-insensitive equality only.
+ */
+const escapeLike = (text: string): string =>
+	text.replace(/[\\%_]/g, "\\$&");
+
 /** The text two addresses are compared by, on the hash path and the plaintext path. */
 export const normalizeContactEmail = (email: string): string =>
 	email.trim().replace(/[A-Z]/g, (c) => c.toLowerCase());
@@ -160,6 +169,37 @@ export async function contactLookup(
 		if (ring) return { emailHash: contactHash(ring, table, email) };
 	}
 	return {
-		email: { equals: normalizeContactEmail(email), mode: "insensitive" },
+		email: {
+			equals: escapeLike(normalizeContactEmail(email)),
+			mode: "insensitive",
+		},
 	};
+}
+
+/**
+ * `contactLookup` for a cleanup that must not be blocked by a lost key (an
+ * account deletion): null, with the stable code logged and no address, when
+ * the instance key is gone for good (`keystore_lost`); the sealed addresses
+ * are unreadable without it anyway. Any other key problem is rethrown, so a
+ * transient one makes the caller retry rather than silently skip. A writer
+ * that stores a hash keeps the fail-closed rule instead.
+ */
+export async function contactLookupIfKeyed(
+	table: ContactTable,
+	email: string,
+	masterKeyring: Keyring | undefined = getMasterKeyring(),
+): Promise<ContactWhere | null> {
+	try {
+		return await contactLookup(table, email, masterKeyring);
+	} catch (error) {
+		if (
+			!(error instanceof TextUnavailableError) ||
+			error.code !== "keystore_lost"
+		)
+			throw error;
+		console.warn(
+			`Contact lookup skipped, the instance key is lost (${error.code})`,
+		);
+		return null;
+	}
 }

@@ -516,6 +516,15 @@ export const auth = betterAuth({
 							sessionId: session.id,
 						},
 					});
+
+					// A guest or ghost migration that failed on a key problem (the
+					// hash could not be made) is retried at the next sign-in. It is
+					// idempotent, re-reads emailVerified, never throws and logs a
+					// stable code, so it is not awaited.
+					void migrateGuestDataForVerifiedUser(db, session.userId, {
+						ipAddress: session.ipAddress ?? undefined,
+						userAgent: session.userAgent ?? undefined,
+					});
 				},
 			},
 		},

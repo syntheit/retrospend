@@ -16,7 +16,7 @@ import { validateLinkOrThrow } from "~/server/lib/magic-link";
 import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
 import { hashToken } from "~/server/lib/tokens";
 import { sendEmail } from "~/server/mailer";
-import { contactHashFor } from "~/server/services/keys/contact-hash";
+import { contactHashFor, contactLookup, matchesContact } from "~/server/services/keys/contact-hash";
 import { joinProject } from "~/server/services/project/joining";
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 import {
@@ -157,14 +157,14 @@ export const guestRouter = createTRPCRouter({
 			// email works, mail a one-time resume link to the address on file;
 			// otherwise fall through and create a separate guest.
 			const emailAvailable = await isEmailDeliveryEnabled();
-			const emailHash = await contactHashFor("guest_session", email); // outside any transaction
+			const [sameAddress, emailHash] = await Promise.all([emailAvailable ? contactLookup("guest_session", email) : null, contactHashFor("guest_session", email)]); // outside any transaction
 
 			// Wrap guest session creation in a transaction to prevent duplicates
 			// from concurrent registrations with the same email + project.
 			const result = await ctx.db.$transaction(async (tx) => {
 				// Re-check for existing session inside the transaction
-				const existingSession = emailAvailable
-					? await tx.guestSession.findFirst({ where: { email, projectId }, select: { id: true, email: true } })
+				const existingSession = sameAddress
+					? (await tx.guestSession.findMany({ where: { ...sameAddress, projectId }, select: { id: true, email: true } })).find((s) => matchesContact(sameAddress, email, s.email)) ?? null
 					: null;
 
 				if (existingSession) {

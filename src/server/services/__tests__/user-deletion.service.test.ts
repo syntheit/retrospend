@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("~/server/storage", () => ({ deleteFile: vi.fn() }));
+const guestsByEmail = vi.hoisted(() => vi.fn(async () => [] as { id: string; projectId: string }[]));
+vi.mock("../guest-session-lookup", () => ({
+	findGuestSessionsByEmail: guestsByEmail,
+}));
 const removeUserExports = vi.hoisted(() => vi.fn(async () => undefined));
 vi.mock("~/server/export-storage", () => ({ removeUserExports }));
 const destroyDataKeys = vi.hoisted(() => vi.fn(async () => 1));
@@ -51,6 +55,20 @@ function makeTx(overrides: Record<string, Record<string, Fn>>) {
 }
 
 describe("anonymizeAndDeleteUser", () => {
+	it("deletes the guest sessions its by-address lookup found, by id, and skips the lookup on a lost key", async () => {
+		guestsByEmail.mockResolvedValueOnce([{ id: "g1", projectId: "p1" }]);
+		const deleteMany = vi.fn(async () => ({ count: 1 }));
+		const { tx } = makeTx({ guestSession: { deleteMany } });
+		const db = {
+			$transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)),
+		};
+		await anonymizeAndDeleteUser(db as never, "user-1", "u@example.com", null);
+		expect(guestsByEmail).toHaveBeenLastCalledWith(db, "u@example.com", {
+			skipIfKeyLost: true,
+		});
+		expect(deleteMany).toHaveBeenCalledWith({ where: { id: { in: ["g1"] } } });
+	});
+
 	it("destroys the user's data keys in the transaction, after the user row goes", async () => {
 		destroyDataKeys.mockClear();
 		const userDelete = vi.fn(async () => ({}));
@@ -253,6 +271,7 @@ describe("organizer hand-over on account deletion", () => {
 		expect(pp.update).toHaveBeenCalledTimes(1);
 		expect(pp.update).toHaveBeenCalledWith({
 			where: { id: "pp-bob" },
+			select: { id: true },
 			data: { role: "ORGANIZER" },
 		});
 		expect(projectDelete).not.toHaveBeenCalled();
@@ -281,7 +300,10 @@ describe("organizer hand-over on account deletion", () => {
 		await anonymizeAndDeleteUser(db as never, "user-1", "u@example.com", null);
 
 		expect(pp.update).not.toHaveBeenCalled();
-		expect(projectDelete).toHaveBeenCalledWith({ where: { id: "p1" } });
+		expect(projectDelete).toHaveBeenCalledWith({
+			where: { id: "p1" },
+			select: { id: true },
+		});
 	});
 
 	it("falls back to a VIEWER user before deleting the project", async () => {
@@ -312,6 +334,7 @@ describe("organizer hand-over on account deletion", () => {
 
 		expect(pp.update).toHaveBeenCalledWith({
 			where: { id: "pp-vic" },
+			select: { id: true },
 			data: { role: "ORGANIZER" },
 		});
 	});

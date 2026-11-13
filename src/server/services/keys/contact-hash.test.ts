@@ -30,6 +30,7 @@ import {
 	contactHashFor,
 	contactHashTag,
 	contactLookup,
+	contactLookupIfKeyed,
 	matchesContact,
 	normalizeContactEmail,
 } from "./contact-hash";
@@ -243,11 +244,52 @@ describe("contactLookup", () => {
 		expect(mocks.getOrCreate).not.toHaveBeenCalled();
 	});
 
+	it("escapes \\, % and _ so the insensitive match is equality, not a pattern", async () => {
+		// Prisma sends `equals` with `mode: insensitive` as an unescaped ILIKE.
+		expect(
+			await contactLookup("guest_session", "John_Doe@100%.io", master),
+		).toEqual({
+			email: { equals: "john\\_doe@100\\%.io", mode: "insensitive" },
+		});
+		expect(await contactLookup("guest_session", "a\\b@x.io", master)).toEqual({
+			email: { equals: "a\\\\b@x.io", mode: "insensitive" },
+		});
+	});
+
 	it("fails closed with an epoch and no ring, never falling back to a plaintext match", async () => {
 		mocks.epoch = true;
 		mocks.getOrCreate.mockRejectedValue(new InstanceKeyError("keystore_lost"));
 		await expect(
 			contactLookup("shadow_profile", "a@b.co", master),
 		).rejects.toBeInstanceOf(TextUnavailableError);
+	});
+});
+
+describe("contactLookupIfKeyed", () => {
+	beforeEach(() => {
+		mocks.epoch = true;
+	});
+
+	it("gives the lookup when the key is there", async () => {
+		mocks.getOrCreate.mockResolvedValue(ring);
+		expect(await contactLookupIfKeyed("guest_session", "a@b.co", master)).toEqual({
+			emailHash: expected(key1, GUEST, "a@b.co"),
+		});
+	});
+
+	it("gives null, logging only the code, when the instance key is lost for good", async () => {
+		mocks.getOrCreate.mockRejectedValue(new InstanceKeyError("keystore_lost"));
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		expect(await contactLookupIfKeyed("guest_session", "a@b.co", master)).toBeNull();
+		expect(warn.mock.calls.flat().join(" ")).toContain("keystore_lost");
+		expect(warn.mock.calls.flat().join(" ")).not.toContain("a@b.co");
+		warn.mockRestore();
+	});
+
+	it("rethrows any other key problem, so a transient one makes the caller retry", async () => {
+		mocks.getOrCreate.mockRejectedValue(new InstanceKeyError("keystore_grants_missing"));
+		await expect(
+			contactLookupIfKeyed("guest_session", "a@b.co", master),
+		).rejects.toMatchObject({ code: "keystore_grants_missing" });
 	});
 });

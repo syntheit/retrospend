@@ -413,7 +413,7 @@
 		"src/server/services/shared-expenses/balances-perspective.service.ts": 102,
 		"src/server/services/shared-expenses/people.service.ts": 1003,
 		"src/server/services/shared-expenses/settlement.service.ts": 371,
-		"src/server/services/shared-expenses/test-utils.ts": 1045,
+		"src/server/services/shared-expenses/test-utils.ts": 974,
 		"src/server/services/shared-expenses/transaction.service.ts": 506,
 		"src/server/services/shared-expenses/verification.service.ts": 59
 	},

@@ -280,7 +280,12 @@ describe("the guest writer", () => {
 		await expect(
 			caller().register({ linkId: l.id, name: "Gus", email }),
 		).rejects.toMatchObject({ cause: expect.any(TextUnavailableError) });
-		expect(await adminDb.guestSession.count({ where: { email } })).toBe(0);
+		expect(
+			(
+				await adminDb.$queryRaw<{ n: bigint }[]>`
+					SELECT count(*) AS "n" FROM "guest_session" WHERE "email" = ${email}`
+			)[0]?.n,
+		).toBe(0n);
 	});
 });
 

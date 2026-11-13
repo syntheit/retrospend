@@ -84,7 +84,19 @@ export async function handOverCreatedProjects(
 		if (heir)
 			await tx.project.update({
 				where: { id },
+				select: { id: true },
 				data: { createdById: heir.participantId },
 			});
 	}
 }
+
+/**
+ * What the pending-settlement step reads of a row: no note or payment method,
+ * which are sealed with the instance key and not needed to settle or cancel.
+ */
+export const PENDING_SETTLEMENT_SELECT = {
+	id: true,
+	confirmedByPayer: true,
+	confirmedByPayee: true,
+	paymentGroupId: true,
+} as const;

@@ -508,6 +508,8 @@
 		"previewFailed": "Impossible de charger la suite. Réessaie.",
 		"projectTransfer": "Transféré à {owner}",
 		"projectDelete": "Supprimé, tu en es le seul membre",
+		"projectUnnamed": "Un projet",
+		"organizerUnnamed": "un autre membre",
 		"settlementsConfirm": {
 			"title": "{count, plural, one {# paiement en attente} other {# paiements en attente}}",
 			"meta": "Confirmés en ton nom"

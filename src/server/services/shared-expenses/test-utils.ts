@@ -19,6 +19,9 @@ import {
 	type PaymentRecord,
 	type SettlementRecord,
 } from "./test-utils-settlements";
+import { makeGuestSessionModel } from "./guest-session-double";
+import type { GuestSessionRecord } from "./guest-session-double";
+export type { GuestSessionRecord };
 
 export type { PaymentRecord, SettlementRecord };
 
@@ -110,17 +113,6 @@ export interface MagicLinkRecord {
 	maxUses: number | null;
 	useCount: number;
 	isActive: boolean;
-	createdAt: Date;
-}
-
-export interface GuestSessionRecord {
-	id: string;
-	name: string;
-	email: string;
-	magicLinkId: string;
-	projectId: string;
-	sessionToken: string;
-	lastActiveAt: Date;
 	createdAt: Date;
 }
 
@@ -1266,71 +1258,8 @@ export function createStatefulDb() {
 
 	// ── guestSession model ───────────────────────────────────────────────────
 
-	const guestSessionModel = {
-		findFirst: vi.fn((args: { where?: Record<string, unknown> } = {}) => {
-			for (const gs of guestSessions.values()) {
-				if (args.where?.email !== undefined && gs.email !== args.where.email)
-					continue;
-				if (
-					args.where?.projectId !== undefined &&
-					gs.projectId !== args.where.projectId
-				)
-					continue;
-				return gs;
-			}
-			return null;
-		}),
-		findUnique: vi.fn((args: { where: { id: string } }) => {
-			return guestSessions.get(args.where.id) ?? null;
-		}),
-		findMany: vi.fn(
-			(
-				args: {
-					where?: {
-						id?: { in?: string[] };
-						projectId?: { in?: string[] } | string;
-					};
-				} = {},
-			) =>
-				[...guestSessions.values()].filter((gs) => {
-					const w = args.where;
-					if (w?.id?.in && !w.id.in.includes(gs.id)) return false;
-					if (typeof w?.projectId === "string" && gs.projectId !== w.projectId)
-						return false;
-					if (
-						typeof w?.projectId === "object" &&
-						w.projectId.in &&
-						!w.projectId.in.includes(gs.projectId)
-					)
-						return false;
-					return true;
-				}),
-		),
-		create: vi.fn((args: { data: Partial<GuestSessionRecord> }) => {
-			const id = nextId();
-			const record: GuestSessionRecord = {
-				id,
-				name: args.data.name ?? "Guest",
-				email: args.data.email ?? "",
-				magicLinkId: args.data.magicLinkId ?? "",
-				projectId: args.data.projectId ?? "",
-				sessionToken: args.data.sessionToken ?? "",
-				lastActiveAt: new Date(),
-				createdAt: new Date(),
-			};
-			guestSessions.set(id, record);
-			return record;
-		}),
-		update: vi.fn(
-			(args: { where: { id: string }; data: Partial<GuestSessionRecord> }) => {
-				const gs = guestSessions.get(args.where.id);
-				if (!gs) throw new Error("Guest session not found");
-				const updated = { ...gs, ...args.data };
-				guestSessions.set(args.where.id, updated);
-				return updated;
-			},
-		),
-	};
+	const guestSessionModel = makeGuestSessionModel(guestSessions, nextId);
+
 	// ── user model ───────────────────────────────────────────────────────────
 
 	const userModel = {
