@@ -1,7 +1,7 @@
 import * as z from "zod";
 import { v1 } from "../common/meta";
 import { cursorQuerySchema, pageOf } from "../common/pagination";
-import { userText } from "../common/user-text";
+import { hasForbiddenControl, userText } from "../common/user-text";
 import { idParamsSchema, idSchema, okSchema, timestampSchema } from "../core";
 
 export const MAX_WEBHOOKS_PER_USER = 10;
@@ -35,10 +35,18 @@ const eventFilterSchema = z
 			"Event types to send: exact (`expense.created`) or per resource (`expense.*`). Empty means every type.",
 	});
 
-const webhookUrlSchema = z.url().max(2048).meta({
-	description:
-		"An https URL. It must resolve to a public address unless an admin allows private targets.",
-});
+// Not `userText`, which would drop the `uri` format from the OpenAPI document:
+// a URL already refuses a leading U+0001, and the refine refuses the rest.
+const webhookUrlSchema = z
+	.url()
+	.max(2048)
+	.refine((value) => !hasForbiddenControl(value), {
+		message: "Text cannot contain control characters",
+	})
+	.meta({
+		description:
+			"An https URL. It must resolve to a public address unless an admin allows private targets.",
+	});
 
 export const webhookSchema = z
 	.object({

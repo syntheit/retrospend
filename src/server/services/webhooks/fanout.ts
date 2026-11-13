@@ -51,6 +51,9 @@ export async function fanOutEvents(): Promise<number> {
 					enabled: true,
 					userId: { in: [...new Set(deliverable.map((e) => e.userId))] },
 				},
+				// Not the name or the url: sealed text cannot be opened in this
+				// transaction, and a fan-out has no use for it.
+				select: { id: true, userId: true, createdAt: true, eventTypes: true },
 			});
 			const now = new Date();
 			const rows: Prisma.WebhookDeliveryCreateManyInput[] = [];

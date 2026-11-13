@@ -428,6 +428,7 @@
 			"connection_error": "Connection failed",
 			"http_error": "Receiver answered with an error",
 			"secret_unreadable": "Secret can't be read, rotate it",
+			"url_unreadable": "Address can't be read",
 			"internal_error": "Server error",
 			"webhook_disabled": "Webhook was off",
 			"event_gone": "Event no longer kept"

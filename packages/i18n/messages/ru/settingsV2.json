@@ -428,6 +428,7 @@
 			"connection_error": "Не удалось соединиться",
 			"http_error": "Получатель ответил ошибкой",
 			"secret_unreadable": "Секрет не читается, смените его",
+			"url_unreadable": "Адрес не читается",
 			"internal_error": "Ошибка сервера",
 			"webhook_disabled": "Вебхук был выключен",
 			"event_gone": "Событие больше не хранится"

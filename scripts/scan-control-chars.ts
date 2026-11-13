@@ -70,6 +70,7 @@ export const USER_TEXT_COLUMNS: ReadonlyArray<readonly [string, string]> = [
 	["transfer", "note"],
 	["user", "name"],
 	["webhook", "name"],
+	["webhook", "url"],
 	["wealth_transfer", "note"],
 ];
 

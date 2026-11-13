@@ -120,6 +120,8 @@ const NO_DECLARED_FIELD: Record<string, string> = {
 		"app crash text scrubbed by scrubReport and stripped by the writer; no userText input names it",
 	"error_report.stack":
 		"app crash stack scrubbed by scrubReport and stripped by the writer; no userText input names it",
+	"webhook.url":
+		"a typed url (z.url with a control check), not declared through userText: it holds no prose",
 };
 
 /**
@@ -278,8 +280,6 @@ const NOT_SEALED: Record<string, string> = {
 		"owner call: a contact address, outside the user-text list",
 	"settlement.autoConfirmedReason": "a system code set by the server",
 	"feedback.pageUrl": "the app route the feedback was sent from",
-	"webhook.url":
-		"owner call: a delivery address, which can carry a secret in its path",
 	"webhook.disabledReason": "a system code from a fixed list",
 	"apikey.metadata": "a JSON string the key plugin writes, not typed text",
 	"notification.title":
@@ -380,6 +380,7 @@ describe("key classes", () => {
 		"feedback.adminNote",
 		"apikey.name",
 		"webhook.name",
+		"webhook.url",
 		"envelope_change.previousName",
 		"error_report.message",
 		"error_report.stack",

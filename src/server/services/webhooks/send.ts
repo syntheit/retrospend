@@ -15,6 +15,7 @@ export type SendError =
 	| "connection_error"
 	| "http_error"
 	| "secret_unreadable"
+	| "url_unreadable"
 	| "internal_error";
 
 export type SendResult =

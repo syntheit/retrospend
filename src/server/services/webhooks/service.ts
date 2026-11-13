@@ -154,8 +154,17 @@ export async function updateWebhook(
 }
 
 export async function deleteWebhook(caller: Caller, id: string) {
-	const row = await ownWebhook(caller, id);
-	await caller.db.webhook.delete({ where: { id: row.id } });
+	// Only the id, in both calls: a delete must not open the sealed url, so a
+	// key that is not available cannot turn a committed delete into an error.
+	const row = await caller.db.webhook.findFirst({
+		where: { id, userId: caller.principal.userId },
+		select: { id: true },
+	});
+	if (!row) throw notFound();
+	await caller.db.webhook.delete({
+		where: { id: row.id },
+		select: { id: true },
+	});
 	return { ok: true as const };
 }
 
