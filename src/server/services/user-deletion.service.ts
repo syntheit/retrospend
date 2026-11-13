@@ -2,7 +2,7 @@ import type { PrismaClient } from "~prisma";
 import { assertAnotherAdminRemains } from "./admin-guard.service";
 import { DELETED_USER_NAME, DELETED_USER_SENTINEL } from "./deleted-sentinels";
 import { keptUndoFiles } from "./entry/undo-stash";
-import { contactLookup } from "./keys/contact-hash";
+import { contactLookupIfKeyed } from "./keys/contact-hash";
 import { destroyDataKeysIfStored } from "./keys/data-key.service";
 import {
 	repointSettlementParty,
@@ -91,16 +91,16 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 
 		if (!promotee) {
 			// No other registered user - delete the project entirely
-			await tx.project.delete({ where: { id: pp.projectId } });
+			await tx.project.delete({ where: { id: pp.projectId }, select: { id: true } });
 		} else {
 			// Promote to organizer
 			await tx.projectParticipant.update({
-				where: { id: promotee.id },
+				where: { id: promotee.id }, select: { id: true },
 				data: { role: "ORGANIZER" },
 			});
 
 			await tx.auditLogEntry.create({
-				data: {
+				select: { id: true }, data: {
 					actorType: "user",
 					actorId: userId,
 					action: "ROLE_CHANGED",
@@ -142,7 +142,7 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 		if (s.confirmedByPayer !== s.confirmedByPayee) {
 			// The payment was recorded - finalize to benefit the other party
 			await tx.settlement.update({
-				where: { id: s.id },
+				where: { id: s.id }, select: { id: true },
 				data: {
 					confirmedByPayer: true,
 					confirmedByPayee: true,
@@ -151,7 +151,7 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 				},
 			});
 			await tx.auditLogEntry.create({
-				data: {
+				select: { id: true }, data: {
 					actorType: "user",
 					actorId: userId,
 					action: "SETTLED",
@@ -167,7 +167,7 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 		} else {
 			// Payer never confirmed - cancel the proposal
 			await tx.auditLogEntry.create({
-				data: {
+				select: { id: true }, data: {
 					actorType: "user",
 					actorId: userId,
 					action: "DELETED",
@@ -178,7 +178,7 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 					},
 				},
 			});
-			await tx.settlement.delete({ where: { id: s.id } });
+			await tx.settlement.delete({ where: { id: s.id }, select: { id: true } });
 		}
 	}
 
@@ -195,7 +195,7 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 		if (s.confirmedByPayer !== s.confirmedByPayee) {
 			// One side recorded it - auto-confirm the rest since user is leaving
 			await tx.settlement.update({
-				where: { id: s.id },
+				where: { id: s.id }, select: { id: true },
 				data: {
 					confirmedByPayer: true,
 					confirmedByPayee: true,
@@ -204,7 +204,7 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 				},
 			});
 			await tx.auditLogEntry.create({
-				data: {
+				select: { id: true }, data: {
 					actorType: "user",
 					actorId: userId,
 					action: "SETTLED",
@@ -220,7 +220,7 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 		} else {
 			// Neither confirmed - cancel
 			await tx.auditLogEntry.create({
-				data: {
+				select: { id: true }, data: {
 					actorType: "user",
 					actorId: userId,
 					action: "DELETED",
@@ -231,7 +231,7 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 					},
 				},
 			});
-			await tx.settlement.delete({ where: { id: s.id } });
+			await tx.settlement.delete({ where: { id: s.id }, select: { id: true } });
 		}
 	}
 
@@ -383,8 +383,8 @@ export async function anonymizeAndDeleteUser(
 	// paths are read first and the files removed after the commit.
 	let screenshotPaths: string[] = [];
 	let iconPaths: string[] = [];
-	// Resolved first: a transaction cannot load the keys the hash needs.
-	const guestsWithEmail = await contactLookup("guest_session", userEmail);
+	// Before the transaction (it cannot load keys); null, not a failure, on a lost key.
+	const guestsWithEmail = await contactLookupIfKeyed("guest_session", userEmail);
 	await db.$transaction(async (tx) => {
 		await assertAnotherAdminRemains(tx, userId);
 		screenshotPaths = (
@@ -485,14 +485,14 @@ export async function anonymizeAndDeleteUser(
 		await retireGhosts(tx as unknown as PrismaTx, userId);
 
 		// Delete the user - cascades all personal data (expenses, budgets, sessions, etc.)
-		await tx.user.delete({ where: { id: userId } });
+		await tx.user.delete({ where: { id: userId }, select: { id: true } });
 
 		// Crypto-shred after the user row, in this transaction (race and trigger
 		// notes on destroyDataKeys in data-key.service.ts).
 		await destroyDataKeysIfStored(userId, tx);
 
 		// Clean up GuestSessions that used this user's email (pre-signup guest access)
-		await tx.guestSession.deleteMany({ where: guestsWithEmail });
+		if (guestsWithEmail) await tx.guestSession.deleteMany({ where: guestsWithEmail });
 	});
 	// Only once the guard passed and the delete committed; a failure leaves a file behind
 	await removeUserFiles(userId, avatarPath, screenshotPaths, iconPaths);

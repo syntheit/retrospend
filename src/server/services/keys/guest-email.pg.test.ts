@@ -387,6 +387,23 @@ describe("sealed rows", () => {
 		expect(await sessionsIn(l.projectId)).toBe(0);
 	});
 
+	it("an account deletion with the instance key lost still deletes, skips the by-address match and logs the code", async () => {
+		const l = await link();
+		const { user } = await createTestUser();
+		const guestId = await created(l.id, user.email);
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		await withoutInstanceKey(async () => {
+			await anonymizeAndDeleteUser(db, user.id, user.email, null);
+		});
+		expect(await adminDb.user.count({ where: { id: user.id } })).toBe(0);
+		expect(warn).toHaveBeenCalledWith(
+			expect.stringContaining("encrypted_text_unavailable"),
+		);
+		expect(JSON.stringify(warn.mock.calls)).not.toContain(user.email);
+		// The sealed address cannot be matched without the key, so the session stays.
+		expect(await exists(guestId)).toBe(true);
+	});
+
 	it("a delete, an update and a bulk delete that return no address succeed with the key unavailable", async () => {
 		const l = await link();
 		const [a, b, c] = [

@@ -28,7 +28,10 @@
 import { blindIndex, blindIndexTag } from "~/server/crypto/blind-index";
 import { loadEpoch } from "~/server/crypto/epoch";
 import { FieldCryptoError, type Keyring } from "~/server/crypto/field-crypto";
-import { TextUnavailableError } from "~/server/crypto/field-open";
+import {
+	TextUnavailableError,
+	textUnavailableProblem,
+} from "~/server/crypto/field-open";
 import { getMasterKeyring } from "~/server/crypto/master-key";
 import {
 	findInstanceKeyring,
@@ -134,4 +137,25 @@ export async function contactLookup(
 	return {
 		email: { equals: normalizeContactEmail(email), mode: "insensitive" },
 	};
+}
+
+/**
+ * `contactLookup` for a cleanup that must not be blocked by a lost key (an
+ * account deletion): null, with the stable code logged and no address, when
+ * the hash cannot be made. The sealed addresses are unreadable without the key
+ * anyway. A writer that stores a hash keeps the fail-closed rule instead.
+ */
+export async function contactLookupIfKeyed(
+	table: ContactTable,
+	email: string,
+	masterKeyring: Keyring | undefined = getMasterKeyring(),
+): Promise<ContactWhere | null> {
+	try {
+		return await contactLookup(table, email, masterKeyring);
+	} catch (error) {
+		const code = textUnavailableProblem(error);
+		if (!code) throw error;
+		console.warn(`Contact lookup skipped, the key store gave no ring (${code})`);
+		return null;
+	}
 }
