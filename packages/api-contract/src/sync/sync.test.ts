@@ -9,9 +9,15 @@ import {
 } from "../common/sync";
 import { syncContract } from "./index";
 import {
+	syncAccountHistorySchema,
+	syncAccountLegSchema,
+	syncAccountRateTypeSchema,
+	syncAccountSchema,
+	syncAccountSnapshotSchema,
 	syncCategorySchema,
 	syncExpenseSchema,
 	syncRecurringTemplateSchema,
+	syncTransferSchema,
 } from "./schemas";
 
 const at = "2026-10-05T00:00:00.000Z";
@@ -144,6 +150,102 @@ describe("raw row schemas", () => {
 		expect(syncRecurringTemplateSchema.parse(template)).toEqual(template);
 	});
 
+	it("round trips each account row with decimals as text and no userId", () => {
+		const account = {
+			id: "a1",
+			name: "Cash",
+			type: "CASH",
+			currency: "ARS",
+			balance: "-1000.5",
+			exchangeRate: null,
+			exchangeRateType: "blue",
+			isLiquid: true,
+			interestRate: "0.123456",
+			minimumPayment: null,
+			dueDate: 15,
+			inBudget: null,
+			countedUnits: "0",
+			closedAt: null,
+			iconKind: "BRAND",
+			iconValue: "revolut",
+			createdAt: at,
+			updatedAt: at,
+		};
+		const snapshot = {
+			id: "s1",
+			accountId: "a1",
+			date: at,
+			balance: "1000",
+			balanceInUSD: "0.68",
+			currency: null,
+			type: null,
+			exchangeRateType: null,
+			recordedAt: at,
+		};
+		const leg = {
+			id: "l1",
+			accountId: null,
+			currency: "ARS",
+			amount: "-50",
+			homeAmount: null,
+			homeCurrency: null,
+			date: at,
+			source: "BALANCE_UPDATE",
+			transferId: null,
+			expenseId: "e1",
+			countedUnits: "0",
+			createdAt: at,
+		};
+		const history = { id: "h1", assetId: "a1", balance: "1", recordedAt: at };
+		const rateType = {
+			id: "r1",
+			accountId: "a1",
+			from: at,
+			type: null,
+			previousType: "official",
+			createdAt: at,
+		};
+		const transfer = {
+			id: "t1",
+			kind: "EXCHANGE",
+			date: at,
+			fromAccountId: "a1",
+			fromAmount: "100",
+			fromCurrency: "USD",
+			toAccountId: null,
+			toAmount: "146800",
+			toCurrency: "ARS",
+			referenceRateType: "blue",
+			feeExpenseId: null,
+			countedFromUnits: "0",
+			countedToUnits: "0",
+			note: null,
+			createdAt: at,
+		};
+		expect(syncAccountSchema.parse(account)).toEqual(account);
+		expect(syncAccountSnapshotSchema.parse(snapshot)).toEqual(snapshot);
+		expect(syncAccountLegSchema.parse(leg)).toEqual(leg);
+		expect(syncAccountHistorySchema.parse(history)).toEqual(history);
+		expect(syncAccountRateTypeSchema.parse(rateType)).toEqual(rateType);
+		expect(syncTransferSchema.parse(transfer)).toEqual(transfer);
+		expect(
+			syncAccountSchema.safeParse({ ...account, balance: 1000 }).success,
+		).toBe(false);
+		expect(
+			syncTransferSchema.safeParse({ ...transfer, kind: "GIFT" }).success,
+		).toBe(false);
+		for (const schema of [
+			syncAccountSchema,
+			syncAccountSnapshotSchema,
+			syncAccountLegSchema,
+			syncAccountHistorySchema,
+			syncAccountRateTypeSchema,
+			syncTransferSchema,
+		]) {
+			expect(Object.keys(schema.shape)).not.toContain("userId");
+		}
+	});
+
 	it("does not carry the server-only columns", () => {
 		expect(Object.keys(syncCategorySchema.shape)).not.toContain("nameIndex");
 		expect(Object.keys(syncCategorySchema.shape)).not.toContain("userId");
@@ -154,6 +256,25 @@ describe("raw row schemas", () => {
 describe("the sync group", () => {
 	it("answers a stale cursor with 410", () => {
 		expect(PROBLEM_STATUS.sync_reset_required).toBe(410);
+	});
+
+	it("has the nine entity routes, each a GET under /sync", () => {
+		const paths = Object.values(syncContract).map(
+			(route) => route["~orpc"].route.path,
+		);
+		expect(paths.sort()).toEqual(
+			[
+				"/sync/account-history",
+				"/sync/account-legs",
+				"/sync/account-rate-types",
+				"/sync/account-snapshots",
+				"/sync/accounts",
+				"/sync/categories",
+				"/sync/expenses",
+				"/sync/recurring-templates",
+				"/sync/transfers",
+			].sort(),
+		);
 	});
 
 	it("needs the session-only sync scope, which no token can be given", () => {

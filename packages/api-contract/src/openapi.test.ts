@@ -39,15 +39,15 @@ describe("openapi.json", () => {
 		expect(doc.paths["/server-info"]?.get?.security).toEqual([]);
 	});
 
-	it("declares 410 sync_reset_required on the three sync operations only", async () => {
+	it("declares 410 sync_reset_required on every sync operation only", async () => {
 		const doc = (await generateOpenApiDocument()) as {
 			paths: Record<string, Record<string, { responses: object }>>;
 		};
-		for (const path of [
-			"/sync/expenses",
-			"/sync/categories",
-			"/sync/recurring-templates",
-		]) {
+		const syncPaths = Object.keys(doc.paths).filter((path) =>
+			path.startsWith("/sync/"),
+		);
+		expect(syncPaths).toHaveLength(9);
+		for (const path of syncPaths) {
 			const responses = doc.paths[path]?.get?.responses as Record<
 				string,
 				{ content: object }

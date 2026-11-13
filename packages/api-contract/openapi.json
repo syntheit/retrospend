@@ -124305,6 +124305,1279 @@
 				"x-required-scope": "write:settings"
 			}
 		},
+		"/sync/account-history": {
+			"get": {
+				"description": "Raw rows changed after `since`, oldest change first, plus a tombstone for each row deleted since. Page with the returned `cursor` until `hasMore` is false. The first pull (no `since`) returns every row once. A cursor the server can no longer honor answers 410 sync_reset_required: drop this entity's rows and pull again from the start. A change shows up once every older write transaction on the database server has finished, normally milliseconds. Cursors carry the server-wide commit position, so they reveal how much the instance writes, as the events feed does. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own rows.",
+				"operationId": "syncAccountHistory",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "since",
+						"schema": {
+							"description": "The cursor of the last page you applied. Omit it for the first pull, which returns every row once.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 200,
+							"maximum": 500,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"cursor": {
+											"type": "string"
+										},
+										"hasMore": {
+											"type": "boolean"
+										},
+										"items": {
+											"items": {
+												"description": "Account history rows are written once and never changed.",
+												"properties": {
+													"assetId": {
+														"description": "The account.",
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"balance": {
+														"examples": [
+															"1450.25"
+														],
+														"pattern": "^-?\\d+(\\.\\d+)?$",
+														"type": "string"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"recordedAt": {
+														"format": "date-time",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"assetId",
+													"balance",
+													"recordedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"tombstones": {
+											"items": {
+												"properties": {
+													"deletedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"deletedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items",
+										"tombstones",
+										"cursor",
+										"hasMore"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"410": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "The cursor is no longer valid; drop these rows and pull again from the start"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"sync"
+						]
+					},
+					{
+						"cookieAuth": [
+							"sync"
+						]
+					}
+				],
+				"summary": "Changes to the caller's account history rows",
+				"tags": [
+					"Sync"
+				],
+				"x-required-scope": "sync"
+			}
+		},
+		"/sync/account-legs": {
+			"get": {
+				"description": "Raw rows changed after `since`, oldest change first, plus a tombstone for each row deleted since. Page with the returned `cursor` until `hasMore` is false. The first pull (no `since`) returns every row once. A cursor the server can no longer honor answers 410 sync_reset_required: drop this entity's rows and pull again from the start. A change shows up once every older write transaction on the database server has finished, normally milliseconds. Cursors carry the server-wide commit position, so they reveal how much the instance writes, as the events feed does. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own rows.",
+				"operationId": "syncAccountLegs",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "since",
+						"schema": {
+							"description": "The cursor of the last page you applied. Omit it for the first pull, which returns every row once.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 200,
+							"maximum": 500,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"cursor": {
+											"type": "string"
+										},
+										"hasMore": {
+											"type": "boolean"
+										},
+										"items": {
+											"items": {
+												"description": "Account legs have no updatedAt.",
+												"properties": {
+													"accountId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														],
+														"description": "Null is Not tracked: money outside your accounts."
+													},
+													"amount": {
+														"description": "Signed in what you have; positive is more.",
+														"examples": [
+															"1450.25"
+														],
+														"pattern": "^-?\\d+(\\.\\d+)?$",
+														"type": "string"
+													},
+													"countedUnits": {
+														"examples": [
+															"1450.25"
+														],
+														"pattern": "^-?\\d+(\\.\\d+)?$",
+														"type": "string"
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"currency": {
+														"type": "string"
+													},
+													"date": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"expenseId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"homeAmount": {
+														"anyOf": [
+															{
+																"examples": [
+																	"1450.25"
+																],
+																"pattern": "^-?\\d+(\\.\\d+)?$",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"homeCurrency": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"source": {
+														"enum": [
+															"INCOME",
+															"TRANSFER",
+															"FEE",
+															"BALANCE_UPDATE"
+														],
+														"type": "string"
+													},
+													"transferId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													}
+												},
+												"required": [
+													"id",
+													"accountId",
+													"currency",
+													"amount",
+													"homeAmount",
+													"homeCurrency",
+													"date",
+													"source",
+													"transferId",
+													"expenseId",
+													"countedUnits",
+													"createdAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"tombstones": {
+											"items": {
+												"properties": {
+													"deletedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"deletedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items",
+										"tombstones",
+										"cursor",
+										"hasMore"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"410": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "The cursor is no longer valid; drop these rows and pull again from the start"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"sync"
+						]
+					},
+					{
+						"cookieAuth": [
+							"sync"
+						]
+					}
+				],
+				"summary": "Changes to the caller's account legs",
+				"tags": [
+					"Sync"
+				],
+				"x-required-scope": "sync"
+			}
+		},
+		"/sync/account-rate-types": {
+			"get": {
+				"description": "Raw rows changed after `since`, oldest change first, plus a tombstone for each row deleted since. Page with the returned `cursor` until `hasMore` is false. The first pull (no `since`) returns every row once. A cursor the server can no longer honor answers 410 sync_reset_required: drop this entity's rows and pull again from the start. A change shows up once every older write transaction on the database server has finished, normally milliseconds. Cursors carry the server-wide commit position, so they reveal how much the instance writes, as the events feed does. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own rows.",
+				"operationId": "syncAccountRateTypes",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "since",
+						"schema": {
+							"description": "The cursor of the last page you applied. Omit it for the first pull, which returns every row once.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 200,
+							"maximum": 500,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"cursor": {
+											"type": "string"
+										},
+										"hasMore": {
+											"type": "boolean"
+										},
+										"items": {
+											"items": {
+												"description": "The rate type an account is valued at from a day on. Several switches can share a day; createdAt orders them.",
+												"properties": {
+													"accountId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"from": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"previousType": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"type": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													}
+												},
+												"required": [
+													"id",
+													"accountId",
+													"from",
+													"type",
+													"previousType",
+													"createdAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"tombstones": {
+											"items": {
+												"properties": {
+													"deletedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"deletedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items",
+										"tombstones",
+										"cursor",
+										"hasMore"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"410": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "The cursor is no longer valid; drop these rows and pull again from the start"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"sync"
+						]
+					},
+					{
+						"cookieAuth": [
+							"sync"
+						]
+					}
+				],
+				"summary": "Changes to the caller's account rate types",
+				"tags": [
+					"Sync"
+				],
+				"x-required-scope": "sync"
+			}
+		},
+		"/sync/account-snapshots": {
+			"get": {
+				"description": "Raw rows changed after `since`, oldest change first, plus a tombstone for each row deleted since. Page with the returned `cursor` until `hasMore` is false. The first pull (no `since`) returns every row once. A cursor the server can no longer honor answers 410 sync_reset_required: drop this entity's rows and pull again from the start. A change shows up once every older write transaction on the database server has finished, normally milliseconds. Cursors carry the server-wide commit position, so they reveal how much the instance writes, as the events feed does. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own rows.",
+				"operationId": "syncAccountSnapshots",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "since",
+						"schema": {
+							"description": "The cursor of the last page you applied. Omit it for the first pull, which returns every row once.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 200,
+							"maximum": 500,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"cursor": {
+											"type": "string"
+										},
+										"hasMore": {
+											"type": "boolean"
+										},
+										"items": {
+											"items": {
+												"description": "Account snapshots have no updatedAt: a changed row, for example when a leg moves the balance, comes again by its id.",
+												"properties": {
+													"accountId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"balance": {
+														"examples": [
+															"1450.25"
+														],
+														"pattern": "^-?\\d+(\\.\\d+)?$",
+														"type": "string"
+													},
+													"balanceInUSD": {
+														"examples": [
+															"1450.25"
+														],
+														"pattern": "^-?\\d+(\\.\\d+)?$",
+														"type": "string"
+													},
+													"currency": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														],
+														"description": "The currency of `balance`. Null on a snapshot older than this column: it is the account's own currency (and `type` and `exchangeRateType` then also come from the account, the snapshot's own `exchangeRateType` being ignored)."
+													},
+													"date": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"exchangeRateType": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														],
+														"description": "The rate type the snapshot was valued at. Meaningful only when `currency` is set; otherwise use the account's."
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"recordedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"type": {
+														"anyOf": [
+															{
+																"enum": [
+																	"CASH",
+																	"INVESTMENT",
+																	"CRYPTO",
+																	"REAL_ESTATE",
+																	"VEHICLE",
+																	"LIABILITY_LOAN",
+																	"LIABILITY_CREDIT_CARD",
+																	"LIABILITY_MORTGAGE"
+																],
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														],
+														"description": "Null: the account's type."
+													}
+												},
+												"required": [
+													"id",
+													"accountId",
+													"date",
+													"balance",
+													"balanceInUSD",
+													"currency",
+													"type",
+													"exchangeRateType",
+													"recordedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"tombstones": {
+											"items": {
+												"properties": {
+													"deletedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"deletedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items",
+										"tombstones",
+										"cursor",
+										"hasMore"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"410": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "The cursor is no longer valid; drop these rows and pull again from the start"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"sync"
+						]
+					},
+					{
+						"cookieAuth": [
+							"sync"
+						]
+					}
+				],
+				"summary": "Changes to the caller's account snapshots",
+				"tags": [
+					"Sync"
+				],
+				"x-required-scope": "sync"
+			}
+		},
+		"/sync/accounts": {
+			"get": {
+				"description": "Raw rows changed after `since`, oldest change first, plus a tombstone for each row deleted since. Page with the returned `cursor` until `hasMore` is false. The first pull (no `since`) returns every row once. A cursor the server can no longer honor answers 410 sync_reset_required: drop this entity's rows and pull again from the start. A change shows up once every older write transaction on the database server has finished, normally milliseconds. Cursors carry the server-wide commit position, so they reveal how much the instance writes, as the events feed does. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own rows.",
+				"operationId": "syncAccounts",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "since",
+						"schema": {
+							"description": "The cursor of the last page you applied. Omit it for the first pull, which returns every row once.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 200,
+							"maximum": 500,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"cursor": {
+											"type": "string"
+										},
+										"hasMore": {
+											"type": "boolean"
+										},
+										"items": {
+											"items": {
+												"properties": {
+													"balance": {
+														"description": "What the account holds now; the server's trigger moves it with each leg.",
+														"examples": [
+															"1450.25"
+														],
+														"pattern": "^-?\\d+(\\.\\d+)?$",
+														"type": "string"
+													},
+													"closedAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"countedUnits": {
+														"examples": [
+															"1450.25"
+														],
+														"pattern": "^-?\\d+(\\.\\d+)?$",
+														"type": "string"
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"currency": {
+														"type": "string"
+													},
+													"dueDate": {
+														"anyOf": [
+															{
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"exchangeRate": {
+														"anyOf": [
+															{
+																"examples": [
+																	"1450.25"
+																],
+																"pattern": "^-?\\d+(\\.\\d+)?$",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"exchangeRateType": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"iconKind": {
+														"anyOf": [
+															{
+																"enum": [
+																	"BRAND",
+																	"MONOGRAM",
+																	"IMAGE"
+																],
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														],
+														"description": "Null, with a null `iconValue`, is the default glyph for its type: also what a stored icon the app can no longer draw reads as."
+													},
+													"iconValue": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														],
+														"description": "As GET /accounts gives it as `icon.value`: a logo slug, an avatar slot, or for IMAGE the picture's URL path like /api/images/accounts/<id>-<ms>.webp."
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"inBudget": {
+														"anyOf": [
+															{
+																"type": "boolean"
+															},
+															{
+																"type": "null"
+															}
+														],
+														"description": "Null is the default for its kind and currency."
+													},
+													"interestRate": {
+														"anyOf": [
+															{
+																"examples": [
+																	"1450.25"
+																],
+																"pattern": "^-?\\d+(\\.\\d+)?$",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"isLiquid": {
+														"type": "boolean"
+													},
+													"minimumPayment": {
+														"anyOf": [
+															{
+																"examples": [
+																	"1450.25"
+																],
+																"pattern": "^-?\\d+(\\.\\d+)?$",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"name": {
+														"type": "string"
+													},
+													"type": {
+														"enum": [
+															"CASH",
+															"INVESTMENT",
+															"CRYPTO",
+															"REAL_ESTATE",
+															"VEHICLE",
+															"LIABILITY_LOAN",
+															"LIABILITY_CREDIT_CARD",
+															"LIABILITY_MORTGAGE"
+														],
+														"type": "string"
+													},
+													"updatedAt": {
+														"description": "The version a write sends as its base.",
+														"format": "date-time",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"name",
+													"type",
+													"currency",
+													"balance",
+													"exchangeRate",
+													"exchangeRateType",
+													"isLiquid",
+													"interestRate",
+													"minimumPayment",
+													"dueDate",
+													"inBudget",
+													"countedUnits",
+													"closedAt",
+													"iconKind",
+													"iconValue",
+													"createdAt",
+													"updatedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"tombstones": {
+											"items": {
+												"properties": {
+													"deletedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"deletedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items",
+										"tombstones",
+										"cursor",
+										"hasMore"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"410": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "The cursor is no longer valid; drop these rows and pull again from the start"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"sync"
+						]
+					},
+					{
+						"cookieAuth": [
+							"sync"
+						]
+					}
+				],
+				"summary": "Changes to the caller's accounts",
+				"tags": [
+					"Sync"
+				],
+				"x-required-scope": "sync"
+			}
+		},
 		"/sync/categories": {
 			"get": {
 				"description": "Raw rows changed after `since`, oldest change first, plus a tombstone for each row deleted since. Page with the returned `cursor` until `hasMore` is false. The first pull (no `since`) returns every row once. A cursor the server can no longer honor answers 410 sync_reset_required: drop this entity's rows and pull again from the start. A change shows up once every older write transaction on the database server has finished, normally milliseconds. Cursors carry the server-wide commit position, so they reveal how much the instance writes, as the events feed does. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own rows.",
@@ -125263,6 +126536,299 @@
 					}
 				],
 				"summary": "Changes to the caller's recurring templates",
+				"tags": [
+					"Sync"
+				],
+				"x-required-scope": "sync"
+			}
+		},
+		"/sync/transfers": {
+			"get": {
+				"description": "Raw rows changed after `since`, oldest change first, plus a tombstone for each row deleted since. Page with the returned `cursor` until `hasMore` is false. The first pull (no `since`) returns every row once. A cursor the server can no longer honor answers 410 sync_reset_required: drop this entity's rows and pull again from the start. A change shows up once every older write transaction on the database server has finished, normally milliseconds. Cursors carry the server-wide commit position, so they reveal how much the instance writes, as the events feed does. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own rows.",
+				"operationId": "syncTransfers",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "since",
+						"schema": {
+							"description": "The cursor of the last page you applied. Omit it for the first pull, which returns every row once.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 200,
+							"maximum": 500,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"cursor": {
+											"type": "string"
+										},
+										"hasMore": {
+											"type": "boolean"
+										},
+										"items": {
+											"items": {
+												"description": "Transfers have no updatedAt. A null account is Not tracked.",
+												"properties": {
+													"countedFromUnits": {
+														"examples": [
+															"1450.25"
+														],
+														"pattern": "^-?\\d+(\\.\\d+)?$",
+														"type": "string"
+													},
+													"countedToUnits": {
+														"examples": [
+															"1450.25"
+														],
+														"pattern": "^-?\\d+(\\.\\d+)?$",
+														"type": "string"
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"date": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"feeExpenseId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"fromAccountId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"fromAmount": {
+														"examples": [
+															"1450.25"
+														],
+														"pattern": "^-?\\d+(\\.\\d+)?$",
+														"type": "string"
+													},
+													"fromCurrency": {
+														"type": "string"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"kind": {
+														"enum": [
+															"TRANSFER",
+															"EXCHANGE",
+															"CARD_PAYMENT",
+															"WITHDRAWAL",
+															"DEBT_PAYMENT"
+														],
+														"type": "string"
+													},
+													"note": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"referenceRateType": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"toAccountId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"toAmount": {
+														"examples": [
+															"1450.25"
+														],
+														"pattern": "^-?\\d+(\\.\\d+)?$",
+														"type": "string"
+													},
+													"toCurrency": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"kind",
+													"date",
+													"fromAccountId",
+													"fromAmount",
+													"fromCurrency",
+													"toAccountId",
+													"toAmount",
+													"toCurrency",
+													"referenceRateType",
+													"feeExpenseId",
+													"countedFromUnits",
+													"countedToUnits",
+													"note",
+													"createdAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"tombstones": {
+											"items": {
+												"properties": {
+													"deletedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"deletedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items",
+										"tombstones",
+										"cursor",
+										"hasMore"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"410": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "The cursor is no longer valid; drop these rows and pull again from the start"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"sync"
+						]
+					},
+					{
+						"cookieAuth": [
+							"sync"
+						]
+					}
+				],
+				"summary": "Changes to the caller's transfers",
 				"tags": [
 					"Sync"
 				],

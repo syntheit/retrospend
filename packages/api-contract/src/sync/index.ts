@@ -1,9 +1,15 @@
 import { v1 } from "../common/meta";
 import { syncPageOf, syncQuerySchema } from "../common/sync";
 import {
+	syncAccountHistorySchema,
+	syncAccountLegSchema,
+	syncAccountRateTypeSchema,
+	syncAccountSchema,
+	syncAccountSnapshotSchema,
 	syncCategorySchema,
 	syncExpenseSchema,
 	syncRecurringTemplateSchema,
+	syncTransferSchema,
 } from "./schemas";
 
 export * from "./schemas";
@@ -50,4 +56,76 @@ export const syncContract = {
 		.meta({ scope: "sync" })
 		.input(syncQuerySchema)
 		.output(syncPageOf(syncRecurringTemplateSchema)),
+	accounts: v1
+		.route({
+			method: "GET",
+			path: "/sync/accounts",
+			operationId: "syncAccounts",
+			tags: TAG,
+			summary: "Changes to the caller's accounts",
+			description: DESCRIPTION,
+		})
+		.meta({ scope: "sync" })
+		.input(syncQuerySchema)
+		.output(syncPageOf(syncAccountSchema)),
+	accountSnapshots: v1
+		.route({
+			method: "GET",
+			path: "/sync/account-snapshots",
+			operationId: "syncAccountSnapshots",
+			tags: TAG,
+			summary: "Changes to the caller's account snapshots",
+			description: DESCRIPTION,
+		})
+		.meta({ scope: "sync" })
+		.input(syncQuerySchema)
+		.output(syncPageOf(syncAccountSnapshotSchema)),
+	accountLegs: v1
+		.route({
+			method: "GET",
+			path: "/sync/account-legs",
+			operationId: "syncAccountLegs",
+			tags: TAG,
+			summary: "Changes to the caller's account legs",
+			description: DESCRIPTION,
+		})
+		.meta({ scope: "sync" })
+		.input(syncQuerySchema)
+		.output(syncPageOf(syncAccountLegSchema)),
+	accountHistory: v1
+		.route({
+			method: "GET",
+			path: "/sync/account-history",
+			operationId: "syncAccountHistory",
+			tags: TAG,
+			summary: "Changes to the caller's account history rows",
+			description: DESCRIPTION,
+		})
+		.meta({ scope: "sync" })
+		.input(syncQuerySchema)
+		.output(syncPageOf(syncAccountHistorySchema)),
+	accountRateTypes: v1
+		.route({
+			method: "GET",
+			path: "/sync/account-rate-types",
+			operationId: "syncAccountRateTypes",
+			tags: TAG,
+			summary: "Changes to the caller's account rate types",
+			description: DESCRIPTION,
+		})
+		.meta({ scope: "sync" })
+		.input(syncQuerySchema)
+		.output(syncPageOf(syncAccountRateTypeSchema)),
+	transfers: v1
+		.route({
+			method: "GET",
+			path: "/sync/transfers",
+			operationId: "syncTransfers",
+			tags: TAG,
+			summary: "Changes to the caller's transfers",
+			description: DESCRIPTION,
+		})
+		.meta({ scope: "sync" })
+		.input(syncQuerySchema)
+		.output(syncPageOf(syncTransferSchema)),
 };
