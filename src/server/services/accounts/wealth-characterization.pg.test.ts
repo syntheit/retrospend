@@ -130,7 +130,10 @@ describe("Wealth dashboard for a user without legs (characterization)", () => {
 			sofia.user.id,
 			"ARS",
 		);
-		const points = summary.history.map((h) => [h.date, Math.round(h.amount)]);
+		const points = summary.history.map((h) => [
+			h.date,
+			Math.round(h.amount ?? Number.NaN),
+		]);
 		expect(points).toEqual([
 			[daysAgo(40).toISOString().slice(0, 10), 900_000],
 			[today.toISOString().slice(0, 10), 2_859_327],
