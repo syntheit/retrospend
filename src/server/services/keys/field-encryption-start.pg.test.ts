@@ -17,6 +17,11 @@ import {
 } from "~/server/crypto/epoch";
 import { Keyring } from "~/server/crypto/field-crypto";
 import { createUserScopedDb } from "~/server/db";
+import {
+	expectedContactHash,
+	GUEST_LABEL,
+	SHADOW_LABEL,
+} from "~/test/contact-hash-expected";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import {
 	inRolledBackPrismaTransaction,
@@ -25,6 +30,8 @@ import {
 import { instanceKeyring, resetInstanceKey } from "~/test/sealed-fixture";
 import { REPO_ROOT } from "~/test/uiRules/paths";
 import type { Prisma } from "~prisma";
+import { contactHashTag } from "./contact-hash";
+import { contactHashMissing, fillContactHashes } from "./contact-hash-fill";
 import {
 	assertFieldEncryptionStart,
 	type FieldEncryptionStartOptions,
@@ -174,6 +181,260 @@ describe("with DATA_KEYS_WRITE on", () => {
 			evictInstanceKeyring();
 			await instanceKeyring(master);
 		}
+	});
+});
+
+const STALE = `${"0".repeat(16)}:${"0".repeat(64)}`;
+const SEALED_EMAIL = "\u0001k1:AAAAAQ==";
+
+describe("the contact hash fill and gate", () => {
+	let ring: Awaited<ReturnType<typeof instanceKeyring>>;
+	beforeAll(async () => {
+		ring = await instanceKeyring(master);
+	});
+	const hash = (label: string, email: string) =>
+		expectedContactHash(ring, label, email);
+	const currentPrefix = () => `${contactHashTag(ring, "shadow_profile")}:`;
+
+	async function ghost(tx: Tx, email: string | null, emailHash: string | null) {
+		const owner = await createTestUser();
+		const id = randomUUID();
+		await tx.$executeRaw`
+			INSERT INTO "shadow_profile" ("id", "createdById", "name", "email", "emailHash")
+			VALUES (${id}, ${owner.user.id}, 'Ghost', ${email}, ${emailHash})`;
+		return id;
+	}
+	async function guest(tx: Tx, email: string, emailHash: string | null) {
+		const id = randomUUID();
+		await tx.$executeRaw`
+			INSERT INTO "guest_session"
+				("id", "name", "email", "emailHash", "magicLinkId", "projectId", "sessionToken")
+			VALUES (${id}, 'Guest', ${email}, ${emailHash}, 'link', 'project', ${randomUUID()})`;
+		return id;
+	}
+	const row = async (
+		tx: Tx,
+		table: "shadow_profile" | "guest_session",
+		id: string,
+	) =>
+		(
+			await tx.$queryRawUnsafe<
+				{ email: string | null; emailHash: string | null; updatedAt?: Date }[]
+			>(`SELECT * FROM "${table}" WHERE "id" = $1`, id)
+		)[0];
+	/** Ghosts with a readable address and no hash of the current key. */
+	const needing = async (tx: Tx) =>
+		Number(
+			(
+				await tx.$queryRaw<{ n: bigint }[]>`
+					SELECT count(*) AS "n" FROM "shadow_profile"
+					WHERE "email" IS NOT NULL AND NOT starts_with("email", E'\\x01')
+					  AND ("emailHash" IS NULL OR NOT starts_with("emailHash", ${currentPrefix()}))`
+			)[0]?.n,
+		);
+
+	it("with the flag off and no master key, fills nothing and throws nothing", async () => {
+		await inRolledBackPrismaTransaction(async (tx) => {
+			const id = await ghost(tx, "Bob@Example.com", null);
+			expect(await start(tx, { flag: false, masterKeyring: undefined })).toBe(
+				"off",
+			);
+			expect((await row(tx, "shadow_profile", id))?.emailHash).toBeNull();
+		});
+	});
+
+	it("with the flag on and no master key, refuses before any fill and sets no epoch", async () => {
+		await inRolledBackPrismaTransaction(async (tx) => {
+			await indexAll(tx);
+			const id = await ghost(tx, "Bob@Example.com", null);
+			const error = await refusal(tx, { masterKeyring: undefined });
+			expect(error?.code).toBe("master_key_missing");
+			expect((await row(tx, "shadow_profile", id))?.emailHash).toBeNull();
+			expect(await epochOf(tx)).toBeNull();
+		});
+	});
+
+	it("fills legacy and stale-tag rows of both tables, leaves email bytes alone, then sets the epoch", async () => {
+		await inRolledBackPrismaTransaction(async (tx) => {
+			await indexAll(tx);
+			const legacy = await ghost(tx, " Bob@Example.COM ", null);
+			const stale = await ghost(tx, "stale@example.com", STALE);
+			const current = await ghost(
+				tx,
+				"Cur@Example.com",
+				hash(SHADOW_LABEL, "cur@example.com"),
+			);
+			const noEmail = await ghost(tx, null, null);
+			const g1 = await guest(tx, "gus@example.com", null);
+			const g2 = await guest(tx, "old@example.com", STALE);
+			const before = await row(tx, "shadow_profile", legacy);
+
+			expect(await start(tx)).toBe("on");
+
+			const after = await row(tx, "shadow_profile", legacy);
+			expect(after?.email).toBe(" Bob@Example.COM ");
+			expect(after?.emailHash).toBe(hash(SHADOW_LABEL, "bob@example.com"));
+			expect(after?.updatedAt).toEqual(before?.updatedAt);
+			expect((await row(tx, "shadow_profile", stale))?.emailHash).toBe(
+				hash(SHADOW_LABEL, "stale@example.com"),
+			);
+			expect((await row(tx, "shadow_profile", current))?.emailHash).toBe(
+				hash(SHADOW_LABEL, "cur@example.com"),
+			);
+			expect(await row(tx, "shadow_profile", noEmail)).toMatchObject({
+				email: null,
+				emailHash: null,
+			});
+			expect((await row(tx, "guest_session", g1))?.emailHash).toBe(
+				hash(GUEST_LABEL, "gus@example.com"),
+			);
+			expect((await row(tx, "guest_session", g2))?.emailHash).toBe(
+				hash(GUEST_LABEL, "old@example.com"),
+			);
+			expect(await epochOf(tx)).toBeInstanceOf(Date);
+		});
+	});
+
+	it("a second run updates nothing", async () => {
+		await inRolledBackPrismaTransaction(async (tx) => {
+			await indexAll(tx);
+			await ghost(tx, "a@example.com", null);
+			await guest(tx, "b@example.com", null);
+			await start(tx);
+			expect(await fillContactHashes(tx, ring, "shadow_profile")).toBe(0);
+			expect(await fillContactHashes(tx, ring, "guest_session")).toBe(0);
+			expect(await start(tx)).toBe("on");
+		});
+	});
+
+	it("a stale tag counts as missing until the fill has made it current", async () => {
+		await inRolledBackPrismaTransaction(async (tx) => {
+			const id = await ghost(tx, "stale@example.com", STALE);
+			const g = await guest(tx, "gone@example.com", STALE);
+			expect(await contactHashMissing(tx, ring, "shadow_profile")).toBe(true);
+			expect(await contactHashMissing(tx, ring, "guest_session")).toBe(true);
+			await fillContactHashes(tx, ring, "shadow_profile");
+			await fillContactHashes(tx, ring, "guest_session");
+			expect(await contactHashMissing(tx, ring, "shadow_profile")).toBe(false);
+			expect(await contactHashMissing(tx, ring, "guest_session")).toBe(false);
+			expect((await row(tx, "shadow_profile", id))?.emailHash).toBe(
+				hash(SHADOW_LABEL, "stale@example.com"),
+			);
+			expect((await row(tx, "guest_session", g))?.emailHash).toBe(
+				hash(GUEST_LABEL, "gone@example.com"),
+			);
+		});
+	});
+
+	it("refuses with contact_hash_missing for a sealed address it cannot hash, after filling the rest, and starts once it has one", async () => {
+		await inRolledBackPrismaTransaction(async (tx) => {
+			await indexAll(tx);
+			const sealed = await ghost(tx, SEALED_EMAIL, STALE);
+			const fillable = await ghost(tx, "fill@example.com", null);
+			const error = await refusal(tx);
+			expect(error?.code).toBe("contact_hash_missing");
+			expect(error?.message).toMatch(/no hash/);
+			expect(await epochOf(tx)).toBeNull();
+			// The fill ran before the gate.
+			expect((await row(tx, "shadow_profile", fillable))?.emailHash).toBe(
+				hash(SHADOW_LABEL, "fill@example.com"),
+			);
+			// The sealed address is left as it was.
+			expect(await row(tx, "shadow_profile", sealed)).toMatchObject({
+				email: SEALED_EMAIL,
+				emailHash: STALE,
+			});
+
+			const made = hash(SHADOW_LABEL, "sealed@example.com");
+			await tx.$executeRaw`UPDATE "shadow_profile" SET "emailHash" = ${made} WHERE "id" = ${sealed}`;
+			expect(await start(tx)).toBe("on");
+			expect(await epochOf(tx)).toBeInstanceOf(Date);
+		});
+	});
+
+	it("a sealed guest address with no hash refuses the start too", async () => {
+		await inRolledBackPrismaTransaction(async (tx) => {
+			await indexAll(tx);
+			await guest(tx, SEALED_EMAIL, null);
+			expect((await refusal(tx))?.code).toBe("contact_hash_missing");
+			expect(await epochOf(tx)).toBeNull();
+		});
+	});
+
+	it("after a crash mid-fill the next start completes, keeps what was done and sets the epoch", async () => {
+		await inRolledBackPrismaTransaction(async (tx) => {
+			await indexAll(tx);
+			for (let i = 0; i < 5; i++)
+				await ghost(tx, `crash${i}@example.com`, null);
+			const todo = await needing(tx);
+			expect(todo).toBeGreaterThanOrEqual(5);
+
+			let writes = 0;
+			const crashing = {
+				$queryRaw: tx.$queryRaw.bind(tx),
+				$executeRaw: (...args: Parameters<typeof tx.$executeRaw>) => {
+					if (++writes === 3) throw new Error("the server stopped");
+					return tx.$executeRaw(...args);
+				},
+			} as unknown as Tx;
+			await expect(start(crashing)).rejects.toThrow("the server stopped");
+
+			// Two updates went through, the third never ran, no epoch.
+			expect(await needing(tx)).toBe(todo - 2);
+			expect(await epochOf(tx)).toBeNull();
+			const done = await tx.$queryRaw<{ id: string; h: string }[]>`
+				SELECT "id", "emailHash" AS "h" FROM "shadow_profile"
+				WHERE starts_with("emailHash", ${currentPrefix()})`;
+
+			expect(await start(tx)).toBe("on");
+			expect(await needing(tx)).toBe(0);
+			expect(await epochOf(tx)).toBeInstanceOf(Date);
+			for (const { id, h } of done)
+				expect((await row(tx, "shadow_profile", id))?.emailHash).toBe(h);
+		});
+	});
+
+	it("skips a row whose address changed after it was read, and takes it on the next run", async () => {
+		await inRolledBackPrismaTransaction(async (tx) => {
+			const id = await ghost(tx, "before@example.com", null);
+			let raced = false;
+			const racing = {
+				$queryRaw: async (...args: Parameters<typeof tx.$queryRaw>) => {
+					const rows = await tx.$queryRaw(...args);
+					if (!raced) {
+						raced = true;
+						await tx.$executeRaw`UPDATE "shadow_profile" SET "email" = 'after@example.com' WHERE "id" = ${id}`;
+					}
+					return rows;
+				},
+				$executeRaw: tx.$executeRaw.bind(tx),
+			} as unknown as Tx;
+			await fillContactHashes(racing, ring, "shadow_profile");
+			expect(await row(tx, "shadow_profile", id)).toMatchObject({
+				email: "after@example.com",
+				emailHash: null,
+			});
+			await fillContactHashes(tx, ring, "shadow_profile");
+			expect((await row(tx, "shadow_profile", id))?.emailHash).toBe(
+				hash(SHADOW_LABEL, "after@example.com"),
+			);
+		});
+	});
+
+	it("works in batches", async () => {
+		await inRolledBackPrismaTransaction(async (tx) => {
+			const ids: string[] = [];
+			for (let i = 0; i < 5; i++)
+				ids.push(await ghost(tx, `batch${i}@example.com`, null));
+			expect(
+				await fillContactHashes(tx, ring, "shadow_profile", 2),
+			).toBeGreaterThanOrEqual(5);
+			expect(await needing(tx)).toBe(0);
+			for (const [i, id] of ids.entries())
+				expect((await row(tx, "shadow_profile", id))?.emailHash).toBe(
+					hash(SHADOW_LABEL, `batch${i}@example.com`),
+				);
+		});
 	});
 });
 
