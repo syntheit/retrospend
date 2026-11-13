@@ -15,6 +15,7 @@ import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { sharedTransactionRouter } from "~/server/api/routers/shared-transaction";
 import { createCallerFactory } from "~/server/api/trpc";
+import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import { adminDb, sealedSuite } from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
 import { arsUser, seedRates, type TestUser } from "../../__tests__/g3-fixtures";
@@ -65,7 +66,7 @@ const asGuest = () =>
 		headers: new Headers({ "x-guest-token": guestToken }),
 	});
 
-const user = (u: TestUser) => ({
+const user = (u: TestUser): ParticipantRef => ({
 	participantType: "user" as const,
 	participantId: u.user.id,
 });
@@ -73,8 +74,8 @@ const user = (u: TestUser) => ({
 const input = (
 	amount: number,
 	description: string,
-	paidBy: ReturnType<typeof user>,
-	splitWith: ReturnType<typeof user>[],
+	paidBy: ParticipantRef,
+	splitWith: ParticipantRef[],
 	receiptUrl?: string,
 ) => ({
 	amount,

@@ -10,15 +10,12 @@ import {
 import { participantRefSchema } from "~/server/services/payments/input";
 import { getImageUrl } from "~/server/storage";
 import { deleteSharedAndRecord } from "~/server/services/shared-expenses/delete-tell";
+import {
+	receiptUrlSchema,
+	splitModeEnum,
+	splitParticipantSchema,
+} from "~/server/services/shared-expenses/input";
 import { SharedTransactionService } from "~/server/services/shared-expenses/transaction.service";
-
-const splitParticipantSchema = participantRefSchema.extend({
-	shareAmount: z.number().nonnegative().optional(),
-	sharePercentage: z.number().min(0).max(100).optional(),
-	shareUnits: z.number().int().positive().optional(),
-});
-
-const splitModeEnum = z.enum(["EQUAL", "EXACT", "PERCENTAGE", "SHARES"]);
 
 export const sharedTransactionRouter = createTRPCRouter({
 	create: guestOrProtectedProcedure
@@ -36,9 +33,7 @@ export const sharedTransactionRouter = createTRPCRouter({
 				splitMode: splitModeEnum,
 				projectId: z.cuid().optional(),
 				notes: userTextOrEmpty("shared_expense.notes", 5000).optional(),
-				receiptUrl: userText("shared_expense.receiptUrl", 2048)
-					.pipe(z.url())
-					.optional(),
+				receiptUrl: receiptUrlSchema.optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -66,9 +61,7 @@ export const sharedTransactionRouter = createTRPCRouter({
 				splitMode: splitModeEnum.optional(),
 				projectId: z.cuid().nullish(),
 				notes: userTextOrEmpty("shared_expense.notes", 5000).nullish(),
-				receiptUrl: userText("shared_expense.receiptUrl", 2048)
-					.pipe(z.url())
-					.nullish(),
+				receiptUrl: receiptUrlSchema.nullish(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
