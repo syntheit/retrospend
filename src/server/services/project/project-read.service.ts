@@ -16,42 +16,6 @@ import type { PrismaClient } from "~prisma";
 import { redactParticipantEmails, resolveParticipantNames } from "./identities";
 import type { ProjectViewer } from "./types";
 
-/** Spending per category. Sums raw amounts across currencies, as the pages always have. */
-async function categoryStats(db: PrismaClient, projectId: string) {
-	const raw = await db.sharedTransaction.groupBy({
-		by: ["categoryId"],
-		where: { projectId },
-		_sum: { amount: true },
-		_count: { _all: true },
-	});
-	const totalSpent = raw.reduce(
-		(sum, s) => sum + (s._sum.amount ? Number(s._sum.amount) : 0),
-		0,
-	);
-	const ids = raw
-		.map((s) => s.categoryId)
-		.filter((id): id is string => id !== null);
-	const categories =
-		ids.length > 0
-			? await db.category.findMany({
-					where: { id: { in: ids } },
-					select: { id: true, name: true, color: true },
-				})
-			: [];
-	const byId = new Map(categories.map((c) => [c.id, c]));
-	const stats = raw.map((s) => {
-		const cat = s.categoryId ? byId.get(s.categoryId) : null;
-		return {
-			categoryId: s.categoryId,
-			name: cat?.name ?? "Uncategorized",
-			color: cat?.color ?? "gray",
-			total: s._sum.amount ? Number(s._sum.amount) : 0,
-			count: s._count._all,
-		};
-	});
-	return { totalSpent, categoryStats: stats };
-}
-
 function groupBy<T>(rows: readonly T[], key: (row: T) => string) {
 	const out = new Map<string, T[]>();
 	for (const row of rows) {
@@ -173,19 +137,6 @@ async function namedMembers(
 	);
 }
 
-/** Raw amounts summed per project, across currencies, as the list always showed. */
-async function spentByProject(db: PrismaClient, projectIds: string[]) {
-	const spent =
-		projectIds.length > 0
-			? await db.sharedTransaction.groupBy({
-					by: ["projectId"],
-					where: { projectId: { in: projectIds } },
-					_sum: { amount: true },
-				})
-			: [];
-	return new Map(spent.map((g) => [g.projectId, Number(g._sum.amount ?? 0)]));
-}
-
 export async function listProjects(
 	db: PrismaClient,
 	userId: string,
@@ -193,10 +144,6 @@ export async function listProjects(
 ) {
 	const projects = await findMyProjects(db, userId, status);
 	const members = await namedMembers(db, userId, projects);
-	const spent = await spentByProject(
-		db,
-		projects.map((p) => p.id),
-	);
 	const settled = await settledByProject(
 		db,
 		projects
@@ -216,7 +163,6 @@ export async function listProjects(
 			myRole: people.find(isMe)?.role ?? null,
 			excludeFromAnalytics:
 				p.participants.find(isMe)?.excludeFromAnalytics ?? false,
-			totalSpent: spent.get(p.id) ?? 0,
 			currentBillingPeriod: p.billingPeriods[0] ?? null,
 			isSettled: settled.get(p.id) ?? false,
 		};
@@ -263,10 +209,6 @@ export async function getProjectDetail(
 		isLink ? null : { participantType, participantId },
 		resolved,
 	);
-	const { totalSpent, categoryStats: stats } = await categoryStats(
-		db,
-		projectId,
-	);
 	const currentBillingPeriod = project.billingCycleLength
 		? (project.billingPeriods.find((p) => p.status === "OPEN") ?? null)
 		: null;
@@ -289,8 +231,6 @@ export async function getProjectDetail(
 	return {
 		...project,
 		participants,
-		categoryStats: stats,
-		totalSpent,
 		currentBillingPeriod,
 		unseenChangesCount,
 		pendingVerificationCount,
