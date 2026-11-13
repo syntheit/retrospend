@@ -1,8 +1,8 @@
 import type { PrismaClient } from "~prisma";
 import { assertAnotherAdminRemains } from "./admin-guard.service";
-import { DELETED_USER_NAME, DELETED_USER_SENTINEL } from "./deleted-sentinels";
+import { DELETED_USER_SENTINEL } from "./deleted-sentinels";
 import { keptUndoFiles } from "./entry/undo-stash";
-import { contactLookupIfKeyed } from "./keys/contact-hash";
+import { findGuestSessionsByEmail } from "./guest-session-lookup";
 import { destroyDataKeysIfStored } from "./keys/data-key.service";
 import {
 	repointSettlementParty,
@@ -14,51 +14,13 @@ import {
 	countOtherUserOrganizers,
 	findSuccessorOrganizer,
 	handOverCreatedProjects,
+	PENDING_SETTLEMENT_SELECT,
 } from "./user-deletion-projects";
 import { removeUserFiles } from "./user-files.service";
 
 export * from "./deleted-sentinels";
 export { anonymizeParticipantReferences } from "./user-deletion-ghosts";
-
-// ── Preview types ─────────────────────────────────────────────────────────────
-
-export interface DeletionPreview {
-	projectsToTransfer: { id: string; name: string; newOrganizerName: string }[];
-	projectsToDelete: { id: string; name: string }[];
-	settlementsToAutoConfirm: number;
-	settlementsToCancel: number;
-	verificationsToAutoAccept: number;
-	sharedTransactionsToAnonymize: number;
-}
-
-/**
- * Resolves a display name for a participant without throwing on missing records.
- */
-async function resolveParticipantDisplayName(
-	db: PrismaClient | PrismaTx,
-	participantType: string,
-	participantId: string,
-): Promise<string> {
-	if (participantId === DELETED_USER_SENTINEL) return DELETED_USER_NAME;
-
-	if (participantType === "user") {
-		const user = await (db as PrismaClient).user.findUnique({
-			where: { id: participantId },
-			select: { name: true },
-		});
-		return user?.name ?? "another member";
-	}
-
-	if (participantType === "shadow") {
-		const shadow = await (db as PrismaClient).shadowProfile.findUnique({
-			where: { id: participantId },
-			select: { name: true },
-		});
-		return shadow?.name ?? "another member";
-	}
-
-	return "another member";
-}
+export { type DeletionPreview, previewAccountDeletion } from "./user-deletion-preview";
 
 // ── Pre-deletion cleanup ──────────────────────────────────────────────────────
 
@@ -79,7 +41,7 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 			participantId: userId,
 			role: "ORGANIZER",
 		},
-		include: { project: { select: { id: true, name: true } } },
+		select: { projectId: true },
 	});
 
 	for (const pp of userOrganizerRoles) {
@@ -131,6 +93,7 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 			fromParticipantId: userId,
 			status: "PROPOSED",
 		},
+		select: PENDING_SETTLEMENT_SELECT,
 	});
 
 	// A pending row has exactly one side agreed: the person who recorded it.
@@ -189,6 +152,7 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 			toParticipantId: userId,
 			status: "PROPOSED",
 		},
+		select: PENDING_SETTLEMENT_SELECT,
 	});
 
 	for (const s of settlementsAsPayee) {
@@ -256,113 +220,6 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 	});
 }
 
-// ── Preview (read-only) ───────────────────────────────────────────────────────
-
-/**
- * Computes what WOULD happen if the user deleted their account, without
- * modifying anything. Used to show the pre-deletion summary in the UI.
- */
-export async function previewAccountDeletion(
-	db: PrismaClient,
-	userId: string,
-): Promise<DeletionPreview> {
-	const projectsToTransfer: DeletionPreview["projectsToTransfer"] = [];
-	const projectsToDelete: DeletionPreview["projectsToDelete"] = [];
-
-	// Step 1: Projects where user is the only organizer
-	const userOrganizerRoles = await db.projectParticipant.findMany({
-		where: {
-			participantType: "user",
-			participantId: userId,
-			role: "ORGANIZER",
-		},
-		include: { project: { select: { id: true, name: true } } },
-	});
-
-	for (const pp of userOrganizerRoles) {
-		if ((await countOtherUserOrganizers(db, pp.projectId, userId)) > 0)
-			continue;
-
-		const promotee = await findSuccessorOrganizer(db, pp.projectId, userId);
-
-		if (!promotee) {
-			projectsToDelete.push({ id: pp.projectId, name: pp.project.name });
-		} else {
-			const newOrganizerName = await resolveParticipantDisplayName(
-				db,
-				promotee.participantType,
-				promotee.participantId,
-			);
-			projectsToTransfer.push({
-				id: pp.projectId,
-				name: pp.project.name,
-				newOrganizerName,
-			});
-		}
-	}
-
-	// Step 2: Pending settlements
-	const [settlementsAsPayer, settlementsAsPayee] = await Promise.all([
-		db.settlement.findMany({
-			where: {
-				fromParticipantType: "user",
-				fromParticipantId: userId,
-				status: "PROPOSED",
-			},
-			select: { id: true, confirmedByPayer: true, confirmedByPayee: true },
-		}),
-		db.settlement.findMany({
-			where: {
-				toParticipantType: "user",
-				toParticipantId: userId,
-				status: "PROPOSED",
-			},
-			select: { id: true, confirmedByPayer: true, confirmedByPayee: true },
-		}),
-	]);
-
-	let settlementsToAutoConfirm = 0;
-	let settlementsToCancel = 0;
-
-	// Same rule as preDeletionCleanup: one side agreed => auto-confirm.
-	for (const s of settlementsAsPayer) {
-		if (s.confirmedByPayer !== s.confirmedByPayee) settlementsToAutoConfirm++;
-		else settlementsToCancel++;
-	}
-	for (const s of settlementsAsPayee) {
-		if (s.confirmedByPayer !== s.confirmedByPayee) settlementsToAutoConfirm++;
-		else settlementsToCancel++;
-	}
-
-	// Step 3: Pending verifications
-	const verificationsToAutoAccept = await db.splitParticipant.count({
-		where: {
-			participantType: "user",
-			participantId: userId,
-			verificationStatus: "PENDING",
-		},
-	});
-
-	// Shared transactions that will be anonymized
-	const sharedTransactionsToAnonymize = await db.sharedTransaction.count({
-		where: {
-			OR: [
-				{ paidByType: "user", paidById: userId },
-				{ createdByType: "user", createdById: userId },
-			],
-		},
-	});
-
-	return {
-		projectsToTransfer,
-		projectsToDelete,
-		settlementsToAutoConfirm,
-		settlementsToCancel,
-		verificationsToAutoAccept,
-		sharedTransactionsToAnonymize,
-	};
-}
-
 // ── Main deletion function ────────────────────────────────────────────────────
 
 /**
@@ -383,8 +240,8 @@ export async function anonymizeAndDeleteUser(
 	// paths are read first and the files removed after the commit.
 	let screenshotPaths: string[] = [];
 	let iconPaths: string[] = [];
-	// Before the transaction (it cannot load keys); null, not a failure, on a lost key.
-	const guestsWithEmail = await contactLookupIfKeyed("guest_session", userEmail);
+	// Before the transaction (it cannot load keys); none, not a failure, on a lost key.
+	const guestIds = (await findGuestSessionsByEmail(db, userEmail, { skipIfKeyLost: true })).map((g) => g.id);
 	await db.$transaction(async (tx) => {
 		await assertAnotherAdminRemains(tx, userId);
 		screenshotPaths = (
@@ -492,7 +349,7 @@ export async function anonymizeAndDeleteUser(
 		await destroyDataKeysIfStored(userId, tx);
 
 		// Clean up GuestSessions that used this user's email (pre-signup guest access)
-		if (guestsWithEmail) await tx.guestSession.deleteMany({ where: guestsWithEmail });
+		await tx.guestSession.deleteMany({ where: { id: { in: guestIds } } });
 	});
 	// Only once the guard passed and the delete committed; a failure leaves a file behind
 	await removeUserFiles(userId, avatarPath, screenshotPaths, iconPaths);
