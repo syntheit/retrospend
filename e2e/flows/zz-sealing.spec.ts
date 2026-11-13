@@ -1,10 +1,4 @@
 import { Pool } from "pg";
-import { jsonColumns, mappedColumns } from "~/server/crypto/fields";
-import {
-	plainBodySql,
-	plainTextSql,
-	textLeaves,
-} from "~/server/crypto/plaintext-sql";
 import { SEALING_FLOOR } from "~/server/crypto/release";
 import {
 	E2E_DATABASE_URL,
@@ -13,18 +7,17 @@ import {
 	USER_STORAGE_STATE,
 } from "../constants";
 import { SEED_USERS } from "../fixtures/personas";
-import { expect, test } from "../fixtures/sealed-guard";
+import { expect, guardStats, test } from "../fixtures/sealed-guard";
 import { untilSaved } from "../helpers/trpc";
-import { readSeedIds } from "../sealing-seed";
 import { trpcQuery } from "./entry-audit";
 import { openV2 } from "./viewer";
 
 // Sealed runs only (E2E_SEALED=1, E2EE D11 PR 9.2): the server this run
 // started has the flag on, so what it wrote must be ciphertext in the
-// database and plaintext in every response. "zz" keeps it last, so the sweep
-// at the end sees what the whole suite wrote. It reads the database as the
-// owner, like scripts/verify-sealing.ts, and shares that script's plaintext
-// rules (src/server/crypto/plaintext-sql.ts).
+// database and plaintext in every response. It reads the database as the
+// owner. The sweep for plaintext left anywhere else runs from global teardown
+// (global-teardown.ts), so every CI shard has it, not only the one that holds
+// this file.
 
 test.skip(!E2E_SEALED, "sealed runs only (E2E_SEALED=1)");
 test.use({ storageState: USER_STORAGE_STATE });
@@ -113,6 +106,7 @@ test("an expense made in the UI is sealed in the database and plaintext in the A
 	page,
 }) => {
 	const title = `sealing probe ${Date.now()}`;
+	const seenBefore = guardStats.pageTrpc;
 	await page.setViewportSize({ width: 1440, height: 900 });
 	await openV2(page, "/activity");
 	await page.keyboard.press("n");
@@ -146,54 +140,10 @@ test("an expense made in the UI is sealed in the database and plaintext in the A
 		},
 	);
 	expect(served.title).toBe(title);
-});
 
-/**
- * Rows the seed wrote are legacy plaintext (the snapshot). So are rows a spec
- * inserts with SQL as the owner (budget-sheets.spec.ts): their ids start
- * `e2e` or `ce2e`, and the server never makes an id like that.
- */
-const notSeeded = (ids: Record<string, string[]>, table: string) => ({
-	params: ids[table] ?? [],
-	where: `"id"::text !~ '^c?e2e' AND "id"::text <> ALL($1::text[])`,
-});
-
-test("every mapped column holds no plaintext in rows the seed did not write", async () => {
-	const ids = readSeedIds();
-	const found: string[] = [];
-	const count = async (table: string, column: string, plain: string) => {
-		const { params, where } = notSeeded(ids, table);
-		const { rows } = await pool.query<{ n: string }>(
-			`SELECT count(*) AS n FROM "${table}" WHERE (${plain}) AND ${where}`,
-			[params],
-		);
-		if (Number(rows[0]?.n) > 0) found.push(`${table}.${column}: ${rows[0]?.n}`);
-	};
-	// A payment confirm's `previous` copies its source cells as they are, so a
-	// legacy plaintext source stays plaintext there until the D12 reseal: the
-	// shared classification calls those leaves legacy copies (plaintext-sql.ts).
-	for (const [table, column] of mappedColumns())
-		await count(table, column, plainTextSql(table, column));
-	for (const [table, column, cell] of jsonColumns()) {
-		if (cell.mode === "body") {
-			await count(table, column, plainBodySql(column));
-			continue;
-		}
-		const { params, where } = notSeeded(ids, table);
-		const { rows } = await pool.query<{ v: unknown }>(
-			`SELECT "${column}" AS v FROM "${table}"
-			 WHERE "${column}" IS NOT NULL AND jsonb_typeof("${column}") = 'object'
-			   AND ${where}`,
-			[params],
-		);
-		const bad = new Set<string>();
-		for (const { v } of rows)
-			for (const { path, state } of textLeaves(v, cell))
-				if (state !== "sealed" && state !== "legacy_copy")
-					bad.add(path.join("."));
-		if (bad.size > 0)
-			found.push(`${table}.${column}: leaves at ${[...bad].join(", ")}`);
-	}
-	// Names and paths, never a value.
-	expect(found, "plaintext in rows made after the seed").toEqual([]);
+	// The guard (fixtures/sealed-guard.ts) read the page's own tRPC answers
+	// while this test ran: one that sees nothing must not pass as clean.
+	await expect
+		.poll(() => guardStats.pageTrpc, "page tRPC responses inspected")
+		.toBeGreaterThan(seenBefore);
 });

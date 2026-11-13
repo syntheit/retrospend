@@ -1,6 +1,6 @@
+import { expect, type Page, test } from "../fixtures/sealed-guard";
 import { personaStorageState } from "../constants";
 import { SOFIA } from "../fixtures/personas";
-import { expect, type Page, test } from "../fixtures/sealed-guard";
 import { bannedOutputOn } from "../helpers/banned-output";
 import { gotoReady } from "../helpers/navigation";
 import { untilSaved } from "../helpers/trpc";

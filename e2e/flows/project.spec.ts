@@ -1,5 +1,5 @@
-import { PROJECT_IDS } from "../fixtures/personas";
 import { expect, test } from "../fixtures/sealed-guard";
+import { PROJECT_IDS } from "../fixtures/personas";
 import { bannedOutputOn } from "../helpers/banned-output";
 import { gotoReady } from "../helpers/navigation";
 import { untilSaved } from "../helpers/trpc";

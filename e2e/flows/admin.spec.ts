@@ -1,5 +1,5 @@
-import { ADMIN_STORAGE_STATE } from "../constants";
 import { expect, test } from "../fixtures/sealed-guard";
+import { ADMIN_STORAGE_STATE } from "../constants";
 import { bannedOutputOn } from "../helpers/banned-output";
 import { gotoReady } from "../helpers/navigation";
 
@@ -55,9 +55,10 @@ test.describe("Admin", () => {
 		// A link with a hash lands on its tab.
 		await gotoReady(page, "/profile");
 		await gotoReady(page, "/admin#invite-codes");
-		await expect(
-			tabs.getByRole("tab", { name: "Invite codes" }),
-		).toHaveAttribute("aria-selected", "true");
+		await expect(tabs.getByRole("tab", { name: "Invite codes" })).toHaveAttribute(
+			"aria-selected",
+			"true",
+		);
 		expect(await bannedOutputOn(page), "banned output").toEqual([]);
 	});
 });

@@ -1,6 +1,6 @@
+import { expect, type Page, test } from "../fixtures/sealed-guard";
 import { personaStorageState } from "../constants";
 import { LUCIA, SOFIA } from "../fixtures/personas";
-import { expect, type Page, test } from "../fixtures/sealed-guard";
 import { bannedOutputOn } from "../helpers/banned-output";
 import { FigureAudit, httpFigureFetcher } from "../helpers/figures";
 import { gotoReady } from "../helpers/navigation";
@@ -69,9 +69,7 @@ async function walkPages(
 			expect(await bannedOutputOn(page), `${label}: banned output`).toEqual([]);
 			// The flows own the required figure ids of each page; the walk checks the rest.
 			const figures = (
-				NO_AUDIT.has(key)
-					? []
-					: await audit.checkPage(page, label, `${key}-smoke`)
+				NO_AUDIT.has(key) ? [] : await audit.checkPage(page, label, `${key}-smoke`)
 			).filter(
 				(problem) =>
 					!(NO_FIGURES.has(key) && problem.includes("renders no figures")),

@@ -1,13 +1,13 @@
 import { createHmac } from "node:crypto";
 import { createServer, type IncomingMessage } from "node:http";
 import type { AddressInfo } from "node:net";
+import { expect, type Page, test } from "../fixtures/sealed-guard";
 import {
 	ADMIN_STORAGE_STATE,
 	E2E_BASE_URL,
 	personaStorageState,
 } from "../constants";
 import { SOFIA } from "../fixtures/personas";
-import { expect, type Page, test } from "../fixtures/sealed-guard";
 import { bannedOutputOn } from "../helpers/banned-output";
 import { gotoReady } from "../helpers/navigation";
 
@@ -32,10 +32,7 @@ function receiver() {
 		const chunks: Buffer[] = [];
 		req.on("data", (c: Buffer) => chunks.push(c));
 		req.on("end", () => {
-			seen.push({
-				headers: req.headers,
-				body: Buffer.concat(chunks).toString(),
-			});
+			seen.push({ headers: req.headers, body: Buffer.concat(chunks).toString() });
 			res.writeHead(204).end();
 		});
 	});
@@ -184,14 +181,10 @@ test.describe("Developer", () => {
 			await section.getByRole("button", { name: "New webhook" }).click();
 			const sheet = page.getByRole("dialog", { name: "New webhook" });
 			await sheet.getByLabel("Name").fill("E2E hook");
-			await sheet
-				.getByLabel("URL")
-				.fill(`http://127.0.0.1:${port}/hook?token=abc`);
+			await sheet.getByLabel("URL").fill(`http://127.0.0.1:${port}/hook?token=abc`);
 			// Choose events: one resource, the last one cannot be unchecked.
 			await sheet.getByRole("radio", { name: "Chosen events" }).click();
-			await sheet
-				.getByRole("checkbox", { name: "Expenses", exact: true })
-				.check();
+			await sheet.getByRole("checkbox", { name: "Expenses", exact: true }).check();
 			const changes = sheet.getByRole("region", { name: "What this changes" });
 			await expect(changes).toContainText("E2E hook");
 			await expect(changes).toContainText("Expenses");
@@ -212,9 +205,7 @@ test.describe("Developer", () => {
 			await expect(row).not.toContainText(secret);
 
 			// Test delivery: signed with the secret, logged.
-			await row
-				.getByRole("button", { name: "More actions for E2E hook" })
-				.click();
+			await row.getByRole("button", { name: "More actions for E2E hook" }).click();
 			await page.getByRole("menuitem", { name: "Send test delivery" }).click();
 			await expect(page.getByText("Test delivered to E2E hook")).toBeVisible();
 			expect(hook.seen).toHaveLength(1);
@@ -226,9 +217,7 @@ test.describe("Developer", () => {
 				.digest("hex");
 			expect(v1).toBe(expected);
 
-			await row
-				.getByRole("button", { name: "More actions for E2E hook" })
-				.click();
+			await row.getByRole("button", { name: "More actions for E2E hook" }).click();
 			await page.getByRole("menuitem", { name: "View deliveries" }).click();
 			const log = page.getByRole("dialog", { name: "Deliveries for E2E hook" });
 			await expect(log.getByText("webhook.test")).toBeVisible();
@@ -236,9 +225,7 @@ test.describe("Developer", () => {
 			await log.getByRole("button", { name: "Close" }).first().click();
 
 			// Turn off, then Undo from the toast.
-			await row
-				.getByRole("button", { name: "More actions for E2E hook" })
-				.click();
+			await row.getByRole("button", { name: "More actions for E2E hook" }).click();
 			await page.getByRole("menuitem", { name: "Turn off" }).click();
 			await expect(row.getByText("Off")).toBeVisible();
 			await page
@@ -249,19 +236,13 @@ test.describe("Developer", () => {
 			await expect(row.getByText("Off")).toHaveCount(0);
 
 			// Edit: only what changes is listed, Save ends with Undo, the secret stays.
-			await row
-				.getByRole("button", { name: "More actions for E2E hook" })
-				.click();
+			await row.getByRole("button", { name: "More actions for E2E hook" }).click();
 			await page.getByRole("menuitem", { name: "Edit webhook" }).click();
 			const edit = page.getByRole("dialog", { name: "Edit E2E hook" });
-			const editChanges = edit.getByRole("region", {
-				name: "What this changes",
-			});
+			const editChanges = edit.getByRole("region", { name: "What this changes" });
 			// Nothing changed yet: the block stays hidden until there is something to list.
 			await expect(editChanges).toHaveCount(0);
-			await expect(
-				edit.getByRole("button", { name: "Save changes" }),
-			).toBeDisabled();
+			await expect(edit.getByRole("button", { name: "Save changes" })).toBeDisabled();
 			await edit
 				.getByLabel("URL", { exact: true })
 				.fill(`http://127.0.0.1:${port}/hook?token=changed`);
@@ -270,9 +251,7 @@ test.describe("Developer", () => {
 			await expect(editChanges).toContainText("your signing secret");
 			await expect(editChanges).not.toContainText("token=changed");
 			const updated = page.waitForResponse(
-				(r) =>
-					r.request().method() === "PATCH" &&
-					/\/api\/v1\/webhooks\//.test(r.url()),
+				(r) => r.request().method() === "PATCH" && /\/api\/v1\/webhooks\//.test(r.url()),
 			);
 			await edit.getByRole("button", { name: "Save changes" }).click();
 			expect((await updated).status()).toBe(200);
@@ -295,24 +274,18 @@ test.describe("Developer", () => {
 
 			// Rotating the secret cannot be undone: the sheet says what changes and
 			// lets the old secret keep signing for a while; the new one shows once.
-			await row
-				.getByRole("button", { name: "More actions for E2E hook" })
-				.click();
+			await row.getByRole("button", { name: "More actions for E2E hook" }).click();
 			await page.getByRole("menuitem", { name: "Rotate secret" }).click();
 			const rotate = page.getByRole("dialog", {
 				name: "Rotate the secret of E2E hook",
 			});
-			const rotateChanges = rotate.getByRole("region", {
-				name: "What this changes",
-			});
+			const rotateChanges = rotate.getByRole("region", { name: "What this changes" });
 			// The default stops the old secret at once.
 			await expect(rotateChanges).toContainText("Stops at once");
 			await rotate.getByRole("radio", { name: "1 hour" }).click();
 			await expect(rotateChanges).toContainText("Works for 1 hour");
 			await rotate.getByRole("button", { name: "Rotate secret" }).click();
-			const rotated = page.getByRole("dialog", {
-				name: "New secret for E2E hook",
-			});
+			const rotated = page.getByRole("dialog", { name: "New secret for E2E hook" });
 			const next = await rotated.getByLabel("Signing secret").inputValue();
 			expect(next).not.toBe(secret);
 			await rotated.getByRole("button", { name: "Done" }).click();
@@ -327,9 +300,7 @@ test.describe("Developer", () => {
 			expect(left).toBeLessThanOrEqual(60 * 60_000);
 
 			// Delete asks first, then the row is gone.
-			await row
-				.getByRole("button", { name: "More actions for E2E hook" })
-				.click();
+			await row.getByRole("button", { name: "More actions for E2E hook" }).click();
 			await page.getByRole("menuitem", { name: "Delete webhook" }).click();
 			await page
 				.getByRole("alertdialog", { name: "Delete E2E hook?" })
@@ -355,22 +326,20 @@ test.describe("Developer", () => {
 		test.setTimeout(120_000);
 		await page.setViewportSize({ width: 1440, height: 900 });
 		await openDeveloper(page);
-		await page.locator(DEVELOPER).getByRole("link", { name: "Open" }).click();
+		await page
+			.locator(DEVELOPER)
+			.getByRole("link", { name: "Open" })
+			.click();
 		await expect(page).toHaveURL(/\/docs\/api$/);
 		await expect(
 			page.getByRole("heading", { level: 1, name: "API reference" }),
 		).toBeVisible();
-		await page
-			.getByRole("link", { name: /^Webhooks/ })
-			.first()
-			.click();
+		await page.getByRole("link", { name: /^Webhooks/ }).first().click();
 		await expect(page).toHaveURL(/\/docs\/api\/webhooks$/);
 		const op = page.locator("#createWebhook");
 		await op.locator("summary").click();
 		await expect(op.getByText("write:settings").first()).toBeVisible();
-		await expect(
-			op.getByText("webhook.created", { exact: true }),
-		).toBeVisible();
+		await expect(op.getByText("webhook.created", { exact: true })).toBeVisible();
 		expect(await bannedOutputOn(page), "banned output").toEqual([]);
 	});
 });

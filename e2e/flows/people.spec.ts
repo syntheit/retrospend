@@ -1,6 +1,6 @@
+import { expect, test } from "../fixtures/sealed-guard";
 import { personaStorageState } from "../constants";
 import { SOFIA } from "../fixtures/personas";
-import { expect, test } from "../fixtures/sealed-guard";
 import { bannedOutputOn } from "../helpers/banned-output";
 import { FigureAudit, httpFigureFetcher } from "../helpers/figures";
 import { gotoReady } from "../helpers/navigation";

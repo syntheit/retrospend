@@ -1,4 +1,10 @@
 import { randomUUID } from "node:crypto";
+import {
+	type APIRequestContext,
+	expect,
+	type Page,
+	test,
+} from "../fixtures/sealed-guard";
 import { Pool } from "pg";
 import {
 	E2E_BASE_URL,
@@ -6,12 +12,6 @@ import {
 	personaStorageState,
 } from "../constants";
 import { MARTIN } from "../fixtures/personas";
-import {
-	type APIRequestContext,
-	expect,
-	type Page,
-	test,
-} from "../fixtures/sealed-guard";
 import { bannedOutputOn } from "../helpers/banned-output";
 import {
 	collectFigureTags,

@@ -1,5 +1,5 @@
-import { TEST_USER } from "./constants";
 import { expect, test } from "./fixtures/sealed-guard";
+import { TEST_USER } from "./constants";
 import { loginAsTestUser } from "./helpers/auth";
 import { gotoReady } from "./helpers/navigation";
 
@@ -9,7 +9,9 @@ test.describe("login", () => {
 	// Each test in this block starts with no session
 	test.use({ storageState: { cookies: [], origins: [] } });
 
-	test("login with valid credentials lands on Home", async ({ page }) => {
+	test("login with valid credentials lands on Home", async ({
+		page,
+	}) => {
 		await gotoReady(page, "/login");
 		await page.fill("#email", TEST_USER.email);
 		await page.fill("#password", TEST_USER.password);
