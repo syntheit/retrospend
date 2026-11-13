@@ -108,7 +108,15 @@ export const FIELD_MAP = {
 			rejectedReason: "instance",
 		},
 	},
-	ShadowProfile: { table: "shadow_profile", columns: { name: "instance" } },
+	// A ghost's name is read by everyone in its projects (instance). Its contact
+	// details are the creator's own: sealed with the creator's key, and null for
+	// every other reader, whether or not they share a project (Revision 3, Q2).
+	ShadowProfile: {
+		table: "shadow_profile",
+		columns: { name: "instance", email: "user", phone: "user" },
+		owner: { column: "createdById", relation: "createdBy" },
+		nullWhenHidden: ["email", "phone"],
+	},
 	SharedTransaction: {
 		table: "shared_transaction",
 		columns: { description: "instance", notes: "instance" },
@@ -193,6 +201,17 @@ export function addModelsForTests(
 	const taken = Object.keys(extra).filter((m) => Object.hasOwn(FIELD_MAP, m));
 	if (taken.length > 0)
 		throw new Error(`addModelsForTests may not replace ${taken.join(", ")}`);
+	// Two models on one table would make modelOfTable answer for the wrong one.
+	const mappedTables = new Set<string>(
+		Object.values(FIELD_MAP).map((m) => m.table),
+	);
+	const sharing = Object.entries(extra)
+		.filter(([, m]) => mappedTables.has(m.table))
+		.map(([model, m]) => `${model} (${m.table})`);
+	if (sharing.length > 0)
+		throw new Error(
+			`addModelsForTests may not map a table that is already mapped: ${sharing.join(", ")}`,
+		);
 	const before = index;
 	index = indexOf({ ...FIELD_MAP, ...extra });
 	cellClasses = buildCellClasses();
