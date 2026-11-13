@@ -98,8 +98,10 @@ export class AmortizationService {
 		// The booked home amount splits like the amount, so the parts add up
 		// to the parent's home value and none of them drifts either.
 		const { homeCurrency, homeRate, homeAmount } = expense;
+		// The rate goes back as exact text: a Decimal object is not a string write.
+		const homeRateText = homeRate == null ? null : dec(homeRate).toFixed();
 		const homeParts =
-			homeCurrency && homeRate != null && homeAmount != null
+			homeCurrency && homeRateText !== null && homeAmount != null
 				? splitMinorUnits(homeAmount, amortizeOver, homeCurrency)
 				: null;
 
@@ -109,7 +111,11 @@ export class AmortizationService {
 		const children = splits.map((split, i) => ({
 			rateType: expense.rateType ?? null,
 			...(homeParts
-				? { homeCurrency, homeRate, homeAmount: homeParts[i] }
+				? {
+						homeCurrency,
+						homeRate: homeRateText,
+						homeAmount: homeParts[i],
+					}
 				: {}),
 			id: split.id,
 			userId: expense.userId,
