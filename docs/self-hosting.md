@@ -189,7 +189,7 @@ The dumps carry no owners and no privileges, so a restored database has tables w
    ```
 
    Any other error is a real failure. From anywhere but inside the container, set `PGPASSWORD` to the derived password, which `printf %s retrospend_owner | openssl dgst -sha256 -hmac "$POSTGRES_PASSWORD" | awk '{print $NF}'` prints, or use your `DATABASE_OWNER_PASSWORD`.
-5. Start again with `docker compose up -d`. On start the server checks whether the sync log survived the restore (a restore into another database or cluster, or from a dump) and rebuilds it when it did not: devices pull their data again from the start. To rebuild it by hand, run `SELECT sync_reset()` as `retrospend_owner`.
+5. Start again with `docker compose up -d`. On start the server checks whether the sync log survived the restore (a restore into another database or cluster, or from a dump) and rebuilds it when it did not: devices pull their data again from the start. A snapshot or point-in-time restore of the whole database in place is found too, because the server remembers the highest transaction counter it has seen and notices when the counter is lower. The rebuild waits up to 30 seconds for the sync log; if another connection holds it, the start fails with `sync_reset_lock_timeout` and a log line, and starting again once that connection is gone works. If you are unsure whether a restore was found, rebuild by hand: run `SELECT sync_reset()` as `retrospend_owner`.
 
 ### Data key backups
 

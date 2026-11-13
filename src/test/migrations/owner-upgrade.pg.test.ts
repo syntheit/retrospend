@@ -143,6 +143,63 @@ describe("an install that older releases migrated as the superuser", () => {
 		expect(Number(rows[0]?.n)).toBeGreaterThan(0);
 	}, 120_000);
 
+	it("rolls the sync log migration back with its snippet and forward again through migrate deploy", async () => {
+		const name = "20261114100000_sync_change";
+		const count = async (sql: string) =>
+			Number((await owner.query<{ n: string }>(sql)).rows[0]?.n);
+		const objects = async () => ({
+			triggers: await count(`
+				SELECT count(*) AS n FROM pg_trigger t JOIN pg_proc p ON p.oid = t.tgfoid
+				WHERE p.proname = 'sync_stamp_rows' AND NOT t.tgisinternal`),
+			functions: await count(`
+				SELECT count(*) AS n FROM pg_proc WHERE pronamespace = 'public'::regnamespace
+				AND proname IN ('sync_stamp_rows','sync_backfill','sync_reset','sync_restore_reason','sync_note_xmax')`),
+			tables: await count(`
+				SELECT count(*) AS n FROM pg_class WHERE relnamespace = 'public'::regnamespace
+				AND relkind = 'r' AND relname IN ('sync_change','sync_state')`),
+			sequences: await count(`
+				SELECT count(*) AS n FROM pg_class WHERE relnamespace = 'public'::regnamespace
+				AND relkind = 'S' AND relname = 'sync_change_seq'`),
+			applied: await count(`
+				SELECT count(*) AS n FROM _prisma_migrations
+				WHERE migration_name = '${name}' AND finished_at IS NOT NULL`),
+		});
+		const whole = {
+			triggers: 27,
+			functions: 5,
+			tables: 2,
+			sequences: 1,
+			applied: 1,
+		};
+		expect(await objects()).toEqual(whole);
+
+		prisma(["db", "execute", "--file", `prisma/rollback/${name}.sql`]);
+		expect(await objects()).toEqual({
+			triggers: 0,
+			functions: 0,
+			tables: 0,
+			sequences: 0,
+			applied: 0,
+		});
+
+		const deploy = prisma(["migrate", "deploy"]);
+		expect(deploy).toContain(name);
+		expect(deploy).toMatch(/successfully applied/);
+		expect(await objects()).toEqual(whole);
+		// Back to a working log: every stamp the backfill wrote is a U, and the
+		// state row is whole.
+		expect(
+			await count(`SELECT count(*) AS n FROM sync_change WHERE op <> 'U'`),
+		).toBe(0);
+		expect(await count(`SELECT count(*) AS n FROM sync_state`)).toBe(1);
+
+		// The next start applies the grants file; the app role ends up as the ratchet says.
+		prisma(["db", "execute", "--file", "prisma/grants/app-role.sql"]);
+		const catalog = await readPrivilegeCatalog(owner);
+		expect(catalog.tables).toEqual(expected.tables);
+		expect(catalog.sequences).toEqual(expected.sequences);
+	}, 180_000);
+
 	it("runs SQL that prisma applies as retrospend_owner, which is what a migration is", async () => {
 		const dir = mkdtempSync(join(tmpdir(), "a2-probe-"));
 		try {

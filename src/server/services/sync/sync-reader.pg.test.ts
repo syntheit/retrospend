@@ -401,6 +401,16 @@ describe("cursors the log cannot honor", () => {
 		await expect(
 			pull(user.id, { since: token("x", "-1", "0"), limit: 10 }),
 		).rejects.toBeInstanceOf(InvalidCursorError);
+		// Numbers that fit the pattern but not the column are refused before SQL
+		// casts them (a 500 otherwise).
+		for (const [t, s] of [
+			["18446744073709551616", "0"],
+			["1", "9223372036854775808"],
+			["99999999999999999999", "0"],
+		] as const)
+			await expect(
+				pull(user.id, { since: token("x", t, s), limit: 10 }),
+			).rejects.toBeInstanceOf(InvalidCursorError);
 	});
 
 	it("asks for a reset on another epoch", async () => {

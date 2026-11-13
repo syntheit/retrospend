@@ -36,10 +36,20 @@ import { decodeCursor, encodeCursor } from "~/server/services/api-v1/cursor";
 import { Prisma } from "~prisma";
 import { SYNC_LOADERS, type SyncEntity, type SyncRow } from "./entities";
 
+/** The largest txid (xid8 is 64 bits unsigned) and seq (bigint) a token may name. */
+const MAX_TXID = 2n ** 64n - 1n;
+const MAX_SEQ_VALUE = 2n ** 63n - 1n;
+
+const digits = (max: bigint) =>
+	z
+		.string()
+		.regex(/^\d{1,20}$/)
+		.refine((value) => BigInt(value) <= max);
+
 const syncCursorSchema = z.object({
 	e: z.string().min(1).max(64),
-	t: z.string().regex(/^\d{1,20}$/),
-	s: z.string().regex(/^\d{1,20}$/),
+	t: digits(MAX_TXID),
+	s: digits(MAX_SEQ_VALUE),
 });
 
 export class SyncResetRequiredError extends Error {
@@ -66,7 +76,7 @@ export type StampRead = {
 	cut: string;
 };
 
-const MAX_SEQ = "9223372036854775807";
+const MAX_SEQ = MAX_SEQ_VALUE.toString();
 
 export type SyncPage<Row> = {
 	items: Row[];

@@ -346,7 +346,7 @@ describe("the rollback snippet", () => {
 			functions: await one(`
 				SELECT count(*)::int AS n FROM pg_proc
 				WHERE pronamespace = 'public'::regnamespace
-				  AND proname IN ('sync_stamp_rows','sync_backfill','sync_reset','sync_restore_reason')`),
+				  AND proname IN ('sync_stamp_rows','sync_backfill','sync_reset','sync_restore_reason','sync_note_xmax')`),
 			tables: await one(`
 				SELECT count(*)::int AS n FROM pg_class
 				WHERE relnamespace = 'public'::regnamespace AND relkind = 'r'
@@ -364,7 +364,7 @@ describe("the rollback snippet", () => {
 	};
 	const whole = {
 		triggers: 27,
-		functions: 4,
+		functions: 5,
 		tables: 2,
 		sequences: 1,
 		appRead: 2,
@@ -380,11 +380,22 @@ describe("the rollback snippet", () => {
 	it("takes every object away, twice, and the migration brings every one back, twice", async () => {
 		const snippet = read(`prisma/rollback/${NAME}.sql`);
 		const migration = read(`prisma/migrations/${NAME}/migration.sql`);
+		const record = async (client: import("pg").Client) =>
+			(
+				await client.query(
+					`SELECT count(*)::int AS n FROM _prisma_migrations WHERE migration_name = $1`,
+					[NAME],
+				)
+			).rows[0].n as number;
 		await inRolledBackTransaction(async (client) => {
 			expect(await objects(client)).toEqual(whole);
+			expect(await record(client)).toBe(1);
 			await client.query(snippet);
 			await client.query(snippet);
 			expect(await objects(client)).toEqual(none);
+			// So the next start applies it again (owner-upgrade.pg.test.ts runs that
+			// through migrate deploy).
+			expect(await record(client)).toBe(0);
 			await client.query(migration);
 			await client.query(migration);
 			expect(await objects(client)).toEqual(whole);
