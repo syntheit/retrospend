@@ -184,9 +184,6 @@ describe("the allowlist", () => {
 		"VERCEL_URL", // not hosted there
 		"PG_TEST_SUPER_URL", // tests
 		"PG_TEST_SEALED", // tests
-		// Development and tests only until sealing is released
-		// (src/server/crypto/release.ts); PR 9 moves it into the app's list.
-		"DATA_KEYS_WRITE",
 	]);
 
 	function sources(dir: string): string[] {
@@ -221,6 +218,12 @@ describe("the allowlist", () => {
 				!name.startsWith("NEXT_PUBLIC_"),
 		);
 		expect(missing).toEqual([]);
+	});
+
+	it("passes DATA_KEYS_WRITE to the app, so a released build can turn sealing on", () => {
+		// The scratch rehearsal found it dropped by the entrypoint: the flag
+		// was set on the container and the app never saw it.
+		expect(APP_ENV_NAMES).toContain("DATA_KEYS_WRITE");
 	});
 
 	it("never lets the database superuser's credentials through", () => {
