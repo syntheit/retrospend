@@ -14,11 +14,11 @@
  *      every user's first sealing write would fail;
  *   4. a category without a name index: once names are sealed, the name index
  *      is what keeps them unique (D9), so its backfill must be complete.
- * Then the sealing floor is raised to this build's (floor.ts, PR 9.1), on
- * its own statement so a bump is stored whatever the epoch says, and a build
- * below a floor the database already holds refuses (`code_below_floor`)
- * before it seals anything. Then the instance key is made, so shared text
- * seals from the first write.
+ * A build below a floor the database already holds refuses
+ * (`code_below_floor`) before any key work. Then the instance key is made, so
+ * shared text seals from the first write, and the sealing floor is raised to
+ * this build's (floor.ts, PR 9.1) on its own statement, so a bump is stored
+ * whatever the epoch says.
  * Then every ghost and guest address gets its hash (contact-hash-fill.ts,
  * Revision 3 PR 3a): the fill runs on every start, after the ring exists,
  * and the gate refuses the start (`contact_hash_missing`) while any address
@@ -40,7 +40,7 @@ import {
 	countMissingContactHashes,
 	fillContactHashes,
 } from "./contact-hash-fill";
-import { raiseSealingFloor, StartGateError } from "./floor";
+import { raiseSealingFloor, readSealingFloor, StartGateError } from "./floor";
 import { getOrCreateInstanceKeyring } from "./instance-key.service";
 
 const SETTINGS_ID = "app_settings_singleton";
@@ -179,8 +179,9 @@ export async function assertFieldEncryptionStart({
 		throw new FieldEncryptionStartError("keystore_grants_missing");
 	if (!(await categoriesIndexed(client)))
 		throw new FieldEncryptionStartError("category_index_missing");
-	const stored = await raiseSealingFloor(client, floor);
-	// About to seal: a build below the floor must not, even before the epoch.
+	// About to seal: a build below the floor must not, even before the epoch,
+	// and not after minting a key.
+	const stored = await readSealingFloor(client);
 	if (stored > floor)
 		throw new StartGateError(
 			"code_below_floor",
@@ -190,6 +191,9 @@ export async function assertFieldEncryptionStart({
 		{ kind: "service" },
 		masterKeyring,
 	);
+	// After the mint, which writes app_settings on its own connection and
+	// would wait on a row this statement had locked in a caller's transaction.
+	await raiseSealingFloor(client, floor);
 	await fillContactHashesOrRefuse(client, ring);
 	// The conditional update keeps the first start's time; a row is made if
 	// app_settings has none yet.

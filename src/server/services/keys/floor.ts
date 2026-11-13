@@ -57,6 +57,13 @@ export class StartGateError extends Error {
 
 type Client = Pick<typeof keystoreDb, "$queryRaw" | "$executeRaw">;
 
+/** The stored floor; a missing settings row or a null column reads as 0. */
+export async function readSealingFloor(client: Client): Promise<number> {
+	const [row] = await client.$queryRaw<{ floor: number | null }[]>`
+		SELECT "sealingFloor" AS "floor" FROM "app_settings" WHERE "id" = ${SETTINGS_ID}`;
+	return row?.floor ?? 0;
+}
+
 /**
  * Stores `floor` unless the database already holds a higher one, and returns
  * what it holds now. Makes the settings row when there is none.
