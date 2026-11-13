@@ -143,6 +143,7 @@ export function bookHome(
 			}
 		: { currency: place.currency, rateType: null, storedRate: null };
 	const value = homeValue(pick, valued, amount, homeCurrency, endOfDayOf(date));
+	// 8 decimals; an exact tie rounds half to even.
 	return (
 		value && {
 			amount: value.toDecimalPlaces(8, Dec.ROUND_HALF_EVEN),

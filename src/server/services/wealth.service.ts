@@ -1,7 +1,6 @@
 import { isValidRate } from "@retrospend/domain/money";
 import {
 	convertDec,
-	crossRateDec,
 	fromUSDDec,
 	roundUSDDec,
 	toUSDDec,
@@ -30,6 +29,7 @@ import {
 	type SnapshotMeta,
 	type SnapshotRow,
 	usdWithoutRate,
+	valueToday,
 } from "./accounts/dashboard-rates";
 
 import { CUSTOM_RATE_TYPE } from "./accounts/valuation";
@@ -246,14 +246,12 @@ export class WealthService {
 			targetCurrency,
 		]);
 
-		const { rateOf, assetRate, snapshotRate } = dashboardRates(rateFor);
+		const { rateOf, snapshotRate } = dashboardRates(rateFor);
 
-		const targetRateAt = (date: Date) => {
-			const picked = rateFor(targetCurrency, date);
+		const targetRateAt = (date: Date, rateType: string | null = null) => {
+			const picked = rateFor(targetCurrency, date, rateType);
 			return picked ? dec(picked.rate) : null;
 		};
-
-		const targetRate = targetRateAt(now);
 
 		let weightedAPR = dec(0);
 		let totalLiabilityBalanceUSD = dec(0);
@@ -265,11 +263,11 @@ export class WealthService {
 
 		const assetsWithUSD = assets.map((asset) => {
 			const balance = dec(asset.balance);
-			const rate = assetRate(asset, now);
 			const interestRate = toNumberOrNull(asset.interestRate);
 			const shownBalance = toNumberWithDefault(asset.balance);
+			const worth = valueToday(rateFor, asset, balance, targetCurrency, now);
 
-			if (rate === null) {
+			if (worth === null) {
 				// Left out of every total and reported, never valued at 1:1.
 				console.warn(
 					`[WealthDashboard] No exchange rate for ${asset.currency}; asset ${asset.id} left out of totals`,
@@ -286,7 +284,7 @@ export class WealthService {
 				};
 			}
 
-			const balanceInUSD = toUSDDec(balance, asset.currency, rate);
+			const { usd: balanceInUSD, inTarget, perUnit } = worth;
 			const liability = asset.type.startsWith("LIABILITY_");
 
 			if (liability) {
@@ -295,13 +293,6 @@ export class WealthService {
 					weightedAPR = weightedAPR.plus(dec(interestRate).mul(balanceInUSD));
 				}
 			}
-			const inTarget = convertDec(
-				balance,
-				asset.currency,
-				rate,
-				targetCurrency,
-				targetRate,
-			);
 			counted.push({ liability, liquid: asset.isLiquid, value: inTarget });
 
 			return {
@@ -311,12 +302,7 @@ export class WealthService {
 				balanceInUSD: roundedMajor(balanceInUSD, USD),
 				balanceInTargetCurrency: roundedMajor(inTarget, targetCurrency),
 				// One unit of the account's currency in the target: the rate the account is valued at.
-				homePerUnit:
-					asset.currency === targetCurrency
-						? 1
-						: toFloat(
-								crossRateDec(asset.currency, rate, targetCurrency, targetRate),
-							),
+				homePerUnit: toFloat(perUnit),
 				rateMissing: false,
 			};
 		});
@@ -344,11 +330,13 @@ export class WealthService {
 			]);
 		}
 
+		// A point is null when an account on that day has no value to count:
+		// a gap in the chart, never a figure that left the account out.
 		const history: {
 			date: string;
-			amount: number;
-			assets: number;
-			liabilities: number;
+			amount: number | null;
+			assets: number | null;
+			liabilities: number | null;
 		}[] = [];
 		// Days with a money move get a point too (accounts/dashboard-legs.ts).
 		const sortedDates = [
@@ -365,6 +353,7 @@ export class WealthService {
 
 			let assetsInTarget = dec(0);
 			let liabilitiesInTarget = dec(0);
+			let unpriced = false;
 
 			for (const [assetId, snap] of held.entries()) {
 				const asset = assetMap.get(assetId);
@@ -387,21 +376,29 @@ export class WealthService {
 				// No rate for the asset: the recorded USD value, with the legs on top.
 				let value: Decimal;
 				if (rate !== null) {
+					// A USD account's rate type picks the target's rate (valuation.ts).
+					const targetRate =
+						snap.currency === USD
+							? targetRateAt(
+									day,
+									switched === undefined ? snap.exchangeRateType : switched,
+								)
+							: dayTargetRate;
 					value = convertDec(
 						balance,
 						snap.currency,
 						rate,
 						targetCurrency,
-						dayTargetRate,
+						targetRate,
 					);
 				} else {
 					const usd = usdWithoutRate(snap, balance, asset.exchangeRate);
-					if (usd === null) missingRateCurrencies.add(snap.currency);
-					value = fromUSDDec(
-						usd ?? snap.balanceInUSD,
-						targetCurrency,
-						dayTargetRate,
-					);
+					if (usd === null) {
+						missingRateCurrencies.add(snap.currency);
+						unpriced = true;
+						continue;
+					}
+					value = fromUSDDec(usd, targetCurrency, dayTargetRate);
 				}
 
 				if (snap.type.startsWith("LIABILITY_")) {
@@ -411,15 +408,19 @@ export class WealthService {
 				}
 			}
 
-			history.push({
-				date: dateStr,
-				amount: roundedMajor(
-					assetsInTarget.minus(liabilitiesInTarget),
-					targetCurrency,
-				),
-				assets: roundedMajor(assetsInTarget, targetCurrency),
-				liabilities: roundedMajor(liabilitiesInTarget, targetCurrency),
-			});
+			history.push(
+				unpriced
+					? { date: dateStr, amount: null, assets: null, liabilities: null }
+					: {
+							date: dateStr,
+							amount: roundedMajor(
+								assetsInTarget.minus(liabilitiesInTarget),
+								targetCurrency,
+							),
+							assets: roundedMajor(assetsInTarget, targetCurrency),
+							liabilities: roundedMajor(liabilitiesInTarget, targetCurrency),
+						},
+			);
 		}
 
 		// Added exact and rounded once, like the registered netWorth figure.

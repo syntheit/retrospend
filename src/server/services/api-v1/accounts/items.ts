@@ -5,6 +5,7 @@ import {
 	homePerUnit,
 	homeValue,
 	type RatePick,
+	ratePerUnit,
 } from "~/server/services/accounts/valuation";
 import { accountViewIn } from "~/server/services/accounts/view";
 import { dec, toMinor } from "~/server/services/envelope/units";
@@ -52,7 +53,7 @@ export function accountItem(row: Row, home: string, pick: RatePick) {
 		inBudget: inBudget(row, home),
 		isLiquid: row.isLiquid,
 		rateType: row.exchangeRateType,
-		rate: perUnit ? perUnit.toDecimalPlaces(12).toString() : null,
+		rate: perUnit ? ratePerUnit(perUnit).toDecimalPlaces(12).toString() : null,
 		closedAt: row.closedAt?.toISOString() ?? null,
 		interestRate: row.interestRate?.toString() ?? null,
 		minimumPayment: row.minimumPayment

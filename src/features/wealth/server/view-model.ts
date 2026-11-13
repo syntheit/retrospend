@@ -22,7 +22,7 @@ export type DashboardInput = {
 	totalNetWorth: number;
 	totalLiquidAssets: number;
 	netWorth30DaysAgo: number | null;
-	history: { date: string; amount: number }[];
+	history: { date: string; amount: number | null }[];
 	assets: {
 		id: string;
 		name: string;
@@ -208,9 +208,13 @@ function series(
 	today: string,
 	home: string,
 ): Record<WealthRange, WealthPoint[]> {
+	// A day with an account the rates cannot value is a gap, not a lower line.
 	const points = [...history]
 		.sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : 0))
-		.map((h) => ({ date: h.date, value: moneyFromMajor(h.amount, home) }));
+		.map((h) => ({
+			date: h.date,
+			value: h.amount === null ? null : moneyFromMajor(h.amount, home),
+		}));
 	const heldOn = (day: string) =>
 		points.filter((p) => p.date <= day).at(-1)?.value ?? null;
 	const out = {} as Record<WealthRange, WealthPoint[]>;

@@ -39,7 +39,7 @@ import {
 } from "../accounts/ledger";
 import { countedOnArrival, inBudget } from "../accounts/places";
 import { endOfDay } from "../accounts/series";
-import { homePerUnit } from "../accounts/valuation";
+import { homePerUnit, unitsForHome } from "../accounts/valuation";
 import { type RestoreToken, readRowRestore } from "../entry/restore-token";
 import { bookRate, loadRateContext, type RateChoice } from "../rate-types";
 import { typedAmount } from "../transfers/plan";
@@ -168,9 +168,10 @@ function unitsInAccount(
 		});
 	}
 	// The leg's amount column holds 8 decimals; rounded here, half to even.
-	return dec(income.booked)
-		.div(perUnit)
-		.toDecimalPlaces(8, Dec.ROUND_HALF_EVEN);
+	return unitsForHome(dec(income.booked), perUnit).toDecimalPlaces(
+		8,
+		Dec.ROUND_HALF_EVEN,
+	);
 }
 
 async function createTemplate(

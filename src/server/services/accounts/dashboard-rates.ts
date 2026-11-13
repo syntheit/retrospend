@@ -1,17 +1,24 @@
 /**
- * The rates the Wealth dashboard (wealth.service.ts) values accounts and
- * snapshots with, in the stored convention (fiat per USD, USD per coin) as
- * exact Decimals; the new figures use accounts/valuation.ts, which follows
+ * The rates the Wealth dashboard (wealth.service.ts) values snapshots with,
+ * in the stored convention (fiat per USD, USD per coin) as exact Decimals.
+ * Today's rows and totals use accounts/valuation.ts through `valueToday`,
  * the same rule. A rate that is missing, zero or negative is null, never 1.
  */
-import { toUSDDec, USD } from "@retrospend/domain/money-dec";
+import { MissingRateError, toUSDDec, USD } from "@retrospend/domain/money-dec";
 import {
 	type Decimal,
 	type DecimalInput,
 	dec,
 } from "@retrospend/domain/precise-decimal";
 import type { AssetType } from "~prisma";
-import { CUSTOM_RATE_TYPE, type RatePick } from "./valuation";
+import {
+	CUSTOM_RATE_TYPE,
+	homePerUnit,
+	homeValue,
+	missingRateOf,
+	ratePerUnit,
+	type RatePick,
+} from "./valuation";
 
 /** What an account was when a snapshot of it was taken. */
 export interface SnapshotMeta {
@@ -23,7 +30,8 @@ export interface SnapshotMeta {
 /** An account's latest snapshot while history is rebuilt, as recorded. */
 export interface HeldSnapshot extends SnapshotMeta {
 	balance: Decimal;
-	balanceInUSD: Decimal;
+	/** The USD value recorded with the snapshot; null on a legacy row that has none (missing, never 0). */
+	balanceInUSD: Decimal | null;
 	date: Date;
 	recordedAt: Date;
 }
@@ -57,7 +65,7 @@ export function heldSnapshot(
 ): HeldSnapshot {
 	return {
 		balance: dec(snap.balance ?? 0),
-		balanceInUSD: dec(snap.balanceInUSD ?? 0),
+		balanceInUSD: snap.balanceInUSD === null ? null : dec(snap.balanceInUSD),
 		currency: snap.currency ?? asset.currency,
 		type: snap.type ?? asset.type,
 		exchangeRateType: snap.currency
@@ -134,20 +142,60 @@ export function dashboardRates(rateFor: RatePick) {
 
 /**
  * The USD value of a snapshot's account with no rate, at `balance` (the
- * snapshot plus the legs on top of it). The legs count: the recorded USD
- * value scaled by the balance, else the account's stored rate. Null when
- * nothing values the legs; the caller keeps the recorded value and reports
- * the currency as missing a rate.
+ * snapshot plus the legs on top of it). A zero balance is worth nothing. The
+ * legs count: the recorded USD value scaled by the balance, else the
+ * account's stored rate. Null when nothing values it (no recorded value
+ * either): the caller reports the currency as missing a rate and the point
+ * as a gap, never a value that dropped the legs.
  */
 export function usdWithoutRate(
 	snap: HeldSnapshot,
 	balance: Decimal,
 	storedRate: DecimalInput | null,
 ): Decimal | null {
+	if (balance.isZero()) return dec(0);
 	if (balance.eq(snap.balance)) return snap.balanceInUSD;
 	if (!snap.balance.isZero()) {
-		return snap.balanceInUSD.mul(balance).div(snap.balance);
+		return snap.balanceInUSD?.mul(balance).div(snap.balance) ?? null;
 	}
 	const stored = usableRate(storedRate);
 	return stored ? toUSDDec(balance, snap.currency, stored) : null;
+}
+
+/**
+ * An open account's worth today: its USD value, its value in the target
+ * currency and the rate it is valued at (target per unit). One function, the
+ * one the net worth figure and API v1 read (accounts/valuation.ts), so the
+ * row, the totals and the figure agree to the minor unit. Null when the
+ * account's own currency has no rate; a target with no rate throws.
+ */
+export function valueToday(
+	pick: RatePick,
+	asset: RatedAsset,
+	balance: Decimal,
+	targetCurrency: string,
+	now: Date,
+): { usd: Decimal; inTarget: Decimal; perUnit: Decimal } | null {
+	const valued = {
+		currency: asset.currency,
+		rateType: asset.exchangeRateType,
+		storedRate: asset.exchangeRate,
+	};
+	if (missingRateOf(pick, valued, targetCurrency, now) === asset.currency) {
+		return null;
+	}
+	const needed = <T>(value: T | null, currency: string): T => {
+		if (value === null) throw new MissingRateError(currency);
+		return value;
+	};
+	return {
+		usd: needed(homeValue(pick, valued, balance, USD, now), asset.currency),
+		inTarget: needed(
+			homeValue(pick, valued, balance, targetCurrency, now),
+			targetCurrency,
+		),
+		perUnit: ratePerUnit(
+			needed(homePerUnit(pick, valued, targetCurrency, now), targetCurrency),
+		),
+	};
 }

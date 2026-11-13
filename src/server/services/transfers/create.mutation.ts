@@ -26,7 +26,13 @@ import {
 	ratePickFor,
 	writeLeg,
 } from "../accounts/ledger";
-import { homePerUnit, type RatePick } from "../accounts/valuation";
+import {
+	byFraction,
+	homePerUnit,
+	homeValue,
+	type RatePick,
+	ratePerUnit,
+} from "../accounts/valuation";
 import { type BudgetSideResult, recordBudgetSide } from "./budget-side";
 import {
 	type BudgetEffect,
@@ -133,19 +139,20 @@ function atReference(
 	to: string,
 	date: Date,
 ): Decimal {
-	const fromHome = homePerUnit(
+	const arrives = homeValue(
 		pick,
 		{ currency: from, rateType: null, storedRate: null },
+		dec(amount),
 		to,
 		date,
 	);
-	if (!fromHome) {
+	if (!arrives) {
 		throw new TRPCError({
 			code: "BAD_REQUEST",
 			message: `No exchange rate for ${from} to ${to}. Type what arrived.`,
 		});
 	}
-	return roundMoneyDec(dec(amount).mul(fromHome), to);
+	return roundMoneyDec(arrives, to);
 }
 
 const placeFacts = (side: Side) =>
@@ -173,23 +180,27 @@ function reference(
 	}
 	const foreign = homeIsFrom ? input.toCurrency : input.fromCurrency;
 	const units = homeIsFrom ? input.toAmount : input.fromAmount.neg();
-	const perUnit = homePerUnit(
+	const fraction = homePerUnit(
 		pick,
 		{ currency: foreign, rateType: null, storedRate: null },
 		home,
 		date,
 	);
-	if (!perUnit)
+	if (!fraction)
 		return { vsReference: null, referenceRateType: null, referenceRate: null };
 	const typedHome = homeIsFrom ? booked.fromHome : booked.toHome;
 	const ref = pick(foreign === "USD" ? home : foreign, date, null);
 	return {
 		vsReference: {
-			minor: toMinor(typedHome.add(units.mul(perUnit)), home),
+			minor: toMinor(typedHome.add(byFraction(units, fraction)), home),
 			currency: home,
 		},
 		referenceRateType: ref?.type ?? null,
-		referenceRate: { base: foreign, quote: home, value: perUnit.toFixed(6) },
+		referenceRate: {
+			base: foreign,
+			quote: home,
+			value: ratePerUnit(fraction).toFixed(6),
+		},
 	};
 }
 
