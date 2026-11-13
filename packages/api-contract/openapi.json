@@ -124691,7 +124691,8 @@
 															{
 																"type": "null"
 															}
-														]
+														],
+														"description": "The currency of `balance`. Null on a snapshot older than this column: it is the account's own currency (and `type` and `exchangeRateType` then also come from the account, the snapshot's own `exchangeRateType` being ignored)."
 													},
 													"date": {
 														"format": "date-time",
@@ -124705,7 +124706,8 @@
 															{
 																"type": "null"
 															}
-														]
+														],
+														"description": "The rate type the snapshot was valued at. Meaningful only when `currency` is set; otherwise use the account's."
 													},
 													"id": {
 														"maxLength": 64,
@@ -124734,7 +124736,8 @@
 															{
 																"type": "null"
 															}
-														]
+														],
+														"description": "Null: the account's type."
 													}
 												},
 												"required": [
@@ -124991,7 +124994,8 @@
 															{
 																"type": "null"
 															}
-														]
+														],
+														"description": "Null, with a null `iconValue`, is the default glyph for its type: also what a stored icon the app can no longer draw reads as."
 													},
 													"iconValue": {
 														"anyOf": [
@@ -125001,7 +125005,8 @@
 															{
 																"type": "null"
 															}
-														]
+														],
+														"description": "As GET /accounts gives it as `icon.value`: a logo slug, an avatar slot, or for IMAGE the picture's URL path like /api/images/accounts/<id>-<ms>.webp."
 													},
 													"id": {
 														"maxLength": 64,

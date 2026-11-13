@@ -507,6 +507,46 @@ describe("account sync routes: changes", () => {
 		expect(gone.items).toEqual([]);
 	});
 
+	it("reads an icon as GET /accounts does: an image as its URL, one the app cannot draw as none", async () => {
+		const user = (await createTestUser()).user.id;
+		const headers = await asMobile(user);
+		const make = async (
+			name: string,
+			iconKind: "BRAND" | "MONOGRAM" | "IMAGE",
+			iconValue: string,
+		) =>
+			(
+				await fixtureDb.assetAccount.create({
+					data: {
+						userId: user,
+						name,
+						type: "CASH",
+						currency: "ARS",
+						balance: "1",
+						iconKind,
+						iconValue,
+					},
+					select: { id: true },
+				})
+			).id;
+		const image = await make("Image", "IMAGE", "accounts/acc1-1700000000.webp");
+		const brand = await make("Brand", "BRAND", "revolut");
+		const monogram = await make("Monogram", "MONOGRAM", "avatar-3");
+		const removed = await make("Removed", "BRAND", "no-such-logo-slug");
+		const page = await pullUntil("accounts", headers, "", hasRows(4));
+		const icon = (id: string) => {
+			const row = page.items.find((r) => r.id === id);
+			return [row?.iconKind, row?.iconValue];
+		};
+		expect(icon(image)).toEqual([
+			"IMAGE",
+			"/api/images/accounts/acc1-1700000000.webp",
+		]);
+		expect(icon(brand)).toEqual(["BRAND", "revolut"]);
+		expect(icon(monogram)).toEqual(["MONOGRAM", "avatar-3"]);
+		expect(icon(removed)).toEqual([null, null]);
+	});
+
 	it("pages with limit and hasMore, each account once", async () => {
 		const user = (await createTestUser()).user.id;
 		const headers = await asMobile(user);

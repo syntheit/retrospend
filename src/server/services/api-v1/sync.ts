@@ -10,6 +10,7 @@ import type {
 	SyncRecurringTemplateDto,
 	SyncTransferDto,
 } from "@retrospend/api-contract";
+import { iconOf } from "~/lib/account-icons";
 import { readChanges, type SyncPage } from "~/server/services/sync/changes";
 import type { SyncEntity, SyncRow } from "~/server/services/sync/entities";
 import type { Caller } from "./caller";
@@ -101,6 +102,8 @@ const decimalOrNull = (value: { toFixed(): string } | null) =>
 	value ? decimal(value) : null;
 
 export function toSyncAccount(row: SyncRow<"asset_account">): SyncAccountDto {
+	// The one icon representation: the same reader GET /accounts uses.
+	const icon = iconOf(row);
 	return {
 		id: row.id,
 		name: row.name,
@@ -116,8 +119,8 @@ export function toSyncAccount(row: SyncRow<"asset_account">): SyncAccountDto {
 		inBudget: row.inBudget,
 		countedUnits: decimal(row.countedUnits),
 		closedAt: row.closedAt ? instant(row.closedAt) : null,
-		iconKind: row.iconKind,
-		iconValue: row.iconValue,
+		iconKind: icon?.kind ?? null,
+		iconValue: icon?.value ?? null,
 		createdAt: instant(row.createdAt),
 		updatedAt: instant(row.updatedAt),
 	};

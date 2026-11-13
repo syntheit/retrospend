@@ -139,8 +139,14 @@ export const syncAccountSchema = z
 		}),
 		countedUnits: decimalStringSchema,
 		closedAt: timestampSchema.nullable(),
-		iconKind: z.enum(ACCOUNT_ICON_KINDS).nullable(),
-		iconValue: z.string().nullable(),
+		iconKind: z.enum(ACCOUNT_ICON_KINDS).nullable().meta({
+			description:
+				"Null, with a null `iconValue`, is the default glyph for its type: also what a stored icon the app can no longer draw reads as.",
+		}),
+		iconValue: z.string().nullable().meta({
+			description:
+				"As GET /accounts gives it as `icon.value`: a logo slug, an avatar slot, or for IMAGE the picture's URL path like /api/images/accounts/<id>-<ms>.webp.",
+		}),
 		createdAt: timestampSchema,
 		updatedAt: timestampSchema.meta({
 			description: "The version a write sends as its base.",
@@ -157,9 +163,17 @@ export const syncAccountSnapshotSchema = z
 		date: timestampSchema,
 		balance: decimalStringSchema,
 		balanceInUSD: decimalStringSchema,
-		currency: z.string().nullable(),
-		type: accountTypeSchema.nullable(),
-		exchangeRateType: z.string().nullable(),
+		currency: z.string().nullable().meta({
+			description:
+				"The currency of `balance`. Null on a snapshot older than this column: it is the account's own currency (and `type` and `exchangeRateType` then also come from the account, the snapshot's own `exchangeRateType` being ignored).",
+		}),
+		type: accountTypeSchema.nullable().meta({
+			description: "Null: the account's type.",
+		}),
+		exchangeRateType: z.string().nullable().meta({
+			description:
+				"The rate type the snapshot was valued at. Meaningful only when `currency` is set; otherwise use the account's.",
+		}),
 		recordedAt: timestampSchema,
 	})
 	.meta({
