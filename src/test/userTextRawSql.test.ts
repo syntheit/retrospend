@@ -31,6 +31,7 @@ const COLUMNS = [
 	"paymentMethod",
 	"paymentSource",
 	"websiteUrl",
+	"receiptUrl",
 	"rejectionReason",
 	"rejectedReason",
 	"adminNote",

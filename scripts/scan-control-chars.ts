@@ -65,6 +65,7 @@ export const USER_TEXT_COLUMNS: ReadonlyArray<readonly [string, string]> = [
 	["shadow_profile", "name"],
 	["shared_transaction", "description"],
 	["shared_transaction", "notes"],
+	["shared_transaction", "receiptUrl"],
 	["split_participant", "rejectionReason"],
 	["transfer", "note"],
 	["user", "name"],

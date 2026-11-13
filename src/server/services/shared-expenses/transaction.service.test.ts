@@ -2456,6 +2456,7 @@ describe("SharedTransactionService", () => {
 			// Hard delete was performed
 			expect(txClient.sharedTransaction.delete).toHaveBeenCalledWith({
 				where: { id: "txn-1" },
+				select: { id: true },
 			});
 		});
 
@@ -2638,6 +2639,7 @@ describe("SharedTransactionService", () => {
 			expect(computeBalance).not.toHaveBeenCalled();
 			expect(txClient.sharedTransaction.delete).toHaveBeenCalledWith({
 				where: { id: "txn-1" },
+				select: { id: true },
 			});
 		});
 	});

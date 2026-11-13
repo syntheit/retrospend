@@ -299,6 +299,8 @@ describe("detector", () => {
 		for (const name of [
 			"trpc expense.createExpense:title",
 			"trpc sharedTransaction.update:notes",
+			"trpc sharedTransaction.create:receiptUrl",
+			"trpc sharedTransaction.update:receiptUrl",
 			"trpc people.createShadow:name",
 			"trpc settlement.reject:reason",
 			"trpc paymentMethod.upsert:methods[].identifier",

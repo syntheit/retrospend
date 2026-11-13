@@ -117,7 +117,11 @@ export const FIELD_MAP = {
 	ShadowProfile: { table: "shadow_profile", columns: { name: "instance" } },
 	SharedTransaction: {
 		table: "shared_transaction",
-		columns: { description: "instance", notes: "instance" },
+		columns: {
+			description: "instance",
+			notes: "instance",
+			receiptUrl: "instance",
+		},
 	},
 	SplitParticipant: {
 		table: "split_participant",

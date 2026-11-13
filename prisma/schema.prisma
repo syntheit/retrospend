@@ -1588,7 +1588,7 @@ model SharedTransaction {
   // the expense was saved, so shares convert at that rate later.
   exchangeRate    Decimal?  @db.Decimal(18, 6)
   notes           String?   @db.Text
-  receiptUrl      String?   @db.VarChar(2048)
+  receiptUrl      String?   @db.Text
   isLocked        Boolean   @default(false)
   // The payment that settled this split and locked it (null: a period close
   // locked it, or it is not locked). Undoing or rejecting that payment unlocks.

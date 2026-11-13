@@ -169,6 +169,7 @@ export async function restoreShared(
 			// A correction is never deleted by hand and is not restorable.
 			correctsId: null,
 		},
+		select: { id: true },
 	});
 	await tx.splitParticipant.createMany({
 		data: shares.map((s) => ({

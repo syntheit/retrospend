@@ -125,6 +125,9 @@ const STORED: Record<string, Column[]> = {
 		{ table: "shared_transaction", column: "description" },
 	],
 	"shared_expense.notes": [{ table: "shared_transaction", column: "notes" }],
+	"shared_expense.receiptUrl": [
+		{ table: "shared_transaction", column: "receiptUrl" },
+	],
 	"shared_expense.reject_reason": [
 		{ table: "split_participant", column: "rejectionReason" },
 	],
