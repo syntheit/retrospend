@@ -50,7 +50,7 @@ vi.mock("~prisma", () => ({
 
 vi.mock("pg", () => ({
 	Pool: vi.fn(function () {
-		return {};
+		return { on: vi.fn() };
 	}),
 }));
 
