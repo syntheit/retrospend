@@ -130,9 +130,12 @@ let cabana: string;
 
 beforeAll(async () => {
 	await seedRates();
-	[sofia, martin, lucia, kenji, aiko, beni] = await Promise.all(
-		Array.from({ length: 6 }, () => createTestUser()),
-	);
+	sofia = await createTestUser();
+	martin = await createTestUser();
+	lucia = await createTestUser();
+	kenji = await createTestUser();
+	aiko = await createTestUser();
+	beni = await createTestUser();
 	await setHome([sofia, martin, lucia], "ARS");
 	await setHome([kenji, aiko, beni], "JPY");
 	cabana = await project(sofia, [ref(sofia), ref(martin)]);
