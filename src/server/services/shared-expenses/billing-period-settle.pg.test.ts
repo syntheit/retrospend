@@ -96,6 +96,11 @@ const pays = (
 		},
 	});
 
+// Outstanding rows come in participant-key order, and test ids are random:
+// compare as sets.
+const byId = <T extends unknown[]>(rows: T[]): T[] =>
+	[...rows].sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+
 describe("a period of legacy thirds", () => {
 	it("is open at 25.46 owed to Ana until Ben and Cam each pay the 12.73 People shows", async () => {
 		const t = await seedThirds();
@@ -111,12 +116,16 @@ describe("a period of legacy thirds", () => {
 
 		const open = await computePeriodSettleStatus(adminDb, t.period);
 		expect(
-			open.outstanding.map((o) => [o.participant.participantId, o.amount]),
-		).toEqual([
-			[t.ana.user.id, 25.46],
-			[t.ben.user.id, -12.73],
-			[t.cam.user.id, -12.73],
-		]);
+			byId(
+				open.outstanding.map((o) => [o.participant.participantId, o.amount]),
+			),
+		).toEqual(
+			byId([
+				[t.ana.user.id, 25.46],
+				[t.ben.user.id, -12.73],
+				[t.cam.user.id, -12.73],
+			]),
+		);
 		const plan = await projectSettlementPlan(adminDb, t.project.id);
 		expect(plan.byCurrency.USD?.plan.map((p) => p.amount)).toEqual([
 			12.73, 12.73,
@@ -126,11 +135,15 @@ describe("a period of legacy thirds", () => {
 		const half = await computePeriodSettleStatus(adminDb, t.period);
 		// Ana is owed 25.46 - 12.73 = 12.73 and Cam still owes 12.73.
 		expect(
-			half.outstanding.map((o) => [o.participant.participantId, o.amount]),
-		).toEqual([
-			[t.ana.user.id, 12.73],
-			[t.cam.user.id, -12.73],
-		]);
+			byId(
+				half.outstanding.map((o) => [o.participant.participantId, o.amount]),
+			),
+		).toEqual(
+			byId([
+				[t.ana.user.id, 12.73],
+				[t.cam.user.id, -12.73],
+			]),
+		);
 	});
 
 	it("is settled once Ben and Cam have paid 12.73 each, and every screen agrees", async () => {
@@ -167,15 +180,19 @@ describe("a payment in a currency with no expense", () => {
 		await pays(t.project.id, t.cam, t.ben, "10", "EUR");
 		const open = await computePeriodSettleStatus(adminDb, t.period);
 		expect(
-			open.outstanding.map((o) => [
-				o.participant.participantId,
-				o.currency,
-				o.amount,
+			byId(
+				open.outstanding.map((o) => [
+					o.participant.participantId,
+					o.currency,
+					o.amount,
+				]),
+			),
+		).toEqual(
+			byId([
+				[t.cam.user.id, "EUR", 10],
+				[t.ben.user.id, "EUR", -10],
 			]),
-		).toEqual([
-			[t.cam.user.id, "EUR", 10],
-			[t.ben.user.id, "EUR", -10],
-		]);
+		);
 		const plan = await projectSettlementPlan(adminDb, t.project.id);
 		expect(
 			plan.byCurrency.EUR?.plan.map((p) => [
