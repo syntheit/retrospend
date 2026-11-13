@@ -76,11 +76,23 @@ const money = (amount: number, currency: string) =>
 const usd = (amount: number, currency: string) =>
 	money(computeAmountInUSD(amount, currency, seedRate(currency)), "USD");
 
-async function resetDatabase(db: Db): Promise<void> {
+/**
+ * Empties the public tables. `keepServerState` leaves `app_settings` alone: a
+ * sealed run's server wrote its canary, instance key marker, sealing floor and
+ * epoch there at start (before this seed), and emptying them would leave a
+ * running server that seals against a database that says nothing was ever
+ * sealed. The key store is not touched here either. The state from earlier
+ * runs is already gone: e2e/reset-before-server.ts emptied both before the
+ * server started.
+ */
+async function resetDatabase(db: Db, keepServerState: boolean): Promise<void> {
 	const tables = await db.$queryRaw<{ tablename: string }[]>`
 		SELECT tablename FROM pg_tables
 		WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'`;
-	const list = tables.map((t) => `"${t.tablename}"`).join(", ");
+	const list = tables
+		.filter((t) => !(keepServerState && t.tablename === "app_settings"))
+		.map((t) => `"${t.tablename}"`)
+		.join(", ");
 	await db.$executeRawUnsafe(`TRUNCATE ${list} RESTART IDENTITY CASCADE`);
 }
 
@@ -421,13 +433,14 @@ export async function seedE2eDatabase(
 	anchor: Anchor = seedAnchor(),
 	// The Maestro seed CLI swaps in its own guard (../maestro-db-guard.ts).
 	check: (url: string) => void = assertE2eDatabase,
+	keepServerState = false,
 ): Promise<void> {
 	check(databaseUrl);
 	const db = new PrismaClient({
 		adapter: new PrismaPg({ connectionString: databaseUrl }),
 	});
 	try {
-		await resetDatabase(db);
+		await resetDatabase(db, keepServerState);
 		await writeUsers(db);
 		await writeRates(db, anchor);
 		await writeExpenses(db, anchor);

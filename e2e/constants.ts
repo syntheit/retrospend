@@ -10,6 +10,23 @@ export const E2E_DATABASE_URL =
 	process.env.E2E_DATABASE_URL ??
 	"postgresql://postgres:testpassword@127.0.0.1:5437/retrospend_test_e2e";
 
+export const E2E_AUTH_SECRET =
+	process.env.E2E_AUTH_SECRET ?? "e2e-test-secret-value-32-chars-!!";
+
+/**
+ * E2E_SEALED=1 runs the whole suite with DATA_KEYS_WRITE on (E2EE D11 PR 9.2,
+ * docs/roadmap/e2ee-d11-pr9.md section 6), so user text is sealed on write.
+ * The key below is a throwaway for the e2e database only: it wraps keys that
+ * the pre-server reset (reset-before-server.ts) deletes at the start of every
+ * run. It protects nothing and must never be a real master key.
+ */
+export const E2E_SEALED = process.env.E2E_SEALED === "1";
+export const E2E_MASTER_KEY =
+	"e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0";
+
+// Where global setup saves the ids it wrote (sealed runs, see sealing-seed.ts)
+export const SEALING_SEED_IDS = "playwright/.sealing/seed-ids.json";
+
 // Paths to saved auth state (reused across tests)
 export const USER_STORAGE_STATE = "playwright/.auth/user.json";
 export const ADMIN_STORAGE_STATE = "playwright/.auth/admin.json";
