@@ -86,7 +86,7 @@ describe("a book's rows are stamped U when written", () => {
 			});
 			await tx.budgetBook.update({
 				where: { id: s.book },
-				data: { lastOpenedAt: new Date("2026-11-10T00:00:00.000Z") },
+				data: { weekStartDay: 2 },
 			});
 		});
 		expect((await stampOf(user.id, "budget_movement", movement.id))?.op).toBe(
@@ -110,6 +110,44 @@ describe("a book's rows are stamped U when written", () => {
 		});
 		const again = await stampOf(user.id, "income_rule_run", s.run);
 		expect(BigInt(again?.seq ?? 0)).toBeGreaterThan(BigInt(stamp?.seq ?? 0));
+	});
+
+	it("a write of only the book's read bookkeeping or a cache stamps nothing; a write of a carried column does", async () => {
+		const { user } = await createTestUser();
+		const s = await seedBook(user.id);
+		const bookStamp = () => stampOf(user.id, "budget_book", s.book);
+		const closeStamp = () => stampOf(user.id, "month_close", s.close);
+		const [book0, close0] = [await bookStamp(), await closeStamp()];
+		await fixtureDb.budgetBook.update({
+			where: { id: s.book },
+			data: {
+				dirtyFromMonth: 202610,
+				lastOpenedAt: new Date("2026-11-10T00:00:00.000Z"),
+				styleUndo: { before: "x" },
+				legacyHiddenIds: ["a"],
+			},
+		});
+		await fixtureDb.monthClose.update({
+			where: { id: s.close },
+			data: { checkpoint: { other: "cache" } },
+		});
+		expect(await bookStamp()).toEqual(book0);
+		expect(await closeStamp()).toEqual(close0);
+
+		await fixtureDb.budgetBook.update({
+			where: { id: s.book },
+			data: { name: "Renamed" },
+		});
+		await fixtureDb.monthClose.update({
+			where: { id: s.close },
+			data: { recalc: { moved: true } },
+		});
+		expect(BigInt((await bookStamp())?.seq ?? 0)).toBeGreaterThan(
+			BigInt(book0?.seq ?? 0),
+		);
+		expect(BigInt((await closeStamp())?.seq ?? 0)).toBeGreaterThan(
+			BigInt(close0?.seq ?? 0),
+		);
 	});
 
 	it("2,000 movements in one statement are 2,000 stamps in one transaction", async () => {
@@ -396,15 +434,23 @@ describe("trigger coverage", () => {
 			  AND NOT t.tgisinternal
 			ORDER BY c.relname, t.tgname`);
 
+	// Columns whose change alone is no change, by hand (the routes carry none).
+	const IGNORED: Record<string, string> = {
+		budget_book:
+			"dirtyFromMonth,lastOpenedAt,updatedAt,styleUndo,legacyMigrationRunId,legacyMigratedAt,legacyNoticeSeenAt,legacyHiddenIds",
+		month_close: "checkpoint",
+	};
+
 	it("the constant, the migration's table list and the id columns agree", async () => {
 		const rows = await adminDb.$queryRaw<
-			{ tbl: string; idcol: string; bookcol: string }[]
-		>`SELECT "tbl", "idcol", "bookcol" FROM sync_book_tables()`;
+			{ tbl: string; idcol: string; bookcol: string; ignored: string }[]
+		>`SELECT "tbl", "idcol", "bookcol", "ignored" FROM sync_book_tables()`;
 		expect(rows.map((r) => r.tbl).sort()).toEqual(
 			[...SYNCED_BOOK_ENTITIES].sort(),
 		);
 		for (const r of rows) {
 			expect(r.idcol).toBe(BOOK_ID_COLUMN[r.tbl as never] ?? "id");
+			expect(r.ignored).toBe(IGNORED[r.tbl] ?? "");
 			expect(r.bookcol).toBe(r.tbl === "budget_book" ? "id" : "bookId");
 		}
 	});
@@ -429,10 +475,18 @@ describe("trigger coverage", () => {
 						: "sync_stamp_book_rows";
 			for (const t of list) {
 				expect(t.fn).toBe(fn);
+				const args = t.args.replace(/,+$/, "");
 				if (fn === "sync_stamp_book_rows")
-					expect(t.args.replace(/,$/, "")).toBe(
-						`${table},${BOOK_ID_COLUMN[table as never] ?? "id"}`,
+					expect(args).toBe(
+						[
+							table,
+							BOOK_ID_COLUMN[table as never] ?? "id",
+							IGNORED[table] ?? "",
+						]
+							.join(",")
+							.replace(/,+$/, ""),
 					);
+				if (fn === "sync_stamp_book_self") expect(args).toBe(IGNORED[table]);
 				// tgtype bits: 1 row, 2 before, 4 insert, 8 delete, 16 update.
 				expect(t.type & 1).toBe(0);
 				expect(t.type & 2).toBe(0);

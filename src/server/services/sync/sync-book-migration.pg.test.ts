@@ -8,12 +8,16 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Client } from "pg";
 import { describe, expect, it } from "vitest";
-import { createTestUser } from "~/test/pg-harness";
-import { inRolledBackTransaction } from "~/test/rolled-back-sql";
+import { adminDb, createTestUser } from "~/test/pg-harness";
+import {
+	inRolledBackPrismaTransaction,
+	inRolledBackTransaction,
+} from "~/test/rolled-back-sql";
 import { REPO_ROOT } from "~/test/uiRules/paths";
 import { SYNCED_BOOK_ENTITIES } from "./book-entities";
+import { readChanges, readStamps, SyncResetRequiredError } from "./changes";
 import { seedBook } from "./sync-book-test-support";
-import { seedPersonal } from "./sync-test-support";
+import { seedPersonal, until } from "./sync-test-support";
 
 const read = (path: string) => readFileSync(join(REPO_ROOT, path), "utf8");
 const NAME = "20261114200000_sync_book_family";
@@ -173,6 +177,41 @@ describe("the rollback snippet", () => {
 				`SELECT "op" FROM sync_change WHERE entity = 'budget_book' AND "entityId" = 'book-after-rollback'`,
 			);
 			expect(stamped.rows).toEqual([{ op: "U" }]);
+		});
+	});
+	it("refuses a cursor from before the rollback after the roll forward, though a row went meanwhile with no trigger to say so", async () => {
+		const { user } = await createTestUser();
+		const s = await seedBook(user.id);
+		const first = await until(
+			() => readChanges(adminDb, user.id, "budget_movement", { limit: 50 }),
+			(page) => page.items.length >= 1,
+		);
+		const snippet = read(`prisma/rollback/${NAME}.sql`);
+		const migration = read(`prisma/migrations/${NAME}/migration.sql`);
+		await inRolledBackPrismaTransaction(async (tx, run) => {
+			await run(snippet);
+			// The older image deletes a movement: no trigger, no tombstone.
+			await tx.$executeRaw`DELETE FROM "budget_movement" WHERE "id" = ${s.movement}`;
+			await run(migration);
+			// The device that held the old cursor is sent back to the start, so
+			// it drops the movement it never heard was deleted.
+			await expect(
+				readStamps(tx, user.id, "budget_movement", {
+					since: first.cursor,
+					limit: 10,
+				}),
+			).rejects.toBeInstanceOf(SyncResetRequiredError);
+		});
+	}, 120_000);
+
+	it("refuses to run once the older migration's snippet has run, instead of making a backfill over missing tables", async () => {
+		const older = read("prisma/rollback/20261114100000_sync_change.sql");
+		const snippet = read(`prisma/rollback/${NAME}.sql`);
+		await inRolledBackTransaction(async (client) => {
+			await client.query(older);
+			await expect(client.query(snippet)).rejects.toThrow(
+				/already rolled back/,
+			);
 		});
 	});
 });

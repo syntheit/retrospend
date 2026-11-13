@@ -47,7 +47,6 @@ export function toSyncBudgetBook(
 		defaultEnvelopeId: row.defaultEnvelopeId,
 		startingBalanceExpenseId: row.startingBalanceExpenseId,
 		startingMoneyConfirmedAt: instantOrNull(row.startingMoneyConfirmedAt),
-		lastOpenedAt: instantOrNull(row.lastOpenedAt),
 		welcomeBackFrom: instantOrNull(row.welcomeBackFrom),
 		reconciledAt: instantOrNull(row.reconciledAt),
 		planFundFrom: row.planFundFrom,

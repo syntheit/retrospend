@@ -125856,17 +125856,6 @@
 													"isPersonal": {
 														"type": "boolean"
 													},
-													"lastOpenedAt": {
-														"anyOf": [
-															{
-																"format": "date-time",
-																"type": "string"
-															},
-															{
-																"type": "null"
-															}
-														]
-													},
 													"monthStartDay": {
 														"maximum": 9007199254740991,
 														"minimum": -9007199254740991,
@@ -125988,7 +125977,7 @@
 														"type": "boolean"
 													},
 													"updatedAt": {
-														"description": "The version a write sends as its base.",
+														"description": "Moves with every write to the row, including ones that are not a change here (the server's read bookkeeping), so a pull may show it newer than the last change you saw.",
 														"format": "date-time",
 														"type": "string"
 													},
@@ -126026,7 +126015,6 @@
 													"defaultEnvelopeId",
 													"startingBalanceExpenseId",
 													"startingMoneyConfirmedAt",
-													"lastOpenedAt",
 													"welcomeBackFrom",
 													"reconciledAt",
 													"planFundFrom",

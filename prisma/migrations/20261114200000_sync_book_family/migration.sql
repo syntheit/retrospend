@@ -28,6 +28,13 @@
 -- 6. sync_backfill() is replaced: the nine tables of P14a plus the family.
 --    sync_reset() calls it, so a reset rebuilds the whole log.
 --
+-- Two more rules. A hand-over (a member arriving or leaving, isPersonal
+-- flipping) first takes FOR UPDATE on the book row: a child row's foreign key
+-- holds KEY SHARE on it, so the hand-over waits for a row being inserted and
+-- stamps it, or the insert waits and its own trigger sees the new state. And
+-- an UPDATE of budget_book or month_close that changes only the columns that
+-- sync_book_tables() calls ignored (read bookkeeping, caches, undo state)
+-- stamps nothing: the rows are compared whole, minus those names.
 -- A tombstone is never written over a tombstone (a row deleted from a book
 -- that was already handed over keeps its first D), so a pull never gets a
 -- delete twice. No new table, role or grant: stamps go into the same "sync_change" through
@@ -54,25 +61,30 @@ AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION sync_book_tables()
-RETURNS TABLE ("tbl" TEXT, "idcol" TEXT, "bookcol" TEXT)
+RETURNS TABLE ("tbl" TEXT, "idcol" TEXT, "bookcol" TEXT, "ignored" TEXT)
 LANGUAGE sql
 IMMUTABLE
 SET search_path = public, pg_temp
 AS $$
+  -- "ignored": columns the routes do not carry and that change on their own
+  -- (read bookkeeping, derived caches, the server's undo state). An UPDATE
+  -- that changes only these stamps nothing; the comparison is over the whole
+  -- row minus these names, so a column added later is compared by default.
   SELECT * FROM (VALUES
-    ('budget_book', 'id', 'id'),
-    ('envelope_group', 'id', 'bookId'),
-    ('envelope', 'id', 'bookId'),
-    ('envelope_category', 'id', 'bookId'),
-    ('budget_movement', 'id', 'bookId'),
-    ('book_period', 'id', 'bookId'),
-    ('month_close', 'id', 'bookId'),
-    ('income_rule', 'id', 'bookId'),
-    ('income_rule_run', 'expenseId', 'bookId'),
-    ('payoff_plan', 'id', 'bookId'),
-    ('wealth_transfer', 'id', 'bookId'),
-    ('envelope_change', 'id', 'bookId')
-  ) AS v("tbl", "idcol", "bookcol")
+    ('budget_book', 'id', 'id',
+      'dirtyFromMonth,lastOpenedAt,updatedAt,styleUndo,legacyMigrationRunId,legacyMigratedAt,legacyNoticeSeenAt,legacyHiddenIds'),
+    ('envelope_group', 'id', 'bookId', ''),
+    ('envelope', 'id', 'bookId', ''),
+    ('envelope_category', 'id', 'bookId', ''),
+    ('budget_movement', 'id', 'bookId', ''),
+    ('book_period', 'id', 'bookId', ''),
+    ('month_close', 'id', 'bookId', 'checkpoint'),
+    ('income_rule', 'id', 'bookId', ''),
+    ('income_rule_run', 'expenseId', 'bookId', ''),
+    ('payoff_plan', 'id', 'bookId', ''),
+    ('wealth_transfer', 'id', 'bookId', ''),
+    ('envelope_change', 'id', 'bookId', '')
+  ) AS v("tbl", "idcol", "bookcol", "ignored")
 $$;
 
 -- Stamps every row of one book for its owner with `p_op`: the hand-over (D
@@ -105,7 +117,8 @@ END;
 $$;
 
 -- The child tables. TG_ARGV[0] is the entity (the table name), TG_ARGV[1] the
--- id column (default id). The statements are built with format() only for the
+-- id column (default id), TG_ARGV[2] the ignored columns (comma separated,
+-- sync_book_tables()). The statements are built with format() only for the
 -- id column and the transition table's name; the transition tables are
 -- new_rows (INSERT, UPDATE) and old_rows (UPDATE, DELETE).
 CREATE OR REPLACE FUNCTION sync_stamp_book_rows() RETURNS trigger
@@ -116,6 +129,8 @@ AS $$
 DECLARE
   v_entity TEXT := TG_ARGV[0];
   v_idcol  TEXT := COALESCE(TG_ARGV[1], 'id');
+  v_ignored TEXT := COALESCE(TG_ARGV[2], '');
+  v_changed TEXT := '';
   -- 1 entity, 2 op, 3 id column, 4 transition table, 5 extra condition.
   stamp CONSTANT TEXT := $sql$
     INSERT INTO "sync_change" ("entity", "entityId", "userId", "op", "txid", "seq", "changedAt")
@@ -168,7 +183,14 @@ BEGIN
     -- row (the U wins when both name the same key).
     EXECUTE format(stamp, v_entity, 'D', v_idcol, 'old_rows',
       format('AND NOT EXISTS (SELECT 1 FROM new_rows n WHERE n.%1$I = x.%1$I AND n."bookId" = x."bookId")', v_idcol));
-    EXECUTE format(stamp, v_entity, 'U', v_idcol, 'new_rows', '');
+    -- Only a row that changed in a column the routes carry is a change.
+    IF v_ignored <> '' THEN
+      v_changed := format(
+        'AND EXISTS (SELECT 1 FROM old_rows c WHERE c.%1$I = x.%1$I
+           AND to_jsonb(c.*) - %2$L::text[] IS DISTINCT FROM to_jsonb(x.*) - %2$L::text[])',
+        v_idcol, '{' || v_ignored || '}');
+    END IF;
+    EXECUTE format(stamp, v_entity, 'U', v_idcol, 'new_rows', v_changed);
   END IF;
   RETURN NULL;
 END;
@@ -182,6 +204,8 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   b RECORD;
+  -- TG_ARGV[0]: the columns whose change alone is no change (sync_book_tables()).
+  v_ignored TEXT[] := string_to_array(COALESCE(TG_ARGV[0], ''), ',');
 BEGIN
   IF TG_OP = 'INSERT' THEN
     INSERT INTO "sync_change" ("entity", "entityId", "userId", "op", "txid", "seq", "changedAt")
@@ -212,14 +236,19 @@ BEGIN
       WHERE "sync_change"."op" <> EXCLUDED."op"
            OR ("sync_change"."txid" <> EXCLUDED."txid" AND EXCLUDED."op" = 'U');
   ELSE
-    -- U for a book that is personal and alone. One that is not stamps nothing
-    -- here: a flip of isPersonal is handled below (the book's own D comes with
-    -- its rows'), a member's arrival by sync_stamp_book_members.
+    -- U for a book that is personal and alone and changed in a column the
+    -- route carries (a write of the read bookkeeping or a cache stamps
+    -- nothing). One that is not personal and alone stamps nothing here: a flip
+    -- of isPersonal is handled below (the book's own stamp comes with its
+    -- rows'), a member's arrival by sync_stamp_book_members.
     INSERT INTO "sync_change" ("entity", "entityId", "userId", "op", "txid", "seq", "changedAt")
     SELECT 'budget_book', s."id", s."uid", 'U', pg_current_xact_id(),
            nextval('sync_change_seq'), CURRENT_TIMESTAMP
     FROM (
-      SELECT n."id", sync_book_owner(n."id") AS "uid" FROM new_rows n ORDER BY n."id"
+      SELECT n."id", sync_book_owner(n."id") AS "uid"
+      FROM new_rows n JOIN old_rows o ON o."id" = n."id"
+      WHERE to_jsonb(o.*) - v_ignored IS DISTINCT FROM to_jsonb(n.*) - v_ignored
+      ORDER BY n."id"
     ) s
     WHERE s."uid" IS NOT NULL
     ON CONFLICT ("entity", "entityId", "userId") DO UPDATE
@@ -228,6 +257,18 @@ BEGIN
       WHERE "sync_change"."op" <> EXCLUDED."op"
            OR ("sync_change"."txid" <> EXCLUDED."txid" AND EXCLUDED."op" = 'U');
     -- The book's rows follow its isPersonal flag, when nobody else is a member.
+    -- First the lock that waits for a child row another transaction is
+    -- inserting or deleting (its foreign key check holds KEY SHARE on the book
+    -- row, which this UPDATE's own lock does not conflict with) and that makes
+    -- a later one wait for this transaction: either its row is seen by the
+    -- stamps below, or its own trigger sees the book's new state.
+    PERFORM 1 FROM "budget_book" bb
+    WHERE bb."id" IN (
+      SELECT o."id" FROM old_rows o JOIN new_rows n ON n."id" = o."id"
+      WHERE o."isPersonal" IS DISTINCT FROM n."isPersonal"
+    )
+    ORDER BY bb."id"
+    FOR UPDATE;
     FOR b IN
       SELECT o."id", o."createdById", n."isPersonal" AS "nowPersonal"
       FROM old_rows o JOIN new_rows n ON n."id" = o."id"
@@ -275,6 +316,9 @@ BEGIN
   IF ids IS NULL THEN
     RETURN NULL;
   END IF;
+  -- The lock that serializes this with a child row written at the same time
+  -- (see sync_stamp_book_self). Taken before the state is read.
+  PERFORM 1 FROM "budget_book" bb WHERE bb."id" = ANY (ids) ORDER BY bb."id" FOR UPDATE;
   FOR b IN
     SELECT bb."id", bb."createdById", (sync_book_owner(bb."id") IS NOT NULL) AS "solo"
     FROM "budget_book" bb
@@ -298,29 +342,29 @@ BEGIN
     IF t."tbl" = 'budget_book' THEN
       EXECUTE format(
         'CREATE TRIGGER %I AFTER INSERT ON %I REFERENCING NEW TABLE AS new_rows
-           FOR EACH STATEMENT EXECUTE FUNCTION sync_stamp_book_self()',
-        'sync_' || t."tbl" || '_ins', t."tbl");
+           FOR EACH STATEMENT EXECUTE FUNCTION sync_stamp_book_self(%L)',
+        'sync_' || t."tbl" || '_ins', t."tbl", t."ignored");
       EXECUTE format(
         'CREATE TRIGGER %I AFTER UPDATE ON %I REFERENCING OLD TABLE AS old_rows NEW TABLE AS new_rows
-           FOR EACH STATEMENT EXECUTE FUNCTION sync_stamp_book_self()',
-        'sync_' || t."tbl" || '_upd', t."tbl");
+           FOR EACH STATEMENT EXECUTE FUNCTION sync_stamp_book_self(%L)',
+        'sync_' || t."tbl" || '_upd', t."tbl", t."ignored");
       EXECUTE format(
         'CREATE TRIGGER %I AFTER DELETE ON %I REFERENCING OLD TABLE AS old_rows
-           FOR EACH STATEMENT EXECUTE FUNCTION sync_stamp_book_self()',
-        'sync_' || t."tbl" || '_del', t."tbl");
+           FOR EACH STATEMENT EXECUTE FUNCTION sync_stamp_book_self(%L)',
+        'sync_' || t."tbl" || '_del', t."tbl", t."ignored");
     ELSE
       EXECUTE format(
         'CREATE TRIGGER %I AFTER INSERT ON %I REFERENCING NEW TABLE AS new_rows
-           FOR EACH STATEMENT EXECUTE FUNCTION sync_stamp_book_rows(%L, %L)',
-        'sync_' || t."tbl" || '_ins', t."tbl", t."tbl", t."idcol");
+           FOR EACH STATEMENT EXECUTE FUNCTION sync_stamp_book_rows(%L, %L, %L)',
+        'sync_' || t."tbl" || '_ins', t."tbl", t."tbl", t."idcol", t."ignored");
       EXECUTE format(
         'CREATE TRIGGER %I AFTER UPDATE ON %I REFERENCING OLD TABLE AS old_rows NEW TABLE AS new_rows
-           FOR EACH STATEMENT EXECUTE FUNCTION sync_stamp_book_rows(%L, %L)',
-        'sync_' || t."tbl" || '_upd', t."tbl", t."tbl", t."idcol");
+           FOR EACH STATEMENT EXECUTE FUNCTION sync_stamp_book_rows(%L, %L, %L)',
+        'sync_' || t."tbl" || '_upd', t."tbl", t."tbl", t."idcol", t."ignored");
       EXECUTE format(
         'CREATE TRIGGER %I AFTER DELETE ON %I REFERENCING OLD TABLE AS old_rows
-           FOR EACH STATEMENT EXECUTE FUNCTION sync_stamp_book_rows(%L, %L)',
-        'sync_' || t."tbl" || '_del', t."tbl", t."tbl", t."idcol");
+           FOR EACH STATEMENT EXECUTE FUNCTION sync_stamp_book_rows(%L, %L, %L)',
+        'sync_' || t."tbl" || '_del', t."tbl", t."tbl", t."idcol", t."ignored");
     END IF;
   END LOOP;
 END $$;

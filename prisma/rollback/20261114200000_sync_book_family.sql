@@ -8,16 +8,28 @@
 --
 -- It drops the triggers on the twelve tables of the personal budget books
 -- (and on "budget_member"), the functions they call, puts back the version of
--- sync_backfill() that 20261114100000_sync_change defined (nine tables), deletes the
--- stamps of the twelve tables from "sync_change" (nothing in the older image
--- reads them, and a sweep would never remove a live one), and deletes the
--- migration's row from "_prisma_migrations", so that starting this release
--- again applies the migration again (a roll forward) and sync_backfill()
--- rebuilds the stamps. The log of the nine tables is left as it is. To go back
--- past 20261114100000_sync_change, run this file first and that one's snippet
--- after. Checked by src/server/services/sync/sync-book-migration.pg.test.ts
--- and, through `prisma migrate deploy`, by src/test/migrations/owner-upgrade.pg.test.ts.
+-- sync_backfill() that 20261114100000_sync_change defined (nine tables), and
+-- deletes the migration's row from "_prisma_migrations", so that starting this
+-- release again applies the migration again (a roll forward) and
+-- sync_backfill() rebuilds the stamps. It then runs sync_reset(): the older
+-- image writes the book family without stamps, so every cursor a device holds
+-- must be refused (410, a new epoch) or a row deleted in between would never
+-- reach it as a tombstone. That also deletes the twelve tables' stamps and
+-- rebuilds the nine tables'. It refuses to run when 20261114100000_sync_change
+-- is already rolled back: run this file first and that one's snippet after.
+-- Checked by src/server/services/sync/sync-book-migration.pg.test.ts and, through `prisma migrate deploy`, by src/test/migrations/owner-upgrade.pg.test.ts.
 -- Idempotent: running it twice changes nothing more.
+
+DO $$
+BEGIN
+  IF to_regclass('public.sync_change') IS NULL
+     OR to_regclass('public.sync_state') IS NULL
+     OR to_regprocedure('sync_backfill()') IS NULL
+     OR to_regprocedure('sync_reset(text)') IS NULL THEN
+    RAISE EXCEPTION 'the sync log (20261114100000_sync_change) is already rolled back: roll back 20261114200000_sync_book_family first'
+      USING ERRCODE = 'invalid_object_definition';
+  END IF;
+END $$;
 
 DO $$
 DECLARE
@@ -40,19 +52,6 @@ DROP FUNCTION IF EXISTS sync_stamp_book_rows();
 DROP FUNCTION IF EXISTS sync_book_stamp(text, text, text);
 DROP FUNCTION IF EXISTS sync_book_tables();
 DROP FUNCTION IF EXISTS sync_book_owner(text);
-
--- The tables may already be gone (the older rollback ran first); then there
--- is nothing to delete.
-DO $$
-BEGIN
-  IF to_regclass('public.sync_change') IS NOT NULL THEN
-    DELETE FROM "sync_change" WHERE "entity" IN (
-      'budget_book', 'envelope_group', 'envelope', 'envelope_category', 'budget_movement',
-      'book_period', 'month_close', 'income_rule', 'income_rule_run', 'payoff_plan',
-      'wealth_transfer', 'envelope_change'
-    );
-  END IF;
-END $$;
 
 CREATE OR REPLACE FUNCTION sync_backfill() RETURNS bigint
 LANGUAGE plpgsql
@@ -79,5 +78,8 @@ BEGIN
   RETURN total;
 END;
 $$;
+
+-- A new epoch, a log rebuilt for the nine tables, the family's stamps gone.
+SELECT sync_reset();
 
 DELETE FROM "_prisma_migrations" WHERE "migration_name" = '20261114200000_sync_book_family';

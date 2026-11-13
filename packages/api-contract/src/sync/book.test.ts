@@ -33,7 +33,6 @@ const book = {
 	defaultEnvelopeId: "e1",
 	startingBalanceExpenseId: null,
 	startingMoneyConfirmedAt: null,
-	lastOpenedAt: at,
 	welcomeBackFrom: null,
 	reconciledAt: null,
 	planFundFrom: null,
