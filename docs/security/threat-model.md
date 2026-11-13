@@ -12,7 +12,7 @@ Written 2026-11-08 against base commit `d081bfc1` (the crypto foundation F1 to F
 | Sealed record format | Built, merged | `packages/crypto/src/format.ts` |
 | Key hierarchy, wraps, recovery key text, fingerprint phrase | Built, merged | `packages/crypto/src/keys.ts` |
 | Known-answer vectors from other implementations | Built, merged | `packages/crypto/vectors/*.json`, `src/self-test.ts` |
-| Server-side encryption at rest of user text (D11): field map, per-user and instance keys, master key, canary, epoch, rollback floor, start gates | Built, behind `DATA_KEYS_WRITE`, off by default. Sealing is not allowed in production builds until the release that carries `SEALING_RELEASED = true` | `src/server/crypto/` (`field-crypto.ts`, `fields.ts`, `release.ts`), `src/server/services/keys/`, `docs/encryption-at-rest.md` |
+| Server-side encryption at rest of user text (D11): field map, per-user and instance keys, master key, canary, epoch, rollback floor, start gates | Built, behind `DATA_KEYS_WRITE`, off by default. Production builds allow sealing from the release that carries `SEALING_RELEASED = true`, and only when the operator sets the flag | `src/server/crypto/` (`field-crypto.ts`, `fields.ts`, `release.ts`), `src/server/services/keys/`, `docs/encryption-at-rest.md` |
 | Backups encrypted with age (optional, operator key) | Built, merged | `sidecar/tasks/backup.go`, `docs/self-hosting.md` |
 | Admin access log, shown to the person | Built, merged | `prisma/schema.prisma` (`AdminAccessLog`), `src/features/settings/security/admin-access-block.tsx` |
 | Nonce CSP | Built, merged. Trusted Types is report-only | `src/lib/csp.ts`, `src/proxy.ts` |

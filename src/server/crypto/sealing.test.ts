@@ -19,9 +19,17 @@ describe("sealing()", () => {
 		expect(sealingWanted(true, "development")).toBe(true);
 	});
 
-	it("never seals in production until sealing is released", () => {
-		expect(SEALING_RELEASED).toBe(false);
-		expect(sealingWanted(true, "production")).toBe(false);
+	it("never seals in production while sealing is not released", () => {
+		expect(sealingWanted(true, "production", false)).toBe(false);
+		expect(sealingWanted(true, "development", false)).toBe(true);
+	});
+
+	it("seals in a released production build only with the flag on", () => {
+		expect(SEALING_RELEASED).toBe(true);
+		expect(sealingWanted(undefined, "production")).toBe(false);
+		expect(sealingWanted(false, "production")).toBe(false);
+		expect(sealingWanted("true", "production")).toBe(false);
+		expect(sealingWanted(true, "production")).toBe(true);
 	});
 
 	it("takes a skipped validation's raw string as off", () => {

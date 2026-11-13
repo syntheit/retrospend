@@ -13,8 +13,11 @@ import { SEALING_RELEASED } from "./release";
  * What the setting asks for. Strictly `true`: with env validation skipped
  * (the image build) the flag is the raw string, truthy whatever it says.
  */
-export const sealingWanted = (flag: unknown, nodeEnv: unknown): boolean =>
-	flag === true && (SEALING_RELEASED || nodeEnv !== "production");
+export const sealingWanted = (
+	flag: unknown,
+	nodeEnv: unknown,
+	released = SEALING_RELEASED,
+): boolean => flag === true && (released || nodeEnv !== "production");
 
 let setting: () => boolean = () => false;
 let current: () => boolean = () => setting();
