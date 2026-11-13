@@ -1,11 +1,12 @@
 import { ORPCError } from "@orpc/server";
 import type { ProblemCode } from "@retrospend/api-contract/common";
-import { TRPCError } from "@trpc/server";
 import { MissingRateError } from "@retrospend/domain/money";
+import { TRPCError } from "@trpc/server";
 import { textUnavailableProblem } from "~/server/crypto/field-open";
+import { InvalidCursorError } from "~/server/services/api-v1/cursor";
 import { OverpayError } from "~/server/services/payments/procedures";
 import { RateOutOfRangeError } from "~/server/services/payments/rate-band";
-import { InvalidCursorError } from "~/server/services/api-v1/cursor";
+import { SyncResetRequiredError } from "~/server/services/sync/changes";
 import { Prisma } from "~prisma";
 import { problem } from "../errors";
 
@@ -38,6 +39,10 @@ export function toProblem(error: unknown, route?: string): unknown {
 	if (error instanceof ORPCError) return error;
 	if (error instanceof InvalidCursorError)
 		return problem("bad_request", error.message);
+	// A sync cursor from another epoch or older than the kept tombstones: the
+	// client drops that entity's rows and pulls again from the start.
+	if (error instanceof SyncResetRequiredError)
+		return problem("sync_reset_required", error.message);
 	// A conversion with no stored rate: the write is fine but cannot be booked
 	// (a missing rate is never 1). Clients show "No rate yet" and offer a rate.
 	const missing = [error, (error as { cause?: unknown } | null)?.cause].find(
