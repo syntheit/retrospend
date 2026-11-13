@@ -41,10 +41,10 @@ export const env = createEnv({
 		// malformed value stops the server at start (src/server/crypto/master-key.ts).
 		DATA_MASTER_KEY: z.string().optional(),
 		DATA_MASTER_KEY_FILE: z.string().optional(),
-		// Seal user text on write (E2EE D11). Development and tests only until
-		// sealing is released (src/server/crypto/release.ts); the server will
-		// not start with it on unless the master key, the key store grants and
-		// every category's name index are in place.
+		// Seal user text on write (E2EE D11). The server will not start with it
+		// on unless the master key, the key store grants and every category's
+		// name index are in place, and in production nothing seals until that
+		// start check has passed (src/server/crypto/sealing.ts).
 		DATA_KEYS_WRITE: z
 			.enum(["true", "false"])
 			.default("false")

@@ -4,8 +4,10 @@
  * production only once sealing is released (release.ts). db.ts wires the
  * setting, so this file reads no environment and a unit test seals nothing.
  * The start-up check (field-encryption-start.ts) refuses a server with the
- * flag on that lacks what sealing needs; the release rule here also covers
- * scripts, which skip that check. Tests flip it here instead of mocking.
+ * flag on that lacks what sealing needs. In production nothing seals until
+ * that check has passed in this process (it sets the epoch and raises the
+ * floor first), so a script run with the flag set, which skips the check,
+ * never seals. Tests flip it here instead of mocking.
  */
 import { SEALING_RELEASED } from "./release";
 
@@ -17,7 +19,16 @@ export const sealingWanted = (
 	flag: unknown,
 	nodeEnv: unknown,
 	released = SEALING_RELEASED,
-): boolean => flag === true && (released || nodeEnv !== "production");
+	started = startPassed,
+): boolean =>
+	flag === true && (nodeEnv !== "production" || (released && started));
+
+let startPassed = false;
+
+/** field-encryption-start.ts, once the epoch is set: this process may seal. */
+export function markSealingStartPassed(): void {
+	startPassed = true;
+}
 
 let setting: () => boolean = () => false;
 let current: () => boolean = () => setting();
