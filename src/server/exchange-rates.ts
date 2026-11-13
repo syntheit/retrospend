@@ -17,6 +17,7 @@ import {
 } from "@retrospend/domain/money";
 import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient } from "~prisma";
+import { toFloat } from "@retrospend/domain/precise-decimal";
 
 type RateDb = Pick<PrismaClient | Prisma.TransactionClient, "exchangeRate">;
 
@@ -47,7 +48,7 @@ async function fetchRows(db: RateDb, currency: string, date: Date) {
 	}
 	return rows.map((r) => ({
 		type: r.type,
-		rate: Number(r.rate),
+		rate: toFloat(r.rate),
 		date: r.date,
 	}));
 }

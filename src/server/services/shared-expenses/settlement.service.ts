@@ -42,6 +42,7 @@ import {
 	tellSettlementRecorded,
 } from "./settlement-notices";
 import { type ParticipantRef, sameParticipant } from "./types";
+import { toFloat } from "@retrospend/domain/precise-decimal";
 
 export { RECORDED_BY_PAYEE_REASON } from "~/server/services/payments/confirmation";
 
@@ -118,7 +119,7 @@ const decimalString = (amount: number, currency: string) =>
 	amount.toFixed(currencyDecimals(currency));
 
 const asNumber = (minor: number, currency: string) =>
-	fromMinor(minor, currency).toNumber();
+	toFloat(fromMinor(minor, currency));
 
 /**
  * The settle-up entry points of the settlement router. Recording and
@@ -403,7 +404,6 @@ export class SettlementService {
 	async sendReminder(settlementId: string) {
 		const { rows } = await this.loadGroup(this.db, settlementId);
 		const roles = groupRoles(rows, this.userId);
-
 		if (!roles.isParty || !roles.recordedByMe) {
 			throw new TRPCError({
 				code: "FORBIDDEN",
@@ -660,7 +660,7 @@ export class SettlementService {
 				: undefined;
 			const paid =
 				header && summary.kind === "payment"
-					? { amount: Number(header.amount), currency: header.currency }
+					? { amount: toFloat(header.amount), currency: header.currency }
 					: { amount: summary.amount, currency: summary.currency };
 
 			let canRemind = false;
@@ -692,12 +692,12 @@ export class SettlementService {
 				})),
 				convertedAmount:
 					group.length === 1 && lead.convertedAmount
-						? Number(lead.convertedAmount)
+						? toFloat(lead.convertedAmount)
 						: null,
 				convertedCurrency: group.length === 1 ? lead.convertedCurrency : null,
 				exchangeRateUsed:
 					group.length === 1 && lead.exchangeRateUsed
-						? Number(lead.exchangeRateUsed)
+						? toFloat(lead.exchangeRateUsed)
 						: null,
 				paymentMethod: lead.paymentMethod,
 				note: lead.note,
@@ -793,10 +793,10 @@ export class SettlementService {
 		});
 		const settlements = rows.map((settlement) => ({
 			id: settlement.id,
-			amount: Number(settlement.amount),
+			amount: toFloat(settlement.amount),
 			currency: settlement.currency,
 			convertedAmount: settlement.convertedAmount
-				? Number(settlement.convertedAmount)
+				? toFloat(settlement.convertedAmount)
 				: null,
 			convertedCurrency: settlement.convertedCurrency,
 			projectId: settlement.projectId ?? null,

@@ -70,8 +70,14 @@ describe("canonicalizeProjectLedger", () => {
 			[],
 		);
 
-		expect(out.transactions[0]!.splitParticipants).toEqual([
-			{ participantType: "user", participantId: "bob", shareAmount: 15 },
+		// 10 + 5, added exactly into one row.
+		expect(
+			out.transactions[0]!.splitParticipants.map((sp) => ({
+				...sp,
+				shareAmount: sp.shareAmount.toString(),
+			})),
+		).toEqual([
+			{ participantType: "user", participantId: "bob", shareAmount: "15" },
 		]);
 	});
 

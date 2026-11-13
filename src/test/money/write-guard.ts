@@ -4,18 +4,13 @@
  * value by the time it reaches Prisma. Writers pass a string from money-dec
  * (docs/roadmap/money-decimal.md, D5).
  *
- * pg-env.ts puts it on the client every pg test runs through. The writers
- * that still wrote numbers when the guard landed are listed in
- * number-writes.json, by column and file, and the list only shrinks:
- * - a full, passing `pnpm test:pg` fails at the end on an entry no write
- *   used (number-writes-setup.ts). When a writer moves to Decimal, remove its
- *   entry (a column with no files left goes too);
- * - write-guard.test.ts fails on an entry that main does not have.
+ * pg-env.ts puts it on the client every pg test runs through. There is no
+ * allowlist: a writer that receives a number converts it first
+ * (`columnFromFloat`, money-dec.ts) and hands Prisma the decimal text.
  */
 import { relative } from "node:path";
 import type { RuntimeModels } from "~/server/crypto/model-graph";
 import { REPO_ROOT } from "../uiRules/paths";
-import allowed from "./number-writes.json";
 
 type Row = Record<string, unknown>;
 
@@ -102,21 +97,14 @@ interface CallSite {
 /** Test code: fixtures and harnesses write literal numbers on purpose. */
 const TEST_CODE = /\.test\.tsx?$|\/__tests__\/|\/src\/test\//;
 
-/** Files still allowed to write a number, by `Model.column`. */
-export type NumberWriters = Readonly<Record<string, readonly string[]>>;
-
 export interface GuardOptions {
-	/** Defaults to number-writes.json. */
-	allow?: NumberWriters;
 	/** Defaults to test files, `__tests__` and src/test. */
 	isTestCode?: (file: string) => boolean;
-	/** Told each `Model.column<TAB>file` entry a write was let through by. */
-	used?: (entry: string) => void;
 }
 
 /**
- * `client` with every write checked. A write called from test code passes,
- * and so does one `allow` lists for its column and file. The call site is
+ * `client` with every write checked. A write called from test code passes;
+ * any other that holds a number is refused. The call site is
  * Prisma's own record (an internal parameter); when it is missing the write
  * is refused, so an upgrade that moves it makes the guard stricter, never
  * looser. The data model is read at the first write, through db-core, which
@@ -125,11 +113,7 @@ export interface GuardOptions {
  */
 export function guardMoneyWrites<C extends Extendable>(
 	client: C,
-	{
-		allow = allowed,
-		isTestCode = (file) => TEST_CODE.test(file),
-		used,
-	}: GuardOptions = {},
+	{ isTestCode = (file) => TEST_CODE.test(file) }: GuardOptions = {},
 ): C {
 	return client.$extends({
 		name: "money-write-guard",
@@ -149,12 +133,7 @@ export function guardMoneyWrites<C extends Extendable>(
 					const file =
 						at && relative(REPO_ROOT, at.fileName).split("\\").join("/");
 					const { runtimeDataModel } = await import("~/server/db-core");
-					const bad: string[] = [];
-					for (const column of numberWrites(runtimeDataModel(), model, args)) {
-						if (file && allow[column]?.includes(file))
-							used?.(`${column}\t${file}`);
-						else bad.push(column);
-					}
+					const bad = numberWrites(runtimeDataModel(), model, args);
 					if (bad.length > 0)
 						throw new Error(
 							`A JS number was written to ${bad.join(", ")} at ${at ? `${file}:${at.lineNumber}` : "an unknown call site"}: write a string from @retrospend/domain/money-dec (src/test/money/write-guard.ts)`,

@@ -10,6 +10,7 @@ import {
 	toMinorUnits,
 } from "./money";
 import {
+	columnFromFloat,
 	computeAmountInUSDDec,
 	convertDec,
 	crossRateDec,
@@ -268,10 +269,10 @@ describe("the number edge", () => {
 		expect(roundedMajor("123456789012.345", "USD")).toBe(123456789012.34);
 	});
 
-	it("toFloat keeps 15 significant digits and no float noise", () => {
-		expect(toFloat(dec("0.1").plus("0.2"))).toBe(0.3);
-		expect(toFloat(dec("1544.9999999999999999"))).toBe(1545);
-		expect(toFloat(dec("10.3"))).toBe(10.3);
+	it("toFloat with significant digits keeps 15 and no float noise", () => {
+		expect(toFloat(dec("0.1").plus("0.2"), 15)).toBe(0.3);
+		expect(toFloat(dec("1544.9999999999999999"), 15)).toBe(1545);
+		expect(toFloat(dec("10.3"), 15)).toBe(10.3);
 	});
 
 	it("number wrappers follow the same rule", () => {
@@ -302,5 +303,22 @@ describe("the number edge", () => {
 			computeAmountInUSDDec("-0.4", "ARS", 100),
 		])
 			expect(d.isNegative(), d.toString()).toBe(false);
+	});
+});
+
+describe("columnFromFloat", () => {
+	it("trims float noise and rounds half to even at the column's scale", () => {
+		// 8 dp: ...785 is a tie after an even 8; ...795 a tie after an odd 9.
+		expect(columnFromFloat(0.123456785, 8)).toBe("0.12345678");
+		expect(columnFromFloat(0.123456795, 8)).toBe("0.1234568");
+		// 6 dp, ARS per USD: ...4565 ties down to the even 6, ...4575 up to 8.
+		expect(columnFromFloat(1450.1234565, 6)).toBe("1450.123456");
+		expect(columnFromFloat(1450.1234575, 6)).toBe("1450.123458");
+		// 4 dp, a percentage: 33.33335 ties up to the even 4.
+		expect(columnFromFloat(33.33335, 4)).toBe("33.3334");
+		// 0.1 + 0.2 is 0.30000000000000004: the noise goes, no tie to break.
+		expect(columnFromFloat(0.1 + 0.2, 8)).toBe("0.3");
+		// Magnitude rounds, so a negative ties the same way.
+		expect(columnFromFloat(-0.123456785, 8)).toBe("-0.12345678");
 	});
 });

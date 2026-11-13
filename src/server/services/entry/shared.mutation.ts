@@ -36,6 +36,7 @@ import { SharedTransactionService } from "../shared-expenses/transaction.service
 import type { ParticipantRef } from "../shared-expenses/types";
 import { RETRACT_WINDOW_MS, retractSplitNotices } from "./notices";
 import { putUndoStash, takeUndoStash } from "./undo-stash";
+import { toFloat } from "@retrospend/domain/precise-decimal";
 
 type Tx = Prisma.TransactionClient;
 type Service = SharedTransactionService;
@@ -98,7 +99,7 @@ async function restoreOf(tx: Tx, id: string): Promise<SharedRestore> {
 	const mode = row.splitMode;
 	return {
 		id,
-		amount: Number(row.amount.toString()),
+		amount: toFloat(row.amount),
 		currency: row.currency,
 		description: row.description,
 		categoryId: row.categoryId,
@@ -111,7 +112,7 @@ async function restoreOf(tx: Tx, id: string): Promise<SharedRestore> {
 			participantType: p.participantType,
 			participantId: p.participantId,
 			...(mode === "EXACT"
-				? { shareAmount: Number(p.shareAmount.toString()) }
+				? { shareAmount: toFloat(p.shareAmount) }
 				: mode === "PERCENTAGE" && p.sharePercentage
 					? { sharePercentage: Number(p.sharePercentage.toString()) }
 					: mode === "SHARES" && p.shareUnits

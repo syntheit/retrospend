@@ -13,7 +13,7 @@
  */
 import type { SetupInput, TargetInput } from "~/lib/schemas/envelope";
 import type { Minor } from "./types";
-import { toMinor } from "./units";
+import { dec, toMinor } from "./units";
 
 /** The API default group names; user text, written as typed. */
 const BILLS = "Bills";
@@ -211,7 +211,7 @@ function categoryEnvelope(
 	const own = toMinor(row.amount, row.currency);
 	const inBook = money(row.amount, row.currency);
 	planned.fundMinor = inBook;
-	if (row.isRollover && Number(row.rolloverAmount) > 0)
+	if (row.isRollover && dec(row.rolloverAmount).gt(0))
 		planned.rolloverMinor = money(row.rolloverAmount, row.currency);
 	return {
 		planned,
@@ -277,7 +277,7 @@ function defaultEnvelope(
 		return set(Math.max(0, spentOutside(input.spentLast, linked)));
 	const inBook = input.convert(global.amount, global.currency);
 	if (inBook === null) missing.add(global.currency);
-	if (global.isRollover && Number(global.rolloverAmount) > 0) {
+	if (global.isRollover && dec(global.rolloverAmount).gt(0)) {
 		const roll = input.convert(global.rolloverAmount, global.currency);
 		if (roll === null) missing.add(global.currency);
 		planned.rolloverMinor = roll ?? 0;
@@ -329,7 +329,7 @@ export function planLegacyMigration(input: LegacyPlanInput): LegacyPlanResult {
 	const global = input.budgets.find((b) => b.categoryId === null);
 	const sources = categorySources(input, report);
 	const worth = (b: LegacyBudgetRow) =>
-		isPegActual(b) || b.type === "PEG_TO_LAST_MONTH" || Number(b.amount) > 0;
+		isPegActual(b) || b.type === "PEG_TO_LAST_MONTH" || dec(b.amount).gt(0);
 	if (sources.length === 0 && !(global && worth(global)))
 		return { ok: false, refusal: { reason: "NOTHING_TO_MIGRATE" } };
 

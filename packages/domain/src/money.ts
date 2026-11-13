@@ -12,8 +12,12 @@
  * rate "type": ARS has a "crypto" rate type that is still ARS per USD.
  *
  * amountInUSD = toUSD(amount, currency, exchangeRate), rounded half to even
- * to cents. The exact math lives in money-dec.ts; the number functions here
- * wrap it for display and form drafts.
+ * to cents. The exact math lives in money-dec.ts (the domain Decimal, 40
+ * digits, half to even; Prisma's Decimal only at the database boundary, by
+ * string). The number functions here wrap it for display and form drafts, and
+ * this file is the declared display edge: everywhere else a number leaves
+ * Decimal only through toFloat or roundedMajor (precise-decimal.ts,
+ * money-minor.ts), and enters through fromFloat or columnFromFloat.
  * Converting between two non-USD currencies always goes through USD. A rate
  * shown to the user ("1 EUR = 1775 ARS") is a display quote built with
  * quoteRate(); it is never stored.

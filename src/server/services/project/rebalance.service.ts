@@ -4,6 +4,7 @@ import { userTimeZone } from "~/server/services/user-time-zone";
 import type { PrismaClient } from "~prisma";
 import { joinedAfter, toIsoDate } from "./membership";
 import type { MemberRef, ProjectActor } from "./types";
+import { toFloat } from "@retrospend/domain/precise-decimal";
 
 function loadProject(db: PrismaClient, projectId: string) {
 	return Promise.all([
@@ -104,7 +105,7 @@ export async function rebalanceableExpenses(
 			return {
 				id: e.id,
 				description: e.description,
-				amount: Number(e.amount),
+				amount: toFloat(e.amount),
 				currency: e.currency,
 				date: e.date,
 				splitMode: e.splitMode,

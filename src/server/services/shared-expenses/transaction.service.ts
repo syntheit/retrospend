@@ -23,6 +23,7 @@ import {
 	resolveSplits,
 	SplitComputationError,
 } from "@retrospend/domain/shared-split-computation";
+import { amountColumn, columnsOf, rateColumn, shareColumns } from "./transaction-columns";
 import { type DeleteOptions, guardDelete } from "./delete-guard";
 import { rescaleExactSplits } from "./exact-rescale";
 
@@ -180,9 +181,9 @@ export class SharedTransactionService {
 			const transaction = await tx.sharedTransaction.create({
 				data: {
 					id: input.id, description: input.description,
-					amount: input.amount,
+					amount: amountColumn(input.amount),
 					currency: input.currency,
-					exchangeRate: capturedRate?.rate ?? null,
+					exchangeRate: rateColumn(capturedRate?.rate),
 					date: input.date,
 					categoryId: input.categoryId,
 					splitMode: splitMode as SplitMode,
@@ -204,8 +205,7 @@ export class SharedTransactionService {
 							return {
 								participantType: p.participantType,
 								participantId: p.participantId,
-								shareAmount: p.shareAmount!,
-								sharePercentage: p.sharePercentage ?? null,
+								...shareColumns(p),
 								shareUnits: p.shareUnits ?? null,
 								verificationStatus: status,
 								verifiedAt,
@@ -575,7 +575,7 @@ export class SharedTransactionService {
 			// Update the transaction
 			const updated = await tx.sharedTransaction.update({
 				where: { id: input.id },
-				data: fieldUpdates as Prisma.SharedTransactionUncheckedUpdateInput,
+				data: columnsOf(fieldUpdates),
 			});
 
 			// Auto-accept is decided by the expense's PROJECT (effectiveProjectId
@@ -603,8 +603,7 @@ export class SharedTransactionService {
 							transactionId: input.id,
 							participantType: p.participantType,
 							participantId: p.participantId,
-							shareAmount: p.shareAmount!,
-							sharePercentage: p.sharePercentage ?? null,
+							...shareColumns(p),
 							shareUnits: p.shareUnits ?? null,
 							verificationStatus: status,
 							verifiedAt,

@@ -8,6 +8,7 @@ import {
 	DELETED_USER_NAME,
 	DELETED_USER_SENTINEL,
 } from "~/server/services/user-deletion.service";
+import { type DecimalInput, toFloat } from "@retrospend/domain/precise-decimal";
 
 // ── Output Types ──────────────────────────────────────────────────────────────
 
@@ -108,10 +109,8 @@ export function formatSplitMode(mode: string): string {
 
 function safeFormatCurrency(amount: unknown, currency: unknown): string {
 	try {
-		const n = typeof amount === "number" ? amount : Number(amount);
 		const c = typeof currency === "string" ? currency : "USD";
-		if (isNaN(n)) return String(amount);
-		return formatCurrency(n, c);
+		return formatCurrency(toFloat(amount as DecimalInput), c);
 	} catch {
 		return String(amount);
 	}

@@ -111,7 +111,7 @@ export function roundedMinor(value: DecimalInput, currency: string): number {
  * client's minor units are the ones roundedMinor gives.
  */
 export function roundedMajor(value: DecimalInput, currency: string): number {
-	return toFloat(roundMoneyDec(value, currency));
+	return toFloat(roundMoneyDec(value, currency), 15);
 }
 
 const DECIMAL_TEXT = /^([+-]?)(\d*)(?:\.(\d*))?(?:e([+-]?\d+))?$/i;

@@ -10,6 +10,7 @@ import { resolveClaimAliases } from "./identity";
 import { buildCallerRoleMap, deriveCanModify } from "./project-permissions";
 import { encodeLedgerCursor, ledgerCursorWhere, peopleOn } from "./ledger-cursor";
 import type { ParticipantRef } from "./types";
+import { type DecimalInput, toFloat } from "@retrospend/domain/precise-decimal";
 
 type AppDb = PrismaClient;
 
@@ -197,7 +198,6 @@ export class PeopleService {
 		});
 
 		if (transactions.length === 0) return [];
-
 		const contactStats = new Map<string, ContactStats>();
 
 		for (const tx of transactions) {
@@ -563,7 +563,7 @@ export class PeopleService {
 				return {
 					id: tx.id,
 					description: tx.description,
-					amount: Number(tx.amount),
+					amount: toFloat(tx.amount),
 					currency: tx.currency,
 					category: tx.category,
 					date: tx.date,
@@ -574,8 +574,8 @@ export class PeopleService {
 						avatarUrl: payerIdentity?.avatarUrl ?? null,
 						isMe: tx.paidByType === this.currentUserRef.participantType && tx.paidById === this.currentUserRef.participantId,
 					},
-					myShare: myPart ? Number(myPart.shareAmount) : 0,
-					theirShare: theirPart ? Number(theirPart.shareAmount) : 0,
+					myShare: myPart ? toFloat(myPart.shareAmount) : 0,
+					theirShare: theirPart ? toFloat(theirPart.shareAmount) : 0,
 					myVerificationStatus: myPart?.verificationStatus ?? "PENDING",
 					theirVerificationStatus: theirPart?.verificationStatus ?? "PENDING",
 					project: tx.project ?? null,
@@ -588,7 +588,7 @@ export class PeopleService {
 						return {
 							participantType: sp.participantType,
 							participantId: sp.participantId,
-							shareAmount: Number(sp.shareAmount),
+							shareAmount: toFloat(sp.shareAmount),
 							name: identity?.name ?? "Unknown",
 							avatarUrl: identity?.avatarUrl ?? null,
 						};
@@ -961,7 +961,7 @@ export class PeopleService {
 			return {
 				id: tx.id,
 				description: tx.description,
-				amount: Number(tx.amount),
+				amount: toFloat(tx.amount as DecimalInput),
 				currency: tx.currency,
 				category: tx.category,
 				date: tx.date,
@@ -972,8 +972,8 @@ export class PeopleService {
 					avatarUrl: payerIdentity?.avatarUrl ?? null,
 					isMe: tx.paidByType === this.currentUserRef.participantType && tx.paidById === this.currentUserRef.participantId,
 				},
-				myShare: myPart ? Number(myPart.shareAmount) : 0,
-				theirShare: theirPart ? Number(theirPart.shareAmount) : 0,
+				myShare: myPart ? toFloat(myPart.shareAmount as DecimalInput) : 0,
+				theirShare: theirPart ? toFloat(theirPart.shareAmount as DecimalInput) : 0,
 				myVerificationStatus: myPart?.verificationStatus ?? "PENDING",
 				theirVerificationStatus:
 					theirPart?.verificationStatus ?? "PENDING",
@@ -987,7 +987,7 @@ export class PeopleService {
 					return {
 						participantType: sp.participantType,
 						participantId: sp.participantId,
-						shareAmount: Number(sp.shareAmount),
+						shareAmount: toFloat(sp.shareAmount as DecimalInput),
 						name: identity?.name ?? "Unknown",
 						avatarUrl: identity?.avatarUrl ?? null,
 					};

@@ -26,6 +26,7 @@ import {
 } from "./rate-types";
 import { listedEntryWhere } from "./spending";
 import { sortByText } from "./text-order";
+import { toFloat } from "@retrospend/domain/precise-decimal";
 
 /** pricingSource of a rate the user typed in by hand. */
 export const CUSTOM_PRICING_SOURCE = CUSTOM_RATE_TYPE;
@@ -95,7 +96,7 @@ function savedRateOf(row: {
 }): SavedRate {
 	return {
 		currency: row.currency,
-		exchangeRate: Number(row.exchangeRate),
+		exchangeRate: toFloat(row.exchangeRate),
 		rateType: row.rateType,
 		homeCurrency: row.homeCurrency,
 		homeRate: row.homeRate?.toString() ?? null,

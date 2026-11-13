@@ -3,13 +3,7 @@ import { dec } from "@retrospend/domain/precise-decimal";
 import { describe, expect, it } from "vitest";
 import { runtimeDataModel } from "~/server/db-core";
 import { Prisma, PrismaClient } from "~prisma";
-import { runGit } from "../logHygiene/repo";
-import allowed from "./number-writes.json";
-import {
-	guardMoneyWrites,
-	type NumberWriters,
-	numberWrites,
-} from "./write-guard";
+import { guardMoneyWrites, numberWrites } from "./write-guard";
 
 const data = runtimeDataModel();
 const writes = (model: string, args: unknown) =>
@@ -122,17 +116,9 @@ describe("guardMoneyWrites on a client", () => {
 		}),
 	});
 
-	it("refuses a number before the query runs, and lets a listed writer through", async () => {
+	it("refuses a number before the query runs, from any file that is not test code", async () => {
 		// Count this file as app code, so its writes are checked.
-		const used: string[] = [];
-		const guarded = guardMoneyWrites(raw, {
-			allow: {
-				"Expense.exchangeRate": ["src/test/money/write-guard.test.ts"],
-				"Expense.amount": ["src/server/services/expense.service.ts"],
-			},
-			isTestCode: () => false,
-			used: (entry) => used.push(entry),
-		});
+		const guarded = guardMoneyWrites(raw, { isTestCode: () => false });
 		await expect(
 			guarded.expense.update({
 				where: { id: "e" },
@@ -141,26 +127,21 @@ describe("guardMoneyWrites on a client", () => {
 		).rejects.toThrow(
 			/JS number was written to Expense\.amountInUSD at src\/test\/money\/write-guard\.test\.ts:\d+/,
 		);
-		// Listed for another file only: refused here.
 		await expect(
 			guarded.expense.update({ where: { id: "e" }, data: { amount: 1 } }),
 		).rejects.toThrow(/JS number was written to Expense\.amount at/);
-		// A listed column goes on to the query, which fails only for want of a database.
+		// A string goes on to the query, which fails only for want of a database:
+		// Prisma's own error (no server), not the guard's plain Error.
 		const failed = await guarded.expense
-			.update({ where: { id: "e" }, data: { exchangeRate: 100 } })
+			.update({ where: { id: "e" }, data: { exchangeRate: "1450.123456" } })
 			.then(
 				() => null,
 				(error: unknown) => error,
 			);
-		// Prisma's own error (no server), not the guard's plain Error.
 		expect((failed as Error).name).toMatch(/^PrismaClient/);
-		// Only the entry that let a write through is reported as used.
-		expect(used).toEqual([
-			"Expense.exchangeRate\tsrc/test/money/write-guard.test.ts",
-		]);
 	});
 
-	it("refuses when Prisma gives no call site, even for a listed column", async () => {
+	it("refuses when Prisma gives no call site", async () => {
 		// A stand-in client that hands back the extension, so the hook is called
 		// the way Prisma would call it after an upgrade that drops the call site.
 		type Hook = (params: {
@@ -210,30 +191,5 @@ describe("guardMoneyWrites on a client", () => {
 		expect(guarded._runtimeDataModel).toBe(
 			(raw as unknown as { _runtimeDataModel: unknown })._runtimeDataModel,
 		);
-	});
-});
-
-describe("number-writes.json", () => {
-	const entries = (list: NumberWriters) =>
-		Object.entries(list).flatMap(([column, files]) =>
-			files.map((file) => `${column} ${file}`),
-		);
-
-	it("only shrinks: every entry is on main too", () => {
-		const base = (
-			runGit(["merge-base", "HEAD", "main"]) ??
-			runGit(["merge-base", "HEAD", "origin/main"])
-		)?.trim();
-		const was =
-			base && runGit(["show", `${base}:src/test/money/number-writes.json`]);
-		if (!was) {
-			console.warn("number-writes.json: no copy on main to compare with");
-			return;
-		}
-		const onMain = new Set(entries(JSON.parse(was) as NumberWriters));
-		expect(
-			entries(allowed).filter((entry) => !onMain.has(entry)),
-			"New number writers: write a string from money-dec instead",
-		).toEqual([]);
 	});
 });

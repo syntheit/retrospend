@@ -34,10 +34,27 @@ export function fromFloat(n: number): Decimal {
 }
 
 /**
- * A decimal read as the float a client that still takes numbers can hold: 15
- * significant digits, the inverse of fromFloat. Display only; a figure rounds
- * to its currency first (roundedMajor) or leaves as minor units.
+ * A decimal as the float a client that still takes numbers can hold. The one
+ * place a Decimal becomes a number, for a DTO field or a form draft:
+ *
+ * - Without `significant` it is exact: it throws when the float does not read
+ *   back as the same decimal (more digits than a float keeps, such as 2^53 + 1
+ *   or 19 digits), so a stored value never silently loses digits.
+ * - With `significant` it trims to that many significant digits (15 is all a
+ *   float reliably keeps, the inverse of fromFloat), for a computed figure
+ *   such as a ratio, where the 40-digit tail is noise. A money figure rounds
+ *   to its currency first (roundedMajor) or leaves as minor units.
+ *
+ * Call it only as an object literal property value or a return value, never
+ * in arithmetic or through a variable: the ratchet counts those
+ * (src/test/money/arithmetic.test.ts).
  */
-export function toFloat(value: Decimal): number {
-	return Number(value.toSignificantDigits(15).toString());
+export function toFloat(value: DecimalInput, significant?: number): number {
+	const exact = dec(value);
+	if (significant !== undefined)
+		return Number(exact.toSignificantDigits(significant).toString());
+	const n = Number(exact.toString());
+	if (!dec(n).eq(exact))
+		throw new RangeError(`${exact.toString()} does not fit a number exactly`);
+	return n;
 }

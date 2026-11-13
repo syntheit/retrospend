@@ -3,6 +3,7 @@ import type { Prisma, PrismaClient, SplitParticipant } from "~prisma";
 import { logAudit } from "./audit-log";
 import { effectOfRemovingShare } from "./balance-change";
 import type { ParticipantRef } from "./types";
+import { dec } from "@retrospend/domain/precise-decimal";
 
 /**
  * The write of "Remove me", on the caller's transaction. It answers the rows it
@@ -111,10 +112,10 @@ export async function removeSelfIn(
 		txn.paidByType === actor.participantType &&
 		txn.paidById === actor.participantId;
 	const myShare = mySplits.reduce(
-		(sum, sp) => sum + Number(sp.shareAmount),
-		0,
+		(sum, sp) => sum.plus(dec(sp.shareAmount)),
+		dec(0),
 	);
-	if (!confirmBalanceChange && !iPaid && myShare > 0) {
+	if (!confirmBalanceChange && !iPaid && myShare.gt(0)) {
 		const effect = await effectOfRemovingShare(
 			tx as unknown as PrismaClient,
 			{

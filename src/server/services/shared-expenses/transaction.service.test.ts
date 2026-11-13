@@ -21,8 +21,25 @@ vi.mock("./balance", () => ({
 	computeBalance: vi.fn().mockResolvedValue({ byCurrency: {}, minorByCurrency: {} }),
 }));
 
+// The audit snapshot is not under test, and these mocked rows carry no amount.
+vi.mock("./serialize", async (importOriginal) => ({
+	...(await importOriginal<typeof import("./serialize")>()),
+	serializeTransaction: (tx: unknown) => tx,
+}));
+
 import { computeBalance } from "./balance";
 import { SharedTransactionService } from "./transaction.service";
+
+/** The service writes decimal text at each column's scale; these cases compare the numbers. */
+function asNumbers<T>(rows: T): T {
+	return (rows as Array<Record<string, unknown>>).map((r) => ({
+		...r,
+		shareAmount: Number(r.shareAmount),
+		...(r.sharePercentage == null
+			? {}
+			: { sharePercentage: Number(r.sharePercentage) }),
+	})) as T;
+}
 
 // Mock Prisma transaction client
 function createMockDb() {
@@ -128,7 +145,7 @@ describe("SharedTransactionService", () => {
 			const firstCall = txClient.sharedTransaction.create.mock.calls[0];
 			if (!firstCall) throw new Error("Expected create to be called");
 			const createCall = firstCall[0];
-			const splits = createCall.data.splitParticipants.create;
+			const splits = asNumbers(createCall.data.splitParticipants.create);
 			expect(splits).toHaveLength(3);
 			expect(splits[0].shareAmount).toBe(30);
 			expect(splits[1].shareAmount).toBe(30);
@@ -173,7 +190,7 @@ describe("SharedTransactionService", () => {
 
 			const firstCall = txClient.sharedTransaction.create.mock.calls[0];
 			if (!firstCall) throw new Error("Expected create to be called");
-			const splits = firstCall[0].data.splitParticipants.create;
+			const splits = asNumbers(firstCall[0].data.splitParticipants.create);
 			// $100 / 3 = $33.33... → payer (alice) gets $33.34, others $33.33
 			expect(splits[0].shareAmount).toBe(33.34); // alice (payer)
 			expect(splits[1].shareAmount).toBe(33.33); // bob
@@ -211,7 +228,7 @@ describe("SharedTransactionService", () => {
 
 			const firstCall = txClient.sharedTransaction.create.mock.calls[0];
 			if (!firstCall) throw new Error("Expected create to be called");
-			const splits = firstCall[0].data.splitParticipants.create;
+			const splits = asNumbers(firstCall[0].data.splitParticipants.create);
 
 			// Only the two split participants get a row; the payer (alice) has none,
 			// so she owes nothing and is owed the full $50.
@@ -284,7 +301,7 @@ describe("SharedTransactionService", () => {
 
 			const firstCall = txClient.sharedTransaction.create.mock.calls[0];
 			if (!firstCall) throw new Error("Expected create to be called");
-			const splits = firstCall[0].data.splitParticipants.create;
+			const splits = asNumbers(firstCall[0].data.splitParticipants.create);
 			expect(splits[0].shareAmount).toBe(60);
 			expect(splits[1].shareAmount).toBe(40);
 		});
@@ -334,7 +351,7 @@ describe("SharedTransactionService", () => {
 			const existing = {
 				id: "txn-1",
 				description: "Dinner",
-				amount: { toNumber: () => 50 },
+				amount: { toNumber: () => 50, toString: () => "50" },
 				currency: "USD",
 				date: new Date("2026-03-01"),
 				categoryId: null,
@@ -351,12 +368,12 @@ describe("SharedTransactionService", () => {
 					{
 						participantType: "user",
 						participantId: "alice",
-						shareAmount: { toNumber: () => 25 },
+						shareAmount: { toNumber: () => 25, toString: () => "25" },
 					},
 					{
 						participantType: "user",
 						participantId: "bob",
-						shareAmount: { toNumber: () => 25 },
+						shareAmount: { toNumber: () => 25, toString: () => "25" },
 					},
 				],
 			};
@@ -420,7 +437,7 @@ describe("SharedTransactionService", () => {
 			const existing = {
 				id: "txn-1",
 				description: "Dinner",
-				amount: { toNumber: () => 50 },
+				amount: { toNumber: () => 50, toString: () => "50" },
 				currency: "USD",
 				date: new Date("2026-03-01"),
 				categoryId: null,
@@ -437,23 +454,23 @@ describe("SharedTransactionService", () => {
 					{
 						participantType: "user",
 						participantId: "alice",
-						shareAmount: { toNumber: () => 25 },
+						shareAmount: { toNumber: () => 25, toString: () => "25" },
 					},
 					{
 						participantType: "user",
 						participantId: "bob",
-						shareAmount: { toNumber: () => 25 },
+						shareAmount: { toNumber: () => 25, toString: () => "25" },
 					},
 				],
 			};
 			txClient.sharedTransaction.findUnique.mockResolvedValue(existing);
 			txClient.sharedTransaction.update.mockResolvedValue({
 				...existing,
-				amount: { toNumber: () => 60 },
+				amount: { toNumber: () => 60, toString: () => "60" },
 			});
 			txClient.sharedTransaction.findUniqueOrThrow.mockResolvedValue({
 				...existing,
-				amount: { toNumber: () => 60 },
+				amount: { toNumber: () => 60, toString: () => "60" },
 			});
 
 			const service = new SharedTransactionService(db as never, {
@@ -493,7 +510,7 @@ describe("SharedTransactionService", () => {
 			const existing = {
 				id: "txn-1",
 				description: "Dinner",
-				amount: { toNumber: () => 50 },
+				amount: { toNumber: () => 50, toString: () => "50" },
 				currency: "USD",
 				date: new Date("2026-03-01"),
 				categoryId: null,
@@ -554,7 +571,7 @@ describe("SharedTransactionService", () => {
 			});
 			const firstCall = txClient.sharedTransaction.create.mock.calls[0];
 			if (!firstCall) throw new Error("Expected create to be called");
-			return firstCall[0].data.splitParticipants.create as Array<{
+			return asNumbers(firstCall[0].data.splitParticipants.create) as Array<{
 				participantId: string;
 				shareAmount: number;
 			}>;
@@ -637,7 +654,7 @@ describe("SharedTransactionService", () => {
 
 			const firstCall = txClient.sharedTransaction.create.mock.calls[0];
 			if (!firstCall) throw new Error("Expected create to be called");
-			const splits = firstCall[0].data.splitParticipants.create;
+			const splits = asNumbers(firstCall[0].data.splitParticipants.create);
 			expect(splits[0].shareAmount).toBe(100);
 			expect(splits[1].shareAmount).toBe(0);
 		});
@@ -677,7 +694,7 @@ describe("SharedTransactionService", () => {
 
 			const firstCall = txClient.sharedTransaction.create.mock.calls[0];
 			if (!firstCall) throw new Error("Expected create to be called");
-			const splits = firstCall[0].data.splitParticipants.create;
+			const splits = asNumbers(firstCall[0].data.splitParticipants.create);
 			expect(
 				splits[0].shareAmount + splits[1].shareAmount + splits[2].shareAmount,
 			).toBe(100);
@@ -802,7 +819,7 @@ describe("SharedTransactionService", () => {
 			});
 			const firstCall = txClient.sharedTransaction.create.mock.calls[0];
 			if (!firstCall) throw new Error("Expected create to be called");
-			return firstCall[0].data.splitParticipants.create as Array<{
+			return asNumbers(firstCall[0].data.splitParticipants.create) as Array<{
 				participantId: string;
 				shareAmount: number;
 			}>;
@@ -1018,7 +1035,7 @@ describe("SharedTransactionService", () => {
 			});
 			const firstCall = txClient.sharedTransaction.create.mock.calls[0];
 			if (!firstCall) throw new Error("Expected create to be called");
-			return firstCall[0].data.splitParticipants.create as Array<{
+			return asNumbers(firstCall[0].data.splitParticipants.create) as Array<{
 				participantId: string;
 				shareAmount: number;
 			}>;
@@ -1166,7 +1183,7 @@ describe("SharedTransactionService", () => {
 			});
 			const firstCall = txClient.sharedTransaction.create.mock.calls[0];
 			if (!firstCall) throw new Error("Expected create to be called");
-			return firstCall[0].data.splitParticipants.create as Array<{
+			return asNumbers(firstCall[0].data.splitParticipants.create) as Array<{
 				participantType: string;
 				participantId: string;
 				shareAmount: number;
@@ -1300,7 +1317,7 @@ describe("SharedTransactionService", () => {
 			const existing = {
 				id: "txn-1",
 				description: "Dinner",
-				amount: { toNumber: () => 90 },
+				amount: { toNumber: () => 90, toString: () => "90" },
 				currency: "USD",
 				date: new Date("2026-03-01"),
 				categoryId: null,
@@ -1317,14 +1334,14 @@ describe("SharedTransactionService", () => {
 					{
 						participantType: "user",
 						participantId: "alice",
-						shareAmount: { toNumber: () => 45 },
+						shareAmount: { toNumber: () => 45, toString: () => "45" },
 						sharePercentage: null,
 						shareUnits: null,
 					},
 					{
 						participantType: "user",
 						participantId: "bob",
-						shareAmount: { toNumber: () => 45 },
+						shareAmount: { toNumber: () => 45, toString: () => "45" },
 						sharePercentage: null,
 						shareUnits: null,
 					},
@@ -1353,7 +1370,7 @@ describe("SharedTransactionService", () => {
 			const createManyCallArr = txClient.splitParticipant.createMany.mock.calls[0];
 			if (!createManyCallArr) throw new Error("Expected createMany Call");
 			const createManyCall = createManyCallArr[0];
-			const newSplits = createManyCall.data as Array<{
+			const newSplits = asNumbers(createManyCall.data) as Array<{
 				participantId: string;
 				shareAmount: number;
 			}>;
@@ -1369,7 +1386,7 @@ describe("SharedTransactionService", () => {
 			const existing = {
 				id: "txn-1",
 				description: "Dinner",
-				amount: { toNumber: () => 100 },
+				amount: { toNumber: () => 100, toString: () => "100" },
 				currency: "USD",
 				date: new Date("2026-03-01"),
 				categoryId: null,
@@ -1386,15 +1403,15 @@ describe("SharedTransactionService", () => {
 					{
 						participantType: "user",
 						participantId: "alice",
-						shareAmount: { toNumber: () => 60 },
-						sharePercentage: { toNumber: () => 60 },
+						shareAmount: { toNumber: () => 60, toString: () => "60" },
+						sharePercentage: { toNumber: () => 60, toString: () => "60" },
 						shareUnits: null,
 					},
 					{
 						participantType: "user",
 						participantId: "bob",
-						shareAmount: { toNumber: () => 40 },
-						sharePercentage: { toNumber: () => 40 },
+						shareAmount: { toNumber: () => 40, toString: () => "40" },
+						sharePercentage: { toNumber: () => 40, toString: () => "40" },
 						shareUnits: null,
 					},
 				],
@@ -1420,7 +1437,7 @@ describe("SharedTransactionService", () => {
 			const createManyCallArr = txClient.splitParticipant.createMany.mock.calls[0];
 			if (!createManyCallArr) throw new Error("Expected createMany Call");
 			const createManyCall = createManyCallArr[0];
-			const newSplits = createManyCall.data as Array<{
+			const newSplits = asNumbers(createManyCall.data) as Array<{
 				participantId: string;
 				shareAmount: number;
 			}>;
@@ -1436,7 +1453,7 @@ describe("SharedTransactionService", () => {
 			const existing = {
 				id: "txn-1",
 				description: "Dinner",
-				amount: { toNumber: () => 90 },
+				amount: { toNumber: () => 90, toString: () => "90" },
 				currency: "USD",
 				date: new Date("2026-03-01"),
 				categoryId: null,
@@ -1453,14 +1470,14 @@ describe("SharedTransactionService", () => {
 					{
 						participantType: "user",
 						participantId: "alice",
-						shareAmount: { toNumber: () => 60 },
+						shareAmount: { toNumber: () => 60, toString: () => "60" },
 						sharePercentage: null,
 						shareUnits: 2,
 					},
 					{
 						participantType: "user",
 						participantId: "bob",
-						shareAmount: { toNumber: () => 30 },
+						shareAmount: { toNumber: () => 30, toString: () => "30" },
 						sharePercentage: null,
 						shareUnits: 1,
 					},
@@ -1487,7 +1504,7 @@ describe("SharedTransactionService", () => {
 			const createManyCallArr = txClient.splitParticipant.createMany.mock.calls[0];
 			if (!createManyCallArr) throw new Error("Expected createMany Call");
 			const createManyCall = createManyCallArr[0];
-			const newSplits = createManyCall.data as Array<{
+			const newSplits = asNumbers(createManyCall.data) as Array<{
 				participantId: string;
 				shareAmount: number;
 			}>;
@@ -1508,7 +1525,7 @@ describe("SharedTransactionService", () => {
 			return {
 				id: "txn-1",
 				description: "Dinner",
-				amount: { toNumber: () => oldAmount },
+				amount: { toNumber: () => oldAmount, toString: () => String(oldAmount) },
 				currency: "USD",
 				date: new Date("2026-03-01"),
 				categoryId: null,
@@ -1524,7 +1541,7 @@ describe("SharedTransactionService", () => {
 				splitParticipants: shares.map((s) => ({
 					participantType: "user",
 					participantId: s.id,
-					shareAmount: { toNumber: () => s.amount },
+					shareAmount: { toNumber: () => s.amount, toString: () => String(s.amount) },
 					sharePercentage: null,
 					shareUnits: null,
 				})),
@@ -1555,7 +1572,10 @@ describe("SharedTransactionService", () => {
 			await service.update({ id: "txn-1", amount: newAmount });
 			const call = txClient.splitParticipant.createMany.mock.calls[0];
 			if (!call) throw new Error("Expected createMany to be called");
-			return call[0].data as Array<{ participantId: string; shareAmount: number }>;
+			return asNumbers(call[0].data) as Array<{
+				participantId: string;
+				shareAmount: number;
+			}>;
 		}
 
 		it("EXACT mode: amount change rescales shares proportionally ($100 [40/60] → $200 [80/120])", async () => {
@@ -1625,7 +1645,7 @@ describe("SharedTransactionService", () => {
 			return {
 				id: "txn-1",
 				description: "Dinner",
-				amount: { toNumber: () => 100 },
+				amount: { toNumber: () => 100, toString: () => "100" },
 				currency: "USD",
 				date: new Date("2026-03-01"),
 				categoryId: null,
@@ -1760,7 +1780,7 @@ describe("SharedTransactionService", () => {
 			{
 				participantType: "user",
 				participantId: "alice",
-				shareAmount: { toNumber: () => 100 },
+				shareAmount: { toNumber: () => 100, toString: () => "100" },
 				sharePercentage: null,
 				shareUnits: null,
 			},
@@ -1977,7 +1997,7 @@ describe("SharedTransactionService", () => {
 					{
 						participantType: "user",
 						participantId: "bob",
-						shareAmount: { toNumber: () => 0 },
+						shareAmount: { toNumber: () => 0, toString: () => "0" },
 						sharePercentage: null,
 						shareUnits: null,
 					},
@@ -2035,14 +2055,14 @@ describe("SharedTransactionService", () => {
 					{
 						participantType: "user",
 						participantId: "alice",
-						shareAmount: { toNumber: () => 50 },
+						shareAmount: { toNumber: () => 50, toString: () => "50" },
 						sharePercentage: null,
 						shareUnits: null,
 					},
 					{
 						participantType: "user",
 						participantId: "bob",
-						shareAmount: { toNumber: () => 50 },
+						shareAmount: { toNumber: () => 50, toString: () => "50" },
 						sharePercentage: null,
 						shareUnits: null,
 					},
@@ -2075,7 +2095,7 @@ describe("SharedTransactionService", () => {
 					{
 						participantType: "user",
 						participantId: "alice",
-						shareAmount: { toNumber: () => 100 },
+						shareAmount: { toNumber: () => 100, toString: () => "100" },
 						sharePercentage: null,
 						shareUnits: null,
 					},
@@ -2106,7 +2126,7 @@ describe("SharedTransactionService", () => {
 					{
 						participantType: "user",
 						participantId: "alice",
-						shareAmount: { toNumber: () => 100 },
+						shareAmount: { toNumber: () => 100, toString: () => "100" },
 						sharePercentage: null,
 						shareUnits: null,
 					},
@@ -2142,7 +2162,7 @@ describe("SharedTransactionService", () => {
 					{
 						participantType: "user",
 						participantId: "alice",
-						shareAmount: { toNumber: () => 100 },
+						shareAmount: { toNumber: () => 100, toString: () => "100" },
 						sharePercentage: null,
 						shareUnits: null,
 					},

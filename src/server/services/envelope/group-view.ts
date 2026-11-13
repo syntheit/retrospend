@@ -16,6 +16,7 @@ import {
 } from "./groups";
 import type { Minor } from "./types";
 import { dec, sumMinor, toMinor } from "./units";
+import { toFloat } from "@retrospend/domain/precise-decimal";
 
 /** The base for % targets this month, or null before any income exists. */
 export interface GroupBase {
@@ -50,7 +51,7 @@ export function groupTargetOf(
 			value:
 				g.targetKind === "AMOUNT"
 					? toMinor(value, H)
-					: dec(value).times(100).toDecimalPlaces(0).toNumber(),
+					: toFloat(dec(value).times(100).toDecimalPlaces(0)),
 		},
 		mainEnvelopeId: g.mainEnvelopeId,
 	};

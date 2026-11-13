@@ -20,6 +20,7 @@ import {
 } from "~/server/services/shared-expenses/types";
 import type { Prisma } from "~prisma";
 import type { PairEvent } from "../payments/ledger";
+import { dec } from "@retrospend/domain/precise-decimal";
 
 type Tx = Prisma.TransactionClient;
 
@@ -119,7 +120,7 @@ export async function lockSettledSplits(
 			.filter(
 				(p, i) =>
 					!sameParticipant(p, paidBy) &&
-					Number(t.splitParticipants[i]?.shareAmount ?? 0) !== 0,
+					!dec(t.splitParticipants[i]?.shareAmount ?? 0).isZero(),
 			);
 		let all = true;
 		for (const other of others) {

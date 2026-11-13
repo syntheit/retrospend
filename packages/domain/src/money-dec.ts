@@ -11,7 +11,13 @@
  */
 import { currencyDecimals } from "./currency-decimals";
 import { isCrypto } from "./currency-format";
-import { Dec, type Decimal, type DecimalInput, dec } from "./precise-decimal";
+import {
+	Dec,
+	type Decimal,
+	type DecimalInput,
+	dec,
+	fromFloat,
+} from "./precise-decimal";
 
 export const USD = "USD";
 
@@ -172,6 +178,15 @@ export function roundUSDDec(value: DecimalInput): Decimal {
 /** A rate at a column's scale (6 for exchangeRate, 12 for homeRate), half to even. */
 export function roundRateDec(value: DecimalInput, scale: number): Decimal {
 	return roundTo(value, scale);
+}
+
+/**
+ * A number a client sent, as the decimal text of a column with `scale`
+ * decimals: float noise trimmed (fromFloat), then half to even. What a writer
+ * that still receives a number hands to Prisma, never the number itself.
+ */
+export function columnFromFloat(value: number, scale: number): string {
+	return roundRateDec(fromFloat(value), scale).toFixed();
 }
 
 /** amountInUSD as stored: converted and rounded to cents, half to even. */

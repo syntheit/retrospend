@@ -41,14 +41,6 @@ export function formatPercent(value: number, decimals = 1): string {
 	return `${formatNumber(value, decimals)}%`;
 }
 
-/**
- * Strips commas from a formatted number string and parses to float.
- * Returns NaN for empty/invalid strings (caller should check with isNaN).
- */
-export function parseFormattedNumber(formatted: string): number {
-	return parseFloat(formatted.replace(/,/g, ""));
-}
-
 export function getCurrencySymbol(
 	currency: string,
 	useNativeForDefault = false,

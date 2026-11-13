@@ -2,6 +2,7 @@ import { isValidRate } from "@retrospend/domain/money";
 import {
 	convertDec,
 	fromUSDDec,
+	hasRate as hasUsableRate,
 	roundUSDDec,
 	toUSDDec,
 	USD,
@@ -16,7 +17,6 @@ import {
 import { TRPCError } from "@trpc/server";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { normalizeDate } from "~/lib/date";
-import { toNumberOrNull, toNumberWithDefault } from "~/lib/utils";
 import type { Prisma, PrismaClient } from "~prisma";
 import { findExchangeRate, findExchangeRatesForDates } from "../exchange-rates";
 import { loadDashboardLegs } from "./accounts/dashboard-legs";
@@ -64,14 +64,15 @@ export class WealthService {
 	async resolveExchangeRate(
 		currency: string,
 		date: Date,
-		requested?: { rate?: number | null; type?: string | null },
+		requested?: { rate?: DecimalInput | null; type?: string | null },
 	): Promise<{ rate: number; rateType: string | null }> {
 		if (currency === BASE_CURRENCY) {
 			return { rate: 1, rateType: null };
 		}
 
-		if (requested?.type === CUSTOM_RATE_TYPE && isValidRate(requested.rate)) {
-			return { rate: requested.rate, rateType: CUSTOM_RATE_TYPE };
+		const custom = requested?.type === CUSTOM_RATE_TYPE ? requested.rate : null;
+		if (custom != null && hasUsableRate(currency, custom)) {
+			return { rate: toFloat(custom), rateType: CUSTOM_RATE_TYPE };
 		}
 
 		const bestRate = await findExchangeRate(
@@ -263,10 +264,9 @@ export class WealthService {
 
 		const assetsWithUSD = assets.map((asset) => {
 			const balance = dec(asset.balance);
-			const interestRate = toNumberOrNull(asset.interestRate);
-			const shownBalance = toNumberWithDefault(asset.balance);
+			const interestRate =
+				asset.interestRate === null ? null : dec(asset.interestRate);
 			const worth = valueToday(rateFor, asset, balance, targetCurrency, now);
-
 			if (worth === null) {
 				// Left out of every total and reported, never valued at 1:1.
 				console.warn(
@@ -275,8 +275,8 @@ export class WealthService {
 				missingRateCurrencies.add(asset.currency);
 				return {
 					...asset,
-					interestRate,
-					balance: shownBalance,
+					interestRate: interestRate === null ? null : toFloat(interestRate),
+					balance: toFloat(balance),
 					balanceInUSD: 0,
 					balanceInTargetCurrency: 0,
 					homePerUnit: null,
@@ -289,20 +289,20 @@ export class WealthService {
 
 			if (liability) {
 				totalLiabilityBalanceUSD = totalLiabilityBalanceUSD.plus(balanceInUSD);
-				if (interestRate && balanceInUSD.gt(0)) {
-					weightedAPR = weightedAPR.plus(dec(interestRate).mul(balanceInUSD));
+				if (interestRate && !interestRate.isZero() && balanceInUSD.gt(0)) {
+					weightedAPR = weightedAPR.plus(interestRate.mul(balanceInUSD));
 				}
 			}
 			counted.push({ liability, liquid: asset.isLiquid, value: inTarget });
 
 			return {
 				...asset,
-				interestRate,
-				balance: shownBalance,
+				interestRate: interestRate === null ? null : toFloat(interestRate),
+				balance: toFloat(balance),
 				balanceInUSD: roundedMajor(balanceInUSD, USD),
 				balanceInTargetCurrency: roundedMajor(inTarget, targetCurrency),
 				// One unit of the account's currency in the target: the rate the account is valued at.
-				homePerUnit: toFloat(perUnit),
+				homePerUnit: toFloat(perUnit, 15),
 				rateMissing: false,
 			};
 		});
@@ -428,32 +428,34 @@ export class WealthService {
 			counted.filter(pick).reduce((sum, a) => sum.plus(a.value), dec(0));
 		const assetsExact = sumTarget((a) => !a.liability);
 		const liabilitiesExact = sumTarget((a) => a.liability);
-		const totalAssets = roundedMajor(assetsExact, targetCurrency);
-		const totalLiabilities = roundedMajor(liabilitiesExact, targetCurrency);
-		const totalLiquidAssets = roundedMajor(
-			sumTarget((a) => !a.liability && a.liquid),
-			targetCurrency,
-		);
-		const totalNetWorth = roundedMajor(
-			assetsExact.minus(liabilitiesExact),
-			targetCurrency,
-		);
+		const totals = {
+			totalNetWorth: roundedMajor(
+				assetsExact.minus(liabilitiesExact),
+				targetCurrency,
+			),
+			totalAssets: roundedMajor(assetsExact, targetCurrency),
+			totalLiabilities: roundedMajor(liabilitiesExact, targetCurrency),
+			totalLiquidAssets: roundedMajor(
+				sumTarget((a) => !a.liability && a.liquid),
+				targetCurrency,
+			),
+		};
 
 		const todayStr = today.toISOString().split("T")[0] ?? "";
 		const lastEntry = history[history.length - 1];
 		if (lastEntry?.date === todayStr) {
 			// Today's point matches the headline numbers
 			Object.assign(lastEntry, {
-				amount: totalNetWorth,
-				assets: totalAssets,
-				liabilities: totalLiabilities,
+				amount: totals.totalNetWorth,
+				assets: totals.totalAssets,
+				liabilities: totals.totalLiabilities,
 			});
 		} else {
 			history.push({
 				date: todayStr,
-				amount: totalNetWorth,
-				assets: totalAssets,
-				liabilities: totalLiabilities,
+				amount: totals.totalNetWorth,
+				assets: totals.totalAssets,
+				liabilities: totals.totalLiabilities,
 			});
 		}
 
@@ -470,11 +472,8 @@ export class WealthService {
 		const netWorth30DaysAgo: number | null = entry30DaysAgo?.amount ?? null;
 
 		return {
-			totalNetWorth,
-			totalAssets,
-			totalLiabilities,
-			totalLiquidAssets,
-			weightedAPR: toFloat(weightedAPR),
+			...totals,
+			weightedAPR: toFloat(weightedAPR, 15),
 			assets: assetsWithUSD,
 			history,
 			currency: targetCurrency,
@@ -487,7 +486,7 @@ export class WealthService {
 				name: a.name,
 				type: a.type,
 				currency: a.currency,
-				balance: toNumberWithDefault(a.balance),
+				balance: toFloat(a.balance),
 				closedAt: a.closedAt,
 				iconKind: a.iconKind,
 				iconValue: a.iconValue,

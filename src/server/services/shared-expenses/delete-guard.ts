@@ -22,6 +22,7 @@ import {
 	type SettledChoice,
 	voidCoveringPayments,
 } from "./void-covering";
+import { dec, toMinor } from "~/server/services/envelope/units";
 
 export type DeleteOptions =
 	| boolean
@@ -44,7 +45,6 @@ async function deletionEffect(
 		participantType: existing.paidByType as "user" | "guest" | "shadow",
 		participantId: existing.paidById,
 	};
-	const TOLERANCE = 0.005;
 	let strongest: ShareRemovalEffect = "none";
 	for (const sp of existing.splitParticipants) {
 		// The payer's own share is not a debt.
@@ -54,8 +54,8 @@ async function deletionEffect(
 		)
 			continue;
 		// This participant contributes debt only if they were charged a share.
-		const share = Number(sp.shareAmount);
-		if (share <= TOLERANCE) continue;
+		const share = dec(sp.shareAmount);
+		if (toMinor(share, existing.currency) <= 0) continue;
 		const effect = await effectOfRemovingShare(db, {
 			payer,
 			participant: {

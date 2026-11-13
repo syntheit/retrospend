@@ -114,10 +114,20 @@ describe("normalizeExpense", () => {
 
 describe("normalizeExpensesFromApi", () => {
 	it("normalizes valid input array", () => {
-		const input = [{ id: "1", date: "2024-03-15", currency: "USD" }];
+		const input = [
+			{ id: "1", date: "2024-03-15", currency: "USD", amount: "12.5" },
+		];
 		const result = normalizeExpensesFromApi(input);
 		expect(result).toHaveLength(1);
 		expect(result[0]?.id).toBe("1");
+		expect(result[0]?.amount).toBe(12.5);
+		// A missing rate stays missing: never 1 and never 0.
+		expect(result[0]?.exchangeRate).toBeNull();
+	});
+
+	it("throws on an expense with no amount, never reading it as 0", () => {
+		const input = [{ id: "1", date: "2024-03-15", currency: "USD" }];
+		expect(() => normalizeExpensesFromApi(input)).toThrow();
 	});
 
 	it("throws on Zod validation failure (missing id)", () => {

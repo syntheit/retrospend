@@ -262,8 +262,8 @@ describe("Edge Case 5: Extremely large amounts", () => {
 		expect(total).toBeCloseTo(999999.99, 2);
 
 		// Payer (alice) gets the rounding remainder: $500000.00, bob gets $499999.99
-		expect(aliceSplit!.shareAmount).toBe(500000.0);
-		expect(bobSplit!.shareAmount).toBe(499999.99);
+		expect(aliceSplit!.shareAmount).toBe("500000");
+		expect(bobSplit!.shareAmount).toBe("499999.99");
 	});
 });
 
@@ -734,8 +734,8 @@ describe("Edge Case 12: EXACT split validation", () => {
 			(sp: { participantId: string }) => sp.participantId === BOB,
 		);
 
-		expect(aliceSplit?.shareAmount).toBe(70);
-		expect(bobSplit?.shareAmount).toBe(30);
+		expect(aliceSplit?.shareAmount).toBe("70");
+		expect(bobSplit?.shareAmount).toBe("30");
 	});
 
 	it("EXACT split amounts not summing to total: throws BAD_REQUEST", async () => {
@@ -841,9 +841,9 @@ describe("Edge Case 14: 3-way equal split rounding: remainder goes to payer", ()
 			(sp: { participantId: string }) => sp.participantId === "carol",
 		);
 
-		expect(aliceSplit?.shareAmount).toBe(33.34);
-		expect(bobSplit?.shareAmount).toBe(33.33);
-		expect(carolSplit?.shareAmount).toBe(33.33);
+		expect(aliceSplit?.shareAmount).toBe("33.34");
+		expect(bobSplit?.shareAmount).toBe("33.33");
+		expect(carolSplit?.shareAmount).toBe("33.33");
 	});
 });
 

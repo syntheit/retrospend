@@ -12,7 +12,7 @@
 import type { Decimal } from "@retrospend/domain/precise-decimal";
 import { addMonths } from "./calendar";
 import type { DecimalLike, Minor, MonthKey, PayoffStrategy } from "./types";
-import { dec, fromMinor, sumMinor, toMinor } from "./units";
+import { Dec, dec, fromMinor, sumMinor, toMinor } from "./units";
 
 export const PAYOFF_MAX_MONTHS = 600;
 
@@ -21,7 +21,7 @@ export const PAYOFF_MAX_MONTHS = 600;
  * growing faster than anything can pay down; the schedule stops there instead
  * of overflowing a safe integer. Room for the interest sum and the rate.
  */
-const DIVERGED = Number.MAX_SAFE_INTEGER / 1024;
+const DIVERGED = dec(Number.MAX_SAFE_INTEGER).div(1024);
 
 export interface PayoffDebt {
 	id: string;
@@ -192,7 +192,7 @@ function startLive(debts: readonly PayoffDebt[]): Live[] {
 /** Some balance grew past what a safe integer can carry through the conversions. */
 function diverged(live: readonly Live[]): boolean {
 	return live.some(
-		(l) => l.balance > DIVERGED / Math.max(1, Math.ceil(l.rate.toNumber())),
+		(l) => dec(l.balance).gt(DIVERGED.div(Dec.max(1, l.rate.ceil()))),
 	);
 }
 

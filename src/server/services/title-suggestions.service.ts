@@ -17,6 +17,7 @@ import type { PrismaClient } from "~prisma";
 import { dateIdOf, olderThan, scanBatches } from "./scan-batches";
 import { ilikeContains, searchesInAppLoaded } from "./search-fold";
 import { listedEntryWhere } from "./spending";
+import { toFloat } from "@retrospend/domain/precise-decimal";
 
 /** Distinct titles kept per source, and suggestions returned. */
 const GROUPS_PER_SOURCE = 15;
@@ -122,7 +123,7 @@ async function personalInSql(
 				rows.map((e) => ({
 					title: e.title,
 					categoryId: e.categoryId,
-					amount: Number(e.amount),
+					amount: toFloat(e.amount),
 					currency: e.currency,
 				})),
 			);
@@ -174,7 +175,7 @@ async function personalInApp(
 				if (!newest.has(r.title))
 					newest.set(r.title, {
 						categoryId: r.categoryId,
-						amount: Number(r.amount),
+						amount: toFloat(r.amount),
 						currency: r.currency,
 					});
 			}

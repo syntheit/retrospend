@@ -11,6 +11,7 @@ import type { IncomeRuleDto } from "~/lib/schemas/envelope-plan";
 import type { Prisma, IncomeRule as RuleRow } from "~prisma";
 import type { IncomeRule, RecordedRun, RuleAction, RuleMatch } from "./rules";
 import { dec, fromMinor, toMinor } from "./units";
+import { toFloat } from "@retrospend/domain/precise-decimal";
 
 /** A rule's match. Its title comes opened by the client (field-open.ts). */
 export function matchOf(r: RuleRow): RuleMatch {
@@ -36,9 +37,7 @@ export function actionOf(r: RuleRow, H: string): RuleAction {
 	if (r.action === "PERCENT")
 		return {
 			kind: "PERCENT",
-			basisPoints: dec(r.value ?? "0")
-				.times(100)
-				.toNumber(),
+			basisPoints: toFloat(dec(r.value ?? "0").times(100)),
 		};
 	if (r.action === "AMOUNT")
 		return { kind: "AMOUNT", minor: toMinor(r.value ?? "0", H) };

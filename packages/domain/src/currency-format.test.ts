@@ -8,7 +8,6 @@ import {
 	getDecimalDigits,
 	formatNumber,
 	formatPercent,
-	parseFormattedNumber,
 } from "./currency-format";
 
 describe("isCrypto", () => {
@@ -246,28 +245,6 @@ describe("formatPercent", () => {
 
 	it("formats negative percentages", () => {
 		expect(formatPercent(-5.5)).toBe("-5.5%");
-	});
-});
-
-describe("parseFormattedNumber", () => {
-	it("parses plain number", () => {
-		expect(parseFormattedNumber("123.45")).toBe(123.45);
-	});
-
-	it("strips commas and parses", () => {
-		expect(parseFormattedNumber("15,000.00")).toBe(15000);
-	});
-
-	it("handles large formatted numbers", () => {
-		expect(parseFormattedNumber("1,234,567.89")).toBe(1234567.89);
-	});
-
-	it("returns NaN for empty string", () => {
-		expect(parseFormattedNumber("")).toBeNaN();
-	});
-
-	it("returns NaN for non-numeric", () => {
-		expect(parseFormattedNumber("abc")).toBeNaN();
 	});
 });
 

@@ -16,6 +16,7 @@ import {
 	splitParticipantSchema,
 } from "~/server/services/shared-expenses/input";
 import { SharedTransactionService } from "~/server/services/shared-expenses/transaction.service";
+import { toFloat } from "@retrospend/domain/precise-decimal";
 
 export const sharedTransactionRouter = createTRPCRouter({
 	create: guestOrProtectedProcedure
@@ -230,7 +231,6 @@ export const sharedTransactionRouter = createTRPCRouter({
 			const userMap = new Map(users.map((u) => [u.id, u]));
 			const shadowMap = new Map(shadows.map((s) => [s.id, s]));
 			const guestMap = new Map(guests.map((g) => [g.id, g]));
-
 			const resolveName = (type: string, id: string): string => {
 				if (id === "DELETED_USER") return "Deleted User";
 				if (type === "user") return userMap.get(id)?.name ?? "Unknown";
@@ -257,7 +257,7 @@ export const sharedTransactionRouter = createTRPCRouter({
 			return {
 				id: tx.id,
 				description: tx.description,
-				amount: Number(tx.amount),
+				amount: toFloat(tx.amount),
 				currency: tx.currency,
 				date: tx.date,
 				notes: tx.notes,
@@ -277,8 +277,8 @@ export const sharedTransactionRouter = createTRPCRouter({
 					participantId: sp.participantId,
 					name: resolveName(sp.participantType, sp.participantId),
 					avatarUrl: resolveAvatarUrl(sp.participantType, sp.participantId),
-					shareAmount: Number(sp.shareAmount),
-					sharePercentage: sp.sharePercentage ? Number(sp.sharePercentage) : null,
+					shareAmount: toFloat(sp.shareAmount),
+					sharePercentage: sp.sharePercentage ? toFloat(sp.sharePercentage) : null,
 					shareUnits: sp.shareUnits,
 					verificationStatus: sp.verificationStatus,
 				})),
