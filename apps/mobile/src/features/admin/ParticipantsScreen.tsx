@@ -55,7 +55,6 @@ export function ParticipantsScreen() {
 	if (shadow) {
 		title = shadow.name;
 		facts = [
-			{ label: t("email"), value: shadow.email },
 			{ label: t("createdBy"), value: shadow.createdByUsername },
 			{ label: t("created"), value: day(shadow.createdAt) },
 			{
@@ -114,7 +113,6 @@ export function ParticipantsScreen() {
 									}
 									key={p.id}
 									onPress={() => setOpen({ kind: "shadow", id: p.id })}
-									sub={p.email ?? undefined}
 									title={p.name}
 								/>
 							))}

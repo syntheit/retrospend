@@ -311,6 +311,7 @@ export const adminShadowProfileSchema = z
 	.object({
 		id: idSchema,
 		name: z.string(),
+		/** Deprecated, always null: only the person who added a ghost sees its address. */
 		email: z.string().nullable(),
 		createdByUsername: z.string().nullable(),
 		/** Set once the person signed up and took the profile over. */
