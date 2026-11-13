@@ -45,7 +45,7 @@ describe("precise decimal", () => {
 	});
 });
 
-describe("toFloat, exact", () => {
+describe("toFloat", () => {
 	it("returns the number a stored decimal reads back as", () => {
 		expect(toFloat("12.73333333")).toBe(12.73333333);
 		// 15 digits.
@@ -56,12 +56,12 @@ describe("toFloat, exact", () => {
 		expect(toFloat(0.30000000000000004)).toBe(0.30000000000000004);
 	});
 
-	it("throws rather than lose digits: 16 digits past 2^53, and 19 digits", () => {
+	it("never throws: past a float's digits it is the nearest double", () => {
 		// 2^53 + 1 is the first 16 digit integer a float cannot hold.
-		expect(() => toFloat("9007199254740993")).toThrow(RangeError);
-		expect(() => toFloat("1234567890123456789")).toThrow(RangeError);
+		expect(toFloat("9007199254740993")).toBe(9007199254740992);
+		expect(toFloat("1234567890123456789")).toBe(1234567890123456800);
 		// Decimal(19,8) at its top: 19 digits.
-		expect(() => toFloat("99999999999.99999999")).toThrow(RangeError);
+		expect(toFloat("99999999999.99999999")).toBe(100000000000);
 	});
 
 	it("trims a computed figure to the digits asked for", () => {

@@ -258,6 +258,8 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 | Budget: envelope detail panel and page | The panel (desktop) and pushed page (phone) with How it adds up, history and Often over (SPEC §6.3) | A row's View activity opens Activity filtered to the envelope's categories | 4C follow-up |
 | Budget: Import from YNAB and Export CSV | Their flows (SPEC §8.4) | Not in the header menu | S6 |
 | Budget: Welcome back and month summary sheets | The sheets behind `welcomeBack`, `monthSummary`, `setup`, `assign` and every other id in `src/features/budget/sheet-ids.ts` | The page shows the notice and the button; a sheet with no renderer in `sheet-registry.tsx` does nothing yet | 4C sheets |
+| tRPC DTO numbers past about 15 significant digits | Exact decimals on the web's tRPC DTOs (amount, share and rate fields still go out as JSON numbers through `toFloat`) | A stored value with more than about 15 significant digits (a legacy 8 dp ARS share past 67 million) loses its last digits, as `Number()` always did. v1 uses integer minor units and is exact | The contract revision that moves the web DTOs to minor units |
+| Settings: monthlyIncome | A nullable `monthlyIncome` in the settings contract, so "not set" is not an amount | `settings.get` sends 0 when it is not set (kept so the client's number field still works; AGENTS 6.1 forbids a 0 default) | The next contract revision |
 
 ## 8. Behavior gaps found by the e2e suite
 

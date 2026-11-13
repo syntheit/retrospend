@@ -37,9 +37,10 @@ export function fromFloat(n: number): Decimal {
  * A decimal as the float a client that still takes numbers can hold. The one
  * place a Decimal becomes a number, for a DTO field or a form draft:
  *
- * - Without `significant` it is exact: it throws when the float does not read
- *   back as the same decimal (more digits than a float keeps, such as 2^53 + 1
- *   or 19 digits), so a stored value never silently loses digits.
+ * - Without `significant` it is the nearest double, as Number() read the
+ *   column: exact up to about 15 significant digits, and a stored value with
+ *   more (2^53 + 1, 19 digits) loses its last digits. It never throws, so one
+ *   legacy row cannot take a screen down (docs/ui/GAPS.md).
  * - With `significant` it trims to that many significant digits (15 is all a
  *   float reliably keeps, the inverse of fromFloat), for a computed figure
  *   such as a ratio, where the 40-digit tail is noise. A money figure rounds
@@ -51,10 +52,10 @@ export function fromFloat(n: number): Decimal {
  */
 export function toFloat(value: DecimalInput, significant?: number): number {
 	const exact = dec(value);
-	if (significant !== undefined)
-		return Number(exact.toSignificantDigits(significant).toString());
-	const n = Number(exact.toString());
-	if (!dec(n).eq(exact))
-		throw new RangeError(`${exact.toString()} does not fit a number exactly`);
-	return n;
+	return Number(
+		(significant === undefined
+			? exact
+			: exact.toSignificantDigits(significant)
+		).toString(),
+	);
 }
