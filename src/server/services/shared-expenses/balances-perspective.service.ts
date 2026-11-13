@@ -96,11 +96,17 @@ interface RawTransaction {
  *
  * Claim aliases are resolved exactly as computeBalance / getPersonDetail do, so
  * a claimed shadow and its claiming user are one party.
+ *
+ * `viewer` is who reads the card (null for a viewer link). A pending payment
+ * counts only for the person who recorded it, so a viewer who is neither
+ * party never counts a pending payment between two others, as in every
+ * other balance.
  */
 export async function getBalancesFromPerspective(
 	db: AppDb,
 	projectId: string,
 	perspective: ParticipantRef,
+	viewer: ParticipantRef | null = perspective,
 ): Promise<BalancesFromPerspectiveResult> {
 	const prisma = db as PrismaClient;
 
@@ -192,6 +198,7 @@ export async function getBalancesFromPerspective(
 		// People page and the balance.person figure read, scoped to this project.
 		computeBalanceBatch(prisma, perspective, [...counterpartByCanonical.values()], {
 			projectScope: projectId,
+			viewer,
 		}),
 	]);
 	const balanceOfCanon = new Map(

@@ -460,7 +460,7 @@ async function computePairBalance(
 }
 
 /** Which side of a settlement row the viewer is on (claim aliases count). */
-function settlementSide(
+export function settlementSide(
 	row: {
 		fromParticipantType: ParticipantType;
 		fromParticipantId: string;

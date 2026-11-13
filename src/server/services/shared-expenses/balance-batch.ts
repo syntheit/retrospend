@@ -11,20 +11,26 @@ import {
 	type BalanceResult,
 	balanceOf,
 	projectScopeWhere,
+	settlementSide,
 } from "./balance";
 import { resolveClaimAliases } from "./identity";
 import type { ParticipantRef } from "./types";
 
 /**
  * Batch-compute balances between participantA and multiple counterparts, as
- * A sees them (the viewer is always A). Uses 4 queries total instead of 4
- * per counterpart (4N → 4).
+ * A sees them (the viewer is A unless `viewer` says otherwise: the project
+ * cards show A's balances to whoever opens them, and a pending payment counts
+ * only for the person who recorded it, so `null` or a third person never
+ * counts one, as in computeBalance). Uses 4 queries total instead of 4 per
+ * counterpart (4N → 4).
  */
 export async function computeBalanceBatch(
 	db: PrismaClient | Prisma.TransactionClient,
 	participantA: ParticipantRef,
 	counterparts: ParticipantRef[],
-	opts?: Pick<BalanceOptions, "projectScope">,
+	opts?: Pick<BalanceOptions, "projectScope"> & {
+		viewer?: ParticipantRef | null;
+	},
 ): Promise<BalanceResult[]> {
 	if (counterparts.length === 0) return [];
 
@@ -33,14 +39,18 @@ export async function computeBalanceBatch(
 
 	// Project scope fragment, applied identically to settlements and to the
 	// nested transaction filter of the split queries (see projectScopeWhere).
-	const projectWhere = projectScopeWhere(opts);
+	const projectWhere = projectScopeWhere({ projectScope: opts?.projectScope });
 
 	// Expand A and every counterpart into their claim-alias refs so a claimed
 	// shadow and its claiming user are summed together (edge-case 8 fix).
+	const viewer = opts?.viewer === undefined ? participantA : opts.viewer;
 	const { aliasesByKey, canonicalKey } = await resolveClaimAliases(prisma, [
 		participantA,
 		...counterparts,
+		...(viewer ? [viewer] : []),
 	]);
+	// "" matches no canonical key: nobody is the viewer, so no pending row counts.
+	const viewerKey = viewer ? canonicalKey(viewer) : "";
 	const aRefs = aliasesByKey.get(
 		key(participantA.participantType, participantA.participantId),
 	) ?? [participantA];
@@ -247,8 +257,10 @@ export async function computeBalanceBatch(
 			participantType: row.toParticipantType,
 			participantId: row.toParticipantId,
 		});
-		// A is the payee: a pending row from B is B's claim, not counted (I5).
-		if (!countsFor(row, "to")) continue;
+		// With A as the viewer A is the payee: a pending row from B is B's
+		// claim, not counted (I5).
+		if (!countsFor(row, settlementSide(row, viewerKey, canonicalKey)))
+			continue;
 		if (!once(`st|${row.id}|${fromKey}|${toKey}`)) continue;
 		add(fromKey, row.currency, row.amount, -1);
 	}
@@ -263,7 +275,8 @@ export async function computeBalanceBatch(
 			participantType: row.toParticipantType,
 			participantId: row.toParticipantId,
 		});
-		if (!countsFor(row, "from")) continue;
+		if (!countsFor(row, settlementSide(row, viewerKey, canonicalKey)))
+			continue;
 		if (!once(`st|${row.id}|${fromKey}|${toKey}`)) continue;
 		add(toKey, row.currency, row.amount, 1);
 	}

@@ -374,3 +374,58 @@ describe("the project's perspective cards read the registered balance", () => {
 		expect(view.statements.length).toBeGreaterThan(0);
 	});
 });
+
+describe("the perspective card applies the pending rule from the real viewer", () => {
+	it("a third person never counts a pending payment between two others", async () => {
+		const ana = await createTestUser();
+		const bob = await createTestUser();
+		const carl = await createTestUser();
+		const id = await project(ana, [ref(ana), ref(bob), ref(carl)]);
+		// Carl paid ARS 100 for Bob, so Bob owes Carl 100.
+		await seedTx(
+			ref(carl),
+			"100",
+			"ARS",
+			[
+				{ who: ref(bob), amount: "100" },
+				{ who: ref(carl), amount: "0" },
+			],
+			id,
+		);
+		// Bob sent Carl ARS 40, still pending: it counts for Bob, who recorded
+		// it, and for nobody else until Carl confirms.
+		await adminDb.settlement.create({
+			data: {
+				fromParticipantType: "user",
+				fromParticipantId: bob.user.id,
+				toParticipantType: "user",
+				toParticipantId: carl.user.id,
+				amount: "40",
+				currency: "ARS",
+				status: "PROPOSED",
+				confirmedByPayer: true,
+				projectId: id,
+			},
+		});
+		const carlsCard = async (
+			viewer: { participantType: "user" | "viewerLink"; participantId: string },
+		) => {
+			const view = await projectBalancesFromPerspective(
+				ana.db,
+				id,
+				ref(bob),
+				viewer,
+			);
+			return view.statements.find(
+				(s) => s.counterpart.participantId === carl.user.id,
+			)?.netByCurrency;
+		};
+		// Bob's own view: 100 - 40, he owes 60. Everyone else sees 100.
+		expect(await carlsCard(ref(bob))).toEqual({ ARS: -60 });
+		expect(await carlsCard(ref(ana))).toEqual({ ARS: -100 });
+		expect(await carlsCard(ref(carl))).toEqual({ ARS: -100 });
+		expect(
+			await carlsCard({ participantType: "viewerLink", participantId: "link" }),
+		).toEqual({ ARS: -100 });
+	});
+});
