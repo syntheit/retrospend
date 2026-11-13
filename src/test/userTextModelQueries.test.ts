@@ -44,6 +44,7 @@ const COLUMNS = [
 	"rejectionReason",
 	"rejectedReason",
 	"adminNote",
+	"phone",
 ];
 const WORD = COLUMNS.join("|");
 const KEY = new RegExp(`(?:^|[{,\\s])["']?(${WORD})["']?\\s*:`, "g");

@@ -247,18 +247,29 @@ export async function searchPeople(
 	return later.slice(0, page.take);
 }
 
-type ShadowHit = { id: string; name: string; email: string | null };
+type ShadowHit = {
+	id: string;
+	name: string;
+	createdById: string;
+	/** Null unless the call asked for it, and for a ghost the caller did not add. */
+	email: string | null;
+};
 
 /**
  * Unclaimed ghosts the caller can see that `keep` accepts, newest first, at
  * most `limit`: (createdAt, id) batches, each opened, matched and dropped but
  * for the hits. createdAt never changes, so no ghost is read twice.
+ *
+ * `email` is read only when `options.email` is set: it is the creator's
+ * sealed text, so it opens for the caller's own ghosts and reads null for
+ * everyone else's, and a search by name must not need the caller's key for it.
  */
 export async function shadowsMatching(
 	db: ScanClient,
 	userId: string,
 	keep: (s: ShadowHit) => boolean,
 	limit = Number.POSITIVE_INFINITY,
+	options: { email?: boolean } = {},
 ): Promise<ShadowHit[]> {
 	const hits: ShadowHit[] = [];
 	await scanBatches(db, userId, {
@@ -276,13 +287,25 @@ export async function shadowsMatching(
 				},
 				orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 				take,
-				select: { id: true, name: true, email: true, createdAt: true },
+				select: {
+					id: true,
+					name: true,
+					createdById: true,
+					email: options.email === true,
+					createdAt: true,
+				},
 			}),
 		cursorOf: (s) => ({ createdAt: s.createdAt, id: s.id }),
 		visit: (rows) => {
-			for (const s of rows) {
+			for (const row of rows) {
+				const s = { ...row, email: row.email ?? null };
 				if (!keep(s)) continue;
-				hits.push({ id: s.id, name: s.name, email: s.email });
+				hits.push({
+					id: s.id,
+					name: s.name,
+					createdById: s.createdById,
+					email: s.email,
+				});
 				if (hits.length >= limit) return true;
 			}
 			return false;

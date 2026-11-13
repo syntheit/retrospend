@@ -20,7 +20,7 @@ import {
 } from "~/server/api/v1/__tests__/g3-fixtures";
 import { encryptSecret } from "~/server/services/webhooks/secret";
 import { fanOutEvents } from "~/server/services/webhooks/worker";
-import { adminDb, openTransactionsEnded } from "~/test/pg-harness";
+import { adminDb, fixtureDb, openTransactionsEnded } from "~/test/pg-harness";
 import { readEventFeed } from "./feed";
 
 let sofia: TestUser;
@@ -375,7 +375,7 @@ describe("a deleted expense still reaches the people who were on it", () => {
 		});
 
 	it("copies it to the users named, a claimed profile's account included, and not to the actor or anyone else", async () => {
-		const sam = await adminDb.shadowProfile.create({
+		const sam = await fixtureDb.shadowProfile.create({
 			data: {
 				createdById: sofia.user.id,
 				name: "Sam",
@@ -383,7 +383,7 @@ describe("a deleted expense still reaches the people who were on it", () => {
 				claimedById: lucia.user.id,
 			},
 		});
-		const unclaimed = await adminDb.shadowProfile.create({
+		const unclaimed = await fixtureDb.shadowProfile.create({
 			data: {
 				createdById: sofia.user.id,
 				name: "Una",

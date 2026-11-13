@@ -4,7 +4,7 @@
  * Each test seeds its own trip, so writes never leak between tests.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { addMember, callerFor, namedUser, seedTrip } from "./trip-fixture";
 
 const sendEmail = vi.hoisted(() => vi.fn(async () => {}));
@@ -189,7 +189,8 @@ describe("project.addParticipant", () => {
 
 	it("caps a ghost at contributor and emails a one-use invite", async () => {
 		const trip = await seedTrip();
-		const ghost = await adminDb.shadowProfile.create({
+		// An address is the creator's sealed text: seeded as its creator.
+		const ghost = await fixtureDb.shadowProfile.create({
 			data: {
 				createdById: trip.ana.user.id,
 				name: "Gil",

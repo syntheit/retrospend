@@ -6,7 +6,7 @@ import { addShadow, assertEmailCheck, renameShadow } from "~/server/services/sha
 import { frequentSplitPartners } from "~/server/services/people/frequent-partners";
 import { ilikeContains } from "~/server/services/search-fold";
 import { shadowsMatching, usersMatching } from "~/server/services/search.service";
-import { buildContactVisibility } from "~/server/services/shared-expenses/contact-visibility";
+import { canSeeGhostContact } from "~/server/services/shared-expenses/contact-visibility";
 import { PeopleService } from "~/server/services/shared-expenses/people.service";
 import { peopleV2Procedures } from "./people-v2";
 
@@ -34,10 +34,11 @@ export const peopleRouter = createTRPCRouter({
 			// created by other members. Private (non-project) shadows of unrelated
 			// users are never returned because RLS excludes them.
 			//
-			// Being able to see a ghost doesn't mean seeing its email: that follows
-			// the shared contact rule (creator, or EDITOR+ in one of its projects).
-			// So match on email only for ghosts whose email the caller may see,
-			// otherwise a substring search would leak the address bit by bit.
+			// Being able to see a ghost doesn't mean seeing its email: only the person
+			// who added it does (contact-visibility.ts), and the sealed address only
+			// opens for them. So the email is matched, and returned, for the caller's
+			// own ghosts only; otherwise a substring search would leak the address
+			// bit by bit.
 			//
 			// A name may be ciphertext in the database, so Postgres cannot match it:
 			// the matching runs in the app over every ghost the caller can see,
@@ -46,35 +47,21 @@ export const peopleRouter = createTRPCRouter({
 			// `ilikeContains`: the old query only prefiltered with ILIKE and the
 			// literal check after it decided, so `%` and `_` never acted as
 			// wildcards for ghosts. The contacts below had no such second check.
-			const candidates = await shadowsMatching(
-				ctx.db,
-				userId,
-				(s) =>
-					s.name.toLowerCase().includes(query) ||
-					(s.email?.toLowerCase().includes(query) ?? false),
-				50,
-			);
-			const contactVisible = await buildContactVisibility(
-				ctx.db,
-				{ participantType: "user", participantId: userId },
-				candidates.map((s) => ({
-					participantType: "shadow",
-					participantId: s.id,
-				})),
-			);
-			const shadows = candidates
-				.map((s) => ({
-					...s,
-					email: contactVisible({ participantType: "shadow", participantId: s.id })
-						? s.email
-						: null,
-				}))
-				.filter(
+			const shadows = (
+				await shadowsMatching(
+					ctx.db,
+					userId,
 					(s) =>
 						s.name.toLowerCase().includes(query) ||
-						(s.email?.toLowerCase().includes(query) ?? false),
+						(canSeeGhostContact(userId, s.createdById) &&
+							(s.email?.toLowerCase().includes(query) ?? false)),
+					10,
+					{ email: true },
 				)
-				.slice(0, 10);
+			).map((s) => ({
+				...s,
+				email: canSeeGhostContact(userId, s.createdById) ? s.email : null,
+			}));
 
 			// Contacts: users we've previously transacted with (fuzzy search)
 			const contactUserIds = await ctx.db.splitParticipant.findMany({

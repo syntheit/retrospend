@@ -126,6 +126,7 @@ current lines.
 | B12 | `scripts/scan-control-chars.ts:105-109` | counts rows with control characters, a leading U+0001 and U+FFFD, per column | b | Intended: it runs before D11 and D12. After the backfill every row starts with U+0001, so its count then means "sealed". Document in the D12 runbook |
 | B13 | `src/server/better-auth/config.ts:168` (adapter) | better-auth reads and writes `user.name` through the global client | a | D11 must apply the extension to that client too (section 8) |
 | B14 | `src/server/services/payments/confirm-restore.ts` (`storedText`) | payment confirm: `payment.paymentMethod` and every settlement column of the payment, read raw | a | Added in D11 PR 4.1, the fix of 7.1: the values go into the SETTLED entry's `previous` exactly as stored, never opened; `openAuditChanges` opens them when the entry is served |
+| B15 | `src/server/services/user-deletion-ghosts.ts` (`clearSealedContact`) | account deletion hands a ghost to a project's heir: `UPDATE shadow_profile SET email = CASE WHEN starts_with(email, U+0001) THEN NULL ...`, same for `phone` | a | Added in E2EE D11 Revision 3 PR 3b: a sealed cell is the deleted user's text under a key that is shredded with them, and the heir's key cannot open it; it is set to null by a prefix test, nothing is read, and `emailHash` stays so the ghost still claims by address. A plaintext cell (saved before sealing) is not touched |
 
 ### C. Database functions, triggers, defaults and policies
 
@@ -365,6 +366,18 @@ in SQL: `people.ts:120-121`, `profile.ts:58,82`,
 `shadow-profile.service.ts:111`, the `/u/` and `/pay/` username lookups, and the
 token deletes in `auth.ts`, `guest.ts` and `account-security.service.ts`. These
 are identifiers, not declared user text.
+
+A ghost's email is looked up by `contactLookup("shadow_profile", email)`
+(`keys/contact-hash.ts`), the only lookup (E2EE D11 Revision 3 PR 3b):
+`emailHash = <tag>:<hex>` once the field encryption epoch is set, otherwise
+`email equals <normalized> mode insensitive` plus an exact JavaScript check
+(`matchesContact`). Both paths normalize with `trim()` and an ASCII-only
+lower-case, so Postgres's own folding of other letters cannot make them
+disagree. `guest-migration.service.ts` is the one caller for ghosts;
+`userTextShadowEmail.test.ts` fails on any other `where` on
+`shadowProfile.email`. The start-up fill (`contact-hash-fill.ts`) reads plain
+ghost emails on the owner connection to make the missing hashes; it skips
+sealed ones.
 
 ## 12. What D10 changed
 

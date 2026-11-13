@@ -21,6 +21,7 @@ import {
 	jsonColumns,
 	mappedColumns,
 	modelOfTable,
+	ownerOfTable,
 } from "~/server/crypto/fields";
 import { createUserScopedDb, type db } from "~/server/db";
 import { outsideTransaction } from "~/server/db-tx";
@@ -88,10 +89,16 @@ function call(client: Client, model: string, operation: string, args: Row) {
 	return method(args);
 }
 
-const ownerOf = (data: unknown): string | undefined => {
+/** The owner column and relation of a client property's model (`userId` and `user` by default). */
+const ownerColumns = (model: string) => ownerOfTable(mapped(model).table);
+
+const ownerOf = (model: string, data: unknown): string | undefined => {
 	if (!isRow(data)) return undefined;
-	if (typeof data.userId === "string") return data.userId;
-	const connect = isRow(data.user) ? data.user.connect : undefined;
+	const { column, relation } = ownerColumns(model);
+	const value = data[column];
+	if (typeof value === "string") return value;
+	const link = data[relation];
+	const connect = isRow(link) ? link.connect : undefined;
 	return isRow(connect) && typeof connect.id === "string"
 		? connect.id
 		: undefined;
@@ -104,18 +111,18 @@ async function ownerOfWrite(
 	operation: string,
 	args: Row,
 ): Promise<string | undefined> {
-	if (operation === "upsert") return ownerOf(args.create);
-	if (operation !== "update") return ownerOf(args.data);
+	if (operation === "upsert") return ownerOf(model, args.create);
+	if (operation !== "update") return ownerOf(model, args.data);
 	const { table, userColumns: columns } = mapped(model);
 	const id = isRow(args.where) ? args.where.id : undefined;
 	const data = isRow(args.data) ? args.data : {};
 	if (typeof id !== "string" || !columns.some((c) => data[c] != null))
 		return undefined;
-	const [row] = await global.$queryRawUnsafe<{ userId: string }[]>(
-		`SELECT "userId" FROM "${table}" WHERE "id" = $1`,
+	const [row] = await global.$queryRawUnsafe<{ owner: string }[]>(
+		`SELECT "${ownerColumns(model).column}" AS "owner" FROM "${table}" WHERE "id" = $1`,
 		id,
 	);
-	return row?.userId;
+	return row?.owner;
 }
 
 /** `args` with every category name given its index under the owner's key. */
@@ -161,7 +168,10 @@ async function write(
 	// One call per owner.
 	const byOwner = new Map<string | undefined, unknown[]>();
 	for (const data of [args.data].flat())
-		byOwner.set(ownerOf(data), [...(byOwner.get(ownerOf(data)) ?? []), data]);
+		byOwner.set(ownerOf(model, data), [
+			...(byOwner.get(ownerOf(model, data)) ?? []),
+			data,
+		]);
 	const results = await Promise.all(
 		[...byOwner].map(([owner, data]) => run(owner, { ...args, data })),
 	);
@@ -176,10 +186,11 @@ async function reopen(model: string, rows: unknown[]): Promise<void> {
 	for (const row of rows) {
 		if (!isRow(row)) continue;
 		const hidden = unavailableFields(row);
-		if (hidden.length > 0 && typeof row.userId === "string")
+		const owner = row[ownerColumns(model).column];
+		if (hidden.length > 0 && typeof owner === "string")
 			Object.assign(
 				row,
-				await call(createUserScopedDb(row.userId), model, "findUnique", {
+				await call(createUserScopedDb(owner), model, "findUnique", {
 					where: { id: row.id },
 					select: Object.fromEntries(hidden.map((c) => [c, true])),
 				}),
@@ -210,7 +221,7 @@ async function read(
 	// needed here: asked for, then dropped.
 	const needs = [
 		"id",
-		...(userColumns.length > 0 ? ["userId"] : []),
+		...(userColumns.length > 0 ? [ownerColumns(model).column] : []),
 		...text.map(([column]) => column),
 	];
 	const select =

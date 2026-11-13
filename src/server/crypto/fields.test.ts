@@ -115,6 +115,10 @@ const NO_DECLARED_FIELD: Record<string, string> = {
 		"a server copy of envelope.name taken before a rename; no input names it",
 	"export_job.fileName":
 		"derived by the server from a project or person name; no input names it",
+	"shadow_profile.email":
+		"typed as an email address (z.email), not free text: a leading U+0001 is no address",
+	"shadow_profile.phone":
+		"no write path sets a phone today; one that does must declare its field",
 };
 
 /**
@@ -265,10 +269,6 @@ const NOT_SEALED: Record<string, string> = {
 	"push_device.addressHash": "a hash of the device address, not text",
 	"shadow_profile.emailHash": "a keyed hash of the address, not text",
 	"guest_session.emailHash": "a keyed hash of the address, not text",
-	"shadow_profile.email":
-		"owner call: a contact address, outside the user-text list",
-	"shadow_profile.phone":
-		"owner call: a contact number, outside the user-text list",
 	"guest_session.email":
 		"owner call: a contact address, outside the user-text list",
 	"shared_transaction.receiptUrl": "a stored receipt path or link, not prose",
@@ -351,6 +351,8 @@ describe("key classes", () => {
 		"export_job.fileName",
 		"import_job.fileName",
 		"push_device.deviceName",
+		"shadow_profile.email",
+		"shadow_profile.phone",
 	];
 	const INSTANCE: string[] = [
 		"shared_transaction.description",

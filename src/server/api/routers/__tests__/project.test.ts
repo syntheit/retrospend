@@ -768,8 +768,10 @@ describe("participant emails in project responses", () => {
 	};
 
 	let memberRows: Array<(typeof PARTICIPANT_ROWS)[number]> = [];
+	let ghostMaker = "ghost-maker";
 
 	beforeEach(() => {
+		ghostMaker = "ghost-maker";
 		mockDb.project.findUnique.mockResolvedValue({
 			id: "proj-1",
 			name: "Trip",
@@ -786,7 +788,9 @@ describe("participant emails in project responses", () => {
 				id: "shadow-1",
 				name: "Ghost",
 				email: "ghost@example.com",
-				createdById: "ghost-maker",
+				get createdById() {
+					return ghostMaker;
+				},
 			},
 		];
 		mockDb.shadowProfile.findMany.mockImplementation(
@@ -883,7 +887,8 @@ describe("participant emails in project responses", () => {
 		});
 	});
 
-	it("detail for an organizer shows ghost and guest emails", async () => {
+	it("detail for an organizer shows a guest email and the email of a ghost it added", async () => {
+		ghostMaker = "organizer-1";
 		const caller = createCaller({
 			session: makeOrganizerSession("organizer-1"),
 			db: mockDb as never,
@@ -895,6 +900,22 @@ describe("participant emails in project responses", () => {
 		expect(emailsOf(result.participants)).toEqual({
 			"organizer-1": null,
 			"shadow-1": "ghost@example.com",
+			"guest-1": "guest@example.com",
+		});
+	});
+
+	it("detail for an organizer who did not add the ghost hides its email (sealed with the creator's key)", async () => {
+		const caller = createCaller({
+			session: makeOrganizerSession("organizer-1"),
+			db: mockDb as never,
+			headers: new Headers(),
+		});
+
+		const result = await callAndFlush(() => caller.detail({ id: "proj-1" }));
+
+		expect(emailsOf(result.participants)).toEqual({
+			"organizer-1": null,
+			"shadow-1": null,
 			"guest-1": "guest@example.com",
 		});
 	});

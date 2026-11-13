@@ -17,7 +17,9 @@ function makeDb(user: { email: string; emailVerified: boolean } | null) {
 		user: { findUnique: vi.fn().mockResolvedValue(user) },
 		guestSession: { findMany: vi.fn().mockResolvedValue([]) },
 		shadowProfile: {
-			findMany: vi.fn().mockResolvedValue([{ id: "shadow-1" }]),
+			findMany: vi
+				.fn()
+				.mockResolvedValue([{ id: "shadow-1", email: "owner@example.com" }]),
 		},
 		$transaction: vi.fn(),
 	};
@@ -47,7 +49,11 @@ describe("migrateGuestDataForVerifiedUser", () => {
 
 		expect(db.shadowProfile.findMany).toHaveBeenCalledWith(
 			expect.objectContaining({
-				where: { email: "owner@example.com", claimedById: null },
+				where: {
+					email: { equals: "owner@example.com", mode: "insensitive" },
+					claimedById: null,
+				},
+				select: { id: true, email: true },
 			}),
 		);
 		expect(mockClaimShadowProfile).toHaveBeenCalledWith(db, "shadow-1", "user-1");
@@ -55,6 +61,24 @@ describe("migrateGuestDataForVerifiedUser", () => {
 		expect(mockLogEventAsync).toHaveBeenCalledWith(
 			expect.objectContaining({ eventType: "GUEST_UPGRADED", userId: "user-1" }),
 		);
+	});
+
+	it("claims only the rows whose address normalizes the same, not the superset Postgres folded", async () => {
+		const db = makeDb({ email: "José@Example.com", emailVerified: true });
+		db.shadowProfile.findMany.mockResolvedValue([
+			{ id: "same-case", email: "JosÉ@example.COM" },
+			{ id: "exact", email: "José@example.com" },
+			{ id: "other", email: "jose@example.com" },
+			{ id: "hidden", email: null },
+		]);
+
+		const result = await migrateGuestDataForVerifiedUser(db as never, "user-1");
+
+		// "É" is not "é" on either path: only the ASCII letters fold.
+		expect(mockClaimShadowProfile.mock.calls.map((c) => c[1])).toEqual([
+			"exact",
+		]);
+		expect(result?.claimedShadowCount).toBe(1);
 	});
 
 	it("swallows errors so the triggering action still succeeds", async () => {

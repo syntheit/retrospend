@@ -309,7 +309,7 @@ describe("/api/v1/admin", () => {
 	});
 
 	it("lists participants and deletes a shadow profile or guest session", async () => {
-		const shadow = await adminDb.shadowProfile.create({
+		const shadow = await fixtureDb.shadowProfile.create({
 			data: { createdById: bob, name: "Ghost Gina", email: "gina@example.com" },
 		});
 		const guest = await adminDb.guestSession.create({

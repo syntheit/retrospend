@@ -219,7 +219,7 @@ export const sharedTransactionRouter = createTRPCRouter({
 				shadowIds.length > 0
 					? ctx.db.shadowProfile.findMany({
 							where: { id: { in: shadowIds } },
-							select: { id: true, name: true, email: true },
+							select: { id: true, name: true },
 						})
 					: [],
 				guestIds.length > 0
