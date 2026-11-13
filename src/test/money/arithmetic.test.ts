@@ -4,9 +4,12 @@
 // code, compared with arithmetic-baseline.json:
 //
 // - float: a money value leaving Decimal for a float. `Number(` whose
-//   argument names a money value (amount, balance, total, ...InUSD), any
-//   `.toNumber()` or `parseFloat(`, and unary `+` on a Decimal. Some are
-//   display edges; each is classified as its area moves to Decimal.
+//   argument names a money value (amount, balance, total, ...InUSD) or whose
+//   type is a Decimal or a stand-in for one (decimal.js, Prisma's Decimal,
+//   `PrismaDecimal`, `DecimalInput`, `{ toString(): string }`), any
+//   `.toNumber()` or `parseFloat(`, unary `+` on those types, and a call to
+//   decimal.ts's `toNumber`, `toNumberWithDefault` or `toNumberOrNull`. Some
+//   are display edges; each is classified as its area moves to Decimal.
 // - prisma-decimal: an arithmetic or rounding call (div, mul, plus,
 //   toDecimalPlaces, toFixed, round, ...) whose receiver's type is Prisma's
 //   Decimal. Prisma's Decimal stays at the database boundary and crosses into
@@ -20,6 +23,7 @@
 // left out: its number wrappers are the declared display edge.
 import { join } from "node:path";
 import {
+	type CallExpression,
 	type Node,
 	type PrefixUnaryExpression,
 	type PropertyAccessExpression,
@@ -27,10 +31,16 @@ import {
 } from "typescript/unstable/ast";
 import {
 	isCallExpression,
+	isIdentifier,
 	isPrefixUnaryExpression,
 	isPropertyAccessExpression,
 } from "typescript/unstable/ast/is";
-import { API, type Type } from "typescript/unstable/sync";
+import {
+	API,
+	type Checker,
+	SymbolFlags,
+	type Type,
+} from "typescript/unstable/sync";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { scanSources, withoutComments } from "../source-scan";
 import { REPO_ROOT } from "../uiRules/paths";
@@ -58,6 +68,33 @@ const PRISMA_DECIMAL =
 	/@prisma\/client-runtime-utils\/|@prisma\/client\/runtime\//;
 const ANY_DECIMAL =
 	/decimal\.js\/|@prisma\/client-runtime-utils\/|@prisma\/client\/runtime\//;
+/** decimal.ts: PrismaDecimal, and the toNumber helpers that turn a Decimal into a float. */
+const DECIMAL_TS = /packages\/domain\/src\/decimal\.ts$/;
+const NUMBER_HELPERS = new Set([
+	"toNumber",
+	"toNumberWithDefault",
+	"toNumberOrNull",
+]);
+
+/**
+ * A Decimal or a stand-in for one: decimal.js or Prisma's class,
+ * `PrismaDecimal`, `DecimalInput`, or any `{ toString(): string }` literal
+ * type. A union counts when any member does.
+ */
+function decimalLike(type: Type | undefined, checker: Checker): boolean {
+	if (!type) return false;
+	if (type.isUnionType())
+		return type.getTypes().some((t) => decimalLike(t, checker));
+	if (declaredIn(type, ANY_DECIMAL) || declaredIn(type, DECIMAL_TS))
+		return true;
+	if (type.getAliasSymbol()?.name === "DecimalInput") return true;
+	const properties = type.isObjectType() ? checker.getPropertiesOfType(type) : [];
+	return (
+		type.getSymbol()?.name === "__type" &&
+		properties.length === 1 &&
+		properties[0]?.name === "toString"
+	);
+}
 
 let api: API;
 let project: Project;
@@ -81,18 +118,32 @@ function hitsIn(path: string): Record<Rule, number[]> {
 	const file = project.program.getSourceFile(path);
 	if (!file) throw new Error(`${path} is not in the root tsconfig`);
 	const code = withoutComments(file.text);
-	const float = [...code.matchAll(FLOAT_TEXT)].map((m) =>
-		lineAt(code, m.index),
-	);
+	const named = [...code.matchAll(FLOAT_TEXT)];
+	const float = named.map((m) => lineAt(code, m.index));
+	const namedAt = new Set(named.map((m) => m.index));
 	const calls: PropertyAccessExpression[] = [];
 	const pluses: PrefixUnaryExpression[] = [];
+	const numbers: CallExpression[] = [];
+	const helpers: CallExpression[] = [];
 	const visit = (node: Node): void => {
-		if (
-			isCallExpression(node) &&
-			isPropertyAccessExpression(node.expression) &&
-			METHODS.has(node.expression.name.text)
-		)
-			calls.push(node.expression);
+		if (isCallExpression(node)) {
+			if (
+				isPropertyAccessExpression(node.expression) &&
+				METHODS.has(node.expression.name.text)
+			)
+				calls.push(node.expression);
+			if (
+				isIdentifier(node.expression) &&
+				node.expression.text === "Number" &&
+				node.arguments.length === 1
+			)
+				numbers.push(node);
+			if (
+				isIdentifier(node.expression) &&
+				NUMBER_HELPERS.has(node.expression.text)
+			)
+				helpers.push(node);
+		}
 		if (isPrefixUnaryExpression(node) && node.operator === SyntaxKind.PlusToken)
 			pluses.push(node);
 		node.forEachChild(visit);
@@ -102,14 +153,34 @@ function hitsIn(path: string): Record<Rule, number[]> {
 	const types = checker.getTypeAtLocation([
 		...calls.map((c) => c.expression),
 		...pluses.map((p) => p.operand),
+		...numbers.map((n) => n.arguments[0] as Node),
 	]);
 	const prisma = calls
 		.filter((_, i) => declaredIn(types[i], PRISMA_DECIMAL))
 		.map((c) => lineAt(file.text, c.end));
 	pluses.forEach((p, i) => {
-		if (declaredIn(types[calls.length + i], ANY_DECIMAL))
+		if (decimalLike(types[calls.length + i], checker))
 			float.push(lineAt(file.text, p.pos + 1));
 	});
+	numbers.forEach((n, i) => {
+		// `Number(` is 7 characters before its argument's parenthesis.
+		const start = n.expression.end - "Number".length;
+		if (
+			!namedAt.has(start) &&
+			decimalLike(types[calls.length + pluses.length + i], checker)
+		)
+			float.push(lineAt(file.text, start));
+	});
+	for (const call of helpers) {
+		const symbol = checker.getSymbolAtLocation(call.expression);
+		const target =
+			symbol && symbol.flags & SymbolFlags.Alias
+				? checker.getAliasedSymbol(symbol)
+				: symbol;
+		const origin = target?.declarations?.[0]?.path ?? "";
+		if (DECIMAL_TS.test(origin))
+			float.push(lineAt(file.text, call.expression.end));
+	}
 	return { float, "prisma-decimal": prisma };
 }
 
@@ -144,8 +215,13 @@ describe("money arithmetic ratchet", () => {
 		const hits = hitsIn(
 			join(REPO_ROOT, "src/test/money/arithmetic.fixture.ts"),
 		);
-		expect(hits["prisma-decimal"]).toEqual([7, 8, 8]);
-		expect(hits.float.sort((a, b) => a - b)).toEqual([10, 11, 12, 13]);
+		expect(hits["prisma-decimal"]).toEqual([13, 14, 14]);
+		expect(hits.float.sort((a, b) => a - b)).toEqual([
+			// fixture(): unary plus, toNumber(), parseFloat, a money name
+			16, 17, 18, 19,
+			// standIns(): the stand-in types, then the three decimal.ts helpers
+			35, 36, 37, 38, 39, 40, 41, 42, 43,
+		]);
 	});
 
 	it("stays at the baseline", () => {
