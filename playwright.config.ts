@@ -2,7 +2,14 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { defineConfig, devices } from "@playwright/test";
-import { E2E_BASE_URL, E2E_DATABASE_URL, E2E_PORT } from "./e2e/constants";
+import {
+	E2E_AUTH_SECRET,
+	E2E_BASE_URL,
+	E2E_DATABASE_URL,
+	E2E_MASTER_KEY,
+	E2E_PORT,
+	E2E_SEALED,
+} from "./e2e/constants";
 import { assertE2eDatabase } from "./e2e/db-guard";
 import { SEED_TIME_ZONE } from "./e2e/fixtures/personas";
 
@@ -10,12 +17,20 @@ import { SEED_TIME_ZONE } from "./e2e/fixtures/personas";
 // setup wipes it.
 assertE2eDatabase(E2E_DATABASE_URL);
 
+// A sealed run needs the server this config starts, on a database it emptied
+// first: a server already running may hold another key or another database.
+if (
+	E2E_SEALED &&
+	(process.env.E2E_REUSE_SERVER === "1" || process.env.E2E_BASE_URL)
+)
+	throw new Error(
+		"Refusing to run e2e: E2E_SEALED=1 cannot reuse a running server or use E2E_BASE_URL. " +
+			"A sealed run starts its own server with the e2e master key. Unset E2E_REUSE_SERVER and E2E_BASE_URL.",
+	);
+
 const UPLOAD_DIR =
 	process.env.E2E_UPLOAD_DIR ??
 	mkdtempSync(join(tmpdir(), "retrospend-e2e-uploads-"));
-
-const AUTH_SECRET =
-	process.env.E2E_AUTH_SECRET ?? "e2e-test-secret-value-32-chars-!!";
 
 // NixOS cannot run Playwright's downloaded browsers; point this at a Nix
 // Chrome or Chromium instead (docs/ui-overhaul/ops/e2e.sh does).
@@ -99,12 +114,15 @@ export default defineConfig({
 		...(process.env.E2E_VISUAL === "1" ? [visual] : []),
 	],
 	globalSetup: "./e2e/global-setup.ts",
+	globalTeardown: "./e2e/global-teardown.ts",
 	// An external E2E_BASE_URL means the app is already running elsewhere.
 	webServer: process.env.E2E_BASE_URL
 		? undefined
 		: {
+				// The reset empties the database (both modes, see the file) before
+				// the server migrates it and, sealed, writes its canary and keys.
 				// The last -p wins, so this overrides dev:test's own port.
-				command: `pnpm dev:test -p ${E2E_PORT}`,
+				command: `pnpm exec tsx e2e/reset-before-server.ts && pnpm dev:test -p ${E2E_PORT}`,
 				url: E2E_BASE_URL,
 				// Reusing a server on the port could mean testing another DB.
 				reuseExistingServer: process.env.E2E_REUSE_SERVER === "1",
@@ -113,12 +131,16 @@ export default defineConfig({
 				gracefulShutdown: { signal: "SIGTERM", timeout: 10_000 },
 				env: {
 					DATABASE_URL: E2E_DATABASE_URL,
-					AUTH_SECRET,
+					AUTH_SECRET: E2E_AUTH_SECRET,
 					PUBLIC_URL: E2E_BASE_URL,
 					NEXT_PUBLIC_APP_URL: E2E_BASE_URL,
 					UPLOAD_DIR,
 					// No sidecar in e2e: rates come from the seed.
 					SIDECAR_URL: "http://127.0.0.1:9",
+					// E2E_SEALED=1: the server seals user text on write (e2e/constants.ts).
+					...(E2E_SEALED
+						? { DATA_KEYS_WRITE: "true", DATA_MASTER_KEY: E2E_MASTER_KEY }
+						: {}),
 				},
 			},
 });

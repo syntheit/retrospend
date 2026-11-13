@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto";
 import { createServer, type IncomingMessage } from "node:http";
 import type { AddressInfo } from "node:net";
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, test } from "../fixtures/sealed-guard";
 import {
 	ADMIN_STORAGE_STATE,
 	E2E_BASE_URL,

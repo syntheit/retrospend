@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, test } from "../fixtures/sealed-guard";
 import { Pool } from "pg";
 import { E2E_DATABASE_URL, personaStorageState } from "../constants";
 import { SOFIA } from "../fixtures/personas";

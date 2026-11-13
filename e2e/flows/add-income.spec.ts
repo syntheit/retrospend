@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/sealed-guard";
 import { personaStorageState } from "../constants";
 import { MARTIN, SOFIA } from "../fixtures/personas";
 import { bannedOutputOn } from "../helpers/banned-output";

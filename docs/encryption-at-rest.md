@@ -117,6 +117,8 @@ Run `scripts/verify-sealing.ts` right away and compare with the baseline. It rep
 
 Once people edit old rows for other reasons (a changed amount makes `updatedAt` newer while the old title is still plaintext), the second group is expected, so run `verify-sealing.ts --created-only`. It still fails on plaintext in a row created after the epoch. Tables with no `createdAt` or `updatedAt` are listed as exceptions and are covered by the baseline comparison only.
 
+`verify-sealing.ts` also prints "Legacy copies": text in an audit entry's `changes.previous` that a payment confirm copied from a plaintext source (the payment's method or a settlement note from before the epoch). The copy is as plaintext as its source until the reseal in D12, so it counts in the baseline but not in the two rules above, and it is listed apart so it cannot rise unnoticed.
+
 Then, on the owner connection (read only). The commands use the container name `retrospend-postgres` and the database name `retrospend`; use your own `POSTGRES_DB_NAME` if it differs:
 
 ```sh

@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, test } from "../fixtures/sealed-guard";
 import { gotoReady } from "../helpers/navigation";
 import { openPage, SOFIA_SESSION } from "./projects-helpers";
 

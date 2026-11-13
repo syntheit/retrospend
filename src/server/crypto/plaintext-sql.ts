@@ -45,13 +45,21 @@ export function* stringLeaves(
 			yield* stringLeaves(item, [...path, key]);
 }
 
-export type LeafState = "sealed" | "plaintext" | "undeclared";
+/**
+ * `legacy_copy` is a leaf kept as its source cell's own text that is still
+ * plaintext (a payment confirm's `previous`, confirm-restore.ts). The source
+ * is plaintext too until the D12 reseal, so the copy is not new plaintext:
+ * verify-sealing lists it apart and leaves it out of the "written after the
+ * epoch" rule. Only those leaves are classified so; the baseline still counts
+ * them.
+ */
+export type LeafState = "sealed" | "plaintext" | "undeclared" | "legacy_copy";
 
 /**
  * The string leaves of a leaves cell value that hold text, each as sealed,
- * plaintext (a declared leaf, or one kept as its source cell's ciphertext,
- * that is not sealed) or undeclared (a string nobody classified). Strings
- * classified as no text are left out.
+ * plaintext (a declared leaf that is not sealed), legacy_copy (a leaf kept as
+ * its source cell's text that is not sealed) or undeclared (a string nobody
+ * classified). Strings classified as no text are left out.
  */
 export function* textLeaves(
 	value: unknown,
@@ -64,7 +72,11 @@ export function* textLeaves(
 			yield {
 				path,
 				text,
-				state: isSealedField(text) ? "sealed" : "plaintext",
+				state: isSealedField(text)
+					? "sealed"
+					: kind === "source_sealed"
+						? "legacy_copy"
+						: "plaintext",
 			};
 	}
 }

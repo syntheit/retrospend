@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures/sealed-guard";
 import { TEST_USER } from "./constants";
 import { loginAsTestUser } from "./helpers/auth";
 import { gotoReady } from "./helpers/navigation";

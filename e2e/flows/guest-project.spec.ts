@@ -4,7 +4,7 @@ import {
 	expect,
 	type Page,
 	test,
-} from "@playwright/test";
+} from "../fixtures/sealed-guard";
 import { E2E_BASE_URL, USER_STORAGE_STATE } from "../constants";
 import { bannedOutputOn } from "../helpers/banned-output";
 import { gotoReady } from "../helpers/navigation";

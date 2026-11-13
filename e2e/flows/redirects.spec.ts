@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/sealed-guard";
 import { E2E_BASE_URL } from "../constants";
 
 // The routes of the old UI answer a permanent redirect to the new page, with

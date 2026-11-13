@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, test } from "../fixtures/sealed-guard";
 import { USER_STORAGE_STATE } from "../constants";
 import { bannedOutputOn } from "../helpers/banned-output";
 import { FigureAudit, type FiguresResponse } from "../helpers/figures";

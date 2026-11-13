@@ -189,6 +189,39 @@ describe("verify-sealing", () => {
 		expect(judge(r, strict).violations).toBe(3);
 	});
 
+	it("lists a confirm's plaintext previous copy apart: in the baseline, not after the epoch", async () => {
+		const base = await report();
+		await audit({ previous: { paymentMethod: "PLANT-COPY" } }, AFTER);
+		const r = await report();
+		const changes = cell(r, "audit_log_entry.changes");
+		expect(changes).toMatchObject({
+			plaintext: cell(base, "audit_log_entry.changes").plaintext + 1,
+			legacyCopies: cell(base, "audit_log_entry.changes").legacyCopies + 1,
+			createdAfter: 0,
+			updatedAfter: 0,
+		});
+		expect(judge(r, strict).violations).toBe(0);
+		const lines: string[] = [];
+		expect(await runVerify(pool, strict, (t) => lines.push(t))).toBe(0);
+		expect(lines.join("\n")).toMatch(
+			/Legacy copies .*: \d+ in .*audit_log_entry\.changes/,
+		);
+		expect(lines.join("\n")).not.toContain("PLANT-COPY");
+	});
+
+	it("still fails on a plaintext leaf outside previous, next to a legacy copy", async () => {
+		await audit(
+			{ previous: { paymentMethod: "PLANT-COPY" }, name: "PLANT-LEAF" },
+			AFTER,
+		);
+		const r = await report();
+		expect(cell(r, "audit_log_entry.changes")).toMatchObject({
+			createdAfter: 1,
+		});
+		expect(judge(r, strict).violations).toBe(1);
+		expect(await runVerify(pool, strict, () => {})).toBe(1);
+	});
+
 	it("has no after-epoch rule before the epoch, only the baseline", async () => {
 		await setEpoch(null);
 		try {

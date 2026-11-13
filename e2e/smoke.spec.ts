@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures/sealed-guard";
 
 // Smoke tests run without any auth state
 test.describe("smoke", () => {

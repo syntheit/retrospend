@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, test } from "../fixtures/sealed-guard";
 import { personaStorageState } from "../constants";
 import { SOFIA } from "../fixtures/personas";
 import { bannedOutputOn } from "../helpers/banned-output";

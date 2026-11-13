@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, test } from "../fixtures/sealed-guard";
 import { bannedOutputOn } from "../helpers/banned-output";
 import { FigureAudit, httpFigureFetcher } from "../helpers/figures";
 import { untilSaved } from "../helpers/trpc";

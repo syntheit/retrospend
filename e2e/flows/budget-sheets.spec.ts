@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "../fixtures/sealed-guard";
 import { Pool } from "pg";
 import {
 	ADMIN_STORAGE_STATE,

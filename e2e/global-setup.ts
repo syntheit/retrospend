@@ -4,9 +4,12 @@ import {
 	ADMIN_USER,
 	E2E_BASE_URL,
 	E2E_DATABASE_URL,
+	E2E_SEALED,
 	TEST_USER,
 } from "./constants";
+import { assertE2eDatabase } from "./db-guard";
 import { seedE2eDatabase } from "./fixtures/seed";
+import { indexSeedCategories, snapshotSeed } from "./sealing-seed";
 
 async function signUpUser(
 	email: string,
@@ -41,9 +44,25 @@ async function setUserRole(
  * Runs after the web server is up. Wipes the e2e database and writes the
  * personas (fixtures/seed.ts), then signs up the two blank accounts the older
  * specs use through the real sign-up endpoint.
+ *
+ * Sealed (E2E_SEALED=1): the server already wrote its canary, instance key,
+ * floor and epoch into the database the reset emptied, so the wipe keeps
+ * `app_settings`. The seed is legacy plaintext, so its categories get their
+ * name index the way the runbook does it, and the ids it wrote are saved for
+ * e2e/flows/zz-sealing.spec.ts. The sign-ups below go through the server, so
+ * those two accounts are sealed.
  */
 export default async function globalSetup(_config: FullConfig): Promise<void> {
-	await seedE2eDatabase(E2E_DATABASE_URL);
+	await seedE2eDatabase(
+		E2E_DATABASE_URL,
+		undefined,
+		assertE2eDatabase,
+		E2E_SEALED,
+	);
+	if (E2E_SEALED) {
+		indexSeedCategories();
+		await snapshotSeed();
+	}
 
 	const pool = new Pool({ connectionString: E2E_DATABASE_URL });
 	try {

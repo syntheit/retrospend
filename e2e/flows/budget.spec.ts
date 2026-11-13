@@ -4,7 +4,7 @@ import {
 	expect,
 	type Page,
 	test,
-} from "@playwright/test";
+} from "../fixtures/sealed-guard";
 import { Pool } from "pg";
 import {
 	E2E_BASE_URL,
