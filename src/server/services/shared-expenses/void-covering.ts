@@ -54,14 +54,14 @@ async function coveringGroups(
 	for (const sp of split.splitParticipants) {
 		const who = refOf(sp.participantType, sp.participantId);
 		if (sameParticipant(who, payer)) continue;
-		const { byCurrency } = await computeBalance(
+		const { minorByCurrency } = await computeBalance(
 			tx as unknown as PrismaClient,
 			payer,
 			who,
 			{ projectScope: split.projectId },
 		);
 		let after =
-			toMinor(String(byCurrency[split.currency] ?? 0), split.currency) -
+			(minorByCurrency[split.currency] ?? 0) -
 			toMinor(sp.shareAmount.toString(), split.currency);
 		if (after >= 0) continue;
 		const payments = await tx.settlement.findMany({

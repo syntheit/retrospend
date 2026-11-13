@@ -9,16 +9,11 @@ import {
 	BALANCE_SETTLEMENT_STATUSES,
 	type BalanceOptions,
 	type BalanceResult,
+	balanceOf,
 	projectScopeWhere,
-	pruneZeroBalances,
 } from "./balance";
 import { resolveClaimAliases } from "./identity";
 import type { ParticipantRef } from "./types";
-
-interface BatchResult extends BalanceResult {
-	/** The same balances in integer minor units, summed exactly (zeros dropped). */
-	minorByCurrency: Record<string, number>;
-}
 
 /**
  * Batch-compute balances between participantA and multiple counterparts, as
@@ -30,7 +25,7 @@ export async function computeBalanceBatch(
 	participantA: ParticipantRef,
 	counterparts: ParticipantRef[],
 	opts?: Pick<BalanceOptions, "projectScope">,
-): Promise<BatchResult[]> {
+): Promise<BalanceResult[]> {
 	if (counterparts.length === 0) return [];
 
 	const prisma = db as PrismaClient;
@@ -189,18 +184,8 @@ export async function computeBalanceBatch(
 
 	// Build per-counterpart balance maps, keyed by CANONICAL identity so
 	// pre-claim shadow rows and post-claim user rows accumulate together.
-	const balanceMap = new Map<string, Record<string, number>>();
+	// Minor units only: the major-unit numbers are derived at the end (balanceOf).
 	const minorMap = new Map<string, Record<string, number>>();
-
-	const getOrCreate = (k: string) => {
-		let m = balanceMap.get(k);
-		if (!m) {
-			m = {};
-			balanceMap.set(k, m);
-			minorMap.set(k, {});
-		}
-		return k;
-	};
 
 	const add = (
 		k: string,
@@ -208,11 +193,10 @@ export async function computeBalanceBatch(
 		value: { toString(): string },
 		sign: 1 | -1,
 	) => {
-		const m = balanceMap.get(k) ?? {};
-		const mm = minorMap.get(k) ?? {};
-		m[currency] = (m[currency] ?? 0) + sign * Number(value);
-		mm[currency] =
-			(mm[currency] ?? 0) + sign * toMinor(value.toString(), currency);
+		const m = minorMap.get(k) ?? {};
+		minorMap.set(k, m);
+		m[currency] =
+			(m[currency] ?? 0) + sign * toMinor(value.toString(), currency);
 	};
 
 	// A person can appear on ONE transaction/settlement under multiple alias refs
@@ -235,8 +219,7 @@ export async function computeBalanceBatch(
 			participantId: row.participantId,
 		});
 		if (!once(`sp+|${row.transactionId}|${cKey}`)) continue;
-		const m = getOrCreate(cKey);
-		add(m, row.transaction.currency, row.shareAmount, 1);
+		add(cKey, row.transaction.currency, row.shareAmount, 1);
 	}
 
 	// B paid, A owes -> negative. Bucket by the payer (counterpart); the counted
@@ -251,8 +234,7 @@ export async function computeBalanceBatch(
 			participantId: row.participantId,
 		});
 		if (!once(`sp-|${row.transactionId}|${payerKey}|${aKey}`)) continue;
-		const m = getOrCreate(payerKey);
-		add(m, row.transaction.currency, row.shareAmount, -1);
+		add(payerKey, row.transaction.currency, row.shareAmount, -1);
 	}
 
 	// Settlements from B to A -> subtract. Dedupe per (settlement, canonical from, to).
@@ -268,8 +250,7 @@ export async function computeBalanceBatch(
 		// A is the payee: a pending row from B is B's claim, not counted (I5).
 		if (!countsFor(row, "to")) continue;
 		if (!once(`st|${row.id}|${fromKey}|${toKey}`)) continue;
-		const m = getOrCreate(fromKey);
-		add(m, row.currency, row.amount, -1);
+		add(fromKey, row.currency, row.amount, -1);
 	}
 
 	// Settlements from A to B -> add. Dedupe per (settlement, canonical from, to).
@@ -284,21 +265,13 @@ export async function computeBalanceBatch(
 		});
 		if (!countsFor(row, "from")) continue;
 		if (!once(`st|${row.id}|${fromKey}|${toKey}`)) continue;
-		const m = getOrCreate(toKey);
-		add(m, row.currency, row.amount, 1);
+		add(toKey, row.currency, row.amount, 1);
 	}
 
 	// Map results back to counterparts in order (via each one's canonical key).
 	return counterparts.map((c) => {
 		if (canonicalKey(c) === aCanonical)
 			return { byCurrency: {}, minorByCurrency: {} };
-		const byCurrency = { ...(balanceMap.get(canonicalKey(c)) ?? {}) };
-		pruneZeroBalances(byCurrency);
-		const minorByCurrency = Object.fromEntries(
-			Object.entries(minorMap.get(canonicalKey(c)) ?? {}).filter(
-				([, v]) => v !== 0,
-			),
-		);
-		return { byCurrency, minorByCurrency };
+		return balanceOf(minorMap.get(canonicalKey(c)) ?? {});
 	});
 }

@@ -1,3 +1,4 @@
+import { fromMinorUnits } from "@retrospend/domain/money";
 import { toMinor } from "~/server/services/envelope/units";
 import { countsFor, type PairEvent } from "~/server/services/payments/ledger";
 import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
@@ -6,8 +7,15 @@ import type { ParticipantRef } from "./types";
 import { sameParticipant } from "./types";
 
 export interface BalanceResult {
-	/** Per-currency net balances. Positive means participantB owes participantA. */
+	/**
+	 * Per-currency net balances in major units, for the DTOs that still carry a
+	 * number. Positive means participantB owes participantA. Always
+	 * `minorByCurrency` divided by the currency's minor unit, never summed on its
+	 * own.
+	 */
 	byCurrency: Record<string, number>;
+	/** The same balances in integer minor units, summed exactly (zeros dropped). */
+	minorByCurrency: Record<string, number>;
 }
 
 /**
@@ -61,13 +69,31 @@ export function projectScopeWhere(opts?: BalanceOptions): {
  */
 export const BALANCE_SETTLEMENT_STATUSES = ["FINALIZED", "PROPOSED"] as const;
 
-/** Remove currencies with effectively zero balance (floating point tolerance). */
-export function pruneZeroBalances(byCurrency: Record<string, number>) {
-	for (const currency of Object.keys(byCurrency)) {
-		if (Math.abs(byCurrency[currency]!) < 0.00000001) {
-			delete byCurrency[currency];
-		}
-	}
+/** Drop the currencies whose balance is exactly zero (a minor-unit sum is exact). */
+export function withoutZeroMinor(
+	minorByCurrency: Record<string, number>,
+): Record<string, number> {
+	return Object.fromEntries(
+		Object.entries(minorByCurrency).filter(([, minor]) => minor !== 0),
+	);
+}
+
+/** Minor-unit balances as major-unit numbers, the DTO edge (one division each). */
+export function majorByCurrency(
+	minorByCurrency: Record<string, number>,
+): Record<string, number> {
+	return Object.fromEntries(
+		Object.entries(minorByCurrency).map(([currency, minor]) => [
+			currency,
+			fromMinorUnits(minor, currency),
+		]),
+	);
+}
+
+/** The two forms of a minor-unit balance map, zeros dropped. */
+export function balanceOf(minorByCurrency: Record<string, number>): BalanceResult {
+	const minor = withoutZeroMinor(minorByCurrency);
+	return { byCurrency: majorByCurrency(minor), minorByCurrency: minor };
 }
 
 /**
@@ -89,13 +115,13 @@ export async function computeBalance(
 	participantB: ParticipantRef,
 	opts?: BalanceOptions,
 ): Promise<BalanceResult> {
-	const { byCurrency } = await computePairBalance(
+	const { byCurrency, minorByCurrency } = await computePairBalance(
 		db,
 		participantA,
 		participantB,
 		opts,
 	);
-	return { byCurrency };
+	return { byCurrency, minorByCurrency };
 }
 
 /**
@@ -159,8 +185,7 @@ export async function computePairLedger(
 	return events;
 }
 
-export interface PairBalance {
-	byCurrency: Record<string, number>;
+export interface PairBalance extends BalanceResult {
 	byProject: Map<string | null, Record<string, number>>;
 	/** The same history in minor units, from A's side (see payments/ledger.ts). */
 	events: PairEvent[];
@@ -192,7 +217,7 @@ async function computePairBalance(
 	opts?: BalanceOptions,
 ): Promise<PairBalance> {
 	if (sameParticipant(participantA, participantB)) {
-		return { byCurrency: {}, byProject: new Map(), events: [] };
+		return { byCurrency: {}, minorByCurrency: {}, byProject: new Map(), events: [] };
 	}
 	const viewer = opts?.viewer ?? participantA;
 
@@ -223,7 +248,7 @@ async function computePairBalance(
 		aRefs.map((r) => `${r.participantType}:${r.participantId}`),
 	);
 	if (bRefs.some((r) => aKeys.has(`${r.participantType}:${r.participantId}`))) {
-		return { byCurrency: {}, byProject: new Map(), events: [] };
+		return { byCurrency: {}, minorByCurrency: {}, byProject: new Map(), events: [] };
 	}
 	const viewerKey = canonicalKey(viewer);
 
@@ -306,8 +331,10 @@ async function computePairBalance(
 		select: SETTLEMENT_SELECT,
 	});
 
-	const byCurrency: Record<string, number> = {};
-	const byProject = new Map<string | null, Record<string, number>>();
+	// Minor units only: every sum is an exact integer, and the major-unit
+	// numbers the DTOs carry are derived from it at the end.
+	const minorByCurrency: Record<string, number> = {};
+	const minorByProject = new Map<string | null, Record<string, number>>();
 	const events: PairEvent[] = [];
 
 	const add = (
@@ -317,21 +344,16 @@ async function computePairBalance(
 		projectId: string | null | undefined,
 		event: Pick<PairEvent, "date" | "kind" | "pending">,
 	) => {
-		const amount = sign * Number(value);
-		byCurrency[currency] = (byCurrency[currency] ?? 0) + amount;
+		const minor = sign * toMinor(value.toString(), currency);
+		minorByCurrency[currency] = (minorByCurrency[currency] ?? 0) + minor;
 		const scope = projectId ?? null;
-		let bucket = byProject.get(scope);
+		let bucket = minorByProject.get(scope);
 		if (!bucket) {
 			bucket = {};
-			byProject.set(scope, bucket);
+			minorByProject.set(scope, bucket);
 		}
-		bucket[currency] = (bucket[currency] ?? 0) + amount;
-		events.push({
-			...event,
-			scope,
-			currency,
-			minor: sign * toMinor(value.toString(), currency),
-		});
+		bucket[currency] = (bucket[currency] ?? 0) + minor;
+		events.push({ ...event, scope, currency, minor });
 	};
 	const shareEvent = (date: Date) => ({
 		date: isoDate(date),
@@ -429,12 +451,12 @@ async function computePairBalance(
 		add(row.currency, row.amount, 1, row.projectId, paymentEvent(row));
 	}
 
-	pruneZeroBalances(byCurrency);
-	for (const [scope, bucket] of byProject) {
-		pruneZeroBalances(bucket);
-		if (Object.keys(bucket).length === 0) byProject.delete(scope);
+	const byProject = new Map<string | null, Record<string, number>>();
+	for (const [scope, bucket] of minorByProject) {
+		const { byCurrency } = balanceOf(bucket);
+		if (Object.keys(byCurrency).length > 0) byProject.set(scope, byCurrency);
 	}
-	return { byCurrency, byProject, events };
+	return { ...balanceOf(minorByCurrency), byProject, events };
 }
 
 /** Which side of a settlement row the viewer is on (claim aliases count). */
