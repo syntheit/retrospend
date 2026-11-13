@@ -49,7 +49,13 @@ const pending = new Set<Promise<void>>();
  * What the guard has looked at in this worker. A spec that drives the UI
  * checks `pageTrpc` rose, so a guard that sees nothing cannot pass.
  */
-export const guardStats = { pageTrpc: 0, inspected: 0, unreadable: 0 };
+export const guardStats = {
+	pageTrpc: 0,
+	inspected: 0,
+	unreadable: 0,
+	/** `/api` fetches still waiting for response headers when a flush froze the page. */
+	noBody: 0,
+};
 
 interface Seen {
 	method: string;
@@ -156,10 +162,14 @@ function guardRequest(request: APIRequestContext): APIRequestContext {
 
 type PageGuard = {
 	__sealedGuard?: (report: Seen & { text: string }) => Promise<void>;
-	/** Reports every read still open, and says how many started and reported. */
+	/**
+	 * Reports every read still open and answers with the counts of that one
+	 * moment: reads started, reads reported, and `/api` fetches that had no
+	 * response yet (nothing to read, accounted for as such).
+	 */
 	__sealedGuardFlush?: (
 		waitMs: number,
-	) => Promise<{ started: number; reported: number }>;
+	) => Promise<{ started: number; reported: number; noBody: number }>;
 };
 
 /**
@@ -174,7 +184,11 @@ type PageGuard = {
  * branch survives that by reporting what arrived, cut to its last complete
  * line. Reads still open at flush or `pagehide` are reported the same way.
  * The flush says how many reads started and how many reported, and a
- * difference fails the test (flushTaps).
+ * difference fails the test (flushTaps). The counts are taken in the same
+ * synchronous step as the last report, so a read the app starts while the
+ * flush is still waiting on the binding is not a read that was dropped: it
+ * started after the freeze. A fetch that has no response yet at the freeze
+ * has no body to read and is counted as such (`noBody`), never as a read.
  */
 function installFetchTap(): void {
 	const w = window as unknown as PageGuard & { fetch: typeof fetch };
@@ -184,6 +198,8 @@ function installFetchTap(): void {
 	}
 	const open = new Set<OpenRead>();
 	const calls = new Set<Promise<unknown>>();
+	/** `/api` fetches whose response headers have not arrived. */
+	const waiting = new Set<object>();
 	let started = 0;
 	let reported = 0;
 	const cut = (text: string) => text.slice(0, text.lastIndexOf("\n") + 1);
@@ -192,18 +208,37 @@ function installFetchTap(): void {
 	};
 	window.addEventListener("pagehide", reportOpen);
 	w.__sealedGuardFlush = async (waitMs) => {
-		// Let reads finish on their own first; then report what each has.
+		// Let reads and responses on their way finish first; then report what
+		// each open read has.
 		await Promise.race([
 			Promise.allSettled([...open].map((read) => read.done)),
 			new Promise((resolve) => setTimeout(resolve, waitMs)),
 		]);
 		reportOpen();
+		// Frozen here: no await between the last report and the counts.
+		const counts = { started, reported, noBody: waiting.size };
 		await Promise.allSettled([...calls]);
-		return { started, reported };
+		return counts;
 	};
 	const original = w.fetch.bind(window);
 	w.fetch = async (input, init) => {
-		const response = await original(input, init);
+		const ticket = {};
+		try {
+			const target = new URL(
+				input instanceof Request ? input.url : String(input),
+				location.href,
+			);
+			if (target.pathname.startsWith("/api/")) waiting.add(ticket);
+		} catch {
+			// Not a URL the tap understands: nothing to account for.
+		}
+		let response: globalThis.Response;
+		try {
+			response = await original(input, init);
+		} catch (error) {
+			waiting.delete(ticket);
+			throw error;
+		}
 		try {
 			const request = input instanceof Request ? input : null;
 			const url = new URL(
@@ -275,6 +310,9 @@ function installFetchTap(): void {
 		} catch {
 			// Never let the tap break the app's own request.
 			return response;
+		} finally {
+			// After the read is open (or was not needed), in the same step.
+			waiting.delete(ticket);
 		}
 	};
 }
@@ -322,7 +360,8 @@ async function flushTaps(): Promise<void> {
 					)
 					// The page navigated or closed while it answered.
 					.catch(() => undefined),
-			)) as { started: number; reported: number } | undefined;
+			)) as { started: number; reported: number; noBody: number } | undefined;
+			if (result) guardStats.noBody += result.noBody;
 			if (result && result.started > result.reported)
 				unreadable.push(
 					`${result.started - result.reported} page read(s) started and never reported`,
