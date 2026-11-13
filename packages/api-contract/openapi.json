@@ -105314,7 +105314,7 @@
 						"name": "to",
 						"required": true,
 						"schema": {
-							"description": "Last day, inclusive; at most 366 days after from.",
+							"description": "Last day, inclusive; at most 366 days from first to last, both counted.",
 							"format": "date",
 							"type": "string"
 						}

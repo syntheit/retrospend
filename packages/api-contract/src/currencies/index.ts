@@ -41,7 +41,7 @@ export const rateHistoryQuerySchema = cursorQuerySchema.extend({
 	to: z.iso.date().optional(),
 });
 
-/** The longest span GET /rates/history serves in one request, in days. */
+/** The longest range GET /rates/history serves in one request, in days, both ends counted. */
 export const RATE_DAYS_MAX_SPAN = 366;
 export const RATE_DAYS_DEFAULT_LIMIT = 1000;
 export const RATE_DAYS_MAX_LIMIT = 2000;
@@ -59,16 +59,16 @@ export const rateDaysQuerySchema = z
 			.default(RATE_DAYS_DEFAULT_LIMIT),
 		from: z.iso.date().meta({ description: "First day, inclusive." }),
 		to: z.iso.date().meta({
-			description: `Last day, inclusive; at most ${RATE_DAYS_MAX_SPAN} days after from.`,
+			description: `Last day, inclusive; at most ${RATE_DAYS_MAX_SPAN} days from first to last, both counted.`,
 		}),
 	})
 	.refine(
 		(q) => {
 			const span = (Date.parse(q.to) - Date.parse(q.from)) / DAY_MS;
-			return span >= 0 && span <= RATE_DAYS_MAX_SPAN;
+			return span >= 0 && span + 1 <= RATE_DAYS_MAX_SPAN;
 		},
 		{
-			error: `to must be on or after from, and at most ${RATE_DAYS_MAX_SPAN} days later`,
+			error: `to must be on or after from, and the range at most ${RATE_DAYS_MAX_SPAN} days, both counted`,
 			path: ["to"],
 		},
 	);

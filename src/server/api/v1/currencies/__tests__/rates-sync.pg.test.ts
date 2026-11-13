@@ -273,11 +273,57 @@ describe("/api/v1 rate sync", () => {
 			expect(mine(body).find((r) => r.currency === "GHS")?.unitsPerUsd).toBe(
 				"5.75",
 			);
-			// One body: a rewritten row never sits beside old values of its neighbors.
-			expect(
-				mine(body).find((r) => r.currency === "TZS" && r.type === "blue")
-					?.unitsPerUsd,
-			).toBe("2400");
+		});
+
+		it("shows the whole old table while a rewrite is open and the whole new one after it commits", async () => {
+			const old = await daily();
+			const rewrite = async (tx: typeof adminDb) => {
+				// Two rows in place, as the sidecar rewrites them in one transaction.
+				await tx.exchangeRate.updateMany({
+					where: { currency: "GHS", type: "official" },
+					data: { rate: "6.25", updatedAt: new Date("2030-01-01T00:00:00Z") },
+				});
+				await tx.exchangeRate.updateMany({
+					where: { currency: "TZS", type: "blue" },
+					data: { rate: "2500", updatedAt: new Date("2030-01-01T00:00:00Z") },
+				});
+			};
+			let release: () => void = () => undefined;
+			const gate = new Promise<void>((r) => {
+				release = r;
+			});
+			let opened: () => void = () => undefined;
+			const open = new Promise<void>((r) => {
+				opened = r;
+			});
+			const holding = adminDb.$transaction(async (tx) => {
+				await rewrite(tx as typeof adminDb);
+				opened();
+				await gate;
+			});
+			try {
+				await open;
+				// Neither row of the open rewrite shows: not one new value beside an old one.
+				expect(await daily()).toEqual(old);
+			} finally {
+				release();
+				await holding;
+			}
+			const after = await daily();
+			expect(after.asOf).toBe("2030-01-01T00:00:00.000Z");
+			const value = (code: string, type: string) =>
+				after.rates.find((r) => r.currency === code && r.type === type)
+					?.unitsPerUsd;
+			expect(value("GHS", "official")).toBe("6.25");
+			expect(value("TZS", "blue")).toBe("2500");
+			// Every row it did not rewrite is as it was.
+			const untouched = (d: Daily) =>
+				d.rates.filter(
+					(r) =>
+						!(r.type === "blue" && r.currency === "TZS") &&
+						!(r.currency === "GHS" && r.type === "official"),
+				);
+			expect(untouched(after)).toEqual(untouched(old));
 		});
 
 		it("needs the read scope", async () => {
@@ -329,16 +375,16 @@ describe("/api/v1 rate sync", () => {
 			expect((await page("from=2019-02-01&to=2019-02-28")).items).toEqual([]);
 		});
 
-		it("serves a 366 day range and refuses a longer one", async () => {
+		it("serves a 366 day range, both ends counted, and refuses a longer one", async () => {
 			expect(
 				(
-					await call("/rates/history?from=2019-01-01&to=2020-01-02", {
+					await call("/rates/history?from=2019-01-01&to=2020-01-01", {
 						headers: as,
 					})
 				).status,
 			).toBe(200);
 			await expectProblem(
-				await call("/rates/history?from=2019-01-01&to=2020-01-03", {
+				await call("/rates/history?from=2019-01-01&to=2020-01-02", {
 					headers: as,
 				}),
 				400,

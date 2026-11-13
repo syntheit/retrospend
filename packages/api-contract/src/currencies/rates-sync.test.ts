@@ -61,10 +61,10 @@ describe("rate sync contract", () => {
 		).toBe(false);
 	});
 
-	it("takes a range of at most 366 days", () => {
+	it("takes a range of at most 366 days, both ends counted", () => {
 		expect(range("2019-01-01", "2019-01-01").success).toBe(true);
-		expect(range("2019-01-01", "2020-01-02").success).toBe(true);
-		expect(range("2019-01-01", "2020-01-03").success).toBe(false);
+		expect(range("2019-01-01", "2020-01-01").success).toBe(true);
+		expect(range("2019-01-01", "2020-01-02").success).toBe(false);
 		expect(range("2019-01-02", "2019-01-01").success).toBe(false);
 		expect(rateDaysQuerySchema.safeParse({ from: "2019-01-01" }).success).toBe(
 			false,
