@@ -30,9 +30,12 @@ export { type MovementRow, mirrorId } from "./movements";
 export {
 	type Change,
 	InvalidInputError,
+	RATE_SYNC_ID,
+	type RateSyncRow,
 	type Reader,
 	SETTINGS_ID,
 	type SettingsRow,
+	SINGLE_ROW_IDS,
 	type ShareRow,
 	type Snapshot,
 	type Store,
@@ -44,6 +47,14 @@ export {
 	type WithId,
 	type Writer,
 } from "./port";
+export {
+	applyDailyTable,
+	type DailyRateRow,
+	type DailyTable,
+	type HistoryRateRow,
+	RateHistoryStore,
+	ratesAsOf,
+} from "./rates";
 export { type ReadRepos, type Repos, readRepos, repos } from "./repos";
 export type { TemplateRow } from "./templates";
 export type { UndoToken } from "./undo";

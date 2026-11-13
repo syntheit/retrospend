@@ -78,6 +78,7 @@ const FIXTURES: { [T in TableName]: (id: string) => TableRows[T] } = {
 		rate: "1545",
 		date: at("2026-03-05T00:00:00Z"),
 	}),
+	rateSync: (id) => ({ id, asOf: "2026-03-05T09:05:00.000Z" }),
 	budgetMovements: (id) => ({
 		id,
 		month: 202603,

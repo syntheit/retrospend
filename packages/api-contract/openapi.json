@@ -105102,6 +105102,370 @@
 				"x-required-scope": "read"
 			}
 		},
+		"/rates/daily": {
+			"get": {
+				"description": "Every exchange_rate row of every currency except USD (1 by definition, never a row), in one body read in one statement, so a rate the sidecar rewrites in place never shows half old and half new. No date parameter and no pick per type: a device prices with all rows, as the server's figures do. A currency with no row is absent, never a row at 1. The ETag is a hash of the body; send it as If-None-Match for 304 with no body.",
+				"operationId": "getDailyRates",
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"asOf": {
+											"anyOf": [
+												{
+													"format": "date-time",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"rates": {
+											"items": {
+												"properties": {
+													"currency": {
+														"description": "ISO 4217 code, or the app's code for a crypto asset.",
+														"examples": [
+															"USD",
+															"ARS",
+															"BTC"
+														],
+														"pattern": "^[A-Z0-9]{2,10}$",
+														"type": "string"
+													},
+													"date": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"type": {
+														"examples": [
+															"official",
+															"blue"
+														],
+														"maxLength": 32,
+														"minLength": 1,
+														"type": "string"
+													},
+													"unitsPerUsd": {
+														"examples": [
+															"1450.25"
+														],
+														"pattern": "^-?\\d+(\\.\\d+)?$",
+														"type": "string"
+													},
+													"updatedAt": {
+														"format": "date-time",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"currency",
+													"type",
+													"date",
+													"unitsPerUsd",
+													"updatedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"asOf",
+										"rates"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "The whole rate table, as stored",
+				"tags": [
+					"Currencies"
+				],
+				"x-required-scope": "read"
+			}
+		},
+		"/rates/history": {
+			"get": {
+				"description": "Raw exchange_rate_history rows, oldest first by (date, currency, type), for charts only: a price never reads them. The range is at most 366 days; pages default to 1000 rows, at most 2000.",
+				"operationId": "listHistoryRates",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "cursor",
+						"required": false,
+						"schema": {
+							"description": "The nextCursor of the previous page.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"default": 1000,
+							"maximum": 2000,
+							"minimum": 1,
+							"type": "integer"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "from",
+						"required": true,
+						"schema": {
+							"description": "First day, inclusive.",
+							"format": "date",
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "to",
+						"required": true,
+						"schema": {
+							"description": "Last day, inclusive; at most 366 days from first to last, both counted.",
+							"format": "date",
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"items": {
+											"items": {
+												"properties": {
+													"currency": {
+														"description": "ISO 4217 code, or the app's code for a crypto asset.",
+														"examples": [
+															"USD",
+															"ARS",
+															"BTC"
+														],
+														"pattern": "^[A-Z0-9]{2,10}$",
+														"type": "string"
+													},
+													"date": {
+														"format": "date",
+														"type": "string"
+													},
+													"type": {
+														"examples": [
+															"official",
+															"blue"
+														],
+														"maxLength": 32,
+														"minLength": 1,
+														"type": "string"
+													},
+													"unitsPerUsd": {
+														"examples": [
+															"1450.25"
+														],
+														"pattern": "^-?\\d+(\\.\\d+)?$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"date",
+													"currency",
+													"type",
+													"unitsPerUsd"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"nextCursor": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										}
+									},
+									"required": [
+										"items",
+										"nextCursor"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "Stored rate days for every currency",
+				"tags": [
+					"Currencies"
+				],
+				"x-required-scope": "read"
+			}
+		},
 		"/rates/sync": {
 			"post": {
 				"operationId": "syncRates",
@@ -106005,6 +106369,7 @@
 		},
 		"/rates/{currency}/history": {
 			"get": {
+				"description": "Reads exchange_rate, which keeps the newest row of each rate type and rewrites it in place, so this is the current rates (newest first), not a daily history. Daily rows for every currency: GET /rates/history. A currency's chart: GET /rates/{currency}/series.",
 				"operationId": "getRateHistory",
 				"parameters": [
 					{
@@ -106232,7 +106597,7 @@
 						]
 					}
 				],
-				"summary": "Stored rates for one currency, newest first",
+				"summary": "The stored rate rows of one currency",
 				"tags": [
 					"Currencies"
 				],

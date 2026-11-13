@@ -6,6 +6,7 @@ import {
 	InvalidInputError,
 	MemoryStore,
 	SETTINGS_ID,
+	SINGLE_ROW_IDS,
 	TABLE_NAMES,
 	TransactionError,
 } from "./index";
@@ -95,7 +96,7 @@ describe("memory store", () => {
 		});
 		const tx = await store.begin();
 		for (const t of TABLE_NAMES)
-			tx.put(t, fixtureRow(t, t === "settings" ? SETTINGS_ID : "new") as never);
+			tx.put(t, fixtureRow(t, SINGLE_ROW_IDS[t] ?? "new") as never);
 		tx.delete("rates", "keep");
 		await expect(tx.commit()).rejects.toThrow("disk full");
 		for (const t of TABLE_NAMES)
