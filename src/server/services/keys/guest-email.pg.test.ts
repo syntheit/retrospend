@@ -26,13 +26,20 @@ import { TextUnavailableError } from "~/server/crypto/field-open";
 import { setSealingForTests } from "~/server/crypto/sealing";
 import { auth } from "~/server/better-auth";
 import { createUserScopedDb, db } from "~/server/db";
-import { keystoreDb } from "~/server/db-core";
+import { buildClients, keystoreDb, runtimeDataModel } from "~/server/db-core";
+import { fieldOpenSlot } from "~/server/crypto/field-open";
+import { buildModelGraph } from "~/server/crypto/model-graph";
+import { textKeys } from "~/server/crypto/text-keys";
+import type { PrismaClient } from "~prisma";
 import { deleteGuestSessionAsAdmin } from "~/server/services/admin-person-removal.service";
 import {
 	migrateGuestDataForVerifiedUser,
 	migrateGuestSessionsToUser,
 } from "~/server/services/guest-migration.service";
-import { evictInstanceKeyring } from "~/server/services/keys/instance-key.service";
+import {
+	evictInstanceKeyring,
+	findInstanceKeyring,
+} from "~/server/services/keys/instance-key.service";
 import {
 	buildContactVisibility,
 	redactContact,
@@ -265,6 +272,76 @@ describe.each(["sealed", "plain"] as const)("guest email, %s", (mode) => {
 		expect(await exists(id)).toBe(false);
 	});
 
+	// An address with _ or % is never a pattern: neither ILIKE wildcard may
+	// reach another person's guest sessions (in sealed mode the hash decides).
+	const stem = () => randomUUID().replaceAll("-", "");
+
+	it("verifying john_doe@ migrates only john_doe@'s sessions, not johnxdoe@'s or john.doe@'s", async () => {
+		const l = await link();
+		const u = stem();
+		const mine = await created(l.id, `${u}john_doe@example.com`);
+		const others = [
+			await created(l.id, `${u}johnxdoe@example.com`),
+			await created(l.id, `${u}john.doe@example.com`),
+		];
+		const { user } = await createTestUser();
+		const result = await migrateGuestSessionsToUser(
+			db,
+			user.id,
+			`${u}John_Doe@Example.com`,
+		);
+		expect(result.migratedSessionCount).toBe(1);
+		expect(await exists(mine)).toBe(false);
+		expect(await Promise.all(others.map(exists))).toEqual([true, true]);
+	});
+
+	it("verifying an address with % migrates nothing", async () => {
+		const l = await link();
+		const u = stem();
+		const guest = await created(l.id, `${u}xyz@example.com`);
+		const { user } = await createTestUser();
+		const result = await migrateGuestSessionsToUser(
+			db,
+			user.id,
+			`${u}%@example.com`,
+		);
+		expect(result.migratedSessionCount).toBe(0);
+		expect(await exists(guest)).toBe(true);
+	});
+
+	it("deleting the account john_doe@ deletes only john_doe@'s sessions", async () => {
+		const l = await link();
+		const u = stem();
+		const mine = await created(l.id, `${u}john_doe@example.com`);
+		const other = await created(l.id, `${u}johnxdoe@example.com`);
+		const { user } = await createTestUser();
+		await anonymizeAndDeleteUser(db, user.id, `${u}john_doe@example.com`, null);
+		expect(await exists(mine)).toBe(false);
+		expect(await exists(other)).toBe(true);
+	});
+
+	it("deleting an account whose address has % deletes no session", async () => {
+		const l = await link();
+		const u = stem();
+		const guest = await created(l.id, `${u}xyz@example.com`);
+		const { user } = await createTestUser();
+		await anonymizeAndDeleteUser(db, user.id, `${u}%@example.com`, null);
+		expect(await exists(guest)).toBe(true);
+	});
+
+	it("registering a_b@ does not resume axb@'s session, and a_b@ itself still resumes", async () => {
+		const l = await link();
+		const u = stem();
+		await created(l.id, `${u}axb@example.com`);
+		const separate = await register(l.id, `${u}a_b@example.com`);
+		expect(separate.resumeEmailSent).toBe(false);
+		expect(mail.sent).toEqual([]);
+		const again = await register(l.id, `${u}A_B@example.com`);
+		expect(again.resumeEmailSent).toBe(true);
+		expect(mail.sent).toEqual([`${u}a_b@example.com`]);
+		expect(await sessionsIn(l.projectId)).toBe(2);
+	});
+
 	it("an organizer reads the address, a contributor and a viewer read null", async () => {
 		const l = await link();
 		const email = address("seen");
@@ -397,11 +474,79 @@ describe("sealed rows", () => {
 		});
 		expect(await adminDb.user.count({ where: { id: user.id } })).toBe(0);
 		expect(warn).toHaveBeenCalledWith(
-			expect.stringContaining("encrypted_text_unavailable"),
+			expect.stringContaining("keystore_lost"),
 		);
 		expect(JSON.stringify(warn.mock.calls)).not.toContain(user.email);
 		// The sealed address cannot be matched without the key, so the session stays.
 		expect(await exists(guestId)).toBe(true);
+	});
+
+	it("an account with an organized project, a created project and a pending settlement deletes with the instance key lost", async () => {
+		const creatorUser = await createTestUser();
+		const { user: other } = await createTestUser();
+		const gone = creatorUser.user.id;
+		// P1: organized and created by `gone`, with another member to inherit it.
+		const p1 = await adminDb.project.create({
+			data: { name: "Compartido", createdById: gone },
+		});
+		await adminDb.projectParticipant.createMany({
+			data: [
+				{ projectId: p1.id, participantType: "user", participantId: gone, role: "ORGANIZER" },
+				{ projectId: p1.id, participantType: "user", participantId: other.id, role: "CONTRIBUTOR" },
+			],
+		});
+		// P2: organized by `gone` alone, so it is deleted with them.
+		const p2 = await adminDb.project.create({
+			data: { name: "Solo", createdById: gone },
+		});
+		await adminDb.projectParticipant.create({
+			data: { projectId: p2.id, participantType: "user", participantId: gone, role: "ORGANIZER" },
+		});
+		// A payment `gone` recorded and `other` has not confirmed: auto-confirmed.
+		const settlement = await adminDb.settlement.create({
+			data: {
+				fromParticipantType: "user",
+				fromParticipantId: gone,
+				toParticipantType: "user",
+				toParticipantId: other.id,
+				amount: "30000",
+				currency: "ARS",
+				note: "Cena",
+				confirmedByPayer: true,
+			},
+			select: { id: true },
+		});
+		vi.spyOn(console, "warn").mockImplementation(() => {});
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		await withoutInstanceKey(async () => {
+			// A client with no ring cached, as a restarted process has.
+			const instance = () => findInstanceKeyring();
+			const fresh = buildClients(
+				{
+					instance: textKeys({ instance }),
+					user: (userId) => textKeys({ instance }, userId),
+				},
+				undefined,
+				fieldOpenSlot(() => buildModelGraph(runtimeDataModel())),
+			);
+			await anonymizeAndDeleteUser(
+				fresh.db as unknown as PrismaClient,
+				gone,
+				creatorUser.user.email,
+				null,
+			);
+		});
+		expect(await adminDb.user.count({ where: { id: gone } })).toBe(0);
+		const [heir] = await adminDb.$queryRaw<{ createdById: string }[]>`
+			SELECT "createdById" FROM "project" WHERE "id" = ${p1.id}`;
+		expect(heir?.createdById).toBe(other.id);
+		expect(
+			(await adminDb.$queryRaw<{ n: bigint }[]>`SELECT count(*) AS "n" FROM "project" WHERE "id" = ${p2.id}`)[0]?.n,
+		).toBe(0n);
+		const [row] = await adminDb.$queryRaw<{ status: string; payer: boolean; payee: boolean }[]>`
+			SELECT "status"::text AS "status", "confirmedByPayer" AS "payer", "confirmedByPayee" AS "payee"
+			FROM "settlement" WHERE "id" = ${settlement.id}`;
+		expect(row).toEqual({ status: "FINALIZED", payer: true, payee: true });
 	});
 
 	it("a delete, an update and a bulk delete that return no address succeed with the key unavailable", async () => {
