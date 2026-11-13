@@ -31,6 +31,11 @@ vi.mock("~/server/services/keys/field-encryption-start", () => ({
 		if (gate.error) throw gate.error;
 	},
 }));
+vi.mock("~/server/services/sync/restore", () => ({
+	checkSyncRestore: async () => {
+		calls.push("sync restore");
+	},
+}));
 vi.mock("~/server/services/webhooks/worker", () => ({
 	startWebhookWorker: step("worker"),
 }));
@@ -62,13 +67,14 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("register", () => {
-	it("checks the master key, then the canary, then the start gates, then field encryption, then starts the workers", async () => {
+	it("checks the master key, then the canary, then the start gates, then field encryption, then the sync log, then starts the workers", async () => {
 		await register();
 		expect(calls).toEqual([
 			"master key config",
 			"canary",
 			"start gates",
 			"field encryption",
+			"sync restore",
 			...Array(6).fill("worker"),
 		]);
 	});
