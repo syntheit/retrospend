@@ -133,5 +133,15 @@ export const feedbackContract = {
 		})
 		.meta({ scope: "write:settings", event: "feedback.error_reports_sent" })
 		.input(submitErrorReportsSchema)
-		.output(z.object({ ok: z.literal(true), stored: z.int().min(0) })),
+		.output(
+			z.object({
+				ok: z.literal(true),
+				stored: z
+					.int()
+					.min(0)
+					.describe(
+						"Reports actually stored; a report whose message or stack starts with U+0001 is skipped.",
+					),
+			}),
+		),
 };

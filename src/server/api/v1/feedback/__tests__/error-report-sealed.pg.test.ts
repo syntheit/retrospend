@@ -353,31 +353,39 @@ describe("a lost instance key", () => {
 		expect(own?.message).toBe(MESSAGE_STORED);
 	});
 
-	it("deletes a report with the key gone, and a retry has nothing left to fail on", async () => {
+	it("deletes a report whose text cannot be opened, through the v1 and the web delete", async () => {
+		const admin = (await person("ADMIN")).user.id;
 		const bob = (await person()).user.id;
-		await send(bob, [report()]);
-		const [row] = await rowsOf(bob);
-		const keys = await adminDb.$queryRaw<
-			{ keyId: number; wrappedKey: string; masterKeyId: bigint }[]
-		>`SELECT "keyId", "wrappedKey", "masterKeyId" FROM keystore."instance_text_key"`;
-		await adminDb.$executeRaw`DELETE FROM keystore."instance_text_key"`;
-		evictInstanceKeyring();
+		await send(bob, [
+			report({ message: "Uno" }),
+			report({ message: "Dos" }),
+			report({ message: "Tres" }),
+		]);
+		const [viaV1, viaWeb, donor] = await rowsOf(bob);
+		// Another row's ciphertext fails the AAD check, so opening these two
+		// throws auth_failed. A delete that returned the row would open it
+		// after the delete committed, and error with the report already gone.
+		for (const row of [viaV1, viaWeb])
+			await adminDb.$executeRaw`UPDATE "error_report" SET "message" = ${donor?.message ?? ""} WHERE "id" = ${row?.id ?? ""}`;
 		vi.spyOn(console, "error").mockImplementation(() => {});
 		try {
-			// A delete that returns the row would open its text after the
-			// delete commits, fail, and leave the report gone with an error.
-			await createUserScopedDb(bob).errorReport.delete({
-				where: { id: row?.id ?? "" },
-				select: { id: true },
+			const res = await call(`/admin/error-reports/${viaV1?.id}`, {
+				method: "DELETE",
+				headers: await asKey(admin, ["admin"]),
+				idempotent: true,
 			});
+			expect(res.status).toBe(200);
+			const web = createCallerFactory(feedbackRouter)({
+				session: makeSession({ id: admin, name: "Admin", role: "ADMIN" }),
+				db,
+				headers: new Headers(),
+			});
+			await expect(
+				web.deleteErrorReport({ id: viaWeb?.id ?? "" }),
+			).resolves.toEqual({ success: true });
 		} finally {
 			vi.restoreAllMocks();
-			for (const k of keys)
-				await adminDb.$executeRaw`
-					INSERT INTO keystore."instance_text_key" ("keyId", "wrappedKey", "masterKeyId")
-					VALUES (${k.keyId}, ${k.wrappedKey}, ${k.masterKeyId})`;
-			evictInstanceKeyring();
 		}
-		expect(await rowsOf(bob)).toEqual([]);
+		expect((await rowsOf(bob)).map((r) => r.id)).toEqual([donor?.id]);
 	});
 });
