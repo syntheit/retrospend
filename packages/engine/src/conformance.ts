@@ -11,7 +11,7 @@
 import { fixtureRow } from "./fixtures";
 import {
 	InvalidInputError,
-	SETTINGS_ID,
+	SINGLE_ROW_IDS,
 	type Store,
 	TABLE_NAMES,
 	TransactionError,
@@ -69,8 +69,9 @@ export const conformanceCases: ConformanceCase[] = [
 		async run(makeStore) {
 			const store = await makeStore();
 			for (const t of TABLE_NAMES) {
-				// Settings has one row.
-				const [a, b] = t === "settings" ? [SETTINGS_ID, null] : ["a", "b"];
+				// Settings and rateSync have one row.
+				const only = SINGLE_ROW_IDS[t];
+				const [a, b] = only !== undefined ? [only, null] : ["a", "b"];
 				const row = fixtureRow(t, a);
 				await store.transaction((tx) => tx.put(t, row));
 				expectEqual(store.get(t, a), row, `${t} get`);

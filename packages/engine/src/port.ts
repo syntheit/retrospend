@@ -37,6 +37,15 @@ export interface SettingsRow extends WithId {
 }
 
 /**
+ * What the last rate sync (applyDailyTable) left, one row (id "rates"): the
+ * server's `asOf` of the table now in `rates`, null when it was empty. Never a
+ * figure input; a device reads it to show how fresh its rates are.
+ */
+export interface RateSyncRow extends WithId {
+	readonly asOf: string | null;
+}
+
+/**
  * What an expense row keeps beyond the fields the spending rules read: its
  * text and both legs of its rate, as the server stores them. Optional, since
  * rows of figures-only fixtures and older rows have none; a row the device
@@ -68,6 +77,7 @@ export interface TableRows {
 	accounts: AccountRow;
 	rateSwitches: RateSwitchRow & WithId;
 	rates: Readonly<StoredRateRow> & WithId;
+	rateSync: RateSyncRow;
 	budgetMovements: Readonly<MovementRow> & WithId;
 	recurringTemplates: Readonly<RecurringTemplateRow>;
 	settings: SettingsRow;
@@ -83,6 +93,7 @@ export const TABLE_NAMES = [
 	"accounts",
 	"rateSwitches",
 	"rates",
+	"rateSync",
 	"budgetMovements",
 	"recurringTemplates",
 	"settings",
@@ -153,6 +164,15 @@ export class TransactionError extends Error {
 
 /** The one row of the settings table. */
 export const SETTINGS_ID = "user";
+
+/** The one row of the rateSync table. */
+export const RATE_SYNC_ID = "rates";
+
+/** Tables that hold exactly one row, and its id; any other id is refused. */
+export const SINGLE_ROW_IDS: Partial<Record<TableName, string>> = {
+	settings: SETTINGS_ID,
+	rateSync: RATE_SYNC_ID,
+};
 
 /** A write the port refuses: the row breaks a rule of its table. */
 export class InvalidInputError extends Error {

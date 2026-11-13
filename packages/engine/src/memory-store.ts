@@ -21,7 +21,7 @@ import {
 	type Change,
 	InvalidInputError,
 	type Reader,
-	SETTINGS_ID,
+	SINGLE_ROW_IDS,
 	type Snapshot,
 	type Store,
 	TABLE_NAMES,
@@ -63,9 +63,10 @@ function own<V>(v: V): V {
 
 /** The copy a table keeps of a row; refuses what the table cannot hold. */
 function owned<T extends TableName>(table: T, row: TableRows[T]): TableRows[T] {
-	if (table === "settings" && row.id !== SETTINGS_ID)
+	const only = SINGLE_ROW_IDS[table];
+	if (only !== undefined && row.id !== only)
 		throw new InvalidInputError(
-			`The settings table has one row, with id "${SETTINGS_ID}"`,
+			`The ${table} table has one row, with id "${only}"`,
 		);
 	return own(row);
 }
