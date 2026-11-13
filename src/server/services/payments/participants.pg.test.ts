@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { claimShadowProfile } from "~/server/services/claim.service";
 import { migrateGuestSessionsToUser } from "~/server/services/guest-migration.service";
+import { contactHashFor } from "~/server/services/keys/contact-hash";
 import { forUser } from "~/server/services/preview";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import {
@@ -106,6 +107,8 @@ describe("payment headers follow participant rewrites", () => {
 			data: {
 				name: "Guest",
 				email,
+				// What the register route stores: the sealed suite finds a guest by this.
+				emailHash: await contactHashFor("guest_session", email),
 				magicLinkId: randomUUID(),
 				projectId: project.id,
 				sessionToken: randomUUID(),
