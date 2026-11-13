@@ -8,7 +8,6 @@ import { columnText } from "@retrospend/domain/money-dec";
 import {
 	type Decimal,
 	type DecimalInput,
-	toFloat,
 } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import { CsvNumber, generateCsv } from "~/lib/csv";
@@ -261,7 +260,7 @@ async function reopenRate(
 		exchangeRateType: string | null;
 	},
 	today: Date,
-): Promise<number> {
+): Promise<DecimalInput> {
 	try {
 		const { rate } = await service.resolveExchangeRate(asset.currency, today, {
 			rate: asset.exchangeRate,
@@ -271,7 +270,7 @@ async function reopenRate(
 	} catch {
 		// No table rate: the account's own stored rate, if any
 		if (asset.exchangeRate !== null && hasRate(asset.currency, asset.exchangeRate))
-			return toFloat(asset.exchangeRate);
+			return asset.exchangeRate;
 		throw new MissingRateError(asset.currency);
 	}
 }
