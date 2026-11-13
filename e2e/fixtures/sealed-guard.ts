@@ -7,8 +7,8 @@
  *
  * It watches the browser contexts (pages), `page.request` and `context.request`,
  * the `request` fixture, and contexts a test opens itself with
- * `browser.newContext`. Contexts made with `playwright.request.newContext`
- * (the API-token specs) are not covered.
+ * `browser.newContext`, and request contexts made with
+ * `playwright.request.newContext` (the API-token specs).
  *
  * A failure names the method, the path and the JSON path of the string, never
  * its value. Unsealed runs pass everything through untouched.
@@ -22,6 +22,7 @@ import {
 	type Browser,
 	type BrowserContext,
 	test as base,
+	type PlaywrightWorkerArgs,
 	type Response,
 } from "@playwright/test";
 import { E2E_SEALED } from "../constants";
@@ -122,7 +123,23 @@ function guardBrowser(browser: Browser): Browser {
 	return browser;
 }
 
+/** `playwright.request.newContext` answers with a guarded request context. */
+function guardPlaywright(
+	playwright: PlaywrightWorkerArgs["playwright"],
+): PlaywrightWorkerArgs["playwright"] {
+	const newContext = playwright.request.newContext.bind(playwright.request);
+	playwright.request.newContext = async (options) =>
+		guardRequest(await newContext(options));
+	return playwright;
+}
+
 export const test = base.extend<{ sealedGuard: void }>({
+	playwright: [
+		async ({ playwright }, use) => {
+			await use(E2E_SEALED ? guardPlaywright(playwright) : playwright);
+		},
+		{ scope: "worker" },
+	],
 	browser: [
 		async ({ browser }, use) => {
 			await use(E2E_SEALED ? guardBrowser(browser) : browser);
