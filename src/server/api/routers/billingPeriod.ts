@@ -333,8 +333,6 @@ export const billingPeriodRouter = createTRPCRouter({
 			// amounts means nothing. The period's figures come from the registry.
 			return period;
 		}),
-			};
-		}),
 
 	closeCurrent: protectedProcedure
 		.input(z.object({ projectId: z.string().min(1) }))
