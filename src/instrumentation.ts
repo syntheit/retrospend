@@ -8,11 +8,13 @@
  * of due recurring items (on in production unless RECURRING_AUTO_POST says
  * otherwise). Each starts once per process and is skipped under test. First
  * it checks the server master key setting, so a malformed key stops the
- * server instead of leaving data unencrypted, then the start gates once the
- * field encryption epoch is set, whatever the flag (floor.ts: a build below
- * the sealing floor, no master key, a lost instance key), and then the key against the
+ * server instead of leaving data unencrypted, then the key against the
  * canary stored in the database, so a wrong key stops it too (the first
- * start with a key writes the canary). With DATA_KEYS_WRITE
+ * start with a key writes the canary; with no key the check is skipped), and
+ * then the start gates once the field encryption epoch is set, whatever the
+ * flag (floor.ts: a build below the sealing floor, no master key, a lost
+ * instance key). The canary comes first so a wrong key reads as
+ * `master_key_mismatch`, not as a lost instance key. With DATA_KEYS_WRITE
  * on it then checks that sealing can work and sets the field encryption epoch
  * (field-encryption-start.ts), so no worker runs on a server that would
  * refuse to seal.
@@ -21,12 +23,12 @@ export async function register() {
 	if (process.env.NEXT_RUNTIME !== "nodejs") return;
 	const { assertMasterKeyConfig } = await import("~/server/crypto/master-key");
 	assertMasterKeyConfig();
-	const { assertStartGates } = await import("~/server/services/keys/floor");
-	await assertStartGates();
 	const { assertMasterKeyCanary } = await import(
 		"~/server/services/keys/master-canary.service"
 	);
 	await assertMasterKeyCanary();
+	const { assertStartGates } = await import("~/server/services/keys/floor");
+	await assertStartGates();
 	const { assertFieldEncryptionStart } = await import(
 		"~/server/services/keys/field-encryption-start"
 	);

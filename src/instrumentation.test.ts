@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const calls = vi.hoisted(() => [] as string[]);
 const gate = vi.hoisted(() => ({
+	canaryError: undefined as Error | undefined,
 	error: undefined as Error | undefined,
 	gateError: undefined as Error | undefined,
 }));
@@ -19,7 +20,10 @@ vi.mock("~/server/services/keys/floor", () => ({
 	},
 }));
 vi.mock("~/server/services/keys/master-canary.service", () => ({
-	assertMasterKeyCanary: async () => step("canary")(),
+	assertMasterKeyCanary: async () => {
+		step("canary")();
+		if (gate.canaryError) throw gate.canaryError;
+	},
 }));
 vi.mock("~/server/services/keys/field-encryption-start", () => ({
 	assertFieldEncryptionStart: async () => {
@@ -53,16 +57,17 @@ beforeEach(() => {
 	calls.length = 0;
 	gate.error = undefined;
 	gate.gateError = undefined;
+	gate.canaryError = undefined;
 });
 afterEach(() => vi.unstubAllEnvs());
 
 describe("register", () => {
-	it("checks the master key, then the start gates, then the canary, then field encryption, then starts the workers", async () => {
+	it("checks the master key, then the canary, then the start gates, then field encryption, then starts the workers", async () => {
 		await register();
 		expect(calls).toEqual([
 			"master key config",
-			"start gates",
 			"canary",
+			"start gates",
 			"field encryption",
 			...Array(6).fill("worker"),
 		]);
@@ -73,15 +78,21 @@ describe("register", () => {
 		await expect(register()).rejects.toThrow("refused");
 		expect(calls).toEqual([
 			"master key config",
-			"start gates",
 			"canary",
+			"start gates",
 			"field encryption",
 		]);
 	});
 
-	it("stops before the canary and starts no worker when a start gate refuses", async () => {
+	it("stops at a wrong master key before the start gates run", async () => {
+		gate.canaryError = new Error("master_key_mismatch");
+		await expect(register()).rejects.toThrow("master_key_mismatch");
+		expect(calls).toEqual(["master key config", "canary"]);
+	});
+
+	it("starts no worker when a start gate refuses", async () => {
 		gate.gateError = new Error("below the floor");
 		await expect(register()).rejects.toThrow("below the floor");
-		expect(calls).toEqual(["master key config", "start gates"]);
+		expect(calls).toEqual(["master key config", "canary", "start gates"]);
 	});
 });

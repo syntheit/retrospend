@@ -5,8 +5,10 @@
  * epoch or a deleted key never reaches the next file in this worker's
  * database. The instance key and the test user's key are made once, outside
  * the transactions: the mint writes app_settings on its own connection, which
- * would wait on their row lock. `boot` runs the checks in the order
- * instrumentation.ts runs them.
+ * would wait on their row lock. `boot` runs the gates and then the flag
+ * check, as instrumentation.ts does after the canary; the canary has its own
+ * cases below because it opens every file's leftover keys in a shared worker
+ * database.
  */
 import { randomBytes } from "node:crypto";
 import {
@@ -33,6 +35,7 @@ import {
 	type FieldEncryptionStartOptions,
 } from "./field-encryption-start";
 import { assertStartGates, raiseSealingFloor, StartGateError } from "./floor";
+import { assertMasterKeyCanary } from "./master-canary.service";
 
 const master = new Keyring([{ id: 1, key: randomBytes(32) }]);
 type Tx = Prisma.TransactionClient;
@@ -252,6 +255,90 @@ describe("instance_key_lost", () => {
 		await inRolledBackPrismaTransaction(async (tx) => {
 			await setEpoch(tx);
 			expect(await boot(tx)).toBe("off");
+		});
+	});
+});
+
+describe("the order with the master key canary", () => {
+	it("a wrong master key on an epoch-set database gives master_key_mismatch, not instance_key_lost", async () => {
+		await inRolledBackPrismaTransaction(async (tx) => {
+			// Other files' user keys sit under their own masters; only this
+			// file's keys may be there when the canary is first written.
+			await tx.$executeRaw`DELETE FROM keystore."user_data_key" WHERE "userId" <> ${userId}`;
+			await tx.$executeRaw`UPDATE "app_settings" SET "masterKeyCanary" = NULL`;
+			expect(await assertMasterKeyCanary(master, tx)).toBe("written");
+			await setEpoch(tx);
+			const other = new Keyring([{ id: 1, key: randomBytes(32) }]);
+			// instrumentation.ts runs the canary first, so this is what stops it.
+			const canary = await assertMasterKeyCanary(other, tx).catch(
+				(error: unknown) => error as Error & { code?: string },
+			);
+			expect((canary as { code?: string }).code).toBe("master_key_mismatch");
+			// The gates alone would call the same state a lost instance key.
+			const gates = await assertStartGates({
+				client: tx,
+				masterKeyring: other,
+			}).catch((error: unknown) => error as Error & { code?: string });
+			expect((gates as { code?: string }).code).toBe("instance_key_lost");
+			// The right key with the keystore intact passes both.
+			expect(await assertMasterKeyCanary(master, tx)).toBe("verified");
+			await expect(
+				assertStartGates({ client: tx, masterKeyring: master }),
+			).resolves.toBeDefined();
+		});
+	});
+
+	it("no master key skips the canary, so the gates still give epoch_without_master_key", async () => {
+		await inRolledBackPrismaTransaction(async (tx) => {
+			await setEpoch(tx);
+			expect(await assertMasterKeyCanary(undefined, tx)).toBe("skipped");
+			const error = await refusal(tx, { masterKeyring: undefined });
+			expect(error?.code).toBe("epoch_without_master_key");
+		});
+	});
+
+	it("the right key with the keystore lost still gives instance_key_lost", async () => {
+		await inRolledBackPrismaTransaction(async (tx) => {
+			await tx.$executeRaw`DELETE FROM keystore."user_data_key" WHERE "userId" <> ${userId}`;
+			await tx.$executeRaw`UPDATE "app_settings" SET "masterKeyCanary" = NULL`;
+			expect(await assertMasterKeyCanary(master, tx)).toBe("written");
+			await setEpoch(tx);
+			await tx.$executeRaw`DELETE FROM keystore."instance_text_key"`;
+			expect(await assertMasterKeyCanary(master, tx)).toBe("verified");
+			expect((await refusal(tx))?.code).toBe("instance_key_lost");
+		});
+	});
+});
+
+describe("a floor raised by a newer build mid-start", () => {
+	it("refuses a build that read a lower floor and then lost the race", async () => {
+		await inRolledBackPrismaTransaction(async (tx) => {
+			await indexAll(tx);
+			// A newer build raises the floor right after this start read it.
+			const racing = {
+				$queryRaw: async (
+					strings: TemplateStringsArray,
+					...values: unknown[]
+				) => {
+					const rows = await tx.$queryRaw(strings, ...values);
+					if (
+						strings.join("").includes('SELECT "sealingFloor" AS "floor" FROM')
+					)
+						await raiseSealingFloor(tx, 2);
+					return rows;
+				},
+				$executeRaw: tx.$executeRaw.bind(tx),
+			} as unknown as FieldEncryptionStartOptions["client"];
+			const error = await assertFieldEncryptionStart({
+				flag: true,
+				production: false,
+				masterKeyring: master,
+				client: racing,
+				floor: 1,
+			}).catch((e: unknown) => e as Error & { code?: string });
+			expect((error as { code?: string }).code).toBe("code_below_floor");
+			expect((error as Error).message).toMatch(/floor 2, this build 1/);
+			expect(await settings(tx)).toMatchObject({ floor: 2, epoch: false });
 		});
 	});
 });

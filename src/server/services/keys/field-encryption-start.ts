@@ -193,7 +193,14 @@ export async function assertFieldEncryptionStart({
 	);
 	// After the mint, which writes app_settings on its own connection and
 	// would wait on a row this statement had locked in a caller's transaction.
-	await raiseSealingFloor(client, floor);
+	// A build that read a lower floor and lost a race with a newer one (a rolling
+	// deploy) must not go on: the stored value is what the database now needs.
+	const raised = await raiseSealingFloor(client, floor);
+	if (raised > floor)
+		throw new StartGateError(
+			"code_below_floor",
+			`floor ${raised}, this build ${floor}`,
+		);
 	await fillContactHashesOrRefuse(client, ring);
 	// The conditional update keeps the first start's time; a row is made if
 	// app_settings has none yet.
