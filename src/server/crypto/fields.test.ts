@@ -112,7 +112,7 @@ const NO_DECLARED_FIELD: Record<string, string> = {
 	"export_job.fileName":
 		"derived by the server from a project or person name; no input names it",
 	"webhook.url":
-		"typed as a url (z.url), not declared through userText: it holds no prose",
+		"a typed url (z.url with a control check), not declared through userText: it holds no prose",
 };
 
 /**
