@@ -110,12 +110,11 @@ async function waitsOnLock(like: string) {
 	}
 }
 
-const insertExpense = (id: string, userId: string) =>
-	[
-		`INSERT INTO "expense" ("id","userId","title","amount","currency","date","amountInUSD","exchangeRate","pricingSource","updatedAt")
+const insertExpense = (id: string, userId: string) => ({
+	text: `INSERT INTO "expense" ("id","userId","title","amount","currency","date","amountInUSD","exchangeRate","pricingSource","updatedAt")
 		 VALUES ($1, $2, 'Concurrent', 1, 'ARS', now(), 0.01, 1468, 'MANUAL', now())`,
-		[id, userId],
-	] as const;
+	values: [id, userId],
+});
 
 const epoch = async () =>
 	(
@@ -180,7 +179,7 @@ describe("a reset next to a writer", () => {
 		const writer = await connect();
 		try {
 			await writer.query("BEGIN");
-			await writer.query(...insertExpense(id, user.id));
+			await writer.query(insertExpense(id, user.id));
 			const before = await epoch();
 			// A Prisma query starts when it is awaited, so start it by hand.
 			const reset = (async () =>
@@ -209,7 +208,7 @@ describe("a reset next to a writer", () => {
 		try {
 			await resetter.query("BEGIN");
 			await resetter.query("SELECT sync_reset('20s')");
-			const insert = writer.query(...insertExpense(id, user.id));
+			const insert = writer.query(insertExpense(id, user.id));
 			await waitsOnLock('%INSERT INTO "expense"%');
 			await resetter.query("COMMIT");
 			await insert;
