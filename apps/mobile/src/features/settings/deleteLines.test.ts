@@ -7,10 +7,7 @@ const translator = createTranslator({
 	messages: loadMessages("en"),
 	namespace: "mobile.settings.delete",
 });
-const t = translator as unknown as (
-	key: string,
-	values?: { project: string; name?: string },
-) => string;
+const t = translator as unknown as Parameters<typeof projectLines>[1];
 
 describe("projectLines", () => {
 	it("names the project and who takes it over", () => {

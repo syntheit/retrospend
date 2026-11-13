@@ -4,7 +4,7 @@ type Preview = Awaited<
 	ReturnType<RetrospendClient["account"]["deletionPreview"]>
 >;
 type Say = (
-	key: string,
+	key: "transfer" | "deleteProject" | "projectUnnamed" | "organizerUnnamed",
 	values?: { project: string; name?: string },
 ) => string;
 
