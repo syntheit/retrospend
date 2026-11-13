@@ -2,6 +2,7 @@ import type { PrismaClient } from "~prisma";
 import { assertAnotherAdminRemains } from "./admin-guard.service";
 import { DELETED_USER_NAME, DELETED_USER_SENTINEL } from "./deleted-sentinels";
 import { keptUndoFiles } from "./entry/undo-stash";
+import { contactLookup } from "./keys/contact-hash";
 import { destroyDataKeysIfStored } from "./keys/data-key.service";
 import {
 	repointSettlementParty,
@@ -382,6 +383,8 @@ export async function anonymizeAndDeleteUser(
 	// paths are read first and the files removed after the commit.
 	let screenshotPaths: string[] = [];
 	let iconPaths: string[] = [];
+	// Resolved first: a transaction cannot load the keys the hash needs.
+	const guestsWithEmail = await contactLookup("guest_session", userEmail);
 	await db.$transaction(async (tx) => {
 		await assertAnotherAdminRemains(tx, userId);
 		screenshotPaths = (
@@ -489,7 +492,7 @@ export async function anonymizeAndDeleteUser(
 		await destroyDataKeysIfStored(userId, tx);
 
 		// Clean up GuestSessions that used this user's email (pre-signup guest access)
-		await tx.guestSession.deleteMany({ where: { email: userEmail } });
+		await tx.guestSession.deleteMany({ where: guestsWithEmail });
 	});
 	// Only once the guard passed and the delete committed; a failure leaves a file behind
 	await removeUserFiles(userId, avatarPath, screenshotPaths, iconPaths);

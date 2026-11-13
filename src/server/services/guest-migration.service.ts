@@ -1,4 +1,5 @@
 import { textUnavailableProblem as keyProblem } from "~/server/crypto/field-open";
+import { contactLookup } from "~/server/services/keys/contact-hash";
 import type { Prisma, PrismaClient } from "~prisma";
 import { logEventAsync } from "./audit.service";
 import { AlreadyClaimedError, claimShadowProfile } from "./claim.service";
@@ -86,7 +87,7 @@ export async function migrateGuestSessionsToUser(
 	userEmail: string,
 ): Promise<MigrationResult> {
 	const guestSessions = await db.guestSession.findMany({
-		where: { email: userEmail.toLowerCase() },
+		where: await contactLookup("guest_session", userEmail),
 		select: { id: true, projectId: true },
 	});
 
