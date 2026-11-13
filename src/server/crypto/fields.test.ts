@@ -263,6 +263,8 @@ const NOT_SEALED: Record<string, string> = {
 	"event_log.ipAddress": "a network address, not typed text",
 	"category.nameIndex": "the D9 blind index of the name, an HMAC, not text",
 	"push_device.addressHash": "a hash of the device address, not text",
+	"shadow_profile.emailHash": "a keyed hash of the address, not text",
+	"guest_session.emailHash": "a keyed hash of the address, not text",
 	"shadow_profile.email":
 		"owner call: a contact address, outside the user-text list",
 	"shadow_profile.phone":

@@ -1,3 +1,4 @@
+import { textUnavailableProblem as keyProblem } from "~/server/crypto/field-open";
 import type { Prisma, PrismaClient } from "~prisma";
 import { logEventAsync } from "./audit.service";
 import { AlreadyClaimedError, claimShadowProfile } from "./claim.service";
@@ -52,7 +53,14 @@ export async function migrateGuestDataForVerifiedUser(
 		}
 		return result;
 	} catch (err) {
-		console.error("[Guest Migration Error]", err);
+		// A code only: an error from a query can carry the address. A hash that
+		// cannot be made (encrypted_text_unavailable) lands here too; the
+		// migration is idempotent and runs again at the next verification.
+		console.error(
+			"[Guest Migration Error]",
+			keyProblem(err) ??
+				(err instanceof Error ? err.name : typeof err),
+		);
 		return null;
 	}
 }
@@ -79,6 +87,7 @@ export async function migrateGuestSessionsToUser(
 ): Promise<MigrationResult> {
 	const guestSessions = await db.guestSession.findMany({
 		where: { email: userEmail.toLowerCase() },
+		select: { id: true, projectId: true },
 	});
 
 	if (guestSessions.length === 0) {
@@ -125,7 +134,7 @@ export async function migrateGuestSessionsToUser(
 			});
 
 			// ─── 8. Delete GuestSession ────────────────────────────────────
-			await tx.guestSession.delete({ where: { id: guestId } });
+			await tx.guestSession.delete({ where: { id: guestId }, select: { id: true } });
 		}
 	});
 

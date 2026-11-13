@@ -14,9 +14,13 @@
  *      every user's first sealing write would fail;
  *   4. a category without a name index: once names are sealed, the name index
  *      is what keeps them unique (D9), so its backfill must be complete.
- * Then the instance key is made, so shared text seals from the first write,
- * and the epoch is written. It is set once and never cleared; a second start
- * leaves the first time in place.
+ * Then the instance key is made, so shared text seals from the first write.
+ * Then every ghost and guest address gets its hash (contact-hash-fill.ts,
+ * Revision 3 PR 3a): the fill runs on every start, after the ring exists,
+ * and the gate refuses the start (`contact_hash_missing`) while any address
+ * lacks a hash of the current key. Only then is the epoch written. It is set
+ * once and never cleared; a second start leaves the first time in place. A
+ * crash anywhere before the epoch leaves nothing but hashes already made.
  *
  * Everything runs on the owner connection (`keystoreDb`): the app role has no
  * privilege on app_settings, and the nameIndex check must see every user.
@@ -27,6 +31,8 @@ import type { Keyring } from "~/server/crypto/field-crypto";
 import { getMasterKeyring } from "~/server/crypto/master-key";
 import { SEALING_RELEASED } from "~/server/crypto/release";
 import { keystoreDb } from "~/server/db-core";
+import { type ContactTable } from "./contact-hash";
+import { contactHashMissing, fillContactHashes } from "./contact-hash-fill";
 import { getOrCreateInstanceKeyring } from "./instance-key.service";
 
 const SETTINGS_ID = "app_settings_singleton";
@@ -35,7 +41,8 @@ export type FieldEncryptionStartCode =
 	| "sealing_unreleased"
 	| "master_key_missing"
 	| "keystore_grants_missing"
-	| "category_index_missing";
+	| "category_index_missing"
+	| "contact_hash_missing";
 
 const MESSAGES: Record<FieldEncryptionStartCode, string> = {
 	sealing_unreleased:
@@ -46,6 +53,8 @@ const MESSAGES: Record<FieldEncryptionStartCode, string> = {
 		"DATA_KEYS_WRITE is on but the app cannot reach the key store. Re-apply the grants in Data key backups in docs/self-hosting.md and start again",
 	category_index_missing:
 		"DATA_KEYS_WRITE is on but some categories have no name index. Run scripts/backfill-category-name-index.ts and start again",
+	contact_hash_missing:
+		"DATA_KEYS_WRITE is on but some contact addresses have no hash and the server could not make it. Check the server log for the table, fix or remove those rows, and start again",
 };
 
 export class FieldEncryptionStartError extends Error {
@@ -98,6 +107,33 @@ async function categoriesIndexed(client: Client): Promise<boolean> {
 	return row?.missing === false;
 }
 
+const CONTACT_TABLES: readonly ContactTable[] = [
+	"shadow_profile",
+	"guest_session",
+];
+
+/**
+ * Makes every missing contact hash, then checks that none is missing. The
+ * counts go to the log, never an address or an id.
+ */
+async function fillContactHashesOrRefuse(
+	client: Client,
+	ring: Keyring,
+): Promise<void> {
+	for (const table of CONTACT_TABLES) {
+		const filled = await fillContactHashes(client, ring, table);
+		if (filled > 0) console.info(`Contact hashes filled: ${table} ${filled}`);
+	}
+	for (const table of CONTACT_TABLES) {
+		if (await contactHashMissing(client, ring, table)) {
+			console.error(
+				`Contact hashes missing after the fill: ${table} has an address that cannot be hashed (it is already sealed)`,
+			);
+			throw new FieldEncryptionStartError("contact_hash_missing");
+		}
+	}
+}
+
 export interface FieldEncryptionStartOptions {
 	flag?: boolean;
 	production?: boolean;
@@ -127,7 +163,11 @@ export async function assertFieldEncryptionStart({
 		throw new FieldEncryptionStartError("keystore_grants_missing");
 	if (!(await categoriesIndexed(client)))
 		throw new FieldEncryptionStartError("category_index_missing");
-	await getOrCreateInstanceKeyring({ kind: "service" }, masterKeyring);
+	const ring = await getOrCreateInstanceKeyring(
+		{ kind: "service" },
+		masterKeyring,
+	);
+	await fillContactHashesOrRefuse(client, ring);
 	// The conditional update keeps the first start's time; a row is made if
 	// app_settings has none yet.
 	await client.$executeRaw`

@@ -8,6 +8,7 @@
 	"src/server/crypto/__tests__/sealed-filters.pg.test.ts": "Sets and clears the epoch",
 	"src/server/services/envelope/rules-title.pg.test.ts": "Mocks the master key",
 	"src/server/services/import/import-sealed.pg.test.ts": "Mocks the master key, builds its own keys and sets and clears the epoch",
+	"src/server/services/keys/contact-hash.pg.test.ts": "Mocks the master key, builds its own keys and sets and clears the epoch",
 	"src/server/services/keys/crypto-shred.pg.test.ts": "Builds its own keys",
 	"src/server/services/keys/data-key.service.pg.test.ts": "Builds its own keys",
 	"src/server/services/keys/field-encryption-start.pg.test.ts": "Builds its own keys and sets and clears the epoch",

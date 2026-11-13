@@ -175,7 +175,7 @@ export async function claimShadowProfile(
 
 		// ── Re-point all other refs, then delete the now-empty shadow ──
 		await repointShadowReferences(tx, shadowId, "user", userId);
-		await tx.shadowProfile.delete({ where: { id: shadowId } });
+		await tx.shadowProfile.delete({ where: { id: shadowId }, select: { id: true } });
 	});
 
 	return {
@@ -443,7 +443,7 @@ export async function mergeShadowIntoGuest(
 
 		// ── Re-point all other refs, then delete the now-empty shadow ──
 		await repointShadowReferences(tx, shadowId, "guest", guestSessionId);
-		await tx.shadowProfile.delete({ where: { id: shadowId } });
+		await tx.shadowProfile.delete({ where: { id: shadowId }, select: { id: true } });
 	});
 
 	return { shadowName: shadow.name };

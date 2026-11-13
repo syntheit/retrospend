@@ -16,6 +16,7 @@ import { validateLinkOrThrow } from "~/server/lib/magic-link";
 import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
 import { hashToken } from "~/server/lib/tokens";
 import { sendEmail } from "~/server/mailer";
+import { contactHashFor } from "~/server/services/keys/contact-hash";
 import { joinProject } from "~/server/services/project/joining";
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 import {
@@ -156,15 +157,14 @@ export const guestRouter = createTRPCRouter({
 			// email works, mail a one-time resume link to the address on file;
 			// otherwise fall through and create a separate guest.
 			const emailAvailable = await isEmailDeliveryEnabled();
+			const emailHash = await contactHashFor("guest_session", email); // outside any transaction
 
 			// Wrap guest session creation in a transaction to prevent duplicates
 			// from concurrent registrations with the same email + project.
 			const result = await ctx.db.$transaction(async (tx) => {
 				// Re-check for existing session inside the transaction
 				const existingSession = emailAvailable
-					? await tx.guestSession.findFirst({
-							where: { email, projectId },
-						})
+					? await tx.guestSession.findFirst({ where: { email, projectId }, select: { id: true, email: true } })
 					: null;
 
 				if (existingSession) {
@@ -197,9 +197,9 @@ export const guestRouter = createTRPCRouter({
 				const { raw: rawToken, hashed: hashedToken } = newGuestToken();
 
 				const guestSession = await tx.guestSession.create({
-					data: {
+					select: { id: true }, data: {
 						name: input.name,
-						email,
+						email, emailHash,
 						magicLinkId: link.id,
 						projectId,
 						sessionToken: hashedToken,
@@ -304,13 +304,13 @@ export const guestRouter = createTRPCRouter({
 					.slice(GUEST_RESUME_PREFIX.length)
 					.split(":");
 				const session = guestSessionId
-					? await tx.guestSession.findUnique({ where: { id: guestSessionId } })
+					? await tx.guestSession.findUnique({ where: { id: guestSessionId }, select: { id: true, projectId: true } })
 					: null;
 				if (!session) throw invalid();
 
 				const { raw, hashed } = newGuestToken();
 				await tx.guestSession.update({
-					where: { id: session.id },
+					where: { id: session.id }, select: { id: true },
 					data: { sessionToken: hashed, lastActiveAt: new Date() },
 				});
 
@@ -435,7 +435,7 @@ export const guestRouter = createTRPCRouter({
 
 			await ctx.db.$transaction(async (tx) => {
 				await anonymizeParticipantReferences(tx, "guest", guestId, DELETED_GUEST_SENTINEL);
-				await tx.guestSession.delete({ where: { id: guestId } });
+				await tx.guestSession.delete({ where: { id: guestId }, select: { id: true } });
 			});
 
 			return { success: true };

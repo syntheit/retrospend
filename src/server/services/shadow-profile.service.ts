@@ -7,6 +7,7 @@ import { sendEmail } from "~/server/mailer";
 import type { PrismaClient } from "~prisma";
 import { consumeRateLimit } from "./api-v1/rate-limit.service";
 import { canMintClaimLink } from "./claim.service";
+import { contactHashFor } from "./keys/contact-hash";
 
 /**
  * People you add by name ("shadow" profiles): adding, renaming and the claim
@@ -121,11 +122,14 @@ export async function addShadow(
 			accountExists = true;
 		}
 	}
+	// Before the write: a hash needs keys, and keys load outside a transaction.
+	const emailHash = await contactHashFor("shadow_profile", input.email);
 	const profile = await db.shadowProfile.create({
 		data: {
 			...(input.id ? { id: input.id } : {}),
 			name: input.name,
 			email: input.email ?? null,
+			emailHash,
 			createdById: creator.id,
 		},
 		select: { id: true, name: true, email: true },
@@ -181,7 +185,7 @@ async function openShadow(db: PrismaClient, id: string) {
 export async function renameShadow(
 	db: PrismaClient,
 	userId: string,
-	input: { id: string; name: string; email?: string },
+	input: { id: string; name: string; email?: string | null },
 ) {
 	const shadow = await openShadow(db, input.id);
 	if (shadow.createdById !== userId) {
@@ -190,11 +194,15 @@ export async function renameShadow(
 			message: "Only the person who added this contact can rename them",
 		});
 	}
+	const emailHash =
+		input.email !== undefined
+			? await contactHashFor("shadow_profile", input.email)
+			: undefined;
 	return db.shadowProfile.update({
 		where: { id: shadow.id },
 		data: {
 			name: input.name,
-			...(input.email !== undefined ? { email: input.email } : {}),
+			...(input.email !== undefined ? { email: input.email, emailHash } : {}),
 		},
 		select: { id: true, name: true, email: true },
 	});

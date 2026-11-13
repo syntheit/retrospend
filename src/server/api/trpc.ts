@@ -335,6 +335,7 @@ export const guestOrProtectedProcedure = baseProcedure
 
 			const guestSession = await ctx.db.guestSession.findUnique({
 				where: { sessionToken: hashedToken },
+				select: { id: true, projectId: true, lastActiveAt: true },
 			});
 
 			if (guestSession) {
@@ -348,6 +349,7 @@ export const guestOrProtectedProcedure = baseProcedure
 					await ctx.db.guestSession
 						.update({
 							where: { id: guestSession.id },
+							select: { id: true },
 							data: { lastActiveAt: new Date() },
 						})
 						.catch(() => undefined);
