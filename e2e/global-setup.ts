@@ -9,7 +9,7 @@ import {
 } from "./constants";
 import { assertE2eDatabase } from "./db-guard";
 import { seedE2eDatabase } from "./fixtures/seed";
-import { indexSeedCategories, snapshotSeedIds } from "./sealing-seed";
+import { indexSeedCategories, snapshotSeed } from "./sealing-seed";
 
 async function signUpUser(
 	email: string,
@@ -61,7 +61,7 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
 	);
 	if (E2E_SEALED) {
 		indexSeedCategories();
-		await snapshotSeedIds();
+		await snapshotSeed();
 	}
 
 	const pool = new Pool({ connectionString: E2E_DATABASE_URL });

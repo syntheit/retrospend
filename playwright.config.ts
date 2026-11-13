@@ -114,6 +114,7 @@ export default defineConfig({
 		...(process.env.E2E_VISUAL === "1" ? [visual] : []),
 	],
 	globalSetup: "./e2e/global-setup.ts",
+	globalTeardown: "./e2e/global-teardown.ts",
 	// An external E2E_BASE_URL means the app is already running elsewhere.
 	webServer: process.env.E2E_BASE_URL
 		? undefined

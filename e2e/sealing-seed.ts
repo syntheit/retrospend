@@ -16,10 +16,10 @@
  *   users have one before the first sealed write. The other choice, asserting
  *   the null-index fallback, would test a state the runbook tells the owner to
  *   leave before the flag goes on.
- * - A snapshot of the ids the seed wrote in every table that holds mapped
- *   text. Plaintext in those rows is legacy and allowed. Plaintext in any
- *   other row means something wrote text without sealing it
- *   (e2e/flows/zz-sealing.spec.ts).
+ * - A snapshot of the seed (ids and cell hashes). Plaintext in a seeded cell
+ *   that did not change is legacy and allowed. Plaintext in any other row, or
+ *   in a seeded cell that changed, means something wrote text without sealing
+ *   it (e2e/sealing-sweep.ts, run by global teardown in every shard).
  */
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -78,25 +78,65 @@ export function indexSeedCategories(): void {
 	);
 }
 
-/** Saves the ids now in every mapped table: the rows the seed made. */
-export async function snapshotSeedIds(): Promise<void> {
+/**
+ * What the seed wrote in every table that holds mapped text: its row ids, and
+ * a hash of each seeded text or JSON cell. A seeded cell may stay plaintext
+ * (legacy), but one that changed and is still plaintext was written by an
+ * update that did not seal it. Ids and md5 hashes only, never a value.
+ */
+export interface SeedSnapshot {
+	ids: Record<string, string[]>;
+	/** `table.column` to row id to md5 of the cell. */
+	cells: Record<string, Record<string, string>>;
+}
+
+/**
+ * Rows a spec inserts with SQL as the owner into a table that holds mapped
+ * text (budget-sheets.spec.ts), so they are plaintext on purpose. Exact ids:
+ * a row the server made has a cuid or uuid and is never skipped.
+ */
+export const SPEC_INSERTED_IDS: Record<string, string[]> = {
+	shadow_profile: ["e2e_shadow_paz2"],
+	shared_transaction: ["e2e_split_dinner"],
+	asset_account: ["e2e_setup_visa"],
+};
+
+/** Saves the ids and cell hashes now in every mapped table: the seed. */
+export async function snapshotSeed(): Promise<void> {
 	const pool = new Pool({ connectionString: E2E_DATABASE_URL });
 	try {
-		const ids: Record<string, string[]> = {};
+		const snapshot: SeedSnapshot = { ids: {}, cells: {} };
 		for (const table of sealedTables()) {
 			const { rows } = await pool.query<{ id: string }>(
-				`SELECT "id" FROM "${table}"`,
+				`SELECT "id"::text AS id FROM "${table}"`,
 			);
-			ids[table] = rows.map((r) => r.id);
+			snapshot.ids[table] = rows.map((r) => r.id);
+		}
+		const cells: [string, string, string][] = [
+			...mappedColumns().map(
+				([t, c]) => [t, c, `"${c}"`] as [string, string, string],
+			),
+			...jsonColumns().map(
+				([t, c]) => [t, c, `"${c}"::text`] as [string, string, string],
+			),
+		];
+		for (const [table, column, expr] of cells) {
+			const { rows } = await pool.query<{ id: string; h: string }>(
+				`SELECT "id"::text AS id, md5(${expr}) AS h FROM "${table}"
+				 WHERE "${column}" IS NOT NULL`,
+			);
+			snapshot.cells[`${table}.${column}`] = Object.fromEntries(
+				rows.map((r) => [r.id, r.h]),
+			);
 		}
 		mkdirSync(dirname(SEALING_SEED_IDS), { recursive: true });
-		writeFileSync(SEALING_SEED_IDS, JSON.stringify(ids));
+		writeFileSync(SEALING_SEED_IDS, JSON.stringify(snapshot));
 	} finally {
 		await pool.end();
 	}
 }
 
-/** The ids `snapshotSeedIds` saved, by table. */
-export function readSeedIds(): Record<string, string[]> {
+/** The snapshot `snapshotSeed` saved. */
+export function readSeedSnapshot(): SeedSnapshot {
 	return JSON.parse(readFileSync(SEALING_SEED_IDS, "utf8"));
 }
