@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
 import { TEST_USER, USER_STORAGE_STATE } from "../constants";
+import { expect, test } from "../fixtures/sealed-guard";
 import { bannedOutputOn } from "../helpers/banned-output";
 import { gotoReady } from "../helpers/navigation";
 
@@ -39,7 +39,7 @@ test("a new account opens every page", async ({ page }) => {
 test("the sidebar names the account", async ({ page }) => {
 	await page.setViewportSize({ width: 1440, height: 900 });
 	await gotoReady(page, "/home");
-	await expect(page.getByRole("button", { name: /Account menu/ })).toContainText(
-		TEST_USER.name,
-	);
+	await expect(
+		page.getByRole("button", { name: /Account menu/ }),
+	).toContainText(TEST_USER.name);
 });

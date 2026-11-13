@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/sealed-guard";
 import { bannedOutputOn } from "../helpers/banned-output";
 import { untilSaved } from "../helpers/trpc";
 import { auditFigures, openPage, SOFIA_SESSION } from "./projects-helpers";

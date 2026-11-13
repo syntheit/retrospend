@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test";
 import { personaStorageState } from "../constants";
 import { SOFIA } from "../fixtures/personas";
+import { expect, test } from "../fixtures/sealed-guard";
 import { openV2 } from "./viewer";
 
 // The one CategoryPicker by keyboard: it filters as you type, Enter picks the
@@ -74,10 +74,9 @@ test("Category filter: a pick toggles and the list stays open, Clear empties it"
 	// Still open, the chip names the pick, the option is marked.
 	await expect(find).toBeVisible();
 	await expect(chip).toHaveText("Subscriptions");
-	await expect(page.getByRole("option", { name: /Subscriptions/ })).toHaveAttribute(
-		"data-chosen",
-		"true",
-	);
+	await expect(
+		page.getByRole("option", { name: /Subscriptions/ }),
+	).toHaveAttribute("data-chosen", "true");
 
 	// Enter again takes it back off.
 	await page.keyboard.press("Enter");

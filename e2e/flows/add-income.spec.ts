@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test";
 import { personaStorageState } from "../constants";
 import { MARTIN, SOFIA } from "../fixtures/personas";
+import { expect, test } from "../fixtures/sealed-guard";
 import { bannedOutputOn } from "../helpers/banned-output";
 import { untilSaved } from "../helpers/trpc";
 import { openV2 } from "./viewer";
@@ -14,50 +14,53 @@ import { openV2 } from "./viewer";
 test.use({ storageState: personaStorageState(SOFIA.username) });
 
 test.describe("without a budget", () => {
-test.use({ storageState: personaStorageState(MARTIN.username) });
+	test.use({ storageState: personaStorageState(MARTIN.username) });
 
-test("Add income: no account, no plan without a budget, save and Undo", async ({
-	page,
-}) => {
-	test.setTimeout(180_000);
-	await page.setViewportSize({ width: 1440, height: 900 });
-	await openV2(page, "/activity");
+	test("Add income: no account, no plan without a budget, save and Undo", async ({
+		page,
+	}) => {
+		test.setTimeout(180_000);
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await openV2(page, "/activity");
 
-	await page.keyboard.press("i");
-	const sheet = page.getByRole("dialog", { name: "Add income" });
-	await expect(sheet).toBeVisible();
-	await sheet.getByRole("button", { name: "Add income" }).click();
-	await expect(sheet.getByText("Who paid you?")).toBeVisible();
-	await expect(sheet.getByText("Pick what it is")).toBeVisible();
+		await page.keyboard.press("i");
+		const sheet = page.getByRole("dialog", { name: "Add income" });
+		await expect(sheet).toBeVisible();
+		await sheet.getByRole("button", { name: "Add income" }).click();
+		await expect(sheet.getByText("Who paid you?")).toBeVisible();
+		await expect(sheet.getByText("Pick what it is")).toBeVisible();
 
-	await sheet.getByRole("textbox", { name: "Amount" }).fill("850000");
-	await sheet.getByRole("button", { name: "Someone else" }).click();
-	await sheet.getByRole("textbox", { name: "Who paid you" }).fill("E2E Andino");
-	await sheet.getByRole("button", { name: "Salary", exact: true }).click();
-	// No account picked: the answer line says so.
-	await expect(sheet.getByRole("button", { name: "No account" })).toBeVisible();
-	// No envelope budget: there is no Plan tab and no plan lines.
-	await expect(sheet.getByRole("tab", { name: /^Plan/ })).toHaveCount(0);
-	await expect(sheet.getByTestId("entry-plan")).toHaveCount(0);
-	// Nothing moves here, so no "Nothing else changes" line.
-	await expect(sheet.getByTestId("entry-changes")).toContainText(
-		"No change to your accounts",
-	);
-	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+		await sheet.getByRole("textbox", { name: "Amount" }).fill("850000");
+		await sheet.getByRole("button", { name: "Someone else" }).click();
+		await sheet
+			.getByRole("textbox", { name: "Who paid you" })
+			.fill("E2E Andino");
+		await sheet.getByRole("button", { name: "Salary", exact: true }).click();
+		// No account picked: the answer line says so.
+		await expect(
+			sheet.getByRole("button", { name: "No account" }),
+		).toBeVisible();
+		// No envelope budget: there is no Plan tab and no plan lines.
+		await expect(sheet.getByRole("tab", { name: /^Plan/ })).toHaveCount(0);
+		await expect(sheet.getByTestId("entry-plan")).toHaveCount(0);
+		// Nothing moves here, so no "Nothing else changes" line.
+		await expect(sheet.getByTestId("entry-changes")).toContainText(
+			"No change to your accounts",
+		);
+		expect(await bannedOutputOn(page), "banned output").toEqual([]);
 
-	await untilSaved(page, "wealth.income.add.save", () =>
-		sheet.getByRole("button", { name: "Add income" }).click(),
-	);
-	await expect(sheet).toBeHidden();
-	await untilSaved(page, "wealth.income.delete.save", () =>
-		page
-			.locator("[data-sonner-toast]")
-			.filter({ hasText: "Added $850,000" })
-			.getByRole("button", { name: "Undo" })
-			.click(),
-	);
-});
-
+		await untilSaved(page, "wealth.income.add.save", () =>
+			sheet.getByRole("button", { name: "Add income" }).click(),
+		);
+		await expect(sheet).toBeHidden();
+		await untilSaved(page, "wealth.income.delete.save", () =>
+			page
+				.locator("[data-sonner-toast]")
+				.filter({ hasText: "Added $850,000" })
+				.getByRole("button", { name: "Undo" })
+				.click(),
+		);
+	});
 });
 
 test("Add income: a pair with no rate asks for one, never 1", async ({

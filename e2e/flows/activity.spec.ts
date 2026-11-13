@@ -1,5 +1,5 @@
-import { expect, type Page, test } from "@playwright/test";
 import { SOFIA } from "../fixtures/personas";
+import { expect, type Page, test } from "../fixtures/sealed-guard";
 import { bannedOutputOn } from "../helpers/banned-output";
 import {
 	FigureAudit,

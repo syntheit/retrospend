@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test";
 import { personaStorageState } from "../constants";
 import { SOFIA } from "../fixtures/personas";
+import { expect, test } from "../fixtures/sealed-guard";
 import { bannedOutputOn } from "../helpers/banned-output";
 import { untilSaved } from "../helpers/trpc";
 import { auditSheet, previewFigures, trpcQuery } from "./entry-audit";

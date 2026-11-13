@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { expect, type Page, test } from "@playwright/test";
 import { Pool } from "pg";
 import { E2E_DATABASE_URL, personaStorageState } from "../constants";
 import { LUCIA, MARTIN, SEED_TIME_ZONE } from "../fixtures/personas";
+import { expect, type Page, test } from "../fixtures/sealed-guard";
 import { bannedOutputOn } from "../helpers/banned-output";
 import {
 	collectFigureTags,

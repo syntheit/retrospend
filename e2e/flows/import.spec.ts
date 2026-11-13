@@ -1,5 +1,5 @@
-import { expect, type Page, test } from "@playwright/test";
 import { USER_STORAGE_STATE } from "../constants";
+import { expect, type Page, test } from "../fixtures/sealed-guard";
 import { bannedOutputOn } from "../helpers/banned-output";
 import { FigureAudit, type FiguresResponse } from "../helpers/figures";
 import { untilSaved } from "../helpers/trpc";

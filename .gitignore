@@ -8,6 +8,7 @@ node_modules/
 # testing
 /coverage
 /playwright/.auth/
+/playwright/.sealing/
 /playwright-report/
 /test-results/
 

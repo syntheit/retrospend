@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test";
 import { personaStorageState } from "../constants";
 import { SOFIA } from "../fixtures/personas";
+import { expect, test } from "../fixtures/sealed-guard";
 import { bannedOutputOn } from "../helpers/banned-output";
 import { openV2 } from "./viewer";
 

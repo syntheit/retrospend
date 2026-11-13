@@ -1,6 +1,6 @@
-import { expect, type Page, test } from "@playwright/test";
 import { personaStorageState } from "../constants";
 import { SOFIA, seedId } from "../fixtures/personas";
+import { expect, type Page, test } from "../fixtures/sealed-guard";
 import { bannedOutputOn } from "../helpers/banned-output";
 import {
 	FigureAudit,

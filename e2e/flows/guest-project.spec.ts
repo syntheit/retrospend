@@ -1,14 +1,19 @@
+import { E2E_BASE_URL, USER_STORAGE_STATE } from "../constants";
 import {
 	type APIRequestContext,
 	type Browser,
 	expect,
 	type Page,
 	test,
-} from "@playwright/test";
-import { E2E_BASE_URL, USER_STORAGE_STATE } from "../constants";
+} from "../fixtures/sealed-guard";
 import { bannedOutputOn } from "../helpers/banned-output";
 import { gotoReady } from "../helpers/navigation";
-import { contextFor, THEMES, useTheme as applyTheme, WIDTHS } from "../visual/matrix";
+import {
+	useTheme as applyTheme,
+	contextFor,
+	THEMES,
+	WIDTHS,
+} from "../visual/matrix";
 
 // A project page opened without an account on it: through a viewer link, an
 // invite that makes a guest, and the public page of a public project. The
@@ -165,7 +170,9 @@ test.describe("an invite that makes a guest", () => {
 			page.getByRole("heading", { name: `Join ${PROJECT}` }),
 		).toBeVisible();
 		await page.getByLabel("Your name").fill("Lucy Guest");
-		await page.getByLabel("Email", { exact: true }).fill("lucy.guest@example.com");
+		await page
+			.getByLabel("Email", { exact: true })
+			.fill("lucy.guest@example.com");
 		await page.getByRole("button", { name: "Join project" }).click();
 		await expect(page.getByText("You are in", { exact: true })).toBeVisible();
 		await page.getByRole("button", { name: "View project" }).click();
@@ -253,7 +260,9 @@ test.describe("the owner", () => {
 		await expect(
 			main.getByRole("heading", { name: PROJECT, level: 1 }),
 		).toBeVisible();
-		await expect(main.getByRole("button", { name: "Add expense" })).toBeVisible();
+		await expect(
+			main.getByRole("button", { name: "Add expense" }),
+		).toBeVisible();
 	});
 });
 
@@ -397,7 +406,9 @@ test.describe("screenshots", () => {
 					width,
 					async (page) => {
 						await gotoReady(page, `/projects/${ids.project}`);
-						await expect(page.getByText("This link no longer works")).toBeVisible();
+						await expect(
+							page.getByText("This link no longer works"),
+						).toBeVisible();
 						await shot(page, `link-expired-${tag}`);
 					},
 					{ guest_session_token: "expired", guest_project_id: ids.project },

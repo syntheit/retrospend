@@ -1,7 +1,7 @@
-import { expect, type Page, test } from "@playwright/test";
 import { Pool } from "pg";
 import { E2E_DATABASE_URL, personaStorageState } from "../constants";
 import { SOFIA } from "../fixtures/personas";
+import { expect, type Page, test } from "../fixtures/sealed-guard";
 import { bannedOutputOn } from "../helpers/banned-output";
 import { FigureAudit, httpFigureFetcher } from "../helpers/figures";
 import { gotoReady } from "../helpers/navigation";
@@ -113,10 +113,9 @@ test.describe("Settings v2", () => {
 			"aria-current",
 			"true",
 		);
-		await expect(nav.getByRole("link", { name: "Danger zone" })).not.toHaveAttribute(
-			"aria-current",
-			"true",
-		);
+		await expect(
+			nav.getByRole("link", { name: "Danger zone" }),
+		).not.toHaveAttribute("aria-current", "true");
 	});
 
 	test("signed-in devices list this browser and sign another device out", async ({
