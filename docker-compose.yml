@@ -27,6 +27,8 @@ services:
       DATA_KEYS_WRITE: ${DATA_KEYS_WRITE:-}
       # Optional: "false" stops the 15-minute auto-post of recurring expenses.
       RECURRING_AUTO_POST: ${RECURRING_AUTO_POST:-}
+      # Optional: days a deletion stays in the sync log (default 90).
+      SYNC_TOMBSTONE_DAYS: ${SYNC_TOMBSTONE_DAYS:-}
       UPLOAD_DIR: /data/uploads
       EXPORT_DIR: /data/exports
       SHOW_LANDING_PAGE: "true"

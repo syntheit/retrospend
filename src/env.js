@@ -49,6 +49,10 @@ export const env = createEnv({
 			.enum(["true", "false"])
 			.default("false")
 			.transform((v) => v === "true"),
+		// Days a deletion stays in the sync log for devices that were offline
+		// (services/sync/tombstones.ts). A device whose cursor is older than the
+		// last sweep pulls from the start again.
+		SYNC_TOMBSTONE_DAYS: z.coerce.number().int().min(1).default(90),
 		// Post due "pay automatically" recurring items every 15 minutes
 		// (recurring-auto-post.ts). Unset: on in production only, so dev,
 		// tests and e2e never post their seeded templates.
@@ -130,6 +134,7 @@ export const env = createEnv({
 		DATA_MASTER_KEY_FILE: process.env.DATA_MASTER_KEY_FILE,
 		DATA_KEYS_WRITE: process.env.DATA_KEYS_WRITE,
 		RECURRING_AUTO_POST: process.env.RECURRING_AUTO_POST,
+		SYNC_TOMBSTONE_DAYS: process.env.SYNC_TOMBSTONE_DAYS,
 		APNS_KEY_ID: process.env.APNS_KEY_ID,
 		APNS_TEAM_ID: process.env.APNS_TEAM_ID,
 		APNS_BUNDLE_ID: process.env.APNS_BUNDLE_ID,

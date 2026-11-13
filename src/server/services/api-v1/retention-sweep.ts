@@ -1,5 +1,6 @@
 import { env } from "~/env";
 import { db } from "~/server/db";
+import { sweepSyncTombstones } from "~/server/services/sync/tombstones";
 import { deleteFile } from "~/server/storage";
 
 /**
@@ -11,7 +12,9 @@ import { deleteFile } from "~/server/storage";
  *   the entry was last changed (archiving it is the last change). The entry's
  *   text stays; only the picture goes;
  * - the file of an import job still waiting or running an hour after it was
- *   created is dropped and the job fails (see sweepStaleImportFiles).
+ *   created is dropped and the job fails (see sweepStaleImportFiles);
+ * - sync tombstones older than SYNC_TOMBSTONE_DAYS go, and the sync floor
+ *   rises with them (services/sync/tombstones.ts).
  */
 
 export const ERROR_REPORT_RETENTION_DAYS = 30;
@@ -92,6 +95,7 @@ export async function sweepSupportData(now = new Date()) {
 		errorReports: await sweepErrorReports(now),
 		screenshots: await sweepArchivedScreenshots(now),
 		importFiles: await sweepStaleImportFiles(now),
+		syncTombstones: await sweepSyncTombstones(now),
 	};
 }
 

@@ -48,6 +48,7 @@ Set these in `.env`. Runtime settings are read at start; nothing is baked into t
 | `DEFAULT_TIME_ZONE` | No | `America/Argentina/Buenos_Aires` | IANA zone for people with no saved zone |
 | `ENABLE_LEGAL_PAGES` | No | `true` | Show `/privacy` and `/terms` |
 | `RECURRING_AUTO_POST` | No | `true` in the image | Post due recurring expenses set to pay automatically, every 15 minutes. Set `false` to stop it |
+| `SYNC_TOMBSTONE_DAYS` | No | `90` | Days a deletion stays in the sync log for devices that were offline. A device away longer pulls its data again from the start |
 | `UNSUBSCRIBE_SECRET` | No | | Secret for signed one-click unsubscribe links in emails |
 | `SMTP_HOST` | No | | SMTP server hostname |
 | `SMTP_PORT` | No | | SMTP port (e.g. `587`) |
@@ -188,7 +189,7 @@ The dumps carry no owners and no privileges, so a restored database has tables w
    ```
 
    Any other error is a real failure. From anywhere but inside the container, set `PGPASSWORD` to the derived password, which `printf %s retrospend_owner | openssl dgst -sha256 -hmac "$POSTGRES_PASSWORD" | awk '{print $NF}'` prints, or use your `DATABASE_OWNER_PASSWORD`.
-5. Start again with `docker compose up -d`.
+5. Start again with `docker compose up -d`. On start the server checks whether the sync log survived the restore (a restore into another database or cluster, or from a dump) and rebuilds it when it did not: devices pull their data again from the start. The rebuild waits up to 30 seconds for the sync log; if another connection holds it, the start fails with `sync_reset_lock_timeout` and a log line, and starting again once that connection is gone works. A restore of the whole cluster (a filesystem, volume or point-in-time restore) is not found, because the restored tables and their ids come back together; run `SELECT sync_reset();` as `retrospend_owner` before you start the app. If you are unsure whether a restore was found, run it anyway; it is safe to repeat.
 
 ### Data key backups
 

@@ -441,6 +441,18 @@
 			"forceRls": false,
 			"policies": []
 		},
+		"sync_change": {
+			"privileges": ["SELECT"],
+			"rls": true,
+			"forceRls": false,
+			"policies": ["sync_change_select_own:SELECT"]
+		},
+		"sync_state": {
+			"privileges": ["SELECT"],
+			"rls": true,
+			"forceRls": false,
+			"policies": ["sync_state_select:SELECT"]
+		},
 		"system_status": {
 			"privileges": ["SELECT"],
 			"rls": false,
@@ -581,6 +593,7 @@
 	},
 	"sequences": {
 		"api_event_seq_seq": ["SELECT", "USAGE"],
-		"budget_dirty_id_seq": ["SELECT", "USAGE"]
+		"budget_dirty_id_seq": ["SELECT", "USAGE"],
+		"sync_change_seq": []
 	}
 }

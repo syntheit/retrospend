@@ -106,6 +106,7 @@ model User {
   pushDevices             PushDevice[]
   exportJobs              ExportJob[]
   apiEvents               ApiEvent[]
+  syncChanges             SyncChange[]
   webhooks                Webhook[]
 
   @@map("user")
@@ -2494,4 +2495,35 @@ model PushDelivery {
   @@index([userId, createdAt])
   @@index([eventId])
   @@map("push_delivery")
+}
+
+/// The delta log of personal data (P14a, 20261114100000_sync_change): one row per
+/// (entity, id, owner), written only by the sync_stamp_rows trigger. Ids only,
+/// no text. Read through raw SQL by services/sync/changes.ts.
+model SyncChange {
+  entity    String              @db.VarChar(32)
+  entityId  String
+  userId    String
+  /// U: the row exists or may; D: it was deleted or left this owner.
+  op        String              @db.Char(1)
+  txid      Unsupported("xid8") @default(dbgenerated("pg_current_xact_id()"))
+  seq       BigInt
+  changedAt DateTime            @default(now())
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([entity, entityId, userId])
+  @@index([userId, entity, txid, seq])
+  @@map("sync_change")
+}
+
+/// The one row of sync state: the epoch, the tombstone floor and the oids that
+/// tell a restore from a normal start.
+model SyncState {
+  id          Int                 @id
+  epoch       String              @default(dbgenerated("(gen_random_uuid())::text"))
+  floorTxid   Unsupported("xid8") @default(dbgenerated("'0'::xid8"))
+  stateOid    BigInt
+  databaseOid BigInt
+
+  @@map("sync_state")
 }

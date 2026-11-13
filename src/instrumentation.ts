@@ -17,7 +17,8 @@
  * `master_key_mismatch`, not as a lost instance key. With DATA_KEYS_WRITE
  * on it then checks that sealing can work and sets the field encryption epoch
  * (field-encryption-start.ts), so no worker runs on a server that would
- * refuse to seal.
+ * refuse to seal. Last it checks whether the sync log survived a restore
+ * (services/sync/restore.ts) and rebuilds it when it did not.
  */
 export async function register() {
 	if (process.env.NEXT_RUNTIME !== "nodejs") return;
@@ -33,6 +34,8 @@ export async function register() {
 		"~/server/services/keys/field-encryption-start"
 	);
 	await assertFieldEncryptionStart();
+	const { checkSyncRestore } = await import("~/server/services/sync/restore");
+	await checkSyncRestore();
 	const [
 		{ startWebhookWorker },
 		{ startPushWorker },
