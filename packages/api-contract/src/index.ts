@@ -18,8 +18,8 @@ import { incomeContract } from "./income";
 import { inviteCodesContract } from "./invite-codes";
 import { needsYouContract } from "./needs-you";
 import { notificationsContract } from "./notifications";
-import { paymentsContract } from "./payments";
 import { paymentMethodsContract } from "./payment-methods";
+import { paymentsContract } from "./payments";
 import { peopleContract } from "./people";
 import { platformContract } from "./platform";
 import { profileContract } from "./profile";
@@ -29,6 +29,7 @@ import { recurringContract } from "./recurring";
 import { searchContract } from "./search";
 import { settingsContract } from "./settings";
 import { sharedExpensesContract } from "./shared-expenses";
+import { syncContract } from "./sync";
 import { tokensContract } from "./tokens";
 import { transfersContract } from "./transfers";
 import { webhooksContract } from "./webhooks";
@@ -67,6 +68,7 @@ export * from "./recurring";
 export * from "./search";
 export * from "./settings";
 export * from "./shared-expenses";
+export * from "./sync";
 export * from "./tokens";
 export * from "./transfers";
 export * from "./webhooks";
@@ -107,6 +109,7 @@ export const contract = {
 	search: searchContract,
 	settings: settingsContract,
 	"shared-expenses": sharedExpensesContract,
+	sync: syncContract,
 	tokens: tokensContract,
 	transfers: transfersContract,
 	webhooks: webhooksContract,

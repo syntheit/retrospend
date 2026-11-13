@@ -24,6 +24,7 @@ const TITLES: Record<ProblemCode, string> = {
 	overpay: "More than is owed",
 	rate_out_of_range: "Rate too far from the stored rate",
 	id_taken: "That id is already used",
+	sync_reset_required: "Pull again from the start",
 	rate_limited: "Too many requests",
 	encrypted_text_unavailable: "Encrypted text unavailable",
 	key_rotated: "Encryption key changed, try again",

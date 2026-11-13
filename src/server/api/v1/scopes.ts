@@ -4,7 +4,6 @@ import {
 	parseScopeList,
 	type RouteScope,
 	SCOPES,
-	SESSION_SCOPES,
 	type Scope,
 	type SessionScope,
 } from "@retrospend/api-contract/common";
@@ -113,21 +112,35 @@ export function hasScope(
 	return required === "public" || scopes.includes(required);
 }
 
+/** The session-only scopes of account security, held by the web app too. */
+const ACCOUNT_SESSION_SCOPES: readonly SessionScope[] = [
+	"account:delete",
+	"account:security",
+];
+
 /**
- * The session-only scopes a principal holds (account deletion). Only the web
- * app's own cookie session and the Expo app's session have them, never a
- * device session or an API key, whatever their stored scopes say. A mobile
- * session with narrowed stored scopes keeps them only with `write:settings`,
- * since deleting the account is at least as sensitive as changing settings.
+ * The session-only scopes a principal holds. Only the web app's own cookie
+ * session and the Expo app's session have the account ones, never a device
+ * session or an API key, whatever their stored scopes say. A mobile session
+ * with narrowed stored scopes keeps them only with `write:settings`, since
+ * deleting the account is at least as sensitive as changing settings.
+ *
+ * `sync` (every column of the caller's own rows, for the app's local copy)
+ * is the Expo app's alone: the web app has no local copy, and a device
+ * session, API key or personal token never gets it, so a `read` token cannot
+ * pull the raw rows. A mobile session keeps it only with `read` stored.
  */
 export function sessionScopesOf(input: {
 	kind: PrincipalKind;
 	granted: readonly Scope[] | null;
 }): SessionScope[] {
-	if (input.kind === "web") return [...SESSION_SCOPES];
-	if (input.kind === "mobile" && input.granted?.includes("write:settings"))
-		return [...SESSION_SCOPES];
-	return [];
+	if (input.kind === "web") return [...ACCOUNT_SESSION_SCOPES];
+	if (input.kind !== "mobile") return [];
+	const held: SessionScope[] = [];
+	if (input.granted?.includes("write:settings"))
+		held.push(...ACCOUNT_SESSION_SCOPES);
+	if (input.granted?.includes("read")) held.push("sync");
+	return held;
 }
 
 /** Whether the principal may call a route that needs `required`. */

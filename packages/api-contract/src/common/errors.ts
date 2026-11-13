@@ -23,6 +23,10 @@ export const PROBLEM_STATUS = {
 	overpay: 422,
 	rate_out_of_range: 422,
 	id_taken: 409,
+	// A sync cursor the log can no longer honor: another epoch, a position the
+	// server has not reached, or one older than the kept tombstones. The client
+	// drops that entity's rows and pulls again from the start.
+	sync_reset_required: 410,
 	rate_limited: 429,
 	// A sealed text the reader may open, whose key the server cannot load
 	// (key store lost or unreachable). Not a client fault; retrying later may work.
