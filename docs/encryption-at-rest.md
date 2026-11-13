@@ -59,6 +59,8 @@ Where else things are recorded, all in `app_settings`: `masterKeyCanary` (a fixe
 
 With the epoch set (sealing has been on once), the server checks the keys at every start, whether or not the flag is on, and refuses to start rather than risk making a new key that opens nothing sealed. With the flag on it checks more. Each refusal logs a code and counts, never a name, an address or an id.
 
+The checks run in this order: the master key setting (a malformed key stops the start), the canary, the start gates (epoch set only), then the flag-on checks. The canary comes before the gates, so a wrong master key on a sealed database reads as `master_key_mismatch`, not as a lost instance key. With no master key the canary is skipped and the gates give `epoch_without_master_key`. With the right key and a lost keystore the gates give `instance_key_lost`.
+
 | Code | When it fires | What to do |
 |---|---|---|
 | `sealing_unreleased` | Flag on in a production build that does not allow sealing yet | Use a build that allows it, or unset `DATA_KEYS_WRITE` |
@@ -69,7 +71,7 @@ With the epoch set (sealing has been on once), the server checks the keys at eve
 | `keystore_grants_missing` | Flag on, and the app role cannot use the `keystore` schema or its four functions, usually after a restore | Restart: the grants are applied at every start. If it persists, the restore was not run as `retrospend_owner`; restore again as that role |
 | `category_index_missing` | Flag on, and some category has no name index | Run `scripts/backfill-category-name-index.ts --apply`, then start |
 | `contact_hash_missing` | Flag on, and after the start filled every plaintext address, some ghost or guest row with an address still has no hash of the current key. The log gives the table and a count | See below |
-| `code_below_floor` | The database holds a higher sealing floor than this build. It is checked at every start once the epoch is set, and on a start with the flag on, including a start where another build raised the floor first | Start the build that sealed the database, or a newer one. Do not roll back below the floor |
+| `code_below_floor` | The database holds a higher sealing floor than this build. It is checked at every start once the epoch is set, and on a start with the flag on, including one that reads a lower floor and then finds another build raised it (a rolling deploy) | Start the build that sealed the database, or a newer one. Do not roll back below the floor |
 
 `contact_hash_missing` means a row whose address is already sealed and has no hash. The start can fill only plaintext addresses, because a sealed one cannot be read there, and writers fail closed, so the usual cause is a restore that mixed a main dump and a keystore dump from different times. The clean fix is to restore the matching pair. The other fix is to remove the address from those rows on the owner connection: set a ghost's `email` to NULL, or delete the guest row. Take a backup first and count the rows against the log line.
 
