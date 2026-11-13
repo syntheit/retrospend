@@ -4,19 +4,21 @@ import { assertNoSealedText, hasContactHash } from "./response-guard";
 const HASH = `${"ab".repeat(8)}:${"cd".repeat(32)}`;
 
 describe("hasContactHash", () => {
-	it("finds a hash at any depth, in a map and in a set", () => {
-		expect(hasContactHash(HASH)).toBe(true);
+	it("finds an emailHash field at any depth, in a map and in a set", () => {
+		expect(hasContactHash({ id: "x", emailHash: HASH })).toBe(true);
 		expect(hasContactHash({ rows: [{ id: "x", emailHash: HASH }] })).toBe(true);
-		expect(hasContactHash(new Map([["k", { v: [HASH] }]]))).toBe(true);
-		expect(hasContactHash(new Set([HASH]))).toBe(true);
+		expect(hasContactHash(new Map([["k", { v: [{ emailHash: HASH }] }]]))).toBe(
+			true,
+		);
+		expect(hasContactHash(new Set([{ emailHash: HASH }]))).toBe(true);
 	});
 
-	it("passes text that only looks a little like one", () => {
-		expect(hasContactHash("bob@example.com")).toBe(false);
-		expect(hasContactHash(`${"ab".repeat(8)}:${"cd".repeat(31)}`)).toBe(false);
-		expect(hasContactHash(`${"AB".repeat(8)}:${"CD".repeat(32)}`)).toBe(false);
-		expect(hasContactHash(` ${HASH}`)).toBe(false);
+	it("passes a null hash, other fields and a category's name index of the same shape", () => {
 		expect(hasContactHash({ emailHash: null, when: new Date() })).toBe(false);
+		expect(hasContactHash({ emailHash: "not a hash" })).toBe(false);
+		expect(hasContactHash({ nameIndex: HASH })).toBe(false);
+		expect(hasContactHash(HASH)).toBe(false);
+		expect(hasContactHash("bob@example.com")).toBe(false);
 	});
 });
 
@@ -26,5 +28,6 @@ describe("assertNoSealedText", () => {
 			/contact hash reached a v1 response/,
 		);
 		expect(() => assertNoSealedText({ emailHash: null }, "v1")).not.toThrow();
+		expect(() => assertNoSealedText({ nameIndex: HASH }, "v1")).not.toThrow();
 	});
 });

@@ -26,19 +26,23 @@ export function hasSealedText(value: unknown): boolean {
 	);
 }
 
-/** True when any string inside `value` is shaped like a contact hash. */
+/**
+ * True when a field named `emailHash` holds a contact hash anywhere inside
+ * `value`. The shape alone cannot be the test: a category's name index
+ * (`nameIndex`, category-name-index.service.ts) has the same shape and rides
+ * in whole category rows today, so the field name is part of the rule.
+ */
 export function hasContactHash(value: unknown): boolean {
-	if (typeof value === "string") return CONTACT_HASH.test(value);
 	if (Array.isArray(value)) return value.some(hasContactHash);
-	if (value instanceof Map)
-		return [...value].some(([k, v]) => hasContactHash(k) || hasContactHash(v));
+	if (value instanceof Map) return [...value.values()].some(hasContactHash);
 	if (value instanceof Set) return [...value].some(hasContactHash);
 	if (typeof value !== "object" || value === null) return false;
 	const proto = Object.getPrototypeOf(value);
-	return (
-		(proto === Object.prototype || proto === null) &&
-		Object.values(value).some(hasContactHash)
-	);
+	if (proto !== Object.prototype && proto !== null) return false;
+	const { emailHash } = value as { emailHash?: unknown };
+	if (typeof emailHash === "string" && CONTACT_HASH.test(emailHash))
+		return true;
+	return Object.values(value).some(hasContactHash);
 }
 
 /**
