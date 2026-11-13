@@ -10,8 +10,8 @@
  * it untouched and names it (a missing rate is never 1).
  */
 
-import { isCrypto } from "@retrospend/domain/currency-format";
 import { USD } from "@retrospend/domain/money";
+import { crossRateDec } from "@retrospend/domain/money-dec";
 import type { Decimal } from "@retrospend/domain/precise-decimal";
 import { findExchangeRate } from "~/server/exchange-rates";
 import { dec } from "~/server/services/envelope/units";
@@ -31,8 +31,9 @@ export interface QuoteRequest {
 	readonly custom?: { readonly rate: string; readonly currency: string } | null;
 }
 
+/** A currency's stored rate (fiat per USD, crypto USD per coin) and its type. */
 interface Leg {
-	usdPerUnit: Decimal;
+	rate: Decimal;
 	type: string;
 }
 
@@ -42,14 +43,10 @@ async function legOf(
 	date: Date,
 	rateType: string | null | undefined,
 ): Promise<Leg | null> {
-	if (currency === USD) return { usdPerUnit: dec(1), type: "official" };
+	if (currency === USD) return { rate: dec(1), type: "official" };
 	const picked = await findExchangeRate(db, currency, date, rateType);
 	if (!picked || !(picked.rate > 0)) return null;
-	const stored = dec(String(picked.rate));
-	return {
-		usdPerUnit: isCrypto(currency) ? stored : dec(1).div(stored),
-		type: picked.type,
-	};
+	return { rate: dec(String(picked.rate)), type: picked.type };
 }
 
 /**
@@ -78,8 +75,11 @@ export async function loadQuotes(
 		}
 		const leg = await legOf(db, currency, request.date, request.rateType);
 		if (!leg || !into) continue;
+		// One division of two products (crossRateDec), so an exact rate stays
+		// exact: USD into a home at 7 is 7, not 6.99...98, and a tie stays a tie
+		// when an amount is multiplied by it.
 		quotes.set(currency, {
-			perUnit: leg.usdPerUnit.div(into.usdPerUnit),
+			perUnit: crossRateDec(currency, leg.rate, request.into, into.rate),
 			rateType: labelOf(into, leg),
 		});
 	}
