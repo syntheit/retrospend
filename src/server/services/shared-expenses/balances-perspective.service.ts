@@ -210,7 +210,6 @@ export async function getBalancesFromPerspective(
 	const itemsByCounterpart = new Map<string, PerspectiveLineItem[]>();
 
 	// -- Itemize transactions --------------------------------------------------
-	//
 	// For each transaction the perspective person is involved in, determine the
 	// counterpart(s) and the signed contribution of this line to the balance
 	// (a display figure; the balance itself comes from computeBalanceBatch):
