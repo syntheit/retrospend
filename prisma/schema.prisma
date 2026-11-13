@@ -1490,7 +1490,7 @@ model ImportJob {
   // Processing results
   transactions Json?   // ImporterTransaction[] when processed
   warnings     Json?   // string[] from importer
-  errorMessage String? @db.VarChar(1000)
+  errorMessage String? @db.Text // capped at 1000 characters by the queue
 
   // Result metadata
   totalTransactions Int  @default(0)
@@ -1507,7 +1507,7 @@ model ImportJob {
 
   // Progress tracking (for bank statements)
   progressPercent Float?
-  statusMessage   String?
+  statusMessage   String? // a progress code (services/import/progress-code.ts); rows before D11 hold English phrases
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

@@ -179,6 +179,51 @@ describe("AI import opt-in", () => {
 		});
 	});
 
+	describe("the progress a statement reports", () => {
+		it("is stored as a code from the fixed list, null for any other text, and complete at the end", async () => {
+			optedIn(true);
+			const line = (message: string, percent: number) =>
+				JSON.stringify({ type: "progress", percent, message });
+			fetchMock.mockImplementation(
+				async () =>
+					new Response(
+						[
+							line("Extracting text from PDF...", 5),
+							line("Parsing bank statement (pages 1-3)...", 20),
+							line("Enriching transactions (batch 2/5)...", 60),
+							line("Row 3: Coto Supermercado, ARS 12.500", 70),
+							JSON.stringify({
+								type: "result",
+								data: [
+									{ title: "Cafe", amount: 10, currency: "USD", date: "2024-06-15" },
+								],
+								metadata: { totalTokensUsed: 5 },
+							}),
+						].join("\n") + "\n",
+					),
+			);
+			db.importJob.findFirst
+				.mockResolvedValueOnce(queuedJob("pdf", "JVBERg=="))
+				.mockResolvedValueOnce(null);
+			db.importJob.update.mockResolvedValue({});
+			db.aiUsage.upsert.mockResolvedValue({});
+
+			await service.processQueue("user-1");
+
+			const stored = db.importJob.update.mock.calls
+				.map((c) => (c[0] as { data: { statusMessage?: string | null } }).data)
+				.filter((d) => "statusMessage" in d)
+				.map((d) => d.statusMessage);
+			expect(stored).toEqual([
+				"reading",
+				"parsing_pages:1-3",
+				"enriching_batch:2/5",
+				null,
+				"complete",
+			]);
+		});
+	});
+
 	describe("createJob", () => {
 		const input = (fileType: string) => ({
 			fileName: `statement.${fileType}`,

@@ -11,6 +11,7 @@ import {
 	type CommitImportInput,
 	commitImport,
 } from "~/server/services/import/commit.mutation";
+import { progressText } from "~/server/services/import/progress-code";
 import { importReview } from "~/server/services/import/review";
 import { importRunner } from "~/server/services/import/runner";
 import { undoImport } from "~/server/services/import/undo.mutation";
@@ -77,7 +78,7 @@ function toDto(row: JobRow): ImportJobDto {
 			row.status === "PROCESSING" && row.progressPercent != null
 				? Math.round(row.progressPercent * 100)
 				: null,
-		message: row.statusMessage,
+		message: progressText(row.statusMessage),
 		rowCount: row.totalTransactions,
 		importedCount: row.importedCount,
 		skippedDuplicates: row.skippedDuplicates,
@@ -100,6 +101,15 @@ async function readJob(caller: LedgerCaller, id: string): Promise<JobRow> {
 	});
 	if (!row) throw notFound();
 	return row;
+}
+
+/** The job exists and is the caller's, reading no text (a write must not depend on opening a cell). */
+async function requireJob(caller: LedgerCaller, id: string): Promise<void> {
+	const row = await caller.db.importJob.findFirst({
+		where: { id, userId: caller.principal.userId },
+		select: { id: true },
+	});
+	if (!row) throw notFound();
 }
 
 const createdCursor = z.object({ createdAt: z.iso.datetime(), id: z.string() });
@@ -249,7 +259,7 @@ function withResult<V>(
 }
 
 export async function cancel(caller: LedgerCaller, id: string) {
-	await readJob(caller, id);
+	await requireJob(caller, id);
 	await new ImportQueueService(caller.db).cancelJob(
 		caller.principal.userId,
 		id,
@@ -258,7 +268,7 @@ export async function cancel(caller: LedgerCaller, id: string) {
 }
 
 export async function remove(caller: LedgerCaller, id: string) {
-	await readJob(caller, id);
+	await requireJob(caller, id);
 	await new ImportQueueService(caller.db).deleteJob(
 		caller.principal.userId,
 		id,

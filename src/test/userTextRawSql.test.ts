@@ -34,6 +34,9 @@ const COLUMNS = [
 	"rejectionReason",
 	"rejectedReason",
 	"adminNote",
+	// Import job text outside the declared fields (D11 Revision 3).
+	"fileData",
+	"errorMessage",
 ];
 const READS_TEXT = new RegExp(`\\b(?:${COLUMNS.join("|")})\\b`);
 

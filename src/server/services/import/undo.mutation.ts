@@ -70,6 +70,7 @@ export const undoImport: MoneyMutation<UndoImportInput, UndoImportValue> = {
 	run: async (tx, input, actor) => {
 		const job = await tx.importJob.findFirst({
 			where: { id: input.jobId, userId: actor.userId },
+			omit: { fileData: true },
 		});
 		if (job?.status !== "COMPLETED")
 			throw nothing("There is no import to undo");

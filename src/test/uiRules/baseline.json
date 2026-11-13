@@ -408,7 +408,7 @@
 		"src/server/api/routers/invite.ts": 13,
 		"src/server/api/routers/recurring.ts": 23,
 		"src/server/api/routers/shared-transaction.ts": 56,
-		"src/server/services/import-queue.service.ts": 459,
+		"src/server/services/import-queue.service.ts": 385,
 		"src/server/services/shared-expenses/audit-log-formatter.ts": 339,
 		"src/server/services/shared-expenses/balances-perspective.service.ts": 102,
 		"src/server/services/shared-expenses/people.service.ts": 1003,

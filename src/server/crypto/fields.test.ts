@@ -109,6 +109,10 @@ const NO_DECLARED_FIELD: Record<string, string> = {
 		"no write path sets a note today; one that does must declare its field",
 	"envelope_change.previousName":
 		"a server copy of envelope.name taken before a rename; no input names it",
+	"import_job.fileData":
+		"the uploaded file as base64: bytes, not a declared text field, and cleared once read",
+	"import_job.errorMessage":
+		"the server's own failure text, which can quote a row of the file; no input names it",
 	"export_job.fileName":
 		"derived by the server from a project or person name; no input names it",
 };
@@ -280,12 +284,8 @@ const NOT_SEALED: Record<string, string> = {
 		"owner call: app crash text, scrubbed by the app and the server, not typed",
 	"error_report.stack":
 		"owner call: app crash stack, scrubbed by the app and the server, not typed",
-	"import_job.fileData":
-		"owner call: the uploaded file as base64, cleared after processing, so it holds row text for a short time",
-	"import_job.errorMessage":
-		"owner call: server and sidecar progress text, which may quote a row",
 	"import_job.statusMessage":
-		"owner call: server and sidecar progress text, which may quote a row",
+		"a stable progress code from a fixed list (import/progress-code.ts); rows before the codes hold fixed English phrases",
 	"export_job.contentType": "a MIME type, not text",
 };
 
@@ -344,6 +344,8 @@ describe("key classes", () => {
 		"recurring_template.websiteUrl",
 		"export_job.fileName",
 		"import_job.fileName",
+		"import_job.fileData",
+		"import_job.errorMessage",
 		"push_device.deviceName",
 	];
 	const INSTANCE: string[] = [

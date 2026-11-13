@@ -22,7 +22,7 @@
 		"src/server/services/envelope/payoff.ts": 1,
 		"src/server/services/envelope/rule-store.ts": 1,
 		"src/server/services/expense-dto.ts": 2,
-		"src/server/services/import-queue.service.ts": 3,
+		"src/server/services/import/csv-rows.ts": 3,
 		"src/server/services/project/expenses.service.ts": 2,
 		"src/server/services/project/project-read.service.ts": 3,
 		"src/server/services/project/rebalance.mutation.ts": 1,

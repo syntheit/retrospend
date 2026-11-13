@@ -44,6 +44,8 @@ export const USER_TEXT_COLUMNS: ReadonlyArray<readonly [string, string]> = [
 	["fix_request", "message"],
 	["fix_request", "reply"],
 	["guest_session", "name"],
+	["import_job", "errorMessage"],
+	["import_job", "fileData"],
 	["import_job", "fileName"],
 	["income_rule", "matchTitle"],
 	["income_rule", "name"],
