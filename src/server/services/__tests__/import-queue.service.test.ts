@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { FieldCryptoError } from "~/server/crypto/field-crypto";
 import { TextUnavailableError } from "~/server/crypto/field-open";
 import { createMockDb } from "~/test/mock-db";
 import { useRateTable } from "~/test/rate-table";
@@ -682,6 +683,43 @@ describe("a job the sweep or a cancel got to first", () => {
 		});
 		expect(updates()[0]?.data).toMatchObject({ status: "FAILED", fileData: null });
 		expect(updates()[0]?.data).not.toHaveProperty("errorMessage");
+	});
+
+	it.each(["keystore_unavailable", "master_key_missing", "key_rotated"])(
+		"leaves the queue alone when the file cannot be opened for %s, which may pass",
+		async (code) => {
+			db.importJob.findFirst.mockRejectedValueOnce(new TextUnavailableError(code));
+
+			await expect(service.processQueue("user-1")).resolves.toBeUndefined();
+
+			expect(db.importJob.findFirst).toHaveBeenCalledTimes(1);
+			expect(db.importJob.update).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each(["auth_failed", "malformed", "unsupported_version", "unknown_key"] as const)(
+		"fails the job at once for a damaged file (%s)",
+		async (code) => {
+			db.importJob.findFirst
+				.mockRejectedValueOnce(new FieldCryptoError(code))
+				.mockResolvedValueOnce({ id: "job-1" })
+				.mockResolvedValueOnce(null);
+			db.importJob.update.mockResolvedValue({});
+
+			await service.processQueue("user-1");
+
+			expect(updates()[0]?.data).toMatchObject({ status: "FAILED", fileData: null });
+		},
+	);
+
+	it("does not take a write or filter code for a damaged file", async () => {
+		db.importJob.findFirst.mockRejectedValueOnce(
+			new FieldCryptoError("filter_on_sealed"),
+		);
+		await expect(service.processQueue("user-1")).rejects.toMatchObject({
+			code: "filter_on_sealed",
+		});
+		expect(db.importJob.update).not.toHaveBeenCalled();
 	});
 
 	it("rethrows a queue read failure that is not an unreadable cell", async () => {

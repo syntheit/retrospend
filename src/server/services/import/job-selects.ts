@@ -6,8 +6,14 @@ import {
 	SealedTextError,
 	stripUserTextControls,
 } from "@retrospend/api-contract/common";
-import { FieldCryptoError } from "~/server/crypto/field-crypto";
-import { textUnavailableProblem } from "~/server/crypto/field-open";
+import {
+	FieldCryptoError,
+	type FieldCryptoErrorCode,
+} from "~/server/crypto/field-crypto";
+import {
+	TextUnavailableError,
+	textUnavailableProblem,
+} from "~/server/crypto/field-open";
 import type { ImportJobStatus, Prisma, PrismaClient } from "~prisma";
 
 const MAX_ERROR_LENGTH = 1000;
@@ -80,16 +86,43 @@ export async function writeJob(
 	}
 }
 
-/** A sealed cell that cannot be read: its key is gone, or the value is damaged. */
+/** A sealed cell that cannot be read now: its key is unavailable, or the value is damaged. */
 export const isUnreadableText = (error: unknown) =>
 	textUnavailableProblem(error) !== null || error instanceof FieldCryptoError;
 
 /**
+ * Codes that mean a cell will never open: the owner's keystore is gone, or
+ * the value is damaged or not ours. Listed outright, so a transient cause
+ * (`keystore_unavailable`, `master_key_missing`, `key_rotated`) and the
+ * write and filter codes never match.
+ */
+const PERMANENT_CODES: ReadonlySet<string> = new Set<
+	"keystore_lost" | FieldCryptoErrorCode
+>([
+	"keystore_lost",
+	"auth_failed",
+	"malformed",
+	"unsupported_version",
+	"unknown_key",
+]);
+
+/** True when `error` (or its cause) says a sealed cell can never be opened. */
+export function isPermanentlyUnreadable(error: unknown): boolean {
+	for (let e = error, depth = 0; e && depth < 8; depth++) {
+		if (e instanceof TextUnavailableError || e instanceof FieldCryptoError)
+			return PERMANENT_CODES.has(e.code);
+		e = (e as { cause?: unknown }).cause;
+	}
+	return false;
+}
+
+/**
  * The next QUEUED job of a user, with its file: the one place the file is
- * read. When the file cannot be opened (the owner's key is gone, or the cell
- * is damaged) it never will be, so that job fails at once with no reason text
- * (the code is logged, never the text) and "failed" says to look again,
- * instead of leaving it queued until the sweep.
+ * read. When the file can never be opened (the owner's key is gone, or the
+ * cell is damaged) that job fails at once with no reason text (the code is
+ * logged, never the text) and "failed" says to look again, instead of leaving
+ * it queued until the sweep. A cause that may pass (the keystore could not be
+ * reached, a key was just rotated) leaves every job queued and ends this pass.
  */
 export async function nextQueuedJob(
 	db: PrismaClient | Prisma.TransactionClient,
@@ -111,9 +144,19 @@ export async function nextQueuedJob(
 			},
 		});
 	} catch (error) {
-		if (!isUnreadableText(error)) throw error;
+		const code = (error as { code?: string }).code;
+		if (!isPermanentlyUnreadable(error)) {
+			// A key that may come back: every job stays queued. Anything else
+			// (a write or filter code, a database error) is not ours to hide.
+			if (textUnavailableProblem(error) === null) throw error;
+			console.error(
+				"An import file could not be opened now, leaving it queued",
+				{ code },
+			);
+			return null;
+		}
 		console.error("An import file could not be opened, failing the job", {
-			code: (error as { code?: string }).code,
+			code,
 		});
 		const stuck = await db.importJob.findFirst({
 			where,
