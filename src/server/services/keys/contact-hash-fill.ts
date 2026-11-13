@@ -16,7 +16,7 @@
  *
  * A row whose email is already sealed and has no current hash cannot be
  * filled here. Writers fail closed, so none should exist; the gate refuses
- * the start if one does.
+ * the start if one does, whatever the cause.
  */
 import type { Keyring } from "~/server/crypto/field-crypto";
 import { keystoreDb } from "~/server/db-core";
@@ -95,28 +95,24 @@ export async function fillContactHashes(
 }
 
 /**
- * Whether any row with an address lacks a hash of the current key: the gate
- * before the epoch. It includes rows whose address is sealed, which the fill
- * cannot reach.
+ * How many rows with an address lack a hash of the current key: the gate
+ * before the epoch (it must be 0). It counts rows whose address is sealed,
+ * which the fill cannot reach, as well as any the fill could not update.
  */
-export async function contactHashMissing(
+export async function countMissingContactHashes(
 	client: Client,
 	ring: Keyring,
 	table: ContactTable,
-): Promise<boolean> {
+): Promise<number> {
 	const prefix = `${contactHashTag(ring, table)}:`;
 	const [row] =
 		table === "shadow_profile"
-			? await client.$queryRaw<{ missing: boolean }[]>`
-				SELECT EXISTS (
-					SELECT 1 FROM "shadow_profile"
-					WHERE "email" IS NOT NULL
-					  AND ("emailHash" IS NULL OR NOT starts_with("emailHash", ${prefix}))
-				) AS "missing"`
-			: await client.$queryRaw<{ missing: boolean }[]>`
-				SELECT EXISTS (
-					SELECT 1 FROM "guest_session"
-					WHERE "emailHash" IS NULL OR NOT starts_with("emailHash", ${prefix})
-				) AS "missing"`;
-	return row?.missing === true;
+			? await client.$queryRaw<{ missing: bigint }[]>`
+				SELECT count(*) AS "missing" FROM "shadow_profile"
+				WHERE "email" IS NOT NULL
+				  AND ("emailHash" IS NULL OR NOT starts_with("emailHash", ${prefix}))`
+			: await client.$queryRaw<{ missing: bigint }[]>`
+				SELECT count(*) AS "missing" FROM "guest_session"
+				WHERE "emailHash" IS NULL OR NOT starts_with("emailHash", ${prefix})`;
+	return Number(row?.missing ?? 0);
 }

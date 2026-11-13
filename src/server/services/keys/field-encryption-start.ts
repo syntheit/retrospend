@@ -32,7 +32,10 @@ import { getMasterKeyring } from "~/server/crypto/master-key";
 import { SEALING_RELEASED } from "~/server/crypto/release";
 import { keystoreDb } from "~/server/db-core";
 import { type ContactTable } from "./contact-hash";
-import { contactHashMissing, fillContactHashes } from "./contact-hash-fill";
+import {
+	countMissingContactHashes,
+	fillContactHashes,
+} from "./contact-hash-fill";
 import { getOrCreateInstanceKeyring } from "./instance-key.service";
 
 const SETTINGS_ID = "app_settings_singleton";
@@ -54,13 +57,14 @@ const MESSAGES: Record<FieldEncryptionStartCode, string> = {
 	category_index_missing:
 		"DATA_KEYS_WRITE is on but some categories have no name index. Run scripts/backfill-category-name-index.ts and start again",
 	contact_hash_missing:
-		"DATA_KEYS_WRITE is on but some contact addresses have no hash and the server could not make it. Check the server log for the table, fix or remove those rows, and start again",
+		"DATA_KEYS_WRITE is on but some contact addresses have no hash of the current key and the server could not make it. Fix or remove those rows, and start again",
 };
 
 export class FieldEncryptionStartError extends Error {
 	readonly code: FieldEncryptionStartCode;
-	constructor(code: FieldEncryptionStartCode) {
-		super(MESSAGES[code]);
+	/** `detail` is counts only, never an address or an id. */
+	constructor(code: FieldEncryptionStartCode, detail?: string) {
+		super(detail ? `${MESSAGES[code]} (${detail})` : MESSAGES[code]);
 		this.name = "FieldEncryptionStartError";
 		this.code = code;
 	}
@@ -124,13 +128,17 @@ async function fillContactHashesOrRefuse(
 		const filled = await fillContactHashes(client, ring, table);
 		if (filled > 0) console.info(`Contact hashes filled: ${table} ${filled}`);
 	}
+	const missing: string[] = [];
 	for (const table of CONTACT_TABLES) {
-		if (await contactHashMissing(client, ring, table)) {
-			console.error(
-				`Contact hashes missing after the fill: ${table} has an address that cannot be hashed (it is already sealed)`,
-			);
-			throw new FieldEncryptionStartError("contact_hash_missing");
-		}
+		const count = await countMissingContactHashes(client, ring, table);
+		if (count > 0) missing.push(`${table}: ${count}`);
+	}
+	if (missing.length > 0) {
+		// Rows, not addresses. The cause is not guessed: a row sealed before
+		// its hash was made, or one the fill could not update, counts the same.
+		const detail = `rows without a current hash, ${missing.join(", ")}`;
+		console.error(`Contact hashes missing after the fill: ${detail}`);
+		throw new FieldEncryptionStartError("contact_hash_missing", detail);
 	}
 }
 
