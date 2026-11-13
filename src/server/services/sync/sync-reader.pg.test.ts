@@ -590,7 +590,14 @@ describe("isolation", () => {
 			() => pull(a.user.id),
 			(p) => p.items.length === 1,
 		);
-		await adminDb.$executeRaw`UPDATE "expense" SET "userId" = ${b.user.id} WHERE "id" = ${id}`;
+		// User text is sealed under its owner's key (in the sealed run), so a
+		// real hand-over writes it again for the new owner, as here.
+		await adminDb.$executeRaw`UPDATE "expense" SET "userId" = ${b.user.id}, "description" = NULL, "location" = NULL WHERE "id" = ${id}`;
+		await fixtureDb.expense.update({
+			where: { id },
+			data: { title: "moved" },
+			select: { id: true },
+		});
 		const forA = await until(
 			() => pull(a.user.id),
 			(p) => p.tombstones.length === 1,
