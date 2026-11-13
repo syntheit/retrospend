@@ -3,14 +3,16 @@ import { Pool } from "pg";
 import { env } from "~/env";
 import type { RuntimeModels } from "~/server/crypto/model-graph";
 import type { TextKeys } from "~/server/crypto/text-keys";
+import { appPoolConfig } from "~/server/db-pool-config";
 import { insideTransaction, registerClient } from "~/server/db-tx";
 import { type Prisma, PrismaClient } from "~prisma";
 
-const pool = new Pool({
-	connectionString: env.DATABASE_URL,
-	max: 20,
-	idleTimeoutMillis: 30000,
-	connectionTimeoutMillis: 5000,
+const pool = new Pool(appPoolConfig(env.DATABASE_URL));
+
+// A connection Postgres ends (the idle-in-transaction timeout) must not crash
+// the process: the pool drops it and the next query opens a new one.
+pool.on("error", (error) => {
+	console.error("Database pool connection ended", error.message);
 });
 
 const adapter = new PrismaPg(pool);
