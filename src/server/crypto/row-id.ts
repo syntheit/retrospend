@@ -22,6 +22,7 @@ export const ID_DEFAULT: Record<MappedModel | JsonModel, "cuid" | "none"> = {
 	Envelope: "cuid",
 	EnvelopeChange: "none",
 	EnvelopeGroup: "cuid",
+	ErrorReport: "cuid",
 	Expense: "cuid",
 	ExportJob: "cuid",
 	Feedback: "cuid",

@@ -49,6 +49,12 @@ export const FIELD_MAP = {
 		table: "envelope_change",
 		columns: { previousName: "instance" },
 	},
+	// Crash text the app sent for support. Instance class: the admin reads
+	// every user's reports (retention-sweep.ts keeps them 30 days).
+	ErrorReport: {
+		table: "error_report",
+		columns: { message: "instance", stack: "instance" },
+	},
 	Expense: {
 		table: "expense",
 		columns: { title: "user", description: "user", location: "user" },

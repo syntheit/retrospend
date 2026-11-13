@@ -6,13 +6,13 @@ import { deleteFile } from "~/server/storage";
  * Retention for what the mobile app sends for support, swept hourly like the
  * export files (export-sweep.ts), on the owner connection over all users:
  *
- * - error reports are deleted 90 days after they were sent;
+ * - error reports are deleted 30 days after they were sent;
  * - the screenshot of an archived feedback entry is deleted 180 days after
  *   the entry was last changed (archiving it is the last change). The entry's
  *   text stays; only the picture goes.
  */
 
-export const ERROR_REPORT_RETENTION_DAYS = 90;
+export const ERROR_REPORT_RETENTION_DAYS = 30;
 export const ARCHIVED_SCREENSHOT_RETENTION_DAYS = 180;
 
 const DAY_MS = 24 * 60 * 60 * 1000;

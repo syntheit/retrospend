@@ -6,6 +6,10 @@ import {
 	type SubmitFeedback,
 	scrubReport,
 } from "@retrospend/api-contract";
+import {
+	SealedTextError,
+	stripUserTextControls,
+} from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
 import * as z from "zod";
 import { db } from "~/server/db";
@@ -102,8 +106,24 @@ export async function readScreenshot(
 const REPORTS_KEPT_PER_USER = 200;
 
 /**
+ * The scrubbed text with the characters a sealed column refuses taken out.
+ * scrubReport leaves a leading U+0001 (the marker of a sealed value) alone, so
+ * it is refused here as a 400 instead of failing the seal later.
+ */
+function storableText(text: string): string {
+	try {
+		return stripUserTextControls(text);
+	} catch (error) {
+		if (!(error instanceof SealedTextError)) throw error;
+		throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid report" });
+	}
+}
+
+/**
  * Stores what the app recorded. The app scrubs first; this scrubs again, so a
- * client that forgot cannot put an address or an amount in the table.
+ * client that forgot cannot put an address or an amount in the table. The
+ * message and stack are sealed on the instance key at rest (the admin reads
+ * them), and the hourly sweep deletes a report after 30 days.
  */
 export async function submitErrorReports(
 	caller: LedgerCaller,
@@ -115,8 +135,8 @@ export async function submitErrorReports(
 		data: reports.map(scrubReport).map((r) => ({
 			userId,
 			kind: r.kind,
-			message: r.message,
-			stack: r.stack ?? null,
+			message: storableText(r.message),
+			stack: r.stack ? storableText(r.stack) : null,
 			screen: r.screen ?? null,
 			appVersion: r.appVersion ?? null,
 			build: r.build ?? null,

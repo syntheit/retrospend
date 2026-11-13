@@ -10,7 +10,6 @@ import sharp from "sharp";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
 	ARCHIVED_SCREENSHOT_RETENTION_DAYS,
-	ERROR_REPORT_RETENTION_DAYS,
 	sweepSupportData,
 } from "~/server/services/api-v1/retention-sweep";
 import { anonymizeAndDeleteUser } from "~/server/services/user-deletion.service";
@@ -422,7 +421,7 @@ describe("/api/v1/feedback and /error-reports", () => {
 		expect(files.has(path ?? "")).toBe(false);
 	});
 
-	it("keeps error reports 90 days and archived screenshots 180", async () => {
+	it("keeps error reports 30 days and archived screenshots 180", async () => {
 		const person = (await createTestUser()).user.id;
 		const day = 24 * 60 * 60 * 1000;
 		const now = new Date();
@@ -438,8 +437,9 @@ describe("/api/v1/feedback and /error-reports", () => {
 					...extra,
 				},
 			});
-		const oldReport = await mk(ERROR_REPORT_RETENTION_DAYS + 1);
-		const freshReport = await mk(ERROR_REPORT_RETENTION_DAYS - 1);
+		// Written out, so changing the limit fails here: 29 stays, 31 goes.
+		const oldReport = await mk(31);
+		const freshReport = await mk(29);
 
 		const entry = (status: string, days: number, name: string) => {
 			files.set(`feedback/${name}.webp`, Buffer.from("x"));
