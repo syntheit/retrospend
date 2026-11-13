@@ -34,7 +34,6 @@ import { ActionDialog } from "./action-dialog";
 interface ShadowProfile {
 	id: string;
 	name: string;
-	email: string | null;
 	createdByUsername: string;
 	claimedByUsername: string | null;
 	claimedAt: Date | null;
@@ -54,17 +53,6 @@ function createShadowColumns(
 			meta: { flex: true },
 			cell: ({ row }) => (
 				<span className="font-medium">{row.original.name}</span>
-			),
-		},
-		{
-			accessorKey: "email",
-			header: t("columnEmail"),
-			enableSorting: true,
-			meta: { flex: true },
-			cell: ({ row }) => (
-				<span className="text-muted-foreground">
-					{row.original.email ?? "-"}
-				</span>
 			),
 		},
 		{
