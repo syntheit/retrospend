@@ -13,7 +13,7 @@ import type { PrismaClient } from "~prisma";
 import { batchResolveIdentities } from "./identities";
 import { readProjectNumbers } from "./numbers";
 import { budgetOf, type ProjectBudget } from "./page-figures";
-import { refKey } from "./summary";
+import { refKey } from "~/server/services/shared-expenses/ledger-posting";
 
 export interface ListPerson {
 	/** `<participantType>:<participantId>`, as summary.refKey. */

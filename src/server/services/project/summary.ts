@@ -31,10 +31,6 @@ import {
 	type SummaryRef,
 } from "~/server/services/shared-expenses/ledger-posting";
 
-export { type MemberLine, refKey, type SummaryRef };
-
-export type SummaryLedger = PostingLedger;
-
 export interface MemberNumbers {
 	ref: SummaryRef;
 	key: string;
@@ -65,7 +61,7 @@ const byCode = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
  *   follows, sorted by key.
  */
 export function summarizeLedger(
-	ledger: SummaryLedger,
+	ledger: PostingLedger,
 	members: readonly SummaryRef[] = [],
 ): ProjectNumbers {
 	const accounts = new Accounts();

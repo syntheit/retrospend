@@ -8,7 +8,10 @@ import type { PrismaClient } from "~prisma";
 import { batchResolveIdentities } from "./identities";
 import { membershipOf } from "./membership";
 import { readProjectNumbers } from "./numbers";
-import { refKey, type SummaryRef } from "./summary";
+import {
+	refKey,
+	type SummaryRef,
+} from "~/server/services/shared-expenses/ledger-posting";
 import type { ProjectViewer } from "./types";
 
 export async function getProjectSummary(

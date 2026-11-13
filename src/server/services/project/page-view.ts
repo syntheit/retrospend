@@ -35,7 +35,7 @@ import {
 	linesOf,
 	shareAtHome,
 } from "./page-figures";
-import { refKey } from "./summary";
+import { refKey } from "~/server/services/shared-expenses/ledger-posting";
 
 /** The most expense rows the page loads at once; the count says when there are more. */
 export const PAGE_ROWS = 500;
