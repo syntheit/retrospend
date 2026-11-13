@@ -28,6 +28,46 @@ export interface HeldSnapshot extends SnapshotMeta {
 	recordedAt: Date;
 }
 
+/** UTC day of a date, as YYYY-MM-DD. */
+export function dayString(date: Date): string {
+	return date.toISOString().slice(0, 10);
+}
+
+/** End of a snapshot's UTC day, so rates published that day count for it. */
+export function endOfSnapshotDay(dateStr: string): Date {
+	return new Date(`${dateStr}T23:59:59.999Z`);
+}
+
+/** An asset_snapshot row as the history reads it. */
+export interface SnapshotRow {
+	accountId: string;
+	balance: DecimalInput | null;
+	balanceInUSD: DecimalInput | null;
+	currency: string | null;
+	type: AssetType | null;
+	exchangeRateType: string | null;
+	date: Date;
+	recordedAt: Date;
+}
+
+/** A snapshot as recorded; rows older than the snapshot columns fall back to the account. */
+export function heldSnapshot(
+	snap: SnapshotRow,
+	asset: SnapshotMeta,
+): HeldSnapshot {
+	return {
+		balance: dec(snap.balance ?? 0),
+		balanceInUSD: dec(snap.balanceInUSD ?? 0),
+		currency: snap.currency ?? asset.currency,
+		type: snap.type ?? asset.type,
+		exchangeRateType: snap.currency
+			? snap.exchangeRateType
+			: asset.exchangeRateType,
+		date: snap.date,
+		recordedAt: snap.recordedAt,
+	};
+}
+
 interface RatedAsset {
 	currency: string;
 	exchangeRateType: string | null;

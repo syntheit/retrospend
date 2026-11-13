@@ -18,13 +18,17 @@ import { TRPCError } from "@trpc/server";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { normalizeDate } from "~/lib/date";
 import { toNumberOrNull, toNumberWithDefault } from "~/lib/utils";
-import type { AssetType, Prisma, PrismaClient } from "~prisma";
+import type { Prisma, PrismaClient } from "~prisma";
 import { findExchangeRate, findExchangeRatesForDates } from "../exchange-rates";
 import { loadDashboardLegs } from "./accounts/dashboard-legs";
 import {
 	dashboardRates,
+	dayString,
+	endOfSnapshotDay,
 	type HeldSnapshot,
+	heldSnapshot,
 	type SnapshotMeta,
+	type SnapshotRow,
 	usdWithoutRate,
 } from "./accounts/dashboard-rates";
 
@@ -33,16 +37,6 @@ import { CUSTOM_RATE_TYPE } from "./accounts/valuation";
 export type { SnapshotMeta };
 /** Rate type of a rate the user typed in; it is kept as is, never looked up. */
 export { CUSTOM_RATE_TYPE };
-
-/** UTC day of a date, as YYYY-MM-DD. */
-function dayString(date: Date): string {
-	return date.toISOString().slice(0, 10);
-}
-
-/** End of a snapshot's UTC day, so rates published that day count for it. */
-function endOfSnapshotDay(dateStr: string): Date {
-	return new Date(`${dateStr}T23:59:59.999Z`);
-}
 
 /**
  * WealthService - Encapsulates business logic for wealth/asset management
@@ -333,31 +327,9 @@ export class WealthService {
 
 		/** Each account's latest snapshot so far, as it was recorded. */
 		const held = new Map<string, HeldSnapshot>();
-		const hold = (snap: {
-			accountId: string;
-			balance: DecimalInput | null;
-			balanceInUSD: DecimalInput | null;
-			currency: string | null;
-			type: AssetType | null;
-			exchangeRateType: string | null;
-			date: Date;
-			recordedAt: Date;
-		}) => {
+		const hold = (snap: SnapshotRow) => {
 			const asset = assetMap.get(snap.accountId);
-			if (!asset) return;
-			// Rows older than the snapshot columns fall back to the account.
-			const recorded = Boolean(snap.currency);
-			held.set(snap.accountId, {
-				balance: dec(snap.balance ?? 0),
-				balanceInUSD: dec(snap.balanceInUSD ?? 0),
-				currency: snap.currency ?? asset.currency,
-				type: snap.type ?? asset.type,
-				exchangeRateType: recorded
-					? snap.exchangeRateType
-					: asset.exchangeRateType,
-				date: snap.date,
-				recordedAt: snap.recordedAt,
-			});
+			if (asset) held.set(snap.accountId, heldSnapshot(snap, asset));
 		};
 		for (const initial of initialPoints) {
 			if (initial) hold(initial);
