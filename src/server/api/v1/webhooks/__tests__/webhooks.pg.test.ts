@@ -370,11 +370,12 @@ describe("/api/v1/webhooks", () => {
 					});
 					await expectProblem(res, 400, "validation_failed");
 				}
-				expect(
-					await adminDb.webhook.count({
-						where: { userId: alice, url: { contains: "169.254" } },
-					}),
-				).toBe(0);
+				// Read and matched here: a sealed url cannot be filtered in SQL.
+				const stored = await adminDb.webhook.findMany({
+					where: { userId: alice },
+					select: { url: true },
+				});
+				expect(stored.filter((w) => w.url.includes("169.254"))).toEqual([]);
 			} finally {
 				await updateAppSettings({ webhooksAllowPrivateTargets: true });
 			}
