@@ -126,7 +126,9 @@ const ACCOUNT_SESSION_SCOPES: readonly SessionScope[] = [
  * deleting the account is at least as sensitive as changing settings.
  *
  * `sync` (every column of the caller's own rows, for the app's local copy)
- * is the Expo app's alone: the web app has no local copy, and a device
+ * goes to mobile sessions only (any client that identifies as the mobile app at
+ * sign-in, as with the account scopes; it reaches only that user's own rows):
+ * the web app has no local copy, and a device
  * session, API key or personal token never gets it, so a `read` token cannot
  * pull the raw rows. A mobile session keeps it only with `read` stored.
  */
