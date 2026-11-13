@@ -1,8 +1,14 @@
 import type {
+	SyncAccountDto,
+	SyncAccountHistoryDto,
+	SyncAccountLegDto,
+	SyncAccountRateTypeDto,
+	SyncAccountSnapshotDto,
 	SyncCategoryDto,
 	SyncExpenseDto,
 	SyncQuery,
 	SyncRecurringTemplateDto,
+	SyncTransferDto,
 } from "@retrospend/api-contract";
 import { readChanges, type SyncPage } from "~/server/services/sync/changes";
 import type { SyncEntity, SyncRow } from "~/server/services/sync/entities";
@@ -91,6 +97,111 @@ export function toSyncRecurringTemplate(
 	};
 }
 
+const decimalOrNull = (value: { toFixed(): string } | null) =>
+	value ? decimal(value) : null;
+
+export function toSyncAccount(row: SyncRow<"asset_account">): SyncAccountDto {
+	return {
+		id: row.id,
+		name: row.name,
+		type: row.type,
+		currency: row.currency,
+		balance: decimal(row.balance),
+		exchangeRate: decimalOrNull(row.exchangeRate),
+		exchangeRateType: row.exchangeRateType,
+		isLiquid: row.isLiquid,
+		interestRate: decimalOrNull(row.interestRate),
+		minimumPayment: decimalOrNull(row.minimumPayment),
+		dueDate: row.dueDate,
+		inBudget: row.inBudget,
+		countedUnits: decimal(row.countedUnits),
+		closedAt: row.closedAt ? instant(row.closedAt) : null,
+		iconKind: row.iconKind,
+		iconValue: row.iconValue,
+		createdAt: instant(row.createdAt),
+		updatedAt: instant(row.updatedAt),
+	};
+}
+
+export function toSyncAccountSnapshot(
+	row: SyncRow<"asset_snapshot">,
+): SyncAccountSnapshotDto {
+	return {
+		id: row.id,
+		accountId: row.accountId,
+		date: instant(row.date),
+		balance: decimal(row.balance),
+		balanceInUSD: decimal(row.balanceInUSD),
+		currency: row.currency,
+		type: row.type,
+		exchangeRateType: row.exchangeRateType,
+		recordedAt: instant(row.recordedAt),
+	};
+}
+
+export function toSyncAccountLeg(
+	row: SyncRow<"account_leg">,
+): SyncAccountLegDto {
+	return {
+		id: row.id,
+		accountId: row.accountId,
+		currency: row.currency,
+		amount: decimal(row.amount),
+		homeAmount: decimalOrNull(row.homeAmount),
+		homeCurrency: row.homeCurrency,
+		date: instant(row.date),
+		source: row.source,
+		transferId: row.transferId,
+		expenseId: row.expenseId,
+		countedUnits: decimal(row.countedUnits),
+		createdAt: instant(row.createdAt),
+	};
+}
+
+export function toSyncAccountHistory(
+	row: SyncRow<"asset_history">,
+): SyncAccountHistoryDto {
+	return {
+		id: row.id,
+		assetId: row.assetId,
+		balance: decimal(row.balance),
+		recordedAt: instant(row.recordedAt),
+	};
+}
+
+export function toSyncAccountRateType(
+	row: SyncRow<"asset_rate_type">,
+): SyncAccountRateTypeDto {
+	return {
+		id: row.id,
+		accountId: row.accountId,
+		from: instant(row.from),
+		type: row.type,
+		previousType: row.previousType,
+		createdAt: instant(row.createdAt),
+	};
+}
+
+export function toSyncTransfer(row: SyncRow<"transfer">): SyncTransferDto {
+	return {
+		id: row.id,
+		kind: row.kind,
+		date: instant(row.date),
+		fromAccountId: row.fromAccountId,
+		fromAmount: decimal(row.fromAmount),
+		fromCurrency: row.fromCurrency,
+		toAccountId: row.toAccountId,
+		toAmount: decimal(row.toAmount),
+		toCurrency: row.toCurrency,
+		referenceRateType: row.referenceRateType,
+		feeExpenseId: row.feeExpenseId,
+		countedFromUnits: decimal(row.countedFromUnits),
+		countedToUnits: decimal(row.countedToUnits),
+		note: row.note,
+		createdAt: instant(row.createdAt),
+	};
+}
+
 /** The page with its rows mapped and its tombstones' instants as text. */
 async function pageOf<E extends SyncEntity, Dto>(
 	caller: Caller,
@@ -123,3 +234,21 @@ export const syncCategories = (caller: Caller, query: SyncQuery) =>
 
 export const syncRecurringTemplates = (caller: Caller, query: SyncQuery) =>
 	pageOf(caller, "recurring_template", query, toSyncRecurringTemplate);
+
+export const syncAccounts = (caller: Caller, query: SyncQuery) =>
+	pageOf(caller, "asset_account", query, toSyncAccount);
+
+export const syncAccountSnapshots = (caller: Caller, query: SyncQuery) =>
+	pageOf(caller, "asset_snapshot", query, toSyncAccountSnapshot);
+
+export const syncAccountLegs = (caller: Caller, query: SyncQuery) =>
+	pageOf(caller, "account_leg", query, toSyncAccountLeg);
+
+export const syncAccountHistory = (caller: Caller, query: SyncQuery) =>
+	pageOf(caller, "asset_history", query, toSyncAccountHistory);
+
+export const syncAccountRateTypes = (caller: Caller, query: SyncQuery) =>
+	pageOf(caller, "asset_rate_type", query, toSyncAccountRateType);
+
+export const syncTransfers = (caller: Caller, query: SyncQuery) =>
+	pageOf(caller, "transfer", query, toSyncTransfer);

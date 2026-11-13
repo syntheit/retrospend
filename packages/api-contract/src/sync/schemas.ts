@@ -1,6 +1,12 @@
 import * as z from "zod";
+import {
+	ACCOUNT_ICON_KINDS,
+	accountTypeSchema,
+	legSourceSchema,
+} from "../accounts/schemas";
 import { categoryColorSchema } from "../categories";
 import { decimalStringSchema, idSchema, timestampSchema } from "../core";
+import { transferKindSchema } from "../transfers";
 
 /**
  * Raw rows for the app's local copy (E2EE lane P): one field per column a
@@ -10,7 +16,8 @@ import { decimalStringSchema, idSchema, timestampSchema } from "../core";
  *
  * Left out on purpose: `userId` (every row is the caller's), the category's
  * `nameIndex` (a keyed hash the server uses for uniqueness) and anything the
- * server keeps to seal text. `importFingerprint` stays: it is the caller's
+ * server keeps to seal text. The account tables have no server-only column,
+ * so each carries every column but `userId`. `importFingerprint` stays: it is the caller's
  * own data (a hash of the import file row) and a copy that imports offline
  * needs it to match a later re-import.
  */
@@ -110,3 +117,137 @@ export const syncRecurringTemplateSchema = z
 export type SyncRecurringTemplateDto = z.infer<
 	typeof syncRecurringTemplateSchema
 >;
+
+export const syncAccountSchema = z
+	.object({
+		id: idSchema,
+		name: z.string(),
+		type: accountTypeSchema,
+		currency: z.string(),
+		balance: decimalStringSchema.meta({
+			description:
+				"What the account holds now; the server's trigger moves it with each leg.",
+		}),
+		exchangeRate: decimalOrNull,
+		exchangeRateType: z.string().nullable(),
+		isLiquid: z.boolean(),
+		interestRate: decimalOrNull,
+		minimumPayment: decimalOrNull,
+		dueDate: z.int().nullable(),
+		inBudget: z.boolean().nullable().meta({
+			description: "Null is the default for its kind and currency.",
+		}),
+		countedUnits: decimalStringSchema,
+		closedAt: timestampSchema.nullable(),
+		iconKind: z.enum(ACCOUNT_ICON_KINDS).nullable(),
+		iconValue: z.string().nullable(),
+		createdAt: timestampSchema,
+		updatedAt: timestampSchema.meta({
+			description: "The version a write sends as its base.",
+		}),
+	})
+	.meta({ id: "SyncAccount" });
+
+export type SyncAccountDto = z.infer<typeof syncAccountSchema>;
+
+export const syncAccountSnapshotSchema = z
+	.object({
+		id: idSchema,
+		accountId: idSchema,
+		date: timestampSchema,
+		balance: decimalStringSchema,
+		balanceInUSD: decimalStringSchema,
+		currency: z.string().nullable(),
+		type: accountTypeSchema.nullable(),
+		exchangeRateType: z.string().nullable(),
+		recordedAt: timestampSchema,
+	})
+	.meta({
+		id: "SyncAccountSnapshot",
+		description:
+			"Account snapshots have no updatedAt: a changed row, for example when a leg moves the balance, comes again by its id.",
+	});
+
+export type SyncAccountSnapshotDto = z.infer<typeof syncAccountSnapshotSchema>;
+
+export const syncAccountLegSchema = z
+	.object({
+		id: idSchema,
+		accountId: idSchema.nullable().meta({
+			description: "Null is Not tracked: money outside your accounts.",
+		}),
+		currency: z.string(),
+		amount: decimalStringSchema.meta({
+			description: "Signed in what you have; positive is more.",
+		}),
+		homeAmount: decimalOrNull,
+		homeCurrency: z.string().nullable(),
+		date: timestampSchema,
+		source: legSourceSchema,
+		transferId: idSchema.nullable(),
+		expenseId: idSchema.nullable(),
+		countedUnits: decimalStringSchema,
+		createdAt: timestampSchema,
+	})
+	.meta({
+		id: "SyncAccountLeg",
+		description: "Account legs have no updatedAt.",
+	});
+
+export type SyncAccountLegDto = z.infer<typeof syncAccountLegSchema>;
+
+export const syncAccountHistorySchema = z
+	.object({
+		id: idSchema,
+		assetId: idSchema.meta({ description: "The account." }),
+		balance: decimalStringSchema,
+		recordedAt: timestampSchema,
+	})
+	.meta({
+		id: "SyncAccountHistory",
+		description: "Account history rows are written once and never changed.",
+	});
+
+export type SyncAccountHistoryDto = z.infer<typeof syncAccountHistorySchema>;
+
+export const syncAccountRateTypeSchema = z
+	.object({
+		id: idSchema,
+		accountId: idSchema,
+		from: timestampSchema,
+		type: z.string().nullable(),
+		previousType: z.string().nullable(),
+		createdAt: timestampSchema,
+	})
+	.meta({
+		id: "SyncAccountRateType",
+		description:
+			"The rate type an account is valued at from a day on. Several switches can share a day; createdAt orders them.",
+	});
+
+export type SyncAccountRateTypeDto = z.infer<typeof syncAccountRateTypeSchema>;
+
+export const syncTransferSchema = z
+	.object({
+		id: idSchema,
+		kind: transferKindSchema,
+		date: timestampSchema,
+		fromAccountId: idSchema.nullable(),
+		fromAmount: decimalStringSchema,
+		fromCurrency: z.string(),
+		toAccountId: idSchema.nullable(),
+		toAmount: decimalStringSchema,
+		toCurrency: z.string(),
+		referenceRateType: z.string().nullable(),
+		feeExpenseId: idSchema.nullable(),
+		countedFromUnits: decimalStringSchema,
+		countedToUnits: decimalStringSchema,
+		note: z.string().nullable(),
+		createdAt: timestampSchema,
+	})
+	.meta({
+		id: "SyncTransfer",
+		description: "Transfers have no updatedAt. A null account is Not tracked.",
+	});
+
+export type SyncTransferDto = z.infer<typeof syncTransferSchema>;
