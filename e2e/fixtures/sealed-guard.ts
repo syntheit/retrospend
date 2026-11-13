@@ -32,6 +32,7 @@ import {
 	type Browser,
 	type BrowserContext,
 	test as base,
+	type Page,
 	type PlaywrightWorkerArgs,
 	type Response,
 } from "@playwright/test";
@@ -164,13 +165,20 @@ type PageGuard = {
 	__sealedGuard?: (report: Seen & { text: string }) => Promise<void>;
 	/**
 	 * Reports every read still open and answers with the counts of that one
-	 * moment: reads started, reads reported, and `/api` fetches that had no
-	 * response yet (nothing to read, accounted for as such).
+	 * moment (`started`, `reported`, `noBody`: `/api` fetches with no response
+	 * yet), and with what is still going on once the binding calls have landed
+	 * (`startedAfter`, `waitingAfter`), which asks for another round.
 	 */
-	__sealedGuardFlush?: (
-		waitMs: number,
-	) => Promise<{ started: number; reported: number; noBody: number }>;
+	__sealedGuardFlush?: (waitMs: number) => Promise<FlushCounts>;
 };
+
+interface FlushCounts {
+	started: number;
+	reported: number;
+	noBody: number;
+	startedAfter: number;
+	waitingAfter: number;
+}
 
 /**
  * Runs in every page of a watched context, before the app. Wraps `fetch` so
@@ -188,7 +196,8 @@ type PageGuard = {
  * synchronous step as the last report, so a read the app starts while the
  * flush is still waiting on the binding is not a read that was dropped: it
  * started after the freeze. A fetch that has no response yet at the freeze
- * has no body to read and is counted as such (`noBody`), never as a read.
+ * has no body to read; it, and any read started after the freeze, ask for
+ * another round (flushTaps), which waits for them too.
  */
 function installFetchTap(): void {
 	const w = window as unknown as PageGuard & { fetch: typeof fetch };
@@ -199,7 +208,11 @@ function installFetchTap(): void {
 	const open = new Set<OpenRead>();
 	const calls = new Set<Promise<unknown>>();
 	/** `/api` fetches whose response headers have not arrived. */
-	const waiting = new Set<object>();
+	interface Waiting {
+		settled: Promise<void>;
+		settle: () => void;
+	}
+	const waiting = new Set<Waiting>();
 	let started = 0;
 	let reported = 0;
 	const cut = (text: string) => text.slice(0, text.lastIndexOf("\n") + 1);
@@ -208,21 +221,37 @@ function installFetchTap(): void {
 	};
 	window.addEventListener("pagehide", reportOpen);
 	w.__sealedGuardFlush = async (waitMs) => {
-		// Let reads and responses on their way finish first; then report what
-		// each open read has.
-		await Promise.race([
-			Promise.allSettled([...open].map((read) => read.done)),
-			new Promise((resolve) => setTimeout(resolve, waitMs)),
-		]);
+		// Let reads and responses on their way finish first, including the read a
+		// response opens when it lands (it is open the moment its fetch settles,
+		// so the next pass sees it); then report what each open read has.
+		const deadline = Date.now() + waitMs;
+		while ((open.size > 0 || waiting.size > 0) && Date.now() < deadline)
+			await Promise.race([
+				Promise.allSettled([
+					...[...open].map((read) => read.done),
+					...[...waiting].map((fetching) => fetching.settled),
+				]),
+				new Promise((resolve) => setTimeout(resolve, deadline - Date.now())),
+			]);
 		reportOpen();
 		// Frozen here: no await between the last report and the counts.
-		const counts = { started, reported, noBody: waiting.size };
+		const frozen = { started, reported, noBody: waiting.size };
 		await Promise.allSettled([...calls]);
-		return counts;
+		return { ...frozen, startedAfter: started, waitingAfter: waiting.size };
 	};
 	const original = w.fetch.bind(window);
 	w.fetch = async (input, init) => {
-		const ticket = {};
+		let settle: () => void = () => undefined;
+		const ticket: Waiting = {
+			settled: new Promise<void>((resolve) => {
+				settle = resolve;
+			}),
+			settle: () => settle(),
+		};
+		const release = () => {
+			waiting.delete(ticket);
+			ticket.settle();
+		};
 		try {
 			const target = new URL(
 				input instanceof Request ? input.url : String(input),
@@ -236,7 +265,7 @@ function installFetchTap(): void {
 		try {
 			response = await original(input, init);
 		} catch (error) {
-			waiting.delete(ticket);
+			release();
 			throw error;
 		}
 		try {
@@ -312,7 +341,7 @@ function installFetchTap(): void {
 			return response;
 		} finally {
 			// After the read is open (or was not needed), in the same step.
-			waiting.delete(ticket);
+			release();
 		}
 	};
 }
@@ -339,34 +368,50 @@ async function watch(context: BrowserContext): Promise<BrowserContext> {
 	return context;
 }
 
+/** Rounds of flushing a page: how long each waits for reads and responses. */
+const FLUSH_ROUNDS_MS = [1500, 500, 500];
+
 /**
- * Asks each open page to report the reads still open, and fails the test when
- * a page that answered started a read it never reported. A page the test
- * already closed is not asked: whatever it had read went out when it closed
- * (the tap reports on pagehide). Every wait is bounded, so a busy page cannot
- * hold the test's teardown.
+ * Flushes one page in bounded rounds. Each round reports every open read and
+ * fails the test when a read started before it was never reported. A round
+ * that leaves new reads or fetches with no response yet (a refetch at the end
+ * of a test, an invalidation after Undo) asks for another one, which waits
+ * for them. Whatever is still going on after the last round is counted in
+ * `guardStats.noBody`; the limit keeps the teardown bounded.
+ */
+async function flushPage(page: Page): Promise<void> {
+	let last: FlushCounts | undefined;
+	for (const waitMs of FLUSH_ROUNDS_MS) {
+		last = (await within(
+			waitMs + 2000,
+			page
+				.evaluate(
+					(ms) => (window as unknown as PageGuard).__sealedGuardFlush?.(ms),
+					waitMs,
+				)
+				// The page navigated or closed while it answered.
+				.catch(() => undefined),
+		)) as FlushCounts | undefined;
+		if (!last) return;
+		if (last.started > last.reported)
+			unreadable.push(
+				`${last.started - last.reported} page read(s) started and never reported`,
+			);
+		if (last.startedAfter <= last.started && last.waitingAfter === 0) return;
+	}
+	if (last) guardStats.noBody += last.waitingAfter;
+}
+
+/**
+ * Asks each open page to flush (flushPage). A page the test already closed is
+ * not asked: whatever it had read went out when it closed (the tap reports on
+ * pagehide). Every wait is bounded, so a busy page cannot hold the test's
+ * teardown.
  */
 async function flushTaps(): Promise<void> {
 	for (const context of tapped)
-		for (const page of context.pages()) {
-			if (page.isClosed()) continue;
-			const result = (await within(
-				3500,
-				page
-					.evaluate(
-						(waitMs) =>
-							(window as unknown as PageGuard).__sealedGuardFlush?.(waitMs),
-						1500,
-					)
-					// The page navigated or closed while it answered.
-					.catch(() => undefined),
-			)) as { started: number; reported: number; noBody: number } | undefined;
-			if (result) guardStats.noBody += result.noBody;
-			if (result && result.started > result.reported)
-				unreadable.push(
-					`${result.started - result.reported} page read(s) started and never reported`,
-				);
-		}
+		for (const page of context.pages())
+			if (!page.isClosed()) await flushPage(page);
 	tapped.clear();
 	// The binding calls land after the page's promises settle.
 	await within(2500, Promise.all(pending));
