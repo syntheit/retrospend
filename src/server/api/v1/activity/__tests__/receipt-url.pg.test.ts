@@ -400,3 +400,35 @@ describe("the input", () => {
 		expect(await opened(created.transaction.id)).toBe(link);
 	});
 });
+
+describe("a receipt cell that cannot be opened", () => {
+	it.runIf(sealedSuite)(
+		"fails an edit and a delete whole: the row, its text and its audit trail stay as they were",
+		async () => {
+			const created = await asUser(sofia).create(
+				input(5000, "Postres", user(sofia), [user(sofia)], FIRST),
+			);
+			const id = created.transaction.id;
+			const good = (await stored(id)) as string;
+			const bad = `${SEALED}not-a-real-cell`;
+			await adminDb.$executeRaw`UPDATE "shared_transaction" SET "receiptUrl" = ${bad} WHERE "id" = ${id}`;
+			try {
+				await expect(
+					asUser(martin).update({ id, description: "Postres con helado" }),
+				).rejects.toThrow();
+				await expect(
+					asUser(sofia).delete({ id, confirmUnsettled: true }),
+				).rejects.toThrow();
+			} finally {
+				await adminDb.$executeRaw`UPDATE "shared_transaction" SET "receiptUrl" = ${good} WHERE "id" = ${id}`;
+			}
+			expect(await opened(id)).toBe(FIRST);
+			const row = await adminDb.sharedTransaction.findUniqueOrThrow({
+				where: { id },
+				select: { description: true },
+			});
+			expect(row.description).toBe("Postres");
+			expect((await entries(id)).map((e) => e.action)).toEqual(["CREATED"]);
+		},
+	);
+});

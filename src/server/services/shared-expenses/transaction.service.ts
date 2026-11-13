@@ -768,7 +768,7 @@ export class SharedTransactionService {
 				projectId: existing.projectId ?? undefined,
 			});
 
-			await tx.sharedTransaction.delete({ where: { id } });
+			await tx.sharedTransaction.delete({ where: { id }, select: { id: true } });
 		});
 
 		// Notify user-type participants (excluding actor) that the expense was deleted
