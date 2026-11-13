@@ -143,7 +143,7 @@ export function bookHome(
 			}
 		: { currency: place.currency, rateType: null, storedRate: null };
 	const perUnit = homePerUnit(pick, valued, homeCurrency, endOfDayOf(date));
-	// The leg stores units x the per-unit rate at 8 decimals, as it always did.
+	// The leg stores units x the per-unit rate at 8 decimals; an exact tie rounds half to even.
 	return (
 		perUnit && {
 			amount: amount

@@ -178,7 +178,7 @@ function oldPerUnit(
 	return usdPer(account).div(usdPer(home));
 }
 
-describe("what a writer stores does not move", () => {
+describe("what a writer stores against the old two-division quotient", () => {
 	// A seeded generator, so a failure names its inputs.
 	let state = 20261112;
 	const next = () => {
@@ -187,7 +187,10 @@ describe("what a writer stores does not move", () => {
 	};
 	const pickOf = <T>(list: T[]) => list[Math.floor(next() * list.length)] as T;
 
-	it("the 8 dp leg value and the 12 dp rate match the old two-division quotient", () => {
+	// Random rates with at most 4 dp seldom make an exact tie at 8 or 12 dp, so
+	// this checks that off a tie nothing moves. It does not say ties are
+	// unchanged: they now round half to even (the pg tests pin them).
+	it("off a tie, the 8 dp leg value and the 12 dp rate equal the old quotient", () => {
 		const currencies = ["USD", "ARS", "JPY", "EUR", "BRL", "BTC", "ETH"];
 		let compared = 0;
 		for (let i = 0; i < 2000; i++) {

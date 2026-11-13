@@ -17,9 +17,21 @@
  * Net worth = 1,144,443.609 + 0.515 + 662.142857142857 = 1,145,106.266857...,
  * rounded once: 1,145,106.27 (114,510,627 minor).
  *
- * Stored values do not move: the Pound leg of a 3 GBP move out is worth
- * 3 x 1,545 / 7 = 662.14285714 (8 dp, as written before), and 1,545 ARS of
- * income into the Pound account lands as 1,545 / (1,545 / 7) = 7 GBP.
+ * Stored values are unchanged except on exact ties, which now round half to
+ * even (the per-unit rate is one exact division, no longer two 40 digit ones
+ * that fell just under a tie). Off a tie: the Pound leg of a 3 GBP move out
+ * is worth 3 x 1,545 / 7 = 662.14285714 (8 dp), and 1,545 ARS of income into
+ * the Pound account lands as 1,545 / (1,545 / 7) = 7 GBP.
+ *
+ * On a tie (JPY home, the old value in brackets):
+ * - Transfer 1 EUR into a JPY account at the reference rate: 16.5 / 3 = 5.5,
+ *   so 6 JPY arrive (5).
+ * - Transfer out 0.01 CHF at 192 per USD: 16.5 / 192 = 0.0859375 JPY per CHF,
+ *   0.01 x 0.0859375 = 0.000859375 exactly; at 8 dp that is a tie between
+ *   ...37 (odd) and ...38, so the leg is worth -0.00085938 (-0.00085937).
+ * - The 12 dp rate of a SEK account at 12,288 per USD: 16.5 / 12,288 =
+ *   0.0013427734375 exactly, a tie between ...437 (odd) and ...438:
+ *   0.001342773438 (0.001342773437).
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
@@ -39,6 +51,8 @@ async function seedRates() {
 	for (const [currency, type, rate] of [
 		["EUR", "official", "3"],
 		["GBP", "official", "7"],
+		["CHF", "official", "192"],
+		["SEK", "official", "12288"],
 		["JPY", "official", "16.5"],
 		["ARS", "blue", "1545"],
 		["BTC", "crypto", "60000"],
@@ -83,6 +97,8 @@ let tie: TestUser;
 let control: TestUser;
 let ars: TestUser;
 let pound: string;
+let ties: TestUser;
+let ex: { eur: string; yen: string; chf: string };
 
 beforeAll(async () => {
 	await seedRates();
@@ -94,6 +110,13 @@ beforeAll(async () => {
 	await openAccount(ars.user.id, "Bitcoin", "CRYPTO", "BTC", 0.01234567);
 	await openAccount(ars.user.id, "Euro", "CASH", "EUR", 0.001);
 	pound = await openAccount(ars.user.id, "Pound", "CASH", "GBP", 3);
+	ties = await userAt("JPY");
+	ex = {
+		eur: await openAccount(ties.user.id, "Euro", "CASH", "EUR", 10),
+		yen: await openAccount(ties.user.id, "Yen", "CASH", "JPY", 100),
+		chf: await openAccount(ties.user.id, "Franc", "CASH", "CHF", 1),
+	};
+	await openAccount(ties.user.id, "Krona", "CASH", "SEK", 1);
 });
 
 describe("a JPY home: 1 EUR at 3 per USD into JPY at 16.5", () => {
@@ -152,8 +175,8 @@ describe("an ARS home with a coin, a tie and a repeating rate", () => {
 	});
 });
 
-describe("what a writer stores does not move", () => {
-	it("a leg's home value and an income's units match the per-unit quotient as before", async () => {
+describe("what a writer stores is unchanged off a tie", () => {
+	it("a leg's home value and an income's units match the per-unit quotient", async () => {
 		const run = forUser(ars.user.id);
 		await run.apply(addIncome, {
 			title: "Bonus",
@@ -179,5 +202,52 @@ describe("what a writer stores does not move", () => {
 		expect(out?.amount.toString()).toBe("-3");
 		expect(out?.homeAmount?.toString()).toBe("-662.14285714");
 		expect(out?.homeCurrency).toBe("ARS");
+	});
+});
+
+describe("what a writer stores on an exact tie rounds half to even", () => {
+	const legsOf = (accountId: string) =>
+		adminDb.accountLeg.findMany({
+			where: { userId: ties.user.id, accountId },
+			orderBy: { createdAt: "asc" },
+		});
+
+	it("a transfer arrives 6 JPY for 1 EUR at the reference rate (5.5), not 5", async () => {
+		await forUser(ties.user.id).apply(createTransfer, {
+			fromAccountId: ex.eur,
+			toAccountId: ex.yen,
+			fromAmount: "1",
+		});
+
+		const [arrived] = (await legsOf(ex.yen)).filter(
+			(l) => l.source === "TRANSFER",
+		);
+		expect(arrived?.amount.toString()).toBe("6");
+		// The EUR side is worth 5.5 JPY at home, which fits 8 dp exactly.
+		const [left] = await legsOf(ex.eur);
+		expect(left?.homeAmount?.toString()).toBe("-5.5");
+	});
+
+	it("an 8 dp leg value ties to even: 0.01 CHF is -0.00085938 JPY, not -0.00085937", async () => {
+		await forUser(ties.user.id).apply(createTransfer, {
+			fromAccountId: ex.chf,
+			toAccountId: null,
+			toCurrency: "CHF",
+			fromAmount: "0.01",
+		});
+
+		const [out] = (await legsOf(ex.chf)).filter((l) => l.source === "TRANSFER");
+		expect(out?.amount.toString()).toBe("-0.01");
+		expect(out?.homeAmount?.toString()).toBe("-0.00085938");
+	});
+
+	it("the 12 dp rate of API v1 ties to even: 0.001342773438, not ...437", async () => {
+		const { accounts } = await userTransaction(adminDb, ties.user.id, (tx) =>
+			accountItemsIn(tx, ties.user.id),
+		);
+
+		expect(accounts.find((a) => a.name === "Krona")?.rate).toBe(
+			"0.001342773438",
+		);
 	});
 });
