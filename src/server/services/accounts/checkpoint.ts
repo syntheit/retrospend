@@ -5,7 +5,7 @@
  * day's snapshot like every balance write before legs existed. Every path
  * that sets a balance by hand (Update balance, Edit, import) comes here.
  */
-import type { Decimal } from "@prisma/client/runtime/index-browser";
+import type { Decimal } from "@retrospend/domain/precise-decimal";
 import { dec } from "~/server/services/envelope/units";
 import { WealthService } from "~/server/services/wealth.service";
 import type { Prisma } from "~prisma";

@@ -4,7 +4,7 @@
  * balance typed by hand goes through writeCheckpoint, so it records its Not
  * logged difference like Update balance.
  */
-import type { Decimal } from "@prisma/client/runtime/index-browser";
+import type { Decimal } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import { CsvNumber, generateCsv } from "~/lib/csv";
 import { isCrypto } from "@retrospend/domain/currency-format";

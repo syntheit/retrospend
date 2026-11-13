@@ -5,8 +5,7 @@
  * (D3). With no legs and no switches it adds nothing, so the history of a
  * user who never moved money is exactly what it was.
  */
-import type { Decimal } from "@prisma/client/runtime/index-browser";
-import { dec } from "~/server/services/envelope/units";
+import { type Decimal, dec } from "@retrospend/domain/precise-decimal";
 import type { AssetType, PrismaClient } from "~prisma";
 import { balanceEffect } from "./places";
 import { dayOf } from "./series";
@@ -25,7 +24,7 @@ export interface DashboardLegs {
 		type: AssetType,
 		held: Held | null,
 		day: string,
-	): number;
+	): Decimal;
 	/** The switched rate type in force on `day` (before the first, the type it replaced); undefined without switches. */
 	typeOn(accountId: string, day: string): string | null | undefined;
 }
@@ -57,7 +56,7 @@ export async function loadDashboardLegs(
 			(d) => d >= sinceDay,
 		),
 		onTop(accountId, type, held, day) {
-			let sum: Decimal = dec(0);
+			let sum = dec(0);
 			for (const leg of legs) {
 				const legDay = dayOf(leg.date);
 				if (leg.accountId !== accountId || legDay > day) continue;
@@ -69,7 +68,7 @@ export async function loadDashboardLegs(
 					continue;
 				sum = sum.add(balanceEffect(type, dec(leg.amount.toString())));
 			}
-			return sum.toNumber();
+			return sum;
 		},
 		typeOn(accountId, day) {
 			const own = switches.filter((s) => s.accountId === accountId);
