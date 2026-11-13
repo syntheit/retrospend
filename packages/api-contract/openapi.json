@@ -125578,6 +125578,888 @@
 				"x-required-scope": "sync"
 			}
 		},
+		"/sync/book-periods": {
+			"get": {
+				"description": "Raw rows changed after `since`, oldest change first, plus a tombstone for each row deleted since. Page with the returned `cursor` until `hasMore` is false. The first pull (no `since`) returns every row once. A cursor the server can no longer honor answers 410 sync_reset_required: drop this entity's rows and pull again from the start. A change shows up once every older write transaction on the database server has finished, normally milliseconds. Cursors carry the server-wide commit position, so they reveal how much the instance writes, as the events feed does. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own rows. A budget book's rows are the caller's only while the book is personal and has no other member: when it gains a member or stops being personal, each of its rows comes back as a tombstone.",
+				"operationId": "syncBookPeriods",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "since",
+						"schema": {
+							"description": "The cursor of the last page you applied. Omit it for the first pull, which returns every row once.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 200,
+							"maximum": 500,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"cursor": {
+											"type": "string"
+										},
+										"hasMore": {
+											"type": "boolean"
+										},
+										"items": {
+											"items": {
+												"description": "The start day and rate type in force from a month on.",
+												"properties": {
+													"bookId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"fromMonth": {
+														"description": "YYYYMM.",
+														"maximum": 9007199254740991,
+														"minimum": -9007199254740991,
+														"type": "integer"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"rateType": {
+														"type": "string"
+													},
+													"startDay": {
+														"maximum": 9007199254740991,
+														"minimum": -9007199254740991,
+														"type": "integer"
+													}
+												},
+												"required": [
+													"id",
+													"bookId",
+													"fromMonth",
+													"startDay",
+													"rateType",
+													"createdAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"tombstones": {
+											"items": {
+												"properties": {
+													"deletedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"deletedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items",
+										"tombstones",
+										"cursor",
+										"hasMore"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"410": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "The cursor is no longer valid; drop these rows and pull again from the start"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"sync"
+						]
+					},
+					{
+						"cookieAuth": [
+							"sync"
+						]
+					}
+				],
+				"summary": "Changes to the periods of the caller's budget book",
+				"tags": [
+					"Sync"
+				],
+				"x-required-scope": "sync"
+			}
+		},
+		"/sync/budget-books": {
+			"get": {
+				"description": "Raw rows changed after `since`, oldest change first, plus a tombstone for each row deleted since. Page with the returned `cursor` until `hasMore` is false. The first pull (no `since`) returns every row once. A cursor the server can no longer honor answers 410 sync_reset_required: drop this entity's rows and pull again from the start. A change shows up once every older write transaction on the database server has finished, normally milliseconds. Cursors carry the server-wide commit position, so they reveal how much the instance writes, as the events feed does. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own rows. A budget book's rows are the caller's only while the book is personal and has no other member: when it gains a member or stops being personal, each of its rows comes back as a tombstone.",
+				"operationId": "syncBudgetBooks",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "since",
+						"schema": {
+							"description": "The cursor of the last page you applied. Omit it for the first pull, which returns every row once.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 200,
+							"maximum": 500,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"cursor": {
+											"type": "string"
+										},
+										"hasMore": {
+											"type": "boolean"
+										},
+										"items": {
+											"items": {
+												"properties": {
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"currency": {
+														"type": "string"
+													},
+													"defaultEnvelopeId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"fundingSource": {
+														"enum": [
+															"INCOME",
+															"TARGETS"
+														],
+														"type": "string"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"isPersonal": {
+														"type": "boolean"
+													},
+													"lastOpenedAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"monthStartDay": {
+														"maximum": 9007199254740991,
+														"minimum": -9007199254740991,
+														"type": "integer"
+													},
+													"name": {
+														"type": "string"
+													},
+													"pausedAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"payAnchor": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"payFrequency": {
+														"anyOf": [
+															{
+																"enum": [
+																	"MONTHLY",
+																	"EVERY_TWO_WEEKS",
+																	"WEEKLY",
+																	"VARIES"
+																],
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"planFundFrom": {
+														"anyOf": [
+															{
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"reconciledAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"startDate": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"startMonth": {
+														"description": "YYYYMM of the first month.",
+														"maximum": 9007199254740991,
+														"minimum": -9007199254740991,
+														"type": "integer"
+													},
+													"startingBalanceExpenseId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"startingMoneyConfirmedAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"style": {
+														"enum": [
+															"LIMITS",
+															"FLEX",
+															"EVERY_DOLLAR",
+															"SAVE_FIRST",
+															"FIFTY_THIRTY_TWENTY",
+															"WEEKLY",
+															"DEBT_PAYOFF"
+														],
+														"type": "string"
+													},
+													"timeZone": {
+														"type": "string"
+													},
+													"timeZoneConfirmed": {
+														"type": "boolean"
+													},
+													"updatedAt": {
+														"description": "The version a write sends as its base.",
+														"format": "date-time",
+														"type": "string"
+													},
+													"weekStartDay": {
+														"maximum": 9007199254740991,
+														"minimum": -9007199254740991,
+														"type": "integer"
+													},
+													"welcomeBackFrom": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													}
+												},
+												"required": [
+													"id",
+													"name",
+													"isPersonal",
+													"currency",
+													"style",
+													"fundingSource",
+													"pausedAt",
+													"weekStartDay",
+													"monthStartDay",
+													"timeZone",
+													"timeZoneConfirmed",
+													"startDate",
+													"startMonth",
+													"defaultEnvelopeId",
+													"startingBalanceExpenseId",
+													"startingMoneyConfirmedAt",
+													"lastOpenedAt",
+													"welcomeBackFrom",
+													"reconciledAt",
+													"planFundFrom",
+													"payFrequency",
+													"payAnchor",
+													"createdAt",
+													"updatedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"tombstones": {
+											"items": {
+												"properties": {
+													"deletedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"deletedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items",
+										"tombstones",
+										"cursor",
+										"hasMore"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"410": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "The cursor is no longer valid; drop these rows and pull again from the start"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"sync"
+						]
+					},
+					{
+						"cookieAuth": [
+							"sync"
+						]
+					}
+				],
+				"summary": "Changes to the caller's personal budget book",
+				"tags": [
+					"Sync"
+				],
+				"x-required-scope": "sync"
+			}
+		},
+		"/sync/budget-movements": {
+			"get": {
+				"description": "Raw rows changed after `since`, oldest change first, plus a tombstone for each row deleted since. Page with the returned `cursor` until `hasMore` is false. The first pull (no `since`) returns every row once. A cursor the server can no longer honor answers 410 sync_reset_required: drop this entity's rows and pull again from the start. A change shows up once every older write transaction on the database server has finished, normally milliseconds. Cursors carry the server-wide commit position, so they reveal how much the instance writes, as the events feed does. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own rows. A budget book's rows are the caller's only while the book is personal and has no other member: when it gains a member or stops being personal, each of its rows comes back as a tombstone.",
+				"operationId": "syncBudgetMovements",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "since",
+						"schema": {
+							"description": "The cursor of the last page you applied. Omit it for the first pull, which returns every row once.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 200,
+							"maximum": 500,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"cursor": {
+											"type": "string"
+										},
+										"hasMore": {
+											"type": "boolean"
+										},
+										"items": {
+											"items": {
+												"description": "Movements are appended, never changed.",
+												"properties": {
+													"amount": {
+														"description": "Positive, in the book's currency.",
+														"examples": [
+															"1450.25"
+														],
+														"pattern": "^-?\\d+(\\.\\d+)?$",
+														"type": "string"
+													},
+													"batchId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"bookId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"fromEnvelopeId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														],
+														"description": "Null is Not planned yet (To assign)."
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"kind": {
+														"enum": [
+															"ASSIGN",
+															"SET",
+															"MOVE",
+															"COVER",
+															"UNASSIGN",
+															"AUTO_FILL",
+															"RULE",
+															"PLAN_FUND",
+															"PLAN_APPLY",
+															"CARRY_OVERSPEND",
+															"FIX_NEGATIVE",
+															"RESET",
+															"ARCHIVE",
+															"MIGRATION",
+															"UNDO"
+														],
+														"type": "string"
+													},
+													"month": {
+														"description": "YYYYMM.",
+														"maximum": 9007199254740991,
+														"minimum": -9007199254740991,
+														"type": "integer"
+													},
+													"note": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"revertsId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"ruleId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"sourceExpenseId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"toEnvelopeId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													}
+												},
+												"required": [
+													"id",
+													"bookId",
+													"month",
+													"fromEnvelopeId",
+													"toEnvelopeId",
+													"amount",
+													"kind",
+													"batchId",
+													"revertsId",
+													"sourceExpenseId",
+													"ruleId",
+													"note",
+													"createdAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"tombstones": {
+											"items": {
+												"properties": {
+													"deletedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"deletedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items",
+										"tombstones",
+										"cursor",
+										"hasMore"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"410": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "The cursor is no longer valid; drop these rows and pull again from the start"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"sync"
+						]
+					},
+					{
+						"cookieAuth": [
+							"sync"
+						]
+					}
+				],
+				"summary": "Changes to the movements of the caller's budget book",
+				"tags": [
+					"Sync"
+				],
+				"x-required-scope": "sync"
+			}
+		},
 		"/sync/categories": {
 			"get": {
 				"description": "Raw rows changed after `since`, oldest change first, plus a tombstone for each row deleted since. Page with the returned `cursor` until `hasMore` is false. The first pull (no `since`) returns every row once. A cursor the server can no longer honor answers 410 sync_reset_required: drop this entity's rows and pull again from the start. A change shows up once every older write transaction on the database server has finished, normally milliseconds. Cursors carry the server-wide commit position, so they reveal how much the instance writes, as the events feed does. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own rows.",
@@ -125801,6 +126683,1135 @@
 					}
 				],
 				"summary": "Changes to the caller's categories",
+				"tags": [
+					"Sync"
+				],
+				"x-required-scope": "sync"
+			}
+		},
+		"/sync/envelope-categories": {
+			"get": {
+				"description": "Raw rows changed after `since`, oldest change first, plus a tombstone for each row deleted since. Page with the returned `cursor` until `hasMore` is false. The first pull (no `since`) returns every row once. A cursor the server can no longer honor answers 410 sync_reset_required: drop this entity's rows and pull again from the start. A change shows up once every older write transaction on the database server has finished, normally milliseconds. Cursors carry the server-wide commit position, so they reveal how much the instance writes, as the events feed does. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own rows. A budget book's rows are the caller's only while the book is personal and has no other member: when it gains a member or stops being personal, each of its rows comes back as a tombstone.",
+				"operationId": "syncEnvelopeCategories",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "since",
+						"schema": {
+							"description": "The cursor of the last page you applied. Omit it for the first pull, which returns every row once.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 200,
+							"maximum": 500,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"cursor": {
+											"type": "string"
+										},
+										"hasMore": {
+											"type": "boolean"
+										},
+										"items": {
+											"items": {
+												"description": "Which envelope a category feeds. Links have no updatedAt.",
+												"properties": {
+													"bookId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"categoryId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"envelopeId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"bookId",
+													"envelopeId",
+													"categoryId",
+													"createdAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"tombstones": {
+											"items": {
+												"properties": {
+													"deletedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"deletedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items",
+										"tombstones",
+										"cursor",
+										"hasMore"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"410": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "The cursor is no longer valid; drop these rows and pull again from the start"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"sync"
+						]
+					},
+					{
+						"cookieAuth": [
+							"sync"
+						]
+					}
+				],
+				"summary": "Changes to the category links of the caller's envelopes",
+				"tags": [
+					"Sync"
+				],
+				"x-required-scope": "sync"
+			}
+		},
+		"/sync/envelope-changes": {
+			"get": {
+				"description": "Raw rows changed after `since`, oldest change first, plus a tombstone for each row deleted since. Page with the returned `cursor` until `hasMore` is false. The first pull (no `since`) returns every row once. A cursor the server can no longer honor answers 410 sync_reset_required: drop this entity's rows and pull again from the start. A change shows up once every older write transaction on the database server has finished, normally milliseconds. Cursors carry the server-wide commit position, so they reveal how much the instance writes, as the events feed does. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own rows. A budget book's rows are the caller's only while the book is personal and has no other member: when it gains a member or stops being personal, each of its rows comes back as a tombstone.",
+				"operationId": "syncEnvelopeChanges",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "since",
+						"schema": {
+							"description": "The cursor of the last page you applied. Omit it for the first pull, which returns every row once.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 200,
+							"maximum": 500,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"cursor": {
+											"type": "string"
+										},
+										"hasMore": {
+											"type": "boolean"
+										},
+										"items": {
+											"items": {
+												"description": "What an envelope edit changed, kept for its undo. `before` holds ids, amounts and flags only.",
+												"properties": {
+													"before": {},
+													"bookId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"envelopeId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"kind": {
+														"enum": [
+															"SET_TARGET",
+															"CREATE",
+															"UPDATE",
+															"MERGE",
+															"ARCHIVE",
+															"CONFIRM_STARTING_MONEY"
+														],
+														"type": "string"
+													},
+													"previousName": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"undoneAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													}
+												},
+												"required": [
+													"id",
+													"bookId",
+													"kind",
+													"envelopeId",
+													"previousName",
+													"createdAt",
+													"undoneAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"tombstones": {
+											"items": {
+												"properties": {
+													"deletedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"deletedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items",
+										"tombstones",
+										"cursor",
+										"hasMore"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"410": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "The cursor is no longer valid; drop these rows and pull again from the start"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"sync"
+						]
+					},
+					{
+						"cookieAuth": [
+							"sync"
+						]
+					}
+				],
+				"summary": "Changes to the envelope edits kept for undo in the caller's budget book",
+				"tags": [
+					"Sync"
+				],
+				"x-required-scope": "sync"
+			}
+		},
+		"/sync/envelope-groups": {
+			"get": {
+				"description": "Raw rows changed after `since`, oldest change first, plus a tombstone for each row deleted since. Page with the returned `cursor` until `hasMore` is false. The first pull (no `since`) returns every row once. A cursor the server can no longer honor answers 410 sync_reset_required: drop this entity's rows and pull again from the start. A change shows up once every older write transaction on the database server has finished, normally milliseconds. Cursors carry the server-wide commit position, so they reveal how much the instance writes, as the events feed does. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own rows. A budget book's rows are the caller's only while the book is personal and has no other member: when it gains a member or stops being personal, each of its rows comes back as a tombstone.",
+				"operationId": "syncEnvelopeGroups",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "since",
+						"schema": {
+							"description": "The cursor of the last page you applied. Omit it for the first pull, which returns every row once.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 200,
+							"maximum": 500,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"cursor": {
+											"type": "string"
+										},
+										"hasMore": {
+											"type": "boolean"
+										},
+										"items": {
+											"items": {
+												"properties": {
+													"archivedAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"bookId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"mainEnvelopeId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"name": {
+														"type": "string"
+													},
+													"role": {
+														"anyOf": [
+															{
+																"enum": [
+																	"BILLS",
+																	"SPENDING",
+																	"SAVINGS"
+																],
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"sortOrder": {
+														"maximum": 9007199254740991,
+														"minimum": -9007199254740991,
+														"type": "integer"
+													},
+													"targetKind": {
+														"enum": [
+															"NONE",
+															"AMOUNT",
+															"PERCENT_OF_INCOME"
+														],
+														"type": "string"
+													},
+													"targetValue": {
+														"anyOf": [
+															{
+																"examples": [
+																	"1450.25"
+																],
+																"pattern": "^-?\\d+(\\.\\d+)?$",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														],
+														"description": "AMOUNT: in the book's currency; PERCENT_OF_INCOME: the percent."
+													},
+													"updatedAt": {
+														"format": "date-time",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"bookId",
+													"name",
+													"sortOrder",
+													"role",
+													"targetKind",
+													"targetValue",
+													"mainEnvelopeId",
+													"archivedAt",
+													"createdAt",
+													"updatedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"tombstones": {
+											"items": {
+												"properties": {
+													"deletedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"deletedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items",
+										"tombstones",
+										"cursor",
+										"hasMore"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"410": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "The cursor is no longer valid; drop these rows and pull again from the start"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"sync"
+						]
+					},
+					{
+						"cookieAuth": [
+							"sync"
+						]
+					}
+				],
+				"summary": "Changes to the envelope groups of the caller's budget book",
+				"tags": [
+					"Sync"
+				],
+				"x-required-scope": "sync"
+			}
+		},
+		"/sync/envelopes": {
+			"get": {
+				"description": "Raw rows changed after `since`, oldest change first, plus a tombstone for each row deleted since. Page with the returned `cursor` until `hasMore` is false. The first pull (no `since`) returns every row once. A cursor the server can no longer honor answers 410 sync_reset_required: drop this entity's rows and pull again from the start. A change shows up once every older write transaction on the database server has finished, normally milliseconds. Cursors carry the server-wide commit position, so they reveal how much the instance writes, as the events feed does. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own rows. A budget book's rows are the caller's only while the book is personal and has no other member: when it gains a member or stops being personal, each of its rows comes back as a tombstone.",
+				"operationId": "syncEnvelopes",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "since",
+						"schema": {
+							"description": "The cursor of the last page you applied. Omit it for the first pull, which returns every row once.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 200,
+							"maximum": 500,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"cursor": {
+											"type": "string"
+										},
+										"hasMore": {
+											"type": "boolean"
+										},
+										"items": {
+											"items": {
+												"properties": {
+													"archivedAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"bookId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"color": {
+														"anyOf": [
+															{
+																"enum": [
+																	"emerald",
+																	"blue",
+																	"sky",
+																	"cyan",
+																	"teal",
+																	"orange",
+																	"amber",
+																	"violet",
+																	"pink",
+																	"fuchsia",
+																	"indigo",
+																	"slate",
+																	"zinc",
+																	"lime",
+																	"neutral",
+																	"gray",
+																	"purple",
+																	"yellow",
+																	"stone",
+																	"rose",
+																	"red"
+																],
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"groupId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"icon": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"kind": {
+														"enum": [
+															"MONTHLY",
+															"BILL",
+															"SAVINGS",
+															"NONE"
+														],
+														"type": "string"
+													},
+													"leftoverRule": {
+														"enum": [
+															"CARRY",
+															"RETURN",
+															"SWEEP"
+														],
+														"type": "string"
+													},
+													"leftoverSweepToId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"name": {
+														"type": "string"
+													},
+													"sortOrder": {
+														"maximum": 9007199254740991,
+														"minimum": -9007199254740991,
+														"type": "integer"
+													},
+													"targetAmount": {
+														"anyOf": [
+															{
+																"examples": [
+																	"1450.25"
+																],
+																"pattern": "^-?\\d+(\\.\\d+)?$",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"targetCadence": {
+														"enum": [
+															"MONTH",
+															"WEEK"
+														],
+														"type": "string"
+													},
+													"targetCurrency": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														],
+														"description": "Null is the book's currency."
+													},
+													"targetDueDate": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"targetLiabilityId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"targetMode": {
+														"enum": [
+															"REFILL",
+															"SET_ASIDE"
+														],
+														"type": "string"
+													},
+													"targetMonthlyAmount": {
+														"anyOf": [
+															{
+																"examples": [
+																	"1450.25"
+																],
+																"pattern": "^-?\\d+(\\.\\d+)?$",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"targetRepeat": {
+														"anyOf": [
+															{
+																"enum": [
+																	"WEEKLY",
+																	"BIWEEKLY",
+																	"MONTHLY",
+																	"QUARTERLY",
+																	"YEARLY"
+																],
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"targetStartMonth": {
+														"anyOf": [
+															{
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"targetTemplateId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"updatedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"wealthAccountId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"wealthDedicated": {
+														"type": "boolean"
+													}
+												},
+												"required": [
+													"id",
+													"bookId",
+													"groupId",
+													"name",
+													"icon",
+													"color",
+													"kind",
+													"sortOrder",
+													"targetAmount",
+													"targetMode",
+													"targetCadence",
+													"targetMonthlyAmount",
+													"targetCurrency",
+													"targetDueDate",
+													"targetRepeat",
+													"targetStartMonth",
+													"targetTemplateId",
+													"targetLiabilityId",
+													"leftoverRule",
+													"leftoverSweepToId",
+													"wealthAccountId",
+													"wealthDedicated",
+													"archivedAt",
+													"createdAt",
+													"updatedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"tombstones": {
+											"items": {
+												"properties": {
+													"deletedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"deletedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items",
+										"tombstones",
+										"cursor",
+										"hasMore"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"410": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "The cursor is no longer valid; drop these rows and pull again from the start"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"sync"
+						]
+					},
+					{
+						"cookieAuth": [
+							"sync"
+						]
+					}
+				],
+				"summary": "Changes to the envelopes of the caller's budget book",
 				"tags": [
 					"Sync"
 				],
@@ -126252,6 +128263,956 @@
 					}
 				],
 				"summary": "Changes to the caller's expenses",
+				"tags": [
+					"Sync"
+				],
+				"x-required-scope": "sync"
+			}
+		},
+		"/sync/income-rule-runs": {
+			"get": {
+				"description": "Raw rows changed after `since`, oldest change first, plus a tombstone for each row deleted since. Page with the returned `cursor` until `hasMore` is false. The first pull (no `since`) returns every row once. A cursor the server can no longer honor answers 410 sync_reset_required: drop this entity's rows and pull again from the start. A change shows up once every older write transaction on the database server has finished, normally milliseconds. Cursors carry the server-wide commit position, so they reveal how much the instance writes, as the events feed does. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own rows. A budget book's rows are the caller's only while the book is personal and has no other member: when it gains a member or stops being personal, each of its rows comes back as a tombstone.",
+				"operationId": "syncIncomeRuleRuns",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "since",
+						"schema": {
+							"description": "The cursor of the last page you applied. Omit it for the first pull, which returns every row once.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 200,
+							"maximum": 500,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"cursor": {
+											"type": "string"
+										},
+										"hasMore": {
+											"type": "boolean"
+										},
+										"items": {
+											"items": {
+												"description": "What the income rules did for one income row, so a rule runs once. It outlives the row.",
+												"properties": {
+													"batchId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"bookId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"expenseId": {
+														"description": "The income row the run is for, and the row's key: a tombstone carries it as its id.",
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"fingerprint": {
+														"type": "string"
+													},
+													"record": {},
+													"skipped": {
+														"type": "boolean"
+													},
+													"updatedAt": {
+														"format": "date-time",
+														"type": "string"
+													}
+												},
+												"required": [
+													"expenseId",
+													"bookId",
+													"batchId",
+													"skipped",
+													"fingerprint",
+													"createdAt",
+													"updatedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"tombstones": {
+											"items": {
+												"properties": {
+													"deletedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"deletedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items",
+										"tombstones",
+										"cursor",
+										"hasMore"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"410": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "The cursor is no longer valid; drop these rows and pull again from the start"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"sync"
+						]
+					},
+					{
+						"cookieAuth": [
+							"sync"
+						]
+					}
+				],
+				"summary": "Changes to the income rule runs of the caller's budget book",
+				"tags": [
+					"Sync"
+				],
+				"x-required-scope": "sync"
+			}
+		},
+		"/sync/income-rules": {
+			"get": {
+				"description": "Raw rows changed after `since`, oldest change first, plus a tombstone for each row deleted since. Page with the returned `cursor` until `hasMore` is false. The first pull (no `since`) returns every row once. A cursor the server can no longer honor answers 410 sync_reset_required: drop this entity's rows and pull again from the start. A change shows up once every older write transaction on the database server has finished, normally milliseconds. Cursors carry the server-wide commit position, so they reveal how much the instance writes, as the events feed does. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own rows. A budget book's rows are the caller's only while the book is personal and has no other member: when it gains a member or stops being personal, each of its rows comes back as a tombstone.",
+				"operationId": "syncIncomeRules",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "since",
+						"schema": {
+							"description": "The cursor of the last page you applied. Omit it for the first pull, which returns every row once.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 200,
+							"maximum": 500,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"cursor": {
+											"type": "string"
+										},
+										"hasMore": {
+											"type": "boolean"
+										},
+										"items": {
+											"items": {
+												"properties": {
+													"action": {
+														"enum": [
+															"PERCENT",
+															"AMOUNT",
+															"REMAINDER"
+														],
+														"type": "string"
+													},
+													"active": {
+														"type": "boolean"
+													},
+													"archivedAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"bookId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"envelopeId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"matchKind": {
+														"enum": [
+															"ANY",
+															"CATEGORY",
+															"TEMPLATE",
+															"TITLE",
+															"CURRENCY"
+														],
+														"type": "string"
+													},
+													"matchTitle": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"matchValue": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"name": {
+														"type": "string"
+													},
+													"sortOrder": {
+														"maximum": 9007199254740991,
+														"minimum": -9007199254740991,
+														"type": "integer"
+													},
+													"updatedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"value": {
+														"anyOf": [
+															{
+																"examples": [
+																	"1450.25"
+																],
+																"pattern": "^-?\\d+(\\.\\d+)?$",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														],
+														"description": "PERCENT: the percent; AMOUNT: in the book's currency; REMAINDER: null."
+													}
+												},
+												"required": [
+													"id",
+													"bookId",
+													"sortOrder",
+													"name",
+													"matchKind",
+													"matchValue",
+													"matchTitle",
+													"action",
+													"value",
+													"envelopeId",
+													"active",
+													"archivedAt",
+													"createdAt",
+													"updatedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"tombstones": {
+											"items": {
+												"properties": {
+													"deletedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"deletedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items",
+										"tombstones",
+										"cursor",
+										"hasMore"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"410": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "The cursor is no longer valid; drop these rows and pull again from the start"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"sync"
+						]
+					},
+					{
+						"cookieAuth": [
+							"sync"
+						]
+					}
+				],
+				"summary": "Changes to the income rules of the caller's budget book",
+				"tags": [
+					"Sync"
+				],
+				"x-required-scope": "sync"
+			}
+		},
+		"/sync/month-closes": {
+			"get": {
+				"description": "Raw rows changed after `since`, oldest change first, plus a tombstone for each row deleted since. Page with the returned `cursor` until `hasMore` is false. The first pull (no `since`) returns every row once. A cursor the server can no longer honor answers 410 sync_reset_required: drop this entity's rows and pull again from the start. A change shows up once every older write transaction on the database server has finished, normally milliseconds. Cursors carry the server-wide commit position, so they reveal how much the instance writes, as the events feed does. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own rows. A budget book's rows are the caller's only while the book is personal and has no other member: when it gains a member or stops being personal, each of its rows comes back as a tombstone.",
+				"operationId": "syncMonthCloses",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "since",
+						"schema": {
+							"description": "The cursor of the last page you applied. Omit it for the first pull, which returns every row once.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 200,
+							"maximum": 500,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"cursor": {
+											"type": "string"
+										},
+										"hasMore": {
+											"type": "boolean"
+										},
+										"items": {
+											"items": {
+												"description": "One closed month. The engine's checkpoint is left out: a device rebuilds it.",
+												"properties": {
+													"ackRevision": {
+														"anyOf": [
+															{
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"acknowledgedAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"bookId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"closedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"lateEntries": {
+														"maximum": 9007199254740991,
+														"minimum": -9007199254740991,
+														"type": "integer"
+													},
+													"mode": {
+														"enum": [
+															"AUTO",
+															"USER"
+														],
+														"type": "string"
+													},
+													"month": {
+														"description": "YYYYMM.",
+														"maximum": 9007199254740991,
+														"minimum": -9007199254740991,
+														"type": "integer"
+													},
+													"recalc": {
+														"anyOf": [
+															{},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"revision": {
+														"maximum": 9007199254740991,
+														"minimum": -9007199254740991,
+														"type": "integer"
+													},
+													"summary": {}
+												},
+												"required": [
+													"id",
+													"bookId",
+													"month",
+													"mode",
+													"closedAt",
+													"revision",
+													"acknowledgedAt",
+													"ackRevision",
+													"lateEntries"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"tombstones": {
+											"items": {
+												"properties": {
+													"deletedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"deletedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items",
+										"tombstones",
+										"cursor",
+										"hasMore"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"410": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "The cursor is no longer valid; drop these rows and pull again from the start"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"sync"
+						]
+					},
+					{
+						"cookieAuth": [
+							"sync"
+						]
+					}
+				],
+				"summary": "Changes to the month closes of the caller's budget book",
+				"tags": [
+					"Sync"
+				],
+				"x-required-scope": "sync"
+			}
+		},
+		"/sync/payoff-plans": {
+			"get": {
+				"description": "Raw rows changed after `since`, oldest change first, plus a tombstone for each row deleted since. Page with the returned `cursor` until `hasMore` is false. The first pull (no `since`) returns every row once. A cursor the server can no longer honor answers 410 sync_reset_required: drop this entity's rows and pull again from the start. A change shows up once every older write transaction on the database server has finished, normally milliseconds. Cursors carry the server-wide commit position, so they reveal how much the instance writes, as the events feed does. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own rows. A budget book's rows are the caller's only while the book is personal and has no other member: when it gains a member or stops being personal, each of its rows comes back as a tombstone.",
+				"operationId": "syncPayoffPlans",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "since",
+						"schema": {
+							"description": "The cursor of the last page you applied. Omit it for the first pull, which returns every row once.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 200,
+							"maximum": 500,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"cursor": {
+											"type": "string"
+										},
+										"hasMore": {
+											"type": "boolean"
+										},
+										"items": {
+											"items": {
+												"description": "At most one per book.",
+												"properties": {
+													"bookId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"customOrder": {
+														"description": "CUSTOM: the account ids in payoff order."
+													},
+													"envelopeId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"extraMonthly": {
+														"description": "In the book's currency.",
+														"examples": [
+															"1450.25"
+														],
+														"pattern": "^-?\\d+(\\.\\d+)?$",
+														"type": "string"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"strategy": {
+														"enum": [
+															"SNOWBALL",
+															"AVALANCHE",
+															"CUSTOM"
+														],
+														"type": "string"
+													},
+													"updatedAt": {
+														"format": "date-time",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"bookId",
+													"strategy",
+													"extraMonthly",
+													"envelopeId",
+													"createdAt",
+													"updatedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"tombstones": {
+											"items": {
+												"properties": {
+													"deletedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"deletedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items",
+										"tombstones",
+										"cursor",
+										"hasMore"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"410": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "The cursor is no longer valid; drop these rows and pull again from the start"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"sync"
+						]
+					},
+					{
+						"cookieAuth": [
+							"sync"
+						]
+					}
+				],
+				"summary": "Changes to the payoff plan of the caller's budget book",
 				"tags": [
 					"Sync"
 				],
@@ -126829,6 +129790,278 @@
 					}
 				],
 				"summary": "Changes to the caller's transfers",
+				"tags": [
+					"Sync"
+				],
+				"x-required-scope": "sync"
+			}
+		},
+		"/sync/wealth-transfers": {
+			"get": {
+				"description": "Raw rows changed after `since`, oldest change first, plus a tombstone for each row deleted since. Page with the returned `cursor` until `hasMore` is false. The first pull (no `since`) returns every row once. A cursor the server can no longer honor answers 410 sync_reset_required: drop this entity's rows and pull again from the start. A change shows up once every older write transaction on the database server has finished, normally milliseconds. Cursors carry the server-wide commit position, so they reveal how much the instance writes, as the events feed does. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own rows. A budget book's rows are the caller's only while the book is personal and has no other member: when it gains a member or stops being personal, each of its rows comes back as a tombstone.",
+				"operationId": "syncWealthTransfers",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "since",
+						"schema": {
+							"description": "The cursor of the last page you applied. Omit it for the first pull, which returns every row once.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 200,
+							"maximum": 500,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"cursor": {
+											"type": "string"
+										},
+										"hasMore": {
+											"type": "boolean"
+										},
+										"items": {
+											"items": {
+												"description": "The budget's half of a move between the budget and Wealth. It goes with the transfer or income row that made it.",
+												"properties": {
+													"amount": {
+														"description": "In the book's currency.",
+														"examples": [
+															"1450.25"
+														],
+														"pattern": "^-?\\d+(\\.\\d+)?$",
+														"type": "string"
+													},
+													"assetAccountId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"bookId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"countOnly": {
+														"type": "boolean"
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"date": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"direction": {
+														"enum": [
+															"TO_WEALTH",
+															"FROM_WEALTH"
+														],
+														"type": "string"
+													},
+													"envelopeId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														],
+														"description": "Null is Not planned yet (To assign)."
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"note": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"sourceExpenseId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"transferId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													}
+												},
+												"required": [
+													"id",
+													"bookId",
+													"direction",
+													"envelopeId",
+													"transferId",
+													"sourceExpenseId",
+													"assetAccountId",
+													"countOnly",
+													"date",
+													"amount",
+													"note",
+													"createdAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"tombstones": {
+											"items": {
+												"properties": {
+													"deletedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"deletedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items",
+										"tombstones",
+										"cursor",
+										"hasMore"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"410": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "The cursor is no longer valid; drop these rows and pull again from the start"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"sync"
+						]
+					},
+					{
+						"cookieAuth": [
+							"sync"
+						]
+					}
+				],
+				"summary": "Changes to the Wealth transfers of the caller's budget book",
 				"tags": [
 					"Sync"
 				],

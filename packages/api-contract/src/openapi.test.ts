@@ -46,7 +46,7 @@ describe("openapi.json", () => {
 		const syncPaths = Object.keys(doc.paths).filter((path) =>
 			path.startsWith("/sync/"),
 		);
-		expect(syncPaths).toHaveLength(9);
+		expect(syncPaths).toHaveLength(21);
 		for (const path of syncPaths) {
 			const responses = doc.paths[path]?.get?.responses as Record<
 				string,
