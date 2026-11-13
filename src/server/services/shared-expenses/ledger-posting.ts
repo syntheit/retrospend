@@ -13,11 +13,13 @@
  * Rounding per row, never per total: it is the figure the Summary tab and the
  * People page show, so a legacy row stored at 8 decimals (three shares of
  * 12.73333333 of 38.20) reads the same on every screen. The part of an
- * expense no share covers is the payer's own share (after "Remove me"); a
- * share total above the amount is a data fault and stays a non-zero sum.
+ * expense no share covers is the payer's own share (after "Remove me"), and
+ * so is a rounding excess when the exact shares do not exceed the amount; a
+ * share total that exceeds the amount exactly is a data fault and stays a
+ * non-zero sum.
  */
 
-import type { Decimal } from "@retrospend/domain/precise-decimal";
+import { type Decimal, dec } from "@retrospend/domain/precise-decimal";
 import { toMinor } from "~/server/services/envelope/units";
 import type { ParticipantType } from "~prisma";
 
@@ -110,15 +112,21 @@ export function post(ledger: PostingLedger, accounts: Accounts) {
 		};
 		accounts.add(payer, tx.currency, "paid", amount);
 		let covered = 0;
+		let exactShares = dec(0);
 		for (const sp of tx.splitParticipants) {
 			const share = minor(sp.shareAmount, tx.currency);
 			covered += share;
+			exactShares = exactShares.plus(dec(sp.shareAmount));
 			accounts.add(sp, tx.currency, "share", share);
 		}
-		// "Remove me" leaves part of the amount without a share: the payer paid
-		// it and nobody owes it back, so it is the payer's own share. A negative
-		// gap is a data fault and stays visible as an imbalance.
-		if (amount > covered) {
+		// The payer absorbs what no share covers ("Remove me" leaves a gap
+		// nobody owes back) and, the other way, what rounding each share on its
+		// own row adds past the amount (5.015 twice of 10.03 rounds to 5.02
+		// twice, 10.04): the payer's own share is that much smaller, as the
+		// People page has it. Only shares that exceed the amount exactly are a
+		// data fault, and they stay visible as an imbalance.
+		const exactOver = exactShares.gt(dec(tx.amount));
+		if (amount > covered || (covered > amount && !exactOver)) {
 			accounts.add(payer, tx.currency, "share", amount - covered);
 		}
 	}

@@ -128,15 +128,17 @@ export function planGreedyTransfers<Ref>(
 /**
  * Compute an optimal greedy settlement plan for a set of shared transactions.
  *
- * Step 1: Group transactions by currency. Each currency is processed independently.
+ * Step 1: Group transactions and payments by currency. Each currency is
+ *   processed independently.
  *
  * Step 2: For each currency, post the ledger into integer minor units with
  *   the posting the project summary uses (ledger-posting.ts): each expense
  *   amount, share and payment is rounded once, half to even, and
  *   net = paid - share - received + sent. Any part of an expense that no
  *   share covers (someone used "Remove me") counts as the payer's own share,
- *   so the nets add up to zero unless a share exceeds its expense (a data
- *   fault, shown as the summary's `imbalance`). Positive net = creditor (is
+ *   and so does a rounding excess, so the nets add up to zero unless the
+ *   shares exceed their expense exactly (a data fault, shown as the
+ *   summary's `imbalance`). Positive net = creditor (is
  *   owed money). Negative net = debtor (owes money).
  *
  * Step 3: Greedy settlement on those integer minor-unit balances (the matcher
@@ -154,40 +156,25 @@ export function computeSettlementPlan(
 	transactions: TxForSettlement[],
 	existingSettlements: SettlementForPlan[],
 ): SettlementPlanResult {
-	const currencies = new Set(transactions.map((tx) => tx.currency));
+	// Currencies come from the expenses and from the payments: a payment in a
+	// currency with no expense is money that has to go back, as in the summary.
+	const currencies = new Set([
+		...transactions.map((tx) => tx.currency),
+		...existingSettlements.map((s) => s.currency),
+	]);
 	const people = new Set<string>();
+	for (const tx of transactions) {
+		people.add(
+			refKey({ participantType: tx.paidByType, participantId: tx.paidById }),
+		);
+		for (const sp of tx.splitParticipants) people.add(refKey(sp));
+	}
 
 	const byCurrency: Record<string, CurrencyBreakdown> = {};
 	for (const currency of currencies) {
-		const txs = transactions.filter((tx) => tx.currency === currency);
-		const inExpenses = new Set<string>();
-		for (const tx of txs) {
-			inExpenses.add(
-				refKey({ participantType: tx.paidByType, participantId: tx.paidById }),
-			);
-			for (const sp of tx.splitParticipants) inExpenses.add(refKey(sp));
-		}
-		for (const key of inExpenses) people.add(key);
-		// A payment between two people with no expense in this currency has
-		// nothing to settle against.
 		const ledger = {
-			transactions: txs,
-			settlements: existingSettlements.filter(
-				(s) =>
-					s.currency === currency &&
-					(inExpenses.has(
-						refKey({
-							participantType: s.fromParticipantType,
-							participantId: s.fromParticipantId,
-						}),
-					) ||
-						inExpenses.has(
-							refKey({
-								participantType: s.toParticipantType,
-								participantId: s.toParticipantId,
-							}),
-						)),
-			),
+			transactions: transactions.filter((tx) => tx.currency === currency),
+			settlements: existingSettlements.filter((s) => s.currency === currency),
 		};
 		const accounts = new Accounts();
 		post(ledger, accounts);
@@ -285,4 +272,28 @@ export function computePeriodOutstanding(
 	}
 
 	return outstanding.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+}
+
+/**
+ * What is open in currencies that have payments but no expense anywhere in
+ * the project: nothing in any period explains them, so no period is settled
+ * while they stand. `allTxs` is every expense of the project.
+ */
+export function computePaymentOnlyOutstanding(
+	allTxs: TxForSettlement[],
+	settlements: SettlementForPlan[],
+): PeriodOutstanding[] {
+	const withExpenses = new Set(allTxs.map((tx) => tx.currency));
+	const plan = computeSettlementPlan(allTxs, settlements);
+	return Object.entries(plan.byCurrency).flatMap(([currency, breakdown]) =>
+		withExpenses.has(currency)
+			? []
+			: breakdown.balances
+					.filter((b) => Math.abs(b.netBalance) > zeroTolerance(currency))
+					.map((b) => ({
+						participant: b.participant,
+						currency,
+						amount: b.netBalance,
+					})),
+	);
 }

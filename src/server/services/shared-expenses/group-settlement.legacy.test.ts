@@ -9,8 +9,10 @@ import { Dec } from "@retrospend/domain/precise-decimal";
 import { describe, expect, it } from "vitest";
 import { summarizeLedger } from "~/server/services/project/summary";
 import {
+	computePaymentOnlyOutstanding,
 	computePeriodOutstanding,
 	computeSettlementPlan,
+	isFullySettled,
 	type SettlementForPlan,
 	type TxForSettlement,
 } from "./group-settlement";
@@ -107,6 +109,127 @@ describe("USD 38.20 in three shares of 12.73333333", () => {
 	});
 });
 
+describe("rounding each share past the amount falls on the payer", () => {
+	// USD 10.03 in two shares of 5.015: each rounds to 5.02 (501.5 is a tie,
+	// 502 is even), 10.04 of 10.03. The exact shares equal the amount, so the
+	// payer absorbs the extra cent, as People has it (Bob owes Ana 5.02).
+	const both: Array<[string, string]> = [
+		["ana", "5.015"],
+		["bob", "5.015"],
+	];
+
+	it("Ana +5.02, Bob -5.02, and Bob pays Ana 5.02", () => {
+		// Ana: paid 1003, share 502 - 1 = 501, net 502. Bob: -502.
+		const txs = [expense("ana", "10.03", "USD", both)];
+		const usd = computeSettlementPlan(txs, []).byCurrency.USD;
+		expect(usd?.balances.map((b) => b.netBalance)).toEqual([5.02, -5.02]);
+		expect(
+			usd?.plan.map((p) => [
+				p.from.participantId,
+				p.to.participantId,
+				p.amount,
+			]),
+		).toEqual([["bob", "ana", 5.02]]);
+		const summary = summarizeLedger({ transactions: txs, settlements: [] });
+		expect(summary.members.map((m) => m.lines[0]?.balance)).toEqual([
+			502, -502,
+		]);
+		expect(summary.imbalance).toEqual([]);
+	});
+
+	it("is settled at zero once Bob pays 5.02, and the period lists nobody", () => {
+		const txs = [expense("ana", "10.03", "USD", both)];
+		const paid = [payment("bob", "ana", "5.02", "USD")];
+		const usd = computeSettlementPlan(txs, paid).byCurrency.USD;
+		expect(usd?.balances.map((b) => b.netBalance)).toEqual([0, 0]);
+		expect(usd?.plan).toEqual([]);
+		expect(computePeriodOutstanding(txs, paid)).toEqual([]);
+	});
+
+	it("a payer who is not in the split: Ana +10.04, Bob -5.02, Cam -5.02", () => {
+		// Ana paid 1003 for Bob and Cam at 502 each (1004). Her own share is
+		// -1, so her net is 1003 + 1 = 1004, which is what Bob and Cam owe her.
+		const txs = [
+			expense("ana", "10.03", "USD", [
+				["bob", "5.015"],
+				["cam", "5.015"],
+			]),
+		];
+		const usd = computeSettlementPlan(txs, []).byCurrency.USD;
+		expect(usd?.balances.map((b) => b.netBalance)).toEqual([
+			10.04, -5.02, -5.02,
+		]);
+		expect(usd?.balances[0]?.fairShare).toBe(-0.01);
+		expect(usd?.plan.map((p) => [p.from.participantId, p.amount])).toEqual([
+			["bob", 5.02],
+			["cam", 5.02],
+		]);
+		expect(
+			summarizeLedger({ transactions: txs, settlements: [] }).members.map(
+				(m) => m.lines[0]?.balance,
+			),
+		).toEqual([1004, -502, -502]);
+	});
+
+	it("shares that exceed the amount exactly stay an imbalance", () => {
+		// 5 + 6 of 10: Ana +5, Bob -6, the cent-less -1 is the data fault.
+		const txs = [
+			expense("ana", "10.00", "USD", [
+				["ana", "5"],
+				["bob", "6"],
+			]),
+		];
+		const summary = summarizeLedger({ transactions: txs, settlements: [] });
+		expect(summary.imbalance).toEqual([{ minor: -100, currency: "USD" }]);
+		expect(
+			computeSettlementPlan(txs, []).byCurrency.USD?.balances.map(
+				(b) => b.netBalance,
+			),
+		).toEqual([5, -6]);
+	});
+});
+
+describe("every payment counts, in the currency it was made in", () => {
+	// A USD-only project; Cam paid Dan EUR 10 with no EUR expense anywhere.
+	const txs = [
+		expense("ana", "30.00", "USD", [
+			["ana", "10"],
+			["cam", "10"],
+			["dan", "10"],
+		]),
+	];
+	const eur = [payment("cam", "dan", "10", "EUR")];
+
+	it("lists a EUR plan where Dan pays Cam 10, and the project is not settled", () => {
+		// Cam sent 1000: +1000. Dan received 1000: -1000.
+		const result = computeSettlementPlan(txs, eur);
+		expect(
+			result.byCurrency.EUR?.plan.map((p) => [
+				p.from.participantId,
+				p.to.participantId,
+				p.amount,
+			]),
+		).toEqual([["dan", "cam", 10]]);
+		expect(isFullySettled(result)).toBe(false);
+		expect(Object.keys(result.byCurrency).sort()).toEqual(["EUR", "USD"]);
+		expect(result.participantCount).toBe(3);
+	});
+
+	it("names those balances as outstanding for any period", () => {
+		expect(
+			computePaymentOnlyOutstanding(txs, eur).map((o) => [
+				o.participant.participantId,
+				o.currency,
+				o.amount,
+			]),
+		).toEqual([
+			["cam", "EUR", 10],
+			["dan", "EUR", -10],
+		]);
+		expect(computePaymentOnlyOutstanding(txs, [])).toEqual([]);
+	});
+});
+
 // A small seeded generator (mulberry32), so the rows below are the same on
 // every run.
 function seeded(seed: number) {
@@ -170,6 +293,24 @@ describe("the plan and the summary are one figure on random legacy rows", () => 
 				),
 			);
 		}
+		// Payments between any two people, in any currency, whether or not an
+		// expense was ever made in it.
+		for (let i = 0; i < Math.floor(next() * 3); i++) {
+			const from = pick(people);
+			const to = pick(people.filter((p) => p !== from));
+			const currency = pick(["USD", "ARS", "JPY", "EUR", "BRL"]);
+			const places = currencyDecimals(currency);
+			settlements.push(
+				payment(
+					from,
+					to,
+					new Dec(1 + Math.floor(next() * 2000))
+						.div(new Dec(10).pow(places))
+						.toFixed(places),
+					currency,
+				),
+			);
+		}
 		return { transactions, settlements };
 	}
 
@@ -181,6 +322,16 @@ describe("the plan and the summary are one figure on random legacy rows", () => 
 			const plan = computeSettlementPlan(
 				ledger.transactions,
 				ledger.settlements,
+			);
+			expect(
+				Object.keys(plan.byCurrency).sort(),
+				`currencies in ledger ${n}`,
+			).toEqual(
+				[
+					...new Set(
+						summary.members.flatMap((m) => m.lines.map((l) => l.currency)),
+					),
+				].sort(),
 			);
 			for (const [currency, breakdown] of Object.entries(plan.byCurrency)) {
 				const scale = 10 ** currencyDecimals(currency);
@@ -202,6 +353,9 @@ describe("the plan and the summary are one figure on random legacy rows", () => 
 				const imbalance =
 					summary.imbalance.find((i) => i.currency === currency)?.minor ?? 0;
 				expect(sum, `${currency} sum in ledger ${n}`).toBe(imbalance);
+				// Shares cut down at 8 decimals never exceed their amount, so the
+				// payer absorbs every rounding difference and nets add to zero.
+				expect(imbalance, `${currency} imbalance in ledger ${n}`).toBe(0);
 				expect(
 					breakdown.plan.map((p) => [
 						p.from.participantId,

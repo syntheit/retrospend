@@ -618,10 +618,10 @@ describe("settlement rounds every row once, half to even", () => {
 	});
 
 	it("ARS tie with an odd lower neighbor rounds up: 0.295 is 29.5, half even gives 30", () => {
-		// Ana paid 0.59 = 59 centavos; each share rounds to 30. Her net is
-		// 59 - 30 = 29, Bob's -30: rows rounded up past the amount leave 1
-		// centavo no one can be paid (the summary's imbalance), so the plan
-		// pays what Ana is owed.
+		// Ana paid 0.59 = 59 centavos; each share rounds to 30, 60 of 59. The
+		// exact shares (0.59) do not exceed the amount, so the payer absorbs the
+		// extra centavo: Ana's share is 30 - 1 = 29, her net 59 - 29 = 30, and
+		// Bob's is -30. The nets add to zero and the plan pays 0.30.
 		const ars = plan(
 			[
 				tx("ana", "0.59", "ARS", [
@@ -631,15 +631,15 @@ describe("settlement rounds every row once, half to even", () => {
 			],
 			"ARS",
 		);
-		expect(netOf(ars, "ana")).toBe(0.29);
+		expect(netOf(ars, "ana")).toBe(0.3);
 		expect(netOf(ars, "bob")).toBe(-0.3);
-		expect(ars.plan).toMatchObject([{ amount: 0.29 }]);
+		expect(ars.plan).toMatchObject([{ amount: 0.3 }]);
 	});
 
 	it("JPY tie: 1257.5 yen rounds to the even 1258", () => {
-		// Ana paid 2515 yen; each share 1257.5 rounds to 1258 (1257 is odd).
-		// Rows rounded up past the amount: Ana's net is 2515 - 1258 = 1257,
-		// Bob's is -1258, and the plan pays what Ana is owed.
+		// Ana paid 2515 yen; each share 1257.5 rounds to 1258 (1257 is odd),
+		// 2516 of 2515. Ana absorbs the extra yen: share 1258 - 1 = 1257, net
+		// 2515 - 1257 = 1258. Bob's is -1258.
 		const jpy = plan(
 			[
 				tx("ana", "2515", "JPY", [
@@ -649,9 +649,9 @@ describe("settlement rounds every row once, half to even", () => {
 			],
 			"JPY",
 		);
-		expect(netOf(jpy, "ana")).toBe(1257);
+		expect(netOf(jpy, "ana")).toBe(1258);
 		expect(netOf(jpy, "bob")).toBe(-1258);
-		expect(jpy.plan).toMatchObject([{ amount: 1257 }]);
+		expect(jpy.plan).toMatchObject([{ amount: 1258 }]);
 	});
 
 	it("rounds each 8 dp share on its own row, and the payer takes the cent left over", () => {

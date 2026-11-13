@@ -12,6 +12,7 @@
  * 25.47), so after 25.46 came in it still listed Ana as owed 0.01.
  */
 import { describe, expect, it } from "vitest";
+import { peopleOverview } from "../people/overview";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { callerFor } from "../project/__tests__/trip-fixture";
 import { projectSettlementPlan } from "../project/group.service";
@@ -80,6 +81,7 @@ const pays = (
 	from: TestUser,
 	to: TestUser,
 	amount: string,
+	currency = "USD",
 ) =>
 	adminDb.settlement.create({
 		data: {
@@ -88,7 +90,7 @@ const pays = (
 			toParticipantType: "user",
 			toParticipantId: to.user.id,
 			amount,
-			currency: "USD",
+			currency,
 			status: "FINALIZED",
 			projectId,
 		},
@@ -149,5 +151,102 @@ describe("a period of legacy thirds", () => {
 		});
 		expect(summary.transfers).toEqual([]);
 		expect(summary.balancesAddUp).toBe(true);
+	});
+});
+
+describe("a payment in a currency with no expense", () => {
+	it("keeps every period open: Ben still owes Cam EUR 10", async () => {
+		const t = await seedThirds();
+		await pays(t.project.id, t.ben, t.ana, "12.73");
+		await pays(t.project.id, t.cam, t.ana, "12.73");
+		expect(
+			(await computePeriodSettleStatus(adminDb, t.period)).outstanding,
+		).toEqual([]);
+
+		// Cam paid Ben EUR 10, and no EUR expense exists anywhere.
+		await pays(t.project.id, t.cam, t.ben, "10", "EUR");
+		const open = await computePeriodSettleStatus(adminDb, t.period);
+		expect(
+			open.outstanding.map((o) => [
+				o.participant.participantId,
+				o.currency,
+				o.amount,
+			]),
+		).toEqual([
+			[t.cam.user.id, "EUR", 10],
+			[t.ben.user.id, "EUR", -10],
+		]);
+		const plan = await projectSettlementPlan(adminDb, t.project.id);
+		expect(
+			plan.byCurrency.EUR?.plan.map((p) => [
+				p.from.participantId,
+				p.to.participantId,
+				p.amount,
+			]),
+		).toEqual([[t.ben.user.id, t.cam.user.id, 10]]);
+	});
+});
+
+describe("USD 10.03 in two shares of 5.015", () => {
+	it("is 5.02 for Summary, the plan and People, and the payer absorbs the cent", async () => {
+		const ana = await createTestUser();
+		const ben = await createTestUser();
+		const project = await adminDb.project.create({
+			data: { name: "Tie", createdById: ana.user.id },
+		});
+		for (const [u, role] of [
+			[ana, "ORGANIZER"],
+			[ben, "CONTRIBUTOR"],
+		] as const) {
+			await adminDb.projectParticipant.create({
+				data: {
+					projectId: project.id,
+					participantType: "user",
+					participantId: u.user.id,
+					role,
+				},
+			});
+		}
+		await adminDb.sharedTransaction.create({
+			data: {
+				description: "Coffee",
+				amount: "10.03",
+				currency: "USD",
+				date: new Date("2026-10-10"),
+				paidByType: "user",
+				paidById: ana.user.id,
+				createdByType: "user",
+				createdById: ana.user.id,
+				projectId: project.id,
+				splitParticipants: {
+					create: [ana, ben].map((u) => ({
+						participantType: "user" as const,
+						participantId: u.user.id,
+						shareAmount: "5.015",
+						verificationStatus: "ACCEPTED" as const,
+					})),
+				},
+			},
+		});
+
+		// Ana: paid 1003, share 502 - 1 = 501, net 502. Ben: -502.
+		const summary = await callerFor(ana.user).summary({
+			projectId: project.id,
+		});
+		expect(
+			summary.members
+				.map((m) => m.lines[0]?.balance.minor)
+				.sort((a, b) => (a ?? 0) - (b ?? 0)),
+		).toEqual([-502, 502]);
+		expect(summary.balancesAddUp).toBe(true);
+		const plan = await projectSettlementPlan(adminDb, project.id);
+		expect(plan.byCurrency.USD?.plan.map((p) => p.amount)).toEqual([5.02]);
+
+		// People: Ben's row of 5.015 is 5.02 owed to Ana.
+		const view = await peopleOverview(ben.db, ben.user.id);
+		expect(view.people[0]?.parts[0]?.amount).toEqual({
+			minor: -502,
+			currency: "USD",
+		});
 	});
 });
