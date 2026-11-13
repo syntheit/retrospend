@@ -20,6 +20,7 @@ import { userTransaction } from "~/server/db-tx";
 import { figures, readFiguresIn } from "~/server/figures/registry";
 import { personKey } from "~/server/services/payments/view";
 import { projectBalancesFromPerspective } from "~/server/services/project/group.service";
+import type { ProjectViewer } from "~/server/services/project/types";
 import { PeopleService } from "~/server/services/shared-expenses/people.service";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import { adminDb, createTestUser } from "~/test/pg-harness";
@@ -407,9 +408,7 @@ describe("the perspective card applies the pending rule from the real viewer", (
 				projectId: id,
 			},
 		});
-		const carlsCard = async (
-			viewer: { participantType: "user" | "viewerLink"; participantId: string },
-		) => {
+		const carlsCard = async (viewer: ProjectViewer) => {
 			const view = await projectBalancesFromPerspective(
 				ana.db,
 				id,
