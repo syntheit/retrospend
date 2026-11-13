@@ -1,4 +1,4 @@
-import { textUnavailableProblem } from "~/server/crypto/field-open";
+import { textUnavailableProblem as keyProblem } from "~/server/crypto/field-open";
 import type { Prisma, PrismaClient } from "~prisma";
 import { logEventAsync } from "./audit.service";
 import { AlreadyClaimedError, claimShadowProfile } from "./claim.service";
@@ -58,7 +58,7 @@ export async function migrateGuestDataForVerifiedUser(
 		// migration is idempotent and runs again at the next verification.
 		console.error(
 			"[Guest Migration Error]",
-			textUnavailableProblem(err) ??
+			keyProblem(err) ??
 				(err instanceof Error ? err.name : typeof err),
 		);
 		return null;
