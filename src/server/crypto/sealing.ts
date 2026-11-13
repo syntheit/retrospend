@@ -11,6 +11,14 @@
  */
 import { SEALING_RELEASED } from "./release";
 
+// On globalThis, not in module state: Next bundles instrumentation, route
+// handlers and pages separately, each with its own copy of this module, and
+// the start check marks only the instrumentation copy (see settings.ts).
+const startPassed = Symbol.for("retrospend.sealingStartPassed");
+
+const sealingStartPassed = (): boolean =>
+	(globalThis as Record<symbol, unknown>)[startPassed] === true;
+
 /**
  * What the setting asks for. Strictly `true`: with env validation skipped
  * (the image build) the flag is the raw string, truthy whatever it says.
@@ -19,15 +27,13 @@ export const sealingWanted = (
 	flag: unknown,
 	nodeEnv: unknown,
 	released = SEALING_RELEASED,
-	started = startPassed,
+	started = sealingStartPassed(),
 ): boolean =>
 	flag === true && (nodeEnv !== "production" || (released && started));
 
-let startPassed = false;
-
 /** field-encryption-start.ts, once the epoch is set: this process may seal. */
 export function markSealingStartPassed(): void {
-	startPassed = true;
+	(globalThis as Record<symbol, unknown>)[startPassed] = true;
 }
 
 let setting: () => boolean = () => false;
