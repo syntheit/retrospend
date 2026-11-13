@@ -79,7 +79,7 @@ export async function dollarTodayIn(
 		others: sameDay.map((r) => ({
 			rateType: r.type,
 			value: {
-				minor: toMinor(Number(r.rate), homeCurrency),
+				minor: toMinor(r.rate, homeCurrency),
 				currency: homeCurrency,
 			},
 		})),

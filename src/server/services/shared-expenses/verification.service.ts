@@ -8,6 +8,7 @@ import { buildCallerRoleMap, deriveCanModify } from "./project-permissions";
 import { removeSelfIn } from "./remove-self";
 import { autoAcceptSplits } from "./split-sweep";
 import type { ParticipantRef } from "./types";
+import { serializeDecimal } from "./serialize";
 
 type AppDb = PrismaClient;
 
@@ -23,12 +24,7 @@ export function computeTransactionStatus(
 	return "active";
 }
 
-function serializeDecimal(val: unknown): number {
-	if (val && typeof val === "object" && "toNumber" in val) {
-		return (val as { toNumber(): number }).toNumber();
-	}
-	return Number(val);
-}
+
 
 function serializeParticipant(p: {
 	id: string;

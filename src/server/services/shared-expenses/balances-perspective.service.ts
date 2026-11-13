@@ -4,6 +4,7 @@ import { majorByCurrency } from "./balance";
 import { computeBalanceBatch } from "./balance-batch";
 import { resolveClaimAliases } from "./identity";
 import type { ParticipantRef } from "./types";
+import { type Decimal, dec, toFloat } from "@retrospend/domain/precise-decimal";
 
 type AppDb = PrismaClient | Prisma.TransactionClient;
 
@@ -209,7 +210,6 @@ export async function getBalancesFromPerspective(
 	const itemsByCounterpart = new Map<string, PerspectiveLineItem[]>();
 
 	// -- Itemize transactions --------------------------------------------------
-	//
 	// For each transaction the perspective person is involved in, determine the
 	// counterpart(s) and the signed contribution of this line to the balance
 	// (a display figure; the balance itself comes from computeBalanceBatch):
@@ -226,7 +226,7 @@ export async function getBalancesFromPerspective(
 
 		// The perspective person's own share on this transaction (deduped by
 		// canonical identity so alias rows do not double count).
-		let perspectiveShare = 0;
+		let perspectiveShare = dec(0);
 		const perspectiveSeen = new Set<string>();
 		for (const sp of tx.splitParticipants) {
 			const spCanon = canonicalKey({
@@ -235,12 +235,12 @@ export async function getBalancesFromPerspective(
 			});
 			if (spCanon === perspectiveCanonical && !perspectiveSeen.has(spCanon)) {
 				perspectiveSeen.add(spCanon);
-				perspectiveShare += Number(sp.shareAmount);
+				perspectiveShare = perspectiveShare.plus(dec(sp.shareAmount));
 			}
 		}
 
 		// Aggregate each counterpart's share on this transaction (dedup per canon).
-		const shareByCounterpart = new Map<string, number>();
+		const shareByCounterpart = new Map<string, Decimal>();
 		const seenPerCounterpart = new Set<string>();
 		for (const sp of tx.splitParticipants) {
 			const spCanon = canonicalKey({
@@ -254,7 +254,7 @@ export async function getBalancesFromPerspective(
 			seenPerCounterpart.add(dedupeKey);
 			shareByCounterpart.set(
 				spCanon,
-				(shareByCounterpart.get(spCanon) ?? 0) + Number(sp.shareAmount),
+				(shareByCounterpart.get(spCanon) ?? dec(0)).plus(dec(sp.shareAmount)),
 			);
 		}
 
@@ -266,7 +266,7 @@ export async function getBalancesFromPerspective(
 					id: tx.id,
 					description: tx.description,
 					date: tx.date,
-					amount: Number(tx.amount),
+					amount: toFloat(tx.amount),
 					currency: tx.currency,
 					paidBy: {
 						participantType: tx.paidByType,
@@ -274,22 +274,22 @@ export async function getBalancesFromPerspective(
 						name: "", // resolved later
 						isPerspective: true,
 					},
-					perspectiveShare,
-					counterpartShare,
-					signedAmount: signed,
+					perspectiveShare: toFloat(perspectiveShare),
+					counterpartShare: toFloat(counterpartShare),
+					signedAmount: toFloat(signed),
 				});
 			}
-		} else if (counterpartByCanonical.has(payerCanon) && perspectiveShare > 0) {
+		} else if (counterpartByCanonical.has(payerCanon) && perspectiveShare.gt(0)) {
 			// A counterpart paid and the perspective person has a share: perspective
 			// owes that counterpart their own share.
 			const canon = payerCanon;
-			const counterpartShare = shareByCounterpart.get(canon) ?? 0;
-			const signed = -perspectiveShare; // - toward "you owe counterpart"
+			const counterpartShare = shareByCounterpart.get(canon) ?? dec(0);
+			const signed = perspectiveShare.neg(); // - toward "you owe counterpart"
 			pushItem(itemsByCounterpart, canon, {
 				id: tx.id,
 				description: tx.description,
 				date: tx.date,
-				amount: Number(tx.amount),
+				amount: toFloat(tx.amount),
 				currency: tx.currency,
 				paidBy: {
 					participantType: tx.paidByType,
@@ -297,9 +297,9 @@ export async function getBalancesFromPerspective(
 					name: "",
 					isPerspective: false,
 				},
-				perspectiveShare,
-				counterpartShare,
-				signedAmount: signed,
+				perspectiveShare: toFloat(perspectiveShare),
+				counterpartShare: toFloat(counterpartShare),
+				signedAmount: toFloat(signed),
 			});
 		}
 	}

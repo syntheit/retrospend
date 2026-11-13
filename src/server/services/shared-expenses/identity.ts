@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from "~prisma";
 import type { ParticipantRef } from "./types";
+import { dec } from "@retrospend/domain/precise-decimal";
 
 /**
  * Claimed-shadow identity resolution.
@@ -260,8 +261,7 @@ export async function canonicalizeProjectLedger<
 				participantType: r.participantType,
 				participantId: r.participantId,
 				shareAmount: existing
-					? Number(existing.shareAmount.toString()) +
-						Number(sp.shareAmount.toString())
+					? dec(existing.shareAmount).plus(dec(sp.shareAmount))
 					: sp.shareAmount,
 			});
 		}

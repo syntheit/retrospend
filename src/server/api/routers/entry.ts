@@ -29,6 +29,7 @@ import {
 	setDefaultRateType,
 } from "~/server/services/rate-types";
 import { createTransfer } from "~/server/services/transfers/create.mutation";
+import { toFloat } from "@retrospend/domain/precise-decimal";
 
 type Ctx = { session: { user: { id: string } }; timeZone?: string };
 type Notify = (() => Promise<void>)[];
@@ -141,7 +142,7 @@ export const entryRouter = createTRPCRouter({
 		),
 		update: money(schema.expenseFormSchema, updateExpenseEntry, (v, c) => ({
 			...schema.toExpenseInput(v, c.timeZone),
-			amount: Number(v.amount),
+			amount: toFloat(v.amount),
 		})),
 		delete: money(
 			z.object({ id: z.string().min(1) }),
@@ -153,7 +154,7 @@ export const entryRouter = createTRPCRouter({
 		/** Undo of an edit: the values it had. */
 		revert: money(schema.expenseRestoreSchema, updateExpenseEntry, (v) => ({
 			...v,
-			amount: Number(v.amount),
+			amount: toFloat(v.amount),
 		})),
 	}),
 

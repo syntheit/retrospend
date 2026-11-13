@@ -64,9 +64,7 @@ export async function updateBalanceIn(
 		account.currency,
 		today,
 		{
-			rate:
-				input.exchangeRate ??
-				(account.exchangeRate ? Number(account.exchangeRate) : null),
+			rate: input.exchangeRate ?? account.exchangeRate,
 			type: wanted,
 		},
 	);

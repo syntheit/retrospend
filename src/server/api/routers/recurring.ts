@@ -1,4 +1,5 @@
-import { convertAmount } from "@retrospend/domain/money";
+import { convertDec } from "@retrospend/domain/money-dec";
+import { dec, toFloat } from "@retrospend/domain/precise-decimal";
 import { dayKey, startOfNextDayIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -68,7 +69,6 @@ export const recurringRouter = createTRPCRouter({
 			);
 
 			const enrichedTemplates = templates.map((t) => {
-				const amount = Number(t.amount);
 				const fromRate =
 					t.currency === "USD" ? 1 : (rateMap.get(t.currency)?.rate ?? null);
 				const toRate =
@@ -76,17 +76,11 @@ export const recurringRouter = createTRPCRouter({
 						? 1
 						: (rateMap.get(homeCurrency)?.rate ?? null);
 				// Null when a rate is missing: never priced at 1:1
-				const amountInHomeCurrency =
+				const amountInHome =
 					t.currency === homeCurrency
-						? amount
+						? dec(t.amount)
 						: fromRate !== null && toRate !== null
-							? convertAmount(
-									amount,
-									t.currency,
-									fromRate,
-									homeCurrency,
-									toRate,
-								)
+							? convertDec(t.amount, t.currency, fromRate, homeCurrency, toRate)
 							: null;
 				const exchangeRate = fromRate;
 
@@ -95,8 +89,9 @@ export const recurringRouter = createTRPCRouter({
 					// Prisma Decimal can't cross the RSC boundary (this query is
 					// server-prefetched in recurring/layout.tsx and dehydrated into
 					// HydrateClient). Return a plain number.
-					amount: Number(t.amount),
-					amountInHomeCurrency,
+					amount: toFloat(t.amount),
+					amountInHomeCurrency:
+						amountInHome === null ? null : toFloat(amountInHome, 15),
 					exchangeRate,
 				};
 			});

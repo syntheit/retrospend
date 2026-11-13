@@ -199,13 +199,13 @@ describe("SharedTransactionService captures the rate", () => {
 		});
 
 		const stored = db._stores.transactions.get(transaction.id)!;
-		expect(stored.exchangeRate).toBe(64545.9);
+		expect(stored.exchangeRate).toBe("64545.9");
 		const shares = [...db._stores.splits.values()].map((s) => s.shareAmount);
-		expect(shares).toEqual([0.001, 0.001, 0.001]);
+		expect(shares).toEqual(["0.001", "0.001", "0.001"]);
 
 		await service.update({ id: transaction.id, currency: "EUR", amount: 30 });
 		expect(db._stores.transactions.get(transaction.id)!.exchangeRate).toBe(
-			0.8787,
+			"0.8787",
 		);
 	});
 });

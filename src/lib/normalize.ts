@@ -2,7 +2,7 @@ import { fromMinor, type Money } from "@retrospend/domain/money-minor";
 import { z } from "zod";
 import { isCrypto } from "@retrospend/domain/currency-format";
 import type { AssetType } from "./db-enums";
-import { toNumberOrNull, toNumberWithDefault } from "@retrospend/domain/decimal";
+import { type DecimalInput, toFloat } from "@retrospend/domain/precise-decimal";
 
 export type NormalizedExpense = {
 	id: string;
@@ -148,9 +148,11 @@ export function normalizeExpensesFromApi(
 			const expense = result.data;
 			return {
 				...expense,
-				amount: toNumberWithDefault(expense.amount),
-				exchangeRate: toNumberOrNull(expense.exchangeRate),
-				amountInUSD: toNumberOrNull(expense.amountInUSD),
+				amount: toFloat(expense.amount as DecimalInput),
+				exchangeRate:
+					expense.exchangeRate == null ? null : toFloat(expense.exchangeRate as DecimalInput),
+				amountInUSD:
+					expense.amountInUSD == null ? null : toFloat(expense.amountInUSD as DecimalInput),
 			};
 		}),
 	);

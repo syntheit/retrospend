@@ -1,9 +1,8 @@
+import { type DecimalInput, toFloat } from "@retrospend/domain/precise-decimal";
+
 /** Decimal columns as numbers, for audit log snapshots. */
 export function serializeDecimal(val: unknown): number {
-	if (val && typeof val === "object" && "toNumber" in val) {
-		return (val as { toNumber(): number }).toNumber();
-	}
-	return Number(val);
+	return toFloat(val as DecimalInput);
 }
 
 export function serializeTransaction(tx: Record<string, unknown>) {

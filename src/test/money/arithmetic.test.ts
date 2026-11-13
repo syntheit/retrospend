@@ -7,9 +7,14 @@
 //   argument names a money value (amount, balance, total, ...InUSD) or whose
 //   type is a Decimal or a stand-in for one (decimal.js, Prisma's Decimal,
 //   `PrismaDecimal`, `DecimalInput`, `{ toString(): string }`), any
-//   `.toNumber()` or `parseFloat(`, unary `+` on those types, and a call to
-//   decimal.ts's `toNumber`, `toNumberWithDefault` or `toNumberOrNull`. Some
-//   are display edges; each is classified as its area moves to Decimal.
+//   `.toNumber()` or `parseFloat(`, unary `+` on those types, a call to a
+//   `toNumber`, `toNumberWithDefault` or `toNumberOrNull` helper, and an edge
+//   helper (`toFloat`, `roundedMajor`) anywhere but as an object literal
+//   property value or a return value: in arithmetic, a reduce or a variable
+//   it is a figure computed in floats. A function whose body only returns an
+//   edge helper is an edge helper too (found by name, in any scanned file). A hit that is not money (a count, a
+//   percentage) goes in NOT_MONEY below with its reason; a match is never
+//   narrowed to drop one.
 // - prisma-decimal: an arithmetic or rounding call (div, mul, plus,
 //   toDecimalPlaces, toFixed, round, ...) whose receiver's type is Prisma's
 //   Decimal. Prisma's Decimal stays at the database boundary and crosses into
@@ -30,17 +35,26 @@ import {
 	SyntaxKind,
 } from "typescript/unstable/ast";
 import {
+	isArrowFunction,
+	isAsExpression,
+	isBlock,
 	isCallExpression,
+	isConditionalExpression,
+	isFunctionDeclaration,
+	isFunctionExpression,
 	isIdentifier,
+	isMethodDeclaration,
+	isNumericLiteral,
+	isNonNullExpression,
+	isParenthesizedExpression,
 	isPrefixUnaryExpression,
 	isPropertyAccessExpression,
+	isPropertyAssignment,
+	isReturnStatement,
+	isSatisfiesExpression,
+	isVariableDeclaration,
 } from "typescript/unstable/ast/is";
-import {
-	API,
-	type Checker,
-	SymbolFlags,
-	type Type,
-} from "typescript/unstable/sync";
+import { API, type Checker, type Type } from "typescript/unstable/sync";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { scanSources, withoutComments } from "../source-scan";
 import { REPO_ROOT } from "../uiRules/paths";
@@ -68,13 +82,201 @@ const PRISMA_DECIMAL =
 	/@prisma\/client-runtime-utils\/|@prisma\/client\/runtime\//;
 const ANY_DECIMAL =
 	/decimal\.js\/|@prisma\/client-runtime-utils\/|@prisma\/client\/runtime\//;
-/** decimal.ts: PrismaDecimal, and the toNumber helpers that turn a Decimal into a float. */
+/** decimal.ts: PrismaDecimal, the structural stand-in for Prisma's Decimal. */
 const DECIMAL_TS = /packages\/domain\/src\/decimal\.ts$/;
+/** Helpers that turn a Decimal or a stand-in into a float, wherever they are declared. */
 const NUMBER_HELPERS = new Set([
 	"toNumber",
 	"toNumberWithDefault",
 	"toNumberOrNull",
 ]);
+/** The edges: a Decimal becomes a number only here (precise-decimal.ts, money-minor.ts). */
+const EDGE_HELPERS = new Set(["toFloat", "roundedMajor"]);
+/** Functions whose body only returns an edge helper: they hold the edge value too. */
+const wrappers = new Set<string>();
+const isEdgeName = (name: string) => EDGE_HELPERS.has(name) || wrappers.has(name);
+
+/** A hit that is not money, kept out of the count with its reason. An entry that matches nothing fails. */
+interface NotMoney {
+	readonly file: string;
+	/** The hit's whole source line, trimmed: nothing else on the line is excused. */
+	readonly line: string;
+	readonly reason: string;
+}
+const NOT_MONEY: readonly NotMoney[] = [
+	{
+		file: "packages/domain/src/envelope/units.ts",
+		line: "return assertMinor(scaled.toNumber(), `${currency} amount`);",
+		reason:
+			"A rounded whole number of minor units, checked safe by assertMinor on the same line",
+	},
+	{
+		file: "packages/domain/src/envelope/units.ts",
+		line: 'return assertMinor(Number(total), "sum");',
+		reason:
+			"A BigInt sum of whole minor units, checked safe by assertMinor on the same line",
+	},
+	{
+		file: "packages/domain/src/insights.ts",
+		line: "return Number(divideHalfEven(BigInt(total), BigInt(divisor))) || 0;",
+		reason:
+			"A whole-number average of minor units from exact BigInt division, never a fraction",
+	},
+];
+
+/** The call an expression is, through parentheses and casts. */
+function callOf(expression: Node): CallExpression | null {
+	let node = expression;
+	while (
+		isParenthesizedExpression(node) ||
+		isAsExpression(node) ||
+		isSatisfiesExpression(node) ||
+		isNonNullExpression(node)
+	)
+		node = node.expression;
+	return isCallExpression(node) ? node : null;
+}
+
+const isEdgeCall = (expression: Node) => {
+	const call = callOf(expression);
+	return !!call && isIdentifier(call.expression) && isEdgeName(call.expression.text);
+};
+
+/** A value a wrapper may return besides an edge call: null, undefined or 0. */
+const isEmptyValue = (node: Node) =>
+	node.kind === SyntaxKind.NullKeyword ||
+	(isIdentifier(node) && node.text === "undefined") ||
+	(isNumericLiteral(node) && node.text === "0");
+
+/** An expression that is an edge call, or null, undefined or 0, through `? :`, parentheses and casts. */
+function isEdgeOrEmpty(expression: Node): boolean {
+	let node = expression;
+	while (
+		isParenthesizedExpression(node) ||
+		isAsExpression(node) ||
+		isSatisfiesExpression(node) ||
+		isNonNullExpression(node)
+	)
+		node = node.expression;
+	if (isConditionalExpression(node))
+		return isEdgeOrEmpty(node.whenTrue) && isEdgeOrEmpty(node.whenFalse);
+	return isEdgeCall(node) || isEmptyValue(node);
+}
+
+const isFunctionLike = (node: Node) =>
+	isFunctionDeclaration(node) ||
+	isFunctionExpression(node) ||
+	isArrowFunction(node) ||
+	isMethodDeclaration(node);
+
+/**
+ * Whether every value a function returns is an edge call or null, undefined
+ * or 0 (looking through `? :`, if/else and try/catch), and at least one is an
+ * edge call.
+ */
+function returnsOnlyEdge(fn: Node & { body?: Node }): boolean {
+	const body = fn.body;
+	if (!body) return false;
+	if (!isBlock(body)) return isEdgeOrEmpty(body) && hasEdgeCall(body);
+	let edge = false;
+	let other = false;
+	const visit = (node: Node): void => {
+		if (isFunctionLike(node)) return;
+		if (isReturnStatement(node)) {
+			if (!node.expression) return;
+			if (!isEdgeOrEmpty(node.expression)) other = true;
+			else if (hasEdgeCall(node.expression)) edge = true;
+			return;
+		}
+		node.forEachChild(visit);
+	};
+	body.forEachChild(visit);
+	return edge && !other;
+}
+
+/** Whether an edge-or-empty expression has an edge call in it. */
+function hasEdgeCall(expression: Node): boolean {
+	let node = expression;
+	while (
+		isParenthesizedExpression(node) ||
+		isAsExpression(node) ||
+		isSatisfiesExpression(node) ||
+		isNonNullExpression(node)
+	)
+		node = node.expression;
+	if (isConditionalExpression(node))
+		return hasEdgeCall(node.whenTrue) || hasEdgeCall(node.whenFalse);
+	return isEdgeCall(node);
+}
+
+/** Learns the functions of exactly these files that return only an edge helper; the fixture's names never reach the scan. */
+function learnWrappers(paths: string[]): void {
+	wrappers.clear();
+	const bodyReturnsEdge = (fn: Node & { body?: Node }) =>
+		fn.body && !isBlock(fn.body)
+			? isEdgeOrEmpty(fn.body) && hasEdgeCall(fn.body)
+			: returnsOnlyEdge(fn);
+	for (let again = true; again; ) {
+		again = false;
+		for (const path of paths) {
+			const file = project.program.getSourceFile(path);
+			if (!file) continue;
+			const visit = (node: Node): void => {
+				const named =
+					(isFunctionDeclaration(node) || isMethodDeclaration(node)) &&
+					node.name &&
+					isIdentifier(node.name)
+						? { name: node.name.text, fn: node }
+						: (isVariableDeclaration(node) || isPropertyAssignment(node)) &&
+								isIdentifier(node.name) &&
+								node.initializer &&
+								(isArrowFunction(node.initializer) ||
+									isFunctionExpression(node.initializer))
+							? { name: node.name.text, fn: node.initializer }
+							: null;
+				if (named && !wrappers.has(named.name) && bodyReturnsEdge(named.fn)) {
+					wrappers.add(named.name);
+					// A wrapper of a wrapper is found on the next pass.
+					again = true;
+				}
+				node.forEachChild(visit);
+			};
+			visit(file);
+		}
+	}
+}
+
+/**
+ * Whether an edge helper call is an object literal property value or a return
+ * value, through a conditional, parentheses or a cast, or the amount handed
+ * to formatCurrency (text for a person, never computed on). A variable, an
+ * operand, any other argument or a reduce is not.
+ */
+function atEdge(call: CallExpression): boolean {
+	let node: Node = call;
+	for (;;) {
+		const parent = node.parent;
+		if (
+			isParenthesizedExpression(parent) ||
+			isAsExpression(parent) ||
+			isSatisfiesExpression(parent) ||
+			isNonNullExpression(parent) ||
+			(isConditionalExpression(parent) && parent.condition !== node)
+		) {
+			node = parent;
+			continue;
+		}
+		return (
+			(isPropertyAssignment(parent) && parent.initializer === node) ||
+			isReturnStatement(parent) ||
+			(isArrowFunction(parent) && parent.body === node) ||
+			(isCallExpression(parent) &&
+				isIdentifier(parent.expression) &&
+				parent.expression.text === "formatCurrency" &&
+				parent.arguments[0] === node)
+		);
+	}
+}
 
 /**
  * A Decimal or a stand-in for one: decimal.js or Prisma's class,
@@ -127,6 +329,7 @@ function hitsIn(path: string): Record<Rule, number[]> {
 	const pluses: PrefixUnaryExpression[] = [];
 	const numbers: CallExpression[] = [];
 	const helpers: CallExpression[] = [];
+	const edges: CallExpression[] = [];
 	const visit = (node: Node): void => {
 		if (isCallExpression(node)) {
 			if (
@@ -145,6 +348,13 @@ function hitsIn(path: string): Record<Rule, number[]> {
 				NUMBER_HELPERS.has(node.expression.text)
 			)
 				helpers.push(node);
+			if (
+				(isIdentifier(node.expression) &&
+					isEdgeName(node.expression.text)) ||
+				(isPropertyAccessExpression(node.expression) &&
+					wrappers.has(node.expression.name.text))
+			)
+				edges.push(node);
 		}
 		if (isPrefixUnaryExpression(node) && node.operator === SyntaxKind.PlusToken)
 			pluses.push(node);
@@ -173,34 +383,55 @@ function hitsIn(path: string): Record<Rule, number[]> {
 		)
 			float.push(lineAt(file.text, start));
 	});
-	for (const call of helpers) {
-		const symbol = checker.getSymbolAtLocation(call.expression);
-		const target =
-			symbol && symbol.flags & SymbolFlags.Alias
-				? checker.getAliasedSymbol(symbol)
-				: symbol;
-		const origin = target?.declarations?.[0]?.path ?? "";
-		if (DECIMAL_TS.test(origin))
-			float.push(lineAt(file.text, call.expression.end));
-	}
+	for (const call of helpers) float.push(lineAt(file.text, call.expression.end));
+	for (const call of edges)
+		if (!atEdge(call)) float.push(lineAt(file.text, call.expression.end));
 	return { float, "prisma-decimal": prisma };
 }
 
-function scan(): { counts: Counts; lines: Record<string, string[]> } {
+/** `float` hits that no entry of `list` excuses, and the entries that excused nothing. */
+function withoutNotMoney(
+	file: string,
+	path: string,
+	lines: number[],
+	list: readonly NotMoney[],
+	used: Set<NotMoney>,
+): number[] {
+	const text = project.program.getSourceFile(path)?.text.split("\n") ?? [];
+	return lines.filter((n) => {
+		const entry = list.find(
+			(e) => e.file === file && (text[n - 1] ?? "").trim() === e.line,
+		);
+		if (entry) used.add(entry);
+		return !entry;
+	});
+}
+
+function scan(): {
+	counts: Counts;
+	lines: Record<string, string[]>;
+	unused: NotMoney[];
+} {
+	const used = new Set<NotMoney>();
 	const files = scanSources({
 		roots: ["src/server", "packages/domain/src", "packages/engine/src"],
 		include: /\.tsx?$/,
 		exclude:
 			/\.test\.tsx?$|__tests__|test-fixtures|packages\/domain\/src\/money\.ts$/,
 	});
+	learnWrappers(files);
 	const counts: Counts = {};
 	const lines: Record<string, string[]> = {};
 	for (const path of files) {
 		const file = path.slice(REPO_ROOT.length).replace(/^\//, "");
-		for (const [rule, at] of Object.entries(hitsIn(path)) as [
+		for (const [rule, found] of Object.entries(hitsIn(path)) as [
 			Rule,
 			number[],
 		][]) {
+			const at =
+				rule === "float"
+					? withoutNotMoney(file, path, found, NOT_MONEY, used)
+					: found;
 			if (at.length === 0) continue;
 			counts[rule] = { ...counts[rule], [file]: at.length };
 			lines[`${rule} ${file}`] = at
@@ -208,26 +439,58 @@ function scan(): { counts: Counts; lines: Record<string, string[]> } {
 				.map((n) => `${file}:${n}`);
 		}
 	}
-	return { counts, lines };
+	return { counts, lines, unused: NOT_MONEY.filter((e) => !used.has(e)) };
 }
 
 describe("money arithmetic ratchet", () => {
 	it("counts by type what each rule names, and nothing else", () => {
 		// arithmetic.fixture.ts marks each line with what it must count.
-		const hits = hitsIn(
-			join(REPO_ROOT, "src/test/money/arithmetic.fixture.ts"),
-		);
-		expect(hits["prisma-decimal"]).toEqual([13, 14, 14]);
+		const fixture = join(REPO_ROOT, "src/test/money/arithmetic.fixture.ts");
+		learnWrappers([fixture]);
+		const hits = hitsIn(fixture);
+		expect(hits["prisma-decimal"]).toEqual([19, 20, 20]);
 		expect(hits.float.sort((a, b) => a - b)).toEqual([
 			// fixture(): unary plus, toNumber(), parseFloat, a money name
-			16, 17, 18, 19,
-			// standIns(): the stand-in types, then the three decimal.ts helpers
-			35, 36, 37, 38, 39, 40, 41, 42, 43,
+			22, 23, 24, 25,
+			// standIns(): the stand-in types, then the three helpers by name
+			41, 42, 43, 44, 45, 46, 47, 48, 49,
+			// edges(): a variable (x2), arithmetic, a reduce, an argument (x2),
+			// a wrapper in arithmetic (x2), an if with 0 (x2), a conditional
+			// and a try/catch (x2), an object method
+			95, 96, 97, 98, 99, 101, 102, 102, 104, 104, 105, 105, 106,
+			// paged(): a money name, until the list excuses it
+			113,
 		]);
 	});
 
+	it("excuses a hit that is not money only through a named entry, and reports an unused one", () => {
+		const path = join(REPO_ROOT, "src/test/money/arithmetic.fixture.ts");
+		const file = "src/test/money/arithmetic.fixture.ts";
+		learnWrappers([path]);
+		const hits = hitsIn(path).float.sort((a, b) => a - b);
+		const page: NotMoney = {
+			file,
+			line: "return { pages: Number(page.total) }; // float: a money name, excused by the self-test",
+			reason: "A page count named total, not an amount",
+		};
+		const stale: NotMoney = {
+			file,
+			line: "Number(nothing here)",
+			reason: "x",
+		};
+		const used = new Set<NotMoney>();
+		const left = withoutNotMoney(file, path, hits, [page, stale], used);
+		expect(left).toEqual(hits.filter((n) => n !== 113));
+		expect([...used]).toEqual([page]);
+		// Another file's entry excuses nothing, and neither does part of the line.
+		const other = { ...page, file: "x.ts" };
+		expect(withoutNotMoney(file, path, hits, [other], new Set())).toEqual(hits);
+		const part = { ...page, line: "Number(page.total)" };
+		expect(withoutNotMoney(file, path, hits, [part], new Set())).toEqual(hits);
+	});
+
 	it("stays at the baseline", () => {
-		const { counts, lines } = scan();
+		const { counts, lines, unused } = scan();
 		const base = baseline as Counts;
 		const problems: string[] = [];
 		for (const rule of ["float", "prisma-decimal"] as const) {
@@ -248,6 +511,10 @@ describe("money arithmetic ratchet", () => {
 					);
 			}
 		}
+		for (const e of unused)
+			problems.push(
+				`not-money entry matches nothing, remove it: ${e.file} "${e.line}"`,
+			);
 		expect(problems, `\n${problems.join("\n")}\n`).toEqual([]);
 	}, 60_000);
 });

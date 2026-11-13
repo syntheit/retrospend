@@ -6,14 +6,20 @@
  */
 import { formatDateOnly, parseDateOnly } from "~/lib/date";
 import {
-	computeAmountInUSD,
-	isValidRate,
-	roundUSD,
+	computeAmountInUSDDec,
+	hasRate,
+	roundUSDDec,
 	USD,
-} from "@retrospend/domain/money";
+} from "@retrospend/domain/money-dec";
+import { type Decimal, dec, toFloat } from "@retrospend/domain/precise-decimal";
 import type { Prisma, PrismaClient } from "~prisma";
 import { findExchangeRate } from "../../exchange-rates";
 import type { ImporterTransaction } from "../import-queue.service";
+
+/** A number in a cell: plain decimal text, read exactly. Null for anything else. */
+const DECIMAL_CELL = /^[+-]?(\d+(\.\d*)?|\.\d+)$/;
+const cellDecimal = (text: string): Decimal | null =>
+	DECIMAL_CELL.test(text) ? dec(text) : null;
 
 export async function readCsvRows(
 	db: PrismaClient | Prisma.TransactionClient,
@@ -43,8 +49,8 @@ export async function readCsvRows(
 				continue;
 			}
 
-			const amount = parseFloat(amountStr);
-			if (isNaN(amount) || amount <= 0) {
+			const amount = cellDecimal(amountStr);
+			if (amount === null || !amount.gt(0)) {
 				warnings.push(`Row ${i + 1}: Invalid amount "${amountStr}", skipping`);
 				continue;
 			}
@@ -82,29 +88,31 @@ export async function readCsvRows(
 
 			// Calculate exchange rate and USD amount. Rates use the stored
 			// convention (fiat: units per USD, crypto: USD per coin).
-			let exchangeRate: number | undefined;
-			let amountInUSD: number;
+			let exchangeRate: Decimal | undefined;
+			let amountInUSD: Decimal;
 			let fromTable = false;
 			if (currency === USD) {
-				exchangeRate = 1;
-				amountInUSD = roundUSD(amount);
+				exchangeRate = dec(1);
+				amountInUSD = roundUSDDec(amount);
 			} else if (exchangeRateStr) {
-				exchangeRate = parseFloat(exchangeRateStr);
-				if (!isValidRate(exchangeRate)) {
+				const typed = cellDecimal(exchangeRateStr);
+				if (typed === null || !hasRate(currency, typed)) {
 					warnings.push(
 						`Row ${i + 1}: Invalid exchange rate "${exchangeRateStr}", skipping`,
 					);
 					continue;
 				}
-				amountInUSD = computeAmountInUSD(amount, currency, exchangeRate);
+				exchangeRate = typed;
+				amountInUSD = computeAmountInUSDDec(amount, currency, typed);
 			} else if (amountInUSDStr) {
-				amountInUSD = parseFloat(amountInUSDStr);
-				if (!isValidRate(amountInUSD)) {
+				const typed = cellDecimal(amountInUSDStr);
+				if (typed === null || !typed.isFinite() || !typed.gt(0)) {
 					warnings.push(
 						`Row ${i + 1}: Invalid USD amount "${amountInUSDStr}", skipping`,
 					);
 					continue;
 				}
+				amountInUSD = typed;
 				// Kept as the file has it, with no rate: booking prices the row
 				// at exactly USD / amount (book.ts, csv.service.ts), where a
 				// float rate here would move a cent on a tie.
@@ -116,17 +124,19 @@ export async function readCsvRows(
 					);
 					continue;
 				}
-				exchangeRate = picked.rate;
-				amountInUSD = computeAmountInUSD(amount, currency, exchangeRate);
+				exchangeRate = dec(picked.rate);
+				amountInUSD = computeAmountInUSDDec(amount, currency, exchangeRate);
 				fromTable = true;
 			}
 
 			transactions.push({
 				title,
-				amount,
+				amount: toFloat(amount),
 				currency,
-				...(exchangeRate === undefined ? {} : { exchangeRate }),
-				amountInUSD,
+				...(exchangeRate === undefined
+					? {}
+					: { exchangeRate: toFloat(exchangeRate) }),
+				amountInUSD: toFloat(amountInUSD),
 				date: formatDateOnly(date),
 				location,
 				description,

@@ -6,6 +6,7 @@ import { computeTransactionStatus } from "~/server/services/shared-expenses/veri
 import type { Prisma, PrismaClient } from "~prisma";
 import { batchResolveIdentities, type Identity } from "./identities";
 import type { ProjectRoleName, ProjectViewer } from "./types";
+import { toFloat } from "@retrospend/domain/precise-decimal";
 
 interface Page {
 	page: number;
@@ -72,7 +73,7 @@ function baseRow(tx: Row, identities: Map<string, Identity>, isMe: boolean) {
 	return {
 		id: tx.id,
 		description: tx.description,
-		amount: Number(tx.amount),
+		amount: toFloat(tx.amount),
 		currency: tx.currency,
 		date: tx.date,
 		category: tx.category,
@@ -98,7 +99,7 @@ function withIdentity<
 	const identity = identities.get(`${sp.participantType}:${sp.participantId}`);
 	return {
 		...sp,
-		shareAmount: Number(sp.shareAmount),
+		shareAmount: toFloat(sp.shareAmount),
 		name: identity?.name ?? "Unknown",
 		avatarUrl: identity?.avatarUrl ?? null,
 	};

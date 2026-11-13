@@ -1,4 +1,4 @@
-import { currencyDecimals, fromMinorUnits } from "@retrospend/domain/money";
+import { fromMinorUnits } from "@retrospend/domain/money";
 import type { ParticipantType } from "~prisma";
 import {
 	Accounts,
@@ -74,14 +74,6 @@ export interface SettlementPlanResult {
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-/**
- * Balances below half of the currency's smallest unit (in absolute value) are
- * treated as zero: 0.005 USD, 0.5 JPY, 0.000000005 BTC.
- */
-function zeroTolerance(currency: string): number {
-	return 0.5 * 10 ** -currencyDecimals(currency);
-}
-
 // ── algorithm ─────────────────────────────────────────────────────────────────
 
 /**
@@ -156,6 +148,44 @@ export function computeSettlementPlan(
 	transactions: TxForSettlement[],
 	existingSettlements: SettlementForPlan[],
 ): SettlementPlanResult {
+	const { minors, participantCount } = postedByCurrency(
+		transactions,
+		existingSettlements,
+	);
+	const byCurrency: Record<string, CurrencyBreakdown> = {};
+	for (const [currency, posted] of Object.entries(minors)) {
+		byCurrency[currency] = {
+			plan: posted.plan.map((step) => ({
+				...step,
+				amount: fromMinorUnits(step.amount, currency),
+				currency,
+			})),
+			balances: posted.balances.map((b) => ({
+				participant: b.participant,
+				totalPaid: fromMinorUnits(b.paid, currency),
+				fairShare: fromMinorUnits(b.share, currency),
+				netBalance: fromMinorUnits(b.net, currency),
+			})),
+		};
+	}
+	return { byCurrency, participantCount };
+}
+
+/** One currency's posting in integer minor units: each person's paid, share and net, and the transfers. */
+interface PostedCurrency {
+	balances: Array<{
+		participant: ParticipantRef;
+		paid: number;
+		share: number;
+		net: number;
+	}>;
+	plan: Array<{ from: ParticipantRef; to: ParticipantRef; amount: number }>;
+}
+
+function postedByCurrency(
+	transactions: TxForSettlement[],
+	existingSettlements: SettlementForPlan[],
+): { minors: Record<string, PostedCurrency>; participantCount: number } {
 	// Currencies come from the expenses and from the payments: a payment in a
 	// currency with no expense is money that has to go back, as in the summary.
 	const currencies = new Set([
@@ -170,7 +200,7 @@ export function computeSettlementPlan(
 		for (const sp of tx.splitParticipants) people.add(refKey(sp));
 	}
 
-	const byCurrency: Record<string, CurrencyBreakdown> = {};
+	const minors: Record<string, PostedCurrency> = {};
 	for (const currency of currencies) {
 		const ledger = {
 			transactions: transactions.filter((tx) => tx.currency === currency),
@@ -179,35 +209,28 @@ export function computeSettlementPlan(
 		const accounts = new Accounts();
 		post(ledger, accounts);
 
-		const balances: ParticipantBalance[] = [];
-		const signed: Array<{ ref: ParticipantRef; balance: number }> = [];
+		const balances: PostedCurrency["balances"] = [];
 		for (const key of ledgerOrder(ledger, currency)) {
 			const line = accounts.lines.get(key)?.get(currency);
 			const participant = accounts.refs.get(key);
 			if (!line || !participant) continue;
-			signed.push({ ref: participant, balance: line.balance });
 			balances.push({
 				participant,
-				totalPaid: fromMinorUnits(line.paid, currency),
-				fairShare: fromMinorUnits(line.share, currency),
-				netBalance: fromMinorUnits(line.balance, currency),
+				paid: line.paid,
+				share: line.share,
+				net: line.balance,
 			});
 		}
 
 		// Integer balances: half a unit separates zero from one.
-		const plan: SettlementStep[] = planGreedyTransfers(
-			signed,
+		const plan = planGreedyTransfers(
+			balances.map((b) => ({ ref: b.participant, balance: b.net })),
 			0.5,
 			(amount) => amount,
-		).map((step) => ({
-			...step,
-			amount: fromMinorUnits(step.amount, currency),
-			currency,
-		}));
-		byCurrency[currency] = { plan, balances };
+		).map((step) => ({ from: step.from, to: step.to, amount: step.amount }));
+		minors[currency] = { balances, plan };
 	}
-
-	return { byCurrency, participantCount: people.size };
+	return { minors, participantCount: people.size };
 }
 
 /** Returns true when there are no outstanding payments in any currency. */
@@ -249,24 +272,28 @@ export function computePeriodOutstanding(
 	throughPeriodTxs: TxForSettlement[],
 	settlements: SettlementForPlan[],
 ): PeriodOutstanding[] {
-	const before = computeSettlementPlan(throughPeriodTxs, []);
-	const after = computeSettlementPlan(throughPeriodTxs, settlements);
+	const before = postedByCurrency(throughPeriodTxs, []).minors;
+	const after = postedByCurrency(throughPeriodTxs, settlements).minors;
 
 	const outstanding: PeriodOutstanding[] = [];
-	for (const [currency, breakdown] of Object.entries(before.byCurrency)) {
-		const ZERO_TOLERANCE = zeroTolerance(currency);
+	for (const [currency, posted] of Object.entries(before)) {
 		const afterNet = new Map<string, number>();
-		for (const b of after.byCurrency[currency]?.balances ?? []) {
-			afterNet.set(refKey(b.participant), b.netBalance);
+		for (const b of after[currency]?.balances ?? []) {
+			afterNet.set(refKey(b.participant), b.net);
 		}
 
-		for (const b of breakdown.balances) {
-			const owedBefore = b.netBalance;
+		for (const b of posted.balances) {
+			const owedBefore = b.net;
 			const net = afterNet.get(refKey(b.participant)) ?? owedBefore;
-			const stillOwes = owedBefore < -ZERO_TOLERANCE && net < -ZERO_TOLERANCE;
-			const stillOwed = owedBefore > ZERO_TOLERANCE && net > ZERO_TOLERANCE;
+			// Minor units are whole numbers: any open amount is at least one.
+			const stillOwes = owedBefore < 0 && net < 0;
+			const stillOwed = owedBefore > 0 && net > 0;
 			if (stillOwes || stillOwed) {
-				outstanding.push({ participant: b.participant, currency, amount: net });
+				outstanding.push({
+					participant: b.participant,
+					currency,
+					amount: fromMinorUnits(net, currency),
+				});
 			}
 		}
 	}
@@ -284,16 +311,16 @@ export function computePaymentOnlyOutstanding(
 	settlements: SettlementForPlan[],
 ): PeriodOutstanding[] {
 	const withExpenses = new Set(allTxs.map((tx) => tx.currency));
-	const plan = computeSettlementPlan(allTxs, settlements);
-	return Object.entries(plan.byCurrency).flatMap(([currency, breakdown]) =>
+	const { minors } = postedByCurrency(allTxs, settlements);
+	return Object.entries(minors).flatMap(([currency, posted]) =>
 		withExpenses.has(currency)
 			? []
-			: breakdown.balances
-					.filter((b) => Math.abs(b.netBalance) > zeroTolerance(currency))
+			: posted.balances
+					.filter((b) => b.net !== 0)
 					.map((b) => ({
 						participant: b.participant,
 						currency,
-						amount: b.netBalance,
+						amount: fromMinorUnits(b.net, currency),
 					})),
 	);
 }

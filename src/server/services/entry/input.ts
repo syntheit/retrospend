@@ -14,6 +14,7 @@ import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { z } from "zod";
 import { customRateSchema } from "~/lib/schemas/rate";
 import type { CreateExpenseInput } from "../expense.service";
+import { toFloat } from "@retrospend/domain/precise-decimal";
 
 const decimal = z
 	.string()
@@ -139,7 +140,7 @@ export function toSharedInput<
 >(form: T, timeZone?: string) {
 	return {
 		...form,
-		amount: Number(form.amount),
+		amount: toFloat(form.amount),
 		date: parseDateOnlyIn(form.date, timeZone),
 	};
 }

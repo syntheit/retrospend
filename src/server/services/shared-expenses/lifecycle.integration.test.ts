@@ -106,8 +106,8 @@ describe("Suite 1A: Full expense lifecycle: happy path", () => {
 		expect(bobSplit?.verificationStatus).toBe("AUTO_ACCEPTED");
 
 		// Equal split: each gets $50
-		expect(aliceSplit?.shareAmount).toBe(50);
-		expect(bobSplit?.shareAmount).toBe(50);
+		expect(aliceSplit?.shareAmount).toBe("50");
+		expect(bobSplit?.shareAmount).toBe("50");
 
 		// Audit log entry was created
 		expect(db._stores.audits).toHaveLength(1);
@@ -453,7 +453,7 @@ describe("Suite 1B: Rejection flow: reject -> edit -> re-accept", () => {
 			(sp) => sp.transactionId === transaction.id,
 		);
 		expect(newSplits).toHaveLength(2);
-		expect(newSplits.every((sp) => sp.shareAmount === 40)).toBe(true);
+		expect(newSplits.every((sp) => String(sp.shareAmount) === "40")).toBe(true);
 
 		// Bob's status is PENDING
 		const bobSplit = newSplits.find((sp) => sp.participantId === BOB);

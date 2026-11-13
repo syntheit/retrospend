@@ -1,8 +1,8 @@
+import { toMinor } from "~/server/services/envelope/units";
 import type { PrismaClient } from "~prisma";
 import { computeBalance } from "./balance";
+import type { Amount } from "./ledger-posting";
 import type { ParticipantRef } from "./types";
-
-const TOLERANCE = 0.005;
 
 /**
  * What happens to the balance between an expense's payer and one participant
@@ -15,7 +15,7 @@ const TOLERANCE = 0.005;
  *   for this expense turns into a debt the other way round.
  * - "erases_debt": the participant still owes the payer at least the share,
  *   and that unpaid debt disappears.
- * - "none": the share is zero (within rounding), nothing changes.
+ * - "none": the share is zero (at the currency's minor unit), nothing changes.
  *
  * Any non-zero share changes the balance, so it is always one of the first
  * two; callers decide which of them need the user to confirm.
@@ -33,12 +33,13 @@ export async function effectOfRemovingShare(
 	args: {
 		payer: ParticipantRef;
 		participant: ParticipantRef;
-		share: number;
+		share: Amount;
 		currency: string;
 		projectId: string | null;
 	},
 ): Promise<ShareRemovalEffect> {
-	if (args.share <= TOLERANCE) return "none";
+	const shareMinor = toMinor(args.share.toString(), args.currency);
+	if (shareMinor <= 0) return "none";
 	// computeBalance(payer, participant): positive = participant owes payer.
 	// A payment still pending counts for one side only (I5); for this warning
 	// it counts if either side recorded it, so a payment is never missed.
@@ -51,9 +52,9 @@ export async function effectOfRemovingShare(
 		),
 	);
 	const owed = Math.min(
-		...views.map((balance) => balance.byCurrency[args.currency] ?? 0),
+		...views.map((balance) => balance.minorByCurrency[args.currency] ?? 0),
 	);
-	if (owed - args.share < -TOLERANCE) return "flips_balance";
-	if (owed > TOLERANCE) return "erases_debt";
+	if (owed - shareMinor < 0) return "flips_balance";
+	if (owed > 0) return "erases_debt";
 	return "none";
 }

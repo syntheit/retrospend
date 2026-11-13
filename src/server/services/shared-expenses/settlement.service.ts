@@ -42,6 +42,7 @@ import {
 	tellSettlementRecorded,
 } from "./settlement-notices";
 import { type ParticipantRef, sameParticipant } from "./types";
+import { toFloat } from "@retrospend/domain/precise-decimal";
 
 export { RECORDED_BY_PAYEE_REASON } from "~/server/services/payments/confirmation";
 
@@ -118,7 +119,7 @@ const decimalString = (amount: number, currency: string) =>
 	amount.toFixed(currencyDecimals(currency));
 
 const asNumber = (minor: number, currency: string) =>
-	fromMinor(minor, currency).toNumber();
+	toFloat(fromMinor(minor, currency));
 
 /**
  * The settle-up entry points of the settlement router. Recording and
@@ -203,7 +204,7 @@ export class SettlementService {
 				code: "BAD_REQUEST",
 				message:
 					value.reason === "overpay"
-						? `This settlement of ${input.currency} ${formatAmount(input.amount, input.currency)} exceeds the outstanding balance of ${input.currency} ${formatAmount(asNumber(owed.minor, owed.currency), input.currency)} with this person. Enter an amount up to the outstanding balance.`
+						? `This settlement of ${input.currency} ${formatAmount(input.amount, input.currency)} exceeds the outstanding balance of ${input.currency} ${fromMinor(owed.minor, owed.currency).toFixed(currencyDecimals(owed.currency))} with this person. Enter an amount up to the outstanding balance.`
 						: `There is no outstanding ${input.currency} balance to settle with this person${typeof input.projectId === "string" ? " in this project" : ""}.`,
 			});
 		}
@@ -403,7 +404,6 @@ export class SettlementService {
 	async sendReminder(settlementId: string) {
 		const { rows } = await this.loadGroup(this.db, settlementId);
 		const roles = groupRoles(rows, this.userId);
-
 		if (!roles.isParty || !roles.recordedByMe) {
 			throw new TRPCError({
 				code: "FORBIDDEN",
@@ -598,12 +598,11 @@ export class SettlementService {
 							)
 							.reduce((sum, l) => sum + Math.abs(l.balance), 0)
 					: 0;
-			const amount = asNumber(Math.abs(balance), currency);
 			return {
 				currency,
-				balance: amount,
+				balance: asNumber(Math.abs(balance), currency),
 				direction: toDirection(balance),
-				suggestedAmount: amount,
+				suggestedAmount: asNumber(Math.abs(balance), currency),
 				offsetAmount: asNumber(offset, currency),
 			};
 		});
@@ -660,7 +659,7 @@ export class SettlementService {
 				: undefined;
 			const paid =
 				header && summary.kind === "payment"
-					? { amount: Number(header.amount), currency: header.currency }
+					? { amount: toFloat(header.amount), currency: header.currency }
 					: { amount: summary.amount, currency: summary.currency };
 
 			let canRemind = false;
@@ -692,12 +691,12 @@ export class SettlementService {
 				})),
 				convertedAmount:
 					group.length === 1 && lead.convertedAmount
-						? Number(lead.convertedAmount)
+						? toFloat(lead.convertedAmount)
 						: null,
 				convertedCurrency: group.length === 1 ? lead.convertedCurrency : null,
 				exchangeRateUsed:
 					group.length === 1 && lead.exchangeRateUsed
-						? Number(lead.exchangeRateUsed)
+						? toFloat(lead.exchangeRateUsed)
 						: null,
 				paymentMethod: lead.paymentMethod,
 				note: lead.note,
@@ -793,19 +792,15 @@ export class SettlementService {
 		});
 		const settlements = rows.map((settlement) => ({
 			id: settlement.id,
-			amount: Number(settlement.amount),
+			amount: toFloat(settlement.amount),
 			currency: settlement.currency,
 			convertedAmount: settlement.convertedAmount
-				? Number(settlement.convertedAmount)
+				? toFloat(settlement.convertedAmount)
 				: null,
 			convertedCurrency: settlement.convertedCurrency,
 			projectId: settlement.projectId ?? null,
 			isOffset: settlement.isOffset,
 		}));
-		const total = value.allocation
-			? asNumber(value.allocation.amount.minor, input.paymentCurrency)
-			: 0;
-
 		const settledCurrencyCount = new Set(
 			settlements.filter((s) => !s.isOffset).map((s) => s.currency),
 		).size;
@@ -827,7 +822,9 @@ export class SettlementService {
 			settlements,
 			paymentGroupId: value.paymentId,
 			skipped,
-			totalInPaymentCurrency: total,
+			totalInPaymentCurrency: value.allocation
+				? asNumber(value.allocation.amount.minor, input.paymentCurrency)
+				: 0,
 			paymentCurrency: input.paymentCurrency,
 			requiresPayeeConfirmation: value.status === "PROPOSED",
 		};

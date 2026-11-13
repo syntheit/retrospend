@@ -12,7 +12,7 @@ import {
 	computeAmountInUSDDec,
 	type RateInput,
 } from "@retrospend/domain/money-dec";
-import { dec } from "@retrospend/domain/precise-decimal";
+import { dec, toFloat } from "@retrospend/domain/precise-decimal";
 import { priceShare } from "@retrospend/domain/spent";
 import type { Prisma, PrismaClient } from "~prisma";
 import { findExchangeRatesForDates } from "../exchange-rates";
@@ -372,15 +372,13 @@ export async function listSharedParticipationsForUser(
 
 	return participations.map((p) => {
 		const tx = p.transaction;
-		const shareAmount = Number(p.shareAmount);
+		const shareAmount = dec(p.shareAmount);
 		const currency = tx.currency;
 		const rate = rateFor(tx);
 		// The feed lists every share; one with no rate shows as "no rate"
 		// (null, as for personal expenses) instead of failing the whole list.
 		const amountInUSD =
-			rate === null
-				? null
-				: computeAmountInUSDDec(shareAmount, currency, rate).toNumber();
+			rate === null ? null : computeAmountInUSDDec(shareAmount, currency, rate);
 
 		const payerKey = `${tx.paidByType}:${tx.paidById}`;
 		const paidByName = nameMap.get(payerKey) ?? "Unknown";
@@ -402,16 +400,19 @@ export async function listSharedParticipationsForUser(
 		return {
 			id: `shared:${tx.id}`,
 			description: tx.description,
-			amount: shareAmount,
+			amount: toFloat(shareAmount),
 			currency,
-			exchangeRate: currency === USD || rate === null ? null : Number(rate),
-			amountInUSD,
+			exchangeRate:
+				currency === USD || rate === null || rate === undefined
+					? null
+					: toFloat(rate),
+			amountInUSD: amountInUSD === null ? null : toFloat(amountInUSD),
 			date: tx.date,
 			categoryId: tx.categoryId,
 			category: tx.category,
 			source: "shared" as const,
 			sharedContext: {
-				totalAmount: Number(tx.amount),
+				totalAmount: toFloat(tx.amount),
 				participantCount,
 				paidByName,
 				paidByAvatarUrl,
@@ -433,7 +434,7 @@ export async function listSharedParticipationsForUser(
 					return {
 						participantType: sp.participantType,
 						participantId: sp.participantId,
-						shareAmount: Number(sp.shareAmount),
+						shareAmount: toFloat(sp.shareAmount),
 						name: nameMap.get(spKey) ?? "Unknown",
 						avatarUrl: avatarMap.get(spKey) ?? null,
 					};

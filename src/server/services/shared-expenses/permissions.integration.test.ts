@@ -535,8 +535,8 @@ describe("Suite 5C: hasUnseenChanges tracking after edit", () => {
 		expect(aliceSplit?.hasUnseenChanges).toBe(false);
 		expect(bobSplit?.hasUnseenChanges).toBe(true);
 		// Amount recalculated: 80/2 = 40 each
-		expect(aliceSplit?.shareAmount).toBe(40);
-		expect(bobSplit?.shareAmount).toBe(40);
+		expect(aliceSplit?.shareAmount).toBe("40");
+		expect(bobSplit?.shareAmount).toBe("40");
 	});
 
 	it("editing twice: hasUnseenChanges stays true for non-editor (boolean, not cumulative)", async () => {

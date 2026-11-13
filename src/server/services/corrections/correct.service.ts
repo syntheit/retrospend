@@ -38,6 +38,7 @@ import {
 	shareCategories,
 } from "./split-state";
 import { userTimeZone } from "~/server/services/user-time-zone";
+import { toFloat } from "@retrospend/domain/precise-decimal";
 
 type Tx = Prisma.TransactionClient;
 
@@ -64,12 +65,12 @@ function desiredOf(split: LoadedSplit, input: CorrectInput) {
 	try {
 		shares = resolveSplits({
 			mode: input.splitMode,
-			amount: Number(input.amount),
+			amount: toFloat(input.amount),
 			currency,
 			participants: input.splitWith.map((l) => ({
 				...toParty(l.participant),
 				shareAmount:
-					l.shareAmount === undefined ? undefined : Number(l.shareAmount),
+					l.shareAmount === undefined ? undefined : toFloat(l.shareAmount),
 				sharePercentage: l.sharePercentage,
 				shareUnits: l.shareUnits,
 			})),

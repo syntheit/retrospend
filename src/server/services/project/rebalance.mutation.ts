@@ -27,6 +27,8 @@ import { userTimeZone } from "~/server/services/user-time-zone";
 import type { ParticipantType, Prisma } from "~prisma";
 import { joinedAfter, membershipOf } from "./membership";
 import type { MemberRef, ProjectActor } from "./types";
+import { toFloat } from "@retrospend/domain/precise-decimal";
+import { columnText } from "@retrospend/domain/money-dec";
 
 export interface RebalanceInput extends MemberRef {
 	projectId: string;
@@ -133,7 +135,7 @@ async function resplit(
 ) {
 	const shares = resolveSplits({
 		mode: "EQUAL",
-		amount: Number(e.amount),
+		amount: toFloat(e.amount),
 		currency: e.currency,
 		participants: [...e.splitParticipants, newcomer] as SplitParticipantRef[],
 		paidBy: { participantType: e.paidByType, participantId: e.paidById },
@@ -153,7 +155,7 @@ async function resplit(
 			return {
 				transactionId: e.id,
 				...ref,
-				shareAmount: p.shareAmount,
+				shareAmount: columnText(p.shareAmount, 8),
 				verificationStatus: status,
 				verifiedAt,
 				hasUnseenChanges: !sameParticipant(ref, actor),

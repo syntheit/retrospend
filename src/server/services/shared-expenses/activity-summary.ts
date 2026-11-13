@@ -4,13 +4,12 @@
  * them themselves.
  */
 import { formatCurrency } from "@retrospend/domain/currency-format";
+import { type DecimalInput, toFloat } from "@retrospend/domain/precise-decimal";
 
 function safeFormatAmount(amount: unknown, currency: unknown): string {
 	try {
-		const n = Number(amount);
 		const c = String(currency ?? "USD");
-		if (isNaN(n)) return String(amount);
-		return formatCurrency(n, c);
+		return formatCurrency(toFloat(amount as DecimalInput), c);
 	} catch {
 		return String(amount);
 	}

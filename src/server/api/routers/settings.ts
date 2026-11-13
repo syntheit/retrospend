@@ -18,6 +18,7 @@ import {
 	getAppSettings,
 	isInviteOnlyEnabled,
 } from "~/server/services/settings";
+import { toFloat } from "@retrospend/domain/precise-decimal";
 
 export const settingsRouter = createTRPCRouter({
 	getGeneral: protectedProcedure.query(async ({ ctx }) => {
@@ -28,7 +29,7 @@ export const settingsRouter = createTRPCRouter({
 		const { autoAcceptSplits: _autoAccept, ...general } = user;
 		return {
 			...general,
-			monthlyIncome: Number(user.monthlyIncome),
+			monthlyIncome: user.monthlyIncome === null ? 0 : toFloat(user.monthlyIncome),
 			allowAllUsersToGenerateInvites:
 				appSettings.allowAllUsersToGenerateInvites,
 		};

@@ -18,6 +18,7 @@ import type { Prisma, PrismaClient } from "~prisma";
 import { AmortizationService } from "./amortization.service";
 import { entryLegOnly, fileLegOf, legAt } from "./import/book";
 import { listedEntryWhere } from "./spending";
+import { type DecimalInput, dec } from "@retrospend/domain/precise-decimal";
 
 /**
  * Stored rate and USD amount of an imported row. A rate in the file wins
@@ -63,11 +64,11 @@ const CONTROLS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g;
 export function importFingerprint(
 	date: Date,
 	title: string,
-	amount: number,
+	amount: DecimalInput,
 	currency: string,
 	timeZone?: string,
 ): string {
-	return `${dayKey(date, timeZone)}|${title.trim()}|${Math.abs(amount)}|${currency.toUpperCase()}`;
+	return `${dayKey(date, timeZone)}|${title.trim()}|${dec(amount).abs().toFixed()}|${currency.toUpperCase()}`;
 }
 
 /**
@@ -79,7 +80,7 @@ export function importFingerprint(
 export function importFingerprints(
 	date: Date,
 	title: string,
-	amount: number,
+	amount: DecimalInput,
 	currency: string,
 	timeZone?: string,
 ): string[] {
@@ -268,7 +269,7 @@ export class CsvService {
 		const fingerprints = (
 			date: Date,
 			title: string,
-			amount: number,
+			amount: DecimalInput,
 			currency: string,
 		) => importFingerprints(date, title, amount, currency, tz);
 
@@ -292,7 +293,7 @@ export class CsvService {
 		// Build fingerprint set for duplicate detection
 		const existingFingerprints = new Set(
 			existingExpenses.flatMap((e) =>
-				fingerprints(e.date, e.title, Number(e.amount), e.currency),
+				fingerprints(e.date, e.title, e.amount, e.currency),
 			),
 		);
 

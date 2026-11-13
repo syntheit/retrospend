@@ -34,10 +34,28 @@ export function fromFloat(n: number): Decimal {
 }
 
 /**
- * A decimal read as the float a client that still takes numbers can hold: 15
- * significant digits, the inverse of fromFloat. Display only; a figure rounds
- * to its currency first (roundedMajor) or leaves as minor units.
+ * A decimal as the float a client that still takes numbers can hold. The one
+ * place a Decimal becomes a number, for a DTO field or a form draft:
+ *
+ * - Without `significant` it is the nearest double, as Number() read the
+ *   column: exact up to about 15 significant digits, and a stored value with
+ *   more (2^53 + 1, 19 digits) loses its last digits. It never throws, so one
+ *   legacy row cannot take a screen down (docs/ui/GAPS.md).
+ * - With `significant` it trims to that many significant digits (15 is all a
+ *   float reliably keeps, the inverse of fromFloat), for a computed figure
+ *   such as a ratio, where the 40-digit tail is noise. A money figure rounds
+ *   to its currency first (roundedMajor) or leaves as minor units.
+ *
+ * Call it only as an object literal property value or a return value, never
+ * in arithmetic or through a variable: the ratchet counts those
+ * (src/test/money/arithmetic.test.ts).
  */
-export function toFloat(value: Decimal): number {
-	return Number(value.toSignificantDigits(15).toString());
+export function toFloat(value: DecimalInput, significant?: number): number {
+	const exact = dec(value);
+	return Number(
+		(significant === undefined
+			? exact
+			: exact.toSignificantDigits(significant)
+		).toString(),
+	);
 }

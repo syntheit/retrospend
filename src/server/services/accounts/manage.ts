@@ -4,13 +4,16 @@
  * balance typed by hand goes through writeCheckpoint, so it records its Not
  * logged difference like Update balance.
  */
-import type { Decimal } from "@retrospend/domain/precise-decimal";
+import { columnText } from "@retrospend/domain/money-dec";
+import {
+	type Decimal,
+	type DecimalInput,
+} from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import { CsvNumber, generateCsv } from "~/lib/csv";
 import { isCrypto } from "@retrospend/domain/currency-format";
 import { normalizeDate } from "~/lib/date";
-import { isValidRate, MissingRateError, USD } from "@retrospend/domain/money";
-import { toNumberOrNull } from "~/lib/utils";
+import { hasRate, MissingRateError, USD } from "@retrospend/domain/money-dec";
 import { userTransaction } from "~/server/db-tx";
 import { deleteFile } from "~/server/storage";
 import { dec } from "~/server/services/envelope/units";
@@ -55,13 +58,18 @@ async function accountRate(
 		: resolved;
 }
 
+const column = (value: number | null | undefined, scale: number) =>
+	value === null || value === undefined
+		? value
+		: columnText(value, scale);
+
 const otherFields = (input: AccountFields) => ({
 	name: input.name,
 	type: input.type,
 	currency: input.currency,
 	isLiquid: input.isLiquid,
-	interestRate: input.interestRate,
-	minimumPayment: input.minimumPayment,
+	interestRate: column(input.interestRate, 6),
+	minimumPayment: column(input.minimumPayment, 8),
 	dueDate: input.dueDate,
 	...(input.inBudget !== undefined ? { inBudget: input.inBudget } : {}),
 });
@@ -91,7 +99,7 @@ export async function createAccountIn(
 			userId,
 			...otherFields(input),
 			balance: balance.toFixed(),
-			exchangeRate: rate,
+			exchangeRate: columnText(rate, 6),
 			exchangeRateType: rateType,
 		},
 	});
@@ -248,21 +256,21 @@ async function reopenRate(
 	service: WealthService,
 	asset: {
 		currency: string;
-		exchangeRate: { toString(): string } | null;
+		exchangeRate: DecimalInput | null;
 		exchangeRateType: string | null;
 	},
 	today: Date,
-): Promise<number> {
-	const stored = toNumberOrNull(asset.exchangeRate);
+): Promise<DecimalInput> {
 	try {
 		const { rate } = await service.resolveExchangeRate(asset.currency, today, {
-			rate: stored,
+			rate: asset.exchangeRate,
 			type: asset.exchangeRateType,
 		});
 		return rate;
 	} catch {
 		// No table rate: the account's own stored rate, if any
-		if (isValidRate(stored)) return stored;
+		if (asset.exchangeRate !== null && hasRate(asset.currency, asset.exchangeRate))
+			return asset.exchangeRate;
 		throw new MissingRateError(asset.currency);
 	}
 }
@@ -350,10 +358,10 @@ export async function deleteAccount(db: Db, userId: string, id: string) {
 function usdValue(
 	balance: Decimal,
 	currency: string,
-	rate: number | null,
+	rate: DecimalInput | null,
 ): Decimal | null {
 	if (currency === USD) return balance;
-	if (!isValidRate(rate)) return null;
+	if (rate === null || !hasRate(currency, rate)) return null;
 	return isCrypto(currency) ? balance.mul(dec(rate)) : balance.div(dec(rate));
 }
 
@@ -367,21 +375,20 @@ export async function exportAccountsCsv(db: Db, userId: string) {
 	const today = new Date();
 	const balancesInUSD = await Promise.all(
 		assets.map(async (asset) => {
-			const stored = toNumberOrNull(asset.exchangeRate);
 			const balance = dec(asset.balance.toString());
 			try {
 				const { rate } = await service.resolveExchangeRate(
 					asset.currency,
 					today,
 					{
-						rate: stored,
+						rate: asset.exchangeRate,
 						type: asset.exchangeRateType,
 					},
 				);
 				return usdValue(balance, asset.currency, rate);
 			} catch {
 				// No table rate: the asset's own stored rate, else left blank
-				return usdValue(balance, asset.currency, stored);
+				return usdValue(balance, asset.currency, asset.exchangeRate);
 			}
 		}),
 	);

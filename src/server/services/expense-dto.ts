@@ -9,6 +9,7 @@
 import type { Expense, Prisma, PrismaClient } from "~prisma";
 import { bookedRate } from "./booked-rate";
 import { bookedHome } from "./rate-types";
+import { toFloat } from "@retrospend/domain/precise-decimal";
 
 export function expenseDto<T extends Expense>(row: T, homeCurrency: string) {
 	const {
@@ -22,9 +23,9 @@ export function expenseDto<T extends Expense>(row: T, homeCurrency: string) {
 	} = row;
 	return {
 		...fields,
-		amount: Number(amount),
-		amountInUSD: Number(amountInUSD),
-		exchangeRate: Number(exchangeRate),
+		amount: toFloat(amount),
+		amountInUSD: toFloat(amountInUSD),
+		exchangeRate: toFloat(exchangeRate),
 		home: bookedHome(row, homeCurrency),
 		/** The booked rate, unrounded: home per 1 unit of the entry's currency (a typed custom rate shows it back). */
 		rate: bookedRate(row, homeCurrency),

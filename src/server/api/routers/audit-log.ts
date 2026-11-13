@@ -1,9 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { formatCurrency } from "@retrospend/domain/currency-format";
-import {
-	buildActivitySummary,
-} from "~/server/services/shared-expenses/activity-summary";
+import { buildActivitySummary } from "~/server/services/shared-expenses/activity-summary";
 
 export { buildActivitySummary };
 import {
@@ -30,6 +28,7 @@ import {
 	resolveActorName,
 	settlementCounterparty,
 } from "~/server/services/shared-expenses/audit-log-formatter";
+import { type DecimalInput, toFloat } from "@retrospend/domain/precise-decimal";
 
 // ── Activity Feed Types & Helpers ──────────────────────────────────────────────
 
@@ -416,7 +415,7 @@ async function batchFormatActivityEntries(
 		for (const txn of txns) {
 			txnMap.set(txn.id, {
 				description: txn.description,
-				amount: Number(txn.amount),
+				amount: toFloat(txn.amount),
 				currency: txn.currency,
 			});
 		}
@@ -612,7 +611,7 @@ export const auditLogRouter = createTRPCRouter({
 					id: transaction.id,
 					description: transaction.description,
 					amount: formatCurrency(
-						Number(transaction.amount),
+						toFloat(transaction.amount),
 						transaction.currency,
 					),
 					currency: transaction.currency,
@@ -629,7 +628,7 @@ export const auditLogRouter = createTRPCRouter({
 						(c.description as string | undefined) ?? "Deleted expense",
 					amount:
 						c.amount !== undefined
-							? formatCurrency(Number(c.amount), String(c.currency ?? "USD"))
+							? formatCurrency(toFloat(c.amount as DecimalInput), String(c.currency ?? "USD"))
 							: "-",
 					currency: (c.currency as string | undefined) ?? "USD",
 					isDeleted: true,
