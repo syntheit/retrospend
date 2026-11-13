@@ -97,6 +97,8 @@ GRANT DELETE, INSERT, SELECT, UPDATE ON "settlement" TO retrospend_app;
 GRANT DELETE, INSERT, SELECT, UPDATE ON "shadow_profile" TO retrospend_app;
 GRANT DELETE, INSERT, SELECT, UPDATE ON "shared_transaction" TO retrospend_app;
 GRANT DELETE, INSERT, SELECT, UPDATE ON "split_participant" TO retrospend_app;
+GRANT SELECT ON "sync_change" TO retrospend_app;
+GRANT SELECT ON "sync_state" TO retrospend_app;
 GRANT SELECT ON "system_status" TO retrospend_app;
 GRANT DELETE, INSERT, SELECT, UPDATE ON "transfer" TO retrospend_app;
 GRANT DELETE, INSERT, SELECT, UPDATE ON "user_page_setting" TO retrospend_app;

@@ -61,7 +61,8 @@
 		"settlement_mark_insert",
 		"settlement_note_claim",
 		"split_participant_record_removal",
-		"split_participant_use_removal"
+		"split_participant_use_removal",
+		"sync_stamp_rows"
 	],
 	"invokerAppExecutable": [
 		"account_cap_counted",
