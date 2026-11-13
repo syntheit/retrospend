@@ -13,6 +13,9 @@
  * master key would bless that key. With no wrapped key yet, there is nothing
  * to check against, and the canary is written as is.
  *
+ * Once the field encryption epoch is set it never writes (see
+ * `assertMasterKeyCanary`).
+ *
  * With no master key configured the check is skipped: nothing is sealed then.
  * Any other failure (the database is unreachable, the column is missing) also
  * stops the start: an unchecked master key is the case this guards against.
@@ -116,14 +119,29 @@ function verify(sealed: string, keyring: Keyring): void {
 	if (text !== CANARY_TEXT) throw new MasterCanaryError();
 }
 
+/** Whether the field encryption epoch is set (sealing has been on). */
+async function epochSet(client: CanaryClient): Promise<boolean> {
+	const [row] = await client.$queryRaw<{ set: boolean }[]>`
+		SELECT "fieldEncryptionSince" IS NOT NULL AS "set"
+		FROM "app_settings" WHERE "id" = ${SETTINGS_ID}`;
+	return row?.set === true;
+}
+
 /**
  * Opens the canary with the master key, writing it first when there is none.
  * Returns what it did. Throws `MasterCanaryError` on a wrong key.
+ *
+ * Once the epoch is set the canary only verifies, never writes: a database
+ * that was sealed but lost its canary and its keystore would otherwise bind
+ * whatever key is configured now, and the original key would then stop at
+ * `master_key_mismatch`. It still opens an existing wrapped key, so a wrong
+ * key is caught when there is one, and returns "unwritten"; the start gates
+ * (floor.ts) refuse the rest.
  */
 export async function assertMasterKeyCanary(
 	masterKeyring: Keyring | undefined = getMasterKeyring(),
 	client: CanaryClient = keystoreDb,
-): Promise<"skipped" | "written" | "verified"> {
+): Promise<"skipped" | "written" | "verified" | "unwritten"> {
 	if (!masterKeyring) return "skipped";
 	const existing = await readCanary(client);
 	if (existing !== null) {
@@ -131,6 +149,7 @@ export async function assertMasterKeyCanary(
 		return "verified";
 	}
 	await verifyExistingKeys(client, masterKeyring);
+	if (await epochSet(client)) return "unwritten";
 	// The conditional update keeps the first writer's value when two servers
 	// start together; both then check what is stored.
 	const sealed = sealField(masterKeyring, CANARY_TEXT, AAD);

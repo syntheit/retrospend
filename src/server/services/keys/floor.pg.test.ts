@@ -297,6 +297,45 @@ describe("the order with the master key canary", () => {
 		});
 	});
 
+	it("never writes a canary once the epoch is set, so a lost canary does not bind the configured key", async () => {
+		const canary = (tx: Tx) =>
+			tx.$queryRaw<
+				{ c: string | null }[]
+			>`SELECT "masterKeyCanary" AS "c" FROM "app_settings"`.then(
+				(rows) => rows[0]?.c ?? null,
+			);
+		await inRolledBackPrismaTransaction(async (tx) => {
+			await tx.$executeRaw`DELETE FROM keystore."user_data_key" WHERE "userId" <> ${userId}`;
+			await tx.$executeRaw`UPDATE "app_settings" SET "masterKeyCanary" = NULL`;
+			await setEpoch(tx);
+			// Keystore intact: the right key is not bound, a wrong one is caught.
+			expect(await assertMasterKeyCanary(master, tx)).toBe("unwritten");
+			expect(await canary(tx)).toBeNull();
+			const other = new Keyring([{ id: 1, key: randomBytes(32) }]);
+			await expect(assertMasterKeyCanary(other, tx)).rejects.toMatchObject({
+				code: "master_key_mismatch",
+			});
+			expect(await canary(tx)).toBeNull();
+			// Keystore lost too: nothing to check against, still nothing written,
+			// and the gates refuse the start.
+			await tx.$executeRaw`DELETE FROM keystore."user_data_key"`;
+			await tx.$executeRaw`DELETE FROM keystore."instance_text_key"`;
+			expect(await assertMasterKeyCanary(other, tx)).toBe("unwritten");
+			expect(await canary(tx)).toBeNull();
+			expect((await refusal(tx, { masterKeyring: other }))?.code).toBe(
+				"instance_key_lost",
+			);
+		});
+	});
+
+	it("still writes the first canary before the epoch", async () => {
+		await inRolledBackPrismaTransaction(async (tx) => {
+			await tx.$executeRaw`DELETE FROM keystore."user_data_key" WHERE "userId" <> ${userId}`;
+			await tx.$executeRaw`UPDATE "app_settings" SET "masterKeyCanary" = NULL`;
+			expect(await assertMasterKeyCanary(master, tx)).toBe("written");
+		});
+	});
+
 	it("the right key with the keystore lost still gives instance_key_lost", async () => {
 		await inRolledBackPrismaTransaction(async (tx) => {
 			await tx.$executeRaw`DELETE FROM keystore."user_data_key" WHERE "userId" <> ${userId}`;
