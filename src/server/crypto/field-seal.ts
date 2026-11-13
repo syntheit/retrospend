@@ -14,7 +14,8 @@
  *   the write is refused; so is a bulk write (`updateMany`) that sets text,
  *   since each row needs its own AAD. A null seals nothing and passes.
  * - User-class text is sealed with the client's user's key only. A create
- *   names its owner (`userId`, or `user.connect.id`), which must be that
+ *   names its owner (the model's owner column, `userId` by default, or the
+ *   owner relation's `connect.id`, `user` by default), which must be that
  *   user. An update cannot name it: RLS keeps a scoped client to its own
  *   rows, and the global client holds no user key, so it is refused there.
  *
@@ -30,7 +31,12 @@ import {
 	type Keyring,
 	sealField,
 } from "./field-crypto";
-import { fieldsOfModel, jsonCellsOfModel, type KeyClass } from "./fields";
+import {
+	fieldsOfModel,
+	jsonCellsOfModel,
+	type KeyClass,
+	ownerOfModel,
+} from "./fields";
 import { plainPieces } from "./json-cells";
 import type { ModelGraph } from "./model-graph";
 import { newRowId } from "./row-id";
@@ -118,10 +124,13 @@ function queue(
 	for (const t of texts) w.cells.push({ ...t, data, model, rowId });
 }
 
-const ownerOf = (data: Row): string | undefined =>
-	typeof data.userId === "string"
-		? data.userId
-		: idOf(isRow(data.user) ? data.user.connect : undefined);
+const ownerOf = (model: string, data: Row): string | undefined => {
+	const { column, relation } = ownerOfModel(model);
+	const value = data[column];
+	if (typeof value === "string") return value;
+	const link = data[relation];
+	return idOf(isRow(link) ? link.connect : undefined);
+};
 
 function create(w: Walk, model: string, data: unknown, whereId?: string) {
 	if (!isRow(data)) return data;
@@ -130,7 +139,7 @@ function create(w: Walk, model: string, data: unknown, whereId?: string) {
 	if (texts.length > 0) {
 		if (
 			texts.some((t) => t.cls === "user") &&
-			(w.userId === undefined || ownerOf(next) !== w.userId)
+			(w.userId === undefined || ownerOf(model, next) !== w.userId)
 		)
 			throw new FieldCryptoError("foreign_owner");
 		if (typeof next.id !== "string") next.id = whereId ?? newRowId(model);
