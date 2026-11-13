@@ -14,11 +14,15 @@ import { scanSources } from "../../test/source-scan";
 import {
 	FIELD_MAP,
 	fieldsOfModel,
+	JSON_CELLS,
+	jsonCellsOfModel,
 	type KeyClass,
 	keyClassOfColumn,
 	keyClassOfField,
 	mappedColumns,
+	type ModelFields,
 	modelOfTable,
+	ownerOfModel,
 } from "./fields";
 
 const schema = readSchema();
@@ -393,16 +397,43 @@ describe("key classes", () => {
 		expect(classOf("instance")).toEqual([...INSTANCE].sort());
 	});
 
-	it("gives every model with a user-class cell a userId column, its owner", () => {
+	it("gives every model with a user-class cell an owner column and relation in the schema", () => {
 		// A user-class cell opens with the row owner's key (field-open.ts reads
-		// `userId`), so there is no ownerless user-class cell.
-		for (const [model, { columns }] of Object.entries(FIELD_MAP)) {
-			if (!Object.values(columns).includes("user")) continue;
-			const owner = modelByName
-				.get(model)
-				?.fields.find((f) => f.name === "userId");
-			expect(owner?.type, `${model}.userId`).toBe("String");
-			expect(owner?.list, `${model}.userId`).toBe(false);
+		// the owner column), so there is no ownerless user-class cell. JSON
+		// cells count too: IdempotencyKey is owned by `userId` by default.
+		const models = new Set([
+			...Object.keys(FIELD_MAP),
+			...Object.keys(JSON_CELLS),
+		]);
+		let checked = 0;
+		for (const model of models) {
+			const user = [
+				...Object.values(fieldsOfModel(model)?.columns ?? {}),
+				...Object.values(jsonCellsOfModel(model)?.columns ?? {}).map(
+					(c) => c.cls,
+				),
+			].includes("user");
+			if (!user) continue;
+			const { column, relation } = ownerOfModel(model);
+			const fields = modelByName.get(model)?.fields ?? [];
+			const owner = fields.find((f) => f.name === column);
+			expect(owner?.type, `${model}.${column}`).toBe("String");
+			expect(owner?.list, `${model}.${column}`).toBe(false);
+			const link = fields.find((f) => f.name === relation);
+			expect(link?.type, `${model}.${relation}`).toBe("User");
+			expect(link?.attributes, `${model}.${relation}`).toContain(
+				`fields: [${column}]`,
+			);
+			checked++;
+		}
+		expect(checked).toBeGreaterThan(8);
+	});
+
+	it("lists in nullWhenHidden only user-class columns of the model", () => {
+		for (const [model, entry] of Object.entries(FIELD_MAP)) {
+			const { columns, nullWhenHidden } = entry as ModelFields;
+			for (const column of nullWhenHidden ?? [])
+				expect(columns[column], `${model}.${column}`).toBe("user");
 		}
 	});
 

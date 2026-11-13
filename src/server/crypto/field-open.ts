@@ -6,8 +6,9 @@
  * write stores (field-seal.ts, PR 4.2), with keys picked by `sealingRing`.
  *
  * Who may open a sealed cell:
- * - An instance-class cell, or a user-class cell whose `userId` is the
- *   client's user: opened with that ring. A ring that lacks the key (or no
+ * - An instance-class cell, or a user-class cell whose owner column (`userId`,
+ *   or the column the field map names for the model) is the client's user:
+ *   opened with that ring. A ring that lacks the key (or no
  *   ring) gets one reload; still nothing fails the request with the recorded
  *   code (`keystore_lost` when the key row is simply absent). There is no
  *   fallback: the reader is entitled to the text, so hiding it would hide a
@@ -17,14 +18,16 @@
  *   would fail the tag and look like corruption). It reads as "" and the row
  *   carries the field name under `UNAVAILABLE_FIELDS`, which never
  *   serializes. `userText()` minimums refuse "" on required columns, so a
- *   fallback cannot be written back as a real value.
+ *   fallback cannot be written back as a real value. A column the map lists
+ *   in `nullWhenHidden` reads null instead (an optional contact field, where
+ *   "" would look like an address that was set to empty).
  * - `auth_failed`, `malformed`, `unsupported_version`: the request fails.
  *   Integrity is never hidden. Failures and fallbacks log table, column and
  *   code only: never a row id, a user id or text.
  *
  * A cell's AAD needs its row id, and a user-class cell its owner, so a
- * `select` that names a mapped field without them gets `id` (and `userId`)
- * added, and they are removed from the result again.
+ * `select` that names a mapped field without them gets `id` (and the owner
+ * column) added, and they are removed from the result again.
  *
  * JSON cells (PR 8.1, json-cells.ts) follow the same rules piece by piece; a
  * body a reader holds no key for reads as null.
@@ -50,6 +53,9 @@ import {
 	jsonCellsOfModel,
 	type KeyClass,
 	keyClassOfColumn,
+	nullWhenHidden,
+	ownerOfModel,
+	ownerOfTable,
 } from "./fields";
 import { sealedPieces } from "./json-cells";
 import type { ModelGraph } from "./model-graph";
@@ -108,14 +114,16 @@ interface Added {
 	children: Map<string, Added>;
 }
 
-/** `id` for the AAD, and `userId` when a user-class cell is among `named`. */
+/** `id` for the AAD, and the owner column when a user-class cell is among `named`. */
 function needed(model: string, named: string[]): string[] {
 	const columns = cellClassesOfModel(model);
-	return named.some((f) => columns[f] === "user") ? ["id", "userId"] : ["id"];
+	return named.some((f) => columns[f] === "user")
+		? ["id", ownerOfModel(model).column]
+		: ["id"];
 }
 
 /**
- * A copy of the arguments with `id` and `userId` added wherever a mapped
+ * A copy of the arguments with `id` and the owner column added wherever a mapped
  * field is read without them, and the record of what was added. The caller's
  * objects are never changed.
  */
@@ -244,7 +252,8 @@ function collect(
 
 function hide(cell: Cell): void {
 	if (cell.json) cell.json.hide();
-	else cell.row[cell.column] = "";
+	else
+		cell.row[cell.column] = nullWhenHidden(cell.table, cell.column) ? null : "";
 	const row = cell.row as { [UNAVAILABLE_FIELDS]?: string[] };
 	const list = row[UNAVAILABLE_FIELDS];
 	if (list) list.push(fieldOf(cell));
@@ -304,7 +313,7 @@ async function openCells(keys: TextKeys, cells: Cell[]): Promise<void> {
 			entitled.push(cell);
 			continue;
 		}
-		const owner = cell.row.userId;
+		const owner = cell.row[ownerOfTable(cell.table).column];
 		if (typeof owner !== "string")
 			throw new Error(
 				`A ${cell.table}.${fieldOf(cell)} cell was read without its owner`,
@@ -463,6 +472,7 @@ async function refuseWrites(
 	const fields = fieldsOfModel(model);
 	const json = jsonCellsOfModel(model);
 	if (!fields && !json) return;
+	const ownerColumn = ownerOfModel(model).column;
 	const kept: Cell[] = [];
 	for (const { values, rowId, creates } of writesOf(operation, args)) {
 		if (!isRow(values)) continue;
@@ -495,9 +505,9 @@ async function refuseWrites(
 				inVerbatim() &&
 				rowId !== undefined &&
 				(cell.cls === "instance" ||
-					(owner !== undefined && (!creates || values.userId === owner)));
+					(owner !== undefined && (!creates || values[ownerColumn] === owner)));
 			if (!ownCell) throw new FieldCryptoError("bad_plaintext");
-			kept.push({ ...cell, row: { id: rowId, userId: owner } });
+			kept.push({ ...cell, row: { id: rowId, [ownerColumn]: owner } });
 		}
 	}
 	if (kept.length > 0) await openCells(keys, kept);

@@ -12,9 +12,11 @@
  * Key classes, final per the owner's answers (design doc, Revision 2, and
  * the 2026-11-11 change in docs/roadmap/e2ee-d11-pr3.md section 2.1):
  * - `user`: personal text, sealed with the row owner's data key. Every model
- *   with a user-class column has a `userId` column, and the reader opens the
- *   cell with that owner's key; a reader who is not the owner gets a typed
- *   fallback, never another key's attempt.
+ *   with a user-class column has an owner column, `userId` unless the entry
+ *   names another in `owner` (a ghost person is owned by `createdById`), and
+ *   the reader opens the cell with that owner's key; a reader who is not the
+ *   owner gets a typed fallback, never another key's attempt. The fallback
+ *   is "" unless the column is in `nullWhenHidden`, where it is null.
  * - `instance`: text other people read (shared expenses, projects, shared
  *   budget books and their income rules and wealth moves, co-participant
  *   names, admin views, better-auth reads), sealed with the instance key.
@@ -29,11 +31,24 @@
 
 export type KeyClass = "user" | "instance";
 
+/** The column that names a row's owner, and the relation it backs (for `connect`). */
+export interface OwnerColumn {
+	readonly column: string;
+	readonly relation: string;
+}
+
+/** Owner of every model that does not name one. */
+const DEFAULT_OWNER: OwnerColumn = { column: "userId", relation: "user" };
+
 export interface ModelFields {
 	/** The SQL table name (the model's `@@map`). */
 	readonly table: string;
 	/** Column (and Prisma field) name to the key class that seals it. */
 	readonly columns: Readonly<Record<string, KeyClass>>;
+	/** Owner of a user-class cell; `userId` and `user` when absent. */
+	readonly owner?: OwnerColumn;
+	/** User-class columns that read null, not "", for a reader who holds no key for them. */
+	readonly nullWhenHidden?: readonly string[];
 }
 
 export const FIELD_MAP = {
@@ -111,23 +126,76 @@ export const FIELD_MAP = {
 /** A Prisma model name that has at least one mapped column. */
 export type MappedModel = keyof typeof FIELD_MAP;
 
-const MODELS: Readonly<Record<string, ModelFields | undefined>> = FIELD_MAP;
+type ModelEntries = Readonly<Record<string, ModelFields | undefined>>;
 
-const MODEL_BY_TABLE: ReadonlyMap<string, MappedModel> = new Map(
-	(Object.keys(FIELD_MAP) as MappedModel[]).map((model) => [
-		FIELD_MAP[model].table,
-		model,
-	]),
-);
+/**
+ * The lookups over the map. Built once for FIELD_MAP; a test may swap in a
+ * map with an extra model (`addModelsForTests`) to exercise a rule no
+ * real model uses yet.
+ */
+interface Index {
+	models: ModelEntries;
+	byTable: ReadonlyMap<string, string>;
+}
+
+const indexOf = (models: ModelEntries): Index => ({
+	models,
+	byTable: new Map(
+		Object.entries(models).flatMap(([model, fields]) =>
+			fields ? [[fields.table, model] as const] : [],
+		),
+	),
+});
+
+let index: Index = indexOf(FIELD_MAP);
 
 /** The map entry for a Prisma model name, or undefined when it holds no user text. */
 export function fieldsOfModel(model: string): ModelFields | undefined {
-	return Object.hasOwn(MODELS, model) ? MODELS[model] : undefined;
+	return Object.hasOwn(index.models, model) ? index.models[model] : undefined;
 }
 
 /** The Prisma model that owns a SQL table, or undefined when it holds no user text. */
 export function modelOfTable(table: string): MappedModel | undefined {
-	return MODEL_BY_TABLE.get(table);
+	return index.byTable.get(table) as MappedModel | undefined;
+}
+
+/**
+ * The owner column of a model's user-class cells. A model that only has JSON
+ * cells (IdempotencyKey) is not in the map and is owned by `userId`.
+ */
+export function ownerOfModel(model: string): OwnerColumn {
+	return fieldsOfModel(model)?.owner ?? DEFAULT_OWNER;
+}
+
+/** The owner column of a SQL table's user-class cells. */
+export function ownerOfTable(table: string): OwnerColumn {
+	const model = modelOfTable(table);
+	return model ? ownerOfModel(model) : DEFAULT_OWNER;
+}
+
+/** Whether a hidden cell of this column reads null instead of "". */
+export function nullWhenHidden(table: string, column: string): boolean {
+	const model = modelOfTable(table);
+	return (
+		(model && fieldsOfModel(model)?.nullWhenHidden?.includes(column)) === true
+	);
+}
+
+/**
+ * Adds `extra` models to the map, for tests of a rule no real model uses yet,
+ * and returns the call that takes them out again. The caches built from the
+ * map are rebuilt both ways, so build a model graph after calling this.
+ */
+export function addModelsForTests(
+	extra: Readonly<Record<string, ModelFields>>,
+): () => void {
+	const before = index;
+	index = indexOf({ ...FIELD_MAP, ...extra });
+	cellClasses = buildCellClasses();
+	return () => {
+		index = before;
+		cellClasses = buildCellClasses();
+	};
 }
 
 /** The key class that seals a cell, looked up by Prisma model and field. */
@@ -144,7 +212,7 @@ export function keyClassOfColumn(
 	table: string,
 	column: string,
 ): KeyClass | undefined {
-	const model = MODEL_BY_TABLE.get(table);
+	const model = modelOfTable(table);
 	return model ? keyClassOfField(model, column) : undefined;
 }
 
@@ -263,12 +331,14 @@ export function jsonCellsOfModel(model: string): ModelJsonCells | undefined {
 	return Object.hasOwn(JSON_MODELS, model) ? JSON_MODELS[model] : undefined;
 }
 
-const CELL_CLASSES: ReadonlyMap<
+const buildCellClasses = (): ReadonlyMap<
 	string,
 	Readonly<Record<string, KeyClass>>
-> = new Map(
-	[...new Set([...Object.keys(MODELS), ...Object.keys(JSON_MODELS)])].map(
-		(model) => [
+> =>
+	new Map(
+		[
+			...new Set([...Object.keys(index.models), ...Object.keys(JSON_MODELS)]),
+		].map((model) => [
 			model,
 			{
 				...fieldsOfModel(model)?.columns,
@@ -278,15 +348,16 @@ const CELL_CLASSES: ReadonlyMap<
 					),
 				),
 			},
-		],
-	),
-);
+		]),
+	);
+
+let cellClasses = buildCellClasses();
 
 /** Every sealed field of a model, text and JSON, to its key class. */
 export function cellClassesOfModel(
 	model: string,
 ): Readonly<Record<string, KeyClass>> {
-	return CELL_CLASSES.get(model) ?? {};
+	return cellClasses.get(model) ?? {};
 }
 
 /** Every JSON cell as `[table, column, cell]`, in map order. */
