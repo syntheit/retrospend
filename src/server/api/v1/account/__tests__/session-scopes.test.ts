@@ -9,9 +9,28 @@ describe("sessionScopesOf", () => {
 		expect(sessionScopesOf({ kind: "web", granted: null })).toEqual(held);
 		expect(sessionScopesOf({ kind: "mobile", granted: null })).toEqual([]);
 		expect(
-			sessionScopesOf({ kind: "mobile", granted: ["read", "write:settings"] }),
+			sessionScopesOf({ kind: "mobile", granted: ["write:settings"] }),
 		).toEqual(held);
-		expect(sessionScopesOf({ kind: "mobile", granted: ["read"] })).toEqual([]);
+		expect(
+			sessionScopesOf({ kind: "mobile", granted: ["read", "write:settings"] }),
+		).toEqual([...held, "sync"]);
+	});
+
+	it("gives sync to a mobile session with read stored, and to nothing else", () => {
+		expect(sessionScopesOf({ kind: "mobile", granted: ["read"] })).toEqual([
+			"sync",
+		]);
+		expect(
+			sessionScopesOf({ kind: "mobile", granted: ["write:expenses"] }),
+		).toEqual([]);
+		expect(sessionScopesOf({ kind: "web", granted: null })).not.toContain(
+			"sync",
+		);
+		for (const kind of ["device", "apiKey"] as const) {
+			expect(
+				sessionScopesOf({ kind, granted: ["read", "write:settings"] }),
+			).not.toContain("sync");
+		}
 	});
 
 	it("never gives it to a device session or an API key, whatever they store", () => {

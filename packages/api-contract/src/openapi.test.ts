@@ -38,4 +38,24 @@ describe("openapi.json", () => {
 
 		expect(doc.paths["/server-info"]?.get?.security).toEqual([]);
 	});
+
+	it("declares 410 sync_reset_required on the three sync operations only", async () => {
+		const doc = (await generateOpenApiDocument()) as {
+			paths: Record<string, Record<string, { responses: object }>>;
+		};
+		for (const path of [
+			"/sync/expenses",
+			"/sync/categories",
+			"/sync/recurring-templates",
+		]) {
+			const responses = doc.paths[path]?.get?.responses as Record<
+				string,
+				{ content: object }
+			>;
+			expect(Object.keys(responses["410"]?.content ?? {})).toEqual([
+				"application/problem+json",
+			]);
+		}
+		expect(doc.paths["/events"]?.get?.responses).not.toHaveProperty("410");
+	});
 });

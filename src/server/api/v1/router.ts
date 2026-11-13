@@ -30,6 +30,7 @@ import { recurringRouter } from "./recurring";
 import { searchRouter } from "./search";
 import { settingsRouter } from "./settings";
 import { sharedExpensesRouter } from "./shared-expenses";
+import { syncRouter } from "./sync";
 import { tokensRouter } from "./tokens";
 import { transfersRouter } from "./transfers";
 import { webhooksRouter } from "./webhooks";
@@ -70,6 +71,7 @@ export const v1Router = v1.router({
 	search: searchRouter,
 	settings: settingsRouter,
 	"shared-expenses": sharedExpensesRouter,
+	sync: syncRouter,
 	tokens: tokensRouter,
 	transfers: transfersRouter,
 	webhooks: webhooksRouter,
