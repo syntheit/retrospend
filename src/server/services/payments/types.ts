@@ -28,9 +28,15 @@ export interface PairLine {
  * How a debt currency converts into the payment currency: `perUnit` units
  * of the payment currency per 1 unit of the debt currency, of `rateType`
  * (blue, official, mep, card, custom).
+ *
+ * An amount converts through `fraction` (units x num / den, one division),
+ * never through `perUnit`: that quotient is rounded to 40 digits and can land
+ * just off an exact tie. `perUnit` is for the stored 12 dp rate and the rate
+ * shown. Build one with `quote` or `quoteOf` (allocate.ts).
  */
 export interface Quote {
 	readonly perUnit: Decimal;
+	readonly fraction: readonly [Decimal, Decimal];
 	readonly rateType: string;
 }
 

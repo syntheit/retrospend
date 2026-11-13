@@ -1,14 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { dec } from "~/server/services/envelope/units";
-import type { Quote } from "~/server/services/payments/types";
+import { quote as quoteAt } from "~/server/services/payments/allocate";
 import { shareAtHome } from "./page-figures";
 
 const ars = (minor: number) => ({ minor, currency: "ARS" });
 const brl = (minor: number) => ({ minor, currency: "BRL" });
-const quote = (perUnit: string): Quote => ({
-	perUnit: dec(perUnit),
-	rateType: "blue",
-});
+const quote = (perUnit: string) => quoteAt(perUnit, "blue");
 
 describe("shareAtHome", () => {
 	it("adds shares in other currencies at the reference rates", () => {

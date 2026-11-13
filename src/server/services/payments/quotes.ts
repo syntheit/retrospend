@@ -11,11 +11,12 @@
  */
 
 import { USD } from "@retrospend/domain/money";
-import { crossRateDec } from "@retrospend/domain/money-dec";
+import { crossFractionDec } from "@retrospend/domain/money-dec";
 import type { Decimal } from "@retrospend/domain/precise-decimal";
 import { findExchangeRate } from "~/server/exchange-rates";
 import { dec } from "~/server/services/envelope/units";
 import type { Prisma } from "~prisma";
+import { quote, quoteOf } from "./allocate";
 import type { Quote } from "./types";
 
 type RateDb = Pick<Prisma.TransactionClient, "exchangeRate">;
@@ -67,21 +68,23 @@ export async function loadQuotes(
 	const into = await legOf(db, request.into, request.date, request.rateType);
 	for (const currency of wanted) {
 		if (request.custom && request.custom.currency === currency) {
-			quotes.set(currency, {
-				perUnit: dec(request.custom.rate),
-				rateType: "custom",
-			});
+			quotes.set(currency, quote(request.custom.rate, "custom"));
 			continue;
 		}
 		const leg = await legOf(db, currency, request.date, request.rateType);
 		if (!leg || !into) continue;
-		// One division of two products (crossRateDec), so an exact rate stays
-		// exact: USD into a home at 7 is 7, not 6.99...98, and a tie stays a tie
-		// when an amount is multiplied by it.
-		quotes.set(currency, {
-			perUnit: crossRateDec(currency, leg.rate, request.into, into.rate),
-			rateType: labelOf(into, leg),
-		});
+		// The quote keeps the cross rate as an undivided fraction: an amount
+		// converts as amount x num / den, one division, so a tie stays a tie
+		// (3 NOK at 9 per USD into JPY at 16.5 is 3 x 16.5 / 9 = 5.5, not
+		// 3 x 1.8333...3 = 5.4999...9). perUnit, the quotient, is only the rate
+		// that is stored or shown.
+		quotes.set(
+			currency,
+			quoteOf(
+				crossFractionDec(currency, leg.rate, request.into, into.rate),
+				labelOf(into, leg),
+			),
+		);
 	}
 	return quotes;
 }

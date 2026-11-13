@@ -121,14 +121,36 @@ export function convertDec(
 	return dec(amount).mul(fromNum).mul(toDen).div(fromDen.mul(toNum));
 }
 
-/** Units of `to` per one unit of `from` (unrounded). */
+/**
+ * Units of `to` per one unit of `from` as a [numerator, denominator] pair,
+ * undivided, so an amount converts with one division (amount x num / den) and
+ * an exact tie stays a tie. NOK at 9 per USD into JPY at 16.5 is 16.5 / 9:
+ * 3 NOK x 16.5 / 9 is 5.5, where 3 x (the 40-digit quotient 1.8333...3) is
+ * 5.4999...9.
+ */
+export function crossFractionDec(
+	from: string,
+	fromRate: RateInput,
+	to: string,
+	toRate: RateInput,
+): [Decimal, Decimal] {
+	const [fromNum, fromDen] = usdFractionDec(from, fromRate);
+	const [toNum, toDen] = usdFractionDec(to, toRate);
+	return [fromNum.mul(toDen), fromDen.mul(toNum)];
+}
+
+/**
+ * Units of `to` per one unit of `from` (unrounded). For a rate that is stored
+ * or shown; an amount converts with crossFractionDec or convertDec.
+ */
 export function crossRateDec(
 	from: string,
 	fromRate: RateInput,
 	to: string,
 	toRate: RateInput,
 ): Decimal {
-	return convertDec(1, from, fromRate, to, toRate);
+	const [num, den] = crossFractionDec(from, fromRate, to, toRate);
+	return from === to ? new Dec(1) : num.div(den);
 }
 
 /** `value` at `places` decimals, half to even; -0 becomes 0. */
