@@ -20,7 +20,7 @@ import { planPush } from "./recipients";
 
 export const FAN_OUT_BATCH = 200;
 export const STALE_MS = 60 * 60 * 1000;
-const TRANSACTION_TIMEOUT_MS = 30_000;
+export const PUSH_FAN_OUT_TIMEOUT_MS = 30_000;
 
 type OutboxRow = {
 	id: string;
@@ -86,6 +86,6 @@ export async function fanOutPushEvents(
 			});
 			return events.length;
 		},
-		{ timeout: TRANSACTION_TIMEOUT_MS },
+		{ timeout: PUSH_FAN_OUT_TIMEOUT_MS },
 	);
 }

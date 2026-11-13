@@ -7,11 +7,11 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { afterEach, describe, expect, it } from "vitest";
+import { createAppPool } from "~/server/db-core";
 import {
 	appPoolConfig,
 	IDLE_IN_TRANSACTION_TIMEOUT_MS,
 } from "~/server/db-pool-config";
-import { adminDb } from "~/test/pg-harness";
 import { PrismaClient } from "~prisma";
 
 const SHORT_MS = 1000;
@@ -34,12 +34,29 @@ function shortPool(): Pool {
 }
 
 describe("idle in transaction timeout", () => {
-	it("is set on the app's pool", async () => {
-		const rows = await adminDb.$queryRaw<
-			{ value: string }[]
-		>`SELECT current_setting('idle_in_transaction_session_timeout') AS value`;
+	// adminDb is the pool pg-env.ts built and db-core.ts reuses, so these build
+	// db-core's own pool on the worker's URL instead.
+	it("is set on the pool db-core builds", async () => {
+		const pool = createAppPool(process.env.DATABASE_URL as string);
+		opened.push(() => pool.end());
+		const shown = await pool.query("SHOW idle_in_transaction_session_timeout");
 		expect(IDLE_IN_TRANSACTION_TIMEOUT_MS).toBe(120_000);
-		expect(rows[0]?.value).toBe("2min");
+		expect(shown.rows[0].idle_in_transaction_session_timeout).toBe("2min");
+	});
+
+	it("is set beside options the URL already carries", async () => {
+		const url = process.env.DATABASE_URL as string;
+		const joined = url.includes("?") ? "&" : "?";
+		const pool = createAppPool(
+			`${url}${joined}options=-c%20search_path%3Dpublic,pg_catalog`,
+		);
+		opened.push(() => pool.end());
+		const timeout = await pool.query(
+			"SHOW idle_in_transaction_session_timeout",
+		);
+		const path = await pool.query("SHOW search_path");
+		expect(timeout.rows[0].idle_in_transaction_session_timeout).toBe("2min");
+		expect(path.rows[0].search_path).toBe("public,pg_catalog");
 	});
 
 	it("ends a connection idle inside a transaction and the pool replaces it", async () => {

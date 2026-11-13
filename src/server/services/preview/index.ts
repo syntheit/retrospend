@@ -50,11 +50,13 @@ import { createPreviewRunner, type PreviewRunner } from "./runner";
 import type { TransactionPurpose, TransactionRunner } from "./types";
 
 /** A preview reads every figure twice, so it gets more than Prisma's 5s default. */
+export const PREVIEW_TIMEOUT_MS = 15_000;
+
 const TRANSACTION_OPTIONS: Record<TransactionPurpose, UserTransactionOptions> =
 	{
 		preview: {
 			isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
-			timeout: 15_000,
+			timeout: PREVIEW_TIMEOUT_MS,
 		},
 		apply: { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
 	};

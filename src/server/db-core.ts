@@ -7,15 +7,18 @@ import { appPoolConfig } from "~/server/db-pool-config";
 import { insideTransaction, registerClient } from "~/server/db-tx";
 import { type Prisma, PrismaClient } from "~prisma";
 
-const pool = new Pool(appPoolConfig(env.DATABASE_URL));
+/** The app's pool; a test builds one on its own URL to check what it sets. */
+export function createAppPool(connectionString: string): Pool {
+	const created = new Pool(appPoolConfig(connectionString));
+	// A connection Postgres ends (the idle-in-transaction timeout) must not
+	// crash the process: the pool drops it and the next query opens a new one.
+	created.on("error", (error) => {
+		console.error("Database pool connection ended", error.message);
+	});
+	return created;
+}
 
-// A connection Postgres ends (the idle-in-transaction timeout) must not crash
-// the process: the pool drops it and the next query opens a new one.
-pool.on("error", (error) => {
-	console.error("Database pool connection ended", error.message);
-});
-
-const adapter = new PrismaPg(pool);
+const adapter = new PrismaPg(createAppPool(env.DATABASE_URL));
 
 const createPrismaClient = () =>
 	new PrismaClient({

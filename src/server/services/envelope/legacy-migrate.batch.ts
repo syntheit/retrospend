@@ -45,7 +45,7 @@ class DryRun extends Error {
 	}
 }
 
-const TIMEOUT_MS = 60_000;
+export const LEGACY_MIGRATE_TIMEOUT_MS = 60_000;
 
 async function migrateOne(
 	client: Client,
@@ -65,7 +65,7 @@ async function migrateOne(
 				if (!o.apply) throw new DryRun(report);
 				return report;
 			},
-			{ timeout: TIMEOUT_MS },
+			{ timeout: LEGACY_MIGRATE_TIMEOUT_MS },
 		);
 	} catch (error) {
 		if (error instanceof DryRun) return error.report;
