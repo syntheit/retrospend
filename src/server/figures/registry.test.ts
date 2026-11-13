@@ -220,7 +220,8 @@ describe("figures (the product registry)", () => {
 	});
 
 	// A duplicate id in the product list already fails here: importing ./registry throws.
-	it("has a test for every registered figure", () => {
+	// It reads every test file in the repo, which can pass 5 s on a loaded host.
+	it("has a test for every registered figure", { timeout: 30_000 }, () => {
 		const tested = new Set(allTestSources().flatMap(testedFigureIds));
 		const untested = figures.ids.filter((id) => !tested.has(id));
 		expect(untested).toEqual([]);
