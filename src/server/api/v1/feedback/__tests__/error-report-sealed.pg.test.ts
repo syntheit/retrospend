@@ -10,7 +10,7 @@
  *   stack "at go (https://me.example/bundle.js:12:3)\nat run (app.js:7:1)"
  *                                                -> "at bundle.js:12:3\nat app.js:7:1"
  *   message "bo<BEL>om"                          -> stored "boom" (control stripped)
- *   message "<U+0001>boom"                       -> 400, nothing stored
+ *   batch ["<U+0001>boom", "Sigue"]               -> 201, stored 1 (only "Sigue")
  *
  * Retention, with a fixed `now` and the 30 day limit: a report made 29 days
  * before is kept, one made 31 days before is deleted, sealed or not, and the
@@ -184,7 +184,7 @@ describe("an error report sent with sealing on", () => {
 		expect(row?.stack).toBeNull();
 	});
 
-	it("strips a control character and refuses text that starts with U+0001", async () => {
+	it("strips a control character and skips only a report whose text starts with U+0001", async () => {
 		const bob = (await person()).user.id;
 		await send(bob, [report({ message: "bo\u0007om", stack: undefined })]);
 		const [row] = await rowsOf(bob);
@@ -197,11 +197,30 @@ describe("an error report sent with sealing on", () => {
 			}),
 		).toBe("boom");
 
+		// One bad report in a batch does not stop the good one: the app resends
+		// its newest reports, so a refused batch would silence the device.
 		const eve = (await person()).user.id;
-		expect((await send(eve, [report({ message: "\u0001boom" })])).status).toBe(
-			400,
-		);
-		expect(await rowsOf(eve)).toEqual([]);
+		const mixed = await send(eve, [
+			report({ message: "\u0001boom" }),
+			report({ message: "Sigue" }),
+		]);
+		expect(mixed.status).toBe(201);
+		expect(await mixed.json()).toMatchObject({ stored: 1 });
+		const kept = await rowsOf(eve);
+		expect(kept).toHaveLength(1);
+		expect(
+			openField(ring, kept[0]?.message ?? "", {
+				table: "error_report",
+				column: "message",
+				rowId: kept[0]?.id ?? "",
+			}),
+		).toBe("Sigue");
+
+		const only = (await person()).user.id;
+		const none = await send(only, [report({ message: "\u0001boom" })]);
+		expect(none.status).toBe(201);
+		expect(await none.json()).toMatchObject({ stored: 0 });
+		expect(await rowsOf(only)).toEqual([]);
 	});
 
 	it("fails a read after two reports' message cells are swapped", async () => {
@@ -332,5 +351,33 @@ describe("a lost instance key", () => {
 		resetReloadsForTests();
 		const [own] = await createUserScopedDb(bob).errorReport.findMany();
 		expect(own?.message).toBe(MESSAGE_STORED);
+	});
+
+	it("deletes a report with the key gone, and a retry has nothing left to fail on", async () => {
+		const bob = (await person()).user.id;
+		await send(bob, [report()]);
+		const [row] = await rowsOf(bob);
+		const keys = await adminDb.$queryRaw<
+			{ keyId: number; wrappedKey: string; masterKeyId: bigint }[]
+		>`SELECT "keyId", "wrappedKey", "masterKeyId" FROM keystore."instance_text_key"`;
+		await adminDb.$executeRaw`DELETE FROM keystore."instance_text_key"`;
+		evictInstanceKeyring();
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		try {
+			// A delete that returns the row would open its text after the
+			// delete commits, fail, and leave the report gone with an error.
+			await createUserScopedDb(bob).errorReport.delete({
+				where: { id: row?.id ?? "" },
+				select: { id: true },
+			});
+		} finally {
+			vi.restoreAllMocks();
+			for (const k of keys)
+				await adminDb.$executeRaw`
+					INSERT INTO keystore."instance_text_key" ("keyId", "wrappedKey", "masterKeyId")
+					VALUES (${k.keyId}, ${k.wrappedKey}, ${k.masterKeyId})`;
+			evictInstanceKeyring();
+		}
+		expect(await rowsOf(bob)).toEqual([]);
 	});
 });
