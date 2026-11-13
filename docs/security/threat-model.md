@@ -2,7 +2,7 @@
 
 **DRAFT. Not a security claim.** This document describes a design that is only partly built. No audit has been done. An independent audit comes before any public statement that Retrospend is end-to-end encrypted (spike phase 6, W2), and until that report exists nothing here may be used in marketing.
 
-Written 2026-11-08 against base commit `d081bfc1` (the crypto foundation F1 to F3 is merged there) plus D1 (server field crypto), merged into the segment at `038d4709`, which this branch does not contain; D1 files are read from `e2ee/d1-field-crypto`. Every technical statement cites the file it comes from. Where the design in `docs/roadmap/e2ee-spike.md` (the spike) and the code disagree, section 12 says so, and the code is what this document describes. Section 14 covers database access, which applies to every account.
+Written 2026-11-08 against base commit `d081bfc1` (the crypto foundation F1 to F3 is merged there) plus D1 (server field crypto), merged into the segment at `038d4709`, which this branch does not contain; D1 files are read from `e2ee/d1-field-crypto`. Every technical statement cites the file it comes from. Where the design in `docs/roadmap/e2ee-spike.md` (the spike) and the code disagree, section 12 says so, and the code is what this document describes. Section 14 covers database access, which applies to every account. Sections 7 and 7.1 were updated on 2026-11-13 for the built D11 (encryption at rest behind `DATA_KEYS_WRITE`); the rest of the text is as of the base commit.
 
 ## 1. What exists today
 
@@ -12,17 +12,17 @@ Written 2026-11-08 against base commit `d081bfc1` (the crypto foundation F1 to F
 | Sealed record format | Built, merged | `packages/crypto/src/format.ts` |
 | Key hierarchy, wraps, recovery key text, fingerprint phrase | Built, merged | `packages/crypto/src/keys.ts` |
 | Known-answer vectors from other implementations | Built, merged | `packages/crypto/vectors/*.json`, `src/self-test.ts` |
-| Server field crypto (AES-256-GCM) and master key loading | Built, merged into the segment. No callers except the start-up key check in `src/instrumentation.ts` | `src/server/crypto/field-crypto.ts`, `master-key.ts` |
+| Server-side encryption at rest of user text (D11): field map, per-user and instance keys, master key, canary, epoch, rollback floor, start gates | Built, behind `DATA_KEYS_WRITE`, off by default. Sealing is not allowed in production builds until the release that carries `SEALING_RELEASED = true` | `src/server/crypto/` (`field-crypto.ts`, `fields.ts`, `release.ts`), `src/server/services/keys/`, `docs/encryption-at-rest.md` |
 | Backups encrypted with age (optional, operator key) | Built, merged | `sidecar/tasks/backup.go`, `docs/self-hosting.md` |
 | Admin access log, shown to the person | Built, merged | `prisma/schema.prisma` (`AdminAccessLog`), `src/features/settings/security/admin-access-block.tsx` |
 | Nonce CSP | Built, merged. Trusted Types is report-only | `src/lib/csp.ts`, `src/proxy.ts` |
 | Push text built from kind, ids and amount only | Built, merged | `src/server/services/push/message.ts` |
 
-Nothing outside `packages/crypto` imports `@retrospend/crypto`. No user can turn Advanced protection on, no account has a key, no sealed record store exists, and `DATA_MASTER_KEY` encrypts nothing yet (`docs/self-hosting.md` says so). Everything below about flows is design. Everything below about formats and keys is code.
+Nothing outside `packages/crypto` imports `@retrospend/crypto`. No user can turn Advanced protection on, no account has an Advanced key, and no sealed record store exists. The server-side encryption at rest in section 7 is built and is a separate thing: the server holds those keys. It is off until the operator sets `DATA_KEYS_WRITE`. Everything below about flows is design. Everything below about formats and keys is code.
 
 ## 2. Two modes
 
-**Default accounts.** The server can read the data and compute every figure. Email reset works. Goal: a stolen database or backup does not reveal text, and staff cannot browse. Plan: per-user data keys wrapped by a server master key (lane D, spike section 3 and 4.6). Amounts stay plain so SQL and the money engine keep working.
+**Default accounts.** The server can read the data and compute every figure. Email reset works. Goal: a stolen database or backup does not reveal text. Built (lane D, section 7): per-user data keys and one instance key, wrapped by a server master key, behind `DATA_KEYS_WRITE`. Amounts stay plain so SQL and the money engine keep working. Admin pages show identity, not titles; that is authorization (section 4.1), not encryption.
 
 **Advanced protection.** Opt-in, per account. Personal data is sealed on the device with keys the server never holds. The server cannot compute personal figures, so the device does (lane P). Turning it on requires at least one recovery method. If a person loses the password and every recovery method, the data is gone, by design.
 
@@ -51,7 +51,7 @@ It will not protect:
 Someone who runs or administers the server and wants to look at one person's data, without attacking anything.
 
 - Default today: the admin pages show identity, not titles (spike section 3, "Admin"). Admin actions on an account are written to `admin_access_log` with a stable action code, and the person reads their own rows under row-level security (`prisma/migrations/20261103100000_admin_access_log/migration.sql`). The log covers actions through the app. It does not record someone reading the database or the host directly.
-- Default after lane D: titles and notes are ciphertext in the database. An operator who also has the master key (environment or file on the app host, `master-key.ts`) can decrypt all of them. Lane D therefore protects against the database and backups leaving the host, and against browsing, not against the person who runs the app process.
+- Default with `DATA_KEYS_WRITE` on: text written since is ciphertext in the database. An operator who also has the master key (environment or file on the app host, `master-key.ts`) can decrypt all of it, and the running process holds plaintext while it serves. Encryption at rest therefore protects against the database and backups leaving the host without the master key, not against the person who runs the app process. Section 7.1 lists what it does not protect.
 - Advanced: the operator cannot read personal records. Shared data and metadata stay visible.
 - Self-hosting: the operator and the user are the same person, so the hosted operator is out of the trust chain.
 
@@ -59,7 +59,7 @@ Someone who runs or administers the server and wants to look at one person's dat
 
 An attacker who controls the app, the database and the master key, or a malicious operator who modifies the app.
 
-- Default: full read of everything the app can read. Out of scope for lane D.
+- Default: full read of everything the app can read. Out of scope for encryption at rest.
 - Advanced, passive (reads storage and traffic): sees ciphertext, wrapped keys and the metadata in section 8. Cannot open records without the password or a recovery secret.
 - Advanced, active (changes responses): can
   - return weak but in-range Argon2id parameters and a chosen salt (section 5.2);
@@ -74,7 +74,7 @@ An attacker who controls the app, the database and the master key, or a maliciou
 A copy of the database dump, or of the sealed store, in someone else's hands.
 
 - Default today: a plain `pg_dump` unless the operator sets `BACKUP_AGE_RECIPIENT`, in which case it is encrypted to a public key whose private key never lives on the server (`docs/self-hosting.md`). Retention is `BACKUP_RETENTION_DAYS`, default 30.
-- Default after lane D: text fields are ciphertext, amounts and dates are not. Data keys live in a separate schema excluded from the main dump (D2, built), with their own backups on the same retention. Crypto-shredding on account deletion (D3, built) helps only for rows that were already backfilled, and a deleted account's key stays in older key backups until they age out (section 7, `docs/self-hosting.md` "Data key backups").
+- Default with `DATA_KEYS_WRITE` on: text written since is ciphertext, amounts and dates are not. Data keys live in a separate schema excluded from the main dump (D2, built), with their own backups on the same retention. Crypto-shredding on account deletion (D3, built) helps only for rows that are sealed, and a deleted account's key stays in older key backups, including the pre-flag backup pair, until they age out (section 7.1, `docs/self-hosting.md` "Data key backups").
 - Advanced: sealed rows are ciphertext. Plain columns (ids, timestamps, sizes, shared data) are in the dump. Backups taken before the commit of turning protection on still hold personal amounts until retention ends.
 
 ### 4.4 Stolen phone
@@ -216,18 +216,45 @@ AAD           "rs.v1|<bytes 0..17 as 36 hex characters>|userId|collectionId|enti
 
 ## 7. Server field crypto for default users (D1)
 
-Merged into the segment at `038d4709`. A helper exists. Nothing calls it except the start-up key check in `src/instrumentation.ts`. No data keys, no Prisma extension, no backfill, no flag.
+The helper merged at `038d4709`. Since then the rest of D11 is built: data keys and the instance key, a Prisma extension that opens sealed cells on read and seals on write, the master key canary, the epoch and the rollback floor, and the `DATA_KEYS_WRITE` flag, off by default. There is no backfill yet (D12). Operator steps are in `docs/encryption-at-rest.md`; section 7.1 says what this does and does not protect.
 
-- **Cipher:** AES-256-GCM through `node:crypto`, 12-byte random nonce from the operating system for every call, never derived and never supplied by a caller. NIST SP 800-38D limits random 96-bit nonces to about 2^32 encryptions per key, so the design needs per-user data keys (D2) before D11. A single key over every field of the database would approach that bound far sooner.
+- **Cipher:** AES-256-GCM through `node:crypto`, 12-byte random nonce from the operating system for every call, never derived and never supplied by a caller. NIST SP 800-38D limits random 96-bit nonces to about 2^32 encryptions per key, so the design uses per-user data keys (D2) and one instance key. A single key over every field of the database would approach that bound far sooner.
 - **Wire form:** `"\u0001k1:"` followed by base64 of `key id (u32 big endian) | nonce (12) | ciphertext | tag (16)`. The colon ends the version number so a later `k10:` cannot be read as `k1:`. A value that starts with U+0001 is ciphertext. An unknown version is an error, never plaintext.
 - **AAD:** `"rs.k1"`, the key id (u32), then table, column and row id, each as a 4-byte length and UTF-8. Moving a ciphertext to another table, column or row, or relabeling its key id, fails the tag check. Every copy of an encrypted value between rows (recurring template to expense, import queue to expense, duplicate) must therefore be decrypted and encrypted again. Tables with composite keys need a defined row id.
 - **Key ids and the keyring:** a keyring holds keys by id. The first entry is current and seals, the others only open. Keys are held as `KeyObject`s in private state, so logging a keyring shows no bytes.
 - **Master key:** `DATA_MASTER_KEY` or the file `DATA_MASTER_KEY_FILE` names (a Docker or Kubernetes secret). Entries are `<id>:<64 hex>` separated by commas or whitespace, or a single bare key that is id 1. A key that is set but malformed, unreadable, all zero, repeated, or set both ways stops the server at start (`assertMasterKeyConfig`, called from `src/instrumentation.ts`). With neither set the key is absent and nothing is encrypted. Rotation: put the new key first with the next id, keep the old one, run the rewrap job (D12), then drop the old entry. The master key is meant to wrap per-user data keys (D2), and it is held outside the database.
 - **Mixed mode:** `readField` returns plaintext as it is and decrypts ciphertext, so the database can hold both forms until the D12 backfill finishes. During that window anyone with database write access can substitute plaintext for a row and the reader accepts it. A plaintext value that starts with U+0001 would be read as ciphertext and fail. `userText()` now rejects control characters other than tab, line feed and carriage return, and lone surrogates (`packages/api-contract/src/common/user-text.ts`), and `Category.name` goes through it. Many contract fields are declared through `userText` (expense title in the contract, account and envelope names, income rule names and match text, fix requests). What still accepts any string are the tRPC routers (for example `src/server/api/routers/expense.ts:23`, `import-queue.ts:20`) and the other write paths (shared transaction description, people, recurring, settlement, guest, imports, the sidecar).
-- **Crypto-shredding (D3):** deleting an account destroys its data keys in the deletion transaction, twice over: a trigger on `"user"` removes them when the row goes, and `anonymizeAndDeleteUser` (`src/server/services/user-deletion.service.ts`) calls `destroyDataKeysIfStored` right after the user delete, in the same transaction. Every delete of a user row goes through that function: the self-service delete (web and `/api/v1/me/deletion`) and the admin delete (web and `/api/v1/admin`). A failed deletion rolls both back. The explicit call runs after the user delete so that a concurrent first-key insert cannot leave a key behind: it either committed first and the call sees it, or it waits on the user row and then fails. A missing keystore (a main dump restored with no keystore dump) destroys nothing and does not stop the deletion; the server logs a warning without a user id. What it gives: text that was sealed with the key can never be read again. What it does not give: it destroys nothing for rows that are still plaintext, and today nothing is sealed (no caller of `sealField` exists before D11), so the guarantee has no effect yet and starts after D12 finishes the backfill. Older keystore backups keep the key until `BACKUP_RETENTION_DAYS` removes them, and a failed dump prunes nothing. Main dumps exclude the keystore, so they keep ciphertext but no keys. Anyone holding an older keystore backup, `DATA_MASTER_KEY` and a matching main backup can still read the ciphertext. Say it that way to users: never "your data is cryptographically erased" before D12 and the backup window have both passed.
+- **Crypto-shredding (D3):** deleting an account destroys its data keys in the deletion transaction, twice over: a trigger on `"user"` removes them when the row goes, and `anonymizeAndDeleteUser` (`src/server/services/user-deletion.service.ts`) calls `destroyDataKeysIfStored` right after the user delete, in the same transaction. Every delete of a user row goes through that function: the self-service delete (web and `/api/v1/me/deletion`) and the admin delete (web and `/api/v1/admin`). A failed deletion rolls both back. The explicit call runs after the user delete so that a concurrent first-key insert cannot leave a key behind: it either committed first and the call sees it, or it waits on the user row and then fails. A missing keystore (a main dump restored with no keystore dump) destroys nothing and does not stop the deletion; the server logs a warning without a user id. What it gives: text that was sealed with the key can never be read again. What it does not give: it destroys nothing for rows that are still plaintext, and rows written before the flag was turned on stay plaintext until they are edited or D12 runs the backfill. Older keystore backups keep the key until `BACKUP_RETENTION_DAYS` removes them, and a failed dump prunes nothing. Main dumps exclude the keystore, so they keep ciphertext but no keys. Anyone holding an older keystore backup, `DATA_MASTER_KEY` and a matching main backup can still read the ciphertext. Say it that way to users: never "your data is cryptographically erased" before D12 and the backup window have both passed.
 - **Errors** carry a stable code and a fixed message, never a key, a key id, a plaintext or a ciphertext.
 
 What this does not give: protection against whoever holds the running server and its master key, any protection for amounts, and any tamper detection on rows that are still plaintext.
+
+### 7.1 What D11 protects, and what it does not
+
+Wording: encrypted at rest; the server holds the keys. Not end-to-end. The server opens every cell it needs, so the person or process that holds the running server and the master key reads everything. Operator steps and refusals are in `docs/encryption-at-rest.md`. This is a statement of what the code does, not an audit.
+
+Protects, for text written with `DATA_KEYS_WRITE` on:
+
+- A main database dump without the master key.
+- A keystore dump alone: its keys are wrapped by the master key.
+- Swapped or copied ciphertext. The AAD binds table, column, row id and key id (`field-crypto.ts`), so moving a value to another cell fails the tag check.
+- A deleted person's user-key text, once their key is destroyed and every keystore backup that holds it has aged out (D3). Backups age out after `BACKUP_RETENTION_DAYS` (default 30). The pre-flag backup pair is deleted 30 days after the flag is turned on, so that window is real only after that. Instance-key text (below) is not shredded this way.
+
+Does not protect:
+
+1. **The operator, or anyone who holds the running process or the master key.** The key sits in the environment, in `docker inspect` output, or in a mounted file. A stolen host disk opens everything unless the master key is kept off that disk: a `.env` file or a `DATA_MASTER_KEY_FILE` beside the data does not count. A main dump, a keystore dump and the master key together open everything.
+2. **Amounts, dates, structure, ids, who shares with whom, counts and timing.** Section 8 stays true.
+3. **Instance-class text survives a person's shred.** Shared expenses, project names, display names, error reports, webhook URLs, guest email, receipt links and audit text use the instance key. User-class text (own expenses, categories, ghost contacts, import text) does not survive it.
+4. **`emailHash`.** One instance key hashes every ghost and guest address. A dump without any key shows which ghosts, whoever added them, share an address, and which guest rows share one. The two tables use different labels, so the tables are not linked to each other. With the instance key, a candidate address can be tested. The hash is not removed with a deleted account. The per-user category name index (D9) differs: it is keyed per person. D12 must keep instance key id 1 or re-hash (`blind-index.ts` signs with the lowest key id).
+5. **Old plaintext rows until D12.** Mixed mode accepts substituted plaintext, and a shred destroys nothing for unsealed rows (section 11, item 5). Old notices, audit entries, JSON bodies, error reports, webhook URLs and imports are in the same state. User keys already exist before the flag is turned on and do not rotate before D12.
+6. **Keystore loss and master key loss.** Losing the keystore is crypto-shred of what it held: `keystore_lost` is refused and never re-made. Losing the master key is the same for everything.
+7. **More than one app process.** Another process can keep a user key for up to 5 minutes after a shred and can re-cache it in the commit window, can cache "epoch not set" for 30 seconds and "no ring" for 30 seconds, so a hash may be missed until the next start fills it. The floor and key checks run only at start. Self-hosted installs run one process, and there is no timed second fill.
+8. **The rollback floor.** An older build cannot check a marker it does not know, so after the epoch is set an image older than the first floor build must never be deployed.
+9. **Search, suggestions and duplicate checks** read text inside the app, so the process holds plaintext while serving.
+10. **Case folding of plaintext addresses.** Before the epoch, ghost email lookup relies on Postgres folding A to Z, and a `tr_TR` collation misses a dotted capital I. The hash path is exact. The hash assumes ASCII addresses; a path that accepts non-ASCII addresses must change the hash label and refill.
+11. **A person whose key is unavailable, while the flag is on.** Their sealed cells fail with `encrypted_text_unavailable` and every API v1 write by them fails, because the idempotency record is sealed with their key. With the flag off that write failure does not apply.
+
+Admin pages that show identity but not titles are an authorization rule (section 4.1), not encryption, and are not listed above.
 
 ## 8. What the server still sees
 
@@ -241,7 +268,7 @@ What this does not give: protection against whoever holds the running server and
 - Wrapped keys, public keys, key ids, the number of devices and contacts, and Argon2id parameters and the salt.
 - That a recovery or device-approval request happened, and when.
 
-**Default accounts:** everything above, plus all personal amounts, dates and structure. Text fields become ciphertext after lane D, which the server decrypts for any caller with a valid token (the API, webhooks and integrations work as today).
+**Default accounts:** everything above, plus all personal amounts, dates and structure. Text fields written with `DATA_KEYS_WRITE` on are ciphertext at rest, which the server decrypts for any caller with a valid token (the API, webhooks and integrations work as today).
 
 **Notifications, push, email and webhooks:**
 
@@ -286,7 +313,7 @@ From the F3 review:
 
 From the D1 review:
 
-3. **Move every write path of an encrypted field to `userText()`** and run a pre-backfill scan that fails if any existing row in those columns starts with U+0001, before D11 backfills or reads through `readField`. Otherwise a stored plaintext starting with U+0001 breaks reads for every member who can see the row. See section 7.
+3. **Move every write path of an encrypted field to `userText()`** and run a pre-backfill scan that fails if any existing row in those columns starts with U+0001, before D11 backfills or reads through `readField`. Otherwise a stored plaintext starting with U+0001 breaks reads for every member who can see the row. See section 7. The scan has a `--fail` mode (`scripts/scan-control-chars.ts`) and is step 3 of the flag-on runbook in `docs/encryption-at-rest.md`, a one-time gate.
 4. **AAD binds table, column and row id, not the user.** Update spike section 4.5 and D11. Every copy of an encrypted value between rows must decrypt and encrypt again, and tables with composite keys need a defined row id. Safe with per-user data keys (D2).
 5. **Mixed mode accepts substituted plaintext until D12 finishes.** Anyone with database write access can do it until then. D3 crypto-shredding destroys nothing for rows not yet backfilled: tell users so until D12 finishes (section 7 says how).
 
@@ -312,10 +339,11 @@ The code is what this document describes.
 | 4.3 floor 46 MiB and 1 pass, default 64 MiB and 3 passes | Same, plus a ceiling of 256 MiB and 10 passes that the spike does not mention |
 | 4.2 device approval uses `crypto_kx` | The native libsodium build has no `crypto_kx` (`primitives.ts`), so the handshake must use boxes or sealed boxes |
 | 4.8 strict nonce CSP and Trusted Types on every page | Nonce CSP is enforced. Trusted Types is report-only (`csp.ts`) |
-| 3 notifications are "generic text from ids, types and amounts" | Push is. In-app and email notices include the other person's display name (`notificationText.json`) |
+| 3 notifications are "generic text from ids, types and amounts" | Push is. In-app and email notices include the other person's display name (`notificationText.json`). Since D11 PR 8.4 the name is put in when the notice is read, and new notices store no names or titles |
 | 2.4 "the device keeps a high-water mark per record" | No code. The format cannot do it alone (section 6) |
 | 4.4 `MK ──kdf "auth"──> auth key` is sent to better-auth | F8 is not built. `src/server/better-auth/config.ts` has no auth-key wiring |
 | 4.7 trusted contact "must have Advanced protection on" | No code enforces it, and no flow exists |
+| 4.6 and the design (section 8) put the master key check value and the encryption epoch in the `keystore` schema | They are columns of `app_settings` in the main schema (`masterKeyCanary`, `fieldEncryptionSince`, `instanceKeySince`, `sealingFloor`), so a restore of the main dump without the keystore still checks the key and still knows sealing was on. The keys themselves are in `keystore` |
 
 Everything else in spike section 4 that is built (XChaCha20-Poly1305, Argon2id, sealed boxes, 64-byte padding, role-bound wraps, 24-byte nonces, AES-256-GCM with 12-byte nonces, master key from file or environment with key ids) matches.
 
@@ -323,7 +351,7 @@ Everything else in spike section 4 that is built (XChaCha20-Poly1305, Argon2id, 
 
 An independent firm reviews the design and the code before any public claim (spike phase 6, W2). The audit package should include this document, `packages/crypto`, the vectors and their generators (`packages/crypto/scripts`), and `src/server/crypto`. The known-answer vectors were produced by implementations other than libsodium (`vectors/primitives.vectors.json`, `keys.vectors.json`), which is what lets them catch a wrong build. Questions to hand the auditor: section 5.2 (hostile parameters), 5.6 (account key substitution), 5.8 (the commitment step for device approval), 6 (rollback and omission), 7 (mixed mode), 9 (web delivery).
 
-Until that report exists, wording stays at what is true today: no user's data is end-to-end encrypted, and none of it is encrypted with a server data key yet.
+Until that report exists, wording stays at what is true today: no user's data is end-to-end encrypted. Text can be encrypted at rest with keys the server holds, when the operator turns `DATA_KEYS_WRITE` on. The public wording is "encrypted at rest; the server holds the keys", never "end-to-end".
 
 ## 14. Database access
 
