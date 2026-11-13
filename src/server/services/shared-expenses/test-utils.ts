@@ -117,7 +117,6 @@ export interface GuestSessionRecord {
 	id: string;
 	name: string;
 	email: string;
-	emailHash?: string | null;
 	magicLinkId: string;
 	projectId: string;
 	sessionToken: string;
@@ -1270,19 +1269,7 @@ export function createStatefulDb() {
 	const guestSessionModel = {
 		findFirst: vi.fn((args: { where?: Record<string, unknown> } = {}) => {
 			for (const gs of guestSessions.values()) {
-				// What contactLookup returns: the hash, or the address ignoring case.
-				const email = args.where?.email as
-					| { equals: string; mode?: string }
-					| undefined;
-				if (
-					email !== undefined &&
-					gs.email.toLowerCase() !== email.equals.toLowerCase()
-				)
-					continue;
-				if (
-					args.where?.emailHash !== undefined &&
-					gs.emailHash !== args.where.emailHash
-				)
+				if (args.where?.email !== undefined && gs.email.toLowerCase() !== (args.where.email as { equals: string }).equals.toLowerCase())
 					continue;
 				if (
 					args.where?.projectId !== undefined &&
@@ -1325,7 +1312,6 @@ export function createStatefulDb() {
 				id,
 				name: args.data.name ?? "Guest",
 				email: args.data.email ?? "",
-				emailHash: args.data.emailHash ?? null,
 				magicLinkId: args.data.magicLinkId ?? "",
 				projectId: args.data.projectId ?? "",
 				sessionToken: args.data.sessionToken ?? "",
