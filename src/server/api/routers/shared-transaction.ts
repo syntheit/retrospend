@@ -36,7 +36,9 @@ export const sharedTransactionRouter = createTRPCRouter({
 				splitMode: splitModeEnum,
 				projectId: z.cuid().optional(),
 				notes: userTextOrEmpty("shared_expense.notes", 5000).optional(),
-				receiptUrl: z.url().max(2048).optional(),
+				receiptUrl: userText("shared_expense.receiptUrl", 2048)
+					.pipe(z.url())
+					.optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -64,7 +66,9 @@ export const sharedTransactionRouter = createTRPCRouter({
 				splitMode: splitModeEnum.optional(),
 				projectId: z.cuid().nullish(),
 				notes: userTextOrEmpty("shared_expense.notes", 5000).nullish(),
-				receiptUrl: z.url().max(2048).nullish(),
+				receiptUrl: userText("shared_expense.receiptUrl", 2048)
+					.pipe(z.url())
+					.nullish(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
