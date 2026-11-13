@@ -17,7 +17,7 @@
  * string). The number functions here wrap it for display and form drafts, and
  * this file is the declared display edge: everywhere else a number leaves
  * Decimal only through toFloat or roundedMajor (precise-decimal.ts,
- * money-minor.ts), and enters through fromFloat or columnFromFloat.
+ * money-minor.ts), and enters through fromFloat or columnText.
  * Converting between two non-USD currencies always goes through USD. A rate
  * shown to the user ("1 EUR = 1775 ARS") is a display quote built with
  * quoteRate(); it is never stored.

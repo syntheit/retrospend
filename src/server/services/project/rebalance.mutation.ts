@@ -28,7 +28,7 @@ import type { ParticipantType, Prisma } from "~prisma";
 import { joinedAfter, membershipOf } from "./membership";
 import type { MemberRef, ProjectActor } from "./types";
 import { toFloat } from "@retrospend/domain/precise-decimal";
-import { columnFromFloat } from "@retrospend/domain/money-dec";
+import { columnText } from "@retrospend/domain/money-dec";
 
 export interface RebalanceInput extends MemberRef {
 	projectId: string;
@@ -155,7 +155,7 @@ async function resplit(
 			return {
 				transactionId: e.id,
 				...ref,
-				shareAmount: columnFromFloat(p.shareAmount, 8),
+				shareAmount: columnText(p.shareAmount, 8),
 				verificationStatus: status,
 				verifiedAt,
 				hasUnseenChanges: !sameParticipant(ref, actor),

@@ -204,7 +204,7 @@ export class SettlementService {
 				code: "BAD_REQUEST",
 				message:
 					value.reason === "overpay"
-						? `This settlement of ${input.currency} ${formatAmount(input.amount, input.currency)} exceeds the outstanding balance of ${input.currency} ${formatAmount(asNumber(owed.minor, owed.currency), input.currency)} with this person. Enter an amount up to the outstanding balance.`
+						? `This settlement of ${input.currency} ${formatAmount(input.amount, input.currency)} exceeds the outstanding balance of ${input.currency} ${fromMinor(owed.minor, owed.currency).toFixed(currencyDecimals(owed.currency))} with this person. Enter an amount up to the outstanding balance.`
 						: `There is no outstanding ${input.currency} balance to settle with this person${typeof input.projectId === "string" ? " in this project" : ""}.`,
 			});
 		}
@@ -598,12 +598,11 @@ export class SettlementService {
 							)
 							.reduce((sum, l) => sum + Math.abs(l.balance), 0)
 					: 0;
-			const amount = asNumber(Math.abs(balance), currency);
 			return {
 				currency,
-				balance: amount,
+				balance: asNumber(Math.abs(balance), currency),
 				direction: toDirection(balance),
-				suggestedAmount: amount,
+				suggestedAmount: asNumber(Math.abs(balance), currency),
 				offsetAmount: asNumber(offset, currency),
 			};
 		});
@@ -802,10 +801,6 @@ export class SettlementService {
 			projectId: settlement.projectId ?? null,
 			isOffset: settlement.isOffset,
 		}));
-		const total = value.allocation
-			? asNumber(value.allocation.amount.minor, input.paymentCurrency)
-			: 0;
-
 		const settledCurrencyCount = new Set(
 			settlements.filter((s) => !s.isOffset).map((s) => s.currency),
 		).size;
@@ -827,7 +822,9 @@ export class SettlementService {
 			settlements,
 			paymentGroupId: value.paymentId,
 			skipped,
-			totalInPaymentCurrency: total,
+			totalInPaymentCurrency: value.allocation
+				? asNumber(value.allocation.amount.minor, input.paymentCurrency)
+				: 0,
 			paymentCurrency: input.paymentCurrency,
 			requiresPayeeConfirmation: value.status === "PROPOSED",
 		};

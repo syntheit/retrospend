@@ -4,7 +4,7 @@
  * balance typed by hand goes through writeCheckpoint, so it records its Not
  * logged difference like Update balance.
  */
-import { columnFromFloat } from "@retrospend/domain/money-dec";
+import { columnText } from "@retrospend/domain/money-dec";
 import {
 	type Decimal,
 	type DecimalInput,
@@ -62,7 +62,7 @@ async function accountRate(
 const column = (value: number | null | undefined, scale: number) =>
 	value === null || value === undefined
 		? value
-		: columnFromFloat(value, scale);
+		: columnText(value, scale);
 
 const otherFields = (input: AccountFields) => ({
 	name: input.name,
@@ -100,7 +100,7 @@ export async function createAccountIn(
 			userId,
 			...otherFields(input),
 			balance: balance.toFixed(),
-			exchangeRate: columnFromFloat(rate, 6),
+			exchangeRate: columnText(rate, 6),
 			exchangeRateType: rateType,
 		},
 	});

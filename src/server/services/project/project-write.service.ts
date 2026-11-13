@@ -8,7 +8,7 @@ import { userTransaction } from "~/server/db-tx";
 import { logAudit } from "~/server/services/shared-expenses/audit-log";
 import type { Prisma, PrismaClient } from "~prisma";
 import type { ProjectActor } from "./types";
-import { columnFromFloat } from "@retrospend/domain/money-dec";
+import { columnText } from "@retrospend/domain/money-dec";
 
 type CycleLength = "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "CUSTOM";
 
@@ -78,7 +78,7 @@ const projectData = (userId: string, input: CreateProjectInput) => ({
 	budgetAmount:
 		input.budgetAmount === undefined
 			? null
-			: columnFromFloat(input.budgetAmount, 8),
+			: columnText(input.budgetAmount, 8),
 	budgetCurrency: input.budgetCurrency ?? null,
 	primaryCurrency: input.primaryCurrency,
 	createdById: userId,
@@ -197,7 +197,7 @@ export async function updateProject(
 			data: {
 				...updateData,
 				...(typeof updateData.budgetAmount === "number"
-					? { budgetAmount: columnFromFloat(updateData.budgetAmount, 8) }
+					? { budgetAmount: columnText(updateData.budgetAmount, 8) }
 					: {}),
 			} as Prisma.ProjectUncheckedUpdateInput,
 		});

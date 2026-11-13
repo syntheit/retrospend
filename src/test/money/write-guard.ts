@@ -6,7 +6,7 @@
  *
  * pg-env.ts puts it on the client every pg test runs through. There is no
  * allowlist: a writer that receives a number converts it first
- * (`columnFromFloat`, money-dec.ts) and hands Prisma the decimal text.
+ * (`columnText`, money-dec.ts) and hands Prisma the decimal text.
  */
 import { relative } from "node:path";
 import type { RuntimeModels } from "~/server/crypto/model-graph";

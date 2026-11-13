@@ -10,7 +10,7 @@ import {
 	toMinorUnits,
 } from "./money";
 import {
-	columnFromFloat,
+	columnText,
 	computeAmountInUSDDec,
 	convertDec,
 	crossRateDec,
@@ -306,19 +306,28 @@ describe("the number edge", () => {
 	});
 });
 
-describe("columnFromFloat", () => {
-	it("trims float noise and rounds half to even at the column's scale", () => {
+describe("columnText", () => {
+	it("rounds half to even at the column's scale, from a number, text or Decimal", () => {
 		// 8 dp: ...785 is a tie after an even 8; ...795 a tie after an odd 9.
-		expect(columnFromFloat(0.123456785, 8)).toBe("0.12345678");
-		expect(columnFromFloat(0.123456795, 8)).toBe("0.1234568");
+		expect(columnText(0.123456785, 8)).toBe("0.12345678");
+		expect(columnText(0.123456795, 8)).toBe("0.1234568");
 		// 6 dp, ARS per USD: ...4565 ties down to the even 6, ...4575 up to 8.
-		expect(columnFromFloat(1450.1234565, 6)).toBe("1450.123456");
-		expect(columnFromFloat(1450.1234575, 6)).toBe("1450.123458");
+		expect(columnText(1450.1234565, 6)).toBe("1450.123456");
+		expect(columnText("1450.1234575", 6)).toBe("1450.123458");
 		// 4 dp, a percentage: 33.33335 ties up to the even 4.
-		expect(columnFromFloat(33.33335, 4)).toBe("33.3334");
-		// 0.1 + 0.2 is 0.30000000000000004: the noise goes, no tie to break.
-		expect(columnFromFloat(0.1 + 0.2, 8)).toBe("0.3");
+		expect(columnText(dec("33.33335"), 4)).toBe("33.3334");
+		// Noise below the scale rounds away: 0.1 + 0.2 is 0.30000000000000004.
+		expect(columnText(0.1 + 0.2, 8)).toBe("0.3");
 		// Magnitude rounds, so a negative ties the same way.
-		expect(columnFromFloat(-0.123456785, 8)).toBe("-0.12345678");
+		expect(columnText(-0.123456785, 8)).toBe("-0.12345678");
+	});
+
+	it("keeps a legacy 16 digit share whole, through a float and back", () => {
+		// ARS 10,333,333.33666667 is 16 digits: the nearest double prints back as
+		// the same text, where a 15 digit trim gave 10333333.3366667.
+		expect(columnText(toFloat("10333333.33666667"), 8)).toBe(
+			"10333333.33666667",
+		);
+		expect(columnText("10333333.33666667", 8)).toBe("10333333.33666667");
 	});
 });

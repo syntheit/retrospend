@@ -11,6 +11,7 @@ import {
 import type { Prisma, PrismaClient, SplitMode } from "~prisma";
 import { answerFixRequestsOnEdit } from "../corrections/fix-request.service";
 import { logAudit } from "./audit-log";
+import { type DecimalInput, dec } from "@retrospend/domain/precise-decimal";
 import { serializeDecimal, serializeTransaction } from "./serialize";
 import {
 	assertCanModifyTransaction,
@@ -23,7 +24,7 @@ import {
 	resolveSplits,
 	SplitComputationError,
 } from "@retrospend/domain/shared-split-computation";
-import { amountColumn, columnsOf, rateColumn, shareColumns } from "./transaction-columns";
+import { amountColumn, columnsOf, engineInput, rateColumn, type SplitRow, shareColumns } from "./transaction-columns";
 import { type DeleteOptions, guardDelete } from "./delete-guard";
 import { rescaleExactSplits } from "./exact-rescale";
 
@@ -290,7 +291,7 @@ export class SharedTransactionService {
 			}
 			if (
 				input.amount !== undefined &&
-				input.amount !== serializeDecimal(existing.amount)
+				!dec(existing.amount).eq(dec(input.amount))
 			) {
 				diff.amount = {
 					old: serializeDecimal(existing.amount),
@@ -462,11 +463,10 @@ export class SharedTransactionService {
 			}
 
 			// Handle split participant changes
-			let newParticipants: SplitParticipantInput[] | undefined;
+			let newParticipants: SplitRow[] | undefined;
 
 			if (input.splitWith !== undefined) {
-				const effectiveAmount =
-					input.amount ?? serializeDecimal(existing.amount);
+				const effectiveAmount = input.amount ?? existing.amount;
 
 				// Validate no duplicate participants
 				const seen = new Set<string>();
@@ -500,17 +500,15 @@ export class SharedTransactionService {
 				// from what is stored, in the new currency's minor units.
 				// resolveSplits orders its own leftover units; the EXACT rescale
 				// gives them to the last row, so sort for it.
-				const newAmount = input.amount ?? serializeDecimal(existing.amount);
+				const newAmount = input.amount ?? existing.amount;
 				const stored = [...existing.splitParticipants]
 					.sort(compareParticipants)
 					.map((sp) => ({
 						participantType: sp.participantType as "user" | "guest" | "shadow",
 						participantId: sp.participantId,
-						sharePercentage: sp.sharePercentage
-							? serializeDecimal(sp.sharePercentage)
-							: undefined,
+						sharePercentage: sp.sharePercentage ?? undefined,
 						shareUnits: sp.shareUnits ?? undefined,
-						shareAmount: serializeDecimal(sp.shareAmount),
+						shareAmount: sp.shareAmount,
 					}));
 				newParticipants =
 					effectiveSplitMode === "EXACT"
@@ -518,7 +516,7 @@ export class SharedTransactionService {
 							// longer equals the amount, silently corrupting balances):
 							// rescale each proportionally, keeping it cent-accurate.
 							rescaleExactSplits({
-								oldAmount: serializeDecimal(existing.amount),
+								oldAmount: existing.amount,
 								newAmount,
 								currency: effectiveCurrency,
 								fromCurrency: existing.currency,
@@ -541,7 +539,7 @@ export class SharedTransactionService {
 				const oldSplits = existing.splitParticipants.map((sp) => ({
 					participantType: sp.participantType,
 					participantId: sp.participantId,
-					shareAmount: serializeDecimal(sp.shareAmount),
+					shareAmount: sp.shareAmount,
 				}));
 				const newSplits = newParticipants.map((p) => ({
 					participantType: p.participantType,
@@ -553,7 +551,7 @@ export class SharedTransactionService {
 					oldSplits.length !== newSplits.length ||
 					oldSplits.some((old) => {
 						const match = newSplits.find((n) => sameParticipant(n, old));
-						return !match || match.shareAmount !== old.shareAmount;
+						return !match || !dec(match.shareAmount).eq(dec(old.shareAmount));
 					}) ||
 					newSplits.some(
 						(n) => !oldSplits.find((old) => sameParticipant(old, n)),
@@ -561,7 +559,10 @@ export class SharedTransactionService {
 
 				if (splitsChanged) {
 					diff.splitParticipants = {
-						old: oldSplits,
+						old: oldSplits.map((o) => ({
+							...o,
+							shareAmount: serializeDecimal(o.shareAmount),
+						})),
 						new: newSplits,
 					};
 				}
@@ -958,12 +959,12 @@ export class SharedTransactionService {
 	 * into TRPCErrors for the API layer.
 	 */
 	private computeSplits(
-		amount: number,
+		amount: DecimalInput,
 		currency: string,
-		splitWith: SplitParticipantInput[],
+		splitWith: SplitRow[],
 		splitMode: SplitModeType,
 		paidBy: ParticipantRef,
-	): SplitParticipantInput[] {
+	): SplitRow[] {
 		// A missing EXACT amount counts as 0 in the sum check, so it can pass
 		// validation and then fail the insert (shareAmount is required). Reject
 		// it here as a validation error instead.
@@ -981,9 +982,8 @@ export class SharedTransactionService {
 		try {
 			return resolveSplits({
 				mode: splitMode,
-				amount,
+				...engineInput(amount, splitWith),
 				currency,
-				participants: splitWith,
 				paidBy,
 			});
 		} catch (err) {

@@ -16,7 +16,7 @@ import {
 	ratePickFor,
 } from "./ledger";
 import { cappedCounted, worthOf } from "./places";
-import { columnFromFloat } from "@retrospend/domain/money-dec";
+import { columnText } from "@retrospend/domain/money-dec";
 
 type Tx = Prisma.TransactionClient;
 
@@ -87,7 +87,7 @@ export async function writeCheckpoint(
 				dec(account.countedUnits.toString()),
 				next.balance,
 			).toString(),
-			exchangeRate: columnFromFloat(next.rate.rate, 6),
+			exchangeRate: columnText(next.rate.rate, 6),
 			exchangeRateType: next.rate.rateType,
 		},
 	});

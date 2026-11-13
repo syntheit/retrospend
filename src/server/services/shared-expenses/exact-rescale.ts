@@ -1,4 +1,6 @@
-import { fromMinorUnits, toMinorUnits } from "@retrospend/domain/money";
+import { fromMinorUnits } from "@retrospend/domain/money";
+import { type DecimalInput, dec } from "@retrospend/domain/precise-decimal";
+import { toMinor } from "~/server/services/envelope/units";
 import {
 	allocateByWeights,
 	remainderRow,
@@ -8,7 +10,7 @@ import type { ParticipantRef } from "./types";
 type Share = {
 	participantType: "user" | "guest" | "shadow";
 	participantId: string;
-	shareAmount: number;
+	shareAmount: DecimalInput;
 };
 
 /**
@@ -21,8 +23,8 @@ type Share = {
  * amount equally so the shares still sum to it.
  */
 export function rescaleExactSplits<S extends Share>(input: {
-	oldAmount: number;
-	newAmount: number;
+	oldAmount: DecimalInput;
+	newAmount: DecimalInput;
 	currency: string;
 	fromCurrency: string;
 	splits: S[];
@@ -30,18 +32,18 @@ export function rescaleExactSplits<S extends Share>(input: {
 	equal: () => {
 		participantType: S["participantType"];
 		participantId: string;
-		shareAmount?: number;
+		shareAmount?: DecimalInput;
 	}[];
 }) {
 	const { currency, fromCurrency, splits, paidBy } = input;
-	if (toMinorUnits(input.oldAmount, fromCurrency) === 0) return input.equal();
+	if (toMinor(dec(input.oldAmount), fromCurrency) === 0) return input.equal();
 	// Exact BigInt allocation: newTotal * oldShare overflows a float near 1e12 units.
 	const oldShares = splits.map((p) =>
-		toMinorUnits(p.shareAmount, fromCurrency),
+		toMinor(dec(p.shareAmount), fromCurrency),
 	);
 	if (oldShares.reduce((s, v) => s + v, 0) === 0) return input.equal();
 	const cents = allocateByWeights(
-		toMinorUnits(input.newAmount, currency),
+		toMinor(dec(input.newAmount), currency),
 		oldShares,
 		remainderRow(splits, paidBy),
 	);
