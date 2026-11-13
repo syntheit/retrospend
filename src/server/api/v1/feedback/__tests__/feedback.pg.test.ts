@@ -367,8 +367,16 @@ describe("/api/v1/feedback and /error-reports", () => {
 				form: await shot(100),
 				idempotent: true,
 			});
-		for (let n = 0; n < 5; n++) expect((await put()).status).toBe(200);
-		await expectProblem(await put(), 429, "rate_limited");
+		// The window is a fixed minute, so six slow uploads under load could
+		// straddle a boundary and land in two windows. Hold the clock still.
+		const minute = Math.floor(Date.now() / 60_000) * 60_000;
+		vi.useFakeTimers({ toFake: ["Date"], now: minute + 1_000 });
+		try {
+			for (let n = 0; n < 5; n++) expect((await put()).status).toBe(200);
+			await expectProblem(await put(), 429, "rate_limited");
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("leaves one file when uploads arrive at the same moment", async () => {
