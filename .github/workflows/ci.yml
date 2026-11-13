@@ -364,6 +364,82 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
+  # The same suite with DATA_KEYS_WRITE on and a throwaway master key
+  # (E2E_SEALED=1, e2e/constants.ts): user text is sealed on write, every
+  # /api response is checked for ciphertext, and e2e/flows/zz-sealing.spec.ts
+  # checks the database. Pushes to main and segment/** only: the workflow
+  # triggers on no other branch, and the condition keeps pull requests and
+  # manual runs on other branches out.
+  e2e-sealed:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # One worker per job (the specs share one seeded ledger), so the suite is
+    # split by file across jobs instead; each has its own Postgres. Serial, it
+    # outgrew the 20-minute cap (about 18 to 19 minutes by 2026-11).
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1/2, 2/2]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: retrospend_test_e2e
+        ports:
+          - 5436:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # The suite's own default (e2e/constants.ts); prisma.config.ts needs it too.
+      DATABASE_URL: postgresql://postgres:testpassword@127.0.0.1:5436/retrospend_test_e2e
+      E2E_DATABASE_URL: postgresql://postgres:testpassword@127.0.0.1:5436/retrospend_test_e2e
+      E2E_SEALED: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma generate
+        run: pnpm exec prisma generate
+
+      # The browser download is cached per Playwright version; the system
+      # libraries still come from apt.
+      - name: Playwright version
+        id: pw
+        run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ steps.pw.outputs.version }}
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Sealed E2E suite
+        run: pnpm exec playwright test --shard=${{ matrix.shard }}
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: playwright-report-sealed-${{ strategy.job-index }}
+          path: playwright-report/
+          retention-days: 7
+
   # Visual regression (e2e/visual): the gallery and the shell against the
   # committed baselines. The browser runs in the pinned Playwright image,
   # the same renderer that drew the baselines (e2e/visual/run.sh).
