@@ -1,27 +1,32 @@
 import { randomUUID } from "node:crypto";
-import { fromMinorUnits, toMinorUnits, USD } from "@retrospend/domain/money";
+import { USD } from "@retrospend/domain/money";
+import { fromMinor, roundedMinor } from "@retrospend/domain/money-minor";
+import { type DecimalInput, dec } from "@retrospend/domain/precise-decimal";
 import { addMonthsClamped } from "@retrospend/domain/recurring";
 import type { Prisma, PrismaClient } from "~prisma";
 
+/** Amounts are exact decimal text, written to the Decimal columns as they are. */
 export interface AmortizationSplit {
 	id: string;
 	date: Date;
-	amount: number;
-	amountInUSD: number;
+	amount: string;
+	amountInUSD: string;
 }
 
 /**
  * Splits `total` into `parts` whole minor units of `currency`; the first
  * parts take the leftover units, so the parts always add up to the total.
+ * A total more precise than the currency (a stored column keeps 8 decimals)
+ * is rounded half to even once, before it is split.
  */
-function splitMinorUnits(total: number, parts: number, currency: string) {
-	const units = toMinorUnits(total, currency);
+function splitMinorUnits(total: DecimalInput, parts: number, currency: string) {
+	const units = roundedMinor(total, currency);
 	const base = Math.floor(units / parts);
 	let remainder = units - base * parts;
 	return Array.from({ length: parts }, () => {
 		const extra = remainder > 0 ? 1 : 0;
 		remainder -= extra;
-		return fromMinorUnits(base + extra, currency);
+		return fromMinor({ minor: base + extra, currency });
 	});
 }
 
@@ -35,8 +40,8 @@ export class AmortizationService {
 	 */
 	calculateSplits(
 		startDate: Date,
-		totalAmount: number,
-		totalAmountInUSD: number,
+		totalAmount: DecimalInput,
+		totalAmountInUSD: DecimalInput,
 		months: number,
 		currency = USD,
 	): AmortizationSplit[] {
@@ -84,8 +89,8 @@ export class AmortizationService {
 		// 2. Calculate new splits
 		const splits = this.calculateSplits(
 			expense.date,
-			Number(expense.amount),
-			Number(expense.amountInUSD),
+			expense.amount,
+			expense.amountInUSD,
 			amortizeOver,
 			expense.currency,
 		);
@@ -95,7 +100,7 @@ export class AmortizationService {
 		const { homeCurrency, homeRate, homeAmount } = expense;
 		const homeParts =
 			homeCurrency && homeRate != null && homeAmount != null
-				? splitMinorUnits(Number(homeAmount), amortizeOver, homeCurrency)
+				? splitMinorUnits(homeAmount, amortizeOver, homeCurrency)
 				: null;
 
 		// 3. Create new children. They carry the parent's rate and its
@@ -112,7 +117,7 @@ export class AmortizationService {
 			amount: split.amount,
 			currency: expense.currency,
 			amountInUSD: split.amountInUSD,
-			exchangeRate: Number(expense.exchangeRate),
+			exchangeRate: dec(expense.exchangeRate).toFixed(),
 			pricingSource: expense.pricingSource ?? "MANUAL",
 			date: split.date,
 			categoryId: expense.categoryId || undefined,
