@@ -1561,7 +1561,7 @@ model ShadowProfile {
 model GuestSession {
   id           String   @id @default(cuid())
   name         String   @db.Text
-  email        String   @db.VarChar(255)
+  email        String   @db.Text
   // Keyed hash of the normalized email, "<tag>:<hex>" (contact-hash.ts). Derived, server only.
   emailHash    String?
   magicLinkId  String
