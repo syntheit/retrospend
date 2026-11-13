@@ -361,5 +361,6 @@ Retrospend has one design language, decided with the owner. These rules override
 | [`docs/ui/MOTION-mobile.md`](docs/ui/MOTION-mobile.md) | Mobile motion |
 | [`docs/development.md`](docs/development.md) | Local setup |
 | [`docs/self-hosting.md`](docs/self-hosting.md) | Running your own server, every setting |
+| [`docs/encryption-at-rest.md`](docs/encryption-at-rest.md) | What is encrypted, the keys, start refusals, the flag-on runbook, rollback |
 | [`docs/releasing.md`](docs/releasing.md) | Versions, tags, release steps |
 | [`apps/mobile/README.md`](apps/mobile/README.md) | Mobile builds and distribution |
