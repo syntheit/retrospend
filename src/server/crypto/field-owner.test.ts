@@ -137,6 +137,14 @@ describe("the owner lookups", () => {
 		expect(ownerOfTable("ghost_person").column).toBe("userId");
 		expect(keyClassOfColumn("ghost_person", "email")).toBeUndefined();
 	});
+
+	it("refuse to replace a real model, whose constants elsewhere would not follow", () => {
+		expect(() =>
+			addModelsForTests({
+				Settlement: { table: "settlement", columns: {} },
+			} as never),
+		).toThrow(/may not replace Settlement/);
+	});
 });
 
 describe("opening a cell whose owner column is not userId", () => {

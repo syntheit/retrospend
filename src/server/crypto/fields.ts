@@ -183,12 +183,16 @@ export function nullWhenHidden(table: string, column: string): boolean {
 
 /**
  * Adds `extra` models to the map, for tests of a rule no real model uses yet,
- * and returns the call that takes them out again. The caches built from the
- * map are rebuilt both ways, so build a model graph after calling this.
+ * and returns the call that takes them out again. Only this module's lookups
+ * are rebuilt (other modules build constants from FIELD_MAP at import), so a
+ * real model may not be replaced, and a model graph is built after this call.
  */
 export function addModelsForTests(
 	extra: Readonly<Record<string, ModelFields>>,
 ): () => void {
+	const taken = Object.keys(extra).filter((m) => Object.hasOwn(FIELD_MAP, m));
+	if (taken.length > 0)
+		throw new Error(`addModelsForTests may not replace ${taken.join(", ")}`);
 	const before = index;
 	index = indexOf({ ...FIELD_MAP, ...extra });
 	cellClasses = buildCellClasses();
