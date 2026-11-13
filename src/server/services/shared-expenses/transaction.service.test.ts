@@ -18,7 +18,7 @@ vi.mock("~/server/services/notifications", () => ({
 // Mock computeBalance so the delete guard's unsettled-balance check is controlled
 // per-test (its own correctness is covered in balance.test.ts).
 vi.mock("./balance", () => ({
-	computeBalance: vi.fn().mockResolvedValue({ byCurrency: {} }),
+	computeBalance: vi.fn().mockResolvedValue({ byCurrency: {}, minorByCurrency: {} }),
 }));
 
 import { computeBalance } from "./balance";
@@ -2377,7 +2377,7 @@ describe("SharedTransactionService", () => {
 			// Reset call history and default to no unsettled balance so delete
 			// proceeds without confirmation unless a test says otherwise.
 			vi.mocked(computeBalance).mockClear();
-			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: {} });
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: {}, minorByCurrency: {} });
 		});
 
 		it("rejects delete by non-creator", async () => {
@@ -2438,7 +2438,7 @@ describe("SharedTransactionService", () => {
 			};
 			txClient.sharedTransaction.findUnique.mockResolvedValue(existing);
 			txClient.sharedTransaction.delete.mockResolvedValue(existing);
-			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: {} });
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: {}, minorByCurrency: {} });
 
 			const service = new SharedTransactionService(db as never, {
 				participantType: "user",
@@ -2480,7 +2480,7 @@ describe("SharedTransactionService", () => {
 			};
 			txClient.sharedTransaction.findUnique.mockResolvedValue(existing);
 			// bob still owes alice $25 in USD (computeBalance(alice, bob) positive)
-			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: 25 } });
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: 25 }, minorByCurrency: { USD: 2500 } });
 
 			const service = new SharedTransactionService(db as never, {
 				participantType: "user",
@@ -2519,7 +2519,7 @@ describe("SharedTransactionService", () => {
 				},
 			});
 			// bob still owes alice his share within the project.
-			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: 25 } });
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: 25 }, minorByCurrency: { USD: 2500 } });
 
 			const service = new SharedTransactionService(db as never, {
 				participantType: "user",
@@ -2559,7 +2559,7 @@ describe("SharedTransactionService", () => {
 			txClient.sharedTransaction.findUnique.mockResolvedValue(existing);
 			// bob paid alice back, so nothing is owed now. Deleting the expense
 			// would leave his $25 payment as alice owing bob.
-			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: {} });
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: {}, minorByCurrency: {} });
 
 			const service = new SharedTransactionService(db as never, {
 				participantType: "user",
@@ -2593,7 +2593,7 @@ describe("SharedTransactionService", () => {
 			};
 			txClient.sharedTransaction.findUnique.mockResolvedValue(existing);
 			// bob paid $15 of his $25: $10 left, but deleting removes $25.
-			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: 10 } });
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: 10 }, minorByCurrency: { USD: 1000 } });
 
 			const service = new SharedTransactionService(db as never, {
 				participantType: "user",
@@ -2626,7 +2626,7 @@ describe("SharedTransactionService", () => {
 			};
 			txClient.sharedTransaction.findUnique.mockResolvedValue(existing);
 			txClient.sharedTransaction.delete.mockResolvedValue(existing);
-			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: 25 } });
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: 25 }, minorByCurrency: { USD: 2500 } });
 
 			const service = new SharedTransactionService(db as never, {
 				participantType: "user",

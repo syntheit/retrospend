@@ -9,28 +9,29 @@ import {
 	BALANCE_SETTLEMENT_STATUSES,
 	type BalanceOptions,
 	type BalanceResult,
+	balanceOf,
 	projectScopeWhere,
-	pruneZeroBalances,
+	settlementSide,
 } from "./balance";
 import { resolveClaimAliases } from "./identity";
 import type { ParticipantRef } from "./types";
 
-interface BatchResult extends BalanceResult {
-	/** The same balances in integer minor units, summed exactly (zeros dropped). */
-	minorByCurrency: Record<string, number>;
-}
-
 /**
  * Batch-compute balances between participantA and multiple counterparts, as
- * A sees them (the viewer is always A). Uses 4 queries total instead of 4
- * per counterpart (4N → 4).
+ * A sees them (the viewer is A unless `viewer` says otherwise: the project
+ * cards show A's balances to whoever opens them, and a pending payment counts
+ * only for the person who recorded it, so `null` or a third person never
+ * counts one, as in computeBalance). Uses 4 queries total instead of 4 per
+ * counterpart (4N → 4).
  */
 export async function computeBalanceBatch(
 	db: PrismaClient | Prisma.TransactionClient,
 	participantA: ParticipantRef,
 	counterparts: ParticipantRef[],
-	opts?: Pick<BalanceOptions, "projectScope">,
-): Promise<BatchResult[]> {
+	opts?: Pick<BalanceOptions, "projectScope"> & {
+		viewer?: ParticipantRef | null;
+	},
+): Promise<BalanceResult[]> {
 	if (counterparts.length === 0) return [];
 
 	const prisma = db as PrismaClient;
@@ -38,14 +39,18 @@ export async function computeBalanceBatch(
 
 	// Project scope fragment, applied identically to settlements and to the
 	// nested transaction filter of the split queries (see projectScopeWhere).
-	const projectWhere = projectScopeWhere(opts);
+	const projectWhere = projectScopeWhere({ projectScope: opts?.projectScope });
 
 	// Expand A and every counterpart into their claim-alias refs so a claimed
 	// shadow and its claiming user are summed together (edge-case 8 fix).
+	const viewer = opts?.viewer === undefined ? participantA : opts.viewer;
 	const { aliasesByKey, canonicalKey } = await resolveClaimAliases(prisma, [
 		participantA,
 		...counterparts,
+		...(viewer ? [viewer] : []),
 	]);
+	// "" matches no canonical key: nobody is the viewer, so no pending row counts.
+	const viewerKey = viewer ? canonicalKey(viewer) : "";
 	const aRefs = aliasesByKey.get(
 		key(participantA.participantType, participantA.participantId),
 	) ?? [participantA];
@@ -189,18 +194,8 @@ export async function computeBalanceBatch(
 
 	// Build per-counterpart balance maps, keyed by CANONICAL identity so
 	// pre-claim shadow rows and post-claim user rows accumulate together.
-	const balanceMap = new Map<string, Record<string, number>>();
+	// Minor units only: the major-unit numbers are derived at the end (balanceOf).
 	const minorMap = new Map<string, Record<string, number>>();
-
-	const getOrCreate = (k: string) => {
-		let m = balanceMap.get(k);
-		if (!m) {
-			m = {};
-			balanceMap.set(k, m);
-			minorMap.set(k, {});
-		}
-		return k;
-	};
 
 	const add = (
 		k: string,
@@ -208,11 +203,10 @@ export async function computeBalanceBatch(
 		value: { toString(): string },
 		sign: 1 | -1,
 	) => {
-		const m = balanceMap.get(k) ?? {};
-		const mm = minorMap.get(k) ?? {};
-		m[currency] = (m[currency] ?? 0) + sign * Number(value);
-		mm[currency] =
-			(mm[currency] ?? 0) + sign * toMinor(value.toString(), currency);
+		const m = minorMap.get(k) ?? {};
+		minorMap.set(k, m);
+		m[currency] =
+			(m[currency] ?? 0) + sign * toMinor(value.toString(), currency);
 	};
 
 	// A person can appear on ONE transaction/settlement under multiple alias refs
@@ -235,8 +229,7 @@ export async function computeBalanceBatch(
 			participantId: row.participantId,
 		});
 		if (!once(`sp+|${row.transactionId}|${cKey}`)) continue;
-		const m = getOrCreate(cKey);
-		add(m, row.transaction.currency, row.shareAmount, 1);
+		add(cKey, row.transaction.currency, row.shareAmount, 1);
 	}
 
 	// B paid, A owes -> negative. Bucket by the payer (counterpart); the counted
@@ -251,8 +244,7 @@ export async function computeBalanceBatch(
 			participantId: row.participantId,
 		});
 		if (!once(`sp-|${row.transactionId}|${payerKey}|${aKey}`)) continue;
-		const m = getOrCreate(payerKey);
-		add(m, row.transaction.currency, row.shareAmount, -1);
+		add(payerKey, row.transaction.currency, row.shareAmount, -1);
 	}
 
 	// Settlements from B to A -> subtract. Dedupe per (settlement, canonical from, to).
@@ -265,11 +257,12 @@ export async function computeBalanceBatch(
 			participantType: row.toParticipantType,
 			participantId: row.toParticipantId,
 		});
-		// A is the payee: a pending row from B is B's claim, not counted (I5).
-		if (!countsFor(row, "to")) continue;
+		// With A as the viewer A is the payee: a pending row from B is B's
+		// claim, not counted (I5).
+		if (!countsFor(row, settlementSide(row, viewerKey, canonicalKey)))
+			continue;
 		if (!once(`st|${row.id}|${fromKey}|${toKey}`)) continue;
-		const m = getOrCreate(fromKey);
-		add(m, row.currency, row.amount, -1);
+		add(fromKey, row.currency, row.amount, -1);
 	}
 
 	// Settlements from A to B -> add. Dedupe per (settlement, canonical from, to).
@@ -282,23 +275,16 @@ export async function computeBalanceBatch(
 			participantType: row.toParticipantType,
 			participantId: row.toParticipantId,
 		});
-		if (!countsFor(row, "from")) continue;
+		if (!countsFor(row, settlementSide(row, viewerKey, canonicalKey)))
+			continue;
 		if (!once(`st|${row.id}|${fromKey}|${toKey}`)) continue;
-		const m = getOrCreate(toKey);
-		add(m, row.currency, row.amount, 1);
+		add(toKey, row.currency, row.amount, 1);
 	}
 
 	// Map results back to counterparts in order (via each one's canonical key).
 	return counterparts.map((c) => {
 		if (canonicalKey(c) === aCanonical)
 			return { byCurrency: {}, minorByCurrency: {} };
-		const byCurrency = { ...(balanceMap.get(canonicalKey(c)) ?? {}) };
-		pruneZeroBalances(byCurrency);
-		const minorByCurrency = Object.fromEntries(
-			Object.entries(minorMap.get(canonicalKey(c)) ?? {}).filter(
-				([, v]) => v !== 0,
-			),
-		);
-		return { byCurrency, minorByCurrency };
+		return balanceOf(minorMap.get(canonicalKey(c)) ?? {});
 	});
 }

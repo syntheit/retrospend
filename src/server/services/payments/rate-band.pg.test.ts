@@ -11,10 +11,9 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { forUser } from "~/server/services/preview";
 import { adminDb, createTestUser } from "~/test/pg-harness";
-import type { PlannedSettlement } from "./allocate";
+import { type PlannedSettlement, quote } from "./allocate";
 import { assertTypedRate, RateOutOfRangeError } from "./rate-band";
 import { recordPayment } from "./record.mutation";
-import { dec } from "~/server/services/envelope/units";
 
 const DAY = new Date("2026-06-15T00:00:00.000Z");
 
@@ -59,7 +58,7 @@ const planned = (
 	isOffset: opts.isOffset ?? false,
 	paid: 0,
 	quote: rate
-		? { perUnit: dec(rate), rateType: opts.rateType ?? "custom" }
+		? quote(rate, opts.rateType ?? "custom")
 		: null,
 });
 

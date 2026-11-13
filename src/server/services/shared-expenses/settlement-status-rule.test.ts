@@ -12,7 +12,6 @@ import { BALANCE_SETTLEMENT_STATUSES } from "./balance";
  */
 const BALANCE_QUERY_FILES = [
 	"src/server/services/shared-expenses/balance.ts",
-	"src/server/services/shared-expenses/balances-perspective.service.ts",
 	"src/server/services/project/ledger.ts",
 	"src/server/services/project/project-read.service.ts",
 	"src/server/services/shared-expenses/billing-period-settle.ts",

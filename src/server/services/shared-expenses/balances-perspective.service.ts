@@ -1,11 +1,11 @@
-import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
 import { getImageUrl } from "~/server/storage";
-import { BALANCE_SETTLEMENT_STATUSES } from "./balance";
+import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
+import { majorByCurrency } from "./balance";
+import { computeBalanceBatch } from "./balance-batch";
 import { resolveClaimAliases } from "./identity";
 import type { ParticipantRef } from "./types";
 
 type AppDb = PrismaClient | Prisma.TransactionClient;
-
 
 export interface PerspectiveIdentity {
 	name: string;
@@ -85,24 +85,6 @@ interface RawTransaction {
 	}>;
 }
 
-interface RawSettlement {
-	id: string;
-	fromParticipantType: ParticipantType;
-	fromParticipantId: string;
-	toParticipantType: ParticipantType;
-	toParticipantId: string;
-	amount: Prisma.Decimal;
-	currency: string;
-}
-
-function pruneZero(byCurrency: Record<string, number>): Record<string, number> {
-	const out: Record<string, number> = {};
-	for (const [currency, value] of Object.entries(byCurrency)) {
-		if (Math.abs(value) >= 0.00000001) out[currency] = value;
-	}
-	return out;
-}
-
 /**
  * Computes per-project balances from ONE person's perspective within a single
  * project, returning one statement card per counterpart that has any shared
@@ -114,11 +96,17 @@ function pruneZero(byCurrency: Record<string, number>): Record<string, number> {
  *
  * Claim aliases are resolved exactly as computeBalance / getPersonDetail do, so
  * a claimed shadow and its claiming user are one party.
+ *
+ * `viewer` is who reads the card (null for a viewer link). A pending payment
+ * counts only for the person who recorded it, so a viewer who is neither
+ * party never counts a pending payment between two others, as in every
+ * other balance.
  */
 export async function getBalancesFromPerspective(
 	db: AppDb,
 	projectId: string,
 	perspective: ParticipantRef,
+	viewer: ParticipantRef | null = perspective,
 ): Promise<BalancesFromPerspectiveResult> {
 	const prisma = db as PrismaClient;
 
@@ -184,7 +172,7 @@ export async function getBalancesFromPerspective(
 		]),
 	};
 
-	const [rawTransactions, rawSettlements] = await Promise.all([
+	const [rawTransactions, balances] = await Promise.all([
 		prisma.sharedTransaction.findMany({
 			where: { projectId, AND: [perspectiveInvolvement] },
 			select: {
@@ -205,62 +193,26 @@ export async function getBalancesFromPerspective(
 			},
 			orderBy: { date: "desc" },
 		}) as Promise<RawTransaction[]>,
-		// Settlements where the perspective person is one party, scoped to THIS
-		// project. Settlements are now project-scoped (settlement.projectId), so
-		// the per-project perspective view only counts this project's payments and
-		// no longer leaks settlements the same pair made in a different project.
-		prisma.settlement.findMany({
-			where: {
-				projectId,
-				status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
-				OR: [
-					{
-						OR: perspectiveRefs.map((r) => ({
-							fromParticipantType: r.participantType,
-							fromParticipantId: r.participantId,
-						})),
-					},
-					{
-						OR: perspectiveRefs.map((r) => ({
-							toParticipantType: r.participantType,
-							toParticipantId: r.participantId,
-						})),
-					},
-				],
-			},
-			select: {
-				id: true,
-				fromParticipantType: true,
-				fromParticipantId: true,
-				toParticipantType: true,
-				toParticipantId: true,
-				amount: true,
-				currency: true,
-			},
-		}) as Promise<RawSettlement[]>,
+		// The net per counterpart is the registered person-balance path: the same
+		// minor-unit sums, claim aliases, settlement statuses and viewer rule the
+		// People page and the balance.person figure read, scoped to this project.
+		computeBalanceBatch(prisma, perspective, [...counterpartByCanonical.values()], {
+			projectScope: projectId,
+			viewer,
+		}),
 	]);
+	const balanceOfCanon = new Map(
+		[...counterpartByCanonical.keys()].map((canon, i) => [canon, balances[i]]),
+	);
 
-	// Accumulators keyed by counterpart canonical identity.
-	const netByCounterpart = new Map<string, Record<string, number>>();
+	// Line items keyed by counterpart canonical identity.
 	const itemsByCounterpart = new Map<string, PerspectiveLineItem[]>();
-
-	const getNet = (canon: string) => {
-		let m = netByCounterpart.get(canon);
-		if (!m) {
-			m = {};
-			netByCounterpart.set(canon, m);
-		}
-		return m;
-	};
-	const addNet = (canon: string, currency: string, value: number) => {
-		const m = getNet(canon);
-		m[currency] = (m[currency] ?? 0) + value;
-	};
 
 	// -- Itemize transactions --------------------------------------------------
 	//
 	// For each transaction the perspective person is involved in, determine the
-	// counterpart(s) and the signed contribution to the pairwise balance:
+	// counterpart(s) and the signed contribution of this line to the balance
+	// (a display figure; the balance itself comes from computeBalanceBatch):
 	//   - perspective paid, counterpart has a share  => +counterpartShare
 	//   - counterpart paid, perspective has a share   => -perspectiveShare
 	// A transaction can involve several counterparts; it appears on each relevant
@@ -310,7 +262,6 @@ export async function getBalancesFromPerspective(
 			// Perspective paid: each counterpart owes their share to perspective.
 			for (const [canon, counterpartShare] of shareByCounterpart) {
 				const signed = counterpartShare; // + toward "counterpart owes you"
-				addNet(canon, tx.currency, signed);
 				pushItem(itemsByCounterpart, canon, {
 					id: tx.id,
 					description: tx.description,
@@ -334,7 +285,6 @@ export async function getBalancesFromPerspective(
 			const canon = payerCanon;
 			const counterpartShare = shareByCounterpart.get(canon) ?? 0;
 			const signed = -perspectiveShare; // - toward "you owe counterpart"
-			addNet(canon, tx.currency, signed);
 			pushItem(itemsByCounterpart, canon, {
 				id: tx.id,
 				description: tx.description,
@@ -351,43 +301,6 @@ export async function getBalancesFromPerspective(
 				counterpartShare,
 				signedAmount: signed,
 			});
-		}
-	}
-
-	// -- Apply settlements -----------------------------------------------------
-	//
-	// A settlement from the counterpart TO the perspective person reduces what the
-	// counterpart owes (subtract); from perspective TO counterpart increases it
-	// (add). Settlements are not shown as line items (they are payments, not
-	// shared expenses) but they do move the net.
-	const seenSettlement = new Set<string>();
-	for (const s of rawSettlements) {
-		const fromCanon = canonicalKey({
-			participantType: s.fromParticipantType,
-			participantId: s.fromParticipantId,
-		});
-		const toCanon = canonicalKey({
-			participantType: s.toParticipantType,
-			participantId: s.toParticipantId,
-		});
-
-		const perspectiveIsFrom = fromCanon === perspectiveCanonical;
-		const perspectiveIsTo = toCanon === perspectiveCanonical;
-		if (!perspectiveIsFrom && !perspectiveIsTo) continue;
-
-		const counterpartCanon = perspectiveIsFrom ? toCanon : fromCanon;
-		if (!counterpartByCanonical.has(counterpartCanon)) continue;
-
-		const dedupe = `${s.id}|${fromCanon}|${toCanon}`;
-		if (seenSettlement.has(dedupe)) continue;
-		seenSettlement.add(dedupe);
-
-		if (perspectiveIsTo) {
-			// Counterpart paid perspective -> counterpart owes less.
-			addNet(counterpartCanon, s.currency, -Number(s.amount));
-		} else {
-			// Perspective paid counterpart -> counterpart owes more.
-			addNet(counterpartCanon, s.currency, Number(s.amount));
 		}
 	}
 
@@ -416,14 +329,14 @@ export async function getBalancesFromPerspective(
 
 	// -- Assemble statements ---------------------------------------------------
 	const statements: PerspectiveStatement[] = [];
-	const totals: PerspectiveTotals = {
-		owedToPerspective: {},
-		owedByPerspective: {},
-	};
+	// Totals add minor units, so every sum is exact; major units come last.
+	const owedToMinor: Record<string, number> = {};
+	const owedByMinor: Record<string, number> = {};
 
 	for (const [canon, ref] of counterpartByCanonical) {
-		const netRaw = netByCounterpart.get(canon) ?? {};
-		const net = pruneZero(netRaw);
+		const { byCurrency: net, minorByCurrency: netMinor } = balanceOfCanon.get(
+			canon,
+		) ?? { byCurrency: {}, minorByCurrency: {} };
 		const items = itemsByCounterpart.get(canon) ?? [];
 
 		// Include a counterpart when there is any nonzero balance OR any shared
@@ -456,13 +369,13 @@ export async function getBalancesFromPerspective(
 			};
 		});
 
-		for (const [currency, value] of Object.entries(net)) {
-			if (value > 0) {
-				totals.owedToPerspective[currency] =
-					(totals.owedToPerspective[currency] ?? 0) + value;
-			} else if (value < 0) {
-				totals.owedByPerspective[currency] =
-					(totals.owedByPerspective[currency] ?? 0) + -value;
+		// Owed to you and You owe stay apart: a person owed in one currency and
+		// owing in another adds to both, never netted.
+		for (const [currency, minor] of Object.entries(netMinor)) {
+			if (minor > 0) {
+				owedToMinor[currency] = (owedToMinor[currency] ?? 0) + minor;
+			} else if (minor < 0) {
+				owedByMinor[currency] = (owedByMinor[currency] ?? 0) - minor;
 			}
 		}
 
@@ -488,8 +401,8 @@ export async function getBalancesFromPerspective(
 		perspective: perspectiveIdentity,
 		statements,
 		totals: {
-			owedToPerspective: pruneZero(totals.owedToPerspective),
-			owedByPerspective: pruneZero(totals.owedByPerspective),
+			owedToPerspective: majorByCurrency(owedToMinor),
+			owedByPerspective: majorByCurrency(owedByMinor),
 		},
 	};
 }

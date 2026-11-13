@@ -56,7 +56,17 @@ export async function projectBalancesFromPerspective(
 	perspective: MemberRef,
 	viewer: ProjectViewer,
 ) {
-	const result = await getBalancesFromPerspective(db, projectId, perspective);
+	const result = await getBalancesFromPerspective(
+		db,
+		projectId,
+		perspective,
+		viewer.participantType === "viewerLink"
+			? null
+			: {
+					participantType: viewer.participantType,
+					participantId: viewer.participantId,
+				},
+	);
 	const visible = await buildContactVisibility(
 		db,
 		viewer.participantType === "viewerLink"

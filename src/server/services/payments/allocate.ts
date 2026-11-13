@@ -126,8 +126,9 @@ export function toPaymentCurrency(
 ): Minor {
 	if (currency === paymentCurrency) return minor;
 	if (!quote) throw new RangeError(`no quote for ${currency}`);
+	const [num, den] = quote.fraction;
 	return toMinor(
-		fromMinor(minor, currency).mul(quote.perUnit),
+		fromMinor(minor, currency).mul(num).div(den),
 		paymentCurrency,
 	);
 }
@@ -141,8 +142,9 @@ function fromPaymentCurrency(
 ): Minor {
 	if (currency === paymentCurrency) return paidMinor;
 	if (!quote) throw new RangeError(`no quote for ${currency}`);
+	const [num, den] = quote.fraction;
 	return toMinor(
-		fromMinor(paidMinor, paymentCurrency).div(dec(quote.perUnit)),
+		fromMinor(paidMinor, paymentCurrency).mul(den).div(num),
 		currency,
 	);
 }
@@ -367,9 +369,17 @@ export function allocatePayment(input: AllocateInput): Allocation {
 	};
 }
 
+/** A quote from a per-unit fraction [num, den]; the rate it shows is num / den. */
+export function quoteOf(
+	fraction: readonly [Decimal, Decimal],
+	rateType: string,
+): Quote {
+	return { perUnit: fraction[0].div(fraction[1]), fraction, rateType };
+}
+
 /** A quote from a decimal rate (string, never a float). */
 export function quote(perUnit: string | Decimal, rateType: string): Quote {
-	return { perUnit: dec(perUnit), rateType };
+	return quoteOf([dec(perUnit), dec(1)], rateType);
 }
 
 /** One settlement row to write for an allocation, seen from the payer. */
