@@ -15,7 +15,7 @@ import { findExchangeRatesForDates } from "~/server/exchange-rates";
 import { Dec, dec } from "~/server/services/envelope/units";
 import type { AccountLegSource, AssetType, Prisma } from "~prisma";
 import { balanceEffect } from "./places";
-import { homeValue, type RatePick } from "./valuation";
+import { homePerUnit, type RatePick, ratePerUnit } from "./valuation";
 
 type Tx = Prisma.TransactionClient;
 
@@ -142,10 +142,13 @@ export function bookHome(
 				storedRate: place.account.exchangeRate,
 			}
 		: { currency: place.currency, rateType: null, storedRate: null };
-	const value = homeValue(pick, valued, amount, homeCurrency, endOfDayOf(date));
+	const perUnit = homePerUnit(pick, valued, homeCurrency, endOfDayOf(date));
+	// The leg stores units x the per-unit rate at 8 decimals, as it always did.
 	return (
-		value && {
-			amount: value.toDecimalPlaces(8, Dec.ROUND_HALF_EVEN),
+		perUnit && {
+			amount: amount
+				.mul(ratePerUnit(perUnit))
+				.toDecimalPlaces(8, Dec.ROUND_HALF_EVEN),
 			currency: homeCurrency,
 		}
 	);

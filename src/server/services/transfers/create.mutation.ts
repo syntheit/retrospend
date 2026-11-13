@@ -26,7 +26,7 @@ import {
 	ratePickFor,
 	writeLeg,
 } from "../accounts/ledger";
-import { homePerUnit, type RatePick } from "../accounts/valuation";
+import { homePerUnit, type RatePick, ratePerUnit } from "../accounts/valuation";
 import { type BudgetSideResult, recordBudgetSide } from "./budget-side";
 import {
 	type BudgetEffect,
@@ -145,7 +145,7 @@ function atReference(
 			message: `No exchange rate for ${from} to ${to}. Type what arrived.`,
 		});
 	}
-	return roundMoneyDec(dec(amount).mul(fromHome), to);
+	return roundMoneyDec(dec(amount).mul(ratePerUnit(fromHome)), to);
 }
 
 const placeFacts = (side: Side) =>
@@ -173,14 +173,15 @@ function reference(
 	}
 	const foreign = homeIsFrom ? input.toCurrency : input.fromCurrency;
 	const units = homeIsFrom ? input.toAmount : input.fromAmount.neg();
-	const perUnit = homePerUnit(
+	const fraction = homePerUnit(
 		pick,
 		{ currency: foreign, rateType: null, storedRate: null },
 		home,
 		date,
 	);
-	if (!perUnit)
+	if (!fraction)
 		return { vsReference: null, referenceRateType: null, referenceRate: null };
+	const perUnit = ratePerUnit(fraction);
 	const typedHome = homeIsFrom ? booked.fromHome : booked.toHome;
 	const ref = pick(foreign === "USD" ? home : foreign, date, null);
 	return {

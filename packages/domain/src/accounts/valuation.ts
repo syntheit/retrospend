@@ -8,9 +8,16 @@
  * converts at its default pick. One extension for D3: a USD account has no
  * rate of its own, so its rate type picks the home currency's rate instead
  * (Wise valued at Official: USD 1 = ARS 1,412).
+ *
+ * One function per figure: an account's value in the home currency is
+ * `homeValue`, one division of two products (units x numerator / denominator),
+ * so an exact tie stays a tie (1 EUR at 3 per USD into JPY at 16.5 is 5.5,
+ * never 5.499...9). The Wealth dashboard, the net worth figure and API v1
+ * all read it. Code that stores a per-unit rate takes the quotient with
+ * `ratePerUnit`.
  */
-import { isCrypto } from "../currency-format";
 import { type PickedRate, rateLookup, rateRowsByCurrency, USD } from "../money";
+import { usdFractionDec } from "../money-dec";
 import { type Decimal, dec } from "../precise-decimal";
 
 export const CUSTOM_RATE_TYPE = "custom";
@@ -54,45 +61,65 @@ export interface Valued {
 	readonly storedRate: { toString(): string } | number | null;
 }
 
+/** A conversion rate kept as numerator and denominator, so a value divides once. */
+export type HomeFraction = readonly [num: Decimal, den: Decimal];
+
 const validRate = (rate: Valued["storedRate"]) =>
 	rate !== null && dec(String(rate)).gt(0) ? dec(String(rate)) : null;
 
-/** USD per one unit, from a rate in the stored convention (fiat per USD, USD per coin). */
-const usdPer = (currency: string, rate: Decimal) =>
-	isCrypto(currency) ? rate : dec(1).div(rate);
-
-function accountUsdPerUnit(
+/** USD per one unit of the account's currency; null when no rate values it. */
+function accountUsd(
 	pick: RatePick,
 	valued: Valued,
 	date: Date,
-): Decimal | null {
-	if (valued.currency === USD) return dec(1);
+): HomeFraction | null {
+	if (valued.currency === USD) return usdFractionDec(USD, 1);
 	const stored = validRate(valued.storedRate);
 	if (valued.rateType === CUSTOM_RATE_TYPE && stored) {
-		return usdPer(valued.currency, stored);
+		return usdFractionDec(valued.currency, stored);
 	}
 	const picked = pick(valued.currency, date, valued.rateType);
 	if (picked && picked.rate > 0) {
-		return usdPer(valued.currency, dec(String(picked.rate)));
+		return usdFractionDec(valued.currency, dec(String(picked.rate)));
 	}
-	return stored ? usdPer(valued.currency, stored) : null;
+	return stored ? usdFractionDec(valued.currency, stored) : null;
 }
 
-/** Home units one unit of `valued.currency` is worth on `date`; null when a rate is missing (never 1). */
+/** USD per one unit of the home currency; null when it has no rate. */
+function homeUsd(
+	pick: RatePick,
+	valued: Valued,
+	homeCurrency: string,
+	date: Date,
+): HomeFraction | null {
+	if (homeCurrency === USD) return usdFractionDec(USD, 1);
+	const homeType = valued.currency === USD ? valued.rateType : null;
+	const home = pick(homeCurrency, date, homeType);
+	if (!home || !(home.rate > 0)) return null;
+	return usdFractionDec(homeCurrency, dec(String(home.rate)));
+}
+
+/**
+ * Home units one unit of `valued.currency` is worth on `date`, as a
+ * fraction; null when a rate is missing (never 1).
+ */
 export function homePerUnit(
 	pick: RatePick,
 	valued: Valued,
 	homeCurrency: string,
 	date: Date,
-): Decimal | null {
-	if (valued.currency === homeCurrency) return dec(1);
-	const account = accountUsdPerUnit(pick, valued, date);
+): HomeFraction | null {
+	if (valued.currency === homeCurrency) return [dec(1), dec(1)];
+	const account = accountUsd(pick, valued, date);
 	if (!account) return null;
-	if (homeCurrency === USD) return account;
-	const homeType = valued.currency === USD ? valued.rateType : null;
-	const home = pick(homeCurrency, date, homeType);
-	if (!home || !(home.rate > 0)) return null;
-	return account.div(usdPer(homeCurrency, dec(String(home.rate))));
+	const home = homeUsd(pick, valued, homeCurrency, date);
+	if (!home) return null;
+	return [account[0].mul(home[1]), account[1].mul(home[0])];
+}
+
+/** The per-unit rate as one Decimal, for code that stores or shows a rate; values use `homeValue`. */
+export function ratePerUnit(fraction: HomeFraction): Decimal {
+	return fraction[0].div(fraction[1]);
 }
 
 /** `units` of `valued.currency` in the home currency, unrounded; null when a rate is missing. */
@@ -104,5 +131,20 @@ export function homeValue(
 	date: Date,
 ): Decimal | null {
 	const perUnit = homePerUnit(pick, valued, homeCurrency, date);
-	return perUnit ? units.mul(perUnit) : null;
+	return perUnit ? units.mul(perUnit[0]).div(perUnit[1]) : null;
+}
+
+/**
+ * The currency a valuation lacks a rate for: the account's own first, then
+ * the home currency's; null when `homeValue` can price it.
+ */
+export function missingRateOf(
+	pick: RatePick,
+	valued: Valued,
+	homeCurrency: string,
+	date: Date,
+): string | null {
+	if (valued.currency === homeCurrency) return null;
+	if (!accountUsd(pick, valued, date)) return valued.currency;
+	return homeUsd(pick, valued, homeCurrency, date) ? null : homeCurrency;
 }
