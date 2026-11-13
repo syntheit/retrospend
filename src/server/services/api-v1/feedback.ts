@@ -6,6 +6,10 @@ import {
 	type SubmitFeedback,
 	scrubReport,
 } from "@retrospend/api-contract";
+import {
+	SealedTextError,
+	stripUserTextControls,
+} from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
 import * as z from "zod";
 import { db } from "~/server/db";
@@ -102,8 +106,26 @@ export async function readScreenshot(
 const REPORTS_KEPT_PER_USER = 200;
 
 /**
+ * The scrubbed text with the characters a sealed column refuses taken out, or
+ * null for text that starts with U+0001 (the marker of a sealed value, which
+ * scrubReport leaves alone). Only that report is dropped: the app resends its
+ * newest reports, so refusing the batch would silence the device.
+ */
+function storableText(text: string): string | null {
+	try {
+		return stripUserTextControls(text);
+	} catch (error) {
+		if (error instanceof SealedTextError) return null;
+		throw error;
+	}
+}
+
+/**
  * Stores what the app recorded. The app scrubs first; this scrubs again, so a
- * client that forgot cannot put an address or an amount in the table.
+ * client that forgot cannot put an address or an amount in the table. The
+ * message and stack are sealed on the instance key at rest (the admin reads
+ * them), and the hourly sweep deletes a report after 30 days. A report whose
+ * text starts with U+0001 is skipped; the rest are stored.
  */
 export async function submitErrorReports(
 	caller: LedgerCaller,
@@ -111,20 +133,26 @@ export async function submitErrorReports(
 ) {
 	const userId = caller.principal.userId;
 	const reports = input.reports.slice(0, ERROR_REPORT_BATCH_MAX);
-	await caller.db.errorReport.createMany({
-		data: reports.map(scrubReport).map((r) => ({
-			userId,
-			kind: r.kind,
-			message: r.message,
-			stack: r.stack ?? null,
-			screen: r.screen ?? null,
-			appVersion: r.appVersion ?? null,
-			build: r.build ?? null,
-			os: r.os ?? null,
-			device: r.device ?? null,
-			occurredAt: new Date(r.occurredAt),
-		})),
+	const rows = reports.map(scrubReport).flatMap((r) => {
+		const message = storableText(r.message);
+		const stack = r.stack ? storableText(r.stack) : null;
+		if (message === null || (r.stack && stack === null)) return [];
+		return [
+			{
+				userId,
+				kind: r.kind,
+				message,
+				stack,
+				screen: r.screen ?? null,
+				appVersion: r.appVersion ?? null,
+				build: r.build ?? null,
+				os: r.os ?? null,
+				device: r.device ?? null,
+				occurredAt: new Date(r.occurredAt),
+			},
+		];
 	});
+	if (rows.length > 0) await caller.db.errorReport.createMany({ data: rows });
 	const old = await caller.db.errorReport.findMany({
 		where: { userId },
 		orderBy: { createdAt: "desc" },
@@ -135,7 +163,7 @@ export async function submitErrorReports(
 		await caller.db.errorReport.deleteMany({
 			where: { id: { in: old.map((o) => o.id) }, userId },
 		});
-	return { ok: true as const, stored: reports.length };
+	return { ok: true as const, stored: rows.length };
 }
 
 export async function listErrorReports(
@@ -189,7 +217,8 @@ export async function removeErrorReport(caller: LedgerCaller, id: string) {
 	});
 	if (!found)
 		throw new TRPCError({ code: "NOT_FOUND", message: "Report not found" });
-	await db.errorReport.delete({ where: { id } });
+	// No text is read back: the delete has committed by the time a row is opened.
+	await db.errorReport.delete({ where: { id }, select: { id: true } });
 	return { ok: true as const };
 }
 

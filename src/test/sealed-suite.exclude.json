@@ -1,4 +1,5 @@
 {
+	"src/server/api/v1/feedback/__tests__/error-report-sealed.pg.test.ts": "Mocks the master key and turns sealing on and off",
 	"src/server/crypto/__tests__/data-keys-write.pg.test.ts": "Mocks the master key",
 	"src/server/crypto/__tests__/field-open-models.pg.test.ts": "Mocks the master key and builds its own keys",
 	"src/server/crypto/__tests__/field-open-paths.pg.test.ts": "Mocks the master key and builds its own keys",

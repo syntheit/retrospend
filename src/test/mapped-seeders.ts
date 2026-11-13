@@ -195,6 +195,14 @@ export const SEEDERS: Record<MappedModel, (c: Ctx) => Promise<Data>> = {
 		expiresAt: day,
 		fileName: text("trip.csv"),
 	}),
+	ErrorReport: async (c) => ({
+		id: randomUUID(),
+		userId: c.owner,
+		kind: "crash",
+		message: text("Render failed"),
+		stack: text("at bundle.js:12:3"),
+		occurredAt: day,
+	}),
 	Feedback: async (c) => ({
 		id: randomUUID(),
 		userId: c.owner,

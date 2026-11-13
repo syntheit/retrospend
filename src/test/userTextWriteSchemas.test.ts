@@ -194,7 +194,7 @@ const REASONS = {
 	profile:
 		"updateProfile strips the characters userText refuses before it writes (profile.service.ts), so Undo of an old name works",
 	crash:
-		"app-generated crash text, scrubbed by scrubReport, kept in error_report and feedback diagnostics, not a mapped column",
+		"app-generated crash text, scrubbed by scrubReport; error_report.message and stack are stripped of controls and refused with a leading U+0001 by submitErrorReports, and feedback diagnostics are one sealed JSON body",
 } as const;
 
 /**
@@ -207,6 +207,9 @@ const NOT_TEXT_INPUTS: Record<string, keyof typeof REASONS> = {
 	"trpc feedback.submit:diagnostics.recentErrors[].message": "crash",
 	"v1 POST /feedback:diagnostics.recentErrors[].message": "crash",
 	"v1 POST /error-reports:reports[].message": "crash",
+	"trpc feedback.submit:diagnostics.recentErrors[].stack": "crash",
+	"v1 POST /feedback:diagnostics.recentErrors[].stack": "crash",
+	"v1 POST /error-reports:reports[].stack": "crash",
 };
 
 describe("detector", () => {

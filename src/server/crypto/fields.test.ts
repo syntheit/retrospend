@@ -115,6 +115,10 @@ const NO_DECLARED_FIELD: Record<string, string> = {
 		"a server copy of envelope.name taken before a rename; no input names it",
 	"export_job.fileName":
 		"derived by the server from a project or person name; no input names it",
+	"error_report.message":
+		"app crash text scrubbed by scrubReport and stripped by the writer; no userText input names it",
+	"error_report.stack":
+		"app crash stack scrubbed by scrubReport and stripped by the writer; no userText input names it",
 };
 
 /**
@@ -282,10 +286,6 @@ const NOT_SEALED: Record<string, string> = {
 		"built from ids at read time or sealed with the JSON copies (D11 PR 8, Revision 1 item 8)",
 	"notification.body":
 		"built from ids at read time or sealed with the JSON copies (D11 PR 8, Revision 1 item 8)",
-	"error_report.message":
-		"owner call: app crash text, scrubbed by the app and the server, not typed",
-	"error_report.stack":
-		"owner call: app crash stack, scrubbed by the app and the server, not typed",
 	"import_job.fileData":
 		"owner call: the uploaded file as base64, cleared after processing, so it holds row text for a short time",
 	"import_job.errorMessage":
@@ -312,7 +312,7 @@ describe("free-text-looking columns anywhere in the schema", () => {
 
 	it("scans the whole schema, not only mapped tables", () => {
 		expect(found).toContain("notification.title");
-		expect(found).toContain("error_report.message");
+		expect(found).toContain("notification.body");
 	});
 
 	it("are mapped, or explained", () => {
@@ -380,6 +380,8 @@ describe("key classes", () => {
 		"apikey.name",
 		"webhook.name",
 		"envelope_change.previousName",
+		"error_report.message",
+		"error_report.stack",
 		"income_rule.name",
 		"income_rule.matchTitle",
 		"wealth_transfer.note",

@@ -232,7 +232,10 @@ export const feedbackRouter = createTRPCRouter({
 	deleteErrorReport: adminProcedure
 		.input(z.object({ id: z.string() }))
 		.mutation(async ({ ctx, input }) => {
-			await ctx.db.errorReport.delete({ where: { id: input.id } });
+			await ctx.db.errorReport.delete({
+				where: { id: input.id },
+				select: { id: true },
+			});
 			return { success: true };
 		}),
 });

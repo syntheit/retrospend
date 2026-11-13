@@ -63611,6 +63611,7 @@
 											"const": true
 										},
 										"stored": {
+											"description": "Reports actually stored; a report whose message or stack starts with U+0001 is skipped.",
 											"maximum": 9007199254740991,
 											"minimum": 0,
 											"type": "integer"

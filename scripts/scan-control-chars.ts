@@ -35,6 +35,8 @@ export const USER_TEXT_COLUMNS: ReadonlyArray<readonly [string, string]> = [
 	["envelope", "name"],
 	["envelope_change", "previousName"],
 	["envelope_group", "name"],
+	["error_report", "message"],
+	["error_report", "stack"],
 	["expense", "description"],
 	["expense", "location"],
 	["expense", "title"],
