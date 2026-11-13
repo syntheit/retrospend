@@ -86,25 +86,34 @@ function inspect(
 	if (!watchesBody(seen)) return;
 	const job = read().then(
 		(text) => check(seen, text, fromPage),
-		// A redirect, a page that closed mid-stream, a streamed body.
 		() => {
 			guardStats.unreadable++;
+			// A redirect has no body; a 2xx body the guard cannot read is a hole.
+			if (seen.status >= 200 && seen.status < 300)
+				unreadable.push(
+					`${seen.method} ${new URL(seen.url).pathname} (body unreadable)`,
+				);
 		},
 	);
 	pending.add(job);
 	void job.finally(() => pending.delete(job));
 }
 
+// A page's own fetch calls are read by the tap (installFetchTap): their
+// streamed bodies cannot be read from the response event. What is left here is
+// everything else the page loads.
 const inspectResponse = (response: Response): void =>
-	inspect(
-		{
-			method: response.request().method(),
-			url: response.url(),
-			status: response.status(),
-			contentType: response.headers()["content-type"],
-		},
-		() => response.text(),
-	);
+	response.request().resourceType() === "fetch"
+		? undefined
+		: inspect(
+				{
+					method: response.request().method(),
+					url: response.url(),
+					status: response.status(),
+					contentType: response.headers()["content-type"],
+				},
+				() => response.text(),
+			);
 
 const REQUEST_METHODS = new Set([
 	"get",
@@ -146,25 +155,52 @@ function guardRequest(request: APIRequestContext): APIRequestContext {
 }
 
 type PageGuard = {
-	__sealedGuard?: (report: Seen & { text: string }) => void;
-	__sealedGuardPending?: Set<Promise<unknown>>;
+	__sealedGuard?: (report: Seen & { text: string }) => Promise<void>;
+	/** Reports every read still open, and says how many started and reported. */
+	__sealedGuardFlush?: (
+		waitMs: number,
+	) => Promise<{ started: number; reported: number }>;
 };
 
 /**
  * Runs in every page of a watched context, before the app. Wraps `fetch` so
- * the body of each `/api` JSON response is read here as the app reads it, and
- * sent to the binding once the stream ends. The app gets an equal response
- * made from a stream that passes every chunk through.
+ * the body of each `/api` JSON response is read here, whatever the app does
+ * with it, and sent to the binding.
  *
- * A clone read on the side does not work: the tRPC client aborts its fetch as
- * soon as it has its results, which kills the clone's read too. Reading as
- * the app does sees every chunk the app received. An aborted stream reports
- * what arrived, cut back to its last complete JSON line.
+ * The body is tee'd: the app gets one branch and the guard reads the other to
+ * the end on its own, so an app that checks only `res.ok` and never reads the
+ * body hides nothing. A clone read on the side is no use: the tRPC client
+ * aborts its fetch as soon as it has its results, which kills it. The guard's
+ * branch survives that by reporting what arrived, cut to its last complete
+ * line. Reads still open at flush or `pagehide` are reported the same way.
+ * The flush says how many reads started and how many reported, and a
+ * difference fails the test (flushTaps).
  */
 function installFetchTap(): void {
 	const w = window as unknown as PageGuard & { fetch: typeof fetch };
-	const pending = new Set<Promise<unknown>>();
-	w.__sealedGuardPending = pending;
+	interface OpenRead {
+		done: Promise<void>;
+		report: (aborted: boolean) => void;
+	}
+	const open = new Set<OpenRead>();
+	const calls = new Set<Promise<unknown>>();
+	let started = 0;
+	let reported = 0;
+	const cut = (text: string) => text.slice(0, text.lastIndexOf("\n") + 1);
+	const reportOpen = () => {
+		for (const read of [...open]) read.report(true);
+	};
+	window.addEventListener("pagehide", reportOpen);
+	w.__sealedGuardFlush = async (waitMs) => {
+		// Let reads finish on their own first; then report what each has.
+		await Promise.race([
+			Promise.allSettled([...open].map((read) => read.done)),
+			new Promise((resolve) => setTimeout(resolve, waitMs)),
+		]);
+		reportOpen();
+		await Promise.allSettled([...calls]);
+		return { started, reported };
+	};
 	const original = w.fetch.bind(window);
 	w.fetch = async (input, init) => {
 		const response = await original(input, init);
@@ -187,48 +223,49 @@ function installFetchTap(): void {
 				status: response.status,
 				contentType,
 			};
-			const reader = response.body.getReader();
+			const [forApp, forGuard] = response.body.tee();
 			const decoder = new TextDecoder();
 			let text = "";
-			let done = false;
+			let finished = false;
 			let finish: () => void = () => undefined;
-			const job = new Promise<void>((resolve) => {
+			const done = new Promise<void>((resolve) => {
 				finish = resolve;
 			});
-			pending.add(job);
-			const report = (aborted: boolean) => {
-				if (done) return;
-				done = true;
-				text += decoder.decode();
-				w.__sealedGuard?.({
-					...seen,
-					text: aborted ? text.slice(0, text.lastIndexOf("\n") + 1) : text,
-				});
-				pending.delete(job);
-				finish();
-			};
-			const body = new ReadableStream<Uint8Array>({
-				async pull(controller) {
-					try {
-						const chunk = await reader.read();
-						if (chunk.done) {
-							report(false);
-							controller.close();
-							return;
-						}
-						text += decoder.decode(chunk.value, { stream: true });
-						controller.enqueue(chunk.value);
-					} catch (error) {
-						report(true);
-						controller.error(error);
+			const read: OpenRead = {
+				done,
+				report: (aborted) => {
+					if (finished) return;
+					finished = true;
+					open.delete(read);
+					text += decoder.decode();
+					const call = w.__sealedGuard?.({
+						...seen,
+						text: aborted ? cut(text) : text,
+					});
+					if (call) {
+						reported++;
+						calls.add(call);
+						void call.finally(() => calls.delete(call));
 					}
+					finish();
 				},
-				cancel(reason) {
-					report(true);
-					return reader.cancel(reason);
-				},
-			});
-			const tapped = new Response(body, {
+			};
+			open.add(read);
+			started++;
+			void (async () => {
+				const reader = forGuard.getReader();
+				try {
+					for (;;) {
+						const chunk = await reader.read();
+						if (chunk.done) return read.report(false);
+						text += decoder.decode(chunk.value, { stream: true });
+					}
+				} catch {
+					// Aborted by the app's own signal, or the page is going away.
+					read.report(true);
+				}
+			})();
+			const tapped = new Response(forApp, {
 				status: response.status,
 				statusText: response.statusText,
 				headers: response.headers,
@@ -264,26 +301,33 @@ async function watch(context: BrowserContext): Promise<BrowserContext> {
 	return context;
 }
 
-/** Waits for the page taps to finish reading what the test's pages fetched. */
+/**
+ * Asks each open page to report the reads still open, and fails the test when
+ * a page that answered started a read it never reported. A page the test
+ * already closed is not asked: whatever it had read went out when it closed
+ * (the tap reports on pagehide). Every wait is bounded, so a busy page cannot
+ * hold the test's teardown.
+ */
 async function flushTaps(): Promise<void> {
 	for (const context of tapped)
-		for (const page of context.pages())
-			if (!page.isClosed())
-				await within(
-					2500,
-					page
-						.evaluate(async () => {
-							const open = (window as unknown as PageGuard)
-								.__sealedGuardPending;
-							if (!open) return;
-							await Promise.race([
-								Promise.allSettled([...open]),
-								new Promise((resolve) => setTimeout(resolve, 2000)),
-							]);
-						})
-						// A closed page has nothing left to read.
-						.catch(() => undefined),
+		for (const page of context.pages()) {
+			if (page.isClosed()) continue;
+			const result = (await within(
+				3500,
+				page
+					.evaluate(
+						(waitMs) =>
+							(window as unknown as PageGuard).__sealedGuardFlush?.(waitMs),
+						1500,
+					)
+					// The page navigated or closed while it answered.
+					.catch(() => undefined),
+			)) as { started: number; reported: number } | undefined;
+			if (result && result.started > result.reported)
+				unreadable.push(
+					`${result.started - result.reported} page read(s) started and never reported`,
 				);
+		}
 	tapped.clear();
 	// The binding calls land after the page's promises settle.
 	await within(2500, Promise.all(pending));
