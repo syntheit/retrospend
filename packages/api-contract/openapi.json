@@ -82305,7 +82305,14 @@
 														"type": "string"
 													},
 													"name": {
-														"type": "string"
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
 													}
 												},
 												"required": [
@@ -82325,10 +82332,24 @@
 														"type": "string"
 													},
 													"name": {
-														"type": "string"
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
 													},
 													"newOrganizerName": {
-														"type": "string"
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
 													}
 												},
 												"required": [

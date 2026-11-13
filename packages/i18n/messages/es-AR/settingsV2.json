@@ -507,6 +507,8 @@
 		"previewFailed": "No se pudo cargar lo que va a pasar. Intentá de nuevo.",
 		"projectTransfer": "Pasa a {owner}",
 		"projectDelete": "Se elimina, sos su único miembro",
+		"projectUnnamed": "Un proyecto",
+		"organizerUnnamed": "otro miembro",
 		"settlementsConfirm": {
 			"title": "{count, plural, one {# pago pendiente} other {# pagos pendientes}}",
 			"meta": "Se confirman en tu nombre"

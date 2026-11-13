@@ -2291,6 +2291,8 @@
 			"nothing": "No cambia nada para nadie más.",
 			"transfer": "{project} pasa a {name}",
 			"deleteProject": "{project} se elimina, nadie más puede llevarlo",
+			"projectUnnamed": "Un proyecto",
+			"organizerUnnamed": "otro miembro",
 			"confirm": "{count, plural, one {# pago que te espera se confirma} other {# pagos que te esperan se confirman}}",
 			"cancel": "{count, plural, one {# pago que nadie confirmó se cancela} other {# pagos que nadie confirmó se cancelan}}",
 			"accept": "{count, plural, one {# parte que espera tu respuesta se acepta} other {# partes que esperan tu respuesta se aceptan}}",

@@ -44,7 +44,10 @@ import {
 	buildContactVisibility,
 	redactContact,
 } from "~/server/services/shared-expenses/contact-visibility";
-import { anonymizeAndDeleteUser } from "~/server/services/user-deletion.service";
+import {
+	anonymizeAndDeleteUser,
+	previewAccountDeletion,
+} from "~/server/services/user-deletion.service";
 import { expectedContactHash, GUEST_LABEL } from "~/test/contact-hash-expected";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import {
@@ -161,6 +164,19 @@ const sessionsIn = async (projectId: string) =>
 		)[0]?.n,
 	);
 const exists = async (id: string) => (await rawRow(id)) !== undefined;
+
+/** A global client with no ring cached, as a restarted process has. */
+function freshClient(): PrismaClient {
+	const instance = () => findInstanceKeyring();
+	return buildClients(
+		{
+			instance: textKeys({ instance }),
+			user: (userId) => textKeys({ instance }, userId),
+		},
+		undefined,
+		fieldOpenSlot(() => buildModelGraph(runtimeDataModel())),
+	).db as unknown as PrismaClient;
+}
 
 /** Runs `run` with the instance key rows gone and no ring cached, then puts the rows back. */
 async function withoutInstanceKey<T>(run: () => Promise<T>): Promise<T> {
@@ -481,6 +497,38 @@ describe("sealed rows", () => {
 		expect(await exists(guestId)).toBe(true);
 	});
 
+	it("the deletion preview names what it can read and gives null for a name whose key is lost", async () => {
+		const { user: gone } = await createTestUser();
+		const { user: other } = await createTestUser();
+		const shared = await adminDb.project.create({
+			data: { name: "Bariloche", createdById: gone.id },
+		});
+		const solo = await adminDb.project.create({
+			data: { name: "Alquiler", createdById: gone.id },
+		});
+		await adminDb.projectParticipant.createMany({
+			data: [
+				{ projectId: shared.id, participantType: "user", participantId: gone.id, role: "ORGANIZER" },
+				{ projectId: shared.id, participantType: "user", participantId: other.id, role: "CONTRIBUTOR" },
+				{ projectId: solo.id, participantType: "user", participantId: gone.id, role: "ORGANIZER" },
+			],
+		});
+		const withKey = await previewAccountDeletion(db, gone.id);
+		expect(withKey.projectsToTransfer).toEqual([
+			{ id: shared.id, name: "Bariloche", newOrganizerName: other.name },
+		]);
+		expect(withKey.projectsToDelete).toEqual([{ id: solo.id, name: "Alquiler" }]);
+
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		const lost = await withoutInstanceKey(() =>
+			previewAccountDeletion(freshClient(), gone.id),
+		);
+		expect(lost.projectsToTransfer).toEqual([
+			{ id: shared.id, name: null, newOrganizerName: null },
+		]);
+		expect(lost.projectsToDelete).toEqual([{ id: solo.id, name: null }]);
+	});
+
 	it("an account with an organized project, a created project and a pending settlement deletes with the instance key lost", async () => {
 		const creatorUser = await createTestUser();
 		const { user: other } = await createTestUser();
@@ -519,18 +567,8 @@ describe("sealed rows", () => {
 		vi.spyOn(console, "warn").mockImplementation(() => {});
 		vi.spyOn(console, "error").mockImplementation(() => {});
 		await withoutInstanceKey(async () => {
-			// A client with no ring cached, as a restarted process has.
-			const instance = () => findInstanceKeyring();
-			const fresh = buildClients(
-				{
-					instance: textKeys({ instance }),
-					user: (userId) => textKeys({ instance }, userId),
-				},
-				undefined,
-				fieldOpenSlot(() => buildModelGraph(runtimeDataModel())),
-			);
 			await anonymizeAndDeleteUser(
-				fresh.db as unknown as PrismaClient,
+				freshClient(),
 				gone,
 				creatorUser.user.email,
 				null,

@@ -9,6 +9,7 @@ import { Button } from "@/ui/Button";
 import { Sheet, useSheetBodySize } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { TextField } from "@/ui/TextField";
+import { projectLines } from "./deleteLines";
 
 type Consequences = Awaited<
 	ReturnType<RetrospendClient["account"]["deletionPreview"]>
@@ -86,12 +87,7 @@ export function DeleteAccountSheet({
 	const line = (text: string) => <Text key={text}>{text}</Text>;
 	const lines = what
 		? [
-				...what.projectsToTransfer.map((p) =>
-					t("transfer", { project: p.name, name: p.newOrganizerName }),
-				),
-				...what.projectsToDelete.map((p) =>
-					t("deleteProject", { project: p.name }),
-				),
+				...projectLines(what, t),
 				...(what.settlementsToAutoConfirm > 0
 					? [t("confirm", { count: what.settlementsToAutoConfirm })]
 					: []),

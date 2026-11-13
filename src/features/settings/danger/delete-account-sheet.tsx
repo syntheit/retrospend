@@ -11,24 +11,14 @@ import { Sheet } from "~/components/ui/sheet";
 import { useToast } from "~/components/ui/toast";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { SettingRow, SettingRows } from "../setting-row";
+import { projectRows } from "./deletion-rows";
 
 type Preview = RouterOutputs["user"]["previewAccountDeletion"];
 
 /** What happens to shared things, one row each (mockup step 2). */
 function Consequences({ data }: { data: Preview }) {
 	const t = useTranslations("settingsV2.delete");
-	const rows: { key: string; title: string; meta: string }[] = [
-		...data.projectsToTransfer.map((p) => ({
-			key: `t-${p.id}`,
-			title: p.name,
-			meta: t("projectTransfer", { owner: p.newOrganizerName }),
-		})),
-		...data.projectsToDelete.map((p) => ({
-			key: `d-${p.id}`,
-			title: p.name,
-			meta: t("projectDelete"),
-		})),
-	];
+	const rows = projectRows(data, t);
 	const counts: [string, number, string][] = [
 		["confirm", data.settlementsToAutoConfirm, "settlementsConfirm"],
 		["cancel", data.settlementsToCancel, "settlementsCancel"],

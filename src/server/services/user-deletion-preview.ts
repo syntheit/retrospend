@@ -1,7 +1,8 @@
 /**
  * What an account deletion would do, without changing anything (the summary
- * the delete sheet shows). Names come back blank, not as a failure, when the
- * instance key that sealed them is lost.
+ * the delete sheet shows). A name the server cannot give comes back null, not
+ * as a failure, when the instance key that sealed it is lost or the person is
+ * unknown; the client words the fallback.
  */
 import { textUnavailableProblem } from "~/server/crypto/field-open";
 import type { PrismaClient } from "~prisma";
@@ -13,8 +14,12 @@ import {
 } from "./user-deletion-projects";
 
 export interface DeletionPreview {
-	projectsToTransfer: { id: string; name: string; newOrganizerName: string }[];
-	projectsToDelete: { id: string; name: string }[];
+	projectsToTransfer: {
+		id: string;
+		name: string | null;
+		newOrganizerName: string | null;
+	}[];
+	projectsToDelete: { id: string; name: string | null }[];
 	settlementsToAutoConfirm: number;
 	settlementsToCancel: number;
 	verificationsToAutoAccept: number;
@@ -22,19 +27,19 @@ export interface DeletionPreview {
 }
 
 /**
- * Resolves a display name for a participant without throwing on missing records
- * or on a name whose key is unavailable.
+ * Resolves a display name for a participant: null for a missing record or a
+ * name whose key is unavailable, never a failure.
  */
 async function resolveParticipantDisplayName(
 	db: PrismaClient | PrismaTx,
 	participantType: string,
 	participantId: string,
-): Promise<string> {
+): Promise<string | null> {
 	try {
 		return await displayName(db, participantType, participantId);
 	} catch (error) {
-		// A name sealed with a key that is gone reads blank; the preview still shows.
-		if (textUnavailableProblem(error)) return "";
+		// A name sealed with a key that is gone reads null; the preview still shows.
+		if (textUnavailableProblem(error)) return null;
 		throw error;
 	}
 }
@@ -43,7 +48,7 @@ async function displayName(
 	db: PrismaClient | PrismaTx,
 	participantType: string,
 	participantId: string,
-): Promise<string> {
+): Promise<string | null> {
 	if (participantId === DELETED_USER_SENTINEL) return DELETED_USER_NAME;
 
 	if (participantType === "user") {
@@ -51,7 +56,7 @@ async function displayName(
 			where: { id: participantId },
 			select: { name: true },
 		});
-		return user?.name ?? "another member";
+		return user?.name ?? null;
 	}
 
 	if (participantType === "shadow") {
@@ -59,22 +64,22 @@ async function displayName(
 			where: { id: participantId },
 			select: { name: true },
 		});
-		return shadow?.name ?? "another member";
+		return shadow?.name ?? null;
 	}
 
-	return "another member";
+	return null;
 }
 
 
 /**
  * The projects the user organizes, with their names. A project name is sealed
- * with the instance key; when that key is gone the names read blank and the
+ * with the instance key; when that key is gone the names read null and the
  * preview still shows, so the user can still delete the account.
  */
 async function organizerRoles(
 	db: PrismaClient,
 	userId: string,
-): Promise<{ projectId: string; name: string }[]> {
+): Promise<{ projectId: string; name: string | null }[]> {
 	const where = {
 		participantType: "user",
 		participantId: userId,
@@ -92,7 +97,7 @@ async function organizerRoles(
 			where,
 			select: { projectId: true },
 		});
-		return roles.map((pp) => ({ projectId: pp.projectId, name: "" }));
+		return roles.map((pp) => ({ projectId: pp.projectId, name: null }));
 	}
 }
 

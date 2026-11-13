@@ -507,6 +507,8 @@
 		"previewFailed": "Не удалось загрузить последствия. Попробуйте ещё раз.",
 		"projectTransfer": "Перейдёт к {owner}",
 		"projectDelete": "Будет удалён, вы его единственный участник",
+		"projectUnnamed": "Проект",
+		"organizerUnnamed": "другому участнику",
 		"settlementsConfirm": {
 			"title": "{count, plural, one {# ожидающий платёж} few {# ожидающих платежа} many {# ожидающих платежей} other {# ожидающего платежа}}",
 			"meta": "Будут подтверждены за вас"

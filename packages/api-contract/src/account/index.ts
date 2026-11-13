@@ -9,16 +9,22 @@ const TAG = ["Account"];
 
 export const accountDeletionPreviewSchema = z
 	.object({
-		/** Projects you organize alone that another member takes over. */
+		/**
+		 * Projects you organize alone that another member takes over. A name is
+		 * null when the server cannot read it (its key is unavailable) or does
+		 * not know the person: the client words that.
+		 */
 		projectsToTransfer: z.array(
 			z.object({
 				id: idSchema,
-				name: z.string(),
-				newOrganizerName: z.string(),
+				name: z.string().nullable(),
+				newOrganizerName: z.string().nullable(),
 			}),
 		),
 		/** Projects you organize alone with nobody to hand them to: they are deleted. */
-		projectsToDelete: z.array(z.object({ id: idSchema, name: z.string() })),
+		projectsToDelete: z.array(
+			z.object({ id: idSchema, name: z.string().nullable() }),
+		),
 		/** Payments waiting for an answer that are confirmed for the other person. */
 		settlementsToAutoConfirm: z.int().min(0),
 		/** Payments nobody confirmed yet that are cancelled. */

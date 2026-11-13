@@ -507,6 +507,8 @@
 		"previewFailed": "Folgen konnten nicht geladen werden. Versuch es erneut.",
 		"projectTransfer": "Geht an {owner}",
 		"projectDelete": "Gelöscht, du bist das einzige Mitglied",
+		"projectUnnamed": "Ein Projekt",
+		"organizerUnnamed": "ein anderes Mitglied",
 		"settlementsConfirm": {
 			"title": "{count, plural, one {# offene Zahlung} other {# offene Zahlungen}}",
 			"meta": "Werden für dich bestätigt"

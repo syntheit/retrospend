@@ -507,6 +507,8 @@
 		"previewFailed": "Couldn't load what happens. Try again.",
 		"projectTransfer": "Moves to {owner}",
 		"projectDelete": "Deleted, you are its only member",
+		"projectUnnamed": "A project",
+		"organizerUnnamed": "another member",
 		"settlementsConfirm": {
 			"title": "{count, plural, one {# pending payment} other {# pending payments}}",
 			"meta": "Confirmed for you"
