@@ -16,7 +16,7 @@ import { validateLinkOrThrow } from "~/server/lib/magic-link";
 import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
 import { hashToken } from "~/server/lib/tokens";
 import { sendEmail } from "~/server/mailer";
-import { contactHashFor, contactLookup } from "~/server/services/keys/contact-hash";
+import { contactHashFor, contactLookup, matchesContact } from "~/server/services/keys/contact-hash";
 import { joinProject } from "~/server/services/project/joining";
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 import {
@@ -164,7 +164,7 @@ export const guestRouter = createTRPCRouter({
 			const result = await ctx.db.$transaction(async (tx) => {
 				// Re-check for existing session inside the transaction
 				const existingSession = sameAddress
-					? await tx.guestSession.findFirst({ where: { ...sameAddress, projectId }, select: { id: true, email: true } })
+					? (await tx.guestSession.findMany({ where: { ...sameAddress, projectId }, select: { id: true, email: true } })).find((s) => matchesContact(sameAddress, email, s.email)) ?? null
 					: null;
 
 				if (existingSession) {

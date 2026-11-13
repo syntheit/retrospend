@@ -24,56 +24,51 @@ const isInsensitiveEquals = (value: unknown): value is InsensitiveEquals =>
 	value !== null &&
 	typeof (value as InsensitiveEquals).equals === "string";
 
+/** Prisma's `equals` with `mode: "insensitive"` is an unescaped ILIKE: `%`, `_` and `\` are special. */
+function ilike(pattern: string, text: string): boolean {
+	let source = "";
+	for (let i = 0; i < pattern.length; i++) {
+		const c = pattern[i] as string;
+		const literal = c === "\\" ? (pattern[++i] ?? "") : null;
+		if (literal === null && c === "%") source += "[\\s\\S]*";
+		else if (literal === null && c === "_") source += "[\\s\\S]";
+		else source += (literal ?? c).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	}
+	return new RegExp(`^${source}$`, "i").test(text);
+}
+
+type Where = Record<string, unknown>;
+
+function matches(gs: GuestSessionRecord, w: Where = {}): boolean {
+	const { email, emailHash, id, projectId } = w;
+	if (email !== undefined && !isInsensitiveEquals(email))
+		throw new Error("guestSession double: email filter not supported");
+	if (isInsensitiveEquals(email) && !ilike(email.equals, gs.email)) return false;
+	if (emailHash !== undefined && gs.emailHash !== emailHash) return false;
+	const ids = (id as { in?: string[] } | undefined)?.in;
+	if (ids && !ids.includes(gs.id)) return false;
+	if (typeof projectId === "string" && gs.projectId !== projectId) return false;
+	const projects = (projectId as { in?: string[] } | undefined)?.in;
+	if (typeof projectId === "object" && projects && !projects.includes(gs.projectId))
+		return false;
+	return true;
+}
+
 export function makeGuestSessionModel(
 	guestSessions: Map<string, GuestSessionRecord>,
 	nextId: () => string,
 ) {
 	return {
-		findFirst: vi.fn((args: { where?: Record<string, unknown> } = {}) => {
-			for (const gs of guestSessions.values()) {
-				const { email, emailHash } = args.where ?? {};
-				if (email !== undefined && !isInsensitiveEquals(email))
-					throw new Error("guestSession double: email filter not supported");
-				if (
-					isInsensitiveEquals(email) &&
-					gs.email.toLowerCase() !== email.equals.toLowerCase()
-				)
-					continue;
-				if (emailHash !== undefined && gs.emailHash !== emailHash) continue;
-				if (
-					args.where?.projectId !== undefined &&
-					gs.projectId !== args.where.projectId
-				)
-					continue;
-				return gs;
-			}
-			return null;
-		}),
+		findFirst: vi.fn(
+			(args: { where?: Where } = {}) =>
+				[...guestSessions.values()].find((gs) => matches(gs, args.where)) ??
+				null,
+		),
 		findUnique: vi.fn((args: { where: { id: string } }) => {
 			return guestSessions.get(args.where.id) ?? null;
 		}),
-		findMany: vi.fn(
-			(
-				args: {
-					where?: {
-						id?: { in?: string[] };
-						projectId?: { in?: string[] } | string;
-					};
-				} = {},
-			) =>
-				[...guestSessions.values()].filter((gs) => {
-					const w = args.where;
-					if (w?.id?.in && !w.id.in.includes(gs.id)) return false;
-					if (typeof w?.projectId === "string" && gs.projectId !== w.projectId)
-						return false;
-					if (
-						typeof w?.projectId === "object" &&
-						w.projectId.in &&
-						!w.projectId.in.includes(gs.projectId)
-					)
-						return false;
-					return true;
-				}),
+		findMany: vi.fn((args: { where?: Where } = {}) =>
+			[...guestSessions.values()].filter((gs) => matches(gs, args.where)),
 		),
 		create: vi.fn((args: { data: Partial<GuestSessionRecord> }) => {
 			const id = nextId();

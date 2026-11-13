@@ -4,7 +4,14 @@
  * guest (`guest_session`) by address once the address is ciphertext.
  *
  *   emailHash = "<tag>:<hex>"   (see blind-index.ts)
- *   normalized = email.trim().toLowerCase()
+ *   normalized = email.trim() with A to Z folded to a to z
+ *
+ * Only ASCII letters fold. Both lookup paths must agree on what "the same
+ * address" means, and Postgres folds non-ASCII letters by its own rules (the
+ * database locale, not JavaScript's), so a fold that goes further would make
+ * the hash path and the plaintext path disagree on an address with an
+ * accented capital. The plaintext path asks Postgres for a superset
+ * (`mode: insensitive`) and `matchesContact` makes the answer exact in JS.
  *
  * The ring is the INSTANCE ring, and `blindIndex` signs with its lowest key
  * id, so adding a key never changes a hash. The label differs per table: the
@@ -28,10 +35,7 @@
 import { blindIndex, blindIndexTag } from "~/server/crypto/blind-index";
 import { loadEpoch } from "~/server/crypto/epoch";
 import { FieldCryptoError, type Keyring } from "~/server/crypto/field-crypto";
-import {
-	TextUnavailableError,
-	textUnavailableProblem,
-} from "~/server/crypto/field-open";
+import { TextUnavailableError } from "~/server/crypto/field-open";
 import { getMasterKeyring } from "~/server/crypto/master-key";
 import {
 	findInstanceKeyring,
@@ -46,9 +50,18 @@ const LABELS: Record<ContactTable, string> = {
 	guest_session: "retrospend guest email hash v1",
 };
 
+/**
+ * Prisma compiles `equals` with `mode: "insensitive"` to ILIKE and does not
+ * escape the value (search-fold.ts), so `_` and `%` in an address would be
+ * wildcards. Postgres's default LIKE escape is the backslash: escaping all
+ * three makes the database match case-insensitive equality only.
+ */
+const escapeLike = (text: string): string =>
+	text.replace(/[\\%_]/g, "\\$&");
+
 /** The text two addresses are compared by, on the hash path and the plaintext path. */
 export const normalizeContactEmail = (email: string): string =>
-	email.trim().toLowerCase();
+	email.trim().replace(/[A-Z]/g, (c) => c.toLowerCase());
 
 /** The key tag a table's hashes are made with; a stored hash counts only while its tag is this. */
 export const contactHashTag = (ring: Keyring, table: ContactTable): string =>
@@ -120,10 +133,31 @@ export type ContactWhere =
 	| { email: { equals: string; mode: "insensitive" } };
 
 /**
+ * Whether a row read through `where` (from `contactLookup`) is a match for
+ * `email`. The hash path matched exactly in SQL, so every row is. The
+ * plaintext path matched a superset (Postgres folds case by its own locale),
+ * so the stored address is compared again with the one normalization both
+ * paths share. The row must be read with its `email` on the plaintext path.
+ */
+export function matchesContact(
+	where: ContactWhere,
+	email: string,
+	stored: string | null | undefined,
+): boolean {
+	if ("emailHash" in where) return true;
+	return (
+		stored !== null &&
+		stored !== undefined &&
+		normalizeContactEmail(stored) === normalizeContactEmail(email)
+	);
+}
+
+/**
  * The only lookup of a ghost or a guest by address. With the epoch set and a
  * master key it matches the hash (rule 2 for the ring); otherwise the
  * normalized plaintext address, ignoring case, so matching does not depend on
- * the epoch. Resolve it before opening a transaction.
+ * the epoch. Resolve it before opening a transaction, and filter the rows it
+ * finds with `matchesContact`.
  */
 export async function contactLookup(
 	table: ContactTable,
@@ -135,15 +169,20 @@ export async function contactLookup(
 		if (ring) return { emailHash: contactHash(ring, table, email) };
 	}
 	return {
-		email: { equals: normalizeContactEmail(email), mode: "insensitive" },
+		email: {
+			equals: escapeLike(normalizeContactEmail(email)),
+			mode: "insensitive",
+		},
 	};
 }
 
 /**
  * `contactLookup` for a cleanup that must not be blocked by a lost key (an
  * account deletion): null, with the stable code logged and no address, when
- * the hash cannot be made. The sealed addresses are unreadable without the key
- * anyway. A writer that stores a hash keeps the fail-closed rule instead.
+ * the instance key is gone for good (`keystore_lost`); the sealed addresses
+ * are unreadable without it anyway. Any other key problem is rethrown, so a
+ * transient one makes the caller retry rather than silently skip. A writer
+ * that stores a hash keeps the fail-closed rule instead.
  */
 export async function contactLookupIfKeyed(
 	table: ContactTable,
@@ -153,9 +192,14 @@ export async function contactLookupIfKeyed(
 	try {
 		return await contactLookup(table, email, masterKeyring);
 	} catch (error) {
-		const code = textUnavailableProblem(error);
-		if (!code) throw error;
-		console.warn(`Contact lookup skipped, the key store gave no ring (${code})`);
+		if (
+			!(error instanceof TextUnavailableError) ||
+			error.code !== "keystore_lost"
+		)
+			throw error;
+		console.warn(
+			`Contact lookup skipped, the instance key is lost (${error.code})`,
+		);
 		return null;
 	}
 }

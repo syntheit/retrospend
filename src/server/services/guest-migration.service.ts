@@ -1,5 +1,5 @@
 import { textUnavailableProblem as keyProblem } from "~/server/crypto/field-open";
-import { contactLookup } from "~/server/services/keys/contact-hash";
+import { findGuestSessionsByEmail } from "./guest-session-lookup";
 import type { Prisma, PrismaClient } from "~prisma";
 import { logEventAsync } from "./audit.service";
 import { AlreadyClaimedError, claimShadowProfile } from "./claim.service";
@@ -86,10 +86,7 @@ export async function migrateGuestSessionsToUser(
 	userId: string,
 	userEmail: string,
 ): Promise<MigrationResult> {
-	const guestSessions = await db.guestSession.findMany({
-		where: await contactLookup("guest_session", userEmail),
-		select: { id: true, projectId: true },
-	});
+	const guestSessions = await findGuestSessionsByEmail(db, userEmail);
 
 	if (guestSessions.length === 0) {
 		// Still try to claim shadow profiles even without guest sessions

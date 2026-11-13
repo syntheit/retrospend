@@ -43,4 +43,16 @@ describe("guestSession double findFirst", () => {
 			/not supported/,
 		);
 	});
+
+	it("reads an unescaped _ and % as ILIKE does, and a backslash escape as the character", () => {
+		const { m, add } = model();
+		const dot = add("john.doe@example.com", null);
+		const under = add("john_doe@example.com", null);
+		const ids = (equals: string) =>
+			m.findMany({ where: { email: { equals, mode: "insensitive" } } }).map((r) => r.id);
+		expect(ids("john_doe@example.com")).toEqual([dot, under]);
+		expect(ids("john\\_doe@example.com")).toEqual([under]);
+		expect(ids("%@example.com")).toEqual([dot, under]);
+		expect(ids("\\%@example.com")).toEqual([]);
+	});
 });
