@@ -70,12 +70,12 @@ Mobile uses v1, never tRPC, because an App Store or F-Droid build lives for mont
 
 - REST and OpenAPI 3.1. The spec is served at `/docs/api/openapi.json` and regenerated with `pnpm exec tsx packages/api-contract/scripts/write-openapi.ts`. A test fails when the committed copy is stale.
 - **Auth:** one principal from a cookie session, a bearer token (mobile), a device token (RFC 8628, approved at `/device`) or an API key (`rsk_` prefix, hashed, always expires).
-- **Scopes:** `read`, `write:expenses`, `write:money`, `write:settings`, `admin`, plus session-only scopes for account security and deletion. Every route declares its scope.
+- **Scopes:** `read`, `write:expenses`, `write:money`, `write:settings`, `admin`, plus session-only scopes for account security and deletion and for `sync`, which only the Expo app's session holds. Every route declares its scope.
 - **Idempotency:** every write needs an `Idempotency-Key`. Responses are stored per user; a reused key with different input is refused.
 - **Errors:** RFC 9457 problem+json with a stable `code`.
 - **Rate limits:** per IP and per token, stored in Postgres.
 - **Previews:** every money write has a `.../preview` twin returning what changes and what does not.
-- **Sync:** cursor pagination, `updatedSince` deltas, and an events feed (`/api/v1/events`).
+- **Sync:** cursor pagination, an events feed (`/api/v1/events`), and raw row deltas for the app's local copy at `GET /sync/{expenses,categories,recurring-templates}`. A pull takes `since` (opaque) and `limit` and returns `items`, `tombstones`, `cursor` and `hasMore`; a cursor the log cannot honor is `410 sync_reset_required`. The `sync` scope is session-only: the Expo app's session holds it, no API key, device session or `read` token does. Stamps come from `sync_change` (`src/server/services/sync/`). Cursors carry the server-wide commit position, as the events feed does.
 - **Completeness:** `src/server/api/v1/__tests__/completeness.test.ts` fails if any tRPC procedure has no v1 route and no written reason.
 
 ### Database access and row-level security
