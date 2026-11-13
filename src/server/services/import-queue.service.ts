@@ -20,6 +20,7 @@ import {
 	GUARD,
 	JOB_CREATED,
 	NO_FILE,
+	nextQueuedJob,
 	STATE,
 	writeJob,
 } from "./import/job-selects";
@@ -161,19 +162,8 @@ export class ImportQueueService {
 		}
 
 		// Get next QUEUED job for this user
-		const job = await this.db.importJob.findFirst({
-			where: { userId, status: "QUEUED" },
-			orderBy: { createdAt: "asc" },
-			select: {
-				id: true,
-				userId: true,
-				type: true,
-				fileName: true,
-				fileType: true,
-				fileData: true,
-			},
-		});
-
+		const job = await nextQueuedJob(this.db, userId);
+		if (job === "failed") return await this.processQueue(userId);
 		if (!job) {
 			return; // Queue empty
 		}

@@ -33,7 +33,7 @@ const CALL = new RegExp(
 const KEY = /^\s*(["']?)(\w+)\1\s*:/;
 
 /** The only call that reads the file: processQueue's findFirst. */
-const READS_FILE = "src/server/services/import-queue.service.ts";
+const READS_FILE = "src/server/services/import/job-selects.ts";
 
 interface Call {
 	op: string;

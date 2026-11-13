@@ -23,6 +23,7 @@ import {
 import { openField } from "~/server/crypto/field-crypto";
 import { textUnavailableProblem } from "~/server/crypto/field-open";
 import { createUserScopedDb } from "~/server/db";
+import * as v1 from "~/server/services/api-v1/imports";
 import { sweepStaleImportFiles } from "~/server/services/api-v1/retention-sweep";
 import { ImportQueueService } from "~/server/services/import-queue.service";
 import {
@@ -476,6 +477,96 @@ describe.runIf(sealedSuite)(
 			const swept = await rawJob(stale.id);
 			expect(swept.status).toBe("FAILED");
 			expect(swept.fileData).toBeNull();
+		});
+
+		const caller = (userId: string) =>
+			({
+				db: createUserScopedDb(userId),
+				principal: { userId },
+				timeZone: "America/Argentina/Buenos_Aires",
+			}) as never as Parameters<typeof v1.cancel>[0];
+
+		it("v1 cancel commits and answers, with the unreadable name left empty", async () => {
+			const userId = await owned();
+			const job = await queued(userId, GOOD);
+			await destroyDataKeys(userId);
+
+			const dto = await v1.cancel(caller(userId), job.id);
+			expect(dto).toMatchObject({
+				id: job.id,
+				state: "cancelled",
+				fileName: "",
+				fileType: "csv",
+				source: "csv",
+				warnings: [],
+				error: null,
+			});
+			expect((await rawJob(job.id)).status).toBe("CANCELLED");
+			// v1 remove touches no text either.
+			await expect(v1.remove(caller(userId), job.id)).resolves.toEqual({
+				ok: true,
+			});
+		});
+
+		it("v1 cancel answers when a name cell is damaged, and still refuses a job that is not queued", async () => {
+			const userId = await owned();
+			const job = await queued(userId, GOOD);
+			const [row] = await adminDb.$queryRaw<{ fileName: string }[]>`
+				SELECT "fileName" FROM "import_job" WHERE "id" = ${job.id}`;
+			const name = row?.fileName ?? "";
+			expect(name.startsWith(MARKER)).toBe(true);
+			// One base64 character of the ciphertext changed: the tag no longer holds.
+			const at = name.length - 6;
+			const damaged = `${name.slice(0, at)}${name[at] === "A" ? "B" : "A"}${name.slice(at + 1)}`;
+			await adminDb.$executeRaw`
+				UPDATE "import_job" SET "fileName" = ${damaged} WHERE "id" = ${job.id}`;
+			await expect(
+				createUserScopedDb(userId).importJob.findFirstOrThrow({
+					where: { id: job.id },
+					select: { fileName: true },
+				}),
+			).rejects.toMatchObject({ code: "auth_failed" });
+
+			try {
+				const dto = await v1.cancel(caller(userId), job.id);
+				expect(dto).toMatchObject({ state: "cancelled", fileName: "" });
+				expect((await rawJob(job.id)).status).toBe("CANCELLED");
+				await expect(v1.cancel(caller(userId), job.id)).rejects.toMatchObject({
+					code: "BAD_REQUEST",
+				});
+			} finally {
+				await adminDb.$executeRaw`
+					UPDATE "import_job" SET "fileName" = ${name} WHERE "id" = ${job.id}`;
+			}
+		});
+
+		it("fails a queued job at once when its file cannot be opened, with no reason text", async () => {
+			const lost = await owned();
+			const gone = await queued(lost, GOOD);
+			await destroyDataKeys(lost);
+			await queue(lost).processQueue(lost);
+			const lostRow = await rawJob(gone.id);
+			expect(lostRow.status).toBe("FAILED");
+			expect(lostRow.fileData).toBeNull();
+			expect(lostRow.errorMessage).toBeNull();
+			expect(lostRow.failedAt).toBeInstanceOf(Date);
+
+			// A damaged file cell: the key is there, the tag fails.
+			const userId = await owned();
+			const job = await queued(userId, GOOD);
+			const next = await queued(userId, GOOD);
+			const stored = (await rawJob(job.id)).fileData ?? "";
+			const at = stored.length - 6;
+			const damaged = `${stored.slice(0, at)}${stored[at] === "A" ? "B" : "A"}${stored.slice(at + 1)}`;
+			await adminDb.$executeRaw`
+				UPDATE "import_job" SET "fileData" = ${damaged} WHERE "id" = ${job.id}`;
+			await queue(userId).processQueue(userId);
+			const damagedRow = await rawJob(job.id);
+			expect(damagedRow.status).toBe("FAILED");
+			expect(damagedRow.fileData).toBeNull();
+			expect(damagedRow.errorMessage).toBeNull();
+			// The next job in line was still read: two ARS rows, ready for review.
+			expect((await rawJob(next.id)).status).toBe("READY_FOR_REVIEW");
 		});
 	},
 );

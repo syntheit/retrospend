@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { TextUnavailableError } from "~/server/crypto/field-open";
 import { createMockDb } from "~/test/mock-db";
 import { useRateTable } from "~/test/rate-table";
 import { ImportQueueService } from "../import-queue.service";
@@ -663,6 +664,31 @@ describe("a job the sweep or a cancel got to first", () => {
 			errorMessage: "connection reset",
 			fileData: null,
 		});
+	});
+
+	it("fails at once a job whose file cannot be opened, with no reason text, and goes on", async () => {
+		db.importJob.findFirst
+			.mockRejectedValueOnce(new TextUnavailableError("keystore_lost"))
+			.mockResolvedValueOnce({ id: "job-1" }) // the same job, by id only
+			.mockResolvedValueOnce(null);
+		db.importJob.update.mockResolvedValue({});
+
+		await expect(service.processQueue("user-1")).resolves.toBeUndefined();
+
+		expect(updates()).toHaveLength(1);
+		expect(updates()[0]?.where).toEqual({
+			id: "job-1",
+			status: "QUEUED",
+		});
+		expect(updates()[0]?.data).toMatchObject({ status: "FAILED", fileData: null });
+		expect(updates()[0]?.data).not.toHaveProperty("errorMessage");
+	});
+
+	it("rethrows a queue read failure that is not an unreadable cell", async () => {
+		db.importJob.findFirst.mockRejectedValueOnce(new Error("connection lost"));
+		await expect(service.processQueue("user-1")).rejects.toThrow(
+			"connection lost",
+		);
 	});
 
 	it("rethrows a write failure that is not a missing row", async () => {

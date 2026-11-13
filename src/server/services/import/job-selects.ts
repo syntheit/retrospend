@@ -6,6 +6,8 @@ import {
 	SealedTextError,
 	stripUserTextControls,
 } from "@retrospend/api-contract/common";
+import { FieldCryptoError } from "~/server/crypto/field-crypto";
+import { textUnavailableProblem } from "~/server/crypto/field-open";
 import type { ImportJobStatus, Prisma, PrismaClient } from "~prisma";
 
 const MAX_ERROR_LENGTH = 1000;
@@ -75,5 +77,56 @@ export async function writeJob(
 	} catch (error) {
 		if (only && (error as { code?: string }).code === "P2025") return false;
 		throw error;
+	}
+}
+
+/** A sealed cell that cannot be read: its key is gone, or the value is damaged. */
+export const isUnreadableText = (error: unknown) =>
+	textUnavailableProblem(error) !== null || error instanceof FieldCryptoError;
+
+/**
+ * The next QUEUED job of a user, with its file: the one place the file is
+ * read. When the file cannot be opened (the owner's key is gone, or the cell
+ * is damaged) it never will be, so that job fails at once with no reason text
+ * (the code is logged, never the text) and "failed" says to look again,
+ * instead of leaving it queued until the sweep.
+ */
+export async function nextQueuedJob(
+	db: PrismaClient | Prisma.TransactionClient,
+	userId: string,
+) {
+	const where = { userId, status: "QUEUED" } as const;
+	const orderBy = { createdAt: "asc" } as const;
+	try {
+		return await db.importJob.findFirst({
+			where,
+			orderBy,
+			select: {
+				id: true,
+				userId: true,
+				type: true,
+				fileName: true,
+				fileType: true,
+				fileData: true,
+			},
+		});
+	} catch (error) {
+		if (!isUnreadableText(error)) throw error;
+		console.error("An import file could not be opened, failing the job", {
+			code: (error as { code?: string }).code,
+		});
+		const stuck = await db.importJob.findFirst({
+			where,
+			orderBy,
+			select: { id: true },
+		});
+		if (stuck)
+			await writeJob(
+				db,
+				stuck.id,
+				{ status: "FAILED", failedAt: new Date(), fileData: null },
+				"QUEUED",
+			);
+		return "failed" as const;
 	}
 }
