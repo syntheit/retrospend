@@ -66,7 +66,8 @@ Set these in `.env`. Runtime settings are read at start; nothing is baked into t
 | `VAPID_SUBJECT` | No | `PUBLIC_URL` if https | `mailto:` or `https:` contact sent to push services |
 | `PUSH_ENDPOINT_ALLOW_HOSTS` | No | | Hosts (names or IPs, comma-separated) that may receive push although they are on a private network, such as a LAN ntfy server. The admin setting Allow private webhook targets also allows private UnifiedPush endpoints |
 | `DATABASE_OWNER_PASSWORD` | No | derived | A secret of your own for the `retrospend_owner` database role, in place of the one derived from `POSTGRES_PASSWORD`. Set the same value on the app and the sidecar, or on neither (see [Database access](#database-access)) |
-| `DATA_MASTER_KEY` or `DATA_MASTER_KEY_FILE` | No | | Master key for server-side data encryption: 64 hex characters (`openssl rand -hex 32`) or a file path; the server will not start if it is malformed. Nothing is encrypted with it yet; keep a copy with your backups |
+| `DATA_MASTER_KEY` or `DATA_MASTER_KEY_FILE` | No | | Master key for encryption at rest: 64 hex characters (`openssl rand -hex 32`) or a file path; the server will not start if it is malformed. It wraps every other key, so text sealed under it cannot be read without it and no other copy exists. Keep it in two places, apart from the backup files and off the data disk. Prefer a file on a separate mount over `DATA_MASTER_KEY`, because `docker inspect` shows environment values. Once sealing has been on, the server will not start without it. See [encryption-at-rest.md](encryption-at-rest.md) |
+| `DATA_KEYS_WRITE` | No | `false` | `true` seals new and edited text as ciphertext. Needs the master key. Read [encryption-at-rest.md](encryption-at-rest.md) and follow its steps first: once it has been on, the master key may never be removed and the server will not start on an older build. Unset it to stop sealing; sealed text still opens |
 | `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID` | No | | Apple push (iPhone and iPad); all four APNs settings are needed |
 | `APNS_KEY` or `APNS_KEY_FILE` | No | | The APNs auth key (`.p8`) as text (newlines written `\n`) or as a file path |
 | `ANDROID_APP_CERT_SHA256` | No | | More SHA-256 fingerprint(s), comma-separated, of Android app signing certificates, besides the release key. Served in `/.well-known/assetlinks.json` for app links and password manager autofill |
@@ -147,6 +148,8 @@ Stop it when you are done. Never put it behind a public address, and never publi
 
 The sidecar service handles scheduled database backups on the schedule set by `BACKUP_CRON` (default: daily at 3 AM UTC). Retention is controlled by `BACKUP_RETENTION_DAYS` (default: 30).
 
+The commands in this section and in [encryption-at-rest.md](encryption-at-rest.md) use the container name `retrospend-postgres` and the database name `retrospend`; use your own container name and `POSTGRES_DB_NAME` if they differ.
+
 Backup files are written inside the sidecar container. They go to `BACKUP_DIR` (default `/backups`), which the example compose file mounts as the `backup_data` volume.
 
 ### Encrypted backups
@@ -189,7 +192,7 @@ The dumps carry no owners and no privileges, so a restored database has tables w
 
 ### Data key backups
 
-Per-user data keys, and the one instance key that will seal text shared between accounts, live in their own database schema, `keystore`. The sidecar leaves that schema out of the main dump and writes it on its own as `keystore-<time>.dump` (or `.dump.age` when `BACKUP_AGE_RECIPIENT` is set), right after the main backup. These files are kept for `BACKUP_RETENTION_DAYS`, like the main backups, and a failed dump removes nothing, so the last good key backup lasts as long as the last good main backup. Deleting an account destroys its key in the live database at once, but a copy stays in every key backup made before the deletion until that backup ages out, so lower `BACKUP_RETENTION_DAYS` if that window is too long for you. If dumps keep failing, nothing is pruned, so old key backups (and the keys of deleted accounts in them) stay past the retention time. Check that `keystore-*.dump` files are being replaced. Nothing is sealed with these keys yet, so destroying one erases nothing today. The keys inside are sealed with `DATA_MASTER_KEY`, so a keystore backup is useless without it: keep the master key with your backups, apart from the files.
+Per-user data keys, and the one instance key that seals text shared between accounts, live in their own database schema, `keystore`. User keys are made when a person first needs one (the category name index, category writes, and a first sealed write with `DATA_KEYS_WRITE` on); the instance key is made at the first start with the flag on. The sidecar leaves that schema out of the main dump and writes it on its own as `keystore-<time>.dump` (or `.dump.age` when `BACKUP_AGE_RECIPIENT` is set), right after the main backup. These files are kept for `BACKUP_RETENTION_DAYS`, like the main backups, and a failed dump removes nothing, so the last good key backup lasts as long as the last good main backup. Deleting an account destroys its key in the live database at once, but a copy stays in every key backup made before the deletion until that backup ages out, so lower `BACKUP_RETENTION_DAYS` if that window is too long for you. If dumps keep failing, nothing is pruned, so old key backups (and the keys of deleted accounts in them) stay past the retention time. Check that `keystore-*.dump` files are being replaced. Destroying a key erases only text that was sealed with it, and nothing for rows that are still plaintext (see [encryption-at-rest.md](encryption-at-rest.md)). A keystore dump older than a key does not have that key, so take a backup right after the first start with the flag on. The keys inside are sealed with `DATA_MASTER_KEY`, so a keystore backup is useless without it: keep the master key in two places, apart from the backup files and off the data disk.
 
 To restore, restore the main dump as above, then replace the contents of the two key tables with the keystore dump. The app must have started at least once, so that `retrospend_owner` owns the `keystore` schema and the tables exist. With the app and the sidecar stopped:
 
@@ -200,9 +203,17 @@ docker exec retrospend-postgres psql -U retrospend_owner -d retrospend -c 'DELET
 docker compose up -d
 ```
 
-Never restore the keystore dump as the owner with `--clean`. It drops the `keystore` schema and the owner cannot create it again, which leaves the database with no key store. The superuser is not needed for any of these steps. The app's grants on the key tables are applied on start.
+Never restore the keystore dump as the owner with `--clean`. It drops the `keystore` schema and the owner cannot create it again, which leaves the database with no key store. The superuser is not needed for any of these steps. The app's grants on the key tables are applied on every start, so if the server reports `keystore_grants_missing` after a restore, restart it. If it persists, the restore was not run as `retrospend_owner`: restore again as that role.
 
-The delete removes keys of accounts that were deleted after the keystore dump was made, so a restore never brings a deleted account's key back. If you restore a keystore dump that is older than the main one, an account whose key was made in between has lost it. The main dump remembers that the account had a key (the `dataKeySince` column), so the server reports that the user's keys are gone instead of making a new key, which would open nothing sealed with the old one. Accounts that never had a key still get one on first use. If nothing was sealed with the lost keys, allow new ones with the command at the end of this section. The instance key works the same way: the main dump remembers that it was made (`app_settings."instanceKeySince"`), so a keystore dump from before it was made leaves the server reporting that the instance key is gone, instead of making a new one. To allow a new one when nothing was sealed with it, run `UPDATE app_settings SET "instanceKeySince" = NULL` the same way.
+The delete removes keys of accounts that were deleted after the keystore dump was made, so a restore never brings a deleted account's key back. If you restore a keystore dump that is older than the main one, an account whose key was made in between has lost it. The main dump remembers that the account had a key (the `dataKeySince` column), so the server reports that the user's keys are gone instead of making a new key, which would open nothing sealed with the old one. Accounts that never had a key still get one on first use. The instance key works the same way: the main dump remembers that it was made (`app_settings."instanceKeySince"`), so a keystore dump from before it was made leaves the server reporting that the instance key is gone, instead of making a new one. Once the field encryption epoch is set, a server with no instance key will not start at all (`instance_key_lost`) and one with users whose key is gone starts with a warning; see [encryption-at-rest.md](encryption-at-rest.md).
+
+**The commands below that clear a marker are valid only while nothing has been sealed.** Check first, on the owner connection: `SELECT "fieldEncryptionSince" IS NULL FROM app_settings`. It must say `t` (true). If it says `f` or returns no row, do not clear any marker: the only way back is the main dump and the keystore dump that were taken together. Both commands carry the same check in their `WHERE`, so they change nothing once the epoch is set.
+
+To allow a new instance key when nothing was sealed with it:
+
+```sh
+docker exec retrospend-postgres psql -U retrospend_owner -d retrospend -c 'UPDATE app_settings SET "instanceKeySince" = NULL WHERE "fieldEncryptionSince" IS NULL'
+```
 
 If you restore a main dump into a new database and have no keystore dump (it is older than `BACKUP_RETENTION_DAYS`, or was lost), the database lists the keystore migrations as applied but the schema is missing, and the server reports that the key store is missing. Make an empty one and restart. Delete all three rows: the second migration replaces a function the first one defines, so the first alone would bring back the old, unguarded version, and the third makes the instance key table.
 
@@ -210,10 +221,10 @@ If you restore a main dump into a new database and have no keystore dump (it is 
 docker exec retrospend-postgres psql -U retrospend_owner -d retrospend -c "DELETE FROM _prisma_migrations WHERE migration_name IN ('20261109100000_keystore', '20261109800000_keystore_lost_guard', '20261111100000_instance_text_key')"
 ```
 
-The migrations run again on start, in order, and are safe to repeat. An empty key store means every user who had a key has lost it, and the server reports that instead of making a new one. If nothing was sealed with the lost keys, clear the marker of every user whose key is gone, and the next request makes a new key. Anything already sealed with the lost keys can no longer be read.
+The migrations run again on start, in order, and are safe to repeat. An empty key store means every user who had a key has lost it, and the server reports that instead of making a new one. If `SELECT "fieldEncryptionSince" IS NULL FROM app_settings` says true, nothing was sealed with the lost keys, so you may clear the marker of every user whose key is gone, and the next request makes a new key. If it says false, do not clear anything: restore the keystore dump that matches your main dump. Anything already sealed with the lost keys can no longer be read.
 
 ```sh
-docker exec retrospend-postgres psql -U retrospend_owner -d retrospend -c 'UPDATE "user" SET "dataKeySince" = NULL WHERE "dataKeySince" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM keystore.user_data_key k WHERE k."userId" = "user".id)'
+docker exec retrospend-postgres psql -U retrospend_owner -d retrospend -c 'UPDATE "user" SET "dataKeySince" = NULL WHERE "dataKeySince" IS NOT NULL AND (SELECT "fieldEncryptionSince" IS NULL FROM app_settings LIMIT 1) AND NOT EXISTS (SELECT 1 FROM keystore.user_data_key k WHERE k."userId" = "user".id)'
 ```
 
 ## Updating
@@ -221,5 +232,7 @@ docker exec retrospend-postgres psql -U retrospend_owner -d retrospend -c 'UPDAT
 1. Back up the database and the `uploads` volume.
 2. Pull the new images: `docker compose pull`.
 3. Restart: `docker compose up -d`. Migrations run on start.
+
+Before you turn on `DATA_KEYS_WRITE`, read [encryption-at-rest.md](encryption-at-rest.md). After sealing has been on, do not roll back to an image older than the one that first ran with it: a newer database refuses to start on a build below the sealing floor, and an older build that cannot check will show ciphertext as text.
 
 Release notes for each version are on [GitHub Releases](https://github.com/syntheit/retrospend/releases).

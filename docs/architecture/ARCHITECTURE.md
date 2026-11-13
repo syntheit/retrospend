@@ -185,7 +185,7 @@ Minimums are iOS 16.4 and Android 8 (API 26).
 
 ## Keeping end-to-end encryption possible
 
-End-to-end encryption is planned but not built. These rules keep the door open:
+Server-side encryption of user text at rest is built behind `DATA_KEYS_WRITE` (off by default); the server holds the keys. End-to-end encryption is not built. Operators read [`docs/encryption-at-rest.md`](encryption-at-rest.md); the threat model is [`docs/security/threat-model.md`](security/threat-model.md). These rules keep the door open:
 
 1. Every free-text field (titles, notes, names) is declared through `userText()` in `packages/api-contract/src/common/user-text.ts`, so one list names every field.
 2. No server feature reads titles (merchant normalization, server AI categorization, title rules) without a client-side path. The known exception is envelope title rules.
@@ -223,3 +223,11 @@ Preferred, for the same reason:
 | The app and sidecar connect as `retrospend_owner`, not the superuser (A2) | `RESET ROLE` from `retrospend_app` used to land on the superuser. It now lands on a table owner that is not a superuser and holds no database `CREATE`, until a separate login for scoped work (A3). The superuser runs only a catalog-only bootstrap and never reaches the app's environment. |
 | Android without Google, Google only as an extra | De-Googled phones (GrapheneOS) are first-class. Features must not depend on Play services. |
 | Integer minor units on the wire, `Decimal` in the database | Floats lose cents. ARS and crypto amounts exceed what naive formats handle. |
+| Text is sealed at rest with per-user keys for personal text and one instance key for shared text; the AAD binds table, column, row id and key id (D11) | One key over everything nears the safe nonce limit, and shared text is read by people who hold no key of the author's. A ciphertext copied to another cell fails to open. |
+| Opening is always on when a master key is set; sealing is behind `DATA_KEYS_WRITE`; the epoch (`fieldEncryptionSince`) is set once and never cleared | A flag-off or older-version server can still read what a flag-on one wrote. After the epoch, search and filters on text must run in the app, whatever a process's own flag says. |
+| A sealing floor and start gates refuse a start that could silently make a new key or read ciphertext as text (D11 PR 9) | An older binary cannot protect itself, so the database records the highest floor and refuses a lower build, a missing master key or a lost instance key. |
+| Contact lookup by a keyed hash on the instance key, with the table in the label (D11 Rev 3) | An address cannot be matched once it is sealed. One instance key keeps claim and resume working across creators, at the cost that a keyless dump shows who shares an address. |
+| Recurring auto-post runs in the app; the sidecar keeps only its heartbeat | The sidecar then never holds the master key, and posting uses the same confirm code, undo and events as a manual confirm. |
+| JSON copies (undo stashes, replayed responses, import rows, audit text) are sealed too | They held the same text as the columns in plaintext, so sealing the columns alone would not have changed what a dump shows. |
+| No matching of category names across people (D19) | The creator's category name is under the creator's key, and the server never compares names across users. A shared expense routes by the viewer's own category or envelope rules. |
+| Wording is "encrypted at rest; the server holds the keys", never "end-to-end" | The server opens every cell it needs, and no audit exists yet. |
