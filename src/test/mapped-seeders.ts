@@ -307,6 +307,7 @@ export const SEEDERS: Record<MappedModel, (c: Ctx) => Promise<Data>> = {
 		id: randomUUID(),
 		description: text("Dinner"),
 		notes: text("with wine"),
+		receiptUrl: `https://receipts.example/${randomUUID()}`,
 		amount: "30000",
 		currency: "ARS",
 		date: day,

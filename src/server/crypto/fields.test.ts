@@ -86,6 +86,7 @@ const STORED: Record<string, string[]> = {
 	"recurring.websiteUrl": ["recurring_template.websiteUrl"],
 	"shared_expense.description": ["shared_transaction.description"],
 	"shared_expense.notes": ["shared_transaction.notes"],
+	"shared_expense.receiptUrl": ["shared_transaction.receiptUrl"],
 	"shared_expense.reject_reason": ["split_participant.rejectionReason"],
 	"transfer.note": ["transfer.note"],
 	"user.name": ["user.name"],
@@ -265,7 +266,6 @@ const NOT_SEALED: Record<string, string> = {
 		"owner call: a contact number, outside the user-text list",
 	"guest_session.email":
 		"owner call: a contact address, outside the user-text list",
-	"shared_transaction.receiptUrl": "a stored receipt path or link, not prose",
 	"settlement.autoConfirmedReason": "a system code set by the server",
 	"feedback.pageUrl": "the app route the feedback was sent from",
 	"webhook.url":
@@ -349,6 +349,7 @@ describe("key classes", () => {
 	const INSTANCE: string[] = [
 		"shared_transaction.description",
 		"shared_transaction.notes",
+		"shared_transaction.receiptUrl",
 		"split_participant.rejectionReason",
 		"settlement.note",
 		"settlement.paymentMethod",

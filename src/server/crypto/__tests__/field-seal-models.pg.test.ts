@@ -217,6 +217,9 @@ describe("sealed cells are bound to their rows", () => {
 		await swap(db, "SharedTransaction", "description", () =>
 			seed("SharedTransaction", me),
 		);
+		await swap(db, "SharedTransaction", "receiptUrl", () =>
+			seed("SharedTransaction", me),
+		);
 	});
 });
 
