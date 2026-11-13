@@ -169,14 +169,9 @@ test("every mapped column holds no plaintext in rows the seed did not write", as
 		);
 		if (Number(rows[0]?.n) > 0) found.push(`${table}.${column}: ${rows[0]?.n}`);
 	};
-	// What a payment confirm copies into its audit entry's `previous` "keeps
-	// the source cells' own ciphertext" (json-cells.ts), so a legacy plaintext
-	// source stays plaintext there until the D12 reseal.
-	const { rows: legacyPayments } = await pool.query<{ v: string }>(
-		`SELECT "paymentMethod" AS v FROM "payment" WHERE "paymentMethod" IS NOT NULL
-		 UNION SELECT "note" FROM "payment" WHERE "note" IS NOT NULL`,
-	);
-	const legacyCopies = new Set(legacyPayments.map((r) => r.v));
+	// A payment confirm's `previous` copies its source cells as they are, so a
+	// legacy plaintext source stays plaintext there until the D12 reseal: the
+	// shared classification calls those leaves legacy copies (plaintext-sql.ts).
 	for (const [table, column] of mappedColumns())
 		await count(table, column, plainTextSql(table, column));
 	for (const [table, column, cell] of jsonColumns()) {
@@ -193,11 +188,8 @@ test("every mapped column holds no plaintext in rows the seed did not write", as
 		);
 		const bad = new Set<string>();
 		for (const { v } of rows)
-			for (const { path, text, state } of textLeaves(v, cell))
-				if (
-					state !== "sealed" &&
-					!(path[0] === "previous" && legacyCopies.has(text))
-				)
+			for (const { path, state } of textLeaves(v, cell))
+				if (state !== "sealed" && state !== "legacy_copy")
 					bad.add(path.join("."));
 		if (bad.size > 0)
 			found.push(`${table}.${column}: leaves at ${[...bad].join(", ")}`);

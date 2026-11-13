@@ -68,7 +68,9 @@ async function sweepLeaves(
 		for (const { path, text, state } of textLeaves(v, cell)) {
 			const at = `${id}#${path.join(".")}`;
 			if (state === "undeclared") undeclared.set(at, text);
-			else if (state === "plaintext") plain.set(at, text);
+			// A legacy copy is only listed apart by verify-sealing; the sealed suite
+			// seeds sealed sources, so a plaintext copy here is still a failure.
+			else if (state !== "sealed") plain.set(at, text);
 		}
 	cells.set(`${table}.${column}`, plain);
 	cells.set(`${table}.${column} (undeclared leaf)`, undeclared);

@@ -29,7 +29,10 @@ describe("textLeaves", () => {
 					name: "plain name",
 					description: { old: SEALED, new: "plain" },
 					notThere: "who knows",
-					previous: { rows: [{ id: "r1" }] },
+					previous: {
+						paymentMethod: "Cash",
+						rows: [{ id: "r1", note: SEALED }],
+					},
 				},
 				leavesCell,
 			),
@@ -39,6 +42,9 @@ describe("textLeaves", () => {
 			["description.old", "sealed"],
 			["description.new", "plaintext"],
 			["notThere", "undeclared"],
+			// A plaintext source copied verbatim is a legacy copy, a sealed one is sealed.
+			["previous.paymentMethod", "legacy_copy"],
+			["previous.rows.0.note", "sealed"],
 		]);
 	});
 });

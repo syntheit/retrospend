@@ -12,6 +12,10 @@
  *     run. A legacy row that was only touched for another reason (a changed
  *     amount) after the epoch still holds its old plaintext title in mixed
  *     mode, so `--created-only` reports that group without failing on it;
+ *   - legacy copies: leaves of an audit entry's `changes.previous` (a payment
+ *     confirm keeps its source cells' own text) that are plaintext because
+ *     their source is, until the D12 reseal. They are listed apart, count in
+ *     the baseline, and never in the two invariants above;
  *   - tables with no `createdAt` or `updatedAt` (the audit log's `timestamp`
  *     counts as `createdAt`), which only the baseline
  *     covers (plaintext never rises above what an earlier run printed).
@@ -57,6 +61,12 @@ export interface CellReport {
 	updatedAfter: number;
 	/** The table has no createdAt or updatedAt, so only the baseline applies. */
 	noTimestamps: boolean;
+	/**
+	 * Plaintext leaves that copy a plaintext source cell (a payment confirm's
+	 * `previous`). They are in `plaintext` (the baseline rule) but never in
+	 * `createdAfter` or `updatedAfter`: the source is legacy plaintext too.
+	 */
+	legacyCopies: number;
 }
 
 export interface ContactReport {
@@ -129,6 +139,7 @@ const emptyCell = (cell: string, noTimestamps = false): CellReport => ({
 	createdAfter: 0,
 	updatedAfter: 0,
 	noTimestamps,
+	legacyCopies: 0,
 });
 
 /** The row filters "created after the epoch" and "only updated after it". */
@@ -171,6 +182,7 @@ async function countCell(
 		createdAfter: Number(r.created ?? 0),
 		updatedAfter: Number(r.updated ?? 0),
 		noTimestamps,
+		legacyCopies: 0,
 	};
 }
 
@@ -204,7 +216,11 @@ async function countLeaves(
 		for (const { state } of textLeaves(row.v, cell)) {
 			const target = state === "undeclared" ? undeclared : text;
 			if (state === "sealed") text.sealed++;
-			else {
+			else if (state === "legacy_copy") {
+				// In the baseline, never "written after the epoch".
+				text.plaintext++;
+				text.legacyCopies++;
+			} else {
 				target.plaintext++;
 				if (row.created) target.createdAfter++;
 				else if (row.updated) target.updatedAfter++;
@@ -350,6 +366,7 @@ export function formatReport(
 		]),
 	]);
 	const noTs = report.cells.filter((c) => c.noTimestamps).map((c) => c.cell);
+	const legacy = report.cells.filter((c) => c.legacyCopies > 0);
 	const tail = [
 		"",
 		`Tables with no createdAt or updatedAt (baseline only): ${noTs.length > 0 ? noTs.join(", ") : "none"}`,
@@ -359,6 +376,7 @@ export function formatReport(
 				? `Plaintext written after the epoch: 0${options.createdOnly ? " (created only)" : ""}`
 				: `Plaintext written after the epoch: ${verdict.violations}`,
 		...verdict.lines.map((l) => `  ${l}`),
+		`Legacy copies (plaintext copied from a plaintext source until the reseal, in the baseline, not in the rule above): ${legacy.reduce((n, c) => n + c.legacyCopies, 0)}${legacy.length > 0 ? ` in ${legacy.map((c) => c.cell).join(", ")}` : ""}`,
 		report.contacts.some((c) => c.addressWithoutHash > 0)
 			? "Contacts with an address and no hash: restart with DATA_KEYS_WRITE on to fill them."
 			: "",
