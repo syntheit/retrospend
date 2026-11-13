@@ -22,6 +22,7 @@ import {
 	keyClassOfColumn,
 	mappedColumns,
 	modelOfTable,
+	ownerOfTable,
 } from "~/server/crypto/fields";
 import { keystoreDb } from "~/server/db-core";
 import { userTransaction } from "~/server/db-tx";
@@ -173,7 +174,7 @@ export async function sealRow(
 		if (typeof value !== "string" || value === "") continue;
 		const ring =
 			cls === "user"
-				? await userKeyring(row.userId as string, master)
+				? await userKeyring(row[ownerOfTable(table).column] as string, master)
 				: await instanceKeyring(master);
 		await sealCell(ring, { table, column, rowId }, value);
 		plain[column] = value;
@@ -192,12 +193,13 @@ export async function sealText(
 		throw new Error(`${cell.table}.${cell.column} is not a mapped cell`);
 	if (cls === "instance")
 		return sealCell(await instanceKeyring(master), cell, plaintext);
-	const [row] = await adminDb.$queryRawUnsafe<{ userId: string }[]>(
-		`SELECT "userId" FROM "${cell.table}" WHERE "id" = $1`,
+	const owner = ownerOfTable(cell.table).column;
+	const [row] = await adminDb.$queryRawUnsafe<{ owner: string }[]>(
+		`SELECT "${owner}" AS "owner" FROM "${cell.table}" WHERE "id" = $1`,
 		cell.rowId,
 	);
 	if (!row) throw new Error(`No ${cell.table} row to seal`);
-	return sealCell(await userKeyring(row.userId, master), cell, plaintext);
+	return sealCell(await userKeyring(row.owner, master), cell, plaintext);
 }
 
 /**
