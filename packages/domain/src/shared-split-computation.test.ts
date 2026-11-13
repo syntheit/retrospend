@@ -283,3 +283,85 @@ describe("resolveSplits", () => {
 		});
 	});
 });
+
+// Ties and the remainder rule on the number edge: a typed amount is read
+// through fromFloat (float noise trimmed) and rounded half to even, then the
+// BigInt cent math takes over untouched.
+describe("resolveSplits at the number edge", () => {
+	const carol = { participantType: "user" as const, participantId: "carol" };
+
+	it("a three-way split of 100.00 leaves the cent with the payer's row", () => {
+		// 10000 cents / 3 = 3333 r 1. Carol paid, so her row takes the cent:
+		// 33.33 + 33.33 + 33.34.
+		const splits = resolveSplits({
+			mode: "EQUAL",
+			currency: "USD",
+			amount: 100,
+			participants: [user("alice"), user("bob"), user("carol")],
+			paidBy: carol,
+		});
+		expect(splits.map((s) => s.shareAmount)).toEqual([33.33, 33.33, 33.34]);
+	});
+
+	it("a typed 0.285 is 28.5 cents, half even gives 28, so two ways is 0.14 each", () => {
+		const splits = resolveSplits({
+			mode: "EQUAL",
+			currency: "USD",
+			amount: 0.285,
+			participants: [user("alice"), user("bob")],
+			paidBy: payer,
+		});
+		expect(splits.map((s) => s.shareAmount)).toEqual([0.14, 0.14]);
+	});
+
+	it("a typed 0.295 is 29.5 cents, half even gives 30, so two ways is 0.15 each", () => {
+		const splits = resolveSplits({
+			mode: "EQUAL",
+			currency: "USD",
+			amount: 0.295,
+			participants: [user("alice"), user("bob")],
+			paidBy: payer,
+		});
+		expect(splits.map((s) => s.shareAmount)).toEqual([0.15, 0.15]);
+	});
+
+	it("a JPY tie rounds to the even yen: 1257.5 is 1258, 1252.5 is 1252", () => {
+		const split = (amount: number) =>
+			resolveSplits({
+				mode: "EQUAL",
+				currency: "JPY",
+				amount,
+				participants: [user("alice"), user("bob")],
+				paidBy: payer,
+			}).map((s) => s.shareAmount);
+		// 1258 / 2 = 629 each; 1252 / 2 = 626 each.
+		expect(split(1257.5)).toEqual([629, 629]);
+		expect(split(1252.5)).toEqual([626, 626]);
+	});
+
+	it("float noise is not a tie: 1.1 + 2.2 (3.3000000000000003) splits as 3.30", () => {
+		// 330 cents / 2 = 165 each.
+		const splits = resolveSplits({
+			mode: "EQUAL",
+			currency: "USD",
+			amount: 1.1 + 2.2,
+			participants: [user("alice"), user("bob")],
+			paidBy: payer,
+		});
+		expect(splits.map((s) => s.shareAmount)).toEqual([1.65, 1.65]);
+	});
+
+	it("a percentage split of an ARS tie keeps the totals whole: 0.285 at 50/50 is 14 + 14", () => {
+		const splits = resolveSplits({
+			mode: "PERCENTAGE",
+			currency: "ARS",
+			amount: 0.285,
+			participants: [
+				{ ...user("alice"), sharePercentage: 50 },
+				{ ...user("bob"), sharePercentage: 50 },
+			],
+			paidBy: payer,
+		});
+		expect(splits.map((s) => s.shareAmount)).toEqual([0.14, 0.14]);
+	});
+});

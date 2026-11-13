@@ -212,7 +212,8 @@ function computeEqualSplits(
 	const count = BigInt(splitWith.length);
 	const total = safeMinor(toMinorUnits(amount, currency));
 	const base = floorDiv(total, count);
-	let remainder = Number(total - base * count);
+	const leftover = total - base * count;
+	let remainder = Number(leftover);
 
 	const cents = splitWith.map(() => base);
 
