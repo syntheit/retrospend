@@ -33,7 +33,7 @@ import {
 } from "../accounts/ledger";
 import { countedOnArrival, inBudget } from "../accounts/places";
 import { dayOf, endOfDay } from "../accounts/series";
-import { homePerUnit, ratePerUnit } from "../accounts/valuation";
+import { homePerUnit, unitsForHome } from "../accounts/valuation";
 import { INCOME_FIGURES } from "./add.mutation";
 import { incomeRow } from "./delete.mutation";
 import { nextDueDay } from "./due-day";
@@ -198,9 +198,7 @@ export async function confirmRecurringIncomeIn(
 		}
 		const units =
 			perUnit && booked
-				? booked
-						.div(ratePerUnit(perUnit))
-						.toDecimalPlaces(8, Dec.ROUND_HALF_EVEN)
+				? unitsForHome(booked, perUnit).toDecimalPlaces(8, Dec.ROUND_HALF_EVEN)
 				: amount;
 		into = await writeLeg(tx, userId, {
 			account,

@@ -117,9 +117,24 @@ export function homePerUnit(
 	return [account[0].mul(home[1]), account[1].mul(home[0])];
 }
 
-/** The per-unit rate as one Decimal, for code that stores or shows a rate; values use `homeValue`. */
+/**
+ * The per-unit rate as one Decimal, for a rate that is stored or shown (the
+ * v1 12 dp rate, a rate field). An amount never multiplies by it: the
+ * quotient is rounded to 40 digits, which can land just off an exact tie. Use
+ * `byFraction`, `unitsForHome` or `homeValue`.
+ */
 export function ratePerUnit(fraction: HomeFraction): Decimal {
 	return fraction[0].div(fraction[1]);
+}
+
+/** `units` at the per-unit fraction: units x num / den, one division (D3). */
+export function byFraction(units: Decimal, fraction: HomeFraction): Decimal {
+	return units.mul(fraction[0]).div(fraction[1]);
+}
+
+/** The units that are worth `home` at the per-unit fraction: home x den / num, one division. */
+export function unitsForHome(home: Decimal, fraction: HomeFraction): Decimal {
+	return home.mul(fraction[1]).div(fraction[0]);
 }
 
 /** `units` of `valued.currency` in the home currency, unrounded; null when a rate is missing. */
@@ -131,7 +146,7 @@ export function homeValue(
 	date: Date,
 ): Decimal | null {
 	const perUnit = homePerUnit(pick, valued, homeCurrency, date);
-	return perUnit ? units.mul(perUnit[0]).div(perUnit[1]) : null;
+	return perUnit ? byFraction(units, perUnit) : null;
 }
 
 /**

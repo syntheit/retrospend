@@ -3,11 +3,13 @@ import { isCrypto } from "../currency-format";
 import { roundMoneyDec } from "../money-dec";
 import { Dec, dec } from "../precise-decimal";
 import {
+	byFraction,
 	homePerUnit,
 	homeValue,
 	missingRateOf,
 	type RatePick,
 	ratePerUnit,
+	unitsForHome,
 } from "./valuation";
 
 const DAY = new Date("2026-10-21T23:59:59.999Z");
@@ -226,5 +228,52 @@ describe("what a writer stores against the old two-division quotient", () => {
 			compared++;
 		}
 		expect(compared).toBeGreaterThan(1500);
+	});
+});
+
+describe("an amount divides once, never through the rounded quotient", () => {
+	const fractionOf = (
+		rates: Record<string, number>,
+		from: string,
+		to: string,
+	) => {
+		const f = homePerUnit(
+			table(rates),
+			{ currency: from, rateType: null, storedRate: null },
+			to,
+			DAY,
+		);
+		if (!f) throw new Error("no rate");
+		return f;
+	};
+	const eightDp = (d: ReturnType<typeof dec>) =>
+		d.toDecimalPlaces(8, Dec.ROUND_HALF_EVEN).toFixed();
+
+	// 768 per USD into USD: 1 / 768 repeats; 0.036 x 1 / 768 = 0.000046875
+	// exactly (36 / 768,000 = 3 / 64,000), a tie at 8 dp whose lower neighbor
+	// ...87 is odd, so half to even gives ...88. 0.036 x (1 / 768 rounded to 40
+	// digits) is 0.0000468749999..., which gives ...87.
+	it("byFraction: 0.036 at 1 / 768 is the tie 0.000046875, which rounds to 0.00004688", () => {
+		const f = fractionOf({ KWD: 768 }, "KWD", "USD");
+		expect(byFraction(dec("0.036"), f).toFixed()).toBe("0.000046875");
+		expect(eightDp(byFraction(dec("0.036"), f))).toBe("0.00004688");
+		expect(eightDp(dec("0.036").mul(ratePerUnit(f)))).toBe("0.00004687");
+	});
+
+	// 0.3 per USD into USD: units = booked x 0.3; 0.00000175 x 0.3 = 0.000000525
+	// exactly, a tie whose lower neighbor ...52 is even: ...52. Dividing the
+	// booked value by (1 / 0.3 rounded) is 0.00000052500...1: ...53.
+	it("unitsForHome: 0.00000175 USD into an account at 0.3 per USD is the tie 5.25e-7, which rounds to 0.00000052", () => {
+		const f = fractionOf({ XYZ: 0.3 }, "XYZ", "USD");
+		expect(unitsForHome(dec("0.00000175"), f).toFixed()).toBe("0.000000525");
+		expect(eightDp(unitsForHome(dec("0.00000175"), f))).toBe("0.00000052");
+		expect(eightDp(dec("0.00000175").div(ratePerUnit(f)))).toBe("0.00000053");
+	});
+
+	// 3 NOK at 9 per USD into JPY at 16.5: 3 x 16.5 / 9 = 5.5; 3 x 1.8333...3 = 5.4999...9.
+	it("a transfer's arrival: 3 NOK is 5.5 JPY exactly, the quotient path gives 5.4999...", () => {
+		const f = fractionOf({ NOK: 9, JPY: 16.5 }, "NOK", "JPY");
+		expect(byFraction(dec(3), f).toFixed()).toBe("5.5");
+		expect(dec(3).mul(ratePerUnit(f)).lt("5.5")).toBe(true);
 	});
 });

@@ -32,6 +32,15 @@
  * - The 12 dp rate of a SEK account at 12,288 per USD: 16.5 / 12,288 =
  *   0.0013427734375 exactly, a tie between ...437 (odd) and ...438:
  *   0.001342773438 (0.001342773437).
+ *
+ * Rates that do not terminate (an amount times the 40 digit quotient lands
+ * just under the tie, one division lands on it):
+ * - Transfer 3 NOK (9 per USD) into a JPY account: per unit 16.5 / 9 =
+ *   1.8333..., 3 x 16.5 / 9 = 5.5 exactly, so 6 JPY arrive. 3 x 1.8333...3
+ *   (40 digits) is 5.4999...9, which would give 5.
+ * - Transfer out 0.036 KWD at 768 per USD, home USD: 0.036 / 768 =
+ *   0.000046875 exactly (3 / 64,000), a tie between ...87 (odd) and ...88:
+ *   -0.00004688. 0.036 x (1 / 768) lands on the other side: -0.00004687.
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
@@ -53,6 +62,8 @@ async function seedRates() {
 		["GBP", "official", "7"],
 		["CHF", "official", "192"],
 		["SEK", "official", "12288"],
+		["NOK", "official", "9"],
+		["KWD", "official", "768"],
 		["JPY", "official", "16.5"],
 		["ARS", "blue", "1545"],
 		["BTC", "crypto", "60000"],
@@ -98,7 +109,9 @@ let control: TestUser;
 let ars: TestUser;
 let pound: string;
 let ties: TestUser;
-let ex: { eur: string; yen: string; chf: string };
+let ex: { eur: string; yen: string; chf: string; nok: string; yen2: string };
+let usdTies: TestUser;
+let kuwait: string;
 
 beforeAll(async () => {
 	await seedRates();
@@ -115,8 +128,14 @@ beforeAll(async () => {
 		eur: await openAccount(ties.user.id, "Euro", "CASH", "EUR", 10),
 		yen: await openAccount(ties.user.id, "Yen", "CASH", "JPY", 100),
 		chf: await openAccount(ties.user.id, "Franc", "CASH", "CHF", 1),
+		nok: "",
+		yen2: "",
 	};
 	await openAccount(ties.user.id, "Krona", "CASH", "SEK", 1);
+	ex.nok = await openAccount(ties.user.id, "Krone", "CASH", "NOK", 10);
+	ex.yen2 = await openAccount(ties.user.id, "Yen two", "CASH", "JPY", 100);
+	usdTies = await userAt("USD");
+	kuwait = await openAccount(usdTies.user.id, "Dinar", "CASH", "KWD", 1);
 });
 
 describe("a JPY home: 1 EUR at 3 per USD into JPY at 16.5", () => {
@@ -249,5 +268,34 @@ describe("what a writer stores on an exact tie rounds half to even", () => {
 		expect(accounts.find((a) => a.name === "Krona")?.rate).toBe(
 			"0.001342773438",
 		);
+	});
+});
+
+describe("an exact tie where the per-unit rate does not terminate", () => {
+	it("a transfer of 3 NOK arrives 6 JPY (3 x 16.5 / 9 = 5.5), one division", async () => {
+		await forUser(ties.user.id).apply(createTransfer, {
+			fromAccountId: ex.nok,
+			toAccountId: ex.yen2,
+			fromAmount: "3",
+		});
+
+		const [arrived] = await adminDb.accountLeg.findMany({
+			where: { userId: ties.user.id, accountId: ex.yen2, source: "TRANSFER" },
+		});
+		expect(arrived?.amount.toString()).toBe("6");
+	});
+
+	it("an 8 dp leg value of 0.036 KWD at 768 per USD is -0.00004688 USD (0.000046875 exactly)", async () => {
+		await forUser(usdTies.user.id).apply(createTransfer, {
+			fromAccountId: kuwait,
+			toAccountId: null,
+			toCurrency: "KWD",
+			fromAmount: "0.036",
+		});
+
+		const [out] = await adminDb.accountLeg.findMany({
+			where: { userId: usdTies.user.id, accountId: kuwait, source: "TRANSFER" },
+		});
+		expect(out?.homeAmount?.toString()).toBe("-0.00004688");
 	});
 });
