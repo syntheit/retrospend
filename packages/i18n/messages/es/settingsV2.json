@@ -428,6 +428,7 @@
 			"connection_error": "Falló la conexión",
 			"http_error": "El receptor respondió con un error",
 			"secret_unreadable": "No se puede leer el secreto, renuévalo",
+			"url_unreadable": "No se puede leer la dirección",
 			"internal_error": "Error del servidor",
 			"webhook_disabled": "El webhook estaba apagado",
 			"event_gone": "El evento ya no se conserva"

@@ -1,7 +1,9 @@
 import { env } from "~/env";
+import { FieldCryptoError } from "~/server/crypto/field-crypto";
+import { textUnavailableProblem } from "~/server/crypto/field-open";
 import { db } from "~/server/db";
 import { getAppSettings } from "~/server/services/settings";
-import type { Prisma } from "~prisma";
+import type { Prisma, WebhookDelivery } from "~prisma";
 import { type DeliveryOptions, deliverOnce, eventBody } from "./deliver";
 import { FAN_OUT_BATCH, fanOutEvents } from "./fanout";
 import { capHostOf, runWithLimits } from "./pool";
@@ -45,6 +47,13 @@ import type { Resolver } from "./ssrf";
  * Rotating that secret makes every stored webhook secret unreadable: each
  * delivery then fails as `secret_unreadable` until its owner rotates the
  * webhook's secret.
+ *
+ * A webhook's url is sealed with the instance key once sealing is on (D11),
+ * and this worker reads it on the global client, which opens instance cells.
+ * `pickDue` opens each url once and hands it on with its host, so nothing
+ * opens a url twice. A url that cannot be opened (a damaged cell, or a key
+ * that is not available) fails only its own deliveries, as `url_unreadable`,
+ * which retries and counts like `secret_unreadable`.
  */
 
 export type WorkerOptions = {
@@ -77,9 +86,27 @@ async function allowPrivateTargets(options: WorkerOptions): Promise<boolean> {
 	return (await getAppSettings()).webhooksAllowPrivateTargets;
 }
 
-type DueDelivery = Prisma.WebhookDeliveryGetPayload<{
-	include: { webhook: true; event: true };
+/**
+ * The host bucket of a delivery whose url could not be read. Settling one
+ * costs no network time, so the shared per-host cap is only a bound.
+ */
+const UNREADABLE_HOST = "unreadable";
+
+/**
+ * The webhook's own name and url stay unread here: the name is not needed
+ * to send, and the url is opened on its own so that one cell that cannot be
+ * opened does not hide every other delivery of the batch.
+ */
+type DueRow = Prisma.WebhookDeliveryGetPayload<{
+	include: { webhook: { omit: { name: true; url: true } }; event: true };
 }>;
+
+/** What `pickDue` read from the url: the address and its cap host, or the failure. */
+type OpenedUrl =
+	| { url: string; host: string | null; urlError?: false }
+	| { url: null; host: typeof UNREADABLE_HOST; urlError: true };
+
+export type DueDelivery = DueRow & OpenedUrl;
 
 /**
  * Takes a delivery for this worker by moving its next attempt to a lease
@@ -88,7 +115,7 @@ type DueDelivery = Prisma.WebhookDeliveryGetPayload<{
  * that took over), or null when another worker got there first.
  */
 export async function claim(
-	delivery: DueDelivery,
+	delivery: Pick<WebhookDelivery, "id" | "nextAttemptAt">,
 	now: Date,
 ): Promise<Date | null> {
 	const lease = new Date(now.getTime() + CLAIM_LEASE_MS);
@@ -120,6 +147,7 @@ async function recordTerminalFailure(
 		const updated = await db.webhook.update({
 			where: { id: webhookId },
 			data: { consecutiveFailures: { increment: 1 } },
+			select: { enabled: true, consecutiveFailures: true },
 		});
 		if (!updated.enabled || updated.consecutiveFailures < AUTO_DISABLE_AFTER)
 			return;
@@ -131,6 +159,7 @@ async function recordTerminalFailure(
 			disabledAt: now,
 			disabledReason: blocked ? "blocked_target" : "too_many_failures",
 		},
+		select: { id: true },
 	});
 	// Its pending deliveries are left alone: one may be on the wire under
 	// another worker's lease, and must still settle as sent. The rest fail
@@ -166,6 +195,7 @@ async function settle(
 			await db.webhook.update({
 				where: { id: delivery.webhookId },
 				data: { consecutiveFailures: 0 },
+				select: { id: true },
 			});
 		return;
 	}
@@ -202,8 +232,19 @@ async function attempt(
 		});
 		return;
 	}
+	if (delivery.urlError) {
+		// Nothing can be sent: the address is sealed and cannot be opened. It
+		// retries like any failed attempt, since a key outage is temporary.
+		await settle(
+			delivery,
+			{ ok: false, error: "url_unreadable", statusCode: null },
+			now,
+			lease,
+		);
+		return;
+	}
 	const result = await deliverOnce(
-		delivery.webhook,
+		{ ...delivery.webhook, url: delivery.url },
 		{
 			id: delivery.id,
 			eventId: delivery.eventId,
@@ -235,10 +276,57 @@ export async function pickDue(now: Date): Promise<DueDelivery[]> {
 	if (picked.length === 0) return [];
 	const rows = await db.webhookDelivery.findMany({
 		where: { id: { in: picked.map((p) => p.id) } },
-		include: { webhook: true, event: true },
+		include: { webhook: { omit: { name: true, url: true } }, event: true },
 	});
 	const byId = new Map(rows.map((r) => [r.id, r]));
-	return picked.flatMap((p) => byId.get(p.id) ?? []);
+	const urls = await openUrls([...new Set(rows.map((r) => r.webhookId))]);
+	return picked.flatMap((p): DueDelivery[] => {
+		const row = byId.get(p.id);
+		// A webhook deleted since the read takes its deliveries with it.
+		if (!row || !urls.has(row.webhookId)) return [];
+		const url = urls.get(row.webhookId) ?? null;
+		return [
+			url === null
+				? { ...row, url, host: UNREADABLE_HOST, urlError: true }
+				: { ...row, url, host: capHostOf(url) },
+		];
+	});
+}
+
+const cannotOpen = (error: unknown): boolean =>
+	error instanceof FieldCryptoError || textUnavailableProblem(error) !== null;
+
+/**
+ * The url of each webhook, opened on the global client, or null for one that
+ * cannot be opened (a damaged cell, a key that is not available). A batch
+ * that fails for such a cell is read again one webhook at a time, so only the
+ * deliveries of that webhook fail; any other error is not about a url and
+ * ends the pull.
+ */
+async function openUrls(ids: string[]): Promise<Map<string, string | null>> {
+	try {
+		const rows = await db.webhook.findMany({
+			where: { id: { in: ids } },
+			select: { id: true, url: true },
+		});
+		return new Map(rows.map((r) => [r.id, r.url]));
+	} catch (error) {
+		if (!cannotOpen(error)) throw error;
+	}
+	const urls = new Map<string, string | null>();
+	for (const id of ids) {
+		try {
+			const row = await db.webhook.findUnique({
+				where: { id },
+				select: { url: true },
+			});
+			if (row) urls.set(id, row.url);
+		} catch (error) {
+			if (!cannotOpen(error)) throw error;
+			urls.set(id, null);
+		}
+	}
+	return urls;
 }
 
 /**
@@ -257,7 +345,7 @@ export async function processDueDeliveries(
 		[],
 		(delivery) => ({
 			user: delivery.userId,
-			host: capHostOf(delivery.webhook.url),
+			host: delivery.host,
 		}),
 		{
 			total: PARALLEL_ATTEMPTS,

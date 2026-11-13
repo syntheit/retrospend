@@ -105,7 +105,12 @@ export const FIELD_MAP = {
 	Transfer: { table: "transfer", columns: { note: "user" } },
 	User: { table: "user", columns: { name: "instance" } },
 	WealthTransfer: { table: "wealth_transfer", columns: { note: "instance" } },
-	Webhook: { table: "webhook", columns: { name: "instance" } },
+	// The url is typed input, not a declared user-text field. The worker reads
+	// it on the global client to send, so it is instance class.
+	Webhook: {
+		table: "webhook",
+		columns: { name: "instance", url: "instance" },
+	},
 } as const satisfies Record<string, ModelFields>;
 
 /** A Prisma model name that has at least one mapped column. */

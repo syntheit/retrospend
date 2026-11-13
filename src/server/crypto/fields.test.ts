@@ -111,6 +111,8 @@ const NO_DECLARED_FIELD: Record<string, string> = {
 		"a server copy of envelope.name taken before a rename; no input names it",
 	"export_job.fileName":
 		"derived by the server from a project or person name; no input names it",
+	"webhook.url":
+		"typed as a url (z.url), not declared through userText: it holds no prose",
 };
 
 /**
@@ -268,8 +270,6 @@ const NOT_SEALED: Record<string, string> = {
 	"shared_transaction.receiptUrl": "a stored receipt path or link, not prose",
 	"settlement.autoConfirmedReason": "a system code set by the server",
 	"feedback.pageUrl": "the app route the feedback was sent from",
-	"webhook.url":
-		"owner call: a delivery address, which can carry a secret in its path",
 	"webhook.disabledReason": "a system code from a fixed list",
 	"apikey.metadata": "a JSON string the key plugin writes, not typed text",
 	"notification.title":
@@ -373,6 +373,7 @@ describe("key classes", () => {
 		"feedback.adminNote",
 		"apikey.name",
 		"webhook.name",
+		"webhook.url",
 		"envelope_change.previousName",
 		"income_rule.name",
 		"income_rule.matchTitle",

@@ -131,6 +131,7 @@ export const DELIVERY_ERRORS = [
 	"connection_error",
 	"http_error",
 	"secret_unreadable",
+	"url_unreadable",
 	"internal_error",
 	"webhook_disabled",
 	"event_gone",

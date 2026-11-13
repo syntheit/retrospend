@@ -17,6 +17,7 @@
 	"src/server/services/payments/confirm-text.pg.test.ts": "Mocks the master key and turns sealing on and off",
 	"src/server/services/preview/preview-keys.pg.test.ts": "Mocks the master key and builds its own keys",
 	"src/server/services/recurring-auto-post-sealed.pg.test.ts": "Mocks the master key and turns sealing on and off",
+	"src/server/services/webhooks/url-sealed.pg.test.ts": "Mocks the master key and turns sealing on and off",
 	"src/server/services/__tests__/category-name-index.pg.test.ts": "Builds its own keys",
 	"src/server/services/__tests__/category-scripts.pg.test.ts": "Mocks the master key, builds its own keys and turns sealing on and off",
 	"src/server/services/__tests__/category-seed.pg.test.ts": "Mocks the master key, builds its own keys and turns sealing on and off",
