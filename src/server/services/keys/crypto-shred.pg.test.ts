@@ -128,6 +128,8 @@ async function withoutKeystoreTrigger<T>(run: () => Promise<T>): Promise<T> {
 /** Fails the deletion at its last step, after the user delete and the key destroy. */
 function failingAfterKeyDestroy(error: Error) {
 	return {
+		// The by-address guest lookup runs before the transaction, on this client.
+		guestSession: adminDb.guestSession,
 		$transaction: (fn: (tx: unknown) => Promise<unknown>) =>
 			adminDb.$transaction((tx) =>
 				fn(
