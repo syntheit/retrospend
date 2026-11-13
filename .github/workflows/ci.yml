@@ -288,9 +288,9 @@ jobs:
       # A skip would pass silently, so check the database tests ran.
       - name: Database tests ran
         run: |
-          go test ./tasks/ -run 'TestProcessRecurring|TestRecordRateHistory' -v -count=1 | tee db-tests.log
+          go test ./tasks/ -run 'TestRecordRateHistory|TestBackupAsOwnerCoversForceRLSTablesAndKeystore|TestKeystoreRestoreSteps' -v -count=1 | tee db-tests.log
           if grep -q -- '--- SKIP' db-tests.log; then exit 1; fi
-          for t in TestProcessRecurringPostsMoneyIn TestProcessRecurringStepsInUserZone TestRecordRateHistory; do
+          for t in TestRecordRateHistory TestBackupAsOwnerCoversForceRLSTablesAndKeystore TestKeystoreRestoreSteps; do
             grep -q -- "--- PASS: $t" db-tests.log
           done
 
