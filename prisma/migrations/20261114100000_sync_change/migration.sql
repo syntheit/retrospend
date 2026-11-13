@@ -16,17 +16,14 @@
 -- 2. "sync_state": one row. The epoch changes on sync_reset(); floorTxid is
 --    the highest txid the tombstone sweep removed (a cursor at or below it
 --    may have missed a deletion); stateOid and databaseOid tell a restore
---    from a normal start, and highXmax (the highest next-transaction id any
---    start or sweep has seen) tells a snapshot or point-in-time restore that
---    rewound the transaction counter in place (sync_restore_reason).
+--    from a normal start (sync_restore_reason).
 -- 3. sync_stamp_rows(): one statement-level SECURITY DEFINER trigger function
 --    on nine tables, a set-based upsert per statement (an import of 10,000
 --    rows is one statement). It joins "user", so the cascade of a user
 --    deletion writes nothing (the same guard as budget_dirty_add) and the
 --    FK on "userId" removes the rest. An UPDATE that changes the owner stamps
 --    D for the old owner and U for the new one.
--- 4. sync_backfill(), sync_reset(), sync_restore_reason(), sync_note_xmax():
---    owner only, plain
+-- 4. sync_backfill(), sync_reset(), sync_restore_reason(): owner only, plain
 --    functions (they need nothing the owner lacks). The backfill stamps every
 --    existing row once; the reset is the restore runbook step.
 --
@@ -69,17 +66,15 @@ CREATE TABLE IF NOT EXISTS "sync_state" (
   "floorTxid"   xid8    NOT NULL DEFAULT '0'::xid8,
   "stateOid"    BIGINT  NOT NULL,
   "databaseOid" BIGINT  NOT NULL,
-  "highXmax"    xid8    NOT NULL DEFAULT '0'::xid8,
   CONSTRAINT "sync_state_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "sync_state_single_row" CHECK ("id" = 1)
 );
 
-INSERT INTO "sync_state" ("id", "stateOid", "databaseOid", "highXmax")
+INSERT INTO "sync_state" ("id", "stateOid", "databaseOid")
 VALUES (
   1,
   '"sync_state"'::regclass::oid::bigint,
-  (SELECT "oid"::bigint FROM pg_database WHERE "datname" = current_database()),
-  pg_snapshot_xmax(pg_current_snapshot())
+  (SELECT "oid"::bigint FROM pg_database WHERE "datname" = current_database())
 )
 ON CONFLICT ("id") DO NOTHING;
 
@@ -229,30 +224,18 @@ BEGIN
     SET "epoch" = gen_random_uuid()::text,
         "floorTxid" = '0'::xid8,
         "stateOid" = '"sync_state"'::regclass::oid::bigint,
-        "databaseOid" = (SELECT "oid"::bigint FROM pg_database WHERE "datname" = current_database()),
-        "highXmax" = pg_snapshot_xmax(pg_current_snapshot())
+        "databaseOid" = (SELECT "oid"::bigint FROM pg_database WHERE "datname" = current_database())
     WHERE "id" = 1;
   RETURN sync_backfill();
 END;
 $$;
 
--- Raises the highest next-transaction id seen. Every start and every sweep
--- calls it; sync_restore_reason() reads it. Never lowers it.
-CREATE OR REPLACE FUNCTION sync_note_xmax() RETURNS void
-LANGUAGE sql
-SET search_path = public, pg_temp
-AS $$
-  UPDATE "sync_state"
-    SET "highXmax" = GREATEST("highXmax", pg_snapshot_xmax(pg_current_snapshot()))
-    WHERE "id" = 1
-$$;
-
 -- Why this database looks restored, or NULL when it does not. A restore into
 -- another database changes the database oid; a restore of the table brings
--- the old oids back as data; a snapshot or point-in-time restore in place
--- rewinds the transaction counter below the highest one seen (the oids do not
--- move); a new cluster's counter restarts below the stamps (committed stamps
--- are always below any later snapshot's xmax).
+-- the old oids back as data; a new cluster's counter restarts below the
+-- stamps (committed stamps are always below any later snapshot's xmax). A
+-- filesystem, volume or point-in-time restore of the same cluster moves none
+-- of these and is not detected: the runbook runs sync_reset() by hand.
 CREATE OR REPLACE FUNCTION sync_restore_reason() RETURNS text
 LANGUAGE plpgsql
 SET search_path = public, pg_temp
@@ -269,9 +252,6 @@ BEGIN
   END IF;
   IF st."stateOid" <> '"sync_state"'::regclass::oid::bigint THEN
     RETURN 'table';
-  END IF;
-  IF st."highXmax" > pg_snapshot_xmax(pg_current_snapshot()) THEN
-    RETURN 'rewind';
   END IF;
   -- The running transaction's own stamps (a reset just made) can sit at or
   -- above its snapshot's xmax; they are not from another cluster.

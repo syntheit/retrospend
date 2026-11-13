@@ -43,8 +43,5 @@ export async function sweepSyncTombstones(
 		removed += count;
 		if (count < BATCH) break;
 	}
-	// The hourly sweep also notes how far the transaction counter has come, so
-	// a restore that rewinds it is seen at the next start (restore.ts).
-	await db.$executeRaw`SELECT sync_note_xmax()`;
 	return removed;
 }

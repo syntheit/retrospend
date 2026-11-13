@@ -153,7 +153,7 @@ describe("an install that older releases migrated as the superuser", () => {
 				WHERE p.proname = 'sync_stamp_rows' AND NOT t.tgisinternal`),
 			functions: await count(`
 				SELECT count(*) AS n FROM pg_proc WHERE pronamespace = 'public'::regnamespace
-				AND proname IN ('sync_stamp_rows','sync_backfill','sync_reset','sync_restore_reason','sync_note_xmax')`),
+				AND proname IN ('sync_stamp_rows','sync_backfill','sync_reset','sync_restore_reason')`),
 			tables: await count(`
 				SELECT count(*) AS n FROM pg_class WHERE relnamespace = 'public'::regnamespace
 				AND relkind = 'r' AND relname IN ('sync_change','sync_state')`),
@@ -166,7 +166,7 @@ describe("an install that older releases migrated as the superuser", () => {
 		});
 		const whole = {
 			triggers: 27,
-			functions: 5,
+			functions: 4,
 			tables: 2,
 			sequences: 1,
 			applied: 1,

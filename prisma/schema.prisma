@@ -2524,8 +2524,6 @@ model SyncState {
   floorTxid   Unsupported("xid8") @default(dbgenerated("'0'::xid8"))
   stateOid    BigInt
   databaseOid BigInt
-  /// The highest next-transaction id a start or sweep has seen; a lower one now is a rewind.
-  highXmax    Unsupported("xid8") @default(dbgenerated("'0'::xid8"))
 
   @@map("sync_state")
 }

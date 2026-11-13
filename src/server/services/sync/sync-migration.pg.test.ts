@@ -346,7 +346,7 @@ describe("the rollback snippet", () => {
 			functions: await one(`
 				SELECT count(*)::int AS n FROM pg_proc
 				WHERE pronamespace = 'public'::regnamespace
-				  AND proname IN ('sync_stamp_rows','sync_backfill','sync_reset','sync_restore_reason','sync_note_xmax')`),
+				  AND proname IN ('sync_stamp_rows','sync_backfill','sync_reset','sync_restore_reason')`),
 			tables: await one(`
 				SELECT count(*)::int AS n FROM pg_class
 				WHERE relnamespace = 'public'::regnamespace AND relkind = 'r'
@@ -364,7 +364,7 @@ describe("the rollback snippet", () => {
 	};
 	const whole = {
 		triggers: 27,
-		functions: 5,
+		functions: 4,
 		tables: 2,
 		sequences: 1,
 		appRead: 2,

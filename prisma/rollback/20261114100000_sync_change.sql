@@ -6,7 +6,7 @@
 --
 --   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f prisma/rollback/20261114100000_sync_change.sql
 --
--- It drops the nine tables' triggers, the five functions, the two tables
+-- It drops the nine tables' triggers, the four functions, the two tables
 -- (their policies and the app role's SELECT go with them) and the sequence,
 -- and deletes the migration's row from "_prisma_migrations", so that starting
 -- this release again applies the migration again (a roll forward) and
@@ -29,7 +29,6 @@ BEGIN
   END LOOP;
 END $$;
 
-DROP FUNCTION IF EXISTS sync_note_xmax();
 DROP FUNCTION IF EXISTS sync_restore_reason();
 DROP FUNCTION IF EXISTS sync_reset(text);
 DROP FUNCTION IF EXISTS sync_backfill();

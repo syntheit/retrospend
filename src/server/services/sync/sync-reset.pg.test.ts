@@ -1,22 +1,18 @@
 /**
  * The restore check and sync_reset() under the conditions that hurt (E2EE lane
- * P, P14a): a transaction counter rewound by a snapshot or point-in-time
- * restore in place, the high mark that makes it visible, the index the check
- * uses, a reset that gives up instead of hanging behind a connection that
- * holds the log, and a reset that runs next to a writer in either order
- * without losing a stamp or deadlocking.
+ * P, P14a): the index the check uses, a reset that gives up instead of hanging
+ * behind a connection that holds the log, and a reset that runs next to a
+ * writer in either order without losing a stamp or deadlocking.
  */
 import { Client } from "pg";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { adminDb, createTestUser } from "~/test/pg-harness";
-import { inRolledBackPrismaTransaction } from "~/test/rolled-back-sql";
 import {
 	checkSyncRestore,
 	SYNC_RESET_LOCK_TIMEOUT,
 	SyncResetLockTimeoutError,
 } from "./restore";
 import { stampsOf } from "./sync-test-support";
-import { sweepSyncTombstones } from "./tombstones";
 
 // A worker's database is a clone of the template, so its oid differs from the
 // one the migration stored; a start runs this check, so the test does too.
@@ -24,59 +20,7 @@ beforeAll(async () => {
 	await checkSyncRestore();
 });
 
-const xmaxPlus = (n: number) =>
-	`((pg_snapshot_xmax(pg_current_snapshot())::text::bigint) + ${n})::text::xid8`;
-
-describe("a rewound transaction counter", () => {
-	it("a next txid below the highest one seen (a snapshot or point-in-time restore in place) resets at start", async () => {
-		await inRolledBackPrismaTransaction(async (tx) => {
-			await tx.$executeRawUnsafe(
-				`UPDATE "sync_state" SET "highXmax" = ${xmaxPlus(1_000_000)}`,
-			);
-			const [row] = await tx.$queryRaw<
-				{ reason: string }[]
-			>`SELECT sync_restore_reason() AS "reason"`;
-			expect(row?.reason).toBe("rewind");
-			const result = await checkSyncRestore(tx);
-			expect(result).toMatchObject({ restored: true, reason: "rewind" });
-			// The reset took the counter's present as the new high mark.
-			const [after] = await tx.$queryRaw<{ over: boolean }[]>`
-				SELECT "highXmax" > pg_snapshot_xmax(pg_current_snapshot()) AS "over" FROM "sync_state"`;
-			expect(after?.over).toBe(false);
-			expect(await checkSyncRestore(tx)).toEqual({ restored: false });
-		});
-	});
-
-	it("a clean check raises the high mark and never lowers it", async () => {
-		await inRolledBackPrismaTransaction(async (tx) => {
-			await tx.$executeRaw`UPDATE "sync_state" SET "highXmax" = '0'::xid8`;
-			expect(await checkSyncRestore(tx)).toEqual({ restored: false });
-			const [raised] = await tx.$queryRaw<{ ok: boolean }[]>`
-				SELECT "highXmax" >= pg_snapshot_xmax(pg_current_snapshot()) AND "highXmax" > '0'::xid8 AS "ok"
-				FROM "sync_state"`;
-			expect(raised?.ok).toBe(true);
-			await tx.$executeRawUnsafe(
-				`UPDATE "sync_state" SET "highXmax" = ${xmaxPlus(7)}`,
-			);
-			const [before] = await tx.$queryRaw<
-				{ high: string }[]
-			>`SELECT "highXmax"::text AS "high" FROM "sync_state"`;
-			await tx.$executeRaw`SELECT sync_note_xmax()`;
-			const [after] = await tx.$queryRaw<
-				{ high: string }[]
-			>`SELECT "highXmax"::text AS "high" FROM "sync_state"`;
-			expect(after?.high).toBe(before?.high);
-		});
-	});
-
-	it("the hourly sweep raises the high mark too", async () => {
-		await adminDb.$executeRaw`UPDATE "sync_state" SET "highXmax" = '0'::xid8`;
-		await sweepSyncTombstones(new Date(), 90);
-		const [row] = await adminDb.$queryRaw<{ ok: boolean }[]>`
-			SELECT "highXmax" > '0'::xid8 AS "ok" FROM "sync_state"`;
-		expect(row?.ok).toBe(true);
-	});
-
+describe("the restore check's index", () => {
 	it("the check for a stamp above the counter has an index to use", async () => {
 		const rows = await adminDb.$transaction(async (tx) => {
 			await tx.$executeRaw`SET LOCAL enable_seqscan = off`;

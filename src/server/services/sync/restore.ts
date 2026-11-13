@@ -1,15 +1,14 @@
 /**
  * The restore check run at every start (E2EE lane P, P14a). A database
  * restored into another cluster or database, a table restored from a dump, or
- * a snapshot or point-in-time restore in place leaves stamps whose txids this
- * cluster has not reached (or a counter that moved backwards), and cursors
- * that point into a log that no longer exists. sync_restore_reason() names what
- * it sees: a moved database oid, a moved table oid, a next transaction id below
- * the highest one seen ("rewind"), or a stamp at or above the next transaction
- * id. Any answer runs sync_reset(): a new epoch and a fresh log of every row.
- * Devices holding an older cursor get a reset answer and pull again. When
- * nothing is wrong, the highest next transaction id seen is raised, which is
- * what makes a later rewind visible.
+ * leaves stamps whose txids this cluster has not reached, and cursors that
+ * point into a log that no longer exists. sync_restore_reason() names what it
+ * sees: a moved database oid, a moved table oid, or a stamp at or above the
+ * next transaction id. Any answer runs sync_reset(): a new epoch and a fresh
+ * log of every row. Devices holding an older cursor get a reset answer and pull
+ * again. A filesystem, volume or point-in-time restore of the same cluster
+ * moves none of these (the restored table and its oids come back together) and
+ * is not detected: the runbook runs sync_reset() by hand before the app starts.
  *
  * sync_reset() takes a lock on the log that every write to a synced table
  * waits on, and gives up after `lockWait` (30 s): the start then fails with
@@ -19,7 +18,7 @@
 import { db } from "~/server/db";
 import type { Prisma } from "~prisma";
 
-type Runner = Pick<Prisma.TransactionClient, "$queryRaw" | "$executeRaw">;
+type Runner = Pick<Prisma.TransactionClient, "$queryRaw">;
 
 export type SyncRestoreResult =
 	| { restored: false }
@@ -51,10 +50,7 @@ export async function checkSyncRestore(
 	const [check] = await client.$queryRaw<
 		{ reason: string | null }[]
 	>`SELECT sync_restore_reason() AS "reason"`;
-	if (!check?.reason) {
-		await client.$executeRaw`SELECT sync_note_xmax()`;
-		return { restored: false };
-	}
+	if (!check?.reason) return { restored: false };
 	let stamps = 0;
 	try {
 		const [reset] = await client.$queryRaw<
