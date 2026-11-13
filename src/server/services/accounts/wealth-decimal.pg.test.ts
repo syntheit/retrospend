@@ -176,7 +176,9 @@ describe("Wealth dashboard in an ARS home with fiat, crypto and liabilities", ()
 		expect(s.totalLiabilities).toBe(1_306_100);
 		expect(s.totalNetWorth).toBe(5_226_993.36);
 		expect(s.totalLiquidAssets).toBe(2_545_000);
-		expect(s.weightedAPR).toBe(40);
+		// Weighted by USD owed: 40 x 300 / (300 + 842,600 / 1,545) =
+		// 12,000 / 845.372168 = 14.19493 (the loan adds to the owed total and carries no interest).
+		expect(s.weightedAPR).toBeCloseTo(14.19493, 4);
 		expect(s.missingRateCurrencies).toEqual([]);
 	});
 
