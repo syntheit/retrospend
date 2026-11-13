@@ -19,8 +19,26 @@ describe("sealing()", () => {
 		expect(sealingWanted(true, "development")).toBe(true);
 	});
 
-	it("never seals in production until sealing is released", () => {
-		expect(SEALING_RELEASED).toBe(false);
+	it("never seals in production while sealing is not released", () => {
+		expect(sealingWanted(true, "production", false)).toBe(false);
+		expect(sealingWanted(true, "development", false)).toBe(true);
+	});
+
+	it("seals in a released production build only with the flag on and the start check passed", () => {
+		expect(SEALING_RELEASED).toBe(true);
+		expect(sealingWanted(undefined, "production", true, true)).toBe(false);
+		expect(sealingWanted(false, "production", true, true)).toBe(false);
+		expect(sealingWanted("true", "production", true, true)).toBe(false);
+		expect(sealingWanted(true, "production", true, true)).toBe(true);
+	});
+
+	it("never seals in production before the start check passed in this process (a script)", () => {
+		expect(sealingWanted(true, "production", true, false)).toBe(false);
+		// Outside production the flag alone decides, as before.
+		expect(sealingWanted(true, "test", true, false)).toBe(true);
+	});
+
+	it("is not started until the start check marks it", () => {
 		expect(sealingWanted(true, "production")).toBe(false);
 	});
 

@@ -16,6 +16,7 @@ import {
 	resetEpochForTests,
 } from "~/server/crypto/epoch";
 import { Keyring } from "~/server/crypto/field-crypto";
+import { sealingWanted } from "~/server/crypto/sealing";
 import { createUserScopedDb } from "~/server/db";
 import {
 	expectedContactHash,
@@ -91,7 +92,9 @@ describe("with DATA_KEYS_WRITE off", () => {
 			expect(await start(tx, { flag: false, masterKeyring: undefined })).toBe(
 				"off",
 			);
-			expect(await start(tx, { flag: false, production: true })).toBe("off");
+			expect(
+				await start(tx, { flag: false, production: true, released: true }),
+			).toBe("off");
 			expect(await epochOf(tx)).toBeNull();
 		});
 		expect(await loadEpoch()).toBe(false);
@@ -102,11 +105,13 @@ describe("with DATA_KEYS_WRITE on", () => {
 	it("refuses to start in production while sealing is not released", async () => {
 		await inRolledBackPrismaTransaction(async (tx) => {
 			await indexAll(tx);
-			const error = await refusal(tx, { production: true });
+			const error = await refusal(tx, { production: true, released: false });
 			expect(error?.code).toBe("sealing_unreleased");
 			expect(error?.message).toMatch(/not supported in production/);
 			expect(await epochOf(tx)).toBeNull();
 			expect(await start(tx, { production: true, released: true })).toBe("on");
+			// Only now may this production process seal (scripts never get here).
+			expect(sealingWanted(true, "production")).toBe(true);
 		});
 	});
 

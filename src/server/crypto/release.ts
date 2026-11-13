@@ -8,7 +8,7 @@
  * it enables nothing alone: DATA_KEYS_WRITE defaults to false, so a released
  * build seals nothing until the operator sets the flag.
  *
- * Preconditions for flipping it (all must be on main, in a released build):
+ * Preconditions for flipping it, all met when it was flipped (PR 9.4):
  * - D11 PRs 1 to 8: the field map (1), the keystore, instance key and master
  *   canary (2), open-only reads (3), the seal path, flag and epoch (4.1 to
  *   4.4), search that follows the epoch (5), recurring auto-post through the
@@ -21,11 +21,13 @@
  * - PR 9.1 (this marker, the start gates, scripts/verify-sealing.ts and the
  *   DATA_KEYS_WRITE pass-through in the compose files), 9.2 (the sealed e2e),
  *   9.3 (the docs and the runbook) and the owner's sign-off.
+ * - Done: the scratch rehearsal of the runbook on a copy of dev, with the
+ *   way back (restore of the pre-flag backup pair) rehearsed once.
  * - PR 9 notes: `SEALING_FLOOR` below is the first floor and the build that
  *   carries it is the first one the flag can run in; no database was sealed
  *   by anything older.
  */
-export const SEALING_RELEASED = false;
+export const SEALING_RELEASED = true;
 
 /**
  * The rollback floor (plan docs/roadmap/e2ee-d11-pr9.md section 3). Every

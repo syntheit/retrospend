@@ -34,6 +34,7 @@ import { markEpochActive } from "~/server/crypto/epoch";
 import type { Keyring } from "~/server/crypto/field-crypto";
 import { getMasterKeyring } from "~/server/crypto/master-key";
 import { SEALING_FLOOR, SEALING_RELEASED } from "~/server/crypto/release";
+import { markSealingStartPassed } from "~/server/crypto/sealing";
 import { keystoreDb } from "~/server/db-core";
 import type { ContactTable } from "./contact-hash";
 import {
@@ -212,5 +213,6 @@ export async function assertFieldEncryptionStart({
 	if (!(await readFieldEncryptionEpoch(client)))
 		throw new Error("The field encryption epoch was not stored");
 	markEpochActive();
+	markSealingStartPassed();
 	return "on";
 }
