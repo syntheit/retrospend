@@ -30,6 +30,7 @@ import {
 	contactHashFor,
 	contactHashTag,
 	contactLookup,
+	matchesContact,
 	normalizeContactEmail,
 } from "./contact-hash";
 import { InstanceKeyError } from "./instance-key.service";
@@ -60,7 +61,7 @@ beforeEach(() => {
 });
 
 describe("contactHash", () => {
-	it("is the tag and the HMAC of the trimmed, lower-cased address, derived from the key", () => {
+	it("is the tag and the HMAC of the trimmed, ASCII lower-cased address, derived from the key", () => {
 		expect(contactHash(ring, "shadow_profile", "  Bob@Example.COM ")).toBe(
 			expected(key1, SHADOW, "bob@example.com"),
 		);
@@ -74,7 +75,17 @@ describe("contactHash", () => {
 		expect(contactHash(ring, "shadow_profile", " bob@example.COM\n")).toBe(a);
 		expect(contactHash(ring, "shadow_profile", "bob@example.org")).not.toBe(a);
 		expect(contactHash(ring, "shadow_profile", "b.ob@example.com")).not.toBe(a);
-		expect(normalizeContactEmail("\tÀB@x.io ")).toBe("àb@x.io");
+	});
+
+	it("folds only A to Z, so the hash path and Postgres (which folds the rest by locale) cannot disagree", () => {
+		// Non-ASCII letters keep their case: "É" and "é" are two addresses on
+		// both lookup paths, and the JavaScript fold of "İ" never applies.
+		expect(normalizeContactEmail("\tÀB@x.io ")).toBe("Àb@x.io");
+		expect(normalizeContactEmail("JOSÉ@X.io")).toBe("josÉ@x.io");
+		const upper = contactHash(ring, "shadow_profile", "JOSÉ@x.io");
+		expect(upper).toBe(expected(key1, SHADOW, "josÉ@x.io"));
+		expect(contactHash(ring, "shadow_profile", "josé@x.io")).not.toBe(upper);
+		expect(contactHash(ring, "shadow_profile", "José@X.io")).not.toBe(upper);
 	});
 
 	it("gives a ghost and a guest different hashes for one address", () => {
@@ -176,6 +187,34 @@ describe("the rule", () => {
 		);
 		expect(warn.mock.calls.flat().join(" ")).not.toContain("a@b.co");
 		warn.mockRestore();
+	});
+});
+
+describe("matchesContact", () => {
+	const plaintext = {
+		email: { equals: "bob@example.com", mode: "insensitive" },
+	} as const;
+
+	it("accepts every row the hash matched", () => {
+		expect(matchesContact({ emailHash: "t:h" }, "bob@example.com", null)).toBe(
+			true,
+		);
+	});
+
+	it("keeps the plaintext rows whose address normalizes the same, and drops the superset's extras", () => {
+		expect(matchesContact(plaintext, "Bob@Example.com", "BOB@example.COM")).toBe(
+			true,
+		);
+		expect(matchesContact(plaintext, "bob@example.com", " bob@example.com")).toBe(
+			true,
+		);
+		expect(matchesContact(plaintext, "bob@example.com", "bob@example.org")).toBe(
+			false,
+		);
+		expect(matchesContact(plaintext, "bob@example.com", null)).toBe(false);
+		// Postgres may fold a non-ASCII capital and return the row; JS says no.
+		expect(matchesContact(plaintext, "josé@x.io", "JOSÉ@x.io")).toBe(false);
+		expect(matchesContact(plaintext, "José@x.io", "José@X.IO")).toBe(true);
 	});
 });
 
