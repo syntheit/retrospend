@@ -23,8 +23,8 @@ import type { Caller } from "./caller";
  * Decimals are written with toFixed(), which never uses an exponent.
  */
 
-const instant = (date: Date) => date.toISOString();
-const decimal = (value: { toFixed(): string }) => value.toFixed();
+export const instant = (date: Date) => date.toISOString();
+export const decimal = (value: { toFixed(): string }) => value.toFixed();
 
 export function toSyncExpense(row: SyncRow<"expense">): SyncExpenseDto {
 	return {
@@ -98,7 +98,7 @@ export function toSyncRecurringTemplate(
 	};
 }
 
-const decimalOrNull = (value: { toFixed(): string } | null) =>
+export const decimalOrNull = (value: { toFixed(): string } | null) =>
 	value ? decimal(value) : null;
 
 export function toSyncAccount(row: SyncRow<"asset_account">): SyncAccountDto {
@@ -206,7 +206,7 @@ export function toSyncTransfer(row: SyncRow<"transfer">): SyncTransferDto {
 }
 
 /** The page with its rows mapped and its tombstones' instants as text. */
-async function pageOf<E extends SyncEntity, Dto>(
+export async function pageOf<E extends SyncEntity, Dto>(
 	caller: Caller,
 	entity: E,
 	query: SyncQuery,

@@ -1,0 +1,103 @@
+import {
+	syncBookPeriodSchema,
+	syncBudgetBookSchema,
+	syncBudgetMovementSchema,
+	syncEnvelopeCategorySchema,
+	syncEnvelopeChangeSchema,
+	syncEnvelopeGroupSchema,
+	syncEnvelopeSchema,
+	syncIncomeRuleRunSchema,
+	syncIncomeRuleSchema,
+	syncMonthCloseSchema,
+	syncPayoffPlanSchema,
+	syncWealthTransferSchema,
+} from "./book-schemas";
+import { SYNC_BOOK_DESCRIPTION, syncRoute } from "./route";
+
+/** GET /sync/* for the caller's personal budget book (E2EE lane P, P14c). */
+export const syncBookContract = {
+	budgetBooks: syncRoute(
+		"budget-books",
+		"syncBudgetBooks",
+		"Changes to the caller's personal budget book",
+		syncBudgetBookSchema,
+		SYNC_BOOK_DESCRIPTION,
+	),
+	envelopeGroups: syncRoute(
+		"envelope-groups",
+		"syncEnvelopeGroups",
+		"Changes to the envelope groups of the caller's budget book",
+		syncEnvelopeGroupSchema,
+		SYNC_BOOK_DESCRIPTION,
+	),
+	envelopes: syncRoute(
+		"envelopes",
+		"syncEnvelopes",
+		"Changes to the envelopes of the caller's budget book",
+		syncEnvelopeSchema,
+		SYNC_BOOK_DESCRIPTION,
+	),
+	envelopeCategories: syncRoute(
+		"envelope-categories",
+		"syncEnvelopeCategories",
+		"Changes to the category links of the caller's envelopes",
+		syncEnvelopeCategorySchema,
+		SYNC_BOOK_DESCRIPTION,
+	),
+	budgetMovements: syncRoute(
+		"budget-movements",
+		"syncBudgetMovements",
+		"Changes to the movements of the caller's budget book",
+		syncBudgetMovementSchema,
+		SYNC_BOOK_DESCRIPTION,
+	),
+	bookPeriods: syncRoute(
+		"book-periods",
+		"syncBookPeriods",
+		"Changes to the periods of the caller's budget book",
+		syncBookPeriodSchema,
+		SYNC_BOOK_DESCRIPTION,
+	),
+	monthCloses: syncRoute(
+		"month-closes",
+		"syncMonthCloses",
+		"Changes to the month closes of the caller's budget book",
+		syncMonthCloseSchema,
+		SYNC_BOOK_DESCRIPTION,
+	),
+	incomeRules: syncRoute(
+		"income-rules",
+		"syncIncomeRules",
+		"Changes to the income rules of the caller's budget book",
+		syncIncomeRuleSchema,
+		SYNC_BOOK_DESCRIPTION,
+	),
+	incomeRuleRuns: syncRoute(
+		"income-rule-runs",
+		"syncIncomeRuleRuns",
+		"Changes to the income rule runs of the caller's budget book",
+		syncIncomeRuleRunSchema,
+		SYNC_BOOK_DESCRIPTION,
+	),
+	payoffPlans: syncRoute(
+		"payoff-plans",
+		"syncPayoffPlans",
+		"Changes to the payoff plan of the caller's budget book",
+		syncPayoffPlanSchema,
+		SYNC_BOOK_DESCRIPTION,
+	),
+	wealthTransfers: syncRoute(
+		"wealth-transfers",
+		"syncWealthTransfers",
+		"Changes to the Wealth transfers of the caller's budget book",
+		syncWealthTransferSchema,
+		SYNC_BOOK_DESCRIPTION,
+	),
+	envelopeChanges: syncRoute(
+		"envelope-changes",
+		"syncEnvelopeChanges",
+		"Changes to the envelope edits kept for undo in the caller's budget book",
+		syncEnvelopeChangeSchema,
+		SYNC_BOOK_DESCRIPTION,
+	),
+};

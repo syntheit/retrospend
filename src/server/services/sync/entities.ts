@@ -3,7 +3,8 @@
  * entity name is the table name, which is what sync_stamp_rows writes into
  * "sync_change"."entity". The same nine tables carry the three triggers in
  * 20261114100000_sync_change; sync.pg.test.ts fails when this list and the
- * catalog disagree.
+ * catalog disagree. The twelve tables of the personal budget books (P14c) are
+ * stamped through their book and live in book-entities.ts.
  *
  * A loader reads the live rows of one entity by id for one owner through the
  * Prisma model and never through raw SQL, so the field-open extension opens
@@ -12,6 +13,7 @@
  * and reads as deleted.
  */
 import type { Prisma } from "~prisma";
+import { BOOK_LOADERS, type SyncBookEntity } from "./book-entities";
 
 export const SYNCED_ENTITIES = [
 	"expense",
@@ -25,11 +27,14 @@ export const SYNCED_ENTITIES = [
 	"asset_rate_type",
 ] as const;
 
-export type SyncEntity = (typeof SYNCED_ENTITIES)[number];
+/** The tables stamped by "userId" (sync_stamp_rows); the budget books' family is in book-entities.ts. */
+export type SyncUserEntity = (typeof SYNCED_ENTITIES)[number];
+
+export type SyncEntity = SyncUserEntity | SyncBookEntity;
 
 type Tx = Prisma.TransactionClient;
 
-export const SYNC_LOADERS = {
+const USER_LOADERS = {
 	expense: (tx: Tx, ids: string[], userId: string) =>
 		tx.expense.findMany({ where: { id: { in: ids }, userId } }),
 	category: (tx: Tx, ids: string[], userId: string) =>
@@ -49,9 +54,11 @@ export const SYNC_LOADERS = {
 	asset_rate_type: (tx: Tx, ids: string[], userId: string) =>
 		tx.assetRateType.findMany({ where: { id: { in: ids }, userId } }),
 } satisfies Record<
-	SyncEntity,
+	SyncUserEntity,
 	(tx: Tx, ids: string[], userId: string) => Promise<{ id: string }[]>
 >;
+
+export const SYNC_LOADERS = { ...USER_LOADERS, ...BOOK_LOADERS };
 
 /** The row type one entity's loader returns. */
 export type SyncRow<E extends SyncEntity> = Awaited<
@@ -59,5 +66,5 @@ export type SyncRow<E extends SyncEntity> = Awaited<
 >[number];
 
 export function isSyncEntity(value: string): value is SyncEntity {
-	return (SYNCED_ENTITIES as readonly string[]).includes(value);
+	return Object.hasOwn(SYNC_LOADERS, value);
 }

@@ -195,7 +195,7 @@ describe("sync_reset and the restore check", () => {
 			// must not sit above the txid of the reset's own stamps.
 			expect(after?.floor).toBe("0");
 			expect(before?.floor).not.toBeUndefined();
-			// One stamp per live row of the nine tables, all U, none above the next txid.
+			// One stamp per live row of the nine tables and of the personal books' twelve, all U, none above the next txid.
 			const [live] = await tx.$queryRaw<{ n: number }[]>`
 				SELECT (
 				  (SELECT count(*) FROM "expense" r JOIN "user" u ON u.id = r."userId") +
@@ -207,6 +207,18 @@ describe("sync_reset and the restore check", () => {
 				  (SELECT count(*) FROM "account_leg" r JOIN "user" u ON u.id = r."userId") +
 				  (SELECT count(*) FROM "transfer" r JOIN "user" u ON u.id = r."userId") +
 				  (SELECT count(*) FROM "asset_rate_type" r JOIN "user" u ON u.id = r."userId")
+				  + (SELECT count(*) FROM "envelope_group" r WHERE sync_book_owner(r."bookId") IS NOT NULL)
+				  + (SELECT count(*) FROM "envelope" r WHERE sync_book_owner(r."bookId") IS NOT NULL)
+				  + (SELECT count(*) FROM "envelope_category" r WHERE sync_book_owner(r."bookId") IS NOT NULL)
+				  + (SELECT count(*) FROM "budget_movement" r WHERE sync_book_owner(r."bookId") IS NOT NULL)
+				  + (SELECT count(*) FROM "book_period" r WHERE sync_book_owner(r."bookId") IS NOT NULL)
+				  + (SELECT count(*) FROM "month_close" r WHERE sync_book_owner(r."bookId") IS NOT NULL)
+				  + (SELECT count(*) FROM "income_rule" r WHERE sync_book_owner(r."bookId") IS NOT NULL)
+				  + (SELECT count(*) FROM "payoff_plan" r WHERE sync_book_owner(r."bookId") IS NOT NULL)
+				  + (SELECT count(*) FROM "wealth_transfer" r WHERE sync_book_owner(r."bookId") IS NOT NULL)
+				  + (SELECT count(*) FROM "envelope_change" r WHERE sync_book_owner(r."bookId") IS NOT NULL)
+				  + (SELECT count(*) FROM "income_rule_run" r WHERE sync_book_owner(r."bookId") IS NOT NULL)
+				  + (SELECT count(*) FROM "budget_book" r WHERE sync_book_owner(r."id") IS NOT NULL)
 				)::int AS "n"`;
 			expect(reset?.n).toBe(live?.n);
 			const [log] = await tx.$queryRaw<{ n: number; ops: string }[]>`

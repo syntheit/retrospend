@@ -258,7 +258,7 @@ describe("the sync group", () => {
 		expect(PROBLEM_STATUS.sync_reset_required).toBe(410);
 	});
 
-	it("has the nine entity routes, each a GET under /sync", () => {
+	it("has the 21 entity routes, each a GET under /sync", () => {
 		const paths = Object.values(syncContract).map(
 			(route) => route["~orpc"].route.path,
 		);
@@ -269,10 +269,22 @@ describe("the sync group", () => {
 				"/sync/account-rate-types",
 				"/sync/account-snapshots",
 				"/sync/accounts",
+				"/sync/book-periods",
+				"/sync/budget-books",
+				"/sync/budget-movements",
 				"/sync/categories",
+				"/sync/envelope-categories",
+				"/sync/envelope-changes",
+				"/sync/envelope-groups",
+				"/sync/envelopes",
 				"/sync/expenses",
+				"/sync/income-rule-runs",
+				"/sync/income-rules",
+				"/sync/month-closes",
+				"/sync/payoff-plans",
 				"/sync/recurring-templates",
 				"/sync/transfers",
+				"/sync/wealth-transfers",
 			].sort(),
 		);
 	});
@@ -280,6 +292,7 @@ describe("the sync group", () => {
 	it("needs the session-only sync scope, which no token can be given", () => {
 		for (const route of Object.values(syncContract)) {
 			expect(route["~orpc"].meta.scope).toBe("sync");
+			expect(route["~orpc"].route.method).toBe("GET");
 		}
 		expect(isSessionScope("sync")).toBe(true);
 		expect(isScope("sync")).toBe(false);

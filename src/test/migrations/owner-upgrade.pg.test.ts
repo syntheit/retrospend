@@ -143,8 +143,9 @@ describe("an install that older releases migrated as the superuser", () => {
 		expect(Number(rows[0]?.n)).toBeGreaterThan(0);
 	}, 120_000);
 
-	it("rolls the sync log migration back with its snippet and forward again through migrate deploy", async () => {
+	it("rolls the sync log and the book family migrations back with their snippets, the newer first, and forward again through migrate deploy", async () => {
 		const name = "20261114100000_sync_change";
+		const bookName = "20261114200000_sync_book_family";
 		const count = async (sql: string) =>
 			Number((await owner.query<{ n: string }>(sql)).rows[0]?.n);
 		const objects = async () => ({
@@ -160,30 +161,52 @@ describe("an install that older releases migrated as the superuser", () => {
 			sequences: await count(`
 				SELECT count(*) AS n FROM pg_class WHERE relnamespace = 'public'::regnamespace
 				AND relkind = 'S' AND relname = 'sync_change_seq'`),
+			bookTriggers: await count(`
+				SELECT count(*) AS n FROM pg_trigger t JOIN pg_proc p ON p.oid = t.tgfoid
+				WHERE p.proname IN ('sync_stamp_book_rows','sync_stamp_book_self','sync_stamp_book_members')
+				  AND NOT t.tgisinternal`),
+			bookFunctions: await count(`
+				SELECT count(*) AS n FROM pg_proc WHERE pronamespace = 'public'::regnamespace
+				AND proname IN ('sync_stamp_book_rows','sync_stamp_book_self','sync_stamp_book_members',
+				                'sync_book_stamp','sync_book_tables','sync_book_owner')`),
 			applied: await count(`
 				SELECT count(*) AS n FROM _prisma_migrations
-				WHERE migration_name = '${name}' AND finished_at IS NOT NULL`),
+				WHERE migration_name IN ('${name}', '${bookName}') AND finished_at IS NOT NULL`),
 		});
 		const whole = {
 			triggers: 27,
 			functions: 4,
 			tables: 2,
 			sequences: 1,
-			applied: 1,
+			bookTriggers: 39,
+			bookFunctions: 6,
+			applied: 2,
 		};
 		expect(await objects()).toEqual(whole);
 
+		// The newer first: the book family's snippet restores the older
+		// sync_backfill() the older snippet then drops.
+		prisma(["db", "execute", "--file", `prisma/rollback/${bookName}.sql`]);
+		expect(await objects()).toMatchObject({
+			bookTriggers: 0,
+			bookFunctions: 0,
+			applied: 1,
+			triggers: 27,
+		});
 		prisma(["db", "execute", "--file", `prisma/rollback/${name}.sql`]);
 		expect(await objects()).toEqual({
 			triggers: 0,
 			functions: 0,
 			tables: 0,
 			sequences: 0,
+			bookTriggers: 0,
+			bookFunctions: 0,
 			applied: 0,
 		});
 
 		const deploy = prisma(["migrate", "deploy"]);
 		expect(deploy).toContain(name);
+		expect(deploy).toContain(bookName);
 		expect(deploy).toMatch(/successfully applied/);
 		expect(await objects()).toEqual(whole);
 		// Back to a working log: every stamp the backfill wrote is a U, and the

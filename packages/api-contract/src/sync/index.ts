@@ -1,5 +1,7 @@
 import { v1 } from "../common/meta";
 import { syncPageOf, syncQuerySchema } from "../common/sync";
+import { syncBookContract } from "./book";
+import { SYNC_DESCRIPTION, SYNC_TAG } from "./route";
 import {
 	syncAccountHistorySchema,
 	syncAccountLegSchema,
@@ -12,12 +14,8 @@ import {
 	syncTransferSchema,
 } from "./schemas";
 
+export * from "./book-schemas";
 export * from "./schemas";
-
-const TAG = ["Sync"];
-
-const DESCRIPTION =
-	"Raw rows changed after `since`, oldest change first, plus a tombstone for each row deleted since. Page with the returned `cursor` until `hasMore` is false. The first pull (no `since`) returns every row once. A cursor the server can no longer honor answers 410 sync_reset_required: drop this entity's rows and pull again from the start. A change shows up once every older write transaction on the database server has finished, normally milliseconds. Cursors carry the server-wide commit position, so they reveal how much the instance writes, as the events feed does. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own rows.";
 
 export const syncContract = {
 	expenses: v1
@@ -25,9 +23,9 @@ export const syncContract = {
 			method: "GET",
 			path: "/sync/expenses",
 			operationId: "syncExpenses",
-			tags: TAG,
+			tags: SYNC_TAG,
 			summary: "Changes to the caller's expenses",
-			description: DESCRIPTION,
+			description: SYNC_DESCRIPTION,
 		})
 		.meta({ scope: "sync" })
 		.input(syncQuerySchema)
@@ -37,9 +35,9 @@ export const syncContract = {
 			method: "GET",
 			path: "/sync/categories",
 			operationId: "syncCategories",
-			tags: TAG,
+			tags: SYNC_TAG,
 			summary: "Changes to the caller's categories",
-			description: DESCRIPTION,
+			description: SYNC_DESCRIPTION,
 		})
 		.meta({ scope: "sync" })
 		.input(syncQuerySchema)
@@ -49,9 +47,9 @@ export const syncContract = {
 			method: "GET",
 			path: "/sync/recurring-templates",
 			operationId: "syncRecurringTemplates",
-			tags: TAG,
+			tags: SYNC_TAG,
 			summary: "Changes to the caller's recurring templates",
-			description: DESCRIPTION,
+			description: SYNC_DESCRIPTION,
 		})
 		.meta({ scope: "sync" })
 		.input(syncQuerySchema)
@@ -61,9 +59,9 @@ export const syncContract = {
 			method: "GET",
 			path: "/sync/accounts",
 			operationId: "syncAccounts",
-			tags: TAG,
+			tags: SYNC_TAG,
 			summary: "Changes to the caller's accounts",
-			description: DESCRIPTION,
+			description: SYNC_DESCRIPTION,
 		})
 		.meta({ scope: "sync" })
 		.input(syncQuerySchema)
@@ -73,9 +71,9 @@ export const syncContract = {
 			method: "GET",
 			path: "/sync/account-snapshots",
 			operationId: "syncAccountSnapshots",
-			tags: TAG,
+			tags: SYNC_TAG,
 			summary: "Changes to the caller's account snapshots",
-			description: DESCRIPTION,
+			description: SYNC_DESCRIPTION,
 		})
 		.meta({ scope: "sync" })
 		.input(syncQuerySchema)
@@ -85,9 +83,9 @@ export const syncContract = {
 			method: "GET",
 			path: "/sync/account-legs",
 			operationId: "syncAccountLegs",
-			tags: TAG,
+			tags: SYNC_TAG,
 			summary: "Changes to the caller's account legs",
-			description: DESCRIPTION,
+			description: SYNC_DESCRIPTION,
 		})
 		.meta({ scope: "sync" })
 		.input(syncQuerySchema)
@@ -97,9 +95,9 @@ export const syncContract = {
 			method: "GET",
 			path: "/sync/account-history",
 			operationId: "syncAccountHistory",
-			tags: TAG,
+			tags: SYNC_TAG,
 			summary: "Changes to the caller's account history rows",
-			description: DESCRIPTION,
+			description: SYNC_DESCRIPTION,
 		})
 		.meta({ scope: "sync" })
 		.input(syncQuerySchema)
@@ -109,9 +107,9 @@ export const syncContract = {
 			method: "GET",
 			path: "/sync/account-rate-types",
 			operationId: "syncAccountRateTypes",
-			tags: TAG,
+			tags: SYNC_TAG,
 			summary: "Changes to the caller's account rate types",
-			description: DESCRIPTION,
+			description: SYNC_DESCRIPTION,
 		})
 		.meta({ scope: "sync" })
 		.input(syncQuerySchema)
@@ -121,11 +119,12 @@ export const syncContract = {
 			method: "GET",
 			path: "/sync/transfers",
 			operationId: "syncTransfers",
-			tags: TAG,
+			tags: SYNC_TAG,
 			summary: "Changes to the caller's transfers",
-			description: DESCRIPTION,
+			description: SYNC_DESCRIPTION,
 		})
 		.meta({ scope: "sync" })
 		.input(syncQuerySchema)
 		.output(syncPageOf(syncTransferSchema)),
+	...syncBookContract,
 };
