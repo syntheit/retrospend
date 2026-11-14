@@ -419,7 +419,7 @@ describe("the budget block's promotion", () => {
 		startMonth: 202603,
 		defaultEnvelopeId: null,
 		startingBalanceExpenseId: null,
-	};
+	} as WireOf["budgetBooks"];
 	/** Every entity ends at `at`, and the book is among the rows. */
 	const catchUp = (at: string): Pages => {
 		const empty = { items: [], tombstones: [], cursor: at, hasMore: false };

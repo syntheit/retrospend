@@ -4,7 +4,7 @@
  * shares snapshot, and the refusals that leave a store as it was. Dates are
  * Ana's, home ARS in Buenos Aires, March 2026.
  */
-import type { SplitBlock } from "@retrospend/domain/envelope/split-block";
+import type { SyncSplitBlockDto } from "@retrospend/api-contract";
 import { describe, expect, it } from "vitest";
 import { promotePendingBudget } from "./budget-snapshot";
 import { MemoryStore } from "./memory-store";
@@ -20,7 +20,9 @@ import type { WireBudgetBlock } from "./sync-apply-book";
 
 const BOOK = "book-1";
 
-const WIRE: { [E in keyof WireOf]?: WireOf[E] } = {
+// Only the fields a table keeps: the wire types are the contract's whole rows,
+// so the builder below casts what this leaves out.
+const WIRE: { [E in keyof WireOf]?: Partial<WireOf[E]> } = {
 	budgetBooks: {
 		id: BOOK,
 		currency: "ARS",
@@ -52,7 +54,7 @@ const WIRE: { [E in keyof WireOf]?: WireOf[E] } = {
 		name: "Rent",
 		icon: "home",
 		color: "blue",
-		kind: "STANDARD",
+		kind: "MONTHLY",
 		sortOrder: 0,
 		targetAmount: "300000.50",
 		targetMode: "REFILL",
@@ -492,7 +494,7 @@ describe("expense and account fields the budget reads", () => {
 	});
 });
 
-const EMPTY_SPLITS: SplitBlock = {
+const EMPTY_SPLITS: SyncSplitBlockDto = {
 	shares: [],
 	effects: [],
 	balances: [],
