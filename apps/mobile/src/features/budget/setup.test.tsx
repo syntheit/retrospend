@@ -267,6 +267,8 @@ describe("steps and pay", () => {
 	});
 });
 
+const SETUP_UNDO_TOKEN = "setup-undo-token";
+
 function fakeApi(short: number) {
 	const calls: { route: string; input: unknown; key?: string }[] = [];
 	const result = {
@@ -304,7 +306,17 @@ function fakeApi(short: number) {
 					input,
 					key: init?.context?.idempotencyKey,
 				});
-				return { result, undo: null };
+				return { result, undo: SETUP_UNDO_TOKEN };
+			},
+			undo: async (input: unknown) => {
+				calls.push({ route: "undo", input });
+				return {
+					result: {
+						kind: "setup.undo",
+						result: { bookId: "b1", expenseId: null },
+					},
+					redo: null,
+				};
 			},
 		},
 	} as unknown as RetrospendClient;
@@ -348,7 +360,7 @@ async function walkToEnvelopes(tree: Tree) {
 }
 
 describe("Set up your budget", () => {
-	it("previews the exact setup, writes it once and ends in a toast with no Undo", async () => {
+	it("previews the exact setup, writes it once and ends in a toast whose Undo takes it back", async () => {
 		const { api, calls } = fakeApi(0);
 		mockSession.api = api;
 		const onClose = jest.fn();
@@ -377,10 +389,17 @@ describe("Set up your budget", () => {
 		expect(onDone).toHaveBeenCalled();
 		const toast = mockToast.show.mock.calls[0]?.[0] as {
 			message: string;
-			undo?: unknown;
+			undo?: { label: string; onUndo: () => Promise<void> };
 		};
 		expect(toast.message).toBe("Your budget is ready");
-		expect(toast.undo).toBeUndefined();
+		// The toast takes the budget back with the token the server answered.
+		expect(toast.undo?.label).toBe("Undo");
+		await act(async () => {
+			await toast.undo?.onUndo();
+		});
+		expect(calls.filter((c) => c.route === "undo")).toEqual([
+			{ route: "undo", input: { token: SETUP_UNDO_TOKEN } },
+		]);
 		act(() => tree.unmount());
 	});
 

@@ -63,8 +63,8 @@ function planOf(preview: unknown): {
  * Set up your budget: how you like to budget, how you get paid, what you can
  * budget now, then the style's envelopes. One question a step; nothing is
  * written until the last. The server's dry run of the exact setup shows what
- * is created and stops a plan that costs more than you have. A first set-up
- * cannot be taken back, so its toast has no Undo.
+ * is created and stops a plan that costs more than you have. The toast's Undo
+ * takes the budget back while it holds only what the start made.
  */
 export function SetupSheet({
 	visible,
