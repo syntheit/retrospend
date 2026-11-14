@@ -1,4 +1,17 @@
 export { fromBase64Url, toBase64Url } from "./base64url";
+export {
+	type Argon2Result,
+	BENCH_ARGON2_SETS,
+	BENCH_RECORDS,
+	BENCH_RUNS,
+	type BenchOptions,
+	type BenchReport,
+	type BenchRow,
+	benchJson,
+	benchRows,
+	type RecordsResult,
+	runCryptoBench,
+} from "./bench";
 export { CryptoError, type CryptoErrorCode } from "./errors";
 export {
 	ALGORITHM_XCHACHA20_POLY1305,
