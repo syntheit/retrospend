@@ -281,6 +281,28 @@ describe("the web undo", () => {
 		);
 	});
 
+	it("refuses a token from before a later answer even when the share reads the same answer again", async () => {
+		const { bruno, expense, restore } = await rejected();
+		const run = forUser(bruno.user.id);
+		await run.apply(restoreAnswerWebMutation, { restore });
+		await run.apply(answerShareWebMutation, input(expense.id, "accept"));
+		await run.apply(answerShareWebMutation, input(expense.id, "reject"));
+		// The share reads REJECTED again, as the first token expects, but it
+		// was answered since: the first token must not restore anything.
+		await expect(
+			run.apply(restoreAnswerWebMutation, { restore }),
+		).rejects.toMatchObject({ code: "CONFLICT" });
+		expect((await shareOf(expense.id, bruno)).verificationStatus).toBe(
+			"REJECTED",
+		);
+		expect(await eventTypes(bruno)).toEqual([
+			"shared_expense.rejected",
+			"shared_expense.undone",
+			"shared_expense.accepted",
+			"shared_expense.rejected",
+		]);
+	});
+
 	it("refuses to take an answer back once the expense is settled", async () => {
 		const { bruno, expense, restore } = await rejected();
 		await adminDb.sharedTransaction.update({
