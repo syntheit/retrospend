@@ -11,25 +11,23 @@ import {
 	acknowledgeMonthResultSchema,
 	adjustmentSchema,
 	bookPeriodResultSchema,
+	bankSideSchema as contractBankSideSchema,
+	monthSummaryOutputSchema as contractMonthSummaryOutputSchema,
+	pauseResultSchema as contractPauseResultSchema,
+	revertLimitResultSchema as contractRevertLimitResultSchema,
+	setLimitResultSchema as contractSetLimitResultSchema,
+	setStyleResultSchema as contractSetStyleResultSchema,
+	stylePreviousSchema as contractStylePreviousSchema,
+	welcomeBackResultSchema as contractWelcomeBackResultSchema,
+	welcomeBackSchema as contractWelcomeBackSchema,
 	monthChangeSchema,
 	revertStyleResultSchema,
-	ruleRowSchema,
 	SWITCH_STYLES,
 	switchStyleSchema,
 	targetSnapshotSchema,
 } from "@retrospend/api-contract/budget";
 import { z } from "zod";
-import {
-	budgetStyleSchema,
-	isoDateSchema,
-	leftoverRuleSchema,
-	minorSchema,
-	missingRateSchema,
-	moneySchema,
-	monthCloseSummarySchema,
-	monthKeySchema,
-	movementResultSchema,
-} from "./envelope";
+import { minorSchema, monthKeySchema, movementResultSchema } from "./envelope";
 
 export {
 	accountLineSchema,
@@ -46,23 +44,13 @@ export {
 const idSchema = z.string().min(1).max(64);
 const clientIdSchema = z.string().uuid();
 const nonNegativeMinor = minorSchema.refine((v) => v >= 0, "must be 0 or more");
-const fundingSourceSchema = z.enum(["INCOME", "TARGETS"]);
+const _fundingSourceSchema = z.enum(["INCOME", "TARGETS"]);
 
 // ── Month summary (SPEC §5.5, §6.6) ─────────────────────────────────────────
 
-export const monthSummaryOutputSchema = z.object({
-	summary: monthCloseSummarySchema,
-	/** What each envelope can still take from next month for this month's overspend (Take it from next month instead): the server's cap, late expenses and earlier carries counted. Only the month that just closed has any; envelopes with none are left out. */
-	carryable: z.array(z.object({ id: idSchema, amount: moneySchema })),
-	closedAt: z.date(),
-	revision: z.number().int().min(1),
-	/** The revision the person acknowledged; null until they do. */
-	acknowledgedRevision: z.number().int().nullable(),
-	/** Rows added inside the late window ("Includes 3 late expenses"); null for none, never 0. */
-	lateEntries: z.number().int().min(1).nullable(),
-	/** The latest change after the window, when there is one. */
-	change: monthChangeSchema.nullable(),
-});
+export const monthSummaryOutputSchema = contractMonthSummaryOutputSchema.extend(
+	{ closedAt: z.date() },
+);
 
 export const acknowledgeMonthInputSchema = z.object({
 	month: monthKeySchema,
@@ -82,71 +70,28 @@ export const setStyleInputSchema = z.object({
 	leftovers: z.enum(["KEEP", "STYLE_DEFAULT"]).default("STYLE_DEFAULT"),
 });
 
-export const stylePreviousSchema = z.object({
-	style: budgetStyleSchema,
-	fundingSource: fundingSourceSchema,
-	planFundFrom: monthKeySchema.nullable(),
+export const stylePreviousSchema = contractStylePreviousSchema.extend({
 	startingMoneyConfirmedAt: z.date().nullable(),
-	rules: z.array(ruleRowSchema),
 });
 
-export const setStyleResultSchema = z.object({
-	bookId: idSchema,
-	style: budgetStyleSchema,
-	fundingSource: fundingSourceSchema,
-	/** Limits: the first month a plan-funding batch opens (next month). */
-	fundedFrom: monthKeySchema.nullable(),
-	ruleChanges: z.array(
-		z.object({
-			envelopeId: idSchema,
-			from: leftoverRuleSchema,
-			to: leftoverRuleSchema,
-		}),
-	),
-	/** Leaving Limits: the Adjustment that makes To assign what you have minus what envelopes hold. */
-	adjustment: z.object({ id: idSchema, amount: moneySchema }).nullable(),
-	/** What the undo (revertStyle) puts back. */
+export const setStyleResultSchema = contractSetStyleResultSchema.extend({
 	previous: stylePreviousSchema,
 });
 
 /** The undo of the last style switch: what it changed is stored server side (budget_book.styleUndo). */
 export const revertStyleInputSchema = z.object({});
 
-export const pauseResultSchema = z.object({
-	paused: z.boolean(),
-	/** Resume: Welcome back waits from here (SPEC §4.4). */
+export const pauseResultSchema = contractPauseResultSchema.extend({
 	welcomeBackFrom: z.date().nullable(),
 });
 
 // ── Welcome back (SPEC §5.5, S26) and reconcile (SPEC §5.11) ────────────────
 
-export const bankSideSchema = z.object({
-	/** ToAssign + Σ Left + Assigned(next): what the budget holds. */
-	holds: moneySchema,
-	/** Σ accounts that are part of the budget, in the book currency. */
-	accounts: z.array(accountLineSchema),
-	bank: moneySchema,
-	/** bank - holds: what an Adjustment would record. */
-	difference: moneySchema,
-	/** Money people owe you: in neither side, shown apart. */
-	held: moneySchema,
+export const bankSideSchema = contractBankSideSchema.extend({
 	reconciledAt: z.date().nullable(),
-	incomplete: z.boolean(),
-	missingRates: z.array(missingRateSchema),
 });
 
-export const welcomeBackSchema = z.object({
-	pending: z.boolean(),
-	since: isoDateSchema.nullable(),
-	/** Closes waiting to be read, oldest first. */
-	months: z.array(
-		z.object({
-			month: monthKeySchema,
-			revision: z.number().int(),
-			acknowledged: z.boolean(),
-		}),
-	),
-	/** "Set what I have now": the bank side as a prefill. */
+export const welcomeBackSchema = contractWelcomeBackSchema.extend({
 	bank: bankSideSchema,
 });
 
@@ -162,12 +107,8 @@ export const welcomeBackInputSchema = z.discriminatedUnion("choice", [
 	z.object({ choice: z.literal("START_FRESH"), batchId: clientIdSchema }),
 ]);
 
-export const welcomeBackResultSchema = z.object({
-	choice: z.enum(["CATCH_UP", "SET_HAVE_NOW", "START_FRESH"]),
-	adjustment: adjustmentSchema.nullable(),
+export const welcomeBackResultSchema = contractWelcomeBackResultSchema.extend({
 	movements: movementResultSchema.nullable(),
-	/** Catch up: the summaries to open, oldest first. */
-	months: z.array(monthKeySchema),
 });
 
 export const reconcileInputSchema = z.object({
@@ -205,17 +146,8 @@ export const setLimitInputSchema = z.object({
 	scope: z.enum(["THIS_MONTH", "FROM_NOW_ON"]),
 });
 
-export const setLimitResultSchema = movementResultSchema.extend({
-	envelopeId: idSchema,
-	/** As typed, in its currency. */
-	limit: moneySchema,
-	/** The same limit in the book currency at today's rate: what this month is funded to. */
-	limitInBook: moneySchema,
-	/** What this month's plan funding gave the envelope before (the undo funds it back to this). */
-	previous: moneySchema,
-	scope: z.enum(["THIS_MONTH", "FROM_NOW_ON"]),
-	/** The stored target before the change; the undo (revertLimit) writes it back. */
-	previousTarget: targetSnapshotSchema,
+export const setLimitResultSchema = contractSetLimitResultSchema.extend({
+	movements: movementResultSchema.shape.movements,
 });
 
 export const revertLimitInputSchema = z.object({
@@ -225,8 +157,8 @@ export const revertLimitInputSchema = z.object({
 	envelopeId: idSchema,
 });
 
-export const revertLimitResultSchema = movementResultSchema.extend({
-	envelopeId: idSchema,
+export const revertLimitResultSchema = contractRevertLimitResultSchema.extend({
+	movements: movementResultSchema.shape.movements,
 });
 
 export type MonthSummaryOutput = z.infer<typeof monthSummaryOutputSchema>;
