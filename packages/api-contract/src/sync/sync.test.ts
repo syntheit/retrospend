@@ -20,7 +20,11 @@ import {
 	syncRecurringTemplateSchema,
 	syncTransferSchema,
 } from "./schemas";
-import { syncSettingsSchema, syncSharesSchema } from "./snapshots";
+import {
+	syncSettingsSchema,
+	syncSharesQuerySchema,
+	syncSharesSchema,
+} from "./snapshots";
 
 const at = "2026-10-05T00:00:00.000Z";
 
@@ -304,6 +308,107 @@ describe("the shares snapshot", () => {
 	});
 });
 
+describe("the shares snapshot's budget block", () => {
+	const empty = {
+		shares: [],
+		effects: [],
+		balances: [],
+		ignored: [],
+		events: [],
+		pending: [],
+		unresolved: [],
+		notInBudget: [],
+		missingRates: [],
+		approximate: [],
+		checkpointMissingRates: [],
+		checkpointApproximate: [],
+	};
+	const block = {
+		bookId: "b1",
+		valuationKey: "key",
+		asOf: "cursor",
+		frozen: [
+			{
+				key: "x1|USD|10|10|2026-11-08|blue",
+				minor: 1500000,
+				approximate: false,
+			},
+		],
+		splits: empty,
+	};
+	const base = { items: [], owed: { missingRates: [] } };
+
+	it("is absent without the flag, and takes null, a block or the unavailable shape", () => {
+		expect(syncSharesSchema.parse(base).budget).toBeUndefined();
+		expect(syncSharesSchema.parse({ ...base, budget: null }).budget).toBeNull();
+		expect(
+			syncSharesSchema.parse({ ...base, budget: { unavailable: true } }).budget,
+		).toEqual({ unavailable: true });
+		expect(syncSharesSchema.parse({ ...base, budget: block }).budget).toEqual(
+			block,
+		);
+	});
+
+	it("keeps unavailable apart from null and from an empty object", () => {
+		expect(syncSharesSchema.safeParse({ ...base, budget: {} }).success).toBe(
+			false,
+		);
+		expect(
+			syncSharesSchema.safeParse({ ...base, budget: { unavailable: false } })
+				.success,
+		).toBe(false);
+	});
+
+	it("takes the flag as 1 only", () => {
+		expect(syncSharesQuerySchema.parse({}).budget).toBeUndefined();
+		expect(syncSharesQuerySchema.parse({ budget: "1" }).budget).toBe("1");
+		expect(syncSharesQuerySchema.safeParse({ budget: "0" }).success).toBe(
+			false,
+		);
+	});
+
+	it("takes a replay event of every kind", () => {
+		const e = {
+			id: "e1",
+			counterparty: "p1",
+			currency: "USD",
+			date: "2026-11-10",
+			month: 202611,
+			native: 3000,
+		};
+		const events = [
+			{ ...e, kind: "FRONT", value: 4500000, shareStatus: "ACCEPTED" },
+			{ ...e, kind: "OWE", status: "PENDING" },
+			{ ...e, kind: "UNFRONT" },
+			{
+				...e,
+				kind: "RECV",
+				status: "FINALIZED",
+				cash: 4500000,
+				isOffset: false,
+			},
+			{ ...e, kind: "PAY", status: "PROPOSED", cash: 0, forgiven: true },
+			{ ...e, kind: "FORGIVE", status: "FINALIZED", envelopeId: null },
+		];
+		const parsed = syncSharesSchema.parse({
+			...base,
+			budget: { ...block, splits: { ...empty, events } },
+		});
+		const kinds =
+			parsed.budget && "splits" in parsed.budget
+				? parsed.budget.splits.events.map((x) => x.kind)
+				: [];
+		expect(kinds).toEqual([
+			"FRONT",
+			"OWE",
+			"UNFRONT",
+			"RECV",
+			"PAY",
+			"FORGIVE",
+		]);
+	});
+});
+
 describe("the settings snapshot", () => {
 	const settings = {
 		homeCurrency: "ARS",
@@ -377,7 +482,11 @@ describe("the sync group", () => {
 		for (const route of Object.values(syncContract)) {
 			if (route["~orpc"].meta.snapshot !== true) continue;
 			// No `since` or `limit`: a snapshot is one table, replaced on each pull.
-			expect(route["~orpc"].inputSchema).toBeUndefined();
+			// The one input any takes is shares' opt-in `budget` flag.
+			if (route["~orpc"].route.path === "/sync/shares")
+				expect(route["~orpc"].inputSchema).toBe(syncSharesQuerySchema);
+			else expect(route["~orpc"].inputSchema).toBeUndefined();
+			expect(Object.keys(syncSharesQuerySchema.shape)).toEqual(["budget"]);
 			expect(route["~orpc"].route.description).not.toContain(SYNC_DESCRIPTION);
 		}
 	});

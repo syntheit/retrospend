@@ -16,6 +16,7 @@ import {
 import { syncSnapshotsContract } from "./snapshots";
 
 export * from "./book-schemas";
+export * from "./budget-block";
 export * from "./schemas";
 export * from "./snapshots";
 

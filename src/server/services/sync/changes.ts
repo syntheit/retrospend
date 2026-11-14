@@ -170,6 +170,27 @@ export async function readStamps(
 }
 
 /**
+ * The cursor at the cut of the caller's snapshot: the oldest open transaction
+ * minus one, the position a pull ends at once no stamp is left. A snapshot
+ * read in this transaction holds every committed change at or below it; a
+ * writer still open has a txid above it, so its commit lands past the cursor.
+ * Run it in the transaction whose snapshot it names.
+ */
+export async function readCutCursor(tx: Prisma.TransactionClient) {
+	const rows = await tx.$queryRaw<{ epoch: string; xmin: string }[]>(Prisma.sql`
+		SELECT st."epoch", pg_snapshot_xmin(pg_current_snapshot())::text AS "xmin"
+		FROM "sync_state" st
+		WHERE st."id" = 1`);
+	const state = rows[0];
+	if (!state) throw new Error("sync_state has no row");
+	return encodeCursor({
+		e: state.epoch,
+		t: (BigInt(state.xmin) - 1n).toString(),
+		s: MAX_SEQ,
+	});
+}
+
+/**
  * Turns a stamp read into a page: the live rows of the U stamps (loaded by id
  * and owner), a tombstone for a D stamp and for a U stamp whose row is not
  * there. Items and tombstones keep stamp order.

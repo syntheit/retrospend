@@ -108,6 +108,8 @@ export const syncRouter = {
 		serve(({ context }) => snapshots.syncSettings(signedIn(context))),
 	),
 	shares: v1.sync.shares.handler(
-		serve(({ context }) => snapshots.syncShares(signedIn(context))),
+		serve(({ context, input }) =>
+			snapshots.syncShares(signedIn(context), input),
+		),
 	),
 };
