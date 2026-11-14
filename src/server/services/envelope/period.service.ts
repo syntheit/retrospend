@@ -11,6 +11,7 @@
  * what was in force removes the pending row instead (that is the undo).
  */
 
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import { USD } from "@retrospend/domain/money";
 import type {
 	BookPeriodResult,
@@ -18,7 +19,6 @@ import type {
 } from "~/lib/schemas/envelope-book";
 import type { Prisma } from "~prisma";
 import { addMonths, daysBetween } from "./calendar";
-import { EnvelopeError } from "./errors";
 import { findPersonalBook } from "./inputs";
 import { forgetMonthViews } from "./month-read";
 import {

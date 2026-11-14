@@ -10,6 +10,7 @@
  * because the movement ledger is append-only and its rows keep the envelope.
  */
 import { randomUUID } from "node:crypto";
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type {
 	UndoChangeInput,
 	UndoChangeResult,
@@ -23,7 +24,6 @@ import {
 	newerChanges,
 	parseBefore,
 } from "./envelope-change";
-import { EnvelopeError } from "./errors";
 import { forgetMonthViews } from "./month-read";
 import {
 	lockedSnapshot,

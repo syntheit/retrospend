@@ -12,6 +12,8 @@
  * preview them, and both log what they changed (envelope_change) for an exact
  * undo.
  */
+
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type {
 	CreateEnvelopeInput,
 	CreateEnvelopeResult,
@@ -28,7 +30,6 @@ import {
 	writeAndList,
 } from "./crud-shared";
 import { assertNewChange, recordChange } from "./envelope-change";
-import { EnvelopeError } from "./errors";
 import { forgetMonthViews } from "./month-read";
 import { checkEnvelope, type Snapshot, snapshot } from "./movement-state";
 import { checkTarget, targetColumns } from "./target-write";

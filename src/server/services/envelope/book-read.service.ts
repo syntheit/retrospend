@@ -3,6 +3,8 @@
  * money (acknowledge a summary, pause, resume): each opens one RLS
  * transaction for the user. Money writes go through book.mutation.ts.
  */
+
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type {
 	BankSide,
 	PauseResult,
@@ -12,7 +14,6 @@ import { db } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import type { Prisma } from "~prisma";
 import { bankSide } from "./bank";
-import { EnvelopeError } from "./errors";
 import { ensureMonthsClosed } from "./month-close.service";
 import { monthViewIn } from "./month-read";
 import { pauseBook, resumeBook } from "./style.service";

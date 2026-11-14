@@ -14,6 +14,8 @@
  * - Envelopes the draft leaves below 0 (or further below) are short, each
  *   with a suggested cover from the month's cover sources.
  */
+
+import { buildMonthView } from "@retrospend/domain/envelope/month-view";
 import type { GetMonthOutput, Money } from "~/lib/schemas/envelope";
 import type { DraftDto, DraftPreview } from "~/lib/schemas/envelope-plan";
 import {
@@ -24,7 +26,6 @@ import {
 	type MovementEntry,
 } from "./engine";
 import type { LoadedBook } from "./inputs";
-import { buildMonthView } from "./month-view";
 import { coverSources } from "./planning";
 import { allocateRules, type IncomeRule } from "./rules";
 import type { Minor, MonthKey } from "./types";

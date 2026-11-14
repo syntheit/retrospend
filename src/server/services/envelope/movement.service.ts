@@ -16,6 +16,7 @@
  * Runs on the caller's transaction, so the `*.mutation.ts` wrappers preview it.
  */
 import { randomUUID } from "node:crypto";
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type {
 	AssignInput,
 	CoverInput,
@@ -25,7 +26,6 @@ import type {
 	UndoInput,
 } from "~/lib/schemas/envelope";
 import type { Prisma } from "~prisma";
-import { EnvelopeError } from "./errors";
 import { forgetMonthViews } from "./month-read";
 import {
 	checkEnvelope,

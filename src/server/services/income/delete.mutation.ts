@@ -3,6 +3,11 @@
  * and the account moves back. A template made with it goes too when named.
  * Its own undo is income.add with `recreate` (the same id).
  */
+
+import {
+	FIGURE_LEFT_TO_SPEND,
+	FIGURE_NOT_PLANNED_YET,
+} from "@retrospend/domain/envelope/verdict";
 import { TRPCError } from "@trpc/server";
 import { dec } from "~/server/services/envelope/units";
 import type { MoneyMutation } from "~/server/services/preview/types";
@@ -15,10 +20,6 @@ import {
 } from "../accounts/ledger";
 import { type RowRestore, signRestore } from "../entry/restore-token";
 import { forgetMonthViews } from "../envelope/month-read";
-import {
-	FIGURE_LEFT_TO_SPEND,
-	FIGURE_NOT_PLANNED_YET,
-} from "../envelope/verdict";
 import {
 	type AddIncomeInput,
 	INCOME_FIGURES,

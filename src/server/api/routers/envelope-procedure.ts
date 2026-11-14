@@ -4,6 +4,11 @@
  * and money writes as preview (rolled back) and apply (committed) of the
  * same mutation (R30).
  */
+
+import {
+	EnvelopeError,
+	type EnvelopeErrorCode,
+} from "@retrospend/domain/envelope/errors";
 import { TRPCError } from "@trpc/server";
 import type { TRPC_ERROR_CODE_KEY } from "@trpc/server/rpc";
 import {
@@ -12,10 +17,6 @@ import {
 	previewOutputSchema,
 } from "~/lib/schemas/envelope";
 import { protectedProcedure } from "~/server/api/trpc";
-import {
-	EnvelopeError,
-	type EnvelopeErrorCode,
-} from "~/server/services/envelope/errors";
 import { forUser, type MoneyMutation } from "~/server/services/preview";
 
 const CODES: Record<EnvelopeErrorCode, TRPC_ERROR_CODE_KEY> = {

@@ -15,6 +15,7 @@
 
 import { randomUUID } from "node:crypto";
 import { payoffFrom } from "@retrospend/domain/envelope/debt-read";
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import { z } from "zod";
 import type {
 	DebtTerms,
@@ -27,7 +28,6 @@ import type {
 	SetDebtTermsInput,
 } from "~/lib/schemas/envelope-debt";
 import { Prisma } from "~prisma";
-import { EnvelopeError } from "./errors";
 import { findPersonalBook } from "./inputs";
 import { forgetMonthViews } from "./month-read";
 import { loadRateRows } from "./rate-book";

@@ -5,11 +5,11 @@
  * lines a preview lists (RC-5). Runs on the caller's transaction.
  */
 import { randomUUID } from "node:crypto";
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type { MovementResult } from "~/lib/schemas/envelope";
 import type { RoutedCategory } from "~/lib/schemas/envelope-crud";
 import type { Prisma } from "~prisma";
 import { settleDeltas } from "./crud-math";
-import { EnvelopeError } from "./errors";
 import { ensureMonthsClosed } from "./month-close.service";
 import { forgetMonthViews } from "./month-read";
 import { insert, result } from "./movement.service";

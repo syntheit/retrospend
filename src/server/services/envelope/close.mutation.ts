@@ -2,6 +2,11 @@
  * The close-time writes as money mutations (R30, R15): each previews as the
  * same write rolled back; undo is envelope.undo of the rows it appended.
  */
+
+import {
+	FIGURE_LEFT_TO_SPEND,
+	FIGURE_NOT_PLANNED_YET,
+} from "@retrospend/domain/envelope/verdict";
 import type {
 	BatchInput,
 	CarryOverspendInput,
@@ -9,7 +14,6 @@ import type {
 } from "~/lib/schemas/envelope";
 import type { MoneyMutation, UndoToken } from "../preview/types";
 import { carryOverspend, fixNegative, resetEnvelopes } from "./fix.service";
-import { FIGURE_LEFT_TO_SPEND, FIGURE_NOT_PLANNED_YET } from "./verdict";
 
 const TOUCHES = [FIGURE_NOT_PLANNED_YET, FIGURE_LEFT_TO_SPEND, "envelope.left"];
 

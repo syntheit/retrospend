@@ -1,3 +1,7 @@
+import {
+	FIGURE_LEFT_TO_SPEND,
+	FIGURE_NOT_PLANNED_YET,
+} from "@retrospend/domain/envelope/verdict";
 import { TRPCError } from "@trpc/server";
 import type { MovementResult, UndoInput } from "~/lib/schemas/envelope";
 import {
@@ -16,10 +20,6 @@ import {
 	setShareCategoryMutation,
 	unforgiveMutation,
 } from "~/server/services/envelope/splits.mutation";
-import {
-	FIGURE_LEFT_TO_SPEND,
-	FIGURE_NOT_PLANNED_YET,
-} from "~/server/services/envelope/verdict";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import { deleteTransfer } from "~/server/services/transfers/delete.mutation";
 import { type AnyMutation, createUndoer } from "../money-op";

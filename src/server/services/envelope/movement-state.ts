@@ -3,10 +3,11 @@
  * book's state under its advisory lock, the month and envelope checks, and
  * the running caps a batch is checked against row by row.
  */
+
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type { Prisma } from "~prisma";
 import { addMonths } from "./calendar";
 import { computeBook } from "./engine";
-import { EnvelopeError } from "./errors";
 import { findPersonalBook, type LoadedBook, loadBook } from "./inputs";
 import { takeBackCap } from "./planning";
 import type { Minor, MonthKey } from "./types";

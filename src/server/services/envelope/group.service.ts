@@ -6,6 +6,7 @@
  * so an undo is the same call with it.
  */
 
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import { groupTargetOf } from "@retrospend/domain/envelope/group-view";
 import type { GroupTargetInput } from "~/lib/schemas/envelope";
 import type {
@@ -13,7 +14,6 @@ import type {
 	SetGroupTargetInput,
 } from "~/lib/schemas/envelope-plan";
 import type { Prisma } from "~prisma";
-import { EnvelopeError } from "./errors";
 import { forgetMonthViews } from "./month-read";
 import { requireBook } from "./rule.service";
 import { groupTargetColumns } from "./setup-p5";

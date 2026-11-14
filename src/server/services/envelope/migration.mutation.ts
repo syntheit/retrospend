@@ -4,6 +4,12 @@
  * budget's figures move and each answer previews as the same write rolled
  * back and ends with an undo.
  */
+
+import {
+	FIGURE_LEFT_IN_LIMITS,
+	FIGURE_LEFT_TO_SPEND,
+	FIGURE_NOT_PLANNED_YET,
+} from "@retrospend/domain/envelope/verdict";
 import type {
 	ResolveHiddenInput,
 	ResolveHiddenResult,
@@ -11,11 +17,6 @@ import type {
 } from "~/lib/schemas/envelope-migration";
 import type { MoneyMutation } from "../preview/types";
 import { resolveHidden, revertHidden } from "./hidden-rows";
-import {
-	FIGURE_LEFT_IN_LIMITS,
-	FIGURE_LEFT_TO_SPEND,
-	FIGURE_NOT_PLANNED_YET,
-} from "./verdict";
 
 const TOUCHES = [
 	FIGURE_NOT_PLANNED_YET,

@@ -9,12 +9,12 @@
  * Welcome back's "Set what I have now" uses the same numbers as its prefill.
  */
 import { budgetHoldsOf } from "@retrospend/domain/envelope/budget-holds";
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type { BankSide } from "~/lib/schemas/envelope-book";
 import type { Prisma } from "~prisma";
 import { inBudget, worthOf } from "../accounts/places";
 import { sortByText } from "../text-order";
 import { addDays } from "./calendar";
-import { EnvelopeError } from "./errors";
 import type { MonthRead } from "./month-read";
 import { loadRateBook } from "./rate-book";
 import type { Minor, MissingRate } from "./types";

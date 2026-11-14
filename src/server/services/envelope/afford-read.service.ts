@@ -4,6 +4,8 @@
  * numbers as Money. It writes nothing; "Add to Spending" and "Move money"
  * are separate previewed writes the client offers from the answer.
  */
+
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type { AffordInput, AffordResult } from "~/lib/schemas/envelope-crud";
 import { db } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
@@ -11,7 +13,6 @@ import type { Prisma } from "~prisma";
 import { type AffordOffer, afford } from "./afford";
 import { addMonths, daysBetween } from "./calendar";
 import type { CloseRow } from "./close-rows";
-import { EnvelopeError } from "./errors";
 import type { MonthRead } from "./month-read";
 import { monthRange } from "./months";
 import { closedView, movedFirst } from "./read.service";

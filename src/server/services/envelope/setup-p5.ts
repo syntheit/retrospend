@@ -5,9 +5,9 @@
  * logged after it, like any rule.
  */
 import { randomUUID } from "node:crypto";
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type { GroupTargetInput, SetupInput } from "~/lib/schemas/envelope";
 import type { Prisma } from "~prisma";
-import { EnvelopeError } from "./errors";
 import { ruleColumns } from "./rule-store";
 import { dec, fromMinor } from "./units";
 

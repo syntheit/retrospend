@@ -1,8 +1,8 @@
-import { TRPCError } from "@trpc/server";
 import {
 	EnvelopeError,
 	type EnvelopeErrorCode,
-} from "~/server/services/envelope/errors";
+} from "@retrospend/domain/envelope/errors";
+import { TRPCError } from "@trpc/server";
 
 /**
  * What the envelope engine says when an undo no longer applies: it was

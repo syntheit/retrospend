@@ -19,9 +19,9 @@
  * both the row title and the rule's text come opened by the client (field-open.ts).
  */
 import { randomUUID } from "node:crypto";
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type { RuleRunDto } from "~/lib/schemas/envelope-plan";
 import type { Prisma } from "~prisma";
-import { EnvelopeError } from "./errors";
 import { findPersonalBook, type LoadedBook, loadBook } from "./inputs";
 import { freeze } from "./load-state";
 import { forgetMonthViews } from "./month-read";

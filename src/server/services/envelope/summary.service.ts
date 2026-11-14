@@ -4,6 +4,8 @@
  * its window; and the acknowledgement that clears the summary and change
  * items from Needs you. Runs on the caller's transaction (RLS set).
  */
+
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type {
 	AcknowledgeMonthInput,
 	MonthSummaryOutput,
@@ -11,7 +13,6 @@ import type {
 import type { Prisma } from "~prisma";
 import { addMonths } from "./calendar";
 import { type CloseRow, loadCloseRows } from "./close-rows";
-import { EnvelopeError } from "./errors";
 import { carryCaps } from "./fix.service";
 import { findPersonalBook } from "./inputs";
 import { snapshot } from "./movement-state";

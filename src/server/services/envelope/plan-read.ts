@@ -8,6 +8,8 @@
  *   pass. Months before the budget started show spending only (own rows
  *   through today's category links; shares are not in it).
  */
+
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import { planCostFrom } from "@retrospend/domain/envelope/plan-read";
 import type {
 	PlanCostDto,
@@ -18,7 +20,6 @@ import type { Prisma } from "~prisma";
 import { budgetRefundWhere, budgetSpendingWhere } from "../spending";
 import { addMonths } from "./calendar";
 import { computeBook } from "./engine";
-import { EnvelopeError } from "./errors";
 import { closedIncomes } from "./income-history";
 import { type LoadedBook, loadBook } from "./inputs";
 import { freeze } from "./load-state";

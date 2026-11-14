@@ -13,6 +13,8 @@
  * Reconcile records the difference between the bank and the budget as an
  * Adjustment (0 records that it matched) and starts the monthly reminder.
  */
+
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type {
 	Adjustment,
 	ReconcileInput,
@@ -23,7 +25,6 @@ import type {
 import type { Prisma } from "~prisma";
 import { writeAdjustment } from "./adjustment";
 import { bankSide, holdsForAdjustment } from "./bank";
-import { EnvelopeError } from "./errors";
 import { resetEnvelopes } from "./fix.service";
 import { findPersonalBook } from "./inputs";
 import { forgetMonthViews, type MonthRead, monthViewIn } from "./month-read";

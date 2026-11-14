@@ -1,3 +1,8 @@
+import {
+	FIGURE_LEFT_IN_LIMITS,
+	FIGURE_LEFT_TO_SPEND,
+	FIGURE_NOT_PLANNED_YET,
+} from "@retrospend/domain/envelope/verdict";
 import type {
 	DebtTermsResult,
 	PayoffPlanResult,
@@ -15,11 +20,6 @@ import {
 } from "~/server/services/envelope/debt.service";
 import { FIGURE_TOTAL_DEBT } from "~/server/services/envelope/figures";
 import { setGroupTarget } from "~/server/services/envelope/group.service";
-import {
-	FIGURE_LEFT_IN_LIMITS,
-	FIGURE_LEFT_TO_SPEND,
-	FIGURE_NOT_PLANNED_YET,
-} from "~/server/services/envelope/verdict";
 import type { MoneyMutation } from "~/server/services/preview/types";
 
 /**

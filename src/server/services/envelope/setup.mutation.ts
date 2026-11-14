@@ -5,6 +5,12 @@
  * result carries the signed token envelope.undoSetup takes the budget back
  * with (setup-undo.service.ts).
  */
+
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import {
+	FIGURE_LEFT_TO_SPEND,
+	FIGURE_NOT_PLANNED_YET,
+} from "@retrospend/domain/envelope/verdict";
 import {
 	AMOUNT_SETUP_STYLES,
 	type SetupInput,
@@ -13,7 +19,6 @@ import {
 import type { MoneyMutation } from "../preview/types";
 import { setupBook } from "./book.service";
 import { projectIn, savePayoffPlan } from "./debt.service";
-import { EnvelopeError } from "./errors";
 import { loadBook } from "./inputs";
 import { forgetMonthViews, monthViewIn } from "./month-read";
 import { nextPay } from "./pay-cycle";
@@ -21,7 +26,6 @@ import { planCostIn } from "./plan-read";
 import { setupFootprint, signSetupUndo } from "./setup-undo.service";
 import { replaySplits } from "./splits-replay";
 import { applyPlan } from "./use-my-plan";
-import { FIGURE_LEFT_TO_SPEND, FIGURE_NOT_PLANNED_YET } from "./verdict";
 
 export type SetupMutationInput = SetupInput & { timeZone: string | null };
 

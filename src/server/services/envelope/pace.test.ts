@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import {
 	daysLeftIncluding,
 	defaultWeekStartDay,
@@ -10,7 +9,8 @@ import {
 	spendingFasterThanPlanned,
 	weeklyPace,
 	weeksOfMonth,
-} from "./pace";
+} from "@retrospend/domain/envelope/pace";
+import { describe, expect, it } from "vitest";
 
 const m = (n: number) => Math.round(n * 100);
 const MON = 1;

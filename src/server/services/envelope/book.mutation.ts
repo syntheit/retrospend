@@ -4,6 +4,12 @@
  * Welcome back, reconcile and book periods all change what the budget shows,
  * so none is written without a preview.
  */
+
+import {
+	FIGURE_LEFT_IN_LIMITS,
+	FIGURE_LEFT_TO_SPEND,
+	FIGURE_NOT_PLANNED_YET,
+} from "@retrospend/domain/envelope/verdict";
 import type { MovementResult } from "~/lib/schemas/envelope";
 import type {
 	Adjustment,
@@ -28,11 +34,6 @@ import { FIGURE_BUDGET_HOLDS } from "./figures";
 import { revertLimit, setLimit } from "./limits.service";
 import { setBookPeriod } from "./period.service";
 import { revertStyle, setStyle } from "./style.service";
-import {
-	FIGURE_LEFT_IN_LIMITS,
-	FIGURE_LEFT_TO_SPEND,
-	FIGURE_NOT_PLANNED_YET,
-} from "./verdict";
 import { reconcile, welcomeBack } from "./welcome.service";
 
 const POOL = [

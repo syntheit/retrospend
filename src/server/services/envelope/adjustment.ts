@@ -6,6 +6,8 @@
  * (no stored title). An Adjustment is signed by direction: IN raises To
  * assign, OUT lowers it. Reports ignore both kinds.
  */
+
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import { MissingRateError, USD } from "@retrospend/domain/money";
 import {
 	computeAmountInUSDDec,
@@ -13,7 +15,6 @@ import {
 } from "@retrospend/domain/money-dec";
 import type { Adjustment } from "~/lib/schemas/envelope-book";
 import type { Prisma } from "~prisma";
-import { EnvelopeError } from "./errors";
 import { forgetMonthViews } from "./month-read";
 import { loadRateBook } from "./rate-book";
 import type { IsoDate } from "./types";
