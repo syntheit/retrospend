@@ -11,12 +11,19 @@
 import {
 	billRepeatSchema,
 	budgetStyleSchema,
+	envelopeGroupSchema,
 	envelopeKindSchema,
+	envelopeRowSchema,
 	envelopeStatusSchema,
+	envelopeTargetSchema,
 	groupRoleSchema,
 	groupTargetKindSchema,
+	groupTargetSchema,
+	groupTotalsSchema,
 	isoDateSchema,
 	leftoverRuleSchema,
+	leftThisWeekSchema,
+	leftToSpendSchema,
 	minorSchema,
 	missingRateSchema,
 	monthKeySchema,
@@ -33,6 +40,7 @@ import {
 	shareCategorySourceSchema,
 	targetCadenceSchema,
 	targetModeSchema,
+	toAssignSchema,
 	verdictActionSchema,
 	verdictStateSchema,
 } from "@retrospend/api-contract/budget";
@@ -42,12 +50,19 @@ import { z } from "zod";
 export {
 	billRepeatSchema,
 	budgetStyleSchema,
+	envelopeGroupSchema,
 	envelopeKindSchema,
+	envelopeRowSchema,
 	envelopeStatusSchema,
+	envelopeTargetSchema,
 	groupRoleSchema,
 	groupTargetKindSchema,
+	groupTargetSchema,
+	groupTotalsSchema,
 	isoDateSchema,
 	leftoverRuleSchema,
+	leftThisWeekSchema,
+	leftToSpendSchema,
 	minorSchema,
 	missingRateSchema,
 	moneySchema,
@@ -65,6 +80,7 @@ export {
 	shareCategorySourceSchema,
 	targetCadenceSchema,
 	targetModeSchema,
+	toAssignSchema,
 	verdictActionSchema,
 	verdictStateSchema,
 };
@@ -81,159 +97,6 @@ export const AMOUNT_SETUP_STYLES: ReadonlySet<(typeof SETUP_STYLES)[number]> =
 	new Set(["FLEX", "WEEKLY", "EVERY_DOLLAR", "DEBT_PAYOFF"]);
 
 // ── Outputs ─────────────────────────────────────────────────────────────────
-
-export const envelopeTargetSchema = z.object({
-	kind: z.enum(["MONTHLY", "BILL", "SAVINGS"]),
-	mode: targetModeSchema.nullable(),
-	cadence: targetCadenceSchema.nullable(),
-	/** MONTHLY: this month's amount (weekly x weeks). BILL: the cycle. SAVINGS: the goal, in the book currency. */
-	amount: moneySchema.nullable(),
-	need: moneySchema,
-	dueDate: isoDateSchema.nullable(),
-	monthsLeft: z.number().int().nullable(),
-	perMonth: moneySchema.nullable(),
-	progress: moneySchema.nullable(),
-	projectedMonth: monthKeySchema.nullable(),
-	totalAtDue: moneySchema.nullable(),
-	paid: z.boolean(),
-	/** A target set in another currency, as set ("about USD 990 today" is the client's label for `amount`). */
-	foreign: moneySchema.nullable(),
-	/** The foreign target has no rate today: need and amount are 0 and flagged. */
-	incomplete: z.boolean(),
-	/** BILL: the liability whose minimum it follows (SPEC §5.4); paid through Pay down a debt. */
-	liabilityId: idSchema.nullable().optional(),
-	/** A bill that follows a liability: payments to it cover this cycle's minimum. */
-	debtPaid: z.boolean().optional(),
-});
-
-export const leftThisWeekSchema = z.object({
-	amount: moneySchema,
-	perDay: moneySchema,
-	weekIndex: z.number().int(),
-	weeks: z.number().int(),
-	daysLeftInWeek: z.number().int(),
-	resetsOn: isoDateSchema.nullable(),
-});
-
-export const envelopeRowSchema = z.object({
-	id: idSchema,
-	name: z.string(),
-	icon: z.string().nullable(),
-	color: z.string().nullable(),
-	kind: envelopeKindSchema,
-	groupId: idSchema.nullable(),
-	isDefault: z.boolean(),
-	sortOrder: z.number().int(),
-	categoryIds: z.array(idSchema),
-	carryIn: moneySchema,
-	assigned: moneySchema,
-	activity: moneySchema,
-	/**
-	 * What the envelope spent this month: spending and your shares minus
-	 * refunds, never Wealth moves (D24). A positive amount in the book
-	 * currency from the stored values, never revalued at today's rate.
-	 */
-	spent: moneySchema,
-	/** Spent of what it holds (carried in plus assigned), hundredths of a percent, 0 to 10000; null for a savings goal. */
-	spentBasis: z.number().int().min(0).max(10_000).nullable(),
-	left: moneySchema,
-	/** Shares still waiting for your OK, inside Activity (D20). */
-	pending: moneySchema,
-	status: envelopeStatusSchema,
-	target: envelopeTargetSchema.nullable(),
-	leftThisWeek: leftThisWeekSchema.nullable(),
-});
-
-export const groupTotalsSchema = z.object({
-	carryIn: moneySchema,
-	assigned: moneySchema,
-	activity: moneySchema,
-	/** Σ spent of its envelopes (see `spent` on a row). */
-	spent: moneySchema,
-	/** Spent of what the group holds (carried in plus assigned), hundredths of a percent, 0 to 10000; null when it holds nothing. */
-	spentBasis: z.number().int().min(0).max(10_000).nullable(),
-	left: moneySchema,
-	/** Σ overspending inside the group ("Over by X" on a Flex row). */
-	over: moneySchema,
-	/**
-	 * Limits books only (null elsewhere): Σ Left of the group's envelopes that
-	 * have a limit, the same rows as the hero's "Left in your limits". An
-	 * envelope with no limit only tracks what was spent and is not in it.
-	 */
-	limitLeft: moneySchema.nullable(),
-	need: moneySchema,
-	count: z.number().int(),
-});
-
-/**
- * A group's target this month (SPEC §5.9): "Wants · planned 30% · spent
- * 31%". Percentages are basis points (3000 = 30%), the base is this month's
- * budget income or, before any arrives, typical income ("of your usual
- * income"). Null base: no income yet and no closed month to judge by.
- */
-export const groupTargetSchema = z.object({
-	kind: z.enum(["AMOUNT", "PERCENT_OF_INCOME"]),
-	/** T_g in the book currency; null for a % target without a base yet. */
-	amount: moneySchema.nullable(),
-	basisPoints: z.number().int().nullable(),
-	base: moneySchema.nullable(),
-	baseSource: z.enum(["THIS_MONTH", "TYPICAL"]).nullable(),
-	plannedBp: z.number().int().nullable(),
-	spentBp: z.number().int().nullable(),
-	/** max(0, T_g - Σ assigned in the group). */
-	need: moneySchema,
-	mainEnvelopeId: idSchema.nullable(),
-	/** What goes to the main envelope after the children's own needs. */
-	mainExtra: moneySchema,
-	/** Guidance only: "Envelope targets need X more than Wants' 30%". */
-	childrenOverBy: moneySchema,
-	/** A rate is missing in the base: the percentages are not shown as fact. */
-	incomplete: z.boolean(),
-});
-
-export const envelopeGroupSchema = z.object({
-	/** null: envelopes without a group. */
-	id: idSchema.nullable(),
-	name: z.string().nullable(),
-	role: groupRoleSchema.nullable(),
-	sortOrder: z.number().int(),
-	totals: groupTotalsSchema,
-	/** Null without a target, or for a closed month. */
-	target: groupTargetSchema.nullable().optional(),
-	envelopes: z.array(envelopeRowSchema),
-});
-
-export const toAssignSchema = z.object({
-	amount: moneySchema,
-	poolName: poolNameSchema,
-	terms: z.object({
-		moneyIn: moneySchema,
-		assigned: moneySchema,
-		assignedAhead: moneySchema,
-		overspendTaken: moneySchema,
-		returned: moneySchema,
-		splitsNet: moneySchema,
-		/** What the budget started with: part of To assign, not of moneyIn. */
-		startingMoney: moneySchema,
-	}),
-});
-
-export const leftToSpendSchema = z.object({
-	left: moneySchema,
-	perDay: moneySchema,
-	daysLeft: z.number().int(),
-	carry: moneySchema,
-	assigned: moneySchema,
-	spent: moneySchema,
-	plannedTooMuch: moneySchema,
-	over: moneySchema,
-	billsHeld: moneySchema,
-	billsShort: moneySchema,
-	billsCount: z.number().int(),
-	savings: moneySchema,
-	notPlanned: moneySchema,
-	fasterThanPlanned: z.boolean(),
-});
 
 /** The top of Budget and Home's budget card: one number, one sentence, at most one notice (SYNTHESIS-r6 §4). */
 export const verdictSchema = z.object({
