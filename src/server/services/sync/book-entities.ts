@@ -37,7 +37,7 @@ export const BOOK_ID_COLUMN: Partial<Record<SyncBookEntity, string>> = {
 type Tx = Prisma.TransactionClient;
 
 /** A book `userId` made, still personal, with nobody else in it. */
-const soloBook = (userId: string) =>
+export const soloBook = (userId: string) =>
 	({
 		createdById: userId,
 		isPersonal: true,

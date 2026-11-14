@@ -21,6 +21,7 @@ import {
 } from "~/server/services/shared-expense-integration";
 import { resolveTimeZone } from "~/server/services/user-time-zone";
 import { Prisma } from "~prisma";
+import { type BudgetRead, readBudgetBlock, runFreeze } from "./budget-block";
 
 /** One of the caller's participations with the fields of its expense the figures read. */
 export interface ShareSnapshotRow {
@@ -39,18 +40,39 @@ export interface ShareSnapshotRow {
 export interface ShareSnapshot {
 	shares: ShareSnapshotRow[];
 	owed: OwedRead | FigureUnavailable;
+	/** Only when the budget block was asked for. */
+	budget?: BudgetRead;
 }
 
 /**
- * Every participation of `userId`, and Owed to you and You owe, in one
- * repeatable-read read-only transaction: both come from one database snapshot,
- * so a settle-up that commits between the two reads shows in neither or both.
- * The totals are priced at the rates of the moment of the read, as the owed
- * figure always is.
+ * The budget block inside the snapshot's transaction, isolated: a failure
+ * (a bug, a database error) rolls back to a savepoint, so the shares and the
+ * owed totals already read still return and the block answers as unavailable.
  */
-export async function readShareSnapshot(
+async function isolatedBudget(
+	tx: Prisma.TransactionClient,
+	userId: string,
+): Promise<BudgetRead> {
+	await tx.$executeRaw`SAVEPOINT budget_block`;
+	try {
+		const read = await readBudgetBlock(tx, userId, new Date());
+		await tx.$executeRaw`RELEASE SAVEPOINT budget_block`;
+		return read;
+	} catch (error) {
+		console.error(
+			"The budget block failed",
+			error instanceof Error ? error.name : "unknown",
+		);
+		await tx.$executeRaw`ROLLBACK TO SAVEPOINT budget_block`;
+		return { kind: "unavailable" };
+	}
+}
+
+/** One repeatable-read read-only transaction: the shares, the owed totals and, when asked, the budget block. */
+async function readShares(
 	db: typeof globalDb,
 	userId: string,
+	withBudget: boolean,
 ): Promise<ShareSnapshot> {
 	return userTransaction(
 		db,
@@ -78,6 +100,7 @@ export async function readShareSnapshot(
 				orderBy: { id: "asc" },
 			});
 			const owed = await owedOnce(tx, userId);
+			const budget = withBudget ? await isolatedBudget(tx, userId) : undefined;
 			return {
 				shares: rows.map((p) => ({
 					id: p.id,
@@ -91,10 +114,49 @@ export async function readShareSnapshot(
 					expenseCategoryId: ownExpenseCategoryId(userId, p.transaction),
 				})),
 				owed,
+				...(budget ? { budget } : {}),
 			};
 		},
-		{ isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+		{
+			isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+			// A full book load per attempt: longer than the default five seconds at 10k rows.
+			...(withBudget ? { timeout: 30_000 } : {}),
+		},
 	);
+}
+
+/** The block saw a value the server had not frozen: freeze again and look again. */
+const needsFreeze = (s: ShareSnapshot) =>
+	s.budget?.kind === "block" && s.budget.unfrozen > 0;
+
+/**
+ * Every participation of `userId`, and Owed to you and You owe, in one
+ * repeatable-read read-only transaction: both come from one database snapshot,
+ * so a settle-up that commits between the two reads shows in neither or both.
+ * The totals are priced at the rates of the moment of the read, as the owed
+ * figure always is.
+ *
+ * With `budget` the same snapshot carries the budget block (budget-block.ts),
+ * after a transaction of its own that freezes what the server's budget read
+ * would. A block that still finds a value to freeze (a row or a rate day came
+ * in between) runs that transaction once more and reads again; a second miss
+ * answers the budget as unavailable. Owed and the shares always return.
+ */
+export async function readShareSnapshot(
+	db: typeof globalDb,
+	userId: string,
+	opts: { budget?: boolean } = {},
+): Promise<ShareSnapshot> {
+	if (!opts.budget) return readShares(db, userId, false);
+	await runFreeze(db, userId);
+	let snapshot = await readShares(db, userId, true);
+	if (needsFreeze(snapshot)) {
+		await runFreeze(db, userId, { force: true });
+		snapshot = await readShares(db, userId, true);
+		if (needsFreeze(snapshot))
+			snapshot = { ...snapshot, budget: { kind: "unavailable" } };
+	}
+	return snapshot;
 }
 
 export interface SettingsSnapshot {

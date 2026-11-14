@@ -129635,14 +129635,1007 @@
 		},
 		"/sync/shares": {
 			"get": {
-				"description": "Every participation of the caller in a shared expense, whatever its status and project (a rejected share and one in a hidden project are rows too; the device applies the spending rules), plus Owed to you and You owe from the same read. The owed totals are priced at the rates of the moment of the read. A snapshot, not a delta: the whole table as of one read, with no cursor and no tombstones, so it never answers 410. Pull it again to replace the last copy. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own data.",
+				"description": "Every participation of the caller in a shared expense, whatever its status and project (a rejected share and one in a hidden project are rows too; the device applies the spending rules), plus Owed to you and You owe from the same read. The owed totals are priced at the rates of the moment of the read. With `budget=1` the response also carries a `budget` field: the server's answer for the splits of the caller's personal budget and the values it froze for the caller's own expenses, from the same database snapshot, so a device can read the budget figures as the server does. Asking for it makes the server read the budget the way a page would first, which freezes the values a first read keeps. The field is null without a budget the device can read, and `{ unavailable: true }` when it could not be made; the shares and owed totals are returned either way. A snapshot, not a delta: the whole table as of one read, with no cursor and no tombstones, so it never answers 410. Pull it again to replace the last copy. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own data.",
 				"operationId": "syncShares",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "budget",
+						"schema": {
+							"const": "1",
+							"description": "Pass `1` to include the `budget` block. Omitted, the response is what it always was."
+						}
+					}
+				],
 				"responses": {
 					"200": {
 						"content": {
 							"application/json": {
 								"schema": {
 									"properties": {
+										"budget": {
+											"anyOf": [
+												{
+													"anyOf": [
+														{
+															"properties": {
+																"asOf": {
+																	"description": "A sync cursor. The block is exact for rows at or below it: use it once every entity cursor you hold has reached it, so pull /sync/shares before the deltas.",
+																	"type": "string"
+																},
+																"bookId": {
+																	"maxLength": 64,
+																	"minLength": 1,
+																	"type": "string"
+																},
+																"frozen": {
+																	"description": "Values the server froze for the caller's own expenses (never for shares, which come valued).",
+																	"items": {
+																		"properties": {
+																			"approximate": {
+																				"type": "boolean"
+																			},
+																			"key": {
+																				"description": "What the value depends on: the expense id first, then currency, amount, USD value, date and rate type.",
+																				"maxLength": 400,
+																				"type": "string"
+																			},
+																			"minor": {
+																				"maximum": 9007199254740991,
+																				"minimum": -9007199254740991,
+																				"type": "integer"
+																			}
+																		},
+																		"required": [
+																			"key",
+																			"minor",
+																			"approximate"
+																		],
+																		"type": "object"
+																	},
+																	"type": "array"
+																},
+																"splits": {
+																	"properties": {
+																		"approximate": {
+																			"items": {
+																				"description": "A row valued at the nearest rate, not one dated on or before it.",
+																				"properties": {
+																					"date": {
+																						"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+																						"type": "string"
+																					},
+																					"rowId": {
+																						"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																						"maxLength": 64,
+																						"minLength": 1,
+																						"type": "string"
+																					}
+																				},
+																				"required": [
+																					"rowId",
+																					"date"
+																				],
+																				"type": "object"
+																			},
+																			"type": "array"
+																		},
+																		"balances": {
+																			"items": {
+																				"properties": {
+																					"basis": {
+																						"description": "Book value of what they owe you; 0 when `native` is not positive.",
+																						"maximum": 9007199254740991,
+																						"minimum": -9007199254740991,
+																						"type": "integer"
+																					},
+																					"counterparty": {
+																						"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																						"maxLength": 64,
+																						"minLength": 1,
+																						"type": "string"
+																					},
+																					"currency": {
+																						"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																						"examples": [
+																							"USD",
+																							"ARS",
+																							"BTC"
+																						],
+																						"pattern": "^[A-Z0-9]{2,10}$",
+																						"type": "string"
+																					},
+																					"native": {
+																						"description": "Positive: they owe you. Negative: you owe them.",
+																						"maximum": 9007199254740991,
+																						"minimum": -9007199254740991,
+																						"type": "integer"
+																					},
+																					"oldestOpen": {
+																						"anyOf": [
+																							{
+																								"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+																								"type": "string"
+																							},
+																							{
+																								"type": "null"
+																							}
+																						]
+																					}
+																				},
+																				"required": [
+																					"counterparty",
+																					"currency",
+																					"native",
+																					"basis",
+																					"oldestOpen"
+																				],
+																				"type": "object"
+																			},
+																			"type": "array"
+																		},
+																		"checkpointApproximate": {
+																			"items": {
+																				"description": "A row valued at the nearest rate, not one dated on or before it.",
+																				"properties": {
+																					"date": {
+																						"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+																						"type": "string"
+																					},
+																					"rowId": {
+																						"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																						"maxLength": 64,
+																						"minLength": 1,
+																						"type": "string"
+																					}
+																				},
+																				"required": [
+																					"rowId",
+																					"date"
+																				],
+																				"type": "object"
+																			},
+																			"type": "array"
+																		},
+																		"checkpointMissingRates": {
+																			"description": "Rates missing behind the server's checkpoint when the block was made. Those rows stay out of every figure, as they do on the server, even when a rate has arrived since.",
+																			"items": {
+																				"description": "A rate a figure needed and did not have; the row is left out of every figure, never valued at 1.",
+																				"properties": {
+																					"currency": {
+																						"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																						"examples": [
+																							"USD",
+																							"ARS",
+																							"BTC"
+																						],
+																						"pattern": "^[A-Z0-9]{2,10}$",
+																						"type": "string"
+																					},
+																					"date": {
+																						"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+																						"type": "string"
+																					},
+																					"rateType": {
+																						"anyOf": [
+																							{
+																								"type": "string"
+																							},
+																							{
+																								"type": "null"
+																							}
+																						]
+																					},
+																					"rowId": {
+																						"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																						"maxLength": 64,
+																						"minLength": 1,
+																						"type": "string"
+																					}
+																				},
+																				"required": [
+																					"currency",
+																					"rateType",
+																					"date"
+																				],
+																				"type": "object"
+																			},
+																			"type": "array"
+																		},
+																		"effects": {
+																			"items": {
+																				"properties": {
+																					"counterparty": {
+																						"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																						"maxLength": 64,
+																						"minLength": 1,
+																						"type": "string"
+																					},
+																					"currency": {
+																						"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																						"examples": [
+																							"USD",
+																							"ARS",
+																							"BTC"
+																						],
+																						"pattern": "^[A-Z0-9]{2,10}$",
+																						"type": "string"
+																					},
+																					"date": {
+																						"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+																						"type": "string"
+																					},
+																					"envelopeId": {
+																						"anyOf": [
+																							{
+																								"maxLength": 64,
+																								"minLength": 1,
+																								"type": "string"
+																							},
+																							{
+																								"type": "null"
+																							}
+																						]
+																					},
+																					"eventId": {
+																						"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																						"maxLength": 64,
+																						"minLength": 1,
+																						"type": "string"
+																					},
+																					"fx": {
+																						"maximum": 9007199254740991,
+																						"minimum": -9007199254740991,
+																						"type": "integer"
+																					},
+																					"minor": {
+																						"maximum": 9007199254740991,
+																						"minimum": -9007199254740991,
+																						"type": "integer"
+																					},
+																					"month": {
+																						"maximum": 299912,
+																						"minimum": 190001,
+																						"type": "integer"
+																					},
+																					"term": {
+																						"enum": [
+																							"FRONTED",
+																							"RETURNED",
+																							"FORGIVEN",
+																							"OLD_DEBT_PAID"
+																						],
+																						"type": "string"
+																					}
+																				},
+																				"required": [
+																					"eventId",
+																					"date",
+																					"month",
+																					"counterparty",
+																					"currency",
+																					"term",
+																					"minor",
+																					"fx"
+																				],
+																				"type": "object"
+																			},
+																			"type": "array"
+																		},
+																		"events": {
+																			"items": {
+																				"anyOf": [
+																					{
+																						"properties": {
+																							"counterparty": {
+																								"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																								"maxLength": 64,
+																								"minLength": 1,
+																								"type": "string"
+																							},
+																							"currency": {
+																								"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																								"examples": [
+																									"USD",
+																									"ARS",
+																									"BTC"
+																								],
+																								"pattern": "^[A-Z0-9]{2,10}$",
+																								"type": "string"
+																							},
+																							"date": {
+																								"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+																								"type": "string"
+																							},
+																							"id": {
+																								"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																								"maxLength": 64,
+																								"minLength": 1,
+																								"type": "string"
+																							},
+																							"kind": {
+																								"const": "FRONT"
+																							},
+																							"month": {
+																								"maximum": 299912,
+																								"minimum": 190001,
+																								"type": "integer"
+																							},
+																							"native": {
+																								"description": "Positive, in minor units of `currency`.",
+																								"maximum": 9007199254740991,
+																								"minimum": -9007199254740991,
+																								"type": "integer"
+																							},
+																							"notInBudget": {
+																								"type": "boolean"
+																							},
+																							"shareStatus": {
+																								"enum": [
+																									"PENDING",
+																									"ACCEPTED",
+																									"REJECTED",
+																									"AUTO_ACCEPTED"
+																								],
+																								"type": "string"
+																							},
+																							"value": {
+																								"maximum": 9007199254740991,
+																								"minimum": -9007199254740991,
+																								"type": "integer"
+																							}
+																						},
+																						"required": [
+																							"id",
+																							"counterparty",
+																							"currency",
+																							"date",
+																							"month",
+																							"native",
+																							"kind",
+																							"value"
+																						],
+																						"type": "object"
+																					},
+																					{
+																						"properties": {
+																							"counterparty": {
+																								"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																								"maxLength": 64,
+																								"minLength": 1,
+																								"type": "string"
+																							},
+																							"currency": {
+																								"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																								"examples": [
+																									"USD",
+																									"ARS",
+																									"BTC"
+																								],
+																								"pattern": "^[A-Z0-9]{2,10}$",
+																								"type": "string"
+																							},
+																							"date": {
+																								"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+																								"type": "string"
+																							},
+																							"id": {
+																								"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																								"maxLength": 64,
+																								"minLength": 1,
+																								"type": "string"
+																							},
+																							"kind": {
+																								"const": "OWE"
+																							},
+																							"month": {
+																								"maximum": 299912,
+																								"minimum": 190001,
+																								"type": "integer"
+																							},
+																							"native": {
+																								"description": "Positive, in minor units of `currency`.",
+																								"maximum": 9007199254740991,
+																								"minimum": -9007199254740991,
+																								"type": "integer"
+																							},
+																							"notInBudget": {
+																								"type": "boolean"
+																							},
+																							"status": {
+																								"enum": [
+																									"PENDING",
+																									"ACCEPTED",
+																									"REJECTED",
+																									"AUTO_ACCEPTED"
+																								],
+																								"type": "string"
+																							}
+																						},
+																						"required": [
+																							"id",
+																							"counterparty",
+																							"currency",
+																							"date",
+																							"month",
+																							"native",
+																							"kind",
+																							"status"
+																						],
+																						"type": "object"
+																					},
+																					{
+																						"properties": {
+																							"counterparty": {
+																								"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																								"maxLength": 64,
+																								"minLength": 1,
+																								"type": "string"
+																							},
+																							"currency": {
+																								"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																								"examples": [
+																									"USD",
+																									"ARS",
+																									"BTC"
+																								],
+																								"pattern": "^[A-Z0-9]{2,10}$",
+																								"type": "string"
+																							},
+																							"date": {
+																								"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+																								"type": "string"
+																							},
+																							"id": {
+																								"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																								"maxLength": 64,
+																								"minLength": 1,
+																								"type": "string"
+																							},
+																							"kind": {
+																								"const": "UNFRONT"
+																							},
+																							"month": {
+																								"maximum": 299912,
+																								"minimum": 190001,
+																								"type": "integer"
+																							},
+																							"native": {
+																								"description": "Positive, in minor units of `currency`.",
+																								"maximum": 9007199254740991,
+																								"minimum": -9007199254740991,
+																								"type": "integer"
+																							},
+																							"notInBudget": {
+																								"type": "boolean"
+																							}
+																						},
+																						"required": [
+																							"id",
+																							"counterparty",
+																							"currency",
+																							"date",
+																							"month",
+																							"native",
+																							"kind"
+																						],
+																						"type": "object"
+																					},
+																					{
+																						"properties": {
+																							"cash": {
+																								"maximum": 9007199254740991,
+																								"minimum": -9007199254740991,
+																								"type": "integer"
+																							},
+																							"counterparty": {
+																								"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																								"maxLength": 64,
+																								"minLength": 1,
+																								"type": "string"
+																							},
+																							"currency": {
+																								"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																								"examples": [
+																									"USD",
+																									"ARS",
+																									"BTC"
+																								],
+																								"pattern": "^[A-Z0-9]{2,10}$",
+																								"type": "string"
+																							},
+																							"date": {
+																								"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+																								"type": "string"
+																							},
+																							"id": {
+																								"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																								"maxLength": 64,
+																								"minLength": 1,
+																								"type": "string"
+																							},
+																							"isOffset": {
+																								"type": "boolean"
+																							},
+																							"kind": {
+																								"const": "RECV"
+																							},
+																							"month": {
+																								"maximum": 299912,
+																								"minimum": 190001,
+																								"type": "integer"
+																							},
+																							"native": {
+																								"description": "Positive, in minor units of `currency`.",
+																								"maximum": 9007199254740991,
+																								"minimum": -9007199254740991,
+																								"type": "integer"
+																							},
+																							"notInBudget": {
+																								"type": "boolean"
+																							},
+																							"status": {
+																								"enum": [
+																									"PROPOSED",
+																									"FINALIZED",
+																									"REJECTED"
+																								],
+																								"type": "string"
+																							}
+																						},
+																						"required": [
+																							"id",
+																							"counterparty",
+																							"currency",
+																							"date",
+																							"month",
+																							"native",
+																							"kind",
+																							"status",
+																							"cash"
+																						],
+																						"type": "object"
+																					},
+																					{
+																						"properties": {
+																							"cash": {
+																								"maximum": 9007199254740991,
+																								"minimum": -9007199254740991,
+																								"type": "integer"
+																							},
+																							"counterparty": {
+																								"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																								"maxLength": 64,
+																								"minLength": 1,
+																								"type": "string"
+																							},
+																							"currency": {
+																								"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																								"examples": [
+																									"USD",
+																									"ARS",
+																									"BTC"
+																								],
+																								"pattern": "^[A-Z0-9]{2,10}$",
+																								"type": "string"
+																							},
+																							"date": {
+																								"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+																								"type": "string"
+																							},
+																							"forgiven": {
+																								"type": "boolean"
+																							},
+																							"id": {
+																								"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																								"maxLength": 64,
+																								"minLength": 1,
+																								"type": "string"
+																							},
+																							"isOffset": {
+																								"type": "boolean"
+																							},
+																							"kind": {
+																								"const": "PAY"
+																							},
+																							"month": {
+																								"maximum": 299912,
+																								"minimum": 190001,
+																								"type": "integer"
+																							},
+																							"native": {
+																								"description": "Positive, in minor units of `currency`.",
+																								"maximum": 9007199254740991,
+																								"minimum": -9007199254740991,
+																								"type": "integer"
+																							},
+																							"notInBudget": {
+																								"type": "boolean"
+																							},
+																							"status": {
+																								"enum": [
+																									"PROPOSED",
+																									"FINALIZED",
+																									"REJECTED"
+																								],
+																								"type": "string"
+																							}
+																						},
+																						"required": [
+																							"id",
+																							"counterparty",
+																							"currency",
+																							"date",
+																							"month",
+																							"native",
+																							"kind",
+																							"status",
+																							"cash"
+																						],
+																						"type": "object"
+																					},
+																					{
+																						"properties": {
+																							"counterparty": {
+																								"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																								"maxLength": 64,
+																								"minLength": 1,
+																								"type": "string"
+																							},
+																							"currency": {
+																								"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																								"examples": [
+																									"USD",
+																									"ARS",
+																									"BTC"
+																								],
+																								"pattern": "^[A-Z0-9]{2,10}$",
+																								"type": "string"
+																							},
+																							"date": {
+																								"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+																								"type": "string"
+																							},
+																							"envelopeId": {
+																								"anyOf": [
+																									{
+																										"maxLength": 64,
+																										"minLength": 1,
+																										"type": "string"
+																									},
+																									{
+																										"type": "null"
+																									}
+																								]
+																							},
+																							"id": {
+																								"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																								"maxLength": 64,
+																								"minLength": 1,
+																								"type": "string"
+																							},
+																							"kind": {
+																								"const": "FORGIVE"
+																							},
+																							"month": {
+																								"maximum": 299912,
+																								"minimum": 190001,
+																								"type": "integer"
+																							},
+																							"native": {
+																								"description": "Positive, in minor units of `currency`.",
+																								"maximum": 9007199254740991,
+																								"minimum": -9007199254740991,
+																								"type": "integer"
+																							},
+																							"notInBudget": {
+																								"type": "boolean"
+																							},
+																							"status": {
+																								"enum": [
+																									"PROPOSED",
+																									"FINALIZED",
+																									"REJECTED"
+																								],
+																								"type": "string"
+																							}
+																						},
+																						"required": [
+																							"id",
+																							"counterparty",
+																							"currency",
+																							"date",
+																							"month",
+																							"native",
+																							"kind",
+																							"status",
+																							"envelopeId"
+																						],
+																						"type": "object"
+																					}
+																				]
+																			},
+																			"type": "array"
+																		},
+																		"ignored": {
+																			"items": {
+																				"properties": {
+																					"eventId": {
+																						"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																						"maxLength": 64,
+																						"minLength": 1,
+																						"type": "string"
+																					},
+																					"native": {
+																						"maximum": 9007199254740991,
+																						"minimum": -9007199254740991,
+																						"type": "integer"
+																					},
+																					"reason": {
+																						"enum": [
+																							"NOT_IN_BUDGET",
+																							"REJECTED",
+																							"PENDING_NOT_COUNTED",
+																							"FORGIVE_EXCEEDS_BALANCE"
+																						],
+																						"type": "string"
+																					}
+																				},
+																				"required": [
+																					"eventId",
+																					"reason",
+																					"native"
+																				],
+																				"type": "object"
+																			},
+																			"type": "array"
+																		},
+																		"missingRates": {
+																			"items": {
+																				"description": "A rate a figure needed and did not have; the row is left out of every figure, never valued at 1.",
+																				"properties": {
+																					"currency": {
+																						"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																						"examples": [
+																							"USD",
+																							"ARS",
+																							"BTC"
+																						],
+																						"pattern": "^[A-Z0-9]{2,10}$",
+																						"type": "string"
+																					},
+																					"date": {
+																						"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+																						"type": "string"
+																					},
+																					"rateType": {
+																						"anyOf": [
+																							{
+																								"type": "string"
+																							},
+																							{
+																								"type": "null"
+																							}
+																						]
+																					},
+																					"rowId": {
+																						"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																						"maxLength": 64,
+																						"minLength": 1,
+																						"type": "string"
+																					}
+																				},
+																				"required": [
+																					"currency",
+																					"rateType",
+																					"date"
+																				],
+																				"type": "object"
+																			},
+																			"type": "array"
+																		},
+																		"notInBudget": {
+																			"description": "Projects the caller counts Not in budget (ids only).",
+																			"items": {
+																				"maxLength": 64,
+																				"minLength": 1,
+																				"type": "string"
+																			},
+																			"type": "array"
+																		},
+																		"pending": {
+																			"items": {
+																				"properties": {
+																					"cash": {
+																						"anyOf": [
+																							{
+																								"maximum": 9007199254740991,
+																								"minimum": -9007199254740991,
+																								"type": "integer"
+																							},
+																							{
+																								"type": "null"
+																							}
+																						],
+																						"description": "Book value of the cash, or null when its rate is missing."
+																					},
+																					"counterparty": {
+																						"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																						"maxLength": 64,
+																						"minLength": 1,
+																						"type": "string"
+																					},
+																					"currency": {
+																						"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																						"examples": [
+																							"USD",
+																							"ARS",
+																							"BTC"
+																						],
+																						"pattern": "^[A-Z0-9]{2,10}$",
+																						"type": "string"
+																					},
+																					"date": {
+																						"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+																						"type": "string"
+																					},
+																					"id": {
+																						"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																						"maxLength": 64,
+																						"minLength": 1,
+																						"type": "string"
+																					},
+																					"native": {
+																						"maximum": 9007199254740991,
+																						"minimum": -9007199254740991,
+																						"type": "integer"
+																					}
+																				},
+																				"required": [
+																					"id",
+																					"counterparty",
+																					"currency",
+																					"native",
+																					"cash",
+																					"date"
+																				],
+																				"type": "object"
+																			},
+																			"type": "array"
+																		},
+																		"shares": {
+																			"items": {
+																				"properties": {
+																					"categoryId": {
+																						"anyOf": [
+																							{
+																								"maxLength": 64,
+																								"minLength": 1,
+																								"type": "string"
+																							},
+																							{
+																								"type": "null"
+																							}
+																						],
+																						"description": "The caller's own category for the share, resolved on the server."
+																					},
+																					"date": {
+																						"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+																						"type": "string"
+																					},
+																					"envelopeId": {
+																						"anyOf": [
+																							{
+																								"maxLength": 64,
+																								"minLength": 1,
+																								"type": "string"
+																							},
+																							{
+																								"type": "null"
+																							}
+																						],
+																						"description": "Set only when the share's project routes to one envelope."
+																					},
+																					"id": {
+																						"description": "The caller's participation.",
+																						"maxLength": 64,
+																						"minLength": 1,
+																						"type": "string"
+																					},
+																					"minor": {
+																						"description": "Negative: the share is spending. Valued in the book currency, as the server froze it.",
+																						"maximum": 9007199254740991,
+																						"minimum": -9007199254740991,
+																						"type": "integer"
+																					},
+																					"month": {
+																						"maximum": 299912,
+																						"minimum": 190001,
+																						"type": "integer"
+																					},
+																					"pending": {
+																						"type": "boolean"
+																					},
+																					"source": {
+																						"const": "SHARE"
+																					}
+																				},
+																				"required": [
+																					"id",
+																					"month",
+																					"date",
+																					"minor",
+																					"source",
+																					"categoryId",
+																					"envelopeId",
+																					"pending"
+																				],
+																				"type": "object"
+																			},
+																			"type": "array"
+																		},
+																		"unresolved": {
+																			"description": "The caller's shares that found no category.",
+																			"items": {
+																				"maxLength": 64,
+																				"minLength": 1,
+																				"type": "string"
+																			},
+																			"type": "array"
+																		}
+																	},
+																	"required": [
+																		"shares",
+																		"effects",
+																		"balances",
+																		"ignored",
+																		"events",
+																		"pending",
+																		"unresolved",
+																		"notInBudget",
+																		"missingRates",
+																		"approximate",
+																		"checkpointMissingRates",
+																		"checkpointApproximate"
+																	],
+																	"type": "object"
+																},
+																"valuationKey": {
+																	"description": "What the book's valuations depend on (currency, zone, start date, every period). Compare for equality with the key of the book you hold; a mismatch means your rows are stale.",
+																	"type": "string"
+																}
+															},
+															"required": [
+																"bookId",
+																"valuationKey",
+																"asOf",
+																"frozen",
+																"splits"
+															],
+															"type": "object"
+														},
+														{
+															"description": "The block could not be made for this pull (it failed, or a value was still unfrozen after a retry). Read the budget as unavailable and pull again; the shares and the owed totals in the same response are good.",
+															"properties": {
+																"unavailable": {
+																	"const": true
+																}
+															},
+															"required": [
+																"unavailable"
+															],
+															"type": "object"
+														}
+													]
+												},
+												{
+													"type": "null"
+												}
+											],
+											"description": "Only with `budget=1`: what a device needs to read the budget figures, from the same snapshot as `items` and `owed`."
+										},
 										"items": {
 											"items": {
 												"properties": {

@@ -6,6 +6,7 @@ import {
 	rateTypeSchema,
 } from "../common/money";
 import { decimalStringSchema, idSchema, timestampSchema } from "../core";
+import { syncBudgetSchema } from "./budget-block";
 import { SYNC_TAG } from "./route";
 
 /**
@@ -77,10 +78,23 @@ export const syncSharesSchema = z
 	.object({
 		items: z.array(syncShareSchema),
 		owed: syncOwedSchema,
+		budget: syncBudgetSchema.optional().meta({
+			description:
+				"Only with `budget=1`: what a device needs to read the budget figures, from the same snapshot as `items` and `owed`.",
+		}),
 	})
 	.meta({ id: "SyncShares" });
 
 export type SyncSharesDto = z.infer<typeof syncSharesSchema>;
+
+export const syncSharesQuerySchema = z.object({
+	budget: z.literal("1").optional().meta({
+		description:
+			"Pass `1` to include the `budget` block. Omitted, the response is what it always was.",
+	}),
+});
+
+export type SyncSharesQuery = z.infer<typeof syncSharesQuerySchema>;
 
 export const syncSettingsSchema = z
 	.object({
@@ -116,9 +130,10 @@ export const syncSnapshotsContract = {
 			operationId: "syncShares",
 			tags: SYNC_TAG,
 			summary: "The caller's participations in shared expenses",
-			description: `Every participation of the caller in a shared expense, whatever its status and project (a rejected share and one in a hidden project are rows too; the device applies the spending rules), plus Owed to you and You owe from the same read. The owed totals are priced at the rates of the moment of the read. ${SNAPSHOT_DESCRIPTION}`,
+			description: `Every participation of the caller in a shared expense, whatever its status and project (a rejected share and one in a hidden project are rows too; the device applies the spending rules), plus Owed to you and You owe from the same read. The owed totals are priced at the rates of the moment of the read. With \`budget=1\` the response also carries a \`budget\` field: the server's answer for the splits of the caller's personal budget and the values it froze for the caller's own expenses, from the same database snapshot, so a device can read the budget figures as the server does. Asking for it makes the server read the budget the way a page would first, which freezes the values a first read keeps. The field is null without a budget the device can read, and \`{ unavailable: true }\` when it could not be made; the shares and owed totals are returned either way. ${SNAPSHOT_DESCRIPTION}`,
 		})
 		.meta({ scope: "sync", snapshot: true })
+		.input(syncSharesQuerySchema)
 		.output(syncSharesSchema),
 	settings: v1
 		.route({
