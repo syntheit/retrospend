@@ -25,6 +25,40 @@ export interface LedgerProfile {
 	withMissingRate?: boolean;
 }
 
+const BA = "America/Argentina/Buenos_Aires";
+
+/** The six profiles of the device conformance test: home currency, zone and fiscal month start, the way each branches the figures. */
+export const P13_PROFILES: Record<string, LedgerProfile> = {
+	"ARS home, alias zone, official default": {
+		home: "ARS",
+		timeZone: BA,
+		startDay: 1,
+		defaultRateTypes: { ARS: "official" },
+	},
+	"USD home, Tokyo": { home: "USD", timeZone: "Asia/Tokyo", startDay: 1 },
+	"JPY home, month from the 15th": {
+		home: "JPY",
+		timeZone: "Asia/Tokyo",
+		startDay: 15,
+	},
+	"ARS home, no stored zone, DEFAULT_TIME_ZONE set": {
+		home: "ARS",
+		timeZone: null,
+		startDay: 1,
+	},
+	"ARS home, unsupported stored zone, month from the 28th": {
+		home: "ARS",
+		timeZone: "Mars/Olympus",
+		startDay: 28,
+	},
+	"ARS home, a currency with no rate": {
+		home: "ARS",
+		timeZone: BA,
+		startDay: 1,
+		withMissingRate: true,
+	},
+};
+
 export interface Ledger {
 	userId: string;
 	accountIds: string[];
