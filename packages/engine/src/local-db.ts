@@ -27,6 +27,21 @@ export interface LocalPreview<V> {
 	readonly changes: readonly RowChange[];
 }
 
+/**
+ * Runs a write function over `tx`, recording the rows it changes, and returns
+ * its value with the undo token. The one place a token is made, so LocalDb
+ * and the device preview runner (preview.ts) hand back the same one.
+ */
+export async function recordWrite<V>(
+	tx: Writer,
+	mutation: string,
+	run: WriteFn<V>,
+): Promise<LocalWrite<V>> {
+	const recorder = record(tx);
+	const value = await run(repos(recorder.writer));
+	return { value, undo: tokenFor(mutation, recorder.changes()) };
+}
+
 export class LocalDb {
 	constructor(private readonly store: Store) {}
 
@@ -37,11 +52,7 @@ export class LocalDb {
 
 	/** Runs `run` in a transaction and commits it; throws roll everything back. */
 	write<V>(mutation: string, run: WriteFn<V>): Promise<LocalWrite<V>> {
-		return this.store.transaction(async (tx) => {
-			const recorder = record(tx);
-			const value = await run(repos(recorder.writer));
-			return { value, undo: tokenFor(mutation, recorder.changes()) };
-		});
+		return this.store.transaction((tx) => recordWrite(tx, mutation, run));
 	}
 
 	/** Runs `run` and rolls it back. The store is exactly as it was. */
