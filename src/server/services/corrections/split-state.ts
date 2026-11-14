@@ -3,6 +3,7 @@
  * row written for it, as plain minor-unit data (plan.ts) and the people who
  * may be on it.
  */
+import { shareCounts } from "@retrospend/domain/share-status";
 import { TRPCError } from "@trpc/server";
 import type { Prisma, ShareCategorySource } from "~prisma";
 import { toMinor } from "../envelope/units";
@@ -43,15 +44,40 @@ export const partyOf = (type: Party["participantType"], id: string): Party => ({
 	participantId: id,
 });
 
+/**
+ * A row as the plan starts from it: only the shares that count (a rejected
+ * one is not owed, so a correction never reverses it), and the payer carries
+ * what those rejected shares left uncovered, as every balance charges it
+ * (ledger-posting.ts), so reversing the row reverses what was posted.
+ */
 export function rowStateOf(record: SplitRecord): RowState {
+	const minorOf = (p: { shareAmount: { toString(): string } }) =>
+		toMinor(p.shareAmount.toString(), record.currency);
+	const payer = partyOf(record.paidByType, record.paidById);
+	const shares = record.splitParticipants
+		.filter((p) => shareCounts(p.verificationStatus))
+		.map((p) => ({
+			party: partyOf(p.participantType, p.participantId),
+			minor: minorOf(p),
+		}));
+	const absorbed = record.splitParticipants
+		.filter((p) => !shareCounts(p.verificationStatus))
+		.reduce((sum, p) => sum + minorOf(p), 0);
+	if (absorbed !== 0) {
+		const key = partyKey(payer);
+		const own = shares.findIndex((s) => partyKey(s.party) === key);
+		if (own >= 0)
+			shares[own] = {
+				party: payer,
+				minor: (shares[own] as { minor: number }).minor + absorbed,
+			};
+		else shares.push({ party: payer, minor: absorbed });
+	}
 	return {
-		payer: partyOf(record.paidByType, record.paidById),
+		payer,
 		categoryId: record.categoryId,
 		amountMinor: toMinor(record.amount.toString(), record.currency),
-		shares: record.splitParticipants.map((p) => ({
-			party: partyOf(p.participantType, p.participantId),
-			minor: toMinor(p.shareAmount.toString(), record.currency),
-		})),
+		shares,
 	};
 }
 
