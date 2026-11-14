@@ -23,6 +23,7 @@ import type {
 	AccountTerms,
 	BookPeriodRow,
 	BudgetBookRow,
+	BudgetResetRow,
 	BudgetSnapshotRow,
 	EnvelopeCategoryRow,
 	EnvelopeGroupRow,
@@ -154,6 +155,8 @@ export interface TableRows {
 	budgetSnapshot: BudgetSnapshotRow;
 	/** The block of the latest pull, waiting for its cursor gate to pass (promotePendingBudget). */
 	budgetSnapshotPending: BudgetSnapshotRow;
+	/** Set while a sync reset keeps the budget unavailable (see BudgetResetRow). */
+	budgetReset: BudgetResetRow;
 }
 
 export type TableName = keyof TableRows;
@@ -183,6 +186,7 @@ export const TABLE_NAMES = [
 	"transfers",
 	"budgetSnapshot",
 	"budgetSnapshotPending",
+	"budgetReset",
 ] as const satisfies readonly TableName[];
 
 /** Reads. Lists come back ordered by id, so a loader never depends on insert order. */
@@ -257,7 +261,7 @@ export const RATE_SYNC_ID = "rates";
 /** The one row of the owed table. */
 export const OWED_ID = "owed";
 
-/** The one row of each snapshot table (budgetSnapshot and budgetSnapshotPending). */
+/** The one row of each snapshot table (budgetSnapshot and budgetSnapshotPending) and of budgetReset. */
 export const BUDGET_SNAPSHOT_ID = "budget";
 
 /** Tables that hold exactly one row, and its id; any other id is refused. */
@@ -267,6 +271,7 @@ export const SINGLE_ROW_IDS: Partial<Record<TableName, string>> = {
 	owed: OWED_ID,
 	budgetSnapshot: BUDGET_SNAPSHOT_ID,
 	budgetSnapshotPending: BUDGET_SNAPSHOT_ID,
+	budgetReset: BUDGET_SNAPSHOT_ID,
 };
 
 /** A write the port refuses: the row breaks a rule of its table. */

@@ -51,6 +51,7 @@ import {
 	spentMinorByCurrency,
 	spentRange,
 } from "@retrospend/domain/spent";
+import { BUDGET_FIGURE_IDS, budgetDeviceFigures } from "./budget-figures";
 import { INSIGHTS_FIGURE_IDS, insightsFigures } from "./insights-figures";
 import {
 	lookupFor,
@@ -305,7 +306,7 @@ function accountFigures(clock: () => Date): DeviceFigure[] {
 	];
 }
 
-/** The device's figures, 37 ids (`DEVICE_FIGURE_IDS`). */
+/** The device's figures, 49 ids (`DEVICE_FIGURE_IDS`). */
 export function deviceFigures(
 	deps: DeviceFiguresDeps = {},
 ): FiguresRegistry<Reader> {
@@ -316,6 +317,7 @@ export function deviceFigures(
 		...recurringFigures(clock),
 		...accountFigures(clock),
 		...insightsFigures(clock),
+		...budgetDeviceFigures(clock),
 	]);
 }
 
@@ -336,6 +338,7 @@ export const DEVICE_FIGURE_IDS: readonly string[] = [
 	"accounts.balance",
 	"notTracked",
 	...INSIGHTS_FIGURE_IDS,
+	...BUDGET_FIGURE_IDS,
 ];
 
 /**
@@ -347,14 +350,6 @@ const SERVER_ONLY: readonly { prefix: string; reason: string }[] = [
 	{
 		prefix: "entry.",
 		reason: "P13b: needs the activity tables the port lacks",
-	},
-	{
-		prefix: "budget.",
-		reason: "P13b: the envelope month view still reads Prisma only",
-	},
-	{
-		prefix: "envelope.",
-		reason: "P13b: the envelope month view still reads Prisma only",
 	},
 	{
 		prefix: "rate.dollarToday",

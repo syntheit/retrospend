@@ -94,6 +94,9 @@ export const SCOPELESS_IDS = DEVICE_FIGURE_IDS.filter(
 	(id) => id !== "recurring.amount" && id !== "accounts.balance",
 );
 
+/** The budget figures that narrow by an envelope. */
+const ENVELOPE_FIGURES = ["envelope.left", "envelope.spent"];
+
 /** The insights figures that narrow by a category. */
 const CATEGORY_IDS = [
 	"insights.byCategory",
@@ -116,6 +119,8 @@ export interface LedgerRefs {
 	categoryIds?: readonly string[];
 	incomeCategory?: string;
 	bobCategory?: string;
+	/** The envelopes of the user's book, for the envelope variants. */
+	envelopeIds?: readonly string[];
 }
 
 export interface Readings {
@@ -131,7 +136,8 @@ export interface Readings {
  * for each account and an unknown one, `insights.byMonth` for each of
  * INSIGHTS_MONTHS, and the three insights category figures for each category
  * of the ledger, its INCOME category (reads 0), another user's (reads 0) and
- * an unknown one. Each variant is read in a pass of its own.
+ * an unknown one, and the two envelope figures for each envelope of the book
+ * and an unknown one. Each variant is read in a pass of its own.
  */
 export async function readAll(
 	store: Reader,
@@ -164,6 +170,11 @@ export async function readAll(
 		...categories.map((value) => ({
 			ids: CATEGORY_IDS,
 			key: "categoryId",
+			value,
+		})),
+		...[...(refs.envelopeIds ?? []), "no-such-envelope"].map((value) => ({
+			ids: ENVELOPE_FIGURES,
+			key: "envelopeId",
 			value,
 		})),
 	];

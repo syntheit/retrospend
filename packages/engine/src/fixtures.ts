@@ -236,8 +236,11 @@ const FIXTURES: { [T in TableName]: (id: string) => TableRows[T] } = {
 			approximate: [],
 			checkpointMissingRates: [],
 			checkpointApproximate: [],
+			planCheckpointMissingRates: [],
+			planCheckpointApproximate: [],
 		},
 	}),
+	budgetReset: (id) => ({ id, entity: "budgetBooks" }),
 	budgetSnapshotPending: (id) => ({
 		id,
 		bookId: "book-1",
@@ -263,6 +266,8 @@ const FIXTURES: { [T in TableName]: (id: string) => TableRows[T] } = {
 			approximate: [],
 			checkpointMissingRates: [],
 			checkpointApproximate: [],
+			planCheckpointMissingRates: [],
+			planCheckpointApproximate: [],
 		},
 	}),
 };

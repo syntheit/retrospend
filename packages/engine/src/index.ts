@@ -8,6 +8,7 @@ export type {
 	AccountTerms,
 	BookPeriodRow,
 	BudgetBookRow,
+	BudgetResetRow,
 	BudgetSnapshotRow,
 	CloseSummary,
 	EnvelopeCategoryRow,
@@ -20,7 +21,25 @@ export type {
 	TransferRow,
 	WealthTransferRow,
 } from "./book-rows";
+export { BudgetUnreadable } from "./budget-book";
+export {
+	BUDGET_GATE_ENTITIES,
+	type BudgetGateEntity,
+	type BudgetStatus,
+	budgetGate,
+	budgetStatus,
+	cursorPosition,
+	dropBudgetOnReset,
+	type EntityCursor,
+	type EntityCursors,
+	type GateReason,
+	type GateResult,
+	promoteBudgetIfReady,
+	SYNC_RESET,
+	syncedBook,
+} from "./budget-gate";
 export { promotePendingBudget } from "./budget-snapshot";
+export { storeBookSource } from "./budget-source";
 export {
 	type AnyRow,
 	type ChangeKind,

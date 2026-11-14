@@ -394,6 +394,44 @@ describe("rates the share side lacked", () => {
 		expect((await figuresOf(deviceSource(block)))["envelope.spent"]).toBeNull();
 	});
 
+	// The plan cost reads the month from a later checkpoint, which can list rows
+	// the default read's checkpoint did not: its own two lists, with the same keys.
+	it("carries the plan cost's checkpoint lists beside the default ones", async () => {
+		const block = await blockOf(splitInputs(), {
+			missingRates: [],
+			approximate: [],
+			own: new Set(["late-own-row"]),
+			plan: {
+				missingRates: [
+					{
+						currency: "EUR",
+						rateType: "official",
+						date: "2026-10-20",
+						rowId: "late-own-row",
+					},
+					{ currency: "XQZ", rateType: null, date: "2026-10-21", rowId: "x" },
+				],
+				approximate: [{ rowId: "x", date: "2026-10-21" }],
+			},
+		});
+		expect(block.checkpointMissingRates).toEqual([]);
+		expect(block.planCheckpointMissingRates).toEqual([
+			{
+				currency: "EUR",
+				rateType: "official",
+				date: "2026-10-20",
+				rowId: "late-own-row",
+			},
+			{ currency: "XQZ", rateType: null, date: "2026-10-21", rowId: "e2" },
+		]);
+		expect(block.planCheckpointApproximate).toEqual([
+			{ rowId: "e2", date: "2026-10-21" },
+		]);
+		const without = await blockOf(splitInputs());
+		expect(without.planCheckpointMissingRates).toEqual([]);
+		expect(without.planCheckpointApproximate).toEqual([]);
+	});
+
 	it("takes a rate missing behind the server's checkpoint and keeps its other ids opaque", async () => {
 		const block = await blockOf(splitInputs(), {
 			missingRates: [

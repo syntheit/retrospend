@@ -322,6 +322,8 @@ describe("the shares snapshot's budget block", () => {
 		approximate: [],
 		checkpointMissingRates: [],
 		checkpointApproximate: [],
+		planCheckpointMissingRates: [],
+		planCheckpointApproximate: [],
 	};
 	const block = {
 		bookId: "b1",

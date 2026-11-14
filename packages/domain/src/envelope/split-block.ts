@@ -13,7 +13,8 @@
  *   (ids only: no figure reads a name);
  * - the rates the share side was missing, and the rows it valued at the
  *   nearest rate;
- * - what the server's checkpoint carries about rows behind it.
+ * - what the server's checkpoint carries about rows behind it, for the default
+ *   read of the month and for the plan cost's read of it.
  *
  * Counterparties and every id that is not the caller's own become opaque keys
  * (p1.. for people, e1.. for events, settlements and pending payments),
@@ -55,14 +56,26 @@ export interface SplitBlock {
 	/** Rates missing behind the server's checkpoint when the block was made: those rows stay out. */
 	checkpointMissingRates: MissingRate[];
 	checkpointApproximate: ApproximateRow[];
+	/**
+	 * The same two lists for the plan cost's own look at the current month. It
+	 * reads that month with `needFrom` set to it, which may start from a later
+	 * checkpoint than the default read, so what stayed out can differ.
+	 */
+	planCheckpointMissingRates: MissingRate[];
+	planCheckpointApproximate: ApproximateRow[];
 }
 
 /** What the server's checkpoint carries, and the caller's own row ids (kept as they are in it). */
 export interface CheckpointSide {
 	missingRates: readonly MissingRate[];
 	approximate: readonly ApproximateRow[];
-	/** Ids of the caller's own expenses among its rows. */
+	/** Ids of the caller's own expenses among its rows (of this checkpoint and the plan's). */
 	own: ReadonlySet<string>;
+	/** What the plan cost's read of the current month carries; none when it starts where the default read does. */
+	plan?: {
+		missingRates: readonly MissingRate[];
+		approximate: readonly ApproximateRow[];
+	};
 }
 
 /** Opaque keys in order of first appearance; ids in `keep` pass through. */
@@ -129,6 +142,8 @@ export function splitBlockOf(
 		approximate: nearest(share.approximate),
 		checkpointMissingRates: missing(checkpoint.missingRates),
 		checkpointApproximate: nearest(checkpoint.approximate),
+		planCheckpointMissingRates: missing(checkpoint.plan?.missingRates ?? []),
+		planCheckpointApproximate: nearest(checkpoint.plan?.approximate ?? []),
 	};
 }
 

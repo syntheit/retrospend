@@ -155,6 +155,18 @@ export interface BudgetSnapshotRow extends WithId {
 }
 
 /**
+ * Set when an entity the budget reads answered 410 and its rows were dropped
+ * (budget-gate.ts `dropBudgetOnReset`), one row (id "budget"), and cleared when
+ * a block next passes its gate. While it is there the budget reads "stale",
+ * whatever rows are left: a book dropped with the rest would otherwise look
+ * like a person with no budget.
+ */
+export interface BudgetResetRow extends WithId {
+	/** The entity whose reset set it (for a person debugging a stuck budget; nothing reads it). */
+	readonly entity: string;
+}
+
+/**
  * What an expense keeps for the budget filters (domain envelope/budget-rows.ts)
  * and the loaders, beyond the fields the spending rules read. Optional, since
  * rows of figures-only fixtures and of a device's own writes have none; a row

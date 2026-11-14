@@ -7,8 +7,12 @@
  * run) puts the page in the store. `engineStoreOf` (src/test/engine-store.ts)
  * never feeds a device here; it is only a cross-check.
  *
- * Order, as a device would pull: settings, categories, templates, expenses,
- * accounts, snapshots, legs, rate types, the rate table, shares. A cursor
+ * Order, as a device would pull: settings, shares with the budget block
+ * (budget=1: the block is exact at a sync position, so it is pulled first and
+ * the deltas move every cursor past it), categories, templates, expenses,
+ * accounts, snapshots, legs, rate types, the nine book routes and transfers,
+ * the rate table, then the pending block is promoted if its gate passes
+ * (engine budget-gate.ts). A cursor
  * entity is paged at the largest page until it says it has no more and the
  * store holds as many rows as the database has for the user: a change shows
  * up once every older write transaction on the server has finished, so the
@@ -51,6 +55,7 @@ import {
 	applySharesSnapshot,
 	applySyncPage,
 	MemoryStore,
+	promoteBudgetIfReady,
 	type SyncEntity,
 	type TableName,
 	type WireOf,
@@ -61,6 +66,7 @@ import {
 	expectBody,
 	sessionFor,
 } from "../../server/api/v1/core/__tests__/harness";
+import { soloBook } from "../../server/services/sync/book-entities";
 import type { ParityLedger } from "./ledger";
 
 /** A mobile app session that outlives any fake clock a test sets. */
@@ -79,10 +85,7 @@ const freshIp = () => {
 	return { "x-real-ip": `10.${a}.${b}.${c}` };
 };
 
-/**
- * The entities the loop pulls today. The book family and transfers apply too
- * (the engine's WireOf) but are pulled with the device budget reads (P13b-1e).
- */
+/** The entities the loop pulls: the figures' tables, the book family and the transfers a bill reads. */
 type PulledEntity =
 	| "categories"
 	| "recurringTemplates"
@@ -90,7 +93,17 @@ type PulledEntity =
 	| "accounts"
 	| "snapshots"
 	| "legs"
-	| "rateSwitches";
+	| "rateSwitches"
+	| "budgetBooks"
+	| "envelopeGroups"
+	| "envelopes"
+	| "envelopeCategories"
+	| "budgetMovements"
+	| "bookPeriods"
+	| "monthCloses"
+	| "wealthTransfers"
+	| "payoffPlans"
+	| "transfers";
 
 export interface Device {
 	userId: string;
@@ -188,9 +201,75 @@ const SPECS = [
 		"/sync/account-rate-types",
 		contract.sync.accountRateTypes,
 	),
+	spec<"budgetBooks", SyncBudgetBookDto>(
+		"budgetBooks",
+		"/sync/budget-books",
+		contract.sync.budgetBooks,
+	),
+	spec<"envelopeGroups", SyncEnvelopeGroupDto>(
+		"envelopeGroups",
+		"/sync/envelope-groups",
+		contract.sync.envelopeGroups,
+	),
+	spec<"envelopes", SyncEnvelopeDto>(
+		"envelopes",
+		"/sync/envelopes",
+		contract.sync.envelopes,
+	),
+	spec<"envelopeCategories", SyncEnvelopeCategoryDto>(
+		"envelopeCategories",
+		"/sync/envelope-categories",
+		contract.sync.envelopeCategories,
+	),
+	spec<"budgetMovements", SyncBudgetMovementDto>(
+		"budgetMovements",
+		"/sync/budget-movements",
+		contract.sync.budgetMovements,
+	),
+	spec<"bookPeriods", SyncBookPeriodDto>(
+		"bookPeriods",
+		"/sync/book-periods",
+		contract.sync.bookPeriods,
+	),
+	spec<"monthCloses", SyncMonthCloseDto>(
+		"monthCloses",
+		"/sync/month-closes",
+		contract.sync.monthCloses,
+	),
+	spec<"wealthTransfers", SyncWealthTransferDto>(
+		"wealthTransfers",
+		"/sync/wealth-transfers",
+		contract.sync.wealthTransfers,
+	),
+	spec<"payoffPlans", SyncPayoffPlanDto>(
+		"payoffPlans",
+		"/sync/payoff-plans",
+		contract.sync.payoffPlans,
+	),
+	spec<"transfers", SyncTransferDto>(
+		"transfers",
+		"/sync/transfers",
+		contract.sync.transfers,
+	),
 ] as const;
 
-const COUNT_OF: Record<PulledEntity, keyof ParityLedger["counts"]> = {
+/** Row counts of the book family and the transfers: what the loop must end with for each. */
+export interface BookCounts {
+	budgetBooks: number;
+	envelopeGroups: number;
+	envelopes: number;
+	envelopeCategories: number;
+	budgetMovements: number;
+	bookPeriods: number;
+	monthCloses: number;
+	wealthTransfers: number;
+	payoffPlans: number;
+	transfers: number;
+}
+
+export type PullCounts = ParityLedger["counts"] & BookCounts;
+
+const COUNT_OF: Record<PulledEntity, keyof PullCounts> = {
 	categories: "categories",
 	recurringTemplates: "templates",
 	expenses: "expenses",
@@ -198,12 +277,20 @@ const COUNT_OF: Record<PulledEntity, keyof ParityLedger["counts"]> = {
 	snapshots: "snapshots",
 	legs: "legs",
 	rateSwitches: "rateSwitches",
+	budgetBooks: "budgetBooks",
+	envelopeGroups: "envelopeGroups",
+	envelopes: "envelopes",
+	envelopeCategories: "envelopeCategories",
+	budgetMovements: "budgetMovements",
+	bookPeriods: "bookPeriods",
+	monthCloses: "monthCloses",
+	wealthTransfers: "wealthTransfers",
+	payoffPlans: "payoffPlans",
+	transfers: "transfers",
 };
 
 /** What the database holds for `userId` in each cursor entity: the rows a pull must end with. */
-export async function expectedCounts(
-	userId: string,
-): Promise<ParityLedger["counts"]> {
+export async function expectedCounts(userId: string): Promise<PullCounts> {
 	const where = { userId };
 	const [
 		expenses,
@@ -226,6 +313,29 @@ export async function expectedCounts(
 			where: { participantType: "user", participantId: userId },
 		}),
 	]);
+	const book = await adminDb.budgetBook.findFirst({ where: soloBook(userId) });
+	const inBook = { bookId: book?.id ?? "" };
+	const [
+		envelopeGroups,
+		envelopes,
+		envelopeCategories,
+		budgetMovements,
+		bookPeriods,
+		monthCloses,
+		wealthTransfers,
+		payoffPlans,
+		transfers,
+	] = await Promise.all([
+		adminDb.envelopeGroup.count({ where: inBook }),
+		adminDb.envelope.count({ where: inBook }),
+		adminDb.envelopeCategory.count({ where: inBook }),
+		adminDb.budgetMovement.count({ where: inBook }),
+		adminDb.bookPeriod.count({ where: inBook }),
+		adminDb.monthClose.count({ where: inBook }),
+		adminDb.wealthTransfer.count({ where: inBook }),
+		adminDb.payoffPlan.count({ where: inBook }),
+		adminDb.transfer.count({ where }),
+	]);
 	return {
 		expenses,
 		categories,
@@ -235,6 +345,16 @@ export async function expectedCounts(
 		legs,
 		rateSwitches,
 		shares,
+		budgetBooks: book ? 1 : 0,
+		envelopeGroups,
+		envelopes,
+		envelopeCategories,
+		budgetMovements,
+		bookPeriods,
+		monthCloses,
+		wealthTransfers,
+		payoffPlans,
+		transfers,
 	};
 }
 
@@ -248,6 +368,16 @@ const TABLE_OF: Record<PulledEntity, TableName> = {
 	snapshots: "snapshots",
 	legs: "legs",
 	rateSwitches: "rateSwitches",
+	budgetBooks: "budgetBooks",
+	envelopeGroups: "envelopeGroups",
+	envelopes: "envelopes",
+	envelopeCategories: "envelopeCategories",
+	budgetMovements: "budgetMovements",
+	bookPeriods: "bookPeriods",
+	monthCloses: "monthCloses",
+	wealthTransfers: "wealthTransfers",
+	payoffPlans: "payoffPlans",
+	transfers: "transfers",
 };
 
 async function pullEntity<E extends PulledEntity, Dto extends WireOf[E]>(
@@ -294,6 +424,8 @@ export interface PullReport {
 		Record<SyncEntity | "settings" | "rates" | "shares", EntityTiming>
 	>;
 	totalMs: number;
+	/** What the gate decided after the pull; absent when shares were not pulled. */
+	promotion?: { promoted: boolean; reason?: string };
 }
 
 const single = (): EntityTiming => ({
@@ -343,13 +475,20 @@ export async function pullRates(device: Device): Promise<EntityTiming> {
  * own: a request made under a future fake clock leaves a future rate-limit
  * window on its keys, which must not be one a later request shares.
  */
-export async function pullShares(device: Device): Promise<EntityTiming> {
+export async function pullShares(
+	device: Device,
+	opts: { budget?: boolean } = { budget: true },
+): Promise<EntityTiming> {
 	const headers = {
 		authorization: `Bearer ${await longSession(device.userId)}`,
 	};
 	const started = performance.now();
 	const body = await expectBody<SyncSharesDto>(
-		await get(device, "/sync/shares", headers),
+		await get(
+			device,
+			`/sync/shares${opts.budget === false ? "" : "?budget=1"}`,
+			headers,
+		),
 		contract.sync.shares,
 	);
 	const fetched = performance.now();
@@ -363,19 +502,47 @@ export async function pullShares(device: Device): Promise<EntityTiming> {
 }
 
 /**
- * Pulls everything a device needs, in order, and returns the timings. The
- * cursors are kept, so a second call applies only what changed since the
- * first. `expected` are the row counts the database holds now.
+ * Moves the pending budget block in when every cursor the device holds has
+ * reached its position and its book is the one it was made for (the engine's
+ * gate). The cursors are the ones the delta pulls last returned.
+ */
+export async function promoteBudget(
+	device: Device,
+): Promise<{ promoted: boolean; reason?: string }> {
+	return device.store.transaction((tx) =>
+		promoteBudgetIfReady(tx, device.cursors),
+	);
+}
+
+/**
+ * Pulls everything a device needs, in order, and returns the timings: settings,
+ * the shares snapshot with the budget block (first, so the deltas that follow
+ * carry every cursor past the block's position), every cursor entity, the rate
+ * table, then the promotion of the block. The cursors are kept, so a second
+ * call applies only what changed since the first. `expected` are the row counts
+ * the database holds now. `atClock` wraps the shares pull only (the owed totals
+ * and the block are priced at the server's clock of that call).
  */
 export async function pullAll(
 	device: Device,
-	expected: ParityLedger["counts"],
-	options: { deadlineMs?: number; shares?: boolean } = {},
+	expected: PullCounts,
+	options: {
+		deadlineMs?: number;
+		shares?: boolean;
+		atClock?: <T>(fn: () => Promise<T>) => Promise<T>;
+	} = {},
 ): Promise<PullReport> {
 	const started = performance.now();
 	const deadline = started + (options.deadlineMs ?? 60_000);
 	const entities: PullReport["entities"] = {};
 	entities.settings = await pullSettings(device);
+	const withShares = options.shares !== false;
+	if (withShares) {
+		const shares = () => pullShares(device);
+		entities.shares = await (options.atClock
+			? options.atClock(shares)
+			: shares());
+	}
 	for (const s of SPECS)
 		entities[s.entity] = await s.run(
 			device,
@@ -383,8 +550,12 @@ export async function pullAll(
 			deadline,
 		);
 	entities.rates = await pullRates(device);
-	if (options.shares !== false) entities.shares = await pullShares(device);
-	return { entities, totalMs: performance.now() - started };
+	const promotion = withShares ? await promoteBudget(device) : undefined;
+	return {
+		entities,
+		totalMs: performance.now() - started,
+		...(promotion ? { promotion } : {}),
+	};
 }
 
 type ContractRowIs<E extends SyncEntity, Dto extends WireOf[E]> = Dto;
@@ -392,7 +563,7 @@ type ContractRowIs<E extends SyncEntity, Dto extends WireOf[E]> = Dto;
 /**
  * Compile-time only: the contract's book rows and transfers are what the
  * engine applies, so a contract change that drops or retypes a field the
- * engine keeps fails here. The pull loop fetches them in P13b-1e.
+ * engine keeps fails here (SPECS above holds the same per entity).
  */
 export type BookWireChecks = [
 	ContractRowIs<"budgetBooks", SyncBudgetBookDto>,

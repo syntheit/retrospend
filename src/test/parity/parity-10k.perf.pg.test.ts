@@ -13,6 +13,7 @@
  * covers sealed parity.
  */
 import { randomUUID } from "node:crypto";
+import { loadBookFrom } from "@retrospend/domain/envelope/load-book";
 import { FigurePass, readFiguresIn } from "@retrospend/domain/figures/registry";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { adminDb, fixtureDb, sealedSuite } from "~/test/pg-harness";
@@ -21,6 +22,7 @@ import {
 	deviceFigures,
 	EXPENSE_CREATE_MUTATION,
 	type Reader,
+	storeBookSource,
 	type TableName,
 } from "../../../packages/engine/src/index";
 import { type LedgerProfile, P13_PROFILES, seedRates } from "../device-ledger";
@@ -117,6 +119,13 @@ function timedReader(store: Reader) {
 	};
 }
 
+const isBudget = (id: string) =>
+	id.startsWith("budget.") || id.startsWith("envelope.");
+
+/** The envelopes the 10k comparison reads: one fed by a category, the default one and a savings goal (the rest are held by the always-on harness). */
+const envelopesOf = (l: ParityLedger) =>
+	[0, 8, 24].map((i) => l.envelopeIds[i] as string);
+
 /** The figure ids by timing group: the id prefix before the first dot, so each family is one group. */
 function timingGroups(): Map<string, string[]> {
 	const groups = new Map<string, string[]>();
@@ -160,8 +169,9 @@ describe.skipIf(sealedSuite)(
 			device = await newDevice(ledger.userId);
 			initial = await pullAll(device, await expectedCounts(ledger.userId), {
 				deadlineMs: 300_000,
-				shares: false,
+				atClock,
 			});
+			expect(initial.promotion).toEqual({ promoted: true });
 			log(
 				"pull",
 				Object.fromEntries(
@@ -209,6 +219,7 @@ describe.skipIf(sealedSuite)(
 				});
 				const refs = {
 					userId: ledger.userId,
+					envelopeIds: envelopesOf(ledger),
 					templateIds: ledger.templateIds,
 					accountIds: ledger.accountIds,
 					categoryIds: ledger.categoryIds,
@@ -255,6 +266,7 @@ describe.skipIf(sealedSuite)(
 			});
 			const refs = {
 				userId: ledger.userId,
+				envelopeIds: envelopesOf(ledger),
 				templateIds: ledger.templateIds,
 				accountIds: ledger.accountIds,
 				categoryIds: ledger.categoryIds,
@@ -280,6 +292,7 @@ describe.skipIf(sealedSuite)(
 					device,
 					await expectedCounts(ledger.userId),
 				);
+				expect(report.promotion).toEqual({ promoted: true });
 				const all = await expectParity(device.store, refs);
 				return { report, all };
 			});
@@ -290,7 +303,11 @@ describe.skipIf(sealedSuite)(
 			await fixtureDb.expense.create({ data: victim });
 			await dropUnpricedShare(xqz);
 			await atClock(async () => {
-				await pullAll(device, await expectedCounts(ledger.userId));
+				const report = await pullAll(
+					device,
+					await expectedCounts(ledger.userId),
+				);
+				expect(report.promotion).toEqual({ promoted: true });
 				await expectParity(device.store, refs);
 			});
 			expect(device.store.list("expenses")).toHaveLength(
@@ -331,8 +348,55 @@ describe.skipIf(sealedSuite)(
 			const all = [...groups.values()].flat();
 			const pass = await timeRead(all);
 			log("full pass, real Date", pass);
+			// The same pass without the 12 budget and envelope ids: what they add.
+			const withoutBudget = all.filter((id) => !isBudget(id));
+			log("full pass without the 12 budget ids", await timeRead(withoutBudget));
+			expect(withoutBudget).toHaveLength(all.length - 12);
 			expect(all.length).toBeGreaterThan(0);
 			if (ENFORCE) expect(pass.totalMs).toBeLessThan(PASS_BUDGET_MS);
+		});
+
+		// The device has no checkpoints: every budget read replays the book from
+		// its start, here 24 months with about 30 envelopes and 500 movements, over
+		// the 10,000 expenses. Logged, never asserted (decision 4 of the P13b plan:
+		// a device checkpoint cache only if this says it must).
+		it("times the budget replay from the book's start, and sizes the snapshot", async () => {
+			const clock = () => CLOCK;
+			const loads: number[] = [];
+			const passes: number[] = [];
+			for (let i = 0; i < 5; i++) {
+				const started = performance.now();
+				await loadBookFrom(
+					storeBookSource(device.store, { userId: ledger.userId }),
+					{ now: CLOCK },
+				);
+				loads.push(performance.now() - started);
+				const pass = performance.now();
+				await deviceReadFrom(
+					device.store,
+					ledger.userId,
+					["budget.notPlannedYet"],
+					{},
+					clock,
+				);
+				passes.push(performance.now() - pass);
+			}
+			log("budget load from the book's start p50 ms", ms(median(loads)));
+			log("one budget figure, cold month view p50 ms", ms(median(passes)));
+			const snapshot = device.store.get("budgetSnapshot", "budget");
+			expect(snapshot).toBeDefined();
+			log("budget snapshot", {
+				bytes: JSON.stringify(snapshot).length,
+				frozen: snapshot?.frozen.length,
+				shares: snapshot?.splits.shares.length,
+				effects: snapshot?.splits.effects.length,
+				events: snapshot?.splits.events.length,
+			});
+			log("book", {
+				movements: device.store.list("budgetMovements").length,
+				envelopes: device.store.list("envelopes").length,
+				closes: device.store.list("monthCloses").length,
+			});
 		});
 
 		it("previews an expense and sorts a list at this size", async () => {
