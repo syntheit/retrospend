@@ -123,7 +123,6 @@ export {
 	type WireCategory,
 	type WireExpense,
 	type WireLeg,
-	type WireMoney,
 	type WireOf,
 	type WireRateSwitch,
 	type WireSettings,

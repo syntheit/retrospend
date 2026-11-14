@@ -148,7 +148,7 @@ const valid = () => ({
 const REMOVE = Symbol("remove");
 type Fault = readonly [string, readonly (string | number)[], unknown];
 
-/** Each fault is one the device check (the engine's budget-block-check) refuses. */
+/** Each fault is one the contract schema refuses, so the engine, which validates with it, refuses the same. */
 const FAULTS: readonly Fault[] = [
 	["an asOf that is a number", ["asOf"], 5],
 	["an empty asOf", ["asOf"], ""],

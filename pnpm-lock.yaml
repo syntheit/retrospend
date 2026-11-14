@@ -592,6 +592,9 @@ importers:
 
   packages/engine:
     dependencies:
+      '@retrospend/api-contract':
+        specifier: workspace:*
+        version: link:../api-contract
       '@retrospend/domain':
         specifier: workspace:*
         version: link:../domain

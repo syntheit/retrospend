@@ -9,6 +9,7 @@
 		".": "./src/index.ts",
 		"./common": "./src/common/index.ts",
 		"./feedback-client": "./src/feedback/client.ts",
+		"./sync": "./src/sync/wire.ts",
 		"./openapi": "./src/openapi.ts",
 		"./openapi.json": "./openapi.json"
 	},

@@ -43,35 +43,37 @@ const SHARES: WireShares = {
 	},
 };
 
-const expense = (id: string, amount = "1000"): WireExpense => ({
-	id,
-	title: "row",
-	amount,
-	currency: "ARS",
-	date: "2026-10-05T15:00:00.000Z",
-	categoryId: null,
-	amountInUSD: "0.67",
-	exchangeRate: "1500",
-	pricingSource: "MANUAL",
-	location: null,
-	description: null,
-	status: "FINALIZED",
-	isAmortizedParent: false,
-	isAmortizedChild: false,
-	parentId: null,
-	amortizeMode: "INSTALLMENTS",
-	keepInWealth: false,
-	recurringTemplateId: null,
-	budgetEnvelopeId: null,
-	excludeFromAnalytics: false,
-	direction: "OUT",
-	entryKind: "STANDARD",
-	inType: null,
-	rateType: "blue",
-	homeCurrency: "ARS",
-	homeRate: "1",
-	homeAmount: amount,
-});
+// Only the fields the store keeps; the wire type is the contract's whole row.
+const expense = (id: string, amount = "1000") =>
+	({
+		id,
+		title: "row",
+		amount,
+		currency: "ARS",
+		date: "2026-10-05T15:00:00.000Z",
+		categoryId: null,
+		amountInUSD: "0.67",
+		exchangeRate: "1500",
+		pricingSource: "MANUAL",
+		location: null,
+		description: null,
+		status: "FINALIZED",
+		isAmortizedParent: false,
+		isAmortizedChild: false,
+		parentId: null,
+		amortizeMode: "INSTALLMENTS",
+		keepInWealth: false,
+		recurringTemplateId: null,
+		budgetEnvelopeId: null,
+		excludeFromAnalytics: false,
+		direction: "OUT",
+		entryKind: "STANDARD",
+		inType: null,
+		rateType: "blue",
+		homeCurrency: "ARS",
+		homeRate: "1",
+		homeAmount: amount,
+	}) as WireExpense;
 
 /** A base64url cursor, {e, t, s} as the server writes it (ASCII only). */
 function cursor(e: string, t: string) {
@@ -419,7 +421,7 @@ describe("the budget block's promotion", () => {
 		startMonth: 202603,
 		defaultEnvelopeId: null,
 		startingBalanceExpenseId: null,
-	};
+	} as WireOf["budgetBooks"];
 	/** Every entity ends at `at`, and the book is among the rows. */
 	const catchUp = (at: string): Pages => {
 		const empty = { items: [], tombstones: [], cursor: at, hasMore: false };

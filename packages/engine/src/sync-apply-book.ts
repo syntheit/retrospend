@@ -1,12 +1,25 @@
 /**
  * The budget book family in the sync apply layer: the wire shapes of
  * the book's tables, the transfers a bill reads and the budget block of
- * GET /sync/shares, and the port rows they make. Shapes are structural, as in
- * sync-apply.ts: a pg test assigns the contract's DTOs to them.
+ * GET /sync/shares, and the port rows they make. The wire shapes are the contract's
+ * DTOs, so there is one definition of them; the budget block is also parsed
+ * with the contract's schema before it is kept.
  */
-import type { SplitBlock } from "@retrospend/domain/envelope/split-block";
+import {
+	type SyncBookPeriodDto,
+	type SyncBudgetBlockDto,
+	type SyncBudgetBookDto,
+	type SyncBudgetMovementDto,
+	type SyncEnvelopeCategoryDto,
+	type SyncEnvelopeDto,
+	type SyncEnvelopeGroupDto,
+	type SyncMonthCloseDto,
+	type SyncPayoffPlanDto,
+	type SyncTransferDto,
+	type SyncWealthTransferDto,
+	syncBudgetBlockSchema,
+} from "@retrospend/api-contract/sync";
 import type { CloseSummary } from "./book-rows";
-import { checkBudgetBlock } from "./budget-block-check";
 import { BUDGET_SNAPSHOT_ID, InvalidInputError, type TableRows } from "./port";
 import {
 	decimal,
@@ -17,129 +30,17 @@ import {
 	monthKeyOrNull,
 } from "./sync-values";
 
-export interface WireBudgetBook {
-	readonly id: string;
-	readonly currency: string;
-	readonly style: string;
-	readonly fundingSource: string;
-	readonly pausedAt: string | null;
-	readonly weekStartDay: number;
-	readonly timeZone: string;
-	readonly startDate: string;
-	readonly startMonth: number;
-	readonly defaultEnvelopeId: string | null;
-	readonly startingBalanceExpenseId: string | null;
-}
-
-export interface WireEnvelopeGroup {
-	readonly id: string;
-	readonly bookId: string;
-	readonly name: string;
-	readonly sortOrder: number;
-	readonly role: string | null;
-	readonly targetKind: string;
-	readonly targetValue: string | null;
-	readonly mainEnvelopeId: string | null;
-	readonly archivedAt: string | null;
-}
-
-export interface WireEnvelope {
-	readonly id: string;
-	readonly bookId: string;
-	readonly groupId: string | null;
-	readonly name: string;
-	readonly icon: string | null;
-	readonly color: string | null;
-	readonly kind: string;
-	readonly sortOrder: number;
-	readonly targetAmount: string | null;
-	readonly targetMode: string;
-	readonly targetCadence: string;
-	readonly targetMonthlyAmount: string | null;
-	readonly targetCurrency: string | null;
-	readonly targetDueDate: string | null;
-	readonly targetRepeat: string | null;
-	readonly targetStartMonth: number | null;
-	readonly targetTemplateId: string | null;
-	readonly targetLiabilityId: string | null;
-	readonly leftoverRule: string;
-	readonly leftoverSweepToId: string | null;
-	readonly wealthAccountId: string | null;
-	readonly wealthDedicated: boolean;
-	readonly archivedAt: string | null;
-}
-
-export interface WireEnvelopeCategory {
-	readonly id: string;
-	readonly bookId: string;
-	readonly envelopeId: string;
-	readonly categoryId: string;
-}
-
-export interface WireBudgetMovement {
-	readonly id: string;
-	readonly bookId: string;
-	readonly month: number;
-	readonly fromEnvelopeId: string | null;
-	readonly toEnvelopeId: string | null;
-	readonly amount: string;
-}
-
-export interface WireBookPeriod {
-	readonly id: string;
-	readonly bookId: string;
-	readonly fromMonth: number;
-	readonly startDay: number;
-	readonly rateType: string;
-}
-
-export interface WireMonthClose {
-	readonly id: string;
-	readonly bookId: string;
-	readonly month: number;
-	/** A JSON column: checked and narrowed when applied. */
-	readonly summary: unknown;
-}
-
-export interface WireWealthTransfer {
-	readonly id: string;
-	readonly bookId: string;
-	readonly direction: string;
-	readonly envelopeId: string | null;
-	readonly date: string;
-	readonly amount: string;
-}
-
-export interface WirePayoffPlan {
-	readonly id: string;
-	readonly bookId: string;
-	readonly strategy: string;
-	readonly extraMonthly: string;
-	/** A JSON column: checked and narrowed when applied. */
-	readonly customOrder: unknown;
-	readonly envelopeId: string | null;
-}
-
-export interface WireTransfer {
-	readonly id: string;
-	readonly date: string;
-	readonly toAccountId: string | null;
-	readonly toAmount: string;
-	readonly toCurrency: string;
-	readonly feeExpenseId: string | null;
-}
-
-export interface WireBudgetBlock {
-	readonly bookId: string;
-	readonly valuationKey: string;
-	readonly asOf: string;
-	readonly frozen: readonly {
-		readonly key: string;
-		readonly minor: number;
-		readonly approximate: boolean;
-	}[];
-	readonly splits: SplitBlock;
-}
+export type WireBudgetBook = SyncBudgetBookDto;
+export type WireEnvelopeGroup = SyncEnvelopeGroupDto;
+export type WireEnvelope = SyncEnvelopeDto;
+export type WireEnvelopeCategory = SyncEnvelopeCategoryDto;
+export type WireBudgetMovement = SyncBudgetMovementDto;
+export type WireBookPeriod = SyncBookPeriodDto;
+export type WireMonthClose = SyncMonthCloseDto;
+export type WireWealthTransfer = SyncWealthTransferDto;
+export type WirePayoffPlan = SyncPayoffPlanDto;
+export type WireTransfer = SyncTransferDto;
+export type WireBudgetBlock = SyncBudgetBlockDto;
 
 /** The wire rows of the book family, by the table they fill. */
 export interface BookWireOf {
@@ -311,16 +212,22 @@ export const BOOK_ROWS: {
 
 /**
  * The snapshot row of a budget block, or undefined for the unavailable shape.
- * The whole block is checked first (budget-block-check.ts): types, ranges and
- * dates, never whether the server's figures are right.
+ * The whole block is parsed first with the contract's schema, so a body that
+ * is corrupt or from a server this device does not understand never reaches a
+ * store: types, ranges and dates, never whether the server's figures are
+ * right. The error names the path and never a value.
  */
 export function budgetSnapshotOf(
 	budget: WireBudgetBlock | { readonly unavailable: true },
 ): TableRows["budgetSnapshot"] | undefined {
 	if ((budget as { unavailable?: unknown }).unavailable === true)
 		return undefined;
-	checkBudgetBlock(budget);
-	const block = budget as WireBudgetBlock;
+	const parsed = syncBudgetBlockSchema.safeParse(budget);
+	if (!parsed.success) {
+		const path = parsed.error.issues[0]?.path.join(".") || "block";
+		throw new InvalidInputError(`The budget block's ${path} is not valid`);
+	}
+	const block = parsed.data;
 	return {
 		id: BUDGET_SNAPSHOT_ID,
 		bookId: block.bookId,
