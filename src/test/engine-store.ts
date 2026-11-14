@@ -122,17 +122,15 @@ export async function engineStoreOf(userId: string): Promise<MemoryStore> {
 		fixtureDb.assetSnapshot.findMany({ where: { userId } }),
 		fixtureDb.assetRateType.findMany({ where: { userId } }),
 		adminDb.exchangeRate.findMany(),
-		fixtureDb.recurringTemplate.findMany({
-			where: { userId },
-			include: {
-				category: {
-					select: { id: true, name: true, color: true, icon: true },
-				},
-			},
-		}),
+		fixtureDb.recurringTemplate.findMany({ where: { userId } }),
 		fixtureDb.category.findMany({ where: { userId } }),
 		owedRowOf(userId),
 	]);
+	const byId = new Map(categories.map((c) => [c.id, c]));
+	const categoryRefOf = (id: string | null) => {
+		const c = id === null ? undefined : byId.get(id);
+		return c ? { id: c.id, name: c.name, color: c.color, icon: c.icon } : null;
+	};
 	return new MemoryStore({
 		rows: {
 			settings: [settings],
@@ -219,7 +217,9 @@ export async function engineStoreOf(userId: string): Promise<MemoryStore> {
 				isActive: t.isActive,
 				autoPay: t.autoPay,
 				amountMode: t.amountMode,
-				category: t.category,
+				// Joined here from the top-level category read: a nested select would
+				// hand back a sealed name unopened in the sealed suite.
+				category: categoryRefOf(t.categoryId),
 			})),
 		},
 	});
