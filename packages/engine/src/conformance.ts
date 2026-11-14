@@ -114,6 +114,7 @@ export const conformanceCases: ConformanceCase[] = [
 			expectEqual(
 				single.sort(),
 				[
+					"budgetReset",
 					"budgetSnapshot",
 					"budgetSnapshotPending",
 					"owed",

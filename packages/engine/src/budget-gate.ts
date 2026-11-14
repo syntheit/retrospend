@@ -190,25 +190,33 @@ export function promoteBudgetIfReady(
 
 /**
  * An entity answered 410 and its rows were dropped: the active snapshot was
- * made for rows the device no longer holds, so it goes, and the figures read
- * unavailable until the re-pull ends and the pending block passes its gate.
- * The pending block stays. True when it dropped one.
+ * made for rows the device no longer holds, so it goes, and the reset flag is
+ * set. The figures read unavailable until the re-pull ends and the pending
+ * block passes its gate (which clears the flag). The flag, not the snapshot,
+ * is what keeps `budgetStatus` at "stale" when the entity is the book itself:
+ * its rows go with the reset, and without the flag the device would look like
+ * a person with no budget. The pending block stays. False when the entity is
+ * not one the budget reads.
  */
 export function dropBudgetOnReset(tx: Writer, entity: string): boolean {
 	if (!(BUDGET_GATE_ENTITIES as readonly string[]).includes(entity))
 		return false;
-	return tx.delete("budgetSnapshot", BUDGET_SNAPSHOT_ID);
+	tx.delete("budgetSnapshot", BUDGET_SNAPSHOT_ID);
+	tx.put("budgetReset", { id: BUDGET_SNAPSHOT_ID, entity });
+	return true;
 }
 
 /**
  * What the device can say about the budget right now. "none": it holds no
  * book (Just track, or never pulled). "stale": it holds a book but no block
  * made for that book as it is now, so the figures are unavailable until a pull
- * and its gate catch up. "ready": the figures read.
+ * and its gate catch up, or a 410 left the reset flag (the book's own rows may
+ * be gone then). "ready": the figures read.
  */
 export type BudgetStatus = "none" | "stale" | "ready";
 
 export function budgetStatus(db: Reader, pass?: FigurePass): BudgetStatus {
+	if (rowsIn(db, pass, "budgetReset").length > 0) return "stale";
 	const book = syncedBook(db, pass);
 	if (!book) return "none";
 	const active = rowsIn(db, pass, "budgetSnapshot")[0];

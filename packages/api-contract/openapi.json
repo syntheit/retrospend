@@ -130551,6 +130551,74 @@
 																			},
 																			"type": "array"
 																		},
+																		"planCheckpointApproximate": {
+																			"items": {
+																				"description": "A row valued at the nearest rate, not one dated on or before it.",
+																				"properties": {
+																					"date": {
+																						"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+																						"type": "string"
+																					},
+																					"rowId": {
+																						"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																						"maxLength": 64,
+																						"minLength": 1,
+																						"type": "string"
+																					}
+																				},
+																				"required": [
+																					"rowId",
+																					"date"
+																				],
+																				"type": "object"
+																			},
+																			"type": "array"
+																		},
+																		"planCheckpointMissingRates": {
+																			"description": "The same for the plan cost's own read of the current month, which can start from a later checkpoint than the default read.",
+																			"items": {
+																				"description": "A rate a figure needed and did not have; the row is left out of every figure, never valued at 1.",
+																				"properties": {
+																					"currency": {
+																						"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																						"examples": [
+																							"USD",
+																							"ARS",
+																							"BTC"
+																						],
+																						"pattern": "^[A-Z0-9]{2,10}$",
+																						"type": "string"
+																					},
+																					"date": {
+																						"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+																						"type": "string"
+																					},
+																					"rateType": {
+																						"anyOf": [
+																							{
+																								"type": "string"
+																							},
+																							{
+																								"type": "null"
+																							}
+																						]
+																					},
+																					"rowId": {
+																						"description": "The caller's own id, or an opaque key (`p1`.. for people, `e1`.. for events, settlements and pending payments) valid in this block only.",
+																						"maxLength": 64,
+																						"minLength": 1,
+																						"type": "string"
+																					}
+																				},
+																				"required": [
+																					"currency",
+																					"rateType",
+																					"date"
+																				],
+																				"type": "object"
+																			},
+																			"type": "array"
+																		},
 																		"shares": {
 																			"items": {
 																				"properties": {
@@ -130644,7 +130712,9 @@
 																		"missingRates",
 																		"approximate",
 																		"checkpointMissingRates",
-																		"checkpointApproximate"
+																		"checkpointApproximate",
+																		"planCheckpointMissingRates",
+																		"planCheckpointApproximate"
 																	],
 																	"type": "object"
 																},

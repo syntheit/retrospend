@@ -1031,4 +1031,54 @@ describe("a rate missing when a month closed", () => {
 			vi.setSystemTime(NOW);
 		}
 	});
+
+	// The plan cost reads the current month with needFrom set to it, from the
+	// October checkpoint; the default read starts at September's. A USD 10 row
+	// on Oct 10 had no MDL rate when October closed, so October's checkpoint
+	// lists it. The MDL rate that arrives on Nov 3 (after the row, so no close is
+	// revised) lets the default read value it at the nearest rate: the month
+	// figures read a number, the plan cost, which starts after the checkpoint
+	// that lists it, stays unavailable. A device that took the default read's
+	// list for both would read a plan cost the server does not.
+	it("reads the plan cost unavailable and the month figures available, on both sides", async () => {
+		const b = await mdlBook();
+		const oct = await usdRow(b, { usd: "10", at: "2026-10-10T15:00:00Z" });
+		vi.setSystemTime(NOV_4);
+		try {
+			await getMonth(b.userId, undefined, new Date());
+			const rate = await adminDb.exchangeRate.create({
+				data: {
+					date: new Date("2026-11-03T00:00:00Z"),
+					currency: "MDL",
+					type: "official",
+					rate: "41",
+				},
+			});
+			try {
+				const ids = BUDGET_IDS.filter((id) => !ENVELOPE_IDS.includes(id));
+				const store = await engineStoreOf(b.userId, { budget: true });
+				const splits = store.get("budgetSnapshot", "budget")?.splits;
+				expect(splits?.checkpointMissingRates).toEqual([]);
+				expect(splits?.planCheckpointMissingRates).toEqual([
+					{
+						currency: "MDL",
+						rateType: "official",
+						date: "2026-10-10",
+						rowId: oct.id,
+					},
+				]);
+				const device = await deviceReadFrom(store, b.userId, ids);
+				const server = await serverRead(b.userId, ids);
+				expectSame(device, server, ids);
+				for (const side of [server, device]) {
+					expect(side.readings.get("budget.planCost")).toBeNull();
+					expect(side.readings.get("budget.notPlannedYet")).not.toBeNull();
+				}
+			} finally {
+				await adminDb.exchangeRate.delete({ where: { id: rate.id } });
+			}
+		} finally {
+			vi.setSystemTime(NOW);
+		}
+	});
 });

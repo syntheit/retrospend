@@ -5,7 +5,8 @@
  * figures read it. A pull writes the block it got to `budgetSnapshotPending`
  * and leaves the active one alone, so a device whose cursors lag behind the new
  * block still reads the last good one instead of nothing. The device decides
- * when the gate has passed and calls `promotePendingBudget` then.
+ * when the gate has passed and calls `promotePendingBudget` then, which also
+ * clears the reset flag a 410 left (budget-gate.ts).
  */
 import { BUDGET_SNAPSHOT_ID, type Writer } from "./port";
 
@@ -18,5 +19,7 @@ export function promotePendingBudget(tx: Writer): boolean {
 	if (pending === undefined) return false;
 	tx.put("budgetSnapshot", pending);
 	tx.delete("budgetSnapshotPending", BUDGET_SNAPSHOT_ID);
+	// A block that passed its gate is made for the rows the device holds now.
+	tx.delete("budgetReset", BUDGET_SNAPSHOT_ID);
 	return true;
 }

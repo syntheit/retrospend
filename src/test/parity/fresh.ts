@@ -25,23 +25,30 @@ export interface FreshReport {
 	newer: string[];
 }
 
-/** The ids of the rows the device valued for the first time reading the book at `now`, closed months' income included (the plan cost reads it). */
+/**
+ * The ids of the rows the device valued for the first time reading the book at
+ * `now`: the default read, the plan cost's own look at the current month, and
+ * the closed months' income (the plan cost reads it).
+ */
 export async function deviceFreshIds(
 	store: Reader,
 	userId: string,
 	now: Date,
 ): Promise<string[]> {
-	const load = await loadBookFrom(storeBookSource(store, { userId }), { now });
-	if (!load) return [];
-	await closedIncomesFrom(
-		async (w) => closedIncomeRows(store, undefined, w),
-		load.loaded,
-	);
-	return [
-		...new Set(
-			load.loaded.valuer.fresh.map((f) => f.key.split("|")[0] as string),
-		),
-	];
+	const ids = new Set<string>();
+	for (const look of ["default", "plan"] as const) {
+		const load = await loadBookFrom(storeBookSource(store, { userId, look }), {
+			now,
+		});
+		if (!load) continue;
+		await closedIncomesFrom(
+			async (w) => closedIncomeRows(store, undefined, w),
+			load.loaded,
+		);
+		for (const f of load.loaded.valuer.fresh)
+			ids.add(f.key.split("|")[0] as string);
+	}
+	return [...ids];
 }
 
 /** Splits the device's fresh rows by whether they are newer than the block's `asOf`. */

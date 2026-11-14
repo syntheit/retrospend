@@ -63,6 +63,7 @@ type Rows = { [T in TableName]: TableRows[T][] };
 const rows = (): Rows => ({
 	bookPeriods: [],
 	budgetBooks: [],
+	budgetReset: [],
 	budgetMovements: [],
 	budgetSnapshot: [],
 	budgetSnapshotPending: [],

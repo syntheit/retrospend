@@ -505,6 +505,8 @@ const EMPTY_SPLITS: SplitBlock = {
 	approximate: [],
 	checkpointMissingRates: [],
 	checkpointApproximate: [],
+	planCheckpointMissingRates: [],
+	planCheckpointApproximate: [],
 };
 
 const block = (o: Partial<WireBudgetBlock> = {}): WireBudgetBlock => ({
@@ -647,6 +649,10 @@ const rich = (): WireBudgetBlock => {
 				{ currency: "XQZ", rateType: "blue", date: "2026-02-05" },
 			],
 			checkpointApproximate: [{ rowId: "e3", date: "2026-02-05" }],
+			planCheckpointMissingRates: [
+				{ currency: "XQZ", rateType: "blue", date: "2026-03-01", rowId: "e4" },
+			],
+			planCheckpointApproximate: [{ rowId: "e5", date: "2026-03-01" }],
 		},
 	});
 };
@@ -933,6 +939,16 @@ describe("applySharesSnapshot, the budget snapshot", () => {
 		[
 			"a checkpoint approximate row on a bad date",
 			["splits", "checkpointApproximate", 0, "date"],
+			"2026-02-31",
+		],
+		[
+			"a plan checkpoint missing rate on a bad date",
+			["splits", "planCheckpointMissingRates", 0, "date"],
+			"x",
+		],
+		[
+			"a plan checkpoint approximate row on a bad date",
+			["splits", "planCheckpointApproximate", 0, "date"],
 			"2026-02-31",
 		],
 		["an unresolved id that is a number", ["splits", "unresolved", 0], 3],

@@ -82,7 +82,15 @@ async function budgetReads(tx: Tx, userId: string, now: Date) {
 	const view = await monthViewIn(tx, userId, now);
 	if (!view) return null;
 	await planCostIn(tx, userId, {}, now);
-	return view;
+	// The plan cost's own read of this month (needFrom set to it, memoized by the
+	// plan cost above): it may start from a later checkpoint than the default one.
+	const plan = await monthViewIn(
+		tx,
+		userId,
+		now,
+		view.loaded.input.currentMonth,
+	);
+	return { view, plan: plan ?? view };
 }
 
 /**
@@ -240,20 +248,19 @@ export async function readBudgetBlock(
 	if (shared) return { kind: "none" };
 	// The reads tx1 makes, counting instead of freezing (and reading no names).
 	const fresh = new Map<string, FreshValue>();
-	const view = await readingForDevice(
+	const reads = await readingForDevice(
 		() => budgetReads(tx, userId, now),
 		fresh,
 	);
-	if (!view) return { kind: "none" };
-	const { loaded } = view;
+	if (!reads) return { kind: "none" };
+	const { loaded } = reads.view;
 	const asOf = await readCutCursor(tx);
 	const checkpoint = loaded.checkpoint;
-	const behind = [
-		...(checkpoint?.missingRates ?? []).flatMap((r) =>
-			r.rowId ? [r.rowId] : [],
-		),
-		...(checkpoint?.approximate ?? []).map((r) => r.rowId),
-	];
+	const planCheckpoint = reads.plan.loaded.checkpoint;
+	const behind = [checkpoint, planCheckpoint].flatMap((c) => [
+		...(c?.missingRates ?? []).flatMap((r) => (r.rowId ? [r.rowId] : [])),
+		...(c?.approximate ?? []).map((r) => r.rowId),
+	]);
 	const block: BudgetBlock = {
 		bookId: loaded.row.id,
 		valuationKey: bookValuationKey(loaded.row),
@@ -263,6 +270,10 @@ export async function readBudgetBlock(
 			missingRates: checkpoint?.missingRates ?? [],
 			approximate: checkpoint?.approximate ?? [],
 			own: await ownExpenseIds(tx, userId, behind),
+			plan: {
+				missingRates: planCheckpoint?.missingRates ?? [],
+				approximate: planCheckpoint?.approximate ?? [],
+			},
 		}),
 	};
 	return { kind: "block", block, unfrozen: fresh.size };

@@ -8,6 +8,7 @@ export type {
 	AccountTerms,
 	BookPeriodRow,
 	BudgetBookRow,
+	BudgetResetRow,
 	BudgetSnapshotRow,
 	CloseSummary,
 	EnvelopeCategoryRow,

@@ -425,6 +425,8 @@ export function applySharesSnapshot(tx: Writer, body: WireShares): void {
 	if (body.budget === null) {
 		tx.delete("budgetSnapshot", BUDGET_SNAPSHOT_ID);
 		tx.delete("budgetSnapshotPending", BUDGET_SNAPSHOT_ID);
+		// Nothing to read on a device any more: no budget, not a stale one.
+		tx.delete("budgetReset", BUDGET_SNAPSHOT_ID);
 	}
 	// A new block waits as pending: the active one is the last whose cursor gate
 	// passed and keeps serving until promotePendingBudget moves the new one in.

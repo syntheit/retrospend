@@ -202,6 +202,16 @@ function splits(value: unknown): void {
 	each(s.approximate, "splits.approximate", approximateRow);
 	each(s.checkpointMissingRates, "splits.checkpointMissingRates", missingRate);
 	each(s.checkpointApproximate, "splits.checkpointApproximate", approximateRow);
+	each(
+		s.planCheckpointMissingRates,
+		"splits.planCheckpointMissingRates",
+		missingRate,
+	);
+	each(
+		s.planCheckpointApproximate,
+		"splits.planCheckpointApproximate",
+		approximateRow,
+	);
 }
 
 /**

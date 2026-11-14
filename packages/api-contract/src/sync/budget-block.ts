@@ -194,6 +194,11 @@ export const syncSplitBlockSchema = z
 				"Rates missing behind the server's checkpoint when the block was made. Those rows stay out of every figure, as they do on the server, even when a rate has arrived since.",
 		}),
 		checkpointApproximate: z.array(approximateRowSchema),
+		planCheckpointMissingRates: z.array(missingRateSchema).meta({
+			description:
+				"The same for the plan cost's own read of the current month, which can start from a later checkpoint than the default read.",
+		}),
+		planCheckpointApproximate: z.array(approximateRowSchema),
 	})
 	.meta({ id: "SyncSplitBlock" });
 

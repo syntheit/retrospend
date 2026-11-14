@@ -49,6 +49,7 @@ import {
 	type RateRow,
 	selectRateRows,
 } from "@retrospend/domain/envelope/rate-book";
+import type { SplitBlock } from "@retrospend/domain/envelope/split-block";
 import type {
 	LiabilityTerms,
 	TemplateTerms,
@@ -110,14 +111,48 @@ export async function selectedRates(
 	return selectRateRows(await rateRowsOf(db, pass), p);
 }
 
+/**
+ * Which look at the month the source serves: the default read, or the plan
+ * cost's, which the server makes with `needFrom` set to the current month and
+ * so may start from a later checkpoint (the block lists what each left out).
+ */
+export type BudgetLook = "default" | "plan";
+
+/** The two lists of what a checkpoint left out, for one look. */
+function behindOf(splits: SplitBlock, look: BudgetLook) {
+	return look === "plan"
+		? {
+				missingRates: splits.planCheckpointMissingRates,
+				approximate: splits.planCheckpointApproximate,
+			}
+		: {
+				missingRates: splits.checkpointMissingRates,
+				approximate: splits.checkpointApproximate,
+			};
+}
+
+/** Whether the plan cost's look leaves out exactly what the default one does, so one load serves both. */
+export function planLooksAsDefault(
+	db: Reader,
+	pass: FigurePass | undefined,
+): boolean {
+	const splits = rowsIn(db, pass, "budgetSnapshot")[0]?.splits;
+	if (!splits) return true;
+	return (
+		JSON.stringify(behindOf(splits, "default")) ===
+		JSON.stringify(behindOf(splits, "plan"))
+	);
+}
+
 /** The rows with ids the checkpoint left out: the block lists them with their rates missing. */
 function behindCheckpointOf(
 	db: Reader,
 	pass: FigurePass | undefined,
+	look: BudgetLook,
 ): ReadonlySet<string> {
-	const active = rowsIn(db, pass, "budgetSnapshot")[0];
+	const splits = rowsIn(db, pass, "budgetSnapshot")[0]?.splits;
 	return new Set(
-		(active?.splits.checkpointMissingRates ?? []).flatMap((r) =>
+		(splits ? behindOf(splits, look).missingRates : []).flatMap((r) =>
 			r.rowId ? [r.rowId] : [],
 		),
 	);
@@ -127,6 +162,7 @@ function inputsOf(
 	db: Reader,
 	pass: FigurePass | undefined,
 	bookId: string,
+	look: BudgetLook,
 ): BudgetInputsPort {
 	return {
 		async ownRows({ from, afterMonth }): Promise<OwnRows> {
@@ -136,7 +172,7 @@ function inputsOf(
 				const p = parents.get(id);
 				return p && { amortizeMode: p.amortizeMode ?? "INSTALLMENTS" };
 			};
-			const behind = behindCheckpointOf(db, pass);
+			const behind = behindCheckpointOf(db, pass, look);
 			const own: OwnRows = {
 				moneyIn: [],
 				spending: [],
@@ -295,14 +331,15 @@ function dedicatedOf(
 /** The loader's source over `db`: a store, a transaction or a snapshot. Reads the ACTIVE budget snapshot only. */
 export function storeBookSource(
 	db: Reader,
-	opts: { userId: string; pass?: FigurePass },
+	opts: { userId: string; pass?: FigurePass; look?: BudgetLook },
 ): BookSource<BookRowCore, CloseRowCore> {
 	const { userId, pass } = opts;
+	const look = opts.look ?? "default";
 	// Listed once per pass: the block is large and a read copies it.
 	const active = () => rowsIn(db, pass, "budgetSnapshot")[0];
 	return {
 		book: async () => bookRowOf(db, pass, userId),
-		inputs: (row) => inputsOf(db, pass, row.id),
+		inputs: (row) => inputsOf(db, pass, row.id, look),
 		closes: async (row) => closeRowsOf(db, pass, row.id),
 		dirtyMarks: async () => [],
 		frozenValues: async () =>
@@ -324,7 +361,14 @@ export function storeBookSource(
 		splitBlock: async () => {
 			const snapshot = active();
 			if (!snapshot) throw new BudgetUnreadable("No budget block is held");
-			return snapshot.splits;
+			const { splits } = snapshot;
+			if (look === "default") return splits;
+			const behind = behindOf(splits, look);
+			return {
+				...splits,
+				checkpointMissingRates: [...behind.missingRates],
+				checkpointApproximate: [...behind.approximate],
+			};
 		},
 		hash: hashText,
 	};

@@ -51,8 +51,10 @@ import { dec } from "@retrospend/domain/precise-decimal";
 import { BudgetUnreadable, bookOf } from "./budget-book";
 import { budgetStatus } from "./budget-gate";
 import {
+	type BudgetLook,
 	closedIncomeRows,
 	expenseById,
+	planLooksAsDefault,
 	selectedRates,
 	storeBookSource,
 } from "./budget-source";
@@ -184,22 +186,25 @@ export function deviceBudgetReads(clock: () => Date): BudgetReads<Reader> {
 		pass: FigurePass | undefined,
 		month?: MonthKey,
 	): Promise<MonthRead | null> => {
-		// The month view of the current month is the same read whether it is asked
-		// for by name or not: a device has no checkpoint for `needFrom` to move, so
-		// the plan cost's second look at this month reuses the first.
+		// The plan cost reads the current month by name, which on the server may
+		// start from a later checkpoint than the default read. The block says what
+		// each left out; when they match, the one load serves both.
+		let look: BudgetLook = "default";
 		if (month !== undefined) {
 			const current = await view(db, userId, pass);
-			if (current && current.loaded.input.currentMonth === month)
-				return current;
+			if (!current || current.loaded.input.currentMonth !== month) {
+				// Another month: the default look, as the server's own reads of it.
+			} else if (planLooksAsDefault(db, pass)) return current;
+			else look = "plan";
 		}
 		return once(
 			pass,
 			month === undefined
 				? `budget.month:${userId}`
-				: `budget.month:${userId}:${month}`,
+				: `budget.month:${userId}:${month}:${look}`,
 			async () => {
 				const now = await readNow(clock, pass);
-				const src = storeBookSource(db, { userId, pass });
+				const src = storeBookSource(db, { userId, pass, look });
 				return monthViewFrom(monthSourceOf(db, pass, src), now, month);
 			},
 		);

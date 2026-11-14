@@ -60,6 +60,7 @@ type Rows = { [T in TableName]: TableRows[T][] };
 const empty = (): Rows => ({
 	bookPeriods: [],
 	budgetBooks: [],
+	budgetReset: [],
 	budgetMovements: [],
 	budgetSnapshot: [],
 	budgetSnapshotPending: [],
@@ -508,31 +509,53 @@ describe("the budget figures on a device", () => {
 		]);
 		// 101,500 + 5,000
 		expect(without.readings.get("envelope.spent")).toEqual(money(10_650_000));
-		const listed = ledger({
-			expenses: withRow.expenses,
-			budgetSnapshot: [
-				snapshot({
-					splits: {
-						...snapshot().splits,
-						checkpointMissingRates: [
-							{
-								currency: "ARS",
-								rateType: "blue",
-								date: "2026-11-11",
-								rowId: "late",
-							},
-						],
-					},
+		const missing = [
+			{
+				currency: "ARS",
+				rateType: "blue",
+				date: "2026-11-11",
+				rowId: "late",
+			},
+		];
+		const listing = (o: Partial<TableRows["budgetSnapshot"]["splits"]>) =>
+			new MemoryStore({
+				rows: ledger({
+					expenses: withRow.expenses,
+					budgetSnapshot: [
+						snapshot({ splits: { ...snapshot().splits, ...o } }),
+					],
 				}),
-			],
-		});
-		const store = new MemoryStore({ rows: listed });
-		const { readings } = await read(store);
+			});
+		// Both the default read and the plan cost's read left the row out.
+		const both = await read(
+			listing({
+				checkpointMissingRates: missing,
+				planCheckpointMissingRates: missing,
+			}),
+		);
 		// The total debt reads the card, not the month: the server keeps it too.
-		expect(Object.fromEntries(readings)).toEqual({
+		expect(Object.fromEntries(both.readings)).toEqual({
 			...NONE,
 			"budget.totalDebt": money(150_000_000),
 		});
+		// Only the default read did (a later checkpoint made the plan cost's look
+		// lack it): the plan cost reads a number, as the server's does, and the
+		// month figures stay unavailable.
+		const onlyDefault = await read(
+			listing({ checkpointMissingRates: missing }),
+		);
+		expect(onlyDefault.readings.get("budget.planCost")).toEqual(
+			money(35_000_000),
+		);
+		expect(onlyDefault.readings.get("budget.notPlannedYet")).toBeNull();
+		// Only the plan cost's look did: the month figures read, the plan cost is unavailable.
+		const onlyPlan = await read(
+			listing({ planCheckpointMissingRates: missing }),
+		);
+		expect(onlyPlan.readings.get("budget.planCost")).toBeNull();
+		expect(onlyPlan.readings.get("budget.notPlannedYet")).toEqual(
+			money(85_000_000),
+		);
 	});
 });
 
@@ -568,6 +591,27 @@ describe("the gate", () => {
 	it("compares positions as numbers, not as text", () => {
 		// "99" is greater than "100" as text, but less as a number.
 		expect(gate(all(cursor("e1", "99")))).toEqual({
+			passes: false,
+			reason: "cursors",
+		});
+	});
+
+	it("ignores leading zeros and takes the longer number as the larger", () => {
+		// 0100 is 100, 099 is 99, and a longer number is larger whatever its digits.
+		expect(gate(all(cursor("e1", "0100")))).toEqual({ passes: true });
+		expect(gate(all(cursor("e1", "099")))).toEqual({
+			passes: false,
+			reason: "cursors",
+		});
+		expect(gate(all(cursor("e1", "00000000000000000100")))).toEqual({
+			passes: true,
+		});
+		expect(gate(all(cursor("e1", "20000000000")))).toEqual({ passes: true });
+		const padded = { ...pending, asOf: cursor("e1", "0100") };
+		expect(gate(all(cursor("e1", "100")), { pending: padded })).toEqual({
+			passes: true,
+		});
+		expect(gate(all(cursor("e1", "99")), { pending: padded })).toEqual({
 			passes: false,
 			reason: "cursors",
 		});
@@ -670,6 +714,44 @@ describe("the gate", () => {
 			await s.transaction((tx) =>
 				promoteBudgetIfReady(tx, all(cursor("e1", "100"))),
 			);
+			expect(budgetStatus(s)).toBe("ready");
+			expect(
+				(await read(s, ["envelope.spent"])).readings.get("envelope.spent"),
+			).toEqual(money(10_150_000));
+		});
+
+		// The book itself answered 410: its rows go with the reset, so a device that
+		// went by its rows would look like a person with no budget (null, as Just
+		// track reads). The flag keeps it unavailable until the re-pull passes.
+		it("reads unavailable, not none, after a 410 on the book mid re-pull", async () => {
+			const s = store();
+			await s.transaction((tx) => {
+				for (const b of tx.list("budgetBooks")) tx.delete("budgetBooks", b.id);
+				dropBudgetOnReset(tx, "budgetBooks");
+			});
+			expect(s.list("budgetBooks")).toEqual([]);
+			expect(budgetStatus(s)).toBe("stale");
+			const { readings, pass } = await read(s);
+			expect(Object.fromEntries(readings)).toEqual(NONE);
+			expect(pass.missingRates()).toEqual([]);
+			// The re-pull brings the book back; the figures wait for the gate.
+			await s.transaction((tx) =>
+				tx.put(
+					"budgetBooks",
+					ledger().budgetBooks[0] as TableRows["budgetBooks"],
+				),
+			);
+			expect(budgetStatus(s)).toBe("stale");
+			await s.transaction((tx) =>
+				promoteBudgetIfReady(tx, all(cursor("e1", "99"))),
+			);
+			expect(budgetStatus(s)).toBe("stale");
+			expect(
+				await s.transaction((tx) =>
+					promoteBudgetIfReady(tx, all(cursor("e1", "100"))),
+				),
+			).toEqual({ promoted: true });
+			expect(s.get("budgetReset", "budget")).toBeUndefined();
 			expect(budgetStatus(s)).toBe("ready");
 			expect(
 				(await read(s, ["envelope.spent"])).readings.get("envelope.spent"),
