@@ -1,5 +1,6 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import type { Money } from "@retrospend/domain/money-minor";
+import type { DeviceReads } from "@/data/device-engine";
 import type { ActivityPage } from "@/features/activity/source";
 import { verdictIsOver } from "@/features/budget/verdict";
 import { approxSides } from "@/features/people/groups";
@@ -24,7 +25,60 @@ export const HOME_CACHE: CacheKey = { name: "home", schema: 3 };
 export const SNOOZE_CACHE: CacheKey = { name: "home.later", schema: 1 };
 export const RECENT_COUNT = 5;
 
-export function fetchHome(api: RetrospendClient) {
+const GLANCE_FIGURES = [
+	"spent",
+	"spentLastToDate",
+	"spentLast",
+	"owedToYou",
+	"youOwe",
+	"netWorth",
+	"moneyIn",
+] as const;
+
+/**
+ * The glance with every figure the device can read taken from the device (the
+ * dev flag's engine); the rest, and everything else in it, stays the
+ * server's. Nothing changes when the device holds nothing it can trust, or
+ * when its home currency is not the glance's (a profile change its rows have
+ * not caught up with). Not planned yet is taken only while the budget block
+ * is one the device can read. The replaced figures are then checked against
+ * the server in the background.
+ */
+async function withDeviceFigures(
+	glance: Glance,
+	device: DeviceReads,
+): Promise<Glance> {
+	const budget = glance.budget?.state === "ready" ? glance.budget : null;
+	const ids = [
+		...GLANCE_FIGURES.flatMap((name) => glance[name]?.id ?? []),
+		...(budget ? [budget.notPlannedYet.id] : []),
+	];
+	const read = await device.read(ids);
+	if (!read || read.homeCurrency !== glance.home) return glance;
+	// A figure is the first line of its reading, as the server's glance takes it.
+	const firstLine = (id: string) => read.readings.get(id)?.[0] ?? null;
+	const next = { ...glance };
+	const replaced: string[] = [];
+	for (const name of GLANCE_FIGURES) {
+		const figure = glance[name];
+		if (!figure || !read.readings.has(figure.id)) continue;
+		next[name] = { id: figure.id, value: firstLine(figure.id) };
+		replaced.push(figure.id);
+	}
+	if (
+		budget &&
+		read.budgetReady &&
+		read.readings.has(budget.notPlannedYet.id)
+	) {
+		const { id } = budget.notPlannedYet;
+		next.budget = { ...budget, notPlannedYet: { id, value: firstLine(id) } };
+		replaced.push(id);
+	}
+	if (replaced.length > 0) void device.verify(replaced);
+	return next;
+}
+
+export function fetchHome(api: RetrospendClient, device?: DeviceReads | null) {
 	return async (): Promise<HomeData> => {
 		const [glance, needs, recent, people] = await Promise.all([
 			api.figures.glance(),
@@ -33,7 +87,7 @@ export function fetchHome(api: RetrospendClient) {
 			api.people.list(),
 		]);
 		return {
-			glance,
+			glance: device ? await withDeviceFigures(glance, device) : glance,
 			needs,
 			recent,
 			approx: approxSides(people.people, people.home),
