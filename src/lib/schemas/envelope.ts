@@ -942,6 +942,12 @@ export const setupResultSchema = z.object({
 	}),
 });
 
+/** What taking a set-up back deleted: the book, and the starting balance row when setup wrote one. */
+export const undoSetupResultSchema = z.object({
+	bookId: idSchema,
+	expenseId: idSchema.nullable(),
+});
+
 export const setShareCategoryInputSchema = z.object({
 	transactionId: idSchema,
 	/** One of your expense categories; null clears it (Everything else). */
