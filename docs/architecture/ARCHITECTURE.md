@@ -121,6 +121,8 @@ Money is the part of the app that must never be wrong.
 
 - Balances are person-centric: everything owed between two people rolls up to one balance, across projects.
 - "Owed to you" and "You owe" are never netted in display; only net worth combines them.
+- A rejected share is not owed. Every balance skips it (one rule: `COUNTED_SHARE` in `shared-expenses/balance.ts`, built from `shareCounts` in `@retrospend/domain/share-status`): the pair balances, Owed to you and You owe, net worth, a project's Summary and the person rows. The payer's Summary share absorbs it, as Remove me does. The payer's budget keeps it fronted, the cash left, so the budget can hold more than People shows owed until the split is fixed (the `split.rejected` item in Needs you); forgiving it from Budget stays refused.
+- Answering your own share is refused where it would change what is settled: `share_locked` (the expense is settled), `share_is_correction` (a correction or a corrected expense) and `share_reject_reverses_payment` (a paid share), in `shared-expenses/answer-guard.ts`, each pointing to Ask to fix. An edit that changes no money field keeps every answer, and a claim merge of two rows that answered differently goes back to pending.
 - A payment is one record in the currency paid. It clears same-currency debts first, then converts.
 - The receiver confirms. The app finalizes proposals left unconfirmed for 7 days (`payments/auto-finalize.ts`, hourly from `instrumentation.ts`), as the receiver, with the same writes as a confirm. A payment the receiver reopened stays pending.
 - Code: `src/server/services/payments/` (the allocator is `allocate.ts`), `people/`, `shared-expenses/`, `transfers/`.
