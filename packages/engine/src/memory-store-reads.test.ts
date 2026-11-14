@@ -4,9 +4,19 @@
  * transaction-list caches never serve a stale list.
  */
 import { describe, expect, it } from "vitest";
+import { createExpense, EXPENSE_CREATE } from "./expense-create";
+import { vectors } from "./expense-create-vectors";
 import { fixtureRow } from "./fixtures";
+import { LocalDb } from "./local-db";
+import { seededStore } from "./local-expense-create";
+import { dump } from "./local-fixtures";
 import { genericOut, MemoryStore } from "./memory-store";
 import { SINGLE_ROW_IDS, TABLE_NAMES } from "./port";
+import {
+	createDevicePreviewRunner,
+	EXPENSE_CREATE_MUTATION,
+} from "./preview";
+import { deviceFigures } from "./registry";
 
 const rate = (id: string) => fixtureRow("rates", id);
 
@@ -152,5 +162,137 @@ describe("the id order a store keeps per committed table", () => {
 		first.push("junk");
 		first.length = 0;
 		expect(ids(store.list("categories"))).toEqual(["k"]);
+	});
+});
+
+describe("a transaction's list", () => {
+	const withRate = (id: string, value: string) => ({ ...rate(id), rate: value });
+
+	it("follows a put, a delete and a put of one id, and savepoints that commit and roll back", async () => {
+		const store = new MemoryStore({ rows: { rates: [rate("b"), rate("d")] } });
+		const tx = await store.begin();
+		/** Reads twice, so the second read is served from the memo and must agree. */
+		const read = (t: { list: typeof tx.list }) => {
+			const rows = () =>
+				t.list("rates").map((r) => `${r.id}:${r.rate}`);
+			const once = rows();
+			expect(rows()).toEqual(once);
+			return once;
+		};
+		expect(read(tx)).toEqual(["b:1545", "d:1545"]);
+		tx.put("rates", withRate("c", "1"));
+		expect(read(tx)).toEqual(["b:1545", "c:1", "d:1545"]);
+		tx.delete("rates", "c");
+		expect(read(tx)).toEqual(["b:1545", "d:1545"]);
+		tx.put("rates", withRate("c", "2"));
+		tx.delete("rates", "b");
+		expect(read(tx)).toEqual(["c:2", "d:1545"]);
+
+		const outer = tx.savepoint();
+		outer.put("rates", rate("a"));
+		outer.put("rates", withRate("c", "3"));
+		expect(read(outer)).toEqual(["a:1545", "c:3", "d:1545"]);
+		const inner = outer.savepoint();
+		inner.delete("rates", "d");
+		inner.put("rates", rate("e"));
+		expect(read(inner)).toEqual(["a:1545", "c:3", "e:1545"]);
+		inner.rollback();
+		expect(read(outer)).toEqual(["a:1545", "c:3", "d:1545"]);
+		const kept = outer.savepoint();
+		kept.put("rates", rate("b"));
+		kept.delete("rates", "a");
+		expect(read(kept)).toEqual(["b:1545", "c:3", "d:1545"]);
+		await kept.commit();
+		expect(read(outer)).toEqual(["b:1545", "c:3", "d:1545"]);
+		await outer.commit();
+		expect(read(tx)).toEqual(["b:1545", "c:3", "d:1545"]);
+
+		const dropped = tx.savepoint();
+		dropped.put("rates", rate("a"));
+		expect(read(dropped)).toEqual(["a:1545", "b:1545", "c:3", "d:1545"]);
+		dropped.rollback();
+		expect(read(tx)).toEqual(["b:1545", "c:3", "d:1545"]);
+		// Nothing reached the store before commit.
+		expect(store.list("rates").map((r) => r.id)).toEqual(["b", "d"]);
+		await tx.commit();
+		expect(
+			store.list("rates").map((r) => `${r.id}:${r.rate}`),
+		).toEqual(["b:1545", "c:3", "d:1545"]);
+	});
+
+	it("a savepoint's list follows its parent when the parent rolls back under it", async () => {
+		const store = new MemoryStore({ rows: { rates: [rate("a")] } });
+		const tx = await store.begin();
+		tx.put("rates", rate("b"));
+		const child = tx.savepoint();
+		child.put("rates", rate("c"));
+		expect(ids(child.list("rates"))).toEqual(["a", "b", "c"]);
+		tx.rollback();
+		expect(ids(child.list("rates"))).toEqual(["a", "c"]);
+	});
+
+	it("reads a table it never wrote as the store has it, with its own Date objects", async () => {
+		const store = new MemoryStore({
+			rows: { rates: [rate("a")], legs: [fixtureRow("legs", "l")] },
+		});
+		const tx = await store.begin();
+		tx.put("rates", rate("b"));
+		const legs = tx.list("legs");
+		expect(legs).toEqual(store.list("legs"));
+		expect(legs[0]?.date).not.toBe(store.list("legs")[0]?.date);
+		legs[0]?.date.setTime(0);
+		expect(tx.list("legs")[0]?.date.toISOString()).toBe(
+			"2026-03-01T00:00:00.000Z",
+		);
+		tx.rollback();
+	});
+
+	it("a read after a rolled-back transaction, and after one that failed to commit, sees only committed rows", async () => {
+		let fail = false;
+		const store = new MemoryStore({
+			rows: { rates: [rate("a")] },
+			onCommit: () => {
+				if (fail) throw new Error("disk full");
+			},
+		});
+		const tx = await store.begin();
+		tx.put("rates", rate("b"));
+		expect(tx.list("rates")).toHaveLength(2);
+		tx.rollback();
+		const failing = await store.begin();
+		fail = true;
+		failing.put("rates", rate("c"));
+		expect(failing.list("rates")).toHaveLength(2);
+		await expect(failing.commit()).rejects.toThrow("disk full");
+		fail = false;
+		const next = await store.begin();
+		expect(ids(next.list("rates"))).toEqual(["a"]);
+		next.put("rates", rate("b"));
+		expect(ids(next.list("rates"))).toEqual(["a", "b"]);
+		next.rollback();
+	});
+
+	it("a preview of a write, through LocalDb and through the device runner, leaves every list as it was, and a later write lands in order", async () => {
+		const v = vectors[1] as (typeof vectors)[number];
+		const store = await seededStore(v.seed);
+		const before = dump(store);
+
+		const db = new LocalDb(store);
+		await db.preview(createExpense(v.input));
+		expect(dump(store)).toEqual(before);
+
+		const runner = createDevicePreviewRunner({
+			store,
+			figures: deviceFigures({ clock: () => v.input.date }),
+			actor: { userId: "u1" },
+		});
+		await runner.preview(EXPENSE_CREATE_MUTATION, v.input);
+		await runner.preview(EXPENSE_CREATE_MUTATION, v.input);
+		expect(dump(store)).toEqual(before);
+		expect(store.get("expenses", v.input.id)).toBeUndefined();
+
+		await db.write(EXPENSE_CREATE, createExpense(v.input));
+		expect(store.list("expenses").map((r) => r.id)).toEqual([v.input.id]);
+		expect(store.list("rates")).toEqual(before.rates);
 	});
 });

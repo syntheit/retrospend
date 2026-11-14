@@ -201,8 +201,40 @@ interface TxHooks {
 	end(): void;
 }
 
+/**
+ * The id-ordered rows of `base` with `writes` applied: a write replaces the
+ * row of its id, a null drops it. One linear pass over the sorted base and the
+ * (few) sorted writes.
+ */
+function mergeSorted(
+	base: readonly AnyRow[],
+	writes: ReadonlyMap<string, AnyRow | null>,
+): readonly AnyRow[] {
+	const changed = [...writes].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+	const merged: AnyRow[] = [];
+	let i = 0;
+	for (const [id, row] of changed) {
+		for (; i < base.length && (base[i] as AnyRow).id < id; i++)
+			merged.push(base[i] as AnyRow);
+		if (i < base.length && (base[i] as AnyRow).id === id) i++;
+		if (row !== null) merged.push(row);
+	}
+	for (; i < base.length; i++) merged.push(base[i] as AnyRow);
+	return Object.freeze(merged);
+}
+
 class MemoryTx implements Tx {
 	private overlay: Overlay = new Map();
+	/**
+	 * The merged list of a table this transaction wrote, with the base list it
+	 * was merged over. Dropped when the table is written again and when the
+	 * overlay is cleared; an entry whose base is no longer the base's current
+	 * list (a savepoint reading through a parent that wrote since) is ignored.
+	 */
+	private merged = new Map<
+		TableName,
+		{ base: readonly AnyRow[]; rows: readonly AnyRow[] }
+	>();
 	private done = false;
 	private childOpen = false;
 
@@ -221,14 +253,23 @@ class MemoryTx implements Tx {
 					: ((written ?? undefined) as TableRows[T] | undefined);
 			},
 			list: <T extends TableName>(table: T) => {
-				const rows = new Map<string, AnyRow>();
-				for (const r of base.list(table)) rows.set(r.id, r);
-				for (const [id, r] of this.overlay.get(table) ?? [])
-					if (r === null) rows.delete(id);
-					else rows.set(id, r);
-				return [...rows.values()].sort(byId) as TableRows[T][];
+				const rows = base.list(table) as readonly AnyRow[];
+				const writes = this.overlay.get(table);
+				// A table this transaction never wrote is the base's own list.
+				if (writes === undefined || writes.size === 0)
+					return rows as readonly TableRows[T][];
+				const hit = this.merged.get(table);
+				if (hit?.base === rows) return hit.rows as readonly TableRows[T][];
+				const result = mergeSorted(rows, writes);
+				this.merged.set(table, { base: rows, rows: result });
+				return result as readonly TableRows[T][];
 			},
 		};
+	}
+
+	private clearWrites() {
+		this.overlay = new Map();
+		this.merged.clear();
 	}
 
 	private live() {
@@ -263,6 +304,7 @@ class MemoryTx implements Tx {
 		const writes = this.overlay.get(table) ?? new Map();
 		writes.set(id, row);
 		this.overlay.set(table, writes);
+		this.merged.delete(table);
 	}
 
 	async commit() {
@@ -271,7 +313,7 @@ class MemoryTx implements Tx {
 		try {
 			await this.hooks.commit(this.overlay);
 		} finally {
-			this.overlay = new Map();
+			this.clearWrites();
 			this.hooks.end();
 		}
 	}
@@ -279,7 +321,7 @@ class MemoryTx implements Tx {
 	rollback() {
 		if (this.done) return;
 		this.done = true;
-		this.overlay = new Map();
+		this.clearWrites();
 		this.hooks.end();
 	}
 
