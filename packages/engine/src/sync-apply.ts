@@ -394,7 +394,12 @@ export function applySharesSnapshot(tx: Writer, body: WireShares): void {
 
 /** Applies GET /sync/settings: the one settings row. An empty `defaultRateTypes` is left off the row. */
 export function applySettings(tx: Writer, body: WireSettings): void {
-	if (!Number.isInteger(body.startDay) || body.startDay < 1)
+	// 1 to 28: the contract's cap, so every month has the day.
+	if (
+		!Number.isInteger(body.startDay) ||
+		body.startDay < 1 ||
+		body.startDay > 28
+	)
 		throw new InvalidInputError("Settings has no valid start day");
 	tx.put("settings", {
 		id: SETTINGS_ID,

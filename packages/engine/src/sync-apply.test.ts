@@ -468,11 +468,16 @@ describe("applySettings", () => {
 		expect(row?.defaultRateTypes).toBeUndefined();
 	});
 
-	it("refuses a start day that is not a day", async () => {
+	it("refuses a start day outside 1 to 28 and writes nothing", async () => {
 		const tx = await new MemoryStore().begin();
-		expect(() => applySettings(tx, { ...SETTINGS, startDay: 0 })).toThrow(
-			InvalidInputError,
-		);
+		for (const startDay of [0, 29, 1.5, Number.NaN])
+			expect(() => applySettings(tx, { ...SETTINGS, startDay })).toThrow(
+				InvalidInputError,
+			);
+		expect(tx.list("settings")).toEqual([]);
+		// 28 is the last day every month has.
+		applySettings(tx, { ...SETTINGS, startDay: 28 });
+		expect(tx.get("settings", "user")?.startDay).toBe(28);
 		tx.rollback();
 	});
 });
