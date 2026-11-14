@@ -18,7 +18,7 @@
 import { Pool } from "pg";
 import { E2E_DATABASE_URL } from "./constants";
 import { assertE2eDatabase } from "./db-guard";
-import { SYNC_STATE_ROW } from "./sync-state";
+import { SYNC_STATE_EXISTS, SYNC_STATE_ROW } from "./sync-state";
 
 const KEYSTORE_TABLES = ["user_data_key", "instance_text_key"] as const;
 
@@ -45,8 +45,11 @@ export async function resetBeforeServer(url: string): Promise<number> {
 				`TRUNCATE ${tables.join(", ")} RESTART IDENTITY CASCADE`,
 			);
 		// The sync log's state row is schema, not data (see e2e/sync-state.ts).
-		await pool.query(SYNC_STATE_ROW);
-		await pool.query("SELECT sync_reset()");
+		const { rows } = await pool.query<{ exists: boolean }>(SYNC_STATE_EXISTS);
+		if (rows[0]?.exists) {
+			await pool.query(SYNC_STATE_ROW);
+			await pool.query("SELECT sync_reset()");
+		}
 		return tables.length;
 	} finally {
 		await pool.end();

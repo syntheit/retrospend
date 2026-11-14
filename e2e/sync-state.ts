@@ -7,3 +7,6 @@ export const SYNC_STATE_ROW = `INSERT INTO "sync_state" ("id", "stateOid", "data
 VALUES (1, '"sync_state"'::regclass::oid::bigint,
   (SELECT "oid"::bigint FROM pg_database WHERE "datname" = current_database()))
 ON CONFLICT ("id") DO NOTHING`;
+
+/** A new database is reset before its first migration, when the table does not exist yet. */
+export const SYNC_STATE_EXISTS = `SELECT to_regclass('public.sync_state') IS NOT NULL AS "exists"`;
