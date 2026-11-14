@@ -11,65 +11,73 @@ import {
 	applySettings,
 	applySharesSnapshot,
 	applySyncPage,
+	type WireAccount,
 	type WireCategory,
 	type WireExpense,
+	type WireLeg,
 	type WireShare,
+	type WireSnapshot,
 	type WireTemplate,
 } from "./sync-apply";
 
-const expense = (id: string, o: Partial<WireExpense> = {}): WireExpense => ({
-	id,
-	title: "row",
-	amount: "1000",
-	currency: "ARS",
-	date: "2026-10-05T15:00:00.000Z",
-	categoryId: null,
-	amountInUSD: "0.67",
-	exchangeRate: "1500",
-	pricingSource: "MANUAL",
-	location: null,
-	description: null,
-	status: "FINALIZED",
-	isAmortizedParent: false,
-	isAmortizedChild: false,
-	parentId: null,
-	amortizeMode: "INSTALLMENTS",
-	keepInWealth: false,
-	recurringTemplateId: null,
-	budgetEnvelopeId: null,
-	excludeFromAnalytics: false,
-	direction: "OUT",
-	entryKind: "STANDARD",
-	inType: null,
-	rateType: "blue",
-	homeCurrency: "ARS",
-	homeRate: "1",
-	homeAmount: "1000",
-	...o,
-});
+// Rows hold the fields a table keeps; the wire types are the contract's whole
+// rows, so each builder casts what it leaves out.
+const expense = (id: string, o: Partial<WireExpense> = {}) =>
+	({
+		id,
+		title: "row",
+		amount: "1000",
+		currency: "ARS",
+		date: "2026-10-05T15:00:00.000Z",
+		categoryId: null,
+		amountInUSD: "0.67",
+		exchangeRate: "1500",
+		pricingSource: "MANUAL",
+		location: null,
+		description: null,
+		status: "FINALIZED",
+		isAmortizedParent: false,
+		isAmortizedChild: false,
+		parentId: null,
+		amortizeMode: "INSTALLMENTS",
+		keepInWealth: false,
+		recurringTemplateId: null,
+		budgetEnvelopeId: null,
+		excludeFromAnalytics: false,
+		direction: "OUT",
+		entryKind: "STANDARD",
+		inType: null,
+		rateType: "blue",
+		homeCurrency: "ARS",
+		homeRate: "1",
+		homeAmount: "1000",
+		...o,
+	}) as WireExpense;
 
-const category = (id: string, kind = "EXPENSE"): WireCategory => ({
-	id,
-	name: `Name ${id}`,
-	color: "blue",
-	icon: null,
-	kind,
-});
+const category = (id: string, kind = "EXPENSE") =>
+	({
+		id,
+		name: `Name ${id}`,
+		color: "blue",
+		icon: null,
+		kind,
+	}) as WireCategory;
 
-const template = (id: string, categoryId: string | null): WireTemplate => ({
-	id,
-	name: "Rent",
-	amount: "300000",
-	currency: "ARS",
-	categoryId,
-	direction: "OUT",
-	amountMode: "FIXED",
-	frequency: "MONTHLY",
-	nextDueDate: "2026-11-01T03:00:00.000Z",
-	anchorDay: 1,
-	autoPay: false,
-	isActive: true,
-});
+const template = (id: string, categoryId: string | null) =>
+	({
+		id,
+		name: "Rent",
+		amount: "300000",
+		currency: "ARS",
+		categoryId,
+		direction: "OUT",
+		amountMode: "FIXED",
+		frequency: "MONTHLY",
+		nextDueDate: "2026-11-01T03:00:00.000Z",
+		anchorDay: 1,
+		autoPay: false,
+		isActive: true,
+	}) as WireTemplate;
 
 const share = (id: string, o: Partial<WireShare> = {}): WireShare => ({
 	id,
@@ -280,7 +288,7 @@ describe("applySyncPage", () => {
 						closedAt: null,
 						createdAt: "2026-01-01T00:00:00.000Z",
 					},
-				],
+				] as WireAccount[],
 				...none,
 			});
 			applySyncPage(tx, "legs", {
@@ -296,7 +304,7 @@ describe("applySyncPage", () => {
 						source: "TRANSFER",
 						createdAt: "2026-10-01T08:00:00.000Z",
 					},
-				],
+				] as WireLeg[],
 				...none,
 			});
 			applySyncPage(tx, "snapshots", {
@@ -310,7 +318,7 @@ describe("applySyncPage", () => {
 						exchangeRateType: null,
 						recordedAt: "2026-01-01T09:00:00.000Z",
 					},
-				],
+				] as WireSnapshot[],
 				...none,
 			});
 			applySyncPage(tx, "rateSwitches", {

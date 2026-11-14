@@ -5,10 +5,9 @@
  * Production code for the pull loop; the parity harness drives the same
  * functions from real route responses.
  *
- * The engine depends on the domain only, so the wire shapes are declared here
- * as structural interfaces holding just the fields a table keeps. A pg test
- * assigns the contract's DTOs to them, so a contract change that drops or
- * retypes one of these fields fails to compile there.
+ * The wire shapes are the contract's DTOs, so there is one definition of them
+ * and a contract change that drops or retypes a field the engine reads fails
+ * to compile here.
  *
  * Every page is checked before its first write (a decimal that is not plain
  * decimal text, an instant that is not a date), so a bad page leaves the
@@ -29,9 +28,18 @@
  * category arrives, in any order: a category that arrives after its expense
  * fills the kind in, and a deleted one clears it.
  */
-import type { AccountLegSource } from "@retrospend/domain/accounts/apply-legs";
-import type { AssetType } from "@retrospend/domain/accounts/places";
-import type { RecurringFrequency } from "@retrospend/domain/recurring";
+import type {
+	SyncAccountDto,
+	SyncAccountLegDto,
+	SyncAccountRateTypeDto,
+	SyncAccountSnapshotDto,
+	SyncCategoryDto,
+	SyncExpenseDto,
+	SyncRecurringTemplateDto,
+	SyncSettingsDto,
+	SyncShareDto,
+	SyncSharesDto,
+} from "@retrospend/api-contract";
 import type { TableName, TableRows, Writer } from "./port";
 import {
 	BUDGET_SNAPSHOT_ID,
@@ -43,145 +51,26 @@ import {
 	BOOK_ROWS,
 	type BookWireOf,
 	budgetSnapshotOf,
-	type WireBudgetBlock,
 } from "./sync-apply-book";
 import { decimal, decimalOrNull, instant, instantOrNull } from "./sync-values";
 
-export interface WireExpense {
-	readonly id: string;
-	readonly title: string;
-	readonly amount: string;
-	readonly currency: string;
-	readonly date: string;
-	readonly categoryId: string | null;
-	readonly amountInUSD: string;
-	readonly exchangeRate: string;
-	readonly pricingSource: string;
-	readonly location: string | null;
-	readonly description: string | null;
-	readonly status: string;
-	readonly isAmortizedParent: boolean;
-	readonly isAmortizedChild: boolean;
-	readonly parentId: string | null;
-	readonly amortizeMode: string;
-	readonly keepInWealth: boolean;
-	readonly recurringTemplateId: string | null;
-	readonly budgetEnvelopeId: string | null;
-	readonly excludeFromAnalytics: boolean;
-	readonly direction: string;
-	readonly entryKind: string;
-	readonly inType: string | null;
-	readonly rateType: string | null;
-	readonly homeCurrency: string | null;
-	readonly homeRate: string | null;
-	readonly homeAmount: string | null;
-}
+export type WireExpense = SyncExpenseDto;
+export type WireCategory = SyncCategoryDto;
+export type WireTemplate = SyncRecurringTemplateDto;
+export type WireAccount = SyncAccountDto;
+export type WireSnapshot = SyncAccountSnapshotDto;
+export type WireLeg = SyncAccountLegDto;
+export type WireRateSwitch = SyncAccountRateTypeDto;
+export type WireShare = SyncShareDto;
+export type WireSettings = SyncSettingsDto;
 
-export interface WireCategory {
-	readonly id: string;
-	readonly name: string;
-	readonly color: string;
-	readonly icon: string | null;
-	readonly kind: string;
-}
-
-export interface WireTemplate {
-	readonly id: string;
-	readonly name: string;
-	readonly amount: string;
-	readonly currency: string;
-	readonly categoryId: string | null;
-	readonly direction: "OUT" | "IN";
-	readonly amountMode: string;
-	readonly frequency: RecurringFrequency;
-	readonly nextDueDate: string;
-	readonly anchorDay: number | null;
-	readonly autoPay: boolean;
-	readonly isActive: boolean;
-}
-
-export interface WireAccount {
-	readonly id: string;
-	readonly type: AssetType;
-	readonly currency: string;
-	readonly balance: string;
-	readonly exchangeRate: string | null;
-	readonly exchangeRateType: string | null;
-	readonly interestRate: string | null;
-	readonly minimumPayment: string | null;
-	readonly dueDate: number | null;
-	readonly closedAt: string | null;
-	readonly createdAt: string;
-}
-
-export interface WireSnapshot {
-	readonly id: string;
-	readonly accountId: string;
-	readonly date: string;
-	readonly balance: string;
-	readonly currency: string | null;
-	readonly exchangeRateType: string | null;
-	readonly recordedAt: string;
-}
-
-export interface WireLeg {
-	readonly id: string;
-	readonly accountId: string | null;
-	readonly currency: string;
-	readonly amount: string;
-	readonly homeAmount: string | null;
-	readonly homeCurrency: string | null;
-	readonly date: string;
-	readonly source: AccountLegSource;
-	readonly createdAt: string;
-}
-
-export interface WireRateSwitch {
-	readonly id: string;
-	readonly accountId: string;
-	readonly from: string;
-	readonly type: string | null;
-	readonly previousType: string | null;
-	readonly createdAt: string;
-}
-
-export interface WireShare {
-	readonly id: string;
-	readonly expenseId: string;
-	readonly shareAmount: string;
-	readonly verificationStatus: string;
-	readonly currency: string;
-	readonly date: string;
-	readonly projectId: string | null;
-	readonly exchangeRate: string | null;
-	readonly expenseCategoryId: string | null;
-}
-
-export interface WireMoney {
-	readonly minor: number;
-	readonly currency: string;
-}
-
-export interface WireShares {
-	readonly items: readonly WireShare[];
-	readonly owed:
-		| { readonly owedToYou: WireMoney; readonly youOwe: WireMoney }
-		| { readonly missingRates: readonly string[] };
-	/**
-	 * Only in a response to `budget=1`. Absent: not asked, the stored snapshot
-	 * stays. Null: nothing to read on a device, the snapshot is cleared.
-	 * Unavailable: this pull could not make it, the previous snapshot stays.
-	 */
-	readonly budget?: WireBudgetBlock | { readonly unavailable: true } | null;
-}
-
-export interface WireSettings {
-	readonly homeCurrency: string;
-	readonly timeZone: string;
-	readonly startDay: number;
-	readonly hiddenProjectIds: readonly string[];
-	readonly defaultRateTypes: Readonly<Record<string, string>>;
-}
+/**
+ * The shares snapshot. `budget` is only in a response to `budget=1`. Absent:
+ * not asked, the stored snapshot stays. Null: nothing to read on a device, the
+ * snapshot is cleared. Unavailable: this pull could not make it, the previous
+ * snapshot stays.
+ */
+export type WireShares = SyncSharesDto;
 
 /** The entities of a cursor pull the device applies, by the table they fill. */
 export interface WireOf extends BookWireOf {

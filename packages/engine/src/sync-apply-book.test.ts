@@ -13,6 +13,7 @@ import {
 	applySharesSnapshot,
 	applySyncPage,
 	type SyncEntity,
+	type WireExpense,
 	type WireOf,
 	type WireShares,
 } from "./sync-apply";
@@ -440,7 +441,7 @@ describe("expense and account fields the budget reads", () => {
 						homeRate: "1",
 						homeAmount: "600000",
 					},
-				],
+				] as WireExpense[],
 				...none,
 			}),
 		);
@@ -979,7 +980,7 @@ describe("applySharesSnapshot, the budget snapshot", () => {
 		id: "s1",
 		expenseId: "x1",
 		shareAmount: "250",
-		verificationStatus: "ACCEPTED",
+		verificationStatus: "ACCEPTED" as const,
 		currency: "ARS",
 		date: "2026-03-06T15:00:00.000Z",
 		projectId: null,
