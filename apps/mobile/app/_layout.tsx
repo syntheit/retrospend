@@ -100,6 +100,7 @@ function Routes() {
 				<Stack.Screen name="shared/[id]" />
 				<Stack.Protected guard={GALLERY_ENABLED}>
 					<Stack.Screen name="gallery" />
+					<Stack.Screen name="crypto-bench" />
 				</Stack.Protected>
 			</Stack>
 		</>
