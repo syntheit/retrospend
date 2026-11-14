@@ -42,7 +42,12 @@
 		"accept": "Annehmen",
 		"accepted": "{title} angenommen",
 		"rejected": "{title} abgelehnt",
-		"failed": "Speichern hat nicht geklappt. Versuch es noch einmal."
+		"failed": "Speichern hat nicht geklappt. Versuch es noch einmal.",
+		"refused": {
+			"share_locked": "Diese Ausgabe ist ausgeglichen, nutze stattdessen „Um Korrektur bitten“.",
+			"share_is_correction": "Eine Korrektur lässt sich nicht ablehnen, nutze stattdessen „Um Korrektur bitten“.",
+			"share_reject_reverses_payment": "Du hast diesen Anteil schon bezahlt, nutze stattdessen „Um Korrektur bitten“."
+		}
 	},
 	"addPerson": {
 		"title": "Person hinzufügen",

@@ -32,7 +32,17 @@ describe("mergeOverlappingSplitRows", () => {
 		expect(update.text).toContain(
 			'COALESCE(target."shareUnits", 0) + COALESCE(source."shareUnits", 0)',
 		);
-		expect(update.values).toEqual(["shadow", "ghost-1", "user", "bob"]);
+		// The uncounted list is inlined four times (a raw SQL fragment); the
+		// four people are the only bound values.
+		const bound = update.values.filter((v) => typeof v === "string");
+		expect(bound).toEqual(["shadow", "ghost-1", "user", "bob"]);
+		expect(
+			update.values
+				.filter((v) => typeof v !== "string")
+				.map((v) => (v as { text: string }).text),
+		).toEqual(Array(4).fill("'REJECTED'"));
+		// Only a counted and an uncounted answer go back to PENDING.
+		expect(update.text).toContain(`ELSE 'PENDING'::"VerificationStatus"`);
 
 		const del = sqlOf(tx.$executeRaw.mock.calls[1] as unknown[]);
 		expect(del.text).toContain("DELETE FROM split_participant");

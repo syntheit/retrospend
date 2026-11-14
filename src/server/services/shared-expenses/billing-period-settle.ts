@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient } from "~prisma";
 import { logAudit } from "./audit-log";
-import { BALANCE_SETTLEMENT_STATUSES } from "./balance";
+import { BALANCE_SETTLEMENT_STATUSES, COUNTED_SHARE } from "./balance";
 import {
 	computePaymentOnlyOutstanding,
 	computePeriodOutstanding,
@@ -16,6 +16,7 @@ const txForPlanSelect = {
 	paidByType: true,
 	paidById: true,
 	splitParticipants: {
+		where: COUNTED_SHARE,
 		select: {
 			participantType: true,
 			participantId: true,

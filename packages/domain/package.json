@@ -41,6 +41,7 @@
 		"./recurring": "./src/recurring.ts",
 		"./recurring-view": "./src/recurring-view.ts",
 		"./row-money": "./src/row-money.ts",
+		"./share-status": "./src/share-status.ts",
 		"./shared-split-computation": "./src/shared-split-computation.ts",
 		"./spend-pace": "./src/spend-pace.ts",
 		"./spent": "./src/spent.ts",

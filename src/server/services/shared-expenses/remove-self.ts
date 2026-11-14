@@ -1,3 +1,4 @@
+import { shareCounts } from "@retrospend/domain/share-status";
 import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient, SplitParticipant } from "~prisma";
 import { logAudit } from "./audit-log";
@@ -111,10 +112,10 @@ export async function removeSelfIn(
 	const iPaid =
 		txn.paidByType === actor.participantType &&
 		txn.paidById === actor.participantId;
-	const myShare = mySplits.reduce(
-		(sum, sp) => sum.plus(dec(sp.shareAmount)),
-		dec(0),
-	);
+	// A rejected share is not in the balance, so removing it flips nothing.
+	const myShare = mySplits
+		.filter((sp) => shareCounts(sp.verificationStatus))
+		.reduce((sum, sp) => sum.plus(dec(sp.shareAmount)), dec(0));
 	if (!confirmBalanceChange && !iPaid && myShare.gt(0)) {
 		const effect = await effectOfRemovingShare(
 			tx as unknown as PrismaClient,

@@ -33,6 +33,7 @@ import {
 	byCategory,
 	type CategoryInput,
 	linesOf,
+	myShareOf,
 	shareAtHome,
 } from "./page-figures";
 import { refKey } from "~/server/services/shared-expenses/ledger-posting";
@@ -441,7 +442,7 @@ async function readPage(
 					currency: e.currency,
 					amount: e.amount,
 					category: e.category,
-					myShare: e.splitParticipants.find(isMe)?.shareAmount ?? null,
+					myShare: myShareOf(e, isMe),
 				})),
 			),
 		payments: payments.map((p) => ({

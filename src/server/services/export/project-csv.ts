@@ -4,6 +4,7 @@
  * comes from the project summary's matcher on minor units, so these files
  * agree with the Summary tab to the last digit.
  */
+import { shareCounts } from "@retrospend/domain/share-status";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import { csvMeta, generateCsv } from "~/lib/csv";
@@ -78,6 +79,7 @@ const splitDetails = (
 			participantType: string;
 			participantId: string;
 			shareAmount: DecimalLike;
+			verificationStatus: string;
 		}>;
 	},
 	names: ReadonlyMap<string, string>,
@@ -87,7 +89,11 @@ const splitDetails = (
 		.map((sp) => ({
 			name: nameOf(names, sp),
 			key: refKeyOf(sp),
-			share: amountText(sp.shareAmount, tx.currency),
+			// A rejected share is not owed: 0, and the row's Status says Disputed.
+			share: amountText(
+				shareCounts(sp.verificationStatus) ? sp.shareAmount : "0",
+				tx.currency,
+			),
 		}))
 		.sort((a, b) => compareText(a.name, b.name) || compareText(a.key, b.key))
 		.map(

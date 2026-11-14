@@ -1851,7 +1851,12 @@
 		"previewError": "Couldn't check this. Try again.",
 		"asked": "Asked {name} to fix it",
 		"undone": "Answer taken back",
-		"undoError": "Couldn't take the answer back. Try again."
+		"undoError": "Couldn't take the answer back. Try again.",
+		"refused": {
+			"share_locked": "This expense is settled, so use Ask to fix instead.",
+			"share_is_correction": "A correction can't be rejected, so use Ask to fix instead.",
+			"share_reject_reverses_payment": "You already paid this share, so use Ask to fix instead."
+		}
 	},
 	"projects": {
 		"title": "Projects",

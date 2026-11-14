@@ -12,6 +12,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { useToast } from "~/components/ui/toast";
 import { api } from "~/trpc/react";
 import { firstName } from "./filter";
+import { shareRefusalOf } from "./share-refusal";
 import type { NeedsItemDTO } from "./types";
 
 type Verify = Extract<NeedsItemDTO, { kind: "verify" }>;
@@ -88,8 +89,16 @@ function ReviewFooter({ item, onDone }: { item: Verify; onDone: () => void }) {
 		toast.saved(message);
 		onDone();
 	};
-	const fail = (e: unknown) =>
-		toast.failed(e instanceof Error ? e.message : t("failed"));
+	const fail = (e: unknown) => {
+		const refusal = shareRefusalOf(e);
+		toast.failed(
+			refusal
+				? t(`refused.${refusal}`)
+				: e instanceof Error
+					? e.message
+					: t("failed"),
+		);
+	};
 	if (rejecting)
 		return (
 			<div className="flex w-full flex-col gap-2">

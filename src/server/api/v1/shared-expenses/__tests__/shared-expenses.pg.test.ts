@@ -437,7 +437,7 @@ describe("/api/v1/shared-expenses", () => {
 		await expectProblem(
 			await post("/shared-expenses/undo", { token: answered.undo }, asMartin),
 			409,
-			"conflict",
+			"share_locked",
 		);
 		await expectProblem(
 			await post(
@@ -446,7 +446,7 @@ describe("/api/v1/shared-expenses", () => {
 				asMartin,
 			),
 			409,
-			"conflict",
+			"share_locked",
 		);
 		// The share was left as answered.
 		await expect(
@@ -454,6 +454,110 @@ describe("/api/v1/shared-expenses", () => {
 				where: { transactionId: made.id, participantId: martin.user.id },
 			}),
 		).resolves.toMatchObject({ verificationStatus: "ACCEPTED" });
+	});
+
+	it("answers a refused answer with a problem code of its own, in the preview and the write", async () => {
+		// A pair of their own per case: a balance is the whole pair's, so one
+		// case's expenses must not cover another's payment.
+		const world = async () => {
+			const payer = await arsUser();
+			const debtor = await arsUser();
+			return {
+				payer,
+				debtor,
+				asDebtor: await asMobile(debtor.user.id),
+				seed: (description: string, extra: Record<string, unknown> = {}) =>
+					seedFor(payer, debtor, description, extra),
+			};
+		};
+		const seedFor = (
+			payer: TestUser,
+			debtor: TestUser,
+			description: string,
+			extra: Record<string, unknown> = {},
+		) =>
+			adminDb.sharedTransaction.create({
+				data: {
+					description,
+					amount: "90",
+					currency: "ARS",
+					date: new Date("2026-10-10"),
+					paidByType: "user",
+					paidById: payer.user.id,
+					createdByType: "user",
+					createdById: payer.user.id,
+					splitParticipants: {
+						create: [
+							{
+								participantType: "user",
+								participantId: payer.user.id,
+								shareAmount: "45",
+								verificationStatus: "ACCEPTED",
+							},
+							{
+								participantType: "user",
+								participantId: debtor.user.id,
+								shareAmount: "45",
+								verificationStatus: "PENDING",
+							},
+						],
+					},
+					...extra,
+				},
+			});
+		const refuse = async (
+			asDebtor: Record<string, string>,
+			id: string,
+			choice: "accept" | "reject",
+			code: string,
+		) => {
+			for (const path of [
+				`/shared-expenses/${id}/${choice}/preview`,
+				`/shared-expenses/${id}/${choice}`,
+			])
+				await expectProblem(await post(path, {}, asDebtor), 409, code);
+		};
+
+		// Settled: neither answer may change.
+		const a = await world();
+		const settled = await a.seed("Settled already", { isLocked: true });
+		await refuse(a.asDebtor, settled.id, "reject", "share_locked");
+		await refuse(a.asDebtor, settled.id, "accept", "share_locked");
+
+		// A correction of an expense is undone, not rejected (the corrected one too).
+		const b = await world();
+		const corrected = await b.seed("Has a correction");
+		await b.seed("The correction", { correctsId: corrected.id });
+		await refuse(b.asDebtor, corrected.id, "reject", "share_is_correction");
+
+		// The debtor paid ARS 45 already: rejecting would leave the payer owing him.
+		const c2 = await world();
+		const paid = await c2.seed("Paid already");
+		const { payer, debtor } = c2;
+		await adminDb.settlement.create({
+			data: {
+				fromParticipantType: "user",
+				fromParticipantId: debtor.user.id,
+				toParticipantType: "user",
+				toParticipantId: payer.user.id,
+				amount: "45",
+				currency: "ARS",
+				status: "FINALIZED",
+			},
+		});
+		await refuse(c2.asDebtor, paid.id, "reject", "share_reject_reverses_payment");
+
+		// Nothing was written by any of them.
+		for (const [id, who] of [
+			[settled.id, a.debtor],
+			[corrected.id, b.debtor],
+			[paid.id, debtor],
+		] as const)
+			expect(
+				(await row(id))?.splitParticipants.find(
+					(p) => p.participantId === who.user.id,
+				)?.verificationStatus,
+			).toBe("PENDING");
 	});
 
 	it("refuses another person's undo token for an answer", async () => {

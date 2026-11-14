@@ -3,7 +3,10 @@
  * check access first (requireProjectRole or the public-visibility test).
  */
 import { TRPCError } from "@trpc/server";
-import { BALANCE_SETTLEMENT_STATUSES } from "~/server/services/shared-expenses/balance";
+import {
+	BALANCE_SETTLEMENT_STATUSES,
+	COUNTED_SHARE,
+} from "~/server/services/shared-expenses/balance";
 import {
 	buildContactVisibility,
 	redactContact,
@@ -46,6 +49,7 @@ async function settledByProject(
 				paidByType: true,
 				paidById: true,
 				splitParticipants: {
+					where: COUNTED_SHARE,
 					select: {
 						participantType: true,
 						participantId: true,

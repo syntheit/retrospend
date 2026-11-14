@@ -410,12 +410,12 @@
 		"src/server/api/routers/shared-transaction.ts": 53,
 		"src/server/services/import-queue.service.ts": 375,
 		"src/server/services/shared-expenses/audit-log-formatter.ts": 338,
-		"src/server/services/shared-expenses/balances-perspective.service.ts": 15,
+		"src/server/services/shared-expenses/balances-perspective.service.ts": 13,
 		"src/server/services/shared-expenses/people.service.ts": 1003,
 		"src/server/services/shared-expenses/settlement.service.ts": 368,
-		"src/server/services/shared-expenses/test-utils.ts": 974,
+		"src/server/services/shared-expenses/test-utils.ts": 971,
 		"src/server/services/shared-expenses/transaction.service.ts": 505,
-		"src/server/services/shared-expenses/verification.service.ts": 55
+		"src/server/services/shared-expenses/verification.service.ts": 54
 	},
 	"UI-151": {
 		"src/app/api/import/process/route.ts": 1,

@@ -13,6 +13,7 @@
  * credit" stays the choice. Like voidAutoFinalizedSettlement, each void is
  * logged on the group and reopens the billing periods it had settled.
  */
+import { shareCounts } from "@retrospend/domain/share-status";
 import { TRPCError } from "@trpc/server";
 import { toMinor } from "~/server/services/envelope/units";
 import type { Prisma, PrismaClient } from "~prisma";
@@ -36,6 +37,7 @@ export interface CoveredSplit {
 		participantType: string;
 		participantId: string;
 		shareAmount: Prisma.Decimal | number;
+		verificationStatus: string;
 	}>;
 }
 
@@ -54,6 +56,8 @@ async function coveringGroups(
 	for (const sp of split.splitParticipants) {
 		const who = refOf(sp.participantType, sp.participantId);
 		if (sameParticipant(who, payer)) continue;
+		// A rejected share is not in the balance, so its removal changes nothing.
+		if (!shareCounts(sp.verificationStatus)) continue;
 		const { minorByCurrency } = await computeBalance(
 			tx as unknown as PrismaClient,
 			payer,

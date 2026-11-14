@@ -1851,7 +1851,12 @@
 		"previewError": "Das konnte nicht geprüft werden. Versuche es erneut.",
 		"asked": "{name} wurde um eine Korrektur gebeten",
 		"undone": "Antwort zurückgenommen",
-		"undoError": "Die Antwort konnte nicht zurückgenommen werden. Versuche es erneut."
+		"undoError": "Die Antwort konnte nicht zurückgenommen werden. Versuche es erneut.",
+		"refused": {
+			"share_locked": "Diese Ausgabe ist ausgeglichen, nutze stattdessen „Korrektur erbitten“.",
+			"share_is_correction": "Eine Korrektur lässt sich nicht ablehnen, nutze stattdessen „Korrektur erbitten“.",
+			"share_reject_reverses_payment": "Du hast diesen Anteil schon bezahlt, nutze stattdessen „Korrektur erbitten“."
+		}
 	},
 	"projects": {
 		"title": "Projekte",

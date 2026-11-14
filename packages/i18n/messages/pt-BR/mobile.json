@@ -1851,7 +1851,12 @@
 		"previewError": "Não foi possível verificar isto. Tente de novo.",
 		"asked": "Você pediu a {name} que corrija",
 		"undone": "Resposta desfeita",
-		"undoError": "Não foi possível desfazer a resposta. Tente de novo."
+		"undoError": "Não foi possível desfazer a resposta. Tente de novo.",
+		"refused": {
+			"share_locked": "Esta despesa já foi acertada, use Pedir correção.",
+			"share_is_correction": "Uma correção não pode ser recusada, use Pedir correção.",
+			"share_reject_reverses_payment": "Você já pagou esta parte, use Pedir correção."
+		}
 	},
 	"projects": {
 		"title": "Projetos",

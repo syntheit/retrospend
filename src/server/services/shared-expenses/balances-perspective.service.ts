@@ -1,6 +1,6 @@
 import { getImageUrl } from "~/server/storage";
 import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
-import { majorByCurrency } from "./balance";
+import { COUNTED_SHARE, majorByCurrency } from "./balance";
 import { computeBalanceBatch } from "./balance-batch";
 import { resolveClaimAliases } from "./identity";
 import type { ParticipantRef } from "./types";
@@ -184,12 +184,10 @@ export async function getBalancesFromPerspective(
 				date: true,
 				paidByType: true,
 				paidById: true,
+				// Counted shares only, so the lines sum to the balance.
 				splitParticipants: {
-					select: {
-						participantType: true,
-						participantId: true,
-						shareAmount: true,
-					},
+					where: COUNTED_SHARE,
+					select: { participantType: true, participantId: true, shareAmount: true },
 				},
 			},
 			orderBy: { date: "desc" },

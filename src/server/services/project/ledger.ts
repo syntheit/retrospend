@@ -1,4 +1,7 @@
-import { BALANCE_SETTLEMENT_STATUSES } from "~/server/services/shared-expenses/balance";
+import {
+	BALANCE_SETTLEMENT_STATUSES,
+	COUNTED_SHARE,
+} from "~/server/services/shared-expenses/balance";
 import { canonicalizeProjectLedger } from "~/server/services/shared-expenses/identity";
 import type { Prisma, PrismaClient } from "~prisma";
 
@@ -36,6 +39,7 @@ export async function fetchProjectLedger(
 			paidByType: true,
 			paidById: true,
 			splitParticipants: {
+				where: COUNTED_SHARE,
 				select: {
 					participantType: true,
 					participantId: true,

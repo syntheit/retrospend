@@ -14,6 +14,7 @@ import { priceShare, shareRateOf } from "@retrospend/domain/spent";
 import type { Prisma, PrismaClient } from "~prisma";
 import { findExchangeRatesForDates } from "../exchange-rates";
 import type { RateCache } from "./rate-cache";
+import { COUNTED_SHARE } from "./shared-expenses/balance";
 import {
 	buildCallerRoleMap,
 	deriveCanModify,
@@ -157,7 +158,7 @@ export function shareParticipations(
 		where: {
 			participantType: "user",
 			participantId: userId,
-			verificationStatus: { not: "REJECTED" },
+			...COUNTED_SHARE,
 			transaction: whereTransaction,
 		},
 		select: {

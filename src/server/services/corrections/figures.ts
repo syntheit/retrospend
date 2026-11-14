@@ -19,6 +19,7 @@ import type {
 } from "~/server/figures/registry";
 import { sumMinor, toMinor } from "~/server/services/envelope/units";
 import { parsePersonKey } from "~/server/services/payments/view";
+import { COUNTED_SHARE } from "~/server/services/shared-expenses/balance";
 
 type Part = "paid" | "share";
 
@@ -43,6 +44,7 @@ async function changed(
 			paidByType: true,
 			paidById: true,
 			splitParticipants: {
+				where: COUNTED_SHARE,
 				select: {
 					participantType: true,
 					participantId: true,

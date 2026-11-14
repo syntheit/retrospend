@@ -348,10 +348,9 @@ describe("Suite 1B: Rejection flow: reject -> edit -> re-accept", () => {
 		expect(second.rejectionPendingNotification).toBe(false);
 	});
 
-	it("alice edits the expense in a manual-approval project; bob's status resets to PENDING", async () => {
-		// Reset-to-PENDING on edit only happens when the project requires manual
-		// approval (autoAcceptSplits off). In an auto-accept project or a standalone
-		// expense, an edit re-accepts non-actor splits automatically instead.
+	it("alice edits only the description in a manual-approval project; bob's rejection stays", async () => {
+		// A title edit is not a money field, so every answer stays: a rejected
+		// share stays rejected (not owed). Money edits reset it (next tests).
 		const project = addProject(db, {
 			createdById: ALICE,
 			autoAcceptSplits: false,
@@ -383,7 +382,7 @@ describe("Suite 1B: Rejection flow: reject -> edit -> re-accept", () => {
 			description: "Dinner: corrected",
 		});
 
-		// Bob should be back to PENDING
+		// Bob's answer is untouched
 		const bobSplit = (
 			updated as {
 				splitParticipants: Array<{
@@ -392,9 +391,9 @@ describe("Suite 1B: Rejection flow: reject -> edit -> re-accept", () => {
 				}>;
 			}
 		).splitParticipants.find((sp) => sp.participantId === BOB);
-		expect(bobSplit?.verificationStatus).toBe("PENDING");
+		expect(bobSplit?.verificationStatus).toBe("REJECTED");
 
-		// Alice's own split should remain ACCEPTED (the editor's split isn't reset)
+		// Alice's own split should remain ACCEPTED
 		const aliceSplit = (
 			updated as {
 				splitParticipants: Array<{

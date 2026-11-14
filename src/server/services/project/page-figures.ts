@@ -3,8 +3,14 @@
  * the read services load the rows and pass them in. Currencies are never
  * converted or netted against each other.
  */
+import { shareCounts } from "@retrospend/domain/share-status";
 import type { Money } from "~/server/figures/registry";
-import { ratioBp, sumMinor, toMinor } from "~/server/services/envelope/units";
+import {
+	dec,
+	ratioBp,
+	sumMinor,
+	toMinor,
+} from "~/server/services/envelope/units";
 import { toPaymentCurrency } from "~/server/services/payments/allocate";
 import type { Quote } from "~/server/services/payments/types";
 
@@ -84,6 +90,42 @@ const toMoney = (by: Map<string, number[]>): Money[] =>
 	[...by.entries()]
 		.map(([currency, parts]) => ({ minor: sumMinor(parts), currency }))
 		.sort((a, b) => (a.currency < b.currency ? -1 : 1));
+
+/**
+ * Your share of one expense as the Summary counts it, so the category lines
+ * add up to your share: your own row unless you rejected it, plus, when you
+ * paid, the rows nobody owes (rejected shares), which the payer absorbs. Null
+ * when you are not in it.
+ */
+export function myShareOf(
+	e: {
+		paidByType: string;
+		paidById: string;
+		splitParticipants: ReadonlyArray<{
+			participantType: string;
+			participantId: string;
+			shareAmount: Amount;
+			verificationStatus: string;
+		}>;
+	},
+	isMe: (r: { participantType: string; participantId: string }) => boolean,
+): Amount | null {
+	const mine = e.splitParticipants.filter(isMe);
+	const absorbed = isMe({
+		participantType: e.paidByType,
+		participantId: e.paidById,
+	})
+		? e.splitParticipants.filter((sp) => !shareCounts(sp.verificationStatus))
+		: [];
+	const parts = [
+		...mine.filter((sp) => shareCounts(sp.verificationStatus)),
+		...absorbed,
+	];
+	if (parts.length === 0) return null;
+	return parts
+		.map((sp) => dec(sp.shareAmount.toString()))
+		.reduce((sum, d) => sum.plus(d), dec(0));
+}
 
 /**
  * The group's spending and yours by category, biggest group amount first

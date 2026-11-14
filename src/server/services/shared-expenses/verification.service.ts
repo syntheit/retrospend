@@ -213,7 +213,7 @@ export class VerificationService {
 
 	/**
 	 * Bulk-accept multiple pending shared transactions in a single transaction.
-	 * Skips already-accepted items (idempotent). Returns the count of newly accepted items.
+	 * Skips accepted shares (idempotent) and settled expenses (answer-guard.ts).
 	 */
 	async bulkAccept(txnIds: string[]): Promise<{ accepted: number }> {
 		if (txnIds.length === 0) return { accepted: 0 };
@@ -226,10 +226,9 @@ export class VerificationService {
 					participantId: this.actor.participantId,
 					verificationStatus: "PENDING",
 					transactionId: { in: txnIds },
+					transaction: { isLocked: false },
 				},
-				include: {
-					transaction: { select: { id: true, projectId: true } },
-				},
+				include: { transaction: { select: { id: true, projectId: true } } },
 			});
 
 			if (pending.length === 0) return { accepted: 0 };

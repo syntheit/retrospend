@@ -10,6 +10,7 @@
  * - `settled: "VOID_PAYMENT"`: the payments that covered it are voided in
  *   the same transaction (void-covering.ts).
  */
+import { shareCounts } from "@retrospend/domain/share-status";
 import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient } from "~prisma";
 import {
@@ -53,6 +54,8 @@ async function deletionEffect(
 			sp.participantId === payer.participantId
 		)
 			continue;
+		// A rejected share is not in the balance, so deleting it changes nothing.
+		if (!shareCounts(sp.verificationStatus)) continue;
 		// This participant contributes debt only if they were charged a share.
 		const share = dec(sp.shareAmount);
 		if (toMinor(share, existing.currency) <= 0) continue;

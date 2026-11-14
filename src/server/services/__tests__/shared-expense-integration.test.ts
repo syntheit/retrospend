@@ -145,7 +145,7 @@ describe("getSharedExpenseShares", () => {
 		const where = db.splitParticipant.findMany.mock.calls[0]?.[0]?.where;
 		expect(where).toMatchObject({
 			participantId: "user-1",
-			verificationStatus: { not: "REJECTED" },
+			verificationStatus: { notIn: ["REJECTED"] },
 		});
 	});
 });

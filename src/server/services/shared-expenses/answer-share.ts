@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import type { Prisma, VerificationStatus } from "~prisma";
+import { assertAnswerAllowed } from "./answer-guard";
 import { logAudit } from "./audit-log";
 import type { ParticipantRef } from "./types";
 
@@ -20,7 +21,9 @@ const ACCEPTED: VerificationStatus[] = ["ACCEPTED", "AUTO_ACCEPTED"];
  * accept, or reject with an optional reason. Answering the same way twice
  * changes nothing (`changed` false). The web's VerificationService.accept and
  * .reject and the v1 money mutation (answer-share.mutation.ts) run this one
- * function, so they cannot differ.
+ * function, so they cannot differ. A change the expense's state refuses
+ * (settled, a correction, a reject that would reverse a payment) throws a
+ * ShareAnswerRefusedError (answer-guard.ts).
  */
 export async function answerShareIn(
 	tx: Prisma.TransactionClient,
@@ -69,6 +72,12 @@ export async function answerShareIn(
 			? ACCEPTED.includes(sp.verificationStatus)
 			: sp.verificationStatus === "REJECTED";
 	if (already) return { txn, before, changed: false };
+	await assertAnswerAllowed(tx, {
+		expense: txn,
+		actor,
+		share: sp,
+		next: answer === "accept" ? "ACCEPTED" : "REJECTED",
+	});
 
 	await tx.splitParticipant.update({
 		where: { id: sp.id },

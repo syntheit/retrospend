@@ -2,6 +2,7 @@ import type { renameBillingPeriodSchema } from "@retrospend/api-contract";
 import type * as z from "zod";
 import { readFigures } from "~/server/figures/read";
 import { sumMinor, toMinor } from "~/server/services/envelope/units";
+import { myShareOf } from "~/server/services/project/page-figures";
 import type { LedgerCaller } from "./money-op";
 import { trpcBillingPeriod } from "./trpc-bridge";
 
@@ -97,15 +98,34 @@ export async function readBillingPeriod(
 		}
 	>();
 	for (const e of expenses) {
-		for (const sp of e.splitParticipants) {
-			const key = `${sp.participantType}:${sp.participantId}`;
+		// Everyone on the expense, and its payer even outside the split: the
+		// payer carries what a rejected share left uncovered (the Summary's rule).
+		const payer = { participantType: e.paidByType, participantId: e.paidById };
+		const onSplit = e.splitParticipants.some(
+			(sp) =>
+				sp.participantType === payer.participantType &&
+				sp.participantId === payer.participantId,
+		);
+		for (const who of onSplit
+			? e.splitParticipants
+			: [...e.splitParticipants, payer]) {
+			// What the Summary charges them: nothing for a rejected share.
+			const share = myShareOf(
+				e,
+				(r) =>
+					r.participantType === who.participantType &&
+					r.participantId === who.participantId,
+			);
+			// A payer outside the split with nothing absorbed is not on the list.
+			if (share === null && !onSplit && who === payer) continue;
+			const key = `${who.participantType}:${who.participantId}`;
 			const entry = people.get(key) ?? {
-				type: sp.participantType,
-				id: sp.participantId,
+				type: who.participantType,
+				id: who.participantId,
 				shares: [],
 			};
 			entry.shares.push({
-				amount: sp.shareAmount.toString(),
+				amount: share === null ? "0" : share.toString(),
 				currency: e.currency,
 			});
 			people.set(key, entry);
