@@ -257,7 +257,7 @@ describe("device figure registry", () => {
 	it("registers exactly DEVICE_FIGURE_IDS and none sets inEveryPreview", () => {
 		const registry = deviceFigures();
 		expect([...registry.ids].sort()).toEqual([...DEVICE_FIGURE_IDS].sort());
-		expect(DEVICE_FIGURE_IDS).toHaveLength(37);
+		expect(DEVICE_FIGURE_IDS).toHaveLength(49);
 		expect(registry.inEveryPreview).toEqual([]);
 	});
 
