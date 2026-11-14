@@ -1,6 +1,6 @@
 import type { LeftToSpend } from "@retrospend/domain/envelope/pace";
+import { poolNameFor, verdict } from "@retrospend/domain/envelope/verdict";
 import { describe, expect, it } from "vitest";
-import { poolNameFor, verdict } from "./verdict";
 
 const base: LeftToSpend = {
 	left: 59_161,

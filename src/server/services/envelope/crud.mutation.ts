@@ -5,6 +5,12 @@
  * moves no money but changes what the plan asks of each month, so it
  * previews too; the rest reroute spending or move money between envelopes.
  */
+
+import {
+	FIGURE_LEFT_IN_LIMITS,
+	FIGURE_LEFT_TO_SPEND,
+	FIGURE_NOT_PLANNED_YET,
+} from "@retrospend/domain/envelope/verdict";
 import type {
 	ArchiveEnvelopeInput,
 	ArchiveEnvelopeResult,
@@ -28,11 +34,6 @@ import { createEnvelope, updateEnvelope } from "./crud.service";
 import { FIGURE_BUDGET_HOLDS } from "./figures";
 import { confirmStartingMoney } from "./starting-money.service";
 import { setTarget } from "./target.service";
-import {
-	FIGURE_LEFT_IN_LIMITS,
-	FIGURE_LEFT_TO_SPEND,
-	FIGURE_NOT_PLANNED_YET,
-} from "./verdict";
 
 const POOL = [
 	FIGURE_NOT_PLANNED_YET,

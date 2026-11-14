@@ -4,6 +4,12 @@
  * run on what is Not planned yet. The preview is the same write rolled back.
  * The undo is envelope.undo on the batch.
  */
+
+import {
+	FIGURE_LEFT_IN_LIMITS,
+	FIGURE_LEFT_TO_SPEND,
+	FIGURE_NOT_PLANNED_YET,
+} from "@retrospend/domain/envelope/verdict";
 import type {
 	UsePlanInput,
 	UsePlanResult,
@@ -12,11 +18,6 @@ import type { MoneyMutation } from "../preview/types";
 import { EnvelopeError } from "./errors";
 import { monthViewIn } from "./month-read";
 import { applyPlan } from "./use-my-plan";
-import {
-	FIGURE_LEFT_IN_LIMITS,
-	FIGURE_LEFT_TO_SPEND,
-	FIGURE_NOT_PLANNED_YET,
-} from "./verdict";
 
 export const usePlanMutation: MoneyMutation<UsePlanInput, UsePlanResult> = {
 	id: "envelope.usePlan",

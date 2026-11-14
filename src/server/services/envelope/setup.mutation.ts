@@ -5,6 +5,11 @@
  * result carries the signed token envelope.undoSetup takes the budget back
  * with (setup-undo.service.ts).
  */
+
+import {
+	FIGURE_LEFT_TO_SPEND,
+	FIGURE_NOT_PLANNED_YET,
+} from "@retrospend/domain/envelope/verdict";
 import {
 	AMOUNT_SETUP_STYLES,
 	type SetupInput,
@@ -21,7 +26,6 @@ import { planCostIn } from "./plan-read";
 import { setupFootprint, signSetupUndo } from "./setup-undo.service";
 import { replaySplits } from "./splits-replay";
 import { applyPlan } from "./use-my-plan";
-import { FIGURE_LEFT_TO_SPEND, FIGURE_NOT_PLANNED_YET } from "./verdict";
 
 export type SetupMutationInput = SetupInput & { timeZone: string | null };
 

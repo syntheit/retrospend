@@ -13,6 +13,7 @@ import {
 } from "@retrospend/domain/envelope/month-view";
 import type { EnvelopeTarget } from "@retrospend/domain/envelope/needs";
 import type { GroupRole } from "@retrospend/domain/envelope/pace";
+import type { BudgetStyle } from "@retrospend/domain/envelope/verdict";
 import { describe, expect, it } from "vitest";
 import type { GetMonthOutput } from "~/lib/schemas/envelope";
 import {
@@ -28,7 +29,6 @@ import { replaySplits } from "./splits-replay";
 import { bookContext } from "./test-fixtures";
 import type { IsoDate, MonthKey } from "./types";
 import { convertToBook, valueRow } from "./valuation";
-import type { BudgetStyle } from "./verdict";
 
 /** Whole currency units to minor units (every book here has 2 decimals). */
 const m = (n: number) => Math.round(n * 100);

@@ -18,6 +18,8 @@
  *   Undo of that setup removes the book, its envelopes, its funding movements
  *   and the starting balance row.
  */
+
+import { FIGURE_NOT_PLANNED_YET } from "@retrospend/domain/envelope/verdict";
 import { describe, expect, it } from "vitest";
 import type { SetupInput } from "~/lib/schemas/envelope";
 import { userTransaction } from "~/server/db-tx";
@@ -27,7 +29,6 @@ import { seedArsRates } from "../accounts/test-fixtures";
 import { addRow, seedUser, setupInput } from "./__tests__/pg-fixture";
 import { getMonth } from "./read.service";
 import { setupEnvelopeBook } from "./setup.mutation";
-import { FIGURE_NOT_PLANNED_YET } from "./verdict";
 
 type Seeded = Awaited<ReturnType<typeof seedUser>>;
 

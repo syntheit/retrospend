@@ -7,6 +7,11 @@
  * - envelope.forgive: undo is envelope.unforgive of the payment it wrote.
  * - envelope.unforgive: undo is envelope.forgive with the same input.
  */
+
+import {
+	FIGURE_LEFT_TO_SPEND,
+	FIGURE_NOT_PLANNED_YET,
+} from "@retrospend/domain/envelope/verdict";
 import type {
 	ForgiveInput,
 	ForgiveResult,
@@ -25,7 +30,6 @@ import {
 	setShareCategory,
 	unforgive,
 } from "./splits.service";
-import { FIGURE_LEFT_TO_SPEND, FIGURE_NOT_PLANNED_YET } from "./verdict";
 
 const BUDGET = [FIGURE_NOT_PLANNED_YET, FIGURE_LEFT_TO_SPEND];
 const OWED = [...BUDGET, FIGURE_HELD_FOR_OTHERS, "owed.owedToYou"];

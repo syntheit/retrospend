@@ -3,6 +3,11 @@
  * undo. Each previews as the same write rolled back. Undo tokens point at the
  * rows the write appended; `envelope.undo` mirrors them.
  */
+
+import {
+	FIGURE_LEFT_TO_SPEND,
+	FIGURE_NOT_PLANNED_YET,
+} from "@retrospend/domain/envelope/verdict";
 import type {
 	AssignInput,
 	CoverInput,
@@ -12,7 +17,6 @@ import type {
 } from "~/lib/schemas/envelope";
 import type { MoneyMutation, UndoToken } from "../preview/types";
 import { assign, cover, move, undo } from "./movement.service";
-import { FIGURE_LEFT_TO_SPEND, FIGURE_NOT_PLANNED_YET } from "./verdict";
 
 const TOUCHES = [FIGURE_NOT_PLANNED_YET, FIGURE_LEFT_TO_SPEND, "envelope.left"];
 

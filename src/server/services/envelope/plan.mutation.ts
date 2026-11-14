@@ -8,6 +8,12 @@
  * - envelope.unapplyDraft: the plan's Apply taken back.
  * - envelope.fundPlanNow: "Fund it now from what I have".
  */
+
+import {
+	FIGURE_LEFT_IN_LIMITS,
+	FIGURE_LEFT_TO_SPEND,
+	FIGURE_NOT_PLANNED_YET,
+} from "@retrospend/domain/envelope/verdict";
 import type { MovementResult } from "~/lib/schemas/envelope";
 import type {
 	ApplyDraftInput,
@@ -20,11 +26,6 @@ import type { MoneyMutation, UndoToken } from "../preview/types";
 import { applyDraft, fundNow, unapplyDraft } from "./draft.service";
 import { FIGURE_BUDGET_HOLDS } from "./figures";
 import { applyRuleToMonth } from "./rule-crud.service";
-import {
-	FIGURE_LEFT_IN_LIMITS,
-	FIGURE_LEFT_TO_SPEND,
-	FIGURE_NOT_PLANNED_YET,
-} from "./verdict";
 
 const POOL = [
 	FIGURE_NOT_PLANNED_YET,

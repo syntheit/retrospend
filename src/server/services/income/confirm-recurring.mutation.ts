@@ -9,16 +9,16 @@
  * and rewinds the template.
  */
 
+import {
+	FIGURE_LEFT_TO_SPEND,
+	FIGURE_NOT_PLANNED_YET,
+} from "@retrospend/domain/envelope/verdict";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import type { RestChoice } from "~/lib/schemas/envelope";
 import type { Money } from "~/server/figures/registry";
 import { forgetMonthViews } from "~/server/services/envelope/month-read";
 import { Dec, dec, toMinor } from "~/server/services/envelope/units";
-import {
-	FIGURE_LEFT_TO_SPEND,
-	FIGURE_NOT_PLANNED_YET,
-} from "~/server/services/envelope/verdict";
 import { recurringEntryData } from "~/server/services/money-in.service";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import { paidOnInstant } from "~/server/services/recurring-paid-on";

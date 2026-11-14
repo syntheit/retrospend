@@ -4,13 +4,17 @@
  * and its starting balance go and nothing else does. It refuses once the
  * budget holds work of its own (setup-undo.service.ts).
  */
+
+import {
+	FIGURE_LEFT_TO_SPEND,
+	FIGURE_NOT_PLANNED_YET,
+} from "@retrospend/domain/envelope/verdict";
 import type { MoneyMutation } from "../preview/types";
 import {
 	type UndoSetupInput,
 	type UndoSetupResult,
 	undoSetup,
 } from "./setup-undo.service";
-import { FIGURE_LEFT_TO_SPEND, FIGURE_NOT_PLANNED_YET } from "./verdict";
 
 export const undoSetupEnvelopeBook: MoneyMutation<
 	UndoSetupInput,
