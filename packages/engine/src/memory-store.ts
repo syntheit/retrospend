@@ -151,8 +151,28 @@ function outList<R extends object>(rows: readonly R[]): readonly R[] {
 	return copied ? Object.freeze(copy) : copy;
 }
 
+/**
+ * Each published table Map's rows in id order, built on the first list and
+ * shared by every snapshot of that Map. It is valid for as long as the Map
+ * lives because a published Map is never mutated (see `MemoryStore.apply`);
+ * a commit publishes a new Map, which has no entry yet.
+ */
+const sortedByMap = new WeakMap<Rows, readonly AnyRow[]>();
+
+function sortedRows(rows: Rows): readonly AnyRow[] {
+	let sorted = sortedByMap.get(rows);
+	if (sorted === undefined) {
+		sorted = Object.freeze([...rows.values()].sort(byId));
+		sortedByMap.set(rows, sorted);
+	}
+	return sorted;
+}
+
 class Snap implements Snapshot {
-	/** The stored rows themselves, for a transaction that copies on its own reads. */
+	/**
+	 * The stored rows themselves, for a transaction that copies on its own
+	 * reads. A list is the shared sorted array: frozen, never handed to a caller.
+	 */
 	readonly raw: Reader;
 
 	constructor(state: State) {
@@ -160,7 +180,7 @@ class Snap implements Snapshot {
 			get: <T extends TableName>(table: T, id: string) =>
 				state[table].get(id) as TableRows[T] | undefined,
 			list: <T extends TableName>(table: T) =>
-				[...state[table].values()].sort(byId) as TableRows[T][],
+				sortedRows(state[table]) as readonly TableRows[T][],
 		};
 	}
 
@@ -398,6 +418,14 @@ export class MemoryStore implements Store {
 		}
 	}
 
+	/**
+	 * Invariant: a table Map that `this.state` has ever held is never mutated.
+	 * Each touched table is copied into a new Map that only this method writes
+	 * to, and it becomes visible in the one assignment at the end, after
+	 * `onCommit`, so a failed commit leaves the old Map and its sorted-order
+	 * cache untouched. The sorted-order cache (`sortedByMap`) and the
+	 * transaction list memo rely on this.
+	 */
 	private async apply(writes: Overlay) {
 		const next: Record<TableName, Rows> = { ...this.state };
 		const changes: Change[] = [];
