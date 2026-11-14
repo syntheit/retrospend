@@ -129,6 +129,32 @@
 			}
 		},
 		{
+			// The preview runner core takes `markPreview` as a required argument;
+			// the server must always pass `insidePreview`, which preview/runner.ts
+			// does. Every server runner is built there, so a second caller of the
+			// core could skip the mark and let a preview seal a key.
+			// Keep this pattern in the override below too: an override replaces
+			// the rule's options for the files it matches.
+			"includes": ["src/**", "!src/server/services/preview/runner.ts"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"paths": {
+									"@retrospend/domain/figures/preview": {
+										"importNames": ["createPreviewRunnerCore"],
+										"message": "Build the server preview runner through preview/runner.ts, which always passes insidePreview."
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		{
 			// Money mutations and figures run inside a preview transaction that
 			// always rolls back. The global db opens another connection that
 			// commits anyway, so they must use the tx they are given.
@@ -152,7 +178,13 @@
 										],
 										"message": "Use the tx you are given: the global db commits outside a preview's transaction."
 									}
-								]
+								],
+								"paths": {
+									"@retrospend/domain/figures/preview": {
+										"importNames": ["createPreviewRunnerCore"],
+										"message": "Build the server preview runner through preview/runner.ts, which always passes insidePreview."
+									}
+								}
 							}
 						}
 					}

@@ -199,6 +199,31 @@ export function groupSpentRows(
 const capturedRate = (s: SpentShareRow): RateInput =>
 	s.currency === USD ? 1 : s.exchangeRate;
 
+/** What a share needs to find its rate. */
+export interface ShareRateSource {
+	currency: string;
+	date: Date;
+	/** Rate captured when the expense was saved (units per USD), or null. */
+	exchangeRate: DecimalInput | null;
+}
+
+/**
+ * The rate a share converts at, the one way the server and a device both
+ * pick it: USD is 1, else the rate captured when it was saved (exact text,
+ * never a float), else `lookup` on the share's own date (never today's rate
+ * for a past month). Null only when the currency has no rate at all, which
+ * leaves the share unpriced; it is never 1.
+ */
+export function shareRateOf(
+	lookup: (currency: string, date: Date) => { readonly rate: RateInput } | null,
+): (share: ShareRateSource) => RateInput {
+	return (share) => {
+		if (share.currency === USD) return 1;
+		if (share.exchangeRate !== null) return dec(share.exchangeRate).toFixed();
+		return lookup(share.currency, share.date)?.rate ?? null;
+	};
+}
+
 /**
  * The figure's inputs from rows held in memory, in the range: what a device
  * loader returns. `hiddenProjectIds` are the projects hidden from reports;
