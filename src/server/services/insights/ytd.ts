@@ -14,32 +14,25 @@ import {
 	type Span,
 	yearToDate,
 } from "@retrospend/domain/insights";
-import { USD } from "@retrospend/domain/money";
+import {
+	type HomeAndUsd,
+	type YtdSide,
+	ytdSideOf,
+} from "@retrospend/domain/insights-compute";
 import { dayKey } from "@retrospend/domain/time-zone";
 import type { FigureDb } from "~/server/figures/registry";
-import { type SpentItem, spentItems } from "~/server/services/figures/spent";
+import { spentItems } from "~/server/services/figures/spent";
 import {
 	type InsightsContext,
 	insightsContext,
-	spanRate,
 	spentFilterFor,
-	type Valued,
-	valueIn,
 } from "./context";
-import { groupByCategory } from "./summary";
 import {
-	type HomeAndUsd,
 	INSIGHTS,
 	type InsightsFilter,
 	type YtdCategoryRow,
 	type YtdDTO,
 } from "./types";
-
-interface Side {
-	readonly total: HomeAndUsd;
-	readonly categories: ReadonlyMap<string | null, HomeAndUsd>;
-	readonly missing: readonly string[];
-}
 
 const NONE: HomeAndUsd = { home: null, usd: null };
 
@@ -49,27 +42,13 @@ export async function readSide(
 	ctx: InsightsContext,
 	span: Span,
 	filter?: InsightsFilter,
-): Promise<Side> {
+): Promise<YtdSide> {
 	const items = await spentItems(
 		db,
 		spentFilterFor(ctx, span, filter),
 		"category",
 	);
-	const rate = spanRate(ctx, span);
-	const both = (group: readonly SpentItem[]) => {
-		const home = valueIn(group, ctx.home, rate);
-		const usd = valueIn(group, USD, 1);
-		return { value: { home: home.money, usd: usd.money }, home, usd };
-	};
-	const missing = (...v: Valued[]) => v.flatMap((x) => x.missing);
-	const all = both(items);
-	return {
-		total: all.value,
-		categories: new Map(
-			[...groupByCategory(items)].map(([id, group]) => [id, both(group).value]),
-		),
-		missing: [...new Set(missing(all.home, all.usd))].sort(),
-	};
+	return ytdSideOf(items, ctx, span);
 }
 
 const change = (a: HomeAndUsd, b: HomeAndUsd, key: keyof HomeAndUsd) => {
@@ -77,7 +56,7 @@ const change = (a: HomeAndUsd, b: HomeAndUsd, key: keyof HomeAndUsd) => {
 	return now && before ? percentChange(now.minor, before.minor) : null;
 };
 
-function rows(current: Side, last: Side): readonly YtdCategoryRow[] {
+function rows(current: YtdSide, last: YtdSide): readonly YtdCategoryRow[] {
 	const out: YtdCategoryRow[] = [];
 	for (const [categoryId, value] of current.categories) {
 		const before = last.categories.get(categoryId) ?? NONE;

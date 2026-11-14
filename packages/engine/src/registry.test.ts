@@ -21,7 +21,12 @@ import { describe, expect, it } from "vitest";
 import { NotFoundError } from "./errors";
 import { fixtureRow } from "./fixtures";
 import { MemoryStore } from "./memory-store";
-import { type Reader, TABLE_NAMES, type TableName, type TableRows } from "./port";
+import {
+	type Reader,
+	TABLE_NAMES,
+	type TableName,
+	type TableRows,
+} from "./port";
 import { DEVICE_FIGURE_IDS, deviceFigures, serverOnlyReason } from "./registry";
 
 const at = (iso: string) => new Date(iso);
@@ -241,7 +246,7 @@ describe("device figure registry", () => {
 	it("registers exactly DEVICE_FIGURE_IDS and none sets inEveryPreview", () => {
 		const registry = deviceFigures();
 		expect([...registry.ids].sort()).toEqual([...DEVICE_FIGURE_IDS].sort());
-		expect(DEVICE_FIGURE_IDS).toHaveLength(23);
+		expect(DEVICE_FIGURE_IDS).toHaveLength(37);
 		expect(registry.inEveryPreview).toEqual([]);
 	});
 
@@ -588,9 +593,7 @@ describe("device figure registry", () => {
 
 		it("reads every figure as one pass per figure does, missing rates included, and lists each table once", async () => {
 			const s = missingEverywhere();
-			const before = Object.fromEntries(
-				TABLE_NAMES.map((t) => [t, s.list(t)]),
-			);
+			const before = Object.fromEntries(TABLE_NAMES.map((t) => [t, s.list(t)]));
 			const { counted, lists } = counting(s);
 			const together = await read(counted, IDS);
 			for (const id of IDS) {
@@ -653,12 +656,221 @@ describe("device figure registry", () => {
 		});
 	});
 
+	describe("insights figures", () => {
+		// The ledger above plus: ARS blue 1,400 from 2025-12-20 (so September, whose
+		// end is before the Oct 10 rows, prices at 1,400, not at 1,500); e1 and e2
+		// filed under Food; e8, USD 10 on Sep 10.
+		const insightsStore = () => {
+			const base = rows();
+			return store({
+				rates: [
+					...base.rates,
+					{
+						id: "ARS:blue:old",
+						currency: "ARS",
+						type: "blue",
+						rate: "1400",
+						date: at("2025-12-20T00:00:00Z"),
+					},
+				],
+				expenses: [
+					...base.expenses.map((e) =>
+						e.id === "e1" || e.id === "e2" ? { ...e, categoryId: "food" } : e,
+					),
+					expense("e8", {
+						currency: "USD",
+						amount: "10",
+						amountInUSD: "10",
+						date: at("2026-09-10T15:00:00Z"),
+					}),
+				],
+			});
+		};
+		const ars = (minor: number) => ({ minor, currency: "ARS" });
+		const usd = (minor: number) => ({ minor, currency: "USD" });
+		const narrowed = (id: string, narrow: Record<string, string>) =>
+			one(id, { narrow }, insightsStore());
+
+		// October at blue 1,500 (Oct 10 is on or before now): booked e1 30,000 and
+		// e5 100; e2, e3, e4 are USD 10 + 20 + 10 = 40 x 1,500 = 60,000; the JPY
+		// share 1,500 / 150 = USD 10 x 1,500 = 15,000. Total 105,100.00.
+		it("insights.spent is this period at the period's rate, the share at the table's JPY 150", async () => {
+			expect(await one("insights.spent", undefined, insightsStore())).toEqual([
+				ars(10_510_000),
+			]);
+		});
+
+		// September ends before the Oct 10 rows: blue 1,400 (Dec 20, 2025) is its
+		// rate. e7 booked 5.00 + e8 USD 10 x 1,400 = 14,005.00.
+		it("insights.spentPrevious prices September at its own end's rate", async () => {
+			expect(
+				await one("insights.spentPrevious", undefined, insightsStore()),
+			).toEqual([ars(1_400_500)]);
+		});
+
+		// Food: e1 30,000 + e2 USD 10 x 1,500 = 45,000.00.
+		it("insights.byCategory is one category of the period, 0 when nothing", async () => {
+			expect(
+				await narrowed("insights.byCategory", { categoryId: "food" }),
+			).toEqual([ars(4_500_000)]);
+			expect(
+				await narrowed("insights.byCategory", { categoryId: "nothing" }),
+			).toEqual([ars(0)]);
+			expect(
+				await one("insights.byCategory", undefined, insightsStore()),
+			).toBeNull();
+		});
+
+		it("insights.byMonth reads a month by its label, this one when omitted", async () => {
+			expect(await one("insights.byMonth", undefined, insightsStore())).toEqual(
+				[ars(10_510_000)],
+			);
+			expect(await narrowed("insights.byMonth", { month: "2026-09" })).toEqual([
+				ars(1_400_500),
+			]);
+			// e6, ARS 7.00 booked, at 00:00 on Nov 1 in Buenos Aires.
+			expect(await narrowed("insights.byMonth", { month: "2026-11" })).toEqual([
+				ars(700),
+			]);
+		});
+
+		// Income: in1 ARS 2,000.00. Saved: 2,000.00 - 105,100.00 = -103,100.00.
+		// Daily: 10,510,000 minor over the 15 days elapsed = 700,666.67, half
+		// even 700,667. One fiscal period: the monthly average is the total.
+		it("insights.income, saved and the averages", async () => {
+			const s = insightsStore();
+			expect(await one("insights.income", undefined, s)).toEqual([
+				ars(200_000),
+			]);
+			expect(await one("insights.saved", undefined, s)).toEqual([
+				ars(-10_310_000),
+			]);
+			expect(await one("insights.dailyAverage", undefined, s)).toEqual([
+				ars(700_667),
+			]);
+			expect(await one("insights.monthlyAverage", undefined, s)).toEqual([
+				ars(10_510_000),
+			]);
+		});
+
+		// Jan 1 to Oct 15 at blue 1,500: booked e1 30,000 and e7 5; USD e2 10 + e3 20
+		// + e4 10 + e8 10 = 50 x 1,500 = 75,000; the share 15,000 = 120,005.00.
+		// e5 (Oct 31) and e6 (Nov 1) are after today. The USD twin is frozen:
+		// 20 + 10 + 20 + 10 + 0.003 + 10 + 10 = 80.003, rounded once: 80.00.
+		it("insights.ytd and its USD twin; last year has nothing", async () => {
+			const s = insightsStore();
+			expect(await one("insights.ytd", undefined, s)).toEqual([
+				ars(12_000_500),
+			]);
+			expect(await one("insights.ytdUsd", undefined, s)).toEqual([usd(8_000)]);
+			expect(await one("insights.ytdLastYear", undefined, s)).toEqual([ars(0)]);
+			expect(await one("insights.ytdLastYearUsd", undefined, s)).toEqual([
+				usd(0),
+			]);
+		});
+
+		// Food: e1 30,000 + e2 10 x 1,500 = 45,000.00; in USD e1 20 + e2 10 = 30.00.
+		it("insights.ytdByCategory and its USD twin", async () => {
+			const food = { categoryId: "food" };
+			expect(await narrowed("insights.ytdByCategory", food)).toEqual([
+				ars(4_500_000),
+			]);
+			expect(await narrowed("insights.ytdByCategoryUsd", food)).toEqual([
+				usd(3_000),
+			]);
+			expect(
+				await narrowed("insights.ytdByCategory", { categoryId: "nothing" }),
+			).toEqual([ars(0)]);
+			expect(
+				await narrowed("insights.ytdByCategoryUsd", { categoryId: "nothing" }),
+			).toEqual([usd(0)]);
+		});
+
+		// A rate row no figure of the glance would see (20 rows behind it) is still
+		// the insights pick: blue 1,300 behind 25 newer official rows beats them.
+		it("reads every home rate row, not the glance's window", async () => {
+			const base = rows();
+			const newer = Array.from({ length: 25 }, (_, i) => ({
+				id: `ARS:official:${i}`,
+				currency: "ARS",
+				type: "official",
+				rate: String(1000 + i),
+				date: at(`2026-02-${String(i + 1).padStart(2, "0")}T00:00:00Z`),
+			}));
+			const s = store({
+				rates: [
+					{
+						id: "ARS:blue:stale",
+						currency: "ARS",
+						type: "blue",
+						rate: "1300",
+						date: at("2026-01-01T00:00:00Z"),
+					},
+					...newer,
+				],
+				expenses: [
+					expense("only", {
+						currency: "USD",
+						amount: "10",
+						amountInUSD: "10",
+						date: at("2026-10-05T15:00:00Z"),
+					}),
+				],
+				shares: [],
+				legs: base.legs,
+			});
+			// USD 10 x blue 1,300 = 13,000.00 (the windowed glance would read official).
+			expect(await one("insights.spent", undefined, s)).toEqual([
+				ars(1_300_000),
+			]);
+		});
+
+		// The clock is read on every pass: on Nov 15 this period is November, which
+		// holds only e6, and the period before it is October at 1,500.
+		it("rereads the clock on every pass", async () => {
+			const clock = () => at("2026-11-15T15:00:00Z");
+			const s = insightsStore();
+			expect(await one("insights.spent", { clock }, s)).toEqual([ars(700)]);
+			expect(await one("insights.spentPrevious", { clock }, s)).toEqual([
+				ars(10_510_000),
+			]);
+		});
+
+		it("a share with no rate at all reads unavailable and names its currency", async () => {
+			const s = store({
+				shares: [
+					...rows().shares,
+					{
+						...fixtureRow("shares", "s2"),
+						currency: "XQZ",
+						shareAmount: "12.34",
+						exchangeRate: null,
+						date: at("2026-10-09T15:00:00Z"),
+					},
+				],
+			});
+			const { m, pass } = await read(s, [
+				"insights.spent",
+				"insights.ytdUsd",
+				"insights.income",
+			]);
+			expect(m.get("insights.spent")).toBeNull();
+			expect(pass.missingRates("insights.spent")).toEqual(["XQZ"]);
+			expect(m.get("insights.ytdUsd")).toBeNull();
+			expect(pass.missingRates("insights.ytdUsd")).toEqual(["XQZ"]);
+			// Income prices in-store rows only: unaffected by the share.
+			expect(m.get("insights.income")).toEqual([ars(200_000)]);
+		});
+	});
+
 	describe("without a settings row", () => {
 		it("throws instead of falling back to USD", async () => {
 			const s = store({ settings: [] });
-			const error = await one("spent", undefined, s).catch((e) => e);
-			expect(error).toBeInstanceOf(FigureError);
-			expect((error as FigureError).cause).toBeInstanceOf(NotFoundError);
+			for (const id of ["spent", "insights.spent", "insights.ytdUsd"]) {
+				const error = await one(id, undefined, s).catch((e) => e);
+				expect(error, id).toBeInstanceOf(FigureError);
+				expect((error as FigureError).cause).toBeInstanceOf(NotFoundError);
+			}
 		});
 	});
 });

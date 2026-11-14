@@ -70,7 +70,7 @@ export interface SpentExpenseRow {
 	excludeFromAnalytics: boolean;
 	/** The kind of its category, null for none. Income categories never count. */
 	categoryKind: string | null;
-	/** Only read when grouping per day (the spend pace), where it splits groups as the SQL loader's does. */
+	/** Only read when grouping per category or per day, where it splits groups as the SQL loader's does. */
 	categoryId?: string | null;
 	date: Date;
 	currency: string;
@@ -127,8 +127,11 @@ export function countsAsRefund(row: SpentExpenseRow, r: SpentRange): boolean {
 	);
 }
 
-/** How rows are grouped: per currency, or per entry instant and category too (the SQL loader's "day" grouping). */
-export type SpentRowGrouping = "currency" | "day";
+/**
+ * How rows are grouped, the SQL loader's keys: per currency, per category and
+ * currency ("category"), or per entry instant, category and currency ("day").
+ */
+export type SpentRowGrouping = "currency" | "category" | "day";
 
 /**
  * The income rule of Just track's "Money in" (services/figures/spend-pace.ts),
@@ -144,6 +147,18 @@ export function countsAsIncome(row: SpentExpenseRow, r: SpentRange): boolean {
 		!row.excludeFromAnalytics &&
 		inRange(row.date, r)
 	);
+}
+
+/**
+ * The income rule's groups of a range, per currency and booked home currency:
+ * what the server reads with SQL (services/figures/spend-pace.ts) and a device
+ * groups from its rows.
+ */
+export function incomeGroupsFromRows(
+	expenses: readonly SpentExpenseRow[],
+	range: SpentRange,
+): SpentGroup[] {
+	return groupSpentRows(expenses.filter((r) => countsAsIncome(r, range)));
 }
 
 /** The JS counterpart of the loader's grouped SUM: per currency and booked home currency, exact. */
@@ -164,7 +179,7 @@ export function groupSpentRows(
 	>();
 	for (const r of rows) {
 		const daily = by === "day";
-		const categoryId = daily ? (r.categoryId ?? null) : null;
+		const categoryId = by === "currency" ? null : (r.categoryId ?? null);
 		const key = JSON.stringify([
 			daily ? r.date.getTime() : null,
 			categoryId,

@@ -66,12 +66,14 @@ const PROFILES: Record<string, LedgerProfile> = {
 
 /**
  * Budgets below were measured on harbor (the owner's machine, 2026-11-14) and
- * are 3x the median of the runs, rounded up: a pass of every device figure
- * 32 ms, an expense.create preview 38 ms, one list of 11,000 expenses 4.6 ms.
- * Before the store speed work these were 108, 160 and 27 ms.
+ * are 3x the median of the runs, rounded up: an expense.create preview 38 ms,
+ * one list of 11,000 expenses 4.6 ms. Before the store speed work these were
+ * 160 and 27 ms. A pass of every device figure was 32 ms before the 14
+ * insights figures; with them it is 62 to 70 ms (the insights group alone is
+ * about 35 ms, mostly compute), so its budget is 200 ms (it was 100).
  */
 const ENFORCE = process.env.PERF_BUDGET === "harbor" && !process.env.CI;
-const PASS_BUDGET_MS = 100;
+const PASS_BUDGET_MS = 200;
 const PREVIEW_BUDGET_MS = 120;
 const LIST_BUDGET_MS = 15;
 
@@ -209,6 +211,9 @@ describe.skipIf(sealedSuite)(
 					userId: ledger.userId,
 					templateIds: ledger.templateIds,
 					accountIds: ledger.accountIds,
+					categoryIds: ledger.categoryIds,
+					incomeCategory: ledger.incomeCategory,
+					bobCategory: ledger.bobCategory,
 				};
 				const repull = await atClock(async () => {
 					const settings = await pullSettings(device);
@@ -252,6 +257,9 @@ describe.skipIf(sealedSuite)(
 				userId: ledger.userId,
 				templateIds: ledger.templateIds,
 				accountIds: ledger.accountIds,
+				categoryIds: ledger.categoryIds,
+				incomeCategory: ledger.incomeCategory,
+				bobCategory: ledger.bobCategory,
 			};
 			// A plain row: deleting a parent or the row the legs name would cascade.
 			const victim = await fixtureDb.expense.findFirstOrThrow({

@@ -9,12 +9,17 @@
  * - Monthly average: spending over the fiscal periods the range touches.
  */
 import {
-	averageMinor,
-	daysBetween,
 	fiscalPeriodsTouched,
 	type Span,
 	savingsRatePercent,
 } from "@retrospend/domain/insights";
+import {
+	averageOf,
+	type CashflowRead,
+	cashflowOf,
+	daysElapsed,
+	savedOf,
+} from "@retrospend/domain/insights-compute";
 import type { Money } from "@retrospend/domain/money-minor";
 import { dayKey } from "@retrospend/domain/time-zone";
 import type { FigureDb } from "~/server/figures/registry";
@@ -24,17 +29,9 @@ import {
 	type InsightsContext,
 	insightsContext,
 	instantRange,
-	spanRate,
 	spentFilterFor,
-	valueIn,
 } from "./context";
 import { type CashflowDTO, INSIGHTS, type InsightsFigure } from "./types";
-
-export interface CashflowRead {
-	readonly spent: Money | null;
-	readonly income: Money | null;
-	readonly missing: readonly string[];
-}
 
 /** Spending and income of one range, unfiltered, in the home currency. */
 export async function readCashflow(
@@ -42,47 +39,13 @@ export async function readCashflow(
 	ctx: InsightsContext,
 	range: Span,
 ): Promise<CashflowRead> {
-	const rate = spanRate(ctx, range);
 	const when = instantRange(range, ctx.zone);
-	const spent = valueIn(
+	return cashflowOf(
 		await spentItems(db, spentFilterFor(ctx, range), "currency"),
-		ctx.home,
-		rate,
-	);
-	const income = valueIn(
 		await incomeItems(db, ctx.userId, { start: when.gte, end: when.lte }),
-		ctx.home,
-		rate,
+		ctx,
+		range,
 	);
-	return {
-		spent: spent.money,
-		income: income.money,
-		missing: [...new Set([...spent.missing, ...income.missing])].sort(),
-	};
-}
-
-/** Spending split over `days` days (null for none), half to even. */
-export function averageOf(spent: Money | null, divisor: number): Money | null {
-	if (!spent || divisor <= 0) return null;
-	return {
-		minor: averageMinor(spent.minor, divisor),
-		currency: spent.currency,
-	};
-}
-
-/** Days of the range that have happened by `today`. */
-export function daysElapsed(range: Span, today: string): number {
-	const last = range.to < today ? range.to : today;
-	return daysBetween(range.from, last) + 1;
-}
-
-export function savedOf(read: CashflowRead): Money | null {
-	return read.spent && read.income
-		? {
-				minor: read.income.minor - read.spent.minor,
-				currency: read.income.currency,
-			}
-		: null;
 }
 
 const figure = (id: string, value: Money | null): InsightsFigure => ({

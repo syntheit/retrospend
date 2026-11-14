@@ -5,8 +5,11 @@
  * period. The seeders run in a fixed order, each drawing from the one
  * generator, so the same seed gives the same rows.
  */
+import { yearToDate } from "@retrospend/domain/insights";
+import { instantRange } from "@retrospend/domain/insights-compute";
 import { fromMinor } from "@retrospend/domain/money-minor";
 import { spentRange } from "@retrospend/domain/spent";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { resolveTimeZone } from "~/server/services/user-time-zone";
 import { Prisma } from "~prisma";
 import type { LedgerProfile } from "../device-ledger";
@@ -127,7 +130,16 @@ export function seedContext(base: Base, seed: number): SeedContext {
 	};
 }
 
-/** Instants 30 minutes, 1 ms and 0 either side of each period start and end of each profile, per clock, for this and the last period. */
+const OFFSETS = [-30 * MINUTE, -1, 0, 1, 30 * MINUTE];
+
+/**
+ * Instants 30 minutes, 1 ms and 0 either side of each period start and end of
+ * each profile, per clock, for this and the last period, and of the year to
+ * date: January 1 of this year and the clock's day, and the same two edges one
+ * year back (Insights' last year ends on the same calendar day, so around a
+ * New Year's clock these fall on January 1 in one zone and December 31 in
+ * another).
+ */
 export function edgeInstants(
 	profiles: readonly LedgerProfile[],
 	clocks: readonly Date[],
@@ -144,8 +156,13 @@ export function edgeInstants(
 			);
 			for (const r of [now, last])
 				for (const edge of [r.start.getTime(), r.end.getTime()])
-					for (const d of [-30 * MINUTE, -1, 0, 1, 30 * MINUTE])
-						out.push(new Date(edge + d));
+					for (const d of OFFSETS) out.push(new Date(edge + d));
+			const { thisYear, lastYear } = yearToDate(dayKey(clock, zone));
+			for (const span of [thisYear, lastYear]) {
+				const { gte, lte } = instantRange(span, zone);
+				for (const edge of [gte.getTime(), lte.getTime()])
+					for (const d of OFFSETS) out.push(new Date(edge + d));
+			}
 		}
 	return out;
 }

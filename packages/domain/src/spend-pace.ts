@@ -42,8 +42,7 @@ import {
 import { roundedMinor } from "./money-minor";
 import type { Decimal } from "./precise-decimal";
 import {
-	countsAsIncome,
-	groupSpentRows,
+	incomeGroupsFromRows,
 	type SpentExpenseRow,
 	type SpentGroup,
 	type SpentInputs,
@@ -169,9 +168,7 @@ export function spendPaceInputsFromRows(args: {
 			rateFor: args.rateFor,
 			by: "day",
 		}),
-		income: groupSpentRows(
-			args.expenses.filter((r) => countsAsIncome(r, p.thisRange)),
-		),
+		income: incomeGroupsFromRows(args.expenses, p.thisRange),
 		thisRate: homeRateOn(args.home, args.homeRates, dates.thisDate),
 		lastRate: homeRateOn(args.home, args.homeRates, dates.lastDate),
 	};

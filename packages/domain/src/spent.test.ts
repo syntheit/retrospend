@@ -8,6 +8,8 @@ import { describe, expect, it } from "vitest";
 import { MissingRateError, sumInDec } from "./money-dec";
 import { roundedMinor } from "./money-minor";
 import {
+	groupSpentRows,
+	incomeGroupsFromRows,
 	type SpentExpenseRow,
 	type SpentShareRow,
 	spentInputsFromRows,
@@ -326,5 +328,124 @@ describe("spent on rows in memory", () => {
 			});
 			expect(spentItemsOf(zero)[0]?.amount.toFixed()).toBe("0");
 		});
+	});
+});
+
+describe("grouping rows like the SQL loader", () => {
+	const food = "cat-food";
+	const rows = [
+		row({ currency: "USD", amount: "10", amountInUSD: "10", categoryId: food }),
+		row({
+			currency: "USD",
+			amount: "10",
+			amountInUSD: "10",
+			categoryId: food,
+			homeCurrency: "ARS",
+			homeAmount: "14500",
+		}),
+		row({
+			currency: "USD",
+			amount: "5",
+			amountInUSD: "5",
+			categoryId: food,
+			date: new Date("2026-10-11T12:00:00Z"),
+		}),
+		row({
+			currency: "USD",
+			amount: "3",
+			amountInUSD: "3",
+			categoryId: "cat-transport",
+		}),
+		row({ amount: "7" }),
+	];
+	const shape = (by: "currency" | "category" | "day") =>
+		groupSpentRows(rows, by).map((g) => [
+			g.categoryId,
+			g.currency,
+			g.homeCurrency,
+			g.amount,
+			g.homeAmount,
+			g.count,
+		]);
+
+	it("category splits by category, currency and booked home currency", () => {
+		// Food: two unbooked USD rows (10 + 5) are one group, the booked USD 10 is
+		// its own, so the unbooked 15 is never merged with the booked 14,500.
+		expect(shape("category")).toEqual([
+			[food, "USD", null, "15", "0", 2],
+			[food, "USD", "ARS", "10", "14500", 1],
+			["cat-transport", "USD", null, "3", "0", 1],
+			[null, "ARS", null, "7", "0", 1],
+		]);
+		expect(groupSpentRows(rows, "category").every((g) => g.date === null)).toBe(
+			true,
+		);
+	});
+
+	it("currency ignores the category, and day also keeps each instant apart", () => {
+		// USD unbooked 10 + 5 + 3 = 18; booked USD 10; ARS 7.
+		expect(shape("currency")).toEqual([
+			[null, "USD", null, "18", "0", 3],
+			[null, "USD", "ARS", "10", "14500", 1],
+			[null, "ARS", null, "7", "0", 1],
+		]);
+		// The Oct 11 row is apart from the Oct 10 rows of the same category.
+		expect(shape("day")).toHaveLength(5);
+	});
+
+	it("a row with no category groups with the null of its currency", () => {
+		const bare = groupSpentRows(
+			[row({ amount: "1" }), row({ amount: "2", categoryId: null })],
+			"category",
+		);
+		expect(bare).toHaveLength(1);
+		expect(bare[0]?.amount).toBe("3");
+	});
+});
+
+describe("incomeGroupsFromRows", () => {
+	const income = (o: Partial<SpentExpenseRow> = {}) =>
+		row({ direction: "IN", inType: "INCOME", ...o });
+
+	it("groups money in typed as income per currency and booked home currency", () => {
+		const groups = incomeGroupsFromRows(
+			[
+				income({ amount: "100", currency: "USD", amountInUSD: "100" }),
+				income({ amount: "50", currency: "USD", amountInUSD: "50" }),
+				income({
+					amount: "20",
+					currency: "USD",
+					amountInUSD: "20",
+					homeCurrency: "ARS",
+					homeAmount: "29000",
+				}),
+				income({ amount: "1000" }),
+				// Not income: a refund, an own transfer, hidden from reports, outside.
+				row({ direction: "IN", inType: "REFUND", amount: "9" }),
+				income({ amount: "8", excludeFromAnalytics: true }),
+				income({ amount: "6", entryKind: "TRANSFER" }),
+				income({ amount: "4", date: new Date("2027-01-01T00:00:00Z") }),
+			],
+			{
+				start: new Date("2026-10-01T00:00:00Z"),
+				end: new Date("2026-10-31T23:59:59.999Z"),
+			},
+		);
+		expect(
+			groups.map((g) => [
+				g.currency,
+				g.homeCurrency,
+				g.amount,
+				g.amountInUSD,
+				g.homeAmount,
+				g.count,
+				g.categoryId,
+				g.date,
+			]),
+		).toEqual([
+			["USD", null, "150", "150", "0", 2, null, null],
+			["USD", "ARS", "20", "20", "29000", 1, null, null],
+			["ARS", null, "1000", "0", "0", 1, null, null],
+		]);
 	});
 });

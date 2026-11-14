@@ -6,37 +6,28 @@
  * ytd, cashflow) for the range and filters in its URL, so a figure id
  * names one definition whatever the filter.
  *
- * - insights.spent, insights.spentPrevious: your spending this period and
- *   the one before (previousPeriod), in the home currency.
- * - insights.byCategory [categoryId]: one category of it (0 when nothing).
- * - insights.byMonth [month]: one fiscal month ("2026-10"; this one when
- *   omitted).
- * - insights.income, insights.saved: money in this period, and money in
- *   minus spending (signed).
- * - insights.dailyAverage, insights.monthlyAverage: spending per elapsed
- *   day, and per fiscal period the range touches.
- * - insights.ytd, insights.ytdLastYear, insights.ytdByCategory
- *   [categoryId]: January 1 to today against the same span last year, in
- *   the home currency; the Usd twins total the same rows at their frozen
- *   USD values.
- *
- * Each is unavailable (null, currencies named) while a rate is missing.
+ * What each figure reads (the span, the side, the unavailable marker) is
+ * picked in @retrospend/domain/insights-figures, which a device registry
+ * calls too; this file only loads rows once per pass and hands them over.
+ * See there for what each id means.
  */
+import type { Span } from "@retrospend/domain/insights";
 import {
-	fiscalPeriodsTouched,
-	type Span,
-	yearToDate,
-} from "@retrospend/domain/insights";
-import type { Money } from "@retrospend/domain/money-minor";
-import { dayKey } from "@retrospend/domain/time-zone";
-import { getCurrentFiscalMonth, getFiscalMonthRange } from "@retrospend/domain/fiscal-month";
+	cashflowPicks,
+	cashflowReading,
+	categoryReading,
+	insightsPeriod,
+	insightsYtdSpans,
+	monthReading,
+	spanReading,
+	ytdReading,
+} from "@retrospend/domain/insights-figures";
 import type {
 	FigureDb,
 	FigureDefinition,
 	FigurePass,
 } from "~/server/figures/registry";
-import { FigureUnavailable } from "~/server/figures/unavailable";
-import { averageOf, daysElapsed, readCashflow, savedOf } from "./cashflow";
+import { readCashflow } from "./cashflow";
 import { insightsContext, previousPeriod } from "./context";
 import { fiscalMonthLabel, loadMonths } from "./months";
 import { readSpan } from "./summary";
@@ -55,25 +46,11 @@ function once<T>(
 async function viewOf(db: FigureDb, userId: string, pass?: FigurePass) {
 	return once(pass, `insights:ctx:${userId}`, async () => {
 		const ctx = await insightsContext(db, userId);
-		const label = getCurrentFiscalMonth(ctx.now, ctx.startDay, ctx.zone);
-		const range = getFiscalMonthRange(label, ctx.startDay, ctx.zone);
-		const period: Span = {
-			from: dayKey(range.start, ctx.zone),
-			to: dayKey(range.end, ctx.zone),
-		};
-		return { ctx, period };
+		return { ctx, period: insightsPeriod(ctx) };
 	});
 }
 
 type View = Awaited<ReturnType<typeof viewOf>>;
-
-/** A reading, or the unavailable marker naming the currencies that kept it out. */
-function reading(
-	money: Money | null,
-	missing: readonly string[],
-): Money | FigureUnavailable {
-	return money ?? new FigureUnavailable(missing);
-}
 
 const spanFigure = (
 	id: string,
@@ -89,7 +66,7 @@ const spanFigure = (
 			`insights:span:${scope.userId}:${span.from}`,
 			() => readSpan(db, ctx, span),
 		);
-		return reading(read.total.money, read.total.missing);
+		return spanReading(read);
 	},
 });
 
@@ -104,10 +81,7 @@ const byCategoryFigure: FigureDefinition = {
 			`insights:span:${scope.userId}:${period.from}`,
 			() => readSpan(db, ctx, period),
 		);
-		const value = read.categories.get(scope.categoryId);
-		return value
-			? reading(value.money, value.missing)
-			: { minor: 0, currency: ctx.home };
+		return categoryReading(read, scope.categoryId, ctx.home);
 	},
 };
 
@@ -118,16 +92,13 @@ const byMonthFigure: FigureDefinition = {
 		const { ctx } = await viewOf(db, scope.userId, pass);
 		const month = scope.month ?? fiscalMonthLabel(ctx, ctx.now);
 		const { bars, missing } = await loadMonths(db, ctx, [month]);
-		return reading(bars[0]?.total ?? null, missing);
+		return monthReading(bars, missing);
 	},
 };
 
 const cashflowFigure = (
 	id: string,
-	pick: (
-		read: Awaited<ReturnType<typeof readCashflow>>,
-		view: View,
-	) => Money | null,
+	pick: keyof typeof cashflowPicks,
 ): FigureDefinition => ({
 	id,
 	scope: [],
@@ -136,7 +107,7 @@ const cashflowFigure = (
 		const read = await once(pass, `insights:cashflow:${scope.userId}`, () =>
 			readCashflow(db, ctx, period),
 		);
-		return reading(pick(read, { ctx, period }), read.missing);
+		return cashflowReading(cashflowPicks[pick], read, ctx, period);
 	},
 });
 
@@ -151,16 +122,16 @@ const ytdFigure = (
 	compute: async (db, scope, pass) => {
 		if (byCategory && !scope.categoryId) return null;
 		const { ctx } = await viewOf(db, scope.userId, pass);
-		const spans = yearToDate(dayKey(ctx.now, ctx.zone));
+		const spans = insightsYtdSpans(ctx);
 		const read = await once(pass, `insights:ytd:${scope.userId}:${side}`, () =>
 			readSide(db, ctx, spans[side]),
 		);
-		const value = byCategory
-			? (read.categories.get(scope.categoryId ?? "") ?? null)
-			: read.total;
-		if (byCategory && !value)
-			return { minor: 0, currency: currency === "usd" ? "USD" : ctx.home };
-		return reading(value?.[currency] ?? null, read.missing);
+		return ytdReading(
+			read,
+			currency,
+			ctx,
+			byCategory ? scope.categoryId : undefined,
+		);
 	},
 });
 
@@ -169,14 +140,10 @@ export const insightsFigures: FigureDefinition[] = [
 	spanFigure(INSIGHTS.spentPrevious, (v) => previousPeriod(v.ctx, v.period)),
 	byCategoryFigure,
 	byMonthFigure,
-	cashflowFigure(INSIGHTS.income, (r) => r.income),
-	cashflowFigure(INSIGHTS.saved, (r) => savedOf(r)),
-	cashflowFigure(INSIGHTS.dailyAverage, (r, v) =>
-		averageOf(r.spent, daysElapsed(v.period, dayKey(v.ctx.now, v.ctx.zone))),
-	),
-	cashflowFigure(INSIGHTS.monthlyAverage, (r, v) =>
-		averageOf(r.spent, fiscalPeriodsTouched(v.period, v.ctx.startDay)),
-	),
+	cashflowFigure(INSIGHTS.income, "income"),
+	cashflowFigure(INSIGHTS.saved, "saved"),
+	cashflowFigure(INSIGHTS.dailyAverage, "dailyAverage"),
+	cashflowFigure(INSIGHTS.monthlyAverage, "monthlyAverage"),
 	ytdFigure(INSIGHTS.ytd, "thisYear", "home"),
 	ytdFigure(INSIGHTS.ytdLastYear, "lastYear", "home"),
 	ytdFigure(INSIGHTS.ytdByCategory, "thisYear", "home", true),
