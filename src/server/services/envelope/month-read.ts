@@ -4,6 +4,13 @@
  * and history. Figures and previews call these inside their transaction;
  * read.service.ts opens one per request for the transports.
  */
+
+import {
+	type MonthRead as DomainMonthRead,
+	type MonthViewSource,
+	monthViewFrom,
+	owedInputOf,
+} from "@retrospend/domain/envelope/month-read";
 import type {
 	CoverOverview,
 	FillFromTargetsOutput,
@@ -11,26 +18,19 @@ import type {
 	HistoryOutput,
 } from "~/lib/schemas/envelope";
 import type { Prisma } from "~prisma";
-import { addMonths } from "./calendar";
+import type { CloseRow } from "./close-rows";
 import { savedPlanLines } from "./draft-store";
-import { computeBook, type MoneyInEntry } from "./engine";
 import { moneyInEntries } from "./entries";
 import { EnvelopeError } from "./errors";
-import type { GroupBase } from "./group-view";
-import { groupBaseFor, hasPercentGroup } from "./income-history";
-import { type LoadContext, type LoadedBook, loadBook } from "./inputs";
-import { buildMonthView, type MonthView } from "./month-view";
-import { owedSummary } from "./owed";
+import { groupBaseFor } from "./income-history";
+import { type BookRow, loadBook } from "./inputs";
 import { coverOverview, fillFromTargets } from "./planning";
-import { startingMoneyIn } from "./starting-money-in";
 import type { Minor, MonthKey } from "./types";
 import { toMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
 
-export interface MonthRead extends MonthView {
-	loaded: LoadedBook;
-}
+export type MonthRead = DomainMonthRead<BookRow, CloseRow>;
 
 /**
  * Month views per transaction: a preview reads several figures before and
@@ -64,23 +64,10 @@ export function monthViewIn(
 	return view;
 }
 
-/**
- * What a month view reads. The server answers with Postgres
- * (prismaMonthViewSource); a device answers from its own store. The view
- * itself (monthViewFrom) never sees a database.
- */
-export interface MonthViewSource {
-	loadBook(ctx: LoadContext): Promise<LoadedBook | null>;
-	/** The % base of a month for percent groups (SPEC §5.9), which needs closed months. */
-	groupBase(loaded: LoadedBook, month: MonthKey): Promise<GroupBase | null>;
-	/** The starting balance row as a money-in entry, for when it is behind a checkpoint. */
-	startingBalanceEntry(
-		loaded: LoadedBook,
-		id: string,
-	): Promise<MoneyInEntry | undefined>;
-}
-
-export function prismaMonthViewSource(tx: Tx, userId: string): MonthViewSource {
+export function prismaMonthViewSource(
+	tx: Tx,
+	userId: string,
+): MonthViewSource<BookRow, CloseRow> {
 	return {
 		loadBook: (ctx) => loadBook(tx, userId, ctx),
 		groupBase: (loaded, month) => groupBaseFor(tx, loaded, month),
@@ -100,55 +87,7 @@ function computeMonthView(
 	return monthViewFrom(prismaMonthViewSource(tx, userId), now, month);
 }
 
-/** The month view of a source: the same figures on the server and on a device. */
-export async function monthViewFrom(
-	src: MonthViewSource,
-	now: Date,
-	month?: MonthKey,
-): Promise<MonthRead | null> {
-	// A past month needs the pass to start before it, not at the last closed one.
-	const loaded = await src.loadBook({ now, needFrom: month });
-	if (!loaded) return null;
-	const key = month ?? loaded.input.currentMonth;
-	if (
-		key > addMonths(loaded.input.currentMonth, 1) ||
-		key < loaded.book.startMonth
-	)
-		throw new EnvelopeError("INVALID", "that month is outside your budget");
-	const state = computeBook(loaded.input, key);
-	const groupBase =
-		key >= loaded.input.currentMonth && hasPercentGroup(loaded)
-			? await src.groupBase(loaded, key)
-			: null;
-	const view = buildMonthView({
-		book: loaded.book,
-		input: loaded.input,
-		state,
-		month: key,
-		today: loaded.today,
-		missingRates: loaded.missingRates,
-		owed: owedSummary(owedInputOf(loaded)),
-		groupBase,
-		approximateRows: loaded.approximate.length,
-		startingMoney: await startingMoneyIn(loaded, key, (id) =>
-			src.startingBalanceEntry(loaded, id),
-		),
-	});
-	return { ...view, loaded };
-}
-
-/** What the owed reads need from a loaded book. */
-export function owedInputOf(loaded: LoadedBook) {
-	return {
-		replay: loaded.splits.replay,
-		events: loaded.splits.events,
-		pending: loaded.splits.pending,
-		notInBudget: loaded.splits.notInBudget,
-		currency: loaded.book.currency,
-		today: loaded.today,
-		incomplete: loaded.missingRates.length > 0,
-	};
-}
+export { monthViewFrom, owedInputOf };
 
 async function requireView(
 	tx: Tx,
