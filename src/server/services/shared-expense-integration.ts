@@ -8,12 +8,9 @@
  * never the full transaction amount.
  */
 import { USD } from "@retrospend/domain/money";
-import {
-	computeAmountInUSDDec,
-	type RateInput,
-} from "@retrospend/domain/money-dec";
+import { computeAmountInUSDDec } from "@retrospend/domain/money-dec";
 import { dec, toFloat } from "@retrospend/domain/precise-decimal";
-import { priceShare } from "@retrospend/domain/spent";
+import { priceShare, shareRateOf } from "@retrospend/domain/spent";
 import type { Prisma, PrismaClient } from "~prisma";
 import { findExchangeRatesForDates } from "../exchange-rates";
 import type { RateCache } from "./rate-cache";
@@ -70,12 +67,8 @@ export async function shareRateResolver(db: AppDb, rows: ShareRateSource[]) {
 			.filter((r) => r.exchangeRate === null && r.currency !== USD)
 			.map((r) => r.currency),
 	);
-	return (row: ShareRateSource): RateInput => {
-		if (row.currency === USD) return 1;
-		// The stored 18,6 rate crosses as exact text, never a float.
-		if (row.exchangeRate !== null) return dec(row.exchangeRate).toFixed();
-		return lookup(row.currency, row.date)?.rate ?? null;
-	};
+	// The pick is shared with the device (shareRateOf), so both price a share alike.
+	return shareRateOf(lookup);
 }
 
 /**
