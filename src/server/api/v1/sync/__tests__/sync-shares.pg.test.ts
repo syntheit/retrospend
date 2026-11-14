@@ -7,7 +7,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { contract, SCOPES } from "@retrospend/api-contract";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { owedOnce } from "~/server/services/payments/figures";
 import { readShareSnapshot } from "~/server/services/sync/snapshots";
@@ -29,9 +29,10 @@ vi.mock("next/headers", () => ({
 	cookies: async () => ({ get: () => undefined }),
 }));
 
-// Lets one test commit a write between the shares read and the owed read.
+// Lets one test act between the shares read and the owed read: it commits a
+// write on another connection, or tries one on the snapshot's own transaction.
 const between = vi.hoisted(() => ({
-	run: null as null | (() => Promise<void>),
+	run: null as null | ((tx: unknown) => Promise<void>),
 }));
 vi.mock("~/server/services/payments/figures", async (importOriginal) => {
 	const actual =
@@ -39,7 +40,7 @@ vi.mock("~/server/services/payments/figures", async (importOriginal) => {
 	return {
 		...actual,
 		owedOnce: async (...args: Parameters<typeof actual.owedOnce>) => {
-			await between.run?.();
+			await between.run?.(args[0]);
 			return actual.owedOnce(...args);
 		},
 	};
@@ -309,9 +310,14 @@ describe("shares sync route: owed", () => {
 		return { me, bob, as: await asMobile(me) };
 	};
 
+	// The rate table is shared by the files of a worker: add the NZD row only if
+	// it is not there, and delete only a row this file added, by id.
+	let nzdRates: string[] = [];
+
 	beforeAll(async () => {
-		await adminDb.exchangeRate.createMany({
+		const added = await adminDb.exchangeRate.createManyAndReturn({
 			skipDuplicates: true,
+			select: { id: true },
 			data: [
 				{
 					date: new Date("2026-01-01T00:00:00Z"),
@@ -321,6 +327,11 @@ describe("shares sync route: owed", () => {
 				},
 			],
 		});
+		nzdRates = added.map((r) => r.id);
+	});
+
+	afterAll(async () => {
+		await adminDb.exchangeRate.deleteMany({ where: { id: { in: nzdRates } } });
 	});
 
 	// Bob paid USD 40 and NZD 30 for Alice's shares: Alice owes Bob USD 40.00
@@ -418,5 +429,28 @@ describe("shares sync route: one snapshot", () => {
 		const next = await readShareSnapshot(adminDb, alice);
 		expect(next.shares).toHaveLength(2);
 		expect(next.owed).toMatchObject({ youOwe: 3500 });
+	});
+
+	// Postgres refuses any write in a read-only transaction (25006). The write
+	// is tried on the very transaction the snapshot reads in; without SET
+	// TRANSACTION READ ONLY it would succeed and the snapshot would resolve.
+	it("reads in a read-only transaction", async () => {
+		const alice = (await createTestUser()).user.id;
+		between.run = async (tx) => {
+			between.run = null;
+			await (tx as typeof adminDb).user.update({
+				where: { id: alice },
+				data: { homeCurrency: "EUR" },
+			});
+		};
+		try {
+			await expect(readShareSnapshot(adminDb, alice)).rejects.toThrow(
+				/read-only transaction|25006/,
+			);
+		} finally {
+			between.run = null;
+		}
+		const user = await adminDb.user.findUniqueOrThrow({ where: { id: alice } });
+		expect(user.homeCurrency).not.toBe("EUR");
 	});
 });

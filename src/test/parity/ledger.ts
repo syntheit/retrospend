@@ -157,19 +157,26 @@ export async function seedWildHistory() {
 		type: type as string,
 		rate: rate as string,
 	}));
-	await adminDb.exchangeRateHistory.createMany({
+	// The table has no id (its key is date, currency and type): only the rows
+	// this call actually created are returned, and only those are dropped.
+	return adminDb.exchangeRateHistory.createManyAndReturn({
 		data: keys,
 		skipDuplicates: true,
 	});
-	return keys;
 }
 
 export async function dropWildHistory(
-	keys: Awaited<ReturnType<typeof seedWildHistory>>,
+	added: Awaited<ReturnType<typeof seedWildHistory>>,
 ) {
-	for (const k of keys)
-		await adminDb.exchangeRateHistory.deleteMany({
-			where: { date: k.date, currency: k.currency, type: k.type },
+	for (const k of added)
+		await adminDb.exchangeRateHistory.delete({
+			where: {
+				date_currency_type: {
+					date: k.date,
+					currency: k.currency,
+					type: k.type,
+				},
+			},
 		});
 }
 
