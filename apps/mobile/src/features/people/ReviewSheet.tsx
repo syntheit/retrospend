@@ -178,6 +178,8 @@ export function ReviewSheet({
 					) : (
 						note(t("noFigures"))
 					)
+				) : flow.refusal ? (
+					note(t(`refused.${flow.refusal}`), "attention")
 				) : flow.previewFailed ? (
 					note(t("previewError"), "attention")
 				) : (

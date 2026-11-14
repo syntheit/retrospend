@@ -375,12 +375,11 @@ export function createStatefulDb() {
 		}),
 
 		count: vi.fn((args: { where?: Record<string, unknown> } = {}) => {
-			if (!args.where) return transactions.size;
-			let count = 0;
-			for (const tx of transactions.values()) {
-				if (matchesTx(tx, args.where)) count++;
-			}
-			return count;
+			const where = args.where;
+			if (!where) return transactions.size;
+			// No fixture expense corrects another (answer-guard.ts asks).
+			if (where.correctsId !== undefined) return 0;
+			return [...transactions.values()].filter((tx) => matchesTx(tx, where)).length;
 		}),
 
 		aggregate: vi.fn(() => ({ _sum: { amount: 0 } })),

@@ -1851,7 +1851,12 @@
 		"previewError": "No se pudo revisar esto. Inténtalo de nuevo.",
 		"asked": "Has pedido a {name} que lo arregle",
 		"undone": "Respuesta deshecha",
-		"undoError": "No se pudo deshacer la respuesta. Inténtalo de nuevo."
+		"undoError": "No se pudo deshacer la respuesta. Inténtalo de nuevo.",
+		"refused": {
+			"share_locked": "Este gasto está saldado, usa «Pedir arreglo» en su lugar.",
+			"share_is_correction": "Una corrección no se puede rechazar, usa «Pedir arreglo» en su lugar.",
+			"share_reject_reverses_payment": "Ya pagaste esta parte, usa «Pedir arreglo» en su lugar."
+		}
 	},
 	"projects": {
 		"title": "Proyectos",

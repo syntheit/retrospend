@@ -8,6 +8,7 @@ import { TRPCError } from "@trpc/server";
 import { SHARED_FIGURES } from "~/server/services/entry/shared.mutation";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import type { VerificationStatus } from "~prisma";
+import { assertAnswerAllowed } from "./answer-guard";
 import { answerShareIn, type ShareAnswer } from "./answer-share";
 import { logAudit } from "./audit-log";
 
@@ -98,7 +99,8 @@ export interface RestoreAnswerInput {
 
 /**
  * Undo of answerShare: the share goes back to what it was, only while it
- * still reads the answer and the expense is not settled.
+ * still reads the answer and the expense is not settled. Going back to a
+ * rejection is refused where rejecting is (answer-guard.ts).
  */
 export const restoreAnswerMutation: MoneyMutation<
 	RestoreAnswerInput,
@@ -114,7 +116,19 @@ export const restoreAnswerMutation: MoneyMutation<
 				participantType: "user",
 				participantId: actor.userId,
 			},
-			include: { transaction: { select: { isLocked: true, projectId: true } } },
+			include: {
+				transaction: {
+					select: {
+						id: true,
+						isLocked: true,
+						correctsId: true,
+						projectId: true,
+						currency: true,
+						paidByType: true,
+						paidById: true,
+					},
+				},
+			},
 		});
 		if (!split)
 			throw new TRPCError({
@@ -125,11 +139,19 @@ export const restoreAnswerMutation: MoneyMutation<
 			input.answer === "accept"
 				? split.verificationStatus === "ACCEPTED"
 				: split.verificationStatus === "REJECTED";
-		if (!reads || split.transaction.isLocked)
+		if (!reads)
 			throw new TRPCError({
 				code: "CONFLICT",
 				message: "Your share changed since. Undo is no longer safe.",
 			});
+		// Settled, a correction, or a reject that would reverse a payment: the
+		// same refusals as answering (a redo of a flip is refused too).
+		await assertAnswerAllowed(tx, {
+			expense: split.transaction,
+			actor: { participantType: "user", participantId: actor.userId },
+			share: split,
+			next: input.was.verificationStatus,
+		});
 		await tx.splitParticipant.update({
 			where: { id: split.id },
 			data: {

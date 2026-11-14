@@ -6,6 +6,7 @@ import { textUnavailableProblem } from "~/server/crypto/field-open";
 import { InvalidCursorError } from "~/server/services/api-v1/cursor";
 import { OverpayError } from "~/server/services/payments/procedures";
 import { RateOutOfRangeError } from "~/server/services/payments/rate-band";
+import { ShareAnswerRefusedError } from "~/server/services/shared-expenses/answer-guard";
 import { SyncResetRequiredError } from "~/server/services/sync/changes";
 import { Prisma } from "~prisma";
 import { problem } from "../errors";
@@ -59,6 +60,10 @@ export function toProblem(error: unknown, route?: string): unknown {
 	// A typed rate far from the stored one: a slip, with a code a client can show.
 	if (error instanceof RateOutOfRangeError)
 		return problem("rate_out_of_range", error.message);
+	// An answer the expense's state refuses: a code per reason, each pointing
+	// to Ask to fix, so a client words it.
+	if (error instanceof ShareAnswerRefusedError)
+		return problem(error.problem, error.message);
 	if (error instanceof TRPCError) {
 		const code = TRPC_TO_PROBLEM[error.code];
 		if (code) return problem(code, error.message);

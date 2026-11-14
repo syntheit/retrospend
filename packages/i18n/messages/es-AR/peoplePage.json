@@ -42,7 +42,12 @@
 		"accept": "Aceptar",
 		"accepted": "Aceptaste {title}",
 		"rejected": "Rechazaste {title}",
-		"failed": "No se pudo guardar. Probá de nuevo."
+		"failed": "No se pudo guardar. Probá de nuevo.",
+		"refused": {
+			"share_locked": "Este gasto está saldado, usá «Pedir que lo corrija» en su lugar.",
+			"share_is_correction": "Una corrección no se puede rechazar, usá «Pedir que lo corrija» en su lugar.",
+			"share_reject_reverses_payment": "Ya pagaste esta parte, usá «Pedir que lo corrija» en su lugar."
+		}
 	},
 	"addPerson": {
 		"title": "Agregar persona",

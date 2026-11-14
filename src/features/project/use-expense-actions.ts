@@ -7,6 +7,7 @@ import type { ActionHandlers } from "~/components/actions/types";
 import { useToast } from "~/components/ui/toast";
 import { useEntrySheets } from "~/features/entry/context";
 import { useEntryActions } from "~/features/entry/entry-actions";
+import { shareRefusalOf } from "~/features/people/share-refusal";
 import { api } from "~/trpc/react";
 
 /**
@@ -21,6 +22,7 @@ export function useExpenseActions(
 	projectId: string,
 ): ActionHandlers<ExpenseTarget> {
 	const t = useTranslations("projectV2.toast");
+	const tRefused = useTranslations("peoplePage.review");
 	const toast = useToast();
 	const utils = api.useUtils();
 	const { openSharedExpense } = useEntryActions();
@@ -36,10 +38,18 @@ export function useExpenseActions(
 			open: (x) => openSharedExpense(x.id),
 			edit: (x) => sheets.open({ kind: "shared", id: x.id }),
 			review: async (x) => {
-				await accept.mutateAsync({ txnId: x.id });
+				try {
+					await accept.mutateAsync({ txnId: x.id });
+				} catch (e) {
+					// A settled expense takes no answer: say so, pointing to Ask to fix.
+					const refusal = shareRefusalOf(e);
+					if (!refusal) throw e;
+					toast.failed(tRefused(`refused.${refusal}`));
+					return;
+				}
 				toast.saved(t("accepted", { name: x.name }));
 			},
 		}),
-		[accept, openSharedExpense, sheets, t, toast],
+		[accept, openSharedExpense, sheets, t, tRefused, toast],
 	);
 }

@@ -3,6 +3,7 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { RateOutOfRangeError } from "~/server/services/payments/rate-band";
+import { ShareAnswerRefusedError } from "~/server/services/shared-expenses/answer-guard";
 import { errorFormatter, zodErrorData } from "../error-formatter";
 
 const t = initTRPC.create({ errorFormatter });
@@ -27,6 +28,9 @@ const router = t.router({
 		throw new RateOutOfRangeError(
 			"That ARS rate is too far from the stored rate.",
 		);
+	}),
+	locked: t.procedure.mutation(() => {
+		throw new ShareAnswerRefusedError("share_locked", "This expense is settled.");
 	}),
 	fail: t.procedure.mutation(() => {
 		throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
@@ -87,6 +91,9 @@ describe("tRPC error formatter", () => {
 		const slip = await call("slip");
 		expect(slip.status).toBe(400);
 		expect(slip.body.error.data.problem).toBe("rate_out_of_range");
+		const locked = await call("locked");
+		expect(locked.status).toBe(409);
+		expect(locked.body.error.data.problem).toBe("share_locked");
 		expect((await call("fail")).body.error.data.problem).toBeNull();
 	});
 

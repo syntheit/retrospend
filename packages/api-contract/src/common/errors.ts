@@ -23,6 +23,11 @@ export const PROBLEM_STATUS = {
 	overpay: 422,
 	rate_out_of_range: 422,
 	id_taken: 409,
+	// An answer to your share that the expense's state refuses (see
+	// shared-expenses/answer-guard.ts). Each points to Ask to fix instead.
+	share_locked: 409,
+	share_is_correction: 409,
+	share_reject_reverses_payment: 409,
 	// A sync cursor the log can no longer honor: another epoch, a position the
 	// server has not reached, or one older than the kept tombstones. The client
 	// drops that entity's rows and pulls again from the start.

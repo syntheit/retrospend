@@ -42,7 +42,12 @@
 		"accept": "Accepter",
 		"accepted": "{title} accepté",
 		"rejected": "{title} refusé",
-		"failed": "Enregistrement impossible. Réessaie."
+		"failed": "Enregistrement impossible. Réessaie.",
+		"refused": {
+			"share_locked": "Cette dépense est soldée, utilise plutôt « Demander une correction ».",
+			"share_is_correction": "Une correction ne peut pas être refusée, utilise plutôt « Demander une correction ».",
+			"share_reject_reverses_payment": "Tu as déjà payé cette part, utilise plutôt « Demander une correction »."
+		}
 	},
 	"addPerson": {
 		"title": "Ajouter une personne",

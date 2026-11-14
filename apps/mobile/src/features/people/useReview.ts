@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import type { PaymentPreview } from "@/features/settle/plan";
+import { type ReviewRefusal, refusalOf } from "./reviewRefusal";
 
 export type ReviewChoice = "accept" | "reject" | "fix";
 
@@ -28,6 +29,7 @@ export function useReview(
 		choice: ReviewChoice;
 		preview: PaymentPreview | null;
 		failed: boolean;
+		refusal: ReviewRefusal | null;
 	} | null>(null);
 	const [busy, setBusy] = useState(false);
 	const [failed, setFailed] = useState(false);
@@ -60,10 +62,17 @@ export function useReview(
 					: api.corrections.previewAskToFix({ id: expenseId });
 		run
 			.then((preview) => {
-				if (!cancelled) setSettled({ choice, preview, failed: false });
+				if (!cancelled)
+					setSettled({ choice, preview, failed: false, refusal: null });
 			})
-			.catch(() => {
-				if (!cancelled) setSettled({ choice, preview: null, failed: true });
+			.catch((error) => {
+				if (!cancelled)
+					setSettled({
+						choice,
+						preview: null,
+						failed: true,
+						refusal: refusalOf(error),
+					});
 			});
 		return () => {
 			cancelled = true;
@@ -123,6 +132,7 @@ export function useReview(
 	return {
 		preview,
 		previewFailed: current?.failed === true,
+		refusal: current?.refusal ?? null,
 		busy,
 		failed,
 		send,

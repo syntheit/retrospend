@@ -42,7 +42,12 @@
 		"accept": "Accept",
 		"accepted": "Accepted {title}",
 		"rejected": "Rejected {title}",
-		"failed": "Couldn't save that. Try again."
+		"failed": "Couldn't save that. Try again.",
+		"refused": {
+			"share_locked": "This expense is settled, so use Ask to fix instead.",
+			"share_is_correction": "A correction can't be rejected, so use Ask to fix instead.",
+			"share_reject_reverses_payment": "You already paid this share, so use Ask to fix instead."
+		}
 	},
 	"addPerson": {
 		"title": "Add person",

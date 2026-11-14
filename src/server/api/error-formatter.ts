@@ -2,6 +2,7 @@ import type { TRPCError } from "@trpc/server";
 import { ZodError, z } from "zod";
 import { textUnavailableProblem } from "~/server/crypto/field-open";
 import { RateOutOfRangeError } from "~/server/services/payments/rate-band";
+import { ShareAnswerRefusedError } from "~/server/services/shared-expenses/answer-guard";
 
 /**
  * Field errors for input validation failures, in the flattened
@@ -17,6 +18,7 @@ export function zodErrorData(error: TRPCError) {
  */
 export function problemCode(error: TRPCError) {
 	if (error instanceof RateOutOfRangeError) return "rate_out_of_range";
+	if (error instanceof ShareAnswerRefusedError) return error.problem;
 	return textUnavailableProblem(error);
 }
 
