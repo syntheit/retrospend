@@ -33,6 +33,7 @@ import {
 } from "@retrospend/domain/figures/registry";
 import { FigureUnavailable } from "@retrospend/domain/figures/unavailable";
 import {
+	type RateRow,
 	rateLookup,
 	rateRowsByCurrency,
 	type StoredRateRow,
@@ -59,7 +60,13 @@ import {
 	spentRange,
 } from "@retrospend/domain/spent";
 import { NotFoundError } from "./errors";
-import { OWED_ID, type Reader } from "./port";
+import {
+	OWED_ID,
+	type Reader,
+	type SettingsRow,
+	type TableName,
+	type TableRows,
+} from "./port";
 import { settingsReads } from "./reference";
 
 export interface DeviceFiguresDeps {
@@ -72,8 +79,66 @@ export interface DeviceFiguresDeps {
 
 type DeviceFigure = FigureDefinition<Reader>;
 
+/**
+ * What one read pass has loaded from its reader, so a pass over many figures
+ * lists each table once instead of once per figure. A pass is one reader's
+ * reads with no write between (the FigurePass contract), so what it loaded
+ * cannot go stale; a pass handed to a different reader gets no memo.
+ */
+interface PassReads {
+	readonly db: Reader;
+	readonly tables: Map<TableName, readonly unknown[]>;
+	settings?: SettingsRow;
+	/** The rate rows of every currency, grouped once. */
+	rateRows?: Record<string, RateRow[]>;
+	notTracked?: ReturnType<typeof notTrackedUnitsOf>;
+}
+
+const passReads = new WeakMap<FigurePass, PassReads>();
+
+function readsOf(db: Reader, pass?: FigurePass): PassReads | undefined {
+	if (!pass) return undefined;
+	let reads = passReads.get(pass);
+	if (!reads) {
+		reads = { db, tables: new Map() };
+		passReads.set(pass, reads);
+	}
+	return reads.db === db ? reads : undefined;
+}
+
+/** The rows of `table`, listed once per pass; a plain list when there is no pass. */
+function rowsIn<T extends TableName>(
+	db: Reader,
+	pass: FigurePass | undefined,
+	table: T,
+): readonly TableRows[T][] {
+	const reads = readsOf(db, pass);
+	if (!reads) return db.list(table);
+	let rows = reads.tables.get(table);
+	if (rows === undefined) {
+		rows = db.list(table);
+		reads.tables.set(table, rows);
+	}
+	return rows as readonly TableRows[T][];
+}
+
 /** The settings row; a store without one throws (NotFoundError), never a USD fallback. */
-const settingsOf = (db: Reader) => settingsReads(db).require();
+function settingsOf(db: Reader, pass?: FigurePass): SettingsRow {
+	const reads = readsOf(db, pass);
+	if (reads?.settings) return reads.settings;
+	const row = settingsReads(db).require();
+	if (reads) reads.settings = row;
+	return row;
+}
+
+/** The not-tracked units of the pass's legs, summed once. */
+function notTrackedIn(db: Reader, pass?: FigurePass) {
+	const reads = readsOf(db, pass);
+	if (reads?.notTracked) return reads.notTracked;
+	const units = notTrackedUnitsOf(rowsIn(db, pass, "legs"));
+	if (reads) reads.notTracked = units;
+	return units;
+}
 
 /**
  * Owed to you and You owe from the `owed` row a shares sync wrote. Shared
@@ -94,10 +159,38 @@ function owedOf(db: Reader, home: string): OwedReading {
 	return { owedToYou: row.owedToYou, youOwe: row.youOwe };
 }
 
+/**
+ * The rate rows of `currencies` (USD has none), as rateRowsByCurrency gives
+ * them. With a pass the rows are grouped once for every currency and each call
+ * takes its currencies from that, so a currency not asked for is still absent.
+ */
+function ratesOf(
+	db: Reader,
+	pass: FigurePass | undefined,
+	currencies: Iterable<string>,
+): Record<string, RateRow[]> {
+	const rates: readonly StoredRateRow[] = rowsIn(db, pass, "rates");
+	const reads = readsOf(db, pass);
+	if (!reads) return rateRowsByCurrency(rates, currencies);
+	reads.rateRows ??= rateRowsByCurrency(
+		rates,
+		rates.map((r) => r.currency),
+	);
+	const picked: Record<string, RateRow[]> = {};
+	for (const currency of currencies) {
+		const rows = reads.rateRows[currency];
+		if (rows) picked[currency] = rows;
+	}
+	return picked;
+}
+
 /** Rate lookups over the rows of `currencies`, picked in memory as the server's batch lookup does. */
-function lookupFor(db: Reader, currencies: Iterable<string>) {
-	const rates: readonly StoredRateRow[] = db.list("rates");
-	return rateLookup(rateRowsByCurrency(rates, currencies));
+function lookupFor(
+	db: Reader,
+	pass: FigurePass | undefined,
+	currencies: Iterable<string>,
+) {
+	return rateLookup(ratesOf(db, pass, currencies));
 }
 
 /** The instant one pass reads at: the same for every figure of the pass. */
@@ -120,7 +213,7 @@ function spentFigure(clock: () => Date): DeviceFigure {
 		id: "spent",
 		scope: [],
 		compute: async (db, _scope, pass) => {
-			const s = settingsOf(db);
+			const s = settingsOf(db, pass);
 			const range = spentRange(
 				await readNow(clock, pass),
 				s.startDay,
@@ -128,8 +221,8 @@ function spentFigure(clock: () => Date): DeviceFigure {
 			);
 			return spentMinorByCurrency(
 				spentInputsFromRows({
-					expenses: db.list("expenses"),
-					shares: db.list("shares"),
+					expenses: rowsIn(db, pass, "expenses"),
+					shares: rowsIn(db, pass, "shares"),
 					hiddenProjectIds: s.hiddenProjectIds,
 					range,
 				}),
@@ -138,13 +231,17 @@ function spentFigure(clock: () => Date): DeviceFigure {
 	};
 }
 
-async function loadPace(db: Reader, now: Date): Promise<SpendPace> {
-	const s = settingsOf(db);
-	const shares = db.list("shares");
-	const rates: readonly StoredRateRow[] = db.list("rates");
-	const homeRates = rateRowsByCurrency(rates, [s.homeCurrency])[s.homeCurrency];
+async function loadPace(
+	db: Reader,
+	now: Date,
+	pass?: FigurePass,
+): Promise<SpendPace> {
+	const s = settingsOf(db, pass);
+	const shares = rowsIn(db, pass, "shares");
+	const homeRates = ratesOf(db, pass, [s.homeCurrency])[s.homeCurrency];
 	const shareLookup = lookupFor(
 		db,
+		pass,
 		shares.filter((x) => x.exchangeRate === null).map((x) => x.currency),
 	);
 	return spendPaceFrom({
@@ -153,7 +250,7 @@ async function loadPace(db: Reader, now: Date): Promise<SpendPace> {
 		now,
 		timeZone: s.timeZone,
 		inputs: spendPaceInputsFromRows({
-			expenses: db.list("expenses"),
+			expenses: rowsIn(db, pass, "expenses"),
 			shares,
 			hiddenProjectIds: s.hiddenProjectIds,
 			home: s.homeCurrency,
@@ -175,7 +272,7 @@ function glanceFigures(clock: () => Date): DeviceFigure[] {
 		scope: [],
 		compute: async (db, scope, pass) => {
 			const pace = await once(pass, `glance:pace:${scope.userId}`, async () =>
-				loadPace(db, await readNow(clock, pass)),
+				loadPace(db, await readNow(clock, pass), pass),
 			);
 			const minor = pick(pace);
 			if (minor === null) return new FigureUnavailable(pace.missingRates);
@@ -197,15 +294,16 @@ function recurringFigures(clock: () => Date): DeviceFigure[] {
 	/** Due dates step and days show in the one saved zone, as the server's figure read has no request zone. */
 	const bodyOf = (db: Reader, scope: { userId: string }, pass?: FigurePass) =>
 		once(pass, `recurring:${scope.userId}`, async () => {
-			const s = settingsOf(db);
+			const s = settingsOf(db, pass);
 			const now = await readNow(clock, pass);
-			const templates = db.list("recurringTemplates");
+			const templates = rowsIn(db, pass, "recurringTemplates");
 			return recurringBodyFrom({
 				inputs: recurringInputsFromRows({
 					home: s.homeCurrency,
 					templates,
-					rateRows: rateRowsByCurrency(
-						db.list("rates"),
+					rateRows: ratesOf(
+						db,
+						pass,
 						recurringRateCurrencies(s.homeCurrency, templates),
 					),
 					now,
@@ -256,11 +354,13 @@ function accountFigures(clock: () => Date): DeviceFigure[] {
 		id: "netWorth",
 		scope: [],
 		compute: async (db, _scope, pass) => {
-			const s = settingsOf(db);
-			const open = db.list("accounts").filter((a) => a.closedAt === null);
-			const legs = db.list("legs");
-			const notTracked = notTrackedUnitsOf(legs);
-			const pick = lookupFor(db, [
+			const s = settingsOf(db, pass);
+			const open = rowsIn(db, pass, "accounts").filter(
+				(a) => a.closedAt === null,
+			);
+			const legs = rowsIn(db, pass, "legs");
+			const notTracked = notTrackedIn(db, pass);
+			const pick = lookupFor(db, pass, [
 				s.homeCurrency,
 				...open.map((a) => a.currency),
 				...notTracked.map((u) => u.currency),
@@ -289,12 +389,12 @@ function accountFigures(clock: () => Date): DeviceFigure[] {
 					pass,
 					`netWorthChange:${scope.userId}`,
 					async () => {
-						const s = settingsOf(db);
-						const accounts = db.list("accounts");
-						const snapshots = db.list("snapshots");
-						const legs = db.list("legs");
-						const untracked = notTrackedUnitsOf(legs).map((u) => u.currency);
-						const pick = lookupFor(db, [
+						const s = settingsOf(db, pass);
+						const accounts = rowsIn(db, pass, "accounts");
+						const snapshots = rowsIn(db, pass, "snapshots");
+						const legs = rowsIn(db, pass, "legs");
+						const untracked = notTrackedIn(db, pass).map((u) => u.currency);
+						const pick = lookupFor(db, pass, [
 							s.homeCurrency,
 							...accounts.map((a) => a.currency),
 							...snapshots.flatMap((x) => (x.currency ? [x.currency] : [])),
@@ -306,7 +406,7 @@ function accountFigures(clock: () => Date): DeviceFigure[] {
 								accounts,
 								snapshots,
 								legs,
-								rateSwitches: db.list("rateSwitches"),
+								rateSwitches: rowsIn(db, pass, "rateSwitches"),
 								pick,
 							}),
 							await readNow(clock, pass),
@@ -322,13 +422,14 @@ function accountFigures(clock: () => Date): DeviceFigure[] {
 	const balance: DeviceFigure = {
 		id: "accounts.balance",
 		scope: ["accountId"],
-		compute: async (db, scope) =>
-			accountBalancesFrom(db.list("accounts"), scope.accountId),
+		compute: async (db, scope, pass) =>
+			accountBalancesFrom(rowsIn(db, pass, "accounts"), scope.accountId),
 	};
 	const notTracked: DeviceFigure = {
 		id: "notTracked",
 		scope: [],
-		compute: async (db) => notTrackedFrom(notTrackedUnitsOf(db.list("legs"))),
+		compute: async (db, _scope, pass) =>
+			notTrackedFrom(notTrackedIn(db, pass)),
 	};
 	return [
 		netWorth,
