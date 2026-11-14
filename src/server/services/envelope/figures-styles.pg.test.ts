@@ -29,6 +29,9 @@
  * Every style computes these the same way (styles are presets, B8); what
  * differs is the lead (Left in limits in Limits only), so those are checked
  * against the month view the same pass reads.
+ *
+ * A user who chose Just track has no book, so every budget and envelope
+ * figure is unavailable (null), never 0.
  */
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -51,6 +54,7 @@ const STYLES = [
 	"SAVE_FIRST",
 	"FIFTY_THIRTY_TWENTY",
 	"WEEKLY",
+	"DEBT_PAYOFF",
 ] as const;
 
 /** Styles whose setup assigns the Rent and Dining amounts from the pool (header). */
@@ -59,6 +63,7 @@ const FUNDED_AT_SETUP: readonly (typeof STYLES)[number][] = [
 	"FLEX",
 	"EVERY_DOLLAR",
 	"WEEKLY",
+	"DEBT_PAYOFF",
 ];
 
 /**
@@ -234,5 +239,30 @@ describe("budget figures with a rate missing", () => {
 		expect(r.get("budget.notPlannedYet")).toBeNull();
 		expect(r.get("budget.holds")).toBeNull();
 		expect(r.get("budget.leftToSpend")).toBeNull();
+	});
+});
+
+describe("budget figures without a book (Just track)", () => {
+	it("are all unavailable", async () => {
+		const s = await seedUser();
+		const r = await readFigures(
+			s.user.id,
+			[
+				"budget.notPlannedYet",
+				"budget.leftToSpend",
+				"budget.leftThisWeek",
+				"budget.leftInLimits",
+				"envelope.left",
+				"envelope.spent",
+				"budget.moneyIn",
+				"budget.heldForOthers",
+				"budget.holds",
+				"budget.planCost",
+				"budget.typicalIncome",
+				"budget.totalDebt",
+			],
+			{ envelopeId: randomUUID() },
+		);
+		expect([...r.values()]).toEqual(Array.from({ length: 12 }, () => null));
 	});
 });
