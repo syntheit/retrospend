@@ -35,8 +35,8 @@ export {
 	type Reader,
 	SETTINGS_ID,
 	type SettingsRow,
-	SINGLE_ROW_IDS,
 	type ShareRow,
+	SINGLE_ROW_IDS,
 	type Snapshot,
 	type Store,
 	TABLE_NAMES,
@@ -55,6 +55,12 @@ export {
 	RateHistoryStore,
 	ratesAsOf,
 } from "./rates";
+export {
+	DEVICE_FIGURE_IDS,
+	type DeviceFiguresDeps,
+	deviceFigures,
+	serverOnlyReason,
+} from "./registry";
 export { type ReadRepos, type Repos, readRepos, repos } from "./repos";
 export type { TemplateRow } from "./templates";
 export type { UndoToken } from "./undo";
