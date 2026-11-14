@@ -4,7 +4,7 @@ import { currencyCodeSchema } from "../common/money";
 import { idSchema } from "../core";
 
 /**
- * The budget block of GET /sync/shares?budget=1 (E2EE P13b): what a device
+ * The budget block of GET /sync/shares?budget=1: what a device
  * needs besides its own rows to read the budget figures as the server does.
  * Every amount is integer minor units of the book currency unless a field
  * says otherwise. Counterparties and every id that is not the caller's own
@@ -12,6 +12,12 @@ import { idSchema } from "../core";
  * alone: the next pull may number them differently, and nothing in here
  * names a person, a project or a title.
  */
+
+/** A date that exists: the plain schema only checks the digits, so 2026-02-30 passes it. */
+const syncIsoDateSchema = isoDateSchema.refine((v) => {
+	const at = new Date(`${v}T00:00:00Z`);
+	return !Number.isNaN(at.getTime()) && at.toISOString().slice(0, 10) === v;
+}, "not a calendar date");
 
 const opaqueKeySchema = idSchema.meta({
 	description:
@@ -22,7 +28,7 @@ const missingRateSchema = z
 	.object({
 		currency: currencyCodeSchema,
 		rateType: z.string().nullable(),
-		date: isoDateSchema,
+		date: syncIsoDateSchema,
 		rowId: opaqueKeySchema.optional(),
 	})
 	.meta({
@@ -32,7 +38,7 @@ const missingRateSchema = z
 	});
 
 const approximateRowSchema = z
-	.object({ rowId: opaqueKeySchema, date: isoDateSchema })
+	.object({ rowId: opaqueKeySchema, date: syncIsoDateSchema })
 	.meta({
 		id: "SyncApproximateRow",
 		description:
@@ -43,7 +49,7 @@ const shareEntrySchema = z
 	.object({
 		id: idSchema.meta({ description: "The caller's participation." }),
 		month: monthKeySchema,
-		date: isoDateSchema,
+		date: syncIsoDateSchema,
 		minor: minorSchema.meta({
 			description:
 				"Negative: the share is spending. Valued in the book currency, as the server froze it.",
@@ -72,7 +78,7 @@ const eventBase = {
 	id: opaqueKeySchema,
 	counterparty: opaqueKeySchema,
 	currency: currencyCodeSchema,
-	date: isoDateSchema,
+	date: syncIsoDateSchema,
 	month: monthKeySchema,
 	native: minorSchema.meta({
 		description: "Positive, in minor units of `currency`.",
@@ -121,7 +127,7 @@ const replayEventSchema = z
 const replayEffectSchema = z
 	.object({
 		eventId: opaqueKeySchema,
-		date: isoDateSchema,
+		date: syncIsoDateSchema,
 		month: monthKeySchema,
 		counterparty: opaqueKeySchema,
 		currency: currencyCodeSchema,
@@ -143,7 +149,7 @@ const replayBalanceSchema = z
 			description:
 				"Book value of what they owe you; 0 when `native` is not positive.",
 		}),
-		oldestOpen: isoDateSchema.nullable(),
+		oldestOpen: syncIsoDateSchema.nullable(),
 	})
 	.meta({ id: "SyncReplayBalance" });
 
@@ -169,7 +175,7 @@ const pendingReceiptSchema = z
 		cash: minorSchema.nullable().meta({
 			description: "Book value of the cash, or null when its rate is missing.",
 		}),
-		date: isoDateSchema,
+		date: syncIsoDateSchema,
 	})
 	.meta({ id: "SyncPendingReceipt" });
 
@@ -215,6 +221,21 @@ export const syncFrozenValueSchema = z
 	})
 	.meta({ id: "SyncFrozenValue" });
 
+const frozenListSchema = z
+	.array(syncFrozenValueSchema)
+	.superRefine((list, ctx) => {
+		const seen = new Set<string>();
+		list.forEach((f, i) => {
+			if (seen.has(f.key))
+				ctx.addIssue({
+					code: "custom",
+					path: [i, "key"],
+					message: "repeats an earlier key",
+				});
+			seen.add(f.key);
+		});
+	});
+
 export const syncBudgetBlockSchema = z
 	.object({
 		bookId: idSchema,
@@ -222,11 +243,11 @@ export const syncBudgetBlockSchema = z
 			description:
 				"What the book's valuations depend on (currency, zone, start date, every period). Compare for equality with the key of the book you hold; a mismatch means your rows are stale.",
 		}),
-		asOf: z.string().meta({
+		asOf: z.string().min(1).meta({
 			description:
 				"A sync cursor. The block is exact for rows at or below it: use it once every entity cursor you hold has reached it, so pull /sync/shares before the deltas.",
 		}),
-		frozen: z.array(syncFrozenValueSchema).meta({
+		frozen: frozenListSchema.meta({
 			description:
 				"Values the server froze for the caller's own expenses (never for shares, which come valued).",
 		}),
