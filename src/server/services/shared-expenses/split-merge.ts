@@ -1,4 +1,10 @@
-import type { Prisma } from "~prisma";
+import { UNCOUNTED_SHARE_STATUSES } from "@retrospend/domain/share-status";
+import { Prisma } from "~prisma";
+
+/** The statuses that do not count, as the SQL list (constants, never user input). */
+const UNCOUNTED = Prisma.raw(
+	UNCOUNTED_SHARE_STATUSES.map((s) => `'${s}'`).join(", "),
+);
 
 type ParticipantType = "user" | "guest" | "shadow";
 
@@ -17,10 +23,11 @@ interface SplitOwner {
  *    summed, so a PERCENTAGE or SHARES expense keeps a percentage/units value
  *    that matches the merged amount (a later rescale or edit recomputes from
  *    those, and a stale value would silently undo the merge). A column that
- *    is null on both rows stays null. The merged row keeps the answer when
- *    both rows gave the same one; when they differ it goes back to PENDING,
- *    so the person confirms the merged amount (a rejected row never makes
- *    a bigger share count again on the other row's answer).
+ *    is null on both rows stays null. The merged row keeps the target's
+ *    answer unless exactly one of the two rows counts (a rejected share does
+ *    not, shareCounts in the domain package): then it goes back to PENDING and
+ *    the person confirms the merged amount, so one row's rejection never makes
+ *    a bigger share count on the other row's answer.
  * 2. Delete the source rows that were merged.
  *
  * Step 3 (re-pointing the remaining source rows with updateMany) is left to
@@ -43,12 +50,14 @@ export async function mergeOverlappingSplitRows(
 		           ELSE COALESCE(target."shareUnits", 0) + COALESCE(source."shareUnits", 0)
 		       END,
 		       "verificationStatus" = CASE
-		           WHEN target."verificationStatus" = source."verificationStatus"
+		           WHEN (target."verificationStatus" IN (${UNCOUNTED}))
+		              = (source."verificationStatus" IN (${UNCOUNTED}))
 		           THEN target."verificationStatus"
 		           ELSE 'PENDING'::"VerificationStatus"
 		       END,
 		       "verifiedAt"      = CASE
-		           WHEN target."verificationStatus" = source."verificationStatus"
+		           WHEN (target."verificationStatus" IN (${UNCOUNTED}))
+		              = (source."verificationStatus" IN (${UNCOUNTED}))
 		           THEN target."verifiedAt"
 		       END
 		FROM   split_participant AS source

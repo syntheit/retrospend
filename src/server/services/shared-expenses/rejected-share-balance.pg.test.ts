@@ -719,7 +719,7 @@ describe("scenario H: a creator edit and a rejected share", () => {
 });
 
 describe("scenario I: a claim merge never lets one row's answer cover another's", () => {
-	it("6: differing answers merge to PENDING in both directions, equal answers are kept", async () => {
+	it("6: a counted and an uncounted answer merge to PENDING in both directions, any other pair keeps the target's answer", async () => {
 		const { ana, bruno } = await cast();
 		const ghost = await adminDb.shadowProfile.create({
 			data: { createdById: ana.user.id, name: "Bruno (guest)" },
@@ -729,6 +729,10 @@ describe("scenario I: a claim merge never lets one row's answer cover another's"
 			["REJECTED", "ACCEPTED", "PENDING"],
 			["ACCEPTED", "ACCEPTED", "ACCEPTED"],
 			["REJECTED", "REJECTED", "REJECTED"],
+			// Both count: the target's answer stays, nobody is asked again.
+			["ACCEPTED", "AUTO_ACCEPTED", "ACCEPTED"],
+			["AUTO_ACCEPTED", "ACCEPTED", "AUTO_ACCEPTED"],
+			["PENDING", "ACCEPTED", "PENDING"],
 		] as const;
 		const ids: string[] = [];
 		for (const [userAnswer, ghostAnswer] of answers) {
@@ -777,7 +781,7 @@ describe("scenario I: a claim merge never lets one row's answer cover another's"
 			},
 		});
 		// One row per expense, 10,000 + 20,000 = 30,000 each.
-		expect(merged).toHaveLength(4);
+		expect(merged).toHaveLength(answers.length);
 		expect(
 			ids.map((id) => {
 				const row = merged.find((m) => m.transactionId === id);
