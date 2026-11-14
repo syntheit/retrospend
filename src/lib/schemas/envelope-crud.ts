@@ -9,7 +9,17 @@
  * changed is stored server side (envelope_change), so its undo is exact and a
  * client never sends the old state back.
  */
-import { affordStateSchema } from "@retrospend/api-contract/budget";
+import {
+	affordActionSchema,
+	affordResultSchema,
+	affordStateSchema,
+	leftChangeSchema,
+	routedCategorySchema,
+	routedResult,
+	setTargetResultSchema,
+	unroutedShareSchema,
+	unroutedSharesOutputSchema,
+} from "@retrospend/api-contract/budget";
 import { userText } from "@retrospend/api-contract/common";
 import { z } from "zod";
 import {
@@ -23,26 +33,20 @@ import {
 } from "./envelope";
 import { targetSnapshotSchema } from "./envelope-book";
 
-export { affordStateSchema };
+export {
+	affordActionSchema,
+	affordResultSchema,
+	affordStateSchema,
+	routedCategorySchema,
+	setTargetResultSchema,
+	unroutedShareSchema,
+	unroutedSharesOutputSchema,
+};
 
 const idSchema = z.string().min(1).max(64);
 const clientIdSchema = z.string().uuid();
 const positiveMinor = minorSchema.refine((v) => v > 0, "must be above 0");
 const nonNegativeMinor = minorSchema.refine((v) => v >= 0, "must be 0 or more");
-
-/** A category link that moved: from the envelope that had it (null: none) to the one that has it now (null: none). */
-export const routedCategorySchema = z.object({
-	categoryId: idSchema,
-	from: idSchema.nullable(),
-	to: idSchema.nullable(),
-});
-
-/** An envelope's Left in the current month before and after an edit (RC-5: every line listed). */
-const leftChangeSchema = z.object({
-	id: idSchema,
-	before: moneySchema,
-	after: moneySchema,
-});
 
 const changeIdSchema = z.object({
 	/** Client id of the edit: a retry is a no-op, and it names the edit for its undo. */
@@ -64,21 +68,6 @@ export const setTargetInputSchema = changeIdSchema
 		path: ["target"],
 	});
 
-export const setTargetResultSchema = z.object({
-	changeId: idSchema,
-	envelopeId: idSchema,
-	/** The stored target now. */
-	target: targetSnapshotSchema,
-	/** The stored target before: what the undo writes back. */
-	previous: targetSnapshotSchema,
-	/** As typed, in its own currency (a foreign target keeps it); null without an amount. */
-	typed: moneySchema.nullable(),
-	/** The same target in the book currency at today's rate; null without an amount or a rate. */
-	inBook: moneySchema.nullable(),
-	/** A foreign target with no rate today (R14): the need reads 0 and says so. */
-	incomplete: z.boolean(),
-});
-
 // ── Create, update, combine, archive ───────────────────────────────────────
 
 export const createEnvelopeInputSchema = z.object({
@@ -94,12 +83,6 @@ export const createEnvelopeInputSchema = z.object({
 	categoryIds: z.array(idSchema).max(200).default([]),
 	icon: z.string().max(32).optional(),
 });
-
-const routedResult = {
-	changeId: idSchema,
-	/** Categories whose link moved. Closed months keep the routing they closed with (B7). */
-	routed: z.array(routedCategorySchema),
-};
 
 export const createEnvelopeResultSchema = movementResultSchema.extend({
 	...routedResult,
@@ -241,70 +224,11 @@ export const affordInputSchema = z.object({
 	envelopeId: idSchema.optional(),
 });
 
-export const affordActionSchema = z.discriminatedUnion("kind", [
-	/** Put the shortfall into Spending from Not planned yet. */
-	z.object({ kind: z.literal("ADD_TO_SPENDING"), amount: moneySchema }),
-	z.object({
-		kind: z.literal("MOVE_MONEY"),
-		envelopeId: idSchema,
-		amount: moneySchema,
-	}),
-	z.object({ kind: z.literal("PLAN_NEXT_MONTH"), month: monthKeySchema }),
-]);
-
-/** The sentence's state and every number in it; the client writes the words. */
-export const affordResultSchema = z.object({
-	month: monthKeySchema,
-	scope: z.enum(["SPENDING", "ENVELOPE", "WEEK"]),
-	state: affordStateSchema,
-	amount: moneySchema,
-	/** The envelope answered from (ENVELOPE scope). */
-	envelopeId: idSchema.nullable(),
-	/** What the scope holds now: Left to spend, the envelope's Left or Left this week. */
-	left: moneySchema,
-	/** left - amount; below 0 when it does not fit. */
-	after: moneySchema,
-	/** How much more it needs; 0 when it fits. */
-	short: moneySchema,
-	/** About how much a day after paying it. */
-	perDay: moneySchema,
-	daysLeft: z.number().int(),
-	/** About what you usually spend a day (last 3 closed months); null before a first close. */
-	usualPerDay: moneySchema.nullable(),
-	/** Not planned yet (To assign when it is above 0). */
-	notPlanned: moneySchema,
-	/** NO_LIMIT: what the envelope spent this month. */
-	spent: moneySchema,
-	action: affordActionSchema.nullable(),
-	incomplete: z.boolean(),
-});
-
 // ── Shares with no envelope (SPEC §5.8, §5.14) ──────────────────────────────
 
 export const unroutedSharesInputSchema = z
 	.object({ limit: z.number().int().min(1).max(200).default(100) })
 	.default({ limit: 100 });
-
-export const unroutedShareSchema = z.object({
-	shareId: idSchema,
-	/** The split expense it belongs to; the client joins its title. */
-	expenseId: idSchema,
-	date: isoDateSchema,
-	month: monthKeySchema.nullable(),
-	/** Your share in the book currency at its date; null when a rate is missing (R14). */
-	amount: moneySchema.nullable(),
-	projectId: idSchema.nullable(),
-	payer: z.object({ type: z.string(), id: idSchema }),
-});
-
-export const unroutedSharesOutputSchema = z.object({
-	/** Where they land until you pick: Everything else. */
-	defaultEnvelopeId: idSchema,
-	shares: z.array(unroutedShareSchema),
-	total: moneySchema,
-	count: z.number().int().min(0),
-	incomplete: z.boolean(),
-});
 
 export type SetTargetInput = z.infer<typeof setTargetInputSchema>;
 export type SetTargetResult = z.infer<typeof setTargetResultSchema>;
