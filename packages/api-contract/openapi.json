@@ -129709,6 +129709,7 @@
 															"properties": {
 																"asOf": {
 																	"description": "A sync cursor. The block is exact for rows at or below it: use it once every entity cursor you hold has reached it, so pull /sync/shares before the deltas.",
+																	"minLength": 1,
 																	"type": "string"
 																},
 																"bookId": {
