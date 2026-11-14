@@ -133,6 +133,24 @@ export interface ShadowProfileRecord {
 	claimedById: string | null;
 }
 
+/**
+ * A Prisma `verificationStatus` filter against one status: equality, `in`,
+ * `not` and `notIn`, the forms the readers use (COUNTED_SHARE is `notIn`).
+ */
+function statusMatches(filter: unknown, status: string): boolean {
+	if (filter === undefined) return true;
+	if (typeof filter === "string") return status === filter;
+	const f = filter as {
+		in?: string[];
+		not?: string;
+		notIn?: string[];
+	};
+	if (f.in !== undefined && !f.in.includes(status)) return false;
+	if (f.not !== undefined && status === f.not) return false;
+	if (f.notIn !== undefined && f.notIn.includes(status)) return false;
+	return true;
+}
+
 // ── Main factory ──────────────────────────────────────────────────────────────
 
 export function createStatefulDb() {
@@ -498,10 +516,7 @@ export function createStatefulDb() {
 							sp.participantId !== w.participantId
 						)
 							return false;
-						if (
-							w.verificationStatus !== undefined &&
-							sp.verificationStatus !== w.verificationStatus
-						)
+						if (!statusMatches(w.verificationStatus, sp.verificationStatus))
 							return false;
 
 						// NOT: { participantType, participantId } excludes the actor's own
@@ -683,16 +698,7 @@ export function createStatefulDb() {
 					)
 						matches = false;
 
-					if (
-						w.verificationStatus !== undefined &&
-						typeof w.verificationStatus === "string" &&
-						sp.verificationStatus !== w.verificationStatus
-					)
-						matches = false;
-
-					const vsIn = (w.verificationStatus as { in?: string[] } | undefined)
-						?.in;
-					if (vsIn !== undefined && !vsIn.includes(sp.verificationStatus))
+					if (!statusMatches(w.verificationStatus, sp.verificationStatus))
 						matches = false;
 
 					if (
@@ -778,15 +784,7 @@ export function createStatefulDb() {
 					sp.participantId !== w.participantId
 				)
 					matches = false;
-				if (
-					w.verificationStatus !== undefined &&
-					typeof w.verificationStatus === "string" &&
-					sp.verificationStatus !== w.verificationStatus
-				)
-					matches = false;
-				const vsIn = (w.verificationStatus as { in?: string[] } | undefined)
-					?.in;
-				if (vsIn !== undefined && !vsIn.includes(sp.verificationStatus))
+				if (!statusMatches(w.verificationStatus, sp.verificationStatus))
 					matches = false;
 
 				if (w.transaction) {

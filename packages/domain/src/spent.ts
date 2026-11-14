@@ -16,6 +16,7 @@ import { getCurrentFiscalMonth, getFiscalMonthRange } from "./fiscal-month";
 import { type MoneyItemDec, type RateInput, toUSDDec, USD } from "./money-dec";
 import { type Money, roundedMinor } from "./money-minor";
 import { type Decimal, type DecimalInput, dec } from "./precise-decimal";
+import { shareCounts } from "./share-status";
 
 /** The sums of rows that share a currency and a booked home currency (rows booked when saved, M2, are split from the rest). */
 export interface SpentGroup {
@@ -253,7 +254,7 @@ export function spentInputsFromRows(args: {
 		shares: args.shares
 			.filter(
 				(s) =>
-					s.verificationStatus !== "REJECTED" &&
+					shareCounts(s.verificationStatus) &&
 					inRange(s.date, range) &&
 					(s.projectId === null ||
 						!args.hiddenProjectIds.includes(s.projectId)),

@@ -1,4 +1,5 @@
 import { fromMinorUnits } from "@retrospend/domain/money";
+import { UNCOUNTED_SHARE_STATUSES } from "@retrospend/domain/share-status";
 import { toMinor } from "~/server/services/envelope/units";
 import { countsFor, type PairEvent } from "~/server/services/payments/ledger";
 import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
@@ -68,6 +69,17 @@ export function projectScopeWhere(opts?: BalanceOptions): {
  * viewer rule with their own tracks.
  */
 export const BALANCE_SETTLEMENT_STATUSES = ["FINALIZED", "PROPOSED"] as const;
+
+/**
+ * The shares a balance counts (the where twin of `shareCounts` in the domain
+ * package): everyone's but a rejected one. A rejected share is not owed, so
+ * it leaves both sides of a pair and the payer absorbs it in a project.
+ * Every loader that sums shares spreads this in, so no reader keeps its own
+ * filter.
+ */
+export const COUNTED_SHARE = {
+	verificationStatus: { notIn: [...UNCOUNTED_SHARE_STATUSES] },
+} satisfies Prisma.SplitParticipantWhereInput;
 
 /** Drop the currencies whose balance is exactly zero (a minor-unit sum is exact). */
 export function withoutZeroMinor(
