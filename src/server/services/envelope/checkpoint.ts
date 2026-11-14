@@ -56,7 +56,8 @@ export function readCheckpoint(json: unknown): StoredCheckpoint | null {
 	return parsed.success ? parsed.data : null;
 }
 
-const sha256 = (s: string) =>
+/** The one digest of the stored prints: the loader (inputs.ts) and `fingerprints` both use it, so a change here is a change to every month_close print. */
+export const sha256 = (s: string) =>
 	createHash("sha256").update(s).digest("base64url");
 
 /** Fingerprints of the fully loaded inputs up to each month, as month_close stores them. */

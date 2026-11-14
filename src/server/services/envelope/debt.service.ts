@@ -14,6 +14,7 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { payoffFrom } from "@retrospend/domain/envelope/debt-read";
 import { z } from "zod";
 import type {
 	DebtTerms,
@@ -26,20 +27,12 @@ import type {
 	SetDebtTermsInput,
 } from "~/lib/schemas/envelope-debt";
 import { Prisma } from "~prisma";
-import { addDays } from "./calendar";
 import { EnvelopeError } from "./errors";
 import { findPersonalBook } from "./inputs";
 import { forgetMonthViews } from "./month-read";
-import { budgetMonthOf, isoDateIn } from "./months";
-import { type PayoffDebt, projectPayoff } from "./payoff";
-import { loadRateBook } from "./rate-book";
+import { loadRateRows } from "./rate-book";
 import { LIABILITY_TYPES } from "./target-write";
 import { dec, fromMinor, toMinor } from "./units";
-import {
-	convertToBook,
-	rateTypeForMonth,
-	type ValuationContext,
-} from "./valuation";
 
 type Tx = Prisma.TransactionClient;
 
@@ -286,133 +279,21 @@ export async function revertPayoffPlan(
 	return { plan: planDto(restored, H), previous: planDto(row, H) };
 }
 
-/** Book currency per 1 unit of `currency` today, from a million units (display only). */
-function bookPerUnit(currency: string, ctx: ValuationContext, today: string) {
-	if (currency === ctx.bookCurrency) return dec(1);
-	const v = convertToBook(
-		"1000000",
-		currency,
-		{
-			date: today,
-			month: budgetMonthOf(today, ctx.periods),
-			// The book's rate type for this month (BookPeriod), as targets use.
-			foreignRateType: rateTypeForMonth(budgetMonthOf(today, ctx.periods), ctx),
-		},
-		ctx,
-	);
-	if (!v.ok) return null;
-	return fromMinor(v.minor, ctx.bookCurrency).div(1_000_000);
-}
-
-async function valuationFor(
-	tx: Tx,
-	book: Awaited<ReturnType<typeof requireBook>>,
-	currencies: readonly string[],
-	today: string,
-): Promise<ValuationContext> {
-	const rates = await loadRateBook(tx, {
-		bookCurrency: book.currency,
-		rateTypes: [
-			...new Set(["official", ...book.periods.map((p) => p.rateType)]),
-		],
-		since: addDays(today, -31),
-		extraCurrencies: currencies,
-	});
-	return {
-		bookCurrency: book.currency,
-		periods: book.periods.map((p) => ({
-			fromMonth: p.fromMonth,
-			startDay: p.startDay,
-			rateType: p.rateType,
-		})),
-		defaultRateType: book.periods[0]?.rateType ?? "official",
-		usdRate: rates.lookup,
-	};
-}
-
 /** The projection for the saved plan, or for the overrides the slider tries. Never writes. */
-export async function projectIn(
+export function projectIn(
 	tx: Tx,
 	userId: string,
 	input: PayoffProjectInput,
 	now: Date,
 ): Promise<PayoffProjection> {
-	const book = await requireBook(tx, userId);
-	const H = book.currency;
-	const saved = await getPayoffPlan(tx, userId);
-	const plan: PayoffPlanDto = {
-		...saved,
-		strategy: input.strategy ?? saved.strategy,
-		extraMonthly:
-			input.extraMonthlyMinor === undefined
-				? saved.extraMonthly
-				: { minor: input.extraMonthlyMinor, currency: H },
-		customOrder: input.customOrder ?? saved.customOrder,
-	};
-	const today = isoDateIn(now, book.timeZone);
-	const all = (await liabilitiesOf(tx)).filter((a) => dec(a.balance).gt(0));
-	const ctx = await valuationFor(
-		tx,
-		book,
-		[...new Set(all.map((a) => a.currency))],
-		today,
+	return payoffFrom(
+		{
+			book: () => requireBook(tx, userId),
+			savedPlan: () => getPayoffPlan(tx, userId),
+			liabilities: () => liabilitiesOf(tx),
+			rateRows: (p) => loadRateRows(tx, p),
+		},
+		input,
+		now,
 	);
-	const missing: PayoffProjection["missingRates"] = [];
-	const debts: Array<PayoffDebt & { dueDay: number | null }> = [];
-	for (const a of all) {
-		const rate = bookPerUnit(a.currency, ctx, today);
-		if (!rate) {
-			missing.push({ assetAccountId: a.id, currency: a.currency });
-			continue;
-		}
-		debts.push({
-			id: a.id,
-			currency: a.currency,
-			balance: toMinor(a.balance, a.currency),
-			aprPercent: a.interestRate ? dec(a.interestRate).toString() : "0",
-			minimum: a.minimumPayment ? toMinor(a.minimumPayment, a.currency) : 0,
-			bookPerUnit: rate,
-			dueDay: a.dueDate,
-		});
-	}
-	const r = projectPayoff({
-		bookCurrency: H,
-		debts,
-		strategy: plan.strategy,
-		customOrder: plan.customOrder,
-		extraMonthly: plan.extraMonthly.minor,
-		startMonth: budgetMonthOf(today, ctx.periods),
-	});
-	const own = (minor: number, currency: string) => ({ minor, currency });
-	const total = debts.reduce(
-		(t, d) =>
-			t + toMinor(fromMinor(d.balance, d.currency).mul(dec(d.bookPerUnit)), H),
-		0,
-	);
-	return {
-		plan,
-		debtFreeMonth: r.debtFreeMonth,
-		months: r.months,
-		capped: r.capped,
-		diverges: r.diverges,
-		totalDebt: own(total, H),
-		totalInterest: own(r.totalInterest, H),
-		debts: debts.map((d, i) => {
-			const o = r.debts[i] as (typeof r.debts)[number];
-			return {
-				assetAccountId: d.id,
-				balance: own(d.balance, d.currency),
-				aprPercent: dec(d.aprPercent).toString(),
-				minimum: own(d.minimum, d.currency),
-				dueDay: d.dueDay,
-				payoffMonth: o.payoffMonth,
-				interest: own(o.interest, d.currency),
-				nextMinimum: own(o.nextMinimum, d.currency),
-				nextExtra: own(o.nextExtra, d.currency),
-			};
-		}),
-		schedule: r.schedule,
-		missingRates: missing,
-		incomplete: missing.length > 0,
-	};
 }

@@ -4,24 +4,16 @@
  * bill follows (SPEC §5.4, §5.11). Read only when an envelope names one, so
  * a book without such bills costs no query.
  */
+import type { LiabilityTerms } from "@retrospend/domain/envelope/target-input";
 import type { Prisma, RecurringTemplate } from "~prisma";
 import { addMonthsToDate } from "./calendar";
 import type { BookRow } from "./inputs";
-import type { IsoDate, Minor } from "./types";
+import type { IsoDate } from "./types";
 import { toMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
 
-/** A liability's terms as a bill target reads them. */
-export interface LiabilityTerms {
-	id: string;
-	currency: string;
-	minimumPayment: Prisma.Decimal | null;
-	/** Day of the month; null without a due day. */
-	dueDate: number | null;
-	/** Payments to it since last month began: principal plus interest, by day (own minor units). */
-	payments?: Array<{ date: IsoDate; minor: Minor }>;
-}
+export type { LiabilityTerms };
 
 export async function loadTargetSources(
 	tx: Tx,

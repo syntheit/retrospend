@@ -8,12 +8,12 @@
  * without a rate is listed with no value and the check is incomplete (R14).
  * Welcome back's "Set what I have now" uses the same numbers as its prefill.
  */
+import { budgetHoldsOf } from "@retrospend/domain/envelope/budget-holds";
 import type { BankSide } from "~/lib/schemas/envelope-book";
 import type { Prisma } from "~prisma";
 import { inBudget, worthOf } from "../accounts/places";
 import { sortByText } from "../text-order";
-import { addDays, addMonths } from "./calendar";
-import { computeBook, sumLeft } from "./engine";
+import { addDays } from "./calendar";
 import { EnvelopeError } from "./errors";
 import type { MonthRead } from "./month-read";
 import { loadRateBook } from "./rate-book";
@@ -47,13 +47,7 @@ export function holdsForAdjustment(view: MonthRead): Minor {
 
 /** To assign + Σ Left + Assigned(next month): everything the budget holds today. */
 export function budgetHolds(view: MonthRead): Minor {
-	const state = computeBook(view.loaded.input);
-	const c = state.currentMonth;
-	return (
-		state.toAssign(c).total +
-		sumLeft(state, c) +
-		state.month(addMonths(c, 1)).totals.assigned
-	);
+	return budgetHoldsOf(view.loaded.input);
 }
 
 export async function bankSide(

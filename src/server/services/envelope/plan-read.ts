@@ -1,18 +1,14 @@
 /**
  * Plan cost, runway and the year view (SPEC §5.13, E6, B15, D9, D55, D66).
  *
- * - Plan cost: Σ monthly-equivalent targets (a weekly target × weeks, a bill
- *   per month of its repeat, a goal's monthly need), a group counting its
- *   own target when that is larger than its children, against typical
- *   income (median budget income of the last 3 closed months).
- * - Runway, on demand: (To assign + Σ Left + money goals hold in Wealth) /
- *   essential plan cost, in whole tenths of a month rounded down.
- *   Essentials default to the Bills group and every bill.
+ * - Plan cost and runway are pure over a source and live in
+ *   @retrospend/domain/envelope/plan-read, shared with devices; here: the
+ *   source over this transaction's month views and closed incomes.
  * - Year view: envelopes by month (assigned, spent, left) from one engine
  *   pass. Months before the budget started show spending only (own rows
  *   through today's category links; shares are not in it).
  */
-import type { GetMonthOutput } from "~/lib/schemas/envelope";
+import { planCostFrom } from "@retrospend/domain/envelope/plan-read";
 import type {
 	PlanCostDto,
 	PlanCostInput,
@@ -23,149 +19,28 @@ import { budgetRefundWhere, budgetSpendingWhere } from "../spending";
 import { addMonths } from "./calendar";
 import { computeBook } from "./engine";
 import { EnvelopeError } from "./errors";
-import { typicalIncome } from "./groups";
 import { closedIncomes } from "./income-history";
 import { type LoadedBook, loadBook } from "./inputs";
 import { freeze } from "./load-state";
-import { type MonthRead, monthViewIn } from "./month-read";
-import type { ViewEnvelope } from "./month-view";
+import { monthViewIn } from "./month-read";
 import { monthStart } from "./months";
-import {
-	type PlanCostTarget,
-	planCost,
-	runway,
-	savingsOutsideEnvelopes,
-} from "./plan-cost";
 import type { Minor, MonthKey } from "./types";
-import { sumMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
-type Row = GetMonthOutput["groups"][number]["envelopes"][number];
 
-function costTarget(env: ViewEnvelope, row: Row | undefined): PlanCostTarget {
-	const t = env.target;
-	const dto = row?.target;
-	if (!t || !dto) return { kind: "NONE" };
-	if (t.kind === "MONTHLY")
-		return {
-			kind: "MONTHLY",
-			// The DTO amount is already this month's X (weekly x weeks).
-			target: {
-				amount: dto.amount?.minor ?? 0,
-				mode: t.mode,
-				cadence: "MONTH",
-			},
-			weeksInMonth: 1,
-		};
-	if (t.kind === "BILL")
-		return {
-			kind: "BILL",
-			amount: t.amount,
-			repeatMonths: t.repeatMonths,
-			needThisMonth: dto.need.minor,
-		};
-	return {
-		kind: "SAVINGS",
-		monthlyNeed: t.monthly ?? dto.perMonth?.minor ?? dto.need.minor,
-	};
-}
-
-/** Money goals hold outside their envelopes: moved to Wealth, or a dedicated account today. */
-function savingsOutside(loaded: LoadedBook, c: MonthKey): Minor {
-	const state = computeBook(loaded.input, c);
-	const moved = new Map<string, Minor>();
-	for (const a of loaded.input.activity) {
-		if (a.source !== "WEALTH" || a.month > c) continue;
-		const id = state.envelopeOf(a);
-		moved.set(id, (moved.get(id) ?? 0) - a.minor);
-	}
-	return savingsOutsideEnvelopes(
-		loaded.book.envelopes
-			.filter((e) => e.kind === "SAVINGS" && !e.archived)
-			.map((e) => ({
-				toWealth: moved.get(e.id) ?? 0,
-				fromWealth: 0,
-				dedicatedAccountValue: e.dedicatedValue ?? null,
-			})),
-	);
-}
-
-export async function planCostIn(
+export function planCostIn(
 	tx: Tx,
 	userId: string,
 	input: PlanCostInput,
 	now: Date,
 ): Promise<PlanCostDto> {
-	const current = await monthViewIn(tx, userId, now);
-	if (!current) throw new EnvelopeError("NO_BOOK", "start a budget first");
-	const { loaded } = current;
-	const c = loaded.input.currentMonth;
-	const month = input.month ?? c;
-	if (month !== c && month !== addMonths(c, 1))
-		throw new EnvelopeError(
-			"INVALID",
-			"plan cost is for this month or the next",
-		);
-	const view = ((await monthViewIn(tx, userId, now, month)) as MonthRead).dto;
-	const rows = new Map(
-		view.groups.flatMap((g) => g.envelopes).map((r) => [r.id, r]),
+	return planCostFrom(
+		{
+			view: (month) => monthViewIn(tx, userId, now, month),
+			closedIncomes: (loaded) => closedIncomes(tx, loaded),
+		},
+		input,
 	);
-	const live = loaded.book.envelopes.filter((e) => !e.archived);
-	const all = live.map((e) => ({
-		id: e.id,
-		groupId: e.groupId,
-		target: costTarget(e, rows.get(e.id)),
-	}));
-	const groupTargets = new Map(
-		view.groups.flatMap((g) =>
-			g.id && g.target?.amount ? [[g.id, g.target.amount.minor] as const] : [],
-		),
-	);
-	const cost = planCost(all, groupTargets);
-	const bills = new Set(
-		loaded.book.groups.filter((g) => g.role === "BILLS").map((g) => g.id),
-	);
-	const essentialIds =
-		input.essentialIds ??
-		live
-			.filter((e) => e.kind === "BILL" || (e.groupId && bills.has(e.groupId)))
-			.map((e) => e.id);
-	const essential = planCost(
-		all.filter((e) => essentialIds.includes(e.id)),
-		new Map(),
-	).total;
-	const closed = await closedIncomes(tx, loaded);
-	const typical = typicalIncome(closed.months);
-	const H = loaded.book.currency;
-	const money = (minor: Minor) => ({ minor, currency: H });
-	const leftNow = sumMinor(
-		current.dto.groups.flatMap((g) => g.envelopes).map((r) => r.left.minor),
-	);
-	const run = runway({
-		toAssign: current.dto.toAssign.amount.minor,
-		sumLeft: leftNow,
-		savingsOutside: savingsOutside(loaded, c),
-		essentialPlanCost: essential,
-	});
-	return {
-		month,
-		cost: money(cost.total),
-		byGroup: [...cost.byGroup].map(([groupId, v]) => ({
-			groupId,
-			cost: money(v),
-		})),
-		typicalIncome: typical === null ? null : money(typical),
-		closedMonths: closed.months.length,
-		essentialCost: money(essential),
-		essentialIds,
-		runway: run
-			? { available: money(run.available), tenths: run.tenths }
-			: null,
-		incomplete:
-			view.incomplete ||
-			closed.incomplete ||
-			live.some((e) => e.targetIncomplete),
-	};
 }
 
 /** Own spending before the budget started, per envelope and month, through today's links (D9). */
