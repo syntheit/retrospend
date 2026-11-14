@@ -17,8 +17,10 @@
  *
  * The budget book family is the person's personal book (soloBook, the sync
  * rule) with everything that hangs off it, and the transfers a bill reads;
- * the budget snapshot is left empty, since only a pull of /sync/shares has the
- * server's block to put in it.
+ * the budget snapshot is empty unless the caller asks for it (`budget: true`),
+ * since only a pull of /sync/shares has the server's block: then it is the
+ * block that pull makes, put in the active snapshot as a device does once its
+ * gate has passed (the gate is held by its own tests).
  *
  * The parity harness (P16) feeds its device store from the real v1 sync
  * routes instead; this builder is only its cross-check, so a row the routes
@@ -31,8 +33,10 @@ import { userTransaction } from "~/server/db-tx";
 import { FigureUnavailable } from "~/server/figures/unavailable";
 import { owedOnce } from "~/server/services/payments/figures";
 import { soloBook } from "~/server/services/sync/book-entities";
+import { readShareSnapshot } from "~/server/services/sync/snapshots";
 import { resolveTimeZone } from "~/server/services/user-time-zone";
 import {
+	BUDGET_SNAPSHOT_ID,
 	type CloseSummary,
 	MemoryStore,
 	OWED_ID,
@@ -166,7 +170,29 @@ async function bookRowsOf(userId: string) {
 	};
 }
 
-export async function engineStoreOf(userId: string): Promise<MemoryStore> {
+/** The budget block of a pull of /sync/shares?budget=1 as the active snapshot row, or none (Just track, a shared book, an unavailable block). */
+async function budgetSnapshotOf(
+	userId: string,
+): Promise<TableRows["budgetSnapshot"][]> {
+	const { budget } = await readShareSnapshot(adminDb, userId, { budget: true });
+	if (budget?.kind !== "block") return [];
+	const { block } = budget;
+	return [
+		{
+			id: BUDGET_SNAPSHOT_ID,
+			bookId: block.bookId,
+			valuationKey: block.valuationKey,
+			asOf: block.asOf,
+			frozen: block.frozen,
+			splits: block.splits,
+		},
+	];
+}
+
+export async function engineStoreOf(
+	userId: string,
+	opts: { budget?: boolean } = {},
+): Promise<MemoryStore> {
 	const [
 		settings,
 		expenses,
@@ -181,6 +207,7 @@ export async function engineStoreOf(userId: string): Promise<MemoryStore> {
 		owed,
 		book,
 		transfers,
+		snapshot,
 	] = await Promise.all([
 		settingsOf(userId),
 		fixtureDb.expense.findMany({
@@ -198,6 +225,7 @@ export async function engineStoreOf(userId: string): Promise<MemoryStore> {
 		owedRowOf(userId),
 		bookRowsOf(userId),
 		fixtureDb.transfer.findMany({ where: { userId } }),
+		opts.budget ? budgetSnapshotOf(userId) : [],
 	]);
 	const byId = new Map(categories.map((c) => [c.id, c]));
 	const categoryRefOf = (id: string | null) => {
@@ -206,6 +234,7 @@ export async function engineStoreOf(userId: string): Promise<MemoryStore> {
 	};
 	return new MemoryStore({
 		rows: {
+			budgetSnapshot: snapshot,
 			settings: [settings],
 			owed: [owed],
 			categories: categories.map((c) => ({

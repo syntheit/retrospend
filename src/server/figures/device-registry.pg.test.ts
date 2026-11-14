@@ -24,9 +24,22 @@ import {
 import { shiftMonthStart } from "@retrospend/domain/insights";
 import { fiscalMonthLabel } from "@retrospend/domain/insights-compute";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import type { SetupInput } from "~/lib/schemas/envelope";
+import { getMonth } from "~/server/services/envelope/read.service";
 import { createExpense } from "~/server/services/expense-create.mutation";
 import { forUser } from "~/server/services/preview";
+import {
+	mdlBook,
+	money,
+	row,
+	upsertRate,
+	usdRow,
+	VECTOR_FIGURES,
+	NOW as VECTOR_NOW,
+	vector,
+} from "~/server/services/sync/budget-block-test-support";
 import { resolveTimeZone } from "~/server/services/user-time-zone";
+import { type SeededBook, seedBudgetBook } from "~/test/device-book";
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 // The root app does not depend on the engine package; it is imported by path.
@@ -54,10 +67,26 @@ import {
 import { figures } from "./registry";
 
 const NOW = new Date("2026-10-15T15:00:00Z");
+/** The rates of the 1a vector (budget-block-test-support.ts), dated before every row. */
+const VECTOR_RATES = [
+	["ARS", "blue", "2026-10-01", "1500"],
+	["ARS", "official", "2026-10-01", "1000"],
+] as const;
 const BA = "America/Argentina/Buenos_Aires";
 const D = (v: string) => new Prisma.Decimal(v);
 
 const ledgers = new Map<string, Ledger>();
+const books = new Map<string, SeededBook>();
+
+/** One budget style per profile, so every style's own figure is read on some profile. */
+const BOOK_STYLES: Record<string, SetupInput["style"]> = {
+	"ARS home, alias zone, official default": "LIMITS",
+	"USD home, Tokyo": "FLEX",
+	"JPY home, month from the 15th": "WEEKLY",
+	"ARS home, no stored zone, DEFAULT_TIME_ZONE set": "FIFTY_THIRTY_TWENTY",
+	"ARS home, unsupported stored zone, month from the 28th": "DEBT_PAYOFF",
+	"ARS home, a currency with no rate": "SAVE_FIRST",
+};
 const previousDefaultZone = process.env.DEFAULT_TIME_ZONE;
 /** A category of another user: no figure of this user may read it. */
 let bobCategory = "";
@@ -68,8 +97,19 @@ beforeAll(async () => {
 	vi.useFakeTimers({ toFake: ["Date"] });
 	vi.setSystemTime(NOW);
 	await seedRates();
-	for (const [name, profile] of Object.entries(PROFILES))
-		ledgers.set(name, await seedLedger(profile, NOW));
+	for (const [name, profile] of Object.entries(PROFILES)) {
+		const ledger = await seedLedger(profile, NOW);
+		ledgers.set(name, ledger);
+		books.set(
+			name,
+			await seedBudgetBook(
+				ledger.userId,
+				profile,
+				NOW,
+				BOOK_STYLES[name] as SetupInput["style"],
+			),
+		);
+	}
 	const { user: bob } = await createTestUser();
 	bobCategory = (
 		await fixtureDb.category.create({
@@ -84,13 +124,20 @@ afterAll(() => {
 	else process.env.DEFAULT_TIME_ZONE = previousDefaultZone;
 });
 
-/** The device side over the raw rows of one user (engineStoreOf). */
+const isBudget = (id: string) =>
+	id.startsWith("budget.") || id.startsWith("envelope.");
+
+/**
+ * The device side over the raw rows of one user (engineStoreOf), with the
+ * server's budget block when a budget figure is read.
+ */
 async function deviceRead(
 	userId: string,
 	ids: readonly string[],
 	narrowing: Record<string, string> = {},
 ): Promise<Read> {
-	return deviceReadFrom(await engineStoreOf(userId), userId, ids, narrowing);
+	const store = await engineStoreOf(userId, { budget: ids.some(isBudget) });
+	return deviceReadFrom(store, userId, ids, narrowing);
 }
 
 describe("the device registry against the server", () => {
@@ -654,5 +701,334 @@ describe("insights at the year boundary", () => {
 			lastYearUsd: 1_000,
 			december: 1_029,
 		})();
+	});
+});
+
+const BUDGET_IDS = DEVICE_FIGURE_IDS.filter(isBudget);
+const ENVELOPE_IDS = ["envelope.left", "envelope.spent"];
+
+/** Every budget id on both sides for one narrowing, equal, with the readings of each. */
+async function expectBudgetSame(
+	userId: string,
+	narrowing: Record<string, string> = {},
+	ids: readonly string[] = BUDGET_IDS,
+) {
+	const device = await deviceRead(userId, ids, narrowing);
+	const server = await serverRead(userId, ids, narrowing);
+	expectSame(device, server, ids);
+	return { device, server };
+}
+
+describe("the budget figures against the server, on a book with closes", () => {
+	for (const [name, profile] of Object.entries(PROFILES))
+		it(`${name}: every figure and every envelope variant equal`, async () => {
+			const { userId } = ledgers.get(name) as Ledger;
+			const book = books.get(name) as SeededBook;
+			// Closed months with a checkpoint: the server's pass starts after it, the device's at the book's start.
+			const closes = await adminDb.monthClose.findMany({
+				where: { bookId: book.bookId },
+			});
+			expect(closes.length, "closed months").toBeGreaterThanOrEqual(2);
+			expect(
+				closes.filter((c) => c.checkpoint !== null).length,
+				"checkpoints",
+			).toBeGreaterThanOrEqual(1);
+
+			const plain = await expectBudgetSame(
+				userId,
+				{},
+				BUDGET_IDS.filter((id) => !ENVELOPE_IDS.includes(id)),
+			);
+			// Each envelope, none and one that does not exist.
+			const reads: unknown[] = [];
+			for (const envelopeId of [
+				...Object.values(book.envelopes),
+				"no-such-envelope",
+			]) {
+				const both = await expectBudgetSame(
+					userId,
+					{ envelopeId },
+					ENVELOPE_IDS,
+				);
+				reads.push(both.server.readings.get("envelope.spent"));
+			}
+			await expectBudgetSame(userId, {}, ENVELOPE_IDS);
+
+			if (profile.withMissingRate) {
+				// The XQZ share keeps the splits' share side out: every month-based figure is unavailable on both sides.
+				expect(plain.server.readings.get("budget.notPlannedYet")).toBeNull();
+				expect(plain.server.readings.get("budget.holds")).toBeNull();
+				return;
+			}
+			// Not equal because both are null: the server reads a number, and Dining spent something.
+			for (const id of [
+				"budget.notPlannedYet",
+				"budget.moneyIn",
+				"budget.holds",
+				"budget.planCost",
+				"budget.typicalIncome",
+				"budget.totalDebt",
+			])
+				expect(plain.server.readings.get(id), id).not.toBeNull();
+			const spent = await serverRead(userId, ["envelope.spent"], {
+				envelopeId: book.envelopes.Dining as string,
+			});
+			expect(
+				spent.readings.get("envelope.spent")?.[0]?.minor ?? 0,
+			).toBeGreaterThan(0);
+			// The style's own figure.
+			const style = BOOK_STYLES[name];
+			if (style === "LIMITS")
+				expect(plain.server.readings.get("budget.leftInLimits")).not.toBeNull();
+			if (style === "WEEKLY")
+				expect(plain.server.readings.get("budget.leftThisWeek")).not.toBeNull();
+		});
+
+	it("previews expense.create as the server does with the budget figures registered", async () => {
+		const { userId } = ledgers.get(
+			"ARS home, alias zone, official default",
+		) as Ledger;
+		const input = {
+			id: randomUUID(),
+			title: "Books",
+			amount: "100",
+			currency: "USD",
+			date: new Date(NOW.getTime() - 60 * 60 * 1000),
+		};
+		const store = await engineStoreOf(userId, { budget: true });
+		const device = await createDevicePreviewRunner({
+			store,
+			figures: deviceFigures(),
+			actor: { userId },
+		}).preview(EXPENSE_CREATE_MUTATION, input);
+		const server = await forUser(userId).preview(createExpense, input);
+		// The preview names what the write touches; the budget figures are not among them, on either side.
+		expect(device.changes.map((c) => c.id).sort()).toEqual(
+			server.changes.map((c) => c.id).sort(),
+		);
+		expect(device.changes).toEqual(server.changes);
+		for (const c of device.changes) expect(isBudget(c.id)).toBe(false);
+		expect(device.unchanged).toEqual(server.unchanged);
+		expect(device.unavailable).toEqual(server.unavailable);
+		expect(device.approx).toEqual(server.approx);
+	});
+});
+
+describe("by hand: the 1a vector on both sides", () => {
+	// An ARS book valued at blue (1,500; official 1,000), Buenos Aires, the
+	// month from the 5th, the clock 2026-11-14T15:00Z. The derivation is in
+	// budget-block-test-support.ts: Dining spent 102,500.00, left 197,500.00,
+	// Bob's USD 30 held 45,000.00, money in 150,000.00, Not planned yet
+	// 805,000.00, holds 1,002,500.00, plan cost 350,000.00, total debt
+	// 1,500,000.00. The device reads them from its rows and the block.
+	beforeAll(async () => {
+		for (const [currency, type, day, rate] of VECTOR_RATES)
+			await upsertRate(currency, type, day, rate);
+		vi.setSystemTime(VECTOR_NOW);
+	});
+	afterAll(async () => {
+		vi.setSystemTime(NOW);
+		await adminDb.exchangeRate.deleteMany({
+			where: {
+				OR: VECTOR_RATES.map(([currency, type, day]) => ({
+					currency,
+					type,
+					date: new Date(`${day}T00:00:00.000Z`),
+				})),
+			},
+		});
+	});
+
+	it("reads the derived figures on both sides", async () => {
+		const v = await vector();
+		const narrowing = { envelopeId: v.envelopes.Dining as string };
+		const { device, server } = await expectBudgetSame(v.userId, narrowing);
+		for (const side of [server, device])
+			expect(Object.fromEntries(side.readings)).toEqual(VECTOR_FIGURES);
+	});
+
+	// The unbooked USD 10 is frozen at blue 1,500 by the first pull. The daily
+	// sync then moves the rate row to 1,600: the kept value still reads 15,000.00
+	// on both sides (Dining spent 102,500.00), and the card, which is never kept,
+	// moves with the rate (USD 1,000 x 1,600 = 1,600,000.00). A USD 10 row
+	// added after is valued at today's 1,600 = 16,000.00 on both.
+	it("reads a value frozen before a rate rewrite as it was, on both sides", async () => {
+		const v = await vector();
+		const narrowing = { envelopeId: v.envelopes.Dining as string };
+		await expectBudgetSame(v.userId, narrowing);
+		// The device-ledger table also has blue for Oct 5, the latest before the clock: both days move.
+		const rewrite = async (rate: string) => {
+			for (const day of ["2026-10-01", "2026-10-05"])
+				await upsertRate("ARS", "blue", day, rate);
+		};
+		await rewrite("1600");
+		try {
+			const both = await expectBudgetSame(v.userId, narrowing);
+			for (const side of [both.server, both.device]) {
+				expect(side.readings.get("envelope.spent")).toEqual(money(10_250_000));
+				expect(side.readings.get("budget.totalDebt")).toEqual(
+					money(160_000_000),
+				);
+			}
+			await row(v, {
+				amount: "10",
+				currency: "USD",
+				at: "2026-11-09T15:00:00Z",
+			});
+			const after = await expectBudgetSame(v.userId, narrowing);
+			for (const side of [after.server, after.device])
+				expect(side.readings.get("envelope.spent")).toEqual(
+					money(10_250_000 + 1_600_000),
+				);
+		} finally {
+			await rewrite("1500");
+		}
+	});
+
+	// Your 30 of a USD 60 split in a project that routes to Dining: the block
+	// says Dining by id. The envelope is then removed (its tombstone arrives
+	// before the next block): the entry names an envelope the device no longer
+	// has, and reads where the server's own load now puts the share, in the
+	// default envelope.
+	it("reads a block share whose envelope was tombstoned as the server does", async () => {
+		const v = await vector();
+		const { user: bob } = await createTestUser();
+		const project = await adminDb.project.create({
+			data: {
+				name: "Trip",
+				createdById: bob.id,
+				primaryCurrency: "ARS",
+				participants: {
+					create: [
+						{
+							participantType: "user",
+							participantId: v.userId,
+							budgetRouting: "ENVELOPE",
+							budgetEnvelopeId: v.envelopes.Dining as string,
+						},
+						{ participantType: "user", participantId: bob.id },
+					],
+				},
+			},
+		});
+		await adminDb.sharedTransaction.create({
+			data: {
+				description: "Dinner",
+				amount: new Prisma.Decimal(9000),
+				currency: "ARS",
+				date: new Date("2026-11-11T15:00:00Z"),
+				projectId: project.id,
+				paidByType: "user",
+				paidById: bob.id,
+				createdByType: "user",
+				createdById: bob.id,
+				splitParticipants: {
+					create: {
+						participantType: "user",
+						participantId: v.userId,
+						shareAmount: new Prisma.Decimal(4500),
+						verificationStatus: "ACCEPTED",
+					},
+				},
+			},
+		});
+		const store = await engineStoreOf(v.userId, { budget: true });
+		const block = store.get("budgetSnapshot", "budget");
+		expect(block?.splits.shares.map((s) => s.envelopeId)).toContain(
+			v.envelopes.Dining,
+		);
+		// Dining's tombstone: the envelope and its category link leave the device store.
+		await store.transaction((tx) => {
+			tx.delete("envelopes", v.envelopes.Dining as string);
+			for (const link of tx.list("envelopeCategories"))
+				if (link.envelopeId === v.envelopes.Dining)
+					tx.delete("envelopeCategories", link.id);
+		});
+		// Its assigned money goes with it (a movement names its envelope), on both sides.
+		const assigned = await adminDb.budgetMovement.findMany({
+			where: { toEnvelopeId: v.envelopes.Dining },
+		});
+		await store.transaction((tx) => {
+			for (const m of assigned) tx.delete("budgetMovements", m.id);
+		});
+		await adminDb.budgetMovement.deleteMany({
+			where: { toEnvelopeId: v.envelopes.Dining },
+		});
+		await adminDb.envelope.delete({ where: { id: v.envelopes.Dining } });
+		const ids = BUDGET_IDS.filter((id) => !ENVELOPE_IDS.includes(id));
+		const device = await deviceReadFrom(store, v.userId, ids);
+		const server = await serverRead(v.userId, ids);
+		expectSame(device, server, ids);
+		// Not null on both sides: the share is counted somewhere, and the pool is read.
+		expect(server.readings.get("budget.notPlannedYet")).not.toBeNull();
+		const spending = { envelopeId: v.envelopes.Spending as string };
+		expectSame(
+			await deviceReadFrom(store, v.userId, ENVELOPE_IDS, spending),
+			await serverRead(v.userId, ENVELOPE_IDS, spending),
+			ENVELOPE_IDS,
+		);
+	});
+});
+
+describe("a rate missing when a month closed", () => {
+	// An MDL book from August with no MDL rate: a USD 10 row on Sep 5 had none
+	// when Aug to Oct closed (Nov 4), and the checkpoint keeps that. An MDL rate
+	// then appears, dated Nov 3: no close is revised, so the server still keeps
+	// the row out and reads the budget unavailable. The block lists the row and
+	// the device, which runs from the book's start and would value it at the
+	// nearest rate, keeps it out too.
+	const NOV_4 = new Date("2026-11-04T15:00:00Z");
+
+	it("is unavailable on both sides, with the row kept out by the device", async () => {
+		const b = await mdlBook();
+		const sep = await usdRow(b, { usd: "10", at: "2026-09-05T15:00:00Z" });
+		vi.setSystemTime(NOV_4);
+		try {
+			await getMonth(b.userId, undefined, new Date());
+			const rate = await adminDb.exchangeRate.create({
+				data: {
+					date: new Date("2026-11-03T00:00:00Z"),
+					currency: "MDL",
+					type: "official",
+					rate: "41",
+				},
+			});
+			try {
+				const ids = BUDGET_IDS.filter((id) => !ENVELOPE_IDS.includes(id));
+				const store = await engineStoreOf(b.userId, { budget: true });
+				const block = store.get("budgetSnapshot", "budget");
+				expect(block?.splits.checkpointMissingRates).toEqual([
+					{
+						currency: "MDL",
+						rateType: "official",
+						date: "2026-09-05",
+						rowId: sep.id,
+					},
+				]);
+				const device = await deviceReadFrom(store, b.userId, ids);
+				const server = await serverRead(b.userId, ids);
+				expectSame(device, server, ids);
+				expect(server.readings.get("budget.notPlannedYet")).toBeNull();
+				expect(device.readings.get("budget.notPlannedYet")).toBeNull();
+				// Without the exclusion the device would value the row at the new rate: a number.
+				const unlisted = await engineStoreOf(b.userId, { budget: true });
+				await unlisted.transaction((tx) => {
+					const held = tx.get("budgetSnapshot", "budget");
+					if (!held) throw new Error("no block");
+					tx.put("budgetSnapshot", {
+						...held,
+						splits: { ...held.splits, checkpointMissingRates: [] },
+					});
+				});
+				const without = await deviceReadFrom(unlisted, b.userId, [
+					"budget.notPlannedYet",
+				]);
+				expect(without.readings.get("budget.notPlannedYet")).not.toBeNull();
+			} finally {
+				await adminDb.exchangeRate.delete({ where: { id: rate.id } });
+			}
+		} finally {
+			vi.setSystemTime(NOW);
+		}
 	});
 });

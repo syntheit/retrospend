@@ -29,7 +29,7 @@ import { vi } from "vitest";
 import { forUser } from "~/server/services/preview";
 import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
-import { seedUser } from "../envelope/__tests__/pg-fixture";
+import { seedUser, setupInput } from "../envelope/__tests__/pg-fixture";
 import { setupEnvelopeBook } from "../envelope/setup.mutation";
 
 export const NOW = new Date("2026-11-14T15:00:00Z");
@@ -339,4 +339,59 @@ export async function vector(): Promise<Vector> {
 		bobsShare: part(bob.id),
 		bobShadow: bob.id,
 	};
+}
+
+/**
+ * An MDL book from August with no MDL rate at all, as stable-past.pg.test.ts
+ * builds one: no rate row of the pair, setup, the book moved back to Aug 1.
+ */
+export async function mdlBook() {
+	const s = await seedUser();
+	await adminDb.user.update({
+		where: { id: s.user.id },
+		data: { homeCurrency: "MDL" },
+	});
+	await adminDb.exchangeRate.deleteMany({
+		where: { currency: "MDL", type: "official" },
+	});
+	await forUser(s.user.id).apply(setupEnvelopeBook, {
+		...setupInput(s),
+		startingMoneyMinor: 0,
+		timeZone: "UTC",
+	});
+	const book = await adminDb.budgetBook.findFirstOrThrow({
+		where: { createdById: s.user.id },
+	});
+	await adminDb.budgetBook.update({
+		where: { id: book.id },
+		data: { startMonth: 202608, startDate: new Date("2026-08-01T00:00:00Z") },
+	});
+	await adminDb.bookPeriod.updateMany({
+		where: { bookId: book.id },
+		data: { fromMonth: 202608 },
+	});
+	return { ...s, userId: s.user.id, bookId: book.id };
+}
+
+/** A USD row of `usd` dollars in an MDL book: no booked value, so it is valued at a rate. */
+export function usdRow(
+	b: { userId: string; dining: string },
+	o: { usd: string; at: string; income?: boolean },
+) {
+	return fixtureDb.expense.create({
+		data: {
+			userId: b.userId,
+			title: "Row",
+			amount: new Prisma.Decimal(o.usd),
+			currency: "USD",
+			date: new Date(o.at),
+			categoryId: o.income ? null : b.dining,
+			amountInUSD: new Prisma.Decimal(o.usd),
+			exchangeRate: new Prisma.Decimal(1),
+			pricingSource: "MANUAL",
+			...(o.income
+				? { direction: "IN" as const, inType: "INCOME" as const }
+				: {}),
+		},
+	});
 }
