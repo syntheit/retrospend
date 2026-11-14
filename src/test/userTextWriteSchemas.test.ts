@@ -1,5 +1,5 @@
 // Catches: an input that writes a user-text column without a `userText`
-// schema (E2EE lane D11, PR 0 leftover). Once at-rest sealing is on, a value
+// schema. Once at-rest sealing is on, a value
 // that reaches a mapped column starting with U+0001 would be stored as if it
 // were a ciphertext, so every write path must refuse it at the edge.
 //

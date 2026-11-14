@@ -1,5 +1,5 @@
 /**
- * A budget book for a conformance ledger (E2EE P13b): the device registry's
+ * A budget book for a conformance ledger: the device registry's
  * budget figures are held to the server's on a book that has real closes, so
  * every profile of device-ledger.ts gets one, set up in the past and read once
  * at `now`, which closes the months before it (and writes their checkpoints).

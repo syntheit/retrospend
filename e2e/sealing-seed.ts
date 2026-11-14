@@ -1,7 +1,6 @@
 /**
  * What a sealed e2e run (E2E_SEALED=1) does around the seed, and how the
- * sealing spec finds what was not sealed on purpose (E2EE D11 PR 9.2, plan
- * docs/roadmap/e2ee-d11-pr9.md section 6).
+ * sealing spec finds what was not sealed on purpose.
  *
  * The seed writes plaintext straight to Postgres, so a sealed run is mixed
  * mode the way a real instance is on the first start with the flag on: legacy

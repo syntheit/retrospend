@@ -1,4 +1,4 @@
-// Catches: raw SQL that reads a user-text column (E2EE lane D10).
+// Catches: raw SQL that reads a user-text column.
 // Once field encryption is on, a column in USER_TEXT_FIELDS holds ciphertext,
 // so SQL that matches, sorts, groups or compares it (or hands it to code that
 // does not decrypt) is wrong. docs/security/user-text-sql-audit.md lists every
@@ -35,7 +35,7 @@ const COLUMNS = [
 	"rejectionReason",
 	"rejectedReason",
 	"adminNote",
-	// Import job text outside the declared fields (D11 Revision 3).
+	// Import job text outside the declared fields.
 	"fileData",
 	"errorMessage",
 	"phone",

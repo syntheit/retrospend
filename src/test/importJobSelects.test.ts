@@ -1,5 +1,5 @@
-// Catches: a model call that returns a whole import job, file included (E2EE
-// D11 Revision 3, PR 5). `import_job.fileData` is the uploaded file as base64,
+// Catches: a model call that returns a whole import job, file included.
+// `import_job.fileData` is the uploaded file as base64,
 // up to 14 MB. It is sealed at rest, so a call that does not name its columns
 // opens all of it on the way out, and a create or update that returns the row
 // hands it to the caller (the tRPC create used to return the job to the

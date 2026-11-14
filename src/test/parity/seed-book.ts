@@ -1,5 +1,5 @@
 /**
- * The budget book of the parity ledger (E2EE P13b): a personal book that began
+ * The budget book of the parity ledger: a personal book that began
  * 24 months before the first clock, about 30 envelopes in three groups (five of
  * them fed by the ledger's categories, one a savings goal), 500 movements
  * spread over every month, a Wealth move, and the months before the first

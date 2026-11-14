@@ -1,5 +1,5 @@
 /**
- * Gives every category a name index (E2EE lane D9), the keyed hash that keeps
+ * Gives every category a name index, the keyed hash that keeps
  * names unique once they are ciphertext. Rows the app wrote before that
  * migration have none, and a migration cannot compute them: each user's hash
  * key comes from their data key, which only the app can open.

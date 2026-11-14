@@ -1,6 +1,5 @@
 /**
- * The database sweep of a sealed e2e run (E2E_SEALED=1, E2EE D11 PR 9.2,
- * plan docs/roadmap/e2ee-d11-pr9.md section 6): after the whole suite, every
+ * The database sweep of a sealed e2e run (E2E_SEALED=1): after the whole suite, every
  * mapped text cell, JSON body and audit leaf must be sealed, except what the
  * seed wrote and nothing changed since. It runs from global teardown
  * (global-teardown.ts), so every shard sweeps its own database, whatever

@@ -1,5 +1,5 @@
 /**
- * What a device values that the server has not kept (E2EE P13b). The budget
+ * What a device values that the server has not kept. The budget
  * block carries the value every foreign row of the user was first valued at;
  * a device that finds a row the block does not cover values it itself, at the
  * rates it holds, and the loader lists it in `fresh`. For a row the block

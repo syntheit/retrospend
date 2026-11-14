@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# A throwaway seeded Retrospend server for the Maestro flows
-# (docs/roadmap/maestro-plan.md 1.1 and 2.3). Run from anywhere, inside the
+# A throwaway seeded Retrospend server for the Maestro flows.
+# Run from anywhere, inside the
 # repo's default `nix develop` shell, after `pnpm build` (it serves .next).
 #
 #   bash apps/mobile/maestro/server.sh template          # migrate + seed rs_e2e_template, once per run

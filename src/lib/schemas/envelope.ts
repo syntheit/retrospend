@@ -642,7 +642,7 @@ export const groupTargetInputSchema = z.discriminatedUnion("kind", [
 	}),
 ]);
 
-/** What an income rule matches (SPEC §5.10). TITLE is the one rule that reads titles (E2EE known exception). */
+/** What an income rule matches (SPEC §5.10). TITLE is the one rule that reads titles, so it is a known exception to sealing. */
 export const ruleMatchSchema = z.discriminatedUnion("kind", [
 	z.object({ kind: z.literal("ANY") }),
 	z.object({ kind: z.literal("CATEGORY"), categoryId: idSchema }),

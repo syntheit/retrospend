@@ -12,7 +12,7 @@ import { untilSaved } from "../helpers/trpc";
 import { trpcQuery } from "./entry-audit";
 import { openV2 } from "./viewer";
 
-// Sealed runs only (E2E_SEALED=1, E2EE D11 PR 9.2): the server this run
+// Sealed runs only (E2E_SEALED=1): the server this run
 // started has the flag on, so what it wrote must be ciphertext in the
 // database and plaintext in every response. It reads the database as the
 // owner. The sweep for plaintext left anywhere else runs from global teardown

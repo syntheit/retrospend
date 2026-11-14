@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Builds the read-only emulator image every Maestro run boots from
-# (docs/roadmap/maestro-plan.md 1.1): the Pixel 8 class AVD of
+# Builds the read-only emulator image every Maestro run boots from: the Pixel 8 class AVD of
 # scripts/android-emulator.sh, API 36 google_apis x86_64, animations off, and
 # one quick-boot snapshot called `clean` taken right after boot, before the
 # app is installed. Runs on the runner host inside the flake's android-emu

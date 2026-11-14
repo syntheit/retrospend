@@ -1,4 +1,4 @@
-// Stable ids for the Maestro flows (docs/roadmap/maestro-plan.md 2.1). Maestro
+// Stable ids for the Maestro flows. Maestro
 // finds a control by `testID`; the flows may only use ids from this file, and
 // the app imports them from here, so a rename breaks the checks, not a
 // nightly run.

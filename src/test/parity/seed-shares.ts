@@ -1,5 +1,5 @@
 /**
- * The shared expenses of the parity ledger (E2EE P16): Bob's (and the user's
+ * The shared expenses of the parity ledger: Bob's (and the user's
  * own) expenses with the user in them. Every status, with and without a
  * captured rate, one project the user hides from reports and one they show, a
  * guest beside the user, expenses the user paid, corrections with negative

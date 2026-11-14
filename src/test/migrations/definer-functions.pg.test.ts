@@ -1,4 +1,4 @@
-// SECURITY DEFINER hygiene (access hardening plan, PR 3). The function list
+// SECURITY DEFINER hygiene. The function list
 // comes from the migrated database's catalog, not from reading migrations, so
 // a function added by any migration is checked: it must not be executable by
 // PUBLIC, must pin a search_path that ends in pg_temp, and must be listed in

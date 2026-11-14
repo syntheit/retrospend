@@ -1,5 +1,5 @@
 /**
- * The expenses of the parity ledger (E2EE P16): random rows over the span,
+ * The expenses of the parity ledger: random rows over the span,
  * with refunds, income, drafts, hidden rows, NOT_SPENDING, an INCOME category
  * and amortized parents with children; one row of each currency at every
  * period edge; and the parent every leg names. Written in chunks through

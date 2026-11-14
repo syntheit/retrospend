@@ -1,7 +1,6 @@
 /**
- * The sealed pg suite (E2EE D11 PR 4.4, docs/roadmap/e2ee-d11-pr4.md section
- * 7): `pnpm test:pg:sealed` runs the pg files with sealing on, a master key
- * and the field encryption epoch set (pg-env.ts), except those listed in
+ * The sealed pg suite: `pnpm test:pg:sealed` runs the pg files with sealing on,
+ * a master key and the field encryption epoch set (pg-env.ts), except those listed in
  * sealed-suite.exclude.json, which set a master key, sealing or the epoch
  * themselves. Tests seed user rows through `fixtureDb` (fixture-db.ts). The
  * sweep here is its guard: after each file, any mapped cell (from

@@ -1,6 +1,5 @@
 /**
- * The e2e `test`, with one addition for sealed runs (E2E_SEALED=1, E2EE D11
- * PR 9.2): any `/api` JSON response that holds a string starting with U+0001
+ * The e2e `test`, with one addition for sealed runs (E2E_SEALED=1): any `/api` JSON response that holds a string starting with U+0001
  * fails the test. A sealed value must never leave the server (design section
  * 7.1), and the server's own response guard runs only under NODE_ENV=test,
  * not in `next dev`, so the browser side checks every response here.

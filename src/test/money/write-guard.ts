@@ -1,8 +1,7 @@
 /**
  * Test-only guard: a JS number written to a Decimal column (every money and
  * rate column is one) is refused, because a float has already lost the exact
- * value by the time it reaches Prisma. Writers pass a string from money-dec
- * (docs/roadmap/money-decimal.md, D5).
+ * value by the time it reaches Prisma. Writers pass a string from money-dec.
  *
  * pg-env.ts puts it on the client every pg test runs through. There is no
  * allowlist: a writer that receives a number converts it first

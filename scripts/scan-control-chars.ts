@@ -1,5 +1,5 @@
 /**
- * Read-only scan for user text the app would now refuse (E2EE lane D4b).
+ * Read-only scan for user text the app would now refuse.
  * Every declared user-text column is counted for rows that hold a C0 control
  * character other than tab, line feed and carriage return, rows that start
  * with U+0001 (the marker of a field-encrypted value), and rows that hold
@@ -12,8 +12,8 @@
  * row (the owner role, as the other scripts use), or row-level security hides
  * rows from the counts.
  *
- * With `--fail` it is the gate before the first at-rest encryption backfill
- * (D11): it exits 1 when any column holds a C0 control character or a value
+ * With `--fail` it is the gate before the first at-rest encryption backfill:
+ * it exits 1 when any column holds a C0 control character or a value
  * that starts with U+0001. After the first sealed write, sealed values start
  * with U+0001 by design, so the gate only means something before that.
  * U+FFFD is information only and never fails the gate.

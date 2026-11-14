@@ -4,7 +4,7 @@
  * runway, the year view and group targets. Same conventions as
  * ./envelope: Money DTOs in integer minor units, months as YYYYMM.
  *
- * Drafts carry ids and amounts only, never free text (E2EE rule 10): an
+ * Drafts carry ids and amounts only, never free text: an
  * expected money in is named by its recurring template or category, a
  * pretend row by its category or envelope.
  */

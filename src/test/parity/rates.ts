@@ -1,5 +1,5 @@
 /**
- * The rates of the parity ledger (E2EE P16): a deterministic daily series per
+ * The rates of the parity ledger: a deterministic daily series per
  * currency and type, the rows that put it in the exchange_rate table, and the
  * stored money fields a row gets from it (`book`).
  *

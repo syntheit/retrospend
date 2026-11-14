@@ -14,8 +14,8 @@ export const E2E_AUTH_SECRET =
 	process.env.E2E_AUTH_SECRET ?? "e2e-test-secret-value-32-chars-!!";
 
 /**
- * E2E_SEALED=1 runs the whole suite with DATA_KEYS_WRITE on (E2EE D11 PR 9.2,
- * docs/roadmap/e2ee-d11-pr9.md section 6), so user text is sealed on write.
+ * E2E_SEALED=1 runs the whole suite with DATA_KEYS_WRITE on, so user text is
+ * sealed on write.
  * The key below is a throwaway for the e2e database only: it wraps keys that
  * the pre-server reset (reset-before-server.ts) deletes at the start of every
  * run. It protects nothing and must never be a real master key.

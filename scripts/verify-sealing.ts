@@ -1,6 +1,5 @@
 /**
- * Read-only check of what is sealed in a database (E2EE D11 PR 9.1, plan
- * docs/roadmap/e2ee-d11-pr9.md sections 3 and 4). It reports:
+ * Read-only check of what is sealed in a database. It reports:
  *   - the field encryption epoch, the sealing floor (stored, and this build's)
  *     and whether the instance key marker is set;
  *   - contact hash coverage: ghost and guest rows with an address, with a
@@ -14,7 +13,7 @@
  *     mode, so `--created-only` reports that group without failing on it;
  *   - legacy copies: leaves of an audit entry's `changes.previous` (a payment
  *     confirm keeps its source cells' own text) that are plaintext because
- *     their source is, until the D12 reseal. They are listed apart, count in
+ *     their source is, until the reseal. They are listed apart, count in
  *     the baseline, and never in the two invariants above;
  *   - tables with no `createdAt` or `updatedAt` (the audit log's `timestamp`
  *     counts as `createdAt`), which only the baseline
