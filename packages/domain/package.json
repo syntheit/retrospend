@@ -27,6 +27,7 @@
 		"./format-percent": "./src/format-percent.ts",
 		"./glance-pace": "./src/glance-pace.ts",
 		"./insights": "./src/insights.ts",
+		"./insights-compute": "./src/insights-compute.ts",
 		"./money": "./src/money.ts",
 		"./money-dec": "./src/money-dec.ts",
 		"./money-minor": "./src/money-minor.ts",
