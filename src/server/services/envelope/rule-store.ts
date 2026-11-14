@@ -5,13 +5,14 @@
  * used matched then, and a rerun happens only when the money in itself
  * changes (SPEC §5.10), so a recorded rule is stored without its match.
  */
+
+import { dec, fromMinor, toMinor } from "@retrospend/domain/envelope/units";
+import { toFloat } from "@retrospend/domain/precise-decimal";
 import { z } from "zod";
 import type { RuleActionInput, RuleMatchInput } from "~/lib/schemas/envelope";
 import type { IncomeRuleDto } from "~/lib/schemas/envelope-plan";
 import type { Prisma, IncomeRule as RuleRow } from "~prisma";
 import type { IncomeRule, RecordedRun, RuleAction, RuleMatch } from "./rules";
-import { dec, fromMinor, toMinor } from "./units";
-import { toFloat } from "@retrospend/domain/precise-decimal";
 
 /** A rule's match. Its title comes opened by the client (field-open.ts). */
 export function matchOf(r: RuleRow): RuleMatch {

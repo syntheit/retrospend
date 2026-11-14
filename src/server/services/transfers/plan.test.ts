@@ -3,8 +3,9 @@
  * home. Accounts: Savings and Digital wallet (ARS bank, in the budget),
  * Credit card (in), Personal loan (out), USD cash and Wise (USD, out).
  */
+
+import { dec } from "@retrospend/domain/envelope/units";
 import { describe, expect, it } from "vitest";
-import { dec } from "~/server/services/envelope/units";
 import type { AssetType } from "~prisma";
 import {
 	budgetEffect,

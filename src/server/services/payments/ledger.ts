@@ -5,7 +5,7 @@
  * debt per line and "Settled since" are derived here, so the allocator, the
  * person page and the tests read one history.
  */
-import { sumMinor } from "~/server/services/envelope/units";
+import { sumMinor } from "@retrospend/domain/envelope/units";
 import type { IsoDate, Minor, PairLine, Scope } from "./types";
 
 export interface PairEvent {

@@ -5,8 +5,9 @@
  * refused until an income edit rewrites the leg (docs/ui/GAPS.md). Title,
  * category and notes stay editable.
  */
+
+import { dec } from "@retrospend/domain/envelope/units";
 import { TRPCError } from "@trpc/server";
-import { dec } from "~/server/services/envelope/units";
 
 export function refuseLegMoneyEdit(
 	existing: {

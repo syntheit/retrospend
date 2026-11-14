@@ -13,10 +13,10 @@
  * figures move.
  */
 import { randomUUID } from "node:crypto";
+import { fromMinor } from "@retrospend/domain/envelope/units";
 import type { Prisma } from "~prisma";
 import { findPersonalBook } from "./inputs";
 import { forgetMonthViews } from "./month-read";
-import { fromMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
 

@@ -5,11 +5,11 @@
  * a book without such bills costs no query.
  */
 import type { LiabilityTerms } from "@retrospend/domain/envelope/target-input";
+import { toMinor } from "@retrospend/domain/envelope/units";
 import type { Prisma, RecurringTemplate } from "~prisma";
 import { addMonthsToDate } from "./calendar";
 import type { BookRow } from "./inputs";
 import type { IsoDate } from "./types";
-import { toMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
 

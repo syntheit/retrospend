@@ -19,8 +19,8 @@
  * non-zero sum.
  */
 
+import { toMinor } from "@retrospend/domain/envelope/units";
 import { type Decimal, dec } from "@retrospend/domain/precise-decimal";
-import { toMinor } from "~/server/services/envelope/units";
 import type { ParticipantType } from "~prisma";
 
 export interface SummaryRef {

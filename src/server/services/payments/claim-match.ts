@@ -5,9 +5,10 @@
  * still pending, in the same currency (or within 2% after converting it at
  * the payment's quote), within 2% of the amount and within 7 days.
  */
-import { TRPCError } from "@trpc/server";
+
+import { fromMinor } from "@retrospend/domain/envelope/units";
 import { currencyDecimals } from "@retrospend/domain/money";
-import { fromMinor } from "~/server/services/envelope/units";
+import { TRPCError } from "@trpc/server";
 import type { IsoDate, Minor } from "./types";
 
 export interface Claim {

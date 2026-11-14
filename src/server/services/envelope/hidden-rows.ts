@@ -12,6 +12,7 @@
  */
 
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import { toMinor } from "@retrospend/domain/envelope/units";
 import type {
 	HiddenAnswer,
 	HiddenRow,
@@ -24,7 +25,6 @@ import { addMonths } from "./calendar";
 import { monthStartInstant } from "./inputs";
 import { forgetMonthViews } from "./month-read";
 import { isoDateIn } from "./months";
-import { toMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
 

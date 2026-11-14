@@ -1,8 +1,8 @@
 import type { removeMeSchema } from "@retrospend/api-contract";
+import { toMinor } from "@retrospend/domain/envelope/units";
 import type * as z from "zod";
 import { sharedAuthor } from "~/server/services/entry/shared-read";
 import { removeSelfMutation } from "~/server/services/shared-expenses/remove-self.mutation";
-import { toMinor } from "~/server/services/envelope/units";
 import { isoDay } from "./caller";
 import type { LedgerCaller } from "./money-op";
 import { applyWrite, previewWrite, undoFor } from "./money-write";

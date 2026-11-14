@@ -2,6 +2,7 @@ import type {
 	createAccountSchema,
 	updateAccountSchema,
 } from "@retrospend/api-contract";
+import { dec } from "@retrospend/domain/envelope/units";
 import type * as z from "zod";
 import {
 	restoreAccount,
@@ -20,7 +21,6 @@ import {
 	putUndoStash,
 	takeUndoStash,
 } from "~/server/services/entry/undo-stash";
-import { dec } from "~/server/services/envelope/units";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import { assertMinorUnits, exactAmount } from "../amounts";
 import { type AccountItem, accountItemIn } from "./items";

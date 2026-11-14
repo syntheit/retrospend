@@ -6,6 +6,7 @@
  */
 
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import { mulDiv } from "@retrospend/domain/envelope/units";
 import type { AffordInput, AffordResult } from "~/lib/schemas/envelope-crud";
 import { db } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
@@ -17,7 +18,6 @@ import type { MonthRead } from "./month-read";
 import { monthRange } from "./months";
 import { closedView, movedFirst } from "./read.service";
 import type { Minor } from "./types";
-import { mulDiv } from "./units";
 
 type Tx = Prisma.TransactionClient;
 

@@ -4,7 +4,7 @@
  * to (review). Read only; the Needs you list of the People and Person pages.
  * Also the newest pending payment per person, either way (I5).
  */
-import { toMinor } from "~/server/services/envelope/units";
+import { toMinor } from "@retrospend/domain/envelope/units";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import type { Prisma, PrismaClient } from "~prisma";

@@ -5,7 +5,7 @@
  * currency, then the people who owe you add up to Owed to you and the
  * people you owe add up to You owe. The two are never netted together.
  */
-import { sumMinor } from "~/server/services/envelope/units";
+import { sumMinor } from "@retrospend/domain/envelope/units";
 import { toPaymentCurrency } from "./allocate";
 import type { Minor, Quote } from "./types";
 

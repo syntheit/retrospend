@@ -3,8 +3,9 @@
  * expense and the counted units it moved (D4) all go back. Its own undo is
  * transfer.create with `recreate`, the same id and the amounts as typed.
  */
+
+import { dec } from "@retrospend/domain/envelope/units";
 import { TRPCError } from "@trpc/server";
-import { dec } from "~/server/services/envelope/units";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import type { Prisma } from "~prisma";
 import { type AccountChange, reverseLegs } from "../accounts/ledger";

@@ -10,6 +10,7 @@
  */
 import { budgetHoldsOf } from "@retrospend/domain/envelope/budget-holds";
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import { toMinor } from "@retrospend/domain/envelope/units";
 import type { BankSide } from "~/lib/schemas/envelope-book";
 import type { Prisma } from "~prisma";
 import { inBudget, worthOf } from "../accounts/places";
@@ -18,7 +19,6 @@ import { addDays } from "./calendar";
 import type { MonthRead } from "./month-read";
 import { loadRateBook } from "./rate-book";
 import type { Minor, MissingRate } from "./types";
-import { toMinor } from "./units";
 import { convertToBook } from "./valuation";
 
 type Tx = Prisma.TransactionClient;

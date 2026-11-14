@@ -9,6 +9,7 @@ import type {
 	BudgetInputsPort,
 	OwnRows,
 } from "@retrospend/domain/envelope/inputs-port";
+import { dec } from "@retrospend/domain/envelope/units";
 import type { Prisma } from "~prisma";
 import {
 	budgetMoneyInWhere,
@@ -16,7 +17,6 @@ import {
 	budgetSpendingWhere,
 } from "../spending";
 import { loadRateRows } from "./rate-book";
-import { dec } from "./units";
 
 type Tx = Prisma.TransactionClient;
 

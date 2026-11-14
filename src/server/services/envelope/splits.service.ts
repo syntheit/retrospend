@@ -20,6 +20,7 @@
 import { randomUUID } from "node:crypto";
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import { owedDto } from "@retrospend/domain/envelope/owed";
+import { fromMinor } from "@retrospend/domain/envelope/units";
 import type {
 	ForgiveInput,
 	OwedDto,
@@ -43,7 +44,6 @@ import { forgetMonthViews, owedInputOf } from "./month-read";
 import { isoDateIn } from "./months";
 import { lockedSnapshot } from "./movement-state";
 import type { UnsavedChoice } from "./splits-input";
-import { fromMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
 

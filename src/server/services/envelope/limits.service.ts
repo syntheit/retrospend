@@ -12,6 +12,7 @@
  */
 
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import { fromMinor } from "@retrospend/domain/envelope/units";
 import { z } from "zod";
 import type {
 	RevertLimitInput,
@@ -36,7 +37,6 @@ import { insert, replay, result } from "./movement.service";
 import { checkEnvelope, lockedSnapshot } from "./movement-state";
 import { loadRateBook } from "./rate-book";
 import type { MissingRate } from "./types";
-import { fromMinor } from "./units";
 import { convertToBookOrThrow, valueRow } from "./valuation";
 
 type Tx = Prisma.TransactionClient;

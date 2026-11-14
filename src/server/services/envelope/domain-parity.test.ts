@@ -6,10 +6,10 @@
  */
 import * as domainEngine from "@retrospend/domain/envelope/engine";
 import * as domainUnits from "@retrospend/domain/envelope/units";
+import * as units from "@retrospend/domain/envelope/units";
 import { describe, expect, it } from "vitest";
 import { Prisma } from "~prisma";
 import * as engine from "./engine";
-import * as units from "./units";
 
 describe("server paths re-export the domain envelope core", () => {
 	it("is one function, not a copy", () => {

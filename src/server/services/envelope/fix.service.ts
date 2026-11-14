@@ -17,6 +17,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import { toMinor } from "@retrospend/domain/envelope/units";
 import type {
 	CarryOverspendInput,
 	MovementResult,
@@ -30,7 +31,6 @@ import {
 	type Snapshot,
 } from "./movement-state";
 import type { Minor } from "./types";
-import { toMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
 

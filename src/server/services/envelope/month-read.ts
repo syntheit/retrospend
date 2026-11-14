@@ -12,6 +12,7 @@ import {
 	monthViewFrom,
 	owedInputOf,
 } from "@retrospend/domain/envelope/month-read";
+import { toMinor } from "@retrospend/domain/envelope/units";
 import type {
 	CoverOverview,
 	FillFromTargetsOutput,
@@ -26,7 +27,6 @@ import { groupBaseFor } from "./income-history";
 import { type BookRow, loadBook } from "./inputs";
 import { coverOverview, fillFromTargets } from "./planning";
 import type { Minor, MonthKey } from "./types";
-import { toMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
 

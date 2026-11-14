@@ -16,6 +16,7 @@
  * dirty mark sends their pass back to an earlier checkpoint.
  */
 import { randomUUID } from "node:crypto";
+import { fromMinor } from "@retrospend/domain/envelope/units";
 import type { Prisma } from "~prisma";
 import { addMonths } from "./calendar";
 import { loadCloseRows, loadDirtyMarks } from "./close-rows";
@@ -23,7 +24,6 @@ import { forgetMonthViews, monthViewIn } from "./month-read";
 import { closeAndRevise } from "./month-revise";
 import { budgetMonthOf, isoDateIn, monthsFrom } from "./months";
 import { lockBook } from "./movement-state";
-import { fromMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
 

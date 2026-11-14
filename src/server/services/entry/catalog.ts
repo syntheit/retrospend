@@ -6,12 +6,12 @@
  * Amounts are Money in minor units; the client only formats them.
  */
 import { categoryTone } from "@retrospend/domain/category-tone";
+import { dec, toMinor } from "@retrospend/domain/envelope/units";
 import { type AccountIcon, iconOf } from "~/lib/account-icons";
 import type { Money } from "~/server/figures/registry";
 import type { PrismaClient } from "~prisma";
 import { defaultAccounts } from "../accounts/defaults";
 import { inBudget, isLiability, worthOf } from "../accounts/places";
-import { dec, toMinor } from "../envelope/units";
 import { ensureIncomeCategories } from "../money-in.service";
 import { byUsageThenName, compareText } from "../text-order";
 

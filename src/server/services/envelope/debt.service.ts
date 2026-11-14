@@ -16,6 +16,7 @@
 import { randomUUID } from "node:crypto";
 import { payoffFrom } from "@retrospend/domain/envelope/debt-read";
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import { dec, fromMinor, toMinor } from "@retrospend/domain/envelope/units";
 import { z } from "zod";
 import type {
 	DebtTerms,
@@ -32,7 +33,6 @@ import { findPersonalBook } from "./inputs";
 import { forgetMonthViews } from "./month-read";
 import { loadRateRows } from "./rate-book";
 import { LIABILITY_TYPES } from "./target-write";
-import { dec, fromMinor, toMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
 

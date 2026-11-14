@@ -1,6 +1,6 @@
 import type { Money } from "@retrospend/api-contract";
+import { toMinor } from "@retrospend/domain/envelope/units";
 import type { db as globalDb } from "~/server/db";
-import { toMinor } from "~/server/services/envelope/units";
 import type { Principal } from "./principal.service";
 
 /** What a v1 adapter needs from the request: the caller and their RLS client. */
