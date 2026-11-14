@@ -1,5 +1,5 @@
 /**
- * The rows of the budget book family on a device (E2EE P13b): the person's
+ * The rows of the budget book family on a device: the person's
  * personal book and what hangs off it, the transfers a bill reads, and the
  * snapshot of what only the server can compute. Raw rows, as a sync sends
  * them and as the loaders of @retrospend/domain/envelope read them: decimals

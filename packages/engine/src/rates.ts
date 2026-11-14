@@ -1,5 +1,5 @@
 /**
- * Rates on the device (E2EE lane P, P15).
+ * Rates on the device.
  *
  * The daily table (GET /rates/daily) is the server's whole exchange_rate
  * table. `applyDailyTable` puts it in the `rates` table, the one every figure

@@ -1,5 +1,5 @@
 /**
- * The 12 budget and envelope figures on a device (E2EE P13b): the same
+ * The 12 budget and envelope figures on a device: the same
  * `createBudgetFigures` the server registers, over reads that come from the
  * device's own rows and its budget snapshot. The loaders (month view, plan
  * cost, payoff projection) are the domain's, run through `storeBookSource`;

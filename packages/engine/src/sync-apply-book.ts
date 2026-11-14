@@ -1,5 +1,5 @@
 /**
- * The budget book family in the sync apply layer (E2EE P13b): the wire shapes of
+ * The budget book family in the sync apply layer: the wire shapes of
  * the book's tables, the transfers a bill reads and the budget block of
  * GET /sync/shares, and the port rows they make. Shapes are structural, as in
  * sync-apply.ts: a pg test assigns the contract's DTOs to them.

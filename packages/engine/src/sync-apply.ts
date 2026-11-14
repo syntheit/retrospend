@@ -1,5 +1,5 @@
 /**
- * Applying what the server syncs to the device store (E2EE P16): the wire rows
+ * Applying what the server syncs to the device store: the wire rows
  * of GET /sync/{expenses,categories,...} and the two snapshots
  * (GET /sync/shares, GET /sync/settings), as the port rows the figures read.
  * Production code for the pull loop; the parity harness drives the same

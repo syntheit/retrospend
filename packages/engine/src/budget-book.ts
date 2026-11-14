@@ -1,5 +1,5 @@
 /**
- * The device's rows as the budget loader's types (E2EE P13b): the personal
+ * The device's rows as the budget loader's types: the personal
  * book with its periods, groups, envelopes and category links, the closes
  * without a checkpoint, and the expense and account rows the budget reads,
  * each turned from the port's text decimals and plain strings into the domain's
