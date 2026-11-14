@@ -44,7 +44,6 @@ export {
 const idSchema = z.string().min(1).max(64);
 const clientIdSchema = z.string().uuid();
 const nonNegativeMinor = minorSchema.refine((v) => v >= 0, "must be 0 or more");
-const _fundingSourceSchema = z.enum(["INCOME", "TARGETS"]);
 
 // ── Month summary (SPEC §5.5, §6.6) ─────────────────────────────────────────
 

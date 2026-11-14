@@ -180,6 +180,20 @@ describe("budget contract mirrors the web's schemas", () => {
 		}
 	});
 
+	// A schema the web re-exports as is answers tRPC, which carries a Date: if
+	// the contract gives it an ISO instant, the web must extend it with a Date.
+	it("re-exports no schema with an instant the web would send as a Date", () => {
+		for (const name of names.filter((n) => sources[n] === mirrors[n])) {
+			const text = JSON.stringify(
+				z.toJSONSchema(mirrors[name] as z.ZodType, {
+					io: "output",
+					unrepresentable: "any",
+				}),
+			);
+			expect(text, name).not.toContain('"format":"date-time"');
+		}
+	});
+
 	it.each(apart.filter((n) => !DRAFT_OUTPUTS.has(n)))("%s: input", (name) => {
 		expect(jsonOf(mirrors[name] as z.ZodType, "input")).toEqual(
 			jsonOf(sources[name] as z.ZodType, "input"),
