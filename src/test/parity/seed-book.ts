@@ -143,7 +143,7 @@ export async function seedParityBook(ctx: SeedContext): Promise<ParityBook> {
 				adminDb,
 				ctx.userId,
 				(tx) => ensureMonthsClosed(tx, ctx.userId, first),
-				{ timeout: 120_000 },
+				{ timeout: 110_000 },
 			);
 		});
 	};
