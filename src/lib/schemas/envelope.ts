@@ -11,6 +11,9 @@
 import {
 	billRepeatSchema,
 	budgetStyleSchema,
+	historyOutputSchema as contractHistoryOutputSchema,
+	movementResultSchema as contractMovementResultSchema,
+	movementSchema as contractMovementSchema,
 	coverOverviewSchema,
 	coverSourceSchema,
 	envelopeGroupSchema,
@@ -51,12 +54,14 @@ import {
 	ruleMatchSchema,
 	SETUP_STYLES,
 	setupPaySchema,
+	setupResultSchema,
 	setupStyleSchema,
 	shareCategoryResultSchema,
 	shareCategorySourceSchema,
 	targetCadenceSchema,
 	targetModeSchema,
 	toAssignSchema,
+	undoSetupResultSchema,
 	verdictActionSchema,
 	verdictSchema,
 	verdictStateSchema,
@@ -108,12 +113,14 @@ export {
 	ruleMatchSchema,
 	SETUP_STYLES,
 	setupPaySchema,
+	setupResultSchema,
 	setupStyleSchema,
 	shareCategoryResultSchema,
 	shareCategorySourceSchema,
 	targetCadenceSchema,
 	targetModeSchema,
 	toAssignSchema,
+	undoSetupResultSchema,
 	verdictActionSchema,
 	verdictSchema,
 	verdictStateSchema,
@@ -132,36 +139,17 @@ export const AMOUNT_SETUP_STYLES: ReadonlySet<(typeof SETUP_STYLES)[number]> =
 
 // ── Outputs ─────────────────────────────────────────────────────────────────
 
-// ── Month close (P4, SPEC §5.5) ─────────────────────────────────────────────
-
-// ── Splits and money owed (P3, SPEC §5.8) ───────────────────────────────────
-
-export const movementSchema = z.object({
-	id: idSchema,
-	month: monthKeySchema,
-	from: idSchema.nullable(),
-	to: idSchema.nullable(),
-	amount: moneySchema,
-	kind: movementKindSchema,
-	batchId: idSchema.nullable(),
-	revertsId: idSchema.nullable(),
+/** tRPC carries a Date (superjson); v1 sends the same instant as an ISO string. */
+export const movementSchema = contractMovementSchema.extend({
 	createdAt: z.date(),
-	/** Not yet undone, not an undo itself, and in an open month. */
-	canUndo: z.boolean(),
 });
 
-export const historyOutputSchema = z.object({
+export const historyOutputSchema = contractHistoryOutputSchema.extend({
 	items: z.array(movementSchema),
-	nextCursor: idSchema.nullable(),
 });
 
-export const movementResultSchema = z.object({
+export const movementResultSchema = contractMovementResultSchema.extend({
 	movements: z.array(movementSchema.omit({ canUndo: true })),
-	/** Every envelope the write moved, with its Left before and after (RC-5: every line listed). */
-	envelopes: z.array(
-		z.object({ id: idSchema, before: moneySchema, after: moneySchema }),
-	),
-	toAssign: z.object({ before: moneySchema, after: moneySchema }),
 });
 
 export const setupPresetOutputSchema = z.object({
@@ -465,60 +453,6 @@ export function previewOutputSchema<T extends z.ZodType>(value: T) {
 export function applyOutputSchema<T extends z.ZodType>(value: T) {
 	return previewOutputSchema(value).extend({ undo: undoTokenSchema });
 }
-
-export const setupResultSchema = z.object({
-	bookId: idSchema,
-	/**
-	 * What you and each person owe each other as the budget starts, per
-	 * person and currency, never netted (owner 2026-10-23): part of the
-	 * starting position. Positive: they owe you (counts when it arrives);
-	 * negative: you owe them (leaves To assign when you pay).
-	 */
-	openBalances: z.array(
-		z.object({ participant: participantRefSchema, amount: moneySchema }),
-	),
-	/**
-	 * What the plan costs a month against what you start with (the stop when
-	 * it costs more than you have). Null for a style that funds itself
-	 * (Limits asks for no money now).
-	 */
-	plan: z
-		.object({
-			cost: moneySchema,
-			available: moneySchema,
-			/** max(0, cost - available): what the plan costs beyond what you have. */
-			short: moneySchema,
-		})
-		.nullable(),
-	/** The first pay on or after today from the pay step; null when pay varies or was not asked. */
-	nextPay: isoDateSchema.nullable(),
-	/** Pay off debt: where the saved plan leads, from the same write. Null for any other style. */
-	payoff: z
-		.object({
-			debtFreeMonth: monthKeySchema.nullable(),
-			totalInterest: moneySchema,
-			/** The minimums fall short of the interest: balances grow at this payment. */
-			diverges: z.boolean(),
-			/** Debts left out for want of a rate today (R14). */
-			incomplete: z.boolean(),
-			debts: z.number().int(),
-		})
-		.nullable(),
-	/**
-	 * Signed by the server; envelope.undoSetup takes the budget back with it
-	 * while it holds nothing but what this write made. Opaque to clients.
-	 */
-	restore: z.object({
-		data: z.string().min(2).max(200_000),
-		sig: z.string().regex(/^[0-9a-f]{64}$/),
-	}),
-});
-
-/** What taking a set-up back deleted: the book, and the starting balance row when setup wrote one. */
-export const undoSetupResultSchema = z.object({
-	bookId: idSchema,
-	expenseId: idSchema.nullable(),
-});
 
 export const setShareCategoryInputSchema = z.object({
 	transactionId: idSchema,
