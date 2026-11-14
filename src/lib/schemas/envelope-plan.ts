@@ -10,6 +10,8 @@
  */
 
 import {
+	applyRuleResultSchema as contractApplyRuleResultSchema,
+	incomeRuleSchema as contractIncomeRuleSchema,
 	draftEnvelopeLineSchema,
 	draftKindSchema,
 	draftPreviewSchema,
@@ -50,15 +52,7 @@ const nonNegativeMinor = minorSchema.refine((v) => v >= 0, "must be 0 or more");
 
 // ── Income rules (SPEC §5.10) ───────────────────────────────────────────────
 
-export const incomeRuleSchema = z.object({
-	id: idSchema,
-	name: z.string(),
-	sortOrder: z.number().int(),
-	match: ruleMatchSchema,
-	action: ruleActionSchema,
-	envelopeId: idSchema,
-	active: z.boolean(),
-	/** Rules apply to money in created after this. */
+export const incomeRuleSchema = contractIncomeRuleSchema.extend({
 	createdAt: z.date(),
 });
 
@@ -92,8 +86,7 @@ export const applyRuleToMonthInputSchema = z.object({
 	ruleId: idSchema,
 });
 
-export const applyRuleResultSchema = z.object({
-	runs: z.array(ruleRunSchema),
+export const applyRuleResultSchema = contractApplyRuleResultSchema.extend({
 	movement: movementResultSchema.nullable(),
 });
 
