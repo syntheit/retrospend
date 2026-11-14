@@ -1,5 +1,5 @@
 /**
- * The pull side of the parity harness (E2EE P16): a device's MemoryStore fed
+ * The pull side of the parity harness: a device's MemoryStore fed
  * by the engine's own pull driver (packages/engine/src/sync-pull.ts, the code
  * the app runs) through the real client over the handler the Next route uses,
  * as a mobile app session. So the JSON, the sync scope and row-level security
