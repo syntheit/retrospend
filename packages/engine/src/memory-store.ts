@@ -61,6 +61,33 @@ function own<V>(v: V): V {
 	return v;
 }
 
+/**
+ * How to hand out a stored row: the top-level keys that hold a Date, or
+ * "deep" when a Date sits inside a nested object or array. A row with no Date
+ * has an empty plan.
+ */
+type CopyPlan = readonly string[] | "deep";
+
+/** Plans by stored row. Stored rows are frozen, so a plan never goes stale. */
+const plans = new WeakMap<object, CopyPlan>();
+
+function hasDate(v: unknown): boolean {
+	if (v instanceof Date) return true;
+	if (Array.isArray(v)) return v.some(hasDate);
+	if (v !== null && typeof v === "object" && isPlain(v))
+		return Object.values(v).some(hasDate);
+	return false;
+}
+
+function planFor(row: object): CopyPlan {
+	const dates: string[] = [];
+	for (const [key, value] of Object.entries(row)) {
+		if (value instanceof Date) dates.push(key);
+		else if (hasDate(value)) return "deep";
+	}
+	return dates;
+}
+
 /** The copy a table keeps of a row; refuses what the table cannot hold. */
 function owned<T extends TableName>(table: T, row: TableRows[T]): TableRows[T] {
 	const only = SINGLE_ROW_IDS[table];
@@ -68,28 +95,60 @@ function owned<T extends TableName>(table: T, row: TableRows[T]): TableRows[T] {
 		throw new InvalidInputError(
 			`The ${table} table has one row, with id "${only}"`,
 		);
-	return own(row);
+	const stored = own(row);
+	plans.set(stored, planFor(stored));
+	return stored;
 }
 
 /**
- * A row as a reader gets it: its Dates are fresh copies, since a Date cannot
- * be frozen and `setTime` on a shared one would change committed state. A row
- * with no Date is handed out as stored.
+ * A value as a reader gets it: its Dates are fresh copies, since a Date cannot
+ * be frozen and `setTime` on a shared one would change committed state. A
+ * value with no Date is handed out as stored. This is the plan-free walk;
+ * `outRow` is the fast path for stored rows and must match it exactly (the
+ * store test holds them equal, so it is exported for that).
  */
-function out<V>(v: V): V {
+export function genericOut<V>(v: V): V {
 	if (v instanceof Date) return new Date(v.getTime()) as V;
 	if (Array.isArray(v)) {
-		const copy = v.map(out);
+		const copy = v.map(genericOut);
 		return copy.some((x, i) => x !== v[i]) ? (Object.freeze(copy) as V) : v;
 	}
 	if (v !== null && typeof v === "object" && isPlain(v)) {
 		const entries = Object.entries(v);
-		const copy = entries.map(([k, x]) => [k, out(x)] as const);
+		const copy = entries.map(([k, x]) => [k, genericOut(x)] as const);
 		return copy.some(([, x], i) => x !== entries[i]?.[1])
 			? (Object.freeze(Object.fromEntries(copy)) as V)
 			: v;
 	}
 	return v;
+}
+
+/**
+ * A stored row as a reader gets it, by its plan: a row with no Date as stored,
+ * a row with top-level Dates as a frozen copy rebuilt in one spread (the key
+ * order of the generic walk), anything else by the generic walk.
+ */
+function outRow<R extends object>(row: R): R {
+	const plan = plans.get(row);
+	if (plan === undefined || plan === "deep") return genericOut(row);
+	if (plan.length === 0) return row;
+	const copy = { ...row } as Record<string, unknown>;
+	for (const key of plan) copy[key] = new Date((copy[key] as Date).getTime());
+	return Object.freeze(copy) as R;
+}
+
+/**
+ * Stored rows as a list a reader gets: a new array every time, frozen when any
+ * row had to be copied (as the generic walk did), so callers never share one.
+ */
+function outList<R extends object>(rows: readonly R[]): readonly R[] {
+	let copied = false;
+	const copy = rows.map((row) => {
+		const read = outRow(row);
+		if (read !== row) copied = true;
+		return read;
+	});
+	return copied ? Object.freeze(copy) : copy;
 }
 
 class Snap implements Snapshot {
@@ -106,11 +165,12 @@ class Snap implements Snapshot {
 	}
 
 	get<T extends TableName>(table: T, id: string) {
-		return out(this.raw.get(table, id));
+		const row = this.raw.get(table, id);
+		return row === undefined ? undefined : outRow(row);
 	}
 
 	list<T extends TableName>(table: T) {
-		return out(this.raw.list(table));
+		return outList(this.raw.list(table));
 	}
 }
 
@@ -158,12 +218,13 @@ class MemoryTx implements Tx {
 
 	get<T extends TableName>(table: T, id: string) {
 		this.live();
-		return out(this.view.get(table, id));
+		const row = this.view.get(table, id);
+		return row === undefined ? undefined : outRow(row);
 	}
 
 	list<T extends TableName>(table: T) {
 		this.live();
-		return out(this.view.list(table));
+		return outList(this.view.list(table));
 	}
 
 	put<T extends TableName>(table: T, row: TableRows[T]) {
