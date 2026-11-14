@@ -219,12 +219,19 @@ describe("auto-finalize of a payment pending for more than 7 days", () => {
 			paymentId: manual,
 			person: ref(q.payer),
 		});
-		const [byHand] = (
-			await readEventFeed(adminDb, q.payee.user.id, { limit: 100 })
-		).items.filter(
-			(e) => e.type === "payment.confirmed" && e.data.ids.paymentId === manual,
-		);
-		expect(byHand).toBeDefined();
+		// The feed append lands after the confirm's transaction ends, so wait for
+		// it the same way as above instead of reading once.
+		await openTransactionsEnded();
+		const byHand = await vi.waitFor(async () => {
+			const [event] = (
+				await readEventFeed(adminDb, q.payee.user.id, { limit: 100 })
+			).items.filter(
+				(e) =>
+					e.type === "payment.confirmed" && e.data.ids.paymentId === manual,
+			);
+			expect(event).toBeDefined();
+			return event;
+		});
 		expect(byHand?.data).not.toHaveProperty("automatic");
 	});
 
