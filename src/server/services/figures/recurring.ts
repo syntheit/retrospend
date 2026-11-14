@@ -12,6 +12,7 @@
  */
 
 import { FigureNarrowingError } from "@retrospend/domain/figures/narrowing";
+import { FigureUnavailable } from "@retrospend/domain/figures/unavailable";
 import {
 	type RecurringDirection,
 	type RecurringPeriod,
@@ -24,7 +25,6 @@ import type {
 	FigurePass,
 	FigureScope,
 } from "~/server/figures/registry";
-import { FigureUnavailable } from "~/server/figures/unavailable";
 import {
 	type RecurringBody,
 	readRecurringBody,

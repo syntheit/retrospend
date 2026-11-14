@@ -81,11 +81,11 @@ import {
 	type PickRateRow,
 	ratePickFromRows,
 } from "@retrospend/domain/accounts/valuation";
+import { FigureUnavailable } from "@retrospend/domain/figures/unavailable";
 import { rateWindow } from "@retrospend/domain/money";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { readFigures } from "~/server/figures/read";
-import { FigureUnavailable } from "~/server/figures/unavailable";
 import { owedRead } from "~/server/services/payments/figures";
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { loadNetWorthInputs, netWorthChangeFor, netWorthFor } from "./figures";

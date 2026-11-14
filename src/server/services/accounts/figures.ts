@@ -29,13 +29,13 @@ import type {
 	ChangePart,
 	NetWorthChange,
 } from "@retrospend/domain/accounts/net-worth-change";
+import { FigureUnavailable } from "@retrospend/domain/figures/unavailable";
 import type {
 	FigureDb,
 	FigureDefinition,
 	FigurePass,
 	Money,
 } from "~/server/figures/registry";
-import { FigureUnavailable } from "~/server/figures/unavailable";
 import { owedOnce } from "~/server/services/payments/figures";
 import { homeCurrencyOf, ratePickFor } from "./ledger";
 import { loadAccountRows, loadAccountsLedger } from "./load";

@@ -3,7 +3,7 @@ import type {
 	SyncSharesDto,
 	SyncSharesQuery,
 } from "@retrospend/api-contract";
-import { FigureUnavailable } from "~/server/figures/unavailable";
+import { FigureUnavailable } from "@retrospend/domain/figures/unavailable";
 import type { BudgetRead } from "~/server/services/sync/budget-block";
 import {
 	readSettingsSnapshot,
