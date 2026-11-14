@@ -12,16 +12,21 @@
  * never touched. Old history is dropped on purpose (owner, 02 §9.1 Q4).
  */
 import { randomUUID } from "node:crypto";
+import { computeBook } from "@retrospend/domain/envelope/engine";
+import { invariantSides } from "@retrospend/domain/envelope/invariant";
+import type { Minor, MonthKey } from "@retrospend/domain/envelope/types";
 import { fromMinor, toMinor } from "@retrospend/domain/envelope/units";
+import {
+	convertToBook,
+	type ValuationContext,
+} from "@retrospend/domain/envelope/valuation";
 import type { Prisma } from "~prisma";
 import { sortByText } from "../text-order";
 import { userTimeZone } from "../user-time-zone";
 import { rateTypeFor, setupBook } from "./book.service";
 import { addMonths } from "./calendar";
-import { computeBook } from "./engine";
 import { hiddenRowsIn } from "./hidden-rows";
 import { loadBook, monthStartInstant } from "./inputs";
-import { invariantSides } from "./invariant";
 import {
 	type LegacyBudgetRow,
 	type LegacyPlan,
@@ -32,8 +37,6 @@ import { spendingByCategory } from "./limits.service";
 import { forgetMonthViews, monthViewIn } from "./month-read";
 import { budgetMonthOf, isoDateIn } from "./months";
 import { loadRateBook } from "./rate-book";
-import type { Minor, MonthKey } from "./types";
-import { convertToBook, type ValuationContext } from "./valuation";
 
 type Tx = Prisma.TransactionClient;
 

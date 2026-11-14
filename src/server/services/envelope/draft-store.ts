@@ -3,6 +3,8 @@
  * and the saved plan Use my plan starts from. JSON columns hold ids and
  * amounts only, parsed with the contract's own schemas.
  */
+
+import type { MonthKey } from "@retrospend/domain/envelope/types";
 import { z } from "zod";
 import {
 	type DraftDto,
@@ -13,7 +15,6 @@ import {
 } from "~/lib/schemas/envelope-plan";
 import type { BudgetDraft, Prisma } from "~prisma";
 import type { SavedPlanLine } from "./planning";
-import type { MonthKey } from "./types";
 
 type Tx = Prisma.TransactionClient;
 

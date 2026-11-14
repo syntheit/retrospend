@@ -1,6 +1,4 @@
-import { describe, expect, it } from "vitest";
-import { bookContext } from "./test-fixtures";
-import { MissingRateError } from "./types";
+import { MissingRateError } from "@retrospend/domain/envelope/types";
 import {
 	type BookPeriod,
 	convertToBook,
@@ -9,7 +7,9 @@ import {
 	sumRows,
 	type ValuationRow,
 	valueRow,
-} from "./valuation";
+} from "@retrospend/domain/envelope/valuation";
+import { describe, expect, it } from "vitest";
+import { bookContext } from "./test-fixtures";
 
 const row = (
 	o: Partial<ValuationRow> & Pick<ValuationRow, "amount" | "currency">,

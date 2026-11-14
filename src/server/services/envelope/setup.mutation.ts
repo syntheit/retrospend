@@ -7,6 +7,7 @@
  */
 
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import { replaySplits } from "@retrospend/domain/envelope/splits-replay";
 import {
 	FIGURE_LEFT_TO_SPEND,
 	FIGURE_NOT_PLANNED_YET,
@@ -24,7 +25,6 @@ import { forgetMonthViews, monthViewIn } from "./month-read";
 import { nextPay } from "./pay-cycle";
 import { planCostIn } from "./plan-read";
 import { setupFootprint, signSetupUndo } from "./setup-undo.service";
-import { replaySplits } from "./splits-replay";
 import { applyPlan } from "./use-my-plan";
 
 export type SetupMutationInput = SetupInput & { timeZone: string | null };

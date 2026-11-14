@@ -7,10 +7,10 @@
  * them lines up and a spreadsheet can read them back.
  */
 import { isCrypto } from "@retrospend/domain/currency-format";
+import type { DecimalLike } from "@retrospend/domain/envelope/types";
 import { toMinor } from "@retrospend/domain/envelope/units";
 import { fromMinor } from "@retrospend/domain/money-minor";
 import { CsvNumber } from "~/lib/csv";
-import type { DecimalLike } from "~/server/services/envelope/types";
 
 /** A stored amount in integer minor units, rounded half to even once. */
 export function minorOf(amount: DecimalLike, currency: string): number {

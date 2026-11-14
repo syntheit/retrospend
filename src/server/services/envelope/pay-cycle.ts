@@ -3,6 +3,8 @@
  * cycle counts from. Pure calendar math on YYYY-MM-DD strings (no time zone
  * enters: the caller passes today in the book's zone).
  */
+
+import type { IsoDate } from "@retrospend/domain/envelope/types";
 import {
 	addDays,
 	addMonthsToDate,
@@ -10,7 +12,6 @@ import {
 	daysBetween,
 	monthsBetween,
 } from "./calendar";
-import type { IsoDate } from "./types";
 
 export type PayFrequency = "MONTHLY" | "EVERY_TWO_WEEKS" | "WEEKLY" | "VARIES";
 

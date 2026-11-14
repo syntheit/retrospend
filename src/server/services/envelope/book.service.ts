@@ -8,6 +8,7 @@ import { randomUUID } from "node:crypto";
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import { REPEAT_MONTHS } from "@retrospend/domain/envelope/target-input";
 import { savingsShape } from "@retrospend/domain/envelope/targets";
+import { TargetConfigError } from "@retrospend/domain/envelope/types";
 import { toMinor } from "@retrospend/domain/envelope/units";
 import type { SetupInput, SetupPresetOutput } from "~/lib/schemas/envelope";
 import type { Prisma } from "~prisma";
@@ -26,7 +27,6 @@ import {
 	writeSetupExtras,
 } from "./setup-p5";
 import { KIND_FOR, LIABILITY_TYPES, targetColumns } from "./target-write";
-import { TargetConfigError } from "./types";
 
 type Tx = Prisma.TransactionClient;
 

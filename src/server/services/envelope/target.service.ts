@@ -12,6 +12,7 @@
 
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type { EnvelopeTarget } from "@retrospend/domain/envelope/needs";
+import type { Minor } from "@retrospend/domain/envelope/types";
 import type { TargetInput } from "~/lib/schemas/envelope";
 import type {
 	SetTargetInput,
@@ -24,7 +25,6 @@ import { restoreData, snapshotOf } from "./limit-target";
 import { forgetMonthViews } from "./month-read";
 import { checkEnvelope, lockedSnapshot, snapshot } from "./movement-state";
 import { checkTarget, replaceTarget } from "./target-write";
-import type { Minor } from "./types";
 
 type Tx = Prisma.TransactionClient;
 

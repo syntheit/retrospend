@@ -10,6 +10,8 @@
  *   by Left, then Savings, then Bills last with their due date.
  * - Move caps (S15): a move out of an envelope takes at most max(0, Left).
  */
+
+import type { Minor } from "@retrospend/domain/envelope/types";
 import type {
 	CoverOverview,
 	CoverSource,
@@ -25,7 +27,6 @@ import {
 	type TargetedGroup,
 } from "./auto-fill";
 import { addMonths } from "./calendar";
-import type { Minor } from "./types";
 
 function rowsOf(
 	view: GetMonthOutput,

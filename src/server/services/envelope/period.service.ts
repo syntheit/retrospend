@@ -12,6 +12,7 @@
  */
 
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import { periodForMonth } from "@retrospend/domain/envelope/valuation";
 import { USD } from "@retrospend/domain/money";
 import type {
 	BookPeriodResult,
@@ -29,7 +30,6 @@ import {
 	monthStart,
 } from "./months";
 import { lockBook } from "./movement-state";
-import { periodForMonth } from "./valuation";
 
 type Tx = Prisma.TransactionClient;
 

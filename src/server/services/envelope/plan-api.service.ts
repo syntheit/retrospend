@@ -4,6 +4,8 @@
  * pending income rules). Writes here move no money (rule list edits,
  * drafts, group targets); money writes go through plan.mutation.ts.
  */
+
+import type { MonthKey } from "@retrospend/domain/envelope/types";
 import type {
 	CreateRuleInput,
 	DraftDto,
@@ -41,7 +43,6 @@ import {
 	reorderRules,
 	updateRule,
 } from "./rule-crud.service";
-import type { MonthKey } from "./types";
 
 type Tx = Prisma.TransactionClient;
 

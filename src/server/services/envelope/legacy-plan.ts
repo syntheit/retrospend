@@ -12,9 +12,9 @@
  * valued at 1). A target keeps its own currency (D25).
  */
 
+import type { Minor } from "@retrospend/domain/envelope/types";
 import { dec, toMinor } from "@retrospend/domain/envelope/units";
 import type { SetupInput, TargetInput } from "~/lib/schemas/envelope";
-import type { Minor } from "./types";
 
 /** The API default group names; user text, written as typed. */
 const BILLS = "Bills";

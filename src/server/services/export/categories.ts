@@ -1,4 +1,4 @@
-import type { DecimalLike } from "~/server/services/envelope/types";
+import type { DecimalLike } from "@retrospend/domain/envelope/types";
 import { minorOf, minorText } from "./amounts";
 
 export interface CategoryRow {

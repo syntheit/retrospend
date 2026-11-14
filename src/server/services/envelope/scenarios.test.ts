@@ -7,28 +7,28 @@
  */
 
 import {
+	type ActivityEntry,
+	computeBook,
+	type EngineInput,
+	type MoneyInEntry,
+	type MovementEntry,
+} from "@retrospend/domain/envelope/engine";
+import { invariantSides } from "@retrospend/domain/envelope/invariant";
+import {
 	buildMonthView,
 	type ViewBook,
 	type ViewEnvelope,
 } from "@retrospend/domain/envelope/month-view";
 import type { EnvelopeTarget } from "@retrospend/domain/envelope/needs";
 import type { GroupRole } from "@retrospend/domain/envelope/pace";
+import { replaySplits } from "@retrospend/domain/envelope/splits-replay";
+import type { IsoDate, MonthKey } from "@retrospend/domain/envelope/types";
+import { convertToBook, valueRow } from "@retrospend/domain/envelope/valuation";
 import type { BudgetStyle } from "@retrospend/domain/envelope/verdict";
 import { describe, expect, it } from "vitest";
 import type { GetMonthOutput } from "~/lib/schemas/envelope";
-import {
-	type ActivityEntry,
-	computeBook,
-	type EngineInput,
-	type MoneyInEntry,
-	type MovementEntry,
-} from "./engine";
-import { invariantSides } from "./invariant";
 import { coverSources, fillFromTargets, moveCap } from "./planning";
-import { replaySplits } from "./splits-replay";
 import { bookContext } from "./test-fixtures";
-import type { IsoDate, MonthKey } from "./types";
-import { convertToBook, valueRow } from "./valuation";
 
 /** Whole currency units to minor units (every book here has 2 decimals). */
 const m = (n: number) => Math.round(n * 100);

@@ -20,6 +20,8 @@
  * Late window by when the change was made: an Oct 30 dinner logged Nov 3
  * and first read Nov 10 still updates October in place, with no item.
  */
+
+import { computeBook } from "@retrospend/domain/envelope/engine";
 import { describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { forUser } from "~/server/services/preview";
@@ -35,7 +37,6 @@ import {
 } from "./__tests__/pg-fixture";
 import { reconcileMutation, welcomeBackMutation } from "./book.mutation";
 import { loadCloseRows } from "./close-rows";
-import { computeBook } from "./engine";
 import { loadBook } from "./inputs";
 import { getMonth, getMonthSummary } from "./read.service";
 import { setupEnvelopeBook } from "./setup.mutation";

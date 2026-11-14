@@ -31,6 +31,7 @@
  * Dining: 2,500 moves from Dining to Coffee the same way.
  */
 import { randomUUID } from "node:crypto";
+import { computeBook } from "@retrospend/domain/envelope/engine";
 import { beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { forUser } from "~/server/services/preview";
@@ -48,7 +49,6 @@ import {
 	undoChangeMutation,
 	updateEnvelopeMutation,
 } from "./crud.mutation";
-import { computeBook } from "./engine";
 import { loadBook } from "./inputs";
 import { budgetMonthOf, isoDateIn } from "./months";
 import { undoMovements } from "./movement.mutation";

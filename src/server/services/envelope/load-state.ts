@@ -8,13 +8,13 @@
  */
 
 import { AsyncLocalStorage } from "node:async_hooks";
+import type { MonthKey } from "@retrospend/domain/envelope/types";
 import type {
 	FreshValue,
 	FrozenValue,
 	Valuer,
 } from "@retrospend/domain/envelope/valuer";
 import type { Prisma } from "~prisma";
-import type { MonthKey } from "./types";
 
 export {
 	approximateThrough,

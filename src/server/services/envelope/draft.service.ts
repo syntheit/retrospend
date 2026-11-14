@@ -16,6 +16,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import type { MonthKey } from "@retrospend/domain/envelope/types";
 import type { MovementResult } from "~/lib/schemas/envelope";
 import type {
 	ApplyDraftInput,
@@ -43,7 +44,6 @@ import {
 	Tracker,
 } from "./movement-state";
 import { activeRules, runPendingRules } from "./rule.service";
-import type { MonthKey } from "./types";
 
 type Tx = Prisma.TransactionClient;
 

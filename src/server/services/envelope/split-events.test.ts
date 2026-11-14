@@ -4,6 +4,7 @@
  * calendar dates are read as stored (SPEC §5.1, C21). Values by hand.
  */
 
+import { Valuer } from "@retrospend/domain/envelope/entries";
 import {
 	type SplitRows,
 	splitEvents,
@@ -16,7 +17,6 @@ import {
 	TABLE,
 	type TxSpec,
 } from "./__tests__/split-rows";
-import { Valuer } from "./entries";
 import { bookContext, lookupIn } from "./test-fixtures";
 
 const table = lookupIn(TABLE);

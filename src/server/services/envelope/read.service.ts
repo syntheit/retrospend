@@ -5,6 +5,7 @@
  */
 
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import type { Minor, MonthKey } from "@retrospend/domain/envelope/types";
 import type {
 	CoverOverview,
 	FillFromTargetsOutput,
@@ -32,7 +33,6 @@ import type { SetupStyle } from "./presets";
 import { runPendingRules } from "./rule.service";
 import { owedIn, saveShareDefaults } from "./splits.service";
 import { monthSummaryIn } from "./summary.service";
-import type { Minor, MonthKey } from "./types";
 import { touchOpened } from "./welcome.service";
 
 function read<T>(

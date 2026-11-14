@@ -1,13 +1,13 @@
 /** Shared seed for the envelope pg tests: a USD user with Rent and Dining, a Save first setup (it plans nothing at setup, so every figure starts unfunded), plain rows. */
 import { randomUUID } from "node:crypto";
+import { computeBook } from "@retrospend/domain/envelope/engine";
+import { invariantSides } from "@retrospend/domain/envelope/invariant";
 import type { SetupInput } from "~/lib/schemas/envelope";
 import { userTransaction } from "~/server/db-tx";
 import { forUser } from "~/server/services/preview";
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
-import { computeBook } from "../engine";
 import { loadBook } from "../inputs";
-import { invariantSides } from "../invariant";
 import { setupEnvelopeBook } from "../setup.mutation";
 
 /**

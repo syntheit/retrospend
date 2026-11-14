@@ -4,9 +4,9 @@
  * when envelopes are combined. No I/O; the services load rows and call these.
  */
 
+import type { Minor } from "@retrospend/domain/envelope/types";
 import { Dec } from "@retrospend/domain/envelope/units";
 import type { TargetSnapshot } from "~/lib/schemas/envelope-book";
-import type { Minor } from "./types";
 
 export interface Delta {
 	id: string;

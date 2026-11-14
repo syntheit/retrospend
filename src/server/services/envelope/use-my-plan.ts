@@ -13,7 +13,12 @@
  * months, so one undo takes it back.
  */
 import { randomUUID } from "node:crypto";
+import {
+	computeBook,
+	type MovementEntry,
+} from "@retrospend/domain/envelope/engine";
 import { buildMonthView } from "@retrospend/domain/envelope/month-view";
+import type { Minor, MonthKey } from "@retrospend/domain/envelope/types";
 import type {
 	FillFromTargetsOutput,
 	Money,
@@ -22,12 +27,10 @@ import type {
 } from "~/lib/schemas/envelope";
 import type { Prisma } from "~prisma";
 import { savedPlanLines } from "./draft-store";
-import { computeBook, type MovementEntry } from "./engine";
 import { type MonthRead, monthViewIn } from "./month-read";
 import { assignPlan } from "./movement.service";
 import { fillFromTargets, type SavedPlanLine, saveHome } from "./planning";
 import { ruleTotalFor, runPendingRules } from "./rule.service";
-import type { Minor, MonthKey } from "./types";
 
 type Line = FillFromTargetsOutput["lines"][number];
 
