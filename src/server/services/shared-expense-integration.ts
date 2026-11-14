@@ -46,9 +46,11 @@ export async function getExcludedProjectIds(
 
 /**
  * Which participations are the user's own. The one access fragment of every
- * reader of a user's shares (the device snapshot, the spending shares, the
- * list), so the device's input set and the server's candidates are one query.
- * It holds no counting rule: that is countsAsShare, in memory.
+ * Prisma reader of a user's shares (the device snapshot, the spending shares,
+ * the list), so the device's input set and the server's candidates are one
+ * query. The expense list's raw SQL (SHARED_JOIN in expense-list/query-parts.ts)
+ * repeats it by hand, an accepted copy (a list, not a figure): change both
+ * together. It holds no counting rule: that is countsAsShare, in memory.
  */
 export function ownParticipationWhere(userId: string) {
 	return {

@@ -6,7 +6,7 @@
  */
 import type { SyncShareDto } from "@retrospend/api-contract";
 import { UNCOUNTED_SHARE_STATUSES } from "@retrospend/domain/share-status";
-import type { countsAsShare, SpentShareRow } from "@retrospend/domain/spent";
+import type { countsAsShare } from "@retrospend/domain/spent";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { createMockDb } from "~/test/mock-db";
 import {
@@ -87,9 +87,9 @@ describe("shareParticipations where (a pre-filter; countsAsShare decides)", () =
 describe("the rule's row", () => {
 	type RuleRow = Parameters<typeof countsAsShare>[0];
 
-	it("is made of fields the wire share and the device share both carry", () => {
-		// Adding a field to the rule that a device does not hold fails here.
+	it("is made of fields the synced share carries", () => {
+		// A rule field the sync wire does not send fails here (the row is a Pick of
+		// the device's SpentShareRow, so that side cannot differ).
 		expectTypeOf<keyof RuleRow>().toExtend<keyof SyncShareDto>();
-		expectTypeOf<keyof RuleRow>().toExtend<keyof SpentShareRow>();
 	});
 });

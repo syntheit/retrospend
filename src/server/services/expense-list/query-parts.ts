@@ -222,7 +222,11 @@ export function sharedParts(k: KeyQuery): Prisma.Sql[] {
 	return parts;
 }
 
-/** Your own split row on the expense: the shares branch only lists these. */
+/**
+ * Your own split row on the expense: the shares branch only lists these. The
+ * raw SQL twin of ownParticipationWhere (shared-expense-integration.ts): change
+ * both together.
+ */
 export const SHARED_JOIN = (
 	userId: string,
 ) => Prisma.sql`FROM shared_transaction st
