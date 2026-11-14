@@ -1,5 +1,20 @@
+import * as engineModule from "@retrospend/engine";
 import { expense, fakeDeviceApi } from "../../test/deviceApi";
 import { createDeviceEngine, engineFor, PULL_AFTER_MS } from "./device-engine";
+
+// Lets a test act while the figures are being read; reads as the real one otherwise.
+jest.mock("@retrospend/engine", () => {
+	const actual = jest.requireActual("@retrospend/engine");
+	return { ...actual, readDeviceFigures: jest.fn(actual.readDeviceFigures) };
+});
+const actualRead = jest.requireActual("@retrospend/engine").readDeviceFigures;
+const readDuring = (act: () => Promise<unknown>) =>
+	jest
+		.mocked(engineModule.readDeviceFigures)
+		.mockImplementationOnce(async (...args) => {
+			await act();
+			return actualRead(...args);
+		});
 
 // The device engine on a server double. The user's home currency is ARS in
 // Buenos Aires, the month starts on the 1st, and "now" is 2026-10-15 12:00
@@ -73,6 +88,34 @@ describe("reading figures", () => {
 		expect(
 			(await engine.read(["glance.spent"]))?.readings.get("glance.spent"),
 		).toEqual(ARS(100_000));
+	});
+});
+
+describe("a read while a pull begins", () => {
+	// Each reading below was made from rows a pull has since touched, so it is
+	// dropped and Home keeps the server's value.
+	it("is dropped when a pull is still running at the end of the read", async () => {
+		const { api } = fakeDeviceApi({ expenses: [page(ROWS)] });
+		const engine = createDeviceEngine(api, "u1");
+		await engine.pull();
+		readDuring(async () => {
+			void engine.pull();
+		});
+		expect(await engine.read(["glance.spent"])).toBeNull();
+		await engine.pull();
+		expect(
+			(await engine.read(["glance.spent"]))?.readings.get("glance.spent"),
+		).toEqual(ARS(100_000));
+	});
+
+	it("is dropped when a whole pull began and ended during the read", async () => {
+		const { api } = fakeDeviceApi({ expenses: [page(ROWS)] });
+		const engine = createDeviceEngine(api, "u1");
+		await engine.pull();
+		readDuring(() => engine.pull());
+		expect(await engine.read(["glance.spent"])).toBeNull();
+		expect(engine.status).toBe("ready");
+		expect(engine.generation).toBe(2);
 	});
 });
 
@@ -187,6 +230,15 @@ describe("checking against the server", () => {
 		});
 		expect(warn).toHaveBeenCalledTimes(1);
 		expect(warn.mock.calls[0]?.[0]).toContain("figures differ");
+		// The log names the figure and counts, and carries no amount from either side.
+		const logged = JSON.stringify(warn.mock.calls[0]);
+		expect(logged).toContain("glance.spentLast");
+		expect(logged).not.toMatch(/250000|260000|minor/);
+		expect(JSON.parse(warn.mock.calls[0]?.[1])).toMatchObject({
+			ids: ["glance.spentLast"],
+			count: 1,
+			generation: 2,
+		});
 	});
 
 	it("is quiet when the pull's rows catch up with what the server says", async () => {

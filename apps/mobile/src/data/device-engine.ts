@@ -91,11 +91,14 @@ export function createDeviceEngine(
 	let cursors: PullCursors = {};
 	let status: DeviceStatus = "idle";
 	let generation = 0;
+	/** Pulls begun, finished or not: a read that spans one is thrown away. */
+	let pullsBegun = 0;
 	let pulledAt: number | null = null;
 	let inflight: Promise<void> | null = null;
 	let lastParity: ParityResult | null = null;
 
 	async function run(): Promise<void> {
+		pullsBegun += 1;
 		status = "pulling";
 		try {
 			try {
@@ -142,7 +145,12 @@ export function createDeviceEngine(
 		const settings = store.get("settings", SETTINGS_ID);
 		if (status !== "ready" || !settings) return null;
 		const known = ids.filter((id) => DEVICE_FIGURE_IDS.includes(id));
+		const begun = pullsBegun;
 		const { readings } = await readDeviceFigures(store, userId, known);
+		// A pull that began while the figures were read changed the rows under
+		// them (or swapped the store): the reading is of no moment, so Home keeps
+		// the server's value.
+		if (pullsBegun !== begun || status !== "ready") return null;
 		return {
 			homeCurrency: settings.homeCurrency,
 			budgetReady: budgetStatus(store) === "ready",
@@ -188,8 +196,17 @@ export function createDeviceEngine(
 				generation,
 				clock: new Date(now()).toISOString(),
 			};
+			// Ids and counts only: the amounts stay in lastParity, never in a log.
 			if (mismatches.length > 0)
-				warn("figures differ from the server", JSON.stringify(lastParity));
+				warn(
+					"figures differ from the server",
+					JSON.stringify({
+						ids: mismatches.map((m) => m.id),
+						count: mismatches.length,
+						generation: lastParity.generation,
+						clock: lastParity.clock,
+					}),
+				);
 		} catch (error) {
 			warn("check failed", (error as Error)?.name);
 		}
