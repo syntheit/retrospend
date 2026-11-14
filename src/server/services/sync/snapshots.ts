@@ -17,6 +17,7 @@ import { type OwedRead, owedOnce } from "~/server/services/payments/figures";
 import {
 	getExcludedProjectIds,
 	ownExpenseCategoryId,
+	ownParticipationWhere,
 } from "~/server/services/shared-expense-integration";
 import { resolveTimeZone } from "~/server/services/user-time-zone";
 import { Prisma } from "~prisma";
@@ -57,7 +58,7 @@ export async function readShareSnapshot(
 		async (tx) => {
 			await tx.$executeRaw`SET TRANSACTION READ ONLY`;
 			const rows = await tx.splitParticipant.findMany({
-				where: { participantType: "user", participantId: userId },
+				where: ownParticipationWhere(userId),
 				select: {
 					id: true,
 					transactionId: true,

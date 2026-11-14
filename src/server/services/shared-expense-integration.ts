@@ -10,11 +10,14 @@
 import { USD } from "@retrospend/domain/money";
 import { computeAmountInUSDDec } from "@retrospend/domain/money-dec";
 import { dec, toFloat } from "@retrospend/domain/precise-decimal";
-import { priceShare, shareRateOf } from "@retrospend/domain/spent";
+import {
+	countsAsShare,
+	priceShare,
+	shareRateOf,
+} from "@retrospend/domain/spent";
 import type { Prisma, PrismaClient } from "~prisma";
 import { findExchangeRatesForDates } from "../exchange-rates";
 import type { RateCache } from "./rate-cache";
-import { COUNTED_SHARE } from "./shared-expenses/balance";
 import {
 	buildCallerRoleMap,
 	deriveCanModify,
@@ -40,7 +43,24 @@ export async function getExcludedProjectIds(
 	return excluded.map((e) => e.projectId);
 }
 
-/** Builds a Prisma WHERE filter that excludes transactions from specific projects. */
+/**
+ * Which participations are the user's own. The one access fragment of every
+ * reader of a user's shares (the device snapshot, the spending shares, the
+ * list), so the device's input set and the server's candidates are one query.
+ * It holds no counting rule: that is countsAsShare, in memory.
+ */
+export function ownParticipationWhere(userId: string) {
+	return {
+		participantType: "user",
+		participantId: userId,
+	} as const satisfies Prisma.SplitParticipantWhereInput;
+}
+
+/**
+ * Builds a Prisma WHERE filter that excludes transactions from specific
+ * projects. For the transactions list only: a share's own filter is
+ * countsAsShare.
+ */
 function excludedProjectFilter(
 	excludedProjectIds?: string[],
 ): Prisma.SharedTransactionWhereInput | undefined {
@@ -141,8 +161,12 @@ function narrowingFilter(
  * share except ones they rejected (pending shares count until answered),
  * in the date range, outside the excluded projects. The one definition both
  * the spending readers and the envelope budget read.
+ *
+ * SQL selects by access, date and the Insights narrowing; countsAsShare (the
+ * rule the device runs on its own rows) then drops what does not count, on
+ * every row, before any caller sees the list.
  */
-export function shareParticipations(
+export async function shareParticipations(
 	db: AppDb,
 	userId: string,
 	dateFilter?: { gte?: Date; lte?: Date },
@@ -151,14 +175,11 @@ export function shareParticipations(
 ) {
 	const whereTransaction: Prisma.SharedTransactionWhereInput = {
 		...(dateFilter ? { date: dateFilter } : {}),
-		...excludedProjectFilter(excludedProjectIds),
 		...(narrow ? { AND: narrowingFilter(narrow) } : {}),
 	};
-	return (db as PrismaClient).splitParticipant.findMany({
+	const rows = await (db as PrismaClient).splitParticipant.findMany({
 		where: {
-			participantType: "user",
-			participantId: userId,
-			...COUNTED_SHARE,
+			...ownParticipationWhere(userId),
 			transaction: whereTransaction,
 		},
 		select: {
@@ -185,6 +206,16 @@ export function shareParticipations(
 			},
 		},
 	});
+	const hidden = excludedProjectIds ?? [];
+	return rows.filter((p) =>
+		countsAsShare(
+			{
+				verificationStatus: p.verificationStatus,
+				projectId: p.transaction.projectId,
+			},
+			hidden,
+		),
+	);
 }
 
 /**
@@ -245,8 +276,7 @@ export async function listSharedParticipationsForUser(
 
 	const participations = await (db as PrismaClient).splitParticipant.findMany({
 		where: {
-			participantType: "user",
-			participantId: userId,
+			...ownParticipationWhere(userId),
 			...(transactionFilter ? { transaction: transactionFilter } : {}),
 		},
 		select: {

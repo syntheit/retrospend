@@ -13,6 +13,7 @@
  * Then decides each share's category (share-category.ts), maps the rows to
  * replay events (split-events.ts) and replays them (splits-replay.ts).
  */
+import { countsAsShare } from "@retrospend/domain/spent";
 import type { Prisma } from "~prisma";
 import {
 	shareParticipations,
@@ -261,11 +262,16 @@ export function buildSplits(
 		(r) => r.budgetRouting === "NOT_IN_BUDGET",
 	);
 	const notInBudget = new Set(excluded.map((r) => r.projectId));
-	// The share definition already leaves "Not in budget" projects out; rows
-	// made by hand (tests) get the same rule here.
-	const mine = rows.mine.filter(
-		(s) =>
-			!(s.transaction.projectId && notInBudget.has(s.transaction.projectId)),
+	// shareParticipations already applies the share rule with this list; rows
+	// made by hand (tests) get the same predicate here.
+	const mine = rows.mine.filter((s) =>
+		countsAsShare(
+			{
+				verificationStatus: s.verificationStatus,
+				projectId: s.transaction.projectId,
+			},
+			[...notInBudget],
+		),
 	);
 	const { events, pending } = splitEvents(
 		{ ...rows, mine },
