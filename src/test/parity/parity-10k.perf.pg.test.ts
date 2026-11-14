@@ -27,16 +27,7 @@ import {
 	SCOPELESS_IDS,
 	serverRead,
 } from "./compare";
-import {
-	addUnpricedShare,
-	dropParityRates,
-	dropUnpricedShare,
-	LARGE_SIZE,
-	type ParityLedger,
-	type RateSeed,
-	seedParityLedger,
-	seedParityRates,
-} from "./ledger";
+import { LARGE_SIZE, type ParityLedger, seedParityLedger } from "./ledger";
 import {
 	type Device,
 	expectedCounts,
@@ -46,6 +37,8 @@ import {
 	pullSettings,
 	pullShares,
 } from "./pull";
+import { dropParityRates, type RateSeed, seedParityRates } from "./rates";
+import { addUnpricedShare, dropUnpricedShare } from "./seed-shares";
 
 vi.setConfig({ testTimeout: 600_000, hookTimeout: 900_000 });
 

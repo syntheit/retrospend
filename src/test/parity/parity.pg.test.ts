@@ -21,7 +21,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { dec } from "@retrospend/domain/precise-decimal";
-import { spentRange } from "@retrospend/domain/spent";
+import { type SpentRange, spentRange } from "@retrospend/domain/spent";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { figures } from "~/server/figures/registry";
@@ -40,19 +40,8 @@ import {
 	seedRates,
 } from "../device-ledger";
 import { engineStoreOf } from "../engine-store";
-import { expectParity, readAll } from "./compare";
-import {
-	addUnpricedShare,
-	dropParityRates,
-	dropUnpricedShare,
-	dropWildHistory,
-	type ParityLedger,
-	type RateSeed,
-	SMALL_SIZE,
-	seedParityLedger,
-	seedParityRates,
-	seedWildHistory,
-} from "./ledger";
+import { expectParity, type LedgerRefs, readAll } from "./compare";
+import { type ParityLedger, SMALL_SIZE, seedParityLedger } from "./ledger";
 import {
 	type Device,
 	expectedCounts,
@@ -60,6 +49,14 @@ import {
 	pullAll,
 	pullShares,
 } from "./pull";
+import {
+	dropParityRates,
+	dropWildHistory,
+	type RateSeed,
+	seedParityRates,
+	seedWildHistory,
+} from "./rates";
+import { addUnpricedShare, dropUnpricedShare } from "./seed-shares";
 
 // A pull and a read of every figure on both sides take a while; seeding more.
 vi.setConfig({ testTimeout: 120_000, hookTimeout: 300_000 });
@@ -256,6 +253,97 @@ describe("B: the synced tables are the database's rows", () => {
 		});
 });
 
+/** The rows test C changes, found in the ledger so that each change is one the figures read. */
+async function findChangeTargets(ledger: ParityLedger, month: SpentRange) {
+	// An expense that counts this month, an accepted share, a project the user shows.
+	const victim = await fixtureDb.expense.findFirstOrThrow({
+		where: {
+			userId: ledger.userId,
+			status: "FINALIZED",
+			direction: "OUT",
+			entryKind: "STANDARD",
+			isAmortizedParent: false,
+			excludeFromAnalytics: false,
+			category: { is: null },
+			date: { gte: month.start, lte: month.end },
+		},
+	});
+	const share = await adminDb.splitParticipant.findFirstOrThrow({
+		where: {
+			participantId: ledger.userId,
+			participantType: "user",
+			verificationStatus: "ACCEPTED",
+			transaction: { projectId: null },
+		},
+	});
+	const shown = await adminDb.projectParticipant.findFirstOrThrow({
+		where: {
+			participantId: ledger.userId,
+			participantType: "user",
+			excludeFromAnalytics: false,
+		},
+	});
+	return { victim, share, shown };
+}
+
+type Targets = Awaited<ReturnType<typeof findChangeTargets>>;
+
+/** Deletes the expense, rejects the share, hides the project, and adds rows with no rate. */
+async function changeLedger(ledger: ParityLedger, t: Targets) {
+	await fixtureDb.expense.delete({ where: { id: t.victim.id } });
+	await adminDb.splitParticipant.update({
+		where: { id: t.share.id },
+		data: { verificationStatus: "REJECTED" },
+	});
+	await adminDb.projectParticipant.update({
+		where: { id: t.shown.id },
+		data: { excludeFromAnalytics: true },
+	});
+	// A share in a currency with no rate: priced from the table, so spending is unavailable.
+	const xqzShare = await addUnpricedShare(
+		ledger.userId,
+		ledger.bobId,
+		new Date(FIRST.getTime() - 60_000),
+	);
+	const xqzAccount = randomUUID();
+	await fixtureDb.assetAccount.create({
+		data: {
+			id: xqzAccount,
+			userId: ledger.userId,
+			name: "no rate",
+			type: "CASH",
+			currency: "XQZ",
+			balance: "5",
+		},
+	});
+	return { xqzShare, xqzAccount };
+}
+
+/** Puts every change back: the same expense under its id, the share accepted, the project shown, the XQZ rows gone. */
+async function undoChanges(
+	t: Targets,
+	added: Awaited<ReturnType<typeof changeLedger>>,
+) {
+	await fixtureDb.expense.create({ data: t.victim });
+	await adminDb.splitParticipant.update({
+		where: { id: t.share.id },
+		data: { verificationStatus: "ACCEPTED" },
+	});
+	await adminDb.projectParticipant.update({
+		where: { id: t.shown.id },
+		data: { excludeFromAnalytics: false },
+	});
+	await dropUnpricedShare(added.xqzShare);
+	await adminDb.assetAccount.delete({ where: { id: added.xqzAccount } });
+}
+
+/** A delta pull of everything, then the whole comparison, at the first instant. */
+const repullAndCompare = (device: Device, userId: string, refs: LedgerRefs) =>
+	atClock(FIRST, async () => {
+		await pullAll(device, await expectedCounts(userId));
+		return expectParity(device.store, refs);
+	});
+
 describe("C: a delta round and back", () => {
 	// The ARS home profile: the 6th, with a currency that has no rate, is for A.
 	const name = "ARS home, alias zone, official default";
@@ -263,75 +351,21 @@ describe("C: a delta round and back", () => {
 	it("applies deletes, a rejected share, a hidden project and unpriced rows, then the undo", async () => {
 		const { ledger, device } = entries.get(name) as Entry;
 		const refs = refsOf(ledger);
-		const zone = resolveTimeZone(PROFILES[name]?.timeZone);
-		const range = spentRange(FIRST, 1, zone);
+		const month = spentRange(
+			FIRST,
+			1,
+			resolveTimeZone(PROFILES[name]?.timeZone),
+		);
 		const first = await atClock(FIRST, async () => {
 			await pullShares(device);
 			return expectParity(device.store, refs);
 		});
 
-		// What changes: an expense that counts this month goes, an accepted share
-		// is rejected, the project the user shows is hidden.
-		const victim = await fixtureDb.expense.findFirstOrThrow({
-			where: {
-				userId: ledger.userId,
-				status: "FINALIZED",
-				direction: "OUT",
-				entryKind: "STANDARD",
-				isAmortizedParent: false,
-				excludeFromAnalytics: false,
-				category: { is: null },
-				date: { gte: range.start, lte: range.end },
-			},
-		});
-		const share = await adminDb.splitParticipant.findFirstOrThrow({
-			where: {
-				participantId: ledger.userId,
-				participantType: "user",
-				verificationStatus: "ACCEPTED",
-				transaction: { projectId: null },
-			},
-		});
-		const shown = await adminDb.projectParticipant.findFirstOrThrow({
-			where: {
-				participantId: ledger.userId,
-				participantType: "user",
-				excludeFromAnalytics: false,
-			},
-		});
-		await fixtureDb.expense.delete({ where: { id: victim.id } });
-		await adminDb.splitParticipant.update({
-			where: { id: share.id },
-			data: { verificationStatus: "REJECTED" },
-		});
-		await adminDb.projectParticipant.update({
-			where: { id: shown.id },
-			data: { excludeFromAnalytics: true },
-		});
-		// A share in a currency with no rate: priced from the table, so spending is unavailable.
-		const xqzShare = await addUnpricedShare(
-			ledger.userId,
-			ledger.bobId,
-			new Date(FIRST.getTime() - 60_000),
-		);
-		const xqzAccount = randomUUID();
-		await fixtureDb.assetAccount.create({
-			data: {
-				id: xqzAccount,
-				userId: ledger.userId,
-				name: "no rate",
-				type: "CASH",
-				currency: "XQZ",
-				balance: "5",
-			},
-		});
-
-		const second = await atClock(FIRST, async () => {
-			await pullAll(device, await expectedCounts(ledger.userId));
-			return expectParity(device.store, {
-				...refs,
-				accountIds: [...refs.accountIds, xqzAccount],
-			});
+		const targets = await findChangeTargets(ledger, month);
+		const added = await changeLedger(ledger, targets);
+		const second = await repullAndCompare(device, ledger.userId, {
+			...refs,
+			accountIds: [...refs.accountIds, added.xqzAccount],
 		});
 		// The unpriced share and account keep both sides' glance and net worth unavailable.
 		for (const side of [second.device, second.server]) {
@@ -340,39 +374,24 @@ describe("C: a delta round and back", () => {
 			expect(side.readings.get("netWorth")).toBeNull();
 			expect(side.missing.get("netWorth")).toEqual(["XQZ"]);
 		}
-		expect(device.store.get("expenses", victim.id)).toBeUndefined();
-		expect(device.store.get("shares", share.id)?.verificationStatus).toBe(
-			"REJECTED",
-		);
+		expect(device.store.get("expenses", targets.victim.id)).toBeUndefined();
+		expect(
+			device.store.get("shares", targets.share.id)?.verificationStatus,
+		).toBe("REJECTED");
 		expect(device.store.get("settings", "user")?.hiddenProjectIds).toContain(
-			shown.projectId,
+			targets.shown.projectId,
 		);
 		// The spending the server reads changed (the deleted row, the rejected share).
 		expect(second.server.readings.get("spent")).not.toEqual(
 			first.server.readings.get("spent"),
 		);
 
-		// Undo it all: the same expense comes back under its id, the share is
-		// accepted again, the project shown, the XQZ rows gone.
-		await fixtureDb.expense.create({ data: victim });
-		await adminDb.splitParticipant.update({
-			where: { id: share.id },
-			data: { verificationStatus: "ACCEPTED" },
-		});
-		await adminDb.projectParticipant.update({
-			where: { id: shown.id },
-			data: { excludeFromAnalytics: false },
-		});
-		await dropUnpricedShare(xqzShare);
-		await adminDb.assetAccount.delete({ where: { id: xqzAccount } });
-		const third = await atClock(FIRST, async () => {
-			await pullAll(device, await expectedCounts(ledger.userId));
-			return expectParity(device.store, refs);
-		});
+		await undoChanges(targets, added);
+		const third = await repullAndCompare(device, ledger.userId, refs);
 		expect(third.device.readings).toEqual(first.device.readings);
 		expect(third.device.missing).toEqual(first.device.missing);
 		expect(device.store.list("expenses")).toHaveLength(ledger.counts.expenses);
-		expect(device.store.get("accounts", xqzAccount)).toBeUndefined();
+		expect(device.store.get("accounts", added.xqzAccount)).toBeUndefined();
 	}, 120_000);
 });
 
