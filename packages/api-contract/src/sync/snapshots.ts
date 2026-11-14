@@ -1,6 +1,10 @@
 import * as z from "zod";
 import { v1 } from "../common/meta";
-import { currencyCodeSchema, moneySchema } from "../common/money";
+import {
+	currencyCodeSchema,
+	moneySchema,
+	rateTypeSchema,
+} from "../common/money";
 import { decimalStringSchema, idSchema, timestampSchema } from "../core";
 import { SYNC_TAG } from "./route";
 
@@ -78,6 +82,28 @@ export const syncSharesSchema = z
 
 export type SyncSharesDto = z.infer<typeof syncSharesSchema>;
 
+export const syncSettingsSchema = z
+	.object({
+		homeCurrency: currencyCodeSchema,
+		timeZone: z.string().meta({
+			description:
+				"The zone the server reads the caller's days in: the stored zone when it is one the server supports, else the server default. Never null.",
+		}),
+		startDay: z.int().min(1).max(28).meta({
+			description: "First day of the fiscal month.",
+		}),
+		hiddenProjectIds: z.array(idSchema).meta({
+			description: "Projects the caller hides from reports.",
+		}),
+		defaultRateTypes: z.record(z.string(), rateTypeSchema).meta({
+			description:
+				'The preferred rate type per home currency ({"ARS": "blue"}); empty when none is set.',
+		}),
+	})
+	.meta({ id: "SyncSettings" });
+
+export type SyncSettingsDto = z.infer<typeof syncSettingsSchema>;
+
 /** The note every snapshot shares: what makes it differ from the row routes. */
 const SNAPSHOT_DESCRIPTION =
 	"A snapshot, not a delta: the whole table as of one read, with no cursor and no tombstones, so it never answers 410. Pull it again to replace the last copy. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own data.";
@@ -94,4 +120,15 @@ export const syncSnapshotsContract = {
 		})
 		.meta({ scope: "sync", snapshot: true })
 		.output(syncSharesSchema),
+	settings: v1
+		.route({
+			method: "GET",
+			path: "/sync/settings",
+			operationId: "syncSettings",
+			tags: SYNC_TAG,
+			summary: "The settings the figures read",
+			description: `The caller's home currency, the zone their days are read in, the fiscal month start day, the projects hidden from reports and the preferred rate types, as the server's figures read them. ${SNAPSHOT_DESCRIPTION}`,
+		})
+		.meta({ scope: "sync", snapshot: true })
+		.output(syncSettingsSchema),
 };

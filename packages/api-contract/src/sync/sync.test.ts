@@ -20,7 +20,7 @@ import {
 	syncRecurringTemplateSchema,
 	syncTransferSchema,
 } from "./schemas";
-import { syncSharesSchema } from "./snapshots";
+import { syncSettingsSchema, syncSharesSchema } from "./snapshots";
 
 const at = "2026-10-05T00:00:00.000Z";
 
@@ -304,6 +304,36 @@ describe("the shares snapshot", () => {
 	});
 });
 
+describe("the settings snapshot", () => {
+	const settings = {
+		homeCurrency: "ARS",
+		timeZone: "America/Argentina/Buenos_Aires",
+		startDay: 1,
+		hiddenProjectIds: [],
+		defaultRateTypes: {},
+	};
+
+	it("takes the port's settings fields, never a null zone", () => {
+		expect(syncSettingsSchema.parse(settings)).toEqual(settings);
+		expect(
+			syncSettingsSchema.safeParse({ ...settings, timeZone: null }).success,
+		).toBe(false);
+		expect(
+			syncSettingsSchema.safeParse({ ...settings, startDay: 29 }).success,
+		).toBe(false);
+	});
+
+	it("keeps the preferred rate type per currency", () => {
+		const parsed = syncSettingsSchema.parse({
+			...settings,
+			hiddenProjectIds: ["p1"],
+			defaultRateTypes: { ARS: "blue" },
+		});
+		expect(parsed.defaultRateTypes).toEqual({ ARS: "blue" });
+		expect(parsed.hiddenProjectIds).toEqual(["p1"]);
+	});
+});
+
 describe("the sync group", () => {
 	it("answers a stale cursor with 410", () => {
 		expect(PROBLEM_STATUS.sync_reset_required).toBe(410);
@@ -343,7 +373,7 @@ describe("the sync group", () => {
 	});
 
 	it("has the snapshots, which take no cursor and say so", () => {
-		expect(pathsOf(true).sort()).toEqual(["/sync/shares"]);
+		expect(pathsOf(true).sort()).toEqual(["/sync/settings", "/sync/shares"]);
 		for (const route of Object.values(syncContract)) {
 			if (route["~orpc"].meta.snapshot !== true) continue;
 			// No `since` or `limit`: a snapshot is one table, replaced on each pull.

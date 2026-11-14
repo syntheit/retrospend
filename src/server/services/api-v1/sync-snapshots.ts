@@ -1,6 +1,7 @@
-import type { SyncSharesDto } from "@retrospend/api-contract";
+import type { SyncSettingsDto, SyncSharesDto } from "@retrospend/api-contract";
 import { FigureUnavailable } from "~/server/figures/unavailable";
 import {
+	readSettingsSnapshot,
 	readShareSnapshot,
 	type ShareSnapshot,
 	type ShareSnapshotRow,
@@ -45,5 +46,19 @@ export async function syncShares(caller: Caller): Promise<SyncSharesDto> {
 	return {
 		items: snapshot.shares.map(toSyncShare),
 		owed: toSyncOwed(snapshot.owed),
+	};
+}
+
+export async function syncSettings(caller: Caller): Promise<SyncSettingsDto> {
+	const settings = await readSettingsSnapshot(
+		caller.db,
+		caller.principal.userId,
+	);
+	return {
+		homeCurrency: settings.homeCurrency,
+		timeZone: settings.timeZone,
+		startDay: settings.startDay,
+		hiddenProjectIds: settings.hiddenProjectIds,
+		defaultRateTypes: settings.defaultRateTypes,
 	};
 }

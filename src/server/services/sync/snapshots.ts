@@ -14,7 +14,11 @@ import type { db as globalDb } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import type { FigureUnavailable } from "~/server/figures/unavailable";
 import { type OwedRead, owedOnce } from "~/server/services/payments/figures";
-import { ownExpenseCategoryId } from "~/server/services/shared-expense-integration";
+import {
+	getExcludedProjectIds,
+	ownExpenseCategoryId,
+} from "~/server/services/shared-expense-integration";
+import { resolveTimeZone } from "~/server/services/user-time-zone";
 import { Prisma } from "~prisma";
 
 /** One of the caller's participations with the fields of its expense the figures read. */
@@ -90,4 +94,48 @@ export async function readShareSnapshot(
 		},
 		{ isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
 	);
+}
+
+export interface SettingsSnapshot {
+	homeCurrency: string;
+	/** Resolved: the stored zone when supported, else the server default; never null. */
+	timeZone: string;
+	startDay: number;
+	hiddenProjectIds: string[];
+	defaultRateTypes: Record<string, string>;
+}
+
+/**
+ * The settings the figures read, as the device's settings row holds them. The
+ * zone is what the figures use with no request zone (resolveTimeZone), and the
+ * hidden projects come from the function the spending figures call, so the
+ * device cannot read a different month or set of projects than the server.
+ */
+export async function readSettingsSnapshot(
+	db: typeof globalDb,
+	userId: string,
+): Promise<SettingsSnapshot> {
+	return userTransaction(db, userId, async (tx) => {
+		const user = await tx.user.findUniqueOrThrow({
+			where: { id: userId },
+			select: {
+				homeCurrency: true,
+				timeZone: true,
+				fiscalMonthStartDay: true,
+				defaultRateTypes: true,
+			},
+		});
+		const stored = user.defaultRateTypes;
+		const defaultRateTypes: Record<string, string> = {};
+		if (stored && typeof stored === "object" && !Array.isArray(stored))
+			for (const [currency, type] of Object.entries(stored))
+				if (typeof type === "string") defaultRateTypes[currency] = type;
+		return {
+			homeCurrency: user.homeCurrency,
+			timeZone: resolveTimeZone(user.timeZone),
+			startDay: user.fiscalMonthStartDay,
+			hiddenProjectIds: await getExcludedProjectIds(tx, userId),
+			defaultRateTypes,
+		};
+	});
 }

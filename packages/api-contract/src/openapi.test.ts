@@ -46,10 +46,10 @@ describe("openapi.json", () => {
 		const syncPaths = Object.keys(doc.paths).filter((path) =>
 			path.startsWith("/sync/"),
 		);
-		const snapshots = ["/sync/shares"];
+		const snapshots = ["/sync/settings", "/sync/shares"];
 		const cursorPaths = syncPaths.filter((path) => !snapshots.includes(path));
 		expect(cursorPaths).toHaveLength(21);
-		expect(syncPaths.filter((path) => snapshots.includes(path))).toEqual(
+		expect(syncPaths.filter((path) => snapshots.includes(path)).sort()).toEqual(
 			snapshots,
 		);
 		for (const path of cursorPaths) {

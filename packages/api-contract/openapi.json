@@ -129491,6 +129491,145 @@
 				"x-required-scope": "sync"
 			}
 		},
+		"/sync/settings": {
+			"get": {
+				"description": "The caller's home currency, the zone their days are read in, the fiscal month start day, the projects hidden from reports and the preferred rate types, as the server's figures read them. A snapshot, not a delta: the whole table as of one read, with no cursor and no tombstones, so it never answers 410. Pull it again to replace the last copy. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own data.",
+				"operationId": "syncSettings",
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"defaultRateTypes": {
+											"additionalProperties": {
+												"examples": [
+													"official",
+													"blue"
+												],
+												"maxLength": 32,
+												"minLength": 1,
+												"type": "string"
+											},
+											"description": "The preferred rate type per home currency ({\"ARS\": \"blue\"}); empty when none is set.",
+											"propertyNames": {
+												"type": "string"
+											},
+											"type": "object"
+										},
+										"hiddenProjectIds": {
+											"description": "Projects the caller hides from reports.",
+											"items": {
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											},
+											"type": "array"
+										},
+										"homeCurrency": {
+											"description": "ISO 4217 code, or the app's code for a crypto asset.",
+											"examples": [
+												"USD",
+												"ARS",
+												"BTC"
+											],
+											"pattern": "^[A-Z0-9]{2,10}$",
+											"type": "string"
+										},
+										"startDay": {
+											"description": "First day of the fiscal month.",
+											"maximum": 28,
+											"minimum": 1,
+											"type": "integer"
+										},
+										"timeZone": {
+											"description": "The zone the server reads the caller's days in: the stored zone when it is one the server supports, else the server default. Never null.",
+											"type": "string"
+										}
+									},
+									"required": [
+										"homeCurrency",
+										"timeZone",
+										"startDay",
+										"hiddenProjectIds",
+										"defaultRateTypes"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"sync"
+						]
+					},
+					{
+						"cookieAuth": [
+							"sync"
+						]
+					}
+				],
+				"summary": "The settings the figures read",
+				"tags": [
+					"Sync"
+				],
+				"x-required-scope": "sync"
+			}
+		},
 		"/sync/shares": {
 			"get": {
 				"description": "Every participation of the caller in a shared expense, whatever its status and project (a rejected share and one in a hidden project are rows too; the device applies the spending rules), plus Owed to you and You owe from the same read. The owed totals are priced at the rates of the moment of the read. A snapshot, not a delta: the whole table as of one read, with no cursor and no tombstones, so it never answers 410. Pull it again to replace the last copy. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own data.",
