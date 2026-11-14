@@ -4,6 +4,7 @@ import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
+import { useDeviceReads } from "@/data/useDeviceEngine";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useReloadOnEntryChange } from "@/features/read/useReloadOnEntryChange";
@@ -47,9 +48,10 @@ export function BudgetView() {
 	const [setupOpen, setSetupOpen] = useState(false);
 	const [refreshing, setRefreshing] = useState(false);
 
+	const device = useDeviceReads();
 	const fetch = useMemo(
-		() => (api ? fetchBudget(api, selected) : null),
-		[api, selected],
+		() => (api ? fetchBudget(api, selected, device) : null),
+		[api, selected, device],
 	);
 	const { state, reload } = useCachedRead(budgetCache(selected), fetch, {
 		prefix: BUDGET_CACHE_PREFIX,
