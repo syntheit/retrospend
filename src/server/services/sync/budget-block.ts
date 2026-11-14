@@ -140,7 +140,7 @@ export async function runFreeze(
 	db: typeof globalDb,
 	userId: string,
 	opts: { force?: boolean } = {},
-): Promise<void> {
+): Promise<"ran" | "skipped" | "failed"> {
 	try {
 		const done = await userTransaction(
 			db,
@@ -154,12 +154,15 @@ export async function runFreeze(
 			// A full book read: longer than the default five seconds at 10k rows.
 			{ timeout: 30_000 },
 		);
-		if (done !== null) remember(userId, done);
+		if (done === null) return "skipped";
+		remember(userId, done);
+		return "ran";
 	} catch (error) {
 		console.error(
 			"Freezing for a device failed",
 			error instanceof Error ? error.name : "unknown",
 		);
+		return "failed";
 	}
 }
 

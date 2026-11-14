@@ -510,7 +510,8 @@ describe("trigger coverage", () => {
 			budget_member:
 				"membership decides who owns the rows; the book's tombstones carry the effect",
 			budget_dirty: "derived cache, the device rebuilds it",
-			budget_row_value: "derived cache, the device rebuilds it",
+			budget_row_value:
+				"a foreign row's value is frozen at first sight because the rate table keeps one row per pair moved in place, so a device cannot rebuild it; the values of the caller's own expenses reach it in the budget block of GET /sync/shares",
 			budget_draft: "plan drafts are worked on the server (plan section 2)",
 		};
 		const tables = readSchema()
