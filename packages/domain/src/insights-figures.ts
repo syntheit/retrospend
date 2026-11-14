@@ -109,9 +109,10 @@ export function cashflowReading(
 }
 
 /** This year to today and the same span last year, in the viewer's zone. */
-export function insightsYtdSpans(
-	ctx: Pick<InsightsContext, "now" | "zone">,
-): { thisYear: Span; lastYear: Span } {
+export function insightsYtdSpans(ctx: Pick<InsightsContext, "now" | "zone">): {
+	thisYear: Span;
+	lastYear: Span;
+} {
 	return yearToDate(dayKey(ctx.now, ctx.zone));
 }
 

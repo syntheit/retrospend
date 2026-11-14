@@ -20,7 +20,11 @@ import {
 
 const ars = (minor: number) => ({ minor, currency: "ARS" });
 const usd = (minor: number) => ({ minor, currency: "USD" });
-const ctxAt = (now: string, startDay = 1, zone = "America/Argentina/Buenos_Aires") =>
+const ctxAt = (
+	now: string,
+	startDay = 1,
+	zone = "America/Argentina/Buenos_Aires",
+) =>
 	insightsContextOf({
 		home: "ARS",
 		zone,
@@ -132,7 +136,11 @@ describe("readings", () => {
 	it("cashflow: income, saved and the averages over this period's days and periods", () => {
 		const ctx = ctxAt("2026-10-15T15:00:00Z");
 		const period = insightsPeriod(ctx);
-		const read = { spent: ars(5_760_010), income: ars(15_000_000), missing: [] };
+		const read = {
+			spent: ars(5_760_010),
+			income: ars(15_000_000),
+			missing: [],
+		};
 		const at = (pick: keyof typeof cashflowPicks) =>
 			cashflowReading(cashflowPicks[pick], read, ctx, period);
 		expect(at("income")).toEqual(ars(15_000_000));
@@ -159,9 +167,7 @@ describe("readings", () => {
 	describe("ytd", () => {
 		const side: YtdSide = {
 			total: { home: ars(4_875_000), usd: usd(3_250) },
-			categories: new Map([
-				["food", { home: ars(4_875_000), usd: null }],
-			]),
+			categories: new Map([["food", { home: ars(4_875_000), usd: null }]]),
 			missing: ["XQZ"],
 		};
 		const ctx = { home: "ARS" };

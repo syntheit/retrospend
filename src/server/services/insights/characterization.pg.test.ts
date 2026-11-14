@@ -230,7 +230,11 @@ beforeAll(async () => {
 		usd: "0.20",
 		categoryId: transport,
 	});
-	await expense(ana, { at: "2026-01-01T02:50:00Z", amount: "400", usd: "0.29" });
+	await expense(ana, {
+		at: "2026-01-01T02:50:00Z",
+		amount: "400",
+		usd: "0.29",
+	});
 	await expense(ana, {
 		at: at("2025-03-10"),
 		amount: "10",
@@ -244,7 +248,11 @@ beforeAll(async () => {
 		usd: "0.14",
 		categoryId: transport,
 	});
-	await expense(ana, { at: "2025-01-01T02:50:00Z", amount: "250", usd: "0.18" });
+	await expense(ana, {
+		at: "2025-01-01T02:50:00Z",
+		amount: "250",
+		usd: "0.18",
+	});
 
 	// An XQZ share with no captured rate and no table row cannot be priced.
 	lost = await user("NGN");

@@ -16,12 +16,7 @@ import {
 	getFiscalMonthRange,
 	shiftMonth,
 } from "./fiscal-month";
-import {
-	averageMinor,
-	daysBetween,
-	previousSpan,
-	type Span,
-} from "./insights";
+import { averageMinor, daysBetween, previousSpan, type Span } from "./insights";
 import { periodRateDate, type RateRow, rateLookup, USD } from "./money";
 import { type MoneyItemDec, missingRatesIn, sumInDec } from "./money-dec";
 import { type Money, roundedMinor } from "./money-minor";
