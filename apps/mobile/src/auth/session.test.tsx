@@ -1,5 +1,6 @@
 import { createElement } from "react";
 import { createReadCache } from "@/data/cache";
+import { engineScope } from "@/data/engine-db/names";
 import { createMemoryStore } from "@/data/store";
 import { tokenKey } from "./token-store";
 import { SessionProvider, type SessionState, useSession } from "./session";
@@ -39,6 +40,10 @@ jest.mock("@/lib/secure-store", () => ({
 			mockKeystore.delete(k);
 		},
 	},
+}));
+const mockSweep = jest.fn(async (_keep: string | null) => {});
+jest.mock("@/data/engine-db/sweep", () => ({
+	sweepEngineDbs: (keep: string | null) => mockSweep(keep),
 }));
 jest.mock("@/auth/server-connection", () => ({
 	useServerConnection: () => ({ connection: mockConnection }),
@@ -100,6 +105,7 @@ async function coldStart(opts: { token: boolean; cached: boolean }) {
 
 const statuses = () => seen.map((s) => s.status);
 
+beforeEach(() => mockSweep.mockClear());
 afterEach(() => {
 	jest.useRealTimers();
 	mockMe = async () => me;
@@ -192,5 +198,47 @@ describe("cold start", () => {
 			tree.update(createElement(SessionProvider, null, createElement(Probe)));
 		});
 		expect(seen.at(-1)).toEqual({ status: "signedOut", expired: false });
+	});
+});
+
+// The device engine keeps files on the phone for the account it runs for; the
+// sweep leaves only the signed-in account's (data/engine-db/sweep.ts).
+describe("the device engine's files", () => {
+	const mine = engineScope(BASE, "u1");
+
+	it("keeps the signed-in account's at the app start", async () => {
+		mockMe = () => new Promise(() => {});
+		await coldStart({ token: true, cached: true });
+		expect(mockSweep.mock.calls).toEqual([[mine]]);
+	});
+
+	it("keeps none once the session ended on the server, which skips sign-out", async () => {
+		let reject: (e: unknown) => void = () => {};
+		mockMe = () => new Promise((_, r) => (reject = r));
+		await coldStart({ token: true, cached: true });
+		await act(async () => {
+			reject({ status: 401 });
+		});
+		expect(mockSweep.mock.calls).toEqual([[mine], [null]]);
+	});
+
+	it("keeps none when nobody is signed in at the app start", async () => {
+		await coldStart({ token: false, cached: false });
+		expect(mockSweep.mock.calls).toEqual([[null]]);
+	});
+
+	it("waits while an account is signed in but its profile is not loaded", async () => {
+		jest.useFakeTimers();
+		mockMe = () => new Promise(() => {});
+		const connect = await boot({ token: true, cached: false });
+		await act(async () => {
+			connect();
+			await jest.advanceTimersByTimeAsync(3900);
+		});
+		await act(async () => {
+			await jest.advanceTimersByTimeAsync(4100);
+		});
+		expect(seen.at(-1)).toMatchObject({ status: "signedIn", me: null });
+		expect(mockSweep).not.toHaveBeenCalled();
 	});
 });

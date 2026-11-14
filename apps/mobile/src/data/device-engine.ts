@@ -18,6 +18,7 @@ import {
 	openEngineStorage,
 	type StorageHooks,
 } from "./engine-db/storage";
+import { registerLiveEngine } from "./engine-db/sweep";
 
 // The device engine, behind the dev flag EXPO_PUBLIC_DEV_DEVICE_ENGINE=1: a
 // copy of the account's rows in memory, filled by the engine's pull driver
@@ -77,6 +78,8 @@ export interface DeviceEngine extends DeviceReads {
 	readonly generation: number;
 	/** The last parity check, kept for tests. */
 	readonly lastParity: ParityResult | null;
+	/** Stopped for good: a new engine is needed to read or pull again. */
+	readonly disposed: boolean;
 	/** One pull at a time: a call while one runs waits for it. */
 	pull(): Promise<void>;
 	/** Pulls when none has finished yet or the last one is older than PULL_AFTER_MS. */
@@ -335,6 +338,9 @@ export function createDeviceEngine(
 		get lastParity() {
 			return lastParity;
 		},
+		get disposed() {
+			return disposed;
+		},
 		pull,
 		pullIfStale,
 		read,
@@ -345,14 +351,15 @@ export function createDeviceEngine(
 
 const engines = new WeakMap<
 	RetrospendClient,
-	{ userId: string; engine: DeviceEngine }
+	{ userId: string; engine: DeviceEngine; unregister: () => void }
 >();
 
 /**
  * The one engine of a client, account and server. A client outlives a sign
  * out, so a different account on it gets an engine of its own, never the old
- * rows, and the old one is disposed with its file and key. `origin` null
- * (no server connected) means memory-only.
+ * rows, and the old one is disposed with its file and key; so is one the
+ * sweep has stopped, which a new sign-in replaces. `origin` null (no server
+ * connected) means memory-only.
  */
 export function engineFor(
 	api: RetrospendClient,
@@ -361,13 +368,18 @@ export function engineFor(
 	deps: OpenDeps = appOpenDeps(warn),
 ): DeviceEngine {
 	const held = engines.get(api);
-	if (held?.userId === userId) return held.engine;
+	if (held?.userId === userId && !held.engine.disposed) return held.engine;
+	held?.unregister();
 	void held?.engine.dispose({ wipe: true });
+	const scope = origin ? engineScope(origin, userId) : null;
 	const engine = createDeviceEngine(api, userId, Date.now, {
-		storage: origin
-			? (hooks) => openEngineStorage(deps, engineScope(origin, userId), hooks)
+		storage: scope
+			? (hooks) => openEngineStorage(deps, scope, hooks)
 			: undefined,
 	});
-	engines.set(api, { userId, engine });
+	const unregister = scope
+		? registerLiveEngine(scope, () => engine.dispose({ wipe: true }))
+		: () => undefined;
+	engines.set(api, { userId, engine, unregister });
 	return engine;
 }

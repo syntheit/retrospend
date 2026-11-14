@@ -326,6 +326,38 @@ describe("a disk that fails", () => {
 	});
 });
 
+describe("rows the store will not take", () => {
+	it("wipes the disk copy and starts empty in memory", async () => {
+		const dispose = jest.fn(async () => {});
+		const engine = createDeviceEngine(served().api, "u1", Date.now, {
+			storage: async () => ({
+				// A settings row with the wrong id is refused by the store.
+				loaded: {
+					rows: { settings: [{ id: "not-user" } as never] },
+					cursors: { expenses: "stale" },
+					complete: true,
+					wiped: false,
+					rowCount: 1,
+				},
+				persistence: {
+					state: "live",
+					commit: () => {},
+					beginPull: () => {},
+					finishPull: () => {},
+					abandonPull: () => {},
+					close: () => {},
+				},
+				dispose,
+			}),
+		});
+		expect(await spent(engine)).toEqual({
+			"glance.spent": ARS(100_000),
+			"glance.spentLast": ARS(250_000),
+		});
+		expect(dispose).toHaveBeenCalledWith({ wipe: true });
+	});
+});
+
 function warnings() {
 	return jest.mocked(console.warn).mock.calls;
 }
