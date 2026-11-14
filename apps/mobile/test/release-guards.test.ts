@@ -105,6 +105,14 @@ describe("check-release-bundle.sh", () => {
 		expect(result.stderr).toContain("the device engine is in the bundle");
 	});
 
+	it("fails on a bundle that carries the crypto benchmark", () => {
+		const result = run(null, {}, 'var n = "RetrospendCryptoBench"');
+		expect(result.status).toBe(1);
+		expect(result.stderr).toContain("the crypto benchmark screen is in");
+		const source = read(join(__dirname, "..", "src", "dev", "CryptoBench.tsx"));
+		expect(source).toContain('displayName = "RetrospendCryptoBench"');
+	});
+
 	it("keeps the engine's name where the check looks for it", () => {
 		const source = read(
 			join(__dirname, "..", "src", "data", "device-engine.ts"),

@@ -39,6 +39,10 @@ if grep -raql 'RetrospendDevComposerTour' "$dir"; then
 	echo "FAIL: the dev composer tour is in the bundle at $dir" >&2
 	fail=1
 fi
+if grep -raql 'RetrospendCryptoBench' "$dir"; then
+	echo "FAIL: the crypto benchmark screen is in the bundle at $dir" >&2
+	fail=1
+fi
 if grep -raql 'RetrospendDeviceEngine' "$dir"; then
 	echo "FAIL: the device engine is in the bundle at $dir" >&2
 	fail=1
