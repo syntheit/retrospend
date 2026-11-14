@@ -26,8 +26,10 @@ import { FigureNarrowingError } from "@retrospend/domain/figures/narrowing";
 import {
 	createFiguresRegistry,
 	type FigureDefinition,
-	type FigurePass,
+	FigurePass,
+	type FigureReading,
 	type FiguresRegistry,
+	readFiguresIn,
 } from "@retrospend/domain/figures/registry";
 import { FigureUnavailable } from "@retrospend/domain/figures/unavailable";
 import {
@@ -340,6 +342,38 @@ export const DEVICE_FIGURE_IDS: readonly string[] = [
 	...INSIGHTS_FIGURE_IDS,
 	...BUDGET_FIGURE_IDS,
 ];
+
+export interface DeviceReading {
+	readonly readings: ReadonlyMap<string, FigureReading>;
+	/** The currencies whose missing rate kept each figure out. */
+	readonly missing: ReadonlyMap<string, string[]>;
+}
+
+/**
+ * Reads `ids` from the device registry over `store`, in one pass, narrowed by
+ * `narrowing` (an account id, a month and so on). `clock` fixes the instant
+ * the figures read at; without it they read at the real now.
+ */
+export async function readDeviceFigures(
+	store: Reader,
+	userId: string,
+	ids: readonly string[],
+	narrowing: Record<string, string> = {},
+	clock?: () => Date,
+): Promise<DeviceReading> {
+	const registry = deviceFigures({ clock });
+	const pass = new FigurePass();
+	const readings = await readFiguresIn(
+		store,
+		ids.map((id) => registry.get(id)),
+		{ ...narrowing, userId },
+		pass,
+	);
+	return {
+		readings,
+		missing: new Map(ids.map((id) => [id, pass.missingRates(id)])),
+	};
+}
 
 /**
  * Why a server figure has no device twin yet, by id prefix. A figure the
