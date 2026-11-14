@@ -1,40 +1,41 @@
 /**
  * What the loader (inputs.ts) keeps between reads: foreign rows' frozen
- * values (budget_row_value, 02 §3.4), the rules each closed month closed
- * under (MonthClose snapshots, B7), and the mark a stale checkpoint leaves
- * when no trigger saw its change.
+ * values (budget_row_value, 02 §3.4) and the mark a stale checkpoint leaves
+ * when no trigger saw its change. What a load derives from them (the rules
+ * each closed month closed under, the stale month, the lists without
+ * duplicates) is pure and lives in @retrospend/domain/envelope/load-state,
+ * shared with devices; the writes stay here.
  */
+import type {
+	FreshValue,
+	FrozenValue,
+	Valuer,
+} from "@retrospend/domain/envelope/valuer";
 import type { Prisma } from "~prisma";
-import type { CloseRow, DirtyMark } from "./close-rows";
-import type { ClosedRule } from "./engine";
-import type { Valuer } from "./entries";
-import type { LoadedBook } from "./inputs";
-import { budgetMonthOf } from "./months";
-import type { MissingRate, MonthKey } from "./types";
-import type { ApproximateRow, FrozenValue } from "./valuer";
+import type { MonthKey } from "./types";
+
+export {
+	approximateThrough,
+	closedRulesOf,
+	missingThrough,
+	staleMarkOf,
+	uniqueApproximate,
+	uniqueMissing,
+} from "@retrospend/domain/envelope/load-state";
 
 type Tx = Prisma.TransactionClient;
 
 /**
- * A closed month whose fully loaded rows no longer match its checkpoint, with
- * no mark to say so (a change no trigger saw, a claimed shadow's share): one
- * mark from it, so the next read revises it under the book lock.
+ * One budget_dirty mark from `fromMonth`: the stale month a load found (no
+ * trigger saw its change, a claimed shadow's share), so the next read revises
+ * it under the book lock.
  */
-export async function markStale(
+export async function markDirtyFrom(
 	tx: Tx,
 	bookId: string,
-	closes: readonly CloseRow[],
-	prints: ReadonlyMap<MonthKey, string>,
-	dirty: readonly DirtyMark[],
+	fromMonth: MonthKey,
 ) {
-	const stale = closes.find(
-		(c) =>
-			c.checkpoint &&
-			prints.has(c.month) &&
-			prints.get(c.month) !== c.checkpoint.print,
-	);
-	if (!stale || dirty.some((d) => d.fromMonth <= stale.month)) return;
-	await tx.budgetDirty.create({ data: { bookId, fromMonth: stale.month } });
+	await tx.budgetDirty.create({ data: { bookId, fromMonth } });
 }
 
 /** Foreign rows' values frozen by earlier loads (budget_row_value). */
@@ -54,11 +55,15 @@ export async function frozenValues(
 	);
 }
 
-/** Freezes what this load valued for the first time; a concurrent load writing the same key is a no-op. */
-export async function freeze(tx: Tx, bookId: string, valuer: Valuer) {
-	if (valuer.fresh.length === 0) return;
+/** Freezes values a load made for the first time; a concurrent load writing the same key is a no-op. */
+export async function freezeValues(
+	tx: Tx,
+	bookId: string,
+	fresh: readonly FreshValue[],
+) {
+	if (fresh.length === 0) return;
 	await tx.budgetRowValue.createMany({
-		data: valuer.fresh.map((f) => ({
+		data: fresh.map((f) => ({
 			bookId,
 			key: f.key,
 			minor: BigInt(f.minor),
@@ -69,54 +74,7 @@ export async function freeze(tx: Tx, bookId: string, valuer: Valuer) {
 	});
 }
 
-/** One entry per approximate row (a checkpoint and the full share load can both name it). */
-export function uniqueApproximate(
-	rows: readonly ApproximateRow[],
-): ApproximateRow[] {
-	return [...new Map(rows.map((r) => [r.rowId, r])).values()];
-}
-
-/** Same rate, same row: listed once (a checkpoint and the full share load can both name it). */
-export function uniqueMissing(rates: readonly MissingRate[]): MissingRate[] {
-	const seen = new Map<string, MissingRate>();
-	for (const r of rates)
-		seen.set(`${r.rowId ?? ""}|${r.currency}|${r.rateType}|${r.date}`, r);
-	return [...seen.values()];
-}
-
-/** The leftover rules each closed month closed under (MonthClose snapshots, B7). */
-export function closedRulesOf(
-	closes: readonly CloseRow[],
-): Map<MonthKey, Map<string, ClosedRule>> {
-	const out = new Map<MonthKey, Map<string, ClosedRule>>();
-	for (const c of closes)
-		out.set(
-			c.month,
-			new Map(
-				c.summary.envelopes.map((e) => [
-					e.id,
-					{ rule: e.rule, sweepToId: e.sweepToId },
-				]),
-			),
-		);
-	return out;
-}
-/** Approximate rows of months up to `month`: what a checkpoint there carries. */
-export function approximateThrough(
-	loaded: LoadedBook,
-	month: MonthKey,
-): ApproximateRow[] {
-	return loaded.approximate.filter(
-		(r) => budgetMonthOf(r.date, loaded.periods) <= month,
-	);
-}
-
-/** Own missing rates of months up to `month`: what a checkpoint there carries. */
-export function missingThrough(
-	loaded: LoadedBook,
-	month: MonthKey,
-): MissingRate[] {
-	return loaded.missingRates.filter(
-		(r) => budgetMonthOf(r.date, loaded.periods) <= month,
-	);
+/** Freezes what this valuer valued for the first time. */
+export function freeze(tx: Tx, bookId: string, valuer: Valuer) {
+	return freezeValues(tx, bookId, valuer.fresh);
 }

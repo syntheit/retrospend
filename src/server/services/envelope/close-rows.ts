@@ -4,6 +4,10 @@
  * late entries, recalculation) and one for the budget_dirty marks, and the
  * choice of the checkpoint a pass starts at (checkpoint.ts).
  */
+import type {
+	CloseRowCore,
+	DirtyMark,
+} from "@retrospend/domain/envelope/book-source";
 import { z } from "zod";
 import {
 	type MonthCloseSummary,
@@ -26,7 +30,9 @@ export const recalcSchema = z.object({
 });
 export type Recalc = z.infer<typeof recalcSchema>;
 
-export interface CloseRow {
+export type { DirtyMark };
+
+export interface CloseRow extends CloseRowCore {
 	id: string;
 	month: MonthKey;
 	summary: MonthCloseSummary;
@@ -37,13 +43,6 @@ export interface CloseRow {
 	ackRevision: number | null;
 	lateEntries: number;
 	recalc: Recalc | null;
-}
-
-export interface DirtyMark {
-	id: bigint;
-	fromMonth: number;
-	/** When the change was made: the late window counts from here (C17). */
-	createdAt: Date;
 }
 
 export async function loadCloseRows(
