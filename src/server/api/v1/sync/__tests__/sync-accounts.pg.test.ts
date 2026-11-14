@@ -579,7 +579,9 @@ describe("account sync routes: changes", () => {
 			expect(page.items.length).toBeLessThanOrEqual(2);
 			seen.push(...page.items.map((r) => r.id));
 			since = `&since=${page.cursor}`;
-			if (!page.hasMore) break;
+			// hasMore false means caught up for now: rows behind an open
+			// transaction (another test file, under load) come on a later pull.
+			if (!page.hasMore && seen.length >= made.length) break;
 		}
 		expect(seen.sort()).toEqual([...made].sort());
 	});
