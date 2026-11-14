@@ -24,9 +24,6 @@ import type { InsightsFilter } from "./types";
 export {
 	instantRange,
 	previousPeriod,
-	spanRate,
-	type Valued,
-	valueIn,
 } from "@retrospend/domain/insights-compute";
 
 export interface InsightsContext extends InsightsBase {

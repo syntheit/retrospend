@@ -33,8 +33,6 @@ import {
 } from "./context";
 import { type CashflowDTO, INSIGHTS, type InsightsFigure } from "./types";
 
-export { averageOf, type CashflowRead, daysElapsed, savedOf };
-
 /** Spending and income of one range, unfiltered, in the home currency. */
 export async function readCashflow(
 	db: FigureDb,
