@@ -31,10 +31,16 @@ export interface Ledger {
 	templateIds: string[];
 }
 
-/** Units per USD: ARS blue 1,400 then 1,500 and official 1,000, JPY 150, KWD 0.3. */
+/**
+ * Units per USD: ARS blue 1,400 then 1,500 and official 1,000, JPY 150, KWD
+ * 0.3. The table is shared by every file of a worker's database, so a second
+ * seed skips the rows that are there (exchange_rate is unique per date,
+ * currency and type).
+ */
 export async function seedRates() {
 	const day = (iso: string) => new Date(`${iso}T00:00:00Z`);
 	await adminDb.exchangeRate.createMany({
+		skipDuplicates: true,
 		data: [
 			["2026-09-15", "ARS", "blue", "1400"],
 			["2026-10-05", "ARS", "blue", "1500"],

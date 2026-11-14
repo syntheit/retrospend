@@ -157,16 +157,21 @@ export async function seedPersonal(userId: string) {
 	};
 }
 
-/** Calls `read` until `done` accepts its result (the cut moves with other transactions), at most `ms`. */
+/**
+ * Calls `read` until `done` accepts its result (the cut moves with other
+ * transactions), at most `ms`. The deadline runs on performance.now(), which
+ * a faked Date never moves, so a test that fakes the clock around a read does
+ * not hang this loop.
+ */
 export async function until<T>(
 	read: () => Promise<T>,
 	done: (value: T) => boolean,
 	ms = 15_000,
 ): Promise<T> {
-	const stop = Date.now() + ms;
+	const stop = performance.now() + ms;
 	for (;;) {
 		const value = await read();
-		if (done(value) || Date.now() > stop) return value;
+		if (done(value) || performance.now() > stop) return value;
 		await new Promise((resolve) => setTimeout(resolve, 50));
 	}
 }
