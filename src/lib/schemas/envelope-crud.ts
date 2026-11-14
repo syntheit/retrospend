@@ -9,6 +9,7 @@
  * changed is stored server side (envelope_change), so its undo is exact and a
  * client never sends the old state back.
  */
+import { affordStateSchema } from "@retrospend/api-contract/budget";
 import { userText } from "@retrospend/api-contract/common";
 import { z } from "zod";
 import {
@@ -21,6 +22,8 @@ import {
 	targetInputSchema,
 } from "./envelope";
 import { targetSnapshotSchema } from "./envelope-book";
+
+export { affordStateSchema };
 
 const idSchema = z.string().min(1).max(64);
 const clientIdSchema = z.string().uuid();
@@ -237,17 +240,6 @@ export const affordInputSchema = z.object({
 	/** Every dollar and Limits answer from one envelope (default: Everything else). */
 	envelopeId: idSchema.optional(),
 });
-
-export const affordStateSchema = z.enum([
-	"FITS",
-	"FITS_TIGHT",
-	"NO_LIMIT",
-	"SHORT_MOVE",
-	"SHORT_POOL_COVERS",
-	"SHORT_NOTHING_LEFT",
-	"WEEK_FITS",
-	"WEEK_NEXT_WEEK",
-]);
 
 export const affordActionSchema = z.discriminatedUnion("kind", [
 	/** Put the shortfall into Spending from Not planned yet. */

@@ -5,6 +5,7 @@
  * paying envelope, interest is spending). Money is the Money DTO in integer
  * minor units; APR is a decimal string ("24.5" = 24.5% a year).
  */
+import { payoffStrategySchema } from "@retrospend/api-contract/budget";
 import { z } from "zod";
 import {
 	isoDateSchema,
@@ -12,6 +13,8 @@ import {
 	moneySchema,
 	monthKeySchema,
 } from "./envelope";
+
+export { payoffStrategySchema };
 
 const idSchema = z.string().min(1).max(64);
 const clientIdSchema = z.string().uuid();
@@ -47,8 +50,6 @@ export const debtTermsResultSchema = z.object({
 });
 
 // ── Payoff plan (SPEC §5.11, D72) ───────────────────────────────────────────
-
-export const payoffStrategySchema = z.enum(["SNOWBALL", "AVALANCHE", "CUSTOM"]);
 
 export const savePayoffPlanInputSchema = z.object({
 	strategy: payoffStrategySchema,

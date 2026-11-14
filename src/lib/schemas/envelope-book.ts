@@ -6,6 +6,11 @@
  * money is `{ minor, currency }`, months are YYYYMM, dates YYYY-MM-DD, write
  * inputs carry client ids so retries are idempotent.
  */
+import {
+	acknowledgeMonthResultSchema,
+	SWITCH_STYLES,
+	switchStyleSchema,
+} from "@retrospend/api-contract/budget";
 import { z } from "zod";
 import {
 	budgetStyleSchema,
@@ -18,6 +23,8 @@ import {
 	monthKeySchema,
 	movementResultSchema,
 } from "./envelope";
+
+export { acknowledgeMonthResultSchema, SWITCH_STYLES, switchStyleSchema };
 
 const idSchema = z.string().min(1).max(64);
 const clientIdSchema = z.string().uuid();
@@ -55,24 +62,7 @@ export const acknowledgeMonthInputSchema = z.object({
 	revision: z.number().int().min(1),
 });
 
-export const acknowledgeMonthResultSchema = z.object({
-	month: monthKeySchema,
-	acknowledgedRevision: z.number().int(),
-});
-
 // ── Styles (SPEC §4.4) ──────────────────────────────────────────────────────
-
-/** Styles whose features have landed (02 §8: P2, P4 and P5). Between income styles a switch writes nothing beyond the style; the new style's rules and group targets are offered, not written (SPEC §4.4). */
-export const SWITCH_STYLES = [
-	"LIMITS",
-	"FLEX",
-	"EVERY_DOLLAR",
-	"WEEKLY",
-	"SAVE_FIRST",
-	"FIFTY_THIRTY_TWENTY",
-	"DEBT_PAYOFF",
-] as const;
-export const switchStyleSchema = z.enum(SWITCH_STYLES);
 
 export const setStyleInputSchema = z.object({
 	/** Client id of the Adjustment a switch to an income style writes. */

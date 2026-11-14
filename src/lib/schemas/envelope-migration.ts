@@ -4,23 +4,25 @@
  * envelope export and the pacing the dashboard reads. Same conventions as
  * envelope.ts: money is `{ minor, currency }`, dates YYYY-MM-DD.
  */
+import {
+	envelopeExportFileSchema,
+	envelopeExportSchema,
+	hiddenAnswerSchema,
+	migrationStateSchema,
+} from "@retrospend/api-contract/budget";
 import { z } from "zod";
 import { isoDateSchema, moneySchema } from "./envelope";
+
+export {
+	envelopeExportFileSchema,
+	envelopeExportSchema,
+	hiddenAnswerSchema,
+	migrationStateSchema,
+};
 
 const idSchema = z.string().min(1).max(64);
 
 // ── Migration notice and hidden rows (SPEC §8.1, §8.3) ──────────────────────
-
-export const migrationStateSchema = z.object({
-	/** The book came from the old budget. */
-	migrated: z.boolean(),
-	/** "Your limits moved to the new budget. Nothing to set up." until dismissed. */
-	noticeOpen: z.boolean(),
-	/** Hidden expenses of the first month still to answer. */
-	hiddenRows: z.number().int().min(0),
-});
-
-export const hiddenAnswerSchema = z.enum(["SPENDING", "NOT_SPENDING"]);
 
 export const hiddenRowSchema = z.object({
 	id: idSchema,
@@ -53,19 +55,6 @@ export const resolveHiddenResultSchema = z.object({
 export const revertHiddenInputSchema = resolveHiddenResultSchema;
 
 // ── Export (envelopes, movements, rules, months) ────────────────────────────
-
-export const envelopeExportFileSchema = z.object({
-	name: z.string(),
-	contentType: z.enum(["text/csv", "application/json"]),
-	content: z.string(),
-});
-
-export const envelopeExportSchema = z.object({
-	files: z.array(envelopeExportFileSchema),
-	/** The same files as one base64 ZIP for a Download button; null without a budget. */
-	zipData: z.string().nullable(),
-	filename: z.string(),
-});
 
 // ── Dashboard pacing from envelope totals ───────────────────────────────────
 

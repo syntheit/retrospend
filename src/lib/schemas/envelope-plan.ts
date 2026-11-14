@@ -9,6 +9,10 @@
  * pretend row by its category or envelope.
  */
 
+import {
+	draftKindSchema,
+	draftStatusSchema,
+} from "@retrospend/api-contract/budget";
 import { userText } from "@retrospend/api-contract/common";
 import { z } from "zod";
 import {
@@ -20,6 +24,8 @@ import {
 	ruleActionInputSchema,
 	ruleMatchSchema,
 } from "./envelope";
+
+export { draftKindSchema, draftStatusSchema };
 
 const idSchema = z.string().min(1).max(64);
 const clientIdSchema = z.string().uuid();
@@ -93,9 +99,6 @@ export const applyRuleResultSchema = z.object({
 });
 
 // ── Drafts: Plan next month and What if (SPEC §5.13, D2, D54) ───────────────
-
-export const draftKindSchema = z.enum(["PLAN", "WHAT_IF"]);
-export const draftStatusSchema = z.enum(["OPEN", "APPLIED", "DISCARDED"]);
 
 /** PLAN: what the envelope should have assigned in the month. */
 export const planLineSchema = z.object({
