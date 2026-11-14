@@ -6,7 +6,16 @@ import {
 	guestOrProtectedProcedure,
 } from "~/server/api/trpc";
 import { removeSelfFromSplit } from "~/server/services/corrections/guards";
+import {
+	answerShareInputSchema,
+	restoreAnswerInputSchema,
+} from "~/server/services/shared-expenses/answer-input";
+import {
+	answerShareWebMutation,
+	restoreAnswerWebMutation,
+} from "~/server/services/shared-expenses/answer-share-web.mutation";
 import { VerificationService } from "~/server/services/shared-expenses/verification.service";
+import { money } from "./money-pair";
 
 export const verificationRouter = createTRPCRouter({
 	/**
@@ -86,6 +95,25 @@ export const verificationRouter = createTRPCRouter({
 			const service = new VerificationService(ctx.db, actor);
 			return await service.reject(input.txnId, input.reason);
 		}),
+
+	/**
+	 * verification.answer.{preview,save}: accept or reject your own share. The
+	 * preview is the save run and rolled back; a save returns the signed undo.
+	 * Only users answer here (the mutation is user-only); guests have no
+	 * answer screen on the web.
+	 */
+	answer: money(
+		answerShareInputSchema,
+		answerShareWebMutation,
+		({ txnId, ...rest }) => ({ transactionId: txnId, ...rest }),
+	),
+
+	/** verification.restoreAnswer.{preview,save}: take an answer back with the token its save returned. */
+	restoreAnswer: money(
+		restoreAnswerInputSchema,
+		restoreAnswerWebMutation,
+		(value) => value,
+	),
 
 	/**
 	 * POST /api/verification/:txnId/remove-self

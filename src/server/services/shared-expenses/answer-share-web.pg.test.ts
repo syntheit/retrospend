@@ -10,7 +10,11 @@
  */
 
 import { dayKey } from "@retrospend/domain/time-zone";
+import type { TRPCError } from "@trpc/server";
 import { beforeAll, describe, expect, it } from "vitest";
+import { problemCode } from "~/server/api/error-formatter";
+import { verificationRouter } from "~/server/api/routers/verification";
+import { createCallerFactory } from "~/server/api/trpc";
 import { userTransaction } from "~/server/db-tx";
 import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { RESTORE_TTL_MS, signRestore } from "../entry/restore-token";
@@ -286,5 +290,68 @@ describe("the web undo", () => {
 		await expect(
 			forUser(bruno.user.id).preview(restoreAnswerWebMutation, { restore }),
 		).rejects.toMatchObject({ problem: "share_locked" });
+	});
+});
+
+describe("through verification.answer and verification.restoreAnswer", () => {
+	const caller = (u: TestUser | null) =>
+		createCallerFactory(verificationRouter)({
+			db: adminDb,
+			session: u
+				? ({
+						user: {
+							id: u.user.id,
+							role: u.user.role,
+							email: u.user.email,
+							name: u.user.name,
+							isActive: true,
+						},
+					} as never)
+				: null,
+			headers: new Headers(),
+		});
+
+	it("previews, saves and undoes a reject over the procedures the sheet calls", async () => {
+		const { bruno, expense } = await scene();
+		const api = caller(bruno);
+		const dry = await api.answer.preview({
+			txnId: expense.id,
+			answer: "reject",
+		});
+		expect(dry.value.restore).toBeNull();
+		const done = await api.answer.save({
+			txnId: expense.id,
+			answer: "reject",
+			reason: "  no era mío ",
+		});
+		expect(done.changes).toEqual(dry.changes);
+		const restore = done.value.restore;
+		if (!restore) throw new Error("a changed answer carries its undo");
+		expect((await shareOf(expense.id, bruno)).rejectionReason).toBe(
+			"  no era mío ",
+		);
+		await api.restoreAnswer.save({ restore });
+		expect((await shareOf(expense.id, bruno)).verificationStatus).toBe(
+			"PENDING",
+		);
+		expect(await eventTypes(bruno)).toEqual([
+			"shared_expense.rejected",
+			"shared_expense.undone",
+		]);
+	});
+
+	it("sends a refusal as a problem code, which the sheet turns into its sentence", async () => {
+		const { bruno, expense } = await scene({ locked: true });
+		const error = await caller(bruno)
+			.answer.preview({ txnId: expense.id, answer: "accept" })
+			.catch((e: unknown) => e);
+		expect(problemCode(error as TRPCError)).toBe("share_locked");
+	});
+
+	it("takes no answer without a signed-in user", async () => {
+		const { expense } = await scene();
+		await expect(
+			caller(null).answer.save({ txnId: expense.id, answer: "accept" }),
+		).rejects.toMatchObject({ code: "UNAUTHORIZED" });
 	});
 });
