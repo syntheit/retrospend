@@ -10,6 +10,7 @@
  * The reset truncates every table, so it runs the same database check as
  * playwright.config.ts (../db-guard.ts) before touching anything.
  */
+
 import { PrismaPg } from "@prisma/adapter-pg";
 import { budgetPeriod } from "@retrospend/domain/fiscal-month";
 import {
@@ -29,6 +30,7 @@ import { writePayment } from "~/server/services/payments/write";
 import { resolveVerification } from "~/server/services/shared-expenses/auto-accept";
 import { PrismaClient } from "~prisma";
 import { assertE2eDatabase } from "../db-guard";
+import { SYNC_STATE_ROW } from "../sync-state";
 import {
 	ACCOUNTS,
 	type Anchor,
@@ -90,10 +92,13 @@ async function resetDatabase(db: Db, keepServerState: boolean): Promise<void> {
 		SELECT tablename FROM pg_tables
 		WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'`;
 	const list = tables
+		.filter((t) => t.tablename !== "sync_state")
 		.filter((t) => !(keepServerState && t.tablename === "app_settings"))
 		.map((t) => `"${t.tablename}"`)
 		.join(", ");
 	await db.$executeRawUnsafe(`TRUNCATE ${list} RESTART IDENTITY CASCADE`);
+	await db.$executeRawUnsafe(SYNC_STATE_ROW);
+	await db.$queryRawUnsafe("SELECT sync_reset()");
 }
 
 async function writeUsers(db: Db): Promise<void> {
