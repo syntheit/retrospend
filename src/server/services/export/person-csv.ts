@@ -1,6 +1,8 @@
 /** The person CSVs: every expense two people share, and what is open between them. */
+import { shareCounts } from "@retrospend/domain/share-status";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { csvMeta, generateCsv } from "~/lib/csv";
+import type { Prisma } from "~prisma";
 import { exactCell } from "./amounts";
 import { type CsvDocument, type ExportContext, isoDay, slug } from "./context";
 import {
@@ -86,6 +88,10 @@ export async function exportPersonHistory(
 				sp.participantType === them.participantType &&
 				sp.participantId === them.participantId,
 		);
+		// A rejected share is not owed: it reads 0 here (the row says Disputed),
+		// so the share columns add up to the balance the same file reports.
+		const shareCell = (sp: { shareAmount: Prisma.Decimal; verificationStatus: string }) =>
+			shareCounts(sp.verificationStatus) ? exactCell(sp.shareAmount) : 0;
 		return [
 			isoDay(tx.date, ctx.timeZone),
 			tx.description,
@@ -96,9 +102,9 @@ export async function exportPersonHistory(
 				participantType: tx.paidByType,
 				participantId: tx.paidById,
 			}),
-			mine ? exactCell(mine.shareAmount) : 0,
+			mine ? shareCell(mine) : 0,
 			// Hidden from a debtor: empty, not 0.
-			theirs ? exactCell(theirs.shareAmount) : "",
+			theirs ? shareCell(theirs) : "",
 			tx.projectId ? (projectName.get(tx.projectId) ?? "") : "",
 			txStatus(tx.isLocked, tx.splitParticipants),
 			editCounts.get(tx.id) ?? 0,

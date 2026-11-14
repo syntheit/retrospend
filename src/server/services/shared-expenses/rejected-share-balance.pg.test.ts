@@ -46,6 +46,7 @@ import { computePeriodSettleStatus } from "./billing-period-settle";
 import { lockSettledSplits } from "../corrections/locks";
 import { guardDelete } from "./delete-guard";
 import { removeSelfIn } from "./remove-self";
+import { exportPersonHistory } from "../export/person-csv";
 import { personPage } from "../people/detail";
 import { owedRead } from "../payments/figures";
 import { settleContext } from "../people/settle-context";
@@ -446,7 +447,29 @@ describe("scenario G: the rows behind a balance add up to it", () => {
 			["Cena 10000", -500_000, "ok"],
 			["Cena 40000", 0, "rejected"],
 		]);
-		expect(Object.is(brunoView.rows.find((r) => r.state === "rejected")?.effect?.minor, 0)).toBe(true);
+		expect(
+			Object.is(
+				brunoView.rows.find((r) => r.state === "rejected")?.effect?.minor,
+				0,
+			),
+		).toBe(true);
+
+		// The history CSV says Disputed and counts the rejected share as 0.
+		const csv = await exportPersonHistory(
+			{ db: ana.db as never, userId: ana.user.id, timeZone: "UTC" },
+			ref(bruno),
+		);
+		const lines = csv.csv.split("\n").filter((l) => l.length > 0);
+		const header = lines.findIndex((l) => l.startsWith("Date,"));
+		const cells = lines
+			.slice(header + 1)
+			.map((l) => l.split(","))
+			.sort((a, b) => String(a[1]).localeCompare(String(b[1])));
+		// Columns: Your Share (6) and Their Share (7), then Status (9).
+		expect(cells.map((c) => [c[1], c[6], c[7], c[9]])).toEqual([
+			["Cena 10000", "5000", "5000", "Verified"],
+			["Cena 40000", "20000", "0", "Disputed"],
+		]);
 	});
 
 	it("8: a project card's lines sum to its balance and leave the rejected expense out", async () => {
