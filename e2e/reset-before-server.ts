@@ -18,6 +18,7 @@
 import { Pool } from "pg";
 import { E2E_DATABASE_URL } from "./constants";
 import { assertE2eDatabase } from "./db-guard";
+import { SYNC_STATE_ROW } from "./sync-state";
 
 const KEYSTORE_TABLES = ["user_data_key", "instance_text_key"] as const;
 
@@ -25,7 +26,8 @@ const KEYSTORE_TABLES = ["user_data_key", "instance_text_key"] as const;
 async function tablesToEmpty(pool: Pool): Promise<string[]> {
 	const { rows } = await pool.query<{ name: string }>(
 		`SELECT format('%I.%I', schemaname, tablename) AS name FROM pg_tables
-		 WHERE (schemaname = 'public' AND tablename <> '_prisma_migrations')
+		 WHERE (schemaname = 'public'
+		        AND tablename NOT IN ('_prisma_migrations', 'sync_state'))
 		    OR (schemaname = 'keystore' AND tablename = ANY($1))
 		 ORDER BY 1`,
 		[KEYSTORE_TABLES],
@@ -42,6 +44,9 @@ export async function resetBeforeServer(url: string): Promise<number> {
 			await pool.query(
 				`TRUNCATE ${tables.join(", ")} RESTART IDENTITY CASCADE`,
 			);
+		// The sync log's state row is schema, not data (see e2e/sync-state.ts).
+		await pool.query(SYNC_STATE_ROW);
+		await pool.query("SELECT sync_reset()");
 		return tables.length;
 	} finally {
 		await pool.end();
