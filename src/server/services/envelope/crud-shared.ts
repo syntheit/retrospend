@@ -6,6 +6,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import type { MonthKey } from "@retrospend/domain/envelope/types";
 import type { MovementResult } from "~/lib/schemas/envelope";
 import type { RoutedCategory } from "~/lib/schemas/envelope-crud";
 import type { Prisma } from "~prisma";
@@ -19,7 +20,6 @@ import {
 	type Snapshot,
 	snapshot,
 } from "./movement-state";
-import type { MonthKey } from "./types";
 
 type Tx = Prisma.TransactionClient;
 

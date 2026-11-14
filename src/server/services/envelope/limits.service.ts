@@ -11,7 +11,18 @@
  *   leave the envelope negative (B5: PLAN_FUND never blocks).
  */
 
+import {
+	addMonths,
+	calendarMonthOf,
+} from "@retrospend/domain/envelope/calendar";
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import { isoDateIn } from "@retrospend/domain/envelope/months";
+import type { MissingRate } from "@retrospend/domain/envelope/types";
+import { fromMinor } from "@retrospend/domain/envelope/units";
+import {
+	convertToBookOrThrow,
+	valueRow,
+} from "@retrospend/domain/envelope/valuation";
 import { z } from "zod";
 import type {
 	RevertLimitInput,
@@ -23,7 +34,6 @@ import { targetSnapshotSchema } from "~/lib/schemas/envelope-book";
 import { Prisma } from "~prisma";
 import { budgetSpendingWhere } from "../spending";
 import { userTimeZone } from "../user-time-zone";
-import { addMonths, calendarMonthOf } from "./calendar";
 import {
 	fundDelta,
 	fundedThisMonth,
@@ -31,13 +41,9 @@ import {
 	snapshotOf,
 } from "./limit-target";
 import { forgetMonthViews } from "./month-read";
-import { isoDateIn } from "./months";
 import { insert, replay, result } from "./movement.service";
 import { checkEnvelope, lockedSnapshot } from "./movement-state";
 import { loadRateBook } from "./rate-book";
-import type { MissingRate } from "./types";
-import { fromMinor } from "./units";
-import { convertToBookOrThrow, valueRow } from "./valuation";
 
 type Tx = Prisma.TransactionClient;
 

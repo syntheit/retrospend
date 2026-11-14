@@ -18,6 +18,7 @@ import {
 	type LoadContext,
 	loadBookFrom,
 } from "@retrospend/domain/envelope/load-book";
+import type { MonthKey } from "@retrospend/domain/envelope/types";
 import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import type { Prisma } from "~prisma";
 import { sha256 } from "./checkpoint";
@@ -27,7 +28,6 @@ import { prismaBudgetInputs } from "./inputs-source";
 import { freezeValues, frozenValues, markDirtyFrom } from "./load-state";
 import { loadSplitInputs } from "./splits-input";
 import { loadTargetSources } from "./target-sources";
-import type { MonthKey } from "./types";
 
 type Tx = Prisma.TransactionClient;
 

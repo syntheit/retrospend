@@ -17,6 +17,15 @@
  *   checkpoint Aug: carry { save: 100 }; running: in 1000, assigned 900,
  *                   overspent 120, returned 50, fronted 70
  */
+
+import {
+	type ActivityEntry,
+	computeBook,
+	type EngineInput,
+	sumLeft,
+} from "@retrospend/domain/envelope/engine";
+import { invariantSides } from "@retrospend/domain/envelope/invariant";
+import { monthsFrom } from "@retrospend/domain/envelope/months";
 import { describe, expect, it } from "vitest";
 import {
 	checkpointAt,
@@ -24,14 +33,6 @@ import {
 	summaryDiffers,
 	toEngineCheckpoint,
 } from "./checkpoint";
-import {
-	type ActivityEntry,
-	computeBook,
-	type EngineInput,
-	sumLeft,
-} from "./engine";
-import { invariantSides } from "./invariant";
-import { monthsFrom } from "./months";
 
 const env = (id: string, rule: "CARRY" | "RETURN" = "CARRY") => ({
 	id,

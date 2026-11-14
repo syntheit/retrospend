@@ -15,20 +15,20 @@
  *   with a suggested cover from the month's cover sources.
  */
 
-import { buildMonthView } from "@retrospend/domain/envelope/month-view";
-import type { GetMonthOutput, Money } from "~/lib/schemas/envelope";
-import type { DraftDto, DraftPreview } from "~/lib/schemas/envelope-plan";
 import {
 	type ActivityEntry,
 	computeBook,
 	type EngineInput,
 	type MoneyInEntry,
 	type MovementEntry,
-} from "./engine";
+} from "@retrospend/domain/envelope/engine";
+import { buildMonthView } from "@retrospend/domain/envelope/month-view";
+import type { Minor, MonthKey } from "@retrospend/domain/envelope/types";
+import type { GetMonthOutput, Money } from "~/lib/schemas/envelope";
+import type { DraftDto, DraftPreview } from "~/lib/schemas/envelope-plan";
 import type { LoadedBook } from "./inputs";
 import { coverSources } from "./planning";
 import { allocateRules, type IncomeRule } from "./rules";
-import type { Minor, MonthKey } from "./types";
 
 type Row = GetMonthOutput["groups"][number]["envelopes"][number];
 

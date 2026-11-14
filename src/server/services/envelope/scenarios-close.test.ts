@@ -6,21 +6,21 @@
  */
 
 import {
-	buildMonthView,
-	type ViewBook,
-} from "@retrospend/domain/envelope/month-view";
-import type { EnvelopeTarget } from "@retrospend/domain/envelope/needs";
-import { describe, expect, it } from "vitest";
-import {
 	type ActivityEntry,
 	type ClosedRule,
 	computeBook,
 	type EngineInput,
 	type MovementEntry,
-} from "./engine";
-import { invariantSides } from "./invariant";
+} from "@retrospend/domain/envelope/engine";
+import { invariantSides } from "@retrospend/domain/envelope/invariant";
+import {
+	buildMonthView,
+	type ViewBook,
+} from "@retrospend/domain/envelope/month-view";
+import type { EnvelopeTarget } from "@retrospend/domain/envelope/needs";
+import type { MonthKey } from "@retrospend/domain/envelope/types";
+import { describe, expect, it } from "vitest";
 import { closeSummary } from "./month-close";
-import type { MonthKey } from "./types";
 
 const m = (n: number) => Math.round(n * 100);
 

@@ -10,6 +10,8 @@
  * expense. A reader sees the correction rows RLS shows them: everything for
  * the person who made the corrections, their own share for anyone else.
  */
+
+import { sumMinor, toMinor } from "@retrospend/domain/envelope/units";
 import { FigureNarrowingError } from "@retrospend/domain/figures/narrowing";
 import type {
 	FigureDb,
@@ -17,7 +19,6 @@ import type {
 	FigureScope,
 	Money,
 } from "~/server/figures/registry";
-import { sumMinor, toMinor } from "~/server/services/envelope/units";
 import { parsePersonKey } from "~/server/services/payments/view";
 import { COUNTED_SHARE } from "~/server/services/shared-expenses/balance";
 

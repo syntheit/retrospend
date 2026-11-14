@@ -13,6 +13,7 @@
  *   = Left 20,000 + 40,000 = 60,000 (the account replaces the moves).
  */
 import { randomUUID } from "node:crypto";
+import { budgetMonthOf, isoDateIn } from "@retrospend/domain/envelope/months";
 import { describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { forUser } from "~/server/services/preview";
@@ -20,7 +21,6 @@ import { recordBudgetSide } from "~/server/services/transfers/budget-side";
 import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import { invariantAt, seedUser, setupInput } from "./__tests__/pg-fixture";
-import { budgetMonthOf, isoDateIn } from "./months";
 import { getMonth } from "./read.service";
 import { setupEnvelopeBook } from "./setup.mutation";
 

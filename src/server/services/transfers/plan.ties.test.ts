@@ -3,8 +3,9 @@
  * to the domain Decimal (money-decimal PR 6a). ARS home. Every expected value
  * is derived by hand in its comment.
  */
+
+import { dec } from "@retrospend/domain/envelope/units";
 import { describe, expect, it } from "vitest";
-import { dec } from "~/server/services/envelope/units";
 import type { AssetType } from "~prisma";
 import {
 	budgetEffect,

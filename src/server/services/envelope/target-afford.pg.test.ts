@@ -20,6 +20,8 @@
  * about Dining (15,000): a 20,000 item is 5,000 short.
  */
 import { randomUUID } from "node:crypto";
+import { addMonths } from "@retrospend/domain/envelope/calendar";
+import { budgetMonthOf, isoDateIn } from "@retrospend/domain/envelope/months";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { forUser } from "~/server/services/preview";
@@ -34,13 +36,11 @@ import {
 } from "./__tests__/pg-fixture";
 import { getAfford } from "./afford-read.service";
 import { setStyleMutation } from "./book.mutation";
-import { addMonths } from "./calendar";
 import {
 	confirmStartingMoneyMutation,
 	setTargetMutation,
 	undoChangeMutation,
 } from "./crud.mutation";
-import { budgetMonthOf, isoDateIn } from "./months";
 import { getMonth } from "./read.service";
 import { setupEnvelopeBook } from "./setup.mutation";
 import { setShareCategoryMutation } from "./splits.mutation";

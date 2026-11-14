@@ -5,8 +5,11 @@ import {
 	owedDto,
 	owedSummary,
 } from "@retrospend/domain/envelope/owed";
+import {
+	type ReplayEvent,
+	replaySplits,
+} from "@retrospend/domain/envelope/splits-replay";
 import { describe, expect, it } from "vitest";
-import { type ReplayEvent, replaySplits } from "./splits-replay";
 
 const front = (
 	id: string,

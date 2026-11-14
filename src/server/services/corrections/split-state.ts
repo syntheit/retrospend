@@ -3,10 +3,11 @@
  * row written for it, as plain minor-unit data (plan.ts) and the people who
  * may be on it.
  */
+
+import { toMinor } from "@retrospend/domain/envelope/units";
 import { shareCounts } from "@retrospend/domain/share-status";
 import { TRPCError } from "@trpc/server";
 import type { Prisma, ShareCategorySource } from "~prisma";
-import { toMinor } from "../envelope/units";
 import { type Party, partyKey, type RowState } from "./plan";
 
 type Tx = Prisma.TransactionClient;

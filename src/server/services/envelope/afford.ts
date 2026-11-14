@@ -15,9 +15,9 @@
  */
 
 import { perDay } from "@retrospend/domain/envelope/pace";
+import type { Minor, MonthKey } from "@retrospend/domain/envelope/types";
 import type { BudgetStyle } from "@retrospend/domain/envelope/verdict";
 import type { AffordState } from "~/lib/schemas/envelope-crud";
-import type { Minor, MonthKey } from "./types";
 
 /** What the answer offers to do; the service turns the minors into Money. */
 export type AffordOffer =

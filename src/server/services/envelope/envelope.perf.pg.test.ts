@@ -12,6 +12,8 @@
  * the report.
  */
 import { randomUUID } from "node:crypto";
+import { addMonths } from "@retrospend/domain/envelope/calendar";
+import { budgetMonthOf, isoDateIn } from "@retrospend/domain/envelope/months";
 import { describe, expect, it } from "vitest";
 import { db } from "~/server/db";
 import { insightsFirstDay } from "~/server/services/insights";
@@ -22,8 +24,6 @@ import {
 	sealedSuite,
 } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
-import { addMonths } from "./calendar";
-import { budgetMonthOf, isoDateIn } from "./months";
 import { getMonth } from "./read.service";
 
 const EXPENSES = 5_000;

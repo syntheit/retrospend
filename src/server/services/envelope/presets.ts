@@ -9,6 +9,8 @@
  * P2 covers Flex (default), Every dollar and Weekly; P4 Limits; P5 Save
  * first and 50/30/20 (presets-p5.ts).
  */
+
+import { ceilDiv } from "@retrospend/domain/envelope/units";
 import type { SetupPresetOutput } from "~/lib/schemas/envelope";
 import {
 	debtPayoff,
@@ -16,7 +18,6 @@ import {
 	type PresetLiability,
 	saveFirst,
 } from "./presets-p5";
-import { ceilDiv } from "./units";
 
 export type SetupStyle = SetupPresetOutput["style"];
 

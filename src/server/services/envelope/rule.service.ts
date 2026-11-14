@@ -20,6 +20,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import { fromMinor } from "@retrospend/domain/envelope/units";
 import type { RuleRunDto } from "~/lib/schemas/envelope-plan";
 import type { Prisma } from "~prisma";
 import { findPersonalBook, type LoadedBook, loadBook } from "./inputs";
@@ -42,7 +43,6 @@ import {
 	type RuleBatch,
 	type RuleLine,
 } from "./rules";
-import { fromMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
 

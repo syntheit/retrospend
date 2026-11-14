@@ -4,7 +4,7 @@
  * which group a person sits in, and the balance bar's segment sizes. No I/O;
  * money is integer minor units and Decimal rates, never a float.
  */
-import { ratioBp, sumMinor, toMinor } from "~/server/services/envelope/units";
+import { ratioBp, sumMinor, toMinor } from "@retrospend/domain/envelope/units";
 import { toPaymentCurrency } from "~/server/services/payments/allocate";
 import type { Minor, Quote } from "~/server/services/payments/types";
 import type {

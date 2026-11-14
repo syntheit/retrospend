@@ -16,21 +16,21 @@
  * client ids, every touched envelope reported before and after (RC-5).
  */
 import { randomUUID } from "node:crypto";
+import { addMonths } from "@retrospend/domain/envelope/calendar";
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import type { Minor } from "@retrospend/domain/envelope/types";
+import { toMinor } from "@retrospend/domain/envelope/units";
 import type {
 	CarryOverspendInput,
 	MovementResult,
 } from "~/lib/schemas/envelope";
 import type { Prisma } from "~prisma";
-import { addMonths } from "./calendar";
 import { insert, replay, result } from "./movement.service";
 import {
 	lockedSnapshot,
 	type NewMovement,
 	type Snapshot,
 } from "./movement-state";
-import type { Minor } from "./types";
-import { toMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
 

@@ -21,6 +21,8 @@
  *   Dining left 200 - 210 = -10.00; Not spending on the hidden row: 50.00.
  */
 import { randomUUID } from "node:crypto";
+import { addMonths } from "@retrospend/domain/envelope/calendar";
+import { budgetMonthOf, isoDateIn } from "@retrospend/domain/envelope/months";
 import JSZip from "jszip";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { userTransaction } from "~/server/db-tx";
@@ -29,7 +31,6 @@ import { forUser } from "~/server/services/preview";
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import { addRow, at, invariantAt } from "./__tests__/pg-fixture";
-import { addMonths } from "./calendar";
 import { envelopeExportFiles } from "./envelope-export";
 import { ensureLegacyBook, forgetLegacyAttempts } from "./legacy-lazy";
 import {
@@ -49,7 +50,6 @@ import {
 	getMigrationState,
 	getPacing,
 } from "./migration-read.service";
-import { budgetMonthOf, isoDateIn } from "./months";
 import { getMonth } from "./read.service";
 
 type Kind = "FIXED" | "PEG_TO_ACTUAL" | "PEG_TO_LAST_MONTH";

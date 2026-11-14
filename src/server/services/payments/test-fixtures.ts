@@ -9,7 +9,7 @@
  * (allocatePayment, confirmationFor, countsFor), so the invariant tests
  * check the engine, not a copy of it.
  */
-import { dec } from "~/server/services/envelope/units";
+import { dec } from "@retrospend/domain/envelope/units";
 import type { Allocation } from "./allocate";
 import { allocatePayment, plannedSettlements, quote } from "./allocate";
 import { confirmationFor, swappedFlags } from "./confirmation";

@@ -12,11 +12,11 @@ import {
 	closedIncomesFrom,
 	groupBaseFrom,
 } from "@retrospend/domain/envelope/income-history";
+import type { MonthKey } from "@retrospend/domain/envelope/types";
 import type { Prisma } from "~prisma";
 import { budgetClosedIncomeWhere } from "../spending";
 import type { LoadedBook } from "./inputs";
 import { freeze } from "./load-state";
-import type { MonthKey } from "./types";
 
 type Tx = Prisma.TransactionClient;
 

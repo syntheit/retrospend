@@ -15,7 +15,9 @@
  *   previews as stale and cannot be applied.
  */
 import { randomUUID } from "node:crypto";
+import { addMonths } from "@retrospend/domain/envelope/calendar";
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import type { MonthKey } from "@retrospend/domain/envelope/types";
 import type { MovementResult } from "~/lib/schemas/envelope";
 import type {
 	ApplyDraftInput,
@@ -30,7 +32,6 @@ import type {
 	SaveDraftInput,
 } from "~/lib/schemas/envelope-plan";
 import type { Prisma } from "~prisma";
-import { addMonths } from "./calendar";
 import { fundNowLines, previewDraft } from "./draft-preview";
 import { savedPlan, toDraftDto } from "./draft-store";
 import { forgetMonthViews, type MonthRead, monthViewIn } from "./month-read";
@@ -43,7 +44,6 @@ import {
 	Tracker,
 } from "./movement-state";
 import { activeRules, runPendingRules } from "./rule.service";
-import type { MonthKey } from "./types";
 
 type Tx = Prisma.TransactionClient;
 

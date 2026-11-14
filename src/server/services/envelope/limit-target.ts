@@ -4,11 +4,12 @@
  * other target column come back as they were), and the PLAN_FUND delta that
  * moves this month's funding to a given amount (SPEC §5.6).
  */
+
+import type { Minor, MonthKey } from "@retrospend/domain/envelope/types";
+import { toMinor } from "@retrospend/domain/envelope/units";
 import type { TargetSnapshot } from "~/lib/schemas/envelope-book";
 import { Prisma } from "~prisma";
 import type { NewMovement } from "./movement-state";
-import type { Minor, MonthKey } from "./types";
-import { toMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
 

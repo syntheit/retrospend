@@ -8,7 +8,7 @@
  */
 import { inFaceOrder } from "@retrospend/domain/activity-rows";
 import { categoryTone } from "@retrospend/domain/category-tone";
-import { sumMinor, toMinor } from "~/server/services/envelope/units";
+import { sumMinor, toMinor } from "@retrospend/domain/envelope/units";
 import { COUNTED_SHARE } from "~/server/services/shared-expenses/balance";
 import type { TransactionHistoryItem } from "~/server/services/shared-expenses/people.service";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";

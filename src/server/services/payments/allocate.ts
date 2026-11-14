@@ -25,14 +25,14 @@
  * `unpriced`: a missing rate is never 1 (R14).
  */
 
-import { currencyDecimals } from "@retrospend/domain/money";
-import type { Decimal } from "@retrospend/domain/precise-decimal";
 import {
 	dec,
 	fromMinor,
 	sumMinor,
 	toMinor,
-} from "~/server/services/envelope/units";
+} from "@retrospend/domain/envelope/units";
+import { currencyDecimals } from "@retrospend/domain/money";
+import type { Decimal } from "@retrospend/domain/precise-decimal";
 import type { ApplyTo, Minor, PairLine, Quote, Scope } from "./types";
 
 export interface AllocateInput {

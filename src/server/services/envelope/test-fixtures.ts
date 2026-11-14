@@ -5,8 +5,11 @@
  * BRL 5.40). CLP has no rate on purpose (the missing-rate story, C18).
  */
 
-import type { IsoDate } from "./types";
-import type { UsdRateLookup, ValuationContext } from "./valuation";
+import type { IsoDate } from "@retrospend/domain/envelope/types";
+import type {
+	UsdRateLookup,
+	ValuationContext,
+} from "@retrospend/domain/envelope/valuation";
 
 type RateTable = Record<string, Record<string, Array<[IsoDate, string]>>>;
 

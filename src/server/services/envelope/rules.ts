@@ -15,9 +15,10 @@
  *   reverts, an undone batch marks the row "rules skipped". Changing a rule
  *   never touches past batches, and no batch lands in a closed month.
  */
-import { addMonths } from "./calendar";
-import type { Minor, MonthKey } from "./types";
-import { percentOf } from "./units";
+
+import { addMonths } from "@retrospend/domain/envelope/calendar";
+import type { Minor, MonthKey } from "@retrospend/domain/envelope/types";
+import { percentOf } from "@retrospend/domain/envelope/units";
 
 export type RuleMatch =
 	| { kind: "ANY" }

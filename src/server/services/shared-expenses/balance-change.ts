@@ -1,4 +1,4 @@
-import { toMinor } from "~/server/services/envelope/units";
+import { toMinor } from "@retrospend/domain/envelope/units";
 import type { PrismaClient } from "~prisma";
 import { computeBalance } from "./balance";
 import type { Amount } from "./ledger-posting";

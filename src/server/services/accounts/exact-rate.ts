@@ -1,5 +1,5 @@
+import { dec } from "@retrospend/domain/envelope/units";
 import { TRPCError } from "@trpc/server";
-import { dec } from "~/server/services/envelope/units";
 
 /**
  * A typed rate arrives as decimal text and the account services still hold a

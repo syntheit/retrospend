@@ -1,3 +1,18 @@
+import {
+	CHANGE_PARTS,
+	type NotTrackedHistory,
+} from "@retrospend/domain/accounts/net-worth-change";
+import {
+	addDays,
+	dayOf,
+	endOfDay,
+	valueOn,
+} from "@retrospend/domain/accounts/series";
+import {
+	homeValue,
+	type RatePick,
+} from "@retrospend/domain/accounts/valuation";
+import { dec, toMinor } from "@retrospend/domain/envelope/units";
 import { normalizeDate } from "~/lib/date";
 import { FigureUnavailable } from "~/server/figures/registry";
 import {
@@ -5,18 +20,6 @@ import {
 	netWorthFor,
 } from "~/server/services/accounts/figures";
 import { loadAccountsLedger } from "~/server/services/accounts/load";
-import {
-	CHANGE_PARTS,
-	type NotTrackedHistory,
-} from "~/server/services/accounts/net-worth-change";
-import {
-	addDays,
-	dayOf,
-	endOfDay,
-	valueOn,
-} from "~/server/services/accounts/series";
-import { homeValue, type RatePick } from "~/server/services/accounts/valuation";
-import { dec, toMinor } from "~/server/services/envelope/units";
 import type { Prisma } from "~prisma";
 
 type Tx = Prisma.TransactionClient;
@@ -44,7 +47,7 @@ export function notTrackedOn(
 /**
  * Net worth, why it moved and one point a day. The headline and the change
  * are the figures registry's own (GET /figures reads the same). The series is
- * accounts and Not tracked on each day (accounts/series.ts); what people owe
+ * accounts and Not tracked on each day (domain accounts/series.ts); what people owe
  * each other has no history, so it enters every point at today's value, the
  * way the Wealth chart does it, and the last point equals net worth.
  */

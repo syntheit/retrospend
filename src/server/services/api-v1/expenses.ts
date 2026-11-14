@@ -9,10 +9,10 @@ import type {
 	updateExpenseSchema,
 } from "@retrospend/api-contract";
 import { withDefaultRange } from "@retrospend/api-contract";
+import { bookedRate } from "@retrospend/domain/activity-rows";
 import { dayKey, parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
-import { bookedRate } from "~/server/services/booked-rate";
 import {
 	type DeleteManyInput,
 	deleteExpensesBulk,

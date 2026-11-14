@@ -2,7 +2,7 @@
  * Balances between one person and many counterparts at once (the People
  * list, Owed to you), split from balance.ts. Same rules as computeBalance.
  */
-import { toMinor } from "~/server/services/envelope/units";
+import { toMinor } from "@retrospend/domain/envelope/units";
 import { countsFor } from "~/server/services/payments/ledger";
 import type { Prisma, PrismaClient } from "~prisma";
 import {

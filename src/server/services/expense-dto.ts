@@ -6,10 +6,11 @@
  * at today's rate. The raw Decimal columns homeRate and homeAmount never
  * reach the client.
  */
-import type { Expense, Prisma, PrismaClient } from "~prisma";
-import { bookedRate } from "./booked-rate";
-import { bookedHome } from "./rate-types";
+
+import { bookedRate } from "@retrospend/domain/activity-rows";
 import { toFloat } from "@retrospend/domain/precise-decimal";
+import type { Expense, Prisma, PrismaClient } from "~prisma";
+import { bookedHome } from "./rate-types";
 
 export function expenseDto<T extends Expense>(row: T, homeCurrency: string) {
 	const {

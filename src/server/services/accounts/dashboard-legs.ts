@@ -1,14 +1,15 @@
 /**
  * What the Wealth dashboard history (wealth.service.ts) adds on top of its
  * snapshots once money moves link to accounts: the legs a snapshot does not
- * already include (accounts/series.ts rule) and dated rate type switches
+ * already include (domain accounts/series.ts rule) and dated rate type switches
  * (D3). With no legs and no switches it adds nothing, so the history of a
  * user who never moved money is exactly what it was.
  */
+
+import { balanceEffect } from "@retrospend/domain/accounts/places";
+import { dayOf } from "@retrospend/domain/accounts/series";
 import { type Decimal, dec } from "@retrospend/domain/precise-decimal";
 import type { AssetType, PrismaClient } from "~prisma";
-import { balanceEffect } from "./places";
-import { dayOf } from "./series";
 
 interface Held {
 	readonly date: Date;
@@ -76,7 +77,7 @@ export async function loadDashboardLegs(
 			for (const s of own) {
 				if (dayOf(s.from) <= day) found = s.type;
 			}
-			// Before the first switch: the type it replaced (accounts/series.ts typeOn).
+			// Before the first switch: the type it replaced (domain accounts/series.ts typeOn).
 			return found === undefined && own[0] ? own[0].previousType : found;
 		},
 	};

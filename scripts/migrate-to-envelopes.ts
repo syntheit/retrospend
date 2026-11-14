@@ -32,16 +32,16 @@
  * run `--apply` again and fix the skips first.
  */
 import { PrismaPg } from "@prisma/adapter-pg";
+import { fromMinor } from "@retrospend/domain/envelope/units";
+import { currencyDecimals } from "@retrospend/domain/money";
 import { Pool } from "pg";
 import { PrismaClient } from "../generated/prisma/client";
-import { currencyDecimals } from "@retrospend/domain/money";
 import {
 	migrateUsers,
 	needsAttention,
 	rollbackRun,
 } from "../src/server/services/envelope/legacy-migrate.batch";
 import type { MigrationReport } from "../src/server/services/envelope/legacy-migrate.service";
-import { fromMinor } from "../src/server/services/envelope/units";
 
 const args = process.argv.slice(2);
 const flag = (name: string) => args.includes(name);

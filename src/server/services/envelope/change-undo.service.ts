@@ -11,6 +11,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import { toMinor } from "@retrospend/domain/envelope/units";
 import type {
 	UndoChangeInput,
 	UndoChangeResult,
@@ -31,7 +32,6 @@ import {
 	type Snapshot,
 } from "./movement-state";
 import { restoreTarget } from "./target.service";
-import { toMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
 

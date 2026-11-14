@@ -10,11 +10,11 @@
  * it untouched and names it (a missing rate is never 1).
  */
 
+import { dec } from "@retrospend/domain/envelope/units";
 import { USD } from "@retrospend/domain/money";
 import { crossFractionDec } from "@retrospend/domain/money-dec";
 import type { Decimal } from "@retrospend/domain/precise-decimal";
 import { findExchangeRate } from "~/server/exchange-rates";
-import { dec } from "~/server/services/envelope/units";
 import type { Prisma } from "~prisma";
 import { quote, quoteOf } from "./allocate";
 import type { Quote } from "./types";

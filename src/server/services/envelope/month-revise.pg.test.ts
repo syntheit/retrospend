@@ -21,6 +21,7 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { computeBook, sumLeft } from "@retrospend/domain/envelope/engine";
 import { beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { adminDb } from "~/test/pg-harness";
@@ -33,7 +34,6 @@ import {
 	seedUser,
 } from "./__tests__/pg-fixture";
 import { loadCloseRows } from "./close-rows";
-import { computeBook, sumLeft } from "./engine";
 import { loadBook } from "./inputs";
 import { getMonth, getMonthSummary } from "./read.service";
 

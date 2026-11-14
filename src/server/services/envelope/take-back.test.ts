@@ -5,14 +5,15 @@
  * take-backs, moves and spending, every take-back the cap allows keeps
  * Assigned(c+1) >= 0, so ToAssign(c) + Σ Left(e, c) never exceeds the ledger.
  */
-import { describe, expect, it } from "vitest";
+
 import {
 	type ActivityEntry,
 	computeBook,
 	type EngineInput,
 	type MovementEntry,
-} from "./engine";
-import { invariantSides } from "./invariant";
+} from "@retrospend/domain/envelope/engine";
+import { invariantSides } from "@retrospend/domain/envelope/invariant";
+import { describe, expect, it } from "vitest";
 import { takeBackCap } from "./planning";
 
 const C = 202610;

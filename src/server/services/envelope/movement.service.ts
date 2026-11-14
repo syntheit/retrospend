@@ -17,6 +17,8 @@
  */
 import { randomUUID } from "node:crypto";
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import type { Minor, MonthKey } from "@retrospend/domain/envelope/types";
+import { fromMinor, toMinor } from "@retrospend/domain/envelope/units";
 import type {
 	AssignInput,
 	CoverInput,
@@ -37,8 +39,6 @@ import {
 	Tracker,
 } from "./movement-state";
 import { markRulesSkipped, standingRuleRows } from "./rule.service";
-import type { Minor, MonthKey } from "./types";
-import { fromMinor, toMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
 

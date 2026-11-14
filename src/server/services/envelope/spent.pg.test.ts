@@ -14,12 +14,12 @@
  *   spent nothing, reads 0.
  */
 import { randomUUID } from "node:crypto";
+import { budgetMonthOf, isoDateIn } from "@retrospend/domain/envelope/months";
 import { beforeAll, describe, expect, it } from "vitest";
 import { readFigures } from "~/server/figures/read";
 import { forUser } from "~/server/services/preview";
 import { adminDb } from "~/test/pg-harness";
 import { addRow, seedUser, setupInput } from "./__tests__/pg-fixture";
-import { budgetMonthOf, isoDateIn } from "./months";
 import { assignEnvelopes } from "./movement.mutation";
 import { getMonth } from "./read.service";
 import { setupEnvelopeBook } from "./setup.mutation";

@@ -6,10 +6,10 @@
  */
 import { randomUUID } from "node:crypto";
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import { dec, fromMinor } from "@retrospend/domain/envelope/units";
 import type { GroupTargetInput, SetupInput } from "~/lib/schemas/envelope";
 import type { Prisma } from "~prisma";
 import { ruleColumns } from "./rule-store";
-import { dec, fromMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
 

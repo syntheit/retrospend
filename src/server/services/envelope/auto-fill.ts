@@ -2,7 +2,11 @@
  * Auto-fill (SPEC §5.4): overspent envelopes to 0, bills by due date, group
  * targets in group order (§5.9), Monthly, then Savings.
  */
-import type { EnvelopeKind, IsoDate, Minor } from "./types";
+import type {
+	EnvelopeKind,
+	IsoDate,
+	Minor,
+} from "@retrospend/domain/envelope/types";
 
 export type FillStep = "OVERSPENT" | "BILL" | "GROUP" | "MONTHLY" | "SAVINGS";
 

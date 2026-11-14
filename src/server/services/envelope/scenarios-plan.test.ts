@@ -6,28 +6,28 @@
  * between terms; it creates none).
  */
 
+import {
+	type ActivityEntry,
+	computeBook,
+	type EngineInput,
+	type MovementEntry,
+} from "@retrospend/domain/envelope/engine";
 import { groupTargetDto } from "@retrospend/domain/envelope/group-view";
+import { invariantSides } from "@retrospend/domain/envelope/invariant";
 import {
 	buildMonthView,
 	type ViewBook,
 } from "@retrospend/domain/envelope/month-view";
 import type { EnvelopeTarget } from "@retrospend/domain/envelope/needs";
 import type { GroupRole } from "@retrospend/domain/envelope/pace";
+import type { MonthKey } from "@retrospend/domain/envelope/types";
 import { describe, expect, it } from "vitest";
 import type { GetMonthOutput } from "~/lib/schemas/envelope";
 import type { DraftDto } from "~/lib/schemas/envelope-plan";
 import { draftInput, fundNowLines, previewDraft } from "./draft-preview";
-import {
-	type ActivityEntry,
-	computeBook,
-	type EngineInput,
-	type MovementEntry,
-} from "./engine";
 import type { LoadedBook } from "./inputs";
-import { invariantSides } from "./invariant";
 import { fillFromTargets } from "./planning";
 import type { IncomeRule } from "./rules";
-import type { MonthKey } from "./types";
 
 const m = (n: number) => Math.round(n * 100);
 const NOV = 202611;

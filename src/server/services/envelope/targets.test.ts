@@ -7,8 +7,8 @@ import {
 	savingsNeed,
 	savingsProgress,
 } from "@retrospend/domain/envelope/targets";
+import { TargetConfigError } from "@retrospend/domain/envelope/types";
 import { describe, expect, it } from "vitest";
-import { TargetConfigError } from "./types";
 
 /** Whole currency units to minor (2 decimals). */
 const m = (n: number) => Math.round(n * 100);

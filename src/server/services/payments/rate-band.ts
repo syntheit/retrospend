@@ -19,11 +19,11 @@
  * rate to 0), so without offsets it is allowed.
  */
 import { isCrypto } from "@retrospend/domain/currency-format";
+import { dec } from "@retrospend/domain/envelope/units";
 import { USD } from "@retrospend/domain/money";
 import { roundRateDec } from "@retrospend/domain/money-dec";
 import type { Decimal } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
-import { dec } from "~/server/services/envelope/units";
 import type { Prisma } from "~prisma";
 import type { PlannedSettlement } from "./allocate";
 

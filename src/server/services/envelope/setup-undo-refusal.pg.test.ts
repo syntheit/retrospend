@@ -7,6 +7,7 @@
  * the book and its 3 envelopes are still there afterwards.
  */
 import { randomUUID } from "node:crypto";
+import { budgetMonthOf, isoDateIn } from "@retrospend/domain/envelope/months";
 import { describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { forUser } from "~/server/services/preview";
@@ -27,7 +28,6 @@ import {
 import { reconcileMutation, setStyleMutation } from "./book.mutation";
 import { getWelcomeBack, pause } from "./book-read.service";
 import { updateEnvelopeMutation } from "./crud.mutation";
-import { budgetMonthOf, isoDateIn } from "./months";
 import { assignEnvelopes } from "./movement.mutation";
 import { getMonth } from "./read.service";
 import { undoSetupEnvelopeBook } from "./setup-undo.mutation";

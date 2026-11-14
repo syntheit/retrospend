@@ -4,11 +4,14 @@
  */
 
 import {
+	computeBook,
+	type EngineInput,
+} from "@retrospend/domain/envelope/engine";
+import {
 	buildMonthView,
 	type ViewBook,
 } from "@retrospend/domain/envelope/month-view";
 import { describe, expect, it } from "vitest";
-import { computeBook, type EngineInput } from "./engine";
 import type { LoadedBook } from "./inputs";
 import type { MonthRead } from "./month-read";
 import { proposePlan } from "./use-my-plan";

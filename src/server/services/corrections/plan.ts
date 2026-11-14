@@ -16,7 +16,7 @@
  * The original is never touched. Negative shares exist on correction rows
  * only.
  */
-import { sumMinor } from "../envelope/units";
+import { sumMinor } from "@retrospend/domain/envelope/units";
 
 export interface Party {
 	readonly participantType: "user" | "guest" | "shadow";

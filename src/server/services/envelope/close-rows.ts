@@ -8,6 +8,7 @@ import type {
 	CloseRowCore,
 	DirtyMark,
 } from "@retrospend/domain/envelope/book-source";
+import type { MonthKey } from "@retrospend/domain/envelope/types";
 import { z } from "zod";
 import {
 	type MonthCloseSummary,
@@ -15,7 +16,6 @@ import {
 } from "~/lib/schemas/envelope";
 import type { Prisma } from "~prisma";
 import { readCheckpoint, type StoredCheckpoint } from "./checkpoint";
-import type { MonthKey } from "./types";
 
 type Tx = Prisma.TransactionClient;
 

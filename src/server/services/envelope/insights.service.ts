@@ -2,11 +2,12 @@
  * The Budget page's insights read: the month shown, plus the months before
  * it for the trend, each through the same month read the page uses.
  */
+
+import type { MonthKey } from "@retrospend/domain/envelope/types";
 import type { GetMonthOutput } from "~/lib/schemas/envelope";
 import type { BudgetInsights } from "~/lib/schemas/envelope-insights";
 import { insightsOf, trendMonths } from "./insights";
 import { getMonth } from "./read.service";
-import type { MonthKey } from "./types";
 
 /** Null without a budget. */
 export async function getBudgetInsights(

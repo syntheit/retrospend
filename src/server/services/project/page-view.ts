@@ -2,26 +2,30 @@
  * The project page: the header facts, the hero figures, the members with
  * your balance with each, spending by category, the payments and the expense
  * rows, all in minor units. The Summary tab's group table and who pays whom
- * come from getProjectSummary (summary.service.ts); this read never
- * recomputes them. Callers check access first: a member (user or guest), a
- * viewer link, or the public page of a PUBLIC project. A viewer link and
- * the public page have no "you": no balances, no share, no payments. The
- * public page, open to the internet, also loads only the newest PAGE_ROWS
- * rows and reads its totals from aggregates.
+ * come from getProjectSummary (summary.service.ts), never recomputed here.
+ * Callers check access first: a member (user or guest), a viewer link, or
+ * the public page of a PUBLIC project. Those last two have no "you" (no
+ * balances, share or payments), and the public page loads only the newest
+ * PAGE_ROWS rows and reads its totals from aggregates.
  */
 
 import { inFaceOrder } from "@retrospend/domain/activity-rows";
 import { categoryTone } from "@retrospend/domain/category-tone";
+import {
+	fromMinor,
+	sumMinor,
+	toMinor,
+} from "@retrospend/domain/envelope/units";
 import { roundedMinor } from "@retrospend/domain/money-minor";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { getImageUrl } from "~/lib/image-url";
 import { db as globalDb } from "~/server/db";
 import type { Money } from "~/server/figures/registry";
-import { fromMinor, sumMinor, toMinor } from "~/server/services/envelope/units";
 import { loadQuotes } from "~/server/services/payments/quotes";
 import { BALANCE_SETTLEMENT_STATUSES } from "~/server/services/shared-expenses/balance";
 import { computeBalanceBatch } from "~/server/services/shared-expenses/balance-batch";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
+import { refKey } from "~/server/services/shared-expenses/ledger-posting";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import { Prisma, type PrismaClient } from "~prisma";
@@ -37,7 +41,6 @@ import {
 	myShareOf,
 	shareAtHome,
 } from "./page-figures";
-import { refKey } from "~/server/services/shared-expenses/ledger-posting";
 
 /** The most expense rows the page loads at once; the count says when there are more. */
 export const PAGE_ROWS = 500;
@@ -123,23 +126,20 @@ function loadPayments(db: PrismaClient, projectId: string) {
  * spending by category, per currency. Each row is rounded to its currency's
  * minor unit (half to even, roundedMinor) before it is summed, as the member
  * page does, so the two never differ by a cent. Rows with the same amount
- * are one group with a count, so the rounding stays in the domain and the
- * query stays an aggregate; a group's minor units are its count times one
- * row's.
+ * form one group with a count, which keeps the query an aggregate: a
+ * group's minor units are its count times one row's.
  *
- * Reads on the global client explicitly: the public page has no signed-in
- * user, so there is no RLS context to run as (publicPageView hands this the
- * global client already), and the raw query below is refused on a scoped
+ * Reads on the global client: the public page has no signed-in user, so
+ * there is no RLS context, and the raw query below is refused on a scoped
  * client. The caller has checked the project is PUBLIC.
  */
 async function loadPublicTotals(projectId: string) {
-	const db = globalDb;
 	const where = { projectId };
 	const [count, first] = await Promise.all([
-		db.sharedTransaction.count({ where }),
-		db.sharedTransaction.aggregate({ where, _min: { date: true } }),
+		globalDb.sharedTransaction.count({ where }),
+		globalDb.sharedTransaction.aggregate({ where, _min: { date: true } }),
 	]);
-	const groups = await db.$queryRaw<
+	const groups = await globalDb.$queryRaw<
 		{
 			currency: string;
 			categoryId: string | null;
@@ -155,7 +155,7 @@ async function loadPublicTotals(projectId: string) {
 	`);
 	const ids = groups.flatMap((g) => (g.categoryId ? [g.categoryId] : []));
 	const categories = ids.length
-		? await db.category.findMany({
+		? await globalDb.category.findMany({
 				where: { id: { in: ids } },
 				select: { id: true, name: true, icon: true, color: true },
 			})
