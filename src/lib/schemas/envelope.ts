@@ -36,7 +36,7 @@ import {
 	verdictActionSchema,
 	verdictStateSchema,
 } from "@retrospend/api-contract/budget";
-import { userText } from "@retrospend/api-contract/common";
+import { moneySchema, userText } from "@retrospend/api-contract/common";
 import { z } from "zod";
 
 export {
@@ -50,6 +50,7 @@ export {
 	leftoverRuleSchema,
 	minorSchema,
 	missingRateSchema,
+	moneySchema,
 	monthKeySchema,
 	monthStateSchema,
 	movementKindSchema,
@@ -67,11 +68,6 @@ export {
 	verdictActionSchema,
 	verdictStateSchema,
 };
-
-export const moneySchema = z.object({
-	minor: minorSchema,
-	currency: z.string().min(3).max(10),
-});
 
 const idSchema = z.string().min(1).max(64);
 /** Client-made ids (movements, batches) make retries idempotent. */

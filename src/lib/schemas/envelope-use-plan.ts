@@ -4,13 +4,9 @@
  * with the rest choice (Leave it, Save it, Next month). Money is the Money
  * DTO in minor units; the server decides every line.
  */
+import { usePlanResultSchema } from "@retrospend/api-contract/budget";
 import { z } from "zod";
-import {
-	fillLineSchema,
-	minorSchema,
-	moneySchema,
-	restChoiceSchema,
-} from "./envelope";
+import { minorSchema, restChoiceSchema } from "./envelope";
 
 export const usePlanInputSchema = z.object({
 	/** Client id of the batch: a retry returns the batch it wrote instead of planning again. */
@@ -20,19 +16,7 @@ export const usePlanInputSchema = z.object({
 	rest: restChoiceSchema.default("LEAVE"),
 });
 
-export const usePlanResultSchema = z.object({
-	/** The one batch every line was written in; undo takes it back. */
-	batchId: z.string().nullable(),
-	lines: z.array(fillLineSchema),
-	/** What stays Not planned yet. */
-	rest: moneySchema,
-	/** Where the rest went (Leave it when it stayed or was not offered). */
-	restChoice: restChoiceSchema,
-	/** More was asked for than Not planned yet holds: this much was planned at most. */
-	capped: z.object({ asked: moneySchema, held: moneySchema }).nullable(),
-	/** A retry of a batch already written: its id only, the lines were listed the first time. */
-	replayed: z.boolean(),
-});
+export { usePlanResultSchema };
 
 export type UsePlanInput = z.infer<typeof usePlanInputSchema>;
 export type UsePlanResult = z.infer<typeof usePlanResultSchema>;
