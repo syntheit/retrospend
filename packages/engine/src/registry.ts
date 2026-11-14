@@ -21,8 +21,6 @@ import {
 	netWorthFrom,
 	netWorthInputsFromRows,
 	notTrackedFrom,
-	notTrackedUnitsOf,
-	type OwedReading,
 } from "@retrospend/domain/accounts/account-figures";
 import { FigureNarrowingError } from "@retrospend/domain/figures/narrowing";
 import {
@@ -32,11 +30,6 @@ import {
 	type FiguresRegistry,
 } from "@retrospend/domain/figures/registry";
 import { FigureUnavailable } from "@retrospend/domain/figures/unavailable";
-import {
-	rateLookup,
-	rateRowsByCurrency,
-	type StoredRateRow,
-} from "@retrospend/domain/money";
 import {
 	type RecurringDirection,
 	type RecurringPeriod,
@@ -58,9 +51,17 @@ import {
 	spentMinorByCurrency,
 	spentRange,
 } from "@retrospend/domain/spent";
-import { NotFoundError } from "./errors";
-import { OWED_ID, type Reader } from "./port";
-import { settingsReads } from "./reference";
+import {
+	lookupFor,
+	notTrackedIn,
+	once,
+	owedOf,
+	ratesOf,
+	readNow,
+	rowsIn,
+	settingsOf,
+} from "./pass-reads";
+import type { Reader } from "./port";
 
 export interface DeviceFiguresDeps {
 	/**
@@ -72,55 +73,12 @@ export interface DeviceFiguresDeps {
 
 type DeviceFigure = FigureDefinition<Reader>;
 
-/** The settings row; a store without one throws (NotFoundError), never a USD fallback. */
-const settingsOf = (db: Reader) => settingsReads(db).require();
-
-/**
- * Owed to you and You owe from the `owed` row a shares sync wrote. Shared
- * money stays server-computed (the spike, 43-45), so the device reads the
- * server's totals from its store: constant within a pass, never changed by a
- * device write. No row (shares never pulled), or totals in another currency
- * than the home currency (settings changed since the pull), throws instead of
- * guessing: a missing total is never 0, and a stale one would be wrong.
- */
-function owedOf(db: Reader, home: string): OwedReading {
-	const row = db.get("owed", OWED_ID);
-	if (!row) throw new NotFoundError("owed does not exist");
-	if ("missingRates" in row) return { missingRates: row.missingRates };
-	if (row.currency !== home)
-		throw new NotFoundError(
-			`owed is in ${row.currency}, not the home currency ${home}`,
-		);
-	return { owedToYou: row.owedToYou, youOwe: row.youOwe };
-}
-
-/** Rate lookups over the rows of `currencies`, picked in memory as the server's batch lookup does. */
-function lookupFor(db: Reader, currencies: Iterable<string>) {
-	const rates: readonly StoredRateRow[] = db.list("rates");
-	return rateLookup(rateRowsByCurrency(rates, currencies));
-}
-
-/** The instant one pass reads at: the same for every figure of the pass. */
-function readNow(clock: () => Date, pass?: FigurePass): Promise<Date> {
-	const read = async () => new Date(clock().getTime());
-	return pass ? pass.once("device:now", read) : read();
-}
-
-/** A once-per-pass load, or a plain one when there is no pass. */
-function once<T>(
-	pass: FigurePass | undefined,
-	key: string,
-	load: () => Promise<T>,
-): Promise<T> {
-	return pass ? pass.once(key, load) : load();
-}
-
 function spentFigure(clock: () => Date): DeviceFigure {
 	return {
 		id: "spent",
 		scope: [],
 		compute: async (db, _scope, pass) => {
-			const s = settingsOf(db);
+			const s = settingsOf(db, pass);
 			const range = spentRange(
 				await readNow(clock, pass),
 				s.startDay,
@@ -128,8 +86,8 @@ function spentFigure(clock: () => Date): DeviceFigure {
 			);
 			return spentMinorByCurrency(
 				spentInputsFromRows({
-					expenses: db.list("expenses"),
-					shares: db.list("shares"),
+					expenses: rowsIn(db, pass, "expenses"),
+					shares: rowsIn(db, pass, "shares"),
 					hiddenProjectIds: s.hiddenProjectIds,
 					range,
 				}),
@@ -138,13 +96,17 @@ function spentFigure(clock: () => Date): DeviceFigure {
 	};
 }
 
-async function loadPace(db: Reader, now: Date): Promise<SpendPace> {
-	const s = settingsOf(db);
-	const shares = db.list("shares");
-	const rates: readonly StoredRateRow[] = db.list("rates");
-	const homeRates = rateRowsByCurrency(rates, [s.homeCurrency])[s.homeCurrency];
+async function loadPace(
+	db: Reader,
+	now: Date,
+	pass?: FigurePass,
+): Promise<SpendPace> {
+	const s = settingsOf(db, pass);
+	const shares = rowsIn(db, pass, "shares");
+	const homeRates = ratesOf(db, pass, [s.homeCurrency])[s.homeCurrency];
 	const shareLookup = lookupFor(
 		db,
+		pass,
 		shares.filter((x) => x.exchangeRate === null).map((x) => x.currency),
 	);
 	return spendPaceFrom({
@@ -153,7 +115,7 @@ async function loadPace(db: Reader, now: Date): Promise<SpendPace> {
 		now,
 		timeZone: s.timeZone,
 		inputs: spendPaceInputsFromRows({
-			expenses: db.list("expenses"),
+			expenses: rowsIn(db, pass, "expenses"),
 			shares,
 			hiddenProjectIds: s.hiddenProjectIds,
 			home: s.homeCurrency,
@@ -175,7 +137,7 @@ function glanceFigures(clock: () => Date): DeviceFigure[] {
 		scope: [],
 		compute: async (db, scope, pass) => {
 			const pace = await once(pass, `glance:pace:${scope.userId}`, async () =>
-				loadPace(db, await readNow(clock, pass)),
+				loadPace(db, await readNow(clock, pass), pass),
 			);
 			const minor = pick(pace);
 			if (minor === null) return new FigureUnavailable(pace.missingRates);
@@ -197,15 +159,16 @@ function recurringFigures(clock: () => Date): DeviceFigure[] {
 	/** Due dates step and days show in the one saved zone, as the server's figure read has no request zone. */
 	const bodyOf = (db: Reader, scope: { userId: string }, pass?: FigurePass) =>
 		once(pass, `recurring:${scope.userId}`, async () => {
-			const s = settingsOf(db);
+			const s = settingsOf(db, pass);
 			const now = await readNow(clock, pass);
-			const templates = db.list("recurringTemplates");
+			const templates = rowsIn(db, pass, "recurringTemplates");
 			return recurringBodyFrom({
 				inputs: recurringInputsFromRows({
 					home: s.homeCurrency,
 					templates,
-					rateRows: rateRowsByCurrency(
-						db.list("rates"),
+					rateRows: ratesOf(
+						db,
+						pass,
 						recurringRateCurrencies(s.homeCurrency, templates),
 					),
 					now,
@@ -256,11 +219,13 @@ function accountFigures(clock: () => Date): DeviceFigure[] {
 		id: "netWorth",
 		scope: [],
 		compute: async (db, _scope, pass) => {
-			const s = settingsOf(db);
-			const open = db.list("accounts").filter((a) => a.closedAt === null);
-			const legs = db.list("legs");
-			const notTracked = notTrackedUnitsOf(legs);
-			const pick = lookupFor(db, [
+			const s = settingsOf(db, pass);
+			const open = rowsIn(db, pass, "accounts").filter(
+				(a) => a.closedAt === null,
+			);
+			const legs = rowsIn(db, pass, "legs");
+			const notTracked = notTrackedIn(db, pass);
+			const pick = lookupFor(db, pass, [
 				s.homeCurrency,
 				...open.map((a) => a.currency),
 				...notTracked.map((u) => u.currency),
@@ -289,12 +254,12 @@ function accountFigures(clock: () => Date): DeviceFigure[] {
 					pass,
 					`netWorthChange:${scope.userId}`,
 					async () => {
-						const s = settingsOf(db);
-						const accounts = db.list("accounts");
-						const snapshots = db.list("snapshots");
-						const legs = db.list("legs");
-						const untracked = notTrackedUnitsOf(legs).map((u) => u.currency);
-						const pick = lookupFor(db, [
+						const s = settingsOf(db, pass);
+						const accounts = rowsIn(db, pass, "accounts");
+						const snapshots = rowsIn(db, pass, "snapshots");
+						const legs = rowsIn(db, pass, "legs");
+						const untracked = notTrackedIn(db, pass).map((u) => u.currency);
+						const pick = lookupFor(db, pass, [
 							s.homeCurrency,
 							...accounts.map((a) => a.currency),
 							...snapshots.flatMap((x) => (x.currency ? [x.currency] : [])),
@@ -306,7 +271,7 @@ function accountFigures(clock: () => Date): DeviceFigure[] {
 								accounts,
 								snapshots,
 								legs,
-								rateSwitches: db.list("rateSwitches"),
+								rateSwitches: rowsIn(db, pass, "rateSwitches"),
 								pick,
 							}),
 							await readNow(clock, pass),
@@ -322,13 +287,13 @@ function accountFigures(clock: () => Date): DeviceFigure[] {
 	const balance: DeviceFigure = {
 		id: "accounts.balance",
 		scope: ["accountId"],
-		compute: async (db, scope) =>
-			accountBalancesFrom(db.list("accounts"), scope.accountId),
+		compute: async (db, scope, pass) =>
+			accountBalancesFrom(rowsIn(db, pass, "accounts"), scope.accountId),
 	};
 	const notTracked: DeviceFigure = {
 		id: "notTracked",
 		scope: [],
-		compute: async (db) => notTrackedFrom(notTrackedUnitsOf(db.list("legs"))),
+		compute: async (db, _scope, pass) => notTrackedFrom(notTrackedIn(db, pass)),
 	};
 	return [
 		netWorth,
