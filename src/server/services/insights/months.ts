@@ -7,16 +7,18 @@
  * instant, and each month converts at its own end's rate.
  */
 import { shiftMonthStart } from "@retrospend/domain/insights";
-import { periodRateDate } from "@retrospend/domain/money";
-import { dayKey, parseDateOnlyIn } from "@retrospend/domain/time-zone";
-import { getCurrentFiscalMonth, getFiscalMonthRange } from "@retrospend/domain/fiscal-month";
+import {
+	fiscalMonthLabel,
+	monthBarsOf,
+	monthsWindow,
+} from "@retrospend/domain/insights-compute";
+import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import type { FigureDb } from "~/server/figures/registry";
 import { spentItems } from "~/server/services/figures/spent";
 import {
 	type InsightsContext,
 	insightsContext,
 	spentFilterFor,
-	valueIn,
 } from "./context";
 import {
 	INSIGHTS,
@@ -25,16 +27,10 @@ import {
 	type MonthsDTO,
 } from "./types";
 
+export { fiscalMonthLabel };
+
 /** Bars the page shows (the mockup's six). */
 export const MONTH_BARS = 6;
-
-/** The month label ("2026-10") of the fiscal month holding `at`. */
-export function fiscalMonthLabel(ctx: InsightsContext, at: Date): string {
-	return dayKey(
-		getCurrentFiscalMonth(at, ctx.startDay, ctx.zone),
-		ctx.zone,
-	).slice(0, 7);
-}
 
 /** Totals of the fiscal months named by `labels` (oldest first), one load. */
 export async function loadMonths(
@@ -43,50 +39,18 @@ export async function loadMonths(
 	labels: readonly string[],
 	filter?: InsightsFilter,
 ): Promise<{ bars: MonthBar[]; missing: string[] }> {
-	const ranges = labels.map((label) =>
-		getFiscalMonthRange(
-			parseDateOnlyIn(`${label}-01`, ctx.zone),
-			ctx.startDay,
-			ctx.zone,
-		),
-	);
-	const first = ranges[0];
-	const last = ranges.at(-1);
-	if (!first || !last) return { bars: [], missing: [] };
+	const window = monthsWindow(ctx, labels);
+	if (!window) return { bars: [], missing: [] };
 	const items = await spentItems(
 		db,
-		spentFilterFor(
-			ctx,
-			{ from: dayKey(first.start, ctx.zone), to: dayKey(last.end, ctx.zone) },
-			filter,
-		),
+		spentFilterFor(ctx, window.span, filter),
 		"day",
 	);
-	const missing = new Set<string>();
-	const bars = ranges.map((range, i): MonthBar => {
-		const inMonth = items.filter(
-			(item) =>
-				item.date !== null &&
-				item.date.getTime() >= range.start.getTime() &&
-				item.date.getTime() <= range.end.getTime(),
-		);
-		const value = valueIn(
-			inMonth,
-			ctx.home,
-			ctx.homeRateAt(periodRateDate(range.end, ctx.now)),
-		);
-		for (const currency of value.missing) missing.add(currency);
-		return {
-			month: labels[i] ?? "",
-			span: {
-				from: dayKey(range.start, ctx.zone),
-				to: dayKey(range.end, ctx.zone),
-			},
-			figure: INSIGHTS.byMonth,
-			total: value.money,
-		};
-	});
-	return { bars, missing: [...missing].sort() };
+	const { bars, missing } = monthBarsOf(items, ctx, window.ranges);
+	return {
+		bars: bars.map((bar) => ({ ...bar, figure: INSIGHTS.byMonth })),
+		missing,
+	};
 }
 
 export async function monthsIn(

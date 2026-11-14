@@ -10,16 +10,14 @@
  * right before it (previousPeriod), in the viewer's calendar days.
  */
 import { percentChange, type Span } from "@retrospend/domain/insights";
+import { type SpanRead, spanReadOf } from "@retrospend/domain/insights-compute";
 import type { FigureDb } from "~/server/figures/registry";
-import { type SpentItem, spentItems } from "~/server/services/figures/spent";
+import { spentItems } from "~/server/services/figures/spent";
 import {
 	type InsightsContext,
 	insightsContext,
 	previousPeriod,
-	spanRate,
 	spentFilterFor,
-	type Valued,
-	valueIn,
 } from "./context";
 import {
 	type CategoryRow,
@@ -27,26 +25,6 @@ import {
 	type InsightsFilter,
 	type SummaryDTO,
 } from "./types";
-
-export interface SpanRead {
-	readonly total: Valued;
-	/** Expenses behind the total. */
-	readonly count: number;
-	readonly categories: ReadonlyMap<string | null, Valued>;
-}
-
-/** Items grouped by their category (null: none). */
-export function groupByCategory(
-	items: readonly SpentItem[],
-): Map<string | null, SpentItem[]> {
-	const groups = new Map<string | null, SpentItem[]>();
-	for (const item of items) {
-		const list = groups.get(item.categoryId) ?? [];
-		list.push(item);
-		groups.set(item.categoryId, list);
-	}
-	return groups;
-}
 
 /** One span's spending, totaled and split by category in the home currency. */
 export async function readSpan(
@@ -60,17 +38,7 @@ export async function readSpan(
 		spentFilterFor(ctx, span, filter),
 		"category",
 	);
-	const rate = spanRate(ctx, span);
-	return {
-		total: valueIn(items, ctx.home, rate),
-		count: items.reduce((n, item) => n + item.count, 0),
-		categories: new Map(
-			[...groupByCategory(items)].map(([id, group]) => [
-				id,
-				valueIn(group, ctx.home, rate),
-			]),
-		),
-	};
+	return spanReadOf(items, ctx, span);
 }
 
 /** Largest first, nothing-to-show categories out; categories without a value last. */

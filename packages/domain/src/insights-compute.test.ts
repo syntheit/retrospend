@@ -5,14 +5,24 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+	averageOf,
+	cashflowOf,
+	daysElapsed,
+	groupByCategory,
 	insightsContextOf,
 	instantRange,
+	monthBarsOf,
+	monthsWindow,
 	previousPeriod,
+	savedOf,
+	spanReadOf,
 	spanRate,
 	valueIn,
+	ytdSideOf,
 } from "./insights-compute";
 import type { RateRow } from "./money";
 import { dec } from "./precise-decimal";
+import type { SpentItem } from "./spent";
 
 const ZONE = "America/Argentina/Buenos_Aires";
 const day = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
@@ -143,5 +153,218 @@ describe("valueIn", () => {
 			money: null,
 			missing: ["ARS"],
 		});
+	});
+});
+
+/** Home "ARS": blue 1,400 from Dec 20, 2025, blue 1,500 from Oct 5, 2026; now Oct 15. */
+const ratedCtx = () =>
+	ctx([
+		{ type: "blue", rate: 1400, date: day("2025-12-20") },
+		{ type: "blue", rate: 1500, date: day("2026-10-05") },
+	]);
+
+const spent = (
+	amount: string,
+	o: Partial<SpentItem> & { usd?: string } = {},
+): SpentItem => ({
+	currency: "ARS",
+	amount: dec(amount),
+	amountInUSD: dec(o.usd ?? "0"),
+	booked: null,
+	categoryId: null,
+	date: null,
+	count: 1,
+	...o,
+});
+const usdRow = (amount: string, o: Partial<SpentItem> = {}) =>
+	spent(amount, { currency: "USD", usd: amount, ...o });
+
+describe("groupByCategory", () => {
+	it("keeps the first-seen order of categories, null among them", () => {
+		const a = spent("1", { categoryId: "food" });
+		const b = spent("2");
+		const c = spent("3", { categoryId: "food" });
+		const groups = groupByCategory([a, b, c]);
+		expect([...groups.keys()]).toEqual(["food", null]);
+		expect(groups.get("food")).toEqual([a, c]);
+		expect(groups.get(null)).toEqual([b]);
+	});
+});
+
+describe("spanReadOf", () => {
+	const october = { from: "2026-10-01", to: "2026-10-31" };
+
+	it("totals at the span's rate, a booked row at its booked value, a refund is no expense", () => {
+		const read = spanReadOf(
+			[
+				usdRow("10", { categoryId: "food" }),
+				usdRow("10", {
+					categoryId: "food",
+					booked: { currency: "ARS", amount: dec("14500") },
+				}),
+				spent("-2000", { categoryId: "food", count: 0 }),
+				spent("100"),
+			],
+			ratedCtx(),
+			october,
+		);
+		// Food: 10 x 1,500 + 14,500 - 2,000 = 27,500; uncategorized 100; total 27,600.
+		expect(read.total.money).toEqual({ minor: 2_760_000, currency: "ARS" });
+		expect(read.categories.get("food")?.money).toEqual({
+			minor: 2_750_000,
+			currency: "ARS",
+		});
+		expect(read.categories.get(null)?.money).toEqual({
+			minor: 10_000,
+			currency: "ARS",
+		});
+		// Three expenses; the refund counts 0.
+		expect(read.count).toBe(3);
+	});
+
+	it("an unpriced share names its currency and leaves the total out", () => {
+		const read = spanReadOf(
+			[
+				{
+					currency: "XQZ",
+					amount: dec("10"),
+					amountInUSD: null,
+					rate: null,
+					categoryId: null,
+					date: null,
+					count: 1,
+				},
+			],
+			ratedCtx(),
+			october,
+		);
+		expect(read.total).toEqual({ money: null, missing: ["XQZ"] });
+	});
+});
+
+describe("ytdSideOf", () => {
+	it("home at the span's rate, USD at the frozen values, a share at its own rate", () => {
+		const side = ytdSideOf(
+			[
+				usdRow("10", { categoryId: "food" }),
+				{
+					currency: "TRY",
+					amount: dec("900"),
+					amountInUSD: dec("22.5"),
+					rate: dec("40"),
+					categoryId: "food",
+					date: null,
+					count: 1,
+				},
+			],
+			ratedCtx(),
+			{ from: "2026-01-01", to: "2026-10-15" },
+		);
+		// Home: 10 x 1,500 + 900 / 40 x 1,500 = 15,000 + 33,750 = 48,750.00.
+		// USD: 10 + 22.50 = 32.50.
+		const expected = {
+			home: { minor: 4_875_000, currency: "ARS" },
+			usd: { minor: 3_250, currency: "USD" },
+		};
+		expect(side.total).toEqual(expected);
+		expect(side.categories.get("food")).toEqual(expected);
+		expect(side.missing).toEqual([]);
+	});
+});
+
+describe("months", () => {
+	it("a window is the labels' fiscal months and the span that covers them", () => {
+		const window = monthsWindow({ zone: ZONE, startDay: 1 }, [
+			"2026-09",
+			"2026-10",
+		]);
+		expect(window?.span).toEqual({ from: "2026-09-01", to: "2026-10-31" });
+		expect(window?.ranges.map((r) => r.start.toISOString())).toEqual([
+			"2026-09-01T03:00:00.000Z",
+			"2026-10-01T03:00:00.000Z",
+		]);
+		expect(monthsWindow({ zone: ZONE, startDay: 1 }, [])).toBeNull();
+	});
+
+	it("a row falls into its month by its instant and each month converts at its own end", () => {
+		const c = ratedCtx();
+		const window = monthsWindow(c, ["2026-09", "2026-10"]);
+		const { bars, missing } = monthBarsOf(
+			[
+				// Sep 30 23:59 local and Oct 1 00:00 local.
+				spent("5", { date: new Date("2026-10-01T02:59:00Z") }),
+				spent("7", { date: new Date("2026-10-01T03:00:00Z") }),
+				usdRow("20", { date: new Date("2026-09-10T15:00:00Z") }),
+				usdRow("10", { date: new Date("2026-10-10T15:00:00Z") }),
+				// A row with no instant belongs to no month.
+				spent("999"),
+			],
+			c,
+			window?.ranges ?? [],
+		);
+		// September at its end's blue 1,400: 5 + 20 x 1,400 = 28,005.00.
+		// October still runs: at now's blue 1,500: 7 + 10 x 1,500 = 15,007.00.
+		expect(bars).toEqual([
+			{
+				month: "2026-09",
+				span: { from: "2026-09-01", to: "2026-09-30" },
+				total: { minor: 2_800_500, currency: "ARS" },
+			},
+			{
+				month: "2026-10",
+				span: { from: "2026-10-01", to: "2026-10-31" },
+				total: { minor: 1_500_700, currency: "ARS" },
+			},
+		]);
+		expect(missing).toEqual([]);
+	});
+
+	it("a home with no rate leaves the foreign month out and names home", () => {
+		const c = ctx([]);
+		const window = monthsWindow(c, ["2026-10"]);
+		const { bars, missing } = monthBarsOf(
+			[usdRow("10", { date: new Date("2026-10-10T15:00:00Z") })],
+			c,
+			window?.ranges ?? [],
+		);
+		expect(bars[0]?.total).toBeNull();
+		expect(missing).toEqual(["ARS"]);
+	});
+});
+
+describe("cashflow", () => {
+	const m = (minor: number) => ({ minor, currency: "ARS" });
+
+	it("income and spending at the range's rate, saved signed", () => {
+		const read = cashflowOf([spent("100")], [usdRow("50")], ratedCtx(), {
+			from: "2026-10-01",
+			to: "2026-10-31",
+		});
+		// Income 50 x 1,500 = 75,000.00; spent 100.00; saved 74,900.00.
+		expect(read.income).toEqual(m(7_500_000));
+		expect(read.spent).toEqual(m(10_000));
+		expect(savedOf(read)).toEqual(m(7_490_000));
+		expect(savedOf({ ...read, income: null })).toBeNull();
+		expect(savedOf({ ...read, spent: null })).toBeNull();
+		expect(savedOf({ spent: m(500), income: m(0), missing: [] })).toEqual(
+			m(-500),
+		);
+	});
+
+	it("averages split half to even: an exact tie goes to the even neighbor", () => {
+		expect(averageOf(m(5), 2)).toEqual(m(2));
+		expect(averageOf(m(7), 2)).toEqual(m(4));
+		expect(averageOf(m(-5), 2)).toEqual(m(-2));
+		// 5,760,010 / 15 = 384,000.67.
+		expect(averageOf(m(5_760_010), 15)).toEqual(m(384_001));
+		expect(averageOf(null, 2)).toBeNull();
+		expect(averageOf(m(5), 0)).toBeNull();
+	});
+
+	it("days elapsed stop at today, and a finished range counts all its days", () => {
+		const october = { from: "2026-10-01", to: "2026-10-31" };
+		const september = { from: "2026-09-01", to: "2026-09-30" };
+		expect(daysElapsed(october, "2026-10-15")).toBe(15);
+		expect(daysElapsed(september, "2026-10-15")).toBe(30);
 	});
 });

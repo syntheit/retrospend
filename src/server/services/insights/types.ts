@@ -5,6 +5,7 @@
  * formatted by the client's one formatter (R9, R10).
  */
 import type { Span } from "@retrospend/domain/insights";
+import type { HomeAndUsd } from "@retrospend/domain/insights-compute";
 import type { Money } from "@retrospend/domain/money-minor";
 
 /** The page's filters, shared by every read. */
@@ -87,11 +88,7 @@ export interface MonthsDTO {
 	readonly missingRates: readonly string[];
 }
 
-/** One amount in the home currency and the same rows in USD at their frozen values. */
-export interface HomeAndUsd {
-	readonly home: Money | null;
-	readonly usd: Money | null;
-}
+export type { HomeAndUsd };
 
 export interface YtdCategoryRow {
 	readonly categoryId: string | null;
