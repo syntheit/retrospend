@@ -8,54 +8,75 @@
  * integer minor units, computed on the server (R9), formatted by the one
  * formatter. Months are YYYYMM numbers, dates YYYY-MM-DD calendar dates.
  */
+import {
+	billRepeatSchema,
+	budgetStyleSchema,
+	envelopeKindSchema,
+	envelopeStatusSchema,
+	groupRoleSchema,
+	groupTargetKindSchema,
+	isoDateSchema,
+	leftoverRuleSchema,
+	minorSchema,
+	missingRateSchema,
+	monthKeySchema,
+	monthStateSchema,
+	movementKindSchema,
+	participantRefSchema,
+	payFrequencySchema,
+	poolNameSchema,
+	projectBudgetRoutingSchema,
+	restChoiceSchema,
+	SETUP_STYLES,
+	setupPaySchema,
+	setupStyleSchema,
+	shareCategorySourceSchema,
+	targetCadenceSchema,
+	targetModeSchema,
+	verdictActionSchema,
+	verdictStateSchema,
+} from "@retrospend/api-contract/budget";
 import { userText } from "@retrospend/api-contract/common";
 import { z } from "zod";
 
-export const minorSchema = z
-	.number()
-	.int()
-	.refine(Number.isSafeInteger, "must be a safe integer");
+export {
+	billRepeatSchema,
+	budgetStyleSchema,
+	envelopeKindSchema,
+	envelopeStatusSchema,
+	groupRoleSchema,
+	groupTargetKindSchema,
+	isoDateSchema,
+	leftoverRuleSchema,
+	minorSchema,
+	missingRateSchema,
+	monthKeySchema,
+	monthStateSchema,
+	movementKindSchema,
+	participantRefSchema,
+	payFrequencySchema,
+	poolNameSchema,
+	projectBudgetRoutingSchema,
+	restChoiceSchema,
+	SETUP_STYLES,
+	setupPaySchema,
+	setupStyleSchema,
+	shareCategorySourceSchema,
+	targetCadenceSchema,
+	targetModeSchema,
+	verdictActionSchema,
+	verdictStateSchema,
+};
 
 export const moneySchema = z.object({
 	minor: minorSchema,
 	currency: z.string().min(3).max(10),
 });
 
-export const monthKeySchema = z
-	.number()
-	.int()
-	.min(190001)
-	.max(299912)
-	.refine((m) => m % 100 >= 1 && m % 100 <= 12, "not a YYYYMM month");
-
-export const isoDateSchema = z
-	.string()
-	.regex(/^\d{4}-\d{2}-\d{2}$/, "not a YYYY-MM-DD date");
-
 const idSchema = z.string().min(1).max(64);
 /** Client-made ids (movements, batches) make retries idempotent. */
 const clientIdSchema = z.string().uuid();
 
-export const budgetStyleSchema = z.enum([
-	"LIMITS",
-	"FLEX",
-	"EVERY_DOLLAR",
-	"SAVE_FIRST",
-	"FIFTY_THIRTY_TWENTY",
-	"WEEKLY",
-	"DEBT_PAYOFF",
-]);
-/** Styles whose features have landed (02 §8: P2 completes these, P4 Limits, P5 Save first and 50/30/20). */
-export const SETUP_STYLES = [
-	"FLEX",
-	"EVERY_DOLLAR",
-	"WEEKLY",
-	"LIMITS",
-	"SAVE_FIRST",
-	"FIFTY_THIRTY_TWENTY",
-	"DEBT_PAYOFF",
-] as const;
-export const setupStyleSchema = z.enum(SETUP_STYLES);
 /**
  * The styles that fund the envelopes' amounts from the money you start with,
  * in the same write as the book. A plan with no amounts funds nothing.
@@ -63,43 +84,7 @@ export const setupStyleSchema = z.enum(SETUP_STYLES);
 export const AMOUNT_SETUP_STYLES: ReadonlySet<(typeof SETUP_STYLES)[number]> =
 	new Set(["FLEX", "WEEKLY", "EVERY_DOLLAR", "DEBT_PAYOFF"]);
 
-export const envelopeKindSchema = z.enum([
-	"MONTHLY",
-	"BILL",
-	"SAVINGS",
-	"NONE",
-]);
-export const groupRoleSchema = z.enum(["BILLS", "SPENDING", "SAVINGS"]);
-export const targetModeSchema = z.enum(["REFILL", "SET_ASIDE"]);
-export const targetCadenceSchema = z.enum(["MONTH", "WEEK"]);
-export const billRepeatSchema = z.enum(["MONTHLY", "QUARTERLY", "YEARLY"]);
-export const movementKindSchema = z.enum([
-	"ASSIGN",
-	"SET",
-	"MOVE",
-	"COVER",
-	"UNASSIGN",
-	"AUTO_FILL",
-	"RULE",
-	"PLAN_FUND",
-	"PLAN_APPLY",
-	"CARRY_OVERSPEND",
-	"FIX_NEGATIVE",
-	"RESET",
-	"ARCHIVE",
-	"MIGRATION",
-	"UNDO",
-]);
-/** "Not planned yet" in every style except Every dollar (D-owner-2026-10-22f). */
-export const poolNameSchema = z.enum(["NOT_PLANNED_YET", "TO_ASSIGN"]);
-
 // ── Outputs ─────────────────────────────────────────────────────────────────
-
-export const missingRateSchema = z.object({
-	currency: z.string(),
-	rateType: z.string().nullable(),
-	date: isoDateSchema,
-});
 
 export const envelopeTargetSchema = z.object({
 	kind: z.enum(["MONTHLY", "BILL", "SAVINGS"]),
@@ -133,13 +118,6 @@ export const leftThisWeekSchema = z.object({
 	daysLeftInWeek: z.number().int(),
 	resetsOn: isoDateSchema.nullable(),
 });
-
-export const envelopeStatusSchema = z.enum([
-	"OVERSPENT",
-	"UNDERFUNDED",
-	"FUNDED",
-	"NO_TARGET",
-]);
 
 export const envelopeRowSchema = z.object({
 	id: idSchema,
@@ -190,12 +168,6 @@ export const groupTotalsSchema = z.object({
 	need: moneySchema,
 	count: z.number().int(),
 });
-
-export const groupTargetKindSchema = z.enum([
-	"NONE",
-	"AMOUNT",
-	"PERCENT_OF_INCOME",
-]);
 
 /**
  * A group's target this month (SPEC §5.9): "Wants · planned 30% · spent
@@ -267,29 +239,6 @@ export const leftToSpendSchema = z.object({
 	fasterThanPlanned: z.boolean(),
 });
 
-export const verdictStateSchema = z.enum([
-	"PLANNED_TOO_MUCH",
-	"OVER_BUDGET",
-	"BILLS_SHORT",
-	"USED_UP",
-	"FASTER_THAN_PLANNED",
-	"SOME_OVER",
-	"ON_TRACK",
-	"ALL_ASSIGNED",
-	"NEEDS_JOB",
-	"OVER_ASSIGNED",
-	"WEEK_LEFT",
-	"WEEK_USED",
-]);
-
-export const verdictActionSchema = z.enum([
-	"FIX_PLAN",
-	"COVER",
-	"PLAN_BILLS",
-	"USE_PLAN",
-	"TAKE_BACK",
-]);
-
 /** The top of Budget and Home's budget card: one number, one sentence, at most one notice (SYNTHESIS-r6 §4). */
 export const verdictSchema = z.object({
 	style: budgetStyleSchema,
@@ -327,11 +276,7 @@ export const verdictSchema = z.object({
 	incomplete: z.boolean(),
 });
 
-export const monthStateSchema = z.enum(["CLOSED", "OPEN", "NEXT"]);
-
 // ── Month close (P4, SPEC §5.5) ─────────────────────────────────────────────
-
-export const leftoverRuleSchema = z.enum(["CARRY", "RETURN", "SWEEP"]);
 
 /** One envelope at the end of a closed month, in book-currency minor units. */
 export const monthCloseEnvelopeSchema = z.object({
@@ -378,11 +323,6 @@ export const monthCloseSummarySchema = z.object({
 
 // ── Splits and money owed (P3, SPEC §5.8) ───────────────────────────────────
 
-export const participantRefSchema = z.object({
-	type: z.enum(["user", "guest", "shadow"]),
-	id: z.string().min(1).max(191),
-});
-
 export const owedLineSchema = z.object({
 	/** In the balance's own currency. Positive: they owe you; negative: you owe them. */
 	amount: moneySchema,
@@ -423,19 +363,6 @@ export const owedSummarySchema = z.object({
 	people: z.number().int().min(0),
 	aging: z.number().int().min(0),
 });
-
-export const shareCategorySourceSchema = z.enum([
-	"USER",
-	"NAME_MATCH",
-	"PROJECT",
-	"PERSON",
-	"TITLE",
-]);
-export const projectBudgetRoutingSchema = z.enum([
-	"CATEGORY",
-	"ENVELOPE",
-	"NOT_IN_BUDGET",
-]);
 
 export const getMonthOutputSchema = z.object({
 	book: z.object({
@@ -489,9 +416,6 @@ export const fillLineSchema = z.object({
 		"REST",
 	]),
 });
-
-/** Where the rest goes after Use my plan (D-owner-2026-10-22e): nothing moves unseen. */
-export const restChoiceSchema = z.enum(["LEAVE", "SAVE", "NEXT_MONTH"]);
 
 export const restOptionSchema = z.object({
 	choice: restChoiceSchema,
@@ -681,24 +605,6 @@ export const presetRuleSchema = setupRuleSchema
 export const monthInputSchema = z
 	.object({ month: monthKeySchema.optional() })
 	.default({});
-
-export const payFrequencySchema = z.enum([
-	"MONTHLY",
-	"EVERY_TWO_WEEKS",
-	"WEEKLY",
-	"VARIES",
-]);
-
-/** How you are paid (the pay step): a pay date the cycle counts from, unless it varies. */
-export const setupPaySchema = z
-	.object({
-		frequency: payFrequencySchema,
-		nextPay: isoDateSchema.nullable(),
-	})
-	.refine(
-		(p) => (p.frequency === "VARIES") === (p.nextPay === null),
-		"a pay date goes with every cycle except It varies",
-	);
 
 /** Pay off debt: the plan saved in the same write as the book (SPEC §5.11). */
 export const setupPayoffSchema = z.object({
