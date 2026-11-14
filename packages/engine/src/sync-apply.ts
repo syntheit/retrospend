@@ -15,6 +15,13 @@
  * transaction as it was and the caller can discard it. Rows apply by id, so a
  * page applied twice is the same as once; an id in `tombstones` is deleted.
  *
+ * The budget book family (the personal book, its groups, envelopes, category
+ * links, periods, closes, Wealth moves and payoff plan, plus movements and the
+ * transfers a bill reads) applies the same way. A snapshot of `shares` may
+ * carry the budget block (budget=1): it is kept as the pending snapshot beside
+ * `owed`, and whether it can be read yet (cursors, valuation key) is the
+ * reader's check, never made at apply time (see budget-snapshot.ts).
+ *
  * The figures read two things the wire does not carry on the row itself: an
  * expense's category kind (an income category keeps it out of spending) and a
  * template's category (name, color, icon). Both come from the `categories`
@@ -26,10 +33,19 @@ import type { AccountLegSource } from "@retrospend/domain/accounts/apply-legs";
 import type { AssetType } from "@retrospend/domain/accounts/places";
 import type { RecurringFrequency } from "@retrospend/domain/recurring";
 import type { TableName, TableRows, Writer } from "./port";
-import { InvalidInputError, OWED_ID, SETTINGS_ID } from "./port";
-
-/** The decimal text the server sends: optional minus, digits, optional fraction. */
-const DECIMAL = /^-?\d+(\.\d+)?$/;
+import {
+	BUDGET_SNAPSHOT_ID,
+	InvalidInputError,
+	OWED_ID,
+	SETTINGS_ID,
+} from "./port";
+import {
+	BOOK_ROWS,
+	type BookWireOf,
+	budgetSnapshotOf,
+	type WireBudgetBlock,
+} from "./sync-apply-book";
+import { decimal, decimalOrNull, instant, instantOrNull } from "./sync-values";
 
 export interface WireExpense {
 	readonly id: string;
@@ -45,6 +61,12 @@ export interface WireExpense {
 	readonly description: string | null;
 	readonly status: string;
 	readonly isAmortizedParent: boolean;
+	readonly isAmortizedChild: boolean;
+	readonly parentId: string | null;
+	readonly amortizeMode: string;
+	readonly keepInWealth: boolean;
+	readonly recurringTemplateId: string | null;
+	readonly budgetEnvelopeId: string | null;
 	readonly excludeFromAnalytics: boolean;
 	readonly direction: string;
 	readonly entryKind: string;
@@ -85,6 +107,9 @@ export interface WireAccount {
 	readonly balance: string;
 	readonly exchangeRate: string | null;
 	readonly exchangeRateType: string | null;
+	readonly interestRate: string | null;
+	readonly minimumPayment: string | null;
+	readonly dueDate: number | null;
 	readonly closedAt: string | null;
 	readonly createdAt: string;
 }
@@ -142,6 +167,12 @@ export interface WireShares {
 	readonly owed:
 		| { readonly owedToYou: WireMoney; readonly youOwe: WireMoney }
 		| { readonly missingRates: readonly string[] };
+	/**
+	 * Only in a response to `budget=1`. Absent: not asked, the stored snapshot
+	 * stays. Null: nothing to read on a device, the snapshot is cleared.
+	 * Unavailable: this pull could not make it, the previous snapshot stays.
+	 */
+	readonly budget?: WireBudgetBlock | { readonly unavailable: true } | null;
 }
 
 export interface WireSettings {
@@ -153,7 +184,7 @@ export interface WireSettings {
 }
 
 /** The entities of a cursor pull the device applies, by the table they fill. */
-export interface WireOf {
+export interface WireOf extends BookWireOf {
 	expenses: WireExpense;
 	categories: WireCategory;
 	recurringTemplates: WireTemplate;
@@ -171,25 +202,6 @@ export interface SyncPage<Row> {
 	readonly tombstones: readonly { readonly id: string }[];
 }
 
-const decimal = (value: string, what: string): string => {
-	if (!DECIMAL.test(value))
-		throw new InvalidInputError(`${what} is not a decimal`);
-	return value;
-};
-
-const decimalOrNull = (value: string | null, what: string) =>
-	value === null ? null : decimal(value, what);
-
-function instant(value: string, what: string): Date {
-	const date = new Date(value);
-	if (Number.isNaN(date.getTime()))
-		throw new InvalidInputError(`${what} is not a date`);
-	return date;
-}
-
-const instantOrNull = (value: string | null, what: string) =>
-	value === null ? null : instant(value, what);
-
 /** The rows a page makes, built before anything is written, so a bad row refuses the page. */
 type RowOf<E extends SyncEntity> = (
 	wire: WireOf[E],
@@ -197,6 +209,7 @@ type RowOf<E extends SyncEntity> = (
 ) => TableRows[E];
 
 const ROWS: { [E in SyncEntity]: RowOf<E> } = {
+	...BOOK_ROWS,
 	expenses: (w, categories) => ({
 		id: w.id,
 		status: w.status,
@@ -204,6 +217,12 @@ const ROWS: { [E in SyncEntity]: RowOf<E> } = {
 		entryKind: w.entryKind,
 		inType: w.inType,
 		isAmortizedParent: w.isAmortizedParent,
+		isAmortizedChild: w.isAmortizedChild,
+		parentId: w.parentId,
+		amortizeMode: w.amortizeMode,
+		keepInWealth: w.keepInWealth,
+		recurringTemplateId: w.recurringTemplateId,
+		budgetEnvelopeId: w.budgetEnvelopeId,
 		excludeFromAnalytics: w.excludeFromAnalytics,
 		categoryKind:
 			w.categoryId === null
@@ -253,6 +272,12 @@ const ROWS: { [E in SyncEntity]: RowOf<E> } = {
 		balance: decimal(w.balance, `Account ${w.id} balance`),
 		exchangeRate: decimalOrNull(w.exchangeRate, `Account ${w.id} exchangeRate`),
 		exchangeRateType: w.exchangeRateType,
+		interestRate: decimalOrNull(w.interestRate, `Account ${w.id} interestRate`),
+		minimumPayment: decimalOrNull(
+			w.minimumPayment,
+			`Account ${w.id} minimumPayment`,
+		),
+		dueDate: w.dueDate,
 		closedAt: instantOrNull(w.closedAt, `Account ${w.id} closedAt`),
 		createdAt: instant(w.createdAt, `Account ${w.id} createdAt`),
 	}),
@@ -354,7 +379,9 @@ function replaceTable<T extends TableName>(
 
 /**
  * Applies GET /sync/shares: the `shares` table becomes exactly the rows sent,
- * and the `owed` row the totals sent, both in `tx`. The whole body is checked
+ * and the `owed` row the totals sent, both in `tx`, with the budget snapshot
+ * when the body asks for it (see WireShares.budget; a block lands in
+ * budgetSnapshotPending, null clears both snapshots). The whole body is checked
  * first. Owed to you and You owe must be in one currency.
  */
 export function applySharesSnapshot(tx: Writer, body: WireShares): void {
@@ -388,8 +415,21 @@ export function applySharesSnapshot(tx: Writer, body: WireShares): void {
 			youOwe: owed.youOwe.minor,
 		};
 	}
+	// Checked before the first write, like the rest of the body.
+	const snapshot =
+		body.budget === undefined || body.budget === null
+			? undefined
+			: budgetSnapshotOf(body.budget);
 	replaceTable(tx, "shares", rows);
 	tx.put("owed", owedRow);
+	if (body.budget === null) {
+		tx.delete("budgetSnapshot", BUDGET_SNAPSHOT_ID);
+		tx.delete("budgetSnapshotPending", BUDGET_SNAPSHOT_ID);
+	}
+	// A new block waits as pending: the active one is the last whose cursor gate
+	// passed and keeps serving until promotePendingBudget moves the new one in.
+	// Unavailable keeps both, so a failed pull leaves a device the last good block.
+	else if (snapshot) tx.put("budgetSnapshotPending", snapshot);
 }
 
 /** Applies GET /sync/settings: the one settings row. An empty `defaultRateTypes` is left off the row. */

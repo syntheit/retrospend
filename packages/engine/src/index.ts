@@ -4,6 +4,23 @@ export type {
 	LegRow,
 	SnapshotRow,
 } from "./accounts";
+export type {
+	AccountTerms,
+	BookPeriodRow,
+	BudgetBookRow,
+	BudgetSnapshotRow,
+	CloseSummary,
+	EnvelopeCategoryRow,
+	EnvelopeGroupRow,
+	EnvelopeRow,
+	ExpenseBookDetail,
+	FrozenEntry,
+	MonthCloseRow,
+	PayoffPlanRow,
+	TransferRow,
+	WealthTransferRow,
+} from "./book-rows";
+export { promotePendingBudget } from "./budget-snapshot";
 export {
 	type AnyRow,
 	type ChangeKind,
@@ -28,6 +45,7 @@ export {
 export { MemoryStore, type MemoryStoreOptions } from "./memory-store";
 export { type MovementRow, mirrorId } from "./movements";
 export {
+	BUDGET_SNAPSHOT_ID,
 	type CategoryRow,
 	type Change,
 	InvalidInputError,
@@ -93,5 +111,18 @@ export {
 	type WireSnapshot,
 	type WireTemplate,
 } from "./sync-apply";
+export type {
+	WireBookPeriod,
+	WireBudgetBlock,
+	WireBudgetBook,
+	WireBudgetMovement,
+	WireEnvelope,
+	WireEnvelopeCategory,
+	WireEnvelopeGroup,
+	WireMonthClose,
+	WirePayoffPlan,
+	WireTransfer,
+	WireWealthTransfer,
+} from "./sync-apply-book";
 export type { TemplateRow } from "./templates";
 export type { UndoToken } from "./undo";

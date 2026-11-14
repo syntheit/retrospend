@@ -14,6 +14,7 @@ import {
 	SINGLE_ROW_IDS,
 	type Store,
 	TABLE_NAMES,
+	type TableName,
 	TransactionError,
 } from "./port";
 
@@ -103,6 +104,34 @@ export const conformanceCases: ConformanceCase[] = [
 				InvalidInputError,
 			);
 			expectEqual(store.list("settings"), [], "nothing stored");
+		},
+	},
+	{
+		name: "every single-row table refuses a row with another id",
+		async run(makeStore) {
+			const store = await makeStore();
+			const single = Object.keys(SINGLE_ROW_IDS) as TableName[];
+			expectEqual(
+				single.sort(),
+				[
+					"budgetSnapshot",
+					"budgetSnapshotPending",
+					"owed",
+					"rateSync",
+					"settings",
+				],
+				"the single-row tables",
+			);
+			for (const t of single)
+				await expectThrows(
+					() =>
+						store.transaction((tx) =>
+							tx.put(t, fixtureRow(t, "other") as never),
+						),
+					`${t} put`,
+					InvalidInputError,
+				);
+			for (const t of single) expectEqual(store.list(t), [], `${t} stored`);
 		},
 	},
 	{
