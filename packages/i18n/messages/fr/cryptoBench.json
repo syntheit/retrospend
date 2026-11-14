@@ -1,0 +1,6 @@
+{
+	"title": "Test de performance cryptographique",
+	"run": "Lancer",
+	"copy": "Copier les résultats",
+	"failed": "Le test a échoué"
+}
