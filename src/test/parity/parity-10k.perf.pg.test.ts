@@ -209,6 +209,9 @@ describe.skipIf(sealedSuite)(
 					userId: ledger.userId,
 					templateIds: ledger.templateIds,
 					accountIds: ledger.accountIds,
+					categoryIds: ledger.categoryIds,
+					incomeCategory: ledger.incomeCategory,
+					bobCategory: ledger.bobCategory,
 				};
 				const repull = await atClock(async () => {
 					const settings = await pullSettings(device);
@@ -252,6 +255,9 @@ describe.skipIf(sealedSuite)(
 				userId: ledger.userId,
 				templateIds: ledger.templateIds,
 				accountIds: ledger.accountIds,
+				categoryIds: ledger.categoryIds,
+				incomeCategory: ledger.incomeCategory,
+				bobCategory: ledger.bobCategory,
 			};
 			// A plain row: deleting a parent or the row the legs name would cascade.
 			const victim = await fixtureDb.expense.findFirstOrThrow({

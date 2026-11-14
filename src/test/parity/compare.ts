@@ -94,14 +94,32 @@ export const SCOPELESS_IDS = DEVICE_FIGURE_IDS.filter(
 	(id) => id !== "recurring.amount" && id !== "accounts.balance",
 );
 
+/** The insights figures that narrow by a category. */
+const CATEGORY_IDS = [
+	"insights.byCategory",
+	"insights.ytdByCategory",
+	"insights.ytdByCategoryUsd",
+];
+
+/**
+ * The fiscal months read by label: this one at the first clock (October 2026),
+ * the ones holding December 31 and January 1 around the year-boundary clock,
+ * and an empty one after the seeded span.
+ */
+export const INSIGHTS_MONTHS = ["2026-10", "2026-12", "2027-01", "2027-03"];
+
 export interface LedgerRefs {
 	userId: string;
 	templateIds: readonly string[];
 	accountIds: readonly string[];
+	/** The user's expense categories, their INCOME one and another user's, for the insights category variants. */
+	categoryIds?: readonly string[];
+	incomeCategory?: string;
+	bobCategory?: string;
 }
 
 export interface Readings {
-	/** Keys are the figure id, plus `|recurringId=<id>` or `|accountId=<id>` for a variant. */
+	/** Keys are the figure id, plus `|recurringId=<id>`, `|accountId=<id>`, `|month=<label>` or `|categoryId=<id>` for a variant. */
 	keys: string[];
 	device: Read;
 	server: Read;
@@ -110,7 +128,10 @@ export interface Readings {
 /**
  * Every device figure id and every variant, read on both sides. Variants:
  * `recurring.amount` for each template and an unknown one, `accounts.balance`
- * for each account and an unknown one, and read over all accounts.
+ * for each account and an unknown one, `insights.byMonth` for each of
+ * INSIGHTS_MONTHS, and the three insights category figures for each category
+ * of the ledger, its INCOME category (reads 0), another user's (reads 0) and
+ * an unknown one. Each variant is read in a pass of its own.
  */
 export async function readAll(
 	store: Reader,
@@ -118,15 +139,31 @@ export async function readAll(
 ): Promise<Readings> {
 	const { userId } = refs;
 	const base = [...SCOPELESS_IDS, "accounts.balance"];
-	const variants: { id: string; key: string; value: string }[] = [
+	const categories = [
+		...(refs.categoryIds ?? []),
+		...(refs.incomeCategory ? [refs.incomeCategory] : []),
+		...(refs.bobCategory ? [refs.bobCategory] : []),
+		"no-such-category",
+	];
+	const variants: { ids: string[]; key: string; value: string }[] = [
 		...[...refs.templateIds, "no-such-template"].map((value) => ({
-			id: "recurring.amount",
+			ids: ["recurring.amount"],
 			key: "recurringId",
 			value,
 		})),
 		...[...refs.accountIds, "no-such-account"].map((value) => ({
-			id: "accounts.balance",
+			ids: ["accounts.balance"],
 			key: "accountId",
+			value,
+		})),
+		...INSIGHTS_MONTHS.map((value) => ({
+			ids: ["insights.byMonth"],
+			key: "month",
+			value,
+		})),
+		...categories.map((value) => ({
+			ids: CATEGORY_IDS,
+			key: "categoryId",
 			value,
 		})),
 	];
@@ -156,14 +193,14 @@ export async function readAll(
 	for (const v of variants) {
 		const narrowing = { [v.key]: v.value };
 		const suffix = `|${v.key}=${v.value}`;
-		take("server", await serverRead(userId, [v.id], narrowing), [v.id], suffix);
+		take("server", await serverRead(userId, v.ids, narrowing), v.ids, suffix);
 		take(
 			"device",
-			await deviceReadFrom(store, userId, [v.id], narrowing),
-			[v.id],
+			await deviceReadFrom(store, userId, v.ids, narrowing),
+			v.ids,
 			suffix,
 		);
-		keys.push(`${v.id}${suffix}`);
+		keys.push(...v.ids.map((id) => `${id}${suffix}`));
 	}
 	return {
 		keys,

@@ -79,6 +79,10 @@ export interface ParityLedger {
 	/** The id of the project the user hides from reports. */
 	hiddenProjectId: string;
 	bobId: string;
+	/** The user's expense categories, their INCOME one, and Bob's (never the user's to read). */
+	categoryIds: string[];
+	incomeCategory: string;
+	bobCategory: string;
 }
 
 export interface ParityOptions {
@@ -169,6 +173,9 @@ export async function seedParityLedger(
 		templateIds,
 		expenseIds: expenses.ids,
 		hiddenProjectId: projects.hidden,
+		categoryIds: [...ctx.categoryIds],
+		incomeCategory: ctx.incomeCategory,
+		bobCategory: ctx.bobCategory,
 		counts: {
 			expenses: expenses.count,
 			categories: ctx.categoryIds.length + 1,

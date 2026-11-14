@@ -33,12 +33,7 @@ import {
 	serverOnlyReason,
 	type TableName,
 } from "../../../packages/engine/src/index";
-import {
-	type Ledger,
-	type LedgerProfile,
-	P13_PROFILES,
-	seedRates,
-} from "../device-ledger";
+import { type LedgerProfile, P13_PROFILES, seedRates } from "../device-ledger";
 import { engineStoreOf } from "../engine-store";
 import { expectParity, type LedgerRefs, readAll } from "./compare";
 import { type ParityLedger, SMALL_SIZE, seedParityLedger } from "./ledger";
@@ -134,11 +129,16 @@ afterAll(async () => {
 	else process.env.DEFAULT_TIME_ZONE = previousDefaultZone;
 });
 
-const refsOf = (ledger: ParityLedger): Ledger & { expenseIds: string[] } => ({
+const refsOf = (
+	ledger: ParityLedger,
+): LedgerRefs & { expenseIds: string[] } => ({
 	userId: ledger.userId,
 	accountIds: ledger.accountIds,
 	templateIds: ledger.templateIds,
 	expenseIds: ledger.expenseIds,
+	categoryIds: ledger.categoryIds,
+	incomeCategory: ledger.incomeCategory,
+	bobCategory: ledger.bobCategory,
 });
 
 describe("A: the device reads every figure as the server does", () => {
@@ -164,6 +164,29 @@ describe("A: the device reads every figure as the server does", () => {
 						server.readings.get("recurring.cost.out.month"),
 					).not.toBeUndefined();
 					expect(read.all.keys).toContain("netWorth");
+					// Category figures are not equal-because-zero: the ledger spends in
+					// its categories, and the server reads some of them above 0 in the
+					// period at both instants and in the year to date at the first (on
+					// January 1 the year to date is one day, which only edge rows touch,
+					// and they have no category). The INCOME and Bob's read 0.
+					const above = (id: string) =>
+						[...server.readings].some(
+							([key, reading]) =>
+								key.startsWith(`${id}|categoryId=`) &&
+								(reading?.[0]?.minor ?? 0) > 0,
+						);
+					expect(above("insights.byCategory"), "byCategory > 0").toBe(true);
+					if (clock === FIRST)
+						expect(above("insights.ytdByCategory"), "ytdByCategory > 0").toBe(
+							true,
+						);
+					for (const category of [
+						entry().ledger.incomeCategory,
+						entry().ledger.bobCategory,
+					])
+						expect(
+							server.readings.get(`insights.byCategory|categoryId=${category}`),
+						).toEqual([{ minor: 0, currency: profile.home }]);
 					if (profile.withMissingRate) {
 						expect(server.readings.get("glance.spent")).toBeNull();
 						expect(server.missing.get("glance.spent")).toEqual(["XQZ"]);
@@ -412,7 +435,6 @@ describe("D: every server figure is compared or named server-only", () => {
 			"entry.",
 			"budget.",
 			"envelope.",
-			"insights.",
 			"rate.dollarToday",
 			"balance.person",
 			"owed.",
