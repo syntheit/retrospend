@@ -50,7 +50,7 @@ export function ReviewSheet({
 	});
 	return (
 		<Sheet
-			detent="medium"
+			detent={rejecting ? "large" : "medium"}
 			footer={
 				shown ? (
 					<ReviewFooter
