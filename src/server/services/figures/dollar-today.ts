@@ -10,12 +10,12 @@
  */
 
 import { isCrypto } from "@retrospend/domain/currency-format";
+import { FigureUnavailable } from "@retrospend/domain/figures/unavailable";
 import { USD } from "@retrospend/domain/money";
 import { type Money, toMinor } from "@retrospend/domain/money-minor";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { findExchangeRate } from "~/server/exchange-rates";
 import type { FigureDb, FigureDefinition } from "~/server/figures/registry";
-import { FigureUnavailable } from "~/server/figures/unavailable";
 import { loadRateContext } from "~/server/services/rate-types";
 import { userTimeZone } from "~/server/services/user-time-zone";
 

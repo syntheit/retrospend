@@ -14,6 +14,8 @@
  * the currency, never a guess (R14). Figures read days in the zone the server
  * decides for the user (userTimeZone), as glance() does without a request zone.
  */
+
+import { FigureUnavailable } from "@retrospend/domain/figures/unavailable";
 import type { MoneyItemDec } from "@retrospend/domain/money-dec";
 import type { Money } from "@retrospend/domain/money-minor";
 import {
@@ -32,7 +34,6 @@ import type {
 	FigureDefinition,
 	FigurePass,
 } from "~/server/figures/registry";
-import { FigureUnavailable } from "~/server/figures/unavailable";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import { loadSpentInputs } from "./spent";
 

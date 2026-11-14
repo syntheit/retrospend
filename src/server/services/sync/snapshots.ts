@@ -10,9 +10,9 @@
  * reads a title, a note, a payer or another participant (the encryption rules).
  */
 
+import type { FigureUnavailable } from "@retrospend/domain/figures/unavailable";
 import type { db as globalDb } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
-import type { FigureUnavailable } from "~/server/figures/unavailable";
 import { type OwedRead, owedOnce } from "~/server/services/payments/figures";
 import {
 	getExcludedProjectIds,

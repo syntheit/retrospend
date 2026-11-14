@@ -10,6 +10,7 @@
  * own uncommitted rows.
  */
 import { FigureNarrowingError } from "@retrospend/domain/figures/narrowing";
+import { FigureUnavailable } from "@retrospend/domain/figures/unavailable";
 import type {
 	FigureDb,
 	FigureDefinition,
@@ -17,7 +18,6 @@ import type {
 	FigureScope,
 	Money,
 } from "~/server/figures/registry";
-import { FigureUnavailable } from "~/server/figures/unavailable";
 import { computePairLedger } from "~/server/services/shared-expenses/balance";
 import { computeBalanceBatch } from "~/server/services/shared-expenses/balance-batch";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";

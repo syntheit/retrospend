@@ -5,7 +5,8 @@
  * the pass, so a missing rate never reaches a client as a server error.
  *
  * Its own module so figure files can return it without importing the
- * registry, which imports them.
+ * registry, which imports them. The server and the device import this one
+ * class; a second definition would break `instanceof`.
  */
 export class FigureUnavailable {
 	readonly missingRates: readonly string[];

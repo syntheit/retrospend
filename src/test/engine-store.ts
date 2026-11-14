@@ -29,8 +29,9 @@
  * The root app does not depend on the engine package, so it is imported by
  * path, as expense-create-conformance.pg.test.ts does.
  */
+
+import { FigureUnavailable } from "@retrospend/domain/figures/unavailable";
 import { userTransaction } from "~/server/db-tx";
-import { FigureUnavailable } from "~/server/figures/unavailable";
 import { owedOnce } from "~/server/services/payments/figures";
 import { soloBook } from "~/server/services/sync/book-entities";
 import { readShareSnapshot } from "~/server/services/sync/snapshots";
