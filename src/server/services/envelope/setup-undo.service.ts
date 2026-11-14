@@ -315,15 +315,24 @@ const inUse = (what: string) =>
 		`the budget has been used since it was set up (${what})`,
 	);
 
-/** A lock wait that ended in a serialization failure or a deadlock: someone else is writing the book. */
+/** Postgres codes for a lock wait that gave up: not available, serialization failure, deadlock. */
+const CONTENTION_SQLSTATES = new Set(["55P03", "40001", "40P01"]);
+
+/**
+ * Someone else is writing the book. A query that Postgres cancels carries the
+ * SQLSTATE at `meta.driverAdapterError.cause.code` (@prisma/adapter-pg; a raw
+ * query arrives as P2010, see setup-undo-contention.pg.test.ts), whatever
+ * Prisma code wraps it; P2034 is Prisma's own write conflict. Codes only:
+ * messages change with the driver.
+ */
 function isContention(error: unknown): boolean {
-	const e = error as { code?: string; message?: string; meta?: unknown };
-	return (
-		e?.code === "P2034" ||
-		/could not serialize|deadlock detected|\b40001\b|\b40P01\b/i.test(
-			`${e?.message ?? ""} ${JSON.stringify(e?.meta ?? "")}`,
-		)
-	);
+	const e = error as {
+		code?: string;
+		meta?: { driverAdapterError?: { cause?: { code?: string } } };
+	};
+	if (e?.code === "P2034") return true;
+	const sqlstate = e?.meta?.driverAdapterError?.cause?.code;
+	return CONTENTION_SQLSTATES.has(sqlstate ?? "");
 }
 
 /**
