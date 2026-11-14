@@ -40,11 +40,16 @@ describe("the e2e link component name", () => {
 describe("check-release-bundle.sh", () => {
 	// The script finds the app directory from its own path, so run a copy in
 	// a throwaway tree with an empty bundle.
-	function run(env: string | null, extraEnv: Record<string, string> = {}) {
+	function run(
+		env: string | null,
+		extraEnv: Record<string, string> = {},
+		bundle = "",
+	) {
 		const app = mkdtempSync(join(tmpdir(), "release-guard-"));
 		try {
 			mkdirSync(join(app, "scripts"));
 			mkdirSync(join(app, "dist"));
+			writeFileSync(join(app, "dist", "index.bundle"), bundle);
 			copyFileSync(
 				join(scripts, "check-release-bundle.sh"),
 				join(app, "scripts", "check-release-bundle.sh"),
@@ -80,6 +85,7 @@ describe("check-release-bundle.sh", () => {
 		"EXPO_PUBLIC_DEV_EMAIL=a@b.c",
 		"export EXPO_PUBLIC_DEV_EMAIL=a@b.c",
 		"export EXPO_PUBLIC_GALLERY=1",
+		"EXPO_PUBLIC_DEV_DEVICE_ENGINE=1",
 	])("fails on the .env line %j", (line) => {
 		const result = run(`${line}\n`);
 		expect(result.status).toBe(1);
@@ -90,5 +96,19 @@ describe("check-release-bundle.sh", () => {
 		const result = run(null, { EXPO_PUBLIC_E2E: "1" });
 		expect(result.status).toBe(1);
 		expect(result.stderr).toContain("EXPO_PUBLIC_E2E is set");
+	});
+
+	it("fails on a bundle that carries the device engine", () => {
+		expect(run(null, {}, "var a = 1;").status).toBe(0);
+		const result = run(null, {}, 'warn("RetrospendDeviceEngine: pull failed")');
+		expect(result.status).toBe(1);
+		expect(result.stderr).toContain("the device engine is in the bundle");
+	});
+
+	it("keeps the engine's name where the check looks for it", () => {
+		const source = read(
+			join(__dirname, "..", "src", "data", "device-engine.ts"),
+		);
+		expect(source).toContain('const TAG = "RetrospendDeviceEngine"');
 	});
 });

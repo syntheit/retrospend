@@ -9,6 +9,7 @@ import {
 import { Animated, Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
+import { useDevicePull } from "@/data/useDeviceEngine";
 import { ADD_CONTROL } from "@/layout/destinations";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import type { ComposerPrefill } from "@/surfaces/prefill";
@@ -67,6 +68,7 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 		count: number;
 	}>({ count: 0 });
 	useOutboxFlush();
+	useDevicePull();
 	const keyboard = useKeyboardShown();
 	const toastLift = useToastLift();
 	const [hiders, setHiders] = useState(0);

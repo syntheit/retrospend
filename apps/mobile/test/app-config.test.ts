@@ -161,6 +161,7 @@ describe("app config", () => {
 		it.each([
 			{ EXPO_PUBLIC_DEV_PASSWORD: "secret" },
 			{ EXPO_PUBLIC_DEV_SERVER: "http://x" },
+			{ EXPO_PUBLIC_DEV_DEVICE_ENGINE: "1" },
 			{ EXPO_PUBLIC_GALLERY: "1" },
 		])("refuses %j in a release build", (env) => {
 			expect(() => assertBuildProfile(env)).toThrow(/release build/);

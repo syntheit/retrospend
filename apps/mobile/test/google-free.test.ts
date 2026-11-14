@@ -154,6 +154,14 @@ describe("google-free guard", () => {
 		expect(offenders).toEqual([]);
 	});
 
+	it("walks the device engine package and finds nothing banned in it", () => {
+		const shipped = shippedPackages();
+		// The engine is a dependency of the app, so the walk covers it and what it pulls in.
+		expect(shipped.has("@retrospend/engine")).toBe(true);
+		expect(shipped.has("@retrospend/domain")).toBe(true);
+		expect(bannedReason("@retrospend/engine")).toBeNull();
+	});
+
 	it(`imports Google services only under ${rules.optionalDir}/`, () => {
 		const files = SOURCE_DIRS.flatMap((d) => sourceFiles(join(APP_DIR, d)));
 		expect(files.length).toBeGreaterThan(0);
