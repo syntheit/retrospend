@@ -2,6 +2,7 @@ import type { renameBillingPeriodSchema } from "@retrospend/api-contract";
 import type * as z from "zod";
 import { readFigures } from "~/server/figures/read";
 import { sumMinor, toMinor } from "~/server/services/envelope/units";
+import { myShareOf } from "~/server/services/project/page-figures";
 import type { LedgerCaller } from "./money-op";
 import { trpcBillingPeriod } from "./trpc-bridge";
 
@@ -104,8 +105,16 @@ export async function readBillingPeriod(
 				id: sp.participantId,
 				shares: [],
 			};
+			// What the Summary charges them: nothing for a rejected share, and
+			// the payer carries what it left uncovered.
+			const share = myShareOf(
+				e,
+				(r) =>
+					r.participantType === sp.participantType &&
+					r.participantId === sp.participantId,
+			);
 			entry.shares.push({
-				amount: sp.shareAmount.toString(),
+				amount: share === null ? "0" : share.toString(),
 				currency: e.currency,
 			});
 			people.set(key, entry);
