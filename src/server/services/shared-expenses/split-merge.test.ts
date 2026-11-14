@@ -33,6 +33,10 @@ describe("mergeOverlappingSplitRows", () => {
 			'COALESCE(target."shareUnits", 0) + COALESCE(source."shareUnits", 0)',
 		);
 		expect(update.values).toEqual(["shadow", "ghost-1", "user", "bob"]);
+		// Different answers go back to PENDING; equal ones are kept.
+		expect(update.text).toContain(
+			`ELSE 'PENDING'::"VerificationStatus"`,
+		);
 
 		const del = sqlOf(tx.$executeRaw.mock.calls[1] as unknown[]);
 		expect(del.text).toContain("DELETE FROM split_participant");

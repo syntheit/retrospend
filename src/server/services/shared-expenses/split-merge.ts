@@ -17,7 +17,10 @@ interface SplitOwner {
  *    summed, so a PERCENTAGE or SHARES expense keeps a percentage/units value
  *    that matches the merged amount (a later rescale or edit recomputes from
  *    those, and a stale value would silently undo the merge). A column that
- *    is null on both rows stays null.
+ *    is null on both rows stays null. The merged row keeps the answer when
+ *    both rows gave the same one; when they differ it goes back to PENDING,
+ *    so the person confirms the merged amount (a rejected row never makes
+ *    a bigger share count again on the other row's answer).
  * 2. Delete the source rows that were merged.
  *
  * Step 3 (re-pointing the remaining source rows with updateMany) is left to
@@ -38,6 +41,15 @@ export async function mergeOverlappingSplitRows(
 		       "shareUnits"      = CASE
 		           WHEN target."shareUnits" IS NULL AND source."shareUnits" IS NULL THEN NULL
 		           ELSE COALESCE(target."shareUnits", 0) + COALESCE(source."shareUnits", 0)
+		       END,
+		       "verificationStatus" = CASE
+		           WHEN target."verificationStatus" = source."verificationStatus"
+		           THEN target."verificationStatus"
+		           ELSE 'PENDING'::"VerificationStatus"
+		       END,
+		       "verifiedAt"      = CASE
+		           WHEN target."verificationStatus" = source."verificationStatus"
+		           THEN target."verifiedAt"
 		       END
 		FROM   split_participant AS source
 		WHERE  source."participantType" = ${source.participantType}::"ParticipantType"

@@ -46,6 +46,7 @@ import { computePeriodSettleStatus } from "./billing-period-settle";
 import { lockSettledSplits } from "../corrections/locks";
 import { guardDelete } from "./delete-guard";
 import { removeSelfIn } from "./remove-self";
+import { mergeOverlappingSplitRows } from "./split-merge";
 import { exportPersonHistory } from "../export/person-csv";
 import { personPage } from "../people/detail";
 import { owedRead } from "../payments/figures";
@@ -714,6 +715,75 @@ describe("scenario H: a creator edit and a rejected share", () => {
 		// on AUTO_ACCEPTED; either way the rejection is gone and the share counts.
 		expect(await brunoStatus()).toBe("AUTO_ACCEPTED");
 		expect(await anaOwed()).toBe(4_000_000);
+	});
+});
+
+describe("scenario I: a claim merge never lets one row's answer cover another's", () => {
+	it("6: differing answers merge to PENDING in both directions, equal answers are kept", async () => {
+		const { ana, bruno } = await cast();
+		const ghost = await adminDb.shadowProfile.create({
+			data: { createdById: ana.user.id, name: "Bruno (guest)" },
+		});
+		const answers = [
+			["ACCEPTED", "REJECTED", "PENDING"],
+			["REJECTED", "ACCEPTED", "PENDING"],
+			["ACCEPTED", "ACCEPTED", "ACCEPTED"],
+			["REJECTED", "REJECTED", "REJECTED"],
+		] as const;
+		const ids: string[] = [];
+		for (const [userAnswer, ghostAnswer] of answers) {
+			const e = await adminDb.sharedTransaction.create({
+				data: {
+					description: "Merge",
+					amount: "60000",
+					currency: "ARS",
+					date: new Date("2026-10-08"),
+					paidByType: "user",
+					paidById: ana.user.id,
+					createdByType: "user",
+					createdById: ana.user.id,
+					splitParticipants: {
+						create: [
+							{
+								participantType: "user",
+								participantId: bruno.user.id,
+								shareAmount: "10000",
+								verificationStatus: userAnswer,
+							},
+							{
+								participantType: "shadow",
+								participantId: ghost.id,
+								shareAmount: "20000",
+								verificationStatus: ghostAnswer,
+							},
+						],
+					},
+				},
+			});
+			ids.push(e.id);
+		}
+		await mergeOverlappingSplitRows(
+			adminDb as never,
+			{ participantType: "shadow", participantId: ghost.id },
+			{ participantType: "user", participantId: bruno.user.id },
+		);
+		const merged = await adminDb.splitParticipant.findMany({
+			where: { transactionId: { in: ids } },
+			select: {
+				transactionId: true,
+				participantId: true,
+				shareAmount: true,
+				verificationStatus: true,
+			},
+		});
+		// One row per expense, 10,000 + 20,000 = 30,000 each.
+		expect(merged).toHaveLength(4);
+		expect(
+			ids.map((id) => {
+				const row = merged.find((m) => m.transactionId === id);
+				return [row?.participantId === bruno.user.id, row?.shareAmount.toString(), row?.verificationStatus];
+			}),
+		).toEqual(answers.map(([, , expected]) => [true, "30000", expected]));
 	});
 });
 
