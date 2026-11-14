@@ -51,14 +51,19 @@ export async function serverRead(
 	});
 }
 
-/** Reads `ids` from the device registry over `store`, one pass. */
+/**
+ * Reads `ids` from the device registry over `store`, one pass. `clock` fixes
+ * the instant the figures read at, so a timing run can use the real Date
+ * instead of a faked one.
+ */
 export async function deviceReadFrom(
 	store: Reader,
 	userId: string,
 	ids: readonly string[],
 	narrowing: Record<string, string> = {},
+	clock?: () => Date,
 ): Promise<Read> {
-	const registry = deviceFigures();
+	const registry = deviceFigures({ clock });
 	const pass = new FigurePass();
 	const readings = await readFiguresIn(
 		store,

@@ -19,6 +19,8 @@ import {
 	createDevicePreviewRunner,
 	deviceFigures,
 	EXPENSE_CREATE_MUTATION,
+	type Reader,
+	type TableName,
 } from "../../../packages/engine/src/index";
 import { type LedgerProfile, P13_PROFILES, seedRates } from "../device-ledger";
 import {
@@ -72,6 +74,44 @@ let device: Device;
 let initial: PullReport;
 const log = (label: string, value: unknown) =>
 	console.info(`[parity-10k] ${label} ${JSON.stringify(value)}`);
+
+/** A reader that adds up the time and the calls of the store's reads, by table. */
+function timedReader(store: Reader) {
+	const lists = new Map<TableName, { calls: number; ms: number }>();
+	let gets = 0;
+	const reader: Reader = {
+		get: (table, id) => {
+			gets++;
+			return store.get(table, id);
+		},
+		list: (table) => {
+			const started = performance.now();
+			const rows = store.list(table);
+			const entry = lists.get(table) ?? { calls: 0, ms: 0 };
+			entry.calls++;
+			entry.ms += performance.now() - started;
+			lists.set(table, entry);
+			return rows;
+		},
+	};
+	return {
+		reader,
+		listMs: () => [...lists.values()].reduce((sum, e) => sum + e.ms, 0),
+		calls: () =>
+			Object.fromEntries([...lists].map(([table, e]) => [table, e.calls])),
+		gets: () => gets,
+	};
+}
+
+/** The figure ids by timing group: the id prefix before the first dot, so each family is one group. */
+function timingGroups(): Map<string, string[]> {
+	const groups = new Map<string, string[]>();
+	for (const id of [...SCOPELESS_IDS, "accounts.balance"]) {
+		const group = id.split(".")[0] ?? id;
+		groups.set(group, [...(groups.get(group) ?? []), id]);
+	}
+	return groups;
+}
 
 async function atClock<T>(fn: () => Promise<T>): Promise<T> {
 	vi.useFakeTimers({ toFake: ["Date"] });
@@ -236,6 +276,41 @@ describe.skipIf(sealedSuite)(
 			expect(device.store.list("expenses")).toHaveLength(
 				ledger.counts.expenses,
 			);
+		});
+
+		it("times a device pass by figure group, outside the fake clock", async () => {
+			// The real Date: the fake one (atClock) inflates every `new Date` in a row copy.
+			const clock = () => CLOCK;
+			const timeRead = async (ids: readonly string[]) => {
+				const totals: number[] = [];
+				const reads: number[] = [];
+				let calls: Record<string, number> = {};
+				let gets = 0;
+				for (let i = 0; i < 5; i++) {
+					const timed = timedReader(device.store);
+					const started = performance.now();
+					await deviceReadFrom(timed.reader, ledger.userId, ids, {}, clock);
+					totals.push(performance.now() - started);
+					reads.push(timed.listMs());
+					calls = timed.calls();
+					gets = timed.gets();
+				}
+				const total = median(totals);
+				const listMs = median(reads);
+				return {
+					totalMs: ms(total),
+					listMs: ms(listMs),
+					computeMs: ms(total - listMs),
+					listCalls: calls,
+					gets,
+				};
+			};
+			const groups = timingGroups();
+			for (const [group, ids] of groups)
+				log(`group ${group}`, await timeRead(ids));
+			const all = [...groups.values()].flat();
+			log("full pass, real Date", await timeRead(all));
+			expect(all.length).toBeGreaterThan(0);
 		});
 
 		it("previews an expense and sorts a list at this size", async () => {
