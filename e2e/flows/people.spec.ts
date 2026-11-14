@@ -236,6 +236,10 @@ test("People: review a split with a preview, reject it, undo, and a refused reje
 			"You already paid this share, so use Ask to fix instead.",
 		);
 		await expect(sheet.getByRole("button", { name: "Reject" })).toBeDisabled();
+		// There is nothing to explain to Lucía, so the reason box is gone too.
+		await expect(
+			sheet.getByRole("textbox", { name: "Reason (optional)" }),
+		).toHaveCount(0);
 		await sheet.getByRole("button", { name: "Back" }).click();
 		await expect(changes).toContainText("No change to");
 		await expect(sheet.getByRole("button", { name: "Accept" })).toBeEnabled();
