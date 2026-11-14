@@ -128,8 +128,9 @@ export const budgetOps = {
 			...input,
 			timeZone: caller.timeZone,
 		}),
-		// The web's signed token stays out of v1: v1 mints its own undo token.
+		// The web's signed footprint stays out of the answer; the undo token carries it.
 		present: ({ restore: _web, ...answer }) => answer,
+		plan: (_i, v) => ({ op: "setup.undo", args: { token: v.restore } }),
 	}),
 	setStyle: moneyOp(v1Mutation(setStyleMutation), {
 		plan: (_i, v) => ({

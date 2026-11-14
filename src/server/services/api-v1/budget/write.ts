@@ -17,7 +17,8 @@ export type UndoOp =
 	| "payoff_plan.revert"
 	| "draft.unapply"
 	| "hidden_rows.revert"
-	| "debt_payment.delete";
+	| "debt_payment.delete"
+	| "setup.undo";
 
 export type BudgetUndoPlan = UndoPlan<UndoOp>;
 

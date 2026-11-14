@@ -10,6 +10,7 @@ import { undoChangeMutation } from "~/server/services/envelope/crud.mutation";
 import { revertHiddenMutation } from "~/server/services/envelope/migration.mutation";
 import { undo as undoMovement } from "~/server/services/envelope/movement.service";
 import { unapplyDraftMutation } from "~/server/services/envelope/plan.mutation";
+import { undoSetupEnvelopeBook } from "~/server/services/envelope/setup-undo.mutation";
 import {
 	setProjectRoutingMutation,
 	setShareCategoryMutation,
@@ -105,6 +106,7 @@ const INVERSES: Record<UndoOp, AnyMutation> = {
 	"draft.unapply": v1Mutation(unapplyDraftMutation, draftResultOut),
 	"hidden_rows.revert": revertHiddenMutation,
 	"debt_payment.delete": deleteDebtPayment,
+	"setup.undo": undoSetupEnvelopeBook,
 };
 
 const undoer = createUndoer<UndoOp, BudgetCaller>("budget", INVERSES);

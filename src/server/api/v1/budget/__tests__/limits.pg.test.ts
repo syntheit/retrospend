@@ -114,8 +114,8 @@ describe("/api/v1/budget set-up and Limits", () => {
 		expect(withoutStamps(written.result)).toEqual(
 			withoutStamps(preview.detail?.result),
 		);
-		// A first set-up cannot be taken back.
-		expect(written.undo).toBeNull();
+		// A first set-up answers an undo token (setup-undo.pg.test.ts takes it back).
+		expect(written.undo).toEqual(expect.any(String));
 		await expectProblem(await post("/budget/setup", body), 409, "conflict");
 		const envelopes = await adminDb.envelope.findMany({
 			where: { book: { createdById: s.user.id } },

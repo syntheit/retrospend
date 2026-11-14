@@ -155,7 +155,6 @@ const setup = moneyWrite({
 	input: setupInputSchema,
 	result: setupAnswerSchema,
 	status: 201,
-	noUndo: "a first set-up cannot be taken back.",
 });
 const setStyle = moneyWrite({
 	path: "/budget/style",

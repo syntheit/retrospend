@@ -49221,7 +49221,7 @@
 		},
 		"/budget/setup": {
 			"post": {
-				"description": "Answers `undo: null`: a first set-up cannot be taken back.",
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "setUpBudget",
 				"parameters": [
 					{
@@ -54632,7 +54632,7 @@
 		},
 		"/budget/undo": {
 			"post": {
-				"description": "Each token works once, for 24 hours. A token whose row changed since the write answers 409.",
+				"description": "Each token works once, for 24 hours. A token whose row changed since the write answers 409. The token of a first set-up answers 409 once the budget holds anything beyond what the set-up made.",
 				"operationId": "undoBudgetWrite",
 				"parameters": [
 					{
@@ -56529,6 +56529,44 @@
 															"required": [
 																"id",
 																"accounts"
+															],
+															"type": "object"
+														}
+													},
+													"required": [
+														"kind",
+														"result"
+													],
+													"type": "object"
+												},
+												{
+													"properties": {
+														"kind": {
+															"const": "setup.undo"
+														},
+														"result": {
+															"properties": {
+																"bookId": {
+																	"maxLength": 64,
+																	"minLength": 1,
+																	"type": "string"
+																},
+																"expenseId": {
+																	"anyOf": [
+																		{
+																			"maxLength": 64,
+																			"minLength": 1,
+																			"type": "string"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	]
+																}
+															},
+															"required": [
+																"bookId",
+																"expenseId"
 															],
 															"type": "object"
 														}
