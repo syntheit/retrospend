@@ -63,7 +63,7 @@ export function CryptoBench() {
 	return (
 		<>
 			<TopBar
-				account={{ key: "user:bench", name: "Daniel M", imageUri: null }}
+				account={{ key: "user:bench", name: "Sample Person", imageUri: null }}
 				accountLabel="Account"
 				title="Crypto benchmark"
 			/>

@@ -1,5 +1,6 @@
 export { fromBase64Url, toBase64Url } from "./base64url";
 export {
+	type Argon2Entry,
 	type Argon2Result,
 	BENCH_ARGON2_SETS,
 	BENCH_RECORDS,
@@ -9,8 +10,10 @@ export {
 	type BenchRow,
 	benchJson,
 	benchRows,
+	type RecordsEntry,
 	type RecordsResult,
 	runCryptoBench,
+	type StepFailure,
 } from "./bench";
 export { CryptoError, type CryptoErrorCode } from "./errors";
 export {

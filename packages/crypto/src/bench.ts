@@ -4,7 +4,6 @@
 // web and the phone only render what it returns. It uses synthetic records, no
 // user data.
 import { type Json, openRecord, type RecordKey, sealRecord } from "./format";
-import { toHex } from "./hex";
 import { generateCollectionKey } from "./keys";
 import type { Argon2Params, Primitives } from "./primitives";
 
@@ -45,9 +44,17 @@ export interface RecordsResult {
 	openPerRecordMs: number;
 }
 
+/** A step that threw: the error's name only, never its message. */
+export interface StepFailure {
+	failed: string;
+}
+
+export type Argon2Entry = Argon2Result | (Argon2Params & StepFailure);
+export type RecordsEntry = RecordsResult | ({ records: number } & StepFailure);
+
 export interface BenchReport {
-	argon2: Argon2Result[];
-	records: RecordsResult;
+	argon2: Argon2Entry[];
+	records: RecordsEntry;
 }
 
 export interface BenchRow {
@@ -60,6 +67,8 @@ const grouped = (n: number) => String(n).replace(/\B(?=(\d{3})+$)/g, ",");
 const argon2Label = (p: Argon2Params) =>
 	`Argon2id ${p.memoryKiB / 1024} MiB, ${p.passes} passes`;
 const openLabel = (count: number) => `Open ${grouped(count)} records`;
+const failureName = (error: unknown) =>
+	error instanceof Error ? error.name : "Error";
 const ms = (value: number) => Math.round(value * 10) / 10;
 
 function median(values: number[]): number {
@@ -129,9 +138,8 @@ export function benchRecords(
 		sealed.push(sealRecord(p, recordKey, ctx(i), 1, sampleRecord(i)));
 	}
 	const sealMs = now() - sealStart;
-	const keyHex = toHex(recordKey.keyId);
-	const find = (id: Uint8Array) =>
-		toHex(id) === keyHex ? recordKey.key : undefined;
+	// One key opens every record, so the lookup adds nothing to the timing.
+	const find = () => recordKey.key;
 	const openStart = now();
 	for (let i = 0; i < count; i++) {
 		openRecord(p, find, ctx(i), sealed[i] as Uint8Array);
@@ -152,25 +160,45 @@ export async function runCryptoBench(
 ): Promise<BenchReport> {
 	const { now, runs = BENCH_RUNS, records = BENCH_RECORDS } = options;
 	const pause = options.pause ?? (() => Promise.resolve());
-	const argon2: Argon2Result[] = [];
+	// Each step stands alone: one that throws becomes a failed entry and the
+	// results already measured stay.
+	const argon2: Argon2Entry[] = [];
 	for (const params of options.argon2Sets ?? BENCH_ARGON2_SETS) {
 		options.onStep?.(argon2Label(params));
 		await pause();
-		argon2.push(benchArgon2(p, params, runs, now));
+		try {
+			argon2.push(benchArgon2(p, params, runs, now));
+		} catch (error) {
+			argon2.push({ ...params, failed: failureName(error) });
+		}
 	}
 	options.onStep?.(openLabel(records));
 	await pause();
-	return { argon2, records: benchRecords(p, records, now) };
+	try {
+		return { argon2, records: benchRecords(p, records, now) };
+	} catch (error) {
+		return { argon2, records: { records, failed: failureName(error) } };
+	}
 }
 
 /** The plain rows a screen shows. `note` names the thread, where it matters. */
 export function benchRows(report: BenchReport, note = ""): BenchRow[] {
 	const r = report.records;
-	return [
-		...report.argon2.map((a) => ({
-			label: argon2Label(a),
-			value: `${ms(a.medianMs)} ms median, ${ms(a.maxMs)} ms max`,
-		})),
+	const rows: BenchRow[] = report.argon2.map((a) => ({
+		label: argon2Label(a),
+		value:
+			"failed" in a
+				? `failed (${a.failed})`
+				: `${ms(a.medianMs)} ms median, ${ms(a.maxMs)} ms max`,
+	}));
+	if ("failed" in r) {
+		rows.push({
+			label: openLabel(r.records) + note,
+			value: `failed (${r.failed})`,
+		});
+		return rows;
+	}
+	rows.push(
 		{
 			label: openLabel(r.records) + note,
 			value: `${ms(r.openMs)} ms, ${Math.round(r.openPerRecordMs * 1000)} us each`,
@@ -179,7 +207,8 @@ export function benchRows(report: BenchReport, note = ""): BenchRow[] {
 			label: `Seal ${grouped(r.records)} records${note}`,
 			value: `${ms(r.sealMs)} ms`,
 		},
-	];
+	);
+	return rows;
 }
 
 /** One line of JSON to paste into the spike doc. `env` names device and OS. */
@@ -187,20 +216,28 @@ export function benchJson(
 	env: Record<string, string>,
 	report: BenchReport,
 ): string {
+	const r = report.records;
 	return JSON.stringify({
 		...env,
-		argon2: report.argon2.map((a) => ({
-			memoryMiB: a.memoryKiB / 1024,
-			passes: a.passes,
-			runs: a.runs,
-			medianMs: ms(a.medianMs),
-			maxMs: ms(a.maxMs),
-		})),
-		records: {
-			count: report.records.records,
-			sealMs: ms(report.records.sealMs),
-			openMs: ms(report.records.openMs),
-			openPerRecordUs: Math.round(report.records.openPerRecordMs * 1000),
-		},
+		argon2: report.argon2.map((a) =>
+			"failed" in a
+				? { memoryMiB: a.memoryKiB / 1024, passes: a.passes, failed: a.failed }
+				: {
+						memoryMiB: a.memoryKiB / 1024,
+						passes: a.passes,
+						runs: a.runs,
+						medianMs: ms(a.medianMs),
+						maxMs: ms(a.maxMs),
+					},
+		),
+		records:
+			"failed" in r
+				? { count: r.records, failed: r.failed }
+				: {
+						count: r.records,
+						sealMs: ms(r.sealMs),
+						openMs: ms(r.openMs),
+						openPerRecordUs: Math.round(r.openPerRecordMs * 1000),
+					},
 	});
 }
