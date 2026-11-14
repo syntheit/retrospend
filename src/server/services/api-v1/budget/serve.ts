@@ -1,9 +1,9 @@
-import { TRPCError } from "@trpc/server";
-import type { TRPC_ERROR_CODE_KEY } from "@trpc/server/rpc";
 import {
 	EnvelopeError,
 	type EnvelopeErrorCode,
-} from "~/server/services/envelope/errors";
+} from "@retrospend/domain/envelope/errors";
+import { TRPCError } from "@trpc/server";
+import type { TRPC_ERROR_CODE_KEY } from "@trpc/server/rpc";
 import type { Caller } from "../caller";
 
 /** Every budget route needs the time zone the middleware resolved. */

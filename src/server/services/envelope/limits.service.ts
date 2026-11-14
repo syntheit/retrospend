@@ -11,6 +11,7 @@
  *   leave the envelope negative (B5: PLAN_FUND never blocks).
  */
 
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import { z } from "zod";
 import type {
 	RevertLimitInput,
@@ -23,7 +24,6 @@ import { Prisma } from "~prisma";
 import { budgetSpendingWhere } from "../spending";
 import { userTimeZone } from "../user-time-zone";
 import { addMonths, calendarMonthOf } from "./calendar";
-import { EnvelopeError } from "./errors";
 import {
 	fundDelta,
 	fundedThisMonth,

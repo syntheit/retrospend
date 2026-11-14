@@ -19,6 +19,8 @@
  * Book currency only for now: a debt or account in another currency is
  * refused (the exchange path waits for a later phase).
  */
+
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type {
 	DebtPaymentResult,
 	InterestEstimate,
@@ -28,7 +30,6 @@ import type { Prisma } from "~prisma";
 import { inBudget } from "../accounts/places";
 import { createTransferIn } from "../transfers/create.mutation";
 import { liabilitiesOf, projectIn } from "./debt.service";
-import { EnvelopeError } from "./errors";
 import { findPersonalBook } from "./inputs";
 import { isoDateIn } from "./months";
 import { dec, fromMinor, toMinor } from "./units";

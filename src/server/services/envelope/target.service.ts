@@ -10,6 +10,7 @@
  * undo puts back exactly what was there, whichever columns it used.
  */
 
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type { EnvelopeTarget } from "@retrospend/domain/envelope/needs";
 import type { TargetInput } from "~/lib/schemas/envelope";
 import type {
@@ -19,7 +20,6 @@ import type {
 import { Prisma } from "~prisma";
 import { leftoverDefault } from "./book.service";
 import { assertNewChange, recordChange } from "./envelope-change";
-import { EnvelopeError } from "./errors";
 import { restoreData, snapshotOf } from "./limit-target";
 import { forgetMonthViews } from "./month-read";
 import { checkEnvelope, lockedSnapshot, snapshot } from "./movement-state";

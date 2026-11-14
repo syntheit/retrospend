@@ -5,6 +5,7 @@
  * The undo is envelope.undo on the batch.
  */
 
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import {
 	FIGURE_LEFT_IN_LIMITS,
 	FIGURE_LEFT_TO_SPEND,
@@ -15,7 +16,6 @@ import type {
 	UsePlanResult,
 } from "~/lib/schemas/envelope-use-plan";
 import type { MoneyMutation } from "../preview/types";
-import { EnvelopeError } from "./errors";
 import { monthViewIn } from "./month-read";
 import { applyPlan } from "./use-my-plan";
 

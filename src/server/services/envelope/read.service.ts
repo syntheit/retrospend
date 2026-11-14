@@ -3,6 +3,8 @@
  * one RLS transaction for the user and returns contract DTOs. Writes go
  * through the money mutations instead (preview + apply).
  */
+
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type {
 	CoverOverview,
 	FillFromTargetsOutput,
@@ -18,7 +20,6 @@ import { db } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import type { Prisma } from "~prisma";
 import { setupPreset } from "./book.service";
-import { EnvelopeError } from "./errors";
 import { ensureLegacyBook } from "./legacy-lazy";
 import { ensureMonthsClosed } from "./month-close.service";
 import {

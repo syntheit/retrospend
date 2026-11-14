@@ -18,6 +18,7 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import { owedDto } from "@retrospend/domain/envelope/owed";
 import type {
 	ForgiveInput,
@@ -37,7 +38,6 @@ import { logAudit } from "../shared-expenses/audit-log";
 import { computePairLedger } from "../shared-expenses/balance";
 import type { ParticipantRef } from "../shared-expenses/types";
 import { userTimeZone } from "../user-time-zone";
-import { EnvelopeError } from "./errors";
 import { findPersonalBook, loadBook } from "./inputs";
 import { forgetMonthViews, owedInputOf } from "./month-read";
 import { isoDateIn } from "./months";

@@ -13,13 +13,13 @@
  * Spending logged after setup does not block: the book does not hold it.
  */
 import { createHash } from "node:crypto";
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import {
 	type RestoreToken,
 	readRestore,
 	signRestore,
 } from "~/server/services/entry/restore-token";
 import { Prisma } from "~prisma";
-import { EnvelopeError } from "./errors";
 import { forgetMonthViews } from "./month-read";
 import { lockBook } from "./movement-state";
 

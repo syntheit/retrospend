@@ -5,10 +5,11 @@
  * name before a rename has its own column. Every log row is written in the
  * edit's transaction, so a preview that rolls back leaves none.
  */
+
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import { z } from "zod";
 import { targetSnapshotSchema } from "~/lib/schemas/envelope-book";
 import type { Prisma } from "~prisma";
-import { EnvelopeError } from "./errors";
 
 type Tx = Prisma.TransactionClient;
 

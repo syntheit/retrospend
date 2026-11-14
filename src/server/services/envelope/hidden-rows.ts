@@ -10,6 +10,8 @@
  * still hidden spending in that month. Either answer takes it out of the
  * list, and the undo puts the hide back on exactly the rows named.
  */
+
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type {
 	HiddenAnswer,
 	HiddenRow,
@@ -19,7 +21,6 @@ import type {
 import type { Prisma } from "~prisma";
 import { budgetSpendingWhere } from "../spending";
 import { addMonths } from "./calendar";
-import { EnvelopeError } from "./errors";
 import { monthStartInstant } from "./inputs";
 import { forgetMonthViews } from "./month-read";
 import { isoDateIn } from "./months";

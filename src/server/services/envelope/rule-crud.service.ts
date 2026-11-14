@@ -6,6 +6,7 @@
  * money, so it runs as a previewed mutation (rule.mutation.ts).
  */
 
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type { RuleMatchInput } from "~/lib/schemas/envelope";
 import type {
 	ApplyRuleResult,
@@ -15,7 +16,6 @@ import type {
 	UpdateRuleInput,
 } from "~/lib/schemas/envelope-plan";
 import type { Prisma } from "~prisma";
-import { EnvelopeError } from "./errors";
 import { forgetMonthViews } from "./month-read";
 import { monthRange } from "./months";
 import { result } from "./movement.service";

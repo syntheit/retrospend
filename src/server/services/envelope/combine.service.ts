@@ -17,6 +17,7 @@
  * (SPEC §5.3). Runs on the caller's transaction (preview = result).
  */
 import { randomUUID } from "node:crypto";
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type {
 	ArchiveEnvelopeInput,
 	ArchiveEnvelopeResult,
@@ -28,7 +29,6 @@ import { addMonths } from "./calendar";
 import { mergeTargets } from "./crud-math";
 import { begin, moveLinks, neutralRows, writeAndList } from "./crud-shared";
 import { assertNewChange, recordChange } from "./envelope-change";
-import { EnvelopeError } from "./errors";
 import { restoreData, snapshotOf } from "./limit-target";
 import { forgetMonthViews } from "./month-read";
 import {

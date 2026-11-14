@@ -5,6 +5,7 @@
  * the caller's transaction (RLS set), so `setup.mutation.ts` previews it.
  */
 import { randomUUID } from "node:crypto";
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import { REPEAT_MONTHS } from "@retrospend/domain/envelope/target-input";
 import { savingsShape } from "@retrospend/domain/envelope/targets";
 import type { SetupInput, SetupPresetOutput } from "~/lib/schemas/envelope";
@@ -12,7 +13,6 @@ import type { Prisma } from "~prisma";
 import { sortByText } from "../text-order";
 import { userTimeZone } from "../user-time-zone";
 import { writeEntryRow } from "./adjustment";
-import { EnvelopeError } from "./errors";
 import { findPersonalBook, monthStartInstant } from "./inputs";
 import { recentSpending } from "./limits.service";
 import { planFund } from "./month-close.service";

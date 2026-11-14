@@ -6,6 +6,7 @@
  * with (setup-undo.service.ts).
  */
 
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import {
 	FIGURE_LEFT_TO_SPEND,
 	FIGURE_NOT_PLANNED_YET,
@@ -18,7 +19,6 @@ import {
 import type { MoneyMutation } from "../preview/types";
 import { setupBook } from "./book.service";
 import { projectIn, savePayoffPlan } from "./debt.service";
-import { EnvelopeError } from "./errors";
 import { loadBook } from "./inputs";
 import { forgetMonthViews, monthViewIn } from "./month-read";
 import { nextPay } from "./pay-cycle";

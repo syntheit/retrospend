@@ -16,13 +16,13 @@
  * client ids, every touched envelope reported before and after (RC-5).
  */
 import { randomUUID } from "node:crypto";
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type {
 	CarryOverspendInput,
 	MovementResult,
 } from "~/lib/schemas/envelope";
 import type { Prisma } from "~prisma";
 import { addMonths } from "./calendar";
-import { EnvelopeError } from "./errors";
 import { insert, replay, result } from "./movement.service";
 import {
 	lockedSnapshot,

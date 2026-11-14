@@ -10,6 +10,7 @@
  * fact.
  */
 import { randomUUID } from "node:crypto";
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type {
 	ConfirmStartingMoneyInput,
 	ConfirmStartingMoneyResult,
@@ -18,7 +19,6 @@ import type { Prisma } from "~prisma";
 import { writeAdjustment, writeEntryRow } from "./adjustment";
 import { holdsForAdjustment } from "./bank";
 import { assertNewChange, recordChange } from "./envelope-change";
-import { EnvelopeError } from "./errors";
 import { forgetMonthViews, monthViewIn } from "./month-read";
 import { isoDateIn } from "./months";
 import { lockedSnapshot } from "./movement-state";

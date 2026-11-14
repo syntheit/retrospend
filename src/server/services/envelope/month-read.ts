@@ -5,6 +5,7 @@
  * read.service.ts opens one per request for the transports.
  */
 
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import {
 	type MonthRead as DomainMonthRead,
 	type MonthViewSource,
@@ -21,7 +22,6 @@ import type { Prisma } from "~prisma";
 import type { CloseRow } from "./close-rows";
 import { savedPlanLines } from "./draft-store";
 import { moneyInEntries } from "./entries";
-import { EnvelopeError } from "./errors";
 import { groupBaseFor } from "./income-history";
 import { type BookRow, loadBook } from "./inputs";
 import { coverOverview, fillFromTargets } from "./planning";

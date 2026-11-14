@@ -8,6 +8,7 @@
 import { randomUUID } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import { beforeAll, describe, expect, it } from "vitest";
 import { envelopeRouter } from "~/server/api/routers/envelope";
 import { createCallerFactory } from "~/server/api/trpc";
@@ -16,7 +17,6 @@ import { forUser } from "~/server/services/preview";
 import { adminDb } from "~/test/pg-harness";
 import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 import { addRow, seedUser, setupInput } from "./__tests__/pg-fixture";
-import { EnvelopeError } from "./errors";
 import { assignEnvelopes, moveMoney, undoMovements } from "./movement.mutation";
 import { getHistory, getMonth } from "./read.service";
 import { setupEnvelopeBook } from "./setup.mutation";
