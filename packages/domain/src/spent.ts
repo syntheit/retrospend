@@ -101,6 +101,23 @@ export interface SpentRange {
 const inRange = (d: Date, r: SpentRange) =>
 	d.getTime() >= r.start.getTime() && d.getTime() <= r.end.getTime();
 
+/**
+ * The one rule for which of your shares count as spending: its status counts
+ * (a rejected share is not owed) and its project is not one the caller hides.
+ * The server filters its candidate rows with it and a device filters its own,
+ * so the two cannot disagree on a share. The date range is not part of it: a
+ * reader bounds the dates (the server with optional open bounds in SQL).
+ */
+export function countsAsShare(
+	row: Pick<SpentShareRow, "verificationStatus" | "projectId">,
+	hiddenProjectIds: readonly string[],
+): boolean {
+	return (
+		shareCounts(row.verificationStatus) &&
+		(row.projectId === null || !hiddenProjectIds.includes(row.projectId))
+	);
+}
+
 /** reportSpendingWhere, on a row. */
 export function countsAsSpending(row: SpentExpenseRow, r: SpentRange): boolean {
 	return (
@@ -254,10 +271,7 @@ export function spentInputsFromRows(args: {
 		shares: args.shares
 			.filter(
 				(s) =>
-					shareCounts(s.verificationStatus) &&
-					inRange(s.date, range) &&
-					(s.projectId === null ||
-						!args.hiddenProjectIds.includes(s.projectId)),
+					countsAsShare(s, args.hiddenProjectIds) && inRange(s.date, range),
 			)
 			.map((s) => {
 				const amount = dec(s.shareAmount).toFixed();
