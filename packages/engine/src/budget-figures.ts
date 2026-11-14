@@ -22,7 +22,10 @@ import {
 	type DebtSource,
 	payoffFrom,
 } from "@retrospend/domain/envelope/debt-read";
-import type { PayoffPlanDto } from "@retrospend/domain/envelope/dto";
+import type {
+	MonthViewDto,
+	PayoffPlanDto,
+} from "@retrospend/domain/envelope/dto";
 import { moneyInEntries } from "@retrospend/domain/envelope/entries";
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import {
@@ -174,12 +177,8 @@ function debtSourceOf(db: Reader, pass: FigurePass | undefined): DebtSource {
 	};
 }
 
-/**
- * The device's budget reads, each loaded once per pass. Like the server's,
- * each is null without a book or while a rate is missing (R14). Not stale: the
- * figure definitions in `budgetDeviceFigures` answer that before they read.
- */
-export function deviceBudgetReads(clock: () => Date): BudgetReads<Reader> {
+/** The month view of the device's own rows, loaded once per pass; null without a book. */
+function monthViewReader(clock: () => Date) {
 	const view = async (
 		db: Reader,
 		userId: string,
@@ -210,6 +209,16 @@ export function deviceBudgetReads(clock: () => Date): BudgetReads<Reader> {
 		);
 	};
 
+	return view;
+}
+
+/**
+ * The device's budget reads, each loaded once per pass. Like the server's,
+ * each is null without a book or while a rate is missing (R14). Not stale: the
+ * figure definitions in `budgetDeviceFigures` answer that before they read.
+ */
+export function deviceBudgetReads(clock: () => Date): BudgetReads<Reader> {
+	const view = monthViewReader(clock);
 	return {
 		async month(db, userId, pass) {
 			const v = await view(db, userId, pass);
@@ -269,4 +278,24 @@ export function budgetDeviceFigures(
 			}
 		},
 	}));
+}
+
+/**
+ * The current month as the server's month read answers it, from the device's
+ * own rows: null with no book, while the budget is stale, or when a row cannot
+ * be read. Unlike the figures it keeps an incomplete month (a missing rate)
+ * and says so in its `incomplete` flag, for the caller to decide on.
+ */
+export async function deviceMonthView(
+	db: Reader,
+	userId: string,
+	clock: () => Date,
+): Promise<MonthViewDto | null> {
+	if (budgetStatus(db) === "stale") return null;
+	try {
+		return (await monthViewReader(clock)(db, userId, undefined))?.dto ?? null;
+	} catch (error) {
+		if (error instanceof BudgetUnreadable) return null;
+		throw error;
+	}
 }

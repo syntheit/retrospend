@@ -5,7 +5,12 @@ import { createDeviceEngine, engineFor, PULL_AFTER_MS } from "./device-engine";
 // Lets a test act while the figures are being read; reads as the real one otherwise.
 jest.mock("@retrospend/engine", () => {
 	const actual = jest.requireActual("@retrospend/engine");
-	return { ...actual, readDeviceFigures: jest.fn(actual.readDeviceFigures) };
+	return {
+		...actual,
+		readDeviceFigures: jest.fn(actual.readDeviceFigures),
+		budgetStatus: jest.fn(actual.budgetStatus),
+		deviceMonthView: jest.fn(actual.deviceMonthView),
+	};
 });
 const actualRead = jest.requireActual("@retrospend/engine").readDeviceFigures;
 const readDuring = (act: () => Promise<unknown>) =>
@@ -88,6 +93,154 @@ describe("reading figures", () => {
 		expect(
 			(await engine.read(["glance.spent"]))?.readings.get("glance.spent"),
 		).toEqual(ARS(100_000));
+	});
+});
+
+describe("a fresh read", () => {
+	it("pulls again before it reads, even when the rows are young", async () => {
+		const { api, pulls } = fakeDeviceApi({ expenses: [page(ROWS)] });
+		const engine = createDeviceEngine(api, "u1");
+		await engine.pull();
+		const read = await engine.read(["glance.spent"], { fresh: true });
+		expect(pulls()).toBe(2);
+		expect(engine.generation).toBe(2);
+		expect(read?.readings.get("glance.spent")).toEqual(ARS(100_000));
+	});
+
+	// The pull running now began before the call, so a write the caller has
+	// just seen confirmed may not be in its rows: it is waited out, then repeated.
+	it("waits out a pull already running and pulls once more", async () => {
+		const { api, pulls } = fakeDeviceApi({ expenses: [page(ROWS)] });
+		const engine = createDeviceEngine(api, "u1");
+		const running = engine.pull();
+		const read = await engine.read(["glance.spent"], { fresh: true });
+		await running;
+		expect(pulls()).toBe(2);
+		expect(read).not.toBeNull();
+	});
+
+	it("reads nothing when its pull fails", async () => {
+		const { api } = fakeDeviceApi({
+			expenses: [page(ROWS)],
+			fail: { route: "expenses", pull: 2, error: new Error("offline") },
+		});
+		const engine = createDeviceEngine(api, "u1");
+		await engine.pull();
+		expect(await engine.read(["glance.spent"], { fresh: true })).toBeNull();
+		expect(engine.generation).toBe(1);
+	});
+
+	// Offline before the first write leaves the rows as they were and the
+	// engine ready, but they are no fresher than the call: nothing is read.
+	it("reads nothing when its pull fails before it wrote anything", async () => {
+		const { api } = fakeDeviceApi({ expenses: [page(ROWS)] });
+		const engine = createDeviceEngine(api, "u1");
+		await engine.pull();
+		(api.sync as unknown as Record<string, unknown>).settings = async () => {
+			throw new Error("offline");
+		};
+		expect(await engine.read(["glance.spent"], { fresh: true })).toBeNull();
+		expect(engine.status).toBe("ready");
+		expect(engine.generation).toBe(1);
+		expect(await engine.read(["glance.spent"])).not.toBeNull();
+	});
+
+	it("reads nothing from an engine that was disposed", async () => {
+		const { api } = fakeDeviceApi({ expenses: [page(ROWS)] });
+		const engine = createDeviceEngine(api, "u1");
+		await engine.pull();
+		await engine.dispose({ wipe: false });
+		expect(await engine.read([], { fresh: true })).toBeNull();
+	});
+});
+
+describe("the budget month", () => {
+	const dto = {
+		book: { id: "book", currency: "ARS" },
+		month: { key: 202610 },
+		today: "2026-10-15",
+		approximate: false,
+		incomplete: false,
+		verdict: { lead: { figureId: "budget.leftToSpend" } },
+	};
+	const ready = () => jest.mocked(engineModule.budgetStatus);
+	const view = () => jest.mocked(engineModule.deviceMonthView);
+	afterEach(() =>
+		ready().mockImplementation(
+			jest.requireActual("@retrospend/engine").budgetStatus,
+		),
+	);
+
+	it("is the month view's book, month, day and verdict when asked for and the block is readable", async () => {
+		const { api } = fakeDeviceApi();
+		const engine = createDeviceEngine(api, "u1");
+		await engine.pull();
+		ready().mockReturnValue("ready");
+		view().mockResolvedValueOnce(dto as never);
+		const read = await engine.read([], { budget: true });
+		expect(read?.budget).toEqual({
+			bookId: "book",
+			currency: "ARS",
+			month: 202610,
+			today: "2026-10-15",
+			approximate: false,
+			incomplete: false,
+			verdict: dto.verdict,
+		});
+	});
+
+	it("is read at the engine's own clock", async () => {
+		const { api } = fakeDeviceApi();
+		const engine = createDeviceEngine(api, "u1", () => 42_000);
+		await engine.pull();
+		ready().mockReturnValue("ready");
+		view().mockResolvedValueOnce(dto as never);
+		await engine.read([], { budget: true });
+		const clock = view().mock.calls.at(-1)?.[2] as () => Date;
+		expect(clock().getTime()).toBe(42_000);
+	});
+
+	it("is not read unless asked for, nor while the block is not readable", async () => {
+		const { api } = fakeDeviceApi();
+		const engine = createDeviceEngine(api, "u1");
+		await engine.pull();
+		view().mockClear();
+		ready().mockReturnValue("ready");
+		expect((await engine.read([]))?.budget).toBeNull();
+		expect(view()).not.toHaveBeenCalled();
+		ready().mockReturnValue("stale");
+		expect((await engine.read([], { budget: true }))?.budget).toBeNull();
+		expect(view()).not.toHaveBeenCalled();
+	});
+
+	it("loses only the budget when the month view fails", async () => {
+		const { api } = fakeDeviceApi({ expenses: [page(ROWS)] });
+		const engine = createDeviceEngine(api, "u1");
+		await engine.pull();
+		ready().mockReturnValue("ready");
+		view().mockRejectedValueOnce(new Error("boom"));
+		const read = await engine.read(["glance.spent"], { budget: true });
+		expect(read?.budget).toBeNull();
+		expect(read?.readings.get("glance.spent")).toEqual(ARS(100_000));
+	});
+});
+
+describe("a budget verdict that differs", () => {
+	it("is kept in the last parity check and warned with ids and parts only", async () => {
+		const { api } = fakeDeviceApi();
+		const engine = createDeviceEngine(api, "u1");
+		await engine.pull();
+		engine.reportVerdict("budget.leftToSpend", ["state", "amount"], {
+			device: { lead: { amount: { minor: 4_999_900 } } },
+			server: { lead: { amount: { minor: 5_000_000 } } },
+		});
+		expect(engine.lastParity?.ids).toEqual(["budget.leftToSpend"]);
+		expect(engine.lastParity?.mismatches).toHaveLength(1);
+		expect(engine.lastParity?.generation).toBe(1);
+		const logged = warn.mock.calls.flat().join(" ");
+		expect(logged).toContain("budget.leftToSpend");
+		expect(logged).toContain("amount");
+		expect(logged).not.toMatch(/4999900|5000000/);
 	});
 });
 

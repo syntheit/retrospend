@@ -22,6 +22,7 @@ export type {
 	WealthTransferRow,
 } from "./book-rows";
 export { BudgetUnreadable } from "./budget-book";
+export { deviceMonthView } from "./budget-figures";
 export {
 	BUDGET_GATE_ENTITIES,
 	type BudgetGateEntity,

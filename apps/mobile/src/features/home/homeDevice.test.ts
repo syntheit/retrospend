@@ -36,6 +36,7 @@ const api = (glance: Glance) =>
 const device = (read: DeviceRead | null) => ({
 	read: jest.fn(async (_ids: readonly string[]) => read),
 	verify: jest.fn(async (_ids: readonly string[]) => {}),
+	reportVerdict: jest.fn(),
 });
 
 const read = (
@@ -44,6 +45,7 @@ const read = (
 ): DeviceRead => ({
 	homeCurrency: "ARS",
 	budgetReady: false,
+	budget: null,
 	readings: new Map(Object.entries(readings)),
 	...o,
 });
