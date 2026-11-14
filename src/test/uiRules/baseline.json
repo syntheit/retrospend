@@ -415,7 +415,7 @@
 		"src/server/services/shared-expenses/settlement.service.ts": 368,
 		"src/server/services/shared-expenses/test-utils.ts": 971,
 		"src/server/services/shared-expenses/transaction.service.ts": 505,
-		"src/server/services/shared-expenses/verification.service.ts": 55
+		"src/server/services/shared-expenses/verification.service.ts": 54
 	},
 	"UI-151": {
 		"src/app/api/import/process/route.ts": 1,
