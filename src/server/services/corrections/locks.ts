@@ -13,7 +13,10 @@
  * Period close locks splits on its own (billing-period); those carry no
  * payment id and are not touched here.
  */
-import { computePairLedger } from "~/server/services/shared-expenses/balance";
+import {
+	COUNTED_SHARE,
+	computePairLedger,
+} from "~/server/services/shared-expenses/balance";
 import {
 	type ParticipantRef,
 	sameParticipant,
@@ -48,12 +51,16 @@ const refOf = (
 	participantId: string,
 ): ParticipantRef => ({ participantType, participantId });
 
-/** A split `paid` paid with `other` on it. */
+/**
+ * A split `paid` paid with `other` on it. A rejected share is not owed (the
+ * balance skips it), so a payment between the two cannot have settled it.
+ */
 const paidFor = (paid: ParticipantRef, other: ParticipantRef) => ({
 	paidByType: paid.participantType,
 	paidById: paid.participantId,
 	splitParticipants: {
 		some: {
+			...COUNTED_SHARE,
 			participantType: other.participantType,
 			participantId: other.participantId,
 		},
@@ -92,6 +99,7 @@ export async function lockSettledSplits(
 			paidByType: true,
 			paidById: true,
 			splitParticipants: {
+				where: COUNTED_SHARE,
 				select: {
 					participantType: true,
 					participantId: true,

@@ -17,7 +17,8 @@ vi.mock("~/server/services/notifications", () => ({
 
 // Mock computeBalance so the delete guard's unsettled-balance check is controlled
 // per-test (its own correctness is covered in balance.test.ts).
-vi.mock("./balance", () => ({
+vi.mock("./balance", async (importOriginal) => ({
+	...(await importOriginal<typeof import("./balance")>()),
 	computeBalance: vi.fn().mockResolvedValue({ byCurrency: {}, minorByCurrency: {} }),
 }));
 

@@ -10,6 +10,7 @@ import {
 	type BalanceOptions,
 	type BalanceResult,
 	balanceOf,
+	COUNTED_SHARE,
 	projectScopeWhere,
 	settlementSide,
 } from "./balance";
@@ -99,6 +100,7 @@ export async function computeBalanceBatch(
 			// All split participants where A paid and any counterpart owes
 			prisma.splitParticipant.findMany({
 				where: {
+					...COUNTED_SHARE,
 					OR: counterpartConditions,
 					transaction: { OR: aPaidConds, ...projectWhere },
 				},
@@ -113,6 +115,7 @@ export async function computeBalanceBatch(
 			// All split participants where any counterpart paid and A owes
 			prisma.splitParticipant.findMany({
 				where: {
+					...COUNTED_SHARE,
 					OR: aSplitConds,
 					transaction: {
 						OR: counterpartConditions.map((c) => ({

@@ -278,6 +278,7 @@ async function computePairBalance(
 	// Find transactions where A paid and B is a split participant
 	const aPayedBOwes = await prisma.splitParticipant.findMany({
 		where: {
+			...COUNTED_SHARE,
 			OR: orConds(bRefs),
 			transaction: { OR: paidByConds(aRefs), ...projectWhere },
 		},
@@ -295,6 +296,7 @@ async function computePairBalance(
 	// Find transactions where B paid and A is a split participant
 	const bPayedAOwes = await prisma.splitParticipant.findMany({
 		where: {
+			...COUNTED_SHARE,
 			OR: orConds(aRefs),
 			transaction: { OR: paidByConds(bRefs), ...projectWhere },
 		},
