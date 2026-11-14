@@ -41,10 +41,12 @@ import { readShareSnapshot } from "~/server/services/sync/snapshots";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { computeBalance } from "./balance";
+import { getBalancesFromPerspective } from "./balances-perspective.service";
 import { computePeriodSettleStatus } from "./billing-period-settle";
 import { lockSettledSplits } from "../corrections/locks";
 import { guardDelete } from "./delete-guard";
 import { removeSelfIn } from "./remove-self";
+import { personPage } from "../people/detail";
 import { owedRead } from "../payments/figures";
 import { settleContext } from "../people/settle-context";
 import { projectSettlementPlan } from "../project/group.service";
@@ -250,6 +252,17 @@ describe("scenario B: a project's summary charges a rejected share to the payer"
 			Caro: [[0, 3_000_000, 0, 0, -3_000_000]],
 		});
 		expect(s.balancesAddUp).toBe(true);
+		// 8: the summary agrees with the pair balances in the project: Ana's
+		// +30,000 is what Caro owes her plus what Bruno owes her (nothing).
+		const inProject = (a: TestUser, b: TestUser) =>
+			userTransaction(adminDb, ana.user.id, (tx) =>
+				computeBalance(tx, ref(a), ref(b), {
+					projectScope: project.id,
+					viewer: ref(ana),
+				}),
+			).then((r) => r.minorByCurrency);
+		expect(await inProject(ana, caro)).toEqual({ ARS: 3_000_000 });
+		expect(await inProject(ana, bruno)).toEqual({});
 		expect(
 			s.transfers.map((x) => [x.from.name, x.to.name, x.amount.minor]),
 		).toEqual([["Caro", "Ana", 3_000_000]]);
@@ -371,6 +384,104 @@ describe("scenario C: a payment, then a rejection", () => {
 		);
 		expect(quote.direction).toBe("outgoing");
 		expect(quote.everything).toEqual(ars(30_000));
+	});
+});
+
+describe("scenario G: the rows behind a balance add up to it", () => {
+	it("8: a rejected row has effect 0 on both sides, and rows sum to the person balance", async () => {
+		const { ana, bruno } = await cast();
+		const expense = (amount: string, share: string, status: string) =>
+			adminDb.sharedTransaction.create({
+				data: {
+					description: `Cena ${amount}`,
+					amount,
+					currency: "ARS",
+					date: new Date("2026-10-08"),
+					paidByType: "user",
+					paidById: ana.user.id,
+					createdByType: "user",
+					createdById: ana.user.id,
+					splitParticipants: {
+						create: [
+							{
+								participantType: "user",
+								participantId: ana.user.id,
+								shareAmount: share,
+								verificationStatus: "ACCEPTED",
+							},
+							{
+								participantType: "user",
+								participantId: bruno.user.id,
+								shareAmount: share,
+								verificationStatus: status as "ACCEPTED" | "REJECTED",
+							},
+						],
+					},
+				},
+			});
+		await expense("40000", "20000", "REJECTED");
+		await expense("10000", "5000", "ACCEPTED");
+		// Bruno owes Ana ARS 5,000 and nothing for the rejected 20,000.
+		const anaView = await personPage(ana.db as never, ana.user.id, ref(bruno));
+		expect(anaView.net).toEqual(ars(5_000));
+		expect(
+			anaView.rows
+				.map((r) => [r.title, r.effect?.minor, r.state])
+				.sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
+		).toEqual([
+			["Cena 10000", 500_000, "ok"],
+			["Cena 40000", 0, "ok"],
+		]);
+		// His side: minus 5,000, and the rejected row says so.
+		const brunoView = await personPage(
+			bruno.db as never,
+			bruno.user.id,
+			ref(ana),
+		);
+		expect(
+			brunoView.rows
+				.map((r) => [r.title, r.effect?.minor, r.state])
+				.sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
+		).toEqual([
+			["Cena 10000", -500_000, "ok"],
+			["Cena 40000", 0, "rejected"],
+		]);
+		expect(Object.is(brunoView.rows.find((r) => r.state === "rejected")?.effect?.minor, 0)).toBe(true);
+	});
+
+	it("8: a project card's lines sum to its balance and leave the rejected expense out", async () => {
+		const { ana, bruno } = await cast();
+		const project = await adminDb.project.create({
+			data: { name: "Cenas", primaryCurrency: "ARS", createdById: ana.user.id },
+		});
+		await addMember(project.id, "user", ana.user.id, "ORGANIZER");
+		await addMember(project.id, "user", bruno.user.id, "CONTRIBUTOR");
+		for (const [title, amount, share, status] of [
+			["Cena A", "40000", "20000", "REJECTED"],
+			["Cena B", "10000", "5000", "ACCEPTED"],
+		] as const) {
+			await seedExpense(project.id, {
+				description: title,
+				amount,
+				currency: "ARS",
+				date: "2026-10-08",
+				paidBy: who(ana),
+				splits: [
+					{ ...who(ana), share },
+					{ ...who(bruno), share, status },
+				],
+			});
+		}
+		const card = await userTransaction(adminDb, ana.user.id, (tx) =>
+			getBalancesFromPerspective(tx, project.id, ref(ana)),
+		);
+		const statement = card.statements.find(
+			(x) => x.counterpart.participantId === bruno.user.id,
+		);
+		expect(statement?.netByCurrency).toEqual({ ARS: 5_000 });
+		expect(statement?.itemized.map((i) => [i.description, i.signedAmount])).toEqual([
+			["Cena B", 5_000],
+		]);
 	});
 });
 

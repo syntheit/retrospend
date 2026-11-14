@@ -4,11 +4,12 @@
  * aware filter stay in one place); the amounts are read again as Decimals
  * so nothing passes through a float. A row's effect is what it does to
  * your balance with this person: their share of what you paid, or minus
- * your share of what they paid.
+ * your share of what they paid. A rejected share is not owed, so it adds 0.
  */
 import { inFaceOrder } from "@retrospend/domain/activity-rows";
 import { categoryTone } from "@retrospend/domain/category-tone";
 import { sumMinor, toMinor } from "~/server/services/envelope/units";
+import { COUNTED_SHARE } from "~/server/services/shared-expenses/balance";
 import type { TransactionHistoryItem } from "~/server/services/shared-expenses/people.service";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import type { Prisma, PrismaClient } from "~prisma";
@@ -46,7 +47,7 @@ export function effectOf(
 				.map((s) => toMinor(s.shareAmount.toString(), tx.currency)),
 		);
 	if (mine.has(payer)) return sharesOf(theirs);
-	if (theirs.has(payer)) return -sharesOf(mine);
+	if (theirs.has(payer)) return 0 - sharesOf(mine);
 	return null;
 }
 
@@ -73,7 +74,10 @@ export async function ledgerRows(
 					currency: true,
 					paidByType: true,
 					paidById: true,
+					// Only counted shares: a rejected one is not in the balance,
+					// so its row's effect is 0 and the rows sum to the balance.
 					splitParticipants: {
+						where: COUNTED_SHARE,
 						select: {
 							participantType: true,
 							participantId: true,

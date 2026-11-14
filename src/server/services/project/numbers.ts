@@ -28,8 +28,10 @@ export function paymentsCountedFor<S>(
 
 /**
  * Which expenses a reader's summary includes. Today every project expense
- * counts, whatever its review state, as in every project view. Seam for the
- * owner's call at C3 (accepted shares only, and how pending shares show).
+ * counts, and so does every share but a rejected one: the ledger load drops
+ * those (COUNTED_SHARE), so the payer absorbs them. A pending share counts
+ * until it is answered. Seam for the owner's call at C3 (accepted shares
+ * only, and how pending shares show).
  */
 export function expensesCountedFor<T>(
 	_viewer: ProjectViewer,
