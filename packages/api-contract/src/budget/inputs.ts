@@ -1,4 +1,4 @@
-/** Inputs shared by the budget writes: targets, rules, setup, movements. Mirrors src/lib/schemas/envelope*.ts (a test keeps them equal). */
+/** Inputs shared by the budget writes: targets, rules, setup, movements. The web re-exports the outputs; the inputs it writes itself are kept equal by a test. */
 import * as z from "zod";
 import { userText } from "../common/user-text";
 import { idSchema } from "../core";

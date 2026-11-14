@@ -1,4 +1,4 @@
-/** Can I afford it, and shares with no envelope. Mirrors src/lib/schemas/envelope*.ts (a test keeps them equal). */
+/** Can I afford it, and shares with no envelope. The web re-exports the outputs; the inputs it writes itself are kept equal by a test. */
 import * as z from "zod";
 import { moneySchema } from "../common/money";
 import { idSchema } from "../core";

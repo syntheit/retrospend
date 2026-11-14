@@ -1,4 +1,4 @@
-/** Primitives and enums of the budget (months are YYYYMM numbers, money in is integer minor units of the book currency). Mirrors src/lib/schemas/envelope*.ts (a test keeps them equal). */
+/** Primitives and enums of the budget (months are YYYYMM numbers, money in is integer minor units of the book currency). The web re-exports the outputs; the inputs it writes itself are kept equal by a test. */
 import * as z from "zod";
 import { amountTextSchema } from "../common/amount-text";
 

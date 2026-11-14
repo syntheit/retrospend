@@ -1,4 +1,4 @@
-/** Results and inputs of setup, splits and close writes. Mirrors src/lib/schemas/envelope*.ts (a test keeps them equal). */
+/** Results and inputs of setup, splits and close writes. The web re-exports the outputs; the inputs it writes itself are kept equal by a test. */
 import * as z from "zod";
 import { moneySchema } from "../common/money";
 import { idSchema } from "../core";
