@@ -100,6 +100,14 @@ const FIXTURES: { [T in TableName]: (id: string) => TableRows[T] } = {
 		amountMode: "FIXED",
 		category: null,
 	}),
+	categories: (id) => ({
+		id,
+		kind: "EXPENSE",
+		name: "Food",
+		color: "orange",
+		icon: null,
+	}),
+	owed: (id) => ({ id, currency: "ARS", owedToYou: 250_000, youOwe: 100_000 }),
 	settings: (id) => ({
 		id,
 		homeCurrency: "ARS",

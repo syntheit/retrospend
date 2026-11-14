@@ -58,7 +58,8 @@ import {
 	spentMinorByCurrency,
 	spentRange,
 } from "@retrospend/domain/spent";
-import type { Reader } from "./port";
+import { NotFoundError } from "./errors";
+import { OWED_ID, type Reader } from "./port";
 import { settingsReads } from "./reference";
 
 export interface DeviceFiguresDeps {
@@ -67,19 +68,31 @@ export interface DeviceFiguresDeps {
 	 * captured at construction, so a long-lived registry never goes stale.
 	 */
 	readonly clock?: () => Date;
-	/**
-	 * Owed to you and You owe in the home currency, or the unavailable reading
-	 * the server gave. Shared money stays server-computed (the spike, 43-45),
-	 * so the device is handed it; it is constant within a pass, and a device
-	 * write never changes it.
-	 */
-	readonly owed: () => OwedReading | FigureUnavailable;
 }
 
 type DeviceFigure = FigureDefinition<Reader>;
 
 /** The settings row; a store without one throws (NotFoundError), never a USD fallback. */
 const settingsOf = (db: Reader) => settingsReads(db).require();
+
+/**
+ * Owed to you and You owe from the `owed` row a shares sync wrote. Shared
+ * money stays server-computed (the spike, 43-45), so the device reads the
+ * server's totals from its store: constant within a pass, never changed by a
+ * device write. No row (shares never pulled), or totals in another currency
+ * than the home currency (settings changed since the pull), throws instead of
+ * guessing: a missing total is never 0, and a stale one would be wrong.
+ */
+function owedOf(db: Reader, home: string): OwedReading {
+	const row = db.get("owed", OWED_ID);
+	if (!row) throw new NotFoundError("owed does not exist");
+	if ("missingRates" in row) return { missingRates: row.missingRates };
+	if (row.currency !== home)
+		throw new NotFoundError(
+			`owed is in ${row.currency}, not the home currency ${home}`,
+		);
+	return { owedToYou: row.owedToYou, youOwe: row.youOwe };
+}
 
 /** Rate lookups over the rows of `currencies`, picked in memory as the server's batch lookup does. */
 function lookupFor(db: Reader, currencies: Iterable<string>) {
@@ -238,10 +251,7 @@ function recurringFigures(clock: () => Date): DeviceFigure[] {
 	return [amount, ...costs];
 }
 
-function accountFigures(
-	clock: () => Date,
-	owed: DeviceFiguresDeps["owed"],
-): DeviceFigure[] {
+function accountFigures(clock: () => Date): DeviceFigure[] {
 	const netWorth: DeviceFigure = {
 		id: "netWorth",
 		scope: [],
@@ -255,17 +265,13 @@ function accountFigures(
 				...open.map((a) => a.currency),
 				...notTracked.map((u) => u.currency),
 			]);
-			const given = owed();
 			const net = netWorthFrom(
 				netWorthInputsFromRows({
 					home: s.homeCurrency,
 					accounts: open,
 					legs,
 					pick,
-					owed:
-						given instanceof FigureUnavailable
-							? { missingRates: given.missingRates }
-							: given,
+					owed: owedOf(db, s.homeCurrency),
 				}),
 				await readNow(clock, pass),
 			);
@@ -335,14 +341,14 @@ function accountFigures(
 
 /** The device's figures, 23 ids (`DEVICE_FIGURE_IDS`). */
 export function deviceFigures(
-	deps: DeviceFiguresDeps,
+	deps: DeviceFiguresDeps = {},
 ): FiguresRegistry<Reader> {
 	const clock = deps.clock ?? (() => new Date());
 	return createFiguresRegistry<Reader>([
 		spentFigure(clock),
 		...glanceFigures(clock),
 		...recurringFigures(clock),
-		...accountFigures(clock, deps.owed),
+		...accountFigures(clock),
 	]);
 }
 

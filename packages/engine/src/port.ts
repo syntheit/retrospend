@@ -64,6 +64,48 @@ export interface ExpenseDetail {
 	readonly homeRate?: string | null;
 }
 
+/**
+ * A category the user owns, as a sync sends it. The figures never read it
+ * directly: the sync layer joins `kind` onto each expense and the name, color
+ * and icon onto each template when either arrives, in any order, so a loader
+ * always finds them on the row it reads.
+ */
+export interface CategoryRow extends WithId {
+	/** "EXPENSE" or "INCOME"; an income category never counts as spending. */
+	readonly kind: string;
+	readonly name: string;
+	readonly color: string;
+	readonly icon: string | null;
+}
+
+/**
+ * What a template row keeps beyond the fields the view reads: the id of its
+ * category, so the sync layer can fill `category` when the category arrives
+ * after the template. Rows of figures-only fixtures have none.
+ */
+export interface TemplateDetail {
+	readonly categoryId?: string | null;
+}
+
+/**
+ * Owed to you and You owe in the home currency as the server read them, or the
+ * currencies that kept them out, one row (id "owed"). The server computes
+ * shared money, so a device takes it from a sync snapshot (GET /sync/shares)
+ * and the figures read it from the store like any other table: a preview sees
+ * it through its transaction, and a device write never changes it.
+ */
+export type OwedRow = WithId &
+	(
+		| {
+				/** The currency of both totals: the home currency of the pull. */
+				readonly currency: string;
+				/** Minor units, never negative. */
+				readonly owedToYou: number;
+				readonly youOwe: number;
+		  }
+		| { readonly missingRates: readonly string[] }
+	);
+
 /** One of your participations in an expense; `expenseId` ties it to the expense row it belongs to. */
 export type ShareRow = Readonly<SpentShareRow> &
 	WithId & { readonly expenseId: string };
@@ -79,7 +121,9 @@ export interface TableRows {
 	rates: Readonly<StoredRateRow> & WithId;
 	rateSync: RateSyncRow;
 	budgetMovements: Readonly<MovementRow> & WithId;
-	recurringTemplates: Readonly<RecurringTemplateRow>;
+	recurringTemplates: Readonly<RecurringTemplateRow> & TemplateDetail;
+	categories: CategoryRow;
+	owed: OwedRow;
 	settings: SettingsRow;
 }
 
@@ -96,6 +140,8 @@ export const TABLE_NAMES = [
 	"rateSync",
 	"budgetMovements",
 	"recurringTemplates",
+	"categories",
+	"owed",
 	"settings",
 ] as const satisfies readonly TableName[];
 
@@ -168,10 +214,14 @@ export const SETTINGS_ID = "user";
 /** The one row of the rateSync table. */
 export const RATE_SYNC_ID = "rates";
 
+/** The one row of the owed table. */
+export const OWED_ID = "owed";
+
 /** Tables that hold exactly one row, and its id; any other id is refused. */
 export const SINGLE_ROW_IDS: Partial<Record<TableName, string>> = {
 	settings: SETTINGS_ID,
 	rateSync: RATE_SYNC_ID,
+	owed: OWED_ID,
 };
 
 /** A write the port refuses: the row breaks a rule of its table. */

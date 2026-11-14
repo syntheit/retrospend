@@ -31,11 +31,7 @@ const first = vectors[0] as (typeof vectors)[number];
 const arsExpense = vectors[1] as (typeof vectors)[number];
 
 /** A registry reading at the instant the vector's expense happened, so it lands in the current month. */
-const figuresAt = (date: Date) =>
-	deviceFigures({
-		clock: () => date,
-		owed: () => ({ owedToYou: 0, youOwe: 0 }),
-	});
+const figuresAt = (date: Date) => deviceFigures({ clock: () => date });
 
 async function open(v: (typeof vectors)[number]) {
 	const store = await seededStore(v.seed);
