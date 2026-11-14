@@ -19,12 +19,14 @@ function deviceEngineModule(): typeof DeviceEngineModule | null {
 }
 
 function useEngine() {
-	const { api, state } = useSession();
+	const { api, state, baseUrl } = useSession();
 	const userId = state.status === "signedIn" ? (state.me?.id ?? null) : null;
 	return useMemo(() => {
 		const module = deviceEngineModule();
-		return module && api && userId ? module.engineFor(api, userId) : null;
-	}, [api, userId]);
+		return module && api && userId
+			? module.engineFor(api, userId, baseUrl)
+			: null;
+	}, [api, userId, baseUrl]);
 }
 
 /** What Home reads figures from, or null when the flag is off or nobody is signed in. */

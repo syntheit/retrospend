@@ -220,6 +220,9 @@ const config: ExpoConfig = {
 		// CFBundleLocalizations (Settings > Retrospend > Language).
 		["expo-localization", { supportedLocales: APP_LOCALES }],
 		"expo-secure-store",
+		// SQLCipher for the device engine's database (data/engine-db). The
+		// key-value store opens without a key and stays a plain SQLite file.
+		["expo-sqlite", { useSQLCipher: true }],
 		// Profile picture: library and camera on iOS (texts per language in
 		// locales/), and no microphone permission on either platform.
 		[

@@ -32,6 +32,13 @@ describe("app config", () => {
 		expect(config.plugins).toContain("./plugins/with-cleartext-servers");
 	});
 
+	it("builds expo-sqlite with SQLCipher, which the device engine's database needs", () => {
+		expect(config.plugins).toContainEqual([
+			"expo-sqlite",
+			{ useSQLCipher: true },
+		]);
+	});
+
 	it("leaves the connect address empty unless the build names a server", () => {
 		expect(defaultServer({})).toBe("");
 		expect(defaultServer({ RETROSPEND_DEFAULT_SERVER: " " })).toBe("");

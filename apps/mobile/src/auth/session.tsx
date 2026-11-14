@@ -24,6 +24,7 @@ import {
 	type ReadCache,
 	STICKY_CACHE_NAMES,
 } from "@/data/cache";
+import { useEngineSweep } from "@/data/engine-db/useEngineSweep";
 import { newClientId } from "@/data/ids";
 import { createOutbox, type Outbox } from "@/data/outbox";
 import { createSqliteStore } from "@/data/sqlite-store";
@@ -66,6 +67,8 @@ interface SessionValue {
 	signOut(options?: { discardUnsynced?: boolean }): Promise<void>;
 	/** Null until a server is connected. */
 	api: RetrospendClient | null;
+	/** The connected server's address; null until one is connected. */
+	baseUrl: string | null;
 	/** The local store for the signed-in account. */
 	local: Local | null;
 }
@@ -113,6 +116,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 	);
 
 	const meId = state.status === "signedIn" ? (state.me?.id ?? null) : null;
+	// The device engine's files of anyone else go at the start, sign-in, sign-out
+	// and session expiry, whether or not this build runs the engine.
+	useEngineSweep(baseUrl, state.status, meId);
 	const local = useMemo<Local | null>(() => {
 		if (!baseUrl || !meId) return null;
 		const scope = `${baseUrl}|${meId}`;
@@ -276,6 +282,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 		() => ({
 			state,
 			api,
+			baseUrl,
 			local,
 			signIn: async (email, password) =>
 				finishSignIn(
