@@ -153,7 +153,7 @@ describe("swipe twins", () => {
 		}
 	});
 
-	it("an unreviewed expense swipes Mark as reviewed; a reviewed one swipes Split", () => {
+	it("an unreviewed expense swipes Review; a reviewed one swipes Split", () => {
 		const lead = (t: ExpenseTarget) =>
 			swipeEntries(ACTIONS.expense, t, all, "lead").map((a) => a.id);
 		expect(lead(expense({ reviewed: false }))).toEqual(["review"]);

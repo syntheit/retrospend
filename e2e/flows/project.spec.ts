@@ -120,3 +120,37 @@ test("Project: add a person from a day, then Undo", async ({ page }) => {
 	await gotoReady(page, `${DEPTO}?tab=people`);
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
 });
+
+test("Project: Review on a row waiting for you opens the review sheet", async ({
+	page,
+}) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await openPage(page, `/projects/${PROJECT_IDS.floripa}`, "project");
+	const row = page
+		.getByRole("main")
+		.getByRole("row")
+		.filter({ hasText: "Hospedagem, segunda casa" });
+	await row
+		.getByRole("button", { name: "More actions for Hospedagem, segunda casa" })
+		.click();
+	await page.getByRole("menuitem", { name: "Review" }).click();
+	// The one sheet the People page opens: Lucía asked, and Accept moves nothing.
+	const sheet = page.getByRole("dialog", { name: "Review split" });
+	await expect(sheet).toContainText(
+		"Lucía added you to Hospedagem, segunda casa",
+	);
+	await expect(sheet.getByTestId("entry-changes")).toContainText(
+		"No change to",
+	);
+	await expect(sheet.getByRole("button", { name: "Accept" })).toBeEnabled();
+	// Reject is there too, and this share was paid, so it says so and cannot save.
+	await sheet.getByRole("button", { name: "Reject" }).click();
+	await expect(sheet.getByTestId("entry-changes")).toContainText(
+		"You already paid this share, so use Ask to fix instead.",
+	);
+	await expect(sheet.getByRole("button", { name: "Reject" })).toBeDisabled();
+	await page.keyboard.press("Escape");
+	await expect(sheet).toBeHidden();
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+});

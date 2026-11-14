@@ -138,7 +138,7 @@
 	},
 	"changes": {
 		"titleEdit": "What this edit changes",
-		"cannot": "This cannot be saved yet: {reason}",
+		"cannot": "This cannot be saved. {reason}",
 		"figures": {
 			"spent": "Your spending",
 			"owed_owedToYou": "Owed to you",

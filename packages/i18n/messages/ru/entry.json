@@ -138,7 +138,7 @@
 	},
 	"changes": {
 		"titleEdit": "Что изменит эта правка",
-		"cannot": "Пока нельзя сохранить: {reason}",
+		"cannot": "Нельзя сохранить. {reason}",
 		"figures": {
 			"spent": "Ваши расходы",
 			"owed_owedToYou": "Вам должны",

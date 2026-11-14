@@ -88,8 +88,7 @@
 		}
 	},
 	"toast": {
-		"exportFailed": "Не удалось экспортировать",
-		"accepted": "Вы приняли свою долю в {name}"
+		"exportFailed": "Не удалось экспортировать"
 	},
 	"preview": {
 		"figures": {

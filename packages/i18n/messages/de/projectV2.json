@@ -88,8 +88,7 @@
 		}
 	},
 	"toast": {
-		"exportFailed": "Export fehlgeschlagen",
-		"accepted": "Deinen Anteil an {name} angenommen"
+		"exportFailed": "Export fehlgeschlagen"
 	},
 	"preview": {
 		"figures": {

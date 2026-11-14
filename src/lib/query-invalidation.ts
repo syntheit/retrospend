@@ -213,8 +213,19 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"recurring.unconfirm": ["expense", "insights", "sharedTransaction"],
 
 	// ── Verification ────────────────────────────────────────────────────
-	"verification.accept": ["project", "people", "sharedTransaction", "expense"],
-	"verification.reject": ["project", "people", "sharedTransaction"],
+	// An answer moves what you owe, the budget's split lines and Needs you.
+	"verification.answer.save": [
+		...SHARED_TX_DEPS,
+		"sharedTransaction",
+		"verification",
+		"home",
+	],
+	"verification.restoreAnswer.save": [
+		...SHARED_TX_DEPS,
+		"sharedTransaction",
+		"verification",
+		"home",
+	],
 
 	// ── Import ──────────────────────────────────────────────────────────
 	// The Import page: one batch in, or the batch out again.

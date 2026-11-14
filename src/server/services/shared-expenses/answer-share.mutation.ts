@@ -1,8 +1,9 @@
 /**
  * Accept or reject your share of a split expense as a money mutation (R30,
  * R15): the call previews as the same write rolled back, and its undo puts the
- * share back as it was while it still reads the answer. The web's own calls
- * (VerificationService.accept and .reject) run the same answerShareIn.
+ * share back as it was while it still reads the answer. The web's calls
+ * (answer-share-web.mutation.ts) run this mutation under the same id, so the
+ * two cannot differ.
  */
 import { TRPCError } from "@trpc/server";
 import { SHARED_FIGURES } from "~/server/services/entry/shared.mutation";

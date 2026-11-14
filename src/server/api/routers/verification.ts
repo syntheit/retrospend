@@ -1,4 +1,3 @@
-import { userTextOrEmpty } from "@retrospend/api-contract/common";
 import { z } from "zod";
 import {
 	assertWritableParticipant,
@@ -6,7 +5,16 @@ import {
 	guestOrProtectedProcedure,
 } from "~/server/api/trpc";
 import { removeSelfFromSplit } from "~/server/services/corrections/guards";
+import {
+	answerShareInputSchema,
+	restoreAnswerInputSchema,
+} from "~/server/services/shared-expenses/answer-input";
+import {
+	answerShareWebMutation,
+	restoreAnswerWebMutation,
+} from "~/server/services/shared-expenses/answer-share-web.mutation";
 import { VerificationService } from "~/server/services/shared-expenses/verification.service";
+import { money } from "./money-pair";
 
 export const verificationRouter = createTRPCRouter({
 	/**
@@ -37,21 +45,6 @@ export const verificationRouter = createTRPCRouter({
 	}),
 
 	/**
-	 * POST /api/verification/:txnId/accept
-	 *
-	 * Accepts the current participant's pending verification on a shared transaction.
-	 * Idempotent: already-accepted items return 200 with current state.
-	 * Returns the updated transaction with computed status and all participant statuses.
-	 */
-	accept: guestOrProtectedProcedure
-		.input(z.object({ txnId: z.string().min(1) }))
-		.mutation(async ({ ctx, input }) => {
-			const actor = assertWritableParticipant(ctx.participant);
-			const service = new VerificationService(ctx.db, actor);
-			return await service.accept(input.txnId);
-		}),
-
-	/**
 	 * POST /api/verification/bulk-accept
 	 *
 	 * Accepts multiple pending verifications in a single atomic transaction.
@@ -67,25 +60,23 @@ export const verificationRouter = createTRPCRouter({
 		}),
 
 	/**
-	 * POST /api/verification/:txnId/reject
-	 *
-	 * Rejects the current participant's pending verification on a shared transaction.
-	 * Accepts an optional reason string stored on the SplitParticipant record.
-	 * Returns the updated transaction with a rejectionPendingNotification flag
-	 * for the future notification system (Chunk 3D).
+	 * verification.answer.{preview,save}: accept or reject your own share. The
+	 * preview is the save run and rolled back; a save returns the signed undo.
+	 * Only users answer here (the mutation is user-only); guests have no
+	 * answer screen on the web.
 	 */
-	reject: guestOrProtectedProcedure
-		.input(
-			z.object({
-				txnId: z.string().min(1),
-				reason: userTextOrEmpty("shared_expense.reject_reason", 500).optional(),
-			}),
-		)
-		.mutation(async ({ ctx, input }) => {
-			const actor = assertWritableParticipant(ctx.participant);
-			const service = new VerificationService(ctx.db, actor);
-			return await service.reject(input.txnId, input.reason);
-		}),
+	answer: money(
+		answerShareInputSchema,
+		answerShareWebMutation,
+		({ txnId, ...rest }) => ({ transactionId: txnId, ...rest }),
+	),
+
+	/** verification.restoreAnswer.{preview,save}: take an answer back with the token its save returned. */
+	restoreAnswer: money(
+		restoreAnswerInputSchema,
+		restoreAnswerWebMutation,
+		(value) => value,
+	),
 
 	/**
 	 * POST /api/verification/:txnId/remove-self

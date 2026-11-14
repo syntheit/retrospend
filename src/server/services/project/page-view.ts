@@ -25,6 +25,7 @@ import { resolveClaimAliases } from "~/server/services/shared-expenses/identity"
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import { Prisma, type PrismaClient } from "~prisma";
+import { askingOf } from "./asking";
 import { batchResolveIdentities, type Identity } from "./identities";
 import { membershipOf } from "./membership";
 import { readProjectNumbers } from "./numbers";
@@ -227,6 +228,7 @@ function expenseRow(
 			: mine?.verificationStatus === "REJECTED"
 				? ("rejected" as const)
 				: null;
+	const asker = waiting === "review" ? askingOf(e, isMe) : null;
 	return {
 		id: e.id,
 		title: e.description,
@@ -251,6 +253,7 @@ function expenseRow(
 		payerName: isMe(payer) ? null : person(payerKey, people).name,
 		payerIsMe: isMe(payer),
 		waiting,
+		asking: asker ? person(refKey(asker), people) : null,
 		mine: isMe({
 			participantType: e.createdByType,
 			participantId: e.createdById,
@@ -361,6 +364,7 @@ async function readPage(
 			...project.participants,
 			...expenses.flatMap((e) => [
 				{ participantType: e.paidByType, participantId: e.paidById },
+				{ participantType: e.createdByType, participantId: e.createdById },
 				...e.splitParticipants,
 			]),
 			...payments.flatMap((p) => [

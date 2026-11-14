@@ -138,7 +138,7 @@
 	},
 	"changes": {
 		"titleEdit": "Ce que cette modification change",
-		"cannot": "Impossible d'enregistrer pour l'instant : {reason}",
+		"cannot": "Impossible d'enregistrer. {reason}",
 		"figures": {
 			"spent": "Tes dépenses",
 			"owed_owedToYou": "On te doit",

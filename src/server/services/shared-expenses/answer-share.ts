@@ -19,9 +19,9 @@ const ACCEPTED: VerificationStatus[] = ["ACCEPTED", "AUTO_ACCEPTED"];
 /**
  * Answers your own share of a split expense, on the caller's transaction:
  * accept, or reject with an optional reason. Answering the same way twice
- * changes nothing (`changed` false). The web's VerificationService.accept and
- * .reject and the v1 money mutation (answer-share.mutation.ts) run this one
- * function, so they cannot differ. A change the expense's state refuses
+ * changes nothing (`changed` false). The money mutation (answer-share.mutation.ts,
+ * which the web and v1 both run) and VerificationService.accept and .reject
+ * (tests only) run this one function, so they cannot differ. A change the expense's state refuses
  * (settled, a correction, a reject that would reverse a payment) throws a
  * ShareAnswerRefusedError (answer-guard.ts).
  */

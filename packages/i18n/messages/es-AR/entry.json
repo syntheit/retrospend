@@ -138,7 +138,7 @@
 	},
 	"changes": {
 		"titleEdit": "Qué cambia con esta edición",
-		"cannot": "Todavía no se puede guardar: {reason}",
+		"cannot": "No se puede guardar. {reason}",
 		"figures": {
 			"spent": "Tus gastos",
 			"owed_owedToYou": "Te deben",

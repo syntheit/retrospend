@@ -575,11 +575,21 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"user.updateProfile": to("PATCH /profile"),
 
 	// ── verification of shared expenses ──────────────────────────────────
-	"verification.accept": to("POST /shared-expenses/{id}/accept"),
+	"verification.answer.preview": to(
+		"POST /shared-expenses/{id}/accept/preview",
+		"POST /shared-expenses/{id}/reject/preview",
+	),
+	"verification.answer.save": to(
+		"POST /shared-expenses/{id}/accept",
+		"POST /shared-expenses/{id}/reject",
+	),
 	"verification.bulkAccept": to("POST /shared-expenses/accept"),
 	"verification.outgoing": to("GET /shared-expenses/outgoing"),
 	"verification.queue": to("GET /needs-you"),
-	"verification.reject": to("POST /shared-expenses/{id}/reject"),
+	"verification.restoreAnswer.preview": to(
+		"POST /shared-expenses/undo/preview",
+	),
+	"verification.restoreAnswer.save": to("POST /shared-expenses/undo"),
 	"verification.removeSelf": withPreview(
 		"POST /shared-expenses/{id}/remove-me",
 	),

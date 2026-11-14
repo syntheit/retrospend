@@ -90,6 +90,24 @@ const REQUIRED_READERS: Record<string, string[]> = {
 		"people",
 	],
 
+	// Answering your share moves balances, Needs you and the budget; so does its undo.
+	"verification.answer.save": [
+		"home",
+		"people",
+		"project",
+		"envelope",
+		"verification",
+		"sharedTransaction",
+	],
+	"verification.restoreAnswer.save": [
+		"home",
+		"people",
+		"project",
+		"envelope",
+		"verification",
+		"sharedTransaction",
+	],
+
 	// Insights reads the same spending, money in and categories.
 	"entry.expense.create.save": ["insights"],
 	"entry.shared.update.save": ["insights"],

@@ -173,9 +173,9 @@ const cases: Case[] = [
 		empty: true,
 	},
 	{
-		label: "verification.reject reason",
-		schema: inputOf(verificationRouter, "reject"),
-		base: { txnId: "t1" },
+		label: "verification.answer.save reason",
+		schema: inputOf(verificationRouter, "answer.save"),
+		base: { txnId: "t1", answer: "reject" },
 		path: "reason",
 		empty: true,
 	},
