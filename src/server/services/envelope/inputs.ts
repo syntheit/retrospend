@@ -10,7 +10,6 @@
  * envelopes and links; movements grouped by month and sides; money in;
  * spending and refunds; shares; templates; rates.
  */
-import { createHash } from "node:crypto";
 import type {
 	BookSource,
 	LoadedBook as DomainLoadedBook,
@@ -21,6 +20,7 @@ import {
 } from "@retrospend/domain/envelope/load-book";
 import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import type { Prisma } from "~prisma";
+import { sha256 } from "./checkpoint";
 import { type CloseRow, loadCloseRows, loadDirtyMarks } from "./close-rows";
 import { loadDedicatedAccounts } from "./dedicated-goal";
 import { prismaBudgetInputs } from "./inputs-source";
@@ -51,9 +51,6 @@ export type { LoadContext };
 
 /** A loaded book with the server's own row and close types. */
 export type LoadedBook = DomainLoadedBook<BookRow, CloseRow>;
-
-const sha256 = (s: string) =>
-	createHash("sha256").update(s).digest("base64url");
 
 /** The Postgres side of the budget load, through the caller's transaction. */
 export function prismaBookSource(
