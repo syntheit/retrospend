@@ -128,6 +128,8 @@ export const budgetOps = {
 			...input,
 			timeZone: caller.timeZone,
 		}),
+		// The web's signed token stays out of v1: v1 mints its own undo token.
+		present: ({ restore: _web, ...answer }) => answer,
 	}),
 	setStyle: moneyOp(v1Mutation(setStyleMutation), {
 		plan: (_i, v) => ({

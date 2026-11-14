@@ -74,6 +74,7 @@ export const MUTATION_EVENTS: Readonly<Record<string, EventName>> = {
 	"envelope.welcomeBack": "budget_book.welcomed_back",
 	"envelope.setBookPeriod": "budget_book.period_set",
 	"envelope.setup": "budget_book.set_up",
+	"envelope.undoSetup": "budget.undone",
 	"envelope.carryOverspend": "budget_month.overspend_carried",
 	"envelope.fixNegative": "budget_month.negatives_fixed",
 	"envelope.reset": "budget_month.reset",

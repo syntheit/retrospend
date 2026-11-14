@@ -1,8 +1,9 @@
 /**
  * envelope.setup as a money mutation (R30): the first-run write. Its preview
  * is the same write rolled back, so the setup sheet shows exactly what
- * starting the budget will hold, open balances with people included. Undo
- * deletes the book (cascade) and the starting balance row.
+ * starting the budget will hold, open balances with people included. The
+ * result carries the signed token envelope.undoSetup takes the budget back
+ * with (setup-undo.service.ts).
  */
 import {
 	AMOUNT_SETUP_STYLES,
@@ -17,6 +18,7 @@ import { loadBook } from "./inputs";
 import { forgetMonthViews, monthViewIn } from "./month-read";
 import { nextPay } from "./pay-cycle";
 import { planCostIn } from "./plan-read";
+import { setupFootprint, signSetupUndo } from "./setup-undo.service";
 import { replaySplits } from "./splits-replay";
 import { applyPlan } from "./use-my-plan";
 import { FIGURE_LEFT_TO_SPEND, FIGURE_NOT_PLANNED_YET } from "./verdict";
@@ -40,10 +42,11 @@ export const setupEnvelopeBook: MoneyMutation<SetupMutationInput, SetupResult> =
 			);
 			const plan = await planAtStart(tx, actor.userId, now);
 			await fundAmounts(tx, actor.userId, input, now);
+			const openBalances = await openBalancesAtStart(tx, actor.userId, now);
 			return {
 				value: {
 					bookId: made.bookId,
-					openBalances: await openBalancesAtStart(tx, actor.userId, now),
+					openBalances,
 					plan,
 					nextPay: nextPay(
 						input.pay?.frequency ?? null,
@@ -51,10 +54,15 @@ export const setupEnvelopeBook: MoneyMutation<SetupMutationInput, SetupResult> =
 						made.today,
 					),
 					payoff,
+					// Last, so the footprint holds everything this write made.
+					restore: signSetupUndo(
+						actor.userId,
+						await setupFootprint(tx, actor.userId, made.bookId),
+					),
 				},
 				undo: {
 					kind: "revert",
-					mutation: "envelope.setup",
+					mutation: "envelope.undoSetup",
 					rows: [
 						{ table: "budget_book", id: made.bookId },
 						...(made.startingBalanceExpenseId

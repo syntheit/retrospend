@@ -932,6 +932,14 @@ export const setupResultSchema = z.object({
 			debts: z.number().int(),
 		})
 		.nullable(),
+	/**
+	 * Signed by the server; envelope.undoSetup takes the budget back with it
+	 * while it holds nothing but what this write made. Opaque to clients.
+	 */
+	restore: z.object({
+		data: z.string().min(2).max(200_000),
+		sig: z.string().regex(/^[0-9a-f]{64}$/),
+	}),
 });
 
 export const setShareCategoryInputSchema = z.object({

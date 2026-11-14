@@ -7,7 +7,8 @@ import {
 /**
  * What the envelope engine says when an undo no longer applies: it was
  * already taken back, a newer edit sits on top of it, or the state it needs
- * is gone ("there is no style change to undo"). A token's input is signed by
+ * is gone ("there is no style change to undo"), or the budget a set-up made
+ * has been used since. A token's input is signed by
  * the server, so a refusal like this is the state having moved on: 409.
  * Missing rows stay 404 and a closed month or a cap stays 400 (the engine's
  * own validation), so a real error is never hidden.
@@ -17,6 +18,7 @@ const STALE: ReadonlySet<EnvelopeErrorCode> = new Set([
 	"ID_REUSED",
 	"INVALID",
 	"BOOK_EXISTS",
+	"BOOK_IN_USE",
 ]);
 
 export async function staleAsConflict<T>(run: () => Promise<T>): Promise<T> {

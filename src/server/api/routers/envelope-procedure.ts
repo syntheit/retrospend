@@ -28,6 +28,7 @@ const CODES: Record<EnvelopeErrorCode, TRPC_ERROR_CODE_KEY> = {
 	ID_REUSED: "CONFLICT",
 	ALREADY_UNDONE: "CONFLICT",
 	DRAFT_OPEN: "CONFLICT",
+	BOOK_IN_USE: "CONFLICT",
 };
 
 /** Signed in; domain errors leave as tRPC codes in one place. */
