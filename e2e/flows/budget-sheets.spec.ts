@@ -1099,14 +1099,16 @@ test.describe("Set up your budget", () => {
 		await expect(start).toBeEnabled();
 		await start.click();
 		await expect(toast(page, "Your budget is ready")).toBeVisible();
-		await expect(sheet).toBeHidden();
 		// Undo takes the whole start back: the page asks for a budget again.
 		// This is the last test on the admin account, which no other flow reads.
+		// Click before anything else: the Undo toast closes after 6 s, and on a
+		// slow runner waiting for the sheet first can outlast it.
 		await untilSaved(page, "envelope.undoSetup", () =>
 			toast(page, "Your budget is ready")
 				.getByRole("button", { name: "Undo" })
 				.click(),
 		);
+		await expect(sheet).toBeHidden();
 		await expect(toast(page, "Undone")).toBeVisible();
 		await expect(
 			page
