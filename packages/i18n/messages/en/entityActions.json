@@ -1,7 +1,7 @@
 {
 	"expense": {
 		"review": {
-			"label": "Mark as reviewed"
+			"label": "Review"
 		},
 		"open": {
 			"label": "Open"

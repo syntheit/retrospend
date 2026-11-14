@@ -1,55 +1,30 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import type { ExpenseTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
-import { useToast } from "~/components/ui/toast";
 import { useEntrySheets } from "~/features/entry/context";
 import { useEntryActions } from "~/features/entry/entry-actions";
-import { shareRefusalOf } from "~/features/people/share-refusal";
-import { api } from "~/trpc/react";
 
 /**
  * Expense row actions on the project page (the expense registry, R8): Open
  * and Edit (today's expense sheet until 4G's read view lands) and Review,
- * which accepts your share. Accepting moves no figure: a share waiting for
- * you already counts in every balance (numbers.ts, expensesCountedFor).
- * Delete, Split, Correct and the rest need their previews first (4G), so
- * they have no handler here and stay hidden.
+ * which opens the review sheet (Accept or Reject, each with its preview and
+ * Undo) instead of answering in one tap. Delete, Split, Correct and the rest
+ * need their previews first (4G), so they have no handler here and stay
+ * hidden.
  */
 export function useExpenseActions(
-	projectId: string,
+	onReview: (expenseId: string) => void,
 ): ActionHandlers<ExpenseTarget> {
-	const t = useTranslations("projectV2.toast");
-	const tRefused = useTranslations("peoplePage.review");
-	const toast = useToast();
-	const utils = api.useUtils();
 	const { openSharedExpense } = useEntryActions();
 	const sheets = useEntrySheets();
-	const accept = api.verification.accept.useMutation({
-		onSuccess: () => {
-			void utils.project.pageView.invalidate({ id: projectId });
-			void utils.verification.queue.invalidate();
-		},
-	});
 	return useMemo(
 		() => ({
 			open: (x) => openSharedExpense(x.id),
 			edit: (x) => sheets.open({ kind: "shared", id: x.id }),
-			review: async (x) => {
-				try {
-					await accept.mutateAsync({ txnId: x.id });
-				} catch (e) {
-					// A settled expense takes no answer: say so, pointing to Ask to fix.
-					const refusal = shareRefusalOf(e);
-					if (!refusal) throw e;
-					toast.failed(tRefused(`refused.${refusal}`));
-					return;
-				}
-				toast.saved(t("accepted", { name: x.name }));
-			},
+			review: (x) => onReview(x.id),
 		}),
-		[accept, openSharedExpense, sheets, t, tRefused, toast],
+		[onReview, openSharedExpense, sheets],
 	);
 }

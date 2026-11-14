@@ -1,7 +1,7 @@
 {
 	"expense": {
 		"review": {
-			"label": "Als geprüft markieren"
+			"label": "Prüfen"
 		},
 		"open": {
 			"label": "Öffnen"

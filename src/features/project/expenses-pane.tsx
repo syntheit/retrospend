@@ -2,16 +2,18 @@
 
 import { Receipt, SearchX } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import type { ExpenseTarget } from "~/components/actions/registry";
-import { useEntryActions } from "~/features/entry/entry-actions";
 import { TransactionRow } from "~/components/rows/transaction-row";
 import type { TransactionVM } from "~/components/rows/types";
 import { TransactionTable } from "~/components/table/transaction-table";
 import { Button } from "~/components/ui/button";
 import { Empty } from "~/components/ui/empty-state";
+import { useEntryActions } from "~/features/entry/entry-actions";
+import { ReviewSheet } from "~/features/people/review-sheet";
 import { useIsMobile } from "~/hooks/use-mobile";
+import type { NeedsItemDTO } from "~/server/services/people/types";
 import { DayGroups } from "./day-groups";
 import {
 	applyFilters,
@@ -20,6 +22,7 @@ import {
 	isFiltered,
 	NO_FILTERS,
 } from "./expense-filters";
+import { verifyOfRow } from "./review-item";
 import { type PageView, toTransaction } from "./types";
 import { useExpenseActions } from "./use-expense-actions";
 
@@ -52,8 +55,16 @@ function NoExpenses({ view }: { view: PageView }) {
 
 /** The ⋯ menu and right-click of a row, from the expense registry (R8). */
 function useRowMenus(view: PageView) {
-	const handlers = useExpenseActions(view.id);
 	const byId = new Map(view.expenses.map((r) => [r.id, r]));
+	const [review, setReview] = useState<NeedsItemDTO | null>(null);
+	const openReview = useCallback(
+		(id: string) => {
+			const row = view.expenses.find((r) => r.id === id);
+			setReview(row ? verifyOfRow(row) : null);
+		},
+		[view.expenses],
+	);
+	const handlers = useExpenseActions(openReview);
 	const targetOf = (tx: TransactionVM): ExpenseTarget => {
 		const r = byId.get(tx.id);
 		return {
@@ -66,6 +77,8 @@ function useRowMenus(view: PageView) {
 		};
 	};
 	return {
+		review,
+		closeReview: () => setReview(null),
 		menu: (tx: TransactionVM) => (
 			<ActionMenu entity="expense" handlers={handlers} target={targetOf(tx)} />
 		),
@@ -91,7 +104,7 @@ export function ExpensesPane({ view, me }: { view: PageView; me: string }) {
 	const phone = useIsMobile();
 	const { openSharedExpense } = useEntryActions();
 	const [f, setF] = useState<Filters>(NO_FILTERS);
-	const { menu, area } = useRowMenus(view);
+	const { menu, area, review, closeReview } = useRowMenus(view);
 	const rows = useMemo(
 		() => applyFilters(view.expenses, f),
 		[view.expenses, f],
@@ -150,6 +163,7 @@ export function ExpensesPane({ view, me }: { view: PageView; me: string }) {
 		<section aria-label={t("label")}>
 			<ExpenseFilters onChange={setF} value={f} view={view} />
 			{list}
+			<ReviewSheet item={review} onClose={closeReview} />
 			<p className="text-fg-3 text-small mt-3">
 				{isFiltered(f)
 					? t("shownOf", { shown: rows.length, count: view.expenseCount })

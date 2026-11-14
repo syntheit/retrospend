@@ -44,7 +44,7 @@ const S = {
 	mixed: "Menu with identity: bare category glyph, face, cover, group dot",
 	expense: "Super Norte",
 	label: "Example menu",
-	review: "Mark as reviewed",
+	review: "Review",
 	open: "Open",
 	edit: "Edit",
 	split: "Split",

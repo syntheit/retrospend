@@ -1,4 +1,3 @@
-import { userTextOrEmpty } from "@retrospend/api-contract/common";
 import { z } from "zod";
 import {
 	assertWritableParticipant,
@@ -46,21 +45,6 @@ export const verificationRouter = createTRPCRouter({
 	}),
 
 	/**
-	 * POST /api/verification/:txnId/accept
-	 *
-	 * Accepts the current participant's pending verification on a shared transaction.
-	 * Idempotent: already-accepted items return 200 with current state.
-	 * Returns the updated transaction with computed status and all participant statuses.
-	 */
-	accept: guestOrProtectedProcedure
-		.input(z.object({ txnId: z.string().min(1) }))
-		.mutation(async ({ ctx, input }) => {
-			const actor = assertWritableParticipant(ctx.participant);
-			const service = new VerificationService(ctx.db, actor);
-			return await service.accept(input.txnId);
-		}),
-
-	/**
 	 * POST /api/verification/bulk-accept
 	 *
 	 * Accepts multiple pending verifications in a single atomic transaction.
@@ -73,27 +57,6 @@ export const verificationRouter = createTRPCRouter({
 			const actor = assertWritableParticipant(ctx.participant);
 			const service = new VerificationService(ctx.db, actor);
 			return await service.bulkAccept(input.txnIds);
-		}),
-
-	/**
-	 * POST /api/verification/:txnId/reject
-	 *
-	 * Rejects the current participant's pending verification on a shared transaction.
-	 * Accepts an optional reason string stored on the SplitParticipant record.
-	 * Returns the updated transaction with a rejectionPendingNotification flag
-	 * for the future notification system (Chunk 3D).
-	 */
-	reject: guestOrProtectedProcedure
-		.input(
-			z.object({
-				txnId: z.string().min(1),
-				reason: userTextOrEmpty("shared_expense.reject_reason", 500).optional(),
-			}),
-		)
-		.mutation(async ({ ctx, input }) => {
-			const actor = assertWritableParticipant(ctx.participant);
-			const service = new VerificationService(ctx.db, actor);
-			return await service.reject(input.txnId, input.reason);
 		}),
 
 	/**

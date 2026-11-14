@@ -180,13 +180,6 @@ const cases: Case[] = [
 		empty: true,
 	},
 	{
-		label: "verification.reject reason",
-		schema: inputOf(verificationRouter, "reject"),
-		base: { txnId: "t1" },
-		path: "reason",
-		empty: true,
-	},
-	{
 		label: "billingPeriod.updateLabel label",
 		schema: inputOf(billingPeriodRouter, "updateLabel"),
 		base: { projectId: "p1", periodId: "b1", label: "May" },

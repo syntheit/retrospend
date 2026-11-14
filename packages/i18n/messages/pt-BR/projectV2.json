@@ -88,8 +88,7 @@
 		}
 	},
 	"toast": {
-		"exportFailed": "Não foi possível exportar",
-		"accepted": "Você aceitou sua parte de {name}"
+		"exportFailed": "Não foi possível exportar"
 	},
 	"preview": {
 		"figures": {
