@@ -4,14 +4,14 @@
  * enters: the caller passes today in the book's zone).
  */
 
-import type { IsoDate } from "@retrospend/domain/envelope/types";
 import {
 	addDays,
 	addMonthsToDate,
 	calendarMonthOf,
 	daysBetween,
 	monthsBetween,
-} from "./calendar";
+} from "@retrospend/domain/envelope/calendar";
+import type { IsoDate } from "@retrospend/domain/envelope/types";
 
 export type PayFrequency = "MONTHLY" | "EVERY_TWO_WEEKS" | "WEEKLY" | "VARIES";
 

@@ -14,13 +14,14 @@
  *   Pay: monthly from Dec 5 gives the next pay Dec 5 while it is ahead of
  *   today; a varying pay has none.
  */
+
+import { addMonths } from "@retrospend/domain/envelope/calendar";
 import { beforeAll, describe, expect, it } from "vitest";
 import { type SetupInput, setupInputSchema } from "~/lib/schemas/envelope";
 import { forUser } from "~/server/services/preview";
 import { adminDb } from "~/test/pg-harness";
 import { openAccount } from "../accounts/test-fixtures";
 import { seedUser } from "./__tests__/pg-fixture";
-import { addMonths } from "./calendar";
 import { debtsApi } from "./debt-api.service";
 import { setupEnvelopeBook } from "./setup.mutation";
 

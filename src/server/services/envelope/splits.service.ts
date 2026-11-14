@@ -19,6 +19,7 @@
 
 import { randomUUID } from "node:crypto";
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import { isoDateIn } from "@retrospend/domain/envelope/months";
 import { owedDto } from "@retrospend/domain/envelope/owed";
 import { fromMinor } from "@retrospend/domain/envelope/units";
 import type {
@@ -41,7 +42,6 @@ import type { ParticipantRef } from "../shared-expenses/types";
 import { userTimeZone } from "../user-time-zone";
 import { findPersonalBook, loadBook } from "./inputs";
 import { forgetMonthViews, owedInputOf } from "./month-read";
-import { isoDateIn } from "./months";
 import { lockedSnapshot } from "./movement-state";
 import type { UnsavedChoice } from "./splits-input";
 

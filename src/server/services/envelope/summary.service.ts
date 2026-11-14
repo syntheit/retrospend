@@ -5,13 +5,13 @@
  * items from Needs you. Runs on the caller's transaction (RLS set).
  */
 
+import { addMonths } from "@retrospend/domain/envelope/calendar";
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import type {
 	AcknowledgeMonthInput,
 	MonthSummaryOutput,
 } from "~/lib/schemas/envelope-book";
 import type { Prisma } from "~prisma";
-import { addMonths } from "./calendar";
 import { type CloseRow, loadCloseRows } from "./close-rows";
 import { carryCaps } from "./fix.service";
 import { findPersonalBook } from "./inputs";

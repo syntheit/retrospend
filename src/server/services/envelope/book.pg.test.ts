@@ -29,6 +29,8 @@
  * belongs to this month.
  */
 import { randomUUID } from "node:crypto";
+import { addMonths } from "@retrospend/domain/envelope/calendar";
+import { budgetMonthOf, isoDateIn } from "@retrospend/domain/envelope/months";
 import { beforeAll, describe, expect, it } from "vitest";
 import { readFigures } from "~/server/figures/read";
 import { forUser } from "~/server/services/preview";
@@ -55,8 +57,6 @@ import {
 	pause,
 	resume,
 } from "./book-read.service";
-import { addMonths } from "./calendar";
-import { budgetMonthOf, isoDateIn } from "./months";
 import { undoMovements } from "./movement.mutation";
 import { getMonth } from "./read.service";
 import { setupEnvelopeBook } from "./setup.mutation";

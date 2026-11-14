@@ -11,6 +11,7 @@
  * - Move caps (S15): a move out of an envelope takes at most max(0, Left).
  */
 
+import { addMonths } from "@retrospend/domain/envelope/calendar";
 import type { Minor } from "@retrospend/domain/envelope/types";
 import type {
 	CoverOverview,
@@ -26,7 +27,6 @@ import {
 	type FillStep,
 	type TargetedGroup,
 } from "./auto-fill";
-import { addMonths } from "./calendar";
 
 function rowsOf(
 	view: GetMonthOutput,

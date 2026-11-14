@@ -10,6 +10,8 @@
  * value the user's own rows kept.
  */
 import { randomUUID } from "node:crypto";
+import { addMonths } from "@retrospend/domain/envelope/calendar";
+import { budgetMonthOf, isoDateIn } from "@retrospend/domain/envelope/months";
 import { describe, expect, it } from "vitest";
 import {
 	adminDb,
@@ -19,8 +21,6 @@ import {
 } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import { toSyncBudget } from "../api-v1/sync-snapshots";
-import { addMonths } from "../envelope/calendar";
-import { budgetMonthOf, isoDateIn } from "../envelope/months";
 import { runFreeze } from "./budget-block";
 import { readShareSnapshot } from "./snapshots";
 

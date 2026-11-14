@@ -11,6 +11,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import { isoDateIn } from "@retrospend/domain/envelope/months";
 import type {
 	ConfirmStartingMoneyInput,
 	ConfirmStartingMoneyResult,
@@ -20,7 +21,6 @@ import { writeAdjustment, writeEntryRow } from "./adjustment";
 import { holdsForAdjustment } from "./bank";
 import { assertNewChange, recordChange } from "./envelope-change";
 import { forgetMonthViews, monthViewIn } from "./month-read";
-import { isoDateIn } from "./months";
 import { lockedSnapshot } from "./movement-state";
 
 type Tx = Prisma.TransactionClient;

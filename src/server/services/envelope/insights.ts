@@ -5,10 +5,10 @@
  * (GetMonthOutput), so every figure agrees with the table beside it.
  */
 
+import { monthParts } from "@retrospend/domain/envelope/calendar";
 import type { MonthKey } from "@retrospend/domain/envelope/types";
 import type { GetMonthOutput } from "~/lib/schemas/envelope";
 import type { BudgetInsights } from "~/lib/schemas/envelope-insights";
-import { monthParts } from "./calendar";
 
 /** How many months the trend looks back, this one included. */
 export const TREND_MONTHS = 6;

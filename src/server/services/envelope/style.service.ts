@@ -16,6 +16,7 @@
  * back.
  */
 
+import { addMonths } from "@retrospend/domain/envelope/calendar";
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
 import { z } from "zod";
 import {
@@ -30,7 +31,6 @@ import { Prisma } from "~prisma";
 import { removeAdjustment, writeAdjustment } from "./adjustment";
 import { holdsForAdjustment } from "./bank";
 import { fundingSourceFor, leftoverDefault } from "./book.service";
-import { addMonths } from "./calendar";
 import { findPersonalBook } from "./inputs";
 import { forgetMonthViews, monthViewIn } from "./month-read";
 import { lockBook } from "./movement-state";

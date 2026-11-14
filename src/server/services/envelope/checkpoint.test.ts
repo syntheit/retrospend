@@ -25,6 +25,7 @@ import {
 	sumLeft,
 } from "@retrospend/domain/envelope/engine";
 import { invariantSides } from "@retrospend/domain/envelope/invariant";
+import { monthsFrom } from "@retrospend/domain/envelope/months";
 import { describe, expect, it } from "vitest";
 import {
 	checkpointAt,
@@ -32,7 +33,6 @@ import {
 	summaryDiffers,
 	toEngineCheckpoint,
 } from "./checkpoint";
-import { monthsFrom } from "./months";
 
 const env = (id: string, rule: "CARRY" | "RETURN" = "CARRY") => ({
 	id,

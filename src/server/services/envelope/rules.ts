@@ -16,9 +16,9 @@
  *   never touches past batches, and no batch lands in a closed month.
  */
 
+import { addMonths } from "@retrospend/domain/envelope/calendar";
 import type { Minor, MonthKey } from "@retrospend/domain/envelope/types";
 import { percentOf } from "@retrospend/domain/envelope/units";
-import { addMonths } from "./calendar";
 
 export type RuleMatch =
 	| { kind: "ANY" }

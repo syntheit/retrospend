@@ -7,6 +7,7 @@
  */
 
 import { EnvelopeError } from "@retrospend/domain/envelope/errors";
+import { monthRange } from "@retrospend/domain/envelope/months";
 import type { RuleMatchInput } from "~/lib/schemas/envelope";
 import type {
 	ApplyRuleResult,
@@ -17,7 +18,6 @@ import type {
 } from "~/lib/schemas/envelope-plan";
 import type { Prisma } from "~prisma";
 import { forgetMonthViews } from "./month-read";
-import { monthRange } from "./months";
 import { result } from "./movement.service";
 import { lockedSnapshot } from "./movement-state";
 import {

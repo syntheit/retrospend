@@ -26,6 +26,7 @@
  *   20,000; September spent 5,000, left 15,000.
  */
 import { randomUUID } from "node:crypto";
+import { addMonths } from "@retrospend/domain/envelope/calendar";
 import { beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { readFigures } from "~/server/figures/read";
@@ -39,7 +40,6 @@ import {
 	seedUser,
 	setupInput,
 } from "./__tests__/pg-fixture";
-import { addMonths } from "./calendar";
 import { undoMovements } from "./movement.mutation";
 import {
 	applyDraftMutation,

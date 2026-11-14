@@ -4,12 +4,12 @@
  * same-book undo key, reused ids, and two setups racing.
  */
 import { randomUUID } from "node:crypto";
+import { addMonths } from "@retrospend/domain/envelope/calendar";
 import { describe, expect, it } from "vitest";
 import { assignInputSchema } from "~/lib/schemas/envelope";
 import { forUser } from "~/server/services/preview";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { seedUser, setupInput } from "./__tests__/pg-fixture";
-import { addMonths } from "./calendar";
 import { assignEnvelopes, moveMoney } from "./movement.mutation";
 import { getHistory, getMonth } from "./read.service";
 import { setupEnvelopeBook } from "./setup.mutation";
