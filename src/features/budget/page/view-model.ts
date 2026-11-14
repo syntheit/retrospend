@@ -153,7 +153,7 @@ type WelcomeBack = {
  */
 export function pickNotice(
 	data: GetMonthOutput,
-	welcome: WelcomeBack | undefined,
+	welcome: WelcomeBack | null | undefined,
 	names: ReadonlyMap<string, string>,
 	needs?: NeedsFacts,
 ): PageNotice | null {

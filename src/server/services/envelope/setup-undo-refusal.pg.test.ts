@@ -25,12 +25,14 @@ import {
 	undoWith,
 } from "./__tests__/setup-undo-fixture";
 import { reconcileMutation, setStyleMutation } from "./book.mutation";
-import { pause } from "./book-read.service";
+import { getWelcomeBack, pause } from "./book-read.service";
 import { updateEnvelopeMutation } from "./crud.mutation";
 import { budgetMonthOf, isoDateIn } from "./months";
 import { assignEnvelopes } from "./movement.mutation";
 import { getMonth } from "./read.service";
 import { undoSetupEnvelopeBook } from "./setup-undo.mutation";
+import { undoSetup } from "./setup-undo.service";
+import { touchOpened } from "./welcome.service";
 
 const current = budgetMonthOf(isoDateIn(new Date(), "UTC"), [
 	{ fromMonth: 0, startDay: 1 },
@@ -442,5 +444,54 @@ describe("what the sync log and the keystore see", () => {
 		await undoWith(s.user.id, start.token);
 		expect(await keys()).toEqual(before);
 		expect(await counts(start.bookId)).toEqual(NO_ROWS);
+	});
+});
+
+describe("a read that meets the undo", () => {
+	it("Welcome back answers null once there is no budget, and a page open writes nothing", async () => {
+		const w = await started();
+		expect(await getWelcomeBack(w.s.user.id)).toMatchObject({
+			pending: false,
+			months: [],
+		});
+		await undoWith(w.s.user.id, w.token);
+		expect(await getWelcomeBack(w.s.user.id)).toBeNull();
+		await expect(
+			userTransaction(adminDb, w.s.user.id, (tx) =>
+				touchOpened(tx, w.s.user.id, new Date()),
+			),
+		).resolves.toBeUndefined();
+	});
+
+	it("a page open blocked on the undo finds the book gone and is no error", async () => {
+		const w = await started();
+		let release!: () => void;
+		const gate = new Promise<void>((r) => {
+			release = r;
+		});
+		let deleted!: () => void;
+		const done = new Promise<void>((r) => {
+			deleted = r;
+		});
+		// The undo's transaction holds the deleted book open.
+		const undo = userTransaction(adminDb, w.s.user.id, async (tx) => {
+			await undoSetup(tx, w.s.user.id, { token: w.token });
+			deleted();
+			await gate;
+		});
+		await done;
+		// It still sees the book (the delete is not committed), then waits for the row.
+		let settled = false;
+		const open = userTransaction(adminDb, w.s.user.id, (tx) =>
+			touchOpened(tx, w.s.user.id, new Date()),
+		).finally(() => {
+			settled = true;
+		});
+		await new Promise((r) => setTimeout(r, 600));
+		expect(settled).toBe(false);
+		release();
+		await undo;
+		await expect(open).resolves.toBeUndefined();
+		expect((await counts(w.bookId)).budget_book).toBe(0);
 	});
 });

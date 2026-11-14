@@ -59019,99 +59019,155 @@
 		},
 		"/budget/welcome-back": {
 			"get": {
+				"description": "Null before the budget starts.",
 				"operationId": "getBudgetWelcomeBack",
 				"responses": {
 					"200": {
 						"content": {
 							"application/json": {
 								"schema": {
-									"properties": {
-										"bank": {
+									"anyOf": [
+										{
 											"properties": {
-												"accounts": {
-													"items": {
-														"properties": {
-															"id": {
-																"maxLength": 64,
-																"minLength": 1,
-																"type": "string"
-															},
-															"name": {
-																"type": "string"
-															},
-															"value": {
-																"anyOf": [
-																	{
-																		"$ref": "#/components/schemas/Money"
-																	},
-																	{
-																		"type": "null"
-																	}
-																]
-															},
-															"worth": {
-																"$ref": "#/components/schemas/Money"
-															}
-														},
-														"required": [
-															"id",
-															"name",
-															"worth",
-															"value"
-														],
-														"type": "object"
-													},
-													"type": "array"
-												},
 												"bank": {
-													"$ref": "#/components/schemas/Money"
-												},
-												"difference": {
-													"$ref": "#/components/schemas/Money"
-												},
-												"held": {
-													"$ref": "#/components/schemas/Money"
-												},
-												"holds": {
-													"$ref": "#/components/schemas/Money"
-												},
-												"incomplete": {
-													"type": "boolean"
-												},
-												"missingRates": {
-													"items": {
-														"properties": {
-															"currency": {
-																"type": "string"
-															},
-															"date": {
-																"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-																"type": "string"
-															},
-															"rateType": {
-																"anyOf": [
-																	{
+													"properties": {
+														"accounts": {
+															"items": {
+																"properties": {
+																	"id": {
+																		"maxLength": 64,
+																		"minLength": 1,
 																		"type": "string"
 																	},
-																	{
-																		"type": "null"
+																	"name": {
+																		"type": "string"
+																	},
+																	"value": {
+																		"anyOf": [
+																			{
+																				"$ref": "#/components/schemas/Money"
+																			},
+																			{
+																				"type": "null"
+																			}
+																		]
+																	},
+																	"worth": {
+																		"$ref": "#/components/schemas/Money"
 																	}
-																]
+																},
+																"required": [
+																	"id",
+																	"name",
+																	"worth",
+																	"value"
+																],
+																"type": "object"
+															},
+															"type": "array"
+														},
+														"bank": {
+															"$ref": "#/components/schemas/Money"
+														},
+														"difference": {
+															"$ref": "#/components/schemas/Money"
+														},
+														"held": {
+															"$ref": "#/components/schemas/Money"
+														},
+														"holds": {
+															"$ref": "#/components/schemas/Money"
+														},
+														"incomplete": {
+															"type": "boolean"
+														},
+														"missingRates": {
+															"items": {
+																"properties": {
+																	"currency": {
+																		"type": "string"
+																	},
+																	"date": {
+																		"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+																		"type": "string"
+																	},
+																	"rateType": {
+																		"anyOf": [
+																			{
+																				"type": "string"
+																			},
+																			{
+																				"type": "null"
+																			}
+																		]
+																	}
+																},
+																"required": [
+																	"currency",
+																	"rateType",
+																	"date"
+																],
+																"type": "object"
+															},
+															"type": "array"
+														},
+														"reconciledAt": {
+															"anyOf": [
+																{
+																	"format": "date-time",
+																	"type": "string"
+																},
+																{
+																	"type": "null"
+																}
+															]
+														}
+													},
+													"required": [
+														"holds",
+														"accounts",
+														"bank",
+														"difference",
+														"held",
+														"reconciledAt",
+														"incomplete",
+														"missingRates"
+													],
+													"type": "object"
+												},
+												"months": {
+													"items": {
+														"properties": {
+															"acknowledged": {
+																"type": "boolean"
+															},
+															"month": {
+																"maximum": 299912,
+																"minimum": 190001,
+																"type": "integer"
+															},
+															"revision": {
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
 															}
 														},
 														"required": [
-															"currency",
-															"rateType",
-															"date"
+															"month",
+															"revision",
+															"acknowledged"
 														],
 														"type": "object"
 													},
 													"type": "array"
 												},
-												"reconciledAt": {
+												"pending": {
+													"type": "boolean"
+												},
+												"since": {
 													"anyOf": [
 														{
-															"format": "date-time",
+															"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
 															"type": "string"
 														},
 														{
@@ -59121,65 +59177,17 @@
 												}
 											},
 											"required": [
-												"holds",
-												"accounts",
-												"bank",
-												"difference",
-												"held",
-												"reconciledAt",
-												"incomplete",
-												"missingRates"
+												"pending",
+												"since",
+												"months",
+												"bank"
 											],
 											"type": "object"
 										},
-										"months": {
-											"items": {
-												"properties": {
-													"acknowledged": {
-														"type": "boolean"
-													},
-													"month": {
-														"maximum": 299912,
-														"minimum": 190001,
-														"type": "integer"
-													},
-													"revision": {
-														"maximum": 9007199254740991,
-														"minimum": -9007199254740991,
-														"type": "integer"
-													}
-												},
-												"required": [
-													"month",
-													"revision",
-													"acknowledged"
-												],
-												"type": "object"
-											},
-											"type": "array"
-										},
-										"pending": {
-											"type": "boolean"
-										},
-										"since": {
-											"anyOf": [
-												{
-													"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-													"type": "string"
-												},
-												{
-													"type": "null"
-												}
-											]
+										{
+											"type": "null"
 										}
-									},
-									"required": [
-										"pending",
-										"since",
-										"months",
-										"bank"
-									],
-									"type": "object"
+									]
 								}
 							}
 						},
