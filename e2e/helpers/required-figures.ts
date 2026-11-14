@@ -94,6 +94,13 @@ export const REQUIRED_FIGURES: Readonly<Record<string, readonly string[]>> = {
 		`preview.correction.paid.delta:user:${MARTIN.id}`,
 		`preview.correction.share.delta:user:${LUCIA.id}`,
 	],
+	// The People review sheet on Reject, for a USD 40 split Lucía adds with
+	// Sofía (USD 20 each, ARS 29,000 at the seed's 1,450): what Reject changes.
+	reviewReject: [
+		"preview.owed.owedToYou.delta",
+		"preview.spent.delta",
+		"preview.budget.leftToSpend.delta",
+	],
 	// S4B part 2: the Import review of the flow's CSV, whose first row is a
 	// foreign amount: the original and the home value the import saves.
 	import: ["import.amount:0", "import.home:0"],
