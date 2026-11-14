@@ -133,7 +133,8 @@
 			// the server must always pass `insidePreview`, which preview/runner.ts
 			// does. Every server runner is built there, so a second caller of the
 			// core could skip the mark and let a preview seal a key.
-			// Keep this pattern in the override below too: an override replaces
+			// A relative path into packages/domain is banned too, so the ban cannot be
+			// stepped around. Keep this pattern in the override below too: an override replaces
 			// the rule's options for the files it matches.
 			"includes": ["src/**", "!src/server/services/preview/runner.ts"],
 			"linter": {
@@ -142,6 +143,15 @@
 						"noRestrictedImports": {
 							"level": "error",
 							"options": {
+								"patterns": [
+									{
+										"group": [
+											"**/domain/src/figures/preview",
+											"**/domain/src/figures/preview.ts"
+										],
+										"message": "Import the preview core through @retrospend/domain/figures/preview; the server builds runners only in preview/runner.ts."
+									}
+								],
 								"paths": {
 									"@retrospend/domain/figures/preview": {
 										"importNames": ["createPreviewRunnerCore"],
@@ -177,6 +187,13 @@
 											"**/../db-core"
 										],
 										"message": "Use the tx you are given: the global db commits outside a preview's transaction."
+									},
+									{
+										"group": [
+											"**/domain/src/figures/preview",
+											"**/domain/src/figures/preview.ts"
+										],
+										"message": "Import the preview core through @retrospend/domain/figures/preview; the server builds runners only in preview/runner.ts."
 									}
 								],
 								"paths": {

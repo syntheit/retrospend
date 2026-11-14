@@ -33,10 +33,10 @@ export const figuresQuerySchema = z.object({
 	accountId: z.string().optional(),
 	/** For insights.byCategory and the other per-category figures. */
 	categoryId: z.string().optional(),
-	/** For insights.byMonth: a fiscal month label such as 2026-10. */
+	/** For insights.byMonth: a fiscal month label such as 2026-10. Months run 01 to 12: the date parser would roll 2026-13 over into January 2027. */
 	month: z
 		.string()
-		.regex(/^\d{4}-\d{2}$/)
+		.regex(/^\d{4}-(0[1-9]|1[0-2])$/)
 		.optional(),
 	envelopeId: z.string().optional(),
 	/** For entry.amount and entry.share: an Activity row's id (a personal expense id, `shared:<id>` or `payment:<key>`). */
