@@ -74,6 +74,15 @@ const KEYS = [
 	"range",
 ] as const;
 
+/**
+ * The part of URLSearchParams this file reads. Every runtime has it, but the
+ * ECMAScript-only library that the contract and the engine are checked with
+ * does not declare it.
+ */
+declare const URLSearchParams: new (
+	query: string,
+) => Iterable<[string, string]> & { get(name: string): string | null };
+
 function isDay(value: string): boolean {
 	if (!DAY.test(value)) return false;
 	const date = new Date(`${value}T00:00:00.000Z`);

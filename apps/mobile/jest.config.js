@@ -1,3 +1,5 @@
+const preset = require("jest-expo/jest-preset");
+
 /** @type {import('jest').Config} */
 module.exports = {
 	preset: "jest-expo",
@@ -6,10 +8,14 @@ module.exports = {
 	moduleNameMapper: {
 		"^@/(.*)$": "<rootDir>/src/$1",
 	},
+	// The engine validates a sync body with the contract's schemas, and the
+	// contract's routes load @orpc, which ships .mjs only: the preset's babel
+	// step covers .mjs too.
+	transform: { "\\.mjs$": preset.transform["\\.[jt]sx?$"] },
 	// The preset's list, plus use-intl and its ES-module dependencies, so the
 	// test harness can run the real translator over the real catalog.
 	transformIgnorePatterns: [
-		"/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|standard-navigation|use-intl|intl-messageformat|@formatjs))",
+		"/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|standard-navigation|use-intl|intl-messageformat|@formatjs|@orpc))",
 		"/node_modules/react-native-reanimated/plugin/",
 		"/node_modules/@react-native/babel-preset/",
 	],

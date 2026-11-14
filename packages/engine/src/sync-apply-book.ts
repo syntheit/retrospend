@@ -4,9 +4,9 @@
  * GET /sync/shares, and the port rows they make. Shapes are structural, as in
  * sync-apply.ts: a pg test assigns the contract's DTOs to them.
  */
+import { syncBudgetBlockSchema } from "@retrospend/api-contract";
 import type { SplitBlock } from "@retrospend/domain/envelope/split-block";
 import type { CloseSummary } from "./book-rows";
-import { checkBudgetBlock } from "./budget-block-check";
 import { BUDGET_SNAPSHOT_ID, InvalidInputError, type TableRows } from "./port";
 import {
 	decimal,
@@ -311,16 +311,22 @@ export const BOOK_ROWS: {
 
 /**
  * The snapshot row of a budget block, or undefined for the unavailable shape.
- * The whole block is checked first (budget-block-check.ts): types, ranges and
- * dates, never whether the server's figures are right.
+ * The whole block is parsed first with the contract's schema, so a body that
+ * is corrupt or from a server this device does not understand never reaches a
+ * store: types, ranges and dates, never whether the server's figures are
+ * right. The error names the path and never a value.
  */
 export function budgetSnapshotOf(
 	budget: WireBudgetBlock | { readonly unavailable: true },
 ): TableRows["budgetSnapshot"] | undefined {
 	if ((budget as { unavailable?: unknown }).unavailable === true)
 		return undefined;
-	checkBudgetBlock(budget);
-	const block = budget as WireBudgetBlock;
+	const parsed = syncBudgetBlockSchema.safeParse(budget);
+	if (!parsed.success) {
+		const path = parsed.error.issues[0]?.path.join(".") || "block";
+		throw new InvalidInputError(`The budget block's ${path} is not valid`);
+	}
+	const block = parsed.data;
 	return {
 		id: BUDGET_SNAPSHOT_ID,
 		bookId: block.bookId,

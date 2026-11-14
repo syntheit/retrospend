@@ -16,6 +16,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@retrospend/api-contract": "workspace:*",
 		"@retrospend/domain": "workspace:*"
 	},
 	"devDependencies": {
