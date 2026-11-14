@@ -238,6 +238,33 @@ const FIXTURES: { [T in TableName]: (id: string) => TableRows[T] } = {
 			checkpointApproximate: [],
 		},
 	}),
+	budgetSnapshotPending: (id) => ({
+		id,
+		bookId: "book-1",
+		valuationKey: "ARS|America/Argentina/Buenos_Aires|2026-03-01|202603:1:blue",
+		asOf: "AAAAAAAAAAAAAAAAAAAAAA",
+		frozen: [
+			{
+				key: "e1|ARS|1000|1|2026-03-05|blue",
+				minor: 100_000,
+				approximate: false,
+			},
+		],
+		splits: {
+			shares: [],
+			effects: [],
+			balances: [],
+			ignored: [],
+			events: [],
+			pending: [],
+			unresolved: [],
+			notInBudget: [],
+			missingRates: [],
+			approximate: [],
+			checkpointMissingRates: [],
+			checkpointApproximate: [],
+		},
+	}),
 };
 
 /** A row for `table`, for suites that need one. */

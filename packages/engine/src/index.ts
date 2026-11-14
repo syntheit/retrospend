@@ -20,6 +20,7 @@ export type {
 	TransferRow,
 	WealthTransferRow,
 } from "./book-rows";
+export { promotePendingBudget } from "./budget-snapshot";
 export {
 	type AnyRow,
 	type ChangeKind,

@@ -6,6 +6,7 @@
  */
 import type { SplitBlock } from "@retrospend/domain/envelope/split-block";
 import { describe, expect, it } from "vitest";
+import { promotePendingBudget } from "./budget-snapshot";
 import { MemoryStore } from "./memory-store";
 import { BUDGET_SNAPSHOT_ID, InvalidInputError, OWED_ID } from "./port";
 import {
@@ -530,6 +531,126 @@ const block = (o: Partial<WireBudgetBlock> = {}): WireBudgetBlock => ({
 	...o,
 });
 
+/** A block with something in every list the check reads, one event of each kind. */
+const rich = (): WireBudgetBlock => {
+	const base = {
+		counterparty: "p1",
+		currency: "USD",
+		date: "2026-03-05",
+		month: 202603,
+		native: 1000,
+	};
+	return block({
+		splits: {
+			shares: [
+				{
+					id: "part-1",
+					month: 202603,
+					date: "2026-03-06",
+					minor: -75_000,
+					source: "SHARE",
+					categoryId: "c1",
+					envelopeId: null,
+					pending: true,
+				},
+			],
+			effects: [
+				{
+					eventId: "e1",
+					date: "2026-03-05",
+					month: 202603,
+					counterparty: "p1",
+					currency: "USD",
+					term: "FRONTED",
+					minor: 150_000,
+					fx: 0,
+					envelopeId: null,
+				},
+			],
+			balances: [
+				{
+					counterparty: "p1",
+					currency: "USD",
+					native: 1000,
+					basis: 150_000,
+					oldestOpen: "2026-03-05",
+				},
+				{
+					counterparty: "p2",
+					currency: "USD",
+					native: -500,
+					basis: 0,
+					oldestOpen: null,
+				},
+			],
+			ignored: [{ eventId: "e9", reason: "NOT_IN_BUDGET", native: 700 }],
+			events: [
+				{
+					...base,
+					id: "e1",
+					kind: "FRONT",
+					value: 150_000,
+					shareStatus: "ACCEPTED",
+				},
+				{ ...base, id: "e2", kind: "OWE", status: "ACCEPTED" },
+				{ ...base, id: "e3", kind: "UNFRONT" },
+				{
+					...base,
+					id: "e4",
+					kind: "RECV",
+					status: "FINALIZED",
+					cash: 160_000,
+					isOffset: false,
+				},
+				{
+					...base,
+					id: "e5",
+					kind: "PAY",
+					status: "PROPOSED",
+					cash: 20_000,
+					forgiven: true,
+				},
+				{
+					...base,
+					id: "e6",
+					kind: "FORGIVE",
+					status: "FINALIZED",
+					envelopeId: "env-1",
+					notInBudget: true,
+				},
+			],
+			pending: [
+				{
+					id: "e7",
+					counterparty: "p1",
+					currency: "USD",
+					native: 500,
+					cash: null,
+					date: "2026-03-09",
+				},
+				{
+					id: "e8",
+					counterparty: "p1",
+					currency: "USD",
+					native: 500,
+					cash: 75_000,
+					date: "2026-03-09",
+				},
+			],
+			unresolved: ["share-9"],
+			notInBudget: ["project-1"],
+			missingRates: [
+				{ currency: "XQZ", rateType: null, date: "2026-03-05", rowId: "e1" },
+			],
+			approximate: [{ rowId: "e2", date: "2026-03-05" }],
+			checkpointMissingRates: [
+				{ currency: "XQZ", rateType: "blue", date: "2026-02-05" },
+			],
+			checkpointApproximate: [{ rowId: "e3", date: "2026-02-05" }],
+		},
+	});
+};
+
 const shares = (
 	budget?: WireShares["budget"],
 	youOwe = 100_000,
@@ -542,12 +663,21 @@ const shares = (
 	...(budget === undefined ? {} : { budget }),
 });
 
+const pull = (store: MemoryStore, body: WireShares) =>
+	store.transaction((tx) => applySharesSnapshot(tx, body));
+
+/** The cursor of the active and the pending snapshot, undefined for none. */
+const held = (store: MemoryStore) => ({
+	active: store.get("budgetSnapshot", BUDGET_SNAPSHOT_ID)?.asOf,
+	pending: store.get("budgetSnapshotPending", BUDGET_SNAPSHOT_ID)?.asOf,
+});
+
 describe("applySharesSnapshot, the budget snapshot", () => {
-	it("keeps the block as one row beside the owed row, in the same transaction", async () => {
+	it("a block lands as pending beside the owed row, and the active snapshot is untouched", async () => {
 		const store = new MemoryStore();
-		await store.transaction((tx) => applySharesSnapshot(tx, shares(block())));
-		expect(store.list("budgetSnapshot")).toHaveLength(1);
-		expect(store.get("budgetSnapshot", BUDGET_SNAPSHOT_ID)).toEqual({
+		await pull(store, shares(block()));
+		expect(held(store)).toEqual({ active: undefined, pending: "cursor-1" });
+		expect(store.get("budgetSnapshotPending", BUDGET_SNAPSHOT_ID)).toEqual({
 			id: BUDGET_SNAPSHOT_ID,
 			...block(),
 		});
@@ -557,143 +687,324 @@ describe("applySharesSnapshot, the budget snapshot", () => {
 		});
 	});
 
-	it("a throw after the apply rolls the snapshot and the owed row back together", async () => {
+	it("promoting moves pending to active, empties pending and says so once", async () => {
 		const store = new MemoryStore();
-		await store.transaction((tx) => applySharesSnapshot(tx, shares(block())));
+		await pull(store, shares(block()));
+		expect(await store.transaction((tx) => promotePendingBudget(tx))).toBe(
+			true,
+		);
+		expect(held(store)).toEqual({ active: "cursor-1", pending: undefined });
+		expect(store.get("budgetSnapshot", BUDGET_SNAPSHOT_ID)).toEqual({
+			id: BUDGET_SNAPSHOT_ID,
+			...block(),
+		});
+		expect(await store.transaction((tx) => promotePendingBudget(tx))).toBe(
+			false,
+		);
+		expect(held(store)).toEqual({ active: "cursor-1", pending: undefined });
+	});
+
+	it("promoting with nothing pending changes nothing, active included", async () => {
+		const store = new MemoryStore();
+		expect(await store.transaction((tx) => promotePendingBudget(tx))).toBe(
+			false,
+		);
+		expect(held(store)).toEqual({ active: undefined, pending: undefined });
+	});
+
+	it("a promote that is rolled back leaves both snapshots as they were", async () => {
+		const store = new MemoryStore();
+		await pull(store, shares(block()));
+		await expect(
+			store.transaction((tx) => {
+				promotePendingBudget(tx);
+				throw new Error("later step failed");
+			}),
+		).rejects.toThrow("later step failed");
+		expect(held(store)).toEqual({ active: undefined, pending: "cursor-1" });
+	});
+
+	it("a newer block replaces pending while the active block keeps serving, until it is promoted", async () => {
+		const store = new MemoryStore();
+		await pull(store, shares(block()));
+		await store.transaction((tx) => promotePendingBudget(tx));
+		await pull(
+			store,
+			shares(
+				block({
+					asOf: "cursor-2",
+					frozen: [
+						{
+							key: "e3|ARS|5|0|2026-03-07|blue",
+							minor: 500,
+							approximate: false,
+						},
+					],
+				}),
+			),
+		);
+		expect(held(store)).toEqual({ active: "cursor-1", pending: "cursor-2" });
+		expect(
+			store
+				.get("budgetSnapshot", BUDGET_SNAPSHOT_ID)
+				?.frozen.map((f) => f.minor),
+		).toEqual([100_000, 1_500_000]);
+		// A third block before the second passed its gate replaces the second.
+		await pull(store, shares(block({ asOf: "cursor-3" })));
+		expect(held(store)).toEqual({ active: "cursor-1", pending: "cursor-3" });
+		await store.transaction((tx) => promotePendingBudget(tx));
+		expect(held(store)).toEqual({ active: "cursor-3", pending: undefined });
+	});
+
+	it("a throw after the apply rolls pending and the owed row back together", async () => {
+		const store = new MemoryStore();
+		await pull(store, shares(block()));
 		await expect(
 			store.transaction((tx) => {
 				applySharesSnapshot(tx, shares(block({ asOf: "cursor-2" }), 777_000));
 				throw new Error("later step failed");
 			}),
 		).rejects.toThrow("later step failed");
-		expect(store.get("budgetSnapshot", BUDGET_SNAPSHOT_ID)?.asOf).toBe(
-			"cursor-1",
-		);
+		expect(held(store)).toEqual({ active: undefined, pending: "cursor-1" });
 		expect(store.get("owed", OWED_ID)).toMatchObject({ youOwe: 100_000 });
 	});
 
-	it("a new block replaces the snapshot, frozen values and all", async () => {
+	it("unavailable keeps both snapshots while the shares and owed totals still apply", async () => {
 		const store = new MemoryStore();
-		await store.transaction((tx) => applySharesSnapshot(tx, shares(block())));
-		await store.transaction((tx) =>
-			applySharesSnapshot(
-				tx,
-				shares(
-					block({
-						asOf: "cursor-2",
-						frozen: [
-							{
-								key: "e3|ARS|5|0|2026-03-07|blue",
-								minor: 500,
-								approximate: false,
-							},
-						],
-					}),
-				),
-			),
-		);
-		const row = store.get("budgetSnapshot", BUDGET_SNAPSHOT_ID);
-		expect(row?.asOf).toBe("cursor-2");
-		expect(row?.frozen.map((f) => f.minor)).toEqual([500]);
-	});
-
-	it("unavailable keeps the previous snapshot while the shares and owed totals still apply", async () => {
-		const store = new MemoryStore();
-		await store.transaction((tx) => applySharesSnapshot(tx, shares(block())));
-		await store.transaction((tx) =>
-			applySharesSnapshot(tx, shares({ unavailable: true }, 300_000)),
-		);
-		expect(store.get("budgetSnapshot", BUDGET_SNAPSHOT_ID)?.asOf).toBe(
-			"cursor-1",
-		);
+		await pull(store, shares(block()));
+		await store.transaction((tx) => promotePendingBudget(tx));
+		await pull(store, shares(block({ asOf: "cursor-2" })));
+		await pull(store, shares({ unavailable: true }, 300_000));
+		expect(held(store)).toEqual({ active: "cursor-1", pending: "cursor-2" });
 		expect(store.get("owed", OWED_ID)).toMatchObject({ youOwe: 300_000 });
 	});
 
-	it("unavailable with no previous snapshot leaves none", async () => {
+	it("unavailable with nothing held leaves nothing", async () => {
 		const store = new MemoryStore();
-		await store.transaction((tx) =>
-			applySharesSnapshot(tx, shares({ unavailable: true })),
-		);
-		expect(store.list("budgetSnapshot")).toEqual([]);
+		await pull(store, shares({ unavailable: true }));
+		expect(held(store)).toEqual({ active: undefined, pending: undefined });
 	});
 
-	it("null clears the snapshot: nothing to read on a device", async () => {
+	it("null clears both snapshots: nothing to read on a device", async () => {
 		const store = new MemoryStore();
-		await store.transaction((tx) => applySharesSnapshot(tx, shares(block())));
-		await store.transaction((tx) => applySharesSnapshot(tx, shares(null)));
-		expect(store.list("budgetSnapshot")).toEqual([]);
+		await pull(store, shares(block()));
+		await store.transaction((tx) => promotePendingBudget(tx));
+		await pull(store, shares(block({ asOf: "cursor-2" })));
+		expect(held(store)).toEqual({ active: "cursor-1", pending: "cursor-2" });
+		await pull(store, shares(null));
+		expect(held(store)).toEqual({ active: undefined, pending: undefined });
 	});
 
-	it("a body without the field was not asked for it and leaves the snapshot", async () => {
+	it("a body without the field was not asked for it and leaves both", async () => {
 		const store = new MemoryStore();
-		await store.transaction((tx) => applySharesSnapshot(tx, shares(block())));
-		await store.transaction((tx) => applySharesSnapshot(tx, shares()));
-		expect(store.get("budgetSnapshot", BUDGET_SNAPSHOT_ID)?.asOf).toBe(
-			"cursor-1",
-		);
+		await pull(store, shares(block()));
+		await store.transaction((tx) => promotePendingBudget(tx));
+		await pull(store, shares(block({ asOf: "cursor-2" })));
+		await pull(store, shares());
+		expect(held(store)).toEqual({ active: "cursor-1", pending: "cursor-2" });
 	});
 
-	const BAD_BLOCKS: ReadonlyArray<[string, WireBudgetBlock]> = [
+	it("accepts a block with something in every list, one event of each kind", async () => {
+		const store = new MemoryStore();
+		const body = rich();
+		await pull(store, shares(body));
+		expect(store.get("budgetSnapshotPending", BUDGET_SNAPSHOT_ID)).toEqual({
+			id: BUDGET_SNAPSHOT_ID,
+			...body,
+		});
+	});
+
+	const REMOVE = Symbol("remove");
+	type Fault = readonly [string, readonly (string | number)[], unknown];
+	const BAD_BLOCKS: readonly Fault[] = [
+		["an asOf that is a number", ["asOf"], 5],
+		["an empty asOf", ["asOf"], ""],
+		["no asOf", ["asOf"], REMOVE],
+		["an empty book id", ["bookId"], ""],
+		["a book id that is a number", ["bookId"], 7],
+		["a valuation key that is a number", ["valuationKey"], 1],
+		["frozen that is not a list", ["frozen"], {}],
+		["a frozen key that is a number", ["frozen", 0, "key"], 1],
+		["a frozen approximate that is text", ["frozen", 0, "approximate"], "no"],
 		[
 			"a repeated frozen key",
-			block({
-				frozen: [
-					{ key: "k", minor: 1, approximate: false },
-					{ key: "k", minor: 2, approximate: false },
-				],
-			}),
+			["frozen", 1, "key"],
+			"e1|ARS|1000|0.67|2026-03-05|blue",
+		],
+		["a fractional frozen value", ["frozen", 0, "minor"], 1.5],
+		["a frozen value past the safe integers", ["frozen", 0, "minor"], 2 ** 53],
+		["splits that are not an object", ["splits"], "none"],
+		["a splits list that is missing", ["splits", "balances"], REMOVE],
+		["a fractional split share", ["splits", "shares", 0, "minor"], -0.5],
+		[
+			"a split share on a date that does not exist",
+			["splits", "shares", 0, "date"],
+			"2026-02-30",
+		],
+		["a split share in month 13", ["splits", "shares", 0, "month"], 202613],
+		["a split share id that is a number", ["splits", "shares", 0, "id"], 4],
+		[
+			"a split share envelope that is a number",
+			["splits", "shares", 0, "envelopeId"],
+			4,
+		],
+		["a fractional effect fx", ["splits", "effects", 0, "fx"], 0.5],
+		["an effect on a bad date", ["splits", "effects", 0, "date"], "x"],
+		[
+			"an effect minor that is text",
+			["splits", "effects", 0, "minor"],
+			"150000",
 		],
 		[
-			"a frozen value that is not whole minor units",
-			block({ frozen: [{ key: "k", minor: 1.5, approximate: false }] }),
+			"a balance past the safe integers",
+			["splits", "balances", 0, "native"],
+			1e21,
 		],
 		[
-			"a frozen value past the safe integers",
-			block({
-				frozen: [{ key: "k", minor: 2 ** 53, approximate: false }],
-			}),
+			"a balance basis that is fractional",
+			["splits", "balances", 0, "basis"],
+			1.5,
+		],
+		[
+			"a balance oldest open that is not a date",
+			["splits", "balances", 0, "oldestOpen"],
+			"March",
+		],
+		[
+			"an ignored amount that is fractional",
+			["splits", "ignored", 0, "native"],
+			0.1,
+		],
+		["an event of no known kind", ["splits", "events", 0, "kind"], "WAT"],
+		["a fractional FRONT value", ["splits", "events", 0, "value"], 1.5],
+		["a RECV cash that is text", ["splits", "events", 3, "cash"], "5"],
+		[
+			"a PAY cash past the safe integers",
+			["splits", "events", 4, "cash"],
+			2 ** 53,
+		],
+		[
+			"a FORGIVE envelope that is a number",
+			["splits", "events", 5, "envelopeId"],
+			1,
+		],
+		[
+			"an event native that is fractional",
+			["splits", "events", 1, "native"],
+			0.5,
+		],
+		["an event in month zero", ["splits", "events", 1, "month"], 0],
+		["an event on a bad date", ["splits", "events", 2, "date"], "2026-13-01"],
+		[
+			"an event notInBudget that is text",
+			["splits", "events", 5, "notInBudget"],
+			"yes",
+		],
+		[
+			"a pending receipt cash that is fractional",
+			["splits", "pending", 1, "cash"],
+			1.5,
+		],
+		[
+			"a pending receipt on a bad date",
+			["splits", "pending", 0, "date"],
+			"9 March",
+		],
+		[
+			"a missing rate on a bad date",
+			["splits", "missingRates", 0, "date"],
+			"x",
+		],
+		[
+			"a missing rate currency that is a number",
+			["splits", "missingRates", 0, "currency"],
+			1,
+		],
+		[
+			"an approximate row id that is a number",
+			["splits", "approximate", 0, "rowId"],
+			2,
+		],
+		[
+			"a checkpoint missing rate on a bad date",
+			["splits", "checkpointMissingRates", 0, "date"],
+			"x",
+		],
+		[
+			"a checkpoint approximate row on a bad date",
+			["splits", "checkpointApproximate", 0, "date"],
+			"2026-02-31",
+		],
+		["an unresolved id that is a number", ["splits", "unresolved", 0], 3],
+		[
+			"a not-in-budget project that is a number",
+			["splits", "notInBudget", 0],
+			3,
 		],
 	];
-	for (const [name, bad] of BAD_BLOCKS)
-		it(`refuses a body with ${name}, leaving shares, owed and the snapshot as they were`, async () => {
+
+	/** Sets the value at `path` of a plain document, or removes it. */
+	function poke(
+		doc: unknown,
+		path: readonly (string | number)[],
+		value: unknown,
+	) {
+		let at = doc as Record<string | number, unknown>;
+		for (const key of path.slice(0, -1))
+			at = at[key] as Record<string | number, unknown>;
+		const last = path[path.length - 1] as string | number;
+		if (value === REMOVE) delete at[last];
+		else at[last] = value;
+	}
+
+	const SHARE_ROW = {
+		id: "s1",
+		expenseId: "x1",
+		shareAmount: "250",
+		verificationStatus: "ACCEPTED",
+		currency: "ARS",
+		date: "2026-03-06T15:00:00.000Z",
+		projectId: null,
+		exchangeRate: null,
+		expenseCategoryId: null,
+	};
+
+	for (const [name, path, value] of BAD_BLOCKS)
+		it(`refuses a body with ${name}, writing nothing`, async () => {
 			const store = new MemoryStore();
-			await store.transaction((tx) =>
-				applySharesSnapshot(tx, {
-					...shares(block()),
-					items: [
-						{
-							id: "s1",
-							expenseId: "x1",
-							shareAmount: "250",
-							verificationStatus: "ACCEPTED",
-							currency: "ARS",
-							date: "2026-03-06T15:00:00.000Z",
-							projectId: null,
-							exchangeRate: null,
-							expenseCategoryId: null,
-						},
-					],
-				}),
+			await pull(store, { ...shares(block()), items: [SHARE_ROW] });
+			await store.transaction((tx) => promotePendingBudget(tx));
+			await pull(store, shares(block({ asOf: "cursor-2" })));
+			const bad: WireBudgetBlock = JSON.parse(JSON.stringify(rich()));
+			poke(bad, path, value);
+			await expect(pull(store, shares(bad, 999_000))).rejects.toThrow(
+				InvalidInputError,
 			);
-			await expect(
-				store.transaction((tx) =>
-					applySharesSnapshot(tx, shares(bad, 999_000)),
-				),
-			).rejects.toThrow(InvalidInputError);
-			expect(store.list("shares").map((s) => s.id)).toEqual(["s1"]);
+			expect(store.list("shares")).toEqual([]);
+			expect(held(store)).toEqual({ active: "cursor-1", pending: "cursor-2" });
 			expect(store.get("owed", OWED_ID)).toMatchObject({ youOwe: 100_000 });
-			expect(store.get("budgetSnapshot", BUDGET_SNAPSHOT_ID)?.asOf).toBe(
-				"cursor-1",
-			);
 		});
+
+	it("refuses a budget field that is not an object, writing nothing", async () => {
+		const store = new MemoryStore();
+		await pull(store, shares(block()));
+		await expect(
+			pull(store, shares("block" as never, 999_000)),
+		).rejects.toThrow(InvalidInputError);
+		await expect(pull(store, shares(0 as never, 999_000))).rejects.toThrow(
+			InvalidInputError,
+		);
+		expect(held(store).pending).toBe("cursor-1");
+		expect(store.get("owed", OWED_ID)).toMatchObject({ youOwe: 100_000 });
+	});
 
 	it("the snapshot is a copy: changing the body afterwards changes nothing", async () => {
 		const store = new MemoryStore();
 		const body = block();
-		await store.transaction((tx) => applySharesSnapshot(tx, shares(body)));
+		await pull(store, shares(body));
 		(body.splits.notInBudget as string[]).push("project-2");
 		(body.frozen as unknown as { minor: number }[])[0] = { minor: 1 };
-		const row = store.get("budgetSnapshot", BUDGET_SNAPSHOT_ID);
+		const row = store.get("budgetSnapshotPending", BUDGET_SNAPSHOT_ID);
 		expect(row?.splits.notInBudget).toEqual(["project-1"]);
 		expect(row?.frozen[0]?.minor).toBe(100_000);
 	});

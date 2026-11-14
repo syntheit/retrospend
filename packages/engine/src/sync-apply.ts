@@ -18,9 +18,9 @@
  * The budget book family (the personal book, its groups, envelopes, category
  * links, periods, closes, Wealth moves and payoff plan, plus movements and the
  * transfers a bill reads) applies the same way. A snapshot of `shares` may
- * carry the budget block (budget=1): it is kept in one row beside `owed`, and
- * whether it can be read yet (cursors, valuation key) is the reader's check,
- * never made at apply time.
+ * carry the budget block (budget=1): it is kept as the pending snapshot beside
+ * `owed`, and whether it can be read yet (cursors, valuation key) is the
+ * reader's check, never made at apply time (see budget-snapshot.ts).
  *
  * The figures read two things the wire does not carry on the row itself: an
  * expense's category kind (an income category keeps it out of spending) and a
@@ -380,7 +380,8 @@ function replaceTable<T extends TableName>(
 /**
  * Applies GET /sync/shares: the `shares` table becomes exactly the rows sent,
  * and the `owed` row the totals sent, both in `tx`, with the budget snapshot
- * when the body asks for it (see WireShares.budget). The whole body is checked
+ * when the body asks for it (see WireShares.budget; a block lands in
+ * budgetSnapshotPending, null clears both snapshots). The whole body is checked
  * first. Owed to you and You owe must be in one currency.
  */
 export function applySharesSnapshot(tx: Writer, body: WireShares): void {
@@ -415,13 +416,20 @@ export function applySharesSnapshot(tx: Writer, body: WireShares): void {
 		};
 	}
 	// Checked before the first write, like the rest of the body.
-	const snapshot = body.budget ? budgetSnapshotOf(body.budget) : undefined;
+	const snapshot =
+		body.budget === undefined || body.budget === null
+			? undefined
+			: budgetSnapshotOf(body.budget);
 	replaceTable(tx, "shares", rows);
 	tx.put("owed", owedRow);
-	if (body.budget === null) tx.delete("budgetSnapshot", BUDGET_SNAPSHOT_ID);
-	// Unavailable keeps the previous snapshot: a failed pull must not leave a
-	// device with nothing while the last good block still holds.
-	else if (snapshot) tx.put("budgetSnapshot", snapshot);
+	if (body.budget === null) {
+		tx.delete("budgetSnapshot", BUDGET_SNAPSHOT_ID);
+		tx.delete("budgetSnapshotPending", BUDGET_SNAPSHOT_ID);
+	}
+	// A new block waits as pending: the active one is the last whose cursor gate
+	// passed and keeps serving until promotePendingBudget moves the new one in.
+	// Unavailable keeps both, so a failed pull leaves a device the last good block.
+	else if (snapshot) tx.put("budgetSnapshotPending", snapshot);
 }
 
 /** Applies GET /sync/settings: the one settings row. An empty `defaultRateTypes` is left off the row. */

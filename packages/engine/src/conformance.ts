@@ -113,7 +113,13 @@ export const conformanceCases: ConformanceCase[] = [
 			const single = Object.keys(SINGLE_ROW_IDS) as TableName[];
 			expectEqual(
 				single.sort(),
-				["budgetSnapshot", "owed", "rateSync", "settings"],
+				[
+					"budgetSnapshot",
+					"budgetSnapshotPending",
+					"owed",
+					"rateSync",
+					"settings",
+				],
 				"the single-row tables",
 			);
 			for (const t of single)

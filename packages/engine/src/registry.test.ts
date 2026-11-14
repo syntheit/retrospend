@@ -65,6 +65,7 @@ const rows = (): Rows => ({
 	budgetBooks: [],
 	budgetMovements: [],
 	budgetSnapshot: [],
+	budgetSnapshotPending: [],
 	envelopeCategories: [],
 	envelopeGroups: [],
 	envelopes: [],

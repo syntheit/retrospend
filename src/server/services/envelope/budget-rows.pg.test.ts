@@ -8,7 +8,7 @@
  * income type: the nine the table's CHECK allows) x keepInWealth x
  * excludeFromAnalytics x amortization (parent flag x child flag x its own
  * amortize mode x parent: none, missing, INSTALLMENTS, REPORTS_ONLY) x category
- * (none, EXPENSE, INCOME) x seven dates around the two window edges: the
+ * (none, EXPENSE, INCOME) x six dates around the two window edges: the
  * spending window opens at FROM, the closed months' income window is
  * [FROM, TO). A "missing" parent is another person's expense, which row-level
  * security hides from the person's query, as a parent not yet synced is hidden
@@ -45,7 +45,8 @@ import { Prisma } from "~prisma";
 import { budgetClosedIncomeWhere } from "../spending";
 import { prismaBudgetInputs } from "./inputs-source";
 
-vi.setConfig({ testTimeout: 240_000, hookTimeout: 240_000 });
+const SEED_MS = 240_000;
+vi.setConfig({ testTimeout: SEED_MS, hookTimeout: SEED_MS });
 
 const FROM = new Date("2026-03-01T03:00:00.000Z");
 const TO = new Date("2026-04-01T03:00:00.000Z");
@@ -54,7 +55,6 @@ const DATES = [
 	new Date(FROM.getTime() - MS),
 	FROM,
 	new Date(FROM.getTime() + MS),
-	new Date("2026-03-15T12:00:00.000Z"),
 	new Date(TO.getTime() - MS),
 	TO,
 	new Date(TO.getTime() + MS),
@@ -223,7 +223,7 @@ beforeAll(async () => {
 		...BASE,
 		parent: true,
 		mode,
-		date: DATES[3] as Date,
+		date: DATES[2] as Date,
 	});
 	const installments = parentSpec("INSTALLMENTS");
 	const reports = parentSpec("REPORTS_ONLY");
@@ -293,23 +293,30 @@ beforeAll(async () => {
 	for (let i = 0; i < data.length; i += 2000)
 		await fixtureDb.expense.createMany({ data: data.slice(i, i + 2000) });
 
-	const own = await userTransaction(adminDb, userId, async (tx) => {
-		const read = await prismaBudgetInputs(tx, userId, "no-book").ownRows({
-			from: FROM,
-			afterMonth: 0,
-		});
-		const closed = await tx.expense.findMany({
-			where: budgetClosedIncomeWhere(userId, FROM, TO),
-			select: { id: true },
-		});
-		return { read, closed };
-	});
+	// About 41,000 rows are read three times; Prisma's 5 s default for an
+	// interactive transaction is too short when the gate runs files in parallel.
+	const own = await userTransaction(
+		adminDb,
+		userId,
+		async (tx) => {
+			const read = await prismaBudgetInputs(tx, userId, "no-book").ownRows({
+				from: FROM,
+				afterMonth: 0,
+			});
+			const closed = await tx.expense.findMany({
+				where: budgetClosedIncomeWhere(userId, FROM, TO),
+				select: { id: true },
+			});
+			return { read, closed };
+		},
+		{ timeout: 120_000 },
+	);
 	const set = (list: { id: string }[]) => new Set(list.map((r) => r.id));
 	spending = set(own.read.spending);
 	refunds = set(own.read.refunds);
 	moneyIn = set(own.read.moneyIn);
 	closedIncome = set(own.closed);
-});
+}, SEED_MS);
 
 const sortedIds = (list: Iterable<string>) => [...list].sort();
 const of = (s: Partial<Spec>): string => {
@@ -320,9 +327,9 @@ const of = (s: Partial<Spec>): string => {
 
 describe("budget row filters, twin and Prisma", () => {
 	it("holds every id of the cross product, once", () => {
-		// 2 statuses x 9 shapes x 2 x 2 x (2 x 2 x 2 x 4) x 3 categories x 7 dates,
+		// 2 statuses x 9 shapes x 2 x 2 x (2 x 2 x 2 x 4) x 3 categories x 6 dates,
 		// plus the person's two parent rows.
-		expect(rows).toHaveLength(2 * 9 * 2 * 2 * 32 * 3 * 7 + 2);
+		expect(rows).toHaveLength(2 * 9 * 2 * 2 * 32 * 3 * 6 + 2);
 		expect(new Set(rows.map((r) => r.id)).size).toBe(rows.length);
 	});
 

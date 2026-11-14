@@ -6,6 +6,7 @@
  */
 import type { SplitBlock } from "@retrospend/domain/envelope/split-block";
 import type { CloseSummary } from "./book-rows";
+import { checkBudgetBlock } from "./budget-block-check";
 import { BUDGET_SNAPSHOT_ID, InvalidInputError, type TableRows } from "./port";
 import {
 	decimal,
@@ -310,29 +311,26 @@ export const BOOK_ROWS: {
 
 /**
  * The snapshot row of a budget block, or undefined for the unavailable shape.
- * Only what a store needs to be sound is checked: the frozen values are a map
- * on a device, so a key may not repeat and a value is whole minor units. The
- * block's own figures are the server's and are never checked here.
+ * The whole block is checked first (budget-block-check.ts): types, ranges and
+ * dates, never whether the server's figures are right.
  */
 export function budgetSnapshotOf(
 	budget: WireBudgetBlock | { readonly unavailable: true },
 ): TableRows["budgetSnapshot"] | undefined {
-	if ("unavailable" in budget) return undefined;
-	if (new Set(budget.frozen.map((f) => f.key)).size !== budget.frozen.length)
-		throw new InvalidInputError("The budget block repeats a frozen key");
-	for (const f of budget.frozen)
-		if (!Number.isSafeInteger(f.minor))
-			throw new InvalidInputError("A frozen value is not whole minor units");
+	if ((budget as { unavailable?: unknown }).unavailable === true)
+		return undefined;
+	checkBudgetBlock(budget);
+	const block = budget as WireBudgetBlock;
 	return {
 		id: BUDGET_SNAPSHOT_ID,
-		bookId: budget.bookId,
-		valuationKey: budget.valuationKey,
-		asOf: budget.asOf,
-		frozen: budget.frozen.map((f) => ({
+		bookId: block.bookId,
+		valuationKey: block.valuationKey,
+		asOf: block.asOf,
+		frozen: block.frozen.map((f) => ({
 			key: f.key,
 			minor: f.minor,
 			approximate: f.approximate,
 		})),
-		splits: budget.splits,
+		splits: block.splits,
 	};
 }

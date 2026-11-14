@@ -138,10 +138,13 @@ export interface FrozenEntry {
 
 /**
  * What only the server can compute for the budget, as GET /sync/shares?budget=1
- * last sent it (one row, id "budget"): the splits block and the frozen values
- * of the person's own expenses, with the key of the valuation they were made
- * under and the sync cursor they are exact at. No row means the device holds
- * none: Just track, a book others share, or never pulled with the block.
+ * sent it: the splits block and the frozen values of the person's own expenses,
+ * with the key of the valuation they were made under and the sync cursor they
+ * are exact at. Two tables hold it, one row each (id "budget"): `budgetSnapshot`
+ * is the last block whose gate passed and the one the figures read,
+ * `budgetSnapshotPending` the latest pull's, until `promotePendingBudget` moves
+ * it in. No row means the device holds none: Just track, a book others share,
+ * or never pulled with the block.
  */
 export interface BudgetSnapshotRow extends WithId {
 	readonly bookId: string;
