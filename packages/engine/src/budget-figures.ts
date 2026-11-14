@@ -178,13 +178,21 @@ function debtSourceOf(db: Reader, pass: FigurePass | undefined): DebtSource {
  * figure definitions in `budgetDeviceFigures` answer that before they read.
  */
 export function deviceBudgetReads(clock: () => Date): BudgetReads<Reader> {
-	const view = (
+	const view = async (
 		db: Reader,
 		userId: string,
 		pass: FigurePass | undefined,
 		month?: MonthKey,
-	): Promise<MonthRead | null> =>
-		once(
+	): Promise<MonthRead | null> => {
+		// The month view of the current month is the same read whether it is asked
+		// for by name or not: a device has no checkpoint for `needFrom` to move, so
+		// the plan cost's second look at this month reuses the first.
+		if (month !== undefined) {
+			const current = await view(db, userId, pass);
+			if (current && current.loaded.input.currentMonth === month)
+				return current;
+		}
+		return once(
 			pass,
 			month === undefined
 				? `budget.month:${userId}`
@@ -195,6 +203,7 @@ export function deviceBudgetReads(clock: () => Date): BudgetReads<Reader> {
 				return monthViewFrom(monthSourceOf(db, pass, src), now, month);
 			},
 		);
+	};
 
 	return {
 		async month(db, userId, pass) {
