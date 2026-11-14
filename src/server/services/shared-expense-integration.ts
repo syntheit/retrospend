@@ -18,6 +18,7 @@ import {
 import type { Prisma, PrismaClient } from "~prisma";
 import { findExchangeRatesForDates } from "../exchange-rates";
 import type { RateCache } from "./rate-cache";
+import { COUNTED_SHARE } from "./shared-expenses/balance";
 import {
 	buildCallerRoleMap,
 	deriveCanModify,
@@ -58,8 +59,8 @@ export function ownParticipationWhere(userId: string) {
 
 /**
  * Builds a Prisma WHERE filter that excludes transactions from specific
- * projects. For the transactions list only: a share's own filter is
- * countsAsShare.
+ * projects: the transactions list's filter, and the share reader's pre-filter
+ * (countsAsShare decides; this only keeps hidden projects' rows from loading).
  */
 function excludedProjectFilter(
 	excludedProjectIds?: string[],
@@ -162,9 +163,12 @@ function narrowingFilter(
  * in the date range, outside the excluded projects. The one definition both
  * the spending readers and the envelope budget read.
  *
- * SQL selects by access, date and the Insights narrowing; countsAsShare (the
- * rule the device runs on its own rows) then drops what does not count, on
- * every row, before any caller sees the list.
+ * SQL selects by access, date and the Insights narrowing, and pre-filters
+ * with the rule's own constants (the uncounted statuses, the hidden project
+ * ids passed in) so a heavy history is not loaded to be dropped; the
+ * pre-filter only narrows. countsAsShare (the rule the device runs on its own
+ * rows) is the authority: it then decides every row before any caller sees
+ * the list.
  */
 export async function shareParticipations(
 	db: AppDb,
@@ -175,11 +179,13 @@ export async function shareParticipations(
 ) {
 	const whereTransaction: Prisma.SharedTransactionWhereInput = {
 		...(dateFilter ? { date: dateFilter } : {}),
+		...excludedProjectFilter(excludedProjectIds),
 		...(narrow ? { AND: narrowingFilter(narrow) } : {}),
 	};
 	const rows = await (db as PrismaClient).splitParticipant.findMany({
 		where: {
 			...ownParticipationWhere(userId),
+			...COUNTED_SHARE,
 			transaction: whereTransaction,
 		},
 		select: {
