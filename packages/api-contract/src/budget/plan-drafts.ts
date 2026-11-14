@@ -1,4 +1,4 @@
-/** Drafts: Plan next month and What if. Mirrors src/lib/schemas/envelope*.ts (a test keeps them equal). */
+/** Drafts: Plan next month and What if. The web re-exports the outputs; the inputs it writes itself are kept equal by a test. */
 import * as z from "zod";
 import { moneySchema } from "../common/money";
 import { idSchema, timestampSchema } from "../core";

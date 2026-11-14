@@ -1,4 +1,4 @@
-/** Income rules. Mirrors src/lib/schemas/envelope*.ts (a test keeps them equal). */
+/** Income rules. The web re-exports the outputs; the inputs it writes itself are kept equal by a test. */
 import * as z from "zod";
 import { moneySchema } from "../common/money";
 import { userText } from "../common/user-text";

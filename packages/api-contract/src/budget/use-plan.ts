@@ -1,4 +1,4 @@
-/** Use my plan on money already in the pool. Mirrors src/lib/schemas/envelope-use-plan.ts (a test keeps them equal). */
+/** Use my plan on money already in the pool. The web re-exports the result; the input it writes itself is kept equal by a test. */
 import * as z from "zod";
 import { moneySchema } from "../common/money";
 import { clientIdSchema, positiveAmount } from "./basics";

@@ -1,4 +1,4 @@
-/** Month close summaries and money owed. Mirrors src/lib/schemas/envelope*.ts (a test keeps them equal). */
+/** Month close summaries and money owed. The web re-exports the outputs; the inputs it writes itself are kept equal by a test. */
 import * as z from "zod";
 import { moneySchema } from "../common/money";
 import { idSchema } from "../core";

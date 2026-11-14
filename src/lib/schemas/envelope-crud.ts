@@ -9,37 +9,45 @@
  * changed is stored server side (envelope_change), so its undo is exact and a
  * client never sends the old state back.
  */
+import {
+	affordActionSchema,
+	affordResultSchema,
+	affordStateSchema,
+	archiveEnvelopeResultSchema as contractArchiveEnvelopeResultSchema,
+	confirmStartingMoneyResultSchema as contractConfirmStartingMoneyResultSchema,
+	createEnvelopeResultSchema as contractCreateEnvelopeResultSchema,
+	mergeEnvelopesResultSchema as contractMergeEnvelopesResultSchema,
+	undoChangeResultSchema as contractUndoChangeResultSchema,
+	updateEnvelopeResultSchema as contractUpdateEnvelopeResultSchema,
+	routedCategorySchema,
+	setTargetResultSchema,
+	unroutedShareSchema,
+	unroutedSharesOutputSchema,
+} from "@retrospend/api-contract/budget";
 import { userText } from "@retrospend/api-contract/common";
 import { z } from "zod";
 import {
 	envelopeKindSchema,
-	isoDateSchema,
 	minorSchema,
-	moneySchema,
 	monthKeySchema,
 	movementResultSchema,
 	targetInputSchema,
 } from "./envelope";
-import { targetSnapshotSchema } from "./envelope-book";
+
+export {
+	affordActionSchema,
+	affordResultSchema,
+	affordStateSchema,
+	routedCategorySchema,
+	setTargetResultSchema,
+	unroutedShareSchema,
+	unroutedSharesOutputSchema,
+};
 
 const idSchema = z.string().min(1).max(64);
 const clientIdSchema = z.string().uuid();
 const positiveMinor = minorSchema.refine((v) => v > 0, "must be above 0");
 const nonNegativeMinor = minorSchema.refine((v) => v >= 0, "must be 0 or more");
-
-/** A category link that moved: from the envelope that had it (null: none) to the one that has it now (null: none). */
-export const routedCategorySchema = z.object({
-	categoryId: idSchema,
-	from: idSchema.nullable(),
-	to: idSchema.nullable(),
-});
-
-/** An envelope's Left in the current month before and after an edit (RC-5: every line listed). */
-const leftChangeSchema = z.object({
-	id: idSchema,
-	before: moneySchema,
-	after: moneySchema,
-});
 
 const changeIdSchema = z.object({
 	/** Client id of the edit: a retry is a no-op, and it names the edit for its undo. */
@@ -61,21 +69,6 @@ export const setTargetInputSchema = changeIdSchema
 		path: ["target"],
 	});
 
-export const setTargetResultSchema = z.object({
-	changeId: idSchema,
-	envelopeId: idSchema,
-	/** The stored target now. */
-	target: targetSnapshotSchema,
-	/** The stored target before: what the undo writes back. */
-	previous: targetSnapshotSchema,
-	/** As typed, in its own currency (a foreign target keeps it); null without an amount. */
-	typed: moneySchema.nullable(),
-	/** The same target in the book currency at today's rate; null without an amount or a rate. */
-	inBook: moneySchema.nullable(),
-	/** A foreign target with no rate today (R14): the need reads 0 and says so. */
-	incomplete: z.boolean(),
-});
-
 // ── Create, update, combine, archive ───────────────────────────────────────
 
 export const createEnvelopeInputSchema = z.object({
@@ -92,18 +85,10 @@ export const createEnvelopeInputSchema = z.object({
 	icon: z.string().max(32).optional(),
 });
 
-const routedResult = {
-	changeId: idSchema,
-	/** Categories whose link moved. Closed months keep the routing they closed with (B7). */
-	routed: z.array(routedCategorySchema),
-};
-
-export const createEnvelopeResultSchema = movementResultSchema.extend({
-	...routedResult,
-	envelopeId: idSchema,
-	/** Current-month Left of every envelope the edit touched, each as before and after. */
-	left: z.array(leftChangeSchema),
-});
+export const createEnvelopeResultSchema =
+	contractCreateEnvelopeResultSchema.extend({
+		movements: movementResultSchema.shape.movements,
+	});
 
 export const updateEnvelopeInputSchema = changeIdSchema
 	.extend({
@@ -122,15 +107,10 @@ export const updateEnvelopeInputSchema = changeIdSchema
 		{ message: "Nothing to change" },
 	);
 
-export const updateEnvelopeResultSchema = movementResultSchema.extend({
-	...routedResult,
-	envelopeId: idSchema,
-	renamed: z.object({ from: z.string(), to: z.string() }).nullable(),
-	group: z
-		.object({ from: idSchema.nullable(), to: idSchema.nullable() })
-		.nullable(),
-	left: z.array(leftChangeSchema),
-});
+export const updateEnvelopeResultSchema =
+	contractUpdateEnvelopeResultSchema.extend({
+		movements: movementResultSchema.shape.movements,
+	});
 
 export const mergeEnvelopesInputSchema = changeIdSchema
 	.extend({
@@ -149,40 +129,19 @@ export const mergeEnvelopesInputSchema = changeIdSchema
 		path: ["fromIds"],
 	});
 
-export const mergeEnvelopesResultSchema = movementResultSchema.extend({
-	...routedResult,
-	intoId: idSchema,
-	fromIds: z.array(idSchema),
-	renamed: z.object({ from: z.string(), to: z.string() }).nullable(),
-	left: z.array(leftChangeSchema),
-	rules: z.array(idSchema),
-	projectRoutes: z.array(idSchema),
-	/** Envelopes whose leftovers swept to a combined one and now sweep to the one that stays. */
-	sweeps: z.array(idSchema),
-	groupMains: z.array(idSchema),
-	payoffPlan: z.boolean(),
-	/** The stayer's target before and after; `summed` counts the targets added to it, `dropped` the ones that could not be. */
-	target: z.object({
-		before: targetSnapshotSchema,
-		after: targetSnapshotSchema,
-		summed: z.number().int().min(0),
-		dropped: z.number().int().min(0),
-	}),
-});
+export const mergeEnvelopesResultSchema =
+	contractMergeEnvelopesResultSchema.extend({
+		movements: movementResultSchema.shape.movements,
+	});
 
 export const archiveEnvelopeInputSchema = changeIdSchema.extend({
 	envelopeId: idSchema,
 });
 
-export const archiveEnvelopeResultSchema = movementResultSchema.extend({
-	...routedResult,
-	envelopeId: idSchema,
-	left: z.array(leftChangeSchema),
-	/** Active income rules that named it: their lines are left out from now on. */
-	rulesLeftOut: z.array(idSchema),
-	/** Projects that counted your shares in it: they count by category now. */
-	projectRoutes: z.array(idSchema),
-});
+export const archiveEnvelopeResultSchema =
+	contractArchiveEnvelopeResultSchema.extend({
+		movements: movementResultSchema.shape.movements,
+	});
 
 // ── Starting money (D34) ────────────────────────────────────────────────────
 
@@ -191,22 +150,8 @@ export const confirmStartingMoneyInputSchema = changeIdSchema.extend({
 	amountMinor: nonNegativeMinor,
 });
 
-export const confirmStartingMoneyResultSchema = z.object({
-	changeId: idSchema,
-	/** What you said you have right now. */
-	amount: moneySchema,
-	/** Signed: what you have minus what the budget held. Above 0 it is the money in row (what you have plus what was already spent since the start); below 0 the budget held more than you have and this is the OUT Adjustment. 0: no row. */
-	booked: moneySchema,
-	/** booked - amount: "Includes X already spent since <since>". Below 0 when money in was already recorded. */
-	alreadySpent: moneySchema,
-	/** The book's first day. */
-	since: isoDateSchema,
-	/** The money in row written; null when none was needed. */
-	expenseId: idSchema.nullable(),
-	/** The OUT Adjustment written when the budget held more than you have. */
-	adjustmentId: idSchema.nullable(),
-	confirmedAt: z.date(),
-});
+export const confirmStartingMoneyResultSchema =
+	contractConfirmStartingMoneyResultSchema.extend({ confirmedAt: z.date() });
 
 // ── Undo ────────────────────────────────────────────────────────────────────
 
@@ -215,17 +160,8 @@ export const undoChangeInputSchema = z.object({
 	id: idSchema,
 });
 
-export const undoChangeResultSchema = movementResultSchema.extend({
-	changeId: idSchema,
-	kind: z.enum([
-		"SET_TARGET",
-		"CREATE",
-		"UPDATE",
-		"MERGE",
-		"ARCHIVE",
-		"CONFIRM_STARTING_MONEY",
-	]),
-	envelopeId: idSchema.nullable(),
+export const undoChangeResultSchema = contractUndoChangeResultSchema.extend({
+	movements: movementResultSchema.shape.movements,
 });
 
 // ── Can I afford it? (SYNTHESIS-r6 §4) ──────────────────────────────────────
@@ -238,81 +174,11 @@ export const affordInputSchema = z.object({
 	envelopeId: idSchema.optional(),
 });
 
-export const affordStateSchema = z.enum([
-	"FITS",
-	"FITS_TIGHT",
-	"NO_LIMIT",
-	"SHORT_MOVE",
-	"SHORT_POOL_COVERS",
-	"SHORT_NOTHING_LEFT",
-	"WEEK_FITS",
-	"WEEK_NEXT_WEEK",
-]);
-
-export const affordActionSchema = z.discriminatedUnion("kind", [
-	/** Put the shortfall into Spending from Not planned yet. */
-	z.object({ kind: z.literal("ADD_TO_SPENDING"), amount: moneySchema }),
-	z.object({
-		kind: z.literal("MOVE_MONEY"),
-		envelopeId: idSchema,
-		amount: moneySchema,
-	}),
-	z.object({ kind: z.literal("PLAN_NEXT_MONTH"), month: monthKeySchema }),
-]);
-
-/** The sentence's state and every number in it; the client writes the words. */
-export const affordResultSchema = z.object({
-	month: monthKeySchema,
-	scope: z.enum(["SPENDING", "ENVELOPE", "WEEK"]),
-	state: affordStateSchema,
-	amount: moneySchema,
-	/** The envelope answered from (ENVELOPE scope). */
-	envelopeId: idSchema.nullable(),
-	/** What the scope holds now: Left to spend, the envelope's Left or Left this week. */
-	left: moneySchema,
-	/** left - amount; below 0 when it does not fit. */
-	after: moneySchema,
-	/** How much more it needs; 0 when it fits. */
-	short: moneySchema,
-	/** About how much a day after paying it. */
-	perDay: moneySchema,
-	daysLeft: z.number().int(),
-	/** About what you usually spend a day (last 3 closed months); null before a first close. */
-	usualPerDay: moneySchema.nullable(),
-	/** Not planned yet (To assign when it is above 0). */
-	notPlanned: moneySchema,
-	/** NO_LIMIT: what the envelope spent this month. */
-	spent: moneySchema,
-	action: affordActionSchema.nullable(),
-	incomplete: z.boolean(),
-});
-
 // ── Shares with no envelope (SPEC §5.8, §5.14) ──────────────────────────────
 
 export const unroutedSharesInputSchema = z
 	.object({ limit: z.number().int().min(1).max(200).default(100) })
 	.default({ limit: 100 });
-
-export const unroutedShareSchema = z.object({
-	shareId: idSchema,
-	/** The split expense it belongs to; the client joins its title. */
-	expenseId: idSchema,
-	date: isoDateSchema,
-	month: monthKeySchema.nullable(),
-	/** Your share in the book currency at its date; null when a rate is missing (R14). */
-	amount: moneySchema.nullable(),
-	projectId: idSchema.nullable(),
-	payer: z.object({ type: z.string(), id: idSchema }),
-});
-
-export const unroutedSharesOutputSchema = z.object({
-	/** Where they land until you pick: Everything else. */
-	defaultEnvelopeId: idSchema,
-	shares: z.array(unroutedShareSchema),
-	total: moneySchema,
-	count: z.number().int().min(0),
-	incomplete: z.boolean(),
-});
 
 export type SetTargetInput = z.infer<typeof setTargetInputSchema>;
 export type SetTargetResult = z.infer<typeof setTargetResultSchema>;

@@ -1,4 +1,4 @@
-/** A month of the budget: envelopes, groups, To assign, Left to spend and the verdict. Mirrors src/lib/schemas/envelope*.ts (a test keeps them equal). */
+/** A month of the budget: envelopes, groups, To assign, Left to spend and the verdict. The web re-exports the outputs; the inputs it writes itself are kept equal by a test. */
 import * as z from "zod";
 import { moneySchema } from "../common/money";
 import { idSchema } from "../core";

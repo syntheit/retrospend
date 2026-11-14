@@ -10,10 +10,13 @@ import * as plan from "~/lib/schemas/envelope-plan";
 import * as usePlan from "~/lib/schemas/envelope-use-plan";
 
 /**
- * The contract package cannot import the app, so it carries its own copy of
- * the budget schemas (packages/api-contract/src/budget). This keeps the two
- * equal, schema by schema, in the JSON they describe: a change to the web's
- * contract that is not made here fails the build.
+ * The web's output schemas are the contract's own (re-exported from
+ * @retrospend/api-contract/budget), or extend it with the Date that tRPC
+ * carries. What is still written twice is the web's inputs (minor units, trim
+ * and not-blank) against v1's decimal text, and the drafts' rows. This keeps
+ * those equal, schema by schema, in the JSON they describe, and compares an
+ * extended output too: a change to one side that is not made on the other
+ * fails the build.
  *
  * What differs on purpose, and is made equal before comparing:
  * - Money is the shared Money schema (a stricter currency pattern).
@@ -142,6 +145,8 @@ function jsonOf(schema: z.ZodType, io: "input" | "output") {
 const names = Object.keys(sources).filter(
 	(k) => sources[k] instanceof z.ZodType,
 );
+/** A schema that is the contract's own object needs no comparison. */
+const apart = names.filter((n) => n in mirrors && sources[n] !== mirrors[n]);
 
 describe("budget contract mirrors the web's schemas", () => {
 	it("mirrors every schema the web declares", () => {
@@ -175,21 +180,29 @@ describe("budget contract mirrors the web's schemas", () => {
 		}
 	});
 
-	it.each(names.filter((n) => n in mirrors && !DRAFT_OUTPUTS.has(n)))(
-		"%s: input",
-		(name) => {
-			expect(jsonOf(mirrors[name] as z.ZodType, "input")).toEqual(
-				jsonOf(sources[name] as z.ZodType, "input"),
+	// A schema the web re-exports as is answers tRPC, which carries a Date: if
+	// the contract gives it an ISO instant, the web must extend it with a Date.
+	it("re-exports no schema with an instant the web would send as a Date", () => {
+		for (const name of names.filter((n) => sources[n] === mirrors[n])) {
+			const text = JSON.stringify(
+				z.toJSONSchema(mirrors[name] as z.ZodType, {
+					io: "output",
+					unrepresentable: "any",
+				}),
 			);
-		},
-	);
+			expect(text, name).not.toContain('"format":"date-time"');
+		}
+	});
 
-	it.each(names.filter((n) => n in mirrors && !DRAFT_OUTPUTS.has(n)))(
-		"%s: output",
-		(name) => {
-			expect(jsonOf(mirrors[name] as z.ZodType, "output")).toEqual(
-				jsonOf(sources[name] as z.ZodType, "output"),
-			);
-		},
-	);
+	it.each(apart.filter((n) => !DRAFT_OUTPUTS.has(n)))("%s: input", (name) => {
+		expect(jsonOf(mirrors[name] as z.ZodType, "input")).toEqual(
+			jsonOf(sources[name] as z.ZodType, "input"),
+		);
+	});
+
+	it.each(apart.filter((n) => !DRAFT_OUTPUTS.has(n)))("%s: output", (name) => {
+		expect(jsonOf(mirrors[name] as z.ZodType, "output")).toEqual(
+			jsonOf(sources[name] as z.ZodType, "output"),
+		);
+	});
 });

@@ -9,17 +9,41 @@
  * pretend row by its category or envelope.
  */
 
+import {
+	applyRuleResultSchema as contractApplyRuleResultSchema,
+	incomeRuleSchema as contractIncomeRuleSchema,
+	draftEnvelopeLineSchema,
+	draftKindSchema,
+	draftPreviewSchema,
+	draftStatusSchema,
+	planCostSchema,
+	ruleActionSchema,
+	ruleRunSchema,
+	yearCellSchema,
+	yearViewSchema,
+} from "@retrospend/api-contract/budget";
 import { userText } from "@retrospend/api-contract/common";
 import { z } from "zod";
 import {
 	groupTargetInputSchema,
 	minorSchema,
-	moneySchema,
 	monthKeySchema,
 	movementResultSchema,
 	ruleActionInputSchema,
 	ruleMatchSchema,
 } from "./envelope";
+
+export {
+	draftEnvelopeLineSchema,
+	draftKindSchema,
+	draftPreviewSchema,
+	draftStatusSchema,
+	planCostSchema,
+	ruleActionSchema,
+	ruleRunSchema,
+	yearCellSchema,
+	yearViewSchema,
+};
 
 const idSchema = z.string().min(1).max(64);
 const clientIdSchema = z.string().uuid();
@@ -28,23 +52,7 @@ const nonNegativeMinor = minorSchema.refine((v) => v >= 0, "must be 0 or more");
 
 // ── Income rules (SPEC §5.10) ───────────────────────────────────────────────
 
-export const ruleActionSchema = z.object({
-	kind: z.enum(["PERCENT", "AMOUNT", "REMAINDER"]),
-	/** PERCENT: basis points (2000 = 20%). */
-	basisPoints: z.number().int().nullable(),
-	/** AMOUNT: in the book currency. */
-	amount: moneySchema.nullable(),
-});
-
-export const incomeRuleSchema = z.object({
-	id: idSchema,
-	name: z.string(),
-	sortOrder: z.number().int(),
-	match: ruleMatchSchema,
-	action: ruleActionSchema,
-	envelopeId: idSchema,
-	active: z.boolean(),
-	/** Rules apply to money in created after this. */
+export const incomeRuleSchema = contractIncomeRuleSchema.extend({
 	createdAt: z.date(),
 });
 
@@ -78,24 +86,11 @@ export const applyRuleToMonthInputSchema = z.object({
 	ruleId: idSchema,
 });
 
-export const ruleRunSchema = z.object({
-	/** The money in the rules ran on. */
-	expenseId: idSchema,
-	batchId: idSchema,
-	lines: z.array(
-		z.object({ ruleId: idSchema, envelopeId: idSchema, amount: moneySchema }),
-	),
-});
-
-export const applyRuleResultSchema = z.object({
-	runs: z.array(ruleRunSchema),
+export const applyRuleResultSchema = contractApplyRuleResultSchema.extend({
 	movement: movementResultSchema.nullable(),
 });
 
 // ── Drafts: Plan next month and What if (SPEC §5.13, D2, D54) ───────────────
-
-export const draftKindSchema = z.enum(["PLAN", "WHAT_IF"]);
-export const draftStatusSchema = z.enum(["OPEN", "APPLIED", "DISCARDED"]);
 
 /** PLAN: what the envelope should have assigned in the month. */
 export const planLineSchema = z.object({
@@ -188,55 +183,6 @@ export const planFillOutputSchema = z.object({
 	lines: z.array(planLineSchema),
 });
 
-const beforeAfter = z.object({ before: moneySchema, after: moneySchema });
-
-export const draftEnvelopeLineSchema = z.object({
-	envelopeId: idSchema,
-	assigned: beforeAfter,
-	activity: beforeAfter,
-	left: beforeAfter,
-	/** The target's need with the draft in place. */
-	need: moneySchema,
-	/** Left below 0 with the draft in place. */
-	short: z.boolean(),
-});
-
-export const draftPreviewSchema = z.object({
-	draftId: idSchema,
-	kind: draftKindSchema,
-	month: monthKeySchema,
-	/** The draft month's To assign (Not planned yet) without and with the draft. */
-	toAssign: beforeAfter,
-	/** Every envelope the draft moves (RC-5). */
-	envelopes: z.array(draftEnvelopeLineSchema),
-	/** Income rules previewed on expected and pretend money in. */
-	ruleLines: z.array(
-		z.object({
-			sourceId: idSchema,
-			ruleId: idSchema,
-			envelopeId: idSchema,
-			amount: moneySchema,
-		}),
-	),
-	/** Envelopes that go short, each with a suggested cover. */
-	shortfalls: z.array(
-		z.object({
-			envelopeId: idSchema,
-			short: moneySchema,
-			cover: z.array(
-				z.object({ from: idSchema.nullable(), amount: moneySchema }),
-			),
-			/** Part of the shortfall nothing can cover. */
-			uncovered: moneySchema,
-		}),
-	),
-	/** PLAN: what "Fund it now" would take from this month's Not planned yet. */
-	fundNow: moneySchema.nullable(),
-	incomplete: z.boolean(),
-	/** The draft names its month, which is no longer the current or next one. */
-	stale: z.boolean(),
-});
-
 export const applyDraftInputSchema = z.object({
 	draftId: idSchema,
 	/** WHAT_IF: client id of the moves' batch. */
@@ -266,58 +212,9 @@ export const planCostInputSchema = z
 	})
 	.default({});
 
-export const planCostSchema = z.object({
-	month: monthKeySchema,
-	/** Σ monthly-equivalent targets; a group counts its target when larger than its children. */
-	cost: moneySchema,
-	byGroup: z.array(
-		z.object({ groupId: idSchema.nullable(), cost: moneySchema }),
-	),
-	/** Median budget income of the last 3 closed months; null with none. */
-	typicalIncome: moneySchema.nullable(),
-	closedMonths: z.number().int().min(0).max(3),
-	essentialCost: moneySchema,
-	essentialIds: z.array(idSchema),
-	/** "Your budget and savings last 7.5 months at this plan"; null when essentials cost nothing. */
-	runway: z
-		.object({
-			available: moneySchema,
-			/** Whole tenths of a month, rounded down (75 = 7.5 months). */
-			tenths: z.number().int(),
-		})
-		.nullable(),
-	incomplete: z.boolean(),
-});
-
 export const yearViewInputSchema = z
 	.object({ year: z.number().int().min(1900).max(2999).optional() })
 	.default({});
-
-export const yearCellSchema = z.object({
-	month: monthKeySchema,
-	/** Null before the budget started: those months show spending only (D9). */
-	assigned: moneySchema.nullable(),
-	spent: moneySchema,
-	left: moneySchema.nullable(),
-});
-
-export const yearViewSchema = z.object({
-	year: z.number().int(),
-	months: z.array(
-		z.object({
-			key: monthKeySchema,
-			state: z.enum(["BEFORE_START", "CLOSED", "OPEN", "NEXT", "LATER"]),
-		}),
-	),
-	envelopes: z.array(
-		z.object({
-			id: idSchema,
-			groupId: idSchema.nullable(),
-			cells: z.array(yearCellSchema),
-		}),
-	),
-	incomplete: z.boolean(),
-});
 
 // ── Group targets (SPEC §5.9) ───────────────────────────────────────────────
 

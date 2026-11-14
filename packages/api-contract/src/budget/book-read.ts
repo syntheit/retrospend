@@ -1,4 +1,4 @@
-/** Month summaries, Welcome back and the bank side. Mirrors src/lib/schemas/envelope*.ts (a test keeps them equal). */
+/** Month summaries, Welcome back and the bank side. The web re-exports the outputs; the inputs it writes itself are kept equal by a test. */
 import * as z from "zod";
 import { moneySchema } from "../common/money";
 import { idSchema, timestampSchema } from "../core";
