@@ -163,6 +163,7 @@ export async function seedParityLedger(
 	options: ParityOptions,
 ): Promise<ParityLedger> {
 	const ctx = await contextOf(options);
+	const book = await seedParityBook(ctx);
 	const expenses = await seedExpenses(ctx);
 	const accountIds = await seedAccounts(ctx);
 	const snapshots = await seedSnapshots(ctx, accountIds);
@@ -171,7 +172,7 @@ export async function seedParityLedger(
 	const templateIds = await seedTemplates(ctx);
 	const projects = await seedProjects(ctx);
 	const shares = await seedShares(ctx, projects);
-	const book = await seedParityBook(ctx);
+	await book.finish();
 	return {
 		bookId: book.bookId,
 		envelopeIds: book.envelopeIds,

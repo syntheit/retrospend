@@ -7,12 +7,15 @@
  * expenses, shares and accounts (it has a card and a loan) are the book's rows.
  *
  * Set up in the past with only Date faked, as seedBudgetBook does, and read once
- * at the first clock; the caller's clock is the real one again afterwards.
+ * at the first clock; the caller's clock is the real one again afterwards. The
+ * setup comes before the ledger's rows (`seedParityBook`) and the movements and
+ * closes after them (`ParityBook.finish`).
  */
 import { randomUUID } from "node:crypto";
 import { vi } from "vitest";
 import type { SetupInput } from "~/lib/schemas/envelope";
-import { getMonth } from "~/server/services/envelope/read.service";
+import { userTransaction } from "~/server/db-tx";
+import { ensureMonthsClosed } from "~/server/services/envelope/month-close.service";
 import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
 import { forUser } from "~/server/services/preview";
 import { runFreeze } from "~/server/services/sync/budget-block";
@@ -59,31 +62,47 @@ function setupOf(ctx: SeedContext): SetupInput {
 export interface ParityBook {
 	bookId: string;
 	envelopeIds: string[];
+	/** Adds the movements and the Wealth move, then closes the months. Call it once the ledger's rows are in. */
+	finish(): Promise<void>;
 }
 
-/** The book, its movements and its closes; the ledger's clocks are the profile's. */
-export async function seedParityBook(ctx: SeedContext): Promise<ParityBook> {
-	const first = ctx.clocks[0] as Date;
+/** Runs `fn` with only Date faked at `at`, and the real clock again after. */
+async function atDate<T>(at: Date, fn: () => Promise<T>): Promise<T> {
 	vi.useFakeTimers({ toFake: ["Date"] });
 	try {
-		vi.setSystemTime(new Date(first.getTime() - MONTHS_BACK * 30 * DAY));
-		await forUser(ctx.userId).apply(setupEnvelopeBook, {
+		vi.setSystemTime(at);
+		return await fn();
+	} finally {
+		vi.useRealTimers();
+	}
+}
+
+/**
+ * Sets the book up, 24 months before the first clock. Done before the ledger's
+ * rows exist: setup reads the book it makes (in a page read's five seconds),
+ * which at 10,000 rows it would not finish. `finish` does the rest.
+ */
+export async function seedParityBook(ctx: SeedContext): Promise<ParityBook> {
+	const first = ctx.clocks[0] as Date;
+	await atDate(new Date(first.getTime() - MONTHS_BACK * 30 * DAY), () =>
+		forUser(ctx.userId).apply(setupEnvelopeBook, {
 			...setupOf(ctx),
 			currency: ctx.home,
 			timeZone: resolveTimeZone(ctx.profile.timeZone),
+		}),
+	);
+	const book = await adminDb.budgetBook.findFirstOrThrow({
+		where: { createdById: ctx.userId },
+		include: { envelopes: true },
+	});
+	const envelopeIds = book.envelopes.map((e) => e.id);
+	// An ARS book values its foreign rows at blue, so a rewritten blue rate is a rewrite the book reads.
+	if (ctx.home === "ARS")
+		await adminDb.bookPeriod.updateMany({
+			where: { bookId: book.id },
+			data: { rateType: "blue" },
 		});
-		vi.setSystemTime(first);
-		const book = await adminDb.budgetBook.findFirstOrThrow({
-			where: { createdById: ctx.userId },
-			include: { envelopes: true },
-		});
-		const envelopeIds = book.envelopes.map((e) => e.id);
-		// An ARS book values its foreign rows at blue, so a rewritten blue rate is a rewrite the book reads.
-		if (ctx.home === "ARS")
-			await adminDb.bookPeriod.updateMany({
-				where: { bookId: book.id },
-				data: { rateType: "blue" },
-			});
+	const finish = async () => {
 		const movements = Array.from({ length: MOVEMENTS }, (_, i) => {
 			// A month key from the book's start month on, a few per envelope.
 			const offset = i % MONTHS_BACK;
@@ -116,12 +135,17 @@ export async function seedParityBook(ctx: SeedContext): Promise<ParityBook> {
 		});
 		// The first read values every row once and closes every month before this
 		// one, keeping their checkpoints. At 10,000 rows that is longer than a page
-		// read's five seconds, so the values are kept first, in the device freeze's
-		// own thirty.
-		await runFreeze(adminDb, ctx.userId, { force: true });
-		await getMonth(ctx.userId, undefined, first);
-		return { bookId: book.id, envelopeIds };
-	} finally {
-		vi.useRealTimers();
-	}
+		// read's five seconds, so the values are kept first (the device freeze has
+		// thirty) and the months close in a transaction with room for them.
+		await atDate(first, async () => {
+			await runFreeze(adminDb, ctx.userId, { force: true });
+			await userTransaction(
+				adminDb,
+				ctx.userId,
+				(tx) => ensureMonthsClosed(tx, ctx.userId, first),
+				{ timeout: 120_000 },
+			);
+		});
+	};
+	return { bookId: book.id, envelopeIds, finish };
 }
