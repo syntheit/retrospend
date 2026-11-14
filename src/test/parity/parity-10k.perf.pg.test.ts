@@ -6,10 +6,11 @@
  * the always-on harness. The perf project runs it alone after every other
  * file (vitest.pg.config.ts), so the timings are not skewed.
  *
- * It asserts parity only; the timings are logged (a budget comes after two CI
- * runs, as the search benchmark's is owner-machine-only). It skips itself in
- * the sealed suite: sealing 10,000 rows is a different test, and the
- * always-on harness already covers sealed parity.
+ * It asserts parity; the timings are logged, and held to a budget only under
+ * PERF_BUDGET=harbor with CI unset, as the search benchmark's is (a budget on
+ * a shared CI runner would flake). It skips itself in the sealed suite:
+ * sealing 10,000 rows is a different test, and the always-on harness already
+ * covers sealed parity.
  */
 import { randomUUID } from "node:crypto";
 import { FigurePass, readFiguresIn } from "@retrospend/domain/figures/registry";
@@ -62,6 +63,17 @@ const PROFILES: Record<string, LedgerProfile> = {
 		startDay: 28,
 	},
 };
+
+/**
+ * Budgets below were measured on harbor (the owner's machine, 2026-11-14) and
+ * are 3x the median of the runs, rounded up: a pass of every device figure
+ * 32 ms, an expense.create preview 38 ms, one list of 11,000 expenses 4.6 ms.
+ * Before the store speed work these were 108, 160 and 27 ms.
+ */
+const ENFORCE = process.env.PERF_BUDGET === "harbor" && !process.env.CI;
+const PASS_BUDGET_MS = 100;
+const PREVIEW_BUDGET_MS = 120;
+const LIST_BUDGET_MS = 15;
 
 const median = (xs: number[]) =>
 	[...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] ?? 0;
@@ -309,8 +321,10 @@ describe.skipIf(sealedSuite)(
 			for (const [group, ids] of groups)
 				log(`group ${group}`, await timeRead(ids));
 			const all = [...groups.values()].flat();
-			log("full pass, real Date", await timeRead(all));
+			const pass = await timeRead(all);
+			log("full pass, real Date", pass);
 			expect(all.length).toBeGreaterThan(0);
+			if (ENFORCE) expect(pass.totalMs).toBeLessThan(PASS_BUDGET_MS);
 		});
 
 		it("previews an expense and sorts a list at this size", async () => {
@@ -341,6 +355,10 @@ describe.skipIf(sealedSuite)(
 			}
 			log("expense.create preview p50 ms", ms(median(previews)));
 			log("list(expenses) p50 ms", ms(median(lists)));
+			if (ENFORCE) {
+				expect(median(previews)).toBeLessThan(PREVIEW_BUDGET_MS);
+				expect(median(lists)).toBeLessThan(LIST_BUDGET_MS);
+			}
 			// The preview left the store as it was.
 			expect(device.store.get("expenses", input.id)).toBeUndefined();
 			// And read one figure the way a screen does, once, to see the first-read cost.
