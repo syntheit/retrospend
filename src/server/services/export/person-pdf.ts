@@ -1,4 +1,5 @@
 /** The person summary PDF: reads the shared history, formats every amount, hands the text to the renderer. */
+import { shareCounts } from "@retrospend/domain/share-status";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { amountText } from "./amounts";
 import { categoryRows } from "./categories";
@@ -26,6 +27,7 @@ export async function exportPersonPdf(
 					participantType: true,
 					participantId: true,
 					shareAmount: true,
+					verificationStatus: true,
 				},
 			},
 		},
@@ -90,18 +92,29 @@ export async function exportPersonPdf(
 			})),
 		categoryBreakdown: categoryRows(transactions),
 		expenses: transactions.map((tx) => {
-			// A share the signed-in person cannot see reads empty, not 0.
+			// A share the signed-in person cannot see reads empty, not 0. A
+			// rejected share is not owed: 0, and the row is labeled Disputed, so
+			// the shares add up to the balance this file reports.
 			const shareOf = (sp: PersonRef) => {
 				const row = tx.splitParticipants.find(
 					(s) =>
 						s.participantType === sp.participantType &&
 						s.participantId === sp.participantId,
 				);
-				return row ? amountText(row.shareAmount, tx.currency) : "";
+				if (!row) return "";
+				return amountText(
+					shareCounts(row.verificationStatus) ? row.shareAmount : "0",
+					tx.currency,
+				);
 			};
+			const disputed = tx.splitParticipants.some(
+				(s) => !shareCounts(s.verificationStatus),
+			);
 			return {
 				date: isoDay(tx.date, ctx.timeZone),
-				description: tx.description,
+				description: disputed
+					? `${tx.description} (Disputed)`
+					: tx.description,
 				amount: amountText(tx.amount, tx.currency),
 				currency: tx.currency,
 				category: tx.category?.name ?? "",
