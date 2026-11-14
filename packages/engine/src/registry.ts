@@ -51,6 +51,7 @@ import {
 	spentMinorByCurrency,
 	spentRange,
 } from "@retrospend/domain/spent";
+import { INSIGHTS_FIGURE_IDS, insightsFigures } from "./insights-figures";
 import {
 	lookupFor,
 	notTrackedIn,
@@ -304,7 +305,7 @@ function accountFigures(clock: () => Date): DeviceFigure[] {
 	];
 }
 
-/** The device's figures, 23 ids (`DEVICE_FIGURE_IDS`). */
+/** The device's figures, 37 ids (`DEVICE_FIGURE_IDS`). */
 export function deviceFigures(
 	deps: DeviceFiguresDeps = {},
 ): FiguresRegistry<Reader> {
@@ -314,6 +315,7 @@ export function deviceFigures(
 		...glanceFigures(clock),
 		...recurringFigures(clock),
 		...accountFigures(clock),
+		...insightsFigures(clock),
 	]);
 }
 
@@ -333,6 +335,7 @@ export const DEVICE_FIGURE_IDS: readonly string[] = [
 	...CHANGE_PARTS.map((part) => `netWorthChange.${part}`),
 	"accounts.balance",
 	"notTracked",
+	...INSIGHTS_FIGURE_IDS,
 ];
 
 /**
@@ -352,10 +355,6 @@ const SERVER_ONLY: readonly { prefix: string; reason: string }[] = [
 	{
 		prefix: "envelope.",
 		reason: "P13b: the envelope month view still reads Prisma only",
-	},
-	{
-		prefix: "insights.",
-		reason: "P13b after E2EE P6: insights readers still take the server db",
 	},
 	{
 		prefix: "rate.dollarToday",

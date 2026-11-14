@@ -15,8 +15,8 @@ import {
 	monthsWindow,
 	previousPeriod,
 	savedOf,
-	spanReadOf,
 	spanRate,
+	spanReadOf,
 	valueIn,
 	ytdSideOf,
 } from "./insights-compute";

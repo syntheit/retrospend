@@ -33,10 +33,11 @@
  *   Mar 10 2025 USD 10 Food; Jan 1 2025 00:20 (03:20Z) NGN 200 Transport
  *   (usd 0.14): last year's span; Dec 31 2024 23:50 (02:50Z) NGN 250: out
  */
-import { Prisma } from "~prisma";
+
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { readFigures } from "~/server/figures/read";
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
+import { Prisma } from "~prisma";
 import { category } from "./__tests__/fixture";
 import {
 	insightsCashflow,
