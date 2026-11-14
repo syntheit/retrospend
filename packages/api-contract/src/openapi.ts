@@ -57,8 +57,8 @@ function errorResponses(entry: ContractEntry): JsonObject {
 		...base,
 		"401": problemResponse("No valid credentials"),
 		"403": problemResponse("Missing scope, or the API is turned off"),
-		// A sync cursor the log cannot honor (sync_reset_required).
-		...(entry.meta.scope === "sync"
+		// A sync cursor the log cannot honor (sync_reset_required); a snapshot has no cursor.
+		...(entry.meta.scope === "sync" && !entry.meta.snapshot
 			? {
 					"410": problemResponse(
 						"The cursor is no longer valid; drop these rows and pull again from the start",

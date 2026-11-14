@@ -10,14 +10,23 @@
  * is compared, not copied from the server's own readers (getSharedExpenseShares
  * is never used here). Settings carry what a sync sends: the zone the server
  * resolved for the user (resolveTimeZone), the fiscal month start day and the
- * projects hidden from reports.
+ * projects hidden from reports. The owed row holds the server's own reading
+ * (owedOnce), as GET /sync/shares hands it to a device.
+ *
+ * The parity harness (P16) feeds its device store from the real v1 sync
+ * routes instead; this builder is only its cross-check, so a row the routes
+ * send is held to the row read straight from the tables.
  *
  * The root app does not depend on the engine package, so it is imported by
  * path, as expense-create-conformance.pg.test.ts does.
  */
+import { userTransaction } from "~/server/db-tx";
+import { FigureUnavailable } from "~/server/figures/unavailable";
+import { owedOnce } from "~/server/services/payments/figures";
 import { resolveTimeZone } from "~/server/services/user-time-zone";
 import {
 	MemoryStore,
+	OWED_ID,
 	type SettingsRow,
 	type TableRows,
 } from "../../packages/engine/src/index";
@@ -73,6 +82,21 @@ async function sharesOf(userId: string): Promise<TableRows["shares"][]> {
 	}));
 }
 
+/** Owed to you and You owe as the server's figure reads them, as the owed row. */
+async function owedRowOf(userId: string): Promise<TableRows["owed"]> {
+	const owed = await userTransaction(adminDb, userId, (tx) =>
+		owedOnce(tx, userId),
+	);
+	if (owed instanceof FigureUnavailable)
+		return { id: OWED_ID, missingRates: owed.missingRates };
+	return {
+		id: OWED_ID,
+		currency: owed.currency,
+		owedToYou: owed.owedToYou,
+		youOwe: owed.youOwe,
+	};
+}
+
 export async function engineStoreOf(userId: string): Promise<MemoryStore> {
 	const [
 		settings,
@@ -84,6 +108,8 @@ export async function engineStoreOf(userId: string): Promise<MemoryStore> {
 		switches,
 		rates,
 		templates,
+		categories,
+		owed,
 	] = await Promise.all([
 		settingsOf(userId),
 		fixtureDb.expense.findMany({
@@ -96,18 +122,26 @@ export async function engineStoreOf(userId: string): Promise<MemoryStore> {
 		fixtureDb.assetSnapshot.findMany({ where: { userId } }),
 		fixtureDb.assetRateType.findMany({ where: { userId } }),
 		adminDb.exchangeRate.findMany(),
-		fixtureDb.recurringTemplate.findMany({
-			where: { userId },
-			include: {
-				category: {
-					select: { id: true, name: true, color: true, icon: true },
-				},
-			},
-		}),
+		fixtureDb.recurringTemplate.findMany({ where: { userId } }),
+		fixtureDb.category.findMany({ where: { userId } }),
+		owedRowOf(userId),
 	]);
+	const byId = new Map(categories.map((c) => [c.id, c]));
+	const categoryRefOf = (id: string | null) => {
+		const c = id === null ? undefined : byId.get(id);
+		return c ? { id: c.id, name: c.name, color: c.color, icon: c.icon } : null;
+	};
 	return new MemoryStore({
 		rows: {
 			settings: [settings],
+			owed: [owed],
+			categories: categories.map((c) => ({
+				id: c.id,
+				kind: c.kind,
+				name: c.name,
+				color: c.color,
+				icon: c.icon,
+			})),
 			expenses: expenses.map((r) => ({
 				id: r.id,
 				status: r.status,
@@ -183,7 +217,9 @@ export async function engineStoreOf(userId: string): Promise<MemoryStore> {
 				isActive: t.isActive,
 				autoPay: t.autoPay,
 				amountMode: t.amountMode,
-				category: t.category,
+				// Joined here from the top-level category read: a nested select would
+				// hand back a sealed name unopened in the sealed suite.
+				category: categoryRefOf(t.categoryId),
 			})),
 		},
 	});

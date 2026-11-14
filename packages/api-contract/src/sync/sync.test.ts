@@ -8,6 +8,7 @@ import {
 	syncQuerySchema,
 } from "../common/sync";
 import { syncContract } from "./index";
+import { SYNC_DESCRIPTION } from "./route";
 import {
 	syncAccountHistorySchema,
 	syncAccountLegSchema,
@@ -19,6 +20,7 @@ import {
 	syncRecurringTemplateSchema,
 	syncTransferSchema,
 } from "./schemas";
+import { syncSettingsSchema, syncSharesSchema } from "./snapshots";
 
 const at = "2026-10-05T00:00:00.000Z";
 
@@ -253,16 +255,97 @@ describe("raw row schemas", () => {
 	});
 });
 
+describe("the shares snapshot", () => {
+	const share = {
+		id: "p1",
+		expenseId: "x1",
+		shareAmount: "-12.50",
+		verificationStatus: "REJECTED",
+		currency: "ARS",
+		date: at,
+		projectId: null,
+		exchangeRate: null,
+		expenseCategoryId: null,
+	};
+
+	it("takes a negative correction share and either owed reading", () => {
+		const priced = syncSharesSchema.parse({
+			items: [share],
+			owed: {
+				owedToYou: { minor: 500, currency: "ARS" },
+				youOwe: { minor: 0, currency: "ARS" },
+			},
+		});
+		expect(priced.items[0]?.shareAmount).toBe("-12.50");
+		expect(
+			syncSharesSchema.parse({ items: [], owed: { missingRates: ["XQZ"] } })
+				.owed,
+		).toEqual({ missingRates: ["XQZ"] });
+	});
+
+	it("refuses an owed reading with neither totals nor missing rates", () => {
+		expect(syncSharesSchema.safeParse({ items: [], owed: {} }).success).toBe(
+			false,
+		);
+	});
+
+	it("carries no text of the expense, its payer or its other people", () => {
+		const keys = Object.keys(share);
+		for (const leaked of ["description", "paidById", "participants", "notes"])
+			expect(keys).not.toContain(leaked);
+		// The schema strips what it does not name, so a row with them parses without them.
+		const parsed = syncSharesSchema.parse({
+			items: [{ ...share, description: "dinner", paidById: "bob" }],
+			owed: { missingRates: [] },
+		});
+		expect(Object.keys(parsed.items[0] ?? {}).sort()).toEqual(
+			Object.keys(share).sort(),
+		);
+	});
+});
+
+describe("the settings snapshot", () => {
+	const settings = {
+		homeCurrency: "ARS",
+		timeZone: "America/Argentina/Buenos_Aires",
+		startDay: 1,
+		hiddenProjectIds: [],
+		defaultRateTypes: {},
+	};
+
+	it("takes the port's settings fields, never a null zone", () => {
+		expect(syncSettingsSchema.parse(settings)).toEqual(settings);
+		expect(
+			syncSettingsSchema.safeParse({ ...settings, timeZone: null }).success,
+		).toBe(false);
+		expect(
+			syncSettingsSchema.safeParse({ ...settings, startDay: 29 }).success,
+		).toBe(false);
+	});
+
+	it("keeps the preferred rate type per currency", () => {
+		const parsed = syncSettingsSchema.parse({
+			...settings,
+			hiddenProjectIds: ["p1"],
+			defaultRateTypes: { ARS: "blue" },
+		});
+		expect(parsed.defaultRateTypes).toEqual({ ARS: "blue" });
+		expect(parsed.hiddenProjectIds).toEqual(["p1"]);
+	});
+});
+
 describe("the sync group", () => {
 	it("answers a stale cursor with 410", () => {
 		expect(PROBLEM_STATUS.sync_reset_required).toBe(410);
 	});
 
-	it("has the 21 entity routes, each a GET under /sync", () => {
-		const paths = Object.values(syncContract).map(
-			(route) => route["~orpc"].route.path,
-		);
-		expect(paths.sort()).toEqual(
+	const pathsOf = (snapshot: boolean) =>
+		Object.values(syncContract)
+			.filter((route) => (route["~orpc"].meta.snapshot === true) === snapshot)
+			.map((route) => route["~orpc"].route.path);
+
+	it("has the 21 cursor routes, each a GET under /sync", () => {
+		expect(pathsOf(false).sort()).toEqual(
 			[
 				"/sync/account-history",
 				"/sync/account-legs",
@@ -287,6 +370,16 @@ describe("the sync group", () => {
 				"/sync/wealth-transfers",
 			].sort(),
 		);
+	});
+
+	it("has the snapshots, which take no cursor and say so", () => {
+		expect(pathsOf(true).sort()).toEqual(["/sync/settings", "/sync/shares"]);
+		for (const route of Object.values(syncContract)) {
+			if (route["~orpc"].meta.snapshot !== true) continue;
+			// No `since` or `limit`: a snapshot is one table, replaced on each pull.
+			expect(route["~orpc"].inputSchema).toBeUndefined();
+			expect(route["~orpc"].route.description).not.toContain(SYNC_DESCRIPTION);
+		}
 	});
 
 	it("needs the session-only sync scope, which no token can be given", () => {

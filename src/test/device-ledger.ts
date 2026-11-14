@@ -25,16 +25,56 @@ export interface LedgerProfile {
 	withMissingRate?: boolean;
 }
 
+const BA = "America/Argentina/Buenos_Aires";
+
+/** The six profiles of the device conformance test: home currency, zone and fiscal month start, the way each branches the figures. */
+export const P13_PROFILES: Record<string, LedgerProfile> = {
+	"ARS home, alias zone, official default": {
+		home: "ARS",
+		timeZone: BA,
+		startDay: 1,
+		defaultRateTypes: { ARS: "official" },
+	},
+	"USD home, Tokyo": { home: "USD", timeZone: "Asia/Tokyo", startDay: 1 },
+	"JPY home, month from the 15th": {
+		home: "JPY",
+		timeZone: "Asia/Tokyo",
+		startDay: 15,
+	},
+	"ARS home, no stored zone, DEFAULT_TIME_ZONE set": {
+		home: "ARS",
+		timeZone: null,
+		startDay: 1,
+	},
+	"ARS home, unsupported stored zone, month from the 28th": {
+		home: "ARS",
+		timeZone: "Mars/Olympus",
+		startDay: 28,
+	},
+	"ARS home, a currency with no rate": {
+		home: "ARS",
+		timeZone: BA,
+		startDay: 1,
+		withMissingRate: true,
+	},
+};
+
 export interface Ledger {
 	userId: string;
 	accountIds: string[];
 	templateIds: string[];
 }
 
-/** Units per USD: ARS blue 1,400 then 1,500 and official 1,000, JPY 150, KWD 0.3. */
+/**
+ * Units per USD: ARS blue 1,400 then 1,500 and official 1,000, JPY 150, KWD
+ * 0.3. The table is shared by every file of a worker's database, so a second
+ * seed skips the rows that are there (exchange_rate is unique per date,
+ * currency and type).
+ */
 export async function seedRates() {
 	const day = (iso: string) => new Date(`${iso}T00:00:00Z`);
 	await adminDb.exchangeRate.createMany({
+		skipDuplicates: true,
 		data: [
 			["2026-09-15", "ARS", "blue", "1400"],
 			["2026-10-05", "ARS", "blue", "1500"],

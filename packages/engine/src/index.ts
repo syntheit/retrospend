@@ -28,8 +28,11 @@ export {
 export { MemoryStore, type MemoryStoreOptions } from "./memory-store";
 export { type MovementRow, mirrorId } from "./movements";
 export {
+	type CategoryRow,
 	type Change,
 	InvalidInputError,
+	OWED_ID,
+	type OwedRow,
 	RATE_SYNC_ID,
 	type RateSyncRow,
 	type Reader,
@@ -42,6 +45,7 @@ export {
 	TABLE_NAMES,
 	type TableName,
 	type TableRows,
+	type TemplateDetail,
 	TransactionError,
 	type Tx,
 	type WithId,
@@ -70,5 +74,24 @@ export {
 	serverOnlyReason,
 } from "./registry";
 export { type ReadRepos, type Repos, readRepos, repos } from "./repos";
+export {
+	applySettings,
+	applySharesSnapshot,
+	applySyncPage,
+	type SyncEntity,
+	type SyncPage,
+	type WireAccount,
+	type WireCategory,
+	type WireExpense,
+	type WireLeg,
+	type WireMoney,
+	type WireOf,
+	type WireRateSwitch,
+	type WireSettings,
+	type WireShare,
+	type WireShares,
+	type WireSnapshot,
+	type WireTemplate,
+} from "./sync-apply";
 export type { TemplateRow } from "./templates";
 export type { UndoToken } from "./undo";

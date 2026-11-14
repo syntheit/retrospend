@@ -11,19 +11,14 @@
  *
  * The clock is the fake system Date only, as the critic round asked: the
  * device registry reads `new Date()` per pass, like the server's figures.
- * Owed to you and You owe are shared money, so the device is handed the
- * server's own reading (owedOnce), as sync will hand it.
+ * Owed to you and You owe are shared money, so the device store holds the
+ * server's own reading (owedOnce) in its owed row, as GET /sync/shares hands
+ * it to a device.
  */
 import { randomUUID } from "node:crypto";
-import {
-	FigurePass,
-	type FigureReading,
-	readFiguresIn,
-} from "@retrospend/domain/figures/registry";
+import { FigurePass, readFiguresIn } from "@retrospend/domain/figures/registry";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { userTransaction } from "~/server/db-tx";
 import { createExpense } from "~/server/services/expense-create.mutation";
-import { owedOnce } from "~/server/services/payments/figures";
 import { forUser } from "~/server/services/preview";
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
@@ -37,48 +32,23 @@ import {
 } from "../../../packages/engine/src/index";
 import {
 	type Ledger,
-	type LedgerProfile,
+	P13_PROFILES as PROFILES,
 	seedLedger,
 	seedRates,
 } from "../../test/device-ledger";
 import { engineStoreOf } from "../../test/engine-store";
+import {
+	deviceReadFrom,
+	expectSame,
+	type Read,
+	SCOPELESS_IDS,
+	serverRead,
+} from "../../test/parity/compare";
 import { figures } from "./registry";
-import { FigureUnavailable } from "./unavailable";
 
 const NOW = new Date("2026-10-15T15:00:00Z");
 const BA = "America/Argentina/Buenos_Aires";
 const D = (v: string) => new Prisma.Decimal(v);
-
-const PROFILES: Record<string, LedgerProfile> = {
-	"ARS home, alias zone, official default": {
-		home: "ARS",
-		timeZone: BA,
-		startDay: 1,
-		defaultRateTypes: { ARS: "official" },
-	},
-	"USD home, Tokyo": { home: "USD", timeZone: "Asia/Tokyo", startDay: 1 },
-	"JPY home, month from the 15th": {
-		home: "JPY",
-		timeZone: "Asia/Tokyo",
-		startDay: 15,
-	},
-	"ARS home, no stored zone, DEFAULT_TIME_ZONE set": {
-		home: "ARS",
-		timeZone: null,
-		startDay: 1,
-	},
-	"ARS home, unsupported stored zone, month from the 28th": {
-		home: "ARS",
-		timeZone: "Mars/Olympus",
-		startDay: 28,
-	},
-	"ARS home, a currency with no rate": {
-		home: "ARS",
-		timeZone: BA,
-		startDay: 1,
-		withMissingRate: true,
-	},
-};
 
 const ledgers = new Map<string, Ledger>();
 const previousDefaultZone = process.env.DEFAULT_TIME_ZONE;
@@ -99,71 +69,14 @@ afterAll(() => {
 	else process.env.DEFAULT_TIME_ZONE = previousDefaultZone;
 });
 
-interface Read {
-	readings: ReadonlyMap<string, FigureReading>;
-	missing: ReadonlyMap<string, string[]>;
-}
-
-async function owedOf(userId: string) {
-	return userTransaction(adminDb, userId, (tx) => owedOnce(tx, userId));
-}
-
-async function serverRead(
-	userId: string,
-	ids: readonly string[],
-	narrowing: Record<string, string> = {},
-): Promise<Read> {
-	return userTransaction(adminDb, userId, async (tx) => {
-		const pass = new FigurePass();
-		const readings = await readFiguresIn(
-			tx,
-			ids.map((id) => figures.get(id)),
-			{ ...narrowing, userId },
-			pass,
-		);
-		return {
-			readings,
-			missing: new Map(ids.map((id) => [id, pass.missingRates(id)])),
-		};
-	});
-}
-
+/** The device side over the raw rows of one user (engineStoreOf). */
 async function deviceRead(
 	userId: string,
 	ids: readonly string[],
 	narrowing: Record<string, string> = {},
 ): Promise<Read> {
-	const store = await engineStoreOf(userId);
-	const owed = await owedOf(userId);
-	const registry = deviceFigures({ owed: () => owed });
-	const pass = new FigurePass();
-	const readings = await readFiguresIn(
-		store,
-		ids.map((id) => registry.get(id)),
-		{ ...narrowing, userId },
-		pass,
-	);
-	return {
-		readings,
-		missing: new Map(ids.map((id) => [id, pass.missingRates(id)])),
-	};
+	return deviceReadFrom(await engineStoreOf(userId), userId, ids, narrowing);
 }
-
-/** Every id equal on both sides, with the id in the failure message. */
-function expectSame(device: Read, server: Read, ids: readonly string[]) {
-	for (const id of ids) {
-		expect(device.readings.get(id), `${id} reading`).toEqual(
-			server.readings.get(id),
-		);
-		expect(device.missing.get(id), `${id} missing rates`).toEqual(
-			server.missing.get(id),
-		);
-	}
-}
-
-const SCOPELESS = DEVICE_FIGURE_IDS.filter(
-	(id) => id !== "recurring.amount" && id !== "accounts.balance",
-);
 
 describe("the device registry against the server", () => {
 	for (const [name, profile] of Object.entries(PROFILES))
@@ -172,7 +85,7 @@ describe("the device registry against the server", () => {
 
 			it("reads every figure as the server does", async () => {
 				const { userId } = ledger();
-				const ids = [...SCOPELESS, "accounts.balance"];
+				const ids = [...SCOPELESS_IDS, "accounts.balance"];
 				const server = await serverRead(userId, ids);
 				expectSame(await deviceRead(userId, ids), server, ids);
 				// Not trivially equal because both are null or empty.
@@ -219,10 +132,9 @@ describe("the device registry against the server", () => {
 					date: new Date(NOW.getTime() - 60 * 60 * 1000),
 				};
 				const store = await engineStoreOf(userId);
-				const owed = await owedOf(userId);
 				const device = await createDevicePreviewRunner({
 					store,
-					figures: deviceFigures({ owed: () => owed }),
+					figures: deviceFigures(),
 					actor: { userId },
 				}).preview(EXPENSE_CREATE_MUTATION, input);
 				const server = await forUser(userId).preview(createExpense, input);
@@ -237,7 +149,7 @@ describe("the device registry against the server", () => {
 describe("the device registry's shape", () => {
 	it("registers a subset of the server's ids with the same scope", () => {
 		const server = new Set(figures.ids);
-		const device = deviceFigures({ owed: () => ({ owedToYou: 0, youOwe: 0 }) });
+		const device = deviceFigures();
 		for (const id of device.ids) {
 			expect(server.has(id), `${id} is a server figure`).toBe(true);
 			expect(device.get(id).scope, `${id} scope`).toEqual(
@@ -259,16 +171,17 @@ describe("the device registry's shape", () => {
 		expect(EXPENSE_CREATE_MUTATION.id).toBe(createExpense.id);
 	});
 
-	// The device matches an unavailable owed reading by `instanceof`; this
-	// hands it the server's class, so one class per module is what is held.
-	it("shares the FigureUnavailable class with the server", async () => {
+	// An owed row that names missing currencies makes net worth read
+	// unavailable with those names, as an unavailable owed figure does on the server.
+	it("reads net worth unavailable when the owed row names missing currencies", async () => {
 		const { userId } = ledgers.get(
 			"ARS home, alias zone, official default",
 		) as Ledger;
 		const store = await engineStoreOf(userId);
-		const registry = deviceFigures({
-			owed: () => new FigureUnavailable(["BRL"]),
-		});
+		await store.transaction((tx) =>
+			tx.put("owed", { id: "owed", missingRates: ["BRL"] }),
+		);
+		const registry = deviceFigures();
 		const pass = new FigurePass();
 		const readings = await readFiguresIn(
 			store,

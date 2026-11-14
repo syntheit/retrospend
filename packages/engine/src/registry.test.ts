@@ -17,7 +17,6 @@ import {
 	type FigureReading,
 	readFiguresIn,
 } from "@retrospend/domain/figures/registry";
-import { FigureUnavailable } from "@retrospend/domain/figures/unavailable";
 import { describe, expect, it } from "vitest";
 import { NotFoundError } from "./errors";
 import { fixtureRow } from "./fixtures";
@@ -58,6 +57,9 @@ type Rows = { [T in TableName]: TableRows[T][] };
 
 const rows = (): Rows => ({
 	budgetMovements: [],
+	categories: [],
+	// Alice is owed ARS 5,000.00 and owes ARS 2,000.00, in her home currency.
+	owed: [{ id: "owed", currency: "ARS", owedToYou: 500_000, youOwe: 200_000 }],
 	rateSwitches: [],
 	rateSync: [],
 	snapshots: [],
@@ -211,21 +213,15 @@ const rows = (): Rows => ({
 const store = (o: Partial<Rows> = {}) =>
 	new MemoryStore({ rows: { ...rows(), ...o } });
 
-const OWED = { owedToYou: 500_000, youOwe: 200_000 };
-
 function read(
 	reader: Reader,
 	ids: readonly string[],
 	opts: {
 		clock?: () => Date;
-		owed?: () => ReturnType<Parameters<typeof deviceFigures>[0]["owed"]>;
 		narrow?: Record<string, string>;
 	} = {},
 ) {
-	const registry = deviceFigures({
-		clock: opts.clock ?? (() => NOW),
-		owed: opts.owed ?? (() => OWED),
-	});
+	const registry = deviceFigures({ clock: opts.clock ?? (() => NOW) });
 	const pass = new FigurePass();
 	return readFiguresIn(
 		reader,
@@ -243,7 +239,7 @@ const one = async (
 
 describe("device figure registry", () => {
 	it("registers exactly DEVICE_FIGURE_IDS and none sets inEveryPreview", () => {
-		const registry = deviceFigures({ owed: () => OWED });
+		const registry = deviceFigures();
 		expect([...registry.ids].sort()).toEqual([...DEVICE_FIGURE_IDS].sort());
 		expect(DEVICE_FIGURE_IDS).toHaveLength(23);
 		expect(registry.inEveryPreview).toEqual([]);
@@ -272,7 +268,7 @@ describe("device figure registry", () => {
 		// 2026-11-01T03:00Z holds only e6, ARS 7.00.
 		it("rereads the clock on every pass, never one captured at construction", async () => {
 			let now = NOW;
-			const registry = deviceFigures({ clock: () => now, owed: () => OWED });
+			const registry = deviceFigures({ clock: () => now });
 			const s = store();
 			const spent = () =>
 				readFiguresIn(s, [registry.get("spent")], scope).then((m) =>
@@ -421,11 +417,37 @@ describe("device figure registry", () => {
 		});
 
 		it("names the currencies of an unavailable owed reading", async () => {
-			const { m, pass } = await read(store(), ["netWorth"], {
-				owed: () => new FigureUnavailable(["BRL"]),
-			});
+			const s = store({ owed: [{ id: "owed", missingRates: ["BRL"] }] });
+			const { m, pass } = await read(s, ["netWorth"]);
 			expect(m.get("netWorth")).toBeNull();
 			expect(pass.missingRates("netWorth")).toEqual(["BRL"]);
+		});
+
+		// Owed to you 0 and You owe 0 are a reading too: 248,499.50 alone.
+		it("adds nothing for totals of zero, and reads them from the store like any table", async () => {
+			const s = store({
+				owed: [{ id: "owed", currency: "ARS", owedToYou: 0, youOwe: 0 }],
+			});
+			expect(await one("netWorth", undefined, s)).toEqual([
+				{ minor: 24_849_950, currency: "ARS" },
+			]);
+		});
+
+		it("throws when shares were never pulled, instead of reading owed as 0", async () => {
+			const error = await one("netWorth", undefined, store({ owed: [] })).catch(
+				(e) => e,
+			);
+			expect(error).toBeInstanceOf(FigureError);
+			expect((error as FigureError).cause).toBeInstanceOf(NotFoundError);
+		});
+
+		it("throws when the totals are in another currency than the home currency", async () => {
+			const s = store({
+				owed: [{ id: "owed", currency: "USD", owedToYou: 500, youOwe: 0 }],
+			});
+			const error = await one("netWorth", undefined, s).catch((e) => e);
+			expect(error).toBeInstanceOf(FigureError);
+			expect((error as FigureError).cause).toBeInstanceOf(NotFoundError);
 		});
 
 		it("reads unavailable when an account's currency has no rate", async () => {
