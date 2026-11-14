@@ -125977,7 +125977,7 @@
 														"type": "boolean"
 													},
 													"updatedAt": {
-														"description": "Moves with every write to the row, including ones that are not a change here (the server's read bookkeeping), so a pull may show it newer than the last change you saw.",
+														"description": "The server's version of the row, the base a write sends. A copy with an older value is out of date.",
 														"format": "date-time",
 														"type": "string"
 													},

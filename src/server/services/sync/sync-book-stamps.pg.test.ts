@@ -118,15 +118,12 @@ describe("a book's rows are stamped U when written", () => {
 		const bookStamp = () => stampOf(user.id, "budget_book", s.book);
 		const closeStamp = () => stampOf(user.id, "month_close", s.close);
 		const [book0, close0] = [await bookStamp(), await closeStamp()];
-		await fixtureDb.budgetBook.update({
-			where: { id: s.book },
-			data: {
-				dirtyFromMonth: 202610,
-				lastOpenedAt: new Date("2026-11-10T00:00:00.000Z"),
-				styleUndo: { before: "x" },
-				legacyHiddenIds: ["a"],
-			},
-		});
+		// SQL writes of the caches and bookkeeping, which leave updatedAt alone.
+		await adminDb.$executeRaw`
+			UPDATE "budget_book"
+			SET "dirtyFromMonth" = 202610, "lastOpenedAt" = now(),
+			    "styleUndo" = '{"before":"x"}'::jsonb, "legacyHiddenIds" = ARRAY['a']
+			WHERE "id" = ${s.book}`;
 		await fixtureDb.monthClose.update({
 			where: { id: s.close },
 			data: { checkpoint: { other: "cache" } },
@@ -138,6 +135,16 @@ describe("a book's rows are stamped U when written", () => {
 			where: { id: s.book },
 			data: { name: "Renamed" },
 		});
+		// A touchOpened-style write through Prisma moves updatedAt, the device's
+		// base version, so it is a change too.
+		const mid = await bookStamp();
+		await fixtureDb.budgetBook.update({
+			where: { id: s.book },
+			data: { lastOpenedAt: new Date("2026-11-10T00:00:00.000Z") },
+		});
+		expect(BigInt((await bookStamp())?.seq ?? 0)).toBeGreaterThan(
+			BigInt(mid?.seq ?? 0),
+		);
 		await fixtureDb.monthClose.update({
 			where: { id: s.close },
 			data: { recalc: { moved: true } },
@@ -437,7 +444,7 @@ describe("trigger coverage", () => {
 	// Columns whose change alone is no change, by hand (the routes carry none).
 	const IGNORED: Record<string, string> = {
 		budget_book:
-			"dirtyFromMonth,lastOpenedAt,updatedAt,styleUndo,legacyMigrationRunId,legacyMigratedAt,legacyNoticeSeenAt,legacyHiddenIds",
+			"dirtyFromMonth,lastOpenedAt,styleUndo,legacyMigrationRunId,legacyMigratedAt,legacyNoticeSeenAt,legacyHiddenIds",
 		month_close: "checkpoint",
 	};
 

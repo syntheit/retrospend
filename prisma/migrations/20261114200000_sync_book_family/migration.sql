@@ -34,7 +34,9 @@
 -- stamps it, or the insert waits and its own trigger sees the new state. And
 -- an UPDATE of budget_book or month_close that changes only the columns that
 -- sync_book_tables() calls ignored (read bookkeeping, caches, undo state)
--- stamps nothing: the rows are compared whole, minus those names.
+-- stamps nothing: the rows are compared whole, minus those names. updatedAt
+-- is not ignored: it is a device's base version for its edits, so a write that
+-- moves it (the Prisma client sets it) is a change; SQL writes of a cache do not.
 -- A tombstone is never written over a tombstone (a row deleted from a book
 -- that was already handed over keeps its first D), so a pull never gets a
 -- delete twice. No new table, role or grant: stamps go into the same "sync_change" through
@@ -72,7 +74,7 @@ AS $$
   -- row minus these names, so a column added later is compared by default.
   SELECT * FROM (VALUES
     ('budget_book', 'id', 'id',
-      'dirtyFromMonth,lastOpenedAt,updatedAt,styleUndo,legacyMigrationRunId,legacyMigratedAt,legacyNoticeSeenAt,legacyHiddenIds'),
+      'dirtyFromMonth,lastOpenedAt,styleUndo,legacyMigrationRunId,legacyMigratedAt,legacyNoticeSeenAt,legacyHiddenIds'),
     ('envelope_group', 'id', 'bookId', ''),
     ('envelope', 'id', 'bookId', ''),
     ('envelope_category', 'id', 'bookId', ''),

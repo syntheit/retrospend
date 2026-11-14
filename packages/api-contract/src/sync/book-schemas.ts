@@ -28,8 +28,8 @@ import { decimalStringSchema, idSchema, timestampSchema } from "../core";
  * caller's own id, or a former member's), the server's undo state
  * (`styleUndo`, `limitUndo`, the payoff plan's `undo`), derived caches (the
  * book's `dirtyFromMonth`, a close's `checkpoint`, which a device rebuilds),
- * the book's `lastOpenedAt` (written on reads, so it would be a change on every
- * pull) and the legacy move's bookkeeping (`legacyMigrationRunId`, `legacyMigratedAt`,
+ * the book's `lastOpenedAt` (read bookkeeping; its write still moves
+ * `updatedAt`, which a pull carries) and the legacy move's bookkeeping (`legacyMigrationRunId`, `legacyMigratedAt`,
  * `legacyNoticeSeenAt`, `legacyHiddenIds`).
  */
 
@@ -64,7 +64,7 @@ export const syncBudgetBookSchema = z
 		createdAt: timestampSchema,
 		updatedAt: timestampSchema.meta({
 			description:
-				"Moves with every write to the row, including ones that are not a change here (the server's read bookkeeping), so a pull may show it newer than the last change you saw.",
+				"The server's version of the row, the base a write sends. A copy with an older value is out of date.",
 		}),
 	})
 	.meta({ id: "SyncBudgetBook" });

@@ -613,6 +613,36 @@ describe("book sync routes: changes", () => {
 		expect(movements.items[0]?.amount).toBe("12.5");
 	});
 
+	it("a touchOpened-style write moves the book's updatedAt and the pull carries the new one; a cache written in SQL brings nothing", async () => {
+		const user = (await createTestUser()).user.id;
+		const headers = await asMobile(user);
+		const s = await seedBook(user);
+		const first = await pullUntil("books", headers, "", hasRows(1));
+		const before = String(first.items[0]?.updatedAt);
+
+		await adminDb.$executeRaw`
+			UPDATE "budget_book" SET "dirtyFromMonth" = 202610 WHERE "id" = ${s.book}`;
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		const quiet = await pull("books", headers, `?since=${first.cursor}`);
+		expect(quiet.items).toEqual([]);
+
+		await fixtureDb.budgetBook.update({
+			where: { id: s.book },
+			data: { lastOpenedAt: new Date() },
+		});
+		const next = await pullUntil(
+			"books",
+			headers,
+			`?since=${first.cursor}`,
+			hasRows(1),
+		);
+		expect(ids(next)).toEqual([s.book]);
+		expect(Date.parse(String(next.items[0]?.updatedAt))).toBeGreaterThan(
+			Date.parse(before),
+		);
+		expect(next.items[0]).not.toHaveProperty("lastOpenedAt");
+	});
+
 	it("pages with limit and hasMore, each movement once", async () => {
 		const user = (await createTestUser()).user.id;
 		const headers = await asMobile(user);
