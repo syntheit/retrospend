@@ -21,7 +21,7 @@ import { describe, expect, it } from "vitest";
 import { NotFoundError } from "./errors";
 import { fixtureRow } from "./fixtures";
 import { MemoryStore } from "./memory-store";
-import type { Reader, TableName, TableRows } from "./port";
+import { type Reader, TABLE_NAMES, type TableName, type TableRows } from "./port";
 import { DEVICE_FIGURE_IDS, deviceFigures, serverOnlyReason } from "./registry";
 
 const at = (iso: string) => new Date(iso);
@@ -538,6 +538,118 @@ describe("device figure registry", () => {
 			expect(await one("notTracked")).toEqual([
 				{ minor: -150_050, currency: "ARS" },
 			]);
+		});
+	});
+
+	describe("one read pass", () => {
+		/** Ids that need no narrowing; recurring.amount is read on its own below. */
+		const IDS = DEVICE_FIGURE_IDS.filter((id) => id !== "recurring.amount");
+
+		/** A ledger where a share, a template and an account all miss a rate, so every missing-rate path runs. */
+		const missingEverywhere = () =>
+			store({
+				shares: [
+					...rows().shares,
+					{
+						...fixtureRow("shares", "s2"),
+						currency: "XQZ",
+						shareAmount: "12.34",
+						exchangeRate: null,
+						date: at("2026-10-09T15:00:00Z"),
+					},
+				],
+				recurringTemplates: [
+					...rows().recurringTemplates,
+					{
+						...fixtureRow("recurringTemplates", "xq"),
+						name: "XQ",
+						amount: "5",
+						currency: "XQZ",
+					},
+				],
+				accounts: [
+					...rows().accounts,
+					account("a4", { currency: "XQZ", balance: "10" }),
+				],
+			});
+
+		/** A reader that counts how many times each table is listed. */
+		function counting(reader: Reader) {
+			const lists = new Map<TableName, number>();
+			const counted: Reader = {
+				get: (table, id) => reader.get(table, id),
+				list: (table) => {
+					lists.set(table, (lists.get(table) ?? 0) + 1);
+					return reader.list(table);
+				},
+			};
+			return { counted, lists };
+		}
+
+		it("reads every figure as one pass per figure does, missing rates included, and lists each table once", async () => {
+			const s = missingEverywhere();
+			const before = Object.fromEntries(
+				TABLE_NAMES.map((t) => [t, s.list(t)]),
+			);
+			const { counted, lists } = counting(s);
+			const together = await read(counted, IDS);
+			for (const id of IDS) {
+				const alone = await read(s, [id]);
+				expect(together.m.get(id), id).toEqual(alone.m.get(id));
+				expect(together.pass.missingRates(id), `${id} missing`).toEqual(
+					alone.pass.missingRates(id),
+				);
+			}
+			// The ledger does miss rates, so the comparison above is not vacuous.
+			expect(together.pass.missingRates("glance.spent")).toEqual(["XQZ"]);
+			expect(together.pass.missingRates("netWorth")).toEqual(["XQZ"]);
+			expect(together.pass.missingRates("recurring.cost.out.month")).toEqual([
+				"XQZ",
+			]);
+			expect(Math.max(...lists.values())).toBe(1);
+			expect(lists.get("rates")).toBe(1);
+			expect(
+				Object.fromEntries(TABLE_NAMES.map((t) => [t, s.list(t)])),
+			).toEqual(before);
+		});
+
+		it("reads one template's amount as a pass of its own does", async () => {
+			const s = missingEverywhere();
+			const narrow = { recurringId: "xq" };
+			const { counted } = counting(s);
+			const withOthers = await read(counted, ["recurring.amount", "spent"], {
+				narrow,
+			});
+			const alone = await read(s, ["recurring.amount"], { narrow });
+			expect(withOthers.m.get("recurring.amount")).toEqual(
+				alone.m.get("recurring.amount"),
+			);
+		});
+
+		it("a pass handed to a second reader reads that reader's rows, not the first one's", async () => {
+			const first = store();
+			const second = store({
+				expenses: [
+					...rows().expenses,
+					expense("extra", {
+						currency: "USD",
+						amount: "77",
+						amountInUSD: "77",
+						date: at("2026-10-08T15:00:00Z"),
+					}),
+				],
+			});
+			const registry = deviceFigures({ clock: () => NOW });
+			const definitions = [registry.get("spent")];
+			const pass = new FigurePass();
+			await readFiguresIn(first, definitions, scope, pass);
+			const shared = await readFiguresIn(second, definitions, scope, pass);
+			const fresh = await readFiguresIn(second, definitions, scope);
+			expect(shared.get("spent")).toEqual(fresh.get("spent"));
+			expect(fresh.get("spent")).toContainEqual({
+				minor: 8_700,
+				currency: "USD",
+			});
 		});
 	});
 

@@ -61,6 +61,33 @@ function own<V>(v: V): V {
 	return v;
 }
 
+/**
+ * How to hand out a stored row: the top-level keys that hold a Date, or
+ * "deep" when a Date sits inside a nested object or array. A row with no Date
+ * has an empty plan.
+ */
+type CopyPlan = readonly string[] | "deep";
+
+/** Plans by stored row. Stored rows are frozen, so a plan never goes stale. */
+const plans = new WeakMap<object, CopyPlan>();
+
+function hasDate(v: unknown): boolean {
+	if (v instanceof Date) return true;
+	if (Array.isArray(v)) return v.some(hasDate);
+	if (v !== null && typeof v === "object" && isPlain(v))
+		return Object.values(v).some(hasDate);
+	return false;
+}
+
+function planFor(row: object): CopyPlan {
+	const dates: string[] = [];
+	for (const [key, value] of Object.entries(row)) {
+		if (value instanceof Date) dates.push(key);
+		else if (hasDate(value)) return "deep";
+	}
+	return dates;
+}
+
 /** The copy a table keeps of a row; refuses what the table cannot hold. */
 function owned<T extends TableName>(table: T, row: TableRows[T]): TableRows[T] {
 	const only = SINGLE_ROW_IDS[table];
@@ -68,23 +95,27 @@ function owned<T extends TableName>(table: T, row: TableRows[T]): TableRows[T] {
 		throw new InvalidInputError(
 			`The ${table} table has one row, with id "${only}"`,
 		);
-	return own(row);
+	const stored = own(row);
+	plans.set(stored, planFor(stored));
+	return stored;
 }
 
 /**
- * A row as a reader gets it: its Dates are fresh copies, since a Date cannot
- * be frozen and `setTime` on a shared one would change committed state. A row
- * with no Date is handed out as stored.
+ * A value as a reader gets it: its Dates are fresh copies, since a Date cannot
+ * be frozen and `setTime` on a shared one would change committed state. A
+ * value with no Date is handed out as stored. This is the plan-free walk;
+ * `outRow` is the fast path for stored rows and must match it exactly (the
+ * store test holds them equal, so it is exported for that).
  */
-function out<V>(v: V): V {
+export function genericOut<V>(v: V): V {
 	if (v instanceof Date) return new Date(v.getTime()) as V;
 	if (Array.isArray(v)) {
-		const copy = v.map(out);
+		const copy = v.map(genericOut);
 		return copy.some((x, i) => x !== v[i]) ? (Object.freeze(copy) as V) : v;
 	}
 	if (v !== null && typeof v === "object" && isPlain(v)) {
 		const entries = Object.entries(v);
-		const copy = entries.map(([k, x]) => [k, out(x)] as const);
+		const copy = entries.map(([k, x]) => [k, genericOut(x)] as const);
 		return copy.some(([, x], i) => x !== entries[i]?.[1])
 			? (Object.freeze(Object.fromEntries(copy)) as V)
 			: v;
@@ -92,8 +123,56 @@ function out<V>(v: V): V {
 	return v;
 }
 
+/**
+ * A stored row as a reader gets it, by its plan: a row with no Date as stored,
+ * a row with top-level Dates as a frozen copy rebuilt in one spread (the key
+ * order of the generic walk), anything else by the generic walk.
+ */
+function outRow<R extends object>(row: R): R {
+	const plan = plans.get(row);
+	if (plan === undefined || plan === "deep") return genericOut(row);
+	if (plan.length === 0) return row;
+	const copy = { ...row } as Record<string, unknown>;
+	for (const key of plan) copy[key] = new Date((copy[key] as Date).getTime());
+	return Object.freeze(copy) as R;
+}
+
+/**
+ * Stored rows as a list a reader gets: a new array every time, frozen when any
+ * row had to be copied (as the generic walk did), so callers never share one.
+ */
+function outList<R extends object>(rows: readonly R[]): readonly R[] {
+	let copied = false;
+	const copy = rows.map((row) => {
+		const read = outRow(row);
+		if (read !== row) copied = true;
+		return read;
+	});
+	return copied ? Object.freeze(copy) : copy;
+}
+
+/**
+ * Each published table Map's rows in id order, built on the first list and
+ * shared by every snapshot of that Map. It is valid for as long as the Map
+ * lives because a published Map is never mutated (see `MemoryStore.apply`);
+ * a commit publishes a new Map, which has no entry yet.
+ */
+const sortedByMap = new WeakMap<Rows, readonly AnyRow[]>();
+
+function sortedRows(rows: Rows): readonly AnyRow[] {
+	let sorted = sortedByMap.get(rows);
+	if (sorted === undefined) {
+		sorted = Object.freeze([...rows.values()].sort(byId));
+		sortedByMap.set(rows, sorted);
+	}
+	return sorted;
+}
+
 class Snap implements Snapshot {
-	/** The stored rows themselves, for a transaction that copies on its own reads. */
+	/**
+	 * The stored rows themselves, for a transaction that copies on its own
+	 * reads. A list is the shared sorted array: frozen, never handed to a caller.
+	 */
 	readonly raw: Reader;
 
 	constructor(state: State) {
@@ -101,16 +180,17 @@ class Snap implements Snapshot {
 			get: <T extends TableName>(table: T, id: string) =>
 				state[table].get(id) as TableRows[T] | undefined,
 			list: <T extends TableName>(table: T) =>
-				[...state[table].values()].sort(byId) as TableRows[T][],
+				sortedRows(state[table]) as readonly TableRows[T][],
 		};
 	}
 
 	get<T extends TableName>(table: T, id: string) {
-		return out(this.raw.get(table, id));
+		const row = this.raw.get(table, id);
+		return row === undefined ? undefined : outRow(row);
 	}
 
 	list<T extends TableName>(table: T) {
-		return out(this.raw.list(table));
+		return outList(this.raw.list(table));
 	}
 }
 
@@ -121,8 +201,40 @@ interface TxHooks {
 	end(): void;
 }
 
+/**
+ * The id-ordered rows of `base` with `writes` applied: a write replaces the
+ * row of its id, a null drops it. One linear pass over the sorted base and the
+ * (few) sorted writes.
+ */
+function mergeSorted(
+	base: readonly AnyRow[],
+	writes: ReadonlyMap<string, AnyRow | null>,
+): readonly AnyRow[] {
+	const changed = [...writes].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+	const merged: AnyRow[] = [];
+	let i = 0;
+	for (const [id, row] of changed) {
+		for (; i < base.length && (base[i] as AnyRow).id < id; i++)
+			merged.push(base[i] as AnyRow);
+		if (i < base.length && (base[i] as AnyRow).id === id) i++;
+		if (row !== null) merged.push(row);
+	}
+	for (; i < base.length; i++) merged.push(base[i] as AnyRow);
+	return Object.freeze(merged);
+}
+
 class MemoryTx implements Tx {
 	private overlay: Overlay = new Map();
+	/**
+	 * The merged list of a table this transaction wrote, with the base list it
+	 * was merged over. Dropped when the table is written again and when the
+	 * overlay is cleared; an entry whose base is no longer the base's current
+	 * list (a savepoint reading through a parent that wrote since) is ignored.
+	 */
+	private merged = new Map<
+		TableName,
+		{ base: readonly AnyRow[]; rows: readonly AnyRow[] }
+	>();
 	private done = false;
 	private childOpen = false;
 
@@ -141,14 +253,23 @@ class MemoryTx implements Tx {
 					: ((written ?? undefined) as TableRows[T] | undefined);
 			},
 			list: <T extends TableName>(table: T) => {
-				const rows = new Map<string, AnyRow>();
-				for (const r of base.list(table)) rows.set(r.id, r);
-				for (const [id, r] of this.overlay.get(table) ?? [])
-					if (r === null) rows.delete(id);
-					else rows.set(id, r);
-				return [...rows.values()].sort(byId) as TableRows[T][];
+				const rows = base.list(table) as readonly AnyRow[];
+				const writes = this.overlay.get(table);
+				// A table this transaction never wrote is the base's own list.
+				if (writes === undefined || writes.size === 0)
+					return rows as readonly TableRows[T][];
+				const hit = this.merged.get(table);
+				if (hit?.base === rows) return hit.rows as readonly TableRows[T][];
+				const result = mergeSorted(rows, writes);
+				this.merged.set(table, { base: rows, rows: result });
+				return result as readonly TableRows[T][];
 			},
 		};
+	}
+
+	private clearWrites() {
+		this.overlay = new Map();
+		this.merged.clear();
 	}
 
 	private live() {
@@ -158,12 +279,13 @@ class MemoryTx implements Tx {
 
 	get<T extends TableName>(table: T, id: string) {
 		this.live();
-		return out(this.view.get(table, id));
+		const row = this.view.get(table, id);
+		return row === undefined ? undefined : outRow(row);
 	}
 
 	list<T extends TableName>(table: T) {
 		this.live();
-		return out(this.view.list(table));
+		return outList(this.view.list(table));
 	}
 
 	put<T extends TableName>(table: T, row: TableRows[T]) {
@@ -182,6 +304,7 @@ class MemoryTx implements Tx {
 		const writes = this.overlay.get(table) ?? new Map();
 		writes.set(id, row);
 		this.overlay.set(table, writes);
+		this.merged.delete(table);
 	}
 
 	async commit() {
@@ -190,7 +313,7 @@ class MemoryTx implements Tx {
 		try {
 			await this.hooks.commit(this.overlay);
 		} finally {
-			this.overlay = new Map();
+			this.clearWrites();
 			this.hooks.end();
 		}
 	}
@@ -198,7 +321,7 @@ class MemoryTx implements Tx {
 	rollback() {
 		if (this.done) return;
 		this.done = true;
-		this.overlay = new Map();
+		this.clearWrites();
 		this.hooks.end();
 	}
 
@@ -337,6 +460,14 @@ export class MemoryStore implements Store {
 		}
 	}
 
+	/**
+	 * Invariant: a table Map that `this.state` has ever held is never mutated.
+	 * Each touched table is copied into a new Map that only this method writes
+	 * to, and it becomes visible in the one assignment at the end, after
+	 * `onCommit`, so a failed commit leaves the old Map and its sorted-order
+	 * cache untouched. The sorted-order cache (`sortedByMap`) and the
+	 * transaction list memo rely on this.
+	 */
 	private async apply(writes: Overlay) {
 		const next: Record<TableName, Rows> = { ...this.state };
 		const changes: Change[] = [];
