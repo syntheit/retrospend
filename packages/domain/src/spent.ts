@@ -6,9 +6,11 @@
  * store and groups them here (spentInputsFromRows). Both feed the same compute,
  * and a pg test holds the two loaders to each other digit for digit.
  *
- * The row rules are the JS twins of the where clauses in
- * server/services/spending.ts (reports basis) and shared-expense-integration.ts.
- * Nothing here converts but a share's USD value, kept exact (toUSDDec); a
+ * The expense row rules are the JS twins of the where clauses in
+ * server/services/spending.ts (reports basis). A share's rule is not a twin:
+ * countsAsShare is the one function the server's share reader
+ * (shared-expense-integration.ts) and a device both filter with. Nothing here
+ * converts but a share's USD value, kept exact (toUSDDec); a
  * missing rate leaves it null so sumInDec names the currency. Every amount is
  * an exact Decimal until the figure rounds it once, at the edge.
  */

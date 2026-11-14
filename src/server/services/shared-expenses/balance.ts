@@ -75,7 +75,9 @@ export const BALANCE_SETTLEMENT_STATUSES = ["FINALIZED", "PROPOSED"] as const;
  * package): everyone's but a rejected one. A rejected share is not owed, so
  * it leaves both sides of a pair and the payer absorbs it in a project.
  * Every loader that sums shares spreads this in, so no reader keeps its own
- * filter.
+ * filter. Status only: the spending and budget readers also leave out hidden
+ * projects, and filter in memory with `countsAsShare` instead
+ * (shareParticipations).
  */
 export const COUNTED_SHARE = {
 	verificationStatus: { notIn: [...UNCOUNTED_SHARE_STATUSES] },

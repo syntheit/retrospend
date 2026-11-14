@@ -3,11 +3,11 @@
  * P16): small tables a device takes whole, where the delta log has nothing to
  * stamp (a share belongs to a shared expense, which more than one person owns).
  *
- * A snapshot selects by access only. It never applies the spending rules, not
- * REJECTED, not a hidden project: the device holds those rules (the same
- * domain filter the figures use) and the parity harness keeps them equal to
- * the server's. Nothing here reads a title, a note, a payer or another
- * participant (the encryption rules).
+ * A snapshot selects by access only (ownParticipationWhere, the same fragment
+ * the server's share reader starts from). It never applies the spending rules,
+ * not REJECTED, not a hidden project: the device runs countsAsShare on these
+ * rows, the function the server filters its own candidates with. Nothing here
+ * reads a title, a note, a payer or another participant (the encryption rules).
  */
 
 import type { db as globalDb } from "~/server/db";

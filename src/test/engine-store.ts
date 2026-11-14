@@ -6,9 +6,11 @@
  *
  * Every row is read raw and none is filtered: a rejected share, a hidden
  * project's share and a row hidden from reports all go in, so the device
- * rules (participation, REJECTED, hidden projects, the fiscal month) are what
- * is compared, not copied from the server's own readers (getSharedExpenseShares
- * is never used here). Settings carry what a sync sends: the zone the server
+ * rules (participation, the fiscal month, the rest) are what is compared, not
+ * copied from the server's own readers (getSharedExpenseShares is never used
+ * here). The share rule itself is the one function both sides call
+ * (countsAsShare); figures/share-rule.pg.test.ts holds them to each other.
+ * Settings carry what a sync sends: the zone the server
  * resolved for the user (resolveTimeZone), the fiscal month start day and the
  * projects hidden from reports. The owed row holds the server's own reading
  * (owedOnce), as GET /sync/shares hands it to a device.
