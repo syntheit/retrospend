@@ -138,7 +138,7 @@
 	},
 	"changes": {
 		"titleEdit": "Was diese Änderung ändert",
-		"cannot": "Das lässt sich noch nicht speichern: {reason}",
+		"cannot": "Das lässt sich nicht speichern. {reason}",
 		"figures": {
 			"spent": "Deine Ausgaben",
 			"owed_owedToYou": "Dir geschuldet",
