@@ -63,7 +63,7 @@ describe("envelope budget on Postgres", () => {
 		});
 		expect(applied.undo).toMatchObject({
 			kind: "revert",
-			mutation: "envelope.setup",
+			mutation: "envelope.undoSetup",
 		});
 		ids = await envelopeIds(s.user.id);
 		const view = await getMonth(s.user.id);

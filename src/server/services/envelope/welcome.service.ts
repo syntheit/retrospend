@@ -57,7 +57,8 @@ export async function touchOpened(tx: Tx, userId: string, now: Date) {
 		(await tx.monthClose.count({
 			where: { bookId: book.id, acknowledgedAt: null },
 		})) > 0;
-	await tx.budgetBook.update({
+	// updateMany: a book deleted under a racing undo of its set-up is no error for a read.
+	await tx.budgetBook.updateMany({
 		where: { id: book.id },
 		data: {
 			lastOpenedAt: now,
@@ -92,8 +93,10 @@ export async function welcomeBackState(
 	tx: Tx,
 	userId: string,
 	now: Date,
-): Promise<WelcomeBack> {
-	const view = await requireView(tx, userId, now);
+): Promise<WelcomeBack | null> {
+	// Null without a book, as getMonth answers: a page still asking after an Undo of the start stays quiet.
+	const view = await monthViewIn(tx, userId, now);
+	if (!view) return null;
 	const row = view.loaded.row;
 	return {
 		pending: row.welcomeBackFrom !== null,

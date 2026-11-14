@@ -15,7 +15,7 @@ import {
 import { bannedOutputOn } from "../helpers/banned-output";
 import { gotoReady } from "../helpers/navigation";
 import { untilSaved } from "../helpers/trpc";
-import { trpcMutation } from "./entry-audit";
+import { trpcMutation, trpcQuery } from "./entry-audit";
 
 // The Budget sheets (4C2), opened from the Budget page the way a person does:
 // the hero, the notice, an envelope's menu, the header menu and the rail.
@@ -1100,6 +1100,20 @@ test.describe("Set up your budget", () => {
 		await start.click();
 		await expect(toast(page, "Your budget is ready")).toBeVisible();
 		await expect(sheet).toBeHidden();
+		// Undo takes the whole start back: the page asks for a budget again.
+		// This is the last test on the admin account, which no other flow reads.
+		await untilSaved(page, "envelope.undoSetup", () =>
+			toast(page, "Your budget is ready")
+				.getByRole("button", { name: "Undo" })
+				.click(),
+		);
+		await expect(toast(page, "Undone")).toBeVisible();
+		await expect(
+			page
+				.getByRole("main")
+				.getByRole("button", { name: "Set up your budget" }),
+		).toBeVisible();
+		expect(await trpcQuery(page, "envelope.getMonth", {})).toBeNull();
 	});
 });
 

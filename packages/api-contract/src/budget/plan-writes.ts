@@ -36,6 +36,7 @@ import { planWrite, TAG } from "./routes";
 import {
 	projectRoutingResultSchema,
 	shareCategoryResultSchema,
+	undoSetupResultSchema,
 } from "./writes";
 
 /**
@@ -198,6 +199,10 @@ export const budgetUndoResultSchema = z
 			kind: z.literal("debt_payment.delete"),
 			result: transferRemovedSchema,
 		}),
+		z.object({
+			kind: z.literal("setup.undo"),
+			result: undoSetupResultSchema,
+		}),
 	])
 	.meta({ id: "BudgetUndoResult" });
 
@@ -210,7 +215,7 @@ export const budgetUndo = {
 			tags: TAG,
 			summary: "Revert a budget write from its undo token",
 			description:
-				"Each token works once, for 24 hours. A token whose row changed since the write answers 409.",
+				"Each token works once, for 24 hours. A token whose row changed since the write answers 409. The token of a first set-up answers 409 once the budget holds anything beyond what the set-up made.",
 		})
 		.meta({ scope: "write:money", event: "budget.undone" })
 		.input(undoInputSchema)

@@ -25,9 +25,11 @@ import {
 	setupPresetOutputSchema,
 	setupResultSchema,
 	undoInputSchema,
+	undoSetupResultSchema,
 	verdictSchema,
 } from "~/lib/schemas/envelope";
 import { createTRPCRouter } from "~/server/api/trpc";
+import { restoreTokenSchema } from "~/server/services/entry/input";
 import {
 	assignEnvelopes,
 	coverEnvelope,
@@ -44,6 +46,7 @@ import {
 	getVerdict,
 } from "~/server/services/envelope/read.service";
 import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
+import { undoSetupEnvelopeBook } from "~/server/services/envelope/setup-undo.mutation";
 import { forUser } from "~/server/services/preview";
 import { envelopeBookProcedures } from "./envelope-book";
 import { envelopeCrudProcedures } from "./envelope-crud";
@@ -88,6 +91,16 @@ export const envelopeRouter = createTRPCRouter({
 				timeZone: ctx.timeZone ?? null,
 			}),
 		),
+
+	/** Takes a started budget back with the token setup answered; refused once the budget holds work of its own. */
+	undoSetupPreview: envelopeProcedure
+		.input(restoreTokenSchema)
+		.output(previewOutputSchema(undoSetupResultSchema))
+		.mutation(preview(undoSetupEnvelopeBook)),
+	undoSetup: envelopeProcedure
+		.input(restoreTokenSchema)
+		.output(applyOutputSchema(undoSetupResultSchema))
+		.mutation(apply(undoSetupEnvelopeBook)),
 
 	/** Null: no budget yet ("Just track"). */
 	getMonth: envelopeProcedure

@@ -242,14 +242,14 @@ describe("S26 Welcome back after four months away", () => {
 		const m = await getMonth(s.user.id);
 		expect(m?.toAssign.amount.minor).toBe(-7_000);
 		const w = await getWelcomeBack(s.user.id);
-		expect(w.pending).toBe(true);
-		expect(w.months.map((x) => x.month)).toEqual([
+		expect(w?.pending).toBe(true);
+		expect(w?.months.map((x) => x.month)).toEqual([
 			start,
 			addMonths(start, 1),
 			addMonths(start, 2),
 			addMonths(start, 3),
 		]);
-		expect(w.bank.holds).toEqual(usd(73_000));
+		expect(w?.bank.holds).toEqual(usd(73_000));
 		await expect(invariantAt(s.user.id)).resolves.toEqual({
 			budget: 73_000,
 			ledger: 73_000,
@@ -310,7 +310,7 @@ describe("S26 Welcome back after four months away", () => {
 		expect(r.value.months).toHaveLength(4);
 		await acknowledge(s.user.id, { month: start, revision: 1 });
 		const w = await getWelcomeBack(s.user.id);
-		expect(w.months.map((x) => x.month)).not.toContain(start);
+		expect(w?.months.map((x) => x.month)).not.toContain(start);
 	});
 
 	it("pause hides the budget; resume brings Welcome back", async () => {

@@ -65,6 +65,8 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	// ── Envelope budget ─────────────────────────────────────────────────
 	// Setup writes the starting balance row.
 	"envelope.setup": ["expense"],
+	// Taking it back deletes that row again.
+	"envelope.undoSetup": ["expense"],
 	"envelope.mergeEnvelopes": ["insights", "project"],
 	"envelope.archiveEnvelope": ["insights", "project"],
 	"envelope.undoChange": [

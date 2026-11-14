@@ -202,7 +202,8 @@ export const budgetReads = {
 		path: "/budget/welcome-back",
 		operationId: "getBudgetWelcomeBack",
 		summary: "Whether Welcome back is waiting, with the bank side as a prefill",
-		output: welcomeBackSchema,
+		description: "Null before the budget starts.",
+		output: welcomeBackSchema.nullable(),
 	}),
 	bankCheck: budgetReadAll({
 		path: "/budget/bank-check",

@@ -29,7 +29,7 @@ function run<T>(
 export function getWelcomeBack(
 	userId: string,
 	now = new Date(),
-): Promise<WelcomeBack> {
+): Promise<WelcomeBack | null> {
 	return run(userId, async (tx) => {
 		await ensureMonthsClosed(tx, userId, now);
 		return welcomeBackState(tx, userId, now);

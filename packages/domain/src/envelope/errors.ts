@@ -15,7 +15,9 @@ export type EnvelopeErrorCode =
 	| "ID_REUSED"
 	| "ALREADY_UNDONE"
 	/** A new plan while another plan is open for its month. */
-	| "DRAFT_OPEN";
+	| "DRAFT_OPEN"
+	/** Taking back a set-up after the budget holds work of its own. */
+	| "BOOK_IN_USE";
 
 export class EnvelopeError extends Error {
 	constructor(

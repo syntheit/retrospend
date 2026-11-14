@@ -34,7 +34,7 @@ import {
 	projectRoutingResultSchema,
 	setProjectRoutingInputSchema,
 	setShareCategoryInputSchema,
-	setupResultSchema,
+	setupAnswerSchema,
 	shareCategoryResultSchema,
 	unforgiveInputSchema,
 } from "./writes";
@@ -153,9 +153,8 @@ const setup = moneyWrite({
 	summary: "Start the budget",
 	event: "budget_book.set_up",
 	input: setupInputSchema,
-	result: setupResultSchema,
+	result: setupAnswerSchema,
 	status: 201,
-	noUndo: "a first set-up cannot be taken back.",
 });
 const setStyle = moneyWrite({
 	path: "/budget/style",

@@ -97,7 +97,7 @@ export const envelopeBookProcedures = {
 		.mutation(({ ctx }) => resume(ctx.session.user.id)),
 
 	welcomeBackState: envelopeProcedure
-		.output(welcomeBackSchema)
+		.output(welcomeBackSchema.nullable())
 		.query(({ ctx }) => getWelcomeBack(ctx.session.user.id)),
 	welcomeBackPreview: envelopeProcedure
 		.input(welcomeBackInputSchema)

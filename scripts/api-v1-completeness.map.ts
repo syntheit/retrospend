@@ -77,6 +77,7 @@ function envelope(): Record<string, Entry> {
 		unapplyDraft: "POST /budget/drafts/{draftId}/unapply",
 		undo: "POST /budget/undo",
 		undoChange: "POST /budget/changes/{id}/undo",
+		undoSetup: "POST /budget/undo",
 		unforgive: "POST /budget/unforgive",
 		usePlan: "POST /budget/use-plan",
 		welcomeBack: "POST /budget/welcome-back",
