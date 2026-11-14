@@ -1,7 +1,7 @@
 /**
  * One home value per account on real Postgres: the Wealth dashboard row and total, the
  * registered netWorth figure, API v1 accounts items (mobile) and the v1 net
- * worth all read accounts/valuation.ts, so they agree on every value.
+ * worth all read domain accounts/valuation.ts, so they agree on every value.
  *
  * Rates per USD, official: EUR 3, GBP 7, JPY 16.5; ARS blue 1,545; BTC 60,000
  * USD per coin.

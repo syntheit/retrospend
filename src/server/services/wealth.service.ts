@@ -123,7 +123,7 @@ export class WealthService {
 	): Promise<void> {
 		const balance = dec(units).toFixed();
 		const balanceInUSD = roundUSDDec(usd).toFixed(2);
-		// recordedAt orders this balance against legs of the same day (accounts/series.ts).
+		// recordedAt orders this balance against legs of the same day (domain accounts/series.ts).
 		const snapshotMeta = {
 			currency: meta.currency,
 			type: meta.type,

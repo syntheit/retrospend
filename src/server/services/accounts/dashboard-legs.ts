@@ -1,7 +1,7 @@
 /**
  * What the Wealth dashboard history (wealth.service.ts) adds on top of its
  * snapshots once money moves link to accounts: the legs a snapshot does not
- * already include (accounts/series.ts rule) and dated rate type switches
+ * already include (domain accounts/series.ts rule) and dated rate type switches
  * (D3). With no legs and no switches it adds nothing, so the history of a
  * user who never moved money is exactly what it was.
  */
@@ -77,7 +77,7 @@ export async function loadDashboardLegs(
 			for (const s of own) {
 				if (dayOf(s.from) <= day) found = s.type;
 			}
-			// Before the first switch: the type it replaced (accounts/series.ts typeOn).
+			// Before the first switch: the type it replaced (domain accounts/series.ts typeOn).
 			return found === undefined && own[0] ? own[0].previousType : found;
 		},
 	};

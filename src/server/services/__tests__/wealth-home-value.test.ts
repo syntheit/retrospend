@@ -1,5 +1,5 @@
 /**
- * The Wealth dashboard values an account with accounts/valuation.ts, the
+ * The Wealth dashboard values an account with domain accounts/valuation.ts, the
  * function the net worth figure and API v1 read. Every expected value is derived by hand.
  *
  * - 1 EUR at 3 per USD into JPY at 16.5 per USD: 16.5 / 3 = 5.5 JPY exactly,

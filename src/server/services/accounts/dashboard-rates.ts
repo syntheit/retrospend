@@ -1,7 +1,7 @@
 /**
  * The rates the Wealth dashboard (wealth.service.ts) values snapshots with,
  * in the stored convention (fiat per USD, USD per coin) as exact Decimals.
- * Today's rows and totals use accounts/valuation.ts through `valueToday`,
+ * Today's rows and totals use domain accounts/valuation.ts through `valueToday`,
  * the same rule. A rate that is missing, zero or negative is null, never 1.
  */
 
@@ -166,7 +166,7 @@ export function usdWithoutRate(
 /**
  * An open account's worth today: its USD value, its value in the target
  * currency and the rate it is valued at (target per unit). One function, the
- * one the net worth figure and API v1 read (accounts/valuation.ts), so the
+ * one the net worth figure and API v1 read (domain accounts/valuation.ts), so the
  * row, the totals and the figure agree to the minor unit. Null when the
  * account's own currency has no rate; a target with no rate throws.
  */

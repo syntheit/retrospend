@@ -7,7 +7,7 @@
  * rolls it back.
  *
  * `asset_account.balance` stays the current balance every Wealth reader
- * already uses; legs explain how it got there (accounts/series.ts).
+ * already uses; legs explain how it got there (domain accounts/series.ts).
  */
 
 import { balanceEffect } from "@retrospend/domain/accounts/places";

@@ -47,7 +47,7 @@ export function notTrackedOn(
 /**
  * Net worth, why it moved and one point a day. The headline and the change
  * are the figures registry's own (GET /figures reads the same). The series is
- * accounts and Not tracked on each day (accounts/series.ts); what people owe
+ * accounts and Not tracked on each day (domain accounts/series.ts); what people owe
  * each other has no history, so it enters every point at today's value, the
  * way the Wealth chart does it, and the last point equals net worth.
  */
