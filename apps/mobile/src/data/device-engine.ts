@@ -1,9 +1,11 @@
 import type { RetrospendClient } from "@retrospend/api-client";
+import type { MonthViewDto } from "@retrospend/domain/envelope/dto";
 import type { Money } from "@retrospend/domain/money-minor";
 import {
 	budgetStatus,
 	type Change,
 	DEVICE_FIGURE_IDS,
+	deviceMonthView,
 	MemoryStore,
 	type PullCursors,
 	pullAll,
@@ -50,15 +52,53 @@ export interface DeviceReads {
 	 * out), or null when it holds nothing it can trust: the first pull failed,
 	 * or the last one did.
 	 */
-	read(ids: readonly string[]): Promise<DeviceRead | null>;
+	read(
+		ids: readonly string[],
+		options?: ReadOptions,
+	): Promise<DeviceRead | null>;
 	/** Holds the device's readings of `ids` against the server's; never rejects. */
 	verify(ids: readonly string[]): Promise<void>;
+	/**
+	 * Records that the device's budget verdict still differed from the server's
+	 * after a fresh pull: `parts` names what differed (state, action, figure,
+	 * amount) and `values` keeps both sides, never logged.
+	 */
+	reportVerdict(
+		figureId: string,
+		parts: readonly string[],
+		values: { device: unknown; server: unknown },
+	): void;
+}
+
+export interface ReadOptions {
+	/**
+	 * Reads only after a pull that began with this call has finished, so the
+	 * rows hold what the server held when it was made (a write just confirmed
+	 * shows). Null when that pull fails or the engine cannot pull.
+	 */
+	fresh?: boolean;
+	/** Also reads the current budget month into `budget`. */
+	budget?: boolean;
+}
+
+/** The current budget month as the device's rows make it: the verdict and what it is a verdict of. */
+export interface DeviceBudget {
+	bookId: string;
+	/** The book's currency, which the verdict's amounts are in (not the home currency). */
+	currency: string;
+	month: number;
+	today: string;
+	approximate: boolean;
+	incomplete: boolean;
+	verdict: MonthViewDto["verdict"];
 }
 
 export interface DeviceRead {
 	homeCurrency: string;
 	/** Whether the budget figures read: a book and a block the pulls caught up with. */
 	budgetReady: boolean;
+	/** The current month's verdict when asked for with `budget` and the block is readable, else null. */
+	budget: DeviceBudget | null;
 	/** One line per currency, or null when a missing rate keeps the figure out. */
 	readings: ReadonlyMap<string, readonly Money[] | null>;
 }
@@ -269,27 +309,69 @@ export function createDeviceEngine(
 		await closing?.dispose({ wipe });
 	}
 
-	async function readNow(ids: readonly string[]): Promise<DeviceRead | null> {
+	async function budgetNow(): Promise<DeviceBudget | null> {
+		try {
+			const dto = await deviceMonthView(store, userId, () => new Date(now()));
+			if (!dto) return null;
+			return {
+				bookId: dto.book.id,
+				currency: dto.book.currency,
+				month: dto.month.key,
+				today: dto.today,
+				approximate: dto.approximate,
+				incomplete: dto.incomplete,
+				verdict: dto.verdict,
+			};
+		} catch (error) {
+			// Only the budget is lost: the figures of the same read stand.
+			warn("budget read failed", (error as Error)?.name);
+			return null;
+		}
+	}
+
+	async function readNow(
+		ids: readonly string[],
+		withBudget = false,
+	): Promise<DeviceRead | null> {
 		const settings = store.get("settings", SETTINGS_ID);
 		if (status !== "ready" || !settings) return null;
 		const known = ids.filter((id) => DEVICE_FIGURE_IDS.includes(id));
 		const begun = pullsBegun;
 		const { readings } = await readDeviceFigures(store, userId, known);
+		const budgetReady = budgetStatus(store) === "ready";
+		const budget = withBudget && budgetReady ? await budgetNow() : null;
 		// A pull that began while the figures were read changed the rows under
 		// them (or swapped the store): the reading is of no moment, so Home keeps
 		// the server's value.
 		if (pullsBegun !== begun || status !== "ready") return null;
 		return {
 			homeCurrency: settings.homeCurrency,
-			budgetReady: budgetStatus(store) === "ready",
+			budgetReady,
+			budget,
 			readings,
 		};
 	}
 
-	async function read(ids: readonly string[]): Promise<DeviceRead | null> {
-		await settled();
+	/** Whether a pull that began after this call has finished. */
+	async function pulledAfterNow(): Promise<boolean> {
+		await ready;
+		// A pull already running began before the call, so its rows may be older
+		// than a write the caller just saw confirmed: wait it out, then pull.
+		if (inflight) await inflight;
+		const before = generation;
+		await pull();
+		return generation > before;
+	}
+
+	async function read(
+		ids: readonly string[],
+		options: ReadOptions = {},
+	): Promise<DeviceRead | null> {
+		if (options.fresh) {
+			if (!(await pulledAfterNow())) return null;
+		} else await settled();
 		try {
-			return await readNow(ids);
+			return await readNow(ids, options.budget);
 		} catch (error) {
 			warn("read failed", (error as Error)?.name);
 			return null;
@@ -341,6 +423,29 @@ export function createDeviceEngine(
 		}
 	}
 
+	function reportVerdict(
+		figureId: string,
+		parts: readonly string[],
+		values: { device: unknown; server: unknown },
+	): void {
+		lastParity = {
+			ids: [figureId],
+			mismatches: [{ id: figureId, ...values }],
+			generation,
+			clock: new Date(now()).toISOString(),
+		};
+		// Ids and parts only: the amounts stay in lastParity, never in a log.
+		warn(
+			"budget verdict differs from the server",
+			JSON.stringify({
+				ids: [figureId],
+				parts,
+				generation: lastParity.generation,
+				clock: lastParity.clock,
+			}),
+		);
+	}
+
 	return {
 		get status() {
 			return status;
@@ -358,6 +463,7 @@ export function createDeviceEngine(
 		pullIfStale,
 		read,
 		verify,
+		reportVerdict,
 		dispose,
 	};
 }

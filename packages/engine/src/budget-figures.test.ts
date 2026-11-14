@@ -33,7 +33,11 @@
 import { createBudgetFigures } from "@retrospend/domain/envelope/figures";
 import { FigurePass, readFiguresIn } from "@retrospend/domain/figures/registry";
 import { describe, expect, it } from "vitest";
-import { BUDGET_FIGURE_IDS, deviceBudgetReads } from "./budget-figures";
+import {
+	BUDGET_FIGURE_IDS,
+	deviceBudgetReads,
+	deviceMonthView,
+} from "./budget-figures";
 import {
 	BUDGET_GATE_ENTITIES,
 	budgetGate,
@@ -556,6 +560,67 @@ describe("the budget figures on a device", () => {
 		expect(onlyPlan.readings.get("budget.notPlannedYet")).toEqual(
 			money(85_000_000),
 		);
+	});
+});
+
+describe("the device's month view", () => {
+	const view = (rows: Rows) =>
+		deviceMonthView(new MemoryStore({ rows }), "u1", () => NOW);
+
+	// The clock is Nov 14 12:00 in Buenos Aires. Left to spend is the Dining
+	// envelope's 198,500.00 (see the top of the file).
+	it("answers the server's month read for the current month", async () => {
+		const dto = await view(ledger());
+		expect(dto?.book.id).toBe("book");
+		expect(dto?.book.currency).toBe("ARS");
+		expect(dto?.month.key).toBe(202611);
+		expect(dto?.today).toBe("2026-11-14");
+		expect(dto?.incomplete).toBe(false);
+		expect(dto?.approximate).toBe(false);
+		expect(dto?.verdict.lead).toEqual({
+			kind: "LEFT_TO_SPEND",
+			figureId: "budget.leftToSpend",
+			amount: { minor: 19_850_000, currency: "ARS" },
+		});
+	});
+
+	// Every dollar leads with the pool: Not planned yet, 850,000.00.
+	it("leads with To assign in an Every dollar book", async () => {
+		const [book] = ledger().budgetBooks;
+		const dto = await view(
+			ledger({
+				budgetBooks: book ? [{ ...book, style: "EVERY_DOLLAR" }] : [],
+			}),
+		);
+		expect(dto?.verdict.lead).toEqual({
+			kind: "TO_ASSIGN",
+			figureId: "budget.notPlannedYet",
+			amount: { minor: 85_000_000, currency: "ARS" },
+		});
+	});
+
+	it("is null with no book and while the budget is stale", async () => {
+		expect(
+			await view(ledger({ budgetBooks: [], budgetSnapshot: [] })),
+		).toBeNull();
+		expect(await view(ledger({ budgetSnapshot: [] }))).toBeNull();
+	});
+
+	// The figures read unavailable for this month; the view still answers, and says so.
+	it("keeps a month with a missing rate, flagged incomplete", async () => {
+		const missing = [
+			{ currency: "ARS", rateType: "blue", date: "2026-11-11", rowId: "late" },
+		];
+		const dto = await view(
+			ledger({
+				budgetSnapshot: [
+					snapshot({
+						splits: { ...snapshot().splits, checkpointMissingRates: missing },
+					}),
+				],
+			}),
+		);
+		expect(dto?.incomplete).toBe(true);
 	});
 });
 
