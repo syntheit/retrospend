@@ -319,10 +319,11 @@ const inUse = (what: string) =>
 const CONTENTION_SQLSTATES = new Set(["55P03", "40001", "40P01"]);
 
 /**
- * Someone else is writing the book. A raw query that Postgres cancels reaches
- * us as Prisma P2010 with the SQLSTATE at `meta.driverAdapterError.cause.code`
- * (@prisma/adapter-pg, observed in setup-undo-contention.pg.test.ts); P2034
- * is Prisma's own write conflict. Codes only: messages change with the driver.
+ * Someone else is writing the book. A query that Postgres cancels carries the
+ * SQLSTATE at `meta.driverAdapterError.cause.code` (@prisma/adapter-pg; a raw
+ * query arrives as P2010, see setup-undo-contention.pg.test.ts), whatever
+ * Prisma code wraps it; P2034 is Prisma's own write conflict. Codes only:
+ * messages change with the driver.
  */
 function isContention(error: unknown): boolean {
 	const e = error as {
@@ -331,7 +332,7 @@ function isContention(error: unknown): boolean {
 	};
 	if (e?.code === "P2034") return true;
 	const sqlstate = e?.meta?.driverAdapterError?.cause?.code;
-	return e?.code === "P2010" && CONTENTION_SQLSTATES.has(sqlstate ?? "");
+	return CONTENTION_SQLSTATES.has(sqlstate ?? "");
 }
 
 /**
