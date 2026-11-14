@@ -20,7 +20,9 @@ import type {
 	MoneyDto,
 	MonthViewDto,
 } from "@retrospend/domain/envelope/dto";
+import type { Frequency } from "@retrospend/domain/envelope/target-input";
 import { describe, expectTypeOf, it } from "vitest";
+import type { RecurringTemplate } from "~prisma";
 import type {
 	EnvelopeGroupDto,
 	EnvelopeRowDto,
@@ -53,5 +55,9 @@ describe("the domain envelope DTO types", () => {
 		expectTypeOf<MonthViewDto>().toEqualTypeOf<GetMonthOutput>();
 		expectTypeOf<DomainPlanCost>().toEqualTypeOf<PlanCostDto>();
 		expectTypeOf<DomainPayoff>().toEqualTypeOf<PayoffProjection>();
+	});
+
+	it("keeps the recurring frequency the database's", () => {
+		expectTypeOf<Frequency>().toEqualTypeOf<RecurringTemplate["frequency"]>();
 	});
 });
