@@ -23,6 +23,8 @@
  *   Total debt = a USD 1,000 card at blue                     = 1,500,000.00
  */
 import { randomUUID } from "node:crypto";
+import { columnText } from "@retrospend/domain/money-dec";
+import { dec } from "@retrospend/domain/precise-decimal";
 import { vi } from "vitest";
 import { forUser } from "~/server/services/preview";
 import { adminDb, fixtureDb } from "~/test/pg-harness";
@@ -209,7 +211,8 @@ export function row(
 			currency,
 			date: new Date(o.at),
 			categoryId: o.categoryId === undefined ? w.dining : o.categoryId,
-			amountInUSD: currency === "USD" ? amount : amount.div(1500),
+			amountInUSD:
+				currency === "USD" ? amount : columnText(dec(o.amount).div(1500), 2),
 			exchangeRate: new Prisma.Decimal(currency === "USD" ? "1" : "1500"),
 			pricingSource: "MANUAL",
 			direction: o.direction ?? "OUT",
@@ -219,7 +222,7 @@ export function row(
 				? {
 						homeCurrency: "ARS",
 						homeAmount: new Prisma.Decimal(o.booked),
-						homeRate: new Prisma.Decimal(o.booked).div(amount),
+						homeRate: columnText(dec(o.booked).div(dec(o.amount)), 12),
 					}
 				: {}),
 		},
@@ -286,6 +289,7 @@ export async function vector(): Promise<Vector> {
 	});
 	const bob = await adminDb.shadowProfile.create({
 		data: { createdById: w.userId, name: "Bob" },
+		select: { id: true },
 	});
 	const split = await fixtureDb.sharedTransaction.create({
 		data: {

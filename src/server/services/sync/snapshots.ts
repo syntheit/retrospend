@@ -51,21 +51,26 @@ const BUDGET_STATEMENT_TIMEOUT_MS = 10_000;
  * The budget block inside the snapshot's transaction, isolated: a failure
  * (a bug, a database error) rolls back to a savepoint, so the shares and the
  * owed totals already read still return and the block answers as unavailable.
- * A statement that runs past `timeoutMs` fails inside the savepoint too (the
- * local timeout is undone with it), well before the transaction's own limit
- * would end the whole snapshot.
+ * A statement that runs past `timeoutMs` fails inside the savepoint too, well
+ * before the transaction's own limit would end the whole snapshot. The limit is
+ * transaction-local, so it ends with the part in both cases: ROLLBACK TO
+ * undoes it on failure, and on success (where RELEASE keeps it) the value read
+ * before is put back.
  */
-async function isolatedBudget(
+export async function isolatedBudget(
 	tx: Prisma.TransactionClient,
 	userId: string,
 	timeoutMs: number,
 ): Promise<BudgetRead> {
+	const [{ previous }] = await tx.$queryRaw<
+		[{ previous: string }]
+	>`SELECT current_setting('statement_timeout') AS previous`;
 	await tx.$executeRaw`SAVEPOINT budget_block`;
+	let read: BudgetRead;
 	try {
 		await tx.$executeRaw`SELECT set_config('statement_timeout', ${String(timeoutMs)}, true)`;
-		const read = await readBudgetBlock(tx, userId, new Date());
+		read = await readBudgetBlock(tx, userId, new Date());
 		await tx.$executeRaw`RELEASE SAVEPOINT budget_block`;
-		return read;
 	} catch (error) {
 		console.error(
 			"The budget block failed",
@@ -74,6 +79,8 @@ async function isolatedBudget(
 		await tx.$executeRaw`ROLLBACK TO SAVEPOINT budget_block`;
 		return { kind: "unavailable" };
 	}
+	await tx.$executeRaw`SELECT set_config('statement_timeout', ${previous}, true)`;
+	return read;
 }
 
 /** One repeatable-read read-only transaction: the shares, the owed totals and, when asked, the budget block. */

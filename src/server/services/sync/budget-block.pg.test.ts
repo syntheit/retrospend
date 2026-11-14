@@ -34,7 +34,7 @@ import {
 	world,
 	ZONE,
 } from "./budget-block-test-support";
-import { readShareSnapshot } from "./snapshots";
+import { isolatedBudget, readShareSnapshot } from "./snapshots";
 
 // What a test does around the pull: after each tx1, in place of the budget
 // load, and a record of what each tx1 did.
@@ -730,6 +730,37 @@ describe("a slow budget read", () => {
 		// The timeout was local to the failed part: the next pull is whole.
 		hooks.blockFails = null;
 		expect((await pull(v.userId)).budget?.kind).toBe("block");
+	});
+});
+
+describe("the budget part's statement timeout", () => {
+	// RELEASE SAVEPOINT keeps a transaction-local setting; ROLLBACK TO undoes it.
+	// Either way the transaction goes on with the limit it had before the part.
+	it("is back to the original after the part, on success and on failure", async () => {
+		reset();
+		const v = await vector();
+		await userTransaction(adminDb, v.userId, async (tx) => {
+			const show = async () =>
+				(
+					await tx.$queryRaw<{ value: string }[]>`
+						SELECT current_setting('statement_timeout') AS value`
+				)[0]?.value;
+			const original = await show();
+			let during: string | undefined;
+			hooks.blockFails = async () => {
+				during = await show();
+			};
+			expect((await isolatedBudget(tx, v.userId, 250)).kind).toBe("block");
+			expect(during).toBe("250ms");
+			expect(await show()).toBe(original);
+			hooks.blockFails = async () => {
+				await tx.$executeRaw`SELECT 1 / 0`;
+			};
+			expect((await isolatedBudget(tx, v.userId, 250)).kind).toBe(
+				"unavailable",
+			);
+			expect(await show()).toBe(original);
+		});
 	});
 });
 
