@@ -98,21 +98,32 @@ export async function readBillingPeriod(
 		}
 	>();
 	for (const e of expenses) {
-		for (const sp of e.splitParticipants) {
-			const key = `${sp.participantType}:${sp.participantId}`;
-			const entry = people.get(key) ?? {
-				type: sp.participantType,
-				id: sp.participantId,
-				shares: [],
-			};
-			// What the Summary charges them: nothing for a rejected share, and
-			// the payer carries what it left uncovered.
+		// Everyone on the expense, and its payer even outside the split: the
+		// payer carries what a rejected share left uncovered (the Summary's rule).
+		const payer = { participantType: e.paidByType, participantId: e.paidById };
+		const onSplit = e.splitParticipants.some(
+			(sp) =>
+				sp.participantType === payer.participantType &&
+				sp.participantId === payer.participantId,
+		);
+		for (const who of onSplit
+			? e.splitParticipants
+			: [...e.splitParticipants, payer]) {
+			// What the Summary charges them: nothing for a rejected share.
 			const share = myShareOf(
 				e,
 				(r) =>
-					r.participantType === sp.participantType &&
-					r.participantId === sp.participantId,
+					r.participantType === who.participantType &&
+					r.participantId === who.participantId,
 			);
+			// A payer outside the split with nothing absorbed is not on the list.
+			if (share === null && !onSplit && who === payer) continue;
+			const key = `${who.participantType}:${who.participantId}`;
+			const entry = people.get(key) ?? {
+				type: who.participantType,
+				id: who.participantId,
+				shares: [],
+			};
 			entry.shares.push({
 				amount: share === null ? "0" : share.toString(),
 				currency: e.currency,
