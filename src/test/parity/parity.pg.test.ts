@@ -16,8 +16,15 @@
  * table equals the rows read straight from the database tables (the test
  * builder of P13, engineStoreOf), so what the routes send is held to the
  * columns. C: a delta round after deleting, rejecting, hiding and adding an
- * unpriced row, then undoing all of it. D: every server figure is compared or
- * named server-only. E: history rows that no price reads change nothing.
+ * unpriced row, then undoing all of it, and a rate rewritten after the values
+ * were frozen. D: every server figure is compared or named server-only. E:
+ * history rows that no price reads change nothing.
+ *
+ * The device pulls the shares snapshot with the budget block first, then every
+ * delta (the book family and the transfers included), and the block is promoted
+ * once its gate passes (budget-gate.ts): each comparison below is made on a
+ * device whose budget snapshot got there that way. After each pull the device
+ * values nothing the server has not kept (fresh.ts names any row it does).
  */
 import { randomUUID } from "node:crypto";
 import { dec } from "@retrospend/domain/precise-decimal";
@@ -36,6 +43,7 @@ import {
 import { type LedgerProfile, P13_PROFILES, seedRates } from "../device-ledger";
 import { engineStoreOf } from "../engine-store";
 import { expectParity, type LedgerRefs, readAll } from "./compare";
+import { freshReport } from "./fresh";
 import { type ParityLedger, SMALL_SIZE, seedParityLedger } from "./ledger";
 import {
 	type Device,
@@ -129,10 +137,40 @@ afterAll(async () => {
 	else process.env.DEFAULT_TIME_ZONE = previousDefaultZone;
 });
 
+/**
+ * A pull of everything at `clock` (the shares and the block at that clock, the
+ * deltas after), the block promoted, then `fn` with Date at `clock`. The
+ * device's own valuations are held to the server's: it values no row the
+ * block covers, and none at all in a ledger that does not change under it.
+ */
+async function pulledAt<T>(
+	device: Device,
+	userId: string,
+	clock: Date,
+	fn: () => Promise<T>,
+): Promise<T> {
+	const report = await pullAll(device, await expectedCounts(userId), {
+		atClock: (pull) => atClock(clock, pull),
+	});
+	expect(report.promotion, "the budget block's gate").toEqual({
+		promoted: true,
+	});
+	const fresh = await freshReport(device.store, userId, clock);
+	expect(
+		fresh.newer,
+		"rows newer than the block, valued by the device alone",
+	).toEqual([]);
+	expect(fresh.below, "rows the block covers, valued by the device").toEqual(
+		[],
+	);
+	return atClock(clock, fn);
+}
+
 const refsOf = (
 	ledger: ParityLedger,
 ): LedgerRefs & { expenseIds: string[] } => ({
 	userId: ledger.userId,
+	envelopeIds: ledger.envelopeIds,
 	accountIds: ledger.accountIds,
 	templateIds: ledger.templateIds,
 	expenseIds: ledger.expenseIds,
@@ -149,14 +187,18 @@ describe("A: the device reads every figure as the server does", () => {
 			for (const clock of CLOCKS)
 				it(`at ${clock.toISOString()}`, async () => {
 					const { ledger, device } = entry();
-					const read = await atClock(clock, async () => {
-						await pullShares(device);
-						const all = await expectParity(device.store, refsOf(ledger));
-						const owed = await userTransaction(adminDb, ledger.userId, (tx) =>
-							owedOnce(tx, ledger.userId),
-						);
-						return { all, owed };
-					});
+					const read = await pulledAt(
+						device,
+						ledger.userId,
+						clock,
+						async () => {
+							const all = await expectParity(device.store, refsOf(ledger));
+							const owed = await userTransaction(adminDb, ledger.userId, (tx) =>
+								owedOnce(tx, ledger.userId),
+							);
+							return { all, owed };
+						},
+					);
 					const { server } = read.all;
 					// Not equal because both are null or empty.
 					expect(server.readings.get("spent")?.length).toBeGreaterThan(0);
@@ -187,6 +229,28 @@ describe("A: the device reads every figure as the server does", () => {
 						expect(
 							server.readings.get(`insights.byCategory|categoryId=${category}`),
 						).toEqual([{ minor: 0, currency: profile.home }]);
+					// The budget: equal because both read numbers, not because both are null.
+					const envelopeSpent = [...server.readings].filter(
+						([key, reading]) =>
+							key.startsWith("envelope.spent|envelopeId=") &&
+							(reading?.[0]?.minor ?? 0) > 0,
+					);
+					if (profile.withMissingRate) {
+						expect(server.readings.get("budget.notPlannedYet")).toBeNull();
+						expect(server.readings.get("budget.holds")).toBeNull();
+					} else {
+						for (const id of [
+							"budget.notPlannedYet",
+							"budget.holds",
+							"budget.moneyIn",
+							"budget.planCost",
+						])
+							expect(server.readings.get(id), id).not.toBeNull();
+						expect(
+							envelopeSpent.length,
+							"envelopes that spent",
+						).toBeGreaterThan(0);
+					}
 					if (profile.withMissingRate) {
 						expect(server.readings.get("glance.spent")).toBeNull();
 						expect(server.missing.get("glance.spent")).toEqual(["XQZ"]);
@@ -244,6 +308,16 @@ describe("B: the synced tables are the database's rows", () => {
 					"snapshots",
 					"legs",
 					"rateSwitches",
+					"budgetBooks",
+					"envelopeGroups",
+					"envelopes",
+					"envelopeCategories",
+					"budgetMovements",
+					"bookPeriods",
+					"monthCloses",
+					"wealthTransfers",
+					"payoffPlans",
+					"transfers",
 					"shares",
 					"owed",
 					"settings",
@@ -362,10 +436,7 @@ async function undoChanges(
 
 /** A delta pull of everything, then the whole comparison, at the first instant. */
 const repullAndCompare = (device: Device, userId: string, refs: LedgerRefs) =>
-	atClock(FIRST, async () => {
-		await pullAll(device, await expectedCounts(userId));
-		return expectParity(device.store, refs);
-	});
+	pulledAt(device, userId, FIRST, () => expectParity(device.store, refs));
 
 describe("C: a delta round and back", () => {
 	// The ARS home profile: the 6th, with a currency that has no rate, is for A.
@@ -379,10 +450,9 @@ describe("C: a delta round and back", () => {
 			1,
 			resolveTimeZone(PROFILES[name]?.timeZone),
 		);
-		const first = await atClock(FIRST, async () => {
-			await pullShares(device);
-			return expectParity(device.store, refs);
-		});
+		const first = await pulledAt(device, ledger.userId, FIRST, () =>
+			expectParity(device.store, refs),
+		);
 
 		const targets = await findChangeTargets(ledger, month);
 		const added = await changeLedger(ledger, targets);
@@ -418,6 +488,54 @@ describe("C: a delta round and back", () => {
 	}, 120_000);
 });
 
+describe("C: a rate rewritten after the values were frozen", () => {
+	const name = "ARS home, alias zone, official default";
+
+	// The daily sync moves a rate row in place (09:05 UTC). Every ARS blue rate
+	// becomes 2,000: a foreign row the server valued before keeps its frozen
+	// value, so each envelope reads what it read, on the server and on the
+	// device; a figure that prices at today's rate (the glance) moves.
+	it("keeps each envelope's reading, on both sides", async () => {
+		const { ledger, device } = entries.get(name) as Entry;
+		const refs = refsOf(ledger);
+		const before = await pulledAt(device, ledger.userId, FIRST, () =>
+			expectParity(device.store, refs),
+		);
+		const blue = await adminDb.exchangeRate.findMany({
+			where: { currency: "ARS", type: "blue" },
+		});
+		await adminDb.exchangeRate.updateMany({
+			where: { id: { in: blue.map((r) => r.id) } },
+			data: { rate: "2000" },
+		});
+		try {
+			const after = await pulledAt(device, ledger.userId, FIRST, () =>
+				expectParity(device.store, refs),
+			);
+			const spentKeys = after.keys.filter((k) => k.startsWith("envelope."));
+			expect(spentKeys.length).toBeGreaterThan(ledger.envelopeIds.length);
+			for (const side of ["server", "device"] as const)
+				for (const key of spentKeys)
+					expect(after[side].readings.get(key), `${side} ${key}`).toEqual(
+						before[side].readings.get(key),
+					);
+			// Not equal because nothing moved: a figure priced at the rate of the day did.
+			expect(after.server.readings.get("glance.spent")).not.toEqual(
+				before.server.readings.get("glance.spent"),
+			);
+		} finally {
+			await adminDb.$transaction(
+				blue.map((r) =>
+					adminDb.exchangeRate.update({
+						where: { id: r.id },
+						data: { rate: r.rate },
+					}),
+				),
+			);
+		}
+	}, 120_000);
+});
+
 describe("D: every server figure is compared or named server-only", () => {
 	it("leaves none out", async () => {
 		const { ledger, device } = entries.get(
@@ -433,8 +551,6 @@ describe("D: every server figure is compared or named server-only", () => {
 		// The server-only prefixes the plan names.
 		for (const prefix of [
 			"entry.",
-			"budget.",
-			"envelope.",
 			"rate.dollarToday",
 			"balance.person",
 			"owed.",
@@ -454,10 +570,9 @@ describe("E: history rows change no reading", () => {
 			"ARS home, alias zone, official default",
 		) as Entry;
 		const refs = refsOf(ledger);
-		const before = await atClock(SECOND, async () => {
-			await pullShares(device);
-			return expectParity(device.store, refs);
-		});
+		const before = await pulledAt(device, ledger.userId, SECOND, () =>
+			expectParity(device.store, refs),
+		);
 		const keys = await seedWildHistory();
 		try {
 			const after = await atClock(SECOND, () =>

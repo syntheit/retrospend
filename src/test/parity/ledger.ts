@@ -4,7 +4,8 @@
  * the figures branch on: ARS rows booked at blue, at official and unbooked,
  * USD, JPY and KWD rows with their own decimals, refunds, income, drafts,
  * hidden rows, NOT_SPENDING, amortized parents and children, an INCOME
- * category, shares in every status with and without a captured rate (one in a
+ * category, a budget book 24 months back with its envelopes, movements and
+ * closes (seed-book.ts), shares in every status with and without a captured rate (one in a
  * hidden project, one with a guest beside you, corrections with negative
  * shares), accounts of every kind with legs, snapshots and rate switches,
  * templates of every frequency and direction, and rows at 30 minutes either
@@ -28,6 +29,7 @@ import {
 	seedRateSwitches,
 	seedSnapshots,
 } from "./seed-accounts";
+import { seedParityBook } from "./seed-book";
 import {
 	edgeInstants,
 	type ParitySize,
@@ -79,6 +81,9 @@ export interface ParityLedger {
 	/** The id of the project the user hides from reports. */
 	hiddenProjectId: string;
 	bobId: string;
+	/** The personal budget book and its envelopes (a book 24 months back, closed up to the first clock). */
+	bookId: string;
+	envelopeIds: string[];
 	/** The user's expense categories, their INCOME one, and Bob's (never the user's to read). */
 	categoryIds: string[];
 	incomeCategory: string;
@@ -166,7 +171,10 @@ export async function seedParityLedger(
 	const templateIds = await seedTemplates(ctx);
 	const projects = await seedProjects(ctx);
 	const shares = await seedShares(ctx, projects);
+	const book = await seedParityBook(ctx);
 	return {
+		bookId: book.bookId,
+		envelopeIds: book.envelopeIds,
 		userId: ctx.userId,
 		bobId: ctx.bobId,
 		accountIds,
