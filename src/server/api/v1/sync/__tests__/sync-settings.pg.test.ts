@@ -1,5 +1,5 @@
 /**
- * GET /api/v1/sync/settings on Postgres (E2EE P16), through the handler the
+ * GET /api/v1/sync/settings on Postgres, through the handler the
  * Next route uses: the settings the figures read, in the shape of a device's
  * settings row. The zone is the one the figures resolve (never null), hidden
  * projects follow Hide from reports, and only a mobile app session may call it.

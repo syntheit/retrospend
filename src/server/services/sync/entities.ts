@@ -1,5 +1,5 @@
 /**
- * The tables whose rows sync to devices as a delta (E2EE lane P, P14a). The
+ * The tables whose rows sync to devices as a delta. The
  * entity name is the table name, which is what sync_stamp_rows writes into
  * "sync_change"."entity". The same nine tables carry the three triggers in
  * 20261114100000_sync_change; sync.pg.test.ts fails when this list and the
@@ -8,7 +8,7 @@
  *
  * A loader reads the live rows of one entity by id for one owner through the
  * Prisma model and never through raw SQL, so the field-open extension opens
- * sealed text on the way out (E2EE D11). It asks for the id and the owner
+ * sealed text on the way out. It asks for the id and the owner
  * both: a row that changed hands, or that the caller may not read, is missing
  * and reads as deleted.
  */

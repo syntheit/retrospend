@@ -118,7 +118,7 @@ async function buildAndStore(jobId: string, userId: string) {
 		const path = newExportPath(userId, jobId);
 		await putExport(path, built.bytes);
 		// update by id, not updateMany: the file name is user text, sealed under
-		// its row id (E2EE D11).
+		// its row id.
 		try {
 			await db.exportJob.update({
 				where: { id: jobId, userId },

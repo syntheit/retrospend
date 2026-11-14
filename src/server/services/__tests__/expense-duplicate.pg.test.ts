@@ -1,6 +1,6 @@
 /**
  * The duplicate check on the SQL path (no keyring) and the app-layer path
- * (keyring), E2EE lane D7. On plaintext both must give the same answers, with
+ * (keyring). On plaintext both must give the same answers, with
  * titles compared literally in any case: no trimming, no accent folding, and
  * `%`, `_` and backslash mean only themselves. Then the day edges in the
  * user's time zone, other currencies, other users, and sealed titles mixed

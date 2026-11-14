@@ -1,9 +1,8 @@
 /**
- * The search hot paths over a large sealed ledger (E2EE D11 PR 7.0), with no
+ * The search hot paths over a large sealed ledger, with no
  * opened-text cache. Search and Activity scan every row and open every cell
  * on every call; this file measures what that costs on real Postgres, so a
- * cache is built only if a number says it is needed
- * (docs/roadmap/e2ee-d11-pr7-8.md, 7.0 and Critic round 1 items 3 and 4).
+ * cache is built only if a number says it is needed.
  *
  * The ledger is written through the real write path with sealing on (12,000
  * expenses, 2,000 shared expenses, 600 payments, 400 ghosts, 150 projects),

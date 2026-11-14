@@ -1,6 +1,5 @@
 /**
- * Recurring auto-post with sealing on (E2EE D11 PR 6.1, plan section 7 and
- * critic round 2 B and C), for a USD user in Buenos Aires with a USD 10
+ * Recurring auto-post with sealing on, for a USD user in Buenos Aires with a USD 10
  * template due 2027-03-05 (03:00Z), swept at 12:00Z the same day:
  *
  *   cold user (no key), plaintext name "Gym" -> posts in the first pass; one

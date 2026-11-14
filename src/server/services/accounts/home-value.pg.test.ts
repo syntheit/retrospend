@@ -1,6 +1,5 @@
 /**
- * One home value per account on real Postgres (PR 4c of
- * docs/roadmap/money-decimal.md): the Wealth dashboard row and total, the
+ * One home value per account on real Postgres: the Wealth dashboard row and total, the
  * registered netWorth figure, API v1 accounts items (mobile) and the v1 net
  * worth all read accounts/valuation.ts, so they agree on every value.
  *

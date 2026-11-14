@@ -1,6 +1,5 @@
 /**
- * Whether sealing user text is released for production (E2EE D11, plans
- * docs/roadmap/e2ee-d11-pr4.md section 3 and docs/roadmap/e2ee-d11-pr9.md).
+ * Whether sealing user text is released for production.
  *
  * What it does: `assertFieldEncryptionStart` refuses a production start with
  * DATA_KEYS_WRITE on while it is false (`sealing_unreleased`), and
@@ -30,7 +29,7 @@
 export const SEALING_RELEASED = true;
 
 /**
- * The rollback floor (plan docs/roadmap/e2ee-d11-pr9.md section 3). Every
+ * The rollback floor. Every
  * start with DATA_KEYS_WRITE on stores it in app_settings."sealingFloor" with
  * GREATEST, and once the field encryption epoch is set a build whose floor is
  * lower refuses to start (`code_below_floor`, keys/floor.ts). Raise it only

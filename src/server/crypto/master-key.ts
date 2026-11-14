@@ -1,5 +1,5 @@
 /**
- * The server master key (docs/roadmap/e2ee-spike.md 4.6, lane D). It wraps the
+ * The server master key. It wraps the
  * per-user data keys (D2) and is held outside the database: in
  * DATA_MASTER_KEY, or in the file DATA_MASTER_KEY_FILE names (a Docker or
  * Kubernetes secret).

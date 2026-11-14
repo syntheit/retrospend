@@ -1,6 +1,5 @@
 // Catches: the user-text field map (fields.ts) drifting from the things that
-// must agree with it (E2EE lane D11, design section 1.1 and Revision 1 item
-// 10): the control-character scan list, the fields the contract declares, and
+// must agree with it: the control-character scan list, the fields the contract declares, and
 // the Prisma schema. A new text column, a renamed table or a new composite key
 // fails here until the map says what to do with it.
 //
@@ -332,12 +331,11 @@ describe("free-text-looking columns anywhere in the schema", () => {
 });
 
 describe("key classes", () => {
-	// Revision 2 of docs/roadmap/e2ee-d11-design.md, final for PR 1, plus the
-	// review additions: envelope_change.previousName (a copy of envelope.name,
+	// The reviewed list, plus the additions: envelope_change.previousName (a copy of envelope.name,
 	// instance) and export_job.fileName, import_job.fileName and
 	// push_device.deviceName (personal text, user). income_rule and
-	// wealth_transfer moved to instance (docs/roadmap/e2ee-d11-pr3.md 2.1):
-	// every book member reads them, and income_rule has no owner column.
+	// wealth_transfer are instance text: every book member reads them, and
+	// income_rule has no owner column.
 	const USER: string[] = [
 		"expense.title",
 		"expense.description",

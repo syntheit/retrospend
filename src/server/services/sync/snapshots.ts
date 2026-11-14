@@ -1,7 +1,7 @@
 /**
- * The snapshot readers behind GET /sync/shares and GET /sync/settings (E2EE
- * P16): small tables a device takes whole, where the delta log has nothing to
- * stamp (a share belongs to a shared expense, which more than one person owns).
+ * The snapshot readers behind GET /sync/shares and GET /sync/settings: small
+ * tables a device takes whole, where the delta log has nothing to stamp (a
+ * share belongs to a shared expense, which more than one person owns).
  *
  * A snapshot selects by access only (ownParticipationWhere, the same fragment
  * the server's share reader starts from). It never applies the spending rules,

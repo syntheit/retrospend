@@ -1,7 +1,6 @@
 /**
- * Payment text through confirm, reject, remove and undo (E2EE D11 PR 4.1,
- * docs/roadmap/e2ee-d11-pr4.md section 4). Nothing seals in 4.1, so the
- * sealed cases seal the stored cells themselves (sealed-fixture) and check
+ * Payment text through confirm, reject, remove and undo. Nothing seals in these
+ * cases, so the sealed ones seal the stored cells themselves (sealed-fixture) and check
  * that the money paths keep them byte for byte.
  *
  * Fixture, both ARS home: Sofía owes Martín ARS 18,000 in Trip and records

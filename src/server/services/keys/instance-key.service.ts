@@ -1,6 +1,5 @@
 /**
- * The instance key for shared text (docs/roadmap/e2ee-d11-design.md section 3,
- * lane D11). One random 256-bit key seals text that more than one account
+ * The instance key for shared text. One random 256-bit key seals text that more than one account
  * reads (shared expenses, people, projects, budget books). It lives in
  * `keystore."instance_text_key"`, wrapped by the server master key, and is read
  * through SECURITY DEFINER functions that require an actor: a signed-in user

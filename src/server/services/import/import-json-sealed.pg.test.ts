@@ -1,5 +1,5 @@
 /**
- * An import job's parsed rows and warnings (E2EE D11 PR 8.2) on Postgres, in
+ * An import job's parsed rows and warnings on Postgres, in
  * both suites: read from a CSV by the queue, reviewed, committed and undone,
  * every figure the same whether the two JSON columns are plain or sealed.
  * In the sealed suite each is stored as a `{ sealed }` envelope under the

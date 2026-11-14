@@ -1,8 +1,8 @@
 /**
- * Every write path for user free text validates through userText (E2EE lane
- * D4b): a C0 control character is refused, ordinary text with line feeds and
- * tabs is kept as typed, and a field that took "" before still takes it.
- * Procedures are read through their declared input, so no resolver runs.
+ * Every write path for user free text validates through userText: a C0 control
+ * character is refused, ordinary text with line feeds and tabs is kept as
+ * typed, and a field that took "" before still takes it. Procedures are read
+ * through their declared input, so no resolver runs.
  */
 import {
 	createAccessTokenSchema,

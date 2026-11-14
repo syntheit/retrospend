@@ -1,5 +1,5 @@
 /**
- * What counts as plaintext in a mapped cell, in one place (E2EE D11 PR 9.1).
+ * What counts as plaintext in a mapped cell, in one place.
  * The sealed pg suite's sweep (src/test/sealed-sweep.ts) and the operator's
  * scripts/verify-sealing.ts both use it, so the test guard and the production
  * check cannot drift apart. It reads no database and no environment.

@@ -1,9 +1,8 @@
 /**
  * The largest import file the queue takes (10 MB, 13.98 million characters of
- * base64) sealed on create and opened for the queue, with timing budgets
- * (E2EE D11 Revision 3, PR 5). It runs alone, after the other pg files
- * (vitest.pg.config.ts), so other workers cannot skew it. The budgets are
- * never loosened. ARS home, one user.
+ * base64) sealed on create and opened for the queue, with timing budgets. It
+ * runs alone, after the other pg files (vitest.pg.config.ts), so other workers
+ * cannot skew it. The budgets are never loosened. ARS home, one user.
  */
 import { describe, expect, it, vi } from "vitest";
 import { createUserScopedDb } from "~/server/db";

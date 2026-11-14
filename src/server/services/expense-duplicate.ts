@@ -17,7 +17,7 @@ const escapeLike = (text: string) => text.replace(/[\\%_]/g, "\\$&");
  * decimal text is compared exactly; with a `timeZone` the day is the user's,
  * not the server's. Without a `currency`, any currency matches.
  *
- * Titles may be ciphertext (docs/roadmap/e2ee-spike.md, lane D), so with a
+ * Titles may be ciphertext, so with a
  * `keyring` (the same switch as search and title suggestions, `searchesInApp`)
  * Postgres filters by user, amount, currency and day only, and the titles of
  * those few rows (opened by the client, field-open.ts) are compared here. The candidates are one day of

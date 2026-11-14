@@ -1,5 +1,5 @@
 /**
- * GET /api/v1/sync/shares on Postgres (E2EE P16), through the handler the Next
+ * GET /api/v1/sync/shares on Postgres, through the handler the Next
  * route uses: every participation of the caller by access alone (a rejected
  * share and one in a hidden project too), the category rule of budget D19,
  * no text of the expense, Owed to you and You owe from the same read, and the

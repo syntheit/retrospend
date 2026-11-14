@@ -84,7 +84,7 @@ export function recurring(
 	nextDueDate: Date,
 	o: Partial<{ ask: boolean; isActive: boolean; dir: "IN" | "OUT" }> = {},
 ) {
-	// As the owner: the name is user text, written by its owner (E2EE D11).
+	// As the owner: the name is user text, written by its owner.
 	return createUserScopedDb(userId).recurringTemplate.create({
 		data: {
 			userId,

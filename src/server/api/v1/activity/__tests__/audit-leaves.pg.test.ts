@@ -1,5 +1,5 @@
 /**
- * The text leaves of the audit log (E2EE D11 PR 8.3) on Postgres, in both
+ * The text leaves of the audit log on Postgres, in both
  * suites. A shared expense's life (add, edit, dispute, delete, undo), a project
  * rename and a period relabel are read back whole by an organizer, a viewer and
  * a guest, through the web's procedures and the v1 feed and history. In the

@@ -1,5 +1,5 @@
 /**
- * The clients' keys on a real Postgres (E2EE D11 PR 3.1): what `ready()`
+ * The clients' keys on a real Postgres: what `ready()`
  * records, and the key services' caches behind it. Keystore loads are counted
  * at `keystoreDb.$transaction`, the one door both read-only loaders use.
  * Hand-derived expectations:

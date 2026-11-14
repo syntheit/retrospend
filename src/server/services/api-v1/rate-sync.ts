@@ -14,7 +14,7 @@ import { decodeCursor, toPage } from "./cursor";
 type AppDb = typeof globalDb;
 
 /**
- * Rate reads for devices (E2EE lane P, P15). Rates are shared data with no
+ * Rate reads for devices. Rates are shared data with no
  * owner, so any caller reads the same rows; a device prices with them locally.
  */
 

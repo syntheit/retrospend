@@ -1,10 +1,9 @@
 /**
- * Copies between rows re-seal under the new row (E2EE D11 PR 4.2, plan
- * section 4), with `sealing()` on, for an ARS user: a confirmed recurring
- * template's name becomes the expense's title sealed under the expense's id,
- * and an expense deleted and restored by its undo comes back under its old id
- * with fresh ciphertext. Each cell is read raw and opened here with the
- * owner's key and its own (table, column, row id).
+ * Copies between rows re-seal under the new row, with `sealing()` on, for an
+ * ARS user: a confirmed recurring template's name becomes the expense's title
+ * sealed under the expense's id, and an expense deleted and restored by its
+ * undo comes back under its old id with fresh ciphertext. Each cell is read raw
+ * and opened here with the owner's key and its own (table, column, row id).
  */
 import {
 	afterAll,

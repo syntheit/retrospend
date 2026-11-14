@@ -1,6 +1,5 @@
 /**
- * Reads every row a search needs, in keyset batches (E2EE D11 PR 5,
- * docs/roadmap/e2ee-d11-pr5.md section 2). Once text may be sealed, Postgres
+ * Reads every row a search needs, in keyset batches. Once text may be sealed, Postgres
  * cannot match it: SQL or a model keyset picks rows by unmapped columns, model
  * reads open the text, and the app matches it. There is no cap: a search reads
  * every row it must.

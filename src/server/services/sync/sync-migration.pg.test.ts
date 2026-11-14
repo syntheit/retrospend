@@ -1,5 +1,5 @@
 /**
- * The sync migration's catalog on real Postgres (E2EE lane P, P14a): which
+ * The sync migration's catalog on real Postgres: which
  * tables carry the stamp trigger and which user tables do not (and why), the
  * backfill, sync_reset() and the restore detection at start, what the app
  * role may and may not do, and the rollback snippet. Anything that replays

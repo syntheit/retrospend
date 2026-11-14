@@ -1,6 +1,6 @@
 /**
- * importAccounts finds an open account by name in the app layer (E2EE lane
- * D10), since a name may be ciphertext. The old version asked Postgres with
+ * importAccounts finds an open account by name in the app layer, since a name
+ * may be ciphertext. The old version asked Postgres with
  * `where name = ...`; it is copied below as the oracle and both run over the
  * same rows for two users, which must end with the same accounts: an open
  * account of that name is edited, a closed one is left alone and a new one is

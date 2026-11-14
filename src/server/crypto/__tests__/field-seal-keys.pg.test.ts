@@ -1,9 +1,9 @@
 /**
- * Which key the seal path uses and when it is made (E2EE D11 PR 4.2, plan
- * sections 1 and 6), with `sealing()` on: a user's key is made at their first
- * sealing write and never inside a transaction or a preview; a write that
- * cannot have its key fails with the recorded code and stores nothing, while
- * a write with no text still runs; shapes that cannot be sealed are refused.
+ * Which key the seal path uses and when it is made, with `sealing()` on: a
+ * user's key is made at their first sealing write and never inside a
+ * transaction or a preview; a write that cannot have its key fails with the
+ * recorded code and stores nothing, while a write with no text still runs;
+ * shapes that cannot be sealed are refused.
  */
 import { randomUUID } from "node:crypto";
 import {

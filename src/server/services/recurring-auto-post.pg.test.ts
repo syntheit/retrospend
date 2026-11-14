@@ -1,5 +1,5 @@
 /**
- * Recurring auto-post on real Postgres (E2EE D11 PR 6.1). Each sweep is
+ * Recurring auto-post on real Postgres. Each sweep is
  * limited to the users a test made (the `only` source), so templates other
  * files left in this worker's database never post here. Hand-derived values:
  *

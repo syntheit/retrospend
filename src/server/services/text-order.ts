@@ -1,6 +1,6 @@
 /**
  * Ordering by user text, in the app layer. Names and titles can hold
- * ciphertext (docs/roadmap/e2ee-spike.md, lane D), so Postgres cannot sort
+ * ciphertext, so Postgres cannot sort
  * them; the services read the rows, which come back as plaintext, and sort
  * here.
  *

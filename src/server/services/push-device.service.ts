@@ -115,7 +115,7 @@ export async function registerPushDevice(
 		// Two registrations at once must not both see room for one more.
 		await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`push_device:${userId}`}, 0))`;
 		// Found by address, then written by id, not upserted on the address: a
-		// text cell (deviceName) is sealed under its row id (E2EE D11). The
+		// text cell (deviceName) is sealed under its row id. The
 		// lock above keeps the find and the write together.
 		const key = { userId, transport: input.transport, addressHash: hash };
 		const known = await tx.pushDevice.findUnique({

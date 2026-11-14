@@ -1,6 +1,5 @@
 /**
- * The rings a client opens text with (E2EE D11, docs/roadmap/e2ee-d11-pr3.md
- * section 1.3). The loaders are injected (db.ts wires the key services), so
+ * The rings a client opens text with. The loaders are injected (db.ts wires the key services), so
  * this file never touches the database.
  *
  * `ready()` never throws: a missing master key, a missing keystore or a lost

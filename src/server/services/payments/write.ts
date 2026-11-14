@@ -147,8 +147,7 @@ export async function writeRows(
  * Applies `data` to every row of a group, only while each row still has one
  * of `fromStatuses`. If another request changed the group first, the whole
  * action fails rather than touching part of it. Row by row, not one
- * updateMany: a text cell (the reject reason) is sealed under its row id
- * (E2EE D11).
+ * updateMany: a text cell (the reject reason) is sealed under its row id.
  */
 export async function updateGroup(
 	tx: Prisma.TransactionClient,

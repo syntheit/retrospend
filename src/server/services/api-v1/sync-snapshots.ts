@@ -15,7 +15,7 @@ import type { Caller } from "./caller";
 import { decimal, decimalOrNull, instant } from "./sync";
 
 /**
- * v1 adapters for the sync snapshots (P16): the readers' rows in their wire
+ * v1 adapters for the sync snapshots: the readers' rows in their wire
  * form, every field named so a column added to a table cannot reach a device
  * until someone decides it may.
  */

@@ -1,6 +1,5 @@
 /**
- * The relations between Prisma models, for the field-open walk (E2EE D11
- * PR 3.2, docs/roadmap/e2ee-d11-pr3.md section 3). Prisma 7 has no DMMF at
+ * The relations between Prisma models, for the field-open walk. Prisma 7 has no DMMF at
  * runtime; the generated client's runtime data model (read through
  * `runtimeDataModel()` in db-core.ts) names each model's relation fields and
  * their target model, and nothing more. model-graph.test.ts compares the graph

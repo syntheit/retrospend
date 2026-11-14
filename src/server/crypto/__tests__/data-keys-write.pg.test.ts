@@ -1,8 +1,8 @@
 /**
- * DATA_KEYS_WRITE=true wires sealing on with no test override (E2EE D11 PR
- * 4.3): the setting is read by `~/env` and handed to sealing() by db.ts. A
- * write through a scoped client stores `\u0001k1:` and reads back plaintext.
- * The flag is set before any module reads the environment.
+ * DATA_KEYS_WRITE=true wires sealing on with no test override: the setting is
+ * read by `~/env` and handed to sealing() by db.ts. A write through a scoped
+ * client stores `\u0001k1:` and reads back plaintext. The flag is set before
+ * any module reads the environment.
  */
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it, vi } from "vitest";

@@ -1,6 +1,5 @@
 /**
- * Who opens a sealed cell, on every client and path (E2EE D11 PR 3.2, plan
- * tests 8 and 9 and section 2.3). Ana and Beto share a project and a budget
+ * Who opens a sealed cell, on every client and path. Ana and Beto share a project and a budget
  * book; both have ARS as their home currency. Hand-derived expectations:
  *
  *   Ana's own sealed category, on her scoped client, in userTransaction, in a preview -> plaintext

@@ -16,13 +16,13 @@ import { categoryColorSchema } from "../categories";
 import { decimalStringSchema, idSchema, timestampSchema } from "../core";
 
 /**
- * Raw rows of a personal budget book for the app's local copy (E2EE lane P,
- * P14c): the same rules as schemas.ts, one field per column a client can use,
- * the database's own names, decimals as exact text and instants as ISO 8601
- * (a date-only column is the instant at 00:00 UTC). A row belongs to the
- * caller through its book, which is theirs, personal and has no other member:
- * a book that gains a member or stops being personal is shared from that
- * moment, and every row of it comes back as a tombstone.
+ * Raw rows of a personal budget book for the app's local copy: the same rules
+ * as schemas.ts, one field per column a client can use, the database's own
+ * names, decimals as exact text and instants as ISO 8601 (a date-only column is
+ * the instant at 00:00 UTC). A row belongs to the caller through its book,
+ * which is theirs, personal and has no other member: a book that gains a member
+ * or stops being personal is shared from that moment, and every row of it comes
+ * back as a tombstone.
  *
  * Left out on purpose: the book's creator and every row's `actorUserId` (the
  * caller's own id, or a former member's), the server's undo state

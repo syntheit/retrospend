@@ -1,6 +1,5 @@
 /**
- * The pieces of a JSON cell that are sealed (E2EE D11 PR 8.1,
- * docs/roadmap/e2ee-d11-pr7-8.md, "Mechanism"). field-seal.ts and
+ * The pieces of a JSON cell that are sealed. field-seal.ts and
  * field-open.ts seal and open each piece exactly as a text cell, with the
  * AAD `{ table, column, rowId }` of the row's own id:
  * - a `body` cell is one piece, the value's JSON text under the column name,

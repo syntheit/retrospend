@@ -1,6 +1,5 @@
 // Catches: a Json column added to the schema without saying whether it holds
-// user text (E2EE D11 PR 8.3, docs/roadmap/e2ee-d11-pr7-8.md, "Audit leaves
-// and the guard"), and an audit leaf or key classified two ways. Every Json
+// user text, and an audit leaf or key classified two ways. Every Json
 // field is either a JSON cell in JSON_CELLS (sealed) or in NO_TEXT_JSON with a
 // reason; a new one fails here until it is placed.
 //

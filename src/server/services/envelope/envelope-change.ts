@@ -1,7 +1,7 @@
 /**
  * The change log of envelope edits (envelope_change): what each edit changed,
  * kept server side so its undo is exact and a client never sends the old
- * state back. `before` holds ids, amounts and flags only (E2EE rule 10); a
+ * state back. `before` holds ids, amounts and flags only; a
  * name before a rename has its own column. Every log row is written in the
  * edit's transaction, so a preview that rolls back leaves none.
  */

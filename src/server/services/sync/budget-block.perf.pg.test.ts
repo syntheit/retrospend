@@ -1,5 +1,5 @@
 /**
- * What the budget block costs at the size a heavy user has (E2EE P13b PR 1c):
+ * What the budget block costs at the size a heavy user has:
  * a 36-month book with 10,000 expenses (a tenth in USD, valued at the book's
  * blue rate), 15 envelopes, monthly salary and assigned money, and 720 shared
  * expenses with a monthly payment. The two transactions of a pull are timed
@@ -225,7 +225,7 @@ describe.skipIf(sealedSuite)("the budget block at 10,000 expenses", () => {
 			JSON.stringify(toSyncBudget(snapshot.budget)),
 		);
 		console.log(
-			`P13b-1c 10k: tx1 cold ${cold} ms (${usd} values frozen), tx1 warm ${warm} ms, ` +
+			`budget block 10k: tx1 cold ${cold} ms (${usd} values frozen), tx1 warm ${warm} ms, ` +
 				`pull with block (tx1 skipped, tx2 + freeze check) ${pull} ms, shares and owed alone ${plain} ms, ` +
 				`block ${bytes} bytes (${snapshot.budget.block.frozen.length} frozen, ` +
 				`${snapshot.budget.block.splits.shares.length} shares, ${snapshot.budget.block.splits.events.length} events)`,

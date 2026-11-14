@@ -1,6 +1,6 @@
 /**
  * Whether a model call filters, sorts, groups or aggregates on a mapped
- * column (E2EE D11 PR 4.3, docs/roadmap/e2ee-d11-pr4.md section 3). Once the
+ * column. Once the
  * field encryption epoch exists any mapped cell may hold ciphertext with a
  * random nonce, so Postgres would compare, sort or group the ciphertext and
  * quietly miss rows; field-open.ts refuses such a call instead.

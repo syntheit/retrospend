@@ -1,6 +1,5 @@
 /**
- * The field-open extension (E2EE D11 PR 3.2, docs/roadmap/e2ee-d11-pr3.md
- * sections 2 to 4): it sits in the client slot (db-core.ts) and opens every
+ * The field-open extension: it sits in the client slot (db-core.ts) and opens every
  * sealed cell a model call returns, at any depth of `select` or `include`.
  * Plaintext passes untouched. While `sealing()` is true it also seals what a
  * write stores (field-seal.ts, PR 4.2), with keys picked by `sealingRing`.

@@ -27,7 +27,7 @@ const previewScope = new AsyncLocalStorage<true>();
 
 /**
  * Whether the caller runs inside a preview's transaction, which always rolls
- * back: the seal path makes no key there (E2EE D11 PR 4 section 1).
+ * back: the seal path makes no key there.
  */
 export const inPreview = (): boolean => previewScope.getStore() === true;
 

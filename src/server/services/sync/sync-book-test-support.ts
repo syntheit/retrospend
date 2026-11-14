@@ -1,5 +1,5 @@
 /**
- * Fixtures for the personal-book sync tests (E2EE lane P, P14c): one personal
+ * Fixtures for the personal-book sync tests: one personal
  * book with a row in each of the twelve tables of its family, linked the way
  * the app links them, and the stamps of the family read as the owner.
  */

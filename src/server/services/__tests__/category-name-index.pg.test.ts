@@ -1,5 +1,5 @@
 /**
- * Category name blind index (E2EE lane D9), on real Postgres. Hand-derived
+ * Category name blind index, on real Postgres. Hand-derived
  * expectations:
  *
  *   same name, two users               -> two different indexes

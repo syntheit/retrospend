@@ -1,7 +1,7 @@
 /**
- * A webhook's url is user text sealed with the instance key (E2EE D11
- * Revision 3 PR 2), because the worker opens it on the global client. With
- * sealing on, a master key and the instance key made here:
+ * A webhook's url is user text sealed with the instance key, because the worker
+ * opens it on the global client. With sealing on, a master key and the instance
+ * key made here:
  *
  *   created and edited url                        -> `\u0001k1:` at rest, the plain url on the owner's list
  *   a delivery to a sealed url                    -> arrives at the host named in it

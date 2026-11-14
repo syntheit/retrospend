@@ -1,6 +1,6 @@
 /**
  * GET /api/v1/sync/{accounts,account-snapshots,account-legs,account-history,
- * account-rate-types,transfers} on Postgres (E2EE lane P, P14b2), through the
+ * account-rate-types,transfers} on Postgres, through the
  * handler the Next route uses: the raw columns, the cascade of an account
  * delete, the balance trigger's changes, the cursor, the scope, other users
  * and sealed names. Values are derived by hand from the rows seedPersonal

@@ -1,6 +1,5 @@
 /**
- * The rollback floor and the start gates (E2EE D11 PR 9.1, plan
- * docs/roadmap/e2ee-d11-pr9.md section 3 and its critic rounds).
+ * The rollback floor and the start gates.
  *
  * `app_settings."sealingFloor"` is the highest `SEALING_FLOOR` (release.ts)
  * of any build that started with DATA_KEYS_WRITE on. `raiseSealingFloor`

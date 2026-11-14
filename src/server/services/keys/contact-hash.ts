@@ -1,6 +1,5 @@
 /**
- * The keyed hash of a contact address (E2EE D11 Revision 3, PR 3a, plan
- * docs/roadmap/e2ee-d11-rev3.md): what finds a ghost (`shadow_profile`) or a
+ * The keyed hash of a contact address: what finds a ghost (`shadow_profile`) or a
  * guest (`guest_session`) by address once the address is ciphertext.
  *
  *   emailHash = "<tag>:<hex>"   (see blind-index.ts)

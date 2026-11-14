@@ -1,5 +1,5 @@
 /**
- * The stamp trigger on real Postgres (E2EE lane P, P14a): what lands in
+ * The stamp trigger on real Postgres: what lands in
  * "sync_change" for each way a row of the nine synced tables is written,
  * changed or removed, as the app role (so the SECURITY DEFINER trigger is
  * what writes) and as the owner. Expectations are derived by hand from the

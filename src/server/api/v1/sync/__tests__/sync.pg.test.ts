@@ -1,9 +1,9 @@
 /**
- * GET /api/v1/sync/{expenses,categories,recurring-templates} on Postgres
- * (E2EE lane P, P14b1), through the handler the Next route uses: who may call
- * it, what a first pull and a delta return, the cursor, what makes a cursor
- * stale, sealed text coming back plain, and isolation between users. Values
- * are derived by hand from the rows each test writes.
+ * GET /api/v1/sync/{expenses,categories,recurring-templates} on Postgres,
+ * through the handler the Next route uses: who may call it, what a first pull
+ * and a delta return, the cursor, what makes a cursor stale, sealed text coming
+ * back plain, and isolation between users. Values are derived by hand from the
+ * rows each test writes.
  */
 import { contract, SCOPES } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";

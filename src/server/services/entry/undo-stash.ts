@@ -7,7 +7,7 @@
  * person who deleted can take the rows out: the key is scoped to their user,
  * and each stash is taken once.
  *
- * The body is sealed with the owner's key (E2EE D11 PR 8.1), so code without
+ * The body is sealed with the owner's key, so code without
  * it (the expiry prune, account deletion) cannot read which uploaded files a
  * stash keeps. Each file gets a row of its own instead, with no body: key
  * `undo-icon:<stash>:<path>` (the path is a server-made name), same expiry,

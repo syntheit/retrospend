@@ -1,5 +1,5 @@
 /**
- * No sealed value may leave the server (E2EE D11, design section 7.1): mobile
+ * No sealed value may leave the server: mobile
  * caches responses, so a leak would persist. In tests the v1 handler and a
  * tRPC middleware check every response with this; the field-open extension
  * uses `hasSealedText` to refuse aggregate results it cannot open. A contact

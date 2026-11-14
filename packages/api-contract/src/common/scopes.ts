@@ -50,7 +50,7 @@ export const DEVICE_CLIENT_IDS: readonly string[] = [
  * - `account:delete`: delete the signed-in user's own account.
  * - `account:security`: change the password, list the signed-in sessions
  *   and sign one of them out.
- * - `sync`: the raw row pulls under `/sync` (E2EE lane P). A session signed
+ * - `sync`: the raw row pulls under `/sync`. A session signed
  *   in by a client that identifies as the mobile app holds it; the web app
  *   and every token do not.
  */

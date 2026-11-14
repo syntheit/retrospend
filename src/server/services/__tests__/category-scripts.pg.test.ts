@@ -1,6 +1,6 @@
 /**
  * The two default-category scripts write as the owning user, each name with
- * its index (E2EE D11 PR 4.1, plan section 1 item 2). Hand-derived, for a user
+ * its index. Hand-derived, for a user
  * with the old defaults "Dining Out" and "Gas" (no "Transport"):
  *
  *   migrate          -> "Dining Out" renamed "Restaurants"; "Gas" merged into a new

@@ -1,5 +1,5 @@
 /**
- * The guest sessions of one address (E2EE D11 Revision 3, PR 4): the one
+ * The guest sessions of one address: the one
  * place that finds them for a migration or a deletion, so the rule is written
  * once. The lookup is `contactLookup`'s: the hash once the epoch is set,
  * otherwise a case-insensitive match on the plaintext address (escaped, so it

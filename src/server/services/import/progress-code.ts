@@ -1,10 +1,9 @@
 /**
- * The progress of a bank statement job as a stable code (E2EE D11 Revision 3,
- * PR 5). The sidecar streams fixed English phrases, some with page or batch
- * numbers; the queue stored them as `statusMessage`. A phrase is now stored
- * as a code only when it is on this list, so the column never holds text the
- * sidecar or a file put there, and it stays unsealed. An unknown phrase
- * stores null.
+ * The progress of a bank statement job as a stable code. The sidecar streams
+ * fixed English phrases, some with page or batch numbers; the queue stored them
+ * as `statusMessage`. A phrase is now stored as a code only when it is on this
+ * list, so the column never holds text the sidecar or a file put there, and it
+ * stays unsealed. An unknown phrase stores null.
  *
  * `progressText` is the other way, for API v1's `message`: a code renders as
  * the phrase the sidecar sent, and a value that is not a code (a row from

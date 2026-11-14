@@ -1,6 +1,5 @@
 /**
- * The contact hash fill and gate for the DATA_KEYS_WRITE start (E2EE D11
- * Revision 3, PR 3a, owner decision Q5; contact-hash.ts has the rule). Rows
+ * The contact hash fill and gate for the DATA_KEYS_WRITE start (contact-hash.ts has the rule). Rows
  * saved before the hash existed, or while a replica had no instance ring
  * cached, have no hash or one of another key. The email is readable now and
  * only now (once it is sealed, the creator's key is needed), so the start

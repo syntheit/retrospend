@@ -173,7 +173,7 @@ function foldedMatcher(q: string): (text: string) => boolean {
 /**
  * People, projects and categories are read as rows and matched, sorted and
  * paged here, not in SQL: names may be ciphertext, so Postgres can neither
- * match nor order them (docs/roadmap/e2ee-spike.md, lane D). Projects and
+ * match nor order them. Projects and
  * categories are the caller's own, so all of them are read. Text columns come
  * through model reads, which hand back plaintext; SQL only picks ids.
  *

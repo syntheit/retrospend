@@ -51,7 +51,7 @@ export async function addDevice(
 ) {
 	const address = over.address ?? randomUUID().replaceAll("-", "").repeat(2);
 	const sub = newSubscription();
-	// As the owner, the way registerPushDevice writes it (E2EE D11).
+	// As the owner, the way registerPushDevice writes it.
 	const device = await createUserScopedDb(userId).pushDevice.create({
 		data:
 			transport === "UNIFIEDPUSH"

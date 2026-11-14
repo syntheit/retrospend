@@ -1,5 +1,5 @@
 /**
- * JSON cell pieces (E2EE D11 PR 8.1). Hand-derived expectations:
+ * JSON cell pieces. Hand-derived expectations:
  *
  *   body { title: "Cena" }, row r1     -> one piece, column responseBody, text '{"title":"Cena"}',
  *                                        stored { sealed }, opens back to the same object under r1 only

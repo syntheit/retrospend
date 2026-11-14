@@ -1,6 +1,5 @@
 /**
- * Server-side encryption of one text field, AES-256-GCM through node:crypto
- * (docs/roadmap/e2ee-spike.md 4.5 and 4.6, lane D).
+ * Server-side encryption of one text field, AES-256-GCM through node:crypto.
  *
  * Wire form, a plain string that fits a text column:
  *
@@ -82,7 +81,7 @@ export type FieldCryptoErrorCode =
 	| "unsealable_nested"
 	/** User-class text written for an owner whose key this client does not hold. */
 	| "foreign_owner"
-	/** A category name written without its name index (E2EE D9). */
+	/** A category name written without its name index. */
 	| "category_index_missing"
 	/** A filter, sort or grouping on a column that may hold ciphertext (after the epoch). */
 	| "filter_on_sealed";

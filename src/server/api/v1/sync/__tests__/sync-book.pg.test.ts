@@ -1,11 +1,11 @@
 /**
  * GET /api/v1/sync/{budget-books,envelope-groups,envelopes,envelope-categories,
  * budget-movements,book-periods,month-closes,income-rules,income-rule-runs,
- * payoff-plans,wealth-transfers,envelope-changes} on Postgres (E2EE lane P,
- * P14c), through the handler the Next route uses: the scope, the raw columns
- * (and the server's own columns that must not appear), sealed text in the
- * clear, the cursor, a book that stops being personal, a deleted book and other
- * users. Values come from the rows seedBook writes.
+ * payoff-plans,wealth-transfers,envelope-changes} on Postgres, through the
+ * handler the Next route uses: the scope, the raw columns (and the server's own
+ * columns that must not appear), sealed text in the clear, the cursor, a book
+ * that stops being personal, a deleted book and other users. Values come from
+ * the rows seedBook writes.
  */
 import { randomUUID } from "node:crypto";
 import { contract, SCOPES } from "@retrospend/api-contract";

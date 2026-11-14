@@ -1,6 +1,5 @@
 /**
- * Whether this process seals user text on write (E2EE D11 PR 4,
- * docs/roadmap/e2ee-d11-pr4.md sections 1 and 3): DATA_KEYS_WRITE, and in
+ * Whether this process seals user text on write: DATA_KEYS_WRITE, and in
  * production only once sealing is released (release.ts). db.ts wires the
  * setting, so this file reads no environment and a unit test seals nothing.
  * The start-up check (field-encryption-start.ts) refuses a server with the

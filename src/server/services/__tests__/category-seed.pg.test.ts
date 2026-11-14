@@ -1,6 +1,5 @@
 /**
- * Category inserts and the first-write key mint (E2EE D11 PR 4.1,
- * docs/roadmap/e2ee-d11-pr4.md sections 1 and 5, critic round 2 A and B).
+ * Category inserts and the first-write key mint.
  * Hand-derived expectations:
  *
  *   sign-up seed, master key set          -> every default name, each with a current-tag index; again: 0 more

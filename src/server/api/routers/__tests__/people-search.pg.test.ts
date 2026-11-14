@@ -1,5 +1,5 @@
 /**
- * people.search matches names in the app layer (E2EE lane D10), so it no longer
+ * people.search matches names in the app layer, so it no longer
  * asks Postgres for `name ILIKE`. On plaintext rows it must answer what the
  * old queries answered: the old Prisma `contains` filters are copied below as
  * the oracle, for the ghosts the caller can see and for the people they have

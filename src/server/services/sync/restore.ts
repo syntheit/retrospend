@@ -1,5 +1,5 @@
 /**
- * The restore check run at every start (E2EE lane P, P14a). A database
+ * The restore check run at every start. A database
  * restored into another cluster or database, a table restored from a dump, or
  * leaves stamps whose txids this cluster has not reached, and cursors that
  * point into a log that no longer exists. sync_restore_reason() names what it

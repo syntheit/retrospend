@@ -6,11 +6,10 @@
  * Personal titles have two paths, picked by `searchesInAppLoaded`
  * (search-fold.ts): Postgres groups and matches them in SQL before the field
  * encryption epoch, and the same grouping happens in the app layer over
- * opened titles once a title may be sealed (docs/roadmap/e2ee-spike.md, lane
- * D), over every row in batches (scan-batches.ts). Shared descriptions follow
- * the same two paths (the owner decided shared text is sealed too). Both
- * paths hand their groups to the same merge and ranking below, so the output
- * is one function of the groups.
+ * opened titles once a title may be sealed, over every row in batches
+ * (scan-batches.ts). Shared descriptions follow the same two paths (the owner
+ * decided shared text is sealed too). Both paths hand their groups to the same
+ * merge and ranking below, so the output is one function of the groups.
  */
 import type { Keyring } from "~/server/crypto/field-crypto";
 import type { PrismaClient } from "~prisma";

@@ -1,5 +1,5 @@
 /**
- * The extension slot (E2EE D11 prep): the global client and the user-scoped
+ * The extension slot: the global client and the user-scoped
  * client are both built on one raw base through a slot, and interactive
  * transactions run on the extended client, so a query extension sees the model
  * calls inside them. The slot is empty today; this test fills it with a

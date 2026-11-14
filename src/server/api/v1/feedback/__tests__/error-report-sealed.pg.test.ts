@@ -1,5 +1,5 @@
 /**
- * Error report text at rest (E2EE D11 Revision 3, PR 1): `error_report.message`
+ * Error report text at rest: `error_report.message`
  * and `stack` are instance-class cells. With sealing on, a report the app
  * sends is stored as `\u0001k1:` ciphertext in both columns, under the AAD of
  * its own row, and the admin reads it as plaintext through the v1 list and the

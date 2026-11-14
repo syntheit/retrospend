@@ -1,5 +1,5 @@
 /**
- * Every mapped model seals what it writes (E2EE D11 PR 4.2, plan section 7):
+ * Every mapped model seals what it writes:
  * with `sealing()` on, each write operation through the app's own clients
  * (user-class models through their owner's scoped client, instance-class
  * models through the global client) stores `\u0001k1:` ciphertext, and the

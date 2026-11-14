@@ -1,9 +1,9 @@
 /**
- * What the stamp trigger adds to a 10,000-row import commit (E2EE lane P,
- * P14a, plan test 12). The same createMany runs with the expense insert
- * trigger on and off, alternating, and the medians are compared. It runs
- * alone, after the other pg files (vitest.pg.config.ts), so other workers
- * cannot skew it. The budget is never loosened.
+ * What the stamp trigger adds to a 10,000-row import commit. The same
+ * createMany runs with the expense insert trigger on and off, alternating, and
+ * the medians are compared. It runs alone, after the other pg files
+ * (vitest.pg.config.ts), so other workers cannot skew it. The budget is never
+ * loosened.
  */
 import { describe, expect, it } from "vitest";
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";

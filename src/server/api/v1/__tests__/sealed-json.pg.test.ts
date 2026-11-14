@@ -1,5 +1,5 @@
 /**
- * The JSON copies in idempotency_key (E2EE D11 PR 8.1) on Postgres, in both
+ * The JSON copies in idempotency_key on Postgres, in both
  * suites. A replayed v1 write and an undo stash read back the same body; in
  * the sealed suite each is stored as a `{ sealed }` envelope under the row
  * owner's key and its own row id, with the text nowhere in the row, and a

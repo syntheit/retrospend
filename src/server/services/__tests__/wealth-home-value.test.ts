@@ -1,7 +1,6 @@
 /**
  * The Wealth dashboard values an account with accounts/valuation.ts, the
- * function the net worth figure and API v1 read (docs/roadmap/money-decimal.md,
- * PR 4c). Every expected value is derived by hand.
+ * function the net worth figure and API v1 read. Every expected value is derived by hand.
  *
  * - 1 EUR at 3 per USD into JPY at 16.5 per USD: 16.5 / 3 = 5.5 JPY exactly,
  *   a tie that rounds half to even to 6. The old two divisions, (1/3) / (1/16.5),

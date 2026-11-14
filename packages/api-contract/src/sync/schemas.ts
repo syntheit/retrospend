@@ -9,7 +9,7 @@ import { decimalStringSchema, idSchema, timestampSchema } from "../core";
 import { transferKindSchema } from "../transfers";
 
 /**
- * Raw rows for the app's local copy (E2EE lane P): one field per column a
+ * Raw rows for the app's local copy: one field per column a
  * client can use, the database's own names and enum values, decimals as
  * exact text and instants as ISO 8601. Not the display shapes of
  * GET /expenses: nothing is converted, joined or counted here.

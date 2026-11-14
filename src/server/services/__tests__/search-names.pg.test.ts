@@ -1,6 +1,6 @@
 /**
  * v1 search over people, projects and categories in the app layer against the
- * SQL it replaced (E2EE lane D10). The old queries are copied here as the
+ * SQL it replaced. The old queries are copied here as the
  * oracle: `immutable_unaccent(x) ILIKE` with the cursor and the order cut by
  * Postgres. On plaintext rows the new code must return the same rows in the
  * same order, page by page, for accents, case, LIKE wildcards in the query

@@ -1,6 +1,5 @@
 /**
- * What stays plaintext in JSON (E2EE D11 PR 8.3, docs/roadmap/e2ee-d11-pr7-8.md,
- * "Audit leaves and the guard"). Two lists, both with reasons, so that a new
+ * What stays plaintext in JSON. Two lists, both with reasons, so that a new
  * JSON column or a new text leaf cannot slip in unsealed:
  * - `NO_TEXT_JSON`: every `Json` column that is not in JSON_CELLS, and why it
  *   holds no user text (json-columns.test.ts fails on a column in neither);
@@ -20,8 +19,8 @@ export const NO_TEXT_JSON: Readonly<Record<string, string>> = {
 		"EventData is ids and Money by construction (events/data.ts)",
 	"PushDelivery.payload": "ids and Money, built from EventData",
 	"AuditLogEntry.context": "an action code and tags (payments/write.ts)",
-	"BudgetBook.styleUndo": "ids, amounts and flags (E2EE rule 10)",
-	"Envelope.limitUndo": "ids, amounts and flags (E2EE rule 10)",
+	"BudgetBook.styleUndo": "ids, amounts and flags",
+	"Envelope.limitUndo": "ids, amounts and flags",
 	"EnvelopeChange.before":
 		"ids, amounts and flags; the one name has its own column, previousName",
 	"BudgetDraft.expectedIn": "ids and amounts from a zod schema",

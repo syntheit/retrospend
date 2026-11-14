@@ -1,5 +1,5 @@
 /**
- * Fixtures for the sync pg tests (E2EE lane P, P14a): one user with a row in
+ * Fixtures for the sync pg tests: one user with a row in
  * each of the nine synced tables, the stamps read straight from "sync_change"
  * as the owner, and a poll for the commit-order cut (a stamp shows only once
  * every older transaction in the cluster has finished, so a read right after

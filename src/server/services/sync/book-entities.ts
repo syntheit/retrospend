@@ -1,5 +1,5 @@
 /**
- * The personal-book family of the delta log (E2EE lane P, P14c). These twelve
+ * The personal-book family of the delta log. These twelve
  * tables carry a bookId (budget_book is its own book), not a userId, so the
  * stamp trigger resolves the owner through the book: its creator, while the
  * book is personal and has no other member (20261114200000_sync_book_family,

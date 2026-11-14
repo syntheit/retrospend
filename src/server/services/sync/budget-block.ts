@@ -1,5 +1,5 @@
 /**
- * The budget block of GET /sync/shares (E2EE P13b): what a device needs to
+ * The budget block of GET /sync/shares: what a device needs to
  * read the budget figures the way the server does, from the caller's own
  * rows plus this block. It rides on the shares snapshot so the owed totals
  * and the splits come from one database snapshot.
@@ -23,7 +23,7 @@
  *   server has not kept). What the retry covers is exactly the values those
  *   reads make; the block holds the frozen values of the caller's own expenses.
  *
- * The gap that remains until frozen values move to the device (K9): a device
+ * The gap that remains while frozen values stay on the server: a device
  * that values a row itself before its next pull, across a rate rewrite (the
  * daily sync moves a rate row in place, 09:05 UTC) or on stale cached rates,
  * can read a value the server has not frozen yet. The pull's own check cannot
