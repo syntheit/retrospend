@@ -18,13 +18,14 @@
  * Nothing existed 30 days ago, so the change is the whole of it:
  * opened 3,603,856.60 + 2,898,000 - 74,000 - 18,900 - 7,500 - 500 - 5,000.
  */
+
+import { CHANGE_PARTS } from "@retrospend/domain/accounts/net-worth-change";
 import { beforeAll, describe, expect, it } from "vitest";
 import { addIncome } from "~/server/services/income/add.mutation";
 import { forUser } from "~/server/services/preview";
 import { createTransfer } from "~/server/services/transfers/create.mutation";
 import { adminDb } from "~/test/pg-harness";
 import { closeAccount } from "./manage";
-import { CHANGE_PARTS } from "./net-worth-change";
 import {
 	arsUser,
 	figure,

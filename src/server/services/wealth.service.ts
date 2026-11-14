@@ -1,3 +1,4 @@
+import { CUSTOM_RATE_TYPE } from "@retrospend/domain/accounts/valuation";
 import { isValidRate } from "@retrospend/domain/money";
 import {
 	convertDec,
@@ -31,8 +32,6 @@ import {
 	usdWithoutRate,
 	valueToday,
 } from "./accounts/dashboard-rates";
-
-import { CUSTOM_RATE_TYPE } from "./accounts/valuation";
 
 export type { SnapshotMeta };
 /** Rate type of a rate the user typed in; it is kept as is, never looked up. */

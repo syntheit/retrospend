@@ -3,11 +3,12 @@
  * whether it is part of the budget, and its history of legs (income,
  * transfers, fees) and balance updates with their Not logged difference.
  */
+
+import { inBudget } from "@retrospend/domain/accounts/places";
 import { TRPCError } from "@trpc/server";
 import { userTransaction } from "~/server/db-tx";
 import type { Prisma, PrismaClient } from "~prisma";
 import { homeCurrencyOf } from "./ledger";
-import { inBudget } from "./places";
 
 export async function accountViewIn(
 	tx: Prisma.TransactionClient,

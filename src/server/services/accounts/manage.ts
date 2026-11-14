@@ -5,6 +5,7 @@
  * logged difference like Update balance.
  */
 
+import { isLiability } from "@retrospend/domain/accounts/places";
 import { isCrypto } from "@retrospend/domain/currency-format";
 import { dec } from "@retrospend/domain/envelope/units";
 import {
@@ -25,7 +26,6 @@ import type { AssetType, Prisma, PrismaClient } from "~prisma";
 import { writeCheckpoint } from "./checkpoint";
 import { moveDay } from "./dates";
 import { homeCurrencyOf, lockOpenAccount } from "./ledger";
-import { isLiability } from "./places";
 import { switchRateType } from "./rate-type.mutation";
 
 type Db = PrismaClient;

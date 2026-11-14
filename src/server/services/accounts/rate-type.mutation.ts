@@ -5,6 +5,7 @@
  * past. Undo (account.revertRateType) removes the switch.
  */
 
+import { dayOf, valueOn } from "@retrospend/domain/accounts/series";
 import { toMinor } from "@retrospend/domain/envelope/units";
 import { TRPCError } from "@trpc/server";
 import type { Money } from "~/server/figures/registry";
@@ -14,7 +15,6 @@ import type { Prisma } from "~prisma";
 import { moveDay } from "./dates";
 import { lockOpenAccount } from "./ledger";
 import { loadAccountsLedger } from "./load";
-import { dayOf, valueOn } from "./series";
 
 type Tx = Prisma.TransactionClient;
 

@@ -13,13 +13,13 @@
  *   outside the budget.
  */
 
+import { placeInBudget } from "@retrospend/domain/accounts/places";
 import { dec, toMinor } from "@retrospend/domain/envelope/units";
 import { currencyDecimals } from "@retrospend/domain/money";
 import { roundRateDec } from "@retrospend/domain/money-dec";
 import type { Decimal } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import type { AssetType, TransferKind } from "~prisma";
-import { placeInBudget } from "../accounts/places";
 
 export interface PlaceFacts {
 	readonly id: string;
