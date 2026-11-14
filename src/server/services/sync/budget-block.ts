@@ -9,13 +9,19 @@
  * read and then kept, valuer.ts):
  *
  * - tx1 (freezeForDevice, default isolation) is the same read the budget
- *   figures make, so it freezes and marks stale exactly what a page or a
- *   registry read would. A device pull counts as that first read.
+ *   figures make (budgetReads: the month view and the plan cost, whose closed
+ *   months' income rows are valued too), so it freezes and marks stale exactly
+ *   what a page or a registry read would. A device pull counts as that first
+ *   read.
  * - tx2 (readBudgetBlock, inside the repeatable-read read-only snapshot of the
- *   shares) loads the book again and writes nothing. When it still has a value
- *   it would freeze, a row came in or a rate day turned between the two, and
- *   the caller runs tx1 once more and retries; a second miss answers the budget
- *   as unavailable (the device must never value a row the server has not kept).
+ *   shares) runs the very same reads, without writing, and counts every value
+ *   they would freeze (load-state.ts readingForDevice). When any remain, a row
+ *   came in or a rate day turned between the two, or tx1 was skipped on a quiet
+ *   log and something with no stamp changed (a new share, a settlement, a rate
+ *   arriving): the caller runs tx1 once more and retries, and a second miss
+ *   answers the budget as unavailable (the device must never value a row the
+ *   server has not kept). What the retry covers is exactly the values those
+ *   reads make; the block holds the frozen values of the caller's own expenses.
  *
  * The gap that remains until frozen values move to the device (K9): a device
  * that values a row itself before its next pull, across a rate rewrite (the
@@ -28,14 +34,14 @@
  * frozen values are only those of the caller's own expenses.
  */
 import { bookValuationKey } from "@retrospend/domain/envelope/book-valuation-key";
-import { loadBookFrom } from "@retrospend/domain/envelope/load-book";
 import {
 	type SplitBlock,
 	splitBlockOf,
 } from "@retrospend/domain/envelope/split-block";
+import type { FreshValue } from "@retrospend/domain/envelope/valuer";
 import type { db as globalDb } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
-import { prismaBookSource } from "~/server/services/envelope/inputs";
+import { readingForDevice } from "~/server/services/envelope/load-state";
 import {
 	forgetMonthViews,
 	monthViewIn,
@@ -65,6 +71,21 @@ export type BudgetRead =
 	| { kind: "block"; block: BudgetBlock; unfrozen: number };
 
 /**
+ * What the budget figures read, at the default needFrom like a registry read:
+ * the month view (its own rows and the shares) and the plan cost, which reads
+ * the closed months' income rows behind a checkpoint and another month view.
+ * tx1 and tx2 both run exactly this, so what one freezes the other counts.
+ * (The spending before the book starts is the year view's, not a figure's.)
+ */
+async function budgetReads(tx: Tx, userId: string, now: Date) {
+	forgetMonthViews(tx);
+	const view = await monthViewIn(tx, userId, now);
+	if (!view) return null;
+	await planCostIn(tx, userId, {}, now);
+	return view;
+}
+
+/**
  * tx1: reads the budget the way the figures do, so what a read freezes or
  * marks stale is done before the snapshot. False when there is no personal
  * book of the caller's alone to read.
@@ -79,18 +100,14 @@ export async function freezeForDevice(
 		select: { defaultEnvelopeId: true },
 	});
 	if (!book?.defaultEnvelopeId) return false;
-	forgetMonthViews(tx);
-	// The month view freezes its own rows and shares; the plan cost reads the
-	// closed months' income and the spending before the book, which freeze too.
-	if (!(await monthViewIn(tx, userId, now))) return false;
-	await planCostIn(tx, userId, {}, now);
-	return true;
+	return (await readingForDevice(() => budgetReads(tx, userId, now))) !== null;
 }
 
 /**
  * The entities whose stamps say a row a valuation reads may have changed.
- * Shares, settlements and rates have no stamp: tx2's own check of what is
- * still unfrozen covers them, so skipping tx1 on a quiet log is safe.
+ * Shares, settlements and rates have no stamp: when one of them leaves a value
+ * unfrozen, tx2 counts it and the retry freezes it, so skipping tx1 on a log
+ * with no new stamp is safe.
  */
 const SIGNAL_ENTITIES = [
 	"expense",
@@ -100,20 +117,24 @@ const SIGNAL_ENTITIES = [
 	"recurring_template",
 ];
 
-/** The newest visible stamp of each of those entities for the caller, as one string. */
+/**
+ * A fingerprint of the caller's stamps of those entities: how many, and a sum
+ * of a hash of each stamp's (txid, seq). Any stamp that is new or rewritten
+ * changes it, whatever its txid is relative to the others. It is not cut at
+ * the oldest open transaction on the server (the sync cursors need that cut to
+ * stay ordered; a change fingerprint does not), so an open transaction elsewhere
+ * cannot hide a new stamp and make tx1 skip. A stamp is read once its writer
+ * committed, which is when its row can be valued.
+ */
 async function stampSignal(tx: Tx, userId: string): Promise<string> {
-	const rows = await tx.$queryRaw<{ stamp: string | null }[]>(Prisma.sql`
-		SELECT (
-			SELECT c."txid"::text || ':' || c."seq"::text
-			FROM "sync_change" c
-			WHERE c."userId" = ${userId} AND c."entity" = e.entity
-			  AND c."txid" < pg_snapshot_xmin(pg_current_snapshot())
-			ORDER BY c."txid" DESC, c."seq" DESC
-			LIMIT 1
-		) AS "stamp"
-		FROM unnest(${SIGNAL_ENTITIES}::text[]) WITH ORDINALITY AS e(entity, n)
-		ORDER BY e.n`);
-	return rows.map((r) => r.stamp ?? "-").join(",");
+	const rows = await tx.$queryRaw<{ n: string; h: string }[]>(Prisma.sql`
+		SELECT count(c."seq")::text AS "n",
+		       COALESCE(sum(hashtextextended(c."txid"::text || ':' || c."seq"::text, 0)), 0)::text AS "h"
+		FROM unnest(${SIGNAL_ENTITIES}::text[]) WITH ORDINALITY AS e(entity, ord)
+		LEFT JOIN "sync_change" c ON c."userId" = ${userId} AND c."entity" = e.entity
+		GROUP BY e.entity, e.ord
+		ORDER BY e.ord`);
+	return rows.map((r) => `${r.n}:${r.h}`).join(",");
 }
 
 /** What tx1 last saw per user in this process; a restart only costs one more run. */
@@ -217,9 +238,14 @@ export async function readBudgetBlock(
 		select: { id: true },
 	});
 	if (shared) return { kind: "none" };
-	const load = await loadBookFrom(prismaBookSource(tx, userId), { now });
-	if (!load) return { kind: "none" };
-	const { loaded } = load;
+	// The reads tx1 makes, counting instead of freezing (and reading no names).
+	const fresh = new Map<string, FreshValue>();
+	const view = await readingForDevice(
+		() => budgetReads(tx, userId, now),
+		fresh,
+	);
+	if (!view) return { kind: "none" };
+	const { loaded } = view;
 	const asOf = await readCutCursor(tx);
 	const checkpoint = loaded.checkpoint;
 	const behind = [
@@ -239,5 +265,5 @@ export async function readBudgetBlock(
 			own: await ownExpenseIds(tx, userId, behind),
 		}),
 	};
-	return { kind: "block", block, unfrozen: load.fresh.length };
+	return { kind: "block", block, unfrozen: fresh.size };
 }

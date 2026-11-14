@@ -6,6 +6,8 @@
  * duplicates) is pure and lives in @retrospend/domain/envelope/load-state,
  * shared with devices; the writes stay here.
  */
+
+import { AsyncLocalStorage } from "node:async_hooks";
 import type {
 	FreshValue,
 	FrozenValue,
@@ -26,6 +28,29 @@ export {
 type Tx = Prisma.TransactionClient;
 
 /**
+ * A read made for a device (the budget block of GET /sync/shares): the same
+ * reads the figures make, with two differences the loaders honor from here
+ * instead of through every signature. Names a device never receives (a
+ * project's, in the splits) are not read, so they are not opened. With a
+ * `fresh` map the read writes nothing: the values it would freeze are put in
+ * the map (by book and key) and a stale mark is not written, which is what
+ * lets a read-only snapshot count what a freezing read would have kept.
+ */
+interface DeviceRead {
+	fresh: Map<string, FreshValue> | null;
+}
+
+const deviceRead = new AsyncLocalStorage<DeviceRead>();
+
+export const readingForDevice = <T>(
+	work: () => Promise<T>,
+	collect: Map<string, FreshValue> | null = null,
+): Promise<T> => deviceRead.run({ fresh: collect }, work);
+
+/** Whether the caller runs inside `readingForDevice`. */
+export const isDeviceRead = (): boolean => deviceRead.getStore() !== undefined;
+
+/**
  * One budget_dirty mark from `fromMonth`: the stale month a load found (no
  * trigger saw its change, a claimed shadow's share), so the next read revises
  * it under the book lock.
@@ -35,6 +60,7 @@ export async function markDirtyFrom(
 	bookId: string,
 	fromMonth: MonthKey,
 ) {
+	if (deviceRead.getStore()?.fresh) return;
 	await tx.budgetDirty.create({ data: { bookId, fromMonth } });
 }
 
@@ -62,6 +88,11 @@ export async function freezeValues(
 	fresh: readonly FreshValue[],
 ) {
 	if (fresh.length === 0) return;
+	const sink = deviceRead.getStore()?.fresh;
+	if (sink) {
+		for (const f of fresh) sink.set(`${bookId}|${f.key}`, f);
+		return;
+	}
 	await tx.budgetRowValue.createMany({
 		data: fresh.map((f) => ({
 			bookId,

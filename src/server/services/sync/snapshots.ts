@@ -44,17 +44,25 @@ export interface ShareSnapshot {
 	budget?: BudgetRead;
 }
 
+/** Longest one statement of the budget block may run: well under the 30 s of the transaction it sits in. */
+const BUDGET_STATEMENT_TIMEOUT_MS = 10_000;
+
 /**
  * The budget block inside the snapshot's transaction, isolated: a failure
  * (a bug, a database error) rolls back to a savepoint, so the shares and the
  * owed totals already read still return and the block answers as unavailable.
+ * A statement that runs past `timeoutMs` fails inside the savepoint too (the
+ * local timeout is undone with it), well before the transaction's own limit
+ * would end the whole snapshot.
  */
 async function isolatedBudget(
 	tx: Prisma.TransactionClient,
 	userId: string,
+	timeoutMs: number,
 ): Promise<BudgetRead> {
 	await tx.$executeRaw`SAVEPOINT budget_block`;
 	try {
+		await tx.$executeRaw`SELECT set_config('statement_timeout', ${String(timeoutMs)}, true)`;
 		const read = await readBudgetBlock(tx, userId, new Date());
 		await tx.$executeRaw`RELEASE SAVEPOINT budget_block`;
 		return read;
@@ -73,6 +81,7 @@ async function readShares(
 	db: typeof globalDb,
 	userId: string,
 	withBudget: boolean,
+	budgetTimeoutMs: number,
 ): Promise<ShareSnapshot> {
 	return userTransaction(
 		db,
@@ -100,7 +109,9 @@ async function readShares(
 				orderBy: { id: "asc" },
 			});
 			const owed = await owedOnce(tx, userId);
-			const budget = withBudget ? await isolatedBudget(tx, userId) : undefined;
+			const budget = withBudget
+				? await isolatedBudget(tx, userId, budgetTimeoutMs)
+				: undefined;
 			return {
 				shares: rows.map((p) => ({
 					id: p.id,
@@ -145,14 +156,15 @@ const needsFreeze = (s: ShareSnapshot) =>
 export async function readShareSnapshot(
 	db: typeof globalDb,
 	userId: string,
-	opts: { budget?: boolean } = {},
+	opts: { budget?: boolean; budgetTimeoutMs?: number } = {},
 ): Promise<ShareSnapshot> {
-	if (!opts.budget) return readShares(db, userId, false);
+	const timeout = opts.budgetTimeoutMs ?? BUDGET_STATEMENT_TIMEOUT_MS;
+	if (!opts.budget) return readShares(db, userId, false, timeout);
 	await runFreeze(db, userId);
-	let snapshot = await readShares(db, userId, true);
+	let snapshot = await readShares(db, userId, true, timeout);
 	if (needsFreeze(snapshot)) {
 		await runFreeze(db, userId, { force: true });
-		snapshot = await readShares(db, userId, true);
+		snapshot = await readShares(db, userId, true, timeout);
 		if (needsFreeze(snapshot))
 			snapshot = { ...snapshot, budget: { kind: "unavailable" } };
 	}

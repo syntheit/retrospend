@@ -10,22 +10,28 @@
  * the debt at its booking rate.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { userTransaction } from "~/server/db-tx";
 import { readFigures } from "~/server/figures/read";
 import { forUser } from "~/server/services/preview";
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import { seedUser, setupInput } from "../envelope/__tests__/pg-fixture";
+import { readingForDevice } from "../envelope/load-state";
 import { getMonth } from "../envelope/read.service";
 import { setupEnvelopeBook } from "../envelope/setup.mutation";
+import { loadSplitInputs } from "../envelope/splits-input";
 import type { BudgetRead } from "./budget-block";
 import {
+	assigned,
 	BUDGET_IDS,
+	money,
 	NOW,
 	row,
 	startClock,
 	stopClock,
 	VECTOR_FIGURES,
 	vector,
+	world,
 	ZONE,
 } from "./budget-block-test-support";
 import { readShareSnapshot } from "./snapshots";
@@ -178,20 +184,71 @@ describe("the vector through the block", () => {
 		).toEqual(VECTOR_FIGURES);
 	});
 
-	it("gives the same web figures with and without a prior pull, same clock and data", async () => {
+	/**
+	 * A book from August with Aug to Oct closed (a checkpoint through them):
+	 * a USD 10 with no booked value on Aug 12, behind the checkpoint, and one
+	 * on Nov 8, after it. Every kept value is then deleted (a book closed
+	 * before values were kept). A registry read starts its pass at the
+	 * checkpoint, so it values and freezes only the Nov 8 row: 10 x 1,500 =
+	 * 15,000.00 = 1,500,000 minor. A device pull must leave the same set and
+	 * the same figures; a freeze that read from the book's start would also
+	 * keep the Aug 12 row.
+	 */
+	it("keeps the same values and gives the same figures as a plain registry read, on a book with a checkpoint", async () => {
 		reset();
-		const pulled = await vector();
-		const plain = await vector();
-		await pull(pulled.userId);
-		const read = async (v: typeof pulled) =>
+		const closedWorld = async () => {
+			const w = await world();
+			await adminDb.budgetBook.update({
+				where: { id: w.bookId },
+				data: {
+					startMonth: 202608,
+					startDate: new Date("2026-08-05T03:00:00Z"),
+				},
+			});
+			await adminDb.bookPeriod.updateMany({
+				where: { bookId: w.bookId },
+				data: { fromMonth: 202608 },
+			});
+			await assigned(w, 202611, "Dining", "300000");
+			for (const at of ["2026-08-12T15:00:00Z", "2026-11-08T15:00:00Z"])
+				await row(w, { amount: "10", currency: "USD", at });
+			await getMonth(w.userId, undefined, NOW);
+			await adminDb.budgetRowValue.deleteMany({ where: { bookId: w.bookId } });
+			return w;
+		};
+		// What was kept, without the row ids (they differ between worlds).
+		const kept = async (w: { bookId: string }) =>
+			(await adminDb.budgetRowValue.findMany({ where: { bookId: w.bookId } }))
+				.map((f) =>
+					JSON.stringify([
+						f.key.split("|").slice(1).join("|"),
+						Number(f.minor),
+						f.approximate,
+					]),
+				)
+				.sort();
+		const figures = async (w: Awaited<ReturnType<typeof closedWorld>>) =>
 			Object.fromEntries(
-				await readFigures(v.userId, BUDGET_IDS, {
-					envelopeId: v.envelopes.Dining,
+				await readFigures(w.userId, BUDGET_IDS, {
+					envelopeId: w.envelopes.Dining,
 				}),
 			);
-		const [a, b] = [await read(pulled), await read(plain)];
+		const [pulled, plain] = [await closedWorld(), await closedWorld()];
+		// The books really are closed, with the Aug 12 row behind the checkpoint.
+		expect(
+			await adminDb.monthClose.count({ where: { bookId: pulled.bookId } }),
+		).toBeGreaterThanOrEqual(2);
+		expect((await pull(pulled.userId)).budget?.kind).toBe("block");
+		const viaDevice = await kept(pulled);
+		await figures(plain);
+		const viaRegistry = await kept(plain);
+		expect(viaDevice).toEqual(viaRegistry);
+		expect(viaRegistry).toEqual([
+			JSON.stringify(["USD|10|10|2026-11-08|blue", 1_500_000, false]),
+		]);
+		const [a, b] = [await figures(pulled), await figures(plain)];
 		expect(a).toEqual(b);
-		expect(a).toEqual(VECTOR_FIGURES);
+		expect(a["envelope.spent"]).toEqual(money(1_500_000));
 	});
 
 	it("freezes nothing before the first pull and the values it keeps after", async () => {
@@ -491,6 +548,63 @@ describe("one snapshot", () => {
 	});
 });
 
+/**
+ * An MDL book from August with no MDL rate at all, as stable-past.pg.test.ts
+ * builds one: no rate row of the pair, setup, the book moved back to Aug 1.
+ */
+async function mdlBook() {
+	const s = await seedUser();
+	await adminDb.user.update({
+		where: { id: s.user.id },
+		data: { homeCurrency: "MDL" },
+	});
+	await adminDb.exchangeRate.deleteMany({
+		where: { currency: "MDL", type: "official" },
+	});
+	await forUser(s.user.id).apply(setupEnvelopeBook, {
+		...setupInput(s),
+		startingMoneyMinor: 0,
+		timeZone: "UTC",
+	});
+	const book = await adminDb.budgetBook.findFirstOrThrow({
+		where: { createdById: s.user.id },
+	});
+	await adminDb.budgetBook.update({
+		where: { id: book.id },
+		data: { startMonth: 202608, startDate: new Date("2026-08-01T00:00:00Z") },
+	});
+	await adminDb.bookPeriod.updateMany({
+		where: { bookId: book.id },
+		data: { fromMonth: 202608 },
+	});
+	return { ...s, userId: s.user.id, bookId: book.id };
+}
+
+/** A USD row of `usd` dollars in an MDL book: no booked value, so it is valued at a rate. */
+function usdRow(
+	b: { userId: string; dining: string },
+	o: { usd: string; at: string; income?: boolean },
+) {
+	return fixtureDb.expense.create({
+		data: {
+			userId: b.userId,
+			title: "Row",
+			amount: new Prisma.Decimal(o.usd),
+			currency: "USD",
+			date: new Date(o.at),
+			categoryId: o.income ? null : b.dining,
+			amountInUSD: new Prisma.Decimal(o.usd),
+			exchangeRate: new Prisma.Decimal(1),
+			pricingSource: "MANUAL",
+			...(o.income
+				? { direction: "IN" as const, inType: "INCOME" as const }
+				: {}),
+		},
+	});
+}
+
+const NOV_4 = new Date("2026-11-04T15:00:00Z");
+
 describe("a rate missing when a month closed", () => {
 	/**
 	 * An MDL book from August with no MDL rate at all. A USD 10 row on Sep 5
@@ -504,47 +618,12 @@ describe("a rate missing when a month closed", () => {
 	 */
 	it("stays out of the figures and is listed in the block with its currency", async () => {
 		reset();
-		const s = await seedUser();
-		await adminDb.user.update({
-			where: { id: s.user.id },
-			data: { homeCurrency: "MDL" },
-		});
-		await adminDb.exchangeRate.deleteMany({
-			where: { currency: "MDL", type: "official" },
-		});
-		await forUser(s.user.id).apply(setupEnvelopeBook, {
-			...setupInput(s),
-			startingMoneyMinor: 0,
-			timeZone: "UTC",
-		});
-		const book = await adminDb.budgetBook.findFirstOrThrow({
-			where: { createdById: s.user.id },
-		});
-		await adminDb.budgetBook.update({
-			where: { id: book.id },
-			data: { startMonth: 202608, startDate: new Date("2026-08-01T00:00:00Z") },
-		});
-		await adminDb.bookPeriod.updateMany({
-			where: { bookId: book.id },
-			data: { fromMonth: 202608 },
-		});
-		const sep = await fixtureDb.expense.create({
-			data: {
-				userId: s.user.id,
-				title: "Row",
-				amount: new Prisma.Decimal(10),
-				currency: "USD",
-				date: new Date("2026-09-05T15:00:00Z"),
-				categoryId: s.dining,
-				amountInUSD: new Prisma.Decimal(10),
-				exchangeRate: new Prisma.Decimal(1),
-				pricingSource: "MANUAL",
-			},
-		});
+		const b = await mdlBook();
+		const sep = await usdRow(b, { usd: "10", at: "2026-09-05T15:00:00Z" });
 		try {
-			vi.setSystemTime(new Date("2026-11-04T15:00:00Z"));
+			vi.setSystemTime(NOV_4);
 			// The first read closes August to October with the row missing.
-			const month = await getMonth(s.user.id, undefined, new Date());
+			const month = await getMonth(b.userId, undefined, new Date());
 			expect(month?.incomplete).toBe(true);
 			const rate = await adminDb.exchangeRate.create({
 				data: {
@@ -555,7 +634,7 @@ describe("a rate missing when a month closed", () => {
 				},
 			});
 			try {
-				const snapshot = await pull(s.user.id);
+				const snapshot = await pull(b.userId);
 				const splits = blockOf(snapshot.budget).splits;
 				expect(splits.checkpointMissingRates).toEqual([
 					{
@@ -567,7 +646,7 @@ describe("a rate missing when a month closed", () => {
 				]);
 				// Still unavailable on the server, the figure the device must match.
 				expect(
-					(await readFigures(s.user.id, ["budget.notPlannedYet"])).get(
+					(await readFigures(b.userId, ["budget.notPlannedYet"])).get(
 						"budget.notPlannedYet",
 					),
 				).toBeNull();
@@ -577,5 +656,103 @@ describe("a rate missing when a month closed", () => {
 		} finally {
 			vi.setSystemTime(NOW);
 		}
+	});
+
+	/**
+	 * Typical income reads the closed months' income rows behind the
+	 * checkpoint and values them with the book's valuer. A USD 100 income on
+	 * Sep 5 had no rate when Aug to Oct closed, so nothing was kept. The first
+	 * pull finds the same: nothing to keep. An MDL rate then arrives dated Nov
+	 * 3 (no stamp, no close revised), so the next pull's freeze is skipped on
+	 * the quiet log; but typical income would now value that row at the nearest
+	 * rate, 100 x 41 = MDL 4,100.00 = 410,000 minor, and keep it. The block
+	 * must not go out without it: the read that counts the unfrozen values is
+	 * the freeze's own, closed incomes included, so the retry keeps it first.
+	 */
+	it("is kept before a block goes out, when only a closed month's income row would value at the new rate", async () => {
+		reset();
+		const b = await mdlBook();
+		const income = await usdRow(b, {
+			usd: "100",
+			at: "2026-09-05T15:00:00Z",
+			income: true,
+		});
+		try {
+			vi.setSystemTime(NOV_4);
+			await getMonth(b.userId, undefined, new Date());
+			const first = await pull(b.userId);
+			expect(blockOf(first.budget).frozen).toEqual([]);
+			const rate = await adminDb.exchangeRate.create({
+				data: {
+					date: new Date("2026-11-03T00:00:00Z"),
+					currency: "MDL",
+					type: "official",
+					rate: "41",
+				},
+			});
+			try {
+				hooks.freezes.length = 0;
+				const second = await pull(b.userId);
+				expect(hooks.freezes).toEqual(["skipped", "forced ran"]);
+				expect(blockOf(second.budget).frozen).toEqual([
+					{
+						key: `${income.id}|USD|100|100|2026-09-05|official`,
+						minor: 410_000,
+						approximate: true,
+					},
+				]);
+				expect(
+					await adminDb.budgetRowValue.count({ where: { bookId: b.bookId } }),
+				).toBe(1);
+			} finally {
+				await adminDb.exchangeRate.delete({ where: { id: rate.id } });
+			}
+		} finally {
+			vi.setSystemTime(NOW);
+		}
+	});
+});
+
+describe("a slow budget read", () => {
+	it("answers the budget as unavailable inside the snapshot, past the statement timeout, with the shares and owed intact", async () => {
+		reset();
+		const v = await vector();
+		hooks.blockFails = async (tx) => {
+			await (tx as typeof adminDb).$executeRaw`SELECT pg_sleep(1)`;
+		};
+		const snapshot = await readShareSnapshot(adminDb, v.userId, {
+			budget: true,
+			budgetTimeoutMs: 100,
+		});
+		expect(snapshot.budget).toEqual({ kind: "unavailable" });
+		expect(snapshot.shares).toHaveLength(1);
+		expect(snapshot.owed).toMatchObject({ owedToYou: 4_500_000 });
+		// The timeout was local to the failed part: the next pull is whole.
+		hooks.blockFails = null;
+		expect((await pull(v.userId)).budget?.kind).toBe("block");
+	});
+});
+
+describe("what a read for a device leaves unread", () => {
+	it("opens no project name, and reads one for everything else", async () => {
+		reset();
+		const w = await world();
+		await adminDb.project.create({
+			data: {
+				name: "Secret Trip",
+				createdById: w.userId,
+				participants: {
+					create: [{ participantType: "user", participantId: w.userId }],
+				},
+			},
+		});
+		const names = (forDevice: boolean) =>
+			userTransaction(adminDb, w.userId, async (tx) => {
+				const read = () => loadSplitInputs(tx, w.userId);
+				const inputs = await (forDevice ? readingForDevice(read) : read());
+				return inputs.rows.routes.map((r) => r.project.name);
+			});
+		expect(await names(false)).toEqual(["Secret Trip"]);
+		expect(await names(true)).toEqual([""]);
 	});
 });

@@ -23,6 +23,7 @@ import {
 	shareRateResolver,
 } from "../shared-expense-integration";
 import { resolveClaimAliases } from "../shared-expenses/identity";
+import { isDeviceRead } from "./load-state";
 import type { PartyRef, SettlementRowIn, SplitPart } from "./split-events";
 
 export {
@@ -149,15 +150,23 @@ export async function loadSplitInputs(
 	tx: Tx,
 	userId: string,
 ): Promise<SplitInputs> {
-	const routes = await tx.projectParticipant.findMany({
+	// A device never gets a project's name (readingForDevice): not read, so not opened.
+	const names = !isDeviceRead();
+	const found = await tx.projectParticipant.findMany({
 		where: { participantType: "user", participantId: userId },
 		select: {
 			projectId: true,
 			budgetRouting: true,
 			budgetEnvelopeId: true,
-			project: { select: { name: true } },
+			...(names ? { project: { select: { name: true } } } : {}),
 		},
 	});
+	const routes = found.map((r) => ({
+		projectId: r.projectId,
+		budgetRouting: r.budgetRouting,
+		budgetEnvelopeId: r.budgetEnvelopeId,
+		project: { name: "project" in r ? r.project.name : "" },
+	}));
 	const excluded = routes
 		.filter((r) => r.budgetRouting === "NOT_IN_BUDGET")
 		.map((r) => r.projectId);
