@@ -24,7 +24,7 @@ import {
 	resolveSplits,
 	SplitComputationError,
 } from "@retrospend/domain/shared-split-computation";
-import { amountColumn, columnsOf, engineInput, rateColumn, type SplitRow, shareColumns } from "./transaction-columns";
+import { amountColumn, changesMoney, columnsOf, engineInput, rateColumn, type SplitRow, shareColumns } from "./transaction-columns";
 import { type DeleteOptions, guardDelete } from "./delete-guard";
 import { rescaleExactSplits } from "./exact-rescale";
 
@@ -611,9 +611,9 @@ export class SharedTransactionService {
 						};
 					}),
 				});
-			} else {
-				// Even if splits didn't change structurally, reset verification
-				// because the transaction details changed. When the project
+			} else if (changesMoney(diff)) {
+				// Reset verification only when a money field changed (a title or note
+				// edit keeps every answer, a rejected share included). When the project
 				// auto-accepts, every non-actor participant re-accepts immediately;
 				// shadows always re-accept (a ghost can never approve); everyone else
 				// resets to PENDING for manual re-approval.

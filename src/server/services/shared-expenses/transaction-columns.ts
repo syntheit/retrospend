@@ -25,6 +25,22 @@ export const shareColumns = (p: {
 			: columnText(p.sharePercentage, 4),
 });
 
+/**
+ * Whether an edit's diff touches what a participant agreed to pay. Only then
+ * do the other participants answer again; a title, category, note or receipt
+ * edit keeps every answer.
+ */
+export const changesMoney = (diff: object) =>
+	[
+		"amount",
+		"currency",
+		"date",
+		"paidBy",
+		"projectId",
+		"splitMode",
+		"splitParticipants",
+	].some((field) => field in diff);
+
 /** An update's columns: its numbers go to Prisma as decimal text. */
 export function columnsOf<
 	T extends { amount?: number; exchangeRate?: number | null },

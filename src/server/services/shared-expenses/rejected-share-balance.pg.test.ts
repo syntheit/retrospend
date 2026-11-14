@@ -60,6 +60,7 @@ import {
 	type TestUser,
 } from "../project/__tests__/trip-fixture";
 import { seedUser, setupInput } from "../envelope/__tests__/pg-fixture";
+import { updateSharedExpense } from "../entry/shared.mutation";
 import { forUser } from "../preview";
 import { setupEnvelopeBook } from "../envelope/setup.mutation";
 import { FigureUnavailable } from "~/server/figures/registry";
@@ -651,6 +652,68 @@ describe("scenario F: a payment locks the expenses it settled, not a rejected sh
 			[counted.id]: true,
 			[rejected.id]: false,
 		});
+	});
+});
+
+describe("scenario H: a creator edit and a rejected share", () => {
+	it("5: a title edit keeps the rejection and owed; an amount edit resets it and shows the owed change", async () => {
+		const { ana, bruno, caro } = await cast();
+		const expense = await adminDb.sharedTransaction.create({
+			data: {
+				description: "Asado",
+				amount: "90000",
+				currency: "ARS",
+				date: new Date("2026-10-08"),
+				paidByType: "user",
+				paidById: ana.user.id,
+				createdByType: "user",
+				createdById: ana.user.id,
+				splitParticipants: {
+					create: [
+						[ana, "ACCEPTED"],
+						[bruno, "REJECTED"],
+						[caro, "ACCEPTED"],
+					].map(([u, status]) => ({
+						participantType: "user" as const,
+						participantId: (u as TestUser).user.id,
+						shareAmount: "30000",
+						verificationStatus: status as "ACCEPTED" | "REJECTED",
+					})),
+				},
+			},
+		});
+		const brunoStatus = async () =>
+			(
+				await adminDb.splitParticipant.findFirstOrThrow({
+					where: { transactionId: expense.id, participantId: bruno.user.id },
+				})
+			).verificationStatus;
+		const anaOwed = async () => (await owedOf(ana)).owedToYou;
+		expect(await anaOwed()).toBe(3_000_000);
+
+		// Not a money field: Bruno's answer and every figure stay.
+		await forUser(ana.user.id).apply(updateSharedExpense, {
+			id: expense.id,
+			description: "Asado del sabado",
+		});
+		expect(await brunoStatus()).toBe("REJECTED");
+		expect(await anaOwed()).toBe(3_000_000);
+
+		// A money field: all three shares become 20,000 and every answer is
+		// reset. Bruno's share counts again, so Ana is owed 20,000 + 20,000
+		// instead of 30,000: +10,000 (1,000,000 minor), shown before Save.
+		const edit = { id: expense.id, amount: 60000 };
+		const preview = await forUser(ana.user.id).preview(
+			updateSharedExpense,
+			edit,
+		);
+		const owedChange = preview.changes.find((c) => c.id === "owed.owedToYou");
+		expect(owedChange?.delta).toEqual({ minor: 1_000_000, currency: "ARS" });
+		await forUser(ana.user.id).apply(updateSharedExpense, edit);
+		// Bruno's account auto-accepts splits (the default), so the reset lands
+		// on AUTO_ACCEPTED; either way the rejection is gone and the share counts.
+		expect(await brunoStatus()).toBe("AUTO_ACCEPTED");
+		expect(await anaOwed()).toBe(4_000_000);
 	});
 });
 

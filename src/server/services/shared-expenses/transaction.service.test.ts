@@ -347,7 +347,7 @@ describe("SharedTransactionService", () => {
 			).rejects.toThrow("Settled transactions cannot be modified");
 		});
 
-		it("description-only edit re-accepts non-actor splits via updateMany (auto-accept expense)", async () => {
+		it("description-only edit keeps every answer: updateMany only flags unseen changes", async () => {
 			const { db, txClient } = createMockDb();
 			const existing = {
 				id: "txn-1",
@@ -402,19 +402,12 @@ describe("SharedTransactionService", () => {
 				description: "Dinner at Sotto",
 			});
 
-			// Splits did not change structurally, so verification is refreshed via
-			// updateMany. This is a standalone (auto-accept) expense, so the non-actor
-			// participant is re-accepted as AUTO_ACCEPTED, not reset to PENDING.
-			// Manual reset to PENDING only happens when the project turns auto-accept
-			// off (covered by the integration lifecycle suite).
-			expect(txClient.splitParticipant.updateMany).toHaveBeenCalledWith({
-				where: { id: { in: ["sp-bob"] } },
-				data: {
-					verificationStatus: "AUTO_ACCEPTED",
-					verifiedAt: expect.any(Date),
-					rejectionReason: null,
-				},
-			});
+			// A description is not a money field: no answer is touched, the one
+			// updateMany marks the others' unseen changes.
+			expect(txClient.splitParticipant.updateMany).toHaveBeenCalledTimes(1);
+			expect(txClient.splitParticipant.updateMany).toHaveBeenCalledWith(
+				expect.objectContaining({ data: { hasUnseenChanges: true } }),
+			);
 
 			// deleteMany should NOT have been called (splits unchanged)
 			expect(txClient.splitParticipant.deleteMany).not.toHaveBeenCalled();
@@ -430,6 +423,53 @@ describe("SharedTransactionService", () => {
 			expect(auditCall.data.changes.description).toEqual({
 				old: "Dinner",
 				new: "Dinner at Sotto",
+			});
+		});
+
+		it("a date edit with the same split re-accepts non-actor splits (a money field)", async () => {
+			const { db, txClient } = createMockDb();
+			const share = { toNumber: () => 25, toString: () => "25" };
+			const existing = {
+				id: "txn-1",
+				description: "Dinner",
+				amount: { toNumber: () => 50, toString: () => "50" },
+				currency: "USD",
+				date: new Date("2026-03-01"),
+				categoryId: null,
+				splitMode: "EQUAL",
+				notes: null,
+				receiptUrl: null,
+				projectId: null,
+				paidByType: "user",
+				paidById: "alice",
+				createdByType: "user",
+				createdById: "alice",
+				isLocked: false,
+				splitParticipants: [
+					{ participantType: "user", participantId: "alice", shareAmount: share },
+					{ participantType: "user", participantId: "bob", shareAmount: share },
+				],
+			};
+			txClient.sharedTransaction.findUnique.mockResolvedValue(existing);
+			txClient.sharedTransaction.update.mockResolvedValue(existing);
+			txClient.sharedTransaction.findUniqueOrThrow.mockResolvedValue(existing);
+			txClient.splitParticipant.findMany.mockResolvedValue([
+				{ id: "sp-bob", participantType: "user" },
+			]);
+
+			const service = new SharedTransactionService(db as never, {
+				participantType: "user",
+				participantId: "alice",
+			});
+			await service.update({ id: "txn-1", date: new Date("2026-03-05") });
+
+			expect(txClient.splitParticipant.updateMany).toHaveBeenCalledWith({
+				where: { id: { in: ["sp-bob"] } },
+				data: {
+					verificationStatus: "AUTO_ACCEPTED",
+					verifiedAt: expect.any(Date),
+					rejectionReason: null,
+				},
 			});
 		});
 
