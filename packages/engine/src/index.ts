@@ -4,6 +4,22 @@ export type {
 	LegRow,
 	SnapshotRow,
 } from "./accounts";
+export type {
+	AccountTerms,
+	BookPeriodRow,
+	BudgetBookRow,
+	BudgetSnapshotRow,
+	CloseSummary,
+	EnvelopeCategoryRow,
+	EnvelopeGroupRow,
+	EnvelopeRow,
+	ExpenseBookDetail,
+	FrozenEntry,
+	MonthCloseRow,
+	PayoffPlanRow,
+	TransferRow,
+	WealthTransferRow,
+} from "./book-rows";
 export {
 	type AnyRow,
 	type ChangeKind,
@@ -28,6 +44,7 @@ export {
 export { MemoryStore, type MemoryStoreOptions } from "./memory-store";
 export { type MovementRow, mirrorId } from "./movements";
 export {
+	BUDGET_SNAPSHOT_ID,
 	type CategoryRow,
 	type Change,
 	InvalidInputError,

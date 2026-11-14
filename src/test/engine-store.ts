@@ -15,6 +15,11 @@
  * projects hidden from reports. The owed row holds the server's own reading
  * (owedOnce), as GET /sync/shares hands it to a device.
  *
+ * The budget book family is the person's personal book (soloBook, the sync
+ * rule) with everything that hangs off it, and the transfers a bill reads;
+ * the budget snapshot is left empty, since only a pull of /sync/shares has the
+ * server's block to put in it.
+ *
  * The parity harness (P16) feeds its device store from the real v1 sync
  * routes instead; this builder is only its cross-check, so a row the routes
  * send is held to the row read straight from the tables.
@@ -25,8 +30,10 @@
 import { userTransaction } from "~/server/db-tx";
 import { FigureUnavailable } from "~/server/figures/unavailable";
 import { owedOnce } from "~/server/services/payments/figures";
+import { soloBook } from "~/server/services/sync/book-entities";
 import { resolveTimeZone } from "~/server/services/user-time-zone";
 import {
+	type CloseSummary,
 	MemoryStore,
 	OWED_ID,
 	type SettingsRow,
@@ -99,6 +106,66 @@ async function owedRowOf(userId: string): Promise<TableRows["owed"]> {
 	};
 }
 
+type StoredSummary = {
+	envelopes: { id: string; rule: string; sweepToId: string | null }[];
+	links?: Record<string, string>;
+};
+
+/** What the sync apply keeps of a close's summary: each envelope's rule and sweep, and the links. */
+function summaryOf(stored: unknown): CloseSummary {
+	const { envelopes, links } = stored as StoredSummary;
+	return {
+		envelopes: envelopes.map((e) => ({
+			id: e.id,
+			rule: e.rule,
+			sweepToId: e.sweepToId,
+		})),
+		...(links === undefined ? {} : { links }),
+	};
+}
+
+/** The personal book of `userId` and its rows, as the book family tables hold them. */
+async function bookRowsOf(userId: string) {
+	const book = await fixtureDb.budgetBook.findFirst({
+		where: soloBook(userId),
+	});
+	if (!book)
+		return {
+			books: [],
+			groups: [],
+			envelopes: [],
+			links: [],
+			periods: [],
+			closes: [],
+			movements: [],
+			wealth: [],
+			plans: [],
+		};
+	const where = { bookId: book.id };
+	const [groups, envelopes, links, periods, closes, movements, wealth, plans] =
+		await Promise.all([
+			fixtureDb.envelopeGroup.findMany({ where }),
+			fixtureDb.envelope.findMany({ where }),
+			fixtureDb.envelopeCategory.findMany({ where }),
+			fixtureDb.bookPeriod.findMany({ where }),
+			fixtureDb.monthClose.findMany({ where }),
+			fixtureDb.budgetMovement.findMany({ where }),
+			fixtureDb.wealthTransfer.findMany({ where }),
+			fixtureDb.payoffPlan.findMany({ where }),
+		]);
+	return {
+		books: [book],
+		groups,
+		envelopes,
+		links,
+		periods,
+		closes,
+		movements,
+		wealth,
+		plans,
+	};
+}
+
 export async function engineStoreOf(userId: string): Promise<MemoryStore> {
 	const [
 		settings,
@@ -112,6 +179,8 @@ export async function engineStoreOf(userId: string): Promise<MemoryStore> {
 		templates,
 		categories,
 		owed,
+		book,
+		transfers,
 	] = await Promise.all([
 		settingsOf(userId),
 		fixtureDb.expense.findMany({
@@ -127,6 +196,8 @@ export async function engineStoreOf(userId: string): Promise<MemoryStore> {
 		fixtureDb.recurringTemplate.findMany({ where: { userId } }),
 		fixtureDb.category.findMany({ where: { userId } }),
 		owedRowOf(userId),
+		bookRowsOf(userId),
+		fixtureDb.transfer.findMany({ where: { userId } }),
 	]);
 	const byId = new Map(categories.map((c) => [c.id, c]));
 	const categoryRefOf = (id: string | null) => {
@@ -151,6 +222,12 @@ export async function engineStoreOf(userId: string): Promise<MemoryStore> {
 				entryKind: r.entryKind,
 				inType: r.inType,
 				isAmortizedParent: r.isAmortizedParent,
+				isAmortizedChild: r.isAmortizedChild,
+				parentId: r.parentId,
+				amortizeMode: r.amortizeMode,
+				keepInWealth: r.keepInWealth,
+				recurringTemplateId: r.recurringTemplateId,
+				budgetEnvelopeId: r.budgetEnvelopeId,
 				excludeFromAnalytics: r.excludeFromAnalytics,
 				categoryKind: r.category?.kind ?? null,
 				categoryId: r.categoryId,
@@ -169,6 +246,9 @@ export async function engineStoreOf(userId: string): Promise<MemoryStore> {
 				balance: a.balance.toFixed(),
 				exchangeRate: text(a.exchangeRate),
 				exchangeRateType: a.exchangeRateType,
+				interestRate: text(a.interestRate),
+				minimumPayment: text(a.minimumPayment),
+				dueDate: a.dueDate,
 				closedAt: a.closedAt,
 				createdAt: a.createdAt,
 			})),
@@ -222,6 +302,106 @@ export async function engineStoreOf(userId: string): Promise<MemoryStore> {
 				// Joined here from the top-level category read: a nested select would
 				// hand back a sealed name unopened in the sealed suite.
 				category: categoryRefOf(t.categoryId),
+			})),
+			budgetBooks: book.books.map((b) => ({
+				id: b.id,
+				currency: b.currency,
+				style: b.style,
+				fundingSource: b.fundingSource,
+				pausedAt: b.pausedAt,
+				weekStartDay: b.weekStartDay,
+				timeZone: b.timeZone,
+				startDate: b.startDate,
+				startMonth: b.startMonth,
+				defaultEnvelopeId: b.defaultEnvelopeId,
+				startingBalanceExpenseId: b.startingBalanceExpenseId,
+			})),
+			envelopeGroups: book.groups.map((g) => ({
+				id: g.id,
+				bookId: g.bookId,
+				name: g.name,
+				sortOrder: g.sortOrder,
+				role: g.role,
+				targetKind: g.targetKind,
+				targetValue: text(g.targetValue),
+				mainEnvelopeId: g.mainEnvelopeId,
+				archivedAt: g.archivedAt,
+			})),
+			envelopes: book.envelopes.map((e) => ({
+				id: e.id,
+				bookId: e.bookId,
+				groupId: e.groupId,
+				name: e.name,
+				icon: e.icon,
+				color: e.color,
+				kind: e.kind,
+				sortOrder: e.sortOrder,
+				targetAmount: text(e.targetAmount),
+				targetMode: e.targetMode,
+				targetCadence: e.targetCadence,
+				targetMonthlyAmount: text(e.targetMonthlyAmount),
+				targetCurrency: e.targetCurrency,
+				targetDueDate: e.targetDueDate,
+				targetRepeat: e.targetRepeat,
+				targetStartMonth: e.targetStartMonth,
+				targetTemplateId: e.targetTemplateId,
+				targetLiabilityId: e.targetLiabilityId,
+				leftoverRule: e.leftoverRule,
+				leftoverSweepToId: e.leftoverSweepToId,
+				wealthAccountId: e.wealthAccountId,
+				wealthDedicated: e.wealthDedicated,
+				archivedAt: e.archivedAt,
+			})),
+			envelopeCategories: book.links.map((l) => ({
+				id: l.id,
+				bookId: l.bookId,
+				envelopeId: l.envelopeId,
+				categoryId: l.categoryId,
+			})),
+			bookPeriods: book.periods.map((p) => ({
+				id: p.id,
+				bookId: p.bookId,
+				fromMonth: p.fromMonth,
+				startDay: p.startDay,
+				rateType: p.rateType,
+			})),
+			monthCloses: book.closes.map((c) => ({
+				id: c.id,
+				bookId: c.bookId,
+				month: c.month,
+				summary: summaryOf(c.summary),
+			})),
+			budgetMovements: book.movements.map((m) => ({
+				id: m.id,
+				bookId: m.bookId,
+				month: m.month,
+				fromEnvelopeId: m.fromEnvelopeId,
+				toEnvelopeId: m.toEnvelopeId,
+				amount: m.amount.toFixed(),
+			})),
+			wealthTransfers: book.wealth.map((w) => ({
+				id: w.id,
+				bookId: w.bookId,
+				direction: w.direction,
+				envelopeId: w.envelopeId,
+				date: w.date,
+				amount: w.amount.toFixed(),
+			})),
+			payoffPlans: book.plans.map((p) => ({
+				id: p.id,
+				bookId: p.bookId,
+				strategy: p.strategy,
+				extraMonthly: p.extraMonthly.toFixed(),
+				customOrder: p.customOrder as string[],
+				envelopeId: p.envelopeId,
+			})),
+			transfers: transfers.map((t) => ({
+				id: t.id,
+				date: t.date,
+				toAccountId: t.toAccountId,
+				toAmount: t.toAmount.toFixed(),
+				toCurrency: t.toCurrency,
+				feeExpenseId: t.feeExpenseId,
 			})),
 		},
 	});

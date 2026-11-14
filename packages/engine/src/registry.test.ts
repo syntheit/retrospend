@@ -61,7 +61,17 @@ const rate = (
 type Rows = { [T in TableName]: TableRows[T][] };
 
 const rows = (): Rows => ({
+	bookPeriods: [],
+	budgetBooks: [],
 	budgetMovements: [],
+	budgetSnapshot: [],
+	envelopeCategories: [],
+	envelopeGroups: [],
+	envelopes: [],
+	monthCloses: [],
+	payoffPlans: [],
+	transfers: [],
+	wealthTransfers: [],
 	categories: [],
 	// Alice is owed ARS 5,000.00 and owes ARS 2,000.00, in her home currency.
 	owed: [{ id: "owed", currency: "ARS", owedToYou: 500_000, youOwe: 200_000 }],

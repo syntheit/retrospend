@@ -19,6 +19,20 @@ import type { MovementRow } from "@retrospend/domain/envelope/inputs-port";
 import type { StoredRateRow } from "@retrospend/domain/money";
 import type { RecurringTemplateRow } from "@retrospend/domain/recurring-view";
 import type { SpentExpenseRow, SpentShareRow } from "@retrospend/domain/spent";
+import type {
+	AccountTerms,
+	BookPeriodRow,
+	BudgetBookRow,
+	BudgetSnapshotRow,
+	EnvelopeCategoryRow,
+	EnvelopeGroupRow,
+	EnvelopeRow,
+	ExpenseBookDetail,
+	MonthCloseRow,
+	PayoffPlanRow,
+	TransferRow,
+	WealthTransferRow,
+} from "./book-rows";
 
 export interface WithId {
 	readonly id: string;
@@ -112,19 +126,32 @@ export type ShareRow = Readonly<SpentShareRow> &
 
 /** Each table's row type. A new figure's loader adds its table here. */
 export interface TableRows {
-	expenses: Readonly<SpentExpenseRow> & WithId & ExpenseDetail;
+	expenses: Readonly<SpentExpenseRow> &
+		WithId &
+		ExpenseDetail &
+		ExpenseBookDetail;
 	shares: ShareRow;
 	legs: LegRow;
 	snapshots: SnapshotRow & WithId;
-	accounts: AccountRow;
+	accounts: AccountRow & AccountTerms;
 	rateSwitches: RateSwitchRow & WithId;
 	rates: Readonly<StoredRateRow> & WithId;
 	rateSync: RateSyncRow;
-	budgetMovements: Readonly<MovementRow> & WithId;
+	budgetMovements: Readonly<MovementRow> & WithId & { readonly bookId: string };
 	recurringTemplates: Readonly<RecurringTemplateRow> & TemplateDetail;
 	categories: CategoryRow;
 	owed: OwedRow;
 	settings: SettingsRow;
+	budgetBooks: BudgetBookRow;
+	envelopeGroups: EnvelopeGroupRow;
+	envelopes: EnvelopeRow;
+	envelopeCategories: EnvelopeCategoryRow;
+	bookPeriods: BookPeriodRow;
+	monthCloses: MonthCloseRow;
+	wealthTransfers: WealthTransferRow;
+	payoffPlans: PayoffPlanRow;
+	transfers: TransferRow;
+	budgetSnapshot: BudgetSnapshotRow;
 }
 
 export type TableName = keyof TableRows;
@@ -143,6 +170,16 @@ export const TABLE_NAMES = [
 	"categories",
 	"owed",
 	"settings",
+	"budgetBooks",
+	"envelopeGroups",
+	"envelopes",
+	"envelopeCategories",
+	"bookPeriods",
+	"monthCloses",
+	"wealthTransfers",
+	"payoffPlans",
+	"transfers",
+	"budgetSnapshot",
 ] as const satisfies readonly TableName[];
 
 /** Reads. Lists come back ordered by id, so a loader never depends on insert order. */
@@ -217,11 +254,15 @@ export const RATE_SYNC_ID = "rates";
 /** The one row of the owed table. */
 export const OWED_ID = "owed";
 
+/** The one row of the budgetSnapshot table. */
+export const BUDGET_SNAPSHOT_ID = "budget";
+
 /** Tables that hold exactly one row, and its id; any other id is refused. */
 export const SINGLE_ROW_IDS: Partial<Record<TableName, string>> = {
 	settings: SETTINGS_ID,
 	rateSync: RATE_SYNC_ID,
 	owed: OWED_ID,
+	budgetSnapshot: BUDGET_SNAPSHOT_ID,
 };
 
 /** A write the port refuses: the row breaks a rule of its table. */
