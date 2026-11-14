@@ -29,11 +29,21 @@ import {
 	type SyncAccountLegDto,
 	type SyncAccountRateTypeDto,
 	type SyncAccountSnapshotDto,
+	type SyncBookPeriodDto,
+	type SyncBudgetBookDto,
+	type SyncBudgetMovementDto,
 	type SyncCategoryDto,
+	type SyncEnvelopeCategoryDto,
+	type SyncEnvelopeDto,
+	type SyncEnvelopeGroupDto,
 	type SyncExpenseDto,
+	type SyncMonthCloseDto,
+	type SyncPayoffPlanDto,
 	type SyncRecurringTemplateDto,
 	type SyncSettingsDto,
 	type SyncSharesDto,
+	type SyncTransferDto,
+	type SyncWealthTransferDto,
 } from "@retrospend/api-contract";
 import {
 	applyDailyTable,
@@ -68,6 +78,19 @@ const freshIp = () => {
 	const [a = 0, b = 0, c = 0] = randomBytes(3);
 	return { "x-real-ip": `10.${a}.${b}.${c}` };
 };
+
+/**
+ * The entities the loop pulls today. The book family and transfers apply too
+ * (the engine's WireOf) but are pulled with the device budget reads (P13b-1e).
+ */
+type PulledEntity =
+	| "categories"
+	| "recurringTemplates"
+	| "expenses"
+	| "accounts"
+	| "snapshots"
+	| "legs"
+	| "rateSwitches";
 
 export interface Device {
 	userId: string;
@@ -109,7 +132,7 @@ interface Route {
 
 /** One cursor entity: its table and a runner with the DTO type fixed. */
 interface Spec {
-	entity: SyncEntity;
+	entity: PulledEntity;
 	run(
 		device: Device,
 		expected: number,
@@ -118,7 +141,7 @@ interface Spec {
 }
 
 /** `Dto extends WireOf[E]` is the check that the contract's row is what the engine applies. */
-const spec = <E extends SyncEntity, Dto extends WireOf[E]>(
+const spec = <E extends PulledEntity, Dto extends WireOf[E]>(
 	entity: E,
 	path: string,
 	route: Route,
@@ -167,7 +190,7 @@ const SPECS = [
 	),
 ] as const;
 
-const COUNT_OF: Record<SyncEntity, keyof ParityLedger["counts"]> = {
+const COUNT_OF: Record<PulledEntity, keyof ParityLedger["counts"]> = {
 	categories: "categories",
 	recurringTemplates: "templates",
 	expenses: "expenses",
@@ -217,7 +240,7 @@ export async function expectedCounts(
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const TABLE_OF: Record<SyncEntity, TableName> = {
+const TABLE_OF: Record<PulledEntity, TableName> = {
 	categories: "categories",
 	recurringTemplates: "recurringTemplates",
 	expenses: "expenses",
@@ -227,7 +250,7 @@ const TABLE_OF: Record<SyncEntity, TableName> = {
 	rateSwitches: "rateSwitches",
 };
 
-async function pullEntity<E extends SyncEntity, Dto extends WireOf[E]>(
+async function pullEntity<E extends PulledEntity, Dto extends WireOf[E]>(
 	device: Device,
 	entity: E,
 	path: string,
@@ -363,3 +386,23 @@ export async function pullAll(
 	if (options.shares !== false) entities.shares = await pullShares(device);
 	return { entities, totalMs: performance.now() - started };
 }
+
+type ContractRowIs<E extends SyncEntity, Dto extends WireOf[E]> = Dto;
+
+/**
+ * Compile-time only: the contract's book rows and transfers are what the
+ * engine applies, so a contract change that drops or retypes a field the
+ * engine keeps fails here. The pull loop fetches them in P13b-1e.
+ */
+export type BookWireChecks = [
+	ContractRowIs<"budgetBooks", SyncBudgetBookDto>,
+	ContractRowIs<"envelopeGroups", SyncEnvelopeGroupDto>,
+	ContractRowIs<"envelopes", SyncEnvelopeDto>,
+	ContractRowIs<"envelopeCategories", SyncEnvelopeCategoryDto>,
+	ContractRowIs<"budgetMovements", SyncBudgetMovementDto>,
+	ContractRowIs<"bookPeriods", SyncBookPeriodDto>,
+	ContractRowIs<"monthCloses", SyncMonthCloseDto>,
+	ContractRowIs<"wealthTransfers", SyncWealthTransferDto>,
+	ContractRowIs<"payoffPlans", SyncPayoffPlanDto>,
+	ContractRowIs<"transfers", SyncTransferDto>,
+];

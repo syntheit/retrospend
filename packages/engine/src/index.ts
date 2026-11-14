@@ -110,5 +110,18 @@ export {
 	type WireSnapshot,
 	type WireTemplate,
 } from "./sync-apply";
+export type {
+	WireBookPeriod,
+	WireBudgetBlock,
+	WireBudgetBook,
+	WireBudgetMovement,
+	WireEnvelope,
+	WireEnvelopeCategory,
+	WireEnvelopeGroup,
+	WireMonthClose,
+	WirePayoffPlan,
+	WireTransfer,
+	WireWealthTransfer,
+} from "./sync-apply-book";
 export type { TemplateRow } from "./templates";
 export type { UndoToken } from "./undo";
