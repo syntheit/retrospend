@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# The emulator pool of the Maestro runner on vista (docs/roadmap/maestro-plan.md
-# 1.3). Sourced by run.sh; not run by itself.
+# The emulator pool of the Maestro runner on vista.
+# Sourced by run.sh; not run by itself.
 #
 # Two slots, 0 and 1. Slot N owns, and nothing else touches:
 #   ~/rs-runner/pool/slot-N.lock   flock, held on fd 9 by the run that has the slot

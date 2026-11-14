@@ -1,5 +1,5 @@
-# Maestro workspace for the mobile end-to-end flows
-# (docs/roadmap/maestro-plan.md). Only flows/ are run; _common/ holds subflows.
+# Maestro workspace for the mobile end-to-end flows.
+# Only flows/ are run; _common/ holds subflows.
 #
 #   maestro test -e SERVER=http://10.0.2.2:3200 --include-tags smoke apps/mobile/maestro
 #

@@ -1,5 +1,5 @@
 /**
- * `fixtureDb` for the sealed suite (E2EE D11 PR 4.4, sealed-sweep.ts). A
+ * `fixtureDb` for the sealed suite (sealed-sweep.ts). A
  * test seeds and inspects a user's rows on the global client, which holds no
  * user key: with sealing on, the seal path refuses its user-class text and a
  * read gets "" for it; and a filter on any mapped column is refused once

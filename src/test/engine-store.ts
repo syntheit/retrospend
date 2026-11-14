@@ -2,7 +2,7 @@
  * One user's Postgres rows as a device store: the raw rows of every table the
  * device figures read, in the engine port's shape, in a MemoryStore. The
  * conformance tests (device-registry.pg.test.ts) hold the device registry to
- * the server on it, and the device sync work (P16) reuses it to seed a store.
+ * the server on it, and the parity harness reuses it to seed a store.
  *
  * Every row is read raw and none is filtered: a rejected share, a hidden
  * project's share and a row hidden from reports all go in, so the device
@@ -22,7 +22,7 @@
  * block that pull makes, put in the active snapshot as a device does once its
  * gate has passed (the gate is held by its own tests).
  *
- * The parity harness (P16) feeds its device store from the real v1 sync
+ * The parity harness feeds its device store from the real v1 sync
  * routes instead; this builder is only its cross-check, so a row the routes
  * send is held to the row read straight from the tables.
  *

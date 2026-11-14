@@ -1,5 +1,5 @@
 /**
- * What every per-table seeder of the parity ledger shares (E2EE P16): the
+ * What every per-table seeder of the parity ledger shares: the
  * user, the deterministic generator, the sizes, the currencies and amounts
  * rows are drawn from, and the instants at the edges of every profile's
  * period. The seeders run in a fixed order, each drawing from the one

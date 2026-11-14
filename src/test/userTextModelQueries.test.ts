@@ -1,5 +1,5 @@
 // Catches: a Prisma model query that filters, sorts or groups on a user-text
-// column (E2EE lane D10). Once field encryption is on, those columns hold
+// column. Once field encryption is on, those columns hold
 // ciphertext with a random nonce, so `orderBy name`, `name contains`, `title
 // equals` and `groupBy title` return nothing useful: the text has to be read,
 // opened and compared in the app. userTextRawSql.test.ts guards raw SQL; this
@@ -45,7 +45,7 @@ const COLUMNS = [
 	"rejectionReason",
 	"rejectedReason",
 	"adminNote",
-	// Import job text outside the declared fields (D11 Revision 3).
+	// Import job text outside the declared fields.
 	"fileData",
 	"errorMessage",
 	"phone",
@@ -73,7 +73,7 @@ const ALLOWED: { file: string; column: string; reason: string }[] = [
 	{
 		file: "src/server/services/title-suggestions.service.ts",
 		column: "description",
-		reason: "D10: shared descriptions, same two paths as titles",
+		reason: "shared descriptions, same two paths as titles",
 	},
 	{
 		file: "src/server/services/expense-duplicate.ts",

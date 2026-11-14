@@ -1,4 +1,4 @@
-// Money arithmetic ratchet (docs/roadmap/money-decimal.md, D5). Money math is
+// Money arithmetic ratchet. Money math is
 // exact Decimal (`@retrospend/domain/money-dec`); a float or Prisma's Decimal
 // (20 digits, half up) in a figure loses cents. Two counts per file of money
 // code, compared with arithmetic-baseline.json:

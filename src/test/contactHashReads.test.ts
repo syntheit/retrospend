@@ -1,5 +1,5 @@
 // Catches: a whole-row read of a ghost or a guest that would carry `emailHash`
-// out of the server (E2EE D11 Revision 3, PR 3a). The hash is deterministic
+// out of the server. The hash is deterministic
 // across the instance, so a client holding it could compare addresses of
 // people it does not know. A Prisma call on `shadowProfile` or `guestSession`
 // that returns a row (find, create, update, upsert, delete, and the bulk

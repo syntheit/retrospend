@@ -1,7 +1,7 @@
-// Field encryption (docs/roadmap/e2ee-spike.md 4.5, lane D) stores a longer
+// Field encryption stores a longer
 // string than the plaintext. Every column that holds a declared user-text
 // field must fit the ciphertext of the longest value its limit allows, or the
-// D11 backfill fails on a long title. This reads the real column types from
+// sealing backfill fails on a long title. This reads the real column types from
 // the migrated database, so a new field, a new limit or a new bounded column
 // that breaks the rule fails here.
 import { randomBytes } from "node:crypto";
@@ -218,7 +218,7 @@ describe("user-text columns hold their ciphertext", () => {
 	});
 
 	it("stores every mapped column as TEXT, declared field or not", async () => {
-		// The field map names every column D11 seals. A bounded column would
+		// The field map names every column sealing covers. A bounded column would
 		// reject a ciphertext once a field has no declared limit to size it by.
 		const notText: string[] = [];
 		for (const [table, column] of mappedColumns()) {

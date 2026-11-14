@@ -1,5 +1,5 @@
 /**
- * The parity harness (E2EE P16): a device store fed only from the real v1
+ * The parity harness: a device store fed only from the real v1
  * sync routes, held to the server on every device figure, across eight
  * profiles (home currency, zone, fiscal month start) and two instants. The
  * pull driver (pull.ts) calls the routes the way the app will; the engine's
@@ -14,7 +14,7 @@
  *
  * A: every id and variant equal, missing currencies included. B: each synced
  * table equals the rows read straight from the database tables (the test
- * builder of P13, engineStoreOf), so what the routes send is held to the
+ * builder engineStoreOf), so what the routes send is held to the
  * columns. C: a delta round after deleting, rejecting, hiding and adding an
  * unpriced row, then undoing all of it, and a rate rewritten after the values
  * were frozen. D: every server figure is compared or named server-only. E:

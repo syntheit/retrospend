@@ -1,5 +1,5 @@
 /**
- * Reading figures on both sides and holding them equal (E2EE P16). The server
+ * Reading figures on both sides and holding them equal. The server
  * side reads the real registry through a user transaction; the device side
  * reads the device registry from a store. `readAll` reads every device figure
  * id and its variants (each template and account, none, an unknown one) on

@@ -1,7 +1,6 @@
 /**
- * Sealed rows for pg tests (E2EE D11 PR 3.2). Nothing in the app seals until
- * PR 4, so a test writes ciphertext itself: keys come from the PR 2 getters
- * (which mint), and the sealed value is written with raw SQL on the admin
+ * Sealed rows for pg tests. A test writes ciphertext itself: keys come from
+ * the key getters (which mint), and the sealed value is written with raw SQL on the admin
  * client, so no extension sees it. Every sealed cell is read back raw and
  * must start with the wire prefix, so a test cannot pass on plaintext.
  *
@@ -42,7 +41,7 @@ export const newMasterKeyring = () =>
 
 /**
  * The user's data keys, minted on first use. A mint drops the cached ring,
- * as PR 4's seal path will, so a "no key" cached before it is not served.
+ * as the seal path does, so a "no key" cached before it is not served.
  */
 export async function userKeyring(userId: string, master: Keyring) {
 	const ring = await userTransaction(keystoreDb, userId, (tx) =>

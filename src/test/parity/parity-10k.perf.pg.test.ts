@@ -1,5 +1,5 @@
 /**
- * The parity harness at the size of a real ledger (E2EE P16, plan test F):
+ * The parity harness at the size of a real ledger:
  * 10,000 expenses, 3,000 legs, 500 shares, dense daily rates, six profiles.
  * One ledger is pulled once through the real routes; each profile is then a
  * user update, a re-pull of settings and shares, and the same comparison as
@@ -358,8 +358,8 @@ describe.skipIf(sealedSuite)(
 
 		// The device has no checkpoints: every budget read replays the book from
 		// its start, here 24 months with about 30 envelopes and 500 movements, over
-		// the 10,000 expenses. Logged, never asserted (decision 4 of the P13b plan:
-		// a device checkpoint cache only if this says it must).
+		// the 10,000 expenses. Logged, never asserted: a device checkpoint
+		// cache is worth building only if this says it must.
 		it("times the budget replay from the book's start, and sizes the snapshot", async () => {
 			const clock = () => CLOCK;
 			const loads: number[] = [];

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Runs the mobile Maestro flows on vista's Android emulator pool
-# (docs/roadmap/maestro-plan.md 1.3). Run it from a worktree on harbor:
+# Runs the mobile Maestro flows on vista's Android emulator pool.
+# Run it from a worktree on harbor:
 #
 #   bash apps/mobile/maestro/ops/maestro.sh --tags smoke
 #   bash apps/mobile/maestro/ops/maestro.sh --flows flows/sign-in.yaml,flows/edit-expense.yaml

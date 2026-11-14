@@ -1,4 +1,4 @@
-// Privilege ratchet for retrospend_app (access hardening plan, PR 2). The
+// Privilege ratchet for retrospend_app. The
 // expectation file, retrospend-app-privileges.json, lists for every table what
 // the app role may do: table privileges, row-level security and policies; plus
 // the column-level privileges, the sequence privileges and the default

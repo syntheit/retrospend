@@ -1,5 +1,5 @@
 /**
- * The accounts of the parity ledger (E2EE P16): accounts of every kind (a
+ * The accounts of the parity ledger: accounts of every kind (a
  * closed one, liabilities, a rate type set), monthly snapshots (a third of
  * them from before the currency column), legs of every source (some Not
  * tracked, some with a booked home value) and rate type switches, two on one

@@ -1,5 +1,5 @@
 /**
- * Create data for every mapped model (E2EE D11 PR 3.2 and 4.2): the pg tests
+ * Create data for every mapped model: the pg tests
  * that read sealed cells and the ones that write them seed rows the same way.
  * Each call gives fresh values (unique where the schema needs them) with every
  * mapped column set, and ARS amounts where money appears.

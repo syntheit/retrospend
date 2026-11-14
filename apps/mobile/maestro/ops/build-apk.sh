@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Builds the Android app the Maestro flows drive (docs/roadmap/maestro-plan.md
-# 1.1): the release variant, so the JS bundle is embedded and no Metro runs,
+# Builds the Android app the Maestro flows drive: the release variant, so the JS bundle is embedded and no Metro runs,
 # x86_64 only (the emulator), signed with the debug key, with the e2e build
 # profile that compiles in the test-only sign-in link. Never upload this APK:
 # scripts/check-release-bundle.sh would (rightly) refuse its bundle.

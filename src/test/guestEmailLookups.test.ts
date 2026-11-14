@@ -1,5 +1,4 @@
-// Catches: a lookup of a guest session by its `email` column (E2EE D11
-// Revision 3, PR 4). Once the epoch is set `guest_session.email` is
+// Catches: a lookup of a guest session by its `email` column. Once the epoch is set `guest_session.email` is
 // ciphertext with a random nonce, so an equality on it quietly finds nothing
 // (and field-open.ts refuses the call). The one way to find a guest by address
 // is `contactLookup("guest_session", address)` (keys/contact-hash.ts), which

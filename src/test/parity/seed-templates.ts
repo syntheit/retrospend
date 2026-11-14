@@ -1,5 +1,5 @@
 /**
- * The recurring templates of the parity ledger (E2EE P16): every frequency
+ * The recurring templates of the parity ledger: every frequency
  * and direction, one that asks for its amount, one paused, one anchored to
  * the 31st, due around the first clock.
  */

@@ -1,5 +1,5 @@
 /**
- * The ledger of the parity harness (E2EE P16): one user's rows in every table
+ * The ledger of the parity harness: one user's rows in every table
  * a device syncs, in any size, deterministic from a seed. Built to cover what
  * the figures branch on: ARS rows booked at blue, at official and unbooked,
  * USD, JPY and KWD rows with their own decimals, refunds, income, drafts,

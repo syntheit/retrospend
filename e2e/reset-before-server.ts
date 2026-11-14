@@ -1,7 +1,6 @@
 /**
  * Runs before `pnpm dev:test` starts, in both e2e modes (playwright.config.ts
- * prefixes the webServer command with it; E2EE D11 PR 9.2, docs/roadmap/
- * e2ee-d11-pr9.md critic round 2 item 1). Playwright starts the web server
+ * prefixes the webServer command with it). Playwright starts the web server
  * before global setup, so by the time the seed runs the server has already
  * decided what it is: sealed (a fresh canary, instance key, sealing floor and
  * epoch) or not (nothing written). What the previous run left must not

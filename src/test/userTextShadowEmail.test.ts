@@ -1,5 +1,5 @@
-// Catches: a filter, sort or group on a ghost's email (E2EE D11 Revision 3,
-// PR 3b). `shadow_profile.email` is the creator's sealed text, so once the
+// Catches: a filter, sort or group on a ghost's email.
+// `shadow_profile.email` is the creator's sealed text, so once the
 // field encryption epoch is set Postgres would compare ciphertext with a
 // random nonce and quietly miss every row. A ghost is found by address only
 // through `contactLookup` (services/keys/contact-hash.ts: the hash, or the
