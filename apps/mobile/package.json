@@ -30,6 +30,7 @@
 		"@retrospend/api-contract": "workspace:*",
 		"@retrospend/crypto": "workspace:*",
 		"@retrospend/domain": "workspace:*",
+		"@retrospend/engine": "workspace:*",
 		"@retrospend/i18n": "workspace:*",
 		"@retrospend/tokens": "workspace:*",
 		"better-auth": "1.7.12",

@@ -107,7 +107,9 @@ export {
 export {
 	DEVICE_FIGURE_IDS,
 	type DeviceFiguresDeps,
+	type DeviceReading,
 	deviceFigures,
+	readDeviceFigures,
 	serverOnlyReason,
 } from "./registry";
 export { type ReadRepos, type Repos, readRepos, repos } from "./repos";
@@ -143,5 +145,17 @@ export type {
 	WireTransfer,
 	WireWealthTransfer,
 } from "./sync-apply-book";
+export {
+	type PullApi,
+	type PullCursors,
+	type PullOptions,
+	type PullReport,
+	type PullStep,
+	pullAll,
+	pullRates,
+	pullSettings,
+	pullShares,
+	type StepReport,
+} from "./sync-pull";
 export type { TemplateRow } from "./templates";
 export type { UndoToken } from "./undo";

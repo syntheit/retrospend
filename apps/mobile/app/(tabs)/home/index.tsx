@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import { useDeviceReads } from "@/data/useDeviceEngine";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { ActivityRow } from "@/features/activity/ActivityRow";
 import { mergePending } from "@/features/activity/pending";
@@ -39,7 +40,11 @@ export default function HomeScreen() {
 	const { columns } = useLayoutClass();
 	const dates = useHomeDates();
 	const { api } = useSession();
-	const fetch = useMemo(() => (api ? fetchHome(api) : null), [api]);
+	const device = useDeviceReads();
+	const fetch = useMemo(
+		() => (api ? fetchHome(api, device) : null),
+		[api, device],
+	);
 	const { state, reload } = useCachedRead(HOME_CACHE, fetch);
 	const { ops: rowOps, sheet: recurringSheet } = useHomeRowOps();
 	// Entries still waiting on this phone join Recent, as they join Activity.

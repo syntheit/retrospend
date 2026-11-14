@@ -22,6 +22,7 @@ jest.mock("expo-router", () => ({ useFocusEffect: () => {} }));
 jest.mock("@/layout/destinations", () => ({ ADD_CONTROL: "floating" }));
 jest.mock("@/surfaces/useSurfaceLinks", () => ({ useSurfaceLinks: () => {} }));
 jest.mock("./useOutboxFlush", () => ({ useOutboxFlush: () => {} }));
+jest.mock("@/data/useDeviceEngine", () => ({ useDevicePull: () => {} }));
 jest.mock("./replaceDraft", () => ({
 	replaceDraft: (_dirty: boolean, go: () => void) => go(),
 }));

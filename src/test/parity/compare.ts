@@ -20,8 +20,8 @@ import { userTransaction } from "~/server/db-tx";
 import { figures } from "~/server/figures/registry";
 import {
 	DEVICE_FIGURE_IDS,
-	deviceFigures,
 	type Reader,
+	readDeviceFigures,
 } from "../../../packages/engine/src/index";
 import { adminDb } from "../pg-harness";
 
@@ -51,31 +51,8 @@ export async function serverRead(
 	});
 }
 
-/**
- * Reads `ids` from the device registry over `store`, one pass. `clock` fixes
- * the instant the figures read at, so a timing run can use the real Date
- * instead of a faked one.
- */
-export async function deviceReadFrom(
-	store: Reader,
-	userId: string,
-	ids: readonly string[],
-	narrowing: Record<string, string> = {},
-	clock?: () => Date,
-): Promise<Read> {
-	const registry = deviceFigures({ clock });
-	const pass = new FigurePass();
-	const readings = await readFiguresIn(
-		store,
-		ids.map((id) => registry.get(id)),
-		{ ...narrowing, userId },
-		pass,
-	);
-	return {
-		readings,
-		missing: new Map(ids.map((id) => [id, pass.missingRates(id)])),
-	};
-}
+/** The device side of a read: the engine's own reading function. */
+export const deviceReadFrom = readDeviceFigures;
 
 /** Every id equal on both sides, with the id in the failure message. */
 export function expectSame(device: Read, server: Read, ids: readonly string[]) {

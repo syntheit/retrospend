@@ -350,6 +350,9 @@ importers:
       '@retrospend/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@retrospend/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@retrospend/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
