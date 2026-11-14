@@ -124,16 +124,19 @@ function ReviewFooter({
 	if (rejecting)
 		return (
 			<div className="flex w-full flex-col gap-2">
-				<Label htmlFor="review-reason">{t("reason")}</Label>
-				<Textarea
-					autoFocus
-					className="border-line-strong rounded-ctl text-body"
-					id="review-reason"
-					maxLength={500}
-					onChange={(e) => onReason(e.target.value)}
-					rows={3}
-					value={reason}
-				/>
+				{answer.dry.error ? null : (
+					<>
+						<Label htmlFor="review-reason">{t("reason")}</Label>
+						<Textarea
+							className="border-line-strong rounded-ctl text-body"
+							id="review-reason"
+							maxLength={500}
+							onChange={(e) => onReason(e.target.value)}
+							rows={3}
+							value={reason}
+						/>
+					</>
+				)}
 				<div className="flex justify-end gap-2">
 					<Button kind="secondary" onClick={() => onRejecting(false)}>
 						{t("back")}
