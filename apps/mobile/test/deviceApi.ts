@@ -57,6 +57,12 @@ export interface Page {
 export interface DeviceApiOptions {
 	/** The expenses route's answer in each pull, by pull number from 1; the last one repeats. */
 	expenses?: Page[];
+	/**
+	 * The expenses route as pages of one list: a request with no cursor gets the
+	 * first page, one with a page's cursor gets the page after it, and every page
+	 * but the last says there is more. Used instead of `expenses`.
+	 */
+	expensePages?: { items: unknown[]; cursor: string }[];
 	/** What GET /figures answers: id to lines. */
 	figures?: Record<string, { minor: number; currency: string }[] | null>;
 	/** A pull in which this route throws, by pull number from 1. */
@@ -76,6 +82,21 @@ export function fakeDeviceApi(options: DeviceApiOptions = {}) {
 		calls.push(`${name}(${query.since ?? "-"})`);
 		if (options.fail?.route === name && options.fail.pull === pulls)
 			throw options.fail.error;
+		if (name === "expenses" && options.expensePages) {
+			const pages = options.expensePages;
+			const at = query.since
+				? pages.findIndex((p) => p.cursor === query.since) + 1
+				: 0;
+			const found = pages[at];
+			return found
+				? {
+						items: found.items,
+						tombstones: [],
+						cursor: found.cursor,
+						hasMore: at < pages.length - 1,
+					}
+				: empty(name);
+		}
 		const queued = options.expenses;
 		return name === "expenses" && queued
 			? (queued[Math.min(pulls, queued.length) - 1] ?? empty(name))

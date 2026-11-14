@@ -231,7 +231,10 @@ describe("a write that fails", () => {
 		when.on = false;
 		await put("later");
 		expect(first.store.list("expenses")).toHaveLength(2);
+		// Closing the given-up file does not turn the engine's commits into errors.
 		first.persistence.close();
+		await put("after close");
+		expect(first.store.list("expenses")).toHaveLength(3);
 		expect(boot(file()).loaded.rowCount).toBe(0);
 	});
 

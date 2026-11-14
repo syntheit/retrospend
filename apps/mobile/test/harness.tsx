@@ -62,6 +62,8 @@ function freshWorld() {
 	return {
 		/** The client `useSession().api`; undefined is a session with no server yet. */
 		api: undefined as RetrospendClient | undefined,
+		/** The connected server's address (`useSession().baseUrl`). */
+		baseUrl: "https://example.test" as string | null,
 		local: makeLocal(),
 		me: defaultMe(),
 		/** The number format locale (`useFormatLocale`). */
@@ -89,6 +91,7 @@ export function lastToast(): {
 jest.mock("@/auth/session", () => ({
 	useSession: () => ({
 		api: mockWorld().api,
+		baseUrl: mockWorld().baseUrl,
 		local: mockWorld().local,
 		state: {
 			status: "signedIn",

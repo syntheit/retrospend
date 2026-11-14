@@ -66,6 +66,8 @@ interface SessionValue {
 	signOut(options?: { discardUnsynced?: boolean }): Promise<void>;
 	/** Null until a server is connected. */
 	api: RetrospendClient | null;
+	/** The connected server's address; null until one is connected. */
+	baseUrl: string | null;
 	/** The local store for the signed-in account. */
 	local: Local | null;
 }
@@ -276,6 +278,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 		() => ({
 			state,
 			api,
+			baseUrl,
 			local,
 			signIn: async (email, password) =>
 				finishSignIn(

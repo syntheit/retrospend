@@ -186,7 +186,7 @@ export interface Persistence {
 	finishPull(): void;
 	/** The pull failed: the flag stays as the commits left it. */
 	abandonPull(): void;
-	/** Stops accepting commits (they throw) and closes the connection. */
+	/** Closes the connection. A live copy then refuses commits (they throw); a given-up one keeps ignoring them. */
 	close(): void;
 }
 
@@ -260,7 +260,9 @@ export function createPersistence(
 		},
 		close() {
 			if (state === "closed") return;
-			state = "closed";
+			// A given-up copy stays so: its engine goes on in memory, and a commit
+			// there is not a write to a file that has been closed.
+			if (state === "live") state = "closed";
 			try {
 				driver.close();
 			} catch {

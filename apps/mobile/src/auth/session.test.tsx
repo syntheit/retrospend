@@ -65,8 +65,11 @@ jest.mock("@/push/control", () => ({
 }));
 
 const seen: SessionState[] = [];
+const seenBaseUrls: (string | null)[] = [];
 function Probe() {
-	seen.push(useSession().state);
+	const session = useSession();
+	seen.push(session.state);
+	seenBaseUrls.push(session.baseUrl);
 	return null;
 }
 
@@ -111,6 +114,15 @@ describe("the client", () => {
 		} | null;
 		expect(typeof options?.newIdempotencyKey).toBe("function");
 		expect(options?.newIdempotencyKey?.()).toBe("key-1");
+	});
+});
+
+describe("the server address", () => {
+	it("is shared, so the device engine can name its database for this server", async () => {
+		seenBaseUrls.length = 0;
+		await coldStart({ token: true, cached: true });
+		expect(seenBaseUrls[0]).toBeNull();
+		expect(seenBaseUrls.at(-1)).toBe(BASE);
 	});
 });
 
