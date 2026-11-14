@@ -1,6 +1,9 @@
+import {
+	type StoredTarget,
+	targetOf,
+} from "@retrospend/domain/envelope/target-input";
 import { describe, expect, it } from "vitest";
 import { Prisma, type RecurringTemplate } from "~prisma";
-import { type StoredTarget, targetOf } from "./target-input";
 import { bookContext } from "./test-fixtures";
 
 const stored = (over: Partial<StoredTarget>): StoredTarget => ({

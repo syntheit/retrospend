@@ -10,13 +10,14 @@
  *   1. The page names the currencies and shows its partial line untagged.
  *   An "in" figure is empty when no active template brings money in.
  */
+
+import { FigureNarrowingError } from "@retrospend/domain/figures/narrowing";
 import {
 	type RecurringDirection,
 	type RecurringPeriod,
 	recurringAmountOf,
 	recurringCostOf,
 } from "@retrospend/domain/recurring-view";
-import { FigureNarrowingError } from "~/server/figures/narrowing";
 import type {
 	FigureDb,
 	FigureDefinition,

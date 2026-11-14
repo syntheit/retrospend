@@ -20,8 +20,8 @@ import {
 	entryShareOf,
 	rowKeyFromEntryId,
 } from "@retrospend/domain/activity-rows";
+import { FigureNarrowingError } from "@retrospend/domain/figures/narrowing";
 import { findExchangeRate } from "~/server/exchange-rates";
-import { FigureNarrowingError } from "~/server/figures/narrowing";
 import type {
 	FigureDb,
 	FigureDefinition,

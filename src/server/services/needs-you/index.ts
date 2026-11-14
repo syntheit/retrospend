@@ -5,6 +5,8 @@
  * (no per-item reads), and the budget items reuse the month view the
  * engine memoizes per transaction.
  */
+
+import { owedPeople } from "@retrospend/domain/envelope/owed";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { userTransaction } from "~/server/db-tx";
 import { hiddenRowCount } from "~/server/services/envelope/hidden-rows";
@@ -15,7 +17,6 @@ import {
 	owedInputOf,
 } from "~/server/services/envelope/month-read";
 import { isoDateIn, monthRange } from "~/server/services/envelope/months";
-import { owedPeople } from "~/server/services/envelope/owed";
 import { runPendingRules } from "~/server/services/envelope/rule.service";
 import { computeBalanceBatch } from "~/server/services/shared-expenses/balance-batch";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";

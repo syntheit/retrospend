@@ -1,11 +1,14 @@
-import { describe, expect, it } from "vitest";
 import {
 	type PlanCostTarget,
 	planCost,
 	runway,
 	savingsOutsideEnvelopes,
-} from "./plan-cost";
-import { type MonthlyTarget, savingsProgress } from "./targets";
+} from "@retrospend/domain/envelope/plan-cost";
+import {
+	type MonthlyTarget,
+	savingsProgress,
+} from "@retrospend/domain/envelope/targets";
+import { describe, expect, it } from "vitest";
 
 /** Whole currency units to minor (2 decimals). */
 const m = (n: number) => Math.round(n * 100);

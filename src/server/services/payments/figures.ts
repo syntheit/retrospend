@@ -9,7 +9,7 @@
  * All read through the transaction they are given, so a preview sees its
  * own uncommitted rows.
  */
-import { FigureNarrowingError } from "~/server/figures/narrowing";
+import { FigureNarrowingError } from "@retrospend/domain/figures/narrowing";
 import type {
 	FigureDb,
 	FigureDefinition,

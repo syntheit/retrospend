@@ -5,6 +5,8 @@
  * here: the read of the closed months' income rows, and the freezing of what
  * valuing them valued for the first time.
  */
+
+import type { GroupBase } from "@retrospend/domain/envelope/group-view";
 import {
 	type ClosedIncomes,
 	closedIncomesFrom,
@@ -12,7 +14,6 @@ import {
 } from "@retrospend/domain/envelope/income-history";
 import type { Prisma } from "~prisma";
 import { budgetClosedIncomeWhere } from "../spending";
-import type { GroupBase } from "./group-view";
 import type { LoadedBook } from "./inputs";
 import { freeze } from "./load-state";
 import type { MonthKey } from "./types";

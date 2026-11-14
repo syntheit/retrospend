@@ -5,6 +5,8 @@
  * SPEC §5.3 invariant, also on a draft's virtual month (a draft moves money
  * between terms; it creates none).
  */
+
+import { groupTargetDto } from "@retrospend/domain/envelope/group-view";
 import { describe, expect, it } from "vitest";
 import type { GetMonthOutput } from "~/lib/schemas/envelope";
 import type { DraftDto } from "~/lib/schemas/envelope-plan";
@@ -15,7 +17,6 @@ import {
 	type EngineInput,
 	type MovementEntry,
 } from "./engine";
-import { groupTargetDto } from "./group-view";
 import type { LoadedBook } from "./inputs";
 import { invariantSides } from "./invariant";
 import { buildMonthView, type ViewBook } from "./month-view";

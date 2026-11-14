@@ -1,5 +1,9 @@
+import {
+	type PayoffDebt,
+	type PayoffInput,
+	projectPayoff,
+} from "@retrospend/domain/envelope/payoff";
 import { describe, expect, it } from "vitest";
-import { type PayoffDebt, type PayoffInput, projectPayoff } from "./payoff";
 
 const m = (n: number) => Math.round(n * 100);
 

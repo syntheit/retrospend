@@ -4,11 +4,12 @@
  * that currency (D25) and is converted each month, never at save time. A new
  * target counts from the month it is set ("recalculates from today").
  */
+
+import { REPEAT_MONTHS } from "@retrospend/domain/envelope/target-input";
+import { savingsShape } from "@retrospend/domain/envelope/targets";
 import type { TargetInput } from "~/lib/schemas/envelope";
 import { Prisma } from "~prisma";
 import { EnvelopeError } from "./errors";
-import { REPEAT_MONTHS } from "./target-input";
-import { savingsShape } from "./targets";
 import { TargetConfigError } from "./types";
 import { fromMinor } from "./units";
 
