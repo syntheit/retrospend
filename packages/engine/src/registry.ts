@@ -1,5 +1,5 @@
 /**
- * The device's figure registry (E2EE P13): the figures a device reads from its
+ * The device's figure registry: the figures a device reads from its
  * own rows, through the same registry core, the same loaders-from-rows and the
  * same domain compute the server calls, so a number is never made two ways.
  * `src/server/figures/device-registry.pg.test.ts` holds each of these to the
@@ -383,7 +383,7 @@ export async function readDeviceFigures(
 const SERVER_ONLY: readonly { prefix: string; reason: string }[] = [
 	{
 		prefix: "entry.",
-		reason: "P13b: needs the activity tables the port lacks",
+		reason: "activity rows are built on the server",
 	},
 	{
 		prefix: "rate.dollarToday",

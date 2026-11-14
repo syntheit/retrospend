@@ -1,6 +1,6 @@
 /**
  * The conformance suite every Store must pass: the in-memory one today, the
- * SQLCipher one on the phone later (L1). It is a list of cases, not tied to a
+ * SQLCipher one on the phone later. It is a list of cases, not tied to a
  * test runner: register each with `it(c.name, () => c.run(makeStore))`. A case
  * throws when the store misbehaves. `makeStore` returns a fresh, empty store.
  *

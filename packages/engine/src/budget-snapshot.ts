@@ -1,5 +1,5 @@
 /**
- * The budget snapshot is double buffered (E2EE P13b, critic round 2 item 4).
+ * The budget snapshot is double buffered.
  * `budgetSnapshot` is the last block whose gate passed (every cursor the device
  * holds has reached its `asOf`, and its valuation key matches the book's): the
  * figures read it. A pull writes the block it got to `budgetSnapshotPending`

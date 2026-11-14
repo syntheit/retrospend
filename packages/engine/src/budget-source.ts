@@ -1,5 +1,5 @@
 /**
- * The budget loader's source over a device store (E2EE P13b): the same
+ * The budget loader's source over a device store: the same
  * `BookSource` the server implements over Postgres (server/services/envelope/
  * inputs.ts), so the one loader in @retrospend/domain/envelope runs on both.
  *

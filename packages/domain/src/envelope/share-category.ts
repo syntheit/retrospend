@@ -8,7 +8,7 @@
  *   2. PERSON: the category you last picked for a share someone paid.
  *   The server never reads the split's title or the creator's category name
  *   to guess (E2EE rule 2): with names sealed, another person's category is
- *   neutral to you (E2EE D11). A suggestion from the title is the client's,
+ *   neutral to you. A suggestion from the title is the client's,
  *   from its own data.
  * - With none, the share is unresolved: it lands in "Everything else" and
  *   raises one Needs you item (UNCATEGORIZED_SHARES).

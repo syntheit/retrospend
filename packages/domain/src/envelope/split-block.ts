@@ -1,5 +1,5 @@
 /**
- * The splits of one person's budget as a device takes them (E2EE P13b): the
+ * The splits of one person's budget as a device takes them: the
  * replay's answer, not the rows it ran on. A share's category, its project
  * routing and its value, what others owe and the payments that settled it all
  * depend on rows the device must not hold (other people's shares, their

@@ -1,5 +1,5 @@
 /**
- * When a device may read the budget figures (E2EE P13b). The budget block
+ * When a device may read the budget figures. The budget block
  * (GET /sync/shares?budget=1) is exact at one sync position, its `asOf`; the
  * rows the figures read come from the cursor pulls. The block is usable only
  * once every cursor the device holds has reached that position, and only

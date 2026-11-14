@@ -263,7 +263,7 @@ describe("device figure registry", () => {
 	});
 
 	it("names a reason for the server figures it leaves out", () => {
-		expect(serverOnlyReason("entry.amount")).toMatch(/P13b/);
+		expect(serverOnlyReason("entry.amount")).toMatch(/activity rows/);
 		expect(serverOnlyReason("owed.owedToYou")).toBeDefined();
 		expect(serverOnlyReason("spent")).toBeUndefined();
 	});

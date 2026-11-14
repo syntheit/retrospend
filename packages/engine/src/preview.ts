@@ -1,5 +1,5 @@
 /**
- * The device preview runner (E2EE P13): the same runner core the server uses
+ * The device preview runner: the same runner core the server uses
  * (@retrospend/domain/figures/preview), on the device store. A preview runs
  * the real write inside a store transaction that rolls back, reading the
  * figures through that transaction before and after, so the sheet that says

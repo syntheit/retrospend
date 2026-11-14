@@ -1,5 +1,5 @@
 /**
- * The 14 `insights.*` figures on a device (E2EE P6): the default view (this
+ * The 14 `insights.*` figures on a device: the default view (this
  * fiscal period, no filters) read from the device's own rows through the same
  * loaders-from-rows (insights-rows) and the same picks (insights-figures) the
  * server's registry calls, so a number is never made two ways.
