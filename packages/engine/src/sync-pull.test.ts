@@ -203,7 +203,7 @@ describe("pullAll", () => {
 		const log: string[] = [];
 		const report = await pullAll(new MemoryStore(), fakeApi(log), {});
 		expect(log).toEqual(FIRST_PULL);
-		expect(Object.keys(report.steps)).toEqual([
+		expect(Object.keys(report.entities)).toEqual([
 			"settings",
 			"shares",
 			...ROUTES.map(([, entity]) => entity),
@@ -267,7 +267,7 @@ describe("pullAll", () => {
 			"expenses(-,500)",
 			"expenses(a,500)",
 		]);
-		expect(first.steps.expenses).toMatchObject({ pages: 2, rows: 2 });
+		expect(first.entities.expenses).toMatchObject({ pages: 2, rows: 2 });
 		expect(cursors.expenses).toBe("b");
 		expect(cursors.categories).toBe("categories-0");
 
@@ -378,7 +378,10 @@ describe("pullAll", () => {
 			{ now: () => (t += 10) },
 		);
 		// Settings reads the clock before the request, after it and after the write.
-		expect(report.steps.settings).toMatchObject({ fetchMs: 10, applyMs: 10 });
+		expect(report.entities.settings).toMatchObject({
+			fetchMs: 10,
+			applyMs: 10,
+		});
 	});
 });
 

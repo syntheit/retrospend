@@ -83,7 +83,7 @@ export interface StepReport {
 export type PullStep = SyncEntity | "settings" | "shares" | "rates";
 
 export interface PullReport {
-	steps: Partial<Record<PullStep, StepReport>>;
+	entities: Partial<Record<PullStep, StepReport>>;
 	totalMs: number;
 	/** What the gate decided; absent when the shares snapshot was left out. */
 	promotion?: { promoted: boolean; reason?: string };
@@ -248,18 +248,18 @@ export async function pullAll(
 ): Promise<PullReport> {
 	const now = options.now ?? Date.now;
 	const started = now();
-	const steps: PullReport["steps"] = {};
-	steps.settings = await pullSettings(store, api, options);
+	const entities: PullReport["entities"] = {};
+	entities.settings = await pullSettings(store, api, options);
 	const withShares = options.shares !== false;
-	if (withShares) steps.shares = await pullShares(store, api, options);
+	if (withShares) entities.shares = await pullShares(store, api, options);
 	for (const s of ENTITY_STEPS)
-		steps[s.entity] = await pullEntity(store, api, cursors, s, options);
-	steps.rates = await pullRates(store, api, options);
+		entities[s.entity] = await pullEntity(store, api, cursors, s, options);
+	entities.rates = await pullRates(store, api, options);
 	const promotion = withShares
 		? await store.transaction((tx) => promoteBudgetIfReady(tx, cursors))
 		: undefined;
 	return {
-		steps,
+		entities,
 		totalMs: now() - started,
 		...(promotion ? { promotion } : {}),
 	};
