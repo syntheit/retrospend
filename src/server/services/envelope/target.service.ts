@@ -9,6 +9,8 @@
  * Moves no money. The previous target is stored in the change log, so the
  * undo puts back exactly what was there, whichever columns it used.
  */
+
+import type { EnvelopeTarget } from "@retrospend/domain/envelope/needs";
 import type { TargetInput } from "~/lib/schemas/envelope";
 import type {
 	SetTargetInput,
@@ -21,7 +23,6 @@ import { EnvelopeError } from "./errors";
 import { restoreData, snapshotOf } from "./limit-target";
 import { forgetMonthViews } from "./month-read";
 import { checkEnvelope, lockedSnapshot, snapshot } from "./movement-state";
-import type { EnvelopeTarget } from "./needs";
 import { checkTarget, replaceTarget } from "./target-write";
 import type { Minor } from "./types";
 

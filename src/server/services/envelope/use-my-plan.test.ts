@@ -2,11 +2,15 @@
  * Use my plan's rest (D-owner-2026-10-22e): Leave it (default), Save it,
  * Next month. Values by hand.
  */
+
+import {
+	buildMonthView,
+	type ViewBook,
+} from "@retrospend/domain/envelope/month-view";
 import { describe, expect, it } from "vitest";
 import { computeBook, type EngineInput } from "./engine";
 import type { LoadedBook } from "./inputs";
 import type { MonthRead } from "./month-read";
-import { buildMonthView, type ViewBook } from "./month-view";
 import { proposePlan } from "./use-my-plan";
 
 const usd = (minor: number) => ({ minor, currency: "USD" });

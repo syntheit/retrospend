@@ -7,6 +7,12 @@
  */
 
 import { groupTargetDto } from "@retrospend/domain/envelope/group-view";
+import {
+	buildMonthView,
+	type ViewBook,
+} from "@retrospend/domain/envelope/month-view";
+import type { EnvelopeTarget } from "@retrospend/domain/envelope/needs";
+import type { GroupRole } from "@retrospend/domain/envelope/pace";
 import { describe, expect, it } from "vitest";
 import type { GetMonthOutput } from "~/lib/schemas/envelope";
 import type { DraftDto } from "~/lib/schemas/envelope-plan";
@@ -19,9 +25,6 @@ import {
 } from "./engine";
 import type { LoadedBook } from "./inputs";
 import { invariantSides } from "./invariant";
-import { buildMonthView, type ViewBook } from "./month-view";
-import type { EnvelopeTarget } from "./needs";
-import type { GroupRole } from "./pace";
 import { fillFromTargets } from "./planning";
 import type { IncomeRule } from "./rules";
 import type { MonthKey } from "./types";

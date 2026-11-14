@@ -13,8 +13,9 @@
  *   it spent instead).
  * - Weekly: this week first, then the month.
  */
+
+import { perDay } from "@retrospend/domain/envelope/pace";
 import type { AffordState } from "~/lib/schemas/envelope-crud";
-import { perDay } from "./pace";
 import type { Minor, MonthKey } from "./types";
 import type { BudgetStyle } from "./verdict";
 

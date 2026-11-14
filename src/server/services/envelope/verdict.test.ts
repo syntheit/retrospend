@@ -1,5 +1,5 @@
+import type { LeftToSpend } from "@retrospend/domain/envelope/pace";
 import { describe, expect, it } from "vitest";
-import type { LeftToSpend } from "./pace";
 import { poolNameFor, verdict } from "./verdict";
 
 const base: LeftToSpend = {

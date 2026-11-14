@@ -5,6 +5,14 @@
  * Every row also checks the SPEC §5.3 invariant:
  *   ToAssign(c) + Σ Left(e, c) + Assigned(c+1) = MoneyIn - Σ outflows - SplitsNet
  */
+
+import {
+	buildMonthView,
+	type ViewBook,
+	type ViewEnvelope,
+} from "@retrospend/domain/envelope/month-view";
+import type { EnvelopeTarget } from "@retrospend/domain/envelope/needs";
+import type { GroupRole } from "@retrospend/domain/envelope/pace";
 import { describe, expect, it } from "vitest";
 import type { GetMonthOutput } from "~/lib/schemas/envelope";
 import {
@@ -15,9 +23,6 @@ import {
 	type MovementEntry,
 } from "./engine";
 import { invariantSides } from "./invariant";
-import { buildMonthView, type ViewBook, type ViewEnvelope } from "./month-view";
-import type { EnvelopeTarget } from "./needs";
-import type { GroupRole } from "./pace";
 import { coverSources, fillFromTargets, moveCap } from "./planning";
 import { replaySplits } from "./splits-replay";
 import { bookContext } from "./test-fixtures";

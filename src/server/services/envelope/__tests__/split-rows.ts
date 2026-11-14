@@ -5,6 +5,10 @@
  * computeBook and buildMonthView.
  */
 
+import {
+	buildMonthView,
+	type ViewBook,
+} from "@retrospend/domain/envelope/month-view";
 import { owedSummary } from "@retrospend/domain/envelope/owed";
 import type {
 	SettlementRowIn,
@@ -19,7 +23,6 @@ import {
 } from "../engine";
 import { activityEntries, Valuer } from "../entries";
 import { invariantSides } from "../invariant";
-import { buildMonthView, type ViewBook } from "../month-view";
 import { buildSplits, type MyShare, type RouteRow } from "../splits-input";
 import { bookContext, lookupIn, RATES } from "../test-fixtures";
 import type { IsoDate, MonthKey } from "../types";

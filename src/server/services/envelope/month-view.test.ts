@@ -1,5 +1,5 @@
+import { groupSpentBasis } from "@retrospend/domain/envelope/month-view";
 import { describe, expect, it } from "vitest";
-import { groupSpentBasis } from "./month-view";
 
 describe("groupSpentBasis", () => {
 	it("is the spent share of what the group holds, in hundredths of a percent", () => {

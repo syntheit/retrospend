@@ -4,6 +4,12 @@
  * the engine, the close summary and the month view; expected values by hand.
  * Every row checks the SPEC §5.3 invariant.
  */
+
+import {
+	buildMonthView,
+	type ViewBook,
+} from "@retrospend/domain/envelope/month-view";
+import type { EnvelopeTarget } from "@retrospend/domain/envelope/needs";
 import { describe, expect, it } from "vitest";
 import {
 	type ActivityEntry,
@@ -14,8 +20,6 @@ import {
 } from "./engine";
 import { invariantSides } from "./invariant";
 import { closeSummary } from "./month-close";
-import { buildMonthView, type ViewBook } from "./month-view";
-import type { EnvelopeTarget } from "./needs";
 import type { MonthKey } from "./types";
 
 const m = (n: number) => Math.round(n * 100);

@@ -13,6 +13,7 @@
  * months, so one undo takes it back.
  */
 import { randomUUID } from "node:crypto";
+import { buildMonthView } from "@retrospend/domain/envelope/month-view";
 import type {
 	FillFromTargetsOutput,
 	Money,
@@ -23,7 +24,6 @@ import type { Prisma } from "~prisma";
 import { savedPlanLines } from "./draft-store";
 import { computeBook, type MovementEntry } from "./engine";
 import { type MonthRead, monthViewIn } from "./month-read";
-import { buildMonthView } from "./month-view";
 import { assignPlan } from "./movement.service";
 import { fillFromTargets, type SavedPlanLine, saveHome } from "./planning";
 import { ruleTotalFor, runPendingRules } from "./rule.service";
