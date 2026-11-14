@@ -49,6 +49,7 @@ function SetupForm({ open, onClose }: SheetProps) {
 	const last = at === steps.length - 1;
 	const preview = api.envelope.setupPreview.useMutation();
 	const commit = api.envelope.setup.useMutation();
+	const undoSetup = api.envelope.undoSetup.useMutation();
 	const w = useMoneyWrite({
 		input: choice === "TRACK" ? null : s.input,
 		preview: preview.mutateAsync,
@@ -63,6 +64,8 @@ function SetupForm({ open, onClose }: SheetProps) {
 			}
 		},
 		toast: () => t("toast"),
+		// The server's own signed token: it refuses once the budget holds anything beyond the start.
+		undo: (r) => () => undoSetup.mutateAsync({ token: r.value.restore }),
 	});
 	const result = w.dry.preview?.value ?? null;
 	const plan = result?.plan ?? null;
