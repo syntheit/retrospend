@@ -34,7 +34,7 @@ import {
 	toEngineCheckpoint,
 } from "./checkpoint";
 import { dedicatedValues } from "./dedicated-goal";
-import type { EngineInput } from "./engine";
+import type { ActivityEntry, EngineInput } from "./engine";
 import {
 	activityEntries,
 	moneyInEntries,
@@ -58,16 +58,17 @@ import {
 	monthStart,
 	monthsFrom,
 } from "./months";
-import { buildSplitsFrom } from "./splits-input";
+import { type ShareSide, splitsFromBlock } from "./split-block";
+import { buildSplitsFrom, type LoadedSplits } from "./splits-input";
 import {
 	type LiabilityTerms,
 	type TargetContext,
 	type TemplateTerms,
 	targetOf,
 } from "./target-input";
-import type { IsoDate, Minor, MonthKey } from "./types";
+import type { IsoDate, Minor, MissingRate, MonthKey } from "./types";
 import type { ValuationContext } from "./valuation";
-import type { FreshValue } from "./valuer";
+import type { ApproximateRow, FreshValue } from "./valuer";
 
 export interface LoadContext {
 	now: Date;
@@ -236,21 +237,45 @@ async function settingOf<R extends BookRowCore, C extends CloseRowCore>(
 	};
 }
 
-/** Shares, payments and Wealth moves, read in full on every load. */
-async function loadFull<R extends BookRowCore, C extends CloseRowCore>(
+/** Rates a checkpoint's skipped rows lacked, when the checkpoint is not the loader's own. */
+interface BehindCheckpoint {
+	missingRates: readonly MissingRate[];
+	approximate: readonly ApproximateRow[];
+}
+
+const NOTHING_BEHIND: BehindCheckpoint = { missingRates: [], approximate: [] };
+
+/**
+ * The splits of the load: replayed from the source's rows, or taken from the
+ * block a source that holds no rows was given. Either way own shares come
+ * out as engine entries and the share side's missing rates are in the
+ * valuer, as the rows path leaves them.
+ */
+async function loadSplits<R extends BookRowCore, C extends CloseRowCore>(
 	src: BookSource<R, C>,
-	port: BudgetInputsPort,
 	s: Setting<R>,
-) {
+): Promise<{
+	splits: LoadedSplits;
+	shares: ActivityEntry[];
+	behindCheckpoint: BehindCheckpoint;
+}> {
+	const block = await src.splitBlock?.(s.row);
+	if (block) {
+		s.valuer.adopt(block);
+		return {
+			splits: splitsFromBlock(block),
+			shares: block.shares,
+			// A device has no checkpoint: the server's list of what stayed out stands in for it.
+			behindCheckpoint: {
+				missingRates: block.checkpointMissingRates,
+				approximate: block.checkpointApproximate,
+			},
+		};
+	}
 	const splits = buildSplitsFrom(
 		await src.splits(s.row),
 		s.valuer,
 		s.row.startMonth,
-	);
-	const wealth = wealthEntries(
-		await port.wealthRows(),
-		s.valuer,
-		s.row.currency,
 	);
 	const shares = activityEntries(
 		{
@@ -262,8 +287,31 @@ async function loadFull<R extends BookRowCore, C extends CloseRowCore>(
 		s.valuer,
 		splits.routing,
 	);
+	return { splits, shares, behindCheckpoint: NOTHING_BEHIND };
+}
+
+/** Shares, payments and Wealth moves, read in full on every load. */
+async function loadFull<R extends BookRowCore, C extends CloseRowCore>(
+	src: BookSource<R, C>,
+	port: BudgetInputsPort,
+	s: Setting<R>,
+) {
+	const { splits, shares, behindCheckpoint } = await loadSplits(src, s);
+	const wealth = wealthEntries(
+		await port.wealthRows(),
+		s.valuer,
+		s.row.currency,
+	);
+	// Valued so far: shares, payments and fronts; own rows come after.
+	const shareSide: ShareSide = {
+		entries: shares,
+		missingRates: uniqueMissing(s.valuer.missingRates),
+		approximate: uniqueApproximate(s.valuer.approximate),
+	};
 	return {
 		splits,
+		shareSide,
+		behindCheckpoint,
 		entries: {
 			activity: [...shares, ...wealth.activity],
 			moneyIn: wealth.moneyIn,
@@ -276,8 +324,15 @@ function finishLoad<R extends BookRowCore, C extends CloseRowCore>(
 	s: Setting<R>,
 	p: Pick<
 		LoadedBook<R, C>,
-		"input" | "splits" | "closes" | "dirty" | "checkpoint" | "prints"
+		| "input"
+		| "splits"
+		| "shareSide"
+		| "closes"
+		| "dirty"
+		| "checkpoint"
+		| "prints"
 	>,
+	behind: BehindCheckpoint,
 ): LoadedBook<R, C> {
 	const dedicated = dedicatedValues(
 		s.row,
@@ -306,10 +361,12 @@ function finishLoad<R extends BookRowCore, C extends CloseRowCore>(
 		today: s.today,
 		missingRates: uniqueMissing([
 			...(p.checkpoint?.missingRates ?? []),
+			...behind.missingRates,
 			...s.valuer.missingRates,
 		]),
 		approximate: uniqueApproximate([
 			...(p.checkpoint?.approximate ?? []),
+			...behind.approximate,
 			...s.valuer.approximate,
 		]),
 		periods: s.periods,
@@ -389,14 +446,19 @@ export async function loadBookFrom<
 		),
 		checkpoint: checkpoint ? toEngineCheckpoint(checkpoint) : null,
 	};
-	const loaded = finishLoad<R, C>(s, {
-		input,
-		splits: full.splits,
-		closes,
-		dirty,
-		checkpoint,
-		prints,
-	});
+	const loaded = finishLoad<R, C>(
+		s,
+		{
+			input,
+			splits: full.splits,
+			shareSide: full.shareSide,
+			closes,
+			dirty,
+			checkpoint,
+			prints,
+		},
+		full.behindCheckpoint,
+	);
 	return {
 		loaded,
 		fresh: [...s.valuer.fresh],

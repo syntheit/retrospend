@@ -76,6 +76,15 @@ export class Valuer {
 		private readonly nearest: NearestRate | null = null,
 	) {}
 
+	/** Takes in what another valuer left out or valued at the nearest rate (a server's block, for a device that holds no share rows). */
+	adopt(side: {
+		missingRates: readonly MissingRate[];
+		approximate: readonly ApproximateRow[];
+	}) {
+		this.missingRates.push(...side.missingRates);
+		this.approximate.push(...side.approximate);
+	}
+
 	dated(d: Date): { date: IsoDate; month: MonthKey } {
 		const date = isoDateIn(d, this.tz);
 		return { date, month: budgetMonthOf(date, this.periods) };

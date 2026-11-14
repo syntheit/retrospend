@@ -18,6 +18,7 @@ import type { EngineInput, LeftoverRule } from "./engine";
 import type { BudgetInputsPort } from "./inputs-port";
 import type { ViewBook } from "./month-view";
 import type { MonthBoundary } from "./months";
+import type { ShareSide, SplitBlock } from "./split-block";
 import type { LoadedSplits, SplitInputs } from "./splits-input";
 import type {
 	LiabilityTerms,
@@ -131,6 +132,12 @@ export interface BookSource<
 	dedicatedAccounts(row: R): Promise<DedicatedAccount[]>;
 	/** Every split row of the person, full history (the replay needs every debt from its start). */
 	splits(row: R): Promise<SplitInputs>;
+	/**
+	 * The splits as a block the server computed, for a source that does not
+	 * hold the rows (a device). When present the loader uses it instead of
+	 * `splits` and replays nothing: the block is the replay's answer.
+	 */
+	splitBlock?(row: R): Promise<SplitBlock>;
 	/** A stable string hash for the fingerprints of fully loaded rows (checkpoint.ts). */
 	hash(text: string): string;
 }
@@ -147,6 +154,8 @@ export interface LoadedBook<
 	/** Foreign rows valued at the nearest rate, not one dated on or before them ("≈"). */
 	approximate: ApproximateRow[];
 	splits: LoadedSplits;
+	/** What the share side of the load produced: own shares as entries and the rates it lacked (a splits block is made from it). */
+	shareSide: ShareSide;
 	/** Every close of the book, oldest first. */
 	closes: C[];
 	/** budget_dirty marks seen by this load. */
