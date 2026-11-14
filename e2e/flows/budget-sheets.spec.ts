@@ -21,7 +21,9 @@ import { trpcMutation } from "./entry-audit";
 // Everything else is overspent by 120.00.
 
 test.use({ storageState: USER_STORAGE_STATE });
-test.describe.configure({ mode: "serial" });
+// A retry restarts this serial file on a database that already holds the books
+// the first attempt made, so it can only fail with a 409: report the real failure.
+test.describe.configure({ mode: "serial", retries: 0 });
 
 const today = () =>
 	new Date().toLocaleDateString("en-CA", {
@@ -1089,11 +1091,10 @@ test.describe("Set up your budget", () => {
 			.fill("500");
 		await expect(start).toBeEnabled();
 		await untilSaved(page, "envelope.setup", () => start.click());
-		// The toast first: it lives 6 seconds from the save, and the sheet only
-		// closes after the page has refreshed, which can take longer than that
-		// on a loaded run. Checking the sheet first lets the toast pass unseen.
+		// The toast comes after the page has refreshed (use-money-write.ts), which
+		// can take well over 15 seconds on a loaded run; the sheet closes right after.
 		await expect(toast(page, "Your budget is ready")).toBeVisible({
-			timeout: 15_000,
+			timeout: 45_000,
 		});
 		await expect(sheet).toBeHidden({ timeout: 15_000 });
 	});
