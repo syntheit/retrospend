@@ -15,12 +15,15 @@ import type { RouteScope } from "./scopes";
  *   Every write scoped `write:money` must have one at `<path>/preview`.
  * - `secretResponse`: the response holds a secret shown once, so the
  *   idempotency store keeps no copy of it.
+ * - `snapshot`: on a `sync` route, the body is a whole table as of one read,
+ *   not a cursor delta, so the route never answers 410 sync_reset_required.
  */
 export interface ApiMeta {
 	scope?: RouteScope;
 	event?: string;
 	previewOf?: string;
 	secretResponse?: boolean;
+	snapshot?: boolean;
 }
 
 /** Every v1 route starts here. Paths are relative to `/api/v1`. */

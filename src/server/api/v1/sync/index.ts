@@ -1,5 +1,6 @@
 import * as sync from "~/server/services/api-v1/sync";
 import * as syncBook from "~/server/services/api-v1/sync-book";
+import * as snapshots from "~/server/services/api-v1/sync-snapshots";
 import { serve } from "../core/serve";
 import { signedIn, v1 } from "../middleware";
 
@@ -102,5 +103,8 @@ export const syncRouter = {
 		serve(({ context, input }) =>
 			syncBook.syncEnvelopeChanges(signedIn(context), input),
 		),
+	),
+	shares: v1.sync.shares.handler(
+		serve(({ context }) => snapshots.syncShares(signedIn(context))),
 	),
 };

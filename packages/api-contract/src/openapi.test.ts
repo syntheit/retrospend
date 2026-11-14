@@ -39,15 +39,20 @@ describe("openapi.json", () => {
 		expect(doc.paths["/server-info"]?.get?.security).toEqual([]);
 	});
 
-	it("declares 410 sync_reset_required on every sync operation only", async () => {
+	it("declares 410 sync_reset_required on every cursor sync operation only", async () => {
 		const doc = (await generateOpenApiDocument()) as {
 			paths: Record<string, Record<string, { responses: object }>>;
 		};
 		const syncPaths = Object.keys(doc.paths).filter((path) =>
 			path.startsWith("/sync/"),
 		);
-		expect(syncPaths).toHaveLength(21);
-		for (const path of syncPaths) {
+		const snapshots = ["/sync/shares"];
+		const cursorPaths = syncPaths.filter((path) => !snapshots.includes(path));
+		expect(cursorPaths).toHaveLength(21);
+		expect(syncPaths.filter((path) => snapshots.includes(path))).toEqual(
+			snapshots,
+		);
+		for (const path of cursorPaths) {
 			const responses = doc.paths[path]?.get?.responses as Record<
 				string,
 				{ content: object }
@@ -56,6 +61,9 @@ describe("openapi.json", () => {
 				"application/problem+json",
 			]);
 		}
+		// A snapshot has no cursor to go stale, but is still behind the sync scope.
+		for (const path of snapshots)
+			expect(doc.paths[path]?.get?.responses).not.toHaveProperty("410");
 		expect(doc.paths["/events"]?.get?.responses).not.toHaveProperty("410");
 	});
 });

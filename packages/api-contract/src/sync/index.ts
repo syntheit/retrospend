@@ -13,9 +13,11 @@ import {
 	syncRecurringTemplateSchema,
 	syncTransferSchema,
 } from "./schemas";
+import { syncSnapshotsContract } from "./snapshots";
 
 export * from "./book-schemas";
 export * from "./schemas";
+export * from "./snapshots";
 
 export const syncContract = {
 	expenses: v1
@@ -127,4 +129,5 @@ export const syncContract = {
 		.input(syncQuerySchema)
 		.output(syncPageOf(syncTransferSchema)),
 	...syncBookContract,
+	...syncSnapshotsContract,
 };

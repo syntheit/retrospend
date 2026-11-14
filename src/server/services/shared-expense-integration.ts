@@ -72,6 +72,24 @@ export async function shareRateResolver(db: AppDb, rows: ShareRateSource[]) {
 }
 
 /**
+ * The category of a shared expense as `userId` may use it. A category belongs
+ * to whoever created the expense (budget D19): another participant's budgets
+ * and breakdowns cannot use it, so for them the share is uncategorized. The one
+ * rule behind every reader of a share's category, including GET /sync/shares.
+ */
+export function ownExpenseCategoryId(
+	userId: string,
+	transaction: {
+		categoryId: string | null;
+		category: { userId: string } | null;
+	},
+): string | null {
+	return transaction.category?.userId === userId
+		? transaction.categoryId
+		: null;
+}
+
+/**
  * Represents a user's share of a shared expense, compatible with
  * the budget/stats aggregation format (same fields as personal expenses).
  */
@@ -207,12 +225,7 @@ export async function getSharedExpenseShares(
 			amount,
 			currency,
 			...priceShare(amount, currency, rateFor(p.transaction)),
-			// The category belongs to whoever created the expense. Another
-			// participant's budgets and breakdowns cannot use it: uncategorized.
-			categoryId:
-				p.transaction.category?.userId === userId
-					? p.transaction.categoryId
-					: null,
+			categoryId: ownExpenseCategoryId(userId, p.transaction),
 			date: p.transaction.date,
 		};
 	});
