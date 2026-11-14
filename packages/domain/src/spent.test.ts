@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import { MissingRateError, sumInDec } from "./money-dec";
 import { roundedMinor } from "./money-minor";
 import {
+	countsAsShare,
 	groupSpentRows,
 	incomeGroupsFromRows,
 	type SpentExpenseRow,
@@ -64,6 +65,43 @@ const figure = (
 			range,
 		}),
 	);
+
+describe("countsAsShare", () => {
+	const HIDDEN = ["hidden"];
+	const statuses = [
+		["PENDING", true],
+		["ACCEPTED", true],
+		["AUTO_ACCEPTED", true],
+		["REJECTED", false],
+		// A status the domain does not know still counts: only the listed ones stay out.
+		["VERIFIED", true],
+	] as const;
+	const projects = [
+		["no project", null, true],
+		["a hidden project", "hidden", false],
+		["a shown project", "shown", true],
+	] as const;
+
+	for (const [status, statusCounts] of statuses)
+		for (const [label, projectId, projectCounts] of projects)
+			it(`${status} in ${label}: ${statusCounts && projectCounts}`, () => {
+				expect(
+					countsAsShare({ verificationStatus: status, projectId }, HIDDEN),
+				).toBe(statusCounts && projectCounts);
+			});
+
+	it("hides nothing when the hidden list is empty", () => {
+		expect(
+			countsAsShare(
+				{ verificationStatus: "ACCEPTED", projectId: "hidden" },
+				[],
+			),
+		).toBe(true);
+		expect(
+			countsAsShare({ verificationStatus: "REJECTED", projectId: null }, []),
+		).toBe(false);
+	});
+});
 
 describe("spent on rows in memory", () => {
 	it("counts spending and shares, nets refunds, and leaves out everything else", () => {

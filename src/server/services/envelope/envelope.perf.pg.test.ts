@@ -3,13 +3,18 @@
  * 5,000 expenses (a tenth in USD, valued at the book's blue rate), monthly
  * salary, 15 envelopes assigned every month, and splits (P3): 720 shared
  * expenses (half paid by you for three, half paid by a friend), a payment
- * each month and a project. Months before this one are closed by the first
+ * each month and a project. A second project is routed Not in budget and
+ * holds 3,600 more of your shares (100 a month), plus a few rejected ones, so
+ * the rows the envelope loads and drops (and Insights All time reads) are the
+ * size a heavy user has. Months before this one are closed by the first
  * read (P4); there are no checkpoints yet, so each read is the full pass.
  * Target p95 under 250 ms on harbor; the measured numbers are printed for
  * the report.
  */
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { db } from "~/server/db";
+import { insightsFirstDay } from "~/server/services/insights";
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import { addMonths } from "./calendar";
@@ -159,6 +164,8 @@ async function seedThreeYears() {
 }
 
 const SPLITS_PER_MONTH = 20;
+const OFF_BUDGET_PER_MONTH = 100;
+const REJECTED_PER_MONTH = 5;
 const share = (participantType: "user" | "shadow", participantId: string) => ({
 	participantType,
 	participantId,
@@ -256,9 +263,85 @@ async function seedSplits(
 		}
 		await monthlyPayment(friend.id, userId, monthDate(m, 20));
 	}
+	await seedOffBudget(userId, friend.id, months, monthDate);
 }
 
-describe("getMonth performance (3 years, 5,000 expenses, 720 splits)", () => {
+/**
+ * A Not in budget project with a big history: your share of each expense
+ * (counted in Insights, left out of the envelope), and a few shares you
+ * rejected (left out of both).
+ */
+async function seedOffBudget(
+	userId: string,
+	friendId: string,
+	months: number[],
+	monthDate: (m: number, day: number) => Date,
+) {
+	const project = await adminDb.project.create({
+		data: {
+			name: "Perf off budget",
+			createdById: userId,
+			participants: {
+				create: [
+					{
+						participantType: "user",
+						participantId: userId,
+						role: "ORGANIZER",
+						budgetRouting: "NOT_IN_BUDGET",
+					},
+					{ participantType: "user", participantId: friendId },
+				],
+			},
+		},
+	});
+	const transactions: Prisma.SharedTransactionCreateManyInput[] = [];
+	const shares: Prisma.SplitParticipantCreateManyInput[] = [];
+	for (const m of months)
+		for (let i = 0; i < OFF_BUDGET_PER_MONTH; i++) {
+			const id = randomUUID();
+			transactions.push({
+				id,
+				description: `Off budget ${m} ${i}`,
+				amount: new Prisma.Decimal(20_000),
+				currency: "COP",
+				exchangeRate: new Prisma.Decimal(1_000),
+				date: monthDate(m, 1 + (i % 27)),
+				projectId: project.id,
+				paidByType: "user",
+				paidById: friendId,
+				createdByType: "user",
+				createdById: friendId,
+			});
+			const mine = {
+				...share("user", userId),
+				transactionId: id,
+				verificationStatus:
+					i < REJECTED_PER_MONTH
+						? ("REJECTED" as const)
+						: ("ACCEPTED" as const),
+			};
+			shares.push(mine, { ...share("user", friendId), transactionId: id });
+		}
+	for (let i = 0; i < transactions.length; i += 1_000)
+		await adminDb.sharedTransaction.createMany({
+			data: transactions.slice(i, i + 1_000),
+		});
+	for (let i = 0; i < shares.length; i += 1_000)
+		await adminDb.splitParticipant.createMany({
+			data: shares.slice(i, i + 1_000),
+		});
+}
+
+function p95Of(runs: number[]) {
+	runs.sort((a, b) => a - b);
+	return {
+		p50: runs[Math.floor(runs.length / 2)] as number,
+		p95: runs[Math.ceil(runs.length * 0.95) - 1] as number,
+		max: runs.at(-1) as number,
+	};
+}
+
+describe("getMonth performance (3 years, 5,000 expenses, 720 splits, 3,600 off budget)", () => {
 	it("p95 under 250 ms", { timeout: 180_000 }, async () => {
 		const userId = await seedThreeYears();
 		// Production tables carry planner statistics; a fresh test database does not until autovacuum gets to it.
@@ -275,11 +358,20 @@ describe("getMonth performance (3 years, 5,000 expenses, 720 splits)", () => {
 			runs.push(performance.now() - t);
 			expect(view?.incomplete).toBe(false);
 		}
-		runs.sort((a, b) => a - b);
-		const p50 = runs[Math.floor(runs.length / 2)] as number;
-		const p95 = runs[Math.ceil(runs.length * 0.95) - 1] as number;
+		const { p50, p95, max } = p95Of(runs);
 		console.log(
-			`getMonth 3y/5000+720 splits: p50 ${p50.toFixed(1)} ms, p95 ${p95.toFixed(1)} ms, max ${runs.at(-1)?.toFixed(1)} ms`,
+			`getMonth 3y/5000+720 splits+3600 off budget: p50 ${p50.toFixed(1)} ms, p95 ${p95.toFixed(1)} ms, max ${max.toFixed(1)} ms`,
+		);
+		// Insights All time reads every share that counts, over all history.
+		const firstDay: number[] = [];
+		for (let i = 0; i < 30; i++) {
+			const t = performance.now();
+			await insightsFirstDay(db, userId);
+			firstDay.push(performance.now() - t);
+		}
+		const fd = p95Of(firstDay);
+		console.log(
+			`insightsFirstDay all time: p50 ${fd.p50.toFixed(1)} ms, p95 ${fd.p95.toFixed(1)} ms, max ${fd.max.toFixed(1)} ms`,
 		);
 		expect(p95).toBeLessThan(250);
 	});

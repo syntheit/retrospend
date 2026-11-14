@@ -1,8 +1,7 @@
 /**
  * Shared expense shares convert at their own date's rate (batch 3, bug 7).
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createMockDb } from "~/test/mock-db";
+
 import {
 	MissingRateError,
 	missingRatesIn,
@@ -10,13 +9,15 @@ import {
 } from "@retrospend/domain/money-dec";
 import { dec } from "@retrospend/domain/precise-decimal";
 import { spentItemsOf } from "@retrospend/domain/spent";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createMockDb } from "~/test/mock-db";
 import { RATE_DATE, useRateTable } from "~/test/rate-table";
-import { createStatefulDb, makeUserRef } from "../shared-expenses/test-utils";
-import { SharedTransactionService } from "../shared-expenses/transaction.service";
 import {
 	getSharedExpenseShares,
 	listSharedParticipationsForUser,
 } from "../shared-expense-integration";
+import { createStatefulDb, makeUserRef } from "../shared-expenses/test-utils";
+import { SharedTransactionService } from "../shared-expenses/transaction.service";
 
 vi.mock("~/server/services/notifications", () => ({
 	createNotification: vi.fn().mockResolvedValue(undefined),
@@ -139,14 +140,31 @@ describe("getSharedExpenseShares", () => {
 		expect(shares.map((s) => s.categoryId)).toEqual(["cat-mine", null]);
 	});
 
-	it("leaves out shares the user rejected, keeps pending ones", async () => {
-		db.splitParticipant.findMany.mockResolvedValue([]);
-		await getSharedExpenseShares(db as never, "user-1");
-		const where = db.splitParticipant.findMany.mock.calls[0]?.[0]?.where;
-		expect(where).toMatchObject({
-			participantId: "user-1",
-			verificationStatus: { notIn: ["REJECTED"] },
-		});
+	it("drops rejected shares and hidden-project shares from what the query returns, keeps pending ones", async () => {
+		const row = (amount: number, status: string, projectId: string | null) => {
+			const p = participation(amount, "USD", null);
+			return {
+				...p,
+				verificationStatus: status,
+				transaction: { ...p.transaction, projectId },
+			};
+		};
+		db.splitParticipant.findMany.mockResolvedValue([
+			row(1, "ACCEPTED", null),
+			row(2, "REJECTED", null),
+			row(3, "PENDING", null),
+			row(4, "ACCEPTED", "hidden"),
+			row(5, "ACCEPTED", "shown"),
+			row(6, "REJECTED", "shown"),
+		]);
+		const shares = await getSharedExpenseShares(
+			db as never,
+			"user-1",
+			undefined,
+			undefined,
+			["hidden"],
+		);
+		expect(shares.map((s) => s.amount)).toEqual(["1", "3", "5"]);
 	});
 });
 
