@@ -1,4 +1,3 @@
-import { expect, type Locator, type Page, test } from "../fixtures/sealed-guard";
 import { Pool } from "pg";
 import {
 	ADMIN_STORAGE_STATE,
@@ -7,6 +6,12 @@ import {
 	TEST_USER,
 	USER_STORAGE_STATE,
 } from "../constants";
+import {
+	expect,
+	type Locator,
+	type Page,
+	test,
+} from "../fixtures/sealed-guard";
 import { bannedOutputOn } from "../helpers/banned-output";
 import { gotoReady } from "../helpers/navigation";
 import { untilSaved } from "../helpers/trpc";
@@ -1082,21 +1087,19 @@ test.describe("Set up your budget", () => {
 		// No history and no bills: nothing is planned, so Start waits for an amount
 		// (a budget with nothing assigned starts overspent on the first expense).
 		await expect(start).toBeDisabled();
-		await expect(sheet.getByText(/Started from your last 3 months/)).toHaveCount(
-			0,
-		);
-		await expect(sheet.getByText("Give an envelope an amount to start.")).toBeVisible();
+		await expect(
+			sheet.getByText(/Started from your last 3 months/),
+		).toHaveCount(0);
+		await expect(
+			sheet.getByText("Give an envelope an amount to start."),
+		).toBeVisible();
 		await sheet
 			.getByRole("textbox", { name: "Amount for Spending" })
 			.fill("500");
 		await expect(start).toBeEnabled();
-		await untilSaved(page, "envelope.setup", () => start.click());
-		// The toast comes after the page has refreshed (use-money-write.ts), which
-		// can take well over 15 seconds on a loaded run; the sheet closes right after.
-		await expect(toast(page, "Your budget is ready")).toBeVisible({
-			timeout: 45_000,
-		});
-		await expect(sheet).toBeHidden({ timeout: 15_000 });
+		await start.click();
+		await expect(toast(page, "Your budget is ready")).toBeVisible();
+		await expect(sheet).toBeHidden();
 	});
 });
 
