@@ -60,16 +60,24 @@ const serialized = <T>(work: () => Promise<T>): Promise<T> => {
 	return run;
 };
 
-/** The scopes in the index; text that is not a list of scopes reads as empty. */
+/** The index value is there but is not a list. It is left as it is: it may be all that names a file. */
+export class IndexUnreadable extends Error {
+	override readonly name = "IndexUnreadable";
+}
+
+/** The scopes in the index. Throws IndexUnreadable for a value that is not a JSON list. */
 export async function readIndex(secrets: SecretStore): Promise<string[]> {
 	const saved = await secrets.get(ENGINE_INDEX_NAME);
 	if (saved === null) return [];
+	let parsed: unknown;
 	try {
-		const parsed: unknown = JSON.parse(saved);
-		return Array.isArray(parsed) ? parsed.filter(isEngineScope) : [];
+		parsed = JSON.parse(saved);
 	} catch {
-		return [];
+		throw new IndexUnreadable("The engine index is not JSON");
 	}
+	if (!Array.isArray(parsed))
+		throw new IndexUnreadable("The engine index is not a list");
+	return parsed.filter(isEngineScope);
 }
 
 const changeIndex = (
@@ -83,8 +91,14 @@ const changeIndex = (
 			await secrets.set(ENGINE_INDEX_NAME, JSON.stringify(after));
 	});
 
+/** Throws IndexUnreadable rather than write over text it cannot read: nothing may be created unlisted. */
 export const addToIndex = (secrets: SecretStore, scope: string) =>
 	changeIndex(secrets, (all) => (all.includes(scope) ? all : [...all, scope]));
 
+/** An index that cannot be read has nothing to take out; its text stays as it is. */
 export const removeFromIndex = (secrets: SecretStore, scope: string) =>
-	changeIndex(secrets, (all) => all.filter((s) => s !== scope));
+	changeIndex(secrets, (all) => all.filter((s) => s !== scope)).catch(
+		(error) => {
+			if (!(error instanceof IndexUnreadable)) throw error;
+		},
+	);

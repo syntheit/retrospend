@@ -122,6 +122,34 @@ describe("a launch after a whole pull", () => {
 		expect((await spent(second))["glance.spent"]).toEqual(ARS(100_000));
 	});
 
+	it("reads nothing when a refresh fails after it wrote, not the half-updated figures", async () => {
+		const phone = cipherFake(dir);
+		const first = launch(phone, served().api);
+		await first.pull();
+		await first.dispose({ wipe: false });
+
+		// A whole copy on disk. The refresh brings e1 as 9,000.00 in a later page,
+		// then the accounts step dies: e1 is updated and the rest is not.
+		const second = launch(
+			phone,
+			served({
+				expensePages: [
+					page([E1, E2, E3], "c1"),
+					page([expense("e1", "9000", "2026-10-05T15:00:00.000Z")], "c2"),
+				],
+				fail: { route: "accounts", pull: 1, error: new Error("killed") },
+			}).api,
+		);
+		expect(await spent(second)).toEqual({
+			"glance.spent": ARS(100_000),
+			"glance.spentLast": ARS(250_000),
+		});
+		expect(second.status).toBe("ready");
+		await second.pull();
+		expect(second.status).toBe("failed");
+		expect(await second.read(SPENT)).toBeNull();
+	});
+
 	it("saves the cursors of a pull that changed no expense", async () => {
 		const phone = cipherFake(dir);
 		const first = launch(
@@ -295,6 +323,48 @@ describe("a server that cannot honor a cursor", () => {
 	});
 });
 
+describe("a reset that ends offline", () => {
+	it("leaves an empty engine that pulls again on the next read", async () => {
+		const phone = cipherFake(dir);
+		const first = launch(phone, served().api);
+		await first.pull();
+		await first.dispose({ wipe: false });
+
+		const server = served({
+			expensePages: [page([E1, E2, E3], "c1")],
+			fail: {
+				route: "expenses",
+				pull: 1,
+				error: Object.assign(new Error("gone"), {
+					code: "sync_reset_required",
+				}),
+			},
+		});
+		// The second settings call is the one after the reset: the network is gone.
+		const sync = server.api.sync as unknown as Record<
+			string,
+			() => Promise<unknown>
+		>;
+		const settings = sync.settings as () => Promise<unknown>;
+		let settingsCalls = 0;
+		sync.settings = async () => {
+			settingsCalls += 1;
+			if (settingsCalls === 2) throw new Error("offline");
+			return settings();
+		};
+		const engine = launch(phone, server.api);
+		await engine.pull();
+		// Nothing is held, so this is neither ready nor failed.
+		expect(engine.status).toBe("idle");
+
+		expect(await spent(engine)).toEqual({
+			"glance.spent": ARS(100_000),
+			"glance.spentLast": ARS(250_000),
+		});
+		expect(engine.status).toBe("ready");
+	});
+});
+
 describe("a disk that fails", () => {
 	it("gives it up, deletes file and key, and the engine goes on in memory", async () => {
 		const phone = cipherFake(dir);
@@ -324,6 +394,47 @@ describe("a disk that fails", () => {
 		expect(JSON.stringify(warnings())).toContain("disk copy given up");
 		expect(JSON.stringify(warnings())).toContain("full");
 	});
+});
+
+describe("a dispose while the database is still opening", () => {
+	it.each([true, false])(
+		"honors wipe: %s when the open finishes",
+		async (wipe) => {
+			let release = () => {};
+			const gate = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			const dispose = jest.fn(async () => {});
+			const engine = createDeviceEngine(served().api, "u1", Date.now, {
+				storage: async () => {
+					await gate;
+					return {
+						loaded: {
+							rows: {},
+							cursors: {},
+							complete: false,
+							wiped: false,
+							rowCount: 0,
+						},
+						persistence: {
+							state: "live",
+							commit: () => {},
+							beginPull: () => {},
+							finishPull: () => {},
+							abandonPull: () => {},
+							close: () => {},
+						},
+						dispose,
+					};
+				},
+			});
+			const disposing = engine.dispose({ wipe });
+			release();
+			await disposing;
+			expect(dispose).toHaveBeenCalledTimes(1);
+			expect(dispose).toHaveBeenCalledWith({ wipe });
+		},
+	);
 });
 
 describe("rows the store will not take", () => {

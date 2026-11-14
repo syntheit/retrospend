@@ -216,6 +216,30 @@ describe("when there is no safe way to keep a key", () => {
 	});
 });
 
+describe("an index that cannot be read", () => {
+	const RAW = "{not a list";
+
+	it("is left as it is, and nothing is created unlisted", async () => {
+		const fake = cipherFake(dir);
+		fake.secrets.values.set("retrospend.engine.index", RAW);
+		expect(await openEncrypted(fake.deps, A)).toBeNull();
+		expect(fake.secrets.values.get("retrospend.engine.index")).toBe(RAW);
+		expect(fake.secrets.values.has(engineKeyName(A))).toBe(false);
+		expect(fake.files.size).toBe(0);
+		expect(onDisk(A)).toBe(false);
+	});
+
+	it("does not stop a wipe, and is not overwritten by it", async () => {
+		const fake = cipherFake(dir);
+		(await openEncrypted(fake.deps, A))?.close();
+		fake.secrets.values.set("retrospend.engine.index", RAW);
+		await wipeScope(fake.deps, A);
+		expect(onDisk(A)).toBe(false);
+		expect(fake.secrets.values.has(engineKeyName(A))).toBe(false);
+		expect(fake.secrets.values.get("retrospend.engine.index")).toBe(RAW);
+	});
+});
+
 describe("wiping", () => {
 	it("removes the file, the key and the index entry of one account only", async () => {
 		const fake = cipherFake(dir);

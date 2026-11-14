@@ -125,6 +125,10 @@ export function createDeviceEngine(
 	let inflight: Promise<void> | null = null;
 	let lastParity: ParityResult | null = null;
 	let disposed = false;
+	/** What a dispose asked for, for an open that finishes after it. */
+	let wipeOnDispose = false;
+	/** A reset emptied the store in the running pull: nothing is held until a pull completes. */
+	let emptied = false;
 	/** Commits the running pull has made: none means the rows are as the pull found them. */
 	let commitsInPull = 0;
 
@@ -155,7 +159,7 @@ export function createDeviceEngine(
 		try {
 			opened = await options.storage(hooks);
 			if (opened === null) return;
-			if (disposed) return await opened.dispose({ wipe: true });
+			if (disposed) return await opened.dispose({ wipe: wipeOnDispose });
 			store = new MemoryStore({
 				rows: opened.loaded.rows,
 				onCommit: commit,
@@ -183,6 +187,9 @@ export function createDeviceEngine(
 
 	/** The server can no longer honor a cursor: nothing pulled with it can be trusted. */
 	async function startOver(): Promise<void> {
+		emptied = true;
+		// The rows earlier commits wrote are gone with the old store.
+		commitsInPull = 0;
 		const old = storage;
 		storage = null;
 		await old?.dispose({ wipe: true });
@@ -199,6 +206,7 @@ export function createDeviceEngine(
 		const before = status;
 		status = "pulling";
 		commitsInPull = 0;
+		emptied = false;
 		storage?.persistence.beginPull();
 		try {
 			try {
@@ -219,7 +227,11 @@ export function createDeviceEngine(
 			// A pull that stopped before its first write (offline) left the rows
 			// as they were; one that stopped after it may have left them half
 			// updated, so nothing reads them until a pull succeeds.
-			status = before === "ready" && commitsInPull === 0 ? "ready" : "failed";
+			// After a reset with no write since, the store holds nothing: idle, so
+			// the next read pulls again.
+			if (commitsInPull === 0 && emptied) status = "idle";
+			else
+				status = before === "ready" && commitsInPull === 0 ? "ready" : "failed";
 			warn("pull failed", (error as Error)?.name);
 		}
 	}
@@ -246,6 +258,7 @@ export function createDeviceEngine(
 
 	async function dispose({ wipe }: { wipe: boolean }): Promise<void> {
 		disposed = true;
+		wipeOnDispose ||= wipe;
 		// Closing first makes a pull in flight fail at its next write instead of
 		// writing to a file that is about to go.
 		const closing = storage;

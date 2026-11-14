@@ -122,6 +122,23 @@ describe("the sweep", () => {
 		expect(onDisk(A)).toBe(true);
 	});
 
+	it.each(["{not json", '{"a":1}'])(
+		"skips the round and leaves an index it cannot read as it is: %s",
+		async (raw) => {
+			const fake = cipherFake(dir);
+			await open(fake, A);
+			fake.secrets.values.set("retrospend.engine.index", raw);
+			const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+			await sweepEngineDbs(null, fake.deps);
+			expect(onDisk(A)).toBe(true);
+			expect(fake.secrets.values.get("retrospend.engine.index")).toBe(raw);
+			// The log carries the kind of failure and no part of the value.
+			expect(JSON.stringify(warn.mock.calls)).toContain("IndexUnreadable");
+			expect(JSON.stringify(warn.mock.calls)).not.toContain(raw);
+			warn.mockRestore();
+		},
+	);
+
 	it("does nothing on a phone that never had an engine database", async () => {
 		const fake = cipherFake(dir);
 		await sweepEngineDbs(A, fake.deps);

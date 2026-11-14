@@ -1,7 +1,7 @@
 import { deleteExpoFile } from "./expo-driver";
 import type { keystore as Keystore } from "./keystore";
 import { type OpenDeps, wipeScope } from "./open";
-import { readIndex } from "./secrets";
+import { IndexUnreadable, readIndex } from "./secrets";
 
 // Removes the device engine's databases and keys that belong to nobody who is
 // signed in. It runs in every build, with the engine flag on or off: a build
@@ -55,7 +55,10 @@ export async function sweepEngineDbs(
 	let scopes: string[];
 	try {
 		scopes = await readIndex(deps.secrets);
-	} catch {
+	} catch (error) {
+		// An index that cannot be read is left as it is and this round is skipped.
+		if (error instanceof IndexUnreadable)
+			console.warn("RetrospendEngineSweep: index unreadable", error.name);
 		return;
 	}
 	for (const scope of scopes) {
