@@ -10,7 +10,7 @@ import { syncBudgetSchema } from "./budget-block";
 import { SYNC_TAG } from "./route";
 
 /**
- * Snapshots for the app's local copy (E2EE P16): small tables a device reads
+ * Snapshots for the app's local copy: small tables a device reads
  * whole instead of as a delta. A snapshot has no cursor, no tombstones and no
  * 410: the body is the table as of one read, and the next pull replaces it.
  * What a device cannot get from the row routes lives here: the caller's

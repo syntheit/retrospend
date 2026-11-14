@@ -1,4 +1,4 @@
-// The client layering (E2EE D11 prep, PR 3.1): one raw base Prisma client,
+// The client layering: one raw base Prisma client,
 // private to db-core.ts, and every transaction that sets the RLS identity is
 // built in one of two files. A source scan keeps it that way, since a
 // hand-rolled set_config transaction or a second client would skip the

@@ -1,5 +1,5 @@
 /**
- * The owner column and `nullWhenHidden` of the field map (E2EE D11 PR 3b.0),
+ * The owner column and `nullWhenHidden` of the field map,
  * on a test-only model that no real map entry uses yet: a ghost person owned
  * by `createdById` (relation `createdBy`), with an email and a phone that read
  * null when hidden and a label that reads "". Hand-derived expectations:

@@ -1,6 +1,6 @@
 /**
  * GET /api/v1/sync/shares?budget=1 on Postgres, through the handler the Next
- * route uses (E2EE P13b PR 1c): the flag is opt-in and additive, the block
+ * route uses: the flag is opt-in and additive, the block
  * parses against the contract, and the raw body holds nothing of the other
  * person. The numbers are the 1a vector (services/sync/budget-block-test-support).
  */

@@ -1,5 +1,5 @@
 /**
- * A preview with a master key configured (E2EE D11 PR 3.1): the real runner
+ * A preview with a master key configured: the real runner
  * transaction (userTransactionRunner, on the app's db) loads the user's keys
  * and the instance keys read-only, on their own connection, before the
  * preview opens, and mints nothing. The mutation recolors a category, so the

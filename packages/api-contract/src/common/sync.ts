@@ -1,7 +1,7 @@
 import * as z from "zod";
 
 /**
- * Delta sync (E2EE lane P). A `/sync/{entity}` route returns the rows of one
+ * Delta sync. A `/sync/{entity}` route returns the rows of one
  * entity that changed after `since` plus a tombstone for each row deleted
  * after it, so an offline client applies the delta without refetching. The
  * `cursor` of a page is the `since` of the next pull. It is opaque and

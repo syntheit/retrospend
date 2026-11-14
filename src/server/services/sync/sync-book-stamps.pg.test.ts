@@ -1,12 +1,12 @@
 /**
- * The personal-book family of the delta log on real Postgres (E2EE lane P,
- * P14c): what lands in "sync_change" when the rows of a book are written,
- * changed and removed, who gets the stamps (the book's creator, while the book
- * is personal and alone), what happens when the book stops being personal
- * (Q4: tombstones to the creator, then silence, then stamps again if it
- * returns), the cascade of a book delete, account deletion, rollback, the
- * backfill and the catalog of triggers. Expectations are derived by hand from
- * the rows seedBook writes: 13 rows, one stamp each.
+ * The personal-book family of the delta log on real Postgres: what lands in
+ * "sync_change" when the rows of a book are written, changed and removed, who
+ * gets the stamps (the book's creator, while the book is personal and alone),
+ * what happens when the book stops being personal (Q4: tombstones to the
+ * creator, then silence, then stamps again if it returns), the cascade of a
+ * book delete, account deletion, rollback, the backfill and the catalog of
+ * triggers. Expectations are derived by hand from the rows seedBook writes: 13
+ * rows, one stamp each.
  */
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";

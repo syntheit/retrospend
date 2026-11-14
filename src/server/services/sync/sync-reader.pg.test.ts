@@ -1,5 +1,5 @@
 /**
- * The delta reader on real Postgres (E2EE lane P, P14a): first pulls and
+ * The delta reader on real Postgres: first pulls and
  * paging, commit order under open transactions (the events feed's race, with
  * real triggers), rows that change or vanish between the stamp read and the
  * row read, cursors the log cannot honor, the tombstone sweep and its floor,

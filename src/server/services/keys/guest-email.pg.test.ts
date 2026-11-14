@@ -1,6 +1,5 @@
 /**
- * guest_session.email on the instance key (E2EE D11 Revision 3, PR 4, plan
- * docs/roadmap/e2ee-d11-rev3.md): resume mail, de-duplication, migration at
+ * guest_session.email on the instance key: resume mail, de-duplication, migration at
  * verification, deletion and the admin removal, all by address, once the
  * address is ciphertext (sealing on, the epoch set) and with sealing off.
  * Both modes run in both `pnpm test:pg` and `pnpm test:pg:sealed`; the file

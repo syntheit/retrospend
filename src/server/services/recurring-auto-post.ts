@@ -1,5 +1,5 @@
 /**
- * Recurring auto-post (E2EE D11 PR 6, docs/roadmap/e2ee-d11-pr6.md): every
+ * Recurring auto-post: every
  * 15 minutes each due template that pays automatically with a fixed amount
  * is posted exactly as Confirm posts it, by `recurring.confirm` through the
  * preview runner as its owner. So row-level security stays on, the name is

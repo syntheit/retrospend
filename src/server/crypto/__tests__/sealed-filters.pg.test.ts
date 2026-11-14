@@ -1,12 +1,11 @@
 /**
- * Filters on mapped columns and the field encryption epoch (E2EE D11 PR 4.3,
- * plan section 3), on the real clients. Before the epoch every filter runs as
- * it always did. Once `app_settings."fieldEncryptionSince"` is set, every
- * client (scoped or global, whatever its own flag) refuses a call that
- * filters, sorts, groups or aggregates on a mapped column, including
- * Category's compound unique key `name_userId`, before it reaches Postgres.
- * The epoch is read outside transactions; inside one only the cached value
- * is used.
+ * Filters on mapped columns and the field encryption epoch, on the real
+ * clients. Before the epoch every filter runs as it always did. Once
+ * `app_settings."fieldEncryptionSince"` is set, every client (scoped or global,
+ * whatever its own flag) refuses a call that filters, sorts, groups or
+ * aggregates on a mapped column, including Category's compound unique key
+ * `name_userId`, before it reaches Postgres. The epoch is read outside
+ * transactions; inside one only the cached value is used.
  */
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";

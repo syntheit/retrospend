@@ -1,6 +1,6 @@
 /**
  * Text matching for search, in the app layer. Titles and notes can hold
- * ciphertext (docs/roadmap/e2ee-spike.md, lane D), so Postgres cannot match
+ * ciphertext, so Postgres cannot match
  * them; the services pick rows by the plain filters, read the text through
  * model reads (which open it), and match here.
  *

@@ -1,5 +1,5 @@
 /**
- * What `ready()` records and logs for a loader that fails (E2EE D11 PR 3.1).
+ * What `ready()` records and logs for a loader that fails.
  * Hand-derived expectations:
  *
  *   an error with no stable code -> failed keystore_unavailable, logged once with

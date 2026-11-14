@@ -300,7 +300,7 @@ export async function forgive(
 			forgiveEnvelopeId: input.envelopeId,
 		})),
 	});
-	// The audit entry names ids, never a title (E2EE rule 4); both people can read it.
+	// The audit entry names ids, never a title; both people can read it.
 	await logAudit(tx, {
 		actor: me,
 		action: "FORGIVEN",

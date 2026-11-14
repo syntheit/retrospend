@@ -1,6 +1,6 @@
 /**
  * The Wealth dashboard's exact decimals on real Postgres, ARS home at blue
- * 1,545 per USD (PR 4b of docs/roadmap/money-decimal.md). Rates: ARS blue
+ * 1,545 per USD. Rates: ARS blue
  * 1,545, JPY official 150 per USD, BTC crypto 60,000 USD per coin.
  *
  * - Cash ARS 1,000,000; Wise USD 1,840.55 (x 1,545 = 2,843,649.75); Bitcoin

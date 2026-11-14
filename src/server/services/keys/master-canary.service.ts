@@ -1,6 +1,5 @@
 /**
- * The master key canary (docs/roadmap/e2ee-d11-design.md section 8, Revision 1
- * item 7). A fixed text sealed under the server master key sits in
+ * The master key canary. A fixed text sealed under the server master key sits in
  * `app_settings."masterKeyCanary"` (main schema; the app role has no privilege
  * on that table, so this runs on the owner connection, `keystoreDb`). At start
  * it is opened: a wrong DATA_MASTER_KEY fails the check and stops the server,

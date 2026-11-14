@@ -1,6 +1,6 @@
 // Catches: the sidecar's progress phrases (sidecar/main.go, importer/pdf,
-// importer/llm) drifting from the codes the queue stores (E2EE D11 Revision 3,
-// PR 5), and API v1's `message` changing text for a job read before the codes.
+// importer/llm) drifting from the codes the queue stores, and API v1's
+// `message` changing text for a job read before the codes.
 import { describe, expect, it } from "vitest";
 import { progressCode, progressText } from "./progress-code";
 

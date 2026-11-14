@@ -1,8 +1,8 @@
 /**
- * The restore check and sync_reset() under the conditions that hurt (E2EE lane
- * P, P14a): the index the check uses, a reset that gives up instead of hanging
- * behind a connection that holds the log, and a reset that runs next to a
- * writer in either order without losing a stamp or deadlocking.
+ * The restore check and sync_reset() under the conditions that hurt: the index
+ * the check uses, a reset that gives up instead of hanging behind a connection
+ * that holds the log, and a reset that runs next to a writer in either order
+ * without losing a stamp or deadlocking.
  */
 import { Client } from "pg";
 import { beforeAll, describe, expect, it, vi } from "vitest";

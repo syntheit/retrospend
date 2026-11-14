@@ -1,5 +1,5 @@
 /**
- * The one place the app's clients are composed (E2EE D11 PR 3): the raw base,
+ * The one place the app's clients are composed: the raw base,
  * the client builder and the runtime data model come from db-core.ts, the
  * rings from the key services, and the slot is the field-open extension. The
  * services import `keystoreDb` from db-core, never from here, so this file can

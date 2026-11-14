@@ -1,6 +1,6 @@
 /**
- * An export job finishes by id (E2EE D11 PR 4.1: the file name is user text,
- * sealed under its row id, so no updateMany): a job deleted while its file
+ * An export job finishes by id (the file name is user text, sealed under its
+ * row id, so no updateMany): a job deleted while its file
  * was built leaves no row and no file; a live one ends READY with its name.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";

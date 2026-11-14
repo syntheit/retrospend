@@ -1,5 +1,5 @@
 /**
- * Notifications are worded when they are read (E2EE D11 PR 8.4): the row
+ * Notifications are worded when they are read: the row
  * keeps ids, codes and minor amounts, never a name or a sentence. Both
  * readers, /api/v1/notifications and the tRPC list, word each kind in the
  * reader's current language, with the actor's current name and "Someone"

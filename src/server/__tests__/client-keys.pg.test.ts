@@ -1,5 +1,5 @@
 /**
- * Which keys each transaction gets, and when (E2EE D11 PR 3.1). The clients
+ * Which keys each transaction gets, and when. The clients
  * are built on a base of the test's own that reports every statement, with a
  * slot that records whose keys each model call ran with, and keys that record
  * each `ready()`. Hand-derived expectations:

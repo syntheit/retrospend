@@ -1,6 +1,6 @@
 /**
  * What the import queue reads and returns of a job, and the text it keeps for
- * a failure (E2EE D11 Revision 3, PR 5).
+ * a failure.
  */
 import {
 	SealedTextError,

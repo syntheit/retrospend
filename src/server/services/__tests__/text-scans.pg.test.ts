@@ -1,11 +1,11 @@
 /**
- * The other app-layer text matches over every row in batches (E2EE D11 PR
- * 5.2): title suggestions (personal and shared), import review suggestions,
- * people search and the people picker. Batches of 3 here (and id chunks of 3,
- * taken in id order), so a handful of rows spans several: a match only in the
- * third batch is found, results and limits are what the SQL path gives, a row
- * edited between batches counts once, and a key the ring lacks fails the
- * request retryably in a later batch.
+ * The other app-layer text matches over every row in batches: title suggestions
+ * (personal and shared), import review suggestions, people search and the
+ * people picker. Batches of 3 here (and id chunks of 3, taken in id order), so
+ * a handful of rows spans several: a match only in the third batch is found,
+ * results and limits are what the SQL path gives, a row edited between batches
+ * counts once, and a key the ring lacks fails the request retryably in a later
+ * batch.
  *
  * It runs in both pg suites. The app-layer path is the one once the field
  * encryption epoch exists: the sealed suite writes it (and seals every row),

@@ -1,5 +1,5 @@
 /**
- * The contact hash writers on real Postgres (E2EE D11 Revision 3, PR 3a): what
+ * The contact hash writers on real Postgres: what
  * the shadow and guest writers store in "emailHash" under each case of the
  * one rule (contact-hash.ts), the lookup, the fill, and the migration's
  * rollback snippet. The expected hashes are derived here with node:crypto

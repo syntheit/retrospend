@@ -1,5 +1,5 @@
 /**
- * The hourly sweep of sync tombstones (E2EE lane P, P14a), on the owner
+ * The hourly sweep of sync tombstones, on the owner
  * connection over all users, called from sweepSupportData. A D stamp older
  * than SYNC_TOMBSTONE_DAYS is deleted, and the floor in "sync_state" rises to
  * the highest txid removed, in the same statement: a cursor at or below the

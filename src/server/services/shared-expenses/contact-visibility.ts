@@ -10,7 +10,7 @@ import type { ParticipantRef } from "./types";
  * server (project views, people list/detail, people search):
  *
  *   - Ghost (shadow): visible to its creator only. A ghost's email and phone
- *     are sealed with the creator's key (E2EE D11 Revision 3), so no one else
+ *     are sealed with the creator's key, so no one else
  *     can read them, an EDITOR or ORGANIZER of its projects included; rows
  *     saved before sealing are hidden from them by this rule too.
  *   - Guest: visible to the guest themself, and to EDITOR or ORGANIZER members

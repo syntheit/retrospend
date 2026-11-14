@@ -1,5 +1,5 @@
 /**
- * The blind index of a category name (E2EE lane D9): what keeps a person's
+ * The blind index of a category name: what keeps a person's
  * category names unique once the names themselves are ciphertext. See
  * src/server/crypto/blind-index.ts for the hash and the migration
  * 20261109700000_category_name_index for the column.

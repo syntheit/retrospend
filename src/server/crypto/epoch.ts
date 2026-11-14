@@ -1,6 +1,5 @@
 /**
- * The field encryption epoch (E2EE D11 PR 4.3, docs/roadmap/e2ee-d11-pr4.md
- * section 3): `app_settings."fieldEncryptionSince"`, written once when a
+ * The field encryption epoch: `app_settings."fieldEncryptionSince"`, written once when a
  * server first starts with DATA_KEYS_WRITE on and never cleared. From then on
  * any mapped cell may hold ciphertext, whatever this process's own flag says,
  * so filters on mapped columns are refused (field-open.ts) and searches read

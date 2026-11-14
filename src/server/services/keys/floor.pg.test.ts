@@ -1,6 +1,5 @@
 /**
- * The sealing floor and the start gates (E2EE D11 PR 9.1, plan
- * docs/roadmap/e2ee-d11-pr9.md section 3 and its critic rounds). Each case
+ * The sealing floor and the start gates. Each case
  * runs in a rolled-back transaction on the owner connection, so a floor, an
  * epoch or a deleted key never reaches the next file in this worker's
  * database. The instance key and the test user's key are made once, outside

@@ -1,6 +1,6 @@
 /**
  * A book that turns shared or personal while a child row is being written, on
- * real Postgres with two connections (E2EE lane P, P14c). The child row's
+ * real Postgres with two connections. The child row's
  * foreign key holds KEY SHARE on the book row, which an UPDATE of the book
  * does not conflict with, so the hand-over takes FOR UPDATE on the book first:
  * it waits for the open insert and then stamps that row too, or the insert

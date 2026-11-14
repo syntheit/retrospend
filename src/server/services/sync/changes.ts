@@ -1,5 +1,5 @@
 /**
- * The reader of the delta log (E2EE lane P, P14a): the changes to one entity
+ * The reader of the delta log: the changes to one entity
  * of one user after a cursor, in commit order. Stamps come from "sync_change"
  * (ids only, written by the sync_stamp_rows trigger), the rows from the live
  * tables through the Prisma models (entities.ts), so a row is always as new
@@ -24,7 +24,7 @@
  * client that is caught up would be sent back to the start on every pull. A
  * garbage token is a 400 (InvalidCursorError). A
  * token the log can no longer honor is SyncResetRequiredError (a 410 on the
- * route, P14b): another epoch (sync_reset), a txid this cluster has not
+ * route): another epoch (sync_reset), a txid this cluster has not
  * reached (a restore), or one at or below the floor (the sweep removed
  * tombstones it may not have seen). The client drops its rows of the entity
  * and pulls again from the start.

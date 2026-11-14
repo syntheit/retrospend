@@ -1,6 +1,5 @@
 /**
- * The in-process keyring cache entry both key services use (docs/roadmap/
- * e2ee-d11-pr3.md section 1.3). An entry holds the load's promise, so
+ * The in-process keyring cache entry both key services use. An entry holds the load's promise, so
  * concurrent callers share one keystore query. A keyring is reused for five
  * minutes, so a rotation (a key added by D12) reaches every process; no key,
  * or a failure, only for 30 seconds, so a key made or a grant restored

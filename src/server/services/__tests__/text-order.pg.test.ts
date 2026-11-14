@@ -1,6 +1,6 @@
 /**
  * Ordering by user text in the app layer against the `ORDER BY name` SQL it
- * replaced (E2EE lane D10). The old queries are copied here as the oracle: on
+ * replaced. The old queries are copied here as the oracle: on
  * a plaintext ledger every list must come back in the same order as
  * Postgres sorted it, page by page for the cursor lists.
  *

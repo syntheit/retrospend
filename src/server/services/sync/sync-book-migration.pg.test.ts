@@ -1,6 +1,6 @@
 /**
  * The book family migration's rollback snippet and its privileges on real
- * Postgres (E2EE lane P, P14c). Anything that replays SQL does it inside a
+ * Postgres. Anything that replays SQL does it inside a
  * transaction that always rolls back. The stamps, the backfill and the
  * trigger catalog are in sync-book-stamps.pg.test.ts.
  */

@@ -1,5 +1,5 @@
 /**
- * The field-open extension's rules, on a fake client (E2EE D11 PR 3.2). The
+ * The field-open extension's rules, on a fake client. The
  * pg tests run the same extension on real clients; these pin each rule with
  * hand-made rings and cells. Hand-derived expectations:
  *

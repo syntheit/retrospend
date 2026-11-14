@@ -1,6 +1,5 @@
 /**
- * The user-text field map (E2EE lane D11, docs/roadmap/e2ee-d11-design.md
- * section 1.1): every database column that holds a person's free text, the
+ * The user-text field map: every database column that holds a person's free text, the
  * Prisma model it belongs to, and which key seals it.
  *
  * It is written by hand because the contract names in USER_TEXT_FIELDS
@@ -9,8 +8,7 @@
  * (no field uses `@map`), so the AAD for a cell is
  * `{ table, column, rowId }` with the table from here.
  *
- * Key classes, final per the owner's answers (design doc, Revision 2, and
- * the 2026-11-11 change in docs/roadmap/e2ee-d11-pr3.md section 2.1):
+ * Key classes:
  * - `user`: personal text, sealed with the row owner's data key. Every model
  *   with a user-class column has an owner column, `userId` unless the entry
  *   names another in `owner` (a ghost person is owned by `createdById`), and
@@ -273,8 +271,7 @@ export function mappedColumns(): ReadonlyArray<
 }
 
 /**
- * A JSON column that holds user text (E2EE D11 PR 8, docs/roadmap/
- * e2ee-d11-pr7-8.md), sealed by the same extension under the AAD of the
+ * A JSON column that holds user text, sealed by the same extension under the AAD of the
  * row's own id (json-cells.ts):
  * - `body`: the whole value, stored as `{ "sealed": "<ciphertext>" }`;
  * - `leaves`: only the strings at `paths` (dot paths, `*` for each array

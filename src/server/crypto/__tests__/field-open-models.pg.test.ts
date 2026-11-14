@@ -1,6 +1,6 @@
 /**
  * Every mapped model reads its sealed cells back as plaintext through every
- * walked operation (E2EE D11 PR 3.2, plan test 7). Rows are written as
+ * walked operation. Rows are written as
  * plaintext, then sealed in place with raw SQL (src/test/sealed-fixture.ts),
  * and read through the app's own clients: user-class models through their
  * owner's scoped client, instance-class models through the global client.

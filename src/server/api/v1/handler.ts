@@ -62,8 +62,8 @@ function withProblemHeaders(res: Response): Response {
 }
 
 /**
- * In tests, fails a JSON response that carries a sealed value (E2EE D11,
- * design section 7.1). Does nothing outside tests, so no body is read twice.
+ * In tests, fails a JSON response that carries a sealed value. Does nothing
+ * outside tests, so no body is read twice.
  */
 async function guardSealedText(res: Response): Promise<void> {
 	if (process.env.NODE_ENV !== "test") return;

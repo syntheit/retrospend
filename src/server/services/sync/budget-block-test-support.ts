@@ -1,5 +1,5 @@
 /**
- * Fixtures for the budget block tests (E2EE P13b PR 1c): the 1a vector
+ * Fixtures for the budget block tests: the vector
  * (envelope/figures-money.pg.test.ts) as a world one call builds, so a test
  * can make two identical ones. An ARS book valued at blue, Buenos Aires
  * (UTC-3), the month starting on the 5th, the clock 2026-11-14T15:00Z

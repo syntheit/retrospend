@@ -1,5 +1,5 @@
 /**
- * Per-user data keys (docs/roadmap/e2ee-spike.md 4.5, lane D2). Each user has
+ * Per-user data keys. Each user has
  * a random 256-bit key, stored in the `keystore` schema sealed under the
  * server master key (src/server/crypto/master-key.ts). Nothing encrypts user
  * data with it yet; D11 will.
@@ -180,11 +180,10 @@ export async function getOrCreateDataKeyring(
 
 /**
  * The signed-in user's data keys, read in their transaction and never made
- * there: while this process seals, a key is made only outside transactions
- * (E2EE D11 PR 4 section 1, for the D9 name index). With none, a preview gets
- * undefined (its write rolls back); any other transaction starts the mint on
- * a connection of its own and fails with the retryable `key_rotated`, so the
- * retry finds the key.
+ * there: while this process seals, a key is made only outside transactions.
+ * With none, a preview gets undefined (its write rolls back); any other
+ * transaction starts the mint on a connection of its own and fails with the
+ * retryable `key_rotated`, so the retry finds the key.
  */
 export async function dataKeyringInTransaction(
 	tx: Prisma.TransactionClient,
@@ -204,17 +203,17 @@ export async function dataKeyringInTransaction(
 const minting = new Map<string, Promise<Keyring>>();
 
 /**
- * The user's data keys, made now if they have none (E2EE D11 PR 4 section
- * 1): for the first write that seals, so a read, a preview or a script that
- * only reads never mints. It runs on a connection of its own, never inside
- * the caller's transaction (that would hold two pool connections at once),
- * and shares one mint per user in this process; across processes the insert
- * is a no-op for the loser. The cached ring answers first, so a user who has
- * keys costs no query. The ring is evicted after the commit, so the next
- * client load reads the new key. A mint the keystore refuses (`keystore_lost`,
- * a lost grant) is cached like a failed load: client loads then record that
- * code, so a write in a transaction fails with it instead of asking for a
- * retry, and the keystore is not asked again for 30 seconds.
+ * The user's data keys, made now if they have none: for the first write that
+ * seals, so a read, a preview or a script that only reads never mints. It runs
+ * on a connection of its own, never inside the caller's transaction (that would
+ * hold two pool connections at once), and shares one mint per user in this
+ * process; across processes the insert is a no-op for the loser. The cached
+ * ring answers first, so a user who has keys costs no query. The ring is
+ * evicted after the commit, so the next client load reads the new key. A mint
+ * the keystore refuses (`keystore_lost`, a lost grant) is cached like a failed
+ * load: client loads then record that code, so a write in a transaction fails
+ * with it instead of asking for a retry, and the keystore is not asked again
+ * for 30 seconds.
  */
 export function ensureUserKeyring(
 	userId: string,

@@ -1,5 +1,5 @@
 /**
- * A shared expense's receipt link (E2EE D11 revision 3, PR 6) on Postgres, in
+ * A shared expense's receipt link on Postgres, in
  * both suites. The column is instance class: in the sealed suite the stored
  * cell is `\u0001k1:` ciphertext under the instance key, and in the plain
  * suite it is the link itself. Either way every reader gets the link back

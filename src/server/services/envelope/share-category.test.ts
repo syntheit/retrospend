@@ -46,7 +46,7 @@ describe("share categories (D19)", () => {
 		expect(pick([s], "a")).toEqual({ categoryId: "c-groc", source: null });
 	});
 
-	it("another person's category is neutral: it never picks one of yours (E2EE D11)", () => {
+	it("another person's category is neutral: it never picks one of yours", () => {
 		const s = share("a", { creatorCategory: { id: "x", isMine: false } });
 		expect(pick([s], "a")).toEqual({ categoryId: null, source: null });
 	});
@@ -83,7 +83,7 @@ describe("share categories (D19)", () => {
 		});
 	});
 
-	it("never guesses from the split's title on the server (E2EE rule 2)", () => {
+	it("never guesses from the split's title on the server", () => {
 		expect(
 			pick([share("a", { title: "Whole Foods run" } as never)], "a"),
 		).toEqual({ categoryId: null, source: null });

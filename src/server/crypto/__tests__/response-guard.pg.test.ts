@@ -1,8 +1,8 @@
 /**
- * No sealed value leaves the server in tests (E2EE D11, design section 7.1,
- * plan test 11). The v1 handler and every tRPC procedure builder check their
- * responses: a raw sealed value fails the call, the fallback "" does not, and
- * a real route over a sealed row answers with the plaintext.
+ * No sealed value leaves the server in tests. The v1 handler and every tRPC
+ * procedure builder check their responses: a raw sealed value fails the call,
+ * the fallback "" does not, and a real route over a sealed row answers with the
+ * plaintext.
  */
 import { os } from "@orpc/server";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";

@@ -1,6 +1,5 @@
 /**
- * The seal path (E2EE D11 PR 4.2, docs/roadmap/e2ee-d11-pr4.md sections 1
- * and 2). `planSeal` reads a model call's arguments and returns a copy in
+ * The seal path. `planSeal` reads a model call's arguments and returns a copy in
  * which every mapped column it writes, at any depth, is queued to be sealed
  * under the AAD of the row it lands in; `applySeal` seals the queued cells
  * once the keys are known (field-open.ts picks them). The caller's objects

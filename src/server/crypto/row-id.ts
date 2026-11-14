@@ -1,6 +1,5 @@
 /**
- * Row ids for creates that seal (E2EE D11 PR 4.2, docs/roadmap/e2ee-d11-pr4.md
- * section 2). A sealed cell's AAD names its row, so the id must be known
+ * Row ids for creates that seal. A sealed cell's AAD names its row, so the id must be known
  * before the insert: a create that gives none gets one here, made the way the
  * model's own `@id` default would. Prisma's generator is not exported, and the
  * runtime data model does not say which default a model has, so the table is

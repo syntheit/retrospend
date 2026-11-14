@@ -257,7 +257,7 @@ export async function finalizeClaim(
 			status: "FINALIZED",
 			settledAt: now,
 		});
-		// Row by row: each text cell is sealed under its own row id (E2EE D11).
+		// Row by row: each text cell is sealed under its own row id.
 		if (input.paymentMethod) {
 			for (const row of rows.filter((r) => !r.isOffset))
 				await tx.settlement.update({

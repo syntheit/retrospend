@@ -1,7 +1,6 @@
 /**
  * Blind index: a keyed hash of a short text, so the server can ask "is this
- * text already used" without reading the text (docs/roadmap/e2ee-spike.md
- * section 3, lane D9). Equal texts under one user's keyring give equal
+ * text already used" without reading the text. Equal texts under one user's keyring give equal
  * indexes; the same text under two users' keyrings gives different ones.
  *
  *   indexKey = HKDF-SHA256(ikm = the user's oldest data key, salt = none, info = <label>)

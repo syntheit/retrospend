@@ -181,8 +181,8 @@ const timingMiddleware = t.middleware(async ({ next }) => {
 });
 
 /**
- * In tests, fails any response that carries a sealed value (E2EE D11, design
- * section 7.1): every text a procedure returns must have been opened.
+ * In tests, fails any response that carries a sealed value: every text a
+ * procedure returns must have been opened.
  */
 const sealedTextGuard = t.middleware(async ({ next }) => {
 	const result = await next();

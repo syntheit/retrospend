@@ -1,6 +1,5 @@
 /**
- * The start-up check for DATA_KEYS_WRITE and the field encryption epoch
- * (E2EE D11 PR 4.3, docs/roadmap/e2ee-d11-pr4.md section 3, owner answer 1).
+ * The start-up check for DATA_KEYS_WRITE and the field encryption epoch.
  * instrumentation.ts runs it after the master key canary and before any
  * worker. With the flag off this check runs no query and writes nothing
  * (every process still reads the epoch with its keys, epoch.ts).

@@ -14,7 +14,7 @@ import {
 } from "./book-schemas";
 import { SYNC_BOOK_DESCRIPTION, syncRoute } from "./route";
 
-/** GET /sync/* for the caller's personal budget book (E2EE lane P, P14c). */
+/** GET /sync/* for the caller's personal budget book. */
 export const syncBookContract = {
 	budgetBooks: syncRoute(
 		"budget-books",

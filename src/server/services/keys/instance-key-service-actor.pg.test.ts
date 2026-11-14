@@ -1,5 +1,5 @@
 /**
- * The service actor for the instance key (E2EE D11 PR 3.1, migration
+ * The service actor for the instance key (migration
  * 20261111200000_instance_key_service_actor). Hand-derived expectations:
  *
  *   current_setting('role') inside a definer function -> the session's setting, not the definer

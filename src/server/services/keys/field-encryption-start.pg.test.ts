@@ -1,6 +1,5 @@
 /**
- * The DATA_KEYS_WRITE start-up check and the epoch (E2EE D11 PR 4.3, plan
- * section 3, owner answer 1). Each gate runs in a rolled-back transaction on
+ * The DATA_KEYS_WRITE start-up check and the epoch. Each gate runs in a rolled-back transaction on
  * the owner connection, so a revoked grant, a category without a name index
  * or a written epoch never reaches the next file in this worker's database.
  * Other files leave categories with no name index (the seed computes none

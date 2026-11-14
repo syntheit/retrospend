@@ -1,5 +1,5 @@
 /**
- * The diagnostics sent with feedback (E2EE D11 PR 8.2) on Postgres, in both
+ * The diagnostics sent with feedback on Postgres, in both
  * suites. They copy error report text, so in the sealed suite the column is
  * a `{ sealed }` envelope under the instance key and its own row, with the
  * text nowhere in the row; an admin reads the same diagnostics on the web

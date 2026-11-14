@@ -42,8 +42,8 @@
  *
  * The other worlds each pin what their name says; amounts are in the book
  * currency. A book's membership is not part of this file: findPersonalBook
- * ignores membership while sync tombstones a shared book, a known divergence
- * recorded in the P13b plan, and no app path adds a member (book.service.ts).
+ * ignores membership while sync tombstones a shared book, a known divergence,
+ * and no app path adds a member (book.service.ts).
  */
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";

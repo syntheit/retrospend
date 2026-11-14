@@ -1,5 +1,5 @@
 /**
- * The budget block of the shares snapshot on Postgres (E2EE P13b PR 1c). The
+ * The budget block of the shares snapshot on Postgres. The
  * numbers are the 1a vector (budget-block-test-support.ts has the derivation:
  * Bob's USD 30 held is 45,000.00 = 4,500,000 minor, the USD 10 with no booked
  * value is 15,000.00 = 1,500,000 minor, frozen).

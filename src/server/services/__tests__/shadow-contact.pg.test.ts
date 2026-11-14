@@ -1,5 +1,5 @@
 /**
- * A ghost's email and phone on the creator's key (E2EE D11 Revision 3, PR 3b)
+ * A ghost's email and phone on the creator's key
  * on real Postgres, with sealing turned on and off inside the file (it sets
  * its own master key and epoch, so the sealed suite runs it as it is,
  * sealed-suite.exclude.json). Hand-derived expectations:

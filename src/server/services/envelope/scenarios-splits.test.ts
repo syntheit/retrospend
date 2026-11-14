@@ -81,7 +81,7 @@ describe("S4 a split someone else made hits your envelope (Alex, USD)", () => {
 				),
 			),
 		);
-		// Sam's category is neutral to you (E2EE D11): no default, as unresolved.
+		// Sam's category is neutral to you: no default, as unresolved.
 		expect(r.left("everything")).toBe(-7_000);
 		expect(r.left("groceries")).toBe(0);
 		expect(r.view.shares.unresolved).toBe(1);

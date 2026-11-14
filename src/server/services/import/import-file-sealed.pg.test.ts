@@ -1,5 +1,5 @@
 /**
- * An import job's file and failure text (E2EE D11 Revision 3, PR 5) on
+ * An import job's file and failure text on
  * Postgres, in both suites. `fileData` is the uploaded file as base64 and
  * `errorMessage` the failure text, which quotes rows of that file; both are
  * user-class cells, sealed under the owner's key and their own column and row
