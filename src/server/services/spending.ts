@@ -113,6 +113,23 @@ export function budgetMoneyInWhere(
 }
 
 /**
+ * Income of the closed months: standard money in dated from `from` up to, not
+ * including, `to` (typical income, the % base). A starting balance or an
+ * adjustment is never typical income.
+ */
+export function budgetClosedIncomeWhere(
+	userId: string,
+	from: Date,
+	to: Date,
+): Prisma.ExpenseWhereInput {
+	return {
+		...budgetMoneyInWhere(userId, from),
+		entryKind: "STANDARD",
+		date: { gte: from, lt: to },
+	};
+}
+
+/**
  * Rows today's expense lists, duplicate checks and title suggestions know how
  * to show: spending entries only. Money in, own transfers and adjustments
  * wait for the Activity rebuild, which labels them.

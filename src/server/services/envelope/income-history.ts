@@ -11,7 +11,7 @@ import {
 	groupBaseFrom,
 } from "@retrospend/domain/envelope/income-history";
 import type { Prisma } from "~prisma";
-import { budgetMoneyInWhere } from "../spending";
+import { budgetClosedIncomeWhere } from "../spending";
 import type { GroupBase } from "./group-view";
 import type { LoadedBook } from "./inputs";
 import { freeze } from "./load-state";
@@ -34,11 +34,7 @@ export async function closedIncomes(
 	const closed = await closedIncomesFrom(async ({ from, to }) => {
 		read = true;
 		return tx.expense.findMany({
-			where: {
-				...budgetMoneyInWhere(loaded.row.createdById, from),
-				entryKind: "STANDARD",
-				date: { gte: from, lt: to },
-			},
+			where: budgetClosedIncomeWhere(loaded.row.createdById, from, to),
 			select: {
 				id: true,
 				amount: true,
