@@ -39,7 +39,7 @@ import type {
 	SyncSettingsDto,
 	SyncShareDto,
 	SyncSharesDto,
-} from "@retrospend/api-contract";
+} from "@retrospend/api-contract/sync";
 import type { TableName, TableRows, Writer } from "./port";
 import {
 	BUDGET_SNAPSHOT_ID,

@@ -1,6 +1,6 @@
 /** Primitives and enums of the budget (months are YYYYMM numbers, money in is integer minor units of the book currency). Mirrors src/lib/schemas/envelope*.ts (a test keeps them equal). */
 import * as z from "zod";
-import { amountTextSchema } from "../ledger";
+import { amountTextSchema } from "../common/amount-text";
 
 export const minorSchema = z
 	.number()

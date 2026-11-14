@@ -18,7 +18,7 @@ import {
 	type SyncTransferDto,
 	type SyncWealthTransferDto,
 	syncBudgetBlockSchema,
-} from "@retrospend/api-contract";
+} from "@retrospend/api-contract/sync";
 import type { CloseSummary } from "./book-rows";
 import { BUDGET_SNAPSHOT_ID, InvalidInputError, type TableRows } from "./port";
 import {

@@ -4,7 +4,7 @@
  * shares snapshot, and the refusals that leave a store as it was. Dates are
  * Ana's, home ARS in Buenos Aires, March 2026.
  */
-import type { SyncSplitBlockDto } from "@retrospend/api-contract";
+import type { SyncSplitBlockDto } from "@retrospend/api-contract/sync";
 import { describe, expect, it } from "vitest";
 import { promotePendingBudget } from "./budget-snapshot";
 import { MemoryStore } from "./memory-store";
