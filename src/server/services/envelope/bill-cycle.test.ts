@@ -1,5 +1,8 @@
+import {
+	type BillCycleInput,
+	billCycle,
+} from "@retrospend/domain/envelope/bill-cycle";
 import { describe, expect, it } from "vitest";
-import { type BillCycleInput, billCycle } from "./bill-cycle";
 
 /** Whole currency units to minor (2 decimals). */
 const m = (n: number) => Math.round(n * 100);

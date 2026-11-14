@@ -10,7 +10,7 @@
  * expense. A reader sees the correction rows RLS shows them: everything for
  * the person who made the corrections, their own share for anyone else.
  */
-import { FigureNarrowingError } from "~/server/figures/narrowing";
+import { FigureNarrowingError } from "@retrospend/domain/figures/narrowing";
 import type {
 	FigureDb,
 	FigureDefinition,

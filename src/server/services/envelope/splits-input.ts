@@ -13,6 +13,12 @@
  * - payments to and from you;
  * - your project routing (D31) and your categories (D19).
  */
+
+import type {
+	PartyRef,
+	SettlementRowIn,
+	SplitPart,
+} from "@retrospend/domain/envelope/split-events";
 import type {
 	MyShare,
 	SplitInputs,
@@ -24,7 +30,6 @@ import {
 } from "../shared-expense-integration";
 import { resolveClaimAliases } from "../shared-expenses/identity";
 import { isDeviceRead } from "./load-state";
-import type { PartyRef, SettlementRowIn, SplitPart } from "./split-events";
 
 export {
 	buildSplits,

@@ -18,6 +18,7 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { owedDto } from "@retrospend/domain/envelope/owed";
 import type {
 	ForgiveInput,
 	OwedDto,
@@ -41,7 +42,6 @@ import { findPersonalBook, loadBook } from "./inputs";
 import { forgetMonthViews, owedInputOf } from "./month-read";
 import { isoDateIn } from "./months";
 import { lockedSnapshot } from "./movement-state";
-import { owedDto } from "./owed";
 import type { UnsavedChoice } from "./splits-input";
 import { fromMinor } from "./units";
 

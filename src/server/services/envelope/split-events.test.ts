@@ -3,6 +3,11 @@
  * when a payment counts (D8, I5), how cash is valued (D10), and that
  * calendar dates are read as stored (SPEC §5.1, C21). Values by hand.
  */
+
+import {
+	type SplitRows,
+	splitEvents,
+} from "@retrospend/domain/envelope/split-events";
 import { describe, expect, it } from "vitest";
 import {
 	front,
@@ -12,7 +17,6 @@ import {
 	type TxSpec,
 } from "./__tests__/split-rows";
 import { Valuer } from "./entries";
-import { type SplitRows, splitEvents } from "./split-events";
 import { bookContext, lookupIn } from "./test-fixtures";
 
 const table = lookupIn(TABLE);

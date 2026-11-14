@@ -4,6 +4,12 @@
  * buildSplits (routing, categories, events, replay), activityEntries,
  * computeBook and buildMonthView.
  */
+
+import { owedSummary } from "@retrospend/domain/envelope/owed";
+import type {
+	SettlementRowIn,
+	SplitPart,
+} from "@retrospend/domain/envelope/split-events";
 import { Prisma } from "~prisma";
 import {
 	type ActivityEntry,
@@ -14,8 +20,6 @@ import {
 import { activityEntries, Valuer } from "../entries";
 import { invariantSides } from "../invariant";
 import { buildMonthView, type ViewBook } from "../month-view";
-import { owedSummary } from "../owed";
-import type { SettlementRowIn, SplitPart } from "../split-events";
 import { buildSplits, type MyShare, type RouteRow } from "../splits-input";
 import { bookContext, lookupIn, RATES } from "../test-fixtures";
 import type { IsoDate, MonthKey } from "../types";

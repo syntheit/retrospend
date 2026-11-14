@@ -1,6 +1,11 @@
 /** Money owed as the budget sees it: per person, held, pending, age (C15). */
+
+import {
+	OWED_AGING_DAYS,
+	owedDto,
+	owedSummary,
+} from "@retrospend/domain/envelope/owed";
 import { describe, expect, it } from "vitest";
-import { OWED_AGING_DAYS, owedDto, owedSummary } from "./owed";
 import { type ReplayEvent, replaySplits } from "./splits-replay";
 
 const front = (

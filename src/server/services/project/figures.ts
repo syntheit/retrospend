@@ -6,7 +6,7 @@
  * (`personId` = `<participantType>:<participantId>`, as summary.refKey).
  * Every value is a per-currency list in minor units; nothing is converted.
  */
-import { FigureNarrowingError } from "~/server/figures/narrowing";
+import { FigureNarrowingError } from "@retrospend/domain/figures/narrowing";
 import type {
 	FigureDb,
 	FigureDefinition,

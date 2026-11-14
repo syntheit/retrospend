@@ -5,6 +5,8 @@
  * plan and the group header read. The result carries the previous target,
  * so an undo is the same call with it.
  */
+
+import { groupTargetOf } from "@retrospend/domain/envelope/group-view";
 import type { GroupTargetInput } from "~/lib/schemas/envelope";
 import type {
 	GroupTargetResult,
@@ -12,7 +14,6 @@ import type {
 } from "~/lib/schemas/envelope-plan";
 import type { Prisma } from "~prisma";
 import { EnvelopeError } from "./errors";
-import { groupTargetOf } from "./group-view";
 import { forgetMonthViews } from "./month-read";
 import { requireBook } from "./rule.service";
 import { groupTargetColumns } from "./setup-p5";

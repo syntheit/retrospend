@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import {
 	billNeed,
 	type MonthlyTarget,
@@ -7,7 +6,8 @@ import {
 	type SavingsTarget,
 	savingsNeed,
 	savingsProgress,
-} from "./targets";
+} from "@retrospend/domain/envelope/targets";
+import { describe, expect, it } from "vitest";
 import { TargetConfigError } from "./types";
 
 /** Whole currency units to minor (2 decimals). */

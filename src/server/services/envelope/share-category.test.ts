@@ -1,9 +1,10 @@
 /** D19: your share of someone else's split takes your own category. */
-import { describe, expect, it } from "vitest";
+
 import {
 	resolveShareCategories,
 	type ShareForCategory,
-} from "./share-category";
+} from "@retrospend/domain/envelope/share-category";
+import { describe, expect, it } from "vitest";
 
 const MINE = [
 	{ id: "c-groc" },
