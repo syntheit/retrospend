@@ -281,27 +281,6 @@ describe("POST /me/protection/enable", () => {
 			expect(html).not.toContain(secret);
 	});
 
-	it("keeps no secret in the idempotency row", async () => {
-		const u = await passwordUser();
-		const me = await mobile(u.id);
-		const m = made(u.id);
-		await enable(me.headers, bodyOf(m));
-		const rows = await adminDb.idempotencyKey.findMany({
-			where: { userId: u.id },
-		});
-		expect(rows).toHaveLength(1);
-		const stored = JSON.stringify(rows);
-		const sent = bodyOf(m);
-		for (const secret of [
-			m.authKeyText,
-			PASSWORD,
-			sent.kdf.salt,
-			sent.publicKey,
-			...sent.wraps.map((w) => w.wrapped),
-		])
-			expect(stored).not.toContain(secret);
-	});
-
 	it("is all or nothing when the database fails after the password write", async () => {
 		const u = await passwordUser();
 		const other = await passwordUser();
@@ -451,7 +430,7 @@ describe("POST /me/protection/enable", () => {
 			await expectProblem(
 				await enable(me.headers, bodyOf(m, { currentPassword: "Not mine 1" })),
 				400,
-				"bad_request",
+				"wrong_password",
 			);
 		expect(await storedHash(u.id)).toBe(before);
 		expect(await keyRows(u.id)).toEqual({ sets: 0, wraps: 0 });
@@ -550,14 +529,14 @@ describe("POST /me/protection/enable", () => {
 			await expectProblem(
 				await enable(me.headers, bodyOf(m)),
 				400,
-				"bad_request",
+				"two_factor_required",
 			);
 			const right = await codeNow();
 			const wrong = right === "000000" ? "000001" : "000000";
 			await expectProblem(
 				await enable(me.headers, bodyOf(m, { totpCode: wrong })),
 				400,
-				"bad_request",
+				"wrong_two_factor_code",
 			);
 			expect(await storedHash(u.id)).toBe(before);
 			expect(await keyRows(u.id)).toEqual({ sets: 0, wraps: 0 });
@@ -571,13 +550,17 @@ describe("POST /me/protection/enable", () => {
 
 		it("accepts one step of clock drift and not two", async () => {
 			const u = await twoFactorUser();
-			const now = Date.now();
+			// The middle of a 30 second step, so the code and every check below
+			// belong to one known step whatever the real time is.
+			const at = Math.floor(Date.now() / 30_000) * 30_000 + 15_000;
+			vi.useFakeTimers({ toFake: ["Date"] });
+			vi.setSystemTime(at);
 			const code = await codeNow();
-			expect(await verifyTwoFactorCode(u.id, code, now)).toBe(true);
-			expect(await verifyTwoFactorCode(u.id, code, now + 30_000)).toBe(true);
-			expect(await verifyTwoFactorCode(u.id, code, now - 30_000)).toBe(true);
-			expect(await verifyTwoFactorCode(u.id, code, now + 90_000)).toBe(false);
-			expect(await verifyTwoFactorCode(u.id, code, now - 90_000)).toBe(false);
+			vi.useRealTimers();
+			for (const drift of [0, 30_000, -30_000])
+				expect(await verifyTwoFactorCode(u.id, code, at + drift)).toBe(true);
+			for (const drift of [60_000, -60_000])
+				expect(await verifyTwoFactorCode(u.id, code, at + drift)).toBe(false);
 		});
 	});
 

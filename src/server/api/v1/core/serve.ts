@@ -52,10 +52,10 @@ const ENABLE_DETAIL: Record<EnableProtectionError["code"], string> = {
 
 function enableProblem(error: EnableProtectionError) {
 	const detail = ENABLE_DETAIL[error.code];
-	if (error.code === "session_not_fresh")
-		return problem("session_not_fresh", detail);
 	if (error.code === "email_not_verified") return problem("forbidden", detail);
-	return problem("bad_request", detail);
+	if (error.code === "no_password") return problem("bad_request", detail);
+	// The rest are problem codes of the same name.
+	return problem(error.code, detail);
 }
 
 export function toProblem(error: unknown, route?: string): unknown {
