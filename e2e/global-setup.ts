@@ -87,6 +87,6 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
 	}
 	// After the sign-ups, so the account counts of the older specs hold; this
 	// one is not a persona and has no ledger.
-	await seedKeyedUser(E2E_DATABASE_URL);
+	await seedKeyedUser(E2E_DATABASE_URL, signUpUser);
 	console.log("E2E database seeded");
 }

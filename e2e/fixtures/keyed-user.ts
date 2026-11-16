@@ -9,7 +9,6 @@
  * sign-in takes a fraction of a second. All values are fake.
  */
 import { PrismaPg } from "@prisma/adapter-pg";
-import { hashPassword } from "better-auth/crypto";
 import { PrismaClient } from "~prisma";
 // Deep paths: the package index also loads the known-answer self-test, whose
 // JSON import Playwright's loader refuses.
@@ -24,7 +23,6 @@ import { createWebPrimitives } from "../../packages/crypto/src/web";
 import { assertE2eDatabase } from "../db-guard";
 
 export const KEYED_USER = {
-	id: "e2e_user_keyed",
 	name: "Keyed E2E User",
 	username: "keyede2e",
 	email: "keyed.e2e@example.com",
@@ -47,34 +45,39 @@ export async function keyedSignInSecret(): Promise<string> {
 	return signInSecret(masterSubkeys(p, master).authKey);
 }
 
-export async function seedKeyedUser(databaseUrl: string): Promise<void> {
+/**
+ * Signs the keyed account up through the app with the derived secret as its
+ * password (so the server stores the hash and, in a sealed run, seals the
+ * name like every other sign-up), then adds its key set on the owner
+ * connection, which is what makes prelogin answer with the parameters.
+ */
+export async function seedKeyedUser(
+	databaseUrl: string,
+	signUp: (
+		email: string,
+		password: string,
+		name: string,
+		username: string,
+	) => Promise<void>,
+): Promise<void> {
 	assertE2eDatabase(databaseUrl);
-	const secret = await keyedSignInSecret();
+	await signUp(
+		KEYED_USER.email,
+		await keyedSignInSecret(),
+		KEYED_USER.name,
+		KEYED_USER.username,
+	);
 	const db = new PrismaClient({
 		adapter: new PrismaPg({ connectionString: databaseUrl }),
 	});
 	try {
-		await db.user.create({
-			data: {
-				id: KEYED_USER.id,
-				name: KEYED_USER.name,
-				username: KEYED_USER.username,
-				email: KEYED_USER.email,
-				emailVerified: true,
-			},
-		});
-		await db.account.create({
-			data: {
-				id: "e2e_account_keyed",
-				accountId: KEYED_USER.id,
-				providerId: "credential",
-				userId: KEYED_USER.id,
-				password: await hashPassword(secret),
-			},
+		const user = await db.user.findUniqueOrThrow({
+			where: { email: KEYED_USER.email },
+			select: { id: true },
 		});
 		await db.protectionKeySet.create({
 			data: {
-				userId: KEYED_USER.id,
+				userId: user.id,
 				kdfSalt: SALT,
 				kdfMemoryKiB: ARGON2_FLOOR.memoryKiB,
 				kdfPasses: ARGON2_FLOOR.passes,
