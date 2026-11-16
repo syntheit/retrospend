@@ -20,15 +20,19 @@
 -- Idempotent: running it twice changes nothing more.
 
 DO $$
+DECLARE
+  t TEXT;
+  used BOOLEAN;
 BEGIN
-  IF to_regclass('public.protection_key_set') IS NOT NULL
-     AND EXISTS (SELECT 1 FROM "protection_key_set") THEN
-    RAISE EXCEPTION 'protection_key_set has rows: rolling back would delete the wrapped keys of a protected account';
-  END IF;
-  IF to_regclass('public.protection_key_wrap') IS NOT NULL
-     AND EXISTS (SELECT 1 FROM "protection_key_wrap") THEN
-    RAISE EXCEPTION 'protection_key_wrap has rows: rolling back would delete the wrapped keys of a protected account';
-  END IF;
+  -- Dynamic SQL: a table the first run already dropped is skipped, not an error.
+  FOREACH t IN ARRAY ARRAY['protection_key_set', 'protection_key_wrap'] LOOP
+    IF to_regclass('public.' || t) IS NOT NULL THEN
+      EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I)', t) INTO used;
+      IF used THEN
+        RAISE EXCEPTION '% has rows: rolling back would delete the wrapped keys of a protected account', t;
+      END IF;
+    END IF;
+  END LOOP;
 END $$;
 
 DROP TABLE IF EXISTS "protection_key_wrap";

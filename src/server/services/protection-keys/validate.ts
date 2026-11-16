@@ -32,7 +32,8 @@ const OWN_TARGET_ROLES: readonly WrapRole[] = [
 
 /** keys.ts `ID`: the pattern an id must match to be bound into a wrap. */
 const TARGET_ID = /^[A-Za-z0-9_-]{1,64}$/;
-const WRAP_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const WRAP_ID =
+	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 /** More than a person ever holds (collections, devices and contacts); bounds a request. */
 export const MAX_CHANGES = 500;
 

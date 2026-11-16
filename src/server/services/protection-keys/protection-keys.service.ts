@@ -18,8 +18,8 @@ import {
 	type WrapRole,
 } from "./validate";
 
-export type { KeyChanges, WrapInput, WrapRef } from "./validate";
 export { ProtectionKeysError } from "./errors";
+export type { KeyChanges, WrapInput, WrapRef } from "./validate";
 
 export type ProtectionKeys = {
 	kdfSalt: Uint8Array;
@@ -27,7 +27,12 @@ export type ProtectionKeys = {
 	kdfPasses: number;
 	publicKey: Uint8Array;
 	version: number;
-	wraps: { id: string; role: WrapRole; targetId: string; wrapped: Uint8Array }[];
+	wraps: {
+		id: string;
+		role: WrapRole;
+		targetId: string;
+		wrapped: Uint8Array;
+	}[];
 };
 
 type JoinedRow = {
