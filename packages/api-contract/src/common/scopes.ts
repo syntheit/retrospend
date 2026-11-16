@@ -53,11 +53,16 @@ export const DEVICE_CLIENT_IDS: readonly string[] = [
  * - `sync`: the raw row pulls under `/sync`. A session signed
  *   in by a client that identifies as the mobile app holds it; the web app
  *   and every token do not.
+ * - `vault`: pull and push the sealed records of a protected account
+ *   (`/vault`). A web session holds it; a mobile session holds it with `read`,
+ *   `write:expenses` and `write:money` stored, so a narrowed phone session
+ *   cannot push or pull a vault. No token, API key or device session does.
  */
 export const SESSION_SCOPES = [
 	"account:delete",
 	"account:security",
 	"sync",
+	"vault",
 ] as const;
 
 export type SessionScope = (typeof SESSION_SCOPES)[number];

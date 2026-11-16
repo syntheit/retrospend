@@ -207,6 +207,8 @@ export const EVENT_TYPES = [
 	"webhook.secret_rotated",
 	"webhook.tested",
 	"webhook.updated",
+	// Vault sync (E2EE F7b): ids only, never a record's bytes.
+	"vault.changed",
 ] as const satisfies readonly string[];
 
 export type EventType = (typeof EVENT_TYPES)[number];

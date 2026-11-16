@@ -29,6 +29,9 @@ export const PROBLEM_STATUS = {
 	wrong_two_factor_code: 400,
 	not_found: 404,
 	conflict: 409,
+	// A vault write from an account that has no protection key set: nothing a
+	// client sealed could ever be opened, so the server refuses to hold it.
+	protection_keys_missing: 409,
 	payload_too_large: 413,
 	idempotency_in_progress: 409,
 	idempotency_replay_unavailable: 409,
@@ -80,7 +83,8 @@ export const problemIssueSchema = z.object({
 /**
  * RFC 9457 problem details plus the extension members we use: the stable
  * `code`, field `errors` for validation failures, `requiredScope` for
- * missing_scope and `retryAfter` (seconds) for rate_limited.
+ * missing_scope, `retryAfter` (seconds) for rate_limited and `conflictIds` for
+ * a vault write conflict.
  */
 export const problemSchema = z
 	.object({
@@ -93,6 +97,10 @@ export const problemSchema = z
 		errors: z.array(problemIssueSchema).optional(),
 		requiredScope: z.string().optional(),
 		retryAfter: z.int().optional(),
+		conflictIds: z.array(z.string()).max(500).optional().meta({
+			description:
+				"On a vault write conflict: the ids of the records whose base version is stale. Ids only; nothing was stored.",
+		}),
 	})
 	.meta({ id: "Problem" });
 

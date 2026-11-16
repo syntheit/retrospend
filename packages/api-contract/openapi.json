@@ -52,6 +52,7 @@
 							"wrong_two_factor_code",
 							"not_found",
 							"conflict",
+							"protection_keys_missing",
 							"payload_too_large",
 							"idempotency_in_progress",
 							"idempotency_replay_unavailable",
@@ -71,6 +72,14 @@
 							"not_implemented"
 						],
 						"type": "string"
+					},
+					"conflictIds": {
+						"description": "On a vault write conflict: the ids of the records whose base version is stale. Ids only; nothing was stored.",
+						"items": {
+							"type": "string"
+						},
+						"maxItems": 500,
+						"type": "array"
 					},
 					"detail": {
 						"type": "string"
@@ -134976,6 +134985,389 @@
 					"Transfers"
 				],
 				"x-required-scope": "write:money"
+			}
+		},
+		"/vault/changes": {
+			"get": {
+				"description": "Records (live and deleted) in commit order after `cursor`, at most `limit` and about 4 MiB of ciphertext per page, at least one when any remain. A record written again comes again at its new version, so apply records by id. Page until `hasMore` is false; the last cursor is the next pull's start. A cursor the server can no longer honor (another epoch after a restore) answers 410 sync_reset_required: drop the local copy and pull from the start. A bad cursor is 400. An account without keys reads an empty page. Needs the `vault` session scope: a web session has it, a mobile session with read, write:expenses and write:money stored has it, a token, API key or device session never does.",
+				"operationId": "getVaultChanges",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "cursor",
+						"schema": {
+							"description": "The cursor of the last page you applied. Omit it for the first pull.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 500,
+							"maximum": 1000,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"cursor": {
+											"type": "string"
+										},
+										"hasMore": {
+											"type": "boolean"
+										},
+										"records": {
+											"items": {
+												"properties": {
+													"ciphertext": {
+														"anyOf": [
+															{
+																"maxLength": 1398179,
+																"minLength": 1,
+																"pattern": "^[A-Za-z0-9_-]+$",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														],
+														"description": "Null for a deleted record."
+													},
+													"collectionId": {
+														"pattern": "^[A-Za-z0-9_-]{1,64}$",
+														"type": "string"
+													},
+													"deletedAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"entity": {
+														"maximum": 9007199254740991,
+														"minimum": -9007199254740991,
+														"type": "integer"
+													},
+													"id": {
+														"pattern": "^[A-Za-z0-9_-]{1,64}$",
+														"type": "string"
+													},
+													"version": {
+														"maximum": 9007199254740991,
+														"minimum": 1,
+														"type": "integer"
+													}
+												},
+												"required": [
+													"id",
+													"collectionId",
+													"entity",
+													"version",
+													"ciphertext",
+													"deletedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"records",
+										"cursor",
+										"hasMore"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"410": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "The cursor is no longer valid; drop these rows and pull again from the start"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"vault"
+						]
+					},
+					{
+						"cookieAuth": [
+							"vault"
+						]
+					}
+				],
+				"summary": "Sealed records changed after a cursor",
+				"tags": [
+					"Vault"
+				],
+				"x-required-scope": "vault"
+			}
+		},
+		"/vault/writes": {
+			"post": {
+				"description": "1 to 500 writes, at most 8 MiB of ciphertext in all, all or nothing. A stale base version or a taken id is 409 conflict with `conflictIds` and nothing stored. A write that is already stored exactly (same version and bytes) answers as applied, so a retry is safe. An account without protection keys is 409 protection_keys_missing. A body over about 11.3 MB is 413. Limited to 30 batches a minute per account. The event vault.changed carries record ids only.",
+				"operationId": "writeVaultRecords",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"writes": {
+										"items": {
+											"properties": {
+												"baseVersion": {
+													"description": "The version you read; 0 creates the record. The write becomes baseVersion + 1, the version it was sealed for.",
+													"maximum": 2147483646,
+													"minimum": 0,
+													"type": "integer"
+												},
+												"ciphertext": {
+													"anyOf": [
+														{
+															"maxLength": 1398179,
+															"minLength": 1,
+															"pattern": "^[A-Za-z0-9_-]+$",
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													],
+													"description": "The sealed record as unpadded base64url, or null to delete it (a tombstone)."
+												},
+												"collectionId": {
+													"pattern": "^[A-Za-z0-9_-]{1,64}$",
+													"type": "string"
+												},
+												"entity": {
+													"description": "The clients' entity number, stored as given and never interpreted.",
+													"maximum": 65535,
+													"minimum": 1,
+													"type": "integer"
+												},
+												"id": {
+													"description": "Client-made record id.",
+													"pattern": "^[A-Za-z0-9_-]{1,64}$",
+													"type": "string"
+												}
+											},
+											"required": [
+												"id",
+												"collectionId",
+												"entity",
+												"baseVersion",
+												"ciphertext"
+											],
+											"type": "object"
+										},
+										"maxItems": 500,
+										"minItems": 1,
+										"type": "array"
+									}
+								},
+								"required": [
+									"writes"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"results": {
+											"items": {
+												"properties": {
+													"id": {
+														"pattern": "^[A-Za-z0-9_-]{1,64}$",
+														"type": "string"
+													},
+													"version": {
+														"maximum": 9007199254740991,
+														"minimum": 1,
+														"type": "integer"
+													}
+												},
+												"required": [
+													"id",
+													"version"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"results"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"vault"
+						]
+					},
+					{
+						"cookieAuth": [
+							"vault"
+						]
+					}
+				],
+				"summary": "Store a batch of sealed records",
+				"tags": [
+					"Vault"
+				],
+				"x-event-type": "vault.changed",
+				"x-required-scope": "vault"
 			}
 		},
 		"/webhooks": {

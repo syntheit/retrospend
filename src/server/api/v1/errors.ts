@@ -22,6 +22,7 @@ const TITLES: Record<ProblemCode, string> = {
 	wrong_two_factor_code: "Two-factor code is incorrect",
 	not_found: "Not found",
 	conflict: "Conflict",
+	protection_keys_missing: "Protection keys are missing",
 	payload_too_large: "Upload too large",
 	idempotency_in_progress: "Request in progress",
 	idempotency_replay_unavailable: "Response not stored",
@@ -52,7 +53,10 @@ const ORPC_CODES: Record<string, ProblemCode> = {
 	NOT_IMPLEMENTED: "not_implemented",
 };
 
-type ProblemExtras = Pick<Problem, "requiredScope" | "retryAfter" | "errors">;
+type ProblemExtras = Pick<
+	Problem,
+	"requiredScope" | "retryAfter" | "errors" | "conflictIds"
+>;
 
 function isProblemCode(code: string): code is ProblemCode {
 	return code in PROBLEM_STATUS;
