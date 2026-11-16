@@ -49,6 +49,7 @@ export function exportCallerFor(user: TestUser["user"]) {
 				email: user.email,
 				name: user.name,
 				isActive: true,
+				protectionState: "OFF",
 				timeZone: "America/Argentina/Buenos_Aires",
 			},
 		} as never,

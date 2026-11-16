@@ -178,6 +178,7 @@ describe("payment methods for a debtor", () => {
 					email: u.user.email,
 					name: u.user.name,
 					isActive: true,
+					protectionState: "OFF",
 				},
 			} as never,
 			headers: new Headers(),

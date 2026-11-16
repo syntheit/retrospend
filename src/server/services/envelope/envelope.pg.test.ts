@@ -318,7 +318,9 @@ describe("figure budget.leftThisWeek", () => {
 describe("envelope router", () => {
 	const caller = (user: { id: string }) =>
 		createCallerFactory(envelopeRouter)({
-			session: { user: { ...user, role: "USER", isActive: true } },
+			session: {
+				user: { ...user, role: "USER", isActive: true, protectionState: "OFF" },
+			},
 			db: adminDb,
 			headers: new Headers({ "x-timezone": "UTC" }),
 		} as never);

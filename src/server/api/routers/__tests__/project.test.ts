@@ -118,6 +118,7 @@ function makeOrganizerSession(userId = "organizer-1") {
 			email: "org@test.com",
 			name: "Organizer",
 			isActive: true,
+			protectionState: "OFF",
 		},
 	} as never;
 }

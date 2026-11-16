@@ -85,6 +85,7 @@ function makeSession(
 			email: "test@test.com",
 			name: "Test User",
 			isActive: overrides.isActive ?? true,
+			protectionState: "OFF",
 		},
 	} as never;
 }

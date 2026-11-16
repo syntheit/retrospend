@@ -146,7 +146,13 @@ describe("deleting from the activity list (the older procedure)", () => {
 		const caller = createCallerFactory(sharedTransactionRouter)({
 			db: adminDb,
 			session: {
-				user: { id: b.user.id, role: "USER", isActive: true, timeZone: "UTC" },
+				user: {
+					id: b.user.id,
+					role: "USER",
+					isActive: true,
+					timeZone: "UTC",
+					protectionState: "OFF",
+				},
 			} as never,
 			headers: new Headers(),
 		});

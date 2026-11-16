@@ -51,6 +51,7 @@ export function callerFor(user: TestUser["user"]) {
 				email: user.email,
 				name: user.name,
 				isActive: true,
+				protectionState: "OFF",
 			},
 		} as never,
 		headers: new Headers(),
