@@ -3,16 +3,17 @@
 import { useTranslations } from "next-intl";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState } from "react";
+import { Input } from "~/components/ui/input";
 import {
 	InputOTP,
 	InputOTPGroup,
 	InputOTPSlot,
 } from "~/components/ui/input-otp";
-import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Sheet } from "~/components/ui/sheet";
 import { useToast } from "~/components/ui/toast";
 import { authClient } from "~/lib/auth-client";
+import { useSessionSignInSecret } from "~/lib/protection/use-sign-in-secret";
 import { BackupCodes } from "./backup-codes";
 
 type Step = "password" | "scan" | "codes";
@@ -43,6 +44,7 @@ export function TwoFactorOnSheet({
 }) {
 	const t = useTranslations("settingsV2.twoFactor");
 	const toast = useToast();
+	const signInSecret = useSessionSignInSecret();
 	const [step, setStep] = useState<Step>("password");
 	const [password, setPassword] = useState("");
 	const [code, setCode] = useState("");
@@ -61,7 +63,9 @@ export function TwoFactorOnSheet({
 
 	const submit = async () => {
 		if (step === "password") {
-			const { data, error } = await authClient.twoFactor.enable({ password });
+			const { data, error } = await authClient.twoFactor.enable({
+				password: await signInSecret(password),
+			});
 			if (error) throw new Error(error.message || t("failed"));
 			setUri(data?.method === "totp" ? data.totpURI : "");
 			setCodes(data?.method === "totp" ? data.backupCodes : []);
@@ -116,11 +120,11 @@ export function TwoFactorOnSheet({
 			)}
 			{step === "scan" && (
 				<div className="flex flex-col items-center gap-4">
-					<div className="rounded-ctl border border-line-strong bg-surface p-2">
+					<div className="rounded-ctl border-line-strong bg-surface border p-2">
 						{/* QR codes need a light ground in both themes to scan. */}
 						<QRCodeSVG marginSize={1} size={160} value={uri} />
 					</div>
-					<p className="text-center text-fg-2 text-small">
+					<p className="text-fg-2 text-small text-center">
 						{t("scan")} <span className="font-mono">{totpSecret(uri)}</span>
 					</p>
 					<div className="flex flex-col items-center gap-2">

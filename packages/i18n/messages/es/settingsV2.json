@@ -260,7 +260,8 @@
 		"notMet": "todavía no",
 		"mismatch": "Las contraseñas nuevas no coinciden",
 		"submit": "Actualizar contraseña",
-		"changed": "Contraseña cambiada. Se cerró la sesión en tus otros dispositivos."
+		"changed": "Contraseña cambiada. Se cerró la sesión en tus otros dispositivos.",
+		"locked": "No disponible mientras la protección avanzada está activada."
 	},
 	"twoFactor": {
 		"onTitle": "Activar la autenticación de dos factores",
@@ -291,6 +292,11 @@
 		"codesCopied": "Códigos copiados",
 		"copyFailed": "No se pudieron copiar los códigos",
 		"fileHeader": "Códigos de respaldo de Retrospend. Cada código funciona una vez."
+	},
+	"signInSecret": {
+		"unavailable": "No se pudo comprobar cómo iniciar tu sesión. Inténtalo de nuevo.",
+		"downgrade": "El servidor omitió la protección de esta cuenta, así que se detuvo el inicio de sesión.",
+		"params": "Los ajustes de protección del servidor son demasiado débiles, así que se detuvo el inicio de sesión."
 	},
 	"developer": {
 		"title": "Desarrollador",

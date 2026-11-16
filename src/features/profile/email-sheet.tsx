@@ -6,6 +6,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Sheet } from "~/components/ui/sheet";
 import { useToast } from "~/components/ui/toast";
+import { useSessionSignInSecret } from "~/lib/protection/use-sign-in-secret";
 import { api } from "~/trpc/react";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -31,6 +32,7 @@ export function EmailSheet({
 	const toast = useToast();
 	const utils = api.useUtils();
 	const update = api.profile.update.useMutation();
+	const signInSecret = useSessionSignInSecret();
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 
@@ -48,7 +50,7 @@ export function EmailSheet({
 	const submit = async () => {
 		const result = await update.mutateAsync({
 			email: next,
-			currentPassword: password,
+			currentPassword: await signInSecret(password),
 		});
 		const pending = "emailChangePending" in result && result.emailChangePending;
 		await utils.profile.getPendingEmail.invalidate();

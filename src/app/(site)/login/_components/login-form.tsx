@@ -14,6 +14,7 @@ import {
 } from "~/components/ui/input-otp";
 import { Label } from "~/components/ui/label";
 import { authClient } from "~/lib/auth-client";
+import { useSignInSecret } from "~/lib/protection/use-sign-in-secret";
 import { safeRedirect } from "~/lib/safe-redirect";
 import { api } from "~/trpc/react";
 
@@ -37,6 +38,7 @@ function LoginFormInner() {
 	const [useBackupCode, setUseBackupCode] = useState(false);
 	const [backupCode, setBackupCode] = useState("");
 
+	const signInSecret = useSignInSecret();
 	const { data: appFeatures } = api.auth.getAppFeatures.useQuery();
 
 	const handleSubmit = async (e: React.FormEvent) => {
@@ -45,9 +47,19 @@ function LoginFormInner() {
 		setError("");
 
 		try {
+			const address = email.trim().toLowerCase();
+			let secret: string;
+			try {
+				// Keyed accounts sign in with a key made from the password here
+				// (about a second), never with the password itself.
+				secret = await signInSecret(address, password);
+			} catch (e) {
+				setError(e instanceof Error ? e.message : t("unexpectedError"));
+				return;
+			}
 			const result = await authClient.signIn.email({
-				email: email.trim().toLowerCase(),
-				password,
+				email: address,
+				password: secret,
 			});
 
 			if (result.error) {

@@ -260,7 +260,8 @@
 		"notMet": "ainda não",
 		"mismatch": "As novas senhas não coincidem",
 		"submit": "Atualizar senha",
-		"changed": "Senha alterada. Seus outros dispositivos foram desconectados."
+		"changed": "Senha alterada. Seus outros dispositivos foram desconectados.",
+		"locked": "Indisponível enquanto a proteção avançada está ativada."
 	},
 	"twoFactor": {
 		"onTitle": "Ativar a autenticação de dois fatores",
@@ -291,6 +292,11 @@
 		"codesCopied": "Códigos copiados",
 		"copyFailed": "Não foi possível copiar os códigos",
 		"fileHeader": "Códigos de backup do Retrospend. Cada código funciona uma vez."
+	},
+	"signInSecret": {
+		"unavailable": "Não foi possível verificar como entrar na sua conta. Tente de novo.",
+		"downgrade": "O servidor omitiu a proteção desta conta, então a entrada foi interrompida.",
+		"params": "As configurações de proteção do servidor são fracas demais, então a entrada foi interrompida."
 	},
 	"developer": {
 		"title": "Desenvolvedor",

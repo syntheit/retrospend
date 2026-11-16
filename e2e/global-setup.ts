@@ -8,6 +8,7 @@ import {
 	TEST_USER,
 } from "./constants";
 import { assertE2eDatabase } from "./db-guard";
+import { seedKeyedUser } from "./fixtures/keyed-user";
 import { seedE2eDatabase } from "./fixtures/seed";
 import { indexSeedCategories, snapshotSeed } from "./sealing-seed";
 
@@ -84,5 +85,8 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
 	} finally {
 		await pool.end();
 	}
+	// After the sign-ups, so the account counts of the older specs hold; this
+	// one is not a persona and has no ledger.
+	await seedKeyedUser(E2E_DATABASE_URL);
 	console.log("E2E database seeded");
 }

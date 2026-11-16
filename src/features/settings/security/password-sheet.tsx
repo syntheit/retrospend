@@ -65,11 +65,22 @@ export function PasswordSheet({
 		<Sheet
 			onOpenChange={onOpenChange}
 			onSubmit={async () => {
-				await change.mutateAsync({
-					currentPassword: current,
-					newPassword: next,
-					confirmPassword: confirm,
-				});
+				try {
+					await change.mutateAsync({
+						currentPassword: current,
+						newPassword: next,
+						confirmPassword: confirm,
+					});
+				} catch (e) {
+					// An account with Advanced protection keeps its password until
+					// the key set can change with it (K0 decision 6).
+					if (
+						(e as { data?: { problem?: string } } | null)?.data?.problem ===
+						"protected_password"
+					)
+						throw new Error(t("locked"));
+					throw e;
+				}
 				toast.saved(t("changed"));
 			}}
 			open={open}
@@ -86,7 +97,7 @@ export function PasswordSheet({
 					"current-password",
 				)}
 				{field("pw-new", t("new"), next, setNext, "new-password")}
-				<ul aria-label={t("rules")} className="flex flex-col gap-1 text-meta">
+				<ul aria-label={t("rules")} className="text-meta flex flex-col gap-1">
 					{CHECKS.map((c) => (
 						<li
 							className={cn(

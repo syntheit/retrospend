@@ -8,6 +8,7 @@ import { Label } from "~/components/ui/label";
 import { Sheet } from "~/components/ui/sheet";
 import { useToast } from "~/components/ui/toast";
 import { authClient } from "~/lib/auth-client";
+import { useSessionSignInSecret } from "~/lib/protection/use-sign-in-secret";
 import { BackupCodes } from "./backup-codes";
 
 type SheetProps = { open: boolean; onOpenChange: (open: boolean) => void };
@@ -43,6 +44,7 @@ function PasswordField({
 export function BackupCodesSheet({ open, onOpenChange }: SheetProps) {
 	const t = useTranslations("settingsV2.twoFactor");
 	const toast = useToast();
+	const signInSecret = useSessionSignInSecret();
 	const [password, setPassword] = useState("");
 	const [codes, setCodes] = useState<string[]>([]);
 
@@ -54,7 +56,7 @@ export function BackupCodesSheet({ open, onOpenChange }: SheetProps) {
 
 	const make = async () => {
 		const { data, error } = await authClient.twoFactor.generateBackupCodes({
-			password,
+			password: await signInSecret(password),
 		});
 		if (error) throw new Error(error.message || t("failed"));
 		setCodes(data?.backupCodes ?? []);
@@ -90,6 +92,7 @@ export function TwoFactorOffSheet({
 }: SheetProps & { onDone: () => unknown }) {
 	const t = useTranslations("settingsV2.twoFactor");
 	const toast = useToast();
+	const signInSecret = useSessionSignInSecret();
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
@@ -104,7 +107,9 @@ export function TwoFactorOffSheet({
 		setBusy(true);
 		setError(null);
 		try {
-			const res = await authClient.twoFactor.disable({ password });
+			const res = await authClient.twoFactor.disable({
+				password: await signInSecret(password),
+			});
 			if (res.error) {
 				setError(res.error.message || t("failed"));
 				return;
@@ -112,6 +117,8 @@ export function TwoFactorOffSheet({
 			toast.saved(t("turnedOff"));
 			await onDone();
 			onOpenChange(false);
+		} catch (e) {
+			setError(e instanceof Error ? e.message : t("failed"));
 		} finally {
 			setBusy(false);
 		}
@@ -141,7 +148,7 @@ export function TwoFactorOffSheet({
 		>
 			<PasswordField onChange={setPassword} value={password} />
 			{error && (
-				<p className="mt-2 text-danger text-small" role="alert">
+				<p className="text-danger text-small mt-2" role="alert">
 					{error}
 				</p>
 			)}
