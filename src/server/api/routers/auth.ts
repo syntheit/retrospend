@@ -23,7 +23,6 @@ import {
 	resetPasswordHash,
 	storeEmailVerificationToken,
 } from "~/server/services/account-security.service";
-import { hasKeySet } from "~/server/services/protection-keys/password-writes";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 
@@ -125,9 +124,10 @@ export const authRouter = createTRPCRouter({
 				return { success: true }; // Generic success to prevent enumeration
 			}
 
-			// An account with keys gets no link (a reset would remove or refuse them),
-			// and the same answer as everyone else.
-			if (await hasKeySet(db, user.id)) return { success: true };
+			// While nothing is sealed (OFF) a reset removes the account's keys and
+			// is allowed; with protection on it would be refused, so no link is
+			// sent. The answer is the same either way.
+			if (user.protectionState !== "OFF") return { success: true };
 
 			const token = crypto.randomBytes(32).toString("hex");
 			const expires = new Date(Date.now() + 1000 * 60 * 60); // 1 hour

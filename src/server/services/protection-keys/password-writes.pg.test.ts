@@ -13,6 +13,8 @@ import { adminRouter } from "~/server/api/routers/admin";
 import { authRouter } from "~/server/api/routers/auth";
 import { createCallerFactory } from "~/server/api/trpc";
 import {
+	call,
+	expectProblem,
 	sessionFor,
 	webCookieFor,
 } from "~/server/api/v1/core/__tests__/harness";
@@ -330,14 +332,35 @@ describe("auth.requestPasswordReset", () => {
 		).toBe(1);
 	});
 
-	it("says the same for an account with keys and for no account, and sends nothing", async () => {
+	it("sends the normal link to an account with keys while protection is OFF, and the reset removes the keys", async () => {
 		const a = await passwordUser();
 		await giveKeys(a.id);
 		mail.sendEmail.mockClear();
 		expect(await request(a.email)).toEqual({ success: true });
-		expect(await request(`nobody-${a.id}@pg-test.invalid`)).toEqual({
-			success: true,
+		expect(mail.sendEmail).toHaveBeenCalledTimes(1);
+		const token = await adminDb.passwordResetToken.findFirstOrThrow({
+			where: { identifier: a.email },
 		});
+		await publicCaller().resetPassword({
+			token: token.token,
+			newPassword: NEW_PASSWORD,
+		});
+		expect(await keyRows(a.id)).toEqual({ sets: 0, wraps: 0 });
+		expect(
+			await verifyPassword({
+				password: NEW_PASSWORD,
+				hash: await storedHash(a.id),
+			}),
+		).toBe(true);
+	});
+
+	it("sends nothing to an account whose protection is on, and answers like it does for no account", async () => {
+		const a = await passwordUser();
+		await giveKeys(a.id, "ON");
+		mail.sendEmail.mockClear();
+		const answer = await request(a.email);
+		expect(answer).toEqual({ success: true });
+		expect(await request(`nobody-${a.id}@pg-test.invalid`)).toEqual(answer);
 		expect(mail.sendEmail).not.toHaveBeenCalled();
 		expect(
 			await adminDb.passwordResetToken.count({
@@ -426,24 +449,28 @@ describe("admin.resetPassword and generatePasswordResetLink", () => {
 		});
 	});
 
-	it("makes a link for an account without keys and refuses one with keys before writing a token", async () => {
+	it("makes a link for an account without keys or with keys while OFF, and refuses one whose protection is on before writing a token", async () => {
 		const { caller: admin } = await adminCaller();
 		const plain = await passwordUser();
-		const keyed = await passwordUser();
-		await giveKeys(keyed.id);
-		const link = await admin.generatePasswordResetLink({ userId: plain.id });
-		expect(link.resetUrl).toContain("/auth/reset-password?token=");
-		expect(
-			await adminDb.passwordResetToken.count({
-				where: { identifier: plain.email },
-			}),
-		).toBe(1);
+		const keyedOff = await passwordUser();
+		const keyedOn = await passwordUser();
+		await giveKeys(keyedOff.id);
+		await giveKeys(keyedOn.id, "ON");
+		for (const who of [plain, keyedOff]) {
+			const link = await admin.generatePasswordResetLink({ userId: who.id });
+			expect(link.resetUrl).toContain("/auth/reset-password?token=");
+			expect(
+				await adminDb.passwordResetToken.count({
+					where: { identifier: who.email },
+				}),
+			).toBe(1);
+		}
 		await expect(
-			admin.generatePasswordResetLink({ userId: keyed.id }),
+			admin.generatePasswordResetLink({ userId: keyedOn.id }),
 		).rejects.toBeInstanceOf(ProtectedPasswordError);
 		expect(
 			await adminDb.passwordResetToken.count({
-				where: { identifier: keyed.email },
+				where: { identifier: keyedOn.email },
 			}),
 		).toBe(0);
 	});
@@ -479,5 +506,22 @@ describe("better-auth password routes", () => {
 			(await post("/request-password-reset", { email: a.email })).status,
 		).toBe(404);
 		expect(await storedHash(a.id)).toBe(before);
+	});
+});
+
+describe("POST /api/v1/me/password", () => {
+	it("answers 403 protected_password for an account with keys", async () => {
+		const a = await passwordUser();
+		await giveKeys(a.id);
+		const res = await call("/me/password", {
+			method: "POST",
+			headers: {
+				authorization: `Bearer ${await sessionFor(a.id)}`,
+				"x-forwarded-for": "198.51.100.77",
+			},
+			body: { currentPassword: PASSWORD, newPassword: NEW_PASSWORD },
+			idempotent: true,
+		});
+		await expectProblem(res, 403, "protected_password");
 	});
 });

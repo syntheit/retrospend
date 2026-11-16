@@ -23,10 +23,7 @@ import { getAiUsageSummary } from "~/server/services/ai-access.service";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
 import { deleteFile, getStorageSize } from "~/server/storage";
 import { logEventAsync } from "~/server/services/audit.service";
-import {
-	hasKeySet,
-	ProtectedPasswordError,
-} from "~/server/services/protection-keys/password-writes";
+import { ProtectedPasswordError } from "~/server/services/protection-keys/password-writes";
 import { resetPasswordHash } from "~/server/services/account-security.service";
 import { IntegrationService } from "~/server/services/integration.service";
 import {
@@ -555,9 +552,9 @@ export const adminRouter = createTRPCRouter({
 				throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
 			}
 
-			// A link for an account with keys would only end in a refusal or in
-			// removing its keys: say so now, to the admin.
-			if (await hasKeySet(db, user.id)) throw new ProtectedPasswordError();
+			// With protection on, the reset step would refuse: say so now, to the
+			// admin. While OFF the reset removes the account's keys.
+			if (user.protectionState !== "OFF") throw new ProtectedPasswordError();
 
 			const token = crypto.randomBytes(32).toString("hex");
 			const expires = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
