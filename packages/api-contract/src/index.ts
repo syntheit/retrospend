@@ -25,6 +25,7 @@ import { peopleContract } from "./people";
 import { platformContract } from "./platform";
 import { profileContract } from "./profile";
 import { projectsContract } from "./projects";
+import { protectionContract } from "./protection";
 import { pushContract } from "./push";
 import { recurringContract } from "./recurring";
 import { searchContract } from "./search";
@@ -65,6 +66,7 @@ export * from "./people";
 export * from "./platform";
 export * from "./profile";
 export * from "./projects";
+export * from "./protection";
 export * from "./push";
 export * from "./recurring";
 export * from "./search";
@@ -108,6 +110,7 @@ export const contract = {
 	profile: profileContract,
 	recurring: recurringContract,
 	projects: projectsContract,
+	protection: protectionContract,
 	push: pushContract,
 	search: searchContract,
 	settings: settingsContract,

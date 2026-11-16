@@ -171,6 +171,31 @@ describe("POST /auth/prelogin", () => {
 		for (const key of keys) expect(key).not.toContain("@");
 	}, 60_000);
 
+	it("counts one address in any letter case against the same limit", async () => {
+		const id = (await createTestUser()).user.id;
+		const mixed = `Victim-${id}@Pg-Test.invalid`;
+		const lower = mixed.toLowerCase();
+		// 60 of each spelling from 120 addresses: together they fill the 120 allowed.
+		for (let i = 0; i < 120; i++)
+			expect(
+				(
+					await prelogin(i % 2 === 0 ? mixed : lower, {
+						"x-forwarded-for": `198.19.0.${i + 1}`,
+					})
+				).status,
+			).toBe(200);
+		await expectProblem(
+			await prelogin(lower, { "x-forwarded-for": "198.19.1.1" }),
+			429,
+			"rate_limited",
+		);
+		await expectProblem(
+			await prelogin(mixed, { "x-forwarded-for": "198.19.1.2" }),
+			429,
+			"rate_limited",
+		);
+	}, 60_000);
+
 	it("counts the addresses of one IPv6 /64 as one sender", async () => {
 		const at = (n: number) => ({ "x-forwarded-for": `2001:db8:5:6::${n}` });
 		for (let i = 0; i < 30; i++)

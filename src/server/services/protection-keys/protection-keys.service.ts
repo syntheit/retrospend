@@ -27,6 +27,7 @@ export type ProtectionKeys = {
 	kdfPasses: number;
 	publicKey: Uint8Array;
 	version: number;
+	createdAt: Date;
 	wraps: {
 		id: string;
 		role: WrapRole;
@@ -41,6 +42,7 @@ type JoinedRow = {
 	kdfPasses: number;
 	publicKey: Uint8Array;
 	version: number;
+	createdAt: Date;
 	wrapId: string | null;
 	role: WrapRole | null;
 	targetId: string | null;
@@ -60,7 +62,7 @@ export async function getProtectionKeys(
 	userId: string,
 ): Promise<ProtectionKeys | null> {
 	const rows = await tx.$queryRaw<JoinedRow[]>`
-		SELECT s."kdfSalt", s."kdfMemoryKiB", s."kdfPasses", s."publicKey", s."version",
+		SELECT s."kdfSalt", s."kdfMemoryKiB", s."kdfPasses", s."publicKey", s."version", s."createdAt",
 		       w."id"::text AS "wrapId", w."role", w."targetId", w."wrapped"
 		FROM "protection_key_set" s
 		LEFT JOIN "protection_key_wrap" w ON w."userId" = s."userId"
@@ -74,6 +76,7 @@ export async function getProtectionKeys(
 		kdfPasses: first.kdfPasses,
 		publicKey: plain(first.publicKey),
 		version: first.version,
+		createdAt: first.createdAt,
 		wraps: rows.flatMap((r) =>
 			r.wrapId && r.role && r.targetId && r.wrapped
 				? [

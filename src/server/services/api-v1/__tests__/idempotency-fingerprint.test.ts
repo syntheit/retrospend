@@ -40,4 +40,27 @@ describe("request fingerprint", () => {
 			redactSecrets({ nested: [{ password: "p", name: "n" }], day }),
 		).toEqual({ nested: [{ password: REDACTED, name: "n" }], day });
 	});
+
+	it("does not depend on the sign-in secret of an Advanced protection turn-on, and still binds the wraps", async () => {
+		const enable = (authKey: string, wrapped: string, totpCode = "123456") =>
+			hashRequest("POST", "/me/protection/enable", {
+				currentPassword: "Old password 1",
+				authKey,
+				totpCode,
+				kdf: { salt: "AAECAwQFBgcICQoLDA0ODw", memoryKiB: 65536, passes: 3 },
+				wraps: [{ role: "ak-password", wrapped }],
+			});
+		const key = "A".repeat(43);
+		expect(await enable(key, "wrap-one")).toBe(
+			await enable("B".repeat(43), "wrap-one"),
+		);
+		expect(redactSecrets({ authKey: key })).toEqual({ authKey: REDACTED });
+		// A retry with the same key and a fresh two-factor code is the same request.
+		expect(await enable(key, "wrap-one", "654321")).toBe(
+			await enable(key, "wrap-one", "123456"),
+		);
+		expect(await enable(key, "wrap-one")).not.toBe(
+			await enable(key, "wrap-two"),
+		);
+	});
 });

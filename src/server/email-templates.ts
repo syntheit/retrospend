@@ -196,6 +196,21 @@ export function getPasswordChangedAlertTemplate() {
 	});
 }
 
+/** Security alert after Advanced protection keys were created. */
+export function getProtectionEnabledAlertTemplate() {
+	const copy = emailCopy.protectionEnabled;
+	const content = `
+    ${heading(copy.title)}
+    ${paragraph(escapeHtml(copy.body))}
+    ${notice(copy.notice)}
+  `;
+	return baseEmailTemplate({
+		title: emailSubject.protectionEnabled,
+		content,
+		preheader: copy.body,
+	});
+}
+
 /**
  * A notice email for an in-app notification. The words (title, body, button
  * label) and the three footer labels come from the notificationText catalog,

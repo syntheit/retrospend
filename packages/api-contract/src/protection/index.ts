@@ -1,0 +1,120 @@
+import * as z from "zod";
+import { preloginKdfSchema } from "../auth";
+import { v1 } from "../common/meta";
+import { timestampSchema } from "../core";
+
+const TAG = ["Advanced protection"];
+
+/** 32 bytes as unpadded base64url (the sign-in secret, a public key). */
+const KEY_TEXT = /^[A-Za-z0-9_-]{43}$/;
+
+export const enableWrapSchema = z
+	.object({
+		id: z.uuid().optional().meta({
+			description:
+				"A client-made id for the wrap; the server makes one when absent.",
+		}),
+		role: z.enum([
+			"ak-password",
+			"ak-recovery",
+			"private-key",
+			"collection-key",
+		]),
+		targetId: z
+			.string()
+			.regex(/^[A-Za-z0-9_-]{1,64}$/)
+			.meta({
+				description:
+					"What the wrap is bound to: your user id for ak-password, ak-recovery and private-key, the collection key id for collection-key.",
+			}),
+		wrapped: z
+			.string()
+			.regex(/^[A-Za-z0-9_-]{1,512}$/)
+			.meta({
+				description: "The wrapped key, base64url. The server never opens it.",
+			}),
+	})
+	.meta({ id: "EnableProtectionWrap" });
+
+export const enableProtectionSchema = z
+	.object({
+		currentPassword: z.string().min(1).max(255).meta({
+			description:
+				"The password you sign in with now, typed. Counted as a try, like a password change.",
+		}),
+		authKey: z.string().regex(KEY_TEXT).meta({
+			description:
+				"The new sign-in secret: the 32-byte auth key as base64url, 43 characters. It replaces the password for sign-in; the typed password never leaves the device again.",
+		}),
+		totpCode: z
+			.string()
+			.regex(/^\d{6}$/)
+			.optional()
+			.meta({ description: "The current two-factor code, when it is on." }),
+		kdf: preloginKdfSchema,
+		publicKey: z.string().regex(KEY_TEXT).meta({
+			description: "The account public key, 32 bytes as base64url.",
+		}),
+		wraps: z.array(enableWrapSchema).length(4).meta({
+			description:
+				"Exactly one each of ak-password, ak-recovery and private-key, and one collection-key.",
+		}),
+	})
+	.meta({ id: "EnableProtection" });
+
+export const protectionKeysStatusSchema = z
+	.object({
+		createdAt: timestampSchema,
+		version: z.int().min(1),
+	})
+	.meta({ id: "ProtectionKeysStatus" });
+
+export const enableProtectionResultSchema = protectionKeysStatusSchema
+	.extend({
+		signedOut: z.int().min(0).meta({
+			description: "How many other sessions the change signed out.",
+		}),
+	})
+	.meta({ id: "EnableProtectionResult" });
+
+export const protectionKeysSchema = protectionKeysStatusSchema
+	.extend({ kdf: preloginKdfSchema })
+	.meta({ id: "ProtectionKeys" });
+
+export type EnableProtection = z.infer<typeof enableProtectionSchema>;
+export type ProtectionKeysDto = z.infer<typeof protectionKeysSchema>;
+
+/**
+ * Turning on Advanced protection keys (E2EE K1). Only the person's own sign-in
+ * may use them (scope `account:security`), and both stay reachable once
+ * protection is on. Nothing is sealed yet: the account only moves to a
+ * password that never leaves the device.
+ */
+export const protectionContract = {
+	enable: v1
+		.route({
+			method: "POST",
+			path: "/me/protection/enable",
+			operationId: "enableAdvancedProtection",
+			tags: TAG,
+			summary: "Create your protection keys and a new sign-in secret",
+			description:
+				"Needs a session made in the last 10 minutes (403 session_not_fresh), the current password (5 tries per session and 20 per account in 15 minutes, then 429), a two-factor code when it is on, and a verified email. Replaces the password with the new sign-in secret, signs out every other session, removes pending password reset links and emails you. 409 when keys already exist, 501 when the server does not offer Advanced protection.",
+		})
+		.meta({ scope: "account:security", event: "user.protection_keys_created" })
+		.input(enableProtectionSchema)
+		.output(enableProtectionResultSchema),
+	keys: v1
+		.route({
+			method: "GET",
+			path: "/me/protection/keys",
+			operationId: "getProtectionKeys",
+			tags: TAG,
+			summary:
+				"When your protection keys were made and how to derive with them",
+			description:
+				"The salt and Argon2id parameters to derive the sign-in secret from your password while signed in. 404 when you have no keys.",
+		})
+		.meta({ scope: "account:security" })
+		.output(protectionKeysSchema),
+};

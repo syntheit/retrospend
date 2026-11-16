@@ -68,8 +68,12 @@ async function describeFiles(value: unknown): Promise<unknown> {
 	return value;
 }
 
-/** Fields that hold a secret the person typed (currentPassword, password). */
-const SECRET_FIELD = /password/i;
+/**
+ * Fields that hold a secret the person typed (currentPassword, password) or the
+ * sign-in secret derived from it (authKey) or a one-time code (totpCode, E2EE K1). Wraps and public keys are
+ * ciphertext and public values, so they stay in the keyed fingerprint.
+ */
+const SECRET_FIELD = /password|authkey|totp/i;
 
 /** Stands in for a secret in a fingerprint. */
 export const REDACTED = "[redacted]";

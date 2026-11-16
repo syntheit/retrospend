@@ -18,3 +18,19 @@ export class ProtectionKeysError extends Error {
 		this.code = code;
 	}
 }
+
+export type EnableProtectionRefusal =
+	| "session_not_fresh"
+	| "email_not_verified"
+	| "no_password"
+	| "wrong_password"
+	| "two_factor_required"
+	| "wrong_two_factor_code";
+
+/** A precondition failed; the transport maps `code` to a problem. The text is never shown. */
+export class EnableProtectionError extends Error {
+	constructor(readonly code: EnableProtectionRefusal) {
+		super(`Advanced protection was not enabled: ${code}`);
+		this.name = "EnableProtectionError";
+	}
+}

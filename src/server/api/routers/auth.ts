@@ -118,16 +118,14 @@ export const authRouter = createTRPCRouter({
 				where: { email: input.email },
 			});
 
-			if (!user) {
+			// While nothing is sealed (OFF) a reset removes the account's keys and
+			// is allowed; with protection on it would be refused, so no link is
+			// sent. Both that and no account run the dummy hash and answer alike.
+			if (!user || user.protectionState !== "OFF") {
 				// Run dummy hash to mitigate timing attacks
 				await hashPassword(crypto.randomBytes(32).toString("hex"));
 				return { success: true }; // Generic success to prevent enumeration
 			}
-
-			// While nothing is sealed (OFF) a reset removes the account's keys and
-			// is allowed; with protection on it would be refused, so no link is
-			// sent. The answer is the same either way.
-			if (user.protectionState !== "OFF") return { success: true };
 
 			const token = crypto.randomBytes(32).toString("hex");
 			const expires = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
