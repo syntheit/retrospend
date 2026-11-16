@@ -81,7 +81,7 @@ describe("retrospend_app privileges", () => {
 		expect(actual.columns.user?.INSERT).toBeUndefined();
 	});
 
-	it("reads every user column except the secret, the personal data and the key marker", async () => {
+	it("reads every user column except the secret, the personal data, the key marker and the protection state", async () => {
 		const { rows } = await client.query<{ name: string }>(
 			`SELECT attname AS name FROM pg_attribute
 			 WHERE attrelid = '"user"'::regclass AND attnum > 0 AND NOT attisdropped
@@ -94,6 +94,9 @@ describe("retrospend_app privileges", () => {
 			// Only keystore.create_first_data_key reads or writes it, as the owner.
 			"dataKeySince",
 			"pendingEmailToken",
+			// Written on the owner connection only; the access guard reads it from
+			// the session user and the API key principal, not a scoped client.
+			"protectionState",
 		]);
 	});
 

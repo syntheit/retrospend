@@ -71,6 +71,10 @@ model User {
   // When the first data key was made (keystore.create_first_data_key sets it;
   // the app role has no access). Set with no key row means the keys were lost.
   dataKeySince      DateTime?
+  // Advanced protection. Written on the owner connection only and not granted
+  // to the app role: the server guard reads it from the session user and the
+  // API key principal, never from a user-scoped client.
+  protectionState   ProtectionState @default(OFF)
   aiUsages          AiUsage[]
 
   avatarPath              String?                  @db.VarChar(500)
@@ -2322,6 +2326,11 @@ model ExportJob {
 enum PushPlatform {
   IOS
   ANDROID
+}
+
+enum ProtectionState {
+  OFF
+  ON
 }
 
 enum PushTransport {
