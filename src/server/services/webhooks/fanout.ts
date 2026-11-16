@@ -1,3 +1,4 @@
+import { isWebhookEventType } from "@retrospend/api-contract";
 import { db } from "~/server/db";
 import {
 	type AudienceEvent,
@@ -48,7 +49,7 @@ export async function fanOutEvents(): Promise<number> {
 			// A webhook never hears about its own deliveries, nor about the vault: a
 			// vault event only wakes the person's own devices through the feed.
 			const deliverable = events.filter(
-				(e) => !e.type.startsWith("webhook.") && !e.type.startsWith("vault."),
+				(e) => !e.type.startsWith("webhook.") && isWebhookEventType(e.type),
 			);
 			const hooks = await tx.webhook.findMany({
 				where: {

@@ -1,5 +1,5 @@
 import type { WebhookDeliveryDto, WebhookDto } from "@retrospend/api-contract";
-import { EVENT_TYPES } from "@retrospend/api-contract";
+import { EVENT_TYPES, isWebhookEventType } from "@retrospend/api-contract";
 import type { StatusKind } from "~/components/ui/status-map";
 
 /**
@@ -56,7 +56,7 @@ export function eventAreas(
 	types: readonly string[] = EVENT_TYPES,
 ): EventArea[] {
 	const by = new Map<EventAreaId, Set<string>>();
-	for (const type of types) {
+	for (const type of types.filter(isWebhookEventType)) {
 		const resource = type.split(".")[0] ?? "";
 		const id = areaOfResource(resource);
 		if (!id) continue;

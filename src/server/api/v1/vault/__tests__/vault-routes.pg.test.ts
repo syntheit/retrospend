@@ -5,6 +5,7 @@
  * conflict and malformed answers, cursors, the account without keys, the
  * protected account, isolation between users and the event a write leaves.
  */
+import { randomUUID } from "node:crypto";
 import { SCOPES } from "@retrospend/api-contract";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { encodeCursor } from "~/server/services/api-v1/cursor";
@@ -15,6 +16,8 @@ import {
 	sealer,
 	writeOf,
 } from "~/server/services/vault/vault-test-support";
+import { encryptSecret } from "~/server/services/webhooks/secret";
+import { fanOutEvents } from "~/server/services/webhooks/worker";
 import { asKey, expectProblem, sessionFor } from "../../core/__tests__/harness";
 import {
 	accountWithKeys,
@@ -354,6 +357,46 @@ describe("writing and pulling", () => {
 		const ids = new Set([event?.entityId, ...Object.values(payload.ids)]);
 		expect(ids).toEqual(new Set(["ev-1", "ev-2"]));
 		expect(text.length).toBeLessThan(2_000);
+	});
+
+	it("is not sent to a webhook, though a webhook with no filter gets the user's other events", async () => {
+		const id = await accountWithKeys();
+		const hook = await adminDb.webhook.create({
+			data: {
+				id: randomUUID(),
+				userId: id,
+				name: "all events",
+				url: "http://vault-fanout.site.test/hook",
+				eventTypes: [],
+				secretCipher: encryptSecret("whsec_test"),
+				secretStart: "whsec_test",
+			},
+		});
+		const headers = await webHeaders(id, 19);
+		expect(
+			(await post(headers, [toWire(writeOf(seal, id, "wh", 0))])).status,
+		).toBe(200);
+		await adminDb.apiEvent.create({
+			data: {
+				userId: id,
+				actorUserId: id,
+				type: "expense.created",
+				payload: { ids: {}, amounts: [], truncated: false },
+			},
+		});
+		await until(
+			async () => {
+				await fanOutEvents();
+				return adminDb.apiEvent.count({
+					where: { userId: id, fannedOutAt: null },
+				});
+			},
+			(pending) => pending === 0,
+		);
+		const deliveries = await adminDb.webhookDelivery.findMany({
+			where: { webhookId: hook.id },
+		});
+		expect(deliveries.map((d) => d.eventType)).toEqual(["expense.created"]);
 	});
 
 	it("appends no event for a refused batch", async () => {

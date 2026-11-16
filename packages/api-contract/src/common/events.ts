@@ -213,6 +213,18 @@ export const EVENT_TYPES = [
 
 export type EventType = (typeof EVENT_TYPES)[number];
 
+/**
+ * Resources whose events stay in the person's own feed: no webhook is told
+ * (the fan-out skips them) and the webhook picker offers no area for them.
+ * `vault.changed` only wakes the person's own devices.
+ */
+export const FEED_ONLY_EVENT_RESOURCES: readonly string[] = ["vault"];
+
+/** Whether a webhook can receive events of this type. */
+export function isWebhookEventType(type: string): boolean {
+	return !FEED_ONLY_EVENT_RESOURCES.includes(type.split(".")[0] ?? "");
+}
+
 export const eventTypeSchema = z
 	.string()
 	.regex(EVENT_TYPE_PATTERN)
