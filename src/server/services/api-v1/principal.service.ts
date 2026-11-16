@@ -32,11 +32,18 @@ export type Principal = {
 	tokenId: string;
 	expiresAt: Date | null;
 	clientId: string | null;
+	/** Advanced protection is on (any state other than OFF). */
+	protected: boolean;
 };
 
 export type PrincipalResult =
 	| { ok: true; principal: Principal }
 	| { ok: false; reason: "none" | "invalid" };
+
+/** The session user's state is a plain string; a missing one means OFF. */
+function isProtectedState(state: unknown): boolean {
+	return state !== undefined && state !== null && state !== "OFF";
+}
 
 /** An API key comes in `x-api-key` or as a bearer token with our prefix. */
 function apiKeyFrom(headers: Headers): string | null {
@@ -51,7 +58,7 @@ async function fromApiKey(key: string): Promise<PrincipalResult> {
 	if (!result.valid || !result.key) return { ok: false, reason: "invalid" };
 	const user = await db.user.findUnique({
 		where: { id: result.key.referenceId },
-		select: { id: true, role: true, isActive: true },
+		select: { id: true, role: true, isActive: true, protectionState: true },
 	});
 	if (!user?.isActive) return { ok: false, reason: "invalid" };
 	return {
@@ -69,6 +76,7 @@ async function fromApiKey(key: string): Promise<PrincipalResult> {
 			tokenId: result.key.id,
 			expiresAt: result.key.expiresAt ? new Date(result.key.expiresAt) : null,
 			clientId: null,
+			protected: isProtectedState(user.protectionState),
 		},
 	};
 }
@@ -116,6 +124,7 @@ export async function resolvePrincipal(
 			tokenId: session.session.id,
 			expiresAt: new Date(session.session.expiresAt),
 			clientId,
+			protected: isProtectedState(session.user.protectionState),
 		},
 	};
 }

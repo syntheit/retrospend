@@ -131,6 +131,7 @@ describe("a webhook url sealed with the instance key", () => {
 				tokenId: "test",
 				expiresAt: null,
 				clientId: null,
+				protected: false,
 			},
 		};
 	}

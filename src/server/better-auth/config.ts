@@ -270,6 +270,14 @@ export const auth = betterAuth({
 				required: false,
 				input: false,
 			},
+			// Advanced protection state, read by the access guard. input: false
+			// so sign-up and updateUser can never set it; it changes on the
+			// owner connection only. Absent on an unmigrated row, so not required.
+			protectionState: {
+				type: "string",
+				required: false,
+				input: false,
+			},
 		},
 	},
 	databaseHooks: {
