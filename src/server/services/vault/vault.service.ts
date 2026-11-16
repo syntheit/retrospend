@@ -4,7 +4,8 @@
  * the bytes a client sealed and the plain facts around them (id, collection,
  * entity number, version, write times) and never logs either. Both functions
  * run in the caller's transaction (userTransaction), so row-level security
- * applies and a thrown error rolls the whole batch back.
+ * applies. A batch is all or nothing on its own (a savepoint), so a caller
+ * that catches the error and commits keeps none of it.
  *
  * Order is the device sync feed's (sync/changes.ts): the vault_record_stamp
  * trigger sets (txid, seq) on every write, and a reader only sees rows whose
@@ -107,15 +108,25 @@ export async function applyVaultWrites(
 	writes: readonly VaultWrite[],
 ): Promise<{ id: string; version: number }[]> {
 	validateVaultWrites(writes);
-	const conflicts: string[] = [];
-	const ordered = [...writes].sort((a, b) => (a.id < b.id ? -1 : 1));
-	for (const w of ordered) {
-		if (await writeOne(tx, userId, w)) continue;
-		const why = await whyNot(tx, userId, w);
-		if (why === "moved") throw new VaultError("invalid_input");
-		if (why === "conflict") conflicts.push(w.id);
+	// All or nothing without relying on the caller: a caller that catches the
+	// error inside its own transaction and commits must not keep the writes
+	// that came before the conflict.
+	await tx.$executeRaw`SAVEPOINT vault_writes`;
+	try {
+		const conflicts: string[] = [];
+		const ordered = [...writes].sort((a, b) => (a.id < b.id ? -1 : 1));
+		for (const w of ordered) {
+			if (await writeOne(tx, userId, w)) continue;
+			const why = await whyNot(tx, userId, w);
+			if (why === "moved") throw new VaultError("invalid_input");
+			if (why === "conflict") conflicts.push(w.id);
+		}
+		if (conflicts.length > 0) throw new VaultError("conflict", conflicts);
+	} catch (error) {
+		await tx.$executeRaw`ROLLBACK TO SAVEPOINT vault_writes`;
+		throw error;
 	}
-	if (conflicts.length > 0) throw new VaultError("conflict", conflicts);
+	await tx.$executeRaw`RELEASE SAVEPOINT vault_writes`;
 	return writes.map((w) => ({ id: w.id, version: w.baseVersion + 1 }));
 }
 
@@ -171,6 +182,10 @@ export async function readVaultChanges(
 	const { limit, maxBytes = MAX_PAGE_BYTES } = options;
 	if (!Number.isInteger(limit) || limit < 1 || limit > MAX_PAGE_ROWS)
 		throw new VaultError("invalid_input");
+	// A cap of zero or less would still return a row, but a caller that
+	// trusts "at most maxBytes" is wrong either way: refuse it.
+	if (!Number.isInteger(maxBytes) || maxBytes < 1)
+		throw new VaultError("invalid_input");
 	const after = decodeCursor(cursor, syncCursorSchema);
 	const rows = await tx.$queryRaw<PageRow[]>(Prisma.sql`
 		WITH st AS (
@@ -192,7 +207,8 @@ export async function readVaultChanges(
 		), flagged AS (
 			SELECT cand.*,
 			       (row_number() OVER w <= ${limit}
-			        AND coalesce(sum(cand."size") OVER (w ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0) < ${maxBytes}
+			        AND (row_number() OVER w = 1
+			             OR coalesce(sum(cand."size") OVER (w ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0) < ${maxBytes})
 			       ) AS "included"
 			FROM cand
 			WINDOW w AS (ORDER BY cand."txid", cand."seq")

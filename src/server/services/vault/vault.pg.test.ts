@@ -148,6 +148,28 @@ describe("versions", () => {
 		expect(seen).toEqual({ first: { code: "conflict", ids: ["a"] }, n: 1 });
 	});
 
+	it("a caller that catches the conflict and commits keeps none of the batch", async () => {
+		const u = await newUser();
+		await u.apply([u.put("b", 0)]);
+		const outcomeInside = await u.run(async (tx) => {
+			// "a" sorts first and would be created; "b" is taken, so the batch fails.
+			const result = await outcome(
+				applyVaultWrites(tx, u.id, [
+					u.put("a", 0),
+					u.put("b", 0, { record: { n: 2 } }),
+				]),
+			);
+			// A write after the failure still works in the same transaction.
+			await applyVaultWrites(tx, u.id, [u.put("c", 0)]);
+			return result;
+		});
+		expect(outcomeInside).toEqual({ code: "conflict", ids: ["b"] });
+		expect((await vaultRowsOf(u.id)).map((r) => r.id).sort()).toEqual([
+			"b",
+			"c",
+		]);
+	});
+
 	it("a tombstone raises the version, clears the bytes and keeps its place; a live write revives it", async () => {
 		const u = await newUser();
 		await u.apply([u.put("a", 0)]);
@@ -513,6 +535,19 @@ describe("cursors the store cannot honor", () => {
 			});
 		}
 		await expect(u.read(undefined, 1000)).resolves.toBeDefined();
+	});
+
+	it("refuses a byte cap that is not a positive integer", async () => {
+		const u = await newUser();
+		for (const maxBytes of [0, -1, 1.5, Number.NaN]) {
+			await expect(
+				u.read(undefined, 10, maxBytes),
+				String(maxBytes),
+			).rejects.toMatchObject({
+				code: "invalid_input",
+			});
+		}
+		await expect(u.read(undefined, 10, 1)).resolves.toBeDefined();
 	});
 });
 
