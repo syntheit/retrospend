@@ -104,6 +104,7 @@ export const RESOURCE_GROUPS: Readonly<Record<string, readonly ApiGroup[]>> = {
 	push_device: ["push"],
 	token: ["tokens"],
 	webhook: ["webhooks"],
+	vault: ["vault"],
 	// Ledger
 	expense: LEDGER,
 	expenses: LEDGER,

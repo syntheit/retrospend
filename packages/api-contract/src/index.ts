@@ -34,6 +34,7 @@ import { sharedExpensesContract } from "./shared-expenses";
 import { syncContract } from "./sync";
 import { tokensContract } from "./tokens";
 import { transfersContract } from "./transfers";
+import { vaultContract } from "./vault";
 import { webhooksContract } from "./webhooks";
 
 export * from "./account";
@@ -75,6 +76,7 @@ export * from "./shared-expenses";
 export * from "./sync";
 export * from "./tokens";
 export * from "./transfers";
+export * from "./vault";
 export * from "./webhooks";
 
 /**
@@ -118,6 +120,7 @@ export const contract = {
 	sync: syncContract,
 	tokens: tokensContract,
 	transfers: transfersContract,
+	vault: vaultContract,
 	webhooks: webhooksContract,
 };
 

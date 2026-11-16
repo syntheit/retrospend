@@ -52,7 +52,7 @@ vi.mock("~/server/services/api-v1/principal.service", () => ({
 				"write:settings",
 				"admin",
 			],
-			sessionScopes: ["account:delete", "account:security", "sync"],
+			sessionScopes: ["account:delete", "account:security", "sync", "vault"],
 			tokenId: "walk-token",
 			expiresAt: null,
 			clientId: null,

@@ -1,4 +1,4 @@
-import { EVENT_TYPES } from "@retrospend/api-contract";
+import { EVENT_TYPES, isWebhookEventType } from "@retrospend/api-contract";
 import { describe, expect, it } from "vitest";
 import en from "../../../../packages/i18n/messages/en/settingsV2.json";
 import {
@@ -88,7 +88,10 @@ describe("API tokens model", () => {
 
 describe("webhooks model", () => {
 	it("gives every event resource of the contract an area", () => {
-		const resources = new Set(EVENT_TYPES.map((t) => t.split(".")[0] ?? ""));
+		// A feed-only type (vault.changed) is never sent to a webhook, so it has no area.
+		const resources = new Set(
+			EVENT_TYPES.filter(isWebhookEventType).map((t) => t.split(".")[0] ?? ""),
+		);
 		const orphans = [...resources].filter((r) => areaOfResource(r) === null);
 		expect(orphans, "event resources with no area").toEqual([]);
 	});

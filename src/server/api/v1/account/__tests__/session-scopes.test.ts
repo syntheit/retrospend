@@ -6,7 +6,10 @@ const held = ["account:delete", "account:security"];
 
 describe("sessionScopesOf", () => {
 	it("gives account deletion and security to the web app and the Expo app only", () => {
-		expect(sessionScopesOf({ kind: "web", granted: null })).toEqual(held);
+		expect(sessionScopesOf({ kind: "web", granted: null })).toEqual([
+			...held,
+			"vault",
+		]);
 		expect(sessionScopesOf({ kind: "mobile", granted: null })).toEqual([]);
 		expect(
 			sessionScopesOf({ kind: "mobile", granted: ["write:settings"] }),
@@ -42,6 +45,52 @@ describe("sessionScopesOf", () => {
 				}),
 			).toEqual([]);
 		}
+	});
+});
+
+describe("sessionScopesOf and the vault scope", () => {
+	const needs = ["read", "write:expenses", "write:money"] as const;
+
+	it("gives it to every web session", () => {
+		expect(sessionScopesOf({ kind: "web", granted: null })).toContain("vault");
+	});
+
+	it("gives a mobile session it only with read, write:expenses and write:money stored", () => {
+		expect(sessionScopesOf({ kind: "mobile", granted: [...needs] })).toEqual([
+			"sync",
+			"vault",
+		]);
+		expect(
+			sessionScopesOf({
+				kind: "mobile",
+				granted: [...needs, "write:settings", "admin"],
+			}),
+		).toEqual([...held, "sync", "vault"]);
+		// Each missing scope alone takes it away.
+		for (const missing of needs) {
+			const granted = needs.filter((scope) => scope !== missing);
+			expect(sessionScopesOf({ kind: "mobile", granted })).not.toContain(
+				"vault",
+			);
+		}
+		expect(sessionScopesOf({ kind: "mobile", granted: null })).not.toContain(
+			"vault",
+		);
+	});
+
+	it("never gives it to a device session or an API key, whatever they store", () => {
+		for (const kind of ["device", "apiKey"] as const) {
+			expect(
+				sessionScopesOf({
+					kind,
+					granted: [...needs, "write:settings", "admin"],
+				}),
+			).not.toContain("vault");
+		}
+	});
+
+	it("cannot be requested as a token scope", () => {
+		expect(parseScopeList("read vault").unknown).toEqual(["vault"]);
 	});
 });
 

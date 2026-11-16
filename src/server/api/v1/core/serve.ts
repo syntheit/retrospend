@@ -13,6 +13,7 @@ import {
 import { ProtectedPasswordError } from "~/server/services/protection-keys/password-writes";
 import { ShareAnswerRefusedError } from "~/server/services/shared-expenses/answer-guard";
 import { SyncResetRequiredError } from "~/server/services/sync/changes";
+import { VaultError } from "~/server/services/vault/errors";
 import { Prisma } from "~prisma";
 import { problem } from "../errors";
 
@@ -58,6 +59,16 @@ function enableProblem(error: EnableProtectionError) {
 	return problem(error.code, detail);
 }
 
+function vaultProblem(error: VaultError) {
+	if (error.code === "conflict")
+		return problem("conflict", error.message, {
+			conflictIds: [...error.ids],
+		});
+	if (error.code === "keys_missing")
+		return problem("protection_keys_missing", error.message);
+	return problem("bad_request", error.message);
+}
+
 export function toProblem(error: unknown, route?: string): unknown {
 	if (error instanceof ORPCError) return error;
 	if (error instanceof InvalidCursorError)
@@ -96,6 +107,9 @@ export function toProblem(error: unknown, route?: string): unknown {
 		return error.code === "conflict"
 			? problem("conflict", error.message)
 			: problem("bad_request", error.message);
+	// The sealed record store: a stale base lists the ids and nothing was
+	// stored; a batch with no key set to open it is refused.
+	if (error instanceof VaultError) return vaultProblem(error);
 	if (error instanceof TRPCError) {
 		const code = TRPC_TO_PROBLEM[error.code];
 		if (code) return problem(code, error.message);
