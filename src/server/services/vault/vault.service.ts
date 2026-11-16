@@ -182,8 +182,8 @@ export async function readVaultChanges(
 	const { limit, maxBytes = MAX_PAGE_BYTES } = options;
 	if (!Number.isInteger(limit) || limit < 1 || limit > MAX_PAGE_ROWS)
 		throw new VaultError("invalid_input");
-	// A cap of zero or less would still return a row, but a caller that
-	// trusts "at most maxBytes" is wrong either way: refuse it.
+	// The first row is always in because the bytes before it are 0, which is
+	// under any positive cap; a cap of zero or less would drop it.
 	if (!Number.isInteger(maxBytes) || maxBytes < 1)
 		throw new VaultError("invalid_input");
 	const after = decodeCursor(cursor, syncCursorSchema);
@@ -207,8 +207,7 @@ export async function readVaultChanges(
 		), flagged AS (
 			SELECT cand.*,
 			       (row_number() OVER w <= ${limit}
-			        AND (row_number() OVER w = 1
-			             OR coalesce(sum(cand."size") OVER (w ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0) < ${maxBytes})
+			        AND coalesce(sum(cand."size") OVER (w ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0) < ${maxBytes}
 			       ) AS "included"
 			FROM cand
 			WINDOW w AS (ORDER BY cand."txid", cand."seq")

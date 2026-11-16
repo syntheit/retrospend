@@ -8,6 +8,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { SyncResetRequiredError } from "~/server/services/sync/changes";
@@ -88,6 +89,38 @@ describe("sync_reset() and vault rows from another cluster", () => {
 			),
 		).rejects.toBeInstanceOf(SyncResetRequiredError);
 	}, 60_000);
+});
+
+describe("a reset never hangs behind a vault writer", () => {
+	it("gives up after its wait when an open transaction holds a vault row, and changes nothing", async () => {
+		const { user } = await createTestUser();
+		const holder = new Client({ connectionString: process.env.DATABASE_URL });
+		await holder.connect();
+		try {
+			await holder.query("BEGIN");
+			await holder.query(
+				`INSERT INTO "vault_record" ("userId", "id", "collectionId", "entity", "version", "ciphertext")
+				 VALUES ($1, 'held', 'col1', 40, 1, $2)`,
+				[user.id, Buffer.from(seal(contextOf(user.id, "held", 0)))],
+			);
+			const epochNow = async () =>
+				(
+					await adminDb.$queryRaw<
+						{ epoch: string }[]
+					>`SELECT "epoch" FROM "sync_state"`
+				)[0]?.epoch;
+			const before = await epochNow();
+			const started = Date.now();
+			await expect(
+				adminDb.$queryRaw`SELECT sync_reset('300ms')`,
+			).rejects.toThrow(/lock timeout|55P03/);
+			expect(Date.now() - started).toBeLessThan(10_000);
+			expect(await epochNow()).toBe(before);
+		} finally {
+			await holder.query("ROLLBACK");
+			await holder.end();
+		}
+	}, 30_000);
 });
 
 describe("the start's restore check", () => {

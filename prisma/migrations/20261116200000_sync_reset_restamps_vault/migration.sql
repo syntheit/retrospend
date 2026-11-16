@@ -26,6 +26,12 @@ DECLARE
 BEGIN
   PERFORM set_config('lock_timeout', lock_wait, true);
   LOCK TABLE "sync_change" IN EXCLUSIVE MODE;
+  -- The restamp below updates every vault row, so it waits behind any open
+  -- transaction that wrote one: lock the table here, under the same wait, or
+  -- the promise that a start fails after lock_wait would not hold.
+  IF to_regclass('public.vault_record') IS NOT NULL THEN
+    EXECUTE 'LOCK TABLE "vault_record" IN EXCLUSIVE MODE';
+  END IF;
   PERFORM set_config('lock_timeout', previous, true);
   DELETE FROM "sync_change";
   UPDATE "sync_state"
