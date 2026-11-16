@@ -165,6 +165,10 @@ export const V1_ALLOWED: Readonly<Record<string, string>> = {
 	"GET /me/sessions": "Security: the account's own sessions",
 	"DELETE /me/sessions/{id}":
 		"Security: ends one of the account's own sessions",
+	"POST /me/protection/enable":
+		"Security: creates the account's own protection keys and sign-in secret",
+	"GET /me/protection/keys":
+		"Security: the account's own key parameters, no wraps",
 	"GET /tokens": "Security: the account's own access tokens",
 	"POST /tokens": "Security: mints an access token",
 	"DELETE /tokens/{id}": "Security: revokes an access token",

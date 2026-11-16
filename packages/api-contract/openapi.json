@@ -46,6 +46,7 @@
 							"missing_scope",
 							"protected_account",
 							"protected_password",
+							"session_not_fresh",
 							"not_found",
 							"conflict",
 							"payload_too_large",
@@ -82892,6 +82893,356 @@
 					"Account"
 				],
 				"x-event-type": "user.password_changed",
+				"x-required-scope": "account:security"
+			}
+		},
+		"/me/protection/enable": {
+			"post": {
+				"description": "Needs a session made in the last 10 minutes (403 session_not_fresh), the current password (5 tries per session and 20 per account in 15 minutes, then 429), a two-factor code when it is on, and a verified email. Replaces the password with the new sign-in secret, signs out every other session, removes pending password reset links and emails you. 409 when keys already exist, 501 when the server does not offer Advanced protection.",
+				"operationId": "enableAdvancedProtection",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"authKey": {
+										"description": "The new sign-in secret: the 32-byte auth key as base64url, 43 characters. It replaces the password for sign-in; the typed password never leaves the device again.",
+										"pattern": "^[A-Za-z0-9_-]{43}$",
+										"type": "string"
+									},
+									"currentPassword": {
+										"description": "The password you sign in with now, typed. Counted as a try, like a password change.",
+										"maxLength": 255,
+										"minLength": 1,
+										"type": "string"
+									},
+									"kdf": {
+										"properties": {
+											"memoryKiB": {
+												"maximum": 9007199254740991,
+												"minimum": 1,
+												"type": "integer"
+											},
+											"passes": {
+												"maximum": 9007199254740991,
+												"minimum": 1,
+												"type": "integer"
+											},
+											"salt": {
+												"description": "The 16-byte Argon2id salt, base64url.",
+												"pattern": "^[A-Za-z0-9_-]{22}$",
+												"type": "string"
+											}
+										},
+										"required": [
+											"salt",
+											"memoryKiB",
+											"passes"
+										],
+										"type": "object"
+									},
+									"publicKey": {
+										"description": "The account public key, 32 bytes as base64url.",
+										"pattern": "^[A-Za-z0-9_-]{43}$",
+										"type": "string"
+									},
+									"totpCode": {
+										"description": "The current two-factor code, when it is on.",
+										"pattern": "^\\d{6}$",
+										"type": "string"
+									},
+									"wraps": {
+										"description": "Exactly one each of ak-password, ak-recovery and private-key, and one collection-key.",
+										"items": {
+											"properties": {
+												"id": {
+													"description": "A client-made id for the wrap; the server makes one when absent.",
+													"format": "uuid",
+													"type": "string"
+												},
+												"role": {
+													"enum": [
+														"ak-password",
+														"ak-recovery",
+														"private-key",
+														"collection-key"
+													],
+													"type": "string"
+												},
+												"targetId": {
+													"description": "What the wrap is bound to: your user id for ak-password, ak-recovery and private-key, the collection key id for collection-key.",
+													"pattern": "^[A-Za-z0-9_-]{1,64}$",
+													"type": "string"
+												},
+												"wrapped": {
+													"description": "The wrapped key, base64url. The server never opens it.",
+													"pattern": "^[A-Za-z0-9_-]{1,512}$",
+													"type": "string"
+												}
+											},
+											"required": [
+												"role",
+												"targetId",
+												"wrapped"
+											],
+											"type": "object"
+										},
+										"maxItems": 4,
+										"minItems": 4,
+										"type": "array"
+									}
+								},
+								"required": [
+									"currentPassword",
+									"authKey",
+									"kdf",
+									"publicKey",
+									"wraps"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"createdAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"signedOut": {
+											"description": "How many other sessions the change signed out.",
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"version": {
+											"maximum": 9007199254740991,
+											"minimum": 1,
+											"type": "integer"
+										}
+									},
+									"required": [
+										"createdAt",
+										"version",
+										"signedOut"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"account:security"
+						]
+					},
+					{
+						"cookieAuth": [
+							"account:security"
+						]
+					}
+				],
+				"summary": "Create your protection keys and a new sign-in secret",
+				"tags": [
+					"Advanced protection"
+				],
+				"x-event-type": "user.protection_keys_created",
+				"x-required-scope": "account:security"
+			}
+		},
+		"/me/protection/keys": {
+			"get": {
+				"description": "The salt and Argon2id parameters to derive the sign-in secret from your password while signed in. 404 when you have no keys.",
+				"operationId": "getProtectionKeys",
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"createdAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"kdf": {
+											"properties": {
+												"memoryKiB": {
+													"maximum": 9007199254740991,
+													"minimum": 1,
+													"type": "integer"
+												},
+												"passes": {
+													"maximum": 9007199254740991,
+													"minimum": 1,
+													"type": "integer"
+												},
+												"salt": {
+													"description": "The 16-byte Argon2id salt, base64url.",
+													"pattern": "^[A-Za-z0-9_-]{22}$",
+													"type": "string"
+												}
+											},
+											"required": [
+												"salt",
+												"memoryKiB",
+												"passes"
+											],
+											"type": "object"
+										},
+										"version": {
+											"maximum": 9007199254740991,
+											"minimum": 1,
+											"type": "integer"
+										}
+									},
+									"required": [
+										"createdAt",
+										"version",
+										"kdf"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"account:security"
+						]
+					},
+					{
+						"cookieAuth": [
+							"account:security"
+						]
+					}
+				],
+				"summary": "When your protection keys were made and how to derive with them",
+				"tags": [
+					"Advanced protection"
+				],
 				"x-required-scope": "account:security"
 			}
 		},

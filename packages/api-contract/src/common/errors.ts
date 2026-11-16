@@ -19,6 +19,9 @@ export const PROBLEM_STATUS = {
 	// The account's password is also its Advanced protection key set, so the
 	// server cannot change or reset it alone (a client rotates it with the keys).
 	protected_password: 403,
+	// A change that needs a recent sign-in came on an older session (Advanced
+	// protection turn-on: 10 minutes). The client asks the person to sign in again.
+	session_not_fresh: 403,
 	not_found: 404,
 	conflict: 409,
 	payload_too_large: 413,

@@ -26,6 +26,7 @@ import { peopleRouter } from "./people";
 import { platformRouter } from "./platform";
 import { profileRouter } from "./profile";
 import { projectsRouter } from "./projects";
+import { protectionRouter } from "./protection";
 import { pushRouter } from "./push";
 import { recurringRouter } from "./recurring";
 import { searchRouter } from "./search";
@@ -68,6 +69,7 @@ export const v1Router = v1.router({
 	platform: platformRouter,
 	profile: profileRouter,
 	projects: projectsRouter,
+	protection: protectionRouter,
 	push: pushRouter,
 	recurring: recurringRouter,
 	search: searchRouter,

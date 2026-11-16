@@ -44,6 +44,7 @@ export const EVENT_TYPES = [
 	"token.revoked",
 	"user.deleted",
 	"user.password_changed",
+	"user.protection_keys_created",
 	"user.session_ended",
 	// G2 ledger (S3b)
 	"expense.created",

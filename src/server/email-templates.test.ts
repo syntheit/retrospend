@@ -19,6 +19,7 @@ import {
 	getFeedbackNotificationTemplate,
 	getPasswordChangedAlertTemplate,
 	getPasswordResetEmailTemplate,
+	getProtectionEnabledAlertTemplate,
 	getShadowInviteEmailTemplate,
 	getTestEmailTemplate,
 	getVerificationEmailTemplate,
@@ -64,6 +65,12 @@ const cases: { name: string; subject: string; html: string; link: string }[] = [
 		name: "password changed",
 		subject: emailSubject.passwordChanged,
 		html: getPasswordChangedAlertTemplate(),
+		link: "",
+	},
+	{
+		name: "protection enabled",
+		subject: emailSubject.protectionEnabled,
+		html: getProtectionEnabledAlertTemplate(),
 		link: "",
 	},
 	{

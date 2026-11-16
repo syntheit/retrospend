@@ -16,6 +16,7 @@ const TITLES: Record<ProblemCode, string> = {
 	missing_scope: "Missing scope",
 	protected_account: "Advanced protection is on",
 	protected_password: "The password is protected",
+	session_not_fresh: "Sign in again to do this",
 	not_found: "Not found",
 	conflict: "Conflict",
 	payload_too_large: "Upload too large",

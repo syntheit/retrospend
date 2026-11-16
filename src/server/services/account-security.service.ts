@@ -9,6 +9,7 @@ import { TRPCError } from "@trpc/server";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { MOBILE_CLIENT_ID } from "~/server/api/v1/scopes";
 import { db } from "~/server/db";
+import type { Prisma } from "~prisma";
 import { consumeRateLimit } from "./api-v1/rate-limit.service";
 import {
 	hasKeySet,
@@ -36,6 +37,31 @@ export class PasswordTriesExceededError extends TRPCError {
 	}
 }
 
+/**
+ * Counts one try at the current password for this session and user. The
+ * password change and the Advanced protection turn-on share the counters:
+ * both are what a stolen session would guess with.
+ */
+export async function spendPasswordTry(
+	userId: string,
+	sessionId: string,
+): Promise<void> {
+	const session = await consumeRateLimit(
+		`pwchange:${userId}:${sessionId}`,
+		TRIES.perSession,
+		TRIES.windowMs,
+	);
+	if (!session.allowed)
+		throw new PasswordTriesExceededError(session.retryAfterSeconds);
+	const user = await consumeRateLimit(
+		`pwchange:${userId}`,
+		TRIES.perUser,
+		TRIES.windowMs,
+	);
+	if (!user.allowed)
+		throw new PasswordTriesExceededError(user.retryAfterSeconds);
+}
+
 export const WRONG_PASSWORD_MESSAGE = "Current password is incorrect";
 
 /**
@@ -54,20 +80,7 @@ export async function changeOwnPassword(input: {
 	currentPassword: string;
 	newPassword: string;
 }): Promise<{ signedOut: number }> {
-	const session = await consumeRateLimit(
-		`pwchange:${input.userId}:${input.keepSessionId}`,
-		TRIES.perSession,
-		TRIES.windowMs,
-	);
-	if (!session.allowed)
-		throw new PasswordTriesExceededError(session.retryAfterSeconds);
-	const user = await consumeRateLimit(
-		`pwchange:${input.userId}`,
-		TRIES.perUser,
-		TRIES.windowMs,
-	);
-	if (!user.allowed)
-		throw new PasswordTriesExceededError(user.retryAfterSeconds);
+	await spendPasswordTry(input.userId, input.keepSessionId);
 
 	if (await hasKeySet(db, input.userId)) throw new ProtectedPasswordError();
 
@@ -145,6 +158,18 @@ export async function resetPasswordHash(input: {
 		if (input.token)
 			await tx.passwordResetToken.delete({ where: { token: input.token } });
 	});
+}
+
+/**
+ * Removes every pending password reset link for an address, in the caller's
+ * transaction. The Advanced protection turn-on needs it: a link made earlier
+ * would write a hash around the new keys.
+ */
+export async function deleteResetTokens(
+	tx: Prisma.TransactionClient,
+	email: string,
+): Promise<void> {
+	await tx.passwordResetToken.deleteMany({ where: { identifier: email } });
 }
 
 /**

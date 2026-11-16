@@ -6,6 +6,10 @@ import { textUnavailableProblem } from "~/server/crypto/field-open";
 import { InvalidCursorError } from "~/server/services/api-v1/cursor";
 import { OverpayError } from "~/server/services/payments/procedures";
 import { RateOutOfRangeError } from "~/server/services/payments/rate-band";
+import {
+	EnableProtectionError,
+	ProtectionKeysError,
+} from "~/server/services/protection-keys/errors";
 import { ProtectedPasswordError } from "~/server/services/protection-keys/password-writes";
 import { ShareAnswerRefusedError } from "~/server/services/shared-expenses/answer-guard";
 import { SyncResetRequiredError } from "~/server/services/sync/changes";
@@ -35,6 +39,23 @@ const TRPC_TO_PROBLEM: Partial<Record<TRPCError["code"], ProblemCode>> = {
 function idIsTheKey(error: Prisma.PrismaClientKnownRequestError): boolean {
 	const meta = JSON.stringify(error.meta ?? {});
 	return /"id"|_pkey/.test(meta);
+}
+
+const ENABLE_DETAIL: Record<EnableProtectionError["code"], string> = {
+	session_not_fresh: "Sign in again to turn on Advanced protection",
+	email_not_verified: "Verify your email first",
+	no_password: "Advanced protection needs an account with a password",
+	wrong_password: "Current password is incorrect",
+	two_factor_required: "Enter your two-factor code",
+	wrong_two_factor_code: "That two-factor code is not right",
+};
+
+function enableProblem(error: EnableProtectionError) {
+	const detail = ENABLE_DETAIL[error.code];
+	if (error.code === "session_not_fresh")
+		return problem("session_not_fresh", detail);
+	if (error.code === "email_not_verified") return problem("forbidden", detail);
+	return problem("bad_request", detail);
 }
 
 export function toProblem(error: unknown, route?: string): unknown {
@@ -68,6 +89,13 @@ export function toProblem(error: unknown, route?: string): unknown {
 	// The password is the account's key wrap: only a client can change it.
 	if (error instanceof ProtectedPasswordError)
 		return problem("protected_password", error.message);
+	// Turning on Advanced protection: a stale session has a code of its own so
+	// the client asks for a new sign-in; the rest are the person's input.
+	if (error instanceof EnableProtectionError) return enableProblem(error);
+	if (error instanceof ProtectionKeysError)
+		return error.code === "conflict"
+			? problem("conflict", error.message)
+			: problem("bad_request", error.message);
 	if (error instanceof TRPCError) {
 		const code = TRPC_TO_PROBLEM[error.code];
 		if (code) return problem(code, error.message);
