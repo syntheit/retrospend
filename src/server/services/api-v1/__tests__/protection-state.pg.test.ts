@@ -138,7 +138,7 @@ describe("the protection state column", () => {
 					protectionState: "ON",
 				} as never,
 			}),
-		).rejects.toThrow();
+		).rejects.toThrow(/protectionState is not allowed to be set/);
 
 		const id = await passwordUser();
 		const res = await auth.handler(
