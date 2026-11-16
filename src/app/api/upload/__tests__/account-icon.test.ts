@@ -45,7 +45,9 @@ function post(fields: { file?: File | null; accountId?: string }): Request {
 }
 
 function signedIn() {
-	vi.mocked(getWebSession).mockResolvedValue({ user: { id: "u1" } } as never);
+	vi.mocked(getWebSession).mockResolvedValue({
+		user: { id: "u1", protectionState: "OFF" },
+	} as never);
 }
 
 beforeEach(() => {
@@ -57,6 +59,17 @@ describe("POST /api/upload/account-icon", () => {
 		vi.mocked(getWebSession).mockResolvedValue(null);
 		const res = await POST(post({ accountId: "a1" }) as never);
 		expect(res.status).toBe(401);
+	});
+
+	it("refuses an account with advanced protection on, with the problem body", async () => {
+		vi.mocked(getWebSession).mockResolvedValue({
+			user: { id: "u1", protectionState: "ON" },
+		} as never);
+		const res = await POST(post({ accountId: "a1" }) as never);
+		expect(res.status).toBe(403);
+		expect(res.headers.get("content-type")).toBe("application/problem+json");
+		expect(await res.json()).toMatchObject({ code: "protected_account" });
+		expect(uploadAccountIcon).not.toHaveBeenCalled();
 	});
 
 	it("403 for an inactive user", async () => {

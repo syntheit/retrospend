@@ -105,6 +105,19 @@ beforeEach(() => {
 // ─── POST /api/upload/avatar ───────────────────────────────────────────────
 
 describe("POST /api/upload/avatar", () => {
+	it("still takes an account with advanced protection on: the picture is identity", async () => {
+		vi.mocked(getWebSession).mockResolvedValue({
+			user: { id: USER_ID, protectionState: "ON" },
+			session: { id: "session-1" },
+		} as never);
+		vi.mocked(db.user.findUnique).mockResolvedValue({
+			isActive: true,
+			avatarPath: null,
+		} as never);
+		const res = await POST(makePostRequest(makeFile()) as never);
+		expect(res.status).not.toBe(403);
+	});
+
 	it("returns 401 when no session", async () => {
 		vi.mocked(getWebSession).mockResolvedValue(null);
 		const res = await POST(makePostRequest(makeFile()) as never);

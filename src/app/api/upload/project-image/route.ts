@@ -5,6 +5,7 @@ import { deleteFile, getImageUrl, uploadFile } from "~/server/storage";
 import { db } from "~/server/db";
 import { logAudit } from "~/server/services/shared-expenses/audit-log";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
+import { refuseProtected } from "~/server/api/protection/refuse";
 import { getWebSession } from "~/server/better-auth/web-session";
 
 async function getAuthenticatedUserId(
@@ -15,6 +16,9 @@ async function getAuthenticatedUserId(
 	if (!session?.user) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
+	// Shared projects stay denied for a protected account until each is checked.
+	const refused = refuseProtected(session.user);
+	if (refused) return refused;
 
 	const activeUser = await db.user.findUnique({
 		where: { id: session.user.id },

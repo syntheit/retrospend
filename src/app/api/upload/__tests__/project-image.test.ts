@@ -85,7 +85,7 @@ function makeDeleteRequest(projectId = PROJECT_ID): Request {
 
 function mockAuthedUser(): void {
 	vi.mocked(getWebSession).mockResolvedValue({
-		user: { id: USER_ID },
+		user: { id: USER_ID, protectionState: "OFF" },
 		session: { id: "session-1" },
 	} as never);
 	vi.mocked(db.user.findUnique).mockResolvedValue({ isActive: true } as never);
@@ -119,6 +119,20 @@ beforeEach(() => {
 // ─── POST /api/upload/project-image ───────────────────────────────────────
 
 describe("POST /api/upload/project-image", () => {
+	it("refuses an account with advanced protection on, with the problem body", async () => {
+		vi.mocked(getWebSession).mockResolvedValue({
+			user: { id: USER_ID, protectionState: "ON" },
+			session: { id: "session-1" },
+		} as never);
+		const res = await POST(
+			makePostRequest(makeFile()) as never,
+		);
+		expect(res.status).toBe(403);
+		expect(res.headers.get("content-type")).toBe("application/problem+json");
+		expect(await res.json()).toMatchObject({ code: "protected_account" });
+		expect(db.user.findUnique).not.toHaveBeenCalled();
+	});
+
 	it("returns 401 when no session", async () => {
 		vi.mocked(getWebSession).mockResolvedValue(null);
 		const res = await POST(makePostRequest(makeFile()) as never);
@@ -127,7 +141,7 @@ describe("POST /api/upload/project-image", () => {
 
 	it("returns 403 when user is not active", async () => {
 		vi.mocked(getWebSession).mockResolvedValue({
-			user: { id: USER_ID },
+			user: { id: USER_ID, protectionState: "OFF" },
 		} as never);
 		vi.mocked(db.user.findUnique).mockResolvedValue({ isActive: false } as never);
 		const res = await POST(makePostRequest(makeFile()) as never);
