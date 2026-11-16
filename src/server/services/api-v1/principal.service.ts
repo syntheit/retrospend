@@ -40,9 +40,12 @@ export type PrincipalResult =
 	| { ok: true; principal: Principal }
 	| { ok: false; reason: "none" | "invalid" };
 
-/** The session user's state is a plain string; a missing one means OFF. */
+/**
+ * Only an explicit OFF is unprotected. A missing value means the field was not
+ * loaded, and the guard fails closed rather than open.
+ */
 function isProtectedState(state: unknown): boolean {
-	return state !== undefined && state !== null && state !== "OFF";
+	return state !== "OFF";
 }
 
 /** An API key comes in `x-api-key` or as a bearer token with our prefix. */
