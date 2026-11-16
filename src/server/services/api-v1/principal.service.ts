@@ -3,6 +3,7 @@ import {
 	type Scope,
 	type SessionScope,
 } from "@retrospend/api-contract/common";
+import { isProtected } from "~/server/api/protection/guard";
 import type { PrincipalKind } from "~/server/api/v1/scopes";
 import {
 	apiKeyScopes,
@@ -40,14 +41,6 @@ export type PrincipalResult =
 	| { ok: true; principal: Principal }
 	| { ok: false; reason: "none" | "invalid" };
 
-/**
- * Only an explicit OFF is unprotected. A missing value means the field was not
- * loaded, and the guard fails closed rather than open.
- */
-function isProtectedState(state: unknown): boolean {
-	return state !== "OFF";
-}
-
 /** An API key comes in `x-api-key` or as a bearer token with our prefix. */
 function apiKeyFrom(headers: Headers): string | null {
 	const header = headers.get("x-api-key")?.trim();
@@ -79,7 +72,7 @@ async function fromApiKey(key: string): Promise<PrincipalResult> {
 			tokenId: result.key.id,
 			expiresAt: result.key.expiresAt ? new Date(result.key.expiresAt) : null,
 			clientId: null,
-			protected: isProtectedState(user.protectionState),
+			protected: isProtected(user.protectionState),
 		},
 	};
 }
@@ -127,7 +120,7 @@ export async function resolvePrincipal(
 			tokenId: session.session.id,
 			expiresAt: new Date(session.session.expiresAt),
 			clientId,
-			protected: isProtectedState(session.user.protectionState),
+			protected: isProtected(session.user.protectionState),
 		},
 	};
 }

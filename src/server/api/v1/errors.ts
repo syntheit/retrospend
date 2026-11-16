@@ -14,6 +14,7 @@ const TITLES: Record<ProblemCode, string> = {
 	unauthenticated: "Not signed in",
 	forbidden: "Forbidden",
 	missing_scope: "Missing scope",
+	protected_account: "Advanced protection is on",
 	not_found: "Not found",
 	conflict: "Conflict",
 	payload_too_large: "Upload too large",

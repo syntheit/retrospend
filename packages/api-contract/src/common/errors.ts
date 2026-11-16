@@ -13,6 +13,9 @@ export const PROBLEM_STATUS = {
 	unauthenticated: 401,
 	forbidden: 403,
 	missing_scope: 403,
+	// The account has advanced protection on and the route has not been cleared
+	// for it (src/server/api/protection/allowed.ts). Not a scope a token can gain.
+	protected_account: 403,
 	not_found: 404,
 	conflict: 409,
 	payload_too_large: 413,
