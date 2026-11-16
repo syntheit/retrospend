@@ -200,6 +200,14 @@ const signsInWith = (email: string, password: string) =>
 		.then(() => true)
 		.catch(() => false);
 
+const TRIES_WINDOW_MS = 15 * 60_000;
+
+/** Waits until at least a minute is left in the current tries window. */
+async function clearTriesWindowEdge(): Promise<void> {
+	const left = TRIES_WINDOW_MS - (Date.now() % TRIES_WINDOW_MS);
+	if (left < 60_000) await new Promise((r) => setTimeout(r, left + 1_000));
+}
+
 describe("POST /me/protection/enable", () => {
 	it("writes the new hash, the set and its wraps, ends the other sessions, removes reset links, records and mails", async () => {
 		const u = await passwordUser();
@@ -421,6 +429,9 @@ describe("POST /me/protection/enable", () => {
 	});
 
 	it("counts a wrong current password as a try and changes nothing, then stops at the limit", async () => {
+		// The tries count in fixed 15 minute windows on the clock: all six must
+		// land in one, so a run close to a boundary waits it out first.
+		await clearTriesWindowEdge();
 		const u = await passwordUser();
 		const me = await mobile(u.id);
 		const other = await sessionFor(u.id);
@@ -440,7 +451,7 @@ describe("POST /me/protection/enable", () => {
 		await expectProblem(res, 429, "rate_limited");
 		expect(Number(res.headers.get("retry-after"))).toBeGreaterThan(0);
 		expect(await keyRows(u.id)).toEqual({ sets: 0, wraps: 0 });
-	});
+	}, 120_000);
 
 	it("is refused with 501 when the server does not offer it, and writes nothing", async () => {
 		flag.on = false;
