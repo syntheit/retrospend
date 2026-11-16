@@ -393,6 +393,7 @@
 			"invalidCode": "Dieser Code stimmt nicht. Versuch es noch einmal.",
 			"emailNotVerified": "Bestätige zuerst deine E-Mail und melde dich dann an.",
 			"rateLimited": "Zu viele Versuche. Warte eine Minute und versuch es erneut.",
+			"protectionRefused": "Die Antwort des Servers zum Schutz dieses Kontos wirkt falsch. Anmeldung gestoppt.",
 			"network": "Der Server ist nicht erreichbar. Prüfe deine Verbindung.",
 			"unknown": "Anmeldung nicht möglich. Versuch es noch einmal."
 		}
@@ -2305,6 +2306,7 @@
 			"password": "Passwort",
 			"delete": "Konto löschen",
 			"deleting": "Löschen",
+			"protectionRefused": "Die Antwort des Servers zum Schutz dieses Kontos wirkt falsch. Nichts wurde gelöscht.",
 			"error": "Das Konto konnte nicht gelöscht werden. Prüfe dein Passwort und versuche es erneut."
 		},
 		"numbers": {
@@ -2401,6 +2403,7 @@
 				"changed": "Passwort geändert. Deine anderen Geräte sind abgemeldet.",
 				"wrong": "Das aktuelle Passwort ist falsch.",
 				"tooMany": "Zu viele Versuche. Versuch es später erneut.",
+				"protected": "Gesperrt, solange der erweiterte Schutz an ist.",
 				"error": "Das Passwort konnte nicht geändert werden. Versuch es erneut."
 			},
 			"sessions": {

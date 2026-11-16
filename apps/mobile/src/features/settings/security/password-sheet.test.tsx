@@ -142,6 +142,20 @@ describe("PasswordSheet", () => {
 		expect(onClose).not.toHaveBeenCalled();
 	});
 
+	it("words a protected account's refusal by its code, not its status", async () => {
+		const s = render();
+		s.type("Current password", "Old password 1");
+		s.type("New password", "Battery staple 2");
+		s.type("Confirm new password", "Battery staple 2");
+		mockChange.mockRejectedValueOnce({
+			status: 403,
+			code: "protected_password",
+		});
+		await s.submit();
+		expect(s.texts()).toContain("Locked while Advanced protection is on.");
+		expect(onClose).not.toHaveBeenCalled();
+	});
+
 	it("says when the new passwords differ", () => {
 		const s = render();
 		s.type("New password", "Battery staple 2");

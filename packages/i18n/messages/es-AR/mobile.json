@@ -393,6 +393,7 @@
 			"invalidCode": "Ese código no es correcto. Probá de nuevo.",
 			"emailNotVerified": "Verificá primero tu correo y después iniciá sesión.",
 			"rateLimited": "Demasiados intentos. Esperá un minuto y probá de nuevo.",
+			"protectionRefused": "La respuesta del servidor sobre la protección de esta cuenta parece incorrecta. Se frenó el inicio de sesión.",
 			"network": "No se pudo conectar con el servidor. Revisá tu conexión.",
 			"unknown": "No se pudo iniciar sesión. Probá de nuevo."
 		}
@@ -2305,6 +2306,7 @@
 			"password": "Contraseña",
 			"delete": "Eliminar cuenta",
 			"deleting": "Eliminando",
+			"protectionRefused": "La respuesta del servidor sobre la protección de esta cuenta parece incorrecta. No se eliminó nada.",
 			"error": "No se pudo eliminar la cuenta. Revisá tu contraseña y probá de nuevo."
 		},
 		"numbers": {
@@ -2401,6 +2403,7 @@
 				"changed": "Contraseña cambiada. Se cerró la sesión en tus otros dispositivos.",
 				"wrong": "La contraseña actual no es correcta.",
 				"tooMany": "Demasiados intentos. Probá más tarde.",
+				"protected": "Bloqueado mientras la protección avanzada está activada.",
 				"error": "No se pudo cambiar la contraseña. Probá de nuevo."
 			},
 			"sessions": {

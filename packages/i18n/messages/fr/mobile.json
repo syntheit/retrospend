@@ -393,6 +393,7 @@
 			"invalidCode": "Ce code n'est pas correct. Réessaie.",
 			"emailNotVerified": "Vérifie d'abord ton e-mail, puis connecte-toi.",
 			"rateLimited": "Trop de tentatives. Attends une minute et réessaie.",
+			"protectionRefused": "La réponse du serveur sur la protection de ce compte semble incorrecte. Connexion arrêtée.",
 			"network": "Impossible de joindre le serveur. Vérifie ta connexion.",
 			"unknown": "Connexion impossible. Réessaie."
 		}
@@ -2305,6 +2306,7 @@
 			"password": "Mot de passe",
 			"delete": "Supprimer le compte",
 			"deleting": "Suppression",
+			"protectionRefused": "La réponse du serveur sur la protection de ce compte semble incorrecte. Rien n'a été supprimé.",
 			"error": "Impossible de supprimer le compte. Vérifie ton mot de passe et réessaie."
 		},
 		"numbers": {
@@ -2401,6 +2403,7 @@
 				"changed": "Mot de passe changé. Vos autres appareils sont déconnectés.",
 				"wrong": "Le mot de passe actuel est incorrect.",
 				"tooMany": "Trop d'essais. Réessayez plus tard.",
+				"protected": "Verrouillé tant que la protection avancée est activée.",
 				"error": "Impossible de changer le mot de passe. Réessayez."
 			},
 			"sessions": {

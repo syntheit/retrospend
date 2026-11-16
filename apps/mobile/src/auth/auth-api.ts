@@ -10,6 +10,8 @@ import { twoFactorClient } from "better-auth/client/plugins";
 import { serverKey } from "@/lib/origin-key";
 import { secureStore } from "@/lib/secure-store";
 import { type AuthFailure, authFailureOf } from "./errors";
+import { preloginLookup } from "./prelogin-lookup";
+import { resolveSignInSecret } from "./sign-in-secret";
 import type { TokenStore } from "./token-store";
 
 export type SignInStep =
@@ -26,7 +28,14 @@ export interface AuthApi {
 	clearLocal(): Promise<void>;
 }
 
-export function createAuthApi(baseUrl: string, tokens: TokenStore): AuthApi {
+/** How a typed password becomes the text the server checks (injected in tests). */
+export type SecretResolver = typeof resolveSignInSecret;
+
+export function createAuthApi(
+	baseUrl: string,
+	tokens: TokenStore,
+	resolveSecret: SecretResolver = resolveSignInSecret,
+): AuthApi {
 	// The cookie and session data are stored under this prefix, per server.
 	const storagePrefix = `retrospend_${serverKey(baseUrl)}`;
 	const client = createAuthClient({
@@ -69,8 +78,19 @@ export function createAuthApi(baseUrl: string, tokens: TokenStore): AuthApi {
 	}
 
 	return {
-		signIn: (email, password) =>
-			step(() => client.signIn.email({ email, password })),
+		signIn: async (email, password) => {
+			// Prelogin and Argon2id first when the account has protection keys.
+			const result = await resolveSecret({
+				baseUrl,
+				email,
+				password,
+				lookup: preloginLookup(baseUrl, email),
+			});
+			if (!result.ok) return { status: "error", reason: result.reason };
+			return step(() =>
+				client.signIn.email({ email, password: result.secret }),
+			);
+		},
 		verifyCode: (code) => {
 			const clean = code.replace(/\s/g, "");
 			// A backup code is longer than the 6 digits an authenticator shows.
