@@ -79,3 +79,8 @@ export {
 	wipe,
 } from "./primitives";
 export { runKnownAnswerTests } from "./self-test";
+export {
+	isSignInSecret,
+	SIGN_IN_SECRET_LENGTH,
+	signInSecret,
+} from "./sign-in-secret";
