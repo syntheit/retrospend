@@ -171,6 +171,30 @@ describe("POST /auth/prelogin", () => {
 		for (const key of keys) expect(key).not.toContain("@");
 	}, 60_000);
 
+	it("counts the addresses of one IPv6 /64 as one sender", async () => {
+		const at = (n: number) => ({ "x-forwarded-for": `2001:db8:5:6::${n}` });
+		for (let i = 0; i < 30; i++)
+			expect(
+				(await prelogin(`six-${i}-${Date.now()}@pg-test.invalid`, at(i + 1)))
+					.status,
+			).toBe(200);
+		await expectProblem(
+			await prelogin("six-more@pg-test.invalid", {
+				"x-forwarded-for": "2001:db8:5:6:aaaa:bbbb:cccc:dddd",
+			}),
+			429,
+			"rate_limited",
+		);
+		// A neighbouring /64 is a different sender.
+		expect(
+			(
+				await prelogin("six-other@pg-test.invalid", {
+					"x-forwarded-for": "2001:db8:5:7::1",
+				})
+			).status,
+		).toBe(200);
+	}, 60_000);
+
 	it("limits one address of the sender per minute", async () => {
 		const sender = { "x-forwarded-for": "198.18.0.77" };
 		for (let i = 0; i < 30; i++)

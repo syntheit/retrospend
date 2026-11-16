@@ -1,14 +1,17 @@
-import { getClientIp } from "~/server/lib/rate-limiter";
+import { getClientIp, ipBucket } from "~/server/lib/rate-limiter";
 import { hashToken } from "~/server/lib/tokens";
-import { readPreloginKdf } from "~/server/services/protection-keys/prelogin";
+import {
+	normalizeEmail,
+	readPreloginKdf,
+} from "~/server/services/protection-keys/prelogin";
 import { v1 } from "../middleware";
 import { enforceRateLimit, RATE_LIMITS } from "../rate-limit";
 
 export const authRouter = {
 	prelogin: v1.auth.prelogin.handler(async ({ context, input }) => {
-		const email = input.email.trim().toLowerCase();
+		const email = normalizeEmail(input.email);
 		await enforceRateLimit(
-			`prelogin:ip:${getClientIp(context.headers)}`,
+			`prelogin:ip:${ipBucket(getClientIp(context.headers))}`,
 			RATE_LIMITS.preloginPerIp,
 			context.resHeaders,
 		);
@@ -18,6 +21,6 @@ export const authRouter = {
 			RATE_LIMITS.preloginPerEmail,
 			context.resHeaders,
 		);
-		return { kdf: await readPreloginKdf(email) };
+		return { kdf: await readPreloginKdf(input.email) };
 	}),
 };

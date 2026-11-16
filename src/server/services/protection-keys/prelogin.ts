@@ -12,16 +12,19 @@
  * this) and add a migration, a grant and a definer-catalog entry for nothing.
  * What leaves is the public salt and the parameters, never a wrap.
  */
+import type { PreloginKdf } from "@retrospend/api-contract";
 import { toBase64Url } from "@retrospend/crypto";
 import { db } from "~/server/db";
-
-export type PreloginKdf = { salt: string; memoryKiB: number; passes: number };
 
 type Row = {
 	kdfSalt: Uint8Array | null;
 	kdfMemoryKiB: number | null;
 	kdfPasses: number | null;
 };
+
+/** The address as sign-up stores it: lowercased and trimmed. The one place that says so. */
+export const normalizeEmail = (email: string): string =>
+	email.trim().toLowerCase();
 
 /**
  * One query for every address, so a keyed account costs one row more and
@@ -32,7 +35,7 @@ export async function readPreloginKdf(
 ): Promise<PreloginKdf | null> {
 	const [row] = await db.$queryRaw<Row[]>`
 		SELECT s."kdfSalt", s."kdfMemoryKiB", s."kdfPasses"
-		FROM (SELECT ${email.trim().toLowerCase()}::text AS "email") q
+		FROM (SELECT ${normalizeEmail(email)}::text AS "email") q
 		LEFT JOIN "user" u ON u."email" = q."email"
 		LEFT JOIN "protection_key_set" s ON s."userId" = u."id"`;
 	if (!row?.kdfSalt || row.kdfMemoryKiB === null || row.kdfPasses === null)
