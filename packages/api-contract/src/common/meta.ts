@@ -15,6 +15,9 @@ import type { RouteScope } from "./scopes";
  *   Every write scoped `write:money` must have one at `<path>/preview`.
  * - `secretResponse`: the response holds a secret shown once, so the
  *   idempotency store keeps no copy of it.
+ * - `readsOnly`: a POST that writes nothing (the body carries what a query
+ *   string should not, such as an email address). It needs no event and no
+ *   Idempotency-Key, may be public, and ignores any session sent with it.
  * - `snapshot`: on a `sync` route, the body is a whole table as of one read,
  *   not a cursor delta, so the route never answers 410 sync_reset_required.
  */
@@ -23,6 +26,7 @@ export interface ApiMeta {
 	event?: string;
 	previewOf?: string;
 	secretResponse?: boolean;
+	readsOnly?: boolean;
 	snapshot?: boolean;
 }
 

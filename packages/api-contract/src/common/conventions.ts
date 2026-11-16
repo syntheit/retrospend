@@ -29,7 +29,16 @@ export function checkContractConventions(
 		if (!scope) problems.push(`${name}: no scope`);
 		else if (!ROUTE_SCOPES.includes(scope))
 			problems.push(`${name}: unknown scope "${scope}"`);
-		if (r.method !== "GET" && (scope === "public" || scope === "read"))
+		// A readsOnly POST writes nothing, so it may be public and has no event.
+		if (r.meta.readsOnly && r.method !== "POST")
+			problems.push(`${name}: readsOnly is for a POST`);
+		if (r.meta.readsOnly && r.meta.event)
+			problems.push(`${name}: a readsOnly route cannot have an event`);
+		if (
+			r.method !== "GET" &&
+			!r.meta.readsOnly &&
+			(scope === "public" || scope === "read")
+		)
 			problems.push(`${name}: a write needs a write scope, not ${scope}`);
 
 		if (!r.path?.startsWith("/")) problems.push(`${name}: no path`);
@@ -47,7 +56,7 @@ export function checkContractConventions(
 		if (!def.outputSchema) problems.push(`${name}: no output schema`);
 
 		const isPreview = r.path?.endsWith(PREVIEW_SUFFIX) ?? false;
-		if (r.method !== "GET" && !isPreview) {
+		if (r.method !== "GET" && !isPreview && !r.meta.readsOnly) {
 			if (!r.meta.event) problems.push(`${name}: write without an event`);
 			else if (!eventTypes.includes(r.meta.event))
 				problems.push(`${name}: event "${r.meta.event}" is not registered`);

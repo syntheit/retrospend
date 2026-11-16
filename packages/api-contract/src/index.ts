@@ -2,6 +2,7 @@ import { accountContract } from "./account";
 import { accountsContract } from "./accounts";
 import { activityContract } from "./activity";
 import { adminContract } from "./admin";
+import { authContract } from "./auth";
 import { billingPeriodsContract } from "./billing-periods";
 import { budgetContract } from "./budget";
 import { categoriesContract } from "./categories";
@@ -38,6 +39,7 @@ export * from "./account";
 export * from "./accounts";
 export * from "./activity";
 export * from "./admin";
+export * from "./auth";
 export * from "./billing-periods";
 export * from "./budget";
 export * from "./categories";
@@ -82,6 +84,7 @@ export const contract = {
 	accounts: accountsContract,
 	activity: activityContract,
 	admin: adminContract,
+	auth: authContract,
 	"billing-periods": billingPeriodsContract,
 	budget: budgetContract,
 	categories: categoriesContract,
