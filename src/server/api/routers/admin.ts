@@ -23,6 +23,11 @@ import { getAiUsageSummary } from "~/server/services/ai-access.service";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
 import { deleteFile, getStorageSize } from "~/server/storage";
 import { logEventAsync } from "~/server/services/audit.service";
+import {
+	hasKeySet,
+	ProtectedPasswordError,
+} from "~/server/services/protection-keys/password-writes";
+import { resetPasswordHash } from "~/server/services/account-security.service";
 import { IntegrationService } from "~/server/services/integration.service";
 import {
 	adminSettingsView,
@@ -224,26 +229,11 @@ export const adminRouter = createTRPCRouter({
 			const newPassword = crypto.randomBytes(12).toString("base64url");
 			const hashedPassword = await hashPassword(newPassword);
 
-			const updatedAccount = await db.account.updateMany({
-				where: {
-					userId: input.userId,
-					providerId: "credential",
-				},
-				data: {
-					password: hashedPassword,
-				},
-			});
-
-			if (updatedAccount.count === 0) {
-				throw new TRPCError({
-					code: "NOT_FOUND",
-					message: "User does not have a credential account",
-				});
-			}
-
-			// Invalidate all sessions for the target user
-			await db.session.deleteMany({
-				where: { userId: input.userId },
+			await resetPasswordHash({
+				userId: input.userId,
+				hashed: hashedPassword,
+				by: { kind: "admin", adminId: session.user.id },
+				whenNoCredential: "not_found",
 			});
 
 			// Log the password reset
@@ -564,6 +554,10 @@ export const adminRouter = createTRPCRouter({
 			if (!user) {
 				throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
 			}
+
+			// A link for an account with keys would only end in a refusal or in
+			// removing its keys: say so now, to the admin.
+			if (await hasKeySet(db, user.id)) throw new ProtectedPasswordError();
 
 			const token = crypto.randomBytes(32).toString("hex");
 			const expires = new Date(Date.now() + 1000 * 60 * 60); // 1 hour

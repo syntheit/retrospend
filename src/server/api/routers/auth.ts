@@ -19,7 +19,11 @@ import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
 import { emailSubject } from "~/server/email-copy";
 import { sendEmail } from "~/server/mailer";
 
-import { storeEmailVerificationToken } from "~/server/services/account-security.service";
+import {
+	resetPasswordHash,
+	storeEmailVerificationToken,
+} from "~/server/services/account-security.service";
+import { hasKeySet } from "~/server/services/protection-keys/password-writes";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 
@@ -121,6 +125,10 @@ export const authRouter = createTRPCRouter({
 				return { success: true }; // Generic success to prevent enumeration
 			}
 
+			// An account with keys gets no link (a reset would remove or refuse them),
+			// and the same answer as everyone else.
+			if (await hasKeySet(db, user.id)) return { success: true };
+
 			const token = crypto.randomBytes(32).toString("hex");
 			const expires = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
 
@@ -194,23 +202,12 @@ export const authRouter = createTRPCRouter({
 
 			const hashedPassword = await hashPassword(input.newPassword);
 
-			await db.account.updateMany({
-				where: {
-					userId: user.id,
-					providerId: "credential",
-				},
-				data: {
-					password: hashedPassword,
-				},
-			});
-
-			// Invalidate all existing sessions: password was compromised or reset
-			await db.session.deleteMany({
-				where: { userId: user.id },
-			});
-
-			await db.passwordResetToken.delete({
-				where: { token: input.token },
+			await resetPasswordHash({
+				userId: user.id,
+				hashed: hashedPassword,
+				by: { kind: "email" },
+				token: input.token,
+				whenNoCredential: "continue",
 			});
 
 			if (await isEmailDeliveryEnabled()) {
