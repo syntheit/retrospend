@@ -61,8 +61,8 @@ vi.mock("~/server/services/api-v1/principal.service", () => ({
 	}),
 }));
 
-import { errorFormatter } from "~/server/api/error-formatter";
 import { appRouter, createCaller } from "~/server/api/root";
+import { errorFormatter } from "~/server/api/error-formatter";
 import { handleV1Request } from "~/server/api/v1/handler";
 import { TRPC_ALLOWED, V1_ALLOWED } from "../allowed";
 import { ProtectedAccountError } from "../guard";

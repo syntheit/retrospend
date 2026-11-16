@@ -135,6 +135,39 @@ describe("the body cap", () => {
 		expect(await vaultRowsOf(id)).toEqual([]);
 	});
 
+	it("never stores a streamed body over the cap even when its start is a valid batch", async () => {
+		const id = await accountWithKeys();
+		const headers = await webHeaders(id, 64);
+		const key = "cap-valid-prefix";
+		const enc = new TextEncoder();
+		const valid = JSON.stringify({
+			writes: [toWire(writeOf(seal, id, "prefix-1", 0))],
+		});
+		// The batch is complete JSON; whitespace after it is still JSON, so a
+		// parser handed the prefix alone would accept it.
+		const head = enc.encode(valid);
+		const pad = enc.encode(" ".repeat(1024 * 1024));
+		let sent = 0;
+		const body = new ReadableStream<Uint8Array>({
+			pull(controller) {
+				if (sent === 0) {
+					sent += head.byteLength;
+					controller.enqueue(head);
+				} else if (sent > VAULT_WRITES_BODY_LIMIT) controller.close();
+				else {
+					sent += pad.byteLength;
+					controller.enqueue(pad);
+				}
+			},
+		});
+		const res = await rawPost(headers, body, {}, key);
+		await expectProblem(res, 413, "payload_too_large");
+		expect(
+			await adminDb.idempotencyKey.count({ where: { userId: id, key } }),
+		).toBe(0);
+		expect(await vaultRowsOf(id)).toEqual([]);
+	});
+
 	it("leaves the cap to this route only: another JSON route takes a body of the same size", async () => {
 		const id = await accountWithKeys();
 		const headers = await webHeaders(id, 62);

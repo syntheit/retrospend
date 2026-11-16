@@ -1,11 +1,11 @@
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import type { Router } from "@orpc/server";
 import { ResponseHeadersPlugin } from "@orpc/server/plugins";
-import { IMPORT_MAX_BYTES } from "@retrospend/api-contract";
 import {
 	API_PREFIX,
 	PROBLEM_CONTENT_TYPE,
 } from "@retrospend/api-contract/common";
+import { IMPORT_MAX_BYTES } from "@retrospend/api-contract";
 import { assertNoSealedText } from "~/server/crypto/response-guard";
 import { notModifiedFor } from "./core/etag";
 import { encodeProblem, problem } from "./errors";
@@ -57,7 +57,9 @@ function capUpload(
 				seen += chunk.byteLength;
 				if (seen > limit) {
 					over = true;
-					controller.terminate();
+					// An error, not terminate(): a cleanly ended stream hands the
+					// parser whatever arrived, and a JSON prefix can parse and run.
+					controller.error(new Error("payload_too_large"));
 				} else controller.enqueue(chunk);
 			},
 		}),
@@ -86,13 +88,7 @@ function withProblemHeaders(res: Response): Response {
 async function guardSealedText(res: Response): Promise<void> {
 	if (process.env.NODE_ENV !== "test") return;
 	if (!(res.headers.get("content-type") ?? "").includes("json")) return;
-	assertNoSealedText(
-		await res
-			.clone()
-			.json()
-			.catch(() => null),
-		"v1",
-	);
+	assertNoSealedText(await res.clone().json().catch(() => null), "v1");
 }
 
 /** Builds a fetch handler for a v1 router (tests pass their own router). */

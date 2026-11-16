@@ -101,8 +101,7 @@ describe("webhooks model", () => {
 			areas: Record<string, string>;
 			deliveryError: Record<string, string>;
 		};
-		for (const id of Object.keys(EVENT_AREAS))
-			expect(dev.areas[id], id).toBeTruthy();
+		for (const id of Object.keys(EVENT_AREAS)) expect(dev.areas[id], id).toBeTruthy();
 		for (const code of DELIVERY_ERRORS)
 			expect(dev.deliveryError[code], code).toBeTruthy();
 	});
