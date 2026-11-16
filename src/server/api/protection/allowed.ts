@@ -7,7 +7,8 @@
  * The rule for adding one (e2ee-f5 decision 7): every table the route reads or
  * writes is identity, settings, shared or public data, and no figure it
  * returns sums personal rows. In doubt, leave it out. The K PRs add the
- * routes they make safe, and allowed.test.ts keeps the list honest.
+ * routes they make safe. The protection block in v1/__tests__/completeness.test.ts
+ * and __tests__/walk.test.ts keep the list honest.
  *
  * Left out on purpose, with their sealed settings record in mind: the general
  * settings (settings.getGeneral and updateGeneral, v1 /settings carry monthly
