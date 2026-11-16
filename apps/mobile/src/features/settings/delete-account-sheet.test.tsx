@@ -28,11 +28,17 @@ const mockApi = {
 		delete: mockDelete,
 	},
 };
+const mockState = {
+	current: { status: "signedIn", me: { email: "ana@example.com" } } as {
+		status: string;
+		me: { email: string } | null;
+	},
+};
 jest.mock("@/auth/session", () => ({
 	useSession: () => ({
 		api: mockApi,
 		baseUrl: "https://retrospend.app",
-		state: { status: "signedIn", me: { email: "ana@example.com" } },
+		state: mockState.current,
 		signOut: mockSignOut,
 	}),
 }));
@@ -140,6 +146,7 @@ async function render() {
 beforeEach(() => {
 	for (const m of [mockDelete, mockSignOut, mockResolve, mockForget])
 		m.mockReset();
+	mockState.current = { status: "signedIn", me: { email: "ana@example.com" } };
 	mockDelete.mockResolvedValue({ ok: true });
 	mockForget.mockResolvedValue(undefined);
 });
@@ -173,6 +180,19 @@ describe("DeleteAccountSheet", () => {
 		expect(mockDelete).not.toHaveBeenCalled();
 		expect(s.texts()).toContain(
 			"The server's answer about this account's protection looks wrong. Nothing was deleted.",
+		);
+	});
+});
+
+describe("DeleteAccountSheet without a profile", () => {
+	it("says it could not delete and sends nothing", async () => {
+		mockState.current = { status: "signedIn", me: null };
+		const s = await render();
+		await s.remove();
+		expect(mockResolve).not.toHaveBeenCalled();
+		expect(mockDelete).not.toHaveBeenCalled();
+		expect(s.texts()).toContain(
+			"Couldn't delete the account. Check your password and try again.",
 		);
 	});
 });

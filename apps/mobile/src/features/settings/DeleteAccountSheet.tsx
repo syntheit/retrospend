@@ -74,9 +74,14 @@ export function DeleteAccountSheet({
 	}, [visible, api]);
 
 	async function remove() {
-		if (!api || !baseUrl || !email || busy || password === "") return;
-		setBusy(true);
+		if (!api || busy || password === "") return;
 		setRefusal(null);
+		// Without the profile there is no email to key the check on: send nothing.
+		if (!baseUrl || !email) {
+			setRefusal(t("error"));
+			return;
+		}
+		setBusy(true);
 		try {
 			const secret = await resolveSignInSecret({
 				baseUrl,
