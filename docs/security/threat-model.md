@@ -136,7 +136,7 @@ What this does and does not buy:
 | Recovery key | `rs.rk.v1` | 1 | recovery wrapping key |
 | Account key | `rs.ak.v1` | | reserved, unused |
 
-The auth key and the wrapping key are independent outputs of one keyed hash, so the server learning the auth key (it receives it at every sign-in) does not give it the wrapping key. better-auth is to hash the auth key again before storing it (spike section 4.4). The auth key travels as base64url of its 32 bytes (`packages/crypto/src/sign-in-secret.ts`); prelogin (K1-1), the enable route (K1-2) and the web and mobile derivation (K1-3, K1-4) are built behind `ADVANCED_PROTECTION_ENABLED`.
+The auth key and the wrapping key are independent outputs of one keyed hash, so the server learning the auth key (it receives it at every sign-in) does not give it the wrapping key. The server hashes the auth key again with better-auth's password hash before storing it (K1-2, spike section 4.4). The auth key travels as base64url of its 32 bytes (`packages/crypto/src/sign-in-secret.ts`); prelogin (K1-1), the enable route (K1-2) and the web and mobile derivation (K1-3, K1-4) are built behind `ADVANCED_PROTECTION_ENABLED`.
 
 ### 5.4 Account key and collection keys
 
