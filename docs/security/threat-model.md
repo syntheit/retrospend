@@ -65,7 +65,8 @@ An attacker who controls the app, the database and the master key, or a maliciou
   - return weak but in-range Argon2id parameters and a chosen salt (section 5.2);
   - withhold, delete or replay old sealed records and wraps;
   - seal a substitute account key to a device or contact public key (section 5.6, open requirement);
-  - serve modified web code (section 9).
+  - serve modified web code (section 9);
+  - answer prelogin with "no keys" for an account that has them, so a client that trusts the answer sends the typed password, from which the server can derive the master key. Native apps refuse this once they have seen the account keyed on this server: they keep a record (a hash of the server origin and the email, in the Keychain or Keystore, this device only) and treat a "no keys" answer, an error or a 404 for a recorded account as a refusal, never as a reason to send the typed password. Limits: trust on first use (a new phone, or one restored from a backup that does not carry device-only Keychain items, has no record); the web keeps the same record in local storage, which protects nothing against a server that serves the page (section 9); and after an email or admin reset removed the keys (allowed only while nothing is sealed), the person can choose "I reset my password", confirm, and sign in with the typed password, so a hostile server can downgrade a native client only if the person confirms a reset they did not make. Every screen that asks for the password while signed in (deletion, password change, two-factor, email change) checks the record or the keys route first, and a password change for a keyed account is refused on the device without sending anything.
 
   It cannot move a record to another id, entity, version, user or collection, or present a genuine wrap as another role or id, without the tag check failing (sections 5.5 and 6).
 
@@ -96,7 +97,7 @@ A copy of the database dump, or of the sealed store, in someone else's hands.
 
 - TLS and HSTS protect the transport. A network attacker who breaks TLS sees ciphertext and metadata for protected accounts, and everything for default accounts.
 - Push services (APNs, FCM, UnifiedPush) and the mail provider see what push and email carry (section 8).
-- The prelogin route must return deterministic fake parameters for unknown emails so it cannot be used to discover accounts (F8a, not built).
+- Prelogin (`POST /api/v1/auth/prelogin`, K1-1) returns the real salt and Argon2id parameters for an account with a key set and no parameters for every other email, unknown or not. It does not hide whether an account exists (sign-up and email change already say an address is taken); it does tell anyone who asks that an account has Advanced protection keys. It is limited per IP (an IPv6 /64 counts as one) and loosely per email (keyed by a hash of the address, never the address).
 
 ## 5. Key hierarchy as built
 
@@ -135,7 +136,7 @@ What this does and does not buy:
 | Recovery key | `rs.rk.v1` | 1 | recovery wrapping key |
 | Account key | `rs.ak.v1` | | reserved, unused |
 
-The auth key and the wrapping key are independent outputs of one keyed hash, so the server learning the auth key (it receives it at every sign-in) does not give it the wrapping key. better-auth is to hash the auth key again before storing it (spike section 4.4). None of the sign-in wiring is built (F8a, F8b).
+The auth key and the wrapping key are independent outputs of one keyed hash, so the server learning the auth key (it receives it at every sign-in) does not give it the wrapping key. better-auth is to hash the auth key again before storing it (spike section 4.4). The auth key travels as base64url of its 32 bytes (`packages/crypto/src/sign-in-secret.ts`); prelogin (K1-1), the enable route (K1-2) and the web and mobile derivation (K1-3, K1-4) are built behind `ADVANCED_PROTECTION_ENABLED`.
 
 ### 5.4 Account key and collection keys
 
@@ -324,7 +325,7 @@ Found while writing this draft, not in the 2026-11-08 sections:
 8. **Trusted Types enforcement** and the worker for keys (section 9).
 9. **Device benchmark (F4).** The Argon2id default and floor are estimates until measured (section 5.2).
 10. **Plaintext deletion at commit and backup retention wording.** The owner signs off on the exact text and number of days before K11 merges (spike section 5.3 and 9, item 6). Backups hold personal amounts for up to `BACKUP_RETENTION_DAYS` after the commit.
-11. **Wiring checks:** `auth key` hashing and prelogin (F8), the `protected_account` guard (F5), and the sidecar skipping protected users (F9) do not exist. Until they do, no server path is known to be safe for a protected account.
+11. **Wiring checks:** auth key hashing and prelogin (K1-1, K1-2) and the deny-by-default `protected_account` guard (F5) are built; the sidecar skipping protected users (F9) is not. Until it is, no server path is known to be safe for a protected account.
 
 ## 12. Where the spike and the code disagree
 
