@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Suspense, useState } from "react";
 import { AuthPanel } from "~/app/(site)/_components/auth-panel";
 import { Button } from "~/components/ui/button";
+import { ConfirmationDialog } from "~/components/ui/confirmation-dialog";
 import { Input } from "~/components/ui/input";
 import {
 	InputOTP,
@@ -14,12 +15,17 @@ import {
 } from "~/components/ui/input-otp";
 import { Label } from "~/components/ui/label";
 import { authClient } from "~/lib/auth-client";
+import {
+	forgetKeyed,
+	SignInSecretError,
+} from "~/lib/protection/sign-in-secret";
 import { useSignInSecret } from "~/lib/protection/use-sign-in-secret";
 import { safeRedirect } from "~/lib/safe-redirect";
 import { api } from "~/trpc/react";
 
 function LoginFormInner() {
 	const t = useTranslations("auth");
+	const ts = useTranslations("settingsV2.signInSecret");
 	const searchParams = useSearchParams();
 	// `redirect` comes from in-app links, `callbackUrl` from the proxy when a
 	// signed-out visitor opens a protected page (the device page keeps its
@@ -39,12 +45,16 @@ function LoginFormInner() {
 	const [backupCode, setBackupCode] = useState("");
 
 	const signInSecret = useSignInSecret();
+	// Set when this browser remembers the address as keyed and the server now
+	// says it is not: the person may have reset the password since.
+	const [staleKeys, setStaleKeys] = useState(false);
+	const [confirmReset, setConfirmReset] = useState(false);
 	const { data: appFeatures } = api.auth.getAppFeatures.useQuery();
 
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
+	const signIn = async () => {
 		setIsLoading(true);
 		setError("");
+		setStaleKeys(false);
 
 		try {
 			const address = email.trim().toLowerCase();
@@ -55,6 +65,11 @@ function LoginFormInner() {
 				secret = await signInSecret(address, password);
 			} catch (e) {
 				setError(e instanceof Error ? e.message : t("unexpectedError"));
+				setStaleKeys(
+					e instanceof Error &&
+						e.cause instanceof SignInSecretError &&
+						e.cause.code === "downgrade",
+				);
 				return;
 			}
 			const result = await authClient.signIn.email({
@@ -91,6 +106,17 @@ function LoginFormInner() {
 		} finally {
 			setIsLoading(false);
 		}
+	};
+
+	const handleSubmit = (e: React.FormEvent) => {
+		e.preventDefault();
+		void signIn();
+	};
+
+	const signInWithNewPassword = async () => {
+		await forgetKeyed(email);
+		setConfirmReset(false);
+		await signIn();
 	};
 
 	const handleVerify2FA = async (
@@ -326,10 +352,29 @@ function LoginFormInner() {
 						/>
 					</div>
 					{error && <div className="text-destructive text-sm">{error}</div>}
+					{staleKeys && (
+						<Button
+							className="text-muted-foreground h-auto p-0 hover:underline"
+							onClick={() => setConfirmReset(true)}
+							type="button"
+							variant="link"
+						>
+							{ts("resetAction")}
+						</Button>
+					)}
 					<Button className="w-full" disabled={isLoading} type="submit">
 						{isLoading ? t("signingIn") : t("signIn")}
 					</Button>
 				</form>
+				<ConfirmationDialog
+					confirmLabel={t("signIn")}
+					description={ts("resetBody")}
+					isLoading={isLoading}
+					onConfirm={() => void signInWithNewPassword()}
+					onOpenChange={setConfirmReset}
+					open={confirmReset}
+					title={ts("resetTitle")}
+				/>
 				<div className="mt-4 text-center">
 					<p className="text-muted-foreground text-sm">
 						{t("dontHaveAccount")}{" "}

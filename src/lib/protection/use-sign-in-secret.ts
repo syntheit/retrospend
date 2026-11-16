@@ -9,8 +9,10 @@ function useMessage() {
 	const t = useTranslations("settingsV2.signInSecret");
 	return useCallback(
 		(error: unknown): Error =>
+			// The cause lets a caller offer a way out of a refusal (the sign-in form).
 			new Error(
 				error instanceof SignInSecretError ? t(error.code) : t("unavailable"),
+				{ cause: error },
 			),
 		[t],
 	);

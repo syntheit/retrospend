@@ -73,6 +73,16 @@ describe("web password prompts", () => {
 		).not.toMatch(/mutateAsync\(\{ password \}\)/);
 	});
 
+	it("offers the way out of a stale keyed record on the form and clears it after a reset", () => {
+		const login = read("app/(site)/login/_components/login-form.tsx");
+		expect(login).toContain('code === "downgrade"');
+		expect(login).toMatch(/forgetKeyed\(email\)[\s\S]*await signIn\(\)/);
+		expect(login).toContain("ConfirmationDialog");
+		expect(read("app/(site)/auth/reset-password/page.tsx")).toMatch(
+			/onSuccess: async \(\{ email \}\) => \{\s*await forgetKeyed\(email\)/,
+		);
+	});
+
 	it("shows the locked reason when the server refuses a password change", () => {
 		expect(read("features/settings/security/password-sheet.tsx")).toContain(
 			'"protected_password"',

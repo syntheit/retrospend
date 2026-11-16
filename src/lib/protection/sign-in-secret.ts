@@ -28,7 +28,7 @@ export class SignInSecretError extends Error {
 export type SignInSecretDeps = {
 	fetch: typeof fetch;
 	/** Null where storage is blocked: the record is then neither read nor written. */
-	storage: Pick<Storage, "getItem" | "setItem"> | null;
+	storage: Pick<Storage, "getItem" | "setItem" | "removeItem"> | null;
 	/** Lets the busy state paint before Argon2id blocks the main thread. */
 	paint: () => Promise<void>;
 };
@@ -96,6 +96,25 @@ async function record(deps: SignInSecretDeps, email: string): Promise<void> {
 		if (key !== null) deps.storage?.setItem(key, "1");
 	} catch {
 		// Best effort: a blocked or full store only loses the downgrade check.
+	}
+}
+
+/**
+ * Forgets that an address was keyed, for the person who says they reset the
+ * password (a reset removes the keys while protection is off, and an address
+ * that is still recorded would be refused for good). Then the next sign-in
+ * takes whatever the server says.
+ */
+export async function forgetKeyed(
+	email: string,
+	deps: Partial<SignInSecretDeps> = {},
+): Promise<void> {
+	const { storage } = { ...defaults(), ...deps };
+	try {
+		const key = await recordKey(email);
+		if (key !== null) storage?.removeItem(key);
+	} catch {
+		// Best effort, like the record itself.
 	}
 }
 

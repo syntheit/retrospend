@@ -220,7 +220,10 @@ export const authRouter = createTRPCRouter({
 				);
 			}
 
-			return { success: true };
+			// The address lets the browser forget that it saw this account keyed:
+			// the person just set a plain password. Only the holder of the
+			// emailed token gets it.
+			return { success: true, email: user.email };
 		}),
 
 	/**

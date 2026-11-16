@@ -10,6 +10,7 @@ import { AuthPanel } from "~/app/(site)/_components/auth-panel";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { forgetKeyed } from "~/lib/protection/sign-in-secret";
 import { api } from "~/trpc/react";
 
 function ResetPasswordInner() {
@@ -23,7 +24,8 @@ function ResetPasswordInner() {
 	const [error, setError] = useState("");
 
 	const resetMutation = api.auth.resetPassword.useMutation({
-		onSuccess: () => {
+		onSuccess: async ({ email }) => {
+			await forgetKeyed(email);
 			toast.success(t("passwordUpdatedSuccessfully"));
 			router.push("/login");
 		},

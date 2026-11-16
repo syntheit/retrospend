@@ -296,7 +296,10 @@
 	"signInSecret": {
 		"unavailable": "Couldn't check how to sign you in. Try again.",
 		"downgrade": "The server left out this account's protection, so sign-in stopped.",
-		"params": "The server's protection settings are too weak, so sign-in stopped."
+		"params": "The server's protection settings are too weak, so sign-in stopped.",
+		"resetAction": "I reset my password",
+		"resetTitle": "Sign in with your new password?",
+		"resetBody": "This browser will stop expecting protection for this account."
 	},
 	"developer": {
 		"title": "Developer",

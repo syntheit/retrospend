@@ -1,7 +1,11 @@
 import { toBase64Url } from "@retrospend/crypto";
 import { describe, expect, it, vi } from "vitest";
 import vectors from "../../../packages/crypto/vectors/keys.vectors.json";
-import { SignInSecretError, signInSecretFor } from "./sign-in-secret";
+import {
+	forgetKeyed,
+	SignInSecretError,
+	signInSecretFor,
+} from "./sign-in-secret";
 
 // The second master vector uses the floor parameters, so a derivation takes
 // a fraction of the default one. Its auth key is a known answer from a
@@ -30,6 +34,7 @@ function memoryStorage(initial: Record<string, string> = {}) {
 		map,
 		getItem: (k: string) => map.get(k) ?? null,
 		setItem: (k: string, v: string) => void map.set(k, v),
+		removeItem: (k: string) => void map.delete(k),
 	};
 }
 
@@ -163,10 +168,29 @@ describe("signInSecretFor", () => {
 		expect(await failure(malformed.run("Plain-pw-1"))).toBe("unavailable");
 	});
 
+	it("signs in with the typed password again once the address is forgotten", async () => {
+		let keyed = true;
+		const t = setup(() => json({ kdf: keyed ? FLOOR_ONLY : null }));
+		await t.run(MASTER.password);
+		keyed = false;
+		expect(await failure(t.run("New-pw-1"))).toBe("downgrade");
+		await forgetKeyed(EMAIL, { storage: t.storage });
+		expect(t.storage.map.size).toBe(0);
+		expect(await t.run("New-pw-1")).toBe("New-pw-1");
+	});
+
+	it("forgets only the address it is given", async () => {
+		const t = setup(() => json({ kdf: FLOOR_ONLY }));
+		await t.run(MASTER.password);
+		await t.run(MASTER.password, { email: "other@example.com" });
+		await forgetKeyed("PERSON@example.com ", { storage: t.storage });
+		expect(t.storage.map.size).toBe(1);
+	});
+
 	it("keeps the address out of storage", async () => {
 		const t = setup(() => json({ kdf: FLOOR_ONLY }));
 		await t.run(MASTER.password);
-		const [[key, value]] = [...t.storage.map];
+		const [key, value] = [...t.storage.map][0] ?? [];
 		expect(key).toMatch(/^rs\.keyed\.[0-9a-f]{64}$/);
 		expect(value).toBe("1");
 		expect(JSON.stringify([...t.storage.map])).not.toMatch(/person|example/i);
@@ -178,6 +202,9 @@ describe("signInSecretFor", () => {
 			deps: {
 				fetch: fetch as typeof globalThis.fetch,
 				storage: {
+					removeItem: () => {
+						throw new Error("blocked");
+					},
 					getItem: () => {
 						throw new Error("blocked");
 					},
