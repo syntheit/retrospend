@@ -73,8 +73,8 @@ export function refusePasswordChange(state: KeyedState): void {
  * A reset (the person forgot the password, or an admin sets one). While
  * nothing is sealed (`OFF`) the keys protect no data, so they are removed in
  * the caller's transaction, with the new hash, and the account returns to a
- * plain password. Anything else is refused: the keys are the only way back
- * into sealed data. The audit entry carries ids only.
+ * plain password, and the vault rows sealed under them go too. Anything else is
+ * refused: the keys are the only way back into sealed data. The audit entry carries ids only.
  */
 export type ResetBy = { kind: "email" } | { kind: "admin"; adminId: string };
 
@@ -88,6 +88,13 @@ export async function settleKeysForReset(
 	if (state.protectionState !== "OFF") throw new ProtectedPasswordError();
 	await tx.protectionKeyWrap.deleteMany({ where: { userId } });
 	await tx.protectionKeySet.deleteMany({ where: { userId } });
+	// Records sealed under the removed keys can never be opened, and while the
+	// state is OFF the plaintext still exists, so nothing is lost. The key set
+	// delete above waits for a vault writer that holds the row FOR SHARE
+	// (vault-api.service.ts), so this sees the rows that writer committed; a
+	// writer that comes later finds no key set and stores nothing. This runs
+	// on the owner connection: the app role cannot delete vault rows.
+	await tx.$executeRaw`DELETE FROM "vault_record" WHERE "userId" = ${userId}`;
 	await tx.eventLog.create({
 		data: {
 			eventType: "PASSWORD_RESET",

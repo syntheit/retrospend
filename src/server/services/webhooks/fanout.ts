@@ -45,7 +45,11 @@ export async function fanOutEvents(): Promise<number> {
 			FOR UPDATE SKIP LOCKED`;
 			if (events.length === 0) return 0;
 
-			const deliverable = events.filter((e) => !e.type.startsWith("webhook."));
+			// A webhook never hears about its own deliveries, nor about the vault: a
+			// vault event only wakes the person's own devices through the feed.
+			const deliverable = events.filter(
+				(e) => !e.type.startsWith("webhook.") && !e.type.startsWith("vault."),
+			);
 			const hooks = await tx.webhook.findMany({
 				where: {
 					enabled: true,

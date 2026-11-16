@@ -1,19 +1,37 @@
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import type { Router } from "@orpc/server";
 import { ResponseHeadersPlugin } from "@orpc/server/plugins";
+import { IMPORT_MAX_BYTES } from "@retrospend/api-contract";
 import {
 	API_PREFIX,
 	PROBLEM_CONTENT_TYPE,
 } from "@retrospend/api-contract/common";
-import { IMPORT_MAX_BYTES } from "@retrospend/api-contract";
 import { assertNoSealedText } from "~/server/crypto/response-guard";
 import { notModifiedFor } from "./core/etag";
 import { encodeProblem, problem } from "./errors";
 import type { V1InitialContext } from "./middleware";
 import { v1Router } from "./router";
+import { VAULT_WRITES_BODY_LIMIT, VAULT_WRITES_PATH } from "./vault/body-limit";
 
 /** The biggest file field is the 10 MB import; the rest is form overhead. */
 export const MULTIPART_LIMIT = IMPORT_MAX_BYTES + 1024 * 1024;
+
+/**
+ * The byte limit of a request body, or null for a route with none of its own:
+ * a multipart upload, and the vault's JSON batch. Every other JSON route is
+ * left to the transport's limit.
+ */
+function uploadLimitOf(request: Request): number | null {
+	const type = request.headers.get("content-type") ?? "";
+	if (type.toLowerCase().startsWith("multipart/form-data"))
+		return MULTIPART_LIMIT;
+	if (
+		request.method === "POST" &&
+		new URL(request.url).pathname.replace(/\/+$/, "") === VAULT_WRITES_PATH
+	)
+		return VAULT_WRITES_BODY_LIMIT;
+	return null;
+}
 
 /**
  * Stops an oversized upload before it is read into memory. A declared
@@ -23,11 +41,11 @@ export const MULTIPART_LIMIT = IMPORT_MAX_BYTES + 1024 * 1024;
 function capUpload(
 	request: Request,
 ): { request: Request; exceeded: () => boolean } | Response {
-	const type = request.headers.get("content-type") ?? "";
-	if (!type.toLowerCase().startsWith("multipart/form-data") || !request.body)
+	const limit = uploadLimitOf(request);
+	if (limit === null || !request.body)
 		return { request, exceeded: () => false };
 	const declared = Number(request.headers.get("content-length"));
-	if (Number.isFinite(declared) && declared > MULTIPART_LIMIT)
+	if (Number.isFinite(declared) && declared > limit)
 		return Response.json(encodeProblem(problem("payload_too_large")), {
 			status: 413,
 		});
@@ -37,7 +55,7 @@ function capUpload(
 		new TransformStream<Uint8Array, Uint8Array>({
 			transform(chunk, controller) {
 				seen += chunk.byteLength;
-				if (seen > MULTIPART_LIMIT) {
+				if (seen > limit) {
 					over = true;
 					controller.terminate();
 				} else controller.enqueue(chunk);
@@ -68,7 +86,13 @@ function withProblemHeaders(res: Response): Response {
 async function guardSealedText(res: Response): Promise<void> {
 	if (process.env.NODE_ENV !== "test") return;
 	if (!(res.headers.get("content-type") ?? "").includes("json")) return;
-	assertNoSealedText(await res.clone().json().catch(() => null), "v1");
+	assertNoSealedText(
+		await res
+			.clone()
+			.json()
+			.catch(() => null),
+		"v1",
+	);
 }
 
 /** Builds a fetch handler for a v1 router (tests pass their own router). */

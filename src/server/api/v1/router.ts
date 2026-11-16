@@ -35,6 +35,7 @@ import { sharedExpensesRouter } from "./shared-expenses";
 import { syncRouter } from "./sync";
 import { tokensRouter } from "./tokens";
 import { transfersRouter } from "./transfers";
+import { vaultRouter } from "./vault";
 import { webhooksRouter } from "./webhooks";
 
 /**
@@ -78,5 +79,6 @@ export const v1Router = v1.router({
 	sync: syncRouter,
 	tokens: tokensRouter,
 	transfers: transfersRouter,
+	vault: vaultRouter,
 	webhooks: webhooksRouter,
 });
