@@ -29,6 +29,18 @@ vi.mock("next/headers", () => ({
 	cookies: async () => ({ get: () => undefined }),
 }));
 const mail = vi.hoisted(() => ({ sendEmail: vi.fn(async () => undefined) }));
+// Watched, not replaced: the real hash runs, the test counts the calls.
+const hashing = vi.hoisted(() => ({ calls: 0 }));
+vi.mock("better-auth/crypto", async (original) => {
+	const actual = await original<typeof import("better-auth/crypto")>();
+	return {
+		...actual,
+		hashPassword: (password: string) => {
+			hashing.calls++;
+			return actual.hashPassword(password);
+		},
+	};
+});
 vi.mock("~/server/mailer", () => mail);
 vi.mock("~/server/lib/email-delivery", () => ({
 	isEmailDeliveryEnabled: async () => true,
@@ -352,6 +364,19 @@ describe("auth.requestPasswordReset", () => {
 				hash: await storedHash(a.id),
 			}),
 		).toBe(true);
+	});
+
+	it("spends one hash for an account whose protection is on, as it does for no account", async () => {
+		const a = await passwordUser();
+		await giveKeys(a.id, "ON");
+		const hashesFor = async (email: string) => {
+			hashing.calls = 0;
+			await request(email);
+			return hashing.calls;
+		};
+		const unknown = await hashesFor(`nobody-${a.id}@pg-test.invalid`);
+		expect(unknown).toBe(1);
+		expect(await hashesFor(a.email)).toBe(unknown);
 	});
 
 	it("sends nothing to an account whose protection is on, and answers like it does for no account", async () => {
