@@ -546,7 +546,9 @@ describe("insights cashflow", () => {
 describe("insights router", () => {
 	const caller = (userId: string) =>
 		createCallerFactory(insightsRouter)({
-			session: { user: { id: userId, role: "USER", isActive: true } },
+			session: {
+				user: { id: userId, role: "USER", isActive: true, protectionState: "OFF" },
+			},
 			db: adminDb,
 			headers: new Headers({ "x-timezone": ZONE }),
 		} as never);

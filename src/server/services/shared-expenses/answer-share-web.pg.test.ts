@@ -327,6 +327,7 @@ describe("through verification.answer and verification.restoreAnswer", () => {
 							email: u.user.email,
 							name: u.user.name,
 							isActive: true,
+							protectionState: "OFF",
 						},
 					} as never)
 				: null,

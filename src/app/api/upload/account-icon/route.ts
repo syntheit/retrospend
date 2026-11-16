@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { type NextRequest, NextResponse } from "next/server";
+import { refuseProtected } from "~/server/api/protection/refuse";
 import { getWebSession } from "~/server/better-auth/web-session";
 import { uploadAccountIcon } from "~/server/services/accounts/icon";
 
@@ -19,6 +20,9 @@ export async function POST(request: NextRequest) {
 	if (!session?.user) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
+	// A protected account's accounts live in the vault, so the icon has no row to go on.
+	const refused = refuseProtected(session.user);
+	if (refused) return refused;
 
 	const formData = await request.formData();
 	const file = formData.get("file");

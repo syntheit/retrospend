@@ -308,7 +308,9 @@ describe("Later", () => {
 describe("home router", () => {
 	const caller = (user: { id: string }) =>
 		createCallerFactory(homeRouter)({
-			session: { user: { ...user, role: "USER", isActive: true } },
+			session: {
+				user: { ...user, role: "USER", isActive: true, protectionState: "OFF" },
+			},
 			db: adminDb,
 			headers: new Headers({ "x-timezone": ZONE }),
 		} as never);

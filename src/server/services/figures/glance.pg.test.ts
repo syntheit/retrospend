@@ -350,7 +350,9 @@ describe("glance()", () => {
 
 	it("is served as home.glance", async () => {
 		const c = createCallerFactory(homeRouter)({
-			session: { user: { id: sofia, role: "USER", isActive: true } },
+			session: {
+				user: { id: sofia, role: "USER", isActive: true, protectionState: "OFF" },
+			},
 			db: adminDb,
 			headers: new Headers(),
 		} as never);

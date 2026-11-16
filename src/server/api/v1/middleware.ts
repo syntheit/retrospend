@@ -2,6 +2,8 @@ import { implement, os } from "@orpc/server";
 import type { ResponseHeadersPluginContext } from "@orpc/server/plugins";
 import { contract } from "@retrospend/api-contract";
 import { type ApiMeta, isWriteMethod } from "@retrospend/api-contract/common";
+import { V1_ALLOWED } from "~/server/api/protection/allowed";
+import { isAllowed } from "~/server/api/protection/guard";
 import type { db as globalDb } from "~/server/db";
 import {
 	type Principal,
@@ -36,9 +38,15 @@ export type V1User = {
 
 export type V1Context = V1InitialContext & { user: V1User | null };
 
+/** `METHOD /path` as the allowlist and the contract name a route. */
+function routeKey(route: { method?: string; path?: string }): string {
+	return `${(route.method ?? "POST").toUpperCase()} ${route.path}`;
+}
+
 /**
- * Resolves the principal and enforces, in order: credentials (401) and the
- * route's scope (403 missing_scope). Public routes (server-info) skip both
+ * Resolves the principal and enforces, in order: credentials (401), the
+ * route's scope (403 missing_scope) and advanced protection (403
+ * protected_account). Public routes (server-info) skip both
  * but still see the caller when valid credentials are sent.
  */
 const authenticate = os
@@ -71,6 +79,17 @@ const authenticate = os
 					requiredScope: scope,
 				});
 		}
+
+		// Advanced protection, deny by default. After the scope check so a
+		// missing scope still says so, before the keyring, the zone and the
+		// idempotency record: a refusal writes nothing. Public routes have no
+		// personal data to protect.
+		if (
+			principal?.protected &&
+			scope !== "public" &&
+			!isAllowed(V1_ALLOWED, routeKey(procedure["~orpc"].route))
+		)
+			throw problem("protected_account");
 
 		let user: V1User | null = null;
 		if (principal) {

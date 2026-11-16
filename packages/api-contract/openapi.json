@@ -44,6 +44,7 @@
 							"unauthenticated",
 							"forbidden",
 							"missing_scope",
+							"protected_account",
 							"not_found",
 							"conflict",
 							"payload_too_large",

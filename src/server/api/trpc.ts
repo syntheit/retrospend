@@ -13,6 +13,8 @@ import superjson from "superjson";
 
 import { MissingRateError } from "@retrospend/domain/money";
 import { errorFormatter } from "~/server/api/error-formatter";
+import { TRPC_ALLOWED } from "~/server/api/protection/allowed";
+import { assertAllowed, isProtected } from "~/server/api/protection/guard";
 import type { Session } from "~/server/better-auth/config";
 import { assertNoSealedText } from "~/server/crypto/response-guard";
 import { getWebSession } from "~/server/better-auth/web-session";
@@ -121,10 +123,15 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
  * ZodErrors so that you get typesafety on the frontend if your procedure fails due to validation
  * errors on the backend.
  */
-const t = initTRPC.context<typeof createTRPCContext>().create({
-	transformer: superjson,
-	errorFormatter,
-});
+const t = initTRPC
+	.context<typeof createTRPCContext>()
+	// `public` marks a procedure that needs no session, so the protection
+	// allowlist test can pin the set instead of guessing it.
+	.meta<{ public?: boolean }>()
+	.create({
+		transformer: superjson,
+		errorFormatter,
+	});
 
 /**
  * Create a server-side caller.
@@ -190,8 +197,25 @@ const sealedTextGuard = t.middleware(async ({ next }) => {
 	return result;
 });
 
+/**
+ * Advanced protection, deny by default: a signed-in account that is not OFF
+ * may call only the procedures TRPC_ALLOWED names. It sits on the base so
+ * public procedures are covered too, and it runs before every other
+ * middleware that could write (the keyring, the time zone claim), so a
+ * refusal leaves nothing behind. Guests have no session user: never protected.
+ */
+const protectionGuard = t.middleware(async ({ ctx, path, next }) => {
+	const user = ctx.session?.user;
+	if (user)
+		assertAllowed(isProtected(user.protectionState), path, TRPC_ALLOWED);
+	return next();
+});
+
 /** Every procedure builder starts here. */
-const baseProcedure = t.procedure.use(timingMiddleware).use(sealedTextGuard);
+const baseProcedure = t.procedure
+	.use(timingMiddleware)
+	.use(sealedTextGuard)
+	.use(protectionGuard);
 
 /**
  * Public (unauthenticated) procedure
@@ -200,7 +224,7 @@ const baseProcedure = t.procedure.use(timingMiddleware).use(sealedTextGuard);
  * guarantee that a user querying is authorized, but you can still access user session data if they
  * are logged in.
  */
-export const publicProcedure = baseProcedure;
+export const publicProcedure = baseProcedure.meta({ public: true });
 
 /**
  * Protected (authenticated) procedure

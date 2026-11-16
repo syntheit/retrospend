@@ -44,6 +44,7 @@ const caller = () =>
 				email: "me@test.com",
 				name: "Me",
 				isActive: true,
+				protectionState: "OFF",
 			},
 		} as never,
 		headers: new Headers(),

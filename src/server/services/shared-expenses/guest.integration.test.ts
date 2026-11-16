@@ -113,7 +113,7 @@ function guestCaller(db: ReturnType<typeof createStatefulDb>, userId?: string) {
 	return createGuestCaller({
 		session: userId
 			? ({
-					user: { id: userId, isActive: true, role: "USER", email: `${userId}@example.com` },
+					user: { id: userId, isActive: true, role: "USER", email: `${userId}@example.com`, protectionState: "OFF" },
 				} as never)
 			: null,
 		db: wrapped as never,

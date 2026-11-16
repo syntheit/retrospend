@@ -37,7 +37,14 @@ export type BridgeCaller = {
 /** The part of a web session the procedures above read. */
 type BridgeUser = Pick<
 	Session["user"],
-	"id" | "name" | "email" | "username" | "role" | "isActive" | "timeZone"
+	| "id"
+	| "name"
+	| "email"
+	| "username"
+	| "role"
+	| "isActive"
+	| "timeZone"
+	| "protectionState"
 >;
 
 async function contextFor(caller: BridgeCaller) {
@@ -54,7 +61,19 @@ async function contextFor(caller: BridgeCaller) {
 	});
 	// A user deleted while the request ran is a sign-in problem, not a crash.
 	if (!row) throw new TRPCError({ code: "UNAUTHORIZED" });
-	const user: BridgeUser = { ...row, timeZone: caller.timeZone };
+	// The protection guard already ran on the v1 route (middleware.ts
+	// authenticate), which is what decided this call may happen. The
+	// procedures below see a bridge path with no router prefix ("recordConsent",
+	// not "auth.recordConsent"), which the tRPC allowlist cannot match, so
+	// guarding them again would refuse every bridged route of a protected
+	// account that the v1 list allows. A background job that bridges later
+	// (runExportJob) has no request and no guard: the state may have changed
+	// since the route ran. Turning protection on (K1) must handle queued jobs.
+	const user: BridgeUser = {
+		...row,
+		timeZone: caller.timeZone,
+		protectionState: "OFF",
+	};
 	return {
 		db,
 		headers: caller.headers ?? new Headers(),

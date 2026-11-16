@@ -3,6 +3,7 @@ import {
 	type Scope,
 	type SessionScope,
 } from "@retrospend/api-contract/common";
+import { isProtected } from "~/server/api/protection/guard";
 import type { PrincipalKind } from "~/server/api/v1/scopes";
 import {
 	apiKeyScopes,
@@ -32,6 +33,8 @@ export type Principal = {
 	tokenId: string;
 	expiresAt: Date | null;
 	clientId: string | null;
+	/** Advanced protection is on (any state other than OFF). */
+	protected: boolean;
 };
 
 export type PrincipalResult =
@@ -51,7 +54,7 @@ async function fromApiKey(key: string): Promise<PrincipalResult> {
 	if (!result.valid || !result.key) return { ok: false, reason: "invalid" };
 	const user = await db.user.findUnique({
 		where: { id: result.key.referenceId },
-		select: { id: true, role: true, isActive: true },
+		select: { id: true, role: true, isActive: true, protectionState: true },
 	});
 	if (!user?.isActive) return { ok: false, reason: "invalid" };
 	return {
@@ -69,6 +72,7 @@ async function fromApiKey(key: string): Promise<PrincipalResult> {
 			tokenId: result.key.id,
 			expiresAt: result.key.expiresAt ? new Date(result.key.expiresAt) : null,
 			clientId: null,
+			protected: isProtected(user.protectionState),
 		},
 	};
 }
@@ -116,6 +120,7 @@ export async function resolvePrincipal(
 			tokenId: session.session.id,
 			expiresAt: new Date(session.session.expiresAt),
 			clientId,
+			protected: isProtected(session.user.protectionState),
 		},
 	};
 }

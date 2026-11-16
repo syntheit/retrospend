@@ -24,6 +24,8 @@ export type TestUserOverrides = {
 	username?: string | null;
 	role?: "USER" | "ADMIN";
 	isActive?: boolean;
+	/** Advanced protection; OFF unless a test is about it (the guard fails closed). */
+	protectionState?: "OFF" | "ON";
 };
 
 /**
@@ -39,6 +41,7 @@ export function makeSession(overrides: TestUserOverrides = {}) {
 			username: overrides.username ?? null,
 			role: overrides.role ?? "USER",
 			isActive: overrides.isActive ?? true,
+			protectionState: overrides.protectionState ?? "OFF",
 		},
 	} as never;
 }

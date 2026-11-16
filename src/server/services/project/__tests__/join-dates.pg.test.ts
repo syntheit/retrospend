@@ -123,7 +123,12 @@ describe("new joiners get a date", () => {
 		const guest = createCallerFactory(guestRouter)({
 			db: adminDb,
 			session: {
-				user: { id: trip.outsider.user.id, role: "USER", isActive: true },
+				user: {
+					id: trip.outsider.user.id,
+					role: "USER",
+					isActive: true,
+					protectionState: "OFF",
+				},
 			} as never,
 			headers: new Headers(),
 		});
