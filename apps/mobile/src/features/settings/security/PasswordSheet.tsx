@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import { isKeyedAccount, keysLookup } from "@/auth/sign-in-secret";
 import { newClientId } from "@/data/ids";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
@@ -38,7 +39,8 @@ export function PasswordSheet({
 	onClose: () => void;
 }) {
 	const t = useTranslations("mobile.settings.security.password");
-	const { api } = useSession();
+	const { api, baseUrl, state } = useSession();
+	const email = state.status === "signedIn" ? (state.me?.email ?? null) : null;
 	const toast = useToast();
 	const { color, space, type } = useTheme();
 	const [current, setCurrent] = useState("");
@@ -65,6 +67,16 @@ export function PasswordSheet({
 		setBusy(true);
 		setRefusal(null);
 		try {
+			// The server refuses a keyed account's change, but not before the
+			// typed password has travelled: ask first and send nothing.
+			const keyed =
+				baseUrl && email
+					? await isKeyedAccount({ baseUrl, email, lookup: keysLookup(api) })
+					: null;
+			if (keyed !== false) {
+				setRefusal(keyed ? t("protected") : t("error"));
+				return;
+			}
 			await api.account.changePassword(
 				{ currentPassword: current, newPassword: next },
 				{ context: { idempotencyKey: key.current } },

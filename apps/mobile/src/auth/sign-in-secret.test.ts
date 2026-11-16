@@ -184,6 +184,56 @@ describe("resolveSignInSecret", () => {
 		});
 	});
 
+	it("reports a rate limit as rateLimited, with or without a record", async () => {
+		const m = memory();
+		const limited = async () => {
+			throw status(429);
+		};
+		expect(await resolve(m.deps(), limited)).toEqual({
+			ok: false,
+			reason: "rateLimited",
+		});
+		await h.markKeyed(BASE, EMAIL, m.deps());
+		expect(await resolve(m.deps(), limited)).toEqual({
+			ok: false,
+			reason: "rateLimited",
+		});
+	});
+
+	describe("isKeyedAccount", () => {
+		const ask = (deps: SecretDeps, lookup: () => Promise<PreloginKdf | null>) =>
+			h.isKeyedAccount({ baseUrl: BASE, email: EMAIL, lookup }, deps);
+
+		it("is true from the record without asking the server", async () => {
+			const m = memory();
+			await h.markKeyed(BASE, EMAIL, m.deps());
+			const lookup = jest.fn(async () => null);
+			expect(await ask(m.deps(), lookup)).toBe(true);
+			expect(lookup).not.toHaveBeenCalled();
+		});
+
+		it("is true and recorded when the keys route says keyed", async () => {
+			const m = memory();
+			expect(await ask(m.deps(), async () => KDF)).toBe(true);
+			expect(m.items.size).toBe(1);
+		});
+
+		it("is false for no keys, null or 404, and null when it cannot tell", async () => {
+			const m = memory();
+			expect(await ask(m.deps(), async () => null)).toBe(false);
+			expect(
+				await ask(m.deps(), async () => {
+					throw status(404);
+				}),
+			).toBe(false);
+			expect(
+				await ask(m.deps(), async () => {
+					throw status(500);
+				}),
+			).toBeNull();
+		});
+	});
+
 	describe("with no record", () => {
 		it("falls back to the typed password on a 404 (a server without prelogin)", async () => {
 			const m = memory();

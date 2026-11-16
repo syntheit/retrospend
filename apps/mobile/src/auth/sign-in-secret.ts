@@ -34,6 +34,7 @@ import { secureStore } from "@/lib/secure-store";
 // (errors, bad parameters) stays refused with no way around it.
 export type SecretFailure =
 	| "network"
+	| "rateLimited"
 	| "protectionRefused"
 	| "keysMissing"
 	| "unknown";
@@ -118,6 +119,30 @@ async function derive(
 }
 
 /**
+ * Whether sending the typed password for this account would be wrong: true
+ * when this phone recorded it as keyed or the keys route says it has keys
+ * (then it is recorded too), false when the server says it has none, null when
+ * that cannot be told (an error): the caller sends nothing in that case.
+ * For prompts that must never send a keyed account's typed password and have
+ * no secret to send instead (the password change is refused by the server).
+ */
+export async function isKeyedAccount(
+	input: { baseUrl: string; email: string; lookup: KdfLookup },
+	deps: SecretDeps = defaultDeps,
+): Promise<boolean | null> {
+	try {
+		const key = keyedRecordKey(input.baseUrl, input.email);
+		if ((await deps.store.getItemAsync(key)) !== null) return true;
+		const kdf = await input.lookup();
+		if (kdf === null) return false;
+		await markKeyed(input.baseUrl, input.email, deps);
+		return true;
+	} catch (error) {
+		return statusOf(error) === 404 ? false : null;
+	}
+}
+
+/**
  * The text to send as the password for `email` on `baseUrl`. Never logs or
  * stores the password, the secret or the email (only the hashed record).
  */
@@ -147,15 +172,21 @@ export async function resolveSignInSecret(
 	try {
 		kdf = await input.lookup();
 	} catch (error) {
+		const code = statusOf(error);
 		if (recorded) {
 			return {
 				ok: false,
-				reason: statusOf(error) === 404 ? "keysMissing" : "network",
+				reason:
+					code === 404
+						? "keysMissing"
+						: code === 429
+							? "rateLimited"
+							: "network",
 			};
 		}
 		// An older server has no route: the account cannot have keys.
-		if (statusOf(error) === 404) return { ok: true, secret: password };
-		return { ok: false, reason: "network" };
+		if (code === 404) return { ok: true, secret: password };
+		return { ok: false, reason: code === 429 ? "rateLimited" : "network" };
 	}
 
 	if (kdf === null) {
