@@ -16,6 +16,7 @@ import {
 import { SyncResetRequiredError } from "~/server/services/sync/changes";
 import { until } from "~/server/services/sync/sync-test-support";
 import { createTestUser } from "~/test/pg-harness";
+import type { Prisma } from "~prisma";
 import { VaultError } from "./errors";
 import {
 	applyVaultWrites,
@@ -72,8 +73,8 @@ const hex = (b: Uint8Array | null) =>
 
 /** A transaction that stays open until `release`, after `work` ran in it. */
 function held<T>(
-	run: ReturnType<typeof newUser>["run"],
-	work: Parameters<typeof run<T>>[0],
+	run: <R>(work: (tx: Prisma.TransactionClient) => Promise<R>) => Promise<R>,
+	work: (tx: Prisma.TransactionClient) => Promise<T>,
 ) {
 	let release: () => void = () => undefined;
 	const gate = new Promise<void>((r) => {
