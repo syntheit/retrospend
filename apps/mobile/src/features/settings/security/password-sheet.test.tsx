@@ -13,8 +13,17 @@ interface TestNode {
 }
 
 const mockChange = jest.fn();
+const mockKeyed = jest.fn();
 jest.mock("@/auth/session", () => ({
-	useSession: () => ({ api: { account: { changePassword: mockChange } } }),
+	useSession: () => ({
+		api: { account: { changePassword: mockChange } },
+		baseUrl: "https://retrospend.app",
+		state: { status: "signedIn", me: { email: "ana@example.com" } },
+	}),
+}));
+jest.mock("@/auth/sign-in-secret", () => ({
+	keysLookup: () => "lookup",
+	isKeyedAccount: (...args: unknown[]) => mockKeyed(...args),
 }));
 jest.mock("@/data/ids", () => ({ newClientId: () => "key-1" }));
 const mockToast = { show: jest.fn(), dismiss: jest.fn() };
@@ -102,6 +111,8 @@ function render() {
 
 beforeEach(() => {
 	mockChange.mockReset();
+	mockKeyed.mockReset();
+	mockKeyed.mockResolvedValue(false);
 	mockToast.show.mockReset();
 	onClose.mockReset();
 });
@@ -140,6 +151,47 @@ describe("PasswordSheet", () => {
 		await s.submit();
 		expect(s.texts()).toContain("Too many tries. Try again later.");
 		expect(onClose).not.toHaveBeenCalled();
+	});
+
+	it("words a protected account's refusal by its code, not its status", async () => {
+		const s = render();
+		s.type("Current password", "Old password 1");
+		s.type("New password", "Battery staple 2");
+		s.type("Confirm new password", "Battery staple 2");
+		mockChange.mockRejectedValueOnce({
+			status: 403,
+			code: "protected_password",
+		});
+		await s.submit();
+		expect(s.texts()).toContain("Locked while Advanced protection is on.");
+		expect(onClose).not.toHaveBeenCalled();
+	});
+
+	it("sends nothing for a keyed account and shows the locked reason", async () => {
+		mockKeyed.mockResolvedValue(true);
+		const s = render();
+		s.type("Current password", "Old password 1");
+		s.type("New password", "Battery staple 2");
+		s.type("Confirm new password", "Battery staple 2");
+		await s.submit();
+		expect(mockKeyed).toHaveBeenCalledWith({
+			baseUrl: "https://retrospend.app",
+			email: "ana@example.com",
+			lookup: "lookup",
+		});
+		expect(mockChange).not.toHaveBeenCalled();
+		expect(s.texts()).toContain("Locked while Advanced protection is on.");
+	});
+
+	it("sends nothing when it cannot tell whether the account is keyed", async () => {
+		mockKeyed.mockResolvedValue(null);
+		const s = render();
+		s.type("Current password", "Old password 1");
+		s.type("New password", "Battery staple 2");
+		s.type("Confirm new password", "Battery staple 2");
+		await s.submit();
+		expect(mockChange).not.toHaveBeenCalled();
+		expect(s.texts()).toContain("Couldn't change the password. Try again.");
 	});
 
 	it("says when the new passwords differ", () => {

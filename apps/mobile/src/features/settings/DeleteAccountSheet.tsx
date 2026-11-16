@@ -3,6 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import {
+	forgetKeyed,
+	keysLookup,
+	resolveSignInSecret,
+} from "@/auth/sign-in-secret";
 import { newClientId } from "@/data/ids";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
@@ -26,7 +31,9 @@ function detailOf(error: unknown): string | null {
  * other people (projects handed over or deleted, payments and shares settled
  * on your way out: the server's own read), then asks for the password, every
  * time. There is no undo, so the sheet says so. Admins and accounts without
- * a password get the server's refusal as it words it.
+ * a password get the server's refusal as it words it. An account with
+ * protection keys sends its sign-in secret (Argon2id, a moment of busy), not
+ * the typed password.
  */
 export function DeleteAccountSheet({
 	visible,
@@ -37,7 +44,8 @@ export function DeleteAccountSheet({
 }) {
 	const t = useTranslations("mobile.settings.delete");
 	const tc = useTranslations("mobile.common");
-	const { api, signOut } = useSession();
+	const { api, baseUrl, state, signOut } = useSession();
+	const email = state.status === "signedIn" ? (state.me?.email ?? null) : null;
 	const { space } = useTheme();
 	const body = useSheetBodySize({ footer: true });
 	const [what, setWhat] = useState<Consequences | null>(null);
@@ -67,13 +75,35 @@ export function DeleteAccountSheet({
 
 	async function remove() {
 		if (!api || busy || password === "") return;
-		setBusy(true);
 		setRefusal(null);
+		// Without the profile there is no email to key the check on: send nothing.
+		if (!baseUrl || !email) {
+			setRefusal(t("error"));
+			return;
+		}
+		setBusy(true);
 		try {
+			const secret = await resolveSignInSecret({
+				baseUrl,
+				email,
+				password,
+				lookup: keysLookup(api),
+			});
+			if (!secret.ok) {
+				setRefusal(
+					secret.reason === "protectionRefused" ||
+						secret.reason === "keysMissing"
+						? t("protectionRefused")
+						: t("error"),
+				);
+				return;
+			}
 			await api.account.delete(
-				{ password },
+				{ password: secret.secret },
 				{ context: { idempotencyKey: key.current } },
 			);
+			// The account is gone: a new one with this email starts keyless.
+			await forgetKeyed(baseUrl, email).catch(() => undefined);
 			onClose();
 			// The server ended every session; this clears the phone's own.
 			await signOut({ discardUnsynced: true });

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import { isKeyedAccount, keysLookup } from "@/auth/sign-in-secret";
 import { newClientId } from "@/data/ids";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
@@ -18,6 +19,12 @@ function statusOf(error: unknown): number | null {
 	return typeof status === "number" ? status : null;
 }
 
+/** The stable problem code of a refused change (an account with protection keys). */
+function codeOf(error: unknown): string | null {
+	const code = (error as { code?: unknown } | null)?.code;
+	return typeof code === "string" ? code : null;
+}
+
 /**
  * Change password: the current one, the new one with its rules as checks,
  * and the new one again. The server checks the current password every time
@@ -32,7 +39,8 @@ export function PasswordSheet({
 	onClose: () => void;
 }) {
 	const t = useTranslations("mobile.settings.security.password");
-	const { api } = useSession();
+	const { api, baseUrl, state } = useSession();
+	const email = state.status === "signedIn" ? (state.me?.email ?? null) : null;
 	const toast = useToast();
 	const { color, space, type } = useTheme();
 	const [current, setCurrent] = useState("");
@@ -59,6 +67,16 @@ export function PasswordSheet({
 		setBusy(true);
 		setRefusal(null);
 		try {
+			// The server refuses a keyed account's change, but not before the
+			// typed password has travelled: ask first and send nothing.
+			const keyed =
+				baseUrl && email
+					? await isKeyedAccount({ baseUrl, email, lookup: keysLookup(api) })
+					: null;
+			if (keyed !== false) {
+				setRefusal(keyed ? t("protected") : t("error"));
+				return;
+			}
 			await api.account.changePassword(
 				{ currentPassword: current, newPassword: next },
 				{ context: { idempotencyKey: key.current } },
@@ -68,11 +86,13 @@ export function PasswordSheet({
 		} catch (error) {
 			const status = statusOf(error);
 			setRefusal(
-				status === 429
-					? t("tooMany")
-					: status === 400
-						? t("wrong")
-						: t("error"),
+				codeOf(error) === "protected_password"
+					? t("protected")
+					: status === 429
+						? t("tooMany")
+						: status === 400
+							? t("wrong")
+							: t("error"),
 			);
 			// A refused try used its key; the next try is a new request.
 			key.current = newClientId();

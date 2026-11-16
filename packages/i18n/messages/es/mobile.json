@@ -387,12 +387,16 @@
 		"codeHint": "Introduce los 6 dígitos de tu app de autenticación o un código de respaldo.",
 		"submit": "Iniciar sesión",
 		"verify": "Verificar",
+		"resetAction": "Restablecí mi contraseña",
+		"resetConfirm": "¿Iniciar sesión con tu nueva contraseña?",
 		"signingIn": "Iniciando sesión",
 		"error": {
 			"invalidCredentials": "El correo y la contraseña no coinciden.",
 			"invalidCode": "Ese código no es correcto. Inténtalo de nuevo.",
 			"emailNotVerified": "Verifica primero tu correo y luego inicia sesión.",
 			"rateLimited": "Demasiados intentos. Espera un minuto y vuelve a intentarlo.",
+			"keysMissing": "El servidor dice que esta cuenta ya no tiene claves de protección.",
+			"protectionRefused": "La respuesta del servidor sobre la protección de esta cuenta parece incorrecta. Se detuvo el inicio de sesión.",
 			"network": "No se pudo conectar con el servidor. Comprueba tu conexión.",
 			"unknown": "No se pudo iniciar sesión. Inténtalo de nuevo."
 		}
@@ -2305,6 +2309,7 @@
 			"password": "Contraseña",
 			"delete": "Eliminar cuenta",
 			"deleting": "Eliminando",
+			"protectionRefused": "La respuesta del servidor sobre la protección de esta cuenta parece incorrecta. No se eliminó nada.",
 			"error": "No se pudo eliminar la cuenta. Revisa tu contraseña e inténtalo de nuevo."
 		},
 		"numbers": {
@@ -2401,6 +2406,7 @@
 				"changed": "Contraseña cambiada. Se cerró la sesión en tus otros dispositivos.",
 				"wrong": "La contraseña actual no es correcta.",
 				"tooMany": "Demasiados intentos. Inténtalo más tarde.",
+				"protected": "Bloqueado mientras la protección avanzada está activada.",
 				"error": "No se pudo cambiar la contraseña. Inténtalo de nuevo."
 			},
 			"sessions": {
