@@ -58,8 +58,10 @@ const NOT_SYNCED: Record<string, string> = {
 	webhook_delivery: "server only",
 	push_delivery: "server only",
 	sync_change: "the log itself",
-	protection_key_set: "key material the client holds the other half of, never a ledger row",
-	protection_key_wrap: "key material the client holds the other half of, never a ledger row",
+	protection_key_set:
+		"key material the client holds the other half of, never a ledger row",
+	protection_key_wrap:
+		"key material the client holds the other half of, never a ledger row",
 };
 
 const SYNC_TRIGGERS = `
