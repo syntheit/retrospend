@@ -6,9 +6,9 @@
 
 import { type Primitives, wrapKey, wrapKeyToPublic } from "@retrospend/crypto";
 import { createWebPrimitives } from "@retrospend/crypto/web";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
-import { createTestUser } from "~/test/pg-harness";
+import { adminDb, createTestUser } from "~/test/pg-harness";
 import {
 	applyKeyChanges,
 	getProtectionKeys,
@@ -20,6 +20,13 @@ import {
 let p: Primitives;
 beforeAll(async () => {
 	p = await createWebPrimitives();
+});
+
+// The rollback test of the key tables needs them empty, and a worker's database
+// outlives the file: leave no key rows behind.
+afterAll(async () => {
+	await adminDb.protectionKeyWrap.deleteMany({});
+	await adminDb.protectionKeySet.deleteMany({});
 });
 
 async function newUser() {
