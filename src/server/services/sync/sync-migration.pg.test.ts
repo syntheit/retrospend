@@ -62,6 +62,8 @@ const NOT_SYNCED: Record<string, string> = {
 		"key material the client holds the other half of, never a ledger row",
 	protection_key_wrap:
 		"key material the client holds the other half of, never a ledger row",
+	vault_record:
+		"sealed records with a commit-order feed of their own (services/vault)",
 };
 
 const SYNC_TRIGGERS = `

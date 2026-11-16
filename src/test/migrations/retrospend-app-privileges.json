@@ -513,6 +513,12 @@
 			"forceRls": false,
 			"policies": []
 		},
+		"vault_record": {
+			"privileges": ["INSERT", "SELECT"],
+			"rls": true,
+			"forceRls": false,
+			"policies": ["vault_record_own:ALL"]
+		},
 		"wealth_transfer": {
 			"privileges": ["DELETE", "INSERT", "SELECT"],
 			"rls": true,
@@ -604,11 +610,15 @@
 		},
 		"protection_key_set": {
 			"UPDATE": ["kdfMemoryKiB", "kdfPasses", "kdfSalt", "updatedAt", "version"]
+		},
+		"vault_record": {
+			"UPDATE": ["ciphertext", "deletedAt", "version"]
 		}
 	},
 	"sequences": {
 		"api_event_seq_seq": ["SELECT", "USAGE"],
 		"budget_dirty_id_seq": ["SELECT", "USAGE"],
-		"sync_change_seq": []
+		"sync_change_seq": [],
+		"vault_record_seq": []
 	}
 }

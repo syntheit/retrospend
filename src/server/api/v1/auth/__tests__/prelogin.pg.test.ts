@@ -71,6 +71,15 @@ afterAll(async () => {
 	await adminDb.protectionKeySet.deleteMany({});
 });
 
+/**
+ * The limits count in fixed one-minute windows on the clock: a test that
+ * fills one must not straddle a boundary, so it waits one out when close.
+ */
+async function clearMinuteEdge(): Promise<void> {
+	const left = 60_000 - (Date.now() % 60_000);
+	if (left < 12_000) await new Promise((r) => setTimeout(r, left + 500));
+}
+
 describe("POST /auth/prelogin", () => {
 	it("answers null for a keyless account and an unknown address, the stored salt and parameters for a keyed one", async () => {
 		const keyless = await createTestUser();
@@ -150,6 +159,7 @@ describe("POST /auth/prelogin", () => {
 	});
 
 	it("limits one address per minute, counting by a hash of it", async () => {
+		await clearMinuteEdge();
 		const email = `limit-${(await createTestUser()).user.id}@pg-test.invalid`;
 		// 120 requests from 120 addresses pass; the next one for this address is refused.
 		for (let i = 0; i < 120; i++)
@@ -172,6 +182,7 @@ describe("POST /auth/prelogin", () => {
 	}, 60_000);
 
 	it("counts one address in any letter case against the same limit", async () => {
+		await clearMinuteEdge();
 		const id = (await createTestUser()).user.id;
 		const mixed = `Victim-${id}@Pg-Test.invalid`;
 		const lower = mixed.toLowerCase();
@@ -197,6 +208,7 @@ describe("POST /auth/prelogin", () => {
 	}, 60_000);
 
 	it("counts the addresses of one IPv6 /64 as one sender", async () => {
+		await clearMinuteEdge();
 		const at = (n: number) => ({ "x-forwarded-for": `2001:db8:5:6::${n}` });
 		for (let i = 0; i < 30; i++)
 			expect(
@@ -221,6 +233,7 @@ describe("POST /auth/prelogin", () => {
 	}, 60_000);
 
 	it("limits one address of the sender per minute", async () => {
+		await clearMinuteEdge();
 		const sender = { "x-forwarded-for": "198.18.0.77" };
 		for (let i = 0; i < 30; i++)
 			expect(

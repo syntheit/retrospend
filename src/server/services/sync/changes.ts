@@ -40,13 +40,16 @@ import { SYNC_LOADERS, type SyncEntity, type SyncRow } from "./entities";
 const MAX_TXID = 2n ** 64n - 1n;
 const MAX_SEQ_VALUE = 2n ** 63n - 1n;
 
+// zod runs the refine even when the regex failed, and BigInt throws on text
+// that is not digits, so the refine checks the pattern itself.
+const DIGITS = /^\d{1,20}$/;
 const digits = (max: bigint) =>
 	z
 		.string()
-		.regex(/^\d{1,20}$/)
-		.refine((value) => BigInt(value) <= max);
+		.regex(DIGITS)
+		.refine((value) => DIGITS.test(value) && BigInt(value) <= max);
 
-const syncCursorSchema = z.object({
+export const syncCursorSchema = z.object({
 	e: z.string().min(1).max(64),
 	t: digits(MAX_TXID),
 	s: digits(MAX_SEQ_VALUE),
