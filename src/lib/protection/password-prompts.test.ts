@@ -75,7 +75,7 @@ describe("web password prompts", () => {
 
 	it("offers the way out of a stale keyed record on the form and clears it after a reset", () => {
 		const login = read("app/(site)/login/_components/login-form.tsx");
-		expect(login).toContain('code === "downgrade"');
+		expect(login).toContain("isDowngradeRefusal(e)");
 		expect(login).toMatch(/forgetKeyed\(staleFor\)[\s\S]*await signIn\(\)/);
 		expect(login).toContain("ConfirmationDialog");
 		expect(read("app/(site)/auth/reset-password/page.tsx")).toMatch(

@@ -10,11 +10,11 @@ import { ConfirmationDialog } from "~/components/ui/confirmation-dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { authClient } from "~/lib/auth-client";
+import { forgetKeyed } from "~/lib/protection/sign-in-secret";
 import {
-	forgetKeyed,
-	SignInSecretError,
-} from "~/lib/protection/sign-in-secret";
-import { useSignInSecret } from "~/lib/protection/use-sign-in-secret";
+	isDowngradeRefusal,
+	useSignInSecret,
+} from "~/lib/protection/use-sign-in-secret";
 import { safeRedirect } from "~/lib/safe-redirect";
 import { api } from "~/trpc/react";
 import { AuthenticatorStep, BackupCodeStep } from "./login-two-factor";
@@ -61,12 +61,7 @@ function LoginFormInner() {
 				secret = await signInSecret(address, password);
 			} catch (e) {
 				setError(e instanceof Error ? e.message : t("unexpectedError"));
-				if (
-					e instanceof Error &&
-					e.cause instanceof SignInSecretError &&
-					e.cause.code === "downgrade"
-				)
-					setStaleFor(address);
+				if (isDowngradeRefusal(e)) setStaleFor(address);
 				return;
 			}
 			const result = await authClient.signIn.email({

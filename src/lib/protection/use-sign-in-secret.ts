@@ -9,6 +9,12 @@ import {
 	signInSecretFor,
 } from "./sign-in-secret";
 
+/** Whether a rejection of the hooks below is the refusal of a keyed address answered with no keys. */
+export const isDowngradeRefusal = (e: unknown): boolean =>
+	e instanceof Error &&
+	e.cause instanceof SignInSecretError &&
+	e.cause.code === "downgrade";
+
 function useMessage() {
 	const t = useTranslations("settingsV2.signInSecret");
 	return useCallback(
