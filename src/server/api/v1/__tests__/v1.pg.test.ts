@@ -219,7 +219,7 @@ describe("/api/v1 on Postgres", () => {
 			expect(body).toMatchObject({
 				name: "Retrospend",
 				apiVersion: "v1",
-				features: {},
+				features: { advancedProtection: false },
 				auth: { signUp: "open" },
 				push: { transports: [] },
 			});
@@ -490,7 +490,9 @@ describe("/api/v1 on Postgres", () => {
 		it("answers server-info without credentials", async () => {
 			const info = await call("/server-info");
 			expect(info.status).toBe(200);
-			expect((await info.json()).features).toEqual({});
+			expect((await info.json()).features).toEqual({
+				advancedProtection: false,
+			});
 		});
 	});
 
