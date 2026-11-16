@@ -554,9 +554,13 @@ describe("POST /me/protection/enable", () => {
 			// belong to one known step whatever the real time is.
 			const at = Math.floor(Date.now() / 30_000) * 30_000 + 15_000;
 			vi.useFakeTimers({ toFake: ["Date"] });
-			vi.setSystemTime(at);
-			const code = await codeNow();
-			vi.useRealTimers();
+			let code: string;
+			try {
+				vi.setSystemTime(at);
+				code = await codeNow();
+			} finally {
+				vi.useRealTimers();
+			}
 			for (const drift of [0, 30_000, -30_000])
 				expect(await verifyTwoFactorCode(u.id, code, at + drift)).toBe(true);
 			for (const drift of [60_000, -60_000])

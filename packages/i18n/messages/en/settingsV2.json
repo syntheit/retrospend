@@ -260,7 +260,8 @@
 		"notMet": "not yet",
 		"mismatch": "The new passwords don't match",
 		"submit": "Update password",
-		"changed": "Password changed. Your other devices are signed out."
+		"changed": "Password changed. Your other devices are signed out.",
+		"locked": "Not available while Advanced protection is on."
 	},
 	"twoFactor": {
 		"onTitle": "Turn on two-factor",
@@ -291,6 +292,21 @@
 		"codesCopied": "Codes copied",
 		"copyFailed": "Couldn't copy the codes",
 		"fileHeader": "Retrospend backup codes. Each code works once."
+	},
+	"signInSecret": {
+		"unavailable": "Couldn't check how to sign you in. Try again.",
+		"downgrade": "The server left out this account's protection, so sign-in stopped.",
+		"params": "The server's protection settings are not allowed, so sign-in stopped.",
+		"resetAction": "I reset my password",
+		"resetTitle": "Sign in with your new password?",
+		"resetBody": "This browser will stop expecting protection for this account.",
+		"rateLimited": "Too many attempts. Try again in a minute."
+	},
+	"passwordCheck": {
+		"unavailable": "Couldn't check your password. Try again.",
+		"downgrade": "The server left out this account's protection.",
+		"params": "The server's protection settings are not allowed.",
+		"rateLimited": "Too many attempts. Try again in a minute."
 	},
 	"developer": {
 		"title": "Developer",

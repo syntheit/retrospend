@@ -220,7 +220,7 @@ export const authRouter = createTRPCRouter({
 				);
 			}
 
-			return { success: true };
+			return { success: true, email: user.email };
 		}),
 
 	/**

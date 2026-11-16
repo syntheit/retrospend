@@ -9,6 +9,9 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Sheet } from "~/components/ui/sheet";
 import { useToast } from "~/components/ui/toast";
+import { authClient } from "~/lib/auth-client";
+import { forgetKeyed } from "~/lib/protection/sign-in-secret";
+import { useSessionSignInSecret } from "~/lib/protection/use-sign-in-secret";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { SettingRow, SettingRows } from "../setting-row";
 import { projectRows } from "./deletion-rows";
@@ -65,6 +68,9 @@ export function DeleteAccountSheet({
 		staleTime: 60_000,
 	});
 	const remove = api.user.deleteAccount.useMutation();
+	const signInSecret = useSessionSignInSecret();
+	const email = authClient.useSession().data?.user.email;
+	const [deriving, setDeriving] = useState(false);
 
 	useEffect(() => {
 		if (open) return;
@@ -75,13 +81,19 @@ export function DeleteAccountSheet({
 
 	const destroy = async () => {
 		setError(null);
+		setDeriving(true);
 		try {
-			await remove.mutateAsync({ password });
+			await remove.mutateAsync({ password: await signInSecret(password) });
+			// The address is free again: a later keyless sign-up with it must not
+			// be refused as a downgrade.
+			if (email) await forgetKeyed(email);
 			toast.saved(t("deleted"));
 			router.push("/login");
 		} catch (err) {
 			setStep("password");
 			setError(err instanceof Error ? err.message : t("failed"));
+		} finally {
+			setDeriving(false);
 		}
 	};
 
@@ -112,7 +124,7 @@ export function DeleteAccountSheet({
 			<Button
 				disabled={!preview.data}
 				kind="danger"
-				loading={remove.isPending}
+				loading={remove.isPending || deriving}
 				onClick={() => void destroy()}
 			>
 				{t("confirm")}

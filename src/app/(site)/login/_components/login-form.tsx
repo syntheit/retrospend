@@ -6,19 +6,22 @@ import { useTranslations } from "next-intl";
 import { Suspense, useState } from "react";
 import { AuthPanel } from "~/app/(site)/_components/auth-panel";
 import { Button } from "~/components/ui/button";
+import { ConfirmationDialog } from "~/components/ui/confirmation-dialog";
 import { Input } from "~/components/ui/input";
-import {
-	InputOTP,
-	InputOTPGroup,
-	InputOTPSlot,
-} from "~/components/ui/input-otp";
 import { Label } from "~/components/ui/label";
 import { authClient } from "~/lib/auth-client";
+import { forgetKeyed } from "~/lib/protection/sign-in-secret";
+import {
+	isDowngradeRefusal,
+	useSignInSecret,
+} from "~/lib/protection/use-sign-in-secret";
 import { safeRedirect } from "~/lib/safe-redirect";
 import { api } from "~/trpc/react";
+import { AuthenticatorStep, BackupCodeStep } from "./login-two-factor";
 
 function LoginFormInner() {
 	const t = useTranslations("auth");
+	const ts = useTranslations("settingsV2.signInSecret");
 	const searchParams = useSearchParams();
 	// `redirect` comes from in-app links, `callbackUrl` from the proxy when a
 	// signed-out visitor opens a protected page (the device page keeps its
@@ -37,17 +40,33 @@ function LoginFormInner() {
 	const [useBackupCode, setUseBackupCode] = useState(false);
 	const [backupCode, setBackupCode] = useState("");
 
+	const signInSecret = useSignInSecret();
+	// Set when this browser remembers the address as keyed and the server now
+	// says it is not: the person may have reset the password since.
+	const [staleFor, setStaleFor] = useState<string | null>(null);
+	const [confirmReset, setConfirmReset] = useState(false);
 	const { data: appFeatures } = api.auth.getAppFeatures.useQuery();
 
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
+	const signIn = async () => {
 		setIsLoading(true);
 		setError("");
+		setStaleFor(null);
 
 		try {
+			const address = email.trim().toLowerCase();
+			let secret: string;
+			try {
+				// Keyed accounts sign in with a key made from the password here
+				// (about a second), never with the password itself.
+				secret = await signInSecret(address, password);
+			} catch (e) {
+				setError(e instanceof Error ? e.message : t("unexpectedError"));
+				if (isDowngradeRefusal(e)) setStaleFor(address);
+				return;
+			}
 			const result = await authClient.signIn.email({
-				email: email.trim().toLowerCase(),
-				password,
+				email: address,
+				password: secret,
 			});
 
 			if (result.error) {
@@ -79,6 +98,19 @@ function LoginFormInner() {
 		} finally {
 			setIsLoading(false);
 		}
+	};
+
+	const handleSubmit = (e: React.FormEvent) => {
+		e.preventDefault();
+		void signIn();
+	};
+
+	const signInWithNewPassword = async () => {
+		// The address that got the answer, not whatever is typed now.
+		if (staleFor) await forgetKeyed(staleFor);
+		setStaleFor(null);
+		setConfirmReset(false);
+		await signIn();
 	};
 
 	const handleVerify2FA = async (
@@ -145,132 +177,38 @@ function LoginFormInner() {
 
 	if (show2FA && useBackupCode) {
 		return (
-			<div className="bg-background flex min-h-screen items-center justify-center px-4">
-				<AuthPanel
-					description={t("backupCodeDescription")}
-					title={t("twoFactorAuth")}
-				>
-					<form className="space-y-6" onSubmit={handleVerifyBackupCode}>
-						<div className="space-y-2">
-							<Label htmlFor="backup-code">{t("backupCode")}</Label>
-							<Input
-								autoCapitalize="none"
-								autoComplete="one-time-code"
-								autoCorrect="off"
-								autoFocus
-								className="font-mono"
-								disabled={isLoading}
-								id="backup-code"
-								onChange={(e) => setBackupCode(e.target.value)}
-								placeholder={t("enterBackupCode")}
-								spellCheck={false}
-								value={backupCode}
-							/>
-						</div>
-
-						{error && <div className="text-destructive text-sm">{error}</div>}
-
-						<Button
-							className="w-full"
-							disabled={isLoading || !backupCode.trim()}
-							type="submit"
-						>
-							{isLoading ? t("verifying") : t("verifyCode")}
-						</Button>
-
-						<div className="flex flex-col items-center gap-2 text-sm">
-							<Button
-								className="text-muted-foreground h-auto p-0 hover:underline"
-								onClick={() => switch2FAMethod(false)}
-								type="button"
-								variant="link"
-							>
-								{t("useAuthenticatorCode")}
-							</Button>
-							<Button
-								className="text-muted-foreground h-auto p-0 hover:underline"
-								onClick={() => {
-									switch2FAMethod(false);
-									setShow2FA(false);
-								}}
-								type="button"
-								variant="link"
-							>
-								{t("backToLogin")}
-							</Button>
-						</div>
-					</form>
-				</AuthPanel>
-			</div>
+			<BackupCodeStep
+				backupCode={backupCode}
+				error={error}
+				isLoading={isLoading}
+				onBack={() => {
+					switch2FAMethod(false);
+					setShow2FA(false);
+				}}
+				onSubmit={handleVerifyBackupCode}
+				onUseAuthenticator={() => switch2FAMethod(false)}
+				setBackupCode={setBackupCode}
+			/>
 		);
 	}
 
 	if (show2FA) {
 		return (
-			<div className="bg-background flex min-h-screen items-center justify-center px-4">
-				<AuthPanel
-					description={t("twoFactorDescription")}
-					title={t("twoFactorAuth")}
-				>
-					<form
-						className="flex flex-col items-center space-y-6"
-						onSubmit={handleVerify2FA}
-					>
-						<div className="space-y-2">
-							<InputOTP
-								maxLength={6}
-								onChange={setTotpCode}
-								onComplete={(code) => handleVerify2FA(undefined, code)}
-								value={totpCode}
-							>
-								<InputOTPGroup>
-									<InputOTPSlot index={0} />
-									<InputOTPSlot index={1} />
-									<InputOTPSlot index={2} />
-									<InputOTPSlot index={3} />
-									<InputOTPSlot index={4} />
-									<InputOTPSlot index={5} />
-								</InputOTPGroup>
-							</InputOTP>
-						</div>
-
-						{error && <div className="text-destructive text-sm">{error}</div>}
-
-						<Button
-							className="w-full"
-							disabled={isLoading || totpCode.length !== 6}
-							type="submit"
-						>
-							{isLoading ? t("verifying") : t("verifyCode")}
-						</Button>
-
-						<div className="mt-4 flex flex-col items-center gap-2 text-sm">
-							<Button
-								className="text-muted-foreground h-auto p-0 hover:underline"
-								onClick={() => switch2FAMethod(true)}
-								type="button"
-								variant="link"
-							>
-								{t("useBackupCode")}
-							</Button>
-							<Button
-								className="text-muted-foreground h-auto p-0 hover:underline"
-								onClick={() => {
-									setShow2FA(false);
-									setTotpCode("");
-								}}
-								type="button"
-								variant="link"
-							>
-								{t("backToLogin")}
-							</Button>
-						</div>
-					</form>
-				</AuthPanel>
-			</div>
+			<AuthenticatorStep
+				error={error}
+				isLoading={isLoading}
+				onBack={() => {
+					setShow2FA(false);
+					setTotpCode("");
+				}}
+				onComplete={(code) => handleVerify2FA(undefined, code)}
+				onSubmit={handleVerify2FA}
+				onUseBackupCode={() => switch2FAMethod(true)}
+				setTotpCode={setTotpCode}
+				totpCode={totpCode}
+			/>
 		);
 	}
-
 	return (
 		<div className="bg-background flex min-h-screen items-center justify-center px-4">
 			<AuthPanel
@@ -314,10 +252,29 @@ function LoginFormInner() {
 						/>
 					</div>
 					{error && <div className="text-destructive text-sm">{error}</div>}
+					{staleFor === email.trim().toLowerCase() && (
+						<Button
+							className="text-muted-foreground h-auto p-0 hover:underline"
+							onClick={() => setConfirmReset(true)}
+							type="button"
+							variant="link"
+						>
+							{ts("resetAction")}
+						</Button>
+					)}
 					<Button className="w-full" disabled={isLoading} type="submit">
 						{isLoading ? t("signingIn") : t("signIn")}
 					</Button>
 				</form>
+				<ConfirmationDialog
+					confirmLabel={t("signIn")}
+					description={ts("resetBody")}
+					isLoading={isLoading}
+					onConfirm={() => void signInWithNewPassword()}
+					onOpenChange={setConfirmReset}
+					open={confirmReset}
+					title={ts("resetTitle")}
+				/>
 				<div className="mt-4 text-center">
 					<p className="text-muted-foreground text-sm">
 						{t("dontHaveAccount")}{" "}

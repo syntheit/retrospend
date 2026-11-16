@@ -8,6 +8,7 @@ import { Label } from "~/components/ui/label";
 import { Sheet } from "~/components/ui/sheet";
 import { useToast } from "~/components/ui/toast";
 import { cn } from "~/lib/cn";
+import { useAccountIsKeyed } from "~/lib/protection/use-sign-in-secret";
 import { api } from "~/trpc/react";
 import {
 	type PasswordCheck,
@@ -28,6 +29,7 @@ export function PasswordSheet({
 	const t = useTranslations("settingsV2.password");
 	const toast = useToast();
 	const change = api.profile.changePassword.useMutation();
+	const isKeyed = useAccountIsKeyed();
 	const [current, setCurrent] = useState("");
 	const [next, setNext] = useState("");
 	const [confirm, setConfirm] = useState("");
@@ -65,11 +67,25 @@ export function PasswordSheet({
 		<Sheet
 			onOpenChange={onOpenChange}
 			onSubmit={async () => {
-				await change.mutateAsync({
-					currentPassword: current,
-					newPassword: next,
-					confirmPassword: confirm,
-				});
+				// A keyed account's password is not what the server checks, so the
+				// typed one is never sent for it.
+				if (await isKeyed()) throw new Error(t("locked"));
+				try {
+					await change.mutateAsync({
+						currentPassword: current,
+						newPassword: next,
+						confirmPassword: confirm,
+					});
+				} catch (e) {
+					// An account with Advanced protection keeps its password until
+					// the key set can change with it (K0 decision 6).
+					if (
+						(e as { data?: { problem?: string } } | null)?.data?.problem ===
+						"protected_password"
+					)
+						throw new Error(t("locked"));
+					throw e;
+				}
 				toast.saved(t("changed"));
 			}}
 			open={open}
@@ -86,7 +102,7 @@ export function PasswordSheet({
 					"current-password",
 				)}
 				{field("pw-new", t("new"), next, setNext, "new-password")}
-				<ul aria-label={t("rules")} className="flex flex-col gap-1 text-meta">
+				<ul aria-label={t("rules")} className="text-meta flex flex-col gap-1">
 					{CHECKS.map((c) => (
 						<li
 							className={cn(
