@@ -3,6 +3,7 @@ import { ZodError, z } from "zod";
 import { ProtectedAccountError } from "~/server/api/protection/guard";
 import { textUnavailableProblem } from "~/server/crypto/field-open";
 import { RateOutOfRangeError } from "~/server/services/payments/rate-band";
+import { ProtectedPasswordError } from "~/server/services/protection-keys/password-writes";
 import { ShareAnswerRefusedError } from "~/server/services/shared-expenses/answer-guard";
 
 /**
@@ -19,6 +20,7 @@ export function zodErrorData(error: TRPCError) {
  */
 export function problemCode(error: TRPCError) {
 	if (error instanceof ProtectedAccountError) return "protected_account";
+	if (error instanceof ProtectedPasswordError) return "protected_password";
 	if (error instanceof RateOutOfRangeError) return "rate_out_of_range";
 	if (error instanceof ShareAnswerRefusedError) return error.problem;
 	return textUnavailableProblem(error);

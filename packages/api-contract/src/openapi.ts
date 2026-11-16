@@ -86,7 +86,11 @@ function decorateOperation(op: JsonObject, entry: ContractEntry) {
 		if (Number(status) >= 400) delete responses[status];
 	}
 	op.responses = { ...responses, ...errorResponses(entry) };
-	if (entry.method !== "GET" && !entry.meta.previewOf) {
+	if (
+		entry.method !== "GET" &&
+		!entry.meta.previewOf &&
+		!entry.meta.readsOnly
+	) {
 		const params = (op.parameters ?? []) as JsonObject[];
 		op.parameters = [
 			...params,

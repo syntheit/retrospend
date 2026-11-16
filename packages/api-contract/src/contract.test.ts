@@ -47,6 +47,29 @@ describe("v1 contract conventions", () => {
 		]);
 	});
 
+	it("lets a readsOnly POST be public with no event, and nothing else", () => {
+		const reads = v1
+			.route({ method: "POST", path: "/q", operationId: "q" })
+			.meta({ scope: "public", readsOnly: true })
+			.output(out);
+		expect(checkContractConventions({ reads })).toEqual([]);
+
+		const withEvent = v1
+			.route({ method: "POST", path: "/r", operationId: "r" })
+			.meta({ scope: "public", readsOnly: true, event: "b.created" })
+			.output(out);
+		const onGet = v1
+			.route({ method: "GET", path: "/s", operationId: "s" })
+			.meta({ scope: "public", readsOnly: true })
+			.output(out);
+		expect(
+			checkContractConventions({ withEvent, onGet }, ["b.created"]),
+		).toEqual([
+			"onGet: readsOnly is for a POST",
+			"withEvent: a readsOnly route cannot have an event",
+		]);
+	});
+
 	it("needs a preview twin with the same input on a money write", () => {
 		const write = v1
 			.route({ method: "POST", path: "/payments", operationId: "pay" })

@@ -19,6 +19,7 @@ export const systemRouter = createTRPCRouter({
 		const settings = await getAppSettings();
 		return {
 			feedbackEnabled: settings.enableFeedback,
+			advancedProtection: env.ADVANCED_PROTECTION_ENABLED,
 		};
 	}),
 

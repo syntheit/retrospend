@@ -10,6 +10,14 @@ import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { MOBILE_CLIENT_ID } from "~/server/api/v1/scopes";
 import { db } from "~/server/db";
 import { consumeRateLimit } from "./api-v1/rate-limit.service";
+import {
+	hasKeySet,
+	lockCredential,
+	ProtectedPasswordError,
+	type ResetBy,
+	refusePasswordChange,
+	settleKeysForReset,
+} from "./protection-keys/password-writes";
 
 /**
  * A wrong current password is what a stolen session can try, so every try
@@ -34,6 +42,11 @@ export const WRONG_PASSWORD_MESSAGE = "Current password is incorrect";
  * Changes the password after checking the current one, then signs out every
  * other session of the user (the one making the change stays). The tries are
  * counted before the check (TRIES). Neither password is logged or returned.
+ * An account with Advanced protection keys is refused (`protected_password`):
+ * its keys are wrapped under the password. The check runs before the password
+ * is verified, so that account hears the real reason instead of "incorrect",
+ * and again under the credential row lock, so a concurrent enable cannot slip
+ * between the verify and the write.
  */
 export async function changeOwnPassword(input: {
 	userId: string;
@@ -56,6 +69,8 @@ export async function changeOwnPassword(input: {
 	if (!user.allowed)
 		throw new PasswordTriesExceededError(user.retryAfterSeconds);
 
+	if (await hasKeySet(db, input.userId)) throw new ProtectedPasswordError();
+
 	const credential = await db.account.findFirst({
 		where: { userId: input.userId, providerId: "credential" },
 		select: { password: true },
@@ -77,16 +92,59 @@ export async function changeOwnPassword(input: {
 		});
 
 	const hashed = await hashPassword(input.newPassword);
-	const [, ended] = await db.$transaction([
-		db.account.updateMany({
+	return db.$transaction(async (tx) => {
+		const locked = await lockCredential(tx, input.userId);
+		if (!locked)
+			throw new TRPCError({
+				code: "BAD_REQUEST",
+				message: "Password change is not available for this account",
+			});
+		refusePasswordChange(locked);
+		await tx.account.updateMany({
 			where: { userId: input.userId, providerId: "credential" },
 			data: { password: hashed },
-		}),
-		db.session.deleteMany({
+		});
+		const ended = await tx.session.deleteMany({
 			where: { userId: input.userId, id: { not: input.keepSessionId } },
-		}),
-	]);
-	return { signedOut: ended.count };
+		});
+		return { signedOut: ended.count };
+	});
+}
+
+/**
+ * Writes a reset password hash (the email reset and the admin reset) and ends
+ * every session of the user, in one owner transaction that takes the
+ * credential row lock first. An account with protection keys has them removed
+ * with the new hash while nothing is sealed, and is refused otherwise
+ * (settleKeysForReset). `token` is a reset token spent in the same
+ * transaction. Without a credential account the email reset still ends the
+ * sessions (`continue`); the admin reset answers not found and changes nothing.
+ */
+export async function resetPasswordHash(input: {
+	userId: string;
+	hashed: string;
+	by: ResetBy;
+	token?: string;
+	whenNoCredential: "continue" | "not_found";
+}): Promise<void> {
+	await db.$transaction(async (tx) => {
+		const locked = await lockCredential(tx, input.userId);
+		if (locked) {
+			await settleKeysForReset(tx, input.userId, locked, input.by);
+			await tx.account.updateMany({
+				where: { userId: input.userId, providerId: "credential" },
+				data: { password: input.hashed },
+			});
+		} else if (input.whenNoCredential === "not_found") {
+			throw new TRPCError({
+				code: "NOT_FOUND",
+				message: "User does not have a credential account",
+			});
+		}
+		await tx.session.deleteMany({ where: { userId: input.userId } });
+		if (input.token)
+			await tx.passwordResetToken.delete({ where: { token: input.token } });
+	});
 }
 
 /**

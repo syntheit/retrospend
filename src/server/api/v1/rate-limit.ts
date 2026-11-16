@@ -14,6 +14,11 @@ import type { V1Context, V1InitialContext } from "./middleware";
 export const RATE_LIMITS = {
 	perIp: { limit: 600, windowMs: 60_000 },
 	perToken: { limit: 300, windowMs: 60_000 },
+	// Prelogin is public and answers from the database. The IP limit is the
+	// real one; the per-address limit is loose on purpose (one address is one
+	// person's sign-in, and a stranger must not be able to use it up for them).
+	preloginPerIp: { limit: 30, windowMs: 60_000 },
+	preloginPerEmail: { limit: 120, windowMs: 60_000 },
 } as const;
 
 export async function enforceRateLimit(

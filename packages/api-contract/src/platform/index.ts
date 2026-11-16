@@ -21,10 +21,14 @@ export const serverInfoSchema = z
 		minClientVersion: z.string().meta({
 			description: "Older app builds must ask the user to update.",
 		}),
-		features: z.object({}).meta({
-			description:
-				"Optional server capabilities. Empty today: clients still read the object, so it stays.",
-		}),
+		features: z
+			.object({
+				advancedProtection: z.boolean().meta({
+					description:
+						"Whether this server offers turning on Advanced protection. Accounts that already have it sign in the same way whatever this says.",
+				}),
+			})
+			.meta({ description: "Optional server capabilities." }),
 		auth: z.object({
 			methods: z.array(z.enum(AUTH_METHODS)),
 			signUp: z.enum(["open", "inviteOnly"]),

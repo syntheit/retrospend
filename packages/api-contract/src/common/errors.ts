@@ -16,6 +16,9 @@ export const PROBLEM_STATUS = {
 	// The account has advanced protection on and the route has not been cleared
 	// for it (src/server/api/protection/allowed.ts). Not a scope a token can gain.
 	protected_account: 403,
+	// The account's password is also its Advanced protection key set, so the
+	// server cannot change or reset it alone (a client rotates it with the keys).
+	protected_password: 403,
 	not_found: 404,
 	conflict: 409,
 	payload_too_large: 413,

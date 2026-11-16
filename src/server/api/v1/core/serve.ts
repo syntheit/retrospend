@@ -6,6 +6,7 @@ import { textUnavailableProblem } from "~/server/crypto/field-open";
 import { InvalidCursorError } from "~/server/services/api-v1/cursor";
 import { OverpayError } from "~/server/services/payments/procedures";
 import { RateOutOfRangeError } from "~/server/services/payments/rate-band";
+import { ProtectedPasswordError } from "~/server/services/protection-keys/password-writes";
 import { ShareAnswerRefusedError } from "~/server/services/shared-expenses/answer-guard";
 import { SyncResetRequiredError } from "~/server/services/sync/changes";
 import { Prisma } from "~prisma";
@@ -64,6 +65,9 @@ export function toProblem(error: unknown, route?: string): unknown {
 	// to Ask to fix, so a client words it.
 	if (error instanceof ShareAnswerRefusedError)
 		return problem(error.problem, error.message);
+	// The password is the account's key wrap: only a client can change it.
+	if (error instanceof ProtectedPasswordError)
+		return problem("protected_password", error.message);
 	if (error instanceof TRPCError) {
 		const code = TRPC_TO_PROBLEM[error.code];
 		if (code) return problem(code, error.message);

@@ -190,6 +190,15 @@ export const auth = betterAuth({
 	emailAndPassword: {
 		enabled: true,
 	},
+	// Our own services are the only writers of the password hash (they check
+	// for Advanced protection keys under a row lock). better-auth's own
+	// password routes would write it around them; no client calls them
+	// (reset runs through auth.requestPasswordReset and auth.resetPassword).
+	disabledPaths: [
+		"/change-password",
+		"/request-password-reset",
+		"/reset-password",
+	],
 	hooks: {
 		before: createAuthMiddleware(async (context) => {
 			const requestHeaders = context.request?.headers ?? context.headers;

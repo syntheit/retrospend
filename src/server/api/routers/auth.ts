@@ -19,7 +19,10 @@ import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
 import { emailSubject } from "~/server/email-copy";
 import { sendEmail } from "~/server/mailer";
 
-import { storeEmailVerificationToken } from "~/server/services/account-security.service";
+import {
+	resetPasswordHash,
+	storeEmailVerificationToken,
+} from "~/server/services/account-security.service";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 
@@ -121,6 +124,11 @@ export const authRouter = createTRPCRouter({
 				return { success: true }; // Generic success to prevent enumeration
 			}
 
+			// While nothing is sealed (OFF) a reset removes the account's keys and
+			// is allowed; with protection on it would be refused, so no link is
+			// sent. The answer is the same either way.
+			if (user.protectionState !== "OFF") return { success: true };
+
 			const token = crypto.randomBytes(32).toString("hex");
 			const expires = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
 
@@ -194,23 +202,12 @@ export const authRouter = createTRPCRouter({
 
 			const hashedPassword = await hashPassword(input.newPassword);
 
-			await db.account.updateMany({
-				where: {
-					userId: user.id,
-					providerId: "credential",
-				},
-				data: {
-					password: hashedPassword,
-				},
-			});
-
-			// Invalidate all existing sessions: password was compromised or reset
-			await db.session.deleteMany({
-				where: { userId: user.id },
-			});
-
-			await db.passwordResetToken.delete({
-				where: { token: input.token },
+			await resetPasswordHash({
+				userId: user.id,
+				hashed: hashedPassword,
+				by: { kind: "email" },
+				token: input.token,
+				whenNoCredential: "continue",
 			});
 
 			if (await isEmailDeliveryEnabled()) {

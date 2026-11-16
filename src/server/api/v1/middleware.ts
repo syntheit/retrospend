@@ -91,8 +91,13 @@ const authenticate = os
 		)
 			throw problem("protected_account");
 
+		// A public route that only reads (prelogin) acts the same with or without
+		// a session: no keyring is made, no zone is claimed, and idempotency,
+		// events and the token limit see no user.
+		const ignoresSession =
+			scope === "public" && procedure["~orpc"].meta.readsOnly === true;
 		let user: V1User | null = null;
-		if (principal) {
+		if (principal && !ignoresSession) {
 			// When sealing, the user's key exists before any transaction needs it.
 			await ensureUserKeyringWhenSealing(principal.userId);
 			const db = scopedDbFor(principal.userId);

@@ -2,6 +2,7 @@ import { accountRouter } from "./account";
 import { accountsRouter } from "./accounts";
 import { activityRouter } from "./activity";
 import { adminRouter } from "./admin";
+import { authRouter } from "./auth";
 import { billingPeriodsRouter } from "./billing-periods";
 import { budgetRouter } from "./budget";
 import { categoriesRouter } from "./categories";
@@ -44,6 +45,7 @@ export const v1Router = v1.router({
 	accounts: accountsRouter,
 	activity: activityRouter,
 	admin: adminRouter,
+	auth: authRouter,
 	"billing-periods": billingPeriodsRouter,
 	budget: budgetRouter,
 	categories: categoriesRouter,

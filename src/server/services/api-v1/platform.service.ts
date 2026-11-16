@@ -1,4 +1,5 @@
 import type { Me, ServerInfo } from "@retrospend/api-contract";
+import { env } from "~/env";
 import { APP_VERSION } from "~/lib/version";
 import type { db as globalDb } from "~/server/db";
 import { type PushConfig, pushConfig } from "~/server/services/push/config";
@@ -29,7 +30,7 @@ export async function getServerInfo(
 		version: APP_VERSION,
 		apiVersion: "v1",
 		minClientVersion: MIN_CLIENT_VERSION,
-		features: {},
+		features: { advancedProtection: env.ADVANCED_PROTECTION_ENABLED },
 		auth: {
 			methods: ["password", "totp", "bearer", "apiKey", "deviceAuthorization"],
 			signUp: inviteOnly ? "inviteOnly" : "open",

@@ -49,6 +49,12 @@ export const env = createEnv({
 			.enum(["true", "false"])
 			.default("false")
 			.transform((v) => v === "true"),
+		// Offers Advanced protection (E2EE K1): the Security row and the enable
+		// route. Sign-in for accounts that already have keys never depends on it.
+		ADVANCED_PROTECTION_ENABLED: z
+			.enum(["true", "false"])
+			.default("false")
+			.transform((v) => v === "true"),
 		// Days a deletion stays in the sync log for devices that were offline
 		// (services/sync/tombstones.ts). A device whose cursor is older than the
 		// last sweep pulls from the start again.
@@ -133,6 +139,7 @@ export const env = createEnv({
 		DATA_MASTER_KEY: process.env.DATA_MASTER_KEY,
 		DATA_MASTER_KEY_FILE: process.env.DATA_MASTER_KEY_FILE,
 		DATA_KEYS_WRITE: process.env.DATA_KEYS_WRITE,
+		ADVANCED_PROTECTION_ENABLED: process.env.ADVANCED_PROTECTION_ENABLED,
 		RECURRING_AUTO_POST: process.env.RECURRING_AUTO_POST,
 		SYNC_TOMBSTONE_DAYS: process.env.SYNC_TOMBSTONE_DAYS,
 		APNS_KEY_ID: process.env.APNS_KEY_ID,

@@ -45,6 +45,7 @@
 							"forbidden",
 							"missing_scope",
 							"protected_account",
+							"protected_password",
 							"not_found",
 							"conflict",
 							"payload_too_large",
@@ -14093,6 +14094,118 @@
 				],
 				"x-event-type": "admin_user.enabled",
 				"x-required-scope": "admin"
+			}
+		},
+		"/auth/prelogin": {
+			"post": {
+				"description": "Public, and answered the same way with or without credentials. Call it before signing in. It reveals that an address has Advanced protection keys; it does not say whether an address has an account. Writes nothing, so it needs no Idempotency-Key.",
+				"operationId": "prelogin",
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"email": {
+										"format": "email",
+										"maxLength": 255,
+										"type": "string"
+									}
+								},
+								"required": [
+									"email"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"kdf": {
+											"anyOf": [
+												{
+													"properties": {
+														"memoryKiB": {
+															"maximum": 9007199254740991,
+															"minimum": 1,
+															"type": "integer"
+														},
+														"passes": {
+															"maximum": 9007199254740991,
+															"minimum": 1,
+															"type": "integer"
+														},
+														"salt": {
+															"description": "The 16-byte Argon2id salt, base64url.",
+															"pattern": "^[A-Za-z0-9_-]{22}$",
+															"type": "string"
+														}
+													},
+													"required": [
+														"salt",
+														"memoryKiB",
+														"passes"
+													],
+													"type": "object"
+												},
+												{
+													"type": "null"
+												}
+											],
+											"description": "Null for an account without Advanced protection keys and for an address with no account: the typed password is the sign-in secret. Otherwise the client derives the sign-in secret with Argon2id from the password and these values."
+										}
+									},
+									"required": [
+										"kdf"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [],
+				"summary": "How to turn a password into the sign-in secret",
+				"tags": [
+					"Auth"
+				],
+				"x-required-scope": "public"
 			}
 		},
 		"/budget/adjustments/{expenseId}": {
@@ -113747,7 +113860,16 @@
 											"type": "object"
 										},
 										"features": {
-											"description": "Optional server capabilities. Empty today: clients still read the object, so it stays.",
+											"description": "Optional server capabilities.",
+											"properties": {
+												"advancedProtection": {
+													"description": "Whether this server offers turning on Advanced protection. Accounts that already have it sign in the same way whatever this says.",
+													"type": "boolean"
+												}
+											},
+											"required": [
+												"advancedProtection"
+											],
 											"type": "object"
 										},
 										"minClientVersion": {
