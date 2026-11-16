@@ -298,19 +298,20 @@ describe("two writers and a failing change", () => {
 	it("rolls the whole change back when a later insert fails", async () => {
 		const u = await newUser();
 		const old = akPassword(u.id);
-		await u.run((tx) =>
-			applyKeyChanges(tx, u.id, create([old, device("keep")])),
-		);
-		// Two wraps with one client id: the single insert fails after the delete
-		// and the version bump have run.
 		const id = "0b0e6c6e-0000-4000-8000-000000000001";
+		await u.run((tx) =>
+			applyKeyChanges(
+				tx,
+				u.id,
+				create([old, device("keep"), { ...device("other"), id }]),
+			),
+		);
+		// A new wrap reusing a stored wrap's id: the insert fails after the
+		// delete and the version bump have run.
 		const failing: KeyChanges = {
 			baseVersion: 1,
 			set: { kdfSalt: p.randomBytes(16), kdfMemoryKiB: 70_000, kdfPasses: 2 },
-			put: [
-				{ ...akPassword(u.id), id },
-				{ ...device("d9"), id },
-			],
+			put: [akPassword(u.id), { ...device("d9"), id }],
 			remove: [{ role: "ak-device", targetId: "keep" }],
 		};
 		expect(
@@ -320,7 +321,7 @@ describe("two writers and a failing change", () => {
 		expect(stored?.version).toBe(1);
 		expect(stored?.kdfMemoryKiB).toBe(64 * 1024);
 		expect(stored?.wraps.map((w) => w.targetId).sort()).toEqual(
-			["keep", u.id].sort(),
+			["keep", "other", u.id].sort(),
 		);
 		const kept = stored?.wraps.find((w) => w.role === "ak-password");
 		expect(hex(kept?.wrapped as Uint8Array)).toBe(hex(old.wrapped));

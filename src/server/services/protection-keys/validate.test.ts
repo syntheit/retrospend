@@ -189,6 +189,29 @@ describe("role and target", () => {
 		).toBe("ok");
 	});
 
+	it("refuses one client id on two wraps in one change", () => {
+		const id = "0b0e6c6e-0000-4000-8000-000000000001";
+		const other = { ...wraps["ak-device"], targetId: "d2" };
+		expect(
+			code({
+				...create,
+				put: [
+					{ ...wraps["ak-device"], id },
+					{ ...other, id },
+				],
+			}),
+		).toBe("invalid_input");
+		expect(
+			code({
+				...create,
+				put: [
+					{ ...wraps["ak-device"], id },
+					{ ...other, id: "0b0e6c6e-0000-4000-8000-000000000002" },
+				],
+			}),
+		).toBe("ok");
+	});
+
 	it("checks what remove names too", () => {
 		const base = { ...create, baseVersion: 1, set: undefined, put: [] };
 		expect(

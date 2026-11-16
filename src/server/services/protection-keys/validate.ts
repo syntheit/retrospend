@@ -125,11 +125,18 @@ export function validateKeyChanges(userId: string, changes: KeyChanges): void {
 	}
 	if (set) checkParams(set);
 	const seen = new Set<string>();
+	const ids = new Set<string>();
 	for (const wrap of put) {
 		checkWrap(wrap, userId);
 		const slot = `${wrap.role}|${wrap.targetId}`;
 		if (seen.has(slot)) invalid();
 		seen.add(slot);
+		// A repeated id is a malformed request, not a race: conflict would
+		// tell the client to re-read and send the same thing again.
+		if (wrap.id !== undefined) {
+			if (ids.has(wrap.id)) invalid();
+			ids.add(wrap.id);
+		}
 	}
 	for (const ref of remove) checkRef(ref, userId);
 }

@@ -15,8 +15,7 @@
 -- run while any key set exists: dropping them would lock that user out of
 -- their sealed data for good. Turn protection off first (or restore the rows
 -- afterwards from a backup), then run this.
--- Checked by src/server/services/protection-keys/protection-keys-migration.pg.test.ts
--- and, through `prisma migrate deploy`, by src/test/migrations/owner-upgrade.pg.test.ts.
+-- Checked by src/server/services/protection-keys/protection-keys-migration.pg.test.ts.
 -- Idempotent: running it twice changes nothing more.
 
 DO $$
