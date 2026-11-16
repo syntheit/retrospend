@@ -5,10 +5,12 @@ import { useTranslations } from "use-intl";
 import type { AuthFailure } from "@/auth/errors";
 import { useServerConnection } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
+import { forgetKeyed } from "@/auth/sign-in-secret";
 import { openWebPage } from "@/features/settings/webPages";
 import { HEADER_TITLE_FACE, LARGE_TITLE } from "@/layout/pushedHeader";
 import { TEST_IDS } from "@/lib/testIds";
 import { useTheme } from "@/theme";
+import { showAlert } from "@/ui/alert";
 import { Button } from "@/ui/Button";
 import { Screen } from "@/ui/Screen";
 import { Text } from "@/ui/Text";
@@ -23,6 +25,7 @@ type Step = "password" | "code";
 // apple-app-site-association (iOS).
 export default function SignInScreen() {
 	const t = useTranslations("mobile.signIn");
+	const tc = useTranslations("mobile.common");
 	const { space } = useTheme();
 	const { connection, disconnect } = useServerConnection();
 	const { state, signIn, verifyCode } = useSession();
@@ -48,6 +51,30 @@ export default function SignInScreen() {
 		setBusy(false);
 		if (result.status === "twoFactor") setStep("code");
 		else if (result.status === "error") setFailure(result.reason);
+	}
+
+	// Offered only when the server definitely says an account this phone saw
+	// with protection keys has none now (a reset removed them). Confirming
+	// forgets the record, so the retry sends the typed password.
+	function askNewPassword() {
+		if (connection.status !== "connected") return;
+		const { baseUrl } = connection;
+		showAlert(t("resetConfirm"), undefined, [
+			{ text: tc("cancel"), style: "cancel" },
+			{
+				text: t("submit"),
+				onPress: () => {
+					void (async () => {
+						try {
+							await forgetKeyed(baseUrl, email.trim());
+						} catch {
+							return;
+						}
+						await submit();
+					})();
+				},
+			},
+		]);
 	}
 
 	return (
@@ -122,6 +149,14 @@ export default function SignInScreen() {
 					>
 						{t(`error.${failure}`)}
 					</Text>
+				) : null}
+				{failure === "keysMissing" && step === "password" ? (
+					<Button
+						disabled={busy}
+						label={t("resetAction")}
+						onPress={askNewPassword}
+						variant="text"
+					/>
 				) : null}
 				<Button
 					busy={busy}

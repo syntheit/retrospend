@@ -387,12 +387,15 @@
 		"codeHint": "Digite os 6 dígitos do seu app autenticador ou um código de backup.",
 		"submit": "Entrar",
 		"verify": "Verificar",
+		"resetAction": "Redefini minha senha",
+		"resetConfirm": "Entrar com sua nova senha?",
 		"signingIn": "Entrando",
 		"error": {
 			"invalidCredentials": "O e-mail e a senha não conferem.",
 			"invalidCode": "Esse código não está certo. Tente de novo.",
 			"emailNotVerified": "Verifique seu e-mail primeiro e depois entre.",
 			"rateLimited": "Muitas tentativas. Aguarde um minuto e tente de novo.",
+			"keysMissing": "O servidor diz que esta conta não tem mais chaves de proteção.",
 			"protectionRefused": "A resposta do servidor sobre a proteção desta conta parece errada. Entrada interrompida.",
 			"network": "Não foi possível acessar o servidor. Verifique sua conexão.",
 			"unknown": "Não foi possível entrar. Tente de novo."

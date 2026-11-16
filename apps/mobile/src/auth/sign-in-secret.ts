@@ -29,7 +29,14 @@ import { getPrimitives } from "@/crypto/native";
 import { originOf, sha256Hex } from "@/lib/origin-key";
 import { secureStore } from "@/lib/secure-store";
 
-export type SecretFailure = "network" | "protectionRefused" | "unknown";
+// "keysMissing" is the one refusal a person can act on: a recorded account that
+// the server now says has no keys (a reset removed them). Everything else
+// (errors, bad parameters) stays refused with no way around it.
+export type SecretFailure =
+	| "network"
+	| "protectionRefused"
+	| "keysMissing"
+	| "unknown";
 export type SecretResult =
 	| { ok: true; secret: string }
 	| { ok: false; reason: SecretFailure };
@@ -143,7 +150,7 @@ export async function resolveSignInSecret(
 		if (recorded) {
 			return {
 				ok: false,
-				reason: statusOf(error) === 404 ? "protectionRefused" : "network",
+				reason: statusOf(error) === 404 ? "keysMissing" : "network",
 			};
 		}
 		// An older server has no route: the account cannot have keys.
@@ -153,7 +160,7 @@ export async function resolveSignInSecret(
 
 	if (kdf === null) {
 		return recorded
-			? { ok: false, reason: "protectionRefused" }
+			? { ok: false, reason: "keysMissing" }
 			: { ok: true, secret: password };
 	}
 

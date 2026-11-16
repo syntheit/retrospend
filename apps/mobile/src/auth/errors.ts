@@ -8,6 +8,7 @@ export type AuthFailure =
 	| "emailNotVerified"
 	| "rateLimited"
 	| "protectionRefused"
+	| "keysMissing"
 	| "network"
 	| "unknown";
 

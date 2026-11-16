@@ -118,7 +118,7 @@ describe("resolveSignInSecret", () => {
 			const m = await recorded();
 			expect(await resolve(m.deps(), async () => null)).toEqual({
 				ok: false,
-				reason: "protectionRefused",
+				reason: "keysMissing",
 			});
 		});
 
@@ -137,7 +137,7 @@ describe("resolveSignInSecret", () => {
 				await resolve(m.deps(), async () => {
 					throw status(404);
 				}),
-			).toEqual({ ok: false, reason: "protectionRefused" });
+			).toEqual({ ok: false, reason: "keysMissing" });
 			expect(
 				await resolve(m.deps(), async () => {
 					throw status(500);
@@ -165,7 +165,7 @@ describe("resolveSignInSecret", () => {
 					},
 					m.deps(),
 				),
-			).toEqual({ ok: false, reason: "protectionRefused" });
+			).toEqual({ ok: false, reason: "keysMissing" });
 		});
 
 		it("is per server: another server is not refused", async () => {
@@ -223,6 +223,20 @@ describe("resolveSignInSecret", () => {
 			reason: "unknown",
 		});
 		expect(lookup).not.toHaveBeenCalled();
+	});
+
+	it("falls back to the typed password only once the record is forgotten", async () => {
+		const m = memory();
+		await h.markKeyed(BASE, EMAIL, m.deps());
+		expect(await resolve(m.deps(), async () => null)).toEqual({
+			ok: false,
+			reason: "keysMissing",
+		});
+		await h.forgetKeyed(BASE, EMAIL, m.deps());
+		expect(await resolve(m.deps(), async () => null)).toEqual({
+			ok: true,
+			secret: PASSWORD,
+		});
 	});
 
 	it("forgets a record for a deleted account", async () => {

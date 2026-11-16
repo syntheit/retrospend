@@ -387,12 +387,15 @@
 		"codeHint": "Saisis les 6 chiffres de ton application d'authentification ou un code de secours.",
 		"submit": "Se connecter",
 		"verify": "Vérifier",
+		"resetAction": "J'ai réinitialisé mon mot de passe",
+		"resetConfirm": "Se connecter avec votre nouveau mot de passe ?",
 		"signingIn": "Connexion en cours",
 		"error": {
 			"invalidCredentials": "L'e-mail et le mot de passe ne correspondent pas.",
 			"invalidCode": "Ce code n'est pas correct. Réessaie.",
 			"emailNotVerified": "Vérifie d'abord ton e-mail, puis connecte-toi.",
 			"rateLimited": "Trop de tentatives. Attends une minute et réessaie.",
+			"keysMissing": "Le serveur indique que ce compte n'a plus de clés de protection.",
 			"protectionRefused": "La réponse du serveur sur la protection de ce compte semble incorrecte. Connexion arrêtée.",
 			"network": "Impossible de joindre le serveur. Vérifie ta connexion.",
 			"unknown": "Connexion impossible. Réessaie."

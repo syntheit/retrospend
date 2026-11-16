@@ -86,7 +86,8 @@ export function DeleteAccountSheet({
 			});
 			if (!secret.ok) {
 				setRefusal(
-					secret.reason === "protectionRefused"
+					secret.reason === "protectionRefused" ||
+						secret.reason === "keysMissing"
 						? t("protectionRefused")
 						: t("error"),
 				);

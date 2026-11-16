@@ -387,12 +387,15 @@
 		"codeHint": "Introduce los 6 dígitos de tu app de autenticación o un código de respaldo.",
 		"submit": "Iniciar sesión",
 		"verify": "Verificar",
+		"resetAction": "Restablecí mi contraseña",
+		"resetConfirm": "¿Iniciar sesión con tu nueva contraseña?",
 		"signingIn": "Iniciando sesión",
 		"error": {
 			"invalidCredentials": "El correo y la contraseña no coinciden.",
 			"invalidCode": "Ese código no es correcto. Inténtalo de nuevo.",
 			"emailNotVerified": "Verifica primero tu correo y luego inicia sesión.",
 			"rateLimited": "Demasiados intentos. Espera un minuto y vuelve a intentarlo.",
+			"keysMissing": "El servidor dice que esta cuenta ya no tiene claves de protección.",
 			"protectionRefused": "La respuesta del servidor sobre la protección de esta cuenta parece incorrecta. Se detuvo el inicio de sesión.",
 			"network": "No se pudo conectar con el servidor. Comprueba tu conexión.",
 			"unknown": "No se pudo iniciar sesión. Inténtalo de nuevo."

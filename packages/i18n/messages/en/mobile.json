@@ -387,12 +387,15 @@
 		"codeHint": "Enter the 6 digits from your authenticator app, or a backup code.",
 		"submit": "Sign in",
 		"verify": "Verify",
+		"resetAction": "I reset my password",
+		"resetConfirm": "Sign in with your new password?",
 		"signingIn": "Signing in",
 		"error": {
 			"invalidCredentials": "That email and password don't match.",
 			"invalidCode": "That code isn't right. Try again.",
 			"emailNotVerified": "Verify your email first, then sign in.",
 			"rateLimited": "Too many tries. Wait a minute and try again.",
+			"keysMissing": "The server says this account has no protection keys now.",
 			"protectionRefused": "The server's answer about this account's protection looks wrong. Sign-in stopped.",
 			"network": "Couldn't reach the server. Check your connection.",
 			"unknown": "Couldn't sign in. Try again."
