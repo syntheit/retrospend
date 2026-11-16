@@ -65,7 +65,8 @@
 		"sync_stamp_book_members",
 		"sync_stamp_book_rows",
 		"sync_stamp_book_self",
-		"sync_stamp_rows"
+		"sync_stamp_rows",
+		"vault_record_stamp"
 	],
 	"invokerAppExecutable": [
 		"account_cap_counted",

@@ -104,6 +104,7 @@ GRANT SELECT ON "sync_state" TO retrospend_app;
 GRANT SELECT ON "system_status" TO retrospend_app;
 GRANT DELETE, INSERT, SELECT, UPDATE ON "transfer" TO retrospend_app;
 GRANT DELETE, INSERT, SELECT, UPDATE ON "user_page_setting" TO retrospend_app;
+GRANT INSERT, SELECT ON "vault_record" TO retrospend_app;
 GRANT DELETE, INSERT, SELECT ON "wealth_transfer" TO retrospend_app;
 GRANT DELETE, INSERT, SELECT, UPDATE ON "webhook" TO retrospend_app;
 GRANT SELECT ON "webhook_delivery" TO retrospend_app;
@@ -182,6 +183,11 @@ GRANT UPDATE (
 -- change; the public key and the owner never do.
 GRANT UPDATE ("kdfSalt", "kdfMemoryKiB", "kdfPasses", "version", "updatedAt")
   ON "protection_key_set" TO retrospend_app;
+
+-- "vault_record": a write changes the sealed bytes, the version and the
+-- tombstone mark. The stamp columns (txid, seq, updatedAt) are set by the
+-- vault_record_stamp trigger, and a record never moves or changes owner.
+GRANT UPDATE ("ciphertext", "version", "deletedAt") ON "vault_record" TO retrospend_app;
 
 -- Sequences
 GRANT SELECT, USAGE ON SEQUENCE "api_event_seq_seq" TO retrospend_app;
