@@ -113,6 +113,7 @@ model User {
   syncChanges             SyncChange[]
   protectionKeySet        ProtectionKeySet?
   protectionKeyWraps      ProtectionKeyWrap[]
+  vaultRecords            VaultRecord[]
   webhooks                Webhook[]
 
   @@map("user")
@@ -2525,6 +2526,33 @@ model SyncChange {
   @@id([entity, entityId, userId])
   @@index([userId, entity, txid, seq])
   @@map("sync_change")
+}
+
+/// A protected account's sealed record (F7a, 20261116100000_vault_record): the
+/// bytes a client sealed and the plain facts the server may know (id,
+/// collection, entity number, version, times). Never opened by the server.
+/// txid, seq and updatedAt are set by the vault_record_stamp trigger on every
+/// write. Read and written through raw SQL by services/vault.
+model VaultRecord {
+  userId       String
+  id           String
+  collectionId String
+  entity       Int
+  version      Int
+  /// Null for a tombstone: a tombstone keeps no ciphertext.
+  ciphertext   Bytes?
+  deletedAt    DateTime?
+  /// Prisma cannot read or write xid8; the column and its default stay in the
+  /// migration, so do not drop this line (a migrate diff would remove them).
+  txid         Unsupported("xid8") @default(dbgenerated("pg_current_xact_id()"))
+  seq          BigInt
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @default(now())
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, id])
+  @@index([userId, txid, seq])
+  @@map("vault_record")
 }
 
 /// The one row of sync state: the epoch, the tombstone floor and the oids that
