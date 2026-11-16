@@ -9,16 +9,18 @@
  * sign-in takes a fraction of a second. All values are fake.
  */
 import { PrismaPg } from "@prisma/adapter-pg";
+import { hashPassword } from "better-auth/crypto";
+import { PrismaClient } from "~prisma";
+// Deep paths: the package index also loads the known-answer self-test, whose
+// JSON import Playwright's loader refuses.
+import { toBase64Url } from "../../packages/crypto/src/base64url";
 import {
 	ARGON2_FLOOR,
 	deriveMasterKey,
 	masterSubkeys,
-	signInSecret,
-	toBase64Url,
-} from "@retrospend/crypto";
-import { createWebPrimitives } from "@retrospend/crypto/web";
-import { hashPassword } from "better-auth/crypto";
-import { PrismaClient } from "~prisma";
+} from "../../packages/crypto/src/keys";
+import { signInSecret } from "../../packages/crypto/src/sign-in-secret";
+import { createWebPrimitives } from "../../packages/crypto/src/web";
 import { assertE2eDatabase } from "../db-guard";
 
 export const KEYED_USER = {
