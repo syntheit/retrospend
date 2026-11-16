@@ -111,6 +111,8 @@ model User {
   exportJobs              ExportJob[]
   apiEvents               ApiEvent[]
   syncChanges             SyncChange[]
+  protectionKeySet        ProtectionKeySet?
+  protectionKeyWraps      ProtectionKeyWrap[]
   webhooks                Webhook[]
 
   @@map("user")
@@ -2535,4 +2537,39 @@ model SyncState {
   databaseOid BigInt
 
   @@map("sync_state")
+}
+
+/// What a client needs to unlock Advanced protection, one row per user (E2EE F6a,
+/// 20261115200000_protection_keys): the Argon2id salt and parameters and the
+/// account public key. Ciphertext and public values only, so nothing is sealed.
+/// "version" covers the set and its wraps: a writer names the one it read.
+model ProtectionKeySet {
+  userId       String   @id
+  kdfSalt      Bytes
+  kdfMemoryKiB Int
+  kdfPasses    Int
+  /// Written once. The app role cannot update it, so a bug cannot swap it.
+  publicKey    Bytes
+  version      Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("protection_key_set")
+}
+
+/// One wrapped key (packages/crypto keys.ts). A wrap is replaced, never edited:
+/// the superseded one would still open the same key. "role" is text because
+/// Prisma enum values cannot hold "-". "targetId" is the id bound into the wrap.
+model ProtectionKeyWrap {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String
+  role      String
+  targetId  String
+  wrapped   Bytes
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role, targetId])
+  @@map("protection_key_wrap")
 }
