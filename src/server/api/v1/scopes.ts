@@ -112,6 +112,13 @@ export function hasScope(
 	return required === "public" || scopes.includes(required);
 }
 
+/** What a mobile session stores to hold `vault`. */
+const VAULT_MOBILE_NEEDS: readonly Scope[] = [
+	"read",
+	"write:expenses",
+	"write:money",
+];
+
 /** The session-only scopes of account security, held by the web app too. */
 const ACCOUNT_SESSION_SCOPES: readonly SessionScope[] = [
 	"account:delete",
@@ -131,17 +138,25 @@ const ACCOUNT_SESSION_SCOPES: readonly SessionScope[] = [
  * the web app has no local copy, and a device
  * session, API key or personal token never gets it, so a `read` token cannot
  * pull the raw rows. A mobile session keeps it only with `read` stored.
+ *
+ * `vault` (pull and push a protected account's sealed records) goes to every
+ * web session, and to a mobile session only with `read`, `write:expenses` and
+ * `write:money` stored: a phone narrowed below what it needs to keep a ledger
+ * has no business holding a copy of the vault. Device sessions and API keys
+ * never get it.
  */
 export function sessionScopesOf(input: {
 	kind: PrincipalKind;
 	granted: readonly Scope[] | null;
 }): SessionScope[] {
-	if (input.kind === "web") return [...ACCOUNT_SESSION_SCOPES];
+	if (input.kind === "web") return [...ACCOUNT_SESSION_SCOPES, "vault"];
 	if (input.kind !== "mobile") return [];
 	const held: SessionScope[] = [];
 	if (input.granted?.includes("write:settings"))
 		held.push(...ACCOUNT_SESSION_SCOPES);
 	if (input.granted?.includes("read")) held.push("sync");
+	if (VAULT_MOBILE_NEEDS.every((scope) => input.granted?.includes(scope)))
+		held.push("vault");
 	return held;
 }
 

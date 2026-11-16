@@ -52,7 +52,7 @@ vi.mock("~/server/services/api-v1/principal.service", () => ({
 				"write:settings",
 				"admin",
 			],
-			sessionScopes: ["account:delete", "account:security", "sync"],
+			sessionScopes: ["account:delete", "account:security", "sync", "vault"],
 			tokenId: "walk-token",
 			expiresAt: null,
 			clientId: null,
@@ -61,8 +61,8 @@ vi.mock("~/server/services/api-v1/principal.service", () => ({
 	}),
 }));
 
-import { appRouter, createCaller } from "~/server/api/root";
 import { errorFormatter } from "~/server/api/error-formatter";
+import { appRouter, createCaller } from "~/server/api/root";
 import { handleV1Request } from "~/server/api/v1/handler";
 import { TRPC_ALLOWED, V1_ALLOWED } from "../allowed";
 import { ProtectedAccountError } from "../guard";
