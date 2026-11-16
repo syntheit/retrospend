@@ -8,11 +8,6 @@ import { AuthPanel } from "~/app/(site)/_components/auth-panel";
 import { Button } from "~/components/ui/button";
 import { ConfirmationDialog } from "~/components/ui/confirmation-dialog";
 import { Input } from "~/components/ui/input";
-import {
-	InputOTP,
-	InputOTPGroup,
-	InputOTPSlot,
-} from "~/components/ui/input-otp";
 import { Label } from "~/components/ui/label";
 import { authClient } from "~/lib/auth-client";
 import {
@@ -22,6 +17,7 @@ import {
 import { useSignInSecret } from "~/lib/protection/use-sign-in-secret";
 import { safeRedirect } from "~/lib/safe-redirect";
 import { api } from "~/trpc/react";
+import { AuthenticatorStep, BackupCodeStep } from "./login-two-factor";
 
 function LoginFormInner() {
 	const t = useTranslations("auth");
@@ -183,132 +179,38 @@ function LoginFormInner() {
 
 	if (show2FA && useBackupCode) {
 		return (
-			<div className="bg-background flex min-h-screen items-center justify-center px-4">
-				<AuthPanel
-					description={t("backupCodeDescription")}
-					title={t("twoFactorAuth")}
-				>
-					<form className="space-y-6" onSubmit={handleVerifyBackupCode}>
-						<div className="space-y-2">
-							<Label htmlFor="backup-code">{t("backupCode")}</Label>
-							<Input
-								autoCapitalize="none"
-								autoComplete="one-time-code"
-								autoCorrect="off"
-								autoFocus
-								className="font-mono"
-								disabled={isLoading}
-								id="backup-code"
-								onChange={(e) => setBackupCode(e.target.value)}
-								placeholder={t("enterBackupCode")}
-								spellCheck={false}
-								value={backupCode}
-							/>
-						</div>
-
-						{error && <div className="text-destructive text-sm">{error}</div>}
-
-						<Button
-							className="w-full"
-							disabled={isLoading || !backupCode.trim()}
-							type="submit"
-						>
-							{isLoading ? t("verifying") : t("verifyCode")}
-						</Button>
-
-						<div className="flex flex-col items-center gap-2 text-sm">
-							<Button
-								className="text-muted-foreground h-auto p-0 hover:underline"
-								onClick={() => switch2FAMethod(false)}
-								type="button"
-								variant="link"
-							>
-								{t("useAuthenticatorCode")}
-							</Button>
-							<Button
-								className="text-muted-foreground h-auto p-0 hover:underline"
-								onClick={() => {
-									switch2FAMethod(false);
-									setShow2FA(false);
-								}}
-								type="button"
-								variant="link"
-							>
-								{t("backToLogin")}
-							</Button>
-						</div>
-					</form>
-				</AuthPanel>
-			</div>
+			<BackupCodeStep
+				backupCode={backupCode}
+				error={error}
+				isLoading={isLoading}
+				onBack={() => {
+					switch2FAMethod(false);
+					setShow2FA(false);
+				}}
+				onSubmit={handleVerifyBackupCode}
+				onUseAuthenticator={() => switch2FAMethod(false)}
+				setBackupCode={setBackupCode}
+			/>
 		);
 	}
 
 	if (show2FA) {
 		return (
-			<div className="bg-background flex min-h-screen items-center justify-center px-4">
-				<AuthPanel
-					description={t("twoFactorDescription")}
-					title={t("twoFactorAuth")}
-				>
-					<form
-						className="flex flex-col items-center space-y-6"
-						onSubmit={handleVerify2FA}
-					>
-						<div className="space-y-2">
-							<InputOTP
-								maxLength={6}
-								onChange={setTotpCode}
-								onComplete={(code) => handleVerify2FA(undefined, code)}
-								value={totpCode}
-							>
-								<InputOTPGroup>
-									<InputOTPSlot index={0} />
-									<InputOTPSlot index={1} />
-									<InputOTPSlot index={2} />
-									<InputOTPSlot index={3} />
-									<InputOTPSlot index={4} />
-									<InputOTPSlot index={5} />
-								</InputOTPGroup>
-							</InputOTP>
-						</div>
-
-						{error && <div className="text-destructive text-sm">{error}</div>}
-
-						<Button
-							className="w-full"
-							disabled={isLoading || totpCode.length !== 6}
-							type="submit"
-						>
-							{isLoading ? t("verifying") : t("verifyCode")}
-						</Button>
-
-						<div className="mt-4 flex flex-col items-center gap-2 text-sm">
-							<Button
-								className="text-muted-foreground h-auto p-0 hover:underline"
-								onClick={() => switch2FAMethod(true)}
-								type="button"
-								variant="link"
-							>
-								{t("useBackupCode")}
-							</Button>
-							<Button
-								className="text-muted-foreground h-auto p-0 hover:underline"
-								onClick={() => {
-									setShow2FA(false);
-									setTotpCode("");
-								}}
-								type="button"
-								variant="link"
-							>
-								{t("backToLogin")}
-							</Button>
-						</div>
-					</form>
-				</AuthPanel>
-			</div>
+			<AuthenticatorStep
+				error={error}
+				isLoading={isLoading}
+				onBack={() => {
+					setShow2FA(false);
+					setTotpCode("");
+				}}
+				onComplete={(code) => handleVerify2FA(undefined, code)}
+				onSubmit={handleVerify2FA}
+				onUseBackupCode={() => switch2FAMethod(true)}
+				setTotpCode={setTotpCode}
+				totpCode={totpCode}
+			/>
 		);
 	}
-
 	return (
 		<div className="bg-background flex min-h-screen items-center justify-center px-4">
 			<AuthPanel
