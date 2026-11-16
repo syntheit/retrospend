@@ -311,7 +311,8 @@ describe("writing and pulling", () => {
 		expect(JSON.stringify(row)).not.toContain(
 			(w.ciphertext as string).slice(0, 40),
 		);
-		expect(row?.responseBody).toEqual({ results: [{ id: "rp", version: 1 }] });
+		// The stored answer itself is checked through the replay above: a
+		// sealed run keeps it in its sealed column, not in responseBody.
 	});
 
 	it("frees the key after a conflict, so the corrected batch can use it", async () => {
