@@ -99,7 +99,11 @@ export default function SignInScreen() {
 							invalid={!!failure}
 							keyboardType="email-address"
 							label={t("email")}
-							onChangeText={setEmail}
+							onChangeText={(text) => {
+								setEmail(text);
+								// "I reset my password" acts only on the email that was refused.
+								setFailure(null);
+							}}
 							returnKeyType="next"
 							testID={TEST_IDS.signIn.email}
 							textContentType="username"

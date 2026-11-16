@@ -72,7 +72,12 @@ async function setup() {
 			await (button.props.onPress as () => Promise<void>)();
 		});
 	};
-	return { labels, press };
+	const typeEmail = async (text: string) => {
+		await act(async () => {
+			(email.props.onChangeText as (v: string) => void)(text);
+		});
+	};
+	return { labels, press, typeEmail };
 }
 
 beforeEach(() => {
@@ -99,6 +104,18 @@ describe("sign-in after a reset removed the keys", () => {
 		});
 		await s.press("submit");
 		expect(s.labels()).toContain("resetAction");
+	});
+
+	it("drops the action when the email changes", async () => {
+		const s = await setup();
+		mockSignIn.mockResolvedValueOnce({
+			status: "error",
+			reason: "keysMissing",
+		});
+		await s.press("submit");
+		expect(s.labels()).toContain("resetAction");
+		await s.typeEmail("bo@example.com");
+		expect(s.labels()).not.toContain("resetAction");
 	});
 
 	it("changes nothing on cancel", async () => {
