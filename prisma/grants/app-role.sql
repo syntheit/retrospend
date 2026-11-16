@@ -91,6 +91,8 @@ GRANT DELETE, INSERT, SELECT, UPDATE ON "payment_method" TO retrospend_app;
 GRANT INSERT, SELECT, UPDATE ON "payoff_plan" TO retrospend_app;
 GRANT DELETE, INSERT, SELECT, UPDATE ON "project" TO retrospend_app;
 GRANT DELETE, INSERT, SELECT, UPDATE ON "project_participant" TO retrospend_app;
+GRANT INSERT, SELECT ON "protection_key_set" TO retrospend_app;
+GRANT DELETE, INSERT, SELECT ON "protection_key_wrap" TO retrospend_app;
 GRANT DELETE, INSERT, SELECT, UPDATE ON "push_device" TO retrospend_app;
 GRANT DELETE, INSERT, SELECT, UPDATE ON "recurring_template" TO retrospend_app;
 GRANT DELETE, INSERT, SELECT, UPDATE ON "settlement" TO retrospend_app;
@@ -175,6 +177,11 @@ GRANT UPDATE (
   "timeZone",
   "updatedAt"
 ) ON "user" TO retrospend_app;
+
+-- "protection_key_set": the key parameters and version change on a password
+-- change; the public key and the owner never do.
+GRANT UPDATE ("kdfSalt", "kdfMemoryKiB", "kdfPasses", "version", "updatedAt")
+  ON "protection_key_set" TO retrospend_app;
 
 -- Sequences
 GRANT SELECT, USAGE ON SEQUENCE "api_event_seq_seq" TO retrospend_app;

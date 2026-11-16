@@ -374,6 +374,18 @@
 				"project_participant_update:UPDATE"
 			]
 		},
+		"protection_key_set": {
+			"privileges": ["INSERT", "SELECT"],
+			"rls": true,
+			"forceRls": false,
+			"policies": ["protection_key_set_own:ALL"]
+		},
+		"protection_key_wrap": {
+			"privileges": ["DELETE", "INSERT", "SELECT"],
+			"rls": true,
+			"forceRls": false,
+			"policies": ["protection_key_wrap_own:ALL"]
+		},
 		"push_delivery": {
 			"privileges": [],
 			"rls": true,
@@ -589,6 +601,9 @@
 				"timeZone",
 				"updatedAt"
 			]
+		},
+		"protection_key_set": {
+			"UPDATE": ["kdfMemoryKiB", "kdfPasses", "kdfSalt", "updatedAt", "version"]
 		}
 	},
 	"sequences": {
