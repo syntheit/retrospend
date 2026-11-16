@@ -296,10 +296,16 @@
 	"signInSecret": {
 		"unavailable": "No se pudo comprobar cómo iniciar tu sesión. Probá de nuevo.",
 		"downgrade": "El servidor omitió la protección de esta cuenta, así que se detuvo el inicio de sesión.",
-		"params": "Los ajustes de protección del servidor son demasiado débiles, así que se detuvo el inicio de sesión.",
+		"params": "Los ajustes de protección del servidor no están permitidos, así que se detuvo el inicio de sesión.",
 		"resetAction": "Restablecí mi contraseña",
 		"resetTitle": "¿Iniciar sesión con tu nueva contraseña?",
 		"resetBody": "Este navegador dejará de esperar protección para esta cuenta.",
+		"rateLimited": "Demasiados intentos. Probá de nuevo en un minuto."
+	},
+	"passwordCheck": {
+		"unavailable": "No se pudo comprobar tu contraseña. Probá de nuevo.",
+		"downgrade": "El servidor omitió la protección de esta cuenta.",
+		"params": "Los ajustes de protección del servidor no están permitidos.",
 		"rateLimited": "Demasiados intentos. Probá de nuevo en un minuto."
 	},
 	"developer": {

@@ -9,6 +9,8 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Sheet } from "~/components/ui/sheet";
 import { useToast } from "~/components/ui/toast";
+import { authClient } from "~/lib/auth-client";
+import { forgetKeyed } from "~/lib/protection/sign-in-secret";
 import { useSessionSignInSecret } from "~/lib/protection/use-sign-in-secret";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { SettingRow, SettingRows } from "../setting-row";
@@ -67,6 +69,7 @@ export function DeleteAccountSheet({
 	});
 	const remove = api.user.deleteAccount.useMutation();
 	const signInSecret = useSessionSignInSecret();
+	const email = authClient.useSession().data?.user.email;
 	const [deriving, setDeriving] = useState(false);
 
 	useEffect(() => {
@@ -81,6 +84,9 @@ export function DeleteAccountSheet({
 		setDeriving(true);
 		try {
 			await remove.mutateAsync({ password: await signInSecret(password) });
+			// The address is free again: a later keyless sign-up with it must not
+			// be refused as a downgrade.
+			if (email) await forgetKeyed(email);
 			toast.saved(t("deleted"));
 			router.push("/login");
 		} catch (err) {

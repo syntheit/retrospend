@@ -96,6 +96,20 @@ describe("web password prompts", () => {
 		expect(login).toContain("forgetKeyed(staleFor)");
 	});
 
+	it("forgets the keyed record once the account is deleted", () => {
+		expect(read("features/settings/danger/delete-account-sheet.tsx")).toMatch(
+			/mutateAsync\([\s\S]*?\);[\s\S]*?await forgetKeyed\(email\)/,
+		);
+	});
+
+	it("words the prompts inside the app without mentioning sign-in", () => {
+		const catalog = JSON.parse(
+			read("../packages/i18n/messages/en/settingsV2.json"),
+		) as { passwordCheck: Record<string, string> };
+		for (const text of Object.values(catalog.passwordCheck))
+			expect(text.toLowerCase()).not.toContain("sign");
+	});
+
 	it("shows the locked reason when the server refuses a password change", () => {
 		expect(read("features/settings/security/password-sheet.tsx")).toContain(
 			'"protected_password"',

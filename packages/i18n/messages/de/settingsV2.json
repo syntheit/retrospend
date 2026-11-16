@@ -296,10 +296,16 @@
 	"signInSecret": {
 		"unavailable": "Die Anmeldung konnte nicht vorbereitet werden. Versuche es erneut.",
 		"downgrade": "Der Server hat den Schutz dieses Kontos verschwiegen, daher wurde die Anmeldung gestoppt.",
-		"params": "Die Schutzeinstellungen des Servers sind zu schwach, daher wurde die Anmeldung gestoppt.",
+		"params": "Die Schutzeinstellungen des Servers sind nicht zulässig, daher wurde die Anmeldung gestoppt.",
 		"resetAction": "Ich habe mein Passwort zurückgesetzt",
 		"resetTitle": "Mit deinem neuen Passwort anmelden?",
 		"resetBody": "Dieser Browser erwartet für dieses Konto keinen Schutz mehr.",
+		"rateLimited": "Zu viele Versuche. Versuche es in einer Minute erneut."
+	},
+	"passwordCheck": {
+		"unavailable": "Dein Passwort konnte nicht geprüft werden. Versuche es erneut.",
+		"downgrade": "Der Server hat den Schutz dieses Kontos verschwiegen.",
+		"params": "Die Schutzeinstellungen des Servers sind nicht zulässig.",
 		"rateLimited": "Zu viele Versuche. Versuche es in einer Minute erneut."
 	},
 	"developer": {

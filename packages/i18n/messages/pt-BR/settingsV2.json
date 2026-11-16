@@ -296,10 +296,16 @@
 	"signInSecret": {
 		"unavailable": "Não foi possível verificar como entrar na sua conta. Tente de novo.",
 		"downgrade": "O servidor omitiu a proteção desta conta, então a entrada foi interrompida.",
-		"params": "As configurações de proteção do servidor são fracas demais, então a entrada foi interrompida.",
+		"params": "As configurações de proteção do servidor não são permitidas, então a entrada foi interrompida.",
 		"resetAction": "Redefini minha senha",
 		"resetTitle": "Entrar com sua nova senha?",
 		"resetBody": "Este navegador deixará de esperar proteção para esta conta.",
+		"rateLimited": "Muitas tentativas. Tente de novo em um minuto."
+	},
+	"passwordCheck": {
+		"unavailable": "Não foi possível verificar sua senha. Tente de novo.",
+		"downgrade": "O servidor omitiu a proteção desta conta.",
+		"params": "As configurações de proteção do servidor não são permitidas.",
 		"rateLimited": "Muitas tentativas. Tente de novo em um minuto."
 	},
 	"developer": {

@@ -15,8 +15,11 @@ export const isDowngradeRefusal = (e: unknown): boolean =>
 	e.cause instanceof SignInSecretError &&
 	e.cause.code === "downgrade";
 
-function useMessage() {
-	const t = useTranslations("settingsV2.signInSecret");
+/** The sign-in form words a refusal as a sign-in; the prompts inside the app say what they could not check. */
+function useMessage(
+	namespace: "signInSecret" | "passwordCheck" = "passwordCheck",
+) {
+	const t = useTranslations(`settingsV2.${namespace}`);
 	return useCallback(
 		(error: unknown): Error =>
 			// The cause lets a caller offer a way out of a refusal (the sign-in form).
@@ -33,7 +36,7 @@ function useMessage() {
  * Rejects with an Error whose message is ready to show.
  */
 export function useSignInSecret() {
-	const message = useMessage();
+	const message = useMessage("signInSecret");
 	return useCallback(
 		(email: string, password: string) =>
 			signInSecretFor(email, password).catch((e: unknown) => {
