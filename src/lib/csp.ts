@@ -1,7 +1,9 @@
 /**
  * The Content-Security-Policy for pages. Scripts run only with this request's
  * nonce (and the scripts those load, 'strict-dynamic'), so a script injected
- * into the page does not run. Styles stay 'unsafe-inline' because React style
+ * into the page does not run. 'wasm-unsafe-eval' lets the page compile
+ * WebAssembly (libsodium, for Advanced protection sign-in) and nothing else:
+ * it does not allow eval or new Function. Styles stay 'unsafe-inline' because React style
  * props and next/font need it and CSS cannot run code.
  *
  * Trusted Types is sent as a separate report-only policy first: the
@@ -18,7 +20,7 @@ export function buildCsp(nonce: string, dev: boolean): string {
 	return [
 		"default-src 'self'",
 		// React uses eval in development for stack traces; never in production.
-		`script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}`,
+		`script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'${dev ? " 'unsafe-eval'" : ""}`,
 		"style-src 'self' 'unsafe-inline'",
 		"img-src 'self' data: blob:",
 		"font-src 'self'",

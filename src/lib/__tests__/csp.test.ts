@@ -18,9 +18,12 @@ describe("newNonce", () => {
 describe("buildCsp", () => {
 	it("lets scripts run only with the nonce, never inline", () => {
 		const scripts = directive(buildCsp("abc123", false), "script-src");
-		expect(scripts).toBe("'self' 'nonce-abc123' 'strict-dynamic'");
+		expect(scripts).toBe(
+			"'self' 'nonce-abc123' 'strict-dynamic' 'wasm-unsafe-eval'",
+		);
 		expect(scripts).not.toContain("unsafe-inline");
-		expect(scripts).not.toContain("unsafe-eval");
+		// 'wasm-unsafe-eval' (libsodium) is not 'unsafe-eval' (JavaScript eval).
+		expect(scripts?.split(" ")).not.toContain("'unsafe-eval'");
 	});
 
 	it("allows eval only in development", () => {
