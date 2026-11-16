@@ -15,7 +15,11 @@
 // account's first sign-in on a new browser is not covered.
 import type { PreloginKdf } from "@retrospend/api-contract";
 
-export type SignInSecretFailure = "unavailable" | "downgrade" | "params";
+export type SignInSecretFailure =
+	| "unavailable"
+	| "downgrade"
+	| "params"
+	| "rateLimited";
 
 /** Fixed text only: nothing typed, derived or stored ever lands in a message. */
 export class SignInSecretError extends Error {
@@ -164,6 +168,7 @@ async function ask(
 		throw new SignInSecretError("unavailable");
 	}
 	if (res.status === 404) return null;
+	if (res.status === 429) throw new SignInSecretError("rateLimited");
 	if (!res.ok) throw new SignInSecretError("unavailable");
 	let body: unknown;
 	try {
@@ -232,4 +237,24 @@ export async function signInSecretFor(
 		if (e instanceof SignInSecretError) throw e;
 		throw new SignInSecretError("unavailable");
 	}
+}
+
+/**
+ * Whether the signed-in account has protection keys, for a prompt that must
+ * not send a typed password at all for such an account (password change).
+ * True too when this browser remembers the address as keyed and the server now
+ * says otherwise: sending nothing is the safe answer there. Throws
+ * SignInSecretError when the server cannot be asked.
+ */
+export async function accountIsKeyed(
+	email: string,
+	options: { deps?: Partial<SignInSecretDeps> } = {},
+): Promise<boolean> {
+	const deps = { ...defaults(), ...options.deps };
+	const answer = await ask(deps, email, true);
+	if (answer) {
+		await record(deps, email);
+		return true;
+	}
+	return isRecorded(deps, email);
 }

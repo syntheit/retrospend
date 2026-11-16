@@ -43,14 +43,14 @@ function LoginFormInner() {
 	const signInSecret = useSignInSecret();
 	// Set when this browser remembers the address as keyed and the server now
 	// says it is not: the person may have reset the password since.
-	const [staleKeys, setStaleKeys] = useState(false);
+	const [staleFor, setStaleFor] = useState<string | null>(null);
 	const [confirmReset, setConfirmReset] = useState(false);
 	const { data: appFeatures } = api.auth.getAppFeatures.useQuery();
 
 	const signIn = async () => {
 		setIsLoading(true);
 		setError("");
-		setStaleKeys(false);
+		setStaleFor(null);
 
 		try {
 			const address = email.trim().toLowerCase();
@@ -61,11 +61,12 @@ function LoginFormInner() {
 				secret = await signInSecret(address, password);
 			} catch (e) {
 				setError(e instanceof Error ? e.message : t("unexpectedError"));
-				setStaleKeys(
+				if (
 					e instanceof Error &&
-						e.cause instanceof SignInSecretError &&
-						e.cause.code === "downgrade",
-				);
+					e.cause instanceof SignInSecretError &&
+					e.cause.code === "downgrade"
+				)
+					setStaleFor(address);
 				return;
 			}
 			const result = await authClient.signIn.email({
@@ -110,7 +111,9 @@ function LoginFormInner() {
 	};
 
 	const signInWithNewPassword = async () => {
-		await forgetKeyed(email);
+		// The address that got the answer, not whatever is typed now.
+		if (staleFor) await forgetKeyed(staleFor);
+		setStaleFor(null);
 		setConfirmReset(false);
 		await signIn();
 	};
@@ -254,7 +257,7 @@ function LoginFormInner() {
 						/>
 					</div>
 					{error && <div className="text-destructive text-sm">{error}</div>}
-					{staleKeys && (
+					{staleFor === email.trim().toLowerCase() && (
 						<Button
 							className="text-muted-foreground h-auto p-0 hover:underline"
 							onClick={() => setConfirmReset(true)}

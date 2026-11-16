@@ -3,7 +3,11 @@
 import { useTranslations } from "next-intl";
 import { useCallback } from "react";
 import { authClient } from "~/lib/auth-client";
-import { SignInSecretError, signInSecretFor } from "./sign-in-secret";
+import {
+	accountIsKeyed,
+	SignInSecretError,
+	signInSecretFor,
+} from "./sign-in-secret";
 
 function useMessage() {
 	const t = useTranslations("settingsV2.signInSecret");
@@ -46,6 +50,27 @@ export function useSessionSignInSecret() {
 		(password: string) =>
 			(email
 				? signInSecretFor(email, password, { signedIn: true })
+				: Promise.reject(new SignInSecretError("unavailable"))
+			).catch((e: unknown) => {
+				throw message(e);
+			}),
+		[email, message],
+	);
+}
+
+/**
+ * For the password change: whether the signed-in account has keys, so the
+ * sheet can say so without sending the typed password. Rejects with an Error
+ * whose message is ready to show.
+ */
+export function useAccountIsKeyed() {
+	const message = useMessage();
+	const { data: session } = authClient.useSession();
+	const email = session?.user.email;
+	return useCallback(
+		() =>
+			(email
+				? accountIsKeyed(email)
 				: Promise.reject(new SignInSecretError("unavailable"))
 			).catch((e: unknown) => {
 				throw message(e);

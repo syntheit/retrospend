@@ -299,7 +299,8 @@
 		"params": "Los ajustes de protección del servidor son demasiado débiles, así que se detuvo el inicio de sesión.",
 		"resetAction": "Restablecí mi contraseña",
 		"resetTitle": "¿Iniciar sesión con tu nueva contraseña?",
-		"resetBody": "Este navegador dejará de esperar protección para esta cuenta."
+		"resetBody": "Este navegador dejará de esperar protección para esta cuenta.",
+		"rateLimited": "Demasiados intentos. Probá de nuevo en un minuto."
 	},
 	"developer": {
 		"title": "Desarrollador",

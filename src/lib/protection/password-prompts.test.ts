@@ -76,11 +76,24 @@ describe("web password prompts", () => {
 	it("offers the way out of a stale keyed record on the form and clears it after a reset", () => {
 		const login = read("app/(site)/login/_components/login-form.tsx");
 		expect(login).toContain('code === "downgrade"');
-		expect(login).toMatch(/forgetKeyed\(email\)[\s\S]*await signIn\(\)/);
+		expect(login).toMatch(/forgetKeyed\(staleFor\)[\s\S]*await signIn\(\)/);
 		expect(login).toContain("ConfirmationDialog");
 		expect(read("app/(site)/auth/reset-password/page.tsx")).toMatch(
 			/onSuccess: async \(\{ email \}\) => \{\s*await forgetKeyed\(email\)/,
 		);
+	});
+
+	it("asks whether the account is keyed before the password change sends anything", () => {
+		const sheet = read("features/settings/security/password-sheet.tsx");
+		expect(sheet).toMatch(
+			/if \(await isKeyed\(\)\) throw new Error\(t\("locked"\)\);[\s\S]*mutateAsync/,
+		);
+	});
+
+	it("shows the reset action only for the address that got the answer", () => {
+		const login = read("app/(site)/login/_components/login-form.tsx");
+		expect(login).toContain("staleFor === email.trim().toLowerCase()");
+		expect(login).toContain("forgetKeyed(staleFor)");
 	});
 
 	it("shows the locked reason when the server refuses a password change", () => {

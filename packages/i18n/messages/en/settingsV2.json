@@ -299,7 +299,8 @@
 		"params": "The server's protection settings are too weak, so sign-in stopped.",
 		"resetAction": "I reset my password",
 		"resetTitle": "Sign in with your new password?",
-		"resetBody": "This browser will stop expecting protection for this account."
+		"resetBody": "This browser will stop expecting protection for this account.",
+		"rateLimited": "Too many attempts. Try again in a minute."
 	},
 	"developer": {
 		"title": "Developer",

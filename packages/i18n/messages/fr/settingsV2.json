@@ -299,7 +299,8 @@
 		"params": "Les paramètres de protection du serveur sont trop faibles, la connexion a donc été arrêtée.",
 		"resetAction": "J'ai réinitialisé mon mot de passe",
 		"resetTitle": "Vous connecter avec votre nouveau mot de passe ?",
-		"resetBody": "Ce navigateur n'attendra plus de protection pour ce compte."
+		"resetBody": "Ce navigateur n'attendra plus de protection pour ce compte.",
+		"rateLimited": "Trop de tentatives. Réessayez dans une minute."
 	},
 	"developer": {
 		"title": "Développeur",

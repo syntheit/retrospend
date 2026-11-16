@@ -2,6 +2,7 @@ import { toBase64Url } from "@retrospend/crypto";
 import { describe, expect, it, vi } from "vitest";
 import vectors from "../../../packages/crypto/vectors/keys.vectors.json";
 import {
+	accountIsKeyed,
 	forgetKeyed,
 	SignInSecretError,
 	signInSecretFor,
@@ -161,6 +162,14 @@ describe("signInSecretFor", () => {
 		expect(await t.run("Plain-pw-1")).toBe("Plain-pw-1");
 	});
 
+	it("reports a rate limit as its own failure, never as a network error or a fallback", async () => {
+		const t = setup(() => json({ title: "Too many requests" }, 429));
+		expect(await failure(t.run("Plain-pw-1"))).toBe("rateLimited");
+		expect(await failure(t.run("Plain-pw-1", { signedIn: true }))).toBe(
+			"rateLimited",
+		);
+	});
+
 	it("never falls back on an error, even for an unrecorded address", async () => {
 		const t = setup(() => json({}, 500));
 		expect(await failure(t.run("Plain-pw-1"))).toBe("unavailable");
@@ -216,5 +225,35 @@ describe("signInSecretFor", () => {
 			},
 		});
 		expect(secret).toBe(EXPECTED);
+	});
+});
+
+describe("accountIsKeyed", () => {
+	const run = (answer: () => Response, storage = memoryStorage()) =>
+		accountIsKeyed(EMAIL, {
+			deps: {
+				fetch: (async () => answer()) as typeof globalThis.fetch,
+				storage,
+			},
+		});
+
+	it("is true for an account the keys route knows, and false for one without keys", async () => {
+		expect(await run(() => json({ kdf: FLOOR_ONLY }))).toBe(true);
+		expect(await run(() => json({}, 404))).toBe(false);
+	});
+
+	it("is true when the server says no keys for an address this browser saw keyed", async () => {
+		const storage = memoryStorage();
+		await run(() => json({ kdf: FLOOR_ONLY }), storage);
+		expect(await run(() => json({}, 404), storage)).toBe(true);
+	});
+
+	it("refuses to answer when the server cannot be asked", async () => {
+		expect(
+			await failure(run(() => json({}, 500)) as unknown as Promise<unknown>),
+		).toBe("unavailable");
+		expect(
+			await failure(run(() => json({}, 429)) as unknown as Promise<unknown>),
+		).toBe("rateLimited");
 	});
 });
