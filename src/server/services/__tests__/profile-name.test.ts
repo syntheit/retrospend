@@ -33,20 +33,20 @@ function fakeDb() {
 describe("updateProfile name", () => {
 	it("stores a name as typed, without trimming or folding", async () => {
 		const { db, update } = fakeDb();
-		await updateProfile(db, current, { name: "  Dana Ñ LOPEZ " });
+		await updateProfile(db, current, { name: "  Dana Ñ LOPEZ " }, "s1");
 		expect(update.mock.calls[0]?.[0].data.name).toBe("  Dana Ñ LOPEZ ");
 	});
 
 	it("takes the previous stored name back with a control character, cleaned", async () => {
 		const { db, update } = fakeDb();
-		await updateProfile(db, current, { name: "Da\u000bna\u0001" });
+		await updateProfile(db, current, { name: "Da\u000bna\u0001" }, "s1");
 		expect(update.mock.calls[0]?.[0].data.name).toBe("Dana");
 	});
 
 	it("refuses a name that is nothing but controls", async () => {
 		const { db, update } = fakeDb();
 		await expect(
-			updateProfile(db, current, { name: "\u000b\u0001" }),
+			updateProfile(db, current, { name: "\u000b\u0001" }, "s1"),
 		).rejects.toMatchObject({ code: "BAD_REQUEST" });
 		expect(update).not.toHaveBeenCalled();
 	});

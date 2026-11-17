@@ -40,12 +40,17 @@ export async function patchProfile(
 	patch: z.infer<typeof updateProfileSchema>,
 ) {
 	const current = await getProfile(caller.db, caller.principal.userId);
-	const { emailChangePending } = await updateProfile(caller.db, current, {
-		name: patch.name,
-		username: patch.username,
-		email: patch.email,
-		currentPassword: patch.currentPassword,
-	});
+	const { emailChangePending } = await updateProfile(
+		caller.db,
+		current,
+		{
+			name: patch.name,
+			username: patch.username,
+			email: patch.email,
+			currentPassword: patch.currentPassword,
+		},
+		caller.principal.tokenId,
+	);
 	return { ...(await profileOf(caller)), emailChangePending };
 }
 

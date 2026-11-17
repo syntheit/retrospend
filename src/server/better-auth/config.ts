@@ -23,10 +23,10 @@ import {
 } from "~/server/api/v1/scopes";
 import { guardScopedSessions } from "~/server/better-auth/scoped-sessions";
 import { db } from "~/server/db";
+import { emailSubject } from "~/server/email-copy";
 import { getVerificationEmailTemplate } from "~/server/email-templates";
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 import { getClientIp, InMemoryRateLimiter } from "~/server/lib/rate-limiter";
-import { emailSubject } from "~/server/email-copy";
 import { sendEmail } from "~/server/mailer";
 import { logEventAsync } from "~/server/services/audit.service";
 import { seedDefaultCategories } from "~/server/services/category.service";
@@ -194,10 +194,13 @@ export const auth = betterAuth({
 	// for Advanced protection keys under a row lock). better-auth's own
 	// password routes would write it around them; no client calls them
 	// (reset runs through auth.requestPasswordReset and auth.resetPassword).
+	// /verify-password is a password check that spends none of the tries
+	// (account-security.service TRIES): a stolen cookie could guess with it.
 	disabledPaths: [
 		"/change-password",
 		"/request-password-reset",
 		"/reset-password",
+		"/verify-password",
 	],
 	hooks: {
 		before: createAuthMiddleware(async (context) => {
@@ -436,11 +439,7 @@ export const auth = betterAuth({
 						const verifyUrl = `${env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/verify?token=${token}`;
 						const htmlContent = getVerificationEmailTemplate(verifyUrl);
 
-						await sendEmail(
-							user.email,
-							emailSubject.verifyEmail,
-							htmlContent,
-						);
+						await sendEmail(user.email, emailSubject.verifyEmail, htmlContent);
 					}
 
 					// Log account creation and invite usage

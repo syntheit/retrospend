@@ -69,6 +69,7 @@ export const userRouter = createTRPCRouter({
 					email: input.email,
 					currentPassword: input.currentPassword,
 				},
+				session.session.id,
 			);
 
 			if (input.password?.trim() && input.currentPassword) {

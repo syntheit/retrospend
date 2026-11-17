@@ -141,6 +141,35 @@ describe("/api/v1/profile", () => {
 		lucia.email = next;
 	});
 
+	it("counts each email-change password check as a try, so the sixth is a 429 even with the right password", async () => {
+		// The tries count in fixed 15 minute windows: all six must land in one.
+		const left = 15 * 60_000 - (Date.now() % (15 * 60_000));
+		if (left < 60_000) await new Promise((r) => setTimeout(r, left + 1_000));
+		const guesser = await passwordUser();
+		const headers = await asMobile(guesser.id);
+		const next = `${randomUUID()}@pg-test.invalid`;
+		for (let i = 0; i < 5; i++)
+			await expectProblem(
+				await patch(headers, {
+					email: next,
+					currentPassword: "wrong password",
+				}),
+				400,
+				"bad_request",
+			);
+		const res = await patch(headers, {
+			email: next,
+			currentPassword: PASSWORD,
+		});
+		await expectProblem(res, 429, "rate_limited");
+		expect(Number(res.headers.get("retry-after"))).toBeGreaterThan(0);
+		const row = await adminDb.user.findUniqueOrThrow({
+			where: { id: guesser.id },
+			select: { email: true },
+		});
+		expect(row.email).toBe(guesser.email);
+	}, 120_000);
+
 	it("refuses an email another user has", async () => {
 		const other = await createTestUser();
 		await expectProblem(

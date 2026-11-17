@@ -263,6 +263,7 @@ describe("updateProfile through a scoped client", () => {
 				email,
 				currentPassword: "Correct1horse",
 			},
+			randomUUID(),
 		);
 
 		// The default test server has no email delivery, so the change applies at once.
@@ -292,6 +293,7 @@ describe("updateProfile through a scoped client", () => {
 					email: `${randomUUID()}@pg-test.invalid`,
 					currentPassword: "Wrong1horse",
 				},
+				randomUUID(),
 			),
 		).rejects.toMatchObject({ code: "BAD_REQUEST" });
 
