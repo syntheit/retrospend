@@ -120,7 +120,7 @@ function made(userId: string, overrides: { authKey?: Uint8Array } = {}) {
 		targetId: userId,
 		wrapped: wrapKey(p, p.randomBytes(32), role, userId, p.randomBytes(32)),
 	});
-	const collectionId = `ck-${randomBytes(6).toString("hex")}`;
+	const collectionId = randomBytes(16).toString("hex");
 	const wraps = [
 		wrap("ak-password"),
 		wrap("ak-recovery"),

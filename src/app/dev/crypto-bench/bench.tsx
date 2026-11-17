@@ -5,7 +5,7 @@ import {
 	benchJson,
 	benchRows,
 	runCryptoBench,
-} from "@retrospend/crypto";
+} from "@retrospend/crypto/dev";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";

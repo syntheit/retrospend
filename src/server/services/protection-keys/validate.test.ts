@@ -9,8 +9,8 @@ import {
 	type PublicRole,
 	type SymmetricRole,
 	wrapKey,
-	wrapKeyToPublic,
 } from "@retrospend/crypto";
+import { wrapKeyToPublic } from "@retrospend/crypto/k4";
 import { createWebPrimitives } from "@retrospend/crypto/web";
 import { beforeAll, describe, expect, it } from "vitest";
 import { ProtectionKeysError } from "./errors";
@@ -157,13 +157,44 @@ describe("role and target", () => {
 
 	it("refuses a target outside the id pattern", () => {
 		for (const targetId of ["", "a".repeat(65), "has space", "slash/id", "ü"]) {
-			expect(code(withWrap({ targetId }, "collection-key")), targetId).toBe(
+			expect(code(withWrap({ targetId }, "ak-device")), targetId).toBe(
 				"invalid_input",
 			);
 		}
-		expect(code(withWrap({ targetId: "a".repeat(64) }, "collection-key"))).toBe(
+		expect(code(withWrap({ targetId: "a".repeat(64) }, "ak-device"))).toBe(
 			"ok",
 		);
+	});
+
+	it("takes only the lowercase hex of the key id as a collection key target", () => {
+		const hex = "00ff00ff00ff00ff00ff00ff00ff00ff";
+		expect(code(withWrap({ targetId: hex }, "collection-key"))).toBe("ok");
+		for (const targetId of [
+			hex.toUpperCase(),
+			// 16 bytes as base64url, which fits the general id pattern.
+			"AP8A_wD_AP8A_wD_AP8A_w",
+			hex.slice(0, 30),
+			`${hex}00`,
+			"a".repeat(64),
+			"k1",
+			`${hex.slice(0, 31)}g`,
+		]) {
+			expect(code(withWrap({ targetId }, "collection-key")), targetId).toBe(
+				"invalid_input",
+			);
+			// The same text is a fine id for the other roles that take any id.
+			if (/^[A-Za-z0-9_-]{1,64}$/.test(targetId)) {
+				expect(code(withWrap({ targetId }, "ak-contact")), targetId).toBe("ok");
+			}
+		}
+		// The same rule applies to a removal.
+		expect(
+			code({
+				...create,
+				put: [],
+				remove: [{ role: "collection-key", targetId: hex.toUpperCase() }],
+			}),
+		).toBe("invalid_input");
 	});
 
 	it("refuses a wrap id that is not a uuid, accepts one that is", () => {
@@ -298,7 +329,7 @@ describe("baseVersion and size", () => {
 		const refs = (n: number) =>
 			Array.from({ length: n }, (_, i) => ({
 				role: "collection-key" as const,
-				targetId: `k${i}`,
+				targetId: i.toString(16).padStart(32, "0"),
 			}));
 		const base = { ...create, put: [] };
 		expect(code({ ...base, remove: refs(MAX_CHANGES) })).toBe("ok");

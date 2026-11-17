@@ -108,7 +108,7 @@ async function keyed(userId: string, opts: { state?: "OFF" | "ON" } = {}) {
 		targetId: userId,
 		wrapped: wrapKey(p, p.randomBytes(32), role, userId, p.randomBytes(32)),
 	});
-	const collectionId = `ck-${randomBytes(6).toString("hex")}`;
+	const collectionId = randomBytes(16).toString("hex");
 	const wraps = [
 		wrapOf("ak-password"),
 		wrapOf("ak-recovery"),

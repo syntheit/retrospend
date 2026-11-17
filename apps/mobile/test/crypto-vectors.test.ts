@@ -19,14 +19,13 @@ import {
 	parseRecoveryKey,
 	type RecordContext,
 	recoveryWrapKey,
-	runKnownAnswerTests,
 	sealRecord,
 	TAG_BYTES,
 	unwrapKey,
-	unwrapKeyFromPublic,
 	wrapKey,
-	wrapKeyToPublic,
 } from "@retrospend/crypto";
+import { runKnownAnswerTests } from "@retrospend/crypto/dev";
+import { unwrapKeyFromPublic, wrapKeyToPublic } from "@retrospend/crypto/k4";
 import { loadWebSodium } from "@retrospend/crypto/web";
 
 let p: Primitives;
