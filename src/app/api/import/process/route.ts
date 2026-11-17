@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "~/env";
+import { refuseProtected } from "~/server/api/protection/refuse";
 import { db } from "~/server/db";
 import { getWebSession } from "~/server/better-auth/web-session";
 import {
@@ -15,6 +16,10 @@ export async function POST(request: NextRequest) {
 	if (!session?.user) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
+
+	// The parsed rows could only be written through the server's plaintext path.
+	const refused = refuseProtected(session.user);
+	if (refused) return refused;
 
 	// Check if user is still active (mirrors protectedProcedure isActive check)
 	const activeUser = await db.user.findUnique({
