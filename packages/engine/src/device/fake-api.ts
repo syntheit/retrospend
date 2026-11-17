@@ -63,6 +63,21 @@ export interface DeviceApiOptions {
 	 * but the last says there is more. Used instead of `expenses`.
 	 */
 	expensePages?: { items: unknown[]; cursor: string }[];
+	/** The categories route's answer in each pull, as `expenses`. */
+	categories?: Page[];
+	/** The settings the server holds (default: SETTINGS). */
+	settings?: typeof SETTINGS;
+	/** The daily rate table the server holds (default: empty). */
+	rates?: {
+		asOf: string | null;
+		rates: {
+			id: string;
+			currency: string;
+			type: string;
+			date: string;
+			unitsPerUsd: string;
+		}[];
+	};
 	/** What GET /figures answers: id to lines. */
 	figures?: Record<string, { minor: number; currency: string }[] | null>;
 	/** A pull in which this route throws, by pull number from 1. */
@@ -97,8 +112,13 @@ export function fakeDeviceApi(options: DeviceApiOptions = {}) {
 					}
 				: empty(name);
 		}
-		const queued = options.expenses;
-		return name === "expenses" && queued
+		const queued =
+			name === "expenses"
+				? options.expenses
+				: name === "categories"
+					? options.categories
+					: undefined;
+		return queued
 			? (queued[Math.min(pulls, queued.length) - 1] ?? empty(name))
 			: empty(name);
 	};
@@ -107,7 +127,7 @@ export function fakeDeviceApi(options: DeviceApiOptions = {}) {
 			settings: async () => {
 				pulls += 1;
 				calls.push("settings");
-				return SETTINGS;
+				return options.settings ?? SETTINGS;
 			},
 			shares: async () => {
 				calls.push("shares");
@@ -121,7 +141,7 @@ export function fakeDeviceApi(options: DeviceApiOptions = {}) {
 		currencies: {
 			dailyRates: async () => {
 				calls.push("dailyRates");
-				return { asOf: null, rates: [] };
+				return options.rates ?? { asOf: null, rates: [] };
 			},
 		},
 		figures: {

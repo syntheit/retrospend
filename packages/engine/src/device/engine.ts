@@ -2,10 +2,12 @@ import type { MonthViewDto } from "@retrospend/domain/envelope/dto";
 import type { Money } from "@retrospend/domain/money-minor";
 import { deviceMonthView } from "../budget-figures";
 import { budgetStatus } from "../budget-gate";
+import type { CreateCaptures } from "../create-captures";
 import { MemoryStore } from "../memory-store";
 import { type Change, SETTINGS_ID } from "../port";
 import { DEVICE_FIGURE_IDS, readDeviceFigures } from "../registry";
 import { type PullCursors, pullAll } from "../sync-pull";
+import { compareCreate, type WriteVerdict } from "../write-parity";
 import type { DeviceApi, EngineStorage, StorageHooks } from "./ports";
 
 // The device engine: a copy of the account's rows in memory, filled by the
@@ -88,6 +90,17 @@ export interface ParityResult {
 	clock: string;
 }
 
+/** What the write parity check found, by counts and ids: never an amount, title or note. */
+export interface WriteParity {
+	/** Per outcome ("match", "differs", "rate_missing", "refused", "skipped:<code>", "expired"). */
+	readonly counts: Readonly<Record<string, number>>;
+	/** The latest verdicts, oldest first. */
+	readonly recent: readonly WriteVerdict[];
+}
+
+/** The most verdicts `WriteParity.recent` keeps. */
+const RECENT_WRITES = 100;
+
 export interface DeviceEngine extends DeviceReads {
 	/** "ready" at once when the disk copy holds a whole pull; "idle" until a pull otherwise. */
 	readonly status: DeviceStatus;
@@ -95,6 +108,8 @@ export interface DeviceEngine extends DeviceReads {
 	readonly generation: number;
 	/** The last parity check, kept for tests. */
 	readonly lastParity: ParityResult | null;
+	/** Creates the server booked, compared with the device's own booking of them (dev only). */
+	readonly writeParity: WriteParity;
 	/** Stopped for good: a new engine is needed to read or pull again. */
 	readonly disposed: boolean;
 	/** One pull at a time: a call while one runs waits for it. */
@@ -114,6 +129,13 @@ export interface DeviceEngineOptions {
 	storage?: (hooks: StorageHooks) => Promise<EngineStorage | null>;
 	/** Where the engine reports what went wrong: a short reason and ids and counts, never an amount. */
 	warn?: (what: string, detail?: string) => void;
+	/**
+	 * Creates the platform saw the server accept. After a pull that brings one
+	 * in, the engine books the same input in a scratch store and compares it
+	 * with the synced row, once per id. Dev only: the platform passes none in
+	 * a release build.
+	 */
+	captures?: CreateCaptures;
 }
 
 const sameLines = (
@@ -144,6 +166,8 @@ export function createDeviceEngine(
 	let pulledAt: number | null = null;
 	let inflight: Promise<void> | null = null;
 	let lastParity: ParityResult | null = null;
+	const writeCounts: Record<string, number> = {};
+	let writeRecent: WriteVerdict[] = [];
 	let disposed = false;
 	/** What a dispose asked for, for an open that finishes after it. */
 	let wipeOnDispose = false;
@@ -159,6 +183,7 @@ export function createDeviceEngine(
 		storage?.persistence.commit(changes);
 	};
 	let store = new MemoryStore({ onCommit: commit });
+	options.captures?.bind(() => store.get("settings", SETTINGS_ID));
 
 	const hooks: StorageHooks = {
 		cursors: () => cursors,
@@ -242,6 +267,7 @@ export function createDeviceEngine(
 			generation += 1;
 			pulledAt = now();
 			status = "ready";
+			await compareWrites();
 		} catch (error) {
 			storage?.persistence.abandonPull();
 			// A pull that stopped before its first write (offline) left the rows
@@ -254,6 +280,56 @@ export function createDeviceEngine(
 				status = before === "ready" && commitsInPull === 0 ? "ready" : "failed";
 			warn("pull failed", (error as Error)?.name);
 		}
+	}
+
+	/**
+	 * Compares each captured create the last pull brought in, once, on a
+	 * committed snapshot: no live transaction, so a pull or a reset never
+	 * waits on it. A comparison that throws is a `refused` finding, so the
+	 * pull it follows is never failed by it.
+	 */
+	async function compareWrites(): Promise<void> {
+		const captures = options.captures;
+		if (!captures) return;
+		const expired = captures.prune(now());
+		const snap = store.snapshot();
+		const verdicts: WriteVerdict[] = [];
+		for (const c of captures.pending()) {
+			// A transfer has no expense row to wait for; the rest wait for theirs.
+			if (c.kind !== "transfer" && !snap.get("expenses", c.id)) continue;
+			captures.drop(c.id);
+			verdicts.push(
+				await compareCreate(snap, c).catch(
+					(): WriteVerdict => ({ id: c.id, outcome: "refused" }),
+				),
+			);
+		}
+		const bump = (key: string) => {
+			writeCounts[key] = (writeCounts[key] ?? 0) + 1;
+		};
+		for (const v of verdicts)
+			bump(v.outcome === "skipped" ? `skipped:${v.code}` : v.outcome);
+		for (let i = 0; i < expired; i += 1) bump("expired");
+		writeRecent = [...writeRecent, ...verdicts].slice(-RECENT_WRITES);
+		if (verdicts.length === 0 && expired === 0) return;
+		const findings = verdicts.filter((v) =>
+			["differs", "rate_missing", "refused"].includes(v.outcome),
+		);
+		// Ids, field names and counts only: no amount ever reaches a log.
+		warn(
+			findings.length > 0 ? "writes differ from the server" : "writes checked",
+			JSON.stringify({
+				checked: verdicts.length,
+				expired,
+				findings: findings.map((v) => ({
+					id: v.id,
+					outcome: v.outcome,
+					...(v.outcome === "differs" ? { fields: v.fields } : {}),
+				})),
+				generation,
+				clock: new Date(now()).toISOString(),
+			}),
+		);
 	}
 
 	const pull = () => {
@@ -435,6 +511,9 @@ export function createDeviceEngine(
 		},
 		get lastParity() {
 			return lastParity;
+		},
+		get writeParity() {
+			return { counts: { ...writeCounts }, recent: [...writeRecent] };
 		},
 		get disposed() {
 			return disposed;
