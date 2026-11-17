@@ -35,6 +35,10 @@ vi.mock("~/server/services/settings", () => ({
 	getAppSettings: vi.fn(async () => mockSettings),
 }));
 vi.mock("~/server/mailer", () => ({ sendEmail: vi.fn() }));
+// The try counter has its own Postgres tests (password-writes, profile v1).
+vi.mock("~/server/services/account-security.service", () => ({
+	spendPasswordTry: vi.fn(),
+}));
 vi.mock("~/server/storage", () => ({ getImageUrl: vi.fn(() => null) }));
 vi.mock("~/server/services/username.service", () => ({
 	changeUsername: vi.fn(),
@@ -104,7 +108,11 @@ describe("auth.verifyEmail", () => {
 		expect(mockDb.user.update).toHaveBeenCalledWith(
 			expect.objectContaining({ data: { emailVerified: true } }),
 		);
-		expect(mockMigrate).toHaveBeenCalledWith(mockDb, "user-1", expect.anything());
+		expect(mockMigrate).toHaveBeenCalledWith(
+			mockDb,
+			"user-1",
+			expect.anything(),
+		);
 	});
 });
 

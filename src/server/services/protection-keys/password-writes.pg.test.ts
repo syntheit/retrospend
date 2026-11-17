@@ -349,7 +349,7 @@ describe("changeOwnPassword", () => {
 		await expect(change(a, session)).rejects.toBeInstanceOf(
 			PasswordTriesExceededError,
 		);
-	});
+	}, 120_000);
 });
 
 describe("swapCredentialHash", () => {

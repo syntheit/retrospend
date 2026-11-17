@@ -43,6 +43,7 @@ export function makeSession(overrides: TestUserOverrides = {}) {
 			isActive: overrides.isActive ?? true,
 			protectionState: overrides.protectionState ?? "OFF",
 		},
+		session: { id: "session-1" },
 	} as never;
 }
 
