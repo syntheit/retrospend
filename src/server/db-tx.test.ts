@@ -148,6 +148,35 @@ describe("userTransaction inside an open one", () => {
 		).rejects.toThrow(/cannot switch users/);
 	});
 
+	describe("once the transaction has ended", () => {
+		/** A unit mock: its `$transaction` passes the client itself as tx. */
+		const selfTxClient = () => {
+			const client = {
+				$executeRaw: vi.fn(async () => 1),
+				$transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn(client)),
+			};
+			return client as unknown as Pick<PrismaClient, "$transaction">;
+		};
+
+		it("no longer joins the client after the work returned", async () => {
+			const client = selfTxClient();
+			await userTransaction(client, "user-1", async () => 1);
+			await userTransaction(client, "user-2", async () => 2);
+			expect(client.$transaction).toHaveBeenCalledTimes(2);
+		});
+
+		it("no longer joins the client after the work threw", async () => {
+			const client = selfTxClient();
+			await expect(
+				userTransaction(client, "user-1", async () => {
+					throw new Error("boom");
+				}),
+			).rejects.toThrow("boom");
+			await userTransaction(client, "user-2", async () => 2);
+			expect(client.$transaction).toHaveBeenCalledTimes(2);
+		});
+	});
+
 	it("does not let a keystore transaction pass as a user transaction", async () => {
 		allowUnregisteredClientsForTests(false);
 		const { client } = fakeClient();
