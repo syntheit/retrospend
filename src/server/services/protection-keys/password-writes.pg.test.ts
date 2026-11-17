@@ -11,6 +11,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { problemCode } from "~/server/api/error-formatter";
 import { adminRouter } from "~/server/api/routers/admin";
 import { authRouter } from "~/server/api/routers/auth";
+import { userRouter } from "~/server/api/routers/user";
 import { createCallerFactory } from "~/server/api/trpc";
 import {
 	call,
@@ -19,10 +20,18 @@ import {
 	webCookieFor,
 } from "~/server/api/v1/core/__tests__/harness";
 import { auth } from "~/server/better-auth";
-import { changeOwnPassword } from "~/server/services/account-security.service";
+import {
+	changeOwnPassword,
+	PasswordTriesExceededError,
+	spendPasswordTry,
+} from "~/server/services/account-security.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
-import { lockCredential, ProtectedPasswordError } from "./password-writes";
+import {
+	lockCredential,
+	ProtectedPasswordError,
+	swapCredentialHash,
+} from "./password-writes";
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -170,6 +179,44 @@ async function blockedBehindLock<T>(call: Promise<T>) {
 	return { blocked: false, outcome };
 }
 
+/** Holds the credential lock in its own owner transaction until `commit`. */
+async function holdCredentialLock(
+	userId: string,
+	whileHeld: (tx: Parameters<typeof lockCredential>[0]) => Promise<void>,
+) {
+	let release!: () => void;
+	const gate = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	let locked!: () => void;
+	const hasLock = new Promise<void>((resolve) => {
+		locked = resolve;
+	});
+	const open = adminDb.$transaction(
+		async (tx) => {
+			await lockCredential(tx, userId);
+			locked();
+			await gate;
+			await whileHeld(tx);
+		},
+		{ timeout: 30_000 },
+	);
+	await hasLock;
+	return {
+		commit: async () => {
+			release();
+			await open;
+		},
+	};
+}
+
+const TRIES_WINDOW_MS = 15 * 60_000;
+/** The tries count in fixed 15 minute windows: a run near the edge waits it out. */
+async function clearTriesWindowEdge(): Promise<void> {
+	const left = TRIES_WINDOW_MS - (Date.now() % TRIES_WINDOW_MS);
+	if (left < 60_000) await new Promise((r) => setTimeout(r, left + 1_000));
+}
+
 let n = 0;
 const headers = () =>
 	new Headers({ "x-forwarded-for": `203.0.113.${10 + (n++ % 200)}` });
@@ -254,6 +301,155 @@ describe("changeOwnPassword", () => {
 			error: expect.any(ProtectedPasswordError),
 		});
 		expect(await storedHash(a.id)).toBe(before);
+	});
+
+	it("takes the hash it verified: a hash another writer stored while it waited is not overwritten", async () => {
+		const a = await passwordUser();
+		const other = await sessionFor(a.id);
+		const taken = await hashPassword("A reset password 3");
+		// A keyless reset commits between the verify and the write: the key set
+		// is still absent, so only the compare-and-swap can see what changed.
+		const holder = await holdCredentialLock(a.id, async (tx) => {
+			await tx.account.updateMany({
+				where: { userId: a.id, providerId: "credential" },
+				data: { password: taken },
+			});
+		});
+		const { blocked, outcome } = await blockedBehindLock(change(a));
+		expect(blocked).toBe(true);
+		await holder.commit();
+		expect(await outcome).toMatchObject({
+			error: expect.objectContaining({ code: "CONFLICT" }),
+		});
+		expect(await storedHash(a.id)).toBe(taken);
+		expect(await adminDb.session.count({ where: { token: other } })).toBe(1);
+	});
+
+	it("refuses a keyed account without spending a try: the sixth call still says protected_password", async () => {
+		await clearTriesWindowEdge();
+		const a = await passwordUser();
+		await giveKeys(a.id);
+		const session = randomUUID();
+		for (let i = 0; i < 6; i++) {
+			const error = await change(a, session).catch((e: unknown) => e);
+			expect(error).toBeInstanceOf(ProtectedPasswordError);
+		}
+	}, 120_000);
+
+	it("spends a try on every call of a keyless account, so the sixth from one session is refused", async () => {
+		await clearTriesWindowEdge();
+		const a = await passwordUser();
+		const session = randomUUID();
+		const wrong = () =>
+			changeOwnPassword({
+				userId: a.id,
+				keepSessionId: session,
+				currentPassword: "Not mine 1",
+				newPassword: NEW_PASSWORD,
+			});
+		for (let i = 0; i < 5; i++)
+			await expect(wrong()).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		await expect(change(a, session)).rejects.toBeInstanceOf(
+			PasswordTriesExceededError,
+		);
+	}, 120_000);
+});
+
+describe("swapCredentialHash", () => {
+	const swap = async (
+		a: Account,
+		over: Partial<Parameters<typeof swapCredentialHash>[1]> = {},
+	) => {
+		const checked = await storedHash(a.id);
+		const hashed = await hashPassword("A new hash 4");
+		const result = await adminDb.$transaction((tx) =>
+			swapCredentialHash(tx, {
+				userId: a.id,
+				checked,
+				hashed,
+				keys: "absent",
+				keepSessionId: "keep",
+				...over,
+			}),
+		);
+		return { result, checked, hashed };
+	};
+
+	it("replaces the checked hash, ends the other sessions and the reset links of the address it is given", async () => {
+		const a = await passwordUser();
+		const other = await sessionFor(a.id);
+		await adminDb.passwordResetToken.create({
+			data: {
+				identifier: a.email,
+				token: randomBytes(8).toString("hex"),
+				expires: new Date(Date.now() + 60_000),
+			},
+		});
+		const { result, hashed } = await swap(a, { resetLinksFor: a.email });
+		expect(result).toMatchObject({ ok: true });
+		expect(await storedHash(a.id)).toBe(hashed);
+		expect(await adminDb.session.count({ where: { token: other } })).toBe(0);
+		expect(
+			await adminDb.passwordResetToken.count({
+				where: { identifier: a.email },
+			}),
+		).toBe(0);
+	});
+
+	it("leaves reset links alone when no address is given", async () => {
+		const a = await passwordUser();
+		await resetToken(a.email);
+		await swap(a);
+		expect(
+			await adminDb.passwordResetToken.count({
+				where: { identifier: a.email },
+			}),
+		).toBe(1);
+	});
+
+	it("refuses a hash that is no longer the one checked, and writes nothing", async () => {
+		const a = await passwordUser();
+		const other = await sessionFor(a.id);
+		const stored = await storedHash(a.id);
+		const { result } = await swap(a, {
+			checked: await hashPassword("What was checked once"),
+		});
+		expect(result).toEqual({ ok: false, refusal: "hash_changed" });
+		expect(await storedHash(a.id)).toBe(stored);
+		expect(await adminDb.session.count({ where: { token: other } })).toBe(1);
+	});
+
+	it("refuses a keyed account when keys must be absent, and a keyless one when they must be present", async () => {
+		const keyless = await passwordUser();
+		expect((await swap(keyless, { keys: "present" })).result).toEqual({
+			ok: false,
+			refusal: "keys_missing",
+		});
+		const keyed = await passwordUser();
+		await giveKeys(keyed.id);
+		const before = await storedHash(keyed.id);
+		expect((await swap(keyed, { keys: "absent" })).result).toEqual({
+			ok: false,
+			refusal: "keys_present",
+		});
+		expect(await storedHash(keyed.id)).toBe(before);
+		expect((await swap(keyed, { keys: "present" })).result).toMatchObject({
+			ok: true,
+		});
+	});
+
+	it("refuses an account with no credential", async () => {
+		const { user } = await createTestUser();
+		const result = await adminDb.$transaction((tx) =>
+			swapCredentialHash(tx, {
+				userId: user.id,
+				checked: "x",
+				hashed: "y",
+				keys: "absent",
+				keepSessionId: "keep",
+			}),
+		);
+		expect(result).toEqual({ ok: false, refusal: "no_credential" });
 	});
 });
 
@@ -532,6 +728,155 @@ describe("better-auth password routes", () => {
 		).toBe(404);
 		expect(await storedHash(a.id)).toBe(before);
 	});
+
+	it("does not route /verify-password: a check of the password that spends no try", async () => {
+		const a = await passwordUser();
+		const { cookie } = await webCookieFor(a.id);
+		const res = await auth.handler(
+			new Request("http://localhost:3101/api/auth/verify-password", {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+					origin: "http://localhost:3101",
+					cookie,
+				},
+				body: JSON.stringify({ password: PASSWORD }),
+			}),
+		);
+		expect(res.status).toBe(404);
+	});
+});
+
+describe("better-auth two-factor routes that check the password", () => {
+	/** A web session: its id, a cookie and a bearer for it. */
+	async function webSession(userId: string) {
+		const { cookie } = await webCookieFor(userId);
+		const token = decodeURIComponent(cookie.split("=")[1] ?? "").split(".")[0];
+		const row = await adminDb.session.findFirstOrThrow({
+			where: { token },
+			select: { id: true },
+		});
+		return { id: row.id, cookie, bearer: `Bearer ${token}` };
+	}
+	const post = (
+		path: string,
+		extra: Record<string, string>,
+		body: unknown = { password: "Not mine 1" },
+	) =>
+		auth.handler(
+			new Request(`http://localhost:3101/api/auth${path}`, {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+					origin: "http://localhost:3101",
+					...extra,
+				},
+				body: JSON.stringify(body),
+			}),
+		);
+	// Written out, not read from the guard's own list: the routes of better-auth
+	// that check a password and stay routed, found by searching its code for
+	// checkPassword and validatePassword (plugins/two-factor).
+	const PATHS = [
+		"/two-factor/enable",
+		"/two-factor/disable",
+		"/two-factor/get-totp-uri",
+		"/two-factor/generate-backup-codes",
+	];
+
+	it.each(PATHS)(
+		"%s refuses once the session's five tries are used, and the route itself counts one",
+		async (path) => {
+			await clearTriesWindowEdge();
+			const a = await passwordUser();
+			const s = await webSession(a.id);
+			for (let i = 0; i < 4; i++) await spendPasswordTry(a.id, s.id);
+			// The fifth try is the route's own: a wrong password, answered 400.
+			const fifth = await post(path, { cookie: s.cookie });
+			expect(fifth.status).not.toBe(429);
+			const sixth = await post(path, { cookie: s.cookie });
+			expect(sixth.status).toBe(429);
+			expect(Number(sixth.headers.get("retry-after"))).toBeGreaterThan(0);
+		},
+		120_000,
+	);
+
+	it("counts a call made with a bearer for a web session, not only one with the cookie", async () => {
+		await clearTriesWindowEdge();
+		const a = await passwordUser();
+		const s = await webSession(a.id);
+		for (let i = 0; i < 5; i++) await spendPasswordTry(a.id, s.id);
+		const res = await post("/two-factor/get-totp-uri", {
+			authorization: s.bearer,
+		});
+		expect(res.status).toBe(429);
+	}, 120_000);
+
+	it("charges the session better-auth authenticates, not a decoy under another cookie name", async () => {
+		await clearTriesWindowEdge();
+		// The decoy is made first, so an unordered lookup would find it first.
+		const attacker = await passwordUser();
+		const decoy = await webSession(attacker.id);
+		const victim = await passwordUser();
+		const stolen = await webSession(victim.id);
+		for (let i = 0; i < 5; i++) await spendPasswordTry(victim.id, stolen.id);
+		const decoyValue = decoy.cookie.split("=")[1];
+		// better-auth reads only better-auth.session_token here; the other name is ignored.
+		const res = await post("/two-factor/get-totp-uri", {
+			cookie: `${stolen.cookie}; __Secure-better-auth.session_token=${decoyValue}`,
+		});
+		expect(res.status).toBe(429);
+	}, 120_000);
+
+	it("spends nothing for a call that carries no password, or no session", async () => {
+		await clearTriesWindowEdge();
+		const a = await passwordUser();
+		const s = await webSession(a.id);
+		for (let i = 0; i < 5; i++) await spendPasswordTry(a.id, s.id);
+		const noPassword = await post(
+			"/two-factor/generate-backup-codes",
+			{ cookie: s.cookie },
+			{},
+		);
+		expect(noPassword.status).not.toBe(429);
+		const noSession = await post("/two-factor/enable", {});
+		expect(noSession.status).not.toBe(429);
+	}, 120_000);
+});
+
+describe("user.updateProfile with an email and a password change in one request", () => {
+	it("counts one try for the request, not one for each check", async () => {
+		await clearTriesWindowEdge();
+		const a = await passwordUser();
+		const caller = createCallerFactory(userRouter)({
+			session: makeSession({
+				id: a.id,
+				email: a.email,
+				username: "someone",
+			}),
+			db: adminDb,
+			headers: new Headers(),
+		} as never);
+		for (let i = 0; i < 3; i++) await spendPasswordTry(a.id, "session-1");
+		await caller.updateProfile({
+			name: "Lucía",
+			username: "someone",
+			email: `${randomUUID()}@pg-test.invalid`,
+			password: NEW_PASSWORD,
+			currentPassword: PASSWORD,
+		});
+		// 3 before and 1 for the request leaves the fifth, and not the sixth.
+		await spendPasswordTry(a.id, "session-1");
+		await expect(spendPasswordTry(a.id, "session-1")).rejects.toBeInstanceOf(
+			PasswordTriesExceededError,
+		);
+		expect(
+			await verifyPassword({
+				password: NEW_PASSWORD,
+				hash: await storedHash(a.id),
+			}),
+		).toBe(true);
+	}, 120_000);
 });
 
 describe("POST /api/v1/me/password", () => {

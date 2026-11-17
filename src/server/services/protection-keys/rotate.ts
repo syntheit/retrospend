@@ -22,31 +22,25 @@
  */
 
 import type { RotatePassword } from "@retrospend/api-contract";
-import { fromBase64Url, isSignInSecret, toBase64Url } from "@retrospend/crypto";
+import { isSignInSecret, toBase64Url } from "@retrospend/crypto";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { db } from "~/server/db";
 import { emailSubject } from "~/server/email-copy";
 import { getPasswordChangedAlertTemplate } from "~/server/email-templates";
-import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
-import { sendEmail } from "~/server/mailer";
-import {
-	deleteResetTokens,
-	spendPasswordTry,
-} from "../account-security.service";
+import { spendPasswordTry } from "../account-security.service";
 import { ProtectionKeysError, RotatePasswordError } from "./errors";
-import { hasKeySet, lockCredential } from "./password-writes";
+import {
+	hasKeySet,
+	lockCredential,
+	swapCredentialHash,
+} from "./password-writes";
 import {
 	applyKeyChanges,
 	getProtectionKeys,
 	type KeyChanges,
 } from "./protection-keys.service";
+import { bytes, invalid, readCredentialHash, sendNotice } from "./shared";
 import { validateKeyChanges } from "./validate";
-
-function invalid(): never {
-	throw new ProtectionKeysError("invalid_input");
-}
-
-const bytes = (text: string): Uint8Array => fromBase64Url(text) ?? invalid();
 
 /** The request as a key change: new parameters and the one replaced wrap. */
 function toKeyChanges(userId: string, body: RotatePassword): KeyChanges {
@@ -71,12 +65,9 @@ function toKeyChanges(userId: string, body: RotatePassword): KeyChanges {
 }
 
 async function credentialHash(userId: string): Promise<string> {
-	const credential = await db.account.findFirst({
-		where: { userId, providerId: "credential" },
-		select: { password: true },
-	});
-	if (!credential?.password) throw new RotatePasswordError("no_password");
-	return credential.password;
+	const hash = await readCredentialHash(userId);
+	if (!hash) throw new RotatePasswordError("no_password");
+	return hash;
 }
 
 /** The stored version, or null with no key set. */
@@ -147,22 +138,6 @@ export async function beginRotation(input: {
 
 export type RotateResult = { version: number; signedOut: number };
 
-/** After the commit: the account hears about it. It carries no data beyond the address it goes to. */
-async function sendNotice(email: string): Promise<void> {
-	try {
-		if (await isEmailDeliveryEnabled())
-			await sendEmail(
-				email,
-				emailSubject.passwordChanged,
-				getPasswordChangedAlertTemplate(),
-			);
-	} catch {
-		// The password is changed; a mail failure must not fail the request. No
-		// detail is logged: an SMTP error can quote the address.
-		console.error("Could not send the password change notice");
-	}
-}
-
 export async function rotatePassword(input: {
 	userId: string;
 	sessionId: string;
@@ -195,19 +170,16 @@ export async function rotatePassword(input: {
 	const hashed = await hashPassword(body.newAuthKey);
 
 	const done = await db.$transaction(async (tx) => {
-		const locked = await lockCredential(tx, userId);
-		if (!locked?.hasKeySet) throw new ProtectionKeysError("conflict");
-		// Only the hash that was checked is replaced: another writer got in first otherwise.
-		const swapped = await tx.account.updateMany({
-			where: { userId, providerId: "credential", password: checked },
-			data: { password: hashed },
+		const swapped = await swapCredentialHash(tx, {
+			userId,
+			checked,
+			hashed,
+			keys: "present",
+			keepSessionId: sessionId,
+			resetLinksFor: user.email,
 		});
-		if (swapped.count !== 1) throw new ProtectionKeysError("conflict");
+		if (!swapped.ok) throw new ProtectionKeysError("conflict");
 		const { version } = await applyKeyChanges(tx, userId, changes);
-		const ended = await tx.session.deleteMany({
-			where: { userId, id: { not: sessionId } },
-		});
-		await deleteResetTokens(tx, user.email);
 		await tx.eventLog.create({
 			data: {
 				eventType: "PASSWORD_CHANGED",
@@ -215,8 +187,12 @@ export async function rotatePassword(input: {
 				metadata: { reason: "protection_keys_rotated" },
 			},
 		});
-		return { version, signedOut: ended.count };
+		return { version, signedOut: swapped.signedOut };
 	});
-	await sendNotice(user.email);
+	await sendNotice(user.email, {
+		subject: emailSubject.passwordChanged,
+		body: getPasswordChangedAlertTemplate,
+		failure: "Could not send the password change notice",
+	});
 	return done;
 }

@@ -21,6 +21,7 @@ import {
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 import { hashToken } from "~/server/lib/tokens";
 import { sendEmail } from "~/server/mailer";
+import { spendPasswordTry } from "~/server/services/account-security.service";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
 import { changeUsername } from "~/server/services/username.service";
 
@@ -96,13 +97,20 @@ type IdentityWrite = { name?: string };
 
 // The password hash is auth data: the app role cannot read the account table,
 // so it is read on the owner connection, for the caller's own id.
-async function assertPassword(userId: string, password?: string) {
+// A wrong password is what a stolen session would guess with, so the check
+// spends one of the session's tries like a password change does.
+async function assertPassword(
+	userId: string,
+	sessionId: string,
+	password?: string,
+) {
 	if (!password) {
 		throw new TRPCError({
 			code: "BAD_REQUEST",
 			message: "Current password is required to change email",
 		});
 	}
+	await spendPasswordTry(userId, sessionId);
 	const credential = await globalDb.account.findFirst({
 		where: { userId, providerId: "credential" },
 	});
@@ -191,7 +199,13 @@ export async function updateProfile(
 	db: AppDb,
 	current: { id: string; username: string; email: string },
 	input: ProfileChanges,
-): Promise<{ emailChangePending: boolean; user: UpdatedIdentity }> {
+	sessionId: string,
+): Promise<{
+	emailChangePending: boolean;
+	user: UpdatedIdentity;
+	/** The current password was checked, which spent one try. */
+	passwordChecked: boolean;
+}> {
 	const userId = current.id;
 	let name: string | undefined;
 	try {
@@ -208,10 +222,11 @@ export async function updateProfile(
 	};
 	const username = input.username?.toLowerCase();
 	const email = input.email?.toLowerCase().trim();
-	const newEmail = email !== undefined && email !== current.email ? email : null;
+	const newEmail =
+		email !== undefined && email !== current.email ? email : null;
 	// Everything that can refuse comes before the first write.
 	if (newEmail !== null) {
-		await assertPassword(userId, input.currentPassword);
+		await assertPassword(userId, sessionId, input.currentPassword);
 		await assertEmailFree(db, userId, newEmail);
 	}
 	if (username !== undefined && username !== current.username) {
@@ -219,7 +234,7 @@ export async function updateProfile(
 	}
 	if (newEmail !== null && (await isEmailDeliveryEnabled())) {
 		const user = await startEmailChange(db, current, write, newEmail);
-		return { emailChangePending: true, user };
+		return { emailChangePending: true, user, passwordChecked: true };
 	}
 	// The email column is not writable by the app role: an immediate change
 	// (no email delivery) goes through the owner connection, for the caller's
@@ -231,8 +246,13 @@ export async function updateProfile(
 	});
 	// Needs the owner connection (guest rows are not the user's yet); the
 	// helper re-checks emailVerified and never throws.
-	if (newEmail !== null) await migrateGuestDataForVerifiedUser(globalDb, userId);
-	return { emailChangePending: false, user };
+	if (newEmail !== null)
+		await migrateGuestDataForVerifiedUser(globalDb, userId);
+	return {
+		emailChangePending: false,
+		user,
+		passwordChecked: newEmail !== null,
+	};
 }
 
 export async function cancelPendingEmailChange(db: AppDb, userId: string) {

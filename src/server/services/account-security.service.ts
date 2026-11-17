@@ -9,15 +9,14 @@ import { TRPCError } from "@trpc/server";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { MOBILE_CLIENT_ID } from "~/server/api/v1/scopes";
 import { db } from "~/server/db";
-import type { Prisma } from "~prisma";
 import { consumeRateLimit } from "./api-v1/rate-limit.service";
 import {
 	hasKeySet,
 	lockCredential,
 	ProtectedPasswordError,
 	type ResetBy,
-	refusePasswordChange,
 	settleKeysForReset,
+	swapCredentialHash,
 } from "./protection-keys/password-writes";
 
 /**
@@ -69,20 +68,27 @@ export const WRONG_PASSWORD_MESSAGE = "Current password is incorrect";
  * other session of the user (the one making the change stays). The tries are
  * counted before the check (TRIES). Neither password is logged or returned.
  * An account with Advanced protection keys is refused (`protected_password`):
- * its keys are wrapped under the password. The check runs before the password
- * is verified, so that account hears the real reason instead of "incorrect",
- * and again under the credential row lock, so a concurrent enable cannot slip
- * between the verify and the write.
+ * its keys are wrapped under the password. The check runs before a try is
+ * spent and the password is verified, so that account hears the real reason
+ * instead of "incorrect", and again under the credential row lock
+ * (swapCredentialHash), so a concurrent enable cannot slip between the verify
+ * and the write. The write replaces only the hash that was verified.
  */
 export async function changeOwnPassword(input: {
 	userId: string;
 	keepSessionId: string;
 	currentPassword: string;
 	newPassword: string;
+	/**
+	 * The same request already spent its try on this password (the email check
+	 * of user.updateProfile), so one request counts once.
+	 */
+	tryAlreadySpent?: boolean;
 }): Promise<{ signedOut: number }> {
-	await spendPasswordTry(input.userId, input.keepSessionId);
-
+	// A keyed account hears the real reason before any try is spent.
 	if (await hasKeySet(db, input.userId)) throw new ProtectedPasswordError();
+	if (!input.tryAlreadySpent)
+		await spendPasswordTry(input.userId, input.keepSessionId);
 
 	const credential = await db.account.findFirst({
 		where: { userId: input.userId, providerId: "credential" },
@@ -94,9 +100,10 @@ export async function changeOwnPassword(input: {
 			message: "Password change is not available for this account",
 		});
 	}
+	const checked = credential.password;
 	const valid = await verifyPassword({
 		password: input.currentPassword,
-		hash: credential.password,
+		hash: checked,
 	});
 	if (!valid)
 		throw new TRPCError({
@@ -105,22 +112,25 @@ export async function changeOwnPassword(input: {
 		});
 
 	const hashed = await hashPassword(input.newPassword);
-	return db.$transaction(async (tx) => {
-		const locked = await lockCredential(tx, input.userId);
-		if (!locked)
-			throw new TRPCError({
-				code: "BAD_REQUEST",
-				message: "Password change is not available for this account",
-			});
-		refusePasswordChange(locked);
-		await tx.account.updateMany({
-			where: { userId: input.userId, providerId: "credential" },
-			data: { password: hashed },
+	const swapped = await db.$transaction((tx) =>
+		swapCredentialHash(tx, {
+			userId: input.userId,
+			checked,
+			hashed,
+			keys: "absent",
+			keepSessionId: input.keepSessionId,
+		}),
+	);
+	if (swapped.ok) return { signedOut: swapped.signedOut };
+	if (swapped.refusal === "keys_present") throw new ProtectedPasswordError();
+	if (swapped.refusal === "hash_changed")
+		throw new TRPCError({
+			code: "CONFLICT",
+			message: "The password changed meanwhile. Try again.",
 		});
-		const ended = await tx.session.deleteMany({
-			where: { userId: input.userId, id: { not: input.keepSessionId } },
-		});
-		return { signedOut: ended.count };
+	throw new TRPCError({
+		code: "BAD_REQUEST",
+		message: "Password change is not available for this account",
 	});
 }
 
@@ -158,18 +168,6 @@ export async function resetPasswordHash(input: {
 		if (input.token)
 			await tx.passwordResetToken.delete({ where: { token: input.token } });
 	});
-}
-
-/**
- * Removes every pending password reset link for an address, in the caller's
- * transaction. The Advanced protection turn-on needs it: a link made earlier
- * would write a hash around the new keys.
- */
-export async function deleteResetTokens(
-	tx: Prisma.TransactionClient,
-	email: string,
-): Promise<void> {
-	await tx.passwordResetToken.deleteMany({ where: { identifier: email } });
 }
 
 /**

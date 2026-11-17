@@ -1,8 +1,8 @@
 import { DeleteTriesExceededError } from "~/server/services/account-deletion.service";
-import { PasswordTriesExceededError } from "~/server/services/account-security.service";
 import * as account from "~/server/services/api-v1/account";
 import * as gap from "~/server/services/api-v1/gap-reads";
 import { serve } from "../core/serve";
+import { withTries } from "../core/with-tries";
 import { problem } from "../errors";
 import { signedIn, v1 } from "../middleware";
 
@@ -10,23 +10,11 @@ const p = v1.account;
 
 export const accountRouter = {
 	changePassword: p.changePassword.handler(
-		serve(async ({ context, input }) => {
-			try {
-				return await account.changePassword(signedIn(context), input);
-			} catch (error) {
-				// The service counts the tries (the web has the same limit): a 429 here.
-				if (error instanceof PasswordTriesExceededError) {
-					context.resHeaders?.set(
-						"Retry-After",
-						String(error.retryAfterSeconds),
-					);
-					throw problem("rate_limited", undefined, {
-						retryAfter: error.retryAfterSeconds,
-					});
-				}
-				throw error;
-			}
-		}),
+		serve(({ context, input }) =>
+			withTries(context, () =>
+				account.changePassword(signedIn(context), input),
+			),
+		),
 	),
 	sessions: p.sessions.handler(
 		serve(({ context }) => account.readSessions(signedIn(context))),

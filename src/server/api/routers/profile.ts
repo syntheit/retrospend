@@ -158,6 +158,7 @@ export const profileRouter = createTRPCRouter({
 				ctx.db,
 				ctx.session.user,
 				input,
+				ctx.session.session.id,
 			);
 			return emailChangePending ? { ...user, emailChangePending: true } : user;
 		}),

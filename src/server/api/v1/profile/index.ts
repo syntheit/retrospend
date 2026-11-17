@@ -1,6 +1,7 @@
 import * as gap from "~/server/services/api-v1/gap-reads";
 import * as profile from "~/server/services/api-v1/profile";
 import { serve } from "../core/serve";
+import { withTries } from "../core/with-tries";
 import { signedIn, v1 } from "../middleware";
 
 const p = v1.profile;
@@ -14,7 +15,7 @@ export const profileRouter = {
 	),
 	update: p.update.handler(
 		serve(({ context, input }) =>
-			profile.patchProfile(signedIn(context), input),
+			withTries(context, () => profile.patchProfile(signedIn(context), input)),
 		),
 	),
 	cancelEmailChange: p.cancelEmailChange.handler(
