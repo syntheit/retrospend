@@ -108,6 +108,20 @@ describe("signInSecretFor", () => {
 		expect(await t.run("Plain-pw-1", { signedIn: true })).toBe("Plain-pw-1");
 	});
 
+	it("is unavailable, never no keys, when the keys route answers a null kdf or the answer is not the expected shape", async () => {
+		for (const [body, signedIn] of [
+			[{ kdf: null }, true],
+			[{}, true],
+			[{}, false],
+			[{ kdf: "keys" }, false],
+		] as const) {
+			const t = setup(() => json(body));
+			expect(await failure(t.run("Plain-pw-1", { signedIn }))).toBe(
+				"unavailable",
+			);
+		}
+	});
+
 	it("refuses parameters below the floor or above the ceiling before any derivation", async () => {
 		for (const bad of [
 			{ ...FLOOR_ONLY, memoryKiB: 1024 },

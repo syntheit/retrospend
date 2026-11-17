@@ -41,11 +41,10 @@ export function readBeginAnswer(body: unknown): BeginAnswer {
 	if (
 		!answerKdf ||
 		typeof wrappedAccountKey !== "string" ||
-		typeof version !== "number" ||
 		!Number.isInteger(version)
 	)
 		throw new KeyFlowError("unavailable");
-	return { version, kdf: answerKdf, wrappedAccountKey };
+	return { version: version as number, kdf: answerKdf, wrappedAccountKey };
 }
 
 /** The commit route's body. */
