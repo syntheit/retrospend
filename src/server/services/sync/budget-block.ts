@@ -168,7 +168,7 @@ function remember(userId: string, signal: string) {
 export async function runFreeze(
 	db: typeof globalDb,
 	userId: string,
-	opts: { force?: boolean } = {},
+	opts: { force?: boolean; timeoutMs?: number } = {},
 ): Promise<"ran" | "skipped" | "failed"> {
 	try {
 		const done = await userTransaction(
@@ -181,7 +181,7 @@ export async function runFreeze(
 				return ran ? signal : null;
 			},
 			// A full book read: longer than the default five seconds at 10k rows.
-			{ timeout: 30_000 },
+			{ timeout: opts.timeoutMs ?? 30_000 },
 		);
 		if (done === null) return "skipped";
 		remember(userId, done);
