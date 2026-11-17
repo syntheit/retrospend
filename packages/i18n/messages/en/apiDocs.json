@@ -17,7 +17,7 @@
 	"eventsTitle": "Events and webhooks",
 	"eventsBody": "Every write adds an event. Read them from GET /events, or add a webhook in Settings and Retrospend posts each one to your URL, signed in the Retrospend-Signature header.",
 	"protectionTitle": "Advanced protection",
-	"protectionBody": "An account with Advanced protection on can call only the routes that are not marked otherwise. Every other route answers 403 with the code protected_account. For that account, GET /events returns only events without personal ids or amounts, and vault.changed reaches only callers that hold the vault scope.",
+	"protectionBody": "An account with Advanced protection on can call only the routes that are not marked otherwise. Every other route answers 403 with the code protected_account. For that account, GET /events returns only events without personal ids or amounts. For every account, vault.changed reaches only callers that hold the vault scope.",
 	"routesTitle": "Routes",
 	"routeCount": "{count, plural, one {1 route} other {# routes}}",
 	"back": "All routes",

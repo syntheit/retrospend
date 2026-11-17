@@ -17,7 +17,7 @@
 	"eventsTitle": "Ereignisse und Webhooks",
 	"eventsBody": "Jeder Schreibzugriff erzeugt ein Ereignis. Lies sie über GET /events oder lege in den Einstellungen einen Webhook an, dann sendet Retrospend jedes an deine URL, signiert im Header Retrospend-Signature.",
 	"protectionTitle": "Erweiterter Schutz",
-	"protectionBody": "Ein Konto mit aktiviertem Erweiterten Schutz kann nur die Routen aufrufen, die nicht anders gekennzeichnet sind. Jede andere Route antwortet mit 403 und dem Code protected_account. Für dieses Konto liefert GET /events nur Ereignisse ohne persönliche IDs oder Beträge, und vault.changed erreicht nur Aufrufer mit dem Scope vault.",
+	"protectionBody": "Ein Konto mit aktiviertem Erweitertem Schutz kann nur die Routen aufrufen, die nicht anders gekennzeichnet sind. Jede andere Route antwortet mit 403 und dem Code protected_account. Für dieses Konto liefert GET /events nur Ereignisse ohne persönliche IDs oder Beträge. Für jedes Konto erreicht vault.changed nur Aufrufer mit dem Scope vault.",
 	"routesTitle": "Routen",
 	"routeCount": "{count, plural, one {1 Route} other {# Routen}}",
 	"back": "Alle Routen",
