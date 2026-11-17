@@ -155,7 +155,11 @@ describe("sync routes: who may call them", () => {
 		});
 		const headers = { ...OWN_IP, ...(await webCookieFor(protectedId)) };
 		for (const { path } of Object.values(ROUTES)) {
-			await expectProblem(await call(path, { headers }), 403, "protected_account");
+			await expectProblem(
+				await call(path, { headers }),
+				403,
+				"protected_account",
+			);
 		}
 	});
 

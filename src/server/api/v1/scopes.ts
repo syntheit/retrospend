@@ -150,8 +150,7 @@ export function sessionScopesOf(input: {
 	kind: PrincipalKind;
 	granted: readonly Scope[] | null;
 }): SessionScope[] {
-	if (input.kind === "web")
-		return [...ACCOUNT_SESSION_SCOPES, "sync", "vault"];
+	if (input.kind === "web") return [...ACCOUNT_SESSION_SCOPES, "sync", "vault"];
 	if (input.kind !== "mobile") return [];
 	const held: SessionScope[] = [];
 	if (input.granted?.includes("write:settings"))
