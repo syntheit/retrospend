@@ -8,6 +8,9 @@ import { gotoReady, waitUntilReady } from "../helpers/navigation";
 // and rewraps the account key, and the server only sees those. Afterwards the
 // new password signs in and the old one does not.
 test.use({ storageState: { cookies: [], origins: [] } });
+// The change commits, so a retry on the same database would sign in with a
+// password that no longer exists and hide the real failure.
+test.describe.configure({ retries: 0 });
 
 async function signInAs(page: Page, password: string) {
 	await gotoReady(page, "/login");
@@ -60,7 +63,10 @@ test("a keyed account changes its password, signs in with the new one and not th
 	await page.context().clearCookies();
 
 	await signInAs(page, USER.password);
-	await expect(page.getByRole("alert")).toBeVisible({ timeout: 90_000 });
+	// The form's own error line (the route announcer is also an empty alert).
+	await expect(page.getByText("Invalid email or password")).toBeVisible({
+		timeout: 90_000,
+	});
 	await expect(page).toHaveURL(/\/login/);
 
 	await signInAs(page, USER.newPassword);
