@@ -1,5 +1,5 @@
 import { db } from "~/server/db";
-import { isProtected } from "./guard";
+import { isProtected } from "~/server/api/protection/guard";
 
 /**
  * Whether the account is protected right now, for work that runs outside a

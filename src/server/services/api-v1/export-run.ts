@@ -1,6 +1,6 @@
 import type { ExportRequest } from "@retrospend/api-contract";
 import { dayKey } from "@retrospend/domain/time-zone";
-import { isProtectedNow } from "~/server/api/protection/now";
+import { isProtectedNow } from "~/server/services/protection/now";
 import {
 	newExportPath,
 	putExport,

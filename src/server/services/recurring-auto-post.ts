@@ -26,7 +26,7 @@
 import { MissingRateError } from "@retrospend/domain/money";
 import { TRPCError } from "@trpc/server";
 import { env } from "~/env";
-import { isProtectedNow } from "~/server/api/protection/now";
+import { isProtectedNow } from "~/server/services/protection/now";
 import { textUnavailableProblem } from "~/server/crypto/field-open";
 import { db } from "~/server/db";
 import { ensureUserKeyringWhenSealing } from "~/server/services/keys/data-key.service";

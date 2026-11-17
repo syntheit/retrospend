@@ -18,7 +18,7 @@ vi.mock("~/env", () => ({
 }));
 
 // Unprotected: the state read needs the real database client.
-vi.mock("~/server/api/protection/now", () => ({
+vi.mock("~/server/services/protection/now", () => ({
 	isProtectedNow: vi.fn().mockResolvedValue(false),
 }));
 

@@ -29,7 +29,7 @@
  */
 import { TRPCError } from "@trpc/server";
 import { env } from "~/env";
-import { isProtectedNow } from "~/server/api/protection/now";
+import { isProtectedNow } from "~/server/services/protection/now";
 import { db } from "~/server/db";
 import { forUser } from "~/server/services/preview";
 import type { ParticipantType, Prisma } from "~prisma";

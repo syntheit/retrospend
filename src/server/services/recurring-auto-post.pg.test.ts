@@ -54,9 +54,9 @@ import { confirmRecurringExpense } from "./recurring-confirm.mutation";
 const watch = vi.hoisted(() => ({
 	before: undefined as undefined | ((userId: string) => Promise<void>),
 }));
-vi.mock("~/server/api/protection/now", async (importOriginal) => {
+vi.mock("~/server/services/protection/now", async (importOriginal) => {
 	const real =
-		await importOriginal<typeof import("~/server/api/protection/now")>();
+		await importOriginal<typeof import("~/server/services/protection/now")>();
 	return {
 		isProtectedNow: async (userId: string) => {
 			await watch.before?.(userId);
