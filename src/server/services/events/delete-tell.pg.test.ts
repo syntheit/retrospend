@@ -27,7 +27,7 @@ import {
 	fixtureDb,
 	openTransactionsEnded,
 } from "~/test/pg-harness";
-import { readEventFeed } from "./feed";
+import { readEventFeed, WHOLE_FEED } from "./feed";
 
 beforeAll(seedArsRates);
 
@@ -86,7 +86,12 @@ async function deletedInFeed(userId: string) {
 	await openTransactionsEnded();
 
 	for (let n = 0; n < 50 && deleted.length === 0; n++) {
-		const feed = await readEventFeed(adminDb, userId, { limit: 50 });
+		const feed = await readEventFeed(
+			adminDb,
+			userId,
+			{ limit: 50 },
+			WHOLE_FEED,
+		);
 		deleted = feed.items.filter((e) => e.type === "shared_expense.deleted");
 		if (deleted.length === 0) await new Promise((r) => setTimeout(r, 100));
 	}

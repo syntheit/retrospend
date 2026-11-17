@@ -21,7 +21,7 @@ import {
 import { encryptSecret } from "~/server/services/webhooks/secret";
 import { fanOutEvents } from "~/server/services/webhooks/worker";
 import { adminDb, fixtureDb, openTransactionsEnded } from "~/test/pg-harness";
-import { readEventFeed } from "./feed";
+import { readEventFeed, WHOLE_FEED } from "./feed";
 
 let sofia: TestUser;
 let martin: TestUser;
@@ -90,14 +90,21 @@ async function feedOf(user: TestUser, expected: number, type?: string) {
 	await openTransactionsEnded();
 
 	for (let n = 0; n < 50; n++) {
-		const feed = await readEventFeed(adminDb, user.user.id, { limit: 200 });
+		const feed = await readEventFeed(
+			adminDb,
+			user.user.id,
+			{ limit: 200 },
+			WHOLE_FEED,
+		);
 		const seen = type
 			? feed.items.filter((e) => e.type === type).length
 			: feed.items.length;
 		if (seen >= expected) return feed.items;
 		await new Promise((r) => setTimeout(r, 100));
 	}
-	return (await readEventFeed(adminDb, user.user.id, { limit: 200 })).items;
+	return (
+		await readEventFeed(adminDb, user.user.id, { limit: 200 }, WHOLE_FEED)
+	).items;
 }
 
 describe("events reach the other people on a shared entity", () => {

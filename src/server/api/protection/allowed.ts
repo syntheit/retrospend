@@ -173,6 +173,8 @@ export const V1_ALLOWED: Readonly<Record<string, string>> = {
 		"Vault: the account's own sealed records, which only its keys open",
 	"POST /vault/writes":
 		"Vault: stores the account's own sealed records, which only its keys open",
+	"GET /events":
+		"Feed: the account's own events, filtered to types with no personal ids or amounts",
 	"GET /tokens": "Security: the account's own access tokens",
 	"POST /tokens": "Security: mints an access token",
 	"DELETE /tokens/{id}": "Security: revokes an access token",
