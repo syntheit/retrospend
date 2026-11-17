@@ -21,6 +21,7 @@ import {
 	expectBody,
 	expectProblem,
 	fixtureDb,
+	sessionFor,
 	webCookieFor,
 } from "../../core/__tests__/harness";
 
@@ -141,10 +142,37 @@ describe("shares sync route: who may call it", () => {
 		});
 	});
 
-	it("refuses the web app's cookie session", async () => {
+	it("answers the web app's cookie session", async () => {
+		const res = await call("/sync/shares", {
+			headers: { ...OWN_IP, ...(await webCookieFor(userId)) },
+		});
+		expect(res.status, await res.text()).toBe(200);
+	});
+
+	it("still refuses a protected account's web session", async () => {
+		const protectedId = (await createTestUser()).user.id;
+		await adminDb.user.update({
+			where: { id: protectedId },
+			data: { protectionState: "ON" },
+		});
+		const headers = { ...OWN_IP, ...(await webCookieFor(protectedId)) };
+		for (const path of ["/sync/shares", "/sync/shares?budget=1"]) {
+			await expectProblem(
+				await call(path, { headers }),
+				403,
+				"protected_account",
+			);
+		}
+	});
+
+	it("refuses a device session that holds every token scope", async () => {
+		const token = await sessionFor(userId, {
+			scopes: [...SCOPES].join(" "),
+			clientId: "retrospend-cli",
+		});
 		await expectProblem(
 			await call("/sync/shares", {
-				headers: { ...OWN_IP, ...(await webCookieFor(userId)) },
+				headers: { ...OWN_IP, authorization: `Bearer ${token}` },
 			}),
 			403,
 			"missing_scope",
