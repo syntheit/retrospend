@@ -198,14 +198,17 @@ const ms = (since: number) => Math.round(performance.now() - since);
 describe.skipIf(sealedSuite)("the budget block at 10,000 expenses", () => {
 	it("times tx1 and tx2 and sizes the block", async () => {
 		const userId = await seed();
+		// The production 30 s limit fails a cold 10k freeze on a loaded runner;
+		// this file times the work, so it allows longer.
+		const slow = { force: true, timeoutMs: 120_000 };
 		const usd = Math.ceil(EXPENSES / 10);
 
 		const coldAt = performance.now();
-		expect(await runFreeze(adminDb, userId, { force: true })).toBe("ran");
+		expect(await runFreeze(adminDb, userId, slow)).toBe("ran");
 		const cold = ms(coldAt);
 
 		const warmAt = performance.now();
-		expect(await runFreeze(adminDb, userId, { force: true })).toBe("ran");
+		expect(await runFreeze(adminDb, userId, slow)).toBe("ran");
 		const warm = ms(warmAt);
 
 		// tx1 is quiet now (the stamps are unchanged), so this is tx2 alone.
