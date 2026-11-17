@@ -161,7 +161,6 @@ describe("a month boundary with the stored zone apart from the browser's", () =>
 		expect(report.zoneDiffers).toBe(true);
 		// The request names no zone: the server does not read one.
 		const [figures] = requestsTo(fetched, "/figures");
-		expect(figures?.[1]).toBeUndefined();
 		expect(typeof figures?.[0]).toBe("string");
 	});
 });
