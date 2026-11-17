@@ -265,6 +265,7 @@ export type RotationFailure =
 	| "wrongPassword"
 	| "rateLimited"
 	| "conflict"
+	| "notOffered"
 	| "params"
 	| "downgrade"
 	| "unavailable";
@@ -323,6 +324,9 @@ function refusal({ status, body }: Wire): PasswordRotationError {
 		return new PasswordRotationError("rateLimited");
 	if (code === "wrong_password")
 		return new PasswordRotationError("wrongPassword");
+	// The operator turned Advanced protection off after accounts were keyed.
+	if (status === 501 || code === "not_implemented")
+		return new PasswordRotationError("notOffered");
 	if (status === 409 || code === "conflict")
 		return new PasswordRotationError("conflict");
 	return new PasswordRotationError("unavailable");

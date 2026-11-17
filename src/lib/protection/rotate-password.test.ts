@@ -241,6 +241,36 @@ describe("rotatePassword", () => {
 		expect(t.posted(COMMIT)).toHaveLength(0);
 	});
 
+	it("refuses to send a new wrap that opens to a different account key, and posts no commit", async () => {
+		const t = setup();
+		// The seal succeeds and opens, but holds other bytes than the account key.
+		const primitives = async () => ({
+			...p,
+			aeadEncrypt: (...args: Parameters<Primitives["aeadEncrypt"]>) => {
+				const [key, nonce, , aad] = args;
+				return p.aeadEncrypt(key, nonce, p.randomBytes(32), aad);
+			},
+		});
+		expect(await failure(t.run(MASTER.password, NEXT, { primitives }))).toBe(
+			"unavailable",
+		);
+		expect(t.posted(COMMIT)).toHaveLength(0);
+	});
+
+	it("names a server that does not offer protection, on begin and on commit, without a retry", async () => {
+		const noBegin = setup({ begin: () => problem("not_implemented", 501) });
+		expect(await failure(noBegin.run(MASTER.password, NEXT))).toBe(
+			"notOffered",
+		);
+		expect(noBegin.posted(BEGIN)).toHaveLength(1);
+		expect(noBegin.posted(COMMIT)).toHaveLength(0);
+		const noCommit = setup({ commit: () => problem("not_implemented", 501) });
+		expect(await failure(noCommit.run(MASTER.password, NEXT))).toBe(
+			"notOffered",
+		);
+		expect(noCommit.posted(COMMIT)).toHaveLength(1);
+	});
+
 	it("refuses to send a new auth key that the new password does not make again", async () => {
 		const t = setup();
 		// kdfDerive runs old auth, old wrap, new auth, new wrap, check auth, check
