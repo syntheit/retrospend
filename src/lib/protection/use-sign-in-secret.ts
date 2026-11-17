@@ -100,10 +100,11 @@ export function useRotatePassword() {
 	const t = useTranslations("settingsV2.password");
 	const { data: session } = authClient.useSession();
 	const userId = session?.user.id;
+	const email = session?.user.email;
 	return useCallback(
 		(current: string, next: string) =>
-			(userId
-				? rotatePassword(userId, current, next)
+			(userId && email
+				? rotatePassword(userId, email, current, next)
 				: Promise.reject(new SignInSecretError("unavailable"))
 			).catch((e: unknown) => {
 				const code =
@@ -120,6 +121,6 @@ export function useRotatePassword() {
 								: check(code);
 				throw new Error(text, { cause: e });
 			}),
-		[check, t, userId],
+		[check, email, t, userId],
 	);
 }

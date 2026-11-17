@@ -17,8 +17,8 @@ import {
 	unwrapKey,
 	wrapKey,
 } from "@retrospend/crypto";
-import { loadWebSodium } from "@retrospend/crypto/web";
 import vectors from "@retrospend/crypto/vectors/keys.vectors.json";
+import { loadWebSodium } from "@retrospend/crypto/web";
 import type { RotateApi, SecretDeps } from "./sign-in-secret";
 
 type Helper = typeof import("./sign-in-secret");
@@ -261,7 +261,7 @@ describe("rotatePassword", () => {
 		expect(a.rotate).not.toHaveBeenCalled();
 	});
 
-	it("sends nothing when the answer carries a salt or parameters the proof did not use", async () => {
+	it("treats an answer with a salt or parameters the proof did not use as a conflict: one more run, and nothing sent", async () => {
 		for (const other of [
 			{ ...OLD_KDF, salt: NEW_SALT },
 			{ ...OLD_KDF, memoryKiB: 48 * 1024 },
@@ -271,10 +271,30 @@ describe("rotatePassword", () => {
 			const a = api({ kdf: other });
 			expect(await run(r, a.client)).toEqual({
 				ok: false,
-				reason: "protectionRefused",
+				reason: "conflict",
 			});
+			expect(a.begin).toHaveBeenCalledTimes(2);
 			expect(a.rotate).not.toHaveBeenCalled();
 		}
+	});
+
+	it("succeeds when the key set is stable on the second run", async () => {
+		const r = rig();
+		const begin = jest
+			.fn()
+			.mockResolvedValueOnce({
+				version: 1,
+				kdf: { ...OLD_KDF, passes: 2 },
+				wrappedAccountKey: oldWrap(),
+			})
+			.mockResolvedValueOnce({
+				version: 2,
+				kdf: OLD_KDF,
+				wrappedAccountKey: oldWrap(),
+			});
+		const a = api({ begin });
+		expect(await run(r, a.client)).toEqual({ ok: true });
+		expect(a.rotate).toHaveBeenCalledTimes(1);
 	});
 
 	it("refuses to send a new wrap that does not open", async () => {

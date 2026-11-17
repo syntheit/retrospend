@@ -6,6 +6,7 @@
 	"type": "module",
 	"exports": {
 		".": "./src/index.ts",
+		"./client": "./src/client/index.ts",
 		"./web": "./src/web.ts",
 		"./dev": "./src/dev.ts",
 		"./k4": "./src/k4.ts",
