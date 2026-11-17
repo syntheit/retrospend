@@ -94943,7 +94943,7 @@
 				"x-required-scope": "read"
 			},
 			"patch": {
-				"description": "An email change needs currentPassword. When the server sends email, the new address must confirm it first (emailChangePending).",
+				"description": "An email change needs currentPassword, and each check counts as a password try like a password change: too many answers 429 with Retry-After. When the server sends email, the new address must confirm it first (emailChangePending).",
 				"operationId": "updateProfile",
 				"parameters": [
 					{

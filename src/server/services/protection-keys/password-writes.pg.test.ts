@@ -11,6 +11,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { problemCode } from "~/server/api/error-formatter";
 import { adminRouter } from "~/server/api/routers/admin";
 import { authRouter } from "~/server/api/routers/auth";
+import { userRouter } from "~/server/api/routers/user";
 import { createCallerFactory } from "~/server/api/trpc";
 import {
 	call,
@@ -19,9 +20,11 @@ import {
 	webCookieFor,
 } from "~/server/api/v1/core/__tests__/harness";
 import { auth } from "~/server/better-auth";
+import { PASSWORD_CHECKING_PATHS } from "~/server/better-auth/password-tries";
 import {
 	changeOwnPassword,
 	PasswordTriesExceededError,
+	spendPasswordTry,
 } from "~/server/services/account-security.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
@@ -324,6 +327,7 @@ describe("changeOwnPassword", () => {
 	});
 
 	it("refuses a keyed account without spending a try: the sixth call still says protected_password", async () => {
+		await clearTriesWindowEdge();
 		const a = await passwordUser();
 		await giveKeys(a.id);
 		const session = randomUUID();
@@ -742,6 +746,114 @@ describe("better-auth password routes", () => {
 		);
 		expect(res.status).toBe(404);
 	});
+});
+
+describe("better-auth two-factor routes that check the password", () => {
+	/** A web session: its id, a cookie and a bearer for it. */
+	async function webSession(userId: string) {
+		const { cookie } = await webCookieFor(userId);
+		const token = decodeURIComponent(cookie.split("=")[1] ?? "").split(".")[0];
+		const row = await adminDb.session.findFirstOrThrow({
+			where: { token },
+			select: { id: true },
+		});
+		return { id: row.id, cookie, bearer: `Bearer ${token}` };
+	}
+	const post = (
+		path: string,
+		extra: Record<string, string>,
+		body: unknown = { password: "Not mine 1" },
+	) =>
+		auth.handler(
+			new Request(`http://localhost:3101/api/auth${path}`, {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+					origin: "http://localhost:3101",
+					...extra,
+				},
+				body: JSON.stringify(body),
+			}),
+		);
+	const PATHS = PASSWORD_CHECKING_PATHS;
+
+	it.each(PATHS)(
+		"%s refuses once the session's five tries are used, and the route itself counts one",
+		async (path) => {
+			await clearTriesWindowEdge();
+			const a = await passwordUser();
+			const s = await webSession(a.id);
+			for (let i = 0; i < 4; i++) await spendPasswordTry(a.id, s.id);
+			// The fifth try is the route's own: a wrong password, answered 400.
+			const fifth = await post(path, { cookie: s.cookie });
+			expect(fifth.status).not.toBe(429);
+			const sixth = await post(path, { cookie: s.cookie });
+			expect(sixth.status).toBe(429);
+			expect(Number(sixth.headers.get("retry-after"))).toBeGreaterThan(0);
+		},
+		120_000,
+	);
+
+	it("counts a call made with a bearer for a web session, not only one with the cookie", async () => {
+		await clearTriesWindowEdge();
+		const a = await passwordUser();
+		const s = await webSession(a.id);
+		for (let i = 0; i < 5; i++) await spendPasswordTry(a.id, s.id);
+		const res = await post("/two-factor/get-totp-uri", {
+			authorization: s.bearer,
+		});
+		expect(res.status).toBe(429);
+	});
+
+	it("spends nothing for a call that carries no password, or no session", async () => {
+		await clearTriesWindowEdge();
+		const a = await passwordUser();
+		const s = await webSession(a.id);
+		for (let i = 0; i < 5; i++) await spendPasswordTry(a.id, s.id);
+		const noPassword = await post(
+			"/two-factor/generate-backup-codes",
+			{ cookie: s.cookie },
+			{},
+		);
+		expect(noPassword.status).not.toBe(429);
+		const noSession = await post("/two-factor/enable", {});
+		expect(noSession.status).not.toBe(429);
+	});
+});
+
+describe("user.updateProfile with an email and a password change in one request", () => {
+	it("counts one try for the request, not one for each check", async () => {
+		await clearTriesWindowEdge();
+		const a = await passwordUser();
+		const caller = createCallerFactory(userRouter)({
+			session: makeSession({
+				id: a.id,
+				email: a.email,
+				username: "someone",
+			}),
+			db: adminDb,
+			headers: new Headers(),
+		} as never);
+		for (let i = 0; i < 3; i++) await spendPasswordTry(a.id, "session-1");
+		await caller.updateProfile({
+			name: "Lucía",
+			username: "someone",
+			email: `${randomUUID()}@pg-test.invalid`,
+			password: NEW_PASSWORD,
+			currentPassword: PASSWORD,
+		});
+		// 3 before and 1 for the request leaves the fifth, and not the sixth.
+		await spendPasswordTry(a.id, "session-1");
+		await expect(spendPasswordTry(a.id, "session-1")).rejects.toBeInstanceOf(
+			PasswordTriesExceededError,
+		);
+		expect(
+			await verifyPassword({
+				password: NEW_PASSWORD,
+				hash: await storedHash(a.id),
+			}),
+		).toBe(true);
+	}, 120_000);
 });
 
 describe("POST /api/v1/me/password", () => {

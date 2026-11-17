@@ -79,6 +79,22 @@ function withoutSessionCookies(cookieName: string, headers: Headers): Headers {
 	return next;
 }
 
+/**
+ * The session tokens a request can act as, the way guardScopedSessions reads
+ * them: a bearer the plugin acts on replaces the cookies, otherwise the cookies.
+ */
+export function requestSessionTokens(
+	headers: Headers,
+	cookieName: string,
+): string[] {
+	const bearer = pluginBearer(headers);
+	return (
+		bearer === null
+			? cookieSessionTokens(cookieName, headers)
+			: [bearerSessionToken(bearer)]
+	).filter(Boolean);
+}
+
 /** Auth endpoints a scoped (mobile or device) session may still call. */
 const SCOPED_ALLOWED = ["/get-session", "/sign-out", "/device/token"];
 /** Sign-in and sign-up do not act on the current session, so a stale token never blocks them. */

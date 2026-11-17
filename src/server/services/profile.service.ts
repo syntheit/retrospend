@@ -200,7 +200,12 @@ export async function updateProfile(
 	current: { id: string; username: string; email: string },
 	input: ProfileChanges,
 	sessionId: string,
-): Promise<{ emailChangePending: boolean; user: UpdatedIdentity }> {
+): Promise<{
+	emailChangePending: boolean;
+	user: UpdatedIdentity;
+	/** The current password was checked, which spent one try. */
+	passwordChecked: boolean;
+}> {
 	const userId = current.id;
 	let name: string | undefined;
 	try {
@@ -229,7 +234,7 @@ export async function updateProfile(
 	}
 	if (newEmail !== null && (await isEmailDeliveryEnabled())) {
 		const user = await startEmailChange(db, current, write, newEmail);
-		return { emailChangePending: true, user };
+		return { emailChangePending: true, user, passwordChecked: true };
 	}
 	// The email column is not writable by the app role: an immediate change
 	// (no email delivery) goes through the owner connection, for the caller's
@@ -243,7 +248,11 @@ export async function updateProfile(
 	// helper re-checks emailVerified and never throws.
 	if (newEmail !== null)
 		await migrateGuestDataForVerifiedUser(globalDb, userId);
-	return { emailChangePending: false, user };
+	return {
+		emailChangePending: false,
+		user,
+		passwordChecked: newEmail !== null,
+	};
 }
 
 export async function cancelPendingEmailChange(db: AppDb, userId: string) {

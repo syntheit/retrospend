@@ -86,7 +86,7 @@ export const profileContract = {
 			tags: TAG,
 			summary: "Change name, username or email",
 			description:
-				"An email change needs currentPassword. When the server sends email, the new address must confirm it first (emailChangePending).",
+				"An email change needs currentPassword, and each check counts as a password try like a password change: too many answers 429 with Retry-After. When the server sends email, the new address must confirm it first (emailChangePending).",
 		})
 		.meta({ scope: "write:settings", event: "profile.updated" })
 		.input(updateProfileSchema)

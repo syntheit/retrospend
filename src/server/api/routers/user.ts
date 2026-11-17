@@ -56,7 +56,7 @@ export const userRouter = createTRPCRouter({
 			// The same services as profile.update and PATCH /api/v1/profile: the
 			// app role cannot write the email, username or password columns, and a
 			// new email needs the current password.
-			const { user } = await updateProfile(
+			const { user, passwordChecked } = await updateProfile(
 				db,
 				{
 					id: session.user.id,
@@ -78,6 +78,8 @@ export const userRouter = createTRPCRouter({
 					keepSessionId: session.session.id,
 					currentPassword: input.currentPassword,
 					newPassword: input.password,
+					// One request, one try: the email check already counted it.
+					tryAlreadySpent: passwordChecked,
 				});
 			}
 

@@ -79,10 +79,16 @@ export async function changeOwnPassword(input: {
 	keepSessionId: string;
 	currentPassword: string;
 	newPassword: string;
+	/**
+	 * The same request already spent its try on this password (the email check
+	 * of user.updateProfile), so one request counts once.
+	 */
+	tryAlreadySpent?: boolean;
 }): Promise<{ signedOut: number }> {
 	// A keyed account hears the real reason before any try is spent.
 	if (await hasKeySet(db, input.userId)) throw new ProtectedPasswordError();
-	await spendPasswordTry(input.userId, input.keepSessionId);
+	if (!input.tryAlreadySpent)
+		await spendPasswordTry(input.userId, input.keepSessionId);
 
 	const credential = await db.account.findFirst({
 		where: { userId: input.userId, providerId: "credential" },

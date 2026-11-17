@@ -21,6 +21,7 @@ import {
 	MAX_SCOPE_LIST_LENGTH,
 	MOBILE_CLIENT_ID,
 } from "~/server/api/v1/scopes";
+import { spendTryForPasswordCheck } from "~/server/better-auth/password-tries";
 import { guardScopedSessions } from "~/server/better-auth/scoped-sessions";
 import { db } from "~/server/db";
 import { emailSubject } from "~/server/email-copy";
@@ -196,6 +197,8 @@ export const auth = betterAuth({
 	// (reset runs through auth.requestPasswordReset and auth.resetPassword).
 	// /verify-password is a password check that spends none of the tries
 	// (account-security.service TRIES): a stolen cookie could guess with it.
+	// The two-factor routes that check the password stay, and spend a try in the
+	// before hook (password-tries.ts).
 	disabledPaths: [
 		"/change-password",
 		"/request-password-reset",
@@ -233,6 +236,12 @@ export const auth = betterAuth({
 					});
 				}
 			}
+			await spendTryForPasswordCheck({
+				path,
+				body: context.body,
+				headers: context.request.headers,
+				cookieName: context.context.authCookies.sessionToken.name,
+			});
 			guardApiKeyRequest(path, context.body);
 			return result;
 		}),
