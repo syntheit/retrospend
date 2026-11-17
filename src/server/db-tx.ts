@@ -114,6 +114,9 @@ function runAs<T>(
 	);
 }
 
+/** Each open user transaction's client, mapped to the user it runs as. Keystore transactions are never in it. */
+const openTransactions = new WeakMap<object, string>();
+
 /**
  * Runs `work` in one interactive transaction with RLS set for `userId`.
  * The RLS settings are the first statement inside it.
@@ -123,6 +126,9 @@ function runAs<T>(
  * user's keys, db-core.ts), whose keys load before the transaction opens, on
  * their own connection. So `tx` is never the per-query wrapper that would
  * split the work across connections, and no keystore query runs inside it.
+ * A transaction client this function opened joins its own transaction when
+ * passed back for the same user (a service called from inside a money write);
+ * `options` then do not apply, and another user throws.
  * Any other client throws: it would run model calls with no sealing, so a
  * script's own `new PrismaClient` copies ciphertext as text or writes
  * plaintext. Keystore work uses `keystoreTransaction`.
@@ -138,16 +144,26 @@ export async function userTransaction<T>(
 	work: (tx: Prisma.TransactionClient) => Promise<T>,
 	options?: UserTransactionOptions,
 ): Promise<T> {
+	const openFor = openTransactions.get(client);
+	if (openFor === userId) return work(client as Prisma.TransactionClient);
+	if (openFor !== undefined)
+		throw new Error(
+			"userTransaction cannot switch users inside an open transaction",
+		);
 	const cryptoClientFor = cryptoClients.get(client);
+	const joinable = (tx: Prisma.TransactionClient) => {
+		openTransactions.set(tx, userId);
+		return work(tx);
+	};
 	if (!cryptoClientFor && fakesAllowed)
-		return runAs(client, userId, work, options);
+		return runAs(client, userId, joinable, options);
 	if (!cryptoClientFor)
 		throw new Error(
 			"userTransaction needs the client from db.ts (the global db or a user-scoped one); use keystoreTransaction for key work",
 		);
 	const crypto = cryptoClientFor(userId);
 	await crypto.ready();
-	return runAs(crypto.client, userId, work, options);
+	return runAs(crypto.client, userId, joinable, options);
 }
 
 /**
