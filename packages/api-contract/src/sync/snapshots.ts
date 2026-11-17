@@ -120,7 +120,7 @@ export type SyncSettingsDto = z.infer<typeof syncSettingsSchema>;
 
 /** The note every snapshot shares: what makes it differ from the row routes. */
 const SNAPSHOT_DESCRIPTION =
-	"A snapshot, not a delta: the whole table as of one read, with no cursor and no tombstones, so it never answers 410. Pull it again to replace the last copy. Needs the `sync` session scope: a session signed in by a client that identifies as the mobile app has it, an API key, personal token or device session never does. It reaches only the caller's own data.";
+	"A snapshot, not a delta: the whole table as of one read, with no cursor and no tombstones, so it never answers 410. Pull it again to replace the last copy. Needs the `sync` session scope: the web app's own cookie session and a session signed in by a client that identifies as the mobile app have it, an API key, personal token or device session never does. It reaches only the caller's own data.";
 
 export const syncSnapshotsContract = {
 	shares: v1

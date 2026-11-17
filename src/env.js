@@ -99,6 +99,11 @@ export const env = createEnv({
 		NEXT_PUBLIC_APP_URL: z.url().default("http://localhost:1997"),
 		NEXT_PUBLIC_SHOW_LANDING_PAGE: z.enum(["true", "false"]).default("false"),
 		NEXT_PUBLIC_ENABLE_LEGAL_PAGES: z.enum(["true", "false"]).default("true"),
+		// Dev flag: runs the device engine in a web worker next to Home, which
+		// only compares its figures with the server's. Unset in every release
+		// build: scripts/check-release-drop.mjs proves the worker and the engine
+		// are then not in .next. Read as a literal in lib/device-engine/load.ts.
+		NEXT_PUBLIC_DEV_DEVICE_ENGINE: z.enum(["0", "1"]).optional(),
 	},
 
 	/**
@@ -120,6 +125,7 @@ export const env = createEnv({
 		NEXT_PUBLIC_ENABLE_LEGAL_PAGES:
 			process.env.ENABLE_LEGAL_PAGES ??
 			process.env.NEXT_PUBLIC_ENABLE_LEGAL_PAGES,
+		NEXT_PUBLIC_DEV_DEVICE_ENGINE: process.env.NEXT_PUBLIC_DEV_DEVICE_ENGINE,
 		NODE_ENV: process.env.NODE_ENV,
 		NEXT_PUBLIC_APP_URL:
 			process.env.PUBLIC_URL ?? process.env.NEXT_PUBLIC_APP_URL,

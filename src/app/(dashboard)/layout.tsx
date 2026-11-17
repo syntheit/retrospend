@@ -8,6 +8,7 @@ import { RevisionHistoryProvider } from "~/components/revision-history-provider"
 import { AppShell } from "~/components/shell/app-shell";
 import { EntrySheetsProvider } from "~/features/entry/provider";
 import { LocaleSync } from "~/i18n/locale-sync";
+import { DeviceEngineLifecycle } from "~/lib/device-engine/react";
 import { getWebSession } from "~/server/better-auth/web-session";
 import { db } from "~/server/db";
 import { api, HydrateClient } from "~/trpc/server";
@@ -46,6 +47,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
 				cookieLocale={currentCookie}
 				dbLocale={user?.language ?? "en"}
 			/>
+			<DeviceEngineLifecycle />
 			<MoneyPrefsProvider>
 				<EntrySheetsProvider>
 					<RecurringModalProvider>

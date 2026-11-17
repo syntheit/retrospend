@@ -50,9 +50,9 @@ export const DEVICE_CLIENT_IDS: readonly string[] = [
  * - `account:delete`: delete the signed-in user's own account.
  * - `account:security`: change the password, list the signed-in sessions
  *   and sign one of them out.
- * - `sync`: the raw row pulls under `/sync`. A session signed
- *   in by a client that identifies as the mobile app holds it; the web app
- *   and every token do not.
+ * - `sync`: the raw row pulls under `/sync`. The web app's own cookie session
+ *   and a session signed in by a client that identifies as the mobile app
+ *   hold it; a device session, API key and personal token never do.
  * - `vault`: pull and push the sealed records of a protected account
  *   (`/vault`). A web session holds it; a mobile session holds it with `read`,
  *   `write:expenses` and `write:money` stored, so a narrowed phone session

@@ -70,6 +70,7 @@
 		"@retrospend/api-contract": "workspace:*",
 		"@retrospend/crypto": "workspace:*",
 		"@retrospend/domain": "workspace:*",
+		"@retrospend/engine": "workspace:*",
 		"@retrospend/i18n": "workspace:*",
 		"@t3-oss/env-nextjs": "^0.13.11",
 		"@tabler/icons-react": "^3.49.0",
