@@ -49,7 +49,12 @@ import { Prisma } from "~prisma";
 import { createPreviewRunner, type PreviewRunner } from "./runner";
 import type { TransactionPurpose, TransactionRunner } from "./types";
 
-/** A preview reads every figure twice, so it gets more than Prisma's 5s default. */
+/**
+ * A preview reads every figure twice, so it gets more than Prisma's 5s default.
+ * Apply does the same reads and the writes, so it gets the same budget: a write
+ * whose preview fit must not then fail on a slower apply (a 100-row bulk delete
+ * of spread expenses on a sealed, loaded server passed 5s).
+ */
 export const PREVIEW_TIMEOUT_MS = 15_000;
 
 const TRANSACTION_OPTIONS: Record<TransactionPurpose, UserTransactionOptions> =
@@ -58,7 +63,10 @@ const TRANSACTION_OPTIONS: Record<TransactionPurpose, UserTransactionOptions> =
 			isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
 			timeout: PREVIEW_TIMEOUT_MS,
 		},
-		apply: { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+		apply: {
+			isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+			timeout: PREVIEW_TIMEOUT_MS,
+		},
 	};
 
 /** The RLS transaction a preview or apply runs in for `userId`. Exported so pg tests use the real one. */
