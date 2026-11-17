@@ -14,7 +14,8 @@ export const PROBLEM_STATUS = {
 	forbidden: 403,
 	missing_scope: 403,
 	// The account has advanced protection on and the route has not been cleared
-	// for it (src/server/api/protection/allowed.ts). Not a scope a token can gain.
+	// for it (protection/v1-allowed.ts; openapi.json marks each operation with
+	// x-protected-account). Not a scope a token can gain.
 	protected_account: 403,
 	// The account's password is also its Advanced protection key set, so the
 	// server cannot change or reset it alone (a client rotates it with the keys).
@@ -84,7 +85,10 @@ export const problemIssueSchema = z.object({
  * RFC 9457 problem details plus the extension members we use: the stable
  * `code`, field `errors` for validation failures, `requiredScope` for
  * missing_scope, `retryAfter` (seconds) for rate_limited and `conflictIds` for
- * a vault write conflict.
+ * a vault write conflict. Advanced protection adds three 403 codes:
+ * `protected_account` (the route is not cleared for the account),
+ * `protected_password` (the password is changed with the keys, through the
+ * protection routes) and `session_not_fresh` (sign in again).
  */
 export const problemSchema = z
 	.object({
