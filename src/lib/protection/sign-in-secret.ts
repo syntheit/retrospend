@@ -14,6 +14,8 @@
 // (spike 4.8). It stops a server that only controls the API answers, and an
 // account's first sign-in on a new browser is not covered.
 import type { PreloginKdf } from "@retrospend/api-contract";
+import type { Argon2Params, Primitives } from "@retrospend/crypto";
+import { generateId } from "~/lib/id";
 
 export type SignInSecretFailure =
 	| "unavailable"
@@ -257,4 +259,228 @@ export async function accountIsKeyed(
 		return true;
 	}
 	return isRecorded(deps, email);
+}
+
+export type RotationFailure =
+	| "wrongPassword"
+	| "rateLimited"
+	| "conflict"
+	| "params"
+	| "downgrade"
+	| "unavailable";
+
+/** Fixed text only, like SignInSecretError: no key, secret or typed text in a message. */
+export class PasswordRotationError extends Error {
+	constructor(readonly code: RotationFailure) {
+		super(code);
+		this.name = "PasswordRotationError";
+	}
+}
+
+export type RotateDeps = SignInSecretDeps & {
+	/** The primitives (the WebAssembly build by default); the tests wrap them to corrupt or watch a step. */
+	primitives?: () => Promise<Primitives>;
+	/** The Argon2id parameters of the new password (the default set unless a test says otherwise). */
+	newParams?: Argon2Params;
+};
+
+const webPrimitives = async () =>
+	(await import("@retrospend/crypto/web")).createWebPrimitives();
+
+type Wire = { status: number; body: unknown };
+
+const asObject = (v: unknown): Record<string, unknown> =>
+	typeof v === "object" && v !== null ? (v as Record<string, unknown>) : {};
+
+async function post(
+	deps: RotateDeps,
+	path: string,
+	body: unknown,
+	idempotencyKey?: string,
+): Promise<Wire> {
+	try {
+		const res = await deps.fetch(path, {
+			method: "POST",
+			credentials: "same-origin",
+			headers: {
+				accept: "application/json",
+				"content-type": "application/json",
+				...(idempotencyKey ? { "idempotency-key": idempotencyKey } : {}),
+			},
+			body: JSON.stringify(body),
+			signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+		});
+		return { status: res.status, body: await res.json().catch(() => null) };
+	} catch {
+		throw new PasswordRotationError("unavailable");
+	}
+}
+
+/** The stable code of a refused answer; raw text from the server is never used. */
+function refusal({ status, body }: Wire): PasswordRotationError {
+	const code = asObject(body).code;
+	if (status === 429 || code === "rate_limited")
+		return new PasswordRotationError("rateLimited");
+	if (code === "wrong_password")
+		return new PasswordRotationError("wrongPassword");
+	if (status === 409 || code === "conflict")
+		return new PasswordRotationError("conflict");
+	return new PasswordRotationError("unavailable");
+}
+
+const sameBytes = (a: Uint8Array, b: Uint8Array): boolean => {
+	let diff = a.length ^ b.length;
+	for (let i = 0; i < a.length; i++) diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
+	return diff === 0;
+};
+
+/**
+ * One run of the password change for an account with keys: prove the old
+ * password, open the account key with it, wrap the same key under the new
+ * one, check that before sending, then commit. Every secret buffer is wiped
+ * in `finally`.
+ */
+async function rotateOnce(
+	deps: RotateDeps,
+	userId: string,
+	current: string,
+	next: string,
+): Promise<void> {
+	const keys = await ask(deps, "", true);
+	if (!keys) throw new PasswordRotationError("downgrade");
+	const lib = await import("@retrospend/crypto");
+	const oldParams = { memoryKiB: keys.kdf.memoryKiB, passes: keys.kdf.passes };
+	const newParams = deps.newParams ?? lib.ARGON2_DEFAULT;
+	try {
+		lib.checkArgon2Params(oldParams);
+		lib.checkArgon2Params(newParams);
+	} catch {
+		throw new PasswordRotationError("params");
+	}
+	const oldSalt = lib.fromBase64Url(keys.kdf.salt);
+	if (oldSalt?.length !== 16) throw new PasswordRotationError("unavailable");
+	const p = await (deps.primitives ?? webPrimitives)();
+	const secrets: Uint8Array[] = [];
+	const keep = (bytes: Uint8Array) => {
+		secrets.push(bytes);
+		return bytes;
+	};
+	const subkeys = (master: Uint8Array) => {
+		const k = lib.masterSubkeys(p, keep(master));
+		return { authKey: keep(k.authKey), wrapKey: keep(k.wrapKey) };
+	};
+	try {
+		await deps.paint();
+		const old = subkeys(lib.deriveMasterKey(p, current, oldSalt, oldParams));
+		const begin = await post(deps, "/api/v1/me/protection/password/begin", {
+			currentAuthKey: lib.signInSecret(old.authKey),
+		});
+		if (begin.status !== 200) throw refusal(begin);
+		const { version, kdf, wrappedAccountKey } = asObject(begin.body);
+		const beginKdf = readKdf(kdf);
+		const oldWrap =
+			typeof wrappedAccountKey === "string"
+				? lib.fromBase64Url(wrappedAccountKey)
+				: null;
+		if (!beginKdf || !oldWrap || !Number.isInteger(version))
+			throw new PasswordRotationError("unavailable");
+		// The wrap belongs to the parameters the keys route gave: a change
+		// between the two calls starts over.
+		if (
+			beginKdf.salt !== keys.kdf.salt ||
+			beginKdf.memoryKiB !== keys.kdf.memoryKiB ||
+			beginKdf.passes !== keys.kdf.passes
+		)
+			throw new PasswordRotationError("conflict");
+		let accountKey: Uint8Array;
+		try {
+			accountKey = keep(
+				lib.unwrapKey(p, old.wrapKey, "ak-password", userId, oldWrap),
+			);
+		} catch {
+			// The server proved the password was right, so this wrap is corrupt or
+			// swapped: nothing is sent.
+			throw new PasswordRotationError("unavailable");
+		}
+
+		const newSalt = p.randomBytes(16);
+		const fresh = subkeys(lib.deriveMasterKey(p, next, newSalt, newParams));
+		const newKdf: PreloginKdf = {
+			salt: lib.toBase64Url(newSalt),
+			memoryKiB: newParams.memoryKiB,
+			passes: newParams.passes,
+		};
+		const newAuthKey = lib.signInSecret(fresh.authKey);
+		const wrapped = lib.toBase64Url(
+			lib.wrapKey(p, fresh.wrapKey, "ak-password", userId, accountKey),
+		);
+
+		// What was made must open from the new password alone, with the values
+		// as they will be sent, or the person would lock themselves out.
+		const sentSalt = lib.fromBase64Url(newKdf.salt);
+		const sentWrap = lib.fromBase64Url(wrapped);
+		if (!sentSalt || !sentWrap) throw new PasswordRotationError("unavailable");
+		const again = subkeys(
+			lib.deriveMasterKey(p, next, sentSalt, {
+				memoryKiB: newKdf.memoryKiB,
+				passes: newKdf.passes,
+			}),
+		);
+		let reopened: Uint8Array;
+		try {
+			reopened = keep(
+				lib.unwrapKey(p, again.wrapKey, "ak-password", userId, sentWrap),
+			);
+		} catch {
+			throw new PasswordRotationError("unavailable");
+		}
+		if (
+			!sameBytes(reopened, accountKey) ||
+			lib.signInSecret(again.authKey) !== newAuthKey
+		)
+			throw new PasswordRotationError("unavailable");
+
+		const commit = await post(
+			deps,
+			"/api/v1/me/protection/password",
+			{
+				currentAuthKey: lib.signInSecret(old.authKey),
+				newAuthKey,
+				kdf: newKdf,
+				wrappedAccountKey: wrapped,
+				baseVersion: version as number,
+			},
+			generateId(),
+		);
+		if (commit.status !== 200) throw refusal(commit);
+	} finally {
+		for (const bytes of secrets) p.wipe(bytes);
+	}
+}
+
+/**
+ * Changes the password of the signed-in account that has keys, entirely in
+ * the browser: the server only ever sees the two sign-in secrets and the
+ * rewrapped account key. A `conflict` (the keys changed under it) starts the
+ * whole run again once, with a new Idempotency-Key. Throws
+ * PasswordRotationError or SignInSecretError.
+ */
+export async function rotatePassword(
+	userId: string,
+	current: string,
+	next: string,
+	options: { deps?: Partial<RotateDeps> } = {},
+): Promise<void> {
+	const deps: RotateDeps = { ...defaults(), ...options.deps };
+	for (let attempt = 0; ; attempt++) {
+		try {
+			return await rotateOnce(deps, userId, current, next);
+		} catch (e) {
+			const again =
+				e instanceof PasswordRotationError &&
+				e.code === "conflict" &&
+				attempt === 0;
+			if (!again) throw e;
+		}
+	}
 }
