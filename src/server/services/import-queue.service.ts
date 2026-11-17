@@ -71,9 +71,6 @@ const COMPLETED_JOB_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 /** The stable reason a job of a protected account fails with, in `statusMessage`. */
 const PROTECTED_CODE = "protected_account";
 
-/** Thrown when the owner turned protection on while a job ran; the job fails with the code, not this message. */
-class ProtectedJobError extends Error {}
-
 // ── Service ───────────────────────────────────────────────────────────
 
 export class ImportQueueService {
@@ -107,7 +104,7 @@ export class ImportQueueService {
 
 	/** The sidecar call can take minutes: the state is read again before a result is stored. */
 	private async assertNotProtected(userId: string) {
-		if (await isProtectedNow(userId)) throw new ProtectedJobError();
+		if (await isProtectedNow(userId)) throw new Error(PROTECTED_CODE);
 	}
 
 	/**
@@ -236,8 +233,9 @@ export class ImportQueueService {
 				job.id,
 				{
 					status: "FAILED",
-					// A refusal gives its code, never text: nothing is sealed.
-					...(error instanceof ProtectedJobError
+					// Once protected, the code and never the error text (it can quote
+					// the file): nothing is sealed, whatever the failure was.
+					...((await isProtectedNow(job.userId))
 						? { statusMessage: PROTECTED_CODE }
 						: { errorMessage: errorText(error) }),
 					failedAt: new Date(),
@@ -523,6 +521,17 @@ export class ImportQueueService {
 				throw new Error("No transactions extracted from statement");
 			}
 
+			// Counted before the check: the tokens were used, and a count is not personal data.
+			if (totalTokensUsed > 0) {
+				const providerType = provider === "openrouter" ? "external" : "local";
+				await recordTokenUsage(
+					this.db,
+					job.userId,
+					totalTokensUsed,
+					providerType,
+				);
+			}
+
 			await this.assertNotProtected(job.userId);
 			// Store results in job
 			await this.write(
@@ -542,17 +551,6 @@ export class ImportQueueService {
 				},
 				"PROCESSING",
 			);
-
-			// Record token usage for both local and external providers
-			if (totalTokensUsed > 0) {
-				const providerType = provider === "openrouter" ? "external" : "local";
-				await recordTokenUsage(
-					this.db,
-					job.userId,
-					totalTokensUsed,
-					providerType,
-				);
-			}
 		} catch (error) {
 			if (error instanceof Error && error.name === "AbortError") {
 				throw new Error(

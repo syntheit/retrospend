@@ -166,6 +166,40 @@ describe("a protected account's import jobs", () => {
 	});
 });
 
+describe("a job that fails after protection turns on", () => {
+	// Reads: before the claim, then in the failure handler.
+	function flipAtFailure(userId: string) {
+		let reads = 0;
+		watch.before = async () => {
+			if (++reads === 2) await protect(userId);
+		};
+	}
+
+	it("keeps the importer's empty answer out of the error text", async () => {
+		const { userId, jobId } = await queued("BANK_STATEMENT");
+		importer.mockResolvedValueOnce(new Response(""));
+		flipAtFailure(userId);
+		await run(userId);
+		expect(importer).toHaveBeenCalledTimes(1);
+		expectRefused(await stored(jobId));
+	});
+
+	it("keeps the CSV's parse warnings, which quote the file, out of the error text", async () => {
+		const { userId, jobId } = await queued("CSV");
+		await fixtureDb.importJob.update({
+			where: { id: jobId },
+			data: {
+				fileData: Buffer.from(
+					"date,title,amount,currency\nayer-mismo,Kiosco,500,ARS\n",
+				).toString("base64"),
+			},
+		});
+		flipAtFailure(userId);
+		await run(userId);
+		expectRefused(await stored(jobId));
+	});
+});
+
 describe("an unprotected account's import jobs", () => {
 	it("still run: a CSV reaches review and a statement stores the importer's rows", async () => {
 		const csv = await queued("CSV");
