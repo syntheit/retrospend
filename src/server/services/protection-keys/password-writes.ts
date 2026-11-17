@@ -10,6 +10,7 @@
  * lock, so a writer that waited sees the key set it created. The three that
  * follow a check of the current password share `swapCredentialHash`.
  */
+import { isProtected } from "@retrospend/api-contract/protection-state";
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
 
@@ -146,7 +147,7 @@ export async function settleKeysForReset(
 	by: ResetBy,
 ): Promise<{ keysRemoved: boolean }> {
 	if (!state.hasKeySet) return { keysRemoved: false };
-	if (state.protectionState !== "OFF") throw new ProtectedPasswordError();
+	if (isProtected(state.protectionState)) throw new ProtectedPasswordError();
 	await tx.protectionKeyWrap.deleteMany({ where: { userId } });
 	await tx.protectionKeySet.deleteMany({ where: { userId } });
 	// Records sealed under the removed keys can never be opened, and while the

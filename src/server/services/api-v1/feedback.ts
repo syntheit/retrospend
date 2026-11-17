@@ -20,7 +20,7 @@ import { uploadFile } from "~/server/storage";
 import { assertAdmin } from "./admin";
 import { decodeCursor, encodeCursor } from "./cursor";
 import type { LedgerCaller } from "./money-op";
-import { trpcFeedback } from "./trpc-bridge";
+import { trpcFeedback, V1_GUARDED } from "./trpc-bridge";
 
 /**
  * v1 adapters for POST /feedback and the admin feedback inbox. Sending is
@@ -30,7 +30,7 @@ import { trpcFeedback } from "./trpc-bridge";
  */
 
 export async function submit(caller: LedgerCaller, input: SubmitFeedback) {
-	const sent = await (await trpcFeedback(caller)).submit(input);
+	const sent = await (await trpcFeedback(caller, V1_GUARDED)).submit(input);
 	return { ok: true as const, id: sent.id };
 }
 
@@ -237,7 +237,7 @@ export async function listInbox(
 ) {
 	assertAdmin(caller);
 	const after = decodeCursor(q.cursor, idKey);
-	const page = await (await trpcFeedback(caller)).list({
+	const page = await (await trpcFeedback(caller, V1_GUARDED)).list({
 		status: q.status,
 		limit: q.limit,
 		cursor: after?.id,
@@ -278,7 +278,7 @@ export async function setStatus(
 ) {
 	assertAdmin(caller);
 	await requireFeedback(input.id);
-	await (await trpcFeedback(caller)).updateStatus(input);
+	await (await trpcFeedback(caller, V1_GUARDED)).updateStatus(input);
 	return { ok: true as const };
 }
 
@@ -300,6 +300,6 @@ export async function remove(caller: LedgerCaller, id: string) {
 	assertAdmin(caller);
 	await requireFeedback(id);
 	// The procedure deletes the screenshot with the entry.
-	await (await trpcFeedback(caller)).delete({ id });
+	await (await trpcFeedback(caller, V1_GUARDED)).delete({ id });
 	return { ok: true as const };
 }

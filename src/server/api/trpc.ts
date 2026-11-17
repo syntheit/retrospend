@@ -14,7 +14,8 @@ import superjson from "superjson";
 import { MissingRateError } from "@retrospend/domain/money";
 import { errorFormatter } from "~/server/api/error-formatter";
 import { TRPC_ALLOWED } from "~/server/api/protection/allowed";
-import { assertAllowed, isProtected } from "~/server/api/protection/guard";
+import { isProtected } from "@retrospend/api-contract/protection-state";
+import { assertAllowed } from "~/server/api/protection/guard";
 import type { Session } from "~/server/better-auth/config";
 import { assertNoSealedText } from "~/server/crypto/response-guard";
 import { getWebSession } from "~/server/better-auth/web-session";
@@ -117,6 +118,14 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
 };
 
 /**
+ * `guardedByV1` is set by the v1 bridge alone (trpc-bridge.ts), after its
+ * route ran the protection guard. No request context carries it.
+ */
+type Context = Awaited<ReturnType<typeof createTRPCContext>> & {
+	guardedByV1?: true;
+};
+
+/**
  * 2. INITIALIZATION
  *
  * This is where the tRPC API is initialized, connecting the context and transformer. We also parse
@@ -124,7 +133,7 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
  * errors on the backend.
  */
 const t = initTRPC
-	.context<typeof createTRPCContext>()
+	.context<() => Promise<Context>>()
 	// `public` marks a procedure that needs no session, so the protection
 	// allowlist test can pin the set instead of guessing it.
 	.meta<{ public?: boolean }>()
@@ -206,7 +215,7 @@ const sealedTextGuard = t.middleware(async ({ next }) => {
  */
 const protectionGuard = t.middleware(async ({ ctx, path, next }) => {
 	const user = ctx.session?.user;
-	if (user)
+	if (user && !ctx.guardedByV1)
 		assertAllowed(isProtected(user.protectionState), path, TRPC_ALLOWED);
 	return next();
 });

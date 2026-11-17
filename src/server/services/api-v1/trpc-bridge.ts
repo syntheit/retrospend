@@ -1,4 +1,6 @@
+import { isProtected } from "@retrospend/api-contract/protection-state";
 import { TRPCError } from "@trpc/server";
+import { ProtectedAccountError } from "~/server/api/protection/guard";
 import { adminRouter } from "~/server/api/routers/admin";
 import { auditLogRouter } from "~/server/api/routers/audit-log";
 import { authRouter } from "~/server/api/routers/auth";
@@ -47,7 +49,20 @@ type BridgeUser = Pick<
 	| "protectionState"
 >;
 
-async function contextFor(caller: BridgeCaller) {
+/**
+ * Passed by a v1 service whose route already ran the protection guard
+ * (middleware.ts authenticate: scope, V1_ALLOWED, protected principal), which
+ * is what decided this call may happen. The tRPC allowlist cannot match a
+ * bridged path ("recordConsent", not "auth.recordConsent"), so guarding again
+ * would refuse every bridged route of a protected account that the v1 list
+ * allows. Nothing else passes it: a caller without it is refused when the
+ * account is protected (the export job reads the state itself and passes
+ * none).
+ */
+export const V1_GUARDED = { guardedByV1: true } as const;
+type BridgeGuard = typeof V1_GUARDED;
+
+async function contextFor(caller: BridgeCaller, guard?: BridgeGuard) {
 	const row = await db.user.findUnique({
 		where: { id: caller.principal.userId },
 		select: {
@@ -57,29 +72,20 @@ async function contextFor(caller: BridgeCaller) {
 			username: true,
 			role: true,
 			isActive: true,
+			protectionState: true,
 		},
 	});
 	// A user deleted while the request ran is a sign-in problem, not a crash.
 	if (!row) throw new TRPCError({ code: "UNAUTHORIZED" });
-	// The protection guard already ran on the v1 route (middleware.ts
-	// authenticate), which is what decided this call may happen. The
-	// procedures below see a bridge path with no router prefix ("recordConsent",
-	// not "auth.recordConsent"), which the tRPC allowlist cannot match, so
-	// guarding them again would refuse every bridged route of a protected
-	// account that the v1 list allows. A background job that bridges later
-	// (runExportJob) has no request and no guard, so it reads the state itself
-	// before it claims and again before it stores a file. Turning protection on
-	// (K9) still drains in-flight work before moving rows.
-	const user: BridgeUser = {
-		...row,
-		timeZone: caller.timeZone,
-		protectionState: "OFF",
-	};
+	if (!guard && isProtected(row.protectionState))
+		throw new ProtectedAccountError();
+	const user: BridgeUser = { ...row, timeZone: caller.timeZone };
 	return {
 		db,
 		headers: caller.headers ?? new Headers(),
 		// protectedProcedure reads only `user`; the session row is not needed.
 		session: { user } as unknown as Session,
+		...(guard ?? {}),
 	};
 }
 
@@ -98,31 +104,33 @@ const settingsFactory = createCallerFactory(settingsRouter);
 const sharedTransactionFactory = createCallerFactory(sharedTransactionRouter);
 const verificationFactory = createCallerFactory(verificationRouter);
 
-export const trpcAdmin = async (c: BridgeCaller) =>
-	adminFactory(await contextFor(c));
-export const trpcExpense = async (c: BridgeCaller) =>
-	expenseFactory(await contextFor(c));
-export const trpcFeedback = async (c: BridgeCaller) =>
-	feedbackFactory(await contextFor(c));
-export const trpcGuest = async (c: BridgeCaller) =>
-	guestFactory(await contextFor(c));
-export const trpcInvite = async (c: BridgeCaller) =>
-	inviteFactory(await contextFor(c));
-export const trpcProject = async (c: BridgeCaller) =>
-	projectFactory(await contextFor(c));
-export const trpcBillingPeriod = async (c: BridgeCaller) =>
-	billingPeriodFactory(await contextFor(c));
-export const trpcPaymentMethod = async (c: BridgeCaller) =>
-	paymentMethodFactory(await contextFor(c));
-export const trpcAuditLog = async (c: BridgeCaller) =>
-	auditLogFactory(await contextFor(c));
-export const trpcAuth = async (c: BridgeCaller) =>
-	authFactory(await contextFor(c));
-export const trpcProfile = async (c: BridgeCaller) =>
-	profileFactory(await contextFor(c));
-export const trpcSettings = async (c: BridgeCaller) =>
-	settingsFactory(await contextFor(c));
-export const trpcSharedTransaction = async (c: BridgeCaller) =>
-	sharedTransactionFactory(await contextFor(c));
-export const trpcVerification = async (c: BridgeCaller) =>
-	verificationFactory(await contextFor(c));
+export const trpcAdmin = async (c: BridgeCaller, guard?: BridgeGuard) =>
+	adminFactory(await contextFor(c, guard));
+export const trpcExpense = async (c: BridgeCaller, guard?: BridgeGuard) =>
+	expenseFactory(await contextFor(c, guard));
+export const trpcFeedback = async (c: BridgeCaller, guard?: BridgeGuard) =>
+	feedbackFactory(await contextFor(c, guard));
+export const trpcGuest = async (c: BridgeCaller, guard?: BridgeGuard) =>
+	guestFactory(await contextFor(c, guard));
+export const trpcInvite = async (c: BridgeCaller, guard?: BridgeGuard) =>
+	inviteFactory(await contextFor(c, guard));
+export const trpcProject = async (c: BridgeCaller, guard?: BridgeGuard) =>
+	projectFactory(await contextFor(c, guard));
+export const trpcBillingPeriod = async (c: BridgeCaller, guard?: BridgeGuard) =>
+	billingPeriodFactory(await contextFor(c, guard));
+export const trpcPaymentMethod = async (c: BridgeCaller, guard?: BridgeGuard) =>
+	paymentMethodFactory(await contextFor(c, guard));
+export const trpcAuditLog = async (c: BridgeCaller, guard?: BridgeGuard) =>
+	auditLogFactory(await contextFor(c, guard));
+export const trpcAuth = async (c: BridgeCaller, guard?: BridgeGuard) =>
+	authFactory(await contextFor(c, guard));
+export const trpcProfile = async (c: BridgeCaller, guard?: BridgeGuard) =>
+	profileFactory(await contextFor(c, guard));
+export const trpcSettings = async (c: BridgeCaller, guard?: BridgeGuard) =>
+	settingsFactory(await contextFor(c, guard));
+export const trpcSharedTransaction = async (
+	c: BridgeCaller,
+	guard?: BridgeGuard,
+) => sharedTransactionFactory(await contextFor(c, guard));
+export const trpcVerification = async (c: BridgeCaller, guard?: BridgeGuard) =>
+	verificationFactory(await contextFor(c, guard));

@@ -12,7 +12,7 @@ import { requireProjectRole } from "~/server/services/shared-expenses/project-pe
 import { isoDay } from "./caller";
 import type { LedgerCaller } from "./money-op";
 import { applyWrite, previewWrite } from "./money-write";
-import { trpcProject } from "./trpc-bridge";
+import { trpcProject, V1_GUARDED } from "./trpc-bridge";
 
 /**
  * v1 adapters for the project writes that move other people's money: the
@@ -21,7 +21,7 @@ import { trpcProject } from "./trpc-bridge";
 
 type Body<S extends z.ZodType> = z.infer<S>;
 type Kind = "user" | "guest" | "shadow";
-const bridge = (caller: LedgerCaller) => trpcProject(caller);
+const bridge = (caller: LedgerCaller) => trpcProject(caller, V1_GUARDED);
 
 /**
  * Deleting a project is a money action: the expenses and payments in it go

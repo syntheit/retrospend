@@ -8,7 +8,7 @@ import type { Prisma } from "~prisma";
 import { assertAdmin } from "./admin";
 import { decodeCursor, toPage } from "./cursor";
 import type { LedgerCaller } from "./money-op";
-import { trpcInvite } from "./trpc-bridge";
+import { trpcInvite, V1_GUARDED } from "./trpc-bridge";
 
 /**
  * v1 adapters for /invite-codes (your own) and /admin/invite-codes (all).
@@ -99,12 +99,12 @@ export async function listMine(caller: LedgerCaller, q: Query) {
 }
 
 export async function createMine(caller: LedgerCaller): Promise<InviteCodeDto> {
-	const made = await (await trpcInvite(caller)).generateUserCode();
+	const made = await (await trpcInvite(caller, V1_GUARDED)).generateUserCode();
 	return byCode(made.code);
 }
 
 export async function deleteMine(caller: LedgerCaller, id: string) {
-	await (await trpcInvite(caller)).deleteUserCode({ id });
+	await (await trpcInvite(caller, V1_GUARDED)).deleteUserCode({ id });
 	return { ok: true as const };
 }
 
@@ -121,13 +121,13 @@ export async function listAll(caller: LedgerCaller, q: Query) {
 
 export async function createAny(caller: LedgerCaller): Promise<InviteCodeDto> {
 	assertAdmin(caller);
-	const made = await (await trpcInvite(caller)).generate();
+	const made = await (await trpcInvite(caller, V1_GUARDED)).generate();
 	return byCode(made.code);
 }
 
 export async function deleteAny(caller: LedgerCaller, id: string) {
 	assertAdmin(caller);
-	await (await trpcInvite(caller)).delete({ id });
+	await (await trpcInvite(caller, V1_GUARDED)).delete({ id });
 	return { ok: true as const };
 }
 

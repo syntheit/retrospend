@@ -4,6 +4,7 @@ import {
 	type AudienceEvent,
 	copyToOtherParties,
 } from "~/server/services/events/audience";
+import { unprotectedAmong } from "~/server/services/protection/now";
 import type { Prisma } from "~prisma";
 
 /**
@@ -48,9 +49,16 @@ export async function fanOutEvents(): Promise<number> {
 
 			// A webhook never hears about its own deliveries, nor about the vault: a
 			// vault event only wakes the person's own devices through the feed.
-			const deliverable = events.filter(
+			// A protected account's webhooks hear nothing, whatever the type and
+			// whenever the event was written (rows from before turn-on included).
+			const candidates = events.filter(
 				(e) => !e.type.startsWith("webhook.") && isWebhookEventType(e.type),
 			);
+			const open = await unprotectedAmong(
+				tx,
+				candidates.map((e) => e.userId),
+			);
+			const deliverable = candidates.filter((e) => open.has(e.userId));
 			const hooks = await tx.webhook.findMany({
 				where: {
 					enabled: true,

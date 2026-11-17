@@ -1,3 +1,4 @@
+import { isProtected } from "@retrospend/api-contract/protection-state";
 import { TRPCError } from "@trpc/server";
 import { hashPassword } from "better-auth/crypto";
 import crypto from "crypto";
@@ -121,7 +122,7 @@ export const authRouter = createTRPCRouter({
 			// While nothing is sealed (OFF) a reset removes the account's keys and
 			// is allowed; with protection on it would be refused, so no link is
 			// sent. Both that and no account run the dummy hash and answer alike.
-			if (!user || user.protectionState !== "OFF") {
+			if (!user || isProtected(user.protectionState)) {
 				// Run dummy hash to mitigate timing attacks
 				await hashPassword(crypto.randomBytes(32).toString("hex"));
 				return { success: true }; // Generic success to prevent enumeration

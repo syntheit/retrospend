@@ -1,15 +1,6 @@
 import { TRPCError } from "@trpc/server";
 
 /**
- * Only an explicit OFF is unprotected. A missing value means the field was
- * not loaded (a stub session, an unmigrated row), and the guard fails closed
- * rather than open. Every state K9 adds later is refused by default too.
- */
-export function isProtected(state: unknown): boolean {
-	return state !== "OFF";
-}
-
-/**
  * A protected account called something that has not been cleared for it. The
  * web shows its own words by `data.problem`; the message is never shown.
  */

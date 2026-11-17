@@ -13,6 +13,7 @@
 		"./sync": "./src/sync/wire.ts",
 		"./openapi": "./src/openapi.ts",
 		"./protection-allowed": "./src/protection/v1-allowed.ts",
+		"./protection-state": "./src/protection/state.ts",
 		"./openapi.json": "./openapi.json"
 	},
 	"scripts": {
