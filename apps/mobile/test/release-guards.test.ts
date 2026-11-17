@@ -115,8 +115,18 @@ describe("check-release-bundle.sh", () => {
 
 	it("keeps the engine's name where the check looks for it", () => {
 		const source = read(
-			join(__dirname, "..", "src", "data", "device-engine.ts"),
+			join(
+				__dirname,
+				"..",
+				"..",
+				"..",
+				"packages",
+				"engine",
+				"src",
+				"device",
+				"engine.ts",
+			),
 		);
-		expect(source).toContain('const TAG = "RetrospendDeviceEngine"');
+		expect(source).toContain('export const TAG = "RetrospendDeviceEngine"');
 	});
 });

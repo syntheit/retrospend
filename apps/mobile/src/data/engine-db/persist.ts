@@ -1,11 +1,14 @@
 import {
-	type Change,
-	type MemoryStoreOptions,
 	type PullCursors,
 	SINGLE_ROW_IDS,
 	TABLE_NAMES,
 	type TableName,
 } from "@retrospend/engine";
+import type {
+	EnginePersistence,
+	LoadedEngine as LoadedEnginePort,
+	LoadedRows,
+} from "@retrospend/engine/device";
 import { type FailureKind, failureKind, type SqlDriver } from "./driver";
 import { decodeRow, encodeRow, SerializeError } from "./serialize";
 
@@ -47,14 +50,8 @@ const DELETE_META = "DELETE FROM meta WHERE key = ?";
 
 const TABLES: ReadonlySet<string> = new Set(TABLE_NAMES);
 
-export type LoadedRows = NonNullable<MemoryStoreOptions["rows"]>;
-
-/** What a database held when it was opened. */
-export interface LoadedEngine {
-	rows: LoadedRows;
-	cursors: PullCursors;
-	/** A pull ran to its end after the last row was written: the rows are a whole copy. */
-	complete: boolean;
+/** What a database held when it was opened, with what only this file's checks know. */
+export interface LoadedEngine extends LoadedEnginePort {
 	/** The file held something unreadable or from another schema or owner, and was emptied. */
 	wiped: boolean;
 	rowCount: number;
@@ -176,18 +173,8 @@ export interface PersistenceOptions {
 	onDegraded: (cause: FailureKind | "repeated") => void;
 }
 
-export interface Persistence {
+export interface Persistence extends EnginePersistence {
 	readonly state: PersistenceState;
-	/** For `MemoryStoreOptions.onCommit`: throws when the write fails, so the commit fails. */
-	commit(changes: readonly Change[]): void;
-	/** A pull starts: its first commit clears the pull-complete flag. */
-	beginPull(): void;
-	/** The pull ran to its end: saves the cursors and sets the flag, in one transaction. */
-	finishPull(): void;
-	/** The pull failed: the flag stays as the commits left it. */
-	abandonPull(): void;
-	/** Closes the connection. A live copy then refuses commits (they throw); a given-up one keeps ignoring them. */
-	close(): void;
 }
 
 export function createPersistence(

@@ -1,25 +1,36 @@
-import * as engineModule from "@retrospend/engine";
-import { expense, fakeDeviceApi } from "../../test/deviceApi";
-import { createDeviceEngine, engineFor, PULL_AFTER_MS } from "./device-engine";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { deviceMonthView } from "../budget-figures";
+import { budgetStatus } from "../budget-gate";
+import { readDeviceFigures } from "../registry";
+import {
+	createDeviceEngine as create,
+	type DeviceEngineOptions,
+	PULL_AFTER_MS,
+} from "./engine";
+import { expense, fakeDeviceApi } from "./fake-api";
 
 // Lets a test act while the figures are being read; reads as the real one otherwise.
-jest.mock("@retrospend/engine", () => {
-	const actual = jest.requireActual("@retrospend/engine");
-	return {
-		...actual,
-		readDeviceFigures: jest.fn(actual.readDeviceFigures),
-		budgetStatus: jest.fn(actual.budgetStatus),
-		deviceMonthView: jest.fn(actual.deviceMonthView),
-	};
+vi.mock("../registry", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("../registry")>();
+	return { ...actual, readDeviceFigures: vi.fn(actual.readDeviceFigures) };
 });
-const actualRead = jest.requireActual("@retrospend/engine").readDeviceFigures;
+vi.mock("../budget-gate", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("../budget-gate")>();
+	return { ...actual, budgetStatus: vi.fn(actual.budgetStatus) };
+});
+vi.mock("../budget-figures", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("../budget-figures")>();
+	return { ...actual, deviceMonthView: vi.fn(actual.deviceMonthView) };
+});
+const actualRegistry =
+	await vi.importActual<typeof import("../registry")>("../registry");
+const actualGate =
+	await vi.importActual<typeof import("../budget-gate")>("../budget-gate");
 const readDuring = (act: () => Promise<unknown>) =>
-	jest
-		.mocked(engineModule.readDeviceFigures)
-		.mockImplementationOnce(async (...args) => {
-			await act();
-			return actualRead(...args);
-		});
+	vi.mocked(readDeviceFigures).mockImplementationOnce(async (...args) => {
+		await act();
+		return actualRegistry.readDeviceFigures(...args);
+	});
 
 // The device engine on a server double. The user's home currency is ARS in
 // Buenos Aires, the month starts on the 1st, and "now" is 2026-10-15 12:00
@@ -43,14 +54,19 @@ const page = (items: unknown[], cursor = "c1") => ({
 });
 const ARS = (minor: number) => [{ minor, currency: "ARS" }];
 
-let warn: jest.SpyInstance;
+const warn = vi.fn<(what: string, detail?: string) => void>();
+const createDeviceEngine = (
+	api: Parameters<typeof create>[0],
+	userId: string,
+	now: () => number = Date.now,
+	options: DeviceEngineOptions = {},
+) => create(api, userId, now, { warn, ...options });
 beforeEach(() => {
-	jest.useFakeTimers({ now: NOW });
-	warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+	vi.useFakeTimers({ now: NOW });
+	warn.mockClear();
 });
 afterEach(() => {
-	jest.useRealTimers();
-	jest.restoreAllMocks();
+	vi.useRealTimers();
 });
 
 describe("reading figures", () => {
@@ -163,13 +179,9 @@ describe("the budget month", () => {
 		incomplete: false,
 		verdict: { lead: { figureId: "budget.leftToSpend" } },
 	};
-	const ready = () => jest.mocked(engineModule.budgetStatus);
-	const view = () => jest.mocked(engineModule.deviceMonthView);
-	afterEach(() =>
-		ready().mockImplementation(
-			jest.requireActual("@retrospend/engine").budgetStatus,
-		),
-	);
+	const ready = () => vi.mocked(budgetStatus);
+	const view = () => vi.mocked(deviceMonthView);
+	afterEach(() => ready().mockImplementation(actualGate.budgetStatus));
 
 	it("is the month view's book, month, day and verdict when asked for and the block is readable", async () => {
 		const { api } = fakeDeviceApi();
@@ -323,14 +335,6 @@ describe("pulling", () => {
 		expect(read?.readings.get("glance.spent")).toEqual(ARS(0));
 		expect(read?.readings.get("glance.spentLast")).toEqual(ARS(200_000));
 	});
-
-	it("keeps one engine per client and account", () => {
-		const { api } = fakeDeviceApi();
-		const mine = engineFor(api, "u1");
-		expect(engineFor(api, "u1")).toBe(mine);
-		expect(engineFor(api, "u2")).not.toBe(mine);
-		expect(engineFor(fakeDeviceApi().api, "u1")).not.toBe(mine);
-	});
 });
 
 describe("checking against the server", () => {
@@ -387,7 +391,7 @@ describe("checking against the server", () => {
 		const logged = JSON.stringify(warn.mock.calls[0]);
 		expect(logged).toContain("glance.spentLast");
 		expect(logged).not.toMatch(/250000|260000|minor/);
-		expect(JSON.parse(warn.mock.calls[0]?.[1])).toMatchObject({
+		expect(JSON.parse(warn.mock.calls[0]?.[1] ?? "")).toMatchObject({
 			ids: ["glance.spentLast"],
 			count: 1,
 			generation: 2,

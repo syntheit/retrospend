@@ -31,8 +31,8 @@ const settled = () => act(async () => {});
 
 describe("without the flag", () => {
 	it("gives Home nothing to read from and pulls nothing", async () => {
-		const { api, calls } = fakeDeviceApi();
-		world.api = api;
+		const { client, calls } = fakeDeviceApi();
+		world.api = client;
 		const { result } = await renderHook(() => {
 			useDevicePull();
 			return useDeviceReads();
@@ -50,8 +50,8 @@ describe("with the flag", () => {
 	});
 
 	it("pulls when someone signs in and offers Home the engine to read from", async () => {
-		const { api, calls } = fakeDeviceApi();
-		world.api = api;
+		const { client, calls } = fakeDeviceApi();
+		world.api = client;
 		const { result } = await renderHook(() => {
 			useDevicePull();
 			return useDeviceReads();
@@ -65,8 +65,8 @@ describe("with the flag", () => {
 	it("does nothing without a server or offline", async () => {
 		world.api = undefined;
 		await renderHook(() => useDevicePull());
-		const { api, calls } = fakeDeviceApi();
-		world.api = api;
+		const { client, calls } = fakeDeviceApi();
+		world.api = client;
 		world.reachable = false;
 		await renderHook(() => useDevicePull());
 		await settled();
@@ -75,8 +75,8 @@ describe("with the flag", () => {
 
 	it("pulls again on the foreground only after a minute, and stops listening on unmount", async () => {
 		jest.useFakeTimers({ now: new Date("2026-10-15T15:00:00.000Z") });
-		const { api, pulls } = fakeDeviceApi();
-		world.api = api;
+		const { client, pulls } = fakeDeviceApi();
+		world.api = client;
 		const hook = await renderHook(() => useDevicePull());
 		await settled();
 		expect(pulls()).toBe(1);

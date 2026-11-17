@@ -1,4 +1,4 @@
-import type { RetrospendClient } from "@retrospend/api-client";
+import type { DeviceApi } from "@retrospend/engine/device";
 import { cipherFake } from "../../test/cipherFake";
 import {
 	type DeviceApiOptions,
@@ -45,11 +45,7 @@ afterEach(() => {
 type Phone = ReturnType<typeof cipherFake>;
 
 /** A launch of the app on `phone`: an engine whose disk copy is the phone's. */
-function launch(
-	phone: Phone,
-	api: RetrospendClient,
-	userId = "u1",
-): DeviceEngine {
+function launch(phone: Phone, api: DeviceApi, userId = "u1"): DeviceEngine {
 	return createDeviceEngine(api, userId, Date.now, {
 		storage: (hooks) =>
 			openEngineStorage(phone.deps, engineScope(ORIGIN, userId), hooks),
@@ -67,7 +63,7 @@ function offline() {
 		sync: new Proxy({}, { get: (_t, name: string) => down(name) }),
 		currencies: { dailyRates: down("dailyRates") },
 		figures: { read: down("figures") },
-	} as unknown as RetrospendClient;
+	} as unknown as DeviceApi;
 	return { api, calls };
 }
 
