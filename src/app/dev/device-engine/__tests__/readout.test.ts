@@ -24,11 +24,12 @@ import { ParityView } from "../view";
 
 const render = (element: ReactElement) =>
 	renderToStaticMarkup(
-		createElement(
-			NextIntlClientProvider,
-			{ locale: "en", messages: { deviceEngine: en } },
-			element,
-		),
+		createElement(NextIntlClientProvider, {
+			locale: "en",
+			timeZone: "UTC",
+			messages: { deviceEngine: en },
+			children: element,
+		}),
 	);
 
 // A report as the worker makes it, plus fields a careless change could add:
