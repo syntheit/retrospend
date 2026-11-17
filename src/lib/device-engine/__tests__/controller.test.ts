@@ -17,6 +17,7 @@ const report = (generation: number): ParityReport => ({
 	state: "checked",
 	ids: ["glance.spent"],
 	mismatchedIds: [],
+	counts: [],
 	generation,
 	storedZone: "UTC",
 	browserZone: "UTC",
@@ -509,5 +510,74 @@ describe("device controller: parity", () => {
 		await b.controller.homeOpened();
 		expect(b.controller.state).toBe("terminal");
 		expect(changed.terminate).toHaveBeenCalled();
+	});
+});
+
+describe("device controller: the dev readout", () => {
+	it("checks now even when no pull has finished since the last check, and tells listeners", async () => {
+		const client = fakeClient();
+		const { controller, time } = setup([client]);
+		controller.setUser(ANA);
+		const heard = vi.fn();
+		controller.subscribe(heard);
+		await controller.homeOpened();
+		expect(client.parity).toHaveBeenCalledTimes(1);
+		expect(controller.lastPullAt).toBe(time.now);
+		await controller.tabVisible();
+		expect(client.parity).toHaveBeenCalledTimes(1);
+		await controller.checkNow();
+		expect(client.parity).toHaveBeenCalledTimes(2);
+		expect(heard).toHaveBeenCalledTimes(2);
+	});
+
+	it("stops telling a listener that unsubscribed", async () => {
+		const { controller } = setup([fakeClient()]);
+		controller.setUser(ANA);
+		const heard = vi.fn();
+		controller.subscribe(heard)();
+		await controller.homeOpened();
+		expect(heard).not.toHaveBeenCalled();
+	});
+});
+
+describe("device controller: what the readout reports", () => {
+	it("moves the last pull time only when the engine really pulled", async () => {
+		// The engine skips a pull while the last is fresh: its count does not move.
+		const queue = [1, 1, 2];
+		const client = fakeClient(async () => ({
+			status: "ready",
+			generation: queue.shift() ?? 2,
+		}));
+		const { controller, time } = setup([client]);
+		controller.setUser(ANA);
+		await controller.homeOpened();
+		const first = time.now;
+		expect(controller.lastPullAt).toBe(first);
+		time.now += 5_000;
+		await controller.tabVisible();
+		expect(controller.lastPullAt).toBe(first);
+		time.now += 5_000;
+		await controller.tabVisible();
+		expect(controller.lastPullAt).toBe(first + 10_000);
+	});
+
+	it("checks now past a wait, which a person asked for", async () => {
+		const client = fakeClient();
+		client.pull.mockRejectedValueOnce(new DeviceError("rate_limited"));
+		const { controller } = setup([client]);
+		controller.setUser(ANA);
+		await controller.homeOpened();
+		await controller.tabVisible();
+		expect(client.pull).toHaveBeenCalledTimes(1);
+		await controller.checkNow();
+		expect(client.pull).toHaveBeenCalledTimes(2);
+		expect(client.parity).toHaveBeenCalledTimes(1);
+	});
+
+	it("says it is waiting for an account before one is known, and starts nothing", async () => {
+		const { controller, load } = setup([fakeClient()]);
+		await controller.checkNow();
+		expect(controller.state).toBe("off");
+		expect(load).not.toHaveBeenCalled();
 	});
 });

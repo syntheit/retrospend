@@ -55,6 +55,13 @@ export function createDeviceController(deps: ControllerDeps) {
 	/** The pull count the last parity check ended at: a pull that changed nothing is not checked again. */
 	let checkedGeneration = 0;
 	let lastParity: ParityReport | null = null;
+	let lastPullAt: number | null = null;
+	/** The pull count at the last real pull: a pull the engine skipped as fresh leaves it. */
+	let pulledGeneration = 0;
+	const listeners = new Set<() => void>();
+	const changed = () => {
+		for (const listener of [...listeners]) listener();
+	};
 
 	function endWorker() {
 		const old = client;
@@ -113,10 +120,11 @@ export function createDeviceController(deps: ControllerDeps) {
 		return spawning.worker;
 	}
 
-	async function run(spawn: boolean): Promise<void> {
+	async function run(spawn: boolean, force: boolean): Promise<void> {
 		const mine = epoch;
 		if (!user || state === "terminal" || !deps.visible()) return;
-		if (deps.now() < waitUntil) return;
+		// An explicit check goes past a wait: it is a person asking.
+		if (!force && deps.now() < waitUntil) return;
 		if (!client && !spawn) return;
 		const worker = await ensureClient(mine);
 		if (!worker) return;
@@ -125,13 +133,18 @@ export function createDeviceController(deps: ControllerDeps) {
 			if (mine !== epoch) return;
 			if (status === "failed") backOff("failed");
 			else {
+				if (generation > pulledGeneration) {
+					pulledGeneration = generation;
+					lastPullAt = deps.now();
+				}
 				// Compare only: the figures are checked against the server's and the
 				// screen keeps showing the server's.
-				if (status === "ready" && generation > checkedGeneration) {
+				if (status === "ready" && (force || generation > checkedGeneration)) {
 					const report = await worker.parity();
 					if (mine !== epoch) return;
 					lastParity = report;
 					deps.onParity?.(report);
+					changed();
 					// A check that did not finish is tried again, after a wait.
 					if (report.state === "failed") return backOff("failed");
 					checkedGeneration = report.generation;
@@ -152,14 +165,16 @@ export function createDeviceController(deps: ControllerDeps) {
 		}
 	}
 
-	function pull(spawn: boolean): Promise<void> {
+	function pull(spawn: boolean, force = false): Promise<void> {
 		// One run at a time. A request that must start the worker waits for a
 		// run that would not have, then runs.
-		if (inflight && !(spawn && !client)) return inflight;
+		if (inflight && !force && !(spawn && !client)) return inflight;
 		// Starts at once when nothing runs: a run deferred to a microtask would
 		// see an account set meanwhile and start a second worker beside the one
 		// that account's own pull starts.
-		const run1 = inflight ? inflight.then(() => run(spawn)) : run(spawn);
+		const run1 = inflight
+			? inflight.then(() => run(spawn, force))
+			: run(spawn, force);
 		const mine = run1.finally(() => {
 			if (inflight === mine) inflight = null;
 		});
@@ -179,6 +194,19 @@ export function createDeviceController(deps: ControllerDeps) {
 		get lastParity() {
 			return lastParity;
 		},
+		/** When the last pull finished (the controller's clock), or null before one. */
+		get lastPullAt() {
+			return lastPullAt;
+		},
+		/** Runs for any change a readout shows; returns what stops it. */
+		subscribe(listener: () => void) {
+			listeners.add(listener);
+			return () => void listeners.delete(listener);
+		},
+		/** Pulls if due and checks the glance figures now, past any wait, whether or not a pull finished since the last check. */
+		checkNow() {
+			return pull(true, true);
+		},
 		/** The signed-in account, or null on sign-out. A different account ends the worker. */
 		setUser(next: DeviceUser | null) {
 			if (
@@ -196,6 +224,8 @@ export function createDeviceController(deps: ControllerDeps) {
 			inflight = null;
 			spawning = null;
 			checkedGeneration = 0;
+			pulledGeneration = 0;
+			lastPullAt = null;
 			lastParity = null;
 			state = !next ? "off" : next.protectedAccount ? "terminal" : "idle";
 			if (state === "idle" && homeOpen) void pull(true);

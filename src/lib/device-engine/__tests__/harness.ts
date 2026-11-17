@@ -52,7 +52,7 @@ export interface SetupOptions {
 	 * real route reads in the user's stored zone, whatever zone the request
 	 * names (no header or cookie is read), so this is called with that zone.
 	 */
-	serverFigures?: (storedZone: string) => Record<string, Money[]>;
+	serverFigures?: (storedZone: string) => Record<string, Money[] | null>;
 	/** The zone in the settings the engine pulls; the double's own (Buenos Aires) by default. */
 	zone?: string;
 	/** A route that fails: its name, and in which pull (from 1). */

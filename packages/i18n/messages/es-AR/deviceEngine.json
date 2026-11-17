@@ -1,0 +1,33 @@
+{
+	"title": "Motor del dispositivo",
+	"off": "No está en esta versión",
+	"check": "Comprobar ahora",
+	"none": "Aún no se ha comprobado",
+	"state": "Estado",
+	"pulls": "Descargas",
+	"lastPull": "Última descarga",
+	"never": "Ninguna aún",
+	"storedZone": "Zona guardada",
+	"browserZone": "Zona del navegador",
+	"unknown": "Desconocida",
+	"zones": "Zonas",
+	"differ": "Distintas",
+	"same": "Iguales",
+	"matches": "Coincide",
+	"differs": "Difiere",
+	"lines": "{device} en el dispositivo, {server} en el servidor",
+	"states": {
+		"checked": "Coincide con el servidor",
+		"mismatch": "Difiere del servidor",
+		"failed": "La comprobación no terminó",
+		"skipped": "Aún no hay nada que comprobar"
+	},
+	"lineCount": "{count, plural, one {# línea} other {# líneas}}",
+	"engine": "Motor",
+	"phases": {
+		"off": "Todavía sin iniciar sesión",
+		"idle": "Sin iniciar",
+		"running": "En marcha",
+		"terminal": "Detenido por el servidor"
+	}
+}
