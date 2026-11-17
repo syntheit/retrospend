@@ -454,6 +454,72 @@ describe("POST /me/protection/password/begin", () => {
 		expect((await begin(me.headers, loose)).status).toBe(400);
 		expect((await begin(me.headers, "short")).status).toBe(400);
 	});
+
+	describe("when a writer lands between the proof and the read", () => {
+		/** Begin while another writer holds the credential lock, then the writer commits. */
+		async function beginBehind(
+			userId: string,
+			authKey: string,
+			writer: Parameters<typeof holdCredentialLock>[1],
+		) {
+			const me = await mobile(userId);
+			const holder = await holdCredentialLock(userId, writer);
+			const pending = begin(me.headers, authKey);
+			expect(await blockedBehindLock(pending)).toBe(true);
+			await holder.commit();
+			return pending;
+		}
+		const noWrap = async (res: Response, userId: string) => {
+			const text = await res.text();
+			for (const w of await wrapRows(userId))
+				expect(text).not.toContain(toBase64Url(w.wrapped));
+		};
+
+		it("answers conflict and no wrap when only the hash changed", async () => {
+			const u = await passwordUser();
+			const k = await keyed(u.id);
+			const taken = await hashPassword("a hash another writer stored");
+			const res = await beginBehind(u.id, k.authKeyText, async (tx) => {
+				await tx.account.updateMany({
+					where: { userId: u.id, providerId: "credential" },
+					data: { password: taken },
+				});
+			});
+			await noWrap(res.clone(), u.id);
+			await expectProblem(res, 409, "conflict");
+		});
+
+		it("answers conflict and no wrap when an email reset removed the keys and replaced the hash", async () => {
+			const u = await passwordUser();
+			const k = await keyed(u.id);
+			const wraps = await wrapRows(u.id);
+			const reset = await hashPassword("A reset password 3");
+			const res = await beginBehind(u.id, k.authKeyText, async (tx) => {
+				await tx.protectionKeyWrap.deleteMany({ where: { userId: u.id } });
+				await tx.protectionKeySet.deleteMany({ where: { userId: u.id } });
+				await tx.account.updateMany({
+					where: { userId: u.id, providerId: "credential" },
+					data: { password: reset },
+				});
+			});
+			const text = await res.clone().text();
+			for (const w of wraps) expect(text).not.toContain(toBase64Url(w.wrapped));
+			await expectProblem(res, 409, "conflict");
+		});
+
+		it("answers conflict and no wrap when the keys are gone and the hash is the one proven", async () => {
+			const u = await passwordUser();
+			const k = await keyed(u.id);
+			const wraps = await wrapRows(u.id);
+			const res = await beginBehind(u.id, k.authKeyText, async (tx) => {
+				await tx.protectionKeyWrap.deleteMany({ where: { userId: u.id } });
+				await tx.protectionKeySet.deleteMany({ where: { userId: u.id } });
+			});
+			const text = await res.clone().text();
+			for (const w of wraps) expect(text).not.toContain(toBase64Url(w.wrapped));
+			await expectProblem(res, 409, "conflict");
+		});
+	});
 });
 
 describe("POST /me/protection/password", () => {
@@ -707,6 +773,15 @@ describe("POST /me/protection/password", () => {
 		expect(await signsInWith(u.email, PASSWORD)).toBe(true);
 	});
 
+	it("answers conflict for every commit of an account without keys, and spends no try", async () => {
+		await clearTriesWindowEdge();
+		const u = await passwordUser();
+		const me = await mobile(u.id);
+		const r = rotationOf(u.id, signInSecret(p.randomBytes(32)));
+		for (let i = 0; i < 6; i++)
+			await expectProblem(await rotate(me.headers, r.body), 409, "conflict");
+	}, 120_000);
+
 	it("is refused with 501 when the server does not offer it, and writes nothing", async () => {
 		flag.on = false;
 		const u = await passwordUser();
@@ -905,7 +980,7 @@ describe("POST /me/protection/password", () => {
 		expect(mail.sendEmail).not.toHaveBeenCalled();
 	});
 
-	it("waits behind an email reset in flight, then answers conflict and leaves no key set", async () => {
+	it("answers conflict when an email reset removed the keys and replaced the hash while it waited, and leaves no key set", async () => {
 		const u = await passwordUser();
 		const k = await keyed(u.id);
 		const me = await mobile(u.id);
@@ -929,6 +1004,26 @@ describe("POST /me/protection/password", () => {
 		expect(await keyRows(u.id)).toEqual({ sets: 0, wraps: 0 });
 		expect(await storedHash(u.id)).toBe(reset);
 		expect(await signsInWith(u.email, "A reset password 3")).toBe(true);
+		expect(await sessionExists(other)).toBe(true);
+		expect(mail.sendEmail).not.toHaveBeenCalled();
+	});
+
+	it("answers conflict, with the hash untouched, when the keys are removed under it and the hash is the one checked", async () => {
+		const u = await passwordUser();
+		const k = await keyed(u.id);
+		const me = await mobile(u.id);
+		const other = await sessionFor(u.id);
+		const hash = await storedHash(u.id);
+		const holder = await holdCredentialLock(u.id, async (tx) => {
+			await tx.protectionKeyWrap.deleteMany({ where: { userId: u.id } });
+			await tx.protectionKeySet.deleteMany({ where: { userId: u.id } });
+		});
+		const pending = rotate(me.headers, rotationOf(u.id, k.authKeyText).body);
+		expect(await blockedBehindLock(pending)).toBe(true);
+		await holder.commit();
+		await expectProblem(await pending, 409, "conflict");
+		expect(await keyRows(u.id)).toEqual({ sets: 0, wraps: 0 });
+		expect(await storedHash(u.id)).toBe(hash);
 		expect(await sessionExists(other)).toBe(true);
 		expect(mail.sendEmail).not.toHaveBeenCalled();
 	});
