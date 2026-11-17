@@ -2,7 +2,9 @@
  * One account that has Advanced protection keys, for the flows that sign in
  * through prelogin and Argon2id. It is written straight to Postgres like the
  * personas, but it is not one of them (no ledger, not in SEED_USERS), so the
- * seeded counts the other flows read do not change.
+ * seeded counts the other flows read do not change. A second one changes its
+ * password in a flow (keyed-password-change.spec.ts), so no other flow may
+ * sign in as it.
  *
  * The stored password hash is the one of the sign-in secret, made here from
  * the typed password with the app's own derivation at the Argon2 floor, so a
@@ -17,6 +19,7 @@ import {
 	ARGON2_FLOOR,
 	deriveMasterKey,
 	masterSubkeys,
+	wrapKey,
 } from "../../packages/crypto/src/keys";
 import { signInSecret } from "../../packages/crypto/src/sign-in-secret";
 import { createWebPrimitives } from "../../packages/crypto/src/web";
@@ -29,7 +32,24 @@ export const KEYED_USER = {
 	password: "Keyed-e2e-2026!",
 } as const;
 
+/** The keyed account that changes its password; the new one is what it signs in with after. */
+export const KEYED_ROTATE_USER = {
+	name: "Keyed Rotate E2E User",
+	username: "keyedrotate",
+	email: "keyed.rotate.e2e@example.com",
+	password: "Keyed-rotate-2026!",
+	newPassword: "Changed-rotate-2027?",
+} as const;
+
+type Account = {
+	name: string;
+	username: string;
+	email: string;
+	password: string;
+};
+
 const SALT = Uint8Array.from({ length: 16 }, (_, i) => 0xe0 + i);
+const ROTATE_SALT = Uint8Array.from({ length: 16 }, (_, i) => 0xd0 + i);
 
 /** What prelogin must answer for the keyed account. */
 export const KEYED_KDF = {
@@ -46,45 +66,80 @@ export async function keyedSignInSecret(): Promise<string> {
 }
 
 /**
- * Signs the keyed account up through the app with the derived secret as its
+ * Signs an account up through the app with the derived secret as its
  * password (so the server stores the hash and, in a sealed run, seals the
- * name like every other sign-up), then adds its key set on the owner
- * connection, which is what makes prelogin answer with the parameters.
+ * name like every other sign-up), then adds its key set and the account key
+ * wrapped under its password on the owner connection, which is what makes
+ * prelogin answer with the parameters and a password change find a wrap.
  */
-export async function seedKeyedUser(
+async function seedKeyedAccount(
 	databaseUrl: string,
-	signUp: (
-		email: string,
-		password: string,
-		name: string,
-		username: string,
-	) => Promise<void>,
+	account: Account,
+	salt: Uint8Array,
+	signUp: SignUp,
 ): Promise<void> {
-	assertE2eDatabase(databaseUrl);
+	const p = await createWebPrimitives();
+	const { authKey, wrapKey: passwordWrapKey } = masterSubkeys(
+		p,
+		deriveMasterKey(p, account.password, salt, ARGON2_FLOOR),
+	);
 	await signUp(
-		KEYED_USER.email,
-		await keyedSignInSecret(),
-		KEYED_USER.name,
-		KEYED_USER.username,
+		account.email,
+		signInSecret(authKey),
+		account.name,
+		account.username,
 	);
 	const db = new PrismaClient({
 		adapter: new PrismaPg({ connectionString: databaseUrl }),
 	});
 	try {
 		const user = await db.user.findUniqueOrThrow({
-			where: { email: KEYED_USER.email },
+			where: { email: account.email },
 			select: { id: true },
 		});
 		await db.protectionKeySet.create({
 			data: {
 				userId: user.id,
-				kdfSalt: SALT,
+				kdfSalt: Uint8Array.from(salt),
 				kdfMemoryKiB: ARGON2_FLOOR.memoryKiB,
 				kdfPasses: ARGON2_FLOOR.passes,
 				publicKey: new Uint8Array(32).fill(7),
 			},
 		});
+		await db.protectionKeyWrap.create({
+			data: {
+				userId: user.id,
+				role: "ak-password",
+				targetId: user.id,
+				wrapped: Uint8Array.from(
+					wrapKey(
+						p,
+						passwordWrapKey,
+						"ak-password",
+						user.id,
+						p.randomBytes(32),
+					),
+				),
+			},
+		});
 	} finally {
 		await db.$disconnect();
 	}
+}
+
+type SignUp = (
+	email: string,
+	password: string,
+	name: string,
+	username: string,
+) => Promise<void>;
+
+/** Seeds both keyed accounts (see the header). */
+export async function seedKeyedUser(
+	databaseUrl: string,
+	signUp: SignUp,
+): Promise<void> {
+	assertE2eDatabase(databaseUrl);
+	await seedKeyedAccount(databaseUrl, KEYED_USER, SALT, signUp);
+	await seedKeyedAccount(databaseUrl, KEYED_ROTATE_USER, ROTATE_SALT, signUp);
 }

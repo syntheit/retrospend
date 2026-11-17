@@ -137,6 +137,8 @@ export default defineConfig({
 					UPLOAD_DIR,
 					// No sidecar in e2e: rates come from the seed.
 					SIDECAR_URL: "http://127.0.0.1:9",
+					// The password change of a keyed account is refused without it.
+					ADVANCED_PROTECTION_ENABLED: "true",
 					// E2E_SEALED=1: the server seals user text on write (e2e/constants.ts).
 					...(E2E_SEALED
 						? { DATA_KEYS_WRITE: "true", DATA_MASTER_KEY: E2E_MASTER_KEY }
