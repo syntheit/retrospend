@@ -10,6 +10,7 @@ import {
 	userText,
 	userTextOrEmpty,
 } from "@retrospend/api-contract/common";
+import { toBookingInput } from "@retrospend/domain/expense-input";
 import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { z } from "zod";
 import { customRateSchema } from "~/lib/schemas/rate";
@@ -53,16 +54,7 @@ export function toExpenseInput(
 	form: ExpenseForm,
 	timeZone?: string,
 ): CreateExpenseInput {
-	const { date, customRate, rateType: type, ...rest } = form;
-	return {
-		...rest,
-		date: parseDateOnlyIn(date, timeZone),
-		...(customRate
-			? { customRate: { base: form.currency, value: customRate } }
-			: type
-				? { rateType: type }
-				: {}),
-	};
+	return toBookingInput(form, timeZone);
 }
 
 /**
