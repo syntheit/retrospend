@@ -27,7 +27,7 @@ import {
 import { type TextKeys, textKeys } from "~/server/crypto/text-keys";
 import { createUserScopedDb, db } from "~/server/db";
 import { buildClients, type KeySource, keystoreDb } from "~/server/db-core";
-import { userTransaction } from "~/server/db-tx";
+import { keystoreTransaction, userTransaction } from "~/server/db-tx";
 import { adminDb, createTestUser, withSuperuser } from "~/test/pg-harness";
 import {
 	destroyDataKeys,
@@ -154,7 +154,7 @@ describe("the key caches", () => {
 	it("serves 50 cold requests with one keystore load per class", async () => {
 		const mk = master();
 		const me = await createTestUser();
-		const own = await userTransaction(keystoreDb, me.user.id, (tx) =>
+		const own = await keystoreTransaction(keystoreDb, me.user.id, (tx) =>
 			getOrCreateDataKeyring(tx, mk),
 		);
 		await getOrCreateInstanceKeyring({ kind: "user", userId: me.user.id }, mk);
@@ -211,7 +211,7 @@ describe("the key caches", () => {
 		expect(keystoreCalls).toHaveBeenCalledTimes(2);
 
 		// A key made in the meantime is seen once the 30 seconds are over.
-		await userTransaction(keystoreDb, me.user.id, (tx) =>
+		await keystoreTransaction(keystoreDb, me.user.id, (tx) =>
 			getOrCreateDataKeyring(tx, mk),
 		);
 		keystoreCalls.mockClear();
@@ -232,7 +232,7 @@ describe("the key caches", () => {
 	it("drops a user's ring in this process when destroyDataKeys runs", async () => {
 		const mk = master();
 		const me = await createTestUser();
-		await userTransaction(keystoreDb, me.user.id, (tx) =>
+		await keystoreTransaction(keystoreDb, me.user.id, (tx) =>
 			getOrCreateDataKeyring(tx, mk),
 		);
 		keystoreCalls.mockClear();
@@ -248,7 +248,7 @@ describe("the key caches", () => {
 	it("does not cache a ring loaded while a shred waits to commit", async () => {
 		const mk = master();
 		const me = await createTestUser();
-		await userTransaction(keystoreDb, me.user.id, (tx) =>
+		await keystoreTransaction(keystoreDb, me.user.id, (tx) =>
 			getOrCreateDataKeyring(tx, mk),
 		);
 		expect(await findDataKeyring(me.user.id, mk)).toBeInstanceOf(Keyring);
@@ -266,7 +266,7 @@ describe("the key caches", () => {
 	it("only costs uncached loads when the deletion rolls back", async () => {
 		const mk = master();
 		const me = await createTestUser();
-		await userTransaction(keystoreDb, me.user.id, (tx) =>
+		await keystoreTransaction(keystoreDb, me.user.id, (tx) =>
 			getOrCreateDataKeyring(tx, mk),
 		);
 		const rollback = new Error("deletion failed");

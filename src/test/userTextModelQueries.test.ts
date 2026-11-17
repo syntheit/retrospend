@@ -24,32 +24,10 @@ import {
 	withoutCommentsAndStrings,
 } from "./source-scan";
 import { REPO_ROOT } from "./uiRules/paths";
+import { USER_TEXT_COLUMNS } from "./userTextColumns";
 
-/** The column words of USER_TEXT_FIELDS (see userTextRawSql.test.ts). */
-const COLUMNS = [
-	"name",
-	"title",
-	"description",
-	"notes",
-	"note",
-	"location",
-	"label",
-	"identifier",
-	"message",
-	"reply",
-	"matchTitle",
-	"paymentMethod",
-	"paymentSource",
-	"websiteUrl",
-	"receiptUrl",
-	"rejectionReason",
-	"rejectedReason",
-	"adminNote",
-	// Import job text outside the declared fields.
-	"fileData",
-	"errorMessage",
-	"phone",
-];
+/** Every column word of the sealing map, generated (userTextColumns.ts). */
+const COLUMNS = USER_TEXT_COLUMNS;
 const WORD = COLUMNS.join("|");
 const KEY = new RegExp(`(?:^|[{,\\s])["']?(${WORD})["']?\\s*:`, "g");
 const SHORTHAND = new RegExp(`[{,]\\s*(${WORD})\\s*(?=[,}])`, "g");
@@ -64,6 +42,45 @@ const WHERE_VAR = /\b\w*[Ww]here\w*\s*(?::[^=;]+)?=\s*(?=\{)/g;
  * docs/security/user-text-sql-audit.md) or a move to the app layer.
  */
 const ALLOWED: { file: string; column: string; reason: string }[] = [
+	{
+		file: "scripts/repair-import-dates.ts",
+		column: "email",
+		reason: "user.email lookup: the user table is not mapped",
+	},
+	{
+		file: "src/server/api/routers/auth.ts",
+		column: "email",
+		reason: "user.email lookups (verify, reset): the user table is not mapped",
+	},
+	{
+		file: "src/server/api/routers/people.ts",
+		column: "email",
+		reason:
+			"exact user.email match of a non-contact; the ghost email is matched in the app (A14)",
+	},
+	{
+		file: "src/server/services/profile.service.ts",
+		column: "email",
+		reason:
+			"user.email and pendingEmail taken check: the user table is not mapped",
+	},
+	{
+		file: "src/server/services/shadow-profile.service.ts",
+		column: "email",
+		reason: "user.email: does an account have this address",
+	},
+	{
+		file: "src/server/services/payments/auto-finalize.mutation.ts",
+		column: "changes",
+		reason:
+			"audit changes path paymentGroupId: an id, not a sealed leaf (AUDIT_CHANGES_LEAVES)",
+	},
+	{
+		file: "src/server/services/push/recipients.ts",
+		column: "changes",
+		reason:
+			"audit changes path selfRemoved: a flag, not a sealed leaf (AUDIT_CHANGES_LEAVES)",
+	},
 	{
 		file: "src/server/services/title-suggestions.service.ts",
 		column: "title",

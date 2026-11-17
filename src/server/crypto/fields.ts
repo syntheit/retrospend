@@ -21,8 +21,8 @@
  *   `income_rule` has no owner column and every book member reads it, so its
  *   text and `wealth_transfer.note` are instance class.
  *
- * Reads open sealed cells through this map (field-open.ts); nothing seals
- * yet. `fields.test.ts` holds it in step with the control-character scan
+ * Reads open sealed cells through this map and writes seal them while sealing
+ * is on (field-open.ts, field-seal.ts). `fields.test.ts` holds it in step with the control-character scan
  * list, the declared contract fields and the Prisma schema, so a new text
  * column fails a test until it is placed here.
  */

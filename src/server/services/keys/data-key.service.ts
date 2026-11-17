@@ -30,8 +30,8 @@ import { keystoreDb } from "~/server/db-core";
 import {
 	inPreview,
 	inTransaction,
+	keystoreTransaction,
 	outsideTransaction,
-	userTransaction,
 } from "~/server/db-tx";
 import type { Prisma } from "~prisma";
 import {
@@ -227,7 +227,7 @@ export function ensureUserKeyring(
 		const found = await findDataKeyring(userId, masterKeyring);
 		if (found) return found;
 		try {
-			const ring = await userTransaction(keystoreDb, userId, (tx) =>
+			const ring = await keystoreTransaction(keystoreDb, userId, (tx) =>
 				getOrCreateDataKeyring(tx, masterKeyring),
 			);
 			evictDataKeyring(userId);
@@ -291,7 +291,7 @@ export function findDataKeyring(
 	if (!masterKeyring)
 		return Promise.reject(new DataKeyError("master_key_missing"));
 	const load = () =>
-		userTransaction(keystoreDb, userId, async (tx) => {
+		keystoreTransaction(keystoreDb, userId, async (tx) => {
 			const rows = await readRows(tx);
 			return rows.length > 0 ? unwrapAll(rows, masterKeyring) : undefined;
 		});

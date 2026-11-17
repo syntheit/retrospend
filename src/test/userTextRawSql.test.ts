@@ -14,32 +14,10 @@ import { relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { scanSources, withoutComments } from "./source-scan";
 import { REPO_ROOT } from "./uiRules/paths";
+import { USER_TEXT_COLUMNS } from "./userTextColumns";
 
-/** Every column name declared through userText(), as a word. */
-const COLUMNS = [
-	"name",
-	"title",
-	"description",
-	"notes",
-	"note",
-	"location",
-	"label",
-	"identifier",
-	"message",
-	"reply",
-	"matchTitle",
-	"paymentMethod",
-	"paymentSource",
-	"websiteUrl",
-	"receiptUrl",
-	"rejectionReason",
-	"rejectedReason",
-	"adminNote",
-	// Import job text outside the declared fields.
-	"fileData",
-	"errorMessage",
-	"phone",
-];
+/** Every column word of the sealing map, generated (userTextColumns.ts). */
+const COLUMNS = USER_TEXT_COLUMNS;
 const READS_TEXT = new RegExp(`\\b(?:${COLUMNS.join("|")})\\b`);
 
 /**
@@ -56,6 +34,12 @@ const AUDITED: Record<string, string> = {
 		"B14: payment confirm keeps the stored text in its audit entry, never opened there",
 	"src/server/services/user-deletion-ghosts.ts":
 		"B15: a handed-over ghost has its sealed email and phone set to null by a prefix test, nothing is read",
+	"src/server/services/keys/contact-hash-fill.ts":
+		"B16: the start's fill reads only plaintext shadow_profile and guest_session emails (a sealed one fails the prefix test), writes only emailHash, and the update repeats the plaintext equality",
+	"src/server/services/payments/auto-finalize.ts":
+		"B17: the audit changes key paymentGroupId is an id, not a sealed leaf (AUDIT_CHANGES_LEAVES)",
+	"src/server/services/protection-keys/prelogin.ts":
+		"B18: joins user.email, which is not a mapped column (the sealed email columns are shadow_profile and guest_session)",
 };
 
 const TAG = /(\$queryRaw|\$executeRaw|Prisma\.sql|\bsql)\s*(?:<[^>]*>)?\s*`/g;

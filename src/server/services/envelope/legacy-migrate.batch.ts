@@ -6,6 +6,8 @@
  * run (budget build plan 02 §6 Safety).
  */
 import { randomUUID } from "node:crypto";
+import { loadEpoch } from "~/server/crypto/epoch";
+import { sealing } from "~/server/crypto/sealing";
 import { userTransaction } from "~/server/db-tx";
 import type { PrismaClient } from "~prisma";
 import {
@@ -82,6 +84,12 @@ export async function migrateUsers(
 	options: BatchOptions,
 	each?: (report: MigrationReport) => void,
 ): Promise<{ runId: string; reports: MigrationReport[] }> {
+	// Once the epoch is set a plaintext write would sit beside sealed text, and
+	// a script has no start check to say this process seals (sealing.ts).
+	if (options.apply && (await loadEpoch()) && !sealing())
+		throw new Error(
+			"This run would store plaintext after the field encryption epoch. Run it with sealing on, or dry run.",
+		);
 	const runId = options.runId ?? `script-${randomUUID()}`;
 	const now = options.now ?? new Date();
 	const users = await client.user.findMany({

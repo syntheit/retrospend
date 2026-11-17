@@ -18,6 +18,12 @@
  * shows nothing of the key. The label (HKDF info) keeps one index from being
  * usable as another's.
  *
+ * Label rule: an existing label is never changed (every stored index would
+ * change). The two infos above are not domain-separated: a label equal to
+ * another label plus " key tag" would share its tag key. No such label exists;
+ * a new label starts with a fixed prefix of its own, such as `rs.index.`, so
+ * none ever can.
+ *
  * The index is deterministic on purpose, so it shows which rows of one user
  * share a text; the output is a fixed size and shows no length. It is not a
  * secret from anyone holding the user's data key. Callers decide what

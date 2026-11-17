@@ -7,7 +7,7 @@
  *   userTransaction(scoped for A, A)    -> A's keys, ready before the first statement
  *   userTransaction(db, A)              -> A's keys, not the global client's
  *   userTransaction(scoped for A, B)    -> B's keys, and RLS as B
- *   userTransaction(keystoreDb, A)      -> no slot, no ready
+ *   keystoreTransaction(keystoreDb, A)      -> no slot, no ready
  *   scoped $transaction(callback)       -> the user's keys, ready first
  *   db.$transaction, both forms         -> the instance keys, ready first
  *   prismaAdapter(db) transaction       -> the instance keys, ready first
@@ -40,7 +40,7 @@ import {
 	type KeySource,
 	keystoreDb,
 } from "~/server/db-core";
-import { userTransaction } from "~/server/db-tx";
+import { keystoreTransaction, userTransaction } from "~/server/db-tx";
 import {
 	findDataKeyring,
 	getOrCreateDataKeyring,
@@ -147,7 +147,7 @@ describe("userTransaction", () => {
 
 	it("never swaps or waits on the keystore facade", async () => {
 		const a = await createTestUser();
-		await userTransaction(clients.keystoreDb, a.user.id, (tx) =>
+		await keystoreTransaction(clients.keystoreDb, a.user.id, (tx) =>
 			tx.category.count(),
 		);
 		expect(seen).toEqual([]);
@@ -224,7 +224,7 @@ describe("with real keys", () => {
 
 	it("loads the other user's ring before the transaction and nothing from the keystore inside it", async () => {
 		const [a, b] = await Promise.all([createTestUser(), createTestUser()]);
-		const bRing = await userTransaction(keystoreDb, b.user.id, (tx) =>
+		const bRing = await keystoreTransaction(keystoreDb, b.user.id, (tx) =>
 			getOrCreateDataKeyring(tx, master),
 		);
 		const cell: FieldAad = { table: "expense", column: "title", rowId: "e1" };

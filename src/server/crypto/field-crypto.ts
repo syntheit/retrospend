@@ -47,7 +47,8 @@ const KEY_BYTES = 32;
 const NONCE_BYTES = 12;
 const TAG_BYTES = 16;
 const KEY_ID_BYTES = 4;
-const MAX_KEY_ID = 0xffffffff;
+/** The largest key id: the id is stored as 4 bytes. The one place that says so. */
+export const MAX_KEY_ID = 0xffffffff;
 /**
  * Strict standard base64 with padding. Buffer.from alone accepts junk. A
  * repeated group such as `(?:[A-Za-z0-9+/]{4})*` overflows V8's regex stack on
@@ -147,10 +148,6 @@ export class Keyring {
 		return this.#currentId;
 	}
 
-	has(id: number): boolean {
-		return this.#keys.has(id);
-	}
-
 	/** The key ids the ring holds, lowest first. */
 	get ids(): number[] {
 		return [...this.#keys.keys()].sort((a, b) => a - b);
@@ -229,7 +226,7 @@ export function openField(
 	sealed: string,
 	aad: FieldAad,
 ): string {
-	if (!sealed.startsWith("\u0001")) throw new FieldCryptoError("malformed");
+	if (!isSealedField(sealed)) throw new FieldCryptoError("malformed");
 	if (!sealed.startsWith(PREFIX)) {
 		// "\u0001k", digits and a colon is a format this build does not know; anything
 		// else is not one of ours.
@@ -262,19 +259,4 @@ export function openField(
 		// OpenSSL's message is dropped on purpose; the code says enough.
 		throw new FieldCryptoError("auth_failed");
 	}
-}
-
-/**
- * The value of a column that holds both forms during the backfill: plaintext
- * passes through, ciphertext is decrypted. The pass-through ends when the D12
- * backfill finishes; after that a plaintext value is a bug and should throw.
- * Crypto-shredding a user's key before their rows are backfilled destroys
- * nothing, because those rows are still plaintext.
- */
-export function readField(
-	keyring: Keyring,
-	value: string,
-	aad: FieldAad,
-): string {
-	return isSealedField(value) ? openField(keyring, value, aad) : value;
 }

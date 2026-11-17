@@ -24,7 +24,7 @@ import {
 	ownerOfTable,
 } from "~/server/crypto/fields";
 import { keystoreDb } from "~/server/db-core";
-import { userTransaction } from "~/server/db-tx";
+import { keystoreTransaction } from "~/server/db-tx";
 import {
 	evictDataKeyring,
 	getOrCreateDataKeyring,
@@ -44,7 +44,7 @@ export const newMasterKeyring = () =>
  * as the seal path does, so a "no key" cached before it is not served.
  */
 export async function userKeyring(userId: string, master: Keyring) {
-	const ring = await userTransaction(keystoreDb, userId, (tx) =>
+	const ring = await keystoreTransaction(keystoreDb, userId, (tx) =>
 		getOrCreateDataKeyring(tx, master),
 	);
 	evictDataKeyring(userId);

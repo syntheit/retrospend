@@ -52,7 +52,7 @@ describe("loadMasterKeyring", () => {
 	it("reads a bare 64-hex key as id 1", () => {
 		const ring = loadMasterKeyring({ DATA_MASTER_KEY: HEX_A });
 		expect(ring?.currentId).toBe(1);
-		expect(ring?.has(1)).toBe(true);
+		expect(ring?.ids).toEqual([1]);
 	});
 
 	it("reads id:hex entries; the first is current and the rest only open", () => {
@@ -60,7 +60,7 @@ describe("loadMasterKeyring", () => {
 			DATA_MASTER_KEY: `2:${HEX_B},1:${HEX_A}`,
 		});
 		expect(ring?.currentId).toBe(2);
-		expect(ring?.has(1)).toBe(true);
+		expect(ring?.ids).toEqual([1, 2]);
 		const old = loadMasterKeyring({ DATA_MASTER_KEY: HEX_A });
 		if (!ring || !old) throw new Error("no keyring");
 		expect(openField(ring, sealField(old, "kept", CELL), CELL)).toBe("kept");
@@ -94,6 +94,11 @@ describe("loadMasterKeyring", () => {
 		["id too large", `4294967296:${HEX_A}`],
 		["negative id", `-1:${HEX_A}`],
 		["duplicate id", `1:${HEX_A},1:${HEX_B}`],
+		["the same key under two ids", `2:${HEX_A},1:${HEX_A}`],
+		[
+			"the same key under two ids, in another letter case",
+			`2:${HEX_A.toUpperCase()},1:${HEX_A.toLowerCase()}`,
+		],
 		["bare key beside others", `${HEX_A},2:${HEX_B}`],
 		["only whitespace", "  \n"],
 		["junk beside a good key", `${HEX_A} extra`],

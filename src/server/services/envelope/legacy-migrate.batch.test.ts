@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { needsAttention } from "./legacy-migrate.batch";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { resetEpochForTests } from "~/server/crypto/epoch";
+import { setSealingForTests } from "~/server/crypto/sealing";
+import { migrateUsers, needsAttention } from "./legacy-migrate.batch";
 import { emptyReport, type MigrationStatus } from "./legacy-migrate.service";
 
 const report = (
@@ -35,5 +37,38 @@ describe("needsAttention (the script's exit code, with and without --json)", () 
 				report("MIGRATED", good),
 			]),
 		).toBe(5);
+	});
+});
+
+describe("migrateUsers after the field encryption epoch", () => {
+	afterEach(() => {
+		resetEpochForTests();
+		setSealingForTests();
+	});
+	const empty = () => {
+		const findMany = vi.fn(async () => []);
+		return { client: { user: { findMany } } as never, findMany };
+	};
+
+	it("refuses an apply that would store plaintext, and reads nothing", async () => {
+		resetEpochForTests(true);
+		setSealingForTests(() => false);
+		const { client, findMany } = empty();
+		await expect(migrateUsers(client, { apply: true })).rejects.toThrow(
+			/plaintext after the field encryption epoch/,
+		);
+		expect(findMany).not.toHaveBeenCalled();
+	});
+
+	it("still runs a dry run, and an apply that seals", async () => {
+		resetEpochForTests(true);
+		setSealingForTests(() => false);
+		const dry = empty();
+		await migrateUsers(dry.client, { apply: false });
+		expect(dry.findMany).toHaveBeenCalled();
+		setSealingForTests(() => true);
+		const sealed = empty();
+		await migrateUsers(sealed.client, { apply: true });
+		expect(sealed.findMany).toHaveBeenCalled();
 	});
 });
