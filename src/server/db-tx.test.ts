@@ -123,6 +123,47 @@ describe("userTransaction", () => {
 	});
 });
 
+describe("userTransaction inside an open one", () => {
+	it("joins the open transaction for the same user: no new transaction, no second RLS statement", async () => {
+		allowUnregisteredClientsForTests(false);
+		const { client, tx, log } = registeredClient();
+		await userTransaction(client, "user-1", async (outer) => {
+			const inner = await userTransaction(outer, "user-1", async (joined) => {
+				expect(joined).toBe(tx);
+				return "inner";
+			});
+			expect(inner).toBe("inner");
+		});
+		expect(client.$transaction).toHaveBeenCalledTimes(1);
+		expect(log).toHaveLength(1);
+	});
+
+	it("refuses another user inside the open transaction", async () => {
+		allowUnregisteredClientsForTests(false);
+		const { client } = registeredClient();
+		await expect(
+			userTransaction(client, "user-1", (outer) =>
+				userTransaction(outer, "user-2", async () => 1),
+			),
+		).rejects.toThrow(/cannot switch users/);
+	});
+
+	it("does not let a keystore transaction pass as a user transaction", async () => {
+		allowUnregisteredClientsForTests(false);
+		const { client } = fakeClient();
+		registerKeystoreClient(client);
+		await expect(
+			keystoreTransaction(client, "user-1", (tx) =>
+				userTransaction(
+					tx as unknown as Pick<PrismaClient, "$transaction">,
+					"user-1",
+					async () => 1,
+				),
+			),
+		).rejects.toThrow(/needs the client from db.ts/);
+	});
+});
+
 describe("keystoreTransaction", () => {
 	it("runs a registered keystore client as the user, with no key load", async () => {
 		const { client, log } = fakeClient();

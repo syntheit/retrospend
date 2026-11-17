@@ -25,7 +25,7 @@ import { TRPCError } from "@trpc/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { blindIndexTag } from "~/server/crypto/blind-index";
 import { Keyring } from "~/server/crypto/field-crypto";
-import { userTransaction } from "~/server/db-tx";
+import { registerClient, userTransaction } from "~/server/db-tx";
 import {
 	adminDb,
 	createTestUser,
@@ -515,6 +515,9 @@ describe("category name index", () => {
 					}, options);
 			},
 		});
+		// userTransaction takes only clients db.ts registered; this one stands in
+		// for its own crypto client, as it did before that rule.
+		registerClient(racing, () => ({ client: racing, ready: async () => {} }));
 		const seen = new Map<string, boolean>();
 		const result = await backfillCategoryNameIndexes(racing, master, {
 			userIds: [a.user.id, b.user.id],
