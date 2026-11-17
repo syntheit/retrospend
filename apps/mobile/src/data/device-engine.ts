@@ -41,7 +41,11 @@ export const createDeviceEngine = (
 	userId: string,
 	now: () => number = Date.now,
 	options: DeviceEngineOptions = {},
-): DeviceEngine => createCoreEngine(api, userId, now, { warn, ...options });
+): DeviceEngine =>
+	createCoreEngine(api, userId, now, {
+		...options,
+		warn: options.warn ?? warn,
+	});
 
 const engines = new WeakMap<
 	RetrospendClient,
