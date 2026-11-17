@@ -521,17 +521,6 @@ export class ImportQueueService {
 				throw new Error("No transactions extracted from statement");
 			}
 
-			// Counted before the check: the tokens were used, and a count is not personal data.
-			if (totalTokensUsed > 0) {
-				const providerType = provider === "openrouter" ? "external" : "local";
-				await recordTokenUsage(
-					this.db,
-					job.userId,
-					totalTokensUsed,
-					providerType,
-				);
-			}
-
 			await this.assertNotProtected(job.userId);
 			// Store results in job
 			await this.write(
@@ -551,6 +540,17 @@ export class ImportQueueService {
 				},
 				"PROCESSING",
 			);
+
+			// Record token usage for both local and external providers
+			if (totalTokensUsed > 0) {
+				const providerType = provider === "openrouter" ? "external" : "local";
+				await recordTokenUsage(
+					this.db,
+					job.userId,
+					totalTokensUsed,
+					providerType,
+				);
+			}
 		} catch (error) {
 			if (error instanceof Error && error.name === "AbortError") {
 				throw new Error(
