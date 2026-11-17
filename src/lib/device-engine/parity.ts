@@ -41,12 +41,14 @@ export function idsToCheck(
 export function reportOf(
 	state: ParityReport["state"],
 	parts: Pick<ParityReport, "ids" | "mismatchedIds" | "generation"> & {
+		counts?: ParityReport["counts"];
 		storedZone: string | null;
 		browserZone: string | null;
 	},
 ): ParityReport {
 	return {
 		state,
+		counts: [],
 		...parts,
 		zoneDiffers:
 			parts.storedZone !== null &&
@@ -83,5 +85,25 @@ export function recordingZone(
 				},
 			});
 		},
+	});
+}
+
+const linesIn = (value: unknown) =>
+	Array.isArray(value) ? value.length : null;
+
+/** How many lines each side holds for each checked figure, from what the engine read and what differed. */
+export function countsOf(
+	ids: readonly string[],
+	read: DeviceRead,
+	mismatches: readonly { id: string; server: unknown }[],
+): ParityReport["counts"] {
+	return ids.map((id) => {
+		const device = linesIn(read.readings.get(id));
+		const differing = mismatches.find((m) => m.id === id);
+		return {
+			id,
+			device,
+			server: differing ? linesIn(differing.server) : device,
+		};
 	});
 }

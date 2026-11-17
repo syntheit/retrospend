@@ -17,6 +17,7 @@ const report = (generation: number): ParityReport => ({
 	state: "checked",
 	ids: ["glance.spent"],
 	mismatchedIds: [],
+	counts: [],
 	generation,
 	storedZone: "UTC",
 	browserZone: "UTC",
@@ -509,5 +510,32 @@ describe("device controller: parity", () => {
 		await b.controller.homeOpened();
 		expect(b.controller.state).toBe("terminal");
 		expect(changed.terminate).toHaveBeenCalled();
+	});
+});
+
+describe("device controller: the dev readout", () => {
+	it("checks now even when no pull has finished since the last check, and tells listeners", async () => {
+		const client = fakeClient();
+		const { controller, time } = setup([client]);
+		controller.setUser(ANA);
+		const heard = vi.fn();
+		controller.subscribe(heard);
+		await controller.homeOpened();
+		expect(client.parity).toHaveBeenCalledTimes(1);
+		expect(controller.lastPullAt).toBe(time.now);
+		await controller.tabVisible();
+		expect(client.parity).toHaveBeenCalledTimes(1);
+		await controller.checkNow();
+		expect(client.parity).toHaveBeenCalledTimes(2);
+		expect(heard).toHaveBeenCalledTimes(2);
+	});
+
+	it("stops telling a listener that unsubscribed", async () => {
+		const { controller } = setup([fakeClient()]);
+		controller.setUser(ANA);
+		const heard = vi.fn();
+		controller.subscribe(heard)();
+		await controller.homeOpened();
+		expect(heard).not.toHaveBeenCalled();
 	});
 });

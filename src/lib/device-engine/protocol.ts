@@ -52,6 +52,12 @@ export interface ParityReport {
 	/** The figures compared. */
 	ids: readonly string[];
 	mismatchedIds: readonly string[];
+	/** Lines each side holds per figure (a figure has one line per currency): counts, never amounts. */
+	counts: readonly {
+		id: string;
+		device: number | null;
+		server: number | null;
+	}[];
 	/** Pulls that had finished when the check ended. */
 	generation: number;
 	/** The zone both sides read the figures in: the one stored in the user's settings. */

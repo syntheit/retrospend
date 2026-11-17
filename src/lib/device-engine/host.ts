@@ -5,6 +5,7 @@ import {
 	type DeviceEngine,
 } from "@retrospend/engine/device";
 import {
+	countsOf,
 	GLANCE_PARITY_IDS,
 	idsToCheck,
 	idsToRead,
@@ -218,6 +219,7 @@ export function attachHost(scope: HostScope, deps: HostDeps): void {
 					? reportOf("checked", {
 							ids,
 							mismatchedIds: found.mismatches.map((m) => m.id),
+							counts: read ? countsOf(ids, read, found.mismatches) : [],
 							generation: found.generation,
 							...zones,
 						})

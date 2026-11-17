@@ -68,6 +68,7 @@ describe("parity against the server", () => {
 			state: "checked",
 			ids: IDS,
 			mismatchedIds: [],
+			counts: IDS.map((id) => ({ id, device: 1, server: 1 })),
 			generation: 1,
 			storedZone: BA,
 			browserZone: "Asia/Tokyo",
@@ -88,6 +89,10 @@ describe("parity against the server", () => {
 		const report = await client.parity();
 		expect(report.state).toBe("checked");
 		expect(report.mismatchedIds).toEqual(["glance.spentLast"]);
+		// Counts of lines, one per currency, on each side (the amounts are not kept).
+		expect(report.counts).toEqual(
+			IDS.map((id) => ({ id, device: 1, server: 1 })),
+		);
 		expect(report.zoneDiffers).toBe(false);
 		// Exactly one delta pull (a settings request opens each), two looks at the server.
 		expect(requestsTo(fetched, "/sync/settings").length - settingsBefore).toBe(

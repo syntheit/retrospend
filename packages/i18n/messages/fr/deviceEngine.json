@@ -1,0 +1,25 @@
+{
+	"title": "Moteur de l'appareil",
+	"off": "Absent de cette version",
+	"check": "Vérifier maintenant",
+	"none": "Aucune vérification pour l'instant",
+	"state": "État",
+	"pulls": "Récupérations",
+	"lastPull": "Dernière récupération",
+	"never": "Aucune pour l'instant",
+	"storedZone": "Fuseau enregistré",
+	"browserZone": "Fuseau du navigateur",
+	"unknown": "Inconnu",
+	"zones": "Fuseaux",
+	"differ": "Différents",
+	"same": "Identiques",
+	"matches": "Correspond",
+	"differs": "Diffère",
+	"lines": "{device} lignes sur l'appareil, {server} sur le serveur",
+	"states": {
+		"checked": "Correspond au serveur",
+		"mismatch": "Diffère du serveur",
+		"failed": "La vérification n'a pas abouti",
+		"skipped": "Rien à vérifier pour l'instant"
+	}
+}

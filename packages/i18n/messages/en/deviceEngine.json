@@ -1,0 +1,25 @@
+{
+	"title": "Device engine",
+	"off": "Not in this build",
+	"check": "Check now",
+	"none": "No check has run yet",
+	"state": "State",
+	"pulls": "Pulls",
+	"lastPull": "Last pull",
+	"never": "None yet",
+	"storedZone": "Stored zone",
+	"browserZone": "Browser zone",
+	"unknown": "Unknown",
+	"zones": "Zones",
+	"differ": "Differ",
+	"same": "Same",
+	"matches": "Matches",
+	"differs": "Differs",
+	"lines": "{device} device lines, {server} server lines",
+	"states": {
+		"checked": "Matches the server",
+		"mismatch": "Differs from the server",
+		"failed": "The check did not finish",
+		"skipped": "Nothing to check yet"
+	}
+}
