@@ -14,16 +14,25 @@ interface TestNode {
 
 const mockChange = jest.fn();
 const mockKeyed = jest.fn();
+const mockRotate = jest.fn();
+const mockProtection = { beginPasswordRotation: jest.fn() };
 jest.mock("@/auth/session", () => ({
 	useSession: () => ({
-		api: { account: { changePassword: mockChange } },
+		api: {
+			account: { changePassword: mockChange },
+			protection: mockProtection,
+		},
 		baseUrl: "https://retrospend.app",
-		state: { status: "signedIn", me: { email: "ana@example.com" } },
+		state: {
+			status: "signedIn",
+			me: { id: "user-1", email: "ana@example.com" },
+		},
 	}),
 }));
 jest.mock("@/auth/sign-in-secret", () => ({
 	keysLookup: () => "lookup",
 	isKeyedAccount: (...args: unknown[]) => mockKeyed(...args),
+	rotatePassword: (...args: unknown[]) => mockRotate(...args),
 }));
 jest.mock("@/data/ids", () => ({ newClientId: () => "key-1" }));
 const mockToast = { show: jest.fn(), dismiss: jest.fn() };
@@ -113,6 +122,7 @@ beforeEach(() => {
 	mockChange.mockReset();
 	mockKeyed.mockReset();
 	mockKeyed.mockResolvedValue(false);
+	mockRotate.mockReset();
 	mockToast.show.mockReset();
 	onClose.mockReset();
 });
@@ -167,20 +177,53 @@ describe("PasswordSheet", () => {
 		expect(onClose).not.toHaveBeenCalled();
 	});
 
-	it("sends nothing for a keyed account and shows the locked reason", async () => {
-		mockKeyed.mockResolvedValue(true);
-		const s = render();
-		s.type("Current password", "Old password 1");
-		s.type("New password", "Battery staple 2");
-		s.type("Confirm new password", "Battery staple 2");
-		await s.submit();
-		expect(mockKeyed).toHaveBeenCalledWith({
-			baseUrl: "https://retrospend.app",
-			email: "ana@example.com",
-			lookup: "lookup",
+	describe("a keyed account", () => {
+		function filled() {
+			mockKeyed.mockResolvedValue(true);
+			const s = render();
+			s.type("Current password", "Old password 1");
+			s.type("New password", "Battery staple 2");
+			s.type("Confirm new password", "Battery staple 2");
+			return s;
+		}
+
+		it("takes the rotation, never the plain route, and says the change is done", async () => {
+			mockRotate.mockResolvedValue({ ok: true });
+			const s = filled();
+			await s.submit();
+			expect(mockRotate).toHaveBeenCalledTimes(1);
+			expect(mockRotate).toHaveBeenCalledWith({
+				api: mockProtection,
+				baseUrl: "https://retrospend.app",
+				email: "ana@example.com",
+				userId: "user-1",
+				current: "Old password 1",
+				next: "Battery staple 2",
+				lookup: "lookup",
+				newKey: expect.any(Function),
+			});
+			expect(mockChange).not.toHaveBeenCalled();
+			expect(onClose).toHaveBeenCalled();
+			expect(mockToast.show).toHaveBeenCalledWith({
+				message: "Password changed. Your other devices are signed out.",
+			});
 		});
-		expect(mockChange).not.toHaveBeenCalled();
-		expect(s.texts()).toContain("Locked while Advanced protection is on.");
+
+		it("keeps a refusal in the sheet in the words for its reason", async () => {
+			const s = filled();
+			for (const [reason, text] of [
+				["wrongPassword", "The current password is wrong."],
+				["rateLimited", "Too many tries. Try again later."],
+				["protectionRefused", "Couldn't change the password. Try again."],
+			] as const) {
+				mockRotate.mockResolvedValueOnce({ ok: false, reason });
+				await s.submit();
+				expect(s.texts()).toContain(text);
+			}
+			expect(mockChange).not.toHaveBeenCalled();
+			expect(onClose).not.toHaveBeenCalled();
+			expect(mockToast.show).not.toHaveBeenCalled();
+		});
 	});
 
 	it("sends nothing when it cannot tell whether the account is keyed", async () => {
