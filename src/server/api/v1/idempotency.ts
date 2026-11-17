@@ -32,9 +32,12 @@ export const idempotency = os
 		const route = procedure["~orpc"].route;
 		const method = (route.method ?? "POST").toUpperCase();
 		const user = context.user;
+		const meta = procedure["~orpc"].meta;
 		// A preview twin writes nothing (it rolls back), so it needs no key and
-		// one key can preview and then write.
-		if (!isWriteMethod(method) || !user || procedure["~orpc"].meta.previewOf)
+		// one key can preview and then write. A readsOnly POST stores nothing and
+		// its answer must not be kept (the first step of a password change returns
+		// a wrap), so it has no key and no stored response either.
+		if (!isWriteMethod(method) || !user || meta.previewOf || meta.readsOnly)
 			return next();
 
 		const key = context.headers.get(IDEMPOTENCY_HEADER);
@@ -73,7 +76,6 @@ export const idempotency = os
 		// The write committed. If storing the response fails the key stays in
 		// progress until it expires, which refuses retries instead of writing
 		// twice.
-		const meta = procedure["~orpc"].meta;
 		await completeIdempotentRequest(
 			user.db,
 			start.id,
