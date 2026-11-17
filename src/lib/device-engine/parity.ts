@@ -57,9 +57,10 @@ export function reportOf(
 
 /**
  * The api, telling `record` the time zone of each settings snapshot it
- * returns. The server buckets days and months in the zone of the request (the
- * x-timezone header, else the tz cookie the browser sends) before the stored
- * one, so a check against it must name the stored zone the engine reads in.
+ * returns. The server's figures route reads days and months in the stored
+ * zone, whatever zone the request names, so this is the zone both sides of a
+ * check read in. The tRPC Home on screen reads in the browser's zone instead,
+ * which L6a must match when the device's figures replace it.
  */
 export function recordingZone(
 	api: HostApi,
@@ -84,10 +85,3 @@ export function recordingZone(
 		},
 	});
 }
-
-/** The header the server reads a request's zone from. */
-export const ZONE_HEADER = "x-timezone";
-
-/** A request to the figures route, which reads days and months in a zone. */
-export const isFiguresRequest = (url: string) =>
-	new URL(url, "http://localhost").pathname.endsWith("/figures");

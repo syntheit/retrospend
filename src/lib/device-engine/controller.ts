@@ -125,16 +125,19 @@ export function createDeviceController(deps: ControllerDeps) {
 			if (mine !== epoch) return;
 			if (status === "failed") backOff("failed");
 			else {
-				rateLimits = 0;
 				// Compare only: the figures are checked against the server's and the
 				// screen keeps showing the server's.
 				if (status === "ready" && generation > checkedGeneration) {
 					const report = await worker.parity();
 					if (mine !== epoch) return;
-					checkedGeneration = report.generation;
 					lastParity = report;
 					deps.onParity?.(report);
+					// A check that did not finish is tried again, after a wait.
+					if (report.state === "failed") return backOff("failed");
+					checkedGeneration = report.generation;
 				}
+				// Only a whole run, check included, ends a run of 429s.
+				rateLimits = 0;
 			}
 		} catch (error) {
 			if (mine !== epoch) return;

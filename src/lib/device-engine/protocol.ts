@@ -47,7 +47,8 @@ export interface VerifyResult {
  * could trust, or did not know its zone yet.
  */
 export interface ParityReport {
-	state: "checked" | "skipped";
+	/** `failed`: the check itself did not finish (the server's answer did not come). */
+	state: "checked" | "skipped" | "failed";
 	/** The figures compared. */
 	ids: readonly string[];
 	mismatchedIds: readonly string[];
@@ -56,7 +57,7 @@ export interface ParityReport {
 	/** The zone both sides read the figures in: the one stored in the user's settings. */
 	storedZone: string | null;
 	browserZone: string | null;
-	/** The browser is in another zone than the stored one, so the server was told which to use. */
+	/** The browser is in another zone than the stored one; the tRPC Home reads in the browser's. */
 	zoneDiffers: boolean;
 }
 

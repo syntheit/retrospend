@@ -8,10 +8,8 @@ import {
 	GLANCE_PARITY_IDS,
 	idsToCheck,
 	idsToRead,
-	isFiguresRequest,
 	recordingZone,
 	reportOf,
-	ZONE_HEADER,
 } from "./parity";
 import {
 	DeviceError,
@@ -84,24 +82,11 @@ export function attachHost(scope: HostScope, deps: HostDeps): void {
 	let observed: DeviceErrorCode | null = null;
 	/** How many 429s the server has answered: a call that overlapped one waits too. */
 	let limits = 0;
-	/** The zone of the settings the engine last pulled; the figures are read in it. */
+	/** The zone of the settings the engine last pulled: the one it reads days and months in, and the server's figures route too. */
 	let storedZone: string | null = null;
 
 	const watchedFetch: typeof globalThis.fetch = async (input, init) => {
-		const url =
-			typeof input === "string"
-				? input
-				: input instanceof URL
-					? input.href
-					: input.url;
-		let response: Response;
-		if (storedZone !== null && isFiguresRequest(url)) {
-			// The request's zone wins over the stored one on the server, and the
-			// browser sends its own in the tz cookie: say which zone to use.
-			const request = new Request(input, init);
-			request.headers.set(ZONE_HEADER, storedZone);
-			response = await deps.fetch(request);
-		} else response = await deps.fetch(input, init);
+		const response = await deps.fetch(input, init);
 		const code = await codeOf(response);
 		if (code === "rate_limited") limits += 1;
 		else if (code) observed = code;
@@ -128,8 +113,8 @@ export function attachHost(scope: HostScope, deps: HostDeps): void {
 	 * Runs one engine call, after checking the cookie still belongs to the
 	 * account the engine was started for (another tab may have signed out and
 	 * in as someone else; this call would then merge their rows into ours), and
-	 * again after a call that pulled, so rows another account's cookie fetched
-	 * are wiped before they can be read. A refusal the server gave during it is
+	 * again after the call, so rows another account's cookie fetched (a pull
+	 * that failed half way included) are wiped before they can be read. A refusal the server gave during it is
 	 * the answer, whatever the engine made of it. The server's answers are not
 	 * tied to one call: a terminal refusal ends the engine and every call
 	 * answers with it, and a 429 is given to every call that overlapped it.
@@ -140,15 +125,13 @@ export function attachHost(scope: HostScope, deps: HostDeps): void {
 		const caller = api;
 		if (!mine || !caller) throw new DeviceError("not_started");
 		const limitsBefore = limits;
-		const pulledBefore = mine.generation;
 		let result: T | undefined;
 		let failure: unknown = null;
 		try {
 			if (!(await sameAccount(caller))) observed = "account_changed";
 			else if (!terminal) {
 				result = await call(mine);
-				if (mine.generation !== pulledBefore && !(await sameAccount(caller)))
-					observed = "account_changed";
+				if (!(await sameAccount(caller))) observed = "account_changed";
 			}
 		} catch (error) {
 			failure = error;
@@ -224,6 +207,13 @@ export function attachHost(scope: HostScope, deps: HostDeps): void {
 						? await check(e, ids)
 						: null;
 				// One more pull and a second look on a difference: the engine's verify.
+				if (read && storedZone !== null && ids.length > 0 && !found)
+					return reportOf("failed", {
+						ids,
+						mismatchedIds: [],
+						generation: e.generation,
+						...zones,
+					});
 				return found
 					? reportOf("checked", {
 							ids,

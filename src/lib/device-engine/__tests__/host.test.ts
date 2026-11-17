@@ -138,6 +138,20 @@ describe("worker host over a message channel", () => {
 		expect(await code(client.read(["glance.spent"]))).toBe("account_changed");
 	});
 
+	it("wipes the engine when the cookie changed during a pull that then failed half way", async () => {
+		const { client, cookie, hooks } = setup({
+			fail: { route: "expenses", pull: 1, error: new Error("offline") },
+		});
+		await client.start("u1");
+		hooks.afterSettings = () => {
+			cookie.userId = "u2";
+		};
+		// The settings came with u2's cookie and the expenses did not: the pull
+		// fails with its generation unchanged, and is still checked.
+		expect(await code(client.pull())).toBe("account_changed");
+		expect(await code(client.read(["glance.spent"]))).toBe("account_changed");
+	});
+
 	it("treats a 401 as terminal and a 429 as a wait", async () => {
 		const unauthenticated = setup();
 		await unauthenticated.client.start("u1");

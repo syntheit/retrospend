@@ -26,6 +26,9 @@ export const ROWS = [
 ];
 export const ARS = (minor: number): Money[] => [{ minor, currency: "ARS" }];
 
+/** The zone the engine double's settings carry unless a test sets one. */
+export const STORED_ZONE = "America/Argentina/Buenos_Aires";
+
 const ports: MessagePort[] = [];
 
 /** Fakes only the date ("this month" reads from it); the channel needs real timers. */
@@ -44,12 +47,16 @@ export interface SetupOptions {
 	now?: number;
 	/** What the device's own api answers when asked for figures (no network). */
 	figures?: Record<string, Money[]>;
-	/** The server's answer to GET /figures, by the zone it reads days in (header, else the browser's). */
-	serverFigures?: (zone: string | undefined) => Record<string, Money[]>;
+	/**
+	 * The server's answer to GET /figures, by the zone it reads days in. The
+	 * real route reads in the user's stored zone, whatever zone the request
+	 * names (no header or cookie is read), so this is called with that zone.
+	 */
+	serverFigures?: (storedZone: string) => Record<string, Money[]>;
 	/** The zone in the settings the engine pulls; the double's own (Buenos Aires) by default. */
 	zone?: string;
-	/** The zone of the tz cookie the browser sends. */
-	browserZone?: string;
+	/** A route that fails: its name, and in which pull (from 1). */
+	fail?: { route: string; pull: number; error: unknown };
 	createApi?: (fetch: typeof globalThis.fetch) => HostApi;
 	deps?: Partial<HostDeps>;
 }
@@ -75,6 +82,7 @@ export function setup(options: SetupOptions = {}) {
 			},
 		],
 		figures: options.figures ?? { "glance.spent": ARS(100_000) },
+		fail: options.fail,
 	});
 	// What the server answers the sync routes, whose cookie the browser holds,
 	// and hooks a test uses to act at a moment of a call.
@@ -84,28 +92,23 @@ export function setup(options: SetupOptions = {}) {
 		status?: (url: string) => Promise<number | undefined>;
 		afterSettings?: () => void;
 	} = {};
-	const fetched = vi.fn(
-		async (input: RequestInfo | URL, init?: RequestInit) => {
-			const url = urlOf(input);
-			const forced = await hooks.status?.(url);
-			const status = forced ?? (url.includes("/profile") ? 200 : answer.status);
-			if (url.includes("/figures") && status === 200 && options.serverFigures) {
-				const headers =
-					input instanceof Request ? input.headers : new Headers(init?.headers);
-				const zone = headers.get("x-timezone") ?? options.browserZone;
-				return Response.json({
-					figures: Object.entries(options.serverFigures(zone ?? undefined)).map(
-						([id, lines]) => ({ id, lines }),
-					),
-				});
-			}
-			const body =
-				status === 403
-					? { code: "protected_account", status: 403 }
-					: { code: "x", status };
-			return new Response(JSON.stringify(body), { status });
-		},
-	);
+	const fetched = vi.fn(async (input: RequestInfo | URL) => {
+		const url = urlOf(input);
+		const forced = await hooks.status?.(url);
+		const status = forced ?? (url.includes("/profile") ? 200 : answer.status);
+		if (url.includes("/figures") && status === 200 && options.serverFigures) {
+			return Response.json({
+				figures: Object.entries(
+					options.serverFigures(options.zone ?? STORED_ZONE),
+				).map(([id, lines]) => ({ id, lines })),
+			});
+		}
+		const body =
+			status === 403
+				? { code: "protected_account", status: 403 }
+				: { code: "x", status };
+		return new Response(JSON.stringify(body), { status });
+	});
 	// Routes that ask the server first, as the real client does, and fail the
 	// way the client does: an error whose text names an amount.
 	const through = (fetch: typeof globalThis.fetch): HostApi => ({

@@ -2,6 +2,7 @@
 
 import { createRetrospendClient } from "@retrospend/api-client";
 import { ApiProvider } from "@retrospend/api-client/react";
+import { runtimeTimeZone } from "@retrospend/domain/time-zone";
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchStreamLink, loggerLink } from "@trpc/client";
 import { createTRPCReact } from "@trpc/react-query";
@@ -43,12 +44,7 @@ export type RouterOutputs = inferRouterOutputs<AppRouter>;
 
 /** The browser's IANA time zone; the server buckets days and months in it. */
 function browserTimeZone(): string | undefined {
-	if (typeof window === "undefined") return undefined;
-	try {
-		return Intl.DateTimeFormat().resolvedOptions().timeZone;
-	} catch {
-		return undefined;
-	}
+	return typeof window === "undefined" ? undefined : runtimeTimeZone();
 }
 
 function TRPCProviderInner(props: {

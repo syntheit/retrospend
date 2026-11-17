@@ -2,17 +2,14 @@ import type { DeviceRead } from "@retrospend/engine/device";
 import { expense } from "@retrospend/engine/device-fake";
 import { describe, expect, it } from "vitest";
 import { GLANCE_PARITY_IDS, idsToCheck, NOT_PLANNED_YET } from "../parity";
-import { ARS, code, fakeClock, NOW, setup } from "./harness";
+import { ARS, code, fakeClock, NOW, setup, urlOf } from "./harness";
 
 const BA = "America/Argentina/Buenos_Aires";
 const IDS = ["glance.spent", "glance.spentLastToDate", "glance.spentLast"];
 const requestsTo = (
 	fetched: ReturnType<typeof setup>["fetched"],
 	part: string,
-) =>
-	fetched.mock.calls.filter(([input]) =>
-		(typeof input === "string" ? input : (input as Request).url).includes(part),
-	);
+) => fetched.mock.calls.filter(([input]) => urlOf(input).includes(part));
 
 describe("which figures are checked", () => {
 	const read = (ids: string[], budgetReady: boolean): DeviceRead => ({
@@ -62,8 +59,6 @@ describe("parity against the server", () => {
 	it("compares the figures the device read with the server's lines, in the stored zone", async () => {
 		const { client, fetched } = setup({
 			serverFigures: server(250_000),
-			// The browser's cookie says Tokyo; the stored zone is Buenos Aires.
-			browserZone: "Asia/Tokyo",
 			deps: { parityIds: IDS, browserZone: () => "Asia/Tokyo" },
 		});
 		await client.start("u1");
@@ -79,13 +74,7 @@ describe("parity against the server", () => {
 			zoneDiffers: true,
 		});
 		const [figures] = requestsTo(fetched, "/figures");
-		const request = figures?.[0] as Request;
-		expect(new URL(request.url).searchParams.get("ids")).toBe(IDS.join(","));
-		expect(request.headers.get("x-timezone")).toBe(BA);
-		// Only the figures route is told a zone: the sync requests go out untouched.
-		const sync = requestsTo(fetched, "/sync/");
-		expect(sync.length).toBeGreaterThan(0);
-		expect(sync.every(([input]) => typeof input === "string")).toBe(true);
+		expect(urlOf(figures?.[0])).toContain(`ids=${IDS.join(",")}`);
 	});
 
 	it("pulls once more on a difference, compares again, and records ids and counts only", async () => {
@@ -137,20 +126,19 @@ describe("parity against the server", () => {
 // Stored zone UTC, browser in Buenos Aires (UTC-3), ARS, "now" 2026-11-10
 // 12:00 UTC. One expense of 1,000 ARS at 2026-11-01 01:00 UTC: November 1 in
 // UTC, October 31 (22:00) in Buenos Aires. In UTC: spent this month 1,000.00
-// = 100,000 minor and last month 0. In Buenos Aires the same row would be
-// last month's, so a server reading in the browser's zone would answer 0 and
-// 100,000. The header makes the server read in the stored zone, so they agree.
+// = 100,000 minor and last month 0. The server's figures route reads in the
+// stored zone too, whatever the browser's, so the two agree, and the report
+// notes that the browser's zone is another (the tRPC Home reads in it).
 describe("a month boundary with the stored zone apart from the browser's", () => {
 	const NOV = Date.parse("2026-11-10T12:00:00.000Z");
 	fakeClock(NOV);
 	const boundaryRow = () => expense("b1", "1000", "2026-11-01T01:00:00.000Z");
 
-	it("agrees with the server only because the request names the stored zone", async () => {
-		const { client } = setup({
+	it("agrees with the server and notes the browser's zone", async () => {
+		const { client, fetched } = setup({
 			now: NOV,
 			zone: "UTC",
 			rows: [boundaryRow()],
-			browserZone: BA,
 			serverFigures: (zone) =>
 				zone === "UTC"
 					? { "glance.spent": ARS(100_000), "glance.spentLast": ARS(0) }
@@ -166,9 +154,39 @@ describe("a month boundary with the stored zone apart from the browser's", () =>
 		expect(read?.readings.get("glance.spent")).toEqual(ARS(100_000));
 		expect(read?.readings.get("glance.spentLast")).toEqual(ARS(0));
 		const report = await client.parity();
+		expect(report.state).toBe("checked");
 		expect(report.mismatchedIds).toEqual([]);
 		expect(report.storedZone).toBe("UTC");
 		expect(report.browserZone).toBe(BA);
 		expect(report.zoneDiffers).toBe(true);
+		// The request names no zone: the server does not read one.
+		const [figures] = requestsTo(fetched, "/figures");
+		expect(figures?.[1]).toBeUndefined();
+		expect(typeof figures?.[0]).toBe("string");
+	});
+});
+
+describe("a check that does not finish", () => {
+	fakeClock(NOW);
+
+	it("is reported as failed, not skipped, and the device is not taken as checked", async () => {
+		const { client, hooks } = setup({
+			serverFigures: () => ({
+				"glance.spent": ARS(100_000),
+				"glance.spentLastToDate": ARS(200_000),
+				"glance.spentLast": ARS(250_000),
+			}),
+			deps: { parityIds: IDS },
+		});
+		await client.start("u1");
+		await client.pull();
+		hooks.status = async (url) => (url.includes("/figures") ? 500 : undefined);
+		const report = await client.parity();
+		expect(report.state).toBe("failed");
+		expect(report.ids).toEqual(IDS);
+		expect(report.mismatchedIds).toEqual([]);
+		// A run after the server answers again checks properly.
+		hooks.status = undefined;
+		expect((await client.parity()).state).toBe("checked");
 	});
 });
