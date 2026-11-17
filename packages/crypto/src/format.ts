@@ -32,9 +32,10 @@
 // - Only `invalid_input` and `decrypt_failed` exist (errors.ts). An authentic
 //   record this version cannot read is `decrypt_failed` too.
 import { fromBase64Url, toBase64Url } from "./base64url";
-import { CryptoError } from "./errors";
+import { bad, CryptoError } from "./errors";
 import { toHex } from "./hex";
 import {
+	isBytes,
 	KEY_BYTES,
 	NONCE_BYTES,
 	type Primitives,
@@ -44,6 +45,12 @@ import {
 export const FORMAT_VERSION = 1;
 export const ALGORITHM_XCHACHA20_POLY1305 = 1;
 export const KEY_ID_BYTES = 16;
+/**
+ * A collection key id as text: the lowercase hex of its 16 bytes (`toHex`). A
+ * collection-key wrap's target id is exactly this, so the server can pin it and
+ * the vault can match a record's key id to a wrap.
+ */
+export const KEY_ID_HEX_PATTERN = new RegExp(`^[0-9a-f]{${KEY_ID_BYTES * 2}}$`);
 export const HEADER_BYTES = 2 + KEY_ID_BYTES + NONCE_BYTES;
 export const PAD_BUCKET_BYTES = 64;
 /** Largest plaintext (schema version, JSON and padding) accepted either way. */
@@ -78,10 +85,13 @@ export interface OpenedRecord {
 	record: { [key: string]: Json };
 }
 
-const bad = (): never => {
-	throw new CryptoError("invalid_input");
-};
-const ID = /^[A-Za-z0-9_-]{1,64}$/;
+/**
+ * What an id may be wherever one is bound into an AAD (records and wraps). The
+ * one definition. The server imports it; the API contract and the SQL CHECKs
+ * cannot depend on this package, so they carry the same text, and
+ * src/server/services/protection-keys/crypto-rules.test.ts fails if any of them drifts.
+ */
+export const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 const safeInt = (v: number, max: number) =>
 	Number.isSafeInteger(v) && v >= 0 && v <= max ? v : bad();
 
@@ -94,7 +104,7 @@ const safeInt = (v: number, max: number) =>
 export function recordAad(ctx: RecordContext, header: Uint8Array): string {
 	if (header.length !== 2 + KEY_ID_BYTES) bad();
 	for (const id of [ctx.userId, ctx.collectionId, ctx.recordId]) {
-		if (typeof id !== "string" || !ID.test(id)) bad();
+		if (typeof id !== "string" || !ID_PATTERN.test(id)) bad();
 	}
 	return [
 		"rs.v1",
@@ -243,6 +253,7 @@ export interface SealedHeader {
  * `decrypt_failed` for input too short to hold a record.
  */
 export function readHeader(sealed: Uint8Array): SealedHeader {
+	if (!isBytes(sealed)) bad();
 	if (sealed.length < HEADER_BYTES + TAG_BYTES) {
 		throw new CryptoError("decrypt_failed");
 	}

@@ -8,6 +8,9 @@ const TAG = ["Advanced protection"];
 /** 32 bytes as unpadded base64url (the sign-in secret, a public key). */
 const KEY_TEXT = /^[A-Za-z0-9_-]{43}$/;
 
+/** A collection key id: 16 bytes as lowercase hex (pinned to @retrospend/crypto by a server test). */
+const KEY_ID_HEX = /^[0-9a-f]{32}$/;
+
 export const enableWrapSchema = z
 	.object({
 		id: z.uuid().optional().meta({
@@ -25,7 +28,7 @@ export const enableWrapSchema = z
 			.regex(/^[A-Za-z0-9_-]{1,64}$/)
 			.meta({
 				description:
-					"What the wrap is bound to: your user id for ak-password, ak-recovery and private-key, the collection key id for collection-key.",
+					"What the wrap is bound to: your user id for ak-password, ak-recovery and private-key; for collection-key, the lowercase hex of the 16-byte key id (32 characters).",
 			}),
 		wrapped: z
 			.string()
@@ -34,6 +37,13 @@ export const enableWrapSchema = z
 				description: "The wrapped key, base64url. The server never opens it.",
 			}),
 	})
+	.refine(
+		(wrap) => wrap.role !== "collection-key" || KEY_ID_HEX.test(wrap.targetId),
+		{
+			path: ["targetId"],
+			message: "A collection key is named by the lowercase hex of its key id.",
+		},
+	)
 	.meta({ id: "EnableProtectionWrap" });
 
 export const enableProtectionSchema = z

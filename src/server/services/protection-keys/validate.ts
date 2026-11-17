@@ -8,14 +8,17 @@
  */
 import {
 	checkArgon2Params,
-	KEY_BYTES,
-	NONCE_BYTES,
+	ID_PATTERN,
+	KEY_ID_HEX_PATTERN,
 	PUBLIC_KEY_BYTES,
 	PUBLIC_ROLES,
+	PUBLIC_WRAP_BYTES,
 	SALT_BYTES,
-	SEAL_OVERHEAD_BYTES,
 	SYMMETRIC_ROLES,
-	TAG_BYTES,
+	SYMMETRIC_WRAP_BYTES,
+	WRAP_SYMMETRIC,
+	WRAP_TO_PUBLIC,
+	WRAP_VERSION,
 } from "@retrospend/crypto";
 import { ProtectionKeysError } from "./errors";
 
@@ -30,17 +33,10 @@ const OWN_TARGET_ROLES: readonly WrapRole[] = [
 	"private-key",
 ];
 
-/** keys.ts `ID`: the pattern an id must match to be bound into a wrap. */
-const TARGET_ID = /^[A-Za-z0-9_-]{1,64}$/;
 const WRAP_ID =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 /** More than a person ever holds (collections, devices and contacts); bounds a request. */
 export const MAX_CHANGES = 500;
-
-const HEADER_BYTES = 2;
-const SYMMETRIC_WRAP_BYTES = HEADER_BYTES + NONCE_BYTES + KEY_BYTES + TAG_BYTES;
-/** The sealed plaintext is the key plus a 16-byte binding (keys.ts BINDING_BYTES). */
-const PUBLIC_WRAP_BYTES = HEADER_BYTES + KEY_BYTES + 16 + SEAL_OVERHEAD_BYTES;
 
 export type KeySetParams = {
 	kdfSalt: Uint8Array;
@@ -75,7 +71,11 @@ const isPublic = (role: string): boolean =>
 
 function checkRef(ref: WrapRef, userId: string): void {
 	if (!isSymmetric(ref.role) && !isPublic(ref.role)) invalid();
-	if (typeof ref.targetId !== "string" || !TARGET_ID.test(ref.targetId))
+	// A collection key is named by its key id in hex; every other target is an
+	// id of the general shape.
+	const targetPattern =
+		ref.role === "collection-key" ? KEY_ID_HEX_PATTERN : ID_PATTERN;
+	if (typeof ref.targetId !== "string" || !targetPattern.test(ref.targetId))
 		invalid();
 	if (OWN_TARGET_ROLES.includes(ref.role) && ref.targetId !== userId) invalid();
 }
@@ -85,9 +85,13 @@ function checkWrap(wrap: WrapInput, userId: string): void {
 	if (wrap.id !== undefined && !WRAP_ID.test(wrap.id)) invalid();
 	const bytes = wrap.wrapped;
 	if (!(bytes instanceof Uint8Array)) invalid();
-	// Version 1, then 1 (symmetric) or 2 (sealed to a public key).
+	// The version, then which kind: symmetric or sealed to a public key.
 	const symmetric = isSymmetric(wrap.role);
-	if (bytes[0] !== 1 || bytes[1] !== (symmetric ? 1 : 2)) invalid();
+	if (
+		bytes[0] !== WRAP_VERSION ||
+		bytes[1] !== (symmetric ? WRAP_SYMMETRIC : WRAP_TO_PUBLIC)
+	)
+		invalid();
 	if (bytes.length !== (symmetric ? SYMMETRIC_WRAP_BYTES : PUBLIC_WRAP_BYTES))
 		invalid();
 }

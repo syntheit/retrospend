@@ -4,13 +4,14 @@
 // better-auth checks it at sign-in, and every client derives the same text from
 // the typed password (prelogin salt and parameters, then Argon2id).
 import { fromBase64Url, toBase64Url } from "./base64url";
-import { KEY_BYTES } from "./primitives";
+import { bad } from "./errors";
+import { isBytes, KEY_BYTES } from "./primitives";
 
 export const SIGN_IN_SECRET_LENGTH = 43;
 
 /** The text a client sends as the password for an account with keys. */
 export function signInSecret(authKey: Uint8Array): string {
-	if (authKey.length !== KEY_BYTES) throw new RangeError("bad auth key length");
+	if (!isBytes(authKey) || authKey.length !== KEY_BYTES) bad();
 	return toBase64Url(authKey);
 }
 

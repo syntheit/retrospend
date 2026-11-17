@@ -3,8 +3,8 @@
 // (apps/mobile/test/crypto-vectors.test.ts) through runKnownAnswerTests.
 import { beforeAll, describe, expect, it } from "vitest";
 import {
-	canonicalJson,
 	CryptoError,
+	canonicalJson,
 	decodeSealed,
 	encodeSealed,
 	fromBase64Url,
@@ -18,11 +18,11 @@ import {
 	type RecordKey,
 	readHeader,
 	recordAad,
-	runKnownAnswerTests,
 	sealRecord,
 	toBase64Url,
 	toHex,
 } from "../src";
+import { runKnownAnswerTests } from "../src/dev";
 import { sealRecordWithNonce } from "../src/format";
 import { createWebPrimitives } from "../src/web";
 import vectors from "../vectors/format.vectors.json";

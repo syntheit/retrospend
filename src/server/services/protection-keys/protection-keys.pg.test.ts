@@ -4,7 +4,8 @@
  * replacement, the lock between two writers, and the all-or-nothing change.
  */
 
-import { type Primitives, wrapKey, wrapKeyToPublic } from "@retrospend/crypto";
+import { type Primitives, wrapKey } from "@retrospend/crypto";
+import { wrapKeyToPublic } from "@retrospend/crypto/k4";
 import { createWebPrimitives } from "@retrospend/crypto/web";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";

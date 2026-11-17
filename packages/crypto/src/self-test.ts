@@ -27,10 +27,10 @@ import {
 	recoveryWrapKey,
 	type SymmetricRole,
 	unwrapKey,
-	unwrapKeyFromPublic,
 	wrapKeyWithNonce,
 } from "./keys";
 import type { Primitives } from "./primitives";
+import { unwrapKeyFromPublic } from "./public-wraps";
 
 /** Names of the vectors that failed; empty means every primitive matched. */
 export function runKnownAnswerTests(p: Primitives): string[] {

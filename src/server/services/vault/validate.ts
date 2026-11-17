@@ -10,6 +10,7 @@ import {
 	ALGORITHM_XCHACHA20_POLY1305,
 	FORMAT_VERSION,
 	HEADER_BYTES,
+	ID_PATTERN,
 	MAX_PLAINTEXT_BYTES,
 	PAD_BUCKET_BYTES,
 	TAG_BYTES,
@@ -27,8 +28,6 @@ export type VaultWrite = {
 	ciphertext: Uint8Array | null;
 };
 
-/** keys.ts and format.ts `ID`: the pattern an id must match to be bound into an AAD. */
-const ID = /^[A-Za-z0-9_-]{1,64}$/;
 /** More than a device pushes at once; bounds a request. */
 export const MAX_WRITES = 500;
 /** Ciphertext in one batch. A record may be 1 MiB, so the count alone allows 500 MiB. */
@@ -62,7 +61,7 @@ export function validateVaultWrites(writes: readonly VaultWrite[]): void {
 	const seen = new Set<string>();
 	let bytes = 0;
 	for (const w of writes) {
-		if (!ID.test(w.id) || !ID.test(w.collectionId)) bad();
+		if (!ID_PATTERN.test(w.id) || !ID_PATTERN.test(w.collectionId)) bad();
 		if (!Number.isInteger(w.entity) || w.entity < 1 || w.entity > MAX_ENTITY)
 			bad();
 		if (

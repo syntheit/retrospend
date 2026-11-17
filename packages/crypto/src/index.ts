@@ -1,20 +1,4 @@
 export { fromBase64Url, toBase64Url } from "./base64url";
-export {
-	type Argon2Entry,
-	type Argon2Result,
-	BENCH_ARGON2_SETS,
-	BENCH_RECORDS,
-	BENCH_RUNS,
-	type BenchOptions,
-	type BenchReport,
-	type BenchRow,
-	benchJson,
-	benchRows,
-	type RecordsEntry,
-	type RecordsResult,
-	runCryptoBench,
-	type StepFailure,
-} from "./bench";
 export { CryptoError, type CryptoErrorCode } from "./errors";
 export {
 	ALGORITHM_XCHACHA20_POLY1305,
@@ -23,8 +7,10 @@ export {
 	encodeSealed,
 	FORMAT_VERSION,
 	HEADER_BYTES,
+	ID_PATTERN,
 	type Json,
 	KEY_ID_BYTES,
+	KEY_ID_HEX_PATTERN,
 	MAX_PLAINTEXT_BYTES,
 	type OpenedRecord,
 	openRecord,
@@ -52,15 +38,20 @@ export {
 	keyPairMatches,
 	masterSubkeys,
 	PUBLIC_ROLES,
+	PUBLIC_WRAP_BYTES,
 	type PublicRole,
 	parseRecoveryKey,
 	recoveryWrapKey,
 	SYMMETRIC_ROLES,
+	SYMMETRIC_WRAP_BYTES,
 	type SymmetricRole,
 	unwrapKey,
-	unwrapKeyFromPublic,
+	WRAP_BINDING_BYTES,
+	WRAP_HEADER_BYTES,
+	WRAP_SYMMETRIC,
+	WRAP_TO_PUBLIC,
+	WRAP_VERSION,
 	wrapKey,
-	wrapKeyToPublic,
 } from "./keys";
 export {
 	type Argon2Params,
@@ -78,7 +69,6 @@ export {
 	TAG_BYTES,
 	wipe,
 } from "./primitives";
-export { runKnownAnswerTests } from "./self-test";
 export {
 	isSignInSecret,
 	SIGN_IN_SECRET_LENGTH,

@@ -3,7 +3,7 @@ import {
 	benchJson,
 	benchRows,
 	runCryptoBench,
-} from "@retrospend/crypto";
+} from "@retrospend/crypto/dev";
 import * as Clipboard from "expo-clipboard";
 import * as Device from "expo-device";
 import { useState } from "react";

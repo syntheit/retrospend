@@ -28,15 +28,8 @@
 // genuine wraps, and trust in the public key itself comes from comparing
 // fingerprintPhrase out of band.
 //
-// REQUIREMENT before device or contact unlock ships: public-key wraps
-// (ak-device, ak-contact) do NOT authenticate the account key. Anyone with the
-// recipient's public key, the server included, can seal any 32 bytes for that
-// role and id, and a substitute AK that also comes with a matching private-key
-// wrap and collection-key wraps is not detected by the recipient. Either the
-// device pins a commitment to AK when it is approved (for example BLAKE2b of
-// AK in secure storage, checked on every unwrap), or the approving device
-// authenticates the wrap (crypto_box with its static key). One of the two must
-// be built with the device flow.
+// Public-key wraps (ak-device, ak-contact) are not in the production entry:
+// see public-wraps.ts for why and for the requirement K4 must meet first.
 //
 // Recovery key text: 32 bytes then the 4-bit version 1 make 260 bits, written
 // as 52 symbols of the Crockford base32 alphabet 0123456789ABCDEFGHJKMNPQRSTVWXYZ
@@ -49,16 +42,18 @@
 // moves check 2 by (x+y)*a^i*(1+a), or breaks the equal-to-check-1 test at the
 // last data symbol and the first check. Input is read case-insensitively,
 // ignoring spaces and "-", with O read as 0 and I and L as 1 (Crockford).
-import { CryptoError } from "./errors";
-import { KEY_ID_BYTES, type RecordKey } from "./format";
+import { bad, failed } from "./errors";
+import { ID_PATTERN, KEY_ID_BYTES, type RecordKey } from "./format";
 import { toHex } from "./hex";
 import {
 	type Argon2Params,
 	type BoxKeyPair,
+	isBytes,
 	KEY_BYTES,
 	NONCE_BYTES,
 	type Primitives,
 	SALT_BYTES,
+	SEAL_OVERHEAD_BYTES,
 	TAG_BYTES,
 } from "./primitives";
 
@@ -71,6 +66,9 @@ export const ARGON2_CEILING: Argon2Params = {
 	passes: 10,
 };
 
+// KDF context rule: a new label is "rs." + a short purpose + ".v" + a number
+// (8 characters in all, like the ones below), and a label is never reused for
+// another purpose or key. Existing labels are fixed by the vectors.
 export const CONTEXT_MASTER = "rs.mk.v1";
 export const CONTEXT_RECOVERY = "rs.rk.v1";
 export const SUBKEY_AUTH = 1;
@@ -87,18 +85,19 @@ export const PUBLIC_ROLES = ["ak-device", "ak-contact"] as const;
 export type SymmetricRole = (typeof SYMMETRIC_ROLES)[number];
 export type PublicRole = (typeof PUBLIC_ROLES)[number];
 
-const WRAP_VERSION = 1;
-const WRAP_SYMMETRIC = 1;
-const WRAP_TO_PUBLIC = 2;
-const BINDING_BYTES = 16;
-const ID = /^[A-Za-z0-9_-]{1,64}$/;
-
-const bad = (): never => {
-	throw new CryptoError("invalid_input");
-};
-const failed = (): never => {
-	throw new CryptoError("decrypt_failed");
-};
+export const WRAP_VERSION = 1;
+export const WRAP_SYMMETRIC = 1;
+export const WRAP_TO_PUBLIC = 2;
+/** The two bytes every wrap starts with: version, then which kind it is. */
+export const WRAP_HEADER_BYTES = 2;
+/** The hash of the AAD text sealed beside the key in a public-key wrap. */
+export const WRAP_BINDING_BYTES = 16;
+/** Exact size of a symmetric wrap: header, nonce, the 32-byte key, tag. */
+export const SYMMETRIC_WRAP_BYTES =
+	WRAP_HEADER_BYTES + NONCE_BYTES + KEY_BYTES + TAG_BYTES;
+/** Exact size of a public-key wrap: header, then a sealed key plus binding. */
+export const PUBLIC_WRAP_BYTES =
+	WRAP_HEADER_BYTES + KEY_BYTES + WRAP_BINDING_BYTES + SEAL_OVERHEAD_BYTES;
 
 /** Throws `invalid_input` unless the parameters are within the floor and ceiling. */
 export function checkArgon2Params(params: Argon2Params): Argon2Params {
@@ -155,7 +154,7 @@ export function deriveMasterKey(
 	salt: Uint8Array,
 	params: Argon2Params,
 ): Uint8Array {
-	if (salt.length !== SALT_BYTES) bad();
+	if (!isBytes(salt) || salt.length !== SALT_BYTES) bad();
 	checkArgon2Params(params);
 	const bytes = passwordBytes(password);
 	try {
@@ -184,13 +183,13 @@ export const recoveryWrapKey = (p: Primitives, recoveryKey: Uint8Array) =>
 
 // Wrapping.
 
-const wrapAad = (alg: number, role: string, id: string): string => {
-	if (!ID.test(id)) bad();
+export const wrapAad = (alg: number, role: string, id: string): string => {
+	if (typeof id !== "string" || !ID_PATTERN.test(id)) bad();
 	return `rs.wrap.v1|${toHex(Uint8Array.of(WRAP_VERSION, alg))}|${role}|${id}`;
 };
-const ascii = (text: string): Uint8Array =>
+export const ascii = (text: string): Uint8Array =>
 	Uint8Array.from(text, (ch) => ch.charCodeAt(0));
-const oneOf = <T extends string>(list: readonly T[], role: string): T =>
+export const oneOf = <T extends string>(list: readonly T[], role: string): T =>
 	list.includes(role as T) ? (role as T) : bad();
 
 /** Seals with a caller-chosen nonce, for vectors only (not in the index). */
@@ -202,13 +201,15 @@ export function wrapKeyWithNonce(
 	key: Uint8Array,
 	nonce: Uint8Array,
 ): Uint8Array {
-	if (key.length !== KEY_BYTES) bad();
+	if (!isBytes(key) || key.length !== KEY_BYTES) bad();
 	const aad = wrapAad(WRAP_SYMMETRIC, oneOf(SYMMETRIC_ROLES, role), id);
 	const encrypted = p.aeadEncrypt(wrappingKey, nonce, key, aad);
-	const out = new Uint8Array(2 + NONCE_BYTES + encrypted.length);
+	const out = new Uint8Array(
+		WRAP_HEADER_BYTES + NONCE_BYTES + encrypted.length,
+	);
 	out.set([WRAP_VERSION, WRAP_SYMMETRIC]);
-	out.set(nonce, 2);
-	out.set(encrypted, 2 + NONCE_BYTES);
+	out.set(nonce, WRAP_HEADER_BYTES);
+	out.set(encrypted, WRAP_HEADER_BYTES + NONCE_BYTES);
 	return out;
 }
 
@@ -233,66 +234,17 @@ export function unwrapKey(
 	wrapped: Uint8Array,
 ): Uint8Array {
 	const aad = wrapAad(WRAP_SYMMETRIC, oneOf(SYMMETRIC_ROLES, role), id);
-	if (wrapped.length < 2) failed();
+	if (!isBytes(wrapped)) bad();
+	if (wrapped.length < WRAP_HEADER_BYTES) failed();
 	if (wrapped[0] !== WRAP_VERSION || wrapped[1] !== WRAP_SYMMETRIC) bad();
-	if (wrapped.length !== 2 + NONCE_BYTES + KEY_BYTES + TAG_BYTES) failed();
+	// Before the cipher, so a wrong size never reaches it (a size guard).
+	if (wrapped.length !== SYMMETRIC_WRAP_BYTES) failed();
 	return p.aeadDecrypt(
 		wrappingKey,
-		wrapped.slice(2, 2 + NONCE_BYTES),
-		wrapped.subarray(2 + NONCE_BYTES),
+		wrapped.slice(WRAP_HEADER_BYTES, WRAP_HEADER_BYTES + NONCE_BYTES),
+		wrapped.subarray(WRAP_HEADER_BYTES + NONCE_BYTES),
 		aad,
 	);
-}
-
-export function wrapKeyToPublic(
-	p: Primitives,
-	publicKey: Uint8Array,
-	role: PublicRole,
-	id: string,
-	key: Uint8Array,
-): Uint8Array {
-	if (key.length !== KEY_BYTES) bad();
-	const aad = wrapAad(WRAP_TO_PUBLIC, oneOf(PUBLIC_ROLES, role), id);
-	const plain = new Uint8Array(KEY_BYTES + BINDING_BYTES);
-	plain.set(key);
-	plain.set(p.blake2b(ascii(aad), BINDING_BYTES), KEY_BYTES);
-	try {
-		const sealed = p.seal(plain, publicKey);
-		const out = new Uint8Array(2 + sealed.length);
-		out.set([WRAP_VERSION, WRAP_TO_PUBLIC]);
-		out.set(sealed, 2);
-		return out;
-	} finally {
-		p.wipe(plain);
-	}
-}
-
-export function unwrapKeyFromPublic(
-	p: Primitives,
-	pair: BoxKeyPair,
-	role: PublicRole,
-	id: string,
-	wrapped: Uint8Array,
-): Uint8Array {
-	const aad = wrapAad(WRAP_TO_PUBLIC, oneOf(PUBLIC_ROLES, role), id);
-	if (wrapped.length < 2) failed();
-	if (wrapped[0] !== WRAP_VERSION || wrapped[1] !== WRAP_TO_PUBLIC) bad();
-	const plain = p.sealOpen(
-		wrapped.subarray(2),
-		pair.publicKey,
-		pair.privateKey,
-	);
-	try {
-		const want = p.blake2b(ascii(aad), BINDING_BYTES);
-		let diff = plain.length === KEY_BYTES + BINDING_BYTES ? 0 : 1;
-		for (let i = 0; i < BINDING_BYTES; i++) {
-			diff |= (plain[KEY_BYTES + i] ?? 0) ^ (want[i] ?? 0);
-		}
-		if (diff !== 0) failed();
-		return plain.slice(0, KEY_BYTES);
-	} finally {
-		p.wipe(plain);
-	}
 }
 
 /**
@@ -335,7 +287,7 @@ function checkSymbols(data: readonly number[]): [number, number] {
 }
 
 export function encodeRecoveryKey(key: Uint8Array): string {
-	if (key.length !== KEY_BYTES) bad();
+	if (!isBytes(key) || key.length !== KEY_BYTES) bad();
 	const symbols: number[] = [];
 	let acc = 0;
 	let held = 0;
@@ -398,7 +350,7 @@ const VOWELS = "aiou";
 
 /** Proquints (Wilkerson 2009): 16 bits as consonant, vowel, consonant, vowel, consonant. */
 export function encodeProquint(bytes: Uint8Array): string[] {
-	if (bytes.length === 0 || bytes.length % 2 !== 0) bad();
+	if (!isBytes(bytes) || bytes.length === 0 || bytes.length % 2 !== 0) bad();
 	const words: string[] = [];
 	for (let i = 0; i < bytes.length; i += 2) {
 		const w = ((bytes[i] as number) << 8) | (bytes[i + 1] as number);
@@ -423,12 +375,12 @@ export function fingerprintPhrase(
 	p: Primitives,
 	publicKeys: Uint8Array[],
 ): string {
-	if (publicKeys.length === 0) bad();
+	if (!Array.isArray(publicKeys) || publicKeys.length === 0) bad();
 	const label = ascii("rs.fp.v1");
 	const message = new Uint8Array(label.length + publicKeys.length * KEY_BYTES);
 	message.set(label);
 	publicKeys.forEach((key, i) => {
-		if (key.length !== KEY_BYTES) bad();
+		if (!isBytes(key) || key.length !== KEY_BYTES) bad();
 		message.set(key, label.length + i * KEY_BYTES);
 	});
 	return encodeProquint(p.blake2b(message, 16).subarray(0, 12)).join(" ");
