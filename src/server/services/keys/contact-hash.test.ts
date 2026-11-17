@@ -146,7 +146,7 @@ describe("the rule", () => {
 		expect(
 			await contactHashFor("shadow_profile", "Bob@Example.com", master),
 		).toBe(expected(key1, SHADOW, "bob@example.com"));
-		expect(mocks.getOrCreate).toHaveBeenCalledWith({ kind: "service" }, master);
+		expect(mocks.getOrCreate).toHaveBeenCalledWith(master);
 		expect(mocks.find).not.toHaveBeenCalled();
 	});
 

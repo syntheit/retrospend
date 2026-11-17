@@ -113,7 +113,8 @@ BEGIN
 END
 $extension$;
 
--- The keystore migration says CREATE SCHEMA IF NOT EXISTS, so it keeps this one.
+-- The keystore migration makes the schema only when it is missing (a plain
+-- CREATE SCHEMA inside a catalog check), so with this one in place it makes none.
 CREATE SCHEMA IF NOT EXISTS keystore AUTHORIZATION retrospend_owner;
 
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;

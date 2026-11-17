@@ -53,7 +53,7 @@ export async function userKeyring(userId: string, master: Keyring) {
 
 /** The instance key, minted on first use. */
 export const instanceKeyring = (master: Keyring) =>
-	getOrCreateInstanceKeyring({ kind: "service" }, master);
+	getOrCreateInstanceKeyring(master);
 
 function mappedCell(table: string, column: string): void {
 	if (!keyClassOfColumn(table, column))

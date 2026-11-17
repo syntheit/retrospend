@@ -5,12 +5,12 @@
  *   current_setting('role') inside a definer function -> the session's setting, not the definer
  *   owner connection, app.instance_service = 'on'     -> the keys
  *   owner connection, no flag or 'off'                -> 28000
- *   the flag as retrospend_app (scoped batch shape)   -> 28000, read as "refused" (no_actor)
- *   the flag inside userTransaction                   -> 28000, read as "refused" (no_actor)
+ *   the flag as retrospend_app (scoped batch shape)   -> 42501, the app role has no EXECUTE (read as "grants")
+ *   the flag inside userTransaction                   -> 42501, read as "grants"
  *   the flag after SET ROLE to the owner itself       -> 28000: any role set is refused
  *   findInstanceKeyring with no key                   -> undefined, nothing made
- *   findInstanceKeyring after a user minted           -> the same key
- *   migration twice, rollback twice, migration again  -> on, off, on; grants unchanged
+ *   findInstanceKeyring after the service minted      -> the same key
+ *   migration twice, rollback twice, migration again  -> service flag works; user id works only between rollback and migration
  */
 import { randomBytes, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -114,6 +114,7 @@ describe("the service branch of require_instance_actor", () => {
 				]),
 			).toBe("28000");
 			// The scoped batch's shape: an id that is no user, the app role, the flag.
+			// The app role has no EXECUTE on the door at all.
 			expect(
 				await attempt(client, [
 					`SELECT set_config('app.current_user_id', '${randomUUID()}', true)`,
@@ -121,7 +122,7 @@ describe("the service branch of require_instance_actor", () => {
 					FLAG_ON,
 					READ,
 				]),
-			).toBe("28000");
+			).toBe("42501");
 			// The check is positive: any role set at all is refused.
 			expect(
 				await attempt(client, [
@@ -148,9 +149,9 @@ describe("the service branch of require_instance_actor", () => {
 				return tx.$queryRaw`SELECT * FROM keystore.instance_text_keys()`;
 			}),
 		);
-		// "refused" is the kind InstanceKeyError reports as no_actor.
-		expect(keystoreFailure(await batch)).toBe("refused");
-		expect(keystoreFailure(await inTransaction)).toBe("refused");
+		// The app role has no EXECUTE on the door (20261117100000_instance_key_service_only).
+		expect(keystoreFailure(await batch)).toBe("grants");
+		expect(keystoreFailure(await inTransaction)).toBe("grants");
 	});
 });
 
@@ -167,13 +168,9 @@ describe("findInstanceKeyring", () => {
 		expect(row?.since ?? null).toBeNull();
 	});
 
-	it("reads the key a user made, as the service", async () => {
+	it("reads the key the service made", async () => {
 		const mk = master();
-		const who = await createTestUser();
-		const minted = await getOrCreateInstanceKeyring(
-			{ kind: "user", userId: who.user.id },
-			mk,
-		);
+		const minted = await getOrCreateInstanceKeyring(mk);
 		evictInstanceKeyring();
 		const found = await findInstanceKeyring(mk);
 		expect(found).toBeInstanceOf(Keyring);
@@ -191,9 +188,9 @@ describe("the migration and its rollback", () => {
 
 	it("runs twice, rolls back twice, and comes back, with the grants unchanged", async () => {
 		const who = await createTestUser();
+		// The owner connection: the app role has no EXECUTE on the door now.
 		const asUser = [
 			`SELECT set_config('app.current_user_id', '${who.user.id}', true)`,
-			AS_APP,
 			READ,
 		];
 		const catalog = async (client: Client) =>
