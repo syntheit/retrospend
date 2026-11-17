@@ -5,6 +5,7 @@
 import "./src/env.js";
 import bundleAnalyzer from "@next/bundle-analyzer";
 import createNextIntlPlugin from "next-intl/plugin";
+import { WORKER_CSP } from "./src/lib/worker-csp.js";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
@@ -20,6 +21,10 @@ const config = {
 			process.env.PUBLIC_URL ?? process.env.NEXT_PUBLIC_APP_URL,
 		NEXT_PUBLIC_SHOW_LANDING_PAGE: process.env.SHOW_LANDING_PAGE ?? "false",
 		NEXT_PUBLIC_ENABLE_LEGAL_PAGES: process.env.ENABLE_LEGAL_PAGES ?? "true",
+		// Always defined, so the build can replace the literal in
+		// lib/device-engine/load.ts and drop the dynamic import when it is not "1".
+		NEXT_PUBLIC_DEV_DEVICE_ENGINE:
+			process.env.NEXT_PUBLIC_DEV_DEVICE_ENGINE ?? "",
 	},
 	serverExternalPackages: ["pdfkit"],
 	// Workspace packages ship TypeScript source (packages/*), not built JS.
@@ -29,6 +34,7 @@ const config = {
 		"@retrospend/api-client",
 		"@retrospend/api-contract",
 		"@retrospend/domain",
+		"@retrospend/engine",
 		"@retrospend/i18n",
 	],
 	experimental: {
@@ -54,6 +60,20 @@ const config = {
 			// expense have no page of their own on the web.
 			{ source: "/notifications", destination: "/home", permanent: false },
 			{ source: "/entries/:id", destination: "/activity", permanent: false },
+		];
+	},
+	// The device worker (dev flag) is a classic worker whose chunks Turbopack
+	// serves under /_next/static/chunks. The browser applies the CSP of the
+	// response a worker loads from, and the proxy skips /_next/static, so the
+	// worker would run with none. CSP on a response that is neither a document
+	// nor a worker is ignored, so the policy is harmless on the page's other
+	// chunks. Turbopack has no narrower target for the worker's entry.
+	headers() {
+		return [
+			{
+				source: "/_next/static/chunks/:path*",
+				headers: [{ key: "Content-Security-Policy", value: WORKER_CSP }],
+			},
 		];
 	},
 	devIndicators: {

@@ -7,6 +7,7 @@ import { PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { useRowDates } from "~/components/rows/dates";
 import { useRateTypeName } from "~/features/people/rate-type";
+import { useDevicePullOnHome } from "~/lib/device-engine/react";
 import type { GlanceDTO } from "~/server/services/figures/glance";
 import type { PeopleOverview } from "~/server/services/people/types";
 import { api } from "~/trpc/react";
@@ -89,6 +90,7 @@ function GlancePart({
 export function HomeScreen() {
 	const t = useTranslations("homePage");
 	useHomeRefresh();
+	useDevicePullOnHome();
 	const glance = api.home.glance.useQuery();
 	const needs = api.home.needsYou.useQuery();
 	const recent = api.expense.listV2.useQuery(RECENT_INPUT);
