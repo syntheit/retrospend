@@ -63,6 +63,7 @@ describe("what the page's bundle may reach", () => {
 			"protocol.ts",
 			"react.tsx",
 			"rpc.ts",
+			"wiring.ts",
 		])
 			expect(read(file), file).not.toMatch(staticImport);
 		expect(read("load.ts")).toMatch(

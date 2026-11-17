@@ -1,7 +1,6 @@
-import type { DeviceApi } from "@retrospend/engine/device";
 import { expense, fakeDeviceApi } from "@retrospend/engine/device-fake";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { attachHost, type HostScope } from "../host";
+import { attachHost, type HostApi, type HostScope } from "../host";
 import { DeviceError, type DeviceErrorCode } from "../protocol";
 import { createDeviceClient, type WorkerLike } from "../rpc";
 
@@ -35,7 +34,7 @@ afterEach(() => {
 function setup(
 	options: {
 		figures?: Record<string, { minor: number; currency: string }[]>;
-		createApi?: (fetch: typeof globalThis.fetch) => DeviceApi;
+		createApi?: (fetch: typeof globalThis.fetch) => HostApi;
 	} = {},
 ) {
 	const { port1, port2 } = new MessageChannel();
@@ -44,9 +43,11 @@ function setup(
 		expenses: [page],
 		figures: options.figures ?? { "glance.spent": ARS(100_000) },
 	});
+	// What the server answers the sync routes, and whose cookie the browser holds.
 	const answer = { status: 200 };
-	const fetched = vi.fn(async () => {
-		const status = answer.status;
+	const cookie = { userId: "u1" };
+	const fetched = vi.fn(async (input: unknown) => {
+		const status = String(input).includes("/profile") ? 200 : answer.status;
 		const body =
 			status === 403
 				? { code: "protected_account", status: 403 }
@@ -55,8 +56,14 @@ function setup(
 	});
 	// A route that asks the server first, as the real client does, and fails
 	// the way the client does: an error whose text names an amount.
-	const through = (fetch: typeof globalThis.fetch): DeviceApi => ({
+	const through = (fetch: typeof globalThis.fetch): HostApi => ({
 		...server.api,
+		profile: {
+			get: async () => {
+				await fetch("https://example.test/api/v1/profile");
+				return { id: cookie.userId };
+			},
+		},
 		sync: new Proxy(server.api.sync, {
 			get: (sync, name, receiver) =>
 				name === "settings"
@@ -93,6 +100,7 @@ function setup(
 		client: createDeviceClient(worker),
 		worker,
 		answer,
+		cookie,
 		fetched,
 		server,
 		terminate,
@@ -171,6 +179,39 @@ describe("worker host over a message channel", () => {
 		answer.status = 200;
 		await client.start("u1");
 		expect((await client.pull()).status).toBe("ready");
+	});
+
+	it("ends the engine when the cookie now belongs to another account, before it pulls", async () => {
+		const { client, cookie, fetched } = setup();
+		await client.start("u1");
+		await client.pull();
+		const asked = () =>
+			fetched.mock.calls.filter(([url]) => String(url).includes("/sync/"));
+		const before = asked().length;
+		// Another tab signed out and in as u2: this tab's cookie is theirs now.
+		cookie.userId = "u2";
+		expect(await code(client.pull())).toBe("account_changed");
+		expect(asked().length).toBe(before);
+		expect(await code(client.read(["glance.spent"]))).toBe("account_changed");
+		expect(await code(client.verify(["glance.spent"]))).toBe("account_changed");
+		expect(asked().length).toBe(before);
+	});
+
+	it("lets two overlapping calls see the same refusal, and none lingers afterwards", async () => {
+		const { client, answer } = setup();
+		await client.start("u1");
+		answer.status = 403;
+		const codes = await Promise.all([
+			code(client.pull()),
+			code(client.read(["glance.spent"])),
+			code(client.verify(["glance.spent"])),
+		]);
+		expect(codes).toEqual(Array(3).fill("protected_account"));
+		await client.stop();
+		answer.status = 200;
+		await client.start("u1");
+		expect((await client.pull()).status).toBe("ready");
+		expect((await client.read(["glance.spent"]))?.readings.size).toBe(1);
 	});
 
 	it("treats a 401 as terminal and a 429 as a wait", async () => {

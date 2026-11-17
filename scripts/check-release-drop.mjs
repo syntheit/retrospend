@@ -6,6 +6,8 @@
 //
 //   NEXT_PUBLIC_DEV_DEVICE_ENGINE=1 pnpm build  # positive control
 //   node scripts/check-release-drop.mjs --expect-present   # fails unless both are found
+//                    # (the worker's marker must be in a .js under static/chunks:
+//                    # the bundled worker, not the raw copy under static/media)
 //
 // The markers are one string only the worker holds (WORKER_TAG in
 // src/lib/device-engine/worker.ts) and one only the engine core holds (TAG in
@@ -43,6 +45,9 @@ for (const part of ["static", "server", "standalone/.next"]) {
 	}
 	for (const file of files(root)) {
 		if (/\/\.next\/(cache|dev)\//.test(file)) continue;
+		// Assets are copied as they are, so a raw copy of the worker's source
+		// would count as the bundled worker.
+		if (expectPresent && file.includes("/static/media/")) continue;
 		scanned += 1;
 		const bytes = readFileSync(file);
 		for (const marker of MARKERS)
@@ -56,7 +61,11 @@ if (scanned === 0) {
 }
 
 let fail = false;
-for (const [marker, where] of found) {
+for (const [marker, all] of found) {
+	const where =
+		expectPresent && marker === MARKERS[0]
+			? all.filter((file) => /\/static\/chunks\/.*\.js$/.test(file))
+			: all;
 	if (expectPresent && where.length === 0) {
 		console.error(`FAIL: ${marker} is not in the flag-on build`);
 		fail = true;

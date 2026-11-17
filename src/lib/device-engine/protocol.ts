@@ -12,6 +12,8 @@ export type DeviceErrorCode =
 	| "protected_account"
 	| "unauthenticated"
 	| "forbidden"
+	// The browser's cookie now belongs to another account than the engine's.
+	| "account_changed"
 	| "rate_limited"
 	| "unavailable"
 	| "not_started"
@@ -22,6 +24,7 @@ export const TERMINAL_CODES: readonly DeviceErrorCode[] = [
 	"protected_account",
 	"unauthenticated",
 	"forbidden",
+	"account_changed",
 ];
 
 /** A failure with a fixed code and no message: the only error that crosses the boundary. */

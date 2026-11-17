@@ -63,9 +63,11 @@ export function createDeviceController(deps: ControllerDeps) {
 		waitUntil = deps.now() + wait;
 	}
 
-	async function ensureClient(mine: number): Promise<DeviceClient | null> {
-		if (client && !client.dead) return client;
-		client = null;
+	/** The worker being made for one account, shared so no two runs make one each. */
+	let spawning: { epoch: number; worker: Promise<DeviceClient | null> } | null =
+		null;
+
+	async function spawn(mine: number): Promise<DeviceClient | null> {
 		const spawned = await deps.load();
 		if (!spawned) return null;
 		if (mine !== epoch || !user) {
@@ -76,7 +78,8 @@ export function createDeviceController(deps: ControllerDeps) {
 			await spawned.start(user.id);
 		} catch {
 			spawned.terminate();
-			backOff("failed");
+			// A late failure for an account that has gone must not delay the new one.
+			if (mine === epoch) backOff("failed");
 			return null;
 		}
 		if (mine !== epoch) {
@@ -86,6 +89,18 @@ export function createDeviceController(deps: ControllerDeps) {
 		client = spawned;
 		state = "running";
 		return spawned;
+	}
+
+	function ensureClient(mine: number): Promise<DeviceClient | null> {
+		if (client && !client.dead) return Promise.resolve(client);
+		client = null;
+		if (spawning?.epoch !== mine) {
+			const worker = spawn(mine).finally(() => {
+				if (spawning?.worker === worker) spawning = null;
+			});
+			spawning = { epoch: mine, worker };
+		}
+		return spawning.worker;
 	}
 
 	async function run(spawn: boolean): Promise<void> {
@@ -117,7 +132,10 @@ export function createDeviceController(deps: ControllerDeps) {
 		// One run at a time. A request that must start the worker waits for a
 		// run that would not have, then runs.
 		if (inflight && !(spawn && !client)) return inflight;
-		const run1 = (inflight ?? Promise.resolve()).then(() => run(spawn));
+		// Starts at once when nothing runs: a run deferred to a microtask would
+		// see an account set meanwhile and start a second worker beside the one
+		// that account's own pull starts.
+		const run1 = inflight ? inflight.then(() => run(spawn)) : run(spawn);
 		const mine = run1.finally(() => {
 			if (inflight === mine) inflight = null;
 		});
@@ -140,17 +158,16 @@ export function createDeviceController(deps: ControllerDeps) {
 				next?.protectedAccount === user?.protectedAccount
 			)
 				return;
-			const sameAccount = next !== null && next.id === user?.id;
 			user = next;
-			if (!sameAccount) {
-				epoch += 1;
-				endWorker();
-				waitUntil = 0;
-				rateLimits = 0;
-				inflight = null;
-			}
+			// Any change (another account, or protection turned on for this one)
+			// drops what a run in flight is doing: its answer is for the old state.
+			epoch += 1;
+			endWorker();
+			waitUntil = 0;
+			rateLimits = 0;
+			inflight = null;
+			spawning = null;
 			state = !next ? "off" : next.protectedAccount ? "terminal" : "idle";
-			if (next?.protectedAccount) endWorker();
 			if (state === "idle" && homeOpen) void pull(true);
 		},
 		/** Home opened: starts the worker if it is not running and pulls when the last pull is old. */
@@ -161,9 +178,12 @@ export function createDeviceController(deps: ControllerDeps) {
 		homeClosed() {
 			homeOpen = false;
 		},
-		/** The tab came to the front: pulls only when a worker already runs (Home was opened). */
+		/**
+		 * The tab came to the front: pulls when a worker runs, and starts one when
+		 * Home is open (it was opened in a hidden tab, which never pulls).
+		 */
 		tabVisible() {
-			return pull(false);
+			return pull(homeOpen);
 		},
 	};
 }

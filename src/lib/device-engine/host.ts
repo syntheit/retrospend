@@ -18,9 +18,14 @@ export interface HostScope {
 	onmessage: ((event: { data: unknown }) => void) | null;
 }
 
+/** The engine's api, and the one call that says whose cookie it is riding on. */
+export type HostApi = DeviceApi & {
+	profile: { get(): Promise<{ id: string }> };
+};
+
 export interface HostDeps {
 	/** The api for one engine; `fetch` is the one to give the client, which watches what the server answers. */
-	createApi: (fetch: typeof globalThis.fetch) => DeviceApi;
+	createApi: (fetch: typeof globalThis.fetch) => HostApi;
 	fetch: typeof globalThis.fetch;
 	warn: (what: string, detail?: string) => void;
 	now?: () => number;
@@ -30,7 +35,7 @@ export interface HostDeps {
 export const sameOriginApi = (
 	origin: string,
 	fetch: typeof globalThis.fetch,
-): DeviceApi => createRetrospendClient({ baseUrl: origin, fetch });
+): HostApi => createRetrospendClient({ baseUrl: origin, fetch });
 
 /** The fixed code for what the server answered, or null for an answer that needs none. */
 async function codeOf(response: Response): Promise<DeviceErrorCode | null> {
@@ -58,6 +63,9 @@ const isIds = (value: unknown): value is string[] =>
  */
 export function attachHost(scope: HostScope, deps: HostDeps): void {
 	let engine: DeviceEngine | null = null;
+	let api: HostApi | null = null;
+	/** The account the engine was started for. */
+	let accountId = "";
 	let terminal: DeviceErrorCode | null = null;
 	/** What the server answered during the current call, if it needs a code. */
 	let observed: DeviceErrorCode | null = null;
@@ -75,20 +83,41 @@ export function attachHost(scope: HostScope, deps: HostDeps): void {
 		await old?.dispose({ wipe: true }).catch(() => undefined);
 	}
 
-	/** Runs one engine call; a refusal seen during it is the answer, whatever the engine made of it. */
+	/**
+	 * Runs one engine call, after checking the cookie still belongs to the
+	 * account the engine was started for (another tab may have signed out and
+	 * in as someone else; this call would then merge their rows into ours). A
+	 * refusal the server gave during it is the answer, whatever the engine made
+	 * of it. The server's answers are not tied to one call, so with calls
+	 * overlapping, a refusal goes to the first to finish; a terminal one ends
+	 * the engine, and the others then answer with the same code.
+	 */
 	async function guarded<T>(call: (e: DeviceEngine) => Promise<T>): Promise<T> {
 		if (terminal) throw new DeviceError(terminal);
-		if (!engine) throw new DeviceError("not_started");
-		const result = await call(engine);
-		// Read and cleared here, so a call that overlaps this one sees only its own.
+		const mine = engine;
+		const caller = api;
+		if (!mine || !caller) throw new DeviceError("not_started");
+		let result: T | undefined;
+		let failure: unknown = null;
+		try {
+			const { id } = await caller.profile.get();
+			if (id !== accountId) observed = "account_changed";
+			else if (!terminal) result = await call(mine);
+		} catch (error) {
+			failure = error;
+		}
+		// Cleared even when the call threw, so a refusal never lingers for the next.
 		const seen = observed as DeviceErrorCode | null;
 		observed = null;
-		if (seen === null) return result;
-		if (seen !== "rate_limited") {
-			terminal = seen;
-			await end();
+		if (seen !== null && seen !== "rate_limited") terminal = seen;
+		// Checked after the call too: an overlapping call may have ended the engine.
+		const code = terminal ?? seen;
+		if (code) {
+			if (terminal) await end();
+			throw new DeviceError(code);
 		}
-		throw new DeviceError(seen);
+		if (failure) throw failure;
+		return result as T;
 	}
 
 	const handlers: {
@@ -101,12 +130,11 @@ export function attachHost(scope: HostScope, deps: HostDeps): void {
 				throw new DeviceError("bad_request");
 			await end();
 			terminal = null;
-			engine = createDeviceEngine(
-				deps.createApi(watchedFetch),
-				request.userId,
-				deps.now,
-				{ warn: deps.warn },
-			);
+			api = deps.createApi(watchedFetch);
+			accountId = request.userId;
+			engine = createDeviceEngine(api, request.userId, deps.now, {
+				warn: deps.warn,
+			});
 			return undefined;
 		},
 		pull: () =>

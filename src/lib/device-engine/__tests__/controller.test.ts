@@ -95,23 +95,25 @@ describe("device controller: who starts", () => {
 });
 
 describe("device controller: terminal refusals", () => {
-	it.each(["protected_account", "unauthenticated", "forbidden"] as const)(
-		"%s ends the worker and nothing retries",
-		async (code) => {
-			const client = fakeClient(refuse(code));
-			const { controller, load, time } = setup([client, fakeClient()]);
-			controller.setUser(ANA);
-			await controller.homeOpened();
-			expect(controller.state).toBe("terminal");
-			expect(client.terminate).toHaveBeenCalled();
-			// A day later, Home again, the tab back in front: still nothing.
-			time.now += 86_400_000;
-			await controller.homeOpened();
-			await controller.tabVisible();
-			expect(load).toHaveBeenCalledTimes(1);
-			expect(client.pull).toHaveBeenCalledTimes(1);
-		},
-	);
+	it.each([
+		"protected_account",
+		"unauthenticated",
+		"forbidden",
+		"account_changed",
+	] as const)("%s ends the worker and nothing retries", async (code) => {
+		const client = fakeClient(refuse(code));
+		const { controller, load, time } = setup([client, fakeClient()]);
+		controller.setUser(ANA);
+		await controller.homeOpened();
+		expect(controller.state).toBe("terminal");
+		expect(client.terminate).toHaveBeenCalled();
+		// A day later, Home again, the tab back in front: still nothing.
+		time.now += 86_400_000;
+		await controller.homeOpened();
+		await controller.tabVisible();
+		expect(load).toHaveBeenCalledTimes(1);
+		expect(client.pull).toHaveBeenCalledTimes(1);
+	});
 
 	it("a new account after a terminal one starts fresh", async () => {
 		const second = fakeClient();
@@ -211,18 +213,19 @@ describe("device controller: when it pulls", () => {
 		expect(client.pull).toHaveBeenCalledTimes(2);
 	});
 
-	it("never pulls in a hidden tab", async () => {
+	it("never pulls in a hidden tab, and Home opened there starts the worker when the tab shows", async () => {
 		const client = fakeClient();
-		const { controller, time } = setup([client]);
+		const { controller, load, time } = setup([client]);
 		controller.setUser(ANA);
 		time.visible = false;
 		await controller.homeOpened();
 		await controller.tabVisible();
+		expect(load).not.toHaveBeenCalled();
 		expect(client.pull).not.toHaveBeenCalled();
 		time.visible = true;
 		await controller.tabVisible();
-		expect(client.pull).not.toHaveBeenCalled();
-		await controller.homeOpened();
+		expect(load).toHaveBeenCalledTimes(1);
+		expect(client.start).toHaveBeenCalledWith("u1");
 		expect(client.pull).toHaveBeenCalledTimes(1);
 	});
 
@@ -310,5 +313,71 @@ describe("device controller: backing off", () => {
 		time.now += BACKOFF_MS;
 		await controller.homeOpened();
 		expect(next.pull).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("device controller: one worker per tab", () => {
+	// The page mounts Home (child) before the layout sets the account, in one commit.
+	it("the layout mounting and Home opening in either order make exactly one worker", async () => {
+		for (const homeFirst of [true, false]) {
+			const { controller, load } = setup([fakeClient(), fakeClient()]);
+			if (homeFirst) {
+				void controller.homeOpened();
+				controller.setUser(ANA);
+			} else {
+				controller.setUser(ANA);
+				void controller.homeOpened();
+			}
+			void controller.tabVisible();
+			void controller.homeOpened();
+			await controller.homeOpened();
+			await controller.tabVisible();
+			expect(load).toHaveBeenCalledTimes(1);
+			expect(controller.state).toBe("running");
+		}
+	});
+
+	it("a start still running when protection turns on does not overwrite terminal", async () => {
+		const late = fakeClient();
+		let release: () => void = () => undefined;
+		late.start.mockImplementation(
+			() => new Promise<undefined>((r) => (release = () => r(undefined))),
+		);
+		const { controller } = setup([late]);
+		controller.setUser(ANA);
+		const opening = controller.homeOpened();
+		await vi.waitFor(() => expect(late.start).toHaveBeenCalled());
+		controller.setUser({ id: "u1", protectedAccount: true });
+		release();
+		await opening;
+		expect(controller.state).toBe("terminal");
+		expect(controller.client).toBeNull();
+		expect(late.terminate).toHaveBeenCalled();
+		expect(late.pull).not.toHaveBeenCalled();
+	});
+
+	it("a start that fails after the account changed does not delay the new account", async () => {
+		const old = fakeClient();
+		let fail: () => void = () => undefined;
+		old.start.mockImplementation(
+			() =>
+				new Promise<undefined>(
+					(_, reject) => (fail = () => reject(new Error("x"))),
+				),
+		);
+		const next = fakeClient();
+		const { controller } = setup([old, next]);
+		controller.setUser(ANA);
+		const first = controller.homeOpened();
+		await vi.waitFor(() => expect(old.start).toHaveBeenCalled());
+		controller.setUser({ id: "u2", protectedAccount: false });
+		await vi.waitFor(() => expect(next.start).toHaveBeenCalledWith("u2"));
+		fail();
+		await first;
+		// A pull right away is not held back by the old account's failure.
+		const pulls = next.pull.mock.calls.length;
+		await controller.tabVisible();
+		expect(next.pull).toHaveBeenCalledTimes(pulls + 1);
+		expect(controller.state).toBe("running");
 	});
 });
