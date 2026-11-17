@@ -1,6 +1,6 @@
 import type { Money } from "@retrospend/domain/money-minor";
-import type { Change } from "../port";
 import type { MemoryStoreOptions } from "../memory-store";
+import type { Change } from "../port";
 import type { PullApi, PullCursors } from "../sync-pull";
 
 // What the device engine core needs from the platform it runs on, as

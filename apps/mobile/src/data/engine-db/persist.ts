@@ -1,5 +1,4 @@
 import {
-	type Change,
 	type PullCursors,
 	SINGLE_ROW_IDS,
 	TABLE_NAMES,
