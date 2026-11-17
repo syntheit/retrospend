@@ -88,6 +88,8 @@ afterAll(async () => {
 /** Sealing on: master key, epoch and the seal path. Off: none of them, as a plain install. */
 async function mode(on: boolean) {
 	setSealingForTests(() => on);
+	// The flag-on start makes the instance key, then sets the epoch.
+	if (on) await instanceKeyring(MASTER);
 	await writeEpoch(on);
 	master.ring = on ? MASTER : undefined;
 	evictInstanceKeyring();
