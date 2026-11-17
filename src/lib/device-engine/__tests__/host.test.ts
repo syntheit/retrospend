@@ -1,122 +1,8 @@
-import { expense, fakeDeviceApi } from "@retrospend/engine/device-fake";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { attachHost, type HostApi, type HostScope } from "../host";
-import { DeviceError, type DeviceErrorCode } from "../protocol";
-import { createDeviceClient, type WorkerLike } from "../rpc";
+import { describe, expect, it, vi } from "vitest";
+import type { DeviceErrorCode } from "../protocol";
+import { ARS, code, fakeClock, NOW, setup, silent } from "./harness";
 
-// The worker's host and the page's client over a real MessageChannel: the
-// port on one side stands in for the worker's global scope, the other for
-// the Worker object. Same engine, same structured clone, no browser.
-//
-// The server double holds the rows of the engine's own tests (ARS, Buenos
-// Aires, "now" 2026-10-15 15:00 UTC): e1 1,000 on Oct 5, e2 2,000 on Sep 10,
-// e3 500 on Sep 20. Spent this month is 1,000.00 = 100,000 minor; spent last
-// month is 2,500.00 = 250,000 minor.
-const NOW = Date.parse("2026-10-15T15:00:00.000Z");
-const ROWS = [
-	expense("e1", "1000", "2026-10-05T15:00:00.000Z"),
-	expense("e2", "2000", "2026-09-10T15:00:00.000Z"),
-	expense("e3", "500", "2026-09-20T15:00:00.000Z"),
-];
-const page = { items: ROWS, tombstones: [], cursor: "c1", hasMore: false };
-const ARS = (minor: number) => [{ minor, currency: "ARS" }];
-
-const ports: MessagePort[] = [];
-beforeEach(() => {
-	// Only the date: the figures read "this month" from it, and the channel needs real timers.
-	vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
-});
-afterEach(() => {
-	vi.useRealTimers();
-	for (const port of ports.splice(0)) port.close();
-});
-
-function setup(
-	options: {
-		figures?: Record<string, { minor: number; currency: string }[]>;
-		createApi?: (fetch: typeof globalThis.fetch) => HostApi;
-	} = {},
-) {
-	const { port1, port2 } = new MessageChannel();
-	ports.push(port1, port2);
-	const server = fakeDeviceApi({
-		expenses: [page],
-		figures: options.figures ?? { "glance.spent": ARS(100_000) },
-	});
-	// What the server answers the sync routes, and whose cookie the browser holds.
-	const answer = { status: 200 };
-	const cookie = { userId: "u1" };
-	const fetched = vi.fn(async (input: unknown) => {
-		const status = String(input).includes("/profile") ? 200 : answer.status;
-		const body =
-			status === 403
-				? { code: "protected_account", status: 403 }
-				: { code: "x", status };
-		return new Response(JSON.stringify(body), { status });
-	});
-	// A route that asks the server first, as the real client does, and fails
-	// the way the client does: an error whose text names an amount.
-	const through = (fetch: typeof globalThis.fetch): HostApi => ({
-		...server.api,
-		profile: {
-			get: async () => {
-				await fetch("https://example.test/api/v1/profile");
-				return { id: cookie.userId };
-			},
-		},
-		sync: new Proxy(server.api.sync, {
-			get: (sync, name, receiver) =>
-				name === "settings"
-					? async () => {
-							const response = await fetch(
-								"https://example.test/api/v1/sync/settings",
-							);
-							if (!response.ok) throw new Error("HTTP failure for 1234.56 ARS");
-							return sync.settings();
-						}
-					: Reflect.get(sync, name, receiver),
-		}),
-	});
-	attachHost(port1 as unknown as HostScope, {
-		createApi: options.createApi ?? through,
-		fetch: fetched as unknown as typeof globalThis.fetch,
-		warn: () => undefined,
-		now: () => NOW,
-	});
-	const terminate = vi.fn(() => port2.close());
-	const worker: WorkerLike = {
-		postMessage: (m) => port2.postMessage(m),
-		get onmessage() {
-			return port2.onmessage as WorkerLike["onmessage"];
-		},
-		set onmessage(handler) {
-			port2.onmessage = handler as MessagePort["onmessage"];
-		},
-		onerror: null,
-		onmessageerror: null,
-		terminate,
-	};
-	return {
-		client: createDeviceClient(worker),
-		worker,
-		answer,
-		cookie,
-		fetched,
-		server,
-		terminate,
-		raw: port2,
-	};
-}
-
-const code = async (promise: Promise<unknown>) => {
-	try {
-		await promise;
-	} catch (error) {
-		expect(error).toBeInstanceOf(DeviceError);
-		return (error as DeviceError).code;
-	}
-	return "resolved";
-};
+fakeClock(NOW);
 
 describe("worker host over a message channel", () => {
 	it("starts, pulls and reads the device's figure", async () => {
@@ -214,6 +100,58 @@ describe("worker host over a message channel", () => {
 		expect((await client.read(["glance.spent"]))?.readings.size).toBe(1);
 	});
 
+	it("gives a 429 to every call that overlapped it, not only the first to finish", async () => {
+		const { client, hooks } = setup();
+		await client.start("u1");
+		// Both calls' requests wait until each has been made, then both are limited.
+		let waiting = 0;
+		let release: () => void = () => undefined;
+		const both = new Promise<void>((resolve) => (release = resolve));
+		hooks.status = async (url) => {
+			if (url.includes("/profile")) return undefined;
+			waiting += 1;
+			if (waiting === 2) release();
+			await both;
+			return 429;
+		};
+		const codes = await Promise.all([
+			code(client.pull()),
+			code(client.verify(["glance.spent"])),
+		]);
+		expect(codes).toEqual(["rate_limited", "rate_limited"]);
+		// A wait, not an end: the next call goes through once the server allows it.
+		hooks.status = undefined;
+		expect((await client.pull()).status).toBe("ready");
+	});
+
+	it("wipes the engine when the cookie changed during a pull, before anything reads it", async () => {
+		const { client, cookie, hooks } = setup();
+		await client.start("u1");
+		// Another tab signs in as u2 while this pull is in flight.
+		hooks.afterSettings = () => {
+			cookie.userId = "u2";
+		};
+		expect(await code(client.pull())).toBe("account_changed");
+		hooks.afterSettings = undefined;
+		cookie.userId = "u1";
+		// Ended for good: not even the right cookie reads what the pull fetched.
+		expect(await code(client.read(["glance.spent"]))).toBe("account_changed");
+	});
+
+	it("wipes the engine when the cookie changed during a pull that then failed half way", async () => {
+		const { client, cookie, hooks } = setup({
+			fail: { route: "expenses", pull: 1, error: new Error("offline") },
+		});
+		await client.start("u1");
+		hooks.afterSettings = () => {
+			cookie.userId = "u2";
+		};
+		// The settings came with u2's cookie and the expenses did not: the pull
+		// fails with its generation unchanged, and is still checked.
+		expect(await code(client.pull())).toBe("account_changed");
+		expect(await code(client.read(["glance.spent"]))).toBe("account_changed");
+	});
+
 	it("treats a 401 as terminal and a 429 as a wait", async () => {
 		const unauthenticated = setup();
 		await unauthenticated.client.start("u1");
@@ -276,21 +214,6 @@ describe("worker host over a message channel", () => {
 		}
 	});
 });
-
-/** A worker that never answers. */
-function silent() {
-	const { port1, port2 } = new MessageChannel();
-	ports.push(port1, port2);
-	const terminate = vi.fn();
-	const worker: WorkerLike = {
-		postMessage: (m) => port2.postMessage(m),
-		onmessage: null,
-		onerror: null,
-		onmessageerror: null,
-		terminate,
-	};
-	return { worker, terminate, client: createDeviceClient(worker) };
-}
 
 describe("device client with a dead worker", () => {
 	it("rejects every call that is waiting, ends the worker and refuses new calls", async () => {

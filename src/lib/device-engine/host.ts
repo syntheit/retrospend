@@ -5,6 +5,13 @@ import {
 	type DeviceEngine,
 } from "@retrospend/engine/device";
 import {
+	GLANCE_PARITY_IDS,
+	idsToCheck,
+	idsToRead,
+	recordingZone,
+	reportOf,
+} from "./parity";
+import {
 	DeviceError,
 	type DeviceErrorCode,
 	type Envelope,
@@ -29,6 +36,10 @@ export interface HostDeps {
 	fetch: typeof globalThis.fetch;
 	warn: (what: string, detail?: string) => void;
 	now?: () => number;
+	/** The browser's zone, for the note when it is not the stored one. */
+	browserZone?: () => string | undefined;
+	/** The figures a parity check reads; the glance's by default. */
+	parityIds?: readonly string[];
 }
 
 /** The api over the same-origin cookie session: the web needs no token header. */
@@ -67,13 +78,18 @@ export function attachHost(scope: HostScope, deps: HostDeps): void {
 	/** The account the engine was started for. */
 	let accountId = "";
 	let terminal: DeviceErrorCode | null = null;
-	/** What the server answered during the current call, if it needs a code. */
+	/** A refusal that ends the engine, seen since the last call finished. */
 	let observed: DeviceErrorCode | null = null;
+	/** How many 429s the server has answered: a call that overlapped one waits too. */
+	let limits = 0;
+	/** The zone of the settings the engine last pulled: the one it reads days and months in, and the server's figures route too. */
+	let storedZone: string | null = null;
 
 	const watchedFetch: typeof globalThis.fetch = async (input, init) => {
 		const response = await deps.fetch(input, init);
 		const code = await codeOf(response);
-		if (code) observed = code;
+		if (code === "rate_limited") limits += 1;
+		else if (code) observed = code;
 		return response;
 	};
 
@@ -83,35 +99,49 @@ export function attachHost(scope: HostScope, deps: HostDeps): void {
 		await old?.dispose({ wipe: true }).catch(() => undefined);
 	}
 
+	/** Checks `ids` against the server; null when the check itself failed (the engine's last result is then an older one). */
+	async function check(e: DeviceEngine, ids: readonly string[]) {
+		const before = e.lastParity;
+		await e.verify(ids);
+		return e.lastParity === before ? null : e.lastParity;
+	}
+
+	const sameAccount = async (caller: HostApi) =>
+		(await caller.profile.get()).id === accountId;
+
 	/**
 	 * Runs one engine call, after checking the cookie still belongs to the
 	 * account the engine was started for (another tab may have signed out and
-	 * in as someone else; this call would then merge their rows into ours). A
-	 * refusal the server gave during it is the answer, whatever the engine made
-	 * of it. The server's answers are not tied to one call, so with calls
-	 * overlapping, a refusal goes to the first to finish; a terminal one ends
-	 * the engine, and the others then answer with the same code.
+	 * in as someone else; this call would then merge their rows into ours), and
+	 * again after the call, so rows another account's cookie fetched (a pull
+	 * that failed half way included) are wiped before they can be read. A refusal the server gave during it is
+	 * the answer, whatever the engine made of it. The server's answers are not
+	 * tied to one call: a terminal refusal ends the engine and every call
+	 * answers with it, and a 429 is given to every call that overlapped it.
 	 */
 	async function guarded<T>(call: (e: DeviceEngine) => Promise<T>): Promise<T> {
 		if (terminal) throw new DeviceError(terminal);
 		const mine = engine;
 		const caller = api;
 		if (!mine || !caller) throw new DeviceError("not_started");
+		const limitsBefore = limits;
 		let result: T | undefined;
 		let failure: unknown = null;
 		try {
-			const { id } = await caller.profile.get();
-			if (id !== accountId) observed = "account_changed";
-			else if (!terminal) result = await call(mine);
+			if (!(await sameAccount(caller))) observed = "account_changed";
+			else if (!terminal) {
+				result = await call(mine);
+				if (!(await sameAccount(caller))) observed = "account_changed";
+			}
 		} catch (error) {
 			failure = error;
 		}
 		// Cleared even when the call threw, so a refusal never lingers for the next.
 		const seen = observed as DeviceErrorCode | null;
 		observed = null;
-		if (seen !== null && seen !== "rate_limited") terminal = seen;
+		if (seen !== null) terminal = seen;
 		// Checked after the call too: an overlapping call may have ended the engine.
-		const code = terminal ?? seen;
+		const code = terminal ?? (limits > limitsBefore ? "rate_limited" : null);
 		if (code) {
 			if (terminal) await end();
 			throw new DeviceError(code);
@@ -130,7 +160,10 @@ export function attachHost(scope: HostScope, deps: HostDeps): void {
 				throw new DeviceError("bad_request");
 			await end();
 			terminal = null;
-			api = deps.createApi(watchedFetch);
+			storedZone = null;
+			api = recordingZone(deps.createApi(watchedFetch), (zone) => {
+				storedZone = zone;
+			});
 			accountId = request.userId;
 			engine = createDeviceEngine(api, request.userId, deps.now, {
 				warn: deps.warn,
@@ -149,8 +182,7 @@ export function attachHost(scope: HostScope, deps: HostDeps): void {
 		verify(request) {
 			if (!isIds(request.ids)) throw new DeviceError("bad_request");
 			return guarded(async (e) => {
-				await e.verify(request.ids);
-				const parity = e.lastParity;
+				const parity = await check(e, request.ids);
 				return parity
 					? {
 							mismatchedIds: parity.mismatches.map((m) => m.id),
@@ -159,6 +191,43 @@ export function attachHost(scope: HostScope, deps: HostDeps): void {
 					: null;
 			});
 		},
+		parity: () =>
+			guarded(async (e) => {
+				const base = deps.parityIds ?? GLANCE_PARITY_IDS;
+				const read = await e.read(idsToRead(base));
+				// The read may have made the first pull, which is where the zone comes from.
+				const zones = {
+					storedZone,
+					browserZone: deps.browserZone?.() ?? null,
+				};
+				const ids = read ? idsToCheck(read, base) : [];
+				// Only a pulled engine that knows its zone is worth checking.
+				const found =
+					read && storedZone !== null && ids.length > 0
+						? await check(e, ids)
+						: null;
+				// One more pull and a second look on a difference: the engine's verify.
+				if (read && storedZone !== null && ids.length > 0 && !found)
+					return reportOf("failed", {
+						ids,
+						mismatchedIds: [],
+						generation: e.generation,
+						...zones,
+					});
+				return found
+					? reportOf("checked", {
+							ids,
+							mismatchedIds: found.mismatches.map((m) => m.id),
+							generation: found.generation,
+							...zones,
+						})
+					: reportOf("skipped", {
+							ids: [],
+							mismatchedIds: [],
+							generation: e.generation,
+							...zones,
+						});
+			}),
 		async stop() {
 			terminal = null;
 			await end();

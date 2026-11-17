@@ -41,6 +41,26 @@ export interface VerifyResult {
 	generation: number;
 }
 
+/**
+ * What a check of the glance figures against the server found: ids, counts
+ * and the zones, never an amount. `skipped` means the device held nothing it
+ * could trust, or did not know its zone yet.
+ */
+export interface ParityReport {
+	/** `failed`: the check itself did not finish (the server's answer did not come). */
+	state: "checked" | "skipped" | "failed";
+	/** The figures compared. */
+	ids: readonly string[];
+	mismatchedIds: readonly string[];
+	/** Pulls that had finished when the check ended. */
+	generation: number;
+	/** The zone both sides read the figures in: the one stored in the user's settings. */
+	storedZone: string | null;
+	browserZone: string | null;
+	/** The browser is in another zone than the stored one; the tRPC Home reads in the browser's. */
+	zoneDiffers: boolean;
+}
+
 export interface PullResult {
 	status: DeviceStatus;
 	generation: number;
@@ -51,6 +71,7 @@ export interface Results {
 	pull: PullResult;
 	read: DeviceRead | null;
 	verify: VerifyResult | null;
+	parity: ParityReport;
 	stop: undefined;
 }
 
@@ -59,6 +80,7 @@ export type Request =
 	| { type: "pull" }
 	| { type: "read"; ids: string[] }
 	| { type: "verify"; ids: string[] }
+	| { type: "parity" }
 	| { type: "stop" };
 
 export type Envelope = Request & { id: number };

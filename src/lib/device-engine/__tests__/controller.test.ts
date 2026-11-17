@@ -4,15 +4,30 @@ import {
 	BACKOFF_MS,
 	createDeviceController,
 } from "../controller";
-import { DeviceError, type DeviceErrorCode } from "../protocol";
+import {
+	DeviceError,
+	type DeviceErrorCode,
+	type ParityReport,
+} from "../protocol";
 import type { DeviceClient } from "../rpc";
 
 type Pull = DeviceClient["pull"];
+
+const report = (generation: number): ParityReport => ({
+	state: "checked",
+	ids: ["glance.spent"],
+	mismatchedIds: [],
+	generation,
+	storedZone: "UTC",
+	browserZone: "UTC",
+	zoneDiffers: false,
+});
 
 function fakeClient(pull?: Pull) {
 	const client = {
 		dead: false,
 		start: vi.fn(async () => undefined),
+		parity: vi.fn(async () => report(1)),
 		pull: vi.fn<Pull>(
 			pull ?? (async () => ({ status: "ready", generation: 1 })),
 		),
@@ -32,12 +47,14 @@ function setup(clients: ReturnType<typeof fakeClient>[] = [fakeClient()]) {
 	const load = vi.fn(
 		async () => (queue.shift() ?? null) as DeviceClient | null,
 	);
+	const onParity = vi.fn<(r: ParityReport) => void>();
 	const controller = createDeviceController({
 		load,
 		now: () => time.now,
 		visible: () => time.visible,
+		onParity,
 	});
-	return { controller, load, time };
+	return { controller, load, time, onParity };
 }
 
 const ANA = { id: "u1", protectedAccount: false };
@@ -379,5 +396,118 @@ describe("device controller: one worker per tab", () => {
 		await controller.tabVisible();
 		expect(next.pull).toHaveBeenCalledTimes(pulls + 1);
 		expect(controller.state).toBe("running");
+	});
+});
+
+describe("device controller: parity", () => {
+	const pulls = (generations: number[]): Pull => {
+		const queue = [...generations];
+		return async () => ({
+			status: "ready",
+			generation: queue.shift() ?? 99,
+		});
+	};
+
+	it("checks the glance figures after a pull that made the engine ready, and keeps the report", async () => {
+		const client = fakeClient(pulls([1]));
+		const { controller, onParity } = setup([client]);
+		controller.setUser(ANA);
+		await controller.homeOpened();
+		expect(client.parity).toHaveBeenCalledTimes(1);
+		expect(onParity).toHaveBeenCalledWith(report(1));
+		expect(controller.lastParity).toEqual(report(1));
+	});
+
+	it("never checks after a pull that did not leave the engine ready", async () => {
+		const client = fakeClient(async () => ({
+			status: "failed",
+			generation: 0,
+		}));
+		const { controller, onParity } = setup([client]);
+		controller.setUser(ANA);
+		await controller.homeOpened();
+		expect(client.parity).not.toHaveBeenCalled();
+		expect(onParity).not.toHaveBeenCalled();
+	});
+
+	it("checks again only when a pull has finished since the last check", async () => {
+		const client = fakeClient(pulls([1, 1, 2]));
+		client.parity.mockImplementation(async () => report(1));
+		const { controller } = setup([client]);
+		controller.setUser(ANA);
+		await controller.homeOpened();
+		await controller.tabVisible();
+		expect(client.parity).toHaveBeenCalledTimes(1);
+		client.parity.mockImplementation(async () => report(2));
+		await controller.tabVisible();
+		expect(client.parity).toHaveBeenCalledTimes(2);
+	});
+
+	it("takes the pull a difference made inside the check as already checked", async () => {
+		const client = fakeClient(pulls([1, 2]));
+		client.parity.mockImplementation(async () => report(2));
+		const { controller } = setup([client]);
+		controller.setUser(ANA);
+		await controller.homeOpened();
+		await controller.tabVisible();
+		expect(client.parity).toHaveBeenCalledTimes(1);
+	});
+
+	it("doubles the wait while the check keeps being limited", async () => {
+		const client = fakeClient(pulls([1, 2, 3, 4]));
+		client.parity.mockRejectedValue(new DeviceError("rate_limited"));
+		const { controller, time } = setup([client]);
+		controller.setUser(ANA);
+		await controller.homeOpened();
+		expect(client.parity).toHaveBeenCalledTimes(1);
+		time.now += BACKOFF_MS;
+		await controller.tabVisible();
+		expect(client.parity).toHaveBeenCalledTimes(2);
+		// The second limit waits twice as long: the pull before the check does not reset it.
+		time.now += BACKOFF_MS;
+		await controller.tabVisible();
+		expect(client.parity).toHaveBeenCalledTimes(2);
+		time.now += BACKOFF_MS;
+		await controller.tabVisible();
+		expect(client.parity).toHaveBeenCalledTimes(3);
+	});
+
+	it("tries a check that did not finish again, after a wait", async () => {
+		const client = fakeClient(pulls([1, 1, 1]));
+		client.parity.mockResolvedValue({ ...report(1), state: "failed" });
+		const { controller, time, onParity } = setup([client]);
+		controller.setUser(ANA);
+		await controller.homeOpened();
+		expect(onParity).toHaveBeenCalledTimes(1);
+		await controller.tabVisible();
+		expect(client.parity).toHaveBeenCalledTimes(1);
+		time.now += BACKOFF_MS;
+		client.parity.mockResolvedValue(report(1));
+		await controller.tabVisible();
+		expect(client.parity).toHaveBeenCalledTimes(2);
+		// Now it counts as checked: the same pull is not checked again.
+		await controller.tabVisible();
+		expect(client.parity).toHaveBeenCalledTimes(2);
+	});
+
+	it("waits after a 429 in the check and ends on a changed account", async () => {
+		const limited = fakeClient();
+		limited.parity.mockRejectedValue(new DeviceError("rate_limited"));
+		const a = setup([limited]);
+		a.controller.setUser(ANA);
+		await a.controller.homeOpened();
+		await a.controller.tabVisible();
+		expect(limited.pull).toHaveBeenCalledTimes(1);
+		a.time.now += BACKOFF_MS;
+		await a.controller.tabVisible();
+		expect(limited.pull).toHaveBeenCalledTimes(2);
+
+		const changed = fakeClient();
+		changed.parity.mockRejectedValue(new DeviceError("account_changed"));
+		const b = setup([changed]);
+		b.controller.setUser(ANA);
+		await b.controller.homeOpened();
+		expect(b.controller.state).toBe("terminal");
+		expect(changed.terminate).toHaveBeenCalled();
 	});
 });

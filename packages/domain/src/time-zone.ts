@@ -55,6 +55,15 @@ export function normalizeTimeZone(value: unknown): string | undefined {
 	}
 }
 
+/** The runtime's own IANA zone (a browser's), or undefined when it reports none. */
+export function runtimeTimeZone(): string | undefined {
+	try {
+		return normalizeTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+	} catch {
+		return undefined;
+	}
+}
+
 /** The local date and time of `date` in `timeZone`. */
 export function wallTime(date: Date, timeZone?: string): WallTime {
 	if (!timeZone) {
