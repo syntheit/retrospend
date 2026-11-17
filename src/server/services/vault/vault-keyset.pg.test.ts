@@ -13,8 +13,16 @@ import { settleKeysForReset } from "~/server/services/protection-keys/password-w
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { VaultError } from "./errors";
 import { writeVaultRecords } from "./vault-api.service";
-import { vaultRowsOf } from "./vault-db-support";
-import { contextOf, type Sealer, sealer, writeOf } from "./vault-test-support";
+import { vaultRowsOf, wrapFixtureKey } from "./vault-db-support";
+import {
+	contextOf,
+	KEY_ID_HEX,
+	SECOND_KEY,
+	SECOND_KEY_ID_HEX,
+	type Sealer,
+	sealer,
+	writeOf,
+} from "./vault-test-support";
 
 let seal: Sealer;
 const users: string[] = [];
@@ -51,6 +59,7 @@ async function keyedUser(state: "OFF" | "ON" = "OFF") {
 			wrapped: Buffer.alloc(74, 1),
 		},
 	});
+	await wrapFixtureKey(user.id);
 	if (state === "ON")
 		await adminDb.user.update({
 			where: { id: user.id },
@@ -66,6 +75,20 @@ const wire = (userId: string, id: string, base = 0) => {
 		ciphertext: Buffer.from(w.ciphertext as Uint8Array).toString("base64url"),
 	};
 };
+
+/** What turning protection on again leaves: a new key set and a collection key under a new key id. */
+async function enableAgain(userId: string) {
+	await adminDb.protectionKeySet.create({
+		data: {
+			userId,
+			kdfSalt: randomBytes(16),
+			kdfMemoryKiB: 65536,
+			kdfPasses: 3,
+			publicKey: randomBytes(32),
+		},
+	});
+	await wrapFixtureKey(userId, SECOND_KEY_ID_HEX);
+}
 
 const keySets = (userId: string) =>
 	adminDb.protectionKeySet.count({ where: { userId } });
@@ -237,5 +260,95 @@ describe("a reset while protection is OFF", () => {
 		).rejects.toThrow();
 		expect(await vaultRowsOf(id)).toHaveLength(1);
 		expect(await keySets(id)).toBe(1);
+	});
+});
+
+describe("a device a key generation behind", () => {
+	it("is refused with keys_missing after a reset and re-enable, and nothing is stored", async () => {
+		const { id, db } = await keyedUser();
+		await writeVaultRecords(db, id, [wire(id, "before")]);
+		await adminDb.$transaction((tx) =>
+			settleKeysForReset(tx, id, OFF, { kind: "email" }),
+		);
+		// The reset removed the keys, their wraps and the vault rows.
+		expect(await keySets(id)).toBe(0);
+		expect(
+			await adminDb.protectionKeyWrap.count({ where: { userId: id } }),
+		).toBe(0);
+		expect(await vaultRowsOf(id)).toEqual([]);
+
+		await enableAgain(id);
+		expect(await keySets(id)).toBe(1);
+
+		// The phone never saw the reset: it still seals under the first generation's key.
+		await expect(
+			writeVaultRecords(db, id, [wire(id, "stale"), wire(id, "stale2")]),
+		).rejects.toMatchObject({ name: "VaultError", code: "keys_missing" });
+		expect(await vaultRowsOf(id)).toEqual([]);
+	});
+
+	it("is refused when one record of a batch names an old key, and the good ones are not stored", async () => {
+		const { id, db } = await keyedUser();
+		await adminDb.$transaction((tx) =>
+			settleKeysForReset(tx, id, OFF, { kind: "email" }),
+		);
+		await enableAgain(id);
+		const fresh = writeOf(seal, id, "fresh", 0, { key: SECOND_KEY });
+		const stale = writeOf(seal, id, "stale", 0);
+		const asWire = (w: typeof fresh) => ({
+			...w,
+			ciphertext: Buffer.from(w.ciphertext as Uint8Array).toString("base64url"),
+		});
+		await expect(
+			writeVaultRecords(db, id, [asWire(fresh), asWire(stale)]),
+		).rejects.toMatchObject({ code: "keys_missing" });
+		expect(await vaultRowsOf(id)).toEqual([]);
+	});
+
+	it("does not count a wrap of another role that carries the old key id", async () => {
+		const { id, db } = await keyedUser();
+		await adminDb.$transaction((tx) =>
+			settleKeysForReset(tx, id, OFF, { kind: "email" }),
+		);
+		await enableAgain(id);
+		await adminDb.protectionKeyWrap.create({
+			data: {
+				userId: id,
+				role: "ak-device",
+				targetId: KEY_ID_HEX,
+				wrapped: Buffer.concat([Buffer.from([1, 2]), Buffer.alloc(96, 1)]),
+			},
+		});
+		await expect(
+			writeVaultRecords(db, id, [wire(id, "stale")]),
+		).rejects.toMatchObject({ code: "keys_missing" });
+		expect(await vaultRowsOf(id)).toEqual([]);
+	});
+
+	it("stores a create sealed under the current key, and a tombstone needs no key", async () => {
+		const { id, db } = await keyedUser();
+		await adminDb.$transaction((tx) =>
+			settleKeysForReset(tx, id, OFF, { kind: "email" }),
+		);
+		await enableAgain(id);
+		const current = writeOf(seal, id, "current", 0, { key: SECOND_KEY });
+		const result = await writeVaultRecords(db, id, [
+			{
+				...current,
+				ciphertext: Buffer.from(current.ciphertext as Uint8Array).toString(
+					"base64url",
+				),
+			},
+		]);
+		expect(result).toEqual([{ id: "current", version: 1 }]);
+		expect((await vaultRowsOf(id)).map((r) => r.id)).toEqual(["current"]);
+
+		const gone = await writeVaultRecords(db, id, [
+			{
+				...writeOf(seal, id, "current", 1, { tombstone: true }),
+				ciphertext: null,
+			},
+		]);
+		expect(gone).toEqual([{ id: "current", version: 2 }]);
 	});
 });

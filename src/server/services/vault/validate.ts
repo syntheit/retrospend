@@ -13,7 +13,9 @@ import {
 	ID_PATTERN,
 	MAX_PLAINTEXT_BYTES,
 	PAD_BUCKET_BYTES,
+	readHeader,
 	TAG_BYTES,
+	toHex,
 } from "@retrospend/crypto";
 import { VaultError } from "./errors";
 
@@ -53,6 +55,16 @@ export function isSealedShape(bytes: Uint8Array): boolean {
 		bytes[0] === FORMAT_VERSION &&
 		bytes[1] === ALGORITHM_XCHACHA20_POLY1305
 	);
+}
+
+/**
+ * The key id a sealed record names (bytes 2..17 of the format), as the lowercase
+ * hex a collection key's wrap carries as its `targetId`. The one place the
+ * server reads a header; it never opens a record.
+ */
+export function sealedKeyIdHex(bytes: Uint8Array): string {
+	if (!isSealedShape(bytes)) bad();
+	return toHex(readHeader(bytes).keyId);
 }
 
 /** Throws `VaultError("invalid_input")` for anything the table would refuse or a write cannot mean. */

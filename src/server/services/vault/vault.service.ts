@@ -13,6 +13,7 @@
  * never behind a cursor a client holds. A rewritten record moves to the end
  * and comes again at its new version.
  */
+import * as z from "zod";
 import { Prisma } from "~prisma";
 import { decodeCursor, encodeCursor } from "../api-v1/cursor";
 import { SyncResetRequiredError, syncCursorSchema } from "../sync/changes";
@@ -21,6 +22,17 @@ import { type VaultWrite, validateVaultWrites } from "./validate";
 
 export { VaultError } from "./errors";
 export type { VaultWrite } from "./validate";
+
+/**
+ * The sync feed's cursor plus a kind, so a cursor of one feed is refused by
+ * the other (syncCursorSchema is strict, this one needs `k`) instead of
+ * skipping rows. Nothing wrote a vault cursor before K9, so there is no
+ * kind-less form to keep working.
+ */
+const vaultCursorSchema = z.strictObject({
+	...syncCursorSchema.shape,
+	k: z.literal("vault"),
+});
 
 const MAX_SEQ = (2n ** 63n - 1n).toString();
 /** A page stops after about this much ciphertext (always at least one row). */
@@ -186,7 +198,7 @@ export async function readVaultChanges(
 	// under any positive cap; a cap of zero or less would drop it.
 	if (!Number.isInteger(maxBytes) || maxBytes < 1)
 		throw new VaultError("invalid_input");
-	const after = decodeCursor(cursor, syncCursorSchema);
+	const after = decodeCursor(cursor, vaultCursorSchema);
 	const rows = await tx.$queryRaw<PageRow[]>(Prisma.sql`
 		WITH st AS (
 			SELECT "epoch", pg_snapshot_xmin(pg_current_snapshot()) AS "xmin",
@@ -256,7 +268,7 @@ export async function readVaultChanges(
 			: { t: (BigInt(state.xmin) - 1n).toString(), s: MAX_SEQ };
 	return {
 		records,
-		cursor: encodeCursor({ e: state.epoch, ...position }),
+		cursor: encodeCursor({ k: "vault", e: state.epoch, ...position }),
 		hasMore,
 	};
 }

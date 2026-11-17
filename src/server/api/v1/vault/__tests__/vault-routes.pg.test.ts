@@ -470,18 +470,59 @@ describe("cursors", () => {
 		const epoch = JSON.parse(
 			Buffer.from((await pull(headers)).cursor, "base64url").toString("utf8"),
 		).e as string;
-		const stale = encodeCursor({ e: `${epoch}-old`, t: "1", s: "0" });
+		const stale = encodeCursor({
+			k: "vault",
+			e: `${epoch}-old`,
+			t: "1",
+			s: "0",
+		});
 		await expectProblem(
 			await pullRaw(headers, `?cursor=${encodeURIComponent(stale)}`),
 			410,
 			"sync_reset_required",
 		);
-		const ahead = encodeCursor({ e: epoch, t: "9".repeat(18), s: "0" });
+		const ahead = encodeCursor({
+			k: "vault",
+			e: epoch,
+			t: "9".repeat(18),
+			s: "0",
+		});
 		await expectProblem(
 			await pullRaw(headers, `?cursor=${encodeURIComponent(ahead)}`),
 			410,
 			"sync_reset_required",
 		);
+	});
+
+	it("refuses a sync feed cursor on /vault/changes with 400, and a vault cursor on /sync", async () => {
+		const id = await accountWithKeys();
+		const headers = await webHeaders(id, 33);
+		const syncPage = await call("/sync/expenses", { headers });
+		expect(syncPage.status).toBe(200);
+		const syncCursor = ((await syncPage.json()) as { cursor: string }).cursor;
+		await expectProblem(
+			await pullRaw(headers, `?cursor=${encodeURIComponent(syncCursor)}`),
+			400,
+			"bad_request",
+		);
+		const vaultCursor = (await pull(headers)).cursor;
+		const back = await call(
+			`/sync/expenses?since=${encodeURIComponent(vaultCursor)}`,
+			{ headers },
+		);
+		await expectProblem(back, 400, "bad_request");
+		// Each feed still takes its own cursor.
+		expect(
+			(await pullRaw(headers, `?cursor=${encodeURIComponent(vaultCursor)}`))
+				.status,
+		).toBe(200);
+		expect(
+			(
+				await call(`/sync/expenses?since=${encodeURIComponent(syncCursor)}`, {
+					headers,
+				})
+			).status,
+		).toBe(200);
 	});
 
 	it("answers 400 for a cursor that is not ours and for a limit out of range", async () => {
