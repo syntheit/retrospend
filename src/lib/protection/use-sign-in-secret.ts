@@ -5,6 +5,8 @@ import { useCallback } from "react";
 import { authClient } from "~/lib/auth-client";
 import {
 	accountIsKeyed,
+	PasswordRotationError,
+	rotatePassword,
 	SignInSecretError,
 	signInSecretFor,
 } from "./sign-in-secret";
@@ -85,5 +87,37 @@ export function useAccountIsKeyed() {
 				throw message(e);
 			}),
 		[email, message],
+	);
+}
+
+/**
+ * For the password change of an account with keys: derives, rewraps and
+ * commits in the browser (rotatePassword). Rejects with an Error whose
+ * message is ready to show.
+ */
+export function useRotatePassword() {
+	const check = useTranslations("settingsV2.passwordCheck");
+	const t = useTranslations("settingsV2.password");
+	const { data: session } = authClient.useSession();
+	const userId = session?.user.id;
+	return useCallback(
+		(current: string, next: string) =>
+			(userId
+				? rotatePassword(userId, current, next)
+				: Promise.reject(new SignInSecretError("unavailable"))
+			).catch((e: unknown) => {
+				const code =
+					e instanceof PasswordRotationError || e instanceof SignInSecretError
+						? e.code
+						: "unavailable";
+				const text =
+					code === "wrongPassword"
+						? t("wrong")
+						: code === "conflict"
+							? t("conflict")
+							: check(code);
+				throw new Error(text, { cause: e });
+			}),
+		[check, t, userId],
 	);
 }

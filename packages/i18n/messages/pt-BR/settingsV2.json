@@ -261,7 +261,9 @@
 		"mismatch": "As novas senhas não coincidem",
 		"submit": "Atualizar senha",
 		"changed": "Senha alterada. Seus outros dispositivos foram desconectados.",
-		"locked": "Indisponível enquanto a proteção avançada está ativada."
+		"locked": "Indisponível enquanto a proteção avançada está ativada.",
+		"wrong": "Senha incorreta",
+		"conflict": "Suas chaves de proteção mudaram. Tente de novo."
 	},
 	"twoFactor": {
 		"onTitle": "Ativar a autenticação de dois fatores",

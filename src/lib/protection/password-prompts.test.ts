@@ -30,8 +30,8 @@ const CHECKING_PROMPTS = [
 
 /**
  * Password fields that are not that: a new password (sign-up, reset), and
- * the change-password sheet, which the server refuses for an account with
- * keys (protected_password) until the key set can change with it.
+ * the change-password sheet, which sends nothing typed for an account with
+ * keys: rotatePassword derives the secrets in the browser (K2).
  */
 const NOT_CHECKING = [
 	"app/(site)/signup/_components/signup-form.tsx",
@@ -83,10 +83,10 @@ describe("web password prompts", () => {
 		);
 	});
 
-	it("asks whether the account is keyed before the password change sends anything", () => {
+	it("asks whether the account is keyed before the password change sends anything, and rotates the keyed ones", () => {
 		const sheet = read("features/settings/security/password-sheet.tsx");
 		expect(sheet).toMatch(
-			/if \(await isKeyed\(\)\) throw new Error\(t\("locked"\)\);[\s\S]*mutateAsync/,
+			/if \(await isKeyed\(\)\) \{\s*await rotate\(current, next\);[\s\S]*?return;\s*\}[\s\S]*mutateAsync/,
 		);
 	});
 
