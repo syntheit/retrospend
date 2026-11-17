@@ -261,7 +261,9 @@
 		"mismatch": "Las contraseñas nuevas no coinciden",
 		"submit": "Actualizar contraseña",
 		"changed": "Contraseña cambiada. Se cerró la sesión en tus otros dispositivos.",
-		"locked": "No disponible mientras la protección avanzada está activada."
+		"locked": "No disponible mientras la protección avanzada está activada.",
+		"wrong": "Contraseña incorrecta",
+		"conflict": "Tus claves de protección cambiaron. Inténtalo de nuevo."
 	},
 	"twoFactor": {
 		"onTitle": "Activar la autenticación de dos factores",

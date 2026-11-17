@@ -261,7 +261,9 @@
 		"mismatch": "Die neuen Passwörter stimmen nicht überein",
 		"submit": "Passwort aktualisieren",
 		"changed": "Passwort geändert. Deine anderen Geräte sind abgemeldet.",
-		"locked": "Nicht verfügbar, solange der erweiterte Schutz an ist."
+		"locked": "Nicht verfügbar, solange der erweiterte Schutz an ist.",
+		"wrong": "Falsches Passwort",
+		"conflict": "Deine Schutzschlüssel haben sich geändert. Versuche es erneut."
 	},
 	"twoFactor": {
 		"onTitle": "Zwei-Faktor-Authentifizierung einschalten",

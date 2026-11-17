@@ -261,7 +261,9 @@
 		"mismatch": "The new passwords don't match",
 		"submit": "Update password",
 		"changed": "Password changed. Your other devices are signed out.",
-		"locked": "Not available while Advanced protection is on."
+		"locked": "Not available while Advanced protection is on.",
+		"wrong": "Wrong password",
+		"conflict": "Your protection keys changed. Try again."
 	},
 	"twoFactor": {
 		"onTitle": "Turn on two-factor",

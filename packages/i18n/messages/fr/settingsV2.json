@@ -261,7 +261,9 @@
 		"mismatch": "Les nouveaux mots de passe ne correspondent pas",
 		"submit": "Mettre à jour le mot de passe",
 		"changed": "Mot de passe changé. Tes autres appareils sont déconnectés.",
-		"locked": "Indisponible tant que la protection avancée est activée."
+		"locked": "Indisponible tant que la protection avancée est activée.",
+		"wrong": "Mot de passe incorrect",
+		"conflict": "Tes clés de protection ont changé. Réessaie."
 	},
 	"twoFactor": {
 		"onTitle": "Activer l’authentification à deux facteurs",

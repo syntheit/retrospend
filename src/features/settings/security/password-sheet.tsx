@@ -8,7 +8,10 @@ import { Label } from "~/components/ui/label";
 import { Sheet } from "~/components/ui/sheet";
 import { useToast } from "~/components/ui/toast";
 import { cn } from "~/lib/cn";
-import { useAccountIsKeyed } from "~/lib/protection/use-sign-in-secret";
+import {
+	useAccountIsKeyed,
+	useRotatePassword,
+} from "~/lib/protection/use-sign-in-secret";
 import { api } from "~/trpc/react";
 import {
 	type PasswordCheck,
@@ -30,6 +33,7 @@ export function PasswordSheet({
 	const toast = useToast();
 	const change = api.profile.changePassword.useMutation();
 	const isKeyed = useAccountIsKeyed();
+	const rotate = useRotatePassword();
 	const [current, setCurrent] = useState("");
 	const [next, setNext] = useState("");
 	const [confirm, setConfirm] = useState("");
@@ -68,8 +72,12 @@ export function PasswordSheet({
 			onOpenChange={onOpenChange}
 			onSubmit={async () => {
 				// A keyed account's password is not what the server checks, so the
-				// typed one is never sent for it.
-				if (await isKeyed()) throw new Error(t("locked"));
+				// typed one is never sent for it: the browser derives and rewraps.
+				if (await isKeyed()) {
+					await rotate(current, next);
+					toast.saved(t("changed"));
+					return;
+				}
 				try {
 					await change.mutateAsync({
 						currentPassword: current,
