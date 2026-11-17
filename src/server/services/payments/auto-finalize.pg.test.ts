@@ -17,7 +17,7 @@ import {
 	seedShare,
 	type TestUser,
 } from "~/server/api/v1/__tests__/g3-fixtures";
-import { readEventFeed } from "~/server/services/events/feed";
+import { readEventFeed, WHOLE_FEED } from "~/server/services/events/feed";
 import { forUser } from "~/server/services/preview";
 import {
 	addDevice,
@@ -187,7 +187,9 @@ describe("auto-finalize of a payment pending for more than 7 days", () => {
 		await sweepStalePayments(NOW);
 		await sweepStalePayments(NOW);
 		const confirmed = async (who: TestUser) =>
-			(await readEventFeed(adminDb, who.user.id, { limit: 100 })).items.filter(
+			(
+				await readEventFeed(adminDb, who.user.id, { limit: 100 }, WHOLE_FEED)
+			).items.filter(
 				(e) =>
 					e.type === "payment.confirmed" &&
 					(e.entity?.id === id || e.data.ids.paymentId === id),
@@ -224,7 +226,12 @@ describe("auto-finalize of a payment pending for more than 7 days", () => {
 		await openTransactionsEnded();
 		const byHand = await vi.waitFor(async () => {
 			const [event] = (
-				await readEventFeed(adminDb, q.payee.user.id, { limit: 100 })
+				await readEventFeed(
+					adminDb,
+					q.payee.user.id,
+					{ limit: 100 },
+					WHOLE_FEED,
+				)
 			).items.filter(
 				(e) =>
 					e.type === "payment.confirmed" && e.data.ids.paymentId === manual,
