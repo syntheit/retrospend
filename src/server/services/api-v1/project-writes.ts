@@ -22,7 +22,7 @@ import { isoDay } from "./caller";
 import { decodeCursor, encodeCursor } from "./cursor";
 import type { LedgerCaller } from "./money-op";
 import { toPreviewDto } from "./money-write";
-import { trpcGuest, trpcProject } from "./trpc-bridge";
+import { trpcGuest, trpcProject, V1_GUARDED } from "./trpc-bridge";
 
 /**
  * v1 adapters for the project writes. The logic stays where the web has it:
@@ -37,7 +37,7 @@ type Role = "ORGANIZER" | "EDITOR" | "CONTRIBUTOR" | "VIEWER";
 type Kind = "user" | "guest" | "shadow";
 type SplitMode = "EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES";
 
-const bridge = (caller: LedgerCaller) => trpcProject(caller);
+const bridge = (caller: LedgerCaller) => trpcProject(caller, V1_GUARDED);
 
 // ── The project ─────────────────────────────────────────────────────────────
 
@@ -167,7 +167,7 @@ export async function joinWithInvite(
 	body: Body<typeof joinWithInviteSchema>,
 ) {
 	// The headers carry the client address the join's rate limit keys on.
-	return (await trpcGuest({ ...caller, headers })).joinWithAccount({
+	return (await trpcGuest({ ...caller, headers }, V1_GUARDED)).joinWithAccount({
 		linkId: body.linkId,
 	});
 }

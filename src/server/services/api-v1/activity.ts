@@ -10,7 +10,7 @@ import type * as z from "zod";
 import { db as globalDb, instanceTextKeys } from "~/server/db";
 import { openAuditChanges } from "~/server/services/payments/confirm-restore";
 import type { LedgerCaller } from "./money-op";
-import { trpcAuditLog } from "./trpc-bridge";
+import { trpcAuditLog, V1_GUARDED } from "./trpc-bridge";
 
 /**
  * v1 adapters for the activity feed and the expense history. The reads are
@@ -115,7 +115,9 @@ const entryOf = (e: Entry, changes: Map<string, Changes>) => ({
 });
 
 export async function listActivity(caller: LedgerCaller, q: Query) {
-	const page = await (await trpcAuditLog(caller)).projectActivityFeed({
+	const page = await (
+		await trpcAuditLog(caller, V1_GUARDED)
+	).projectActivityFeed({
 		projectId: q.id,
 		cursor: q.cursor,
 		limit: q.limit,
@@ -130,11 +132,15 @@ export async function listActivity(caller: LedgerCaller, q: Query) {
 }
 
 export async function readActivityFilters(caller: LedgerCaller, id: string) {
-	return (await trpcAuditLog(caller)).projectActivityFilters({ projectId: id });
+	return (await trpcAuditLog(caller, V1_GUARDED)).projectActivityFilters({
+		projectId: id,
+	});
 }
 
 export async function readLastActivity(caller: LedgerCaller, ids: string) {
-	const last = await (await trpcAuditLog(caller)).projectsLastActivity({
+	const last = await (
+		await trpcAuditLog(caller, V1_GUARDED)
+	).projectsLastActivity({
 		projectIds: idList(ids, MAX_LAST_ACTIVITY_IDS),
 	});
 	const entries = Object.entries(last);
@@ -148,7 +154,9 @@ export async function readLastActivity(caller: LedgerCaller, ids: string) {
 }
 
 export async function readExpenseHistory(caller: LedgerCaller, id: string) {
-	const history = await (await trpcAuditLog(caller)).transactionHistory({
+	const history = await (
+		await trpcAuditLog(caller, V1_GUARDED)
+	).transactionHistory({
 		transactionId: id,
 	});
 	const { transaction: info } = history;
@@ -187,7 +195,9 @@ export async function readExpenseHistory(caller: LedgerCaller, id: string) {
 }
 
 export async function readRevisions(caller: LedgerCaller, ids: string) {
-	const summary = await (await trpcAuditLog(caller)).transactionRevisionSummary({
+	const summary = await (
+		await trpcAuditLog(caller, V1_GUARDED)
+	).transactionRevisionSummary({
 		transactionIds: idList(ids, MAX_REVISION_IDS),
 	});
 	return {
@@ -201,6 +211,8 @@ export async function readRevisions(caller: LedgerCaller, ids: string) {
 }
 
 export async function markSeen(caller: LedgerCaller, id: string) {
-	await (await trpcAuditLog(caller)).markTransactionSeen({ transactionId: id });
+	await (await trpcAuditLog(caller, V1_GUARDED)).markTransactionSeen({
+		transactionId: id,
+	});
 	return { ok: true as const };
 }

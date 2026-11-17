@@ -6,7 +6,11 @@ import { removeSelfMutation } from "~/server/services/shared-expenses/remove-sel
 import { isoDay } from "./caller";
 import type { LedgerCaller } from "./money-op";
 import { applyWrite, previewWrite, undoFor } from "./money-write";
-import { trpcSharedTransaction, trpcVerification } from "./trpc-bridge";
+import {
+	trpcSharedTransaction,
+	trpcVerification,
+	V1_GUARDED,
+} from "./trpc-bridge";
 
 /**
  * v1 adapters for reading one split expense and the verification calls the
@@ -22,7 +26,7 @@ const money = (amount: number | { toString(): string }, currency: string) => ({
 });
 
 export async function readSharedExpense(caller: LedgerCaller, id: string) {
-	const t = await trpcSharedTransaction(caller);
+	const t = await trpcSharedTransaction(caller, V1_GUARDED);
 	const tx = await t.getById({ id });
 	const modify = await t.canModify({ transactionId: id });
 	const author = await sharedAuthor(caller.db, caller.principal.userId, id);
@@ -69,7 +73,7 @@ export async function readSharedExpense(caller: LedgerCaller, id: string) {
 }
 
 export async function listOutgoingPending(caller: LedgerCaller) {
-	const groups = await (await trpcVerification(caller)).outgoing();
+	const groups = await (await trpcVerification(caller, V1_GUARDED)).outgoing();
 	return {
 		items: groups.map((g) => ({
 			type: g.participantType as Kind,
@@ -87,8 +91,13 @@ export async function listOutgoingPending(caller: LedgerCaller) {
 	};
 }
 
-export async function acceptSharedExpenses(caller: LedgerCaller, ids: string[]) {
-	return (await trpcVerification(caller)).bulkAccept({ txnIds: ids });
+export async function acceptSharedExpenses(
+	caller: LedgerCaller,
+	ids: string[],
+) {
+	return (await trpcVerification(caller, V1_GUARDED)).bulkAccept({
+		txnIds: ids,
+	});
 }
 
 const removeInput = (body: z.infer<typeof removeMeSchema>) => ({

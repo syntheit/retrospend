@@ -5,7 +5,7 @@ import type {
 import type * as z from "zod";
 import type { LedgerCaller } from "./money-op";
 import { exactAmount } from "./amounts";
-import { trpcPaymentMethod } from "./trpc-bridge";
+import { trpcPaymentMethod, V1_GUARDED } from "./trpc-bridge";
 
 /**
  * v1 adapters for /payment-methods. The list, the replace and the match
@@ -46,7 +46,7 @@ const methodOf = (m: Row) => ({
 });
 
 export async function listPaymentMethods(caller: LedgerCaller) {
-	const rows = await (await trpcPaymentMethod(caller)).list();
+	const rows = await (await trpcPaymentMethod(caller, V1_GUARDED)).list();
 	return { items: rows.map(methodOf) };
 }
 
@@ -68,7 +68,7 @@ export async function replacePaymentMethods(
 	caller: LedgerCaller,
 	methods: MethodInput[],
 ) {
-	await (await trpcPaymentMethod(caller)).upsert({
+	await (await trpcPaymentMethod(caller, V1_GUARDED)).upsert({
 		methods: methods.map(wireOf),
 	});
 	return listPaymentMethods(caller);
@@ -78,7 +78,7 @@ export async function matchPaymentMethods(
 	caller: LedgerCaller,
 	person: PersonParams,
 ) {
-	const found = await (await trpcPaymentMethod(caller)).match({
+	const found = await (await trpcPaymentMethod(caller, V1_GUARDED)).match({
 		participantType: person.type,
 		participantId: person.id,
 	});

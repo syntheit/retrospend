@@ -3,7 +3,7 @@ import {
 	type Scope,
 	type SessionScope,
 } from "@retrospend/api-contract/common";
-import { isProtected } from "~/server/api/protection/guard";
+import { isProtected } from "@retrospend/api-contract/protection-state";
 import type { PrincipalKind } from "~/server/api/v1/scopes";
 import {
 	apiKeyScopes,

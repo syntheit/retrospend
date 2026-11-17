@@ -1,3 +1,4 @@
+import { isProtected } from "@retrospend/api-contract/protection-state";
 import { EVENT_LOG_TYPES } from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import { hashPassword } from "better-auth/crypto";
@@ -554,7 +555,7 @@ export const adminRouter = createTRPCRouter({
 
 			// With protection on, the reset step would refuse: say so now, to the
 			// admin. While OFF the reset removes the account's keys.
-			if (user.protectionState !== "OFF") throw new ProtectedPasswordError();
+			if (isProtected(user.protectionState)) throw new ProtectedPasswordError();
 
 			const token = crypto.randomBytes(32).toString("hex");
 			const expires = new Date(Date.now() + 1000 * 60 * 60); // 1 hour

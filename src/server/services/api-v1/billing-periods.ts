@@ -4,7 +4,7 @@ import type * as z from "zod";
 import { readFigures } from "~/server/figures/read";
 import { myShareOf } from "~/server/services/project/page-figures";
 import type { LedgerCaller } from "./money-op";
-import { trpcBillingPeriod } from "./trpc-bridge";
+import { trpcBillingPeriod, V1_GUARDED } from "./trpc-bridge";
 
 /**
  * v1 adapters for /projects/{id}/billing-periods. The rules (who may close,
@@ -52,7 +52,9 @@ function totalsOf(rows: { amount: { toString(): string }; currency: string }[]) 
 }
 
 export async function listBillingPeriods(caller: LedgerCaller, id: string) {
-	const rows = await (await trpcBillingPeriod(caller)).list({ projectId: id });
+	const rows = await (await trpcBillingPeriod(caller, V1_GUARDED)).list({
+		projectId: id,
+	});
 	return {
 		items: rows.map((r) => ({
 			...periodOf(r),
@@ -68,7 +70,7 @@ export async function readBillingPeriod(
 	id: string,
 	periodId: string,
 ) {
-	const period = await (await trpcBillingPeriod(caller)).detail({
+	const period = await (await trpcBillingPeriod(caller, V1_GUARDED)).detail({
 		projectId: id,
 		periodId,
 	});
@@ -155,7 +157,7 @@ export async function readBillingPeriod(
 
 export async function closeBillingPeriod(caller: LedgerCaller, id: string) {
 	const { closedPeriod, newPeriod } = await (
-		await trpcBillingPeriod(caller)
+		await trpcBillingPeriod(caller, V1_GUARDED)
 	).closeCurrent({ projectId: id });
 	return { closed: periodOf(closedPeriod), next: periodOf(newPeriod) };
 }
@@ -166,7 +168,7 @@ export async function settleBillingPeriod(
 	periodId: string,
 ) {
 	return periodOf(
-		await (await trpcBillingPeriod(caller)).settlePeriod({
+		await (await trpcBillingPeriod(caller, V1_GUARDED)).settlePeriod({
 			projectId: id,
 			periodId,
 		}),
@@ -178,7 +180,7 @@ export async function renameBillingPeriod(
 	body: Rename,
 ) {
 	return periodOf(
-		await (await trpcBillingPeriod(caller)).updateLabel({
+		await (await trpcBillingPeriod(caller, V1_GUARDED)).updateLabel({
 			projectId: body.id,
 			periodId: body.periodId,
 			label: body.label,

@@ -1,5 +1,6 @@
 import { db } from "~/server/db";
-import { isProtected } from "~/server/api/protection/guard";
+import type { Prisma } from "~prisma";
+import { isProtected } from "@retrospend/api-contract/protection-state";
 
 /**
  * Whether the account is protected right now, for work that runs outside a
@@ -16,4 +17,24 @@ export async function isProtectedNow(userId: string): Promise<boolean> {
 		select: { protectionState: true },
 	});
 	return isProtected(user?.protectionState);
+}
+
+/**
+ * The ids among `userIds` whose account is unprotected (an explicit OFF), for
+ * a batch worker that decides per event owner. Pass the owner transaction the
+ * worker already holds: the state is not readable from the user-scoped client.
+ * An id with no user row is left out, so a missing user is protected, and a
+ * failed read throws and rolls the batch back, so nothing goes out.
+ */
+export async function unprotectedAmong(
+	tx: Prisma.TransactionClient,
+	userIds: readonly string[],
+): Promise<Set<string>> {
+	const rows = await tx.user.findMany({
+		where: { id: { in: [...new Set(userIds)] } },
+		select: { id: true, protectionState: true },
+	});
+	return new Set(
+		rows.filter((r) => !isProtected(r.protectionState)).map((r) => r.id),
+	);
 }

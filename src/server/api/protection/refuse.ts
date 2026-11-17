@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { PROBLEM_CONTENT_TYPE } from "@retrospend/api-contract/common";
 import { encodeProblem, problem } from "~/server/api/v1/errors";
-import { isProtected } from "./guard";
+import { isProtected } from "@retrospend/api-contract/protection-state";
 
 /**
  * The refusal a plain route handler gives a protected account: 403 with the

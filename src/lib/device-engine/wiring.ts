@@ -1,3 +1,4 @@
+import { isProtected } from "@retrospend/api-contract/protection-state";
 import type { DeviceController, DeviceUser } from "./controller";
 
 /** The account the page is signed in as, from the session's user (null while signed out). */
@@ -7,7 +8,7 @@ export function deviceUser(
 	if (!user) return null;
 	// A field the session carries at run time but the client's types do not name.
 	const { protectionState } = user as { protectionState?: string };
-	return { id: user.id, protectedAccount: protectionState === "ON" };
+	return { id: user.id, protectedAccount: isProtected(protectionState) };
 }
 
 /** The slice of `document` the tab wiring uses. */

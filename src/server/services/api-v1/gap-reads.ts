@@ -5,7 +5,7 @@ import { snooze, unsnooze } from "~/server/services/needs-you/snooze";
 import { frequentSplitPartners } from "~/server/services/people/frequent-partners";
 import type { Caller } from "./caller";
 import type { LedgerCaller } from "./money-op";
-import { trpcAuth, trpcProfile, trpcSettings } from "./trpc-bridge";
+import { trpcAuth, trpcProfile, trpcSettings, V1_GUARDED } from "./trpc-bridge";
 
 /**
  * Small v1 reads and writes the Add sheets, the profile page and Needs you
@@ -48,7 +48,9 @@ export const readFirstDay = (caller: LedgerCaller) =>
 	});
 
 export async function readLifetimeStats(caller: LedgerCaller) {
-	const stats = await (await trpcProfile(caller)).getLifetimeStats();
+	const stats = await (
+		await trpcProfile(caller, V1_GUARDED)
+	).getLifetimeStats();
 	return {
 		lifetimeSpend: {
 			minor: toMinor(dec(stats.lifetimeSpend), stats.homeCurrency),
@@ -60,7 +62,7 @@ export async function readLifetimeStats(caller: LedgerCaller) {
 }
 
 export async function readAiStatus(caller: LedgerCaller) {
-	return (await trpcSettings(caller)).getAiStatus();
+	return (await trpcSettings(caller, V1_GUARDED)).getAiStatus();
 }
 
 export async function readRunway(caller: Caller, currency?: string) {
@@ -87,7 +89,7 @@ export async function recordConsent(
 	headers: Headers,
 	consentVersion: string,
 ) {
-	await (await trpcAuth({ ...caller, headers })).recordConsent({
+	await (await trpcAuth({ ...caller, headers }, V1_GUARDED)).recordConsent({
 		consentVersion,
 	});
 	return { ok: true as const };

@@ -44,10 +44,25 @@ describe("deviceUser", () => {
 			id: "u1",
 			protectedAccount: false,
 		});
-		expect(deviceUser({ id: "u1" })).toEqual({
-			id: "u1",
-			protectedAccount: false,
-		});
+	});
+
+	it("counts a missing or unknown state as protected, like the server", async () => {
+		expect(deviceUser({ id: "u1" })?.protectedAccount).toBe(true);
+		const { refuseProtected } = await import("~/server/api/protection/refuse");
+		for (const state of [
+			"OFF",
+			"ON",
+			"TURNING_ON",
+			"off",
+			"",
+			null,
+			undefined,
+		]) {
+			const user = { id: "u1", protectionState: state } as { id: string };
+			const refused = refuseProtected({ protectionState: state }) !== null;
+			expect(deviceUser(user)?.protectedAccount, String(state)).toBe(refused);
+			expect(refused, String(state)).toBe(state !== "OFF");
+		}
 	});
 });
 

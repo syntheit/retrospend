@@ -19,7 +19,7 @@ import {
 } from "./cursor";
 import { EVENT_METADATA_KEYS } from "./event-metadata-keys";
 import type { LedgerCaller } from "./money-op";
-import { trpcAdmin } from "./trpc-bridge";
+import { trpcAdmin, V1_GUARDED } from "./trpc-bridge";
 
 /**
  * v1 adapters for /admin. The procedures behind them are the web admin's
@@ -37,7 +37,7 @@ export function assertAdmin(caller: LedgerCaller) {
 
 async function admin(caller: LedgerCaller) {
 	assertAdmin(caller);
-	return trpcAdmin(caller);
+	return trpcAdmin(caller, V1_GUARDED);
 }
 
 async function requireUser(id: string) {
