@@ -47,6 +47,9 @@ export async function OperationBlock({ op }: { op: Operation }) {
 						</div>
 					) : null}
 				</dl>
+				{op.protectedAccount ? null : (
+					<p className="mt-2 text-fg-3 text-small">{t("notProtected")}</p>
+				)}
 				{op.params.length > 0 ? (
 					<FieldTable rows={op.params} title={t("parameters")} />
 				) : null}

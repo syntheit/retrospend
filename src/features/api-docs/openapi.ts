@@ -32,6 +32,8 @@ export type Operation = {
 	description: string;
 	scope: string | null;
 	event: string | null;
+	/** False when an account with Advanced protection on is refused the route. */
+	protectedAccount: boolean;
 	tag: string;
 	params: ParamRow[];
 	request: FieldRow[] | null;
@@ -195,6 +197,11 @@ function buildOperation(
 		description: String(op.description ?? ""),
 		scope: typeof op["x-required-scope"] === "string" ? op["x-required-scope"] : null,
 		event: typeof op["x-event-type"] === "string" ? op["x-event-type"] : null,
+		// An unlabeled operation reads as allowed, so only a stated "no" shows the line.
+		protectedAccount: !(
+			isObject(op["x-protected-account"]) &&
+			op["x-protected-account"].allowed === false
+		),
 		tag: tags[0] ?? "Other",
 		params: paramsOf(doc, op),
 		request: request?.rows ?? null,
