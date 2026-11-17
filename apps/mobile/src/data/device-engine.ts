@@ -12,14 +12,15 @@ import {
 	readDeviceFigures,
 	SETTINGS_ID,
 } from "@retrospend/engine";
+import type {
+	DeviceApi,
+	EngineStorage,
+	StorageHooks,
+} from "@retrospend/engine/device";
 import { appOpenDeps } from "./engine-db/app-deps";
 import { engineScope } from "./engine-db/names";
 import type { OpenDeps } from "./engine-db/open";
-import {
-	type EngineStorage,
-	openEngineStorage,
-	type StorageHooks,
-} from "./engine-db/storage";
+import { openEngineStorage } from "./engine-db/storage";
 import { registerLiveEngine } from "./engine-db/sweep";
 
 // The device engine, behind the dev flag EXPO_PUBLIC_DEV_DEVICE_ENGINE=1: a
@@ -150,7 +151,7 @@ const sameLines = (
 			);
 
 export function createDeviceEngine(
-	api: RetrospendClient,
+	api: DeviceApi,
 	userId: string,
 	now: () => number = Date.now,
 	options: DeviceEngineOptions = {},

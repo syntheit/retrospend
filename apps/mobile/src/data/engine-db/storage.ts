@@ -1,30 +1,12 @@
-import type { PullCursors } from "@retrospend/engine";
+import type { EngineStorage, StorageHooks } from "@retrospend/engine/device";
 import { failureKind } from "./driver";
 import { type OpenDeps, openEncrypted, wipeScope } from "./open";
-import {
-	createPersistence,
-	type LoadedEngine,
-	loadEngineDb,
-	type Persistence,
-} from "./persist";
+import { createPersistence, type LoadedEngine, loadEngineDb } from "./persist";
 
-// One account's disk copy as the device engine sees it: what was on disk, the
-// writer for the engine's store, and a way to close it and, when the account
-// goes, to delete the file and the key.
-
-export interface StorageHooks {
-	/** The cursor object the pull driver keeps; a getter, because a sync reset replaces it. */
-	cursors: () => PullCursors;
-	/** The disk copy was given up for this session; the engine disposes it and goes on in memory. */
-	onDegraded: (cause: string) => void;
-}
-
-export interface EngineStorage {
-	readonly loaded: LoadedEngine;
-	readonly persistence: Persistence;
-	/** Closes the connection; with `wipe`, also deletes the file, the key and the index entry. */
-	dispose(options: { wipe: boolean }): Promise<void>;
-}
+// One account's disk copy as the device engine sees it (the EngineStorage
+// port in @retrospend/engine/device): what was on disk, the writer for the
+// engine's store, and a way to close it and, when the account goes, to delete
+// the file and the key.
 
 /** Opens the encrypted file for a scope and reads it, or null for a memory-only engine. */
 export async function openEngineStorage(
