@@ -8,11 +8,11 @@ import {
 	KEY_BYTES,
 	NONCE_BYTES,
 	type Primitives,
-	runKnownAnswerTests,
 	SEAL_OVERHEAD_BYTES,
 	TAG_BYTES,
 	toHex,
 } from "../src";
+import { runKnownAnswerTests } from "../src/dev";
 import { createWebPrimitives, loadWebSodium } from "../src/web";
 import vectors from "../vectors/primitives.vectors.json";
 

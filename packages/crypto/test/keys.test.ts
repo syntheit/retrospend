@@ -24,15 +24,14 @@ import {
 	type PublicRole,
 	parseRecoveryKey,
 	recoveryWrapKey,
-	runKnownAnswerTests,
 	type SymmetricRole,
 	sealRecord,
 	toHex,
 	unwrapKey,
-	unwrapKeyFromPublic,
 	wrapKey,
-	wrapKeyToPublic,
 } from "../src";
+import { runKnownAnswerTests } from "../src/dev";
+import { unwrapKeyFromPublic, wrapKeyToPublic } from "../src/k4";
 import { createWebPrimitives } from "../src/web";
 import vectors from "../vectors/keys.vectors.json";
 
@@ -379,7 +378,10 @@ describe("wraps to a public key", () => {
 
 describe("recovery key text", () => {
 	const random = () => {
-		const keys: Uint8Array[] = [new Uint8Array(32), new Uint8Array(32).fill(255)];
+		const keys: Uint8Array[] = [
+			new Uint8Array(32),
+			new Uint8Array(32).fill(255),
+		];
 		for (let i = 0; i < 10; i++) keys.push(generateRecoveryKey(p));
 		return keys;
 	};

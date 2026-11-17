@@ -10,7 +10,7 @@
 // carry no data (errors.ts). The library is injected so the web (WebAssembly),
 // Node and React Native (native, through JSI) builds share this one wrapper
 // and one set of vectors (self-test.ts).
-import { CryptoError } from "./errors";
+import { bad, CryptoError } from "./errors";
 
 /**
  * The slice of libsodium used here. Both `libsodium-wrappers-sumo` and
@@ -93,11 +93,8 @@ export interface BoxKeyPair {
 	privateKey: Uint8Array;
 }
 
-const bad = (): never => {
-	throw new CryptoError("invalid_input");
-};
 /** Realm-safe: an array made by another JS realm (a test sandbox) still counts. */
-const isBytes = (v: unknown): v is Uint8Array =>
+export const isBytes = (v: unknown): v is Uint8Array =>
 	v instanceof Uint8Array ||
 	Object.prototype.toString.call(v) === "[object Uint8Array]";
 const requireBytes = (v: unknown, length: number): Uint8Array =>
@@ -116,6 +113,21 @@ const requireAscii = (v: string, length?: number): string =>
 		? v
 		: bad();
 
+/**
+ * Run a libsodium call so that nothing but a CryptoError can leave this
+ * package: the library's own errors may carry its argument text, so they are
+ * dropped, not wrapped. `invalid_input` is the closest of the two codes (a
+ * failed allocation in Argon2 lands here too).
+ */
+const sodiumCall = <T>(run: () => T): T => {
+	try {
+		return run();
+	} catch (e) {
+		if (e instanceof CryptoError) throw e;
+		return bad();
+	}
+};
+
 /** Zero a buffer in place. Best effort: JS gives no guarantee about copies. */
 export function wipe(bytes: Uint8Array): void {
 	bytes.fill(0);
@@ -127,8 +139,9 @@ export function createPrimitives(sodium: SodiumLike) {
 
 	return {
 		randomBytes(length: number): Uint8Array {
+			requireInt(length, 1, 1 << 20);
 			return checked(
-				sodium.randombytes_buf(requireInt(length, 1, 1 << 20)),
+				sodiumCall(() => sodium.randombytes_buf(length)),
 				length,
 			);
 		},
@@ -149,13 +162,16 @@ export function createPrimitives(sodium: SodiumLike) {
 			requireBytes(key, KEY_BYTES);
 			requireBytes(nonce, NONCE_BYTES);
 			if (!isBytes(plaintext)) bad();
+			requireAscii(aad);
 			return checked(
-				sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
-					plaintext,
-					requireAscii(aad),
-					null,
-					nonce,
-					key,
+				sodiumCall(() =>
+					sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+						plaintext,
+						aad,
+						null,
+						nonce,
+						key,
+					),
 				),
 				plaintext.length + TAG_BYTES,
 			);
@@ -218,13 +234,15 @@ export function createPrimitives(sodium: SodiumLike) {
 			requireInt(params.passes, 1, ARGON2_MAX_PASSES);
 			requireInt(length, 16, 64);
 			return checked(
-				sodium.crypto_pwhash(
-					length,
-					password,
-					salt,
-					params.passes,
-					params.memoryKiB * 1024,
-					sodium.crypto_pwhash_ALG_ARGON2ID13,
+				sodiumCall(() =>
+					sodium.crypto_pwhash(
+						length,
+						password,
+						salt,
+						params.passes,
+						params.memoryKiB * 1024,
+						sodium.crypto_pwhash_ALG_ARGON2ID13,
+					),
 				),
 				length,
 			);
@@ -247,7 +265,14 @@ export function createPrimitives(sodium: SodiumLike) {
 			requireAscii(context, KDF_CONTEXT_BYTES);
 			requireInt(length, 16, 64);
 			return checked(
-				sodium.crypto_kdf_derive_from_key(length, subkeyId, context, masterKey),
+				sodiumCall(() =>
+					sodium.crypto_kdf_derive_from_key(
+						length,
+						subkeyId,
+						context,
+						masterKey,
+					),
+				),
 				length,
 			);
 		},
@@ -256,13 +281,23 @@ export function createPrimitives(sodium: SodiumLike) {
 		blake2b(message: Uint8Array, length: number, key?: Uint8Array): Uint8Array {
 			if (!isBytes(message)) bad();
 			requireInt(length, 16, 64);
-			if (key !== undefined) requireInt(key.length, 16, 64);
-			return checked(sodium.crypto_generichash(length, message, key), length);
+			// Only "no key" is undefined: a null or a non-bytes key is a mistake,
+			// not an unkeyed hash.
+			if (
+				key !== undefined &&
+				!(isBytes(key) && key.length >= 16 && key.length <= 64)
+			) {
+				bad();
+			}
+			return checked(
+				sodiumCall(() => sodium.crypto_generichash(length, message, key)),
+				length,
+			);
 		},
 
 		/** A fresh X25519 key pair. */
 		boxKeypair(): BoxKeyPair {
-			const pair = sodium.crypto_box_keypair();
+			const pair = sodiumCall(() => sodium.crypto_box_keypair());
 			return {
 				publicKey: checked(pair.publicKey, PUBLIC_KEY_BYTES),
 				privateKey: checked(pair.privateKey, PRIVATE_KEY_BYTES),
@@ -275,9 +310,8 @@ export function createPrimitives(sodium: SodiumLike) {
 		 * secret without `crypto_scalarmult`, which the native build lacks.
 		 */
 		boxKeypairFromSeed(seed: Uint8Array): BoxKeyPair {
-			const pair = sodium.crypto_box_seed_keypair(
-				requireBytes(seed, KEY_BYTES),
-			);
+			requireBytes(seed, KEY_BYTES);
+			const pair = sodiumCall(() => sodium.crypto_box_seed_keypair(seed));
 			return {
 				publicKey: checked(pair.publicKey, PUBLIC_KEY_BYTES),
 				privateKey: checked(pair.privateKey, PRIVATE_KEY_BYTES),
@@ -292,11 +326,9 @@ export function createPrimitives(sodium: SodiumLike) {
 		 */
 		seal(message: Uint8Array, publicKey: Uint8Array): Uint8Array {
 			if (!isBytes(message)) bad();
+			requireBytes(publicKey, PUBLIC_KEY_BYTES);
 			return checked(
-				sodium.crypto_box_seal(
-					message,
-					requireBytes(publicKey, PUBLIC_KEY_BYTES),
-				),
+				sodiumCall(() => sodium.crypto_box_seal(message, publicKey)),
 				message.length + SEAL_OVERHEAD_BYTES,
 			);
 		},

@@ -1,11 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import {
-	benchJson,
-	benchRows,
-	CryptoError,
-	type Primitives,
-	runCryptoBench,
-} from "../src";
+import { CryptoError, type Primitives } from "../src";
+import { benchJson, benchRows, runCryptoBench } from "../src/dev";
 import { createWebPrimitives } from "../src/web";
 
 let p: Primitives;

@@ -23,3 +23,13 @@ export class CryptoError extends Error {
 		this.code = code;
 	}
 }
+
+/** The one way every module refuses a bad argument. */
+export const bad = (): never => {
+	throw new CryptoError("invalid_input");
+};
+
+/** The one way every module refuses what does not authenticate. */
+export const failed = (): never => {
+	throw new CryptoError("decrypt_failed");
+};
