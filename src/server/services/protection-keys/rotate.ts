@@ -34,7 +34,7 @@ import {
 	spendPasswordTry,
 } from "../account-security.service";
 import { ProtectionKeysError, RotatePasswordError } from "./errors";
-import { lockCredential } from "./password-writes";
+import { hasKeySet, lockCredential } from "./password-writes";
 import {
 	applyKeyChanges,
 	getProtectionKeys,
@@ -107,14 +107,13 @@ export async function beginRotation(input: {
 	const { userId, sessionId, currentAuthKey } = input;
 	if (!isSignInSecret(currentAuthKey)) invalid();
 	// A keyless account has nothing to rotate; answered before a try is spent.
-	if ((await storedVersion(userId)) === null)
-		throw new ProtectionKeysError("conflict");
+	if (!(await hasKeySet(db, userId))) throw new ProtectionKeysError("conflict");
 
 	await spendPasswordTry(userId, sessionId);
 	const checked = await credentialHash(userId);
 	if (!(await verifyPassword({ password: currentAuthKey, hash: checked }))) {
 		// A reset that removed the keys since the first look replaced the hash.
-		if ((await storedVersion(userId)) === null)
+		if (!(await hasKeySet(db, userId)))
 			throw new ProtectionKeysError("conflict");
 		throw new RotatePasswordError("wrong_password");
 	}
@@ -178,6 +177,8 @@ export async function rotatePassword(input: {
 		select: { email: true },
 	});
 	if (!user) throw new RotatePasswordError("no_password");
+	// A keyless account has nothing to rotate; answered before a try is spent.
+	if (!(await hasKeySet(db, userId))) throw new ProtectionKeysError("conflict");
 
 	await spendPasswordTry(userId, sessionId);
 	const checked = await credentialHash(userId);
