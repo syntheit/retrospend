@@ -174,7 +174,7 @@ function rotationOf(userId: string, current: string, baseVersion = 1) {
 			currentAuthKey: current,
 			newAuthKey,
 			kdf: { salt: toBase64Url(salt), memoryKiB: 65536, passes: 3 },
-			akPasswordWrap: toBase64Url(wrapped),
+			wrappedAccountKey: toBase64Url(wrapped),
 			baseVersion,
 		},
 	};
@@ -318,7 +318,7 @@ async function blockedBehindLock(pending: Promise<Response>) {
 type Begun = {
 	version: number;
 	kdf: { salt: string; memoryKiB: number; passes: number };
-	akPasswordWrap: string;
+	wrappedAccountKey: string;
 };
 
 describe("POST /me/protection/password/begin", () => {
@@ -333,7 +333,7 @@ describe("POST /me/protection/password/begin", () => {
 		expect(got).toEqual({
 			version: 1,
 			kdf: { salt: toBase64Url(k.salt), memoryKiB: 65536, passes: 3 },
-			akPasswordWrap: toBase64Url(stored?.wrapped ?? new Uint8Array()),
+			wrappedAccountKey: toBase64Url(stored?.wrapped ?? new Uint8Array()),
 		});
 		expect(
 			await adminDb.idempotencyKey.count({ where: { userId: u.id } }),
@@ -766,7 +766,7 @@ describe("POST /me/protection/password", () => {
 			(
 				await rotate(me.headers, {
 					...r.body,
-					akPasswordWrap: toBase64Url(r.wrapped.slice(0, 60)),
+					wrappedAccountKey: toBase64Url(r.wrapped.slice(0, 60)),
 				})
 			).status,
 		).toBe(400);
@@ -808,6 +808,29 @@ describe("POST /me/protection/password", () => {
 				where: { userId: u.id, eventType: "PASSWORD_CHANGED" },
 			}),
 		).toBe(1);
+	});
+
+	it("binds the wrapped account key into the request, so a reused Idempotency-Key with another wrap is refused", async () => {
+		const u = await passwordUser();
+		const k = await keyed(u.id);
+		const me = await mobile(u.id);
+		const r = rotationOf(u.id, k.authKeyText);
+		const key = randomUUID();
+		await expectBody(
+			await rotate(me.headers, r.body, key),
+			route.rotatePassword,
+		);
+		const other = rotationOf(u.id, k.authKeyText);
+		await expectProblem(
+			await rotate(
+				me.headers,
+				{ ...r.body, wrappedAccountKey: other.body.wrappedAccountKey },
+				key,
+			),
+			422,
+			"idempotency_key_reused",
+		);
+		expect((await setRow(u.id)).version).toBe(2);
 	});
 
 	it("is all or nothing when the database fails after the hash swap", async () => {

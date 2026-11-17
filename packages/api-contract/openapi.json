@@ -83278,11 +83278,6 @@
 						"application/json": {
 							"schema": {
 								"properties": {
-									"akPasswordWrap": {
-										"description": "Your account key wrapped under the new password, base64url. Replaces the old wrap.",
-										"pattern": "^[A-Za-z0-9_-]{1,512}$",
-										"type": "string"
-									},
 									"baseVersion": {
 										"description": "The version the begin call returned.",
 										"maximum": 9007199254740991,
@@ -83323,13 +83318,18 @@
 										"description": "The sign-in secret derived from the new password and the new kdf, base64url, 43 characters.",
 										"pattern": "^[A-Za-z0-9_-]{43}$",
 										"type": "string"
+									},
+									"wrappedAccountKey": {
+										"description": "Your account key wrapped under the new password, base64url. Replaces the old wrap.",
+										"pattern": "^[A-Za-z0-9_-]{1,512}$",
+										"type": "string"
 									}
 								},
 								"required": [
 									"currentAuthKey",
 									"newAuthKey",
 									"kdf",
-									"akPasswordWrap",
+									"wrappedAccountKey",
 									"baseVersion"
 								],
 								"type": "object"
@@ -83467,11 +83467,6 @@
 							"application/json": {
 								"schema": {
 									"properties": {
-										"akPasswordWrap": {
-											"description": "Your account key wrapped under the current password, base64url. The server never opens it.",
-											"pattern": "^[A-Za-z0-9_-]{1,512}$",
-											"type": "string"
-										},
 										"kdf": {
 											"properties": {
 												"memoryKiB": {
@@ -83502,12 +83497,17 @@
 											"maximum": 9007199254740991,
 											"minimum": 1,
 											"type": "integer"
+										},
+										"wrappedAccountKey": {
+											"description": "Your account key wrapped under the current password, base64url. The server never opens it.",
+											"pattern": "^[A-Za-z0-9_-]{1,512}$",
+											"type": "string"
 										}
 									},
 									"required": [
 										"version",
 										"kdf",
-										"akPasswordWrap"
+										"wrappedAccountKey"
 									],
 									"type": "object"
 								}

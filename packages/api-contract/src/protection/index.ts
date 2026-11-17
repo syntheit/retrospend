@@ -99,7 +99,7 @@ export const beginPasswordRotationResultSchema = z
 			description: "The key set version to send back as baseVersion.",
 		}),
 		kdf: preloginKdfSchema,
-		akPasswordWrap: z.string().regex(WRAP_TEXT).meta({
+		wrappedAccountKey: z.string().regex(WRAP_TEXT).meta({
 			description:
 				"Your account key wrapped under the current password, base64url. The server never opens it.",
 		}),
@@ -117,7 +117,7 @@ export const rotatePasswordSchema = z
 				"The sign-in secret derived from the new password and the new kdf, base64url, 43 characters.",
 		}),
 		kdf: preloginKdfSchema,
-		akPasswordWrap: z.string().regex(WRAP_TEXT).meta({
+		wrappedAccountKey: z.string().regex(WRAP_TEXT).meta({
 			description:
 				"Your account key wrapped under the new password, base64url. Replaces the old wrap.",
 		}),

@@ -63,7 +63,7 @@ function toKeyChanges(userId: string, body: RotatePassword): KeyChanges {
 			{
 				role: "ak-password",
 				targetId: userId,
-				wrapped: bytes(body.akPasswordWrap),
+				wrapped: bytes(body.wrappedAccountKey),
 			},
 		],
 		remove: [],
@@ -91,7 +91,7 @@ async function storedVersion(userId: string): Promise<number | null> {
 export type BeginResult = {
 	version: number;
 	kdf: { salt: string; memoryKiB: number; passes: number };
-	akPasswordWrap: string;
+	wrappedAccountKey: string;
 };
 
 /**
@@ -141,7 +141,7 @@ export async function beginRotation(input: {
 				memoryKiB: keys.kdfMemoryKiB,
 				passes: keys.kdfPasses,
 			},
-			akPasswordWrap: toBase64Url(wrap.wrapped),
+			wrappedAccountKey: toBase64Url(wrap.wrapped),
 		};
 	});
 }
