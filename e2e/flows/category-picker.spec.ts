@@ -70,6 +70,11 @@ test("Category filter: a pick toggles and the list stays open, Clear empties it"
 	await expect(find).toBeFocused();
 
 	await page.keyboard.type("subs");
+	// Under load the filtered list can render after the keystrokes; Enter
+	// before it picks nothing (seen in gates b68 and b72).
+	const top = page.getByRole("option").first();
+	await expect(top).toContainText("Subscriptions");
+	await expect(top).toHaveAttribute("aria-selected", "true");
 	await page.keyboard.press("Enter");
 	// Still open, the chip names the pick, the option is marked.
 	await expect(find).toBeVisible();
