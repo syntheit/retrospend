@@ -80,7 +80,7 @@ Research jobs:
 
 Plan critic (High risk): "Here is a plan for <request>. Find what is wrong or missing: wrong layer, duplicated logic, a figure computed twice, money math outside the server, missing preview or undo, RLS, migration safety, encryption rules, missing tests. For security work also: does the plan name the one module that owns each rule (§6.8), and does it list every path that reaches the thing it protects by searching for them (all callers, readers, writers, clients, workers), not from memory? At most 8 issues, most serious first."
 
-Implementation stays with you so the change stays coherent. Split it across agents only when the pieces are in separate files, and never let two agents edit the same file.
+Implementation stays with you so the change stays coherent. Split it across agents only when the pieces are in separate files, and never let two agents edit the same file. Parallel agents each get their own worktree and their own scratch folder; an agent runs only scripts it wrote in this task, `cd`s to its own worktree explicitly, and checks `git status` there before and after a mutation check.
 
 ### 2.3 Review
 
