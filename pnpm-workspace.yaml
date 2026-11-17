@@ -21,3 +21,11 @@ patchedDependencies:
   '@expo/ui@58.0.20': patches/@expo__ui@58.0.20.patch
   # iOS: RN 0.88 has no RCTCxxBridge cast (upstream PR serenity-kit/react-native-libsodium#109).
   react-native-libsodium@1.7.0: patches/react-native-libsodium@1.7.0.patch
+
+# Security fixes in tooling only (Dependabot, owner OK 2026-11-17): hono and
+# its node server come in through the shadcn CLI's MCP SDK, node-forge through
+# @expo/cli. Neither ships in the app.
+overrides:
+  hono: ^4.13.16
+  '@hono/node-server': ^2.1.6
+  node-forge: ^1.4.3
