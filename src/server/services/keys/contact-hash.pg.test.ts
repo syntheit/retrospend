@@ -188,13 +188,15 @@ describe("with a master key and no epoch (rule 3)", () => {
 });
 
 describe("with a master key and the epoch set (rule 2)", () => {
-	it("a writer before the epoch has no ring to use, one after makes it and stores the hash", async () => {
+	it("a writer before the epoch has no ring to use, one after uses the key the flag-on start made and stores the hash", async () => {
 		const before = await add("Before@Example.com");
 		expect(
 			await hashOf("shadow_profile", before.kind === "shadow" ? before.id : ""),
 		).toBeNull();
 		expect(await instanceKeys()).toBe(0);
 
+		// The flag-on start makes the key, then sets the epoch.
+		await instanceKeyring(MASTER);
 		await writeEpoch(true);
 		const after = await add("After@Example.com", "Ann");
 		expect(await instanceKeys()).toBe(1);
@@ -309,6 +311,7 @@ describe("contactLookup on rows", () => {
 	});
 
 	it("after the epoch matches the hash: a filled row is found, an unfilled one is not, a guest is another table", async () => {
+		await instanceKeyring(MASTER);
 		await writeEpoch(true);
 		const email = `Hashed-${randomUUID()}@Example.com`;
 		const hashed = await add(email);
