@@ -140,6 +140,22 @@ describe("account sync routes: who may call them", () => {
 		},
 	);
 
+	it("still refuses a protected account's web session", async () => {
+		const protectedId = (await createTestUser()).user.id;
+		await adminDb.user.update({
+			where: { id: protectedId },
+			data: { protectionState: "ON" },
+		});
+		const headers = { ...OWN_IP, ...(await webCookieFor(protectedId)) };
+		for (const path of Object.values(ROUTES).map((r) => r.path)) {
+			await expectProblem(
+				await call(path, { headers }),
+				403,
+				"protected_account",
+			);
+		}
+	});
+
 	it.each(Object.entries(ROUTES))(
 		"%s refuses a device session that holds every token scope",
 		async (_name, { path }) => {

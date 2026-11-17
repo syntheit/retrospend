@@ -149,6 +149,22 @@ describe("shares sync route: who may call it", () => {
 		expect(res.status, await res.text()).toBe(200);
 	});
 
+	it("still refuses a protected account's web session", async () => {
+		const protectedId = (await createTestUser()).user.id;
+		await adminDb.user.update({
+			where: { id: protectedId },
+			data: { protectionState: "ON" },
+		});
+		const headers = { ...OWN_IP, ...(await webCookieFor(protectedId)) };
+		for (const path of ["/sync/shares", "/sync/shares?budget=1"]) {
+			await expectProblem(
+				await call(path, { headers }),
+				403,
+				"protected_account",
+			);
+		}
+	});
+
 	it("refuses a device session that holds every token scope", async () => {
 		const token = await sessionFor(userId, {
 			scopes: [...SCOPES].join(" "),
