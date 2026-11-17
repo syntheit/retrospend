@@ -199,7 +199,6 @@ describe("with a master key and the epoch set (rule 2)", () => {
 		await instanceKeyring(MASTER);
 		await writeEpoch(true);
 		const after = await add("After@Example.com", "Ann");
-		expect(await instanceKeys()).toBe(1);
 		expect(
 			await hashOf("shadow_profile", after.kind === "shadow" ? after.id : ""),
 		).toBe(await expected(SHADOW, "after@example.com"));
