@@ -73,7 +73,7 @@ const body = (over: Partial<CaptureBody> = {}): CaptureBody => ({
 });
 
 const capture = (
-	over: Partial<CreateCapture> & { body?: CaptureBody } = {},
+	over: { zone?: string; at?: number; body?: CaptureBody } = {},
 	settings: Settings = ARS,
 ): CreateCapture => ({
 	id: "e1",
@@ -83,6 +83,12 @@ const capture = (
 	rateDefaults: rateDefaultsKey(settings),
 	at: SENT,
 	...over,
+});
+
+const skippable = (kind: "split" | "transfer"): CreateCapture => ({
+	...capture(),
+	kind,
+	body: undefined,
 });
 
 interface World {
@@ -346,12 +352,8 @@ describe("what is skipped, with its code", () => {
 	});
 
 	it("skips a split and a transfer, whatever the rows hold", async () => {
-		expect(
-			await verdict({}, capture({ kind: "split", body: undefined })),
-		).toEqual(skip("split"));
-		expect(
-			await verdict({}, capture({ kind: "transfer", body: undefined })),
-		).toEqual(skip("transfer"));
+		expect(await verdict({}, skippable("split"))).toEqual(skip("split"));
+		expect(await verdict({}, skippable("transfer"))).toEqual(skip("transfer"));
 	});
 
 	it("skips a category the device has not received", async () => {

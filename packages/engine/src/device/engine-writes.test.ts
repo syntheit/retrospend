@@ -174,6 +174,18 @@ describe("comparing the creates a pull brings in", () => {
 		expect(engine.writeParity.recent[0]?.id).toBe("e1");
 	});
 
+	it("compares nothing after a pull that failed, and keeps the create for the next one", async () => {
+		const { engine, captures } = setup([[booked("e1")]], {
+			fail: { route: "expenses", pull: 3, error: new Error("offline") },
+		});
+		await engine.pull();
+		await engine.pull();
+		captures.add(sent());
+		await engine.pull();
+		expect(engine.writeParity.counts).toEqual({});
+		expect(captures.pending()).toHaveLength(1);
+	});
+
 	it("does nothing without captures", async () => {
 		const { api } = fakeDeviceApi({ rates, expenses: [page([booked("e1")])] });
 		const engine = createDeviceEngine(api, "u1", Date.now, { warn });

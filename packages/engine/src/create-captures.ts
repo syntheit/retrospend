@@ -69,17 +69,20 @@ export class CreateCaptures {
 	add(sent: SentCreate): boolean {
 		const settings = this.settingsOf?.();
 		if (!settings) return false;
-		const body = sent.kind === "expense" ? bodyOf(sent.body) : undefined;
-		if (body === null) return false;
-		this.held.delete(sent.id);
-		this.held.set(sent.id, {
+		const base = {
 			id: sent.id,
-			kind: sent.kind,
-			...(body ? { body } : {}),
 			zone: settings.timeZone,
 			rateDefaults: rateDefaultsKey(settings),
 			at: sent.at,
-		});
+		};
+		let capture: CreateCapture;
+		if (sent.kind === "expense") {
+			const body = bodyOf(sent.body);
+			if (!body) return false;
+			capture = { ...base, kind: "expense", body };
+		} else capture = { ...base, kind: sent.kind };
+		this.held.delete(sent.id);
+		this.held.set(sent.id, capture);
 		// Oldest first: a Map iterates in insertion order.
 		while (this.held.size > MAX_CAPTURES) {
 			const oldest = this.held.keys().next().value;

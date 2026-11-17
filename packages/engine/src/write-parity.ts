@@ -54,18 +54,19 @@ export interface CaptureBody {
 }
 
 /** A create the server accepted: what the device needs to book it again. */
-export interface CreateCapture {
+export type CreateCapture = {
 	id: string;
-	kind: CaptureKind;
-	/** Only for kind "expense". */
-	body?: CaptureBody;
 	/** The zone the server read the day in: settings.timeZone when it was sent. */
 	zone: string;
 	/** The preferred rate types when it was sent (see rateDefaultsKey). */
 	rateDefaults: string;
 	/** Epoch ms when the send began, which is no later than the server's createdAt. */
 	at: number;
-}
+} & (
+	| { kind: "expense"; body: CaptureBody }
+	/** A split or a transfer is skipped, so its body is never kept. */
+	| { kind: "split" | "transfer"; body?: undefined }
+);
 
 export type SkipCode =
 	| "spread"
@@ -155,9 +156,9 @@ export async function compareCreate(
 	live: Reader,
 	capture: CreateCapture,
 ): Promise<WriteVerdict> {
-	const { id, body } = capture;
-	if (capture.kind !== "expense" || !body)
-		return skipped(id, capture.kind === "split" ? "split" : "transfer");
+	const { id } = capture;
+	if (capture.kind !== "expense") return skipped(id, capture.kind);
+	const { body } = capture;
 	if ((body.amortizeOver ?? 0) > 1) return skipped(id, "spread");
 	const settings = live.get("settings", SETTINGS_ID);
 	if (!settings) return skipped(id, "no_settings");
