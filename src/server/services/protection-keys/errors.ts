@@ -34,3 +34,13 @@ export class EnableProtectionError extends Error {
 		this.name = "EnableProtectionError";
 	}
 }
+
+export type RotatePasswordRefusal = "no_password" | "wrong_password";
+
+/** A password change for a keyed account was refused; the transport maps `code`. The text is never shown. */
+export class RotatePasswordError extends Error {
+	constructor(readonly code: RotatePasswordRefusal) {
+		super(`The password was not changed: ${code}`);
+		this.name = "RotatePasswordError";
+	}
+}

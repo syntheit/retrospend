@@ -169,6 +169,10 @@ export const V1_ALLOWED: Readonly<Record<string, string>> = {
 		"Security: creates the account's own protection keys and sign-in secret",
 	"GET /me/protection/keys":
 		"Security: the account's own key parameters, no wraps",
+	"POST /me/protection/password/begin":
+		"Security: releases the account's own password wrap to a caller that proved the sign-in secret",
+	"POST /me/protection/password":
+		"Security: changes the account's own password and rewraps its own key, touching no data",
 	"GET /vault/changes":
 		"Vault: the account's own sealed records, which only its keys open",
 	"POST /vault/writes":

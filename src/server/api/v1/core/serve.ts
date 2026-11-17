@@ -9,6 +9,7 @@ import { RateOutOfRangeError } from "~/server/services/payments/rate-band";
 import {
 	EnableProtectionError,
 	ProtectionKeysError,
+	RotatePasswordError,
 } from "~/server/services/protection-keys/errors";
 import { ProtectedPasswordError } from "~/server/services/protection-keys/password-writes";
 import { ShareAnswerRefusedError } from "~/server/services/shared-expenses/answer-guard";
@@ -59,6 +60,15 @@ function enableProblem(error: EnableProtectionError) {
 	return problem(error.code, detail);
 }
 
+function rotateProblem(error: RotatePasswordError) {
+	if (error.code === "no_password")
+		return problem(
+			"bad_request",
+			"Password change is not available for this account",
+		);
+	return problem("wrong_password", "Current password is incorrect");
+}
+
 function vaultProblem(error: VaultError) {
 	if (error.code === "conflict")
 		return problem("conflict", error.message, {
@@ -103,6 +113,7 @@ export function toProblem(error: unknown, route?: string): unknown {
 	// Turning on Advanced protection: a stale session has a code of its own so
 	// the client asks for a new sign-in; the rest are the person's input.
 	if (error instanceof EnableProtectionError) return enableProblem(error);
+	if (error instanceof RotatePasswordError) return rotateProblem(error);
 	if (error instanceof ProtectionKeysError)
 		return error.code === "conflict"
 			? problem("conflict", error.message)
