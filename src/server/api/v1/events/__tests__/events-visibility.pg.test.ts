@@ -36,6 +36,12 @@ const withMoney = {
 	amounts: [{ name: "amount", minor: 12_345, currency: "ARS" }],
 	truncated: false,
 };
+const idsOnly = { ids: { categoryId: "cat1" }, amounts: [], truncated: false };
+const amountsOnly = {
+	ids: {},
+	amounts: [{ name: "amount", minor: 12_345, currency: "ARS" }],
+	truncated: false,
+};
 
 let ipCounter = 0;
 /** A request address of its own, so the per-IP limit is never shared. */
@@ -128,7 +134,7 @@ describe("vault.changed in the feed", () => {
 		);
 	});
 
-	it("moves the cursor over a stretch of only vault events", async () => {
+	it("never sticks on a stretch of only vault events, and pages on from the next shown one", async () => {
 		const only = await newUser();
 		await append(
 			only,
@@ -183,6 +189,22 @@ describe("a protected account's feed", () => {
 				type: "payment.confirmed",
 				actorUserId: userId,
 				sourceEventId: "src-self",
+			},
+			// Each of these breaks exactly one other copy rule, so dropping that
+			// rule lets it through: no source event, ids without amounts, amounts
+			// without ids.
+			{ type: "payment.removed", actorUserId: other },
+			{
+				type: "shared_expense.deleted",
+				actorUserId: other,
+				sourceEventId: "src-ids",
+				payload: idsOnly,
+			},
+			{
+				type: "payment.not_received",
+				actorUserId: other,
+				sourceEventId: "src-amounts",
+				payload: amountsOnly,
 			},
 		]);
 	});
