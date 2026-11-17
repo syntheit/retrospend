@@ -1,4 +1,9 @@
-import { DeviceError, type DeviceErrorCode, TERMINAL_CODES } from "./protocol";
+import {
+	DeviceError,
+	type DeviceErrorCode,
+	type ParityReport,
+	TERMINAL_CODES,
+} from "./protocol";
 import type { DeviceClient } from "./rpc";
 
 /** The account the page is signed in as, and whether the server refuses it the sync feed. */
@@ -14,6 +19,8 @@ export interface ControllerDeps {
 	now: () => number;
 	/** The tab is in front: a hidden tab never pulls. */
 	visible: () => boolean;
+	/** Told what each check of the glance figures found (ids and counts, never amounts). */
+	onParity?: (report: ParityReport) => void;
 }
 
 export type ControllerState =
@@ -45,6 +52,9 @@ export function createDeviceController(deps: ControllerDeps) {
 	let inflight: Promise<void> | null = null;
 	let waitUntil = 0;
 	let rateLimits = 0;
+	/** The pull count the last parity check ended at: a pull that changed nothing is not checked again. */
+	let checkedGeneration = 0;
+	let lastParity: ParityReport | null = null;
 
 	function endWorker() {
 		const old = client;
@@ -111,10 +121,21 @@ export function createDeviceController(deps: ControllerDeps) {
 		const worker = await ensureClient(mine);
 		if (!worker) return;
 		try {
-			const { status } = await worker.pull();
+			const { status, generation } = await worker.pull();
 			if (mine !== epoch) return;
 			if (status === "failed") backOff("failed");
-			else rateLimits = 0;
+			else {
+				rateLimits = 0;
+				// Compare only: the figures are checked against the server's and the
+				// screen keeps showing the server's.
+				if (status === "ready" && generation > checkedGeneration) {
+					const report = await worker.parity();
+					if (mine !== epoch) return;
+					checkedGeneration = report.generation;
+					lastParity = report;
+					deps.onParity?.(report);
+				}
+			}
 		} catch (error) {
 			if (mine !== epoch) return;
 			const code = error instanceof DeviceError ? error.code : "unavailable";
@@ -151,6 +172,10 @@ export function createDeviceController(deps: ControllerDeps) {
 		get client() {
 			return client && !client.dead ? client : null;
 		},
+		/** What the last check of the glance figures found, for a dev readout. */
+		get lastParity() {
+			return lastParity;
+		},
 		/** The signed-in account, or null on sign-out. A different account ends the worker. */
 		setUser(next: DeviceUser | null) {
 			if (
@@ -167,6 +192,8 @@ export function createDeviceController(deps: ControllerDeps) {
 			rateLimits = 0;
 			inflight = null;
 			spawning = null;
+			checkedGeneration = 0;
+			lastParity = null;
 			state = !next ? "off" : next.protectedAccount ? "terminal" : "idle";
 			if (state === "idle" && homeOpen) void pull(true);
 		},

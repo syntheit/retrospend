@@ -21,6 +21,8 @@ export interface DeviceClient {
 	pull(): Promise<Results["pull"]>;
 	read(ids: readonly string[]): Promise<Results["read"]>;
 	verify(ids: readonly string[]): Promise<Results["verify"]>;
+	/** Checks the glance figures against the server, after a pull. */
+	parity(): Promise<Results["parity"]>;
 	stop(): Promise<void>;
 	/** Ends the worker; every call still waiting rejects with worker_dead. */
 	terminate(): void;
@@ -80,6 +82,7 @@ export function createDeviceClient(worker: WorkerLike): DeviceClient {
 		pull: () => call({ type: "pull" }),
 		read: (ids) => call({ type: "read", ids: [...ids] }),
 		verify: (ids) => call({ type: "verify", ids: [...ids] }),
+		parity: () => call({ type: "parity" }),
 		stop: () => call({ type: "stop" }),
 		terminate() {
 			die();

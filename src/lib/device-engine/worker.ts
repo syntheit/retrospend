@@ -1,3 +1,4 @@
+import { runtimeTimeZone } from "@retrospend/domain/time-zone";
 import { TAG } from "@retrospend/engine/device";
 import { attachHost, type HostScope, sameOriginApi } from "./host";
 
@@ -15,6 +16,7 @@ attachHost(scope, {
 	createApi: (fetch) => sameOriginApi(scope.location.origin, fetch),
 	// Bound: a worker's fetch throws when called off its global scope.
 	fetch: (input, init) => self.fetch(input, init),
+	browserZone: runtimeTimeZone,
 	// Names and counts only, from the engine; the worker's own tag marks the build.
 	warn: (what, detail) =>
 		console.warn(`${WORKER_TAG}/${TAG}: ${what}`, detail ?? ""),
