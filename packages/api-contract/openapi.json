@@ -154,9 +154,9 @@
 		}
 	},
 	"info": {
-		"description": "The public Retrospend API. Errors are RFC 9457 problem+json with a stable `code`. Every write needs an `Idempotency-Key`.",
+		"description": "The public Retrospend API. Errors are RFC 9457 problem+json with a stable `code`. Every write needs an `Idempotency-Key`.\n\nAccounts with Advanced protection.\n\nAn account with Advanced protection on can call only the operations marked `x-protected-account: { allowed: true }`. Every other operation answers 403 with the code `protected_account`. A public operation is allowed.\n\nFor an account with Advanced protection on, GET /events returns only the event types that carry no personal ids or amounts, plus the bare copies of other people's shared writes. For every account, `vault.changed` events reach only callers that hold the `vault` scope.\n\nSealed records move through GET /vault/changes and POST /vault/writes. The server stores them and cannot open them.\n\nAn account with protection keys changes its password with POST /me/protection/password/begin and POST /me/protection/password. POST /me/password answers 403 `protected_password` for it. A change that needs a recent sign-in answers 403 `session_not_fresh`.\n\nPOST /auth/prelogin tells a client whether to derive the sign-in secret from the password before it signs in.",
 		"title": "Retrospend API",
-		"version": "1.0.0"
+		"version": "1.1.0"
 	},
 	"openapi": "3.1.1",
 	"paths": {
@@ -391,7 +391,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -435,6 +435,9 @@
 				"tags": [
 					"Accounts"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"post": {
@@ -820,7 +823,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -865,6 +868,9 @@
 					"Budget"
 				],
 				"x-event-type": "account.created",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -926,7 +932,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -970,6 +976,9 @@
 				"tags": [
 					"Accounts"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -1080,7 +1089,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -1125,6 +1134,9 @@
 					"Accounts"
 				],
 				"x-event-type": "account.default_set",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -1178,7 +1190,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -1222,6 +1234,9 @@
 				"tags": [
 					"Accounts"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -1410,7 +1425,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -1454,6 +1469,9 @@
 				"tags": [
 					"Accounts"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -1525,7 +1543,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -1569,6 +1587,9 @@
 				"tags": [
 					"Accounts"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"put": {
@@ -1680,7 +1701,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -1725,6 +1746,9 @@
 					"Accounts"
 				],
 				"x-event-type": "account.order_set",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -2264,7 +2288,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -2308,6 +2332,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -2381,7 +2408,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -2425,6 +2452,9 @@
 				"tags": [
 					"Accounts"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -2674,7 +2704,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -2718,6 +2748,9 @@
 				"tags": [
 					"Accounts"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -3635,7 +3668,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -3680,6 +3713,9 @@
 					"Accounts"
 				],
 				"x-event-type": "account.undone",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -4098,7 +4134,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -4142,6 +4178,9 @@
 				"tags": [
 					"Accounts"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -4463,7 +4502,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -4507,6 +4546,9 @@
 				"tags": [
 					"Accounts"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"put": {
@@ -4897,7 +4939,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -4942,6 +4984,9 @@
 					"Budget"
 				],
 				"x-event-type": "account.updated",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -5191,7 +5236,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -5236,6 +5281,9 @@
 					"Budget"
 				],
 				"x-event-type": "account.balance_updated",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -5697,7 +5745,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -5741,6 +5789,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -5997,7 +6048,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -6042,6 +6093,9 @@
 					"Budget"
 				],
 				"x-event-type": "account.closed",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -6452,7 +6506,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -6496,6 +6550,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -6595,7 +6652,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -6640,6 +6697,9 @@
 					"Budget"
 				],
 				"x-event-type": "account.deleted",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -7050,7 +7110,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -7094,6 +7154,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -7640,7 +7703,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -7684,6 +7747,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -7861,7 +7927,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -7906,6 +7972,9 @@
 					"Budget"
 				],
 				"x-event-type": "account.rate_type_set",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -8356,7 +8425,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -8400,6 +8469,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -8656,7 +8728,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -8701,6 +8773,9 @@
 					"Budget"
 				],
 				"x-event-type": "account.reopened",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -9111,7 +9186,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -9155,6 +9230,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -9286,6 +9364,9 @@
 				"tags": [
 					"Admin"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			},
 			"patch": {
@@ -9468,6 +9549,9 @@
 					"Admin"
 				],
 				"x-event-type": "admin_ai_settings.updated",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -9641,6 +9725,9 @@
 				"tags": [
 					"Admin"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -9817,6 +9904,9 @@
 				"tags": [
 					"Admin"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			},
 			"post": {
@@ -9929,6 +10019,9 @@
 					"Admin"
 				],
 				"x-event-type": "admin_backup.started",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -10188,6 +10281,9 @@
 				"tags": [
 					"Admin"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -10307,6 +10403,9 @@
 					"Admin"
 				],
 				"x-event-type": "feedback.error_report_deleted",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -10600,6 +10699,9 @@
 				"tags": [
 					"Admin"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -10984,6 +11086,9 @@
 				"tags": [
 					"Admin"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -11103,6 +11208,9 @@
 					"Admin"
 				],
 				"x-event-type": "feedback.deleted",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -11249,6 +11357,9 @@
 					"Admin"
 				],
 				"x-event-type": "feedback.note_set",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -11352,6 +11463,9 @@
 				"tags": [
 					"Admin"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -11494,6 +11608,9 @@
 					"Admin"
 				],
 				"x-event-type": "feedback.status_set",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -11613,6 +11730,9 @@
 					"Admin"
 				],
 				"x-event-type": "admin_guest_session.deleted",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -11872,6 +11992,9 @@
 				"tags": [
 					"Admin"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			},
 			"post": {
@@ -12079,6 +12202,9 @@
 					"Admin"
 				],
 				"x-event-type": "invite_code.created",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -12198,6 +12324,9 @@
 					"Admin"
 				],
 				"x-event-type": "invite_code.deleted",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -12408,6 +12537,9 @@
 				"tags": [
 					"Admin"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -12537,6 +12669,9 @@
 				"tags": [
 					"Admin"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			},
 			"patch": {
@@ -12717,6 +12852,9 @@
 					"Admin"
 				],
 				"x-event-type": "admin_settings.updated",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -12836,6 +12974,9 @@
 					"Admin"
 				],
 				"x-event-type": "admin_shadow_profile.deleted",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -12997,6 +13138,9 @@
 				"tags": [
 					"Admin"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -13107,6 +13251,9 @@
 					"Admin"
 				],
 				"x-event-type": "admin_test_email.sent",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -13346,6 +13493,9 @@
 				"tags": [
 					"Admin"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -13466,6 +13616,9 @@
 					"Admin"
 				],
 				"x-event-type": "admin_user.deleted",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -13611,6 +13764,9 @@
 					"Admin"
 				],
 				"x-event-type": "admin_user.ai_access_set",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -13730,6 +13886,9 @@
 					"Admin"
 				],
 				"x-event-type": "admin_user.avatar_removed",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -13850,6 +14009,9 @@
 					"Admin"
 				],
 				"x-event-type": "admin_user.disabled",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -13987,6 +14149,9 @@
 					"Admin"
 				],
 				"x-event-type": "admin_user.email_verified_set",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -14106,6 +14271,9 @@
 					"Admin"
 				],
 				"x-event-type": "admin_user.enabled",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -14218,6 +14386,9 @@
 				"tags": [
 					"Auth"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "public"
 			}
 		},
@@ -14328,7 +14499,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -14373,6 +14544,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_book.adjustment_removed",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -14783,7 +14957,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -14827,6 +15001,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -15079,7 +15256,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -15123,6 +15300,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -15419,7 +15599,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -15464,6 +15644,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_movement.assigned",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -15929,7 +16112,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -15973,6 +16156,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -16121,7 +16307,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -16165,6 +16351,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -16428,7 +16617,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -16473,6 +16662,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_month.overspend_carried",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -16905,7 +17097,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -16949,6 +17141,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -17219,7 +17414,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -17264,6 +17459,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_envelope.change_undone",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -17674,7 +17872,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -17718,6 +17916,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -18000,7 +18201,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -18045,6 +18246,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_movement.covered",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -18201,7 +18405,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -18245,6 +18449,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -18696,7 +18903,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -18740,6 +18947,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -18965,7 +19175,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -19010,6 +19220,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_debt.payment_recorded",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -19494,7 +19707,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -19538,6 +19751,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -19785,7 +20001,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -19830,6 +20046,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_debt.terms_set",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -20296,7 +20515,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -20340,6 +20559,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -20423,7 +20645,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -20467,6 +20689,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -21030,7 +21255,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -21074,6 +21299,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"post": {
@@ -21584,7 +21812,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -21629,6 +21857,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_draft.saved",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -22146,7 +22377,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -22191,6 +22422,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_draft.applied",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -22617,7 +22851,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -22661,6 +22895,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -22957,7 +23194,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -23002,6 +23239,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_draft.discarded",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -23522,7 +23762,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -23567,6 +23807,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_draft.funded",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -23996,7 +24239,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -24040,6 +24283,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -24316,7 +24562,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -24360,6 +24606,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -24861,7 +25110,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -24906,6 +25155,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_draft.unapplied",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -25316,7 +25568,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -25360,6 +25612,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -25893,7 +26148,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -25938,6 +26193,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_envelope.created",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -26560,7 +26818,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -26604,6 +26862,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -27032,7 +27293,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -27077,6 +27338,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_envelope.updated",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -27433,7 +27697,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -27478,6 +27742,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_envelope.archived",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -27907,7 +28174,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -27951,6 +28218,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -28406,7 +28676,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -28450,6 +28720,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -29038,7 +29311,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -29083,6 +29356,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_envelope.target_set",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -29692,7 +29968,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -29736,6 +30012,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -29827,7 +30106,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -29871,6 +30150,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -30063,7 +30345,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -30107,6 +30389,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -30355,7 +30640,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -30400,6 +30685,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_month.negatives_fixed",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -30817,7 +31105,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -30861,6 +31149,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -31048,7 +31339,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -31093,6 +31384,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_owed.forgiven",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -31561,7 +31855,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -31605,6 +31899,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -31923,7 +32220,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -31968,6 +32265,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_group.target_set",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -32457,7 +32757,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -32501,6 +32801,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -32604,7 +32907,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -32648,6 +32951,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -32790,7 +33096,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -32835,6 +33141,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_hidden_rows.resolved",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -33274,7 +33583,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -33318,6 +33627,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -33451,7 +33763,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -33496,6 +33808,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_hidden_rows.reverted",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -33926,7 +34241,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -33970,6 +34285,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -34187,7 +34505,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -34231,6 +34549,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -34360,7 +34681,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -34404,6 +34725,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -34836,7 +35160,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -34881,6 +35205,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_limit.set",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -35327,7 +35654,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -35371,6 +35698,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -35631,7 +35961,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -35676,6 +36006,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_limit.reverted",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -36099,7 +36432,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -36143,6 +36476,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -36843,7 +37179,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -36888,6 +37224,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_envelope.merged",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -37327,7 +37666,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -37371,6 +37710,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -37434,7 +37776,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -37478,6 +37820,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -37562,7 +37907,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -37607,6 +37952,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_migration.notice_dismissed",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -38810,7 +39158,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -38854,6 +39202,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -39200,7 +39551,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -39244,6 +39595,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -39342,7 +39696,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -39387,6 +39741,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_book.month_acknowledged",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -39685,7 +40042,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -39730,6 +40087,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_movement.moved",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -40197,7 +40557,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -40241,6 +40601,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -40520,7 +40883,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -40565,6 +40928,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_movement.undone",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -41013,7 +41379,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -41057,6 +41423,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -41273,7 +41642,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -41317,6 +41686,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -41426,7 +41798,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -41470,6 +41842,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -41556,7 +41931,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -41601,6 +41976,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_book.paused",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -41685,7 +42063,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -41729,6 +42107,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"put": {
@@ -41959,7 +42340,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -42004,6 +42385,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_payoff_plan.saved",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -42458,7 +42842,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -42502,6 +42886,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -42688,7 +43075,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -42733,6 +43120,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_payoff_plan.reverted",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -43141,7 +43531,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -43185,6 +43575,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -43473,7 +43866,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -43517,6 +43910,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -43728,7 +44124,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -43773,6 +44169,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_book.period_set",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -44193,7 +44592,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -44237,6 +44636,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -44405,7 +44807,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -44449,6 +44851,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -44542,7 +44947,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -44586,6 +44991,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -44775,7 +45183,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -44820,6 +45228,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_project.routing_set",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -45260,7 +45671,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -45304,6 +45715,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -45433,7 +45847,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -45478,6 +45892,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_book.reconciled",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -45905,7 +46322,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -45949,6 +46366,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -46197,7 +46617,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -46242,6 +46662,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_month.reset",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -46659,7 +47082,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -46703,6 +47126,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -46789,7 +47215,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -46834,6 +47260,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_book.resumed",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -47042,7 +47471,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -47086,6 +47515,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"post": {
@@ -47468,7 +47900,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -47513,6 +47945,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_rule.created",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -47757,7 +48192,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -47802,6 +48237,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_rule.reordered",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -48028,7 +48466,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -48073,6 +48511,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_rule.archived",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			},
 			"patch": {
@@ -48457,7 +48898,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -48502,6 +48943,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_rule.updated",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -48825,7 +49269,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -48870,6 +49314,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_rule.applied",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -49299,7 +49746,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -49343,6 +49790,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -50146,7 +50596,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -50191,6 +50641,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_book.set_up",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -50796,7 +51249,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -50840,6 +51293,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -51829,7 +52285,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -51873,6 +52329,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -52076,7 +52535,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -52121,6 +52580,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_share.category_set",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -52563,7 +53025,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -52607,6 +53069,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -52773,7 +53238,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -52818,6 +53283,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_book.starting_money_confirmed",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -53245,7 +53713,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -53289,6 +53757,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -53601,7 +54072,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -53646,6 +54117,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_style.set",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -54093,7 +54567,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -54137,6 +54611,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -54257,7 +54734,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -54302,6 +54779,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_style.reverted",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -54710,7 +55190,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -54754,6 +55234,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -56745,7 +57228,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -56790,6 +57273,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget.undone",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -57208,7 +57694,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -57252,6 +57738,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -57361,7 +57850,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -57406,6 +57895,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_owed.unforgiven",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -57824,7 +58316,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -57868,6 +58360,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -58042,7 +58537,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -58086,6 +58581,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -58296,7 +58794,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -58341,6 +58839,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_plan.used",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -58775,7 +59276,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -58819,6 +59320,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -59097,7 +59601,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -59141,6 +59645,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -59348,7 +59855,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -59392,6 +59899,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"post": {
@@ -59748,7 +60258,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -59793,6 +60303,9 @@
 					"Budget"
 				],
 				"x-event-type": "budget_book.welcomed_back",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -60255,7 +60768,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -60299,6 +60812,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -60472,7 +60988,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -60516,6 +61032,9 @@
 				"tags": [
 					"Budget"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -60685,7 +61204,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -60729,6 +61248,9 @@
 				"tags": [
 					"Categories"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"post": {
@@ -60914,7 +61436,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -60959,6 +61481,9 @@
 					"Categories"
 				],
 				"x-event-type": "category.created",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -61049,7 +61574,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -61094,6 +61619,9 @@
 					"Categories"
 				],
 				"x-event-type": "category.deleted",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			},
 			"get": {
@@ -61225,7 +61753,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -61269,6 +61797,9 @@
 				"tags": [
 					"Categories"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"patch": {
@@ -61466,7 +61997,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -61511,6 +62042,9 @@
 					"Categories"
 				],
 				"x-event-type": "category.updated",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -61674,7 +62208,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -61719,6 +62253,9 @@
 					"Categories"
 				],
 				"x-event-type": "category.merged",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -61951,7 +62488,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -61996,6 +62533,9 @@
 					"Corrections"
 				],
 				"x-event-type": "correction.undone",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -62414,7 +62954,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -62458,6 +62998,9 @@
 				"tags": [
 					"Corrections"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -62662,6 +63205,9 @@
 				"tags": [
 					"Currencies"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -62772,7 +63318,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -62816,6 +63362,9 @@
 				"tags": [
 					"Currencies"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -63026,7 +63575,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -63070,6 +63619,9 @@
 				"tags": [
 					"Entry"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -63151,7 +63703,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -63195,6 +63747,9 @@
 				"tags": [
 					"Entry"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -63335,7 +63890,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -63380,6 +63935,9 @@
 					"Entry"
 				],
 				"x-event-type": "default_rate_type.set",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -63646,7 +64204,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -63690,6 +64248,9 @@
 				"tags": [
 					"Entry"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -63832,7 +64393,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -63877,6 +64438,9 @@
 					"Feedback"
 				],
 				"x-event-type": "feedback.error_reports_sent",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -64142,6 +64706,9 @@
 				"tags": [
 					"Events"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -64570,7 +65137,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -64614,6 +65181,9 @@
 				"tags": [
 					"Expenses"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"post": {
@@ -64916,7 +65486,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -64961,6 +65531,9 @@
 					"Expenses"
 				],
 				"x-event-type": "expense.created",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -65065,7 +65638,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -65110,6 +65683,9 @@
 					"Expenses"
 				],
 				"x-event-type": "expenses.categorized",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -65539,7 +66115,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -65583,6 +66159,9 @@
 				"tags": [
 					"Expenses"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -65690,7 +66269,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -65735,6 +66314,9 @@
 					"Expenses"
 				],
 				"x-event-type": "expenses.deleted",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -66158,7 +66740,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -66202,6 +66784,9 @@
 				"tags": [
 					"Expenses"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -66325,7 +66910,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -66369,6 +66954,9 @@
 				"tags": [
 					"Expenses"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -66854,7 +67442,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -66898,6 +67486,9 @@
 				"tags": [
 					"Expenses"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -67194,7 +67785,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -67238,6 +67829,9 @@
 				"tags": [
 					"Expenses"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -67347,7 +67941,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -67391,6 +67985,9 @@
 				"tags": [
 					"Expenses"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -67491,7 +68088,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -67536,6 +68133,9 @@
 					"Expenses"
 				],
 				"x-event-type": "expense.undone",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -67954,7 +68554,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -67998,6 +68598,9 @@
 				"tags": [
 					"Expenses"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -68080,7 +68683,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -68125,6 +68728,9 @@
 					"Expenses"
 				],
 				"x-event-type": "expense.deleted",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			},
 			"get": {
@@ -68327,7 +68933,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -68371,6 +68977,9 @@
 				"tags": [
 					"Expenses"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"put": {
@@ -68679,7 +69288,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -68724,6 +69333,9 @@
 					"Expenses"
 				],
 				"x-event-type": "expense.updated",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -69134,7 +69746,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -69178,6 +69790,9 @@
 				"tags": [
 					"Expenses"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -69670,7 +70285,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -69714,6 +70329,9 @@
 				"tags": [
 					"Expenses"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -69933,7 +70551,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -69977,6 +70595,9 @@
 				"tags": [
 					"Exports"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"post": {
@@ -70369,7 +70990,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -70414,6 +71035,9 @@
 					"Exports"
 				],
 				"x-event-type": "export.requested",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -70488,7 +71112,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -70533,6 +71157,9 @@
 					"Exports"
 				],
 				"x-event-type": "export.deleted",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			},
 			"get": {
@@ -70714,7 +71341,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -70758,6 +71385,9 @@
 				"tags": [
 					"Exports"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -70829,7 +71459,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -70873,6 +71503,9 @@
 				"tags": [
 					"Exports"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -71073,7 +71706,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -71118,6 +71751,9 @@
 					"Feedback"
 				],
 				"x-event-type": "feedback.submitted",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -71228,7 +71864,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -71273,6 +71909,9 @@
 					"Feedback"
 				],
 				"x-event-type": "feedback.screenshot_attached",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -71503,7 +72142,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -71547,6 +72186,9 @@
 				"tags": [
 					"Figures"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -71608,7 +72250,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -71652,6 +72294,9 @@
 				"tags": [
 					"Figures"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -72455,7 +73100,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -72499,6 +73144,9 @@
 				"tags": [
 					"Figures"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -72721,7 +73369,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -72765,6 +73413,9 @@
 				"tags": [
 					"Figures"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -72962,7 +73613,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -73006,6 +73657,9 @@
 				"tags": [
 					"Figures"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -73343,7 +73997,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -73387,6 +74041,9 @@
 				"tags": [
 					"Figures"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -73801,7 +74458,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -73845,6 +74502,9 @@
 				"tags": [
 					"Figures"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -74061,7 +74721,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -74106,6 +74766,9 @@
 					"Corrections"
 				],
 				"x-event-type": "fix_request.cancelled",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -74516,7 +75179,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -74560,6 +75223,9 @@
 				"tags": [
 					"Corrections"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -74803,7 +75469,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -74848,6 +75514,9 @@
 					"Corrections"
 				],
 				"x-event-type": "fix_request.answered",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -75285,7 +75954,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -75329,6 +75998,9 @@
 				"tags": [
 					"Corrections"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -75557,7 +76229,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -75601,6 +76273,9 @@
 				"tags": [
 					"Imports"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"post": {
@@ -75844,7 +76519,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -75889,6 +76564,9 @@
 					"Imports"
 				],
 				"x-event-type": "import.uploaded",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -75964,7 +76642,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -76009,6 +76687,9 @@
 					"Imports"
 				],
 				"x-event-type": "import.deleted",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			},
 			"get": {
@@ -76199,7 +76880,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -76243,6 +76924,9 @@
 				"tags": [
 					"Imports"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -76445,7 +77129,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -76490,6 +77174,9 @@
 					"Imports"
 				],
 				"x-event-type": "import.cancelled",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -76751,7 +77438,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -76796,6 +77483,9 @@
 					"Imports"
 				],
 				"x-event-type": "import.finalized",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -77282,7 +77972,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -77326,6 +78016,9 @@
 				"tags": [
 					"Imports"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -77671,7 +78364,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -77715,6 +78408,9 @@
 				"tags": [
 					"Imports"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -77798,7 +78494,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -77843,6 +78539,9 @@
 					"Imports"
 				],
 				"x-event-type": "import.undone",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -78253,7 +78952,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -78297,6 +78996,9 @@
 				"tags": [
 					"Imports"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -78726,7 +79428,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -78771,6 +79473,9 @@
 					"Income"
 				],
 				"x-event-type": "income.created",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -79001,7 +79706,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -79046,6 +79751,9 @@
 					"Income"
 				],
 				"x-event-type": "income.moved_in",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -79545,7 +80253,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -79589,6 +80297,9 @@
 				"tags": [
 					"Income"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -80172,7 +80883,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -80216,6 +80927,9 @@
 				"tags": [
 					"Income"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -80337,7 +81051,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -80382,6 +81096,9 @@
 					"Income"
 				],
 				"x-event-type": "income.undone",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -80800,7 +81517,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -80844,6 +81561,9 @@
 				"tags": [
 					"Income"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -80974,7 +81694,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -81019,6 +81739,9 @@
 					"Income"
 				],
 				"x-event-type": "income.deleted",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -81447,7 +82170,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -81491,6 +82214,9 @@
 				"tags": [
 					"Income"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -81706,7 +82432,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -81750,6 +82476,9 @@
 				"tags": [
 					"Invite codes"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"post": {
@@ -81912,7 +82641,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -81957,6 +82686,9 @@
 					"Invite codes"
 				],
 				"x-event-type": "invite_code.created",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -82031,7 +82763,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -82076,6 +82808,9 @@
 					"Invite codes"
 				],
 				"x-event-type": "invite_code.deleted",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -82330,6 +83065,9 @@
 				"tags": [
 					"Platform"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -82461,6 +83199,9 @@
 					"Account"
 				],
 				"x-event-type": "profile.consent_recorded",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -82646,6 +83387,9 @@
 				"tags": [
 					"Account"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "read"
 			},
 			"post": {
@@ -82770,6 +83514,9 @@
 					"Account"
 				],
 				"x-event-type": "user.deleted",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "account:delete"
 			}
 		},
@@ -82905,6 +83652,9 @@
 					"Account"
 				],
 				"x-event-type": "user.password_changed",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "account:security"
 			}
 		},
@@ -83129,6 +83879,9 @@
 					"Advanced protection"
 				],
 				"x-event-type": "user.protection_keys_created",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "account:security"
 			}
 		},
@@ -83255,6 +84008,9 @@
 				"tags": [
 					"Advanced protection"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "account:security"
 			}
 		},
@@ -83434,6 +84190,9 @@
 					"Advanced protection"
 				],
 				"x-event-type": "user.password_changed",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "account:security"
 			}
 		},
@@ -83582,6 +84341,9 @@
 				"tags": [
 					"Advanced protection"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "account:security"
 			}
 		},
@@ -83733,6 +84495,9 @@
 				"tags": [
 					"Account"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "account:security"
 			}
 		},
@@ -83848,6 +84613,9 @@
 					"Account"
 				],
 				"x-event-type": "user.session_ended",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "account:security"
 			}
 		},
@@ -84225,7 +84993,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -84269,6 +85037,9 @@
 				"tags": [
 					"Needs you"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -84374,7 +85145,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -84419,6 +85190,9 @@
 					"Needs you"
 				],
 				"x-event-type": "needs_you.snoozed",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -84503,7 +85277,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -84548,6 +85322,9 @@
 					"Needs you"
 				],
 				"x-event-type": "needs_you.unsnoozed",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -84713,7 +85490,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -84757,6 +85534,9 @@
 				"tags": [
 					"Notifications"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -84894,6 +85674,9 @@
 				"tags": [
 					"Notifications"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "read"
 			},
 			"put": {
@@ -85101,6 +85884,9 @@
 					"Notifications"
 				],
 				"x-event-type": "notification_preferences.updated",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -85167,7 +85953,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -85212,6 +85998,9 @@
 					"Notifications"
 				],
 				"x-event-type": "notification.all_marked_read",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -85267,7 +86056,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -85311,6 +86100,9 @@
 				"tags": [
 					"Notifications"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -85385,7 +86177,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -85430,6 +86222,9 @@
 					"Notifications"
 				],
 				"x-event-type": "notification.marked_read",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -85576,7 +86371,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -85620,6 +86415,9 @@
 				"tags": [
 					"Payment methods"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"put": {
@@ -85888,7 +86686,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -85933,6 +86731,9 @@
 					"Payment methods"
 				],
 				"x-event-type": "payment_methods.replaced",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -86407,7 +87208,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -86452,6 +87253,9 @@
 					"Payments"
 				],
 				"x-event-type": "payment.recorded",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -87071,7 +87875,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -87115,6 +87919,9 @@
 				"tags": [
 					"Payments"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -87244,7 +88051,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -87289,6 +88096,9 @@
 					"Payments"
 				],
 				"x-event-type": "payment.squared_up",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -87735,7 +88545,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -87779,6 +88589,9 @@
 				"tags": [
 					"Payments"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -87879,7 +88692,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -87924,6 +88737,9 @@
 					"Payments"
 				],
 				"x-event-type": "payment.undone",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -88342,7 +89158,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -88386,6 +89202,9 @@
 				"tags": [
 					"Payments"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -88471,7 +89290,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -88516,6 +89335,9 @@
 					"Payments"
 				],
 				"x-event-type": "payment.removed",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -88823,7 +89645,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -88868,6 +89690,9 @@
 					"Payments"
 				],
 				"x-event-type": "payment.confirmed",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -89330,7 +90155,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -89374,6 +90199,9 @@
 				"tags": [
 					"Payments"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -89472,7 +90300,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -89517,6 +90345,9 @@
 					"Payments"
 				],
 				"x-event-type": "payment.not_received",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -89944,7 +90775,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -89988,6 +90819,9 @@
 				"tags": [
 					"Payments"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -90398,7 +91232,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -90442,6 +91276,9 @@
 				"tags": [
 					"Payments"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -90517,7 +91354,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -90562,6 +91399,9 @@
 					"Payments"
 				],
 				"x-event-type": "payment.reminded",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -91076,7 +91916,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -91120,6 +91960,9 @@
 				"tags": [
 					"People"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"post": {
@@ -91243,7 +92086,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -91288,6 +92131,9 @@
 					"People"
 				],
 				"x-event-type": "person.created",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -91401,7 +92247,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -91445,6 +92291,9 @@
 				"tags": [
 					"People"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -91563,7 +92412,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -91608,6 +92457,9 @@
 					"People"
 				],
 				"x-event-type": "person.updated",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -91691,7 +92543,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -91736,6 +92588,9 @@
 					"People"
 				],
 				"x-event-type": "person.claim_link_created",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -92515,7 +93370,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -92559,6 +93414,9 @@
 				"tags": [
 					"People"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -92844,7 +93702,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -92888,6 +93746,9 @@
 				"tags": [
 					"People"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -93201,7 +94062,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -93245,6 +94106,9 @@
 				"tags": [
 					"Payment methods"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -93333,7 +94197,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -93378,6 +94242,9 @@
 					"People"
 				],
 				"x-event-type": "person.reminded",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -93677,7 +94544,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -93721,6 +94588,9 @@
 				"tags": [
 					"People"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -93862,7 +94732,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -93906,6 +94776,9 @@
 				"tags": [
 					"Payments"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -94064,6 +94937,9 @@
 				"tags": [
 					"Profile"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "read"
 			},
 			"patch": {
@@ -94270,6 +95146,9 @@
 					"Profile"
 				],
 				"x-event-type": "profile.updated",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -94379,6 +95258,9 @@
 					"Profile"
 				],
 				"x-event-type": "profile.avatar_removed",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "write:settings"
 			},
 			"put": {
@@ -94521,6 +95403,9 @@
 					"Profile"
 				],
 				"x-event-type": "profile.avatar_updated",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -94666,6 +95551,9 @@
 				"tags": [
 					"Profile"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "read"
 			},
 			"put": {
@@ -94887,6 +95775,9 @@
 					"Profile"
 				],
 				"x-event-type": "profile.background_updated",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -94996,6 +95887,9 @@
 					"Profile"
 				],
 				"x-event-type": "profile.email_change_cancelled",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -95061,7 +95955,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -95105,6 +95999,9 @@
 				"tags": [
 					"Profile"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -95361,7 +96258,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -95405,6 +96302,9 @@
 				"tags": [
 					"Projects"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"post": {
@@ -95679,7 +96579,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -95724,6 +96624,9 @@
 					"Projects"
 				],
 				"x-event-type": "project.created",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -95816,7 +96719,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -95861,6 +96764,9 @@
 					"Projects"
 				],
 				"x-event-type": "project.member_joined",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -96106,7 +97012,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -96150,6 +97056,9 @@
 				"tags": [
 					"Activity"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -96225,7 +97134,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -96270,6 +97179,9 @@
 					"Projects"
 				],
 				"x-event-type": "project.deleted",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			},
 			"get": {
@@ -96945,7 +97857,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -96989,6 +97901,9 @@
 				"tags": [
 					"Projects"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"patch": {
@@ -97305,7 +98220,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -97350,6 +98265,9 @@
 					"Projects"
 				],
 				"x-event-type": "project.updated",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -97658,7 +98576,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -97702,6 +98620,9 @@
 				"tags": [
 					"Activity"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -97842,7 +98763,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -97886,6 +98807,9 @@
 				"tags": [
 					"Activity"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -97979,7 +98903,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -98024,6 +98948,9 @@
 					"Projects"
 				],
 				"x-event-type": "project.analytics_exclusion_set",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -98169,7 +99096,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -98213,6 +99140,9 @@
 				"tags": [
 					"Billing periods"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -98408,7 +99338,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -98453,6 +99383,9 @@
 					"Billing periods"
 				],
 				"x-event-type": "billing_period.closed",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -98665,7 +99598,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -98709,6 +99642,9 @@
 				"tags": [
 					"Billing periods"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"patch": {
@@ -98862,7 +99798,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -98907,6 +99843,9 @@
 					"Billing periods"
 				],
 				"x-event-type": "billing_period.renamed",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -99042,7 +99981,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -99087,6 +100026,9 @@
 					"Billing periods"
 				],
 				"x-event-type": "billing_period.settled",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -99399,7 +100341,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -99443,6 +100385,9 @@
 				"tags": [
 					"Projects"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -99577,7 +100522,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -99621,6 +100566,9 @@
 				"tags": [
 					"Projects"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			},
 			"post": {
@@ -99783,7 +100731,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -99828,6 +100776,9 @@
 					"Projects"
 				],
 				"x-event-type": "project.magic_link_created",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -99983,7 +100934,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -100028,6 +100979,9 @@
 					"Projects"
 				],
 				"x-event-type": "project.magic_link_reset",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -100112,7 +101066,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -100157,6 +101111,9 @@
 					"Projects"
 				],
 				"x-event-type": "project.magic_link_revoked",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -100309,7 +101266,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -100353,6 +101310,9 @@
 				"tags": [
 					"Projects"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"post": {
@@ -100531,7 +101491,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -100576,6 +101536,9 @@
 					"Projects"
 				],
 				"x-event-type": "project.member_added",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -100674,7 +101637,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -100719,6 +101682,9 @@
 					"Projects"
 				],
 				"x-event-type": "project.member_removed",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -100906,7 +101872,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -100951,6 +101917,9 @@
 					"Projects"
 				],
 				"x-event-type": "project.member_dates_set",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -101420,7 +102389,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -101464,6 +102433,9 @@
 				"tags": [
 					"Projects"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -101639,7 +102611,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -101684,6 +102656,9 @@
 					"Projects"
 				],
 				"x-event-type": "project.member_role_set",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -101787,7 +102762,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -101832,6 +102807,9 @@
 					"Projects"
 				],
 				"x-event-type": "project.ownership_transferred",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -102242,7 +103220,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -102286,6 +103264,9 @@
 				"tags": [
 					"Projects"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -102433,7 +103414,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -102477,6 +103458,9 @@
 				"tags": [
 					"Projects"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"post": {
@@ -102635,7 +103619,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -102680,6 +103664,9 @@
 					"Projects"
 				],
 				"x-event-type": "project.rebalanced",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -103137,7 +104124,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -103181,6 +104168,9 @@
 				"tags": [
 					"Projects"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -103381,7 +104371,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -103426,6 +104416,9 @@
 					"Projects"
 				],
 				"x-event-type": "project.settled_all",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -103557,7 +104550,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -103601,6 +104594,9 @@
 				"tags": [
 					"Projects"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -104057,7 +105053,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -104101,6 +105097,9 @@
 				"tags": [
 					"Projects"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -104211,7 +105210,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -104256,6 +105255,9 @@
 					"Projects"
 				],
 				"x-event-type": "project.settle_all_undone",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -104686,7 +105688,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -104730,6 +105732,9 @@
 				"tags": [
 					"Projects"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -105071,7 +106076,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -105115,6 +106120,9 @@
 				"tags": [
 					"Projects"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -105315,6 +106323,9 @@
 				"tags": [
 					"Push"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "read"
 			},
 			"post": {
@@ -105606,6 +106617,9 @@
 					"Push"
 				],
 				"x-event-type": "push_device.registered",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -105725,6 +106739,9 @@
 					"Push"
 				],
 				"x-event-type": "push_device.removed",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -105953,6 +106970,9 @@
 				"tags": [
 					"Currencies"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -106115,6 +107135,9 @@
 				"tags": [
 					"Currencies"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -106317,6 +107340,9 @@
 				"tags": [
 					"Currencies"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -106426,6 +107452,9 @@
 					"Currencies"
 				],
 				"x-event-type": "rates.sync_requested",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "admin"
 			}
 		},
@@ -106543,6 +107572,9 @@
 				"tags": [
 					"Currencies"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -106818,7 +107850,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -106862,6 +107894,9 @@
 				"tags": [
 					"Currencies"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -107046,6 +108081,9 @@
 				"tags": [
 					"Currencies"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -107174,7 +108212,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -107218,6 +108256,9 @@
 				"tags": [
 					"Currencies"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -107455,6 +108496,9 @@
 				"tags": [
 					"Currencies"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -107691,7 +108735,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -107735,6 +108779,9 @@
 				"tags": [
 					"Currencies"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -107996,7 +109043,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -108040,6 +109087,9 @@
 				"tags": [
 					"Recurring"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"post": {
@@ -108359,7 +109409,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -108404,6 +109454,9 @@
 					"Recurring"
 				],
 				"x-event-type": "recurring.created",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -108649,7 +109702,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -108694,6 +109747,9 @@
 					"Recurring"
 				],
 				"x-event-type": "recurring.undone",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -109112,7 +110168,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -109156,6 +110212,9 @@
 				"tags": [
 					"Recurring"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -109651,7 +110710,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -109695,6 +110754,9 @@
 				"tags": [
 					"Recurring"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -109787,7 +110849,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -109832,6 +110894,9 @@
 					"Recurring"
 				],
 				"x-event-type": "recurring.undone",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -110250,7 +111315,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -110294,6 +111359,9 @@
 				"tags": [
 					"Recurring"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -110664,7 +111732,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -110708,6 +111776,9 @@
 				"tags": [
 					"Recurring"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -110814,7 +111885,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -110859,6 +111930,9 @@
 					"Recurring"
 				],
 				"x-event-type": "recurring.undone",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -111277,7 +112351,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -111321,6 +112395,9 @@
 				"tags": [
 					"Recurring"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -111402,7 +112479,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -111447,6 +112524,9 @@
 					"Recurring"
 				],
 				"x-event-type": "recurring.deleted",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			},
 			"get": {
@@ -111670,7 +112750,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -111714,6 +112794,9 @@
 				"tags": [
 					"Recurring"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"patch": {
@@ -112045,7 +113128,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -112090,6 +113173,9 @@
 					"Recurring"
 				],
 				"x-event-type": "recurring.updated",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -112467,7 +113553,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -112512,6 +113598,9 @@
 					"Recurring"
 				],
 				"x-event-type": "recurring.confirmed",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -113018,7 +114107,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -113062,6 +114151,9 @@
 				"tags": [
 					"Recurring"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -113472,7 +114564,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -113516,6 +114608,9 @@
 				"tags": [
 					"Recurring"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -113637,7 +114732,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -113682,6 +114777,9 @@
 					"Recurring"
 				],
 				"x-event-type": "recurring.skipped",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -114112,7 +115210,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -114156,6 +115254,9 @@
 				"tags": [
 					"Recurring"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -114460,7 +115561,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -114504,6 +115605,9 @@
 				"tags": [
 					"Search"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -114651,6 +115755,9 @@
 				"tags": [
 					"Platform"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "public"
 			}
 		},
@@ -114827,7 +115934,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -114871,6 +115978,9 @@
 				"tags": [
 					"Settings"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"patch": {
@@ -115184,7 +116294,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -115229,6 +116339,9 @@
 					"Settings"
 				],
 				"x-event-type": "settings.updated",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -115338,7 +116451,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -115382,6 +116495,9 @@
 				"tags": [
 					"Settings"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -115494,7 +116610,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -115538,6 +116654,9 @@
 				"tags": [
 					"Settings"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -115612,7 +116731,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -115657,6 +116776,9 @@
 					"Settings"
 				],
 				"x-event-type": "category_preference.deleted",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			},
 			"put": {
@@ -115757,7 +116879,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -115802,6 +116924,9 @@
 					"Settings"
 				],
 				"x-event-type": "category_preference.updated",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -115964,7 +117089,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -116008,6 +117133,9 @@
 				"tags": [
 					"Settings"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"post": {
@@ -116152,7 +117280,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -116197,6 +117325,9 @@
 					"Settings"
 				],
 				"x-event-type": "favorite_rate.added",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -116286,7 +117417,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -116331,6 +117462,9 @@
 					"Settings"
 				],
 				"x-event-type": "favorite_rates.reordered",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -116405,7 +117539,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -116450,6 +117584,9 @@
 					"Settings"
 				],
 				"x-event-type": "favorite_rate.removed",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -116607,7 +117744,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -116651,6 +117788,9 @@
 				"tags": [
 					"Settings"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"patch": {
@@ -116891,7 +118031,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -116936,6 +118076,9 @@
 					"Settings"
 				],
 				"x-event-type": "page_settings.updated",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -117178,7 +118321,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -117223,6 +118366,9 @@
 					"Shared expenses"
 				],
 				"x-event-type": "shared_expense.created",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -117316,7 +118462,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -117361,6 +118507,9 @@
 					"Shared expenses"
 				],
 				"x-event-type": "shared_expense.bulk_accepted",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -117492,7 +118641,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -117536,6 +118685,9 @@
 				"tags": [
 					"Corrections"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -117668,7 +118820,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -117712,6 +118864,9 @@
 				"tags": [
 					"Shared expenses"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -118268,7 +119423,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -118312,6 +119467,9 @@
 				"tags": [
 					"Shared expenses"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -118423,7 +119581,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -118467,6 +119625,9 @@
 				"tags": [
 					"Activity"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -118567,7 +119728,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -118612,6 +119773,9 @@
 					"Shared expenses"
 				],
 				"x-event-type": "shared_expense.undone",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -119030,7 +120194,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -119074,6 +120238,9 @@
 				"tags": [
 					"Shared expenses"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -119189,7 +120356,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -119234,6 +120401,9 @@
 					"Shared expenses"
 				],
 				"x-event-type": "shared_expense.deleted",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			},
 			"get": {
@@ -119574,7 +120744,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -119618,6 +120788,9 @@
 				"tags": [
 					"Shared expenses"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"put": {
@@ -119863,7 +121036,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -119908,6 +121081,9 @@
 					"Shared expenses"
 				],
 				"x-event-type": "shared_expense.updated",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -120036,7 +121212,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -120081,6 +121257,9 @@
 					"Shared expenses"
 				],
 				"x-event-type": "shared_expense.accepted",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -120491,7 +121670,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -120535,6 +121714,9 @@
 				"tags": [
 					"Shared expenses"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -120829,7 +122011,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -120874,6 +122056,9 @@
 					"Corrections"
 				],
 				"x-event-type": "shared_expense.corrected",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -121410,7 +122595,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -121454,6 +122639,9 @@
 				"tags": [
 					"Corrections"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -121888,7 +123076,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -121932,6 +123120,9 @@
 				"tags": [
 					"Shared expenses"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -122118,7 +123309,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -122162,6 +123353,9 @@
 				"tags": [
 					"Corrections"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"post": {
@@ -122398,7 +123592,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -122443,6 +123637,9 @@
 					"Corrections"
 				],
 				"x-event-type": "fix_request.created",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -122875,7 +124072,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -122919,6 +124116,9 @@
 				"tags": [
 					"Corrections"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -123118,7 +124318,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -123162,6 +124362,9 @@
 				"tags": [
 					"Activity"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -123725,7 +124928,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -123769,6 +124972,9 @@
 				"tags": [
 					"Shared expenses"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -123914,7 +125120,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -123959,6 +125165,9 @@
 					"Shared expenses"
 				],
 				"x-event-type": "shared_expense.rejected",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -124386,7 +125595,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -124430,6 +125639,9 @@
 				"tags": [
 					"Shared expenses"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -124529,7 +125741,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -124574,6 +125786,9 @@
 					"Shared expenses"
 				],
 				"x-event-type": "shared_expense.self_removed",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -125000,7 +126215,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -125044,6 +126259,9 @@
 				"tags": [
 					"Shared expenses"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -125119,7 +126337,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -125164,6 +126382,9 @@
 					"Activity"
 				],
 				"x-event-type": "shared_expense.seen",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -125306,7 +126527,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"410": {
 						"content": {
@@ -125355,6 +126576,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -125584,7 +126808,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"410": {
 						"content": {
@@ -125633,6 +126857,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -125793,7 +127020,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"410": {
 						"content": {
@@ -125842,6 +127069,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -126042,7 +127272,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"410": {
 						"content": {
@@ -126091,6 +127321,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -126388,7 +127621,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"410": {
 						"content": {
@@ -126437,6 +127670,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -126587,7 +127823,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"410": {
 						"content": {
@@ -126636,6 +127872,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -126949,7 +128188,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"410": {
 						"content": {
@@ -126998,6 +128237,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -127258,7 +128500,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"410": {
 						"content": {
@@ -127307,6 +128549,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -127487,7 +128732,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"410": {
 						"content": {
@@ -127536,6 +128781,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -127681,7 +128929,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"410": {
 						"content": {
@@ -127730,6 +128978,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -127912,7 +129163,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"410": {
 						"content": {
@@ -127961,6 +129212,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -128174,7 +129428,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"410": {
 						"content": {
@@ -128223,6 +129477,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -128616,7 +129873,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"410": {
 						"content": {
@@ -128665,6 +129922,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -129067,7 +130327,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"410": {
 						"content": {
@@ -129116,6 +130376,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -129277,7 +130540,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"410": {
 						"content": {
@@ -129326,6 +130589,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -129553,7 +130819,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"410": {
 						"content": {
@@ -129602,6 +130868,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -129796,7 +131065,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"410": {
 						"content": {
@@ -129845,6 +131114,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -130017,7 +131289,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"410": {
 						"content": {
@@ -130066,6 +131338,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -130301,7 +131576,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"410": {
 						"content": {
@@ -130350,6 +131625,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -130450,7 +131728,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -130489,6 +131767,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -131741,7 +133022,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -131780,6 +133061,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -132024,7 +133308,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"410": {
 						"content": {
@@ -132073,6 +133357,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -132296,7 +133583,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"410": {
 						"content": {
@@ -132345,6 +133632,9 @@
 				"tags": [
 					"Sync"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "sync"
 			}
 		},
@@ -132556,6 +133846,9 @@
 				"tags": [
 					"Tokens"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "read"
 			},
 			"post": {
@@ -132783,6 +134076,9 @@
 					"Tokens"
 				],
 				"x-event-type": "token.created",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -132902,6 +134198,9 @@
 					"Tokens"
 				],
 				"x-event-type": "token.revoked",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -133377,7 +134676,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -133422,6 +134721,9 @@
 					"Transfers"
 				],
 				"x-event-type": "transfer.created",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -134029,7 +135331,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -134073,6 +135375,9 @@
 				"tags": [
 					"Transfers"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -134194,7 +135499,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -134239,6 +135544,9 @@
 					"Transfers"
 				],
 				"x-event-type": "transfer.undone",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -134657,7 +135965,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -134701,6 +136009,9 @@
 				"tags": [
 					"Transfers"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -134812,7 +136123,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -134857,6 +136168,9 @@
 					"Transfers"
 				],
 				"x-event-type": "transfer.deleted",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -135267,7 +136581,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -135311,6 +136625,9 @@
 				"tags": [
 					"Transfers"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:money"
 			}
 		},
@@ -135504,6 +136821,9 @@
 				"tags": [
 					"Vault"
 				],
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "vault"
 			}
 		},
@@ -135694,6 +137014,9 @@
 					"Vault"
 				],
 				"x-event-type": "vault.changed",
+				"x-protected-account": {
+					"allowed": true
+				},
 				"x-required-scope": "vault"
 			}
 		},
@@ -135876,7 +137199,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -135920,6 +137243,9 @@
 				"tags": [
 					"Webhooks"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"post": {
@@ -136113,7 +137439,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -136158,6 +137484,9 @@
 					"Webhooks"
 				],
 				"x-event-type": "webhook.created",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -136232,7 +137561,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -136277,6 +137606,9 @@
 					"Webhooks"
 				],
 				"x-event-type": "webhook.deleted",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			},
 			"get": {
@@ -136421,7 +137753,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -136465,6 +137797,9 @@
 				"tags": [
 					"Webhooks"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			},
 			"patch": {
@@ -136668,7 +138003,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -136713,6 +138048,9 @@
 					"Webhooks"
 				],
 				"x-event-type": "webhook.updated",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -136929,7 +138267,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -136973,6 +138311,9 @@
 				"tags": [
 					"Webhooks"
 				],
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "read"
 			}
 		},
@@ -137160,7 +138501,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -137205,6 +138546,9 @@
 					"Webhooks"
 				],
 				"x-event-type": "webhook.secret_rotated",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		},
@@ -137385,7 +138729,7 @@
 								}
 							}
 						},
-						"description": "Missing scope, or the API is turned off"
+						"description": "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)"
 					},
 					"429": {
 						"content": {
@@ -137430,6 +138774,9 @@
 					"Webhooks"
 				],
 				"x-event-type": "webhook.tested",
+				"x-protected-account": {
+					"allowed": false
+				},
 				"x-required-scope": "write:settings"
 			}
 		}

@@ -57,6 +57,25 @@ describe("groupsOf", () => {
 		expect(create?.response?.some((r) => r.path === "key")).toBe(true);
 	});
 
+	it("marks an operation Advanced protection refuses, from the document's label", () => {
+		const byId = (id: string) => all.find((o) => o.id === id);
+		expect(byId("listExpenses")?.protectedAccount).toBe(false);
+		expect(byId("createAccessToken")?.protectedAccount).toBe(true);
+		const labels = (
+			Object.values(doc.paths).flatMap((item) => Object.values(item)) as {
+				"x-protected-account"?: { allowed: boolean };
+			}[]
+		).map((op) => op["x-protected-account"]?.allowed);
+		expect(labels.filter((l) => l === false).length).toBe(
+			all.filter((o) => !o.protectedAccount).length,
+		);
+		const unlabeled: OpenApiDocument = {
+			info: { title: "t", version: "1" },
+			paths: { "/x": { get: { operationId: "x", tags: ["T"] } } },
+		};
+		expect(groupsOf(unlabeled)[0]?.operations[0]?.protectedAccount).toBe(true);
+	});
+
 	it("keeps the idempotency header out of the parameter tables", () => {
 		for (const op of all)
 			expect(op.params.map((p) => p.path)).not.toContain("Idempotency-Key");

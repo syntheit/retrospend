@@ -11,6 +11,7 @@
  * idempotency record).
  */
 import { contract, listContractRoutes } from "@retrospend/api-contract";
+import openapi from "@retrospend/api-contract/openapi.json";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const dbCalls = vi.hoisted(() => ({ count: 0 }));
@@ -253,6 +254,34 @@ describe("API v1", () => {
 				refused.push(`${route.method} ${route.path}`);
 		}
 		expect(refused).toEqual([]);
+	}, 120_000);
+
+	it("answers as the committed openapi.json says, for every operation", async () => {
+		// The published label is what a client author reads, so the real outcome
+		// for a protected account has to equal it: a label that drifts from the
+		// guard fails here, in either direction.
+		const operations = (
+			openapi as unknown as {
+				paths: Record<
+					string,
+					Record<string, { "x-protected-account"?: { allowed?: boolean } }>
+				>;
+			}
+		).paths;
+		const wrong: string[] = [];
+		for (const route of routes) {
+			const label =
+				operations[route.path ?? ""]?.[route.method.toLowerCase()]?.[
+					"x-protected-account"
+				]?.allowed;
+			const { body } = await callRoute(route, true);
+			const refused = body?.code === "protected_account";
+			if (typeof label !== "boolean" || refused === label)
+				wrong.push(
+					`${route.method} ${route.path}: published ${label}, refused ${refused}`,
+				);
+		}
+		expect(wrong).toEqual([]);
 	}, 120_000);
 
 	it("never gives protected_account to an account with protection off", async () => {

@@ -9,14 +9,25 @@ import {
 import { moneySchema } from "./common/money";
 import { isSessionScope } from "./common/scopes";
 import { contract } from "./index";
+import { V1_ALLOWED } from "./protection/v1-allowed";
 
 type JsonObject = Record<string, unknown>;
 
 /**
  * The contract's own version (info.version). Bump the minor for additive
  * changes and the patch for docs only; a breaking change needs /api/v2.
+ * 1.1.0: x-protected-account on every operation.
  */
-export const CONTRACT_VERSION = "1.0.0";
+export const CONTRACT_VERSION = "1.1.0";
+
+const PROTECTION_OVERVIEW = [
+	"Accounts with Advanced protection.",
+	"An account with Advanced protection on can call only the operations marked `x-protected-account: { allowed: true }`. Every other operation answers 403 with the code `protected_account`. A public operation is allowed.",
+	"For an account with Advanced protection on, GET /events returns only the event types that carry no personal ids or amounts, plus the bare copies of other people's shared writes. For every account, `vault.changed` events reach only callers that hold the `vault` scope.",
+	"Sealed records move through GET /vault/changes and POST /vault/writes. The server stores them and cannot open them.",
+	"An account with protection keys changes its password with POST /me/protection/password/begin and POST /me/protection/password. POST /me/password answers 403 `protected_password` for it. A change that needs a recent sign-in answers 403 `session_not_fresh`.",
+	"POST /auth/prelogin tells a client whether to derive the sign-in secret from the password before it signs in.",
+].join("\n\n");
 
 const PROBLEM_REF = { $ref: "#/components/schemas/Problem" };
 
@@ -43,6 +54,18 @@ function problemResponse(description: string) {
 }
 
 /**
+ * Whether an account with Advanced protection on may call the operation: the
+ * same rule the server applies (v1 middleware). A public route is never
+ * checked; any other route must be on the list.
+ */
+export function isProtectedAllowed(entry: ContractEntry): boolean {
+	return (
+		entry.meta.scope === "public" ||
+		Object.hasOwn(V1_ALLOWED, `${entry.method} ${entry.path}`)
+	);
+}
+
+/**
  * Error responses every operation can return, all as problem+json. They
  * replace the generator's own error bodies, which use oRPC's shape.
  */
@@ -56,7 +79,11 @@ function errorResponses(entry: ContractEntry): JsonObject {
 	return {
 		...base,
 		"401": problemResponse("No valid credentials"),
-		"403": problemResponse("Missing scope, or the API is turned off"),
+		"403": problemResponse(
+			isProtectedAllowed(entry)
+				? "Missing scope, or the API is turned off"
+				: "Missing scope, the API is turned off, or the account has Advanced protection on (protected_account)",
+		),
 		// A sync cursor the log cannot honor (sync_reset_required); a snapshot has no cursor.
 		...((entry.meta.scope === "sync" && !entry.meta.snapshot) ||
 		(entry.meta.scope === "vault" && entry.method === "GET")
@@ -82,6 +109,8 @@ function decorateOperation(op: JsonObject, entry: ContractEntry) {
 				];
 	op["x-required-scope"] = scope ?? null;
 	if (entry.meta.event) op["x-event-type"] = entry.meta.event;
+	// Only the boolean is published; the reasons stay internal review notes.
+	op["x-protected-account"] = { allowed: isProtectedAllowed(entry) };
 	const responses = (op.responses ?? {}) as JsonObject;
 	for (const status of Object.keys(responses)) {
 		if (Number(status) >= 400) delete responses[status];
@@ -117,8 +146,7 @@ export async function generateOpenApiDocument() {
 		info: {
 			title: "Retrospend API",
 			version: CONTRACT_VERSION,
-			description:
-				"The public Retrospend API. Errors are RFC 9457 problem+json with a stable `code`. Every write needs an `Idempotency-Key`.",
+			description: `The public Retrospend API. Errors are RFC 9457 problem+json with a stable \`code\`. Every write needs an \`Idempotency-Key\`.\n\n${PROTECTION_OVERVIEW}`,
 		},
 		servers: [{ url: API_PREFIX }],
 		commonSchemas: {

@@ -12,6 +12,7 @@
 		"./feedback-client": "./src/feedback/client.ts",
 		"./sync": "./src/sync/wire.ts",
 		"./openapi": "./src/openapi.ts",
+		"./protection-allowed": "./src/protection/v1-allowed.ts",
 		"./openapi.json": "./openapi.json"
 	},
 	"scripts": {
