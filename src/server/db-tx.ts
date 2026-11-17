@@ -76,6 +76,19 @@ export function registerClient(
 	cryptoClients.set(client, cryptoClientFor);
 }
 
+let fakesAllowed = false;
+
+/**
+ * Unit tests pass fake clients to code that opens a user transaction (the unit
+ * setup file calls this); the real-Postgres suite and production never do, so
+ * there a client db.ts did not build is refused. Throws outside tests.
+ */
+export function allowUnregisteredClientsForTests(allow = true): void {
+	if (process.env.NODE_ENV !== "test")
+		throw new Error("allowUnregisteredClientsForTests is for tests only");
+	fakesAllowed = allow;
+}
+
 const keystoreClients = new WeakSet<object>();
 
 /** db-core.ts registers the keystore facades it builds: the only clients `keystoreTransaction` takes. */
@@ -126,6 +139,8 @@ export async function userTransaction<T>(
 	options?: UserTransactionOptions,
 ): Promise<T> {
 	const cryptoClientFor = cryptoClients.get(client);
+	if (!cryptoClientFor && fakesAllowed)
+		return runAs(client, userId, work, options);
 	if (!cryptoClientFor)
 		throw new Error(
 			"userTransaction needs the client from db.ts (the global db or a user-scoped one); use keystoreTransaction for key work",

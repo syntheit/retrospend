@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Prisma, PrismaClient } from "~prisma";
 import {
+	allowUnregisteredClientsForTests,
 	inPreview,
 	insidePreview,
 	inTransaction,
@@ -37,6 +38,8 @@ function registeredClient() {
 	registerClient(made.client, () => ({ client: made.client, ready }));
 	return { ...made, ready };
 }
+
+afterEach(() => allowUnregisteredClientsForTests());
 
 describe("userTransaction", () => {
 	it("sets the RLS user and role before the work runs, in the same transaction", async () => {
@@ -111,6 +114,7 @@ describe("userTransaction", () => {
 	});
 
 	it("throws for a client that db.ts did not build, and runs no query", async () => {
+		allowUnregisteredClientsForTests(false);
 		const { client } = fakeClient();
 		await expect(
 			userTransaction(client, "user-1", async () => 1),
