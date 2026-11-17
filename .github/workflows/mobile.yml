@@ -125,11 +125,22 @@ jobs:
           # shellcheck disable=SC2012
           workspace=$(ls -d ios/*.xcworkspace | head -1)
           scheme=$(basename "$workspace" .xcworkspace)
-          xcodebuild -workspace "$workspace" -scheme "$scheme" \
-            -configuration Debug -derivedDataPath "$DERIVED_DATA" \
-            -destination "generic/platform=iOS Simulator" \
-            build CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= >"$RUNNER_TEMP/xcodebuild.log" 2>&1 \
-            || { grep -E 'error:|BUILD FAILED' "$RUNNER_TEMP/xcodebuild.log" | head -40; exit 1; }
+          # Expo's module scan sometimes stops early on the hosted runner
+          # ("Scanning for @ExpoModule classes didn't complete"); that one
+          # failure is retried once, anything else fails the step.
+          for attempt in 1 2; do
+            if xcodebuild -workspace "$workspace" -scheme "$scheme" \
+              -configuration Debug -derivedDataPath "$DERIVED_DATA" \
+              -destination "generic/platform=iOS Simulator" \
+              build CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= >"$RUNNER_TEMP/xcodebuild.log" 2>&1; then
+              break
+            fi
+            grep -E 'error:|BUILD FAILED' "$RUNNER_TEMP/xcodebuild.log" | head -40
+            if [ "$attempt" = 2 ] || ! grep -q "Scanning for @ExpoModule classes didn't complete" "$RUNNER_TEMP/xcodebuild.log"; then
+              exit 1
+            fi
+            echo "Expo module scan did not complete; retrying the build once."
+          done
           grep -m1 "BUILD SUCCEEDED" "$RUNNER_TEMP/xcodebuild.log"
           echo "APP=$DERIVED_DATA/Build/Products/Debug-iphonesimulator/$scheme.app" >>"$GITHUB_ENV"
 
