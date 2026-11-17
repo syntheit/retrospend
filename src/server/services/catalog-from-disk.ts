@@ -1,6 +1,21 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import { assembleCatalog, type MessageCatalog } from "@retrospend/i18n/catalog";
+import {
+	assembleCatalog,
+	assembleNamespace,
+	type MessageCatalog,
+} from "@retrospend/i18n/catalog";
+
+const messagesRoot = () =>
+	path.join(
+		/* turbopackIgnore: true */ process.cwd(),
+		"packages",
+		"i18n",
+		"messages",
+	);
+
+const read = async (file: string) =>
+	JSON.parse(await readFile(file, "utf8")) as MessageCatalog;
 
 /**
  * One locale's messages read from packages/i18n/messages, for code that runs
@@ -12,14 +27,7 @@ import { assembleCatalog, type MessageCatalog } from "@retrospend/i18n/catalog";
 export async function loadCatalogFromDisk(
 	locale: string,
 ): Promise<MessageCatalog> {
-	const root = path.join(
-		/* turbopackIgnore: true */ process.cwd(),
-		"packages",
-		"i18n",
-		"messages",
-	);
-	const read = async (file: string) =>
-		JSON.parse(await readFile(file, "utf8")) as MessageCatalog;
+	const root = messagesRoot();
 	const features: Record<string, MessageCatalog> = {};
 	const dir = path.join(root, locale);
 	for (const name of await readdir(dir).catch(() => [] as string[])) {
@@ -36,25 +44,21 @@ export async function loadCatalogFromDisk(
 
 /**
  * One namespace of one locale's messages, read like loadNamespace in the
- * Vite and Turbopack loader: the feature file named after it, or the key of
- * the shared file.
+ * Vite and Turbopack loader, by the same rule. Only a missing feature file
+ * means the namespace may be in the shared file; a file that cannot be read
+ * or parsed throws, as loadCatalogFromDisk does. `root` is for tests.
  */
 export async function loadNamespaceFromDisk(
 	locale: string,
 	namespace: string,
+	root = messagesRoot(),
 ): Promise<MessageCatalog> {
-	const root = path.join(
-		/* turbopackIgnore: true */ process.cwd(),
-		"packages",
-		"i18n",
-		"messages",
-	);
-	const read = async (file: string) =>
-		JSON.parse(await readFile(file, "utf8")) as MessageCatalog;
+	const shared = await read(path.join(root, `${locale}.json`));
 	const feature = await read(
 		path.join(root, locale, `${namespace}.json`),
-	).catch(() => null);
-	if (feature) return { [namespace]: feature };
-	const shared = (await read(path.join(root, `${locale}.json`)))[namespace];
-	return shared === undefined ? {} : { [namespace]: shared };
+	).catch((error: unknown) => {
+		if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+		throw error;
+	});
+	return assembleNamespace(shared, namespace, feature);
 }

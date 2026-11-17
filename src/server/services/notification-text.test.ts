@@ -1,4 +1,7 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadCatalog, loadNamespace } from "@retrospend/i18n/load";
 import { SUPPORTED_LOCALES } from "~/i18n/locales";
 import {
@@ -23,10 +26,7 @@ const build = (
 	reader: Parameters<typeof buildNoticeText>[1] = {},
 ) =>
 	buildNoticeText(
-		{
-			...notice,
-			actor: actor === undefined ? null : { type: "user", id: "a" },
-		},
+		{ ...notice, actor: actor === undefined ? null : { type: "user", id: "a" } },
 		reader,
 		actor ?? null,
 	);
@@ -349,7 +349,9 @@ describe("what an edit changed", () => {
 		expect(changes).toEqual({ other: true });
 		const edited = await build({ kind: "expenseEdited", changes });
 		expect(edited.changes).toBe("other changes");
-		expect((await build({ kind: "expenseEdited" })).changes).toBeNull();
+		expect(
+			(await build({ kind: "expenseEdited" })).changes,
+		).toBeNull();
 	});
 });
 
@@ -425,5 +427,44 @@ describe("loadNamespace", () => {
 		await expect(loadNamespace("xx", "push")).rejects.toThrow(
 			"No message catalog for locale xx",
 		);
+		await expect(loadNamespaceFromDisk("xx", "push")).rejects.toThrow(/ENOENT/);
+	});
+
+	describe("from a catalog folder on disk", () => {
+		let root: string;
+		beforeAll(async () => {
+			root = await mkdtemp(path.join(tmpdir(), "retrospend-catalog-"));
+			await mkdir(path.join(root, "en"));
+			await writeFile(
+				path.join(root, "en.json"),
+				JSON.stringify({ both: { a: "shared" }, sharedOnly: { a: "x" } }),
+			);
+			await writeFile(path.join(root, "en", "both.json"), '{"a":"feature"}');
+			await writeFile(path.join(root, "en", "ok.json"), '{"a":"ok"}');
+			await writeFile(path.join(root, "en", "broken.json"), "{ not json");
+		});
+		afterAll(() => rm(root, { recursive: true, force: true }));
+
+		it("reads a feature file, a shared key, and nothing", async () => {
+			expect(await loadNamespaceFromDisk("en", "ok", root)).toEqual({
+				ok: { a: "ok" },
+			});
+			expect(await loadNamespaceFromDisk("en", "sharedOnly", root)).toEqual({
+				sharedOnly: { a: "x" },
+			});
+			expect(await loadNamespaceFromDisk("en", "none", root)).toEqual({});
+		});
+
+		it("throws for a feature file it cannot parse instead of reading the shared key", async () => {
+			await expect(loadNamespaceFromDisk("en", "broken", root)).rejects.toThrow(
+				SyntaxError,
+			);
+		});
+
+		it("throws for a namespace in both the shared file and a feature file", async () => {
+			await expect(loadNamespaceFromDisk("en", "both", root)).rejects.toThrow(
+				'Message namespace "both" is in the shared catalog',
+			);
+		});
 	});
 });

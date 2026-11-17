@@ -51,3 +51,21 @@ export function assembleCatalog(
 
 	return catalog;
 }
+
+/**
+ * One namespace of one locale's catalog, by the same rule as assembleCatalog:
+ * the feature file named after it, or the key of the shared file, and the
+ * same error when it is in both. Empty when the locale has neither.
+ */
+export function assembleNamespace(
+	shared: MessageCatalog,
+	namespace: string,
+	feature: MessageCatalog | undefined,
+): MessageCatalog {
+	const catalog = assembleCatalog(
+		shared,
+		feature === undefined ? {} : { [namespace]: feature },
+	);
+	const messages = catalog[namespace];
+	return messages === undefined ? {} : { [namespace]: messages };
+}

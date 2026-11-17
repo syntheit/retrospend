@@ -26,7 +26,7 @@ const namespaces = new Map<string, MessageCatalog>();
  * gets a TypeError from it and reads the catalogs from disk instead. Only
  * the one namespace is read: a locale's whole catalog is 40 files.
  */
-async function loadNamespace(
+async function readNamespace(
 	locale: string,
 	namespace: string,
 ): Promise<MessageCatalog> {
@@ -46,11 +46,11 @@ async function namespaceOf(
 	const id = `${locale}:${namespace}`;
 	const known = namespaces.get(id);
 	if (known) return known;
-	const english = await loadNamespace(DEFAULT_LOCALE, namespace);
+	const english = await readNamespace(DEFAULT_LOCALE, namespace);
 	const merged =
 		locale === DEFAULT_LOCALE
 			? english
-			: mergeMessageCatalogs(english, await loadNamespace(locale, namespace));
+			: mergeMessageCatalogs(english, await readNamespace(locale, namespace));
 	const messages = { [namespace]: merged[namespace] as MessageCatalog };
 	namespaces.set(id, messages);
 	return messages;

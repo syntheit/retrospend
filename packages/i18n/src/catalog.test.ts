@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { assembleCatalog, mergeMessageCatalogs } from "./catalog";
+import {
+	assembleCatalog,
+	assembleNamespace,
+	mergeMessageCatalogs,
+} from "./catalog";
 
 describe("mergeMessageCatalogs", () => {
 	it("keeps English leaves that are missing from a localized catalog", () => {
@@ -58,5 +62,29 @@ describe("assembleCatalog", () => {
 		expect(() =>
 			assembleCatalog({ budget: { title: "Budget" } }, { budget: {} }),
 		).toThrow('Message namespace "budget"');
+	});
+});
+
+describe("assembleNamespace", () => {
+	it("takes the feature file, or the shared key, or nothing", () => {
+		const shared = { sidebar: { core: "Core" }, push: { x: "shared" } };
+		expect(assembleNamespace(shared, "kit", { a: "A" })).toEqual({
+			kit: { a: "A" },
+		});
+		expect(assembleNamespace(shared, "sidebar", undefined)).toEqual({
+			sidebar: { core: "Core" },
+		});
+		expect(assembleNamespace(shared, "none", undefined)).toEqual({});
+	});
+
+	it("throws, as assembleCatalog does, for a namespace in both places", () => {
+		const shared = { push: { x: "shared" } };
+		const feature = { x: "feature" };
+		expect(() => assembleNamespace(shared, "push", feature)).toThrow(
+			'Message namespace "push" is in the shared catalog and in push.json',
+		);
+		expect(() => assembleCatalog(shared, { push: feature })).toThrow(
+			'Message namespace "push" is in the shared catalog and in push.json',
+		);
 	});
 });

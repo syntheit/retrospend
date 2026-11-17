@@ -3,7 +3,11 @@
 // is picked up without editing any list. Metro does not support
 // import.meta.glob, so the mobile app loads catalogs its own way and shares
 // only ./catalog.
-import { assembleCatalog, type MessageCatalog } from "./catalog";
+import {
+	assembleCatalog,
+	assembleNamespace,
+	type MessageCatalog,
+} from "./catalog";
 
 const SHARED = import.meta.glob<MessageCatalog>("../messages/*.json", {
 	import: "default",
@@ -51,7 +55,9 @@ export async function loadNamespace(
 	if (!loadShared) throw new Error(`No message catalog for locale ${locale}`);
 
 	const loadFeature = FEATURES[`../messages/${locale}/${namespace}.json`];
-	if (loadFeature) return { [namespace]: await loadFeature() };
-	const shared = (await loadShared())[namespace];
-	return shared === undefined ? {} : { [namespace]: shared };
+	return assembleNamespace(
+		await loadShared(),
+		namespace,
+		loadFeature && (await loadFeature()),
+	);
 }
