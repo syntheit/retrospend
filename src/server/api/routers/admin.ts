@@ -553,8 +553,7 @@ export const adminRouter = createTRPCRouter({
 				throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
 			}
 
-			// With protection on, the reset step would refuse: say so now, to the
-			// admin. While OFF the reset removes the account's keys.
+			// Protection on: the reset step would refuse, so tell the admin now (OFF removes the keys).
 			if (isProtected(user.protectionState)) throw new ProtectedPasswordError();
 
 			const token = crypto.randomBytes(32).toString("hex");
