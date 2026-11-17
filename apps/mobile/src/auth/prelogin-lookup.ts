@@ -5,14 +5,14 @@ import { createRetrospendClient } from "@retrospend/api-client";
 import { newClientId } from "@/data/ids";
 import type { KdfLookup } from "./sign-in-secret";
 
-/** Null means no keys; a thrown error carries its HTTP status. */
+/** The server's answer, unread (the shared core reads it); a thrown error carries its HTTP status. */
 export function preloginLookup(baseUrl: string, email: string): KdfLookup {
-	return async () => {
-		const client = createRetrospendClient({
-			baseUrl,
-			newIdempotencyKey: newClientId,
-		});
-		const { kdf } = await client.auth.prelogin({ email });
-		return kdf;
+	return {
+		route: "prelogin",
+		ask: () =>
+			createRetrospendClient({
+				baseUrl,
+				newIdempotencyKey: newClientId,
+			}).auth.prelogin({ email }),
 	};
 }

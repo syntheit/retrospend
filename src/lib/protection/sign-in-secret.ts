@@ -1,10 +1,13 @@
-// The text a web password prompt sends to the server as "the password".
+// The text a web password prompt sends to the server as "the password", the
+// web's side of it. The flow itself (derive, the downgrade decision, changing
+// the password of a keyed account) is @retrospend/crypto/client's, shared
+// with the phone; this file fills in its ports (fetch and its errors, the
+// localStorage record, the WebAssembly primitives) and words the results.
+// Every prompt that checks the password goes through here.
+//
 // An account without Advanced protection keys signs in with what was typed.
-// An account with keys signs in with the auth key made from it: Argon2id with
-// the account's salt and parameters (prelogin when signed out, the keys route
-// when signed in), then the auth key as base64url (signInSecret). This is the
-// one place the web does that, so every prompt that checks the password goes
-// through here.
+// An account with keys signs in with the auth key made from it (prelogin when
+// signed out, the keys route when signed in).
 //
 // Downgrade: a server that answers "no keys" to an account that has them would
 // get the typed password. After a keyed answer this browser remembers that
@@ -13,8 +16,12 @@
 // server that serves this very page can also serve a page that skips the check
 // (spike 4.8). It stops a server that only controls the API answers, and an
 // account's first sign-in on a new browser is not covered.
-import type { PreloginKdf } from "@retrospend/api-contract";
-import type { Argon2Params, Primitives } from "@retrospend/crypto";
+import type { Primitives } from "@retrospend/crypto";
+import type {
+	FlowPorts,
+	KeyedRecord,
+	RotatePorts,
+} from "@retrospend/crypto/client";
 import { generateId } from "~/lib/id";
 
 export type SignInSecretFailure =
@@ -37,6 +44,8 @@ export type SignInSecretDeps = {
 	storage: Pick<Storage, "getItem" | "setItem" | "removeItem"> | null;
 	/** Lets the busy state paint before Argon2id blocks the main thread. */
 	paint: () => Promise<void>;
+	/** The primitives (the WebAssembly build by default); the tests wrap them to corrupt or watch a step. */
+	primitives?: () => Promise<Primitives>;
 };
 
 const KEYED_PREFIX = "rs.keyed.";
@@ -66,6 +75,13 @@ const defaults = (): SignInSecretDeps => ({
 	paint: paintFrame,
 });
 
+// The shared flow loads when a prompt runs, not with the page.
+const loadCore = () => import("@retrospend/crypto/client");
+type Core = Awaited<ReturnType<typeof loadCore>>;
+
+const webPrimitives = async () =>
+	(await import("@retrospend/crypto/web")).createWebPrimitives();
+
 /**
  * The storage key for an address: a SHA-256 of it, so the browser never holds
  * the address itself. Null where SubtleCrypto is missing (a page served over
@@ -84,25 +100,30 @@ async function recordKey(email: string): Promise<string | null> {
 	return KEYED_PREFIX + hex;
 }
 
-async function isRecorded(
-	deps: SignInSecretDeps,
-	email: string,
-): Promise<boolean> {
-	try {
-		const key = await recordKey(email);
-		return key !== null && deps.storage?.getItem(key) === "1";
-	} catch {
-		return false;
-	}
-}
-
-async function record(deps: SignInSecretDeps, email: string): Promise<void> {
-	try {
-		const key = await recordKey(email);
-		if (key !== null) deps.storage?.setItem(key, "1");
-	} catch {
-		// Best effort: a blocked or full store only loses the downgrade check.
-	}
+/**
+ * The record of "this address is keyed" in localStorage. Best effort on both
+ * sides, unlike the phone's: storage is blocked in some private windows, and a
+ * sign-in must still work there (the downgrade check is then off).
+ */
+function keyedRecord(deps: SignInSecretDeps, email: string): KeyedRecord {
+	return {
+		has: async () => {
+			try {
+				const key = await recordKey(email);
+				return key !== null && deps.storage?.getItem(key) === "1";
+			} catch {
+				return false;
+			}
+		},
+		set: async () => {
+			try {
+				const key = await recordKey(email);
+				if (key !== null) deps.storage?.setItem(key, "1");
+			} catch {
+				// Only the downgrade check is lost.
+			}
+		},
+	};
 }
 
 /**
@@ -124,95 +145,94 @@ export async function forgetKeyed(
 	}
 }
 
-type Answer = { kdf: PreloginKdf } | null;
-
-/** The shape of PreloginKdf, checked by hand so the page does not load the contract's schemas. */
-function readKdf(value: unknown): PreloginKdf | null {
-	if (typeof value !== "object" || value === null) return null;
-	const { salt, memoryKiB, passes } = value as Record<string, unknown>;
-	return typeof salt === "string" &&
-		Number.isInteger(memoryKiB) &&
-		Number.isInteger(passes)
-		? { salt, memoryKiB: memoryKiB as number, passes: passes as number }
-		: null;
-}
-
 /**
- * What the server says about the sign-in secret. Null is "no keys" (a null
- * kdf, or a missing route or account). Anything else that is not a clean
- * answer is "unavailable".
+ * Asks the server about the sign-in secret and hands the answer to the core
+ * unread: a missing route or account (404) is `missing`, a rate limit or any
+ * other failure throws "rateLimited" or "unavailable". What the body means is
+ * the core's (lookupKdf), the same for the phone.
  */
-async function ask(
+function lookupPort(
+	core: Core,
 	deps: SignInSecretDeps,
 	email: string,
 	signedIn: boolean,
-): Promise<Answer> {
-	let res: Response;
-	try {
-		const signal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
-		res = signedIn
-			? await deps.fetch("/api/v1/me/protection/keys", {
-					credentials: "same-origin",
-					headers: { accept: "application/json" },
-					signal,
-				})
-			: await deps.fetch("/api/v1/auth/prelogin", {
-					method: "POST",
-					credentials: "same-origin",
-					headers: {
-						accept: "application/json",
-						"content-type": "application/json",
-					},
-					body: JSON.stringify({ email: normalizeEmail(email) }),
-					signal,
-				});
-	} catch {
-		throw new SignInSecretError("unavailable");
-	}
-	if (res.status === 404) return null;
-	if (res.status === 429) throw new SignInSecretError("rateLimited");
-	if (!res.ok) throw new SignInSecretError("unavailable");
-	let body: unknown;
-	try {
-		body = await res.json();
-	} catch {
-		throw new SignInSecretError("unavailable");
-	}
-	const raw = (body as { kdf?: unknown } | null)?.kdf;
-	// Prelogin says null for "no keys"; the keys route has no such answer.
-	if (raw === null && !signedIn) return null;
-	const kdf = readKdf(raw);
-	if (!kdf) throw new SignInSecretError("unavailable");
-	return { kdf };
+): FlowPorts["lookup"] {
+	const fail = (code: "rateLimited" | "unavailable") =>
+		new core.KeyFlowError(code);
+	return async () => {
+		let res: Response;
+		try {
+			const signal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+			res = signedIn
+				? await deps.fetch("/api/v1/me/protection/keys", {
+						credentials: "same-origin",
+						headers: { accept: "application/json" },
+						signal,
+					})
+				: await deps.fetch("/api/v1/auth/prelogin", {
+						method: "POST",
+						credentials: "same-origin",
+						headers: {
+							accept: "application/json",
+							"content-type": "application/json",
+						},
+						body: JSON.stringify({ email: normalizeEmail(email) }),
+						signal,
+					});
+		} catch {
+			throw fail("unavailable");
+		}
+		if (res.status === 404) return { missing: true };
+		if (res.status === 429) throw fail("rateLimited");
+		if (!res.ok) throw fail("unavailable");
+		try {
+			return { body: await res.json() };
+		} catch {
+			throw fail("unavailable");
+		}
+	};
 }
 
-async function derive(
+function flowPorts(
+	core: Core,
 	deps: SignInSecretDeps,
-	password: string,
-	kdf: PreloginKdf,
-): Promise<string> {
-	// The shared package loads here and the WebAssembly build after the
-	// parameters pass, so a plain account never downloads libsodium and a
-	// hostile answer never reaches it.
-	const lib = await import("@retrospend/crypto");
-	const params = { memoryKiB: kdf.memoryKiB, passes: kdf.passes };
+	email: string,
+	signedIn: boolean,
+): FlowPorts {
+	return {
+		primitives: deps.primitives ?? webPrimitives,
+		paint: deps.paint,
+		lookup: lookupPort(core, deps, email, signedIn),
+		lookupRoute: signedIn ? "keys" : "prelogin",
+		record: keyedRecord(deps, email),
+	};
+}
+
+/** Words a flow failure as a sign-in secret failure. */
+function secretError(core: Core, error: unknown): SignInSecretError {
+	const { code } = core.asKeyFlowError(error);
+	return new SignInSecretError(
+		code === "params" || code === "downgrade" || code === "rateLimited"
+			? code
+			: "unavailable",
+	);
+}
+
+async function withCore<T>(
+	run: (core: Core) => Promise<T>,
+	fail: (core: Core, error: unknown) => Error,
+): Promise<T> {
+	let core: Core;
 	try {
-		lib.checkArgon2Params(params);
+		core = await loadCore();
 	} catch {
-		throw new SignInSecretError("params");
+		throw new SignInSecretError("unavailable");
 	}
-	const salt = lib.fromBase64Url(kdf.salt);
-	if (salt?.length !== 16) throw new SignInSecretError("unavailable");
-	const { createWebPrimitives } = await import("@retrospend/crypto/web");
-	const p = await createWebPrimitives();
-	await deps.paint();
-	const master = lib.deriveMasterKey(p, password, salt, params);
-	const { authKey, wrapKey } = lib.masterSubkeys(p, master);
-	const secret = lib.signInSecret(authKey);
-	p.wipe(master);
-	p.wipe(authKey);
-	p.wipe(wrapKey);
-	return secret;
+	try {
+		return await run(core);
+	} catch (error) {
+		throw fail(core, error);
+	}
 }
 
 /**
@@ -221,24 +241,20 @@ async function derive(
  * of prelogin. Throws SignInSecretError; the typed password is never sent
  * after a failure.
  */
-export async function signInSecretFor(
+export function signInSecretFor(
 	email: string,
 	password: string,
 	options: { signedIn?: boolean; deps?: Partial<SignInSecretDeps> } = {},
 ): Promise<string> {
 	const deps = { ...defaults(), ...options.deps };
-	const answer = await ask(deps, email, options.signedIn === true);
-	if (!answer) {
-		if (await isRecorded(deps, email)) throw new SignInSecretError("downgrade");
-		return password;
-	}
-	await record(deps, email);
-	try {
-		return await derive(deps, password, answer.kdf);
-	} catch (e) {
-		if (e instanceof SignInSecretError) throw e;
-		throw new SignInSecretError("unavailable");
-	}
+	return withCore(
+		(core) =>
+			core.signInSecretFor(
+				flowPorts(core, deps, email, options.signedIn === true),
+				password,
+			),
+		secretError,
+	);
 }
 
 /**
@@ -248,17 +264,15 @@ export async function signInSecretFor(
  * says otherwise: sending nothing is the safe answer there. Throws
  * SignInSecretError when the server cannot be asked.
  */
-export async function accountIsKeyed(
+export function accountIsKeyed(
 	email: string,
 	options: { deps?: Partial<SignInSecretDeps> } = {},
 ): Promise<boolean> {
 	const deps = { ...defaults(), ...options.deps };
-	const answer = await ask(deps, email, true);
-	if (answer) {
-		await record(deps, email);
-		return true;
-	}
-	return isRecorded(deps, email);
+	return withCore(
+		(core) => core.accountIsKeyed(flowPorts(core, deps, email, true)),
+		secretError,
+	);
 }
 
 export type RotationFailure =
@@ -278,23 +292,14 @@ export class PasswordRotationError extends Error {
 	}
 }
 
-export type RotateDeps = SignInSecretDeps & {
-	/** The primitives (the WebAssembly build by default); the tests wrap them to corrupt or watch a step. */
-	primitives?: () => Promise<Primitives>;
-	/** The Argon2id parameters of the new password (the default set unless a test says otherwise). */
-	newParams?: Argon2Params;
-};
-
-const webPrimitives = async () =>
-	(await import("@retrospend/crypto/web")).createWebPrimitives();
-
 type Wire = { status: number; body: unknown };
 
 const asObject = (v: unknown): Record<string, unknown> =>
 	typeof v === "object" && v !== null ? (v as Record<string, unknown>) : {};
 
 async function post(
-	deps: RotateDeps,
+	core: Core,
+	deps: SignInSecretDeps,
 	path: string,
 	body: unknown,
 	idempotencyKey?: string,
@@ -313,178 +318,96 @@ async function post(
 		});
 		return { status: res.status, body: await res.json().catch(() => null) };
 	} catch {
-		throw new PasswordRotationError("unavailable");
+		throw new core.KeyFlowError("unavailable");
 	}
 }
 
 /** The stable code of a refused answer; raw text from the server is never used. */
-function refusal({ status, body }: Wire): PasswordRotationError {
-	const code = asObject(body).code;
-	if (status === 429 || code === "rate_limited")
-		return new PasswordRotationError("rateLimited");
-	if (code === "wrong_password")
-		return new PasswordRotationError("wrongPassword");
-	// The operator turned Advanced protection off after accounts were keyed.
-	if (status === 501 || code === "not_implemented")
-		return new PasswordRotationError("notOffered");
-	if (status === 409 || code === "conflict")
-		return new PasswordRotationError("conflict");
-	return new PasswordRotationError("unavailable");
-}
-
-const sameBytes = (a: Uint8Array, b: Uint8Array): boolean => {
-	let diff = a.length ^ b.length;
-	for (let i = 0; i < a.length; i++) diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
-	return diff === 0;
-};
+const refusal = (core: Core, { status, body }: Wire) =>
+	new core.KeyFlowError(core.classifyRefusal(status, asObject(body).code));
 
 /**
- * One run of the password change for an account with keys: prove the old
- * password, open the account key with it, wrap the same key under the new
- * one, check that before sending, then commit. Every secret buffer is wiped
- * in `finally`.
+ * The ports of a password change: the keys route, the two commit routes, the
+ * record and the primitives. Exported for this file's tests, which run the
+ * shared flow with cheaper parameters than the public function may.
  */
-async function rotateOnce(
-	deps: RotateDeps,
-	userId: string,
-	current: string,
-	next: string,
-): Promise<void> {
-	const keys = await ask(deps, "", true);
-	if (!keys) throw new PasswordRotationError("downgrade");
-	const lib = await import("@retrospend/crypto");
-	const oldParams = { memoryKiB: keys.kdf.memoryKiB, passes: keys.kdf.passes };
-	const newParams = deps.newParams ?? lib.ARGON2_DEFAULT;
-	try {
-		lib.checkArgon2Params(oldParams);
-		lib.checkArgon2Params(newParams);
-	} catch {
-		throw new PasswordRotationError("params");
-	}
-	const oldSalt = lib.fromBase64Url(keys.kdf.salt);
-	if (oldSalt?.length !== 16) throw new PasswordRotationError("unavailable");
-	const p = await (deps.primitives ?? webPrimitives)();
-	const secrets: Uint8Array[] = [];
-	const keep = (bytes: Uint8Array) => {
-		secrets.push(bytes);
-		return bytes;
-	};
-	const subkeys = (master: Uint8Array) => {
-		const k = lib.masterSubkeys(p, keep(master));
-		return { authKey: keep(k.authKey), wrapKey: keep(k.wrapKey) };
-	};
-	try {
-		await deps.paint();
-		const old = subkeys(lib.deriveMasterKey(p, current, oldSalt, oldParams));
-		const begin = await post(deps, "/api/v1/me/protection/password/begin", {
-			currentAuthKey: lib.signInSecret(old.authKey),
-		});
-		if (begin.status !== 200) throw refusal(begin);
-		const { version, kdf, wrappedAccountKey } = asObject(begin.body);
-		const beginKdf = readKdf(kdf);
-		const oldWrap =
-			typeof wrappedAccountKey === "string"
-				? lib.fromBase64Url(wrappedAccountKey)
-				: null;
-		if (!beginKdf || !oldWrap || !Number.isInteger(version))
-			throw new PasswordRotationError("unavailable");
-		// The wrap belongs to the parameters the keys route gave: a change
-		// between the two calls starts over.
-		if (
-			beginKdf.salt !== keys.kdf.salt ||
-			beginKdf.memoryKiB !== keys.kdf.memoryKiB ||
-			beginKdf.passes !== keys.kdf.passes
-		)
-			throw new PasswordRotationError("conflict");
-		let accountKey: Uint8Array;
-		try {
-			accountKey = keep(
-				lib.unwrapKey(p, old.wrapKey, "ak-password", userId, oldWrap),
+export function rotationPorts(
+	core: Core,
+	deps: SignInSecretDeps,
+	email: string,
+): RotatePorts {
+	return {
+		...flowPorts(core, deps, email, true),
+		begin: async (body) => {
+			const begin = await post(
+				core,
+				deps,
+				"/api/v1/me/protection/password/begin",
+				body,
 			);
-		} catch {
-			// The server proved the password was right, so this wrap is corrupt or
-			// swapped: nothing is sent.
-			throw new PasswordRotationError("unavailable");
-		}
-
-		const newSalt = p.randomBytes(16);
-		const fresh = subkeys(lib.deriveMasterKey(p, next, newSalt, newParams));
-		const newKdf: PreloginKdf = {
-			salt: lib.toBase64Url(newSalt),
-			memoryKiB: newParams.memoryKiB,
-			passes: newParams.passes,
-		};
-		const newAuthKey = lib.signInSecret(fresh.authKey);
-		const wrapped = lib.toBase64Url(
-			lib.wrapKey(p, fresh.wrapKey, "ak-password", userId, accountKey),
-		);
-
-		// What was made must open from the new password alone, with the values
-		// as they will be sent, or the person would lock themselves out.
-		const sentSalt = lib.fromBase64Url(newKdf.salt);
-		const sentWrap = lib.fromBase64Url(wrapped);
-		if (!sentSalt || !sentWrap) throw new PasswordRotationError("unavailable");
-		const again = subkeys(
-			lib.deriveMasterKey(p, next, sentSalt, {
-				memoryKiB: newKdf.memoryKiB,
-				passes: newKdf.passes,
-			}),
-		);
-		let reopened: Uint8Array;
-		try {
-			reopened = keep(
-				lib.unwrapKey(p, again.wrapKey, "ak-password", userId, sentWrap),
+			if (begin.status !== 200) throw refusal(core, begin);
+			return begin.body;
+		},
+		commit: async (body, idempotencyKey) => {
+			const commit = await post(
+				core,
+				deps,
+				"/api/v1/me/protection/password",
+				body,
+				idempotencyKey,
 			);
-		} catch {
-			throw new PasswordRotationError("unavailable");
-		}
-		if (
-			!sameBytes(reopened, accountKey) ||
-			lib.signInSecret(again.authKey) !== newAuthKey
-		)
-			throw new PasswordRotationError("unavailable");
+			if (commit.status !== 200) throw refusal(core, commit);
+		},
+		newKey: generateId,
+	};
+}
 
-		const commit = await post(
-			deps,
-			"/api/v1/me/protection/password",
-			{
-				currentAuthKey: lib.signInSecret(old.authKey),
-				newAuthKey,
-				kdf: newKdf,
-				wrappedAccountKey: wrapped,
-				baseVersion: version as number,
-			},
-			generateId(),
-		);
-		if (commit.status !== 200) throw refusal(commit);
-	} finally {
-		for (const bytes of secrets) p.wipe(bytes);
-	}
+/** Words a flow failure as a password change failure. */
+export function rotationError(
+	core: Core,
+	error: unknown,
+): PasswordRotationError {
+	const { code } = core.asKeyFlowError(error);
+	return new PasswordRotationError(
+		code === "wrongPassword" ||
+			code === "rateLimited" ||
+			code === "conflict" ||
+			code === "notOffered" ||
+			code === "params" ||
+			code === "downgrade"
+			? code
+			: "unavailable",
+	);
 }
 
 /**
  * Changes the password of the signed-in account that has keys, entirely in
  * the browser: the server only ever sees the two sign-in secrets and the
  * rewrapped account key. A `conflict` (the keys changed under it) starts the
- * whole run again once, with a new Idempotency-Key. Throws
- * PasswordRotationError or SignInSecretError.
+ * whole run again once, with a new Idempotency-Key (the shared flow's rule).
+ * Throws PasswordRotationError.
  */
 export async function rotatePassword(
 	userId: string,
+	email: string,
 	current: string,
 	next: string,
-	options: { deps?: Partial<RotateDeps> } = {},
+	options: { deps?: Partial<SignInSecretDeps> } = {},
 ): Promise<void> {
-	const deps: RotateDeps = { ...defaults(), ...options.deps };
-	for (let attempt = 0; ; attempt++) {
-		try {
-			return await rotateOnce(deps, userId, current, next);
-		} catch (e) {
-			const again =
-				e instanceof PasswordRotationError &&
-				e.code === "conflict" &&
-				attempt === 0;
-			if (!again) throw e;
-		}
+	const deps: SignInSecretDeps = { ...defaults(), ...options.deps };
+	let core: Core;
+	try {
+		core = await loadCore();
+	} catch {
+		throw new PasswordRotationError("unavailable");
+	}
+	try {
+		await core.rotatePassword(rotationPorts(core, deps, email), {
+			userId,
+			current,
+			next,
+		});
+	} catch (error) {
+		throw rotationError(core, error);
 	}
 }

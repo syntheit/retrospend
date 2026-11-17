@@ -17,9 +17,9 @@ import {
 	unwrapKey,
 	wrapKey,
 } from "@retrospend/crypto";
-import { loadWebSodium } from "@retrospend/crypto/web";
 import vectors from "@retrospend/crypto/vectors/keys.vectors.json";
-import type { RotateApi, SecretDeps } from "./sign-in-secret";
+import { loadWebSodium } from "@retrospend/crypto/web";
+import type { KdfLookup, RotateApi, SecretDeps } from "./sign-in-secret";
 
 type Helper = typeof import("./sign-in-secret");
 let h: Helper;
@@ -169,6 +169,12 @@ function api(
 	};
 }
 
+/** A keys route answering `{ kdf }`, or what `ask` makes of it. */
+const keysAnswering = (kdf: () => Promise<PreloginKdf | null>): KdfLookup => ({
+	route: "keys",
+	ask: async () => ({ kdf: await kdf() }),
+});
+
 function run(
 	r: Rig,
 	client: RotateApi,
@@ -183,7 +189,7 @@ function run(
 			userId: USER,
 			current: OLD.password,
 			next: NEW.password,
-			lookup: async () => OLD_KDF,
+			lookup: keysAnswering(async () => OLD_KDF),
 			newKey: () => `key-${++n}`,
 			...over,
 		},
@@ -261,7 +267,7 @@ describe("rotatePassword", () => {
 		expect(a.rotate).not.toHaveBeenCalled();
 	});
 
-	it("sends nothing when the answer carries a salt or parameters the proof did not use", async () => {
+	it("treats an answer with a salt or parameters the proof did not use as a conflict: one more run, and nothing sent", async () => {
 		for (const other of [
 			{ ...OLD_KDF, salt: NEW_SALT },
 			{ ...OLD_KDF, memoryKiB: 48 * 1024 },
@@ -271,10 +277,30 @@ describe("rotatePassword", () => {
 			const a = api({ kdf: other });
 			expect(await run(r, a.client)).toEqual({
 				ok: false,
-				reason: "protectionRefused",
+				reason: "conflict",
 			});
+			expect(a.begin).toHaveBeenCalledTimes(2);
 			expect(a.rotate).not.toHaveBeenCalled();
 		}
+	});
+
+	it("succeeds when the key set is stable on the second run", async () => {
+		const r = rig();
+		const begin = jest
+			.fn()
+			.mockResolvedValueOnce({
+				version: 1,
+				kdf: { ...OLD_KDF, passes: 2 },
+				wrappedAccountKey: oldWrap(),
+			})
+			.mockResolvedValueOnce({
+				version: 2,
+				kdf: OLD_KDF,
+				wrappedAccountKey: oldWrap(),
+			});
+		const a = api({ begin });
+		expect(await run(r, a.client)).toEqual({ ok: true });
+		expect(a.rotate).toHaveBeenCalledTimes(1);
 	});
 
 	it("refuses to send a new wrap that does not open", async () => {
@@ -396,20 +422,50 @@ describe("rotatePassword", () => {
 		}
 	});
 
-	it("says the keys are gone when the lookup is a 404 or null, and calls nothing", async () => {
-		for (const lookup of [
-			async () => {
-				throw status(404);
-			},
-			async () => null,
-		]) {
+	it("says the keys are gone when the lookup is a 404, and calls nothing", async () => {
+		const r = rig();
+		const a = api();
+		const lookup = keysAnswering(async () => {
+			throw status(404);
+		});
+		expect(await run(r, a.client, { lookup })).toEqual({
+			ok: false,
+			reason: "keysMissing",
+		});
+		expect(a.begin).not.toHaveBeenCalled();
+	});
+
+	it("is a network failure, not missing keys, when the keys answer is not the expected shape", async () => {
+		for (const body of [null, {}, { kdf: null }, { kdf: "keys" }]) {
 			const r = rig();
 			const a = api();
+			const lookup: KdfLookup = { route: "keys", ask: async () => body };
 			expect(await run(r, a.client, { lookup })).toEqual({
 				ok: false,
-				reason: "keysMissing",
+				reason: "network",
 			});
 			expect(a.begin).not.toHaveBeenCalled();
+			expect(a.rotate).not.toHaveBeenCalled();
+		}
+	});
+
+	it("is a network failure with no commit when the begin answer is not the expected shape", async () => {
+		const good = { version: 1, kdf: OLD_KDF, wrappedAccountKey: oldWrap() };
+		for (const body of [
+			null,
+			{},
+			{ version: 1 },
+			{ ...good, version: 1.5 },
+			{ ...good, kdf: null },
+			{ ...good, wrappedAccountKey: 7 },
+		]) {
+			const r = rig();
+			const a = api({ begin: jest.fn(async () => body) });
+			expect(await run(r, a.client)).toEqual({
+				ok: false,
+				reason: "network",
+			});
+			expect(a.rotate).not.toHaveBeenCalled();
 		}
 	});
 
@@ -418,7 +474,10 @@ describe("rotatePassword", () => {
 		const a = api();
 		expect(
 			await run(r, a.client, {
-				lookup: async () => ({ ...OLD_KDF, memoryKiB: 19 * 1024 }),
+				lookup: keysAnswering(async () => ({
+					...OLD_KDF,
+					memoryKiB: 19 * 1024,
+				})),
 			}),
 		).toEqual({ ok: false, reason: "protectionRefused" });
 		expect(r.argon2id).not.toHaveBeenCalled();

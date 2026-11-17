@@ -2,6 +2,7 @@ import type { RetrospendClient } from "@retrospend/api-client";
 import { useEffect, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { deleteFailureOf } from "@/auth/errors";
 import { useSession } from "@/auth/session";
 import {
 	forgetKeyed,
@@ -20,19 +21,13 @@ type Consequences = Awaited<
 	ReturnType<RetrospendClient["account"]["deletionPreview"]>
 >;
 
-/** What the server said went wrong, in its own words when it gave some. */
-function detailOf(error: unknown): string | null {
-	const message = (error as { message?: unknown } | null)?.message;
-	return typeof message === "string" && message !== "" ? message : null;
-}
-
 /**
  * Deleting your account for good. The sheet first says what it changes for
  * other people (projects handed over or deleted, payments and shares settled
  * on your way out: the server's own read), then asks for the password, every
- * time. There is no undo, so the sheet says so. Admins and accounts without
- * a password get the server's refusal as it words it. An account with
- * protection keys sends its sign-in secret (Argon2id, a moment of busy), not
+ * time. There is no undo, so the sheet says so. A refusal is worded from its
+ * status and code (the last admin, a wrong password, too many tries), never
+ * from the server's text. An account with protection keys sends its sign-in secret (Argon2id, a moment of busy), not
  * the typed password.
  */
 export function DeleteAccountSheet({
@@ -44,6 +39,7 @@ export function DeleteAccountSheet({
 }) {
 	const t = useTranslations("mobile.settings.delete");
 	const tc = useTranslations("mobile.common");
+	const ts = useTranslations("mobile.signIn.error");
 	const { api, baseUrl, state, signOut } = useSession();
 	const email = state.status === "signedIn" ? (state.me?.email ?? null) : null;
 	const { space } = useTheme();
@@ -55,9 +51,15 @@ export function DeleteAccountSheet({
 	const [refusal, setRefusal] = useState<string | null>(null);
 	const key = useRef(newClientId());
 
-	// Each opening reads what deleting would change, and starts with no password.
+	// Each opening reads what deleting would change, and starts with no
+	// password; closing drops the typed one, so none waits in a closed sheet.
 	useEffect(() => {
-		if (!visible || !api) return;
+		if (!visible) {
+			setPassword("");
+			setRefusal(null);
+			return;
+		}
+		if (!api) return;
 		let cancelled = false;
 		setWhat(null);
 		setLoadFailed(false);
@@ -108,7 +110,16 @@ export function DeleteAccountSheet({
 			// The server ended every session; this clears the phone's own.
 			await signOut({ discardUnsynced: true });
 		} catch (error) {
-			setRefusal(detailOf(error) ?? t("error"));
+			const failure = deleteFailureOf(error);
+			setRefusal(
+				failure === "onlyAdmin"
+					? t("onlyAdmin")
+					: failure === "rateLimited"
+						? ts("rateLimited")
+						: failure === "network"
+							? ts("network")
+							: t("error"),
+			);
 		} finally {
 			setBusy(false);
 		}

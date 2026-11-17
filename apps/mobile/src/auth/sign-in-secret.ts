@@ -1,39 +1,28 @@
-// The one place that turns a typed password into what the server checks.
+// The phone's side of "typed password to what the server checks". The flow
+// itself (derive, the downgrade decision, changing the password of a keyed
+// account) is @retrospend/crypto/client's, shared with the web; this file
+// fills in its ports: the typed API client and its errors, the keystore
+// record, the native primitives, and the words of the phone's results.
 //
-// An account without Advanced protection keys signs in with the typed
-// password. An account with keys signs in with its sign-in secret: Argon2id
-// over the password with the account's salt and parameters (prelogin when
-// signed out, GET /me/protection/keys when signed in), then the auth key as
-// base64url. Every prompt that sends a password (sign-in, deleting the
-// account) goes through here, so none of them can send the typed password of
-// a keyed account.
-//
-// Downgrade defense: a server that is hostile, or one that lost the key set,
-// could answer "no keys" and make the app send the typed password. So once
-// this phone has seen the email keyed on this server (a keyed answer, or the
-// enable flow), it records that in secure storage and from then on refuses a
-// null answer, an error or a 404. Only an account the phone never saw keyed,
-// against a server whose route is missing (404, an older server), falls back.
-//
-// Changing the password of a keyed account (rotatePassword, at the end) is the
-// other derive: the old and the new password both turn into a sign-in secret
-// and the account key is rewrapped under the new one, all on this phone.
+// Every prompt that sends a password (sign-in, deleting the account) goes
+// through resolveSignInSecret, so none of them can send the typed password of
+// a keyed account. The record "this email is keyed on this server" lives in
+// secure storage; with it, a null answer, an error or a 404 is refused. Only
+// an account the phone never saw keyed, against a server whose route is
+// missing (404, an older server), falls back.
 import type { RetrospendClient } from "@retrospend/api-client";
-import type { PreloginKdf } from "@retrospend/api-contract";
+import type { Primitives } from "@retrospend/crypto";
 import {
-	ARGON2_DEFAULT,
-	CryptoError,
-	checkArgon2Params,
-	deriveMasterKey,
-	fromBase64Url,
-	masterSubkeys,
-	type Primitives,
-	SALT_BYTES,
-	signInSecret,
-	toBase64Url,
-	unwrapKey,
-	wrapKey,
-} from "@retrospend/crypto";
+	accountIsKeyed,
+	classifyRefusal,
+	type FlowPorts,
+	type KeyFlowCode,
+	KeyFlowError,
+	type LookupRoute,
+	type RotatePorts,
+	rotatePassword as rotateKeyedPassword,
+	signInSecretFor,
+} from "@retrospend/crypto/client";
 import { getPrimitives } from "@/crypto/native";
 import { originOf, sha256Hex } from "@/lib/origin-key";
 import { secureStore } from "@/lib/secure-store";
@@ -96,12 +85,16 @@ export async function forgetKeyed(
 	await deps.store.deleteItemAsync(keyedRecordKey(baseUrl, email));
 }
 
-/** How to read the account's KDF values: prelogin, or the keys route. */
-export type KdfLookup = () => Promise<PreloginKdf | null>;
+/**
+ * How to ask for the account's KDF values: prelogin, or the keys route. `ask`
+ * returns the server's answer unread; the shared core reads it, the same way
+ * the web does.
+ */
+export type KdfLookup = { route: LookupRoute; ask: () => Promise<unknown> };
 
 /** Signed in: GET /api/v1/me/protection/keys (404 when the account has none). */
 export function keysLookup(api: RetrospendClient): KdfLookup {
-	return async () => (await api.protection.keys()).kdf;
+	return { route: "keys", ask: () => api.protection.keys() };
 }
 
 function statusOf(error: unknown): number | null {
@@ -109,44 +102,50 @@ function statusOf(error: unknown): number | null {
 	return typeof status === "number" ? status : null;
 }
 
-/**
- * The auth key and the wrap key for a password and an account's kdf, or null
- * for a salt that is not base64url. Every key made (the master key too) goes
- * to `own`, so the caller wipes them all.
- */
-function deriveKeys(
-	p: Primitives,
-	password: string,
-	kdf: PreloginKdf,
-	own: (key: Uint8Array) => void,
-): { authKey: Uint8Array; wrapKey: Uint8Array } | null {
-	const salt = fromBase64Url(kdf.salt);
-	if (!salt) return null;
-	const params = checkArgon2Params({
-		memoryKiB: kdf.memoryKiB,
-		passes: kdf.passes,
-	});
-	const master = deriveMasterKey(p, password, salt, params);
-	own(master);
-	const keys = masterSubkeys(p, master);
-	own(keys.authKey);
-	own(keys.wrapKey);
-	return keys;
+/** The lookup as a port: a missing route (404) is `missing`, the answer is handed over unread. */
+function lookupPort(lookup: KdfLookup): FlowPorts["lookup"] {
+	return async () => {
+		try {
+			return { body: await lookup.ask() };
+		} catch (error) {
+			const status = statusOf(error);
+			if (status === 404) return { missing: true };
+			throw new KeyFlowError(status === 429 ? "rateLimited" : "unavailable");
+		}
+	};
 }
 
-async function derive(
-	p: Primitives,
-	password: string,
-	kdf: PreloginKdf,
-): Promise<string | null> {
-	const owned: Uint8Array[] = [];
-	try {
-		const keys = deriveKeys(p, password, kdf, (key) => owned.push(key));
-		return keys && signInSecret(keys.authKey);
-	} finally {
-		for (const key of owned) p.wipe(key);
-	}
+function portsFor(
+	input: { baseUrl: string; email: string; lookup: KdfLookup },
+	deps: SecretDeps,
+): FlowPorts {
+	return {
+		primitives: deps.primitives,
+		lookup: lookupPort(input.lookup),
+		lookupRoute: input.lookup.route,
+		record: {
+			has: async () =>
+				(await deps.store.getItemAsync(
+					keyedRecordKey(input.baseUrl, input.email),
+				)) !== null,
+			set: () => markKeyed(input.baseUrl, input.email, deps),
+		},
+	};
 }
+
+const SECRET_FAILURES: Record<KeyFlowCode, SecretFailure> = {
+	downgrade: "keysMissing",
+	rateLimited: "rateLimited",
+	unavailable: "network",
+	params: "protectionRefused",
+	malformed: "protectionRefused",
+	// The record cannot be read: nothing is sent.
+	unreadable: "unknown",
+	wrongPassword: "unknown",
+	conflict: "unknown",
+	notOffered: "unknown",
+	failed: "unknown",
+};
 
 /**
  * Whether sending the typed password for this account would be wrong: true
@@ -161,14 +160,9 @@ export async function isKeyedAccount(
 	deps: SecretDeps = defaultDeps,
 ): Promise<boolean | null> {
 	try {
-		const key = keyedRecordKey(input.baseUrl, input.email);
-		if ((await deps.store.getItemAsync(key)) !== null) return true;
-		const kdf = await input.lookup();
-		if (kdf === null) return false;
-		await markKeyed(input.baseUrl, input.email, deps);
-		return true;
-	} catch (error) {
-		return statusOf(error) === 404 ? false : null;
+		return await accountIsKeyed(portsFor(input, deps));
+	} catch {
+		return null;
 	}
 }
 
@@ -185,59 +179,12 @@ export async function resolveSignInSecret(
 	},
 	deps: SecretDeps = defaultDeps,
 ): Promise<SecretResult> {
-	const { baseUrl, email, password } = input;
-	// Nothing to derive; the server refuses an empty password either way.
-	if (password === "") return { ok: true, secret: password };
-
-	let recorded: boolean;
 	try {
-		recorded =
-			(await deps.store.getItemAsync(keyedRecordKey(baseUrl, email))) !== null;
-	} catch {
-		// Without the record the defense cannot work: do not send anything.
-		return { ok: false, reason: "unknown" };
-	}
-
-	let kdf: PreloginKdf | null;
-	try {
-		kdf = await input.lookup();
-	} catch (error) {
-		const code = statusOf(error);
-		if (recorded) {
-			return {
-				ok: false,
-				reason:
-					code === 404
-						? "keysMissing"
-						: code === 429
-							? "rateLimited"
-							: "network",
-			};
-		}
-		// An older server has no route: the account cannot have keys.
-		if (code === 404) return { ok: true, secret: password };
-		return { ok: false, reason: code === 429 ? "rateLimited" : "network" };
-	}
-
-	if (kdf === null) {
-		return recorded
-			? { ok: false, reason: "keysMissing" }
-			: { ok: true, secret: password };
-	}
-
-	try {
-		const secret = await derive(await deps.primitives(), password, kdf);
-		if (secret === null) return { ok: false, reason: "protectionRefused" };
-		await markKeyed(baseUrl, email, deps);
+		const secret = await signInSecretFor(portsFor(input, deps), input.password);
 		return { ok: true, secret };
 	} catch (error) {
-		return {
-			ok: false,
-			reason:
-				error instanceof CryptoError && error.code === "invalid_input"
-					? "protectionRefused"
-					: "unknown",
-		};
+		const code = error instanceof KeyFlowError ? error.code : "failed";
+		return { ok: false, reason: SECRET_FAILURES[code] };
 	}
 }
 
@@ -253,6 +200,19 @@ export type RotateFailure =
 	| "unavailable"
 	| "unknown";
 export type RotateResult = { ok: true } | { ok: false; reason: RotateFailure };
+
+const ROTATE_FAILURES: Record<KeyFlowCode, RotateFailure> = {
+	wrongPassword: "wrongPassword",
+	rateLimited: "rateLimited",
+	unavailable: "network",
+	downgrade: "keysMissing",
+	params: "protectionRefused",
+	malformed: "protectionRefused",
+	conflict: "conflict",
+	notOffered: "unavailable",
+	unreadable: "unknown",
+	failed: "unknown",
+};
 
 /** The two routes a rotation calls. */
 export type RotateApi = Pick<
@@ -273,159 +233,52 @@ export interface RotateInput {
 	newKey: () => string;
 }
 
-/** A refusal with its reason; never carries text from the server. */
-class RotateStop extends Error {
-	constructor(readonly reason: RotateFailure) {
-		super(reason);
-	}
-}
-
-const stop = (reason: RotateFailure): never => {
-	throw new RotateStop(reason);
-};
-
-/** The call's refusal as a reason, from the problem's status and code. */
-function reasonOf(error: unknown): RotateFailure {
-	const status = statusOf(error);
-	if (status === null) return "network";
-	if (status === 429) return "rateLimited";
-	if (status === 409) return "conflict";
-	if (status === 501) return "unavailable";
-	const code = (error as { code?: unknown } | null)?.code;
-	if (status === 400 && code === "wrong_password") return "wrongPassword";
-	return "unknown";
-}
-
+/** A call's refusal as a KeyFlowError, from the problem's status and code only: server text is never used. */
 async function call<T>(run: () => Promise<T>): Promise<T> {
 	try {
 		return await run();
 	} catch (error) {
-		return stop(reasonOf(error));
-	}
-}
-
-function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
-	if (a.length !== b.length) return false;
-	let diff = 0;
-	for (let i = 0; i < a.length; i++) diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
-	return diff === 0;
-}
-
-/** One pass of the whole flow. Every key it makes is wiped before it returns. */
-async function rotateOnce(input: RotateInput, p: Primitives): Promise<void> {
-	const owned: Uint8Array[] = [];
-	const keep = (bytes: Uint8Array): Uint8Array => {
-		owned.push(bytes);
-		return bytes;
-	};
-	const subkeys = (password: string, kdf: PreloginKdf) =>
-		deriveKeys(p, password, kdf, keep) ?? stop("protectionRefused");
-	try {
-		let kdf: PreloginKdf | null;
-		try {
-			kdf = await input.lookup();
-		} catch (error) {
-			return stop(statusOf(error) === 404 ? "keysMissing" : reasonOf(error));
-		}
-		if (kdf === null) return stop("keysMissing");
-
-		const old = subkeys(input.current, kdf);
-		const currentAuthKey = signInSecret(old.authKey);
-		const begun = await call(() =>
-			input.api.beginPasswordRotation({ currentAuthKey }),
-		);
-		// The server proved the hash for this salt and these parameters; an
-		// answer with others is not the key set the secret was made for.
-		if (
-			begun.kdf.salt !== kdf.salt ||
-			begun.kdf.memoryKiB !== kdf.memoryKiB ||
-			begun.kdf.passes !== kdf.passes
-		)
-			stop("protectionRefused");
-		// The proof passed, so a wrap that does not open is corrupt or swapped.
-		const wrap =
-			fromBase64Url(begun.wrappedAccountKey) ?? stop("protectionRefused");
-		const accountKey = keep(
-			unwrapKey(p, old.wrapKey, "ak-password", input.userId, wrap),
-		);
-
-		const newSalt = keep(p.randomBytes(SALT_BYTES));
-		const newKdf: PreloginKdf = {
-			salt: toBase64Url(newSalt),
-			memoryKiB: ARGON2_DEFAULT.memoryKiB,
-			passes: ARGON2_DEFAULT.passes,
-		};
-		const fresh = subkeys(input.next, newKdf);
-		const newAuthKey = signInSecret(fresh.authKey);
-		const wrappedAccountKey = toBase64Url(
-			wrapKey(p, fresh.wrapKey, "ak-password", input.userId, accountKey),
-		);
-
-		// Check what is about to be sent, from the sent text, derived again:
-		// the wrap must open with the new password to the same account key, and
-		// the secret must be the one the new password makes. A mismatch would
-		// lock the account out for good, so nothing is sent.
-		const sentWrap =
-			fromBase64Url(wrappedAccountKey) ?? stop("protectionRefused");
-		const again = subkeys(input.next, newKdf);
-		let opened: Uint8Array;
-		try {
-			opened = keep(
-				unwrapKey(p, again.wrapKey, "ak-password", input.userId, sentWrap),
-			);
-		} catch {
-			return stop("protectionRefused");
-		}
-		if (
-			!sameBytes(opened, accountKey) ||
-			signInSecret(again.authKey) !== newAuthKey
-		)
-			stop("protectionRefused");
-
-		await call(() =>
-			input.api.rotatePassword(
-				{
-					currentAuthKey,
-					newAuthKey,
-					kdf: newKdf,
-					wrappedAccountKey,
-					baseVersion: begun.version,
-				},
-				{ context: { idempotencyKey: input.newKey() } },
+		throw new KeyFlowError(
+			classifyRefusal(
+				statusOf(error),
+				(error as { code?: unknown } | null)?.code,
 			),
 		);
-	} finally {
-		for (const bytes of owned) p.wipe(bytes);
 	}
+}
+
+function rotatePorts(input: RotateInput, deps: SecretDeps): RotatePorts {
+	return {
+		...portsFor(input, deps),
+		begin: (body) => call(() => input.api.beginPasswordRotation(body)),
+		commit: async (body, idempotencyKey) => {
+			await call(() =>
+				input.api.rotatePassword(body, { context: { idempotencyKey } }),
+			);
+		},
+		newKey: input.newKey,
+	};
 }
 
 /**
- * Changes the password of an account with protection keys, on this phone: the
- * server only ever sees the two sign-in secrets and the rewrapped account key.
- * A conflict (the keys changed between the two calls) starts over once with a
- * new key; a second one is returned. The account stays recorded as keyed.
+ * Changes the password of an account with protection keys, on this phone (the
+ * flow is @retrospend/crypto/client's). A conflict (the keys changed between
+ * the two calls) starts over once with a new key; a second one is returned.
+ * The account stays recorded as keyed.
  */
 export async function rotatePassword(
 	input: RotateInput,
 	deps: Pick<SecretDeps, "primitives" | "store"> = defaultDeps,
 ): Promise<RotateResult> {
 	try {
-		const p = await deps.primitives();
-		try {
-			await rotateOnce(input, p);
-		} catch (error) {
-			if (!(error instanceof RotateStop) || error.reason !== "conflict")
-				throw error;
-			await rotateOnce(input, p);
-		}
+		await rotateKeyedPassword(rotatePorts(input, deps), {
+			userId: input.userId,
+			current: input.current,
+			next: input.next,
+		});
+		return { ok: true };
 	} catch (error) {
-		if (error instanceof RotateStop) return { ok: false, reason: error.reason };
-		return {
-			ok: false,
-			reason: error instanceof CryptoError ? "protectionRefused" : "unknown",
-		};
+		const code = error instanceof KeyFlowError ? error.code : "failed";
+		return { ok: false, reason: ROTATE_FAILURES[code] };
 	}
-	// The change is done; a failed write of the record must not say otherwise.
-	await markKeyed(input.baseUrl, input.email, deps).catch(() => undefined);
-	return { ok: true };
 }

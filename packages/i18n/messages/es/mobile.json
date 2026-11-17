@@ -2310,6 +2310,7 @@
 			"delete": "Eliminar cuenta",
 			"deleting": "Eliminando",
 			"protectionRefused": "La respuesta del servidor sobre la protección de esta cuenta parece incorrecta. No se eliminó nada.",
+			"onlyAdmin": "Eres el único administrador. Haz administrador a otra persona primero y luego podrás eliminar tu cuenta.",
 			"error": "No se pudo eliminar la cuenta. Revisa tu contraseña e inténtalo de nuevo."
 		},
 		"numbers": {

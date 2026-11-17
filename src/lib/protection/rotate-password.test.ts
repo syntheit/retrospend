@@ -10,6 +10,7 @@ import {
 	toBase64Url,
 	unwrapKey,
 } from "@retrospend/crypto";
+import * as core from "@retrospend/crypto/client";
 import { createWebPrimitives } from "@retrospend/crypto/web";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 // Deep path: the index leaves out the nonce-taking wrap, which a vector needs.
@@ -17,11 +18,19 @@ import { wrapKeyWithNonce } from "../../../packages/crypto/src/keys";
 import vectors from "../../../packages/crypto/vectors/keys.vectors.json";
 import {
 	PasswordRotationError,
-	type RotateDeps,
 	rotatePassword,
-	SignInSecretError,
+	rotationError,
+	rotationPorts,
+	type SignInSecretDeps,
 } from "./sign-in-secret";
 
+// The web's side of the password change for a keyed account: what goes over
+// the wire (the routes, the bodies, the Idempotency-Key), how each answer is
+// worded, and the record. The flow itself (the checks before sending, the
+// retry on a conflict, the wiping) is @retrospend/crypto/client's and is
+// tested in packages/crypto/test/client-rotate.test.ts; this file runs it
+// through the web ports with cheaper parameters than the public function may.
+//
 // The old password, salt and parameters are the second master vector (floor
 // parameters, known answers from a generator that shares no code with the
 // app). The account key and the wrap's id and nonce are the ak-password wrap
@@ -39,6 +48,7 @@ const OLD_KDF = {
 };
 const OLD_AUTH_KEY = toBase64Url(fromHex(MASTER.authKey));
 const NEXT = "A brand new passphrase 7";
+const EMAIL = "Person@Example.com";
 
 let p: Primitives;
 let oldWrap: string;
@@ -111,17 +121,32 @@ function setup(server: Server = {}) {
 			wrappedAccountKey: string;
 			baseVersion: number;
 		};
-	const run = (current: string, next: string, deps: Partial<RotateDeps> = {}) =>
-		rotatePassword(USER_ID, current, next, {
-			deps: {
-				fetch: fetch as typeof globalThis.fetch,
-				storage: null,
-				paint: async () => {},
-				newParams: ARGON2_FLOOR,
-				...deps,
-			},
-		});
-	return { fetch, calls, posted, bodyOf, run };
+	const deps = (over: Partial<SignInSecretDeps> = {}): SignInSecretDeps => ({
+		fetch: fetch as typeof globalThis.fetch,
+		storage: null,
+		paint: async () => {},
+		...over,
+	});
+	/** The shared flow through the web ports, with the floor parameters for the new password. */
+	const run = async (
+		current: string,
+		next: string,
+		over: Partial<SignInSecretDeps> = {},
+	) => {
+		try {
+			await core.rotatePassword(
+				rotationPorts(core, deps(over), EMAIL),
+				{ userId: USER_ID, current, next },
+				{ newParams: ARGON2_FLOOR },
+			);
+		} catch (e) {
+			throw rotationError(core, e);
+		}
+	};
+	/** The public function: the default parameters, nothing injected. */
+	const runPublic = (current: string, next: string) =>
+		rotatePassword(USER_ID, EMAIL, current, next, { deps: deps() });
+	return { fetch, calls, posted, bodyOf, run, runPublic };
 }
 
 const keyOf = (c: Call | undefined): string | undefined =>
@@ -131,9 +156,7 @@ const failure = async (promise: Promise<unknown>) => {
 	try {
 		await promise;
 	} catch (e) {
-		return e instanceof PasswordRotationError || e instanceof SignInSecretError
-			? e.code
-			: "other";
+		return e instanceof PasswordRotationError ? e.code : "other";
 	}
 	return "none";
 };
@@ -193,6 +216,25 @@ describe("rotatePassword", () => {
 		expect(wire).not.toContain(MASTER.password);
 	});
 
+	it("never sends either typed password, whatever the server answers", async () => {
+		const answers: Server[] = [
+			{ begin: () => problem("rate_limited", 429) },
+			{ begin: () => problem("not_implemented", 501) },
+			{ begin: () => json({}, 500) },
+			{ commit: () => problem("conflict", 409) },
+			{ commit: () => problem("wrong_password", 400) },
+			{ commit: () => json({}, 500) },
+			{ keys: () => json({}, 404) },
+		];
+		for (const answer of answers) {
+			const t = setup(answer);
+			await failure(t.run(MASTER.password, NEXT));
+			const wire = JSON.stringify(t.calls.map((c) => [c.url, c.init]));
+			expect(wire).not.toContain(NEXT);
+			expect(wire).not.toContain(MASTER.password);
+		}
+	});
+
 	it("sends a fresh Idempotency-Key on the commit and none on begin", async () => {
 		const t = setup();
 		await t.run(MASTER.password, NEXT);
@@ -200,9 +242,9 @@ describe("rotatePassword", () => {
 		expect(keyOf(t.posted(COMMIT)[0])).toMatch(/^[0-9a-f-]{36}$/);
 	});
 
-	it("makes the new key set with the default Argon2id parameters", async () => {
+	it("makes the new key set with the default Argon2id parameters when nothing is injected", async () => {
 		const t = setup();
-		await t.run(MASTER.password, NEXT, { newParams: undefined });
+		await t.runPublic(MASTER.password, NEXT);
 		const sent = t.bodyOf(t.posted(COMMIT)[0]);
 		expect(sent.kdf.memoryKiB).toBe(ARGON2_DEFAULT.memoryKiB);
 		expect(sent.kdf.passes).toBe(ARGON2_DEFAULT.passes);
@@ -224,39 +266,6 @@ describe("rotatePassword", () => {
 		expect(t.posted(COMMIT)).toHaveLength(0);
 	});
 
-	it("refuses to send a new wrap that does not open, and posts no commit", async () => {
-		const t = setup();
-		// The only seal in the run is the new wrap: one flipped byte in it.
-		const primitives = async () => ({
-			...p,
-			aeadEncrypt: (...args: Parameters<Primitives["aeadEncrypt"]>) => {
-				const out = p.aeadEncrypt(...args);
-				out[0] = (out[0] ?? 0) ^ 1;
-				return out;
-			},
-		});
-		expect(await failure(t.run(MASTER.password, NEXT, { primitives }))).toBe(
-			"unavailable",
-		);
-		expect(t.posted(COMMIT)).toHaveLength(0);
-	});
-
-	it("refuses to send a new wrap that opens to a different account key, and posts no commit", async () => {
-		const t = setup();
-		// The seal succeeds and opens, but holds other bytes than the account key.
-		const primitives = async () => ({
-			...p,
-			aeadEncrypt: (...args: Parameters<Primitives["aeadEncrypt"]>) => {
-				const [key, nonce, , aad] = args;
-				return p.aeadEncrypt(key, nonce, p.randomBytes(32), aad);
-			},
-		});
-		expect(await failure(t.run(MASTER.password, NEXT, { primitives }))).toBe(
-			"unavailable",
-		);
-		expect(t.posted(COMMIT)).toHaveLength(0);
-	});
-
 	it("names a server that does not offer protection, on begin and on commit, without a retry", async () => {
 		const noBegin = setup({ begin: () => problem("not_implemented", 501) });
 		expect(await failure(noBegin.run(MASTER.password, NEXT))).toBe(
@@ -269,34 +278,6 @@ describe("rotatePassword", () => {
 			"notOffered",
 		);
 		expect(noCommit.posted(COMMIT)).toHaveLength(1);
-	});
-
-	it("refuses to send a new auth key that the new password does not make again", async () => {
-		const t = setup();
-		// kdfDerive runs old auth, old wrap, new auth, new wrap, check auth, check
-		// wrap: damage the third, so the sent key differs from the re-derived one.
-		let n = 0;
-		const primitives = async () => ({
-			...p,
-			kdfDerive: (...args: Parameters<Primitives["kdfDerive"]>) => {
-				const out = p.kdfDerive(...args);
-				if (++n === 3) out[0] = (out[0] ?? 0) ^ 1;
-				return out;
-			},
-		});
-		expect(await failure(t.run(MASTER.password, NEXT, { primitives }))).toBe(
-			"unavailable",
-		);
-		expect(n).toBeGreaterThanOrEqual(6);
-		expect(t.posted(COMMIT)).toHaveLength(0);
-	});
-
-	it("refuses a begin wrap that does not open under the old password, and sends nothing", async () => {
-		const bad = fromBase64Url(oldWrap) as Uint8Array;
-		bad[bad.length - 1] = (bad[bad.length - 1] ?? 0) ^ 1;
-		const t = setup({ beginWrap: () => toBase64Url(bad) });
-		expect(await failure(t.run(MASTER.password, NEXT))).toBe("unavailable");
-		expect(t.posted(COMMIT)).toHaveLength(0);
 	});
 
 	it("starts over once on a conflict, with a new Idempotency-Key", async () => {
@@ -329,6 +310,21 @@ describe("rotatePassword", () => {
 		const u = setup({ commit: () => json({}, 500) });
 		expect(await failure(u.run(MASTER.password, NEXT))).toBe("unavailable");
 		expect(u.posted(COMMIT)).toHaveLength(1);
+	});
+
+	it("treats a begin answer that is not the expected shape as unavailable, and sends no commit", async () => {
+		const answers = [
+			{ version: "3", kdf: OLD_KDF, wrappedAccountKey: oldWrap },
+			{ version: 3.5, kdf: OLD_KDF, wrappedAccountKey: oldWrap },
+			{ version: 3, kdf: { salt: 1 }, wrappedAccountKey: oldWrap },
+			{ version: 3, kdf: OLD_KDF, wrappedAccountKey: 7 },
+			{ version: 3, kdf: OLD_KDF },
+		];
+		for (const answer of answers) {
+			const t = setup({ begin: () => json(answer) });
+			expect(await failure(t.run(MASTER.password, NEXT))).toBe("unavailable");
+			expect(t.posted(COMMIT)).toHaveLength(0);
+		}
 	});
 
 	it("treats a key set that changed between the keys route and begin as a conflict", async () => {
@@ -369,36 +365,5 @@ describe("rotatePassword", () => {
 		);
 		expect(paint).not.toHaveBeenCalled();
 		expect(t.posted(BEGIN)).toHaveLength(0);
-	});
-
-	it("wipes every key it derived or opened, on success and on a refusal", async () => {
-		const kept: Uint8Array[] = [];
-		const watch = async () => ({
-			...p,
-			argon2id: (...args: Parameters<Primitives["argon2id"]>) =>
-				track(p.argon2id(...args)),
-			kdfDerive: (...args: Parameters<Primitives["kdfDerive"]>) =>
-				track(p.kdfDerive(...args)),
-			aeadDecrypt: (...args: Parameters<Primitives["aeadDecrypt"]>) =>
-				track(p.aeadDecrypt(...args)),
-		});
-		const track = (bytes: Uint8Array) => {
-			kept.push(bytes);
-			return bytes;
-		};
-		const allZero = () => kept.every((b) => b.every((x) => x === 0));
-
-		await setup().run(MASTER.password, NEXT, { primitives: watch });
-		// Three derivations (old, new, check), six subkeys, the opened account
-		// key twice.
-		expect(kept).toHaveLength(3 + 6 + 2);
-		expect(kept.every((b) => b.length === 32)).toBe(true);
-		expect(allZero()).toBe(true);
-
-		kept.length = 0;
-		const t = setup({ commit: () => problem("wrong_password", 400) });
-		await failure(t.run(MASTER.password, NEXT, { primitives: watch }));
-		expect(kept.length).toBeGreaterThan(0);
-		expect(allZero()).toBe(true);
 	});
 });
