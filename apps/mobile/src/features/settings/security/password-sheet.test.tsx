@@ -14,6 +14,7 @@ interface TestNode {
 
 const mockChange = jest.fn();
 const mockKeyed = jest.fn();
+let mockUserId: string | undefined = "user-1";
 const mockRotate = jest.fn();
 const mockProtection = { beginPasswordRotation: jest.fn() };
 jest.mock("@/auth/session", () => ({
@@ -25,7 +26,7 @@ jest.mock("@/auth/session", () => ({
 		baseUrl: "https://retrospend.app",
 		state: {
 			status: "signedIn",
-			me: { id: "user-1", email: "ana@example.com" },
+			me: { id: mockUserId, email: "ana@example.com" },
 		},
 	}),
 }));
@@ -123,6 +124,7 @@ beforeEach(() => {
 	mockKeyed.mockReset();
 	mockKeyed.mockResolvedValue(false);
 	mockRotate.mockReset();
+	mockUserId = "user-1";
 	mockToast.show.mockReset();
 	onClose.mockReset();
 });
@@ -177,6 +179,20 @@ describe("PasswordSheet", () => {
 		expect(onClose).not.toHaveBeenCalled();
 	});
 
+	it("sends nothing when the account id is not known", async () => {
+		mockUserId = undefined;
+		mockKeyed.mockResolvedValue(true);
+		const s = render();
+		s.type("Current password", "Old password 1");
+		s.type("New password", "Battery staple 2");
+		s.type("Confirm new password", "Battery staple 2");
+		await s.submit();
+		expect(mockKeyed).not.toHaveBeenCalled();
+		expect(mockRotate).not.toHaveBeenCalled();
+		expect(mockChange).not.toHaveBeenCalled();
+		expect(s.texts()).toContain("Couldn't change the password. Try again.");
+	});
+
 	describe("a keyed account", () => {
 		function filled() {
 			mockKeyed.mockResolvedValue(true);
@@ -215,6 +231,11 @@ describe("PasswordSheet", () => {
 				["wrongPassword", "The current password is wrong."],
 				["rateLimited", "Too many tries. Try again later."],
 				["protectionRefused", "Couldn't change the password. Try again."],
+				["unavailable", "Locked while Advanced protection is on."],
+				[
+					"keysMissing",
+					"The server says this account has no protection keys now.",
+				],
 			] as const) {
 				mockRotate.mockResolvedValueOnce({ ok: false, reason });
 				await s.submit();

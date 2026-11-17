@@ -382,7 +382,8 @@ describe("rotatePassword", () => {
 		for (const [error, reason] of [
 			[status(429), "rateLimited"],
 			[new TypeError("offline"), "network"],
-			[status(501, "not_implemented"), "unknown"],
+			[status(501, "not_implemented"), "unavailable"],
+			[status(500), "unknown"],
 		] as const) {
 			const r = rig();
 			const a = api({

@@ -31,12 +31,18 @@ function codeOf(error: unknown): string | null {
 }
 
 /** The sheet's words for a refused rotation. */
-function rotateRefusal(reason: RotateFailure): "wrong" | "tooMany" | "error" {
+function rotateRefusal(
+	reason: RotateFailure,
+): "wrong" | "tooMany" | "keysMissing" | "protected" | "error" {
 	return reason === "wrongPassword"
 		? "wrong"
 		: reason === "rateLimited"
 			? "tooMany"
-			: "error";
+			: reason === "keysMissing"
+				? "keysMissing"
+				: reason === "unavailable"
+					? "protected"
+					: "error";
 }
 
 /**
@@ -54,6 +60,8 @@ export function PasswordSheet({
 	onClose: () => void;
 }) {
 	const t = useTranslations("mobile.settings.security.password");
+	// Keys that a reset removed: the sign-in screen's words, final here too.
+	const tSignIn = useTranslations("mobile.signIn.error");
 	const { api, baseUrl, state } = useSession();
 	const email = state.status === "signedIn" ? (state.me?.email ?? null) : null;
 	const userId = state.status === "signedIn" ? (state.me?.id ?? null) : null;
@@ -111,7 +119,10 @@ export function PasswordSheet({
 					newKey: newClientId,
 				});
 				if (!done.ok) {
-					setRefusal(t(rotateRefusal(done.reason)));
+					const words = rotateRefusal(done.reason);
+					setRefusal(
+						words === "keysMissing" ? tSignIn("keysMissing") : t(words),
+					);
 					return;
 				}
 				onClose();
