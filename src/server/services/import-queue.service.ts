@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { env } from "~/env";
+import { isProtectedNow } from "~/server/api/protection/now";
 import { parseRawCsv } from "~/lib/csv";
 import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { generateId } from "~/lib/id";
@@ -67,6 +68,12 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_COMPLETED_JOBS = 10; // Max completed/cancelled/failed jobs to keep per user
 const COMPLETED_JOB_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
+/** The stable reason a job of a protected account fails with, in `statusMessage`. */
+const PROTECTED_CODE = "protected_account";
+
+/** Thrown when the owner turned protection on while a job ran; the job fails with the code, not this message. */
+class ProtectedJobError extends Error {}
+
 // ── Service ───────────────────────────────────────────────────────────
 
 export class ImportQueueService {
@@ -78,6 +85,29 @@ export class ImportQueueService {
 		only?: ImportJobStatus | ImportJobStatus[],
 	) {
 		return writeJob(this.db, id, data, only);
+	}
+
+	/**
+	 * Fails a job for a protected account, clearing its file. The reason is the
+	 * unsealed `statusMessage` code and `errorMessage` stays null: a refusal
+	 * seals nothing, so it never needs the owner's key.
+	 */
+	private refuse(id: string) {
+		return this.write(
+			id,
+			{
+				status: "FAILED",
+				statusMessage: PROTECTED_CODE,
+				failedAt: new Date(),
+				fileData: null,
+			},
+			"QUEUED",
+		);
+	}
+
+	/** The sidecar call can take minutes: the state is read again before a result is stored. */
+	private async assertNotProtected(userId: string) {
+		if (await isProtectedNow(userId)) throw new ProtectedJobError();
 	}
 
 	/**
@@ -161,6 +191,17 @@ export class ImportQueueService {
 			return;
 		}
 
+		// A protected account's jobs never run: refused before any file is read
+		// or claimed, outside the try below so no error text is stored.
+		if (await isProtectedNow(userId)) {
+			const queued = await this.db.importJob.findMany({
+				where: { userId, status: "QUEUED" },
+				select: { id: true },
+			});
+			for (const { id } of queued) await this.refuse(id);
+			return;
+		}
+
 		// Get next QUEUED job for this user
 		const job = await nextQueuedJob(this.db, userId);
 		if (job === "failed") return await this.processQueue(userId);
@@ -195,7 +236,10 @@ export class ImportQueueService {
 				job.id,
 				{
 					status: "FAILED",
-					errorMessage: errorText(error),
+					// A refusal gives its code, never text: nothing is sealed.
+					...(error instanceof ProtectedJobError
+						? { statusMessage: PROTECTED_CODE }
+						: { errorMessage: errorText(error) }),
 					failedAt: new Date(),
 					fileData: null, // Clear file data
 				},
@@ -239,6 +283,7 @@ export class ImportQueueService {
 	 */
 	private async processCsvJob(job: {
 		id: string;
+		userId: string;
 		fileData: string | null;
 		fileName: string;
 	}): Promise<void> {
@@ -286,6 +331,7 @@ export class ImportQueueService {
 			);
 		}
 
+		await this.assertNotProtected(job.userId);
 		// Store transactions and clear file data
 		await this.write(
 			job.id,
@@ -477,6 +523,7 @@ export class ImportQueueService {
 				throw new Error("No transactions extracted from statement");
 			}
 
+			await this.assertNotProtected(job.userId);
 			// Store results in job
 			await this.write(
 				job.id,

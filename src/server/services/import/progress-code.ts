@@ -31,6 +31,8 @@ const FIXED: ReadonlyArray<readonly [code: string, text: string]> = [
 	["parsing_statement", "Parsing bank statement..."],
 	["enriching", "Enriching transactions..."],
 	["complete", "Complete"],
+	// A job refused for a protected account (F9); the failure reason, never sidecar text.
+	["protected_account", "Advanced protection is on"],
 ];
 
 const WITH_NUMBERS: readonly Shape[] = [
