@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { loadCatalog } from "@retrospend/i18n/load";
 import { SUPPORTED_LOCALES } from "~/i18n/locales";
 import { loadCatalogFromDisk } from "./catalog-from-disk";
@@ -60,6 +60,13 @@ const KINDS: NoticeKind[] = [
 ];
 
 describe("buildNoticeText amounts", () => {
+	// The first read of a locale's catalog loads and merges it from disk, which
+	// passed the 5 s test limit on a loaded gate; warm them once, with room.
+	beforeAll(async () => {
+		for (const locale of ["en", "es-AR", "de"])
+			await serverTranslator(locale, "notificationText");
+	}, 30_000);
+
 	it("names a share and the total in ARS through the money formatter", async () => {
 		expect(
 			await text({
