@@ -312,6 +312,21 @@ describe("rotatePassword", () => {
 		expect(u.posted(COMMIT)).toHaveLength(1);
 	});
 
+	it("treats a begin answer that is not the expected shape as unavailable, and sends no commit", async () => {
+		const answers = [
+			{ version: "3", kdf: OLD_KDF, wrappedAccountKey: oldWrap },
+			{ version: 3.5, kdf: OLD_KDF, wrappedAccountKey: oldWrap },
+			{ version: 3, kdf: { salt: 1 }, wrappedAccountKey: oldWrap },
+			{ version: 3, kdf: OLD_KDF, wrappedAccountKey: 7 },
+			{ version: 3, kdf: OLD_KDF },
+		];
+		for (const answer of answers) {
+			const t = setup({ begin: () => json(answer) });
+			expect(await failure(t.run(MASTER.password, NEXT))).toBe("unavailable");
+			expect(t.posted(COMMIT)).toHaveLength(0);
+		}
+	});
+
 	it("treats a key set that changed between the keys route and begin as a conflict", async () => {
 		const t = setup({
 			begin: () =>
