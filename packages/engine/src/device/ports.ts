@@ -8,7 +8,12 @@ import type { PullApi, PullCursors } from "../sync-pull";
 // The phone and the web worker each implement them; the engine package knows
 // neither the generated client nor a database.
 
-/** The figures the server holds, as `GET /figures` returns them. */
+/**
+ * The figures the server holds, as `GET /figures` returns them. A line's
+ * currency may be the "%" pseudo-currency (figureLineSchema). The type is
+ * structural on purpose, so this package needs no api-client dependency: the
+ * phone's typecheck against the real client catches a contract change.
+ */
 export interface ServerFigures {
 	readonly figures: readonly {
 		readonly id: string;

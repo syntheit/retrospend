@@ -8,6 +8,7 @@
 	"exports": {
 		".": "./src/index.ts",
 		"./device": "./src/device/index.ts",
+		"./device-fake": "./src/device/fake-api.ts",
 		"./conformance": "./src/conformance.ts",
 		"./local-conformance": "./src/local-conformance.ts",
 		"./expense-create-conformance": "./src/expense-create-conformance.ts",
