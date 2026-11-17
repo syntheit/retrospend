@@ -17,7 +17,9 @@ import type { RouteScope } from "./scopes";
  *   idempotency store keeps no copy of it.
  * - `readsOnly`: a POST that writes nothing (the body carries what a query
  *   string should not, such as an email address). It needs no event and no
- *   Idempotency-Key, may be public, and ignores any session sent with it.
+ *   Idempotency-Key, may be public, and ignores any session sent with it. On
+ *   a signed-in scope it still reads the session but needs no Idempotency-Key
+ *   (the first step of a password change: it spends a try, stores nothing).
  * - `snapshot`: on a `sync` route, the body is a whole table as of one read,
  *   not a cursor delta, so the route never answers 410 sync_reset_required.
  */

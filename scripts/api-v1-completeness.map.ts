@@ -467,7 +467,13 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 
 	// ── profile ──────────────────────────────────────────────────────────
 	"profile.cancelPendingEmailChange": to("DELETE /profile/pending-email"),
-	"profile.changePassword": to("POST /me/password"),
+	// An account with protection keys changes its password through the two
+	// protection routes; the plain route refuses it with protected_password.
+	"profile.changePassword": to(
+		"POST /me/password",
+		"POST /me/protection/password/begin",
+		"POST /me/protection/password",
+	),
 	"profile.getBackgroundSettings": to("GET /profile/background"),
 	"profile.getLifetimeStats": to("GET /profile/stats"),
 	"profile.getMyAvatar": to("GET /profile"),

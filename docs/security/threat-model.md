@@ -70,6 +70,11 @@ An attacker who controls the app, the database and the master key, or a maliciou
 
   It cannot move a record to another id, entity, version, user or collection, or present a genuine wrap as another role or id, without the tag check failing (sections 5.5 and 6).
 
+  Changing the password of a keyed account (K2):
+  - `POST /me/protection/password/begin` releases the `ak-password` wrap only to a caller that proved the current auth key. A wrong key is a counted try (5 per session and 20 per account in 15 minutes, shared with every password check), so a stolen session cookie gets no wrap to guess against offline, only online guesses at that rate.
+  - Rotation deletes the old wrap row and replaces the salt, but a backup taken before it, or a hostile server replaying the old salt and the old wrap, still opens the account key with the old password.
+  - Only rotating the account key itself (spike section 4.6) defeats that replay. Rotation here rewraps the same account key, so the private key, the collection keys and a phone's own copy of the account key stay valid and nothing sealed is touched.
+
 ### 4.3 Compromised backup
 
 A copy of the database dump, or of the sealed store, in someone else's hands.

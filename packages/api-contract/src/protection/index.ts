@@ -81,7 +81,63 @@ export const protectionKeysSchema = protectionKeysStatusSchema
 	.extend({ kdf: preloginKdfSchema })
 	.meta({ id: "ProtectionKeys" });
 
+/** The wrap text of a 74-byte symmetric wrap; the server checks the bytes. */
+const WRAP_TEXT = /^[A-Za-z0-9_-]{1,512}$/;
+
+export const beginPasswordRotationSchema = z
+	.object({
+		currentAuthKey: z.string().regex(KEY_TEXT).meta({
+			description:
+				"The sign-in secret you derived from your current password, base64url, 43 characters. Counted as a try, like a password change.",
+		}),
+	})
+	.meta({ id: "BeginPasswordRotation" });
+
+export const beginPasswordRotationResultSchema = z
+	.object({
+		version: z.int().min(1).meta({
+			description: "The key set version to send back as baseVersion.",
+		}),
+		kdf: preloginKdfSchema,
+		wrappedAccountKey: z.string().regex(WRAP_TEXT).meta({
+			description:
+				"Your account key wrapped under the current password, base64url. The server never opens it.",
+		}),
+	})
+	.meta({ id: "BeginPasswordRotationResult" });
+
+export const rotatePasswordSchema = z
+	.object({
+		currentAuthKey: z.string().regex(KEY_TEXT).meta({
+			description:
+				"The sign-in secret of the current password, base64url, 43 characters. Counted as a try.",
+		}),
+		newAuthKey: z.string().regex(KEY_TEXT).meta({
+			description:
+				"The sign-in secret derived from the new password and the new kdf, base64url, 43 characters.",
+		}),
+		kdf: preloginKdfSchema,
+		wrappedAccountKey: z.string().regex(WRAP_TEXT).meta({
+			description:
+				"Your account key wrapped under the new password, base64url. Replaces the old wrap.",
+		}),
+		baseVersion: z.int().min(1).meta({
+			description: "The version the begin call returned.",
+		}),
+	})
+	.meta({ id: "RotatePassword" });
+
+export const rotatePasswordResultSchema = z
+	.object({
+		version: z.int().min(2),
+		signedOut: z.int().min(0).meta({
+			description: "How many other sessions the change signed out.",
+		}),
+	})
+	.meta({ id: "RotatePasswordResult" });
+
 export type EnableProtection = z.infer<typeof enableProtectionSchema>;
+export type RotatePassword = z.infer<typeof rotatePasswordSchema>;
 export type ProtectionKeysDto = z.infer<typeof protectionKeysSchema>;
 
 /**
@@ -117,4 +173,30 @@ export const protectionContract = {
 		})
 		.meta({ scope: "account:security" })
 		.output(protectionKeysSchema),
+	beginPasswordRotation: v1
+		.route({
+			method: "POST",
+			path: "/me/protection/password/begin",
+			operationId: "beginPasswordRotation",
+			tags: TAG,
+			summary: "Prove your current sign-in secret and get your password wrap",
+			description:
+				"Step one of changing the password of an account with protection keys. The wrap is released only to a caller that proves the current sign-in secret (5 tries per session and 20 per account in 15 minutes, shared with every password check, then 429; a wrong one is 400 wrong_password). 409 when you have no keys, 501 when the server does not offer Advanced protection. Writes nothing, so it needs no Idempotency-Key.",
+		})
+		.meta({ scope: "account:security", readsOnly: true })
+		.input(beginPasswordRotationSchema)
+		.output(beginPasswordRotationResultSchema),
+	rotatePassword: v1
+		.route({
+			method: "POST",
+			path: "/me/protection/password",
+			operationId: "rotatePassword",
+			tags: TAG,
+			summary: "Change the password of an account with protection keys",
+			description:
+				"Step two: the device derived a new sign-in secret and rewrapped the account key under the new password. Counts a try like step one. Replaces the stored sign-in secret and the password wrap together, signs out every other session, removes pending password reset links and emails you. 409 when the keys changed since step one: start again from step one. 501 when the server does not offer Advanced protection.",
+		})
+		.meta({ scope: "account:security", event: "user.password_changed" })
+		.input(rotatePasswordSchema)
+		.output(rotatePasswordResultSchema),
 };
