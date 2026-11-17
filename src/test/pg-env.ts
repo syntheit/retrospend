@@ -6,6 +6,7 @@
 import { createHash } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, inject } from "vitest";
+import type { Keyring } from "~/server/crypto/field-crypto";
 import { appPoolConfig } from "~/server/db-pool-config";
 import { PrismaClient } from "~prisma";
 import { guardMoneyWrites } from "./money/write-guard";
@@ -64,8 +65,13 @@ beforeAll(async () => {
 		),
 	);
 	if (!sealed) return;
-	// What the start-up check writes before the first sealing write.
-	const { writeEpoch } = await import("./sealed-fixture");
+	// What the flag-on start writes before the first sealing write: the
+	// instance key, then the epoch. The key service refuses a first key once
+	// the epoch is set.
+	const { instanceKeyring, writeEpoch } = await import("./sealed-fixture");
+	const { getMasterKeyring } = await import("~/server/crypto/master-key");
+	await writeEpoch(false);
+	await instanceKeyring(getMasterKeyring() as Keyring);
 	await writeEpoch(true);
 	const { startSweep } = await import("./sealed-sweep");
 	endSweep = await startSweep();
