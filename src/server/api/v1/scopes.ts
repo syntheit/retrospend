@@ -132,12 +132,13 @@ const ACCOUNT_SESSION_SCOPES: readonly SessionScope[] = [
  * with narrowed stored scopes keeps them only with `write:settings`, since
  * deleting the account is at least as sensitive as changing settings.
  *
- * `sync` (every column of the caller's own rows, for the app's local copy)
- * goes to mobile sessions only (any client that identifies as the mobile app at
- * sign-in, as with the account scopes; it reaches only that user's own rows):
- * the web app has no local copy, and a device
- * session, API key or personal token never gets it, so a `read` token cannot
- * pull the raw rows. A mobile session keeps it only with `read` stored.
+ * `sync` (every column of the caller's own rows, for an app's local copy)
+ * goes to every web cookie session (the web app's own engine reads its own
+ * rows with it) and to mobile sessions (any client that identifies as the
+ * mobile app at sign-in, as with the account scopes). It reaches only that
+ * user's own rows. A device session, API key or personal token never gets it,
+ * so a `read` token cannot pull the raw rows. A mobile session keeps it only
+ * with `read` stored.
  *
  * `vault` (pull and push a protected account's sealed records) goes to every
  * web session, and to a mobile session only with `read`, `write:expenses` and
@@ -149,7 +150,8 @@ export function sessionScopesOf(input: {
 	kind: PrincipalKind;
 	granted: readonly Scope[] | null;
 }): SessionScope[] {
-	if (input.kind === "web") return [...ACCOUNT_SESSION_SCOPES, "vault"];
+	if (input.kind === "web")
+		return [...ACCOUNT_SESSION_SCOPES, "sync", "vault"];
 	if (input.kind !== "mobile") return [];
 	const held: SessionScope[] = [];
 	if (input.granted?.includes("write:settings"))

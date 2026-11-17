@@ -8,6 +8,7 @@ describe("sessionScopesOf", () => {
 	it("gives account deletion and security to the web app and the Expo app only", () => {
 		expect(sessionScopesOf({ kind: "web", granted: null })).toEqual([
 			...held,
+			"sync",
 			"vault",
 		]);
 		expect(sessionScopesOf({ kind: "mobile", granted: null })).toEqual([]);
@@ -19,16 +20,14 @@ describe("sessionScopesOf", () => {
 		).toEqual([...held, "sync"]);
 	});
 
-	it("gives sync to a mobile session with read stored, and to nothing else", () => {
+	it("gives sync to every web session, and to a mobile session with read stored, and to nothing else", () => {
 		expect(sessionScopesOf({ kind: "mobile", granted: ["read"] })).toEqual([
 			"sync",
 		]);
 		expect(
 			sessionScopesOf({ kind: "mobile", granted: ["write:expenses"] }),
 		).toEqual([]);
-		expect(sessionScopesOf({ kind: "web", granted: null })).not.toContain(
-			"sync",
-		);
+		expect(sessionScopesOf({ kind: "web", granted: null })).toContain("sync");
 		for (const kind of ["device", "apiKey"] as const) {
 			expect(
 				sessionScopesOf({ kind, granted: ["read", "write:settings"] }),

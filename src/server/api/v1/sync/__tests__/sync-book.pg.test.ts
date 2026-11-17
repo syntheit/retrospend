@@ -25,6 +25,7 @@ import {
 	expectBody,
 	expectProblem,
 	fixtureDb,
+	sessionFor,
 	webCookieFor,
 } from "../../core/__tests__/harness";
 
@@ -165,10 +166,24 @@ describe("book sync routes: who may call them", () => {
 	);
 
 	it.each(Object.entries(ROUTES))(
-		"%s refuses the web app's cookie session",
+		"%s answers the web app's cookie session",
 		async (_name, { path }) => {
 			const res = await call(path, {
 				headers: { ...OWN_IP, ...(await webCookieFor(userId)) },
+			});
+			expect(res.status, await res.text()).toBe(200);
+		},
+	);
+
+	it.each(Object.entries(ROUTES))(
+		"%s refuses a device session that holds every token scope",
+		async (_name, { path }) => {
+			const token = await sessionFor(userId, {
+				scopes: [...SCOPES].join(" "),
+				clientId: "retrospend-cli",
+			});
+			const res = await call(path, {
+				headers: { ...OWN_IP, authorization: `Bearer ${token}` },
 			});
 			await expectProblem(res, 403, "missing_scope");
 		},
