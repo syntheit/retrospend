@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
-import { isKeyedAccount, keysLookup } from "@/auth/sign-in-secret";
+import {
+	isKeyedAccount,
+	keysLookup,
+	type RotateFailure,
+	rotatePassword,
+} from "@/auth/sign-in-secret";
 import { newClientId } from "@/data/ids";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
@@ -25,11 +30,27 @@ function codeOf(error: unknown): string | null {
 	return typeof code === "string" ? code : null;
 }
 
+/** The sheet's words for a refused rotation. */
+function rotateRefusal(
+	reason: RotateFailure,
+): "wrong" | "tooMany" | "keysMissing" | "protected" | "error" {
+	return reason === "wrongPassword"
+		? "wrong"
+		: reason === "rateLimited"
+			? "tooMany"
+			: reason === "keysMissing"
+				? "keysMissing"
+				: reason === "unavailable"
+					? "protected"
+					: "error";
+}
+
 /**
  * Change password: the current one, the new one with its rules as checks,
  * and the new one again. The server checks the current password every time
- * and signs out the other devices; this phone stays signed in. Nothing typed
- * stays in a closed sheet.
+ * and signs out the other devices; this phone stays signed in. An account with
+ * protection keys changes it on this phone (derive, rewrap, check, send), the
+ * same sheet with its busy state. Nothing typed stays in a closed sheet.
  */
 export function PasswordSheet({
 	visible,
@@ -39,8 +60,11 @@ export function PasswordSheet({
 	onClose: () => void;
 }) {
 	const t = useTranslations("mobile.settings.security.password");
+	// Keys that a reset removed: the sign-in screen's words, final here too.
+	const tSignIn = useTranslations("mobile.signIn.error");
 	const { api, baseUrl, state } = useSession();
 	const email = state.status === "signedIn" ? (state.me?.email ?? null) : null;
+	const userId = state.status === "signedIn" ? (state.me?.id ?? null) : null;
 	const toast = useToast();
 	const { color, space, type } = useTheme();
 	const [current, setCurrent] = useState("");
@@ -67,14 +91,42 @@ export function PasswordSheet({
 		setBusy(true);
 		setRefusal(null);
 		try {
-			// The server refuses a keyed account's change, but not before the
-			// typed password has travelled: ask first and send nothing.
-			const keyed =
-				baseUrl && email
-					? await isKeyedAccount({ baseUrl, email, lookup: keysLookup(api) })
-					: null;
-			if (keyed !== false) {
-				setRefusal(keyed ? t("protected") : t("error"));
+			if (!baseUrl || !email || !userId) {
+				setRefusal(t("error"));
+				return;
+			}
+			// The plain route refuses a keyed account, but not before the typed
+			// password has travelled: ask first, and a keyed account takes the
+			// rotation, which sends only sign-in secrets.
+			const keyed = await isKeyedAccount({
+				baseUrl,
+				email,
+				lookup: keysLookup(api),
+			});
+			if (keyed === null) {
+				setRefusal(t("error"));
+				return;
+			}
+			if (keyed) {
+				const done = await rotatePassword({
+					api: api.protection,
+					baseUrl,
+					email,
+					userId,
+					current,
+					next,
+					lookup: keysLookup(api),
+					newKey: newClientId,
+				});
+				if (!done.ok) {
+					const words = rotateRefusal(done.reason);
+					setRefusal(
+						words === "keysMissing" ? tSignIn("keysMissing") : t(words),
+					);
+					return;
+				}
+				onClose();
+				toast.show({ message: t("changed") });
 				return;
 			}
 			await api.account.changePassword(
