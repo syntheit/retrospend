@@ -1,5 +1,6 @@
 import type { ExportRequest } from "@retrospend/api-contract";
 import { dayKey } from "@retrospend/domain/time-zone";
+import { isProtectedNow } from "~/server/api/protection/now";
 import {
 	newExportPath,
 	putExport,
@@ -84,6 +85,9 @@ async function build(
 	}
 }
 
+/** The reason an export of a protected account fails with, in the plain `error` column. */
+const PROTECTED_CODE = "protected_account";
+
 function messageOf(error: unknown): string {
 	const text = error instanceof Error ? error.message : "The export failed";
 	return text.slice(0, 500);
@@ -100,6 +104,18 @@ export function runExportJob(jobId: string, userId: string) {
 
 async function buildAndStore(jobId: string, userId: string) {
 	const db = scopedDbFor(userId);
+	// A protected account's export is never built: refused before the claim, no file.
+	if (await isProtectedNow(userId)) {
+		await db.exportJob.updateMany({
+			where: { id: jobId, userId, status: "QUEUED" },
+			data: {
+				status: "FAILED",
+				error: PROTECTED_CODE,
+				completedAt: new Date(),
+			},
+		});
+		return;
+	}
 	// Claims the job, so a second runner never builds it again.
 	const claimed = await db.exportJob.updateMany({
 		where: { id: jobId, userId, status: "QUEUED" },
@@ -115,6 +131,8 @@ async function buildAndStore(jobId: string, userId: string) {
 			{ principal: { userId }, timeZone: job.timeZone },
 			{ ...(job.params as object), kind: job.kind } as ExportRequest,
 		);
+		// Building can take a while: read the state again before a file is stored.
+		if (await isProtectedNow(userId)) throw new Error(PROTECTED_CODE);
 		const path = newExportPath(userId, jobId);
 		await putExport(path, built.bytes);
 		// update by id, not updateMany: the file name is user text, sealed under
