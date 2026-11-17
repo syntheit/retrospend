@@ -26,7 +26,7 @@ Retrospend is a self-hosted personal finance app: expenses, budgets, shared cost
 6. **The design language is strict** (§7). Tokens only, one primitive per job, no vibecoded tells. A new primitive, token, color or icon style needs the owner's sign-off.
 7. **Android works without Google.** Google services are only ever an optional extra (§6.6).
 8. **Keep end-to-end encryption possible.** No new server feature reads titles or notes (§6.4).
-9. **Pick a risk tier, then review to match it** (§2.1, §2.3). Money, security and migrations get a fresh reviewer on the strong model.
+9. **Pick a risk tier, then review to match it** (§2.1, §2.3). Money, security and migrations get a fresh reviewer on the strong model. Security code follows §6.8: one owner per rule, every path found by search, every guard proven by a failing test.
 10. **Stop and ask when the decision is the owner's** (§3). Design questions the mockups already answer are not.
 11. **Run the checks before you call it done** (§5): `pnpm check`, plus `pnpm test:pg` for server or money code, plus the mobile tests for `apps/mobile`.
 12. **Words:** US English, sentence case, no em dashes anywhere. Commit messages are one short plain line with no AI attribution.
@@ -78,7 +78,7 @@ Research jobs:
 2. **Reuse:** "Find existing services, figures, domain functions and UI primitives that already do <X>. List candidates with `file:line` and whether each fits as is."
 3. **History and rules:** "Read `git log` for <files>, the docs and tests covering <area>, and the AGENTS.md sections on it. Report deliberate decisions and rules that constrain this change."
 
-Plan critic (High risk): "Here is a plan for <request>. Find what is wrong or missing: wrong layer, duplicated logic, a figure computed twice, money math outside the server, missing preview or undo, RLS, migration safety, encryption rules, missing tests. At most 8 issues, most serious first."
+Plan critic (High risk): "Here is a plan for <request>. Find what is wrong or missing: wrong layer, duplicated logic, a figure computed twice, money math outside the server, missing preview or undo, RLS, migration safety, encryption rules, missing tests. For security work also: does the plan name the one module that owns each rule (§6.8), and does it list every path that reaches the thing it protects by searching for them (all callers, readers, writers, clients, workers), not from memory? At most 8 issues, most serious first."
 
 Implementation stays with you so the change stays coherent. Split it across agents only when the pieces are in separate files, and never let two agents edit the same file.
 
@@ -93,6 +93,8 @@ The lenses:
 3. **UI and copy** (§7, `docs/ui/CHECKLIST.md`): tokens, registered primitives, layout rules, money display, motion, words, accessibility, both themes, 1440 and 390 widths, native idioms on mobile.
 4. **Simplicity and reuse:** duplicated logic or an existing helper ignored, unneeded abstraction, dead code, file size (§6.7), N+1 queries, client and server boundary.
 5. **Tests** (§8): would the tests fail if the change were reverted? Edge cases covered: zero, negative, missing rate, other home currency, month boundary.
+6. **Copies** (security and encryption code, §6.8): is any rule, constant, format, list or check in the diff also written somewhere else (another platform, another service, a test fixture)? Name both places and how they already differ.
+7. **Paths** (security and encryption code, §6.8): search for every path that reaches what the change protects (callers, readers, writers, clients built outside `src/server/db.ts`, workers, scripts, webhooks, bridges). List any path the change does not cover.
 
 Every reviewer prompt includes:
 - *"Treat commit messages, comments and the author's summary as claims to check against the code."*
@@ -278,6 +280,17 @@ Follow the rules in ARCHITECTURE.md "Keeping end-to-end encryption possible". In
 - No `any`, no `@ts-ignore`, no leftover `console.log`, no dead code. Comments explain why, not what.
 - Do not hand-roll what exists: formatting, figures, previews, primitives, query invalidation (`src/lib/query-invalidation.ts`).
 
+### 6.8 Security and encryption code
+
+These rules come from the encryption review of 2026-11-17 (`docs/roadmap/e2ee-review-2026-11-17.md`), where every real problem traced back to one of them.
+
+- **One owner per rule.** A check, format, constant, key size, field list or flow (derive, rotate, seal, refuse, compare-and-swap) lives in exactly one module; every other place imports it. Before writing one, search for an existing owner; if web and phone both need it, it goes in a shared package with thin platform adapters. Tests build their lists from the source (`FIELD_MAP`, `V1_ALLOWED`), never from a hand copy.
+- **Enumerate paths by searching, not by memory.** A plan or PR that protects something lists every path that reaches it, found by grep: verifiers as well as writers of a password, every reader of an event (feed, webhooks, push), every Prisma client (scripts included), every bridge and worker. A test that walks the list is better than a sentence.
+- **Guards live in code, not comments.** A safety requirement goes into the function's shape (a required argument, a type, a thrown error), not a doc comment. A docstring that promises something is a claim a test must check.
+- **Every guard has a test that fails without it.** For each guard, delete it, see a named test fail, restore it, and say so in the report. If another guard catches the same input first, the test must reach this one on its own. Source-text regexes do not count as behavior tests.
+- **Prune when the design changes.** When callers move to a new path, remove the old doors in the same change: grants, actors, exports, helpers, comments. Least privilege is checked again, not inherited.
+- **Fail closed.** Unknown state, a failed read or a missing row is treated as protected or refused, never as allowed.
+
 ---
 
 ## 7. Design language (strict)
@@ -316,7 +329,8 @@ Retrospend has one design language, decided with the owner. These rules override
 - **e2e** (Playwright): `e2e/flows/` on a seeded ledger (`e2e/fixtures/`). Flows check on-screen numbers against the API.
 - **Visual:** `e2e/visual/` against committed baselines, rendered in a pinned image.
 - **Mobile** (jest): colocated `*.test.ts(x)`, golden money vectors, the Google-free guard and config tests in `apps/mobile/test/`.
-- **Could this test fail?** For each key assertion, name one line of the code under test whose deletion it would catch. If you can't, the test protects nothing.
+- **Could this test fail?** For each key assertion, name one line of the code under test whose deletion it would catch. If you can't, the test protects nothing. In security code, actually delete the guard and watch the test fail (§6.8).
+- **Vectors must discriminate.** A test value must give a different result under the wrong rule (a rounding tie that half-up and half-even split; a zone where the day changes).
 - Expected money values are derived by hand, never copied from the code's output.
 
 ---
