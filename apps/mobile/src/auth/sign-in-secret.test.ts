@@ -5,7 +5,7 @@
 import type { PreloginKdf } from "@retrospend/api-contract";
 import type { Primitives } from "@retrospend/crypto";
 import { loadWebSodium } from "@retrospend/crypto/web";
-import type { SecretDeps } from "./sign-in-secret";
+import type { KdfLookup, SecretDeps } from "./sign-in-secret";
 
 type Helper = typeof import("./sign-in-secret");
 let h: Helper;
@@ -49,13 +49,28 @@ function memory() {
 }
 
 const status = (n: number) => Object.assign(new Error("x"), { status: n });
+/** A lookup whose server answer is `{ kdf }`, from prelogin or the keys route. */
+const answering = (
+	kdf: () => Promise<PreloginKdf | null>,
+	route: KdfLookup["route"] = "prelogin",
+): KdfLookup => ({ route, ask: async () => ({ kdf: await kdf() }) });
+/** A lookup whose server answer is exactly `body`. */
+const raw = (body: unknown, route: KdfLookup["route"]): KdfLookup => ({
+	route,
+	ask: async () => body,
+});
 const resolve = (
 	deps: SecretDeps,
-	lookup: () => Promise<PreloginKdf | null>,
+	lookup: (() => Promise<PreloginKdf | null>) | KdfLookup,
 	password = PASSWORD,
 ) =>
 	h.resolveSignInSecret(
-		{ baseUrl: BASE, email: EMAIL, password, lookup },
+		{
+			baseUrl: BASE,
+			email: EMAIL,
+			password,
+			lookup: typeof lookup === "function" ? answering(lookup) : lookup,
+		},
 		deps,
 	);
 
@@ -161,7 +176,7 @@ describe("resolveSignInSecret", () => {
 						baseUrl: BASE,
 						email: ` ${EMAIL.toLowerCase()} `,
 						password: PASSWORD,
-						lookup: async () => null,
+						lookup: answering(async () => null),
 					},
 					m.deps(),
 				),
@@ -176,7 +191,7 @@ describe("resolveSignInSecret", () => {
 						baseUrl: "https://other.example",
 						email: EMAIL,
 						password: PASSWORD,
-						lookup: async () => null,
+						lookup: answering(async () => null),
 					},
 					m.deps(),
 				),
@@ -201,8 +216,20 @@ describe("resolveSignInSecret", () => {
 	});
 
 	describe("isKeyedAccount", () => {
-		const ask = (deps: SecretDeps, lookup: () => Promise<PreloginKdf | null>) =>
-			h.isKeyedAccount({ baseUrl: BASE, email: EMAIL, lookup }, deps);
+		// Signed in: the keys route.
+		const ask = (
+			deps: SecretDeps,
+			lookup: (() => Promise<PreloginKdf | null>) | KdfLookup,
+		) =>
+			h.isKeyedAccount(
+				{
+					baseUrl: BASE,
+					email: EMAIL,
+					lookup:
+						typeof lookup === "function" ? answering(lookup, "keys") : lookup,
+				},
+				deps,
+			);
 
 		it("is true from the record without asking the server", async () => {
 			const m = memory();
@@ -218,9 +245,8 @@ describe("resolveSignInSecret", () => {
 			expect(m.items.size).toBe(1);
 		});
 
-		it("is false for no keys, null or 404, and null when it cannot tell", async () => {
+		it("is false for a 404, and null when it cannot tell", async () => {
 			const m = memory();
-			expect(await ask(m.deps(), async () => null)).toBe(false);
 			expect(
 				await ask(m.deps(), async () => {
 					throw status(404);
@@ -231,6 +257,33 @@ describe("resolveSignInSecret", () => {
 					throw status(500);
 				}),
 			).toBeNull();
+		});
+
+		it("cannot tell from an answer that is not the expected shape, and records nothing", async () => {
+			const m = memory();
+			for (const body of [null, {}, { kdf: null }, { kdf: "keys" }]) {
+				expect(await ask(m.deps(), raw(body, "keys"))).toBeNull();
+			}
+			expect(m.items.size).toBe(0);
+		});
+	});
+
+	describe("an answer that is not the expected shape", () => {
+		it("is a network failure, never no keys: the typed password is not sent", async () => {
+			for (const lookup of [
+				raw({ kdf: "keys" }, "prelogin"),
+				raw({}, "prelogin"),
+				raw(null, "prelogin"),
+				raw({ kdf: null }, "keys"),
+				raw({ kdf: { salt: KDF.salt, memoryKiB: 1.5, passes: 1 } }, "prelogin"),
+			]) {
+				const m = memory();
+				expect(await resolve(m.deps(), lookup)).toEqual({
+					ok: false,
+					reason: "network",
+				});
+				expect(m.items.size).toBe(0);
+			}
 		});
 	});
 

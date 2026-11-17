@@ -9,8 +9,10 @@ export {
 	type KeyedRecord,
 	type KeyFlowCode,
 	KeyFlowError,
+	type LookupAnswer,
+	type LookupRoute,
+	lookupKdf,
 	NEW_PASSWORD_PARAMS,
-	readKdf,
 } from "./flow";
 export {
 	type BeginAnswer,
@@ -18,6 +20,7 @@ export {
 	type RotateInput,
 	type RotateOptions,
 	type RotatePorts,
+	readBeginAnswer,
 	rotatePassword,
 } from "./rotate";
 export { accountIsKeyed, deriveSignInSecret, signInSecretFor } from "./secret";

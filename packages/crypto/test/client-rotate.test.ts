@@ -20,7 +20,6 @@ import {
 	unwrapKey,
 } from "../src";
 import {
-	type BeginAnswer,
 	type CommitBody,
 	classifyRefusal,
 	type Kdf,
@@ -66,7 +65,9 @@ beforeAll(async () => {
 
 type Server = {
 	keys?: () => Kdf | null;
-	begin?: (n: number, body: { currentAuthKey: string }) => BeginAnswer;
+	/** The keys route is missing for this account (404). */
+	noKeys?: boolean;
+	begin?: (n: number, body: { currentAuthKey: string }) => unknown;
 	commit?: (n: number) => void;
 };
 
@@ -80,7 +81,11 @@ function rig(server: Server = {}, primitives?: Primitives) {
 	const ports: RotatePorts = {
 		primitives: prims,
 		paint,
-		lookup: async () => (server.keys ? server.keys() : OLD_KDF),
+		lookup: async () =>
+			server.noKeys
+				? { missing: true as const }
+				: { body: { kdf: server.keys ? server.keys() : OLD_KDF } },
+		lookupRoute: "keys",
 		record: { has: async () => false, set },
 		begin: async (body) => {
 			const n = begins.push(body) - 1;
@@ -255,6 +260,33 @@ describe("rotatePassword", () => {
 			expect(t.commits).toHaveLength(0);
 		});
 
+		it("is unavailable, with no commit, when the begin answer is not the expected shape", async () => {
+			const good = { version: 3, kdf: OLD_KDF, wrappedAccountKey: oldWrap };
+			for (const body of [
+				null,
+				"begin",
+				{},
+				{ version: 1 },
+				{ ...good, version: undefined },
+				{ ...good, version: 3.5 },
+				{ ...good, version: "3" },
+				{ ...good, kdf: null },
+				{ ...good, kdf: { ...OLD_KDF, passes: 1.5 } },
+				{ ...good, wrappedAccountKey: undefined },
+				{ ...good, wrappedAccountKey: 7 },
+			]) {
+				const t = rig({ begin: () => body });
+				expect(await codeOf(t.run())).toBe("unavailable");
+				expect(t.commits).toHaveLength(0);
+			}
+		});
+
+		it("is unavailable, not a downgrade, when the keys route answers a null kdf", async () => {
+			const t = rig({ keys: () => null });
+			expect(await codeOf(t.run())).toBe("unavailable");
+			expect(t.begins).toHaveLength(0);
+		});
+
 		it("refuses a begin wrap that is not base64url", async () => {
 			const t = rig({
 				begin: () => ({ version: 3, kdf: OLD_KDF, wrappedAccountKey: "***" }),
@@ -342,7 +374,7 @@ describe("rotatePassword", () => {
 	});
 
 	it("refuses an account the keys route says has no keys, before any derivation", async () => {
-		const t = rig({ keys: () => null });
+		const t = rig({ noKeys: true });
 		expect(await codeOf(t.run())).toBe("downgrade");
 		expect(t.paint).not.toHaveBeenCalled();
 		expect(t.prims).not.toHaveBeenCalled();

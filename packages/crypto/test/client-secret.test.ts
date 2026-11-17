@@ -33,6 +33,11 @@ beforeAll(async () => {
 
 type Over = {
 	kdf?: Kdf | null;
+	/** The raw answer body, instead of `{ kdf }`. */
+	body?: unknown;
+	/** A missing route or account (404). */
+	missing?: boolean;
+	route?: "prelogin" | "keys";
 	lookupError?: KeyFlowError;
 	recorded?: boolean;
 	hasError?: boolean;
@@ -43,7 +48,9 @@ type Over = {
 function rig(over: Over = {}) {
 	const lookup = vi.fn(async () => {
 		if (over.lookupError) throw over.lookupError;
-		return over.kdf === undefined ? KDF : over.kdf;
+		if (over.missing) return { missing: true as const };
+		if ("body" in over) return { body: over.body };
+		return { body: { kdf: over.kdf === undefined ? KDF : over.kdf } };
 	});
 	const has = vi.fn(async () => {
 		if (over.hasError) throw new Error("locked");
@@ -54,7 +61,13 @@ function rig(over: Over = {}) {
 	});
 	const paint = vi.fn(async () => {});
 	const primitives = vi.fn(async () => over.primitives ?? p);
-	const ports: FlowPorts = { primitives, paint, lookup, record: { has, set } };
+	const ports: FlowPorts = {
+		primitives,
+		paint,
+		lookup,
+		lookupRoute: over.route ?? "prelogin",
+		record: { has, set },
+	};
 	return { ports, lookup, has, set, paint, primitives };
 }
 
@@ -107,6 +120,64 @@ describe("signInSecretFor", () => {
 			"malformed",
 		);
 		expect(r.primitives).not.toHaveBeenCalled();
+	});
+
+	describe("the lookup answer", () => {
+		const MALFORMED: [string, unknown][] = [
+			["no body", null],
+			["a string", "keys"],
+			["an empty object", {}],
+			["no kdf field", { version: 1 }],
+			["a kdf that is a string", { kdf: "keys" }],
+			["a kdf without a salt", { kdf: { memoryKiB: 65536, passes: 3 } }],
+			["a salt that is not text", { kdf: { ...KDF, salt: 7 } }],
+			["parameters that are not integers", { kdf: { ...KDF, passes: 1.5 } }],
+			["parameters that are text", { kdf: { ...KDF, memoryKiB: "9" } }],
+		];
+
+		it("is unavailable, never no keys, when it is not the expected shape", async () => {
+			for (const recorded of [false, true]) {
+				for (const [, body] of MALFORMED) {
+					const r = rig({ recorded, body });
+					expect(await codeOf(signInSecretFor(r.ports, TYPED))).toBe(
+						"unavailable",
+					);
+					expect(r.primitives).not.toHaveBeenCalled();
+					expect(r.set).not.toHaveBeenCalled();
+				}
+			}
+		});
+
+		it("is unavailable for a null kdf from the keys route, which has no such answer", async () => {
+			const r = rig({ route: "keys", kdf: null });
+			expect(await codeOf(signInSecretFor(r.ports, TYPED))).toBe(
+				"unavailable",
+			);
+			expect(await codeOf(accountIsKeyed(r.ports))).toBe("unavailable");
+			expect(r.set).not.toHaveBeenCalled();
+		});
+
+		it("cannot tell whether the account is keyed from a malformed answer", async () => {
+			for (const [, body] of MALFORMED) {
+				const r = rig({ body });
+				expect(await codeOf(accountIsKeyed(r.ports))).toBe("unavailable");
+				expect(r.set).not.toHaveBeenCalled();
+			}
+		});
+
+		it("takes a null kdf from prelogin and a missing route as no keys", async () => {
+			expect(await signInSecretFor(rig({ kdf: null }).ports, TYPED)).toBe(
+				TYPED,
+			);
+			expect(await signInSecretFor(rig({ missing: true }).ports, TYPED)).toBe(
+				TYPED,
+			);
+			for (const route of ["prelogin", "keys"] as const) {
+				expect(await accountIsKeyed(rig({ route, missing: true }).ports)).toBe(
+					false,
+				);
+			}
+		});
 	});
 
 	describe("for an account recorded as keyed", () => {

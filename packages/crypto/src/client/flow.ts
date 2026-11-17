@@ -55,17 +55,28 @@ export interface KeyedRecord {
 	set(): Promise<void>;
 }
 
+/** Which route a lookup asks: prelogin (signed out, may say "no keys" with a null kdf) or the keys route (signed in, always a kdf). */
+export type LookupRoute = "prelogin" | "keys";
+
+/**
+ * What a lookup port hands the core: the raw JSON the server answered, or
+ * `missing` for a missing route or account (a 404). The core reads it
+ * (lookupKdf), so the web and the phone treat the same answer the same way.
+ */
+export type LookupAnswer = { missing: true } | { missing?: false; body: unknown };
+
 export interface FlowPorts {
 	/** The primitives. Called only after the server's parameters passed, so a hostile answer never loads the library. */
 	primitives(): Promise<Primitives>;
 	/** Lets a busy state paint before Argon2id blocks the thread. */
 	paint?(): Promise<void>;
 	/**
-	 * The account's kdf: prelogin when signed out, the keys route when signed in.
-	 * Null is "no keys" (a null kdf or a missing route or account). Anything
-	 * else that is not a clean answer throws KeyFlowError("rateLimited" or "unavailable").
+	 * Asks the server for the account's kdf: prelogin when signed out, the keys
+	 * route when signed in. Returns the answer unread. A refusal or a failure
+	 * to reach the server throws KeyFlowError("rateLimited" or "unavailable").
 	 */
-	lookup(): Promise<Kdf | null>;
+	lookup(): Promise<LookupAnswer>;
+	lookupRoute: LookupRoute;
 	record: KeyedRecord;
 }
 
@@ -78,6 +89,23 @@ export function readKdf(value: unknown): Kdf | null {
 		Number.isInteger(passes)
 		? { salt, memoryKiB: memoryKiB as number, passes: passes as number }
 		: null;
+}
+
+/**
+ * The account's kdf from the lookup port: null is "no keys" (a missing route
+ * or account, or a null kdf from prelogin). An answer of any other shape,
+ * including a null kdf from the keys route, is "unavailable", never "no keys".
+ */
+export async function lookupKdf(
+	ports: Pick<FlowPorts, "lookup" | "lookupRoute">,
+): Promise<Kdf | null> {
+	const answer = await ports.lookup();
+	if (answer.missing) return null;
+	const raw = (answer.body as { kdf?: unknown } | null)?.kdf;
+	if (raw === null && ports.lookupRoute === "prelogin") return null;
+	const kdf = readKdf(raw);
+	if (!kdf) throw new KeyFlowError("unavailable");
+	return kdf;
 }
 
 export const sameKdf = (a: Kdf, b: Kdf): boolean =>

@@ -18,9 +18,7 @@
 // account's first sign-in on a new browser is not covered.
 import type { Primitives } from "@retrospend/crypto";
 import type {
-	BeginAnswer,
 	FlowPorts,
-	Kdf,
 	KeyedRecord,
 	RotatePorts,
 } from "@retrospend/crypto/client";
@@ -148,9 +146,10 @@ export async function forgetKeyed(
 }
 
 /**
- * What the server says about the sign-in secret: the kdf, or null for "no
- * keys" (a null kdf, or a missing route or account). Anything else that is
- * not a clean answer throws "rateLimited" or "unavailable".
+ * Asks the server about the sign-in secret and hands the answer to the core
+ * unread: a missing route or account (404) is `missing`, a rate limit or any
+ * other failure throws "rateLimited" or "unavailable". What the body means is
+ * the core's (lookupKdf), the same for the phone.
  */
 function lookupPort(
 	core: Core,
@@ -183,21 +182,14 @@ function lookupPort(
 		} catch {
 			throw fail("unavailable");
 		}
-		if (res.status === 404) return null;
+		if (res.status === 404) return { missing: true };
 		if (res.status === 429) throw fail("rateLimited");
 		if (!res.ok) throw fail("unavailable");
-		let body: unknown;
 		try {
-			body = await res.json();
+			return { body: await res.json() };
 		} catch {
 			throw fail("unavailable");
 		}
-		const raw = (body as { kdf?: unknown } | null)?.kdf;
-		// Prelogin says null for "no keys"; the keys route has no such answer.
-		if (raw === null && !signedIn) return null;
-		const kdf = core.readKdf(raw);
-		if (!kdf) throw fail("unavailable");
-		return kdf;
 	};
 }
 
@@ -211,6 +203,7 @@ function flowPorts(
 		primitives: deps.primitives ?? webPrimitives,
 		paint: deps.paint,
 		lookup: lookupPort(core, deps, email, signedIn),
+		lookupRoute: signedIn ? "keys" : "prelogin",
 		record: keyedRecord(deps, email),
 	};
 }
@@ -353,17 +346,7 @@ export function rotationPorts(
 				body,
 			);
 			if (begin.status !== 200) throw refusal(core, begin);
-			const { version, kdf, wrappedAccountKey } = asObject(begin.body);
-			const beginKdf: Kdf | null = core.readKdf(kdf);
-			if (
-				!beginKdf ||
-				typeof wrappedAccountKey !== "string" ||
-				typeof version !== "number" ||
-				!Number.isInteger(version)
-			)
-				throw new core.KeyFlowError("unavailable");
-			const answer: BeginAnswer = { version, kdf: beginKdf, wrappedAccountKey };
-			return answer;
+			return begin.body;
 		},
 		commit: async (body, idempotencyKey) => {
 			const commit = await post(

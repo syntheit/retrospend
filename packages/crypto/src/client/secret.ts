@@ -20,6 +20,7 @@ import {
 	type FlowPorts,
 	type Kdf,
 	KeyFlowError,
+	lookupKdf,
 	readSalt,
 	secretBin,
 } from "./flow";
@@ -83,7 +84,7 @@ export async function signInSecretFor(
 	if (password === "") return password;
 	// Read first: without the record the defense cannot work.
 	const wasKeyed = await recorded(ports);
-	const kdf = await ports.lookup();
+	const kdf = await lookupKdf(ports);
 	if (kdf === null) {
 		if (wasKeyed) throw new KeyFlowError("downgrade");
 		return password;
@@ -102,7 +103,7 @@ export async function signInSecretFor(
  */
 export async function accountIsKeyed(ports: FlowPorts): Promise<boolean> {
 	if (await recorded(ports)) return true;
-	const kdf = await ports.lookup();
+	const kdf = await lookupKdf(ports);
 	if (kdf === null) return false;
 	await mark(ports);
 	return true;

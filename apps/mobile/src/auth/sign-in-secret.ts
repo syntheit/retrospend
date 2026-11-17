@@ -11,7 +11,6 @@
 // an account the phone never saw keyed, against a server whose route is
 // missing (404, an older server), falls back.
 import type { RetrospendClient } from "@retrospend/api-client";
-import type { PreloginKdf } from "@retrospend/api-contract";
 import type { Primitives } from "@retrospend/crypto";
 import {
 	accountIsKeyed,
@@ -19,6 +18,7 @@ import {
 	type FlowPorts,
 	type KeyFlowCode,
 	KeyFlowError,
+	type LookupRoute,
 	type RotatePorts,
 	rotatePassword as rotateKeyedPassword,
 	signInSecretFor,
@@ -85,12 +85,16 @@ export async function forgetKeyed(
 	await deps.store.deleteItemAsync(keyedRecordKey(baseUrl, email));
 }
 
-/** How to read the account's KDF values: prelogin, or the keys route. */
-export type KdfLookup = () => Promise<PreloginKdf | null>;
+/**
+ * How to ask for the account's KDF values: prelogin, or the keys route. `ask`
+ * returns the server's answer unread; the shared core reads it, the same way
+ * the web does.
+ */
+export type KdfLookup = { route: LookupRoute; ask: () => Promise<unknown> };
 
 /** Signed in: GET /api/v1/me/protection/keys (404 when the account has none). */
 export function keysLookup(api: RetrospendClient): KdfLookup {
-	return async () => (await api.protection.keys()).kdf;
+	return { route: "keys", ask: () => api.protection.keys() };
 }
 
 function statusOf(error: unknown): number | null {
@@ -98,14 +102,14 @@ function statusOf(error: unknown): number | null {
 	return typeof status === "number" ? status : null;
 }
 
-/** The lookup as a port: a missing route (404) is "no keys", like a null kdf. */
+/** The lookup as a port: a missing route (404) is `missing`, the answer is handed over unread. */
 function lookupPort(lookup: KdfLookup): FlowPorts["lookup"] {
 	return async () => {
 		try {
-			return await lookup();
+			return { body: await lookup.ask() };
 		} catch (error) {
 			const status = statusOf(error);
-			if (status === 404) return null;
+			if (status === 404) return { missing: true };
 			throw new KeyFlowError(status === 429 ? "rateLimited" : "unavailable");
 		}
 	};
@@ -118,6 +122,7 @@ function portsFor(
 	return {
 		primitives: deps.primitives,
 		lookup: lookupPort(input.lookup),
+		lookupRoute: input.lookup.route,
 		record: {
 			has: async () =>
 				(await deps.store.getItemAsync(

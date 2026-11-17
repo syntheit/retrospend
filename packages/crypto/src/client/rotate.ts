@@ -12,7 +12,9 @@ import {
 	type FlowPorts,
 	type Kdf,
 	KeyFlowError,
+	lookupKdf,
 	NEW_PASSWORD_PARAMS,
+	readKdf,
 	readSalt,
 	sameKdf,
 	secretBin,
@@ -25,6 +27,27 @@ export type BeginAnswer = {
 	wrappedAccountKey: string;
 };
 
+/**
+ * The begin route's answer from the port, which hands it over unread. One
+ * that is not exactly this shape is "unavailable": nothing is derived from it
+ * and no commit is sent.
+ */
+export function readBeginAnswer(body: unknown): BeginAnswer {
+	const { version, kdf, wrappedAccountKey } =
+		typeof body === "object" && body !== null
+			? (body as Record<string, unknown>)
+			: ({} as Record<string, unknown>);
+	const answerKdf = readKdf(kdf);
+	if (
+		!answerKdf ||
+		typeof wrappedAccountKey !== "string" ||
+		typeof version !== "number" ||
+		!Number.isInteger(version)
+	)
+		throw new KeyFlowError("unavailable");
+	return { version, kdf: answerKdf, wrappedAccountKey };
+}
+
 /** The commit route's body. */
 export type CommitBody = {
 	currentAuthKey: string;
@@ -36,10 +59,11 @@ export type CommitBody = {
 
 export interface RotatePorts extends FlowPorts {
 	/**
-	 * Proves the current sign-in secret and returns the wrap. A refusal throws
-	 * KeyFlowError with the code `classifyRefusal` gives for its status.
+	 * Proves the current sign-in secret and returns the answer unread (the core
+	 * reads it with readBeginAnswer). A refusal throws KeyFlowError with the
+	 * code `classifyRefusal` gives for its status.
 	 */
-	begin(body: { currentAuthKey: string }): Promise<BeginAnswer>;
+	begin(body: { currentAuthKey: string }): Promise<unknown>;
 	/** Commits; a refusal throws a KeyFlowError the same way. */
 	commit(body: CommitBody, idempotencyKey: string): Promise<void>;
 	/** A fresh Idempotency-Key for each commit. */
@@ -70,7 +94,7 @@ async function rotateOnce(
 	input: RotateInput,
 	newParams: Argon2Params,
 ): Promise<void> {
-	const keys = await ports.lookup();
+	const keys = await lookupKdf(ports);
 	if (!keys) throw new KeyFlowError("downgrade");
 	// Everything the server sent is checked before the library loads.
 	const oldParams = allowedParams(keys);
@@ -86,7 +110,7 @@ async function rotateOnce(
 		await ports.paint?.();
 		const old = subkeys(deriveMasterKey(p, input.current, oldSalt, oldParams));
 		const currentAuthKey = signInSecret(old.authKey);
-		const begun = await ports.begin({ currentAuthKey });
+		const begun = readBeginAnswer(await ports.begin({ currentAuthKey }));
 		// The proof was made for the salt and parameters the keys route gave: an
 		// answer with others is a key set that changed in between, and a second
 		// run starts from the new one. (A hostile server gets nothing by it: no
