@@ -18,24 +18,20 @@
  */
 
 import type { EnableProtection } from "@retrospend/api-contract";
-import { fromBase64Url, isSignInSecret } from "@retrospend/crypto";
+import { isSignInSecret } from "@retrospend/crypto";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { db } from "~/server/db";
 import { emailSubject } from "~/server/email-copy";
 import { getProtectionEnabledAlertTemplate } from "~/server/email-templates";
-import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
-import { sendEmail } from "~/server/mailer";
-import {
-	deleteResetTokens,
-	spendPasswordTry,
-} from "../account-security.service";
+import { spendPasswordTry } from "../account-security.service";
 import { EnableProtectionError, ProtectionKeysError } from "./errors";
-import { hasKeySet, lockCredential } from "./password-writes";
+import { hasKeySet, swapCredentialHash } from "./password-writes";
 import {
 	applyKeyChanges,
 	getProtectionKeys,
 	type KeyChanges,
 } from "./protection-keys.service";
+import { bytes, invalid, readCredentialHash, sendNotice } from "./shared";
 import { verifyTwoFactorCode } from "./two-factor";
 import { validateKeyChanges } from "./validate";
 
@@ -48,12 +44,6 @@ const WRAP_ROLES = [
 	"collection-key",
 	"private-key",
 ];
-
-function invalid(): never {
-	throw new ProtectionKeysError("invalid_input");
-}
-
-const bytes = (text: string): Uint8Array => fromBase64Url(text) ?? invalid();
 
 /** The request as a key change: exactly the four wraps a new set starts with. */
 function toKeyChanges(body: EnableProtection): KeyChanges {
@@ -83,22 +73,6 @@ export type EnableResult = {
 	createdAt: Date;
 	signedOut: number;
 };
-
-/** After the commit: the account hears about it. It carries no data beyond the address it goes to. */
-async function sendNotice(email: string): Promise<void> {
-	try {
-		if (await isEmailDeliveryEnabled())
-			await sendEmail(
-				email,
-				emailSubject.protectionEnabled,
-				getProtectionEnabledAlertTemplate(),
-			);
-	} catch {
-		// The keys are made; a mail failure must not fail the request. No detail
-		// is logged: an SMTP error can quote the address.
-		console.error("Could not send the Advanced protection notice");
-	}
-}
 
 async function refuseWhenKeyed(userId: string): Promise<void> {
 	if (await hasKeySet(db, userId)) throw new ProtectionKeysError("conflict");
@@ -131,12 +105,8 @@ export async function enableProtection(
 	await refuseWhenKeyed(userId);
 
 	await spendPasswordTry(userId, sessionId);
-	const credential = await db.account.findFirst({
-		where: { userId, providerId: "credential" },
-		select: { password: true },
-	});
-	if (!credential?.password) throw new EnableProtectionError("no_password");
-	const checked = credential.password;
+	const checked = await readCredentialHash(userId);
+	if (!checked) throw new EnableProtectionError("no_password");
 	if (
 		!(await verifyPassword({ password: body.currentPassword, hash: checked }))
 	) {
@@ -153,19 +123,16 @@ export async function enableProtection(
 	const hashed = await hashPassword(body.authKey);
 
 	const done = await db.$transaction(async (tx) => {
-		const locked = await lockCredential(tx, userId);
-		if (!locked || locked.hasKeySet) throw new ProtectionKeysError("conflict");
-		// Only the hash that was checked is replaced: another writer got in first otherwise.
-		const swapped = await tx.account.updateMany({
-			where: { userId, providerId: "credential", password: checked },
-			data: { password: hashed },
+		const swapped = await swapCredentialHash(tx, {
+			userId,
+			checked,
+			hashed,
+			keys: "absent",
+			keepSessionId: sessionId,
+			resetLinksFor: user.email,
 		});
-		if (swapped.count !== 1) throw new ProtectionKeysError("conflict");
+		if (!swapped.ok) throw new ProtectionKeysError("conflict");
 		const { version } = await applyKeyChanges(tx, userId, changes);
-		const ended = await tx.session.deleteMany({
-			where: { userId, id: { not: sessionId } },
-		});
-		await deleteResetTokens(tx, user.email);
 		await tx.eventLog.create({
 			data: {
 				eventType: "PASSWORD_CHANGED",
@@ -177,9 +144,13 @@ export async function enableProtection(
 		return {
 			version,
 			createdAt: keys?.createdAt ?? now,
-			signedOut: ended.count,
+			signedOut: swapped.signedOut,
 		};
 	});
-	await sendNotice(user.email);
+	await sendNotice(user.email, {
+		subject: emailSubject.protectionEnabled,
+		body: getProtectionEnabledAlertTemplate,
+		failure: "Could not send the Advanced protection notice",
+	});
 	return done;
 }

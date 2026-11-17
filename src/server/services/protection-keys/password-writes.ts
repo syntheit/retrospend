@@ -5,9 +5,10 @@
  * change would lock them out of their data and a reset would strand the keys.
  *
  * Every hash writer (changeOwnPassword, the email reset, the admin reset, and
- * K1-2's enable) runs an interactive owner transaction, takes the credential
+ * enable and rotate) runs an interactive owner transaction, takes the credential
  * row lock here first and checks for a key set under it. Enable takes the same
- * lock, so a writer that waited sees the key set it created.
+ * lock, so a writer that waited sees the key set it created. The three that
+ * follow a check of the current password share `swapCredentialHash`.
  */
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
@@ -62,11 +63,71 @@ export async function hasKeySet(
 }
 
 /**
- * A password change by the person (they know the password, but the keys are
- * wrapped under it): refused until K2 rotates the keys with it.
+ * Removes every pending password reset link for an address, in the caller's
+ * transaction. A link made earlier would write a hash around keys that were
+ * just created or rotated.
  */
-export function refusePasswordChange(state: KeyedState): void {
-	if (state.hasKeySet) throw new ProtectedPasswordError();
+export async function deleteResetTokens(
+	tx: Prisma.TransactionClient,
+	email: string,
+): Promise<void> {
+	await tx.passwordResetToken.deleteMany({ where: { identifier: email } });
+}
+
+export type SwapRefusal =
+	/** The account has no credential row. */
+	| "no_credential"
+	/** The caller needs a keyless account and a key set exists. */
+	| "keys_present"
+	/** The caller needs a keyed account and no key set exists. */
+	| "keys_missing"
+	/** The stored hash is no longer the one the caller checked. */
+	| "hash_changed";
+
+export type CredentialSwap =
+	| { ok: true; signedOut: number }
+	| { ok: false; refusal: SwapRefusal };
+
+/**
+ * The one write of a password hash that follows a check of the current
+ * password (the person's own change, the turn-on of protection keys, the
+ * rotation). The caller verified `checked` outside the transaction, because
+ * hashing is slow; this locks the credential row, checks the key set rule
+ * under the lock (`keys`), and replaces the hash only if it is still `checked`,
+ * so a reset or another change that committed in between is a refusal, not an
+ * overwrite. On success every other session ends, and the pending reset links
+ * of `resetLinksFor` (an address) go too when given. Nothing is written on a
+ * refusal, so the caller throws its own error for it.
+ */
+export async function swapCredentialHash(
+	tx: Prisma.TransactionClient,
+	input: {
+		userId: string;
+		checked: string;
+		hashed: string;
+		keys: "absent" | "present";
+		keepSessionId: string;
+		resetLinksFor?: string;
+	},
+): Promise<CredentialSwap> {
+	const { userId } = input;
+	const locked = await lockCredential(tx, userId);
+	if (!locked) return { ok: false, refusal: "no_credential" };
+	if (input.keys === "absent" && locked.hasKeySet)
+		return { ok: false, refusal: "keys_present" };
+	if (input.keys === "present" && !locked.hasKeySet)
+		return { ok: false, refusal: "keys_missing" };
+	const swapped = await tx.account.updateMany({
+		where: { userId, providerId: "credential", password: input.checked },
+		data: { password: input.hashed },
+	});
+	if (swapped.count !== 1) return { ok: false, refusal: "hash_changed" };
+	const ended = await tx.session.deleteMany({
+		where: { userId, id: { not: input.keepSessionId } },
+	});
+	if (input.resetLinksFor !== undefined)
+		await deleteResetTokens(tx, input.resetLinksFor);
+	return { ok: true, signedOut: ended.count };
 }
 
 /**

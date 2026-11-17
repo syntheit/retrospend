@@ -13,7 +13,11 @@ import {
 	wrapKey,
 } from "@retrospend/crypto";
 import { createWebPrimitives } from "@retrospend/crypto/web";
-import { symmetricEncrypt, verifyPassword } from "better-auth/crypto";
+import {
+	hashPassword,
+	symmetricEncrypt,
+	verifyPassword,
+} from "better-auth/crypto";
 import {
 	afterAll,
 	beforeAll,
@@ -426,6 +430,54 @@ describe("POST /me/protection/enable", () => {
 		await expectProblem(await pending, 409, "conflict");
 		expect(await storedHash(u.id)).toBe(before);
 		expect(await keyRows(u.id)).toEqual({ sets: 1, wraps: 0 });
+	});
+
+	it("takes the hash it checked: a keyless reset that commits while it waits is not overwritten", async () => {
+		const u = await passwordUser();
+		const me = await mobile(u.id);
+		const other = await sessionFor(u.id);
+		const reset = await hashPassword("A reset password 3");
+		let release!: () => void;
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let locked!: () => void;
+		const hasLock = new Promise<void>((resolve) => {
+			locked = resolve;
+		});
+		// The reset holds the credential lock and changes only the hash. No key
+		// set appears, so only the compare-and-swap can see what changed.
+		const holder = adminDb.$transaction(
+			async (tx) => {
+				await lockCredential(tx, u.id);
+				locked();
+				await gate;
+				await tx.account.updateMany({
+					where: { userId: u.id, providerId: "credential" },
+					data: { password: reset },
+				});
+			},
+			{ timeout: 30_000 },
+		);
+		await hasLock;
+		const pending = enable(me.headers, bodyOf(made(u.id)));
+		const deadline = Date.now() + 15_000;
+		let waiting = 0;
+		while (waiting === 0 && Date.now() < deadline) {
+			const [row] = await adminDb.$queryRaw<{ waiting: number }[]>`
+				SELECT count(*)::int AS waiting FROM pg_stat_activity
+				WHERE datname = current_database() AND wait_event_type = 'Lock'`;
+			waiting = row?.waiting ?? 0;
+			if (waiting === 0) await new Promise((r) => setTimeout(r, 25));
+		}
+		expect(waiting).toBeGreaterThan(0);
+		release();
+		await holder;
+		await expectProblem(await pending, 409, "conflict");
+		expect(await storedHash(u.id)).toBe(reset);
+		expect(await keyRows(u.id)).toEqual({ sets: 0, wraps: 0 });
+		expect(await sessionExists(other)).toBe(true);
+		expect(mail.sendEmail).not.toHaveBeenCalled();
 	});
 
 	it("counts a wrong current password as a try and changes nothing, then stops at the limit", async () => {
