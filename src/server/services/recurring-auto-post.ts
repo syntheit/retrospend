@@ -121,7 +121,8 @@ async function postTemplate(
 ) {
 	let due = c.nextDueDate;
 	for (let i = 0; i < CATCH_UP_CAP; i++) {
-		if (await isProtectedNow(c.userId)) return;
+		// Period 0 was checked before the key was made.
+		if (i > 0 && (await isProtectedNow(c.userId))) return;
 		const { outcome, nextDueAt } = await postOne({ ...c, nextDueDate: due });
 		counts[outcome] += 1;
 		if (!nextDueAt || nextDueAt > now) return;
