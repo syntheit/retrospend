@@ -26,7 +26,7 @@ const sent = (over: Partial<SentCreate> = {}): SentCreate => ({
 });
 
 const bound = (row: SettingsRow | null = settings) => {
-	const c = new CreateCaptures();
+	const c = new CreateCaptures(() => 1_000);
 	c.bind(() => row ?? undefined);
 	return c;
 };
@@ -41,6 +41,7 @@ describe("holding a create", () => {
 				kind: "expense",
 				body: { amount: "100", currency: "USD", date: "2026-03-05" },
 				zone: "America/Argentina/Buenos_Aires",
+				homeCurrency: "ARS",
 				rateDefaults: rateDefaultsKey(settings),
 				at: 1_000,
 			},
@@ -138,12 +139,40 @@ describe("holding a create", () => {
 });
 
 describe("the time limit", () => {
-	it("drops what is older than the limit and counts it, keeping what is exactly at it", () => {
-		const c = bound();
+	const clock = (start: number) => {
+		const t = { now: start };
+		const c = new CreateCaptures(() => t.now);
+		c.bind(() => settings);
+		return { t, c };
+	};
+
+	it("drops what is older than the limit, keeping what is exactly at it", () => {
+		const { t, c } = clock(0);
 		c.add(sent({ id: "old", at: 0 }));
 		c.add(sent({ id: "edge", at: 1 }));
-		expect(c.prune(CAPTURE_TTL_MS + 1)).toBe(1);
+		t.now = CAPTURE_TTL_MS + 1;
 		expect(c.pending().map((x) => x.id)).toEqual(["edge"]);
-		expect(c.prune(CAPTURE_TTL_MS + 1)).toBe(0);
+		expect(c.takeExpired()).toBe(1);
+		expect(c.takeExpired()).toBe(0);
+	});
+
+	it("drops on add, without anyone reading", () => {
+		const { t, c } = clock(0);
+		c.add(sent({ id: "old", at: 0 }));
+		t.now = CAPTURE_TTL_MS + 1;
+		c.add(sent({ id: "new", at: t.now }));
+		expect(c.takeExpired()).toBe(1);
+		expect(c.pending().map((x) => x.id)).toEqual(["new"]);
+	});
+
+	it("forgets everything on clear, expired count included", () => {
+		const { t, c } = clock(0);
+		c.add(sent({ id: "old", at: 0 }));
+		c.add(sent({ id: "old2", at: 0 }));
+		t.now = CAPTURE_TTL_MS + 1;
+		c.pending();
+		c.clear();
+		expect(c.pending()).toEqual([]);
+		expect(c.takeExpired()).toBe(0);
 	});
 });

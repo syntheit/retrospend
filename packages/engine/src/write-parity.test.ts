@@ -3,6 +3,7 @@ import { MemoryStore } from "./memory-store";
 import { RATE_SYNC_ID, SETTINGS_ID, type TableRows } from "./port";
 import {
 	type CaptureBody,
+	CLOCK_SKEW_MS,
 	type CreateCapture,
 	compareCreate,
 	rateDefaultsKey,
@@ -73,13 +74,19 @@ const body = (over: Partial<CaptureBody> = {}): CaptureBody => ({
 });
 
 const capture = (
-	over: { zone?: string; at?: number; body?: CaptureBody } = {},
+	over: {
+		zone?: string;
+		homeCurrency?: string;
+		at?: number;
+		body?: CaptureBody;
+	} = {},
 	settings: Settings = ARS,
 ): CreateCapture => ({
 	id: "e1",
 	kind: "expense",
 	body: body(),
 	zone: settings.timeZone,
+	homeCurrency: settings.homeCurrency,
 	rateDefaults: rateDefaultsKey(settings),
 	at: SENT,
 	...over,
@@ -373,17 +380,30 @@ describe("what is skipped, with its code", () => {
 	});
 
 	it("skips when the rates changed after the send, and compares when they did not", async () => {
-		const later = "2026-03-05T15:00:01Z";
+		const later = new Date(SENT + 1).toISOString();
 		expect(await verdict({ asOf: later })).toEqual(skip("rates_moved"));
-		// The send began at 15:00:00Z exactly: rates stamped then were already there.
-		expect(await verdict({ asOf: "2026-03-05T15:00:00Z" })).toEqual({
-			id: "e1",
-			outcome: "match",
-		});
 		expect(await verdict({ asOf: null })).toEqual({
 			id: "e1",
 			outcome: "match",
 		});
+	});
+
+	it("allows for clocks that differ: rates stamped within the margin before the send count as moved", async () => {
+		const at = (ms: number) =>
+			new Date(SENT - CLOCK_SKEW_MS + ms).toISOString();
+		// Exactly the margin before the send is outside it; a millisecond later is inside.
+		expect(await verdict({ asOf: at(0) })).toEqual({
+			id: "e1",
+			outcome: "match",
+		});
+		expect(await verdict({ asOf: at(1) })).toEqual(skip("rates_moved"));
+		// The send itself, and a server clock a minute behind the phone's.
+		expect(await verdict({ asOf: new Date(SENT).toISOString() })).toEqual(
+			skip("rates_moved"),
+		);
+		expect(
+			await verdict({ asOf: new Date(SENT - 60_000).toISOString() }),
+		).toEqual(skip("rates_moved"));
 	});
 
 	it("skips a rate stamp it cannot read", async () => {
@@ -392,7 +412,19 @@ describe("what is skipped, with its code", () => {
 
 	it("skips when the preferred rate types changed after the send", async () => {
 		const changed = settingsOf("ARS", BA, { ARS: "official" });
-		expect(await verdict({ settings: changed })).toEqual(skip("rates_moved"));
+		expect(await verdict({ settings: changed })).toEqual(
+			skip("settings_moved"),
+		);
+	});
+
+	it("skips when the zone changed after the send", async () => {
+		const moved = settingsOf("ARS", "Asia/Tokyo");
+		expect(await verdict({ settings: moved })).toEqual(skip("settings_moved"));
+	});
+
+	it("skips when the home currency changed after the send", async () => {
+		const moved = settingsOf("EUR", BA);
+		expect(await verdict({ settings: moved })).toEqual(skip("settings_moved"));
 	});
 
 	it("does not mind the order of the preferred rate types", () => {
@@ -432,30 +464,10 @@ describe("what is a finding", () => {
 	});
 
 	it("is refused on a zone it cannot read, not thrown", async () => {
-		expect(await verdict({}, capture({ zone: "Not/AZone" }))).toEqual({
+		const odd = settingsOf("ARS", "Not/AZone");
+		expect(await verdict({ settings: odd }, capture({}, odd))).toEqual({
 			id: "e1",
 			outcome: "refused",
 		});
-	});
-});
-
-describe("the live store", () => {
-	it("is never written: no row added, none changed", async () => {
-		const store = await live({});
-		const before = store.snapshot();
-		await compareCreate(store.snapshot(), capture());
-		const after = store.snapshot();
-		expect(after.list("expenses")).toEqual(before.list("expenses"));
-		expect(after.list("rates")).toEqual(before.list("rates"));
-		expect(after.get("settings", SETTINGS_ID)).toEqual(
-			before.get("settings", SETTINGS_ID),
-		);
-	});
-
-	it("holds up no transaction: a write started after the compare runs at once", async () => {
-		const store = await live({});
-		await compareCreate(store.snapshot(), capture());
-		await store.transaction((tx) => tx.delete("expenses", "e1"));
-		expect(store.list("expenses")).toHaveLength(0);
 	});
 });

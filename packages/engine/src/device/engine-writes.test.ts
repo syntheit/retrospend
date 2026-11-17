@@ -201,6 +201,77 @@ describe("comparing the creates a pull brings in", () => {
 		expect(captures.pending()).toHaveLength(1);
 	});
 
+	it("compares nothing for a create that was dropped, as an edit or a delete on the phone does", async () => {
+		const { engine, captures } = setup([
+			[booked("e1", { homeAmount: "1.00" })],
+		]);
+		await engine.pull();
+		captures.add(sent());
+		captures.drop("e1");
+		await engine.pull();
+		expect(engine.writeParity.counts).toEqual({});
+		expect(warn).not.toHaveBeenCalled();
+	});
+
+	it("keeps the pull as it ended when the log throws, and counts the error", async () => {
+		const { engine, captures } = setup([[booked("e1")]]);
+		await engine.pull();
+		captures.add(sent());
+		warn.mockImplementationOnce(() => {
+			throw new Error("log is gone");
+		});
+		await expect(engine.pull()).resolves.toBeUndefined();
+		expect(engine.status).toBe("ready");
+		expect(engine.generation).toBe(2);
+		expect(engine.writeParity.counts).toEqual({ match: 1, error: 1 });
+		expect(warn.mock.calls.map((c) => c[0])).not.toContain("pull failed");
+	});
+
+	it("forgets every capture when the engine is disposed", async () => {
+		const { engine, captures } = setup([[booked("e1")]]);
+		await engine.pull();
+		captures.add(sent());
+		await engine.dispose({ wipe: true });
+		expect(captures.pending()).toEqual([]);
+	});
+
+	it("writes nothing to the live store while it compares", async () => {
+		const commit = vi.fn();
+		const captures = new CreateCaptures();
+		const { api } = fakeDeviceApi({
+			rates,
+			expenses: [page([booked("e1")])],
+		});
+		const engine = createDeviceEngine(api, "u1", Date.now, {
+			warn,
+			captures,
+			storage: async () => ({
+				loaded: { rows: {}, cursors: {}, complete: false },
+				persistence: {
+					commit,
+					beginPull: () => undefined,
+					finishPull: () => undefined,
+					abandonPull: () => undefined,
+					close: () => undefined,
+				},
+				dispose: async () => undefined,
+			}),
+		});
+		await engine.pull();
+		captures.add(sent());
+		let during: number[] = [];
+		vi.mocked(compareCreate).mockImplementationOnce(async (...args) => {
+			const before = commit.mock.calls.length;
+			const verdict = await actualCompare(...args);
+			during = [before, commit.mock.calls.length];
+			return verdict;
+		});
+		await engine.pull();
+		expect(engine.writeParity.counts).toEqual({ match: 1 });
+		expect(during[0]).toBeGreaterThan(0);
+		expect(during[1]).toBe(during[0]);
+	});
+
 	it("does nothing without captures", async () => {
 		const { api } = fakeDeviceApi({ rates, expenses: [page([booked("e1")])] });
 		const engine = createDeviceEngine(api, "u1", Date.now, { warn });

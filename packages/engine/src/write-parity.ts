@@ -15,11 +15,17 @@
  * - unknown_category: the category row has not arrived.
  * - no_rate: the server row carries no home booking to compare with.
  * - no_settings: the device holds no settings yet.
- * - rates_moved: the rates changed (the server overwrites them daily) or the
- *   preferred rate types did, after the create was sent, so the device may
- *   hold different ones from the server's at booking time.
+ * - rates_moved: the rates changed after the create was sent (the server
+ *   overwrites them daily), so the device may hold different ones from the
+ *   server's at booking time.
+ * - settings_moved: the zone, the home currency or the preferred rate types
+ *   differ from what they were when the create was sent.
  * A rate the server used and the device lacks is not a skip but a finding
  * (`rate_missing`), as is a booking the device refuses (`refused`).
+ *
+ * Known limit: the store row has no version or timestamp, so an edit made on
+ * the web or another device between the create and the pull that is compared
+ * shows as `differs`. The phone's own edits and deletes drop the capture first.
  *
  * Not compared: excludeFromAnalytics. The store's category row has no
  * excludeByDefault, so the body's own value is passed and the field is left out.
@@ -58,6 +64,8 @@ export type CreateCapture = {
 	id: string;
 	/** The zone the server read the day in: settings.timeZone when it was sent. */
 	zone: string;
+	/** The home currency when it was sent. */
+	homeCurrency: string;
 	/** The preferred rate types when it was sent (see rateDefaultsKey). */
 	rateDefaults: string;
 	/** Epoch ms when the send began, which is no later than the server's createdAt. */
@@ -75,6 +83,7 @@ export type SkipCode =
 	| "unknown_category"
 	| "no_rate"
 	| "no_settings"
+	| "settings_moved"
 	| "rates_moved";
 
 export type WriteVerdict =
@@ -87,6 +96,12 @@ export type WriteVerdict =
 /** The settings' preferred rate types as one comparable text, key order aside. */
 export const rateDefaultsKey = (settings: SettingsRow): string =>
 	JSON.stringify(Object.entries(settings.defaultRateTypes ?? {}).sort());
+
+/**
+ * The device and the server keep their own clocks, so a rate stamped this
+ * close before the send may already be the one the server booked with.
+ */
+export const CLOCK_SKEW_MS = 5 * 60_000;
 
 const COMPARED = [
 	"status",
@@ -162,11 +177,14 @@ export async function compareCreate(
 	if ((body.amortizeOver ?? 0) > 1) return skipped(id, "spread");
 	const settings = live.get("settings", SETTINGS_ID);
 	if (!settings) return skipped(id, "no_settings");
-	const asOf = ratesAsOf(live);
 	if (
-		(asOf !== null && !(Date.parse(asOf) <= capture.at)) ||
+		settings.timeZone !== capture.zone ||
+		settings.homeCurrency !== capture.homeCurrency ||
 		rateDefaultsKey(settings) !== capture.rateDefaults
 	)
+		return skipped(id, "settings_moved");
+	const asOf = ratesAsOf(live);
+	if (asOf !== null && !(Date.parse(asOf) <= capture.at - CLOCK_SKEW_MS))
 		return skipped(id, "rates_moved");
 	const category = body.categoryId
 		? live.get("categories", body.categoryId)

@@ -59,19 +59,24 @@ function bodyOf(raw: unknown): CaptureBody | null {
 export class CreateCaptures {
 	private readonly held = new Map<string, CreateCapture>();
 	private settingsOf: (() => SettingsRow | undefined) | null = null;
+	private expiredCount = 0;
+
+	constructor(private readonly now: () => number = () => Date.now()) {}
 
 	/** The engine says where the live settings are; a capture without them cannot be made. */
 	bind(settings: () => SettingsRow | undefined): void {
 		this.settingsOf = settings;
 	}
 
-	/** Holds a create, with the zone and rate types the device held when it was sent. False when it cannot. */
+	/** Holds a create, with the zone, home currency and rate types the device held when it was sent. False when it cannot. */
 	add(sent: SentCreate): boolean {
+		this.sweep();
 		const settings = this.settingsOf?.();
 		if (!settings) return false;
 		const base = {
 			id: sent.id,
 			zone: settings.timeZone,
+			homeCurrency: settings.homeCurrency,
 			rateDefaults: rateDefaultsKey(settings),
 			at: sent.at,
 		};
@@ -92,22 +97,37 @@ export class CreateCaptures {
 		return true;
 	}
 
-	/** Drops what is older than the time limit and returns how many. */
-	prune(now: number): number {
-		let dropped = 0;
+	/** Drops what is older than the time limit, counting it for `takeExpired`. */
+	private sweep(): void {
+		const now = this.now();
 		for (const [id, c] of this.held)
 			if (now - c.at > CAPTURE_TTL_MS) {
 				this.held.delete(id);
-				dropped += 1;
+				this.expiredCount += 1;
 			}
-		return dropped;
 	}
 
+	/** How many creates timed out since the last call. */
+	takeExpired(): number {
+		this.sweep();
+		const n = this.expiredCount;
+		this.expiredCount = 0;
+		return n;
+	}
+
+	/** What is held and still within the time limit. */
 	pending(): CreateCapture[] {
+		this.sweep();
 		return [...this.held.values()];
 	}
 
 	drop(id: string): void {
 		this.held.delete(id);
+	}
+
+	/** Forgets everything: the account is gone. */
+	clear(): void {
+		this.held.clear();
+		this.expiredCount = 0;
 	}
 }

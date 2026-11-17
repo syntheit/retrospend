@@ -253,6 +253,7 @@ export function createDeviceEngine(
 		commitsInPull = 0;
 		emptied = false;
 		storage?.persistence.beginPull();
+		let pulled = false;
 		try {
 			try {
 				await pullAll(store, api, cursors);
@@ -267,7 +268,7 @@ export function createDeviceEngine(
 			generation += 1;
 			pulledAt = now();
 			status = "ready";
-			await compareWrites();
+			pulled = true;
 		} catch (error) {
 			storage?.persistence.abandonPull();
 			// A pull that stopped before its first write (offline) left the rows
@@ -280,21 +281,28 @@ export function createDeviceEngine(
 				status = before === "ready" && commitsInPull === 0 ? "ready" : "failed";
 			warn("pull failed", (error as Error)?.name);
 		}
+		// After the pull has settled, and apart from it: whatever the comparison
+		// does, the pull stays as it ended.
+		if (pulled && !disposed)
+			await compareWrites().catch(() => {
+				writeCounts.error = (writeCounts.error ?? 0) + 1;
+			});
 	}
 
 	/**
 	 * Compares each captured create the last pull brought in, once, on a
 	 * committed snapshot: no live transaction, so a pull or a reset never
-	 * waits on it. A comparison that throws is a `refused` finding, so the
-	 * pull it follows is never failed by it.
+	 * waits on it. A comparison that throws is a `refused` finding; anything
+	 * else that throws is counted as an error by the caller.
 	 */
 	async function compareWrites(): Promise<void> {
 		const captures = options.captures;
 		if (!captures) return;
-		const expired = captures.prune(now());
+		const pending = captures.pending();
+		const expired = captures.takeExpired();
 		const snap = store.snapshot();
 		const verdicts: WriteVerdict[] = [];
-		for (const c of captures.pending()) {
+		for (const c of pending) {
 			// A transfer has no expense row to wait for; the rest wait for theirs.
 			if (c.kind !== "transfer" && !snap.get("expenses", c.id)) continue;
 			captures.drop(c.id);
@@ -354,6 +362,7 @@ export function createDeviceEngine(
 
 	async function dispose({ wipe }: { wipe: boolean }): Promise<void> {
 		disposed = true;
+		options.captures?.clear();
 		wipeOnDispose ||= wipe;
 		// Closing first makes a pull in flight fail at its next write instead of
 		// writing to a file that is about to go.
