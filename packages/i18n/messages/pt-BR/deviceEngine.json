@@ -15,11 +15,19 @@
 	"same": "Iguais",
 	"matches": "Confere",
 	"differs": "Difere",
-	"lines": "{device} linhas no dispositivo, {server} no servidor",
+	"lines": "{device} no dispositivo, {server} no servidor",
 	"states": {
 		"checked": "Confere com o servidor",
 		"mismatch": "Difere do servidor",
 		"failed": "A verificação não terminou",
 		"skipped": "Nada para verificar ainda"
+	},
+	"lineCount": "{count, plural, one {# linha} other {# linhas}}",
+	"engine": "Motor",
+	"phases": {
+		"off": "Ainda sem login",
+		"idle": "Não iniciado",
+		"running": "Em execução",
+		"terminal": "Parado pelo servidor"
 	}
 }

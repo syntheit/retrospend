@@ -15,11 +15,19 @@
 	"same": "Iguales",
 	"matches": "Coincide",
 	"differs": "Difiere",
-	"lines": "{device} líneas en el dispositivo, {server} en el servidor",
+	"lines": "{device} en el dispositivo, {server} en el servidor",
 	"states": {
 		"checked": "Coincide con el servidor",
 		"mismatch": "Difiere del servidor",
 		"failed": "La comprobación no terminó",
 		"skipped": "Aún no hay nada que comprobar"
+	},
+	"lineCount": "{count, plural, one {# línea} other {# líneas}}",
+	"engine": "Motor",
+	"phases": {
+		"off": "Aún sin iniciar sesión",
+		"idle": "Sin iniciar",
+		"running": "En marcha",
+		"terminal": "Detenido por el servidor"
 	}
 }

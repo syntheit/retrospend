@@ -1,7 +1,12 @@
 import type { DeviceRead } from "@retrospend/engine/device";
 import { expense } from "@retrospend/engine/device-fake";
 import { describe, expect, it } from "vitest";
-import { GLANCE_PARITY_IDS, idsToCheck, NOT_PLANNED_YET } from "../parity";
+import {
+	countsOf,
+	GLANCE_PARITY_IDS,
+	idsToCheck,
+	NOT_PLANNED_YET,
+} from "../parity";
 import { ARS, code, fakeClock, NOW, setup, urlOf } from "./harness";
 
 const BA = "America/Argentina/Buenos_Aires";
@@ -167,6 +172,62 @@ describe("a month boundary with the stored zone apart from the browser's", () =>
 		// The request names no zone: the server does not read one.
 		const [figures] = requestsTo(fetched, "/figures");
 		expect(typeof figures?.[0]).toBe("string");
+	});
+});
+
+describe("line counts", () => {
+	fakeClock(NOW);
+	const read = (counts: Record<string, number>) =>
+		({
+			homeCurrency: "ARS",
+			budgetReady: false,
+			budget: null,
+			readings: new Map(
+				Object.entries(counts).map(([id, n]) => [id, Array(n).fill(ARS(1)[0])]),
+			),
+		}) as unknown as DeviceRead;
+
+	it("counts both sides of a difference from the last comparison, and an unknown side as null", () => {
+		const counts = countsOf(
+			["a", "b", "c"],
+			// What the device read before the engine's second pull.
+			read({ a: 1, b: 1, c: 1 }),
+			[
+				{ id: "b", device: [1, 2], server: [1] },
+				{ id: "c", device: [1], server: null },
+			],
+		);
+		expect(counts).toEqual([
+			{ id: "a", device: 1, server: 1 },
+			{ id: "b", device: 2, server: 1 },
+			{ id: "c", device: 1, server: null },
+		]);
+	});
+
+	it("reports a server with more lines than the device, and a missing server figure", async () => {
+		const { client } = setup({
+			serverFigures: () => ({
+				"glance.spent": ARS(100_000),
+				"glance.spentLastToDate": null,
+				"glance.spentLast": [
+					{ minor: 250_000, currency: "ARS" },
+					{ minor: 1, currency: "USD" },
+				],
+			}),
+			deps: { parityIds: IDS },
+		});
+		await client.start("u1");
+		await client.pull();
+		const report = await client.parity();
+		expect(report.mismatchedIds).toEqual([
+			"glance.spentLastToDate",
+			"glance.spentLast",
+		]);
+		expect(report.counts).toEqual([
+			{ id: "glance.spent", device: 1, server: 1 },
+			{ id: "glance.spentLastToDate", device: 1, server: null },
+			{ id: "glance.spentLast", device: 1, server: 2 },
+		]);
 	});
 });
 

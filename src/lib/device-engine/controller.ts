@@ -56,6 +56,8 @@ export function createDeviceController(deps: ControllerDeps) {
 	let checkedGeneration = 0;
 	let lastParity: ParityReport | null = null;
 	let lastPullAt: number | null = null;
+	/** The pull count at the last real pull: a pull the engine skipped as fresh leaves it. */
+	let pulledGeneration = 0;
 	const listeners = new Set<() => void>();
 	const changed = () => {
 		for (const listener of [...listeners]) listener();
@@ -121,7 +123,8 @@ export function createDeviceController(deps: ControllerDeps) {
 	async function run(spawn: boolean, force: boolean): Promise<void> {
 		const mine = epoch;
 		if (!user || state === "terminal" || !deps.visible()) return;
-		if (deps.now() < waitUntil) return;
+		// An explicit check goes past a wait: it is a person asking.
+		if (!force && deps.now() < waitUntil) return;
 		if (!client && !spawn) return;
 		const worker = await ensureClient(mine);
 		if (!worker) return;
@@ -130,7 +133,10 @@ export function createDeviceController(deps: ControllerDeps) {
 			if (mine !== epoch) return;
 			if (status === "failed") backOff("failed");
 			else {
-				lastPullAt = deps.now();
+				if (generation > pulledGeneration) {
+					pulledGeneration = generation;
+					lastPullAt = deps.now();
+				}
 				// Compare only: the figures are checked against the server's and the
 				// screen keeps showing the server's.
 				if (status === "ready" && (force || generation > checkedGeneration)) {
@@ -197,7 +203,7 @@ export function createDeviceController(deps: ControllerDeps) {
 			listeners.add(listener);
 			return () => void listeners.delete(listener);
 		},
-		/** Pulls if due and checks the glance figures now, whether or not a pull finished since the last check. */
+		/** Pulls if due and checks the glance figures now, past any wait, whether or not a pull finished since the last check. */
 		checkNow() {
 			return pull(true, true);
 		},
@@ -218,6 +224,8 @@ export function createDeviceController(deps: ControllerDeps) {
 			inflight = null;
 			spawning = null;
 			checkedGeneration = 0;
+			pulledGeneration = 0;
+			lastPullAt = null;
 			lastParity = null;
 			state = !next ? "off" : next.protectedAccount ? "terminal" : "idle";
 			if (state === "idle" && homeOpen) void pull(true);

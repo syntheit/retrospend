@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import type { ControllerState } from "~/lib/device-engine/controller";
 import type { ParityReport } from "~/lib/device-engine/protocol";
 
 /** The words for a report: any difference outranks a finished check. */
@@ -35,17 +36,31 @@ function Row({
 export function ParityView({
 	report,
 	lastPullAt,
+	phase,
 }: {
 	report: ParityReport | null;
+	/** Whether the engine is running at all: a check cannot start before it is. */
+	phase: ControllerState;
 	/** An ISO time, from the controller's clock. */
 	lastPullAt: string | null;
 }) {
 	const t = useTranslations("deviceEngine");
-	if (!report) return <p className="text-fg-3 text-small">{t("none")}</p>;
+	/** A count of lines in words, or an unknown marker (never a zero it did not read). */
+	const lineText = (count: number | null | undefined) =>
+		typeof count === "number" ? t("lineCount", { count }) : t("unknown");
+	const engine = <Row label={t("engine")}>{t(`phases.${phase}`)}</Row>;
+	if (!report)
+		return (
+			<div>
+				{engine}
+				<p className="text-fg-3 text-small mt-2">{t("none")}</p>
+			</div>
+		);
 	const state = stateOf(report);
 	const bad = state === "mismatch" || state === "failed";
 	return (
 		<div>
+			{engine}
 			<Row label={t("state")} tone={bad ? "text-danger" : "text-fg"}>
 				{t(`states.${state}`)}
 			</Row>
@@ -62,8 +77,8 @@ export function ParityView({
 				return (
 					<Row key={id} label={id} tone={differs ? "text-danger" : "text-fg"}>
 						{`${differs ? t("differs") : t("matches")}, ${t("lines", {
-							device: count?.device ?? 0,
-							server: count?.server ?? 0,
+							device: lineText(count?.device),
+							server: lineText(count?.server),
 						})}`}
 					</Row>
 				);

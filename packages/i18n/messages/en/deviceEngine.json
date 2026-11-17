@@ -15,11 +15,19 @@
 	"same": "Same",
 	"matches": "Matches",
 	"differs": "Differs",
-	"lines": "{device} device lines, {server} server lines",
+	"lines": "{device} on the device, {server} on the server",
 	"states": {
 		"checked": "Matches the server",
 		"mismatch": "Differs from the server",
 		"failed": "The check did not finish",
 		"skipped": "Nothing to check yet"
+	},
+	"lineCount": "{count, plural, one {# line} other {# lines}}",
+	"engine": "Engine",
+	"phases": {
+		"off": "Not signed in yet",
+		"idle": "Not started",
+		"running": "Running",
+		"terminal": "Stopped by the server"
 	}
 }

@@ -91,19 +91,25 @@ export function recordingZone(
 const linesIn = (value: unknown) =>
 	Array.isArray(value) ? value.length : null;
 
-/** How many lines each side holds for each checked figure, from what the engine read and what differed. */
+/**
+ * How many lines each side holds for each checked figure. `read` is the
+ * device's reading when the check began; a figure that differed after the
+ * engine's second pull takes both counts from that last comparison instead.
+ */
 export function countsOf(
 	ids: readonly string[],
 	read: DeviceRead,
-	mismatches: readonly { id: string; server: unknown }[],
+	mismatches: readonly { id: string; device: unknown; server: unknown }[],
 ): ParityReport["counts"] {
 	return ids.map((id) => {
-		const device = linesIn(read.readings.get(id));
 		const differing = mismatches.find((m) => m.id === id);
-		return {
-			id,
-			device,
-			server: differing ? linesIn(differing.server) : device,
-		};
+		if (differing)
+			return {
+				id,
+				device: linesIn(differing.device),
+				server: linesIn(differing.server),
+			};
+		const lines = linesIn(read.readings.get(id));
+		return { id, device: lines, server: lines };
 	});
 }

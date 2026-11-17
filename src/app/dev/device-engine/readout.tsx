@@ -38,6 +38,7 @@ function Live() {
 			</header>
 			<ParityView
 				lastPullAt={pulled === null ? null : new Date(pulled).toISOString()}
+				phase={controller.state}
 				report={controller.lastParity}
 			/>
 		</>

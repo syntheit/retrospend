@@ -15,11 +15,19 @@
 	"same": "Gleich",
 	"matches": "Stimmt",
 	"differs": "Weicht ab",
-	"lines": "{device} Zeilen auf dem Gerät, {server} auf dem Server",
+	"lines": "{device} auf dem Gerät, {server} auf dem Server",
 	"states": {
 		"checked": "Stimmt mit dem Server überein",
 		"mismatch": "Weicht vom Server ab",
 		"failed": "Die Prüfung wurde nicht beendet",
 		"skipped": "Noch nichts zu prüfen"
+	},
+	"lineCount": "{count, plural, one {# Zeile} other {# Zeilen}}",
+	"engine": "Engine",
+	"phases": {
+		"off": "Noch nicht angemeldet",
+		"idle": "Nicht gestartet",
+		"running": "Läuft",
+		"terminal": "Vom Server gestoppt"
 	}
 }

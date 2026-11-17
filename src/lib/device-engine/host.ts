@@ -201,6 +201,7 @@ export function attachHost(scope: HostScope, deps: HostDeps): void {
 					storedZone,
 					browserZone: deps.browserZone?.() ?? null,
 				};
+				const readAt = e.generation;
 				const ids = read ? idsToCheck(read, base) : [];
 				// Only a pulled engine that knows its zone is worth checking.
 				const found =
@@ -215,11 +216,14 @@ export function attachHost(scope: HostScope, deps: HostDeps): void {
 						generation: e.generation,
 						...zones,
 					});
+				// A second pull may have changed what the device holds: count from that.
+				const compared =
+					found && found.generation !== readAt ? await e.read(ids) : read;
 				return found
 					? reportOf("checked", {
 							ids,
 							mismatchedIds: found.mismatches.map((m) => m.id),
-							counts: read ? countsOf(ids, read, found.mismatches) : [],
+							counts: compared ? countsOf(ids, compared, found.mismatches) : [],
 							generation: found.generation,
 							...zones,
 						})

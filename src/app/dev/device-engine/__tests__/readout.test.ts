@@ -24,12 +24,15 @@ import { ParityView } from "../view";
 
 const render = (element: ReactElement) =>
 	renderToStaticMarkup(
-		createElement(NextIntlClientProvider, {
-			locale: "en",
-			timeZone: "UTC",
-			messages: { deviceEngine: en },
-			children: element,
-		}),
+		createElement(
+			NextIntlClientProvider,
+			{
+				locale: "en",
+				timeZone: "UTC",
+				messages: { deviceEngine: en },
+			} as unknown as Parameters<typeof NextIntlClientProvider>[0],
+			element,
+		),
 	);
 
 // A report as the worker makes it, plus fields a careless change could add:
@@ -62,17 +65,40 @@ describe("the readout's view", () => {
 			createElement(ParityView, {
 				report,
 				lastPullAt: "2026-11-17T12:00:00.000Z",
+				phase: "running",
 			}),
 		);
 		expect(html).toContain("Differs from the server");
 		expect(html).toContain("glance.spentLast");
-		expect(html).toContain("Matches, 1 device lines, 1 server lines");
-		expect(html).toContain("Differs, 1 device lines, 2 server lines");
+		expect(html).toContain(
+			"Matches, 1 line on the device, 1 line on the server",
+		);
+		expect(html).toContain(
+			"Differs, 1 line on the device, 2 lines on the server",
+		);
 		expect(html).toContain("America/Argentina/Buenos_Aires");
 		expect(html).toContain("Differ");
 		for (const minor of ["987654321", "424242424", "515151515"])
 			expect(html).not.toContain(minor);
 		expect(html).not.toContain("ARS");
+	});
+
+	it("shows an unknown marker for a count it does not have, never a zero", () => {
+		const unknown = {
+			...report,
+			counts: [{ id: "glance.spentLast", device: 1, server: null }],
+		} as unknown as ParityReport;
+		const html = render(
+			createElement(ParityView, {
+				report: unknown,
+				lastPullAt: null,
+				phase: "running",
+			}),
+		);
+		expect(html).toContain(
+			"Differs, 1 line on the device, Unknown on the server",
+		);
+		expect(html).not.toContain("0 lines");
 	});
 
 	it("names each state in words", () => {
@@ -82,13 +108,20 @@ describe("the readout's view", () => {
 				createElement(ParityView, {
 					report: { ...base, state },
 					lastPullAt: null,
+					phase: "running",
 				}),
 			);
 		expect(words("checked")).toContain("Matches the server");
 		expect(words("failed")).toContain("The check did not finish");
 		expect(words("skipped")).toContain("Nothing to check yet");
 		expect(
-			render(createElement(ParityView, { report: null, lastPullAt: null })),
+			render(
+				createElement(ParityView, {
+					report: null,
+					lastPullAt: null,
+					phase: "off",
+				}),
+			),
 		).toContain("No check has run yet");
 	});
 });

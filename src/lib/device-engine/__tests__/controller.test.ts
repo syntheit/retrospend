@@ -539,3 +539,45 @@ describe("device controller: the dev readout", () => {
 		expect(heard).not.toHaveBeenCalled();
 	});
 });
+
+describe("device controller: what the readout reports", () => {
+	it("moves the last pull time only when the engine really pulled", async () => {
+		// The engine skips a pull while the last is fresh: its count does not move.
+		const queue = [1, 1, 2];
+		const client = fakeClient(async () => ({
+			status: "ready",
+			generation: queue.shift() ?? 2,
+		}));
+		const { controller, time } = setup([client]);
+		controller.setUser(ANA);
+		await controller.homeOpened();
+		const first = time.now;
+		expect(controller.lastPullAt).toBe(first);
+		time.now += 5_000;
+		await controller.tabVisible();
+		expect(controller.lastPullAt).toBe(first);
+		time.now += 5_000;
+		await controller.tabVisible();
+		expect(controller.lastPullAt).toBe(first + 10_000);
+	});
+
+	it("checks now past a wait, which a person asked for", async () => {
+		const client = fakeClient();
+		client.pull.mockRejectedValueOnce(new DeviceError("rate_limited"));
+		const { controller } = setup([client]);
+		controller.setUser(ANA);
+		await controller.homeOpened();
+		await controller.tabVisible();
+		expect(client.pull).toHaveBeenCalledTimes(1);
+		await controller.checkNow();
+		expect(client.pull).toHaveBeenCalledTimes(2);
+		expect(client.parity).toHaveBeenCalledTimes(1);
+	});
+
+	it("says it is waiting for an account before one is known, and starts nothing", async () => {
+		const { controller, load } = setup([fakeClient()]);
+		await controller.checkNow();
+		expect(controller.state).toBe("off");
+		expect(load).not.toHaveBeenCalled();
+	});
+});
