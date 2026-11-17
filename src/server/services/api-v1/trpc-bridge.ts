@@ -67,8 +67,9 @@ async function contextFor(caller: BridgeCaller) {
 	// not "auth.recordConsent"), which the tRPC allowlist cannot match, so
 	// guarding them again would refuse every bridged route of a protected
 	// account that the v1 list allows. A background job that bridges later
-	// (runExportJob) has no request and no guard: the state may have changed
-	// since the route ran. Turning protection on (K1) must handle queued jobs.
+	// (runExportJob) has no request and no guard, so it reads the state itself
+	// before it claims and again before it stores a file. Turning protection on
+	// (K9) still drains in-flight work before moving rows.
 	const user: BridgeUser = {
 		...row,
 		timeZone: caller.timeZone,
