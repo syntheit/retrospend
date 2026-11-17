@@ -2310,6 +2310,7 @@
 			"delete": "Konto löschen",
 			"deleting": "Löschen",
 			"protectionRefused": "Die Antwort des Servers zum Schutz dieses Kontos wirkt falsch. Nichts wurde gelöscht.",
+			"onlyAdmin": "Du bist der einzige Admin. Mach zuerst jemand anderen zum Admin, dann kannst du dein Konto löschen.",
 			"error": "Das Konto konnte nicht gelöscht werden. Prüfe dein Passwort und versuche es erneut."
 		},
 		"numbers": {

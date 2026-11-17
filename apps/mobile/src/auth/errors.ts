@@ -44,3 +44,24 @@ export function authFailureOf(error: AuthErrorShape | null | undefined) {
 	if (error?.status === 401) return "invalidCredentials" as const;
 	return "unknown" as const;
 }
+
+/** Why deleting the account was refused, from the call's status and code only: the server's text is never shown. */
+export type DeleteFailure =
+	| "onlyAdmin"
+	| "rateLimited"
+	| "network"
+	| "wrongPassword"
+	| "unknown";
+
+export function deleteFailureOf(error: unknown): DeleteFailure {
+	const { status, code } = (error ?? {}) as {
+		status?: unknown;
+		code?: unknown;
+	};
+	if (typeof status !== "number") return "network";
+	if (status === 429) return "rateLimited";
+	// The last admin is refused as forbidden; the in-app session has the scope.
+	if (status === 403 && code === "forbidden") return "onlyAdmin";
+	if (status === 400) return "wrongPassword";
+	return "unknown";
+}

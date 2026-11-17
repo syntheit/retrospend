@@ -1,8 +1,9 @@
 import { DeleteAccountSheet } from "./DeleteAccountSheet";
 
 // Deleting the account sends the helper's secret as the password, stops with
-// the refusal's words when the helper refuses, and forgets the keyed record
-// once the account is gone.
+// the refusal's words when the helper refuses, words a refused call from its
+// status and code (never the server's text), forgets the keyed record once the
+// account is gone, and drops the typed password when the sheet closes.
 const renderer = require("react-test-renderer");
 const { act, create } = renderer;
 
@@ -62,21 +63,21 @@ jest.mock("@/ui/Sheet", () => {
 	const { View } = require("react-native");
 	return {
 		useSheetBodySize: () => ({ height: 400 }),
+		// Children stay mounted when closed, as the native sheet's state does, so
+		// a test can read what a closed sheet still holds.
 		Sheet: ({
 			children,
 			footer,
-			visible,
 		}: {
 			children: unknown;
 			footer: unknown;
 			visible: boolean;
-		}) =>
-			visible ? (
-				<View>
-					{children}
-					{footer}
-				</View>
-			) : null,
+		}) => (
+			<View>
+				{children}
+				{footer}
+			</View>
+		),
 	};
 });
 jest.mock("@/ui/TextField", () => {
@@ -120,12 +121,20 @@ jest.mock("use-intl", () => {
 });
 
 async function render() {
-	let root: { root: TestNode } | undefined;
+	let root: { root: TestNode; update(element: unknown): void } | undefined;
 	await act(async () => {
 		root = create(<DeleteAccountSheet onClose={jest.fn()} visible />);
 	});
 	if (!root) throw new Error("not rendered");
+	const rendered = root;
 	const tree = root.root;
+	const setVisible = async (visible: boolean) => {
+		await act(async () => {
+			rendered.update(
+				<DeleteAccountSheet onClose={jest.fn()} visible={visible} />,
+			);
+		});
+	};
 	const byId = (id: string) =>
 		tree.findAll((n) => n.props.testID === id)[0] as TestNode;
 	await act(async () => {
@@ -140,7 +149,8 @@ async function render() {
 		tree
 			.findAll((n) => typeof n.props.children === "string")
 			.map((n) => n.props.children as string);
-	return { remove, texts };
+	const typed = () => byId("password").props.value as string;
+	return { remove, texts, setVisible, typed };
 }
 
 beforeEach(() => {
@@ -181,6 +191,60 @@ describe("DeleteAccountSheet", () => {
 		expect(s.texts()).toContain(
 			"The server's answer about this account's protection looks wrong. Nothing was deleted.",
 		);
+	});
+});
+
+describe("DeleteAccountSheet closing", () => {
+	it("drops the typed password and the refusal when the sheet closes", async () => {
+		mockResolve.mockResolvedValue({ ok: false, reason: "protectionRefused" });
+		const s = await render();
+		await s.remove();
+		expect(s.typed()).toBe("typed pw");
+		expect(s.texts()).toContain(
+			"The server's answer about this account's protection looks wrong. Nothing was deleted.",
+		);
+		await s.setVisible(false);
+		expect(s.typed()).toBe("");
+		expect(s.texts()).not.toContain(
+			"The server's answer about this account's protection looks wrong. Nothing was deleted.",
+		);
+	});
+});
+
+describe("DeleteAccountSheet when the server refuses the call", () => {
+	const RAW = "raw server text with the email ana@example.com";
+	const refused = (status?: number, code?: string) =>
+		Object.assign(new Error(RAW), { status, code });
+
+	it("words each refusal from its status and code, never the server's text", async () => {
+		const cases: [unknown, string][] = [
+			[
+				refused(403, "forbidden"),
+				"You're the only admin. Make someone else an admin first, then you can delete your account.",
+			],
+			[
+				refused(429, "rate_limited"),
+				"Too many tries. Wait a minute and try again.",
+			],
+			[refused(undefined), "Couldn't reach the server. Check your connection."],
+			[
+				refused(400, "bad_request"),
+				"Couldn't delete the account. Check your password and try again.",
+			],
+			[
+				refused(500, "internal"),
+				"Couldn't delete the account. Check your password and try again.",
+			],
+		];
+		for (const [error, words] of cases) {
+			mockResolve.mockResolvedValue({ ok: true, secret: "SECRET" });
+			mockDelete.mockRejectedValue(error);
+			const s = await render();
+			await s.remove();
+			expect(s.texts()).toContain(words);
+			expect(s.texts().join("\n")).not.toContain("raw server text");
+			expect(mockSignOut).not.toHaveBeenCalled();
+		}
 	});
 });
 

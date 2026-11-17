@@ -2310,6 +2310,7 @@
 			"delete": "Delete account",
 			"deleting": "Deleting",
 			"protectionRefused": "The server's answer about this account's protection looks wrong. Nothing was deleted.",
+			"onlyAdmin": "You're the only admin. Make someone else an admin first, then you can delete your account.",
 			"error": "Couldn't delete the account. Check your password and try again."
 		},
 		"numbers": {
