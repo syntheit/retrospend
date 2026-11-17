@@ -11,8 +11,9 @@
  * src/server/api/v1/__tests__/completeness.test.ts and
  * src/server/api/protection/__tests__/walk.test.ts keep the list honest.
  *
- * This is the one source for the v1 list: the server guard, the events feed
- * and the generated openapi.json (`x-protected-account`) all read it. The
+ * This is the one source for the v1 list: the server guard and the generated
+ * openapi.json (`x-protected-account`) read it. The events feed has its own
+ * list of event types (PROTECTED_FEED_TYPES in services/events/feed.ts). The
  * reasons are review notes and stay out of the published document. The list
  * has its own subpath (`@retrospend/api-contract/protection-allowed`) so the
  * mobile bundle does not carry it.
