@@ -37,3 +37,21 @@ export async function loadCatalog(locale: string): Promise<MessageCatalog> {
 
 	return assembleCatalog(await loadShared(), features);
 }
+
+/**
+ * One namespace of one locale's messages, with no fallback: the feature file
+ * named after it, or the key of the shared file. Reads one file instead of
+ * every feature file, for code that words a few messages (a push, an email).
+ */
+export async function loadNamespace(
+	locale: string,
+	namespace: string,
+): Promise<MessageCatalog> {
+	const loadShared = SHARED[`../messages/${locale}.json`];
+	if (!loadShared) throw new Error(`No message catalog for locale ${locale}`);
+
+	const loadFeature = FEATURES[`../messages/${locale}/${namespace}.json`];
+	if (loadFeature) return { [namespace]: await loadFeature() };
+	const shared = (await loadShared())[namespace];
+	return shared === undefined ? {} : { [namespace]: shared };
+}

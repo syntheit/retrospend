@@ -33,3 +33,28 @@ export async function loadCatalogFromDisk(
 		features,
 	);
 }
+
+/**
+ * One namespace of one locale's messages, read like loadNamespace in the
+ * Vite and Turbopack loader: the feature file named after it, or the key of
+ * the shared file.
+ */
+export async function loadNamespaceFromDisk(
+	locale: string,
+	namespace: string,
+): Promise<MessageCatalog> {
+	const root = path.join(
+		/* turbopackIgnore: true */ process.cwd(),
+		"packages",
+		"i18n",
+		"messages",
+	);
+	const read = async (file: string) =>
+		JSON.parse(await readFile(file, "utf8")) as MessageCatalog;
+	const feature = await read(
+		path.join(root, locale, `${namespace}.json`),
+	).catch(() => null);
+	if (feature) return { [namespace]: feature };
+	const shared = (await read(path.join(root, `${locale}.json`)))[namespace];
+	return shared === undefined ? {} : { [namespace]: shared };
+}

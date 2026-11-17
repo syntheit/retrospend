@@ -1,7 +1,10 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { loadCatalog } from "@retrospend/i18n/load";
+import { loadCatalog, loadNamespace } from "@retrospend/i18n/load";
 import { SUPPORTED_LOCALES } from "~/i18n/locales";
-import { loadCatalogFromDisk } from "./catalog-from-disk";
+import {
+	loadCatalogFromDisk,
+	loadNamespaceFromDisk,
+} from "./catalog-from-disk";
 import { serverTranslator } from "./server-translator";
 import {
 	buildNoticeText,
@@ -20,7 +23,10 @@ const build = (
 	reader: Parameters<typeof buildNoticeText>[1] = {},
 ) =>
 	buildNoticeText(
-		{ ...notice, actor: actor === undefined ? null : { type: "user", id: "a" } },
+		{
+			...notice,
+			actor: actor === undefined ? null : { type: "user", id: "a" },
+		},
 		reader,
 		actor ?? null,
 	);
@@ -207,10 +213,8 @@ describe("buildNoticeText never carries free text", () => {
 
 	it("has the catalog namespace, with a title and body for every kind, in every locale", async () => {
 		for (const locale of SUPPORTED_LOCALES) {
-			const catalog = (await loadCatalog(locale)).notificationText as Record<
-				string,
-				Record<string, string>
-			>;
+			const catalog = (await loadNamespace(locale, "notificationText"))
+				.notificationText as Record<string, Record<string, string>>;
 			expect(catalog, locale).toBeDefined();
 			for (const kind of KINDS) {
 				expect(catalog[kind]?.title, `${kind} ${locale}`).toBeTruthy();
@@ -345,9 +349,7 @@ describe("what an edit changed", () => {
 		expect(changes).toEqual({ other: true });
 		const edited = await build({ kind: "expenseEdited", changes });
 		expect(edited.changes).toBe("other changes");
-		expect(
-			(await build({ kind: "expenseEdited" })).changes,
-		).toBeNull();
+		expect((await build({ kind: "expenseEdited" })).changes).toBeNull();
 	});
 });
 
@@ -384,10 +386,44 @@ describe("serverTranslator", () => {
 });
 
 describe("loadCatalogFromDisk", () => {
-	it("reads the same catalog the Vite and Turbopack loader does, for every locale", async () => {
-		for (const locale of SUPPORTED_LOCALES)
-			expect(await loadCatalogFromDisk(locale), locale).toEqual(
+	// One case per locale: each reads every feature file twice, so a busy
+	// machine gets a timeout budget per locale instead of one for all seven.
+	it.each(SUPPORTED_LOCALES)(
+		"reads the same catalog the Vite and Turbopack loader does in %s",
+		async (locale) => {
+			expect(await loadCatalogFromDisk(locale)).toEqual(
 				await loadCatalog(locale),
 			);
+		},
+	);
+});
+
+describe("loadNamespace", () => {
+	it.each(SUPPORTED_LOCALES)(
+		"reads one namespace, a feature file or a shared key, as the whole catalog has it, from the loader and from disk in %s",
+		async (locale) => {
+			const whole = await loadCatalog(locale);
+			for (const namespace of ["notificationText", "push", "sidebar"]) {
+				const expected = { [namespace]: whole[namespace] };
+				expect(await loadNamespace(locale, namespace), namespace).toEqual(
+					expected,
+				);
+				expect(
+					await loadNamespaceFromDisk(locale, namespace),
+					namespace,
+				).toEqual(expected);
+			}
+		},
+	);
+
+	it("is empty for a namespace the locale does not have", async () => {
+		expect(await loadNamespace("en", "noSuchNamespace")).toEqual({});
+		expect(await loadNamespaceFromDisk("en", "noSuchNamespace")).toEqual({});
+	});
+
+	it("throws for a locale with no catalog", async () => {
+		await expect(loadNamespace("xx", "push")).rejects.toThrow(
+			"No message catalog for locale xx",
+		);
 	});
 });
