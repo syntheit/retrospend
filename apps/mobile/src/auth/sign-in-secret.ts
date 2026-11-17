@@ -109,11 +109,17 @@ function statusOf(error: unknown): number | null {
 	return typeof status === "number" ? status : null;
 }
 
-async function derive(
+/**
+ * The auth key and the wrap key for a password and an account's kdf, or null
+ * for a salt that is not base64url. Every key made (the master key too) goes
+ * to `own`, so the caller wipes them all.
+ */
+function deriveKeys(
 	p: Primitives,
 	password: string,
 	kdf: PreloginKdf,
-): Promise<string | null> {
+	own: (key: Uint8Array) => void,
+): { authKey: Uint8Array; wrapKey: Uint8Array } | null {
 	const salt = fromBase64Url(kdf.salt);
 	if (!salt) return null;
 	const params = checkArgon2Params({
@@ -121,10 +127,25 @@ async function derive(
 		passes: kdf.passes,
 	});
 	const master = deriveMasterKey(p, password, salt, params);
-	const { authKey, wrapKey } = masterSubkeys(p, master);
-	const secret = signInSecret(authKey);
-	for (const key of [master, authKey, wrapKey]) p.wipe(key);
-	return secret;
+	own(master);
+	const keys = masterSubkeys(p, master);
+	own(keys.authKey);
+	own(keys.wrapKey);
+	return keys;
+}
+
+async function derive(
+	p: Primitives,
+	password: string,
+	kdf: PreloginKdf,
+): Promise<string | null> {
+	const owned: Uint8Array[] = [];
+	try {
+		const keys = deriveKeys(p, password, kdf, (key) => owned.push(key));
+		return keys && signInSecret(keys.authKey);
+	} finally {
+		for (const key of owned) p.wipe(key);
+	}
 }
 
 /**
@@ -228,6 +249,8 @@ export type RotateFailure =
 	| "keysMissing"
 	| "protectionRefused"
 	| "conflict"
+	/** The server does not offer Advanced protection (501) any more. */
+	| "unavailable"
 	| "unknown";
 export type RotateResult = { ok: true } | { ok: false; reason: RotateFailure };
 
@@ -267,6 +290,7 @@ function reasonOf(error: unknown): RotateFailure {
 	if (status === null) return "network";
 	if (status === 429) return "rateLimited";
 	if (status === 409) return "conflict";
+	if (status === 501) return "unavailable";
 	const code = (error as { code?: unknown } | null)?.code;
 	if (status === 400 && code === "wrong_password") return "wrongPassword";
 	return "unknown";
@@ -294,20 +318,8 @@ async function rotateOnce(input: RotateInput, p: Primitives): Promise<void> {
 		owned.push(bytes);
 		return bytes;
 	};
-	const subkeys = (password: string, salt: Uint8Array, kdf: PreloginKdf) => {
-		const master = keep(
-			deriveMasterKey(
-				p,
-				password,
-				salt,
-				checkArgon2Params({ memoryKiB: kdf.memoryKiB, passes: kdf.passes }),
-			),
-		);
-		const keys = masterSubkeys(p, master);
-		keep(keys.authKey);
-		keep(keys.wrapKey);
-		return keys;
-	};
+	const subkeys = (password: string, kdf: PreloginKdf) =>
+		deriveKeys(p, password, kdf, keep) ?? stop("protectionRefused");
 	try {
 		let kdf: PreloginKdf | null;
 		try {
@@ -316,9 +328,8 @@ async function rotateOnce(input: RotateInput, p: Primitives): Promise<void> {
 			return stop(statusOf(error) === 404 ? "keysMissing" : reasonOf(error));
 		}
 		if (kdf === null) return stop("keysMissing");
-		const salt = fromBase64Url(kdf.salt) ?? stop("protectionRefused");
 
-		const old = subkeys(input.current, salt, kdf);
+		const old = subkeys(input.current, kdf);
 		const currentAuthKey = signInSecret(old.authKey);
 		const begun = await call(() =>
 			input.api.beginPasswordRotation({ currentAuthKey }),
@@ -344,7 +355,7 @@ async function rotateOnce(input: RotateInput, p: Primitives): Promise<void> {
 			memoryKiB: ARGON2_DEFAULT.memoryKiB,
 			passes: ARGON2_DEFAULT.passes,
 		};
-		const fresh = subkeys(input.next, newSalt, newKdf);
+		const fresh = subkeys(input.next, newKdf);
 		const newAuthKey = signInSecret(fresh.authKey);
 		const wrappedAccountKey = toBase64Url(
 			wrapKey(p, fresh.wrapKey, "ak-password", input.userId, accountKey),
@@ -354,10 +365,9 @@ async function rotateOnce(input: RotateInput, p: Primitives): Promise<void> {
 		// the wrap must open with the new password to the same account key, and
 		// the secret must be the one the new password makes. A mismatch would
 		// lock the account out for good, so nothing is sent.
-		const sentSalt = fromBase64Url(newKdf.salt) ?? stop("protectionRefused");
 		const sentWrap =
 			fromBase64Url(wrappedAccountKey) ?? stop("protectionRefused");
-		const again = subkeys(input.next, sentSalt, newKdf);
+		const again = subkeys(input.next, newKdf);
 		let opened: Uint8Array;
 		try {
 			opened = keep(
