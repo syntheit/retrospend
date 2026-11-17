@@ -1,4 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
+import { dropCaptured } from "@/data/captureSent";
 import type { PreviewState } from "./preview";
 import { SEND_TIMEOUT_MS, type UndoRef } from "./send";
 
@@ -114,6 +115,7 @@ export async function runDelete(
 	const timer = setTimeout(() => timeout.abort(), SEND_TIMEOUT_MS);
 	const options = { context: { idempotencyKey }, signal: timeout.signal };
 	const { id } = target;
+	dropCaptured(api, id);
 	try {
 		if (target.shared) {
 			const result = await api["shared-expenses"].delete(

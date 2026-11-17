@@ -64,6 +64,12 @@ const CAPTURED = {
 	transfers: "transfer",
 } as const;
 
+/** Forgets the create of `id` the engine of `api` was holding: the row is about to change. */
+export function dropCaptured(api: object, id: string): void {
+	// Callers may hold the client as a narrower type; the key is the same object.
+	engines.get(api as RetrospendClient)?.captures.drop(id);
+}
+
 /**
  * Hands the engine of `api` a create the server just accepted, for it to book
  * again and compare after the next pull. Only the entity's family and the

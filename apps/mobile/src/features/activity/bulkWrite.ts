@@ -1,4 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
+import { dropCaptured } from "@/data/captureSent";
 import type { PreviewDto, PreviewState } from "@/features/entry/preview";
 
 // The writes behind the Activity bulk bar. Each is one dry run of the whole
@@ -72,6 +73,8 @@ export async function runBulk(
 	batch: string,
 ): Promise<BulkResult> {
 	const options = { context: { idempotencyKey: batch } };
+	// The synced rows stop being what their creates booked, whether or not the answer arrives.
+	for (const id of ids) dropCaptured(api, id);
 	if (action.kind === "category") {
 		const out = await api.expenses.bulkCategory(
 			{ ids: [...ids], categoryId: action.categoryId },
