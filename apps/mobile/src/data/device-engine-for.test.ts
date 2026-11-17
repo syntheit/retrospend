@@ -90,7 +90,7 @@ describe("captureSent", () => {
 
 	it("counts a split and a transfer as skipped and an income as nothing", async () => {
 		jest.spyOn(console, "warn").mockImplementation(() => {});
-		const { client, engine } = await pulled([row("e2")]);
+		const { client, engine } = await pulled([row("e2"), row("i1")]);
 		const at = Date.now() - 1000;
 		captureSent(client, entry("e2", "shared-expenses"), at);
 		captureSent(client, entry("t1", "transfers"), at);
