@@ -27,7 +27,7 @@
  */
 import { randomBytes } from "node:crypto";
 import { keystoreDb } from "~/server/db-core";
-import { userTransaction } from "~/server/db-tx";
+import { keystoreTransaction } from "~/server/db-tx";
 import type { Prisma } from "~prisma";
 import {
 	type FieldAad,
@@ -129,7 +129,7 @@ function unwrapAll(rows: KeyRow[], masterKeyring: Keyring): Keyring {
 
 /**
  * Runs `work` in one keystore transaction as the actor, dropped to the app
- * role as the scoped client does. A user goes through `userTransaction`, the
+ * role as the scoped client does. A user goes through `keystoreTransaction`, the
  * one place that sets the RLS identity.
  */
 async function asActor<T>(
@@ -138,7 +138,7 @@ async function asActor<T>(
 ): Promise<T> {
 	if (actor.kind === "user") {
 		if (!actor.userId) throw new InstanceKeyError("no_actor");
-		return userTransaction(keystoreDb, actor.userId, work);
+		return keystoreTransaction(keystoreDb, actor.userId, work);
 	}
 	if (actor.kind === "service")
 		return keystoreDb.$transaction(async (tx) => {

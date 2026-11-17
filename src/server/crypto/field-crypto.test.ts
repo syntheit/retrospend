@@ -24,7 +24,6 @@ import {
 	isSealedField,
 	Keyring,
 	openField,
-	readField,
 	sealField,
 } from "./field-crypto";
 
@@ -269,9 +268,6 @@ describe("damaged values", () => {
 			"unsupported_version",
 		);
 		expect(isSealedField(future)).toBe(true);
-		expect(codeOf(() => readField(keyring, future, CELL))).toBe(
-			"unsupported_version",
-		);
 	});
 
 	it("the colon keeps k1: apart from k10: to k19: and from base64 digits", () => {
@@ -354,10 +350,10 @@ describe("damaged values", () => {
 describe("mixed plaintext and ciphertext", () => {
 	const keyring = ring([1, KEY_1]);
 
-	it("reads plaintext as is and ciphertext decrypted", () => {
+	it("opens ciphertext and refuses plaintext, which has no pass-through", () => {
 		const sealed = sealField(keyring, "Rent", CELL);
-		expect(readField(keyring, "Rent", CELL)).toBe("Rent");
-		expect(readField(keyring, sealed, CELL)).toBe("Rent");
+		expect(openField(keyring, sealed, CELL)).toBe("Rent");
+		expect(codeOf(() => openField(keyring, "Rent", CELL))).toBe("malformed");
 	});
 
 	it("tells the two apart by the U+0001 start, which userText forbids", () => {

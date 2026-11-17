@@ -21,7 +21,7 @@
  */
 import { readFileSync } from "node:fs";
 import { env } from "~/env";
-import { FieldCryptoError, Keyring } from "./field-crypto";
+import { FieldCryptoError, Keyring, MAX_KEY_ID } from "./field-crypto";
 
 export type MasterKeySource = {
 	DATA_MASTER_KEY?: string | undefined;
@@ -29,7 +29,6 @@ export type MasterKeySource = {
 };
 
 const ENTRY = /^(?:([1-9][0-9]{0,9}):)?([0-9a-fA-F]{64})$/;
-const MAX_KEY_ID = 0xffffffff;
 
 function readSetting(source: MasterKeySource): string | undefined {
 	const inline = source.DATA_MASTER_KEY;
@@ -61,6 +60,9 @@ export function loadMasterKeyring(
 		if (id > MAX_KEY_ID) throw new FieldCryptoError("bad_key");
 		return { id, key: Buffer.from(hex, "hex") };
 	});
+	// The same bytes under two ids is a rotation that never changed the key.
+	if (new Set(entries.map((e) => e.key.toString("hex"))).size < entries.length)
+		throw new FieldCryptoError("bad_key");
 	return new Keyring(entries);
 }
 

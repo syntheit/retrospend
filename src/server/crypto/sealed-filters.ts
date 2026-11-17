@@ -18,11 +18,7 @@
 import { cellClassesOfModel, jsonCellsOfModel } from "./fields";
 import { jsonFilterAllowed } from "./json-cells";
 import type { ModelGraph } from "./model-graph";
-
-type Row = Record<string, unknown>;
-
-const isRow = (value: unknown): value is Row =>
-	typeof value === "object" && value !== null && !Array.isArray(value);
+import { isRow } from "./row-id";
 
 const isMapped = (model: string, field: string) =>
 	Object.hasOwn(cellClassesOfModel(model), field);

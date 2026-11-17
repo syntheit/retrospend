@@ -24,7 +24,7 @@ import {
 	type ClientSlot,
 	type KeySource,
 } from "~/server/db-core";
-import { userTransaction } from "~/server/db-tx";
+import { keystoreTransaction, userTransaction } from "~/server/db-tx";
 import { getOrCreateDataKeyring } from "~/server/services/keys/data-key.service";
 import { createTestUser, fixtureDb } from "~/test/pg-harness";
 import { PrismaClient } from "~prisma";
@@ -206,7 +206,7 @@ describe("the keystore facade", () => {
 		const me = await createTestUser();
 		const master = new Keyring([{ id: 1, key: randomBytes(32) }]);
 
-		const keys = await userTransaction(
+		const keys = await keystoreTransaction(
 			clients.keystoreDb,
 			me.user.id,
 			async (tx) => {

@@ -76,6 +76,44 @@ export function registerClient(
 	cryptoClients.set(client, cryptoClientFor);
 }
 
+let fakesAllowed = false;
+
+/**
+ * Unit tests pass fake clients to code that opens a user transaction (the unit
+ * setup file calls this); the real-Postgres suite and production never do, so
+ * there a client db.ts did not build is refused. Throws outside tests.
+ */
+export function allowUnregisteredClientsForTests(allow = true): void {
+	if (process.env.NODE_ENV !== "test")
+		throw new Error("allowUnregisteredClientsForTests is for tests only");
+	fakesAllowed = allow;
+}
+
+const keystoreClients = new WeakSet<object>();
+
+/** db-core.ts registers the keystore facades it builds: the only clients `keystoreTransaction` takes. */
+export function registerKeystoreClient(client: object): void {
+	keystoreClients.add(client);
+}
+
+/** Opens `client`'s transaction with the RLS settings as its first statement. */
+function runAs<T>(
+	client: TransactionClient,
+	userId: string,
+	work: (tx: Prisma.TransactionClient) => Promise<T>,
+	options: UserTransactionOptions | undefined,
+): Promise<T> {
+	return client.$transaction(
+		(tx) =>
+			insideTransaction(async () => {
+				await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true),
+				                            set_config('role', 'retrospend_app', true)`;
+				return work(tx);
+			}),
+		options,
+	);
+}
+
 /**
  * Runs `work` in one interactive transaction with RLS set for `userId`.
  * The RLS settings are the first statement inside it.
@@ -85,8 +123,9 @@ export function registerClient(
  * user's keys, db-core.ts), whose keys load before the transaction opens, on
  * their own connection. So `tx` is never the per-query wrapper that would
  * split the work across connections, and no keystore query runs inside it.
- * A client that was not registered (`keystoreDb`, a test's base) is used as
- * it is, so a keystore transaction never waits for keys.
+ * Any other client throws: it would run model calls with no sealing, so a
+ * script's own `new PrismaClient` copies ciphertext as text or writes
+ * plaintext. Keystore work uses `keystoreTransaction`.
  *
  * `userId` is who the whole transaction runs as, whatever scoped client was
  * passed: `userTransaction(scopedForAlice, bobId, ...)` runs every query as
@@ -99,15 +138,30 @@ export async function userTransaction<T>(
 	work: (tx: Prisma.TransactionClient) => Promise<T>,
 	options?: UserTransactionOptions,
 ): Promise<T> {
-	const crypto = cryptoClients.get(client)?.(userId);
-	await crypto?.ready();
-	return (crypto?.client ?? client).$transaction(
-		(tx) =>
-			insideTransaction(async () => {
-				await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true),
-				                            set_config('role', 'retrospend_app', true)`;
-				return work(tx);
-			}),
-		options,
-	);
+	const cryptoClientFor = cryptoClients.get(client);
+	if (!cryptoClientFor && fakesAllowed)
+		return runAs(client, userId, work, options);
+	if (!cryptoClientFor)
+		throw new Error(
+			"userTransaction needs the client from db.ts (the global db or a user-scoped one); use keystoreTransaction for key work",
+		);
+	const crypto = cryptoClientFor(userId);
+	await crypto.ready();
+	return runAs(crypto.client, userId, work, options);
+}
+
+/**
+ * The keystore's own path: the same transaction as `userTransaction`, on a
+ * `keystoreDb` facade (db-core.ts) and never through the extension, so key
+ * work never waits for keys or seals anything. Any other client throws.
+ */
+export async function keystoreTransaction<T>(
+	client: TransactionClient,
+	userId: string,
+	work: (tx: Prisma.TransactionClient) => Promise<T>,
+	options?: UserTransactionOptions,
+): Promise<T> {
+	if (!keystoreClients.has(client))
+		throw new Error("keystoreTransaction takes keystoreDb only");
+	return runAs(client, userId, work, options);
 }

@@ -24,6 +24,18 @@ const filesMatching = (pattern: RegExp) =>
 		.map(relative)
 		.sort();
 
+const HAND_BUILT_CLIENTS: Record<string, string> = {
+	"scripts/repair-import-dates.ts":
+		"reads no user text (ids and dates only, printed by id) and writes only dates",
+	"scripts/repair-amount-in-usd.ts": "reads and writes amounts, no mapped text",
+	"scripts/fix-wealth-data.ts": "asset snapshots only, no mapped text",
+	"scripts/backfill-rate-history.ts": "exchange rates only, no text",
+	"e2e/fixtures/seed.ts":
+		"seeds the e2e database before any server runs, plaintext by design",
+	"e2e/fixtures/keyed-user.ts":
+		"writes a protection key set and reads the user id, no mapped text",
+};
+
 describe("client layering", () => {
 	it("sets the RLS identity only in db-core.ts and db-tx.ts", () => {
 		expect(filesMatching(/set_config\(\s*'app\.current_user_id'/)).toEqual([
@@ -36,6 +48,25 @@ describe("client layering", () => {
 		expect(filesMatching(/new\s+PrismaClient\s*\(/)).toEqual([
 			"src/server/db-core.ts",
 		]);
+	});
+
+	// Outside src a client built by hand has no sealing extension: what it reads
+	// of a mapped column is raw, and what it writes there is stored as given.
+	// Each one is listed with why that is fine; a new one needs a line here.
+	it("builds a raw client outside src only in the listed scripts and fixtures", () => {
+		const outside = scanSources({
+			roots: ["scripts", "e2e", "prisma", "packages"],
+			include: /\.(tsx?|mjs|js)$/,
+			exclude: /[\\/]node_modules[\\/]/,
+		})
+			.filter((file) =>
+				/new\s+PrismaClient\s*\(/.test(
+					withoutComments(readFileSync(file, "utf8")),
+				),
+			)
+			.map(relative)
+			.sort();
+		expect(outside).toEqual(Object.keys(HAND_BUILT_CLIENTS).sort());
 	});
 
 	it("sets the instance key's service flag only in the instance key service", () => {

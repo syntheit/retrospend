@@ -26,16 +26,20 @@
  * that has no rate is left alone and listed; the old rows are never changed.
  * Run `prisma migrate deploy` first (this needs the P7 migration).
  *
+ * It runs on the app's own client (src/server/db.ts), so the old category
+ * names are read and the envelope names written through the field-sealing
+ * extension, never as a raw copy. After the field encryption epoch `--apply`
+ * refuses (this script never runs the start check, so it cannot seal); a dry
+ * run still works, and each person moves on their first Budget read.
+ *
  * Release order: deploy, then dry run, review, `--apply`. Anyone who opens
  * Budget before the script has run is moved in on that first read. Anyone the
  * script skipped or that failed waits 10 to 30 minutes between lazy tries, so
  * run `--apply` again and fix the skips first.
  */
-import { PrismaPg } from "@prisma/adapter-pg";
 import { fromMinor } from "@retrospend/domain/envelope/units";
 import { currencyDecimals } from "@retrospend/domain/money";
-import { Pool } from "pg";
-import { PrismaClient } from "../generated/prisma/client";
+import { db } from "../src/server/db";
 import {
 	migrateUsers,
 	needsAttention,
@@ -55,9 +59,6 @@ if (!connectionString) {
 	console.error("DATABASE_URL environment variable is required.");
 	process.exit(1);
 }
-
-const pool = new Pool({ connectionString });
-const db = new PrismaClient({ adapter: new PrismaPg(pool) });
 
 function maskUrl(url: string): string {
 	return url.replace(/\/\/([^:@/]+):[^@]*@/, "//$1:***@");
@@ -167,5 +168,4 @@ main()
 	})
 	.finally(async () => {
 		await db.$disconnect();
-		await pool.end();
 	});

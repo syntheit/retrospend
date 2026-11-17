@@ -24,7 +24,7 @@ import {
 	sealField,
 } from "~/server/crypto/field-crypto";
 import { keystoreDb } from "~/server/db-core";
-import { userTransaction } from "~/server/db-tx";
+import { keystoreTransaction } from "~/server/db-tx";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 import { REPO_ROOT } from "~/test/uiRules/paths";
@@ -143,7 +143,7 @@ describe("the service branch of require_instance_actor", () => {
 			]),
 		);
 		const inTransaction = failure(
-			userTransaction(keystoreDb, randomUUID(), async (tx) => {
+			keystoreTransaction(keystoreDb, randomUUID(), async (tx) => {
 				await tx.$executeRaw`SELECT set_config('app.instance_service', 'on', true)`;
 				return tx.$queryRaw`SELECT * FROM keystore.instance_text_keys()`;
 			}),

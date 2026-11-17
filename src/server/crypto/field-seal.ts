@@ -1,9 +1,16 @@
 /**
- * The seal path. `planSeal` reads a model call's arguments and returns a copy in
- * which every mapped column it writes, at any depth, is queued to be sealed
- * under the AAD of the row it lands in; `applySeal` seals the queued cells
- * once the keys are known (field-open.ts picks them). The caller's objects
- * are never changed. Both run only while `sealing()` is true.
+ * The write walk. `planWrite` reads a model call's arguments, through every
+ * nested write, and is the one place that inspects what a write stores:
+ * - It refuses a value that already looks sealed, at any depth, in every
+ *   mode (sealing on or off, a create, an update, an `updateMany`). Only
+ *   `verbatim` mode (db-tx.ts) lets a top-level one through, returned in
+ *   `kept` for field-open.ts to open under the AAD of the cell it is
+ *   written to; a nested one is refused even there.
+ * - In `seal` mode it also returns a copy in which every mapped column the
+ *   write sets is queued to be sealed under the AAD of the row it lands in;
+ *   `applySeal` seals the queued cells once the keys are known (field-open.ts
+ *   picks them). The caller's objects are never changed.
+ * The seal-only rules below run in `seal` mode only.
  *
  * A cell's AAD names its row, so:
  * - A create that seals text and names no id gets one before the insert
@@ -18,11 +25,9 @@
  *   user. An update cannot name it: RLS keeps a scoped client to its own
  *   rows, and the global client holds no user key, so it is refused there.
  *
- * Plain strings and `{ set }` are text; "" is sealed like any text. A value
- * that already looks sealed is refused here: field-open.ts lets one through
- * only inside `verbatim`, and nothing is sealed there, so nothing is sealed
- * twice. A JSON cell (PR 8.1) is sealed by the same rules, piece by piece
- * (json-cells.ts).
+ * Plain strings and `{ set }` are text; "" is sealed like any text. Nothing is
+ * sealed in `verbatim`, so nothing is sealed twice. A JSON cell (PR 8.1) is
+ * sealed by the same rules, piece by piece (json-cells.ts).
  */
 import {
 	FieldCryptoError,
@@ -36,17 +41,9 @@ import {
 	type KeyClass,
 	ownerOfModel,
 } from "./fields";
-import { plainPieces } from "./json-cells";
+import { plainPieces, sealedPieces } from "./json-cells";
 import type { ModelGraph } from "./model-graph";
-import { newRowId } from "./row-id";
-
-type Row = Record<string, unknown>;
-
-const isRow = (value: unknown): value is Row =>
-	typeof value === "object" && value !== null && !Array.isArray(value);
-
-const idOf = (value: unknown): string | undefined =>
-	isRow(value) && typeof value.id === "string" ? value.id : undefined;
+import { idOf, isRow, newRowId, type Row } from "./row-id";
 
 /** One cell to seal: `data[column]` of a copied data object. */
 export interface SealCell {
@@ -65,11 +62,51 @@ export interface SealCell {
 
 type Text = Omit<SealCell, "data" | "model" | "rowId">;
 
+/**
+ * How a write is walked. `seal`: sealing is on, the write is sealed.
+ * `plain`: sealing is off, the write is stored as given. `verbatim`: inside
+ * db-tx.ts `verbatim`, stored as given, and a top-level sealed value is kept
+ * for the caller to open instead of refused.
+ */
+export type WriteMode = "seal" | "plain" | "verbatim";
+
+/** A sealed-looking value a top-level write stores, in `verbatim` mode only. */
+export interface KeptSealed {
+	table: string;
+	/** The AAD column: a JSON piece's own. */
+	column: string;
+	cls: KeyClass;
+	sealed: string;
+	/** The row field of a JSON piece. */
+	json?: { field: string };
+	/** The row the data is stored in, when the arguments name it. */
+	rowId: string | undefined;
+	creates: boolean;
+	data: Row;
+}
+
 interface Walk {
 	graph: ModelGraph;
 	/** The client's user; undefined on the global client. */
 	userId: string | undefined;
+	mode: WriteMode;
 	cells: SealCell[];
+	kept: KeptSealed[];
+	/** 0 for the call's own data, more inside a nested write. */
+	depth: number;
+}
+
+/** Where a data object is stored. */
+interface Place {
+	rowId: string | undefined;
+	creates: boolean;
+}
+
+/** A sealed-looking value is refused, except one a verbatim write names at the top. */
+function refuseSealed(w: Walk, kept: KeptSealed): void {
+	if (w.mode !== "verbatim" || w.depth > 0)
+		throw new FieldCryptoError("bad_plaintext");
+	w.kept.push(kept);
 }
 
 const map = (value: unknown, each: (item: unknown) => unknown) =>
@@ -86,31 +123,52 @@ function textOf(
 }
 
 /**
- * The mapped columns of `model` that `data` sets to text, and the pieces of
- * the JSON cells it sets. `data` must be the walk's own copy.
+ * Refuses (or keeps, see `refuseSealed`) each sealed-looking value `data`
+ * sets, in any mode. Then, in `seal` mode only, returns the mapped columns of
+ * `model` that `data` sets to text and the pieces of the JSON cells it sets.
+ * `data` must be the walk's own copy.
  */
-function textsOf(model: string, data: Row): Text[] {
+function textsOf(w: Walk, model: string, data: Row, at: Place): Text[] {
 	const fields = fieldsOfModel(model);
-	const texts: Text[] = fields
-		? Object.entries(fields.columns).flatMap(([column, cls]) => {
-				const found = textOf(data[column]);
-				if (!found) return [];
-				if (isSealedField(found.text))
-					throw new FieldCryptoError("bad_plaintext");
-				return [{ ...found, column, cls, table: fields.table }];
-			})
-		: [];
 	const json = jsonCellsOfModel(model);
-	if (json)
-		for (const [column, cell] of Object.entries(json.columns))
-			for (const piece of plainPieces(data, column, cell))
-				texts.push({
-					...piece,
-					wrapped: false,
-					cls: cell.cls,
-					table: json.table,
+	const texts: Text[] = [];
+	if (fields)
+		for (const [column, cls] of Object.entries(fields.columns)) {
+			const found = textOf(data[column]);
+			if (!found) continue;
+			if (isSealedField(found.text))
+				refuseSealed(w, {
+					...at,
+					data,
+					table: fields.table,
+					column,
+					cls,
+					sealed: found.text,
 				});
-	return texts;
+			else texts.push({ ...found, column, cls, table: fields.table });
+		}
+	if (json)
+		for (const [field, cell] of Object.entries(json.columns)) {
+			for (const piece of sealedPieces(data, field, cell))
+				refuseSealed(w, {
+					...at,
+					data,
+					table: json.table,
+					column: piece.column,
+					cls: cell.cls,
+					sealed: piece.sealed,
+					json: { field },
+				});
+			if (w.mode === "seal")
+				for (const piece of plainPieces(data, field, cell))
+					texts.push({
+						...piece,
+						wrapped: false,
+						cls: cell.cls,
+						table: json.table,
+					});
+		}
+	return w.mode === "seal" ? texts : [];
 }
 
 function queue(
@@ -134,7 +192,7 @@ const ownerOf = (model: string, data: Row): string | undefined => {
 function create(w: Walk, model: string, data: unknown, whereId?: string) {
 	if (!isRow(data)) return data;
 	const next = { ...data };
-	const texts = textsOf(model, next);
+	const texts = textsOf(w, model, next, { rowId: idOf(next), creates: true });
 	if (texts.length > 0) {
 		if (
 			texts.some((t) => t.cls === "user") &&
@@ -157,7 +215,7 @@ function update(
 ) {
 	if (!isRow(data)) return data;
 	const next = { ...data };
-	const texts = textsOf(model, next);
+	const texts = textsOf(w, model, next, { rowId, creates: false });
 	if (texts.length > 0) {
 		if (rowId === undefined)
 			throw new FieldCryptoError(
@@ -180,9 +238,13 @@ function upsert(w: Walk, model: string, args: Row, isNested: boolean): Row {
 	};
 }
 
-function refuseBulkText(model: string, data: unknown): void {
+function refuseBulkText(w: Walk, model: string, data: unknown): void {
 	for (const item of [data].flat())
-		if (isRow(item) && textsOf(model, { ...item }).length > 0)
+		if (
+			isRow(item) &&
+			textsOf(w, model, { ...item }, { rowId: undefined, creates: false })
+				.length > 0
+		)
 			throw new FieldCryptoError("bulk_text_write");
 }
 
@@ -193,6 +255,7 @@ const isWrapped = (value: Row) =>
 
 /** The nested writes in `data`, through each relation to a model that can hold text. */
 function nested(w: Walk, model: string, data: Row): void {
+	w.depth++;
 	for (const [field, target] of w.graph.relations(model)) {
 		const ops = data[field];
 		if (!isRow(ops) || !w.graph.reaches(target)) continue;
@@ -221,25 +284,30 @@ function nested(w: Walk, model: string, data: Row): void {
 						: update(w, target, u, undefined, true),
 				);
 			else if (op === "updateMany")
-				map(value, (u) => refuseBulkText(target, isRow(u) ? u.data : u));
+				map(value, (u) => refuseBulkText(w, target, isRow(u) ? u.data : u));
 		}
 		data[field] = next;
 	}
+	w.depth--;
 }
 
 /**
- * A copy of `args` with ids assigned, and the cells to seal in it. Throws
- * `FieldCryptoError` for a write it cannot seal (see the top of the file).
+ * Walks a model call's write arguments (see the top of the file). Throws
+ * `FieldCryptoError` for a sealed-looking value, and in `seal` mode for a
+ * write it cannot seal. In `seal` mode `args` is a copy with ids assigned and
+ * `cells` lists what to seal; otherwise `args` is the caller's own and
+ * `cells` is empty. `kept` is `verbatim` mode's top-level sealed values.
  */
-export function planSeal(
+export function planWrite(
 	graph: ModelGraph,
 	userId: string | undefined,
 	model: string,
 	operation: string,
 	args: Row,
-): { args: Row; cells: SealCell[] } {
-	const w: Walk = { graph, userId, cells: [] };
-	if (!graph.reaches(model)) return { args, cells: [] };
+	mode: WriteMode,
+): { args: Row; cells: SealCell[]; kept: KeptSealed[] } {
+	const w: Walk = { graph, userId, mode, cells: [], kept: [], depth: 0 };
+	if (!graph.reaches(model)) return { args, cells: [], kept: [] };
 	const next = { ...args };
 	if (operation === "create") next.data = create(w, model, args.data);
 	else if (operation === "createMany" || operation === "createManyAndReturn")
@@ -247,10 +315,14 @@ export function planSeal(
 	else if (operation === "update")
 		next.data = update(w, model, args.data, idOf(args.where), false);
 	else if (operation === "upsert")
-		return { args: upsert(w, model, args, false), cells: w.cells };
+		Object.assign(next, upsert(w, model, args, false));
 	else if (operation === "updateMany" || operation === "updateManyAndReturn")
-		refuseBulkText(model, args.data);
-	return { args: next, cells: w.cells };
+		refuseBulkText(w, model, args.data);
+	return {
+		args: mode === "seal" ? next : args,
+		cells: w.cells,
+		kept: w.kept,
+	};
 }
 
 /**

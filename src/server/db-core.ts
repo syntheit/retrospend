@@ -4,7 +4,11 @@ import { env } from "~/env";
 import type { RuntimeModels } from "~/server/crypto/model-graph";
 import type { TextKeys } from "~/server/crypto/text-keys";
 import { appPoolConfig } from "~/server/db-pool-config";
-import { insideTransaction, registerClient } from "~/server/db-tx";
+import {
+	insideTransaction,
+	registerClient,
+	registerKeystoreClient,
+} from "~/server/db-tx";
 import { type Prisma, PrismaClient } from "~prisma";
 
 /** The app's pool; a test builds one on its own URL to check what it sets. */
@@ -60,13 +64,14 @@ export function runtimeDataModel(): RuntimeModels {
 }
 
 /**
- * The slot is where lane D11 puts the field-encryption extension: it seals
+ * The slot holds the field-encryption extension: it seals
  * mapped columns on write and opens them on read, so it sits on every client
  * that reads or writes user text and on the transactions they open (an
  * interactive transaction's `tx` inherits its client's query extensions).
  * `keys` are the rings that client may open with: the instance ring on the
  * global client, a user's ring and the instance ring on that user's clients.
- * Today it does nothing: it passes every query on unchanged. On a scoped
+ * db.ts fills it with the field-open extension; the default passes every
+ * query on unchanged (a test of this file's wiring). On a scoped
  * client the slot is outside the per-query RLS batch (it is added first, and
  * Prisma runs the first-added query extension outermost), so a slot extension
  * sees the plain model call, wraps the whole batch, and can call `query` again
@@ -92,19 +97,24 @@ export interface KeySource {
  * The keystore calls (the functions that read and mint keys) stay off the
  * slot: the slot's extension loads keys through them, so running them through
  * it would call itself. The three members the keystore needs, bound to the
- * raw base. It is not registered with userTransaction, so a keystore
- * transaction never swaps to a crypto client or waits for keys.
+ * raw base. It is not registered with userTransaction (which refuses it), so a
+ * keystore transaction goes through keystoreTransaction and never swaps to a
+ * crypto client or waits for keys.
  */
 export type KeystoreClient = Pick<
 	RawClient,
 	"$transaction" | "$executeRaw" | "$queryRaw"
 >;
 
-const keystoreFacade = (base: RawClient): KeystoreClient => ({
-	$transaction: base.$transaction.bind(base),
-	$executeRaw: base.$executeRaw.bind(base),
-	$queryRaw: base.$queryRaw.bind(base),
-});
+const keystoreFacade = (base: RawClient): KeystoreClient => {
+	const facade: KeystoreClient = {
+		$transaction: base.$transaction.bind(base),
+		$executeRaw: base.$executeRaw.bind(base),
+		$queryRaw: base.$queryRaw.bind(base),
+	};
+	registerKeystoreClient(facade);
+	return facade;
+};
 
 /** Keystore calls only: the raw base, never through the slot. */
 export const keystoreDb = keystoreFacade(rawBase);
@@ -183,11 +193,15 @@ export function buildClients(
 		const arg =
 			typeof first === "function"
 				? (tx: unknown) =>
-						insideTransaction(() => (first as (tx: unknown) => Promise<unknown>)(tx))
+						insideTransaction(() =>
+							(first as (tx: unknown) => Promise<unknown>)(tx),
+						)
 				: first;
 		return keys.instance
 			.ready()
-			.then(() => (extendedGlobal.$transaction as AnyTransaction)(arg, ...rest));
+			.then(() =>
+				(extendedGlobal.$transaction as AnyTransaction)(arg, ...rest),
+			);
 	};
 
 	// A Proxy only for the `$transaction` override. better-auth receives this

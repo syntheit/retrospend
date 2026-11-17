@@ -9,6 +9,16 @@ import { randomBytes } from "node:crypto";
 import { FieldCryptoError } from "./field-crypto";
 import type { JsonModel, MappedModel } from "./fields";
 
+export type Row = Record<string, unknown>;
+
+/** A plain object, not an array: the shape of a Prisma data or args object. */
+export const isRow = (value: unknown): value is Row =>
+	typeof value === "object" && value !== null && !Array.isArray(value);
+
+/** The string `id` of a row-shaped value. */
+export const idOf = (value: unknown): string | undefined =>
+	isRow(value) && typeof value.id === "string" ? value.id : undefined;
+
 /** `cuid`: the id is `@default(cuid())`. `none`: callers always name it. */
 export const ID_DEFAULT: Record<MappedModel | JsonModel, "cuid" | "none"> = {
 	Apikey: "none",

@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { Keyring, openField } from "./field-crypto";
-import { applySeal, planSeal } from "./field-seal";
+import { applySeal, planWrite, type WriteMode } from "./field-seal";
 import { buildModelGraph } from "./model-graph";
 
 const rel = (name: string, type: string) => ({ name, kind: "object", type });
@@ -23,6 +23,15 @@ const graph = buildModelGraph({
 		User: { fields: [rel("categories", "Category")] },
 	},
 });
+
+const planSeal = (
+	g: typeof graph,
+	userId: string | undefined,
+	model: string,
+	operation: string,
+	args: Record<string, unknown>,
+	mode: WriteMode = "seal",
+) => planWrite(g, userId, model, operation, args, mode);
 
 const ring = new Keyring([{ id: 1, key: randomBytes(32) }]);
 const ALICE = "user-alice";
@@ -49,7 +58,7 @@ const code = (fn: () => unknown) => {
 	return "none";
 };
 
-describe("planSeal and applySeal", () => {
+describe("planWrite and applySeal", () => {
 	it("seals a create under a new cuid id and keeps a given id, never changing the caller's args", () => {
 		const args = { data: { description: "Dinner", notes: null } };
 		const out = sealedIn(args, "SharedTransaction", "create").data as Row;
@@ -237,6 +246,165 @@ describe("planSeal and applySeal", () => {
 				}),
 			),
 		).toBe("bad_plaintext");
+	});
+
+	describe("a sealed-looking value, at every depth and in every mode", () => {
+		const looksSealed = "\u0001k1:AAAA";
+		const writes: Array<[string, string, string, Record<string, unknown>]> = [
+			[
+				"a nested create",
+				"SharedTransaction",
+				"create",
+				{
+					data: {
+						description: "Dinner",
+						splitParticipants: { create: { rejectionReason: looksSealed } },
+					},
+				},
+			],
+			[
+				"a nested createMany row",
+				"SharedTransaction",
+				"update",
+				{
+					where: { id: "t1" },
+					data: {
+						splitParticipants: {
+							createMany: {
+								data: [
+									{ rejectionReason: "ok" },
+									{ rejectionReason: looksSealed },
+								],
+							},
+						},
+					},
+				},
+			],
+			[
+				"a nested update",
+				"SharedTransaction",
+				"update",
+				{
+					where: { id: "t1" },
+					data: {
+						splitParticipants: {
+							update: {
+								where: { id: "s1" },
+								data: { rejectionReason: { set: looksSealed } },
+							},
+						},
+					},
+				},
+			],
+			[
+				"a nested upsert's update half",
+				"SharedTransaction",
+				"update",
+				{
+					where: { id: "t1" },
+					data: {
+						splitParticipants: {
+							upsert: {
+								where: { id: "s1" },
+								create: { rejectionReason: "ok" },
+								update: { rejectionReason: looksSealed },
+							},
+						},
+					},
+				},
+			],
+			[
+				"a nested updateMany",
+				"SharedTransaction",
+				"update",
+				{
+					where: { id: "t1" },
+					data: {
+						splitParticipants: {
+							updateMany: {
+								where: {},
+								data: { rejectionReason: looksSealed },
+							},
+						},
+					},
+				},
+			],
+			[
+				"a top-level updateMany",
+				"SplitParticipant",
+				"updateMany",
+				{ where: {}, data: { rejectionReason: looksSealed } },
+			],
+			[
+				"a JSON body",
+				"IdempotencyKey",
+				"update",
+				{
+					where: { id: "k1" },
+					data: { responseBody: { sealed: looksSealed } },
+				},
+			],
+		];
+		for (const mode of ["seal", "plain", "verbatim"] as const)
+			for (const [label, model, operation, args] of writes) {
+				it(`refuses ${label} in ${mode} mode`, () => {
+					expect(
+						code(() => planSeal(graph, ALICE, model, operation, args, mode)),
+					).toBe(
+						// A verbatim top-level one is kept for field-open.ts to open,
+						// except one with no row to bind to (the updateMany).
+						mode === "verbatim" &&
+							(label === "a JSON body" || label === "a top-level updateMany")
+							? "none"
+							: "bad_plaintext",
+					);
+				});
+			}
+
+		it("keeps a top-level one in verbatim mode with the row it names, and nothing nested", () => {
+			const plan = planSeal(
+				graph,
+				ALICE,
+				"SharedTransaction",
+				"update",
+				{ where: { id: "t1" }, data: { description: looksSealed } },
+				"verbatim",
+			);
+			expect(plan.kept).toMatchObject([
+				{ table: "shared_transaction", column: "description", rowId: "t1" },
+			]);
+			expect(plan.cells).toEqual([]);
+			const bulk = planSeal(
+				graph,
+				ALICE,
+				"SplitParticipant",
+				"updateMany",
+				{ where: {}, data: { rejectionReason: looksSealed } },
+				"verbatim",
+			);
+			expect(bulk.kept).toMatchObject([{ rowId: undefined }]);
+		});
+
+		it("stores plain text as given outside seal mode, sealing nothing", () => {
+			const args = {
+				data: {
+					description: "Dinner",
+					splitParticipants: { create: { rejectionReason: "no" } },
+				},
+			};
+			for (const mode of ["plain", "verbatim"] as const) {
+				const plan = planSeal(
+					graph,
+					ALICE,
+					"SharedTransaction",
+					"create",
+					args,
+					mode,
+				);
+				expect(plan.args).toBe(args);
+				expect(plan.cells).toEqual([]);
+			}
+		});
 	});
 
 	it("seals nested creates, createMany, connectOrCreate, upsert and update with an id", () => {
