@@ -264,15 +264,28 @@ describe("the write limit", () => {
 	it("allows the configured batches a minute per account, then answers 429 with Retry-After", async () => {
 		const id = await accountWithKeys();
 		const headers = await webHeaders(id, 65);
-		for (let i = 0; i < VAULT_WRITE_LIMIT.limit; i++) {
+		// The limiter counts in fixed minute windows read from the clock, so on a
+		// slow run the batches could straddle a boundary and the count would reset.
+		// Pin the clock to the middle of the current window (only Date, so I/O timers run).
+		const { windowMs } = VAULT_WRITE_LIMIT;
+		const mid = Math.floor(Date.now() / windowMs) * windowMs + windowMs / 2;
+		vi.useFakeTimers({ toFake: ["Date"], now: mid });
+		try {
+			for (let i = 0; i < VAULT_WRITE_LIMIT.limit; i++) {
+				const res = await post(headers, [
+					toWire(writeOf(seal, id, `rl-${i}`, 0)),
+				]);
+				expect(res.status, `write ${i}`).toBe(200);
+			}
 			const res = await post(headers, [
-				toWire(writeOf(seal, id, `rl-${i}`, 0)),
+				toWire(writeOf(seal, id, "rl-over", 0)),
 			]);
-			expect(res.status, `write ${i}`).toBe(200);
+			await expectProblem(res.clone(), 429, "rate_limited");
+			// Pinned at the middle of the window: the wait is exactly the other half.
+			expect(Number(res.headers.get("retry-after"))).toBe(windowMs / 2000);
+		} finally {
+			vi.useRealTimers();
 		}
-		const res = await post(headers, [toWire(writeOf(seal, id, "rl-over", 0))]);
-		await expectProblem(res.clone(), 429, "rate_limited");
-		expect(Number(res.headers.get("retry-after"))).toBeGreaterThan(0);
 		expect((await vaultRowsOf(id)).length).toBe(VAULT_WRITE_LIMIT.limit);
 		// Another account is not held back by it.
 		const other = await accountWithKeys();

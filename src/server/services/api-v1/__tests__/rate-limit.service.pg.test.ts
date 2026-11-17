@@ -30,6 +30,19 @@ describe("consumeRateLimit on Postgres", () => {
 		expect(next).toMatchObject({ allowed: true, count: 1 });
 	});
 
+	it("counts a request one millisecond before the edge in the old window and one at the edge in the new", async () => {
+		const key = `test:${randomUUID()}`;
+		const edge = at(WINDOW - 10_000); // 12:01:00.000
+		const before = new Date(edge.getTime() - 1);
+		for (let i = 0; i < 2; i++) await consumeRateLimit(key, 2, WINDOW, before);
+		const last = await consumeRateLimit(key, 2, WINDOW, before);
+		expect(last).toMatchObject({ allowed: false, count: 3 });
+		expect(last.retryAfterSeconds).toBe(1);
+		const first = await consumeRateLimit(key, 2, WINDOW, edge);
+		expect(first).toMatchObject({ allowed: true, count: 1 });
+		expect(first.retryAfterSeconds).toBe(60);
+	});
+
 	it("never resets a newer window when a request carries an older clock", async () => {
 		const key = `test:${randomUUID()}`;
 		await consumeRateLimit(key, 2, WINDOW, at(WINDOW));
