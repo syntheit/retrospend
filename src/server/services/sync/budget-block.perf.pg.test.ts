@@ -210,14 +210,20 @@ describe.skipIf(sealedSuite)("the budget block at 10,000 expenses", () => {
 
 		// tx1 is quiet now (the stamps are unchanged), so this is tx2 alone.
 		const pullAt = performance.now();
-		const snapshot = await readShareSnapshot(adminDb, userId, { budget: true });
+		// The 10 s production statement timeout answers `unavailable` on a
+		// loaded runner; this file times the read, so it allows longer.
+		const snapshot = await readShareSnapshot(adminDb, userId, {
+			budget: true,
+			budgetTimeoutMs: 120_000,
+		});
 		const pull = ms(pullAt);
 
 		const plainAt = performance.now();
 		await readShareSnapshot(adminDb, userId);
 		const plain = ms(plainAt);
 
-		if (snapshot.budget?.kind !== "block") throw new Error("no block");
+		if (snapshot.budget?.kind !== "block")
+			throw new Error(`no block: ${snapshot.budget?.kind}`);
 		expect(snapshot.budget.unfrozen).toBe(0);
 		// A tenth of the rows are USD with no booked value: one kept value each.
 		expect(snapshot.budget.block.frozen).toHaveLength(usd);
