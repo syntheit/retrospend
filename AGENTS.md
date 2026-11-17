@@ -54,7 +54,7 @@ feat/<topic> ──merge --no-ff──> segment/<name> ──merge──> main �
    - For UI, read the GUIDELINE sections for what you are building (§7).
 4. **Plan.** What changes, in which files, how you will test it, what could break. High risk: a fresh `plan-critic` subagent reviews the plan first.
 5. **Build.** Match the surrounding code: naming, comment density, patterns. Keep the diff to what the request needs. Note drive-by fixes instead of making them.
-6. **Test.** Add or update tests (§8). Run the checks (§5).
+6. **Test.** Add or update tests (§8). Run the checks (§5). A branch that changes server, database or encryption code runs `pnpm check`, `pnpm test:pg` and `pnpm test:pg:sealed` in full on the branch itself before it is called ready or sent to review. Targeted test files are for iterating only.
 7. **Review** to your tier (§2.3), verify each finding (§2.4), fix the real ones.
 8. **Merge** into the segment branch with `--no-ff`, and report what now works.
 
@@ -330,6 +330,7 @@ Retrospend has one design language, decided with the owner. These rules override
 - **Visual:** `e2e/visual/` against committed baselines, rendered in a pinned image.
 - **Mobile** (jest): colocated `*.test.ts(x)`, golden money vectors, the Google-free guard and config tests in `apps/mobile/test/`.
 - **Could this test fail?** For each key assertion, name one line of the code under test whose deletion it would catch. If you can't, the test protects nothing. In security code, actually delete the guard and watch the test fail (§6.8).
+- **Fixtures follow production order.** Set up steps in the order production runs them (the key before the epoch, for example). A fixture in an impossible order hides a guard or fakes one.
 - **Vectors must discriminate.** A test value must give a different result under the wrong rule (a rounding tie that half-up and half-even split; a zone where the day changes).
 - Expected money values are derived by hand, never copied from the code's output.
 
