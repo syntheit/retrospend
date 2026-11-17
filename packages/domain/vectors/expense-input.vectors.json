@@ -1,5 +1,5 @@
 {
-	"about": "Golden cases for toExpenseInput (@retrospend/domain/expense-input) and for what a create books from it. Every path that creates an expense runs these: the web's tRPC create, v1 POST /expenses, and later the device engine. body is the create body. instants is the start of body.date in each zone the request can carry (Buenos Aires is UTC-3 all year, so its midnight is 03:00Z; UTC is 00:00Z). booked is what the row stores, as decimal text compared as numbers. Rates are units per USD (rates, all dated 2026-03-01T00:00:00Z). Expected values are derived by hand in each case's derivation, never read from an implementation. A create books status FINALIZED, direction OUT and pricingSource MANUAL.",
+	"about": "Golden cases for toBookingInput (@retrospend/domain/expense-input) and for what a create books from it. Every path that creates an expense runs these: the web's tRPC create, v1 POST /expenses, and later the device engine. body is the create body. instants is the start of body.date in each zone the request can carry (Buenos Aires is UTC-3 all year, so its midnight is 03:00Z; UTC is 00:00Z). booked is what the row stores, as decimal text compared as numbers. Rates are units per USD (rates, all dated 2026-03-01T00:00:00Z). Expected values are derived by hand in each case's derivation, never read from an implementation. A create books status FINALIZED, direction OUT and pricingSource MANUAL.",
 	"rates": [
 		{ "currency": "ARS", "type": "blue", "rate": "1545" },
 		{ "currency": "ARS", "type": "official", "rate": "1000" },
@@ -87,12 +87,12 @@
 			}
 		},
 		{
-			"name": "JPY home: a tie at 1257.5 rounds to the even 1258",
-			"derivation": "JPY official 125 per USD, USD entry: homeRate 125, USD 10.06 x 125 = 1257.5 exactly, a tie at JPY's 0 decimals; half to even picks 1258 (1257 is odd). USD value 10.06. 2026-03-31 midnight: 03:00Z in Buenos Aires, 00:00Z in UTC.",
+			"name": "JPY home: a tie at 1252.5 rounds to the even 1252",
+			"derivation": "JPY official 125 per USD, USD entry: homeRate 125, USD 10.02 x 125 = 1252.5 exactly, a tie at JPY's 0 decimals; half to even picks 1252 (1252 is even; half up would give 1253). USD value 10.02. 2026-03-31 midnight: 03:00Z in Buenos Aires, 00:00Z in UTC.",
 			"homeCurrency": "JPY",
 			"body": {
 				"title": "Ramen",
-				"amount": "10.06",
+				"amount": "10.02",
 				"currency": "USD",
 				"date": "2026-03-31"
 			},
@@ -101,14 +101,14 @@
 				"UTC": "2026-03-31T00:00:00.000Z"
 			},
 			"booked": {
-				"amount": "10.06",
+				"amount": "10.02",
 				"currency": "USD",
 				"exchangeRate": "1",
-				"amountInUSD": "10.06",
+				"amountInUSD": "10.02",
 				"rateType": "official",
 				"homeCurrency": "JPY",
 				"homeRate": "125",
-				"homeAmount": "1258"
+				"homeAmount": "1252"
 			}
 		},
 		{
