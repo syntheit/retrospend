@@ -172,7 +172,8 @@ export const protectionContract = {
 				"The salt and Argon2id parameters to derive the sign-in secret from your password while signed in. 404 when you have no keys.",
 		})
 		.meta({ scope: "account:security" })
-		.output(protectionKeysSchema),	beginPasswordRotation: v1
+		.output(protectionKeysSchema),
+	beginPasswordRotation: v1
 		.route({
 			method: "POST",
 			path: "/me/protection/password/begin",

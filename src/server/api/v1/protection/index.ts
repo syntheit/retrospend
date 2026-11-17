@@ -2,7 +2,7 @@ import { PasswordTriesExceededError } from "~/server/services/account-security.s
 import * as protection from "~/server/services/api-v1/protection";
 import { serve } from "../core/serve";
 import { problem } from "../errors";
-import { type V1Context, signedIn, v1 } from "../middleware";
+import { signedIn, type V1Context, v1 } from "../middleware";
 
 const p = v1.protection;
 

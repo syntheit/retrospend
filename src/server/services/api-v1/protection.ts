@@ -1,14 +1,17 @@
-import type { EnableProtection, RotatePassword } from "@retrospend/api-contract";
+import type {
+	EnableProtection,
+	RotatePassword,
+} from "@retrospend/api-contract";
 import { toBase64Url } from "@retrospend/crypto";
 import { env } from "~/env";
 import { problem } from "~/server/api/v1/errors";
 import { userTransaction } from "~/server/db-tx";
 import { enableProtection } from "~/server/services/protection-keys/enable";
+import { getProtectionKeys } from "~/server/services/protection-keys/protection-keys.service";
 import {
 	beginRotation,
 	rotatePassword,
 } from "~/server/services/protection-keys/rotate";
-import { getProtectionKeys } from "~/server/services/protection-keys/protection-keys.service";
 import type { Caller } from "./caller";
 
 /** v1 adapters for /me/protection; the key services do the work. */
