@@ -8,6 +8,8 @@ import {
 	insideTransaction,
 	registerClient,
 	registerKeystoreClient,
+	type UserTransactionOptions,
+	userTransaction,
 } from "~/server/db-tx";
 import { type Prisma, PrismaClient } from "~prisma";
 
@@ -244,17 +246,13 @@ export function buildClients(
 					"Use userTransaction(db, userId, async (tx) => { ... }) instead.",
 				);
 			}
-			const work = first as (tx: Prisma.TransactionClient) => Promise<unknown>;
-			return crypto.ready().then(() =>
-				(crypto.client.$transaction as AnyTransaction)(
-					(tx: Prisma.TransactionClient) =>
-						insideTransaction(async () => {
-							await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true),
-							                            set_config('role', 'retrospend_app', true)`;
-							return work(tx);
-						}),
-					...rest,
-				),
+			// The one opener of a user's RLS transaction (db-tx.ts), so a service
+			// that nests userTransaction(tx, ...) joins this one as it joins that.
+			return userTransaction(
+				scoped,
+				userId,
+				first as (tx: Prisma.TransactionClient) => Promise<unknown>,
+				rest[0] as UserTransactionOptions | undefined,
 			);
 		}
 

@@ -128,7 +128,10 @@ const openTransactions = new WeakMap<object, string>();
  * split the work across connections, and no keystore query runs inside it.
  * A transaction client this function opened joins its own transaction when
  * passed back for the same user (a service called from inside a money write);
- * `options` then do not apply, and another user throws.
+ * `options` then do not apply, and another user throws. A joined call opens no
+ * savepoint (Prisma 7's nested `tx.$transaction` did): a Postgres error inside
+ * it aborts the whole outer transaction, and a partial write the caller
+ * catches is not rolled back.
  * Any other client throws: it would run model calls with no sealing, so a
  * script's own `new PrismaClient` copies ciphertext as text or writes
  * plaintext. Keystore work uses `keystoreTransaction`.

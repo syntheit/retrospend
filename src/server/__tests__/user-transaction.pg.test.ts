@@ -12,7 +12,6 @@ import {
 	protectedProcedure,
 } from "~/server/api/trpc";
 import { userTransaction } from "~/server/db-tx";
-import { categoryNameIndexFor } from "~/server/services/category-name-index.service";
 import {
 	arsUser,
 	balanceOf,
@@ -20,6 +19,7 @@ import {
 	seedArsRates,
 } from "~/server/services/accounts/test-fixtures";
 import { updateBalance } from "~/server/services/accounts/update-balance.mutation";
+import { categoryNameIndexFor } from "~/server/services/category-name-index.service";
 import { forUser } from "~/server/services/preview";
 import {
 	adminDb,
@@ -88,6 +88,25 @@ const probe = createTRPCRouter({
 			};
 		}),
 	),
+	// A service nested in a scoped $transaction (settlement.record) joins it.
+	nestedInScoped: protectedProcedure
+		.input((value: unknown) => value as { otherUserId?: string })
+		.mutation(({ ctx, input }) =>
+			ctx.db.$transaction((tx) =>
+				userTransaction(
+					tx,
+					input.otherUserId ?? ctx.session.user.id,
+					async (joined) => ({
+						sameTx: joined === tx,
+						role: (
+							await joined.$queryRaw<
+								{ role: string }[]
+							>`SELECT current_user AS role`
+						)[0]?.role,
+					}),
+				),
+			),
+		),
 	touchOther: protectedProcedure
 		.input((value: unknown) => value as { otherCategoryId: string })
 		.mutation(({ ctx, input }) =>
@@ -153,6 +172,19 @@ describe("userTransaction on the protected procedure's scoped client", () => {
 			writtenByThisTransaction: true,
 		});
 		expect(await namesOf(user.id)).toEqual(["Renamed"]);
+	});
+
+	it("lets a service nest userTransaction inside a scoped $transaction for the same user only", async () => {
+		const alice = await createTestUser();
+		const bob = await createTestUser();
+
+		expect(await callerFor(alice.user.id).nestedInScoped({})).toEqual({
+			sameTx: true,
+			role: "retrospend_app",
+		});
+		await expect(
+			callerFor(alice.user.id).nestedInScoped({ otherUserId: bob.user.id }),
+		).rejects.toThrow(/cannot switch users/);
 	});
 
 	it("still enforces RLS on every query inside it", async () => {
