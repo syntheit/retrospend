@@ -89,7 +89,7 @@ export interface OpenedRecord {
  * What an id may be wherever one is bound into an AAD (records and wraps). The
  * one definition. The server imports it; the API contract and the SQL CHECKs
  * cannot depend on this package, so they carry the same text, and
- * src/server/services/crypto-rules.test.ts fails if any of them drifts.
+ * src/server/services/protection-keys/crypto-rules.test.ts fails if any of them drifts.
  */
 export const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 const safeInt = (v: number, max: number) =>
