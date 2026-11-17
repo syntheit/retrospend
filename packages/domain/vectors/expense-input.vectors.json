@@ -13,7 +13,12 @@
 			"name": "ARS home: USD 100 books the blue rate on the first day of a month",
 			"derivation": "No type: the ARS default is blue. USD leg 1, ARS blue 1545, so homeRate 1545 and homeAmount 100 x 1545 = 154500.00. 2026-04-01 is April 1 midnight in the zone: 03:00Z in Buenos Aires, 00:00Z in UTC.",
 			"homeCurrency": "ARS",
-			"body": { "title": "Lunch", "amount": "100", "currency": "USD", "date": "2026-04-01" },
+			"body": {
+				"title": "Lunch",
+				"amount": "100",
+				"currency": "USD",
+				"date": "2026-04-01"
+			},
 			"instants": {
 				"America/Argentina/Buenos_Aires": "2026-04-01T03:00:00.000Z",
 				"UTC": "2026-04-01T00:00:00.000Z"
@@ -85,7 +90,12 @@
 			"name": "JPY home: a tie at 1257.5 rounds to the even 1258",
 			"derivation": "JPY official 125 per USD, USD entry: homeRate 125, USD 10.06 x 125 = 1257.5 exactly, a tie at JPY's 0 decimals; half to even picks 1258 (1257 is odd). USD value 10.06. 2026-03-31 midnight: 03:00Z in Buenos Aires, 00:00Z in UTC.",
 			"homeCurrency": "JPY",
-			"body": { "title": "Ramen", "amount": "10.06", "currency": "USD", "date": "2026-03-31" },
+			"body": {
+				"title": "Ramen",
+				"amount": "10.06",
+				"currency": "USD",
+				"date": "2026-03-31"
+			},
 			"instants": {
 				"America/Argentina/Buenos_Aires": "2026-03-31T03:00:00.000Z",
 				"UTC": "2026-03-31T00:00:00.000Z"
@@ -105,7 +115,12 @@
 			"name": "KWD home: a KWD amount keeps its 3 decimals",
 			"derivation": "KWD official 0.25 per USD is 4 USD per KWD. The entry is in the home currency: homeRate 1, homeAmount 12.345 (KWD has 3 decimals), USD value 12.345 x 4 = 49.38, exchangeRate 0.25. 2026-04-01 midnight: 03:00Z in Buenos Aires, 00:00Z in UTC.",
 			"homeCurrency": "KWD",
-			"body": { "title": "Taxi", "amount": "12.345", "currency": "KWD", "date": "2026-04-01" },
+			"body": {
+				"title": "Taxi",
+				"amount": "12.345",
+				"currency": "KWD",
+				"date": "2026-04-01"
+			},
 			"instants": {
 				"America/Argentina/Buenos_Aires": "2026-04-01T03:00:00.000Z",
 				"UTC": "2026-04-01T00:00:00.000Z"

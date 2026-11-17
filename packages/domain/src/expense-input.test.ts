@@ -62,8 +62,8 @@ describe("toBookingInput", () => {
 	});
 
 	it("refuses a day that is not YYYY-MM-DD", () => {
-		expect(() => toBookingInput({ ...body, date: "04/01/2026" }, "UTC")).toThrow(
-			"Date must be in YYYY-MM-DD format",
-		);
+		expect(() =>
+			toBookingInput({ ...body, date: "04/01/2026" }, "UTC"),
+		).toThrow("Date must be in YYYY-MM-DD format");
 	});
 });
