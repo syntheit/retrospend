@@ -55,7 +55,7 @@ describe("migrateUsers after the field encryption epoch", () => {
 		setSealingForTests(() => false);
 		const { client, findMany } = empty();
 		await expect(migrateUsers(client, { apply: true })).rejects.toThrow(
-			/plaintext after the field encryption epoch/,
+			/After the field encryption epoch this script does not apply/,
 		);
 		expect(findMany).not.toHaveBeenCalled();
 	});

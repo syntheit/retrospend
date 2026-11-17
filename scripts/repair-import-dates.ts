@@ -9,13 +9,13 @@
  * Dry run is the default. --apply runs every update in one transaction.
  */
 import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
 import { normalizeTimeZone } from "@retrospend/domain/time-zone";
+import { Pool } from "pg";
+import { PrismaClient } from "../generated/prisma/client";
 import {
 	IMPORT_PRICING_SOURCES,
 	planImportDateRepair,
 } from "../src/server/import-date-repair";
-import { PrismaClient } from "../generated/prisma/client";
 
 function arg(name: string): string | undefined {
 	const i = process.argv.indexOf(name);
@@ -54,18 +54,17 @@ async function main() {
 			userId: user.id,
 			pricingSource: { in: [...IMPORT_PRICING_SOURCES] },
 		},
-		select: { id: true, date: true, pricingSource: true, title: true },
+		select: { id: true, date: true, pricingSource: true },
 		orderBy: { date: "asc" },
 	});
 	const fixes = planImportDateRepair(rows, timeZone as string);
-	const titles = new Map(rows.map((r) => [r.id, r.title]));
 
 	console.log(
-		`User ${user.email}: ${rows.length} imported expenses, ${fixes.length} stored at midnight UTC.`,
+		`User ${user.id}: ${rows.length} imported expenses, ${fixes.length} stored at midnight UTC.`,
 	);
 	for (const fix of fixes.slice(0, 20)) {
 		console.log(
-			`  ${fix.from.toISOString()} -> ${fix.to.toISOString()}  ${titles.get(fix.id) ?? ""}`,
+			`  ${fix.from.toISOString()} -> ${fix.to.toISOString()}  expense ${fix.id}`,
 		);
 	}
 	if (fixes.length > 20) console.log(`  ... and ${fixes.length - 20} more`);

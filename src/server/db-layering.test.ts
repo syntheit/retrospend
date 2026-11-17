@@ -26,7 +26,7 @@ const filesMatching = (pattern: RegExp) =>
 
 const HAND_BUILT_CLIENTS: Record<string, string> = {
 	"scripts/repair-import-dates.ts":
-		"reads expense titles to print them (ciphertext once sealed) and writes only dates",
+		"reads no user text (ids and dates only, printed by id) and writes only dates",
 	"scripts/repair-amount-in-usd.ts": "reads and writes amounts, no mapped text",
 	"scripts/fix-wealth-data.ts": "asset snapshots only, no mapped text",
 	"scripts/backfill-rate-history.ts": "exchange rates only, no text",

@@ -28,8 +28,9 @@
  *
  * It runs on the app's own client (src/server/db.ts), so the old category
  * names are read and the envelope names written through the field-sealing
- * extension, never as a raw copy. `--apply` after the field encryption epoch
- * needs this process to seal; it stops otherwise (legacy-migrate.batch.ts).
+ * extension, never as a raw copy. After the field encryption epoch `--apply`
+ * refuses (this script never runs the start check, so it cannot seal); a dry
+ * run still works, and each person moves on their first Budget read.
  *
  * Release order: deploy, then dry run, review, `--apply`. Anyone who opens
  * Budget before the script has run is moved in on that first read. Anyone the

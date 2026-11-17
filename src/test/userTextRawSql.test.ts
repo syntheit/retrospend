@@ -19,28 +19,63 @@ import { USER_TEXT_COLUMNS } from "./userTextColumns";
 /** Every column word of the sealing map, generated (userTextColumns.ts). */
 const COLUMNS = USER_TEXT_COLUMNS;
 const READS_TEXT = new RegExp(`\\b(?:${COLUMNS.join("|")})\\b`);
+const WORD = (column: string) => new RegExp(`\\b${column}\\b`);
 
 /**
- * The audited files, with the audit section that covers them. The search ones
+ * The audited files and the mapped columns each may name, with the audit
+ * section that covers them. A new column in an audited file needs its own entry. The search ones
  * keep a SQL path for a database before the field encryption epoch; after it
  * they read text through model reads (search-fold.ts, `searchesInAppLoaded`).
  */
-const AUDITED: Record<string, string> = {
-	"src/server/services/search.service.ts":
-		"expense search: SQL path, before the field encryption epoch",
-	"src/server/services/expense-list/query-parts.ts":
-		"Activity search: SQL path, before the field encryption epoch",
-	"src/server/services/payments/confirm-restore.ts":
-		"B14: payment confirm keeps the stored text in its audit entry, never opened there",
-	"src/server/services/user-deletion-ghosts.ts":
-		"B15: a handed-over ghost has its sealed email and phone set to null by a prefix test, nothing is read",
-	"src/server/services/keys/contact-hash-fill.ts":
-		"B16: the start's fill reads only plaintext shadow_profile and guest_session emails (a sealed one fails the prefix test), writes only emailHash, and the update repeats the plaintext equality",
-	"src/server/services/payments/auto-finalize.ts":
-		"B17: the audit changes key paymentGroupId is an id, not a sealed leaf (AUDIT_CHANGES_LEAVES)",
-	"src/server/services/protection-keys/prelogin.ts":
-		"B18: joins user.email, which is not a mapped column (the sealed email columns are shadow_profile and guest_session)",
-};
+const AUDITED: { file: string; columns: string[]; reason: string }[] = [
+	{
+		file: "src/server/services/search.service.ts",
+		columns: ["description", "location", "title"],
+		reason: "expense search: SQL path, before the field encryption epoch",
+	},
+	{
+		file: "src/server/services/expense-list/query-parts.ts",
+		columns: [
+			"description",
+			"location",
+			"note",
+			"notes",
+			"paymentMethod",
+			"title",
+		],
+		reason: "Activity search: SQL path, before the field encryption epoch",
+	},
+	{
+		file: "src/server/services/payments/confirm-restore.ts",
+		columns: ["paymentMethod"],
+		reason:
+			"B14: payment confirm keeps the stored text in its audit entry, never opened there",
+	},
+	{
+		file: "src/server/services/user-deletion-ghosts.ts",
+		columns: ["email", "phone"],
+		reason:
+			"B15: a handed-over ghost has its sealed email and phone set to null by a prefix test, nothing is read",
+	},
+	{
+		file: "src/server/services/keys/contact-hash-fill.ts",
+		columns: ["email"],
+		reason:
+			"B16: the start's fill reads only plaintext shadow_profile and guest_session emails (a sealed one fails the prefix test), writes only emailHash, and the update repeats the plaintext equality",
+	},
+	{
+		file: "src/server/services/payments/auto-finalize.ts",
+		columns: ["changes"],
+		reason:
+			"B17: the audit changes key paymentGroupId is an id, not a sealed leaf (AUDIT_CHANGES_LEAVES)",
+	},
+	{
+		file: "src/server/services/protection-keys/prelogin.ts",
+		columns: ["email"],
+		reason:
+			"B18: joins user.email, which is not a mapped column (the sealed email columns are shadow_profile and guest_session)",
+	},
+];
 
 const TAG = /(\$queryRaw|\$executeRaw|Prisma\.sql|\bsql)\s*(?:<[^>]*>)?\s*`/g;
 
@@ -72,15 +107,23 @@ describe("raw SQL that reads user text", () => {
 		include: /\.tsx?$/,
 		exclude: /\.test\.tsx?$|[\\/]__tests__[\\/]|[\\/]src[\\/]test[\\/]/,
 	});
+	// "file column" for each mapped column word a tagged template names.
 	const readers = files
-		.filter((f) =>
-			templateBodies(readFileSync(f, "utf8")).some((b) => READS_TEXT.test(b)),
-		)
-		.map((f) => relative(REPO_ROOT, f).replaceAll("\\", "/"))
+		.flatMap((f) => {
+			const bodies = templateBodies(readFileSync(f, "utf8"));
+			const file = relative(REPO_ROOT, f).replaceAll("\\", "/");
+			return COLUMNS.filter((c) => bodies.some((b) => WORD(c).test(b))).map(
+				(c) => `${file} ${c}`,
+			);
+		})
 		.sort();
 
-	it("sits only in the audited files", () => {
-		expect(readers).toEqual(Object.keys(AUDITED).sort());
+	it("sits only in the audited files, for the audited columns", () => {
+		expect(readers.join("\n")).toBe(
+			AUDITED.flatMap((a) => a.columns.map((c) => `${a.file} ${c}`))
+				.sort()
+				.join("\n"),
+		);
 	});
 
 	it("finds the readers it should (the scan itself works)", () => {

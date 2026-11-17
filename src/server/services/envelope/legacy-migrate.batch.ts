@@ -88,7 +88,7 @@ export async function migrateUsers(
 	// a script has no start check to say this process seals (sealing.ts).
 	if (options.apply && (await loadEpoch()) && !sealing())
 		throw new Error(
-			"This run would store plaintext after the field encryption epoch. Run it with sealing on, or dry run.",
+			"After the field encryption epoch this script does not apply: it never runs the start check, so it would store plaintext. Dry run only; people move on their first Budget read.",
 		);
 	const runId = options.runId ?? `script-${randomUUID()}`;
 	const now = options.now ?? new Date();
