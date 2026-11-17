@@ -10,6 +10,7 @@ import type {
 } from "@retrospend/api-contract";
 import { withDefaultRange } from "@retrospend/api-contract";
 import { bookedRate } from "@retrospend/domain/activity-rows";
+import { toBookingInput } from "@retrospend/domain/expense-input";
 import { dayKey, parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
@@ -153,17 +154,7 @@ function toServiceInput(
 	f: Omit<Fields, "id">,
 	timeZone: string,
 ): CreateExpenseInput {
-	const { date, customRate, rateType, ...rest } = f;
-	return {
-		...rest,
-		id,
-		date: parseDateOnlyIn(date, timeZone),
-		...(customRate
-			? { customRate: { base: f.currency, value: customRate } }
-			: rateType
-				? { rateType }
-				: {}),
-	};
+	return toBookingInput({ ...f, id }, timeZone);
 }
 
 export function createInput(caller: LedgerCaller, input: Fields) {
