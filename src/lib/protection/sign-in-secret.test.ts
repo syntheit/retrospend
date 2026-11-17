@@ -228,6 +228,66 @@ describe("signInSecretFor", () => {
 	});
 });
 
+// What every prompt in password-prompts.test.ts relies on: whatever the server
+// does to a keyed account, the typed password is neither returned for sending
+// nor sent in a request of its own.
+describe("a keyed account's typed password", () => {
+	const TYPED = MASTER.password;
+	type Mode = { status: number; body: unknown } | "network";
+	const states: [string, Mode][] = [
+		["a null answer", { status: 200, body: { kdf: null } }],
+		["a missing route", { status: 404, body: {} }],
+		["a server error", { status: 500, body: {} }],
+		["a rate limit", { status: 429, body: {} }],
+		["a network error", "network"],
+		["a body that is not a kdf", { status: 200, body: { kdf: { salt: 1 } } }],
+		[
+			"parameters below the floor",
+			{ status: 200, body: { kdf: { ...FLOOR_ONLY, memoryKiB: 1024 } } },
+		],
+		[
+			"a short salt",
+			{ status: 200, body: { kdf: { ...FLOOR_ONLY, salt: "AAAA" } } },
+		],
+	];
+
+	for (const signedIn of [false, true]) {
+		it(`is never returned or sent, ${signedIn ? "signed in" : "signed out"}, in any server state`, async () => {
+			const storage = memoryStorage();
+			const sent: string[] = [];
+			let mode: Mode = { status: 200, body: { kdf: FLOOR_ONLY } };
+			const fetch = vi.fn(async (_url: unknown, init?: RequestInit) => {
+				sent.push(JSON.stringify([init?.body, init?.headers]));
+				if (mode === "network") throw new TypeError("offline");
+				return json(mode.body, mode.status);
+			});
+			const run = () =>
+				signInSecretFor(EMAIL, TYPED, {
+					signedIn,
+					deps: {
+						fetch: fetch as unknown as typeof globalThis.fetch,
+						storage,
+						paint: async () => {},
+					},
+				});
+			// The first keyed answer records the address.
+			expect(await run()).toBe(EXPECTED);
+			for (const [name, state] of states) {
+				mode = state;
+				const out = await run().then(
+					(text) => text,
+					(e: unknown) => (e instanceof SignInSecretError ? e.code : "other"),
+				);
+				expect(out, name).not.toBe(TYPED);
+				expect(["downgrade", "unavailable", "params", "rateLimited"]).toContain(
+					out,
+				);
+			}
+			expect(sent.join("\n")).not.toContain(TYPED);
+		});
+	}
+});
+
 describe("accountIsKeyed", () => {
 	const run = (answer: () => Response, storage = memoryStorage()) =>
 		accountIsKeyed(EMAIL, {
