@@ -212,8 +212,8 @@ func TestKeystoreRestoreSteps(t *testing.T) {
 	if _, err := asAppUserErr(scratch, userA, `SELECT count(*) FROM keystore.user_data_key`); err == nil {
 		t.Fatal("the app role can read the keystore table")
 	}
-	if got := asAppUser(t, scratch, userA, `SELECT count(*) FROM keystore.instance_text_keys()`); got != sourceInstanceKeys {
-		t.Fatalf("the app role sees %d instance keys through the function, want %d", got, sourceInstanceKeys)
+	if _, err := asAppUserErr(scratch, userA, `SELECT count(*) FROM keystore.instance_text_keys()`); err == nil {
+		t.Fatal("the app role can read the instance keys through the function")
 	}
 	if _, err := asAppUserErr(scratch, userA, `SELECT count(*) FROM keystore.instance_text_key`); err == nil {
 		t.Fatal("the app role can read the instance key table")

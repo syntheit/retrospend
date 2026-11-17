@@ -88,8 +88,9 @@ export async function readFieldEncryptionEpoch(
 }
 
 /**
- * Whether retrospend_app may use the key store doors the scoped clients call,
- * as prisma/grants/app-role.sql grants them. A missing role, schema or
+ * Whether retrospend_app may use the user key doors the scoped clients call,
+ * as prisma/grants/app-role.sql grants them. The instance key has no door for
+ * the app role: the service reads and mints it on the owner connection. A missing role, schema or
  * function reads as false, never as an error.
  */
 async function keystoreReachable(client: Client): Promise<boolean> {
@@ -102,9 +103,7 @@ async function keystoreReachable(client: Client): Promise<boolean> {
 			                      AND pg_catalog.has_function_privilege('retrospend_app', f::oid, 'EXECUTE'))
 			      FROM unnest(ARRAY[
 			        to_regprocedure('keystore.current_user_data_keys()'),
-			        to_regprocedure('keystore.create_first_data_key(text, bigint)'),
-			        to_regprocedure('keystore.instance_text_keys()'),
-			        to_regprocedure('keystore.create_first_instance_key(text, bigint)')
+			        to_regprocedure('keystore.create_first_data_key(text, bigint)')
 			      ]) AS f)
 		END AS "ok"`;
 	return row?.ok === true;
@@ -187,10 +186,7 @@ export async function assertFieldEncryptionStart({
 			"code_below_floor",
 			`floor ${stored}, this build ${floor}`,
 		);
-	const ring = await getOrCreateInstanceKeyring(
-		{ kind: "service" },
-		masterKeyring,
-	);
+	const ring = await getOrCreateInstanceKeyring(masterKeyring);
 	// After the mint, which writes app_settings on its own connection and
 	// would wait on a row this statement had locked in a caller's transaction.
 	// A build that read a lower floor and lost a race with a newer one (a rolling

@@ -127,8 +127,6 @@ describe("with DATA_KEYS_WRITE on", () => {
 	it.each([
 		'REVOKE EXECUTE ON FUNCTION keystore."current_user_data_keys"() FROM retrospend_app',
 		'REVOKE EXECUTE ON FUNCTION keystore."create_first_data_key"(text, bigint) FROM retrospend_app',
-		'REVOKE EXECUTE ON FUNCTION keystore."instance_text_keys"() FROM retrospend_app',
-		'REVOKE EXECUTE ON FUNCTION keystore."create_first_instance_key"(text, bigint) FROM retrospend_app',
 		"REVOKE USAGE ON SCHEMA keystore FROM retrospend_app",
 		'DROP FUNCTION keystore."current_user_data_keys"()',
 	])("refuses to start when the key store is out of reach: %s", async (sql) => {

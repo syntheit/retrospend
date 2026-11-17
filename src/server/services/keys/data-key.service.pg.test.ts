@@ -716,6 +716,8 @@ describe("keys that were lost", () => {
 			"20261109100000_keystore",
 			"20261109800000_keystore_lost_guard",
 			"20261111100000_instance_text_key",
+			"20261111200000_instance_key_service_actor",
+			"20261117100000_instance_key_service_only",
 		]);
 		const migration = (name: string) =>
 			readFileSync(
@@ -757,6 +759,41 @@ describe("keys that were lost", () => {
 			// The documented list runs both, in order, and the guard is back.
 			for (const name of names) await client.query(migration(name ?? ""));
 			expect(await mint()).toBe("KS001");
+
+			// The instance key after the replay: the service reads it, a user id
+			// is refused, the app role has no door, and an epoch with no key row
+			// refuses a new key.
+			const instance = async (statements: string[]) => {
+				await client.query("SAVEPOINT instance");
+				try {
+					for (const sql of statements) await client.query(sql);
+					return "ok";
+				} catch (error) {
+					return (error as { code?: string }).code;
+				} finally {
+					await client.query("ROLLBACK TO SAVEPOINT instance");
+				}
+			};
+			const read = "SELECT * FROM keystore.instance_text_keys()";
+			const service = "SELECT set_config('app.instance_service', 'on', true)";
+			const asUser = `SELECT set_config('app.current_user_id', '${me.user.id}', true)`;
+			const asApp = "SELECT set_config('role', 'retrospend_app', true)";
+			expect(await instance([service, read])).toBe("ok");
+			expect(await instance([asUser, read])).toBe("28000");
+			expect(await instance([asUser, asApp, read])).toBe("42501");
+			await client.query(
+				`INSERT INTO "app_settings" ("id", "updatedAt", "fieldEncryptionSince")
+				 VALUES ('app_settings_singleton', now() AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC')
+				 ON CONFLICT ("id") DO UPDATE SET "instanceKeySince" = NULL,
+				        "fieldEncryptionSince" = now() AT TIME ZONE 'UTC'`,
+			);
+			await client.query("DELETE FROM keystore.instance_text_key");
+			expect(
+				await instance([
+					service,
+					"SELECT * FROM keystore.create_first_instance_key('x', 1::bigint)",
+				]),
+			).toBe("KS001");
 		});
 	});
 });

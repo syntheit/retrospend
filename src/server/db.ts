@@ -42,8 +42,7 @@ const userLoader =
 
 // The seal path's first write makes the key (PR 4 section 1); the instance
 // key is the service's, whoever writes first.
-const mintInstance: KeyMinter = () =>
-	getOrCreateInstanceKeyring({ kind: "service" });
+const mintInstance: KeyMinter = () => getOrCreateInstanceKeyring();
 
 // DATA_KEYS_WRITE turns sealing on (sealing.ts), and every client's
 // `ready()` loads the epoch through this reader (epoch.ts).

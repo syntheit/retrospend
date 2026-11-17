@@ -1,8 +1,8 @@
 /**
  * Per-user data keys. Each user has
  * a random 256-bit key, stored in the `keystore` schema sealed under the
- * server master key (src/server/crypto/master-key.ts). Nothing encrypts user
- * data with it yet; D11 will.
+ * server master key (src/server/crypto/master-key.ts). It seals the user's own
+ * text (src/server/crypto/field-seal.ts) once the field encryption epoch is set.
  *
  * A signed-in caller reaches only its own key. `getOrCreateDataKeyring` takes
  * the transaction of a user-scoped client, for example

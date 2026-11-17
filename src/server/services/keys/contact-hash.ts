@@ -55,8 +55,7 @@ const LABELS: Record<ContactTable, string> = {
  * wildcards. Postgres's default LIKE escape is the backslash: escaping all
  * three makes the database match case-insensitive equality only.
  */
-const escapeLike = (text: string): string =>
-	text.replace(/[\\%_]/g, "\\$&");
+const escapeLike = (text: string): string => text.replace(/[\\%_]/g, "\\$&");
 
 /** The text two addresses are compared by, on the hash path and the plaintext path. */
 export const normalizeContactEmail = (email: string): string =>
@@ -89,10 +88,7 @@ async function ringForRule(
 	if (!masterKeyring) return undefined;
 	if (await loadEpoch()) {
 		try {
-			return await getOrCreateInstanceKeyring(
-				{ kind: "service" },
-				masterKeyring,
-			);
+			return await getOrCreateInstanceKeyring(masterKeyring);
 		} catch (error) {
 			if (!isRingFailure(error)) throw error;
 			throw new TextUnavailableError(error.code);

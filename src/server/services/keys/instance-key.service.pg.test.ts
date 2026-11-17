@@ -2,12 +2,13 @@
  * The instance key for shared text, in the keystore schema. Hand-derived
  * expectations:
  *
- *   no actor, or an actor the database does not know -> refused (28000)
- *   a signed-in user, or a live guest session        -> the key, made on first use
- *   a guest idle for 91 days                         -> refused; 89 days -> works
- *   eight concurrent first calls                     -> one row, one key
- *   key wiped while "instanceKeySince" is set        -> keystore_lost, nothing made
- *   operator clears the marker                       -> a new key (opens nothing old)
+ *   retrospend_app, with or without a user id set      -> permission denied (42501), both doors
+ *   the owner connection with no service flag           -> refused (28000)
+ *   the service                                         -> the key, made on first use
+ *   eight concurrent first calls                        -> one row, one key
+ *   key wiped while "instanceKeySince" is set           -> keystore_lost, nothing made
+ *   key wiped while the epoch is set, marker cleared    -> keystore_lost, nothing made
+ *   operator clears the marker, epoch not set           -> a new key (opens nothing old)
  *   master key with the same id, other bytes         -> auth_failed
  *   wrapped key copied to another key id             -> auth_failed (AAD names the id)
  *   canary: first start writes it, same key verifies, wrong key stops
@@ -32,7 +33,6 @@ import {
 	evictInstanceKeyring,
 	getOrCreateInstanceKeyring,
 	InstanceKeyError,
-	type InstanceKeyActor,
 } from "./instance-key.service";
 import {
 	assertMasterKeyCanary,
@@ -41,8 +41,11 @@ import {
 
 const MIGRATION = "20261111100000_instance_text_key";
 const master = (id = 1) => new Keyring([{ id, key: randomBytes(32) }]);
-const cell: FieldAad = { table: "shared_transaction", column: "notes", rowId: "s1" };
-const DAY = 24 * 60 * 60 * 1000;
+const cell: FieldAad = {
+	table: "shared_transaction",
+	column: "notes",
+	rowId: "s1",
+};
 
 type Row = { keyId: number; wrappedKey: string; masterKeyId: bigint };
 
@@ -90,38 +93,17 @@ async function expectFieldError(promise: Promise<unknown>, code: string) {
 	expect((error as FieldCryptoError).code).toBe(code);
 }
 
-async function guest(lastActiveAt = new Date()): Promise<InstanceKeyActor> {
-	const row = await adminDb.guestSession.create({
-		data: {
-			name: "Guest",
-			email: `${randomUUID()}@pg-test.invalid`,
-			magicLinkId: randomUUID(),
-			projectId: randomUUID(),
-			sessionToken: randomUUID(),
-			lastActiveAt,
-		},
-		select: { id: true },
-	});
-	return { kind: "guest", guestSessionId: row.id };
-}
-
-const asUser = async (): Promise<InstanceKeyActor> => ({
-	kind: "user",
-	userId: (await createTestUser()).user.id,
-});
-
 /** Evicts first, so every call is a fresh load. */
-const load = (actor: InstanceKeyActor, mk: Keyring | undefined) => {
+const load = (mk: Keyring | undefined) => {
 	evictInstanceKeyring();
-	return getOrCreateInstanceKeyring(actor, mk);
+	return getOrCreateInstanceKeyring(mk);
 };
 
 describe("getOrCreateInstanceKeyring", () => {
-	it("makes one key on first use for a signed-in user and returns it after", async () => {
-		const actor = await asUser();
+	it("makes one key on first use and returns it after", async () => {
 		const mk = master();
-		const first = await load(actor, mk);
-		const second = await load(actor, mk);
+		const first = await load(mk);
+		const second = await load(mk);
 
 		expect(openField(second, sealField(first, "Dinner", cell), cell)).toBe(
 			"Dinner",
@@ -132,107 +114,48 @@ describe("getOrCreateInstanceKeyring", () => {
 		expect(stored[0]?.masterKeyId).toBe(1n);
 	});
 
-	it("serves a live guest session the same key as a user", async () => {
-		const mk = master();
-		const viaUser = await load(await asUser(), mk);
-		const viaGuest = await load(await guest(), mk);
-
-		expect(
-			openField(viaGuest, sealField(viaUser, "Shared", cell), cell),
-		).toBe("Shared");
-		expect(await rows()).toHaveLength(1);
-	});
-
-	it("lets a guest make the first key", async () => {
-		const mk = master();
-		const viaGuest = await load(await guest(), mk);
-		const viaUser = await load(await asUser(), mk);
-		expect(openField(viaUser, sealField(viaGuest, "Hi", cell), cell)).toBe(
-			"Hi",
-		);
-		expect(await rows()).toHaveLength(1);
-	});
-
-	it("refuses a guest id that is no guest session, and an empty actor", async () => {
-		const mk = master();
-		const fake = await expectInstanceError(
-			load({ kind: "guest", guestSessionId: randomUUID() }, mk),
-			"no_actor",
-		);
-		expect(fake.message).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}/);
-		await expectInstanceError(
-			load({ kind: "guest", guestSessionId: "" }, mk),
-			"no_actor",
-		);
-		await expectInstanceError(load({ kind: "user", userId: "" }, mk), "no_actor");
-		await expectInstanceError(
-			load({ kind: "user", userId: randomUUID() }, mk),
-			"no_actor",
-		);
-		// Refused means nothing was made.
-		expect(await rows()).toHaveLength(0);
-		expect((await markers())?.since ?? null).toBeNull();
-	});
-
-	it("refuses a guest idle for more than 90 days", async () => {
-		const mk = master();
-		await expectInstanceError(
-			load(await guest(new Date(Date.now() - 91 * DAY)), mk),
-			"no_actor",
-		);
-		expect(
-			await load(await guest(new Date(Date.now() - 89 * DAY)), mk),
-		).toBeInstanceOf(Keyring);
-	});
-
 	it("needs a master key", async () => {
-		await expectInstanceError(load(await asUser(), undefined), "master_key_missing");
+		await expectInstanceError(load(undefined), "master_key_missing");
 		expect(await rows()).toHaveLength(0);
 	});
 
 	it("is idempotent when callers race on the first use", async () => {
 		const mk = master();
-		const actors = await Promise.all(
-			Array.from({ length: 8 }, async (_, i) =>
-				i % 2 === 0 ? asUser() : guest(),
-			),
-		);
-		const rings = await Promise.all(actors.map((a) => load(a, mk)));
+		const rings = await Promise.all(Array.from({ length: 8 }, () => load(mk)));
 
 		expect(await rows()).toHaveLength(1);
 		const sealed = sealField(rings[0] as Keyring, "Race", cell);
-		for (const ring of rings) expect(openField(ring, sealed, cell)).toBe("Race");
+		for (const ring of rings)
+			expect(openField(ring, sealed, cell)).toBe("Race");
 	});
 
 	it("sets the marker once, with the key", async () => {
-		const actor = await asUser();
 		const mk = master();
 		const before = Date.now();
-		await load(actor, mk);
+		await load(mk);
 		const first = (await markers())?.since;
 		expect(first).toBeInstanceOf(Date);
 		expect(Math.abs((first?.getTime() ?? 0) - before)).toBeLessThan(10_000);
-		await load(actor, mk);
+		await load(mk);
 		expect((await markers())?.since).toEqual(first);
 	});
 
 	it("refuses to make a new key when the marker is set and the key is gone", async () => {
-		const actor = await asUser();
 		const mk = master();
-		const sealed = sealField(await load(actor, mk), "Kept", cell);
+		const sealed = sealField(await load(mk), "Kept", cell);
 		const marker = (await markers())?.since;
 		// A main dump restored without the keystore: the marker stays, the key goes.
 		await adminDb.$executeRaw`DELETE FROM keystore."instance_text_key"`;
 
-		await expectInstanceError(load(actor, mk), "keystore_lost");
+		await expectInstanceError(load(mk), "keystore_lost");
 		expect(await rows()).toHaveLength(0);
-		await expectInstanceError(load(actor, mk), "keystore_lost");
+		await expectInstanceError(load(mk), "keystore_lost");
 		expect((await markers())?.since).toEqual(marker);
 
 		// An operator who accepts the loss clears the marker; a new key does not
 		// open what the first one sealed.
 		await adminDb.$executeRaw`UPDATE "app_settings" SET "instanceKeySince" = NULL`;
-		const reborn = await load(actor, mk);
+		const reborn = await load(mk);
 		expect(await rows()).toHaveLength(1);
 		await expectFieldError(
 			Promise.resolve().then(() => openField(reborn, sealed, cell)),
@@ -241,26 +164,23 @@ describe("getOrCreateInstanceKeyring", () => {
 	});
 
 	it("does not open a key wrapped by another master key with the same id", async () => {
-		const actor = await asUser();
-		await load(actor, master(1));
-		await expectFieldError(load(actor, master(1)), "auth_failed");
+		await load(master(1));
+		await expectFieldError(load(master(1)), "auth_failed");
 	});
 
 	it("does not open a wrapped key copied to another key id", async () => {
-		const actor = await asUser();
 		const mk = master();
-		await load(actor, mk);
+		await load(mk);
 		const [one] = await rows();
 		await adminDb.$executeRaw`
 			INSERT INTO keystore."instance_text_key" ("keyId", "wrappedKey", "masterKeyId")
 			VALUES (2, ${one?.wrappedKey ?? ""}, 1)`;
-		await expectFieldError(load(actor, mk), "auth_failed");
+		await expectFieldError(load(mk), "auth_failed");
 	});
 
 	it("keeps older key ids in the ring after a rotation adds one", async () => {
-		const actor = await asUser();
 		const mk = master();
-		const old = await load(actor, mk);
+		const old = await load(mk);
 		const sealedOld = sealField(old, "Old", cell);
 		// What D12 does: a key 2, wrapped under the master key with its own AAD.
 		const wrapped = sealField(mk, randomBytes(32).toString("base64"), {
@@ -271,49 +191,59 @@ describe("getOrCreateInstanceKeyring", () => {
 		await adminDb.$executeRaw`
 			INSERT INTO keystore."instance_text_key" ("keyId", "wrappedKey", "masterKeyId")
 			VALUES (2, ${wrapped}, 1)`;
-		const ring = await load(actor, mk);
+		const ring = await load(mk);
 		expect(ring.currentId).toBe(2);
 		expect(ring.ids).toEqual([1, 2]);
 		expect(openField(ring, sealedOld, cell)).toBe("Old");
 	});
 
-	it("does not let an invalid caller that shares a load fail a valid one", async () => {
+	it("refuses a mint after the epoch when the key is gone, though the marker was cleared", async () => {
 		const mk = master();
-		evictInstanceKeyring();
-		const t0 = 2_000_000;
-		const bad: InstanceKeyActor = {
-			kind: "guest",
-			guestSessionId: randomUUID(),
-		};
-		const good = await asUser();
-		// Both start before either finishes, so the second shares the first's load.
-		const first = getOrCreateInstanceKeyring(bad, mk, t0);
-		const second = getOrCreateInstanceKeyring(good, mk, t0);
-		const [a, b] = await Promise.allSettled([first, second]);
-		expect(a.status).toBe("rejected");
-		expect((a as PromiseRejectedResult).reason).toMatchObject({
-			code: "no_actor",
-		});
-		expect(b.status).toBe("fulfilled");
-		expect(await rows()).toHaveLength(1);
+		await load(mk);
+		await adminDb.$executeRaw`DELETE FROM keystore."instance_text_key"`;
+		// The marker is cleared by hand, so only the epoch is left to say a key
+		// was made: a new key would open nothing sealed before.
+		await adminDb.$executeRaw`
+			UPDATE "app_settings" SET "instanceKeySince" = NULL, "fieldEncryptionSince" = now() AT TIME ZONE 'UTC'`;
+		try {
+			await expectInstanceError(load(mk), "keystore_lost");
+			expect(await rows()).toHaveLength(0);
+			expect((await markers())?.since ?? null).toBeNull();
+		} finally {
+			await adminDb.$executeRaw`UPDATE "app_settings" SET "fieldEncryptionSince" = NULL`;
+		}
+	});
+
+	it("reads the existing key after the epoch and makes none", async () => {
+		const mk = master();
+		const first = await load(mk);
+		await adminDb.$executeRaw`UPDATE "app_settings" SET "fieldEncryptionSince" = now() AT TIME ZONE 'UTC'`;
+		try {
+			const again = await load(mk);
+			expect(openField(again, sealField(first, "Same", cell), cell)).toBe(
+				"Same",
+			);
+			expect(await rows()).toHaveLength(1);
+		} finally {
+			await adminDb.$executeRaw`UPDATE "app_settings" SET "fieldEncryptionSince" = NULL`;
+		}
 	});
 
 	it("caches the keyring for a short time and then asks the database again", async () => {
-		const actor = await asUser();
 		const mk = master();
 		evictInstanceKeyring();
 		const t0 = 1_000_000;
-		const first = await getOrCreateInstanceKeyring(actor, mk, t0);
+		const first = await getOrCreateInstanceKeyring(mk, t0);
 		await adminDb.$executeRaw`DELETE FROM keystore."instance_text_key"`;
 		// Within the TTL the process keeps its key; the database is not asked.
-		expect(await getOrCreateInstanceKeyring(actor, mk, t0 + 60_000)).toBe(first);
+		expect(await getOrCreateInstanceKeyring(mk, t0 + 60_000)).toBe(first);
 		await expectInstanceError(
-			getOrCreateInstanceKeyring(actor, mk, t0 + 6 * 60_000),
+			getOrCreateInstanceKeyring(mk, t0 + 6 * 60_000),
 			"keystore_lost",
 		);
 		// A failure is not cached.
 		await expectInstanceError(
-			getOrCreateInstanceKeyring(actor, mk, t0 + 6 * 60_000 + 1),
+			getOrCreateInstanceKeyring(mk, t0 + 6 * 60_000 + 1),
 			"keystore_lost",
 		);
 	});
@@ -339,23 +269,41 @@ async function asApp(
 	}
 }
 
-describe("the keystore functions, called as the app role", () => {
+describe("the keystore functions", () => {
 	const read = "SELECT * FROM keystore.instance_text_keys()";
-	const mint = "SELECT * FROM keystore.create_first_instance_key('x', 1::bigint)";
+	const mint =
+		"SELECT * FROM keystore.create_first_instance_key('x', 1::bigint)";
+	const FLAG_ON = "SELECT set_config('app.instance_service', 'on', true)";
 
-	it("refuse both doors with no actor, an unknown user and an unknown guest", async () => {
+	/** The owner connection, with the given statements run first; the SQLSTATE or "ok". */
+	async function asOwner(
+		client: Client,
+		before: string[],
+		statement: string,
+	): Promise<string> {
+		await client.query("SAVEPOINT door");
+		try {
+			for (const sql of before) await client.query(sql);
+			await client.query(statement);
+			return "ok";
+		} catch (error) {
+			return (error as { code?: string }).code ?? "error";
+		} finally {
+			await client.query("ROLLBACK TO SAVEPOINT door");
+		}
+	}
+
+	it("are not executable by the app role, whoever it says it is", async () => {
+		const who = await createTestUser();
 		await inRolledBackTransaction(async (client) => {
 			for (const sql of [read, mint]) {
-				expect(await asApp(client, {}, sql)).toBe("28000");
+				expect(await asApp(client, {}, sql)).toBe("42501");
 				expect(
-					await asApp(client, { "app.current_user_id": "" }, sql),
-				).toBe("28000");
-				expect(
-					await asApp(client, { "app.current_user_id": randomUUID() }, sql),
-				).toBe("28000");
-				expect(
-					await asApp(client, { "app.guest_session_id": randomUUID() }, sql),
-				).toBe("28000");
+					await asApp(client, { "app.current_user_id": who.user.id }, sql),
+				).toBe("42501");
+				expect(await asApp(client, { "app.instance_service": "on" }, sql)).toBe(
+					"42501",
+				);
 			}
 			expect(
 				await asApp(client, {}, 'SELECT * FROM keystore."instance_text_key"'),
@@ -367,32 +315,53 @@ describe("the keystore functions, called as the app role", () => {
 		});
 	});
 
-	it("accept a live guest and a real user, and make the app_settings row when it is missing", async () => {
+	it("do not let the app role plant a key before the epoch", async () => {
 		const who = await createTestUser();
-		const guestActor = await guest();
+		await inRolledBackTransaction(async (client) => {
+			expect(
+				await asApp(client, { "app.current_user_id": who.user.id }, mint),
+			).toBe("42501");
+			const { rows: planted } = await client.query(
+				'SELECT count(*)::int AS n FROM keystore."instance_text_key"',
+			);
+			expect(planted[0]?.n).toBe(0);
+		});
+	});
+
+	it("refuse the owner connection without the service flag, and any user or guest id", async () => {
+		const who = await createTestUser();
+		await inRolledBackTransaction(async (client) => {
+			for (const sql of [read, mint]) {
+				expect(await asOwner(client, [], sql)).toBe("28000");
+				expect(
+					await asOwner(
+						client,
+						[
+							`SELECT set_config('app.current_user_id', '${who.user.id}', true)`,
+						],
+						sql,
+					),
+				).toBe("28000");
+				expect(
+					await asOwner(
+						client,
+						[
+							`SELECT set_config('app.guest_session_id', '${randomUUID()}', true)`,
+						],
+						sql,
+					),
+				).toBe("28000");
+				expect(await asOwner(client, [FLAG_ON], sql)).toBe("ok");
+			}
+		});
+	});
+
+	it("let the service make the key and the app_settings row when it is missing", async () => {
 		await inRolledBackTransaction(async (client) => {
 			await client.query("DELETE FROM keystore.instance_text_key");
 			await client.query('DELETE FROM "app_settings"');
-			expect(
-				await asApp(client, { "app.current_user_id": who.user.id }, mint),
-			).toBe("ok");
-			expect(
-				await asApp(
-					client,
-					{
-						"app.guest_session_id":
-							guestActor.kind === "guest" ? guestActor.guestSessionId : "",
-					},
-					read,
-				),
-			).toBe("ok");
-			// The mint above was rolled back with its savepoint: run one for real.
-			await client.query("SELECT set_config('app.current_user_id', $1, true)", [
-				who.user.id,
-			]);
-			await client.query("SELECT set_config('role', 'retrospend_app', true)");
+			await client.query(FLAG_ON);
 			await client.query(mint);
-			await client.query("RESET role");
 			const { rows: settings } = await client.query<{ since: Date | null }>(
 				`SELECT "instanceKeySince" AS since FROM "app_settings"
 				 WHERE "id" = 'app_settings_singleton'`,
@@ -403,7 +372,7 @@ describe("the keystore functions, called as the app role", () => {
 });
 
 describe("catalog", () => {
-	it("makes the doors definer functions with a fixed search_path, for the app role only", async () => {
+	it("makes the doors definer functions with a fixed search_path, for nobody but the owner", async () => {
 		const result = await adminDb.$queryRaw<
 			{
 				name: string;
@@ -422,9 +391,27 @@ describe("catalog", () => {
 			ORDER BY 1`;
 		const config = ["search_path=pg_catalog, pg_temp"];
 		expect(result).toEqual([
-			{ name: "create_first_instance_key", secdef: true, config, app: true, pub: false },
-			{ name: "instance_text_keys", secdef: true, config, app: true, pub: false },
-			{ name: "require_instance_actor", secdef: true, config, app: false, pub: false },
+			{
+				name: "create_first_instance_key",
+				secdef: true,
+				config,
+				app: false,
+				pub: false,
+			},
+			{
+				name: "instance_text_keys",
+				secdef: true,
+				config,
+				app: false,
+				pub: false,
+			},
+			{
+				name: "require_instance_actor",
+				secdef: true,
+				config,
+				app: false,
+				pub: false,
+			},
 		]);
 	});
 
@@ -436,7 +423,12 @@ describe("catalog", () => {
 			       has_column_privilege('retrospend_app', 'app_settings', 'instanceKeySince', 'SELECT, UPDATE') AS since,
 			       has_column_privilege('retrospend_app', 'app_settings', 'masterKeyCanary', 'SELECT, UPDATE') AS canary,
 			       (SELECT relrowsecurity FROM pg_class WHERE oid = 'keystore.instance_text_key'::regclass) AS rls`;
-		expect(priv).toEqual({ table: false, since: false, canary: false, rls: true });
+		expect(priv).toEqual({
+			table: false,
+			since: false,
+			canary: false,
+			rls: true,
+		});
 	});
 
 	it("the migration runs again safely", async () => {
@@ -444,8 +436,7 @@ describe("catalog", () => {
 			join(REPO_ROOT, "prisma/migrations", MIGRATION, "migration.sql"),
 			"utf8",
 		);
-		const actor = await asUser();
-		await load(actor, master());
+		await load(master());
 		const before = await rows();
 		await inRolledBackTransaction(async (client) => {
 			await client.query(migrationSql);
@@ -454,13 +445,6 @@ describe("catalog", () => {
 				'SELECT "keyId", "wrappedKey" FROM keystore."instance_text_key"',
 			);
 			expect(after).toHaveLength(before.length);
-			expect(
-				await asApp(
-					client,
-					{ "app.current_user_id": actor.kind === "user" ? actor.userId : "" },
-					"SELECT * FROM keystore.instance_text_keys()",
-				),
-			).toBe("ok");
 		});
 	});
 
@@ -531,7 +515,7 @@ describe("assertMasterKeyCanary", () => {
 
 	it("refuses to write the first canary under a master key that does not open the instance key", async () => {
 		const right = master();
-		await load(await asUser(), right);
+		await load(right);
 
 		expect(await failure(assertMasterKeyCanary(master()))).toBeInstanceOf(
 			MasterCanaryError,

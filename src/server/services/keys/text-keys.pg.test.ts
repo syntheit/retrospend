@@ -10,7 +10,7 @@
  *                               service (owner connection), so it is none; transactions run
  *   keystore schema missing  -> both failed keystore_missing; transactions run
  *   50 cold ready() calls    -> one keystore load per class, one ring for all
- *   one instance load        -> serves the read and the mint, whatever the actor
+ *   one instance load        -> serves the read and the mint
  *   no key                   -> cached 30 s, then asked again; a ring is cached 5 minutes
  *   destroyDataKeys          -> the next load asks the keystore again; a ring loaded
  *                               before the shred commits is not cached, and a
@@ -157,7 +157,7 @@ describe("the key caches", () => {
 		const own = await keystoreTransaction(keystoreDb, me.user.id, (tx) =>
 			getOrCreateDataKeyring(tx, mk),
 		);
-		await getOrCreateInstanceKeyring({ kind: "user", userId: me.user.id }, mk);
+		await getOrCreateInstanceKeyring(mk);
 		evictInstanceKeyring();
 		keystoreCalls.mockClear();
 
@@ -176,13 +176,9 @@ describe("the key caches", () => {
 		);
 	});
 
-	it("shares one instance load between the read, the mint and every actor", async () => {
+	it("shares one instance load between the read and the mint", async () => {
 		const mk = master();
-		const [a, b] = await Promise.all([createTestUser(), createTestUser()]);
-		const minted = await getOrCreateInstanceKeyring(
-			{ kind: "user", userId: a.user.id },
-			mk,
-		);
+		const minted = await getOrCreateInstanceKeyring(mk);
 		keystoreCalls.mockClear();
 		const global = sourceFor(mk).instance;
 		await global.ready();
@@ -193,9 +189,7 @@ describe("the key caches", () => {
 		evictInstanceKeyring();
 		const found = await findInstanceKeyring(mk);
 		expect(keystoreCalls).toHaveBeenCalledTimes(1);
-		expect(
-			await getOrCreateInstanceKeyring({ kind: "user", userId: b.user.id }, mk),
-		).toBe(found);
+		expect(await getOrCreateInstanceKeyring(mk)).toBe(found);
 		expect(keystoreCalls).toHaveBeenCalledTimes(1);
 	});
 
