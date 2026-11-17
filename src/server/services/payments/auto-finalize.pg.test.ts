@@ -478,4 +478,25 @@ describe("auto-finalize of a payment pending for more than 7 days", () => {
 		).rejects.toMatchObject({ code: "FORBIDDEN" });
 		expect((await state(id)).header.status).toBe("FINALIZED");
 	});
+
+	it("leaves a payment to a protected payee pending, and still finalizes one from a protected payer", async () => {
+		const toProtected = await pair(false);
+		const fromProtected = await pair(false);
+		const on = (id: string) =>
+			adminDb.user.update({
+				where: { id },
+				data: { protectionState: "ON" },
+			});
+		await on(toProtected.payee.user.id);
+		await on(fromProtected.payer.user.id);
+		const kept = await pay(toProtected, "10000");
+		const done = await pay(fromProtected, "10000");
+		// Only the payer-protected payment finalizes; an earlier test leaves an over-claim.
+		expect((await sweepStalePayments(NOW)).finalized).toBe(1);
+		const pending = await state(kept);
+		expect(pending.header.status).toBe("PROPOSED");
+		expect(pending.rows.map((r) => r.status)).toEqual(["PROPOSED"]);
+		expect(await settledEntries(kept)).toHaveLength(0);
+		expect((await state(done)).header.status).toBe("FINALIZED");
+	});
 });

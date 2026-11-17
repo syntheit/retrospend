@@ -330,7 +330,7 @@ Found while writing this draft, not in the 2026-11-08 sections:
 8. **Trusted Types enforcement** and the worker for keys (section 9).
 9. **Device benchmark (F4).** The Argon2id default and floor are estimates until measured (section 5.2).
 10. **Plaintext deletion at commit and backup retention wording.** The owner signs off on the exact text and number of days before K11 merges (spike section 5.3 and 9, item 6). Backups hold personal amounts for up to `BACKUP_RETENTION_DAYS` after the commit.
-11. **Wiring checks:** auth key hashing and prelogin (K1-1, K1-2) and the deny-by-default `protected_account` guard (F5) are built; the sidecar skipping protected users (F9) is not. Until it is, no server path is known to be safe for a protected account.
+11. **Wiring checks:** auth key hashing and prelogin (K1-1, K1-2), the deny-by-default `protected_account` guard (F5) and the background work gate (F9) are built. F9 closes the server's own jobs: recurring auto-post (income too), the import queue and the AI import route, export builds and payment auto-finalize read the state on the owner connection (`isProtectedNow`) and never read or write a protected account's personal rows. Jobs are refused before the claim and again before each result is stored, and a refusal seals nothing. A payment to a protected payee stays pending for the payee to confirm. Still open: the webhook and push fan-out send events for protected accounts until L9 builds their payloads from ids, types and amounts; shared recurring for protected accounts, device import and the per-file import opt-in wait for M5, M8 and K9 (turn-on drains in-flight work before moving rows).
 
 ## 12. Where the spike and the code disagree
 

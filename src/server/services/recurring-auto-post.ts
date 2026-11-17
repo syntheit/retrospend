@@ -15,12 +15,18 @@
  *   ids were read.
  * - After downtime a template posts every missed period, each dated its own
  *   due date with that day's rate, up to CATCH_UP_CAP per pass.
+ * - A protected account's templates never post (its personal rows live in the
+ *   vault, F9): the due list leaves them out, and the state is read again
+ *   before every period, so a template whose owner turns protection on
+ *   mid-pass stops at once. Income templates too: the confirm writes a
+ *   personal row either way.
  * - Nothing advances on a failure (a missing rate, a key), so the next pass
  *   retries; Needs you shows it as overdue after an hour (needs-you/activity.ts).
  */
 import { MissingRateError } from "@retrospend/domain/money";
 import { TRPCError } from "@trpc/server";
 import { env } from "~/env";
+import { isProtectedNow } from "~/server/services/protection/now";
 import { textUnavailableProblem } from "~/server/crypto/field-open";
 import { db } from "~/server/db";
 import { ensureUserKeyringWhenSealing } from "~/server/services/keys/data-key.service";
@@ -60,11 +66,13 @@ interface Candidate {
 /** Due templates that post on their own. Ids and the due date only, never text. */
 function dueTemplates(source: RawSource, now: Date) {
 	return source.$queryRaw<Candidate[]>`
-		SELECT "id", "userId", "nextDueDate"
-		FROM "recurring_template"
-		WHERE "isActive" AND "autoPay" AND "amountMode" = 'FIXED'
-			AND "nextDueDate" <= ${now}
-		ORDER BY "nextDueDate", "id"`;
+		SELECT t."id", t."userId", t."nextDueDate"
+		FROM "recurring_template" t
+		JOIN "user" u ON u."id" = t."userId"
+		WHERE t."isActive" AND t."autoPay" AND t."amountMode" = 'FIXED'
+			AND t."nextDueDate" <= ${now}
+			AND u."protectionState" = 'OFF'
+		ORDER BY t."nextDueDate", t."id"`;
 }
 
 /** What is safe to log about an error: its code or name, never its message (it can carry row values). */
@@ -113,6 +121,8 @@ async function postTemplate(
 ) {
 	let due = c.nextDueDate;
 	for (let i = 0; i < CATCH_UP_CAP; i++) {
+		// Period 0 was checked before the key was made.
+		if (i > 0 && (await isProtectedNow(c.userId))) return;
 		const { outcome, nextDueAt } = await postOne({ ...c, nextDueDate: due });
 		counts[outcome] += 1;
 		if (!nextDueAt || nextDueAt > now) return;
@@ -141,6 +151,8 @@ export async function sweepRecurringAutoPost(
 	};
 	const keyed = new Set<string>();
 	for (const candidate of await dueTemplates(source, now)) {
+		// Before the key is made: a protected account gets none from this pass.
+		if (await isProtectedNow(candidate.userId)) continue;
 		try {
 			if (!keyed.has(candidate.userId))
 				await ensureUserKeyringWhenSealing(candidate.userId);

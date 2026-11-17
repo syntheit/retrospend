@@ -20,11 +20,16 @@
  *   received" through payment.unconfirm.
  * - A payment the payee reopened (an unconfirm entry exists) waits for a
  *   person from then on, so an unconfirm is not undone an hour later.
+ * - A protected payee is skipped (F9): finalizing runs the confirm as the payee,
+ *   and its figures read the payee's personal rows. The payment stays pending
+ *   for the payee to confirm; a protected payer with an unprotected payee
+ *   still finalizes.
  * - A claim that would credit more than is still owed (ConfirmInsteadError)
  *   stays pending for the payee to settle by hand.
  */
 import { TRPCError } from "@trpc/server";
 import { env } from "~/env";
+import { isProtectedNow } from "~/server/services/protection/now";
 import { db } from "~/server/db";
 import { forUser } from "~/server/services/preview";
 import type { ParticipantType, Prisma } from "~prisma";
@@ -131,6 +136,7 @@ export async function sweepStalePayments(
 		failed: 0,
 	};
 	for (const candidate of await staleCandidates(source, cutoff)) {
+		if (await isProtectedNow(candidate.payeeId)) continue;
 		counts[await finalizeOne(candidate)] += 1;
 	}
 	return counts;

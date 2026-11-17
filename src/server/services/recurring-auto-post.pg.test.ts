@@ -34,6 +34,7 @@ import {
 	it,
 	vi,
 } from "vitest";
+import { ensureUserKeyringWhenSealing } from "~/server/services/keys/data-key.service";
 import {
 	AUTO_POST_GRACE_MS,
 	recurringItems,
@@ -47,6 +48,32 @@ import {
 	sweepRecurringAutoPost,
 } from "./recurring-auto-post";
 import { confirmRecurringExpense } from "./recurring-confirm.mutation";
+
+// The real state read, with a hook that runs just before it: a test flips the
+// state at a chosen step. The real key function, watched.
+const watch = vi.hoisted(() => ({
+	before: undefined as undefined | ((userId: string) => Promise<void>),
+}));
+vi.mock("~/server/services/protection/now", async (importOriginal) => {
+	const real =
+		await importOriginal<typeof import("~/server/services/protection/now")>();
+	return {
+		isProtectedNow: async (userId: string) => {
+			await watch.before?.(userId);
+			return real.isProtectedNow(userId);
+		},
+	};
+});
+vi.mock("~/server/services/keys/data-key.service", async (importOriginal) => {
+	const real =
+		await importOriginal<
+			typeof import("~/server/services/keys/data-key.service")
+		>();
+	return {
+		...real,
+		ensureUserKeyringWhenSealing: vi.fn(real.ensureUserKeyringWhenSealing),
+	};
+});
 
 const BA = "America/Argentina/Buenos_Aires";
 const ba = (day: string) => new Date(`${day}T03:00:00.000Z`);
@@ -75,7 +102,10 @@ beforeAll(async () => {
 		})),
 	});
 });
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+	vi.useRealTimers();
+	watch.before = undefined;
+});
 afterAll(() => vi.restoreAllMocks());
 
 async function user(homeCurrency: string, timeZone: string) {
@@ -106,11 +136,15 @@ async function template(userId: string, data: TemplateData) {
 
 type Source = Parameters<typeof sweepRecurringAutoPost>[1];
 
+/** Whose templates the due query returned, before `only` narrows them. */
+const listed: string[] = [];
+
 /** The real id read, kept to `userIds`; `then` runs after the read, before any post. */
 function only(userIds: string[], then?: () => Promise<unknown>): Source {
 	return {
 		$queryRaw: (async (...args: Parameters<typeof adminDb.$queryRaw>) => {
 			const rows = (await adminDb.$queryRaw(...args)) as { userId: string }[];
+			listed.splice(0, listed.length, ...rows.map((r) => r.userId));
 			await then?.();
 			return rows.filter((r) => userIds.includes(r.userId));
 		}) as typeof adminDb.$queryRaw,
@@ -453,5 +487,64 @@ describe("direction, owner, events and status", () => {
 			posted: 1,
 			missingRate: 1,
 		});
+	});
+});
+
+describe("protected accounts", () => {
+	const NOW = new Date("2027-03-05T12:00:00Z");
+	const protect = (id: string) =>
+		adminDb.user.update({ where: { id }, data: { protectionState: "ON" } });
+
+	it("posts only the unprotected user's template: ARS 120,000 at blue 1200 is USD 100.00", async () => {
+		const [open, closed] = [await user("ARS", BA), await user("ARS", BA)];
+		await protect(closed);
+		await template(open, { amount: "120000", currency: "ARS" });
+		const spend = await template(closed, { amount: "120000", currency: "ARS" });
+		const salary = await template(closed, {
+			amount: "60000",
+			currency: "ARS",
+			direction: "IN",
+		});
+		expect(await sweep(NOW, [open, closed])).toEqual({ ...NONE, posted: 1 });
+		// The due query itself leaves the protected owner's templates out.
+		expect(listed).toContain(open);
+		expect(listed).not.toContain(closed);
+		expect(await booked(open)).toEqual([
+			expect.objectContaining({
+				amount: "120000",
+				rate: "1200",
+				usd: "100.00",
+			}),
+		]);
+		expect(await booked(closed)).toEqual([]);
+		for (const id of [spend, salary])
+			expect(await dueOf(id)).toBe("2027-03-05T03:00:00.000Z");
+	});
+
+	it("skips an owner who turned protection on after the due list was read, and makes no key", async () => {
+		const me = await user("ARS", BA);
+		const id = await template(me, { amount: "120000", currency: "ARS" });
+		vi.mocked(ensureUserKeyringWhenSealing).mockClear();
+		expect(await sweep(NOW, [me], () => protect(me))).toEqual(NONE);
+		expect(ensureUserKeyringWhenSealing).not.toHaveBeenCalledWith(me);
+		expect(await booked(me)).toEqual([]);
+		expect(await dueOf(id)).toBe("2027-03-05T03:00:00.000Z");
+	});
+
+	it("stops a catch-up between periods when the owner turns protection on", async () => {
+		const me = await user("ARS", BA);
+		const id = await template(me, { amount: "120000", currency: "ARS" });
+		// Mar, Apr, May and Jun 5 are due; protection turns on after the first posts.
+		watch.before = async (userId) => {
+			if (
+				userId === me &&
+				(await fixtureDb.expense.count({ where: { userId } })) > 0
+			)
+				await protect(me);
+		};
+		const result = await sweep(new Date("2027-06-05T12:00:00Z"), [me]);
+		expect(result).toEqual({ ...NONE, posted: 1 });
+		expect(await booked(me)).toHaveLength(1);
+		expect(await dueOf(id)).toBe("2027-04-05T03:00:00.000Z");
 	});
 });

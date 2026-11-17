@@ -40,7 +40,9 @@ function upload() {
 
 beforeEach(() => {
 	vi.clearAllMocks();
-	mocks.session.mockResolvedValue({ user: { id: "user-1" } });
+	mocks.session.mockResolvedValue({
+		user: { id: "user-1", protectionState: "OFF" },
+	});
 	mocks.userFind.mockResolvedValue({ isActive: true, aiMode: "LOCAL" });
 	mocks.access.mockResolvedValue({ allowed: true, effectiveMode: "LOCAL" });
 	mocks.fetch.mockResolvedValue(new Response("", { status: 200 }));
@@ -48,6 +50,20 @@ beforeEach(() => {
 });
 
 describe("POST /api/import/process", () => {
+	it("refuses an account with advanced protection on, before any read and without calling the sidecar", async () => {
+		mocks.session.mockResolvedValue({
+			user: { id: "user-1", protectionState: "ON" },
+		});
+		mocks.enabled.mockResolvedValue(true);
+		const res = await POST(upload());
+		expect(res.status).toBe(403);
+		expect(res.headers.get("content-type")).toBe("application/problem+json");
+		expect(await res.json()).toMatchObject({ code: "protected_account" });
+		expect(mocks.userFind).not.toHaveBeenCalled();
+		expect(mocks.enabled).not.toHaveBeenCalled();
+		expect(mocks.fetch).not.toHaveBeenCalled();
+	});
+
 	it("refuses when AI import is off and sends nothing to the sidecar", async () => {
 		mocks.enabled.mockResolvedValue(false);
 		const res = await POST(upload());

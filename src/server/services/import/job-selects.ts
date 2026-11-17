@@ -6,6 +6,7 @@ import {
 	SealedTextError,
 	stripUserTextControls,
 } from "@retrospend/api-contract/common";
+import { isProtectedNow } from "~/server/services/protection/now";
 import {
 	FieldCryptoError,
 	type FieldCryptoErrorCode,
@@ -17,6 +18,9 @@ import {
 import type { ImportJobStatus, Prisma, PrismaClient } from "~prisma";
 
 const MAX_ERROR_LENGTH = 1000;
+
+/** The stable reason a job of a protected account fails with, in the unsealed `statusMessage`. */
+export const PROTECTED_CODE = "protected_account";
 
 /**
  * Every read, create and update of a job names its columns or omits the file
@@ -55,6 +59,15 @@ export function errorText(error: unknown): string {
 	}
 }
 
+/** Whether the job's owner is protected now; false for a job that is gone. */
+async function ownerProtected(
+	db: PrismaClient | Prisma.TransactionClient,
+	id: string,
+) {
+	const job = await db.importJob.findUnique({ where: { id }, select: GUARD });
+	return job ? isProtectedNow(job.userId) : false;
+}
+
 /**
  * A write that discards its row. A returned row is opened, and the rows,
  * warnings, file and error text are sealed, so only `id` comes back.
@@ -63,6 +76,11 @@ export function errorText(error: unknown): string {
  * and false says it was not: the sweep (retention-sweep.ts) fails a job that
  * waited or ran too long and clears its file, and a late write of the run
  * must not bring that job back.
+ *
+ * Protected accounts (F9): a result is not stored for an owner who turned
+ * protection on while the job ran (it throws, and the queue fails the job), and
+ * a failure keeps its code, never its text, which can quote the file: the
+ * refusal seals nothing and needs no key.
  */
 export async function writeJob(
 	db: PrismaClient | Prisma.TransactionClient,
@@ -70,6 +88,12 @@ export async function writeJob(
 	data: Prisma.ImportJobUpdateInput,
 	only?: ImportJobStatus | ImportJobStatus[],
 ): Promise<boolean> {
+	if (data.status === "READY_FOR_REVIEW" && (await ownerProtected(db, id)))
+		throw new Error(PROTECTED_CODE);
+	if (data.errorMessage !== undefined && (await ownerProtected(db, id))) {
+		const { errorMessage: _text, ...rest } = data;
+		data = { ...rest, statusMessage: PROTECTED_CODE };
+	}
 	try {
 		await db.importJob.update({
 			where: {
@@ -130,6 +154,23 @@ export async function nextQueuedJob(
 ) {
 	const where = { userId, status: "QUEUED" } as const;
 	const orderBy = { createdAt: "asc" } as const;
+	// A protected account's jobs never run: refused before any file is read.
+	if (await isProtectedNow(userId)) {
+		const queued = await db.importJob.findMany({ where, select: { id: true } });
+		for (const { id } of queued)
+			await writeJob(
+				db,
+				id,
+				{
+					status: "FAILED",
+					statusMessage: PROTECTED_CODE,
+					failedAt: new Date(),
+					fileData: null,
+				},
+				"QUEUED",
+			);
+		return null;
+	}
 	try {
 		return await db.importJob.findFirst({
 			where,

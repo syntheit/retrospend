@@ -20,6 +20,11 @@ vi.mock("~/env", () => ({
 	},
 }));
 
+// Unprotected: the state read needs the real database client.
+vi.mock("~/server/services/protection/now", () => ({
+	isProtectedNow: vi.fn().mockResolvedValue(false),
+}));
+
 vi.mock("~/server/services/settings", () => ({
 	getAppSettings: vi.fn().mockResolvedValue({
 		maxConcurrentImportJobs: 3,
