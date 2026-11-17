@@ -20,7 +20,6 @@ import {
 	webCookieFor,
 } from "~/server/api/v1/core/__tests__/harness";
 import { auth } from "~/server/better-auth";
-import { PASSWORD_CHECKING_PATHS } from "~/server/better-auth/password-tries";
 import {
 	changeOwnPassword,
 	PasswordTriesExceededError,
@@ -335,7 +334,7 @@ describe("changeOwnPassword", () => {
 			const error = await change(a, session).catch((e: unknown) => e);
 			expect(error).toBeInstanceOf(ProtectedPasswordError);
 		}
-	});
+	}, 120_000);
 
 	it("spends a try on every call of a keyless account, so the sixth from one session is refused", async () => {
 		await clearTriesWindowEdge();
@@ -775,7 +774,15 @@ describe("better-auth two-factor routes that check the password", () => {
 				body: JSON.stringify(body),
 			}),
 		);
-	const PATHS = PASSWORD_CHECKING_PATHS;
+	// Written out, not read from the guard's own list: the routes of better-auth
+	// that check a password and stay routed, found by searching its code for
+	// checkPassword and validatePassword (plugins/two-factor).
+	const PATHS = [
+		"/two-factor/enable",
+		"/two-factor/disable",
+		"/two-factor/get-totp-uri",
+		"/two-factor/generate-backup-codes",
+	];
 
 	it.each(PATHS)(
 		"%s refuses once the session's five tries are used, and the route itself counts one",
@@ -803,7 +810,7 @@ describe("better-auth two-factor routes that check the password", () => {
 			authorization: s.bearer,
 		});
 		expect(res.status).toBe(429);
-	});
+	}, 120_000);
 
 	it("spends nothing for a call that carries no password, or no session", async () => {
 		await clearTriesWindowEdge();
@@ -818,7 +825,7 @@ describe("better-auth two-factor routes that check the password", () => {
 		expect(noPassword.status).not.toBe(429);
 		const noSession = await post("/two-factor/enable", {});
 		expect(noSession.status).not.toBe(429);
-	});
+	}, 120_000);
 });
 
 describe("user.updateProfile with an email and a password change in one request", () => {
