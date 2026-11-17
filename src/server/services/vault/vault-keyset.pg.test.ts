@@ -314,9 +314,9 @@ describe("a device a key generation behind", () => {
 		await adminDb.protectionKeyWrap.create({
 			data: {
 				userId: id,
-				role: "private-key",
+				role: "ak-device",
 				targetId: KEY_ID_HEX,
-				wrapped: Buffer.concat([Buffer.from([1, 1]), Buffer.alloc(72, 1)]),
+				wrapped: Buffer.concat([Buffer.from([1, 2]), Buffer.alloc(96, 1)]),
 			},
 		});
 		await expect(
