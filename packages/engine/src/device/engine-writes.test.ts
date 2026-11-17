@@ -157,8 +157,23 @@ describe("comparing the creates a pull brings in", () => {
 		await engine.pull();
 		expect(engine.status).toBe("ready");
 		expect(engine.writeParity.counts).toEqual({ refused: 1 });
+		expect(warn.mock.calls[0]?.[0]).toBe("writes differ from the server");
 		expect(warn.mock.calls[0]?.[1]).not.toContain("boom");
 		vi.mocked(compareCreate).mockImplementation(actualCompare);
+	});
+
+	it("reports a rate the device lacks as a finding, never a booking at 1", async () => {
+		const { engine, captures } = setup([
+			[booked("e1", { currency: "EUR", exchangeRate: "0.8" })],
+		]);
+		await engine.pull();
+		captures.add({ ...sent(), body: { ...sent().body, currency: "EUR" } });
+		await engine.pull();
+		expect(engine.writeParity.counts).toEqual({ rate_missing: 1 });
+		expect(warn.mock.calls[0]?.[0]).toBe("writes differ from the server");
+		expect(JSON.parse(warn.mock.calls[0]?.[1] ?? "").findings).toEqual([
+			{ id: "e1", outcome: "rate_missing" },
+		]);
 	});
 
 	it("keeps the latest verdicts only", async () => {

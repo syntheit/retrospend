@@ -119,6 +119,16 @@ describe("holding a create", () => {
 		expect(ids.at(-1)).toBe(`e${MAX_CAPTURES}`);
 	});
 
+	it("moves a re-added create to the newest place, so the cap drops another first", () => {
+		const c = bound();
+		for (let i = 0; i < MAX_CAPTURES; i += 1) c.add(sent({ id: `e${i}` }));
+		c.add(sent({ id: "e0" }));
+		c.add(sent({ id: "new" }));
+		const ids = c.pending().map((x) => x.id);
+		expect(ids).toContain("e0");
+		expect(ids).not.toContain("e1");
+	});
+
 	it("drops one by id", () => {
 		const c = bound();
 		c.add(sent());
