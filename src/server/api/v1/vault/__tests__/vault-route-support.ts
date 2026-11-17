@@ -6,6 +6,7 @@
 import { randomBytes } from "node:crypto";
 import { contract, type VaultWriteDto } from "@retrospend/api-contract";
 import type { VaultWrite } from "~/server/services/vault/validate";
+import { wrapFixtureKey } from "~/server/services/vault/vault-db-support";
 import {
 	adminDb,
 	asMobile,
@@ -35,6 +36,7 @@ export async function accountWithKeys() {
 			publicKey: randomBytes(32),
 		},
 	});
+	await wrapFixtureKey(user.id);
 	return user.id;
 }
 

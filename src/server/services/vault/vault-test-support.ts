@@ -7,15 +7,26 @@ import {
 	type Json,
 	type Primitives,
 	type RecordContext,
+	type RecordKey,
 	sealRecord,
+	toHex,
 } from "@retrospend/crypto";
 import { createWebPrimitives } from "@retrospend/crypto/web";
 import type { VaultWrite } from "./validate";
 
-const KEY = {
+const KEY: RecordKey = {
 	keyId: new Uint8Array(16).fill(7),
 	key: new Uint8Array(32).fill(9),
 };
+/** A later generation's collection key: what turning protection on again makes. */
+export const SECOND_KEY: RecordKey = {
+	keyId: new Uint8Array(16).fill(8),
+	key: new Uint8Array(32).fill(10),
+};
+
+/** The key id the fixtures seal under, as a collection-key wrap's targetId. */
+export const KEY_ID_HEX = toHex(KEY.keyId);
+export const SECOND_KEY_ID_HEX = toHex(SECOND_KEY.keyId);
 
 let primitives: Primitives | undefined;
 export async function sealer() {
@@ -25,7 +36,8 @@ export async function sealer() {
 	return (
 		ctx: RecordContext,
 		record: { [key: string]: Json } = { note: "x" },
-	): Uint8Array => sealRecord(p, KEY, ctx, 1, record);
+		key: RecordKey = KEY,
+	): Uint8Array => sealRecord(p, key, ctx, 1, record);
 }
 
 /** The context a write to `id` at `baseVersion` is sealed under. */
@@ -59,6 +71,8 @@ export function writeOf(
 		entity?: number;
 		record?: { [key: string]: Json };
 		tombstone?: boolean;
+		/** The collection key to seal under; the fixtures' first key when omitted. */
+		key?: RecordKey;
 	} = {},
 ): VaultWrite {
 	const collectionId = over.collectionId ?? "col1";
@@ -73,6 +87,7 @@ export function writeOf(
 			: seal(
 					contextOf(userId, id, baseVersion, collectionId, entity),
 					over.record,
+					over.key,
 				),
 	};
 }

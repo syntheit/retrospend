@@ -49,7 +49,9 @@ const digits = (max: bigint) =>
 		.regex(DIGITS)
 		.refine((value) => DIGITS.test(value) && BigInt(value) <= max);
 
-export const syncCursorSchema = z.object({
+// Strict: a cursor of another feed (the vault's has a `k` field) is refused
+// here instead of read with the extra field dropped.
+export const syncCursorSchema = z.strictObject({
 	e: z.string().min(1).max(64),
 	t: digits(MAX_TXID),
 	s: digits(MAX_SEQ_VALUE),

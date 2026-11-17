@@ -12,7 +12,9 @@ import type {
 import { fromBase64Url } from "@retrospend/crypto";
 import type { db as globalDb } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
+import type { Prisma } from "~prisma";
 import { VaultError } from "./errors";
+import { sealedKeyIdHex } from "./validate";
 import {
 	applyVaultWrites,
 	readVaultChanges,
@@ -38,11 +40,39 @@ function toWrite(w: VaultWriteDto): VaultWrite {
 }
 
 /**
- * Stores a batch for a user who has a key set, all or nothing. The key set row
- * is read FOR SHARE in the write's own transaction: a reset that removes the
- * keys (and the account's vault rows) waits for this batch to finish, or runs
- * first and this batch sees no key set. Either way no record is left that no
- * key can open.
+ * Refuses a batch that names a key the account does not hold: every live
+ * record's header key id (what it was sealed under) must be the `targetId` of
+ * one of the user's collection-key wraps. A device that sealed under keys an
+ * earlier generation deleted (a reset while protection was OFF, then turn-on
+ * again) is told to start over instead of storing bytes no key can open.
+ * Tombstones carry no header and are not checked.
+ */
+async function requireCurrentKeys(
+	tx: Prisma.TransactionClient,
+	userId: string,
+	writes: readonly VaultWrite[],
+): Promise<void> {
+	const named = new Set<string>();
+	for (const w of writes) {
+		if (w.ciphertext !== null) named.add(sealedKeyIdHex(w.ciphertext));
+	}
+	if (named.size === 0) return;
+	const held = await tx.$queryRaw<{ targetId: string }[]>`
+		SELECT "targetId" FROM "protection_key_wrap"
+		WHERE "userId" = ${userId} AND "role" = 'collection-key'
+		  AND "targetId" = ANY(${[...named]})`;
+	if (held.length !== named.size) throw new VaultError("keys_missing");
+}
+
+/**
+ * Stores a batch for a user who has a key set, all or nothing. In the write's
+ * own transaction the key set row is read FOR SHARE (a reset that removes the
+ * keys and the account's vault rows waits for this batch to finish, or runs
+ * first and this batch sees no key set), and every live record's header key id
+ * must name one of the user's collection-key wraps (requireCurrentKeys). The
+ * check is the header's key id only: the server never opens a record, so it
+ * cannot tell that the bytes were sealed under that key, only which key they
+ * claim; the AAD still makes a lie fail to open on a device.
  */
 export async function writeVaultRecords(
 	db: typeof globalDb,
@@ -58,6 +88,7 @@ export async function writeVaultRecords(
 				SELECT 1 AS "one" FROM "protection_key_set"
 				WHERE "userId" = ${userId} FOR SHARE`;
 			if (keys.length === 0) throw new VaultError("keys_missing");
+			await requireCurrentKeys(tx, userId, decoded);
 			return applyVaultWrites(tx, userId, decoded);
 		},
 		{ timeout: VAULT_WRITE_TIMEOUT_MS },
