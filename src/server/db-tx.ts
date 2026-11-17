@@ -154,9 +154,16 @@ export async function userTransaction<T>(
 			"userTransaction cannot switch users inside an open transaction",
 		);
 	const cryptoClientFor = cryptoClients.get(client);
-	const joinable = (tx: Prisma.TransactionClient) => {
+	// The entry lives only while the transaction is open: a client stays the
+	// same object afterwards (a unit mock passes itself as tx), and a stale
+	// entry would refuse the next user's transaction on it.
+	const joinable = async (tx: Prisma.TransactionClient) => {
 		openTransactions.set(tx, userId);
-		return work(tx);
+		try {
+			return await work(tx);
+		} finally {
+			if (openTransactions.get(tx) === userId) openTransactions.delete(tx);
+		}
 	};
 	if (!cryptoClientFor && fakesAllowed)
 		return runAs(client, userId, joinable, options);
