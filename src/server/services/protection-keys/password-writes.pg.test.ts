@@ -812,6 +812,22 @@ describe("better-auth two-factor routes that check the password", () => {
 		expect(res.status).toBe(429);
 	}, 120_000);
 
+	it("charges the session better-auth authenticates, not a decoy under another cookie name", async () => {
+		await clearTriesWindowEdge();
+		// The decoy is made first, so an unordered lookup would find it first.
+		const attacker = await passwordUser();
+		const decoy = await webSession(attacker.id);
+		const victim = await passwordUser();
+		const stolen = await webSession(victim.id);
+		for (let i = 0; i < 5; i++) await spendPasswordTry(victim.id, stolen.id);
+		const decoyValue = decoy.cookie.split("=")[1];
+		// better-auth reads only better-auth.session_token here; the other name is ignored.
+		const res = await post("/two-factor/get-totp-uri", {
+			cookie: `${stolen.cookie}; __Secure-better-auth.session_token=${decoyValue}`,
+		});
+		expect(res.status).toBe(429);
+	}, 120_000);
+
 	it("spends nothing for a call that carries no password, or no session", async () => {
 		await clearTriesWindowEdge();
 		const a = await passwordUser();

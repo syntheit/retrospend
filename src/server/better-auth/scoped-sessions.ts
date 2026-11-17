@@ -80,19 +80,22 @@ function withoutSessionCookies(cookieName: string, headers: Headers): Headers {
 }
 
 /**
- * The session tokens a request can act as, the way guardScopedSessions reads
- * them: a bearer the plugin acts on replaces the cookies, otherwise the cookies.
+ * The one session token better-auth authenticates this request with: the
+ * bearer the plugin acts on (which replaces the cookies), otherwise the first
+ * cookie under the session cookie's own name. For charging a session (unlike
+ * the refusing guard above, which looks at every name), a token better-auth
+ * would not use must never be picked.
  */
-export function requestSessionTokens(
+export function authenticatingSessionToken(
 	headers: Headers,
 	cookieName: string,
-): string[] {
+): string | null {
 	const bearer = pluginBearer(headers);
-	return (
+	const token =
 		bearer === null
-			? cookieSessionTokens(cookieName, headers)
-			: [bearerSessionToken(bearer)]
-	).filter(Boolean);
+			? parseCookies(headers.get("cookie") ?? "").get(cookieName)
+			: bearerSessionToken(bearer);
+	return token ? sessionTokenOf(token) || null : null;
 }
 
 /** Auth endpoints a scoped (mobile or device) session may still call. */

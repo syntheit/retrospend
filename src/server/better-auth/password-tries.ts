@@ -1,5 +1,5 @@
 import { APIError } from "better-auth/api";
-import { requestSessionTokens } from "~/server/better-auth/scoped-sessions";
+import { authenticatingSessionToken } from "~/server/better-auth/scoped-sessions";
 import { db } from "~/server/db";
 import {
 	PasswordTriesExceededError,
@@ -21,7 +21,7 @@ export const PASSWORD_CHECKING_PATHS = [
 /**
  * Runs in hooks.before, which better-auth calls before the bearer plugin turns
  * a bearer into a cookie, so the session is found from the tokens directly
- * (requestSessionTokens), not through getSession.
+ * (authenticatingSessionToken), not through getSession.
  */
 export async function spendTryForPasswordCheck(input: {
 	path: string;
@@ -33,10 +33,10 @@ export async function spendTryForPasswordCheck(input: {
 		return;
 	const password = (input.body as { password?: unknown } | null)?.password;
 	if (typeof password !== "string" || password === "") return;
-	const tokens = requestSessionTokens(input.headers, input.cookieName);
-	if (tokens.length === 0) return;
+	const token = authenticatingSessionToken(input.headers, input.cookieName);
+	if (!token) return;
 	const session = await db.session.findFirst({
-		where: { token: { in: tokens }, expiresAt: { gt: new Date() } },
+		where: { token, expiresAt: { gt: new Date() } },
 		select: { id: true, userId: true },
 	});
 	// No session: the route answers 401 itself.
