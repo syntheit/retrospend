@@ -83743,7 +83743,7 @@
 													"type": "string"
 												},
 												"targetId": {
-													"description": "What the wrap is bound to: your user id for ak-password, ak-recovery and private-key, the collection key id for collection-key.",
+													"description": "What the wrap is bound to: your user id for ak-password, ak-recovery and private-key; for collection-key, the lowercase hex of the 16-byte key id (32 characters).",
 													"pattern": "^[A-Za-z0-9_-]{1,64}$",
 													"type": "string"
 												},
