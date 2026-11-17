@@ -91,6 +91,8 @@ const previousDefaultZone = process.env.DEFAULT_TIME_ZONE;
 /** A category of another user: no figure of this user may read it. */
 let bobCategory = "";
 
+// Seeding several users and a month of rows passed the 10 s hook limit in the
+// sealed suite on a loaded gate (b69, b71); the tests themselves stay fast.
 beforeAll(async () => {
 	// Auckland is a different local day than Buenos Aires at NOW.
 	process.env.DEFAULT_TIME_ZONE = "Pacific/Auckland";
@@ -116,7 +118,7 @@ beforeAll(async () => {
 			data: { name: "Bob's", color: "orange", userId: bob.id },
 		})
 	).id;
-});
+}, 60_000);
 
 afterAll(() => {
 	vi.useRealTimers();
