@@ -1,7 +1,13 @@
-import { beforeAll, describe, expect, it } from "vitest";
-import { loadCatalog } from "@retrospend/i18n/load";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { loadCatalog, loadNamespace } from "@retrospend/i18n/load";
 import { SUPPORTED_LOCALES } from "~/i18n/locales";
-import { loadCatalogFromDisk } from "./catalog-from-disk";
+import {
+	loadCatalogFromDisk,
+	loadNamespaceFromDisk,
+} from "./catalog-from-disk";
 import { serverTranslator } from "./server-translator";
 import {
 	buildNoticeText,
@@ -207,10 +213,8 @@ describe("buildNoticeText never carries free text", () => {
 
 	it("has the catalog namespace, with a title and body for every kind, in every locale", async () => {
 		for (const locale of SUPPORTED_LOCALES) {
-			const catalog = (await loadCatalog(locale)).notificationText as Record<
-				string,
-				Record<string, string>
-			>;
+			const catalog = (await loadNamespace(locale, "notificationText"))
+				.notificationText as Record<string, Record<string, string>>;
 			expect(catalog, locale).toBeDefined();
 			for (const kind of KINDS) {
 				expect(catalog[kind]?.title, `${kind} ${locale}`).toBeTruthy();
@@ -384,10 +388,83 @@ describe("serverTranslator", () => {
 });
 
 describe("loadCatalogFromDisk", () => {
-	it("reads the same catalog the Vite and Turbopack loader does, for every locale", async () => {
-		for (const locale of SUPPORTED_LOCALES)
-			expect(await loadCatalogFromDisk(locale), locale).toEqual(
+	// One case per locale: each reads every feature file twice, so a busy
+	// machine gets a timeout budget per locale instead of one for all seven.
+	it.each(SUPPORTED_LOCALES)(
+		"reads the same catalog the Vite and Turbopack loader does in %s",
+		async (locale) => {
+			expect(await loadCatalogFromDisk(locale)).toEqual(
 				await loadCatalog(locale),
 			);
+		},
+	);
+});
+
+describe("loadNamespace", () => {
+	it.each(SUPPORTED_LOCALES)(
+		"reads one namespace, a feature file or a shared key, as the whole catalog has it, from the loader and from disk in %s",
+		async (locale) => {
+			const whole = await loadCatalog(locale);
+			for (const namespace of ["notificationText", "push", "sidebar"]) {
+				const expected = { [namespace]: whole[namespace] };
+				expect(await loadNamespace(locale, namespace), namespace).toEqual(
+					expected,
+				);
+				expect(
+					await loadNamespaceFromDisk(locale, namespace),
+					namespace,
+				).toEqual(expected);
+			}
+		},
+	);
+
+	it("is empty for a namespace the locale does not have", async () => {
+		expect(await loadNamespace("en", "noSuchNamespace")).toEqual({});
+		expect(await loadNamespaceFromDisk("en", "noSuchNamespace")).toEqual({});
+	});
+
+	it("throws for a locale with no catalog", async () => {
+		await expect(loadNamespace("xx", "push")).rejects.toThrow(
+			"No message catalog for locale xx",
+		);
+		await expect(loadNamespaceFromDisk("xx", "push")).rejects.toThrow(/ENOENT/);
+	});
+
+	describe("from a catalog folder on disk", () => {
+		let root: string;
+		beforeAll(async () => {
+			root = await mkdtemp(path.join(tmpdir(), "retrospend-catalog-"));
+			await mkdir(path.join(root, "en"));
+			await writeFile(
+				path.join(root, "en.json"),
+				JSON.stringify({ both: { a: "shared" }, sharedOnly: { a: "x" } }),
+			);
+			await writeFile(path.join(root, "en", "both.json"), '{"a":"feature"}');
+			await writeFile(path.join(root, "en", "ok.json"), '{"a":"ok"}');
+			await writeFile(path.join(root, "en", "broken.json"), "{ not json");
+		});
+		afterAll(() => rm(root, { recursive: true, force: true }));
+
+		it("reads a feature file, a shared key, and nothing", async () => {
+			expect(await loadNamespaceFromDisk("en", "ok", root)).toEqual({
+				ok: { a: "ok" },
+			});
+			expect(await loadNamespaceFromDisk("en", "sharedOnly", root)).toEqual({
+				sharedOnly: { a: "x" },
+			});
+			expect(await loadNamespaceFromDisk("en", "none", root)).toEqual({});
+		});
+
+		it("throws for a feature file it cannot parse instead of reading the shared key", async () => {
+			await expect(loadNamespaceFromDisk("en", "broken", root)).rejects.toThrow(
+				SyntaxError,
+			);
+		});
+
+		it("throws for a namespace in both the shared file and a feature file", async () => {
+			await expect(loadNamespaceFromDisk("en", "both", root)).rejects.toThrow(
+				'Message namespace "both" is in the shared catalog',
+			);
+		});
 	});
 });

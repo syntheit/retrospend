@@ -4,7 +4,7 @@ import {
 } from "@retrospend/i18n/catalog";
 import { createTranslator } from "next-intl";
 import { DEFAULT_LOCALE } from "~/i18n/locales";
-import { loadCatalogFromDisk } from "./catalog-from-disk";
+import { loadNamespaceFromDisk } from "./catalog-from-disk";
 
 /**
  * Words a message for a person who is not in a request, such as a push or a
@@ -23,15 +23,19 @@ const namespaces = new Map<string, MessageCatalog>();
  * The loader uses import.meta.glob, which only Vite (Vitest) and Turbopack
  * (Next) provide, and it is imported here on first use so that importing
  * this module never fails. Plain Node (the Playwright seed, tsx scripts)
- * gets a TypeError from it and reads the catalogs from disk instead.
+ * gets a TypeError from it and reads the catalogs from disk instead. Only
+ * the one namespace is read: a locale's whole catalog is 40 files.
  */
-async function loadLocale(locale: string): Promise<MessageCatalog> {
+async function readNamespace(
+	locale: string,
+	namespace: string,
+): Promise<MessageCatalog> {
 	try {
-		const { loadCatalog } = await import("@retrospend/i18n/load");
-		return await loadCatalog(locale);
+		const loader = await import("@retrospend/i18n/load");
+		return await loader.loadNamespace(locale, namespace);
 	} catch (error) {
 		if (!(error instanceof TypeError)) throw error;
-		return loadCatalogFromDisk(locale);
+		return loadNamespaceFromDisk(locale, namespace);
 	}
 }
 
@@ -42,11 +46,11 @@ async function namespaceOf(
 	const id = `${locale}:${namespace}`;
 	const known = namespaces.get(id);
 	if (known) return known;
-	const english = await loadLocale(DEFAULT_LOCALE);
+	const english = await readNamespace(DEFAULT_LOCALE, namespace);
 	const merged =
 		locale === DEFAULT_LOCALE
 			? english
-			: mergeMessageCatalogs(english, await loadLocale(locale));
+			: mergeMessageCatalogs(english, await readNamespace(locale, namespace));
 	const messages = { [namespace]: merged[namespace] as MessageCatalog };
 	namespaces.set(id, messages);
 	return messages;
