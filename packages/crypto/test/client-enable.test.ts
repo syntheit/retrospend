@@ -422,5 +422,26 @@ describe("prepareEnable", () => {
 				expect(allZero(kept)).toBe(true);
 			}
 		});
+
+		it("wipes the copy of the recovery key it reads back from the written text", async () => {
+			const base = scripted().prims;
+			const rkInputs: Uint8Array[] = [];
+			const prims: Primitives = {
+				...base,
+				kdfDerive: (key, id, context) => {
+					if (toHex(key) === RK?.recoveryKey) rkInputs.push(key);
+					return base.kdfDerive(key, id, context);
+				},
+			};
+			await prepareEnable(
+				ports(prims),
+				{ userId: USER_ID, password: PASSWORD },
+				OPTIONS,
+			);
+			// Two derivations from the made key and two from the parsed copy: two
+			// different arrays, both wiped.
+			expect(new Set(rkInputs).size).toBe(2);
+			expect(allZero(rkInputs)).toBe(true);
+		});
 	});
 });

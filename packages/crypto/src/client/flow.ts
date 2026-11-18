@@ -209,7 +209,8 @@ export const sameBytes = (a: Uint8Array, b: Uint8Array): boolean => {
  * must open under the wrapping key, for this role and id, to exactly the key
  * it was made from. Anything else is `malformed` and nothing goes out, so a
  * wrap that could lock the person out never reaches the server. Returns the
- * opened key, kept in `bin`. Enable, recover, new-key and rotate all use it.
+ * opened key, kept in `bin`. Enable and rotate use it now; recover and new-key
+ * add themselves in K3-1.
  */
 export function checkOpens(
 	p: Primitives,
