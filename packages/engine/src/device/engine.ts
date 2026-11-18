@@ -8,6 +8,7 @@ import { type Change, SETTINGS_ID } from "../port";
 import { DEVICE_FIGURE_IDS, readDeviceFigures } from "../registry";
 import { type PullCursors, pullAll } from "../sync-pull";
 import { compareCreate, type WriteVerdict } from "../write-parity";
+import { sameLines } from "./compare";
 import type { DeviceApi, EngineStorage, StorageHooks } from "./ports";
 
 // The device engine: a copy of the account's rows in memory, filled by the
@@ -137,18 +138,6 @@ export interface DeviceEngineOptions {
 	 */
 	captures?: CreateCaptures;
 }
-
-const sameLines = (
-	device: readonly Money[] | null | undefined,
-	server: readonly Money[] | null | undefined,
-) =>
-	device == null || server == null
-		? (device ?? null) === (server ?? null)
-		: device.length === server.length &&
-			device.every(
-				(m, i) =>
-					m.minor === server[i]?.minor && m.currency === server[i]?.currency,
-			);
 
 export function createDeviceEngine(
 	api: DeviceApi,

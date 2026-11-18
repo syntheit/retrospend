@@ -9,6 +9,23 @@ import type { PullApi, PullCursors } from "../sync-pull";
 // neither the generated client nor a database.
 
 /**
+ * What a figures answer was read at, when the server gives it (a sync-capable
+ * session; an old server and other principals leave it out): enough to tell a
+ * device that is behind from one that disagrees. Structural, like the rest.
+ */
+export interface FigureBasis {
+	/** A sync cursor at the read's snapshot: a device pulled to it holds every row the read saw. */
+	readonly asOf: string;
+	/** The server's read instant, ISO 8601: the clock the device reads with. */
+	readonly at: string;
+	/** The rate table's version at the read (see `RateSyncRow`), or null with no rates. */
+	readonly ratesAsOf: string | null;
+	readonly home: string;
+	readonly timeZone: string;
+	readonly startDay: number;
+}
+
+/**
  * The figures the server holds, as `GET /figures` returns them. A line's
  * currency may be the "%" pseudo-currency (figureLineSchema). The type is
  * structural on purpose, so this package needs no api-client dependency: the
@@ -20,12 +37,21 @@ export interface ServerFigures {
 		/** One line per currency, or null when the server has no figure (a missing rate). */
 		readonly lines: readonly Money[] | null;
 	}[];
+	readonly basis?: FigureBasis;
 }
+
+/** The narrowings GET /figures takes that a screen's figures use. */
+export type FigureNarrowing = Partial<
+	Record<
+		"accountId" | "categoryId" | "envelopeId" | "month" | "recurringId",
+		string
+	>
+>;
 
 /** The calls the core makes: the sync pulls, and the server's figures to check the device's against. */
 export interface DeviceApi extends PullApi {
 	figures: {
-		read(query: { ids: string }): Promise<ServerFigures>;
+		read(query: { ids: string } & FigureNarrowing): Promise<ServerFigures>;
 	};
 }
 
