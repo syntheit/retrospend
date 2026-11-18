@@ -72054,6 +72054,10 @@
 													"format": "date-time",
 													"type": "string"
 												},
+												"cut": {
+													"minLength": 1,
+													"type": "string"
+												},
 												"home": {
 													"minLength": 1,
 													"type": "string"
@@ -72081,6 +72085,7 @@
 											},
 											"required": [
 												"asOf",
+												"cut",
 												"at",
 												"ratesAsOf",
 												"home",

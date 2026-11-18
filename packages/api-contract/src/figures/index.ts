@@ -56,6 +56,8 @@ export const figuresQuerySchema = z.object({
 export const figuresBasisSchema = z.object({
 	/** A sync cursor: a device whose pulled cursors are at or past it holds every row this read saw. */
 	asOf: z.string().min(1),
+	/** A sync cursor at the oldest transaction open at this read, minus one: a writer open during the read has a txid past it, so its commit lands after it. */
+	cut: z.string().min(1),
 	/** The instant just before the figure reads; figures read their own clock a few milliseconds later, so a device reading with it skips checks near a period edge. */
 	at: z.iso.datetime({ offset: true }),
 	/** The newest rate update, as GET /rates/daily's `asOf`; null when no rate is stored. */

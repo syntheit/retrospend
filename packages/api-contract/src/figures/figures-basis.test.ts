@@ -4,6 +4,7 @@ import { figuresResultSchema } from "./index";
 const figures = [{ id: "spent", lines: [{ minor: 1234, currency: "USD" }] }];
 const basis = {
 	asOf: "eyJlIjoiMSIsInQiOiI5IiwicyI6IjEifQ",
+	cut: "eyJlIjoiMSIsInQiOiI3IiwicyI6IjEifQ",
 	at: "2026-12-01T01:30:00.000Z",
 	ratesAsOf: "2026-11-30T12:00:00.000Z",
 	home: "EUR",

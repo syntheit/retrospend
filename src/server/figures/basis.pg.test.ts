@@ -9,7 +9,11 @@ import { userTransaction } from "~/server/db-tx";
 import { decodeCursor } from "~/server/services/api-v1/cursor";
 import { readDailyRates } from "~/server/services/api-v1/rate-sync";
 import { readChanges, syncCursorSchema } from "~/server/services/sync/changes";
-import { stampOf, until } from "~/server/services/sync/sync-test-support";
+import {
+	stampOf,
+	stampsOf,
+	until,
+} from "~/server/services/sync/sync-test-support";
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { readFiguresWithBasis } from "./read";
 import { type FigureDefinition, figures } from "./registry";
@@ -75,7 +79,12 @@ describe("readFiguresWithBasis: asOf", () => {
 		const mine = await createTestUser();
 		const theirs = await createTestUser();
 		const older = latch();
+		let openTxid = 0n;
 		const open = userTransaction(adminDb, theirs.user.id, async (tx) => {
+			const xids = await tx.$queryRaw<
+				{ xid: string }[]
+			>`SELECT pg_current_xact_id()::text AS "xid"`;
+			openTxid = BigInt(xids[0]?.xid ?? "0");
 			await tx.expense.create({
 				data: {
 					userId: theirs.user.id,
@@ -107,6 +116,11 @@ describe("readFiguresWithBasis: asOf", () => {
 			if (!basis || !stamp) throw new Error("no basis or stamp");
 			const seen = cursorOf(basis.asOf);
 			expect(seen.txid >= BigInt(stamp.txid)).toBe(true);
+			// The writer open during the read is past the cut and within asOf.
+			const cut = cursorOf(basis.cut);
+			expect(cut.epoch).toBe(seen.epoch);
+			expect(cut.txid < openTxid).toBe(true);
+			expect(openTxid <= seen.txid).toBe(true);
 
 			older.release();
 			await open;
@@ -117,6 +131,10 @@ describe("readFiguresWithBasis: asOf", () => {
 			);
 			expect(cursorOf(page.cursor).txid >= seen.txid).toBe(true);
 			expect(page.items.map((r) => r.id)).toContain(id);
+			// What the writer committed after the read is past the cut.
+			const late = await stampsOf(theirs.user.id, "expense");
+			expect(late).toHaveLength(1);
+			expect(BigInt(late[0]?.txid ?? "0") > cut.txid).toBe(true);
 		} finally {
 			// A failed assertion must not leave the older writer open.
 			older.release();
@@ -216,6 +234,49 @@ describe("readFiguresWithBasis: one snapshot", () => {
 		});
 		expect(after.basis?.ratesAsOf).not.toBe(before);
 	}, 90_000);
+
+	it("takes the cut from the read's own snapshot: a writer that commits mid-read stays past it", async () => {
+		const { user } = await createTestUser();
+		const writer = latch();
+		let writerTxid = 0n;
+		const open = userTransaction(adminDb, user.id, async (tx) => {
+			const xids = await tx.$queryRaw<
+				{ xid: string }[]
+			>`SELECT pg_current_xact_id()::text AS "xid"`;
+			writerTxid = BigInt(xids[0]?.xid ?? "0");
+			writer.opened();
+			await writer.gate;
+		});
+		await writer.hasOpened;
+
+		const midRead = latch();
+		const holdFigure: FigureDefinition = {
+			id: "test.hold",
+			scope: [],
+			compute: async () => {
+				midRead.opened();
+				await midRead.gate;
+				return { minor: 1, currency: "USD" };
+			},
+		};
+		const original = figures.get.bind(figures);
+		vi.spyOn(figures, "get").mockImplementation((id) =>
+			id === holdFigure.id ? holdFigure : original(id),
+		);
+		const reading = readFiguresWithBasis(user.id, [holdFigure.id]);
+		try {
+			await midRead.hasOpened;
+			// The writer ends while the read is open; a cut read now would pass it.
+			writer.release();
+			await open;
+		} finally {
+			midRead.release();
+		}
+		const { basis } = await reading;
+		if (!basis) throw new Error("no basis");
+		expect(cursorOf(basis.cut).txid < writerTxid).toBe(true);
+		expect(cursorOf(basis.cut).txid < cursorOf(basis.asOf).txid).toBe(true);
+	}, 60_000);
 
 	it("names the rate stamp GET /rates/daily returns, and the instant it read at", async () => {
 		const { user } = await createTestUser();

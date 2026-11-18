@@ -2,7 +2,7 @@ import type { FiguresBasis } from "@retrospend/api-contract";
 import { db } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import { readRatesAsOf } from "~/server/services/api-v1/rate-sync";
-import { readSeenCursor } from "~/server/services/sync/changes";
+import { readCutCursor, readSeenCursor } from "~/server/services/sync/changes";
 import { figureSettingsOf } from "~/server/services/sync/snapshots";
 import { Prisma } from "~prisma";
 import {
@@ -71,6 +71,7 @@ export async function readFiguresWithBasis(
 				readings,
 				basis: {
 					asOf: await readSeenCursor(tx),
+					cut: await readCutCursor(tx),
 					at: at.toISOString(),
 					ratesAsOf: await readRatesAsOf(tx),
 					home: settings.homeCurrency,
