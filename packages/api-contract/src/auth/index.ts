@@ -1,5 +1,6 @@
 import * as z from "zod";
 import { v1 } from "../common/meta";
+import { preloginKdfSchema } from "../keys";
 
 const TAG = ["Auth"];
 
@@ -8,18 +9,6 @@ export const preloginSchema = z
 		email: z.email().max(255),
 	})
 	.meta({ id: "Prelogin" });
-
-/** What a client needs to turn a typed password into the sign-in secret. */
-export const preloginKdfSchema = z
-	.object({
-		salt: z
-			.string()
-			.regex(/^[A-Za-z0-9_-]{22}$/)
-			.meta({ description: "The 16-byte Argon2id salt, base64url." }),
-		memoryKiB: z.int().min(1),
-		passes: z.int().min(1),
-	})
-	.meta({ id: "PreloginKdf" });
 
 export const preloginResultSchema = z
 	.object({
@@ -30,7 +19,6 @@ export const preloginResultSchema = z
 	})
 	.meta({ id: "PreloginResult" });
 
-export type PreloginKdf = z.infer<typeof preloginKdfSchema>;
 export type PreloginResult = z.infer<typeof preloginResultSchema>;
 
 export const authContract = {
