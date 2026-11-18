@@ -3,10 +3,15 @@ import type { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { adminDb } from "~/test/pg-harness";
+import {
+	migratorRolesByLiveness,
+	migratorRolesInUse,
+	migratorRolesOfRun,
+	scratchMigratorRoles,
+} from "~/test/pg-run-sweep";
 import { migratorRoleName } from "../../../scripts/db-owner/index.mjs";
 import {
 	connect,
-	databaseOf,
 	failureOf,
 	failureOutsideTransaction,
 	foreignOwned,
@@ -147,7 +152,7 @@ describe("code that runs as retrospend_app (row-level security)", () => {
 		}
 	});
 
-	it("is a member of no other role, and only the owner and superusers are members of it", async () => {
+	it("is a member of no other role, and only the owner, superusers and the migration role of a live run are members of it", async () => {
 		const memberOf = await adminDb.$queryRaw<{ n: bigint }[]>`
 			SELECT count(*) AS n FROM pg_auth_members
 			 WHERE member = 'retrospend_app'::regrole`;
@@ -157,7 +162,48 @@ describe("code that runs as retrospend_app (row-level security)", () => {
 			  JOIN pg_roles m ON m.oid = am.member
 			 WHERE am.roleid = 'retrospend_app'::regrole AND NOT m.rolsuper
 			 ORDER BY 1`;
-		expect(members.map((m) => m.name)).toEqual(["retrospend_owner"]);
+		// Runs share the cluster. A role of another run that holds its lock may
+		// be in the group for the seconds its brand-new install migrates. Of this
+		// run only the roles of the scratch databases may be: a test file
+		// migrates those itself (scratch-project.ts). The roles of the template,
+		// the upgrade fixtures and the workers are never here, and neither is a
+		// role of a run that is gone (the next test).
+		const { stem, maintenanceUrl } = inject("pgRun");
+		const own = migratorRolesOfRun(stem);
+		const probe = await connect(maintenanceUrl);
+		let live: string[];
+		let inUse: string[];
+		try {
+			live = (await migratorRolesByLiveness(probe)).live;
+			inUse = await migratorRolesInUse(probe);
+		} finally {
+			await probe.end();
+		}
+		// A run of an older harness (no lock, no marker) migrating on the same
+		// cluster has a role that is in use: it holds CREATE on a database with a
+		// session on it. A leftover of a killed run has no session.
+		const allowed = [
+			...[...live, ...inUse].filter((name) => !own.includes(name)),
+			...scratchMigratorRoles(stem),
+		];
+		expect(
+			members.map((m) => m.name).filter((name) => !allowed.includes(name)),
+		).toEqual(["retrospend_owner"]);
+	});
+
+	it("left no migration role of this run once the setup was done", () => {
+		// The template's one-shot role is dropped in a finally, the other
+		// databases never had one, and the scratch ones are made by tests later.
+		expect(inject("pgRun").migratorRolesAfterSetup).toEqual([]);
+	});
+
+	it("finds no migration role of a run that is gone", async () => {
+		const client = await connect(inject("pgRun").maintenanceUrl);
+		try {
+			expect((await migratorRolesByLiveness(client)).dead).toEqual([]);
+		} finally {
+			await client.end();
+		}
 	});
 });
 
@@ -210,7 +256,7 @@ describe("ownership", () => {
 			expect(rows).toEqual([]);
 			const { rows: roles } = await client.query<{ name: string }>(
 				"SELECT rolname AS name FROM pg_roles WHERE rolname = $1",
-				[migratorRoleName(databaseOf(process.env.DATABASE_URL as string))],
+				[migratorRoleName(inject("pgRun").template)],
 			);
 			expect(roles).toEqual([]);
 			// Nothing in the cluster still depends on a role of that name's kind.

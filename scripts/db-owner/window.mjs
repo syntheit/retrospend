@@ -26,7 +26,9 @@ export function migratorRoleName(databaseName) {
  * only: its sessions end, CREATE on the database is revoked, what it owns
  * goes to the owner (REASSIGN OWNED runs no code, and rewrites the owner and
  * grantor entries of every ACL), whatever else names it (default privileges,
- * grants) is dropped, and the role goes. Safe when it does not exist.
+ * grants) is dropped, and the role goes. Safe when it does not exist. All of
+ * it is per database: the objects and grants of the database `client` is
+ * connected to.
  *
  * @param {pg.Client} client a superuser connection
  * @param {string} role
