@@ -214,11 +214,16 @@ describe("the CHECKs that pin the formats", () => {
 				[...SYMMETRIC_ROLES].sort(),
 			);
 			for (const role of ENABLE_WRAP_ROLES) {
-				await insertWrap(client, id, role, id, SYMMETRIC());
+				// The target is the user id, so the own-target check passes and the
+				// refusal can only come from the format check.
 				const sealed = await failure(client, () =>
-					insertWrap(client, id, role, `${role}-sealed`, SEALED()),
+					insertWrap(client, id, role, id, SEALED()),
 				);
 				expect(sealed?.code, role).toBe("23514");
+				expect(sealed?.message, role).toContain(
+					"protection_key_wrap_format_check",
+				);
+				await insertWrap(client, id, role, id, SYMMETRIC());
 			}
 		});
 	});
