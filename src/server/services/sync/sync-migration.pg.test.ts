@@ -50,6 +50,7 @@ const NOT_SYNCED: Record<string, string> = {
 	admin_access_log: "audit trail, server only",
 	error_report: "support data, server only",
 	device_code: "sign-in state, never on a device",
+	password_reset_token: "sign-in state, never on a device",
 	idempotency_key: "server only",
 	export_job: "server only",
 	push_device: "server only",
