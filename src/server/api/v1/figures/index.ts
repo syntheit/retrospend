@@ -1,5 +1,5 @@
 import { MAX_FIGURE_IDS, parseFigureIds } from "@retrospend/api-contract";
-import { readFigures } from "~/server/figures/read";
+import { readFigures, readFiguresWithBasis } from "~/server/figures/read";
 import {
 	FigureNarrowingError,
 	FigureRegistryError,
@@ -10,6 +10,7 @@ import * as insights from "~/server/services/api-v1/insights";
 import { serve } from "../core/serve";
 import { problem } from "../errors";
 import { signedIn, v1 } from "../middleware";
+import { mayCall } from "../scopes";
 
 export const figuresRouter = {
 	firstDay: v1.figures.firstDay.handler(
@@ -56,20 +57,33 @@ export const figuresRouter = {
 			recurringId,
 			transactionId,
 		} = input;
+		// The basis names the instance's transaction counter, so it goes only to
+		// a principal that may pull the rows (mayCall is false when unknown).
+		const withBasis = mayCall(user.principal, "sync");
+		const narrowing = {
+			projectId,
+			periodId,
+			personId,
+			accountId,
+			categoryId,
+			month,
+			envelopeId,
+			entryId,
+			recurringId,
+			transactionId,
+		};
 		let readings: Awaited<ReturnType<typeof readFigures>>;
+		let basis: Awaited<ReturnType<typeof readFiguresWithBasis>>["basis"] = null;
 		try {
-			readings = await readFigures(user.principal.userId, ids, {
-				projectId,
-				periodId,
-				personId,
-				accountId,
-				categoryId,
-				month,
-				envelopeId,
-				entryId,
-				recurringId,
-				transactionId,
-			});
+			if (withBasis) {
+				({ readings, basis } = await readFiguresWithBasis(
+					user.principal.userId,
+					ids,
+					narrowing,
+				));
+			} else {
+				readings = await readFigures(user.principal.userId, ids, narrowing);
+			}
 		} catch (error) {
 			if (error instanceof FigureRegistryError)
 				throw problem("not_found", error.message);
@@ -82,6 +96,7 @@ export const figuresRouter = {
 				id,
 				lines: readings.get(id)?.map((m) => ({ ...m })) ?? null,
 			})),
+			...(basis ? { basis } : {}),
 		};
 	}),
 };

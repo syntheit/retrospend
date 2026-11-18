@@ -187,6 +187,19 @@ export interface SettingsSnapshot {
 	defaultRateTypes: Record<string, string>;
 }
 
+/** The three settings every figure reads, as the figures resolve them (the zone never null). */
+export function figureSettingsOf(user: {
+	homeCurrency: string;
+	timeZone: string | null;
+	fiscalMonthStartDay: number;
+}) {
+	return {
+		homeCurrency: user.homeCurrency,
+		timeZone: resolveTimeZone(user.timeZone),
+		startDay: user.fiscalMonthStartDay,
+	};
+}
+
 /**
  * The settings the figures read, as the device's settings row holds them. The
  * zone is what the figures use with no request zone (resolveTimeZone), and the
@@ -213,9 +226,7 @@ export async function readSettingsSnapshot(
 			for (const [currency, type] of Object.entries(stored))
 				if (typeof type === "string") defaultRateTypes[currency] = type;
 		return {
-			homeCurrency: user.homeCurrency,
-			timeZone: resolveTimeZone(user.timeZone),
-			startDay: user.fiscalMonthStartDay,
+			...figureSettingsOf(user),
 			hiddenProjectIds: await getExcludedProjectIds(tx, userId),
 			defaultRateTypes,
 		};

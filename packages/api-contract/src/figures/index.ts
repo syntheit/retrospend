@@ -47,8 +47,37 @@ export const figuresQuerySchema = z.object({
 	transactionId: z.string().optional(),
 });
 
+/**
+ * What a figures read was true of, for a client that keeps its own copy of the
+ * rows and checks its figures against these. Only a principal holding the
+ * `sync` scope gets it: `asOf` follows the instance's transaction counter, so
+ * a plain read token must never see it.
+ */
+export const figuresBasisSchema = z.object({
+	/** A sync cursor: a device whose pulled cursors are at or past it holds every row this read saw. */
+	asOf: z.string().min(1),
+	/** A sync cursor at the oldest transaction open at this read, minus one: a writer open during the read has a txid past it, so its commit lands after it. */
+	cut: z.string().min(1),
+	/** The instant just before the figure reads; figures read their own clock a few milliseconds later, so a device reading with it skips checks near a period edge. */
+	at: z.iso.datetime({ offset: true }),
+	/** The newest rate update, as GET /rates/daily's `asOf`; null when no rate is stored. */
+	ratesAsOf: z.iso.datetime({ offset: true }).nullable(),
+	/** The home currency the figures were read in. */
+	home: z.string().min(1),
+	/** The stored zone the figures bucket days in. */
+	timeZone: z.string().min(1),
+	/** The fiscal month start day, 1 to 31. */
+	startDay: z.number().int().min(1).max(31),
+});
+
+export type FiguresBasis = z.infer<typeof figuresBasisSchema>;
+
 export const figuresResultSchema = z.object({
 	figures: z.array(figureSchema),
+	basis: figuresBasisSchema.optional().meta({
+		description:
+			"Present only for a session holding the sync scope (the web app, the phone app).",
+	}),
 });
 
 /**
