@@ -77,7 +77,7 @@
 	"errors": {
 		"wrongPassword": "Contraseña incorrecta",
 		"wrongCode": "Ese código no funcionó",
-		"tooMany": "Demasiados intentos. Inténtalo de nuevo en un minuto.",
+		"tooMany": "Demasiados intentos, espera un minuto e inténtalo de nuevo.",
 		"notOffered": "La protección avanzada no está disponible aquí.",
 		"failed": "No se pudo completar. Inténtalo de nuevo.",
 		"checkFailed": "No se pudieron comprobar tus claves."

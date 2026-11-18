@@ -77,7 +77,7 @@
 	"errors": {
 		"wrongPassword": "Senha incorreta",
 		"wrongCode": "Esse código não funcionou",
-		"tooMany": "Muitas tentativas. Tente de novo em um minuto.",
+		"tooMany": "Muitas tentativas, aguarde um minuto e tente de novo.",
 		"notOffered": "A proteção avançada não está disponível aqui.",
 		"failed": "Não foi possível concluir. Tente de novo.",
 		"checkFailed": "Não foi possível verificar suas chaves."

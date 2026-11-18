@@ -77,7 +77,7 @@
 	"errors": {
 		"wrongPassword": "Wrong password",
 		"wrongCode": "That code didn't work",
-		"tooMany": "Too many attempts. Try again in a minute.",
+		"tooMany": "Too many tries, wait a minute and try again.",
 		"notOffered": "Advanced protection is not available here.",
 		"failed": "Couldn't finish. Try again.",
 		"checkFailed": "Couldn't check your keys."

@@ -77,7 +77,7 @@
 	"errors": {
 		"wrongPassword": "Mot de passe incorrect",
 		"wrongCode": "Ce code n’a pas fonctionné",
-		"tooMany": "Trop de tentatives. Réessaie dans une minute.",
+		"tooMany": "Trop de tentatives, attends une minute et réessaie.",
 		"notOffered": "La protection avancée n’est pas disponible ici.",
 		"failed": "Impossible de terminer. Réessaie.",
 		"checkFailed": "Impossible de vérifier tes clés."

@@ -100,6 +100,43 @@ describe("loadMessages", () => {
 		expect(loadMessages("en").protection.methods.person).toBe("Trusted person");
 	});
 
+	// The files themselves, not loadMessages: its English fallback would hide a
+	// key a locale file is missing.
+	it("has every protection key as a non-empty string with English's placeholders", () => {
+		const flat = (
+			node: unknown,
+			prefix = "",
+			into: Record<string, unknown> = {},
+		): Record<string, unknown> => {
+			if (typeof node === "object" && node !== null) {
+				for (const [key, child] of Object.entries(node)) {
+					flat(child, prefix ? `${prefix}.${key}` : key, into);
+				}
+			} else {
+				into[prefix] = node;
+			}
+			return into;
+		};
+		const placeholders = (text: string) =>
+			(text.match(/\{\w+\}/g) ?? []).sort().join(",");
+		const read = (locale: string) =>
+			flat(require(`@retrospend/i18n/messages/${locale}/protection.json`));
+		const english = read("en") as Record<string, string>;
+		expect(
+			Object.keys(english).filter((key) => placeholders(english[key] ?? "")),
+		).toEqual(["recoveryKey.confirmBody", "recoveryKey.group"]);
+		for (const locale of SUPPORTED_LOCALES) {
+			const messages = read(locale);
+			expect(Object.keys(messages)).toEqual(Object.keys(english));
+			for (const [key, value] of Object.entries(messages)) {
+				expect(typeof value === "string" && value.trim() !== "").toBe(true);
+				expect(`${locale} ${key} ${placeholders(value as string)}`).toBe(
+					`${locale} ${key} ${placeholders(english[key] ?? "")}`,
+				);
+			}
+		}
+	});
+
 	it("translates the tabs (es-AR is not an English copy)", () => {
 		expect(loadMessages("es-AR").mobile.tabs.home).toBe("Inicio");
 		expect(loadMessages("en").mobile.tabs.home).toBe("Home");
