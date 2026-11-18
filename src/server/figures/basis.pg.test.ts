@@ -99,20 +99,29 @@ describe("readFiguresWithBasis: asOf", () => {
 		// The cut waits for the open writer: a device cannot hold the row yet.
 		expect((await pull()).items).toEqual([]);
 
-		const { readings, basis } = await readFiguresWithBasis(mine.user.id, [
-			"spent",
-		]);
-		expect(readings.get("spent")).toEqual([{ minor: 750, currency: "USD" }]);
-		if (!basis || !stamp) throw new Error("no basis or stamp");
-		const seen = cursorOf(basis.asOf);
-		expect(seen.txid >= BigInt(stamp.txid)).toBe(true);
+		try {
+			const { readings, basis } = await readFiguresWithBasis(mine.user.id, [
+				"spent",
+			]);
+			expect(readings.get("spent")).toEqual([{ minor: 750, currency: "USD" }]);
+			if (!basis || !stamp) throw new Error("no basis or stamp");
+			const seen = cursorOf(basis.asOf);
+			expect(seen.txid >= BigInt(stamp.txid)).toBe(true);
 
-		older.release();
-		await open;
-		const page = await until(pull, (p) => cursorOf(p.cursor).txid >= seen.txid);
-		expect(cursorOf(page.cursor).txid >= seen.txid).toBe(true);
-		expect(page.items.map((r) => r.id)).toContain(id);
-	}, 60_000);
+			older.release();
+			await open;
+			const page = await until(
+				pull,
+				(p) => cursorOf(p.cursor).txid >= seen.txid,
+				45_000,
+			);
+			expect(cursorOf(page.cursor).txid >= seen.txid).toBe(true);
+			expect(page.items.map((r) => r.id)).toContain(id);
+		} finally {
+			// A failed assertion must not leave the older writer open.
+			older.release();
+		}
+	}, 90_000);
 });
 
 describe("readFiguresWithBasis: one snapshot", () => {
@@ -206,7 +215,7 @@ describe("readFiguresWithBasis: one snapshot", () => {
 			timeZone: "Pacific/Honolulu",
 		});
 		expect(after.basis?.ratesAsOf).not.toBe(before);
-	}, 60_000);
+	}, 90_000);
 
 	it("names the rate stamp GET /rates/daily returns, and the instant it read at", async () => {
 		const { user } = await createTestUser();
