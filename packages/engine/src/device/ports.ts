@@ -16,6 +16,8 @@ import type { PullApi, PullCursors } from "../sync-pull";
 export interface FigureBasis {
 	/** A sync cursor at the read's snapshot: a device pulled to it holds every row the read saw. */
 	readonly asOf: string;
+	/** A sync cursor at the read's cut: every transaction at or below it was committed-visible or aborted for the read, so rows stamped past it are rows the read may not have seen. */
+	readonly cut: string;
 	/** The server's read instant, ISO 8601: the clock the device reads with. */
 	readonly at: string;
 	/** The rate table's version at the read (see `RateSyncRow`), or null with no rates. */

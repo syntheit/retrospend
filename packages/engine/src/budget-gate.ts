@@ -170,9 +170,9 @@ export function positionReached(
 }
 
 /**
- * Whether `cursor` lies strictly past `asOf`: every stamp a page ending at it
- * holds is at or below its position, so a page whose cursor is not past `asOf`
- * holds nothing newer than `asOf`. Another epoch or an unreadable cursor counts
+ * Whether `cursor` lies strictly past `position`: every stamp a page ending at
+ * it holds is at or below its position, so a page whose cursor is not past
+ * `position` holds nothing newer than `position`. Another epoch or an unreadable cursor counts
  * as past (fail closed).
  */
 export function pastPosition(cursor: string, asOf: string): boolean {

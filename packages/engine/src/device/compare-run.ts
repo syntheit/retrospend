@@ -26,7 +26,7 @@ import type { FigureBasis, FigureNarrowing, ServerFigures } from "./ports";
 
 type Lines = ReadonlyMap<string, readonly Money[] | null | undefined>;
 
-/** Rows each sync entity's pull brought in past a position, by entity (`PullOptions.past`). */
+/** Rows each sync entity's pull brought in past a position, by entity (`PullOptions.pastCut`). */
 export type PulledPast = Readonly<Partial<Record<string, number>>>;
 
 /** What the platform gives the compare: the server, the device's rows, and its pull. */
@@ -41,8 +41,8 @@ export interface CompareDeps {
 		at: Date;
 		verdict: boolean;
 	}): Promise<{ lines: Lines; verdict: VerdictView | null } | null>;
-	/** Pulls with `past` set to the position; null when the pull failed. */
-	pull(past: string): Promise<PulledPast | null>;
+	/** Pulls with `pastCut` set to the read's cut; null when the pull failed. */
+	pull(cut: string): Promise<PulledPast | null>;
 	/** The cursor of each sync entity the device's last pull ended on. */
 	cursors(): Readonly<Partial<Record<string, string>>>;
 	/** The rate table version the device holds (the same value as `basis.ratesAsOf`). */
@@ -132,11 +132,11 @@ async function round(
 	const serverVerdict = spec.verdict
 		? ((await req.serverVerdict?.()) ?? null)
 		: null;
-	// Calls are in time order, so the first read's position is the lowest.
+	// Calls are in time order, so the first read's cut is the lowest.
 	const first = servers[0]?.basis;
 	if (!first) return "no_basis";
 
-	const pulled = await deps.pull(first.asOf);
+	const pulled = await deps.pull(first.cut);
 	if (!pulled) return "no_device";
 	if (
 		!settingsSame(

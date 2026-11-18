@@ -78,8 +78,8 @@ export interface StepReport {
 	rows: number;
 	fetchMs: number;
 	applyMs: number;
-	/** With `PullOptions.past`: rows of pages that end past that position, a bound on the rows stamped after it. */
-	past?: number;
+	/** With `PullOptions.pastCut`: rows of pages that end past that position, a bound on the rows the server's read had not seen. */
+	pastCut?: number;
 }
 
 export type PullStep = SyncEntity | "settings" | "shares" | "rates";
@@ -101,12 +101,15 @@ export interface PullOptions {
 	 */
 	caughtUp?: (entity: SyncEntity, held: number) => boolean | Promise<boolean>;
 	/**
-	 * A sync position (a server read's `asOf`). Each cursor entity then reports
-	 * `past`: the rows (changes and tombstones) of pages whose cursor lies past
-	 * it. A row stamped after the position is in such a page, so zero means the
-	 * pull brought in nothing the position had not seen.
+	 * A server read's cut (`basis.cut`, the position every transaction at or
+	 * below which was committed-visible or aborted for that read). Each cursor
+	 * entity then reports `pastCut`: the rows (changes and tombstones) of pages
+	 * whose cursor lies past it. A row the read had not seen is stamped past the
+	 * cut (a save still open during the read has a stamp below the read's
+	 * `asOf` but past its cut), so it is in such a page, and zero means the pull
+	 * brought in nothing the read missed.
 	 */
-	past?: string;
+	pastCut?: string;
 	/** False leaves the shares snapshot and the budget block alone, and skips the promotion. */
 	shares?: boolean;
 }
@@ -228,7 +231,7 @@ async function pullEntity(
 		rows: 0,
 		fetchMs: 0,
 		applyMs: 0,
-		...(options.past === undefined ? {} : { past: 0 }),
+		...(options.pastCut === undefined ? {} : { pastCut: 0 }),
 	};
 	for (;;) {
 		const since = cursors[entity];
@@ -244,8 +247,11 @@ async function pullEntity(
 		report.pages += 1;
 		const rows = page.items.length + page.tombstones.length;
 		report.rows += rows;
-		if (options.past !== undefined && pastPosition(page.cursor, options.past))
-			report.past = (report.past ?? 0) + rows;
+		if (
+			options.pastCut !== undefined &&
+			pastPosition(page.cursor, options.pastCut)
+		)
+			report.pastCut = (report.pastCut ?? 0) + rows;
 		cursors[entity] = page.cursor;
 		if (page.hasMore) continue;
 		const held = store.list(entity).length;

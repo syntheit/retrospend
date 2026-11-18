@@ -152,6 +152,7 @@ function ledger(
 
 const BASIS: FigureBasis = {
 	asOf: cursor("100"),
+	cut: cursor("95"),
 	at: NOON,
 	ratesAsOf: "R1",
 	home: "EUR",
@@ -304,7 +305,7 @@ describe("compareScreen on Home", () => {
 		});
 		expect(Object.values(report.classes)).toEqual(Array(6).fill("match"));
 		expect(w.events).toEqual(["server", "pull", "device"]);
-		expect(w.pastArgs).toEqual([BASIS.asOf]);
+		expect(w.pastArgs).toEqual([BASIS.cut]);
 	});
 
 	// ARS 154,500 at official 1,050 is EUR 132.43: a server that valued the
@@ -466,11 +467,12 @@ describe("compareScreen on Home", () => {
 		});
 	});
 
-	it("pulls from the lowest position the server's calls read at, which is the first", async () => {
+	it("pulls from the lowest cut the server's calls read at, which is the first", async () => {
 		const w = world({
 			bases: [100, 101, 102].map((t) => ({
 				...BASIS,
 				asOf: cursor(String(t)),
+				cut: cursor(String(t - 5)),
 			})),
 		});
 		await compareScreen(
@@ -478,7 +480,7 @@ describe("compareScreen on Home", () => {
 			request("insights", { values: { categoryId: ["c1", "c2"] } }),
 		);
 		expect(w.serverQueries).toHaveLength(3);
-		expect(w.pastArgs).toEqual([cursor("100")]);
+		expect(w.pastArgs).toEqual([cursor("95")]);
 	});
 
 	it("reads the device at the server's instant, not its own clock", async () => {
@@ -1152,11 +1154,11 @@ describe("pastPosition", () => {
 	});
 });
 
-// The pull counts what it brought in past the read: pages ending past A hold
-// every row stamped after A, so zero is proof that none arrived. The server
-// double pages the way the real one does: a page that has more ends at its
-// last stamp, the last page ends at the cut.
-describe("what the pull brings in past a read", () => {
+// The pull counts what it brought in past the read's cut: pages ending past
+// the cut hold every row the read may not have seen, so zero is proof that
+// none arrived. The server double pages the way the real one does: a page that
+// has more ends at its last stamp, the last page ends at the pull's own cut.
+describe("what the pull brings in past a read's cut", () => {
 	const page = (n: number, t: string, hasMore = false) => ({
 		items: Array.from({ length: n }, (_, i) =>
 			wireExpense(`x${t}-${i}`, "10", "2026-11-10T12:00:00.000Z"),
@@ -1165,34 +1167,164 @@ describe("what the pull brings in past a read", () => {
 		cursor: cursor(t),
 		hasMore,
 	});
-	const pullPast = async (pages: ReturnType<typeof page>[], past: string) => {
+	const pullPast = async (
+		pages: ReturnType<typeof page>[],
+		pastCut: string,
+	) => {
 		const { api } = fakeDeviceApi({ expensePages: pages });
-		const report = await pullAll(new MemoryStore(), api, {}, { past });
-		return report.entities.expenses?.past;
+		const report = await pullAll(new MemoryStore(), api, {}, { pastCut });
+		return report.entities.expenses?.pastCut;
 	};
 
-	it("is zero when every page ends at or below the read, though a later cut moved on", async () => {
-		// Rows stamped 90 and 100, read at 100: nothing newer arrived.
-		expect(await pullPast([page(2, "100")], cursor("100"))).toBe(0);
+	it("is zero when every page ends at or below the cut, though the pull's own cut moved on", async () => {
+		// Rows stamped 90 and 95, the read's cut 95: the read saw them.
+		expect(await pullPast([page(2, "95")], cursor("95"))).toBe(0);
 		expect(
-			await pullPast([page(3, "90", true), page(2, "100")], cursor("100")),
+			await pullPast([page(3, "90", true), page(2, "95")], cursor("95")),
 		).toBe(0);
 	});
 
-	it("counts the rows of pages that end past the read, a bound on the rows stamped after it", async () => {
-		// A last page at cut 107 holds a row stamped 105 (another user's write
-		// moved the cut, this user's row came with it).
-		expect(await pullPast([page(2, "107")], cursor("100"))).toBe(2);
+	// A save still open during the read has a txid below the read's asOf (100)
+	// but past its cut (95): the read did not see it, and a pull that ends at
+	// 100 brings it in. Measured from asOf it would read zero.
+	it("counts a row stamped at the read's asOf when it is past the cut", async () => {
+		expect(await pullPast([page(1, "100")], cursor("95"))).toBe(1);
 		expect(
-			await pullPast([page(3, "90", true), page(1, "107")], cursor("100")),
+			await pullPast([page(1, "97", true), page(0, "100")], cursor("95")),
 		).toBe(1);
-		expect(await pullPast([page(0, "107")], cursor("100"))).toBe(0);
+	});
+
+	it("counts the rows of pages that end past the cut, a bound on the rows the read missed", async () => {
+		expect(await pullPast([page(2, "107")], cursor("95"))).toBe(2);
+		expect(
+			await pullPast([page(3, "90", true), page(1, "107")], cursor("95")),
+		).toBe(1);
+		expect(await pullPast([page(0, "107")], cursor("95"))).toBe(0);
 	});
 
 	it("reports nothing unless asked", async () => {
 		const { api } = fakeDeviceApi({ expensePages: [page(1, "107")] });
 		const report = await pullAll(new MemoryStore(), api, {});
-		expect(report.entities.expenses?.past).toBeUndefined();
+		expect(report.entities.expenses?.pastCut).toBeUndefined();
+	});
+});
+
+// compareScreen over the real pull, in production order: the server is read
+// while a save is open (so its answer lacks the expense), the save commits
+// before the pull, and the pull ends at the pull's own cut, which is the
+// read's asOf (nobody else wrote). The expense, ARS 1,000.00 on Oct 10, reads
+// 100,000 minor on the device and 0 on the server's first read.
+describe("compareScreen over the real pull", () => {
+	const ZONE_BA = "America/Argentina/Buenos_Aires";
+	const AT = "2026-10-15T15:00:00.000Z";
+	const basis = (asOf: string, cut: string): FigureBasis => ({
+		asOf: cursor(asOf),
+		cut: cursor(cut),
+		at: AT,
+		ratesAsOf: null,
+		home: "ARS",
+		timeZone: ZONE_BA,
+		startDay: 1,
+	});
+	const ARS = (minor: number) => [{ minor, currency: "ARS" }];
+
+	function run(answers: { basis: FigureBasis; spent: number }[]) {
+		const { api } = fakeDeviceApi({
+			expensePages: [
+				{
+					items: [wireExpense("e1", "1000", "2026-10-10T15:00:00.000Z")],
+					cursor: cursor("170"),
+				},
+				{ items: [], cursor: cursor("200") },
+			],
+		});
+		// Later pulls end at the cluster's position, 260; the pages above are
+		// the first pull's.
+		const empty = (t: string) => ({
+			items: [],
+			tombstones: [],
+			cursor: cursor(t),
+			hasMore: false,
+		});
+		const firstExpenses = api.sync.expenses;
+		api.sync.expenses = async (q) =>
+			q.since === cursor("200") ? empty("260") : firstExpenses(q);
+		api.sync.categories = async () => empty("260");
+		const store = new MemoryStore();
+		const cursors: Record<string, string> = {};
+		let reads = 0;
+		let pulls = 0;
+		const deps: CompareDeps = {
+			figures: {
+				read: async (q) => {
+					const a = answers[Math.min(reads, answers.length - 1)];
+					reads += 1;
+					return {
+						figures: q.ids
+							.split(",")
+							.map((id) => ({ id, lines: ARS(a?.spent ?? 0) })),
+						basis: a?.basis,
+					};
+				},
+			},
+			read: async (q) => ({
+				lines: (
+					await readDeviceFigures(store, "u1", q.ids, q.narrowing, () => q.at)
+				).readings,
+				verdict: null,
+			}),
+			pull: async (cut) => {
+				pulls += 1;
+				const report = await pullAll(store, api, cursors, { pastCut: cut });
+				return Object.fromEntries(
+					Object.entries(report.entities).map(([k, v]) => [k, v.pastCut ?? 0]),
+				);
+			},
+			cursors: () => cursors,
+			ratesAsOf: () => null,
+			settings: () => {
+				const row = store.get("settings", SETTINGS_ID);
+				return row
+					? {
+							homeCurrency: row.homeCurrency,
+							timeZone: row.timeZone,
+							startDay: row.startDay,
+						}
+					: null;
+			},
+			bookZone: () => null,
+			generation: () => pulls,
+			now: () => at(AT),
+		};
+		return { deps, reads: () => reads, pulls: () => pulls };
+	}
+
+	it("counts the save that was open during the read, reads the server again and matches", async () => {
+		const w = run([
+			{ basis: basis("200", "150"), spent: 0 },
+			{ basis: basis("260", "255"), spent: 100_000 },
+		]);
+		const { report } = await compareScreen(w.deps, request("settings"));
+		expect(report).toMatchObject({
+			state: "checked",
+			skipped: null,
+			differs: [],
+			behind: 0,
+		});
+		expect(report.classes["glance.spent"]).toBe("match");
+		expect(w.reads()).toBe(2);
+		expect(w.pulls()).toBe(2);
+	});
+
+	it("still names a real difference once the rows have settled", async () => {
+		// The server's second answer is wrong by one minor unit: nothing newer
+		// arrives, so it is a difference.
+		const w = run([
+			{ basis: basis("200", "150"), spent: 0 },
+			{ basis: basis("260", "255"), spent: 100_001 },
+		]);
+		const { report } = await compareScreen(w.deps, request("settings"));
+		expect(report.differs).toEqual(["glance.spent"]);
 	});
 });
 
