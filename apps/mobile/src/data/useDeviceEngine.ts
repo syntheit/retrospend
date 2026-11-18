@@ -16,7 +16,7 @@ function useEngine() {
 	}, [api, userId, baseUrl]);
 }
 
-/** What Home reads figures from, or null when the flag is off or nobody is signed in. */
+/** What Home and Budget compare their server figures against, or null when the flag is off or nobody is signed in. */
 export function useDeviceReads(): DeviceReads | null {
 	return useEngine();
 }

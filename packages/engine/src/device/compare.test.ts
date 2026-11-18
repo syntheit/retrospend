@@ -60,31 +60,12 @@ import {
 	compareScreen,
 	type PulledPast,
 } from "./compare-run";
-import { fakeDeviceApi, expense as wireExpense } from "./fake-api";
+import { cursor, fakeDeviceApi, expense as wireExpense } from "./fake-api";
 import type { FigureBasis, FigureNarrowing, ServerFigures } from "./ports";
 
 const at = (iso: string) => new Date(iso);
 const eur = (minor: number) => [{ minor, currency: "EUR" }];
 const NOON = "2026-11-15T12:00:00.000Z";
-
-/** A sync cursor, {e, t, s} as base64url JSON, the way the server writes it. */
-const cursor = (t: string, e = "e1") => {
-	const alphabet =
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-	const bytes = [...JSON.stringify({ e, t, s: "9" })].map((c) =>
-		c.charCodeAt(0),
-	);
-	let out = "";
-	for (let i = 0; i < bytes.length; i += 3) {
-		const [x = 0, y, z] = [bytes[i], bytes[i + 1], bytes[i + 2]];
-		const n = (x << 16) | ((y ?? 0) << 8) | (z ?? 0);
-		out += alphabet[(n >> 18) & 63];
-		out += alphabet[(n >> 12) & 63];
-		if (y !== undefined) out += alphabet[(n >> 6) & 63];
-		if (z !== undefined) out += alphabet[n & 63];
-	}
-	return out;
-};
 
 const rate = (
 	currency: string,

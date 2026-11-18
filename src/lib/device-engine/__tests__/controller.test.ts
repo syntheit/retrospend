@@ -1,39 +1,39 @@
+import type { CompareReport } from "@retrospend/engine/device";
 import { describe, expect, it, vi } from "vitest";
 import {
 	BACKOFF_MAX_MS,
 	BACKOFF_MS,
 	createDeviceController,
 } from "../controller";
-import {
-	DeviceError,
-	type DeviceErrorCode,
-	type ParityReport,
-} from "../protocol";
+import { DeviceError, type DeviceErrorCode } from "../protocol";
 import type { DeviceClient } from "../rpc";
 
 type Pull = DeviceClient["pull"];
 
-const report = (generation: number): ParityReport => ({
+const report = (generation: number): CompareReport => ({
+	screen: "home",
 	state: "checked",
-	ids: ["glance.spent"],
-	mismatchedIds: [],
-	counts: [],
+	skipped: null,
+	keys: 5,
+	of: 5,
+	differs: [],
+	behind: 0,
+	ratesMoved: 0,
 	generation,
-	storedZone: "UTC",
-	browserZone: "UTC",
-	zoneDiffers: false,
+	zone: "same",
+	clock: "2026-11-18T12:00:00.000Z",
+	classes: {},
+	verdictParts: [],
 });
 
 function fakeClient(pull?: Pull) {
 	const client = {
 		dead: false,
 		start: vi.fn(async () => undefined),
-		parity: vi.fn(async () => report(1)),
+		compare: vi.fn(async () => report(1) as CompareReport | null),
 		pull: vi.fn<Pull>(
 			pull ?? (async () => ({ status: "ready", generation: 1 })),
 		),
-		read: vi.fn(),
-		verify: vi.fn(),
 		stop: vi.fn(async () => undefined),
 		terminate: vi.fn(() => {
 			client.dead = true;
@@ -48,14 +48,12 @@ function setup(clients: ReturnType<typeof fakeClient>[] = [fakeClient()]) {
 	const load = vi.fn(
 		async () => (queue.shift() ?? null) as DeviceClient | null,
 	);
-	const onParity = vi.fn<(r: ParityReport) => void>();
 	const controller = createDeviceController({
 		load,
 		now: () => time.now,
 		visible: () => time.visible,
-		onParity,
 	});
-	return { controller, load, time, onParity };
+	return { controller, load, time };
 }
 
 const ANA = { id: "u1", protectedAccount: false };
@@ -400,7 +398,7 @@ describe("device controller: one worker per tab", () => {
 	});
 });
 
-describe("device controller: parity", () => {
+describe("device controller: compare", () => {
 	const pulls = (generations: number[]): Pull => {
 		const queue = [...generations];
 		return async () => ({
@@ -409,14 +407,39 @@ describe("device controller: parity", () => {
 		});
 	};
 
-	it("checks the glance figures after a pull that made the engine ready, and keeps the report", async () => {
+	it("compares Home after a pull that made the engine ready, and keeps the report by screen", async () => {
 		const client = fakeClient(pulls([1]));
-		const { controller, onParity } = setup([client]);
+		const { controller } = setup([client]);
 		controller.setUser(ANA);
 		await controller.homeOpened();
-		expect(client.parity).toHaveBeenCalledTimes(1);
-		expect(onParity).toHaveBeenCalledWith(report(1));
-		expect(controller.lastParity).toEqual(report(1));
+		expect(client.compare).toHaveBeenCalledTimes(1);
+		expect(client.compare).toHaveBeenCalledWith("home");
+		expect(controller.reports).toEqual({ home: report(1) });
+	});
+
+	it("forgets the reports of an account that is gone", async () => {
+		const { controller } = setup([fakeClient(pulls([1]))]);
+		controller.setUser(ANA);
+		await controller.homeOpened();
+		expect(controller.reports.home).toEqual(report(1));
+		controller.setUser({ id: "u2", protectedAccount: false });
+		expect(controller.reports).toEqual({});
+	});
+
+	it("drops an answer that arrives after the account changed", async () => {
+		const client = fakeClient(pulls([1]));
+		let finish: (r: CompareReport) => void = () => undefined;
+		client.compare.mockImplementationOnce(
+			() => new Promise<CompareReport>((resolve) => (finish = resolve)),
+		);
+		const { controller } = setup([client]);
+		controller.setUser(ANA);
+		const running = controller.homeOpened();
+		await vi.waitFor(() => expect(client.compare).toHaveBeenCalled());
+		controller.setUser({ id: "u2", protectedAccount: false });
+		finish(report(1));
+		await running;
+		expect(controller.reports).toEqual({});
 	});
 
 	it("never checks after a pull that did not leave the engine ready", async () => {
@@ -424,76 +447,77 @@ describe("device controller: parity", () => {
 			status: "failed",
 			generation: 0,
 		}));
-		const { controller, onParity } = setup([client]);
+		const { controller } = setup([client]);
 		controller.setUser(ANA);
 		await controller.homeOpened();
-		expect(client.parity).not.toHaveBeenCalled();
-		expect(onParity).not.toHaveBeenCalled();
+		expect(client.compare).not.toHaveBeenCalled();
+		expect(controller.reports).toEqual({});
 	});
 
 	it("checks again only when a pull has finished since the last check", async () => {
 		const client = fakeClient(pulls([1, 1, 2]));
-		client.parity.mockImplementation(async () => report(1));
+		client.compare.mockImplementation(async () => report(1));
 		const { controller } = setup([client]);
 		controller.setUser(ANA);
 		await controller.homeOpened();
 		await controller.tabVisible();
-		expect(client.parity).toHaveBeenCalledTimes(1);
-		client.parity.mockImplementation(async () => report(2));
+		expect(client.compare).toHaveBeenCalledTimes(1);
+		client.compare.mockImplementation(async () => report(2));
 		await controller.tabVisible();
-		expect(client.parity).toHaveBeenCalledTimes(2);
+		expect(client.compare).toHaveBeenCalledTimes(2);
 	});
 
 	it("takes the pull a difference made inside the check as already checked", async () => {
 		const client = fakeClient(pulls([1, 2]));
-		client.parity.mockImplementation(async () => report(2));
+		client.compare.mockImplementation(async () => report(2));
 		const { controller } = setup([client]);
 		controller.setUser(ANA);
 		await controller.homeOpened();
 		await controller.tabVisible();
-		expect(client.parity).toHaveBeenCalledTimes(1);
+		expect(client.compare).toHaveBeenCalledTimes(1);
 	});
 
 	it("doubles the wait while the check keeps being limited", async () => {
 		const client = fakeClient(pulls([1, 2, 3, 4]));
-		client.parity.mockRejectedValue(new DeviceError("rate_limited"));
+		client.compare.mockRejectedValue(new DeviceError("rate_limited"));
 		const { controller, time } = setup([client]);
 		controller.setUser(ANA);
 		await controller.homeOpened();
-		expect(client.parity).toHaveBeenCalledTimes(1);
+		expect(client.compare).toHaveBeenCalledTimes(1);
 		time.now += BACKOFF_MS;
 		await controller.tabVisible();
-		expect(client.parity).toHaveBeenCalledTimes(2);
+		expect(client.compare).toHaveBeenCalledTimes(2);
 		// The second limit waits twice as long: the pull before the check does not reset it.
 		time.now += BACKOFF_MS;
 		await controller.tabVisible();
-		expect(client.parity).toHaveBeenCalledTimes(2);
+		expect(client.compare).toHaveBeenCalledTimes(2);
 		time.now += BACKOFF_MS;
 		await controller.tabVisible();
-		expect(client.parity).toHaveBeenCalledTimes(3);
+		expect(client.compare).toHaveBeenCalledTimes(3);
 	});
 
-	it("tries a check that did not finish again, after a wait", async () => {
+	it("tries a check that could not run again, after a wait, and keeps no report for it", async () => {
 		const client = fakeClient(pulls([1, 1, 1]));
-		client.parity.mockResolvedValue({ ...report(1), state: "failed" });
-		const { controller, time, onParity } = setup([client]);
+		client.compare.mockResolvedValue(null);
+		const { controller, time } = setup([client]);
 		controller.setUser(ANA);
 		await controller.homeOpened();
-		expect(onParity).toHaveBeenCalledTimes(1);
+		expect(controller.reports).toEqual({});
 		await controller.tabVisible();
-		expect(client.parity).toHaveBeenCalledTimes(1);
+		expect(client.compare).toHaveBeenCalledTimes(1);
 		time.now += BACKOFF_MS;
-		client.parity.mockResolvedValue(report(1));
+		client.compare.mockResolvedValue(report(1));
 		await controller.tabVisible();
-		expect(client.parity).toHaveBeenCalledTimes(2);
+		expect(client.compare).toHaveBeenCalledTimes(2);
+		expect(controller.reports.home).toEqual(report(1));
 		// Now it counts as checked: the same pull is not checked again.
 		await controller.tabVisible();
-		expect(client.parity).toHaveBeenCalledTimes(2);
+		expect(client.compare).toHaveBeenCalledTimes(2);
 	});
 
 	it("waits after a 429 in the check and ends on a changed account", async () => {
 		const limited = fakeClient();
-		limited.parity.mockRejectedValue(new DeviceError("rate_limited"));
+		limited.compare.mockRejectedValue(new DeviceError("rate_limited"));
 		const a = setup([limited]);
 		a.controller.setUser(ANA);
 		await a.controller.homeOpened();
@@ -504,7 +528,7 @@ describe("device controller: parity", () => {
 		expect(limited.pull).toHaveBeenCalledTimes(2);
 
 		const changed = fakeClient();
-		changed.parity.mockRejectedValue(new DeviceError("account_changed"));
+		changed.compare.mockRejectedValue(new DeviceError("account_changed"));
 		const b = setup([changed]);
 		b.controller.setUser(ANA);
 		await b.controller.homeOpened();
@@ -521,12 +545,12 @@ describe("device controller: the dev readout", () => {
 		const heard = vi.fn();
 		controller.subscribe(heard);
 		await controller.homeOpened();
-		expect(client.parity).toHaveBeenCalledTimes(1);
+		expect(client.compare).toHaveBeenCalledTimes(1);
 		expect(controller.lastPullAt).toBe(time.now);
 		await controller.tabVisible();
-		expect(client.parity).toHaveBeenCalledTimes(1);
+		expect(client.compare).toHaveBeenCalledTimes(1);
 		await controller.checkNow();
-		expect(client.parity).toHaveBeenCalledTimes(2);
+		expect(client.compare).toHaveBeenCalledTimes(2);
 		expect(heard).toHaveBeenCalledTimes(2);
 	});
 
@@ -571,7 +595,7 @@ describe("device controller: what the readout reports", () => {
 		expect(client.pull).toHaveBeenCalledTimes(1);
 		await controller.checkNow();
 		expect(client.pull).toHaveBeenCalledTimes(2);
-		expect(client.parity).toHaveBeenCalledTimes(1);
+		expect(client.compare).toHaveBeenCalledTimes(1);
 	});
 
 	it("says it is waiting for an account before one is known, and starts nothing", async () => {

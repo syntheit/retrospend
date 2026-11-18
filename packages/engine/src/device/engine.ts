@@ -1,14 +1,27 @@
-import type { MonthViewDto } from "@retrospend/domain/envelope/dto";
-import type { Money } from "@retrospend/domain/money-minor";
+import { monthVerdictIncomplete } from "@retrospend/domain/envelope/verdict";
+import { runtimeTimeZone } from "@retrospend/domain/time-zone";
 import { deviceMonthView } from "../budget-figures";
 import { budgetStatus } from "../budget-gate";
 import type { CreateCaptures } from "../create-captures";
 import { MemoryStore } from "../memory-store";
 import { type Change, SETTINGS_ID } from "../port";
+import { ratesAsOf } from "../rates";
 import { DEVICE_FIGURE_IDS, readDeviceFigures } from "../registry";
-import { type PullCursors, pullAll } from "../sync-pull";
+import { type PullCursors, type PullReport, pullAll } from "../sync-pull";
 import { compareCreate, type WriteVerdict } from "../write-parity";
-import { sameLines } from "./compare";
+import {
+	COMPARE_WHAT,
+	type CompareReport,
+	compareLine,
+	type NarrowValues,
+	type ScreenName,
+	type VerdictView,
+} from "./compare";
+import {
+	type CompareDeps,
+	compareScreen,
+	type PulledPast,
+} from "./compare-run";
 import type { DeviceApi, EngineStorage, StorageHooks } from "./ports";
 
 // The device engine: a copy of the account's rows in memory, filled by the
@@ -25,70 +38,22 @@ const RESET_REQUIRED = "sync_reset_required";
 
 export type DeviceStatus = "idle" | "pulling" | "ready" | "failed";
 
-/** What the screens may read from the device: figures by id, and a check against the server. */
+/** What the screens may ask of the device: a check of their figures against the server's. */
 export interface DeviceReads {
 	/**
-	 * The device's reading of each id it has a figure for (others are left
-	 * out), or null when it holds nothing it can trust: the first pull failed,
-	 * or the last one did.
+	 * Holds the device's figures for `screen` against the server's and logs the
+	 * result (ids and counts, `compareLine`); the screen keeps showing the
+	 * server's numbers. `narrowings` are the values the screen renders (envelope,
+	 * account, template and category ids, month labels). `serverVerdict` reads the
+	 * verdict the screen showed again, through its own query. Never rejects;
+	 * null when the check could not run (an account with Advanced protection,
+	 * which the server never answers for, a disposed engine, or an error).
 	 */
-	read(
-		ids: readonly string[],
-		options?: ReadOptions,
-	): Promise<DeviceRead | null>;
-	/** Holds the device's readings of `ids` against the server's; never rejects. */
-	verify(ids: readonly string[]): Promise<void>;
-	/**
-	 * Records that the device's budget verdict still differed from the server's
-	 * after a fresh pull: `parts` names what differed (state, action, figure,
-	 * amount) and `values` keeps both sides, never logged.
-	 */
-	reportVerdict(
-		figureId: string,
-		parts: readonly string[],
-		values: { device: unknown; server: unknown },
-	): void;
-}
-
-export interface ReadOptions {
-	/**
-	 * Reads only after a pull that began with this call has finished, so the
-	 * rows hold what the server held when it was made (a write just confirmed
-	 * shows). Null when that pull fails or the engine cannot pull.
-	 */
-	fresh?: boolean;
-	/** Also reads the current budget month into `budget`. */
-	budget?: boolean;
-}
-
-/** The current budget month as the device's rows make it: the verdict and what it is a verdict of. */
-export interface DeviceBudget {
-	bookId: string;
-	/** The book's currency, which the verdict's amounts are in (not the home currency). */
-	currency: string;
-	month: number;
-	today: string;
-	approximate: boolean;
-	incomplete: boolean;
-	verdict: MonthViewDto["verdict"];
-}
-
-export interface DeviceRead {
-	homeCurrency: string;
-	/** Whether the budget figures read: a book and a block the pulls caught up with. */
-	budgetReady: boolean;
-	/** The current month's verdict when asked for with `budget` and the block is readable, else null. */
-	budget: DeviceBudget | null;
-	/** One line per currency, or null when a missing rate keeps the figure out. */
-	readings: ReadonlyMap<string, readonly Money[] | null>;
-}
-
-export interface ParityResult {
-	ids: readonly string[];
-	mismatches: { id: string; device: unknown; server: unknown }[];
-	/** How many pulls had finished when it was checked. */
-	generation: number;
-	clock: string;
+	compare(
+		screen: ScreenName,
+		narrowings?: NarrowValues,
+		serverVerdict?: () => Promise<VerdictView | null>,
+	): Promise<CompareReport | null>;
 }
 
 /** What the write parity check found, by counts and ids: never an amount, title or note. */
@@ -107,8 +72,8 @@ export interface DeviceEngine extends DeviceReads {
 	readonly status: DeviceStatus;
 	/** Pulls that have finished. */
 	readonly generation: number;
-	/** The last parity check, kept for tests. */
-	readonly lastParity: ParityResult | null;
+	/** The last compare that ran, for readouts and tests. */
+	readonly lastCompare: CompareReport | null;
 	/** Creates the server booked, compared with the device's own booking of them (dev only). */
 	readonly writeParity: WriteParity;
 	/** Stopped for good: a new engine is needed to read or pull again. */
@@ -137,6 +102,8 @@ export interface DeviceEngineOptions {
 	 * a release build.
 	 */
 	captures?: CreateCaptures;
+	/** The zone the client renders in, for the compare's `zone` field; defaults to the runtime's. */
+	browserZone?: () => string;
 }
 
 export function createDeviceEngine(
@@ -154,7 +121,13 @@ export function createDeviceEngine(
 	let pullsBegun = 0;
 	let pulledAt: number | null = null;
 	let inflight: Promise<void> | null = null;
-	let lastParity: ParityResult | null = null;
+	let lastCompare: CompareReport | null = null;
+	/** Where each screen's next compare starts in its narrowed calls (the plan's rotation). */
+	const rotation: Partial<Record<ScreenName, number>> = {};
+	/** What the last pull counted past its `pastCut`, or null when it did not finish. */
+	let lastPast: PulledPast | null = null;
+	/** The server said this account is protected: it answers no figures, so no compare starts again. */
+	let refused = false;
 	const writeCounts: Record<string, number> = {};
 	let writeRecent: WriteVerdict[] = [];
 	let disposed = false;
@@ -233,7 +206,15 @@ export function createDeviceEngine(
 		if (disposed) throw new Error("The engine was disposed");
 	}
 
-	async function run(): Promise<void> {
+	/** What a pull counted past its cut, by entity. */
+	const pastOf = (report: PullReport): PulledPast =>
+		Object.fromEntries(
+			Object.entries(report.entities).flatMap(([entity, step]) =>
+				step.pastCut === undefined ? [] : [[entity, step.pastCut]],
+			),
+		);
+
+	async function run(pastCut?: string): Promise<void> {
 		await ready;
 		if (disposed) return;
 		pullsBegun += 1;
@@ -243,16 +224,20 @@ export function createDeviceEngine(
 		emptied = false;
 		storage?.persistence.beginPull();
 		let pulled = false;
+		lastPast = null;
+		const pullOptions = pastCut === undefined ? {} : { pastCut };
 		try {
+			let report: PullReport;
 			try {
-				await pullAll(store, api, cursors);
+				report = await pullAll(store, api, cursors, pullOptions);
 			} catch (error) {
 				if ((error as { code?: string } | null)?.code !== RESET_REQUIRED)
 					throw error;
 				await startOver();
 				storage?.persistence.beginPull();
-				await pullAll(store, api, cursors);
+				report = await pullAll(store, api, cursors, pullOptions);
 			}
+			lastPast = pastOf(report);
 			storage?.persistence.finishPull();
 			generation += 1;
 			pulledAt = now();
@@ -329,25 +314,41 @@ export function createDeviceEngine(
 		);
 	}
 
-	const pull = () => {
-		inflight ??= run().finally(() => {
+	const startPull = (pastCut?: string) => {
+		inflight ??= run(pastCut).finally(() => {
 			inflight = null;
 		});
 		return inflight;
 	};
+	const pull = () => startPull();
+
+	/**
+	 * A pull that begins after the call and counts the rows it brings in past
+	 * `cut` (the server read's cut); null when it did not finish. A pull of
+	 * another caller that began after the round's first server read (a foreground
+	 * or another screen's pull), or was still running then, may have applied rows
+	 * past the cut that nothing counted: it answers "again", so both sides are
+	 * read once more. `mark` is the pulls begun when that read was asked for.
+	 */
+	async function pullPast(
+		cut: string,
+		mark: number | null,
+	): Promise<PulledPast | "again" | null> {
+		await ready;
+		// A pull already running began before this call: wait it out.
+		while (inflight) await inflight;
+		const before = generation;
+		await startPull(cut);
+		if (generation <= before) return null;
+		// Our own pull is the one begun since the read.
+		return mark !== null && pullsBegun - mark !== 1 ? "again" : lastPast;
+	}
 
 	const pullIfStale = () =>
 		inflight ??
 		(pulledAt === null || now() - pulledAt >= PULL_AFTER_MS
 			? pull()
 			: Promise.resolve());
-
-	/** The disk copy is loaded and the first pull, or the one in flight, is done: a read never sees a half-pulled store. */
-	async function settled(): Promise<void> {
-		await ready;
-		if (inflight) await inflight;
-		else if (status === "idle") await pull();
-	}
 
 	async function dispose({ wipe }: { wipe: boolean }): Promise<void> {
 		disposed = true;
@@ -363,141 +364,111 @@ export function createDeviceEngine(
 		await closing?.dispose({ wipe });
 	}
 
-	async function budgetNow(): Promise<DeviceBudget | null> {
-		try {
-			const dto = await deviceMonthView(store, userId, () => new Date(now()));
-			if (!dto) return null;
-			return {
-				bookId: dto.book.id,
-				currency: dto.book.currency,
-				month: dto.month.key,
-				today: dto.today,
-				approximate: dto.approximate,
-				incomplete: dto.incomplete,
-				verdict: dto.verdict,
-			};
-		} catch (error) {
-			// Only the budget is lost: the figures of the same read stand.
-			warn("budget read failed", (error as Error)?.name);
-			return null;
-		}
-	}
-
-	async function readNow(
-		ids: readonly string[],
-		withBudget = false,
-	): Promise<DeviceRead | null> {
-		const settings = store.get("settings", SETTINGS_ID);
-		if (status !== "ready" || !settings) return null;
-		const known = ids.filter((id) => DEVICE_FIGURE_IDS.includes(id));
-		const begun = pullsBegun;
-		const { readings } = await readDeviceFigures(store, userId, known);
-		const budgetReady = budgetStatus(store) === "ready";
-		const budget = withBudget && budgetReady ? await budgetNow() : null;
-		// A pull that began while the figures were read changed the rows under
-		// them (or swapped the store): the reading is of no moment, so Home keeps
-		// the server's value.
-		if (pullsBegun !== begun || status !== "ready") return null;
+	/** The budget verdict of the device's month at `at`, as the compare holds it, or null while the budget cannot be read. */
+	async function verdictAt(at: Date): Promise<VerdictView | null> {
+		if (budgetStatus(store) !== "ready") return null;
+		const dto = await deviceMonthView(store, userId, () => at);
+		if (!dto) return null;
+		const { verdict } = dto;
 		return {
-			homeCurrency: settings.homeCurrency,
-			budgetReady,
-			budget,
-			readings,
+			bookId: dto.book.id,
+			currency: dto.book.currency,
+			month: dto.month.key,
+			today: dto.today,
+			style: verdict.style,
+			incomplete: monthVerdictIncomplete(dto),
+			state: verdict.state,
+			action: verdict.action,
+			lead: { figureId: verdict.lead.figureId, amount: verdict.lead.amount },
 		};
 	}
 
-	/** Whether a pull that began after this call has finished. */
-	async function pulledAfterNow(): Promise<boolean> {
-		await ready;
-		// A pull already running began before the call, so its rows may be older
-		// than a write the caller just saw confirmed: wait it out, then pull.
-		if (inflight) await inflight;
-		const before = generation;
-		await pull();
-		return generation > before;
-	}
+	const browserZone = options.browserZone ?? (() => runtimeTimeZone() ?? "");
 
-	async function read(
-		ids: readonly string[],
-		options: ReadOptions = {},
-	): Promise<DeviceRead | null> {
-		if (options.fresh) {
-			if (!(await pulledAfterNow())) return null;
-		} else await settled();
-		try {
-			return await readNow(ids, options.budget);
-		} catch (error) {
-			warn("read failed", (error as Error)?.name);
-			return null;
-		}
-	}
+	/**
+	 * The compare's view of the engine: the server's api, the store as the pulls
+	 * left it, the clock. One per compare, which holds the pulls begun when each
+	 * round's first server read was asked for.
+	 */
+	const depsForCompare = (): CompareDeps => {
+		let mark: number | null = null;
+		return {
+			figures: {
+				read(query) {
+					// A pull still running fetches pages after the read too, so it counts as begun after it.
+					mark ??= inflight ? pullsBegun - 1 : pullsBegun;
+					return api.figures.read(query);
+				},
+			},
+			async read(query) {
+				const settings = store.get("settings", SETTINGS_ID);
+				if (status !== "ready" || !settings) return null;
+				const begun = pullsBegun;
+				const known = query.ids.filter((id) => DEVICE_FIGURE_IDS.includes(id));
+				const { readings } = await readDeviceFigures(
+					store,
+					userId,
+					known,
+					{ ...query.narrowing },
+					() => query.at,
+				);
+				const verdict = query.verdict ? await verdictAt(query.at) : null;
+				// A pull that began during the read changed the rows under it.
+				return pullsBegun !== begun || status !== "ready"
+					? null
+					: { lines: readings, verdict };
+			},
+			pull(cut) {
+				const since = mark;
+				mark = null;
+				return pullPast(cut, since);
+			},
+			cursors: () => cursors,
+			ratesAsOf: () => ratesAsOf(store),
+			settings: () => {
+				const row = store.get("settings", SETTINGS_ID);
+				return row
+					? {
+							homeCurrency: row.homeCurrency,
+							timeZone: row.timeZone,
+							startDay: row.startDay,
+						}
+					: null;
+			},
+			bookZone: () => store.list("budgetBooks")[0]?.timeZone ?? null,
+			generation: () => generation,
+			now: () => new Date(now()),
+		};
+	};
 
-	async function verify(ids: readonly string[]): Promise<void> {
+	async function compare(
+		screen: ScreenName,
+		narrowings: NarrowValues = {},
+		serverVerdict?: () => Promise<VerdictView | null>,
+	): Promise<CompareReport | null> {
+		if (refused) return null;
 		try {
 			await ready;
-			const { figures } = await api.figures.read({ ids: ids.join(",") });
-			const differing = async () => {
-				const device = await readNow(ids);
-				return ids
-					.filter((id) => {
-						const server = figures.find((f) => f.id === id)?.lines;
-						return !sameLines(device?.readings.get(id), server);
-					})
-					.map((id) => ({
-						id,
-						device: device?.readings.get(id) ?? null,
-						server: figures.find((f) => f.id === id)?.lines ?? null,
-					}));
-			};
-			let mismatches = await differing();
-			if (mismatches.length > 0) {
-				// A write since the last pull looks the same as a bug: pull once more.
-				await pull();
-				mismatches = await differing();
-			}
-			lastParity = {
-				ids,
-				mismatches,
-				generation,
-				clock: new Date(now()).toISOString(),
-			};
-			// Ids and counts only: the amounts stay in lastParity, never in a log.
-			if (mismatches.length > 0)
-				warn(
-					"figures differ from the server",
-					JSON.stringify({
-						ids: mismatches.map((m) => m.id),
-						count: mismatches.length,
-						generation: lastParity.generation,
-						clock: lastParity.clock,
-					}),
-				);
+			if (disposed) return null;
+			const { report, next } = await compareScreen(depsForCompare(), {
+				screen,
+				values: narrowings,
+				start: rotation[screen],
+				browserZone: browserZone(),
+				serverVerdict,
+			});
+			rotation[screen] = next;
+			lastCompare = report;
+			// Ids and counts only: `compareLine` reads named fields, never an amount.
+			warn(COMPARE_WHAT, compareLine(report));
+			return report;
 		} catch (error) {
+			// Advanced protection: the server answers no figures, so none are asked for again.
+			if ((error as { code?: string } | null)?.code === "protected_account")
+				refused = true;
 			warn("check failed", (error as Error)?.name);
+			return null;
 		}
-	}
-
-	function reportVerdict(
-		figureId: string,
-		parts: readonly string[],
-		values: { device: unknown; server: unknown },
-	): void {
-		lastParity = {
-			ids: [figureId],
-			mismatches: [{ id: figureId, ...values }],
-			generation,
-			clock: new Date(now()).toISOString(),
-		};
-		// Ids and parts only: the amounts stay in lastParity, never in a log.
-		warn(
-			"budget verdict differs from the server",
-			JSON.stringify({
-				ids: [figureId],
-				parts,
-				generation: lastParity.generation,
-				clock: lastParity.clock,
-			}),
-		);
 	}
 
 	return {
@@ -507,8 +478,8 @@ export function createDeviceEngine(
 		get generation() {
 			return generation;
 		},
-		get lastParity() {
-			return lastParity;
+		get lastCompare() {
+			return lastCompare;
 		},
 		get writeParity() {
 			return { counts: { ...writeCounts }, recent: [...writeRecent] };
@@ -518,9 +489,7 @@ export function createDeviceEngine(
 		},
 		pull,
 		pullIfStale,
-		read,
-		verify,
-		reportVerdict,
+		compare,
 		dispose,
 	};
 }

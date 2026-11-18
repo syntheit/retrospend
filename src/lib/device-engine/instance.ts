@@ -9,8 +9,6 @@ export function deviceController(): DeviceController {
 		load: loadDeviceClient,
 		now: Date.now,
 		visible: () => document.visibilityState === "visible",
-		// Ids, counts and zones only: a report never holds an amount.
-		onParity: (report) => console.info("device parity", JSON.stringify(report)),
 	});
 	return controller;
 }

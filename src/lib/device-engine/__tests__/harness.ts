@@ -1,5 +1,6 @@
 import type { Money } from "@retrospend/domain/money-minor";
-import { expense, fakeDeviceApi } from "@retrospend/engine/device-fake";
+import type { FigureBasis } from "@retrospend/engine/device";
+import { cursor, expense, fakeDeviceApi } from "@retrospend/engine/device-fake";
 import { afterEach, beforeEach, expect, vi } from "vitest";
 import {
 	attachHost,
@@ -26,8 +27,20 @@ export const ROWS = [
 ];
 export const ARS = (minor: number): Money[] => [{ minor, currency: "ARS" }];
 
-/** The zone the engine double's settings carry unless a test sets one. */
-export const STORED_ZONE = "America/Argentina/Buenos_Aires";
+/**
+ * The basis GET /figures answers with for the rows above: every cursor of the
+ * double's pulls is at 200 (the read's position and cut), so nothing arrives
+ * past the cut and a figure that differs is a real difference.
+ */
+export const BASIS: FigureBasis = {
+	asOf: cursor("200"),
+	cut: cursor("200"),
+	at: "2026-10-15T15:00:00.000Z",
+	ratesAsOf: null,
+	home: "ARS",
+	timeZone: "America/Argentina/Buenos_Aires",
+	startDay: 1,
+};
 
 const ports: MessagePort[] = [];
 
@@ -47,14 +60,8 @@ export interface SetupOptions {
 	now?: number;
 	/** What the device's own api answers when asked for figures (no network). */
 	figures?: Record<string, Money[]>;
-	/**
-	 * The server's answer to GET /figures, by the zone it reads days in. The
-	 * real route reads in the user's stored zone, whatever zone the request
-	 * names (no header or cookie is read), so this is called with that zone.
-	 */
-	serverFigures?: (storedZone: string) => Record<string, Money[] | null>;
-	/** The zone in the settings the engine pulls; the double's own (Buenos Aires) by default. */
-	zone?: string;
+	/** The basis GET /figures answers with; none (an old server or a read token) by default. */
+	basis?: FigureBasis;
 	/** A route that fails: its name, and in which pull (from 1). */
 	fail?: { route: string; pull: number; error: unknown };
 	createApi?: (fetch: typeof globalThis.fetch) => HostApi;
@@ -77,11 +84,15 @@ export function setup(options: SetupOptions = {}) {
 			{
 				items: options.rows ?? ROWS,
 				tombstones: [],
-				cursor: "c1",
+				cursor: cursor("200"),
 				hasMore: false,
 			},
 		],
+		categories: [
+			{ items: [], tombstones: [], cursor: cursor("200"), hasMore: false },
+		],
 		figures: options.figures ?? { "glance.spent": ARS(100_000) },
+		basis: options.basis,
 		fail: options.fail,
 	});
 	// What the server answers the sync routes, whose cookie the browser holds,
@@ -96,13 +107,6 @@ export function setup(options: SetupOptions = {}) {
 		const url = urlOf(input);
 		const forced = await hooks.status?.(url);
 		const status = forced ?? (url.includes("/profile") ? 200 : answer.status);
-		if (url.includes("/figures") && status === 200 && options.serverFigures) {
-			return Response.json({
-				figures: Object.entries(
-					options.serverFigures(options.zone ?? STORED_ZONE),
-				).map(([id, lines]) => ({ id, lines })),
-			});
-		}
 		const body =
 			status === 403
 				? { code: "protected_account", status: 403 }
@@ -125,11 +129,7 @@ export function setup(options: SetupOptions = {}) {
 					`https://example.test/api/v1/figures?ids=${query.ids}`,
 				);
 				if (!response.ok) throw new Error("HTTP failure for 1234.56 ARS");
-				return options.serverFigures
-					? ((await response.json()) as Awaited<
-							ReturnType<HostApi["figures"]["read"]>
-						>)
-					: server.api.figures.read(query);
+				return server.api.figures.read(query);
 			},
 		},
 		sync: new Proxy(server.api.sync, {
@@ -141,10 +141,7 @@ export function setup(options: SetupOptions = {}) {
 							);
 							hooks.afterSettings?.();
 							if (!response.ok) throw new Error("HTTP failure for 1234.56 ARS");
-							const settings = await sync.settings();
-							return options.zone
-								? { ...settings, timeZone: options.zone }
-								: settings;
+							return sync.settings();
 						}
 					: Reflect.get(sync, name, receiver),
 		}),

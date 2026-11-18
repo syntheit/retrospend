@@ -1,3 +1,4 @@
+import { MemoryStore, readDeviceFigures } from "@retrospend/engine";
 import type { DeviceApi } from "@retrospend/engine/device";
 import { cipherFake } from "../../test/cipherFake";
 import {
@@ -73,28 +74,56 @@ const served = (
 function page(items: unknown[], cursor = "c1") {
 	return { items, cursor };
 }
-const spent = async (engine: DeviceEngine) =>
-	Object.fromEntries((await engine.read(SPENT))?.readings ?? []);
+
+/** What the phone's disk copy of `userId` holds, read from the file itself: whether a pull ran to its end, and the figures its rows make. */
+async function onDisk(phone: Phone, userId = "u1") {
+	const storage = await openEngineStorage(
+		phone.deps,
+		engineScope(ORIGIN, userId),
+		{ cursors: () => ({}), onDegraded: () => {} },
+	);
+	if (!storage) throw new Error("No disk copy");
+	const { readings } = await readDeviceFigures(
+		new MemoryStore({ rows: storage.loaded.rows }),
+		userId,
+		SPENT,
+		{},
+		() => NOW,
+	);
+	await storage.dispose({ wipe: false });
+	return {
+		complete: storage.loaded.complete,
+		figures: Object.fromEntries(readings),
+	};
+}
+
+/** Lets the engine finish opening its disk copy (it never touches the network to do so). */
+async function opened(engine: DeviceEngine) {
+	for (let i = 0; i < 1000 && engine.status === "idle"; i += 1)
+		await Promise.resolve();
+}
 
 describe("a launch after a whole pull", () => {
 	it("reads the figures from disk with no network, then pulls what changed", async () => {
 		const phone = cipherFake(dir);
 		const first = launch(phone, served().api);
 		await first.pull();
-		expect(await spent(first)).toEqual({
-			"glance.spent": ARS(100_000),
-			"glance.spentLast": ARS(250_000),
-		});
 		await first.dispose({ wipe: false });
+		expect(await onDisk(phone)).toEqual({
+			complete: true,
+			figures: {
+				"glance.spent": ARS(100_000),
+				"glance.spentLast": ARS(250_000),
+			},
+		});
 
+		// A whole copy is ready at once, with no network.
 		const down = offline();
 		const second = launch(phone, down.api);
-		expect(await spent(second)).toEqual({
-			"glance.spent": ARS(100_000),
-			"glance.spentLast": ARS(250_000),
-		});
+		await opened(second);
 		expect(second.status).toBe("ready");
 		expect(down.calls).toEqual([]);
+		await second.dispose({ wipe: false });
 
 		// Online again: it asks only for what is after the saved cursor.
 		const online = served({ expensePages: [page([E1, E2, E3], "c1")] });
@@ -115,10 +144,11 @@ describe("a launch after a whole pull", () => {
 		await second.pull();
 		expect(second.status).toBe("ready");
 		expect(second.generation).toBe(0);
-		expect((await spent(second))["glance.spent"]).toEqual(ARS(100_000));
+		await second.dispose({ wipe: false });
+		expect((await onDisk(phone)).figures["glance.spent"]).toEqual(ARS(100_000));
 	});
 
-	it("reads nothing when a refresh fails after it wrote, not the half-updated figures", async () => {
+	it("holds nothing it can trust when a refresh fails after it wrote, not the half-updated figures", async () => {
 		const phone = cipherFake(dir);
 		const first = launch(phone, served().api);
 		await first.pull();
@@ -136,14 +166,13 @@ describe("a launch after a whole pull", () => {
 				fail: { route: "accounts", pull: 1, error: new Error("killed") },
 			}).api,
 		);
-		expect(await spent(second)).toEqual({
-			"glance.spent": ARS(100_000),
-			"glance.spentLast": ARS(250_000),
-		});
+		await opened(second);
 		expect(second.status).toBe("ready");
 		await second.pull();
 		expect(second.status).toBe("failed");
-		expect(await second.read(SPENT)).toBeNull();
+		await second.dispose({ wipe: false });
+		// The disk says so too: e1 was written as 9,000.00, and the copy is not whole.
+		expect((await onDisk(phone)).complete).toBe(false);
 	});
 
 	it("saves the cursors of a pull that changed no expense", async () => {
@@ -175,7 +204,8 @@ describe("a launch after a whole pull", () => {
 		await mine.dispose({ wipe: false });
 
 		const other = launch(phone, offline().api, "u2");
-		expect(await other.read(SPENT)).toBeNull();
+		await other.pull();
+		expect(other.status).toBe("failed");
 		expect(phone.files.size).toBe(2);
 	});
 });
@@ -193,13 +223,15 @@ describe("a launch after a pull that did not finish", () => {
 		await engine.dispose({ wipe: false });
 	};
 
-	it("reads nothing, even though most rows are there", async () => {
+	it("is not ready, even though most rows are there", async () => {
 		const phone = cipherFake(dir);
 		await killed(phone);
 		const down = offline();
 		const second = launch(phone, down.api);
-		expect(await second.read(SPENT)).toBeNull();
+		await second.pull();
 		expect(second.status).toBe("failed");
+		await second.dispose({ wipe: false });
+		expect((await onDisk(phone)).complete).toBe(false);
 	});
 
 	it("resumes from the saved cursors and finishes the copy", async () => {
@@ -209,10 +241,8 @@ describe("a launch after a pull that did not finish", () => {
 			expensePages: [page([E1], "c1"), page([E2, E3], "c2")],
 		});
 		const second = launch(phone, online.api);
-		expect(await spent(second)).toEqual({
-			"glance.spent": ARS(100_000),
-			"glance.spentLast": ARS(250_000),
-		});
+		await second.pull();
+		expect(second.status).toBe("ready");
 		// The first page's cursor was saved with the second page's rows.
 		expect(online.calls.filter((c) => c.startsWith("expenses"))).toEqual([
 			"expenses(c1)",
@@ -220,9 +250,12 @@ describe("a launch after a pull that did not finish", () => {
 		await second.dispose({ wipe: false });
 
 		// And now the copy is whole.
-		expect(await spent(launch(phone, offline().api))).toEqual({
-			"glance.spent": ARS(100_000),
-			"glance.spentLast": ARS(250_000),
+		expect(await onDisk(phone)).toEqual({
+			complete: true,
+			figures: {
+				"glance.spent": ARS(100_000),
+				"glance.spentLast": ARS(250_000),
+			},
 		});
 	});
 });
@@ -311,8 +344,7 @@ describe("a server that cannot honor a cursor", () => {
 		await second.dispose({ wipe: false });
 
 		// What is on disk now is the server's rows after the reset, and nothing older.
-		const third = launch(phone, offline().api);
-		expect(await spent(third)).toEqual({
+		expect((await onDisk(phone)).figures).toEqual({
 			"glance.spent": ARS(0),
 			"glance.spentLast": ARS(200_000),
 		});
@@ -320,7 +352,7 @@ describe("a server that cannot honor a cursor", () => {
 });
 
 describe("a reset that ends offline", () => {
-	it("leaves an empty engine that pulls again on the next read", async () => {
+	it("leaves an empty engine that pulls again on the next pull", async () => {
 		const phone = cipherFake(dir);
 		const first = launch(phone, served().api);
 		await first.pull();
@@ -353,11 +385,16 @@ describe("a reset that ends offline", () => {
 		// Nothing is held, so this is neither ready nor failed.
 		expect(engine.status).toBe("idle");
 
-		expect(await spent(engine)).toEqual({
-			"glance.spent": ARS(100_000),
-			"glance.spentLast": ARS(250_000),
-		});
+		await engine.pullIfStale();
 		expect(engine.status).toBe("ready");
+		await engine.dispose({ wipe: false });
+		expect(await onDisk(phone)).toEqual({
+			complete: true,
+			figures: {
+				"glance.spent": ARS(100_000),
+				"glance.spentLast": ARS(250_000),
+			},
+		});
 	});
 });
 
@@ -378,12 +415,12 @@ describe("a disk that fails", () => {
 			};
 		};
 		const engine = launch(phone, served().api);
-		await engine.read([]);
+		await engine.pull();
 		failing.on = true;
 		await engine.pull();
 
 		expect(engine.status).toBe("ready");
-		expect((await spent(engine))["glance.spent"]).toEqual(ARS(100_000));
+		expect(engine.generation).toBe(2);
 		await Promise.resolve();
 		expect(phone.files.size).toBe(0);
 		expect(phone.secrets.values.has(engineKeyName(SCOPE))).toBe(false);
@@ -457,10 +494,8 @@ describe("rows the store will not take", () => {
 				dispose,
 			}),
 		});
-		expect(await spent(engine)).toEqual({
-			"glance.spent": ARS(100_000),
-			"glance.spentLast": ARS(250_000),
-		});
+		await engine.pull();
+		expect(engine.status).toBe("ready");
 		expect(dispose).toHaveBeenCalledWith({ wipe: true });
 	});
 });
