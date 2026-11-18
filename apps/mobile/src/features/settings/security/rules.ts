@@ -1,39 +1,5 @@
 import type { SignedInSessionDto } from "@retrospend/api-contract";
 
-/** PASSWORD_MIN_LENGTH and PASSWORD_MAX_LENGTH of the contract (account/security.ts). */
-const MIN_LENGTH = 8;
-const MAX_LENGTH = 255;
-
-/**
- * The new password rules the server holds (POST /me/password): 8 or more
- * characters, a lowercase and an uppercase letter, and a number. Shown as
- * checks while typing, as on the web.
- */
-export type PasswordCheck = "length" | "case" | "number";
-
-export const PASSWORD_CHECKS: PasswordCheck[] = ["length", "case", "number"];
-
-export function passwordChecks(value: string): Record<PasswordCheck, boolean> {
-	return {
-		length: value.length >= MIN_LENGTH && value.length <= MAX_LENGTH,
-		case: /[a-z]/.test(value) && /[A-Z]/.test(value),
-		number: /\d/.test(value),
-	};
-}
-
-/** The sheet can submit: current given, every rule met, both new fields match. */
-export function passwordReady(input: {
-	current: string;
-	next: string;
-	confirm: string;
-}): boolean {
-	return (
-		input.current !== "" &&
-		Object.values(passwordChecks(input.next)).every(Boolean) &&
-		input.next === input.confirm
-	);
-}
-
 /**
  * What a session is called in the list, as a catalog key and its values:
  * the device client by its id, the app and the web by what the user agent

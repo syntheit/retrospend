@@ -1,6 +1,10 @@
 import { apiKey } from "@better-auth/api-key";
 import { expo } from "@better-auth/expo";
 import {
+	PASSWORD_MAX_LENGTH,
+	PASSWORD_MIN_LENGTH,
+} from "@retrospend/api-contract";
+import {
 	DEVICE_CLIENT_IDS,
 	MOBILE_SCOPES,
 	parseScopeList,
@@ -190,6 +194,10 @@ export const auth = betterAuth({
 	},
 	emailAndPassword: {
 		enabled: true,
+		// better-auth's defaults (8 and 128) would refuse at sign-in a password
+		// that the change and reset routes accepted up to 255 characters.
+		minPasswordLength: PASSWORD_MIN_LENGTH,
+		maxPasswordLength: PASSWORD_MAX_LENGTH,
 	},
 	// Our own services are the only writers of the password hash (they check
 	// for Advanced protection keys under a row lock). better-auth's own

@@ -1,3 +1,4 @@
+import { newPasswordSchema } from "@retrospend/api-contract";
 import { fromMinorUnits } from "@retrospend/domain/money";
 import { roundedMinor } from "@retrospend/domain/money-minor";
 import { TRPCError } from "@trpc/server";
@@ -187,14 +188,7 @@ export const profileRouter = createTRPCRouter({
 			z
 				.object({
 					currentPassword: z.string().min(1, "Current password is required"),
-					newPassword: z
-						.string()
-						.min(8, "Password must be at least 8 characters")
-						.max(255)
-						.regex(
-							/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-							"Password must contain at least one uppercase letter, one lowercase letter, and one number",
-						),
+					newPassword: newPasswordSchema,
 					confirmPassword: z.string().min(1, "Please confirm your password"),
 				})
 				.refine((data) => data.newPassword === data.confirmPassword, {

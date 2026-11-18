@@ -7,6 +7,14 @@ import type { Primitives } from "@retrospend/crypto";
 import { loadWebSodium } from "@retrospend/crypto/web";
 import type { KdfLookup, SecretDeps } from "./sign-in-secret";
 
+// The contract's runtime is ESM, so these tests get the real password rules
+// file (it imports nothing) in its place.
+jest.mock("@retrospend/api-contract", () =>
+	jest.requireActual(
+		"../../../../packages/api-contract/src/account/password-rules",
+	),
+);
+
 type Helper = typeof import("./sign-in-secret");
 let h: Helper;
 let p: Primitives;

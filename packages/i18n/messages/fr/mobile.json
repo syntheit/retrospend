@@ -2408,6 +2408,7 @@
 				"wrong": "Le mot de passe actuel est incorrect.",
 				"tooMany": "Trop d'essais. Réessayez plus tard.",
 				"protected": "Verrouillé tant que la protection avancée est activée.",
+				"weak": "Le nouveau mot de passe ne respecte pas les règles.",
 				"error": "Impossible de changer le mot de passe. Réessayez."
 			},
 			"sessions": {

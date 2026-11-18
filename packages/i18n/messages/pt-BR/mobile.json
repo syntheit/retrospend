@@ -2408,6 +2408,7 @@
 				"wrong": "A senha atual está errada.",
 				"tooMany": "Tentativas demais. Tente mais tarde.",
 				"protected": "Bloqueado enquanto a proteção avançada está ativada.",
+				"weak": "A nova senha não atende aos requisitos.",
 				"error": "Não foi possível trocar a senha. Tente de novo."
 			},
 			"sessions": {

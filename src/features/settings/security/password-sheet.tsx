@@ -1,5 +1,10 @@
 "use client";
 
+import {
+	PASSWORD_CHECKS,
+	passwordChecks,
+	passwordReady,
+} from "@retrospend/api-contract";
 import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -13,13 +18,6 @@ import {
 	useRotatePassword,
 } from "~/lib/protection/use-sign-in-secret";
 import { api } from "~/trpc/react";
-import {
-	type PasswordCheck,
-	passwordChecks,
-	passwordReady,
-} from "./password-rules";
-
-const CHECKS: PasswordCheck[] = ["length", "case", "number"];
 
 /** Change password: three fields, the rules as checks, an explicit Update password. */
 export function PasswordSheet({
@@ -111,7 +109,7 @@ export function PasswordSheet({
 				)}
 				{field("pw-new", t("new"), next, setNext, "new-password")}
 				<ul aria-label={t("rules")} className="text-meta flex flex-col gap-1">
-					{CHECKS.map((c) => (
+					{PASSWORD_CHECKS.map((c) => (
 						<li
 							className={cn(
 								"flex items-center gap-2",

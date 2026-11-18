@@ -16,6 +16,7 @@
 // server that serves this very page can also serve a page that skips the check
 // (spike 4.8). It stops a server that only controls the API answers, and an
 // account's first sign-in on a new browser is not covered.
+import { passwordMeetsRules } from "@retrospend/api-contract";
 import type { Primitives } from "@retrospend/crypto";
 import type {
 	FlowPorts,
@@ -282,7 +283,9 @@ export type RotationFailure =
 	| "notOffered"
 	| "params"
 	| "downgrade"
-	| "unavailable";
+	| "unavailable"
+	/** The new password breaks the rules: refused before anything is derived. */
+	| "weakPassword";
 
 /** Fixed text only, like SignInSecretError: no key, secret or typed text in a message. */
 export class PasswordRotationError extends Error {
@@ -394,6 +397,10 @@ export async function rotatePassword(
 	next: string,
 	options: { deps?: Partial<SignInSecretDeps> } = {},
 ): Promise<void> {
+	// A keyed account's password is never sent, so the server cannot refuse a
+	// weak one: this is the only place the rules are enforced for it.
+	if (!passwordMeetsRules(next))
+		throw new PasswordRotationError("weakPassword");
 	const deps: SignInSecretDeps = { ...defaults(), ...options.deps };
 	let core: Core;
 	try {

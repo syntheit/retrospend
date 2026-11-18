@@ -18,6 +18,7 @@ import { disableUserKeepingAnAdmin } from "~/server/services/admin-guard.service
 import {
 	anonymizeAndDeleteUser,
 } from "~/server/services/user-deletion.service";
+import { generatePassword } from "~/server/lib/generate-password";
 import { sendEmail } from "~/server/mailer";
 import { adminTestEmail, guardTestEmail } from "~/server/services/admin-test-email";
 import { getAiUsageSummary } from "~/server/services/ai-access.service";
@@ -223,8 +224,7 @@ export const adminRouter = createTRPCRouter({
 				where: { id: input.userId },
 				select: { email: true, username: true },
 			});
-
-			const newPassword = crypto.randomBytes(12).toString("base64url");
+			const newPassword = generatePassword();
 			const hashedPassword = await hashPassword(newPassword);
 
 			await resetPasswordHash({

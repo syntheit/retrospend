@@ -263,7 +263,8 @@
 		"changed": "Mot de passe changé. Tes autres appareils sont déconnectés.",
 		"locked": "Indisponible tant que la protection avancée est activée.",
 		"wrong": "Mot de passe incorrect",
-		"conflict": "Tes clés de protection ont changé. Réessaie."
+		"conflict": "Tes clés de protection ont changé. Réessaie.",
+		"weak": "Le nouveau mot de passe ne respecte pas les règles"
 	},
 	"twoFactor": {
 		"onTitle": "Activer l’authentification à deux facteurs",

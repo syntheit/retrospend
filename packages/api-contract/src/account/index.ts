@@ -3,6 +3,7 @@ import { v1 } from "../common/meta";
 import { idSchema, okSchema } from "../core";
 import { accountSecurityContract } from "./security";
 
+export * from "./password-rules";
 export * from "./security";
 
 const TAG = ["Account"];

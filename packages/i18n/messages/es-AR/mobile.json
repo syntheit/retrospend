@@ -2408,6 +2408,7 @@
 				"wrong": "La contraseña actual no es correcta.",
 				"tooMany": "Demasiados intentos. Probá más tarde.",
 				"protected": "Bloqueado mientras la protección avanzada está activada.",
+				"weak": "La contraseña nueva no cumple los requisitos.",
 				"error": "No se pudo cambiar la contraseña. Probá de nuevo."
 			},
 			"sessions": {
