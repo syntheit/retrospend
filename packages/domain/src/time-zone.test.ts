@@ -8,6 +8,7 @@ import {
 } from "./fiscal-month";
 import {
 	calendarDaysBetween,
+	canonicalTimeZone,
 	dayKey,
 	fromWallTime,
 	normalizeTimeZone,
@@ -28,6 +29,16 @@ describe("time-zone helpers", () => {
 		expect(normalizeTimeZone("Not/AZone")).toBeUndefined();
 		expect(normalizeTimeZone("")).toBeUndefined();
 		expect(normalizeTimeZone(42)).toBeUndefined();
+	});
+
+	it("canonicalTimeZone gives two spellings of one zone one name", () => {
+		expect(canonicalTimeZone(BA)).toBe(
+			canonicalTimeZone("America/Buenos_Aires"),
+		);
+		expect(canonicalTimeZone("Etc/UTC")).toBe(canonicalTimeZone("UTC"));
+		expect(canonicalTimeZone(BA)).not.toBe(canonicalTimeZone(NY));
+		expect(canonicalTimeZone("Not/AZone")).toBeUndefined();
+		expect(canonicalTimeZone(7)).toBeUndefined();
 	});
 
 	it("wallTime reads the clock in the zone", () => {

@@ -38,6 +38,19 @@ export const CHANGE_DAYS = 30;
 
 export { CHANGE_PARTS };
 
+/**
+ * Every figure the Wealth screen shows: net worth, its 30-day change and parts,
+ * accounts and Not tracked. The web router, the device registry and the compare
+ * all take this one list.
+ */
+export const WEALTH_FIGURE_IDS: readonly string[] = [
+	"netWorth",
+	"netWorthChange.total",
+	...CHANGE_PARTS.map((part) => `netWorthChange.${part}`),
+	"accounts.balance",
+	"notTracked",
+];
+
 /** An amount of money in minor units. */
 export interface MinorMoney {
 	readonly minor: number;

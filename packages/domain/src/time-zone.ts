@@ -55,6 +55,16 @@ export function normalizeTimeZone(value: unknown): string | undefined {
 	}
 }
 
+/**
+ * The zone's one canonical name, so two spellings of one zone compare equal
+ * ("America/Argentina/Buenos_Aires" and "America/Buenos_Aires"), or undefined
+ * for a name the runtime cannot format.
+ */
+export function canonicalTimeZone(value: unknown): string | undefined {
+	if (normalizeTimeZone(value) === undefined) return undefined;
+	return formatterFor(value as string).resolvedOptions().timeZone;
+}
+
 /** The runtime's own IANA zone (a browser's), or undefined when it reports none. */
 export function runtimeTimeZone(): string | undefined {
 	try {

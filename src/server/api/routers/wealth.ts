@@ -1,3 +1,4 @@
+import { WEALTH_FIGURE_IDS } from "@retrospend/domain/accounts/account-figures";
 import { z } from "zod";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -78,21 +79,6 @@ function money<I extends object, V>(
 }
 
 const byId = z.object({ id: z.cuid() });
-
-/** Every figure this router serves: net worth, its 30-day change and parts, accounts, Not tracked. */
-const WEALTH_FIGURES = [
-	"netWorth",
-	"netWorthChange.total",
-	"netWorthChange.income",
-	"netWorthChange.spending",
-	"netWorthChange.exchange",
-	"netWorthChange.notLogged",
-	"netWorthChange.revaluation",
-	"netWorthChange.opened",
-	"netWorthChange.closed",
-	"accounts.balance",
-	"notTracked",
-] as const;
 
 export const wealthRouter = createTRPCRouter({
 	createAsset: protectedProcedure
@@ -196,7 +182,7 @@ export const wealthRouter = createTRPCRouter({
 
 	/** Net worth, its 30-day breakdown, account balances and Not tracked, from the figures registry. */
 	figures: protectedProcedure.query(async ({ ctx }) => {
-		const readings = await readFigures(ctx.session.user.id, WEALTH_FIGURES);
+		const readings = await readFigures(ctx.session.user.id, WEALTH_FIGURE_IDS);
 		return Object.fromEntries(readings);
 	}),
 
