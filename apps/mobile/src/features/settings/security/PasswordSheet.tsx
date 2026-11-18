@@ -37,7 +37,7 @@ function codeOf(error: unknown): string | null {
 /** The sheet's words for a refused rotation. */
 function rotateRefusal(
 	reason: RotateFailure,
-): "wrong" | "tooMany" | "keysMissing" | "protected" | "error" {
+): "wrong" | "tooMany" | "keysMissing" | "protected" | "weak" | "error" {
 	return reason === "wrongPassword"
 		? "wrong"
 		: reason === "rateLimited"
@@ -46,7 +46,9 @@ function rotateRefusal(
 				? "keysMissing"
 				: reason === "unavailable"
 					? "protected"
-					: "error";
+					: reason === "weakPassword"
+						? "weak"
+						: "error";
 }
 
 /**

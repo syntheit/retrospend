@@ -238,6 +238,7 @@ describe("PasswordSheet", () => {
 				["wrongPassword", "The current password is wrong."],
 				["rateLimited", "Too many tries. Try again later."],
 				["protectionRefused", "Couldn't change the password. Try again."],
+				["weakPassword", "The new password doesn't meet the rules."],
 				["unavailable", "Locked while Advanced protection is on."],
 				[
 					"keysMissing",

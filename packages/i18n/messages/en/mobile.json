@@ -2408,6 +2408,7 @@
 				"wrong": "The current password is wrong.",
 				"tooMany": "Too many tries. Try again later.",
 				"protected": "Locked while Advanced protection is on.",
+				"weak": "The new password doesn't meet the rules.",
 				"error": "Couldn't change the password. Try again."
 			},
 			"sessions": {

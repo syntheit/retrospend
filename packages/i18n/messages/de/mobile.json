@@ -2408,6 +2408,7 @@
 				"wrong": "Das aktuelle Passwort ist falsch.",
 				"tooMany": "Zu viele Versuche. Versuch es später erneut.",
 				"protected": "Gesperrt, solange der erweiterte Schutz an ist.",
+				"weak": "Das neue Passwort erfüllt die Regeln nicht.",
 				"error": "Das Passwort konnte nicht geändert werden. Versuch es erneut."
 			},
 			"sessions": {

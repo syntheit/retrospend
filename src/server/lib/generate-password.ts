@@ -7,7 +7,9 @@ const MAX_DRAWS = 50;
 /**
  * A random password (16 characters of base64url) that meets the new password
  * rules, for an admin reset. A plain draw misses a digit or a case about one
- * time in eight, and the person could then not use it to sign in and change it.
+ * time in eight. Sign-in does not check complexity, so such a password would
+ * still work, but a person who then tries to keep it through a change (or any
+ * later rule check) would be refused, so the reset hands out one that passes.
  */
 export function generatePassword(
 	random: (size: number) => Buffer = randomBytes,
