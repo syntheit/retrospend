@@ -248,6 +248,9 @@ describe("readFiguresWithBasis: one snapshot", () => {
 			await writer.gate;
 		});
 		await writer.hasOpened;
+		// A commit after the writer started, so the writer lies below the
+		// snapshot's newest completed transaction and shows as open in it.
+		await expense(user.id, "3");
 
 		const midRead = latch();
 		const holdFigure: FigureDefinition = {
@@ -279,8 +282,11 @@ describe("readFiguresWithBasis: one snapshot", () => {
 		}
 		const { basis } = await reading;
 		if (!basis) throw new Error("no basis");
-		expect(cursorOf(basis.cut).txid < writerTxid).toBe(true);
-		expect(cursorOf(basis.cut).txid < cursorOf(basis.asOf).txid).toBe(true);
+		const cut = cursorOf(basis.cut).txid;
+		const seen = cursorOf(basis.asOf).txid;
+		const shown = `cut ${cut} asOf ${seen} writer ${writerTxid}`;
+		expect(cut < writerTxid, shown).toBe(true);
+		expect(cut < seen, shown).toBe(true);
 	}, 60_000);
 
 	it("names the rate stamp GET /rates/daily returns, and the instant it read at", async () => {

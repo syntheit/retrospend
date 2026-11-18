@@ -210,13 +210,13 @@ export const readCutCursor = (tx: Prisma.TransactionClient) =>
 	readSnapshotCursor(tx, "xmin");
 
 /**
- * The cursor at the newest transaction the caller's snapshot can have seen:
- * the first unassigned txid minus one. Every row the snapshot read was
- * committed at or below it, so a device whose pulled cursors reach it holds
- * every row this snapshot saw (a pull ends at its own cut, never past an open
- * writer). It may sit past a writer still open at the snapshot, which only
- * makes a device that reaches it hold more than the read saw. Run it in the
- * transaction whose snapshot it names.
+ * The cursor at the newest completed transaction of the caller's snapshot (its
+ * xmax minus one; a writer above it is not yet visible). Every row the
+ * snapshot read was committed at or below it, so a device whose pulled cursors
+ * reach it holds every row this snapshot saw (a pull ends at its own cut,
+ * never past an open writer). It may sit past a writer still open at the
+ * snapshot, which only makes a device that reaches it hold more than the read
+ * saw. Run it in the transaction whose snapshot it names.
  */
 export const readSeenCursor = (tx: Prisma.TransactionClient) =>
 	readSnapshotCursor(tx, "xmax");
