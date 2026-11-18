@@ -27,6 +27,8 @@ import vectors from "../vectors/keys.vectors.json";
 const MASTER = vectors.masters[1];
 const RK = vectors.recoveryKeys[2];
 if (!MASTER || !RK) throw new Error("vector missing");
+const AUTH_KEY = toBase64Url(fromHex(MASTER.authKey));
+const PASSWORD = MASTER.password;
 const USER_ID = "0b1f2e3d-4c5b-4a69-8877-665544332211";
 const seq = (n: number, start: number) =>
 	Uint8Array.from({ length: n }, (_, i) => (start + i) & 255);
@@ -291,12 +293,11 @@ describe("prepareNewRecoveryKey (password in)", () => {
 			open: vi.fn(async (body: { authKey: string }) => {
 				opens.push(body);
 				if (server.open) return server.open(body);
-				if (body.authKey !== toBase64Url(fromHex(MASTER.authKey)))
-					throw new KeyFlowError("wrongPassword");
+				if (body.authKey !== AUTH_KEY) throw new KeyFlowError("wrongPassword");
 				return openAnswer();
 			}),
 		} satisfies NewKeyPorts;
-		const run = (password = MASTER.password) =>
+		const run = (password = PASSWORD) =>
 			prepareNewRecoveryKey(ports, { userId: USER_ID, password });
 		return { ports, opens, run };
 	}
