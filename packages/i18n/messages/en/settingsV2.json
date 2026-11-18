@@ -263,7 +263,8 @@
 		"changed": "Password changed. Your other devices are signed out.",
 		"locked": "Not available while Advanced protection is on.",
 		"wrong": "Wrong password",
-		"conflict": "Your protection keys changed. Try again."
+		"conflict": "Your protection keys changed. Try again.",
+		"weak": "The new password doesn't meet the rules"
 	},
 	"twoFactor": {
 		"onTitle": "Turn on two-factor",

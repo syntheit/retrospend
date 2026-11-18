@@ -263,7 +263,8 @@
 		"changed": "Contraseña cambiada. Se cerró la sesión en tus otros dispositivos.",
 		"locked": "No disponible mientras la protección avanzada está activada.",
 		"wrong": "Contraseña incorrecta",
-		"conflict": "Tus claves de protección cambiaron. Probá de nuevo."
+		"conflict": "Tus claves de protección cambiaron. Probá de nuevo.",
+		"weak": "La contraseña nueva no cumple los requisitos"
 	},
 	"twoFactor": {
 		"onTitle": "Activar la autenticación de dos factores",

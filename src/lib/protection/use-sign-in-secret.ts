@@ -118,7 +118,9 @@ export function useRotatePassword() {
 							? t("conflict")
 							: code === "notOffered"
 								? t("locked")
-								: check(code);
+								: code === "weakPassword"
+									? t("weak")
+									: check(code);
 				throw new Error(text, { cause: e });
 			}),
 		[check, email, t, userId],

@@ -1,6 +1,14 @@
 import { createElement } from "react";
 import SignInScreen from "../app/sign-in";
 
+// The contract's runtime is ESM, so these tests get the real password rules
+// file (it imports nothing) in its place.
+jest.mock("@retrospend/api-contract", () =>
+	jest.requireActual(
+		"../../../packages/api-contract/src/account/password-rules",
+	),
+);
+
 // The app has no sign-up form of its own: a new person creates the account on
 // the connected server's own page, opened in the system browser sheet (an
 // SFSafariViewController on iOS, a Custom Tab on Android).

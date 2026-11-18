@@ -263,7 +263,8 @@
 		"changed": "Senha alterada. Seus outros dispositivos foram desconectados.",
 		"locked": "Indisponível enquanto a proteção avançada está ativada.",
 		"wrong": "Senha incorreta",
-		"conflict": "Suas chaves de proteção mudaram. Tente de novo."
+		"conflict": "Suas chaves de proteção mudaram. Tente de novo.",
+		"weak": "A nova senha não atende aos requisitos"
 	},
 	"twoFactor": {
 		"onTitle": "Ativar a autenticação de dois fatores",
