@@ -22,10 +22,11 @@ import {
 	type Fields,
 	feeRow,
 	lunch,
+	MISSING_RATE,
 	makeWorld,
+	NAMES,
 	spreadRow,
 	stored,
-	type Transport,
 	transportsOf,
 	type World,
 } from "./expense-write-kit";
@@ -51,8 +52,9 @@ const NO_OPTIONALS = (f: Fields): Fields => ({
 });
 
 describe("an update replaces the row", () => {
-	it("clears a location, a description and a spread that are left out, and keeps excludeFromAnalytics", async () => {
-		for (const t of w.transports) {
+	it.each(NAMES)(
+		"%s: clears a location and a description that are left out, and keeps excludeFromAnalytics",
+		async (name) => {
 			const id = await book(
 				w.userId,
 				lunch(w, {
@@ -62,56 +64,56 @@ describe("an update replaces the row", () => {
 				}),
 			);
 			expect(
-				await t.update(id, NO_OPTIONALS(lunch(w, { title: "Bare" }))),
-				t.name,
+				await w[name].update(id, NO_OPTIONALS(lunch(w, { title: "Bare" }))),
 			).toEqual({ ok: true });
-			expect(await stored(id), t.name).toMatchObject({
+			expect(await stored(id)).toMatchObject({
 				title: "Bare",
 				location: null,
 				description: null,
 				categoryId: w.food,
 				excludeFromAnalytics: true,
 			});
-		}
-	});
+		},
+	);
 
-	it("clears the category when it is left out, where the transport allows that (v1, legacy)", async () => {
-		for (const t of [w.v1, w.legacy]) {
+	// The web's form always names a category, so only v1 and the legacy router can leave it out.
+	it.each(["v1", "legacy"] as const)(
+		"%s: clears the category when it is left out",
+		async (name) => {
 			const id = await book(w.userId, lunch(w));
 			expect(
-				await t.update(id, {
+				await w[name].update(id, {
 					...NO_OPTIONALS(lunch(w)),
 					categoryId: undefined,
 				}),
-				t.name,
 			).toEqual({ ok: true });
-			expect((await stored(id))?.categoryId, t.name).toBeNull();
-		}
-	});
+			expect((await stored(id))?.categoryId).toBeNull();
+		},
+	);
 
-	it("takes the spread parts away when amortizeOver is left out, and re-spreads when it is sent", async () => {
-		for (const t of w.transports) {
+	it.each(NAMES)(
+		"%s: takes the spread parts away when amortizeOver is left out, and re-spreads when it is sent",
+		async (name) => {
 			const { id, parts } = await spreadRow(w);
 			expect(parts).toHaveLength(3);
 			expect(
-				await t.update(id, lunch(w, { amount: "120", amortizeOver: 4 })),
-				t.name,
+				await w[name].update(id, lunch(w, { amount: "120", amortizeOver: 4 })),
 			).toEqual({ ok: true });
-			expect((await stored(id))?.children, `${t.name} respread`).toHaveLength(
-				4,
-			);
-			expect(await t.update(id, lunch(w, { amount: "120" })), t.name).toEqual({
+			expect((await stored(id))?.children).toHaveLength(4);
+			expect(await w[name].update(id, lunch(w, { amount: "120" }))).toEqual({
 				ok: true,
 			});
-			expect(await stored(id), t.name).toMatchObject({
+			expect(await stored(id)).toMatchObject({
 				isAmortizedParent: false,
 				children: [],
 			});
-		}
-	});
+		},
+	);
 
-	it("a transfer's fee takes a new title when its money is unchanged", async () => {
-		for (const t of [w.entry, w.v1]) {
+	// The legacy router takes no cuid ids, and a fee row's id is one.
+	it.each(["entry", "v1"] as const)(
+		"%s: a transfer's fee takes a new title when its money is unchanged",
+		async (name) => {
 			const id = await feeRow(w.userId);
 			const row = await stored(id);
 			const same = {
@@ -121,11 +123,11 @@ describe("an update replaces the row", () => {
 				date: row?.date.toISOString().slice(0, 10) ?? DAY,
 				categoryId: row?.categoryId ?? w.food,
 			};
-			expect(await t.update(id, same), t.name).toEqual({ ok: true });
-			expect(await stored(id), t.name).toMatchObject({ title: "Bank fee" });
-			expect((await stored(id))?.amount.toFixed(2), t.name).toBe("1500.00");
-		}
-	});
+			expect(await w[name].update(id, same)).toEqual({ ok: true });
+			expect(await stored(id)).toMatchObject({ title: "Bank fee" });
+			expect((await stored(id))?.amount.toFixed(2)).toBe("1500.00");
+		},
+	);
 });
 
 describe("the rate of an edit", () => {
@@ -139,147 +141,170 @@ describe("the rate of an edit", () => {
 			usd: row?.amountInUSD.toFixed(2),
 		};
 	};
+	const OFFICIAL_100 = { type: "official", home: "141200.00", usd: "100.00" };
 
-	it("is kept when the edit sends no rate: USD 120 at the kept Official is ARS 169,440, not Blue's 176,160", async () => {
-		for (const t of w.transports) {
+	it.each(NAMES)(
+		"%s: is kept when the edit sends no rate: USD 120 at the kept Official is ARS 169,440, not Blue's 176,160",
+		async (name) => {
 			const id = await book(w.userId, official());
-			expect(await home(id), `${t.name} booked`).toEqual({
-				type: "official",
-				home: "141200.00",
-				usd: "100.00",
-			});
-			expect(await t.update(id, lunch(w, { amount: "120" })), t.name).toEqual({
+			expect(await home(id)).toEqual(OFFICIAL_100);
+			expect(await w[name].update(id, lunch(w, { amount: "120" }))).toEqual({
 				ok: true,
 			});
-			expect(await home(id), t.name).toEqual({
+			expect(await home(id)).toEqual({
 				type: "official",
 				home: "169440.00",
 				usd: "120.00",
 			});
-		}
-	});
+		},
+	);
 
-	it("is booked again when a different type is sent: USD 120 at Blue is ARS 176,160", async () => {
-		for (const t of w.transports) {
+	it.each(NAMES)(
+		"%s: is booked again when a different type is sent: USD 120 at Blue is ARS 176,160",
+		async (name) => {
 			const id = await book(w.userId, official());
 			expect(
-				await t.update(id, lunch(w, { amount: "120", rateType: "blue" })),
-				t.name,
+				await w[name].update(id, lunch(w, { amount: "120", rateType: "blue" })),
 			).toEqual({ ok: true });
-			expect(await home(id), t.name).toEqual({
+			expect(await home(id)).toEqual({
 				type: "blue",
 				home: "176160.00",
 				usd: "120.00",
 			});
-		}
-	});
+		},
+	);
 
-	it("is kept when only the title changes and the same type is sent", async () => {
-		for (const t of w.transports) {
+	it.each(NAMES)(
+		"%s: is kept when only the title changes and the same type is sent",
+		async (name) => {
 			const id = await book(w.userId, official());
-			expect(
-				await t.update(id, official({ title: "Renamed" })),
-				t.name,
-			).toEqual({ ok: true });
-			expect(await home(id), t.name).toEqual({
-				type: "official",
-				home: "141200.00",
-				usd: "100.00",
+			expect(await w[name].update(id, official({ title: "Renamed" }))).toEqual({
+				ok: true,
 			});
-		}
-	});
+			expect(await home(id)).toEqual(OFFICIAL_100);
+		},
+	);
 
-	it("is replaced by a typed rate: USD 100 at 1,500 is ARS 150,000", async () => {
-		for (const t of w.transports) {
+	it.each(NAMES)(
+		"%s: is replaced by a typed rate: USD 100 at 1,500 is ARS 150,000",
+		async (name) => {
 			const id = await book(w.userId, official());
 			expect(
-				await t.update(id, lunch(w, { customRate: "1500" })),
-				t.name,
+				await w[name].update(id, lunch(w, { customRate: "1500" })),
 			).toEqual({ ok: true });
-			expect(await home(id), t.name).toEqual({
+			expect(await home(id)).toEqual({
 				type: "custom",
 				home: "150000.00",
 				usd: "100.00",
 			});
-		}
-	});
+		},
+	);
 
-	it("a refused edit books nothing: a currency with no rate keeps the Official booking", async () => {
-		for (const t of w.transports) {
+	it.each(NAMES)(
+		"%s: a refused edit books nothing: a currency with no rate keeps the Official booking",
+		async (name) => {
 			const id = await book(w.userId, official());
 			const out = await expectUnchanged(id, () =>
-				t.update(id, lunch(w, { currency: "BTN" })),
+				w[name].update(id, lunch(w, { currency: "BTN" })),
 			);
-			expect(out.ok, t.name).toBe(false);
-		}
-	});
+			expect(out).toEqual(MISSING_RATE[name]);
+			expect(await home(id)).toEqual(OFFICIAL_100);
+		},
+	);
 });
 
 describe("excludeFromAnalytics against the category's default", () => {
 	const flag = async (id: string) => (await stored(id))?.excludeFromAnalytics;
 
-	it("create: the sent flag wins, else the category's default, else false", async () => {
-		const cases = [
-			[{ categoryId: "hold" }, true],
-			[{ categoryId: "hold", excludeFromAnalytics: false }, false],
-			[{ categoryId: "food", excludeFromAnalytics: true }, true],
-			[{ categoryId: "food" }, false],
-		] as const;
-		for (const t of w.transports)
-			for (const [pick, want] of cases) {
-				const id = randomUUID();
-				const f = lunch(w, {
-					categoryId: pick.categoryId === "hold" ? w.holdByDefault : w.food,
-					...("excludeFromAnalytics" in pick
-						? { excludeFromAnalytics: pick.excludeFromAnalytics }
-						: {}),
-				});
-				expect(await t.create(id, f), t.name).toEqual({ ok: true });
-				expect(await flag(id), `${t.name} ${JSON.stringify(pick)}`).toBe(want);
-			}
-	});
+	const created = [
+		["the category's default", "hold", undefined, true],
+		["a sent false over the default", "hold", false, false],
+		["a sent true", "food", true, true],
+		["nothing sent, no default", "food", undefined, false],
+	] as const;
+	const createRows = NAMES.flatMap((n) =>
+		created.map((c) => [n, ...c] as const),
+	);
+	it.each(createRows)(
+		"%s create: %s",
+		async (name, _what, category, sent, want) => {
+			const id = randomUUID();
+			const f = lunch(w, {
+				categoryId: category === "hold" ? w.holdByDefault : w.food,
+				...(sent === undefined ? {} : { excludeFromAnalytics: sent }),
+			});
+			expect(await w[name].create(id, f)).toEqual({ ok: true });
+			expect(await flag(id)).toBe(want);
+		},
+	);
 
-	it("update: a changed category applies its default unless the flag is sent", async () => {
-		for (const t of w.transports) {
-			const none = await book(w.userId, lunch(w));
-			await t.update(none, lunch(w, { categoryId: w.holdByDefault }));
-			expect(await flag(none), `${t.name} default applies`).toBe(true);
+	it.each(NAMES)(
+		"%s: update: a changed category applies its default",
+		async (name) => {
+			const id = await book(w.userId, lunch(w));
+			expect(
+				await w[name].update(id, lunch(w, { categoryId: w.holdByDefault })),
+			).toEqual({ ok: true });
+			expect(await flag(id)).toBe(true);
+		},
+	);
 
-			const sent = await book(w.userId, lunch(w));
-			await t.update(
-				sent,
-				lunch(w, { categoryId: w.holdByDefault, excludeFromAnalytics: false }),
-			);
-			expect(await flag(sent), `${t.name} sent wins`).toBe(false);
-		}
-	});
+	it.each(NAMES)(
+		"%s: update: a sent flag wins over the changed category's default",
+		async (name) => {
+			const id = await book(w.userId, lunch(w));
+			expect(
+				await w[name].update(
+					id,
+					lunch(w, {
+						categoryId: w.holdByDefault,
+						excludeFromAnalytics: false,
+					}),
+				),
+			).toEqual({ ok: true });
+			expect(await flag(id)).toBe(false);
+		},
+	);
 
-	it("update: an unchanged category does not apply its default, and a flag left out is kept", async () => {
-		for (const t of w.transports) {
-			const kept = await book(
+	it.each(NAMES)(
+		"%s: update: an unchanged category does not apply its default",
+		async (name) => {
+			const id = await book(
 				w.userId,
 				lunch(w, { categoryId: w.holdByDefault, excludeFromAnalytics: false }),
 			);
-			await t.update(
-				kept,
-				lunch(w, { title: "Same", categoryId: w.holdByDefault }),
-			);
-			expect(await flag(kept), `${t.name} unchanged category`).toBe(false);
+			expect(
+				await w[name].update(
+					id,
+					lunch(w, { title: "Same", categoryId: w.holdByDefault }),
+				),
+			).toEqual({ ok: true });
+			expect(await flag(id)).toBe(false);
+		},
+	);
 
+	it.each(NAMES)(
+		"%s: update: a flag left out is kept, also when the category changes to a plain one",
+		async (name) => {
 			const on = await book(w.userId, lunch(w, { excludeFromAnalytics: true }));
-			await t.update(on, lunch(w, { title: "Out of it", categoryId: w.food }));
-			expect(await flag(on), `${t.name} left out`).toBe(true);
+			expect(
+				await w[name].update(
+					on,
+					lunch(w, { title: "Out of it", categoryId: w.food }),
+				),
+			).toEqual({ ok: true });
+			expect(await flag(on)).toBe(true);
 
 			const moved = await book(
 				w.userId,
 				lunch(w, { categoryId: w.holdByDefault, excludeFromAnalytics: true }),
 			);
-			await t.update(moved, lunch(w, { categoryId: w.food }));
-			expect(await flag(moved), `${t.name} moved to a plain category`).toBe(
-				true,
-			);
-		}
-	});
+			expect(
+				await w[name].update(moved, lunch(w, { categoryId: w.food })),
+			).toEqual({ ok: true });
+			expect(await flag(moved)).toBe(true);
+		},
+	);
 });
 
 describe("the day is read in the user's zone", () => {
@@ -314,36 +339,37 @@ describe("the day is read in the user's zone", () => {
 		categoryId,
 	});
 
-	it("Kathmandu (UTC+5:45): 2026-11-01 is 2026-10-31T18:15Z on tRPC and v1, the instant sent on legacy", async () => {
-		const z = await zoned("Asia/Kathmandu");
-		const want = {
-			entry: "2026-10-31T18:15:00.000Z",
-			v1: "2026-10-31T18:15:00.000Z",
-			legacy: "2026-11-01T00:00:00.000Z",
-		};
-		for (const t of Object.values(z.t) as Transport[]) {
+	const kathmandu = {
+		entry: "2026-10-31T18:15:00.000Z",
+		v1: "2026-10-31T18:15:00.000Z",
+		legacy: "2026-11-01T00:00:00.000Z",
+	};
+	it.each(NAMES)(
+		"%s: Kathmandu (UTC+5:45) books 2026-11-01 as the instant in its table (legacy keeps the instant sent)",
+		async (name) => {
+			const z = await zoned("Asia/Kathmandu");
 			const id = randomUUID();
 			expect(
-				await t.create(id, form(z.categoryId, "2026-11-01")),
-				t.name,
+				await z.t[name].create(id, form(z.categoryId, "2026-11-01")),
 			).toEqual({ ok: true });
-			expect(await at(id), t.name).toBe(want[t.name]);
-		}
-	});
+			expect(await at(id)).toBe(kathmandu[name]);
+		},
+	);
 
-	it("Buenos Aires (UTC-3): an edit from 2026-10-31 to 2026-11-01 moves the row to 03:00Z on tRPC and v1", async () => {
-		const z = await zoned("America/Argentina/Buenos_Aires");
-		for (const t of [z.t.entry, z.t.v1]) {
+	it.each(["entry", "v1"] as const)(
+		"%s: Buenos Aires (UTC-3): an edit from 2026-10-31 to 2026-11-01 moves the row to 03:00Z",
+		async (name) => {
+			const z = await zoned("America/Argentina/Buenos_Aires");
+			const t = z.t[name];
 			const id = randomUUID();
-			await t.create(id, form(z.categoryId, "2026-10-31"));
-			expect(await at(id), `${t.name} created`).toBe(
-				"2026-10-31T03:00:00.000Z",
-			);
-			expect(
-				await t.update(id, form(z.categoryId, "2026-11-01")),
-				t.name,
-			).toEqual({ ok: true });
-			expect(await at(id), `${t.name} edited`).toBe("2026-11-01T03:00:00.000Z");
-		}
-	});
+			expect(await t.create(id, form(z.categoryId, "2026-10-31"))).toEqual({
+				ok: true,
+			});
+			expect(await at(id)).toBe("2026-10-31T03:00:00.000Z");
+			expect(await t.update(id, form(z.categoryId, "2026-11-01"))).toEqual({
+				ok: true,
+			});
+			expect(await at(id)).toBe("2026-11-01T03:00:00.000Z");
+		},
+	);
 });

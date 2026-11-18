@@ -65,7 +65,13 @@ export const v1Problem = (
 	code: string,
 	message: unknown,
 ): Refusal => ({ ok: false, status, code, message });
+/** A tRPC input refusal: the zod issues, as the router prints them. */
+export const issues = (list: readonly object[]) =>
+	trpc("BAD_REQUEST", JSON.stringify(list, null, 2));
 export const OK: Out = { ok: true };
+
+/** A conversion with no stored rate (BTN has none), as each transport answers it. */
+export const MISSING_BTN = "No exchange rate available for BTN";
 
 export const EXPENSE_NOT_FOUND = "Expense not found";
 export const CATEGORY_NOT_FOUND = "Category not found";
@@ -74,8 +80,17 @@ export const LEG_MONEY =
 export const FEE_DELETE =
 	"This expense moved money in an account. Undo it from its transfer.";
 
+export const NAMES = ["entry", "legacy", "v1"] as const;
+export type Name = (typeof NAMES)[number];
+
+export const MISSING_RATE: Record<Name, Refusal> = {
+	entry: trpc("BAD_REQUEST", MISSING_BTN),
+	legacy: trpc("BAD_REQUEST", MISSING_BTN),
+	v1: v1Problem(422, "missing_rate", MISSING_BTN),
+};
+
 export interface Transport {
-	readonly name: "entry" | "legacy" | "v1";
+	readonly name: Name;
 	create(id: string, f: Fields): Promise<Out>;
 	update(id: string, f: Fields): Promise<Out>;
 	delete(id: string): Promise<Out>;

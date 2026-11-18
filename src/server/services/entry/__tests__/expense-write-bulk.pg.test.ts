@@ -38,7 +38,13 @@ beforeAll(async () => {
 /** What a bulk answer reads as: ok with its count, or the refusal. */
 type Bulk =
 	| { ok: true; updated: number }
-	| { ok: false; code: string; message: unknown; status?: number };
+	| {
+			ok: false;
+			code: string;
+			message: unknown;
+			status?: number;
+			errors?: string[];
+	  };
 
 const v1Bulk = async (
 	path: string,
@@ -57,6 +63,9 @@ const v1Bulk = async (
 		status: res.status,
 		code: String(json.code),
 		message: json.detail ?? json.title,
+		...(Array.isArray(json.errors)
+			? { errors: json.errors.map((e: { message: string }) => e.message) }
+			: {}),
 	};
 };
 
@@ -74,107 +83,225 @@ const legacyBulk = async (ids: string[], categoryId: string): Promise<Bulk> => {
 	}
 };
 
+/** Bulk categorize through one transport (the web's `entry.*` has none). */
+const categorize = (
+	name: "v1" | "legacy",
+	ids: string[],
+	categoryId: string,
+) =>
+	name === "v1"
+		? v1Bulk("/expenses/bulk-category", { ids, categoryId })
+		: legacyBulk(ids, categoryId);
+
+const BULK = ["v1", "legacy"] as const;
 const categoryOf = async (id: string) => (await stored(id))?.categoryId;
+const ids = (n: number) => Array.from({ length: n }, () => randomUUID());
+const refusedCategory = {
+	v1: {
+		ok: false,
+		status: 403,
+		code: "forbidden",
+		message: CATEGORY_NOT_FOUND,
+	},
+	legacy: { ok: false, code: "FORBIDDEN", message: CATEGORY_NOT_FOUND },
+} as const;
+const tooSmall = {
+	ok: false,
+	status: 400,
+	code: "validation_failed",
+	message: "Validation failed",
+	errors: ["Too small: expected array to have >=1 items"],
+} as const;
+const tooBig = (max: number) =>
+	({
+		ok: false,
+		status: 400,
+		code: "validation_failed",
+		message: "Validation failed",
+		errors: [`Too big: expected array to have <=${max} items`],
+	}) as const;
+/** zod's own text, printed by the router as JSON. */
+const legacyIssue = (issue: object) => ({
+	ok: false,
+	code: "BAD_REQUEST",
+	message: JSON.stringify([issue], null, 2),
+});
 
 describe("bulk categorize", () => {
-	const refused = [
+	const bad = [
 		["a category of another user", (w: World) => w.other],
 		["a category that does not exist", (w: World) => w.missing],
 		["an income category", (w: World) => w.income],
 	] as const;
+	const badRows = BULK.flatMap((name) =>
+		bad.map(([what, pick]) => [name, what, pick] as const),
+	);
 
-	it.each(refused)(
-		"%s: v1 403 forbidden, legacy FORBIDDEN, rows unchanged",
-		async (_name, pick) => {
+	it.each(badRows)(
+		"%s: %s is refused, rows unchanged",
+		async (name, _what, pick) => {
 			const mine = await book(w.userId, lunch(w));
 			const before = await stored(mine);
-			for (const path of [
-				"/expenses/bulk-category",
-				"/expenses/bulk-category/preview",
-			]) {
+			if (name === "v1") {
+				// The preview twin answers the same.
 				expect(
-					await v1Bulk(path, { ids: [mine], categoryId: pick(w) }),
-					path,
-				).toMatchObject({
-					ok: false,
-					status: 403,
-					code: "forbidden",
-					message: CATEGORY_NOT_FOUND,
-				});
+					await v1Bulk("/expenses/bulk-category/preview", {
+						ids: [mine],
+						categoryId: pick(w),
+					}),
+				).toEqual(refusedCategory.v1);
 			}
-			expect(await legacyBulk([mine], pick(w))).toEqual({
-				ok: false,
-				code: "FORBIDDEN",
-				message: CATEGORY_NOT_FOUND,
-			});
+			expect(await categorize(name, [mine], pick(w))).toEqual(
+				refusedCategory[name],
+			);
 			expect(await stored(mine)).toEqual(before);
 		},
 	);
 
-	it("a bad category with ids that are not yours is still the category refusal", async () => {
-		const theirs = await book(w.otherId, lunch(w, { categoryId: w.other }));
-		expect(
-			await v1Bulk("/expenses/bulk-category", {
-				ids: [theirs, randomUUID()],
-				categoryId: w.income,
-			}),
-		).toMatchObject({ status: 403, code: "forbidden" });
-		expect(await legacyBulk([theirs], w.income)).toMatchObject({
-			code: "FORBIDDEN",
-		});
-	});
+	it.each(BULK)(
+		"%s: a bad category with ids that are not yours is still the category refusal",
+		async (name) => {
+			const theirs = await book(w.otherId, lunch(w, { categoryId: w.other }));
+			const before = await stored(theirs);
+			expect(await categorize(name, [theirs, randomUUID()], w.income)).toEqual(
+				refusedCategory[name],
+			);
+			expect(await stored(theirs)).toEqual(before);
+		},
+	);
 
-	it("moves only your own rows, counts them, and leaves the rest and excludeFromAnalytics alone", async () => {
-		const target = w.holdByDefault;
-		for (const via of ["v1", "legacy"] as const) {
+	it.each(BULK)(
+		"%s: moves only your own rows, counts them, and leaves the rest and excludeFromAnalytics alone",
+		async (name) => {
+			const target = w.holdByDefault;
 			const a = await book(w.userId, lunch(w, { title: "A" }));
 			const b = await book(w.userId, lunch(w, { title: "B" }));
 			const theirs = await book(w.otherId, lunch(w, { categoryId: w.other }));
-			const ids = [a, theirs, b, randomUUID()];
-			const out =
-				via === "v1"
-					? await v1Bulk("/expenses/bulk-category", { ids, categoryId: target })
-					: await legacyBulk(ids, target);
-			expect(out, via).toMatchObject({ ok: true, updated: 2 });
+			const out = await categorize(name, [a, theirs, b, randomUUID()], target);
+			expect(out).toMatchObject({ ok: true, updated: 2 });
 			expect(await categoryOf(a)).toBe(target);
 			expect(await categoryOf(b)).toBe(target);
 			expect(await categoryOf(theirs)).toBe(w.other);
 			// The category's exclude default applies to new and edited rows, not here.
 			expect((await stored(a))?.excludeFromAnalytics).toBe(false);
-		}
-	});
+		},
+	);
 
-	it("only ids that are not yours: ok, nothing moved, zero updated", async () => {
-		const theirs = await book(w.otherId, lunch(w, { categoryId: w.other }));
-		const before = await stored(theirs);
-		expect(
-			await v1Bulk("/expenses/bulk-category", {
-				ids: [theirs],
-				categoryId: w.food,
-			}),
-		).toMatchObject({ ok: true, updated: 0 });
-		expect(await legacyBulk([theirs], w.food)).toEqual({
-			ok: true,
-			updated: 0,
+	it.each(BULK)(
+		"%s: only ids that are not yours: ok, nothing moved, zero updated",
+		async (name) => {
+			const theirs = await book(w.otherId, lunch(w, { categoryId: w.other }));
+			const before = await stored(theirs);
+			expect(await categorize(name, [theirs], w.food)).toMatchObject({
+				ok: true,
+				updated: 0,
+			});
+			expect(await stored(theirs)).toEqual(before);
+		},
+	);
+
+	it.each(BULK)(
+		"%s: takes income rows, transfer fees and spread parents and parts as any other row",
+		async (name) => {
+			const salary = await incomeRow(w.userId);
+			const feeId = await feeRow(w.userId);
+			const { id: parent, parts } = await spreadRow(w);
+			const all = [salary, feeId, parent, parts[0] ?? ""];
+			expect(await categorize(name, all, w.holdByDefault)).toMatchObject({
+				ok: true,
+				updated: 4,
+			});
+			for (const id of all)
+				expect(await categoryOf(id), id).toBe(w.holdByDefault);
+		},
+	);
+
+	it("v1 preview of a categorize moves no figure and writes nothing", async () => {
+		const mine = await book(w.userId, lunch(w));
+		const before = await stored(mine);
+		const res = await call("/expenses/bulk-category/preview", {
+			method: "POST",
+			headers: w.http,
+			body: { ids: [mine, randomUUID()], categoryId: w.holdByDefault },
+			idempotent: true,
 		});
-		expect(await stored(theirs)).toEqual(before);
+		expect(res.status).toBe(200);
+		expect(await res.json()).toEqual({
+			changes: [],
+			unchanged: [],
+			unavailable: [],
+		});
+		expect(await stored(mine)).toEqual(before);
 	});
 
-	it("takes income rows, transfer fees and spread parents and parts as any other row", async () => {
-		const salary = await incomeRow(w.userId);
-		const feeId = await feeRow(w.userId);
-		const { id: parent, parts } = await spreadRow(w);
-		const ids = [salary, feeId, parent, parts[0] ?? ""];
-		expect(
-			await v1Bulk("/expenses/bulk-category", {
-				ids,
-				categoryId: w.holdByDefault,
+	it("v1 write answers the count and an undo that puts the old category back", async () => {
+		const mine = await book(w.userId, lunch(w));
+		const done = await v1Bulk("/expenses/bulk-category", {
+			ids: [mine],
+			categoryId: w.holdByDefault,
+		});
+		expect(done).toMatchObject({ ok: true, updated: 1 });
+		expect(await categoryOf(mine)).toBe(w.holdByDefault);
+		const { undo } = (done as { json: { undo: string } }).json;
+		expect(await v1Bulk("/expenses/undo", { token: undo })).toMatchObject({
+			ok: true,
+		});
+		expect(await categoryOf(mine)).toBe(w.food);
+	});
+
+	const empty = {
+		v1: tooSmall,
+		legacy: legacyIssue({
+			origin: "array",
+			code: "too_small",
+			minimum: 1,
+			inclusive: true,
+			path: ["expenseIds"],
+			message: "Too small: expected array to have >=1 items",
+		}),
+	} as const;
+	const over = {
+		v1: tooBig(500),
+		legacy: legacyIssue({
+			origin: "array",
+			code: "too_big",
+			maximum: 500,
+			inclusive: true,
+			path: ["expenseIds"],
+			message: "Too big: expected array to have <=500 items",
+		}),
+	} as const;
+	it.each(BULK)("%s: an empty list is refused", async (name) => {
+		expect(await categorize(name, [], w.food)).toEqual(empty[name]);
+		if (name === "v1")
+			expect(
+				await v1Bulk("/expenses/bulk-category/preview", {
+					ids: [],
+					categoryId: w.food,
+				}),
+			).toEqual(empty.v1);
+	});
+	it.each(BULK)("%s: 501 ids are refused", async (name) => {
+		expect(await categorize(name, ids(501), w.food)).toEqual(over[name]);
+		if (name === "v1")
+			expect(
+				await v1Bulk("/expenses/bulk-category/preview", {
+					ids: ids(501),
+					categoryId: w.food,
+				}),
+			).toEqual(over.v1);
+	});
+	it("legacy: a category id that is not a cuid is refused before it is looked up", async () => {
+		expect(await legacyBulk([randomUUID()], "nope")).toEqual(
+			legacyIssue({
+				origin: "string",
+				code: "invalid_format",
+				format: "cuid",
+				pattern: "/^[cC][0-9a-z]{6,}$/",
+				path: ["categoryId"],
+				message: "Invalid cuid",
 			}),
-		).toMatchObject({ ok: true, updated: 4 });
-		for (const id of ids)
-			expect(await categoryOf(id), id).toBe(w.holdByDefault);
-		expect(await legacyBulk(ids, w.food)).toEqual({ ok: true, updated: 4 });
-		for (const id of ids) expect(await categoryOf(id), id).toBe(w.food);
+		);
 	});
 });
 
@@ -222,6 +349,16 @@ describe("bulk delete (v1)", () => {
 			expect(await stored(id), id).toBeNull();
 		for (const id of [b.id, part, salary, feeId, theirs])
 			expect(await stored(id), id).not.toBeNull();
+	});
+
+	it("refuses an empty list and 101 ids, on the write and its preview", async () => {
+		for (const path of [
+			"/expenses/bulk-delete",
+			"/expenses/bulk-delete/preview",
+		]) {
+			expect(await del([], path), path).toEqual(tooSmall);
+			expect(await del(ids(101), path), path).toEqual(tooBig(100));
+		}
 	});
 
 	it("refuses when nothing can go, and leaves every row", async () => {
