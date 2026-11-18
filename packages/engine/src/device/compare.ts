@@ -402,6 +402,32 @@ async function readCalls(
 
 const wrong = (a: Answer) => a.diff.length > 0 || (a.verdict?.length ?? 0) > 0;
 
+/** The settings every figure depends on must be the server's; else the pull is the cure and nothing else is judged. */
+function settingsSame(deps: CompareDeps, list: readonly Answer[]): boolean {
+	const own = deps.settings();
+	return list.every(
+		({ basis: b }) =>
+			own?.homeCurrency === b.home &&
+			own.timeZone === b.timeZone &&
+			own.startDay === b.startDay,
+	);
+}
+
+/** Why a key still differs: lag, then rows the read missed, then the rate table, else nothing explains it. */
+function causeOf(deps: CompareDeps, spec: ScreenSpec, a: Answer): KeyClass {
+	switch (positionReached(deps.cursors(), spec.entities, a.basis.asOf)) {
+		case "behind":
+		case "reset":
+			return "behind";
+		case "ahead":
+			return "device_ahead";
+		case "malformed":
+			return "differs";
+		case "reached":
+			return deps.ratesAsOf() !== a.basis.ratesAsOf ? "rates_moved" : "differs";
+	}
+}
+
 /**
  * Holds one screen's device figures against the server's. A difference may be
  * a write the sync feed has not delivered: the device pulls once, the server is
@@ -436,20 +462,10 @@ export async function compareScreen(
 		} satisfies CompareReport,
 	});
 	const skip = (skipped: SkipReason) => done({ state: "skipped", skipped });
-	/** The settings every figure depends on must be the server's: else the pull is the cure, and nothing else is judged. */
-	const settingsSame = (list: readonly Answer[]) => {
-		const own = deps.settings();
-		return list.every(
-			({ basis: b }) =>
-				own?.homeCurrency === b.home &&
-				own.timeZone === b.timeZone &&
-				own.startDay === b.startDay,
-		);
-	};
 
 	let answers = await readCalls(deps, plan.calls, verdict);
 	if (typeof answers === "string") return skip(answers);
-	if (!settingsSame(answers)) {
+	if (!settingsSame(deps, answers)) {
 		await deps.pull();
 		return skip("settings_differ");
 	}
@@ -464,33 +480,19 @@ export async function compareScreen(
 		if (typeof again === "string") return skip(again);
 		let next = 0;
 		answers = answers.map((a, i) => (redo[i] ? (again[next++] as Answer) : a));
-		if (!settingsSame(answers)) return skip("settings_differ");
+		if (!settingsSame(deps, answers)) return skip("settings_differ");
 	}
 
 	const classes: Record<string, KeyClass> = {};
-	const rates = deps.ratesAsOf();
-	/** Why a key still differs: lag, then rows the read missed, then the rate table, else nothing explains it. */
-	const causeOf = (a: Answer): KeyClass => {
-		switch (positionReached(deps.cursors(), spec.entities, a.basis.asOf)) {
-			case "behind":
-			case "reset":
-				return "behind";
-			case "ahead":
-				return "device_ahead";
-			case "malformed":
-				return "differs";
-			case "reached":
-				return rates !== a.basis.ratesAsOf ? "rates_moved" : "differs";
-		}
-	};
 	for (const a of answers)
 		for (const id of a.call.ids) {
 			const key = keyIn(a.call, id);
-			classes[key] = a.diff.includes(key) ? causeOf(a) : "match";
+			classes[key] = a.diff.includes(key) ? causeOf(deps, spec, a) : "match";
 		}
 	const held = answers.find((a) => a.verdict !== null);
 	if (held?.verdict)
-		classes.verdict = held.verdict.length > 0 ? causeOf(held) : "match";
+		classes.verdict =
+			held.verdict.length > 0 ? causeOf(deps, spec, held) : "match";
 	const count = (c: KeyClass) =>
 		Object.values(classes).filter((v) => v === c).length;
 	return done({
