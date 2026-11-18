@@ -175,11 +175,11 @@ export function positionReached(
  * `position` holds nothing newer than `position`. Another epoch or an unreadable cursor counts
  * as past (fail closed).
  */
-export function pastPosition(cursor: string, asOf: string): boolean {
-	const at = cursorPosition(asOf);
-	const position = cursorPosition(cursor);
-	if (!at || !position || position.epoch !== at.epoch) return true;
-	return !atLeast(at.t, position.t);
+export function pastPosition(cursor: string, position: string): boolean {
+	const at = cursorPosition(position);
+	const held = cursorPosition(cursor);
+	if (!at || !held || held.epoch !== at.epoch) return true;
+	return !atLeast(at.t, held.t);
 }
 
 /**

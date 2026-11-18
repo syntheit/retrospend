@@ -106,8 +106,11 @@ export interface PullOptions {
 	 * entity then reports `pastCut`: the rows (changes and tombstones) of pages
 	 * whose cursor lies past it. A row the read had not seen is stamped past the
 	 * cut (a save still open during the read has a stamp below the read's
-	 * `asOf` but past its cut), so it is in such a page, and zero means the pull
-	 * brought in nothing the read missed.
+	 * `asOf` but past its cut), so it is in such a page. Zero means the pull
+	 * brought in nothing the read missed, with one narrow race: a row that
+	 * changes between the stamp read and the row read comes back in its newer
+	 * live state (loadPage), so a page at or below the cut can hold a row the
+	 * read had not seen. That shows as a difference, not as a count.
 	 */
 	pastCut?: string;
 	/** False leaves the shares snapshot and the budget block alone, and skips the promotion. */

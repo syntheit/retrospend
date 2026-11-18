@@ -438,6 +438,22 @@ describe("compareScreen on Home", () => {
 		},
 	);
 
+	// The wire is unchecked: a basis from a server that predates `cut`, or one
+	// with a cut that is not a string, cannot say what the read missed.
+	it.each([
+		["no cut", undefined],
+		["a numeric cut", 100],
+		["an empty cut", ""],
+	])(
+		"skips as no_basis on a basis with %s, before any pull",
+		async (_n, cut) => {
+			const w = world({ basis: { ...BASIS, cut } as unknown as FigureBasis });
+			const { report } = await compareScreen(w.deps, request("home"));
+			expect(report).toMatchObject({ state: "skipped", skipped: "no_basis" });
+			expect(w.events).toEqual(["server"]);
+		},
+	);
+
 	it("skips with no basis after one call, and with no device reading or a failed pull", async () => {
 		const w = world({ basis: null });
 		const { report } = await compareScreen(

@@ -86,6 +86,10 @@ interface Round {
 	readonly verdict: readonly string[] | null;
 }
 
+/** The wire is unchecked: a basis without a string cut cannot say what the read missed. */
+const hasCut = (basis: FigureBasis) =>
+	typeof basis.cut === "string" && basis.cut !== "";
+
 const isPlain = (call: PlannedCall) => Object.keys(call.narrowing).length === 0;
 const keyIn = (call: PlannedCall, id: string) =>
 	keyOf(id, Object.values(call.narrowing)[0]);
@@ -125,8 +129,9 @@ async function round(
 			ids: call.ids.join(","),
 			...call.narrowing,
 		});
-		// An old server or a read token answers with no basis: no more calls.
-		if (!server.basis) return "no_basis";
+		// An old server or a read token answers with no basis, and one that
+		// predates `cut` has none: the pull could not be measured, so no more calls.
+		if (!server.basis || !hasCut(server.basis)) return "no_basis";
 		servers.push({ call, server, basis: server.basis });
 	}
 	const serverVerdict = spec.verdict
