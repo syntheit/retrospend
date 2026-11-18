@@ -16,7 +16,7 @@
  * error reaches the caller, who decides to rebuild the store and pull again.
  */
 
-import { promoteBudgetIfReady } from "./budget-gate";
+import { pastPosition, promoteBudgetIfReady } from "./budget-gate";
 import type { Store } from "./port";
 import { applyDailyTable, type DailyTable } from "./rates";
 import {
@@ -78,6 +78,8 @@ export interface StepReport {
 	rows: number;
 	fetchMs: number;
 	applyMs: number;
+	/** With `PullOptions.past`: rows of pages that end past that position, a bound on the rows stamped after it. */
+	past?: number;
 }
 
 export type PullStep = SyncEntity | "settings" | "shares" | "rates";
@@ -98,6 +100,13 @@ export interface PullOptions {
 	 * "no more" ends the entity.
 	 */
 	caughtUp?: (entity: SyncEntity, held: number) => boolean | Promise<boolean>;
+	/**
+	 * A sync position (a server read's `asOf`). Each cursor entity then reports
+	 * `past`: the rows (changes and tombstones) of pages whose cursor lies past
+	 * it. A row stamped after the position is in such a page, so zero means the
+	 * pull brought in nothing the position had not seen.
+	 */
+	past?: string;
 	/** False leaves the shares snapshot and the budget block alone, and skips the promotion. */
 	shares?: boolean;
 }
@@ -214,7 +223,13 @@ async function pullEntity(
 	const now = options.now ?? Date.now;
 	const { entity } = entityStep;
 	const route = entityStep.route(api);
-	const report: StepReport = { pages: 0, rows: 0, fetchMs: 0, applyMs: 0 };
+	const report: StepReport = {
+		pages: 0,
+		rows: 0,
+		fetchMs: 0,
+		applyMs: 0,
+		...(options.past === undefined ? {} : { past: 0 }),
+	};
 	for (;;) {
 		const since = cursors[entity];
 		const started = now();
@@ -227,7 +242,10 @@ async function pullEntity(
 		report.fetchMs += fetched - started;
 		report.applyMs += now() - fetched;
 		report.pages += 1;
-		report.rows += page.items.length + page.tombstones.length;
+		const rows = page.items.length + page.tombstones.length;
+		report.rows += rows;
+		if (options.past !== undefined && pastPosition(page.cursor, options.past))
+			report.past = (report.past ?? 0) + rows;
 		cursors[entity] = page.cursor;
 		if (page.hasMore) continue;
 		const held = store.list(entity).length;

@@ -143,17 +143,12 @@ export type GateResult =
 /**
  * Where a set of cursors stands against one sync position (a block's or a
  * server read's `asOf`). "reached": every entity has the position's epoch and
- * is at or past it. "ahead": reached, and some entity is strictly past it, so
- * the device holds rows the position did not see. "reset": an entity is being
- * pulled again. "behind": an entity has no cursor, one of another epoch, or one
- * below the position. "malformed": the position is not a cursor.
+ * is at or past it. "reset": an entity is being pulled again. "behind": an
+ * entity has no cursor, one of another epoch, or one below the position.
+ * "malformed": the position is not a cursor. Positions are cluster-wide, so
+ * "at or past" says nothing about whose rows moved it.
  */
-export type PositionState =
-	| "reached"
-	| "ahead"
-	| "reset"
-	| "behind"
-	| "malformed";
+export type PositionState = "reached" | "reset" | "behind" | "malformed";
 
 /** The one rule for "the device has caught up to this position", for the budget gate and the compare. */
 export function positionReached(
@@ -164,16 +159,27 @@ export function positionReached(
 	const at = cursorPosition(asOf);
 	if (!at) return "malformed";
 	let waiting = false;
-	let ahead = false;
 	for (const entity of entities) {
 		const cursor = cursors[entity];
 		if (cursor === SYNC_RESET) return "reset";
 		const position = cursor === undefined ? null : cursorPosition(cursor);
 		if (!position || position.epoch !== at.epoch || !atLeast(position.t, at.t))
 			waiting = true;
-		else if (!atLeast(at.t, position.t)) ahead = true;
 	}
-	return waiting ? "behind" : ahead ? "ahead" : "reached";
+	return waiting ? "behind" : "reached";
+}
+
+/**
+ * Whether `cursor` lies strictly past `asOf`: every stamp a page ending at it
+ * holds is at or below its position, so a page whose cursor is not past `asOf`
+ * holds nothing newer than `asOf`. Another epoch or an unreadable cursor counts
+ * as past (fail closed).
+ */
+export function pastPosition(cursor: string, asOf: string): boolean {
+	const at = cursorPosition(asOf);
+	const position = cursorPosition(cursor);
+	if (!at || !position || position.epoch !== at.epoch) return true;
+	return !atLeast(at.t, position.t);
 }
 
 /**
