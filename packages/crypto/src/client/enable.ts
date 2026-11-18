@@ -9,13 +9,9 @@ import { fromBase64Url, toBase64Url } from "../base64url";
 import { toHex } from "../hex";
 import {
 	deriveMasterKey,
-	encodeRecoveryKey,
 	generateAccountKey,
 	generateCollectionKey,
-	generateRecoveryKey,
 	keyPairMatches,
-	parseRecoveryKey,
-	recoverySubkeys,
 	type SymmetricRole,
 	wrapKey,
 } from "../keys";
@@ -32,6 +28,7 @@ import {
 	NEW_PASSWORD_PARAMS,
 	secretBin,
 } from "./flow";
+import { makeRecoveryKey } from "./recovery-key";
 
 export type EnableWrap = {
 	role: SymmetricRole;
@@ -88,10 +85,11 @@ export async function prepareEnable(
 			deriveMasterKey(p, input.password, salt, params),
 		);
 		const accountKey = bin.keep(generateAccountKey(p));
-		const recoveryKey = bin.keep(generateRecoveryKey(p));
-		const recovery = recoverySubkeys(p, recoveryKey);
-		bin.keep(recovery.wrapKey);
-		bin.keep(recovery.authKey);
+		// The recovery key, its wrap and its text, checked as they are made.
+		const recovery = makeRecoveryKey(p, bin, {
+			userId: input.userId,
+			accountKey,
+		});
 		const pair = p.boxKeypair();
 		bin.keep(pair.privateKey);
 		const collection = generateCollectionKey(p);
@@ -115,29 +113,23 @@ export async function prepareEnable(
 		});
 		const body: EnableBody = {
 			authKey: signInSecret(mine.authKey),
-			recoveryAuthKey: text(recovery.authKey),
+			recoveryAuthKey: recovery.recoveryAuthKey,
 			kdf,
 			publicKey: text(pair.publicKey),
 			wraps: [
 				wrapped(mine.wrapKey, "ak-password", input.userId, accountKey),
-				wrapped(recovery.wrapKey, "ak-recovery", input.userId, accountKey),
+				{
+					role: "ak-recovery",
+					targetId: input.userId,
+					wrapped: recovery.wrapped,
+				},
 				wrapped(accountKey, "private-key", input.userId, pair.privateKey),
 				wrapped(accountKey, "collection-key", keyIdHex, collection.key),
 			],
 		};
-		const recoveryKeyText = encodeRecoveryKey(recoveryKey);
 
-		// Everything above, as text the way it will be sent, opens: the password
-		// wrap with the password's key, the recovery wrap with the key read back
-		// from the text the person writes down, the rest with the account key.
-		const written = recoverySubkeys(
-			p,
-			bin.keep(parseRecoveryKey(recoveryKeyText)),
-		);
-		bin.keep(written.wrapKey);
-		bin.keep(written.authKey);
-		if (body.recoveryAuthKey !== text(written.authKey))
-			throw new KeyFlowError("malformed");
+		// Everything else, as text the way it will be sent, opens with the
+		// account key (the recovery wrap was checked above).
 		const sentWrap = (role: SymmetricRole) =>
 			body.wraps.find((w) => w.role === role)?.wrapped ?? "";
 		checkOpens(p, bin, {
@@ -145,13 +137,6 @@ export async function prepareEnable(
 			role: "ak-password",
 			id: input.userId,
 			sent: sentWrap("ak-password"),
-			expected: accountKey,
-		});
-		checkOpens(p, bin, {
-			wrappingKey: written.wrapKey,
-			role: "ak-recovery",
-			id: input.userId,
-			sent: sentWrap("ak-recovery"),
 			expected: accountKey,
 		});
 		const privateKey = checkOpens(p, bin, {
@@ -175,7 +160,7 @@ export async function prepareEnable(
 			sent: sentWrap("collection-key"),
 			expected: collection.key,
 		});
-		return { body, recoveryKeyText };
+		return { body, recoveryKeyText: recovery.recoveryKeyText };
 	} catch (error) {
 		throw asKeyFlowError(error);
 	} finally {

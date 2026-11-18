@@ -26,6 +26,13 @@ import { wrapKeyWithNonce } from "../src/keys";
 import { createWebPrimitives } from "../src/web";
 import vectors from "../vectors/keys.vectors.json";
 
+// A spy over the package's own wipe, passing through, to see the one wipe the
+// core does itself (when the primitives cannot load, no bin exists yet).
+vi.mock("../src/primitives", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("../src/primitives")>();
+	return { ...actual, wipe: vi.fn(actual.wipe) };
+});
+
 const MASTER = vectors.masters[1];
 const RK = vectors.recoveryKeys[2];
 const OTHER_RK = vectors.recoveryKeys[3];
@@ -447,6 +454,43 @@ describe("recoverAccount", () => {
 	});
 
 	describe("wiping", () => {
+		it("wipes the parsed key when the primitives cannot be loaded, and gives up", async () => {
+			const { wipe } = await import("../src/primitives");
+			const seen: string[] = [];
+			const real = vi.mocked(wipe).getMockImplementation() as (
+				b: Uint8Array,
+			) => void;
+			vi.mocked(wipe).mockImplementation((b) => {
+				seen.push(toHex(b));
+				real(b);
+			});
+			const handed: Uint8Array[] = [];
+			vi.mocked(wipe).mockClear();
+			const begin = vi.fn();
+			try {
+				await expect(
+					recoverAccount(
+						{
+							primitives: async () => {
+								throw new Error("no library");
+							},
+							begin,
+						},
+						{ recoveryKeyText: RK.text, password: NEW_PASSWORD },
+						OPTIONS,
+					),
+				).rejects.toMatchObject({ code: "failed" });
+				handed.push(...vi.mocked(wipe).mock.calls.map(([b]) => b));
+			} finally {
+				vi.mocked(wipe).mockImplementation(real);
+			}
+			expect(begin).not.toHaveBeenCalled();
+			// One array, holding the key as it was parsed, zero now.
+			expect(seen).toEqual([RK.recoveryKey]);
+			expect(handed).toHaveLength(1);
+			expect(handed[0]?.every((x) => x === 0)).toBe(true);
+		});
+
 		const allZero = (arrays: Uint8Array[]) =>
 			arrays.every((b) => b.every((x) => x === 0));
 

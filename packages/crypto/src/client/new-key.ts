@@ -5,23 +5,14 @@
 // is returned. The old key keeps working until the server commits the new one.
 // Every key made here is wiped before it returns or throws; what is left is
 // text, and the key text for the person to write down.
-import { fromBase64Url, toBase64Url } from "../base64url";
-import {
-	deriveMasterKey,
-	encodeRecoveryKey,
-	generateRecoveryKey,
-	parseRecoveryKey,
-	recoverySubkeys,
-	unwrapKey,
-	wrapKey,
-} from "../keys";
+import { fromBase64Url } from "../base64url";
+import { deriveMasterKey, unwrapKey } from "../keys";
 import type { Primitives } from "../primitives";
 import { signInSecret } from "../sign-in-secret";
 import {
 	allowedParams,
 	asKeyFlowError,
 	binMasterSubkeys,
-	checkOpens,
 	type FlowPorts,
 	findWrap,
 	type Kdf,
@@ -32,6 +23,7 @@ import {
 	sameKdf,
 	secretBin,
 } from "./flow";
+import { makeRecoveryKey } from "./recovery-key";
 
 /** What the new recovery key route takes, less the current sign-in secret. */
 export type NewKeyBody = {
@@ -71,43 +63,13 @@ export function makeNewRecoveryKey(
 	try {
 		if (!Number.isInteger(input.baseVersion))
 			throw new KeyFlowError("malformed");
-		const recoveryKey = bin.keep(generateRecoveryKey(p));
-		const recovery = recoverySubkeys(p, recoveryKey);
-		bin.keep(recovery.wrapKey);
-		bin.keep(recovery.authKey);
+		const made = makeRecoveryKey(p, bin, input);
 		const body: NewKeyBody = {
-			wrappedRecoveryKey: toBase64Url(
-				wrapKey(
-					p,
-					recovery.wrapKey,
-					"ak-recovery",
-					input.userId,
-					input.accountKey,
-				),
-			),
-			recoveryAuthKey: toBase64Url(recovery.authKey),
+			wrappedRecoveryKey: made.wrapped,
+			recoveryAuthKey: made.recoveryAuthKey,
 			baseVersion: input.baseVersion,
 		};
-		const recoveryKeyText = encodeRecoveryKey(recoveryKey);
-
-		// As in enable: the wrap must open with the key read back from the text
-		// the person writes down, and that key must make the proof sent.
-		const written = recoverySubkeys(
-			p,
-			bin.keep(parseRecoveryKey(recoveryKeyText)),
-		);
-		bin.keep(written.wrapKey);
-		bin.keep(written.authKey);
-		if (body.recoveryAuthKey !== toBase64Url(written.authKey))
-			throw new KeyFlowError("malformed");
-		checkOpens(p, bin, {
-			wrappingKey: written.wrapKey,
-			role: "ak-recovery",
-			id: input.userId,
-			sent: body.wrappedRecoveryKey,
-			expected: input.accountKey,
-		});
-		return { body, recoveryKeyText };
+		return { body, recoveryKeyText: made.recoveryKeyText };
 	} catch (error) {
 		throw asKeyFlowError(error);
 	} finally {
