@@ -78,6 +78,12 @@ describe("the app role and recoveryHash", () => {
 				`SELECT s.* FROM "protection_key_set" s`,
 				`SELECT "userId" FROM "protection_key_set" WHERE "recoveryHash" IS NOT NULL`,
 				`UPDATE "protection_key_set" SET "recoveryHash" = '\\x00'::bytea`,
+				// No app-role path writes the key parameters or the version: its one
+				// UPDATE column is updatedAt, which the FOR SHARE lock below needs.
+				`UPDATE "protection_key_set" SET "kdfSalt" = '\\x00'::bytea`,
+				`UPDATE "protection_key_set" SET "kdfMemoryKiB" = 1`,
+				`UPDATE "protection_key_set" SET "kdfPasses" = 1`,
+				`UPDATE "protection_key_set" SET "version" = 2`,
 				`UPDATE "protection_key_set" SET "version" = 2 RETURNING "recoveryHash"`,
 			];
 			for (const sql of denied) {
@@ -102,9 +108,17 @@ describe("the app role and recoveryHash", () => {
 				const count = await client.query(
 					`SELECT count(*)::int AS n FROM "protection_key_set"`,
 				);
-				return [read.rowCount, locked.rowCount, count.rows[0].n];
+				const touched = await client.query(
+					`UPDATE "protection_key_set" SET "updatedAt" = now()`,
+				);
+				return [
+					read.rowCount,
+					locked.rowCount,
+					count.rows[0].n,
+					touched.rowCount,
+				];
 			});
-			expect(own).toEqual([1, 1, 1]);
+			expect(own).toEqual([1, 1, 1, 1]);
 		});
 	});
 
@@ -141,9 +155,7 @@ describe("the grants after the migration", () => {
 			expect(actual.columns.protection_key_set?.SELECT).not.toContain(
 				"recoveryHash",
 			);
-			expect(actual.columns.protection_key_set?.UPDATE).not.toContain(
-				"recoveryHash",
-			);
+			expect(actual.columns.protection_key_set?.UPDATE).toEqual(["updatedAt"]);
 		});
 	});
 });
@@ -196,7 +208,13 @@ describe("the rollback snippet", () => {
 				"SELECT",
 			]);
 			expect(back.columns.protection_key_set).toEqual({
-				UPDATE: expected.columns.protection_key_set.UPDATE,
+				UPDATE: [
+					"kdfMemoryKiB",
+					"kdfPasses",
+					"kdfSalt",
+					"updatedAt",
+					"version",
+				],
 			});
 			// The proof of every key set made since stays.
 			expect(await storedHash(client, user.id)).toEqual(HASH);

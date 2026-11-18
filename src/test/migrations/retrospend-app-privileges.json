@@ -619,7 +619,7 @@
 				"userId",
 				"version"
 			],
-			"UPDATE": ["kdfMemoryKiB", "kdfPasses", "kdfSalt", "updatedAt", "version"]
+			"UPDATE": ["updatedAt"]
 		},
 		"vault_record": {
 			"UPDATE": ["ciphertext", "deletedAt", "version"]

@@ -180,16 +180,15 @@ GRANT UPDATE (
 
 -- "protection_key_set": every key write runs on the owner connection, so the
 -- app role only reads it, and never "recoveryHash" (the stored proof of the
--- recovery key): a query that names it fails with permission denied. It keeps
--- UPDATE on the columns a password change moves because the vault write locks
--- the set row FOR SHARE, which Postgres allows only with some UPDATE privilege;
--- the public key and the owner never change.
+-- recovery key): a query that names it fails with permission denied. Its one
+-- UPDATE column is "updatedAt", because the vault write locks the set row FOR
+-- SHARE, which Postgres allows only with some UPDATE privilege; the key
+-- parameters, the version, the public key and the owner never change here.
 GRANT SELECT (
   "userId", "kdfSalt", "kdfMemoryKiB", "kdfPasses", "publicKey", "version",
   "createdAt", "updatedAt"
 ) ON "protection_key_set" TO retrospend_app;
-GRANT UPDATE ("kdfSalt", "kdfMemoryKiB", "kdfPasses", "version", "updatedAt")
-  ON "protection_key_set" TO retrospend_app;
+GRANT UPDATE ("updatedAt") ON "protection_key_set" TO retrospend_app;
 
 -- "vault_record": a write changes the sealed bytes, the version and the
 -- tombstone mark. The stamp columns (txid, seq, updatedAt) are set by the

@@ -126,7 +126,7 @@ describe("row-level security", () => {
 			// ...and B updating A's set changes nothing (USING hides the row).
 			const updated = await asApp(client, b.id, () =>
 				client.query(
-					`UPDATE "protection_key_set" SET "version" = 9 WHERE "userId" = $1`,
+					`UPDATE "protection_key_set" SET "updatedAt" = now() WHERE "userId" = $1`,
 					[a.id],
 				),
 			);
@@ -186,9 +186,7 @@ describe("what the app role may do", () => {
 			// The grants it does have work, so the refusals above are about the column.
 			const own = await asApp(client, a.id, async () => {
 				const set = await client.query(
-					`UPDATE "protection_key_set"
-					   SET "kdfSalt" = $1, "kdfMemoryKiB" = 50000, "kdfPasses" = 2, "version" = 2, "updatedAt" = now()`,
-					[Buffer.alloc(16, 9)],
+					`UPDATE "protection_key_set" SET "updatedAt" = now()`,
 				);
 				return set.rowCount;
 			});

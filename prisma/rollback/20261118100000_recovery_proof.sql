@@ -8,7 +8,8 @@
 --
 -- It gives retrospend_app back what a release from before that migration
 -- needs: table-level SELECT and INSERT on "protection_key_set" (and no column
--- SELECT list), and INSERT and DELETE on "protection_key_wrap". It does not
+-- SELECT list), column UPDATE on its kdfSalt, kdfMemoryKiB, kdfPasses, version
+-- and updatedAt, and INSERT and DELETE on "protection_key_wrap". It does not
 -- drop the column or the CHECK: "recoveryHash" holds the proof of every key
 -- set made since, and dropping it would make those recovery keys unusable. An
 -- older release ignores the column. It deletes the migration's row from
@@ -29,6 +30,8 @@ DO $$ BEGIN
       "createdAt", "updatedAt"
     ) ON "protection_key_set" FROM retrospend_app;
     GRANT SELECT, INSERT ON "protection_key_set" TO retrospend_app;
+    GRANT UPDATE ("kdfSalt", "kdfMemoryKiB", "kdfPasses", "version", "updatedAt")
+      ON "protection_key_set" TO retrospend_app;
   END IF;
   IF to_regclass('public.protection_key_wrap') IS NOT NULL THEN
     GRANT INSERT, DELETE ON "protection_key_wrap" TO retrospend_app;

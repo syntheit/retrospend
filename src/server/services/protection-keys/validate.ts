@@ -186,8 +186,9 @@ function checkParams(set: KeySetParams): void {
  */
 function checkWriter(changes: KeyChanges, writer: KeyWriter): void {
 	const { baseVersion, put, remove, recoveryHash } = changes;
+	// Own keys only: "constructor" or "toString" must not pass for a writer.
+	if (!Object.hasOwn(WRITER_RULES, writer)) invalid();
 	const rule = WRITER_RULES[writer];
-	if (!rule) invalid();
 	if ((baseVersion === 0) !== rule.creates) invalid();
 	const replacesRecovery = put.some((wrap) => wrap.role === "ak-recovery");
 	// Dropping the wrap would leave a proof that checks nothing.

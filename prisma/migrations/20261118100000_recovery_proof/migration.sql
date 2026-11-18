@@ -18,10 +18,11 @@
 -- 3. Least privilege on the two key tables (§6.8 prune). Every writer of keys
 --    (turn-on, password change, recovery, reset) runs on the owner
 --    connection, so the app role loses INSERT on both tables and DELETE on
---    the wraps. It keeps the column UPDATE on the set: the vault write takes
---    the set row FOR SHARE as the app role, and Postgres needs UPDATE on at
---    least one column for that lock. It keeps SELECT on the wraps (the vault
---    write names the collection keys it holds).
+--    the wraps. No app-role path writes the key parameters or the version, so
+--    its column UPDATE on the set narrows to "updatedAt" alone: the vault
+--    write takes the set row FOR SHARE as the app role, and Postgres needs
+--    UPDATE on at least one column for that lock. It keeps SELECT on the wraps
+--    (the vault write names the collection keys it holds).
 --
 -- Additive and idempotent: the column and constraint are guarded, REVOKE and
 -- GRANT repeat safely. Rollback: prisma/rollback/20261118100000_recovery_proof.sql.
@@ -39,5 +40,8 @@ GRANT SELECT (
   "userId", "kdfSalt", "kdfMemoryKiB", "kdfPasses", "publicKey", "version",
   "createdAt", "updatedAt"
 ) ON "protection_key_set" TO retrospend_app;
+
+REVOKE UPDATE ("kdfSalt", "kdfMemoryKiB", "kdfPasses", "version")
+  ON "protection_key_set" FROM retrospend_app;
 
 REVOKE INSERT, DELETE ON "protection_key_wrap" FROM retrospend_app;
