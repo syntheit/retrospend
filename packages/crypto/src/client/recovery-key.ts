@@ -1,15 +1,21 @@
-// What the web and the phone share around showing a recovery key: which two
+// What the web and the phone share around a recovery key: making one for an
+// account key (makeRecoveryKey, used by enable and Make new key), which two
 // groups the person retypes to prove they saved it, whether what they typed
-// matches, and the text of the file they can save. The key itself is made and
-// written by keys.ts; nothing here stores or sends it.
+// matches, and the text of the file they can save. keys.ts owns the format
+// (encode, parse, subkeys); nothing here stores or sends the key.
+import { toBase64Url } from "../base64url";
 import { bad } from "../errors";
 import {
 	encodeRecoveryKey,
+	generateRecoveryKey,
 	normalizeRecoveryText,
 	parseRecoveryKey,
 	RECOVERY_GROUPS,
+	recoverySubkeys,
+	wrapKey,
 } from "../keys";
 import type { Primitives } from "../primitives";
+import { checkOpens, KeyFlowError, type secretBin } from "./flow";
 
 /** Two group numbers, counted from 0, in ascending order. */
 export type ConfirmGroups = readonly [number, number];
@@ -99,4 +105,63 @@ export function recoveryKeyFileText(
 		labels.keepSafe,
 		"",
 	].join("\n");
+}
+
+/** What a new recovery key gives: the wrap to store, the proof to send, the text to write down. */
+export type MadeRecoveryKey = {
+	/** The account key wrapped under the key's wrap key, base64url. */
+	wrapped: string;
+	/** The recovery auth key, base64url. */
+	recoveryAuthKey: string;
+	/** Nine groups of six. */
+	recoveryKeyText: string;
+};
+
+/**
+ * The one way a recovery key is made for an account key (enable and Make new
+ * key): a fresh key, its subkeys, the ak-recovery wrap and the text, then the
+ * check before anything is returned. The key is read back from the text the
+ * person will write down, that key must make the proof returned, and the wrap
+ * must open under its wrap key to exactly `accountKey`; anything else is
+ * `malformed`. Every key made is kept in `bin` for the caller to wipe, and
+ * `accountKey` is only read.
+ */
+export function makeRecoveryKey(
+	p: Primitives,
+	bin: ReturnType<typeof secretBin>,
+	input: { userId: string; accountKey: Uint8Array },
+): MadeRecoveryKey {
+	const recoveryKey = bin.keep(generateRecoveryKey(p));
+	const recovery = recoverySubkeys(p, recoveryKey);
+	bin.keep(recovery.wrapKey);
+	bin.keep(recovery.authKey);
+	const made: MadeRecoveryKey = {
+		wrapped: toBase64Url(
+			wrapKey(
+				p,
+				recovery.wrapKey,
+				"ak-recovery",
+				input.userId,
+				input.accountKey,
+			),
+		),
+		recoveryAuthKey: toBase64Url(recovery.authKey),
+		recoveryKeyText: encodeRecoveryKey(recoveryKey),
+	};
+	const written = recoverySubkeys(
+		p,
+		bin.keep(parseRecoveryKey(made.recoveryKeyText)),
+	);
+	bin.keep(written.wrapKey);
+	bin.keep(written.authKey);
+	if (made.recoveryAuthKey !== toBase64Url(written.authKey))
+		throw new KeyFlowError("malformed");
+	checkOpens(p, bin, {
+		wrappingKey: written.wrapKey,
+		role: "ak-recovery",
+		id: input.userId,
+		sent: made.wrapped,
+		expected: input.accountKey,
+	});
+	return made;
 }

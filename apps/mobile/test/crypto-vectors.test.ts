@@ -24,8 +24,10 @@ import {
 	unwrapKey,
 	wrapKey,
 } from "@retrospend/crypto";
+import { makeNewRecoveryKey, recoverAccount } from "@retrospend/crypto/client";
 import { runKnownAnswerTests } from "@retrospend/crypto/dev";
 import { unwrapKeyFromPublic, wrapKeyToPublic } from "@retrospend/crypto/k4";
+import vectors from "@retrospend/crypto/vectors/keys.vectors.json";
 import { loadWebSodium } from "@retrospend/crypto/web";
 
 let p: Primitives;
@@ -126,5 +128,77 @@ describe("crypto vectors on the phone toolchain", () => {
 			CryptoError,
 		);
 		expect(fingerprintPhrase(p, [pair.publicKey]).split(" ")).toHaveLength(6);
+	});
+
+	it("recovers with the vector recovery key and makes a new one, on the phone's primitives", async () => {
+		const master = vectors.masters[1];
+		const rk = vectors.recoveryKeys[2];
+		if (!master || !rk) throw new Error("vector missing");
+		const hex = (text: string) =>
+			Uint8Array.from(text.match(/../g) ?? [], (b) => Number.parseInt(b, 16));
+		const userId = "0b1f2e3d-4c5b-4a69-8877-665544332211";
+		const ak = Uint8Array.from({ length: 32 }, (_, i) => 0x20 + i);
+		const pair = p.boxKeypair();
+		const text = (bytes: Uint8Array) =>
+			Buffer.from(bytes).toString("base64url");
+		const answer = {
+			userId,
+			version: 3,
+			publicKey: text(pair.publicKey),
+			wraps: [
+				{
+					role: "ak-recovery",
+					wrapped: text(wrapKey(p, hex(rk.wrapKey), "ak-recovery", userId, ak)),
+				},
+				{
+					role: "private-key",
+					wrapped: text(wrapKey(p, ak, "private-key", userId, pair.privateKey)),
+				},
+			],
+		};
+		const salted: Primitives = {
+			...p,
+			randomBytes: (n) => (n === 16 ? hex(master.salt) : p.randomBytes(n)),
+		};
+		const proofs: string[] = [];
+		const body = await recoverAccount(
+			{
+				primitives: async () => salted,
+				begin: async (b) => {
+					proofs.push(b.recoveryAuthKey);
+					return answer;
+				},
+			},
+			{ recoveryKeyText: rk.text, password: master.password },
+			{ params: ARGON2_FLOOR },
+		);
+		expect(proofs).toEqual([text(hex(rk.authKey))]);
+		expect(body.recoveryAuthKey).toBe(text(hex(rk.authKey)));
+		expect(body.newAuthKey).toBe(text(hex(master.authKey)));
+		expect(
+			unwrapKey(
+				p,
+				hex(master.wrapKey),
+				"ak-password",
+				userId,
+				Uint8Array.from(Buffer.from(body.wrappedAccountKey, "base64url")),
+			),
+		).toEqual(ak);
+
+		const made = makeNewRecoveryKey(p, {
+			userId,
+			accountKey: ak,
+			baseVersion: 3,
+		});
+		const next = parseRecoveryKey(made.recoveryKeyText);
+		expect(
+			unwrapKey(
+				p,
+				recoverySubkeys(p, next).wrapKey,
+				"ak-recovery",
+				userId,
+				Uint8Array.from(Buffer.from(made.body.wrappedRecoveryKey, "base64url")),
+			),
+		).toEqual(ak);
 	});
 });
