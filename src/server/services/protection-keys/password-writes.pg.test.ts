@@ -25,7 +25,7 @@ import {
 	PasswordTriesExceededError,
 	spendPasswordTry,
 } from "~/server/services/account-security.service";
-import { issueResetToken } from "~/server/services/auth/reset-tokens";
+import { issueLinkFor } from "~/test/reset-links";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
 import {
@@ -239,7 +239,7 @@ async function adminCaller() {
 }
 
 const resetToken = (userId: string, origin: "email" | "admin" = "email") =>
-	issueResetToken({ userId, origin });
+	issueLinkFor(userId, origin);
 
 /** The raw token the reset email carried: the table holds only its hash. */
 const tokenInMail = (call = -1): string => {

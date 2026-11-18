@@ -561,7 +561,13 @@ export const adminRouter = createTRPCRouter({
 			const token = await issueResetToken({
 				userId: user.id,
 				origin: "admin",
+				forEmail: user.email,
 			});
+			if (!token)
+				throw new TRPCError({
+					code: "CONFLICT",
+					message: "The account changed meanwhile. Try again.",
+				});
 
 			// Security-critical: log every admin-generated reset link
 			logEventAsync({

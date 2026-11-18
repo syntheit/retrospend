@@ -20,7 +20,10 @@ import {
 } from "~/server/email-templates";
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 import { hashToken } from "~/server/lib/tokens";
-import { deleteUserResetTokens } from "~/server/services/auth/reset-tokens";
+import {
+	deleteUserResetTokens,
+	lockUserRow,
+} from "~/server/services/auth/reset-tokens";
 import { sendEmail } from "~/server/mailer";
 import { spendPasswordTry } from "~/server/services/account-security.service";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
@@ -240,10 +243,11 @@ export async function updateProfile(
 	// The email column is not writable by the app role: an immediate change
 	// (no email delivery) goes through the owner connection, for the caller's
 	// own id only.
-	// A reset link sent to the old address goes with it, in the same transaction.
+	// A reset link sent to the old address goes with it, in the same transaction, under the row lock a link is issued with.
 	const user =
 		newEmail !== null
 			? await globalDb.$transaction(async (tx) => {
+					await lockUserRow(tx, userId);
 					const updated = await tx.user.update({
 						where: { id: userId },
 						data: { ...write, email: newEmail },
@@ -281,6 +285,7 @@ export async function applyConfirmedEmail(
 	newEmail: string,
 ): Promise<void> {
 	await client.$transaction(async (tx) => {
+		await lockUserRow(tx, userId);
 		await tx.user.update({
 			where: { id: userId },
 			data: {

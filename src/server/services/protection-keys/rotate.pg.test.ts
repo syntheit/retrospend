@@ -33,7 +33,7 @@ import {
 	sessionFor,
 } from "~/server/api/v1/core/__tests__/harness";
 import { auth } from "~/server/better-auth";
-import { issueResetToken } from "~/server/services/auth/reset-tokens";
+import { issueLinkFor } from "~/test/reset-links";
 import { lockCredential } from "./password-writes";
 
 vi.mock("next/headers", () => ({
@@ -238,8 +238,7 @@ const keyRows = async (userId: string) => ({
 });
 const sessionExists = async (token: string) =>
 	(await adminDb.session.findUnique({ where: { token } })) !== null;
-const resetToken = (userId: string) =>
-	issueResetToken({ userId, origin: "email" });
+const resetToken = (userId: string) => issueLinkFor(userId);
 const signsInWith = (email: string, password: string) =>
 	auth.api
 		.signInEmail({ body: { email, password } })

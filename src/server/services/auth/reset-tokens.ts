@@ -13,14 +13,19 @@
  *   so it works once and two concurrent uses cannot both win.
  * - `origin` says who made the link. An admin link resets a password like any
  *   other but never opens recovery (`resolveRecoveryToken`).
- * - A new request keeps the earlier live links (a stranger who knows an
- *   address cannot cancel a reset in progress) and is limited per address.
+ * - A new request keeps every earlier live link of the person (a stranger who
+ *   knows an address cannot cancel a reset in progress; no count of links
+ *   trims one, only expiry removes it) and is limited per address.
+ * - A link is made under the user's row lock and only for the address that is
+ *   still the account's, so an address change that commits first leaves the
+ *   old address nothing, and one that follows deletes the link.
  *
  * The table is closed to retrospend_app: this runs on the owner connection.
  */
-import { randomBytes } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
+import { env } from "~/env";
 import { db } from "~/server/db";
 import { hashToken } from "~/server/lib/tokens";
 import { consumeRateLimit } from "../api-v1/rate-limit.service";
@@ -31,8 +36,14 @@ export type ResetTokenOrigin = (typeof RESET_TOKEN_ORIGINS)[number];
 
 /** A link lives an hour. The sidecar purge deletes by this column's date. */
 export const RESET_LINK_TTL_MS = 60 * 60 * 1000;
-/** Live links one user may hold per origin; a newer one pushes out the oldest. */
-export const LIVE_LINKS_PER_ORIGIN = 3;
+/**
+ * Live admin links one user may hold; a newer one pushes out the oldest. Links
+ * the person asked for are never trimmed by count: the address limit bounds
+ * them, and a count would let three requests from a stranger in the next limit
+ * window push out the person's own link (the window and the link's life are
+ * both an hour but do not line up).
+ */
+export const LIVE_ADMIN_LINKS = 3;
 /** Reset requests one address may make: the stranger's brake, not the person's. */
 export const RESET_REQUESTS_PER_ADDRESS = {
 	limit: 3,
@@ -52,33 +63,55 @@ const isOrigin = (value: string): value is ResetTokenOrigin =>
 	(RESET_TOKEN_ORIGINS as readonly string[]).includes(value);
 
 /**
+ * Locks the user's row until the transaction ends and returns the address it
+ * holds now, or null when the user is gone. Whoever changes an account's
+ * address takes this lock before the change (`applyConfirmedEmail`, the
+ * immediate change in `updateProfile`), and `issueResetToken` takes it to
+ * check the address it mails, so the two can never interleave.
+ */
+export async function lockUserRow(
+	tx: Pick<Prisma.TransactionClient, "$queryRaw">,
+	userId: string,
+): Promise<string | null> {
+	const [row] = await tx.$queryRaw<{ email: string }[]>`
+		SELECT "email" FROM "user" WHERE "id" = ${userId} FOR UPDATE`;
+	return row?.email ?? null;
+}
+
+/**
  * Makes a link for the user and returns the raw token (for the email or the
- * admin's screen). Expired links of the user are swept, and the user's links
- * of this origin are trimmed to `LIVE_LINKS_PER_ORIGIN` including the new one.
- * A per-user advisory lock keeps two requests from both missing the trim.
+ * admin's screen), or null when `forEmail` is no longer the account's address
+ * (it changed after the caller read it): nothing is written then. Expired
+ * links of the user are swept; admin links are trimmed to `LIVE_ADMIN_LINKS`
+ * including the new one. A per-user advisory lock keeps two requests from both
+ * missing the trim.
  */
 export async function issueResetToken(input: {
 	userId: string;
 	origin: ResetTokenOrigin;
+	forEmail: string;
 	now?: Date;
-}): Promise<string> {
+}): Promise<string | null> {
 	const now = input.now ?? new Date();
 	const token = randomBytes(32).toString("hex");
-	await db.$transaction(async (tx) => {
+	const issued = await db.$transaction(async (tx) => {
+		if ((await lockUserRow(tx, input.userId)) !== input.forEmail) return false;
 		await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`reset-link:${input.userId}`}, 0))`;
 		await tx.passwordResetToken.deleteMany({
 			where: { userId: input.userId, expires: { lte: now } },
 		});
-		const surplus = await tx.passwordResetToken.findMany({
-			where: { userId: input.userId, origin: input.origin },
-			orderBy: { expires: "desc" },
-			skip: LIVE_LINKS_PER_ORIGIN - 1,
-			select: { token: true },
-		});
-		if (surplus.length > 0)
-			await tx.passwordResetToken.deleteMany({
-				where: { token: { in: surplus.map((row) => row.token) } },
+		if (input.origin === "admin") {
+			const surplus = await tx.passwordResetToken.findMany({
+				where: { userId: input.userId, origin: "admin" },
+				orderBy: { expires: "desc" },
+				skip: LIVE_ADMIN_LINKS - 1,
+				select: { token: true },
 			});
+			if (surplus.length > 0)
+				await tx.passwordResetToken.deleteMany({
+					where: { token: { in: surplus.map((row) => row.token) } },
+				});
+		}
 		await tx.passwordResetToken.create({
 			data: {
 				token: hashToken(token),
@@ -87,8 +120,9 @@ export async function issueResetToken(input: {
 				expires: new Date(now.getTime() + RESET_LINK_TTL_MS),
 			},
 		});
+		return true;
 	});
-	return token;
+	return issued ? token : null;
 }
 
 /**
@@ -161,18 +195,33 @@ export async function deleteUserResetTokens(
 	await tx.passwordResetToken.deleteMany({ where: { userId } });
 }
 
+let addressKey: Buffer | undefined;
+/**
+ * The limiter's key for an address: an HMAC of the normalized address under a
+ * key derived from the auth secret and used for nothing else, so the counter
+ * table (and a backup of it) does not reveal who asked for a reset, and cannot
+ * be checked against a list of addresses without the secret.
+ */
+export function resetAddressKey(email: string): string {
+	addressKey ??= createHmac("sha256", env.BETTER_AUTH_SECRET)
+		.update("reset-request-address")
+		.digest();
+	return `reset:address:${createHmac("sha256", addressKey)
+		.update(normalizeEmail(email))
+		.digest("hex")}`;
+}
+
 /**
  * Counts one reset request for an address and says whether it fits. The key is
- * a hash of the normalized address, so the counter table never holds it, and
- * it counts known and unknown addresses alike, so the limit proves nothing
- * about whether an account exists.
+ * keyed and hashed (`resetAddressKey`), and the count covers known and unknown
+ * addresses alike, so the limit proves nothing about whether an account exists.
  */
 export async function allowResetRequest(
 	email: string,
 	now: Date = new Date(),
 ): Promise<boolean> {
 	const decision = await consumeRateLimit(
-		`reset:address:${hashToken(normalizeEmail(email))}`,
+		resetAddressKey(email),
 		RESET_REQUESTS_PER_ADDRESS.limit,
 		RESET_REQUESTS_PER_ADDRESS.windowMs,
 		now,

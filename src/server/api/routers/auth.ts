@@ -130,25 +130,34 @@ export const authRouter = createTRPCRouter({
 				? await db.user.findUnique({ where: { email: input.email } })
 				: null;
 
-			// OFF: a reset removes the keys and is allowed. Protection on: refused, so no link
-			// is sent. That, no account and a used-up address limit run the dummy hash and answer alike.
+			// Every path runs the same single hash, so the request takes about as long
+			// for a known address as for an unknown, protected or used-up one.
+			await hashPassword(crypto.randomBytes(32).toString("hex"));
+
+			// OFF: a reset removes the keys and is allowed. Protection on: refused, so no
+			// link is sent. That, no account and a used-up address limit answer alike.
 			if (!user || isProtected(user.protectionState)) {
-				// Run dummy hash to mitigate timing attacks
-				await hashPassword(crypto.randomBytes(32).toString("hex"));
 				return { success: true }; // Generic success to prevent enumeration
 			}
 
 			// Earlier live links stay valid: a request from a stranger who knows
-			// the address must not cancel the person's own.
+			// the address must not cancel the person's own. Null: the address was
+			// changed since we read it, and the old one gets nothing.
 			const token = await issueResetToken({
 				userId: user.id,
 				origin: "email",
+				forEmail: user.email,
 			});
+			if (!token) return { success: true };
 
 			const resetUrl = `${env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/reset-password?token=${token}`;
 			const htmlContent = getPasswordResetEmailTemplate(resetUrl);
 
-			await sendEmail(user.email, emailSubject.passwordReset, htmlContent);
+			// Not awaited: a slow mail server must not tell a known address from an
+			// unknown one. The log line carries no address (a mail error can).
+			sendEmail(user.email, emailSubject.passwordReset, htmlContent).catch(
+				() => console.error("Failed to send the password reset email"),
+			);
 
 			return { success: true };
 		}),

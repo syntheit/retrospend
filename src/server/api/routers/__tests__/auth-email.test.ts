@@ -18,6 +18,7 @@ const mockDb = vi.hoisted(() => ({
 	account: { findFirst: vi.fn() },
 	passwordResetToken: { deleteMany: vi.fn() },
 	$transaction: vi.fn(),
+	$queryRaw: vi.fn(async () => []),
 	verificationToken: { findFirst: vi.fn(), delete: vi.fn() },
 }));
 

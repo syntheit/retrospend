@@ -15,14 +15,21 @@ import { authRouter } from "~/server/api/routers/auth";
 import { createCallerFactory } from "~/server/api/trpc";
 import { auth } from "~/server/better-auth";
 import { resetPasswordHash } from "~/server/services/account-security.service";
-import { updateProfile } from "~/server/services/profile.service";
+import {
+	applyConfirmedEmail,
+	updateProfile,
+} from "~/server/services/profile.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
+import { issueLinkFor } from "~/test/reset-links";
 import { makeSession } from "~/test/trpc-test-utils";
 import {
 	allowResetRequest,
+	deleteUserResetTokens,
 	InvalidResetTokenError,
 	issueResetToken,
-	LIVE_LINKS_PER_ORIGIN,
+	LIVE_ADMIN_LINKS,
+	lockUserRow,
+	resetAddressKey,
 	lookupResetToken,
 	RESET_LINK_TTL_MS,
 	RESET_REQUESTS_PER_ADDRESS,
@@ -131,7 +138,7 @@ beforeEach(() => {
 describe("what the table holds", () => {
 	it("stores the SHA-256 of the token and never the token", async () => {
 		const { user } = await createTestUser();
-		const token = await issueResetToken({ userId: user.id, origin: "email" });
+		const token = await issueLinkFor(user.id, "email");
 		const [row] = await rows(user.id);
 		expect(row?.token).toBe(sha256(token));
 		expect(row?.token).not.toBe(token);
@@ -143,7 +150,7 @@ describe("what the table holds", () => {
 
 	it("finds a token by its hash only: the stored value opens nothing", async () => {
 		const { user } = await createTestUser();
-		const token = await issueResetToken({ userId: user.id, origin: "email" });
+		const token = await issueLinkFor(user.id, "email");
 		const stored = sha256(token);
 		expect(await lookupResetToken(token)).toEqual({
 			userId: user.id,
@@ -158,7 +165,7 @@ describe("what the table holds", () => {
 
 	it("is removed with the account", async () => {
 		const { user } = await createTestUser();
-		await issueResetToken({ userId: user.id, origin: "email" });
+		await issueLinkFor(user.id, "email");
 		await adminDb.user.delete({ where: { id: user.id } });
 		expect(await rows(user.id)).toHaveLength(0);
 	});
@@ -189,7 +196,7 @@ describe("who a token opens", () => {
 	it("will not spend a token for another user, and keeps it", async () => {
 		const a = await passwordUser();
 		const b = await passwordUser();
-		const token = await issueResetToken({ userId: a.id, origin: "email" });
+		const token = await issueLinkFor(a.id, "email");
 		const bBefore = await storedHash(b.id);
 		const error = await resetPasswordHash({
 			userId: b.id,
@@ -207,11 +214,11 @@ describe("who a token opens", () => {
 describe("what ends a link", () => {
 	it("is refused once it has expired, by the lookup and by the reset", async () => {
 		const a = await passwordUser();
-		const token = await issueResetToken({
-			userId: a.id,
-			origin: "email",
-			now: new Date(Date.now() - HOUR - 1_000),
-		});
+		const token = await issueLinkFor(
+			a.id,
+			"email",
+			new Date(Date.now() - HOUR - 1_000),
+		);
 		expect(await lookupResetToken(token)).toBeNull();
 		const before = await storedHash(a.id);
 		await expect(reset(token)).rejects.toMatchObject({ code: "NOT_FOUND" });
@@ -221,11 +228,7 @@ describe("what ends a link", () => {
 	it("is live up to its expiry and not at it", async () => {
 		const { user } = await createTestUser();
 		const issued = new Date(Date.now());
-		const token = await issueResetToken({
-			userId: user.id,
-			origin: "email",
-			now: issued,
-		});
+		const token = await issueLinkFor(user.id, "email", issued);
 		const expires = issued.getTime() + HOUR;
 		expect(await lookupResetToken(token, new Date(expires - 1))).not.toBeNull();
 		expect(await lookupResetToken(token, new Date(expires))).toBeNull();
@@ -234,11 +237,7 @@ describe("what ends a link", () => {
 	it("is refused by the spend itself once expired, and the row stays for the purge", async () => {
 		const { user } = await createTestUser();
 		const issued = new Date(Date.now());
-		const token = await issueResetToken({
-			userId: user.id,
-			origin: "email",
-			now: issued,
-		});
+		const token = await issueLinkFor(user.id, "email", issued);
 		const at = new Date(issued.getTime() + HOUR);
 		await expect(
 			spendResetToken(adminDb, { token, userId: user.id, now: at }),
@@ -266,7 +265,7 @@ describe("what ends a link", () => {
 
 	it("lets one of two concurrent uses win and refuses the other with nothing written", async () => {
 		const a = await passwordUser();
-		const token = await issueResetToken({ userId: a.id, origin: "email" });
+		const token = await issueLinkFor(a.id, "email");
 		const results = await Promise.allSettled([
 			reset(token, "First pass 1"),
 			reset(token, "Second pass 2"),
@@ -282,9 +281,9 @@ describe("what ends a link", () => {
 
 	it("goes with every other link of the user when the password is reset", async () => {
 		const a = await passwordUser();
-		const first = await issueResetToken({ userId: a.id, origin: "email" });
-		const second = await issueResetToken({ userId: a.id, origin: "email" });
-		const admin = await issueResetToken({ userId: a.id, origin: "admin" });
+		const first = await issueLinkFor(a.id, "email");
+		const second = await issueLinkFor(a.id, "email");
+		const admin = await issueLinkFor(a.id, "admin");
 		await reset(first);
 		expect(await rows(a.id)).toHaveLength(0);
 		for (const token of [second, admin])
@@ -296,8 +295,8 @@ describe("what ends a link", () => {
 	it("is deleted by an address change, and only the user's own", async () => {
 		const a = await passwordUser();
 		const other = await passwordUser();
-		const token = await issueResetToken({ userId: a.id, origin: "email" });
-		await issueResetToken({ userId: other.id, origin: "email" });
+		const token = await issueLinkFor(a.id, "email");
+		await issueLinkFor(other.id, "email");
 		const confirm = `confirm-${randomUUID()}`;
 		const next = `${randomUUID()}@pg-test.invalid`;
 		await adminDb.user.update({
@@ -310,7 +309,9 @@ describe("what ends a link", () => {
 		});
 		await publicCaller().confirmEmailChange({ token: confirm });
 
-		expect((await adminDb.user.findUniqueOrThrow({ where: { id: a.id } })).email).toBe(next);
+		expect(
+			(await adminDb.user.findUniqueOrThrow({ where: { id: a.id } })).email,
+		).toBe(next);
 		expect(await rows(a.id)).toHaveLength(0);
 		expect(await rows(other.id)).toHaveLength(1);
 		await expect(reset(token)).rejects.toMatchObject({ code: "NOT_FOUND" });
@@ -318,7 +319,7 @@ describe("what ends a link", () => {
 
 	it("is deleted by the immediate address change that applies without email", async () => {
 		const a = await passwordUser();
-		await issueResetToken({ userId: a.id, origin: "email" });
+		await issueLinkFor(a.id, "email");
 		delivery.on = false;
 		const next = `${randomUUID()}@pg-test.invalid`;
 		const result = await updateProfile(
@@ -334,7 +335,7 @@ describe("what ends a link", () => {
 
 	it("is not deleted by a profile change that keeps the address", async () => {
 		const a = await passwordUser();
-		await issueResetToken({ userId: a.id, origin: "email" });
+		await issueLinkFor(a.id, "email");
 		delivery.on = false;
 		await updateProfile(
 			adminDb,
@@ -360,39 +361,62 @@ describe("a new request", () => {
 		expect(await passwordIs(a.id, NEW_PASSWORD)).toBe(true);
 	});
 
-	it("keeps at most three live links per origin and drops the oldest", async () => {
+	it("keeps at most three live admin links and drops the oldest", async () => {
 		const { user } = await createTestUser();
 		const start = Date.now();
 		const tokens: string[] = [];
-		for (let i = 0; i < LIVE_LINKS_PER_ORIGIN + 1; i++)
+		for (let i = 0; i < LIVE_ADMIN_LINKS + 1; i++)
 			tokens.push(
-				await issueResetToken({
-					userId: user.id,
-					origin: "email",
-					now: new Date(start + i * 1_000),
-				}),
+				await issueLinkFor(user.id, "admin", new Date(start + i * 1_000)),
 			);
 		const live = await Promise.all(tokens.map((t) => lookupResetToken(t)));
 		expect(live.map((l) => l !== null)).toEqual([false, true, true, true]);
-		expect(await rows(user.id)).toHaveLength(LIVE_LINKS_PER_ORIGIN);
+		expect(await rows(user.id)).toHaveLength(LIVE_ADMIN_LINKS);
 	});
 
-	it("counts the origins apart, so an admin link does not push out the person's", async () => {
+	it("never trims the person's own links by count, and admin links never push them out", async () => {
 		const { user } = await createTestUser();
-		const mine = await issueResetToken({ userId: user.id, origin: "email" });
-		for (let i = 0; i < LIVE_LINKS_PER_ORIGIN + 1; i++)
-			await issueResetToken({ userId: user.id, origin: "admin" });
-		expect(await lookupResetToken(mine)).not.toBeNull();
+		const start = Date.now();
+		const mine: string[] = [];
+		for (let i = 0; i < 6; i++)
+			mine.push(
+				await issueLinkFor(user.id, "email", new Date(start + i * 1_000)),
+			);
+		for (let i = 0; i < LIVE_ADMIN_LINKS + 2; i++)
+			await issueLinkFor(user.id, "admin", new Date(start + i * 1_000));
+		const live = await Promise.all(mine.map((t) => lookupResetToken(t)));
+		expect(live.every((l) => l !== null)).toBe(true);
+	});
+
+	it("keeps a link made at 10:40 when a stranger fills the next request window at 11:00", async () => {
+		const { user } = await createTestUser();
+		const email = user.email;
+		const hour = Math.floor(Date.now() / HOUR) * HOUR;
+		const at = (minutes: number) => new Date(hour + minutes * 60_000);
+		// The person's link, asked in the first window.
+		expect(await allowResetRequest(email, at(40))).toBe(true);
+		const mine = await issueLinkFor(user.id, "email", at(40));
+		// The next window opens at 11:00: three more requests fit, and a fourth does not.
+		const stranger: string[] = [];
+		for (let i = 0; i < RESET_REQUESTS_PER_ADDRESS.limit; i++) {
+			expect(await allowResetRequest(email, at(60 + i))).toBe(true);
+			stranger.push(await issueLinkFor(user.id, "email", at(60 + i)));
+		}
+		expect(await allowResetRequest(email, at(63))).toBe(false);
+		// 11:03 is inside the person's link (it ends at 11:40): it still opens.
+		expect(await lookupResetToken(mine, at(63))).toEqual({
+			userId: user.id,
+			origin: "email",
+		});
+		expect(await rows(user.id)).toHaveLength(4);
+		for (const t of stranger)
+			expect(await lookupResetToken(t, at(63))).not.toBeNull();
 	});
 
 	it("sweeps the user's expired links when it makes a new one", async () => {
 		const { user } = await createTestUser();
-		await issueResetToken({
-			userId: user.id,
-			origin: "email",
-			now: new Date(Date.now() - 2 * HOUR),
-		});
-		await issueResetToken({ userId: user.id, origin: "email" });
+		await issueLinkFor(user.id, "email", new Date(Date.now() - 2 * HOUR));
+		await issueLinkFor(user.id, "email");
 		expect(await rows(user.id)).toHaveLength(1);
 	});
 });
@@ -418,23 +442,28 @@ describe("the per-address limit", () => {
 		const email = `${randomUUID()}@Pg-Test.invalid`;
 		const spelled = [email, ` ${email.toLowerCase()} `, email.toUpperCase()];
 		const answers = [];
-		for (const s of [...spelled, email]) answers.push(await allowResetRequest(s, stamp));
+		for (const s of [...spelled, email])
+			answers.push(await allowResetRequest(s, stamp));
 		expect(answers).toEqual([true, true, true, false]);
 		expect(await allowResetRequest(`other-${email}`, stamp)).toBe(true);
 	});
 
-	it("keeps the address out of the counter table", async () => {
+	it("keys the counter with a keyed hash, so a backup of the table does not say who asked", async () => {
 		const email = `${randomUUID()}@pg-test.invalid`;
 		await allowResetRequest(email);
-		const keys = await adminDb.apiRateLimit.findMany({
+		const key = resetAddressKey(email);
+		expect(key).toMatch(/^reset:address:[0-9a-f]{64}$/);
+		// Not the unkeyed hash of the address, which anyone could compute from a list.
+		expect(key).not.toBe(`reset:address:${sha256(email.toLowerCase())}`);
+		expect(key).not.toContain(email);
+		expect(key).toBe(resetAddressKey(` ${email.toUpperCase()} `));
+		expect(key).not.toBe(resetAddressKey(`other-${email}`));
+		const stored = await adminDb.apiRateLimit.findMany({
 			where: { key: { startsWith: "reset:address:" } },
 			select: { key: true },
 		});
-		expect(keys.length).toBeGreaterThan(0);
-		expect(keys.some((k) => k.key.includes(email))).toBe(false);
-		expect(keys.map((k) => k.key)).toContain(
-			`reset:address:${sha256(email.toLowerCase())}`,
-		);
+		expect(stored.map((k) => k.key)).toContain(key);
+		expect(stored.some((k) => k.key.includes(email))).toBe(false);
 	});
 });
 
@@ -447,7 +476,11 @@ describe("the request answers alike", () => {
 		const hashesFor = async (email: string) => {
 			hashing.calls = 0;
 			const answer = await request(email);
-			return { answer, hashes: hashing.calls, mails: mail.sendEmail.mock.calls.length };
+			return {
+				answer,
+				hashes: hashing.calls,
+				mails: mail.sendEmail.mock.calls.length,
+			};
 		};
 
 		const known = await hashesFor(a.email);
@@ -467,6 +500,52 @@ describe("the request answers alike", () => {
 		expect(refused.mails).toBe(3);
 	});
 
+	it("runs one password hash for a known, unknown, protected and used-up address alike", async () => {
+		await clearRequestWindowEdge();
+		const known = await passwordUser();
+		const protectedAccount = await passwordUser();
+		await adminDb.user.update({
+			where: { id: protectedAccount.id },
+			data: { protectionState: "ON" },
+		});
+		const limited = await passwordUser();
+		for (let i = 0; i < RESET_REQUESTS_PER_ADDRESS.limit; i++)
+			await allowResetRequest(limited.email);
+		const unknown = `nobody-${randomUUID()}@pg-test.invalid`;
+		for (const [kind, email] of [
+			["known", known.email],
+			["unknown", unknown],
+			["protected", protectedAccount.email],
+			["limited", limited.email],
+		] as const) {
+			hashing.calls = 0;
+			expect(await request(email), kind).toEqual({ success: true });
+			expect(hashing.calls, kind).toBe(1);
+		}
+	});
+
+	it("does not wait on the mailer, and logs a failed send without the address", async () => {
+		const a = await passwordUser();
+		mail.sendEmail.mockClear();
+		// A mail server that never answers: the request still returns.
+		mail.sendEmail.mockImplementationOnce(
+			() => new Promise<undefined>(() => {}),
+		);
+		expect(await request(a.email)).toEqual({ success: true });
+		expect(mail.sendEmail).toHaveBeenCalledTimes(1);
+
+		const b = await passwordUser();
+		mail.sendEmail.mockClear();
+		const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+		mail.sendEmail.mockRejectedValueOnce(
+			new Error(`550 no such mailbox ${b.email}`),
+		);
+		expect(await request(b.email)).toEqual({ success: true });
+		await vi.waitFor(() => expect(logged).toHaveBeenCalled());
+		expect(JSON.stringify(logged.mock.calls)).not.toContain(b.email);
+		logged.mockRestore();
+	});
+
 	it("leaves no link for an unknown address", async () => {
 		const before = await adminDb.passwordResetToken.count();
 		await request(`nobody-${randomUUID()}@pg-test.invalid`);
@@ -474,11 +553,152 @@ describe("the request answers alike", () => {
 	});
 });
 
+describe("an address change and a new link", () => {
+	/** What an address change does first, held open: the row lock and the new address, uncommitted. */
+	async function changeInFlight(userId: string, next: string) {
+		let release!: () => void;
+		const gate = new Promise<void>((r) => (release = r));
+		let locked!: () => void;
+		const hasLock = new Promise<void>((r) => (locked = r));
+		const done = adminDb.$transaction(
+			async (tx) => {
+				await lockUserRow(tx, userId);
+				await tx.user.update({ where: { id: userId }, data: { email: next } });
+				locked();
+				await gate;
+				await deleteUserResetTokens(tx, userId);
+			},
+			{ timeout: 30_000 },
+		);
+		await hasLock;
+		return {
+			commit: async () => {
+				release();
+				await done;
+			},
+		};
+	}
+	/** What a link being made holds open: the row lock and the new link, uncommitted. */
+	async function issueInFlight(userId: string) {
+		let release!: () => void;
+		const gate = new Promise<void>((r) => (release = r));
+		let locked!: () => void;
+		const hasLock = new Promise<void>((r) => (locked = r));
+		const done = adminDb.$transaction(
+			async (tx) => {
+				await lockUserRow(tx, userId);
+				await tx.passwordResetToken.create({
+					data: {
+						token: sha256(randomUUID()),
+						userId,
+						origin: "email",
+						expires: new Date(Date.now() + HOUR),
+					},
+				});
+				locked();
+				await gate;
+			},
+			{ timeout: 30_000 },
+		);
+		await hasLock;
+		return {
+			commit: async () => {
+				release();
+				await done;
+			},
+		};
+	}
+	const stillWaiting = async (work: Promise<unknown>) => {
+		let settled = false;
+		work.then(
+			() => (settled = true),
+			() => (settled = true),
+		);
+		await new Promise((r) => setTimeout(r, 400));
+		return !settled;
+	};
+
+	it("waits behind an address change in flight, then makes no link for the address it left", async () => {
+		const a = await passwordUser();
+		const next = `${randomUUID()}@pg-test.invalid`;
+		const change = await changeInFlight(a.id, next);
+		const issuing = issueResetToken({
+			userId: a.id,
+			origin: "email",
+			forEmail: a.email,
+		});
+		expect(await stillWaiting(issuing)).toBe(true);
+		await change.commit();
+		expect(await issuing).toBeNull();
+		expect(await rows(a.id)).toHaveLength(0);
+	});
+
+	it("makes a link for the address the account has now, and none for the one it had", async () => {
+		const a = await passwordUser();
+		const next = `${randomUUID()}@pg-test.invalid`;
+		await adminDb.user.update({ where: { id: a.id }, data: { email: next } });
+		expect(
+			await issueResetToken({
+				userId: a.id,
+				origin: "email",
+				forEmail: a.email,
+			}),
+		).toBeNull();
+		expect(await rows(a.id)).toHaveLength(0);
+		expect(
+			await issueResetToken({ userId: a.id, origin: "email", forEmail: next }),
+		).not.toBeNull();
+	});
+
+	it("deletes a link that was being made when the confirmed address change arrived", async () => {
+		const a = await passwordUser();
+		const next = `${randomUUID()}@pg-test.invalid`;
+		const issuing = await issueInFlight(a.id);
+		const changing = applyConfirmedEmail(adminDb, a.id, a.email, next);
+		expect(await stillWaiting(changing)).toBe(true);
+		await issuing.commit();
+		await changing;
+		expect(await rows(a.id)).toHaveLength(0);
+	});
+
+	it("deletes a link that was being made when the immediate address change arrived", async () => {
+		const a = await passwordUser();
+		delivery.on = false;
+		const next = `${randomUUID()}@pg-test.invalid`;
+		const issuing = await issueInFlight(a.id);
+		const changing = updateProfile(
+			adminDb,
+			{ id: a.id, username: "unused", email: a.email },
+			{ email: next, currentPassword: PASSWORD },
+			"session-for-the-try-counter",
+		);
+		expect(await stillWaiting(changing)).toBe(true);
+		await issuing.commit();
+		await changing;
+		expect(await rows(a.id)).toHaveLength(0);
+	});
+
+	it("refuses an admin link for an address the account no longer has", async () => {
+		const admin = await adminCaller();
+		const a = await passwordUser();
+		const next = `${randomUUID()}@pg-test.invalid`;
+		const change = await changeInFlight(a.id, next);
+		const making = admin.generatePasswordResetLink({ userId: a.id });
+		// The procedure read the old address, then waits for the row lock.
+		expect(await stillWaiting(making)).toBe(true);
+		await change.commit();
+		await expect(making).rejects.toMatchObject({ code: "CONFLICT" });
+		expect(await rows(a.id)).toHaveLength(0);
+	});
+});
+
 describe("an admin link", () => {
 	it("is made with origin admin, resets the password and never opens recovery", async () => {
 		const admin = await adminCaller();
 		const a = await passwordUser();
-		const { resetUrl } = await admin.generatePasswordResetLink({ userId: a.id });
+		const { resetUrl } = await admin.generatePasswordResetLink({
+			userId: a.id,
+		});
 		const token = /token=([0-9a-f]+)/.exec(resetUrl)?.[1] ?? "";
 		expect(token).not.toBe("");
 
@@ -506,18 +726,20 @@ describe("an admin link", () => {
 		const token = tokenInMail();
 		expect(await resolveRecoveryToken(token)).toEqual({ userId: a.id });
 		expect(await resolveRecoveryToken("0".repeat(64))).toBeNull();
-		const expired = await issueResetToken({
-			userId: a.id,
-			origin: "email",
-			now: new Date(Date.now() - 2 * HOUR),
-		});
+		const expired = await issueLinkFor(
+			a.id,
+			"email",
+			new Date(Date.now() - 2 * HOUR),
+		);
 		expect(await resolveRecoveryToken(expired)).toBeNull();
 	});
 
 	it("is kept when the person asks for their own link", async () => {
 		const admin = await adminCaller();
 		const a = await passwordUser();
-		const { resetUrl } = await admin.generatePasswordResetLink({ userId: a.id });
+		const { resetUrl } = await admin.generatePasswordResetLink({
+			userId: a.id,
+		});
 		const adminToken = /token=([0-9a-f]+)/.exec(resetUrl)?.[1] ?? "";
 		await request(a.email);
 		expect(await lookupResetToken(adminToken)).not.toBeNull();
@@ -529,7 +751,7 @@ describe("better-auth's own reset paths", () => {
 	it("stay off, so no other writer of a reset exists", async () => {
 		const a = await passwordUser();
 		const before = await storedHash(a.id);
-		const token = await issueResetToken({ userId: a.id, origin: "email" });
+		const token = await issueLinkFor(a.id, "email");
 		for (const [path, body] of [
 			["/request-password-reset", { email: a.email }],
 			["/reset-password", { newPassword: NEW_PASSWORD, token }],
