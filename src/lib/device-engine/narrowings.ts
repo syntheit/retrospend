@@ -10,7 +10,12 @@ export const NO_VALUES: NarrowValues = {};
 
 /** Budget: the current month's envelopes. Another month, and a loading or empty page, are not compared. */
 export function budgetValues(
-	data: { groups: { envelopes: { id: string }[] }[] } | null | undefined,
+	data:
+		| {
+				groups: readonly { envelopes: readonly { id: string }[] }[];
+		  }
+		| null
+		| undefined,
 	currentMonth: boolean,
 ): NarrowValues | null {
 	if (!data || !currentMonth) return null;
@@ -21,14 +26,14 @@ export function budgetValues(
 
 /** Wealth: the open accounts the page lists. */
 export function wealthValues(view: {
-	groups: { accounts: { id: string }[] }[];
+	groups: readonly { accounts: readonly { id: string }[] }[];
 }): NarrowValues {
 	return { accountId: view.groups.flatMap((g) => g.accounts.map((a) => a.id)) };
 }
 
 /** Recurring: the templates the page lists, once loaded. */
 export function recurringValues(
-	data: { items: { id: string }[] } | null | undefined,
+	data: { items: readonly { id: string }[] } | null | undefined,
 ): NarrowValues | null {
 	return data ? { recurringId: data.items.map((i) => i.id) } : null;
 }
@@ -39,8 +44,13 @@ export function recurringValues(
  * the months are the bars.
  */
 export function insightsValues(
-	summary: { categories: { categoryId: string | null }[] } | null | undefined,
-	months: { months: { month: string }[] } | null | undefined,
+	summary:
+		| {
+				categories: readonly { categoryId: string | null }[];
+		  }
+		| null
+		| undefined,
+	months: { months: readonly { month: string }[] } | null | undefined,
 	defaultView: boolean,
 ): NarrowValues | null {
 	if (!defaultView || !summary || !months) return null;

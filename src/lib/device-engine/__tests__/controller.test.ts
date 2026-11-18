@@ -30,7 +30,7 @@ function fakeClient(pull?: Pull) {
 	const client = {
 		dead: false,
 		start: vi.fn(async () => undefined),
-		compare: vi.fn(async () => report(1) as CompareReport | null),
+		compare: vi.fn<DeviceClient["compare"]>(async () => report(1)),
 		pull: vi.fn<Pull>(
 			pull ?? (async () => ({ status: "ready", generation: 1 })),
 		),
