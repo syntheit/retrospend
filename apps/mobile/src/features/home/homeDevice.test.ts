@@ -1,9 +1,8 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import type { DeviceRead } from "@/data/device-engine";
 import { fetchHome, type Glance, notPlannedOf } from "./source";
 
-// Home's glance with the dev flag's device engine: the figures the device can
-// read come from it, and the call is the same as ever when there is none.
+// Home's glance with the dev flag's device engine: the screen is the server's,
+// the device only compares.
 
 const money = (minor: number) => ({ minor, currency: "ARS" });
 
@@ -33,22 +32,8 @@ const api = (glance: Glance) =>
 		people: { list: async () => ({ people: [], home: "ARS" }) },
 	}) as unknown as RetrospendClient;
 
-const device = (read: DeviceRead | null) => ({
-	read: jest.fn(async (_ids: readonly string[]) => read),
-	verify: jest.fn(async (_ids: readonly string[]) => {}),
-	reportVerdict: jest.fn(),
-});
-
-const read = (
-	readings: Record<string, ReturnType<typeof money>[] | null>,
-	o: Partial<DeviceRead> = {},
-): DeviceRead => ({
-	homeCurrency: "ARS",
-	budgetReady: false,
-	budget: null,
-	readings: new Map(Object.entries(readings)),
-	...o,
-});
+// What the device would have shown: every figure differs from the server's.
+const device = () => ({ compare: jest.fn(async () => null) });
 
 it("is today's call exactly when there is no device", async () => {
 	const server = { ...base };
@@ -58,59 +43,19 @@ it("is today's call exactly when there is no device", async () => {
 	}
 });
 
-// The device has Spent (1.11), Spent by this day last month (2.22) and net
-// worth (3.33); Spent last month has no rate there, so it reads null. Owed to
-// you and You owe are not the device's, so they stay the server's.
-it("takes the figures the device has and leaves the rest as the server sent them", async () => {
-	const source = device(
-		read({
-			"glance.spent": [money(111)],
-			"glance.spentLastToDate": [money(222)],
-			"glance.spentLast": null,
-			netWorth: [money(333)],
-		}),
-	);
-	const { glance } = await fetchHome(api(base), source)();
-	expect(glance).toEqual({
-		...base,
-		spent: { id: "glance.spent", value: money(111) },
-		spentLastToDate: { id: "glance.spentLastToDate", value: money(222) },
-		spentLast: { id: "glance.spentLast", value: null },
-		netWorth: { id: "netWorth", value: money(333) },
-	});
-	expect(source.read).toHaveBeenCalledWith([
-		"glance.spent",
-		"glance.spentLastToDate",
-		"glance.spentLast",
-		"owed.owedToYou",
-		"owed.youOwe",
-		"netWorth",
-	]);
-	expect(source.verify).toHaveBeenCalledWith([
-		"glance.spent",
-		"glance.spentLastToDate",
-		"glance.spentLast",
-		"netWorth",
-	]);
-});
-
-it("keeps the server's glance when the device has nothing it can trust", async () => {
-	const source = device(null);
+// AGENTS 6.1: the screen shows the server's numbers, whatever the device
+// holds. The device is only asked to compare, for the "home" screen, and the
+// compare is handed nothing to put on screen.
+it("shows the server's glance as it came and only asks the device to compare", async () => {
+	const source = device();
 	const server = { ...base };
-	expect((await fetchHome(api(server), source)()).glance).toBe(server);
-	expect(source.verify).not.toHaveBeenCalled();
+	const data = await fetchHome(api(server), source)();
+	expect(data.glance).toBe(server);
+	expect(source.compare).toHaveBeenCalledTimes(1);
+	expect(source.compare).toHaveBeenCalledWith("home");
 });
 
-it("keeps the server's glance when the device's home currency is another one", async () => {
-	const source = device(
-		read({ "glance.spent": [money(111)] }, { homeCurrency: "USD" }),
-	);
-	const server = { ...base };
-	expect((await fetchHome(api(server), source)()).glance).toBe(server);
-	expect(source.verify).not.toHaveBeenCalled();
-});
-
-describe("Not planned yet", () => {
+it("shows the server's Not planned yet", async () => {
 	const ready = {
 		...base,
 		budget: {
@@ -119,20 +64,6 @@ describe("Not planned yet", () => {
 			notPlannedYet: { id: "budget.notPlannedYet", value: money(5) },
 		},
 	} as unknown as Glance;
-	const readings = { "budget.notPlannedYet": [money(7)] };
-
-	it("comes from the device while its budget block is readable", async () => {
-		const source = device(read(readings, { budgetReady: true }));
-		const { glance } = await fetchHome(api(ready), source)();
-		expect(notPlannedOf(glance)?.amount).toEqual(money(7));
-		expect(source.read.mock.calls[0]?.[0]).toContain("budget.notPlannedYet");
-		expect(source.verify).toHaveBeenCalledWith(["budget.notPlannedYet"]);
-	});
-
-	it("stays the server's while the block is not readable", async () => {
-		const source = device(read(readings, { budgetReady: false }));
-		const { glance } = await fetchHome(api(ready), source)();
-		expect(notPlannedOf(glance)?.amount).toEqual(money(5));
-		expect(source.verify).not.toHaveBeenCalled();
-	});
+	const { glance } = await fetchHome(api(ready), device())();
+	expect(notPlannedOf(glance)?.amount).toEqual(money(5));
 });

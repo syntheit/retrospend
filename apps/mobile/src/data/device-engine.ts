@@ -23,15 +23,11 @@ import { registerLiveEngine } from "./engine-db/sweep";
 // whole engine out of the bundle. scripts/check-release-bundle.sh greps for
 // TAG (defined in the core): it must not appear in a release bundle.
 export {
-	type DeviceBudget,
 	type DeviceEngine,
 	type DeviceEngineOptions,
-	type DeviceRead,
 	type DeviceReads,
 	type DeviceStatus,
-	type ParityResult,
 	PULL_AFTER_MS,
-	type ReadOptions,
 } from "@retrospend/engine/device";
 
 const warn = (what: string, detail?: string) =>
