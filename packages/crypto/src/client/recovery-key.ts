@@ -1,7 +1,8 @@
-// What the web and the phone share around showing a recovery key: which two
+// What the web and the phone share around a recovery key: making one for an
+// account key (makeRecoveryKey, used by enable and Make new key), which two
 // groups the person retypes to prove they saved it, whether what they typed
-// matches, and the text of the file they can save. The key itself is made and
-// written by keys.ts; nothing here stores or sends it.
+// matches, and the text of the file they can save. keys.ts owns the format
+// (encode, parse, subkeys); nothing here stores or sends the key.
 import { toBase64Url } from "../base64url";
 import { bad } from "../errors";
 import {
