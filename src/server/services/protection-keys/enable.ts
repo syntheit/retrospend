@@ -17,7 +17,10 @@
  * hash only if it is still the one that was checked.
  */
 
-import type { EnableProtection } from "@retrospend/api-contract";
+import {
+	ENABLE_WRAP_ROLES,
+	type EnableProtection,
+} from "@retrospend/api-contract";
 import { isSignInSecret } from "@retrospend/crypto";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { db } from "~/server/db";
@@ -38,18 +41,11 @@ import { validateKeyChanges } from "./validate";
 /** How old the calling session may be, by `session.createdAt`. */
 export const FRESH_SESSION_MS = 10 * 60_000;
 
-const WRAP_ROLES = [
-	"ak-password",
-	"ak-recovery",
-	"collection-key",
-	"private-key",
-];
-
 /** The request as a key change: exactly the four wraps a new set starts with. */
 function toKeyChanges(body: EnableProtection): KeyChanges {
 	if (!isSignInSecret(body.authKey)) invalid();
 	const roles = body.wraps.map((w) => w.role).sort();
-	if (roles.join() !== WRAP_ROLES.join()) invalid();
+	if (roles.join() !== [...ENABLE_WRAP_ROLES].sort().join()) invalid();
 	return {
 		baseVersion: 0,
 		set: {

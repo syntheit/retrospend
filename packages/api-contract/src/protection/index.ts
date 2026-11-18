@@ -1,50 +1,14 @@
 import * as z from "zod";
-import { preloginKdfSchema } from "../auth";
 import { v1 } from "../common/meta";
 import { timestampSchema } from "../core";
+import {
+	enableWrapSchema,
+	KEY_TEXT,
+	preloginKdfSchema,
+	WRAP_TEXT,
+} from "../keys";
 
 const TAG = ["Advanced protection"];
-
-/** 32 bytes as unpadded base64url (the sign-in secret, a public key). */
-const KEY_TEXT = /^[A-Za-z0-9_-]{43}$/;
-
-/** A collection key id: 16 bytes as lowercase hex (pinned to @retrospend/crypto by a server test). */
-const KEY_ID_HEX = /^[0-9a-f]{32}$/;
-
-export const enableWrapSchema = z
-	.object({
-		id: z.uuid().optional().meta({
-			description:
-				"A client-made id for the wrap; the server makes one when absent.",
-		}),
-		role: z.enum([
-			"ak-password",
-			"ak-recovery",
-			"private-key",
-			"collection-key",
-		]),
-		targetId: z
-			.string()
-			.regex(/^[A-Za-z0-9_-]{1,64}$/)
-			.meta({
-				description:
-					"What the wrap is bound to: your user id for ak-password, ak-recovery and private-key; for collection-key, the lowercase hex of the 16-byte key id (32 characters).",
-			}),
-		wrapped: z
-			.string()
-			.regex(/^[A-Za-z0-9_-]{1,512}$/)
-			.meta({
-				description: "The wrapped key, base64url. The server never opens it.",
-			}),
-	})
-	.refine(
-		(wrap) => wrap.role !== "collection-key" || KEY_ID_HEX.test(wrap.targetId),
-		{
-			path: ["targetId"],
-			message: "A collection key is named by the lowercase hex of its key id.",
-		},
-	)
-	.meta({ id: "EnableProtectionWrap" });
 
 export const enableProtectionSchema = z
 	.object({
@@ -90,9 +54,6 @@ export const enableProtectionResultSchema = protectionKeysStatusSchema
 export const protectionKeysSchema = protectionKeysStatusSchema
 	.extend({ kdf: preloginKdfSchema })
 	.meta({ id: "ProtectionKeys" });
-
-/** The wrap text of a 74-byte symmetric wrap; the server checks the bytes. */
-const WRAP_TEXT = /^[A-Za-z0-9_-]{1,512}$/;
 
 export const beginPasswordRotationSchema = z
 	.object({
