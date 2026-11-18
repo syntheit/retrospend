@@ -14,6 +14,8 @@ export {
 	MAX_NARROWED_CALLS,
 	type Narrow,
 	type NarrowValues,
+	nearPeriodEdge,
+	PERIOD_EDGE_MS,
 	type PlannedCall,
 	parseKey,
 	planCheck,

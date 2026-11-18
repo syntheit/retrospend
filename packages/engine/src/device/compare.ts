@@ -1,4 +1,5 @@
 import type { Money } from "@retrospend/domain/money-minor";
+import { startOfDayIn, startOfNextDayIn } from "@retrospend/domain/time-zone";
 import { BUDGET_FIGURE_IDS } from "../budget-figures";
 import { BUDGET_GATE_ENTITIES, positionReached } from "../budget-gate";
 import { INSIGHTS_FIGURE_IDS } from "../insights-figures";
@@ -249,7 +250,23 @@ export type KeyClass =
 	/** The device holds rows newer than the server read. */
 	| "device_ahead";
 
-export type SkipReason = "settings_differ" | "no_basis" | "no_device";
+export type SkipReason =
+	| "settings_differ"
+	| "no_basis"
+	| "no_device"
+	| "period_edge";
+
+/** How close to a day boundary a read may be: the server's figures read their own clock a moment after `basis.at`. */
+export const PERIOD_EDGE_MS = 60_000;
+
+/** Whether `at` is within PERIOD_EDGE_MS of midnight in `zone`, which covers every week, month and start-day boundary. */
+export function nearPeriodEdge(at: Date, zone: string): boolean {
+	const t = at.getTime();
+	return (
+		t - startOfDayIn(at, zone).getTime() < PERIOD_EDGE_MS ||
+		startOfNextDayIn(at, zone).getTime() - t < PERIOD_EDGE_MS
+	);
+}
 
 export interface CompareReport {
 	readonly screen: ScreenName;
@@ -371,6 +388,7 @@ async function readCalls(
 		const basis = server.basis as FigureBasis;
 		const at = new Date(basis.at);
 		if (Number.isNaN(at.getTime())) return "no_basis";
+		if (nearPeriodEdge(at, basis.timeZone)) return "period_edge";
 		const withVerdict = verdict !== null && isPlain(call);
 		const device = await deps.read({
 			ids: call.ids,

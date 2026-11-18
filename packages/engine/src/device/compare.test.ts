@@ -408,6 +408,53 @@ describe("compareScreen on Home", () => {
 		);
 	});
 
+	// The server's figures read their own clock a moment after basis.at, so a
+	// read within a minute of midnight in the basis zone is not compared.
+	it.each([
+		[
+			"UTC, 30 s before midnight",
+			"2026-11-30T23:59:30.000Z",
+			"UTC",
+			"period_edge",
+		],
+		[
+			"UTC, 30 s after midnight",
+			"2026-12-01T00:00:30.000Z",
+			"UTC",
+			"period_edge",
+		],
+		["UTC, 2 min before midnight", "2026-11-30T23:58:00.000Z", "UTC", null],
+		["UTC, 2 min after midnight", "2026-12-01T00:02:00.000Z", "UTC", null],
+		[
+			"Buenos Aires, 30 s before midnight",
+			"2026-12-01T02:59:30.000Z",
+			"America/Argentina/Buenos_Aires",
+			"period_edge",
+		],
+		[
+			"Buenos Aires, 30 s after midnight",
+			"2026-12-01T03:00:30.000Z",
+			"America/Argentina/Buenos_Aires",
+			"period_edge",
+		],
+		[
+			"Buenos Aires, UTC midnight is evening",
+			"2026-12-01T00:00:30.000Z",
+			"America/Argentina/Buenos_Aires",
+			null,
+		],
+	])("%s", async (_n, instant, zone, skipped) => {
+		const w = world({
+			basis: { ...BASIS, at: instant, timeZone: zone },
+			timeZone: zone,
+		});
+		const { report } = await compareScreen(w.deps, request("settings"));
+		expect(report.skipped).toBe(skipped);
+		expect(report.state).toBe(skipped ? "skipped" : "checked");
+		// Skipped before the device is read, and nothing is pulled for it.
+		if (skipped) expect(w.events).toEqual(["server"]);
+	});
+
 	it("reports the zone the client renders in against the stored one", async () => {
 		const { report } = await compareScreen(
 			world().deps,
