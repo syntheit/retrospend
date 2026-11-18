@@ -1,31 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { deviceMonthView } from "../budget-figures";
-import { budgetStatus } from "../budget-gate";
 import { readDeviceFigures } from "../registry";
 import {
 	createDeviceEngine as create,
 	type DeviceEngineOptions,
 	PULL_AFTER_MS,
 } from "./engine";
-import { expense, fakeDeviceApi } from "./fake-api";
+import { cursor, expense, fakeDeviceApi } from "./fake-api";
+import type { FigureBasis } from "./ports";
 
 // Lets a test act while the figures are being read; reads as the real one otherwise.
 vi.mock("../registry", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("../registry")>();
 	return { ...actual, readDeviceFigures: vi.fn(actual.readDeviceFigures) };
 });
-vi.mock("../budget-gate", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("../budget-gate")>();
-	return { ...actual, budgetStatus: vi.fn(actual.budgetStatus) };
-});
-vi.mock("../budget-figures", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("../budget-figures")>();
-	return { ...actual, deviceMonthView: vi.fn(actual.deviceMonthView) };
-});
 const actualRegistry =
 	await vi.importActual<typeof import("../registry")>("../registry");
-const actualGate =
-	await vi.importActual<typeof import("../budget-gate")>("../budget-gate");
 const readDuring = (act: () => Promise<unknown>) =>
 	vi.mocked(readDeviceFigures).mockImplementationOnce(async (...args) => {
 		await act();
@@ -170,92 +159,6 @@ describe("a fresh read", () => {
 	});
 });
 
-describe("the budget month", () => {
-	const dto = {
-		book: { id: "book", currency: "ARS" },
-		month: { key: 202610 },
-		today: "2026-10-15",
-		approximate: false,
-		incomplete: false,
-		verdict: { lead: { figureId: "budget.leftToSpend" } },
-	};
-	const ready = () => vi.mocked(budgetStatus);
-	const view = () => vi.mocked(deviceMonthView);
-	afterEach(() => ready().mockImplementation(actualGate.budgetStatus));
-
-	it("is the month view's book, month, day and verdict when asked for and the block is readable", async () => {
-		const { api } = fakeDeviceApi();
-		const engine = createDeviceEngine(api, "u1");
-		await engine.pull();
-		ready().mockReturnValue("ready");
-		view().mockResolvedValueOnce(dto as never);
-		const read = await engine.read([], { budget: true });
-		expect(read?.budget).toEqual({
-			bookId: "book",
-			currency: "ARS",
-			month: 202610,
-			today: "2026-10-15",
-			approximate: false,
-			incomplete: false,
-			verdict: dto.verdict,
-		});
-	});
-
-	it("is read at the engine's own clock", async () => {
-		const { api } = fakeDeviceApi();
-		const engine = createDeviceEngine(api, "u1", () => 42_000);
-		await engine.pull();
-		ready().mockReturnValue("ready");
-		view().mockResolvedValueOnce(dto as never);
-		await engine.read([], { budget: true });
-		const clock = view().mock.calls.at(-1)?.[2] as () => Date;
-		expect(clock().getTime()).toBe(42_000);
-	});
-
-	it("is not read unless asked for, nor while the block is not readable", async () => {
-		const { api } = fakeDeviceApi();
-		const engine = createDeviceEngine(api, "u1");
-		await engine.pull();
-		view().mockClear();
-		ready().mockReturnValue("ready");
-		expect((await engine.read([]))?.budget).toBeNull();
-		expect(view()).not.toHaveBeenCalled();
-		ready().mockReturnValue("stale");
-		expect((await engine.read([], { budget: true }))?.budget).toBeNull();
-		expect(view()).not.toHaveBeenCalled();
-	});
-
-	it("loses only the budget when the month view fails", async () => {
-		const { api } = fakeDeviceApi({ expenses: [page(ROWS)] });
-		const engine = createDeviceEngine(api, "u1");
-		await engine.pull();
-		ready().mockReturnValue("ready");
-		view().mockRejectedValueOnce(new Error("boom"));
-		const read = await engine.read(["glance.spent"], { budget: true });
-		expect(read?.budget).toBeNull();
-		expect(read?.readings.get("glance.spent")).toEqual(ARS(100_000));
-	});
-});
-
-describe("a budget verdict that differs", () => {
-	it("is kept in the last parity check and warned with ids and parts only", async () => {
-		const { api } = fakeDeviceApi();
-		const engine = createDeviceEngine(api, "u1");
-		await engine.pull();
-		engine.reportVerdict("budget.leftToSpend", ["state", "amount"], {
-			device: { lead: { amount: { minor: 4_999_900 } } },
-			server: { lead: { amount: { minor: 5_000_000 } } },
-		});
-		expect(engine.lastParity?.ids).toEqual(["budget.leftToSpend"]);
-		expect(engine.lastParity?.mismatches).toHaveLength(1);
-		expect(engine.lastParity?.generation).toBe(1);
-		const logged = warn.mock.calls.flat().join(" ");
-		expect(logged).toContain("budget.leftToSpend");
-		expect(logged).toContain("amount");
-		expect(logged).not.toMatch(/4999900|5000000/);
-	});
-});
-
 describe("a read while a pull begins", () => {
 	// Each reading below was made from rows a pull has since touched, so it is
 	// dropped and Home keeps the server's value.
@@ -337,79 +240,134 @@ describe("pulling", () => {
 	});
 });
 
-describe("checking against the server", () => {
-	const ids = ["glance.spent", "glance.spentLast"];
+describe("comparing against the server", () => {
+	const AT = "2026-10-15T15:00:00.000Z";
+	const basis = (cut: string): FigureBasis => ({
+		asOf: cursor("200"),
+		cut: cursor(cut),
+		at: AT,
+		ratesAsOf: null,
+		home: "ARS",
+		timeZone: "America/Argentina/Buenos_Aires",
+		startDay: 1,
+	});
+	const spent = { "glance.spent": ARS(100_000) };
+	// The server's rows hold e1 at stamp 120 and one row stamped past the read's cut.
+	const stamped = (t: string, items: unknown[] = []) => ({
+		items,
+		tombstones: [],
+		cursor: cursor(t),
+		hasMore: false,
+	});
 
-	it("records a match and says nothing", async () => {
+	it("checks the device against the server and logs the one line, ids and counts only", async () => {
 		const { api } = fakeDeviceApi({
-			expenses: [page(ROWS)],
-			figures: {
-				"glance.spent": ARS(100_000),
-				"glance.spentLast": ARS(250_000),
-			},
+			expenses: [stamped("120", ROWS)],
+			figures: spent,
+			basis: basis("150"),
 		});
 		const engine = createDeviceEngine(api, "u1");
-		await engine.pull();
-		await engine.verify(ids);
-		expect(engine.lastParity).toMatchObject({
-			ids,
-			mismatches: [],
+		const report = await engine.compare("settings");
+		expect(report).toMatchObject({
+			screen: "settings",
+			state: "checked",
+			skipped: null,
+			differs: [],
 			generation: 1,
-			clock: NOW.toISOString(),
 		});
-		expect(warn).not.toHaveBeenCalled();
-	});
-
-	// The server says Spent last month is 2,600.00, which the rows do not
-	// hold: one more pull cannot fix it, so the check warns with both readings
-	// and the generation after that pull (2).
-	it("pulls once more on a mismatch, then warns with both readings", async () => {
-		const { api, pulls } = fakeDeviceApi({
-			expenses: [page(ROWS)],
-			figures: {
-				"glance.spent": ARS(100_000),
-				"glance.spentLast": ARS(260_000),
-			},
-		});
-		const engine = createDeviceEngine(api, "u1");
-		await engine.pull();
-		await engine.verify(ids);
-		expect(pulls()).toBe(2);
-		expect(engine.lastParity).toMatchObject({
-			generation: 2,
-			mismatches: [
-				{
-					id: "glance.spentLast",
-					device: ARS(250_000),
-					server: ARS(260_000),
-				},
-			],
-		});
+		expect(report?.classes["glance.spent"]).toBe("match");
+		expect(engine.lastCompare).toBe(report);
 		expect(warn).toHaveBeenCalledTimes(1);
-		expect(warn.mock.calls[0]?.[0]).toContain("figures differ");
-		// The log names the figure and counts, and carries no amount from either side.
-		const logged = JSON.stringify(warn.mock.calls[0]);
-		expect(logged).toContain("glance.spentLast");
-		expect(logged).not.toMatch(/250000|260000|minor/);
-		expect(JSON.parse(warn.mock.calls[0]?.[1] ?? "")).toMatchObject({
-			ids: ["glance.spentLast"],
-			count: 1,
-			generation: 2,
+		const [what, line] = warn.mock.calls[0] ?? [];
+		expect(what).toBe("compare");
+		expect(JSON.parse(line ?? "")).toMatchObject({
+			screen: "settings",
+			state: "checked",
+			differs: [],
 		});
+		// The device's own reading is 100,000 minor: it is in no log.
+		expect(line).not.toMatch(/100000|minor/);
 	});
 
-	it("is quiet when the pull's rows catch up with what the server says", async () => {
-		// The server already has e3 at its first answer; the device's first
-		// pull did not (a write in between), the second does.
+	// Every cursor is at the read's position and nothing came in past its cut,
+	// so a figure that still differs is a real difference.
+	it("names a figure the rows cannot make the server's", async () => {
 		const { api } = fakeDeviceApi({
-			expenses: [page(ROWS.slice(0, 2)), page(ROWS, "c2")],
-			figures: { "glance.spentLast": ARS(250_000) },
+			expenses: [stamped("200", ROWS.slice(0, 1))],
+			categories: [stamped("200")],
+			figures: { "glance.spent": ARS(100_001) },
+			basis: basis("200"),
+		});
+		const report = await createDeviceEngine(api, "u1").compare("settings");
+		expect(report?.differs).toEqual(["glance.spent"]);
+	});
+
+	// The pull counts what arrives past the read's cut (150): rows stamped 170
+	// were not in the read. The first pull brings one in, so the check reads
+	// again after a second pull, which brings nothing, and it ends checked.
+	it("counts the rows its pull brings in past the read's cut and reads both sides again", async () => {
+		const { api, pulls, calls } = fakeDeviceApi({
+			expenses: [stamped("170", [ROWS[0]]), stamped("170")],
+			figures: spent,
+			basis: basis("150"),
+		});
+		const report = await createDeviceEngine(api, "u1").compare("settings");
+		expect(pulls()).toBe(2);
+		expect(calls.filter((c) => c.startsWith("figures"))).toHaveLength(2);
+		expect(report).toMatchObject({ state: "checked", skipped: null });
+	});
+
+	it("skips as moving when rows keep arriving past the cut", async () => {
+		const { api, pulls } = fakeDeviceApi({
+			expenses: [stamped("170", [ROWS[0]]), stamped("180", [ROWS[1]])],
+			figures: spent,
+			basis: basis("150"),
+		});
+		const report = await createDeviceEngine(api, "u1").compare("settings");
+		expect(pulls()).toBe(2);
+		expect(report).toMatchObject({ state: "skipped", skipped: "moving" });
+	});
+
+	it("skips with no basis (an old server or a read token), and never pulls", async () => {
+		const { api, pulls } = fakeDeviceApi({ figures: spent });
+		const report = await createDeviceEngine(api, "u1").compare("settings");
+		expect(report).toMatchObject({ state: "skipped", skipped: "no_basis" });
+		expect(pulls()).toBe(0);
+	});
+
+	it("hands a screen's verdict callback to the compare, once, and none for a screen without one", async () => {
+		const { api } = fakeDeviceApi({ figures: spent, basis: basis("150") });
+		const verdict = vi.fn(async () => null);
+		await createDeviceEngine(api, "u1").compare("budget", {}, verdict);
+		expect(verdict).toHaveBeenCalledTimes(1);
+		const none = vi.fn(async () => null);
+		await createDeviceEngine(api, "u1").compare("wealth", {}, none);
+		expect(none).not.toHaveBeenCalled();
+	});
+
+	it("never starts for an account with Advanced protection, now or later", async () => {
+		const refusal = Object.assign(new Error("Advanced protection is on"), {
+			code: "protected_account",
+		});
+		const { api, calls } = fakeDeviceApi({ figuresError: refusal });
+		const engine = createDeviceEngine(api, "u1");
+		expect(await engine.compare("settings")).toBeNull();
+		const asked = calls.length;
+		expect(await engine.compare("budget")).toBeNull();
+		// One refused request, then nothing: no pull, no more figures reads.
+		expect(asked).toBe(1);
+		expect(calls).toHaveLength(1);
+		expect(engine.lastCompare).toBeNull();
+	});
+
+	it("does nothing on an engine that was disposed", async () => {
+		const { api, calls } = fakeDeviceApi({
+			figures: spent,
+			basis: basis("150"),
 		});
 		const engine = createDeviceEngine(api, "u1");
-		await engine.pull();
-		await engine.verify(["glance.spentLast"]);
-		expect(engine.lastParity?.mismatches).toEqual([]);
-		expect(engine.generation).toBe(2);
-		expect(warn).not.toHaveBeenCalled();
+		await engine.dispose({ wipe: true });
+		expect(await engine.compare("settings")).toBeNull();
+		expect(calls).toEqual([]);
 	});
 });
