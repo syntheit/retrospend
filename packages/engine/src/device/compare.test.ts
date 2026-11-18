@@ -50,6 +50,7 @@ import {
 	SCREENS,
 	type ScreenName,
 	sameLines,
+	sameZone,
 	type VerdictView,
 	verdictParts,
 } from "./compare";
@@ -1192,6 +1193,16 @@ describe("what the pull brings in past a read", () => {
 		const { api } = fakeDeviceApi({ expensePages: [page(1, "107")] });
 		const report = await pullAll(new MemoryStore(), api, {});
 		expect(report.entities.expenses?.past).toBeUndefined();
+	});
+});
+
+describe("sameZone", () => {
+	it("is one zone under any spelling, and never for a name the runtime cannot read", () => {
+		expect(
+			sameZone("America/Argentina/Buenos_Aires", "America/Buenos_Aires"),
+		).toBe(true);
+		expect(sameZone("UTC", "America/Buenos_Aires")).toBe(false);
+		expect(sameZone("Mars/Olympus", "Mars/Olympus")).toBe(false);
 	});
 });
 
