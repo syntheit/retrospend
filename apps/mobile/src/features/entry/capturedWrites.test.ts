@@ -3,11 +3,14 @@ import { runBulk } from "@/features/activity/bulkWrite";
 import { expense, fakeDeviceApi } from "../../../test/deviceApi";
 import { runDelete } from "./deleteEntry";
 import { saveExpenseEdit } from "./edit";
+import { undoWrite } from "./send";
 
 // A create the phone captured is compared after the next pull, unless the
 // phone itself changed the row first: an edit, a delete or a bulk write then
 // makes the synced row differ from what the create booked, so the capture is
 // forgotten before the request goes (an answer that gets lost changes nothing).
+// Undoing the create removes the row, so its capture goes too: left to time
+// out it would be logged as expired, a false signal.
 
 const rates = {
 	asOf: "2026-10-14T09:05:00.000Z",
@@ -64,6 +67,7 @@ beforeEach(() => {
 	process.env.EXPO_PUBLIC_DEV_DEVICE_ENGINE = "1";
 });
 afterEach(() => {
+	jest.useRealTimers();
 	delete process.env.EXPO_PUBLIC_DEV_DEVICE_ENGINE;
 	jest.restoreAllMocks();
 });
@@ -122,5 +126,27 @@ describe("a create the phone then changes", () => {
 		await runBulk(client, { kind: "delete" }, ["e2"], "b2");
 		await engine.pull();
 		expect(engine.writeParity.counts).toEqual({});
+	});
+
+	it("is dropped by an undo of the create, so it is never counted as expired", async () => {
+		const { client, engine } = await captured();
+		await engine.pull();
+		// The row of e3 never reaches the phone: the create was undone first.
+		captureSent(
+			client,
+			{
+				clientId: "e3",
+				entity: "expenses",
+				payload: { amount: "100", currency: "USD", date: "2026-10-05" },
+			},
+			Date.now() - 1000,
+		);
+		Object.assign(client, {
+			expenses: { undo: async () => ({ undone: true }) },
+		});
+		await undoWrite(client, { entity: "expenses", token: "t" }, "e3");
+		jest.useFakeTimers({ now: Date.now() + 11 * 60_000 });
+		await engine.pull();
+		expect(engine.writeParity.counts).toEqual({ match: 2 });
 	});
 });

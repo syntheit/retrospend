@@ -1,5 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { captureSent } from "@/data/captureSent";
+import { captureSent, dropCaptured } from "@/data/captureSent";
 import type { Outbox, OutboxEntry } from "@/data/outbox";
 import type { Sender, SendResult } from "@/data/sync";
 
@@ -202,6 +202,8 @@ export async function undoWrite(
 	ref: UndoRef,
 	clientId: string,
 ): Promise<void> {
+	// An undone create has no row to compare, whether or not the answer arrives.
+	dropCaptured(api, clientId);
 	const timeout = new AbortController();
 	const timer = setTimeout(() => timeout.abort(), SEND_TIMEOUT_MS);
 	const options = {
