@@ -16,6 +16,8 @@ const mockMigrate = vi.hoisted(() => vi.fn());
 const mockDb = vi.hoisted(() => ({
 	user: { update: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn() },
 	account: { findFirst: vi.fn() },
+	passwordResetToken: { deleteMany: vi.fn() },
+	$transaction: vi.fn(),
 	verificationToken: { findFirst: vi.fn(), delete: vi.fn() },
 }));
 
@@ -63,6 +65,9 @@ async function callAndFlush<T>(fn: () => Promise<T>): Promise<T> {
 beforeEach(() => {
 	vi.useFakeTimers();
 	vi.clearAllMocks();
+	mockDb.$transaction.mockImplementation(async (run: (tx: unknown) => unknown) =>
+		run(mockDb),
+	);
 	mockEnv.SMTP_HOST = undefined;
 	mockSettings.enableEmail = true;
 });

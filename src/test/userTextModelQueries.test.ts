@@ -120,12 +120,6 @@ const ALLOWED: { file: string; column: string; reason: string }[] = [
 		reason:
 			"Token tables: identifier is an email address, not declared user text",
 	},
-	{
-		file: "src/server/services/protection-keys/password-writes.ts",
-		column: "identifier",
-		reason:
-			"Token tables: identifier is an email address, not declared user text",
-	},
 ];
 
 type Hit = { file: string; column: string };

@@ -13,6 +13,7 @@
 import { isProtected } from "@retrospend/api-contract/protection-state";
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
+import { deleteUserResetTokens } from "../auth/reset-tokens";
 
 /**
  * The account has Advanced protection keys, so the server cannot set its
@@ -63,18 +64,6 @@ export async function hasKeySet(
 	return row !== null;
 }
 
-/**
- * Removes every pending password reset link for an address, in the caller's
- * transaction. A link made earlier would write a hash around keys that were
- * just created or rotated.
- */
-export async function deleteResetTokens(
-	tx: Prisma.TransactionClient,
-	email: string,
-): Promise<void> {
-	await tx.passwordResetToken.deleteMany({ where: { identifier: email } });
-}
-
 export type SwapRefusal =
 	/** The account has no credential row. */
 	| "no_credential"
@@ -96,8 +85,8 @@ export type CredentialSwap =
  * hashing is slow; this locks the credential row, checks the key set rule
  * under the lock (`keys`), and replaces the hash only if it is still `checked`,
  * so a reset or another change that committed in between is a refusal, not an
- * overwrite. On success every other session ends, and the pending reset links
- * of `resetLinksFor` (an address) go too when given. Nothing is written on a
+ * overwrite. On success every other session ends, and the user's pending reset
+ * links go too when `dropResetLinks` is set (reset-tokens.ts). Nothing is written on a
  * refusal, so the caller throws its own error for it.
  */
 export async function swapCredentialHash(
@@ -108,7 +97,7 @@ export async function swapCredentialHash(
 		hashed: string;
 		keys: "absent" | "present";
 		keepSessionId: string;
-		resetLinksFor?: string;
+		dropResetLinks?: boolean;
 	},
 ): Promise<CredentialSwap> {
 	const { userId } = input;
@@ -126,8 +115,7 @@ export async function swapCredentialHash(
 	const ended = await tx.session.deleteMany({
 		where: { userId, id: { not: input.keepSessionId } },
 	});
-	if (input.resetLinksFor !== undefined)
-		await deleteResetTokens(tx, input.resetLinksFor);
+	if (input.dropResetLinks) await deleteUserResetTokens(tx, userId);
 	return { ok: true, signedOut: ended.count };
 }
 

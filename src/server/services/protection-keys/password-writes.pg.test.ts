@@ -25,6 +25,7 @@ import {
 	PasswordTriesExceededError,
 	spendPasswordTry,
 } from "~/server/services/account-security.service";
+import { issueResetToken } from "~/server/services/auth/reset-tokens";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
 import {
@@ -237,13 +238,16 @@ async function adminCaller() {
 	return { caller, adminId: admin.user.id };
 }
 
-async function resetToken(email: string) {
-	const token = randomBytes(16).toString("hex");
-	await adminDb.passwordResetToken.create({
-		data: { identifier: email, token, expires: new Date(Date.now() + 60_000) },
-	});
-	return token;
-}
+const resetToken = (userId: string, origin: "email" | "admin" = "email") =>
+	issueResetToken({ userId, origin });
+
+/** The raw token the reset email carried: the table holds only its hash. */
+const tokenInMail = (call = -1): string => {
+	const html = String((mail.sendEmail.mock.calls as unknown as string[][]).at(call)?.[2]);
+	return /token=([0-9a-f]+)/.exec(html)?.[1] ?? "";
+};
+const tokenRows = (userId: string) =>
+	adminDb.passwordResetToken.count({ where: { userId } });
 
 // The rollback test of the key tables needs them empty, and a worker's database
 // outlives the file: leave no key rows behind.
@@ -375,36 +379,22 @@ describe("swapCredentialHash", () => {
 		return { result, checked, hashed };
 	};
 
-	it("replaces the checked hash, ends the other sessions and the reset links of the address it is given", async () => {
+	it("replaces the checked hash, ends the other sessions and the reset links of the user when asked", async () => {
 		const a = await passwordUser();
 		const other = await sessionFor(a.id);
-		await adminDb.passwordResetToken.create({
-			data: {
-				identifier: a.email,
-				token: randomBytes(8).toString("hex"),
-				expires: new Date(Date.now() + 60_000),
-			},
-		});
-		const { result, hashed } = await swap(a, { resetLinksFor: a.email });
+		await resetToken(a.id);
+		const { result, hashed } = await swap(a, { dropResetLinks: true });
 		expect(result).toMatchObject({ ok: true });
 		expect(await storedHash(a.id)).toBe(hashed);
 		expect(await adminDb.session.count({ where: { token: other } })).toBe(0);
-		expect(
-			await adminDb.passwordResetToken.count({
-				where: { identifier: a.email },
-			}),
-		).toBe(0);
+		expect(await tokenRows(a.id)).toBe(0);
 	});
 
-	it("leaves reset links alone when no address is given", async () => {
+	it("leaves reset links alone when not asked", async () => {
 		const a = await passwordUser();
-		await resetToken(a.email);
+		await resetToken(a.id);
 		await swap(a);
-		expect(
-			await adminDb.passwordResetToken.count({
-				where: { identifier: a.email },
-			}),
-		).toBe(1);
+		expect(await tokenRows(a.id)).toBe(1);
 	});
 
 	it("refuses a hash that is no longer the one checked, and writes nothing", async () => {
@@ -460,7 +450,7 @@ describe("auth.resetPassword (email reset)", () => {
 	it("resets an account without keys, as before, and ends its sessions and the token", async () => {
 		const a = await passwordUser();
 		const session = await sessionFor(a.id);
-		const token = await resetToken(a.email);
+		const token = await resetToken(a.id);
 		await reset(token);
 		expect(
 			await verifyPassword({
@@ -469,15 +459,13 @@ describe("auth.resetPassword (email reset)", () => {
 			}),
 		).toBe(true);
 		expect(await adminDb.session.count({ where: { token: session } })).toBe(0);
-		expect(await adminDb.passwordResetToken.count({ where: { token } })).toBe(
-			0,
-		);
+		expect(await tokenRows(a.id)).toBe(0);
 	});
 
 	it("removes the keys of an account whose protection is OFF with the new hash, and records ids only", async () => {
 		const a = await passwordUser();
 		await giveKeys(a.id);
-		await reset(await resetToken(a.email));
+		await reset(await resetToken(a.id));
 		expect(await keyRows(a.id)).toEqual({ sets: 0, wraps: 0 });
 		expect(
 			await verifyPassword({
@@ -500,21 +488,19 @@ describe("auth.resetPassword (email reset)", () => {
 		const a = await passwordUser();
 		await giveKeys(a.id, "ON");
 		const session = await sessionFor(a.id);
-		const token = await resetToken(a.email);
+		const token = await resetToken(a.id);
 		const before = await storedHash(a.id);
 		const error = await reset(token).catch((e: unknown) => e);
 		expect(error).toBeInstanceOf(ProtectedPasswordError);
 		expect(await storedHash(a.id)).toBe(before);
 		expect(await keyRows(a.id)).toEqual({ sets: 1, wraps: 1 });
 		expect(await adminDb.session.count({ where: { token: session } })).toBe(1);
-		expect(await adminDb.passwordResetToken.count({ where: { token } })).toBe(
-			1,
-		);
+		expect(await tokenRows(a.id)).toBe(1);
 	});
 
 	it("waits behind a turn-on in flight, then removes the keys it created", async () => {
 		const a = await passwordUser();
-		const token = await resetToken(a.email);
+		const token = await resetToken(a.id);
 		const enable = await enableInFlight(a.id);
 		const { blocked, outcome } = await blockedBehindLock(reset(token));
 		expect(blocked).toBe(true);
@@ -533,11 +519,7 @@ describe("auth.requestPasswordReset", () => {
 		mail.sendEmail.mockClear(); // sign-up sent its own verification mail
 		expect(await request(a.email)).toEqual({ success: true });
 		expect(mail.sendEmail).toHaveBeenCalledTimes(1);
-		expect(
-			await adminDb.passwordResetToken.count({
-				where: { identifier: a.email },
-			}),
-		).toBe(1);
+		expect(await tokenRows(a.id)).toBe(1);
 	});
 
 	it("sends the normal link to an account with keys while protection is OFF, and the reset removes the keys", async () => {
@@ -546,11 +528,8 @@ describe("auth.requestPasswordReset", () => {
 		mail.sendEmail.mockClear();
 		expect(await request(a.email)).toEqual({ success: true });
 		expect(mail.sendEmail).toHaveBeenCalledTimes(1);
-		const token = await adminDb.passwordResetToken.findFirstOrThrow({
-			where: { identifier: a.email },
-		});
 		await publicCaller().resetPassword({
-			token: token.token,
+			token: tokenInMail(),
 			newPassword: NEW_PASSWORD,
 		});
 		expect(await keyRows(a.id)).toEqual({ sets: 0, wraps: 0 });
@@ -583,11 +562,7 @@ describe("auth.requestPasswordReset", () => {
 		expect(answer).toEqual({ success: true });
 		expect(await request(`nobody-${a.id}@pg-test.invalid`)).toEqual(answer);
 		expect(mail.sendEmail).not.toHaveBeenCalled();
-		expect(
-			await adminDb.passwordResetToken.count({
-				where: { identifier: a.email },
-			}),
-		).toBe(0);
+		expect(await tokenRows(a.id)).toBe(0);
 	});
 });
 
@@ -681,18 +656,14 @@ describe("admin.resetPassword and generatePasswordResetLink", () => {
 			const link = await admin.generatePasswordResetLink({ userId: who.id });
 			expect(link.resetUrl).toContain("/auth/reset-password?token=");
 			expect(
-				await adminDb.passwordResetToken.count({
-					where: { identifier: who.email },
-				}),
+				await tokenRows(who.id),
 			).toBe(1);
 		}
 		await expect(
 			admin.generatePasswordResetLink({ userId: keyedOn.id }),
 		).rejects.toBeInstanceOf(ProtectedPasswordError);
 		expect(
-			await adminDb.passwordResetToken.count({
-				where: { identifier: keyedOn.email },
-			}),
+			await tokenRows(keyedOn.id),
 		).toBe(0);
 	});
 });

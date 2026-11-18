@@ -24,6 +24,7 @@ import { getAiUsageSummary } from "~/server/services/ai-access.service";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
 import { deleteFile, getStorageSize } from "~/server/storage";
 import { logEventAsync } from "~/server/services/audit.service";
+import { issueResetToken } from "~/server/services/auth/reset-tokens";
 import { ProtectedPasswordError } from "~/server/services/protection-keys/password-writes";
 import { resetPasswordHash } from "~/server/services/account-security.service";
 import { IntegrationService } from "~/server/services/integration.service";
@@ -556,15 +557,10 @@ export const adminRouter = createTRPCRouter({
 			// Protection on: the reset step would refuse, so tell the admin now (OFF removes the keys).
 			if (isProtected(user.protectionState)) throw new ProtectedPasswordError();
 
-			const token = crypto.randomBytes(32).toString("hex");
-			const expires = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
-
-			await db.passwordResetToken.create({
-				data: {
-					identifier: user.email,
-					token,
-					expires,
-				},
+			// Origin "admin": it resets a password like any link but never opens recovery.
+			const token = await issueResetToken({
+				userId: user.id,
+				origin: "admin",
 			});
 
 			// Security-critical: log every admin-generated reset link

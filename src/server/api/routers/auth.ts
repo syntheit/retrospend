@@ -24,7 +24,14 @@ import {
 	resetPasswordHash,
 	storeEmailVerificationToken,
 } from "~/server/services/account-security.service";
+import {
+	allowResetRequest,
+	InvalidResetTokenError,
+	issueResetToken,
+	lookupResetToken,
+} from "~/server/services/auth/reset-tokens";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
+import { applyConfirmedEmail } from "~/server/services/profile.service";
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 
 const rateLimiter = new InMemoryRateLimiter();
@@ -115,32 +122,27 @@ export const authRouter = createTRPCRouter({
 
 			const { db } = ctx;
 
-			const user = await db.user.findUnique({
-				where: { email: input.email },
-			});
+			// Counted before the lookup, for every address, so the limit and the
+			// answer say nothing about whether an account exists. A refused
+			// request answers like any other and sends nothing.
+			const allowed = await allowResetRequest(input.email);
+			const user = allowed
+				? await db.user.findUnique({ where: { email: input.email } })
+				: null;
 
 			// OFF: a reset removes the keys and is allowed. Protection on: refused, so no link
-			// is sent. That and no account both run the dummy hash and answer alike.
+			// is sent. That, no account and a used-up address limit run the dummy hash and answer alike.
 			if (!user || isProtected(user.protectionState)) {
 				// Run dummy hash to mitigate timing attacks
 				await hashPassword(crypto.randomBytes(32).toString("hex"));
 				return { success: true }; // Generic success to prevent enumeration
 			}
 
-			const token = crypto.randomBytes(32).toString("hex");
-			const expires = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
-
-			// Invalidate any existing reset tokens for this user
-			await db.passwordResetToken.deleteMany({
-				where: { identifier: user.email },
-			});
-
-			await db.passwordResetToken.create({
-				data: {
-					identifier: user.email,
-					token,
-					expires,
-				},
+			// Earlier live links stay valid: a request from a stranger who knows
+			// the address must not cancel the person's own.
+			const token = await issueResetToken({
+				userId: user.id,
+				origin: "email",
 			});
 
 			const resetUrl = `${env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/reset-password?token=${token}`;
@@ -176,19 +178,12 @@ export const authRouter = createTRPCRouter({
 
 			const { db } = ctx;
 
-			const resetToken = await db.passwordResetToken.findFirst({
-				where: { token: input.token, expires: { gt: new Date() } },
-			});
-
-			if (!resetToken) {
-				throw new TRPCError({
-					code: "NOT_FOUND",
-					message: "Invalid or expired token",
-				});
-			}
+			// The token belongs to a user id, whatever the address is now.
+			const resetToken = await lookupResetToken(input.token);
+			if (!resetToken) throw new InvalidResetTokenError();
 
 			const user = await db.user.findUnique({
-				where: { email: resetToken.identifier },
+				where: { id: resetToken.userId },
 			});
 
 			if (!user) {
@@ -338,27 +333,7 @@ export const authRouter = createTRPCRouter({
 			const oldEmail = user.email;
 			const newEmail = user.pendingEmail;
 
-			// Swap the email and clear pending fields
-			await db.user.update({
-				where: { id: user.id },
-				data: {
-					email: newEmail,
-					emailVerified: true,
-					pendingEmail: null,
-					pendingEmailToken: null,
-					pendingEmailExpiresAt: null,
-				},
-			});
-
-			// Update the credential account's accountId (better-auth uses email as accountId)
-			await db.account.updateMany({
-				where: {
-					userId: user.id,
-					providerId: "credential",
-					accountId: oldEmail,
-				},
-				data: { accountId: newEmail },
-			});
+			await applyConfirmedEmail(db, user.id, oldEmail, newEmail);
 
 			// Clean up any old verification tokens
 			await db.verificationToken
