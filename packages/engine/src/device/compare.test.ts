@@ -178,6 +178,8 @@ interface World {
 		readonly { minor: number; currency: string }[] | null
 	>;
 	basis?: FigureBasis | null;
+	/** The basis of each server call, by call number from 0; the last repeats. */
+	bases?: FigureBasis[];
 	cursorT?: string;
 	ratesAsOf?: string | null;
 	home?: string;
@@ -211,7 +213,16 @@ function world(w: World = {}) {
 						id,
 						lines: (w.server ?? HOME_SERVER)[id] ?? null,
 					})),
-					...(w.basis === null ? {} : { basis: w.basis ?? BASIS }),
+					...(w.basis === null
+						? {}
+						: {
+								basis:
+									w.bases?.[
+										Math.min(serverQueries.length - 1, w.bases.length - 1)
+									] ??
+									w.basis ??
+									BASIS,
+							}),
 				} satisfies ServerFigures;
 			},
 		},
@@ -452,6 +463,21 @@ describe("compareScreen on Home", () => {
 			state: "skipped",
 			skipped: "no_device",
 		});
+	});
+
+	it("pulls from the lowest position the server's calls read at, which is the first", async () => {
+		const w = world({
+			bases: [100, 101, 102].map((t) => ({
+				...BASIS,
+				asOf: cursor(String(t)),
+			})),
+		});
+		await compareScreen(
+			w.deps,
+			request("insights", { values: { categoryId: ["c1", "c2"] } }),
+		);
+		expect(w.serverQueries).toHaveLength(3);
+		expect(w.pastArgs).toEqual([cursor("100")]);
 	});
 
 	it("reads the device at the server's instant, not its own clock", async () => {
