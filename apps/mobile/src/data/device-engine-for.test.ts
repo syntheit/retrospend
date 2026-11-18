@@ -1,5 +1,9 @@
+import { CreateCaptures } from "@retrospend/engine/device";
+import { cipherFake } from "../../test/cipherFake";
 import { expense, fakeDeviceApi } from "../../test/deviceApi";
+import { removeDir, tempDir } from "../../test/nodeSqlite";
 import { captureSent, createDeviceEngine, engineFor } from "./device-engine";
+import { sweepEngineDbs } from "./engine-db/sweep";
 
 describe("engineFor", () => {
 	it("keeps one engine per client and account", () => {
@@ -8,6 +12,40 @@ describe("engineFor", () => {
 		expect(engineFor(client, "u1")).toBe(mine);
 		expect(engineFor(client, "u2")).not.toBe(mine);
 		expect(engineFor(fakeDeviceApi().client, "u1")).not.toBe(mine);
+	});
+});
+
+describe("sign-out", () => {
+	it("takes no create from a send that ends after the sweep", async () => {
+		const dir = tempDir();
+		const add = jest.spyOn(CreateCaptures.prototype, "add");
+		try {
+			const phone = cipherFake(dir);
+			const { client } = fakeDeviceApi();
+			const engine = engineFor(
+				client,
+				"u1",
+				"https://money.example.test",
+				phone.deps,
+			);
+			await engine.pull();
+			await sweepEngineDbs(null, phone.deps);
+			expect(engine.disposed).toBe(true);
+			// A send that was in flight at sign-out ends after the sweep.
+			captureSent(
+				client,
+				{
+					clientId: "e1",
+					entity: "expenses",
+					payload: { amount: "1", currency: "ARS", date: "2026-10-05" },
+				},
+				Date.now(),
+			);
+			expect(add).toHaveReturnedWith(false);
+		} finally {
+			add.mockRestore();
+			removeDir(dir);
+		}
 	});
 });
 
