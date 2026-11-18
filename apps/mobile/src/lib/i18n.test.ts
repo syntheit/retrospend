@@ -88,6 +88,18 @@ describe("loadMessages", () => {
 		}
 	});
 
+	it("loads the protection namespace for every locale, translated", () => {
+		for (const locale of SUPPORTED_LOCALES) {
+			const messages = loadMessages(locale);
+			expect(typeof messages.protection.row.keysReady).toBe("string");
+			expect(typeof messages.protection.toast.keysSaved).toBe("string");
+			if (locale !== "en") {
+				expect(messages.protection.methods.person).not.toBe("Trusted person");
+			}
+		}
+		expect(loadMessages("en").protection.methods.person).toBe("Trusted person");
+	});
+
 	it("translates the tabs (es-AR is not an English copy)", () => {
 		expect(loadMessages("es-AR").mobile.tabs.home).toBe("Inicio");
 		expect(loadMessages("en").mobile.tabs.home).toBe("Home");

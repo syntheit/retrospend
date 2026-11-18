@@ -1,0 +1,88 @@
+{
+	"row": {
+		"title": "Protection avancée",
+		"off": "Désactivée",
+		"keysReady": "Clés prêtes",
+		"turnOn": "Activer",
+		"makeNewKey": "Créer une nouvelle clé",
+		"verifyEmailFirst": "Vérifie d’abord ton e-mail"
+	},
+	"enable": {
+		"what": {
+			"title": "Activer la protection avancée",
+			"body": "Tes dépenses, budgets et ton patrimoine sont scellés par une clé que seuls tes appareils détiennent.",
+			"continue": "Continuer",
+			"shared": "Les dépenses et projets partagés restent visibles pour le serveur et les personnes concernées.",
+			"backups": "Les montants des anciennes sauvegardes sont conservés 30 jours.",
+			"features": "Certaines fonctions sont désactivées.",
+			"seeWhich": "Voir lesquelles",
+			"unchanged": "Tes données, tes chiffres et ta connexion."
+		},
+		"newPassword": {
+			"title": "Choisis un nouveau mot de passe",
+			"body": "Ce mot de passe ouvre tes données. Nous ne pouvons pas le réinitialiser.",
+			"continue": "Continuer"
+		},
+		"methods": {
+			"title": "Ajoute un moyen de reprendre l’accès",
+			"body": "Commence par une clé de récupération.",
+			"continue": "Continuer"
+		},
+		"confirmYou": {
+			"title": "Confirme que c’est toi",
+			"body": "Saisis ton mot de passe.",
+			"continue": "Enregistrer les clés"
+		},
+		"notice": "Tes clés sont prêtes. Tes données sont scellées quand la protection avancée est activée."
+	},
+	"recoveryKey": {
+		"saveTitle": "Enregistre ta clé de récupération",
+		"saveBody": "Sans cette clé ni ton mot de passe, personne ne peut ouvrir tes données, nous non plus.",
+		"copy": "Copier",
+		"download": "Télécharger",
+		"print": "Imprimer",
+		"saveFiles": "Enregistrer dans Fichiers",
+		"saveDevice": "Enregistrer sur l’appareil",
+		"saved": "Je l’ai enregistrée",
+		"confirmTitle": "Confirme ta clé",
+		"confirmBody": "Saisis le groupe {first} et le groupe {second}.",
+		"mismatch": "Ne correspond pas",
+		"group": "Groupe {number}",
+		"label": "Clé de récupération",
+		"fileTitle": "Clé de récupération Retrospend"
+	},
+	"recover": {
+		"enterTitle": "Utilise ta clé de récupération",
+		"enterBody": "Saisis les 9 groupes ou colle la clé entière.",
+		"typo": "Vérifie la clé, elle semble contenir une erreur.",
+		"wrongKey": "Ce n’est pas la clé de récupération de ce compte.",
+		"unavailable": "Ce compte n’a pas de clé de récupération.",
+		"newPasswordTitle": "Choisis un nouveau mot de passe",
+		"newPasswordBody": "Ta clé de récupération a ouvert tes données. Choisis un nouveau mot de passe.",
+		"unlock": "Se connecter",
+		"apiKeysRemoved": "Tes clés d’API ont été supprimées."
+	},
+	"methods": {
+		"device": "Un autre appareil",
+		"person": "Personne de confiance",
+		"later": "Ajouter plus tard",
+		"reason": "Pas encore disponible",
+		"key": "Clé de récupération",
+		"keyBody": "Conservée sur papier ou dans un fichier",
+		"createKey": "Créer la clé",
+		"deviceBody": "Approuve-le depuis celui-ci",
+		"personBody": "Quelqu’un qui peut demander l’accès",
+		"done": "Terminé"
+	},
+	"errors": {
+		"wrongPassword": "Mot de passe incorrect",
+		"wrongCode": "Ce code n’a pas fonctionné",
+		"tooMany": "Trop de tentatives. Réessaie dans une minute.",
+		"notOffered": "La protection avancée n’est pas disponible ici.",
+		"failed": "Impossible de terminer. Réessaie.",
+		"checkFailed": "Impossible de vérifier tes clés."
+	},
+	"toast": {
+		"keysSaved": "Clés enregistrées"
+	}
+}

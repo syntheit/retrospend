@@ -1,0 +1,88 @@
+{
+	"row": {
+		"title": "Erweiterter Schutz",
+		"off": "Aus",
+		"keysReady": "Schlüssel bereit",
+		"turnOn": "Einschalten",
+		"makeNewKey": "Neuen Schlüssel erstellen",
+		"verifyEmailFirst": "Bestätige zuerst deine E-Mail-Adresse"
+	},
+	"enable": {
+		"what": {
+			"title": "Erweiterten Schutz einschalten",
+			"body": "Deine Ausgaben, Budgets und dein Vermögen werden mit einem Schlüssel versiegelt, den nur deine Geräte besitzen.",
+			"continue": "Weiter",
+			"shared": "Gemeinsame Ausgaben und Projekte bleiben für den Server und die Beteiligten sichtbar.",
+			"backups": "Beträge in älteren Backups bleiben 30 Tage erhalten.",
+			"features": "Einige Funktionen werden ausgeschaltet.",
+			"seeWhich": "Welche das sind",
+			"unchanged": "Deine Daten, Zahlen und die Anmeldung."
+		},
+		"newPassword": {
+			"title": "Neues Passwort festlegen",
+			"body": "Dieses Passwort öffnet deine Daten. Wir können es nicht zurücksetzen.",
+			"continue": "Weiter"
+		},
+		"methods": {
+			"title": "Weg zurück ins Konto hinzufügen",
+			"body": "Beginne mit einem Wiederherstellungsschlüssel.",
+			"continue": "Weiter"
+		},
+		"confirmYou": {
+			"title": "Bestätige, dass du es bist",
+			"body": "Gib dein Passwort ein.",
+			"continue": "Schlüssel speichern"
+		},
+		"notice": "Deine Schlüssel sind bereit. Deine Daten werden versiegelt, sobald der erweiterte Schutz eingeschaltet ist."
+	},
+	"recoveryKey": {
+		"saveTitle": "Wiederherstellungsschlüssel speichern",
+		"saveBody": "Ohne diesen Schlüssel oder dein Passwort kann niemand deine Daten öffnen, auch wir nicht.",
+		"copy": "Kopieren",
+		"download": "Herunterladen",
+		"print": "Drucken",
+		"saveFiles": "In Dateien sichern",
+		"saveDevice": "Auf dem Gerät sichern",
+		"saved": "Ich habe ihn gespeichert",
+		"confirmTitle": "Schlüssel bestätigen",
+		"confirmBody": "Gib Gruppe {first} und Gruppe {second} ein.",
+		"mismatch": "Stimmt nicht überein",
+		"group": "Gruppe {number}",
+		"label": "Wiederherstellungsschlüssel",
+		"fileTitle": "Retrospend-Wiederherstellungsschlüssel"
+	},
+	"recover": {
+		"enterTitle": "Wiederherstellungsschlüssel verwenden",
+		"enterBody": "Gib die 9 Gruppen ein oder füge den ganzen Schlüssel ein.",
+		"typo": "Prüfe den Schlüssel, er enthält wohl einen Tippfehler.",
+		"wrongKey": "Das ist nicht der Wiederherstellungsschlüssel dieses Kontos.",
+		"unavailable": "Dieses Konto hat keinen Wiederherstellungsschlüssel.",
+		"newPasswordTitle": "Neues Passwort festlegen",
+		"newPasswordBody": "Dein Wiederherstellungsschlüssel hat deine Daten geöffnet. Wähle ein neues Passwort.",
+		"unlock": "Anmelden",
+		"apiKeysRemoved": "Deine API-Schlüssel wurden entfernt."
+	},
+	"methods": {
+		"device": "Weiteres Gerät",
+		"person": "Vertrauensperson",
+		"later": "Später hinzufügen",
+		"reason": "Noch nicht verfügbar",
+		"key": "Wiederherstellungsschlüssel",
+		"keyBody": "Auf Papier oder in einer Datei gespeichert",
+		"createKey": "Schlüssel erstellen",
+		"deviceBody": "Von diesem Gerät aus genehmigen",
+		"personBody": "Jemand, der Zugriff anfragen kann",
+		"done": "Fertig"
+	},
+	"errors": {
+		"wrongPassword": "Falsches Passwort",
+		"wrongCode": "Dieser Code hat nicht funktioniert",
+		"tooMany": "Zu viele Versuche. Versuche es in einer Minute erneut.",
+		"notOffered": "Erweiterter Schutz ist hier nicht verfügbar.",
+		"failed": "Das hat nicht geklappt. Versuch es erneut.",
+		"checkFailed": "Deine Schlüssel konnten nicht geprüft werden."
+	},
+	"toast": {
+		"keysSaved": "Schlüssel gespeichert"
+	}
+}

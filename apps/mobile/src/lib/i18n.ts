@@ -8,6 +8,7 @@ import {
 	mergeMessageCatalogs,
 } from "@retrospend/i18n/catalog";
 import type enMobile from "@retrospend/i18n/messages/en/mobile.json";
+import type enProtection from "@retrospend/i18n/messages/en/protection.json";
 import type enPush from "@retrospend/i18n/messages/en/push.json";
 import type en from "@retrospend/i18n/messages/en.json";
 import { APP_LOCALES, type AppLocale } from "./locales";
@@ -23,6 +24,7 @@ const LOCALES = {
 		shared: require("@retrospend/i18n/messages/en.json"),
 		features: {
 			mobile: require("@retrospend/i18n/messages/en/mobile.json"),
+			protection: require("@retrospend/i18n/messages/en/protection.json"),
 			push: require("@retrospend/i18n/messages/en/push.json"),
 		},
 	}),
@@ -30,6 +32,7 @@ const LOCALES = {
 		shared: require("@retrospend/i18n/messages/es.json"),
 		features: {
 			mobile: require("@retrospend/i18n/messages/es/mobile.json"),
+			protection: require("@retrospend/i18n/messages/es/protection.json"),
 			push: require("@retrospend/i18n/messages/es/push.json"),
 		},
 	}),
@@ -37,6 +40,7 @@ const LOCALES = {
 		shared: require("@retrospend/i18n/messages/es-AR.json"),
 		features: {
 			mobile: require("@retrospend/i18n/messages/es-AR/mobile.json"),
+			protection: require("@retrospend/i18n/messages/es-AR/protection.json"),
 			push: require("@retrospend/i18n/messages/es-AR/push.json"),
 		},
 	}),
@@ -44,6 +48,7 @@ const LOCALES = {
 		shared: require("@retrospend/i18n/messages/ru.json"),
 		features: {
 			mobile: require("@retrospend/i18n/messages/ru/mobile.json"),
+			protection: require("@retrospend/i18n/messages/ru/protection.json"),
 			push: require("@retrospend/i18n/messages/ru/push.json"),
 		},
 	}),
@@ -51,6 +56,7 @@ const LOCALES = {
 		shared: require("@retrospend/i18n/messages/pt-BR.json"),
 		features: {
 			mobile: require("@retrospend/i18n/messages/pt-BR/mobile.json"),
+			protection: require("@retrospend/i18n/messages/pt-BR/protection.json"),
 			push: require("@retrospend/i18n/messages/pt-BR/push.json"),
 		},
 	}),
@@ -58,6 +64,7 @@ const LOCALES = {
 		shared: require("@retrospend/i18n/messages/fr.json"),
 		features: {
 			mobile: require("@retrospend/i18n/messages/fr/mobile.json"),
+			protection: require("@retrospend/i18n/messages/fr/protection.json"),
 			push: require("@retrospend/i18n/messages/fr/push.json"),
 		},
 	}),
@@ -65,6 +72,7 @@ const LOCALES = {
 		shared: require("@retrospend/i18n/messages/de.json"),
 		features: {
 			mobile: require("@retrospend/i18n/messages/de/mobile.json"),
+			protection: require("@retrospend/i18n/messages/de/protection.json"),
 			push: require("@retrospend/i18n/messages/de/push.json"),
 		},
 	}),
@@ -76,6 +84,7 @@ export const DEFAULT_LOCALE: AppLocale = "en";
 
 export type Messages = typeof en & {
 	mobile: typeof enMobile;
+	protection: typeof enProtection;
 	push: typeof enPush;
 };
 

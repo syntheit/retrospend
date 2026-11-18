@@ -1,0 +1,88 @@
+{
+	"row": {
+		"title": "Proteção avançada",
+		"off": "Desativada",
+		"keysReady": "Chaves prontas",
+		"turnOn": "Ativar",
+		"makeNewKey": "Criar nova chave",
+		"verifyEmailFirst": "Verifique seu e-mail primeiro"
+	},
+	"enable": {
+		"what": {
+			"title": "Ativar a proteção avançada",
+			"body": "Suas despesas, orçamentos e patrimônio são selados com uma chave que só seus dispositivos têm.",
+			"continue": "Continuar",
+			"shared": "Despesas e projetos compartilhados continuam visíveis para o servidor e para as pessoas neles.",
+			"backups": "Valores em backups antigos ficam por 30 dias.",
+			"features": "Alguns recursos são desativados.",
+			"seeWhich": "Ver quais",
+			"unchanged": "Seus dados, números e acesso à conta."
+		},
+		"newPassword": {
+			"title": "Defina uma nova senha",
+			"body": "Esta senha abre seus dados. Não conseguimos redefini-la.",
+			"continue": "Continuar"
+		},
+		"methods": {
+			"title": "Adicione uma forma de recuperar o acesso",
+			"body": "Comece com uma chave de recuperação.",
+			"continue": "Continuar"
+		},
+		"confirmYou": {
+			"title": "Confirme que é você",
+			"body": "Digite sua senha.",
+			"continue": "Salvar chaves"
+		},
+		"notice": "Suas chaves estão prontas. Seus dados são selados quando a proteção avançada for ativada."
+	},
+	"recoveryKey": {
+		"saveTitle": "Salve sua chave de recuperação",
+		"saveBody": "Sem esta chave ou sua senha, ninguém consegue abrir seus dados, nem nós.",
+		"copy": "Copiar",
+		"download": "Baixar",
+		"print": "Imprimir",
+		"saveFiles": "Salvar em Arquivos",
+		"saveDevice": "Salvar no dispositivo",
+		"saved": "Salvei",
+		"confirmTitle": "Confirme sua chave",
+		"confirmBody": "Digite o grupo {first} e o grupo {second}.",
+		"mismatch": "Não confere",
+		"group": "Grupo {number}",
+		"label": "Chave de recuperação",
+		"fileTitle": "Chave de recuperação do Retrospend"
+	},
+	"recover": {
+		"enterTitle": "Use sua chave de recuperação",
+		"enterBody": "Digite os 9 grupos ou cole a chave inteira.",
+		"typo": "Confira a chave, ela parece ter um erro.",
+		"wrongKey": "Essa não é a chave de recuperação desta conta.",
+		"unavailable": "Esta conta não tem chave de recuperação.",
+		"newPasswordTitle": "Defina uma nova senha",
+		"newPasswordBody": "Sua chave de recuperação abriu seus dados. Escolha uma nova senha.",
+		"unlock": "Entrar",
+		"apiKeysRemoved": "Suas chaves de API foram removidas."
+	},
+	"methods": {
+		"device": "Outro dispositivo",
+		"person": "Pessoa de confiança",
+		"later": "Adicionar depois",
+		"reason": "Ainda não disponível",
+		"key": "Chave de recuperação",
+		"keyBody": "Guardada no papel ou em um arquivo",
+		"createKey": "Criar chave",
+		"deviceBody": "Aprove a partir deste",
+		"personBody": "Alguém que pode pedir acesso",
+		"done": "Concluído"
+	},
+	"errors": {
+		"wrongPassword": "Senha incorreta",
+		"wrongCode": "Esse código não funcionou",
+		"tooMany": "Muitas tentativas. Tente de novo em um minuto.",
+		"notOffered": "A proteção avançada não está disponível aqui.",
+		"failed": "Não foi possível concluir. Tente de novo.",
+		"checkFailed": "Não foi possível verificar suas chaves."
+	},
+	"toast": {
+		"keysSaved": "Chaves salvas"
+	}
+}
