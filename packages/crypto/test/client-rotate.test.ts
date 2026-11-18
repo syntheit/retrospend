@@ -462,11 +462,19 @@ describe("classifyRefusal", () => {
 		expect(classifyRefusal(400, "wrong_password")).toBe("wrongPassword");
 		expect(classifyRefusal(409, "conflict")).toBe("conflict");
 		expect(classifyRefusal(501, "not_implemented")).toBe("notOffered");
+		expect(classifyRefusal(400, "wrong_recovery_key")).toBe("wrongRecoveryKey");
+		expect(classifyRefusal(404, "invalid_token")).toBe("tokenExpired");
+		expect(classifyRefusal(409, "recovery_unavailable")).toBe(
+			"recoveryUnavailable",
+		);
 		expect(classifyRefusal(500, undefined)).toBe("failed");
 		// A code without its status is not enough, and a status without its code
 		// is not a wrong password.
 		expect(classifyRefusal(500, "wrong_password")).toBe("failed");
 		expect(classifyRefusal(200, "conflict")).toBe("failed");
 		expect(classifyRefusal(400, "validation")).toBe("failed");
+		expect(classifyRefusal(500, "wrong_recovery_key")).toBe("failed");
+		expect(classifyRefusal(400, "invalid_token")).toBe("failed");
+		expect(classifyRefusal(404, "wrong_recovery_key")).toBe("failed");
 	});
 });

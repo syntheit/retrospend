@@ -24,7 +24,7 @@ import {
 	masterSubkeys,
 	type PublicRole,
 	parseRecoveryKey,
-	recoveryWrapKey,
+	recoverySubkeys,
 	type SymmetricRole,
 	unwrapKey,
 	wrapKeyWithNonce,
@@ -198,9 +198,12 @@ function runKeyTests(p: Primitives, check: Check): void {
 			v.recoveryKey,
 		);
 		check(
-			`recovery wrap key: ${v.name}`,
-			() => toHex(recoveryWrapKey(p, key)),
-			v.wrapKey,
+			`recovery subkeys: ${v.name}`,
+			() => {
+				const k = recoverySubkeys(p, key);
+				return `${toHex(k.wrapKey)}:${toHex(k.authKey)}`;
+			},
+			`${v.wrapKey}:${v.authKey}`,
 		);
 	}
 	for (const v of keyVectors.symmetricWraps) {

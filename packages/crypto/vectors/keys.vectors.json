@@ -41,31 +41,41 @@
 			"name": "all zero",
 			"recoveryKey": "0000000000000000000000000000000000000000000000000000000000000000",
 			"text": "000000-000000-000000-000000-000000-000000-000000-000000-00011C",
-			"wrapKey": "d06f1c8f05876630006b2d1966df62f150d96f6788711aac6707e49b72040e00"
+			"wrapKey": "d06f1c8f05876630006b2d1966df62f150d96f6788711aac6707e49b72040e00",
+			"authKey": "e2a036a41cd5605b5b094dd0f9b3c10fb1d46c6812c288e75b2201033f8ed97a",
+			"authKeyHash": "dbb5da6254be6253507b06f488d66434938cd1e70e02f48dd147159a9e91b585"
 		},
 		{
 			"name": "all ones",
 			"recoveryKey": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
 			"text": "ZZZZZZ-ZZZZZZ-ZZZZZZ-ZZZZZZ-ZZZZZZ-ZZZZZZ-ZZZZZZ-ZZZZZZ-ZZZHEQ",
-			"wrapKey": "22db316aa10c1df38b30515212548e99ee3a545b36d5b3750188a19693d44d85"
+			"wrapKey": "22db316aa10c1df38b30515212548e99ee3a545b36d5b3750188a19693d44d85",
+			"authKey": "39855fbcec65fa947ae6732e935eee9fe191dfee4adadd23c20a7793e23ac2ff",
+			"authKeyHash": "772ee8ff1ec5bae5fdd50cbc8455595a3f253bf14e4a2c660c19d88f042b86ba"
 		},
 		{
 			"name": "ascending",
 			"recoveryKey": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
 			"text": "000G40-R40M30-E20918-5GR38E-1W8124-GK2GAH-C5RR34-D1P70X-3RFH8K",
-			"wrapKey": "de0234361946d23b75c58f717d3c9fb87a6c1d22cfb66d9760d852b3148af128"
+			"wrapKey": "de0234361946d23b75c58f717d3c9fb87a6c1d22cfb66d9760d852b3148af128",
+			"authKey": "3cb8f1adeee6e95bbcb26edf6e9901d886865187b6c5e0e6bed600d971e4b09a",
+			"authKeyHash": "fbe48e9a39cee3382261a58ac6e95d27048026e6fd92aff9e061d4247fd2f5b2"
 		},
 		{
 			"name": "wrapping",
 			"recoveryKey": "e0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
 			"text": "W3GY5R-Z4WQKE-FT79XB-NYSVFE-XZRF3W-QKYKTZ-DXZRZ7-XFQZ7X-ZVZH7W",
-			"wrapKey": "2338a4e6728b7b29eadd682d60d7b8b24bdd66c646c56bcb222df03fde983a96"
+			"wrapKey": "2338a4e6728b7b29eadd682d60d7b8b24bdd66c646c56bcb222df03fde983a96",
+			"authKey": "c3f96204780132f1c9aec72dc1cff8a481bb77c0b57a4b5db115589f65c21ab7",
+			"authKeyHash": "2059f61056956d7e3577c72940be893d8a5deebd2a4fbb3350ad8311f04a29b3"
 		},
 		{
 			"name": "mixed",
 			"recoveryKey": "0123456789abcdeffedcba9876543210a5a5a5a5c3c3c3c3000000010000000f",
 			"text": "04HMAS-W9NF6Y-ZZPWQA-C7CN1J-22JTB9-D5RF1W-7GR000-002000-007H08",
-			"wrapKey": "ef521ac9b20615975afd27973137b403e9d6d4db89f3b2d19db2f58f52a38f57"
+			"wrapKey": "ef521ac9b20615975afd27973137b403e9d6d4db89f3b2d19db2f58f52a38f57",
+			"authKey": "9c2670cc0aa83f34c6d4e63e7cb8c9cdb219ffeaca9f13b2deba4e52c63b6ddb",
+			"authKeyHash": "177921e1de08250494c20bad5bf35e25872401e5986557f55e5fe7c1709a1ecd"
 		}
 	],
 	"symmetricWraps": [

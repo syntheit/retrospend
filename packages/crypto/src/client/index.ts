@@ -2,6 +2,14 @@
 // refuse a downgrade, change the password of a keyed account. Platform code
 // fills in the ports (flow.ts) and maps KeyFlowError to its own wording.
 export {
+	type EnableBody,
+	type EnableInput,
+	type EnableOptions,
+	type EnableWrap,
+	type PreparedEnable,
+	prepareEnable,
+} from "./enable";
+export {
 	asKeyFlowError,
 	classifyRefusal,
 	type FlowPorts,
@@ -14,6 +22,14 @@ export {
 	lookupKdf,
 	NEW_PASSWORD_PARAMS,
 } from "./flow";
+export {
+	type ConfirmGroups,
+	groupMatches,
+	pickConfirmGroups,
+	type RecoveryFileLabels,
+	randomBelow,
+	recoveryKeyFileText,
+} from "./recovery-key";
 export {
 	type BeginAnswer,
 	type CommitBody,

@@ -2,6 +2,7 @@
 // vectors/keys.vectors.json (made by scripts/gen-keys.mjs, which uses no
 // libsodium and none of keys.ts) run through runKnownAnswerTests and so also
 // on the phone (apps/mobile/test/crypto-vectors.test.ts).
+import { createHash } from "node:crypto";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
 	ARGON2_CEILING,
@@ -19,11 +20,14 @@ import {
 	generateRecoveryKey,
 	keyPairMatches,
 	masterSubkeys,
+	normalizeRecoveryText,
 	openRecord,
 	type Primitives,
 	type PublicRole,
 	parseRecoveryKey,
-	recoveryWrapKey,
+	RECOVERY_GROUPS,
+	recoveryGroups,
+	recoverySubkeys,
 	type SymmetricRole,
 	sealRecord,
 	toHex,
@@ -70,7 +74,7 @@ describe("known answers", () => {
 		const failures = runKnownAnswerTests(broken);
 		expect(failures).toContain(`master subkeys: ${vectors.masters[0]?.name}`);
 		expect(failures).toContain(
-			`recovery wrap key: ${vectors.recoveryKeys[0]?.name}`,
+			`recovery subkeys: ${vectors.recoveryKeys[0]?.name}`,
 		);
 	});
 
@@ -166,10 +170,10 @@ describe("master key and subkeys", () => {
 
 	it("keeps the recovery context apart from the master context", () => {
 		const k = bytes(32, 9);
-		expect(toHex(recoveryWrapKey(p, k))).not.toBe(
+		expect(toHex(recoverySubkeys(p, k).wrapKey)).not.toBe(
 			toHex(masterSubkeys(p, k).wrapKey),
 		);
-		expect(toHex(recoveryWrapKey(p, k))).not.toBe(
+		expect(toHex(recoverySubkeys(p, k).wrapKey)).not.toBe(
 			toHex(masterSubkeys(p, k).authKey),
 		);
 	});
@@ -376,6 +380,48 @@ describe("wraps to a public key", () => {
 	});
 });
 
+describe("recovery subkeys", () => {
+	it("match the known answers: wrap key, auth key and the auth key's SHA-256", () => {
+		for (const v of vectors.recoveryKeys) {
+			const k = recoverySubkeys(p, fromHex(v.recoveryKey));
+			expect(toHex(k.wrapKey), v.name).toBe(v.wrapKey);
+			expect(toHex(k.authKey), v.name).toBe(v.authKey);
+			// The server keeps only this digest; node:crypto is not our code.
+			expect(createHash("sha256").update(k.authKey).digest("hex"), v.name).toBe(
+				v.authKeyHash,
+			);
+		}
+	});
+
+	it("keeps the proof apart from the wrap key, its own hash and the key itself", () => {
+		for (const v of vectors.recoveryKeys) {
+			expect(v.authKey).not.toBe(v.wrapKey);
+			expect(v.authKey).not.toBe(v.authKeyHash);
+			expect(v.authKey).not.toBe(v.recoveryKey);
+		}
+	});
+
+	it("refuses anything but 32 bytes", () => {
+		expect(code(() => recoverySubkeys(p, bytes(31)))).toBe("invalid_input");
+		expect(code(() => recoverySubkeys(p, bytes(33)))).toBe("invalid_input");
+	});
+});
+
+describe("recovery groups and reading", () => {
+	it("are the nine groups of the text, from the vectors", () => {
+		expect(RECOVERY_GROUPS).toBe(9);
+		for (const v of vectors.recoveryKeys) {
+			expect(recoveryGroups(fromHex(v.recoveryKey)).join("-")).toBe(v.text);
+			expect(recoveryGroups(fromHex(v.recoveryKey))).toHaveLength(9);
+		}
+	});
+
+	it("normalizes case, spaces, hyphens and the Crockford look-alikes", () => {
+		expect(normalizeRecoveryText(" a1-OIl  b\n")).toBe("A1011B");
+		expect(code(() => normalizeRecoveryText("ab\u00e9"))).toBe("invalid_input");
+	});
+});
+
 describe("recovery key text", () => {
 	const random = () => {
 		const keys: Uint8Array[] = [
@@ -546,7 +592,7 @@ describe("the whole hierarchy", () => {
 			byPassword: wrapKey(p, pwKey, "ak-password", userId, ak),
 			byRecovery: wrapKey(
 				p,
-				recoveryWrapKey(p, recoveryKey),
+				recoverySubkeys(p, recoveryKey).wrapKey,
 				"ak-recovery",
 				userId,
 				ak,
@@ -575,7 +621,7 @@ describe("the whole hierarchy", () => {
 		);
 		const viaRecovery = unwrapKey(
 			p,
-			recoveryWrapKey(p, parseRecoveryKey(text)),
+			recoverySubkeys(p, parseRecoveryKey(text)).wrapKey,
 			"ak-recovery",
 			userId,
 			wraps.byRecovery,
