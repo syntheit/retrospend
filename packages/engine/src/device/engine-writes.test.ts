@@ -235,41 +235,55 @@ describe("comparing the creates a pull brings in", () => {
 		expect(captures.pending()).toEqual([]);
 	});
 
-	it("writes nothing to the live store while it compares", async () => {
-		const commit = vi.fn();
+	it("takes no create after the engine is disposed, as a send in flight at sign-out would hand one", async () => {
+		const { engine, captures } = setup([[booked("e1")]]);
+		await engine.pull();
+		await engine.dispose({ wipe: true });
+		expect(captures.add(sent())).toBe(false);
+		expect(captures.pending()).toEqual([]);
+	});
+
+	it("compares the others when one comparison throws", async () => {
+		vi.mocked(compareCreate).mockRejectedValueOnce(new Error("boom"));
+		const { engine, captures } = setup([[booked("e1"), booked("e2")]]);
+		await engine.pull();
+		captures.add(sent("e1"));
+		captures.add(sent("e2"));
+		await engine.pull();
+		expect(engine.writeParity.counts).toEqual({ refused: 1, match: 1 });
+		expect(engine.writeParity.recent).toEqual([
+			{ id: "e1", outcome: "refused" },
+			{ id: "e2", outcome: "match" },
+		]);
+		vi.mocked(compareCreate).mockImplementation(actualCompare);
+	});
+
+	it("compares nothing when the engine is disposed as its pull ends", async () => {
 		const captures = new CreateCaptures();
-		const { api } = fakeDeviceApi({
-			rates,
-			expenses: [page([booked("e1")])],
-		});
-		const engine = createDeviceEngine(api, "u1", Date.now, {
-			warn,
-			captures,
-			storage: async () => ({
-				loaded: { rows: {}, cursors: {}, complete: false },
-				persistence: {
-					commit,
-					beginPull: () => undefined,
-					finishPull: () => undefined,
-					abandonPull: () => undefined,
-					close: () => undefined,
-				},
-				dispose: async () => undefined,
-			}),
-		});
+		const { api } = fakeDeviceApi({ rates, expenses: [page([booked("e1")])] });
+		let engine: ReturnType<typeof createDeviceEngine> | undefined;
+		let disposing = false;
+		// The pull stamps its end time right after its last write, with no wait before the comparison: a dispose can only land there.
+		engine = createDeviceEngine(
+			api,
+			"u1",
+			() => {
+				if (disposing) void engine?.dispose({ wipe: true });
+				return Date.now();
+			},
+			{ warn, captures },
+		);
 		await engine.pull();
 		captures.add(sent());
-		let during: number[] = [];
-		vi.mocked(compareCreate).mockImplementationOnce(async (...args) => {
-			const before = commit.mock.calls.length;
-			const verdict = await actualCompare(...args);
-			during = [before, commit.mock.calls.length];
-			return verdict;
-		});
+		// The dispose clears the captures too; hold them so only the engine's own check is under test.
+		vi.spyOn(captures, "clear").mockImplementation(() => undefined);
+		vi.mocked(compareCreate).mockClear();
+		disposing = true;
 		await engine.pull();
-		expect(engine.writeParity.counts).toEqual({ match: 1 });
-		expect(during[0]).toBeGreaterThan(0);
-		expect(during[1]).toBe(during[0]);
+		expect(engine.disposed).toBe(true);
+		expect(engine.status).toBe("ready");
+		expect(compareCreate).not.toHaveBeenCalled();
+		expect(engine.writeParity.counts).toEqual({});
 	});
 
 	it("does nothing without captures", async () => {
