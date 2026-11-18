@@ -16,7 +16,7 @@ import { api } from "~/trpc/react";
 import { HomeCurrencyField, useHomeCurrency } from "./home-currency-field";
 import { InviteCodeField, useInviteCode } from "./invite-code-field";
 import { SignupFeatures } from "./signup-features";
-import { signupError } from "./signup-validation";
+import { SIGNUP_ERROR_VALUES, signupError } from "./signup-validation";
 
 function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 	const t = useTranslations("auth");
@@ -77,7 +77,7 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 			confirmPassword,
 		});
 		if (invalid) {
-			setError(t(invalid));
+			setError(t(invalid, SIGNUP_ERROR_VALUES));
 			setIsLoading(false);
 			return;
 		}

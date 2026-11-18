@@ -3,6 +3,7 @@ import {
 	PASSWORD_CHECKS,
 	PASSWORD_PATTERN,
 	passwordChecks,
+	passwordFirstIssue,
 	passwordMeetsRules,
 	passwordReady,
 } from "./password-rules";
@@ -53,26 +54,33 @@ describe("passwordChecks", () => {
 	});
 });
 
-// The server schema, the pattern in the OpenAPI document and the client
-// checks are the same rule: they may never disagree on a password.
-const VECTORS = [
-	"",
-	"Abcdef1",
-	"Abcdefg1",
-	"abcdefg1",
-	"ABCDEFG1",
-	"Abcdefgh",
-	"abc\nDEF1xyz",
-	"éééééééé1É",
-	"Battery staple 2",
-	`Aa1${"x".repeat(252)}`,
-	`Aa1${"x".repeat(253)}`,
+// The server schema, the pattern in the OpenAPI document and the client rule
+// are the same rule: they may never disagree on a password. Each vector's
+// answer is derived by hand from the rule (8 to 255 characters, and one line
+// holding a lowercase letter, an uppercase letter and a number).
+const VECTORS: [string, boolean, "min" | "max" | "complexity" | null][] = [
+	["", false, "min"],
+	["Abcdef1", false, "min"],
+	["Abcdefg1", true, null],
+	["abcdefg1", false, "complexity"],
+	["ABCDEFG1", false, "complexity"],
+	["Abcdefgh", false, "complexity"],
+	// The pattern reads one line: the number or the uppercase letter on the
+	// next line does not count, and neither client nor server accepts it.
+	["Abcdefg\n1", false, "complexity"],
+	["abcdefg\nA1", false, "complexity"],
+	["Abcdefg1\nxyz", true, null],
+	["éééééééé1É", false, "complexity"],
+	["Battery staple 2", true, null],
+	[`Aa1${"x".repeat(252)}`, true, null],
+	[`Aa1${"x".repeat(253)}`, false, "max"],
 ];
 
 describe("one rule everywhere", () => {
-	for (const value of VECTORS) {
+	for (const [value, meets, issue] of VECTORS) {
 		it(`agrees on ${JSON.stringify(value.slice(0, 24))} (${value.length})`, () => {
-			const meets = passwordMeetsRules(value);
+			expect(passwordMeetsRules(value)).toBe(meets);
+			expect(passwordFirstIssue(value)).toBe(issue);
 			expect(newPasswordSchema.safeParse(value).success).toBe(meets);
 			expect(
 				changePasswordSchema.safeParse({
@@ -80,13 +88,12 @@ describe("one rule everywhere", () => {
 					newPassword: value,
 				}).success,
 			).toBe(meets);
-			const { case: cases, number } = passwordChecks(value);
-			expect(PASSWORD_PATTERN.test(value)).toBe(cases && number);
 		});
 	}
 
 	it("keeps the pattern the OpenAPI document publishes", () => {
 		expect(PASSWORD_PATTERN.source).toBe("(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)");
+		expect(PASSWORD_PATTERN.flags).toBe("");
 	});
 });
 

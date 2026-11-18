@@ -1,6 +1,10 @@
 "use client";
 
-import { passwordChecks } from "@retrospend/api-contract";
+import {
+	PASSWORD_MAX_LENGTH,
+	PASSWORD_MIN_LENGTH,
+	passwordFirstIssue,
+} from "@retrospend/api-contract";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -55,13 +59,18 @@ function ResetPasswordInner() {
 		e.preventDefault();
 		if (!password || !confirmPassword) return;
 
-		const checks = passwordChecks(password);
-		if (!checks.length) {
-			setError(t("passwordMinLength"));
+		const issue = passwordFirstIssue(password);
+		if (issue === "min") {
+			setError(t("passwordMinLength", { min: PASSWORD_MIN_LENGTH }));
 			return;
 		}
 
-		if (!checks.case || !checks.number) {
+		if (issue === "max") {
+			setError(t("passwordMaxLength", { max: PASSWORD_MAX_LENGTH }));
+			return;
+		}
+
+		if (issue === "complexity") {
 			setError(t("passwordComplexity"));
 			return;
 		}
