@@ -38,13 +38,13 @@ const contract = {
 		.route({ method: "POST", path: "/sw", operationId: "sw" })
 		.meta({ scope: "write:expenses", event: "thing.created" })
 		.output(out),
-	// A publicWrite that names an event, which the conventions refuse; the event
-	// step must still append nothing for it.
 	// The same event on a route without publicWrite, as the control.
 	eventWrite: route
 		.route({ method: "POST", path: "/ew", operationId: "ew" })
 		.meta({ scope: "write:expenses", event: "thing.created" })
 		.output(out),
+	// A publicWrite that names an event, which the conventions refuse; the event
+	// step must still append nothing for it.
 	publicWriteWithEvent: route
 		.route({ method: "POST", path: "/pwe", operationId: "pwe" })
 		.meta({

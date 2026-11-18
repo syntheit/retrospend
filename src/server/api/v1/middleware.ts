@@ -102,12 +102,16 @@ const authenticate = os
 		)
 			throw problem("protected_account");
 
-		// A public write (a POST, in practice) acts the same with or without a
-		// session: no keyring is made, no zone is claimed, and idempotency, events
-		// and the token limit see no user. That holds for every public write, not
-		// only readsOnly and publicWrite ones, so a route that skips its meta still
-		// never writes, records or keeps an Idempotency-Key as a cookie's user. A
-		// public GET (server-info) reflects the caller, as its description says.
+		// A public write (a POST, in practice) runs with no user, whatever session
+		// came with it: no keyring is made, no zone is claimed, and the handler,
+		// idempotency, events and the token limit see no user. That holds for every
+		// public write, not only readsOnly and publicWrite ones, so a route that
+		// skips its meta still never writes, records or keeps an Idempotency-Key as
+		// a cookie's user. The session is still looked up above (resolvePrincipal
+		// may refresh its expiry), and the CSRF check still uses the cookie, so a
+		// cross-site POST that carries a web cookie gets 403 while the same POST
+		// without one runs. A public GET (server-info) reflects the caller, as its
+		// description says.
 		const ignoresSession = scope === "public" && isWriteMethod(method);
 		let user: V1User | null = null;
 		if (principal && !ignoresSession) {

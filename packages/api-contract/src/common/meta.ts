@@ -47,16 +47,19 @@ export function publicWriteProblem(
  *   idempotency store keeps no copy of it.
  * - `readsOnly`: a POST that writes nothing (the body carries what a query
  *   string should not, such as an email address). It needs no event and no
- *   Idempotency-Key, may be public, and ignores any session sent with it. On
+ *   Idempotency-Key, may be public, and runs with no user whatever session is sent. On
  *   a signed-in scope it still reads the session but needs no Idempotency-Key
  *   (the first step of a password change: it spends a try, stores nothing).
  * - `publicWrite`: a public POST that writes and is proved by a secret in its
  *   own body instead of a session: `resetToken` (a single-use reset token) or
  *   `resetRequest` (a request with no token yet, answered alike for every
  *   address). It has no event and needs no Idempotency-Key (the token is
- *   single use), and the server drops any session sent with it, so nothing is
- *   written, recorded or kept as the cookie's user. Only a public POST may
- *   carry it (publicWriteProblem); any other public write is refused.
+ *   single use), and the handler runs with no user whatever session was sent,
+ *   so nothing is written, recorded or kept as the cookie's user. The server
+ *   still looks the session up (it may refresh its expiry) and the CSRF check
+ *   still applies to a web cookie, so a cross-site POST with a cookie is
+ *   refused. Only a public POST may carry it (publicWriteProblem); any other
+ *   public write is refused.
  * - `snapshot`: on a `sync` route, the body is a whole table as of one read,
  *   not a cursor delta, so the route never answers 410 sync_reset_required.
  */

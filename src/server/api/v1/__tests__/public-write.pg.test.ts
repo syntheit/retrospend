@@ -207,6 +207,26 @@ describe("a public write with another user's session", () => {
 	});
 });
 
+describe("a cross-site public write", () => {
+	const crossSite = { "sec-fetch-site": "cross-site" };
+
+	it("is refused when it carries a web cookie, and runs as no user without one", async () => {
+		const victim = await createTestUser();
+		const cookie = await webCookieFor(victim.user.id);
+		await expectProblem(
+			await send("/reset-token", { headers: { ...cookie, ...crossSite } }),
+			403,
+			"forbidden",
+		);
+		expect(seen.ran).toEqual([]);
+
+		const res = await send("/reset-token", { headers: crossSite });
+		expect(res.status).toBe(200);
+		expect(await res.json()).toEqual({ user: null });
+		expect(seen.ran).toEqual(["resetToken"]);
+	});
+});
+
 describe("the Idempotency-Key", () => {
 	it("is not needed by a publicWrite route, with or without a session", async () => {
 		const user = await createTestUser();
