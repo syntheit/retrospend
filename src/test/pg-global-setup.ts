@@ -45,6 +45,7 @@ import {
 	MAX_WORKERS,
 	migratorRolesOfRun,
 	RunLock,
+	removeRun,
 	runNames,
 	sweepDeadRuns,
 	unlockRun,
@@ -210,26 +211,16 @@ async function createRunDatabase(project: TestProject) {
 		}
 	};
 
-	// Only names this run created get dropped: with a 4-hex run id another run
-	// can draw the same names, and a failed CREATE must not drop its databases.
-	const created: string[] = [];
-	const create = async (client: Client, name: string, sql: string) => {
-		await client.query(sql);
-		created.push(name);
-	};
+	// The run's lock is held, so every database of the stem is this run's. The
+	// teardown removes them with their migration roles, the way a sweep removes a
+	// dead run: a role a failed test left behind has no database to be found by
+	// once these are gone.
 	const dropRunDatabases = async () => {
-		await withAdmin(async (client) => {
-			// Workers first, then the template; each on its own so one failure
-			// doesn't leak the rest. FORCE closes pool connections the workers
-			// may still hold.
-			for (const name of [...created].reverse()) {
-				await client
-					.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`)
-					.catch((error: unknown) =>
-						console.error(`could not drop ${name}:`, error),
-					);
-			}
-		});
+		await withAdmin((client) =>
+			removeRun(client, maintenanceUrl(baseUrl), stem),
+		).catch((error: unknown) =>
+			console.error(`could not remove test run ${stem}:`, error),
+		);
 		// A lost lock means a sweep may have dropped what this run used while it
 		// ran: the run fails (global teardown errors fail a vitest run).
 		const held = await lock.assertHeld(stem).then(
@@ -277,20 +268,11 @@ async function createRunDatabase(project: TestProject) {
 		await assertLock();
 		await withAdmin(async (client) => {
 			await createMarkedTemplate(client, stem);
-			created.push(names.template);
-			await create(client, names.legacy, `CREATE DATABASE "${names.legacy}"`);
-			await create(client, names.old, `CREATE DATABASE "${names.old}"`);
-			await create(client, names.scratch, `CREATE DATABASE "${names.scratch}"`);
-			await create(
-				client,
-				names.scratch2,
-				`CREATE DATABASE "${names.scratch2}"`,
-			);
-			await create(
-				client,
-				names.scratch3,
-				`CREATE DATABASE "${names.scratch3}"`,
-			);
+			await client.query(`CREATE DATABASE "${names.legacy}"`);
+			await client.query(`CREATE DATABASE "${names.old}"`);
+			await client.query(`CREATE DATABASE "${names.scratch}"`);
+			await client.query(`CREATE DATABASE "${names.scratch2}"`);
+			await client.query(`CREATE DATABASE "${names.scratch3}"`);
 		});
 		// The template takes the path of a new install: the bootstrap, then
 		// every migration as retrospend_owner with only the CREATE on the
@@ -333,9 +315,7 @@ async function createRunDatabase(project: TestProject) {
 			for (const name of names.workers) {
 				for (let attempt = 1; ; attempt++) {
 					try {
-						await create(
-							client,
-							name,
+						await client.query(
 							`CREATE DATABASE "${name}" TEMPLATE "${names.template}"`,
 						);
 						break;

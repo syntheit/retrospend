@@ -18,6 +18,7 @@ import {
 	migratorRolesByLiveness,
 	migratorRolesInUse,
 	RunLock,
+	removeRun,
 	runNames,
 	sweepDeadRuns,
 	tryLockRun,
@@ -249,6 +250,24 @@ describe("RunLock", () => {
 		await expect(lock.assertHeld(fixtureStem())).rejects.toThrow(
 			/no longer held/,
 		);
+	});
+});
+
+describe("removeRun", () => {
+	it("removes the migration role of a run that has no database left to find it by", async () => {
+		const stem = fixtureStem();
+		const names = runNames(stem, 1);
+		const roles = [names.scratch, names.workers[0] as string].map(
+			migratorRoleName,
+		);
+		for (const role of roles) {
+			await admin.query(`CREATE ROLE "${role}" NOLOGIN`);
+		}
+		const session = await liveSession(stem);
+
+		await removeRun(session, maintenanceUrl, stem);
+
+		for (const role of roles) expect(await roleExists(role)).toBe(false);
 	});
 });
 

@@ -294,12 +294,14 @@ function databaseUrl(maintenanceUrl: string, name: string): string {
 }
 
 /**
- * Removes one dead run whose lock this session holds: every database but the
- * template, then its migration roles (from inside the template, where the
- * objects they own still are, with the removal a start does, window.mjs), then
- * the template.
+ * Removes one run whose lock this session holds, dead or finished: every
+ * database but the template, then its migration roles (from inside the
+ * template, where the objects they own still are, with the removal a start
+ * does, window.mjs), then the template. The roles go even when no database of
+ * the run is left to find it by: a role a failed test left behind is removed
+ * by the run's own teardown, or nobody could name it again.
  */
-async function removeRun(
+export async function removeRun(
 	admin: Client,
 	maintenanceUrl: string,
 	stem: string,
@@ -316,7 +318,14 @@ async function removeRun(
 		[migratorRolesOfRun(stem)],
 	);
 	if (rows.length > 0) {
-		const url = databaseUrl(maintenanceUrl, template);
+		// The template is where the roles' objects are; without it they own
+		// nothing a database could still hold, and the maintenance database will do.
+		const { rowCount } = await admin.query(
+			"SELECT 1 FROM pg_catalog.pg_database WHERE datname = $1",
+			[template],
+		);
+		const url =
+			rowCount === 1 ? databaseUrl(maintenanceUrl, template) : maintenanceUrl;
 		const inTemplate = new Client({ connectionString: url });
 		await inTemplate.connect();
 		try {
