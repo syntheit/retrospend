@@ -15,7 +15,7 @@ import {
 	unwrapKey,
 	wrapKey,
 } from "../keys";
-import { KEY_BYTES, type Primitives } from "../primitives";
+import type { Primitives } from "../primitives";
 import { signInSecret } from "../sign-in-secret";
 import {
 	allowedParams,
@@ -69,10 +69,7 @@ export function makeNewRecoveryKey(
 ): PreparedNewKey {
 	const bin = secretBin(p);
 	try {
-		if (
-			!Number.isInteger(input.baseVersion) ||
-			input.accountKey.length !== KEY_BYTES
-		)
+		if (!Number.isInteger(input.baseVersion))
 			throw new KeyFlowError("malformed");
 		const recoveryKey = bin.keep(generateRecoveryKey(p));
 		const recovery = recoverySubkeys(p, recoveryKey);

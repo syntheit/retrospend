@@ -16,7 +16,7 @@ import {
 	unwrapKey,
 	wrapKey,
 } from "../keys";
-import { type Argon2Params, KEY_BYTES, SALT_BYTES, wipe } from "../primitives";
+import { type Argon2Params, SALT_BYTES, wipe } from "../primitives";
 import { signInSecret } from "../sign-in-secret";
 import {
 	allowedParams,
@@ -140,7 +140,7 @@ export async function recoverAccount(
 		const recoveryWrap = fromBase64Url(begun.recoveryWrap);
 		const privateKeyWrap = fromBase64Url(begun.privateKeyWrap);
 		const publicKey = fromBase64Url(begun.publicKey);
-		if (!recoveryWrap || !privateKeyWrap || publicKey?.length !== KEY_BYTES)
+		if (!recoveryWrap || !privateKeyWrap || !publicKey)
 			throw new KeyFlowError("malformed");
 
 		// The proof passed, so a wrap that does not open (unwrapKey throws, and
