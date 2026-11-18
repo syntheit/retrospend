@@ -1,6 +1,14 @@
 import { randomBytes } from "node:crypto";
 import type { Client } from "pg";
-import { afterEach, beforeEach, describe, expect, inject, it } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	inject,
+	it,
+	vi,
+} from "vitest";
 import { migratorRoleName } from "../../scripts/db-owner/index.mjs";
 import { connect } from "./db-owner/helpers";
 import {
@@ -23,6 +31,10 @@ const quiet = { log: () => undefined, marker: MARKER };
 
 let admin: Client;
 const holders: Client[] = [];
+
+// Creating and dropping databases takes seconds on a busy cluster.
+const SLOW = 60_000;
+vi.setConfig({ testTimeout: SLOW, hookTimeout: SLOW });
 
 beforeEach(async () => {
 	admin = await connect(maintenanceUrl);
