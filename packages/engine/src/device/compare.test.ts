@@ -10,9 +10,16 @@
  * The server read is at 2026-11-15T12:00Z unless a test says otherwise, so
  * Spent this month is e1 = EUR 90.00 and Spent last month is 0.
  */
+
+import { WEALTH_FIGURE_IDS } from "@retrospend/domain/accounts/account-figures";
 import { FigureNarrowingError } from "@retrospend/domain/figures/narrowing";
 import { describe, expect, it } from "vitest";
-import { positionReached, SYNC_RESET, syncedBook } from "../budget-gate";
+import {
+	pastPosition,
+	positionReached,
+	SYNC_RESET,
+	syncedBook,
+} from "../budget-gate";
 import { fixtureRow } from "../fixtures";
 import { MemoryStore } from "../memory-store";
 import {
@@ -32,10 +39,8 @@ import {
 } from "../registry";
 import { pullAll } from "../sync-pull";
 import {
-	type CompareDeps,
-	type CompareRequest,
 	compareLine,
-	compareScreen,
+	edgeOf,
 	keyOf,
 	MAX_IDS_PER_CALL,
 	MAX_NARROWED_CALLS,
@@ -48,7 +53,13 @@ import {
 	type VerdictView,
 	verdictParts,
 } from "./compare";
-import { fakeDeviceApi } from "./fake-api";
+import {
+	type CompareDeps,
+	type CompareRequest,
+	compareScreen,
+	type PulledPast,
+} from "./compare-run";
+import { fakeDeviceApi, expense as wireExpense } from "./fake-api";
 import type { FigureBasis, FigureNarrowing, ServerFigures } from "./ports";
 
 const at = (iso: string) => new Date(iso);
@@ -173,8 +184,11 @@ interface World {
 	timeZone?: string;
 	startDay?: number;
 	deviceNow?: string;
-	/** Runs in the pull; may move the store on. */
-	onPull?: () => void;
+	bookZone?: string | null;
+	/** What each pull brought in past the read, by pull number; the last repeats. Default: nothing. */
+	pulled?: (PulledPast | null)[];
+	/** Runs in each pull, with its number from 1: another user's write moves the position, a catch-up moves the store. */
+	onPull?: (n: number) => void;
 	device?: "none";
 	verdict?: VerdictView;
 }
@@ -184,8 +198,9 @@ function world(w: World = {}) {
 	const events: string[] = [];
 	const serverQueries: ({ ids: string } & FigureNarrowing)[] = [];
 	const deviceQueries: { narrowing: FigureNarrowing; at: Date }[] = [];
+	const pastArgs: string[] = [];
 	let cursorT = w.cursorT ?? "100";
-	let generation = 0;
+	let pulls = 0;
 	const deps: CompareDeps = {
 		figures: {
 			read: async (q) => {
@@ -216,10 +231,13 @@ function world(w: World = {}) {
 				verdict: q.verdict ? (w.verdict ?? null) : null,
 			};
 		},
-		pull: async () => {
+		pull: async (past) => {
 			events.push("pull");
-			w.onPull?.();
-			generation += 1;
+			pastArgs.push(past);
+			pulls += 1;
+			w.onPull?.(pulls);
+			const queue = w.pulled ?? [{}];
+			return queue[Math.min(pulls, queue.length) - 1] ?? null;
 		},
 		cursors: () =>
 			Object.fromEntries(
@@ -233,7 +251,8 @@ function world(w: World = {}) {
 			timeZone: w.timeZone ?? "UTC",
 			startDay: w.startDay ?? 1,
 		}),
-		generation: () => generation,
+		bookZone: () => w.bookZone ?? null,
+		generation: () => pulls,
 		now: () => at(w.deviceNow ?? NOON),
 	};
 	return {
@@ -241,6 +260,7 @@ function world(w: World = {}) {
 		events,
 		serverQueries,
 		deviceQueries,
+		pastArgs,
 		setStore: (s: MemoryStore) => {
 			store = s;
 		},
@@ -256,7 +276,7 @@ const request = (
 ): CompareRequest => ({ screen, browserZone: "UTC", ...extra });
 
 describe("compareScreen on Home", () => {
-	it("holds a ledger that agrees as a match, with no pull", async () => {
+	it("reads the server, then pulls to its position, then reads the device", async () => {
 		const w = world();
 		const { report } = await compareScreen(w.deps, request("home"));
 		expect(report).toMatchObject({
@@ -267,30 +287,96 @@ describe("compareScreen on Home", () => {
 			differs: [],
 			behind: 0,
 			ratesMoved: 0,
-			deviceAhead: 0,
 			zone: "same",
-			generation: 0,
+			generation: 1,
 		});
 		expect(Object.values(report.classes)).toEqual(Array(6).fill("match"));
-		expect(w.events).toEqual(["server", "device"]);
+		expect(w.events).toEqual(["server", "pull", "device"]);
+		expect(w.pastArgs).toEqual([BASIS.asOf]);
 	});
 
 	// ARS 154,500 at official 1,050 is EUR 132.43: a server that valued the
 	// rate type the device does not read gives another number.
-	it("names a figure that differs when the cursors and rates agree", async () => {
+	it("names a figure that differs when the pull brought in nothing past the read", async () => {
 		const w = world({
 			server: { ...HOME_SERVER, "glance.spent": eur(13_243) },
 		});
 		const { report } = await compareScreen(w.deps, request("home"));
 		expect(report.differs).toEqual(["glance.spent"]);
 		expect(report.classes["glance.spent"]).toBe("differs");
-		expect(report).toMatchObject({ behind: 0, ratesMoved: 0, deviceAhead: 0 });
-		// A difference pulls once, then reads the server, then the device.
-		expect(w.events).toEqual(["server", "device", "pull", "server", "device"]);
+		expect(report).toMatchObject({ behind: 0, ratesMoved: 0 });
+		// One round: the pull has already brought the device up, so no second read.
+		expect(w.events).toEqual(["server", "pull", "device"]);
 	});
 
-	// An unavailable figure (a rate is missing) is not an amount: null on both
-	// sides agree, null on one side only is a difference, never zero.
+	// Production order: the server is read, then another user writes (the
+	// cluster position moves past the read), then the device pulls. The
+	// device's cursors are past the read, none of the rows are this user's,
+	// and a real difference is a difference, not lag.
+	it("keeps a real difference a difference when another user's write moved the position", async () => {
+		const w = world({
+			server: { ...HOME_SERVER, "glance.spent": eur(13_243) },
+			onPull: () => w.setCursor("107"),
+			pulled: [{ expenses: 0, categories: 0 }],
+		});
+		const { report } = await compareScreen(w.deps, request("home"));
+		expect(report.classes["glance.spent"]).toBe("differs");
+		expect(report).toMatchObject({ differs: ["glance.spent"], behind: 0 });
+	});
+
+	// A pull that did not reach the read (a transaction open at its cut) is
+	// real lag and says so.
+	it("calls a pull that stopped below the read behind", async () => {
+		const w = world({
+			store: ledger({ e1: false }),
+			cursorT: "90",
+		});
+		const { report } = await compareScreen(w.deps, request("home"));
+		expect(report).toMatchObject({ behind: 1, differs: [] });
+		expect(report.classes["glance.spent"]).toBe("behind");
+	});
+
+	it("reads both sides again when the pull brought in the user's rows past the read, and matches once the device holds them", async () => {
+		const w = world({
+			store: ledger({ e1: false }),
+			pulled: [{ expenses: 1 }, {}],
+			onPull: (n) => {
+				if (n === 1) w.setStore(ledger());
+			},
+		});
+		const { report } = await compareScreen(w.deps, request("home"));
+		expect(report).toMatchObject({ state: "checked", differs: [], behind: 0 });
+		expect(report.classes["glance.spent"]).toBe("match");
+		expect(w.events).toEqual(["server", "pull", "server", "pull", "device"]);
+		// The second read of the server moves the position the pull measures from.
+		expect(w.pastArgs).toHaveLength(2);
+	});
+
+	it("skips as moving when rows keep arriving past the read", async () => {
+		const w = world({ pulled: [{ expenses: 2 }, { expenses: 1 }] });
+		const { report } = await compareScreen(w.deps, request("home"));
+		expect(report).toMatchObject({ state: "skipped", skipped: "moving" });
+		expect(w.events.filter((e) => e === "pull")).toHaveLength(2);
+		expect(w.events).not.toContain("device");
+	});
+
+	it("counts only the entities the screen reads", async () => {
+		const w = world({ pulled: [{ wealthTransfers: 0, projects: 9 }] });
+		const { report } = await compareScreen(w.deps, request("insights"));
+		expect(report.state).toBe("checked");
+		const other = world({ pulled: [{ legs: 3 }, { legs: 3 }] });
+		expect(
+			(await compareScreen(other.deps, request("wealth"))).report.skipped,
+		).toBe("moving");
+		const unrelated = world({ pulled: [{ legs: 3 }] });
+		expect(
+			(await compareScreen(unrelated.deps, request("insights"))).report.state,
+		).toBe("checked");
+	});
+
+	// ARS holds no value of its own in EUR: a missing rate reads unavailable,
+	// not an amount. Null on both sides agrees, null on one side only is a
+	// difference, never zero.
 	it("holds a missing rate as a match on both sides and a difference on one", async () => {
 		const noRate = ledger({ rates: false });
 		const both = await compareScreen(
@@ -311,26 +397,6 @@ describe("compareScreen on Home", () => {
 		expect(serverOnly.report.differs).toEqual(["glance.spent"]);
 	});
 
-	it("calls a device that has not pulled the row yet behind, not wrong, and a pull that catches it up a match", async () => {
-		const w = world({ store: ledger({ e1: false }), cursorT: "90" });
-		const { report } = await compareScreen(w.deps, request("home"));
-		expect(report).toMatchObject({ behind: 1, differs: [] });
-		expect(report.classes["glance.spent"]).toBe("behind");
-
-		const caught = world({
-			store: ledger({ e1: false }),
-			cursorT: "90",
-			onPull: () => {
-				caught.setStore(ledger());
-				caught.setCursor("100");
-			},
-		});
-		const after = await compareScreen(caught.deps, request("home"));
-		expect(after.report).toMatchObject({ behind: 0, differs: [] });
-		expect(after.report.classes["glance.spent"]).toBe("match");
-		expect(caught.events.filter((e) => e === "pull")).toHaveLength(1);
-	});
-
 	it("tells a stale rate table from a bug", async () => {
 		const w = world({
 			server: { ...HOME_SERVER, "glance.spent": eur(13_243) },
@@ -341,31 +407,25 @@ describe("compareScreen on Home", () => {
 		expect(report.classes["glance.spent"]).toBe("rates_moved");
 	});
 
-	it("tells a device that holds newer rows than the server read", async () => {
-		const w = world({
-			server: { ...HOME_SERVER, "glance.spent": eur(0) },
-			cursorT: "101",
-		});
-		const { report } = await compareScreen(w.deps, request("home"));
-		expect(report).toMatchObject({ deviceAhead: 1, differs: [], behind: 0 });
-	});
-
 	it.each([
 		["home currency", { home: "ARS" }],
 		["zone", { timeZone: "America/Argentina/Buenos_Aires" }],
 		["start day", { startDay: 15 }],
-	])("skips on a different %s and pulls once", async (_name, setting) => {
-		const w = world(setting);
-		const { report } = await compareScreen(w.deps, request("home"));
-		expect(report).toMatchObject({
-			state: "skipped",
-			skipped: "settings_differ",
-			differs: [],
-		});
-		expect(w.events.filter((e) => e === "pull")).toHaveLength(1);
-	});
+	])(
+		"skips on a different %s, after the pull that fixes it",
+		async (_name, setting) => {
+			const w = world(setting);
+			const { report } = await compareScreen(w.deps, request("home"));
+			expect(report).toMatchObject({
+				state: "skipped",
+				skipped: "settings_differ",
+				differs: [],
+			});
+			expect(w.events).toEqual(["server", "pull"]);
+		},
+	);
 
-	it("skips with no basis after one call, and with no device reading", async () => {
+	it("skips with no basis after one call, and with no device reading or a failed pull", async () => {
 		const w = world({ basis: null });
 		const { report } = await compareScreen(
 			w.deps,
@@ -384,16 +444,25 @@ describe("compareScreen on Home", () => {
 			state: "skipped",
 			skipped: "no_device",
 		});
+		const failed = await compareScreen(
+			world({ pulled: [null] }).deps,
+			request("home"),
+		);
+		expect(failed.report).toMatchObject({
+			state: "skipped",
+			skipped: "no_device",
+		});
 	});
 
 	it("reads the device at the server's instant, not its own clock", async () => {
-		// The server read at 00:30Z on Dec 1, so this month is December: Spent
-		// is 0 and Spent last month is e1 + e2 = 90.00 + 45.00 = EUR 135.00.
-		// A device clock an hour behind, 23:30Z on Nov 30, would read November.
+		// The server read at 00:30Z on Dec 1 would be a period edge; read at
+		// 06:00Z, this month is December: Spent is 0 and Spent last month is
+		// e1 + e2 = 90.00 + 45.00 = EUR 135.00. A device clock a day behind,
+		// Nov 30, would read November.
 		const w = world({
 			store: ledger({ e2: true }),
-			basis: { ...BASIS, at: "2026-12-01T00:30:00.000Z" },
-			deviceNow: "2026-11-30T23:30:00.000Z",
+			basis: { ...BASIS, at: "2026-12-01T06:00:00.000Z" },
+			deviceNow: "2026-11-30T06:00:00.000Z",
 			server: {
 				...HOME_SERVER,
 				"glance.spent": eur(0),
@@ -404,7 +473,7 @@ describe("compareScreen on Home", () => {
 		expect(report.differs).toEqual([]);
 		expect(report.classes["glance.spent"]).toBe("match");
 		expect(w.deviceQueries[0]?.at.toISOString()).toBe(
-			"2026-12-01T00:30:00.000Z",
+			"2026-12-01T06:00:00.000Z",
 		);
 	});
 
@@ -451,16 +520,68 @@ describe("compareScreen on Home", () => {
 		const { report } = await compareScreen(w.deps, request("settings"));
 		expect(report.skipped).toBe(skipped);
 		expect(report.state).toBe(skipped ? "skipped" : "checked");
-		// Skipped before the device is read, and nothing is pulled for it.
-		if (skipped) expect(w.events).toEqual(["server"]);
+		// Skipped before the device is read.
+		if (skipped) expect(w.events).not.toContain("device");
 	});
 
-	it("reports the zone the client renders in against the stored one", async () => {
-		const { report } = await compareScreen(
+	// Budget figures read in the book's zone, which can differ from settings:
+	// 02:59:30Z is 23:59:30 in Buenos Aires but mid-night in UTC.
+	it("skips at the budget book's midnight when it is not the settings zone's", async () => {
+		const edge = "2026-12-01T02:59:30.000Z";
+		const budget = world({
+			basis: { ...BASIS, at: edge },
+			bookZone: "America/Argentina/Buenos_Aires",
+		});
+		expect(
+			(await compareScreen(budget.deps, request("budget"))).report.skipped,
+		).toBe("period_edge");
+		// A screen that reads no book is not held back by it.
+		const wealth = world({
+			basis: { ...BASIS, at: edge },
+			bookZone: "America/Argentina/Buenos_Aires",
+		});
+		expect(
+			(await compareScreen(wealth.deps, request("wealth"))).report.state,
+		).toBe("checked");
+	});
+
+	it("skips as zone_unknown, never rejects, on a zone the runtime cannot format", async () => {
+		const basis = world({
+			basis: { ...BASIS, timeZone: "Mars/Olympus" },
+			timeZone: "Mars/Olympus",
+		});
+		expect(
+			(await compareScreen(basis.deps, request("home"))).report.skipped,
+		).toBe("zone_unknown");
+		const book = world({ bookZone: "Mars/Olympus" });
+		expect(
+			(await compareScreen(book.deps, request("budget"))).report.skipped,
+		).toBe("zone_unknown");
+	});
+
+	it("compares the browser zone by canonical name, not by spelling", async () => {
+		const spelled = world({
+			basis: { ...BASIS, timeZone: "America/Argentina/Buenos_Aires" },
+			timeZone: "America/Argentina/Buenos_Aires",
+		});
+		expect(
+			(
+				await compareScreen(
+					spelled.deps,
+					request("home", { browserZone: "America/Buenos_Aires" }),
+				)
+			).report.zone,
+		).toBe("same");
+		const other = await compareScreen(
 			world().deps,
 			request("home", { browserZone: "America/Argentina/Buenos_Aires" }),
 		);
-		expect(report.zone).toBe("differs");
+		expect(other.report.zone).toBe("differs");
+		const junk = await compareScreen(
+			world().deps,
+			request("home", { browserZone: "Not/AZone" }),
+		);
+		expect(junk.report.zone).toBe("differs");
 	});
 });
 
@@ -478,31 +599,59 @@ const VERDICT: VerdictView = {
 		amount: { minor: 100, currency: "ARS" },
 	},
 };
+const OFF: VerdictView = {
+	...VERDICT,
+	lead: { ...VERDICT.lead, amount: { minor: 101, currency: "ARS" } },
+};
 
 describe("the verdict as a unit", () => {
-	it("holds the verdict the screen rendered against the device's and names the parts", async () => {
-		const same = await compareScreen(
-			world({ verdict: VERDICT }).deps,
-			request("home", { verdict: VERDICT }),
+	it("reads the server's verdict in the figures' window and names the parts", async () => {
+		const same = world({ verdict: VERDICT });
+		const ok = await compareScreen(
+			same.deps,
+			request("home", { serverVerdict: async () => VERDICT }),
 		);
-		expect(same.report).toMatchObject({ keys: 7, of: 7, differs: [] });
-		expect(same.report.classes.verdict).toBe("match");
+		expect(ok.report).toMatchObject({ keys: 7, of: 7, differs: [] });
+		expect(ok.report.classes.verdict).toBe("match");
 
-		const off = {
-			...VERDICT,
-			lead: { ...VERDICT.lead, amount: { minor: 101, currency: "ARS" } },
-		};
+		const events: string[] = [];
 		const w = world({ verdict: VERDICT });
 		const { report } = await compareScreen(
 			w.deps,
-			request("home", { verdict: off }),
+			request("home", {
+				serverVerdict: async () => {
+					events.push(...w.events);
+					return OFF;
+				},
+			}),
 		);
+		// The verdict is read after the server's figures and before the pull.
+		expect(events).toEqual(["server"]);
 		expect(report.differs).toEqual(["verdict"]);
 		expect(report.verdictParts).toEqual(["amount"]);
-		expect(w.events).toContain("pull");
 	});
 
-	it("leaves the verdict out when the screen passes none or it is not comparable", async () => {
+	// A verdict that differs while the pull stopped below the read is lag; one
+	// that differs with the pull complete is a difference.
+	it("classes the verdict with the figures' position", async () => {
+		const behind = world({ verdict: VERDICT, cursorT: "90" });
+		const lag = await compareScreen(
+			behind.deps,
+			request("home", { serverVerdict: async () => OFF }),
+		);
+		expect(lag.report.classes.verdict).toBe("behind");
+		const rates = world({ verdict: VERDICT, ratesAsOf: "R0" });
+		expect(
+			(
+				await compareScreen(
+					rates.deps,
+					request("home", { serverVerdict: async () => OFF }),
+				)
+			).report.classes.verdict,
+		).toBe("rates_moved");
+	});
+
+	it("leaves the verdict out when the screen has none or it is not comparable", async () => {
 		const none = await compareScreen(
 			world({ verdict: VERDICT }).deps,
 			request("home"),
@@ -510,9 +659,23 @@ describe("the verdict as a unit", () => {
 		expect(none.report.classes.verdict).toBeUndefined();
 		const other = await compareScreen(
 			world({ verdict: VERDICT }).deps,
-			request("home", { verdict: { ...VERDICT, today: "2026-11-16" } }),
+			request("home", {
+				serverVerdict: async () => ({ ...VERDICT, today: "2026-11-16" }),
+			}),
 		);
 		expect(other.report).toMatchObject({ keys: 6, differs: [] });
+		// A screen with no verdict never asks for one.
+		let asked = 0;
+		await compareScreen(
+			world().deps,
+			request("wealth", {
+				serverVerdict: async () => {
+					asked += 1;
+					return VERDICT;
+				},
+			}),
+		);
+		expect(asked).toBe(0);
 	});
 });
 
@@ -740,7 +903,6 @@ describe("compareLine", () => {
 			"differs",
 			"behind",
 			"ratesMoved",
-			"deviceAhead",
 			"skipped",
 			"generation",
 			"zone",
@@ -772,7 +934,10 @@ describe("positionReached", () => {
 		expect(positionReached(both("99"), entities, cursor("100"))).toBe("behind");
 		// Positions compare as numbers: 9 is below 10, though "9" > "10" as text.
 		expect(positionReached(both("9"), entities, cursor("10"))).toBe("behind");
-		expect(positionReached(both("100"), entities, cursor("99"))).toBe("ahead");
+		// Past the read is still reached: positions are cluster-wide.
+		expect(positionReached(both("100"), entities, cursor("99"))).toBe(
+			"reached",
+		);
 	});
 	it("is behind when one entity lags, has no cursor or has another epoch", () => {
 		expect(
@@ -944,5 +1109,83 @@ describe("the screens", () => {
 			expect(missing, name).toEqual([]);
 			expect(read.size, name).toBeGreaterThan(0);
 		}
+	});
+});
+
+describe("pastPosition", () => {
+	it("is true only for a cursor strictly past the position, and for any doubt", () => {
+		expect(pastPosition(cursor("101"), cursor("100"))).toBe(true);
+		expect(pastPosition(cursor("100"), cursor("100"))).toBe(false);
+		expect(pastPosition(cursor("99"), cursor("100"))).toBe(false);
+		// As numbers, not text: 10 is past 9.
+		expect(pastPosition(cursor("10"), cursor("9"))).toBe(true);
+		expect(pastPosition(cursor("50", "e2"), cursor("100"))).toBe(true);
+		expect(pastPosition("not a cursor", cursor("100"))).toBe(true);
+		expect(pastPosition(cursor("50"), "not a cursor")).toBe(true);
+	});
+});
+
+// The pull counts what it brought in past the read: pages ending past A hold
+// every row stamped after A, so zero is proof that none arrived. The server
+// double pages the way the real one does: a page that has more ends at its
+// last stamp, the last page ends at the cut.
+describe("what the pull brings in past a read", () => {
+	const page = (n: number, t: string, hasMore = false) => ({
+		items: Array.from({ length: n }, (_, i) =>
+			wireExpense(`x${t}-${i}`, "10", "2026-11-10T12:00:00.000Z"),
+		),
+		tombstones: [],
+		cursor: cursor(t),
+		hasMore,
+	});
+	const pullPast = async (pages: ReturnType<typeof page>[], past: string) => {
+		const { api } = fakeDeviceApi({ expensePages: pages });
+		const report = await pullAll(new MemoryStore(), api, {}, { past });
+		return report.entities.expenses?.past;
+	};
+
+	it("is zero when every page ends at or below the read, though a later cut moved on", async () => {
+		// Rows stamped 90 and 100, read at 100: nothing newer arrived.
+		expect(await pullPast([page(2, "100")], cursor("100"))).toBe(0);
+		expect(
+			await pullPast([page(3, "90", true), page(2, "100")], cursor("100")),
+		).toBe(0);
+	});
+
+	it("counts the rows of pages that end past the read, a bound on the rows stamped after it", async () => {
+		// A last page at cut 107 holds a row stamped 105 (another user's write
+		// moved the cut, this user's row came with it).
+		expect(await pullPast([page(2, "107")], cursor("100"))).toBe(2);
+		expect(
+			await pullPast([page(3, "90", true), page(1, "107")], cursor("100")),
+		).toBe(1);
+		expect(await pullPast([page(0, "107")], cursor("100"))).toBe(0);
+	});
+
+	it("reports nothing unless asked", async () => {
+		const { api } = fakeDeviceApi({ expensePages: [page(1, "107")] });
+		const report = await pullAll(new MemoryStore(), api, {});
+		expect(report.entities.expenses?.past).toBeUndefined();
+	});
+});
+
+describe("edgeOf", () => {
+	it("checks every zone and names an unreadable one without throwing", () => {
+		const nearBa = at("2026-12-01T02:59:30.000Z");
+		expect(edgeOf(nearBa, ["UTC"])).toBeNull();
+		expect(edgeOf(nearBa, ["UTC", "America/Argentina/Buenos_Aires"])).toBe(
+			"period_edge",
+		);
+		expect(edgeOf(nearBa, ["UTC", "Mars/Olympus"])).toBe("zone_unknown");
+		expect(edgeOf(nearBa, [])).toBeNull();
+	});
+});
+
+describe("no hand copies", () => {
+	it("takes the Wealth ids from their one owner", () => {
+		expect(
+			SCREENS.wealth.plain.length + Object.keys(SCREENS.wealth.narrowed).length,
+		).toBe(WEALTH_FIGURE_IDS.length);
+		for (const id of WEALTH_FIGURE_IDS) expect(DEVICE_FIGURE_IDS).toContain(id);
 	});
 });

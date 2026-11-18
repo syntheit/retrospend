@@ -3,18 +3,15 @@ export type { WriteVerdict } from "../write-parity";
 export {
 	type CheckPlan,
 	COMPARE_WHAT,
-	type CompareDeps,
 	type CompareReport,
-	type CompareRequest,
 	compareLine,
-	compareScreen,
+	edgeOf,
 	type KeyClass,
 	keyOf,
 	MAX_IDS_PER_CALL,
 	MAX_NARROWED_CALLS,
 	type Narrow,
 	type NarrowValues,
-	nearPeriodEdge,
 	PERIOD_EDGE_MS,
 	type PlannedCall,
 	parseKey,
@@ -24,9 +21,16 @@ export {
 	type ScreenSpec,
 	type SkipReason,
 	sameLines,
+	sameZone,
 	type VerdictView,
 	verdictParts,
 } from "./compare";
+export {
+	type CompareDeps,
+	type CompareRequest,
+	compareScreen,
+	type PulledPast,
+} from "./compare-run";
 export {
 	createDeviceEngine,
 	type DeviceBudget,

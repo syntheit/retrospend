@@ -1,10 +1,15 @@
+import { WEALTH_FIGURE_IDS } from "@retrospend/domain/accounts/account-figures";
 import type { Money } from "@retrospend/domain/money-minor";
-import { startOfDayIn, startOfNextDayIn } from "@retrospend/domain/time-zone";
+import {
+	canonicalTimeZone,
+	startOfDayIn,
+	startOfNextDayIn,
+} from "@retrospend/domain/time-zone";
 import { BUDGET_FIGURE_IDS } from "../budget-figures";
-import { BUDGET_GATE_ENTITIES, positionReached } from "../budget-gate";
+import { BUDGET_GATE_ENTITIES } from "../budget-gate";
 import { INSIGHTS_FIGURE_IDS } from "../insights-figures";
 import { DEVICE_FIGURE_IDS } from "../registry";
-import type { FigureBasis, FigureNarrowing, ServerFigures } from "./ports";
+import type { FigureNarrowing } from "./ports";
 
 // The one compare of the device's figures against the server's, for every
 // screen on both clients. It owns which ids a screen holds, the key format, the
@@ -82,14 +87,7 @@ export const SCREENS: Readonly<Record<ScreenName, ScreenSpec>> = {
 		BUDGET_GATE_ENTITIES,
 		true,
 	),
-	wealth: screen(
-		(id) =>
-			id === "netWorth" ||
-			id.startsWith("netWorthChange.") ||
-			id === "accounts.balance" ||
-			id === "notTracked",
-		WEALTH_ENTITIES,
-	),
+	wealth: screen((id) => WEALTH_FIGURE_IDS.includes(id), WEALTH_ENTITIES),
 	recurring: screen(
 		(id) => id.startsWith("recurring."),
 		["recurringTemplates", "categories"],
@@ -243,29 +241,49 @@ export function verdictParts(
 export type KeyClass =
 	| "match"
 	| "differs"
-	/** A device cursor is below the server read's position: rows are still to come. */
+	/** A device cursor is below the server read's position: the pull did not reach it. */
 	| "behind"
 	/** The device's rate table is not the server's. */
-	| "rates_moved"
-	/** The device holds rows newer than the server read. */
-	| "device_ahead";
+	| "rates_moved";
 
 export type SkipReason =
 	| "settings_differ"
 	| "no_basis"
 	| "no_device"
-	| "period_edge";
+	| "period_edge"
+	/** A zone the figures read in is one the runtime cannot format. */
+	| "zone_unknown"
+	/** Rows of the screen's entities kept arriving past the server read. */
+	| "moving";
 
 /** How close to a day boundary a read may be: the server's figures read their own clock a moment after `basis.at`. */
 export const PERIOD_EDGE_MS = 60_000;
 
-/** Whether `at` is within PERIOD_EDGE_MS of midnight in `zone`, which covers every week, month and start-day boundary. */
-export function nearPeriodEdge(at: Date, zone: string): boolean {
+/**
+ * Whether `at` is within PERIOD_EDGE_MS of midnight in any of `zones` (which
+ * covers every week, month and start-day boundary), or a zone is one the
+ * runtime cannot format. Never throws.
+ */
+export function edgeOf(
+	at: Date,
+	zones: readonly string[],
+): "period_edge" | "zone_unknown" | null {
+	const canon = zones.map((z) => canonicalTimeZone(z));
+	if (canon.some((z) => z === undefined)) return "zone_unknown";
 	const t = at.getTime();
-	return (
-		t - startOfDayIn(at, zone).getTime() < PERIOD_EDGE_MS ||
-		startOfNextDayIn(at, zone).getTime() - t < PERIOD_EDGE_MS
-	);
+	for (const zone of canon)
+		if (
+			t - startOfDayIn(at, zone).getTime() < PERIOD_EDGE_MS ||
+			startOfNextDayIn(at, zone).getTime() - t < PERIOD_EDGE_MS
+		)
+			return "period_edge";
+	return null;
+}
+
+/** Whether two zone names are one zone, however spelled; an unreadable name is never the same. */
+export function sameZone(a: string, b: string): boolean {
+	const x = canonicalTimeZone(a);
+	return x !== undefined && x === canonicalTimeZone(b);
 }
 
 export interface CompareReport {
@@ -279,7 +297,6 @@ export interface CompareReport {
 	readonly differs: readonly string[];
 	readonly behind: number;
 	readonly ratesMoved: number;
-	readonly deviceAhead: number;
 	readonly generation: number;
 	/** The zone the client renders in against the stored one the figures read in. */
 	readonly zone: "same" | "differs";
@@ -305,223 +322,9 @@ export function compareLine(r: CompareReport): string {
 		differs: r.differs,
 		behind: r.behind,
 		ratesMoved: r.ratesMoved,
-		deviceAhead: r.deviceAhead,
 		skipped: r.skipped,
 		generation: r.generation,
 		zone: r.zone,
 		clock: r.clock,
-	});
-}
-
-type Lines = ReadonlyMap<string, readonly Money[] | null | undefined>;
-
-/** What the platform gives the compare: the server, the device's rows, and its pull. */
-export interface CompareDeps {
-	readonly figures: {
-		read(query: { ids: string } & FigureNarrowing): Promise<ServerFigures>;
-	};
-	/** The device's readings at the server's read instant, or null when it holds nothing it can trust. */
-	read(query: {
-		ids: readonly string[];
-		narrowing: FigureNarrowing;
-		at: Date;
-		verdict: boolean;
-	}): Promise<{ lines: Lines; verdict: VerdictView | null } | null>;
-	pull(): Promise<void>;
-	/** The cursor of each sync entity the device's last pull ended on. */
-	cursors(): Readonly<Partial<Record<string, string>>>;
-	/** The rate table version the device holds (the same value as `basis.ratesAsOf`). */
-	ratesAsOf(): string | null;
-	settings(): {
-		homeCurrency: string;
-		timeZone: string;
-		startDay: number;
-	} | null;
-	generation(): number;
-	now(): Date;
-}
-
-export interface CompareRequest {
-	readonly screen: ScreenName;
-	/** The narrowing values the screen renders. */
-	readonly values?: NarrowValues;
-	/** Rotation: the `next` of the last check of this screen. */
-	readonly start?: number;
-	/** The zone the client renders in. */
-	readonly browserZone: string;
-	/** The server verdict the screen already rendered; the compare checks what is on screen. */
-	readonly verdict?: VerdictView | null;
-}
-
-interface Answer {
-	readonly call: PlannedCall;
-	readonly basis: FigureBasis;
-	/** Keys of this call whose lines differ. */
-	readonly diff: readonly string[];
-	/** What the verdict differs in, on the unnarrowed call when it was held; null when it was not (or is not comparable). */
-	readonly verdict: readonly string[] | null;
-}
-
-const isPlain = (call: PlannedCall) => Object.keys(call.narrowing).length === 0;
-const keyIn = (call: PlannedCall, id: string) =>
-	keyOf(id, Object.values(call.narrowing)[0]);
-
-/** Reads the server for every call, then the device at each call's read instant: the order after a pull. */
-async function readCalls(
-	deps: CompareDeps,
-	calls: readonly PlannedCall[],
-	verdict: VerdictView | null,
-): Promise<Answer[] | SkipReason> {
-	const servers: ServerFigures[] = [];
-	for (const call of calls) {
-		const answer = await deps.figures.read({
-			ids: call.ids.join(","),
-			...call.narrowing,
-		});
-		// An old server or a read token answers with no basis: no more calls.
-		if (!answer.basis) return "no_basis";
-		servers.push(answer);
-	}
-	const answers: Answer[] = [];
-	for (const [i, call] of calls.entries()) {
-		const server = servers[i] as ServerFigures;
-		const basis = server.basis as FigureBasis;
-		const at = new Date(basis.at);
-		if (Number.isNaN(at.getTime())) return "no_basis";
-		if (nearPeriodEdge(at, basis.timeZone)) return "period_edge";
-		const withVerdict = verdict !== null && isPlain(call);
-		const device = await deps.read({
-			ids: call.ids,
-			narrowing: call.narrowing,
-			at,
-			verdict: withVerdict,
-		});
-		if (!device) return "no_device";
-		answers.push({
-			call,
-			basis,
-			diff: call.ids
-				.filter(
-					(id) =>
-						!sameLines(
-							device.lines.get(id),
-							server.figures.find((f) => f.id === id)?.lines,
-						),
-				)
-				.map((id) => keyIn(call, id)),
-			verdict:
-				withVerdict && verdict && device.verdict
-					? verdictParts(device.verdict, verdict)
-					: null,
-		});
-	}
-	return answers;
-}
-
-const wrong = (a: Answer) => a.diff.length > 0 || (a.verdict?.length ?? 0) > 0;
-
-/** The settings every figure depends on must be the server's; else the pull is the cure and nothing else is judged. */
-function settingsSame(deps: CompareDeps, list: readonly Answer[]): boolean {
-	const own = deps.settings();
-	return list.every(
-		({ basis: b }) =>
-			own?.homeCurrency === b.home &&
-			own.timeZone === b.timeZone &&
-			own.startDay === b.startDay,
-	);
-}
-
-/** Why a key still differs: lag, then rows the read missed, then the rate table, else nothing explains it. */
-function causeOf(deps: CompareDeps, spec: ScreenSpec, a: Answer): KeyClass {
-	switch (positionReached(deps.cursors(), spec.entities, a.basis.asOf)) {
-		case "behind":
-		case "reset":
-			return "behind";
-		case "ahead":
-			return "device_ahead";
-		case "malformed":
-			return "differs";
-		case "reached":
-			return deps.ratesAsOf() !== a.basis.ratesAsOf ? "rates_moved" : "differs";
-	}
-}
-
-/**
- * Holds one screen's device figures against the server's. A difference may be
- * a write the sync feed has not delivered: the device pulls once, the server is
- * read again, then the device, and what still differs is sorted by cause. A
- * mismatch never rejects; the caller owns errors from the network.
- */
-export async function compareScreen(
-	deps: CompareDeps,
-	req: CompareRequest,
-): Promise<{ report: CompareReport; next: number }> {
-	const spec = SCREENS[req.screen];
-	const plan = planCheck(spec, req.values ?? {}, req.start);
-	const verdict = spec.verdict ? (req.verdict ?? null) : null;
-	const done = (r: Partial<CompareReport>) => ({
-		next: plan.next,
-		report: {
-			screen: req.screen,
-			state: "checked",
-			skipped: null,
-			keys: plan.keys,
-			of: plan.of,
-			differs: [],
-			behind: 0,
-			ratesMoved: 0,
-			deviceAhead: 0,
-			zone: "same",
-			classes: {},
-			verdictParts: [],
-			...r,
-			generation: deps.generation(),
-			clock: deps.now().toISOString(),
-		} satisfies CompareReport,
-	});
-	const skip = (skipped: SkipReason) => done({ state: "skipped", skipped });
-
-	let answers = await readCalls(deps, plan.calls, verdict);
-	if (typeof answers === "string") return skip(answers);
-	if (!settingsSame(deps, answers)) {
-		await deps.pull();
-		return skip("settings_differ");
-	}
-	if (answers.some(wrong)) {
-		await deps.pull();
-		const redo = answers.map(wrong);
-		const again = await readCalls(
-			deps,
-			plan.calls.filter((_, i) => redo[i]),
-			verdict,
-		);
-		if (typeof again === "string") return skip(again);
-		let next = 0;
-		answers = answers.map((a, i) => (redo[i] ? (again[next++] as Answer) : a));
-		if (!settingsSame(deps, answers)) return skip("settings_differ");
-	}
-
-	const classes: Record<string, KeyClass> = {};
-	for (const a of answers)
-		for (const id of a.call.ids) {
-			const key = keyIn(a.call, id);
-			classes[key] = a.diff.includes(key) ? causeOf(deps, spec, a) : "match";
-		}
-	const held = answers.find((a) => a.verdict !== null);
-	if (held?.verdict)
-		classes.verdict =
-			held.verdict.length > 0 ? causeOf(deps, spec, held) : "match";
-	const count = (c: KeyClass) =>
-		Object.values(classes).filter((v) => v === c).length;
-	return done({
-		keys: plan.keys + (held ? 1 : 0),
-		of: plan.of + (held ? 1 : 0),
-		differs: Object.keys(classes).filter((k) => classes[k] === "differs"),
-		behind: count("behind"),
-		ratesMoved: count("rates_moved"),
-		deviceAhead: count("device_ahead"),
-		zone: answers[0]?.basis.timeZone === req.browserZone ? "same" : "differs",
-		classes,
-		verdictParts: held?.verdict ?? [],
 	});
 }
