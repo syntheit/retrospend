@@ -3,10 +3,10 @@ import type { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { adminDb } from "~/test/pg-harness";
+import { migratorRolesByLiveness } from "~/test/pg-run-sweep";
 import { migratorRoleName } from "../../../scripts/db-owner/index.mjs";
 import {
 	connect,
-	databaseOf,
 	failureOf,
 	failureOutsideTransaction,
 	foreignOwned,
@@ -147,7 +147,7 @@ describe("code that runs as retrospend_app (row-level security)", () => {
 		}
 	});
 
-	it("is a member of no other role, and only the owner and superusers are members of it", async () => {
+	it("is a member of no other role, and only the owner, superusers and the migration role of a live run are members of it", async () => {
 		const memberOf = await adminDb.$queryRaw<{ n: bigint }[]>`
 			SELECT count(*) AS n FROM pg_auth_members
 			 WHERE member = 'retrospend_app'::regrole`;
@@ -157,7 +157,27 @@ describe("code that runs as retrospend_app (row-level security)", () => {
 			  JOIN pg_roles m ON m.oid = am.member
 			 WHERE am.roleid = 'retrospend_app'::regrole AND NOT m.rolsuper
 			 ORDER BY 1`;
-		expect(members.map((m) => m.name)).toEqual(["retrospend_owner"]);
+		// Runs share the cluster: a run that is migrating a brand-new install
+		// (this one, in another worker's test, or another worktree's) has its
+		// one-shot role in the group for those seconds. Only a run that holds its
+		// lock gets that; any other member, the leftover of a killed run included,
+		// fails here.
+		const probe = await connect(inject("pgRun").maintenanceUrl);
+		const { live } = await migratorRolesByLiveness(probe).finally(() =>
+			probe.end(),
+		);
+		expect(
+			members.map((m) => m.name).filter((name) => !live.includes(name)),
+		).toEqual(["retrospend_owner"]);
+	});
+
+	it("finds no migration role of a run that is gone", async () => {
+		const client = await connect(inject("pgRun").maintenanceUrl);
+		try {
+			expect((await migratorRolesByLiveness(client)).dead).toEqual([]);
+		} finally {
+			await client.end();
+		}
 	});
 });
 
@@ -210,7 +230,7 @@ describe("ownership", () => {
 			expect(rows).toEqual([]);
 			const { rows: roles } = await client.query<{ name: string }>(
 				"SELECT rolname AS name FROM pg_roles WHERE rolname = $1",
-				[migratorRoleName(databaseOf(process.env.DATABASE_URL as string))],
+				[migratorRoleName(inject("pgRun").template)],
 			);
 			expect(roles).toEqual([]);
 			// Nothing in the cluster still depends on a role of that name's kind.

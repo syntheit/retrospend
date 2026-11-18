@@ -35,4 +35,8 @@ export {
 	enforceOwnerRole,
 	ownerProblems,
 } from "./roles.mjs";
-export { MIGRATOR_PREFIX, migratorRoleName } from "./window.mjs";
+export {
+	MIGRATOR_PREFIX,
+	migratorRoleName,
+	removeMigratorSurely,
+} from "./window.mjs";

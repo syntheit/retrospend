@@ -22,6 +22,11 @@
  * state. Several worktrees can use one Postgres container as long as each
  * picks its own base name. The owner role is cluster-wide: every run derives
  * the same password from the superuser's, so runs share it harmlessly.
+ *
+ * A run holds an advisory lock for its whole life (pg-run-sweep.ts). At the
+ * start it removes what runs killed before it left behind, databases and
+ * one-shot migration roles, for every run whose lock is free, and nothing of a
+ * run that holds its lock.
  */
 import { randomBytes } from "node:crypto";
 import { Client } from "pg";
@@ -33,6 +38,13 @@ import {
 	ownerUrl,
 	urlPassword,
 } from "../../scripts/db-owner/index.mjs";
+import {
+	markRun,
+	runNames,
+	sweepDeadRuns,
+	tryLockRun,
+	unlockRun,
+} from "./pg-run-sweep";
 import { parseTestDatabaseUrl } from "./pg-test-url";
 import { makeScratchProject } from "./scratch-project";
 
@@ -42,6 +54,8 @@ declare module "vitest" {
 		pgWorkerDatabaseUrls: string[];
 		/** The same databases as the superuser, for tests that opt in. */
 		pgWorkerSuperUrls: string[];
+		/** This run: its stem, template database and the maintenance database's superuser URL. */
+		pgRun: { stem: string; template: string; maintenanceUrl: string };
 		/**
 		 * How many objects a second owner bootstrap handed over on the template
 		 * after the migrations ran as the one-shot migration role: zero when all
@@ -101,53 +115,34 @@ export function runDatabaseNames(
 	baseName: string,
 	runId: string,
 	workers: number,
-): {
-	template: string;
-	legacy: string;
-	old: string;
-	scratch: string;
-	scratch2: string;
-	scratch3: string;
-	workers: string[];
-} {
-	const stem = `${baseName}_${runId}`;
-	const template = `${stem}_tpl`;
-	const legacy = `${stem}_leg`;
-	const old = `${stem}_old`;
-	const scratch = `${stem}_scr`;
-	const scratch2 = `${stem}_sc2`;
-	const scratch3 = `${stem}_sc3`;
-	const names = Array.from({ length: workers }, (_, i) => `${stem}_w${i + 1}`);
-	for (const name of [
-		template,
-		legacy,
-		old,
-		scratch,
-		scratch2,
-		scratch3,
-		...names,
-	]) {
+): ReturnType<typeof runNames> {
+	const names = runNames(`${baseName}_${runId}`, workers);
+	const { workers: perWorker, ...fixed } = names;
+	for (const name of [...Object.values(fixed), ...perWorker]) {
 		if (Buffer.byteLength(name) > MAX_IDENTIFIER) {
 			throw new Error(
 				`Derived test database name "${name}" is longer than ${MAX_IDENTIFIER} bytes`,
 			);
 		}
 	}
-	return {
-		template,
-		legacy,
-		old,
-		scratch,
-		scratch2,
-		scratch3,
-		workers: names,
-	};
+	return names;
 }
 
 function maintenanceUrl(url: URL): string {
 	const admin = new URL(url);
 	admin.pathname = "/postgres";
 	return admin.toString();
+}
+
+/** A run id nobody holds the lock of, and the run's names; the lock stays held. */
+async function claimRun(lock: Client, baseName: string, workers: number) {
+	for (let attempt = 1; attempt <= 20; attempt++) {
+		const runId = randomBytes(2).toString("hex");
+		const names = runDatabaseNames(baseName, runId, workers);
+		const stem = `${baseName}_${runId}`;
+		if (await tryLockRun(lock, stem)) return { stem, names };
+	}
+	throw new Error("no free test run id");
 }
 
 export default async function setup(project: TestProject) {
@@ -172,11 +167,23 @@ async function createRunDatabase(project: TestProject) {
 		process.env.TEST_DATABASE_URL,
 	);
 
-	const names = runDatabaseNames(
-		baseName,
-		randomBytes(2).toString("hex"),
-		workerCount(project.config.maxWorkers),
-	);
+	const workers = workerCount(project.config.maxWorkers);
+	// Held until teardown, or until this process dies: Postgres frees a
+	// session's advisory locks with it, and that is how a later run knows this
+	// one is gone (pg-run-sweep.ts).
+	const lock = new Client({ connectionString: maintenanceUrl(baseUrl) });
+	lock.on("error", (error) => console.error("pg test run lock:", error));
+	await lock.connect();
+	const releaseLock = () => lock.end().catch(() => undefined);
+	let claim: { stem: string; names: ReturnType<typeof runDatabaseNames> };
+	try {
+		claim = await claimRun(lock, baseName, workers);
+		await sweepDeadRuns(lock, maintenanceUrl(baseUrl));
+	} catch (error) {
+		await releaseLock();
+		throw error;
+	}
+	const { stem, names } = claim;
 	const urlFor = (name: string) => {
 		const url = new URL(baseUrl);
 		url.pathname = `/${name}`;
@@ -200,8 +207,8 @@ async function createRunDatabase(project: TestProject) {
 		await client.query(sql);
 		created.push(name);
 	};
-	const dropRunDatabases = () =>
-		withAdmin(async (client) => {
+	const dropRunDatabases = async () => {
+		await withAdmin(async (client) => {
 			// Workers first, then the template; each on its own so one failure
 			// doesn't leak the rest. FORCE closes pool connections the workers
 			// may still hold.
@@ -213,6 +220,9 @@ async function createRunDatabase(project: TestProject) {
 					);
 			}
 		});
+		await unlockRun(lock, stem).catch(() => undefined);
+		await releaseLock();
+	};
 
 	// A database migrated as the superuser, the way every older release did.
 	const migrateAsSuperuser = (databaseUrl: string, root?: string) =>
@@ -253,6 +263,7 @@ async function createRunDatabase(project: TestProject) {
 				names.template,
 				`CREATE DATABASE "${names.template}"`,
 			);
+			await markRun(client, stem);
 			await create(client, names.legacy, `CREATE DATABASE "${names.legacy}"`);
 			await create(client, names.old, `CREATE DATABASE "${names.old}"`);
 			await create(client, names.scratch, `CREATE DATABASE "${names.scratch}"`);
@@ -334,6 +345,11 @@ async function createRunDatabase(project: TestProject) {
 		names.workers.map((name) => ownerUrl(urlFor(name), ownerPassword)),
 	);
 	project.provide("pgWorkerSuperUrls", names.workers.map(urlFor));
+	project.provide("pgRun", {
+		stem,
+		template: names.template,
+		maintenanceUrl: maintenanceUrl(baseUrl),
+	});
 	project.provide("pgFresh", { handedOverAfterMigrate: freshHandedOver });
 	project.provide("pgLegacy", {
 		ownerUrl: ownerUrl(urlFor(names.legacy), ownerPassword),
