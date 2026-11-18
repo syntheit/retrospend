@@ -1,0 +1,88 @@
+{
+	"row": {
+		"title": "Advanced protection",
+		"off": "Off",
+		"keysReady": "Keys ready",
+		"turnOn": "Turn on",
+		"makeNewKey": "Make new key",
+		"verifyEmailFirst": "Verify your email first"
+	},
+	"enable": {
+		"what": {
+			"title": "Turn on Advanced protection",
+			"body": "Your expenses, budgets and Wealth are sealed with a key only your devices hold.",
+			"continue": "Continue",
+			"shared": "Shared expenses and projects stay visible to the server and the people in them.",
+			"backups": "Amounts in older backups stay for 30 days.",
+			"features": "Some features turn off.",
+			"seeWhich": "See which",
+			"unchanged": "Your data, figures and sign-in."
+		},
+		"newPassword": {
+			"title": "Set a new password",
+			"body": "This password unlocks your data. We cannot reset it.",
+			"continue": "Continue"
+		},
+		"methods": {
+			"title": "Add a way to get back in",
+			"body": "Start with a recovery key.",
+			"continue": "Continue"
+		},
+		"confirmYou": {
+			"title": "Confirm it's you",
+			"body": "Enter your password.",
+			"continue": "Save keys"
+		},
+		"notice": "Your keys are ready. Your data is sealed when Advanced protection turns on."
+	},
+	"recoveryKey": {
+		"saveTitle": "Save your recovery key",
+		"saveBody": "Without this key or your password, nobody can open your data, including us.",
+		"copy": "Copy",
+		"download": "Download",
+		"print": "Print",
+		"saveFiles": "Save to Files",
+		"saveDevice": "Save to device",
+		"saved": "I saved it",
+		"confirmTitle": "Confirm your key",
+		"confirmBody": "Type group {first} and group {second}.",
+		"mismatch": "Does not match",
+		"group": "Group {number}",
+		"label": "Recovery key",
+		"fileTitle": "Retrospend recovery key"
+	},
+	"recover": {
+		"enterTitle": "Use your recovery key",
+		"enterBody": "Enter the 9 groups, or paste the whole key.",
+		"typo": "Check the key for a typo.",
+		"wrongKey": "That is not this account's recovery key.",
+		"unavailable": "This account has no recovery key.",
+		"newPasswordTitle": "Set a new password",
+		"newPasswordBody": "Your recovery key opened your data. Choose a new password.",
+		"unlock": "Sign in",
+		"apiKeysRemoved": "Your API keys were removed."
+	},
+	"methods": {
+		"device": "Another device",
+		"person": "Trusted person",
+		"later": "Add later",
+		"reason": "Not available yet",
+		"key": "Recovery key",
+		"keyBody": "Saved on paper or in a file",
+		"createKey": "Create key",
+		"deviceBody": "Approve it from this one",
+		"personBody": "Someone who can ask for access",
+		"done": "Done"
+	},
+	"errors": {
+		"wrongPassword": "Wrong password",
+		"wrongCode": "That code didn't work",
+		"tooMany": "Too many tries, wait a minute and try again.",
+		"notOffered": "Advanced protection is not available here.",
+		"failed": "Couldn't finish. Try again.",
+		"checkFailed": "Couldn't check your keys."
+	},
+	"toast": {
+		"keysSaved": "Keys saved"
+	}
+}

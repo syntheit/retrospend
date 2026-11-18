@@ -1,0 +1,88 @@
+{
+	"row": {
+		"title": "Protección avanzada",
+		"off": "Desactivada",
+		"keysReady": "Claves listas",
+		"turnOn": "Activar",
+		"makeNewKey": "Crear clave nueva",
+		"verifyEmailFirst": "Verifica primero tu correo"
+	},
+	"enable": {
+		"what": {
+			"title": "Activar la protección avanzada",
+			"body": "Tus gastos, presupuestos y patrimonio se sellan con una clave que solo tienen tus dispositivos.",
+			"continue": "Continuar",
+			"shared": "Los gastos y proyectos compartidos siguen visibles para el servidor y para las personas que participan.",
+			"backups": "Los importes en copias de seguridad anteriores se conservan 30 días.",
+			"features": "Algunas funciones se desactivan.",
+			"seeWhich": "Ver cuáles",
+			"unchanged": "Tus datos, cifras e inicio de sesión."
+		},
+		"newPassword": {
+			"title": "Elige una contraseña nueva",
+			"body": "Esta contraseña abre tus datos. No podemos restablecerla.",
+			"continue": "Continuar"
+		},
+		"methods": {
+			"title": "Agrega una forma de volver a entrar",
+			"body": "Empieza con una clave de recuperación.",
+			"continue": "Continuar"
+		},
+		"confirmYou": {
+			"title": "Confirma que eres tú",
+			"body": "Escribe tu contraseña.",
+			"continue": "Guardar claves"
+		},
+		"notice": "Tus claves están listas. Tus datos se sellan cuando se activa la protección avanzada."
+	},
+	"recoveryKey": {
+		"saveTitle": "Guarda tu clave de recuperación",
+		"saveBody": "Sin esta clave ni tu contraseña, nadie puede abrir tus datos, ni siquiera nosotros.",
+		"copy": "Copiar",
+		"download": "Descargar",
+		"print": "Imprimir",
+		"saveFiles": "Guardar en Archivos",
+		"saveDevice": "Guardar en el dispositivo",
+		"saved": "La guardé",
+		"confirmTitle": "Confirma tu clave",
+		"confirmBody": "Escribe el grupo {first} y el grupo {second}.",
+		"mismatch": "No coincide",
+		"group": "Grupo {number}",
+		"label": "Clave de recuperación",
+		"fileTitle": "Clave de recuperación de Retrospend"
+	},
+	"recover": {
+		"enterTitle": "Usa tu clave de recuperación",
+		"enterBody": "Escribe los 9 grupos o pega la clave completa.",
+		"typo": "Revisa la clave, parece tener un error.",
+		"wrongKey": "Esa no es la clave de recuperación de esta cuenta.",
+		"unavailable": "Esta cuenta no tiene clave de recuperación.",
+		"newPasswordTitle": "Elige una contraseña nueva",
+		"newPasswordBody": "Tu clave de recuperación abrió tus datos. Elige una contraseña nueva.",
+		"unlock": "Iniciar sesión",
+		"apiKeysRemoved": "Se eliminaron tus claves de API."
+	},
+	"methods": {
+		"device": "Otro dispositivo",
+		"person": "Persona de confianza",
+		"later": "Agregar después",
+		"reason": "Todavía no disponible",
+		"key": "Clave de recuperación",
+		"keyBody": "Guardada en papel o en un archivo",
+		"createKey": "Crear clave",
+		"deviceBody": "Apruébalo desde este",
+		"personBody": "Alguien que puede pedir acceso",
+		"done": "Listo"
+	},
+	"errors": {
+		"wrongPassword": "Contraseña incorrecta",
+		"wrongCode": "Ese código no funcionó",
+		"tooMany": "Demasiados intentos, espera un minuto e inténtalo de nuevo.",
+		"notOffered": "La protección avanzada no está disponible aquí.",
+		"failed": "No se pudo completar. Inténtalo de nuevo.",
+		"checkFailed": "No se pudieron comprobar tus claves."
+	},
+	"toast": {
+		"keysSaved": "Claves guardadas"
+	}
+}
