@@ -253,7 +253,12 @@ describe("readFiguresWithBasis: one snapshot", () => {
 		const holdFigure: FigureDefinition = {
 			id: "test.hold",
 			scope: [],
-			compute: async () => {
+			compute: async (db, scope) => {
+				// The snapshot starts at the first statement, with the writer open.
+				await db.user.findUniqueOrThrow({
+					where: { id: scope.userId },
+					select: { id: true },
+				});
 				midRead.opened();
 				await midRead.gate;
 				return { minor: 1, currency: "USD" };
