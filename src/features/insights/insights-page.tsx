@@ -4,16 +4,23 @@ import type { Span } from "@retrospend/domain/insights";
 import { ChartPie, SearchX } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback } from "react";
-import { useEntryActions } from "~/features/entry/entry-actions";
 import { PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { Button } from "~/components/ui/button";
 import { Empty } from "~/components/ui/empty-state";
+import { useEntryActions } from "~/features/entry/entry-actions";
+import { insightsValues } from "~/lib/device-engine/narrowings";
+import { useDeviceCompare } from "~/lib/device-engine/react";
 import { ActivityTabs } from "../activity/activity-tabs";
 import { useDimItems } from "../activity/activity-toolbar";
 import { CashflowSection } from "./cashflow-section";
 import { CategorySection } from "./category-section";
-import { activityHref, type InsightsView, isNarrowed } from "./filter";
+import {
+	activityHref,
+	type InsightsView,
+	isNarrowed,
+	thisMonth,
+} from "./filter";
 import { InsightsToolbar } from "./insights-toolbar";
 import { MonthsSection } from "./months-section";
 import { LeadSkeleton, PartUnavailable } from "./part-states";
@@ -62,6 +69,18 @@ export function InsightsPage() {
 	const narrowed = isNarrowed(view);
 	const named = summary?.missingRates ?? [];
 	const nothing = summary?.count === 0;
+	// Only this month with nothing picked is held against the device.
+	const month = thisMonth(today);
+	const defaultView =
+		!narrowed &&
+		view.range.from === month.from &&
+		view.range.to === month.to &&
+		!i.summary.isPlaceholderData &&
+		!i.months.isPlaceholderData;
+	useDeviceCompare(
+		"insights",
+		insightsValues(summary, i.months.data, defaultView),
+	);
 
 	return (
 		<PageFrame label="insights">

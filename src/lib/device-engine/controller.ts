@@ -1,4 +1,8 @@
-import type { CompareReport, ScreenName } from "@retrospend/engine/device";
+import type {
+	CompareReport,
+	NarrowValues,
+	ScreenName,
+} from "@retrospend/engine/device";
 import { DeviceError, type DeviceErrorCode, TERMINAL_CODES } from "./protocol";
 import type { DeviceClient } from "./rpc";
 
@@ -23,6 +27,9 @@ export type ControllerState =
 	| "running"
 	| "terminal"; // the server will not serve this account: nothing retries
 
+/** What an explicit check compares when no screen is open (the dev readout). */
+const HOME = { screen: "home", values: {} } as const;
+
 /** A wait after a 429 starts here and doubles, up to the cap. */
 export const BACKOFF_MS = 60_000;
 export const BACKOFF_MAX_MS = 600_000;
@@ -30,11 +37,11 @@ export const BACKOFF_MAX_MS = 600_000;
 /**
  * The page's lifecycle for the device engine: one worker per tab, for one
  * account. It starts only for a signed-in account that is not protected,
- * pulls when Home opens and when the tab comes back to the front (the
- * engine skips a pull when the last one is under a minute old), backs off
- * when the server says slow down, and ends the worker on sign-out or another
- * account. Home keeps the server's numbers throughout: a refusal changes
- * nothing on screen.
+ * pulls when a screen opens and when the tab comes back to the front (the
+ * engine skips a pull when the last one is under a minute old), compares the
+ * open screen after a new pull, backs off when the server says slow down, and
+ * ends the worker on sign-out or another account. Screens keep the server's
+ * numbers throughout: a refusal changes nothing on screen.
  */
 export function createDeviceController(deps: ControllerDeps) {
 	let user: DeviceUser | null = null;
@@ -42,12 +49,13 @@ export function createDeviceController(deps: ControllerDeps) {
 	let client: DeviceClient | null = null;
 	/** Bumped when the account changes, so an answer for the old one is dropped. */
 	let epoch = 0;
-	let homeOpen = false;
+	/** The screen in front and the narrowing values it renders: the only one compared. */
+	let open: { screen: ScreenName; values: NarrowValues } | null = null;
 	let inflight: Promise<void> | null = null;
 	let waitUntil = 0;
 	let rateLimits = 0;
-	/** The pull count the last compare ended at: a pull that changed nothing is not checked again. */
-	let checkedGeneration = 0;
+	/** Per screen, the pull count its last compare ended at: a pull that changed nothing is not checked again. */
+	let checkedGeneration: Partial<Record<ScreenName, number>> = {};
 	/** The last report of each screen that has been compared. */
 	let reports: Partial<Record<ScreenName, CompareReport>> = {};
 	let lastPullAt: number | null = null;
@@ -133,15 +141,31 @@ export function createDeviceController(deps: ControllerDeps) {
 					lastPullAt = deps.now();
 				}
 				// Compare only: the figures are checked against the server's and the
-				// screen keeps showing the server's. The engine pulls for it too.
-				if (status === "ready" && (force || generation > checkedGeneration)) {
-					const report = await worker.compare("home");
+				// screen keeps showing the server's. The engine pulls for it too. The
+				// loop follows the screen in front: one opened during the compare is
+				// checked next, never the one that was left.
+				let last: ScreenName | null = null;
+				let forced = force;
+				for (
+					let target = open ?? (force ? HOME : null);
+					status === "ready" &&
+					target !== null &&
+					target.screen !== last &&
+					(forced || generation > (checkedGeneration[target.screen] ?? 0));
+					target = open
+				) {
+					const report = await worker.compare(target.screen, target.values);
 					if (mine !== epoch) return;
 					// A check that could not run is tried again, after a wait.
 					if (!report) return backOff("failed");
 					reports = { ...reports, [report.screen]: report };
 					changed();
-					checkedGeneration = report.generation;
+					checkedGeneration = {
+						...checkedGeneration,
+						[target.screen]: report.generation,
+					};
+					last = target.screen;
+					forced = false;
 				}
 				// Only a whole run, check included, ends a run of 429s.
 				rateLimits = 0;
@@ -197,7 +221,7 @@ export function createDeviceController(deps: ControllerDeps) {
 			listeners.add(listener);
 			return () => void listeners.delete(listener);
 		},
-		/** Pulls if due and compares Home now, past any wait, whether or not a pull finished since the last check. */
+		/** Pulls if due and compares the open screen (Home when none is) now, past any wait, whether or not a pull finished since the last check. */
 		checkNow() {
 			return pull(true, true);
 		},
@@ -217,27 +241,32 @@ export function createDeviceController(deps: ControllerDeps) {
 			rateLimits = 0;
 			inflight = null;
 			spawning = null;
-			checkedGeneration = 0;
+			checkedGeneration = {};
 			pulledGeneration = 0;
 			lastPullAt = null;
 			reports = {};
 			state = !next ? "off" : next.protectedAccount ? "terminal" : "idle";
-			if (state === "idle" && homeOpen) void pull(true);
+			if (state === "idle" && open) void pull(true);
 		},
-		/** Home opened: starts the worker if it is not running and pulls when the last pull is old. */
-		homeOpened() {
-			homeOpen = true;
+		/**
+		 * A screen opened with the values it renders: starts the worker if it is
+		 * not running and pulls when the last pull is old. Only this screen is
+		 * compared, after a pull that brought something new.
+		 */
+		screenOpened(screen: ScreenName, values: NarrowValues) {
+			open = { screen, values };
 			return pull(true);
 		},
-		homeClosed() {
-			homeOpen = false;
+		/** A screen closed: it stops being compared, unless another has opened since. */
+		screenClosed(screen: ScreenName) {
+			if (open?.screen === screen) open = null;
 		},
 		/**
 		 * The tab came to the front: pulls when a worker runs, and starts one when
-		 * Home is open (it was opened in a hidden tab, which never pulls).
+		 * a screen is open (it was opened in a hidden tab, which never pulls).
 		 */
 		tabVisible() {
-			return pull(homeOpen);
+			return pull(open !== null);
 		},
 	};
 }

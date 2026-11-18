@@ -1,5 +1,6 @@
 "use client";
 
+import type { NarrowValues, ScreenName } from "@retrospend/engine/device";
 import { useEffect } from "react";
 import { useSession } from "~/hooks/use-session";
 import { deviceController } from "./instance";
@@ -33,12 +34,22 @@ export function DeviceEngineLifecycle() {
 	return null;
 }
 
-/** Home is open: starts the worker and pulls when the last pull is old. */
-export function useDevicePullOnHome() {
+/**
+ * A screen is open and in front: starts the worker, pulls when the last pull
+ * is old, and compares this screen after a pull that brought something new.
+ * `values` are what the page renders (null while it is not ready or is not
+ * showing its default view). The screen keeps showing the server's numbers.
+ */
+export function useDeviceCompare(
+	screen: ScreenName,
+	values: NarrowValues | null,
+) {
+	// A new object with the same ids must not restart the check.
+	const key = values ? JSON.stringify(values) : null;
 	useEffect(() => {
-		if (!enabled()) return;
+		if (!enabled() || key === null) return;
 		const controller = deviceController();
-		void controller.homeOpened();
-		return () => controller.homeClosed();
-	}, []);
+		void controller.screenOpened(screen, JSON.parse(key) as NarrowValues);
+		return () => controller.screenClosed(screen);
+	}, [screen, key]);
 }

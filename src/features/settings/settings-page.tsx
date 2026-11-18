@@ -5,6 +5,8 @@ import { useRef } from "react";
 import { BackButton } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { useIsMobile } from "~/hooks/use-mobile";
+import { NO_VALUES } from "~/lib/device-engine/narrowings";
+import { useDeviceCompare } from "~/lib/device-engine/react";
 import { entryOf } from "~/lib/nav";
 import { AboutFooter } from "./about-footer";
 import { CategoriesSection } from "./categories/categories-section";
@@ -29,6 +31,7 @@ import { SecuritySection } from "./security/security-section";
 export function SettingsPage() {
 	const t = useTranslations("settingsV2");
 	const phone = useIsMobile();
+	useDeviceCompare("settings", NO_VALUES);
 	const scroller = useRef<HTMLDivElement>(null);
 	const { current, go } = useSectionSpy(scroller, SECTIONS);
 	const home = entryOf("home").href;
@@ -50,7 +53,7 @@ export function SettingsPage() {
 				className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
 				ref={scroller}
 			>
-				<div className="px-gutter mx-auto w-full max-w-280 pt-4 pb-12 md:pt-2 md:flex md:items-start md:gap-12">
+				<div className="px-gutter mx-auto w-full max-w-280 pt-4 pb-12 md:flex md:items-start md:gap-12 md:pt-2">
 					{!phone && (
 						<div className="sticky top-2 w-50 shrink-0">
 							<SectionList current={current} ids={SECTIONS} onGo={go} />
