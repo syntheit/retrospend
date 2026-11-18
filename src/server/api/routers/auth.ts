@@ -13,7 +13,6 @@ import {
 } from "~/server/api/trpc";
 import {
 	getPasswordChangedAlertTemplate,
-	getPasswordResetEmailTemplate,
 	getVerificationEmailTemplate,
 } from "~/server/email-templates";
 import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
@@ -24,10 +23,10 @@ import {
 	resetPasswordHash,
 	storeEmailVerificationToken,
 } from "~/server/services/account-security.service";
+import { sendResetLink } from "~/server/services/auth/reset-request";
 import {
 	allowResetRequest,
 	InvalidResetTokenError,
-	issueResetToken,
 	lookupResetToken,
 } from "~/server/services/auth/reset-tokens";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
@@ -141,23 +140,8 @@ export const authRouter = createTRPCRouter({
 			}
 
 			// Earlier live links stay valid: a request from a stranger who knows
-			// the address must not cancel the person's own. Null: the address was
-			// changed since we read it, and the old one gets nothing.
-			const token = await issueResetToken({
-				userId: user.id,
-				origin: "email",
-				forEmail: user.email,
-			});
-			if (!token) return { success: true };
-
-			const resetUrl = `${env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/reset-password?token=${token}`;
-			const htmlContent = getPasswordResetEmailTemplate(resetUrl);
-
-			// Not awaited: a slow mail server must not tell a known address from an
-			// unknown one. The log line carries no address (a mail error can).
-			sendEmail(user.email, emailSubject.passwordReset, htmlContent).catch(
-				() => console.error("Failed to send the password reset email"),
-			);
+			// the address must not cancel the person's own.
+			await sendResetLink(user);
 
 			return { success: true };
 		}),

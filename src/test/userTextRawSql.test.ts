@@ -75,6 +75,12 @@ const AUDITED: { file: string; columns: string[]; reason: string }[] = [
 		reason:
 			"B18: joins user.email, which is not a mapped column (the sealed email columns are shadow_profile and guest_session)",
 	},
+	{
+		file: "src/server/services/auth/reset-tokens.ts",
+		columns: ["email"],
+		reason:
+			"B19: locks the user row and reads user.email, which is not a mapped column (the sealed email columns are shadow_profile and guest_session)",
+	},
 ];
 
 const TAG = /(\$queryRaw|\$executeRaw|Prisma\.sql|\bsql)\s*(?:<[^>]*>)?\s*`/g;
