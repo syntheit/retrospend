@@ -96,7 +96,7 @@ function errorResponses(entry: ContractEntry): JsonObject {
 	};
 }
 
-function decorateOperation(op: JsonObject, entry: ContractEntry) {
+export function decorateOperation(op: JsonObject, entry: ContractEntry) {
 	const scope = entry.meta.scope;
 	// A session scope is never on an API key, so that scheme is not offered.
 	op.security =
@@ -119,7 +119,9 @@ function decorateOperation(op: JsonObject, entry: ContractEntry) {
 	if (
 		entry.method !== "GET" &&
 		!entry.meta.previewOf &&
-		!entry.meta.readsOnly
+		!entry.meta.readsOnly &&
+		// A token in the body proves it and the token is single use.
+		entry.meta.publicWrite === undefined
 	) {
 		const params = (op.parameters ?? []) as JsonObject[];
 		op.parameters = [

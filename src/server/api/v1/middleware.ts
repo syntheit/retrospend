@@ -1,7 +1,11 @@
 import { implement, os } from "@orpc/server";
 import type { ResponseHeadersPluginContext } from "@orpc/server/plugins";
 import { contract } from "@retrospend/api-contract";
-import { type ApiMeta, isWriteMethod } from "@retrospend/api-contract/common";
+import {
+	type ApiMeta,
+	isWriteMethod,
+	publicWriteProblem,
+} from "@retrospend/api-contract/common";
 import { V1_ALLOWED } from "~/server/api/protection/allowed";
 import { isAllowed } from "~/server/api/protection/guard";
 import type { db as globalDb } from "~/server/db";
@@ -46,15 +50,22 @@ function routeKey(route: { method?: string; path?: string }): string {
 /**
  * Resolves the principal and enforces, in order: credentials (401), the
  * route's scope (403 missing_scope) and advanced protection (403
- * protected_account). Public routes (server-info) skip both
- * but still see the caller when valid credentials are sent.
+ * protected_account). A public GET (server-info) skips both but still sees
+ * the caller when valid credentials are sent. A public POST never sees one
+ * (see ignoresSession below).
  */
 const authenticate = os
 	.$context<V1InitialContext>()
 	.$meta<ApiMeta>({})
 	.middleware(async ({ context, next, procedure }) => {
-		const scope = procedure["~orpc"].meta.scope;
+		const { meta, route } = procedure["~orpc"];
+		const scope = meta.scope;
 		if (!scope) throw problem("internal", "Route has no scope");
+		const method = (route.method ?? "POST").toUpperCase();
+		// Fail closed: a publicWrite meta the contract would refuse (an unknown
+		// value, a signed-in scope, a GET) is never run, whatever the route does.
+		const badPublicWrite = publicWriteProblem(meta, method, route.path);
+		if (badPublicWrite) throw problem("internal", badPublicWrite);
 		const resolved = await resolvePrincipal(context.headers);
 		const principal = resolved.ok ? resolved.principal : null;
 
@@ -62,7 +73,7 @@ const authenticate = os
 		// a write from another site is refused (csrf.ts). Tokens are not.
 		if (
 			principal?.kind === "web" &&
-			isWriteMethod(procedure["~orpc"].route.method ?? "POST") &&
+			isWriteMethod(method) &&
 			isCrossSiteWrite(
 				context.headers,
 				appOriginFrom(
@@ -87,15 +98,17 @@ const authenticate = os
 		if (
 			principal?.protected &&
 			scope !== "public" &&
-			!isAllowed(V1_ALLOWED, routeKey(procedure["~orpc"].route))
+			!isAllowed(V1_ALLOWED, routeKey(route))
 		)
 			throw problem("protected_account");
 
-		// A public route that only reads (prelogin) acts the same with or without
-		// a session: no keyring is made, no zone is claimed, and idempotency,
-		// events and the token limit see no user.
-		const ignoresSession =
-			scope === "public" && procedure["~orpc"].meta.readsOnly === true;
+		// A public write (a POST, in practice) acts the same with or without a
+		// session: no keyring is made, no zone is claimed, and idempotency, events
+		// and the token limit see no user. That holds for every public write, not
+		// only readsOnly and publicWrite ones, so a route that skips its meta still
+		// never writes, records or keeps an Idempotency-Key as a cookie's user. A
+		// public GET (server-info) reflects the caller, as its description says.
+		const ignoresSession = scope === "public" && isWriteMethod(method);
 		let user: V1User | null = null;
 		if (principal && !ignoresSession) {
 			// When sealing, the user's key exists before any transaction needs it.
