@@ -376,6 +376,12 @@ const recoveryKeys = rkHexes.map((k, i) => ({
 	recoveryKey: k,
 	text: recoveryText(k),
 	wrapKey: kdf(k, 1, "rs.rk.v1"),
+	// The recovery proof, and what the server stores of it (its SHA-256).
+	authKey: kdf(k, 2, "rs.rk.v1"),
+	authKeyHash: crypto
+		.createHash("sha256")
+		.update(unhex(kdf(k, 2, "rs.rk.v1")))
+		.digest("hex"),
 }));
 
 const wrapAad = (alg, role, id) => `rs.wrap.v1|01${alg}|${role}|${id}`;

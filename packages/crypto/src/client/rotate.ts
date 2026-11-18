@@ -3,12 +3,14 @@
 // password, check that before sending, then commit. The server only ever sees
 // the two sign-in secrets and the rewrapped account key.
 import { fromBase64Url, toBase64Url } from "../base64url";
-import { deriveMasterKey, masterSubkeys, unwrapKey, wrapKey } from "../keys";
+import { deriveMasterKey, unwrapKey, wrapKey } from "../keys";
 import { type Argon2Params, SALT_BYTES } from "../primitives";
 import { signInSecret } from "../sign-in-secret";
 import {
 	allowedParams,
 	asKeyFlowError,
+	binMasterSubkeys,
+	checkOpens,
 	type FlowPorts,
 	type Kdf,
 	KeyFlowError,
@@ -81,12 +83,6 @@ export type RotateOptions = {
 	newParams?: Argon2Params;
 };
 
-const sameBytes = (a: Uint8Array, b: Uint8Array): boolean => {
-	let diff = a.length ^ b.length;
-	for (let i = 0; i < a.length; i++) diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
-	return diff === 0;
-};
-
 /** One run of the whole flow. Every key it makes is wiped before it returns or throws. */
 async function rotateOnce(
 	ports: RotatePorts,
@@ -101,10 +97,7 @@ async function rotateOnce(
 	const oldSalt = readSalt(keys.salt);
 	const p = await ports.primitives();
 	const bin = secretBin(p);
-	const subkeys = (master: Uint8Array) => {
-		const k = masterSubkeys(p, bin.keep(master));
-		return { authKey: bin.keep(k.authKey), wrapKey: bin.keep(k.wrapKey) };
-	};
+	const subkeys = (master: Uint8Array) => binMasterSubkeys(p, bin, master);
 	try {
 		await ports.paint?.();
 		const old = subkeys(deriveMasterKey(p, input.current, oldSalt, oldParams));
@@ -139,16 +132,16 @@ async function rotateOnce(
 		// What was made must open from the new password alone, from the values
 		// as they will be sent, or the person would lock themselves out.
 		const sentSalt = fromBase64Url(newKdf.salt);
-		const sentWrap = fromBase64Url(wrappedAccountKey);
-		if (!sentSalt || !sentWrap) throw new KeyFlowError("malformed");
+		if (!sentSalt) throw new KeyFlowError("malformed");
 		const again = subkeys(deriveMasterKey(p, input.next, sentSalt, newParams));
-		const reopened = bin.keep(
-			unwrapKey(p, again.wrapKey, "ak-password", input.userId, sentWrap),
-		);
-		if (
-			!sameBytes(reopened, accountKey) ||
-			signInSecret(again.authKey) !== newAuthKey
-		)
+		checkOpens(p, bin, {
+			wrappingKey: again.wrapKey,
+			role: "ak-password",
+			id: input.userId,
+			sent: wrappedAccountKey,
+			expected: accountKey,
+		});
+		if (signInSecret(again.authKey) !== newAuthKey)
 			throw new KeyFlowError("malformed");
 
 		await ports.commit(

@@ -6,6 +6,8 @@
 //   MK --kdf "rs.mk.v1" id 1--> auth key   (sent to better-auth as the password)
 //   MK --kdf "rs.mk.v1" id 2--> password wrapping key
 //   recovery key (RK, 32 random bytes) --kdf "rs.rk.v1" id 1--> recovery wrapping key
+//   RK --kdf "rs.rk.v1" id 2--> recovery auth key (the proof for recovery; the
+//       server keeps only its SHA-256)
 //   account key (AK, 32 random bytes) is wrapped by the password wrapping key,
 //       the recovery wrapping key, and (sealed to a public key) each device
 //       and trusted contact
@@ -74,6 +76,7 @@ export const CONTEXT_RECOVERY = "rs.rk.v1";
 export const SUBKEY_AUTH = 1;
 export const SUBKEY_PASSWORD_WRAP = 2;
 export const SUBKEY_RECOVERY_WRAP = 1;
+export const SUBKEY_RECOVERY_AUTH = 2;
 
 export const SYMMETRIC_ROLES = [
 	"ak-password",
@@ -178,8 +181,14 @@ export const generateCollectionKey = (p: Primitives): RecordKey => ({
 	keyId: p.randomBytes(KEY_ID_BYTES),
 	key: p.randomBytes(KEY_BYTES),
 });
-export const recoveryWrapKey = (p: Primitives, recoveryKey: Uint8Array) =>
-	p.kdfDerive(recoveryKey, SUBKEY_RECOVERY_WRAP, CONTEXT_RECOVERY);
+/** Both keys a recovery key gives: the one that opens ak-recovery, and the proof the server stores a hash of. */
+export function recoverySubkeys(p: Primitives, recoveryKey: Uint8Array) {
+	if (!isBytes(recoveryKey) || recoveryKey.length !== KEY_BYTES) bad();
+	return {
+		wrapKey: p.kdfDerive(recoveryKey, SUBKEY_RECOVERY_WRAP, CONTEXT_RECOVERY),
+		authKey: p.kdfDerive(recoveryKey, SUBKEY_RECOVERY_AUTH, CONTEXT_RECOVERY),
+	};
+}
 
 // Wrapping.
 
@@ -273,6 +282,8 @@ const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const RK_VERSION = 1;
 const RK_DATA_SYMBOLS = 52;
 const RK_GROUP = 6;
+/** Nine groups of six: 54 symbols. */
+export const RECOVERY_GROUPS = (RK_DATA_SYMBOLS + 2) / RK_GROUP;
 
 const mulAlpha = (v: number) => ((v << 1) ^ (v & 16 ? 0x25 : 0)) & 31;
 
@@ -307,14 +318,28 @@ export function encodeRecoveryKey(key: Uint8Array): string {
 	return text.match(new RegExp(`.{${RK_GROUP}}`, "g"))?.join("-") ?? bad();
 }
 
-/** `invalid_input` for a wrong length, a stray character, a typo or an unknown version. */
-export function parseRecoveryKey(text: string): Uint8Array {
+/** The nine groups of the key's text, in order. */
+export const recoveryGroups = (key: Uint8Array): string[] =>
+	encodeRecoveryKey(key).split("-");
+
+/**
+ * The one way typed recovery text (or one group of it) is read: upper case,
+ * no spaces or hyphens, O as 0 and I and L as 1 (Crockford). `invalid_input`
+ * for a character that is not printable ASCII or whitespace. It checks no
+ * length and no alphabet: parse and group matching do.
+ */
+export function normalizeRecoveryText(text: string): string {
 	if (typeof text !== "string" || !/^[\t\n\r\x20-\x7e]*$/.test(text)) bad();
-	const clean = text
+	return text
 		.toUpperCase()
 		.replace(/[\s-]/g, "")
 		.replace(/O/g, "0")
 		.replace(/[IL]/g, "1");
+}
+
+/** `invalid_input` for a wrong length, a stray character, a typo or an unknown version. */
+export function parseRecoveryKey(text: string): Uint8Array {
+	const clean = normalizeRecoveryText(text);
 	if (clean.length !== RK_DATA_SYMBOLS + 2) bad();
 	const symbols = [...clean].map((ch) => ALPHABET.indexOf(ch));
 	if (symbols.includes(-1)) bad();

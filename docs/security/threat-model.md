@@ -139,7 +139,10 @@ What this does and does not buy:
 | MK | `rs.mk.v1` | 1 | auth key, sent to better-auth as the password |
 | MK | `rs.mk.v1` | 2 | password wrapping key |
 | Recovery key | `rs.rk.v1` | 1 | recovery wrapping key |
+| Recovery key | `rs.rk.v1` | 2 | recovery auth key, the proof that the person holds the recovery key (`recoverySubkeys`, `keys.ts`) |
 | Account key | `rs.ak.v1` | | reserved, unused |
+
+The recovery auth key is sent by the client at enable and at recovery. The server keeps only its SHA-256 and compares it in constant time (server side with K1-7, not built yet), so a stolen database holds no value that opens the recovery wrap; the proof has 256 bits, so no slow hash is needed. The server cannot check a recovery key itself: the proof only shows that the caller knows it.
 
 The auth key and the wrapping key are independent outputs of one keyed hash, so the server learning the auth key (it receives it at every sign-in) does not give it the wrapping key. The server hashes the auth key again with better-auth's password hash before storing it (K1-2, spike section 4.4). The auth key travels as base64url of its 32 bytes (`packages/crypto/src/sign-in-secret.ts`); prelogin (K1-1), the enable route (K1-2) and the web and mobile derivation (K1-3, K1-4, one shared flow in `packages/crypto/src/client/` with a thin adapter on each platform) are built behind `ADVANCED_PROTECTION_ENABLED`.
 
@@ -340,7 +343,7 @@ The code is what this document describes.
 |---|---|
 | 4.5 record AAD is `rs.v1 \| userId \| collectionId \| entity \| recordId \| version` | The AAD also includes the header (version, algorithm, key id) as 36 hex characters (`format.ts`, `recordAad`) |
 | 4.5 default-user AAD binds the user; wire form `\u0001k1` | AAD binds table, column, row id and key id. Wire form is `\u0001k1:` (`field-crypto.ts`). The 2026-11-08 note already says so; the section 4.5 text is old |
-| 4.4 subkey contexts named "auth" and "wrap" | Contexts `rs.mk.v1` (ids 1 and 2) and `rs.rk.v1` (id 1), 8 ASCII characters each (`keys.ts`) |
+| 4.4 subkey contexts named "auth" and "wrap" | Contexts `rs.mk.v1` (ids 1 and 2) and `rs.rk.v1` (id 1 wrap, id 2 recovery proof), 8 ASCII characters each (`keys.ts`) |
 | 4.7 recovery key is 13 groups of 4 | 9 groups of 6, 54 symbols, two GF(32) checks (the 2026-11-08 note already says so; owner has not confirmed) |
 | 4.3 floor 46 MiB and 1 pass, default 64 MiB and 3 passes | Same, plus a ceiling of 256 MiB and 10 passes that the spike does not mention |
 | 4.2 device approval uses `crypto_kx` | The native libsodium build has no `crypto_kx` (`primitives.ts`), so the handshake must use boxes or sealed boxes |

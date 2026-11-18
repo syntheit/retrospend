@@ -5,7 +5,13 @@
 // errors are worded). Nothing here touches the network, storage or a screen.
 import { fromBase64Url } from "../base64url";
 import { CryptoError } from "../errors";
-import { ARGON2_DEFAULT, checkArgon2Params } from "../keys";
+import {
+	ARGON2_DEFAULT,
+	checkArgon2Params,
+	masterSubkeys,
+	type SymmetricRole,
+	unwrapKey,
+} from "../keys";
 import { type Argon2Params, type Primitives, SALT_BYTES } from "../primitives";
 
 /** The account's key derivation values: the salt as base64url and the Argon2id parameters. */
@@ -27,6 +33,12 @@ export type KeyFlowCode =
 	/** The keyed record cannot be read or written, so the defense cannot work. */
 	| "unreadable"
 	| "wrongPassword"
+	/** The recovery key's proof was refused (a key of another account, or an old one). */
+	| "wrongRecoveryKey"
+	/** The reset link is unknown, used or expired. */
+	| "tokenExpired"
+	/** This account has no recovery proof on the server (keys made before it existed). */
+	| "recoveryUnavailable"
 	/** The key set changed under the run (a second run may succeed). */
 	| "conflict"
 	/** The server no longer offers Advanced protection. */
@@ -63,7 +75,9 @@ export type LookupRoute = "prelogin" | "keys";
  * `missing` for a missing route or account (a 404). The core reads it
  * (lookupKdf), so the web and the phone treat the same answer the same way.
  */
-export type LookupAnswer = { missing: true } | { missing?: false; body: unknown };
+export type LookupAnswer =
+	| { missing: true }
+	| { missing?: false; body: unknown };
 
 export interface FlowPorts {
 	/** The primitives. Called only after the server's parameters passed, so a hostile answer never loads the library. */
@@ -142,6 +156,11 @@ export function classifyRefusal(
 	if (status === null) return "unavailable";
 	if (status === 429) return "rateLimited";
 	if (status === 400 && code === "wrong_password") return "wrongPassword";
+	if (status === 400 && code === "wrong_recovery_key")
+		return "wrongRecoveryKey";
+	if (status === 404 && code === "invalid_token") return "tokenExpired";
+	if (status === 409 && code === "recovery_unavailable")
+		return "recoveryUnavailable";
 	if (status === 409) return "conflict";
 	if (status === 501) return "notOffered";
 	return "failed";
@@ -167,4 +186,53 @@ export function secretBin(p: Pick<Primitives, "wipe">) {
 			for (const bytes of held) p.wipe(bytes);
 		},
 	};
+}
+
+/** The master key's two subkeys, all three kept in `bin` so every exit wipes them. */
+export function binMasterSubkeys(
+	p: Primitives,
+	bin: ReturnType<typeof secretBin>,
+	master: Uint8Array,
+) {
+	const k = masterSubkeys(p, bin.keep(master));
+	return { authKey: bin.keep(k.authKey), wrapKey: bin.keep(k.wrapKey) };
+}
+
+export const sameBytes = (a: Uint8Array, b: Uint8Array): boolean => {
+	let diff = a.length ^ b.length;
+	for (let i = 0; i < a.length; i++) diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
+	return diff === 0;
+};
+
+/**
+ * The one check before sending: the wrap as it will be sent (base64url text)
+ * must open under the wrapping key, for this role and id, to exactly the key
+ * it was made from. Anything else is `malformed` and nothing goes out, so a
+ * wrap that could lock the person out never reaches the server. Returns the
+ * opened key, kept in `bin`. Enable and rotate use it now; recover and new-key
+ * add themselves in K3-1.
+ */
+export function checkOpens(
+	p: Primitives,
+	bin: ReturnType<typeof secretBin>,
+	check: {
+		wrappingKey: Uint8Array;
+		role: SymmetricRole;
+		id: string;
+		sent: string;
+		expected: Uint8Array;
+	},
+): Uint8Array {
+	const wrapped = fromBase64Url(check.sent);
+	if (!wrapped) throw new KeyFlowError("malformed");
+	let opened: Uint8Array;
+	try {
+		opened = bin.keep(
+			unwrapKey(p, check.wrappingKey, check.role, check.id, wrapped),
+		);
+	} catch {
+		throw new KeyFlowError("malformed");
+	}
+	if (!sameBytes(opened, check.expected)) throw new KeyFlowError("malformed");
+	return opened;
 }

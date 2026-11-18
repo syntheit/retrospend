@@ -144,6 +144,10 @@ const SECRET_FAILURES: Record<KeyFlowCode, SecretFailure> = {
 	wrongPassword: "unknown",
 	conflict: "unknown",
 	notOffered: "unknown",
+	// Recovery codes: no sign-in or rotation call can produce them.
+	wrongRecoveryKey: "unknown",
+	tokenExpired: "unknown",
+	recoveryUnavailable: "unknown",
 	failed: "unknown",
 };
 
@@ -211,6 +215,10 @@ const ROTATE_FAILURES: Record<KeyFlowCode, RotateFailure> = {
 	conflict: "conflict",
 	notOffered: "unavailable",
 	unreadable: "unknown",
+	// Recovery codes: no rotation call can produce them.
+	wrongRecoveryKey: "unknown",
+	tokenExpired: "unknown",
+	recoveryUnavailable: "unknown",
 	failed: "unknown",
 };
 

@@ -18,7 +18,7 @@ import {
 	type Primitives,
 	parseRecoveryKey,
 	type RecordContext,
-	recoveryWrapKey,
+	recoverySubkeys,
 	sealRecord,
 	TAG_BYTES,
 	unwrapKey,
@@ -102,7 +102,7 @@ describe("crypto vectors on the phone toolchain", () => {
 		const byPassword = wrapKey(p, pwKey, "ak-password", "u1", ak);
 		const byRecovery = wrapKey(
 			p,
-			recoveryWrapKey(p, recoveryKey),
+			recoverySubkeys(p, recoveryKey).wrapKey,
 			"ak-recovery",
 			"u1",
 			ak,
@@ -112,7 +112,8 @@ describe("crypto vectors on the phone toolchain", () => {
 		expect(
 			unwrapKey(
 				p,
-				recoveryWrapKey(p, parseRecoveryKey(encodeRecoveryKey(recoveryKey))),
+				recoverySubkeys(p, parseRecoveryKey(encodeRecoveryKey(recoveryKey)))
+					.wrapKey,
 				"ak-recovery",
 				"u1",
 				byRecovery,
