@@ -16,6 +16,7 @@ import {
 	markedRuns,
 	markRun,
 	migratorRolesByLiveness,
+	migratorRolesInUse,
 	RunLock,
 	runNames,
 	sweepDeadRuns,
@@ -248,6 +249,80 @@ describe("RunLock", () => {
 		await expect(lock.assertHeld(fixtureStem())).rejects.toThrow(
 			/no longer held/,
 		);
+	});
+});
+
+describe("RunLock against the server's idle timeouts", () => {
+	it("keeps the lock past an idle_session_timeout the connection string asks for", async () => {
+		const stem = fixtureStem();
+		const url = new URL(maintenanceUrl);
+		url.searchParams.set("options", "-c idle_session_timeout=500");
+		const lock = new RunLock(url.toString());
+		await lock.connect();
+		holders.push(lock.client);
+		expect(await lock.take(stem)).toBe(true);
+
+		await new Promise((resolve) => setTimeout(resolve, 2_000));
+
+		await expect(lock.assertHeld(stem)).resolves.toBeUndefined();
+		expect(await tryLockRun(admin, stem)).toBe(false);
+	});
+
+	it("does not call its own close a loss", async () => {
+		const stem = fixtureStem();
+		const lock = new RunLock(maintenanceUrl);
+		await lock.connect();
+		expect(await lock.take(stem)).toBe(true);
+		const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+		try {
+			await lock.close();
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			expect(logged).not.toHaveBeenCalled();
+		} finally {
+			logged.mockRestore();
+		}
+	});
+});
+
+describe("migratorRolesInUse", () => {
+	it("lists a role that holds CREATE on a database with a session, and neither of the other two", async () => {
+		const stem = fixtureStem();
+		const names = runNames(stem, 1);
+		const [busy, quiet2, ungranted] = [
+			names.template,
+			names.scratch,
+			names.legacy,
+		];
+		const roles = [busy, quiet2, ungranted].map(migratorRoleName);
+		for (const name of [busy, quiet2, ungranted]) {
+			await admin.query(`CREATE DATABASE "${name}"`);
+		}
+		for (const role of roles) {
+			await admin.query(`CREATE ROLE "${role}" NOLOGIN`);
+		}
+		await admin.query(`GRANT CREATE ON DATABASE "${busy}" TO "${roles[0]}"`);
+		await admin.query(`GRANT CREATE ON DATABASE "${quiet2}" TO "${roles[1]}"`);
+		// The third role has a session on its database but no CREATE: a
+		// migration role is only in use while it holds the window.
+		const sessions = [busy, ungranted].map(async (name) =>
+			connect(maintenanceUrl.replace(/\/postgres(\?|$)/, `/${name}$1`)),
+		);
+		holders.push(...(await Promise.all(sessions)));
+		try {
+			const inUse = (await migratorRolesInUse(admin)).filter((role) =>
+				roles.includes(role),
+			);
+			expect(inUse).toEqual([roles[0]]);
+		} finally {
+			for (const holder of holders.splice(0)) await holder.end();
+			for (const name of [busy, quiet2, ungranted]) {
+				await admin.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);
+			}
+			for (const role of roles) {
+				await admin.query(`DROP OWNED BY "${role}"`).catch(() => {});
+				await admin.query(`DROP ROLE IF EXISTS "${role}"`);
+			}
+		}
 	});
 });
 

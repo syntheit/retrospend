@@ -92,11 +92,15 @@ export function scratchMigratorRoles(stem: string): string[] {
 export class RunLock {
 	readonly client: Client;
 	private lostBecause: string | null = null;
+	private closing = false;
 
 	constructor(url: string) {
-		this.client = new Client({ connectionString: url });
+		// Keepalive probes keep a quiet connection from being dropped by a
+		// middlebox; the timeouts are switched off in connect().
+		this.client = new Client({ connectionString: url, keepAlive: true });
 		const lose = (why: string) => {
-			if (this.lostBecause !== null) return;
+			// Closing it ourselves at teardown is not a loss.
+			if (this.closing || this.lostBecause !== null) return;
 			this.lostBecause = why;
 			console.error(`pg test run lock lost: ${why}`);
 		};
@@ -104,8 +108,20 @@ export class RunLock {
 		this.client.on("end", () => lose("the connection ended"));
 	}
 
+	/**
+	 * Connects and switches off the server's idle timeouts for this session: a
+	 * run holds the connection idle for its whole length (minutes), and a
+	 * cluster or role default of idle_session_timeout would end it, and the
+	 * lock with it. Whatever the URL or the server say, this session is exempt.
+	 */
 	async connect(): Promise<void> {
 		await this.client.connect();
+		await this.client.query(
+			"SELECT pg_catalog.set_config('idle_in_transaction_session_timeout', '0', false)",
+		);
+		await this.client.query(
+			"SELECT pg_catalog.set_config('idle_session_timeout', '0', false)",
+		);
 	}
 
 	/** Takes the run's lock. False when another session holds it. */
@@ -137,6 +153,7 @@ export class RunLock {
 
 	/** Lets go of the lock by closing the session. */
 	async close(): Promise<void> {
+		this.closing = true;
 		await this.client.end().catch(() => undefined);
 	}
 }
@@ -243,6 +260,31 @@ export async function migratorRolesByLiveness(
 		return rows.map((row) => row.name);
 	};
 	return { live: await existing(live), dead: await existing(dead) };
+}
+
+/**
+ * Migration roles that no marked run owns but that are in use right now: the
+ * role holds CREATE on a database that has a session connected. A run of a
+ * harness without the lock (an older branch on the same cluster) is like that
+ * for the seconds of its brand-new install's migrations: its bootstrap keeps a
+ * superuser session on the database from the role's creation to its removal.
+ * A leftover of a killed run is not: its sessions died with it, so it has none.
+ * Another run's role at most; callers subtract the roles of their own run.
+ */
+export async function migratorRolesInUse(client: Client): Promise<string[]> {
+	const { rows } = await client.query<{ name: string }>(
+		`SELECT r.rolname AS name
+		   FROM pg_catalog.pg_roles r
+		  WHERE r.rolname LIKE 'retrospend_migrator_%'
+		    AND EXISTS (
+		      SELECT 1 FROM pg_catalog.pg_database d
+		       WHERE pg_catalog.has_database_privilege(r.oid, d.oid, 'CREATE')
+		         AND EXISTS (
+		           SELECT 1 FROM pg_catalog.pg_stat_activity a
+		            WHERE a.datid = d.oid AND a.pid <> pg_catalog.pg_backend_pid()))
+		  ORDER BY 1`,
+	);
+	return rows.map((row) => row.name);
 }
 
 function databaseUrl(maintenanceUrl: string, name: string): string {

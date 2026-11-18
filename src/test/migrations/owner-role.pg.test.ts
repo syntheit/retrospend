@@ -5,6 +5,7 @@ import { userTransaction } from "~/server/db-tx";
 import { adminDb } from "~/test/pg-harness";
 import {
 	migratorRolesByLiveness,
+	migratorRolesInUse,
 	migratorRolesOfRun,
 	scratchMigratorRoles,
 } from "~/test/pg-run-sweep";
@@ -170,11 +171,19 @@ describe("code that runs as retrospend_app (row-level security)", () => {
 		const { stem, maintenanceUrl } = inject("pgRun");
 		const own = migratorRolesOfRun(stem);
 		const probe = await connect(maintenanceUrl);
-		const { live } = await migratorRolesByLiveness(probe).finally(() =>
-			probe.end(),
-		);
+		let live: string[];
+		let inUse: string[];
+		try {
+			live = (await migratorRolesByLiveness(probe)).live;
+			inUse = await migratorRolesInUse(probe);
+		} finally {
+			await probe.end();
+		}
+		// A run of an older harness (no lock, no marker) migrating on the same
+		// cluster has a role that is in use: it holds CREATE on a database with a
+		// session on it. A leftover of a killed run has no session.
 		const allowed = [
-			...live.filter((name) => !own.includes(name)),
+			...[...live, ...inUse].filter((name) => !own.includes(name)),
 			...scratchMigratorRoles(stem),
 		];
 		expect(
