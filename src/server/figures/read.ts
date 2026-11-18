@@ -35,8 +35,9 @@ export async function readFigures(
  * rate stamp share one snapshot, so a settings or rate write that commits
  * meanwhile is in all of them or none, and `asOf` bounds every row they read.
  * The basis is null when the user row is not visible (nothing to compare to).
- * `at` is taken before the first read: figures date themselves by the clock,
- * so a device reading with `at` lands in the same instant, to the millisecond.
+ * `at` is the instant taken just before the figure reads. Figures read their
+ * own clock a few milliseconds later, so a compare must skip a check whose `at`
+ * lies near a period edge.
  */
 export async function readFiguresWithBasis(
 	userId: string,
