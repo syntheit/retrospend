@@ -17,8 +17,9 @@ type JsonObject = Record<string, unknown>;
  * The contract's own version (info.version). Bump the minor for additive
  * changes and the patch for docs only; a breaking change needs /api/v2.
  * 1.1.0: x-protected-account on every operation.
+ * 1.2.0: POST /me/protection/enable takes the recovery proof (recoveryAuthKey).
  */
-export const CONTRACT_VERSION = "1.1.0";
+export const CONTRACT_VERSION = "1.2.0";
 
 const PROTECTION_OVERVIEW = [
 	"Accounts with Advanced protection.",

@@ -7,7 +7,7 @@ import { env } from "~/env";
 import { problem } from "~/server/api/v1/errors";
 import { userTransaction } from "~/server/db-tx";
 import { enableProtection } from "~/server/services/protection-keys/enable";
-import { getProtectionKeys } from "~/server/services/protection-keys/protection-keys.service";
+import { getKeySet } from "~/server/services/protection-keys/protection-keys.service";
 import {
 	beginRotation,
 	rotatePassword,
@@ -55,7 +55,7 @@ export function changeKeyedPassword(caller: Caller, body: RotatePassword) {
 export async function readKeys(caller: Caller) {
 	const { userId } = caller.principal;
 	const keys = await userTransaction(caller.db, userId, (tx) =>
-		getProtectionKeys(tx, userId),
+		getKeySet(tx, userId),
 	);
 	if (!keys) throw problem("not_found");
 	return {

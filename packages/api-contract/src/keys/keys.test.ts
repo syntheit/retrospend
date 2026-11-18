@@ -22,6 +22,7 @@ const WRAPS = [
 const enable = (over: Record<string, unknown> = {}) => ({
 	currentPassword: "typed",
 	authKey: KEY,
+	recoveryAuthKey: KEY,
 	kdf: KDF,
 	publicKey: KEY,
 	wraps: WRAPS,
@@ -41,6 +42,9 @@ describe("the key text (43 characters of base64url)", () => {
 			);
 			expect(
 				ok(enableProtectionSchema, enable({ publicKey: b64(length) })),
+			).toBe(false);
+			expect(
+				ok(enableProtectionSchema, enable({ recoveryAuthKey: b64(length) })),
 			).toBe(false);
 			expect(
 				ok(beginPasswordRotationSchema, { currentAuthKey: b64(length) }),
@@ -135,6 +139,23 @@ describe("the kdf parameters", () => {
 				baseVersion: 1,
 			}),
 		).toBe(false);
+	});
+});
+
+describe("the recovery proof of an enable body", () => {
+	it("is required, and is a key text, not any string", () => {
+		const { recoveryAuthKey: _omitted, ...without } = enable();
+		expect(ok(enableProtectionSchema, without)).toBe(false);
+		expect(
+			ok(enableProtectionSchema, enable({ recoveryAuthKey: undefined })),
+		).toBe(false);
+		expect(ok(enableProtectionSchema, enable({ recoveryAuthKey: "" }))).toBe(
+			false,
+		);
+		expect(ok(enableProtectionSchema, enable({ recoveryAuthKey: 7 }))).toBe(
+			false,
+		);
+		expect(ok(enableProtectionSchema, enable())).toBe(true);
 	});
 });
 

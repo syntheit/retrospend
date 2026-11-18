@@ -10,6 +10,7 @@
  * the typed password with the app's own derivation at the Argon2 floor, so a
  * sign-in takes a fraction of a second. All values are fake.
  */
+import { createHash } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "~prisma";
 // Deep paths: the package index also loads the known-answer self-test, whose
@@ -18,7 +19,9 @@ import { toBase64Url } from "../../packages/crypto/src/base64url";
 import {
 	ARGON2_FLOOR,
 	deriveMasterKey,
+	encodeRecoveryKey,
 	masterSubkeys,
+	recoverySubkeys,
 	wrapKey,
 } from "../../packages/crypto/src/keys";
 import { signInSecret } from "../../packages/crypto/src/sign-in-secret";
@@ -40,6 +43,10 @@ export const KEYED_ROTATE_USER = {
 	password: "Keyed-rotate-2026!",
 	newPassword: "Changed-rotate-2027?",
 } as const;
+
+/** The recovery key of every keyed fixture account (all values are fake), as the person would write it down. */
+const RECOVERY_KEY = Uint8Array.from({ length: 32 }, (_, i) => 0x90 + i);
+export const KEYED_RECOVERY_KEY_TEXT = encodeRecoveryKey(RECOVERY_KEY);
 
 type Account = {
 	name: string;
@@ -71,6 +78,10 @@ export async function keyedSignInSecret(): Promise<string> {
  * name like every other sign-up), then adds its key set and the account key
  * wrapped under its password on the owner connection, which is what makes
  * prelogin answer with the parameters and a password change find a wrap.
+ * It is made the way enable makes it (the order of production): one account
+ * key, wrapped under the password and under the recovery key, a real key pair
+ * whose private half is wrapped under the account key, and the SHA-256 of the
+ * recovery auth key stored with the set, so a recovery flow can run on it.
  */
 async function seedKeyedAccount(
 	databaseUrl: string,
@@ -97,30 +108,37 @@ async function seedKeyedAccount(
 			where: { email: account.email },
 			select: { id: true },
 		});
+		const accountKey = p.randomBytes(32);
+		const pair = p.boxKeypair();
+		const recovery = recoverySubkeys(p, RECOVERY_KEY);
+		const wrap = (
+			wrappingKey: Uint8Array,
+			role: "ak-password" | "ak-recovery" | "private-key",
+			key: Uint8Array,
+		) => ({
+			userId: user.id,
+			role,
+			targetId: user.id,
+			wrapped: Uint8Array.from(wrapKey(p, wrappingKey, role, user.id, key)),
+		});
 		await db.protectionKeySet.create({
 			data: {
 				userId: user.id,
 				kdfSalt: Uint8Array.from(salt),
 				kdfMemoryKiB: ARGON2_FLOOR.memoryKiB,
 				kdfPasses: ARGON2_FLOOR.passes,
-				publicKey: new Uint8Array(32).fill(7),
-			},
-		});
-		await db.protectionKeyWrap.create({
-			data: {
-				userId: user.id,
-				role: "ak-password",
-				targetId: user.id,
-				wrapped: Uint8Array.from(
-					wrapKey(
-						p,
-						passwordWrapKey,
-						"ak-password",
-						user.id,
-						p.randomBytes(32),
-					),
+				publicKey: Uint8Array.from(pair.publicKey),
+				recoveryHash: Uint8Array.from(
+					createHash("sha256").update(recovery.authKey).digest(),
 				),
 			},
+		});
+		await db.protectionKeyWrap.createMany({
+			data: [
+				wrap(passwordWrapKey, "ak-password", accountKey),
+				wrap(recovery.wrapKey, "ak-recovery", accountKey),
+				wrap(accountKey, "private-key", pair.privateKey),
+			],
 		});
 	} finally {
 		await db.$disconnect();

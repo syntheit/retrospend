@@ -17,7 +17,9 @@ import { ProtectionKeysError } from "./errors";
 import {
 	type KeyChanges,
 	MAX_CHANGES,
+	type KeyWriter,
 	validateKeyChanges,
+	validateKeyShape,
 	type WrapInput,
 	type WrapRole,
 } from "./validate";
@@ -68,7 +70,7 @@ beforeAll(async () => {
 
 const code = (changes: KeyChanges): string => {
 	try {
-		validateKeyChanges(USER, changes);
+		validateKeyShape(USER, changes);
 		return "ok";
 	} catch (error) {
 		return error instanceof ProtectionKeysError ? error.code : "other";
@@ -336,5 +338,21 @@ describe("baseVersion and size", () => {
 		expect(code({ ...base, remove: refs(MAX_CHANGES + 1) })).toBe(
 			"invalid_input",
 		);
+	});
+});
+
+describe("an unknown writer", () => {
+	it("is refused as invalid input, not a crash, for a change that is otherwise well formed", () => {
+		// A caller outside the type system (a cast, plain JS) names no writer the
+		// table knows. The shape is valid, so only the writer guard can refuse it.
+		for (const writer of ["", "admin", "constructor", "toString"]) {
+			let outcome = "ok";
+			try {
+				validateKeyChanges(USER, create, writer as KeyWriter);
+			} catch (error) {
+				outcome = error instanceof ProtectionKeysError ? error.code : "other";
+			}
+			expect(outcome, writer).toBe("invalid_input");
+		}
 	});
 });
