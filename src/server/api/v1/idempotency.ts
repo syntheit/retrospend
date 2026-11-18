@@ -36,8 +36,16 @@ export const idempotency = os
 		// A preview twin writes nothing (it rolls back), so it needs no key and
 		// one key can preview and then write. A readsOnly POST stores nothing and
 		// its answer must not be kept (the first step of a password change returns
-		// a wrap), so it has no key and no stored response either.
-		if (!isWriteMethod(method) || !user || meta.previewOf || meta.readsOnly)
+		// a wrap), so it has no key and no stored response either. A publicWrite
+		// POST is proved by a single-use token in its body, so a replayed key
+		// would only hide a second use: it takes no key, and none is stored.
+		if (
+			!isWriteMethod(method) ||
+			!user ||
+			meta.previewOf ||
+			meta.readsOnly ||
+			meta.publicWrite !== undefined
+		)
 			return next();
 
 		const key = context.headers.get(IDEMPOTENCY_HEADER);

@@ -1,6 +1,6 @@
 import type { AnyContractRouter } from "@orpc/contract";
 import { EVENT_TYPES } from "./events";
-import { listContractRoutes } from "./meta";
+import { listContractRoutes, publicWriteProblem } from "./meta";
 import { PREVIEW_SUFFIX, previewPathOf, previewResultSchema } from "./preview";
 import { SCOPES, SESSION_SCOPES } from "./scopes";
 
@@ -34,9 +34,15 @@ export function checkContractConventions(
 			problems.push(`${name}: readsOnly is for a POST`);
 		if (r.meta.readsOnly && r.meta.event)
 			problems.push(`${name}: a readsOnly route cannot have an event`);
+		// A publicWrite POST is proved by a token in its body: it may be public,
+		// has no event, and the server drops any session sent with it.
+		const publicWriteIssue = publicWriteProblem(r.meta, r.method, r.path);
+		if (publicWriteIssue) problems.push(`${name}: ${publicWriteIssue}`);
+		const isPublicWrite = r.meta.publicWrite !== undefined;
 		if (
 			r.method !== "GET" &&
 			!r.meta.readsOnly &&
+			!isPublicWrite &&
 			(scope === "public" || scope === "read")
 		)
 			problems.push(`${name}: a write needs a write scope, not ${scope}`);
@@ -56,7 +62,12 @@ export function checkContractConventions(
 		if (!def.outputSchema) problems.push(`${name}: no output schema`);
 
 		const isPreview = r.path?.endsWith(PREVIEW_SUFFIX) ?? false;
-		if (r.method !== "GET" && !isPreview && !r.meta.readsOnly) {
+		if (
+			r.method !== "GET" &&
+			!isPreview &&
+			!r.meta.readsOnly &&
+			!isPublicWrite
+		) {
 			if (!r.meta.event) problems.push(`${name}: write without an event`);
 			else if (!eventTypes.includes(r.meta.event))
 				problems.push(`${name}: event "${r.meta.event}" is not registered`);

@@ -70,6 +70,79 @@ describe("v1 contract conventions", () => {
 		]);
 	});
 
+	it("lets a public POST write with publicWrite, with no event, and refuses a public write without it", () => {
+		const token = v1
+			.route({ method: "POST", path: "/t", operationId: "t" })
+			.meta({ scope: "public", publicWrite: "resetToken" })
+			.output(out);
+		const request = v1
+			.route({ method: "POST", path: "/u", operationId: "u" })
+			.meta({ scope: "public", publicWrite: "resetRequest" })
+			.output(out);
+		expect(checkContractConventions({ token, request })).toEqual([]);
+
+		// The same public write without the meta is still refused, as before.
+		const bare = v1
+			.route({ method: "POST", path: "/v", operationId: "v" })
+			.meta({ scope: "public" })
+			.output(out);
+		expect(checkContractConventions({ bare })).toEqual([
+			"bare: a write needs a write scope, not public",
+			"bare: write without an event",
+		]);
+	});
+
+	it("refuses publicWrite anywhere but a public POST with no event, and an unknown value", () => {
+		const route = (path: `/${string}`, method: "GET" | "POST" | "DELETE") =>
+			v1.route({ method, path, operationId: path.slice(1) }).output(out);
+		const bad = {
+			onGet: route("/g", "GET").meta({
+				scope: "public",
+				publicWrite: "resetToken",
+			}),
+			onDelete: route("/d", "DELETE").meta({
+				scope: "public",
+				publicWrite: "resetToken",
+			}),
+			signedIn: route("/s", "POST").meta({
+				scope: "write:expenses",
+				publicWrite: "resetToken",
+				event: "b.created",
+			}),
+			withEvent: route("/e", "POST").meta({
+				scope: "public",
+				publicWrite: "resetToken",
+				event: "b.created",
+			}),
+			reads: route("/r", "POST").meta({
+				scope: "public",
+				publicWrite: "resetToken",
+				readsOnly: true,
+			}),
+			twin: route("/w/preview", "POST").meta({
+				scope: "public",
+				publicWrite: "resetToken",
+				previewOf: "/w",
+			}),
+			unknown: route("/x", "POST").meta({
+				scope: "public",
+				// A value off the list, as a typo or a new member would be.
+				publicWrite: "resetTokn" as never,
+			}),
+		};
+		const problems = checkContractConventions(bad, ["b.created"]);
+		for (const expected of [
+			"onGet: publicWrite is for a POST",
+			"onDelete: publicWrite is for a POST",
+			"signedIn: publicWrite is for a public route",
+			"withEvent: a publicWrite route cannot have an event",
+			"reads: a publicWrite route cannot be readsOnly",
+			"twin: a publicWrite route cannot be a preview twin",
+			'unknown: unknown publicWrite "resetTokn"',
+		])
+			expect(problems).toContain(expected);
+	});
+
 	it("needs a preview twin with the same input on a money write", () => {
 		const write = v1
 			.route({ method: "POST", path: "/payments", operationId: "pay" })

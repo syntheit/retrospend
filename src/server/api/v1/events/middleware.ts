@@ -22,9 +22,12 @@ export const recordsEvent = os
 	.middleware(async ({ context, next, procedure }, input) => {
 		const { meta, route } = procedure["~orpc"];
 		const user = context.user;
+		// A publicWrite route has no event and no user; the explicit check keeps a
+		// route that names one from appending it as a cookie's user.
 		if (
 			!meta.event ||
 			meta.previewOf ||
+			meta.publicWrite !== undefined ||
 			!user ||
 			!isWriteMethod((route.method ?? "POST").toUpperCase())
 		)

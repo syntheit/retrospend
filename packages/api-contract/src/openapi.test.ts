@@ -1,9 +1,13 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { listContractRoutes } from "./common/meta";
+import { type ApiMeta, listContractRoutes } from "./common/meta";
 import { contract } from "./index";
-import { generateOpenApiDocument, stableStringify } from "./openapi";
+import {
+	decorateOperation,
+	generateOpenApiDocument,
+	stableStringify,
+} from "./openapi";
 import { V1_ALLOWED } from "./protection/v1-allowed";
 
 const COMMITTED = join(import.meta.dirname, "..", "openapi.json");
@@ -113,5 +117,34 @@ describe("openapi.json", () => {
 		expect(doc.paths["/me"]?.get?.responses["403"]?.description).not.toContain(
 			"protected_account",
 		);
+	});
+
+	describe("the Idempotency-Key header", () => {
+		const headerOf = (meta: ApiMeta, method = "POST") => {
+			const op: Record<string, unknown> = {};
+			decorateOperation(op, {
+				key: ["probe"],
+				procedure: {} as never,
+				meta,
+				method,
+				path: "/probe",
+			});
+			return (
+				(op.parameters ?? []) as { name: string; required: boolean }[]
+			).find((p) => p.name === "Idempotency-Key");
+		};
+
+		it("is required on a write, and absent on a public write proved by a token", () => {
+			expect(headerOf({ scope: "write:expenses" })?.required).toBe(true);
+			expect(headerOf({ scope: "public", publicWrite: "resetToken" })).toBe(
+				undefined,
+			);
+			expect(headerOf({ scope: "public", publicWrite: "resetRequest" })).toBe(
+				undefined,
+			);
+			// readsOnly and GET stay as they were.
+			expect(headerOf({ scope: "public", readsOnly: true })).toBe(undefined);
+			expect(headerOf({ scope: "read" }, "GET")).toBe(undefined);
+		});
 	});
 });
