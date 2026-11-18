@@ -13,6 +13,24 @@ import { decodeCursor, toPage } from "./cursor";
 
 type AppDb = typeof globalDb;
 
+/** Every stored rate a device prices with; USD never has a row. */
+const DEVICE_RATES = { currency: { not: USD } };
+
+/**
+ * The newest updatedAt of the rows readDailyRates returns, as its body's
+ * `asOf` (null with no rows). One aggregate, so a figures read can name the
+ * rate table it priced with inside its own snapshot.
+ */
+export async function readRatesAsOf(
+	db: Pick<AppDb, "exchangeRate">,
+): Promise<string | null> {
+	const { _max } = await db.exchangeRate.aggregate({
+		where: DEVICE_RATES,
+		_max: { updatedAt: true },
+	});
+	return _max.updatedAt ? _max.updatedAt.toISOString() : null;
+}
+
 /**
  * Rate reads for devices. Rates are shared data with no
  * owner, so any caller reads the same rows; a device prices with them locally.
@@ -30,7 +48,7 @@ export async function readDailyRates(
 	db: AppDb,
 ): Promise<{ body: DailyRatesDto; etag: string }> {
 	const rows = await db.exchangeRate.findMany({
-		where: { currency: { not: USD } },
+		where: DEVICE_RATES,
 		orderBy: [{ currency: "asc" }, { type: "asc" }, { date: "asc" }],
 	});
 	let newest: Date | null = null;

@@ -175,25 +175,51 @@ export async function readStamps(
 }
 
 /**
- * The cursor at the cut of the caller's snapshot: the oldest open transaction
- * minus one, the position a pull ends at once no stamp is left. A snapshot
- * read in this transaction holds every committed change at or below it; a
- * writer still open has a txid above it, so its commit lands past the cursor.
- * Run it in the transaction whose snapshot it names.
+ * The cursor at a bound of the caller's snapshot, in the transaction whose
+ * snapshot it names. The one encoder behind readCutCursor and readSeenCursor.
  */
-export async function readCutCursor(tx: Prisma.TransactionClient) {
-	const rows = await tx.$queryRaw<{ epoch: string; xmin: string }[]>(Prisma.sql`
-		SELECT st."epoch", pg_snapshot_xmin(pg_current_snapshot())::text AS "xmin"
+async function readSnapshotCursor(
+	tx: Prisma.TransactionClient,
+	bound: "xmin" | "xmax",
+) {
+	const rows = await tx.$queryRaw<
+		{ epoch: string; xmin: string; xmax: string }[]
+	>(Prisma.sql`
+		SELECT st."epoch",
+			pg_snapshot_xmin(pg_current_snapshot())::text AS "xmin",
+			pg_snapshot_xmax(pg_current_snapshot())::text AS "xmax"
 		FROM "sync_state" st
 		WHERE st."id" = 1`);
 	const state = rows[0];
 	if (!state) throw new Error("sync_state has no row");
 	return encodeCursor({
 		e: state.epoch,
-		t: (BigInt(state.xmin) - 1n).toString(),
+		t: (BigInt(state[bound]) - 1n).toString(),
 		s: MAX_SEQ,
 	});
 }
+
+/**
+ * The cursor at the cut of the caller's snapshot: the oldest open transaction
+ * minus one, the position a pull ends at once no stamp is left. A snapshot
+ * read in this transaction holds every committed change at or below it; a
+ * writer still open has a txid above it, so its commit lands past the cursor.
+ * Run it in the transaction whose snapshot it names.
+ */
+export const readCutCursor = (tx: Prisma.TransactionClient) =>
+	readSnapshotCursor(tx, "xmin");
+
+/**
+ * The cursor at the newest transaction the caller's snapshot can have seen:
+ * the first unassigned txid minus one. Every row the snapshot read was
+ * committed at or below it, so a device whose pulled cursors reach it holds
+ * every row this snapshot saw (a pull ends at its own cut, never past an open
+ * writer). It may sit past a writer still open at the snapshot, which only
+ * makes a device that reaches it hold more than the read saw. Run it in the
+ * transaction whose snapshot it names.
+ */
+export const readSeenCursor = (tx: Prisma.TransactionClient) =>
+	readSnapshotCursor(tx, "xmax");
 
 /**
  * Turns a stamp read into a page: the live rows of the U stamps (loaded by id

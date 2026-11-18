@@ -72043,6 +72043,52 @@
 							"application/json": {
 								"schema": {
 									"properties": {
+										"basis": {
+											"description": "Present only for a session holding the sync scope (the web app, the phone app).",
+											"properties": {
+												"asOf": {
+													"minLength": 1,
+													"type": "string"
+												},
+												"at": {
+													"format": "date-time",
+													"type": "string"
+												},
+												"home": {
+													"minLength": 1,
+													"type": "string"
+												},
+												"ratesAsOf": {
+													"anyOf": [
+														{
+															"format": "date-time",
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"startDay": {
+													"maximum": 31,
+													"minimum": 1,
+													"type": "integer"
+												},
+												"timeZone": {
+													"minLength": 1,
+													"type": "string"
+												}
+											},
+											"required": [
+												"asOf",
+												"at",
+												"ratesAsOf",
+												"home",
+												"timeZone",
+												"startDay"
+											],
+											"type": "object"
+										},
 										"figures": {
 											"items": {
 												"properties": {
