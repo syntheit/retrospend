@@ -60,6 +60,8 @@ export class CreateCaptures {
 	private readonly held = new Map<string, CreateCapture>();
 	private settingsOf: (() => SettingsRow | undefined) | null = null;
 	private expiredCount = 0;
+	/** Set by `clear`: an account that is gone gets no more creates. */
+	private closed = false;
 
 	constructor(private readonly now: () => number = () => Date.now()) {}
 
@@ -68,8 +70,9 @@ export class CreateCaptures {
 		this.settingsOf = settings;
 	}
 
-	/** Holds a create, with the zone, home currency and rate types the device held when it was sent. False when it cannot. */
+	/** Holds a create, with the zone, home currency and rate types the device held when it was sent. False when it cannot, or after `clear`. */
 	add(sent: SentCreate): boolean {
+		if (this.closed) return false;
 		this.sweep();
 		const settings = this.settingsOf?.();
 		if (!settings) return false;
@@ -125,8 +128,9 @@ export class CreateCaptures {
 		this.held.delete(id);
 	}
 
-	/** Forgets everything: the account is gone. */
+	/** Forgets everything and takes no more: the account is gone. */
 	clear(): void {
+		this.closed = true;
 		this.held.clear();
 		this.expiredCount = 0;
 	}

@@ -156,13 +156,26 @@ describe("the time limit", () => {
 		expect(c.takeExpired()).toBe(0);
 	});
 
-	it("drops on add, without anyone reading", () => {
+	it("drops on add, before anyone reads", () => {
 		const { t, c } = clock(0);
 		c.add(sent({ id: "old", at: 0 }));
 		t.now = CAPTURE_TTL_MS + 1;
 		c.add(sent({ id: "new", at: t.now }));
+		// Every read sweeps too, so put the clock back before the first one: only
+		// the sweep in add can have taken "old" by now.
+		t.now = 0;
 		expect(c.takeExpired()).toBe(1);
 		expect(c.pending().map((x) => x.id)).toEqual(["new"]);
+	});
+
+	it("drops on takeExpired alone, without a read of what is held", () => {
+		const { t, c } = clock(0);
+		c.add(sent({ id: "old", at: 0 }));
+		t.now = CAPTURE_TTL_MS + 1;
+		expect(c.takeExpired()).toBe(1);
+		// Back in time, so a pending() sweep could not have taken it: it is gone.
+		t.now = 0;
+		expect(c.pending()).toEqual([]);
 	});
 
 	it("forgets everything on clear, expired count included", () => {
@@ -174,5 +187,15 @@ describe("the time limit", () => {
 		c.clear();
 		expect(c.pending()).toEqual([]);
 		expect(c.takeExpired()).toBe(0);
+	});
+});
+
+describe("after clear", () => {
+	it("takes no more creates, so a send in flight at sign-out holds nothing", () => {
+		const c = bound();
+		c.add(sent());
+		c.clear();
+		expect(c.add(sent({ id: "e2" }))).toBe(false);
+		expect(c.pending()).toEqual([]);
 	});
 });
