@@ -1,6 +1,8 @@
-// The shapes of key material on the wire, written once. Every route that
-// carries a sign-in secret, a public key, a wrap or the kdf parameters imports
-// them from here; none of them may write these patterns again.
+// The shapes of key material on the wire. Every route that carries a sign-in
+// secret, a public key, a wrap or the kdf parameters imports them from here.
+// What holds them: keys.test.ts runs the schemas at and past each bound, and
+// crypto-rules.test.ts pins the role list to the crypto package and fails when
+// another api-contract file writes one of the brace quantifiers below.
 import * as z from "zod";
 
 /** 32 bytes as unpadded base64url (the sign-in secret, a public key). */

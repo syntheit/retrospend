@@ -5,11 +5,12 @@
 // not in production.
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { enableWrapSchema } from "@retrospend/api-contract";
+import { ENABLE_WRAP_ROLES, enableWrapSchema } from "@retrospend/api-contract";
 import {
 	ID_PATTERN,
 	KEY_ID_HEX_PATTERN,
 	PUBLIC_WRAP_BYTES,
+	SYMMETRIC_ROLES,
 	SYMMETRIC_WRAP_BYTES,
 } from "@retrospend/crypto";
 import { describe, expect, it } from "vitest";
@@ -77,6 +78,26 @@ describe("the key text patterns in the API contract", () => {
 		const text = read("packages/api-contract/src/keys/index.ts");
 		expect(count(text, "^[A-Za-z0-9_-]{43}$")).toBe(1);
 		expect(count(text, "^[A-Za-z0-9_-]{1,512}$")).toBe(1);
+	});
+});
+
+describe("the wrap roles", () => {
+	it("an enable body carries exactly the symmetric roles the crypto package wraps with", () => {
+		expect([...ENABLE_WRAP_ROLES].sort()).toEqual([...SYMMETRIC_ROLES].sort());
+	});
+
+	it("the key-set migration's symmetric format check lists the same roles", () => {
+		const sql = read(
+			"prisma/migrations/20261115200000_protection_keys/migration.sql",
+		);
+		const listed =
+			/\("role" IN \(([^)]*)\)\s+AND octet_length\("wrapped"\) = \d+ AND substring\("wrapped" from 1 for 2\) = '\\x0101'/.exec(
+				sql,
+			);
+		const roles = [...(listed?.[1] ?? "").matchAll(/'([^']+)'/g)].map(
+			(m) => m[1],
+		);
+		expect(roles.sort()).toEqual([...SYMMETRIC_ROLES].sort());
 	});
 });
 

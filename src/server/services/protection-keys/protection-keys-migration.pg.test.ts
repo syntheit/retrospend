@@ -8,6 +8,8 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { ENABLE_WRAP_ROLES } from "@retrospend/api-contract";
+import { SYMMETRIC_ROLES } from "@retrospend/crypto";
 import type { Client } from "pg";
 import { describe, expect, it } from "vitest";
 import { readPrivilegeCatalog } from "~/test/migrations/privilege-catalog";
@@ -205,6 +207,22 @@ describe("what the app role may do", () => {
 });
 
 describe("the CHECKs that pin the formats", () => {
+	it("stores a symmetric wrap for exactly the roles the contract and the crypto package name", async () => {
+		const id = (await createTestUser()).user.id;
+		await inRolledBackTransaction(async (client) => {
+			expect([...ENABLE_WRAP_ROLES].sort()).toEqual(
+				[...SYMMETRIC_ROLES].sort(),
+			);
+			for (const role of ENABLE_WRAP_ROLES) {
+				await insertWrap(client, id, role, id, SYMMETRIC());
+				const sealed = await failure(client, () =>
+					insertWrap(client, id, role, `${role}-sealed`, SEALED()),
+				);
+				expect(sealed?.code, role).toBe("23514");
+			}
+		});
+	});
+
 	it("accepts a well formed wrap of every role and refuses each way it can be malformed", async () => {
 		const id = (await createTestUser()).user.id;
 		const other = (await createTestUser()).user.id;
