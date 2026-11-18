@@ -1,10 +1,12 @@
 /**
- * getProtectionKeys and applyKeyChanges on real Postgres, as a signed-in user
- * (userTransaction sets the RLS user and the app role): the conflict rules,
+ * getProtectionKeys and applyKeyChanges on real Postgres: the conflict rules,
  * replacement, the lock between two writers, and the all-or-nothing change.
+ * Writers run on the owner connection, as in production (the app role has no
+ * INSERT or DELETE on the key tables); `reader` is the app role, signed in as
+ * a user the way userTransaction sets it, for what that role may still read.
  */
 
-import { type Primitives, wrapKey } from "@retrospend/crypto";
+import { type Primitives, toBase64Url, wrapKey } from "@retrospend/crypto";
 import { wrapKeyToPublic } from "@retrospend/crypto/k4";
 import { createWebPrimitives } from "@retrospend/crypto/web";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -17,6 +19,7 @@ import {
 	ProtectionKeysError,
 	type WrapInput,
 } from "./protection-keys.service";
+import { hashRecoveryProof } from "./validate";
 
 let p: Primitives;
 beforeAll(async () => {
@@ -30,11 +33,28 @@ afterAll(async () => {
 	await adminDb.protectionKeySet.deleteMany({});
 });
 
+type Tx = Parameters<Parameters<typeof adminDb.$transaction>[0]>[0];
+
+/** The writer a test change stands for: a create is the turn-on, anything else a rotation. */
+const apply = (tx: Tx, userId: string, changes: KeyChanges) =>
+	applyKeyChanges(
+		tx,
+		userId,
+		changes,
+		changes.baseVersion === 0 ? "enable" : "rotate",
+	);
+
 async function newUser() {
 	const { user, db } = await createTestUser();
-	const run = <T>(work: Parameters<typeof userTransaction<T>>[2]) =>
+	const run = <T>(work: (tx: Tx) => Promise<T>) => adminDb.$transaction(work);
+	const reader = <T>(work: Parameters<typeof userTransaction<T>>[2]) =>
 		userTransaction(db, user.id, work);
-	return { id: user.id, run };
+	return {
+		id: user.id,
+		run,
+		reader,
+		create: (put: WrapInput[]) => create(user.id, put),
+	};
 }
 
 const akPassword = (userId: string): WrapInput => ({
@@ -59,7 +79,19 @@ const device = (targetId: string): WrapInput => ({
 		p.randomBytes(32),
 	),
 });
-const create = (put: WrapInput[]): KeyChanges => ({
+const akRecovery = (userId: string): WrapInput => ({
+	role: "ak-recovery",
+	targetId: userId,
+	wrapped: wrapKey(
+		p,
+		p.randomBytes(32),
+		"ak-recovery",
+		userId,
+		p.randomBytes(32),
+	),
+});
+/** A turn-on: the set, its recovery wrap and the hash of a proof, and the given wraps. */
+const create = (userId: string, put: WrapInput[]): KeyChanges => ({
 	baseVersion: 0,
 	set: {
 		kdfSalt: p.randomBytes(16),
@@ -67,7 +99,8 @@ const create = (put: WrapInput[]): KeyChanges => ({
 		kdfPasses: 3,
 		publicKey: p.boxKeypair().publicKey,
 	},
-	put,
+	recoveryHash: hashRecoveryProof(toBase64Url(p.randomBytes(32))),
+	put: [akRecovery(userId), ...put],
 	remove: [],
 });
 const codeOf = async (work: Promise<unknown>) =>
@@ -82,8 +115,8 @@ describe("creating and reading", () => {
 		const u = await newUser();
 		expect(await u.run((tx) => getProtectionKeys(tx, u.id))).toBeNull();
 
-		const change = create([akPassword(u.id), device("d1")]);
-		expect(await u.run((tx) => applyKeyChanges(tx, u.id, change))).toEqual({
+		const change = u.create([akPassword(u.id), device("d1")]);
+		expect(await u.run((tx) => apply(tx, u.id, change))).toEqual({
 			version: 1,
 		});
 
@@ -101,6 +134,7 @@ describe("creating and reading", () => {
 		expect(stored?.wraps.map((w) => [w.role, w.targetId])).toEqual([
 			["ak-device", "d1"],
 			["ak-password", u.id],
+			["ak-recovery", u.id],
 		]);
 		for (const w of stored?.wraps ?? []) {
 			const sent = change.put.find((x) => x.role === w.role);
@@ -109,33 +143,37 @@ describe("creating and reading", () => {
 		}
 	});
 
-	it("reads a set that has no wraps, and refuses to create one twice", async () => {
+	it("reads a set that has only its recovery wrap, and refuses to create one twice", async () => {
 		const u = await newUser();
-		await u.run((tx) => applyKeyChanges(tx, u.id, create([])));
+		await u.run((tx) => apply(tx, u.id, u.create([])));
 		const stored = await u.run((tx) => getProtectionKeys(tx, u.id));
-		expect(stored?.wraps).toEqual([]);
-		expect(
-			await codeOf(u.run((tx) => applyKeyChanges(tx, u.id, create([])))),
-		).toBe("conflict");
+		expect(stored?.wraps.map((w) => w.role)).toEqual(["ak-recovery"]);
+		expect(await codeOf(u.run((tx) => apply(tx, u.id, u.create([]))))).toBe(
+			"conflict",
+		);
 	});
 
 	it("keeps another user's set out of reach", async () => {
 		const a = await newUser();
 		const b = await newUser();
-		await a.run((tx) => applyKeyChanges(tx, a.id, create([akPassword(a.id)])));
-		expect(await b.run((tx) => getProtectionKeys(tx, a.id))).toBeNull();
-		expect(await b.run((tx) => getProtectionKeys(tx, b.id))).toBeNull();
+		await a.run((tx) => apply(tx, a.id, a.create([akPassword(a.id)])));
+		// The app role, signed in as B, sees nothing of A's set (row-level security).
+		expect(await b.reader((tx) => getProtectionKeys(tx, a.id))).toBeNull();
+		expect(await b.reader((tx) => getProtectionKeys(tx, b.id))).toBeNull();
+		expect((await a.reader((tx) => getProtectionKeys(tx, a.id)))?.version).toBe(
+			1,
+		);
 	});
 });
 
 describe("changing", () => {
 	it("refuses a stale or unknown base version and changes nothing", async () => {
 		const u = await newUser();
-		await u.run((tx) => applyKeyChanges(tx, u.id, create([akPassword(u.id)])));
+		await u.run((tx) => apply(tx, u.id, u.create([akPassword(u.id)])));
 		const attempt = (baseVersion: number) =>
 			codeOf(
 				u.run((tx) =>
-					applyKeyChanges(tx, u.id, {
+					apply(tx, u.id, {
 						baseVersion,
 						put: [device("d1")],
 						remove: [],
@@ -153,7 +191,7 @@ describe("changing", () => {
 		expect(
 			await codeOf(
 				empty.run((tx) =>
-					applyKeyChanges(tx, empty.id, {
+					apply(tx, empty.id, {
 						baseVersion: 1,
 						put: [device("d1")],
 						remove: [],
@@ -166,13 +204,11 @@ describe("changing", () => {
 	it("replaces a wrap of the same role and target and leaves no old row", async () => {
 		const u = await newUser();
 		const first = akPassword(u.id);
-		await u.run((tx) =>
-			applyKeyChanges(tx, u.id, create([first, device("d1")])),
-		);
+		await u.run((tx) => apply(tx, u.id, u.create([first, device("d1")])));
 		const second = akPassword(u.id);
 		expect(hex(second.wrapped)).not.toBe(hex(first.wrapped));
 		const done = await u.run((tx) =>
-			applyKeyChanges(tx, u.id, { baseVersion: 1, put: [second], remove: [] }),
+			apply(tx, u.id, { baseVersion: 1, put: [second], remove: [] }),
 		);
 		expect(done.version).toBe(2);
 		const stored = await u.run((tx) => getProtectionKeys(tx, u.id));
@@ -181,18 +217,18 @@ describe("changing", () => {
 		expect(passwords).toHaveLength(1);
 		expect(hex(passwords[0]?.wrapped as Uint8Array)).toBe(hex(second.wrapped));
 		// The other wrap is untouched.
-		expect(stored?.wraps.map((w) => w.targetId).sort()).toEqual(
-			["d1", u.id].sort(),
+		expect(stored?.wraps.map((w) => `${w.role}|${w.targetId}`).sort()).toEqual(
+			["ak-device|d1", `ak-password|${u.id}`, `ak-recovery|${u.id}`].sort(),
 		);
 	});
 
 	it("removes the wraps it names and updates the parameters without touching the public key", async () => {
 		const u = await newUser();
-		const made = create([akPassword(u.id), device("d1"), device("d2")]);
-		await u.run((tx) => applyKeyChanges(tx, u.id, made));
+		const made = u.create([akPassword(u.id), device("d1"), device("d2")]);
+		await u.run((tx) => apply(tx, u.id, made));
 		const salt = p.randomBytes(16);
 		await u.run((tx) =>
-			applyKeyChanges(tx, u.id, {
+			apply(tx, u.id, {
 				baseVersion: 1,
 				set: { kdfSalt: salt, kdfMemoryKiB: 100_000, kdfPasses: 4 },
 				put: [],
@@ -204,8 +240,8 @@ describe("changing", () => {
 		);
 		const stored = await u.run((tx) => getProtectionKeys(tx, u.id));
 		expect(stored?.version).toBe(2);
-		expect(stored?.wraps.map((w) => w.targetId).sort()).toEqual(
-			["d2", u.id].sort(),
+		expect(stored?.wraps.map((w) => `${w.role}|${w.targetId}`).sort()).toEqual(
+			["ak-device|d2", `ak-password|${u.id}`, `ak-recovery|${u.id}`].sort(),
 		);
 		expect(hex(stored?.kdfSalt as Uint8Array)).toBe(hex(salt));
 		expect([stored?.kdfMemoryKiB, stored?.kdfPasses]).toEqual([100_000, 4]);
@@ -216,9 +252,9 @@ describe("changing", () => {
 
 	it("moves the version once for a change of many wraps", async () => {
 		const u = await newUser();
-		await u.run((tx) => applyKeyChanges(tx, u.id, create([akPassword(u.id)])));
+		await u.run((tx) => apply(tx, u.id, u.create([akPassword(u.id)])));
 		const done = await u.run((tx) =>
-			applyKeyChanges(tx, u.id, {
+			apply(tx, u.id, {
 				baseVersion: 1,
 				put: [device("d1"), device("d2"), device("d3"), akPassword(u.id)],
 				remove: [],
@@ -240,14 +276,14 @@ describe("two writers and a failing change", () => {
 
 	it("lets exactly one of two changes from one version through, with no mixed set", async () => {
 		const u = await newUser();
-		await u.run((tx) => applyKeyChanges(tx, u.id, create([akPassword(u.id)])));
+		await u.run((tx) => apply(tx, u.id, u.create([akPassword(u.id)])));
 		const first = device("from-first");
 		const second = device("from-second");
 
 		const hold = latch();
 		const applied = latch();
 		const a = u.run(async (tx) => {
-			await applyKeyChanges(tx, u.id, {
+			await apply(tx, u.id, {
 				baseVersion: 1,
 				put: [first],
 				remove: [],
@@ -259,7 +295,7 @@ describe("two writers and a failing change", () => {
 		// B starts while A's transaction is open and waits on the row lock.
 		const b = codeOf(
 			u.run((tx) =>
-				applyKeyChanges(tx, u.id, {
+				apply(tx, u.id, {
 					baseVersion: 1,
 					put: [second],
 					remove: [],
@@ -273,8 +309,12 @@ describe("two writers and a failing change", () => {
 		expect(await b).toBe("conflict");
 		const stored = await u.run((tx) => getProtectionKeys(tx, u.id));
 		expect(stored?.version).toBe(2);
-		expect(stored?.wraps.map((w) => w.targetId).sort()).toEqual(
-			["from-first", u.id].sort(),
+		expect(stored?.wraps.map((w) => `${w.role}|${w.targetId}`).sort()).toEqual(
+			[
+				"ak-device|from-first",
+				`ak-password|${u.id}`,
+				`ak-recovery|${u.id}`,
+			].sort(),
 		);
 	});
 
@@ -282,15 +322,15 @@ describe("two writers and a failing change", () => {
 		const u = await newUser();
 		const hold = latch();
 		const applied = latch();
-		const winner = create([akPassword(u.id)]);
+		const winner = u.create([akPassword(u.id)]);
 		const a = u.run(async (tx) => {
-			await applyKeyChanges(tx, u.id, winner);
+			await apply(tx, u.id, winner);
 			applied.open();
 			await hold.done;
 		});
 		await applied.done;
 		const b = codeOf(
-			u.run((tx) => applyKeyChanges(tx, u.id, create([device("late")]))),
+			u.run((tx) => apply(tx, u.id, u.create([device("late")]))),
 		);
 		await new Promise((resolve) => setTimeout(resolve, 300));
 		hold.open();
@@ -300,7 +340,10 @@ describe("two writers and a failing change", () => {
 		expect(hex(stored?.publicKey as Uint8Array)).toBe(
 			hex(winner.set?.publicKey as Uint8Array),
 		);
-		expect(stored?.wraps.map((w) => w.role)).toEqual(["ak-password"]);
+		expect(stored?.wraps.map((w) => w.role)).toEqual([
+			"ak-password",
+			"ak-recovery",
+		]);
 	});
 
 	it("rolls the whole change back when a later insert fails", async () => {
@@ -308,10 +351,10 @@ describe("two writers and a failing change", () => {
 		const old = akPassword(u.id);
 		const id = "0b0e6c6e-0000-4000-8000-000000000001";
 		await u.run((tx) =>
-			applyKeyChanges(
+			apply(
 				tx,
 				u.id,
-				create([old, device("keep"), { ...device("other"), id }]),
+				u.create([old, device("keep"), { ...device("other"), id }]),
 			),
 		);
 		// A new wrap reusing a stored wrap's id: the insert fails after the
@@ -322,14 +365,19 @@ describe("two writers and a failing change", () => {
 			put: [akPassword(u.id), { ...device("d9"), id }],
 			remove: [{ role: "ak-device", targetId: "keep" }],
 		};
-		expect(
-			await codeOf(u.run((tx) => applyKeyChanges(tx, u.id, failing))),
-		).toBe("conflict");
+		expect(await codeOf(u.run((tx) => apply(tx, u.id, failing)))).toBe(
+			"conflict",
+		);
 		const stored = await u.run((tx) => getProtectionKeys(tx, u.id));
 		expect(stored?.version).toBe(1);
 		expect(stored?.kdfMemoryKiB).toBe(64 * 1024);
-		expect(stored?.wraps.map((w) => w.targetId).sort()).toEqual(
-			["keep", "other", u.id].sort(),
+		expect(stored?.wraps.map((w) => `${w.role}|${w.targetId}`).sort()).toEqual(
+			[
+				"ak-device|keep",
+				"ak-device|other",
+				`ak-password|${u.id}`,
+				`ak-recovery|${u.id}`,
+			].sort(),
 		);
 		const kept = stored?.wraps.find((w) => w.role === "ak-password");
 		expect(hex(kept?.wrapped as Uint8Array)).toBe(hex(old.wrapped));
@@ -337,12 +385,12 @@ describe("two writers and a failing change", () => {
 
 	it("refuses a malformed change before touching the database", async () => {
 		const u = await newUser();
-		await u.run((tx) => applyKeyChanges(tx, u.id, create([akPassword(u.id)])));
+		await u.run((tx) => apply(tx, u.id, u.create([akPassword(u.id)])));
 		const bad = { ...akPassword(u.id), wrapped: new Uint8Array(74) };
 		expect(
 			await codeOf(
 				u.run((tx) =>
-					applyKeyChanges(tx, u.id, { baseVersion: 1, put: [bad], remove: [] }),
+					apply(tx, u.id, { baseVersion: 1, put: [bad], remove: [] }),
 				),
 			),
 		).toBe("invalid_input");

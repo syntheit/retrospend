@@ -91,8 +91,7 @@ GRANT DELETE, INSERT, SELECT, UPDATE ON "payment_method" TO retrospend_app;
 GRANT INSERT, SELECT, UPDATE ON "payoff_plan" TO retrospend_app;
 GRANT DELETE, INSERT, SELECT, UPDATE ON "project" TO retrospend_app;
 GRANT DELETE, INSERT, SELECT, UPDATE ON "project_participant" TO retrospend_app;
-GRANT INSERT, SELECT ON "protection_key_set" TO retrospend_app;
-GRANT DELETE, INSERT, SELECT ON "protection_key_wrap" TO retrospend_app;
+GRANT SELECT ON "protection_key_wrap" TO retrospend_app;
 GRANT DELETE, INSERT, SELECT, UPDATE ON "push_device" TO retrospend_app;
 GRANT DELETE, INSERT, SELECT, UPDATE ON "recurring_template" TO retrospend_app;
 GRANT DELETE, INSERT, SELECT, UPDATE ON "settlement" TO retrospend_app;
@@ -179,8 +178,16 @@ GRANT UPDATE (
   "updatedAt"
 ) ON "user" TO retrospend_app;
 
--- "protection_key_set": the key parameters and version change on a password
--- change; the public key and the owner never do.
+-- "protection_key_set": every key write runs on the owner connection, so the
+-- app role only reads it, and never "recoveryHash" (the stored proof of the
+-- recovery key): a query that names it fails with permission denied. It keeps
+-- UPDATE on the columns a password change moves because the vault write locks
+-- the set row FOR SHARE, which Postgres allows only with some UPDATE privilege;
+-- the public key and the owner never change.
+GRANT SELECT (
+  "userId", "kdfSalt", "kdfMemoryKiB", "kdfPasses", "publicKey", "version",
+  "createdAt", "updatedAt"
+) ON "protection_key_set" TO retrospend_app;
 GRANT UPDATE ("kdfSalt", "kdfMemoryKiB", "kdfPasses", "version", "updatedAt")
   ON "protection_key_set" TO retrospend_app;
 

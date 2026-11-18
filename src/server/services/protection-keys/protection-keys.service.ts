@@ -5,7 +5,7 @@
  * keys; it cannot unwrap any of them and never logs their bytes. Not the D2
  * "keyring" (the server's own data keys): see docs/roadmap/e2ee-f6a.md.
  *
- * Both functions run in the caller's transaction. Changing the salt together
+ * The functions run in the caller's transaction. Changing the salt together
  * with the better-auth password hash is one transaction F8b and K1 own: this
  * writer alone could lock a user out, so it has no `updateKdf`.
  */
@@ -13,13 +13,19 @@ import { Prisma } from "~prisma";
 import { ProtectionKeysError } from "./errors";
 import {
 	type KeyChanges,
+	type KeyWriter,
 	validateKeyChanges,
 	type WrapRef,
 	type WrapRole,
 } from "./validate";
 
 export { ProtectionKeysError } from "./errors";
-export type { KeyChanges, WrapInput, WrapRef } from "./validate";
+export type {
+	KeyChanges,
+	KeyWriter,
+	WrapInput,
+	WrapRef,
+} from "./validate";
 
 export type ProtectionKeys = {
 	kdfSalt: Uint8Array;
@@ -48,6 +54,9 @@ type JoinedRow = {
 	targetId: string | null;
 	wrapped: Uint8Array | null;
 };
+
+/** The set without its wraps: what a reader that returns no wrap asks for. */
+export type KeySet = Omit<ProtectionKeys, "wraps">;
 
 /** A copy that is a plain Uint8Array, whether the driver hands back a Buffer or not. */
 const plain = (bytes: Uint8Array): Uint8Array<ArrayBuffer> =>
@@ -92,6 +101,31 @@ export async function getProtectionKeys(
 	};
 }
 
+/**
+ * The set's own columns, or null when the user has none. Names every column
+ * it reads: the app role cannot select "recoveryHash", and nothing but the
+ * owner module (validate.ts) reads it.
+ */
+export async function getKeySet(
+	tx: Prisma.TransactionClient,
+	userId: string,
+): Promise<KeySet | null> {
+	const [row] = await tx.$queryRaw<
+		Omit<JoinedRow, "wrapId" | "role" | "targetId" | "wrapped">[]
+	>`
+		SELECT "kdfSalt", "kdfMemoryKiB", "kdfPasses", "publicKey", "version", "createdAt"
+		FROM "protection_key_set" WHERE "userId" = ${userId}`;
+	if (!row) return null;
+	return {
+		kdfSalt: plain(row.kdfSalt),
+		kdfMemoryKiB: row.kdfMemoryKiB,
+		kdfPasses: row.kdfPasses,
+		publicKey: plain(row.publicKey),
+		version: row.version,
+		createdAt: row.createdAt,
+	};
+}
+
 const isUniqueViolation = (error: unknown): boolean =>
 	error instanceof Prisma.PrismaClientKnownRequestError &&
 	error.code === "P2002";
@@ -116,15 +150,20 @@ async function lockVersion(
  * the current account key, so keeping it would defeat a password change made
  * because the old one leaked, and a removed trusted person. `remove` deletes
  * wraps by role and target. Everything runs in the caller's transaction, so a
- * failure leaves nothing changed, and the version moves once.
+ * failure leaves nothing changed, and the version moves once. `writer` names
+ * the caller, and validate.ts decides what that caller may do (who creates the
+ * set, who writes the recovery proof, which always travels with its wrap).
+ * Callers run on the owner connection: the app role has no INSERT, no DELETE
+ * and no read of the recovery hash.
  */
 export async function applyKeyChanges(
 	tx: Prisma.TransactionClient,
 	userId: string,
 	changes: KeyChanges,
+	writer: KeyWriter,
 ): Promise<{ version: number }> {
-	validateKeyChanges(userId, changes);
-	const { baseVersion, set, put, remove } = changes;
+	validateKeyChanges(userId, changes, writer);
+	const { baseVersion, set, put, remove, recoveryHash } = changes;
 	let version: number;
 	try {
 		if (baseVersion === 0) {
@@ -139,6 +178,9 @@ export async function applyKeyChanges(
 						kdfMemoryKiB: set.kdfMemoryKiB,
 						kdfPasses: set.kdfPasses,
 						publicKey: Uint8Array.from(set.publicKey),
+						...(recoveryHash && {
+							recoveryHash: Uint8Array.from(recoveryHash),
+						}),
 					},
 				],
 				skipDuplicates: true,
@@ -151,8 +193,13 @@ export async function applyKeyChanges(
 			version = baseVersion + 1;
 			await tx.protectionKeySet.update({
 				where: { userId },
+				// Nothing is read back: the row holds the recovery hash.
+				select: { userId: true },
 				data: {
 					version,
+					...(recoveryHash && {
+						recoveryHash: Uint8Array.from(recoveryHash),
+					}),
 					...(set && {
 						kdfSalt: Uint8Array.from(set.kdfSalt),
 						kdfMemoryKiB: set.kdfMemoryKiB,

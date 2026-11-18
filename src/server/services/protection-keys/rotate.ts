@@ -145,7 +145,7 @@ export async function rotatePassword(input: {
 }): Promise<RotateResult> {
 	const { userId, sessionId, body } = input;
 	const changes = toKeyChanges(userId, body);
-	validateKeyChanges(userId, changes);
+	validateKeyChanges(userId, changes, "rotate");
 
 	const user = await db.user.findUnique({
 		where: { id: userId },
@@ -179,7 +179,7 @@ export async function rotatePassword(input: {
 			resetLinksFor: user.email,
 		});
 		if (!swapped.ok) throw new ProtectionKeysError("conflict");
-		const { version } = await applyKeyChanges(tx, userId, changes);
+		const { version } = await applyKeyChanges(tx, userId, changes, "rotate");
 		await tx.eventLog.create({
 			data: {
 				eventType: "PASSWORD_CHANGED",

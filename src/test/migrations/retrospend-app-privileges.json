@@ -375,13 +375,13 @@
 			]
 		},
 		"protection_key_set": {
-			"privileges": ["INSERT", "SELECT"],
+			"privileges": [],
 			"rls": true,
 			"forceRls": false,
 			"policies": ["protection_key_set_own:ALL"]
 		},
 		"protection_key_wrap": {
-			"privileges": ["DELETE", "INSERT", "SELECT"],
+			"privileges": ["SELECT"],
 			"rls": true,
 			"forceRls": false,
 			"policies": ["protection_key_wrap_own:ALL"]
@@ -609,6 +609,16 @@
 			]
 		},
 		"protection_key_set": {
+			"SELECT": [
+				"createdAt",
+				"kdfMemoryKiB",
+				"kdfPasses",
+				"kdfSalt",
+				"publicKey",
+				"updatedAt",
+				"userId",
+				"version"
+			],
 			"UPDATE": ["kdfMemoryKiB", "kdfPasses", "kdfSalt", "updatedAt", "version"]
 		},
 		"vault_record": {

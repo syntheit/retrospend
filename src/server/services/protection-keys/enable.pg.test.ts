@@ -35,7 +35,9 @@ import {
 	expectProblem,
 	sessionFor,
 } from "~/server/api/v1/core/__tests__/harness";
+import vectors from "../../../../packages/crypto/vectors/keys.vectors.json";
 import { auth } from "~/server/better-auth";
+import { enableProtection } from "./enable";
 import { lockCredential } from "./password-writes";
 import { verifyTwoFactorCode } from "./two-factor";
 
@@ -117,8 +119,12 @@ async function mobile(userId: string) {
 
 type Made = ReturnType<typeof made>;
 /** A key set a device could make: only the shapes matter, the server opens nothing. */
-function made(userId: string, overrides: { authKey?: Uint8Array } = {}) {
+function made(
+	userId: string,
+	overrides: { authKey?: Uint8Array; recoveryAuthKey?: Uint8Array } = {},
+) {
 	const authKey = overrides.authKey ?? p.randomBytes(32);
+	const recoveryAuthKey = overrides.recoveryAuthKey ?? p.randomBytes(32);
 	const wrap = (role: "ak-password" | "ak-recovery" | "private-key") => ({
 		role,
 		targetId: userId,
@@ -143,6 +149,7 @@ function made(userId: string, overrides: { authKey?: Uint8Array } = {}) {
 	];
 	return {
 		authKeyText: signInSecret(authKey),
+		recoveryAuthKeyText: signInSecret(recoveryAuthKey),
 		salt: p.randomBytes(16),
 		publicKey: p.boxKeypair().publicKey,
 		wraps,
@@ -155,6 +162,7 @@ function bodyOf(
 	return {
 		currentPassword: extra.currentPassword ?? PASSWORD,
 		authKey: m.authKeyText,
+		recoveryAuthKey: m.recoveryAuthKeyText,
 		...(extra.totpCode && { totpCode: extra.totpCode }),
 		kdf: { salt: toBase64Url(m.salt), memoryKiB: 65536, passes: 3 },
 		publicKey: toBase64Url(m.publicKey),
@@ -690,6 +698,68 @@ describe("POST /me/protection/enable", () => {
 		});
 		expect(res2.status).toBe(400);
 		expect(await keyRows(u.id)).toEqual({ sets: 0, wraps: 0 });
+	});
+
+	describe("the recovery proof", () => {
+		it("stores the SHA-256 of the proof, never the proof, and the hash of the F3 vector is the vector's", async () => {
+			const u = await passwordUser();
+			const me = await mobile(u.id);
+			const vector = vectors.recoveryKeys[2];
+			if (!vector) throw new Error("no vector");
+			const proof = Uint8Array.from(Buffer.from(vector.authKey, "hex"));
+			const m = made(u.id, { recoveryAuthKey: proof });
+			await expectBody(await enable(me.headers, bodyOf(m)), route.enable);
+
+			const stored = Buffer.from(
+				(
+					await adminDb.protectionKeySet.findUniqueOrThrow({
+						where: { userId: u.id },
+					})
+				).recoveryHash ?? [],
+			);
+			expect(stored.toString("hex")).toBe(vector.authKeyHash);
+			expect(stored.equals(Buffer.from(proof))).toBe(false);
+			// No column of the set, or any wrap, holds the proof.
+			const wraps = await adminDb.protectionKeyWrap.findMany({
+				where: { userId: u.id },
+			});
+			for (const w of wraps)
+				expect(Buffer.from(w.wrapped).includes(Buffer.from(proof))).toBe(false);
+		});
+
+		it("is required by the service itself, even when the route's schema is skipped", async () => {
+			const m = made("user_never_made");
+			const { recoveryAuthKey: _omitted, ...without } = bodyOf(m);
+			for (const body of [without, { ...without, recoveryAuthKey: "short" }]) {
+				await expect(
+					enableProtection({
+						userId: "user_never_made",
+						sessionId: "session_never_made",
+						body: body as never,
+					}),
+				).rejects.toMatchObject({ code: "invalid_input" });
+			}
+		});
+
+		it("refuses a request without it, or with a malformed one, and writes nothing", async () => {
+			const u = await passwordUser();
+			const me = await mobile(u.id);
+			const m = made(u.id);
+			const { recoveryAuthKey: _omitted, ...without } = bodyOf(m);
+			const loose = `${m.recoveryAuthKeyText.slice(0, -1)}9`;
+			for (const body of [
+				without,
+				{ ...without, recoveryAuthKey: "" },
+				{ ...without, recoveryAuthKey: m.recoveryAuthKeyText.slice(1) },
+				{ ...without, recoveryAuthKey: loose },
+				{ ...without, recoveryAuthKey: 42 },
+			]) {
+				const res = await enable(me.headers, body);
+				expect(res.status).toBe(400);
+				expect(await keyRows(u.id)).toEqual({ sets: 0, wraps: 0 });
+			}
+			expect(await signsInWith(u.email, PASSWORD)).toBe(true);
+		});
 	});
 });
 

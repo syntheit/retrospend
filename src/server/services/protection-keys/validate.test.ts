@@ -17,7 +17,7 @@ import { ProtectionKeysError } from "./errors";
 import {
 	type KeyChanges,
 	MAX_CHANGES,
-	validateKeyChanges,
+	validateKeyShape,
 	type WrapInput,
 	type WrapRole,
 } from "./validate";
@@ -68,7 +68,7 @@ beforeAll(async () => {
 
 const code = (changes: KeyChanges): string => {
 	try {
-		validateKeyChanges(USER, changes);
+		validateKeyShape(USER, changes);
 		return "ok";
 	} catch (error) {
 		return error instanceof ProtectionKeysError ? error.code : "other";

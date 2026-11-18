@@ -6,9 +6,12 @@
  * migration. Sizes come from @retrospend/crypto, so a format change there fails
  * the unit test with real wraps before it fails in production.
  */
+import { createHash, timingSafeEqual } from "node:crypto";
 import {
 	checkArgon2Params,
+	fromBase64Url,
 	ID_PATTERN,
+	KEY_BYTES,
 	KEY_ID_HEX_PATTERN,
 	PUBLIC_KEY_BYTES,
 	PUBLIC_ROLES,
@@ -38,6 +41,67 @@ const WRAP_ID =
 /** More than a person ever holds (collections, devices and contacts); bounds a request. */
 export const MAX_CHANGES = 500;
 
+/**
+ * Every caller of `applyKeyChanges` names itself, so the list of paths that
+ * write a key set is the type, and a new writer must be added here (and to the
+ * test that holds one case per member) before it compiles.
+ */
+export const KEY_WRITERS = [
+	"enable",
+	"rotate",
+	"recovery",
+	"newRecoveryKey",
+] as const;
+export type KeyWriter = (typeof KEY_WRITERS)[number];
+
+/**
+ * What each writer may do. `creates`: the change makes the set (baseVersion 0)
+ * rather than updating it. `recoveryProof`: the change carries a recovery
+ * hash, together with the ak-recovery wrap it checks, or carries neither.
+ */
+const WRITER_RULES: Record<
+	KeyWriter,
+	{ creates: boolean; recoveryProof: boolean }
+> = {
+	enable: { creates: true, recoveryProof: true },
+	rotate: { creates: false, recoveryProof: false },
+	recovery: { creates: false, recoveryProof: false },
+	newRecoveryKey: { creates: false, recoveryProof: true },
+};
+
+/** SHA-256 of the 32-byte recovery auth key: the proof is 256 bits, so no slow hash. */
+export const RECOVERY_HASH_BYTES = 32;
+
+/**
+ * What the server stores of a recovery proof (the recovery auth key as the
+ * client sends it, 43 characters of base64url). The one place that hashes it:
+ * enable and Make new key write the result, recovery compares against it.
+ */
+export function hashRecoveryProof(proof: string): Uint8Array {
+	const raw = fromBase64Url(proof);
+	if (!raw || raw.length !== KEY_BYTES) invalid();
+	return createHash("sha256").update(raw).digest();
+}
+
+/**
+ * Whether `proof` is the one `stored` was made from, in constant time. A set
+ * without a stored hash (made before the proof existed) matches nothing, and a
+ * malformed proof or stored value is a mismatch, never an error.
+ */
+export function recoveryProofMatches(
+	stored: Uint8Array | null | undefined,
+	proof: string,
+): boolean {
+	if (!stored || stored.length !== RECOVERY_HASH_BYTES) return false;
+	let given: Uint8Array;
+	try {
+		given = hashRecoveryProof(proof);
+	} catch {
+		return false;
+	}
+	return timingSafeEqual(given, stored);
+}
+
 export type KeySetParams = {
 	kdfSalt: Uint8Array;
 	kdfMemoryKiB: number;
@@ -56,6 +120,12 @@ export type KeyChanges = {
 	baseVersion: number;
 	/** Required (with `publicKey`) to create the set; parameters only afterwards. */
 	set?: KeySetParams & { publicKey?: Uint8Array };
+	/**
+	 * SHA-256 of the recovery auth key (`hashRecoveryProof`). Present exactly
+	 * when `put` replaces the ak-recovery wrap, so the proof and the wrap it
+	 * checks never drift apart.
+	 */
+	recoveryHash?: Uint8Array;
 	put: WrapInput[];
 	remove: WrapRef[];
 };
@@ -109,8 +179,34 @@ function checkParams(set: KeySetParams): void {
 	}
 }
 
-/** Throws `invalid_input` for anything a stored change could not hold. */
-export function validateKeyChanges(userId: string, changes: KeyChanges): void {
+/**
+ * Throws `invalid_input` when `writer` may not make this change: who creates
+ * the set, and the recovery proof, which travels with the ak-recovery wrap it
+ * checks or not at all.
+ */
+function checkWriter(changes: KeyChanges, writer: KeyWriter): void {
+	const { baseVersion, put, remove, recoveryHash } = changes;
+	const rule = WRITER_RULES[writer];
+	if (!rule) invalid();
+	if ((baseVersion === 0) !== rule.creates) invalid();
+	const replacesRecovery = put.some((wrap) => wrap.role === "ak-recovery");
+	// Dropping the wrap would leave a proof that checks nothing.
+	if (remove.some((ref) => ref.role === "ak-recovery")) invalid();
+	if (
+		recoveryHash !== undefined &&
+		(!(recoveryHash instanceof Uint8Array) ||
+			recoveryHash.length !== RECOVERY_HASH_BYTES)
+	)
+		invalid();
+	if (rule.recoveryProof) {
+		if (recoveryHash === undefined || !replacesRecovery) invalid();
+	} else if (recoveryHash !== undefined || replacesRecovery) {
+		invalid();
+	}
+}
+
+/** The checks every change must pass, whoever writes it. */
+export function validateKeyShape(userId: string, changes: KeyChanges): void {
 	const { baseVersion, set, put, remove } = changes;
 	if (!Number.isInteger(baseVersion) || baseVersion < 0) invalid();
 	if (!Array.isArray(put) || !Array.isArray(remove)) invalid();
@@ -143,4 +239,14 @@ export function validateKeyChanges(userId: string, changes: KeyChanges): void {
 		}
 	}
 	for (const ref of remove) checkRef(ref, userId);
+}
+
+/** Throws `invalid_input` for anything `writer` could not store: its shape, then its rules. */
+export function validateKeyChanges(
+	userId: string,
+	changes: KeyChanges,
+	writer: KeyWriter,
+): void {
+	validateKeyShape(userId, changes);
+	checkWriter(changes, writer);
 }
