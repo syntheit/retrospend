@@ -5,35 +5,27 @@ import { ARS, BASIS, code, fakeClock, NOW, setup, silent } from "./harness";
 fakeClock(NOW);
 
 describe("worker host over a message channel", () => {
-	it("starts, pulls and reads the device's figure", async () => {
+	it("starts and pulls", async () => {
 		const { client } = setup();
 		await client.start("u1");
-		const pulled = await client.pull();
-		expect(pulled).toEqual({ status: "ready", generation: 1 });
-		const read = await client.read(["glance.spent"]);
-		expect(read?.homeCurrency).toBe("ARS");
-		expect(read?.readings.get("glance.spent")).toEqual(ARS(100_000));
+		expect(await client.pull()).toEqual({ status: "ready", generation: 1 });
 	});
 
 	it("pairs every answer with its request when calls overlap", async () => {
-		const { client } = setup({
-			figures: {
-				"glance.spent": ARS(100_000),
-				"glance.spentLast": ARS(250_000),
-			},
-		});
+		const { client } = setup({ basis: BASIS });
 		await client.start("u1");
 		const [a, b, pulled, c] = await Promise.all([
-			client.read(["glance.spent"]),
-			client.read(["glance.spentLast"]),
+			client.compare("settings"),
+			client.compare("wealth"),
 			client.pull(),
-			client.read(["glance.spent", "glance.spentLast"]),
+			client.compare("insights"),
 		]);
-		expect(a?.readings.get("glance.spent")).toEqual(ARS(100_000));
-		expect(a?.readings.has("glance.spentLast")).toBe(false);
-		expect(b?.readings.get("glance.spentLast")).toEqual(ARS(250_000));
-		expect(pulled.generation).toBe(1);
-		expect(c?.readings.size).toBe(2);
+		expect([a?.screen, b?.screen, c?.screen]).toEqual([
+			"settings",
+			"wealth",
+			"insights",
+		]);
+		expect(pulled.generation).toBeGreaterThanOrEqual(1);
 	});
 
 	it("compares a screen with the server and sends back ids and counts, never amounts", async () => {
@@ -103,7 +95,7 @@ describe("worker host over a message channel", () => {
 		expect(await code(client.pull())).toBe("protected_account");
 		const asked = fetched.mock.calls.length;
 		expect(await code(client.pull())).toBe("protected_account");
-		expect(await code(client.read(["glance.spent"]))).toBe("protected_account");
+		expect(await code(client.compare("settings"))).toBe("protected_account");
 		expect(fetched.mock.calls.length).toBe(asked);
 		// Stop clears it: a new start may try again.
 		await client.stop();
@@ -134,7 +126,7 @@ describe("worker host over a message channel", () => {
 		cookie.userId = "u2";
 		expect(await code(client.pull())).toBe("account_changed");
 		expect(asked().length).toBe(before);
-		expect(await code(client.read(["glance.spent"]))).toBe("account_changed");
+		expect(await code(client.compare("settings"))).toBe("account_changed");
 		expect(await code(client.compare("settings"))).toBe("account_changed");
 		expect(asked().length).toBe(before);
 	});
@@ -145,7 +137,7 @@ describe("worker host over a message channel", () => {
 		answer.status = 403;
 		const codes = await Promise.all([
 			code(client.pull()),
-			code(client.read(["glance.spent"])),
+			code(client.compare("settings")),
 			code(client.compare("settings")),
 		]);
 		expect(codes).toEqual(Array(3).fill("protected_account"));
@@ -153,7 +145,7 @@ describe("worker host over a message channel", () => {
 		answer.status = 200;
 		await client.start("u1");
 		expect((await client.pull()).status).toBe("ready");
-		expect((await client.read(["glance.spent"]))?.readings.size).toBe(1);
+		expect((await client.compare("settings"))?.screen).toBe("settings");
 	});
 
 	it("gives a 429 to every call that overlapped it, not only the first to finish", async () => {
@@ -191,7 +183,7 @@ describe("worker host over a message channel", () => {
 		hooks.afterSettings = undefined;
 		cookie.userId = "u1";
 		// Ended for good: not even the right cookie reads what the pull fetched.
-		expect(await code(client.read(["glance.spent"]))).toBe("account_changed");
+		expect(await code(client.compare("settings"))).toBe("account_changed");
 	});
 
 	it("wipes the engine when the cookie changed during a pull that then failed half way", async () => {
@@ -205,7 +197,7 @@ describe("worker host over a message channel", () => {
 		// The settings came with u2's cookie and the expenses did not: the pull
 		// fails with its generation unchanged, and is still checked.
 		expect(await code(client.pull())).toBe("account_changed");
-		expect(await code(client.read(["glance.spent"]))).toBe("account_changed");
+		expect(await code(client.compare("settings"))).toBe("account_changed");
 	});
 
 	it("treats a 401 as terminal and a 429 as a wait", async () => {
@@ -276,7 +268,7 @@ describe("device client with a dead worker", () => {
 		const { client, worker, terminate } = silent();
 		const codes = Promise.all([
 			code(client.pull()),
-			code(client.read(["glance.spent"])),
+			code(client.compare("settings")),
 		]);
 		worker.onerror?.({});
 		expect(await codes).toEqual<DeviceErrorCode[]>([

@@ -1,6 +1,5 @@
 import type {
 	CompareReport,
-	DeviceRead,
 	DeviceStatus,
 	NarrowValues,
 	ScreenName,
@@ -49,7 +48,6 @@ export interface PullResult {
 export interface Results {
 	start: undefined;
 	pull: PullResult;
-	read: DeviceRead | null;
 	/** The device's figures held against the server's (ids and counts only), or null when the check could not run. */
 	compare: CompareReport | null;
 	stop: undefined;
@@ -58,7 +56,6 @@ export interface Results {
 export type Request =
 	| { type: "start"; userId: string }
 	| { type: "pull" }
-	| { type: "read"; ids: string[] }
 	| { type: "compare"; screen: ScreenName; values?: NarrowValues }
 	| { type: "stop" };
 

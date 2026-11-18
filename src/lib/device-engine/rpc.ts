@@ -20,7 +20,6 @@ export interface WorkerLike {
 export interface DeviceClient {
 	start(userId: string): Promise<void>;
 	pull(): Promise<Results["pull"]>;
-	read(ids: readonly string[]): Promise<Results["read"]>;
 	/** Holds a screen's device figures against the server's; the engine pulls for it. */
 	compare(
 		screen: ScreenName,
@@ -83,7 +82,6 @@ export function createDeviceClient(worker: WorkerLike): DeviceClient {
 	return {
 		start: (userId) => call({ type: "start", userId }),
 		pull: () => call({ type: "pull" }),
-		read: (ids) => call({ type: "read", ids: [...ids] }),
 		compare: (screen, values) => call({ type: "compare", screen, values }),
 		stop: () => call({ type: "stop" }),
 		terminate() {

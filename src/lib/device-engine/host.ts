@@ -171,10 +171,6 @@ export function attachHost(scope: HostScope, deps: HostDeps): void {
 				await e.pullIfStale();
 				return { status: e.status, generation: e.generation };
 			}),
-		read(request) {
-			if (!isIds(request.ids)) throw new DeviceError("bad_request");
-			return guarded((e) => e.read(request.ids));
-		},
 		compare(request) {
 			if (!isScreen(request.screen) || !isValues(request.values))
 				throw new DeviceError("bad_request");

@@ -1,4 +1,4 @@
-import type { Money } from "@retrospend/domain/money-minor";
+import { monthVerdictIncomplete } from "@retrospend/domain/envelope/verdict";
 import { runtimeTimeZone } from "@retrospend/domain/time-zone";
 import { deviceMonthView } from "../budget-figures";
 import { budgetStatus } from "../budget-gate";
@@ -56,23 +56,6 @@ export interface DeviceReads {
 	): Promise<CompareReport | null>;
 }
 
-export interface ReadOptions {
-	/**
-	 * Reads only after a pull that began with this call has finished, so the
-	 * rows hold what the server held when it was made (a write just confirmed
-	 * shows). Null when that pull fails or the engine cannot pull.
-	 */
-	fresh?: boolean;
-}
-
-export interface DeviceRead {
-	homeCurrency: string;
-	/** Whether the budget figures read: a book and a block the pulls caught up with. */
-	budgetReady: boolean;
-	/** One line per currency, or null when a missing rate keeps the figure out. */
-	readings: ReadonlyMap<string, readonly Money[] | null>;
-}
-
 /** What the write parity check found, by counts and ids: never an amount, title or note. */
 export interface WriteParity {
 	/** Per outcome ("match", "differs", "rate_missing", "refused", "skipped:<code>", "expired"). */
@@ -85,15 +68,6 @@ export interface WriteParity {
 const RECENT_WRITES = 100;
 
 export interface DeviceEngine extends DeviceReads {
-	/**
-	 * The device's reading of each id it has a figure for (others are left
-	 * out), or null when it holds nothing it can trust: the first pull failed,
-	 * or the last one did.
-	 */
-	read(
-		ids: readonly string[],
-		options?: ReadOptions,
-	): Promise<DeviceRead | null>;
 	/** "ready" at once when the disk copy holds a whole pull; "idle" until a pull otherwise. */
 	readonly status: DeviceStatus;
 	/** Pulls that have finished. */
@@ -350,15 +324,24 @@ export function createDeviceEngine(
 
 	/**
 	 * A pull that begins after the call and counts the rows it brings in past
-	 * `cut` (the server read's cut); null when it did not finish.
+	 * `cut` (the server read's cut); null when it did not finish. A pull of
+	 * another caller that began after the round's first server read (a foreground
+	 * or another screen's pull), or was still running then, may have applied rows
+	 * past the cut that nothing counted: it answers "again", so both sides are
+	 * read once more. `mark` is the pulls begun when that read was asked for.
 	 */
-	async function pullPast(cut: string): Promise<PulledPast | null> {
+	async function pullPast(
+		cut: string,
+		mark: number | null,
+	): Promise<PulledPast | "again" | null> {
 		await ready;
-		// A pull already running began before the server read: wait it out.
+		// A pull already running began before this call: wait it out.
 		while (inflight) await inflight;
 		const before = generation;
 		await startPull(cut);
-		return generation > before ? lastPast : null;
+		if (generation <= before) return null;
+		// Our own pull is the one begun since the read.
+		return mark !== null && pullsBegun - mark !== 1 ? "again" : lastPast;
 	}
 
 	const pullIfStale = () =>
@@ -366,13 +349,6 @@ export function createDeviceEngine(
 		(pulledAt === null || now() - pulledAt >= PULL_AFTER_MS
 			? pull()
 			: Promise.resolve());
-
-	/** The disk copy is loaded and the first pull, or the one in flight, is done: a read never sees a half-pulled store. */
-	async function settled(): Promise<void> {
-		await ready;
-		if (inflight) await inflight;
-		else if (status === "idle") await pull();
-	}
 
 	async function dispose({ wipe }: { wipe: boolean }): Promise<void> {
 		disposed = true;
@@ -400,96 +376,69 @@ export function createDeviceEngine(
 			month: dto.month.key,
 			today: dto.today,
 			style: verdict.style,
-			incomplete: dto.incomplete || verdict.incomplete || dto.approximate,
+			incomplete: monthVerdictIncomplete(dto),
 			state: verdict.state,
 			action: verdict.action,
 			lead: { figureId: verdict.lead.figureId, amount: verdict.lead.amount },
 		};
 	}
 
-	async function readNow(ids: readonly string[]): Promise<DeviceRead | null> {
-		const settings = store.get("settings", SETTINGS_ID);
-		if (status !== "ready" || !settings) return null;
-		const known = ids.filter((id) => DEVICE_FIGURE_IDS.includes(id));
-		const begun = pullsBegun;
-		const { readings } = await readDeviceFigures(store, userId, known);
-		const budgetReady = budgetStatus(store) === "ready";
-		// A pull that began while the figures were read changed the rows under
-		// them (or swapped the store): the reading is of no moment, so Home keeps
-		// the server's value.
-		if (pullsBegun !== begun || status !== "ready") return null;
-		return {
-			homeCurrency: settings.homeCurrency,
-			budgetReady,
-			readings,
-		};
-	}
-
-	/** Whether a pull that began after this call has finished. */
-	async function pulledAfterNow(): Promise<boolean> {
-		await ready;
-		// A pull already running began before the call, so its rows may be older
-		// than a write the caller just saw confirmed: wait it out, then pull.
-		if (inflight) await inflight;
-		const before = generation;
-		await pull();
-		return generation > before;
-	}
-
-	async function read(
-		ids: readonly string[],
-		options: ReadOptions = {},
-	): Promise<DeviceRead | null> {
-		if (options.fresh) {
-			if (!(await pulledAfterNow())) return null;
-		} else await settled();
-		try {
-			return await readNow(ids);
-		} catch (error) {
-			warn("read failed", (error as Error)?.name);
-			return null;
-		}
-	}
-
 	const browserZone = options.browserZone ?? (() => runtimeTimeZone() ?? "");
 
-	/** The compare's view of the engine: the server's api, the store as the pulls left it, the clock. */
-	const compareDeps: CompareDeps = {
-		figures: api.figures,
-		async read(query) {
-			const settings = store.get("settings", SETTINGS_ID);
-			if (status !== "ready" || !settings) return null;
-			const begun = pullsBegun;
-			const known = query.ids.filter((id) => DEVICE_FIGURE_IDS.includes(id));
-			const { readings } = await readDeviceFigures(
-				store,
-				userId,
-				known,
-				{ ...query.narrowing },
-				() => query.at,
-			);
-			const verdict = query.verdict ? await verdictAt(query.at) : null;
-			// A pull that began during the read changed the rows under it.
-			return pullsBegun !== begun || status !== "ready"
-				? null
-				: { lines: readings, verdict };
-		},
-		pull: pullPast,
-		cursors: () => cursors,
-		ratesAsOf: () => ratesAsOf(store),
-		settings: () => {
-			const row = store.get("settings", SETTINGS_ID);
-			return row
-				? {
-						homeCurrency: row.homeCurrency,
-						timeZone: row.timeZone,
-						startDay: row.startDay,
-					}
-				: null;
-		},
-		bookZone: () => store.list("budgetBooks")[0]?.timeZone ?? null,
-		generation: () => generation,
-		now: () => new Date(now()),
+	/**
+	 * The compare's view of the engine: the server's api, the store as the pulls
+	 * left it, the clock. One per compare, which holds the pulls begun when each
+	 * round's first server read was asked for.
+	 */
+	const depsForCompare = (): CompareDeps => {
+		let mark: number | null = null;
+		return {
+			figures: {
+				read(query) {
+					// A pull still running fetches pages after the read too, so it counts as begun after it.
+					mark ??= inflight ? pullsBegun - 1 : pullsBegun;
+					return api.figures.read(query);
+				},
+			},
+			async read(query) {
+				const settings = store.get("settings", SETTINGS_ID);
+				if (status !== "ready" || !settings) return null;
+				const begun = pullsBegun;
+				const known = query.ids.filter((id) => DEVICE_FIGURE_IDS.includes(id));
+				const { readings } = await readDeviceFigures(
+					store,
+					userId,
+					known,
+					{ ...query.narrowing },
+					() => query.at,
+				);
+				const verdict = query.verdict ? await verdictAt(query.at) : null;
+				// A pull that began during the read changed the rows under it.
+				return pullsBegun !== begun || status !== "ready"
+					? null
+					: { lines: readings, verdict };
+			},
+			pull(cut) {
+				const since = mark;
+				mark = null;
+				return pullPast(cut, since);
+			},
+			cursors: () => cursors,
+			ratesAsOf: () => ratesAsOf(store),
+			settings: () => {
+				const row = store.get("settings", SETTINGS_ID);
+				return row
+					? {
+							homeCurrency: row.homeCurrency,
+							timeZone: row.timeZone,
+							startDay: row.startDay,
+						}
+					: null;
+			},
+			bookZone: () => store.list("budgetBooks")[0]?.timeZone ?? null,
+			generation: () => generation,
+			now: () => new Date(now()),
+		};
 	};
 
 	async function compare(
@@ -501,7 +450,7 @@ export function createDeviceEngine(
 		try {
 			await ready;
 			if (disposed) return null;
-			const { report, next } = await compareScreen(compareDeps, {
+			const { report, next } = await compareScreen(depsForCompare(), {
 				screen,
 				values: narrowings,
 				start: rotation[screen],
@@ -540,7 +489,6 @@ export function createDeviceEngine(
 		},
 		pull,
 		pullIfStale,
-		read,
 		compare,
 		dispose,
 	};

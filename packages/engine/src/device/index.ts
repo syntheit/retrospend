@@ -35,11 +35,9 @@ export {
 	createDeviceEngine,
 	type DeviceEngine,
 	type DeviceEngineOptions,
-	type DeviceRead,
 	type DeviceReads,
 	type DeviceStatus,
 	PULL_AFTER_MS,
-	type ReadOptions,
 	TAG,
 	type WriteParity,
 } from "./engine";

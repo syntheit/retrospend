@@ -41,8 +41,11 @@ export interface CompareDeps {
 		at: Date;
 		verdict: boolean;
 	}): Promise<{ lines: Lines; verdict: VerdictView | null } | null>;
-	/** Pulls with `pastCut` set to the read's cut; null when the pull failed. */
-	pull(cut: string): Promise<PulledPast | null>;
+	/**
+	 * Pulls with `pastCut` set to the read's cut; null when the pull failed;
+	 * "again" when rows of another pull may have come in past the cut uncounted.
+	 */
+	pull(cut: string): Promise<PulledPast | "again" | null>;
 	/** The cursor of each sync entity the device's last pull ended on. */
 	cursors(): Readonly<Partial<Record<string, string>>>;
 	/** The rate table version the device holds (the same value as `basis.ratesAsOf`). */
@@ -143,6 +146,7 @@ async function round(
 
 	const pulled = await deps.pull(first.cut);
 	if (!pulled) return "no_device";
+	if (pulled === "again") return "again";
 	if (
 		!settingsSame(
 			deps,

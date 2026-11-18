@@ -34,7 +34,6 @@ function fakeClient(pull?: Pull) {
 		pull: vi.fn<Pull>(
 			pull ?? (async () => ({ status: "ready", generation: 1 })),
 		),
-		read: vi.fn(),
 		stop: vi.fn(async () => undefined),
 		terminate: vi.fn(() => {
 			client.dead = true;

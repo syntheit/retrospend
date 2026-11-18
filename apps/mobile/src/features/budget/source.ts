@@ -1,4 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
+import { monthVerdictIncomplete } from "@retrospend/domain/envelope/verdict";
 import type { VerdictView } from "@retrospend/engine/device";
 import type { DeviceReads } from "@/data/device-engine";
 import type { CacheKey } from "@/features/read/loadCached";
@@ -48,7 +49,7 @@ export function verdictViewOf(data: BudgetMonth): VerdictView {
 		month: data.month.key,
 		today: data.today,
 		style: verdict.style,
-		incomplete: data.incomplete || verdict.incomplete || data.approximate,
+		incomplete: monthVerdictIncomplete(data),
 		state: verdict.state,
 		action: verdict.action,
 		lead: { figureId: verdict.lead.figureId, amount: verdict.lead.amount },

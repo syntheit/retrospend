@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { bookValuationKey } from "@retrospend/domain/envelope/book-valuation-key";
+import { fixtureRow } from "../fixtures";
+import type { TableRows } from "../port";
 import { readDeviceFigures } from "../registry";
 import {
 	createDeviceEngine as create,
@@ -6,7 +9,9 @@ import {
 	PULL_AFTER_MS,
 } from "./engine";
 import { cursor, expense, fakeDeviceApi } from "./fake-api";
-import type { FigureBasis } from "./ports";
+import type { EngineStorage, FigureBasis, LoadedRows } from "./ports";
+import type { VerdictView } from "./compare";
+import type { Money } from "@retrospend/domain/money-minor";
 
 // Lets a test act while the figures are being read; reads as the real one otherwise.
 vi.mock("../registry", async (importOriginal) => {
@@ -58,140 +63,11 @@ afterEach(() => {
 	vi.useRealTimers();
 });
 
-describe("reading figures", () => {
-	it("pulls on the first read, then reads the figures it has from the rows", async () => {
-		const { api, calls } = fakeDeviceApi({ expenses: [page(ROWS)] });
-		const engine = createDeviceEngine(api, "u1");
-		expect(engine.status).toBe("idle");
-
-		const read = await engine.read([
-			"glance.spent",
-			"glance.spentLastToDate",
-			"glance.spentLast",
-			"owed.owedToYou",
-		]);
-
-		expect(calls[0]).toBe("settings");
-		expect(engine.status).toBe("ready");
-		expect(engine.generation).toBe(1);
-		expect(read?.homeCurrency).toBe("ARS");
-		expect(read?.budgetReady).toBe(false);
-		expect(Object.fromEntries(read?.readings ?? [])).toEqual({
-			"glance.spent": ARS(100_000),
-			"glance.spentLastToDate": ARS(200_000),
-			"glance.spentLast": ARS(250_000),
-		});
-	});
-
-	it("reads nothing when the pull failed, and again once a later pull works", async () => {
-		const { api } = fakeDeviceApi({
-			expenses: [page(ROWS)],
-			fail: { route: "expenses", pull: 1, error: new Error("offline") },
-		});
-		const engine = createDeviceEngine(api, "u1");
-		expect(await engine.read(["glance.spent"])).toBeNull();
-		expect(engine.status).toBe("failed");
-		expect(engine.generation).toBe(0);
-
-		await engine.pull();
-		expect(engine.status).toBe("ready");
-		expect(
-			(await engine.read(["glance.spent"]))?.readings.get("glance.spent"),
-		).toEqual(ARS(100_000));
-	});
-});
-
-describe("a fresh read", () => {
-	it("pulls again before it reads, even when the rows are young", async () => {
-		const { api, pulls } = fakeDeviceApi({ expenses: [page(ROWS)] });
-		const engine = createDeviceEngine(api, "u1");
-		await engine.pull();
-		const read = await engine.read(["glance.spent"], { fresh: true });
-		expect(pulls()).toBe(2);
-		expect(engine.generation).toBe(2);
-		expect(read?.readings.get("glance.spent")).toEqual(ARS(100_000));
-	});
-
-	// The pull running now began before the call, so a write the caller has
-	// just seen confirmed may not be in its rows: it is waited out, then repeated.
-	it("waits out a pull already running and pulls once more", async () => {
-		const { api, pulls } = fakeDeviceApi({ expenses: [page(ROWS)] });
-		const engine = createDeviceEngine(api, "u1");
-		const running = engine.pull();
-		const read = await engine.read(["glance.spent"], { fresh: true });
-		await running;
-		expect(pulls()).toBe(2);
-		expect(read).not.toBeNull();
-	});
-
-	it("reads nothing when its pull fails", async () => {
-		const { api } = fakeDeviceApi({
-			expenses: [page(ROWS)],
-			fail: { route: "expenses", pull: 2, error: new Error("offline") },
-		});
-		const engine = createDeviceEngine(api, "u1");
-		await engine.pull();
-		expect(await engine.read(["glance.spent"], { fresh: true })).toBeNull();
-		expect(engine.generation).toBe(1);
-	});
-
-	// Offline before the first write leaves the rows as they were and the
-	// engine ready, but they are no fresher than the call: nothing is read.
-	it("reads nothing when its pull fails before it wrote anything", async () => {
-		const { api } = fakeDeviceApi({ expenses: [page(ROWS)] });
-		const engine = createDeviceEngine(api, "u1");
-		await engine.pull();
-		(api.sync as unknown as Record<string, unknown>).settings = async () => {
-			throw new Error("offline");
-		};
-		expect(await engine.read(["glance.spent"], { fresh: true })).toBeNull();
-		expect(engine.status).toBe("ready");
-		expect(engine.generation).toBe(1);
-		expect(await engine.read(["glance.spent"])).not.toBeNull();
-	});
-
-	it("reads nothing from an engine that was disposed", async () => {
-		const { api } = fakeDeviceApi({ expenses: [page(ROWS)] });
-		const engine = createDeviceEngine(api, "u1");
-		await engine.pull();
-		await engine.dispose({ wipe: false });
-		expect(await engine.read([], { fresh: true })).toBeNull();
-	});
-});
-
-describe("a read while a pull begins", () => {
-	// Each reading below was made from rows a pull has since touched, so it is
-	// dropped and Home keeps the server's value.
-	it("is dropped when a pull is still running at the end of the read", async () => {
-		const { api } = fakeDeviceApi({ expenses: [page(ROWS)] });
-		const engine = createDeviceEngine(api, "u1");
-		await engine.pull();
-		readDuring(async () => {
-			void engine.pull();
-		});
-		expect(await engine.read(["glance.spent"])).toBeNull();
-		await engine.pull();
-		expect(
-			(await engine.read(["glance.spent"]))?.readings.get("glance.spent"),
-		).toEqual(ARS(100_000));
-	});
-
-	it("is dropped when a whole pull began and ended during the read", async () => {
-		const { api } = fakeDeviceApi({ expenses: [page(ROWS)] });
-		const engine = createDeviceEngine(api, "u1");
-		await engine.pull();
-		readDuring(() => engine.pull());
-		expect(await engine.read(["glance.spent"])).toBeNull();
-		expect(engine.status).toBe("ready");
-		expect(engine.generation).toBe(2);
-	});
-});
-
 describe("pulling", () => {
 	it("runs one pull at a time", async () => {
 		const { api, calls } = fakeDeviceApi();
 		const engine = createDeviceEngine(api, "u1");
-		await Promise.all([engine.pull(), engine.pull(), engine.read([])]);
+		await Promise.all([engine.pull(), engine.pull(), engine.pullIfStale()]);
 		expect(calls.filter((c) => c === "settings")).toHaveLength(1);
 		expect(engine.generation).toBe(1);
 	});
@@ -213,8 +89,14 @@ describe("pulling", () => {
 	// be trusted, so the engine starts over and asks for expenses again from the
 	// start. e1 is gone from the server's answer, so it is gone from the rows.
 	it("starts over in a new store when the server cannot honor a cursor", async () => {
+		const stamped = (t: string, items: unknown[]) => ({
+			items,
+			tombstones: [],
+			cursor: cursor(t),
+			hasMore: false,
+		});
 		const { api, calls } = fakeDeviceApi({
-			expenses: [page(ROWS, "c1"), page([ROWS[1]], "c2")],
+			expenses: [stamped("120", ROWS), stamped("130", [ROWS[1]])],
 			fail: {
 				route: "expenses",
 				pull: 2,
@@ -222,21 +104,36 @@ describe("pulling", () => {
 					code: "sync_reset_required",
 				}),
 			},
+			// What the server's rows make: only e2 is left.
+			figures: {
+				"glance.spent": ARS(0),
+				"glance.spentLast": ARS(200_000),
+			},
+			basis: {
+				asOf: cursor("200"),
+				cut: cursor("150"),
+				at: "2026-10-15T15:00:00.000Z",
+				ratesAsOf: null,
+				home: "ARS",
+				timeZone: "America/Argentina/Buenos_Aires",
+				startDay: 1,
+			},
 		});
 		const engine = createDeviceEngine(api, "u1");
 		await engine.pull();
 		await engine.pull();
-		// First pull: since none. Second: since c1 (410), then since none again.
+		// First pull: since none. Second: since the first's cursor (410), then since none again.
 		expect(calls.filter((c) => c.startsWith("expenses"))).toEqual([
 			"expenses(-)",
-			"expenses(c1)",
+			`expenses(${cursor("120")})`,
 			"expenses(-)",
 		]);
 		expect(engine.status).toBe("ready");
 		expect(engine.generation).toBe(2);
-		const read = await engine.read(["glance.spent", "glance.spentLast"]);
-		expect(read?.readings.get("glance.spent")).toEqual(ARS(0));
-		expect(read?.readings.get("glance.spentLast")).toEqual(ARS(200_000));
+		const report = await engine.compare("home");
+		expect(report?.state).toBe("checked");
+		expect(report?.classes["glance.spent"]).toBe("match");
+		expect(report?.classes["glance.spentLast"]).toBe("match");
 	});
 });
 
@@ -328,6 +225,126 @@ describe("comparing against the server", () => {
 		expect(report).toMatchObject({ state: "skipped", skipped: "moving" });
 	});
 
+	it("skips when its pull failed, and checks once a later pull works", async () => {
+		const { api } = fakeDeviceApi({
+			expenses: [stamped("120", ROWS)],
+			figures: spent,
+			basis: basis("150"),
+			fail: { route: "expenses", pull: 1, error: new Error("offline") },
+		});
+		const engine = createDeviceEngine(api, "u1");
+		expect(await engine.compare("settings")).toMatchObject({
+			state: "skipped",
+			skipped: "no_device",
+		});
+		expect(engine.status).toBe("failed");
+		const report = await engine.compare("settings");
+		expect(report).toMatchObject({ state: "checked", differs: [] });
+		expect(report?.classes["glance.spent"]).toBe("match");
+	});
+
+	// Each device read below was made from rows a pull has since touched.
+	it.each([
+		["is still running at the end of the read", false],
+		["began and ended during the read", true],
+	])("skips when a pull %s", async (_name, whole) => {
+		const { api } = fakeDeviceApi({
+			expenses: [stamped("120", ROWS)],
+			figures: spent,
+			basis: basis("150"),
+		});
+		const engine = createDeviceEngine(api, "u1");
+		readDuring(async () => {
+			if (whole) await engine.pull();
+			else void engine.pull();
+		});
+		expect(await engine.compare("settings")).toMatchObject({
+			state: "skipped",
+			skipped: "no_device",
+		});
+	});
+
+	// The server answers its cut 150, then a foreground pull (sign in, or the
+	// app coming back) applies e1 stamped 170, past the cut. The compare's own
+	// pull then brings nothing, so only the pull that began after the read can
+	// say the device holds a row the server read did not. The server's second
+	// read has e1, so the check ends as a match, never as a difference.
+	it("reads both sides again when a pull of another caller applied rows past the cut", async () => {
+		const { api, pulls, calls } = fakeDeviceApi({
+			expenses: [stamped("170", [ROWS[0]]), stamped("170")],
+			figures: spent,
+			basis: basis("150"),
+		});
+		const engine = createDeviceEngine(api, "u1");
+		const answer = api.figures.read;
+		let reads = 0;
+		api.figures.read = async (query) => {
+			const served = await answer(query);
+			reads += 1;
+			if (reads > 1) return served;
+			void engine.pull();
+			return {
+				...served,
+				figures: served.figures.map((f) => ({ ...f, lines: ARS(0) })),
+			};
+		};
+		const report = await engine.compare("settings");
+		expect(calls.filter((c) => c.startsWith("figures"))).toHaveLength(2);
+		expect(pulls()).toBe(3);
+		expect(report).toMatchObject({
+			state: "checked",
+			skipped: null,
+			differs: [],
+		});
+		expect(report?.classes["glance.spent"]).toBe("match");
+	});
+
+	// The pull running at the read fetches pages after it too.
+	it("reads both sides again when a pull was already running at the server read", async () => {
+		const { api, calls } = fakeDeviceApi({
+			expenses: [stamped("170", [ROWS[0]]), stamped("170")],
+			figures: spent,
+			basis: basis("150"),
+		});
+		const engine = createDeviceEngine(api, "u1");
+		void engine.pull();
+		const report = await engine.compare("settings");
+		expect(calls.filter((c) => c.startsWith("figures"))).toHaveLength(2);
+		expect(report).toMatchObject({ state: "checked", differs: [] });
+	});
+
+	// The device clock is a month ahead of the server's read instant: the
+	// device reads at the server's, so this month's Spent is e1's 1,000.00.
+	it("reads the device at the server's instant, not its own clock", async () => {
+		const { api } = fakeDeviceApi({
+			expenses: [stamped("120", ROWS)],
+			figures: spent,
+			basis: basis("150"),
+		});
+		const engine = createDeviceEngine(api, "u1", () =>
+			Date.parse("2026-11-02T12:00:00.000Z"),
+		);
+		const report = await engine.compare("settings");
+		expect(report).toMatchObject({ state: "checked", differs: [] });
+		expect(report?.classes["glance.spent"]).toBe("match");
+	});
+
+	it("hands the narrowing values to the device's read", async () => {
+		const { api } = fakeDeviceApi({
+			expenses: [stamped("120", ROWS)],
+			figures: { "recurring.amount": ARS(0) },
+			basis: basis("150"),
+		});
+		const engine = createDeviceEngine(api, "u1");
+		await engine.compare("recurring", { recurringId: ["r1"] });
+		const reads = vi
+			.mocked(readDeviceFigures)
+			.mock.calls.filter(([, , ids]) => ids.includes("recurring.amount"));
+		expect(reads.map(([, , , narrowing]) => narrowing)).toEqual([
+			{ recurringId: "r1" },
+		]);
+	});
+
 	it("skips with no basis (an old server or a read token), and never pulls", async () => {
 		const { api, pulls } = fakeDeviceApi({ figures: spent });
 		const report = await createDeviceEngine(api, "u1").compare("settings");
@@ -369,5 +386,174 @@ describe("comparing against the server", () => {
 		await engine.dispose({ wipe: true });
 		expect(await engine.compare("settings")).toBeNull();
 		expect(calls).toEqual([]);
+	});
+});
+
+// A device that holds a budget book and the block made for it, from its disk
+// copy, so the budget screen's verdict and the book's zone are read. The book
+// is ARS in Buenos Aires, FLEX, the month starting on the 1st (budget month
+// 202610), with no expenses: nothing is assigned or spent, so Left to spend is
+// 0.00 ARS (a month with nothing to spend is USED_UP).
+describe("comparing a budget the device holds", () => {
+	const AT = "2026-10-15T15:00:00.000Z";
+	const ZONE = "America/Argentina/Buenos_Aires";
+	const START = new Date("2026-10-01T03:00:00.000Z");
+	const bookRow = (timeZone = ZONE): TableRows["budgetBooks"] => ({
+		...fixtureRow("budgetBooks", "book"),
+		timeZone,
+		startDate: START,
+		startMonth: 202610,
+		defaultEnvelopeId: "spending",
+	});
+	const periods: TableRows["bookPeriods"][] = [
+		{
+			id: "p1",
+			bookId: "book",
+			fromMonth: 202610,
+			startDay: 1,
+			rateType: "blue",
+		},
+	];
+	const rows = (
+		o: { zone?: string; missingRate?: boolean } = {},
+	): LoadedRows => {
+		const book = bookRow(o.zone);
+		const snapshot = fixtureRow("budgetSnapshot", "budget");
+		return {
+			budgetBooks: [book],
+			bookPeriods: periods,
+			envelopeGroups: [
+				{
+					...fixtureRow("envelopeGroups", "g"),
+					bookId: "book",
+					role: "SPENDING",
+					targetKind: "NONE",
+					targetValue: null,
+				},
+			],
+			envelopes: [
+				{
+					...fixtureRow("envelopes", "spending"),
+					bookId: "book",
+					groupId: "g",
+					name: "Spending",
+					kind: "MONTHLY",
+					targetAmount: null,
+				},
+			],
+			budgetSnapshot: [
+				{
+					...snapshot,
+					bookId: "book",
+					valuationKey: bookValuationKey({
+						currency: book.currency,
+						timeZone: book.timeZone,
+						startDate: book.startDate,
+						periods,
+					}),
+					frozen: [],
+					splits: {
+						...snapshot.splits,
+						checkpointMissingRates: o.missingRate
+							? [
+									{
+										currency: "ARS",
+										rateType: "blue",
+										date: "2026-10-11",
+										rowId: "late",
+									},
+								]
+							: [],
+					},
+				},
+			],
+		};
+	};
+	const storage = (loaded: LoadedRows) => async (): Promise<EngineStorage> => ({
+		loaded: { rows: loaded, cursors: {}, complete: true },
+		persistence: {
+			commit: () => undefined,
+			beginPull: () => undefined,
+			finishPull: () => undefined,
+			abandonPull: () => undefined,
+			close: () => undefined,
+		},
+		dispose: async () => undefined,
+	});
+	const basis: FigureBasis = {
+		asOf: cursor("200"),
+		cut: cursor("150"),
+		at: AT,
+		ratesAsOf: null,
+		home: "ARS",
+		timeZone: ZONE,
+		startDay: 1,
+	};
+	// What the server's month read makes of the same book.
+	const server = (over: Partial<VerdictView> = {}): VerdictView => ({
+		bookId: "book",
+		currency: "ARS",
+		month: 202610,
+		today: "2026-10-15",
+		style: "FLEX",
+		incomplete: false,
+		state: "USED_UP",
+		action: null,
+		lead: { figureId: "budget.leftToSpend", amount: ARS(0)[0] as Money },
+		...over,
+	});
+	const open = (loaded: LoadedRows) => {
+		const { api } = fakeDeviceApi({ figures: {}, basis });
+		return createDeviceEngine(api, "u1", Date.now, {
+			storage: storage(loaded),
+		});
+	};
+
+	it("holds the device's verdict against the server's and calls them a match", async () => {
+		const report = await open(rows()).compare("budget", {}, async () =>
+			server(),
+		);
+		expect(report?.verdictParts).toEqual([]);
+		expect(report?.classes.verdict).toBe("match");
+	});
+
+	it("names the parts of the verdict that differ", async () => {
+		const report = await open(rows()).compare("budget", {}, async () =>
+			server({
+				state: "ON_TRACK",
+				lead: { figureId: "budget.leftToSpend", amount: ARS(5)[0] as Money },
+			}),
+		);
+		expect(report?.verdictParts).toEqual(["state", "amount"]);
+		// The double's pulls end on cursors short of the read's position, so the cause is "behind".
+		expect(report?.classes.verdict).toBe("behind");
+	});
+
+	// The device's own month says it is incomplete (a missing rate): it is no
+	// verdict to compare, so none is held.
+	it("holds no verdict when the device's month is incomplete", async () => {
+		const report = await open(rows({ missingRate: true })).compare(
+			"budget",
+			{},
+			async () => server(),
+		);
+		expect(report).toMatchObject({ state: "checked" });
+		expect(report?.classes.verdict).toBeUndefined();
+	});
+
+	// The book's zone is not the settings zone: at 00:00:20 on Oct 15 in Tokyo
+	// the month's days may roll over under one side's feet.
+	it("skips at a day edge in the book's zone, which is not the settings zone", async () => {
+		const { api } = fakeDeviceApi({
+			figures: {},
+			basis: { ...basis, at: "2026-10-14T15:00:20.000Z" },
+		});
+		const engine = createDeviceEngine(api, "u1", Date.now, {
+			storage: storage(rows({ zone: "Asia/Tokyo" })),
+		});
+		expect(await engine.compare("budget")).toMatchObject({
+			state: "skipped",
+			skipped: "period_edge",
+		});
 	});
 });
