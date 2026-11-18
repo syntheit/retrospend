@@ -542,7 +542,14 @@ describe("the request answers alike", () => {
 		);
 		expect(await request(b.email)).toEqual({ success: true });
 		await vi.waitFor(() => expect(logged).toHaveBeenCalled());
-		expect(JSON.stringify(logged.mock.calls)).not.toContain(b.email);
+		// Errors stringify to "{}" in JSON, so read each argument as text and as an Error's message.
+		const text = logged.mock.calls
+			.flat()
+			.map((arg) =>
+				arg instanceof Error ? `${arg.message}${arg.stack}` : String(arg),
+			)
+			.join("\n");
+		expect(text).not.toContain(b.email);
 		logged.mockRestore();
 	});
 
