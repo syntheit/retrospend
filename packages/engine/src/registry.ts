@@ -21,6 +21,7 @@ import {
 	netWorthFrom,
 	netWorthInputsFromRows,
 	notTrackedFrom,
+	WEALTH_FIGURE_IDS,
 } from "@retrospend/domain/accounts/account-figures";
 import { FigureNarrowingError } from "@retrospend/domain/figures/narrowing";
 import {
@@ -334,11 +335,7 @@ export const DEVICE_FIGURE_IDS: readonly string[] = [
 	...DIRECTIONS.flatMap((dir) =>
 		PERIODS.map((period) => `recurring.cost.${dir}.${period}`),
 	),
-	"netWorth",
-	"netWorthChange.total",
-	...CHANGE_PARTS.map((part) => `netWorthChange.${part}`),
-	"accounts.balance",
-	"notTracked",
+	...WEALTH_FIGURE_IDS,
 	...INSIGHTS_FIGURE_IDS,
 	...BUDGET_FIGURE_IDS,
 ];

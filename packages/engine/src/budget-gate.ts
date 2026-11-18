@@ -141,6 +141,48 @@ export type GateResult =
 	| { readonly passes: false; readonly reason: GateReason };
 
 /**
+ * Where a set of cursors stands against one sync position (a block's or a
+ * server read's `asOf`). "reached": every entity has the position's epoch and
+ * is at or past it. "reset": an entity is being pulled again. "behind": an
+ * entity has no cursor, one of another epoch, or one below the position.
+ * "malformed": the position is not a cursor. Positions are cluster-wide, so
+ * "at or past" says nothing about whose rows moved it.
+ */
+export type PositionState = "reached" | "reset" | "behind" | "malformed";
+
+/** The one rule for "the device has caught up to this position", for the budget gate and the compare. */
+export function positionReached(
+	cursors: Readonly<Partial<Record<string, string>>>,
+	entities: readonly string[],
+	asOf: string,
+): PositionState {
+	const at = cursorPosition(asOf);
+	if (!at) return "malformed";
+	let waiting = false;
+	for (const entity of entities) {
+		const cursor = cursors[entity];
+		if (cursor === SYNC_RESET) return "reset";
+		const position = cursor === undefined ? null : cursorPosition(cursor);
+		if (!position || position.epoch !== at.epoch || !atLeast(position.t, at.t))
+			waiting = true;
+	}
+	return waiting ? "behind" : "reached";
+}
+
+/**
+ * Whether `cursor` lies strictly past `position`: every stamp a page ending at
+ * it holds is at or below its position, so a page whose cursor is not past
+ * `position` holds nothing newer than `position`. Another epoch or an unreadable cursor counts
+ * as past (fail closed).
+ */
+export function pastPosition(cursor: string, position: string): boolean {
+	const at = cursorPosition(position);
+	const held = cursorPosition(cursor);
+	if (!at || !held || held.epoch !== at.epoch) return true;
+	return !atLeast(at.t, held.t);
+}
+
+/**
  * Whether a block can be read: every entity's cursor has the block's epoch and
  * a transaction position at or above its own, no entity is mid-reset, and the
  * book the device holds is the one the block was made for.
@@ -153,17 +195,14 @@ export function budgetGate(p: {
 	book: { id: string; key: string } | null;
 	cursors: EntityCursors;
 }): GateResult {
-	const at = cursorPosition(p.pending.asOf);
-	if (!at) return { passes: false, reason: "malformed" };
-	let waiting = false;
-	for (const entity of BUDGET_GATE_ENTITIES) {
-		const cursor = p.cursors[entity];
-		if (cursor === SYNC_RESET) return { passes: false, reason: "reset" };
-		const position = cursor === undefined ? null : cursorPosition(cursor);
-		if (!position || position.epoch !== at.epoch || !atLeast(position.t, at.t))
-			waiting = true;
-	}
-	if (waiting) return { passes: false, reason: "cursors" };
+	const state = positionReached(
+		p.cursors,
+		BUDGET_GATE_ENTITIES,
+		p.pending.asOf,
+	);
+	if (state === "malformed") return { passes: false, reason: "malformed" };
+	if (state === "reset") return { passes: false, reason: "reset" };
+	if (state === "behind") return { passes: false, reason: "cursors" };
 	if (
 		!p.book ||
 		p.book.id !== p.pending.bookId ||

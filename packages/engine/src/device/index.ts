@@ -1,6 +1,37 @@
 export { CreateCaptures, type SentCreate } from "../create-captures";
 export type { WriteVerdict } from "../write-parity";
 export {
+	type CheckPlan,
+	COMPARE_WHAT,
+	type CompareReport,
+	compareLine,
+	edgeOf,
+	type KeyClass,
+	keyOf,
+	MAX_IDS_PER_CALL,
+	MAX_NARROWED_CALLS,
+	type Narrow,
+	type NarrowValues,
+	PERIOD_EDGE_MS,
+	type PlannedCall,
+	parseKey,
+	planCheck,
+	SCREENS,
+	type ScreenName,
+	type ScreenSpec,
+	type SkipReason,
+	sameLines,
+	sameZone,
+	type VerdictView,
+	verdictParts,
+} from "./compare";
+export {
+	type CompareDeps,
+	type CompareRequest,
+	compareScreen,
+	type PulledPast,
+} from "./compare-run";
+export {
 	createDeviceEngine,
 	type DeviceBudget,
 	type DeviceEngine,
@@ -18,6 +49,8 @@ export type {
 	DeviceApi,
 	EnginePersistence,
 	EngineStorage,
+	FigureBasis,
+	FigureNarrowing,
 	LoadedEngine,
 	LoadedRows,
 	ServerFigures,

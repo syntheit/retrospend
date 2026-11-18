@@ -16,7 +16,7 @@
  * error reaches the caller, who decides to rebuild the store and pull again.
  */
 
-import { promoteBudgetIfReady } from "./budget-gate";
+import { pastPosition, promoteBudgetIfReady } from "./budget-gate";
 import type { Store } from "./port";
 import { applyDailyTable, type DailyTable } from "./rates";
 import {
@@ -78,6 +78,8 @@ export interface StepReport {
 	rows: number;
 	fetchMs: number;
 	applyMs: number;
+	/** With `PullOptions.pastCut`: rows of pages that end past that position, a bound on the rows the server's read had not seen. */
+	pastCut?: number;
 }
 
 export type PullStep = SyncEntity | "settings" | "shares" | "rates";
@@ -98,6 +100,19 @@ export interface PullOptions {
 	 * "no more" ends the entity.
 	 */
 	caughtUp?: (entity: SyncEntity, held: number) => boolean | Promise<boolean>;
+	/**
+	 * A server read's cut (`basis.cut`, the position every transaction at or
+	 * below which was committed-visible or aborted for that read). Each cursor
+	 * entity then reports `pastCut`: the rows (changes and tombstones) of pages
+	 * whose cursor lies past it. A row the read had not seen is stamped past the
+	 * cut (a save still open during the read has a stamp below the read's
+	 * `asOf` but past its cut), so it is in such a page. Zero means the pull
+	 * brought in nothing the read missed, with one narrow race: a row that
+	 * changes between the stamp read and the row read comes back in its newer
+	 * live state (loadPage), so a page at or below the cut can hold a row the
+	 * read had not seen. That shows as a difference, not as a count.
+	 */
+	pastCut?: string;
 	/** False leaves the shares snapshot and the budget block alone, and skips the promotion. */
 	shares?: boolean;
 }
@@ -214,7 +229,13 @@ async function pullEntity(
 	const now = options.now ?? Date.now;
 	const { entity } = entityStep;
 	const route = entityStep.route(api);
-	const report: StepReport = { pages: 0, rows: 0, fetchMs: 0, applyMs: 0 };
+	const report: StepReport = {
+		pages: 0,
+		rows: 0,
+		fetchMs: 0,
+		applyMs: 0,
+		...(options.pastCut === undefined ? {} : { pastCut: 0 }),
+	};
 	for (;;) {
 		const since = cursors[entity];
 		const started = now();
@@ -227,7 +248,13 @@ async function pullEntity(
 		report.fetchMs += fetched - started;
 		report.applyMs += now() - fetched;
 		report.pages += 1;
-		report.rows += page.items.length + page.tombstones.length;
+		const rows = page.items.length + page.tombstones.length;
+		report.rows += rows;
+		if (
+			options.pastCut !== undefined &&
+			pastPosition(page.cursor, options.pastCut)
+		)
+			report.pastCut = (report.pastCut ?? 0) + rows;
 		cursors[entity] = page.cursor;
 		if (page.hasMore) continue;
 		const held = store.list(entity).length;
