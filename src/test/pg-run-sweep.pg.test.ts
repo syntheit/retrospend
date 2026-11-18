@@ -12,9 +12,11 @@ import {
 import { migratorRoleName } from "../../scripts/db-owner/index.mjs";
 import { connect } from "./db-owner/helpers";
 import {
+	createMarkedTemplate,
 	markedRuns,
 	markRun,
 	migratorRolesByLiveness,
+	RunLock,
 	runNames,
 	sweepDeadRuns,
 	tryLockRun,
@@ -180,6 +182,92 @@ describe("sweepDeadRuns", () => {
 		} finally {
 			await admin.query(`DROP DATABASE IF EXISTS "${outside}" WITH (FORCE)`);
 		}
+	});
+});
+
+describe("a run that draws the stem of a dead run", () => {
+	it("sweeps the dead run's leftovers on the lock it holds, and keeps the lock", async () => {
+		const stem = fixtureStem();
+		// The new run holds the lock (claimRun) before the sweep: advisory locks
+		// are reentrant in a session, so the sweep takes it a second time.
+		const session = await liveSession(stem);
+		const { databases, roles } = await killedRun(stem);
+
+		expect(await sweepDeadRuns(session, maintenanceUrl, quiet)).toEqual([stem]);
+
+		for (const name of databases) expect(await exists(name)).toBe(false);
+		for (const role of roles) expect(await roleExists(role)).toBe(false);
+		// The sweep gave back its own hold and nothing more.
+		expect(await tryLockRun(admin, stem)).toBe(false);
+	});
+});
+
+describe("RunLock", () => {
+	const open = async (stem: string) => {
+		const lock = new RunLock(maintenanceUrl);
+		await lock.connect();
+		holders.push(lock.client);
+		expect(await lock.take(stem)).toBe(true);
+		return lock;
+	};
+
+	it("passes while the session holds the lock", async () => {
+		const stem = fixtureStem();
+		const lock = await open(stem);
+		await expect(lock.assertHeld(stem)).resolves.toBeUndefined();
+	});
+
+	it("refuses once the connection is gone, as the run's lock went with it", async () => {
+		const stem = fixtureStem();
+		const lock = await open(stem);
+		const { rows } = await lock.client.query<{ pid: number }>(
+			"SELECT pg_backend_pid() AS pid",
+		);
+		await admin.query("SELECT pg_terminate_backend($1)", [rows[0]?.pid]);
+
+		await vi.waitFor(() =>
+			expect(lock.assertHeld(stem)).rejects.toThrow(/was lost/),
+		);
+		// A sweep may take the run over from here on.
+		expect(await tryLockRun(admin, stem)).toBe(true);
+		await unlockRun(admin, stem);
+	});
+
+	it("refuses when the lock was released on a connection that is still up", async () => {
+		const stem = fixtureStem();
+		const lock = await open(stem);
+		await unlockRun(lock.client, stem);
+
+		await expect(lock.assertHeld(stem)).rejects.toThrow(/no longer held/);
+	});
+
+	it("refuses when the session holds the lock of another run only", async () => {
+		const stem = fixtureStem();
+		const lock = await open(stem);
+
+		await expect(lock.assertHeld(fixtureStem())).rejects.toThrow(
+			/no longer held/,
+		);
+	});
+});
+
+describe("createMarkedTemplate", () => {
+	it("creates the template with its marker", async () => {
+		const stem = fixtureStem();
+		await createMarkedTemplate(admin, stem, MARKER);
+
+		expect(await exists(runNames(stem, 0).template)).toBe(true);
+		expect(await markedRuns(admin, MARKER)).toEqual([stem]);
+	});
+
+	it("drops the template again when it cannot be marked", async () => {
+		const stem = fixtureStem();
+		// A NUL byte cannot be part of a comment: the statement is refused.
+		await expect(
+			createMarkedTemplate(admin, stem, "bad\u0000marker "),
+		).rejects.toThrow();
+
+		expect(await exists(runNames(stem, 0).template)).toBe(false);
 	});
 });
 

@@ -3,7 +3,11 @@ import type { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { adminDb } from "~/test/pg-harness";
-import { migratorRolesByLiveness } from "~/test/pg-run-sweep";
+import {
+	migratorRolesByLiveness,
+	migratorRolesOfRun,
+	scratchMigratorRoles,
+} from "~/test/pg-run-sweep";
 import { migratorRoleName } from "../../../scripts/db-owner/index.mjs";
 import {
 	connect,
@@ -157,18 +161,31 @@ describe("code that runs as retrospend_app (row-level security)", () => {
 			  JOIN pg_roles m ON m.oid = am.member
 			 WHERE am.roleid = 'retrospend_app'::regrole AND NOT m.rolsuper
 			 ORDER BY 1`;
-		// Runs share the cluster: a run that is migrating a brand-new install
-		// (this one, in another worker's test, or another worktree's) has its
-		// one-shot role in the group for those seconds. Only a run that holds its
-		// lock gets that; any other member, the leftover of a killed run included,
-		// fails here.
-		const probe = await connect(inject("pgRun").maintenanceUrl);
+		// Runs share the cluster. A role of another run that holds its lock may
+		// be in the group for the seconds its brand-new install migrates. Of this
+		// run only the roles of the scratch databases may be: a test file
+		// migrates those itself (scratch-project.ts). The roles of the template,
+		// the upgrade fixtures and the workers are never here, and neither is a
+		// role of a run that is gone (the next test).
+		const { stem, maintenanceUrl } = inject("pgRun");
+		const own = migratorRolesOfRun(stem);
+		const probe = await connect(maintenanceUrl);
 		const { live } = await migratorRolesByLiveness(probe).finally(() =>
 			probe.end(),
 		);
+		const allowed = [
+			...live.filter((name) => !own.includes(name)),
+			...scratchMigratorRoles(stem),
+		];
 		expect(
-			members.map((m) => m.name).filter((name) => !live.includes(name)),
+			members.map((m) => m.name).filter((name) => !allowed.includes(name)),
 		).toEqual(["retrospend_owner"]);
+	});
+
+	it("left no migration role of this run once the setup was done", () => {
+		// The template's one-shot role is dropped in a finally, the other
+		// databases never had one, and the scratch ones are made by tests later.
+		expect(inject("pgRun").migratorRolesAfterSetup).toEqual([]);
 	});
 
 	it("finds no migration role of a run that is gone", async () => {

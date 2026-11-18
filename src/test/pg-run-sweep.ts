@@ -17,9 +17,19 @@
  * sweep never reaches a run that is starting up.
  *
  * The template database carries a comment with the stem. That comment is how
- * a sweep finds runs, and a run without it (one started by a harness that
- * predates the lock, which holds none) is never touched. The template is
- * dropped last, so a sweep that is interrupted finds the run again.
+ * a sweep finds runs, and a database without it (a run of a harness that
+ * predates the lock, which holds none) is never touched: a name that merely
+ * looks like a run's could belong to a live one. The comment is set right
+ * after the template is created (createMarkedTemplate); a kill between the
+ * two leaves one empty database and no role, nothing a test reads. The
+ * template is dropped last, so a sweep that is interrupted finds the run
+ * again.
+ *
+ * A run whose lock connection is lost has no protection any more: a sweep may
+ * drop its databases at any time. RunLock remembers a lost connection and
+ * assertHeld throws, so the run fails instead of passing on borrowed time. The
+ * lock is per session, so TEST_DATABASE_URL must be a direct connection to
+ * Postgres: a pooler in transaction mode hands the session to others.
  */
 import { createHash } from "node:crypto";
 import { Client } from "pg";
@@ -28,8 +38,8 @@ import {
 	removeMigratorSurely,
 } from "../../scripts/db-owner/index.mjs";
 
-/** The most workers a run can have (workerCount in pg-global-setup.ts). */
-const MAX_WORKERS = 16;
+/** The most workers a run can have; workerCount in pg-global-setup.ts enforces it. */
+export const MAX_WORKERS = 16;
 
 /** What a run's template database is commented with, followed by the stem. */
 export const RUN_MARKER = "retrospend pg test run ";
@@ -69,6 +79,68 @@ function lockKey(stem: string): string {
 		.toString();
 }
 
+/** The migration roles of the databases a test migrates for itself (scratch-project.ts). */
+export function scratchMigratorRoles(stem: string): string[] {
+	const { scratch, scratch2, scratch3 } = runNames(stem, 0);
+	return [scratch, scratch2, scratch3].map(migratorRoleName);
+}
+
+/**
+ * The connection that holds a run's lock for the whole run. A connection that
+ * errors or ends is remembered, never forgotten: the lock went with it.
+ */
+export class RunLock {
+	readonly client: Client;
+	private lostBecause: string | null = null;
+
+	constructor(url: string) {
+		this.client = new Client({ connectionString: url });
+		const lose = (why: string) => {
+			if (this.lostBecause !== null) return;
+			this.lostBecause = why;
+			console.error(`pg test run lock lost: ${why}`);
+		};
+		this.client.on("error", (error) => lose(String(error)));
+		this.client.on("end", () => lose("the connection ended"));
+	}
+
+	async connect(): Promise<void> {
+		await this.client.connect();
+	}
+
+	/** Takes the run's lock. False when another session holds it. */
+	take(stem: string): Promise<boolean> {
+		return tryLockRun(this.client, stem);
+	}
+
+	/**
+	 * Throws unless this session still holds the run's lock: fail closed on a
+	 * lost connection, a released lock or any error asking.
+	 */
+	async assertHeld(stem: string): Promise<void> {
+		if (this.lostBecause !== null) {
+			throw new Error(
+				`the lock of test run ${stem} was lost: ${this.lostBecause}`,
+			);
+		}
+		const { rowCount } = await this.client.query(
+			`SELECT 1 FROM pg_catalog.pg_locks
+			  WHERE locktype = 'advisory' AND pid = pg_catalog.pg_backend_pid()
+			    AND granted AND objsubid = 1
+			    AND ((classid::bigint << 32) | objid::bigint) = $1::bigint`,
+			[lockKey(stem)],
+		);
+		if (rowCount !== 1) {
+			throw new Error(`the lock of test run ${stem} is no longer held`);
+		}
+	}
+
+	/** Lets go of the lock by closing the session. */
+	async close(): Promise<void> {
+		await this.client.end().catch(() => undefined);
+	}
+}
+
 /** Takes the run's lock for this session. False when a live run holds it. */
 export async function tryLockRun(
 	client: Client,
@@ -83,6 +155,26 @@ export async function tryLockRun(
 
 export async function unlockRun(client: Client, stem: string): Promise<void> {
 	await client.query("SELECT pg_advisory_unlock($1::bigint)", [lockKey(stem)]);
+}
+
+/**
+ * Creates the run's template and marks it in one step: when the mark cannot be
+ * set the database is dropped again, so a database a sweep cannot find never
+ * outlives the call. Returns after both.
+ */
+export async function createMarkedTemplate(
+	client: Client,
+	stem: string,
+	marker = RUN_MARKER,
+): Promise<void> {
+	const template = client.escapeIdentifier(runNames(stem, 0).template);
+	await client.query(`CREATE DATABASE ${template}`);
+	try {
+		await markRun(client, stem, marker);
+	} catch (error) {
+		await client.query(`DROP DATABASE IF EXISTS ${template} WITH (FORCE)`);
+		throw error;
+	}
 }
 
 /** Marks the run's template (already created) so that a sweep can find the run. */

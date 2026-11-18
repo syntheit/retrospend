@@ -26,7 +26,9 @@
  * A run holds an advisory lock for its whole life (pg-run-sweep.ts). At the
  * start it removes what runs killed before it left behind, databases and
  * one-shot migration roles, for every run whose lock is free, and nothing of a
- * run that holds its lock.
+ * run that holds its lock. A run that loses its lock connection fails. The
+ * lock belongs to a session, so TEST_DATABASE_URL must be a direct connection
+ * to Postgres, not a pooler.
  */
 import { randomBytes } from "node:crypto";
 import { Client } from "pg";
@@ -39,10 +41,12 @@ import {
 	urlPassword,
 } from "../../scripts/db-owner/index.mjs";
 import {
-	markRun,
+	createMarkedTemplate,
+	MAX_WORKERS,
+	migratorRolesOfRun,
+	RunLock,
 	runNames,
 	sweepDeadRuns,
-	tryLockRun,
 	unlockRun,
 } from "./pg-run-sweep";
 import { parseTestDatabaseUrl } from "./pg-test-url";
@@ -55,7 +59,13 @@ declare module "vitest" {
 		/** The same databases as the superuser, for tests that opt in. */
 		pgWorkerSuperUrls: string[];
 		/** This run: its stem, template database and the maintenance database's superuser URL. */
-		pgRun: { stem: string; template: string; maintenanceUrl: string };
+		pgRun: {
+			stem: string;
+			template: string;
+			maintenanceUrl: string;
+			/** This run's migration roles that still existed when setup ended: none. */
+			migratorRolesAfterSetup: string[];
+		};
 		/**
 		 * How many objects a second owner bootstrap handed over on the template
 		 * after the migrations ran as the one-shot migration role: zero when all
@@ -94,10 +104,10 @@ function workerCount(maxWorkers: number | undefined): number {
 		!Number.isInteger(maxWorkers) ||
 		!maxWorkers ||
 		maxWorkers < 1 ||
-		maxWorkers > 16
+		maxWorkers > MAX_WORKERS
 	) {
 		throw new Error(
-			`PG_TEST_WORKERS must be an integer from 1 to 16, got "${process.env.PG_TEST_WORKERS}"`,
+			`PG_TEST_WORKERS must be an integer from 1 to ${MAX_WORKERS}, got "${process.env.PG_TEST_WORKERS}"`,
 		);
 	}
 	return maxWorkers;
@@ -135,12 +145,12 @@ function maintenanceUrl(url: URL): string {
 }
 
 /** A run id nobody holds the lock of, and the run's names; the lock stays held. */
-async function claimRun(lock: Client, baseName: string, workers: number) {
+async function claimRun(lock: RunLock, baseName: string, workers: number) {
 	for (let attempt = 1; attempt <= 20; attempt++) {
 		const runId = randomBytes(2).toString("hex");
 		const names = runDatabaseNames(baseName, runId, workers);
 		const stem = `${baseName}_${runId}`;
-		if (await tryLockRun(lock, stem)) return { stem, names };
+		if (await lock.take(stem)) return { stem, names };
 	}
 	throw new Error("no free test run id");
 }
@@ -171,19 +181,19 @@ async function createRunDatabase(project: TestProject) {
 	// Held until teardown, or until this process dies: Postgres frees a
 	// session's advisory locks with it, and that is how a later run knows this
 	// one is gone (pg-run-sweep.ts).
-	const lock = new Client({ connectionString: maintenanceUrl(baseUrl) });
-	lock.on("error", (error) => console.error("pg test run lock:", error));
+	const lock = new RunLock(maintenanceUrl(baseUrl));
 	await lock.connect();
-	const releaseLock = () => lock.end().catch(() => undefined);
 	let claim: { stem: string; names: ReturnType<typeof runDatabaseNames> };
 	try {
 		claim = await claimRun(lock, baseName, workers);
-		await sweepDeadRuns(lock, maintenanceUrl(baseUrl));
+		await sweepDeadRuns(lock.client, maintenanceUrl(baseUrl));
 	} catch (error) {
-		await releaseLock();
+		await lock.close();
 		throw error;
 	}
 	const { stem, names } = claim;
+	// The run fails, and drops what it made, as soon as its lock is gone.
+	const assertLock = () => lock.assertHeld(stem);
 	const urlFor = (name: string) => {
 		const url = new URL(baseUrl);
 		url.pathname = `/${name}`;
@@ -220,8 +230,15 @@ async function createRunDatabase(project: TestProject) {
 					);
 			}
 		});
-		await unlockRun(lock, stem).catch(() => undefined);
-		await releaseLock();
+		// A lost lock means a sweep may have dropped what this run used while it
+		// ran: the run fails (global teardown errors fail a vitest run).
+		const held = await lock.assertHeld(stem).then(
+			() => null,
+			(error: unknown) => error,
+		);
+		await unlockRun(lock.client, stem).catch(() => undefined);
+		await lock.close();
+		if (held) throw held;
 	};
 
 	// A database migrated as the superuser, the way every older release did.
@@ -257,13 +274,10 @@ async function createRunDatabase(project: TestProject) {
 	let legacyHandedOver = 0;
 	let freshHandedOver = -1;
 	try {
+		await assertLock();
 		await withAdmin(async (client) => {
-			await create(
-				client,
-				names.template,
-				`CREATE DATABASE "${names.template}"`,
-			);
-			await markRun(client, stem);
+			await createMarkedTemplate(client, stem);
+			created.push(names.template);
 			await create(client, names.legacy, `CREATE DATABASE "${names.legacy}"`);
 			await create(client, names.old, `CREATE DATABASE "${names.old}"`);
 			await create(client, names.scratch, `CREATE DATABASE "${names.scratch}"`);
@@ -309,6 +323,7 @@ async function createRunDatabase(project: TestProject) {
 		// A second start: the migrations made everything as the owner, so there
 		// is nothing left to hand over.
 		freshHandedOver = (await switched(urlFor(names.template))).changedObjects;
+		await assertLock();
 		// A clone fails while anyone else is connected to the template; migrate
 		// deploy and the bootstrap have exited and the workers have not started.
 		// The clones run one after another because each one locks the template.
@@ -337,6 +352,17 @@ async function createRunDatabase(project: TestProject) {
 		throw error;
 	}
 
+	// Every migration role of this run is gone, the scratch ones included: a
+	// test file that migrates its own scratch database makes its role later.
+	const migratorsLeft = await withAdmin(async (client) => {
+		const { rows } = await client.query<{ name: string }>(
+			"SELECT rolname AS name FROM pg_catalog.pg_roles WHERE rolname = ANY($1::text[]) ORDER BY 1",
+			[migratorRolesOfRun(stem)],
+		);
+		return rows.map((row) => row.name);
+	});
+	await assertLock();
+
 	const superPassword = urlPassword(baseUrl.toString());
 	if (!superPassword) throw new Error("TEST_DATABASE_URL needs a password");
 	const ownerPassword = deriveOwnerPassword(superPassword);
@@ -349,6 +375,7 @@ async function createRunDatabase(project: TestProject) {
 		stem,
 		template: names.template,
 		maintenanceUrl: maintenanceUrl(baseUrl),
+		migratorRolesAfterSetup: migratorsLeft,
 	});
 	project.provide("pgFresh", { handedOverAfterMigrate: freshHandedOver });
 	project.provide("pgLegacy", {
