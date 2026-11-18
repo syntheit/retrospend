@@ -1,3 +1,4 @@
+import { newPasswordSchema } from "@retrospend/api-contract";
 import { userText } from "@retrospend/api-contract/common";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -31,15 +32,7 @@ export const userRouter = createTRPCRouter({
 						.email("Invalid email address")
 						.max(254)
 						.transform((v) => v.toLowerCase().trim()),
-					password: z
-						.string()
-						.min(8, "Password must be at least 8 characters")
-						.max(255)
-						.regex(
-							/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-							"Password must contain at least one uppercase letter, one lowercase letter, and one number",
-						)
-						.optional(),
+					password: newPasswordSchema.optional(),
 					currentPassword: z
 						.string()
 						.min(8, "Current password is required when changing password")

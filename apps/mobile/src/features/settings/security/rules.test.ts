@@ -1,42 +1,4 @@
-import {
-	orderSessions,
-	passwordChecks,
-	passwordReady,
-	sessionName,
-} from "./rules";
-
-describe("password rules", () => {
-	it("checks length, both cases and a number", () => {
-		expect(passwordChecks("")).toEqual({
-			length: false,
-			case: false,
-			number: false,
-		});
-		expect(passwordChecks("abcdefgh")).toEqual({
-			length: true,
-			case: false,
-			number: false,
-		});
-		expect(passwordChecks("Abcdefg1")).toEqual({
-			length: true,
-			case: true,
-			number: true,
-		});
-		expect(passwordChecks("x".repeat(256)).length).toBe(false);
-	});
-
-	it("is ready only with the current password, every rule and a match", () => {
-		const next = "Battery staple 2";
-		expect(passwordReady({ current: "old", next, confirm: next })).toBe(true);
-		expect(passwordReady({ current: "", next, confirm: next })).toBe(false);
-		expect(passwordReady({ current: "old", next, confirm: "other" })).toBe(
-			false,
-		);
-		expect(
-			passwordReady({ current: "old", next: "short", confirm: "short" }),
-		).toBe(false);
-	});
-});
+import { orderSessions, sessionName } from "./rules";
 
 describe("sessionName", () => {
 	it("names device clients by their id", () => {

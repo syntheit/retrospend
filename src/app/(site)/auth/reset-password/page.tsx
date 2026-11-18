@@ -1,5 +1,6 @@
 "use client";
 
+import { passwordChecks } from "@retrospend/api-contract";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -54,12 +55,13 @@ function ResetPasswordInner() {
 		e.preventDefault();
 		if (!password || !confirmPassword) return;
 
-		if (password.length < 8) {
+		const checks = passwordChecks(password);
+		if (!checks.length) {
 			setError(t("passwordMinLength"));
 			return;
 		}
 
-		if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+		if (!checks.case || !checks.number) {
 			setError(t("passwordComplexity"));
 			return;
 		}

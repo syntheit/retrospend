@@ -1,29 +1,32 @@
 import * as z from "zod";
 import { v1 } from "../common/meta";
 import { idParamsSchema, idSchema, okSchema, timestampSchema } from "../core";
+import {
+	PASSWORD_MAX_LENGTH,
+	PASSWORD_MIN_LENGTH,
+	PASSWORD_PATTERN,
+} from "./password-rules";
 
 const TAG = ["Account"];
 
-/** The rule the server holds a new password to (the web shows it as checks). */
-export const PASSWORD_MIN_LENGTH = 8;
-export const PASSWORD_MAX_LENGTH = 255;
-export const PASSWORD_PATTERN = /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+/** One schema for every new password the server accepts (the rules: password-rules.ts). */
+export const newPasswordSchema = z
+	.string()
+	.min(PASSWORD_MIN_LENGTH)
+	.max(PASSWORD_MAX_LENGTH)
+	.regex(
+		PASSWORD_PATTERN,
+		"Use a lowercase and an uppercase letter and a number",
+	)
+	.meta({
+		description:
+			"8 or more characters with a lowercase and an uppercase letter and a number.",
+	});
 
 export const changePasswordSchema = z
 	.object({
 		currentPassword: z.string().min(1).max(PASSWORD_MAX_LENGTH),
-		newPassword: z
-			.string()
-			.min(PASSWORD_MIN_LENGTH)
-			.max(PASSWORD_MAX_LENGTH)
-			.regex(
-				PASSWORD_PATTERN,
-				"Use a lowercase and an uppercase letter and a number",
-			)
-			.meta({
-				description:
-					"8 or more characters with a lowercase and an uppercase letter and a number.",
-			}),
+		newPassword: newPasswordSchema,
 	})
 	.meta({ id: "ChangePassword" });
 

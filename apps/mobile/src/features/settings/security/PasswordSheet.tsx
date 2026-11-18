@@ -1,3 +1,8 @@
+import {
+	PASSWORD_CHECKS,
+	passwordChecks,
+	passwordReady,
+} from "@retrospend/api-contract";
 import { useEffect, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
@@ -16,7 +21,6 @@ import { Sheet } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { TextField } from "@/ui/TextField";
 import { useToast } from "@/ui/Toast";
-import { PASSWORD_CHECKS, passwordChecks, passwordReady } from "./rules";
 
 /** The status of a refused change, read from the server's problem. */
 function statusOf(error: unknown): number | null {

@@ -12,6 +12,13 @@ interface TestNode {
 	findAll(match: (node: TestNode) => boolean): TestNode[];
 }
 
+// The contract's runtime is ESM, so the sheet gets the real password rules
+// file (it imports nothing) in its place.
+jest.mock("@retrospend/api-contract", () =>
+	jest.requireActual(
+		"../../../../../../packages/api-contract/src/account/password-rules",
+	),
+);
 const mockChange = jest.fn();
 const mockKeyed = jest.fn();
 let mockUserId: string | undefined = "user-1";

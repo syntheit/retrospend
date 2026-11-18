@@ -1,3 +1,5 @@
+import { passwordChecks } from "@retrospend/api-contract";
+
 export type SignupErrorKey =
 	| "pleaseEnterValidInviteCode"
 	| "mustAgreeToTerms"
@@ -25,10 +27,9 @@ export function signupError(input: {
 	if (!/^[a-zA-Z0-9]+$/.test(input.username.trim())) {
 		return "usernameAlphanumericOnly";
 	}
-	if (input.password.length < 8) return "passwordMinLength";
-	if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(input.password)) {
-		return "passwordComplexity";
-	}
+	const checks = passwordChecks(input.password);
+	if (!checks.length) return "passwordMinLength";
+	if (!checks.case || !checks.number) return "passwordComplexity";
 	if (input.password !== input.confirmPassword) return "passwordsDontMatch";
 	return null;
 }
