@@ -1,6 +1,7 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import type { DeviceApi } from "@retrospend/engine/device";
 import {
+	CreateCaptures,
 	createDeviceEngine as createCoreEngine,
 	type DeviceEngine,
 	type DeviceEngineOptions,
@@ -49,8 +50,45 @@ export const createDeviceEngine = (
 
 const engines = new WeakMap<
 	RetrospendClient,
-	{ userId: string; engine: DeviceEngine; unregister: () => void }
+	{
+		userId: string;
+		engine: DeviceEngine;
+		captures: CreateCaptures;
+		unregister: () => void;
+	}
 >();
+
+const CAPTURED = {
+	expenses: "expense",
+	"shared-expenses": "split",
+	transfers: "transfer",
+} as const;
+
+/** Forgets the create of `id` the engine of `api` was holding: the row is about to change. */
+export function dropCaptured(api: object, id: string): void {
+	// Callers may hold the client as a narrower type; the key is the same object.
+	engines.get(api as RetrospendClient)?.captures.drop(id);
+}
+
+/**
+ * Hands the engine of `api` a create the server just accepted, for it to book
+ * again and compare after the next pull. Only the entity's family and the
+ * body go in; the engine keeps the booking fields and drops the rest.
+ */
+export function captureSent(
+	api: RetrospendClient,
+	entry: { clientId: string; entity: string; payload: unknown },
+	startedAt: number,
+): void {
+	const kind = CAPTURED[entry.entity as keyof typeof CAPTURED];
+	if (!kind) return;
+	engines.get(api)?.captures.add({
+		id: entry.clientId,
+		kind,
+		body: entry.payload,
+		at: startedAt,
+	});
+}
 
 /**
  * The one engine of a client, account and server. A client outlives a sign
@@ -70,14 +108,16 @@ export function engineFor(
 	held?.unregister();
 	void held?.engine.dispose({ wipe: true });
 	const scope = origin ? engineScope(origin, userId) : null;
+	const captures = new CreateCaptures();
 	const engine = createDeviceEngine(api, userId, Date.now, {
 		storage: scope
 			? (hooks) => openEngineStorage(deps, scope, hooks)
 			: undefined,
+		captures,
 	});
 	const unregister = scope
 		? registerLiveEngine(scope, () => engine.dispose({ wipe: true }))
 		: () => undefined;
-	engines.set(api, { userId, engine, unregister });
+	engines.set(api, { userId, engine, captures, unregister });
 	return engine;
 }

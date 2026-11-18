@@ -1,4 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
+import { captureSent, dropCaptured } from "@/data/captureSent";
 import type { Outbox, OutboxEntry } from "@/data/outbox";
 import type { Sender, SendResult } from "@/data/sync";
 
@@ -127,6 +128,7 @@ export function createEntrySender(
 		if (options.signal?.aborted) {
 			return { status: "retry", reason: "aborted", kind: "network" };
 		}
+		const startedAt = Date.now();
 		const timeout = new AbortController();
 		const timer = setTimeout(() => timeout.abort(), SEND_TIMEOUT_MS);
 		const stop = () => timeout.abort();
@@ -137,6 +139,9 @@ export function createEntrySender(
 				signal: timeout.signal,
 			});
 			rememberUndo(entry.clientId, { entity: entry.entity, token });
+			// A retry may replay a first try the server already booked, earlier
+			// than startedAt: only a first try says when the server booked it.
+			if (entry.attempts === 0) captureSent(api, entry, startedAt);
 			return { status: "sent" };
 		} catch (error) {
 			// The id exists: an earlier try went through and its answer got lost.
@@ -197,6 +202,8 @@ export async function undoWrite(
 	ref: UndoRef,
 	clientId: string,
 ): Promise<void> {
+	// An undone create has no row to compare, whether or not the answer arrives.
+	dropCaptured(api, clientId);
 	const timeout = new AbortController();
 	const timer = setTimeout(() => timeout.abort(), SEND_TIMEOUT_MS);
 	const options = {

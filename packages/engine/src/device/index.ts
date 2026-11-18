@@ -1,3 +1,5 @@
+export { CreateCaptures, type SentCreate } from "../create-captures";
+export type { WriteVerdict } from "../write-parity";
 export {
 	createDeviceEngine,
 	type DeviceBudget,
@@ -10,6 +12,7 @@ export {
 	PULL_AFTER_MS,
 	type ReadOptions,
 	TAG,
+	type WriteParity,
 } from "./engine";
 export type {
 	DeviceApi,
