@@ -304,43 +304,117 @@ describe("RunLock against the server's idle timeouts", () => {
 });
 
 describe("migratorRolesInUse", () => {
-	it("lists a role that holds CREATE on a database with a session, and neither of the other two", async () => {
-		const stem = fixtureStem();
-		const names = runNames(stem, 1);
-		const [busy, quiet2, ungranted] = [
-			names.template,
-			names.scratch,
-			names.legacy,
-		];
-		const roles = [busy, quiet2, ungranted].map(migratorRoleName);
-		for (const name of [busy, quiet2, ungranted]) {
-			await admin.query(`CREATE DATABASE "${name}"`);
-		}
-		for (const role of roles) {
-			await admin.query(`CREATE ROLE "${role}" NOLOGIN`);
-		}
-		await admin.query(`GRANT CREATE ON DATABASE "${busy}" TO "${roles[0]}"`);
-		await admin.query(`GRANT CREATE ON DATABASE "${quiet2}" TO "${roles[1]}"`);
-		// The third role has a session on its database but no CREATE: a
-		// migration role is only in use while it holds the window.
-		const sessions = [busy, ungranted].map(async (name) =>
-			connect(maintenanceUrl.replace(/\/postgres(\?|$)/, `/${name}$1`)),
-		);
-		holders.push(...(await Promise.all(sessions)));
-		try {
-			const inUse = (await migratorRolesInUse(admin)).filter((role) =>
-				roles.includes(role),
+	// A database `<stem>_<suffix>` and a migration-named role with CREATE on it
+	// (a window), a second role to connect as, and sessions of the kind asked for.
+	async function window(which: "template" | "scratch" | "legacy" | "old") {
+		const database = runNames(fixtureStem(), 1)[which];
+		const role = migratorRoleName(database);
+		const other = `${role}_other`;
+		await admin.query(`CREATE DATABASE "${database}"`);
+		await admin.query(`CREATE ROLE "${role}" LOGIN PASSWORD 'pw'`);
+		await admin.query(`CREATE ROLE "${other}" LOGIN PASSWORD 'pw'`);
+		await admin.query(`GRANT CREATE ON DATABASE "${database}" TO "${role}"`);
+		const sessionAs = async (user: string) => {
+			const url = new URL(maintenanceUrl);
+			url.pathname = `/${database}`;
+			url.username = user;
+			url.password = "pw";
+			const session = await connect(url.toString());
+			holders.push(session);
+		};
+		const superSession = async () => {
+			holders.push(
+				await connect(
+					maintenanceUrl.replace(/\/postgres(\?|$)/, `/${database}$1`),
+				),
 			);
-			expect(inUse).toEqual([roles[0]]);
-		} finally {
+		};
+		const inUse = async (seconds?: number) =>
+			(await migratorRolesInUse(admin, seconds)).includes(role);
+		const revokeCreate = async () => {
+			await admin.query(
+				`REVOKE CREATE ON DATABASE "${database}" FROM "${role}"`,
+			);
+		};
+		const remove = async () => {
 			for (const holder of holders.splice(0)) await holder.end();
-			for (const name of [busy, quiet2, ungranted]) {
-				await admin.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);
+			await admin.query(`DROP DATABASE IF EXISTS "${database}" WITH (FORCE)`);
+			for (const name of [role, other]) {
+				await admin.query(`DROP OWNED BY "${name}"`).catch(() => {});
+				await admin.query(`DROP ROLE IF EXISTS "${name}"`);
 			}
-			for (const role of roles) {
-				await admin.query(`DROP OWNED BY "${role}"`).catch(() => {});
-				await admin.query(`DROP ROLE IF EXISTS "${role}"`);
-			}
+		};
+		return {
+			role,
+			other,
+			sessionAs,
+			superSession,
+			inUse,
+			revokeCreate,
+			remove,
+		};
+	}
+
+	it("lists a role while a superuser session is on its database", async () => {
+		const w = await window("template");
+		try {
+			await w.superSession();
+			expect(await w.inUse()).toBe(true);
+		} finally {
+			await w.remove();
+		}
+	});
+
+	it("lists a role while its own session is on its database", async () => {
+		const w = await window("scratch");
+		try {
+			await w.sessionAs(w.role);
+			expect(await w.inUse()).toBe(true);
+		} finally {
+			await w.remove();
+		}
+	});
+
+	it("does not list a role when no session is on its database", async () => {
+		const w = await window("legacy");
+		try {
+			expect(await w.inUse()).toBe(false);
+		} finally {
+			await w.remove();
+		}
+	});
+
+	it("does not list a role for the session of a role that is neither a superuser nor the role", async () => {
+		const w = await window("old");
+		try {
+			await w.sessionAs(w.other);
+			expect(await w.inUse()).toBe(false);
+		} finally {
+			await w.remove();
+		}
+	});
+
+	it("does not list a role for a session older than the window allows", async () => {
+		const w = await window("template");
+		try {
+			await w.superSession();
+			await new Promise((resolve) => setTimeout(resolve, 1_500));
+			expect(await w.inUse(1)).toBe(false);
+			expect(await w.inUse(60)).toBe(true);
+		} finally {
+			await w.remove();
+		}
+	});
+
+	it("does not list a role that holds no CREATE, whatever sessions its database has", async () => {
+		const w = await window("scratch");
+		try {
+			await w.superSession();
+			expect(await w.inUse()).toBe(true);
+			await w.revokeCreate();
+			expect(await w.inUse()).toBe(false);
+		} finally {
+			await w.remove();
 		}
 	});
 });

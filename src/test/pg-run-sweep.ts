@@ -262,27 +262,42 @@ export async function migratorRolesByLiveness(
 	return { live: await existing(live), dead: await existing(dead) };
 }
 
+/** How old a session may be and still count as a migration window's (a full migrate takes about a minute). */
+const WINDOW_SESSION_SECONDS = 600;
+
 /**
- * Migration roles that no marked run owns but that are in use right now: the
- * role holds CREATE on a database that has a session connected. A run of a
- * harness without the lock (an older branch on the same cluster) is like that
- * for the seconds of its brand-new install's migrations: its bootstrap keeps a
- * superuser session on the database from the role's creation to its removal.
- * A leftover of a killed run is not: its sessions died with it, so it has none.
- * Another run's role at most; callers subtract the roles of their own run.
+ * Migration roles that no marked run owns but that are in use right now. That
+ * is what a brand-new install's window looks like in an older harness (one
+ * without the lock, on the same cluster): the role holds CREATE on a database,
+ * and the database has a session of a superuser (the bootstrap connection,
+ * open from the role's creation to its removal) or of the role itself (the
+ * migrations), started within the last ten minutes. A leftover of a killed run
+ * has no such session: its sessions died with it. A session of a role that is
+ * neither, or an old one, does not count, so a psql someone left open on a
+ * leftover database does not make it look alive. Callers subtract the roles of
+ * their own run. `sessionSeconds` is for tests.
  */
-export async function migratorRolesInUse(client: Client): Promise<string[]> {
+export async function migratorRolesInUse(
+	client: Client,
+	sessionSeconds = WINDOW_SESSION_SECONDS,
+): Promise<string[]> {
 	const { rows } = await client.query<{ name: string }>(
 		`SELECT r.rolname AS name
 		   FROM pg_catalog.pg_roles r
-		  WHERE r.rolname LIKE 'retrospend_migrator_%'
+		  WHERE r.rolname LIKE 'retrospend\\_migrator\\_%'
 		    AND EXISTS (
 		      SELECT 1 FROM pg_catalog.pg_database d
 		       WHERE pg_catalog.has_database_privilege(r.oid, d.oid, 'CREATE')
 		         AND EXISTS (
 		           SELECT 1 FROM pg_catalog.pg_stat_activity a
-		            WHERE a.datid = d.oid AND a.pid <> pg_catalog.pg_backend_pid()))
+		            WHERE a.datid = d.oid
+		              AND a.pid <> pg_catalog.pg_backend_pid()
+		              AND a.backend_start > pg_catalog.now() - pg_catalog.make_interval(secs => $1::double precision)
+		              AND (a.usename = r.rolname
+		                   OR EXISTS (SELECT 1 FROM pg_catalog.pg_roles s
+		                               WHERE s.rolname = a.usename AND s.rolsuper))))
 		  ORDER BY 1`,
+		[sessionSeconds],
 	);
 	return rows.map((row) => row.name);
 }
