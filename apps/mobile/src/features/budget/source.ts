@@ -75,10 +75,14 @@ export function fetchBudget(
 				? await api.budget.payoffProjection({}).catch(() => null)
 				: null;
 		if (month === null && device)
-			void device.compare("budget", {}, async () => {
-				const again = await api.budget.month({});
-				return again ? verdictViewOf(again) : null;
-			});
+			void device.compare(
+				"budget",
+				{ envelopeId: data ? envelopesOf(data).map((e) => e.id) : [] },
+				async () => {
+					const again = await api.budget.month({});
+					return again ? verdictViewOf(again) : null;
+				},
+			);
 		return { month: data, payoff };
 	};
 }

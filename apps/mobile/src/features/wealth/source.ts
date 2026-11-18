@@ -1,4 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
+import type { DeviceReads } from "@/data/device-engine";
 import type { CacheKey } from "@/features/read/loadCached";
 
 // Wealth reads, all from API v1 (accounts, net worth and the summary). Shapes are the
@@ -39,7 +40,15 @@ export function accountCache(id: string): CacheKey {
 	return { name: `${ACCOUNT_CACHE_PREFIX}${id}`, schema: 1 };
 }
 
-export function fetchWealth(api: RetrospendClient) {
+/**
+ * The device's figures are only checked against the server's, in the
+ * background, with the account ids the screen lists: it shows the server's
+ * numbers (AGENTS 6.1).
+ */
+export function fetchWealth(
+	api: RetrospendClient,
+	device?: DeviceReads | null,
+) {
 	return async (): Promise<WealthData> => {
 		const [list, netWorth, summary, order] = await Promise.all([
 			api.accounts.list(),
@@ -47,6 +56,10 @@ export function fetchWealth(api: RetrospendClient) {
 			api.accounts.summary(),
 			api.accounts.order(),
 		]);
+		if (device)
+			void device.compare("wealth", {
+				accountId: list.accounts.map((a) => a.id),
+			});
 		return { list, netWorth, summary, order };
 	};
 }

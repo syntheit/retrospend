@@ -1,6 +1,13 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import type { Span } from "@retrospend/domain/insights";
-import { filterParams, type InsightsView, isNarrowed, spanOf } from "./view";
+import type { DeviceReads } from "@/data/device-engine";
+import {
+	DEFAULT_VIEW,
+	filterParams,
+	type InsightsView,
+	isNarrowed,
+	spanOf,
+} from "./view";
 
 type Figures = RetrospendClient["figures"];
 export type InsightsSummary = Awaited<ReturnType<Figures["insightsSummary"]>>;
@@ -21,11 +28,40 @@ export interface InsightsData {
 /** Bars in Month by month, as on the web. */
 export const MONTH_COUNT = 6;
 
+/**
+ * The device's figures are only checked against the server's, in the
+ * background, and only for the default view (this month, everything): the
+ * category ids and month labels are the ones the screen lists. It shows the
+ * server's numbers (AGENTS 6.1).
+ */
+function compareWithDevice(
+	device: DeviceReads,
+	{ summary, months, ytd }: Pick<InsightsData, "summary" | "months" | "ytd">,
+) {
+	const categoryId = [
+		...new Set(
+			[...summary.categories, ...ytd.categories].flatMap((c) =>
+				c.categoryId === null ? [] : [c.categoryId],
+			),
+		),
+	];
+	void device.compare("insights", {
+		categoryId,
+		month: months.months.map((m) => m.month),
+	});
+}
+
+const isDefaultView = (view: InsightsView): boolean =>
+	view.period === DEFAULT_VIEW.period &&
+	view.compare === DEFAULT_VIEW.compare &&
+	!isNarrowed(view);
+
 /** The four reads of the web's Insights page, for one view, in one go. */
 export function fetchInsights(
 	api: RetrospendClient,
 	view: InsightsView,
 	today: string,
+	device?: DeviceReads | null,
 ) {
 	return async (): Promise<InsightsData> => {
 		const firstDay =
@@ -46,6 +82,8 @@ export function fetchInsights(
 			api.figures.insightsYtd(filter),
 			isNarrowed(view) ? null : api.figures.insightsCashflow(span),
 		]);
+		if (device && isDefaultView(view))
+			compareWithDevice(device, { summary, months, ytd });
 		return { span, summary, months, ytd, cashflow };
 	};
 }

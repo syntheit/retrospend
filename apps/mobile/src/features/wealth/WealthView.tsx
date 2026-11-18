@@ -4,6 +4,7 @@ import { Pressable, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import { useDeviceReads } from "@/data/useDeviceEngine";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { currenciesHref } from "@/features/account/places";
 import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
@@ -317,7 +318,11 @@ export function WealthView() {
 	const { api } = useSession();
 	const { widthClass } = useLayoutClass();
 	const { space } = useTheme();
-	const fetch = useMemo(() => (api ? fetchWealth(api) : null), [api]);
+	const device = useDeviceReads();
+	const fetch = useMemo(
+		() => (api ? fetchWealth(api, device) : null),
+		[api, device],
+	);
 	const { state, reload } = useCachedRead(WEALTH_CACHE, fetch);
 	// An Undo from a toast can land while this screen is already in focus.
 	useReloadOnEntryChange(reload);
