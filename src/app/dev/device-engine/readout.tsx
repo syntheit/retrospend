@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { deviceController } from "~/lib/device-engine/instance";
 import { DeviceEngineLifecycle } from "~/lib/device-engine/react";
-import { ParityView } from "./view";
+import { CompareView } from "./view";
 
 function Live() {
 	const t = useTranslations("deviceEngine");
@@ -36,10 +36,10 @@ function Live() {
 					{t("check")}
 				</Button>
 			</header>
-			<ParityView
+			<CompareView
 				lastPullAt={pulled === null ? null : new Date(pulled).toISOString()}
 				phase={controller.state}
-				report={controller.lastParity}
+				reports={controller.reports}
 			/>
 		</>
 	);

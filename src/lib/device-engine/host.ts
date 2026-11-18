@@ -3,15 +3,10 @@ import {
 	createDeviceEngine,
 	type DeviceApi,
 	type DeviceEngine,
+	type NarrowValues,
+	SCREENS,
+	type ScreenName,
 } from "@retrospend/engine/device";
-import {
-	countsOf,
-	GLANCE_PARITY_IDS,
-	idsToCheck,
-	idsToRead,
-	recordingZone,
-	reportOf,
-} from "./parity";
 import {
 	DeviceError,
 	type DeviceErrorCode,
@@ -37,10 +32,8 @@ export interface HostDeps {
 	fetch: typeof globalThis.fetch;
 	warn: (what: string, detail?: string) => void;
 	now?: () => number;
-	/** The browser's zone, for the note when it is not the stored one. */
+	/** The zone the page renders in, for the compare's `zone` field; the runtime's by default. */
 	browserZone?: () => string | undefined;
-	/** The figures a parity check reads; the glance's by default. */
-	parityIds?: readonly string[];
 }
 
 /** The api over the same-origin cookie session: the web needs no token header. */
@@ -67,6 +60,17 @@ async function codeOf(response: Response): Promise<DeviceErrorCode | null> {
 const isIds = (value: unknown): value is string[] =>
 	Array.isArray(value) && value.every((id) => typeof id === "string");
 
+const isScreen = (value: unknown): value is ScreenName =>
+	typeof value === "string" && Object.hasOwn(SCREENS, value);
+
+/** The narrowing values a screen renders: absent, or lists of strings by narrowing. */
+const isValues = (value: unknown): value is NarrowValues | undefined =>
+	value === undefined ||
+	(typeof value === "object" &&
+		value !== null &&
+		!Array.isArray(value) &&
+		Object.values(value).every(isIds));
+
 /**
  * The worker's side: one in-memory engine for one account, driven by
  * messages. Memory only on purpose: the web keeps no disk copy in this slice.
@@ -83,8 +87,6 @@ export function attachHost(scope: HostScope, deps: HostDeps): void {
 	let observed: DeviceErrorCode | null = null;
 	/** How many 429s the server has answered: a call that overlapped one waits too. */
 	let limits = 0;
-	/** The zone of the settings the engine last pulled: the one it reads days and months in, and the server's figures route too. */
-	let storedZone: string | null = null;
 
 	const watchedFetch: typeof globalThis.fetch = async (input, init) => {
 		const response = await deps.fetch(input, init);
@@ -98,13 +100,6 @@ export function attachHost(scope: HostScope, deps: HostDeps): void {
 		const old = engine;
 		engine = null;
 		await old?.dispose({ wipe: true }).catch(() => undefined);
-	}
-
-	/** Checks `ids` against the server; null when the check itself failed (the engine's last result is then an older one). */
-	async function check(e: DeviceEngine, ids: readonly string[]) {
-		const before = e.lastParity;
-		await e.verify(ids);
-		return e.lastParity === before ? null : e.lastParity;
 	}
 
 	const sameAccount = async (caller: HostApi) =>
@@ -161,13 +156,13 @@ export function attachHost(scope: HostScope, deps: HostDeps): void {
 				throw new DeviceError("bad_request");
 			await end();
 			terminal = null;
-			storedZone = null;
-			api = recordingZone(deps.createApi(watchedFetch), (zone) => {
-				storedZone = zone;
-			});
+			api = deps.createApi(watchedFetch);
 			accountId = request.userId;
 			engine = createDeviceEngine(api, request.userId, deps.now, {
 				warn: deps.warn,
+				...(deps.browserZone
+					? { browserZone: () => deps.browserZone?.() ?? "" }
+					: {}),
 			});
 			return undefined;
 		},
@@ -180,60 +175,12 @@ export function attachHost(scope: HostScope, deps: HostDeps): void {
 			if (!isIds(request.ids)) throw new DeviceError("bad_request");
 			return guarded((e) => e.read(request.ids));
 		},
-		verify(request) {
-			if (!isIds(request.ids)) throw new DeviceError("bad_request");
-			return guarded(async (e) => {
-				const parity = await check(e, request.ids);
-				return parity
-					? {
-							mismatchedIds: parity.mismatches.map((m) => m.id),
-							generation: parity.generation,
-						}
-					: null;
-			});
+		compare(request) {
+			if (!isScreen(request.screen) || !isValues(request.values))
+				throw new DeviceError("bad_request");
+			const { screen, values } = request;
+			return guarded((e) => e.compare(screen, values ?? {}));
 		},
-		parity: () =>
-			guarded(async (e) => {
-				const base = deps.parityIds ?? GLANCE_PARITY_IDS;
-				const read = await e.read(idsToRead(base));
-				// The read may have made the first pull, which is where the zone comes from.
-				const zones = {
-					storedZone,
-					browserZone: deps.browserZone?.() ?? null,
-				};
-				const readAt = e.generation;
-				const ids = read ? idsToCheck(read, base) : [];
-				// Only a pulled engine that knows its zone is worth checking.
-				const found =
-					read && storedZone !== null && ids.length > 0
-						? await check(e, ids)
-						: null;
-				// One more pull and a second look on a difference: the engine's verify.
-				if (read && storedZone !== null && ids.length > 0 && !found)
-					return reportOf("failed", {
-						ids,
-						mismatchedIds: [],
-						generation: e.generation,
-						...zones,
-					});
-				// A second pull may have changed what the device holds: count from that.
-				const compared =
-					found && found.generation !== readAt ? await e.read(ids) : read;
-				return found
-					? reportOf("checked", {
-							ids,
-							mismatchedIds: found.mismatches.map((m) => m.id),
-							counts: compared ? countsOf(ids, compared, found.mismatches) : [],
-							generation: found.generation,
-							...zones,
-						})
-					: reportOf("skipped", {
-							ids: [],
-							mismatchedIds: [],
-							generation: e.generation,
-							...zones,
-						});
-			}),
 		async stop() {
 			terminal = null;
 			await end();

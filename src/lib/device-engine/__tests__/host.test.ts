@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { DeviceErrorCode } from "../protocol";
-import { ARS, code, fakeClock, NOW, setup, silent } from "./harness";
+import { ARS, BASIS, code, fakeClock, NOW, setup, silent } from "./harness";
 
 fakeClock(NOW);
 
@@ -36,19 +36,64 @@ describe("worker host over a message channel", () => {
 		expect(c?.readings.size).toBe(2);
 	});
 
-	it("verifies against the server and sends back ids, never amounts", async () => {
+	it("compares a screen with the server and sends back ids and counts, never amounts", async () => {
 		const { client } = setup({
-			figures: {
-				"glance.spent": ARS(100_000),
-				"glance.spentLast": ARS(260_000),
-			},
+			figures: { "glance.spent": ARS(100_001) },
+			basis: BASIS,
 		});
 		await client.start("u1");
-		await client.pull();
-		const result = await client.verify(["glance.spent", "glance.spentLast"]);
-		expect(result?.mismatchedIds).toEqual(["glance.spentLast"]);
-		const text = JSON.stringify(result);
-		expect(text).not.toMatch(/260000|250000|100000/);
+		const result = await client.compare("settings");
+		expect(result).toMatchObject({
+			screen: "settings",
+			state: "checked",
+			differs: ["glance.spent"],
+		});
+		// The device reads 100,000 and the server says 100,001: neither crosses.
+		expect(JSON.stringify(result)).not.toMatch(/10000[01]|minor|ARS/);
+	});
+
+	it("matches when the server holds what the device's rows make", async () => {
+		const { client } = setup({ basis: BASIS });
+		await client.start("u1");
+		const result = await client.compare("settings");
+		expect(result).toMatchObject({ state: "checked", differs: [] });
+		expect(result?.classes["glance.spent"]).toBe("match");
+	});
+
+	it("reports a server with no basis as skipped, never as a match", async () => {
+		const { client } = setup();
+		await client.start("u1");
+		expect(await client.compare("settings")).toMatchObject({
+			state: "skipped",
+			skipped: "no_basis",
+		});
+	});
+
+	it("sends the rendering zone along, as `zone`", async () => {
+		const { client } = setup({
+			basis: BASIS,
+			deps: { browserZone: () => "UTC" },
+		});
+		await client.start("u1");
+		expect((await client.compare("settings"))?.zone).toBe("differs");
+	});
+
+	it("refuses a compare for an unknown screen or a malformed narrowing", async () => {
+		const { client, raw } = setup({ basis: BASIS });
+		await client.start("u1");
+		const replies: unknown[] = [];
+		raw.addEventListener("message", (e) => replies.push(e.data));
+		raw.postMessage({ id: 80, type: "compare", screen: "nope" });
+		raw.postMessage({ id: 81, type: "compare", screen: "wealth", values: [1] });
+		raw.postMessage({
+			id: 82,
+			type: "compare",
+			screen: "wealth",
+			values: { accountId: "a1" },
+		});
+		await vi.waitFor(() => expect(replies).toHaveLength(3));
+		for (const id of [80, 81, 82])
+			expect(replies).toContainEqual({ id, ok: false, code: "bad_request" });
 	});
 
 	it("answers a refusal with a fixed code and then refuses without asking again", async () => {
@@ -67,6 +112,17 @@ describe("worker host over a message channel", () => {
 		expect((await client.pull()).status).toBe("ready");
 	});
 
+	it("ends a compare for a protected account with a fixed code, and no later call asks again", async () => {
+		const { client, answer, fetched } = setup({ basis: BASIS });
+		await client.start("u1");
+		answer.status = 403;
+		expect(await code(client.compare("home"))).toBe("protected_account");
+		const asked = fetched.mock.calls.length;
+		expect(await code(client.compare("budget"))).toBe("protected_account");
+		expect(await code(client.pull())).toBe("protected_account");
+		expect(fetched.mock.calls.length).toBe(asked);
+	});
+
 	it("ends the engine when the cookie now belongs to another account, before it pulls", async () => {
 		const { client, cookie, fetched } = setup();
 		await client.start("u1");
@@ -79,7 +135,7 @@ describe("worker host over a message channel", () => {
 		expect(await code(client.pull())).toBe("account_changed");
 		expect(asked().length).toBe(before);
 		expect(await code(client.read(["glance.spent"]))).toBe("account_changed");
-		expect(await code(client.verify(["glance.spent"]))).toBe("account_changed");
+		expect(await code(client.compare("settings"))).toBe("account_changed");
 		expect(asked().length).toBe(before);
 	});
 
@@ -90,7 +146,7 @@ describe("worker host over a message channel", () => {
 		const codes = await Promise.all([
 			code(client.pull()),
 			code(client.read(["glance.spent"])),
-			code(client.verify(["glance.spent"])),
+			code(client.compare("settings")),
 		]);
 		expect(codes).toEqual(Array(3).fill("protected_account"));
 		await client.stop();
@@ -116,7 +172,7 @@ describe("worker host over a message channel", () => {
 		};
 		const codes = await Promise.all([
 			code(client.pull()),
-			code(client.verify(["glance.spent"])),
+			code(client.compare("settings")),
 		]);
 		expect(codes).toEqual(["rate_limited", "rate_limited"]);
 		// A wait, not an end: the next call goes through once the server allows it.
@@ -242,7 +298,7 @@ describe("device client with a dead worker", () => {
 
 	it("rejects a call waiting when the page ends the worker", async () => {
 		const { client, terminate } = silent();
-		const waiting = code(client.verify(["glance.spent"]));
+		const waiting = code(client.compare("home"));
 		client.terminate();
 		expect(await waiting).toBe("worker_dead");
 		expect(terminate).toHaveBeenCalled();

@@ -1,9 +1,5 @@
-import {
-	DeviceError,
-	type DeviceErrorCode,
-	type ParityReport,
-	TERMINAL_CODES,
-} from "./protocol";
+import type { CompareReport, ScreenName } from "@retrospend/engine/device";
+import { DeviceError, type DeviceErrorCode, TERMINAL_CODES } from "./protocol";
 import type { DeviceClient } from "./rpc";
 
 /** The account the page is signed in as, and whether the server refuses it the sync feed. */
@@ -19,8 +15,6 @@ export interface ControllerDeps {
 	now: () => number;
 	/** The tab is in front: a hidden tab never pulls. */
 	visible: () => boolean;
-	/** Told what each check of the glance figures found (ids and counts, never amounts). */
-	onParity?: (report: ParityReport) => void;
 }
 
 export type ControllerState =
@@ -52,9 +46,10 @@ export function createDeviceController(deps: ControllerDeps) {
 	let inflight: Promise<void> | null = null;
 	let waitUntil = 0;
 	let rateLimits = 0;
-	/** The pull count the last parity check ended at: a pull that changed nothing is not checked again. */
+	/** The pull count the last compare ended at: a pull that changed nothing is not checked again. */
 	let checkedGeneration = 0;
-	let lastParity: ParityReport | null = null;
+	/** The last report of each screen that has been compared. */
+	let reports: Partial<Record<ScreenName, CompareReport>> = {};
 	let lastPullAt: number | null = null;
 	/** The pull count at the last real pull: a pull the engine skipped as fresh leaves it. */
 	let pulledGeneration = 0;
@@ -138,15 +133,14 @@ export function createDeviceController(deps: ControllerDeps) {
 					lastPullAt = deps.now();
 				}
 				// Compare only: the figures are checked against the server's and the
-				// screen keeps showing the server's.
+				// screen keeps showing the server's. The engine pulls for it too.
 				if (status === "ready" && (force || generation > checkedGeneration)) {
-					const report = await worker.parity();
+					const report = await worker.compare("home");
 					if (mine !== epoch) return;
-					lastParity = report;
-					deps.onParity?.(report);
+					// A check that could not run is tried again, after a wait.
+					if (!report) return backOff("failed");
+					reports = { ...reports, [report.screen]: report };
 					changed();
-					// A check that did not finish is tried again, after a wait.
-					if (report.state === "failed") return backOff("failed");
 					checkedGeneration = report.generation;
 				}
 				// Only a whole run, check included, ends a run of 429s.
@@ -186,13 +180,13 @@ export function createDeviceController(deps: ControllerDeps) {
 		get state() {
 			return state;
 		},
-		/** The worker once it has started; PR4's parity reads through it. */
+		/** The worker once it has started. */
 		get client() {
 			return client && !client.dead ? client : null;
 		},
-		/** What the last check of the glance figures found, for a dev readout. */
-		get lastParity() {
-			return lastParity;
+		/** The last report of each screen compared, for a dev readout. */
+		get reports() {
+			return reports;
 		},
 		/** When the last pull finished (the controller's clock), or null before one. */
 		get lastPullAt() {
@@ -203,7 +197,7 @@ export function createDeviceController(deps: ControllerDeps) {
 			listeners.add(listener);
 			return () => void listeners.delete(listener);
 		},
-		/** Pulls if due and checks the glance figures now, past any wait, whether or not a pull finished since the last check. */
+		/** Pulls if due and compares Home now, past any wait, whether or not a pull finished since the last check. */
 		checkNow() {
 			return pull(true, true);
 		},
@@ -226,7 +220,7 @@ export function createDeviceController(deps: ControllerDeps) {
 			checkedGeneration = 0;
 			pulledGeneration = 0;
 			lastPullAt = null;
-			lastParity = null;
+			reports = {};
 			state = !next ? "off" : next.protectedAccount ? "terminal" : "idle";
 			if (state === "idle" && homeOpen) void pull(true);
 		},
