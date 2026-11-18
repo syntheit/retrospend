@@ -13,7 +13,7 @@ import (
 // TestRetentionCleanupPurgesExpiredResetLinks runs the real retention job on a
 // migrated test database and skips unless SIDECAR_TEST_DATABASE_URL names one.
 // The reset link table has a user id, an origin and a hashed token since
-// migration 20261118100000_reset_token_hardening; the purge deletes by
+// migration 20261118110000_reset_token_hardening; the purge deletes by
 // "expires" alone, so it must still remove an expired link of either origin and
 // keep a live one.
 func TestRetentionCleanupPurgesExpiredResetLinks(t *testing.T) {

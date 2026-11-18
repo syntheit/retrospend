@@ -185,7 +185,7 @@ model VerificationToken {
 }
 
 /// A password reset link (services/auth/reset-tokens.ts owns every read and
-/// write; migration 20261118100000_reset_token_hardening). The raw token only
+/// write; migration 20261118110000_reset_token_hardening). The raw token only
 /// ever lives in the email or the admin's screen: "token" holds its SHA-256
 /// (never the raw value), and a token resolves to "userId", never through an
 /// address.

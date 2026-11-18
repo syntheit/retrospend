@@ -1,10 +1,10 @@
--- Rollback for migration 20261118100000_reset_token_hardening. Not a migration:
+-- Rollback for migration 20261118110000_reset_token_hardening. Not a migration:
 -- Prisma never runs this file. Migrations run on container start, so an image
 -- rollback cannot undo that migration; run this by hand, as the role that owns
 -- the tables (the one that ran the migrations), before starting the older
 -- image:
 --
---   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f prisma/rollback/20261118100000_reset_token_hardening.sql
+--   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f prisma/rollback/20261118110000_reset_token_hardening.sql
 --
 -- It deletes every pending reset link (the older code looks a link up by its raw
 -- value, so none of these would open, and an hour is all they live), drops the
@@ -30,4 +30,4 @@ ALTER TABLE "password_reset_token" DROP CONSTRAINT IF EXISTS "password_reset_tok
 ALTER TABLE "password_reset_token" DROP COLUMN IF EXISTS "origin";
 ALTER TABLE "password_reset_token" DROP COLUMN IF EXISTS "userId";
 ALTER TABLE "password_reset_token" ALTER COLUMN "identifier" SET NOT NULL;
-DELETE FROM "_prisma_migrations" WHERE "migration_name" = '20261118100000_reset_token_hardening';
+DELETE FROM "_prisma_migrations" WHERE "migration_name" = '20261118110000_reset_token_hardening';

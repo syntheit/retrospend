@@ -1,5 +1,5 @@
 /**
- * The reset token migration (20261118100000_reset_token_hardening) and its
+ * The reset token migration (20261118110000_reset_token_hardening) and its
  * rollback snippet on real Postgres. Everything runs in a transaction that
  * always rolls back, as the owner (src/test/rolled-back-sql.ts).
  */
@@ -13,7 +13,7 @@ import { createTestUser } from "~/test/pg-harness";
 import { inRolledBackTransaction } from "~/test/rolled-back-sql";
 import { REPO_ROOT } from "~/test/uiRules/paths";
 
-const NAME = "20261118100000_reset_token_hardening";
+const NAME = "20261118110000_reset_token_hardening";
 const read = (path: string) => readFileSync(join(REPO_ROOT, path), "utf8");
 const migration = () => read(`prisma/migrations/${NAME}/migration.sql`);
 const snippet = () => read(`prisma/rollback/${NAME}.sql`);

@@ -1,7 +1,7 @@
 -- K3: drop the address key of password reset links (E2EE K3-0).
 --
 -- NOT APPLIED. This folder sits outside prisma/migrations on purpose, so
--- `prisma migrate deploy` never runs it. Migration 20261118100000_reset_token_hardening
+-- `prisma migrate deploy` never runs it. Migration 20261118110000_reset_token_hardening
 -- stopped writing "identifier" (a link resolves to its user id, never through an
 -- address) and made it nullable; nothing reads it. Dropping it is a narrowing
 -- change, so it waits until the owner schedules it.
