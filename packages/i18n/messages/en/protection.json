@@ -33,6 +33,7 @@
 			"body": "Enter your password.",
 			"continue": "Save keys"
 		},
+		"making": "Making your keys",
 		"notice": "Your keys are ready. Your data is sealed when Advanced protection turns on."
 	},
 	"recoveryKey": {
@@ -49,7 +50,9 @@
 		"mismatch": "Does not match",
 		"group": "Group {number}",
 		"label": "Recovery key",
-		"fileTitle": "Retrospend recovery key"
+		"fileTitle": "Retrospend recovery key",
+		"fileAccount": "Account",
+		"fileMade": "Made"
 	},
 	"recover": {
 		"enterTitle": "Use your recovery key",

@@ -33,6 +33,7 @@
 			"body": "Gib dein Passwort ein.",
 			"continue": "Schlüssel speichern"
 		},
+		"making": "Deine Schlüssel werden erstellt",
 		"notice": "Deine Schlüssel sind bereit. Deine Daten werden versiegelt, sobald der erweiterte Schutz eingeschaltet ist."
 	},
 	"recoveryKey": {
@@ -49,7 +50,9 @@
 		"mismatch": "Stimmt nicht überein",
 		"group": "Gruppe {number}",
 		"label": "Wiederherstellungsschlüssel",
-		"fileTitle": "Retrospend-Wiederherstellungsschlüssel"
+		"fileTitle": "Retrospend-Wiederherstellungsschlüssel",
+		"fileAccount": "Konto",
+		"fileMade": "Erstellt"
 	},
 	"recover": {
 		"enterTitle": "Wiederherstellungsschlüssel verwenden",

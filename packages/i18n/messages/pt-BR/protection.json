@@ -33,6 +33,7 @@
 			"body": "Digite sua senha.",
 			"continue": "Salvar chaves"
 		},
+		"making": "Criando suas chaves",
 		"notice": "Suas chaves estão prontas. Seus dados são selados quando a proteção avançada for ativada."
 	},
 	"recoveryKey": {
@@ -49,7 +50,9 @@
 		"mismatch": "Não confere",
 		"group": "Grupo {number}",
 		"label": "Chave de recuperação",
-		"fileTitle": "Chave de recuperação do Retrospend"
+		"fileTitle": "Chave de recuperação do Retrospend",
+		"fileAccount": "Conta",
+		"fileMade": "Criada"
 	},
 	"recover": {
 		"enterTitle": "Use sua chave de recuperação",
