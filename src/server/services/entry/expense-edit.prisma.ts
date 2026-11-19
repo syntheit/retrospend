@@ -20,7 +20,7 @@ const text = (v: { toString(): string } | null) =>
 	v === null ? null : dec(v).toFixed();
 
 /** A stored row as the core reads it: decimals as plain text, no exponent. */
-function storedExpense(
+export function storedExpense(
 	row: Prisma.ExpenseGetPayload<object>,
 	hasLegs: boolean,
 ): StoredExpense {

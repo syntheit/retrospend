@@ -16,12 +16,12 @@
  * the undo token and the response stay small whatever the set holds, and a
  * lost response can always be replayed.
  */
-import { ENTRY_POLICY } from "@retrospend/domain/expense-write/policy";
+import { deleteMany } from "@retrospend/domain/expense-write/bulk";
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
-import { ExpenseService } from "../expense.service";
 import type { MoneyMutation } from "../preview/types";
 import { EXPENSE_FIGURES } from "./expense.mutation";
+import { expenseBulkPort } from "./expense-bulk.prisma";
 import {
 	type ExpenseSnapshot,
 	restoreExpense,
@@ -73,50 +73,27 @@ export const deleteExpensesBulk: MoneyMutation<DeleteManyInput, DeletedMany> = {
 	id: "expense.deleteMany",
 	touches: EXPENSE_FIGURES,
 	run: async (tx, input, actor) => {
-		const ids = [...new Set(input.ids)];
-		const rows = await tx.expense.findMany({
-			where: {
-				id: { in: ids },
-				userId: actor.userId,
-				direction: "OUT",
-				isAmortizedChild: false,
-			},
-			select: {
-				id: true,
-				updatedAt: true,
-				_count: { select: { accountLegs: true } },
-			},
-		});
-		const byId = new Map(rows.map((r) => [r.id, r]));
-		const service = new ExpenseService(tx);
-		const deleted: string[] = [];
-		const skipped: string[] = [];
 		const snapshots: ExpenseSnapshot[] = [];
-		for (const id of ids) {
-			const row = byId.get(id);
-			const want = input.expected?.[id];
-			if (want && row && row.updatedAt.toISOString() !== want) throw stale();
-			if (!row || row._count.accountLegs > 0) {
-				skipped.push(id);
-				continue;
-			}
-			await service.deleteExpense(actor.userId, id, {
-				policy: ENTRY_POLICY,
-				beforeRemove: async () => {
-					snapshots.push(await snapshotExpense(tx, actor.userId, id));
+		const { deleted, skipped } = await deleteMany(
+			expenseBulkPort(tx, actor.userId),
+			input.ids,
+			{
+				beforeRemove: async (row) => {
+					const want = input.expected?.[row.id];
+					if (want) {
+						const stamp = await tx.expense.findFirst({
+							where: { id: row.id, userId: actor.userId },
+							select: { updatedAt: true },
+						});
+						if (stamp && stamp.updatedAt.toISOString() !== want) throw stale();
+					}
+					snapshots.push(await snapshotExpense(tx, actor.userId, row.id));
 				},
-			});
-			deleted.push(id);
-		}
-		if (deleted.length === 0) {
-			throw new TRPCError({
-				code: "BAD_REQUEST",
-				message: "None of these expenses can be deleted here.",
-			});
-		}
+			},
+		);
 		const stash = await putStash(tx, actor.userId, snapshots);
 		return {
-			value: { ids: deleted, skipped, stash },
+			value: { ids: deleted, skipped: skipped.map((s) => s.id), stash },
 			undo: {
 				kind: "revert",
 				mutation: "expense.restoreMany",

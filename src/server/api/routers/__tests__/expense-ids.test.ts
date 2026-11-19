@@ -46,11 +46,39 @@ beforeEach(() => {
 });
 
 describe("expense ids", () => {
+	// Changed in PR7: the bulk write reads the rows first (the domain core's
+	// reach rules) and writes the ones it takes, so the mock serves both reads.
 	it("categorizes an imported (cuid) row, scoped to its owner", async () => {
 		mockDb.category.findFirst.mockResolvedValue({
 			id: CATEGORY,
-			name: "Groceries",
+			kind: "EXPENSE",
+			excludeByDefault: false,
 		});
+		mockDb.category.findFirstOrThrow.mockResolvedValue({ name: "Groceries" });
+		mockDb.expense.findMany.mockResolvedValue([
+			{
+				id: IMPORTED,
+				title: "Imported",
+				amount: "10",
+				currency: "USD",
+				date: new Date("2026-03-05T15:00:00Z"),
+				direction: "OUT",
+				isAmortizedChild: false,
+				isAmortizedParent: false,
+				exchangeRate: "1",
+				amountInUSD: "10",
+				rateType: null,
+				homeCurrency: "USD",
+				homeRate: null,
+				homeAmount: null,
+				pricingSource: "MANUAL",
+				location: null,
+				description: null,
+				categoryId: null,
+				excludeFromAnalytics: false,
+				_count: { accountLegs: 0 },
+			},
+		]);
 		mockDb.expense.updateMany.mockResolvedValue({ count: 1 });
 
 		const out = await caller().bulkUpdateCategory({
@@ -59,6 +87,11 @@ describe("expense ids", () => {
 		});
 
 		expect(out).toEqual({ count: 1, categoryName: "Groceries" });
+		expect(mockDb.expense.findMany).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: { id: { in: [IMPORTED] }, userId: "user-1" },
+			}),
+		);
 		expect(mockDb.expense.updateMany).toHaveBeenCalledWith({
 			where: { id: { in: [IMPORTED] }, userId: "user-1" },
 			data: { categoryId: CATEGORY },

@@ -171,7 +171,7 @@ describe("bulk categorize", () => {
 	);
 
 	it.each(BULK)(
-		"%s: moves only your own rows, counts them, and leaves the rest and excludeFromAnalytics alone",
+		"%s: moves only your own rows, counts them, and applies the category's analytics default",
 		async (name) => {
 			const target = w.holdByDefault;
 			const a = await book(w.userId, lunch(w, { title: "A" }));
@@ -182,8 +182,33 @@ describe("bulk categorize", () => {
 			expect(await categoryOf(a)).toBe(target);
 			expect(await categoryOf(b)).toBe(target);
 			expect(await categoryOf(theirs)).toBe(w.other);
-			// The category's exclude default applies to new and edited rows, not here.
-			expect((await stored(a))?.excludeFromAnalytics).toBe(false);
+			// Changed in PR7: a category held out by default now excludes the rows it takes, as an edit does.
+			expect((await stored(a))?.excludeFromAnalytics).toBe(true);
+			expect((await stored(theirs))?.excludeFromAnalytics).toBe(false);
+		},
+	);
+
+	it.each(BULK)(
+		"%s: a category with no default leaves the flag, and a row already in the category is counted and left alone",
+		async (name) => {
+			const kept = await book(
+				w.userId,
+				lunch(w, { categoryId: w.holdByDefault, excludeFromAnalytics: false }),
+			);
+			const flagged = await book(
+				w.userId,
+				lunch(w, { excludeFromAnalytics: true }),
+			);
+			expect(await categorize(name, [kept], w.holdByDefault)).toMatchObject({
+				ok: true,
+				updated: 1,
+			});
+			expect((await stored(kept))?.excludeFromAnalytics).toBe(false);
+			expect(await categorize(name, [flagged], w.food)).toMatchObject({
+				ok: true,
+				updated: 1,
+			});
+			expect((await stored(flagged))?.excludeFromAnalytics).toBe(true);
 		},
 	);
 
@@ -200,37 +225,52 @@ describe("bulk categorize", () => {
 		},
 	);
 
+	// Changed in PR7 (finding 5): categorize used to take every row of the person's.
 	it.each(BULK)(
-		"%s: takes income rows, transfer fees and spread parents and parts as any other row",
+		"%s: skips income rows, transfer fees and spread parents and parts, and moves the rest",
 		async (name) => {
 			const salary = await incomeRow(w.userId);
 			const feeId = await feeRow(w.userId);
 			const { id: parent, parts } = await spreadRow(w);
-			const all = [salary, feeId, parent, parts[0] ?? ""];
-			expect(await categorize(name, all, w.holdByDefault)).toMatchObject({
+			const plain = await book(w.userId, lunch(w));
+			const skipped = [salary, feeId, parent, parts[0] ?? ""];
+			const was = await Promise.all(skipped.map(categoryOf));
+			expect(
+				await categorize(name, [...skipped, plain], w.holdByDefault),
+			).toMatchObject({ ok: true, updated: 1 });
+			expect(await categoryOf(plain)).toBe(w.holdByDefault);
+			expect(await Promise.all(skipped.map(categoryOf))).toEqual(was);
+			expect(await categorize(name, skipped, w.holdByDefault)).toMatchObject({
 				ok: true,
-				updated: 4,
+				updated: 0,
 			});
-			for (const id of all)
-				expect(await categoryOf(id), id).toBe(w.holdByDefault);
 		},
 	);
 
-	it("v1 preview of a categorize moves no figure and writes nothing", async () => {
+	// Changed in PR7: the preview used to touch no figure; the category's default
+	// moves spent now. USD 100 at Blue 1,468 is ARS 146,800.00.
+	it("v1 preview of a categorize shows what the category's default takes out of spent, and writes nothing", async () => {
 		const mine = await book(w.userId, lunch(w));
 		const before = await stored(mine);
-		const res = await call("/expenses/bulk-category/preview", {
-			method: "POST",
-			headers: w.http,
-			body: { ids: [mine, randomUUID()], categoryId: w.holdByDefault },
-			idempotent: true,
+		const preview = async (categoryId: string) =>
+			(await (
+				await call("/expenses/bulk-category/preview", {
+					method: "POST",
+					headers: w.http,
+					body: { ids: [mine, randomUUID()], categoryId },
+					idempotent: true,
+				})
+			).json()) as { changes: { id: string; delta: unknown }[] };
+		const held = await preview(w.holdByDefault);
+		expect(held.changes.find((c) => c.id === "spent")?.delta).toEqual({
+			minor: -10_000,
+			currency: "USD",
 		});
-		expect(res.status).toBe(200);
-		expect(await res.json()).toEqual({
-			changes: [],
-			unchanged: [],
-			unavailable: [],
+		expect(held.changes.find((c) => c.id === "glance.spent")?.delta).toEqual({
+			minor: -14_680_000,
+			currency: "ARS",
 		});
+		expect((await preview(w.food)).changes).toEqual([]);
 		expect(await stored(mine)).toEqual(before);
 	});
 
@@ -242,11 +282,24 @@ describe("bulk categorize", () => {
 		});
 		expect(done).toMatchObject({ ok: true, updated: 1 });
 		expect(await categoryOf(mine)).toBe(w.holdByDefault);
+		expect((await stored(mine))?.excludeFromAnalytics).toBe(true);
 		const { undo } = (done as { json: { undo: string } }).json;
 		expect(await v1Bulk("/expenses/undo", { token: undo })).toMatchObject({
 			ok: true,
 		});
 		expect(await categoryOf(mine)).toBe(w.food);
+		// Changed in PR7: the undo puts the analytics flag back with the category.
+		expect((await stored(mine))?.excludeFromAnalytics).toBe(false);
+	});
+
+	// The web's own undo moves the rows back through the same legacy procedure,
+	// which names a category and nothing else: it cannot put the flag back.
+	it("legacy: moving rows back does not clear the flag the first move set", async () => {
+		const mine = await book(w.userId, lunch(w));
+		await legacyBulk([mine], w.holdByDefault);
+		await legacyBulk([mine], w.food);
+		expect(await categoryOf(mine)).toBe(w.food);
+		expect((await stored(mine))?.excludeFromAnalytics).toBe(true);
 	});
 
 	const empty = {
