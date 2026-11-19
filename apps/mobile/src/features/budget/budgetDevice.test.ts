@@ -98,6 +98,16 @@ describe("the compare", () => {
 		expect(await read?.()).toEqual(verdictViewOf(month));
 	});
 
+	it("is asked with no envelopes when there is no budget yet, and its verdict read is null", async () => {
+		const source = device();
+		const got = await fetchBudget(api(null), null, source)();
+		expect(got).toEqual({ month: null, payoff: null });
+		const [screen, narrowings, read] = source.compare.mock.calls[0] ?? [];
+		expect(screen).toBe("budget");
+		expect(narrowings).toEqual({ envelopeId: [] });
+		expect(await read?.()).toBeNull();
+	});
+
 	it("is not asked for an explicit month, the current one included", async () => {
 		const source = device();
 		await fetchBudget(api(server()), 202610, source)();
