@@ -28,6 +28,7 @@ import {
 	AmountRefusedError,
 	CategoryNotFoundError,
 	EditRefusal,
+	SPREAD_NOT_ON_DEVICE,
 } from "@retrospend/domain/expense-write/refusals";
 import {
 	pickBestRate,
@@ -138,7 +139,7 @@ export function createExpense(input: CreateExpenseInput): WriteFn<ExpenseRow> {
 		if (Number.isNaN(input.date.getTime()))
 			throw new InvalidInputError("Pick a valid date");
 		if ((input.amortizeOver ?? 0) > 1)
-			throw new InvalidInputError("Spreading an expense is not on the device");
+			throw new InvalidInputError(SPREAD_NOT_ON_DEVICE);
 		// The same rules createExpenseIn runs: category, then amount, then rate.
 		const given = input.category;
 		const category =
