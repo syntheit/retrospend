@@ -469,10 +469,13 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"profile.cancelPendingEmailChange": to("DELETE /profile/pending-email"),
 	// An account with protection keys changes its password through the two
 	// protection routes; the plain route refuses it with protected_password.
+	// keys/open is the read that step one and the unlock share: no web
+	// procedure has it, a device opens its wraps with it.
 	"profile.changePassword": to(
 		"POST /me/password",
 		"POST /me/protection/password/begin",
 		"POST /me/protection/password",
+		"POST /me/protection/keys/open",
 	),
 	"profile.getBackgroundSettings": to("GET /profile/background"),
 	"profile.getLifetimeStats": to("GET /profile/stats"),

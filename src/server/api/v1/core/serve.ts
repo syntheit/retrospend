@@ -13,6 +13,7 @@ import { RateOutOfRangeError } from "~/server/services/payments/rate-band";
 import {
 	EnableProtectionError,
 	ProtectionKeysError,
+	ReleaseError,
 	RotatePasswordError,
 } from "~/server/services/protection-keys/errors";
 import { ProtectedPasswordError } from "~/server/services/protection-keys/password-writes";
@@ -73,6 +74,16 @@ function rotateProblem(error: RotatePasswordError) {
 	return problem("wrong_password", "Current password is incorrect");
 }
 
+function releaseProblem(error: ReleaseError) {
+	if (error.code === "no_keys")
+		return problem("not_found", "You have no protection keys");
+	if (error.code === "no_password")
+		return problem("bad_request", "This account has no password");
+	if (error.code === "changed")
+		return problem("conflict", "The password changed. Try again.");
+	return problem("wrong_password", "Current password is incorrect");
+}
+
 function vaultProblem(error: VaultError) {
 	if (error.code === "conflict")
 		return problem("conflict", error.message, {
@@ -128,6 +139,7 @@ export function toProblem(error: unknown, route?: string): unknown {
 	// the client asks for a new sign-in; the rest are the person's input.
 	if (error instanceof EnableProtectionError) return enableProblem(error);
 	if (error instanceof RotatePasswordError) return rotateProblem(error);
+	if (error instanceof ReleaseError) return releaseProblem(error);
 	if (error instanceof ProtectionKeysError)
 		return error.code === "conflict"
 			? problem("conflict", error.message)

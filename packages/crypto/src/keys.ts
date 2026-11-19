@@ -256,6 +256,25 @@ export function unwrapKey(
 	);
 }
 
+/** Bytes of `recoveryWrapDigest`: BLAKE2b with a 256-bit output. */
+export const RECOVERY_WRAP_DIGEST_BYTES = 32;
+
+/**
+ * What a device compares to know the server holds the ak-recovery wrap it
+ * sent: BLAKE2b-256 (libsodium `crypto_generichash`, no key) of the stored
+ * wrap bytes. The server computes it from what it stores and a client from
+ * what it made, so both sides use this one function. It is not a secret and
+ * proves nothing about who made the wrap: a server that holds the wrap can
+ * compute it. It only shows that the stored bytes are the sent bytes.
+ */
+export function recoveryWrapDigest(
+	p: Primitives,
+	wrapped: Uint8Array,
+): Uint8Array {
+	if (!isBytes(wrapped) || wrapped.length !== SYMMETRIC_WRAP_BYTES) bad();
+	return p.blake2b(wrapped, RECOVERY_WRAP_DIGEST_BYTES);
+}
+
 /**
  * True if the private key opens what the public key seals. Run after
  * unwrapping the account private key beside the stored public key: a server

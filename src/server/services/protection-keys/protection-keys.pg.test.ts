@@ -1,5 +1,5 @@
 /**
- * getProtectionKeys and applyKeyChanges on real Postgres: the conflict rules,
+ * applyKeyChanges on real Postgres, read back through a test reader: the conflict rules,
  * replacement, the lock between two writers, and the all-or-nothing change.
  * Writers run on the owner connection, as in production (the app role has no
  * INSERT or DELETE on the key tables); `reader` is the app role, signed in as
@@ -12,9 +12,9 @@ import { createWebPrimitives } from "@retrospend/crypto/web";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { adminDb, createTestUser } from "~/test/pg-harness";
+import type { Prisma } from "~prisma";
 import {
 	applyKeyChanges,
-	getProtectionKeys,
 	type KeyChanges,
 	ProtectionKeysError,
 	type WrapInput,
@@ -32,6 +32,35 @@ afterAll(async () => {
 	await adminDb.protectionKeyWrap.deleteMany({});
 	await adminDb.protectionKeySet.deleteMany({});
 });
+
+/**
+ * What is stored, read straight from the tables. A test helper: production
+ * reads wrap bytes only in release.ts, behind a proof. Names the set's columns
+ * because the app role cannot read "recoveryHash".
+ */
+async function getProtectionKeys(tx: Prisma.TransactionClient, userId: string) {
+	const set = await tx.protectionKeySet.findUnique({
+		where: { userId },
+		select: {
+			kdfSalt: true,
+			kdfMemoryKiB: true,
+			kdfPasses: true,
+			publicKey: true,
+			version: true,
+			createdAt: true,
+		},
+	});
+	if (!set) return null;
+	const wraps = await tx.protectionKeyWrap.findMany({
+		where: { userId },
+		orderBy: [{ role: "asc" }, { targetId: "asc" }],
+		select: { id: true, role: true, targetId: true, wrapped: true },
+	});
+	return {
+		...set,
+		wraps: wraps.map((w) => ({ ...w, wrapped: Uint8Array.from(w.wrapped) })),
+	};
+}
 
 type Tx = Parameters<Parameters<typeof adminDb.$transaction>[0]>[0];
 

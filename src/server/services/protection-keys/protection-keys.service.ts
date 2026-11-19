@@ -16,7 +16,6 @@ import {
 	type KeyWriter,
 	validateKeyChanges,
 	type WrapRef,
-	type WrapRole,
 } from "./validate";
 
 export { ProtectionKeysError } from "./errors";
@@ -27,92 +26,30 @@ export type {
 	WrapRef,
 } from "./validate";
 
-export type ProtectionKeys = {
+/** The set's own columns: what a reader that returns no wrap asks for. */
+export type KeySet = {
 	kdfSalt: Uint8Array;
 	kdfMemoryKiB: number;
 	kdfPasses: number;
 	publicKey: Uint8Array;
 	version: number;
 	createdAt: Date;
-	wraps: {
-		id: string;
-		role: WrapRole;
-		targetId: string;
-		wrapped: Uint8Array;
-	}[];
 };
-
-type JoinedRow = {
-	kdfSalt: Uint8Array;
-	kdfMemoryKiB: number;
-	kdfPasses: number;
-	publicKey: Uint8Array;
-	version: number;
-	createdAt: Date;
-	wrapId: string | null;
-	role: WrapRole | null;
-	targetId: string | null;
-	wrapped: Uint8Array | null;
-};
-
-/** The set without its wraps: what a reader that returns no wrap asks for. */
-export type KeySet = Omit<ProtectionKeys, "wraps">;
 
 /** A copy that is a plain Uint8Array, whether the driver hands back a Buffer or not. */
-const plain = (bytes: Uint8Array): Uint8Array<ArrayBuffer> =>
+export const plain = (bytes: Uint8Array): Uint8Array<ArrayBuffer> =>
 	Uint8Array.from(bytes);
 
 /**
- * The set and its wraps, or null when the user has none. One statement, so the
- * version and the wraps come from one snapshot even under READ COMMITTED.
- */
-export async function getProtectionKeys(
-	tx: Prisma.TransactionClient,
-	userId: string,
-): Promise<ProtectionKeys | null> {
-	const rows = await tx.$queryRaw<JoinedRow[]>`
-		SELECT s."kdfSalt", s."kdfMemoryKiB", s."kdfPasses", s."publicKey", s."version", s."createdAt",
-		       w."id"::text AS "wrapId", w."role", w."targetId", w."wrapped"
-		FROM "protection_key_set" s
-		LEFT JOIN "protection_key_wrap" w ON w."userId" = s."userId"
-		WHERE s."userId" = ${userId}
-		ORDER BY w."role", w."targetId"`;
-	const first = rows[0];
-	if (!first) return null;
-	return {
-		kdfSalt: plain(first.kdfSalt),
-		kdfMemoryKiB: first.kdfMemoryKiB,
-		kdfPasses: first.kdfPasses,
-		publicKey: plain(first.publicKey),
-		version: first.version,
-		createdAt: first.createdAt,
-		wraps: rows.flatMap((r) =>
-			r.wrapId && r.role && r.targetId && r.wrapped
-				? [
-						{
-							id: r.wrapId,
-							role: r.role,
-							targetId: r.targetId,
-							wrapped: plain(r.wrapped),
-						},
-					]
-				: [],
-		),
-	};
-}
-
-/**
  * The set's own columns, or null when the user has none. Names every column
- * it reads: the app role cannot select "recoveryHash", and nothing but the
- * owner module (validate.ts) reads it.
+ * it reads: the app role cannot select "recoveryHash". It never reads a wrap:
+ * the only reader of wrap bytes is release.ts.
  */
 export async function getKeySet(
 	tx: Prisma.TransactionClient,
 	userId: string,
 ): Promise<KeySet | null> {
-	const [row] = await tx.$queryRaw<
-		Omit<JoinedRow, "wrapId" | "role" | "targetId" | "wrapped">[]
-	>`
+	const [row] = await tx.$queryRaw<KeySet[]>`
 		SELECT "kdfSalt", "kdfMemoryKiB", "kdfPasses", "publicKey", "version", "createdAt"
 		FROM "protection_key_set" WHERE "userId" = ${userId}`;
 	if (!row) return null;

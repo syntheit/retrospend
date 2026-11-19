@@ -44,3 +44,21 @@ export class RotatePasswordError extends Error {
 		this.name = "RotatePasswordError";
 	}
 }
+
+export type ReleaseRefusal =
+	/** The user has no key set, or a reset removed it while the proof was checked. */
+	| "no_keys"
+	/** The account has no password to check the proof against. */
+	| "no_password"
+	/** The proof is not the current one. */
+	| "wrong_proof"
+	/** The stored hash changed since the proof was checked: the proof is for an old password. */
+	| "changed";
+
+/** Wraps were not released; the caller maps `code` to its own answer. The text is never shown. */
+export class ReleaseError extends Error {
+	constructor(readonly code: ReleaseRefusal) {
+		super(`The key wraps were not released: ${code}`);
+		this.name = "ReleaseError";
+	}
+}

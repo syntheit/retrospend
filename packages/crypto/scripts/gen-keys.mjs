@@ -414,6 +414,9 @@ const symmetricWraps = [
 		key,
 		aad,
 		wrapped: hex(wrapped),
+		// BLAKE2b-256 of the wrap bytes, no key: what the server shows a device
+		// to prove it stores the ak-recovery wrap that was sent.
+		digest: blake2b(hex(wrapped), 32),
 	};
 });
 

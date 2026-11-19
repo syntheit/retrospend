@@ -8,7 +8,8 @@
  *
  * Two calls. `beginRotation` releases the stored password wrap only to a
  * caller that proves the current auth key (a wrong one is a counted try, so a
- * stolen cookie gets no offline guessing target from it). `rotatePassword`
+ * stolen cookie gets no offline guessing target from it; release.ts owns that
+ * proof and which wraps leave). `rotatePassword`
  * checks the current auth key again, hashes the new one, then swaps the hash
  * only if it is still the one that was checked, under the credential row lock.
  * Every call spends one try (`spendPasswordTry` counts success too), so a
@@ -28,17 +29,14 @@ import { db } from "~/server/db";
 import { emailSubject } from "~/server/email-copy";
 import { getPasswordChangedAlertTemplate } from "~/server/email-templates";
 import { spendPasswordTry } from "../account-security.service";
-import { ProtectionKeysError, RotatePasswordError } from "./errors";
 import {
-	hasKeySet,
-	lockCredential,
-	swapCredentialHash,
-} from "./password-writes";
-import {
-	applyKeyChanges,
-	getProtectionKeys,
-	type KeyChanges,
-} from "./protection-keys.service";
+	ProtectionKeysError,
+	ReleaseError,
+	RotatePasswordError,
+} from "./errors";
+import { hasKeySet, swapCredentialHash } from "./password-writes";
+import { applyKeyChanges, type KeyChanges } from "./protection-keys.service";
+import { releaseWraps } from "./release";
 import { bytes, invalid, readCredentialHash, sendNotice } from "./shared";
 import { validateKeyChanges } from "./validate";
 
@@ -85,10 +83,19 @@ export type BeginResult = {
 	wrappedAccountKey: string;
 };
 
+/** What a refused release means to a password change. */
+function rotateRefusal(error: ReleaseError): Error {
+	if (error.code === "no_password") return new RotatePasswordError(error.code);
+	if (error.code === "wrong_proof")
+		return new RotatePasswordError("wrong_password");
+	// Keys removed, or a hash changed since it was checked: start again.
+	return new ProtectionKeysError("conflict");
+}
+
 /**
  * Releases the password wrap and the parameters to a caller that proved the
- * current auth key. The hash and the key set are read together under the
- * credential lock, so the wrap returned belongs to the hash that was checked.
+ * current auth key. `releaseWraps` owns the proof, the try it spends and the
+ * roles that leave; this answers with the one wrap a rotation needs.
  */
 export async function beginRotation(input: {
 	userId: string;
@@ -96,44 +103,26 @@ export async function beginRotation(input: {
 	currentAuthKey: string;
 }): Promise<BeginResult> {
 	const { userId, sessionId, currentAuthKey } = input;
-	if (!isSignInSecret(currentAuthKey)) invalid();
-	// A keyless account has nothing to rotate; answered before a try is spent.
-	if (!(await hasKeySet(db, userId))) throw new ProtectionKeysError("conflict");
-
-	await spendPasswordTry(userId, sessionId);
-	const checked = await credentialHash(userId);
-	if (!(await verifyPassword({ password: currentAuthKey, hash: checked }))) {
-		// A reset that removed the keys since the first look replaced the hash.
-		if (!(await hasKeySet(db, userId)))
-			throw new ProtectionKeysError("conflict");
-		throw new RotatePasswordError("wrong_password");
-	}
-
-	return db.$transaction(async (tx) => {
-		const locked = await lockCredential(tx, userId);
-		if (!locked?.hasKeySet) throw new ProtectionKeysError("conflict");
-		const current = await tx.account.findFirst({
-			where: { userId, providerId: "credential" },
-			select: { password: true },
-		});
-		// The hash changed since it was checked: the proof is for an old password.
-		if (current?.password !== checked)
-			throw new ProtectionKeysError("conflict");
-		const keys = await getProtectionKeys(tx, userId);
-		const wrap = keys?.wraps.find(
-			(w) => w.role === "ak-password" && w.targetId === userId,
-		);
-		if (!keys || !wrap) throw new ProtectionKeysError("conflict");
-		return {
-			version: keys.version,
-			kdf: {
-				salt: toBase64Url(keys.kdfSalt),
-				memoryKiB: keys.kdfMemoryKiB,
-				passes: keys.kdfPasses,
-			},
-			wrappedAccountKey: toBase64Url(wrap.wrapped),
-		};
+	const released = await releaseWraps(userId, {
+		kind: "password",
+		authKey: currentAuthKey,
+		sessionId,
+	}).catch((error: unknown) => {
+		throw error instanceof ReleaseError ? rotateRefusal(error) : error;
 	});
+	const wrap = released.wraps.find(
+		(w) => w.role === "ak-password" && w.targetId === userId,
+	);
+	if (!wrap) throw new ProtectionKeysError("conflict");
+	return {
+		version: released.version,
+		kdf: {
+			salt: toBase64Url(released.kdf.salt),
+			memoryKiB: released.kdf.memoryKiB,
+			passes: released.kdf.passes,
+		},
+		wrappedAccountKey: toBase64Url(wrap.wrapped),
+	};
 }
 
 export type RotateResult = { version: number; signedOut: number };

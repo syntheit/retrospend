@@ -4,6 +4,7 @@ import { timestampSchema } from "../core";
 import {
 	enableWrapSchema,
 	KEY_TEXT,
+	openWrapSchema,
 	preloginKdfSchema,
 	WRAP_TEXT,
 } from "../keys";
@@ -81,6 +82,32 @@ export const beginPasswordRotationResultSchema = z
 	})
 	.meta({ id: "BeginPasswordRotationResult" });
 
+export const openProtectionKeysSchema = z
+	.object({
+		authKey: z.string().regex(KEY_TEXT).meta({
+			description:
+				"The sign-in secret you derived from your current password, base64url, 43 characters. Counted as a try, like a password change.",
+		}),
+	})
+	.meta({ id: "OpenProtectionKeys" });
+
+export const openProtectionKeysResultSchema = protectionKeysStatusSchema
+	.extend({
+		kdf: preloginKdfSchema,
+		publicKey: z.string().regex(KEY_TEXT).meta({
+			description: "The account public key, 32 bytes as base64url.",
+		}),
+		wraps: z.array(openWrapSchema).meta({
+			description:
+				"Your ak-password, private-key and collection-key wraps. The recovery wrap and wraps to another key never leave through this route.",
+		}),
+		recoveryWrapDigest: z.string().regex(KEY_TEXT).nullable().meta({
+			description:
+				"BLAKE2b-256 of the stored ak-recovery wrap, base64url (32 bytes), so a device can check the server holds the recovery wrap it sent. Null when the key set has no recovery wrap.",
+		}),
+	})
+	.meta({ id: "OpenProtectionKeysResult" });
+
 export const rotatePasswordSchema = z
 	.object({
 		currentAuthKey: z.string().regex(KEY_TEXT).meta({
@@ -113,6 +140,9 @@ export const rotatePasswordResultSchema = z
 
 export type EnableProtection = z.infer<typeof enableProtectionSchema>;
 export type RotatePassword = z.infer<typeof rotatePasswordSchema>;
+export type OpenProtectionKeysResult = z.infer<
+	typeof openProtectionKeysResultSchema
+>;
 export type ProtectionKeysDto = z.infer<typeof protectionKeysSchema>;
 
 /**
@@ -161,6 +191,19 @@ export const protectionContract = {
 		.meta({ scope: "account:security", readsOnly: true })
 		.input(beginPasswordRotationSchema)
 		.output(beginPasswordRotationResultSchema),
+	openKeys: v1
+		.route({
+			method: "POST",
+			path: "/me/protection/keys/open",
+			operationId: "openProtectionKeys",
+			tags: TAG,
+			summary: "Prove your sign-in secret and get your key wraps",
+			description:
+				"Releases the wraps a device opens with your password: the account key wrap, the private key wrap and the collection key wraps, with the key set's version and parameters. The recovery wrap never leaves; its digest does. Released only to a caller that proves the current sign-in secret (5 tries per session and 20 per account in 15 minutes, shared with every password check, then 429; a wrong one is 400 wrong_password). 404 when you have no keys, 501 when the server does not offer Advanced protection. Writes nothing, so it needs no Idempotency-Key.",
+		})
+		.meta({ scope: "account:security", readsOnly: true })
+		.input(openProtectionKeysSchema)
+		.output(openProtectionKeysResultSchema),
 	rotatePassword: v1
 		.route({
 			method: "POST",

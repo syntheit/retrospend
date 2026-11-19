@@ -62,6 +62,8 @@ export const V1_ALLOWED: Readonly<Record<string, string>> = {
 		"Security: creates the account's own protection keys and sign-in secret",
 	"GET /me/protection/keys":
 		"Security: the account's own key parameters, no wraps",
+	"POST /me/protection/keys/open":
+		"Security: releases the account's own password-opened key wraps to a caller that proved the sign-in secret, never the recovery wrap",
 	"POST /me/protection/password/begin":
 		"Security: releases the account's own password wrap to a caller that proved the sign-in secret",
 	"POST /me/protection/password":

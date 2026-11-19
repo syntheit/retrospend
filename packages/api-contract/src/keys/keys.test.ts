@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
 	beginPasswordRotationSchema,
 	enableProtectionSchema,
+	openProtectionKeysResultSchema,
+	openProtectionKeysSchema,
 	rotatePasswordSchema,
 } from "../protection";
 import { enableWrapSchema, preloginKdfSchema } from "./index";
@@ -179,5 +181,60 @@ describe("the wrap roles an enable body must carry", () => {
 		expect(collection("0".repeat(31))).toBe(false);
 		expect(collection("0".repeat(33))).toBe(false);
 		expect(collection("A".repeat(32))).toBe(false);
+	});
+});
+
+describe("the keys/open request and answer", () => {
+	const UUID = "0b1f2e3d-4c5b-4a69-8877-665544332211";
+	const answer = (over: Record<string, unknown> = {}) => ({
+		createdAt: "2026-11-18T12:00:00.000Z",
+		version: 1,
+		kdf: KDF,
+		publicKey: KEY,
+		wraps: [
+			{ id: UUID, role: "ak-password", targetId: "user_1", wrapped: b64(100) },
+		],
+		recoveryWrapDigest: KEY,
+		...over,
+	});
+
+	it("takes exactly 43 characters for the auth key", () => {
+		expect(ok(openProtectionKeysSchema, { authKey: KEY })).toBe(true);
+		for (const length of [42, 44])
+			expect(ok(openProtectionKeysSchema, { authKey: b64(length) })).toBe(
+				false,
+			);
+	});
+
+	it("answers only the three password-opened roles, so a leaked ak-recovery or public-key wrap fails the schema", () => {
+		expect(ok(openProtectionKeysResultSchema, answer())).toBe(true);
+		for (const role of ["ak-recovery", "ak-device", "ak-contact"])
+			expect(
+				ok(
+					openProtectionKeysResultSchema,
+					answer({
+						wraps: [{ id: UUID, role, targetId: "user_1", wrapped: b64(100) }],
+					}),
+				),
+				role,
+			).toBe(false);
+	});
+
+	it("takes a 43 character digest or null, nothing else", () => {
+		expect(
+			ok(openProtectionKeysResultSchema, answer({ recoveryWrapDigest: null })),
+		).toBe(true);
+		expect(
+			ok(
+				openProtectionKeysResultSchema,
+				answer({ recoveryWrapDigest: b64(44) }),
+			),
+		).toBe(false);
+		expect(
+			ok(
+				openProtectionKeysResultSchema,
+				answer({ recoveryWrapDigest: undefined }),
+			),
+		).toBe(false);
 	});
 });
