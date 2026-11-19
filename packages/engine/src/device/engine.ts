@@ -4,11 +4,15 @@ import { deviceMonthView } from "../budget-figures";
 import { budgetStatus } from "../budget-gate";
 import type { CreateCaptures } from "../create-captures";
 import { MemoryStore } from "../memory-store";
-import { type Change, SETTINGS_ID } from "../port";
+import { type Change, type Reader, SETTINGS_ID } from "../port";
 import { ratesAsOf } from "../rates";
 import { DEVICE_FIGURE_IDS, readDeviceFigures } from "../registry";
 import { type PullCursors, type PullReport, pullAll } from "../sync-pull";
-import { compareCreate, type WriteVerdict } from "../write-parity";
+import {
+	compareCreate,
+	compareWrite,
+	type WriteVerdict,
+} from "../write-parity";
 import {
 	COMPARE_WHAT,
 	type CompareReport,
@@ -22,6 +26,7 @@ import {
 	compareScreen,
 	type PulledPast,
 } from "./compare-run";
+import { type PendingSource, readOverlaid, retiredBy } from "./pending";
 import type { DeviceApi, EngineStorage, StorageHooks } from "./ports";
 
 // The device engine: a copy of the account's rows in memory, filled by the
@@ -72,12 +77,26 @@ export interface DeviceEngine extends DeviceReads {
 	readonly status: DeviceStatus;
 	/** Pulls that have finished. */
 	readonly generation: number;
+	/**
+	 * Pulls begun, finished or not. The number a pending entry's ack carries:
+	 * a pull numbered above it began after the ack, so it has seen the write.
+	 */
+	readonly pullsBegun: number;
 	/** The last compare that ran, for readouts and tests. */
 	readonly lastCompare: CompareReport | null;
 	/** Creates the server booked, compared with the device's own booking of them (dev only). */
 	readonly writeParity: WriteParity;
 	/** Stopped for good: a new engine is needed to read or pull again. */
 	readonly disposed: boolean;
+	/**
+	 * Runs `read` over the store with the phone's pending writes laid over it, in
+	 * a transaction that is thrown away. For the device preview, the write compare
+	 * and the K9 swap gate; never a screen's read (`compare` and the figures a
+	 * screen shows read the store as a pull left it). Null when the store is not
+	 * a whole copy, a pull began during the read, the engine is disposed or the
+	 * read failed. With no pending source it reads the store as it is.
+	 */
+	readWithPending<R>(read: (view: Reader) => R | Promise<R>): Promise<R | null>;
 	/** One pull at a time: a call while one runs waits for it. */
 	pull(): Promise<void>;
 	/** Pulls when none has finished yet or the last one is older than PULL_AFTER_MS. */
@@ -102,6 +121,12 @@ export interface DeviceEngineOptions {
 	 * a release build.
 	 */
 	captures?: CreateCaptures;
+	/**
+	 * The phone's outbox and acked list. After a pull, the acked writes it has
+	 * seen are compared with the rows it brought and retired through it. Absent:
+	 * no overlay and no write compare of entries.
+	 */
+	pending?: PendingSource;
 	/** The zone the client renders in, for the compare's `zone` field; defaults to the runtime's. */
 	browserZone?: () => string;
 }
@@ -119,6 +144,10 @@ export function createDeviceEngine(
 	let generation = 0;
 	/** Pulls begun, finished or not: a read that spans one is thrown away. */
 	let pullsBegun = 0;
+	/** `pullsBegun` as it was when the latest finished pull began; 0 before any. */
+	let settledPull = 0;
+	/** Entries already compared, so a list that is slow to retire one never has it compared twice. */
+	const compared = new Set<string>();
 	let pulledAt: number | null = null;
 	let inflight: Promise<void> | null = null;
 	let lastCompare: CompareReport | null = null;
@@ -218,6 +247,7 @@ export function createDeviceEngine(
 		await ready;
 		if (disposed) return;
 		pullsBegun += 1;
+		const mine = pullsBegun;
 		const before = status;
 		status = "pulling";
 		commitsInPull = 0;
@@ -240,6 +270,7 @@ export function createDeviceEngine(
 			lastPast = pastOf(report);
 			storage?.persistence.finishPull();
 			generation += 1;
+			settledPull = mine;
 			pulledAt = now();
 			status = "ready";
 			pulled = true;
@@ -257,10 +288,13 @@ export function createDeviceEngine(
 		}
 		// After the pull has settled, and apart from it: whatever the comparison
 		// does, the pull stays as it ended.
-		if (pulled && !disposed)
-			await compareWrites().catch(() => {
+		if (pulled && !disposed) {
+			const counted = () => {
 				writeCounts.error = (writeCounts.error ?? 0) + 1;
-			});
+			};
+			await compareWrites().catch(counted);
+			await compareEntries().catch(counted);
+		}
 	}
 
 	/**
@@ -286,6 +320,14 @@ export function createDeviceEngine(
 				),
 			);
 		}
+		report(verdicts, expired);
+	}
+
+	/**
+	 * Tallies verdicts and logs them: ids, field names and counts only, no
+	 * amount ever reaches a log.
+	 */
+	function report(verdicts: readonly WriteVerdict[], expired: number) {
 		const bump = (key: string) => {
 			writeCounts[key] = (writeCounts[key] ?? 0) + 1;
 		};
@@ -297,7 +339,6 @@ export function createDeviceEngine(
 		const findings = verdicts.filter((v) =>
 			["differs", "rate_missing", "refused"].includes(v.outcome),
 		);
-		// Ids, field names and counts only: no amount ever reaches a log.
 		warn(
 			findings.length > 0 ? "writes differ from the server" : "writes checked",
 			JSON.stringify({
@@ -312,6 +353,43 @@ export function createDeviceEngine(
 				clock: new Date(now()).toISOString(),
 			}),
 		);
+	}
+
+	/**
+	 * Compares each acked write a finished pull has seen with the row the pull
+	 * brought, once, on a committed snapshot, then retires it from the phone's
+	 * list. Writes that left the list undone or aged out are counted as skips.
+	 */
+	async function compareEntries(): Promise<void> {
+		const pending = options.pending;
+		if (!pending) return;
+		const entries = pending.entries();
+		for (const id of compared)
+			if (!entries.some((e) => e.clientId === id)) compared.delete(id);
+		const retired = retiredBy(entries, settledPull).filter(
+			(e) => !compared.has(e.clientId),
+		);
+		const left = pending.takeLeft();
+		if (retired.length === 0 && left.length === 0) return;
+		const snap = store.snapshot();
+		const verdicts: WriteVerdict[] = [
+			...retired.flatMap((e) =>
+				e.changes.map((c) =>
+					compareWrite(snap, c, {
+						bookedAt: e.bookedAt,
+						version: e.ack?.version ?? null,
+					}),
+				),
+			),
+			...left.flatMap(({ entry, code }) =>
+				entry.changes.map(
+					(c): WriteVerdict => ({ id: c.id, outcome: "skipped", code }),
+				),
+			),
+		];
+		for (const e of retired) compared.add(e.clientId);
+		pending.retire(retired.map((e) => e.clientId));
+		report(verdicts, 0);
 	}
 
 	const startPull = (pastCut?: string) => {
@@ -441,6 +519,27 @@ export function createDeviceEngine(
 		};
 	};
 
+	async function readWithPending<R>(
+		read: (view: Reader) => R | Promise<R>,
+	): Promise<R | null> {
+		try {
+			await ready;
+			if (disposed || status !== "ready") return null;
+			const begun = pullsBegun;
+			const value = await readOverlaid(
+				store,
+				options.pending?.entries() ?? [],
+				settledPull,
+				read,
+			);
+			// A pull that began during the read changed the rows under it.
+			return pullsBegun !== begun || status !== "ready" ? null : value;
+		} catch (error) {
+			warn("overlay read failed", (error as Error)?.name);
+			return null;
+		}
+	}
+
 	async function compare(
 		screen: ScreenName,
 		narrowings: NarrowValues = {},
@@ -478,6 +577,9 @@ export function createDeviceEngine(
 		get generation() {
 			return generation;
 		},
+		get pullsBegun() {
+			return pullsBegun;
+		},
 		get lastCompare() {
 			return lastCompare;
 		},
@@ -487,6 +589,7 @@ export function createDeviceEngine(
 		get disposed() {
 			return disposed;
 		},
+		readWithPending,
 		pull,
 		pullIfStale,
 		compare,

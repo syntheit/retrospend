@@ -41,6 +41,7 @@ export {
 	TAG,
 	type WriteParity,
 } from "./engine";
+export type { PendingChange, PendingEntry, PendingSource } from "./pending";
 export type {
 	DeviceApi,
 	EnginePersistence,
