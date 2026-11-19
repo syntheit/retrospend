@@ -205,6 +205,27 @@ describe("expectedUpdatedAt on /api/v1/expenses writes", () => {
 		await expectProblem(await putPreview(id, body), 404, "not_found");
 	});
 
+	it("a stale stamp with a category that is not found is 404 'Category not found', row unchanged", async () => {
+		// v1 checks the category before the stamp, so the category answers first.
+		const made = await add();
+		const id = made.expense.id;
+		await editElsewhere(id);
+		const before = await row(id);
+		const body = {
+			...fields("Mine", "99"),
+			categoryId: `c${randomUUID().replaceAll("-", "")}`,
+			expectedUpdatedAt: made.expense.updatedAt,
+		};
+		for (const send of [put, putPreview]) {
+			const res = await send(id, body);
+			await expectProblem(res.clone(), 404, "not_found");
+			expect(await res.json()).toMatchObject({ detail: "Category not found" });
+		}
+		const after = await row(id);
+		expect(after.title).toBe("Edited elsewhere");
+		expect(after.updatedAt.toISOString()).toBe(before.updatedAt.toISOString());
+	});
+
 	it("DELETE with a stale stamp is 409 expense_changed and the row stays", async () => {
 		const made = await add();
 		const id = made.expense.id;
