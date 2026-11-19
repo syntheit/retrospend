@@ -63,7 +63,6 @@ export function EnableSheet(props: EnableSheetProps) {
 	const rk = useTranslations("protection.recoveryKey");
 	const [state, dispatch] = useReducer(enableReducer, INITIAL_STATE);
 	const view = enableView(state, { twoFactor: props.twoFactor });
-	const running = useRef(false);
 	const body = useRef<HTMLDivElement>(null);
 	const life = useEnableLifecycle({
 		open: props.open,
@@ -91,19 +90,16 @@ export function EnableSheet(props: EnableSheetProps) {
 	}, [state.step]);
 
 	const close = () => {
-		if (!state.busy) props.onOpenChange(false);
+		if (life.canClose()) props.onOpenChange(false);
 	};
-	const run = async (job: () => Promise<void>) => {
-		if (running.current) return;
-		running.current = true;
+	// A job that outlives the sheet (closed or unmounted meanwhile) lands nowhere.
+	const run = async <T,>(job: () => Promise<T>, done: (value: T) => void) => {
+		if (life.running) return;
 		dispatch({ type: "busy" });
-		try {
-			await job();
-		} catch (error) {
-			dispatch({ type: "failed", code: failureCode(error) });
-		} finally {
-			running.current = false;
-		}
+		const outcome = await life.run(job);
+		if (outcome.status === "done") done(outcome.value);
+		else if (outcome.status === "failed")
+			dispatch({ type: "failed", code: failureCode(outcome.error) });
 	};
 	const advance = async () => {
 		if (state.busy || view.primaryDisabled) return;
@@ -122,20 +118,19 @@ export function EnableSheet(props: EnableSheetProps) {
 			case "confirmKey":
 				return dispatch({ type: "keyConfirmed" });
 			case "newPassword":
-				return run(async () => {
-					const keyText = await life.settle(() =>
-						props.makeKeys(state.password),
-					);
-					if (keyText !== null) dispatch({ type: "keysMade", keyText });
-				});
+				return run(
+					() => props.makeKeys(state.password),
+					(keyText) => dispatch({ type: "keysMade", keyText }),
+				);
 			case "confirmYou":
-				return run(async () => {
-					await props.save({
-						password: state.current,
-						code: props.twoFactor ? state.code : null,
-					});
-					dispatch({ type: "saved" });
-				});
+				return run(
+					() =>
+						props.save({
+							password: state.current,
+							code: props.twoFactor ? state.code : null,
+						}),
+					() => dispatch({ type: "saved" }),
+				);
 			case "done":
 				props.onDone?.();
 				return close();
@@ -143,8 +138,7 @@ export function EnableSheet(props: EnableSheetProps) {
 	};
 	const leave = () => {
 		if (view.left === "back") {
-			// Back to the password drops keys made for the old one.
-			if (state.step === "methods") life.discardDraft();
+			life.back(state.step);
 			dispatch({ type: "back" });
 		} else close();
 	};
