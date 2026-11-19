@@ -156,7 +156,7 @@
 	"info": {
 		"description": "The public Retrospend API. Errors are RFC 9457 problem+json with a stable `code`. Every write needs an `Idempotency-Key`.\n\nAccounts with Advanced protection.\n\nAn account with Advanced protection on can call only the operations marked `x-protected-account: { allowed: true }`. Every other operation answers 403 with the code `protected_account`. A public operation is allowed.\n\nFor an account with Advanced protection on, GET /events returns only the event types that carry no personal ids or amounts, plus the bare copies of other people's shared writes. For every account, `vault.changed` events reach only callers that hold the `vault` scope.\n\nSealed records move through GET /vault/changes and POST /vault/writes. The server stores them and cannot open them.\n\nAn account with protection keys changes its password with POST /me/protection/password/begin and POST /me/protection/password. POST /me/password answers 403 `protected_password` for it. A change that needs a recent sign-in answers 403 `session_not_fresh`.\n\nPOST /auth/prelogin tells a client whether to derive the sign-in secret from the password before it signs in.",
 		"title": "Retrospend API",
-		"version": "1.1.0"
+		"version": "1.2.0"
 	},
 	"openapi": "3.1.1",
 	"paths": {
@@ -83770,6 +83770,11 @@
 										"pattern": "^[A-Za-z0-9_-]{43}$",
 										"type": "string"
 									},
+									"recoveryAuthKey": {
+										"description": "The recovery proof: the 32-byte auth key derived from the recovery key, base64url. The server stores only its SHA-256, so a later recovery proves the recovery key without the server being able to use it.",
+										"pattern": "^[A-Za-z0-9_-]{43}$",
+										"type": "string"
+									},
 									"totpCode": {
 										"description": "The current two-factor code, when it is on.",
 										"pattern": "^\\d{6}$",
@@ -83819,6 +83824,7 @@
 								"required": [
 									"currentPassword",
 									"authKey",
+									"recoveryAuthKey",
 									"kdf",
 									"publicKey",
 									"wraps"

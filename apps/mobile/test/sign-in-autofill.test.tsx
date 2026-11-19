@@ -1,6 +1,14 @@
 import { createElement } from "react";
 import SignInScreen from "../app/sign-in";
 
+// The contract's runtime is ESM, so these tests get the real password rules
+// file (it imports nothing) in its place.
+jest.mock("@retrospend/api-contract", () =>
+	jest.requireActual(
+		"../../../packages/api-contract/src/account/password-rules",
+	),
+);
+
 // Password managers (Bitwarden on Android, Password AutoFill on iOS) find the
 // sign-in fields by their hints. Android needs the "username" hint on the
 // email field (the "email" value maps to emailAddress, which managers do not

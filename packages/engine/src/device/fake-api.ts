@@ -1,8 +1,27 @@
-import type { DeviceApi } from "./ports";
+import type { DeviceApi, FigureBasis } from "./ports";
 
 // A server double for the device engine's tests (not a test itself): the sync
 // routes answer pages the test queues, and every other route answers an empty
 // page ending at "<route>-0". Each request is logged as `route(since)`.
+
+/** A sync cursor, {e, t, s} as base64url JSON, the way the server writes it. */
+export const cursor = (t: string, e = "e1") => {
+	const alphabet =
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+	const bytes = [...JSON.stringify({ e, t, s: "9" })].map((c) =>
+		c.charCodeAt(0),
+	);
+	let out = "";
+	for (let i = 0; i < bytes.length; i += 3) {
+		const [x = 0, y, z] = [bytes[i], bytes[i + 1], bytes[i + 2]];
+		const n = (x << 16) | ((y ?? 0) << 8) | (z ?? 0);
+		out += alphabet[(n >> 18) & 63];
+		out += alphabet[(n >> 12) & 63];
+		if (y !== undefined) out += alphabet[(n >> 6) & 63];
+		if (z !== undefined) out += alphabet[n & 63];
+	}
+	return out;
+};
 
 export const SETTINGS = {
 	homeCurrency: "ARS",
@@ -80,6 +99,10 @@ export interface DeviceApiOptions {
 	};
 	/** What GET /figures answers: id to lines. */
 	figures?: Record<string, { minor: number; currency: string }[] | null>;
+	/** The `basis` GET /figures answers with (a sync-capable session); none by default. */
+	basis?: FigureBasis;
+	/** An error GET /figures throws instead of answering. */
+	figuresError?: unknown;
 	/** A pull in which this route throws, by pull number from 1. */
 	fail?: { route: string; pull: number; error: unknown };
 }
@@ -147,7 +170,9 @@ export function fakeDeviceApi(options: DeviceApiOptions = {}) {
 		figures: {
 			read: async ({ ids }: { ids: string }) => {
 				calls.push(`figures(${ids})`);
+				if (options.figuresError) throw options.figuresError;
 				return {
+					...(options.basis ? { basis: options.basis } : {}),
 					figures: ids.split(",").map((id) => ({
 						id,
 						lines: options.figures?.[id] ?? null,

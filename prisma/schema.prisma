@@ -2591,6 +2591,10 @@ model ProtectionKeySet {
   kdfPasses    Int
   /// Written once. The app role cannot update it, so a bug cannot swap it.
   publicKey    Bytes
+  /// SHA-256 of the recovery auth key (20261118100000_recovery_proof). Null on
+  /// a set made before it. The app role cannot select it: read it only on the
+  /// owner connection, through the one owner module (protection-keys/validate.ts).
+  recoveryHash Bytes?
   version      Int      @default(1)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

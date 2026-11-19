@@ -263,7 +263,8 @@
 		"changed": "Passwort geändert. Deine anderen Geräte sind abgemeldet.",
 		"locked": "Nicht verfügbar, solange der erweiterte Schutz an ist.",
 		"wrong": "Falsches Passwort",
-		"conflict": "Deine Schutzschlüssel haben sich geändert. Versuche es erneut."
+		"conflict": "Deine Schutzschlüssel haben sich geändert. Versuche es erneut.",
+		"weak": "Das neue Passwort erfüllt die Regeln nicht"
 	},
 	"twoFactor": {
 		"onTitle": "Zwei-Faktor-Authentifizierung einschalten",

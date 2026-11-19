@@ -1,5 +1,4 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import type { DeviceRead } from "@/data/device-engine";
 import { BudgetView } from "./BudgetView";
 import type { BudgetMonth, BudgetRead, Verdict } from "./source";
 
@@ -96,26 +95,7 @@ const mockApi = {
 	budget: { month: async () => month, payoffProjection: async () => null },
 } as unknown as RetrospendClient;
 
-const mockDevice = {
-	read: jest.fn(
-		async (): Promise<DeviceRead> => ({
-			homeCurrency: "ARS",
-			budgetReady: true,
-			budget: {
-				bookId: "book",
-				currency: "ARS",
-				month: 202610,
-				today: "2026-10-15",
-				approximate: false,
-				incomplete: false,
-				verdict: verdict(4_999_900),
-			},
-			readings: new Map(),
-		}),
-	),
-	verify: jest.fn(async () => {}),
-	reportVerdict: jest.fn(),
-};
+const mockDevice = { compare: jest.fn(async () => null) };
 
 it("hands the body and every sheet the server's month only, though the device's verdict differs", async () => {
 	let tree: { update(element: unknown): void } | undefined;
@@ -133,8 +113,12 @@ it("hands the body and every sheet the server's month only, though the device's 
 		tree?.update(<BudgetView />);
 	});
 
-	// The fetch BudgetView built asked the device, so the check ran.
-	expect(mockDevice.read).toHaveBeenCalled();
+	// The fetch BudgetView built asked the device, so the compare ran.
+	expect(mockDevice.compare).toHaveBeenCalledWith(
+		"budget",
+		{},
+		expect.any(Function),
+	);
 	expect(mockCaptured.body?.data).toBe(month);
 	expect(mockCaptured.sheets?.data).toBe(month);
 	for (const props of [mockCaptured.body, mockCaptured.sheets])

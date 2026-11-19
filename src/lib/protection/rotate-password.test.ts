@@ -251,6 +251,22 @@ describe("rotatePassword", () => {
 		expect(open(sent, NEXT).accountKey()).toEqual(AK);
 	}, 60_000);
 
+	it.each([
+		["too short", "Abcdef1"],
+		["without a number", "Abcdefghij"],
+		["without an uppercase letter", "abcdefg1h"],
+		["over 255 characters", `Aa1${"x".repeat(253)}`],
+	])(
+		"refuses a new password %s before any request is made",
+		async (_name, next) => {
+			const t = setup();
+			expect(await failure(t.runPublic(MASTER.password, next))).toBe(
+				"weakPassword",
+			);
+			expect(t.calls).toHaveLength(0);
+		},
+	);
+
 	it("a wrong old password stops at begin with its own code and sends no commit", async () => {
 		const t = setup();
 		expect(await failure(t.run("not the password", NEXT))).toBe(

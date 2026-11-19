@@ -117,6 +117,7 @@ describe("the migration window on a brand-new install", () => {
 			).rejects.toThrow(/Migration failed/);
 			// Revoked although the migration failed.
 			expect(await ownerCanCreateIn(scratch2.superUrl)).toBe(false);
+			expect(await migratorExists(scratch2.superUrl)).toBe(false);
 			expect(await ownerProblems(owner)).toEqual([]);
 			// The install has been through a first start: not new any more.
 			expect(await neverHandedOver(admin)).toBe(false);
@@ -141,6 +142,7 @@ describe("the migration window on a brand-new install", () => {
 			);
 			expect(rows[0]?.owner).toBe("retrospend_owner");
 			expect(await ownerCanCreateIn(scratch2.superUrl)).toBe(false);
+			expect(await migratorExists(scratch2.superUrl)).toBe(false);
 		} finally {
 			project.cleanup();
 			await owner.end();

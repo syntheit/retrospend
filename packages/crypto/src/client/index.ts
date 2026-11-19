@@ -23,6 +23,28 @@ export {
 	NEW_PASSWORD_PARAMS,
 } from "./flow";
 export {
+	makeNewRecoveryKey,
+	type NewKeyBody,
+	type NewKeyCommitBody,
+	type NewKeyInput,
+	type NewKeyPasswordInput,
+	type NewKeyPorts,
+	type OpenAnswer,
+	type PreparedNewKey,
+	type PreparedNewKeyFromPassword,
+	prepareNewRecoveryKey,
+	readOpenAnswer,
+} from "./new-key";
+export {
+	type RecoverBeginAnswer,
+	type RecoverBody,
+	type RecoverInput,
+	type RecoverOptions,
+	type RecoverPorts,
+	readRecoverBeginAnswer,
+	recoverAccount,
+} from "./recover";
+export {
 	type ConfirmGroups,
 	groupMatches,
 	pickConfirmGroups,

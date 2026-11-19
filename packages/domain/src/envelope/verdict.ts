@@ -91,6 +91,19 @@ export function poolNameFor(style: BudgetStyle): PoolName {
 	return style === "EVERY_DOLLAR" ? "TO_ASSIGN" : "NOT_PLANNED_YET";
 }
 
+/**
+ * Whether a month's verdict cannot be held against another side's: the month
+ * is incomplete (a missing rate), approximate, or the verdict itself is
+ * incomplete. The one rule, for the device engine and the phone's adapter.
+ */
+export function monthVerdictIncomplete(month: {
+	readonly incomplete: boolean;
+	readonly approximate: boolean;
+	readonly verdict: { readonly incomplete: boolean };
+}): boolean {
+	return month.incomplete || month.approximate || month.verdict.incomplete;
+}
+
 export const FIGURE_LEFT_TO_SPEND = "budget.leftToSpend";
 export const FIGURE_NOT_PLANNED_YET = "budget.notPlannedYet";
 export const FIGURE_LEFT_THIS_WEEK = "budget.leftThisWeek";

@@ -1,9 +1,9 @@
+import { newPasswordSchema } from "@retrospend/api-contract";
 import { isProtected } from "@retrospend/api-contract/protection-state";
 import { TRPCError } from "@trpc/server";
 import { hashPassword } from "better-auth/crypto";
 import crypto from "crypto";
 import { z } from "zod";
-import { hashToken } from "~/server/lib/tokens";
 import { env } from "~/env";
 import { CURRENT_POLICY_VERSION } from "~/lib/policy-version";
 import {
@@ -11,14 +11,15 @@ import {
 	protectedProcedure,
 	publicProcedure,
 } from "~/server/api/trpc";
+import { emailSubject } from "~/server/email-copy";
 import {
 	getPasswordChangedAlertTemplate,
 	getVerificationEmailTemplate,
 } from "~/server/email-templates";
-import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
-import { emailSubject } from "~/server/email-copy";
+import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
+import { getClientIp, InMemoryRateLimiter } from "~/server/lib/rate-limiter";
+import { hashToken } from "~/server/lib/tokens";
 import { sendEmail } from "~/server/mailer";
-
 import {
 	resetPasswordHash,
 	storeEmailVerificationToken,
@@ -31,7 +32,6 @@ import {
 } from "~/server/services/auth/reset-tokens";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
 import { applyConfirmedEmail } from "~/server/services/profile.service";
-import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 
 const rateLimiter = new InMemoryRateLimiter();
 
@@ -150,14 +150,7 @@ export const authRouter = createTRPCRouter({
 		.input(
 			z.object({
 				token: z.string().min(1).max(255),
-				newPassword: z
-					.string()
-					.min(8)
-					.max(255)
-					.regex(
-						/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-						"Password must contain at least one uppercase letter, one lowercase letter, and one number",
-					),
+				newPassword: newPasswordSchema,
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -199,12 +192,8 @@ export const authRouter = createTRPCRouter({
 			if (await isEmailDeliveryEnabled()) {
 				const htmlContent = getPasswordChangedAlertTemplate();
 
-				sendEmail(
-					user.email,
-					emailSubject.passwordChanged,
-					htmlContent,
-				).catch((error) =>
-					console.error("Failed to send security alert:", error),
+				sendEmail(user.email, emailSubject.passwordChanged, htmlContent).catch(
+					(error) => console.error("Failed to send security alert:", error),
 				);
 			}
 

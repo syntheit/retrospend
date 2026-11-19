@@ -8,7 +8,9 @@
  * What it needs first, because a stolen session must not be able to move the
  * account to a password only the thief knows: a session made in the last 10
  * minutes, the current password (counted as a try, like a password change),
- * the two-factor code when it is on, and a verified email. What it does after:
+ * the two-factor code when it is on, and a verified email. The recovery auth key
+ * rides along: only its SHA-256 is stored, so a later recovery can prove the
+ * recovery key without the server being able to use it. What it does after:
  * every other session ends, pending reset links are removed (they would write
  * a hash around the keys), an audit entry (ids only) and an email.
  *
@@ -31,12 +33,12 @@ import { EnableProtectionError, ProtectionKeysError } from "./errors";
 import { hasKeySet, swapCredentialHash } from "./password-writes";
 import {
 	applyKeyChanges,
-	getProtectionKeys,
+	getKeySet,
 	type KeyChanges,
 } from "./protection-keys.service";
 import { bytes, invalid, readCredentialHash, sendNotice } from "./shared";
 import { verifyTwoFactorCode } from "./two-factor";
-import { validateKeyChanges } from "./validate";
+import { hashRecoveryProof, validateKeyChanges } from "./validate";
 
 /** How old the calling session may be, by `session.createdAt`. */
 export const FRESH_SESSION_MS = 10 * 60_000;
@@ -54,6 +56,8 @@ function toKeyChanges(body: EnableProtection): KeyChanges {
 			kdfPasses: body.kdf.passes,
 			publicKey: bytes(body.publicKey),
 		},
+		// Only the hash is kept: the proof itself is never stored or logged.
+		recoveryHash: hashRecoveryProof(body.recoveryAuthKey),
 		put: body.wraps.map((w) => ({
 			...(w.id && { id: w.id }),
 			role: w.role,
@@ -80,7 +84,7 @@ export async function enableProtection(
 ): Promise<EnableResult> {
 	const { userId, sessionId, body } = input;
 	const changes = toKeyChanges(body);
-	validateKeyChanges(userId, changes);
+	validateKeyChanges(userId, changes, "enable");
 
 	const [user, session] = await Promise.all([
 		db.user.findUnique({
@@ -128,7 +132,7 @@ export async function enableProtection(
 			dropResetLinks: true,
 		});
 		if (!swapped.ok) throw new ProtectionKeysError("conflict");
-		const { version } = await applyKeyChanges(tx, userId, changes);
+		const { version } = await applyKeyChanges(tx, userId, changes, "enable");
 		await tx.eventLog.create({
 			data: {
 				eventType: "PASSWORD_CHANGED",
@@ -136,7 +140,7 @@ export async function enableProtection(
 				metadata: { reason: "protection_keys_created" },
 			},
 		});
-		const keys = await getProtectionKeys(tx, userId);
+		const keys = await getKeySet(tx, userId);
 		return {
 			version,
 			createdAt: keys?.createdAt ?? now,

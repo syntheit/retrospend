@@ -1,4 +1,9 @@
-import type { DeviceRead, DeviceStatus } from "@retrospend/engine/device";
+import type {
+	CompareReport,
+	DeviceStatus,
+	NarrowValues,
+	ScreenName,
+} from "@retrospend/engine/device";
 
 // The messages between the page and the device worker. Types only: this file
 // is in the page's bundle and the worker's, and must never carry the engine.
@@ -35,38 +40,6 @@ export class DeviceError extends Error {
 	}
 }
 
-/** How the check against the server ended: ids and a count, never an amount. */
-export interface VerifyResult {
-	mismatchedIds: readonly string[];
-	generation: number;
-}
-
-/**
- * What a check of the glance figures against the server found: ids, counts
- * and the zones, never an amount. `skipped` means the device held nothing it
- * could trust, or did not know its zone yet.
- */
-export interface ParityReport {
-	/** `failed`: the check itself did not finish (the server's answer did not come). */
-	state: "checked" | "skipped" | "failed";
-	/** The figures compared. */
-	ids: readonly string[];
-	mismatchedIds: readonly string[];
-	/** Lines each side holds per figure (a figure has one line per currency): counts, never amounts. */
-	counts: readonly {
-		id: string;
-		device: number | null;
-		server: number | null;
-	}[];
-	/** Pulls that had finished when the check ended. */
-	generation: number;
-	/** The zone both sides read the figures in: the one stored in the user's settings. */
-	storedZone: string | null;
-	browserZone: string | null;
-	/** The browser is in another zone than the stored one; the tRPC Home reads in the browser's. */
-	zoneDiffers: boolean;
-}
-
 export interface PullResult {
 	status: DeviceStatus;
 	generation: number;
@@ -75,18 +48,15 @@ export interface PullResult {
 export interface Results {
 	start: undefined;
 	pull: PullResult;
-	read: DeviceRead | null;
-	verify: VerifyResult | null;
-	parity: ParityReport;
+	/** The device's figures held against the server's (ids and counts only), or null when the check could not run. */
+	compare: CompareReport | null;
 	stop: undefined;
 }
 
 export type Request =
 	| { type: "start"; userId: string }
 	| { type: "pull" }
-	| { type: "read"; ids: string[] }
-	| { type: "verify"; ids: string[] }
-	| { type: "parity" }
+	| { type: "compare"; screen: ScreenName; values?: NarrowValues }
 	| { type: "stop" };
 
 export type Envelope = Request & { id: number };

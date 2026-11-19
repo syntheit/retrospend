@@ -46,9 +46,9 @@ beforeAll(async () => {
 
 /**
  * A source of randomness that hands out the vectors' bytes in the order
- * prepareEnable asks: salt, account key, recovery key, collection key id and
- * key, then one nonce for each of the four wraps. Anything after that is real.
- * Every array it hands out is kept, to see them wiped.
+ * prepareEnable asks for them: salt, account key, recovery key, collection key
+ * id and key, matched by size. Everything else (the wraps' nonces) is real.
+ * Every scripted array it hands out is kept, to see them wiped.
  */
 function scripted(base: Primitives = p) {
 	const queue = [
@@ -62,11 +62,12 @@ function scripted(base: Primitives = p) {
 	const prims: Primitives = {
 		...base,
 		randomBytes: (n) => {
-			const next = queue.shift();
-			const out = next ?? base.randomBytes(n);
-			if (out.length !== n) throw new Error("script out of step");
-			handed.push(out);
-			return out;
+			// The next scripted value goes to the request of its size; a wrap's
+			// nonce (24 bytes) is real, whenever the wrap is made.
+			const scripted = queue[0]?.length === n ? queue.shift() : undefined;
+			if (!scripted) return base.randomBytes(n);
+			handed.push(scripted);
+			return scripted;
 		},
 	};
 	return { prims, handed };

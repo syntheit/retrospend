@@ -20,6 +20,10 @@ export const enableProtectionSchema = z
 			description:
 				"The new sign-in secret: the 32-byte auth key as base64url, 43 characters. It replaces the password for sign-in; the typed password never leaves the device again.",
 		}),
+		recoveryAuthKey: z.string().regex(KEY_TEXT).meta({
+			description:
+				"The recovery proof: the 32-byte auth key derived from the recovery key, base64url. The server stores only its SHA-256, so a later recovery proves the recovery key without the server being able to use it.",
+		}),
 		totpCode: z
 			.string()
 			.regex(/^\d{6}$/)

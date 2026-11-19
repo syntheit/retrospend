@@ -33,6 +33,8 @@ export type KeyFlowCode =
 	/** The keyed record cannot be read or written, so the defense cannot work. */
 	| "unreadable"
 	| "wrongPassword"
+	/** The recovery key text is not a key (a typo, a wrong length or a stray character). Nothing was sent. */
+	| "typo"
 	/** The recovery key's proof was refused (a key of another account, or an old one). */
 	| "wrongRecoveryKey"
 	/** The reset link is unknown, used or expired. */
@@ -198,6 +200,25 @@ export function binMasterSubkeys(
 	return { authKey: bin.keep(k.authKey), wrapKey: bin.keep(k.wrapKey) };
 }
 
+/**
+ * The base64url wrap of one role in a list a server answered (`{ role, wrapped }`
+ * items), unread until now. The list must hold exactly one of the role; any
+ * other shape is "unavailable" and nothing is derived from it. Other roles in
+ * the list are ignored.
+ */
+export function findWrap(wraps: unknown, role: SymmetricRole): string {
+	const found = Array.isArray(wraps)
+		? wraps.filter(
+				(w): w is { role: string; wrapped: unknown } =>
+					typeof w === "object" && w !== null && w.role === role,
+			)
+		: [];
+	const [only] = found;
+	if (found.length !== 1 || typeof only?.wrapped !== "string")
+		throw new KeyFlowError("unavailable");
+	return only.wrapped;
+}
+
 export const sameBytes = (a: Uint8Array, b: Uint8Array): boolean => {
 	let diff = a.length ^ b.length;
 	for (let i = 0; i < a.length; i++) diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
@@ -209,8 +230,7 @@ export const sameBytes = (a: Uint8Array, b: Uint8Array): boolean => {
  * must open under the wrapping key, for this role and id, to exactly the key
  * it was made from. Anything else is `malformed` and nothing goes out, so a
  * wrap that could lock the person out never reaches the server. Returns the
- * opened key, kept in `bin`. Enable and rotate use it now; recover and new-key
- * add themselves in K3-1.
+ * opened key, kept in `bin`. Enable, rotate, recover and new-key all use it.
  */
 export function checkOpens(
 	p: Primitives,

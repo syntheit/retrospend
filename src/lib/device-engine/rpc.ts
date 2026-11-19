@@ -1,3 +1,4 @@
+import type { NarrowValues, ScreenName } from "@retrospend/engine/device";
 import {
 	DeviceError,
 	type DeviceErrorCode,
@@ -19,10 +20,11 @@ export interface WorkerLike {
 export interface DeviceClient {
 	start(userId: string): Promise<void>;
 	pull(): Promise<Results["pull"]>;
-	read(ids: readonly string[]): Promise<Results["read"]>;
-	verify(ids: readonly string[]): Promise<Results["verify"]>;
-	/** Checks the glance figures against the server, after a pull. */
-	parity(): Promise<Results["parity"]>;
+	/** Holds a screen's device figures against the server's; the engine pulls for it. */
+	compare(
+		screen: ScreenName,
+		values?: NarrowValues,
+	): Promise<Results["compare"]>;
 	stop(): Promise<void>;
 	/** Ends the worker; every call still waiting rejects with worker_dead. */
 	terminate(): void;
@@ -80,9 +82,7 @@ export function createDeviceClient(worker: WorkerLike): DeviceClient {
 	return {
 		start: (userId) => call({ type: "start", userId }),
 		pull: () => call({ type: "pull" }),
-		read: (ids) => call({ type: "read", ids: [...ids] }),
-		verify: (ids) => call({ type: "verify", ids: [...ids] }),
-		parity: () => call({ type: "parity" }),
+		compare: (screen, values) => call({ type: "compare", screen, values }),
 		stop: () => call({ type: "stop" }),
 		terminate() {
 			die();

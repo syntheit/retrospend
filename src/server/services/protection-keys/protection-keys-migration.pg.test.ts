@@ -112,30 +112,35 @@ describe("row-level security", () => {
 				await asApp(client, b.id, () => count("protection_key_wrap")),
 			).toBe(0);
 
-			// WITH CHECK: B cannot insert a row that belongs to A.
+			// The app role has no INSERT on either table (every key writer is on
+			// the owner connection, 20261118100000_recovery_proof), so B cannot
+			// write a row in A's name, whatever the policy says.
 			for (const run of [
 				() => insertSet(client, a.id),
 				() => insertWrap(client, a.id, "ak-recovery", a.id, SYMMETRIC()),
 			]) {
 				const refused = await asApp(client, b.id, () => failure(client, run));
 				expect(refused?.code).toBe("42501");
-				expect(refused?.message).toMatch(/row-level security/);
+				expect(refused?.message).toMatch(/permission denied/);
 			}
 			// ...and B updating A's set changes nothing (USING hides the row).
 			const updated = await asApp(client, b.id, () =>
 				client.query(
-					`UPDATE "protection_key_set" SET "version" = 9 WHERE "userId" = $1`,
+					`UPDATE "protection_key_set" SET "updatedAt" = now() WHERE "userId" = $1`,
 					[a.id],
 				),
 			);
 			expect(updated.rowCount).toBe(0);
-			// B deleting A's wrap removes nothing either.
+			// B cannot delete A's wrap: the app role has no DELETE on it.
 			const deleted = await asApp(client, b.id, () =>
-				client.query(`DELETE FROM "protection_key_wrap" WHERE "userId" = $1`, [
-					a.id,
-				]),
+				failure(client, () =>
+					client.query(
+						`DELETE FROM "protection_key_wrap" WHERE "userId" = $1`,
+						[a.id],
+					),
+				),
 			);
-			expect(deleted.rowCount).toBe(0);
+			expect(deleted?.code).toBe("42501");
 		});
 	});
 
@@ -154,7 +159,7 @@ describe("row-level security", () => {
 });
 
 describe("what the app role may do", () => {
-	it("cannot change the public key, the owner or a wrap, and cannot delete the set", async () => {
+	it("cannot change the public key, the owner or a wrap, and cannot insert or delete either table", async () => {
 		const { user: a } = await createTestUser();
 		await inRolledBackTransaction(async (client) => {
 			await insertSet(client, a.id);
@@ -168,6 +173,9 @@ describe("what the app role may do", () => {
 				`UPDATE "protection_key_wrap" SET "userId" = 'x'`,
 				`UPDATE "protection_key_wrap" SET "targetId" = 'x'`,
 				`DELETE FROM "protection_key_set"`,
+				`DELETE FROM "protection_key_wrap"`,
+				`INSERT INTO "protection_key_wrap" ("userId", "role", "targetId", "wrapped")
+				 VALUES ('${a.id}', 'ak-recovery', '${a.id}', '\\x00'::bytea)`,
 			];
 			for (const sql of refusals) {
 				const refused = await asApp(client, a.id, () =>
@@ -178,14 +186,11 @@ describe("what the app role may do", () => {
 			// The grants it does have work, so the refusals above are about the column.
 			const own = await asApp(client, a.id, async () => {
 				const set = await client.query(
-					`UPDATE "protection_key_set"
-					   SET "kdfSalt" = $1, "kdfMemoryKiB" = 50000, "kdfPasses" = 2, "version" = 2, "updatedAt" = now()`,
-					[Buffer.alloc(16, 9)],
+					`UPDATE "protection_key_set" SET "updatedAt" = now()`,
 				);
-				const gone = await client.query(`DELETE FROM "protection_key_wrap"`);
-				return [set.rowCount, gone.rowCount];
+				return set.rowCount;
 			});
-			expect(own).toEqual([1, 1]);
+			expect(own).toBe(1);
 		});
 	});
 
@@ -415,6 +420,9 @@ describe("the rollback snippet", () => {
 	it("takes both tables away, twice, and the migration brings them back, twice", async () => {
 		const snippet = read(`prisma/rollback/${NAME}.sql`);
 		const migration = read(`prisma/migrations/${NAME}/migration.sql`);
+		const recoveryProof = read(
+			"prisma/migrations/20261118100000_recovery_proof/migration.sql",
+		);
 		await inRolledBackTransaction(async (client) => {
 			expect(await objects(client)).toEqual({
 				tables: 2,
@@ -431,6 +439,9 @@ describe("the rollback snippet", () => {
 			});
 			await client.query(migration);
 			await client.query(migration);
+			// The grants this migration made are narrowed by the next one.
+			await client.query(recoveryProof);
+			await client.query(recoveryProof);
 			expect((await objects(client)).tables).toBe(2);
 			expect((await objects(client)).policies).toBe(2);
 			const actual = await readPrivilegeCatalog(client);

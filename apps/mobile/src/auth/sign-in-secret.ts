@@ -11,6 +11,7 @@
 // an account the phone never saw keyed, against a server whose route is
 // missing (404, an older server), falls back.
 import type { RetrospendClient } from "@retrospend/api-client";
+import { passwordMeetsRules } from "@retrospend/api-contract";
 import type { Primitives } from "@retrospend/crypto";
 import {
 	accountIsKeyed,
@@ -145,6 +146,7 @@ const SECRET_FAILURES: Record<KeyFlowCode, SecretFailure> = {
 	conflict: "unknown",
 	notOffered: "unknown",
 	// Recovery codes: no sign-in or rotation call can produce them.
+	typo: "unknown",
 	wrongRecoveryKey: "unknown",
 	tokenExpired: "unknown",
 	recoveryUnavailable: "unknown",
@@ -200,6 +202,8 @@ export type RotateFailure =
 	| "keysMissing"
 	| "protectionRefused"
 	| "conflict"
+	/** The new password breaks the rules: refused before anything is derived. */
+	| "weakPassword"
 	/** The server does not offer Advanced protection (501) any more. */
 	| "unavailable"
 	| "unknown";
@@ -216,6 +220,7 @@ const ROTATE_FAILURES: Record<KeyFlowCode, RotateFailure> = {
 	notOffered: "unavailable",
 	unreadable: "unknown",
 	// Recovery codes: no rotation call can produce them.
+	typo: "unknown",
 	wrongRecoveryKey: "unknown",
 	tokenExpired: "unknown",
 	recoveryUnavailable: "unknown",
@@ -278,6 +283,10 @@ export async function rotatePassword(
 	input: RotateInput,
 	deps: Pick<SecretDeps, "primitives" | "store"> = defaultDeps,
 ): Promise<RotateResult> {
+	// A keyed account's password is never sent, so the server cannot refuse a
+	// weak one: this is the only place the rules are enforced for it.
+	if (!passwordMeetsRules(input.next))
+		return { ok: false, reason: "weakPassword" };
 	try {
 		await rotateKeyedPassword(rotatePorts(input, deps), {
 			userId: input.userId,

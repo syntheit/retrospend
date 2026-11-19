@@ -21,6 +21,22 @@ import vectors from "@retrospend/crypto/vectors/keys.vectors.json";
 import { loadWebSodium } from "@retrospend/crypto/web";
 import type { KdfLookup, RotateApi, SecretDeps } from "./sign-in-secret";
 
+// The contract's runtime is ESM, so the real password rules file (it imports
+// nothing) stands in for it. The vector's new password is fixed by its known
+// answers and breaks the rules (no uppercase letter or number), so it alone
+// passes; every other value is judged by the real rules.
+jest.mock("@retrospend/api-contract", () => {
+	const rules = jest.requireActual(
+		"../../../../packages/api-contract/src/account/password-rules",
+	);
+	return {
+		...rules,
+		passwordMeetsRules: (value: string) =>
+			value === "correct horse battery staple" ||
+			rules.passwordMeetsRules(value),
+	};
+});
+
 type Helper = typeof import("./sign-in-secret");
 let h: Helper;
 let real: Primitives;
@@ -241,6 +257,26 @@ describe("rotatePassword", () => {
 		// Still recorded as keyed.
 		expect([...r.items.values()]).toEqual(["1"]);
 	});
+
+	it.each([
+		["too short", "Abcdef1"],
+		["without a number", "Abcdefghij"],
+		["without an uppercase letter", "abcdefg1h"],
+		["over 255 characters", `Aa1${"x".repeat(253)}`],
+	])(
+		"refuses a new password %s before deriving anything",
+		async (_name, next) => {
+			const r = rig();
+			const a = api();
+			expect(await run(r, a.client, { next })).toEqual({
+				ok: false,
+				reason: "weakPassword",
+			});
+			expect(r.argon2id).not.toHaveBeenCalled();
+			expect(a.begin).not.toHaveBeenCalled();
+			expect(a.rotate).not.toHaveBeenCalled();
+		},
+	);
 
 	it("stops at a wrong current password without making a new key", async () => {
 		const r = rig();
