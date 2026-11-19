@@ -191,18 +191,15 @@ export const deleteExpenseEntry: MoneyMutation<{ id: string }, DeletedExpense> =
 		id: "expense.delete",
 		touches: EXPENSE_FIGURES,
 		run: async (tx, input, actor) => {
-			const kept: { snapshot?: ExpenseSnapshot } = {};
+			// A read: a refused delete (not found, a fee) writes nothing and drops it.
+			const snapshot = await snapshotExpense(tx, actor.userId, input.id);
 			await new ExpenseService(tx).deleteExpense(actor.userId, input.id, {
 				policy: ENTRY_POLICY,
-				beforeRemove: async () => {
-					kept.snapshot = await snapshotExpense(tx, actor.userId, input.id);
-				},
 			});
-			if (!kept.snapshot) throw new Error("The delete took no snapshot");
 			return {
 				value: {
 					id: input.id,
-					restore: signRestore(EXPENSE_DELETE, actor.userId, kept.snapshot),
+					restore: signRestore(EXPENSE_DELETE, actor.userId, snapshot),
 				},
 				undo: {
 					kind: "revert",

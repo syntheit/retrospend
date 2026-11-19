@@ -15,8 +15,6 @@ import {
 	type EditPolicy,
 } from "@retrospend/domain/expense-write/policy";
 import {
-	rateChoice as chooseRate,
-	type RateChoice,
 	type RateInput,
 	type SavedRate,
 	storedAmount,
@@ -29,7 +27,7 @@ import { AmortizationService } from "./amortization.service";
 import { bookContextOf, expenseEditPort } from "./entry/expense-edit.prisma";
 import { type RestoreToken, readRowRestore } from "./entry/restore-token";
 import { findDuplicateExpense } from "./expense-duplicate";
-import { asBadRequest, asBadRequestAsync } from "./rate-types";
+import { asBadRequestAsync } from "./rate-types";
 import { listedEntryWhere } from "./spending";
 import { sortByText } from "./text-order";
 
@@ -37,15 +35,6 @@ import { sortByText } from "./text-order";
 export const CUSTOM_PRICING_SOURCE = CUSTOM_RATE_TYPE;
 
 export type { RateInput, SavedRate };
-
-/** The domain's rateChoice, with bad input as a BAD_REQUEST. */
-export function rateChoice(
-	input: RateInput,
-	saved: SavedRate | null | undefined,
-	homeCurrency: string,
-): RateChoice {
-	return asBadRequest(() => chooseRate(input, saved, homeCurrency));
-}
 
 /** The kind of signed restore an expense edit's undo carries (restore-token.ts). */
 export const EXPENSE_RESTORE = "expense.update";

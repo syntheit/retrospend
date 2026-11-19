@@ -9,13 +9,15 @@
 
 import { SealedTextError } from "@retrospend/api-contract/common";
 import { MissingRateError } from "@retrospend/domain/money";
+import { rateChoice as chooseRate } from "@retrospend/domain/rate-booking";
 import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { makeExpense, makeStoredExpense } from "~/test/factories";
 import { createMockDb } from "~/test/mock-db";
 import { useRateTable } from "~/test/rate-table";
-import { ExpenseService, rateChoice } from "../expense.service";
+import { ExpenseService } from "../expense.service";
 import { recurringEntryData } from "../money-in.service";
+import { asBadRequest } from "../rate-types";
 
 const DATE = new Date("2026-08-10T12:00:00Z");
 const BASE = { id: "exp-1", title: "Netflix", date: DATE };
@@ -330,6 +332,9 @@ describe("the home leg an expense books", () => {
 });
 
 describe("rateChoice", () => {
+	const rateChoice = (
+		...args: Parameters<typeof chooseRate>
+	): ReturnType<typeof chooseRate> => asBadRequest(() => chooseRate(...args));
 	const input = { amount: 10, currency: "ARS", date: DATE };
 	const saved = {
 		currency: "ARS",
