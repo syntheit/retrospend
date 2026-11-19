@@ -30,20 +30,25 @@ export interface CreatePlan {
 	excludeFromAnalytics: boolean;
 }
 
-export function planCreate(
-	input: CreateRulesInput,
-	category?: CategoryFacts,
-): CreatePlan {
-	let amount: string;
+/** An amount as the column stores it, above 0; the one rule create and edit share. */
+export function positiveAmount(amount: number | string): string {
+	let stored: string;
 	try {
-		amount = storedAmount(input.amount);
+		stored = storedAmount(amount);
 	} catch {
 		throw new AmountRefusedError();
 	}
 	// An amount that stores as 0 (0.000000001) is no expense either.
-	if (!dec(amount).gt(0)) throw new AmountRefusedError();
+	if (!dec(stored).gt(0)) throw new AmountRefusedError();
+	return stored;
+}
+
+export function planCreate(
+	input: CreateRulesInput,
+	category?: CategoryFacts,
+): CreatePlan {
 	return {
-		amount,
+		amount: positiveAmount(input.amount),
 		// A project's expenses always count; otherwise the form, then the category.
 		excludeFromAnalytics: input.projectId
 			? false

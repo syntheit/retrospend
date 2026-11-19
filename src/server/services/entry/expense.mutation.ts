@@ -16,13 +16,12 @@
  * were: booking again could land a cent apart (a row booked half up, a home
  * amount from the 12-decimal rate).
  */
+import { rateInputOf } from "@retrospend/domain/expense-write/put-body";
 import { dec } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
-import { CUSTOM_RATE_TYPE } from "~/lib/rate-selection";
 import type { Prisma } from "~prisma";
 import { homeCurrencyOf } from "../accounts/ledger";
 import {
-	type CreateExpenseInput,
 	EXPENSE_RESTORE,
 	ExpenseService,
 	type SavedFigures,
@@ -53,35 +52,6 @@ export type UpdateExpenseInput = Parameters<ExpenseService["updateExpense"]>[1];
 type ExpenseRow = Prisma.ExpenseGetPayload<{
 	include: { children: { select: { id: true } } };
 }>;
-
-/** The rate fields that book `row`'s rate again (see the file comment). */
-export function rateInputOf(row: {
-	currency: string;
-	exchangeRate: { toString(): string };
-	pricingSource: string;
-	rateType: string | null;
-	homeRate: { toFixed(): string } | null;
-	homeCurrency: string | null;
-}): Pick<
-	CreateExpenseInput,
-	"exchangeRate" | "pricingSource" | "rateType" | "customRate"
-> {
-	if (row.rateType === CUSTOM_RATE_TYPE && row.homeRate) {
-		return {
-			customRate: {
-				base: row.currency,
-				// Plain decimal text (toFixed never writes an exponent), every stored digit.
-				value: row.homeRate.toFixed(),
-				...(row.homeCurrency ? { home: row.homeCurrency } : {}),
-			},
-		};
-	}
-	return {
-		exchangeRate: Number(row.exchangeRate.toString()),
-		pricingSource: row.pricingSource,
-		...(row.rateType ? { rateType: row.rateType } : {}),
-	};
-}
 
 /** The fields the form saves, as `row` holds them now, and its figures signed. */
 function fieldsOf(row: ExpenseRow, userId: string, home: string) {

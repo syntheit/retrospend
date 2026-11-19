@@ -28,3 +28,28 @@ export class CategoryNotFoundError extends Error {
 		this.name = "CategoryNotFoundError";
 	}
 }
+
+export const EXPENSE_NOT_FOUND = "Expense not found";
+export const LEG_EDIT_REFUSED =
+	"This entry moved money in an account. Delete it and add it again to change its amount, currency or date.";
+export const LEG_DELETE_REFUSED =
+	"This expense moved money in an account. Undo it from its transfer.";
+export const SPREAD_NOT_ON_DEVICE = "Spreading an expense is not on the device";
+
+/** Which answer a refused edit or delete maps to on each transport. */
+export type EditRefusalKind = "notFound" | "badRequest";
+
+/**
+ * The row cannot be reached or changed: not the person's, a row the policy
+ * hides, or money an account leg pins. The kind picks the transport's code
+ * (trpc NOT_FOUND or BAD_REQUEST); the message is the same everywhere.
+ */
+export class EditRefusal extends Error {
+	override readonly name = "EditRefusal";
+	constructor(
+		readonly kind: EditRefusalKind,
+		message: string,
+	) {
+		super(message);
+	}
+}
