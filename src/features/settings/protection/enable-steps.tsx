@@ -8,7 +8,11 @@ import { Label } from "~/components/ui/label";
 import { SheetChanges } from "~/components/ui/sheet-changes";
 import { StatusDot } from "~/components/ui/status-dot";
 import { SettingRow, SettingRows } from "../setting-row";
-import type { EnableAction, EnableState } from "./enable-model";
+import {
+	type EnableAction,
+	type EnableState,
+	fieldsLocked,
+} from "./enable-model";
 import { PasswordRules } from "./password-rules";
 import { StepError } from "./step-error";
 
@@ -48,6 +52,8 @@ export function WhatStep({ onSeeWhich }: { onSeeWhich?: () => void }) {
 export function PasswordStep({ state, dispatch }: StepProps) {
 	const t = useTranslations("protection.enable.newPassword");
 	const field = useTranslations("settingsV2.password");
+	const making = useTranslations("protection.enable");
+	const locked = fieldsLocked(state);
 	const newId = useId();
 	const confirmId = useId();
 	const set = (field: "password" | "confirm") => (value: string) =>
@@ -59,7 +65,7 @@ export function PasswordStep({ state, dispatch }: StepProps) {
 				<Label htmlFor={newId}>{field("new")}</Label>
 				<Input
 					autoComplete="new-password"
-					disabled={state.busy}
+					disabled={locked}
 					id={newId}
 					onChange={(e) => set("password")(e.target.value)}
 					type="password"
@@ -71,7 +77,7 @@ export function PasswordStep({ state, dispatch }: StepProps) {
 				<Label htmlFor={confirmId}>{field("confirm")}</Label>
 				<Input
 					autoComplete="new-password"
-					disabled={state.busy}
+					disabled={locked}
 					id={confirmId}
 					onChange={(e) => set("confirm")(e.target.value)}
 					type="password"
@@ -80,6 +86,11 @@ export function PasswordStep({ state, dispatch }: StepProps) {
 			</div>
 			{state.confirm !== "" && state.confirm !== state.password ? (
 				<p className="text-danger text-meta">{field("mismatch")}</p>
+			) : null}
+			{state.busy ? (
+				<p className="text-fg-3 text-small" role="status">
+					{making("making")}
+				</p>
 			) : null}
 			<StepError code={state.error} />
 		</div>

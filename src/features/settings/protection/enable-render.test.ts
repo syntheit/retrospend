@@ -30,7 +30,7 @@ const actions: KeyActions = {
 const file: KeyFile = {
 	labels: { title: "T", account: "A", made: "M", key: "K", keepSafe: "S" },
 	account: "ana@example.com",
-	made: "2026-11-18",
+	made: new Date(2026, 10, 18),
 };
 const body = (
 	patch: Partial<EnableState>,
@@ -49,7 +49,10 @@ const body = (
 
 /** Text of the markup with the escapes of the apostrophe and ampersand undone. */
 const words = (html: string) =>
-	html.replaceAll("&#x27;", "'").replaceAll("&amp;", "&").replaceAll("&quot;", '"');
+	html
+		.replaceAll("&#x27;", "'")
+		.replaceAll("&amp;", "&")
+		.replaceAll("&quot;", '"');
 
 const p = protection;
 const STEP_STATE: Record<EnableStep, Partial<EnableState>> = {
@@ -142,6 +145,18 @@ describe("new password", () => {
 		expect(html.match(/disabled=""/g)?.length).toBe(2);
 	});
 
+	it("says it is making the keys, only while it is", () => {
+		const busy = words(body({ step: "newPassword", busy: true }));
+		expect(busy).toContain(p.enable.making);
+		expect(busy).toContain('role="status"');
+		expect(words(body({ step: "newPassword" }))).not.toContain(p.enable.making);
+	});
+
+	it("locks both fields after a final failure", () => {
+		const html = body({ step: "newPassword", error: "notOffered" });
+		expect(html.match(/disabled=""/g)?.length).toBe(2);
+	});
+
 	it("shows the failure as an alert", () => {
 		const html = words(body({ step: "newPassword", error: "failed" }));
 		expect(html).toContain('role="alert"');
@@ -172,7 +187,11 @@ describe("save the key", () => {
 			expect(html).toContain(group);
 			expect(html).toContain(`Group ${i + 1}`);
 		});
-		for (const label of [p.recoveryKey.copy, p.recoveryKey.download, p.recoveryKey.print])
+		for (const label of [
+			p.recoveryKey.copy,
+			p.recoveryKey.download,
+			p.recoveryKey.print,
+		])
 			expect(html).toContain(label);
 		expect(html).toContain(p.recoveryKey.label);
 	});
@@ -180,7 +199,9 @@ describe("save the key", () => {
 
 describe("confirm the key", () => {
 	it("asks for the two groups by number", () => {
-		const html = words(body({ step: "confirmKey", keyText: KEY, groups: [2, 6] }));
+		const html = words(
+			body({ step: "confirmKey", keyText: KEY, groups: [2, 6] }),
+		);
 		expect(html).toContain("Type group 3 and group 7.");
 		expect(html).toContain("Group 3");
 		expect(html).toContain("Group 7");
@@ -212,20 +233,36 @@ describe("confirm it's you", () => {
 	});
 
 	it("words each try-again failure", () => {
-		for (const code of ["wrongPassword", "wrongCode", "tooMany", "failed"] as const) {
+		for (const code of [
+			"wrongPassword",
+			"wrongCode",
+			"tooMany",
+			"failed",
+		] as const) {
 			const html = words(body({ step: "confirmYou", error: code }));
 			expect(html, code).toContain(p.errors[code]);
 			expect(html, code).toContain("<input");
 		}
 	});
 
-	it("a final failure is the one Notice, with no fields left", () => {
+	it("a final failure is the one Notice, with the fields locked", () => {
 		for (const code of ["checkFailed", "notOffered"] as const) {
-			const html = words(body({ step: "confirmYou", error: code }));
-			expect(html).toContain(p.errors[code]);
-			expect(html).toContain('data-tone="danger"');
-			expect(html).not.toContain("<input");
+			for (const twoFactor of [false, true]) {
+				const html = words(
+					body({ step: "confirmYou", error: code }, { twoFactor }),
+				);
+				expect(html).toContain(p.errors[code]);
+				expect(html).toContain('data-tone="danger"');
+				const inputs = html.match(/<input[^>]*>/g) ?? [];
+				expect(inputs.length).toBeGreaterThan(0);
+				for (const input of inputs) expect(input).toContain('disabled=""');
+			}
 		}
+	});
+
+	it("leaves the fields usable after a try-again failure", () => {
+		const html = body({ step: "confirmYou", error: "wrongPassword" });
+		expect(html).not.toContain('disabled=""');
 	});
 });
 

@@ -7,9 +7,15 @@
 // The order is the mockup's (protection.html E1 to E3, R1, R2): what changes,
 // a new password, the ways to get back in with the recovery key made, shown
 // and confirmed, then Confirm it's you, then done.
-import { passwordMeetsRules } from "@retrospend/api-contract";
-import { parseRecoveryKey, recoveryGroups } from "@retrospend/crypto";
-import { type ConfirmGroups, groupMatches } from "@retrospend/crypto/client";
+import {
+	passwordMeetsRules,
+	TWO_FACTOR_CODE_LENGTH,
+} from "@retrospend/api-contract";
+import {
+	type ConfirmGroups,
+	groupMatches,
+	recoveryKeyGroups,
+} from "@retrospend/crypto/client";
 
 export const ENABLE_STEPS = [
 	"what",
@@ -103,20 +109,10 @@ export type EnableAction =
 	| { type: "saved" }
 	| { type: "reset" };
 
-/** The nine groups of a key text, read through the key's own format (one owner: packages/crypto). */
-export function keyGroups(keyText: string): string[] {
-	const bytes = parseRecoveryKey(keyText);
-	try {
-		return recoveryGroups(bytes);
-	} finally {
-		bytes.fill(0);
-	}
-}
-
 /** Both typed groups are the groups asked for. Nothing asked yet is never a match. */
 export function groupsConfirmed(state: EnableState): boolean {
 	if (!state.groups || state.keyText === "") return false;
-	const all = keyGroups(state.keyText);
+	const all = recoveryKeyGroups(state.keyText);
 	return state.groups.every((at, i) =>
 		groupMatches(state.typed[i] ?? "", all[at] ?? ""),
 	);
@@ -129,10 +125,18 @@ export function newPasswordReady(
 	return passwordMeetsRules(state.password) && state.password === state.confirm;
 }
 
+/** Nothing can be typed, tried or changed: it is working, or it failed for good. */
+export function fieldsLocked(state: EnableState): boolean {
+	return state.busy || isFinalFailure(state.error);
+}
+
 export function enableReducer(
 	state: EnableState,
 	action: EnableAction,
 ): EnableState {
+	// A final failure stays until the sheet closes (reset): no keystroke, step
+	// or retry moves past it.
+	if (isFinalFailure(state.error) && action.type !== "reset") return state;
 	switch (action.type) {
 		case "reset":
 			return INITIAL_STATE;
@@ -251,9 +255,6 @@ const PRIMARY: Record<EnableStep, string> = {
 	done: "protection.methods.done",
 };
 
-/** The two-factor code is six digits. */
-export const CODE_LENGTH = 6;
-
 export function enableView(
 	state: EnableState,
 	options: { twoFactor: boolean },
@@ -282,7 +283,7 @@ function stepReady(state: EnableState, options: { twoFactor: boolean }) {
 		case "confirmYou":
 			return (
 				state.current !== "" &&
-				(!options.twoFactor || state.code.length === CODE_LENGTH)
+				(!options.twoFactor || state.code.length === TWO_FACTOR_CODE_LENGTH)
 			);
 		default:
 			return true;
@@ -296,7 +297,7 @@ function stepReady(state: EnableState, options: { twoFactor: boolean }) {
 export function groupMismatch(state: EnableState, index: 0 | 1): boolean {
 	const at = state.groups?.[index];
 	if (at === undefined || state.keyText === "") return false;
-	const group = keyGroups(state.keyText)[at] ?? "";
+	const group = recoveryKeyGroups(state.keyText)[at] ?? "";
 	const typed = state.typed[index];
 	return (
 		typed.replace(/[\s-]/g, "").length >= group.length &&

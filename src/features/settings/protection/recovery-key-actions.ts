@@ -4,6 +4,7 @@
 // write the same file. The browser parts are behind one small type so the
 // sheet can be driven without a browser.
 import {
+	RECOVERY_KEY_FILE_NAME,
 	type RecoveryFileLabels,
 	recoveryKeyFileText,
 } from "@retrospend/crypto/client";
@@ -14,14 +15,11 @@ export type KeyActions = {
 	print: (fileText: string) => void;
 };
 
-/** A name that says what the file is and names no one. */
-export const KEY_FILE_NAME = "retrospend-recovery-key.txt";
-
-/** The words around the key in the saved file, and the account and date it was made for. */
+/** The words around the key in the saved file, the account's email and the instant the keys were made. */
 export type KeyFile = {
 	labels: RecoveryFileLabels;
 	account: string;
-	made: string;
+	made: Date;
 };
 
 export function keyFileText(file: KeyFile, keyText: string): string {
@@ -40,7 +38,7 @@ export const browserKeyActions: KeyActions = {
 		);
 		const link = document.createElement("a");
 		link.href = url;
-		link.download = KEY_FILE_NAME;
+		link.download = RECOVERY_KEY_FILE_NAME;
 		link.click();
 		URL.revokeObjectURL(url);
 	},

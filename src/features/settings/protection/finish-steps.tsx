@@ -1,5 +1,6 @@
 "use client";
 
+import { TWO_FACTOR_CODE_LENGTH } from "@retrospend/api-contract";
 import { useTranslations } from "next-intl";
 import { useId } from "react";
 import { Input } from "~/components/ui/input";
@@ -10,9 +11,11 @@ import {
 } from "~/components/ui/input-otp";
 import { Label } from "~/components/ui/label";
 import { Notice } from "~/components/ui/notice";
-import { CODE_LENGTH, isFinalFailure } from "./enable-model";
+import { fieldsLocked } from "./enable-model";
 import type { StepProps } from "./enable-steps";
 import { StepError } from "./step-error";
+
+const CODE_SLOTS = Array.from({ length: TWO_FACTOR_CODE_LENGTH }, (_, i) => i);
 
 /**
  * Confirm it's you: the current password, and the two-factor code when it is
@@ -27,52 +30,48 @@ export function ConfirmYouStep({
 	const label = useTranslations("settingsV2.twoFactor");
 	const passwordId = useId();
 	const codeId = useId();
-	// A final failure leaves nothing to try, so the fields go and the Notice stays.
-	const over = isFinalFailure(state.error);
+	// Working, or failed for good: the fields stay on screen and cannot be used.
+	const locked = fieldsLocked(state);
 	return (
 		<div className="flex flex-col gap-4">
-			{over ? null : (
-				<>
-					<p className="text-fg-2 text-small">{t("body")}</p>
-					<div className="flex flex-col gap-2">
-						<Label htmlFor={passwordId}>{label("password")}</Label>
-						<Input
-							autoComplete="current-password"
-							disabled={state.busy}
-							id={passwordId}
-							onChange={(e) =>
-								dispatch({
-									type: "text",
-									field: "current",
-									value: e.target.value,
-								})
-							}
-							type="password"
-							value={state.current}
-						/>
-					</div>
-					{twoFactor ? (
-						<div className="flex flex-col gap-2">
-							<Label htmlFor={codeId}>{label("code")}</Label>
-							<InputOTP
-								disabled={state.busy}
-								id={codeId}
-								maxLength={CODE_LENGTH}
-								onChange={(value) =>
-									dispatch({ type: "text", field: "code", value })
-								}
-								value={state.code}
-							>
-								<InputOTPGroup>
-									{[0, 1, 2, 3, 4, 5].map((i) => (
-										<InputOTPSlot index={i} key={i} />
-									))}
-								</InputOTPGroup>
-							</InputOTP>
-						</div>
-					) : null}
-				</>
-			)}
+			<p className="text-fg-2 text-small">{t("body")}</p>
+			<div className="flex flex-col gap-2">
+				<Label htmlFor={passwordId}>{label("password")}</Label>
+				<Input
+					autoComplete="current-password"
+					disabled={locked}
+					id={passwordId}
+					onChange={(e) =>
+						dispatch({
+							type: "text",
+							field: "current",
+							value: e.target.value,
+						})
+					}
+					type="password"
+					value={state.current}
+				/>
+			</div>
+			{twoFactor ? (
+				<div className="flex flex-col gap-2">
+					<Label htmlFor={codeId}>{label("code")}</Label>
+					<InputOTP
+						disabled={locked}
+						id={codeId}
+						maxLength={TWO_FACTOR_CODE_LENGTH}
+						onChange={(value) =>
+							dispatch({ type: "text", field: "code", value })
+						}
+						value={state.code}
+					>
+						<InputOTPGroup>
+							{CODE_SLOTS.map((i) => (
+								<InputOTPSlot index={i} key={i} />
+							))}
+						</InputOTPGroup>
+					</InputOTP>
+				</div>
+			) : null}
 			<StepError code={state.error} />
 		</div>
 	);

@@ -1,23 +1,22 @@
+import { TWO_FACTOR_CODE_LENGTH } from "@retrospend/api-contract";
 import { describe, expect, it } from "vitest";
 import {
-	CODE_LENGTH,
-	EnableFailure,
 	type EnableAction,
+	EnableFailure,
 	type EnableState,
 	enableReducer,
 	enableView,
 	failureCode,
+	fieldsLocked,
 	groupMismatch,
 	groupsConfirmed,
 	INITIAL_STATE,
 	isFinalFailure,
-	keyGroups,
 	newPasswordReady,
 } from "./enable-model";
 
 // "ascending" from the shared recovery key vectors: nine different groups.
 const KEY = "000G40-R40M30-E20918-5GR38E-1W8124-GK2GAH-C5RR34-D1P70X-3RFH8K";
-const GROUPS = KEY.split("-");
 
 const run = (actions: EnableAction[], from: EnableState = INITIAL_STATE) =>
 	actions.reduce(enableReducer, from);
@@ -76,10 +75,14 @@ describe("the new password step", () => {
 		expect(newPasswordReady({ password: "Abcdef12", confirm: "Abcdef1" })).toBe(
 			false,
 		);
-		expect(newPasswordReady({ password: "Abcdef12", confirm: "Abcdef12" })).toBe(
-			true,
-		);
-		const s = at({ step: "newPassword", password: "Abcdef12", confirm: "Abcdef12" });
+		expect(
+			newPasswordReady({ password: "Abcdef12", confirm: "Abcdef12" }),
+		).toBe(true);
+		const s = at({
+			step: "newPassword",
+			password: "Abcdef12",
+			confirm: "Abcdef12",
+		});
 		expect(enableView(s, OPTIONS).primaryDisabled).toBe(false);
 		expect(
 			enableView(at({ step: "newPassword", password: "Abcdef12" }), OPTIONS)
@@ -96,10 +99,10 @@ describe("the new password step", () => {
 			],
 			at({ step: "newPassword" }),
 		);
-		const made = run(
-			[{ type: "busy" }, { type: "keysMade", keyText: KEY }],
-			{ ...s, step: "newPassword" },
-		);
+		const made = run([{ type: "busy" }, { type: "keysMade", keyText: KEY }], {
+			...s,
+			step: "newPassword",
+		});
 		expect(made.password).toBe("");
 		expect(made.confirm).toBe("");
 		expect(made.keyText).toBe(KEY);
@@ -127,19 +130,19 @@ describe("the new password step", () => {
 	});
 
 	it("ignores typing and Back while the keys are being made", () => {
-		const s = run([{ type: "busy" }], at({ step: "newPassword", password: "x" }));
+		const s = run(
+			[{ type: "busy" }],
+			at({ step: "newPassword", password: "x" }),
+		);
 		expect(s.busy).toBe(true);
-		expect(run([{ type: "text", field: "password", value: "y" }], s).password).toBe("x");
+		expect(
+			run([{ type: "text", field: "password", value: "y" }], s).password,
+		).toBe("x");
 		expect(run([{ type: "back" }], s).step).toBe("newPassword");
 	});
 });
 
 describe("the recovery key steps", () => {
-	it("lists the nine groups from the key's own format", () => {
-		expect(keyGroups(KEY)).toEqual(GROUPS);
-		expect(keyGroups(KEY.toLowerCase().replaceAll("-", " "))).toEqual(GROUPS);
-	});
-
 	it("confirms only when both asked groups are typed", () => {
 		expect(groupsConfirmed(confirming(["E20918", ""]))).toBe(false);
 		expect(groupsConfirmed(confirming(["E20918", "C5RR34"]))).toBe(true);
@@ -154,8 +157,12 @@ describe("the recovery key steps", () => {
 	});
 
 	it("never counts nothing asked as confirmed", () => {
-		expect(groupsConfirmed(at({ step: "confirmKey", keyText: KEY }))).toBe(false);
-		expect(groupsConfirmed(at({ step: "confirmKey", groups: [0, 1] }))).toBe(false);
+		expect(groupsConfirmed(at({ step: "confirmKey", keyText: KEY }))).toBe(
+			false,
+		);
+		expect(groupsConfirmed(at({ step: "confirmKey", groups: [0, 1] }))).toBe(
+			false,
+		);
 	});
 
 	it("keyConfirmed does nothing without both groups typed", () => {
@@ -188,17 +195,22 @@ describe("the recovery key steps", () => {
 	});
 
 	it("Back to the password drops the keys made for it", () => {
-		const s = run([{ type: "back" }], at({ step: "methods", keyText: KEY, keySaved: true }));
+		const s = run(
+			[{ type: "back" }],
+			at({ step: "methods", keyText: KEY, keySaved: true }),
+		);
 		expect(s.step).toBe("newPassword");
 		expect(s.keyText).toBe("");
 		expect(s.keySaved).toBe(false);
 	});
 
 	it("only Create key starts the key steps", () => {
-		expect(run([{ type: "createKey" }], at({ step: "what" })).step).toBe("what");
-		expect(run([{ type: "savedIt", groups: [0, 1] }], at({ step: "methods" })).step).toBe(
-			"methods",
+		expect(run([{ type: "createKey" }], at({ step: "what" })).step).toBe(
+			"what",
 		);
+		expect(
+			run([{ type: "savedIt", groups: [0, 1] }], at({ step: "methods" })).step,
+		).toBe("methods");
 	});
 });
 
@@ -212,13 +224,13 @@ describe("confirm it's you", () => {
 		expect(enableView(typed, { twoFactor: true }).primaryDisabled).toBe(true);
 		expect(
 			enableView(
-				{ ...typed, code: "1".repeat(CODE_LENGTH - 1) },
+				{ ...typed, code: "1".repeat(TWO_FACTOR_CODE_LENGTH - 1) },
 				{ twoFactor: true },
 			).primaryDisabled,
 		).toBe(true);
 		expect(
 			enableView(
-				{ ...typed, code: "1".repeat(CODE_LENGTH) },
+				{ ...typed, code: "1".repeat(TWO_FACTOR_CODE_LENGTH) },
 				{ twoFactor: true },
 			).primaryDisabled,
 		).toBe(false);
@@ -226,7 +238,11 @@ describe("confirm it's you", () => {
 
 	it("a wrong password is a try-again error that clears when typing", () => {
 		let s = run(
-			[{ type: "text", field: "current", value: "no" }, { type: "busy" }, { type: "failed", code: "wrongPassword" }],
+			[
+				{ type: "text", field: "current", value: "no" },
+				{ type: "busy" },
+				{ type: "failed", code: "wrongPassword" },
+			],
 			ready,
 		);
 		expect(s.step).toBe("confirmYou");
@@ -238,7 +254,11 @@ describe("confirm it's you", () => {
 
 	it("a failed read-back is final: no Continue, only Close", () => {
 		const s = run(
-			[{ type: "text", field: "current", value: "pw" }, { type: "busy" }, { type: "failed", code: "checkFailed" }],
+			[
+				{ type: "text", field: "current", value: "pw" },
+				{ type: "busy" },
+				{ type: "failed", code: "checkFailed" },
+			],
 			ready,
 		);
 		const view = enableView(s, OPTIONS);
@@ -248,7 +268,12 @@ describe("confirm it's you", () => {
 
 	it("clears the password and code once saved", () => {
 		const s = run(
-			[{ type: "text", field: "current", value: "pw" }, { type: "text", field: "code", value: "123456" }, { type: "busy" }, { type: "saved" }],
+			[
+				{ type: "text", field: "current", value: "pw" },
+				{ type: "text", field: "code", value: "123456" },
+				{ type: "busy" },
+				{ type: "saved" },
+			],
 			ready,
 		);
 		expect(s.step).toBe("done");
@@ -263,6 +288,54 @@ describe("confirm it's you", () => {
 	});
 });
 
+describe("a final failure", () => {
+	const ready = at({
+		step: "confirmYou",
+		keyText: KEY,
+		keySaved: true,
+		current: "pw",
+	});
+	const over = (code: "checkFailed" | "notOffered") =>
+		run([{ type: "busy" }, { type: "failed", code }], ready);
+
+	it("stays through typing, steps and retries until the sheet is closed", () => {
+		for (const code of ["checkFailed", "notOffered"] as const) {
+			const s = over(code);
+			expect(s.error).toBe(code);
+			for (const action of [
+				{ type: "text", field: "current", value: "other" },
+				{ type: "text", field: "code", value: "123456" },
+				{ type: "group", index: 0, value: "x" },
+				{ type: "forward" },
+				{ type: "back" },
+				{ type: "busy" },
+				{ type: "createKey" },
+				{ type: "keyConfirmed" },
+				{ type: "saved" },
+			] as EnableAction[])
+				expect(enableReducer(s, action), `${code} ${action.type}`).toEqual(s);
+			expect(enableReducer(s, { type: "reset" })).toEqual(INITIAL_STATE);
+		}
+	});
+
+	it("locks the fields, as does working, and a try-again failure does not", () => {
+		expect(fieldsLocked(over("checkFailed"))).toBe(true);
+		expect(fieldsLocked(at({ busy: true }))).toBe(true);
+		expect(fieldsLocked(at({ error: "wrongPassword" }))).toBe(false);
+		expect(fieldsLocked(INITIAL_STATE)).toBe(false);
+	});
+
+	it("also holds on the password step when the keys could not be made", () => {
+		const s = run(
+			[{ type: "busy" }, { type: "failed", code: "notOffered" }],
+			at({ step: "newPassword", password: "Abcdef12", confirm: "Abcdef12" }),
+		);
+		expect(
+			enableReducer(s, { type: "text", field: "password", value: "x" }),
+		).toEqual(s);
+	});
+});
+
 describe("failures", () => {
 	it("reads a code off an EnableFailure and anything else as failed", () => {
 		expect(failureCode(new EnableFailure("tooMany"))).toBe("tooMany");
@@ -273,7 +346,12 @@ describe("failures", () => {
 	it("is final only when nothing can be retried", () => {
 		expect(isFinalFailure("checkFailed")).toBe(true);
 		expect(isFinalFailure("notOffered")).toBe(true);
-		for (const code of ["wrongPassword", "wrongCode", "tooMany", "failed"] as const)
+		for (const code of [
+			"wrongPassword",
+			"wrongCode",
+			"tooMany",
+			"failed",
+		] as const)
 			expect(isFinalFailure(code)).toBe(false);
 		expect(isFinalFailure(null)).toBe(false);
 	});
@@ -281,7 +359,8 @@ describe("failures", () => {
 
 describe("the view of each step", () => {
 	it("titles and verbs follow the copy", () => {
-		const view = (patch: Partial<EnableState>) => enableView(at(patch), OPTIONS);
+		const view = (patch: Partial<EnableState>) =>
+			enableView(at(patch), OPTIONS);
 		expect(view({ step: "what" })).toMatchObject({
 			title: "protection.enable.what.title",
 			left: "cancel",
@@ -300,9 +379,12 @@ describe("the view of each step", () => {
 	});
 
 	it("methods wait on the confirmed key", () => {
-		expect(enableView(at({ step: "methods" }), OPTIONS).primaryDisabled).toBe(true);
+		expect(enableView(at({ step: "methods" }), OPTIONS).primaryDisabled).toBe(
+			true,
+		);
 		expect(
-			enableView(at({ step: "methods", keySaved: true }), OPTIONS).primaryDisabled,
+			enableView(at({ step: "methods", keySaved: true }), OPTIONS)
+				.primaryDisabled,
 		).toBe(false);
 	});
 

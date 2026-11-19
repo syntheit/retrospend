@@ -9,6 +9,7 @@
 	},
 	"enable": {
 		"back": "Back",
+		"making": "Making your keys",
 		"what": {
 			"title": "Turn on Advanced protection",
 			"body": "Your expenses, budgets and Wealth are sealed with a key only your devices hold.",
@@ -41,6 +42,7 @@
 		"saveTitle": "Save your recovery key",
 		"saveBody": "Without this key or your password, nobody can open your data, including us.",
 		"copy": "Copy",
+		"copied": "Copied",
 		"download": "Download",
 		"print": "Print",
 		"saveFiles": "Save to Files",

@@ -17,15 +17,16 @@ import {
 	type KeyActions,
 	type KeyFile,
 } from "./recovery-key-actions";
+import { useEnableLifecycle } from "./use-enable-lifecycle";
 
 export type EnableSheetProps = {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	/** Two-factor is on, so Confirm it's you also asks for a code. */
 	twoFactor: boolean;
-	/** The account's display name and the date the keys are made, for the saved file. */
+	/** The account's email and the instant the keys are made, for the saved file. */
 	account: string;
-	made: string;
+	made: Date;
 	/**
 	 * New password step: derive and wrap, and resolve with the recovery key's
 	 * text. Reject with an EnableFailure (anything else reads as `failed`). The
@@ -64,8 +65,11 @@ export function EnableSheet(props: EnableSheetProps) {
 	const view = enableView(state, { twoFactor: props.twoFactor });
 	const running = useRef(false);
 	const body = useRef<HTMLDivElement>(null);
-	const discard = useRef(props.discard);
-	discard.current = props.discard;
+	const life = useEnableLifecycle({
+		open: props.open,
+		discard: props.discard,
+		reset: () => dispatch({ type: "reset" }),
+	});
 	const file: KeyFile = {
 		labels: {
 			title: rk("fileTitle"),
@@ -77,15 +81,6 @@ export function EnableSheet(props: EnableSheetProps) {
 		account: props.account,
 		made: props.made,
 	};
-
-	// Whatever closes the sheet (Cancel, Escape, the parent, Done) ends here:
-	// no password, key text or typed group waits in a closed sheet.
-	useEffect(() => {
-		if (props.open) return;
-		dispatch({ type: "reset" });
-		discard.current();
-	}, [props.open]);
-	useEffect(() => () => discard.current(), []);
 
 	// The step that held focus is gone: focus lands on the new step's first control.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: runs on a step change only
@@ -128,8 +123,10 @@ export function EnableSheet(props: EnableSheetProps) {
 				return dispatch({ type: "keyConfirmed" });
 			case "newPassword":
 				return run(async () => {
-					const keyText = await props.makeKeys(state.password);
-					dispatch({ type: "keysMade", keyText });
+					const keyText = await life.settle(() =>
+						props.makeKeys(state.password),
+					);
+					if (keyText !== null) dispatch({ type: "keysMade", keyText });
 				});
 			case "confirmYou":
 				return run(async () => {
@@ -147,7 +144,7 @@ export function EnableSheet(props: EnableSheetProps) {
 	const leave = () => {
 		if (view.left === "back") {
 			// Back to the password drops keys made for the old one.
-			if (state.step === "methods") props.discard();
+			if (state.step === "methods") life.discardDraft();
 			dispatch({ type: "back" });
 		} else close();
 	};

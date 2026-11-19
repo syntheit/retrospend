@@ -9,6 +9,7 @@
 	},
 	"enable": {
 		"back": "Voltar",
+		"making": "Criando suas chaves",
 		"what": {
 			"title": "Ativar a proteção avançada",
 			"body": "Suas despesas, orçamentos e patrimônio são selados com uma chave que só seus dispositivos têm.",
@@ -41,6 +42,7 @@
 		"saveTitle": "Salve sua chave de recuperação",
 		"saveBody": "Sem esta chave ou sua senha, ninguém consegue abrir seus dados, nem nós.",
 		"copy": "Copiar",
+		"copied": "Copiado",
 		"download": "Baixar",
 		"print": "Imprimir",
 		"saveFiles": "Salvar em Arquivos",

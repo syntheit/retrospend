@@ -1,17 +1,20 @@
 "use client";
 
+import { recoveryKeyGroups } from "@retrospend/crypto/client";
 import { useTranslations } from "next-intl";
-import { useId } from "react";
+import { useId, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { groupMismatch, keyGroups } from "./enable-model";
+import { useToast } from "~/components/ui/toast";
+import { fieldsLocked, groupMismatch } from "./enable-model";
 import type { StepProps } from "./enable-steps";
 import {
 	type KeyActions,
 	type KeyFile,
 	keyFileText,
 } from "./recovery-key-actions";
+import { StepError } from "./step-error";
 
 /** R1: the key in nine groups, and the ways to keep it. Shown once; it is not read back from the server. */
 export function SaveKeyStep({
@@ -20,7 +23,19 @@ export function SaveKeyStep({
 	file,
 }: Pick<StepProps, "state"> & { actions: KeyActions; file: KeyFile }) {
 	const t = useTranslations("protection.recoveryKey");
-	const items = keyGroups(state.keyText).map((group, i) => ({
+	const toast = useToast();
+	const [copyFailed, setCopyFailed] = useState(false);
+	// The clipboard can refuse (no permission, an insecure page): say so, never "Copied".
+	const copy = async () => {
+		try {
+			await actions.copy(state.keyText);
+			setCopyFailed(false);
+			toast.saved(t("copied"));
+		} catch {
+			setCopyFailed(true);
+		}
+	};
+	const items = recoveryKeyGroups(state.keyText).map((group, i) => ({
 		group,
 		number: i + 1,
 	}));
@@ -39,11 +54,7 @@ export function SaveKeyStep({
 				))}
 			</fieldset>
 			<div className="flex flex-wrap gap-2">
-				<Button
-					kind="secondary"
-					onClick={() => void actions.copy(state.keyText)}
-					size="sm"
-				>
+				<Button kind="secondary" onClick={() => void copy()} size="sm">
 					{t("copy")}
 				</Button>
 				<Button
@@ -61,6 +72,7 @@ export function SaveKeyStep({
 					{t("print")}
 				</Button>
 			</div>
+			<StepError code={copyFailed ? "failed" : null} />
 		</div>
 	);
 }
@@ -70,6 +82,7 @@ export function ConfirmKeyStep({ state, dispatch }: StepProps) {
 	const t = useTranslations("protection.recoveryKey");
 	const ids = [useId(), useId()] as const;
 	const [first, second] = state.groups ?? [0, 1];
+	const locked = fieldsLocked(state);
 	return (
 		<div className="flex flex-col gap-4">
 			<p className="text-fg-2 text-small">
@@ -91,6 +104,7 @@ export function ConfirmKeyStep({ state, dispatch }: StepProps) {
 								autoComplete="off"
 								autoCorrect="off"
 								className="font-mono"
+								disabled={locked}
 								id={ids[index]}
 								onChange={(e) =>
 									dispatch({ type: "group", index, value: e.target.value })

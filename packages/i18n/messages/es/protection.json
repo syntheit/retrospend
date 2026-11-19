@@ -9,6 +9,7 @@
 	},
 	"enable": {
 		"back": "Atrás",
+		"making": "Creando tus claves",
 		"what": {
 			"title": "Activar la protección avanzada",
 			"body": "Tus gastos, presupuestos y patrimonio se sellan con una clave que solo tienen tus dispositivos.",
@@ -41,6 +42,7 @@
 		"saveTitle": "Guarda tu clave de recuperación",
 		"saveBody": "Sin esta clave ni tu contraseña, nadie puede abrir tus datos, ni siquiera nosotros.",
 		"copy": "Copiar",
+		"copied": "Copiado",
 		"download": "Descargar",
 		"print": "Imprimir",
 		"saveFiles": "Guardar en Archivos",

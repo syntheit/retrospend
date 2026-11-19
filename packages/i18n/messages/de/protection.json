@@ -9,6 +9,7 @@
 	},
 	"enable": {
 		"back": "Zurück",
+		"making": "Deine Schlüssel werden erstellt",
 		"what": {
 			"title": "Erweiterten Schutz einschalten",
 			"body": "Deine Ausgaben, Budgets und dein Vermögen werden mit einem Schlüssel versiegelt, den nur deine Geräte besitzen.",
@@ -41,6 +42,7 @@
 		"saveTitle": "Wiederherstellungsschlüssel speichern",
 		"saveBody": "Ohne diesen Schlüssel oder dein Passwort kann niemand deine Daten öffnen, auch wir nicht.",
 		"copy": "Kopieren",
+		"copied": "Kopiert",
 		"download": "Herunterladen",
 		"print": "Drucken",
 		"saveFiles": "In Dateien sichern",

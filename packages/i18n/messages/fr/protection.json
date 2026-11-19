@@ -9,6 +9,7 @@
 	},
 	"enable": {
 		"back": "Retour",
+		"making": "Création de tes clés",
 		"what": {
 			"title": "Activer la protection avancée",
 			"body": "Tes dépenses, budgets et ton patrimoine sont scellés par une clé que seuls tes appareils détiennent.",
@@ -41,6 +42,7 @@
 		"saveTitle": "Enregistre ta clé de récupération",
 		"saveBody": "Sans cette clé ni ton mot de passe, personne ne peut ouvrir tes données, nous non plus.",
 		"copy": "Copier",
+		"copied": "Copié",
 		"download": "Télécharger",
 		"print": "Imprimer",
 		"saveFiles": "Enregistrer dans Fichiers",
