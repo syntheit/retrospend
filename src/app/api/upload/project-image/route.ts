@@ -1,6 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { type NextRequest, NextResponse } from "next/server";
-import { processProjectImage } from "~/server/image-processing";
+import {
+	INVALID_IMAGE_MESSAGE,
+	processProjectImage,
+} from "~/server/image-processing";
 import { deleteFile, getImageUrl, uploadFile } from "~/server/storage";
 import { db } from "~/server/db";
 import { logAudit } from "~/server/services/shared-expenses/audit-log";
@@ -75,8 +78,13 @@ export async function POST(request: NextRequest) {
 	try {
 		processed = await processProjectImage(buffer);
 	} catch (err) {
-		const message = err instanceof Error ? err.message : "Invalid image format";
-		return NextResponse.json({ error: message }, { status: 400 });
+		// The reason (the image library's text) stays in the log; the client
+		// reads the one stable sentence.
+		console.error(
+			"Project image processing failed:",
+			err instanceof Error ? err.name : typeof err,
+		);
+		return NextResponse.json({ error: INVALID_IMAGE_MESSAGE }, { status: 400 });
 	}
 
 	const filePath = `projects/${projectId}-${Date.now()}.webp`;

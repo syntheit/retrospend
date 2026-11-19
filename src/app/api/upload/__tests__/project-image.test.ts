@@ -35,6 +35,8 @@ vi.mock("~/server/storage", () => ({
 }));
 
 vi.mock("~/server/image-processing", () => ({
+	INVALID_IMAGE_MESSAGE:
+		"Invalid image format. Accepted formats: JPEG, PNG, WebP, GIF",
 	processProjectImage: vi.fn(),
 }));
 
@@ -213,6 +215,24 @@ describe("POST /api/upload/project-image", () => {
 		expect(res.status).toBe(400);
 		const body = (await parseJson(res)) as { error: string };
 		expect(body.error).toMatch(/invalid image/i);
+	});
+
+	it("answers a stable sentence, not the image library's text, when processing throws", async () => {
+		mockAuthedUser();
+		mockAllowedRole();
+		vi.mocked(processProjectImage).mockRejectedValue(
+			new Error("vips: corrupt header in /srv/retrospend/tmp/ana-receipt.jpg"),
+		);
+		const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+		const res = await POST(makePostRequest(makeFile()) as never);
+		expect(res.status).toBe(400);
+		const body = (await parseJson(res)) as { error: string };
+		expect(body.error).toBe(
+			"Invalid image format. Accepted formats: JPEG, PNG, WebP, GIF",
+		);
+		expect(log).toHaveBeenCalled();
+		expect(JSON.stringify(log.mock.calls)).not.toContain("ana-receipt");
+		log.mockRestore();
 	});
 
 	it("returns 200 with imageUrl on successful upload by EDITOR", async () => {

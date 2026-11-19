@@ -17,6 +17,7 @@ import {
 } from "@retrospend/domain/expense-write/refusals";
 import { MissingRateError } from "@retrospend/domain/money";
 import { errorFormatter } from "~/server/api/error-formatter";
+import { uniqueViolation } from "~/server/api/unique-violation";
 import { TRPC_ALLOWED } from "~/server/api/protection/allowed";
 import { isProtected } from "@retrospend/api-contract/protection-state";
 import { assertAllowed } from "~/server/api/protection/guard";
@@ -211,6 +212,18 @@ const timingMiddleware = t.middleware(async ({ next }) => {
 		throw new TRPCError({
 			code: "BAD_REQUEST",
 			message: result.error.cause.message,
+			cause: result.error.cause,
+		});
+	}
+
+	// A unique key violation is a conflict the caller can read (a taken client
+	// id: an earlier try got through; a restore token used twice), not a crash.
+	// The database's own text stays in the cause, which never leaves the server.
+	const taken = !result.ok && uniqueViolation(result.error.cause);
+	if (taken) {
+		throw new TRPCError({
+			code: "CONFLICT",
+			message: taken.message,
 			cause: result.error.cause,
 		});
 	}

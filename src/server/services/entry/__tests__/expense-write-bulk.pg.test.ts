@@ -488,8 +488,8 @@ describe("single undo (v1) and the web's revert", () => {
 	});
 
 	// A second restore of the same token meets the row it already put back: the unique id
-	// violation leaves as INTERNAL_SERVER_ERROR with Prisma's own text (a possible bug, pinned as is).
-	it("the web's restore of a delete puts the row back once; a second restore is a raw database error", async () => {
+	// violation is answered as CONFLICT, not as the database's own text.
+	it("the web's restore of a delete puts the row back once; a second restore is a conflict", async () => {
 		const { entry } = w.callers;
 		const id = await rowIn(w.userId, w.food);
 		const gone = await entry.expense.delete.save({ id });
@@ -499,8 +499,8 @@ describe("single undo (v1) and the web's revert", () => {
 		await expect(
 			entry.expense.restore.save({ token: gone.value.restore }),
 		).rejects.toMatchObject({
-			code: "INTERNAL_SERVER_ERROR",
-			message: expect.stringContaining("Unique constraint failed"),
+			code: "CONFLICT",
+			message: "That id is already used",
 		});
 	});
 });

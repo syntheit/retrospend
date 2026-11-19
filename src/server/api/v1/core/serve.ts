@@ -6,6 +6,7 @@ import {
 } from "@retrospend/domain/expense-write/refusals";
 import { MissingRateError } from "@retrospend/domain/money";
 import { TRPCError } from "@trpc/server";
+import { uniqueViolation } from "~/server/api/unique-violation";
 import { textUnavailableProblem } from "~/server/crypto/field-open";
 import { InvalidCursorError } from "~/server/services/api-v1/cursor";
 import { OverpayError } from "~/server/services/payments/procedures";
@@ -41,12 +42,6 @@ const TRPC_TO_PROBLEM: Partial<Record<TRPCError["code"], ProblemCode>> = {
 	// The server lacks a part this needs (rate sync without its sidecar).
 	NOT_IMPLEMENTED: "not_implemented",
 };
-
-/** Whether the unique key that failed is the row's id (its primary key). */
-function idIsTheKey(error: Prisma.PrismaClientKnownRequestError): boolean {
-	const meta = JSON.stringify(error.meta ?? {});
-	return /"id"|_pkey/.test(meta);
-}
 
 const ENABLE_DETAIL: Record<EnableProtectionError["code"], string> = {
 	session_not_fresh: "Sign in again to turn on Advanced protection",
@@ -148,6 +143,9 @@ export function toProblem(error: unknown, route?: string): unknown {
 	// stored; a batch with no key set to open it is refused.
 	if (error instanceof VaultError) return vaultProblem(error);
 	if (error instanceof TRPCError) {
+		// The tRPC middleware answers a unique violation as CONFLICT; v1 keeps
+		// the finer code (a taken id) from the database error it carries.
+		if (uniqueViolation(error.cause)) return toProblem(error.cause, route);
 		const code = TRPC_TO_PROBLEM[error.code];
 		if (code) return problem(code, error.message);
 		// tRPC wraps what a procedure throws; a known database error inside
@@ -157,14 +155,8 @@ export function toProblem(error: unknown, route?: string): unknown {
 	}
 	// A client-made id that is already taken: an earlier try of the same write
 	// got through. Clients treat it as sent, so it has a code of its own.
-	if (
-		error instanceof Prisma.PrismaClientKnownRequestError &&
-		error.code === "P2002"
-	) {
-		return idIsTheKey(error)
-			? problem("id_taken", "That id is already used")
-			: problem("conflict", "That id or name is already used");
-	}
+	const taken = uniqueViolation(error);
+	if (taken) return problem(taken.problem, taken.message);
 	// A row the caller named that is not theirs: their view of the table has no
 	// such row, which is what the web shows as "not found" too.
 	if (

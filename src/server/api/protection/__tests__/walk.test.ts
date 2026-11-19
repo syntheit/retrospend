@@ -130,7 +130,7 @@ async function callProcedure(path: string, state: "ON" | "OFF") {
 const problemOf = (error: unknown) =>
 	(
 		errorFormatter({
-			shape: { data: {} },
+			shape: { message: "", data: {} },
 			error: error as never,
 		}).data as { problem?: string | null }
 	).problem;

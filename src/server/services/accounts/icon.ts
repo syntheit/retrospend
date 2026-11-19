@@ -9,7 +9,10 @@ import { TRPCError } from "@trpc/server";
 import { type AccountIcon, isAccountIcon } from "~/lib/account-icons";
 import { db } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
-import { processAccountIcon } from "~/server/image-processing";
+import {
+	INVALID_IMAGE_MESSAGE,
+	processAccountIcon,
+} from "~/server/image-processing";
 import { deleteFile, getImageUrl, uploadFile } from "~/server/storage";
 import type { PrismaClient } from "~prisma";
 
@@ -122,7 +125,7 @@ export async function replaceAccountImage(
 	} catch (err) {
 		throw new TRPCError({
 			code: "BAD_REQUEST",
-			message: err instanceof Error ? err.message : "Invalid image format",
+			message: err instanceof Error ? err.message : INVALID_IMAGE_MESSAGE,
 		});
 	}
 	const path = `accounts/${id}-${Date.now()}-${randomUUID().slice(0, 8)}.webp`;
