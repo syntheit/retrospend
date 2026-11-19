@@ -4,6 +4,9 @@ import {
 	decodeEntry,
 	encodeEntry,
 	isChainedTo,
+	PARKED_DISCARDING,
+	parkedReplacedBy,
+	replacementOf,
 	stampedBy,
 	withoutDeviceText,
 } from "./outbox-chain";
@@ -173,8 +176,19 @@ export function createOutbox(
 	const left: { entry: AckedEntry; code: "undone" | "expired" }[] = [];
 	// One operation at a time, so two enqueues never take the same sequence.
 	let queue: Promise<unknown> = Promise.resolve();
+	// A discard or replace that a crash cut short is finished before the first
+	// operation of a run. If that fails the entries stay parked, never sent.
+	let recovered = false;
 	const serial = <T>(task: () => Promise<T>): Promise<T> => {
-		const next = queue.then(task, task);
+		const next = queue.then(async () => {
+			if (!recovered) {
+				recovered = true;
+				await finishCutShort().catch(() => {
+					recovered = false;
+				});
+			}
+			return task();
+		}, task);
 		queue = next.catch(() => undefined);
 		return next;
 	};
@@ -294,10 +308,19 @@ export function createOutbox(
 		const key = await keyFor(clientId);
 		const entry = key ? await read(key) : null;
 		if (!key || !entry) return;
+		// Unsendable first, then its dependents, then gone: a crash on the way
+		// never sends a write the person took back.
+		await write(key, {
+			...entry,
+			state: "conflict",
+			lastError: PARKED_DISCARDING,
+		});
+		await finishDiscard(key, entry);
+	}
+
+	async function finishDiscard(key: string, entry: OutboxEntry) {
 		const base = entry.baseVersion;
-		// Dependents first, as settle does: a crash before the delete leaves the
-		// entry in line and its dependents resting on its own base.
-		await forDependents(clientId, () =>
+		await forDependents(entry.clientId, () =>
 			base === null ? chainLost : { baseVersion: base },
 		);
 		await store.delete(key);
@@ -305,17 +328,40 @@ export function createOutbox(
 
 	async function replace(clientId: string, input: NewOutboxEntry) {
 		const key = await keyFor(clientId);
-		if (!key) return null;
+		const old = key ? await read(key) : null;
+		if (!key || !old) return null;
 		const entry = fresh(input);
 		const next = `${prefix}${key.slice(prefix.length, prefix.length + SEQ_WIDTH)}:${input.clientId}`;
-		// The new entry and its dependents first: a crash before the delete
-		// leaves both entries, never a re-based write that was lost.
+		// The old entry is parked, the new one written, the dependents moved
+		// over and only then the old one deleted: a crash on the way leaves one
+		// entry that can be sent, never none and never both.
+		await write(key, {
+			...old,
+			state: "conflict",
+			lastError: parkedReplacedBy(input.clientId),
+		});
 		await write(next, entry);
-		await forDependents(clientId, () => ({
-			baseVersion: { after: input.clientId },
-		}));
-		if (next !== key) await store.delete(key);
+		await finishReplace(key, clientId, input.clientId);
 		return entry;
+	}
+
+	async function finishReplace(key: string, oldId: string, newId: string) {
+		await forDependents(oldId, () => ({ baseVersion: { after: newId } }));
+		if (oldId !== newId) await store.delete(key);
+	}
+
+	/** A leftover "discarding" is finished; a leftover "replaced" once its replacement exists. */
+	async function finishCutShort() {
+		const entries = await load();
+		for (const entry of entries) {
+			const key = await keyFor(entry.clientId);
+			if (!key) continue;
+			if (entry.state === "conflict" && entry.lastError === PARKED_DISCARDING)
+				await finishDiscard(key, entry);
+			const by = replacementOf(entry);
+			if (by && entries.some((e) => e.clientId === by))
+				await finishReplace(key, entry.clientId, by);
+		}
 	}
 
 	function fresh(input: NewOutboxEntry): OutboxEntry {

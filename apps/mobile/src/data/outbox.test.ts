@@ -3,6 +3,7 @@ import { ACKED_MAX, ACKED_MAX_AGE_MS, createOutbox } from "./outbox";
 import { DEVICE_TEXT_COLUMNS } from "./outbox-chain";
 import { bookedRow, booking, create, edit, SENTINEL } from "./outboxFixtures";
 import { createMemoryStore } from "./store";
+import { flushOutbox } from "./sync";
 
 const T1 = "2026-10-15T15:00:01.000Z";
 const T2 = "2026-10-15T15:00:02.000Z";
@@ -192,6 +193,15 @@ function crashingStore() {
 }
 
 describe("a crash in the middle of a step", () => {
+	const sentBy = async (outbox: ReturnType<typeof createOutbox>) => {
+		const sent: string[] = [];
+		await flushOutbox(outbox, async (e) => {
+			sent.push(e.clientId);
+			return { status: "sent", version: T2 };
+		});
+		return sent;
+	};
+
 	it("replace writes the new entry before it deletes the old one", async () => {
 		const { store, state } = crashingStore();
 		const outbox = createOutbox(store, "a");
@@ -202,12 +212,35 @@ describe("a crash in the middle of a step", () => {
 			"crash",
 		);
 		const entries = await createOutbox(store, "a").all();
-		const base = (id: string) =>
-			entries.find((e) => e.clientId === id)?.baseVersion;
-		// Both entries are there: the re-based write is not lost.
-		expect(base("u1b")).toBe(T2);
-		expect(base("u1")).toBe(T1);
-		expect(base("u2")).toEqual({ after: "u1b" });
+		// The re-based write is not lost, and the dependent follows it.
+		expect(entries.find((e) => e.clientId === "u1b")?.baseVersion).toBe(T2);
+		expect(entries.find((e) => e.clientId === "u2")?.baseVersion).toEqual({
+			after: "u1b",
+		});
+	});
+
+	it("a replaced entry the crash left is never sent, and is deleted on restart", async () => {
+		const { store, state } = crashingStore();
+		const outbox = createOutbox(store, "a");
+		await outbox.enqueue(edit("u1", "e1", T1));
+		state.armed = true;
+		await expect(outbox.replace("u1", edit("u1b", "e1", T2))).rejects.toThrow(
+			"crash",
+		);
+		expect(await sentBy(outbox)).toEqual([]);
+		state.armed = false;
+		const restarted = createOutbox(store, "a");
+		expect((await restarted.all()).map((e) => e.clientId)).toEqual(["u1b"]);
+		expect(await sentBy(restarted)).toEqual(["u1b"]);
+	});
+
+	it("keeps a replaced entry whose replacement never got written", async () => {
+		const store = createMemoryStore();
+		const outbox = createOutbox(store, "a");
+		await outbox.enqueue(edit("u1", "e1", T1));
+		await outbox.markConflict("u1", "replaced:u1b");
+		const [left] = await createOutbox(store, "a").all();
+		expect(left).toMatchObject({ clientId: "u1", state: "conflict" });
 	});
 
 	it("discard re-points the next entry before it deletes", async () => {
@@ -219,6 +252,20 @@ describe("a crash in the middle of a step", () => {
 		await expect(outbox.discard("u1")).rejects.toThrow("crash");
 		const entries = await createOutbox(store, "a").all();
 		expect(entries.find((e) => e.clientId === "u2")?.baseVersion).toBe(T1);
+	});
+
+	it("a discarded entry the crash left is never sent, and is deleted on restart", async () => {
+		const { store, state } = crashingStore();
+		const outbox = createOutbox(store, "a");
+		await outbox.enqueue(edit("u1", "e1", T1));
+		await outbox.enqueue(edit("u2", "e1", { after: "u1" }));
+		state.armed = true;
+		await expect(outbox.discard("u1")).rejects.toThrow("crash");
+		expect(await sentBy(outbox)).toEqual([]);
+		state.armed = false;
+		const restarted = createOutbox(store, "a");
+		expect((await restarted.all()).map((e) => e.clientId)).toEqual(["u2"]);
+		expect(await sentBy(restarted)).toEqual(["u2"]);
 	});
 });
 

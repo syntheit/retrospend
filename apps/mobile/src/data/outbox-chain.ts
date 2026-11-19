@@ -20,6 +20,16 @@ export const DEVICE_TEXT_COLUMNS = [
 ] as const;
 
 export const PARKED_CHAIN_LOST = "chain_lost";
+/** An entry being taken out of line: parked first, so a crash never sends it. */
+export const PARKED_DISCARDING = "discarding";
+const REPLACED = "replaced:";
+/** An entry being swapped for `clientId`: parked until the swap is done. */
+export const parkedReplacedBy = (clientId: string) => `${REPLACED}${clientId}`;
+/** The client id an entry was being replaced by, or null when it was not. */
+export const replacementOf = (entry: OutboxEntry): string | null =>
+	entry.state === "conflict" && entry.lastError?.startsWith(REPLACED)
+		? entry.lastError.slice(REPLACED.length)
+		: null;
 
 function bare<R extends object | null>(row: R): R {
 	if (row === null) return row;
