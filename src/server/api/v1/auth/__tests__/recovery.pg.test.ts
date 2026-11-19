@@ -167,11 +167,12 @@ describe("POST /auth/recovery/check", () => {
 
 	it("answers 404 invalid_token for an unknown, expired, admin-made and spent link, and spends no try", async () => {
 		const k = await recoverable();
-		const bad = await badLinks(k);
+		// Made before the others: making a link sweeps the user's expired ones.
 		const spent = await issueLinkFor(k.id);
 		await adminDb.passwordResetToken.deleteMany({
 			where: { token: hash(spent) },
 		});
+		const bad = await badLinks(k);
 		for (const token of [bad.unknown, bad.expired, bad.admin, spent]) {
 			await expectProblem(await check(token), 404, "invalid_token");
 			expect(await triesSpent(hash(token))).toBe(0);
