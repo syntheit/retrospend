@@ -1,6 +1,6 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import type { Outbox, OutboxEntry } from "@/data/outbox";
-import { flushOutbox } from "@/data/sync";
+import { type FlushOptions, flushOutbox } from "@/data/sync";
 import type { PendingWrite } from "./draft";
 import {
 	createEntrySender,
@@ -60,12 +60,14 @@ export function takeFromOutbox(
 export function flushEntries(
 	outbox: Outbox,
 	api: RetrospendClient,
-	options?: SenderOptions,
+	options?: SenderOptions & FlushOptions,
 ) {
 	return exclusive(outbox, async () => {
 		const mine = entryOutbox(outbox);
 		const before = await mine.pending();
-		const report = await flushOutbox(mine, createEntrySender(api, options));
+		const report = await flushOutbox(mine, createEntrySender(api, options), {
+			pullsBegun: options?.pullsBegun,
+		});
 		// What left the outbox was sent: lists hold it until the server's row lands.
 		const left = new Set((await outbox.all()).map((e) => e.clientId));
 		retainSent(before.filter((e) => !left.has(e.clientId)));

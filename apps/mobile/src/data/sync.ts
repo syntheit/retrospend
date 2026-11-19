@@ -32,7 +32,11 @@ export interface FlushReport {
 }
 
 export interface FlushOptions {
-	/** `DeviceEngine.pullsBegun`, read as each answer arrives; 0 without an engine. */
+	/**
+	 * `DeviceEngine.pullsBegun`, read as each answer arrives. Required wherever
+	 * an engine exists: without it an acked device write is never retired by a
+	 * pull of this run (see Ack.pull).
+	 */
 	pullsBegun?: () => number;
 }
 
@@ -81,7 +85,7 @@ export async function flushOutbox(
 		if (result.status === "sent") {
 			await outbox.markSent(entry.clientId, {
 				version: result.version,
-				pull: options.pullsBegun?.() ?? 0,
+				pull: options.pullsBegun?.(),
 			});
 			report.sent += 1;
 		} else if (result.status === "conflict") {

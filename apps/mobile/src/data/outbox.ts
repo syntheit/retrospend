@@ -93,7 +93,11 @@ export type NewOutboxEntry = Pick<
 export interface Ack {
 	/** The `updatedAt` from the answer; null for a delete, absent when it named none. */
 	version?: string | null;
-	/** `DeviceEngine.pullsBegun` as the answer arrived. */
+	/**
+	 * `DeviceEngine.pullsBegun` as the answer arrived. Left out, it is unknown
+	 * and the acked entry fails closed: no pull of this run retires it (a
+	 * restart reads it as 0, as designed).
+	 */
 	pull?: number;
 }
 
@@ -271,7 +275,7 @@ export function createOutbox(
 			typeof version === "string" ? stampedBy(dep, entry, version) : chainLost,
 		);
 		if (entry.device && !entry.device.unbooked) {
-			ackPulls.set(clientId, answer.pull ?? 0);
+			ackPulls.set(clientId, answer.pull ?? Number.POSITIVE_INFINITY);
 			const record = {
 				...entry,
 				ack: { version: version ?? null },
@@ -290,11 +294,13 @@ export function createOutbox(
 		const key = await keyFor(clientId);
 		const entry = key ? await read(key) : null;
 		if (!key || !entry) return;
-		await store.delete(key);
 		const base = entry.baseVersion;
+		// Dependents first, as settle does: a crash before the delete leaves the
+		// entry in line and its dependents resting on its own base.
 		await forDependents(clientId, () =>
 			base === null ? chainLost : { baseVersion: base },
 		);
+		await store.delete(key);
 	}
 
 	async function replace(clientId: string, input: NewOutboxEntry) {
@@ -302,11 +308,13 @@ export function createOutbox(
 		if (!key) return null;
 		const entry = fresh(input);
 		const next = `${prefix}${key.slice(prefix.length, prefix.length + SEQ_WIDTH)}:${input.clientId}`;
-		await store.delete(key);
+		// The new entry and its dependents first: a crash before the delete
+		// leaves both entries, never a re-based write that was lost.
 		await write(next, entry);
 		await forDependents(clientId, () => ({
 			baseVersion: { after: input.clientId },
 		}));
+		if (next !== key) await store.delete(key);
 		return entry;
 	}
 

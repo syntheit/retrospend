@@ -149,6 +149,20 @@ describe("acked list", () => {
 	});
 });
 
+describe("an ack with an unknown pull", () => {
+	it("fails closed: no pull of this run is later than it, and a restart reads 0", async () => {
+		const store = createMemoryStore();
+		const outbox = createOutbox(store, "a");
+		await outbox.enqueue(create("e1", device("e1")));
+		await outbox.markSent("e1", { version: T1 });
+		const [entry] = await outbox.acked();
+		// The engine retires an entry once a finished pull is past `ack.pull`.
+		expect(entry?.ack.pull).toBe(Number.POSITIVE_INFINITY);
+		expect(1e9 > (entry?.ack.pull ?? 0)).toBe(false);
+		expect((await createOutbox(store, "a").acked())[0]?.ack.pull).toBe(0);
+	});
+});
+
 describe("undo generation", () => {
 	it("undo generation survives a restart", async () => {
 		const store = createMemoryStore();
@@ -158,6 +172,53 @@ describe("undo generation", () => {
 		const restarted = createOutbox(store, "a");
 		expect(await restarted.nextUndoGeneration("e1")).toBe(3);
 		expect(await restarted.nextUndoGeneration("e2")).toBe(1);
+	});
+});
+
+/** A store whose deletes fail once armed: a crash in the middle of a step. */
+function crashingStore() {
+	const inner = createMemoryStore();
+	const state = { armed: false };
+	return {
+		state,
+		store: {
+			...inner,
+			delete: async (key: string) => {
+				if (state.armed) throw new Error("crash");
+				await inner.delete(key);
+			},
+		},
+	};
+}
+
+describe("a crash in the middle of a step", () => {
+	it("replace writes the new entry before it deletes the old one", async () => {
+		const { store, state } = crashingStore();
+		const outbox = createOutbox(store, "a");
+		await outbox.enqueue(edit("u1", "e1", T1));
+		await outbox.enqueue(edit("u2", "e1", { after: "u1" }));
+		state.armed = true;
+		await expect(outbox.replace("u1", edit("u1b", "e1", T2))).rejects.toThrow(
+			"crash",
+		);
+		const entries = await createOutbox(store, "a").all();
+		const base = (id: string) =>
+			entries.find((e) => e.clientId === id)?.baseVersion;
+		// Both entries are there: the re-based write is not lost.
+		expect(base("u1b")).toBe(T2);
+		expect(base("u1")).toBe(T1);
+		expect(base("u2")).toEqual({ after: "u1b" });
+	});
+
+	it("discard re-points the next entry before it deletes", async () => {
+		const { store, state } = crashingStore();
+		const outbox = createOutbox(store, "a");
+		await outbox.enqueue(edit("u1", "e1", T1));
+		await outbox.enqueue(edit("u2", "e1", { after: "u1" }));
+		state.armed = true;
+		await expect(outbox.discard("u1")).rejects.toThrow("crash");
+		const entries = await createOutbox(store, "a").all();
+		expect(entries.find((e) => e.clientId === "u2")?.baseVersion).toBe(T1);
 	});
 });
 

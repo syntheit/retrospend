@@ -121,6 +121,19 @@ describe("flush with chains", () => {
 		expect((await outbox.all())[1]?.attempts).toBe(0);
 	});
 
+	it("records no pull when no engine count is given, which no pull retires", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		await outbox.enqueue(
+			create("e1", {
+				bookedAt: 1,
+				changed: [],
+				changes: [{ table: "expenses", id: "e1", before: null, after: null }],
+			}),
+		);
+		await flushOutbox(outbox, recorder({ e1: T1 }).send);
+		expect((await outbox.acked())[0]?.ack.pull).toBe(Number.POSITIVE_INFINITY);
+	});
+
 	it("hands the engine's pull count to the ack", async () => {
 		const outbox = createOutbox(createMemoryStore(), "a");
 		await outbox.enqueue(

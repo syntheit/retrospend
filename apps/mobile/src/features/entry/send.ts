@@ -137,7 +137,7 @@ export function createEntrySender(
 		const stop = () => timeout.abort();
 		options.signal?.addEventListener("abort", stop);
 		try {
-			const token = await create(api, entry, {
+			const { undo: token, version } = await create(api, entry, {
 				context: { idempotencyKey: entry.clientId },
 				signal: timeout.signal,
 			});
@@ -145,9 +145,11 @@ export function createEntrySender(
 			// A retry may replay a first try the server already booked, earlier
 			// than startedAt: only a first try says when the server booked it.
 			if (entry.attempts === 0) captureSent(api, entry, startedAt);
-			return { status: "sent" };
+			return { status: "sent", ...(version ? { version } : {}) };
 		} catch (error) {
 			// The id exists: an earlier try went through and its answer got lost.
+			// No answer, so no version: an entry chained after it parks as
+			// chain_lost. PR10 reads the row to get one.
 			if (idTaken(error)) return { status: "sent" };
 			return classify(error, entry.serverErrors);
 		} finally {
@@ -162,40 +164,52 @@ interface CallOptions {
 	signal: AbortSignal;
 }
 
+/** The undo token, and for an expense the `updatedAt` the server booked it at. */
+interface Created {
+	undo: string;
+	version?: string;
+}
+
 async function create(
 	api: RetrospendClient,
 	entry: OutboxEntry,
 	options: CallOptions,
-): Promise<string> {
+): Promise<Created> {
 	switch (entry.entity as EntryEntity) {
-		case "expenses":
-			return (
-				await api.expenses.create(
-					entry.payload as Body<typeof api.expenses.create>,
-					options,
-				)
-			).undo;
+		case "expenses": {
+			const written = await api.expenses.create(
+				entry.payload as Body<typeof api.expenses.create>,
+				options,
+			);
+			return { undo: written.undo, version: written.expense?.updatedAt };
+		}
 		case "shared-expenses":
-			return (
-				await api["shared-expenses"].create(
-					entry.payload as Body<(typeof api)["shared-expenses"]["create"]>,
-					options,
-				)
-			).undo;
+			return {
+				undo: (
+					await api["shared-expenses"].create(
+						entry.payload as Body<(typeof api)["shared-expenses"]["create"]>,
+						options,
+					)
+				).undo,
+			};
 		case "income":
-			return (
-				await api.income.create(
-					entry.payload as Body<typeof api.income.create>,
-					options,
-				)
-			).undo;
+			return {
+				undo: (
+					await api.income.create(
+						entry.payload as Body<typeof api.income.create>,
+						options,
+					)
+				).undo,
+			};
 		case "transfers":
-			return (
-				await api.transfers.create(
-					entry.payload as Body<typeof api.transfers.create>,
-					options,
-				)
-			).undo;
+			return {
+				undo: (
+					await api.transfers.create(
+						entry.payload as Body<typeof api.transfers.create>,
+						options,
+					)
+				).undo,
+			};
 	}
 }
 
