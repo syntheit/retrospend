@@ -35,6 +35,15 @@ export const OPEN_WRAP_ROLES = [
 ] as const;
 export type OpenWrapRole = (typeof OPEN_WRAP_ROLES)[number];
 
+/**
+ * The roles a stored wrap may be shown as when the caller holds a live reset
+ * link and proved the recovery key (POST /auth/recovery/begin). Never
+ * ak-password: a stolen link and key must not hand over the offline target
+ * for the password. The server's per-proof role list (release.ts) is this one.
+ */
+export const RECOVERY_WRAP_ROLES = ["ak-recovery", "private-key"] as const;
+export type RecoveryWrapRole = (typeof RECOVERY_WRAP_ROLES)[number];
+
 /** What a client needs to turn a typed password into the sign-in secret. */
 export const preloginKdfSchema = z
 	.object({
