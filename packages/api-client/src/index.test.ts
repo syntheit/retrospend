@@ -61,6 +61,21 @@ describe("createRetrospendClient", () => {
 		expect(sent.expectedUpdatedAt).toBe(stamp);
 	});
 
+	it("encodes an offset stamp in the delete query so the plus sign survives", async () => {
+		const { calls, fetch } = fakeFetch(200, {});
+		const client = createRetrospendClient({
+			baseUrl: "https://example.test",
+			fetch,
+		});
+		const stamp = "2026-11-18T10:00:00.000+02:00";
+		await client.expenses
+			.delete({ params: { id: "e1" }, query: { expectedUpdatedAt: stamp } })
+			.catch(() => undefined);
+		const url = calls[0]?.url ?? "";
+		expect(url).not.toContain("+02");
+		expect(new URL(url).searchParams.get("expectedUpdatedAt")).toBe(stamp);
+	});
+
 	it("reads a problem body on a fetch with no response.body stream (React Native)", async () => {
 		const problem = {
 			type: "urn:retrospend:problem:missing_rate",
