@@ -33,8 +33,10 @@
 import { toBookingInput } from "@retrospend/domain/expense-input";
 import { MissingRateError } from "@retrospend/domain/money";
 import { dec } from "@retrospend/domain/precise-decimal";
+import { sameValue } from "./equal";
 import { createExpense } from "./expense-create";
 import type { BookedExpense } from "./expense-create-conformance";
+import type { ExpenseRow, TextFreeExpenseRow } from "./expenses";
 import { LocalDb } from "./local-db";
 import { bookedOf } from "./local-expense-create";
 import { MemoryStore } from "./memory-store";
@@ -84,7 +86,17 @@ export type SkipCode =
 	| "no_rate"
 	| "no_settings"
 	| "settings_moved"
-	| "rates_moved";
+	| "rates_moved"
+	/** The pulled row is not the one the ack named: another write came after. */
+	| "changed_since"
+	/** The write was undone before a pull could compare it. */
+	| "undone"
+	/** The acked entry aged out of the list before a pull could compare it. */
+	| "expired"
+	/** The row is gone from the pull, deleted elsewhere. */
+	| "gone_already"
+	/** A preview compare: the server has not seen the unsent entries the device preview started from. */
+	| "pending_ahead";
 
 export type WriteVerdict =
 	| { id: string; outcome: "match" }
@@ -131,20 +143,28 @@ const DECIMALS = new Set<string>([
 	"homeAmount",
 ]);
 
+/**
+ * Whether two stored values of one expense column are the same. Decimals by
+ * value: the server sends `Decimal.toFixed()` ("185400") and the device books
+ * to its columns' scale ("185400.00"). Everything else exactly. The one owner
+ * of that rule: the compare and the overlay's value check both read it.
+ */
+export function sameColumnValue(
+	column: string,
+	a: unknown,
+	b: unknown,
+): boolean {
+	if (DECIMALS.has(column) && a != null && b != null)
+		return dec(String(a)).eq(dec(String(b)));
+	return sameValue(a, b);
+}
+
 /** The names of the booked fields that differ: decimals by value, the date by instant. */
 export function differingFields(
 	device: BookedExpense,
 	server: BookedExpense,
 ): string[] {
-	return COMPARED.filter((k) => {
-		const a = device[k];
-		const b = server[k];
-		if (a instanceof Date || b instanceof Date)
-			return (
-				!(a instanceof Date && b instanceof Date) || a.getTime() !== b.getTime()
-			);
-		return DECIMALS.has(k) ? !dec(a as string).eq(dec(b as string)) : a !== b;
-	});
+	return COMPARED.filter((k) => !sameColumnValue(k, device[k], server[k]));
 }
 
 const skipped = (id: string, code: SkipCode): WriteVerdict => ({
@@ -223,5 +243,83 @@ export async function compareCreate(
 		return error instanceof MissingRateError
 			? { id, outcome: "rate_missing" }
 			: { id, outcome: "refused" };
+	}
+}
+
+/**
+ * What a device-booked row and the row the server booked can differ in: the
+ * booked fields, plus excludeFromAnalytics (the edit's patch rules decide it
+ * on both sides). `projectId` is not a column of the engine's expense row (a
+ * personal expense has no project and the sync does not carry it), so there is
+ * nothing on the device to compare it with.
+ */
+export function differingWriteFields(
+	device: TextFreeExpenseRow,
+	server: ExpenseRow,
+): string[] {
+	const fields = differingFields(
+		bookedOf(device as ExpenseRow),
+		bookedOf(server),
+	);
+	if (device.excludeFromAnalytics !== server.excludeFromAnalytics)
+		fields.push("excludeFromAnalytics");
+	return fields;
+}
+
+/** What the compare needs of an acked entry: when it was booked and the version the server answered with. */
+export interface AckedWrite {
+	/** Epoch ms the device booked the write, for `rates_moved`. */
+	readonly bookedAt: number;
+	/** The `updatedAt` of the row the server answered with; null for a delete, or when none was given. */
+	readonly version: string | null;
+}
+
+/**
+ * Compares one row of an acked write with the row a pull that began after the
+ * ack brought, through `live` (a committed snapshot). A delete expects the
+ * tombstone. A row the ack's version does not name has been written since, so
+ * it is a skip, never a difference: a false finding costs more than a missed
+ * one. Nothing is re-booked, so the verdict is ids and field names only.
+ */
+export function compareWrite(
+	live: Reader,
+	change: {
+		readonly id: string;
+		readonly before: TextFreeExpenseRow | null;
+		readonly after: TextFreeExpenseRow | null;
+	},
+	acked: AckedWrite,
+): WriteVerdict {
+	const { id, before, after } = change;
+	const pulled = live.get("expenses", id);
+	if (after === null) {
+		if (!pulled) return { id, outcome: "match" };
+		return pulled.version !== (before?.version ?? null)
+			? skipped(id, "changed_since")
+			: { id, outcome: "differs", fields: ["deleted"] };
+	}
+	if (!pulled) return skipped(id, "gone_already");
+	if (acked.version !== null && pulled.version !== acked.version)
+		return skipped(id, "changed_since");
+	const settings = live.get("settings", SETTINGS_ID);
+	if (!settings) return skipped(id, "no_settings");
+	if (settings.homeCurrency !== after.homeCurrency)
+		return skipped(id, "settings_moved");
+	const asOf = ratesAsOf(live);
+	if (asOf !== null && !(Date.parse(asOf) <= acked.bookedAt - CLOCK_SKEW_MS))
+		return skipped(id, "rates_moved");
+	try {
+		bookedOf(pulled);
+	} catch {
+		return skipped(id, "no_rate");
+	}
+	try {
+		const fields = differingWriteFields(after, pulled);
+		return fields.length === 0
+			? { id, outcome: "match" }
+			: { id, outcome: "differs", fields };
+	} catch {
+		// The device row carries no booking: a finding, not a match.
+		return { id, outcome: "refused" };
 	}
 }

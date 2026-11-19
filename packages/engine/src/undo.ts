@@ -158,6 +158,52 @@ function restoredRow(w: Writer, c: RowChange): AnyRow | null {
 	};
 }
 
+export interface ApplyOptions {
+	/** Whether a stored row is the one a change expects; by value when absent. */
+	readonly matches?: (
+		current: AnyRow | null,
+		expected: AnyRow | null,
+	) => boolean;
+	/** The row to write for `c` where it is not just its own side (a restored row, text laid over a stored one). */
+	readonly rowFor?: (c: RowChange, current: AnyRow | null) => AnyRow | null;
+	/** Refusals that read the whole set; run after the check and before any write. */
+	readonly refuse?: () => void;
+}
+
+/**
+ * Moves rows from one side of `changes` to the other through `w`: every row
+ * must be as `from` says (`before` or `after`) and the other side is written.
+ * The one replay under undo (`from: "after"`, the rows are as the write left
+ * them) and the overlay read (`from: "before"`, the rows are as the write
+ * found them). Checks every row before it writes any, so a conflict leaves the
+ * transaction as it was. Returns the changes with the written side as written.
+ */
+export function applyChanges(
+	w: Writer,
+	changes: readonly RowChange[],
+	from: "before" | "after",
+	options: ApplyOptions = {},
+): RowChange[] {
+	const matches = options.matches ?? sameValue;
+	const current = (c: RowChange): AnyRow | null => w.get(c.table, c.id) ?? null;
+	const moved = changes.filter((c) => !matches(current(c), c[from]));
+	if (moved.length > 0) throw stale("These rows", moved);
+	options.refuse?.();
+	// What is written, so a redo expects exactly it.
+	const written: RowChange[] = changes.map((c) => {
+		const row = options.rowFor
+			? options.rowFor(c, current(c))
+			: c[from === "after" ? "before" : "after"];
+		return from === "after" ? { ...c, before: row } : { ...c, after: row };
+	});
+	for (const c of written) {
+		const row = from === "after" ? c.before : c.after;
+		if (row === null) w.delete(c.table, c.id);
+		else putAny(w, c.table, row);
+	}
+	return written;
+}
+
 /**
  * Applies `token` through `w` (a live transaction) and returns the redo
  * token. Checks every row before it writes any, so a conflict leaves the
@@ -166,23 +212,17 @@ function restoredRow(w: Writer, c: RowChange): AnyRow | null {
 export function applyUndo(w: Writer, token: UndoToken): UndoToken {
 	if (token.kind === "mirror") return applyMirror(w, token);
 	if (token.home !== undefined) refuseEditUndo(w, token, token.home);
-	const current = (c: RowChange): AnyRow | null => w.get(c.table, c.id) ?? null;
-	const moved = token.changes.filter((c) => !sameValue(current(c), c.after));
-	if (moved.length > 0) throw stale("These rows", moved);
-	const stray = strayChildren(w, token.changes);
-	if (stray.length > 0)
-		throw new ConflictError(
-			"Rows were added to this since. Undo is no longer safe.",
-			stray,
-		);
-	// What is written, so the redo expects exactly it.
-	const restored = token.changes.map((c) => ({
-		...c,
-		before: restoredRow(w, c),
-	}));
-	for (const c of restored)
-		if (c.before === null) w.delete(c.table, c.id);
-		else putAny(w, c.table, c.before);
+	const restored = applyChanges(w, token.changes, "after", {
+		refuse() {
+			const stray = strayChildren(w, token.changes);
+			if (stray.length > 0)
+				throw new ConflictError(
+					"Rows were added to this since. Undo is no longer safe.",
+					stray,
+				);
+		},
+		rowFor: (c) => restoredRow(w, c),
+	});
 	return {
 		kind: "revert",
 		mutation: token.mutation,

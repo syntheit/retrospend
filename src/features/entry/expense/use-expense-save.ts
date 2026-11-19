@@ -165,8 +165,16 @@ export function useExpenseSave(d: ExpenseDraft, o: Opts) {
 		if (!personal) throw new Error("Nothing to save");
 		if (editing) {
 			const r = await m.update.mutateAsync(personal);
+			const stamp = r.value.updatedAt;
 			toast.saved(t("saved", { title }), {
-				undo: () => m.revert.mutateAsync(r.value.restore),
+				// Refused once a newer edit changed the row since this one.
+				undo: stamp
+					? () =>
+							m.revert.mutateAsync({
+								...r.value.restore,
+								expectedUpdatedAt: stamp,
+							})
+					: undefined,
 			});
 			return;
 		}

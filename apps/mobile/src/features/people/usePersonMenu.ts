@@ -13,7 +13,7 @@ import {
 	PERSON_ACTIONS,
 	type PersonActionId,
 	personActionsOf,
-} from "./personActions";
+} from "./personActionRegistry";
 import type { PersonRef, PersonSummary } from "./source";
 
 /**

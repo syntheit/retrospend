@@ -1,9 +1,9 @@
 import "server-only";
 
 import { type Money, subtractMoney } from "@retrospend/domain/money-minor";
+import { CUSTOM_RATE_TYPE } from "@retrospend/domain/rate-booking";
 import type { AccountKind } from "~/components/rows/types";
 import { type AccountIconKind, iconOf } from "~/lib/account-icons";
-import { CUSTOM_RATE_TYPE } from "~/server/services/wealth.service";
 import {
 	type AssetTypeKey,
 	type GroupKey,

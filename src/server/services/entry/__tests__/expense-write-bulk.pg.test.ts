@@ -530,14 +530,58 @@ describe("single undo (v1) and the web's revert", () => {
 		).toEqual({ status: 404, code: "not_found", message: "Expense not found" });
 	});
 
-	it("the web's revert has no stamp: it writes the old values over a newer edit", async () => {
+	// The web's undo of an edit carries the stamp that edit left, like v1's undo.
+	const REFUSED = {
+		code: "CONFLICT",
+		message: "This expense changed since. Undo is no longer safe.",
+	};
+	const undoOf = (saved: {
+		value: { restore: object; updatedAt: string | null };
+	}) =>
+		({
+			...saved.value.restore,
+			expectedUpdatedAt: saved.value.updatedAt,
+		}) as never;
+
+	it("the web's revert is refused once a newer edit landed, and the row keeps the newer edit", async () => {
 		const { entry } = w.callers;
 		const id = await book(w.userId, lunch(w, { title: "Old" }));
 		const form = { id, ...lunch(w, { title: "Newer" }), categoryId: w.food };
 		const saved = await entry.expense.update.save(form);
 		await entry.expense.update.save({ ...form, title: "Newest" });
-		await entry.expense.revert.save(saved.value.restore as never);
+		const before = await stored(id);
+		await expect(entry.expense.revert.save(undoOf(saved))).rejects.toMatchObject(
+			REFUSED,
+		);
+		await expect(
+			entry.expense.revert.preview(undoOf(saved)),
+		).rejects.toMatchObject(REFUSED);
+		expect(await stored(id)).toEqual(before);
+		expect(before?.title).toBe("Newest");
+	});
+
+	it("the web's revert of the latest edit puts the old values back, and its preview shows them without writing", async () => {
+		const { entry } = w.callers;
+		const id = await book(w.userId, lunch(w, { title: "Old" }));
+		const form = { id, ...lunch(w, { title: "Newer" }), categoryId: w.food };
+		const saved = await entry.expense.update.save(form);
+		const undo = undoOf(saved);
+		const preview = await entry.expense.revert.preview(undo);
+		expect(preview.value.id).toBe(id);
+		expect((await stored(id))?.title).toBe("Newer");
+		await entry.expense.revert.save(undo);
 		expect((await stored(id))?.title).toBe("Old");
+	});
+
+	it("the web's revert without a stamp is not accepted", async () => {
+		const { entry } = w.callers;
+		const id = await book(w.userId, lunch(w, { title: "Old" }));
+		const form = { id, ...lunch(w, { title: "Newer" }), categoryId: w.food };
+		const saved = await entry.expense.update.save(form);
+		await expect(
+			entry.expense.revert.save(saved.value.restore as never),
+		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		expect((await stored(id))?.title).toBe("Newer");
 	});
 
 	// A second restore of the same token meets the row it already put back: the unique id
