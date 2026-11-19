@@ -15,6 +15,7 @@ import {
 import { vi } from "vitest";
 import {
 	type CompareReport,
+	compareLine,
 	createDeviceEngine,
 	type DeviceApi,
 	type FigureNarrowing,
@@ -23,6 +24,7 @@ import {
 	type ServerFigures,
 } from "../../../packages/engine/src/device/index";
 import { handleV1Request } from "../../server/api/v1/handler";
+import { adminDb } from "../pg-harness";
 import { apiOver, freshIp, longSession, sharesOf } from "./pull";
 
 /** A session takes 300 requests a minute; this leaves room. */
@@ -134,17 +136,44 @@ async function checkOnce(
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** How many times a check that found the device behind is made again, and the wait between. */
-const SETTLE_TRIES = 12;
-const SETTLE_MS = 1_000;
+/** How long a check waits for the cluster to have no write transaction open, and how often it looks. */
+const QUIET_DEADLINE_MS = 60_000;
+const QUIET_POLL_MS = 500;
+/** Checks made, each after a quiet moment: a transaction can open between the wait and the server's read. */
+const ATTEMPTS = 3;
 
 /**
- * `checkOnce`, made again (a new engine each time) while a screen found the
- * device behind the server's read or the rows still moving. Positions are
- * cluster-wide transaction ids, so a transaction another worker's database
- * holds open keeps every pull below the read until it ends: the compare is
- * right to say `behind`, and a test that wants a real answer waits for it. The
- * last attempt is returned, whatever it found.
+ * Positions are cluster-wide transaction ids, so a write transaction that
+ * another worker's database holds open keeps every pull below the server's
+ * read until it ends: the compare rightly says `behind`. This waits until no
+ * write transaction is open anywhere in the cluster (the snapshot's lowest
+ * running id is its next id), so the check that follows starts with nothing
+ * older than its read in the way. Fails loudly, naming the oldest open id.
+ */
+async function waitForQuiet(): Promise<void> {
+	const deadline = Date.now() + QUIET_DEADLINE_MS;
+	for (;;) {
+		const [row] = await adminDb.$queryRaw<{ xmin: string; xmax: string }[]>`
+			SELECT pg_snapshot_xmin(pg_current_snapshot())::text AS xmin,
+			       pg_snapshot_xmax(pg_current_snapshot())::text AS xmax`;
+		if (row && row.xmin === row.xmax) return;
+		// Date is faked only inside a check, so this is the real clock.
+		if (Date.now() > deadline)
+			throw new Error(
+				`A write transaction stayed open for ${QUIET_DEADLINE_MS} ms: the oldest open id is ${row?.xmin}, the next id ${row?.xmax}`,
+			);
+		await sleep(QUIET_POLL_MS);
+	}
+}
+
+const unsettled = (reports: readonly CompareReport[]) =>
+	reports.some((r) => r.behind > 0 || r.skipped === "moving");
+
+/**
+ * `checkOnce` after a quiet moment (waitForQuiet). A check that still found the
+ * device behind, because a transaction opened in between, is made again after
+ * another quiet moment, up to ATTEMPTS times. It never returns such a report:
+ * when none settles, it throws with the report of every attempt.
  */
 export async function checkAt(
 	clock: Date,
@@ -152,13 +181,14 @@ export async function checkAt(
 	checks: readonly Check[],
 	options: { browserZone: string; alter?: Alter },
 ): Promise<Checked> {
-	let last = await checkOnce(clock, userId, checks, options);
-	for (let i = 1; i < SETTLE_TRIES && notSettled(last.reports); i++) {
-		await sleep(SETTLE_MS);
-		last = await checkOnce(clock, userId, checks, options);
+	const attempts: string[] = [];
+	for (let i = 0; i < ATTEMPTS; i++) {
+		await waitForQuiet();
+		const done = await checkOnce(clock, userId, checks, options);
+		if (!unsettled(done.reports)) return done;
+		attempts.push(done.reports.map((r) => compareLine(r)).join("\n"));
 	}
-	return last;
+	throw new Error(
+		`The device stayed behind the server's read in ${ATTEMPTS} checks:\n${attempts.join("\n--\n")}`,
+	);
 }
-
-const notSettled = (reports: readonly CompareReport[]) =>
-	reports.some((r) => r.behind > 0 || r.skipped === "moving");

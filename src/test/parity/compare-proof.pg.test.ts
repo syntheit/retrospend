@@ -105,17 +105,13 @@ async function readBoth(userId: string, ids: string[], clock: Date) {
 
 const lineText = (report: CompareReport) => compareLine(report);
 
-/**
- * `key` was found wrong. A check that settled says `differs`; one that stayed
- * behind a transaction another worker holds open (checkAt waits for that to
- * end) can say only `behind`, which is never `match`.
- */
+/** `key` was found wrong, as a settled check says it: `differs`, with the device not behind. */
 function expectDiffers(report: CompareReport | undefined, key: string) {
 	expect(report, key).toBeDefined();
 	const r = report as CompareReport;
 	expect(r.state, JSON.stringify(r)).toBe("checked");
-	if (r.behind === 0) expect(r.differs, JSON.stringify(r)).toEqual([key]);
-	else expect(r.classes[key], JSON.stringify(r)).toBe("behind");
+	expect(r.behind, JSON.stringify(r)).toBe(0);
+	expect(r.differs, JSON.stringify(r)).toEqual([key]);
 }
 
 describe("hand-derived ledgers", () => {
