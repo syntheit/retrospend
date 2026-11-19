@@ -544,9 +544,15 @@ describe("with another account's session", () => {
 		).toBe(0);
 		expect(spies.keyring).not.toHaveBeenCalled();
 		expect(spies.zone).not.toHaveBeenCalled();
+		// The per-token limit counts a signed-in caller by its session id.
+		const sessions = await adminDb.session.findMany({
+			where: { userId: bystander.id },
+			select: { id: true },
+		});
+		expect(sessions.length).toBeGreaterThan(0);
 		expect(
 			await adminDb.apiRateLimit.count({
-				where: { key: { startsWith: "tok:" } },
+				where: { OR: sessions.map((x) => ({ key: { endsWith: x.id } })) },
 			}),
 		).toBe(0);
 	});
