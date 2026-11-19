@@ -234,6 +234,49 @@ describe("a crash in the middle of a step", () => {
 		expect(await sentBy(restarted)).toEqual(["u1b"]);
 	});
 
+	it("deletes a replaced leftover whose replacement is already acked", async () => {
+		const store = createMemoryStore();
+		const outbox = createOutbox(store, "a");
+		await outbox.enqueue(edit("u1", "e1", T1));
+		await outbox.enqueue(
+			edit("u1b", "e1", T2, booking("e1", null, bookedRow("e1"))),
+		);
+		await outbox.markConflict("u1", "replaced:u1b");
+		await outbox.markSent("u1b", { version: T2, pull: 1 });
+		expect(
+			(await createOutbox(store, "a").all()).map((e) => e.clientId),
+		).toEqual([]);
+	});
+
+	it("refuses a replacement under the same clientId", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		await outbox.enqueue(edit("u1", "e1", T1));
+		await expect(outbox.replace("u1", edit("u1", "e1", T2))).rejects.toThrow(
+			"new clientId",
+		);
+		expect((await outbox.all())[0]).toMatchObject({
+			clientId: "u1",
+			state: "pending",
+			baseVersion: T1,
+		});
+	});
+
+	it("requeue leaves a discarding or replaced entry parked", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		await outbox.enqueue(edit("u1", "e1", T1));
+		await outbox.enqueue(edit("u2", "e2", T1));
+		await outbox.enqueue(edit("u3", "e3", T1));
+		await outbox.markConflict("u1", "discarding");
+		await outbox.markConflict("u2", "replaced:u2b");
+		await outbox.markConflict("u3", "expense_changed");
+		for (const id of ["u1", "u2", "u3"]) await outbox.requeue(id);
+		expect((await outbox.all()).map((e) => [e.clientId, e.state])).toEqual([
+			["u1", "conflict"],
+			["u2", "conflict"],
+			["u3", "pending"],
+		]);
+	});
+
 	it("keeps a replaced entry whose replacement never got written", async () => {
 		const store = createMemoryStore();
 		const outbox = createOutbox(store, "a");

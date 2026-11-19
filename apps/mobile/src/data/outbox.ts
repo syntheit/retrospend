@@ -327,6 +327,10 @@ export function createOutbox(
 	}
 
 	async function replace(clientId: string, input: NewOutboxEntry) {
+		// Every re-base is a new write under a new key: the old key is the
+		// replaced entry's, and a crash leaves it to tell the two apart.
+		if (input.clientId === clientId)
+			throw new Error("A replacement needs a new clientId");
 		const key = await keyFor(clientId);
 		const old = key ? await read(key) : null;
 		if (!key || !old) return null;
@@ -347,19 +351,20 @@ export function createOutbox(
 
 	async function finishReplace(key: string, oldId: string, newId: string) {
 		await forDependents(oldId, () => ({ baseVersion: { after: newId } }));
-		if (oldId !== newId) await store.delete(key);
+		await store.delete(key);
 	}
 
 	/** A leftover "discarding" is finished; a leftover "replaced" once its replacement exists. */
 	async function finishCutShort() {
 		const entries = await load();
+		const acked = await loadAcked();
 		for (const entry of entries) {
 			const key = await keyFor(entry.clientId);
 			if (!key) continue;
 			if (entry.state === "conflict" && entry.lastError === PARKED_DISCARDING)
 				await finishDiscard(key, entry);
 			const by = replacementOf(entry);
-			if (by && entries.some((e) => e.clientId === by))
+			if (by && [...entries, ...acked].some((e) => e.clientId === by))
 				await finishReplace(key, entry.clientId, by);
 		}
 	}
@@ -413,11 +418,12 @@ export function createOutbox(
 			),
 		requeue: (clientId) =>
 			serial(() =>
-				update(clientId, () => ({
-					state: "pending",
-					lastError: null,
-					serverErrors: 0,
-				})),
+				// A write being taken out of line or swapped for another is never put back.
+				update(clientId, (e) =>
+					e.lastError === PARKED_DISCARDING || replacementOf(e)
+						? {}
+						: { state: "pending", lastError: null, serverErrors: 0 },
+				),
 			),
 		discard: (clientId) => serial(() => discard(clientId)),
 		replace: (clientId, input) => serial(() => replace(clientId, input)),
