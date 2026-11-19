@@ -42,11 +42,10 @@ vi.mock("react", async (importOriginal) => ({
 const { useEnableLifecycle } = await import("./use-enable-lifecycle");
 
 function mount() {
-	const calls = { discard: vi.fn(), reset: vi.fn() };
-	const render = (open: boolean) => {
+	const render = (open: boolean, reset: () => void) => {
 		react.cursor = 0;
 		react.pending = [];
-		const life = useEnableLifecycle({ open, ...calls });
+		const life = useEnableLifecycle({ open, reset });
 		for (const run of react.pending) run();
 		return life;
 	};
@@ -55,47 +54,62 @@ function mount() {
 	};
 	react.refs = [];
 	react.effects = [];
-	return { calls, render, unmount };
+	return { render, unmount };
 }
 
+const draft = () => ({ keyText: "KEY", wipe: vi.fn() });
+
 describe("useEnableLifecycle", () => {
-	it("wipes and resets when open turns false, not while it stays true", () => {
-		const { calls, render } = mount();
-		render(true);
-		render(true);
-		expect(calls.discard).not.toHaveBeenCalled();
-		render(false);
-		expect(calls.discard).toHaveBeenCalledTimes(1);
-		expect(calls.reset).toHaveBeenCalledTimes(1);
-		render(false);
-		expect(calls.discard).toHaveBeenCalledTimes(1);
-	});
-
-	it("wipes on unmount while open", () => {
-		const { calls, render, unmount } = mount();
-		render(true);
-		expect(calls.discard).not.toHaveBeenCalled();
-		unmount();
-		expect(calls.discard).toHaveBeenCalledTimes(1);
-		expect(calls.reset).not.toHaveBeenCalled();
-	});
-
-	it("keeps one controller across renders and calls the newest callbacks", async () => {
+	it("wipes and resets when open turns false, not while it stays true", async () => {
 		const { render } = mount();
-		const first = render(true);
-		expect(render(true)).toBe(first);
-		const job = vi.fn(async () => "x");
-		expect((await first.run(job)).status).toBe("done");
+		const reset = vi.fn();
+		const life = render(true, reset);
+		const d = draft();
+		await life.makeDraft(async () => d);
+		render(true, reset);
+		expect(d.wipe).not.toHaveBeenCalled();
+		render(false, reset);
+		expect(d.wipe).toHaveBeenCalledTimes(1);
+		expect(reset).toHaveBeenCalledTimes(1);
+		render(false, reset);
+		expect(d.wipe).toHaveBeenCalledTimes(1);
+		expect(reset).toHaveBeenCalledTimes(1);
 	});
 
-	it("drops a job that finishes after open turned false", async () => {
-		const { calls, render } = mount();
-		const life = render(true);
-		let finish: (v: string) => void = () => {};
-		const run = life.run(() => new Promise<string>((r) => (finish = r)));
-		render(false);
-		finish("keys");
-		expect(await run).toEqual({ status: "late" });
-		expect(calls.discard).toHaveBeenCalledTimes(2);
+	it("wipes on unmount while open", async () => {
+		const { render, unmount } = mount();
+		const reset = vi.fn();
+		const life = render(true, reset);
+		const d = draft();
+		await life.makeDraft(async () => d);
+		expect(d.wipe).not.toHaveBeenCalled();
+		unmount();
+		expect(d.wipe).toHaveBeenCalledTimes(1);
+		expect(reset).not.toHaveBeenCalled();
+	});
+
+	it("keeps one controller across renders and calls the newest reset", () => {
+		const { render } = mount();
+		const stale = vi.fn();
+		const newest = vi.fn();
+		const first = render(true, stale);
+		expect(render(true, newest)).toBe(first);
+		render(false, newest);
+		expect(newest).toHaveBeenCalledTimes(1);
+		expect(stale).not.toHaveBeenCalled();
+	});
+
+	it("a draft that finishes after open turned false wipes itself", async () => {
+		const { render } = mount();
+		const life = render(true, vi.fn());
+		let finish: (d: ReturnType<typeof draft>) => void = () => {};
+		const run = life.makeDraft(
+			() => new Promise<ReturnType<typeof draft>>((r) => (finish = r)),
+		);
+		render(false, vi.fn());
+		const late = draft();
+		finish(late);
+		expect((await run).status).toBe("late");
+		expect(late.wipe).toHaveBeenCalledTimes(1);
 	});
 });
