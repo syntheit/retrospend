@@ -3,15 +3,11 @@
  * the phone and the web worker run (createDeviceEngine), pulling through the
  * sync routes and asking GET /figures for the server's figures and their
  * basis, over the handler the Next route uses, as a mobile app session. What
- * stays here is plumbing: sessions that rotate (one session takes 300
+ * stays here is plumbing: sessions that rotate (pull.ts: one session takes 300
  * requests a minute and a check makes dozens), the fake clock around a run,
  * and a way to alter what the server answers, for the cases a real server
  * never produces.
  */
-import {
-	createRetrospendClient,
-	type RetrospendClient,
-} from "@retrospend/api-client";
 import { vi } from "vitest";
 import {
 	type CompareReport,
@@ -23,35 +19,10 @@ import {
 	type ScreenName,
 	type ServerFigures,
 } from "../../../packages/engine/src/device/index";
-import { handleV1Request } from "../../server/api/v1/handler";
 import { decodeCursor } from "../../server/services/api-v1/cursor";
 import { syncCursorSchema } from "../../server/services/sync/changes";
 import { adminDb } from "../pg-harness";
-import { apiOver, freshIp, longSession, sharesOf } from "./pull";
-
-/** A session takes 300 requests a minute; this leaves room. */
-const SESSION_REQUESTS = 80;
-
-/** A client whose requests move to a new session every SESSION_REQUESTS, answered in process. */
-function rotatingClient(userId: string): RetrospendClient {
-	let token = "";
-	let used = SESSION_REQUESTS;
-	return createRetrospendClient({
-		baseUrl: "http://localhost:3101",
-		fetch: async (input, init) => {
-			if (used >= SESSION_REQUESTS) {
-				token = await longSession(userId);
-				used = 0;
-			}
-			used += 1;
-			const request = new Request(input, init);
-			request.headers.set("authorization", `Bearer ${token}`);
-			for (const [name, value] of Object.entries(freshIp()))
-				request.headers.set(name, value);
-			return handleV1Request(request);
-		},
-	});
-}
+import { apiOver, rotatingClient, sharesOf } from "./pull";
 
 /** Changes the server's answer to one figures read, as a stand-in for a server that is wrong. */
 export type Alter = (

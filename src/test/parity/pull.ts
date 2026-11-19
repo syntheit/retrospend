@@ -56,13 +56,35 @@ export const freshIp = () => {
 	return { "x-real-ip": `10.${a}.${b}.${c}` };
 };
 
-/** The client the app uses, its requests answered by the route handler in process. */
-const clientFor = (token: string): RetrospendClient =>
-	createRetrospendClient({
+/** A session takes 300 requests a minute (tokenRateLimit); this leaves room. */
+const SESSION_REQUESTS = 80;
+
+/**
+ * The client the app uses, its requests answered by the route handler in
+ * process. Its requests move to a new session every SESSION_REQUESTS: the
+ * limiter counts per session in a window of the (fake) clock the request is
+ * made at, so one session carried across a file's clocks, and a pull of
+ * hundreds of requests, would meet a count it never reset.
+ */
+export function rotatingClient(userId: string): RetrospendClient {
+	let token = "";
+	let used = SESSION_REQUESTS;
+	return createRetrospendClient({
 		baseUrl: "http://localhost:3101",
-		fetch: (input, init) => handleV1Request(new Request(input, init)),
-		authHeaders: () => ({ authorization: `Bearer ${token}`, ...freshIp() }),
+		fetch: async (input, init) => {
+			if (used >= SESSION_REQUESTS) {
+				token = await longSession(userId);
+				used = 0;
+			}
+			used += 1;
+			const request = new Request(input, init);
+			request.headers.set("authorization", `Bearer ${token}`);
+			for (const [name, value] of Object.entries(freshIp()))
+				request.headers.set(name, value);
+			return handleV1Request(request);
+		},
 	});
+}
 
 /** Every route the driver calls, taken from the client. */
 export function apiOver(
@@ -108,7 +130,7 @@ export function sharesOf(
 	atClock?: <T>(fn: () => Promise<T>) => Promise<T>,
 ): PullApi["sync"]["shares"] {
 	return async (q) => {
-		const own = clientFor(await longSession(userId));
+		const own = rotatingClient(userId);
 		const read = () => own.sync.shares(q);
 		return atClock ? atClock(read) : read();
 	};
@@ -120,18 +142,14 @@ export interface Device {
 	api: PullApi;
 	/** The cursor each cursor entity last returned, for the next delta pull. */
 	cursors: PullCursors;
-	/** The session the device's requests carry. */
-	token: string;
 }
 
 export async function newDevice(userId: string): Promise<Device> {
-	const token = await longSession(userId);
 	return {
 		userId,
 		store: new MemoryStore(),
-		api: apiOver(clientFor(token), sharesOf(userId)),
+		api: apiOver(rotatingClient(userId), sharesOf(userId)),
 		cursors: {},
-		token,
 	};
 }
 
@@ -270,7 +288,10 @@ export async function pullAll(
 ): Promise<PullReport> {
 	const deadline = performance.now() + (options.deadlineMs ?? 60_000);
 	const api: PullApi = options.atClock
-		? apiOver(clientFor(device.token), sharesOf(device.userId, options.atClock))
+		? apiOver(
+				rotatingClient(device.userId),
+				sharesOf(device.userId, options.atClock),
+			)
 		: device.api;
 	return pullAllWith(device.store, api, device.cursors, {
 		now,
