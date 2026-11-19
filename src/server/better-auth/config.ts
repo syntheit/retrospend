@@ -206,12 +206,17 @@ export const auth = betterAuth({
 	// /verify-password is a password check that spends none of the tries
 	// (account-security.service TRIES): a stolen cookie could guess with it.
 	// The two-factor routes that check the password stay, and spend a try in the
-	// before hook (password-tries.ts).
+	// before hook (password-tries.ts). The revoke routes would end sessions
+	// around endSessions (password-writes.ts), which also ends device codes; no
+	// client calls them (sessions end through /me/sessions).
 	disabledPaths: [
 		"/change-password",
 		"/request-password-reset",
 		"/reset-password",
 		"/verify-password",
+		"/revoke-session",
+		"/revoke-sessions",
+		"/revoke-other-sessions",
 	],
 	hooks: {
 		before: createAuthMiddleware(async (context) => {

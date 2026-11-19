@@ -960,6 +960,39 @@ describe("better-auth password routes", () => {
 	});
 });
 
+describe("better-auth session routes", () => {
+	it("does not route its own revoke routes: they would end sessions and leave device codes", async () => {
+		const a = await passwordUser();
+		const { cookie } = await webCookieFor(a.id);
+		const code = await approvedDeviceCode(a.id);
+		const other = await sessionFor(a.id);
+		const before = await adminDb.session.count({ where: { userId: a.id } });
+		for (const [path, body] of [
+			["/revoke-session", { token: other }],
+			["/revoke-sessions", {}],
+			["/revoke-other-sessions", {}],
+		] as const) {
+			const res = await auth.handler(
+				new Request(`http://localhost:3101/api/auth${path}`, {
+					method: "POST",
+					headers: {
+						"content-type": "application/json",
+						origin: "http://localhost:3101",
+						cookie,
+					},
+					body: JSON.stringify(body),
+				}),
+			);
+			expect(res.status, path).toBe(404);
+		}
+		expect(await adminDb.session.count({ where: { userId: a.id } })).toBe(
+			before,
+		);
+		expect(await deviceCodeRows(a.id)).toBe(1);
+		expect(code).toBeTruthy();
+	});
+});
+
 describe("better-auth two-factor routes that check the password", () => {
 	/** A web session: its id, a cookie and a bearer for it. */
 	async function webSession(userId: string) {

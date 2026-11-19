@@ -208,15 +208,15 @@ export async function releaseWraps<P extends ReleaseProof>(
 	const given: ReleaseProof = proof;
 	let rows: Row[];
 	if (given.reader === "recoveryBegin") {
-		if (!isSignInSecret(given.recoveryAuthKey)) invalid();
-		await spendRecoveryTry(userId, given.tokenHash);
 		rows = await db.$transaction(async (tx) => {
 			// Share-locked, so the hash that is checked is the one the wraps
-			// belong to: a writer of the set waits until this commits.
+			// belong to: a writer of the set waits until this commits. The try is
+			// spent on its own connection (counters commit even when this rolls back).
 			await tx.$queryRaw`
 				SELECT "userId" FROM "protection_key_set" WHERE "userId" = ${userId} FOR SHARE`;
-			await checkRecoveryProof(tx, {
+			await proveRecovery(tx, {
 				userId,
+				tokenHash: given.tokenHash,
 				recoveryAuthKey: given.recoveryAuthKey,
 			});
 			return readSetAndWraps(tx, userId);
