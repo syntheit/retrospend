@@ -33,6 +33,12 @@ export type KeyFlowCode =
 	/** The keyed record cannot be read or written, so the defense cannot work. */
 	| "unreadable"
 	| "wrongPassword"
+	/** The two-factor code was refused, or one is required and was not sent. */
+	| "wrongCode"
+	/** The server wants a sign-in made in the last minutes before it changes the keys. */
+	| "sessionNotFresh"
+	/** The keys were saved, but what the server holds does not read back as what was sent. */
+	| "readBackFailed"
 	/** The recovery key text is not a key (a typo, a wrong length or a stray character). Nothing was sent. */
 	| "typo"
 	/** The recovery key's proof was refused (a key of another account, or an old one). */
@@ -158,6 +164,12 @@ export function classifyRefusal(
 	if (status === null) return "unavailable";
 	if (status === 429) return "rateLimited";
 	if (status === 400 && code === "wrong_password") return "wrongPassword";
+	if (
+		status === 400 &&
+		(code === "wrong_two_factor_code" || code === "two_factor_required")
+	)
+		return "wrongCode";
+	if (status === 403 && code === "session_not_fresh") return "sessionNotFresh";
 	if (status === 400 && code === "wrong_recovery_key")
 		return "wrongRecoveryKey";
 	if (status === 404 && code === "invalid_token") return "tokenExpired";

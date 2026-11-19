@@ -467,6 +467,9 @@ describe("classifyRefusal", () => {
 		expect(classifyRefusal(409, "recovery_unavailable")).toBe(
 			"recoveryUnavailable",
 		);
+		expect(classifyRefusal(400, "wrong_two_factor_code")).toBe("wrongCode");
+		expect(classifyRefusal(400, "two_factor_required")).toBe("wrongCode");
+		expect(classifyRefusal(403, "session_not_fresh")).toBe("sessionNotFresh");
 		expect(classifyRefusal(500, undefined)).toBe("failed");
 		// A code without its status is not enough, and a status without its code
 		// is not a wrong password.
@@ -476,5 +479,7 @@ describe("classifyRefusal", () => {
 		expect(classifyRefusal(500, "wrong_recovery_key")).toBe("failed");
 		expect(classifyRefusal(400, "invalid_token")).toBe("failed");
 		expect(classifyRefusal(404, "wrong_recovery_key")).toBe("failed");
+		expect(classifyRefusal(404, "session_not_fresh")).toBe("failed");
+		expect(classifyRefusal(500, "wrong_two_factor_code")).toBe("failed");
 	});
 });

@@ -11,7 +11,14 @@ export {
 	prepareEnable,
 } from "./enable";
 export {
+	type EnableCallbacks,
+	type EnablePorts,
+	type EnableRequest,
+	createEnableCallbacks,
+} from "./enable-flow";
+export {
 	EnableFailure,
+	enableFailureFor,
 	FAILURE_CODES,
 	type FailureCode,
 	failureCode,
