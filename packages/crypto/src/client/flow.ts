@@ -57,7 +57,7 @@ export type KeyFlowCode =
 	| "keyReused"
 	/** The server no longer offers Advanced protection. */
 	| "notOffered"
-	/** Anything else, including a server error on a write. */
+	/** Anything else the client cannot name (a server error is serverError). */
 	| "failed";
 
 /** Fixed text only: nothing typed, derived or stored ever lands in a message. */
