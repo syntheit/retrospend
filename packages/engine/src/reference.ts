@@ -20,3 +20,7 @@ export function settingsReads(r: Reader) {
 }
 
 export const rateReads = (r: Reader) => tableReads(r, "rates");
+
+export const categoryReads = (r: Reader) => tableReads(r, "categories");
+
+export const transferReads = (r: Reader) => tableReads(r, "transfers");

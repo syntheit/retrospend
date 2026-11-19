@@ -27,6 +27,7 @@ import { bookCreate } from "@retrospend/domain/expense-write/create";
 import {
 	AmountRefusedError,
 	CategoryNotFoundError,
+	EditRefusal,
 } from "@retrospend/domain/expense-write/refusals";
 import {
 	pickBestRate,
@@ -35,6 +36,7 @@ import {
 } from "@retrospend/domain/money";
 import { dec } from "@retrospend/domain/precise-decimal";
 import {
+	type BookContext,
 	CURRENCY_KEY,
 	parseRateDefaults,
 	preferredRateType,
@@ -43,7 +45,9 @@ import {
 } from "@retrospend/domain/rate-booking";
 import type { ExpenseRow } from "./expenses";
 import type { WriteFn } from "./local-db";
+import { NotFoundError } from "./errors";
 import { InvalidInputError, type TableRows } from "./port";
+import type { Repos } from "./repos";
 
 export const EXPENSE_CREATE = "expense.create";
 
@@ -80,11 +84,31 @@ function finderOf(rates: readonly TableRows["rates"][]): RateFinder {
 	};
 }
 
-/** The domain's refusals (rate input, category, amount) are the port's InvalidInputError here. */
-async function refusing<T>(run: () => T | Promise<T>): Promise<T> {
+/** The home currency, the preferred rate type and the rate table of the store, as a write books with them. */
+export function rateBookOf(r: Repos): BookContext {
+	const settings = r.settings.require();
+	return {
+		homeCurrency: settings.homeCurrency,
+		preferred: preferredRateType(
+			settings.homeCurrency,
+			parseRateDefaults(settings.defaultRateTypes),
+		),
+		find: finderOf(r.rates.list()),
+	};
+}
+
+/**
+ * The domain's refusals (rate input, category, amount, a row that cannot be
+ * reached or changed) are the port's errors here, with the domain's words.
+ */
+export async function refusing<T>(run: () => T | Promise<T>): Promise<T> {
 	try {
 		return await run();
 	} catch (e) {
+		if (e instanceof EditRefusal)
+			throw e.kind === "notFound"
+				? new NotFoundError(e.message)
+				: new InvalidInputError(e.message);
 		if (
 			e instanceof RateInputError ||
 			e instanceof CategoryNotFoundError ||
@@ -95,7 +119,7 @@ async function refusing<T>(run: () => T | Promise<T>): Promise<T> {
 	}
 }
 
-function parseAmount(amount: number | string) {
+export function parseAmount(amount: number | string) {
 	let value: ReturnType<typeof dec> | undefined;
 	try {
 		value = dec(amount);
@@ -119,17 +143,9 @@ export function createExpense(input: CreateExpenseInput): WriteFn<ExpenseRow> {
 		const given = input.category;
 		const category =
 			given && (await refusing(() => expenseCategory(given, "not_found")));
-		const settings = r.settings.require();
 		const { plan, booked } = await refusing(() =>
 			bookCreate(
-				{
-					homeCurrency: settings.homeCurrency,
-					preferred: preferredRateType(
-						settings.homeCurrency,
-						parseRateDefaults(settings.defaultRateTypes),
-					),
-					find: finderOf(r.rates.list()),
-				},
+				rateBookOf(r),
 				{ ...input, amount: parseAmount(input.amount).toFixed() },
 				category,
 			),
