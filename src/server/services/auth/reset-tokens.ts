@@ -22,11 +22,11 @@
  *
  * The table is closed to retrospend_app: this runs on the owner connection.
  */
-import { createHmac, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
-import { env } from "~/env";
 import { db } from "~/server/db";
+import { keyedHash } from "~/server/lib/keyed-hash";
 import { hashToken } from "~/server/lib/tokens";
 import { consumeRateLimit } from "../api-v1/rate-limit.service";
 import { normalizeEmail } from "../protection-keys/prelogin";
@@ -195,21 +195,13 @@ export async function deleteUserResetTokens(
 	await tx.passwordResetToken.deleteMany({ where: { userId } });
 }
 
-let addressKey: Buffer | undefined;
 /**
- * The limiter's key for an address: an HMAC of the normalized address under a
- * key derived from the auth secret and used for nothing else, so the counter
- * table (and a backup of it) does not reveal who asked for a reset, and cannot
- * be checked against a list of addresses without the secret.
+ * The limiter's key for an address: a keyed hash of the normalized address
+ * (lib/keyed-hash.ts), so the counter table (and a backup of it) does not
+ * reveal who asked for a reset.
  */
-export function resetAddressKey(email: string): string {
-	addressKey ??= createHmac("sha256", env.BETTER_AUTH_SECRET)
-		.update("reset-request-address")
-		.digest();
-	return `reset:address:${createHmac("sha256", addressKey)
-		.update(normalizeEmail(email))
-		.digest("hex")}`;
-}
+export const resetAddressKey = (email: string): string =>
+	`reset:address:${keyedHash("resetAddress", normalizeEmail(email))}`;
 
 /**
  * Counts one reset request for an address and says whether it fits. The key is

@@ -1,5 +1,5 @@
 import { getClientIp, ipBucket } from "~/server/lib/rate-limiter";
-import { hashToken } from "~/server/lib/tokens";
+import { keyedHash } from "~/server/lib/keyed-hash";
 import {
 	normalizeEmail,
 	readPreloginKdf,
@@ -15,9 +15,9 @@ export const authRouter = {
 			RATE_LIMITS.preloginPerIp,
 			context.resHeaders,
 		);
-		// The address is hashed so the counter table never holds it.
+		// The address is keyed and hashed so the counter table never holds it.
 		await enforceRateLimit(
-			`prelogin:email:${hashToken(email)}`,
+			`prelogin:email:${keyedHash("preloginAddress", email)}`,
 			RATE_LIMITS.preloginPerEmail,
 			context.resHeaders,
 		);

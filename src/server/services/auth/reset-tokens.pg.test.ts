@@ -20,6 +20,7 @@ import {
 	updateProfile,
 } from "~/server/services/profile.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
+import { keyedHash } from "~/server/lib/keyed-hash";
 import { issueLinkFor } from "~/test/reset-links";
 import { makeSession } from "~/test/trpc-test-utils";
 import {
@@ -455,6 +456,10 @@ describe("the per-address limit", () => {
 		expect(key).toMatch(/^reset:address:[0-9a-f]{64}$/);
 		// Not the unkeyed hash of the address, which anyone could compute from a list.
 		expect(key).not.toBe(`reset:address:${sha256(email.toLowerCase())}`);
+		// Not the prelogin counter's hash of the same address: one label per use.
+		expect(key).not.toBe(
+			`reset:address:${keyedHash("preloginAddress", email.toLowerCase())}`,
+		);
 		expect(key).not.toContain(email);
 		expect(key).toBe(resetAddressKey(` ${email.toUpperCase()} `));
 		expect(key).not.toBe(resetAddressKey(`other-${email}`));

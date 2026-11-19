@@ -247,6 +247,8 @@ export async function updateProfile(
 	const user =
 		newEmail !== null
 			? await globalDb.$transaction(async (tx) => {
+					// Redundant today: the UPDATE below takes the same row lock. Kept first so
+					// a statement added before the UPDATE stays safe against a link being made.
 					await lockUserRow(tx, userId);
 					const updated = await tx.user.update({
 						where: { id: userId },
@@ -285,6 +287,8 @@ export async function applyConfirmedEmail(
 	newEmail: string,
 ): Promise<void> {
 	await client.$transaction(async (tx) => {
+		// Redundant today: the UPDATE below takes the same row lock. Kept first so a
+		// statement added before the UPDATE stays safe against a link being made.
 		await lockUserRow(tx, userId);
 		await tx.user.update({
 			where: { id: userId },
