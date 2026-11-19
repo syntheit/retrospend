@@ -4,12 +4,16 @@
  * the write) comes through a port, so the server's Prisma adapter and the
  * device's store adapter run the same rules and write the same row.
  *
- * Edit reads in the order the server has always read in, so the same input
- * fails with the same error on both: the row (the policy), the caller's
- * afterRead hook (the server's other-home refusal), the leg check, a changed
- * category, the amount above 0, then the rate. Nothing is written before the
- * last read. Refusals are EditRefusal (row), CategoryNotFoundError and
- * AmountRefusedError; MissingRateError and RateInputError pass through.
+ * Edit reads in a fixed order, so the same input fails with the same error
+ * on the server and the device. The row is read once, then refused in this
+ * order: the row (the policy), the caller's afterRead hook (the server's
+ * other-home refusal), the leg check, a changed category, the amount above 0,
+ * then the rate. That is the tRPC and legacy order. v1 checks the category
+ * before the row today, so its caller passes `categoryFirst` and the changed
+ * category is refused ahead of the row, the hook and the leg check; the rest
+ * keeps its order. Nothing is written before the last read. Refusals are
+ * EditRefusal (row), CategoryNotFoundError and AmountRefusedError;
+ * MissingRateError and RateInputError pass through.
  *
  * Spread parts are not the core's: the server's hooks sync or remove them,
  * the device refuses a spread before it gets here.
@@ -113,6 +117,11 @@ export interface EditHooks {
 	afterWrite?: (after: StoredExpense, amortizeOver: number) => Promise<void>;
 }
 
+export interface EditOptions extends EditHooks {
+	/** The transport's order: refuse a changed category before the row (v1). */
+	categoryFirst?: boolean;
+}
+
 export interface DeleteHooks {
 	/** Runs once the delete is allowed, before any row goes: the server's snapshot. */
 	beforeRemove?: (row: StoredExpense) => Promise<void>;
@@ -155,28 +164,43 @@ export interface EditResult {
 	after: StoredExpense;
 }
 
+/**
+ * The flag after the category rule: a changed category must be the person's
+ * expense category, same as on create; an unchanged one is left alone so
+ * editing never trips on it. The form leaving the flag unset takes the new
+ * category's default.
+ */
+async function excludeAfterCategory(
+	port: ExpenseEditPort,
+	input: EditInput,
+	current: StoredExpense | null,
+): Promise<boolean | undefined> {
+	if (!input.categoryId || input.categoryId === current?.categoryId)
+		return input.excludeFromAnalytics;
+	const category = expenseCategory(
+		await port.category(input.categoryId),
+		"not_found",
+	);
+	return input.excludeFromAnalytics === undefined && category.excludeByDefault
+		? true
+		: input.excludeFromAnalytics;
+}
+
 export async function editExpense(
 	port: ExpenseEditPort,
 	input: EditInput,
 	policy: EditPolicy,
-	hooks: EditHooks = {},
+	{ categoryFirst, ...hooks }: EditOptions = {},
 ): Promise<EditResult> {
-	const before = reach(await port.expense(input.id), policy);
+	const found = await port.expense(input.id);
+	let excludeFromAnalytics = categoryFirst
+		? await excludeAfterCategory(port, input, found)
+		: undefined;
+	const before = reach(found, policy);
 	await hooks.afterRead?.(before);
 	refuseLegMoneyEdit(before, input);
-
-	let excludeFromAnalytics = input.excludeFromAnalytics;
-	// A changed category must be the person's expense category, same as on
-	// create; an unchanged one is left alone so editing never trips on it.
-	if (input.categoryId && input.categoryId !== before.categoryId) {
-		const category = expenseCategory(
-			await port.category(input.categoryId),
-			"not_found",
-		);
-		// The form left the flag unset: the new category's default applies.
-		if (excludeFromAnalytics === undefined && category.excludeByDefault)
-			excludeFromAnalytics = true;
-	}
+	if (!categoryFirst)
+		excludeFromAnalytics = await excludeAfterCategory(port, input, before);
 
 	const amount = positiveAmount(input.amount);
 	const figures = hooks.restoredFigures

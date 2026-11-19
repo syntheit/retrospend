@@ -91,6 +91,65 @@ describe("editExpense read order", () => {
 	});
 });
 
+describe("editExpense combined refusals: the transport picks the order", () => {
+	// PR0's pins: v1 checks the category first, tRPC and legacy the row first.
+	const fee = { ...arsRow, hasLegs: true };
+	const cases = [
+		["an unknown id and an unknown category", null, {}, EXPENSE_NOT_FOUND],
+		[
+			"a fee with its amount changed and an unknown category",
+			fee,
+			{ amount: "101" },
+			LEG_EDIT_REFUSED,
+		],
+		[
+			"an income row and an unknown category",
+			{ ...arsRow, direction: "IN" },
+			{},
+			EXPENSE_NOT_FOUND,
+		],
+	] as const;
+
+	it.each(cases)("%s", async (_n, row, change, rowMessage) => {
+		const input = { ...same, ...change, categoryId: "unknown" };
+		const rowFirst = fakePort(row);
+		await expect(
+			editExpense(rowFirst.port, input, ENTRY_POLICY),
+		).rejects.toThrow(rowMessage);
+		const categoryFirst = fakePort(row);
+		await expect(
+			editExpense(categoryFirst.port, input, ENTRY_POLICY, {
+				categoryFirst: true,
+			}),
+		).rejects.toBeInstanceOf(CategoryNotFoundError);
+	});
+
+	it("categoryFirst leaves an unchanged category alone, so the row's refusal stands", async () => {
+		const p = fakePort({ ...arsRow, direction: "IN" });
+		await expect(
+			editExpense(p.port, same, ENTRY_POLICY, { categoryFirst: true }),
+		).rejects.toThrow(EXPENSE_NOT_FOUND);
+		expect(p.log).toEqual(["expense"]);
+	});
+
+	it("categoryFirst applies the new category's default and keeps the rest of the order", async () => {
+		const p = fakePort(arsRow, { categories: [hold] });
+		await editExpense(p.port, { ...same, categoryId: "c-hold" }, ENTRY_POLICY, {
+			categoryFirst: true,
+		});
+		expect(p.written[0]?.excludeFromAnalytics).toBe(true);
+		const q = fakePort({ ...arsRow, hasLegs: true }, { categories: [food] });
+		await expect(
+			editExpense(
+				q.port,
+				{ ...same, categoryId: "c-new", amount: "101" },
+				ENTRY_POLICY,
+				{ categoryFirst: true },
+			),
+		).rejects.toThrow(LEG_EDIT_REFUSED);
+	});
+});
+
 describe("policy", () => {
 	const rows = [
 		["income", { ...arsRow, direction: "IN" }],

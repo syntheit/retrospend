@@ -9,7 +9,11 @@ import { dec } from "../precise-decimal";
 import { CUSTOM_RATE_TYPE } from "../rate-booking";
 import { dayKey } from "../time-zone";
 import type { StoredExpense } from "./edit";
-import { EditRefusal, SPREAD_NOT_ON_DEVICE } from "./refusals";
+import {
+	EditRefusal,
+	otherHomeMessage,
+	SPREAD_NOT_ON_DEVICE,
+} from "./refusals";
 
 /** The rate fields that book `row`'s rate again: a typed rate stays typed, else its type. */
 export function rateInputOf(row: {
@@ -62,7 +66,9 @@ export interface PutBody {
  * The full body that saves `row` again. The day is the row's day in `zone`,
  * the zone the request is sent from (the server reads the body's day in it).
  * A spread parent has no body: PUT without `amortizeOver` would remove its
- * parts, and the device does not spread.
+ * parts, and the device does not spread. A typed rate was quoted into the
+ * home it was booked in; sent after the home changed it would read as a rate
+ * into the new `home`, so it is refused, as the server refuses it.
  */
 export function putBodyOf(
 	row: Pick<
@@ -83,10 +89,14 @@ export function putBodyOf(
 		| "homeCurrency"
 	>,
 	zone: string,
+	home: string,
 ): PutBody {
 	if (row.isAmortizedParent)
 		throw new EditRefusal("badRequest", SPREAD_NOT_ON_DEVICE);
 	const rate = rateInputOf(row);
+	const booked = rate.customRate?.home;
+	if (booked && booked !== home)
+		throw new EditRefusal("badRequest", otherHomeMessage(booked));
 	return {
 		title: row.title,
 		amount: dec(row.amount).toFixed(),

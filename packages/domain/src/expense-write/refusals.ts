@@ -34,6 +34,9 @@ export const LEG_EDIT_REFUSED =
 	"This entry moved money in an account. Delete it and add it again to change its amount, currency or date.";
 export const LEG_DELETE_REFUSED =
 	"This expense moved money in an account. Undo it from its transfer.";
+/** A typed rate pinned to the home it was booked into, once the home changed. */
+export const otherHomeMessage = (home: string) =>
+	`This rate was into ${home}, your old home currency. Edit the rate instead.`;
 export const SPREAD_NOT_ON_DEVICE = "Spreading an expense is not on the device";
 
 /** Which answer a refused edit or delete maps to on each transport. */

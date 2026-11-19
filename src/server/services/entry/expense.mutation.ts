@@ -16,7 +16,9 @@
  * were: booking again could land a cent apart (a row booked half up, a home
  * amount from the 12-decimal rate).
  */
+
 import { rateInputOf } from "@retrospend/domain/expense-write/put-body";
+import { otherHomeMessage } from "@retrospend/domain/expense-write/refusals";
 import { dec } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
@@ -125,7 +127,7 @@ async function refuseOtherHome(
 	if (user?.homeCurrency === home) return;
 	throw new TRPCError({
 		code: "BAD_REQUEST",
-		message: `This rate was into ${home}, your old home currency. Edit the rate instead.`,
+		message: otherHomeMessage(home),
 	});
 }
 
