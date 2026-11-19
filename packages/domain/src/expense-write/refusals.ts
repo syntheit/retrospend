@@ -4,7 +4,7 @@
  * and the device to its InvalidInputError, with the same message.
  */
 
-export const AMOUNT_ABOVE_ZERO = "Enter an amount above 0";
+export const AMOUNT_ABOVE_ZERO = "Enter an amount above zero";
 export const CATEGORY_NOT_FOUND = "Category not found";
 
 /** The v1 answers a refused category can have: write routes say not_found, categorize says forbidden. */

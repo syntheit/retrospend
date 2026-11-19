@@ -34,12 +34,12 @@ beforeAll(async () => {
 const count = () => fixtureDb.expense.count({ where: { userId: w.userId } });
 
 describe("an amount that stores as 0 at the column's 8 decimals", () => {
-	const ABOVE_0 = trpc("BAD_REQUEST", "Enter an amount above 0");
+	const ABOVE_0 = trpc("BAD_REQUEST", "Enter an amount above zero");
 	// 9 decimals: past the column, so it stores as 0.00000000. The regex of
 	// entry.expense.* takes 12 decimals and legacy takes any positive number.
 
 	it.each(["entry", "legacy"] as const)(
-		"%s: BAD_REQUEST Enter an amount above 0, nothing stored",
+		"%s: BAD_REQUEST Enter an amount above zero, nothing stored",
 		async (name) => {
 			const before = await count();
 			const f = lunch(w, { amount: "0.000000001" });

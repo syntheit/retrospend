@@ -40,7 +40,7 @@ describe("an expense write refusal as problem+json", () => {
 		expect(encoded(new AmountRefusedError())).toMatchObject({
 			status: 400,
 			code: "bad_request",
-			detail: "Enter an amount above 0",
+			detail: "Enter an amount above zero",
 		});
 	});
 });
