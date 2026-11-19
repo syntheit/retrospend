@@ -143,7 +143,7 @@ export const authContract = {
 			tags: TAG,
 			summary: "What a password reset link leads to",
 			description:
-				"Public. Call it with the token from the reset email before showing the reset page. Spends no try and releases no key. 404 invalid_token for an unknown, expired, used or admin-made token. Limited per address (10 a minute, shared with begin and the recovery itself). Writes nothing, so it needs no Idempotency-Key.",
+				"Public. Call it with the token from the reset email before showing the reset page. Spends no try and releases no key. 404 invalid_token for an unknown, expired, used or admin-made token. Rate limited per address, shared with begin and the recovery itself; a refused call is 429 with Retry-After. Writes nothing, so it needs no Idempotency-Key.",
 		})
 		.meta({ scope: "public", readsOnly: true })
 		.input(checkRecoverySchema)
@@ -156,7 +156,7 @@ export const authContract = {
 			tags: TAG,
 			summary: "Prove your recovery key and get the wraps it opens",
 			description:
-				"Public. The ak-recovery and private-key wraps are released to a caller that holds a live reset link and proves the recovery key. Each call counts one recovery try (5 per link and 10 per account in an hour, then 429). 404 invalid_token for an unknown, expired, used or admin-made token, and 404 when the account has no keys. 400 wrong_recovery_key for a wrong proof. 409 recovery_unavailable when the keys were made before the recovery proof existed. Writes nothing, so it needs no Idempotency-Key.",
+				"Public. The ak-recovery and private-key wraps are released to a caller that holds a live reset link and proves the recovery key. Each call counts one recovery try, limited per link and per account; a refused call is 429 with Retry-After. 404 invalid_token for an unknown, expired, used or admin-made token, and 404 when the account has no keys. 400 wrong_recovery_key for a wrong proof. 409 recovery_unavailable when the keys were made before the recovery proof existed. Writes nothing, so it needs no Idempotency-Key.",
 		})
 		.meta({ scope: "public", readsOnly: true })
 		.input(beginRecoverySchema)
