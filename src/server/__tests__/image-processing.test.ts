@@ -102,19 +102,11 @@ describe("validateImageBytes", () => {
 
 	it("rejects RIFF header without WEBP marker (e.g. WAV audio)", () => {
 		// RIFF + size + "WAVE" - magic bytes match RIFF but not the WEBP sub-marker
+		// biome-ignore format: a byte table, one field per line
 		const buf = Buffer.from([
-			0x52,
-			0x49,
-			0x46,
-			0x46, // "RIFF"
-			0x00,
-			0x00,
-			0x00,
-			0x00, // file size placeholder
-			0x57,
-			0x41,
-			0x56,
-			0x45, // "WAVE" (not "WEBP")
+			0x52, 0x49, 0x46, 0x46, // "RIFF"
+			0x00, 0x00, 0x00, 0x00, // file size placeholder
+			0x57, 0x41, 0x56, 0x45, // "WAVE" (not "WEBP")
 		]);
 		expect(validateImageBytes(buf)).toEqual({ valid: false, format: null });
 	});

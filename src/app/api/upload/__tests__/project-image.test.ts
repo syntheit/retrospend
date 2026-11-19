@@ -126,7 +126,9 @@ describe("POST /api/upload/project-image", () => {
 			user: { id: USER_ID, protectionState: "ON" },
 			session: { id: "session-1" },
 		} as never);
-		const res = await POST(makePostRequest(makeFile()) as never);
+		const res = await POST(
+			makePostRequest(makeFile()) as never,
+		);
 		expect(res.status).toBe(403);
 		expect(res.headers.get("content-type")).toBe("application/problem+json");
 		expect(await res.json()).toMatchObject({ code: "protected_account" });
@@ -143,9 +145,7 @@ describe("POST /api/upload/project-image", () => {
 		vi.mocked(getWebSession).mockResolvedValue({
 			user: { id: USER_ID, protectionState: "OFF" },
 		} as never);
-		vi.mocked(db.user.findUnique).mockResolvedValue({
-			isActive: false,
-		} as never);
+		vi.mocked(db.user.findUnique).mockResolvedValue({ isActive: false } as never);
 		const res = await POST(makePostRequest(makeFile()) as never);
 		expect(res.status).toBe(403);
 	});

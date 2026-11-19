@@ -13,8 +13,11 @@ import {
 import { TRPCError } from "@trpc/server";
 import * as z from "zod";
 import { db } from "~/server/db";
+import {
+	INVALID_IMAGE_MESSAGE,
+	processReceipt,
+} from "~/server/image-processing";
 import { recordAdminListView } from "~/server/services/admin-access.service";
-import { processReceipt } from "~/server/image-processing";
 import { openFeedbackScreenshotAsAdmin } from "~/server/services/feedback-screenshot.service";
 import { uploadFile } from "~/server/storage";
 import { assertAdmin } from "./admin";
@@ -67,7 +70,7 @@ export async function attachScreenshot(
 	} catch (err) {
 		throw new TRPCError({
 			code: "BAD_REQUEST",
-			message: err instanceof Error ? err.message : "Invalid image format",
+			message: err instanceof Error ? err.message : INVALID_IMAGE_MESSAGE,
 		});
 	}
 	const path = screenshotPathOf(row.id);

@@ -1,7 +1,10 @@
 import { AVATAR_MAX_BYTES } from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import type { db as globalDb } from "~/server/db";
-import { processAvatar } from "~/server/image-processing";
+import {
+	INVALID_IMAGE_MESSAGE,
+	processAvatar,
+} from "~/server/image-processing";
 import { deleteFile, getImageUrl, uploadFile } from "~/server/storage";
 
 type AppDb = typeof globalDb;
@@ -28,7 +31,7 @@ export async function replaceAvatar(
 	} catch (err) {
 		throw new TRPCError({
 			code: "BAD_REQUEST",
-			message: err instanceof Error ? err.message : "Invalid image format",
+			message: err instanceof Error ? err.message : INVALID_IMAGE_MESSAGE,
 		});
 	}
 
