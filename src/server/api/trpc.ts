@@ -14,6 +14,7 @@ import superjson from "superjson";
 import {
 	AmountRefusedError,
 	CategoryNotFoundError,
+	EditRefusal,
 } from "@retrospend/domain/expense-write/refusals";
 import { MissingRateError } from "@retrospend/domain/money";
 import { errorFormatter } from "~/server/api/error-formatter";
@@ -204,6 +205,15 @@ const timingMiddleware = t.middleware(async ({ next }) => {
 	if (!result.ok && result.error.cause instanceof CategoryNotFoundError) {
 		throw new TRPCError({
 			code: "FORBIDDEN",
+			message: result.error.cause.message,
+			cause: result.error.cause,
+		});
+	}
+	// A row the edit cannot reach, or money an account leg pins.
+	if (!result.ok && result.error.cause instanceof EditRefusal) {
+		throw new TRPCError({
+			code:
+				result.error.cause.kind === "notFound" ? "NOT_FOUND" : "BAD_REQUEST",
 			message: result.error.cause.message,
 			cause: result.error.cause,
 		});

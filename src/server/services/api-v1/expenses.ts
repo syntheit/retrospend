@@ -26,6 +26,7 @@ import {
 } from "~/server/services/entry/categorize.mutation";
 import {
 	deleteExpenseEntry,
+	replaceExpenseEntry,
 	restoreExpenseEntry,
 	type UpdateExpenseInput,
 	updateExpenseEntry,
@@ -173,36 +174,6 @@ export function updateInput(
 }
 
 /**
- * An expense category must be one of the caller's expense categories. The
- * service answers FORBIDDEN, which reads as a permission problem; here a
- * category that is missing or someone else's is just not found, as every
- * other id in the path or body is. An edit that keeps the expense's own
- * category is left alone, as the service does (an old row can sit in a
- * category that no longer takes new expenses).
- */
-async function requireCategory(
-	caller: LedgerCaller,
-	categoryId: string | undefined,
-	editing?: string,
-) {
-	if (!categoryId) return;
-	const { db, principal } = caller;
-	if (editing) {
-		const current = await db.expense.findFirst({
-			where: { id: editing, userId: principal.userId },
-			select: { categoryId: true },
-		});
-		if (current?.categoryId === categoryId) return;
-	}
-	const found = await db.category.findFirst({
-		where: { id: categoryId, userId: principal.userId, kind: "EXPENSE" },
-		select: { id: true },
-	});
-	if (!found)
-		throw new TRPCError({ code: "NOT_FOUND", message: "Category not found" });
-}
-
-/**
  * A write that names the `updatedAt` its caller read runs only while the row
  * still has it (guardedExpense, in the write's transaction, the same for a
  * preview). Without a stamp the mutation is untouched.
@@ -218,7 +189,6 @@ function stamped<I extends object, V extends { id: string }>(
 }
 
 export async function addExpense(caller: LedgerCaller, input: Fields) {
-	await requireCategory(caller, input.categoryId);
 	const args = createInput(caller, input);
 	const created = await applyWrite(caller, createExpense, args);
 	const expense = await readExpense(caller, created.id);
@@ -232,18 +202,37 @@ export async function addExpense(caller: LedgerCaller, input: Fields) {
 }
 
 export async function previewAddExpense(caller: LedgerCaller, input: Fields) {
-	await requireCategory(caller, input.categoryId);
 	return previewWrite(caller, createExpense, createInput(caller, input));
+}
+
+/**
+ * A replace as v1 answers it: a bad category before a stale stamp, and both
+ * before a missing row (the core's categoryFirst order, which the stamp
+ * compare would otherwise run ahead of).
+ */
+function replacing(expectedUpdatedAt: string | undefined) {
+	const guarded = stamped(replaceExpenseEntry, expectedUpdatedAt);
+	if (!expectedUpdatedAt) return guarded;
+	return {
+		...guarded,
+		run: async (
+			tx: Parameters<typeof guarded.run>[0],
+			input: UpdateExpenseInput,
+			actor: Parameters<typeof guarded.run>[2],
+		) => {
+			await new ExpenseService(tx).checkEditCategory(actor.userId, input);
+			return guarded.run(tx, input, actor);
+		},
+	};
 }
 
 export async function replaceExpense(
 	caller: LedgerCaller,
 	input: z.infer<typeof updateExpenseSchema>,
 ) {
-	await requireCategory(caller, input.categoryId, input.id);
 	const done = await applyWrite(
 		caller,
-		stamped(updateExpenseEntry, input.expectedUpdatedAt),
+		replacing(input.expectedUpdatedAt),
 		updateInput(caller, input),
 	);
 	const expense = await readExpense(caller, done.id);
@@ -260,10 +249,9 @@ export async function previewReplaceExpense(
 	caller: LedgerCaller,
 	input: z.infer<typeof updateExpenseSchema>,
 ) {
-	await requireCategory(caller, input.categoryId, input.id);
 	return previewWrite(
 		caller,
-		stamped(updateExpenseEntry, input.expectedUpdatedAt),
+		replacing(input.expectedUpdatedAt),
 		updateInput(caller, input),
 	);
 }

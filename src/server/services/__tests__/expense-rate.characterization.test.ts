@@ -9,7 +9,7 @@
  * none. The user's home is ARS.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { makeExpense } from "~/test/factories";
+import { makeExpense, makeStoredExpense } from "~/test/factories";
 import { createMockDb } from "~/test/mock-db";
 import { useRateTable } from "~/test/rate-table";
 import { ExpenseService } from "../expense.service";
@@ -41,7 +41,7 @@ describe("expense rate on save today (characterization)", () => {
 			defaultRateTypes: {},
 		});
 		db.expense.create.mockResolvedValue(makeExpense());
-		db.expense.update.mockResolvedValue(makeExpense());
+		db.expense.update.mockResolvedValue(makeStoredExpense());
 		service = new ExpenseService(db as never);
 	});
 
@@ -139,7 +139,7 @@ describe("expense rate on save today (characterization)", () => {
 	});
 
 	describe("editing", () => {
-		const existing = makeExpense({
+		const existing = makeStoredExpense({
 			id: "exp-1",
 			userId: "user-1",
 			currency: "ARS",

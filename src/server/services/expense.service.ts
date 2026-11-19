@@ -1,33 +1,33 @@
 import { expenseCategory } from "@retrospend/domain/expense-write/category";
 import { bookCreate } from "@retrospend/domain/expense-write/create";
-import { toFloat } from "@retrospend/domain/precise-decimal";
 import {
-	rateChoice as chooseRate,
-	type RateChoice,
+	checkEditCategory as checkStoredCategory,
+	type DeleteHooks,
+	deleteExpense as deleteStoredExpense,
+	type EditInput,
+	type EditOptions,
+	type EditResult,
+	editExpense as editStoredExpense,
+	type SavedFigures,
+} from "@retrospend/domain/expense-write/edit";
+import {
+	ANY_POLICY,
+	type EditPolicy,
+} from "@retrospend/domain/expense-write/policy";
+import {
 	type RateInput,
 	type SavedRate,
 	storedAmount,
 } from "@retrospend/domain/rate-booking";
-import {
-	dayKey,
-	parseDateOnlyIn,
-	startOfNextDayIn,
-} from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import { CUSTOM_RATE_TYPE } from "~/lib/rate-selection";
 import { userTransaction } from "~/server/db-tx";
-import { findExchangeRate } from "~/server/exchange-rates";
 import type { Prisma, PrismaClient } from "~prisma";
-import { refuseLegMoneyEdit } from "./accounts/leg-edits";
 import { AmortizationService } from "./amortization.service";
+import { bookContextOf, expenseEditPort } from "./entry/expense-edit.prisma";
 import { type RestoreToken, readRowRestore } from "./entry/restore-token";
 import { findDuplicateExpense } from "./expense-duplicate";
-import {
-	asBadRequest,
-	type BookedRate,
-	bookRate,
-	loadRateContext,
-} from "./rate-types";
+import { asBadRequestAsync } from "./rate-types";
 import { listedEntryWhere } from "./spending";
 import { sortByText } from "./text-order";
 
@@ -36,79 +36,8 @@ export const CUSTOM_PRICING_SOURCE = CUSTOM_RATE_TYPE;
 
 export type { RateInput, SavedRate };
 
-/** The domain's rateChoice, with bad input as a BAD_REQUEST. */
-export function rateChoice(
-	input: RateInput,
-	saved: SavedRate | null | undefined,
-	homeCurrency: string,
-): RateChoice {
-	return asBadRequest(() => chooseRate(input, saved, homeCurrency));
-}
-
-/**
- * Works out both legs of an expense's rate on the server: the entry leg
- * (exchangeRate, amountInUSD) and the home leg booked once (rateType,
- * homeCurrency, homeRate, homeAmount), so the entry never drifts with later
- * rates. The client's amountInUSD is never used. A missing rate throws
- * MissingRateError: saving is blocked, never done at 0 or 1.
- */
-export async function resolveExpenseRate(
-	db: PrismaClient | Prisma.TransactionClient,
-	userId: string,
-	input: RateInput,
-	saved?: SavedRate | null,
-): Promise<BookedRate> {
-	const ctx = await loadRateContext(db, userId);
-	return bookRate(
-		db,
-		ctx,
-		{
-			amount: storedAmount(input.amount),
-			currency: input.currency,
-			date: input.date,
-		},
-		rateChoice(input, saved, ctx.homeCurrency),
-		saved,
-	);
-}
-
 /** The kind of signed restore an expense edit's undo carries (restore-token.ts). */
 export const EXPENSE_RESTORE = "expense.update";
-
-/** The booked rate columns of a row as stored, as decimal text. */
-export interface SavedFigures {
-	exchangeRate: string;
-	amountInUSD: string;
-	rateType: string | null;
-	homeCurrency: string | null;
-	homeRate: string | null;
-	homeAmount: string | null;
-}
-
-/** The rate columns of a saved expense row, and the money it booked. */
-function savedRateOf(row: {
-	currency: string;
-	exchangeRate: Prisma.Decimal | number;
-	rateType: string | null;
-	homeCurrency: string | null;
-	homeRate: Prisma.Decimal | null;
-	amount: Prisma.Decimal;
-	date: Date;
-	amountInUSD: Prisma.Decimal;
-	homeAmount: Prisma.Decimal | null;
-}): SavedRate {
-	return {
-		currency: row.currency,
-		exchangeRate: toFloat(row.exchangeRate),
-		rateType: row.rateType,
-		homeCurrency: row.homeCurrency,
-		homeRate: row.homeRate?.toString() ?? null,
-		amount: row.amount.toString(),
-		date: row.date,
-		amountInUSD: row.amountInUSD.toString(),
-		homeAmount: row.homeAmount?.toString() ?? null,
-	};
-}
 
 export interface CreateExpenseInput {
 	id: string;
@@ -148,21 +77,9 @@ export async function createExpenseIn(
 				"not_found",
 			)
 		: undefined;
-	const rates = await loadRateContext(tx, userId);
-	const { plan, booked: rate } = await bookCreate(
-		{
-			homeCurrency: rates.homeCurrency,
-			preferred: rates.preferred,
-			find: (currency, date, type) =>
-				findExchangeRate(tx, currency, date, type),
-		},
-		input,
-		category,
-	).catch((error: unknown) =>
-		// Bad rate input is a BAD_REQUEST, as on every rate path here.
-		asBadRequest(() => {
-			throw error;
-		}),
+	// Bad rate input is a BAD_REQUEST, as on every rate path here.
+	const { plan, booked: rate } = await asBadRequestAsync(async () =>
+		bookCreate(await bookContextOf(tx, userId), input, category),
 	);
 	const pricingSource = input.pricingSource ?? "MANUAL";
 
@@ -196,6 +113,15 @@ export async function createExpenseIn(
 	return expense;
 }
 
+/** The fields the expense form saves; `restore` is set only by the undo of an edit. */
+export interface UpdateExpenseInput extends Omit<EditInput, "pricingSource"> {
+	pricingSource?: string;
+	/** Old forms send it; the server books its own and never reads it. */
+	amountInUSD?: number;
+	/** The figures the edit was saved with, signed, written back as they were. */
+	restore?: RestoreToken | null;
+}
+
 export class ExpenseService {
 	constructor(private db: PrismaClient | Prisma.TransactionClient) {}
 
@@ -206,114 +132,68 @@ export class ExpenseService {
 		);
 	}
 
-	async updateExpense(
+	/**
+	 * Edits an expense on the domain core, in one transaction. `policy` says
+	 * which rows are reachable; the legacy callers keep every row of the
+	 * person's. Returns the core's before and after, and the row as stored.
+	 */
+	async editExpense(
 		userId: string,
-		input: {
-			id: string;
-			title: string;
-			amount: number | string;
-			currency: string;
-			exchangeRate?: number;
-			amountInUSD?: number;
-			pricingSource?: string;
-			rateType?: string;
-			customRate?: { base: string; value: string; home?: string };
-			date: Date;
-			location?: string;
-			description?: string;
-			categoryId?: string;
-			amortizeOver?: number;
-			excludeFromAnalytics?: boolean;
-			/** Set only by the undo of an edit: the figures it was saved with, signed, written back as they were. */
-			restore?: RestoreToken | null;
-		},
-	) {
-		const existingExpense = await (this.db as PrismaClient).expense.findFirst({
-			where: { id: input.id, userId },
-			include: { _count: { select: { accountLegs: true } } },
-		});
-
-		if (!existingExpense) {
-			throw new TRPCError({ code: "NOT_FOUND", message: "Expense not found" });
-		}
-		refuseLegMoneyEdit(existingExpense, input);
-
-		// Determine excludeFromAnalytics for the update
-		let excludeFromAnalytics: boolean | undefined = input.excludeFromAnalytics;
-
-		// A changed category must belong to the user, same as on create. An
-		// unchanged category is left alone so editing never trips on it.
-		if (input.categoryId && input.categoryId !== existingExpense.categoryId) {
-			const newCategory = await (this.db as PrismaClient).category.findFirst({
-				where: { id: input.categoryId, userId, kind: "EXPENSE" },
-				select: { excludeByDefault: true },
-			});
-			if (!newCategory) {
-				throw new TRPCError({
-					code: "FORBIDDEN",
-					message: "Category not found",
-				});
-			}
-			// If the user didn't explicitly set the flag, apply the new category's default
-			if (excludeFromAnalytics === undefined && newCategory.excludeByDefault) {
-				excludeFromAnalytics = true;
-			}
-		}
-
-		// An undo puts back what was stored; booking again could round differently.
-		const rate = input.restore
-			? await this.restoredFigures(userId, { ...input, restore: input.restore })
-			: await resolveExpenseRate(
-					this.db,
-					userId,
-					input,
-					savedRateOf(existingExpense),
-				);
-
+		input: UpdateExpenseInput,
+		policy: EditPolicy,
+		options: Pick<EditOptions, "categoryFirst" | "afterRead"> = {},
+	): Promise<EditResult & { row: Prisma.ExpenseGetPayload<object> }> {
 		return await this.runInTransaction(async (tx) => {
-			const expense = await tx.expense.update({
-				where: { id: input.id, userId },
-				data: {
-					title: input.title,
-					amount: storedAmount(input.amount),
-					currency: input.currency,
-					...rate,
-					pricingSource: input.pricingSource,
-					date: input.date,
-					location: input.location || null,
-					description: input.description || null,
-					categoryId: input.categoryId || null,
-					isAmortizedParent: (input.amortizeOver ?? 0) > 1,
-					...(excludeFromAnalytics !== undefined && { excludeFromAnalytics }),
-				},
-			});
-
-			const amortization = new AmortizationService(tx);
-			await amortization.syncAmortization(expense, input.amortizeOver ?? 0);
-
-			return expense;
+			const port = expenseEditPort(tx, userId);
+			const spread = new AmortizationService(tx);
+			const { restore } = input;
+			const done = await asBadRequestAsync(() =>
+				editStoredExpense(port, input, policy, {
+					...options,
+					// An undo puts back what was stored; booking again could round differently.
+					restoredFigures: restore
+						? () => this.restoredFigures(tx, userId, { ...input, restore })
+						: undefined,
+					afterWrite: (after, amortizeOver) =>
+						spread.syncAmortization({ ...after, userId }, amortizeOver),
+				}),
+			);
+			return { ...done, row: port.written() };
 		}, userId);
 	}
 
-	async deleteExpense(userId: string, id: string) {
-		const expense = await (this.db as PrismaClient).expense.findFirst({
-			where: { id, userId },
-			select: { id: true, isAmortizedParent: true },
-		});
+	/** The category rule of an edit alone (v1 asks it ahead of a stamp compare). */
+	async checkEditCategory(userId: string, input: UpdateExpenseInput) {
+		await this.runInTransaction(
+			(tx) => checkStoredCategory(expenseEditPort(tx, userId), input),
+			userId,
+		);
+	}
 
-		if (!expense) {
-			throw new TRPCError({ code: "NOT_FOUND", message: "Expense not found" });
-		}
+	/** The legacy edit: every row of the person's, the stored row back. */
+	async updateExpense(userId: string, input: UpdateExpenseInput) {
+		return (await this.editExpense(userId, input, ANY_POLICY)).row;
+	}
 
-		await this.runInTransaction(async (tx) => {
-			if (expense.isAmortizedParent) {
-				await tx.expense.deleteMany({
-					where: { parentId: id, userId },
-				});
-			}
-			await tx.expense.delete({ where: { id } });
-		}, userId);
-
+	/** Deletes an expense and its spread parts; `policy` defaults to every row of the person's. */
+	async deleteExpense(
+		userId: string,
+		id: string,
+		options: {
+			policy?: EditPolicy;
+			beforeRemove?: DeleteHooks["beforeRemove"];
+		} = {},
+	) {
+		await this.runInTransaction(
+			(tx) =>
+				deleteStoredExpense(
+					expenseEditPort(tx, userId),
+					id,
+					options.policy ?? ANY_POLICY,
+					{ beforeRemove: options.beforeRemove },
+				),
+			userId,
+		);
 		return { success: true };
 	}
 
@@ -444,6 +324,7 @@ export class ExpenseService {
 	 * id, amount, currency and date, under the home the user still has.
 	 */
 	private async restoredFigures(
+		tx: Prisma.TransactionClient,
 		userId: string,
 		input: {
 			id: string;
@@ -453,7 +334,7 @@ export class ExpenseService {
 			restore: RestoreToken;
 		},
 	): Promise<SavedFigures> {
-		const user = await (this.db as PrismaClient).user.findUnique({
+		const user = await tx.user.findUnique({
 			where: { id: userId },
 			select: { homeCurrency: true },
 		});

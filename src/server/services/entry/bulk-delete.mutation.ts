@@ -16,6 +16,7 @@
  * the undo token and the response stay small whatever the set holds, and a
  * lost response can always be replayed.
  */
+import { ENTRY_POLICY } from "@retrospend/domain/expense-write/policy";
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
 import { ExpenseService } from "../expense.service";
@@ -99,8 +100,12 @@ export const deleteExpensesBulk: MoneyMutation<DeleteManyInput, DeletedMany> = {
 				skipped.push(id);
 				continue;
 			}
-			snapshots.push(await snapshotExpense(tx, actor.userId, id));
-			await service.deleteExpense(actor.userId, id);
+			await service.deleteExpense(actor.userId, id, {
+				policy: ENTRY_POLICY,
+				beforeRemove: async () => {
+					snapshots.push(await snapshotExpense(tx, actor.userId, id));
+				},
+			});
 			deleted.push(id);
 		}
 		if (deleted.length === 0) {

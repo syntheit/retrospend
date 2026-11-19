@@ -9,13 +9,15 @@
 
 import { SealedTextError } from "@retrospend/api-contract/common";
 import { MissingRateError } from "@retrospend/domain/money";
+import { rateChoice as chooseRate } from "@retrospend/domain/rate-booking";
 import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { makeExpense } from "~/test/factories";
+import { makeExpense, makeStoredExpense } from "~/test/factories";
 import { createMockDb } from "~/test/mock-db";
 import { useRateTable } from "~/test/rate-table";
-import { ExpenseService, rateChoice } from "../expense.service";
+import { ExpenseService } from "../expense.service";
 import { recurringEntryData } from "../money-in.service";
+import { asBadRequest } from "../rate-types";
 
 const DATE = new Date("2026-08-10T12:00:00Z");
 const BASE = { id: "exp-1", title: "Netflix", date: DATE };
@@ -39,7 +41,7 @@ describe("the home leg an expense books", () => {
 		useRateTable(db);
 		asUser("ARS");
 		db.expense.create.mockResolvedValue(makeExpense());
-		db.expense.update.mockResolvedValue(makeExpense());
+		db.expense.update.mockResolvedValue(makeStoredExpense());
 		service = new ExpenseService(db as never);
 	});
 
@@ -143,7 +145,7 @@ describe("the home leg an expense books", () => {
 	});
 
 	describe("editing", () => {
-		const bookedUsd = makeExpense({
+		const bookedUsd = makeStoredExpense({
 			id: "exp-1",
 			userId: "u1",
 			currency: "USD",
@@ -208,7 +210,12 @@ describe("the home leg an expense books", () => {
 
 		it("an expense saved before M2 books its home leg on the next save", async () => {
 			db.expense.findFirst.mockResolvedValue(
-				makeExpense({ id: "exp-1", userId: "u1", currency: "USD", amount: 10 }),
+				makeStoredExpense({
+					id: "exp-1",
+					userId: "u1",
+					currency: "USD",
+					amount: 10,
+				}),
 			);
 			await service.updateExpense("u1", {
 				...BASE,
@@ -226,7 +233,7 @@ describe("the home leg an expense books", () => {
 		it("a home currency change books the new home", async () => {
 			asUser("USD");
 			db.expense.findFirst.mockResolvedValue(
-				makeExpense({
+				makeStoredExpense({
 					id: "exp-1",
 					userId: "u1",
 					currency: "ARS",
@@ -325,6 +332,9 @@ describe("the home leg an expense books", () => {
 });
 
 describe("rateChoice", () => {
+	const rateChoice = (
+		...args: Parameters<typeof chooseRate>
+	): ReturnType<typeof chooseRate> => asBadRequest(() => chooseRate(...args));
 	const input = { amount: 10, currency: "ARS", date: DATE };
 	const saved = {
 		currency: "ARS",

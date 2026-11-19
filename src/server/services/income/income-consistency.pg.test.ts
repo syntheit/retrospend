@@ -5,6 +5,7 @@
  * leg keeps its money, and Use my plan assigns through the envelope budget.
  * ARS home; ARS 1,468 Blue, 1,412 Official, 1,449 MEP per USD.
  */
+import { LEG_EDIT_REFUSED } from "@retrospend/domain/expense-write/refusals";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { confirmRecurringIncomeSchema } from "~/server/services/accounts/input";
 import { updateBalance } from "~/server/services/accounts/update-balance.mutation";
@@ -329,7 +330,10 @@ describe("a row with a leg keeps its money", () => {
 		]) {
 			await expect(
 				service.updateExpense(p.userId, { ...edit, ...change }),
-			).rejects.toMatchObject({ code: "BAD_REQUEST" });
+			).rejects.toMatchObject({
+				kind: "badRequest",
+				message: LEG_EDIT_REFUSED,
+			});
 		}
 		await service.updateExpense(p.userId, { ...edit, title: "June salary" });
 		expect(await balanceOf(p.savings)).toBe("5100000");

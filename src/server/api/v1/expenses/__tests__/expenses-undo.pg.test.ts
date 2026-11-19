@@ -127,6 +127,19 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 		).toBe("After");
 	});
 
+	it("an edit's undo reads the row first: a gone row and a gone category answer Expense not found", async () => {
+		// Only a replace reads the category first; the undo of an edit does not.
+		const cat = await newCategory(userId, "Gone");
+		const made = await add(body(cat.id, { title: "Before" }));
+		const id = made.expense.id;
+		const edit = await put(id, body(cat.id, { title: "After" }));
+		await fixtureDb.expense.delete({ where: { id } });
+		await fixtureDb.category.delete({ where: { id: cat.id } });
+		const res = await undo(edit.undo);
+		await expectProblem(res.clone(), 404, "not_found");
+		expect(await res.json()).toMatchObject({ detail: "Expense not found" });
+	});
+
 	it("lets an undo token work once", async () => {
 		const made = await add(body(food, { title: "Once" }));
 		await expectBody(await undo(made.undo), c.undo);

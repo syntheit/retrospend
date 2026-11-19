@@ -3,6 +3,7 @@ import type { ProblemCode } from "@retrospend/api-contract/common";
 import {
 	AmountRefusedError,
 	CategoryNotFoundError,
+	EditRefusal,
 } from "@retrospend/domain/expense-write/refusals";
 import { MissingRateError } from "@retrospend/domain/money";
 import { TRPCError } from "@trpc/server";
@@ -108,8 +109,15 @@ export function toProblem(error: unknown, route?: string): unknown {
 	// of the route that threw it (404 on a write, 403 on categorize).
 	const refused = [error, (error as { cause?: unknown } | null)?.cause].find(
 		(e) =>
-			e instanceof CategoryNotFoundError || e instanceof AmountRefusedError,
+			e instanceof CategoryNotFoundError ||
+			e instanceof AmountRefusedError ||
+			e instanceof EditRefusal,
 	);
+	if (refused instanceof EditRefusal)
+		return problem(
+			refused.kind === "notFound" ? "not_found" : "bad_request",
+			refused.message,
+		);
 	if (refused instanceof CategoryNotFoundError)
 		return problem(refused.v1Code, refused.message);
 	if (refused instanceof AmountRefusedError)

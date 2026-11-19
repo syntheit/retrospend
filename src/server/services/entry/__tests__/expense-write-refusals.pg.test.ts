@@ -183,6 +183,29 @@ describe("update refusals leave the row as it was", () => {
 	);
 });
 
+describe("an amount that stores as zero (PR3 changed answer)", () => {
+	// Before PR3 the legacy update saved amount 0 and a missing rate answered
+	// first; now the amount refusal comes before the rate, as on create. v1's
+	// amountTextSchema keeps 8 decimals, so it cannot reach a stored 0.
+	const ABOVE_ZERO = trpc("BAD_REQUEST", "Enter an amount above zero");
+	const tiny = { amount: "0.000000004" };
+	const cases: readonly Case[] = [
+		[
+			"an amount of 0.000000004",
+			edit(() => tiny),
+			{ entry: ABOVE_ZERO, legacy: ABOVE_ZERO },
+		],
+		[
+			"an amount of 0.000000004 and a currency with no rate",
+			edit(() => ({ ...tiny, currency: "BTN" })),
+			{ entry: ABOVE_ZERO, legacy: ABOVE_ZERO },
+		],
+	];
+	it.each(perTransport(cases))("%s: update: %s", (name, _what, setup, want) =>
+		refused(name, setup, want, "update"),
+	);
+});
+
 describe("combined refusals: which one wins", () => {
 	// The category is read first on v1 and last on tRPC, so a bad id with a bad
 	// category is "Category not found" on v1 and "Expense not found" on tRPC.

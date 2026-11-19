@@ -117,6 +117,25 @@ export function makeExpense(overrides: Partial<TestExpense> = {}): TestExpense {
 	};
 }
 
+/**
+ * An expense row as the edit adapter reads and writes it (Prisma's full
+ * column set and the leg count), for the mock-db tests of update and delete.
+ */
+export function makeStoredExpense(overrides: Partial<TestExpense> = {}) {
+	return {
+		direction: "OUT",
+		isAmortizedChild: false,
+		isAmortizedParent: false,
+		rateType: null,
+		homeCurrency: null,
+		homeRate: null,
+		homeAmount: null,
+		excludeFromAnalytics: false,
+		_count: { accountLegs: 0 },
+		...makeExpense(overrides),
+	};
+}
+
 // ── Budget ────────────────────────────────────────────────────────────────────
 
 export type TestBudget = {
