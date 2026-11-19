@@ -38,18 +38,24 @@ test("a plain account turns Advanced protection on, and signs in with the new pa
 	await waitUntilReady(page);
 
 	await gotoReady(page, "/settings");
-	const row = page.getByRole("listitem").filter({ hasText: "Advanced protection" });
+	const row = page
+		.getByRole("listitem")
+		.filter({ hasText: "Advanced protection" });
 	await expect(row.getByText("Off", { exact: true })).toBeVisible();
 	await row.getByRole("button", { name: "Turn on" }).click();
 
 	const sheet = page.getByRole("dialog");
 	await sheet.getByRole("button", { name: "Continue" }).click();
-	await sheet.getByLabel("New password", { exact: true }).fill(USER.newPassword);
+	await sheet
+		.getByLabel("New password", { exact: true })
+		.fill(USER.newPassword);
 	await sheet.getByLabel("Confirm new password").fill(USER.newPassword);
 	await sheet.getByRole("button", { name: "Continue" }).click();
 
 	// The keys are made (a busy moment), then the key is created, shown and confirmed.
-	await sheet.getByRole("button", { name: "Create key" }).click({ timeout: 90_000 });
+	await sheet
+		.getByRole("button", { name: "Create key" })
+		.click({ timeout: 90_000 });
 	const groups = await sheet.locator("fieldset .font-mono").allInnerTexts();
 	expect(groups).toHaveLength(9);
 	await sheet.getByRole("button", { name: "I saved it" }).click();
@@ -72,12 +78,16 @@ test("a plain account turns Advanced protection on, and signs in with the new pa
 
 	// Enable, then the read-back with the new sign-in secret. The old password
 	// goes once, as the proof; the new password and the recovery key never go.
-	const calls = sent.filter((c) => c.url.endsWith("/enable") || c.url.endsWith("/keys/open"));
+	const calls = sent.filter(
+		(c) => c.url.endsWith("/enable") || c.url.endsWith("/keys/open"),
+	);
 	expect(calls.map((c) => c.url)).toEqual([
 		"/api/v1/me/protection/enable",
 		"/api/v1/me/protection/keys/open",
 	]);
-	const [enable, open] = calls.map((c) => JSON.parse(c.body) as Record<string, unknown>);
+	const [enable, open] = calls.map(
+		(c) => JSON.parse(c.body) as Record<string, unknown>,
+	);
 	expect(enable?.currentPassword).toBe(USER.password);
 	expect(open).toEqual({ authKey: enable?.authKey });
 	for (const c of sent) {
@@ -86,7 +96,9 @@ test("a plain account turns Advanced protection on, and signs in with the new pa
 	}
 
 	// The server holds the keys, and prelogin now names the account's salt.
-	expect((await page.request.get("/api/v1/me/protection/keys")).status()).toBe(200);
+	expect((await page.request.get("/api/v1/me/protection/keys")).status()).toBe(
+		200,
+	);
 	const prelogin = await page.request.post("/api/v1/auth/prelogin", {
 		data: { email: USER.email },
 	});

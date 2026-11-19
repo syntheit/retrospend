@@ -19,6 +19,7 @@ import {
 } from "../keys";
 import { type Argon2Params, KEY_BYTES, SALT_BYTES } from "../primitives";
 import { signInSecret } from "../sign-in-secret";
+import { checkStoredKeys } from "./enable-readback";
 import {
 	allowedParams,
 	asKeyFlowError,
@@ -30,7 +31,6 @@ import {
 	NEW_PASSWORD_PARAMS,
 	secretBin,
 } from "./flow";
-import { checkStoredKeys } from "./enable-readback";
 import { makeRecoveryKey } from "./recovery-key";
 
 export type EnableWrap = {

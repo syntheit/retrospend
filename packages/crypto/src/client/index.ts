@@ -11,12 +11,6 @@ export {
 	prepareEnable,
 } from "./enable";
 export {
-	type EnableCallbacks,
-	type EnablePorts,
-	type EnableRequest,
-	createEnableCallbacks,
-} from "./enable-flow";
-export {
 	EnableFailure,
 	enableFailureFor,
 	FAILURE_CODES,
@@ -24,6 +18,12 @@ export {
 	failureCode,
 	isFinalFailure,
 } from "./enable-failure";
+export {
+	createEnableCallbacks,
+	type EnableCallbacks,
+	type EnablePorts,
+	type EnableRequest,
+} from "./enable-flow";
 export {
 	createEnableLifecycle,
 	type EnableLifecycle,

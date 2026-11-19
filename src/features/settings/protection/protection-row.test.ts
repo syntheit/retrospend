@@ -23,7 +23,12 @@ const state = vi.hoisted(() => ({
 		refetch: () => void;
 	},
 	user: undefined as
-		| { id: string; email: string; emailVerified: boolean; twoFactorEnabled: boolean }
+		| {
+				id: string;
+				email: string;
+				emailVerified: boolean;
+				twoFactorEnabled: boolean;
+		  }
 		| undefined,
 }));
 
@@ -47,16 +52,28 @@ vi.mock("./enable-sheet", () => ({
 const { ProtectionRow } = await import("./protection-row");
 const row = protection.row;
 
-const user = { id: "u1", email: "ana@example.com", emailVerified: true, twoFactorEnabled: false };
+const user = {
+	id: "u1",
+	email: "ana@example.com",
+	emailVerified: true,
+	twoFactorEnabled: false,
+};
 const setup = (flags: Flags, status: Partial<Status>, who = user) => {
 	state.flags = flags;
-	state.status = { isPending: false, isError: false, refetch: vi.fn(), ...status };
+	state.status = {
+		isPending: false,
+		isError: false,
+		refetch: vi.fn(),
+		...status,
+	};
 	state.user = who;
 };
 const html = () => render(h("ul", null, h(ProtectionRow)));
 const words = (s: string) => s.replaceAll("&#x27;", "'");
 
-beforeEach(() => setup({ data: { advancedProtection: true } }, { data: "none" }));
+beforeEach(() =>
+	setup({ data: { advancedProtection: true } }, { data: "none" }),
+);
 
 describe("ProtectionRow", () => {
 	it("draws nothing until the flags have loaded, and nothing when protection is not offered", () => {
@@ -96,10 +113,16 @@ describe("ProtectionRow", () => {
 	});
 
 	it("disables Turn on and gives the reason when the email is not verified", () => {
-		setup({ data: { advancedProtection: true } }, { data: "none" }, { ...user, emailVerified: false });
+		setup(
+			{ data: { advancedProtection: true } },
+			{ data: "none" },
+			{ ...user, emailVerified: false },
+		);
 		const out = words(html());
 		expect(out).toContain(row.verifyEmailFirst);
-		expect(out).toMatch(new RegExp(`<button[^>]*disabled=""[^>]*>${row.turnOn}`));
+		expect(out).toMatch(
+			new RegExp(`<button[^>]*disabled=""[^>]*>${row.turnOn}`),
+		);
 	});
 
 	it("says keys are ready, with no Turn on and no sheet, once the account has them", () => {

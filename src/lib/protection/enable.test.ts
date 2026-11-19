@@ -20,7 +20,10 @@ import {
 // digest, the words each failure gets, the wiping) is
 // packages/crypto/test/client-enable-flow.test.ts; this file runs it through
 // the web ports with a scripted server and cheaper parameters than the real ones.
-const ACCOUNT = { id: "0b1f2e3d-4c5b-4a69-8877-665544332211", email: "Person@Example.com" };
+const ACCOUNT = {
+	id: "0b1f2e3d-4c5b-4a69-8877-665544332211",
+	email: "Person@Example.com",
+};
 const ENABLE = "/api/v1/me/protection/enable";
 const OPEN = "/api/v1/me/protection/keys/open";
 const OLD = "my old password";
@@ -35,7 +38,8 @@ const json = (body: unknown, status = 200) =>
 		status,
 		headers: { "content-type": "application/json" },
 	});
-const problem = (code: string, status: number) => json({ code, status }, status);
+const problem = (code: string, status: number) =>
+	json({ code, status }, status);
 
 type Sent = Record<string, unknown> & {
 	wraps: { role: string; targetId: string; wrapped: string }[];
@@ -51,7 +55,8 @@ type Script = {
 };
 
 function setup(script: Script = {}, session?: SessionRefresh) {
-	const calls: { url: string; init: RequestInit | undefined; body: Sent }[] = [];
+	const calls: { url: string; init: RequestInit | undefined; body: Sent }[] =
+		[];
 	const store = new Map<string, string>();
 	let stored: Sent | null = null;
 	let enables = 0;
@@ -64,7 +69,11 @@ function setup(script: Script = {}, session?: SessionRefresh) {
 			const refused = script.enable?.(enables++);
 			if (refused) return refused;
 			stored = body;
-			return json({ version: 1, createdAt: "2026-11-19T10:00:00Z", signedOut: 0 });
+			return json({
+				version: 1,
+				createdAt: "2026-11-19T10:00:00Z",
+				signedOut: 0,
+			});
 		}
 		if (path === OPEN) {
 			if (script.open) return script.open();
@@ -82,7 +91,11 @@ function setup(script: Script = {}, session?: SessionRefresh) {
 				createdAt: "2026-11-19T10:00:00Z",
 				kdf: s.kdf,
 				publicKey: s.publicKey,
-				wraps: [wrap("ak-password"), wrap("private-key"), wrap("collection-key")],
+				wraps: [
+					wrap("ak-password"),
+					wrap("private-key"),
+					wrap("collection-key"),
+				],
 				recoveryWrapDigest: toBase64Url(recoveryWrapDigest(p, recovery)),
 			};
 			script.spoil?.(answer);
@@ -112,11 +125,18 @@ function setup(script: Script = {}, session?: SessionRefresh) {
 	return { made, calls, to, store };
 }
 
-const headerOf = (c: { init: RequestInit | undefined } | undefined, name: string) =>
-	(c?.init?.headers as Record<string, string> | undefined)?.[name];
+const headerOf = (
+	c: { init: RequestInit | undefined } | undefined,
+	name: string,
+) => (c?.init?.headers as Record<string, string> | undefined)?.[name];
 
 const code = async (run: Promise<unknown>) =>
-	failureCode(await run.then(() => null, (e: unknown) => e));
+	failureCode(
+		await run.then(
+			() => null,
+			(e: unknown) => e,
+		),
+	);
 
 describe("web enable", () => {
 	it("sends the typed password and the keys once, then reads them back with the new sign-in secret", async () => {
@@ -133,7 +153,9 @@ describe("web enable", () => {
 		expect(enable[0]?.body.currentPassword).toBe(OLD);
 		expect("totpCode" in (enable[0]?.body ?? {})).toBe(false);
 		expect(enable[0]?.body.wraps).toHaveLength(4);
-		expect(JSON.stringify(enable[0]?.body)).not.toContain("A brand new passphrase 7");
+		expect(JSON.stringify(enable[0]?.body)).not.toContain(
+			"A brand new passphrase 7",
+		);
 
 		// Read back with the sign-in secret the server now holds, and no key.
 		const open = t.to(OPEN);
@@ -146,12 +168,19 @@ describe("web enable", () => {
 	});
 
 	it("sends the two-factor code when there is one, and a retry keeps the Idempotency-Key", async () => {
-		const t = setup({ enable: (n) => (n === 0 ? problem("server_error", 500) : null) });
+		const t = setup({
+			enable: (n) => (n === 0 ? problem("server_error", 500) : null),
+		});
 		const draft = await t.made.makeKeys("A brand new passphrase 7");
-		expect(await code(t.made.save(draft, { password: OLD, code: "123456" }))).toBe("failed");
+		expect(
+			await code(t.made.save(draft, { password: OLD, code: "123456" })),
+		).toBe("failed");
 		await t.made.save(draft, { password: OLD, code: "654321" });
 		const enable = t.to(ENABLE);
-		expect(enable.map((c) => headerOf(c, "idempotency-key"))).toEqual(["idem-1", "idem-1"]);
+		expect(enable.map((c) => headerOf(c, "idempotency-key"))).toEqual([
+			"idem-1",
+			"idem-1",
+		]);
 		expect(enable.map((c) => c.body.totpCode)).toEqual(["123456", "654321"]);
 		// Nothing was recorded or read back for the refused attempt.
 		expect(t.to(OPEN)).toHaveLength(1);
@@ -160,7 +189,9 @@ describe("web enable", () => {
 	it("is a final error when the server answers another ak-recovery digest", async () => {
 		const t = setup({
 			spoil: (answer) => {
-				const d = fromBase64Url(answer.recoveryWrapDigest as string) as Uint8Array;
+				const d = fromBase64Url(
+					answer.recoveryWrapDigest as string,
+				) as Uint8Array;
 				d[0] = (d[0] ?? 0) ^ 1;
 				answer.recoveryWrapDigest = toBase64Url(d);
 			},
@@ -181,9 +212,9 @@ describe("web enable", () => {
 		]) {
 			const t = setup({ open });
 			const draft = await t.made.makeKeys("A brand new passphrase 7");
-			expect(await code(t.made.save(draft, { password: OLD, code: null }))).toBe(
-				"checkFailed",
-			);
+			expect(
+				await code(t.made.save(draft, { password: OLD, code: null })),
+			).toBe("checkFailed");
 		}
 	});
 
@@ -196,13 +227,18 @@ describe("web enable", () => {
 		[409, "conflict", "failed"],
 		[403, "email_not_verified", "failed"],
 		[500, "server_error", "failed"],
-	])("words a %s %s from the enable route as %s", async (status, c, expected) => {
-		const t = setup({ enable: () => problem(c, status) });
-		const draft = await t.made.makeKeys("A brand new passphrase 7");
-		expect(await code(t.made.save(draft, { password: OLD, code: null }))).toBe(expected);
-		expect(t.to(OPEN)).toHaveLength(0);
-		expect(t.store.size).toBe(0);
-	});
+	])(
+		"words a %s %s from the enable route as %s",
+		async (status, c, expected) => {
+			const t = setup({ enable: () => problem(c, status) });
+			const draft = await t.made.makeKeys("A brand new passphrase 7");
+			expect(
+				await code(t.made.save(draft, { password: OLD, code: null })),
+			).toBe(expected);
+			expect(t.to(OPEN)).toHaveLength(0);
+			expect(t.store.size).toBe(0);
+		},
+	);
 
 	it("says it could not be reached when the network fails", async () => {
 		const broken = webEnableCallbacks(ACCOUNT, {
@@ -215,7 +251,9 @@ describe("web enable", () => {
 			},
 		});
 		const other = await broken.makeKeys("A brand new passphrase 7");
-		expect(await code(broken.save(other, { password: OLD, code: null }))).toBe("failed");
+		expect(await code(broken.save(other, { password: OLD, code: null }))).toBe(
+			"failed",
+		);
 	});
 });
 
@@ -234,7 +272,8 @@ describe("an old session", () => {
 		};
 		return { refresh, calls };
 	};
-	const stale = (n: number) => (n === 0 ? problem("session_not_fresh", 403) : null);
+	const stale = (n: number) =>
+		n === 0 ? problem("session_not_fresh", 403) : null;
 
 	it("signs in again with the typed password and sends the same request again", async () => {
 		const s = session({ signIn: { status: "signedIn" } });
@@ -244,7 +283,9 @@ describe("an old session", () => {
 		expect(s.calls).toEqual([`signIn person@example.com ${OLD}`]);
 		const enable = t.to(ENABLE);
 		expect(enable).toHaveLength(2);
-		expect(headerOf(enable[1], "idempotency-key")).toBe(headerOf(enable[0], "idempotency-key"));
+		expect(headerOf(enable[1], "idempotency-key")).toBe(
+			headerOf(enable[0], "idempotency-key"),
+		);
 		expect(enable[1]?.body).toEqual(enable[0]?.body);
 		expect(t.to(OPEN)).toHaveLength(1);
 	});
@@ -254,24 +295,43 @@ describe("an old session", () => {
 		const t = setup({ enable: stale }, s.refresh);
 		const draft = await t.made.makeKeys("A brand new passphrase 7");
 		await t.made.save(draft, { password: OLD, code: "123456" });
-		expect(s.calls).toEqual([`signIn person@example.com ${OLD}`, "verify 123456"]);
+		expect(s.calls).toEqual([
+			`signIn person@example.com ${OLD}`,
+			"verify 123456",
+		]);
 	});
 
 	it.each([
-		["a wrong password", { signIn: { status: "error", httpStatus: 401 } }, "wrongPassword"],
-		["a rate limit", { signIn: { status: "error", httpStatus: 429 } }, "tooMany"],
+		[
+			"a wrong password",
+			{ signIn: { status: "error", httpStatus: 401 } },
+			"wrongPassword",
+		],
+		[
+			"a rate limit",
+			{ signIn: { status: "error", httpStatus: 429 } },
+			"tooMany",
+		],
 		["no network", { signIn: { status: "error", httpStatus: null } }, "failed"],
 		[
 			"a wrong code",
-			{ signIn: { status: "twoFactor" }, verify: { status: "error", httpStatus: 401 } },
+			{
+				signIn: { status: "twoFactor" },
+				verify: { status: "error", httpStatus: 401 },
+			},
 			"wrongCode",
 		],
-	] as const)("words %s while signing in again as %s and does not send twice", async (_n, steps, expected) => {
-		const s = session(steps as { signIn: RefreshStep; verify?: RefreshStep });
-		const t = setup({ enable: stale }, s.refresh);
-		const draft = await t.made.makeKeys("A brand new passphrase 7");
-		expect(await code(t.made.save(draft, { password: OLD, code: "123456" }))).toBe(expected);
-		expect(t.to(ENABLE)).toHaveLength(1);
-		expect(t.to(OPEN)).toHaveLength(0);
-	});
+	] as const)(
+		"words %s while signing in again as %s and does not send twice",
+		async (_n, steps, expected) => {
+			const s = session(steps as { signIn: RefreshStep; verify?: RefreshStep });
+			const t = setup({ enable: stale }, s.refresh);
+			const draft = await t.made.makeKeys("A brand new passphrase 7");
+			expect(
+				await code(t.made.save(draft, { password: OLD, code: "123456" })),
+			).toBe(expected);
+			expect(t.to(ENABLE)).toHaveLength(1);
+			expect(t.to(OPEN)).toHaveLength(0);
+		},
+	);
 });

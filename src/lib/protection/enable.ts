@@ -17,8 +17,8 @@ import {
 	loadCore,
 	post,
 	refusal,
-	SignInSecretError,
 	type SignInSecretDeps,
+	SignInSecretError,
 	signInSecretFor,
 } from "./sign-in-secret";
 
@@ -127,13 +127,15 @@ function ports(
 						: "unavailable",
 				);
 			}
-			let next = await session.signIn(account.email.trim().toLowerCase(), secret);
+			let next = await session.signIn(
+				account.email.trim().toLowerCase(),
+				secret,
+			);
 			if (next.status === "twoFactor") {
 				// The sheet asks for the code whenever it is on, so a missing one is a wrong one.
 				if (!code) throw new core.KeyFlowError("wrongCode");
 				next = await session.verifyCode(code);
-				if (next.status === "error")
-					throw stepFailure(core, next, "wrongCode");
+				if (next.status === "error") throw stepFailure(core, next, "wrongCode");
 			} else if (next.status === "error")
 				throw stepFailure(core, next, "wrongPassword");
 		},

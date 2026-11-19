@@ -6,6 +6,7 @@ import { useSignOut } from "@/features/account/useSignOut";
 import { useOpenSettingsRoute } from "@/layout/settingsPath";
 import { ListGroup, ListRow, NavEnd } from "@/ui/List";
 import { Block, GroupNote, SettingsPage } from "../parts";
+import { useProtectionRow } from "../protection/useProtectionRow";
 import { hostOf } from "../source";
 import { openWebPage } from "../webPages";
 import { PasswordSheet } from "./PasswordSheet";
@@ -32,6 +33,7 @@ export function SecuritySection() {
 	const [changing, setChanging] = useState(false);
 	const me = state.status === "signedIn" ? state.me : null;
 	const baseUrl = connection.status === "connected" ? connection.baseUrl : null;
+	const protection = useProtectionRow();
 
 	return (
 		<>
@@ -57,6 +59,7 @@ export function SecuritySection() {
 								title={t("twoFactor")}
 							/>
 						) : null}
+						{protection.row}
 						<ListRow
 							chevron
 							onPress={() => open("sessions")}
@@ -80,6 +83,7 @@ export function SecuritySection() {
 				</Block>
 			</SettingsPage>
 			<PasswordSheet onClose={() => setChanging(false)} visible={changing} />
+			{protection.sheet}
 		</>
 	);
 }

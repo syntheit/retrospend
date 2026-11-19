@@ -13,6 +13,7 @@ import {
 	wrapKey,
 } from "../src";
 import {
+	createEnableCallbacks,
 	type EnablePorts,
 	type EnableRequest,
 	enableFailureFor,
@@ -20,9 +21,8 @@ import {
 	failureCode,
 	isFinalFailure,
 	type KeyDraft,
-	KeyFlowError,
 	type KeyFlowCode,
-	createEnableCallbacks,
+	KeyFlowError,
 } from "../src/client";
 import { createWebPrimitives } from "../src/web";
 
@@ -39,7 +39,11 @@ type Answer = Record<string, unknown>;
 /** A scripted server: stores what enable was sent and answers keys/open from it. */
 function setup(
 	over: {
-		spoil?: (answer: Answer, sent: EnableRequest, accountKey: Uint8Array) => void;
+		spoil?: (
+			answer: Answer,
+			sent: EnableRequest,
+			accountKey: Uint8Array,
+		) => void;
 		enable?: EnablePorts["enable"];
 		open?: EnablePorts["open"];
 		signInAgain?: EnablePorts["signInAgain"];
@@ -76,11 +80,7 @@ function setup(
 			createdAt: "2026-11-19T10:00:00.000Z",
 			kdf: { ...body.kdf },
 			publicKey: body.publicKey,
-			wraps: [
-				wrap("ak-password"),
-				wrap("private-key"),
-				wrap("collection-key"),
-			],
+			wraps: [wrap("ak-password"), wrap("private-key"), wrap("collection-key")],
 			recoveryWrapDigest: toBase64Url(recoveryWrapDigest(p, recovery)),
 		};
 	};
@@ -163,7 +163,10 @@ describe("save", () => {
 		expect(first.wraps).toHaveLength(4);
 		const again = setup();
 		const d2 = await again.callbacks.makeKeys("new password 1A");
-		await again.callbacks.save(d2, { password: "old password 1", code: "123456" });
+		await again.callbacks.save(d2, {
+			password: "old password 1",
+			code: "123456",
+		});
 		expect(again.sent[0]?.body.totpCode).toBe("123456");
 	});
 
@@ -314,16 +317,19 @@ describe("read-back", () => {
 		),
 	];
 
-	it.each(spoiled)("is a final error when the server answers %s", async (_n, spoil) => {
-		const s = setup({ spoil });
-		const draft = await s.callbacks.makeKeys("new password 1A");
-		const error = await s.callbacks.save(draft, INPUT).then(
-			() => null,
-			(e: unknown) => e,
-		);
-		expect(failureCode(error)).toBe("checkFailed");
-		expect(isFinalFailure(failureCode(error))).toBe(true);
-	});
+	it.each(spoiled)(
+		"is a final error when the server answers %s",
+		async (_n, spoil) => {
+			const s = setup({ spoil });
+			const draft = await s.callbacks.makeKeys("new password 1A");
+			const error = await s.callbacks.save(draft, INPUT).then(
+				() => null,
+				(e: unknown) => e,
+			);
+			expect(failureCode(error)).toBe("checkFailed");
+			expect(isFinalFailure(failureCode(error))).toBe(true);
+		},
+	);
 
 	it("is a final error when keys/open fails or answers nothing readable", async () => {
 		for (const open of [
