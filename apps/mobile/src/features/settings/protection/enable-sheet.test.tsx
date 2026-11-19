@@ -548,8 +548,8 @@ describe("EnableSheet, confirm it is you", () => {
 			"Your new password is set, but your keys couldn't be checked.",
 		],
 		[
-			"deviceKeysNotSaved",
-			"Your new password is set, but this device couldn't save its keys.",
+			"deviceRecordNotSaved",
+			"Your new password is set, so sign in again on this device.",
 		],
 	] as const)(
 		"ends on %s with the words and a way to close, not to retry",

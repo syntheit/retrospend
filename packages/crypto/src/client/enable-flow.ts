@@ -5,8 +5,9 @@
 // words every failure as an EnableFailure. Nothing here touches the network or
 // storage.
 //
-// What `save` may do again. A send whose answer never came (`unavailable`), or
-// that was refused as a conflict after an earlier send of the same draft, may
+// What `save` may do again. A send whose answer never came (`unavailable`), that failed on the
+// server (a 5xx), or that was refused as a conflict or a reused key after an
+// earlier send of the same draft, may
 // have committed, so it is never sent again as it was: the keys are read back
 // first. Keys that match are the success; no keys at all mean nothing was
 // stored and a new send (a new Idempotency-Key) is allowed; anything else is
@@ -192,7 +193,14 @@ export function createEnableCallbacks(
 			);
 		} catch (error) {
 			const code = asKeyFlowError(error).code;
-			if (code === "unavailable" || (code === "conflict" && earlier > 0))
+			// No answer, or a server failure (a gateway can answer 502 after the
+			// commit), may have stored it. A conflict or a reused key means an
+			// earlier send of this draft may have.
+			if (
+				code === "unavailable" ||
+				code === "serverError" ||
+				((code === "conflict" || code === "keyReused") && earlier > 0)
+			)
 				held.phase = "unknown";
 			throw error;
 		}
@@ -203,7 +211,7 @@ export function createEnableCallbacks(
 	 * Asks the server for the keys and compares them with the draft. `absent`
 	 * is an account with no keys; a mismatch, or a refusal that is neither "no
 	 * keys" nor "could not ask", is `readBackFailed`; an answer that never came
-	 * (`unavailable`, `rateLimited`) is thrown as it is, so it can be asked again.
+	 * (`unavailable`, `serverError`, `rateLimited`) is thrown as it is, so it can be asked again.
 	 */
 	async function readBack(held: Held): Promise<"match" | "absent"> {
 		let answer: unknown;
@@ -212,7 +220,12 @@ export function createEnableCallbacks(
 		} catch (error) {
 			const code = asKeyFlowError(error).code;
 			if (code === "notFound") return "absent";
-			if (code === "unavailable" || code === "rateLimited") throw error;
+			if (
+				code === "unavailable" ||
+				code === "serverError" ||
+				code === "rateLimited"
+			)
+				throw error;
 			throw new KeyFlowError("readBackFailed");
 		}
 		try {

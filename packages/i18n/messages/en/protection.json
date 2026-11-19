@@ -89,7 +89,7 @@
 		"notOffered": "Advanced protection is not available here.",
 		"failed": "Couldn't finish. Try again.",
 		"checkFailed": "Your new password is set, but your keys couldn't be checked.",
-		"deviceKeysNotSaved": "Your new password is set, but this device couldn't save its keys."
+		"deviceRecordNotSaved": "Your new password is set, so sign in again on this device."
 	},
 	"toast": {
 		"keysSaved": "Keys saved"

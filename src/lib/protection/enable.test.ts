@@ -56,6 +56,8 @@ type Script = {
 	enable?: (n: number) => Response | null;
 	/** The send commits and then its answer is lost (the connection drops). */
 	lose?: (n: number) => boolean;
+	/** The send commits and a gateway answers 502 with no body. */
+	gateway?: (n: number) => boolean;
 	spoil?: (answer: Record<string, unknown>) => void;
 	open?: () => Response;
 };
@@ -79,6 +81,11 @@ function setup(
 				enables++;
 				stored = body;
 				throw new TypeError("connection lost");
+			}
+			if (script.gateway?.(enables)) {
+				enables++;
+				stored = body;
+				return new Response("bad gateway", { status: 502 });
 			}
 			const refused = script.enable?.(enables++);
 			if (refused) return refused;
@@ -181,7 +188,7 @@ describe("web enable", () => {
 		expect([...t.store.keys()][0]).not.toContain("example");
 	});
 
-	it("sends the two-factor code when there is one, and a retry keeps the Idempotency-Key", async () => {
+	it("sends the two-factor code when there is one, and after a server failure reads back first and sends under a new Idempotency-Key", async () => {
 		const t = setup({
 			enable: (n) => (n === 0 ? problem("server_error", 500) : null),
 		});
@@ -193,11 +200,11 @@ describe("web enable", () => {
 		const enable = t.to(ENABLE);
 		expect(enable.map((c) => headerOf(c, "idempotency-key"))).toEqual([
 			"idem-1",
-			"idem-1",
+			"idem-2",
 		]);
 		expect(enable.map((c) => c.body.totpCode)).toEqual(["123456", "654321"]);
-		// Nothing was recorded or read back for the refused attempt.
-		expect(t.to(OPEN)).toHaveLength(1);
+		// The retry looked first (no keys), then the finished save read back.
+		expect(t.to(OPEN)).toHaveLength(2);
 	});
 
 	it("is a final error when the server answers another ak-recovery digest", async () => {
@@ -255,6 +262,17 @@ describe("web enable", () => {
 		await t.made.save(draft, { password: OLD, code: "222222" });
 		expect(t.to(ENABLE)).toHaveLength(1);
 		expect(t.to(ENABLE)[0]?.body.totpCode).toBe("111111");
+		expect([...t.store.values()]).toEqual(["1"]);
+	});
+
+	it("C: a gateway 502 after the commit is read back when saved again, never sent under the used key", async () => {
+		const t = setup({ gateway: (n) => n === 0 });
+		const draft = await t.made.makeKeys("A brand new passphrase 7");
+		expect(
+			await code(t.made.save(draft, { password: OLD, code: "111111" })),
+		).toBe("failed");
+		await t.made.save(draft, { password: OLD, code: "222222" });
+		expect(t.to(ENABLE)).toHaveLength(1);
 		expect([...t.store.values()]).toEqual(["1"]);
 	});
 

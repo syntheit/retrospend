@@ -13,7 +13,7 @@ export const FAILURE_CODES = [
 	"notOffered",
 	"failed",
 	"checkFailed",
-	"deviceKeysNotSaved",
+	"deviceRecordNotSaved",
 ] as const;
 export type FailureCode = (typeof FAILURE_CODES)[number];
 
@@ -32,7 +32,7 @@ export function failureCode(error: unknown): FailureCode {
 /**
  * Failures that end the flow: trying again cannot help. `notOffered` is the
  * server saying no; `checkFailed` is a read-back that found the stored keys
- * are not the ones sent; `deviceKeysNotSaved` is this device failing to
+ * are not the ones sent; `deviceRecordNotSaved` is this device failing to
  * remember that the account is keyed. In the last two the keys are saved and
  * the account stays keyed and OFF (the email reset is the way back).
  */
@@ -40,7 +40,7 @@ export function isFinalFailure(code: FailureCode | null): boolean {
 	return (
 		code === "notOffered" ||
 		code === "checkFailed" ||
-		code === "deviceKeysNotSaved"
+		code === "deviceRecordNotSaved"
 	);
 }
 
@@ -58,12 +58,14 @@ const FAILURE_FOR_FLOW: Record<KeyFlowCode, FailureCode> = {
 	rateLimited: "tooMany",
 	notOffered: "notOffered",
 	readBackFailed: "checkFailed",
-	unreadable: "deviceKeysNotSaved",
+	unreadable: "deviceRecordNotSaved",
 	params: "failed",
 	malformed: "failed",
 	downgrade: "failed",
 	unavailable: "failed",
 	notFound: "failed",
+	serverError: "failed",
+	keyReused: "failed",
 	sessionNotFresh: "failed",
 	typo: "failed",
 	wrongRecoveryKey: "failed",

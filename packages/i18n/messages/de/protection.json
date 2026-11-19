@@ -89,7 +89,7 @@
 		"notOffered": "Erweiterter Schutz ist hier nicht verfügbar.",
 		"failed": "Das hat nicht geklappt. Versuch es erneut.",
 		"checkFailed": "Dein neues Passwort ist gesetzt, aber deine Schlüssel konnten nicht geprüft werden.",
-		"deviceKeysNotSaved": "Dein neues Passwort ist gesetzt, aber dieses Gerät konnte seine Schlüssel nicht speichern."
+		"deviceRecordNotSaved": "Dein neues Passwort ist gesetzt, melde dich auf diesem Gerät noch einmal an."
 	},
 	"toast": {
 		"keysSaved": "Schlüssel gespeichert"

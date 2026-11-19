@@ -68,6 +68,8 @@ function rig(
 		enable?: (n: number) => void;
 		/** The send commits and then its answer is lost (no answer at all). */
 		lose?: (n: number) => boolean;
+		/** The send commits and a gateway answers 502. */
+		gateway?: (n: number) => boolean;
 		/** The keystore cannot be read. */
 		unreadable?: boolean;
 		spoil?: (answer: Record<string, unknown>) => void;
@@ -83,6 +85,10 @@ function rig(
 		if (script.lose?.(n)) {
 			stored = body;
 			throw new TypeError("connection lost");
+		}
+		if (script.gateway?.(n)) {
+			stored = body;
+			throw refusal(502);
 		}
 		script.enable?.(n);
 		stored = body;
@@ -176,7 +182,7 @@ describe("phone enable", () => {
 		expect([...r.items.keys()][0]).not.toContain("ana");
 	});
 
-	it("sends the code when there is one, and a retry keeps the Idempotency-Key", async () => {
+	it("sends the code when there is one, and after a server failure reads back first and sends under a new Idempotency-Key", async () => {
 		const r = rig({
 			enable: (n) => {
 				if (n === 0) throw refusal(500, "server_error");
@@ -193,10 +199,10 @@ describe("phone enable", () => {
 		][];
 		expect(calls.map((c) => c[1].context.idempotencyKey)).toEqual([
 			"idem-1",
-			"idem-1",
+			"idem-2",
 		]);
 		expect(calls.map((c) => c[0].totpCode)).toEqual(["123456", "654321"]);
-		expect(r.openKeys).toHaveBeenCalledTimes(1);
+		expect(r.openKeys).toHaveBeenCalledTimes(2);
 	});
 
 	it("is a final error when the server answers another ak-recovery digest", async () => {
@@ -248,6 +254,17 @@ describe("phone enable", () => {
 
 	it("A: a send whose answer is lost is read back when saved again, and is not sent twice", async () => {
 		const r = rig({ lose: (n) => n === 0 });
+		const draft = await r.made.makeKeys(NEW);
+		expect(
+			await code(r.made.save(draft, { password: OLD, code: "111111" })),
+		).toBe("failed");
+		await r.made.save(draft, { password: OLD, code: "222222" });
+		expect(r.enable).toHaveBeenCalledTimes(1);
+		expect([...r.items.values()]).toEqual(["1"]);
+	});
+
+	it("C: a gateway 502 after the commit is read back when saved again, never sent under the used key", async () => {
+		const r = rig({ gateway: (n) => n === 0 });
 		const draft = await r.made.makeKeys(NEW);
 		expect(
 			await code(r.made.save(draft, { password: OLD, code: "111111" })),

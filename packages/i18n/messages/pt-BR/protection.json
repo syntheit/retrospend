@@ -89,7 +89,7 @@
 		"notOffered": "A proteção avançada não está disponível aqui.",
 		"failed": "Não foi possível concluir. Tente de novo.",
 		"checkFailed": "Sua nova senha foi definida, mas não foi possível verificar suas chaves.",
-		"deviceKeysNotSaved": "Sua nova senha foi definida, mas este dispositivo não conseguiu salvar suas chaves."
+		"deviceRecordNotSaved": "Sua nova senha foi definida, então entre de novo neste dispositivo."
 	},
 	"toast": {
 		"keysSaved": "Chaves salvas"

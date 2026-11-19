@@ -21,7 +21,7 @@ describe("failureCode", () => {
 describe("isFinalFailure", () => {
 	it("is final only when nothing can be retried", () => {
 		expect(isFinalFailure("checkFailed")).toBe(true);
-		expect(isFinalFailure("deviceKeysNotSaved")).toBe(true);
+		expect(isFinalFailure("deviceRecordNotSaved")).toBe(true);
 		expect(isFinalFailure("notOffered")).toBe(true);
 		for (const code of [
 			"wrongPassword",
@@ -35,6 +35,10 @@ describe("isFinalFailure", () => {
 
 	it("knows every code", () => {
 		const final = FAILURE_CODES.filter((code) => isFinalFailure(code));
-		expect(final).toEqual(["notOffered", "checkFailed", "deviceKeysNotSaved"]);
+		expect(final).toEqual([
+			"notOffered",
+			"checkFailed",
+			"deviceRecordNotSaved",
+		]);
 	});
 });

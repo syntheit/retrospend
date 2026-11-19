@@ -51,6 +51,10 @@ export type KeyFlowCode =
 	| "conflict"
 	/** The server answered 404 not_found: the thing asked about is not there (no key set). */
 	| "notFound"
+	/** The server failed (a 5xx, a gateway among them): a write may or may not have committed. */
+	| "serverError"
+	/** The Idempotency-Key was already used for another request body (422). */
+	| "keyReused"
 	/** The server no longer offers Advanced protection. */
 	| "notOffered"
 	/** Anything else, including a server error on a write. */
@@ -180,6 +184,8 @@ export function classifyRefusal(
 		return "recoveryUnavailable";
 	if (status === 409) return "conflict";
 	if (status === 501) return "notOffered";
+	if (status === 422 && code === "idempotency_key_reused") return "keyReused";
+	if (status >= 500) return "serverError";
 	return "failed";
 }
 

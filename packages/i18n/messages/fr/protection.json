@@ -89,7 +89,7 @@
 		"notOffered": "La protection avancée n’est pas disponible ici.",
 		"failed": "Impossible de terminer. Réessaie.",
 		"checkFailed": "Ton nouveau mot de passe est défini, mais tes clés n’ont pas pu être vérifiées.",
-		"deviceKeysNotSaved": "Ton nouveau mot de passe est défini, mais cet appareil n’a pas pu enregistrer ses clés."
+		"deviceRecordNotSaved": "Ton nouveau mot de passe est défini, reconnecte-toi sur cet appareil."
 	},
 	"toast": {
 		"keysSaved": "Clés enregistrées"

@@ -246,7 +246,7 @@ describe("save", () => {
 			() => null,
 			(e: unknown) => e,
 		);
-		expect(failureCode(error)).toBe("deviceKeysNotSaved");
+		expect(failureCode(error)).toBe("deviceRecordNotSaved");
 		expect(isFinalFailure(failureCode(error))).toBe(true);
 		await s.callbacks.save(draft, INPUT).catch(() => undefined);
 		expect(s.ports.enable).toHaveBeenCalledTimes(1);
@@ -457,6 +457,55 @@ describe("a send whose answer was lost", () => {
 		expect(s.sent[0]?.body.totpCode).toBe("111111");
 	});
 
+	it("C: a server failure after the commit (a gateway 502) is read back, so a retyped code is never sent under the used key", async () => {
+		let n = 0;
+		const s = setup({
+			enable: async (body, key) => {
+				s.commit(body, key);
+				if (n++ === 0) throw new KeyFlowError("serverError");
+			},
+		});
+		const draft = await s.callbacks.makeKeys("new password 1A");
+		await failsWith(
+			s.callbacks.save(draft, { password: "old password 1", code: "111111" }),
+			"failed",
+		);
+		await s.callbacks.save(draft, {
+			password: "old password 1",
+			code: "222222",
+		});
+		expect(s.sent).toHaveLength(1);
+		expect(s.ports.record.set).toHaveBeenCalledTimes(1);
+	});
+
+	it("reads a reused key back only when an earlier send of the draft may have committed", async () => {
+		const first = setup({
+			enable: async () => {
+				throw new KeyFlowError("keyReused");
+			},
+		});
+		const d1 = await first.callbacks.makeKeys("new password 1A");
+		await failsWith(first.callbacks.save(d1, INPUT), "failed");
+		await failsWith(first.callbacks.save(d1, INPUT), "failed");
+		expect(first.ports.enable).toHaveBeenCalledTimes(2);
+		expect(first.ports.open).not.toHaveBeenCalled();
+
+		let n = 0;
+		const later = setup({
+			enable: async (body, key) => {
+				// Never delivered, then committed under a second key whose answer says the key was used.
+				if (n++ === 0) throw new KeyFlowError("unavailable");
+				later.commit(body, key);
+				throw new KeyFlowError("keyReused");
+			},
+		});
+		const d2 = await later.callbacks.makeKeys("new password 1A");
+		await failsWith(later.callbacks.save(d2, INPUT), "failed");
+		await failsWith(later.callbacks.save(d2, INPUT), "failed");
+		await later.callbacks.save(d2, INPUT);
+		expect(later.ports.enable).toHaveBeenCalledTimes(2);
+	});
+
 	it("sends again under a new key when the read-back finds no keys", async () => {
 		let n = 0;
 		const s = setup({
@@ -477,6 +526,22 @@ describe("a send whose answer was lost", () => {
 		});
 		expect(s.sent.map((x) => x.key)).toEqual(["key-1", "key-2"]);
 		expect(s.sent[1]?.body.totpCode).toBe("222222");
+	});
+
+	it("keeps asking, and sends nothing, when the read-back meets a server failure too", async () => {
+		const s = setup({
+			enable: async () => {
+				throw new KeyFlowError("serverError");
+			},
+			open: async () => {
+				throw new KeyFlowError("serverError");
+			},
+		});
+		const draft = await s.callbacks.makeKeys("new password 1A");
+		await failsWith(s.callbacks.save(draft, INPUT), "failed");
+		await failsWith(s.callbacks.save(draft, INPUT), "failed");
+		await failsWith(s.callbacks.save(draft, INPUT), "failed");
+		expect(s.ports.enable).toHaveBeenCalledTimes(1);
 	});
 
 	it("keeps asking, and sends nothing, while the read-back cannot be made", async () => {
@@ -685,7 +750,9 @@ describe("the words a failure gets", () => {
 		["failed", "failed"],
 		["malformed", "failed"],
 		["notFound", "failed"],
-		["unreadable", "deviceKeysNotSaved"],
+		["serverError", "failed"],
+		["keyReused", "failed"],
+		["unreadable", "deviceRecordNotSaved"],
 	];
 	it.each(table)("%s reads as %s", async (code, expected) => {
 		expect(enableFailureFor(code)).toBe(expected);
