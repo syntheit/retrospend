@@ -30,6 +30,10 @@ export const PROBLEM_STATUS = {
 	wrong_two_factor_code: 400,
 	not_found: 404,
 	conflict: 409,
+	// An expense write that named the updatedAt it last read, and the expense
+	// changed since (another device edited it). Nothing was written; the client
+	// reads the row again and decides.
+	expense_changed: 409,
 	// A vault write from an account that has no protection key set: nothing a
 	// client sealed could ever be opened, so the server refuses to hold it.
 	protection_keys_missing: 409,

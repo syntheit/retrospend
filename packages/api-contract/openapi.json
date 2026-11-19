@@ -52,6 +52,7 @@
 							"wrong_two_factor_code",
 							"not_found",
 							"conflict",
+							"expense_changed",
 							"protection_keys_missing",
 							"payload_too_large",
 							"idempotency_in_progress",
@@ -156,7 +157,7 @@
 	"info": {
 		"description": "The public Retrospend API. Errors are RFC 9457 problem+json with a stable `code`. Every write needs an `Idempotency-Key`.\n\nAccounts with Advanced protection.\n\nAn account with Advanced protection on can call only the operations marked `x-protected-account: { allowed: true }`. Every other operation answers 403 with the code `protected_account`. A public operation is allowed.\n\nFor an account with Advanced protection on, GET /events returns only the event types that carry no personal ids or amounts, plus the bare copies of other people's shared writes. For every account, `vault.changed` events reach only callers that hold the `vault` scope.\n\nSealed records move through GET /vault/changes and POST /vault/writes. The server stores them and cannot open them.\n\nAn account with protection keys changes its password with POST /me/protection/password/begin and POST /me/protection/password. POST /me/password answers 403 `protected_password` for it. A change that needs a recent sign-in answers 403 `session_not_fresh`.\n\nPOST /auth/prelogin tells a client whether to derive the sign-in secret from the password before it signs in.",
 		"title": "Retrospend API",
-		"version": "1.2.0"
+		"version": "1.3.0"
 	},
 	"openapi": "3.1.1",
 	"paths": {
@@ -68606,6 +68607,7 @@
 		},
 		"/expenses/{id}": {
 			"delete": {
+				"description": "Give `expectedUpdatedAt` (query) as the updatedAt you last read, and a newer one answers 409 `expense_changed` with nothing deleted. A row that is gone is 404 either way.",
 				"operationId": "deleteExpense",
 				"parameters": [
 					{
@@ -68615,6 +68617,17 @@
 						"schema": {
 							"maxLength": 64,
 							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "expectedUpdatedAt",
+						"schema": {
+							"description": "The updatedAt you last read. If the expense changed since, the answer is 409 expense_changed and nothing is written. Left out, nothing is checked.",
+							"format": "date-time",
 							"type": "string"
 						}
 					},
@@ -68983,7 +68996,7 @@
 				"x-required-scope": "read"
 			},
 			"put": {
-				"description": "Every field is sent; one left out is cleared. Changing a split expense's money, or one that moved money in an account, is refused.",
+				"description": "Every field is sent; one left out is cleared. Changing a split expense's money, or one that moved money in an account, is refused. `expectedUpdatedAt` is not a field: give the updatedAt you last read and a newer one answers 409 `expense_changed` with nothing written.",
 				"operationId": "updateExpense",
 				"parameters": [
 					{
@@ -69055,6 +69068,11 @@
 									},
 									"excludeFromAnalytics": {
 										"type": "boolean"
+									},
+									"expectedUpdatedAt": {
+										"description": "The updatedAt you last read. If the expense changed since, the answer is 409 expense_changed and nothing is written. Left out, nothing is checked.",
+										"format": "date-time",
+										"type": "string"
 									},
 									"location": {
 										"maxLength": 191,
@@ -69355,6 +69373,23 @@
 						}
 					}
 				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"expectedUpdatedAt": {
+										"description": "The updatedAt you last read. If the expense changed since, the answer is 409 expense_changed and nothing is written. Left out, nothing is checked.",
+										"format": "date-time",
+										"type": "string"
+									}
+								},
+								"type": "object"
+							}
+						}
+					},
+					"required": false
+				},
 				"responses": {
 					"200": {
 						"content": {
@@ -69861,6 +69896,11 @@
 									},
 									"excludeFromAnalytics": {
 										"type": "boolean"
+									},
+									"expectedUpdatedAt": {
+										"description": "The updatedAt you last read. If the expense changed since, the answer is 409 expense_changed and nothing is written. Left out, nothing is checked.",
+										"format": "date-time",
+										"type": "string"
 									},
 									"location": {
 										"maxLength": 191,

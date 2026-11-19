@@ -61,12 +61,20 @@ export const expensesRouter = {
 	),
 	delete: e.delete.handler(
 		serve(({ context, input }) =>
-			expenses.removeExpense(signedIn(context), input.id),
+			expenses.removeExpense(
+				signedIn(context),
+				input.params.id,
+				input.query?.expectedUpdatedAt,
+			),
 		),
 	),
 	previewDelete: e.previewDelete.handler(
 		serve(({ context, input }) =>
-			expenses.previewRemoveExpense(signedIn(context), input.id),
+			expenses.previewRemoveExpense(
+				signedIn(context),
+				input.id,
+				input.expectedUpdatedAt,
+			),
 		),
 	),
 	bulkCategory: e.bulkCategory.handler(
