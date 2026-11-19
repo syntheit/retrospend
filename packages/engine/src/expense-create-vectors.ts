@@ -21,6 +21,7 @@
  *
  * Rates and dates are in UTC; instants carry their zone in the comment.
  */
+import { AMOUNT_ABOVE_ZERO } from "@retrospend/domain/expense-write/refusals";
 import type {
 	CreateVector,
 	ExpectedMoney,
@@ -70,6 +71,9 @@ const entry = (
 });
 
 const money = (m: ExpectedMoney) => ({ booked: m });
+
+/** An amount of 0 or less: refused with the domain's message, nothing stored, no rate read. */
+const refused = { refused: AMOUNT_ABOVE_ZERO };
 
 /** An expense 23:30 or 00:30 local at a month's edge, with the months it is checked against. */
 const edge = (
@@ -204,7 +208,9 @@ export const vectors: CreateVector[] = [
 	// before, the nearest later one is used. 10 x 1545 = 15450.
 	{
 		name: "ARS home: with no earlier rate the nearest later one is used",
-		seed: seed("ARS", BA, [rate("ARS", "blue", "1545", "2026-03-20T00:00:00Z")]),
+		seed: seed("ARS", BA, [
+			rate("ARS", "blue", "1545", "2026-03-20T00:00:00Z"),
+		]),
 		input: entry({ amount: "10", currency: "USD" }),
 		expect: money({
 			amount: "10",
@@ -297,37 +303,40 @@ export const vectors: CreateVector[] = [
 		}),
 	},
 
-	// Refunds are negative amounts, booked sign-symmetrically.
-	// USD -20: homeAmount = -20 x 1545 = -30900.00, USD value -20.
+	// A refund is not an expense (money in has its own write): an amount of 0
+	// or less is refused before any rate is looked up, on the server and here.
+	// A stored amount of 0 is the same refusal: 0, and 0.000000001 (9 decimals,
+	// stored at 8 as 0.00000000).
 	{
-		name: "refund: a negative USD amount books negative on every leg",
+		name: "refused: zero",
+		seed: arsHome,
+		input: entry({ amount: "0", currency: "USD" }),
+		expect: refused,
+	},
+	{
+		name: "refused: an amount that stores as 0 at the column's 8 decimals",
+		seed: arsHome,
+		input: entry({ amount: "0.000000001", currency: "USD" }),
+		expect: refused,
+	},
+	{
+		// Refused before the rate is read: BTN has no rate, and this is not a missing rate.
+		name: "refused: zero is refused before a missing rate is looked up",
+		seed: arsHome,
+		input: entry({ amount: "0", currency: "BTN" }),
+		expect: refused,
+	},
+	{
+		name: "refused: a negative USD amount (a refund is money in)",
 		seed: arsHome,
 		input: entry({ amount: "-20", currency: "USD" }),
-		expect: money({
-			amount: "-20",
-			amountInUSD: "-20",
-			exchangeRate: "1",
-			rateType: "blue",
-			homeCurrency: "ARS",
-			homeRate: "1545",
-			homeAmount: "-30900.00",
-		}),
+		expect: refused,
 	},
-	// ARS -1000.50: homeRate 1, homeAmount -1000.50. USD value =
-	// -1000.50 / 1545 = -0.64757..., to cents -0.65 (sign kept).
 	{
-		name: "refund: a negative ARS amount keeps its sign through the USD rounding",
+		name: "refused: a negative ARS amount",
 		seed: arsHome,
 		input: entry({ amount: "-1000.50", currency: "ARS" }),
-		expect: money({
-			amount: "-1000.50",
-			amountInUSD: "-0.65",
-			exchangeRate: "1545",
-			rateType: "blue",
-			homeCurrency: "ARS",
-			homeRate: "1",
-			homeAmount: "-1000.50",
-		}),
+		expect: refused,
 	},
 
 	// JPY has no decimals. JPY 1000 in a JPY home: entry leg official 125, so
@@ -377,34 +386,18 @@ export const vectors: CreateVector[] = [
 			homeAmount: "1252",
 		}),
 	},
-	// Refunds tie the same way, mirrored: -1252.5 -> -1252, -1257.5 -> -1258.
+	// The mirrored ties (-1252.5, -1257.5) are refused the same way.
 	{
-		name: "JPY home: a refund tie at -1252.5 rounds to -1252",
+		name: "refused: JPY home, a negative amount that would tie at -1252.5",
 		seed: seed("JPY", "Asia/Tokyo", [rate("JPY", "official", "125", D)]),
 		input: entry({ amount: "-10.02", currency: "USD" }),
-		expect: money({
-			amount: "-10.02",
-			amountInUSD: "-10.02",
-			exchangeRate: "1",
-			rateType: "official",
-			homeCurrency: "JPY",
-			homeRate: "125",
-			homeAmount: "-1252",
-		}),
+		expect: refused,
 	},
 	{
-		name: "JPY home: a refund tie at -1257.5 rounds to -1258",
+		name: "refused: JPY home, a negative amount that would tie at -1257.5",
 		seed: seed("JPY", "Asia/Tokyo", [rate("JPY", "official", "125", D)]),
 		input: entry({ amount: "-10.06", currency: "USD" }),
-		expect: money({
-			amount: "-10.06",
-			amountInUSD: "-10.06",
-			exchangeRate: "1",
-			rateType: "official",
-			homeCurrency: "JPY",
-			homeRate: "125",
-			homeAmount: "-1258",
-		}),
+		expect: refused,
 	},
 
 	// KWD has 3 decimals. KWD 0.25 per USD gives 4 USD per KWD, so a USD
@@ -497,10 +490,8 @@ export const vectors: CreateVector[] = [
 	...(
 		[
 			["28.5", "0.28", "28.50"],
-			// -0.285: the mirror, -0.28.
-			["-28.5", "-0.28", "-28.50"],
-			// -1.5 / 100 = -0.015: 1 is odd, so -0.02 (half up gave -0.01).
-			["-1.5", "-0.02", "-1.50"],
+			// The mirrored ties of a refund (-28.5, -1.5) are in rate-booking.test.ts:
+			// an expense of 0 or less is refused here.
 			// 0.5 / 100 = 0.005: 0 is even, so 0.00 (half up gave 0.01).
 			["0.5", "0.00", "0.50"],
 		] as const
@@ -583,6 +574,23 @@ export const vectors: CreateVector[] = [
 		}),
 	},
 
+	// EUR home, USD 100 at 0.92 EUR per USD (official, the best type with no
+	// blue): homeRate = (1 / 1) / (1 / 0.92) = 0.92, homeAmount = 100 x 0.92 =
+	// 92.00. The USD value is 100.00.
+	{
+		name: "EUR home: USD 100 at 0.92 books EUR 92.00",
+		seed: seed("EUR", "Europe/Madrid", [rate("EUR", "official", "0.92", D)]),
+		input: entry({ amount: "100", currency: "USD" }),
+		expect: money({
+			amount: "100",
+			amountInUSD: "100",
+			exchangeRate: "1",
+			rateType: "official",
+			homeCurrency: "EUR",
+			homeRate: "0.92",
+			homeAmount: "92.00",
+		}),
+	},
 	// Month and time-zone edges. Buenos Aires is UTC-3 all year. Its March is
 	// 2026-03-01T03:00Z to 2026-04-01T02:59:59.999Z, its April starts at
 	// 2026-04-01T03:00Z. 23:30 on Mar 31 local is 2026-04-01T02:30Z: March
@@ -722,6 +730,41 @@ export const vectors: CreateVector[] = [
 				start: "2026-03-31T15:00:00.000Z",
 				end: "2026-04-30T14:59:59.999Z",
 				counts: true,
+			},
+		],
+	),
+
+	// Kathmandu is UTC+5:45 all year. "2026-11-01" there is 2026-10-31T18:15Z,
+	// the first instant of its November (2026-10-31T18:15:00.000Z to
+	// 2026-11-30T18:14:59.999Z); October ends one millisecond before. USD
+	// home, so the home amount is the amount: 100.00.
+	edge(
+		"Kathmandu: 2026-11-01 books 2026-10-31T18:15Z and counts in November",
+		seed("USD", "Asia/Kathmandu", []),
+		"2026-10-31T18:15:00Z",
+		{
+			amount: "100",
+			amountInUSD: "100",
+			exchangeRate: "1",
+			rateType: null,
+			homeCurrency: "USD",
+			homeRate: "1",
+			homeAmount: "100.00",
+		},
+		[
+			{
+				year: 2026,
+				month: 10,
+				start: "2026-10-31T18:15:00.000Z",
+				end: "2026-11-30T18:14:59.999Z",
+				counts: true,
+			},
+			{
+				year: 2026,
+				month: 9,
+				start: "2026-09-30T18:15:00.000Z",
+				end: "2026-10-31T18:14:59.999Z",
+				counts: false,
 			},
 		],
 	),

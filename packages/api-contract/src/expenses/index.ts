@@ -11,9 +11,11 @@ import {
 	bulkCategorySchema,
 	bulkDeleteSchema,
 	createExpenseSchema,
+	deleteExpenseSchema,
 	duplicateQuerySchema,
 	duplicateResultSchema,
 	expenseSchema,
+	previewDeleteExpenseSchema,
 	titleSuggestionSchema,
 	titleSuggestionsQuerySchema,
 	updateExpenseSchema,
@@ -159,7 +161,7 @@ export const expensesContract = {
 			tags: TAG,
 			summary: "Replace an expense's fields",
 			description:
-				"Every field is sent; one left out is cleared. Changing a split expense's money, or one that moved money in an account, is refused.",
+				"Every field is sent; one left out is cleared. Changing a split expense's money, or one that moved money in an account, is refused. `expectedUpdatedAt` is not a field: give the updatedAt you last read and a newer one answers 409 `expense_changed` with nothing written.",
 		})
 		.meta({ scope: "write:expenses", event: "expense.updated" })
 		.input(updateExpenseSchema)
@@ -179,9 +181,12 @@ export const expensesContract = {
 			operationId: "deleteExpense",
 			tags: TAG,
 			summary: "Delete an expense and its spread parts",
+			description:
+				"Give `expectedUpdatedAt` (query) as the updatedAt you last read, and a newer one answers 409 `expense_changed` with nothing deleted. A row that is gone is 404 either way.",
+			inputStructure: "detailed",
 		})
 		.meta({ scope: "write:expenses", event: "expense.deleted" })
-		.input(idParamsSchema)
+		.input(deleteExpenseSchema)
 		.output(expenseDeleteSchema),
 	previewDelete: previewTwin({
 		path: "/expenses/{id}",
@@ -190,7 +195,7 @@ export const expensesContract = {
 		operationId: "previewDeleteExpense",
 		tags: TAG,
 		scope: "write:expenses",
-		input: idParamsSchema,
+		input: previewDeleteExpenseSchema,
 	}),
 	bulkCategory: v1
 		.route({

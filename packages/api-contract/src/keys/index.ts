@@ -22,6 +22,19 @@ export const ENABLE_WRAP_ROLES = [
 	"collection-key",
 ] as const;
 
+/**
+ * The roles a stored wrap may be shown as when the caller proved the password
+ * (POST /me/protection/keys/open). Never ak-recovery (its digest is shown
+ * instead) and never a public-key wrap. The server's per-proof role list
+ * (release.ts) starts from this one, and a server test pins the answer.
+ */
+export const OPEN_WRAP_ROLES = [
+	"ak-password",
+	"private-key",
+	"collection-key",
+] as const;
+export type OpenWrapRole = (typeof OPEN_WRAP_ROLES)[number];
+
 /** What a client needs to turn a typed password into the sign-in secret. */
 export const preloginKdfSchema = z
 	.object({
@@ -62,3 +75,18 @@ export const enableWrapSchema = z
 		},
 	)
 	.meta({ id: "EnableProtectionWrap" });
+
+/** A stored wrap as the server returns it to a caller that proved the password. */
+export const openWrapSchema = z
+	.object({
+		id: z.uuid().meta({ description: "The wrap's id." }),
+		role: z.enum(OPEN_WRAP_ROLES),
+		targetId: z.string().min(1).max(64).meta({
+			description:
+				"What the wrap is bound to: your user id for ak-password and private-key; for collection-key, the lowercase hex of the key id.",
+		}),
+		wrapped: z.string().regex(WRAP_TEXT).meta({
+			description: "The wrapped key, base64url. The server never opens it.",
+		}),
+	})
+	.meta({ id: "ProtectionWrap" });

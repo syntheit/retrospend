@@ -13,12 +13,21 @@
  *   caller passes the category it resolved.
  * - The duplicate check (findDuplicateExpense) is a separate query, not part
  *   of createExpenseIn.
- * - Sign, length and day parsing are the transport's: like createExpenseIn
- *   this books any finite amount, negative ones sign-symmetrically.
+ * - Length and day parsing are the transport's. The amount rule is the
+ *   domain's (expense-write/create.ts): above 0 once stored, as on the server.
  *
  * Run it through LocalDb.write, which returns the undo token (a revert that
  * deletes the row), or LocalDb.preview, which is the same code rolled back.
  */
+import {
+	type CategoryFacts,
+	expenseCategory,
+} from "@retrospend/domain/expense-write/category";
+import { bookCreate } from "@retrospend/domain/expense-write/create";
+import {
+	AmountRefusedError,
+	CategoryNotFoundError,
+} from "@retrospend/domain/expense-write/refusals";
 import {
 	pickBestRate,
 	rateRowsByCurrency,
@@ -26,14 +35,11 @@ import {
 } from "@retrospend/domain/money";
 import { dec } from "@retrospend/domain/precise-decimal";
 import {
-	bookRate,
 	CURRENCY_KEY,
 	parseRateDefaults,
 	preferredRateType,
 	type RateFinder,
 	RateInputError,
-	rateChoice,
-	storedAmount,
 } from "@retrospend/domain/rate-booking";
 import type { ExpenseRow } from "./expenses";
 import type { WriteFn } from "./local-db";
@@ -42,11 +48,7 @@ import { InvalidInputError, type TableRows } from "./port";
 export const EXPENSE_CREATE = "expense.create";
 
 /** A category the caller resolved: only an expense category can hold an expense. */
-export interface ExpenseCategory {
-	id: string;
-	kind: string;
-	excludeByDefault: boolean;
-}
+export type ExpenseCategory = CategoryFacts;
 
 /** createExpenseIn's input, with the category resolved by the caller. */
 export interface CreateExpenseInput {
@@ -78,12 +80,17 @@ function finderOf(rates: readonly TableRows["rates"][]): RateFinder {
 	};
 }
 
-/** bookRate and rateChoice reject bad input with the domain's error; the port's is InvalidInputError. */
+/** The domain's refusals (rate input, category, amount) are the port's InvalidInputError here. */
 async function refusing<T>(run: () => T | Promise<T>): Promise<T> {
 	try {
 		return await run();
 	} catch (e) {
-		if (e instanceof RateInputError) throw new InvalidInputError(e.message);
+		if (
+			e instanceof RateInputError ||
+			e instanceof CategoryNotFoundError ||
+			e instanceof AmountRefusedError
+		)
+			throw new InvalidInputError(e.message);
 		throw e;
 	}
 }
@@ -108,14 +115,13 @@ export function createExpense(input: CreateExpenseInput): WriteFn<ExpenseRow> {
 			throw new InvalidInputError("Pick a valid date");
 		if ((input.amortizeOver ?? 0) > 1)
 			throw new InvalidInputError("Spreading an expense is not on the device");
-		if (input.category && input.category.kind !== "EXPENSE")
-			throw new InvalidInputError("Category not found");
-		// Stored and booked at the column's 8 decimals, half to even, as the server does.
-		const amount = storedAmount(parseAmount(input.amount).toFixed());
-
+		// The same rules createExpenseIn runs: category, then amount, then rate.
+		const given = input.category;
+		const category =
+			given && (await refusing(() => expenseCategory(given, "not_found")));
 		const settings = r.settings.require();
-		const booked = await refusing(() =>
-			bookRate(
+		const { plan, booked } = await refusing(() =>
+			bookCreate(
 				{
 					homeCurrency: settings.homeCurrency,
 					preferred: preferredRateType(
@@ -124,8 +130,8 @@ export function createExpense(input: CreateExpenseInput): WriteFn<ExpenseRow> {
 					),
 					find: finderOf(r.rates.list()),
 				},
-				{ amount, currency: input.currency, date: input.date },
-				rateChoice(input, null, settings.homeCurrency),
+				{ ...input, amount: parseAmount(input.amount).toFixed() },
+				category,
 			),
 		);
 
@@ -136,17 +142,12 @@ export function createExpense(input: CreateExpenseInput): WriteFn<ExpenseRow> {
 			entryKind: "STANDARD",
 			inType: null,
 			isAmortizedParent: false,
-			// A project's expenses always count; otherwise the form, then the category.
-			excludeFromAnalytics: input.projectId
-				? false
-				: (input.excludeFromAnalytics ??
-					input.category?.excludeByDefault ??
-					false),
+			excludeFromAnalytics: plan.excludeFromAnalytics,
 			categoryKind: input.category?.kind ?? null,
 			categoryId: input.category?.id ?? null,
 			date: new Date(input.date.getTime()),
 			currency: input.currency,
-			amount,
+			amount: plan.amount,
 			// Booked figures are already at their columns' scale, half to even.
 			amountInUSD: booked.amountInUSD,
 			homeCurrency: booked.homeCurrency,

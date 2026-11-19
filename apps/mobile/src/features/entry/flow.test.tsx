@@ -1362,7 +1362,7 @@ describe("Edit: undo changes and delete", () => {
 		});
 		await flush();
 		expect(calls.find((c) => c.route === "expense.delete")?.input).toEqual({
-			id: "e1",
+			params: { id: "e1" },
 		});
 		expect(done).toHaveBeenCalledTimes(1);
 		const toast = world.toast.show.mock.calls.at(-1)?.[0];

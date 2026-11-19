@@ -129,7 +129,7 @@ export async function runDelete(
 					: null,
 			};
 		}
-		const result = await api.expenses.delete({ id }, options);
+		const result = await api.expenses.delete({ params: { id } }, options);
 		return {
 			status: "deleted",
 			undo: { entity: "expenses", token: result.undo },

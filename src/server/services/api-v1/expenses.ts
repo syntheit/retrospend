@@ -14,6 +14,7 @@ import { toBookingInput } from "@retrospend/domain/expense-input";
 import { dayKey, parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
+import { problem } from "~/server/api/v1/errors";
 import {
 	type DeleteManyInput,
 	deleteExpensesBulk,
@@ -166,7 +167,8 @@ export function updateInput(
 	caller: LedgerCaller,
 	input: z.infer<typeof updateExpenseSchema>,
 ): UpdateExpenseInput {
-	const { id, ...fields } = input;
+	// The stamp is a guard on the write, not a field of the expense.
+	const { id, expectedUpdatedAt: _stamp, ...fields } = input;
 	return toServiceInput(id, fields, caller.timeZone);
 }
 
@@ -200,6 +202,21 @@ async function requireCategory(
 		throw new TRPCError({ code: "NOT_FOUND", message: "Category not found" });
 }
 
+/**
+ * A write that names the `updatedAt` its caller read runs only while the row
+ * still has it (guardedExpense, in the write's transaction, the same for a
+ * preview). Without a stamp the mutation is untouched.
+ */
+function stamped<I extends object, V extends { id: string }>(
+	mutation: MoneyMutation<I, V>,
+	expectedUpdatedAt: string | undefined,
+): MoneyMutation<I, V> {
+	if (!expectedUpdatedAt) return mutation;
+	return guardedExpense(mutation, expectedUpdatedAt, () =>
+		problem("expense_changed", "This expense changed since you read it"),
+	);
+}
+
 export async function addExpense(caller: LedgerCaller, input: Fields) {
 	await requireCategory(caller, input.categoryId);
 	const args = createInput(caller, input);
@@ -226,7 +243,7 @@ export async function replaceExpense(
 	await requireCategory(caller, input.categoryId, input.id);
 	const done = await applyWrite(
 		caller,
-		updateExpenseEntry,
+		stamped(updateExpenseEntry, input.expectedUpdatedAt),
 		updateInput(caller, input),
 	);
 	const expense = await readExpense(caller, done.id);
@@ -244,11 +261,23 @@ export async function previewReplaceExpense(
 	input: z.infer<typeof updateExpenseSchema>,
 ) {
 	await requireCategory(caller, input.categoryId, input.id);
-	return previewWrite(caller, updateExpenseEntry, updateInput(caller, input));
+	return previewWrite(
+		caller,
+		stamped(updateExpenseEntry, input.expectedUpdatedAt),
+		updateInput(caller, input),
+	);
 }
 
-export async function removeExpense(caller: LedgerCaller, id: string) {
-	const done = await applyWrite(caller, deleteExpenseEntry, { id });
+export async function removeExpense(
+	caller: LedgerCaller,
+	id: string,
+	expectedUpdatedAt?: string,
+) {
+	const done = await applyWrite(
+		caller,
+		stamped(deleteExpenseEntry, expectedUpdatedAt),
+		{ id },
+	);
 	return {
 		id: done.id,
 		undo: undoFor(caller, "expense", "expense.restore", {
@@ -257,8 +286,12 @@ export async function removeExpense(caller: LedgerCaller, id: string) {
 	};
 }
 
-export const previewRemoveExpense = (caller: LedgerCaller, id: string) =>
-	previewWrite(caller, deleteExpenseEntry, { id });
+export const previewRemoveExpense = (
+	caller: LedgerCaller,
+	id: string,
+	expectedUpdatedAt?: string,
+) =>
+	previewWrite(caller, stamped(deleteExpenseEntry, expectedUpdatedAt), { id });
 
 type Bulk = z.infer<typeof bulkCategorySchema>;
 

@@ -25,6 +25,7 @@ import {
 	type PublicRole,
 	parseRecoveryKey,
 	recoverySubkeys,
+	recoveryWrapDigest,
 	type SymmetricRole,
 	unwrapKey,
 	wrapKeyWithNonce,
@@ -230,6 +231,11 @@ function runKeyTests(p: Primitives, check: Check): void {
 					unwrapKey(p, fromHex(v.wrappingKey), role, v.id, fromHex(v.wrapped)),
 				),
 			v.key,
+		);
+		check(
+			`wrap digest: ${v.name}`,
+			() => toHex(recoveryWrapDigest(p, fromHex(v.wrapped))),
+			v.digest,
 		);
 	}
 	for (const v of keyVectors.boxWraps) {

@@ -98,7 +98,7 @@ describe("openapi.json", () => {
 			[...new Set([...Object.keys(V1_ALLOWED), ...publicRoutes])].sort(),
 		);
 		expect(publicRoutes).toContain("GET /server-info");
-		expect(doc.info.version).toBe("1.2.0");
+		expect(doc.info.version).toBe("1.4.0");
 		expect(doc.info.description).toContain("protected_account");
 		// The reasons are review notes and stay out of the document.
 		expect(JSON.stringify(doc)).not.toContain("Identity: the profile");
@@ -111,9 +111,9 @@ describe("openapi.json", () => {
 				Record<string, { responses: Record<string, { description: string }> }>
 			>;
 		};
-		expect(doc.paths["/expenses"]?.get?.responses["403"]?.description).toContain(
-			"protected_account",
-		);
+		expect(
+			doc.paths["/expenses"]?.get?.responses["403"]?.description,
+		).toContain("protected_account");
 		expect(doc.paths["/me"]?.get?.responses["403"]?.description).not.toContain(
 			"protected_account",
 		);
