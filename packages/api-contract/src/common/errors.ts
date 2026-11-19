@@ -28,6 +28,12 @@ export const PROBLEM_STATUS = {
 	wrong_password: 400,
 	two_factor_required: 400,
 	wrong_two_factor_code: 400,
+	// Password recovery with the recovery key (public routes under
+	// /auth/recovery): the reset link is unknown, expired, used or admin-made;
+	// the recovery proof is wrong; the account's keys have no recovery proof.
+	invalid_token: 404,
+	wrong_recovery_key: 400,
+	recovery_unavailable: 409,
 	not_found: 404,
 	conflict: 409,
 	// An expense write that named the updatedAt it last read, and the expense
@@ -92,7 +98,9 @@ export const problemIssueSchema = z.object({
  * a vault write conflict. Advanced protection adds three 403 codes:
  * `protected_account` (the route is not cleared for the account),
  * `protected_password` (the password is changed with the keys, through the
- * protection routes) and `session_not_fresh` (sign in again).
+ * protection routes) and `session_not_fresh` (sign in again). Recovery adds
+ * `invalid_token` (the reset link is not usable), `wrong_recovery_key` and
+ * `recovery_unavailable` (keys made before the recovery proof existed).
  */
 export const problemSchema = z
 	.object({

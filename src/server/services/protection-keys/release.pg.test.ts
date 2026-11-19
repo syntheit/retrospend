@@ -47,6 +47,7 @@ import {
 	releaseWraps,
 } from "./release";
 import { hashRecoveryProof, type WrapRole } from "./validate";
+import { stayInWindow } from "~/test/rate-window";
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -213,11 +214,6 @@ type Opened = {
 
 const TRIES_WINDOW_MS = 15 * 60_000;
 /** Waits until at least a minute is left in the current tries window. */
-async function clearTriesWindowEdge(): Promise<void> {
-	const left = TRIES_WINDOW_MS - (Date.now() % TRIES_WINDOW_MS);
-	if (left < 60_000) await new Promise((r) => setTimeout(r, left + 1_000));
-}
-
 describe("POST /me/protection/keys/open", () => {
 	it("gives the version, parameters, public key and the three password-opened roles, byte for byte", async () => {
 		const u = await passwordUser();
@@ -324,7 +320,7 @@ describe("POST /me/protection/keys/open", () => {
 	});
 
 	it("refuses a wrong auth key with no wrap in the answer, spends a try, and stops the sixth call", async () => {
-		await clearTriesWindowEdge();
+		stayInWindow(TRIES_WINDOW_MS);
 		const u = await passwordUser();
 		const k = await keyed(u.id);
 		const me = await mobile(u.id);
@@ -343,7 +339,7 @@ describe("POST /me/protection/keys/open", () => {
 	}, 120_000);
 
 	it("counts a right key too: the sixth call of one session is 429", async () => {
-		await clearTriesWindowEdge();
+		stayInWindow(TRIES_WINDOW_MS);
 		const u = await passwordUser();
 		const k = await keyed(u.id);
 		const me = await mobile(u.id);
@@ -353,7 +349,7 @@ describe("POST /me/protection/keys/open", () => {
 	}, 120_000);
 
 	it("shares the tries with every other password check of the account", async () => {
-		await clearTriesWindowEdge();
+		stayInWindow(TRIES_WINDOW_MS);
 		const u = await passwordUser();
 		const k = await keyed(u.id);
 		// Four other sessions each use up their own 5 per session, 20 for the account.
@@ -370,7 +366,7 @@ describe("POST /me/protection/keys/open", () => {
 	}, 180_000);
 
 	it("is 404 for an account without keys, and spends no try", async () => {
-		await clearTriesWindowEdge();
+		stayInWindow(TRIES_WINDOW_MS);
 		const u = await passwordUser();
 		const me = await mobile(u.id);
 		for (let i = 0; i < 7; i++)

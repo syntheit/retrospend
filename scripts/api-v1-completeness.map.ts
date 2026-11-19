@@ -207,7 +207,14 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"auth.recordConsent": to("POST /me/consent"),
 	"auth.requestPasswordReset": internal(AUTH_MAIL),
 	"auth.resendVerificationEmail": internal(AUTH_MAIL),
-	"auth.resetPassword": internal(AUTH_MAIL),
+	// A keyed account sets a new password with its recovery key from the link in
+	// the reset email, through three public routes; the plain reset stays on
+	// tRPC and the web page.
+	"auth.resetPassword": to(
+		"POST /auth/recovery/check",
+		"POST /auth/recovery/begin",
+		"POST /auth/recovery",
+	),
 	"auth.revertEmailChange": internal(AUTH_MAIL),
 	"auth.verifyEmail": internal(AUTH_MAIL),
 

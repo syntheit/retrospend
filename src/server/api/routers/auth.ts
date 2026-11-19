@@ -1,5 +1,4 @@
 import { newPasswordSchema } from "@retrospend/api-contract";
-import { isProtected } from "@retrospend/api-contract/protection-state";
 import { TRPCError } from "@trpc/server";
 import { hashPassword } from "better-auth/crypto";
 import crypto from "crypto";
@@ -24,7 +23,10 @@ import {
 	resetPasswordHash,
 	storeEmailVerificationToken,
 } from "~/server/services/account-security.service";
-import { sendResetLink } from "~/server/services/auth/reset-request";
+import {
+	mayGetResetLink,
+	sendResetLink,
+} from "~/server/services/auth/reset-request";
 import {
 	allowResetRequest,
 	InvalidResetTokenError,
@@ -134,11 +136,9 @@ export const authRouter = createTRPCRouter({
 			// for a known address as for an unknown, protected or used-up one.
 			await hashPassword(crypto.randomBytes(32).toString("hex"));
 
-			// OFF: a reset removes the keys and is allowed. Protection on: refused, so no
-			// link is sent. That, no account and a used-up address limit answer alike.
-			if (!user || isProtected(user.protectionState)) {
-				return { success: true }; // Generic success to prevent enumeration
-			}
+			// Whether a link goes out is reset-request.ts's rule; a refusal, no
+			// account and a used-up address limit answer alike.
+			if (!user || !(await mayGetResetLink(user))) return { success: true };
 
 			// Earlier live links stay valid: a request from a stranger who knows
 			// the address must not cancel the person's own.
