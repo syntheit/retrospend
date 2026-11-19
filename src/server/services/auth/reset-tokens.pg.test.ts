@@ -14,6 +14,7 @@ import { adminRouter } from "~/server/api/routers/admin";
 import { authRouter } from "~/server/api/routers/auth";
 import { createCallerFactory } from "~/server/api/trpc";
 import { auth } from "~/server/better-auth";
+import { makeAdminResetLink } from "~/server/services/auth/reset-request";
 import { resetPasswordHash } from "~/server/services/account-security.service";
 import {
 	applyConfirmedEmail,
@@ -691,12 +692,12 @@ describe("an address change and a new link", () => {
 	});
 
 	it("refuses an admin link for an address the account no longer has", async () => {
-		const admin = await adminCaller();
 		const a = await passwordUser();
 		const next = `${randomUUID()}@pg-test.invalid`;
 		const change = await changeInFlight(a.id, next);
-		const making = admin.generatePasswordResetLink({ userId: a.id });
-		// The procedure read the old address, then waits for the row lock.
+		// The admin's procedure hands this the user it read a moment ago, with the
+		// old address; called directly so the read cannot land after the commit.
+		const making = makeAdminResetLink({ id: a.id, email: a.email });
 		expect(await stillWaiting(making)).toBe(true);
 		await change.commit();
 		await expect(making).rejects.toMatchObject({ code: "CONFLICT" });
