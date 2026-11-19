@@ -17,6 +17,8 @@ import { Input } from "~/components/ui/input";
 import { Notice } from "~/components/ui/notice";
 import { SkeletonRows } from "~/components/ui/skeleton";
 import { useIsMobile } from "~/hooks/use-mobile";
+import { recurringValues } from "~/lib/device-engine/narrowings";
+import { useDeviceCompare } from "~/lib/device-engine/react";
 import type { RecurringView } from "~/server/services/recurring-view.service";
 import { ActivityTabs } from "../activity/activity-tabs";
 import { toTransactionVM } from "../activity/to-vm";
@@ -83,6 +85,7 @@ export function RecurringPage() {
 	const [q, setQ] = useState("");
 	const [chips, setChips] = useState<RecurringChips>(NO_CHIPS);
 	const data = r.view.data;
+	useDeviceCompare("recurring", recurringValues(data));
 	const groups = useMemo(() => {
 		if (!data) return [];
 		const shown = data.items.filter((x) => matches(x, q, chips));

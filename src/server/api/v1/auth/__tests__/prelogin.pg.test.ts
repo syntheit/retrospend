@@ -3,6 +3,7 @@
  * only an account with a protection key set gets its salt and parameters, a
  * session changes nothing, and the limits count without keeping the address.
  */
+import { createHash } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import {
@@ -13,6 +14,7 @@ import {
 	expectProblem,
 	sessionFor,
 } from "../../core/__tests__/harness";
+import { keyedHash } from "~/server/lib/keyed-hash";
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -179,6 +181,13 @@ describe("POST /auth/prelogin", () => {
 		).map((r) => r.key);
 		expect(keys.length).toBeGreaterThan(0);
 		for (const key of keys) expect(key).not.toContain("@");
+		// A keyed hash, not the plain SHA-256 of the address a list of addresses could match.
+		expect(keys).toContain(
+			`prelogin:email:${keyedHash("preloginAddress", email)}`,
+		);
+		expect(keys).not.toContain(
+			`prelogin:email:${createHash("sha256").update(email).digest("hex")}`,
+		);
 	}, 60_000);
 
 	it("counts one address in any letter case against the same limit", async () => {

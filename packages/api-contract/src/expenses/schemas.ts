@@ -80,10 +80,38 @@ export const createExpenseSchema = expenseFieldsSchema
 	})
 	.meta({ id: "CreateExpense" });
 
-/** A full replacement: a field left out is cleared. */
+/**
+ * The `updatedAt` the caller last read. Given, the write runs only while the
+ * expense still has it; a newer one answers 409 `expense_changed` and nothing
+ * is written. Left out, nothing is checked.
+ */
+export const expectedUpdatedAtSchema = timestampSchema.meta({
+	description:
+		"The updatedAt you last read. If the expense changed since, the answer is 409 expense_changed and nothing is written. Left out, nothing is checked.",
+});
+
+/** A full replacement: a field left out is cleared (`expectedUpdatedAt` is not a field). */
 export const updateExpenseSchema = z
-	.object({ id: idSchema, ...expenseFieldsSchema.shape })
+	.object({
+		id: idSchema,
+		...expenseFieldsSchema.shape,
+		expectedUpdatedAt: expectedUpdatedAtSchema.optional(),
+	})
 	.meta({ id: "UpdateExpense" });
+
+/** DELETE takes the stamp as a query parameter, so its input is detailed. */
+export const deleteExpenseSchema = z.object({
+	params: z.object({ id: idSchema }),
+	query: z
+		.object({ expectedUpdatedAt: expectedUpdatedAtSchema.optional() })
+		.optional(),
+});
+
+/** The delete's preview twin is a POST: the stamp rides in its body. */
+export const previewDeleteExpenseSchema = z.object({
+	id: idSchema,
+	expectedUpdatedAt: expectedUpdatedAtSchema.optional(),
+});
 
 export const bulkCategorySchema = z
 	.object({

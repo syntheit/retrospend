@@ -89,6 +89,7 @@ const month = {
 	incomplete: false,
 	approximate: false,
 	verdict: verdict(5_000_000),
+	groups: [{ envelopes: [{ id: "e1" }, { id: "e2" }] }],
 } as unknown as BudgetMonth;
 
 const mockApi = {
@@ -116,7 +117,7 @@ it("hands the body and every sheet the server's month only, though the device's 
 	// The fetch BudgetView built asked the device, so the compare ran.
 	expect(mockDevice.compare).toHaveBeenCalledWith(
 		"budget",
-		{},
+		{ envelopeId: ["e1", "e2"] },
 		expect.any(Function),
 	);
 	expect(mockCaptured.body?.data).toBe(month);

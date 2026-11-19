@@ -72,6 +72,8 @@ func RunDataRetentionCleanup(database *db.DB) (RetentionReport, error) {
 	}
 
 	// ── 3. Expired PasswordResetTokens ───────────────────────────────────────
+	// By "expires" alone: the token column holds a hash, and userId and origin
+	// (migration 20261118110000_reset_token_hardening) do not matter to a purge.
 	{
 		tag, err := database.Pool.Exec(ctx,
 			`DELETE FROM password_reset_token WHERE expires < $1`,

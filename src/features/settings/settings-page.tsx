@@ -5,6 +5,8 @@ import { useRef } from "react";
 import { BackButton } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { useIsMobile } from "~/hooks/use-mobile";
+import { NO_VALUES } from "~/lib/device-engine/narrowings";
+import { useDeviceCompare } from "~/lib/device-engine/react";
 import { entryOf } from "~/lib/nav";
 import { AboutFooter } from "./about-footer";
 import { CategoriesSection } from "./categories/categories-section";
@@ -29,6 +31,7 @@ import { SecuritySection } from "./security/security-section";
 export function SettingsPage() {
 	const t = useTranslations("settingsV2");
 	const phone = useIsMobile();
+	useDeviceCompare("settings", NO_VALUES);
 	const scroller = useRef<HTMLDivElement>(null);
 	const { current, go } = useSectionSpy(scroller, SECTIONS);
 	const home = entryOf("home").href;

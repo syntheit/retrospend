@@ -310,6 +310,8 @@ Turning protection on requires at least one. Recommended order in the UI: recove
 | Reset account | Deletes sealed data and keys, keeps the account, shared data and identity | Loses personal data. The only thing an email password reset does for a protected account |
 | Turn off while unlocked | Client decrypts and posts plain rows through the normal services, then deletes the sealed records | Data becomes recoverable by the server again. Backups hold ciphertext only for the sealed period |
 
+**Reset links (K3-0).** The email reset, the admin's link and, later, recovery share one token service (`src/server/services/auth/reset-tokens.ts`). The table holds the SHA-256 of a link's token, so a stolen database or backup opens no link; the raw token lives only in the email or on the admin's screen. A link belongs to a user id, so an address change moves nothing to whoever takes the old address, and an address change deletes the user's links. A link works once (one conditional delete) and lives an hour. A new request keeps the earlier live links (at most 3 per origin), so a stranger who knows an address cannot cancel a reset in progress, and each address may ask 3 times an hour (counted for unknown addresses too, answered alike). A link made by an admin has origin `admin`: it resets a password like any other, but recovery with the recovery key refuses it. The migration deleted every link that was pending when it ran.
+
 Passkey PRF unlock is a possible later convenience, never the only way in, because a de-Googled Android phone may have no PRF provider.
 
 ## 11. Open requirements before ship

@@ -18,9 +18,10 @@ type JsonObject = Record<string, unknown>;
  * changes and the patch for docs only; a breaking change needs /api/v2.
  * 1.1.0: x-protected-account on every operation.
  * 1.2.0: POST /me/protection/enable takes the recovery proof (recoveryAuthKey).
- * 1.3.0: POST /me/protection/keys/open releases the password-opened key wraps.
+ * 1.3.0: PUT and DELETE /expenses/{id} and their previews take expectedUpdatedAt; 409 expense_changed.
+ * 1.4.0: POST /me/protection/keys/open releases the password-opened key wraps.
  */
-export const CONTRACT_VERSION = "1.3.0";
+export const CONTRACT_VERSION = "1.4.0";
 
 const PROTECTION_OVERVIEW = [
 	"Accounts with Advanced protection.",

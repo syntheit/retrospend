@@ -11,6 +11,10 @@ import { createHash } from "node:crypto";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 
+import {
+	AmountRefusedError,
+	CategoryNotFoundError,
+} from "@retrospend/domain/expense-write/refusals";
 import { MissingRateError } from "@retrospend/domain/money";
 import { errorFormatter } from "~/server/api/error-formatter";
 import { TRPC_ALLOWED } from "~/server/api/protection/allowed";
@@ -186,6 +190,24 @@ const timingMiddleware = t.middleware(async ({ next }) => {
 	// A conversion with no exchange rate is a user-facing problem (sync rates
 	// or pick another currency), not a server crash.
 	if (!result.ok && result.error.cause instanceof MissingRateError) {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: result.error.cause.message,
+			cause: result.error.cause,
+		});
+	}
+
+	// The expense write rules refuse with typed errors the domain owns. A bad
+	// category is FORBIDDEN on every tRPC procedure, as before; v1 answers by
+	// the code the error carries (v1/core/serve.ts).
+	if (!result.ok && result.error.cause instanceof CategoryNotFoundError) {
+		throw new TRPCError({
+			code: "FORBIDDEN",
+			message: result.error.cause.message,
+			cause: result.error.cause,
+		});
+	}
+	if (!result.ok && result.error.cause instanceof AmountRefusedError) {
 		throw new TRPCError({
 			code: "BAD_REQUEST",
 			message: result.error.cause.message,

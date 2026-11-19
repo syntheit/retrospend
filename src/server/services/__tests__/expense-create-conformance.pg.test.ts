@@ -11,6 +11,7 @@
  * the rows other files left in this worker's database are put back after.
  */
 import { randomUUID } from "node:crypto";
+import { AMOUNT_ABOVE_ZERO } from "@retrospend/domain/expense-write/refusals";
 import { dec } from "@retrospend/domain/precise-decimal";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createExpense } from "~/server/services/expense-create.mutation";
@@ -67,10 +68,24 @@ function serverAdapter(): ExpenseCreateAdapter {
 			});
 		},
 		async create({ category, ...input }) {
+			// The device is handed a resolved category; the server needs the row.
+			if (category)
+				await fixtureDb.category.upsert({
+					where: { id: prefix + category.id },
+					update: {},
+					create: {
+						id: prefix + category.id,
+						userId,
+						name: `Cat ${category.id}`,
+						color: "teal",
+						kind: category.kind as "EXPENSE" | "INCOME",
+						excludeByDefault: category.excludeByDefault,
+					},
+				});
 			const { value, undo } = await forUser(userId).apply(createExpense, {
 				...input,
 				id: prefix + input.id,
-				categoryId: category?.id,
+				categoryId: category && prefix + category.id,
 			});
 			const expense: BookedExpense = {
 				status: value.status,
@@ -80,7 +95,7 @@ function serverAdapter(): ExpenseCreateAdapter {
 				isAmortizedParent: value.isAmortizedParent,
 				excludeFromAnalytics: value.excludeFromAnalytics,
 				categoryKind: value.category?.kind ?? null,
-				categoryId: value.categoryId,
+				categoryId: value.categoryId?.slice(prefix.length) ?? null,
 				date: value.date,
 				currency: value.currency,
 				amount: value.amount.toString(),
@@ -113,33 +128,32 @@ function serverAdapter(): ExpenseCreateAdapter {
 }
 
 /**
- * What the schema refuses: an expense amount of 0 or less
- * (expense_amount_positive) and a rate of 0 or less (exchange_rate_rate_positive).
- * The device books refunds; the server refuses them, checked below, and a
- * zero rate row cannot be seeded at all.
+ * What the schema refuses that cannot be seeded: a rate of 0 or less
+ * (exchange_rate_rate_positive). An expense amount of 0 or less is the
+ * domain's refusal now (expense-write/create.ts), so those vectors run below
+ * like the rest, with the device's words.
  */
-const refund = new Set(
-	vectors.filter((v) => !dec(v.input.amount).gt(0)).map((v) => v.name),
-);
 const unseedable = new Set(
 	vectors
 		.filter((v) => v.seed.rates.some((r) => !dec(r.rate).gt(0)))
 		.map((v) => v.name),
 );
+const refused = vectors.filter(
+	(v) => !dec(v.input.amount).gt(0) && !unseedable.has(v.name),
+);
 
 describe("expense create conformance (server, real Postgres)", () => {
 	for (const c of expenseCreateCases) {
-		if (refund.has(c.name) || unseedable.has(c.name)) continue;
+		if (unseedable.has(c.name)) continue;
 		it(c.name, () => c.run(serverAdapter));
 	}
 
-	it("refuses every refund vector the device books, storing nothing", async () => {
-		for (const v of vectors.filter((x) => refund.has(x.name))) {
+	it("refuses every amount of 0 or less with the domain's message, not the check constraint's", async () => {
+		expect(refused.length).toBeGreaterThan(0);
+		for (const v of refused) {
 			const adapter = serverAdapter();
 			await adapter.reset(v.seed);
-			await expect(adapter.create(v.input)).rejects.toThrow(
-				/expense_amount_positive/,
-			);
+			await expect(adapter.create(v.input)).rejects.toThrow(AMOUNT_ABOVE_ZERO);
 			expect(await adapter.expenseIds()).toEqual([]);
 		}
 	});

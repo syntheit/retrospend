@@ -9,6 +9,7 @@
  * Like the other suites it is a list of cases, not tied to a test runner:
  * register each with `it(c.name, () => c.run(makeAdapter))`.
  */
+import { CATEGORY_NOT_FOUND } from "@retrospend/domain/expense-write/refusals";
 import { getFiscalMonthRange } from "@retrospend/domain/fiscal-month";
 import { MissingRateError } from "@retrospend/domain/money";
 import { dec } from "@retrospend/domain/precise-decimal";
@@ -93,15 +94,20 @@ export interface CreateVector {
 	name: string;
 	seed: ExpenseSeed;
 	input: CreateExpenseInput;
-	/** The booked money, or the currencies a MissingRateError names. */
-	expect: { booked: ExpectedMoney } | { missingRate: string[] };
+	/** The booked money, the currencies a MissingRateError names, or the refusal's message (nothing stored). */
+	expect:
+		| { booked: ExpectedMoney }
+		| { missingRate: string[] }
+		| { refused: string };
 	/** Months of the seed's zone (start day 1) the created expense is checked against. */
 	months?: MonthCheck[];
 }
 
 export interface ExpenseCreateCase {
 	name: string;
-	run(make: () => ExpenseCreateAdapter | Promise<ExpenseCreateAdapter>): Promise<void>;
+	run(
+		make: () => ExpenseCreateAdapter | Promise<ExpenseCreateAdapter>,
+	): Promise<void>;
 }
 
 const sameDecimal = (a: string, b: string) => dec(a).eq(dec(b));
@@ -127,6 +133,20 @@ async function runVector(
 		if (!(thrown instanceof MissingRateError))
 			throw new Error(`expected MissingRateError, got ${String(thrown)}`);
 		expectEqual(thrown.currencies, v.expect.missingRate, "currencies");
+		expectEqual(await adapter.expenseIds(), [], "nothing stored");
+		return;
+	}
+	if ("refused" in v.expect) {
+		let thrown: unknown;
+		try {
+			await adapter.create(v.input);
+		} catch (e) {
+			thrown = e;
+		}
+		if (!(thrown instanceof Error))
+			throw new Error(`expected a refusal, got ${String(thrown)}`);
+		// Server and device refuse with the same words (the domain's).
+		expectEqual(thrown.message, v.expect.refused, "refusal");
 		expectEqual(await adapter.expenseIds(), [], "nothing stored");
 		return;
 	}
@@ -195,11 +215,61 @@ async function runVector(
 
 const first = vectors[0] as CreateVector;
 
+/** A category the case hands both adapters: the server stores it first, the device takes it as given. */
+const heldCategory = {
+	id: "cat-held",
+	kind: "EXPENSE",
+	excludeByDefault: true,
+};
+
 export const expenseCreateCases: ExpenseCreateCase[] = [
 	...vectors.map((v) => ({
 		name: v.name,
 		run: (make: Parameters<ExpenseCreateCase["run"]>[0]) => runVector(make, v),
 	})),
+	{
+		name: "an income category is refused with Category not found, nothing stored",
+		async run(make) {
+			const adapter = await make();
+			await adapter.reset(first.seed);
+			let thrown: unknown;
+			try {
+				await adapter.create({
+					...first.input,
+					category: { ...heldCategory, id: "cat-income", kind: "INCOME" },
+				});
+			} catch (e) {
+				thrown = e;
+			}
+			if (!(thrown instanceof Error)) throw new Error("create was not refused");
+			expectEqual(thrown.message, CATEGORY_NOT_FOUND, "refusal");
+			expectEqual(await adapter.expenseIds(), [], "nothing stored");
+		},
+	},
+	{
+		name: "a category held out by default excludes the expense unless the form says otherwise",
+		async run(make) {
+			const adapter = await make();
+			await adapter.reset(first.seed);
+			const held = await adapter.create({
+				...first.input,
+				id: "held",
+				category: heldCategory,
+			});
+			const shown = await adapter.create({
+				...first.input,
+				id: "shown",
+				category: heldCategory,
+				excludeFromAnalytics: false,
+			});
+			expectEqual(
+				[held.expense.excludeFromAnalytics, shown.expense.excludeFromAnalytics],
+				[true, false],
+				"excludeFromAnalytics",
+			);
+			expectEqual(held.expense.categoryKind, "EXPENSE", "categoryKind");
+		},
+	},
 	{
 		name: "an id already in use is refused and the first expense is untouched",
 		async run(make) {

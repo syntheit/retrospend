@@ -1,5 +1,9 @@
 import { ORPCError } from "@orpc/server";
 import type { ProblemCode } from "@retrospend/api-contract/common";
+import {
+	AmountRefusedError,
+	CategoryNotFoundError,
+} from "@retrospend/domain/expense-write/refusals";
 import { MissingRateError } from "@retrospend/domain/money";
 import { TRPCError } from "@trpc/server";
 import { textUnavailableProblem } from "~/server/crypto/field-open";
@@ -105,6 +109,16 @@ export function toProblem(error: unknown, route?: string): unknown {
 	);
 	if (missing instanceof MissingRateError)
 		return problem("missing_rate", missing.message);
+	// The expense write rules' refusals: a bad category answers with the code
+	// of the route that threw it (404 on a write, 403 on categorize).
+	const refused = [error, (error as { cause?: unknown } | null)?.cause].find(
+		(e) =>
+			e instanceof CategoryNotFoundError || e instanceof AmountRefusedError,
+	);
+	if (refused instanceof CategoryNotFoundError)
+		return problem(refused.v1Code, refused.message);
+	if (refused instanceof AmountRefusedError)
+		return problem("bad_request", refused.message);
 	// A sealed text the caller may read whose key the server cannot load: the
 	// key store is lost or unreachable. The recorded code stays in the log.
 	const unavailable = textUnavailableProblem(error);

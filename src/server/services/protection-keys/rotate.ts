@@ -165,7 +165,7 @@ export async function rotatePassword(input: {
 			hashed,
 			keys: "present",
 			keepSessionId: sessionId,
-			resetLinksFor: user.email,
+			dropResetLinks: true,
 		});
 		if (!swapped.ok) throw new ProtectionKeysError("conflict");
 		const { version } = await applyKeyChanges(tx, userId, changes, "rotate");
