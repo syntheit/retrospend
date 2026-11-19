@@ -20,13 +20,19 @@ import { strayChildren } from "./children";
 import { sameValue } from "./equal";
 import { ConflictError } from "./errors";
 import { type MovementRow, mirrorId, movementRepo } from "./movements";
-import type { Writer } from "./port";
+import { SETTINGS_ID, type Writer } from "./port";
 
 export type UndoToken =
 	| {
 			readonly kind: "revert";
 			readonly mutation: string;
 			readonly changes: readonly RowChange[];
+			/**
+			 * The home currency the write booked into, for a write whose undo puts
+			 * back a rate quoted into it (an expense edit). The undo is refused once
+			 * the home changed, as the server's signed edit undo is.
+			 */
+			readonly home?: string;
 	  }
 	| {
 			readonly kind: "mirror";
@@ -38,6 +44,7 @@ export type UndoToken =
 export function tokenFor(
 	mutation: string,
 	changes: readonly RowChange[],
+	home?: string,
 ): UndoToken {
 	const appendsOnly =
 		changes.length > 0 &&
@@ -50,7 +57,7 @@ export function tokenFor(
 				mutation,
 				movements: changes.map((c) => c.after as MovementRow),
 			}
-		: { kind: "revert", mutation, changes };
+		: { kind: "revert", mutation, changes, ...(home === undefined ? {} : { home }) };
 }
 
 const stale = (what: string, rows: RowChange[]) =>
@@ -66,6 +73,11 @@ const stale = (what: string, rows: RowChange[]) =>
  */
 export function applyUndo(w: Writer, token: UndoToken): UndoToken {
 	if (token.kind === "mirror") return applyMirror(w, token);
+	if (token.home !== undefined && w.get("settings", SETTINGS_ID)?.homeCurrency !== token.home)
+		throw new ConflictError(
+			"Your home currency changed since. Undo is no longer safe.",
+			[{ table: "settings", id: SETTINGS_ID }],
+		);
 	const current = (c: RowChange): AnyRow | null => w.get(c.table, c.id) ?? null;
 	const moved = token.changes.filter((c) => !sameValue(current(c), c.after));
 	if (moved.length > 0) throw stale("These rows", moved);
@@ -86,6 +98,7 @@ export function applyUndo(w: Writer, token: UndoToken): UndoToken {
 			before: c.after,
 			after: c.before,
 		})),
+		...(token.home === undefined ? {} : { home: token.home }),
 	};
 }
 

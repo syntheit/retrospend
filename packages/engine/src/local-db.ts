@@ -9,7 +9,8 @@
  * way for a preview and for the real write, so the preview is the write.
  */
 import { type RowChange, record } from "./changes";
-import type { Store, Writer } from "./port";
+import { EXPENSE_UPDATE } from "./expense-write-local";
+import { SETTINGS_ID, type Store, type Writer } from "./port";
 import { type ReadRepos, type Repos, readRepos, repos } from "./repos";
 import { applyUndo, tokenFor, type UndoToken } from "./undo";
 
@@ -39,7 +40,12 @@ export async function recordWrite<V>(
 ): Promise<LocalWrite<V>> {
 	const recorder = record(tx);
 	const value = await run(repos(recorder.writer));
-	return { value, undo: tokenFor(mutation, recorder.changes()) };
+	// An edit's undo puts back a rate booked into this home: the token pins it.
+	const home =
+		mutation === EXPENSE_UPDATE
+			? tx.get("settings", SETTINGS_ID)?.homeCurrency
+			: undefined;
+	return { value, undo: tokenFor(mutation, recorder.changes(), home) };
 }
 
 export class LocalDb {

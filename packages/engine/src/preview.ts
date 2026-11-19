@@ -23,6 +23,12 @@ import type {
 	FiguresRegistry,
 } from "@retrospend/domain/figures/registry";
 import { createExpense, EXPENSE_CREATE } from "./expense-create";
+import {
+	deleteExpense,
+	EXPENSE_DELETE,
+	EXPENSE_UPDATE,
+	updateExpense,
+} from "./expense-write-local";
 import { recordWrite, type WriteFn } from "./local-db";
 import type { Reader, Store, Tx } from "./port";
 import { applyUndo, type UndoToken } from "./undo";
@@ -77,6 +83,20 @@ export const EXPENSE_CREATE_MUTATION = deviceMutation({
 	id: EXPENSE_CREATE,
 	touches: ["spent", "glance.spent"],
 	write: createExpense,
+});
+
+/** expense.update on the device; touches what the server's mutation does (expense.mutation.ts, EXPENSE_FIGURES). */
+export const EXPENSE_UPDATE_MUTATION = deviceMutation({
+	id: EXPENSE_UPDATE,
+	touches: ["spent", "glance.spent"],
+	write: updateExpense,
+});
+
+/** expense.delete on the device; the same figures as the server's delete. */
+export const EXPENSE_DELETE_MUTATION = deviceMutation({
+	id: EXPENSE_DELETE,
+	touches: ["spent", "glance.spent"],
+	write: deleteExpense,
 });
 
 /**
