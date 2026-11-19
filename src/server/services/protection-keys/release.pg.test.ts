@@ -6,6 +6,8 @@
  * through the v1 handler.
  */
 import { randomBytes, randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { contract } from "@retrospend/api-contract";
 import {
 	fromBase64Url,
@@ -37,9 +39,14 @@ import {
 	sessionFor,
 } from "~/server/api/v1/core/__tests__/harness";
 import { auth } from "~/server/better-auth";
+import { REPO_ROOT } from "~/test/uiRules/paths";
 import { lockCredential } from "./password-writes";
-import { releaseWraps } from "./release";
-import type { WrapRole } from "./validate";
+import {
+	RELEASE_READERS,
+	type ReleaseReader,
+	releaseWraps,
+} from "./release";
+import { hashRecoveryProof, type WrapRole } from "./validate";
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -522,19 +529,74 @@ describe("rotate begin, the other caller of releaseWraps", () => {
 });
 
 describe("releaseWraps", () => {
-	it("computes the recovery digest only for a caller that asks for it", async () => {
+	it("computes the recovery digest only for the reader that shows it", async () => {
 		const u = await passwordUser();
 		const k = await keyed(u.id);
-		const proof = {
-			kind: "password",
-			authKey: k.authKeyText,
-			sessionId: "s1",
-		} as const;
-		expect((await releaseWraps(u.id, proof)).recoveryWrapDigest).toBeNull();
-		const asked = await releaseWraps(u.id, {
-			...proof,
-			withRecoveryDigest: true,
-		});
-		expect(asked.recoveryWrapDigest?.length).toBe(32);
+		const proof = { authKey: k.authKeyText, sessionId: "s1" } as const;
+		const rotate = await releaseWraps(u.id, { reader: "rotateBegin", ...proof });
+		expect(rotate.recoveryWrapDigest).toBeNull();
+		const shown = await releaseWraps(u.id, { reader: "keysOpen", ...proof });
+		expect(shown.recoveryWrapDigest?.length).toBe(32);
 	});
+});
+
+/**
+ * Where each reader is driven through its own caller, one case per member of
+ * the union (a `Record`, so a reader added without a case fails typecheck).
+ */
+const READER_DRIVEN_BY: Record<ReleaseReader, { file: string }> = {
+	rotateBegin: { file: "src/server/services/protection-keys/rotate.pg.test.ts" },
+	keysOpen: { file: "src/server/services/protection-keys/release.pg.test.ts" },
+	recoveryBegin: { file: "src/server/services/protection-keys/recover.pg.test.ts" },
+};
+
+/** The roles each reader gets, written out by hand from the plan (not read from release.ts). */
+const ROLES_BY_READER: Record<ReleaseReader, string[]> = {
+	rotateBegin: ["ak-password"],
+	keysOpen: ["ak-password", "collection-key", "private-key"],
+	recoveryBegin: ["ak-recovery", "private-key"],
+};
+
+describe("the reader union", () => {
+	it("is the plan's reader table, and every member has a test that drives it", () => {
+		const plan = ["rotateBegin", "keysOpen", "recoveryBegin"];
+		expect([...RELEASE_READERS].sort()).toEqual([...plan].sort());
+		expect(Object.keys(READER_DRIVEN_BY).sort()).toEqual([...plan].sort());
+		expect(Object.keys(ROLES_BY_READER).sort()).toEqual([...plan].sort());
+		for (const driven of Object.values(READER_DRIVEN_BY))
+			expect(existsSync(join(REPO_ROOT, driven.file)), driven.file).toBe(true);
+	});
+
+	it.each(RELEASE_READERS)(
+		"%s gets its roles and no wrap of another role, even when all six are stored",
+		async (reader) => {
+			const u = await passwordUser();
+			const k = await keyed(u.id);
+			const recoveryAuthKey = signInSecret(p.randomBytes(32));
+			await adminDb.protectionKeySet.update({
+				where: { userId: u.id },
+				data: { recoveryHash: Uint8Array.from(hashRecoveryProof(recoveryAuthKey)) },
+			});
+			const released =
+				reader === "recoveryBegin"
+					? await releaseWraps(u.id, {
+							reader,
+							recoveryAuthKey,
+							tokenHash: randomBytes(32).toString("hex"),
+						})
+					: await releaseWraps(u.id, {
+							reader,
+							authKey: k.authKeyText,
+							sessionId: randomUUID(),
+						});
+			expect(released.wraps.map((w) => w.role).sort()).toEqual(
+				ROLES_BY_READER[reader],
+			);
+			const text = JSON.stringify(released.wraps.map((w) => toBase64Url(w.wrapped)));
+			for (const w of k.wraps.filter((x) => !ROLES_BY_READER[reader].includes(x.role)))
+				expect(text, w.role).not.toContain(toBase64Url(w.wrapped));
+			// Only keys/open shows the digest of the recovery wrap.
+			expect(released.recoveryWrapDigest !== null).toBe(reader === "keysOpen");
+		},
+	);
 });

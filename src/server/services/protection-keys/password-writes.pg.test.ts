@@ -6,6 +6,8 @@
  * under it, so a writer that waits behind a turn-on sees the keys.
  */
 import { randomBytes, randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { problemCode } from "~/server/api/error-formatter";
@@ -28,9 +30,12 @@ import {
 import { issueLinkFor } from "~/test/reset-links";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
+import { REPO_ROOT } from "~/test/uiRules/paths";
 import {
 	lockCredential,
 	ProtectedPasswordError,
+	SWAP_WRITERS,
+	type SwapWriter,
 	swapCredentialHash,
 } from "./password-writes";
 
@@ -368,11 +373,11 @@ describe("swapCredentialHash", () => {
 		const hashed = await hashPassword("A new hash 4");
 		const result = await adminDb.$transaction((tx) =>
 			swapCredentialHash(tx, {
+				writer: "change",
 				userId: a.id,
 				checked,
 				hashed,
-				keys: "absent",
-				keepSessionId: "keep",
+				sessions: { keep: "keep" },
 				...over,
 			}),
 		);
@@ -411,19 +416,19 @@ describe("swapCredentialHash", () => {
 
 	it("refuses a keyed account when keys must be absent, and a keyless one when they must be present", async () => {
 		const keyless = await passwordUser();
-		expect((await swap(keyless, { keys: "present" })).result).toEqual({
+		expect((await swap(keyless, { writer: "rotate" })).result).toEqual({
 			ok: false,
 			refusal: "keys_missing",
 		});
 		const keyed = await passwordUser();
 		await giveKeys(keyed.id);
 		const before = await storedHash(keyed.id);
-		expect((await swap(keyed, { keys: "absent" })).result).toEqual({
+		expect((await swap(keyed, { writer: "change" })).result).toEqual({
 			ok: false,
 			refusal: "keys_present",
 		});
 		expect(await storedHash(keyed.id)).toBe(before);
-		expect((await swap(keyed, { keys: "present" })).result).toMatchObject({
+		expect((await swap(keyed, { writer: "rotate" })).result).toMatchObject({
 			ok: true,
 		});
 	});
@@ -432,14 +437,119 @@ describe("swapCredentialHash", () => {
 		const { user } = await createTestUser();
 		const result = await adminDb.$transaction((tx) =>
 			swapCredentialHash(tx, {
+				writer: "change",
 				userId: user.id,
 				checked: "x",
 				hashed: "y",
-				keys: "absent",
-				keepSessionId: "keep",
+				sessions: { keep: "keep" },
 			}),
 		);
 		expect(result).toEqual({ ok: false, refusal: "no_credential" });
+	});
+});
+
+/**
+ * Where each hash writer is driven through its own caller, one case per member
+ * of the union (a `Record`, so a writer added without a case fails typecheck).
+ * The change goes through changeOwnPassword in this file.
+ */
+const SWAP_DRIVEN_BY: Record<SwapWriter, { file: string }> = {
+	change: { file: "src/server/services/protection-keys/password-writes.pg.test.ts" },
+	enable: { file: "src/server/services/protection-keys/enable.pg.test.ts" },
+	rotate: { file: "src/server/services/protection-keys/rotate.pg.test.ts" },
+	recovery: { file: "src/server/services/protection-keys/recover.pg.test.ts" },
+};
+
+describe("the hash writer union", () => {
+	it("is the plan's writer table, and every member has a test that drives it", () => {
+		const plan = ["change", "enable", "rotate", "recovery"];
+		expect([...SWAP_WRITERS].sort()).toEqual([...plan].sort());
+		expect(Object.keys(SWAP_DRIVEN_BY).sort()).toEqual([...plan].sort());
+		for (const driven of Object.values(SWAP_DRIVEN_BY))
+			expect(existsSync(join(REPO_ROOT, driven.file)), driven.file).toBe(true);
+	});
+
+	const swapAs = async (
+		a: Account,
+		writer: SwapWriter,
+		sessions: Parameters<typeof swapCredentialHash>[1]["sessions"],
+	) => {
+		const checked = await storedHash(a.id);
+		const hashed = await hashPassword("A new hash 5");
+		const result = await adminDb
+			.$transaction((tx) =>
+				swapCredentialHash(tx, {
+					writer,
+					userId: a.id,
+					checked,
+					hashed,
+					sessions,
+				}),
+			)
+			.then(
+				(r) => r,
+				(e: unknown) => e,
+			);
+		return { result, checked, hashed };
+	};
+
+	it("recovery ends every session, the others keep the caller's", async () => {
+		const a = await passwordUser();
+		await giveKeys(a.id);
+		await adminDb.session.deleteMany({ where: { userId: a.id } });
+		const mine = await sessionFor(a.id);
+		const mineId = (await adminDb.session.findUniqueOrThrow({ where: { token: mine } })).id;
+		await sessionFor(a.id);
+		const rotated = await swapAs(a, "rotate", { keep: mineId });
+		expect(rotated.result).toEqual({ ok: true, signedOut: 1 });
+		expect(await adminDb.session.count({ where: { userId: a.id } })).toBe(1);
+		await sessionFor(a.id);
+		const recovered = await swapAs(a, "recovery", { endAll: true });
+		expect(recovered.result).toEqual({ ok: true, signedOut: 2 });
+		expect(await adminDb.session.count({ where: { userId: a.id } })).toBe(0);
+	});
+
+	it("refuses a session policy that does not fit the writer, before locking or writing", async () => {
+		const a = await passwordUser();
+		await giveKeys(a.id);
+		await adminDb.session.deleteMany({ where: { userId: a.id } });
+		await sessionFor(a.id);
+		const stored = await storedHash(a.id);
+		for (const [writer, sessions] of [
+			["recovery", { keep: "x" }],
+			["rotate", { endAll: true }],
+			["change", { endAll: true }],
+			["enable", { endAll: true }],
+		] as const) {
+			const { result } = await swapAs(a, writer, sessions);
+			expect(result, writer).toBeInstanceOf(Error);
+		}
+		expect(await storedHash(a.id)).toBe(stored);
+		expect(await adminDb.session.count({ where: { userId: a.id } })).toBe(1);
+	});
+
+	it("refuses an unknown writer, including names every object has", async () => {
+		const a = await passwordUser();
+		for (const writer of ["admin", "constructor", "toString"]) {
+			const { result } = await swapAs(a, writer as SwapWriter, { keep: "x" });
+			expect(result, writer).toBeInstanceOf(Error);
+		}
+	});
+
+	it("applies each writer's key rule: recovery and rotate need keys, change and enable need none", async () => {
+		const keyless = await passwordUser();
+		for (const writer of ["recovery", "rotate"] as const)
+			expect(
+				(await swapAs(keyless, writer, writer === "recovery" ? { endAll: true } : { keep: "k" })).result,
+				writer,
+			).toEqual({ ok: false, refusal: "keys_missing" });
+		const keyed = await passwordUser();
+		await giveKeys(keyed.id);
+		for (const writer of ["change", "enable"] as const)
+			expect((await swapAs(keyed, writer, { keep: "k" })).result, writer).toEqual({
+				ok: false,
+				refusal: "keys_present",
+			});
 	});
 });
 

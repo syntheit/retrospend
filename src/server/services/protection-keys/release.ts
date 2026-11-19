@@ -1,7 +1,7 @@
 /**
  * The one place wrap bytes leave the key tables, and the one owner of which
- * wraps leave under which proof (E2EE F6b; e2ee-k1-k3.md decision 4). The
- * server cannot open a wrap, but a wrap is the offline guessing target for
+ * wraps leave under which proof (E2EE F6b, K3-2a; e2ee-k1-k3.md decision 4).
+ * The server cannot open a wrap, but a wrap is the offline guessing target for
  * the password or the recovery key it was made under, so it is shown only to a
  * caller that proves it holds that secret first, and only the roles that
  * proof is for:
@@ -10,12 +10,17 @@
  *              with the password). Never ak-recovery: the recovery wrap is
  *              shown only as its digest, so a stolen password session gets no
  *              offline target for the recovery key. Never a public-key wrap.
+ *   recovery   ak-recovery and private-key (what the recovery key opens), to a
+ *              caller holding a live reset link and the recovery proof. Never
+ *              ak-password: a stolen link and key must not hand over the
+ *              offline target for the password.
  *
- * Callers pass a proof, never a role list: a new proof kind gets its own row in
- * `RELEASED_ROLES`, and a new reader of wrap bytes does not exist. The proof is
- * checked here too (it spends a password try, so a stolen cookie cannot guess
- * through this route), under the credential lock, so the wraps returned belong
- * to the hash that was checked.
+ * Callers name themselves (`reader`), never a role list: a new reader of wrap
+ * bytes is a new member of `RELEASE_READERS` with its own row in `READERS` and
+ * its own test. Each proof is checked here too, so a stolen cookie or link
+ * cannot guess through this route: the password spends a password try, under
+ * the credential lock, so the wraps returned belong to the hash that was
+ * checked; the recovery key spends a recovery try (`proveRecovery`).
  */
 import {
 	OPEN_WRAP_ROLES,
@@ -26,47 +31,65 @@ import { isSignInSecret } from "@retrospend/crypto";
 import { verifyPassword } from "better-auth/crypto";
 import { db } from "~/server/db";
 import type { Prisma } from "~prisma";
-import { spendPasswordTry } from "../account-security.service";
+import { spendPasswordTry, spendRecoveryTry } from "../account-security.service";
 import { ReleaseError } from "./errors";
 import { hasKeySet, lockCredential } from "./password-writes";
 import { plain } from "./protection-keys.service";
 import { digestOfRecoveryWrap } from "./recovery-digest";
 import { invalid, readCredentialHash } from "./shared";
-import type { WrapRole } from "./validate";
+import { recoveryProofMatches, type WrapRole } from "./validate";
 
-/** What the caller proves. Only the password today; recovery adds its own member. */
-export type ReleaseProof = {
-	kind: "password";
-	/** The sign-in secret derived from the current password, as base64url. */
-	authKey: string;
-	/** The session that spends the try. */
-	sessionId: string;
-	/**
-	 * Also answer the digest of the ak-recovery wrap (keys/open). A caller that
-	 * does not show it (rotate begin) leaves this out and never loads the hash.
-	 */
-	withRecoveryDigest?: true;
-};
+/** Every caller of `releaseWraps`; the test holds one case per member. */
+export const RELEASE_READERS = ["rotateBegin", "keysOpen", "recoveryBegin"] as const;
+export type ReleaseReader = (typeof RELEASE_READERS)[number];
 
-/** The roles that leave under each proof kind. The whole list: nothing else is returned. */
-const RELEASED_ROLES: Record<ReleaseProof["kind"], readonly OpenWrapRole[]> = {
-	password: OPEN_WRAP_ROLES,
-};
+/** What the caller proves. */
+export type ReleaseProof =
+	| {
+			reader: "rotateBegin" | "keysOpen";
+			/** The sign-in secret derived from the current password, as base64url. */
+			authKey: string;
+			/** The session that spends the try. */
+			sessionId: string;
+	  }
+	| {
+			reader: "recoveryBegin";
+			/** The recovery auth key (RK subkey 2), as base64url. */
+			recoveryAuthKey: string;
+			/** The stored hash of the reset link that opened this, which counts the try. */
+			tokenHash: string;
+	  };
 
-export type ReleasedWrap = {
+/**
+ * The roles that leave to each reader, and whether the digest of the ak-recovery
+ * wrap goes with them. The whole list: nothing else is returned. Rotate begin
+ * needs the password wrap only; keys/open is the device's unlock read.
+ */
+const READERS = {
+	rotateBegin: { roles: ["ak-password"], digest: false },
+	keysOpen: { roles: OPEN_WRAP_ROLES, digest: true },
+	recoveryBegin: { roles: ["ak-recovery", "private-key"], digest: false },
+} as const satisfies Record<
+	ReleaseReader,
+	{ roles: readonly WrapRole[]; digest: boolean }
+>;
+
+type RolesOf<R extends ReleaseReader> = (typeof READERS)[R]["roles"][number];
+
+export type ReleasedWrap<Role extends WrapRole = OpenWrapRole> = {
 	id: string;
-	role: OpenWrapRole;
+	role: Role;
 	targetId: string;
 	wrapped: Uint8Array;
 };
 
-export type Released = {
+export type Released<Role extends WrapRole = OpenWrapRole> = {
 	version: number;
 	createdAt: Date;
 	kdf: Pick<PreloginKdf, "memoryKiB" | "passes"> & { salt: Uint8Array };
 	publicKey: Uint8Array;
-	wraps: ReleasedWrap[];
-	/** BLAKE2b-256 of the stored ak-recovery wrap; null when the set has none or the caller did not ask. */
+	wraps: ReleasedWrap<Role>[];
+	/** BLAKE2b-256 of the stored ak-recovery wrap; null when the set has none or the reader does not show it. */
 	recoveryWrapDigest: Uint8Array | null;
 };
 
@@ -102,15 +125,35 @@ async function readSetAndWraps(
 }
 
 /**
- * Checks the proof and releases the wraps that proof is for. Throws
- * `ReleaseError` for a refusal (`no_keys` before a try is spent, then the try,
- * then `no_password`, `wrong_proof` or `changed`) and
- * `PasswordTriesExceededError` when the tries are used up.
+ * Counts a recovery try, then checks the recovery proof against the hash the
+ * set stores (SHA-256 of the recovery auth key, compared in constant time by
+ * validate.ts). Throws `ReleaseError` (`no_keys`, `recovery_unavailable` for a
+ * set made before the proof existed, `wrong_proof`) and
+ * `RecoveryTriesExceededError`; the try is spent first, so every refusal below
+ * costs one. Recovery begin (through `releaseWraps`) and the recovery commit
+ * both call it, so each spends one and neither trusts the other.
  */
-export async function releaseWraps(
+export async function proveRecovery(
+	client: Pick<Prisma.TransactionClient, "protectionKeySet">,
+	input: { userId: string; tokenHash: string; recoveryAuthKey: string },
+): Promise<void> {
+	if (!isSignInSecret(input.recoveryAuthKey)) invalid();
+	await spendRecoveryTry(input.userId, input.tokenHash);
+	const set = await client.protectionKeySet.findUnique({
+		where: { userId: input.userId },
+		select: { recoveryHash: true },
+	});
+	if (!set) throw new ReleaseError("no_keys");
+	if (!set.recoveryHash) throw new ReleaseError("recovery_unavailable");
+	if (!recoveryProofMatches(set.recoveryHash, input.recoveryAuthKey))
+		throw new ReleaseError("wrong_proof");
+}
+
+/** Checks the password proof (a counted try, under the credential lock). */
+async function provePassword(
 	userId: string,
-	proof: ReleaseProof,
-): Promise<Released> {
+	proof: Extract<ReleaseProof, { reader: "rotateBegin" | "keysOpen" }>,
+): Promise<Row[]> {
 	if (!isSignInSecret(proof.authKey)) invalid();
 	// A keyless account has nothing to release; answered before a try is spent.
 	if (!(await hasKeySet(db, userId))) throw new ReleaseError("no_keys");
@@ -124,7 +167,7 @@ export async function releaseWraps(
 		throw new ReleaseError("wrong_proof");
 	}
 
-	const rows = await db.$transaction(async (tx) => {
+	return db.$transaction(async (tx) => {
 		const locked = await lockCredential(tx, userId);
 		if (!locked?.hasKeySet) throw new ReleaseError("no_keys");
 		const current = await tx.account.findFirst({
@@ -135,6 +178,33 @@ export async function releaseWraps(
 		if (current?.password !== checked) throw new ReleaseError("changed");
 		return readSetAndWraps(tx, userId);
 	});
+}
+
+/**
+ * Checks the reader's proof and releases the wraps that proof is for. Throws
+ * `ReleaseError` for a refusal (`no_keys` before a try is spent for a
+ * password, then the try, then `no_password`, `wrong_proof`, `changed`,
+ * `recovery_unavailable`) and `PasswordTriesExceededError` or
+ * `RecoveryTriesExceededError` when the tries are used up.
+ */
+export async function releaseWraps<P extends ReleaseProof>(
+	userId: string,
+	proof: P,
+): Promise<Released<RolesOf<P["reader"]>>> {
+	// Narrowed on a plain copy: a generic parameter does not narrow by its tag.
+	const given: ReleaseProof = proof;
+	let rows: Row[];
+	if (given.reader === "recoveryBegin") {
+		await proveRecovery(db, {
+			userId,
+			tokenHash: given.tokenHash,
+			recoveryAuthKey: given.recoveryAuthKey,
+		});
+		// One statement, so the version and the wraps share a snapshot.
+		rows = await db.$transaction((tx) => readSetAndWraps(tx, userId));
+	} else {
+		rows = await provePassword(userId, given);
+	}
 	const first = rows[0];
 	if (!first) throw new ReleaseError("no_keys");
 
@@ -150,19 +220,16 @@ export async function releaseWraps(
 				]
 			: [],
 	);
+	const reader = READERS[proof.reader];
 	const recovery = stored.find(
 		(w) => w.role === "ak-recovery" && w.targetId === userId,
 	);
 	const digest =
-		recovery && proof.withRecoveryDigest
+		recovery && reader.digest
 			? await digestOfRecoveryWrap(recovery.wrapped)
 			: null;
-	const roles = RELEASED_ROLES[proof.kind];
-	const released: ReleasedWrap[] = stored.flatMap((w) =>
-		roles.some((role) => role === w.role)
-			? [{ ...w, role: w.role as OpenWrapRole }]
-			: [],
-	);
+	const roles: readonly WrapRole[] = reader.roles;
+	const released = stored.filter((w) => roles.includes(w.role));
 	return {
 		version: first.version,
 		createdAt: first.createdAt,
@@ -172,7 +239,8 @@ export async function releaseWraps(
 			passes: first.kdfPasses,
 		},
 		publicKey: plain(first.publicKey),
-		wraps: released,
+		// The filter above is the only way a role gets here.
+		wraps: released as ReleasedWrap<RolesOf<P["reader"]>>[],
 		recoveryWrapDigest: digest,
 	};
 }

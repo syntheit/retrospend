@@ -52,6 +52,8 @@ export type ReleaseRefusal =
 	| "no_password"
 	/** The proof is not the current one. */
 	| "wrong_proof"
+	/** The set was made before the recovery proof existed, so no recovery key can be checked. */
+	| "recovery_unavailable"
 	/** The stored hash changed since the proof was checked: the proof is for an old password. */
 	| "changed";
 

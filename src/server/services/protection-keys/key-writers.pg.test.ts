@@ -38,15 +38,15 @@ const EXPECTED: Record<KeyWriter, { creates: boolean; proof: boolean }> = {
 };
 
 /**
- * Where each writer is driven through its own route. The recovery commit and
- * Make new key have no route yet (K3-2a and K3-3 add them); until then their
- * case is the direct call below, and the PR that adds the route replaces
- * `pending` with the test file.
+ * Where each writer is driven through its own caller. Make new key has no
+ * route yet (K3-3 adds it); until then its case is the direct call below, and
+ * the PR that adds the route replaces `pending` with the test file. The
+ * recovery commit is driven by its service (K3-2b adds its route).
  */
 const DRIVEN_BY: Record<KeyWriter, { file: string } | { pending: string }> = {
 	enable: { file: "src/server/services/protection-keys/enable.pg.test.ts" },
 	rotate: { file: "src/server/services/protection-keys/rotate.pg.test.ts" },
-	recovery: { pending: "K3-2a" },
+	recovery: { file: "src/server/services/protection-keys/recover.pg.test.ts" },
 	newRecoveryKey: { pending: "K3-3" },
 };
 

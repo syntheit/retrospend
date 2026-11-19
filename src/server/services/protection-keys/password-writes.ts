@@ -5,10 +5,10 @@
  * change would lock them out of their data and a reset would strand the keys.
  *
  * Every hash writer (changeOwnPassword, the email reset, the admin reset, and
- * enable and rotate) runs an interactive owner transaction, takes the credential
- * row lock here first and checks for a key set under it. Enable takes the same
- * lock, so a writer that waited sees the key set it created. The three that
- * follow a check of the current password share `swapCredentialHash`.
+ * enable, rotate and the recovery commit) runs an interactive owner transaction,
+ * takes the credential row lock here first and checks for a key set under it.
+ * Enable takes the same lock, so a writer that waited sees the key set it
+ * created. The four that follow a check share `swapCredentialHash`.
  */
 import { isProtected } from "@retrospend/api-contract/protection-state";
 import { TRPCError } from "@trpc/server";
@@ -79,33 +79,71 @@ export type CredentialSwap =
 	| { ok: false; refusal: SwapRefusal };
 
 /**
- * The one write of a password hash that follows a check of the current
- * password (the person's own change, the turn-on of protection keys, the
- * rotation). The caller verified `checked` outside the transaction, because
- * hashing is slow; this locks the credential row, checks the key set rule
- * under the lock (`keys`), and replaces the hash only if it is still `checked`,
- * so a reset or another change that committed in between is a refusal, not an
- * overwrite. On success every other session ends, and the user's pending reset
- * links go too when `dropResetLinks` is set (reset-tokens.ts). Nothing is written on a
- * refusal, so the caller throws its own error for it.
+ * Every caller of `swapCredentialHash` names itself, so the list of paths that
+ * write a password hash after a check is the type, and a new writer must be
+ * added here (and to the test that holds one case per member) before it
+ * compiles.
+ */
+export const SWAP_WRITERS = ["change", "enable", "rotate", "recovery"] as const;
+export type SwapWriter = (typeof SWAP_WRITERS)[number];
+
+/**
+ * What each writer needs, decided here and nowhere else. `keys`: whether the
+ * account must be without or with a key set. `sessions`: whether the caller's
+ * own session stays (the person is signed in and changing it) or every
+ * session ends (a recovery has no session of its own to keep).
+ */
+const SWAP_RULES: Record<
+	SwapWriter,
+	{ keys: "absent" | "present"; sessions: "keep" | "endAll" }
+> = {
+	change: { keys: "absent", sessions: "keep" },
+	enable: { keys: "absent", sessions: "keep" },
+	rotate: { keys: "present", sessions: "keep" },
+	recovery: { keys: "present", sessions: "endAll" },
+};
+
+/** Which sessions survive the write: one of them, or none. */
+export type SessionPolicy = { keep: string } | { endAll: true };
+
+/**
+ * The one write of a password hash that follows a check. For the person's own
+ * change, the turn-on of protection keys and the rotation the check is the
+ * current password; for the recovery commit it is the reset token and the
+ * recovery proof, which the caller verified and spent in the same transaction.
+ * The caller verified `checked` outside the transaction, because hashing is
+ * slow; this locks the credential row, checks the key set rule of `writer`
+ * under the lock, and replaces the hash only if it is still `checked`, so a
+ * reset or another change that committed in between is a refusal, not an
+ * overwrite. On success the sessions end as `sessions` says (every other one,
+ * or all), and the user's pending reset links go too when `dropResetLinks` is
+ * set (reset-tokens.ts). Nothing is written on a refusal, so the caller throws
+ * its own error for it. A `sessions` that does not fit `writer` is a bug in the
+ * caller and throws before anything is locked.
  */
 export async function swapCredentialHash(
 	tx: Prisma.TransactionClient,
 	input: {
+		writer: SwapWriter;
 		userId: string;
 		checked: string;
 		hashed: string;
-		keys: "absent" | "present";
-		keepSessionId: string;
+		sessions: SessionPolicy;
 		dropResetLinks?: boolean;
 	},
 ): Promise<CredentialSwap> {
-	const { userId } = input;
+	const { userId, sessions } = input;
+	// Own keys only: "constructor" or "toString" must not pass for a writer.
+	if (!Object.hasOwn(SWAP_RULES, input.writer))
+		throw new Error("Unknown password writer");
+	const rule = SWAP_RULES[input.writer];
+	if ((rule.sessions === "keep") !== ("keep" in sessions))
+		throw new Error(`The ${input.writer} writer cannot end sessions this way`);
 	const locked = await lockCredential(tx, userId);
 	if (!locked) return { ok: false, refusal: "no_credential" };
-	if (input.keys === "absent" && locked.hasKeySet)
+	if (rule.keys === "absent" && locked.hasKeySet)
 		return { ok: false, refusal: "keys_present" };
-	if (input.keys === "present" && !locked.hasKeySet)
+	if (rule.keys === "present" && !locked.hasKeySet)
 		return { ok: false, refusal: "keys_missing" };
 	const swapped = await tx.account.updateMany({
 		where: { userId, providerId: "credential", password: input.checked },
@@ -113,7 +151,7 @@ export async function swapCredentialHash(
 	});
 	if (swapped.count !== 1) return { ok: false, refusal: "hash_changed" };
 	const ended = await tx.session.deleteMany({
-		where: { userId, id: { not: input.keepSessionId } },
+		where: "keep" in sessions ? { userId, id: { not: sessions.keep } } : { userId },
 	});
 	if (input.dropResetLinks) await deleteUserResetTokens(tx, userId);
 	return { ok: true, signedOut: ended.count };

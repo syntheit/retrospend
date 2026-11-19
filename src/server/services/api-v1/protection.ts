@@ -60,10 +60,9 @@ export function changeKeyedPassword(caller: Caller, body: RotatePassword) {
 export async function openKeys(caller: Caller, authKey: string) {
 	if (!env.ADVANCED_PROTECTION_ENABLED) throw problem("not_implemented");
 	const released = await releaseWraps(caller.principal.userId, {
-		kind: "password",
+		reader: "keysOpen",
 		authKey,
 		sessionId: caller.principal.tokenId,
-		withRecoveryDigest: true,
 	});
 	return {
 		version: released.version,

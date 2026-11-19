@@ -8,6 +8,7 @@ import * as z from "zod";
 import { apiKeyScopes } from "~/server/api/v1/scopes";
 import { auth } from "~/server/better-auth";
 import type { db as globalDb } from "~/server/db";
+import type { Prisma } from "~prisma";
 import type { Caller } from "./caller";
 import { decodeCursor, toPage } from "./cursor";
 import type { Principal } from "./principal.service";
@@ -124,6 +125,22 @@ export async function revokeAccessToken(caller: Caller, id: string) {
 		throw new TRPCError({ code: "NOT_FOUND", message: "Token not found" });
 	}
 	return { ok: true as const };
+}
+
+/**
+ * Deletes every access token of the user in the caller's transaction. Only the
+ * recovery commit calls it (owner decision 10): a key made by whoever had the
+ * old password must not outlive the reset. Devices registered with a token go
+ * with it (their rows cascade).
+ */
+export async function deleteAllAccessTokens(
+	tx: Pick<Prisma.TransactionClient, "apikey">,
+	userId: string,
+): Promise<number> {
+	const { count } = await tx.apikey.deleteMany({
+		where: { referenceId: userId },
+	});
+	return count;
 }
 
 const createdCursor = z.object({ createdAt: z.iso.datetime(), id: z.string() });

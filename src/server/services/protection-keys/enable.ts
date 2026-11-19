@@ -124,11 +124,11 @@ export async function enableProtection(
 
 	const done = await db.$transaction(async (tx) => {
 		const swapped = await swapCredentialHash(tx, {
+			writer: "enable",
 			userId,
 			checked,
 			hashed,
-			keys: "absent",
-			keepSessionId: sessionId,
+			sessions: { keep: sessionId },
 			dropResetLinks: true,
 		});
 		if (!swapped.ok) throw new ProtectionKeysError("conflict");
