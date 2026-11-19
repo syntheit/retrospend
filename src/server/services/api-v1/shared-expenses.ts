@@ -8,6 +8,7 @@ import type {
 import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
+import { guardedShared } from "~/server/services/entry/guarded.mutation";
 import {
 	type CreatedShared,
 	type CreateSharedInput,
@@ -42,7 +43,6 @@ import {
 	toPreviewDto,
 	undoFor,
 } from "./money-write";
-import { guardedShared } from "./shared-guard";
 import { type ShareChange, withShares } from "./shared-shares";
 import { readUndo } from "./undo";
 
