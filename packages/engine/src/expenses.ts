@@ -11,6 +11,29 @@ import {
 
 export type ExpenseRow = TableRows["expenses"];
 
+/**
+ * The expense columns that hold a person's free text. The owner of "what a
+ * device may keep outside the store": the outbox and the overlay carry rows
+ * through `withoutText`. A src test holds this list equal to the keys of
+ * FIELD_MAP.Expense.columns, which the engine cannot import.
+ */
+export const EXPENSE_TEXT_COLUMNS = [
+	"title",
+	"description",
+	"location",
+] as const;
+
+export type ExpenseTextColumn = (typeof EXPENSE_TEXT_COLUMNS)[number];
+
+/** The row as the device may hold it outside the store: every column except the text. */
+export type TextFreeExpenseRow = Omit<ExpenseRow, ExpenseTextColumn>;
+
+export function withoutText(row: ExpenseRow): TextFreeExpenseRow {
+	const out: Record<string, unknown> = { ...row };
+	for (const column of EXPENSE_TEXT_COLUMNS) delete out[column];
+	return out as TextFreeExpenseRow;
+}
+
 export interface ExpenseAggregate {
 	readonly expense: ExpenseRow;
 	readonly shares: readonly ShareRow[];

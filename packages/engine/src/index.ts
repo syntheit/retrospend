@@ -55,7 +55,13 @@ export {
 	EXPENSE_CREATE,
 	type ExpenseCategory,
 } from "./expense-create";
-export type { ExpenseAggregate, ExpenseRow } from "./expenses";
+export type {
+	ExpenseAggregate,
+	ExpenseRow,
+	ExpenseTextColumn,
+	TextFreeExpenseRow,
+} from "./expenses";
+export { EXPENSE_TEXT_COLUMNS, withoutText } from "./expenses";
 export {
 	LocalDb,
 	type LocalPreview,
