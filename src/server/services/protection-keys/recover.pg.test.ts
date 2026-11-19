@@ -37,8 +37,9 @@ import {
 	deleteUserResetTokens,
 	InvalidResetTokenError,
 } from "~/server/services/auth/reset-tokens";
-import type { Prisma } from "~prisma";
 import { adminDb } from "~/test/pg-harness";
+import { approvedDeviceCode, deviceCodeRows, pollDeviceCode } from "~/test/device-codes";
+import { holdCredentialLock, holdSetLock } from "~/test/locks";
 import { issueLinkFor } from "~/test/reset-links";
 import { ProtectionKeysError, ReleaseError } from "./errors";
 import {
@@ -47,7 +48,7 @@ import {
 	commitRecovery,
 	type RecoverInput,
 } from "./recover";
-import { lockCredential, settleKeysForReset } from "./password-writes";
+import { settleKeysForReset } from "./password-writes";
 import { applyKeyChanges } from "./protection-keys.service";
 import { hashRecoveryProof } from "./validate";
 
@@ -298,41 +299,6 @@ async function snapshot(userId: string) {
 	});
 }
 
-/**
- * Runs `run` while another transaction holds the account's credential row, so
- * that `run` has read what it needs and is waiting at the lock; `work` writes
- * in the holder, which then commits, and `run` goes on to see the result.
- */
-async function holdCredentialLock<T>(
-	userId: string,
-	work: (tx: Prisma.TransactionClient) => Promise<void>,
-	run: () => Promise<T>,
-): Promise<T> {
-	let locked!: () => void;
-	const ready = new Promise<void>((resolve) => {
-		locked = resolve;
-	});
-	const holder = adminDb.$transaction(
-		async (tx) => {
-			await lockCredential(tx, userId);
-			locked();
-			// Wait until the run's transaction is queued behind this lock.
-			for (let i = 0; i < 600; i++) {
-				const [row] = await adminDb.$queryRaw<{ n: number }[]>`
-					SELECT count(*)::int AS n FROM pg_stat_activity
-					WHERE datname = current_database() AND wait_event_type = 'Lock'`;
-				if ((row?.n ?? 0) > 0) break;
-				await new Promise((r) => setTimeout(r, 50));
-			}
-			await work(tx);
-		},
-		{ timeout: 60_000, maxWait: 60_000 },
-	);
-	await ready;
-	const [result] = await Promise.all([run(), holder]);
-	return result;
-}
-
 describe("checkRecovery", () => {
 	it("says what the link leads to, for each state of the account", async () => {
 		const keyedOff = await recoverable();
@@ -440,6 +406,30 @@ describe("beginRecovery", () => {
 			beginRecovery({ token, recoveryAuthKey: wrongKey() }),
 		).rejects.toMatchObject({ code: "no_keys" });
 		expect(await triesSpent(tokenHashOf(token))).toBe(1);
+	});
+
+	it("checks the proof under the set lock: a hash changed while it waited is refused and no wrap leaves", async () => {
+		const k = await recoverable();
+		const newHash = hashRecoveryProof(wrongKey());
+		const result = await holdSetLock(
+			k.id,
+			async (tx) => {
+				await tx.protectionKeySet.update({
+					where: { userId: k.id },
+					select: { userId: true },
+					data: { recoveryHash: Uint8Array.from(newHash) },
+				});
+			},
+			() =>
+				settled(() =>
+					beginRecovery({
+						token: k.token,
+						recoveryAuthKey: k.recoveryAuthKey,
+					}),
+				),
+		);
+		expect(result).toMatchObject({ error: { code: "wrong_proof" } });
+		expect(result).not.toHaveProperty("value");
 	});
 
 	it("refuses the account's own sign-in secret as the proof", async () => {
@@ -564,6 +554,18 @@ describe("commitRecovery", () => {
 		]);
 		expect(mail.sendEmail).toHaveBeenCalledTimes(1);
 		expect(mail.sendEmail.mock.calls[0]?.[0]).toBe(k.email);
+	});
+
+	it("ends the approved device codes too: nothing polled afterwards gives a session", async () => {
+		const k = await recoverable();
+		const code = await approvedDeviceCode(k.id);
+		const other = await recoverable();
+		const otherCode = await approvedDeviceCode(other.id);
+		await commitRecovery(commitBody(k).input);
+		expect(await deviceCodeRows(k.id)).toBe(0);
+		expect(await pollDeviceCode(code)).toBe("refused");
+		// The poll path works, and another account's code is untouched.
+		expect(await pollDeviceCode(otherCode)).toBe("session");
 	});
 
 	it("still succeeds when the mail cannot be sent", async () => {
@@ -766,6 +768,33 @@ describe("commitRecovery", () => {
 		expect(await storedHash(k.id)).toBe(reset);
 		expect(await adminDb.protectionKeySet.count({ where: { userId: k.id } })).toBe(0);
 		expect(await adminDb.protectionKeyWrap.count({ where: { userId: k.id } })).toBe(0);
+	});
+
+	it("refuses a recovery hash that changed after the first check, even with the same version", async () => {
+		const k = await recoverable();
+		await sessionFor(k.id);
+		const before = await snapshot(k.id);
+		// What Make new key writes, without the version bump a writer would add:
+		// the version compare cannot be what refuses this.
+		const newHash = hashRecoveryProof(wrongKey());
+		const result = await holdCredentialLock(
+			k.id,
+			async (tx) => {
+				await tx.protectionKeySet.update({
+					where: { userId: k.id },
+					select: { userId: true },
+					data: { recoveryHash: Uint8Array.from(newHash) },
+				});
+			},
+			() => settled(() => commitRecovery(commitBody(k).input)),
+		);
+		expect(result).toMatchObject({ error: { code: "wrong_proof" } });
+		const after = JSON.parse(await snapshot(k.id));
+		expect({ ...after, recoveryHash: "" }).toEqual({
+			...JSON.parse(before),
+			recoveryHash: "",
+		});
+		expect(after.recoveryHash).toBe(Buffer.from(newHash).toString("hex"));
 	});
 
 	it("keeps an account without keys out of recovery: no_keys, and the plain hash is untouched", async () => {

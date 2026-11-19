@@ -107,6 +107,27 @@ const SWAP_RULES: Record<
 export type SessionPolicy = { keep: string } | { endAll: true };
 
 /**
+ * The one place a user's sessions end for a security reason (a password write,
+ * an address change cancelled, an account disabled). Besides the sessions it
+ * deletes the user's device codes: a code approved at /device while an attacker
+ * had the password lets whoever holds it poll for a new session for 30 minutes,
+ * so leaving it would undo "signed out everywhere". Runs on the owner
+ * connection (the app role cannot write either table). Returns how many
+ * sessions ended.
+ */
+export async function endSessions(
+	tx: Pick<Prisma.TransactionClient, "session" | "deviceCode">,
+	userId: string,
+	policy: SessionPolicy,
+): Promise<number> {
+	const ended = await tx.session.deleteMany({
+		where: "keep" in policy ? { userId, id: { not: policy.keep } } : { userId },
+	});
+	await tx.deviceCode.deleteMany({ where: { userId } });
+	return ended.count;
+}
+
+/**
  * The one write of a password hash that follows a check. For the person's own
  * change, the turn-on of protection keys and the rotation the check is the
  * current password; for the recovery commit it is the reset token and the
@@ -150,11 +171,9 @@ export async function swapCredentialHash(
 		data: { password: input.hashed },
 	});
 	if (swapped.count !== 1) return { ok: false, refusal: "hash_changed" };
-	const ended = await tx.session.deleteMany({
-		where: "keep" in sessions ? { userId, id: { not: sessions.keep } } : { userId },
-	});
+	const signedOut = await endSessions(tx, userId, sessions);
 	if (input.dropResetLinks) await deleteUserResetTokens(tx, userId);
-	return { ok: true, signedOut: ended.count };
+	return { ok: true, signedOut };
 }
 
 /**

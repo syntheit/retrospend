@@ -10,7 +10,8 @@
  *   holds the link and the recovery proof (release.ts owns the proof and which
  *   wraps leave). Spends one recovery try.
  * - `commitRecovery`: the new password. Checks the link and the proof again
- *   (spending one more try; it does not trust begin), then in one owner
+ *   (spending one more try; it does not trust begin; and once more under the
+ *   set lock, so a hash changed meanwhile is refused), then in one owner
  *   transaction spends the link, swaps the password hash, replaces the
  *   ak-password wrap and the parameters, ends every session and deletes the
  *   account's API keys. Everything or nothing: a refusal anywhere leaves the
@@ -38,7 +39,7 @@ import {
 import { ProtectionKeysError, ReleaseError } from "./errors";
 import { lockCredential, swapCredentialHash } from "./password-writes";
 import { applyKeyChanges, type KeyChanges } from "./protection-keys.service";
-import { proveRecovery, releaseWraps } from "./release";
+import { checkRecoveryProof, proveRecovery, releaseWraps } from "./release";
 import { bytes, invalid, readCredentialHash, sendNotice } from "./shared";
 import { validateKeyChanges } from "./validate";
 
@@ -197,6 +198,13 @@ export async function commitRecovery(
 			throw new ProtectionKeysError("conflict");
 		}
 		const { version } = await applyKeyChanges(tx, userId, changes, "recovery");
+		// The set row is locked now: the proof must still be the one it holds. A
+		// writer that changed the hash since the check above is a refusal, not
+		// something the version compare alone is trusted to catch.
+		await checkRecoveryProof(tx, {
+			userId,
+			recoveryAuthKey: input.recoveryAuthKey,
+		});
 		await deleteAllAccessTokens(tx, userId);
 		await tx.eventLog.create({
 			data: {

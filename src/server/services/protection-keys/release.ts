@@ -125,20 +125,17 @@ async function readSetAndWraps(
 }
 
 /**
- * Counts a recovery try, then checks the recovery proof against the hash the
- * set stores (SHA-256 of the recovery auth key, compared in constant time by
- * validate.ts). Throws `ReleaseError` (`no_keys`, `recovery_unavailable` for a
- * set made before the proof existed, `wrong_proof`) and
- * `RecoveryTriesExceededError`; the try is spent first, so every refusal below
- * costs one. Recovery begin (through `releaseWraps`) and the recovery commit
- * both call it, so each spends one and neither trusts the other.
+ * Checks the recovery proof against the hash the set stores (SHA-256 of the
+ * recovery auth key, compared in constant time by validate.ts). Spends no try.
+ * Throws `ReleaseError`: `no_keys`, `recovery_unavailable` for a set made before
+ * the proof existed, `wrong_proof`. Anything it cannot read as a match is a
+ * refusal (fail closed). Callers that must not see the hash change under them
+ * call it in a transaction that holds the set row.
  */
-export async function proveRecovery(
+export async function checkRecoveryProof(
 	client: Pick<Prisma.TransactionClient, "protectionKeySet">,
-	input: { userId: string; tokenHash: string; recoveryAuthKey: string },
+	input: { userId: string; recoveryAuthKey: string },
 ): Promise<void> {
-	if (!isSignInSecret(input.recoveryAuthKey)) invalid();
-	await spendRecoveryTry(input.userId, input.tokenHash);
 	const set = await client.protectionKeySet.findUnique({
 		where: { userId: input.userId },
 		select: { recoveryHash: true },
@@ -147,6 +144,22 @@ export async function proveRecovery(
 	if (!set.recoveryHash) throw new ReleaseError("recovery_unavailable");
 	if (!recoveryProofMatches(set.recoveryHash, input.recoveryAuthKey))
 		throw new ReleaseError("wrong_proof");
+}
+
+/**
+ * Counts a recovery try, then checks the proof (`checkRecoveryProof`); the try
+ * is spent first, so every refusal costs one. Throws what that does and
+ * `RecoveryTriesExceededError`. The recovery commit calls it before its slow
+ * work and checks again under the set lock; begin (through `releaseWraps`)
+ * spends its own try, so each spends one and neither trusts the other.
+ */
+export async function proveRecovery(
+	client: Pick<Prisma.TransactionClient, "protectionKeySet">,
+	input: { userId: string; tokenHash: string; recoveryAuthKey: string },
+): Promise<void> {
+	if (!isSignInSecret(input.recoveryAuthKey)) invalid();
+	await spendRecoveryTry(input.userId, input.tokenHash);
+	await checkRecoveryProof(client, input);
 }
 
 /** Checks the password proof (a counted try, under the credential lock). */
@@ -195,13 +208,19 @@ export async function releaseWraps<P extends ReleaseProof>(
 	const given: ReleaseProof = proof;
 	let rows: Row[];
 	if (given.reader === "recoveryBegin") {
-		await proveRecovery(db, {
-			userId,
-			tokenHash: given.tokenHash,
-			recoveryAuthKey: given.recoveryAuthKey,
+		if (!isSignInSecret(given.recoveryAuthKey)) invalid();
+		await spendRecoveryTry(userId, given.tokenHash);
+		rows = await db.$transaction(async (tx) => {
+			// Share-locked, so the hash that is checked is the one the wraps
+			// belong to: a writer of the set waits until this commits.
+			await tx.$queryRaw`
+				SELECT "userId" FROM "protection_key_set" WHERE "userId" = ${userId} FOR SHARE`;
+			await checkRecoveryProof(tx, {
+				userId,
+				recoveryAuthKey: given.recoveryAuthKey,
+			});
+			return readSetAndWraps(tx, userId);
 		});
-		// One statement, so the version and the wraps share a snapshot.
-		rows = await db.$transaction((tx) => readSetAndWraps(tx, userId));
 	} else {
 		rows = await provePassword(userId, given);
 	}

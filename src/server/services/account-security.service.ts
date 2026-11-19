@@ -14,6 +14,7 @@ import {
 	hasKeySet,
 	lockCredential,
 	ProtectedPasswordError,
+	endSessions,
 	type ResetBy,
 	settleKeysForReset,
 	swapCredentialHash,
@@ -223,7 +224,7 @@ export async function resetPasswordHash(input: {
 				message: "User does not have a credential account",
 			});
 		}
-		await tx.session.deleteMany({ where: { userId: input.userId } });
+		await endSessions(tx, input.userId, { endAll: true });
 		await deleteUserResetTokens(tx, input.userId);
 	});
 }

@@ -25,8 +25,17 @@ import { auth } from "~/server/better-auth";
 import {
 	changeOwnPassword,
 	PasswordTriesExceededError,
+	resetPasswordHash,
 	spendPasswordTry,
 } from "~/server/services/account-security.service";
+import { disableUserKeepingAnAdmin } from "~/server/services/admin-guard.service";
+import { hashToken } from "~/server/lib/tokens";
+import {
+	approvedDeviceCode,
+	deviceCodeRows,
+	pollDeviceCode,
+} from "~/test/device-codes";
+import { holdCredentialLock as holdWhileWaiting } from "~/test/locks";
 import { issueLinkFor } from "~/test/reset-links";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
@@ -562,6 +571,117 @@ describe("the hash writer union", () => {
 				ok: false,
 				refusal: "keys_present",
 			});
+	});
+});
+
+describe("device codes end with the sessions", () => {
+	/** A user, an approved code of theirs, and a control user whose code must survive. */
+	async function withCodes() {
+		const a = await passwordUser();
+		const control = await passwordUser();
+		return {
+			a,
+			code: await approvedDeviceCode(a.id),
+			control,
+			controlCode: await approvedDeviceCode(control.id),
+		};
+	}
+	const gone = async (c: Awaited<ReturnType<typeof withCodes>>) => {
+		expect(await deviceCodeRows(c.a.id)).toBe(0);
+		expect(await pollDeviceCode(c.code)).toBe("refused");
+		// The poll path works, and another person's code is not touched.
+		expect(await deviceCodeRows(c.control.id)).toBe(1);
+		expect(await pollDeviceCode(c.controlCode)).toBe("session");
+	};
+
+	it("a password write that keeps one session ends the user's approved codes", async () => {
+		const c = await withCodes();
+		await giveKeys(c.a.id);
+		const checked = await storedHash(c.a.id);
+		const hashed = await hashPassword("A new hash 6");
+		const result = await adminDb.$transaction((tx) =>
+			swapCredentialHash(tx, {
+				writer: "rotate",
+				userId: c.a.id,
+				checked,
+				hashed,
+				sessions: { keep: "keep" },
+			}),
+		);
+		expect(result).toMatchObject({ ok: true });
+		await gone(c);
+	});
+
+	it("the email reset and the admin reset end them", async () => {
+		const c = await withCodes();
+		await resetPasswordHash({
+			userId: c.a.id,
+			hashed: await hashPassword("What the reset set"),
+			by: { kind: "email" },
+			whenNoCredential: "continue",
+		});
+		await gone(c);
+	});
+
+	it("disabling the account ends them", async () => {
+		const c = await withCodes();
+		await createTestUser({ role: "ADMIN" });
+		await disableUserKeepingAnAdmin(adminDb, c.a.id);
+		await gone(c);
+	});
+
+	it("cancelling an email change from the old address ends them", async () => {
+		const c = await withCodes();
+		const raw = randomBytes(16).toString("hex");
+		await adminDb.user.update({
+			where: { id: c.a.id },
+			data: {
+				pendingEmail: `${randomUUID()}@pg-test.invalid`,
+				pendingEmailToken: hashToken(raw),
+				pendingEmailExpiresAt: new Date(Date.now() + 60_000),
+			},
+		});
+		await publicCaller().revertEmailChange({ token: raw });
+		await gone(c);
+	});
+});
+
+describe("resetPasswordHash lock order", () => {
+	it("takes the credential row before the link: while it waits for the row, the link is not locked", async () => {
+		const a = await passwordUser();
+		const token = await issueLinkFor(a.id);
+		const hash = hashToken(token);
+		let probe: unknown = "not run";
+		const done = await holdWhileWaiting(
+			a.id,
+			async () => {
+				// A third connection: a link locked by the waiting reset would fail at once.
+				probe = await adminDb
+					.$transaction((tx) =>
+						tx.$queryRaw<{ token: string }[]>`
+							SELECT "token" FROM "password_reset_token"
+							WHERE "token" = ${hash} FOR UPDATE NOWAIT`,
+					)
+					.then(
+						(rows) => rows.length,
+						(e: unknown) => String(e),
+					);
+			},
+			() =>
+				resetPasswordHash({
+					userId: a.id,
+					hashed: "unused-after-the-lock-test",
+					by: { kind: "email" },
+					token,
+					whenNoCredential: "continue",
+				}).then(
+					() => "reset",
+					(e: unknown) => String(e),
+				),
+		);
+		expect(probe).toBe(1);
+		expect(done).toBe("reset");
+		expect(await tokenRows(a.id)).toBe(0);
 	});
 });
 
