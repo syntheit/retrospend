@@ -112,6 +112,7 @@ model User {
   apiEvents               ApiEvent[]
   syncChanges             SyncChange[]
   protectionKeySet        ProtectionKeySet?
+  passwordResetTokens     PasswordResetToken[]
   protectionKeyWraps      ProtectionKeyWrap[]
   vaultRecords            VaultRecord[]
   webhooks                Webhook[]
@@ -183,12 +184,24 @@ model VerificationToken {
   @@map("verification_token")
 }
 
+/// A password reset link (services/auth/reset-tokens.ts owns every read and
+/// write; migration 20261118110000_reset_token_hardening). The raw token only
+/// ever lives in the email or the admin's screen: "token" holds its SHA-256
+/// (never the raw value), and a token resolves to "userId", never through an
+/// address.
+/// "origin" is "email" (the person asked) or "admin" (an admin made the link);
+/// an admin link never opens recovery. "identifier" is the old address key,
+/// no longer written (prisma/deferred/K3_drop_reset_token_identifier).
 model PasswordResetToken {
-  identifier String
   token      String   @unique
+  userId     String
+  origin     String
   expires    DateTime
+  identifier String?
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([identifier, token])
+  @@index([userId])
   @@map("password_reset_token")
 }
 

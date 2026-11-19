@@ -38,6 +38,7 @@ import {
 import vectors from "../../../../packages/crypto/vectors/keys.vectors.json";
 import { auth } from "~/server/better-auth";
 import { enableProtection } from "./enable";
+import { issueLinkFor } from "~/test/reset-links";
 import { lockCredential } from "./password-writes";
 import { verifyTwoFactorCode } from "./two-factor";
 
@@ -198,14 +199,7 @@ const keyRows = async (userId: string) => ({
 });
 const sessionExists = async (token: string) =>
 	(await adminDb.session.findUnique({ where: { token } })) !== null;
-const resetToken = (email: string) =>
-	adminDb.passwordResetToken.create({
-		data: {
-			identifier: email,
-			token: randomBytes(16).toString("hex"),
-			expires: new Date(Date.now() + 60 * MIN),
-		},
-	});
+const resetToken = (userId: string) => issueLinkFor(userId);
 const signsInWith = (email: string, password: string) =>
 	auth.api
 		.signInEmail({ body: { email, password } })
@@ -226,7 +220,7 @@ describe("POST /me/protection/enable", () => {
 		const me = await mobile(u.id);
 		const other = await sessionFor(u.id);
 		const web = await sessionFor(u.id, {});
-		await resetToken(u.email);
+		await resetToken(u.id);
 		const m = made(u.id);
 
 		const done = await expectBody<{
@@ -271,9 +265,7 @@ describe("POST /me/protection/enable", () => {
 		expect(await sessionExists(other)).toBe(false);
 		expect(await sessionExists(web)).toBe(false);
 		expect(
-			await adminDb.passwordResetToken.count({
-				where: { identifier: u.email },
-			}),
+			await adminDb.passwordResetToken.count({ where: { userId: u.id } }),
 		).toBe(0);
 
 		const audit = await adminDb.eventLog.findMany({
@@ -329,7 +321,7 @@ describe("POST /me/protection/enable", () => {
 		});
 		const me = await mobile(u.id);
 		const otherSession = await sessionFor(u.id);
-		const token = await resetToken(u.email);
+		await resetToken(u.id);
 		const before = await storedHash(u.id);
 		const m = made(u.id);
 		const body = bodyOf(m);
@@ -344,7 +336,7 @@ describe("POST /me/protection/enable", () => {
 		expect(await keyRows(u.id)).toEqual({ sets: 0, wraps: 0 });
 		expect(await sessionExists(otherSession)).toBe(true);
 		expect(
-			await adminDb.passwordResetToken.count({ where: { token: token.token } }),
+			await adminDb.passwordResetToken.count({ where: { userId: u.id } }),
 		).toBe(1);
 		expect(
 			await adminDb.eventLog.count({

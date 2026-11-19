@@ -20,6 +20,10 @@ import {
 } from "~/server/email-templates";
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 import { hashToken } from "~/server/lib/tokens";
+import {
+	deleteUserResetTokens,
+	lockUserRow,
+} from "~/server/services/auth/reset-tokens";
 import { sendEmail } from "~/server/mailer";
 import { spendPasswordTry } from "~/server/services/account-security.service";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
@@ -239,11 +243,26 @@ export async function updateProfile(
 	// The email column is not writable by the app role: an immediate change
 	// (no email delivery) goes through the owner connection, for the caller's
 	// own id only.
-	const user = await (newEmail !== null ? globalDb : db).user.update({
-		where: { id: userId },
-		data: { ...write, ...(newEmail !== null ? { email: newEmail } : {}) },
-		select: IDENTITY_SELECT,
-	});
+	// A reset link sent to the old address goes with it, in the same transaction, under the row lock a link is issued with.
+	const user =
+		newEmail !== null
+			? await globalDb.$transaction(async (tx) => {
+					// Redundant today: the UPDATE below takes the same row lock. Kept first so
+					// a statement added before the UPDATE stays safe against a link being made.
+					await lockUserRow(tx, userId);
+					const updated = await tx.user.update({
+						where: { id: userId },
+						data: { ...write, email: newEmail },
+						select: IDENTITY_SELECT,
+					});
+					await deleteUserResetTokens(tx, userId);
+					return updated;
+				})
+			: await db.user.update({
+					where: { id: userId },
+					data: write,
+					select: IDENTITY_SELECT,
+				});
 	// Needs the owner connection (guest rows are not the user's yet); the
 	// helper re-checks emailVerified and never throws.
 	if (newEmail !== null)
@@ -253,6 +272,40 @@ export async function updateProfile(
 		user,
 		passwordChecked: newEmail !== null,
 	};
+}
+
+/**
+ * The write behind a confirmed email change: the new address, its credential
+ * account key (better-auth uses the email as accountId) and the end of every
+ * reset link made for the old address, in one transaction so a failure keeps
+ * the old address. Runs on the owner connection.
+ */
+export async function applyConfirmedEmail(
+	client: Pick<AppDb, "$transaction">,
+	userId: string,
+	oldEmail: string,
+	newEmail: string,
+): Promise<void> {
+	await client.$transaction(async (tx) => {
+		// Redundant today: the UPDATE below takes the same row lock. Kept first so a
+		// statement added before the UPDATE stays safe against a link being made.
+		await lockUserRow(tx, userId);
+		await tx.user.update({
+			where: { id: userId },
+			data: {
+				email: newEmail,
+				emailVerified: true,
+				pendingEmail: null,
+				pendingEmailToken: null,
+				pendingEmailExpiresAt: null,
+			},
+		});
+		await tx.account.updateMany({
+			where: { userId, providerId: "credential", accountId: oldEmail },
+			data: { accountId: newEmail },
+		});
+		await deleteUserResetTokens(tx, userId);
+	});
 }
 
 export async function cancelPendingEmailChange(db: AppDb, userId: string) {

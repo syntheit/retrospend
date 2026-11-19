@@ -33,6 +33,7 @@ import {
 	sessionFor,
 } from "~/server/api/v1/core/__tests__/harness";
 import { auth } from "~/server/better-auth";
+import { issueLinkFor } from "~/test/reset-links";
 import { lockCredential } from "./password-writes";
 
 vi.mock("next/headers", () => ({
@@ -237,14 +238,7 @@ const keyRows = async (userId: string) => ({
 });
 const sessionExists = async (token: string) =>
 	(await adminDb.session.findUnique({ where: { token } })) !== null;
-const resetToken = (email: string) =>
-	adminDb.passwordResetToken.create({
-		data: {
-			identifier: email,
-			token: randomBytes(16).toString("hex"),
-			expires: new Date(Date.now() + 60 * MIN),
-		},
-	});
+const resetToken = (userId: string) => issueLinkFor(userId);
 const signsInWith = (email: string, password: string) =>
 	auth.api
 		.signInEmail({ body: { email, password } })
@@ -529,7 +523,7 @@ describe("POST /me/protection/password", () => {
 		const me = await mobile(u.id);
 		const other = await sessionFor(u.id);
 		const web = await sessionFor(u.id, {});
-		await resetToken(u.email);
+		await resetToken(u.id);
 		const before = await wrapRows(u.id);
 		const oldWrap = before.find((w) => w.role === "ak-password");
 		const set = await setRow(u.id);
@@ -585,9 +579,7 @@ describe("POST /me/protection/password", () => {
 		expect(await sessionExists(other)).toBe(false);
 		expect(await sessionExists(web)).toBe(false);
 		expect(
-			await adminDb.passwordResetToken.count({
-				where: { identifier: u.email },
-			}),
+			await adminDb.passwordResetToken.count({ where: { userId: u.id } }),
 		).toBe(0);
 
 		const audit = await adminDb.eventLog.findMany({
@@ -913,7 +905,7 @@ describe("POST /me/protection/password", () => {
 		const k = await keyed(u.id);
 		const me = await mobile(u.id);
 		const other = await sessionFor(u.id);
-		const token = await resetToken(u.email);
+		const token = await resetToken(u.id);
 		const hash = await storedHash(u.id);
 		const before = await wrapRows(u.id);
 		// The audit insert is the last write: the hash, the set, the wrap and the
@@ -947,7 +939,7 @@ describe("POST /me/protection/password", () => {
 		);
 		expect(await sessionExists(other)).toBe(true);
 		expect(
-			await adminDb.passwordResetToken.count({ where: { token: token.token } }),
+			await adminDb.passwordResetToken.count({ where: { userId: u.id } }),
 		).toBe(1);
 		expect(mail.sendEmail).not.toHaveBeenCalled();
 	});

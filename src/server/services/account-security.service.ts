@@ -18,6 +18,10 @@ import {
 	settleKeysForReset,
 	swapCredentialHash,
 } from "./protection-keys/password-writes";
+import {
+	deleteUserResetTokens,
+	spendResetToken,
+} from "./auth/reset-tokens";
 
 /**
  * A wrong current password is what a stolen session can try, so every try
@@ -139,8 +143,10 @@ export async function changeOwnPassword(input: {
  * every session of the user, in one owner transaction that takes the
  * credential row lock first. An account with protection keys has them removed
  * with the new hash while nothing is sealed, and is refused otherwise
- * (settleKeysForReset). `token` is a reset token spent in the same
- * transaction. Without a credential account the email reset still ends the
+ * (settleKeysForReset). `token` is a reset token, spent first in the same
+ * transaction (reset-tokens.ts: a spent, expired or other user's token rolls
+ * everything back), and every other pending link of the user goes with the
+ * reset. Without a credential account the email reset still ends the
  * sessions (`continue`); the admin reset answers not found and changes nothing.
  */
 export async function resetPasswordHash(input: {
@@ -151,6 +157,8 @@ export async function resetPasswordHash(input: {
 	whenNoCredential: "continue" | "not_found";
 }): Promise<void> {
 	await db.$transaction(async (tx) => {
+		if (input.token)
+			await spendResetToken(tx, { token: input.token, userId: input.userId });
 		const locked = await lockCredential(tx, input.userId);
 		if (locked) {
 			await settleKeysForReset(tx, input.userId, locked, input.by);
@@ -165,8 +173,7 @@ export async function resetPasswordHash(input: {
 			});
 		}
 		await tx.session.deleteMany({ where: { userId: input.userId } });
-		if (input.token)
-			await tx.passwordResetToken.delete({ where: { token: input.token } });
+		await deleteUserResetTokens(tx, input.userId);
 	});
 }
 
