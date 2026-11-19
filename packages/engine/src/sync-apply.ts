@@ -52,6 +52,7 @@ import {
 	type BookWireOf,
 	budgetSnapshotOf,
 } from "./sync-apply-book";
+import { categoryKindOf } from "./reference";
 import { decimal, decimalOrNull, instant, instantOrNull } from "./sync-values";
 
 export type WireExpense = SyncExpenseDto;
@@ -113,10 +114,7 @@ const ROWS: { [E in SyncEntity]: RowOf<E> } = {
 		recurringTemplateId: w.recurringTemplateId,
 		budgetEnvelopeId: w.budgetEnvelopeId,
 		excludeFromAnalytics: w.excludeFromAnalytics,
-		categoryKind:
-			w.categoryId === null
-				? null
-				: (categories.get(w.categoryId)?.kind ?? null),
+		categoryKind: categoryKindOf(w.categoryId, (id) => categories.get(id)),
 		categoryId: w.categoryId,
 		date: instant(w.date, `Expense ${w.id} date`),
 		currency: w.currency,

@@ -31,6 +31,7 @@ import {
 } from "./expense-write-local";
 import { recordWrite, type WriteFn } from "./local-db";
 import type { Reader, Store, Tx } from "./port";
+import { GLANCE_SPENT } from "./registry";
 import { applyUndo, type UndoToken } from "./undo";
 
 /** A device money mutation: runs on a store transaction and returns an engine undo token. */
@@ -78,24 +79,27 @@ export function deviceUndoMutation(
 	};
 }
 
+/** The figures an expense write can change, as the server's EXPENSE_FIGURES lists them. */
+const EXPENSE_FIGURES = ["spent", GLANCE_SPENT] as const;
+
 /** expense.create on the device; touches what the server's mutation does (expense-create.mutation.ts). */
 export const EXPENSE_CREATE_MUTATION = deviceMutation({
 	id: EXPENSE_CREATE,
-	touches: ["spent", "glance.spent"],
+	touches: EXPENSE_FIGURES,
 	write: createExpense,
 });
 
 /** expense.update on the device; touches what the server's mutation does (expense.mutation.ts, EXPENSE_FIGURES). */
 export const EXPENSE_UPDATE_MUTATION = deviceMutation({
 	id: EXPENSE_UPDATE,
-	touches: ["spent", "glance.spent"],
+	touches: EXPENSE_FIGURES,
 	write: updateExpense,
 });
 
 /** expense.delete on the device; the same figures as the server's delete. */
 export const EXPENSE_DELETE_MUTATION = deviceMutation({
 	id: EXPENSE_DELETE,
-	touches: ["spent", "glance.spent"],
+	touches: EXPENSE_FIGURES,
 	write: deleteExpense,
 });
 

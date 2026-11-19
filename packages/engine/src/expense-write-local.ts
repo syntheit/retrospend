@@ -7,11 +7,11 @@
  *
  * - Spreads: a spread parent is refused (SPREAD_NOT_ON_DEVICE), and so is a
  *   form that asks for one. A spread part is not reachable, as on the server.
- * - Shared expenses: a row that has shares is the server's money (it splits
- *   and notifies); it answers "Expense not found", as a shared id does there.
  * - Transfer fees: a row a transfer names as its fee has a leg. That is only
- *   known once the transfers entity has been pulled, so an edit or delete
- *   made before that is refused with "Sync first", never guessed.
+ *   known once the transfers pull has reached the position the expenses pull
+ *   did, so an edit or delete made before that is refused with "Sync first",
+ *   never guessed. A shared expense is never a row here (its shares carry the
+ *   shared transaction's id), so there is nothing to refuse.
  *
  * Run through LocalDb.write (which returns the undo token) or LocalDb.preview.
  * An edit's token pins the home currency, so an undo after the home changed
@@ -28,15 +28,22 @@ import {
 import { ENTRY_POLICY } from "@retrospend/domain/expense-write/policy";
 import {
 	EditRefusal,
+	bookedInOtherHome,
 	otherHomeMessage,
 	SPREAD_NOT_ON_DEVICE,
 } from "@retrospend/domain/expense-write/refusals";
 import { dec } from "@retrospend/domain/precise-decimal";
-import { CURRENCY_KEY } from "@retrospend/domain/rate-booking";
-import { parseAmount, rateBookOf, refusing } from "./expense-create";
+import { positionReached } from "./budget-gate";
+import {
+	parseAmount,
+	rateBookOf,
+	refuseBadForm,
+	refusing,
+} from "./expense-create";
 import type { ExpenseRow } from "./expenses";
 import type { WriteFn } from "./local-db";
 import { InvalidInputError } from "./port";
+import { categoryKindOf } from "./reference";
 import type { Repos } from "./repos";
 
 export const EXPENSE_UPDATE = "expense.update";
@@ -48,10 +55,12 @@ export const SYNC_FIRST = "Sync first";
 /** What the device needs beyond the form to edit or delete a row. */
 export interface DeviceWriteContext {
 	/**
-	 * The transfers entity has been pulled at least once. Without it the device
-	 * cannot tell a transfer's fee from an expense, so it refuses both writes.
+	 * The sync cursors of the two entities a fee check reads. A transfer's fee
+	 * is an expense the device can only recognise from its transfer, so both
+	 * writes wait until the transfers pull has reached the position the
+	 * expenses pull did (the pull order is expenses, then transfers).
 	 */
-	transfersSynced: boolean;
+	cursors: Readonly<Partial<Record<"expenses" | "transfers", string>>>;
 }
 
 export type UpdateExpenseInput = EditInput & DeviceWriteContext;
@@ -93,13 +102,6 @@ function storedOf(row: ExpenseRow, r: Repos): StoredExpense {
 
 /** The row after the patch: what the patch names changes, the rest stays as stored. */
 function patched(row: ExpenseRow, patch: ExpensePatch, r: Repos): ExpenseRow {
-	// The core has checked a changed category; an unchanged one keeps its kind.
-	const kind =
-		patch.categoryId === null
-			? null
-			: patch.categoryId === row.categoryId
-				? row.categoryKind
-				: (r.categories.get(patch.categoryId)?.kind ?? null);
 	return {
 		...row,
 		title: patch.title,
@@ -116,7 +118,9 @@ function patched(row: ExpenseRow, patch: ExpensePatch, r: Repos): ExpenseRow {
 		location: patch.location,
 		description: patch.description,
 		categoryId: patch.categoryId,
-		categoryKind: kind,
+		categoryKind: categoryKindOf(patch.categoryId, (id) =>
+			r.categories.get(id),
+		),
 		isAmortizedParent: patch.isAmortizedParent,
 		excludeFromAnalytics:
 			patch.excludeFromAnalytics ?? row.excludeFromAnalytics,
@@ -133,9 +137,7 @@ function storePort(r: Repos): ExpenseEditPort & { done(): ExpenseRow } {
 		},
 		expense: async (id) => {
 			const found = r.expenses.get(id);
-			// A row with shares is shared money, which the device does not edit.
-			if (!found || found.shares.length > 0) return null;
-			return storedOf(found.expense, r);
+			return found && storedOf(found.expense, r);
 		},
 		category: async (id) => r.categories.get(id) ?? null,
 		rateBook: async () => rateBookOf(r),
@@ -152,13 +154,17 @@ function storePort(r: Repos): ExpenseEditPort & { done(): ExpenseRow } {
 	};
 }
 
-/** What a device refuses before it reads a row: no transfers yet, or a form that spreads. */
-function refuseUnsupported(
-	input: DeviceWriteContext & { amortizeOver?: number },
-) {
-	if (!input.transfersSynced) throw new InvalidInputError(SYNC_FIRST);
-	if ((input.amortizeOver ?? 0) > 1)
-		throw new InvalidInputError(SPREAD_NOT_ON_DEVICE);
+/**
+ * Refuses until the transfers the expenses point at have been pulled. Anything
+ * short of "reached" (no cursor, another epoch, a reset, behind) refuses.
+ */
+function refuseUntilTransfersCaughtUp({ cursors }: DeviceWriteContext) {
+	const expenses = cursors.expenses;
+	if (
+		expenses === undefined ||
+		positionReached(cursors, ["transfers"], expenses) !== "reached"
+	)
+		throw new InvalidInputError(SYNC_FIRST);
 }
 
 /** A spread parent is the server's: its parts are rows the device never edits. */
@@ -170,11 +176,8 @@ function refuseSpreadParent(row: StoredExpense) {
 /** The write function for an edit; pass it to LocalDb.write or LocalDb.preview. */
 export function updateExpense(input: UpdateExpenseInput): WriteFn<ExpenseRow> {
 	return async (r) => {
-		refuseUnsupported(input);
-		if (!CURRENCY_KEY.test(input.currency))
-			throw new InvalidInputError(`Unknown currency ${input.currency}`);
-		if (Number.isNaN(input.date.getTime()))
-			throw new InvalidInputError("Pick a valid date");
+		refuseUntilTransfersCaughtUp(input);
+		refuseBadForm(input);
 		const port = storePort(r);
 		await refusing(async () =>
 			editExpense(
@@ -186,7 +189,7 @@ export function updateExpense(input: UpdateExpenseInput): WriteFn<ExpenseRow> {
 						// A typed rate pinned to a home the person no longer has (an undo).
 						const home = r.settings.require().homeCurrency;
 						const booked = input.customRate?.home;
-						if (booked && booked !== home)
+						if (bookedInOtherHome(booked, home))
 							throw new EditRefusal("badRequest", otherHomeMessage(booked));
 						refuseSpreadParent(row);
 					},
@@ -200,7 +203,7 @@ export function updateExpense(input: UpdateExpenseInput): WriteFn<ExpenseRow> {
 /** The write function for a delete; the row goes with the shares it has (none, on the device). */
 export function deleteExpense(input: DeleteExpenseInput): WriteFn<ExpenseRow> {
 	return async (r) => {
-		refuseUnsupported(input);
+		refuseUntilTransfersCaughtUp(input);
 		const port = storePort(r);
 		await refusing(() =>
 			deleteExpenseRow(port, input.id, ENTRY_POLICY, {

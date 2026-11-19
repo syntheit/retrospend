@@ -131,15 +131,24 @@ export function parseAmount(amount: number | string) {
 	return value;
 }
 
+/** What no device write takes: a currency code that is not one, a date that is not a day, a spread. */
+export function refuseBadForm(input: {
+	currency: string;
+	date: Date;
+	amortizeOver?: number;
+}) {
+	if (!CURRENCY_KEY.test(input.currency))
+		throw new InvalidInputError(`Unknown currency ${input.currency}`);
+	if (Number.isNaN(input.date.getTime()))
+		throw new InvalidInputError("Pick a valid date");
+	if ((input.amortizeOver ?? 0) > 1)
+		throw new InvalidInputError(SPREAD_NOT_ON_DEVICE);
+}
+
 /** The write function for `input`; pass it to LocalDb.write or LocalDb.preview. */
 export function createExpense(input: CreateExpenseInput): WriteFn<ExpenseRow> {
 	return async (r) => {
-		if (!CURRENCY_KEY.test(input.currency))
-			throw new InvalidInputError(`Unknown currency ${input.currency}`);
-		if (Number.isNaN(input.date.getTime()))
-			throw new InvalidInputError("Pick a valid date");
-		if ((input.amortizeOver ?? 0) > 1)
-			throw new InvalidInputError(SPREAD_NOT_ON_DEVICE);
+		refuseBadForm(input);
 		// The same rules createExpenseIn runs: category, then amount, then rate.
 		const given = input.category;
 		const category =

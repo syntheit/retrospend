@@ -12,6 +12,7 @@
  * BAD_REQUEST as a forged one.
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { UNDO_NOT_VALID } from "@retrospend/domain/expense-write/refusals";
 import { dec } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import { env } from "~/env";
@@ -38,7 +39,7 @@ const sigOf = (data: string) =>
 const invalid = () =>
 	new TRPCError({
 		code: "BAD_REQUEST",
-		message: "This undo is not valid anymore",
+		message: UNDO_NOT_VALID,
 	});
 
 /** Signs any payload as is: for formats that carry their own kind, user and expiry (api-v1/undo.ts). */

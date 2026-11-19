@@ -23,7 +23,10 @@ import type {
 } from "@retrospend/domain/expense-write/edit";
 import { ENTRY_POLICY } from "@retrospend/domain/expense-write/policy";
 import { rateInputOf } from "@retrospend/domain/expense-write/put-body";
-import { otherHomeMessage } from "@retrospend/domain/expense-write/refusals";
+import {
+	bookedInOtherHome,
+	otherHomeMessage,
+} from "@retrospend/domain/expense-write/refusals";
 import { dec } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
@@ -114,7 +117,7 @@ async function refuseOtherHome(
 		where: { id: userId },
 		select: { homeCurrency: true },
 	});
-	if (user?.homeCurrency === home) return;
+	if (!bookedInOtherHome(home, user?.homeCurrency ?? "")) return;
 	throw new TRPCError({
 		code: "BAD_REQUEST",
 		message: otherHomeMessage(home),

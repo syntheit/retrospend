@@ -24,3 +24,15 @@ export const rateReads = (r: Reader) => tableReads(r, "rates");
 export const categoryReads = (r: Reader) => tableReads(r, "categories");
 
 export const transferReads = (r: Reader) => tableReads(r, "transfers");
+
+/**
+ * The kind a row takes from its category: the category's, or null for none or
+ * one the store does not hold (it joins when the category arrives). The one
+ * derivation for a pull, an edit and a restored delete.
+ */
+export function categoryKindOf(
+	categoryId: string | null | undefined,
+	find: (id: string) => { readonly kind: string } | undefined,
+): string | null {
+	return categoryId ? (find(categoryId)?.kind ?? null) : null;
+}

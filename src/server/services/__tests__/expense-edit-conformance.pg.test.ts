@@ -30,6 +30,10 @@ import {
 	expenseEditCases,
 } from "../../../../packages/engine/src/expense-edit-conformance";
 import { editVectors } from "../../../../packages/engine/src/expense-edit-vectors";
+import {
+	EXPENSE_DELETE_MUTATION,
+	EXPENSE_UPDATE_MUTATION,
+} from "../../../../packages/engine/src/preview";
 import { localExpenseEditAdapter } from "../../../../packages/engine/src/local-expense-edit";
 import { differingFields } from "../../../../packages/engine/src/write-parity";
 
@@ -120,6 +124,7 @@ function serverAdapter(): ExpenseEditAdapter {
 				...base,
 				...fields,
 				id: prefix + base.id,
+				...(fields.categoryId && { categoryId: prefix + fields.categoryId }),
 			});
 			const expense = await read(base.id);
 			if (!expense) throw new Error("the edited expense is gone");
@@ -142,6 +147,44 @@ function serverAdapter(): ExpenseEditAdapter {
 					});
 				},
 			};
+		},
+		async plant(id, kind) {
+			const where = { id: prefix + id };
+			if (kind === "income")
+				await fixtureDb.expense.update({
+					where,
+					data: { direction: "IN", inType: "INCOME" },
+				});
+			else if (kind === "spreadPart")
+				await fixtureDb.expense.update({
+					where,
+					data: { isAmortizedChild: true },
+				});
+			else {
+				// A transfer's fee: an account leg names the expense.
+				const row = await fixtureDb.expense.findUniqueOrThrow({ where });
+				await fixtureDb.accountLeg.create({
+					data: {
+						userId,
+						expenseId: row.id,
+						currency: row.currency,
+						amount: "-100",
+						date: row.date,
+						source: "FEE",
+					},
+				});
+			}
+		},
+		async addCategory(id, kind) {
+			await fixtureDb.category.create({
+				data: {
+					id: prefix + id,
+					userId,
+					name: `Cat ${id}`,
+					color: "teal",
+					kind: kind as "EXPENSE" | "INCOME",
+				},
+			});
 		},
 		read,
 	};
@@ -190,5 +233,16 @@ describe("expense edit parity (device and server)", () => {
 				);
 			} else expect(d.message).toBe(s.message);
 		}
+	});
+});
+
+describe("the figures an edit or delete touches", () => {
+	it("are the server's, on the device", () => {
+		expect([...EXPENSE_UPDATE_MUTATION.touches]).toEqual(
+			updateExpenseEntry.touches,
+		);
+		expect([...EXPENSE_DELETE_MUTATION.touches]).toEqual(
+			deleteExpenseEntry.touches,
+		);
 	});
 });

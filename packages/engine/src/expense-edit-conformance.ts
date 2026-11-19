@@ -6,6 +6,12 @@
  * reads it back. Every expected value is derived by hand in
  * expense-edit-vectors.ts, never read from an implementation.
  */
+import {
+	CATEGORY_NOT_FOUND,
+	EXPENSE_NOT_FOUND,
+	LEG_DELETE_REFUSED,
+	LEG_EDIT_REFUSED,
+} from "@retrospend/domain/expense-write/refusals";
 import { getFiscalMonthRange } from "@retrospend/domain/fiscal-month";
 import { MissingRateError } from "@retrospend/domain/money";
 import { dec } from "@retrospend/domain/precise-decimal";
@@ -28,7 +34,11 @@ export interface EditFields {
 	currency?: string;
 	date?: Date;
 	rateType?: string;
+	categoryId?: string;
 }
+
+/** A row the base expense becomes the way another path would leave it. */
+export type Planted = "fee" | "income" | "spreadPart";
 
 export interface ExpenseEditAdapter {
 	/** Starts over: one user with this seed and no expenses. */
@@ -44,6 +54,10 @@ export interface ExpenseEditAdapter {
 	): Promise<{ expense: BookedExpense; undo(): Promise<void> }>;
 	/** Deletes the expense. */
 	remove(id: string): Promise<{ undo(): Promise<void> }>;
+	/** Turns the stored expense into a transfer's fee, an income row or a spread part. */
+	plant(id: string, kind: Planted): Promise<void>;
+	/** Adds a category of the person's, of this kind (EXPENSE or INCOME). */
+	addCategory(id: string, kind: string): Promise<void>;
 	/** The stored expense, or null. */
 	read(id: string): Promise<BookedExpense | null>;
 }
@@ -192,11 +206,86 @@ async function runVector(
 
 export function expenseEditCases(vectors: EditVector[]): ExpenseEditCase[] {
 	const first = vectors[0] as EditVector;
+	/** A refusal on both transports: the same words, the row as it was. */
+	const refusal = (
+		name: string,
+		go: (a: ExpenseEditAdapter) => Promise<unknown>,
+		prepare: (a: ExpenseEditAdapter) => Promise<void>,
+		message: string,
+	): ExpenseEditCase => ({
+		name,
+		async run(make) {
+			const adapter = await make();
+			await adapter.reset(first.seed);
+			await adapter.create(first.base);
+			await prepare(adapter);
+			const before = await adapter.read(first.base.id);
+			const thrown = await thrownBy(() => go(adapter));
+			if (!(thrown instanceof Error))
+				throw new Error("the write was not refused");
+			expectEqual(thrown.message, message, "refusal");
+			expectSame(await adapter.read(first.base.id), before, "unchanged");
+		},
+	});
+	const id = first.base.id;
+	const planted = (kind: Planted) => (a: ExpenseEditAdapter) =>
+		a.plant(id, kind);
+	const edit100to120 = (a: ExpenseEditAdapter) =>
+		a.edit(first.base, { amount: "120" });
+	const none = async () => {};
 	return [
 		...vectors.map((v) => ({
 			name: v.name,
 			run: (make: Parameters<ExpenseEditCase["run"]>[0]) => runVector(make, v),
 		})),
+		refusal(
+			"a transfer's fee: a money edit is refused",
+			edit100to120,
+			planted("fee"),
+			LEG_EDIT_REFUSED,
+		),
+		refusal(
+			"a transfer's fee: a delete is refused",
+			(a) => a.remove(id),
+			planted("fee"),
+			LEG_DELETE_REFUSED,
+		),
+		refusal(
+			"an income row: an edit is not found",
+			edit100to120,
+			planted("income"),
+			EXPENSE_NOT_FOUND,
+		),
+		refusal(
+			"an income row: a delete is not found",
+			(a) => a.remove(id),
+			planted("income"),
+			EXPENSE_NOT_FOUND,
+		),
+		refusal(
+			"a spread part: an edit is not found",
+			edit100to120,
+			planted("spreadPart"),
+			EXPENSE_NOT_FOUND,
+		),
+		refusal(
+			"a spread part: a delete is not found",
+			(a) => a.remove(id),
+			planted("spreadPart"),
+			EXPENSE_NOT_FOUND,
+		),
+		refusal(
+			"an income category on an edit is Category not found",
+			(a) => a.edit(first.base, { categoryId: "inc" }),
+			(a) => a.addCategory("inc", "INCOME"),
+			CATEGORY_NOT_FOUND,
+		),
+		refusal(
+			"a category that does not exist on an edit is Category not found",
+			(a) => a.edit(first.base, { categoryId: "nope" }),
+			none,
+			CATEGORY_NOT_FOUND,
+		),
 		{
 			name: "delete removes the row and its undo brings it back as it was",
 			async run(make) {

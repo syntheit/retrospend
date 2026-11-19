@@ -150,12 +150,15 @@ function glanceFigures(clock: () => Date): DeviceFigure[] {
 		},
 	});
 	return [
-		figure("glance.spent", (p) => p.thisTotal),
+		figure(GLANCE_SPENT, (p) => p.thisTotal),
 		figure("glance.spentLastToDate", lastToDate),
 		figure("glance.spentLast", (p) => p.lastTotal),
 		figure("glance.moneyIn", (p) => p.moneyIn),
 	];
 }
+
+/** The figure the home screen shows as this month's spending; the server names it the same (figures/spend-pace.ts). */
+export const GLANCE_SPENT = "glance.spent";
 
 const DIRECTIONS: readonly RecurringDirection[] = ["out", "in"];
 const PERIODS: readonly RecurringPeriod[] = ["month", "quarter", "year"];
@@ -327,7 +330,7 @@ export function deviceFigures(
 /** The ids `deviceFigures` registers. The pg conformance test holds this list to the registry. */
 export const DEVICE_FIGURE_IDS: readonly string[] = [
 	"spent",
-	"glance.spent",
+	GLANCE_SPENT,
 	"glance.spentLastToDate",
 	"glance.spentLast",
 	"glance.moneyIn",

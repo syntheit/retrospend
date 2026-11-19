@@ -6,6 +6,7 @@ import {
 	LEG_EDIT_REFUSED,
 	otherHomeMessage,
 	SPREAD_NOT_ON_DEVICE,
+	UNDO_NOT_VALID,
 } from "@retrospend/domain/expense-write/refusals";
 import { MissingRateError } from "@retrospend/domain/money";
 import { describe, expect, it } from "vitest";
@@ -31,7 +32,9 @@ import {
 	LocalDb,
 	NotFoundError,
 	TABLE_NAMES,
+	type Tx,
 } from "./index";
+import { cursor } from "./device/fake-api";
 import { localExpenseEditAdapter } from "./local-expense-edit";
 import { seededStore } from "./local-expense-create";
 import {
@@ -50,13 +53,16 @@ describe("expense edit conformance (memory store)", () => {
 const first = editVectors[0] as (typeof editVectors)[number];
 const BASE: CreateExpenseInput = first.base;
 
+/** Transfers pulled as far as expenses. */
+const CAUGHT_UP = { expenses: cursor("200"), transfers: cursor("200") };
+
 const form = (over: Partial<UpdateExpenseInput> = {}): UpdateExpenseInput => ({
 	id: BASE.id,
 	title: "Lunch",
 	amount: "100",
 	currency: "USD",
 	date: BASE.date,
-	transfersSynced: true,
+	cursors: CAUGHT_UP,
 	...over,
 });
 
@@ -91,8 +97,8 @@ async function refuses(
 
 const update = (db: LocalDb, over: Partial<UpdateExpenseInput> = {}) =>
 	db.write(EXPENSE_UPDATE, updateExpense(form(over)));
-const remove = (db: LocalDb, id = "e1", transfersSynced = true) =>
-	db.write(EXPENSE_DELETE, deleteExpense({ id, transfersSynced }));
+const remove = (db: LocalDb, id = "e1", cursors = CAUGHT_UP) =>
+	db.write(EXPENSE_DELETE, deleteExpense({ id, cursors }));
 
 describe("what the device writes on an edit", () => {
 	it("keeps the version, the text it was not given and the rate legs, and changes what the form changed", async () => {
@@ -232,37 +238,6 @@ describe("refusals, each reached on its own", () => {
 			);
 		});
 
-	it("a shared expense is not found", async () => {
-		const { store, db, put } = await open();
-		await put((tx) =>
-			tx.put("shares", {
-				id: "s1",
-				expenseId: "e1",
-				shareAmount: "50",
-				verificationStatus: "ACCEPTED",
-				currency: "USD",
-				date: BASE.date,
-				projectId: null,
-				exchangeRate: null,
-				categoryId: null,
-			}),
-		);
-		await refuses(
-			(d) => update(d),
-			store,
-			db,
-			NotFoundError,
-			EXPENSE_NOT_FOUND,
-		);
-		await refuses(
-			(d) => remove(d),
-			store,
-			db,
-			NotFoundError,
-			EXPENSE_NOT_FOUND,
-		);
-	});
-
 	it("a spread parent is refused for an edit and a delete", async () => {
 		const { store, db, put, row } = await open();
 		await put((tx) => tx.put("expenses", { ...row, isAmortizedParent: true }));
@@ -282,6 +257,24 @@ describe("refusals, each reached on its own", () => {
 		);
 	});
 
+	it("an unknown currency code and an invalid date are refused on an edit", async () => {
+		const { store, db } = await open();
+		await refuses(
+			(d) => update(d, { currency: "usd" }),
+			store,
+			db,
+			InvalidInputError,
+			"Unknown currency usd",
+		);
+		await refuses(
+			(d) => update(d, { date: new Date(Number.NaN) }),
+			store,
+			db,
+			InvalidInputError,
+			"Pick a valid date",
+		);
+	});
+
 	it("a form that asks for a spread is refused", async () => {
 		const { store, db } = await open();
 		await refuses(
@@ -293,22 +286,88 @@ describe("refusals, each reached on its own", () => {
 		);
 	});
 
-	it("before the transfers have been pulled, an edit and a delete say Sync first", async () => {
-		const { store, db } = await open();
-		await refuses(
-			(d) => update(d, { transfersSynced: false }),
-			store,
-			db,
-			InvalidInputError,
-			SYNC_FIRST,
-		);
-		await refuses(
-			(d) => remove(d, "e1", false),
-			store,
-			db,
-			InvalidInputError,
-			SYNC_FIRST,
-		);
+	describe("Sync first", () => {
+		// A fee is only known by its transfer: the transfers pull must have
+		// reached the position the expenses pull did.
+		const cases = [
+			["no cursors yet", {}],
+			["expenses with no transfers pulled", { expenses: cursor("200") }],
+			[
+				"a transfers pull behind the expenses pull",
+				{ expenses: cursor("200"), transfers: cursor("100") },
+			],
+			[
+				"a transfers pull of another epoch",
+				{ expenses: cursor("200"), transfers: cursor("300", "e2") },
+			],
+			[
+				"transfers being pulled again after a reset",
+				{ expenses: cursor("200"), transfers: "reset" },
+			],
+			[
+				"expenses being pulled again after a reset",
+				{ expenses: "reset", transfers: cursor("300") },
+			],
+		] as const;
+		for (const [name, cursors] of cases)
+			it(`${name}: an edit and a delete are refused`, async () => {
+				const { store, db } = await open();
+				await refuses(
+					(d) => update(d, { cursors }),
+					store,
+					db,
+					InvalidInputError,
+					SYNC_FIRST,
+				);
+				await refuses(
+					(d) => remove(d, "e1", cursors),
+					store,
+					db,
+					InvalidInputError,
+					SYNC_FIRST,
+				);
+			});
+
+		it("a fee pulled with the expenses whose transfer has not arrived is not edited as an expense", async () => {
+			// The transfers pull is behind: nothing says e1 is a fee yet.
+			const { store, db, put } = await open();
+			const behind = { expenses: cursor("200"), transfers: cursor("100") };
+			await refuses(
+				(d) => update(d, { amount: "120", cursors: behind }),
+				store,
+				db,
+				InvalidInputError,
+				SYNC_FIRST,
+			);
+			// Once the transfers arrive, the same edit is the fee's refusal.
+			await put((tx) =>
+				tx.put("transfers", {
+					id: "t1",
+					date: BASE.date,
+					toAccountId: null,
+					toAmount: "0",
+					toCurrency: "USD",
+					feeExpenseId: "e1",
+				}),
+			);
+			await refuses(
+				(d) => update(d, { amount: "120" }),
+				store,
+				db,
+				InvalidInputError,
+				LEG_EDIT_REFUSED,
+			);
+		});
+
+		it("transfers pulled at the same position as expenses, or later, pass", async () => {
+			const { store, db } = await open();
+			await update(db, { cursors: CAUGHT_UP, title: "Same" });
+			await update(db, {
+				cursors: { expenses: cursor("200"), transfers: cursor("250") },
+				title: "Later",
+			});
+			expect(store.get("expenses", "e1")?.title).toBe("Later");
+		});
 	});
 
 	it("an id that is not there is not found", async () => {
@@ -393,16 +452,118 @@ describe("undo", () => {
 		expect(dump(store)).toEqual(after);
 	});
 
-	it("is refused once the home currency changed, and writes nothing", async () => {
-		const { store, db, put } = await open();
-		const { undo } = await update(db, { amount: "120" });
-		await put((tx) => {
+	const changeHome = (put: Awaited<ReturnType<typeof open>>["put"]) =>
+		put((tx) => {
 			const s = tx.get("settings", "user");
 			if (s) tx.put("settings", { ...s, homeCurrency: "EUR" });
 		});
+
+	it("a table rate's undo after the home changed says this undo is not valid, and writes nothing", async () => {
+		const { store, db, put } = await open();
+		const { undo } = await update(db, { amount: "120" });
+		await changeHome(put);
 		const edited = dump(store);
-		await expect(db.undo(undo)).rejects.toBeInstanceOf(ConflictError);
+		const error = await db.undo(undo).catch((e) => e);
+		expect(error).toBeInstanceOf(InvalidInputError);
+		expect(error.message).toBe(UNDO_NOT_VALID);
 		expect(dump(store)).toEqual(edited);
+	});
+
+	it("a typed rate's undo after the home changed names the home it was into", async () => {
+		const { store, db, put } = await open();
+		await put((tx) => {
+			const row = tx.get("expenses", "e1") as ExpenseRow;
+			tx.put("expenses", { ...row, rateType: "custom", homeRate: "1600" });
+		});
+		const { undo } = await update(db, { title: "Renamed" });
+		await changeHome(put);
+		const edited = dump(store);
+		const error = await db.undo(undo).catch((e) => e);
+		expect(error).toBeInstanceOf(InvalidInputError);
+		expect(error.message).toBe(otherHomeMessage("ARS"));
+		expect(dump(store)).toEqual(edited);
+	});
+
+	describe("categories gone since", () => {
+		const food = (kind = "EXPENSE") => ({
+			id: "c1",
+			kind,
+			name: "Food",
+			color: "teal",
+			icon: null,
+			excludeByDefault: false,
+		});
+		const withCategory = async () => {
+			const o = await open();
+			await o.put((tx) => {
+				tx.put("categories", food());
+				tx.put("categories", { ...food(), id: "c2", name: "Other" });
+				const row = tx.get("expenses", "e1") as ExpenseRow;
+				tx.put("expenses", {
+					...row,
+					categoryId: "c1",
+					categoryKind: "EXPENSE",
+				});
+			});
+			return o;
+		};
+
+		for (const [name, change] of [
+			["is gone", (tx: Tx) => tx.delete("categories", "c1")],
+			[
+				"is now an income category",
+				(tx: Tx) => tx.put("categories", food("INCOME")),
+			],
+		] as const)
+			it(`an edit's undo is refused when the old category ${name}`, async () => {
+				const { store, db, put } = await withCategory();
+				const { undo } = await update(db, { categoryId: "c2" });
+				await put(change);
+				const edited = dump(store);
+				const error = await db.undo(undo).catch((e) => e);
+				expect(error).toBeInstanceOf(InvalidInputError);
+				expect(error.message).toBe(CATEGORY_NOT_FOUND);
+				expect(dump(store)).toEqual(edited);
+			});
+
+		it("an edit's undo keeps working when the category did not change", async () => {
+			const { store, db, put } = await withCategory();
+			const { undo } = await update(db, { categoryId: "c1", amount: "120" });
+			await put((tx) => tx.delete("categories", "c1"));
+			// The row still names c1 and the edit never moved it: nothing to refuse.
+			await db.undo(undo);
+			expect(store.get("expenses", "e1")?.amount).toBe("100");
+		});
+
+		it("a delete's undo drops a gone category and template and reads the kind again", async () => {
+			const { store, db, put } = await withCategory();
+			await put((tx) => {
+				const row = tx.get("expenses", "e1") as ExpenseRow;
+				tx.put("expenses", { ...row, recurringTemplateId: "rt1" });
+			});
+			const { undo } = await remove(db);
+			await put((tx) => tx.delete("categories", "c1"));
+			const redo = await db.undo(undo);
+			expect(store.get("expenses", "e1")).toMatchObject({
+				categoryId: null,
+				categoryKind: null,
+				recurringTemplateId: null,
+			});
+			// The redo expects the row it was given, and deletes it.
+			await db.undo(redo);
+			expect(store.get("expenses", "e1")).toBeUndefined();
+		});
+
+		it("a delete's undo keeps a category that is still there, with the kind it has now", async () => {
+			const { store, db, put } = await withCategory();
+			const { undo } = await remove(db);
+			await put((tx) => tx.put("categories", food("INCOME")));
+			await db.undo(undo);
+			expect(store.get("expenses", "e1")).toMatchObject({
+				categoryId: "c1",
+				categoryKind: "INCOME",
+			});
+		});
 	});
 
 	it("a delete's undo brings the row back verbatim; a create's token carries no home", async () => {
@@ -463,7 +624,7 @@ describe("preview and apply", () => {
 		const before = dump(store);
 		const preview = await r.preview(EXPENSE_DELETE_MUTATION, {
 			id: "e1",
-			transfersSynced: true,
+			cursors: CAUGHT_UP,
 		});
 		// The row is USD 100 = ARS 154,500.00 at blue 1545.
 		expect(preview.changes).toEqual([
@@ -478,7 +639,7 @@ describe("preview and apply", () => {
 		]);
 		const { undo } = await r.apply(EXPENSE_DELETE_MUTATION, {
 			id: "e1",
-			transfersSynced: true,
+			cursors: CAUGHT_UP,
 		});
 		expect(store.get("expenses", "e1")).toBeUndefined();
 		await new LocalDb(store).undo(undo);
@@ -494,7 +655,7 @@ describe("amounts in home currency, by hand", () => {
 		await update(db, { amount: "120" });
 		expect(home()).toBe("185400.00");
 		const preview = await db.preview(
-			deleteExpense({ id: "e1", transfersSynced: true }),
+			deleteExpense({ id: "e1", cursors: CAUGHT_UP }),
 		);
 		expect(preview.changes).toHaveLength(1);
 		expect(preview.changes[0]).toMatchObject({
