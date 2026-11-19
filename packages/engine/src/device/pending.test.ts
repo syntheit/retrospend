@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createExpense, EXPENSE_CREATE } from "../expense-create";
+import { arsHome } from "../expense-create-vectors";
+import { EXPENSE_UPDATE, updateExpense } from "../expense-write-local";
 import { type ExpenseRow, withoutText } from "../expenses";
+import { LocalDb } from "../local-db";
+import { seededStore } from "../local-expense-create";
 import { readDeviceFigures } from "../registry";
+import type { UndoToken } from "../undo";
 import { createDeviceEngine, type DeviceEngine } from "./engine";
 import { cursor, expense, fakeDeviceApi } from "./fake-api";
 import type { PendingChange, PendingEntry, PendingSource } from "./pending";
@@ -294,6 +300,132 @@ describe("the overlay read", () => {
 		await running;
 		expect(await spentOf(engine)).toBe(15_450_000);
 	});
+});
+
+// Stacked entries as the phone records them: the device's own booking, whose
+// decimals are at the column's scale ("185400.00"), while a pull brings the
+// server's text ("185400"). The first write's ack stamps its version into the
+// entries stacked on it.
+describe("an entry stacked on an acked write", () => {
+	const T1 = "2026-10-15T14:59:30.000Z";
+	const CAUGHT_UP = { expenses: cursor("200"), transfers: cursor("200") };
+	/** What the server stores and sends for USD `amount` at blue 1545. */
+	const server = (id: string, amount: number, version: string) =>
+		booked(id, {
+			amount: String(amount),
+			amountInUSD: String(amount),
+			homeAmount: String(amount * 1545),
+			updatedAt: version,
+		});
+	const rowOf = (token: UndoToken, side: "before" | "after") => {
+		if (token.kind !== "revert") throw new Error("not a revert");
+		const row = token.changes[0]?.[side] as ExpenseRow | null;
+		return row && withoutText(row);
+	};
+
+	async function deviceEdits(
+		row: ExpenseRow | null,
+		steps: { id: string; amount: string }[],
+	) {
+		const store = await seededStore(arsHome);
+		if (row) await store.transaction((tx) => tx.put("expenses", row));
+		const db = new LocalDb(store);
+		const out: { before: Row | null; after: Row | null }[] = [];
+		for (const { id, amount } of steps) {
+			const { undo } = await db.write(
+				row ? EXPENSE_UPDATE : EXPENSE_CREATE,
+				row
+					? updateExpense({
+							id,
+							title: "row",
+							amount,
+							currency: "USD",
+							date: row.date,
+							cursors: CAUGHT_UP,
+						})
+					: createExpense({
+							id,
+							title: "Lunch",
+							amount,
+							currency: "USD",
+							date: new Date(DAY),
+						}),
+			);
+			out.push({ before: rowOf(undo, "before"), after: rowOf(undo, "after") });
+		}
+		return out;
+	}
+
+	it("reads an acked edit and the edit stacked on it, before and after the pull that brings the first", async () => {
+		const { engine, pending } = setup([
+			page([booked("e1")]),
+			page([server("e1", 120, T1)], "c2"),
+		]);
+		await engine.pull();
+		const pulled = (await engine.readWithPending((v) =>
+			v.get("expenses", "e1"),
+		)) as ExpenseRow;
+		const [first, second] = await deviceEdits(pulled, [
+			{ id: "e1", amount: "120" },
+			{ id: "e1", amount: "130" },
+		]);
+		// The device books 120 x 1545 as "185400.00"; the server will send "185400".
+		expect(first?.after?.homeAmount).toBe("185400.00");
+		pending.list = [
+			entry("c1", [change("e1", first?.before as Row, first?.after as Row)], {
+				ack: { version: T1, pull: engine.pullsBegun },
+			}),
+			entry("c2", [
+				change(
+					"e1",
+					{ ...(second?.before as Row), version: T1 },
+					second?.after as Row,
+				),
+			]),
+		];
+		// 130 x 1545 = 200,850.00
+		expect(await spentOf(engine)).toBe(20_085_000);
+		await engine.pull();
+		expect(pending.retired).toEqual(["c1"]);
+		expect(await spentOf(engine)).toBe(20_085_000);
+	});
+
+	it("reads an acked create and the edit stacked on it, before and after the pull that brings the create", async () => {
+		const { engine, pending } = setup([
+			page([booked("e1")]),
+			page([booked("e1"), server("n1", 100, T1)], "c2"),
+		]);
+		await engine.pull();
+		const [create, edit] = await deviceEdits(null, [
+			{ id: "n1", amount: "100" },
+		]).then(async ([c]) => [
+			c,
+			(await deviceEditsOfCreated(c?.after as Row))[0],
+		]);
+		pending.list = [
+			entry("c1", [change("n1", null, create?.after as Row)], {
+				ack: { version: T1, pull: engine.pullsBegun },
+			}),
+			entry("c2", [
+				change(
+					"n1",
+					{ ...(edit?.before as Row), version: T1 },
+					edit?.after as Row,
+				),
+			]),
+		];
+		// e1 154,500.00 + n1 at 120 = 185,400.00
+		expect(await spentOf(engine)).toBe(15_450_000 + 18_540_000);
+		await engine.pull();
+		expect(pending.retired).toEqual(["c1"]);
+		expect(await spentOf(engine)).toBe(15_450_000 + 18_540_000);
+	});
+
+	async function deviceEditsOfCreated(created: Row) {
+		return deviceEdits({ ...created, title: "Lunch" } as ExpenseRow, [
+			{ id: "n1", amount: "120" },
+		]);
+	}
 });
 
 describe("retiring and comparing on a pull", () => {

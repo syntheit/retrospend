@@ -33,6 +33,7 @@
 import { toBookingInput } from "@retrospend/domain/expense-input";
 import { MissingRateError } from "@retrospend/domain/money";
 import { dec } from "@retrospend/domain/precise-decimal";
+import { sameValue } from "./equal";
 import { createExpense } from "./expense-create";
 import type { BookedExpense } from "./expense-create-conformance";
 import type { ExpenseRow, TextFreeExpenseRow } from "./expenses";
@@ -142,20 +143,28 @@ const DECIMALS = new Set<string>([
 	"homeAmount",
 ]);
 
+/**
+ * Whether two stored values of one expense column are the same. Decimals by
+ * value: the server sends `Decimal.toFixed()` ("185400") and the device books
+ * to its columns' scale ("185400.00"). Everything else exactly. The one owner
+ * of that rule: the compare and the overlay's value check both read it.
+ */
+export function sameColumnValue(
+	column: string,
+	a: unknown,
+	b: unknown,
+): boolean {
+	if (DECIMALS.has(column) && a != null && b != null)
+		return dec(String(a)).eq(dec(String(b)));
+	return sameValue(a, b);
+}
+
 /** The names of the booked fields that differ: decimals by value, the date by instant. */
 export function differingFields(
 	device: BookedExpense,
 	server: BookedExpense,
 ): string[] {
-	return COMPARED.filter((k) => {
-		const a = device[k];
-		const b = server[k];
-		if (a instanceof Date || b instanceof Date)
-			return (
-				!(a instanceof Date && b instanceof Date) || a.getTime() !== b.getTime()
-			);
-		return DECIMALS.has(k) ? !dec(a as string).eq(dec(b as string)) : a !== b;
-	});
+	return COMPARED.filter((k) => !sameColumnValue(k, device[k], server[k]));
 }
 
 const skipped = (id: string, code: SkipCode): WriteVerdict => ({

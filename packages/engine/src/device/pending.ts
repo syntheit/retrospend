@@ -1,4 +1,4 @@
-import { sameValue } from "../equal";
+import { filterFieldsOf } from "../budget-book";
 import { ConflictError } from "../errors";
 import {
 	type ExpenseRow,
@@ -7,6 +7,7 @@ import {
 } from "../expenses";
 import type { Reader, Store, Writer } from "../port";
 import { applyChanges } from "../undo";
+import { sameColumnValue } from "../write-parity";
 
 // Writes the device has booked and the server has not shown back yet, read
 // as an overlay for the three readers that need them (the device preview, the
@@ -39,7 +40,11 @@ export interface PendingEntry {
 	readonly parked: boolean;
 	/** The device could not book it (no rate); the server will, and the overlay never counts it. */
 	readonly unbooked?: "no_rate";
-	/** Set once the server accepted it, which moves it to the acked list. */
+	/**
+	 * Set once the server accepted it, which moves it to the acked list. An
+	 * entry stacked on it then has `version` of its `before` rows set to
+	 * `ack.version`, which is how the overlay finds its base.
+	 */
 	readonly ack?: {
 		/** The `updatedAt` the answer named for the row, null for a delete. */
 		readonly version: string | null;
@@ -94,9 +99,36 @@ export const retiredBy = (
 			settledPull > e.ack.pull,
 	);
 
-/** The stored row as the device keeps it, to be held against an entry's `before`. */
-const bookedPart = (row: unknown) =>
-	row === null ? null : withoutText(row as ExpenseRow);
+/**
+ * A row with the columns a device-created row may lack (the sync sets them)
+ * at their defaults, through the one owner of those defaults.
+ */
+function settled(row: TextFreeExpenseRow): Record<string, unknown> {
+	const f = filterFieldsOf(row as ExpenseRow);
+	return {
+		...row,
+		keepInWealth: f.keepInWealth,
+		isAmortizedChild: f.isAmortizedChild,
+		parentId: f.parentId,
+		amortizeMode: f.amortizeMode,
+		recurringTemplateId: row.recurringTemplateId ?? null,
+		budgetEnvelopeId: row.budgetEnvelopeId ?? null,
+	};
+}
+
+/**
+ * Whether the stored row is the one an entry's `before` names: every column
+ * the device keeps, decimals by value (a pulled row's text is the server's,
+ * a device-booked row's is the column's scale), the rest exactly.
+ */
+function isBefore(current: unknown, expected: unknown): boolean {
+	if (current === null || expected === null) return current === expected;
+	const stored = settled(withoutText(current as ExpenseRow));
+	const wanted = settled(expected as TextFreeExpenseRow);
+	return [...new Set([...Object.keys(stored), ...Object.keys(wanted)])].every(
+		(column) => sameColumnValue(column, stored[column], wanted[column]),
+	);
+}
 
 /**
  * Replays one entry over `tx`. A row it would change must equal its `before`
@@ -110,11 +142,17 @@ const bookedPart = (row: unknown) =>
 function replay(tx: Writer, entry: PendingEntry) {
 	try {
 		applyChanges(tx, entry.changes, "before", {
-			matches: (current, expected) => sameValue(bookedPart(current), expected),
+			matches: isBefore,
 			rowFor: (c, current) =>
 				c.after === null
 					? null
-					: ({ ...(current ?? CREATE_TEXT), ...c.after } as ExpenseRow),
+					: ({
+							...(current ?? CREATE_TEXT),
+							...c.after,
+							// An acked write is the server's row at its ack: the entries
+							// stacked on it name that version as their base.
+							...(entry.ack?.version ? { version: entry.ack.version } : {}),
+						} as ExpenseRow),
 		});
 	} catch (error) {
 		if (!(error instanceof ConflictError)) throw error;
