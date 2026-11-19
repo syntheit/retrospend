@@ -355,18 +355,11 @@ describe("create refusals write nothing", () => {
 		expect(await count()).toBe(before);
 	});
 
-	// tRPC leaves the unique id violation as INTERNAL_SERVER_ERROR with Prisma's own text, file
-	// path included (a possible bug, pinned as is). That text carries the checkout's absolute path
-	// and Prisma's formatting, so only its stable phrase is pinned; v1 maps it to 409 id_taken.
+	// tRPC answers the unique id violation as CONFLICT in the same words v1 uses for 409
+	// id_taken, and keeps the database's own text (file path, key name) out of the message.
 	const taken: Expected = {
-		entry: trpc(
-			"INTERNAL_SERVER_ERROR",
-			expect.stringContaining("Unique constraint failed"),
-		),
-		legacy: trpc(
-			"INTERNAL_SERVER_ERROR",
-			expect.stringContaining("Unique constraint failed"),
-		),
+		entry: trpc("CONFLICT", "That id is already used"),
+		legacy: trpc("CONFLICT", "That id is already used"),
 		v1: v1Problem(409, "id_taken", "That id is already used"),
 	};
 	it.each(NAMES)(
