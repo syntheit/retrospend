@@ -9,7 +9,7 @@ import {
 	CURRENCY_ACTIONS,
 	currencyActionsOf,
 } from "./currencies/currencyActions";
-import { PERSON_ACTIONS, personActionsOf } from "./people/personActions";
+import { PERSON_ACTIONS, personActionsOf } from "./people/personActionRegistry";
 import {
 	PROJECT_ACTIONS,
 	projectActionsOf,
