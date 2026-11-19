@@ -18,7 +18,6 @@ import { wrapKeyToPublic } from "@retrospend/crypto/k4";
 import { createWebPrimitives } from "@retrospend/crypto/web";
 import { hashPassword } from "better-auth/crypto";
 import { auth } from "~/server/better-auth";
-import { RECOVERY_TRIES } from "~/server/services/account-security.service";
 import { applyKeyChanges } from "~/server/services/protection-keys/protection-keys.service";
 import { hashRecoveryProof } from "~/server/services/protection-keys/validate";
 import { adminDb } from "~/test/pg-harness";
@@ -202,12 +201,6 @@ export const triesSpent = async (tokenHash: string) =>
 			where: { key: `recovery:token:${tokenHash}` },
 		})
 	)?.count ?? 0;
-
-/** Waits until at least 90 seconds are left in the current recovery window. */
-export async function clearTriesWindowEdge(): Promise<void> {
-	const left = RECOVERY_TRIES.windowMs - (Date.now() % RECOVERY_TRIES.windowMs);
-	if (left < 90_000) await new Promise((r) => setTimeout(r, left + 1_000));
-}
 
 export async function seedApiKey(userId: string) {
 	const id = randomUUID();

@@ -39,6 +39,7 @@ import {
 import { adminDb } from "~/test/pg-harness";
 import { approvedDeviceCode, deviceCodeRows, pollDeviceCode } from "~/test/device-codes";
 import { holdCredentialLock, holdSetLock } from "~/test/locks";
+import { stayInWindow } from "~/test/rate-window";
 import * as fixture from "~/test/recoverable";
 import { issueLinkFor } from "~/test/reset-links";
 import { ProtectionKeysError, ReleaseError } from "./errors";
@@ -111,7 +112,6 @@ const settled = <T>(run: () => Promise<T>) =>
 		(error: unknown) => ({ error }),
 	);
 const {
-	clearTriesWindowEdge,
 	seedApiKey,
 	snapshot,
 	storedHash,
@@ -293,7 +293,7 @@ describe("beginRecovery", () => {
 	});
 
 	it("stops the sixth try of one link, right proof included, and counts them for the user too", async () => {
-		await clearTriesWindowEdge();
+		stayInWindow(RECOVERY_TRIES.windowMs);
 		const k = await recoverable();
 		for (let i = 0; i < RECOVERY_TRIES.perToken; i++)
 			await settled(() =>
@@ -309,7 +309,7 @@ describe("beginRecovery", () => {
 	});
 
 	it("shares the user's count across links: 10 an hour, however many links", async () => {
-		await clearTriesWindowEdge();
+		stayInWindow(RECOVERY_TRIES.windowMs);
 		const k = await recoverable();
 		const second = await issueLinkFor(k.id);
 		const third = await issueLinkFor(k.id);
@@ -432,7 +432,7 @@ describe("commitRecovery", () => {
 	});
 
 	it("refuses a wrong proof at the sixth try even when it is right then", async () => {
-		await clearTriesWindowEdge();
+		stayInWindow(RECOVERY_TRIES.windowMs);
 		const k = await recoverable();
 		for (let i = 0; i < RECOVERY_TRIES.perToken; i++)
 			await settled(() =>

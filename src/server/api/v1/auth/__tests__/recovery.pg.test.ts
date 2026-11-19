@@ -22,9 +22,9 @@ import {
 import { getClientIp, ipBucket } from "~/server/lib/rate-limiter";
 import { RECOVERY_TRIES } from "~/server/services/account-security.service";
 import { hashToken } from "~/server/lib/tokens";
+import { stayInWindow } from "~/test/rate-window";
 import { issueLinkFor } from "~/test/reset-links";
 import {
-	clearTriesWindowEdge,
 	commitBody,
 	loadPrimitives,
 	passwordUser,
@@ -86,6 +86,7 @@ vi.mock("~/server/services/user-time-zone", async (original) => {
 });
 
 const routes = contract.auth;
+const MINUTE = 60_000;
 
 let p: Primitives;
 beforeAll(async () => {
@@ -288,7 +289,7 @@ describe("POST /auth/recovery/begin", () => {
 	});
 
 	it("answers 429 with Retry-After on the 6th try of one link, whatever the proof", async () => {
-		await clearTriesWindowEdge();
+		stayInWindow(RECOVERY_TRIES.windowMs);
 		const k = await recoverable();
 		for (let i = 0; i < RECOVERY_TRIES.perToken; i++)
 			await expectProblem(
@@ -304,7 +305,7 @@ describe("POST /auth/recovery/begin", () => {
 	});
 
 	it("counts the tries of every link of one account together", async () => {
-		await clearTriesWindowEdge();
+		stayInWindow(RECOVERY_TRIES.windowMs);
 		const k = await recoverable();
 		const second = await issueLinkFor(k.id);
 		const third = await issueLinkFor(k.id);
@@ -440,7 +441,7 @@ describe("POST /auth/recovery", () => {
 	});
 
 	it("answers 429 on the 6th try of one link and changes nothing", async () => {
-		await clearTriesWindowEdge();
+		stayInWindow(RECOVERY_TRIES.windowMs);
 		const k = await recoverable();
 		const before = await snapshot(k.id);
 		for (let i = 0; i < RECOVERY_TRIES.perToken; i++)
@@ -597,14 +598,8 @@ describe("the flag and the page it is called from", () => {
 });
 
 describe("the one sender bucket", () => {
-	/** A bucket counts in fixed one-minute windows: a test that fills one must not straddle two. */
-	async function clearMinuteEdge(): Promise<void> {
-		const left = 60_000 - (Date.now() % 60_000);
-		if (left < 12_000) await new Promise((r) => setTimeout(r, left + 500));
-	}
-
 	it("counts check, begin and commit together: the 11th request of one sender in a minute is 429", async () => {
-		await clearMinuteEdge();
+		stayInWindow(MINUTE, 12_000);
 		const sender = { ip: "192.0.2.77" };
 		const token = randomToken();
 		const wrong = wrongKey();
@@ -637,7 +632,7 @@ describe("the one sender bucket", () => {
 	}, 60_000);
 
 	it("is named by the sender's address, and holds no address or token", async () => {
-		await clearMinuteEdge();
+		stayInWindow(MINUTE, 12_000);
 		const ip = "192.0.2.88";
 		const token = randomToken();
 		await check(token, { ip });

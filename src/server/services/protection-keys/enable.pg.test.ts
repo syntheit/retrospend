@@ -41,6 +41,7 @@ import { enableProtection } from "./enable";
 import { issueLinkFor } from "~/test/reset-links";
 import { lockCredential } from "./password-writes";
 import { verifyTwoFactorCode } from "./two-factor";
+import { stayInWindow } from "~/test/rate-window";
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -209,11 +210,6 @@ const signsInWith = (email: string, password: string) =>
 const TRIES_WINDOW_MS = 15 * 60_000;
 
 /** Waits until at least a minute is left in the current tries window. */
-async function clearTriesWindowEdge(): Promise<void> {
-	const left = TRIES_WINDOW_MS - (Date.now() % TRIES_WINDOW_MS);
-	if (left < 60_000) await new Promise((r) => setTimeout(r, left + 1_000));
-}
-
 describe("POST /me/protection/enable", () => {
 	it("writes the new hash, the set and its wraps, ends the other sessions, removes reset links, records and mails", async () => {
 		const u = await passwordUser();
@@ -483,7 +479,7 @@ describe("POST /me/protection/enable", () => {
 	it("counts a wrong current password as a try and changes nothing, then stops at the limit", async () => {
 		// The tries count in fixed 15 minute windows on the clock: all six must
 		// land in one, so a run close to a boundary waits it out first.
-		await clearTriesWindowEdge();
+		stayInWindow(TRIES_WINDOW_MS);
 		const u = await passwordUser();
 		const me = await mobile(u.id);
 		const other = await sessionFor(u.id);
