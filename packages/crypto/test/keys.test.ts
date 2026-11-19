@@ -28,6 +28,7 @@ import {
 	RECOVERY_GROUPS,
 	recoveryGroups,
 	recoverySubkeys,
+	recoveryWrapDigest,
 	type SymmetricRole,
 	sealRecord,
 	toHex,
@@ -404,6 +405,39 @@ describe("recovery subkeys", () => {
 	it("refuses anything but 32 bytes", () => {
 		expect(code(() => recoverySubkeys(p, bytes(31)))).toBe("invalid_input");
 		expect(code(() => recoverySubkeys(p, bytes(33)))).toBe("invalid_input");
+	});
+});
+
+describe("recovery wrap digest", () => {
+	it("matches the known answers made by python hashlib", () => {
+		expect(vectors.symmetricWraps.length).toBeGreaterThan(0);
+		for (const v of vectors.symmetricWraps) {
+			const digest = recoveryWrapDigest(p, fromHex(v.wrapped));
+			expect(digest.length, v.name).toBe(32);
+			expect(toHex(digest), v.name).toBe(v.digest);
+		}
+	});
+
+	it("moves with every byte of the wrap", () => {
+		const wrapped = fromHex(vectors.symmetricWraps[1]?.wrapped ?? "");
+		const base = toHex(recoveryWrapDigest(p, wrapped));
+		for (const at of [0, 1, 2, 40, wrapped.length - 1]) {
+			const changed = wrapped.slice();
+			changed[at] = (changed[at] ?? 0) ^ 1;
+			expect(toHex(recoveryWrapDigest(p, changed)), `byte ${at}`).not.toBe(
+				base,
+			);
+		}
+	});
+
+	it("refuses anything that is not a symmetric wrap size", () => {
+		const wrapped = fromHex(vectors.symmetricWraps[1]?.wrapped ?? "");
+		expect(code(() => recoveryWrapDigest(p, wrapped.slice(1)))).toBe(
+			"invalid_input",
+		);
+		expect(
+			code(() => recoveryWrapDigest(p, Uint8Array.of(...wrapped, 0))),
+		).toBe("invalid_input");
 	});
 });
 
