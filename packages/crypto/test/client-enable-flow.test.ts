@@ -14,6 +14,7 @@ import {
 } from "../src";
 import {
 	createEnableCallbacks,
+	createEnableLifecycle,
 	type EnablePorts,
 	type EnableRequest,
 	enableFailureFor,
@@ -420,5 +421,63 @@ describe("the words a failure gets", () => {
 		const draft = await s.callbacks.makeKeys("new password 1A");
 		await failsWith(s.callbacks.save(draft, INPUT), "failed");
 		for (const [, line] of table) expect(FAILURE_CODES).toContain(line);
+	});
+});
+
+describe("the draft's keys through the sheet's lifecycle", () => {
+	// The sheet's own controller drives the callbacks, as it does on screen:
+	// the account key stays until the sheet leaves, and every exit wipes it.
+	const sheet = () => {
+		const s = setup({
+			spoil: (a) => (a.recoveryWrapDigest = null),
+		});
+		const life = createEnableLifecycle({ reset: () => {} });
+		return { s, life };
+	};
+	const made = async (
+		s: ReturnType<typeof setup>,
+		life: ReturnType<typeof sheet>["life"],
+	) => {
+		const out = await life.makeDraft(() =>
+			s.callbacks.makeKeys("new password 1A"),
+		);
+		if (out.status !== "done") throw new Error("no draft");
+		return out.value;
+	};
+	const alive = (s: ReturnType<typeof setup>) =>
+		s.accountKey().some((x) => x !== 0);
+
+	it("keeps the keys after a saved draft until the sheet closes, then wipes them", async () => {
+		const s = setup();
+		const life = createEnableLifecycle({ reset: () => {} });
+		const draft = await made(s, life);
+		await life.run(() => s.callbacks.save(draft, INPUT));
+		expect(alive(s)).toBe(true);
+		life.closed();
+		expect(alive(s)).toBe(false);
+	});
+
+	it("wipes them when the save failed for good and the sheet then closes", async () => {
+		const { s, life } = sheet();
+		const draft = await made(s, life);
+		const out = await life.run(() => s.callbacks.save(draft, INPUT));
+		expect(out.status).toBe("failed");
+		expect(alive(s)).toBe(true);
+		life.closed();
+		expect(alive(s)).toBe(false);
+	});
+
+	it("wipes them when the sheet unmounts, and when the person goes back to the password", async () => {
+		const gone = setup();
+		const life = createEnableLifecycle({ reset: () => {} });
+		await made(gone, life);
+		life.unmounted();
+		expect(alive(gone)).toBe(false);
+
+		const back = setup();
+		const life2 = createEnableLifecycle({ reset: () => {} });
+		await made(back, life2);
+		life2.back("methods");
+		expect(alive(back)).toBe(false);
 	});
 });
