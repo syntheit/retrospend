@@ -374,8 +374,9 @@ describe("checkRecovery", () => {
 
 	it("is the one 404 for an unknown, expired or admin-made link, and for the stored value itself", async () => {
 		const k = await recoverable();
-		const expired = await issueLinkFor(k.id, "email", new Date(Date.now() - 2 * HOUR));
+		// The expired link is made last: making a link sweeps the person's expired ones.
 		const admin = await issueLinkFor(k.id, "admin");
+		const expired = await issueLinkFor(k.id, "email", new Date(Date.now() - 2 * HOUR));
 		const stored = await adminDb.passwordResetToken.findFirstOrThrow({
 			where: { userId: k.id, origin: "email", token: tokenHashOf(k.token) },
 		});
@@ -450,8 +451,9 @@ describe("beginRecovery", () => {
 
 	it("is 404 for an expired, admin-made or unknown link, before any try is spent", async () => {
 		const k = await recoverable();
-		const expired = await issueLinkFor(k.id, "email", new Date(Date.now() - 2 * HOUR));
+		// The expired link is made last: making a link sweeps the person's expired ones.
 		const admin = await issueLinkFor(k.id, "admin");
+		const expired = await issueLinkFor(k.id, "email", new Date(Date.now() - 2 * HOUR));
 		for (const token of [expired, admin, randomBytes(32).toString("hex")]) {
 			await expect(
 				beginRecovery({ token, recoveryAuthKey: k.recoveryAuthKey }),

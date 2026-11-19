@@ -528,12 +528,24 @@ describe("the hash writer union", () => {
 		expect(await adminDb.session.count({ where: { userId: a.id } })).toBe(1);
 	});
 
-	it("refuses an unknown writer, including names every object has", async () => {
+	it("refuses an unknown writer, including names every object has, before anything is written", async () => {
 		const a = await passwordUser();
+		await giveKeys(a.id);
+		await sessionFor(a.id);
+		const stored = await storedHash(a.id);
+		const sessions = await adminDb.session.count({ where: { userId: a.id } });
+		// `endAll` fits what an unknown writer's missing rule would compare to, so
+		// the session check cannot be what refuses it.
 		for (const writer of ["admin", "constructor", "toString"]) {
-			const { result } = await swapAs(a, writer as SwapWriter, { keep: "x" });
+			const { result } = await swapAs(a, writer as SwapWriter, {
+				endAll: true,
+			});
 			expect(result, writer).toBeInstanceOf(Error);
 		}
+		expect(await storedHash(a.id)).toBe(stored);
+		expect(await adminDb.session.count({ where: { userId: a.id } })).toBe(
+			sessions,
+		);
 	});
 
 	it("applies each writer's key rule: recovery and rotate need keys, change and enable need none", async () => {
