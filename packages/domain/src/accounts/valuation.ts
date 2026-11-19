@@ -16,11 +16,10 @@
  * all read it. Code that stores a per-unit rate takes the quotient with
  * `ratePerUnit`.
  */
+import { CUSTOM_RATE_TYPE } from "../rate-booking";
 import { type PickedRate, rateLookup, rateRowsByCurrency, USD } from "../money";
 import { usdFractionDec } from "../money-dec";
 import { type Decimal, dec } from "../precise-decimal";
-
-export const CUSTOM_RATE_TYPE = "custom";
 
 /** A rate lookup: the best stored rate of a currency on a date, preferring a type. */
 export type RatePick = (
