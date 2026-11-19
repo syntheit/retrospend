@@ -22,6 +22,7 @@ const TITLES: Record<ProblemCode, string> = {
 	wrong_two_factor_code: "Two-factor code is incorrect",
 	not_found: "Not found",
 	conflict: "Conflict",
+	expense_changed: "Expense changed",
 	protection_keys_missing: "Protection keys are missing",
 	payload_too_large: "Upload too large",
 	idempotency_in_progress: "Request in progress",
