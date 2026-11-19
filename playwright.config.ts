@@ -72,6 +72,12 @@ const visual = {
 	},
 };
 
+// The device engine compare (e2e/device). The dev flag is read when the app is
+// built, so it belongs to the server this config starts: only a run that sets
+// E2E_DEVICE_ENGINE=1 defines the project, and `--project=device-engine` is
+// the way to run it.
+const DEVICE_ENGINE = process.env.E2E_DEVICE_ENGINE === "1";
+
 export default defineConfig({
 	testDir: "./e2e",
 	timeout: 30_000,
@@ -111,6 +117,17 @@ export default defineConfig({
 			use: chromium,
 			dependencies: ["setup"],
 		},
+		...(DEVICE_ENGINE
+			? [
+					{
+						name: "device-engine",
+						testDir: "./e2e/device",
+						testMatch: "**/*.spec.ts",
+						use: chromium,
+						dependencies: ["setup"],
+					},
+				]
+			: []),
 		...(process.env.E2E_VISUAL === "1" ? [visual] : []),
 	],
 	globalSetup: "./e2e/global-setup.ts",
@@ -139,6 +156,7 @@ export default defineConfig({
 					SIDECAR_URL: "http://127.0.0.1:9",
 					// The password change of a keyed account is refused without it.
 					ADVANCED_PROTECTION_ENABLED: "true",
+					...(DEVICE_ENGINE ? { NEXT_PUBLIC_DEV_DEVICE_ENGINE: "1" } : {}),
 					// E2E_SEALED=1: the server seals user text on write (e2e/constants.ts).
 					...(E2E_SEALED
 						? { DATA_KEYS_WRITE: "true", DATA_MASTER_KEY: E2E_MASTER_KEY }
