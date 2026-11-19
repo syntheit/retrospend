@@ -1,6 +1,8 @@
 import sharp from "sharp";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+	INVALID_IMAGE_MESSAGE,
+	processAccountIcon,
 	processAvatar,
 	processProjectImage,
 	processReceipt,
@@ -101,9 +103,18 @@ describe("validateImageBytes", () => {
 	it("rejects RIFF header without WEBP marker (e.g. WAV audio)", () => {
 		// RIFF + size + "WAVE" - magic bytes match RIFF but not the WEBP sub-marker
 		const buf = Buffer.from([
-			0x52, 0x49, 0x46, 0x46, // "RIFF"
-			0x00, 0x00, 0x00, 0x00, // file size placeholder
-			0x57, 0x41, 0x56, 0x45, // "WAVE" (not "WEBP")
+			0x52,
+			0x49,
+			0x46,
+			0x46, // "RIFF"
+			0x00,
+			0x00,
+			0x00,
+			0x00, // file size placeholder
+			0x57,
+			0x41,
+			0x56,
+			0x45, // "WAVE" (not "WEBP")
 		]);
 		expect(validateImageBytes(buf)).toEqual({ valid: false, format: null });
 	});
@@ -246,4 +257,32 @@ describe("EXIF stripping", () => {
 		const outMeta = await sharp(output).metadata();
 		expect(outMeta.exif).toBeUndefined();
 	});
+});
+
+// ─── The library's own text never leaves ───────────────────────────────────
+
+describe("an image with a good header and a broken body", () => {
+	const broken = Buffer.concat([
+		Buffer.from([0xff, 0xd8, 0xff, 0xe0]),
+		Buffer.alloc(64, 7),
+	]);
+
+	it.each([
+		["processAvatar", processAvatar],
+		["processProjectImage", processProjectImage],
+		["processAccountIcon", processAccountIcon],
+		["processReceipt", processReceipt],
+	])(
+		"%s answers the one stable sentence and logs the reason",
+		async (_n, run) => {
+			const log = vi
+				.spyOn(console, "error")
+				.mockImplementation(() => undefined);
+			await expect(run(broken)).rejects.toThrow(
+				new Error(INVALID_IMAGE_MESSAGE),
+			);
+			expect(log).toHaveBeenCalledOnce();
+			log.mockRestore();
+		},
+	);
 });

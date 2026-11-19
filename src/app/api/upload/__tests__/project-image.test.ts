@@ -35,6 +35,8 @@ vi.mock("~/server/storage", () => ({
 }));
 
 vi.mock("~/server/image-processing", () => ({
+	INVALID_IMAGE_MESSAGE:
+		"Invalid image format. Accepted formats: JPEG, PNG, WebP, GIF",
 	processProjectImage: vi.fn(),
 }));
 
@@ -124,9 +126,7 @@ describe("POST /api/upload/project-image", () => {
 			user: { id: USER_ID, protectionState: "ON" },
 			session: { id: "session-1" },
 		} as never);
-		const res = await POST(
-			makePostRequest(makeFile()) as never,
-		);
+		const res = await POST(makePostRequest(makeFile()) as never);
 		expect(res.status).toBe(403);
 		expect(res.headers.get("content-type")).toBe("application/problem+json");
 		expect(await res.json()).toMatchObject({ code: "protected_account" });
@@ -143,7 +143,9 @@ describe("POST /api/upload/project-image", () => {
 		vi.mocked(getWebSession).mockResolvedValue({
 			user: { id: USER_ID, protectionState: "OFF" },
 		} as never);
-		vi.mocked(db.user.findUnique).mockResolvedValue({ isActive: false } as never);
+		vi.mocked(db.user.findUnique).mockResolvedValue({
+			isActive: false,
+		} as never);
 		const res = await POST(makePostRequest(makeFile()) as never);
 		expect(res.status).toBe(403);
 	});
@@ -213,6 +215,24 @@ describe("POST /api/upload/project-image", () => {
 		expect(res.status).toBe(400);
 		const body = (await parseJson(res)) as { error: string };
 		expect(body.error).toMatch(/invalid image/i);
+	});
+
+	it("answers a stable sentence, not the image library's text, when processing throws", async () => {
+		mockAuthedUser();
+		mockAllowedRole();
+		vi.mocked(processProjectImage).mockRejectedValue(
+			new Error("vips: corrupt header in /srv/retrospend/tmp/ana-receipt.jpg"),
+		);
+		const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+		const res = await POST(makePostRequest(makeFile()) as never);
+		expect(res.status).toBe(400);
+		const body = (await parseJson(res)) as { error: string };
+		expect(body.error).toBe(
+			"Invalid image format. Accepted formats: JPEG, PNG, WebP, GIF",
+		);
+		expect(log).toHaveBeenCalled();
+		expect(JSON.stringify(log.mock.calls)).not.toContain("ana-receipt");
+		log.mockRestore();
 	});
 
 	it("returns 200 with imageUrl on successful upload by EDITOR", async () => {

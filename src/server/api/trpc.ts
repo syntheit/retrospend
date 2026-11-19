@@ -278,42 +278,43 @@ export const publicProcedure = baseProcedure.meta({ public: true });
  *
  * @see https://trpc.io/docs/procedures
  */
-export const protectedProcedure = baseProcedure.use(async ({ ctx, next }) => {
-	if (!ctx.session?.user) {
-		throw new TRPCError({ code: "UNAUTHORIZED" });
-	}
+export const protectedProcedure = baseProcedure
+	.use(async ({ ctx, next }) => {
+		if (!ctx.session?.user) {
+			throw new TRPCError({ code: "UNAUTHORIZED" });
+		}
 
-	// isActive comes from the user row, which better-auth loads on every
-	// getSession (no cookie cache is configured), so a disabled user is
-	// rejected on their next request. admin.disableUser also deletes the
-	// user's sessions, and session.create.before blocks new sign-ins.
-	if (!ctx.session.user.isActive) {
-		throw new TRPCError({ code: "UNAUTHORIZED" });
-	}
+		// isActive comes from the user row, which better-auth loads on every
+		// getSession (no cookie cache is configured), so a disabled user is
+		// rejected on their next request. admin.disableUser also deletes the
+		// user's sessions, and session.create.before blocks new sign-ins.
+		if (!ctx.session.user.isActive) {
+			throw new TRPCError({ code: "UNAUTHORIZED" });
+		}
 
-	// When sealing, the user's key exists before any transaction needs it.
-	await ensureUserKeyringWhenSealing(ctx.session.user.id);
-	const userDb = createUserScopedDb(ctx.session.user.id);
-	const requestZone = requestTimeZone(ctx.headers);
-	const storedZone = ctx.session.user.timeZone;
-	// A failed claim only means the next request tries again; it must
-	// never fail the request it rides on.
-	try {
-		await claimTimeZone(userDb, ctx.session.user.id, storedZone, requestZone);
-	} catch (error) {
-		console.error("[time-zone] could not store the browser's zone", error);
-	}
+		// When sealing, the user's key exists before any transaction needs it.
+		await ensureUserKeyringWhenSealing(ctx.session.user.id);
+		const userDb = createUserScopedDb(ctx.session.user.id);
+		const requestZone = requestTimeZone(ctx.headers);
+		const storedZone = ctx.session.user.timeZone;
+		// A failed claim only means the next request tries again; it must
+		// never fail the request it rides on.
+		try {
+			await claimTimeZone(userDb, ctx.session.user.id, storedZone, requestZone);
+		} catch (error) {
+			console.error("[time-zone] could not store the browser's zone", error);
+		}
 
-	return next({
-		ctx: {
-			// infers the `session` as non-nullable with additional user fields
-			session: ctx.session as Session,
-			db: userDb,
-			// The user's IANA zone for day and month bucketing
-			timeZone: resolveTimeZone(storedZone, requestZone),
-		},
+		return next({
+			ctx: {
+				// infers the `session` as non-nullable with additional user fields
+				session: ctx.session as Session,
+				db: userDb,
+				// The user's IANA zone for day and month bucketing
+				timeZone: resolveTimeZone(storedZone, requestZone),
+			},
+		});
 	});
-});
 
 /**
  * Admin procedure
@@ -377,8 +378,8 @@ export const adminListProcedure = (view: AdminListView) =>
  * Procedures using this must call assertGuestProjectScope(ctx.participant, projectId)
  * before accessing any project data.
  */
-export const guestOrProtectedProcedure = baseProcedure.use(
-	async ({ ctx, next }) => {
+export const guestOrProtectedProcedure = baseProcedure
+	.use(async ({ ctx, next }) => {
 		// Try regular user session first
 		if (ctx.session?.user && ctx.session.user.isActive) {
 			await ensureUserKeyringWhenSealing(ctx.session.user.id);
@@ -477,5 +478,4 @@ export const guestOrProtectedProcedure = baseProcedure.use(
 		}
 
 		throw new TRPCError({ code: "UNAUTHORIZED" });
-	},
-);
+	});

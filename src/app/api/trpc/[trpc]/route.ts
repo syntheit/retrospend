@@ -1,7 +1,7 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import type { NextRequest } from "next/server";
 
-import { describeInternalError } from "~/server/api/error-formatter";
+import { onTrpcError } from "~/server/api/error-formatter";
 import { appRouter } from "~/server/api/root";
 import { createTRPCContext } from "~/server/api/trpc";
 
@@ -21,12 +21,7 @@ const handler = (req: NextRequest) =>
 		req,
 		router: appRouter,
 		createContext: () => createContext(req),
-		// The client gets a generic message for what the code did not plan for;
-		// the server keeps a line about it.
-		onError: ({ error, path }) => {
-			if (error.code === "INTERNAL_SERVER_ERROR")
-				console.error(describeInternalError(path, error));
-		},
+		onError: onTrpcError,
 	});
 
 export { handler as GET, handler as POST };

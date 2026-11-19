@@ -123,6 +123,30 @@ describe("the server's line about an unexpected failure", () => {
 		expect(line).not.toContain(PATH);
 	});
 
+	it("skips a multi-line message that looks like stack frames", () => {
+		const cause = new Error(
+			"row failed:\n    at the beach with Ana\n    at Lucia's flat",
+		);
+		const line = describeInternalError(
+			"x",
+			new TRPCError({ code: "INTERNAL_SERVER_ERROR", cause }),
+		);
+		expect(line).toContain("    at ");
+		expect(line).not.toContain("beach");
+		expect(line).not.toContain("Ana");
+		expect(line).not.toContain("Lucia");
+	});
+
+	it("gives no frames when the stack does not carry the message", () => {
+		const cause = new Error("secret");
+		cause.stack = "Error: other\n    at somewhere (file.ts:1:1)";
+		const line = describeInternalError(
+			"x",
+			new TRPCError({ code: "INTERNAL_SERVER_ERROR", cause }),
+		);
+		expect(line).not.toContain("somewhere");
+	});
+
 	it("adds the database's code and table", () => {
 		const line = describeInternalError(
 			"x",

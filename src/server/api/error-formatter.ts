@@ -35,6 +35,23 @@ export function problemCode(error: TRPCError) {
 export const INTERNAL_MESSAGE = "Something went wrong";
 
 /**
+ * The stack frames of an error, without its header. V8 starts a stack with
+ * `${name}: ${message}`, and a message can run over several lines and even
+ * look like a frame, so the header is cut by the message itself. A stack
+ * that does not carry the message gives no frames: fail closed.
+ */
+function framesOf(error: Error): string[] {
+	const stack = error.stack ?? "";
+	const at = error.message ? stack.indexOf(error.message) : stack.indexOf("\n");
+	if (at < 0) return [];
+	const after = stack.slice(at + error.message.length);
+	return after
+		.split("\n")
+		.filter((line) => line.startsWith("    at "))
+		.slice(0, 8);
+}
+
+/**
  * The line the server logs for an unexpected failure, with nothing the user
  * wrote in it: Prisma's and a plain error's message can carry values, so only
  * the error's name, the database's code and table, and the stack frames go.
@@ -49,17 +66,26 @@ export function describeInternalError(
 	const detail = [meta.code, meta.meta?.modelName]
 		.filter((part): part is string => typeof part === "string")
 		.join(" ");
-	const frames =
-		cause instanceof Error
-			? (cause.stack ?? "")
-					.split("\n")
-					.filter((line) => line.trimStart().startsWith("at "))
-					.slice(0, 8)
-			: [];
+	const frames = cause instanceof Error ? framesOf(cause) : [];
 	return [
 		`[trpc] ${path ?? "unknown"} failed: ${name}${detail ? ` ${detail}` : ""}`,
 		...frames,
 	].join("\n");
+}
+
+/**
+ * The tRPC handler's `onError`: the client gets a generic message for what
+ * the code did not plan for, and the server keeps a line about it.
+ */
+export function onTrpcError({
+	error,
+	path,
+}: {
+	error: TRPCError;
+	path: string | undefined;
+}) {
+	if (error.code === "INTERNAL_SERVER_ERROR")
+		console.error(describeInternalError(path, error));
 }
 
 export function errorFormatter<

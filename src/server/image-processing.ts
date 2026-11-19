@@ -33,33 +33,54 @@ export function validateImageBytes(buffer: Buffer): {
 	return { valid: false, format: null };
 }
 
+/** What a client reads for any image the server cannot use. */
+export const INVALID_IMAGE_MESSAGE =
+	"Invalid image format. Accepted formats: JPEG, PNG, WebP, GIF";
+
 function assertValidImage(buffer: Buffer): void {
 	const { valid } = validateImageBytes(buffer);
-	if (!valid) {
-		throw new Error(
-			"Invalid image format. Accepted formats: JPEG, PNG, WebP, GIF",
+	if (!valid) throw new Error(INVALID_IMAGE_MESSAGE);
+}
+
+/**
+ * Runs the re-encode. The image library's own failure text (a corrupt file
+ * with a good header) is the server's business: the client gets the one
+ * stable sentence and the reason is logged. Buffer input, so no path or name.
+ */
+async function reencode(run: () => Promise<Buffer>): Promise<Buffer> {
+	try {
+		return await run();
+	} catch (error) {
+		console.error(
+			"[image] could not re-encode:",
+			error instanceof Error ? error.message : typeof error,
 		);
+		throw new Error(INVALID_IMAGE_MESSAGE);
 	}
 }
 
 export async function processAvatar(input: Buffer): Promise<Buffer> {
 	assertValidImage(input);
 
-	return sharp(input)
-		.rotate() // apply EXIF orientation before metadata is stripped
-		.resize(400, 400, { fit: "cover", position: "centre" })
-		.webp({ quality: 80 })
-		.toBuffer();
+	return reencode(() =>
+		sharp(input)
+			.rotate() // apply EXIF orientation before metadata is stripped
+			.resize(400, 400, { fit: "cover", position: "centre" })
+			.webp({ quality: 80 })
+			.toBuffer(),
+	);
 }
 
 export async function processProjectImage(input: Buffer): Promise<Buffer> {
 	assertValidImage(input);
 
-	return sharp(input)
-		.rotate()
-		.resize(400, 400, { fit: "cover", position: "centre" })
-		.webp({ quality: 80 })
-		.toBuffer();
+	return reencode(() =>
+		sharp(input)
+			.rotate()
+			.resize(400, 400, { fit: "cover", position: "centre" })
+			.webp({ quality: 80 })
+			.toBuffer(),
+	);
 }
 
 /**
@@ -69,22 +90,26 @@ export async function processProjectImage(input: Buffer): Promise<Buffer> {
 export async function processAccountIcon(input: Buffer): Promise<Buffer> {
 	assertValidImage(input);
 
-	return sharp(input)
-		.rotate()
-		.resize(256, 256, {
-			fit: "contain",
-			background: { r: 0, g: 0, b: 0, alpha: 0 },
-		})
-		.webp({ quality: 85 })
-		.toBuffer();
+	return reencode(() =>
+		sharp(input)
+			.rotate()
+			.resize(256, 256, {
+				fit: "contain",
+				background: { r: 0, g: 0, b: 0, alpha: 0 },
+			})
+			.webp({ quality: 85 })
+			.toBuffer(),
+	);
 }
 
 export async function processReceipt(input: Buffer): Promise<Buffer> {
 	assertValidImage(input);
 
-	return sharp(input)
-		.rotate()
-		.resize(1200, undefined, { fit: "inside", withoutEnlargement: true })
-		.webp({ quality: 85 })
-		.toBuffer();
+	return reencode(() =>
+		sharp(input)
+			.rotate()
+			.resize(1200, undefined, { fit: "inside", withoutEnlargement: true })
+			.webp({ quality: 85 })
+			.toBuffer(),
+	);
 }
