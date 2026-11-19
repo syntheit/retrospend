@@ -6,13 +6,13 @@
  */
 
 import {
-	CUSTOM_RATE_TYPE,
 	homePerUnit,
 	homeValue,
 	missingRateOf,
 	type RatePick,
 	ratePerUnit,
 } from "@retrospend/domain/accounts/valuation";
+import { CUSTOM_RATE_TYPE } from "@retrospend/domain/rate-booking";
 import { MissingRateError, toUSDDec, USD } from "@retrospend/domain/money-dec";
 import {
 	type Decimal,

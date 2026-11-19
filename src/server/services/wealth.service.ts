@@ -1,4 +1,4 @@
-import { CUSTOM_RATE_TYPE } from "@retrospend/domain/accounts/valuation";
+import { CUSTOM_RATE_TYPE } from "@retrospend/domain/rate-booking";
 import { isValidRate } from "@retrospend/domain/money";
 import {
 	convertDec,
@@ -34,9 +34,6 @@ import {
 } from "./accounts/dashboard-rates";
 
 export type { SnapshotMeta };
-/** Rate type of a rate the user typed in; it is kept as is, never looked up. */
-export { CUSTOM_RATE_TYPE };
-
 /**
  * WealthService - Encapsulates business logic for wealth/asset management
  *
