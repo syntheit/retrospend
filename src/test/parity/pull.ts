@@ -41,7 +41,7 @@ export type EntityTiming = StepReport;
 export type { PullReport };
 
 /** A mobile app session that outlives any fake clock a test sets. */
-async function longSession(userId: string): Promise<string> {
+export async function longSession(userId: string): Promise<string> {
 	const token = await sessionFor(userId);
 	await adminDb.session.update({
 		where: { token },
@@ -51,7 +51,7 @@ async function longSession(userId: string): Promise<string> {
 }
 
 /** A fresh address per request, so no per-IP limit window is shared with another call or file. */
-const freshIp = () => {
+export const freshIp = () => {
 	const [a = 0, b = 0, c = 0] = randomBytes(3);
 	return { "x-real-ip": `10.${a}.${b}.${c}` };
 };
@@ -65,7 +65,7 @@ const clientFor = (token: string): RetrospendClient =>
 	});
 
 /** Every route the driver calls, taken from the client. */
-function apiOver(
+export function apiOver(
 	client: RetrospendClient,
 	shares: PullApi["sync"]["shares"],
 ): PullApi {
@@ -103,7 +103,7 @@ function apiOver(
  * the clock a test sets (the owed totals and the block are priced at the
  * server's clock of that call).
  */
-function sharesOf(
+export function sharesOf(
 	userId: string,
 	atClock?: <T>(fn: () => Promise<T>) => Promise<T>,
 ): PullApi["sync"]["shares"] {

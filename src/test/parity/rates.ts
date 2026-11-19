@@ -28,6 +28,8 @@ const RATE_SERIES: Record<string, (day: number) => string> = {
 	"ARS:blue": (i) => String(1000 + Math.floor(i * 0.8)),
 	"ARS:official": (i) => String(900 + Math.floor(i * 0.3)),
 	"ARS:mep": (i) => String(1050 + Math.floor(i * 0.75)),
+	// EUR does not move: the compare proof's ledgers (proof-ledger.ts) hold it at 0.8.
+	"EUR:official": () => "0.8",
 	"JPY:official": (i) => String(140 + (i % 30)),
 	"KWD:official": (i) => (0.3 + (i % 5) / 1000).toFixed(3),
 };
