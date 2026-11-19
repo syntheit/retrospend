@@ -20,6 +20,7 @@
 		"./decimal": "./src/decimal.ts",
 		"./envelope/*": "./src/envelope/*.ts",
 		"./expense-input": "./src/expense-input.ts",
+		"./expense-write/*": "./src/expense-write/*.ts",
 		"./figures/*": "./src/figures/*.ts",
 		"./fiscal-month": "./src/fiscal-month.ts",
 		"./format": "./src/format.ts",

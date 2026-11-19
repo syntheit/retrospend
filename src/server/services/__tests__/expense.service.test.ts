@@ -1,6 +1,7 @@
+import { CategoryNotFoundError } from "@retrospend/domain/expense-write/refusals";
+import { MissingRateError } from "@retrospend/domain/money";
 import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MissingRateError } from "@retrospend/domain/money";
 import { makeCategory, makeExpense } from "~/test/factories";
 import { createMockDb } from "~/test/mock-db";
 import { RATE_DATE, useRateTable } from "~/test/rate-table";
@@ -196,7 +197,7 @@ describe("ExpenseService", () => {
 			expect(mockSyncAmortization).not.toHaveBeenCalled();
 		});
 
-		it("invalid categoryId (not owned by user): throws FORBIDDEN", async () => {
+		it("invalid categoryId (not owned by user): throws CategoryNotFoundError (FORBIDDEN on tRPC, mapped in trpc.ts)", async () => {
 			db.category.findFirst.mockResolvedValue(null);
 
 			await expect(
@@ -204,13 +205,31 @@ describe("ExpenseService", () => {
 					...BASE_INPUT,
 					categoryId: "cat-999",
 				}),
-			).rejects.toMatchObject({ code: "FORBIDDEN" });
+			).rejects.toBeInstanceOf(CategoryNotFoundError);
+		});
+
+		it("an income category throws CategoryNotFoundError: the kind check is the domain's, not the query's", async () => {
+			db.category.findFirst.mockResolvedValue({
+				...makeCategory({ id: "cat-in", userId: "user-1" }),
+				kind: "INCOME",
+				excludeByDefault: false,
+			});
+
+			await expect(
+				service.createExpense("user-1", {
+					...BASE_INPUT,
+					categoryId: "cat-in",
+				}),
+			).rejects.toBeInstanceOf(CategoryNotFoundError);
+			expect(db.expense.create).not.toHaveBeenCalled();
 		});
 
 		it("valid categoryId owned by user: proceeds and creates expense", async () => {
-			db.category.findFirst.mockResolvedValue(
-				makeCategory({ id: "cat-1", userId: "user-1" }),
-			);
+			db.category.findFirst.mockResolvedValue({
+				...makeCategory({ id: "cat-1", userId: "user-1" }),
+				kind: "EXPENSE",
+				excludeByDefault: false,
+			});
 
 			await service.createExpense("user-1", {
 				...BASE_INPUT,
