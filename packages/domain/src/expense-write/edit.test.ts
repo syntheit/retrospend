@@ -223,6 +223,17 @@ describe("editExpense money", () => {
 		});
 	});
 
+	it("an edit that moves no money never re-rounds a stored figure", async () => {
+		// A row booked before half-to-even: a rebook would give 100.00 and 154500.00.
+		const old = { ...arsRow, amountInUSD: "100.01", homeAmount: "154500.01" };
+		const p = fakePort(old);
+		await edit({ title: "Dinner" }, p);
+		expect(p.written[0]).toMatchObject({
+			amountInUSD: "100.01",
+			homeAmount: "154500.01",
+		});
+	});
+
 	it("a date edit books again at the kept rate", async () => {
 		const p = fakePort(arsRow, {
 			book: table({ ARS: { rate: 1550, type: "blue" } }, "ARS", "blue"),
