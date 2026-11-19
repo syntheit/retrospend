@@ -13,7 +13,7 @@ import { vectors } from "./expense-create-vectors";
 import { LocalDb } from "./local-db";
 import { seededStore } from "./local-expense-create";
 import { dump } from "./local-fixtures";
-import type { Tx } from "./port";
+import { InvalidInputError, type Tx } from "./port";
 import {
 	createDevicePreviewRunner,
 	deviceUndoMutation,
@@ -65,6 +65,21 @@ describe("device preview runner, every expense.create vector", () => {
 					expect((error as MissingRateError).currencies).toEqual(
 						v.expect.missingRate,
 					);
+					expect(dump(store)).toEqual(before);
+				}
+				await expect(store.transaction(() => "free")).resolves.toBe("free");
+				return;
+			}
+
+			if ("refused" in v.expect) {
+				// A refusal blocks the save with the domain's words: nothing written.
+				for (const run of [
+					() => runner.preview(EXPENSE_CREATE_MUTATION, v.input),
+					() => runner.apply(EXPENSE_CREATE_MUTATION, v.input),
+				]) {
+					const error = await run().catch((e) => e);
+					expect(error).toBeInstanceOf(InvalidInputError);
+					expect((error as Error).message).toBe(v.expect.refused);
 					expect(dump(store)).toEqual(before);
 				}
 				await expect(store.transaction(() => "free")).resolves.toBe("free");

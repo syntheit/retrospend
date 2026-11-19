@@ -1,7 +1,10 @@
+import { expenseCategory } from "@retrospend/domain/expense-write/category";
+import { bookCreate } from "@retrospend/domain/expense-write/create";
+import { toFloat } from "@retrospend/domain/precise-decimal";
 import {
+	rateChoice as chooseRate,
 	type RateChoice,
 	type RateInput,
-	rateChoice as chooseRate,
 	type SavedRate,
 	storedAmount,
 } from "@retrospend/domain/rate-booking";
@@ -13,6 +16,7 @@ import {
 import { TRPCError } from "@trpc/server";
 import { CUSTOM_RATE_TYPE } from "~/lib/rate-selection";
 import { userTransaction } from "~/server/db-tx";
+import { findExchangeRate } from "~/server/exchange-rates";
 import type { Prisma, PrismaClient } from "~prisma";
 import { refuseLegMoneyEdit } from "./accounts/leg-edits";
 import { AmortizationService } from "./amortization.service";
@@ -26,7 +30,6 @@ import {
 } from "./rate-types";
 import { listedEntryWhere } from "./spending";
 import { sortByText } from "./text-order";
-import { toFloat } from "@retrospend/domain/precise-decimal";
 
 /** pricingSource of a rate the user typed in by hand. */
 export const CUSTOM_PRICING_SOURCE = CUSTOM_RATE_TYPE;
@@ -136,35 +139,39 @@ export async function createExpenseIn(
 	userId: string,
 	input: CreateExpenseInput,
 ) {
-	let categoryExcludeByDefault = false;
-	if (input.categoryId) {
-		const category = await tx.category.findFirst({
-			where: { id: input.categoryId, userId, kind: "EXPENSE" },
-		});
-		if (!category) {
-			throw new TRPCError({
-				code: "FORBIDDEN",
-				message: "Category not found",
-			});
-		}
-		categoryExcludeByDefault = category.excludeByDefault;
-	}
-
+	const category = input.categoryId
+		? expenseCategory(
+				await tx.category.findFirst({
+					where: { id: input.categoryId, userId },
+					select: { id: true, kind: true, excludeByDefault: true },
+				}),
+				"not_found",
+			)
+		: undefined;
+	const rates = await loadRateContext(tx, userId);
+	const { plan, booked: rate } = await bookCreate(
+		{
+			homeCurrency: rates.homeCurrency,
+			preferred: rates.preferred,
+			find: (currency, date, type) =>
+				findExchangeRate(tx, currency, date, type),
+		},
+		input,
+		category,
+	).catch((error: unknown) =>
+		// Bad rate input is a BAD_REQUEST, as on every rate path here.
+		asBadRequest(() => {
+			throw error;
+		}),
+	);
 	const pricingSource = input.pricingSource ?? "MANUAL";
-	const rate = await resolveExpenseRate(tx, userId, input);
-
-	// Determine excludeFromAnalytics: explicit input > category default > false
-	// Project expenses always have excludeFromAnalytics: false
-	const excludeFromAnalytics = input.projectId
-		? false
-		: (input.excludeFromAnalytics ?? categoryExcludeByDefault);
 
 	const expense = await tx.expense.create({
 		data: {
 			id: input.id,
 			userId,
 			title: input.title,
-			amount: storedAmount(input.amount),
+			amount: plan.amount,
 			currency: input.currency,
 			...rate,
 			pricingSource: pricingSource,
@@ -174,7 +181,7 @@ export async function createExpenseIn(
 			categoryId: input.categoryId,
 			status: "FINALIZED",
 			isAmortizedParent: (input.amortizeOver ?? 0) > 1,
-			excludeFromAnalytics,
+			excludeFromAnalytics: plan.excludeFromAnalytics,
 		},
 		include: {
 			category: true,
