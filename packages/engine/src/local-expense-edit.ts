@@ -93,6 +93,16 @@ export function localExpenseEditAdapter(): ExpenseEditAdapter {
 				}),
 			);
 		},
+		async changeHome(currency) {
+			await store.transaction((tx) => {
+				const settings = tx.get("settings", "user");
+				if (settings)
+					tx.put("settings", { ...settings, homeCurrency: currency });
+			});
+		},
+		async removeCategory(id) {
+			await store.transaction((tx) => tx.delete("categories", id));
+		},
 		async read(id) {
 			const row = store.get("expenses", id);
 			return row ? bookedOf(row) : null;

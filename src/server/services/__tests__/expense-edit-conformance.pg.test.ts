@@ -199,6 +199,15 @@ function serverAdapter(): ExpenseEditAdapter {
 				},
 			});
 		},
+		async changeHome(currency) {
+			await adminDb.user.update({
+				where: { id: userId },
+				data: { homeCurrency: currency },
+			});
+		},
+		async removeCategory(id) {
+			await fixtureDb.category.delete({ where: { id: prefix + id } });
+		},
 		read,
 	};
 }

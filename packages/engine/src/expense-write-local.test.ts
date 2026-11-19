@@ -487,6 +487,50 @@ describe("undo", () => {
 		expect(dump(store)).toEqual(edited);
 	});
 
+	it("a typed rate booked into an old home refuses the undo even when the edit ran after the home changed", async () => {
+		const { store, db, put } = await open();
+		await put((tx) => {
+			const row = tx.get("expenses", "e1") as ExpenseRow;
+			tx.put("expenses", { ...row, rateType: "custom", homeRate: "1600" });
+		});
+		// The home changes first, so the edit's token pins EUR.
+		await changeHome(put);
+		const { undo } = await update(db, {
+			title: "Renamed",
+			customRate: { base: "USD", value: "1600" },
+		});
+		expect(undo).toMatchObject({ home: "EUR" });
+		const edited = dump(store);
+		const error = await db.undo(undo).catch((e) => e);
+		expect(error).toBeInstanceOf(InvalidInputError);
+		expect(error.message).toBe(otherHomeMessage("ARS"));
+		expect(dump(store)).toEqual(edited);
+	});
+
+	it("a table rate's undo with the home changed and the old category gone says Category not found first", async () => {
+		const { store, db, put } = await open();
+		await put((tx) => {
+			for (const id of ["c1", "c2"])
+				tx.put("categories", {
+					id,
+					kind: "EXPENSE",
+					name: id,
+					color: "teal",
+					icon: null,
+					excludeByDefault: false,
+				});
+		});
+		await update(db, { categoryId: "c1" });
+		const { undo } = await update(db, { categoryId: "c2" });
+		await put((tx) => tx.delete("categories", "c1"));
+		await changeHome(put);
+		const edited = dump(store);
+		const error = await db.undo(undo).catch((e) => e);
+		expect(error).toBeInstanceOf(InvalidInputError);
+		expect(error.message).toBe(CATEGORY_NOT_FOUND);
+		expect(dump(store)).toEqual(edited);
+	});
+
 	describe("categories gone since", () => {
 		const food = (kind = "EXPENSE") => ({
 			id: "c1",
@@ -686,8 +730,8 @@ describe("zone and month edges with a process zone other than UTC", () => {
 		try {
 			// UTC+14: the host's own day is not the person's day.
 			expect(new Date(2026, 0, 1).getTimezoneOffset()).toBe(-840);
-			for (const c of expenseEditCases(
-				editVectors.filter((v) => v.name.startsWith("Buenos Aires")),
+			for (const c of expenseEditCases(editVectors).filter((c) =>
+				c.name.startsWith("Buenos Aires"),
 			))
 				await c.run(localExpenseEditAdapter);
 		} finally {

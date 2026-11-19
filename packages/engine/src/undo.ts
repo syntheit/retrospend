@@ -17,9 +17,11 @@
  */
 import { expenseCategory } from "@retrospend/domain/expense-write/category";
 import {
+	bookedInOtherHome,
 	CategoryNotFoundError,
 	undoAfterHomeChange,
 } from "@retrospend/domain/expense-write/refusals";
+import { CUSTOM_RATE_TYPE } from "@retrospend/domain/rate-booking";
 import { type AnyRow, putAny, type RowChange } from "./changes";
 import { strayChildren } from "./children";
 import { sameValue } from "./equal";
@@ -92,16 +94,23 @@ const expenseOf = (c: RowChange, side: "before" | "after") =>
 
 /**
  * An edit's undo (a token that pins the home) refuses what the server's edit
- * undo refuses, with its words: a home that changed since, and an old
- * category that is gone or no longer an expense category.
+ * undo refuses, in its order and with its words: a typed rate into a home
+ * the person no longer has (the server's afterRead check), then an old
+ * category that is gone or no longer an expense category, then a table rate
+ * whose home changed since (the signed figures no longer fit).
  */
 function refuseEditUndo(w: Writer, token: RevertToken, home: string) {
 	const row = token.changes
 		.map((c) => expenseOf(c, "before"))
 		.find((r) => r !== null);
-	if (row && w.get("settings", SETTINGS_ID)?.homeCurrency !== home)
+	const current = w.get("settings", SETTINGS_ID)?.homeCurrency;
+	if (
+		row?.rateType === CUSTOM_RATE_TYPE &&
+		current !== undefined &&
+		bookedInOtherHome(row.homeCurrency, current)
+	)
 		throw new InvalidInputError(
-			undoAfterHomeChange(row.rateType ?? null, row.homeCurrency ?? home),
+			undoAfterHomeChange(row.rateType, row.homeCurrency),
 		);
 	for (const c of token.changes) {
 		const before = expenseOf(c, "before");
@@ -116,6 +125,10 @@ function refuseEditUndo(w: Writer, token: RevertToken, home: string) {
 			throw e;
 		}
 	}
+	if (row && current !== home)
+		throw new InvalidInputError(
+			undoAfterHomeChange(row.rateType ?? null, row.homeCurrency ?? home),
+		);
 }
 
 /**

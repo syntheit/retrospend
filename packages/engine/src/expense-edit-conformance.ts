@@ -8,6 +8,8 @@
  */
 import {
 	CATEGORY_NOT_FOUND,
+	otherHomeMessage,
+	UNDO_NOT_VALID,
 	EXPENSE_NOT_FOUND,
 	LEG_DELETE_REFUSED,
 	LEG_EDIT_REFUSED,
@@ -58,6 +60,10 @@ export interface ExpenseEditAdapter {
 	plant(id: string, kind: Planted): Promise<void>;
 	/** Adds a category of the person's, of this kind (EXPENSE or INCOME). */
 	addCategory(id: string, kind: string): Promise<void>;
+	/** Changes the person's home currency. */
+	changeHome(currency: string): Promise<void>;
+	/** Removes a category of the person's. */
+	removeCategory(id: string): Promise<void>;
 	/** The stored expense, or null. */
 	read(id: string): Promise<BookedExpense | null>;
 }
@@ -228,6 +234,32 @@ export function expenseEditCases(vectors: EditVector[]): ExpenseEditCase[] {
 		},
 	});
 	const id = first.base.id;
+	/** The base as a typed rate: 1 USD = 1600 ARS, into the home it starts with. */
+	const typed: CreateExpenseInput = {
+		...first.base,
+		customRate: { base: "USD", value: "1600" },
+	};
+	/** An edit's undo that is refused with `message`, the row staying as the edit left it. */
+	const undoRefusal = (
+		name: string,
+		edited: (a: ExpenseEditAdapter) => Promise<() => Promise<void>>,
+		message: string,
+		base: CreateExpenseInput,
+	): ExpenseEditCase => ({
+		name,
+		async run(make) {
+			const adapter = await make();
+			await adapter.reset(first.seed);
+			await adapter.create(base);
+			const undo = await edited(adapter);
+			const after = await adapter.read(base.id);
+			const thrown = await thrownBy(undo);
+			if (!(thrown instanceof Error))
+				throw new Error("the undo was not refused");
+			expectEqual(thrown.message, message, "refusal");
+			expectSame(await adapter.read(base.id), after, "unchanged");
+		},
+	});
 	const planted = (kind: Planted) => (a: ExpenseEditAdapter) =>
 		a.plant(id, kind);
 	const edit100to120 = (a: ExpenseEditAdapter) =>
@@ -285,6 +317,40 @@ export function expenseEditCases(vectors: EditVector[]): ExpenseEditCase[] {
 			(a) => a.edit(first.base, { categoryId: "nope" }),
 			none,
 			CATEGORY_NOT_FOUND,
+		),
+		undoRefusal(
+			"a table rate's edit undo after the home changed says the undo is not valid",
+			async (a) => {
+				const { undo } = await a.edit(first.base, { amount: "120" });
+				await a.changeHome("EUR");
+				return undo;
+			},
+			UNDO_NOT_VALID,
+			first.base,
+		),
+		undoRefusal(
+			"a typed rate booked into the old home refuses the undo even when the edit ran after the home changed",
+			async (a) => {
+				await a.changeHome("EUR");
+				const { undo } = await a.edit(typed, { title: "Renamed" });
+				return undo;
+			},
+			otherHomeMessage("ARS"),
+			typed,
+		),
+		undoRefusal(
+			"a table rate's undo with the old category gone and the home changed says Category not found",
+			async (a) => {
+				await a.addCategory("c1", "EXPENSE");
+				await a.addCategory("c2", "EXPENSE");
+				await a.edit(first.base, { categoryId: "c1" });
+				const { undo } = await a.edit(first.base, { categoryId: "c2" });
+				await a.removeCategory("c1");
+				await a.changeHome("EUR");
+				return undo;
+			},
+			CATEGORY_NOT_FOUND,
+			first.base,
 		),
 		{
 			name: "delete removes the row and its undo brings it back as it was",
