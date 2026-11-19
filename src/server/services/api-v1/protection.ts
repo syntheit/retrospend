@@ -63,6 +63,7 @@ export async function openKeys(caller: Caller, authKey: string) {
 		kind: "password",
 		authKey,
 		sessionId: caller.principal.tokenId,
+		withRecoveryDigest: true,
 	});
 	return {
 		version: released.version,

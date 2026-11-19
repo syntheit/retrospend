@@ -38,6 +38,7 @@ import {
 } from "~/server/api/v1/core/__tests__/harness";
 import { auth } from "~/server/better-auth";
 import { lockCredential } from "./password-writes";
+import { releaseWraps } from "./release";
 import type { WrapRole } from "./validate";
 
 vi.mock("next/headers", () => ({
@@ -517,5 +518,23 @@ describe("rotate begin, the other caller of releaseWraps", () => {
 		const text = JSON.stringify(begun);
 		for (const w of k.wraps.filter((x) => x.role !== "ak-password"))
 			expect(text).not.toContain(toBase64Url(w.wrapped));
+	});
+});
+
+describe("releaseWraps", () => {
+	it("computes the recovery digest only for a caller that asks for it", async () => {
+		const u = await passwordUser();
+		const k = await keyed(u.id);
+		const proof = {
+			kind: "password",
+			authKey: k.authKeyText,
+			sessionId: "s1",
+		} as const;
+		expect((await releaseWraps(u.id, proof)).recoveryWrapDigest).toBeNull();
+		const asked = await releaseWraps(u.id, {
+			...proof,
+			withRecoveryDigest: true,
+		});
+		expect(asked.recoveryWrapDigest?.length).toBe(32);
 	});
 });

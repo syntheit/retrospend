@@ -22,7 +22,7 @@ import {
 	type OpenWrapRole,
 	type PreloginKdf,
 } from "@retrospend/api-contract";
-import { isSignInSecret, recoveryWrapDigest } from "@retrospend/crypto";
+import { isSignInSecret } from "@retrospend/crypto";
 import { verifyPassword } from "better-auth/crypto";
 import { db } from "~/server/db";
 import type { Prisma } from "~prisma";
@@ -30,6 +30,7 @@ import { spendPasswordTry } from "../account-security.service";
 import { ReleaseError } from "./errors";
 import { hasKeySet, lockCredential } from "./password-writes";
 import { plain } from "./protection-keys.service";
+import { digestOfRecoveryWrap } from "./recovery-digest";
 import { invalid, readCredentialHash } from "./shared";
 import type { WrapRole } from "./validate";
 
@@ -40,6 +41,11 @@ export type ReleaseProof = {
 	authKey: string;
 	/** The session that spends the try. */
 	sessionId: string;
+	/**
+	 * Also answer the digest of the ak-recovery wrap (keys/open). A caller that
+	 * does not show it (rotate begin) leaves this out and never loads the hash.
+	 */
+	withRecoveryDigest?: true;
 };
 
 /** The roles that leave under each proof kind. The whole list: nothing else is returned. */
@@ -60,7 +66,7 @@ export type Released = {
 	kdf: Pick<PreloginKdf, "memoryKiB" | "passes"> & { salt: Uint8Array };
 	publicKey: Uint8Array;
 	wraps: ReleasedWrap[];
-	/** BLAKE2b-256 of the stored ak-recovery wrap; null when the set has none. */
+	/** BLAKE2b-256 of the stored ak-recovery wrap; null when the set has none or the caller did not ask. */
 	recoveryWrapDigest: Uint8Array | null;
 };
 
@@ -76,21 +82,6 @@ type Row = {
 	targetId: string | null;
 	wrapped: Uint8Array | null;
 };
-
-/**
- * The BLAKE2b of the digest needs libsodium, which the web build carries as
- * WebAssembly and works on Node. Loaded on the first release, not at start.
- */
-let digester: Promise<(wrapped: Uint8Array) => Uint8Array> | undefined;
-function digestOf(wrapped: Uint8Array): Promise<Uint8Array> {
-	digester ??= import("@retrospend/crypto/web").then(
-		async ({ createWebPrimitives }) => {
-			const primitives = await createWebPrimitives();
-			return (bytes) => recoveryWrapDigest(primitives, bytes);
-		},
-	);
-	return digester.then((digest) => digest(wrapped));
-}
 
 /**
  * The set and every wrap it holds, from one statement so the version and the
@@ -162,7 +153,10 @@ export async function releaseWraps(
 	const recovery = stored.find(
 		(w) => w.role === "ak-recovery" && w.targetId === userId,
 	);
-	const digest = recovery ? await digestOf(recovery.wrapped) : null;
+	const digest =
+		recovery && proof.withRecoveryDigest
+			? await digestOfRecoveryWrap(recovery.wrapped)
+			: null;
 	const roles = RELEASED_ROLES[proof.kind];
 	const released: ReleasedWrap[] = stored.flatMap((w) =>
 		roles.some((role) => role === w.role)
