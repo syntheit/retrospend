@@ -26,6 +26,7 @@ import {
 	OPEN_WRAP_ROLES,
 	type OpenWrapRole,
 	type PreloginKdf,
+	RECOVERY_WRAP_ROLES,
 } from "@retrospend/api-contract";
 import { isSignInSecret } from "@retrospend/crypto";
 import { verifyPassword } from "better-auth/crypto";
@@ -68,7 +69,7 @@ export type ReleaseProof =
 const READERS = {
 	rotateBegin: { roles: ["ak-password"], digest: false },
 	keysOpen: { roles: OPEN_WRAP_ROLES, digest: true },
-	recoveryBegin: { roles: ["ak-recovery", "private-key"], digest: false },
+	recoveryBegin: { roles: RECOVERY_WRAP_ROLES, digest: false },
 } as const satisfies Record<
 	ReleaseReader,
 	{ roles: readonly WrapRole[]; digest: boolean }

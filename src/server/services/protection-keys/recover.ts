@@ -23,6 +23,11 @@
  * runs before it passes. The new password is hashed only after the proof held.
  * Wraps, proofs and tokens are never logged.
  */
+import type {
+	Recover,
+	RecoverResult,
+	RecoveryWrapRole,
+} from "@retrospend/api-contract";
 import { isSignInSecret } from "@retrospend/crypto";
 import { hashPassword } from "better-auth/crypto";
 import { isProtected } from "@retrospend/api-contract/protection-state";
@@ -78,7 +83,7 @@ export type RecoveryBegin = {
 	version: number;
 	publicKey: Uint8Array;
 	/** The ak-recovery and private-key wraps, and nothing else. */
-	wraps: { role: string; targetId: string; wrapped: Uint8Array }[];
+	wraps: { role: RecoveryWrapRole; targetId: string; wrapped: Uint8Array }[];
 };
 
 /**
@@ -109,20 +114,8 @@ export async function beginRecovery(input: {
 	};
 }
 
-export type RecoverInput = {
-	token: string;
-	recoveryAuthKey: string;
-	/** The sign-in secret of the new password, as base64url. */
-	newAuthKey: string;
-	kdf: { salt: string; memoryKiB: number; passes: number };
-	/** The account key wrapped under the new password, as base64url. */
-	wrappedAccountKey: string;
-	/** The key set version begin showed. */
-	baseVersion: number;
-};
-
 /** The new parameters and the one replaced wrap (the recovery wrap stays as it is). */
-function toKeyChanges(userId: string, body: RecoverInput): KeyChanges {
+function toKeyChanges(userId: string, body: Recover): KeyChanges {
 	if (!isSignInSecret(body.newAuthKey)) invalid();
 	return {
 		baseVersion: body.baseVersion,
@@ -142,8 +135,6 @@ function toKeyChanges(userId: string, body: RecoverInput): KeyChanges {
 	};
 }
 
-export type RecoverResult = { version: number; signedOut: number };
-
 /**
  * Sets the new password. Throws `InvalidResetTokenError` (the link, also when
  * it was spent by the time the transaction ran), `RecoveryTriesExceededError`,
@@ -153,9 +144,7 @@ export type RecoverResult = { version: number; signedOut: number };
  * read: the client starts again). The "password changed" mail goes after the
  * commit and its failure never fails the request.
  */
-export async function commitRecovery(
-	input: RecoverInput,
-): Promise<RecoverResult> {
+export async function commitRecovery(input: Recover): Promise<RecoverResult> {
 	const userId = await userOfLink(input.token);
 	const changes = toKeyChanges(userId, input);
 	validateKeyChanges(userId, changes, "recovery");

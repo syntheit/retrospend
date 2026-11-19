@@ -18,6 +18,7 @@ import {
 	ReleaseError,
 	RotatePasswordError,
 } from "~/server/services/protection-keys/errors";
+import { InvalidResetTokenError } from "~/server/services/auth/reset-tokens";
 import { ProtectedPasswordError } from "~/server/services/protection-keys/password-writes";
 import { ShareAnswerRefusedError } from "~/server/services/shared-expenses/answer-guard";
 import { SyncResetRequiredError } from "~/server/services/sync/changes";
@@ -77,6 +78,11 @@ function releaseProblem(error: ReleaseError) {
 		return problem("bad_request", "This account has no password");
 	if (error.code === "changed")
 		return problem("conflict", "The password changed. Try again.");
+	if (error.code === "recovery_unavailable")
+		return problem(
+			"recovery_unavailable",
+			"This account has no recovery key set up",
+		);
 	return problem("wrong_password", "Current password is incorrect");
 }
 
@@ -143,6 +149,8 @@ export function toProblem(error: unknown, route?: string): unknown {
 	if (error instanceof EnableProtectionError) return enableProblem(error);
 	if (error instanceof RotatePasswordError) return rotateProblem(error);
 	if (error instanceof ReleaseError) return releaseProblem(error);
+	// A reset link that is unknown, expired, spent or admin-made: one answer.
+	if (error instanceof InvalidResetTokenError) return problem("invalid_token");
 	if (error instanceof ProtectionKeysError)
 		return error.code === "conflict"
 			? problem("conflict", error.message)
