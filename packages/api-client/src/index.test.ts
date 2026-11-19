@@ -32,6 +32,35 @@ describe("createRetrospendClient", () => {
 		expect(calls[0]?.headers.get("x-api-key")).toBe("rsk_test");
 	});
 
+	it("sends expectedUpdatedAt on a delete in the query and on a replace in the body", async () => {
+		const { calls, fetch } = fakeFetch(200, {});
+		const client = createRetrospendClient({
+			baseUrl: "https://example.test",
+			fetch,
+		});
+		const stamp = "2026-11-18T10:00:00.000Z";
+		await client.expenses
+			.delete({ params: { id: "e1" }, query: { expectedUpdatedAt: stamp } })
+			.catch(() => undefined);
+		await client.expenses
+			.update({
+				id: "e1",
+				title: "Lunch",
+				amount: "1",
+				currency: "USD",
+				date: "2026-11-18",
+				expectedUpdatedAt: stamp,
+			})
+			.catch(() => undefined);
+		expect(calls[0]?.method).toBe("DELETE");
+		expect(
+			new URL(calls[0]?.url ?? "").searchParams.get("expectedUpdatedAt"),
+		).toBe(stamp);
+		expect(calls[1]?.method).toBe("PUT");
+		const sent = (await calls[1]?.json()) as { expectedUpdatedAt?: string };
+		expect(sent.expectedUpdatedAt).toBe(stamp);
+	});
+
 	it("reads a problem body on a fetch with no response.body stream (React Native)", async () => {
 		const problem = {
 			type: "urn:retrospend:problem:missing_rate",
