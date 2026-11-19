@@ -70,7 +70,7 @@ function serverAdapter(): ExpenseCreateAdapter {
 		async create({ category, ...input }) {
 			// The device is handed a resolved category; the server needs the row.
 			if (category)
-				await adminDb.category.upsert({
+				await fixtureDb.category.upsert({
 					where: { id: prefix + category.id },
 					update: {},
 					create: {
