@@ -6,6 +6,7 @@ import { useEffect, useReducer, useRef } from "react";
 import { Sheet } from "~/components/ui/sheet";
 import { EnableBody } from "./enable-body";
 import { EnableFooter } from "./enable-footer";
+import type { JobOutcome, KeyDraft } from "./enable-lifecycle";
 import {
 	enableReducer,
 	enableView,
@@ -28,15 +29,24 @@ export type EnableSheetProps = {
 	account: string;
 	made: Date;
 	/**
-	 * New password step: derive and wrap, and resolve with the recovery key's
-	 * text. Reject with an EnableFailure (anything else reads as `failed`). The
-	 * password is dropped from this sheet the moment the keys exist.
+	 * New password step: derive and wrap, and resolve with one draft handle per
+	 * call: the recovery key's text and a `wipe` that wipes exactly the keys
+	 * this call made (never another call's). Reject with an EnableFailure
+	 * (anything else reads as `failed`); a rejected call must hold no keys. The
+	 * sheet calls `wipe` on close, on unmount, on Back to the password and when
+	 * the draft arrives after the sheet is gone. The password is dropped from
+	 * this sheet the moment the draft exists.
 	 */
-	makeKeys: (password: string) => Promise<string>;
-	/** Confirm it's you: send the keys, read them back, resolve when they check. Reject with an EnableFailure. */
-	save: (input: { password: string; code: string | null }) => Promise<void>;
-	/** The keys made so far are no longer wanted: wipe them. Called on close, on Back to the password and on unmount. */
-	discard: () => void;
+	makeKeys: (password: string) => Promise<KeyDraft>;
+	/**
+	 * Confirm it's you: send the sheet's current draft, read it back, resolve
+	 * when it checks. Reject with an EnableFailure. It must not wipe the draft:
+	 * the sheet does when it closes.
+	 */
+	save: (
+		draft: KeyDraft,
+		input: { password: string; code: string | null },
+	) => Promise<void>;
 	/** The person pressed Done on the last step. */
 	onDone?: () => void;
 	/** Opens the list of features that turn off. The link is not shown without it. */
@@ -66,7 +76,6 @@ export function EnableSheet(props: EnableSheetProps) {
 	const body = useRef<HTMLDivElement>(null);
 	const life = useEnableLifecycle({
 		open: props.open,
-		discard: props.discard,
 		reset: () => dispatch({ type: "reset" }),
 	});
 	const file: KeyFile = {
@@ -93,10 +102,13 @@ export function EnableSheet(props: EnableSheetProps) {
 		if (life.canClose()) props.onOpenChange(false);
 	};
 	// A job that outlives the sheet (closed or unmounted meanwhile) lands nowhere.
-	const run = async <T,>(job: () => Promise<T>, done: (value: T) => void) => {
+	const run = async <T,>(
+		start: () => Promise<JobOutcome<T>>,
+		done: (value: T) => void,
+	) => {
 		if (life.running) return;
 		dispatch({ type: "busy" });
-		const outcome = await life.run(job);
+		const outcome = await start();
 		if (outcome.status === "done") done(outcome.value);
 		else if (outcome.status === "failed")
 			dispatch({ type: "failed", code: failureCode(outcome.error) });
@@ -119,18 +131,23 @@ export function EnableSheet(props: EnableSheetProps) {
 				return dispatch({ type: "keyConfirmed" });
 			case "newPassword":
 				return run(
-					() => props.makeKeys(state.password),
-					(keyText) => dispatch({ type: "keysMade", keyText }),
+					() => life.makeDraft(() => props.makeKeys(state.password)),
+					(draft) => dispatch({ type: "keysMade", keyText: draft.keyText }),
 				);
-			case "confirmYou":
+			case "confirmYou": {
+				const draft = life.draft;
+				if (!draft) return dispatch({ type: "failed", code: "failed" });
 				return run(
 					() =>
-						props.save({
-							password: state.current,
-							code: props.twoFactor ? state.code : null,
-						}),
+						life.run(() =>
+							props.save(draft, {
+								password: state.current,
+								code: props.twoFactor ? state.code : null,
+							}),
+						),
 					() => dispatch({ type: "saved" }),
 				);
+			}
 			case "done":
 				props.onDone?.();
 				return close();

@@ -10,15 +10,13 @@ import {
 
 export function useEnableLifecycle({
 	open,
-	discard,
 	reset,
 }: LifecyclePorts & { open: boolean }): EnableLifecycle {
-	// The latest callbacks, so the effects below run on `open` and unmount only.
-	const latest = useRef({ discard, reset });
-	latest.current = { discard, reset };
+	// The latest callback, so the effects below run on `open` and unmount only.
+	const latest = useRef({ reset });
+	latest.current = { reset };
 	const life = useRef<EnableLifecycle | null>(null);
 	life.current ??= createEnableLifecycle({
-		discard: () => latest.current.discard(),
 		reset: () => latest.current.reset(),
 	});
 	const controller = life.current;
