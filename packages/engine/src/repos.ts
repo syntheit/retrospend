@@ -8,7 +8,12 @@ import { accountReads, accountRepo } from "./accounts";
 import { expenseReads, expenseRepo } from "./expenses";
 import { movementReads, movementRepo } from "./movements";
 import type { Reader, Writer } from "./port";
-import { rateReads, settingsReads } from "./reference";
+import {
+	categoryReads,
+	rateReads,
+	settingsReads,
+	transferReads,
+} from "./reference";
 import { templateReads, templateRepo } from "./templates";
 
 export interface Repos {
@@ -19,6 +24,8 @@ export interface Repos {
 	/** Read-only: a write prices with them and never changes them. */
 	settings: ReturnType<typeof settingsReads>;
 	rates: ReturnType<typeof rateReads>;
+	categories: ReturnType<typeof categoryReads>;
+	transfers: ReturnType<typeof transferReads>;
 }
 
 export interface ReadRepos {
@@ -28,6 +35,8 @@ export interface ReadRepos {
 	recurringTemplates: ReturnType<typeof templateReads>;
 	settings: ReturnType<typeof settingsReads>;
 	rates: ReturnType<typeof rateReads>;
+	categories: ReturnType<typeof categoryReads>;
+	transfers: ReturnType<typeof transferReads>;
 }
 
 export const repos = (w: Writer): Repos => ({
@@ -37,6 +46,8 @@ export const repos = (w: Writer): Repos => ({
 	recurringTemplates: templateRepo(w),
 	settings: settingsReads(w),
 	rates: rateReads(w),
+	categories: categoryReads(w),
+	transfers: transferReads(w),
 });
 
 export const readRepos = (r: Reader): ReadRepos => ({
@@ -46,4 +57,6 @@ export const readRepos = (r: Reader): ReadRepos => ({
 	recurringTemplates: templateReads(r),
 	settings: settingsReads(r),
 	rates: rateReads(r),
+	categories: categoryReads(r),
+	transfers: transferReads(r),
 });

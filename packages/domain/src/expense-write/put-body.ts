@@ -11,6 +11,7 @@ import { dayKey } from "../time-zone";
 import type { StoredExpense } from "./edit";
 import {
 	EditRefusal,
+	bookedInOtherHome,
 	otherHomeMessage,
 	SPREAD_NOT_ON_DEVICE,
 } from "./refusals";
@@ -95,7 +96,7 @@ export function putBodyOf(
 		throw new EditRefusal("badRequest", SPREAD_NOT_ON_DEVICE);
 	const rate = rateInputOf(row);
 	const booked = rate.customRate?.home;
-	if (booked && booked !== home)
+	if (bookedInOtherHome(booked, home))
 		throw new EditRefusal("badRequest", otherHomeMessage(booked));
 	return {
 		title: row.title,

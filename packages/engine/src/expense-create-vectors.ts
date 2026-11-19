@@ -29,15 +29,15 @@ import type {
 	RateSeed,
 } from "./expense-create-conformance";
 
-const at = (iso: string) => new Date(iso);
-const rate = (
+export const at = (iso: string) => new Date(iso);
+export const rate = (
 	currency: string,
 	type: string,
 	value: string,
 	date: string,
 ): RateSeed => ({ currency, type, rate: value, date: at(date) });
 
-const seed = (
+export const seed = (
 	homeCurrency: string,
 	timeZone: string,
 	rates: RateSeed[],
@@ -49,17 +49,17 @@ const seed = (
 	...(defaultRateTypes ? { defaultRateTypes } : {}),
 });
 
-const D = "2026-03-05T00:00:00Z";
-const WHEN = at("2026-03-05T15:00:00Z");
-const BA = "America/Argentina/Buenos_Aires";
+export const D = "2026-03-05T00:00:00Z";
+export const WHEN = at("2026-03-05T15:00:00Z");
+export const BA = "America/Argentina/Buenos_Aires";
 
 /** ARS home: blue 1545 and official 1000 per USD, EUR official 0.8 per USD. */
-const arsRates = [
+export const arsRates = [
 	rate("ARS", "blue", "1545", D),
 	rate("ARS", "official", "1000", D),
 	rate("EUR", "official", "0.8", D),
 ];
-const arsHome = seed("ARS", BA, arsRates);
+export const arsHome = seed("ARS", BA, arsRates);
 
 const entry = (
 	over: Partial<CreateVector["input"]> & { amount: string; currency: string },
