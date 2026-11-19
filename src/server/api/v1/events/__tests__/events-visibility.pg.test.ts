@@ -53,6 +53,11 @@ async function newUser() {
 	return (await createTestUser()).user.id;
 }
 
+/**
+ * The feed lists events in commit order (txid, then seq), so the rows are
+ * written one awaited insert at a time: a batch insert makes no promise about
+ * the order its rows commit in, and the assertions below read the order.
+ */
 async function append(
 	userId: string,
 	rows: {
@@ -62,15 +67,17 @@ async function append(
 		sourceEventId?: string;
 	}[],
 ) {
-	await adminDb.apiEvent.createMany({
-		data: rows.map((r) => ({
-			userId,
-			type: r.type,
-			actorUserId: r.actorUserId === undefined ? userId : r.actorUserId,
-			payload: r.payload ?? bare,
-			sourceEventId: r.sourceEventId,
-		})),
-	});
+	for (const r of rows) {
+		await adminDb.apiEvent.create({
+			data: {
+				userId,
+				type: r.type,
+				actorUserId: r.actorUserId === undefined ? userId : r.actorUserId,
+				payload: r.payload ?? bare,
+				sourceEventId: r.sourceEventId,
+			},
+		});
+	}
 }
 
 /** One feed read; rows show once every older open transaction has ended. */
