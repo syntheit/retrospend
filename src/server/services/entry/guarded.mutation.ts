@@ -121,14 +121,14 @@ export const revertExpenseEntry: MoneyMutation<
 };
 
 /**
- * The web's undo of a shared edit: the edit's old values, written (and the
- * people on it told) only while the row still has the `updatedAt` that edit
- * left, and only while nobody has answered their share since (an answer
- * writes the share, not the row, so the stamp alone cannot see it). Both
- * checks run on the locked row before anything is written. Required in the
- * input, so the preview twin refuses a stale undo too.
+ * The edit an undo of a shared edit runs, for the web and for v1's undo token
+ * (one core, so the rule is written once): refused while a person on it has
+ * answered their share. An answer writes the share, not the row, so the
+ * stamp alone cannot see it. This is stricter than "answered since the edit"
+ * on purpose: an answer that survived an edit with unchanged splits blocks the
+ * undo too, which errs on the side of not overwriting what people agreed to.
  */
-const answeredGuarded: MoneyMutation<
+export const updateSharedUnanswered: MoneyMutation<
 	UpdateSharedInput & Deferred,
 	UpdatedShared
 > = {
@@ -139,6 +139,13 @@ const answeredGuarded: MoneyMutation<
 	},
 };
 
+/**
+ * The web's undo of a shared edit: the edit's old values, written (and the
+ * people on it told) only while the row still has the `updatedAt` that edit
+ * left and nobody has answered (`updateSharedUnanswered`). Both checks run on
+ * the locked row before anything is written. Required in the input, so the
+ * preview twin refuses a stale undo too.
+ */
 export const revertSharedExpense: MoneyMutation<
 	UpdateSharedInput & Deferred & { expectedUpdatedAt: string },
 	UpdatedShared & { updatedAt: string | null }
@@ -146,5 +153,9 @@ export const revertSharedExpense: MoneyMutation<
 	id: updateSharedExpense.id,
 	touches: updateSharedExpense.touches,
 	run: (tx, { expectedUpdatedAt, ...input }, actor) =>
-		guardedShared(answeredGuarded, expectedUpdatedAt).run(tx, input, actor),
+		guardedShared(updateSharedUnanswered, expectedUpdatedAt).run(
+			tx,
+			input,
+			actor,
+		),
 };
