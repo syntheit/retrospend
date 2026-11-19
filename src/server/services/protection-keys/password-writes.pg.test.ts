@@ -796,13 +796,40 @@ describe("auth.requestPasswordReset", () => {
 		expect(await hashesFor(a.email)).toBe(unknown);
 	});
 
-	it("sends nothing to an account whose protection is on, and answers like it does for no account", async () => {
+	it("sends the link to a keyed account whose protection is on, answering as it does for no account, and the plain reset it leads to still refuses", async () => {
 		const a = await passwordUser();
 		await giveKeys(a.id, "ON");
 		mail.sendEmail.mockClear();
 		const answer = await request(a.email);
 		expect(answer).toEqual({ success: true });
 		expect(await request(`nobody-${a.id}@pg-test.invalid`)).toEqual(answer);
+		expect(mail.sendEmail).toHaveBeenCalledTimes(1);
+		expect((mail.sendEmail.mock.calls as unknown as string[][])[0]?.[0]).toBe(
+			a.email,
+		);
+		expect(await tokenRows(a.id)).toBe(1);
+
+		// The link is for recovery with the recovery key: the plain reset refuses
+		// and changes nothing.
+		const before = await storedHash(a.id);
+		await expect(
+			publicCaller().resetPassword({
+				token: tokenInMail(),
+				newPassword: NEW_PASSWORD,
+			}),
+		).rejects.toBeInstanceOf(ProtectedPasswordError);
+		expect(await storedHash(a.id)).toBe(before);
+		expect(await keyRows(a.id)).toEqual({ sets: 1, wraps: 1 });
+	});
+
+	it("sends nothing when protection is on and no key set can recover it", async () => {
+		const a = await passwordUser();
+		await adminDb.user.update({
+			where: { id: a.id },
+			data: { protectionState: "ON" },
+		});
+		mail.sendEmail.mockClear();
+		expect(await request(a.email)).toEqual({ success: true });
 		expect(mail.sendEmail).not.toHaveBeenCalled();
 		expect(await tokenRows(a.id)).toBe(0);
 	});

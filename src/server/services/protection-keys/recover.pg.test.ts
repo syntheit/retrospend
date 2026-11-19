@@ -7,7 +7,8 @@
  * service. Route-level parts (the shared IP bucket, the 404 and 400 mapping,
  * the session being dropped) are K3-2b's.
  */
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { randomBytes } from "node:crypto";
+import type { Recover } from "@retrospend/api-contract";
 import {
 	fromBase64Url,
 	type Primitives,
@@ -15,7 +16,6 @@ import {
 	toBase64Url,
 	wrapKey,
 } from "@retrospend/crypto";
-import { wrapKeyToPublic } from "@retrospend/crypto/k4";
 import { createWebPrimitives } from "@retrospend/crypto/web";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import {
@@ -28,7 +28,6 @@ import {
 	vi,
 } from "vitest";
 import { sessionFor } from "~/server/api/v1/core/__tests__/harness";
-import { auth } from "~/server/better-auth";
 import {
 	RECOVERY_TRIES,
 	RecoveryTriesExceededError,
@@ -40,13 +39,13 @@ import {
 import { adminDb } from "~/test/pg-harness";
 import { approvedDeviceCode, deviceCodeRows, pollDeviceCode } from "~/test/device-codes";
 import { holdCredentialLock, holdSetLock } from "~/test/locks";
+import * as fixture from "~/test/recoverable";
 import { issueLinkFor } from "~/test/reset-links";
 import { ProtectionKeysError, ReleaseError } from "./errors";
 import {
 	beginRecovery,
 	checkRecovery,
 	commitRecovery,
-	type RecoverInput,
 } from "./recover";
 import { settleKeysForReset } from "./password-writes";
 import { applyKeyChanges } from "./protection-keys.service";
@@ -65,7 +64,6 @@ vi.mock("~/server/lib/email-delivery", () => ({
 	isEmailDeliveryEnabled: async () => delivery.on,
 }));
 
-const PASSWORD = "Correct horse 1";
 const HOUR = 60 * 60_000;
 
 let p: Primitives;
@@ -81,29 +79,22 @@ afterAll(async () => {
 	await adminDb.protectionKeySet.deleteMany({});
 });
 
-const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
-const tokenHashOf = sha256;
+const tokenHashOf = fixture.sha256;
 
+// Sign-up sent its own verification mail; these tests count only their own.
 async function passwordUser() {
-	const email = `${randomUUID()}@pg-test.invalid`;
-	const { user } = await auth.api.signUpEmail({
-		body: {
-			email,
-			password: PASSWORD,
-			name: "Lucía",
-			username: `l${randomBytes(6).toString("hex")}`,
-		},
-	});
-	await adminDb.user.update({
-		where: { id: user.id },
-		data: { emailVerified: true },
-	});
-	mail.sendEmail.mockClear(); // sign-up sent its own verification mail
-	// Sign-up signed the person in; a test counts only the sessions it makes.
-	await adminDb.session.deleteMany({ where: { userId: user.id } });
-	return { id: user.id, email };
+	const user = await fixture.passwordUser();
+	mail.sendEmail.mockClear();
+	return user;
 }
-
+async function recoverable(opts: { state?: "OFF" | "ON" } = {}) {
+	const k = await fixture.recoverable(opts);
+	mail.sendEmail.mockClear();
+	return k;
+}
+type Recoverable = fixture.Recoverable;
+const commitBody = (k: Recoverable, over: Partial<Recover> = {}) =>
+	fixture.commitBody(p, k, over);
 const symmetric = (
 	role: "ak-password" | "ak-recovery" | "private-key",
 	userId: string,
@@ -113,191 +104,20 @@ const symmetric = (
 	wrapped: wrapKey(p, p.randomBytes(32), role, userId, p.randomBytes(32)),
 });
 
-/**
- * An account the way enable leaves it: one write makes the set, the recovery
- * hash and the wraps (the key before the proof it checks), the stored account
- * hash is of the auth key, and a link came from the real token service. Wraps
- * to a public key, that no flow makes yet, are seeded to prove they never leave.
- */
-async function recoverable(opts: { state?: "OFF" | "ON" } = {}) {
-	const user = await passwordUser();
-	const userId = user.id;
-	const authKeyText = signInSecret(p.randomBytes(32));
-	const recoveryAuthKey = signInSecret(p.randomBytes(32));
-	const wraps = [
-		symmetric("ak-password", userId),
-		symmetric("ak-recovery", userId),
-		symmetric("private-key", userId),
-	];
-	const publicKey = p.boxKeypair().publicKey;
-	await adminDb.$transaction((tx) =>
-		applyKeyChanges(
-			tx,
-			userId,
-			{
-				baseVersion: 0,
-				set: {
-					kdfSalt: p.randomBytes(16),
-					kdfMemoryKiB: 65536,
-					kdfPasses: 3,
-					publicKey,
-				},
-				recoveryHash: hashRecoveryProof(recoveryAuthKey),
-				put: wraps,
-				remove: [],
-			},
-			"enable",
-		),
-	);
-	const collectionId = randomBytes(16).toString("hex");
-	const extra = [
-		{
-			role: "collection-key" as const,
-			targetId: collectionId,
-			wrapped: wrapKey(
-				p,
-				p.randomBytes(32),
-				"collection-key",
-				collectionId,
-				p.randomBytes(32),
-			),
-		},
-		{
-			role: "ak-device" as const,
-			targetId: "device-1",
-			wrapped: wrapKeyToPublic(
-				p,
-				p.boxKeypair().publicKey,
-				"ak-device",
-				"device-1",
-				p.randomBytes(32),
-			),
-		},
-	];
-	await adminDb.protectionKeyWrap.createMany({
-		data: extra.map((w) => ({
-			userId,
-			role: w.role,
-			targetId: w.targetId,
-			wrapped: Uint8Array.from(w.wrapped),
-		})),
-	});
-	await adminDb.account.updateMany({
-		where: { userId, providerId: "credential" },
-		data: { password: await hashPassword(authKeyText) },
-	});
-	if (opts.state === "ON")
-		await adminDb.user.update({
-			where: { id: userId },
-			data: { protectionState: "ON" },
-		});
-	const token = await issueLinkFor(userId);
-	return {
-		...user,
-		authKeyText,
-		recoveryAuthKey,
-		wraps: [...wraps, ...extra],
-		publicKey,
-		token,
-	};
-}
-type Recoverable = Awaited<ReturnType<typeof recoverable>>;
-
-/** What the device sends after it unwrapped with the recovery key and rewrapped. */
-function commitBody(k: Recoverable, over: Partial<RecoverInput> = {}) {
-	const newAuthKey = signInSecret(p.randomBytes(32));
-	const wrapped = wrapKey(
-		p,
-		p.randomBytes(32),
-		"ak-password",
-		k.id,
-		p.randomBytes(32),
-	);
-	const salt = p.randomBytes(16);
-	return {
-		newAuthKey,
-		wrapped,
-		salt,
-		input: {
-			token: k.token,
-			recoveryAuthKey: k.recoveryAuthKey,
-			newAuthKey,
-			kdf: { salt: toBase64Url(salt), memoryKiB: 65536, passes: 3 },
-			wrappedAccountKey: toBase64Url(wrapped),
-			baseVersion: 1,
-			...over,
-		} satisfies RecoverInput,
-	};
-}
-
 const wrongKey = () => signInSecret(p.randomBytes(32));
 const settled = <T>(run: () => Promise<T>) =>
 	run().then(
 		(value) => ({ value }),
 		(error: unknown) => ({ error }),
 	);
-const storedHash = async (userId: string): Promise<string> => {
-	const row = await adminDb.account.findFirstOrThrow({
-		where: { userId, providerId: "credential" },
-	});
-	if (!row.password) throw new Error("the account has no password hash");
-	return row.password;
-};
-const wrapBytes = async (userId: string, role: string) =>
-	toBase64Url(
-		(
-			await adminDb.protectionKeyWrap.findFirstOrThrow({
-				where: { userId, role },
-			})
-		).wrapped,
-	);
-const triesSpent = async (tokenHash: string) =>
-	(
-		await adminDb.apiRateLimit.findUnique({
-			where: { key: `recovery:token:${tokenHash}` },
-		})
-	)?.count ?? 0;
-
-/** Waits until at least 90 seconds are left in the current recovery window. */
-async function clearTriesWindowEdge(): Promise<void> {
-	const left = RECOVERY_TRIES.windowMs - (Date.now() % RECOVERY_TRIES.windowMs);
-	if (left < 90_000) await new Promise((r) => setTimeout(r, left + 1_000));
-}
-
-async function seedApiKey(userId: string) {
-	const id = randomUUID();
-	await adminDb.apikey.create({
-		data: {
-			id,
-			key: sha256(id),
-			referenceId: userId,
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		},
-	});
-	return id;
-}
-
-/** The wraps and parameters as they are, to prove a refusal left them alone. */
-async function snapshot(userId: string) {
-	const set = await adminDb.protectionKeySet.findUniqueOrThrow({
-		where: { userId },
-	});
-	const wraps = await adminDb.protectionKeyWrap.findMany({
-		where: { userId },
-		orderBy: [{ role: "asc" }, { targetId: "asc" }],
-	});
-	return JSON.stringify({
-		hash: await storedHash(userId),
-		version: set.version,
-		salt: toBase64Url(set.kdfSalt),
-		recoveryHash: Buffer.from(set.recoveryHash ?? []).toString("hex"),
-		wraps: wraps.map((w) => [w.role, w.targetId, toBase64Url(w.wrapped)]),
-		sessions: await adminDb.session.count({ where: { userId } }),
-		tokens: await adminDb.passwordResetToken.count({ where: { userId } }),
-		apiKeys: await adminDb.apikey.count({ where: { referenceId: userId } }),
-	});
-}
+const {
+	clearTriesWindowEdge,
+	seedApiKey,
+	snapshot,
+	storedHash,
+	triesSpent,
+	wrapBytes,
+} = fixture;
 
 describe("checkRecovery", () => {
 	it("says what the link leads to, for each state of the account", async () => {
@@ -801,7 +621,7 @@ describe("commitRecovery", () => {
 		const plain = await passwordUser();
 		const token = await issueLinkFor(plain.id);
 		const before = await storedHash(plain.id);
-		const input: RecoverInput = {
+		const input: Recover = {
 			token,
 			recoveryAuthKey: wrongKey(),
 			newAuthKey: wrongKey(),
@@ -819,7 +639,7 @@ describe("commitRecovery", () => {
 	it("refuses a malformed request before any try is spent", async () => {
 		const k = await recoverable();
 		const bad = commitBody(k);
-		const malformed: RecoverInput[] = [
+		const malformed: Recover[] = [
 			{ ...bad.input, newAuthKey: "short" },
 			{ ...bad.input, wrappedAccountKey: toBase64Url(new Uint8Array(10)) },
 			{ ...bad.input, kdf: { ...bad.input.kdf, passes: 0 } },
