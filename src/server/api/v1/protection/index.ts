@@ -14,6 +14,13 @@ export const protectionRouter = {
 	keys: p.keys.handler(
 		serve(({ context }) => protection.readKeys(signedIn(context))),
 	),
+	openKeys: p.openKeys.handler(
+		serve(({ context, input }) =>
+			withTries(context, () =>
+				protection.openKeys(signedIn(context), input.authKey),
+			),
+		),
+	),
 	beginPasswordRotation: p.beginPasswordRotation.handler(
 		serve(({ context, input }) =>
 			withTries(context, () =>

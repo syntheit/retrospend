@@ -8,6 +8,7 @@ import { problem } from "~/server/api/v1/errors";
 import { userTransaction } from "~/server/db-tx";
 import { enableProtection } from "~/server/services/protection-keys/enable";
 import { getKeySet } from "~/server/services/protection-keys/protection-keys.service";
+import { releaseWraps } from "~/server/services/protection-keys/release";
 import {
 	beginRotation,
 	rotatePassword,
@@ -51,7 +52,40 @@ export function changeKeyedPassword(caller: Caller, body: RotatePassword) {
 	});
 }
 
-/** Only the public parameters and the dates: no wrap leaves in K1. */
+/**
+ * The wraps a device opens with the password, to a caller that proves the
+ * sign-in secret. Which roles leave is release.ts's rule; the recovery wrap
+ * is shown as its digest only.
+ */
+export async function openKeys(caller: Caller, authKey: string) {
+	if (!env.ADVANCED_PROTECTION_ENABLED) throw problem("not_implemented");
+	const released = await releaseWraps(caller.principal.userId, {
+		kind: "password",
+		authKey,
+		sessionId: caller.principal.tokenId,
+	});
+	return {
+		version: released.version,
+		createdAt: released.createdAt.toISOString(),
+		kdf: {
+			salt: toBase64Url(released.kdf.salt),
+			memoryKiB: released.kdf.memoryKiB,
+			passes: released.kdf.passes,
+		},
+		publicKey: toBase64Url(released.publicKey),
+		wraps: released.wraps.map((w) => ({
+			id: w.id,
+			role: w.role,
+			targetId: w.targetId,
+			wrapped: toBase64Url(w.wrapped),
+		})),
+		recoveryWrapDigest: released.recoveryWrapDigest
+			? toBase64Url(released.recoveryWrapDigest)
+			: null,
+	};
+}
+
+/** Only the public parameters and the dates: no wrap leaves here. */
 export async function readKeys(caller: Caller) {
 	const { userId } = caller.principal;
 	const keys = await userTransaction(caller.db, userId, (tx) =>
