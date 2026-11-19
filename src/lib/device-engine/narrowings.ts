@@ -1,9 +1,13 @@
+import { insightsPeriod } from "@retrospend/domain/insights-figures";
 import type { NarrowValues } from "@retrospend/engine/device";
+import { type InsightsView, isNarrowed } from "~/features/insights/filter";
 
 // The values each screen hands the compare: ids and month labels the page
 // already holds. Null means the screen is not ready, or shows a view the
 // compare never checks (only a screen's default view is held against the
-// device), so it does not start a check.
+// device), so it does not start a check. Values that change after a compare
+// wait for the next pull that brings something new: a compare runs once per
+// pull generation, so a new id is held then, not at once.
 
 /** Settings and Home render no narrowed figure: the basis check is all they ask. */
 export const NO_VALUES: NarrowValues = {};
@@ -60,4 +64,33 @@ export function insightsValues(
 		),
 		month: months.months.map((m) => m.month),
 	};
+}
+
+/**
+ * Whether Insights shows the view the device figures read: the fiscal period
+ * holding today, from the user's start day (the one `insightsPeriod` the
+ * figures use, so the category ids and month labels come from the same span),
+ * with nothing picked and no answer still the previous view's. Today is a
+ * calendar day, so the period is found at noon UTC, where no zone moves the
+ * day. An unknown start day (settings not loaded) is not the default.
+ */
+export function isDefaultInsightsView(
+	view: InsightsView,
+	today: string,
+	startDay: number | undefined,
+	placeholders: { summary: boolean; months: boolean },
+): boolean {
+	if (startDay === undefined) return false;
+	const period = insightsPeriod({
+		now: new Date(`${today}T12:00:00Z`),
+		startDay,
+		zone: "UTC",
+	});
+	return (
+		!isNarrowed(view) &&
+		view.range.from === period.from &&
+		view.range.to === period.to &&
+		!placeholders.summary &&
+		!placeholders.months
+	);
 }

@@ -1,11 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// No DOM here: effects run at once and their cleanups are kept, which is all
-// the hook uses of React.
+// No DOM here: a stand-in for useEffect that runs the effect when its
+// dependencies changed since the last render and keeps its cleanup, which is
+// all the hook uses of React. `rerender` is a render of the same component.
+let deps: unknown[] | null = null;
+let cleanup: (() => void) | undefined;
 const cleanups: (() => void)[] = [];
 vi.mock("react", () => ({
-	useEffect: (effect: () => (() => void) | undefined) => {
-		const cleanup = effect();
+	useEffect: (effect: () => (() => void) | undefined, next: unknown[]) => {
+		if (
+			deps &&
+			deps.length === next.length &&
+			deps.every((d, i) => Object.is(d, next[i]))
+		)
+			return;
+		cleanup?.();
+		deps = next;
+		cleanup = effect();
 		if (cleanup) cleanups.push(cleanup);
 	},
 }));
@@ -20,6 +31,8 @@ beforeEach(() => {
 	controller.screenOpened.mockReset();
 	controller.screenClosed.mockReset();
 	cleanups.length = 0;
+	deps = null;
+	cleanup = undefined;
 });
 afterEach(() => vi.unstubAllEnvs());
 
@@ -46,5 +59,23 @@ describe("useDeviceCompare", () => {
 		useDeviceCompare("wealth", { accountId: ["a1"] });
 		expect(controller.screenOpened).not.toHaveBeenCalled();
 		expect(cleanups).toHaveLength(0);
+	});
+
+	it("a new object with the same ids neither closes nor reopens the screen", () => {
+		vi.stubEnv("NEXT_PUBLIC_DEV_DEVICE_ENGINE", "1");
+		useDeviceCompare("budget", { envelopeId: ["e1", "e2"] });
+		useDeviceCompare("budget", { envelopeId: ["e1", "e2"] });
+		expect(controller.screenOpened).toHaveBeenCalledTimes(1);
+		expect(controller.screenClosed).not.toHaveBeenCalled();
+	});
+
+	it("new ids close and reopen the screen with them", () => {
+		vi.stubEnv("NEXT_PUBLIC_DEV_DEVICE_ENGINE", "1");
+		useDeviceCompare("budget", { envelopeId: ["e1"] });
+		useDeviceCompare("budget", { envelopeId: ["e1", "e2"] });
+		expect(controller.screenClosed).toHaveBeenCalledTimes(1);
+		expect(controller.screenOpened).toHaveBeenLastCalledWith("budget", {
+			envelopeId: ["e1", "e2"],
+		});
 	});
 });

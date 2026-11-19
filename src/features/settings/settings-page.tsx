@@ -53,7 +53,7 @@ export function SettingsPage() {
 				className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
 				ref={scroller}
 			>
-				<div className="px-gutter mx-auto w-full max-w-280 pt-4 pb-12 md:flex md:items-start md:gap-12 md:pt-2">
+				<div className="px-gutter mx-auto w-full max-w-280 pt-4 pb-12 md:pt-2 md:flex md:items-start md:gap-12">
 					{!phone && (
 						<div className="sticky top-2 w-50 shrink-0">
 							<SectionList current={current} ids={SECTIONS} onGo={go} />
