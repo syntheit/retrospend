@@ -23,6 +23,7 @@ export {
 	type EnableCallbacks,
 	type EnablePorts,
 	type EnableRequest,
+	type EnableSignInStep,
 } from "./enable-flow";
 export {
 	createEnableLifecycle,

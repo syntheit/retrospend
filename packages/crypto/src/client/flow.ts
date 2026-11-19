@@ -49,6 +49,8 @@ export type KeyFlowCode =
 	| "recoveryUnavailable"
 	/** The key set changed under the run (a second run may succeed). */
 	| "conflict"
+	/** The server answered 404 not_found: the thing asked about is not there (no key set). */
+	| "notFound"
 	/** The server no longer offers Advanced protection. */
 	| "notOffered"
 	/** Anything else, including a server error on a write. */
@@ -173,6 +175,7 @@ export function classifyRefusal(
 	if (status === 400 && code === "wrong_recovery_key")
 		return "wrongRecoveryKey";
 	if (status === 404 && code === "invalid_token") return "tokenExpired";
+	if (status === 404 && code === "not_found") return "notFound";
 	if (status === 409 && code === "recovery_unavailable")
 		return "recoveryUnavailable";
 	if (status === 409) return "conflict";

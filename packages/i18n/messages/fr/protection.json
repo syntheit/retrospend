@@ -88,7 +88,8 @@
 		"tooMany": "Trop de tentatives, attends une minute et réessaie.",
 		"notOffered": "La protection avancée n’est pas disponible ici.",
 		"failed": "Impossible de terminer. Réessaie.",
-		"checkFailed": "Impossible de vérifier tes clés."
+		"checkFailed": "Ton nouveau mot de passe est défini, mais tes clés n’ont pas pu être vérifiées.",
+		"deviceKeysNotSaved": "Ton nouveau mot de passe est défini, mais cet appareil n’a pas pu enregistrer ses clés."
 	},
 	"toast": {
 		"keysSaved": "Clés enregistrées"

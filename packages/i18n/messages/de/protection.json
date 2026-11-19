@@ -88,7 +88,8 @@
 		"tooMany": "Zu viele Versuche, warte eine Minute und versuche es erneut.",
 		"notOffered": "Erweiterter Schutz ist hier nicht verfügbar.",
 		"failed": "Das hat nicht geklappt. Versuch es erneut.",
-		"checkFailed": "Deine Schlüssel konnten nicht geprüft werden."
+		"checkFailed": "Dein neues Passwort ist gesetzt, aber deine Schlüssel konnten nicht geprüft werden.",
+		"deviceKeysNotSaved": "Dein neues Passwort ist gesetzt, aber dieses Gerät konnte seine Schlüssel nicht speichern."
 	},
 	"toast": {
 		"keysSaved": "Schlüssel gespeichert"

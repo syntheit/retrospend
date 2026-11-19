@@ -5,12 +5,16 @@ import {
 	recoveryWrapDigest,
 	toBase64Url,
 } from "@retrospend/crypto";
-import { failureCode, isFinalFailure } from "@retrospend/crypto/client";
+import {
+	type EnableSignInStep,
+	failureCode,
+	isFinalFailure,
+} from "@retrospend/crypto/client";
 import { createWebPrimitives } from "@retrospend/crypto/web";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
-	type RefreshStep,
 	type SessionRefresh,
+	signInStepOf,
 	webEnableCallbacks,
 } from "./enable";
 
@@ -50,14 +54,19 @@ type Sent = Record<string, unknown> & {
 
 type Script = {
 	enable?: (n: number) => Response | null;
+	/** The send commits and then its answer is lost (the connection drops). */
+	lose?: (n: number) => boolean;
 	spoil?: (answer: Record<string, unknown>) => void;
 	open?: () => Response;
 };
 
-function setup(script: Script = {}, session?: SessionRefresh) {
+function setup(
+	script: Script = {},
+	session?: SessionRefresh,
+	store = new Map<string, string>(),
+) {
 	const calls: { url: string; init: RequestInit | undefined; body: Sent }[] =
 		[];
-	const store = new Map<string, string>();
 	let stored: Sent | null = null;
 	let enables = 0;
 	const fetch = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
@@ -66,6 +75,11 @@ function setup(script: Script = {}, session?: SessionRefresh) {
 		calls.push({ url: path, init, body });
 		if (path === "/api/v1/auth/prelogin") return json({ kdf: null });
 		if (path === ENABLE) {
+			if (script.lose?.(enables)) {
+				enables++;
+				stored = body;
+				throw new TypeError("connection lost");
+			}
 			const refused = script.enable?.(enables++);
 			if (refused) return refused;
 			stored = body;
@@ -204,18 +218,61 @@ describe("web enable", () => {
 		expect([...t.store.values()]).toEqual(["1"]);
 	});
 
-	it("is a final error when the read-back is refused or cannot be reached", async () => {
-		for (const open of [
-			() => problem("wrong_password", 400),
-			() => problem("rate_limited", 429),
-			() => problem("server_error", 500),
-		]) {
-			const t = setup({ open });
-			const draft = await t.made.makeKeys("A brand new passphrase 7");
-			expect(
-				await code(t.made.save(draft, { password: OLD, code: null })),
-			).toBe("checkFailed");
-		}
+	it("is final when the server refuses the new sign-in secret at the read-back", async () => {
+		const t = setup({ open: () => problem("wrong_password", 400) });
+		const draft = await t.made.makeKeys("A brand new passphrase 7");
+		expect(await code(t.made.save(draft, { password: OLD, code: null }))).toBe(
+			"checkFailed",
+		);
+	});
+
+	it("is not final when the read-back gets no answer: saving again reads back and sends nothing", async () => {
+		let answer = false;
+		const t = setup({
+			open: () => {
+				if (!answer) return problem("rate_limited", 429);
+				return json({});
+			},
+		});
+		const draft = await t.made.makeKeys("A brand new passphrase 7");
+		expect(await code(t.made.save(draft, { password: OLD, code: null }))).toBe(
+			"tooMany",
+		);
+		answer = true;
+		// Another answer than a key set is a real mismatch.
+		expect(await code(t.made.save(draft, { password: OLD, code: null }))).toBe(
+			"checkFailed",
+		);
+		expect(t.to(ENABLE)).toHaveLength(1);
+	});
+
+	it("A: a send whose answer is lost is read back when saved again, and is not sent twice", async () => {
+		const t = setup({ lose: (n) => n === 0 });
+		const draft = await t.made.makeKeys("A brand new passphrase 7");
+		expect(
+			await code(t.made.save(draft, { password: OLD, code: "111111" })),
+		).toBe("failed");
+		await t.made.save(draft, { password: OLD, code: "222222" });
+		expect(t.to(ENABLE)).toHaveLength(1);
+		expect(t.to(ENABLE)[0]?.body.totpCode).toBe("111111");
+		expect([...t.store.values()]).toEqual(["1"]);
+	});
+
+	it("sends nothing from a browser that remembers the account as keyed, even when the server says it has no keys", async () => {
+		const store = new Map<string, string>();
+		const first = setup({}, undefined, store);
+		const done = await first.made.makeKeys("A brand new passphrase 7");
+		await first.made.save(done, { password: OLD, code: null });
+		expect(store.size).toBe(1);
+
+		// A server that now answers "no keys" (a lying one) meets the same browser.
+		const lying = setup({}, undefined, store);
+		const draft = await lying.made.makeKeys("Another passphrase 8");
+		expect(
+			await code(lying.made.save(draft, { password: OLD, code: null })),
+		).toBe("failed");
+		expect(lying.to(ENABLE)).toHaveLength(0);
+		expect(JSON.stringify(lying.calls)).not.toContain(OLD);
 	});
 
 	it.each([
@@ -258,14 +315,17 @@ describe("web enable", () => {
 });
 
 describe("an old session", () => {
-	const session = (steps: { signIn: RefreshStep; verify?: RefreshStep }) => {
+	const session = (steps: {
+		signIn: EnableSignInStep;
+		verify?: EnableSignInStep;
+	}) => {
 		const calls: string[] = [];
 		const refresh: SessionRefresh = {
-			signIn: vi.fn(async (email, password): Promise<RefreshStep> => {
+			signIn: vi.fn(async (email, password): Promise<EnableSignInStep> => {
 				calls.push(`signIn ${email} ${password}`);
 				return steps.signIn;
 			}),
-			verifyCode: vi.fn(async (c): Promise<RefreshStep> => {
+			verifyCode: vi.fn(async (c): Promise<EnableSignInStep> => {
 				calls.push(`verify ${c}`);
 				return steps.verify ?? { status: "signedIn" };
 			}),
@@ -304,27 +364,33 @@ describe("an old session", () => {
 	it.each([
 		[
 			"a wrong password",
-			{ signIn: { status: "error", httpStatus: 401 } },
+			{ signIn: { status: "error", kind: "rejected" } },
 			"wrongPassword",
 		],
 		[
 			"a rate limit",
-			{ signIn: { status: "error", httpStatus: 429 } },
+			{ signIn: { status: "error", kind: "rateLimited" } },
 			"tooMany",
 		],
-		["no network", { signIn: { status: "error", httpStatus: null } }, "failed"],
+		[
+			"no network",
+			{ signIn: { status: "error", kind: "unreachable" } },
+			"failed",
+		],
 		[
 			"a wrong code",
 			{
 				signIn: { status: "twoFactor" },
-				verify: { status: "error", httpStatus: 401 },
+				verify: { status: "error", kind: "rejected" },
 			},
 			"wrongCode",
 		],
 	] as const)(
 		"words %s while signing in again as %s and does not send twice",
 		async (_n, steps, expected) => {
-			const s = session(steps as { signIn: RefreshStep; verify?: RefreshStep });
+			const s = session(
+				steps as { signIn: EnableSignInStep; verify?: EnableSignInStep },
+			);
 			const t = setup({ enable: stale }, s.refresh);
 			const draft = await t.made.makeKeys("A brand new passphrase 7");
 			expect(
@@ -334,4 +400,23 @@ describe("an old session", () => {
 			expect(t.to(OPEN)).toHaveLength(0);
 		},
 	);
+});
+
+describe("signInStepOf", () => {
+	it("reads better-auth's answer: 400 and 401 are the server refusing what was typed", () => {
+		const err = (status?: number) =>
+			signInStepOf({ data: null, error: { status } });
+		expect(err(401)).toEqual({ status: "error", kind: "rejected" });
+		expect(err(400)).toEqual({ status: "error", kind: "rejected" });
+		expect(err(429)).toEqual({ status: "error", kind: "rateLimited" });
+		expect(err(undefined)).toEqual({ status: "error", kind: "unreachable" });
+		expect(err(500)).toEqual({ status: "error", kind: "other" });
+		expect(err(403)).toEqual({ status: "error", kind: "other" });
+		expect(
+			signInStepOf({ data: { twoFactorRedirect: true }, error: null }),
+		).toEqual({ status: "twoFactor" });
+		expect(signInStepOf({ data: { user: {} }, error: null })).toEqual({
+			status: "signedIn",
+		});
+	});
 });

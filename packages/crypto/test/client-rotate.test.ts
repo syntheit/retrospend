@@ -480,6 +480,8 @@ describe("classifyRefusal", () => {
 		expect(classifyRefusal(400, "invalid_token")).toBe("failed");
 		expect(classifyRefusal(404, "wrong_recovery_key")).toBe("failed");
 		expect(classifyRefusal(404, "session_not_fresh")).toBe("failed");
+		expect(classifyRefusal(404, "not_found")).toBe("notFound");
+		expect(classifyRefusal(400, "not_found")).toBe("failed");
 		expect(classifyRefusal(500, "wrong_two_factor_code")).toBe("failed");
 	});
 });

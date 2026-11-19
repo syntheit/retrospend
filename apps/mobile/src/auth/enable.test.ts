@@ -66,21 +66,32 @@ type Sent = {
 function rig(
 	script: {
 		enable?: (n: number) => void;
+		/** The send commits and then its answer is lost (no answer at all). */
+		lose?: (n: number) => boolean;
+		/** The keystore cannot be read. */
+		unreadable?: boolean;
 		spoil?: (answer: Record<string, unknown>) => void;
 		open?: () => unknown;
 		session?: SignInAgain;
 	} = {},
+	items = new Map<string, string>(),
 ) {
 	let stored: Sent | null = null;
 	let enables = 0;
 	const enable = jest.fn(async (body: Sent, _opts: unknown) => {
-		script.enable?.(enables++);
+		const n = enables++;
+		if (script.lose?.(n)) {
+			stored = body;
+			throw new TypeError("connection lost");
+		}
+		script.enable?.(n);
 		stored = body;
 		return { version: 1, createdAt: "2026-11-19T10:00:00Z", signedOut: 0 };
 	});
 	const openKeys = jest.fn(async (_body: { authKey: string }) => {
 		if (script.open) return script.open();
-		const s = stored as Sent;
+		if (!stored) throw refusal(404, "not_found");
+		const s: Sent = stored;
 		const wrap = (role: string) => ({
 			id: "id",
 			...s.wraps.find((w) => w.role === role),
@@ -99,7 +110,6 @@ function rig(
 		script.spoil?.(answer);
 		return answer;
 	});
-	const items = new Map<string, string>();
 	const session: SignInAgain = script.session ?? {
 		signIn: jest.fn(async (): Promise<SignInStep> => ({ status: "signedIn" })),
 		verifyCode: jest.fn(
@@ -123,7 +133,10 @@ function rig(
 			primitives: async () => real,
 			paint: async () => {},
 			store: {
-				getItemAsync: async (k) => items.get(k) ?? null,
+				getItemAsync: async (k) => {
+					if (script.unreadable) throw new Error("keystore");
+					return items.get(k) ?? null;
+				},
 				setItemAsync: async (k, v) => void items.set(k, v),
 				deleteItemAsync: async (k) => void items.delete(k),
 			},
@@ -202,22 +215,71 @@ describe("phone enable", () => {
 		expect([...r.items.values()]).toEqual(["1"]);
 	});
 
-	it("is a final error when the read-back is refused", async () => {
-		for (const error of [
-			refusal(400, "wrong_password"),
-			refusal(429),
-			refusal(500),
-		]) {
-			const r = rig({
-				open: () => {
-					throw error;
-				},
-			});
-			const draft = await r.made.makeKeys(NEW);
-			expect(
-				await code(r.made.save(draft, { password: OLD, code: null })),
-			).toBe("checkFailed");
-		}
+	it("is final when the read-back is refused for the new sign-in secret", async () => {
+		const r = rig({
+			open: () => {
+				throw refusal(400, "wrong_password");
+			},
+		});
+		const draft = await r.made.makeKeys(NEW);
+		expect(await code(r.made.save(draft, { password: OLD, code: null }))).toBe(
+			"checkFailed",
+		);
+	});
+
+	it("is not final when the read-back gets no answer: saving again reads back and sends nothing", async () => {
+		let answered = false;
+		const r = rig({
+			open: () => {
+				if (!answered) throw refusal(429);
+				return {};
+			},
+		});
+		const draft = await r.made.makeKeys(NEW);
+		expect(await code(r.made.save(draft, { password: OLD, code: null }))).toBe(
+			"tooMany",
+		);
+		answered = true;
+		expect(await code(r.made.save(draft, { password: OLD, code: null }))).toBe(
+			"checkFailed",
+		);
+		expect(r.enable).toHaveBeenCalledTimes(1);
+	});
+
+	it("A: a send whose answer is lost is read back when saved again, and is not sent twice", async () => {
+		const r = rig({ lose: (n) => n === 0 });
+		const draft = await r.made.makeKeys(NEW);
+		expect(
+			await code(r.made.save(draft, { password: OLD, code: "111111" })),
+		).toBe("failed");
+		await r.made.save(draft, { password: OLD, code: "222222" });
+		expect(r.enable).toHaveBeenCalledTimes(1);
+		expect([...r.items.values()]).toEqual(["1"]);
+	});
+
+	it("sends nothing from a phone that holds the keyed record, or whose keystore cannot be read", async () => {
+		const items = new Map<string, string>();
+		const first = rig({}, items);
+		await first.made.save(await first.made.makeKeys(NEW), {
+			password: OLD,
+			code: null,
+		});
+		expect(items.size).toBe(1);
+
+		// A server that now says "no keys" meets the same phone.
+		const lying = rig({}, items);
+		const draft = await lying.made.makeKeys(NEW);
+		expect(
+			await code(lying.made.save(draft, { password: OLD, code: null })),
+		).toBe("failed");
+		expect(lying.enable).not.toHaveBeenCalled();
+
+		const broken = rig({ unreadable: true });
+		const d2 = await broken.made.makeKeys(NEW);
+		expect(
+			await code(broken.made.save(d2, { password: OLD, code: null })),
+		).toBe("failed");
+		expect(broken.enable).not.toHaveBeenCalled();
 	});
 
 	it.each([
@@ -340,4 +402,29 @@ describe("an old session", () => {
 			expect(r.openKeys).not.toHaveBeenCalled();
 		},
 	);
+});
+
+describe("signInStepOf", () => {
+	it("reads the session's answer: invalid credentials and an invalid code are the server refusing what was typed", () => {
+		const err = (reason: string) =>
+			h.signInStepOf({ status: "error", reason } as SignInStep);
+		expect(err("invalidCredentials")).toEqual({
+			status: "error",
+			kind: "rejected",
+		});
+		expect(err("invalidCode")).toEqual({ status: "error", kind: "rejected" });
+		expect(err("rateLimited")).toEqual({
+			status: "error",
+			kind: "rateLimited",
+		});
+		expect(err("network")).toEqual({ status: "error", kind: "unreachable" });
+		expect(err("emailNotVerified")).toEqual({ status: "error", kind: "other" });
+		expect(err("unknown")).toEqual({ status: "error", kind: "other" });
+		expect(h.signInStepOf({ status: "twoFactor" })).toEqual({
+			status: "twoFactor",
+		});
+		expect(h.signInStepOf({ status: "signedIn" })).toEqual({
+			status: "signedIn",
+		});
+	});
 });

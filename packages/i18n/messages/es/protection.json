@@ -88,7 +88,8 @@
 		"tooMany": "Demasiados intentos, espera un minuto e inténtalo de nuevo.",
 		"notOffered": "La protección avanzada no está disponible aquí.",
 		"failed": "No se pudo completar. Inténtalo de nuevo.",
-		"checkFailed": "No se pudieron comprobar tus claves."
+		"checkFailed": "Tu nueva contraseña está establecida, pero no se pudieron comprobar tus claves.",
+		"deviceKeysNotSaved": "Tu nueva contraseña está establecida, pero este dispositivo no pudo guardar sus claves."
 	},
 	"toast": {
 		"keysSaved": "Claves guardadas"

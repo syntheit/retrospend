@@ -4,6 +4,14 @@
 // keeps each draft's secrets out of the sheet, sends them, reads them back and
 // words every failure as an EnableFailure. Nothing here touches the network or
 // storage.
+//
+// What `save` may do again. A send whose answer never came (`unavailable`), or
+// that was refused as a conflict after an earlier send of the same draft, may
+// have committed, so it is never sent again as it was: the keys are read back
+// first. Keys that match are the success; no keys at all mean nothing was
+// stored and a new send (a new Idempotency-Key) is allowed; anything else is
+// final. A read-back that could not be made is not an answer: saving again
+// makes it again and sends nothing.
 import { type EnableBody, type PreparedEnable, prepareEnable } from "./enable";
 import { EnableFailure, enableFailureFor } from "./enable-failure";
 import type { KeyDraft } from "./enable-lifecycle";
@@ -11,6 +19,7 @@ import {
 	asKeyFlowError,
 	type FlowPorts,
 	type KeyedRecord,
+	type KeyFlowCode,
 	KeyFlowError,
 } from "./flow";
 
@@ -20,33 +29,67 @@ export type EnableRequest = EnableBody & {
 	totpCode?: string;
 };
 
+/**
+ * One step of signing in again, as a platform reports it. `rejected` is the
+ * server saying no to what was typed (the core decides whether that is the
+ * password or the code), `unreachable` is no answer at all.
+ */
+export type EnableSignInStep =
+	| { status: "signedIn" | "twoFactor" }
+	| {
+			status: "error";
+			kind: "rejected" | "rateLimited" | "unreachable" | "other";
+	  };
+
 export interface EnablePorts extends Pick<FlowPorts, "primitives" | "paint"> {
 	/** The signed-in account's id: the wraps are bound to it. */
 	userId: string;
 	/**
 	 * POST /me/protection/enable. A refusal throws KeyFlowError with the code
-	 * `classifyRefusal` gives; no answer at all is `unavailable`. The same
-	 * Idempotency-Key is sent again when the person retries this draft.
+	 * `classifyRefusal` gives; no answer at all is `unavailable`.
 	 */
 	enable(body: EnableRequest, idempotencyKey: string): Promise<void>;
-	/** POST /me/protection/keys/open with the new sign-in secret; the answer comes back unread. */
+	/**
+	 * POST /me/protection/keys/open with the new sign-in secret; the answer
+	 * comes back unread. A refusal throws KeyFlowError with the code
+	 * `classifyRefusal` gives (`notFound` for an account with no keys).
+	 */
 	open(body: { authKey: string }): Promise<unknown>;
 	/**
-	 * Signs in again in place with what was typed (the account has no keys yet,
-	 * so the typed password is what sign-in sends), for a session the server
-	 * finds too old. Throws KeyFlowError (`wrongPassword`, `wrongCode`,
-	 * `rateLimited`, `unavailable`).
+	 * Signs in again in place for a session the server finds too old: the
+	 * password step (the account has no keys yet, so the typed password is what
+	 * sign-in sends) ...
 	 */
-	signInAgain(input: { password: string; code: string | null }): Promise<void>;
-	/** The account is recorded as keyed as soon as the server has the keys. */
+	signIn(password: string): Promise<EnableSignInStep>;
+	/** ... and the two-factor code step, when the first answered `twoFactor`. */
+	verifyCode(code: string): Promise<EnableSignInStep>;
+	/**
+	 * Whether this device holds the "keyed" record: a device that knows the
+	 * account has keys never sends its typed password (a throw reads as yes).
+	 * `set` is called as soon as the server has the keys, and a throw is final.
+	 */
 	record: KeyedRecord;
-	/** A new Idempotency-Key for each draft. */
+	/** A new Idempotency-Key for each send. */
 	newKey(): string;
 }
+
+/** Where a draft stands with the server. */
+type Phase =
+	/** Nothing is known to be stored: a send is allowed. */
+	| "unsent"
+	/** A send ended without a usable answer: the server may hold the keys. */
+	| "unknown"
+	/** The server answered the send: only the record and the read-back remain. */
+	| "stored";
 
 type Held = {
 	prepared: PreparedEnable;
 	idempotencyKey: string;
+	phase: Phase;
+	/** Sends made so far (a conflict only means "ours may be stored" after an earlier one). */
+	sends: number;
+	/** The keyed record was written. */
+	recorded: boolean;
 	/** Its keys are gone: nothing may be sent with it. */
 	wiped: boolean;
 };
@@ -62,6 +105,23 @@ export type EnableCallbacks = {
 const failure = (error: unknown) =>
 	new EnableFailure(enableFailureFor(asKeyFlowError(error).code));
 
+/** The code a sign-in step failure means at its stage: the same rule on every platform. */
+function signInFailure(
+	step: Extract<EnableSignInStep, { status: "error" }>,
+	stage: "password" | "code",
+): KeyFlowCode {
+	switch (step.kind) {
+		case "rejected":
+			return stage === "password" ? "wrongPassword" : "wrongCode";
+		case "rateLimited":
+			return "rateLimited";
+		case "unreachable":
+			return "unavailable";
+		case "other":
+			return "failed";
+	}
+}
+
 /**
  * `options.params` is for tests: a cheaper Argon2id set than the real one.
  * Every draft's keys are reachable only through its own `wipe`; `save` never
@@ -74,7 +134,21 @@ export function createEnableCallbacks(
 ): EnableCallbacks {
 	const drafts = new WeakMap<KeyDraft, Held>();
 
-	/** The enable call, once more after signing in again when the session was too old. */
+	async function signInAgain(input: { password: string; code: string | null }) {
+		let step = await ports.signIn(input.password);
+		let stage: "password" | "code" = "password";
+		if (step.status === "twoFactor") {
+			// The sheet asks for the code whenever it is on, so a missing one is a wrong one.
+			if (!input.code) throw new KeyFlowError("wrongCode");
+			stage = "code";
+			step = await ports.verifyCode(input.code);
+		}
+		if (step.status === "error")
+			throw new KeyFlowError(signInFailure(step, stage));
+		if (step.status !== "signedIn") throw new KeyFlowError("failed");
+	}
+
+	/** The enable call, once more after signing in again when the session was too old (nothing was stored then). */
 	async function sendEnable(
 		request: EnableRequest,
 		idempotencyKey: string,
@@ -84,9 +158,84 @@ export function createEnableCallbacks(
 			await ports.enable(request, idempotencyKey);
 		} catch (error) {
 			if (asKeyFlowError(error).code !== "sessionNotFresh") throw error;
-			await ports.signInAgain(input);
+			await signInAgain(input);
 			await ports.enable(request, idempotencyKey);
 		}
+	}
+
+	/**
+	 * The one send of a draft. A device that holds the keyed record, or whose
+	 * record cannot be read, refuses first: the server may be lying that the
+	 * account has no keys, and the typed password must not travel to it.
+	 */
+	async function send(
+		held: Held,
+		input: { password: string; code: string | null },
+	) {
+		let keyed: boolean;
+		try {
+			keyed = await ports.record.has();
+		} catch {
+			keyed = true;
+		}
+		if (keyed) throw new KeyFlowError("downgrade");
+		const earlier = held.sends++;
+		try {
+			await sendEnable(
+				{
+					...held.prepared.body,
+					currentPassword: input.password,
+					...(input.code ? { totpCode: input.code } : {}),
+				},
+				held.idempotencyKey,
+				input,
+			);
+		} catch (error) {
+			const code = asKeyFlowError(error).code;
+			if (code === "unavailable" || (code === "conflict" && earlier > 0))
+				held.phase = "unknown";
+			throw error;
+		}
+		held.phase = "stored";
+	}
+
+	/**
+	 * Asks the server for the keys and compares them with the draft. `absent`
+	 * is an account with no keys; a mismatch, or a refusal that is neither "no
+	 * keys" nor "could not ask", is `readBackFailed`; an answer that never came
+	 * (`unavailable`, `rateLimited`) is thrown as it is, so it can be asked again.
+	 */
+	async function readBack(held: Held): Promise<"match" | "absent"> {
+		let answer: unknown;
+		try {
+			answer = await ports.open({ authKey: held.prepared.body.authKey });
+		} catch (error) {
+			const code = asKeyFlowError(error).code;
+			if (code === "notFound") return "absent";
+			if (code === "unavailable" || code === "rateLimited") throw error;
+			throw new KeyFlowError("readBackFailed");
+		}
+		try {
+			held.prepared.readBack(answer);
+		} catch {
+			throw new KeyFlowError("readBackFailed");
+		}
+		return "match";
+	}
+
+	/** The server holds the keys: remember it on this device, then read them back. */
+	async function finish(held: Held) {
+		if (!held.recorded) {
+			try {
+				await ports.record.set();
+			} catch {
+				throw new KeyFlowError("unreadable");
+			}
+			held.recorded = true;
+		}
+		// Keys that are gone after the server accepted them are not ours.
+		if ((await readBack(held)) === "absent")
+			throw new KeyFlowError("readBackFailed");
 	}
 
 	return {
@@ -104,6 +253,9 @@ export function createEnableCallbacks(
 			const held: Held = {
 				prepared,
 				idempotencyKey: ports.newKey(),
+				phase: "unsent",
+				sends: 0,
+				recorded: false,
 				wiped: false,
 			};
 			const draft: KeyDraft = {
@@ -121,29 +273,19 @@ export function createEnableCallbacks(
 			const held = drafts.get(draft);
 			// Not made here, or wiped: nothing is sent (a send could not be read back).
 			if (!held || held.wiped) throw new EnableFailure("failed");
-			const { prepared, idempotencyKey } = held;
 			try {
-				await sendEnable(
-					{
-						...prepared.body,
-						currentPassword: input.password,
-						...(input.code ? { totpCode: input.code } : {}),
-					},
-					idempotencyKey,
-					input,
-				);
+				if (held.phase === "unknown") {
+					// The last send may have committed: look before sending anything.
+					if ((await readBack(held)) === "match") held.phase = "stored";
+					else {
+						held.idempotencyKey = ports.newKey();
+						held.phase = "unsent";
+					}
+				}
+				if (held.phase === "unsent") await send(held, input);
+				await finish(held);
 			} catch (error) {
 				throw failure(error);
-			}
-			// The server holds the keys now: remember it before anything else can
-			// go wrong (the sign-in downgrade check). Only the record is lost if
-			// this fails.
-			await ports.record.set().catch(() => undefined);
-			// From here a failure is final: saving again would meet "already keyed".
-			try {
-				prepared.readBack(await ports.open({ authKey: prepared.body.authKey }));
-			} catch {
-				throw failure(new KeyFlowError("readBackFailed"));
 			}
 		},
 	};

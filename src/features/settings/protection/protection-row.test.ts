@@ -125,6 +125,23 @@ describe("ProtectionRow", () => {
 		);
 	});
 
+	it("ties the buttons to the words that explain them for assistive tech", () => {
+		const describedBy = (out: string) =>
+			out.match(/<button[^>]*aria-describedby="([^"]+)"/)?.[1];
+		const target = (out: string, id: string | undefined) =>
+			out.match(new RegExp(`id="${id}"[^>]*>([^<]*)<`))?.[1];
+		setup(
+			{ data: { advancedProtection: true } },
+			{ data: "none" },
+			{ ...user, emailVerified: false },
+		);
+		const off = words(html());
+		expect(target(off, describedBy(off))).toBe(row.verifyEmailFirst);
+		setup({ data: { advancedProtection: true } }, { isError: true });
+		const failed = words(html());
+		expect(target(failed, describedBy(failed))).toBe(row.loadFailed);
+	});
+
 	it("says keys are ready, with no Turn on and no sheet, once the account has them", () => {
 		setup({ data: { advancedProtection: true } }, { data: "keyed" });
 		const out = words(html());

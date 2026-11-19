@@ -17,6 +17,7 @@ import {
 	createEnableLifecycle,
 	type EnablePorts,
 	type EnableRequest,
+	type EnableSignInStep,
 	enableFailureFor,
 	FAILURE_CODES,
 	failureCode,
@@ -47,7 +48,8 @@ function setup(
 		) => void;
 		enable?: EnablePorts["enable"];
 		open?: EnablePorts["open"];
-		signInAgain?: EnablePorts["signInAgain"];
+		signIn?: EnablePorts["signIn"];
+		verifyCode?: EnablePorts["verifyCode"];
 	} = {},
 ) {
 	const wiped: Uint8Array[] = [];
@@ -99,13 +101,19 @@ function setup(
 		open: vi.fn(
 			over.open ??
 				(async () => {
-					if (!stored) throw new KeyFlowError("unavailable");
+					if (!stored) throw new KeyFlowError("notFound");
 					const answer = honest(stored);
 					over.spoil?.(answer, stored, accountKey());
 					return JSON.parse(JSON.stringify(answer));
 				}),
 		),
-		signInAgain: vi.fn(over.signInAgain ?? (async () => {})),
+		signIn: vi.fn(
+			over.signIn ?? (async () => ({ status: "signedIn" }) as EnableSignInStep),
+		),
+		verifyCode: vi.fn(
+			over.verifyCode ??
+				(async () => ({ status: "signedIn" }) as EnableSignInStep),
+		),
 		record: { has: vi.fn(async () => false), set: vi.fn(async () => {}) },
 		newKey: (() => {
 			let n = 0;
@@ -113,7 +121,12 @@ function setup(
 		})(),
 	} satisfies EnablePorts;
 	const callbacks = createEnableCallbacks(ports, OPTIONS);
-	return { ports, callbacks, sent, wiped, accountKey };
+	/** The server commits a request (as a send that then loses its answer does). */
+	const commit = (body: EnableRequest, key: string) => {
+		stored = body;
+		sent.push({ body, key });
+	};
+	return { ports, callbacks, sent, wiped, accountKey, commit };
 }
 
 const INPUT = { password: "old password 1", code: null };
@@ -180,22 +193,24 @@ describe("save", () => {
 		expect(wire).not.toContain(draft.keyText);
 	});
 
-	it("keeps one Idempotency-Key for a draft across retries, and a new one for the next draft", async () => {
+	it("sends each attempt under its own Idempotency-Key, and a new key for the next draft", async () => {
 		let refuse = true;
 		const s = setup({
 			enable: async (body, key) => {
-				s.sent.push({ body, key });
-				if (refuse) throw new KeyFlowError("unavailable");
+				if (refuse) {
+					s.sent.push({ body, key });
+					throw new KeyFlowError("wrongPassword");
+				}
+				s.commit(body, key);
 			},
 		});
 		const draft = await s.callbacks.makeKeys("new password 1A");
-		await failsWith(s.callbacks.save(draft, INPUT), "failed");
+		await failsWith(s.callbacks.save(draft, INPUT), "wrongPassword");
 		refuse = false;
-		await expect(s.callbacks.save(draft, INPUT)).rejects.toMatchObject({
-			code: "checkFailed",
-		});
+		await s.callbacks.save(draft, INPUT);
 		const other = await s.callbacks.makeKeys("new password 1A");
-		await s.callbacks.save(other, INPUT).catch(() => undefined);
+		await s.callbacks.save(other, INPUT);
+		// A refusal stored nothing, so the draft's second try is the same send; the next draft is its own.
 		expect(s.sent.map((x) => x.key)).toEqual(["key-1", "key-1", "key-2"]);
 	});
 
@@ -223,11 +238,18 @@ describe("save", () => {
 		expect(refused.ports.record.set).not.toHaveBeenCalled();
 	});
 
-	it("does not fail the save when the record cannot be written", async () => {
+	it("is final when this device cannot save that the account is keyed, and the keys are not sent again", async () => {
 		const s = setup();
 		s.ports.record.set.mockRejectedValue(new Error("storage"));
 		const draft = await s.callbacks.makeKeys("new password 1A");
-		await expect(s.callbacks.save(draft, INPUT)).resolves.toBeUndefined();
+		const error = await s.callbacks.save(draft, INPUT).then(
+			() => null,
+			(e: unknown) => e,
+		);
+		expect(failureCode(error)).toBe("deviceKeysNotSaved");
+		expect(isFinalFailure(failureCode(error))).toBe(true);
+		await s.callbacks.save(draft, INPUT).catch(() => undefined);
+		expect(s.ports.enable).toHaveBeenCalledTimes(1);
 	});
 
 	it("does not wipe the draft: the sheet does, when it closes", async () => {
@@ -332,39 +354,313 @@ describe("read-back", () => {
 		},
 	);
 
-	it("is a final error when keys/open fails or answers nothing readable", async () => {
-		for (const open of [
-			async () => {
-				throw new KeyFlowError("rateLimited");
-			},
-			async () => null,
-			async () => "text",
-		]) {
+	it("is a final error when keys/open answers something that is not a key set", async () => {
+		for (const open of [async () => null, async () => "text"]) {
 			const s = setup({ open });
 			const draft = await s.callbacks.makeKeys("new password 1A");
 			await failsWith(s.callbacks.save(draft, INPUT), "checkFailed");
 		}
 	});
+
+	it("is final when keys/open refuses the new sign-in secret or says the keys changed", async () => {
+		for (const code of [
+			"wrongPassword",
+			"conflict",
+			"notOffered",
+			"failed",
+		] as const) {
+			const s = setup({
+				open: async () => {
+					throw new KeyFlowError(code);
+				},
+			});
+			const draft = await s.callbacks.makeKeys("new password 1A");
+			await failsWith(s.callbacks.save(draft, INPUT), "checkFailed");
+		}
+	});
+
+	it("is not final when the read-back never got an answer: saving again reads back and sends nothing", async () => {
+		let reached = false;
+		const s = setup();
+		const open = s.ports.open.getMockImplementation() as EnablePorts["open"];
+		s.ports.open.mockImplementation(async (body) => {
+			if (!reached) throw new KeyFlowError("unavailable");
+			return open(body);
+		});
+		const draft = await s.callbacks.makeKeys("new password 1A");
+		const first = await s.callbacks.save(draft, INPUT).then(
+			() => null,
+			(e: unknown) => e,
+		);
+		expect(failureCode(first)).toBe("failed");
+		expect(isFinalFailure(failureCode(first))).toBe(false);
+		s.ports.open.mockImplementationOnce(async () => {
+			throw new KeyFlowError("rateLimited");
+		});
+		await failsWith(s.callbacks.save(draft, INPUT), "tooMany");
+		reached = true;
+		await s.callbacks.save(draft, INPUT);
+		expect(s.ports.enable).toHaveBeenCalledTimes(1);
+		expect(s.ports.open).toHaveBeenCalledTimes(3);
+		// The record was written once, on the first pass.
+		expect(s.ports.record.set).toHaveBeenCalledTimes(1);
+	});
+
+	it("is final when the keys are gone from a server that accepted them", async () => {
+		const s = setup({
+			open: async () => {
+				throw new KeyFlowError("notFound");
+			},
+		});
+		const draft = await s.callbacks.makeKeys("new password 1A");
+		await failsWith(s.callbacks.save(draft, INPUT), "checkFailed");
+	});
+});
+
+describe("a send whose answer was lost", () => {
+	const twice = async () => {
+		let n = 0;
+		const s = setup({
+			enable: async (body, key) => {
+				// The first send commits and then the answer is lost.
+				if (n++ === 0) {
+					s.commit(body, key);
+					throw new KeyFlowError("unavailable");
+				}
+				s.commit(body, key);
+			},
+		});
+		return s;
+	};
+
+	it("A: saving again reads the committed keys back and is done, without sending again", async () => {
+		const s = await twice();
+		const draft = await s.callbacks.makeKeys("new password 1A");
+		await failsWith(s.callbacks.save(draft, INPUT), "failed");
+		await s.callbacks.save(draft, INPUT);
+		expect(s.ports.enable).toHaveBeenCalledTimes(1);
+		expect(s.ports.record.set).toHaveBeenCalledTimes(1);
+	});
+
+	it("B: a retyped code after a lost answer is never sent under the key of the first body", async () => {
+		const s = await twice();
+		const draft = await s.callbacks.makeKeys("new password 1A");
+		await failsWith(
+			s.callbacks.save(draft, { password: "old password 1", code: "111111" }),
+			"failed",
+		);
+		await s.callbacks.save(draft, {
+			password: "old password 1",
+			code: "222222",
+		});
+		expect(s.sent).toHaveLength(1);
+		expect(s.sent[0]?.body.totpCode).toBe("111111");
+	});
+
+	it("sends again under a new key when the read-back finds no keys", async () => {
+		let n = 0;
+		const s = setup({
+			enable: async (body, key) => {
+				if (n++ === 0) {
+					// Never delivered: nothing was stored.
+					s.sent.push({ body, key });
+					throw new KeyFlowError("unavailable");
+				}
+				s.commit(body, key);
+			},
+		});
+		const draft = await s.callbacks.makeKeys("new password 1A");
+		await failsWith(s.callbacks.save(draft, INPUT), "failed");
+		await s.callbacks.save(draft, {
+			password: "old password 1",
+			code: "222222",
+		});
+		expect(s.sent.map((x) => x.key)).toEqual(["key-1", "key-2"]);
+		expect(s.sent[1]?.body.totpCode).toBe("222222");
+	});
+
+	it("keeps asking, and sends nothing, while the read-back cannot be made", async () => {
+		const s = setup({
+			enable: async () => {
+				throw new KeyFlowError("unavailable");
+			},
+			open: async () => {
+				throw new KeyFlowError("unavailable");
+			},
+		});
+		const draft = await s.callbacks.makeKeys("new password 1A");
+		await failsWith(s.callbacks.save(draft, INPUT), "failed");
+		await failsWith(s.callbacks.save(draft, INPUT), "failed");
+		await failsWith(s.callbacks.save(draft, INPUT), "failed");
+		expect(s.ports.enable).toHaveBeenCalledTimes(1);
+		expect(s.ports.open).toHaveBeenCalledTimes(2);
+	});
+
+	it("is final when keys are there but are not the ones sent", async () => {
+		let n = 0;
+		const s = setup({
+			enable: async () => {
+				if (n++ === 0) throw new KeyFlowError("unavailable");
+			},
+			open: async () => {
+				// Some other set of keys answers to this sign-in secret.
+				throw new KeyFlowError("wrongPassword");
+			},
+		});
+		const draft = await s.callbacks.makeKeys("new password 1A");
+		await failsWith(s.callbacks.save(draft, INPUT), "failed");
+		await failsWith(s.callbacks.save(draft, INPUT), "checkFailed");
+		expect(s.ports.enable).toHaveBeenCalledTimes(1);
+	});
+
+	it("reads a conflict back only when an earlier send of the draft may have committed", async () => {
+		const first = setup({
+			enable: async () => {
+				throw new KeyFlowError("conflict");
+			},
+		});
+		const d1 = await first.callbacks.makeKeys("new password 1A");
+		await failsWith(first.callbacks.save(d1, INPUT), "failed");
+		await failsWith(first.callbacks.save(d1, INPUT), "failed");
+		// A conflict on a first send stored nothing of ours: the next try sends again.
+		expect(first.ports.enable).toHaveBeenCalledTimes(2);
+		expect(first.ports.open).not.toHaveBeenCalled();
+
+		let n = 0;
+		const later = setup({
+			enable: async (body, key) => {
+				if (n++ === 0) throw new KeyFlowError("unavailable");
+				later.commit(body, key);
+				throw new KeyFlowError("conflict");
+			},
+		});
+		const d2 = await later.callbacks.makeKeys("new password 1A");
+		await failsWith(later.callbacks.save(d2, INPUT), "failed");
+		await failsWith(later.callbacks.save(d2, INPUT), "failed");
+		// The conflict after an earlier send: the next save reads back (keys match) and is done.
+		await later.callbacks.save(d2, INPUT);
+		expect(later.ports.enable).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe("a device that knows the account is keyed", () => {
+	it("sends nothing when it holds the keyed record", async () => {
+		const s = setup();
+		s.ports.record.has.mockResolvedValue(true);
+		const draft = await s.callbacks.makeKeys("new password 1A");
+		await failsWith(s.callbacks.save(draft, INPUT), "failed");
+		expect(s.ports.enable).not.toHaveBeenCalled();
+		expect(s.ports.signIn).not.toHaveBeenCalled();
+	});
+
+	it("sends nothing when the record cannot be read (fails closed)", async () => {
+		const s = setup();
+		s.ports.record.has.mockRejectedValue(new Error("storage"));
+		const draft = await s.callbacks.makeKeys("new password 1A");
+		await failsWith(s.callbacks.save(draft, INPUT), "failed");
+		expect(s.ports.enable).not.toHaveBeenCalled();
+	});
+
+	it("looks at the record before every send, including the one after a lost answer", async () => {
+		const s = setup({
+			enable: async () => {
+				throw new KeyFlowError("unavailable");
+			},
+		});
+		const draft = await s.callbacks.makeKeys("new password 1A");
+		await failsWith(s.callbacks.save(draft, INPUT), "failed");
+		expect(s.ports.record.has).toHaveBeenCalledTimes(1);
+		s.ports.record.has.mockResolvedValue(true);
+		s.ports.open.mockRejectedValue(new KeyFlowError("notFound"));
+		await failsWith(s.callbacks.save(draft, INPUT), "failed");
+		expect(s.ports.enable).toHaveBeenCalledTimes(1);
+	});
 });
 
 describe("an old session", () => {
+	const stale =
+		(s: () => ReturnType<typeof setup>, n = { v: 0 }): EnablePorts["enable"] =>
+		async (body, key) => {
+			if (n.v++ === 0) throw new KeyFlowError("sessionNotFresh");
+			s().commit(body, key);
+		};
+	const error = (kind: "rejected" | "rateLimited" | "unreachable" | "other") =>
+		({ status: "error", kind }) as EnableSignInStep;
+	let current: ReturnType<typeof setup>;
+	/** A server whose first send finds the session too old. */
+	const withStale = (over: Parameters<typeof setup>[0]) => {
+		current = setup({ enable: stale(() => current), ...over });
+		return current;
+	};
+
 	it("signs in again with what was typed and sends the same request again", async () => {
-		let calls = 0;
-		const s = setup({
-			enable: async (body, key) => {
-				s.sent.push({ body, key });
-				if (++calls === 1) throw new KeyFlowError("sessionNotFresh");
-			},
-		});
-		const input = { password: "old password 1", code: "123456" };
+		const s = withStale({});
 		const draft = await s.callbacks.makeKeys("new password 1A");
-		await s.callbacks.save(draft, input).catch(() => undefined);
-		expect(s.ports.signInAgain).toHaveBeenCalledWith(input);
-		expect(s.sent.map((x) => x.key)).toEqual(["key-1", "key-1"]);
-		expect(s.sent[1]?.body).toEqual(s.sent[0]?.body);
+		await s.callbacks.save(draft, { password: "old password 1", code: null });
+		expect(s.ports.signIn).toHaveBeenCalledWith("old password 1");
+		expect(s.ports.verifyCode).not.toHaveBeenCalled();
+		expect(s.ports.enable).toHaveBeenCalledTimes(2);
+		const [a, b] = s.ports.enable.mock.calls;
+		expect(b).toEqual(a);
 	});
 
-	it("gives up after one sign-in, and passes on why signing in failed", async () => {
+	it("asks for the code next when the account has two-factor", async () => {
+		const s = withStale({
+			signIn: async () => ({ status: "twoFactor" }),
+		});
+		const draft = await s.callbacks.makeKeys("new password 1A");
+		await s.callbacks.save(draft, {
+			password: "old password 1",
+			code: "123456",
+		});
+		expect(s.ports.verifyCode).toHaveBeenCalledWith("123456");
+	});
+
+	it("reads a missing code as a wrong one, and sends nothing more", async () => {
+		const s = withStale({
+			signIn: async () => ({ status: "twoFactor" }),
+		});
+		const draft = await s.callbacks.makeKeys("new password 1A");
+		await failsWith(s.callbacks.save(draft, INPUT), "wrongCode");
+		expect(s.ports.verifyCode).not.toHaveBeenCalled();
+		expect(s.ports.enable).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([
+		["a rejected password", error("rejected"), undefined, "wrongPassword"],
+		["a rate limit", error("rateLimited"), undefined, "tooMany"],
+		["no answer", error("unreachable"), undefined, "failed"],
+		["anything else", error("other"), undefined, "failed"],
+		[
+			"a rejected code",
+			{ status: "twoFactor" } as EnableSignInStep,
+			error("rejected"),
+			"wrongCode",
+		],
+		[
+			"a code step that asks for a code again",
+			{ status: "twoFactor" } as EnableSignInStep,
+			{ status: "twoFactor" } as EnableSignInStep,
+			"failed",
+		],
+	])(
+		"words %s while signing in again as %s and does not send twice",
+		async (_n, first, then, expected) => {
+			const s = withStale({
+				signIn: async () => first,
+				verifyCode: async () => then ?? { status: "signedIn" },
+			});
+			const draft = await s.callbacks.makeKeys("new password 1A");
+			await failsWith(
+				s.callbacks.save(draft, { password: "old password 1", code: "123456" }),
+				expected,
+			);
+			expect(s.ports.enable).toHaveBeenCalledTimes(1);
+			expect(s.ports.open).not.toHaveBeenCalled();
+		},
+	);
+
+	it("gives up after one sign-in when the session is still too old", async () => {
 		const s = setup({
 			enable: async () => {
 				throw new KeyFlowError("sessionNotFresh");
@@ -372,20 +668,8 @@ describe("an old session", () => {
 		});
 		const draft = await s.callbacks.makeKeys("new password 1A");
 		await failsWith(s.callbacks.save(draft, INPUT), "failed");
-		expect(s.ports.signInAgain).toHaveBeenCalledTimes(1);
+		expect(s.ports.signIn).toHaveBeenCalledTimes(1);
 		expect(s.ports.enable).toHaveBeenCalledTimes(2);
-
-		const wrong = setup({
-			enable: async () => {
-				throw new KeyFlowError("sessionNotFresh");
-			},
-			signInAgain: async () => {
-				throw new KeyFlowError("wrongPassword");
-			},
-		});
-		const d2 = await wrong.callbacks.makeKeys("new password 1A");
-		await failsWith(wrong.callbacks.save(d2, INPUT), "wrongPassword");
-		expect(wrong.ports.enable).toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -400,6 +684,8 @@ describe("the words a failure gets", () => {
 		["conflict", "failed"],
 		["failed", "failed"],
 		["malformed", "failed"],
+		["notFound", "failed"],
+		["unreadable", "deviceKeysNotSaved"],
 	];
 	it.each(table)("%s reads as %s", async (code, expected) => {
 		expect(enableFailureFor(code)).toBe(expected);

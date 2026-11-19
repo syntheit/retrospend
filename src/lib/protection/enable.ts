@@ -7,7 +7,7 @@
 import type {
 	EnableCallbacks,
 	EnablePorts,
-	KeyFlowCode,
+	EnableSignInStep,
 } from "@retrospend/crypto/client";
 import { generateId } from "~/lib/id";
 import {
@@ -24,22 +24,32 @@ import {
 
 /** What signing in again needs from the auth client; the tests pass their own. */
 export interface SessionRefresh {
-	/** Email and password sign-in. `twoFactor` means a code is asked next. */
-	signIn(email: string, password: string): Promise<RefreshStep>;
-	verifyCode(code: string): Promise<RefreshStep>;
+	/** Email and sign-in secret sign-in. `twoFactor` means a code is asked next. */
+	signIn(email: string, secret: string): Promise<EnableSignInStep>;
+	verifyCode(code: string): Promise<EnableSignInStep>;
 }
-export type RefreshStep =
-	| { status: "signedIn" | "twoFactor" }
-	| { status: "error"; httpStatus: number | null };
 
 type AuthResult = {
 	data: unknown;
 	error: { status?: number } | null;
 };
 
-function step(result: AuthResult): RefreshStep {
-	if (result.error)
-		return { status: "error", httpStatus: result.error.status ?? null };
+/** better-auth's answer as a sign-in step: 400 and 401 are the server saying no to what was typed. */
+export function signInStepOf(result: AuthResult): EnableSignInStep {
+	const status = result.error?.status;
+	if (result.error) {
+		return {
+			status: "error",
+			kind:
+				status === undefined
+					? "unreachable"
+					: status === 429
+						? "rateLimited"
+						: status === 400 || status === 401
+							? "rejected"
+							: "other",
+		};
+	}
 	return (result.data as { twoFactorRedirect?: boolean } | null)
 		?.twoFactorRedirect
 		? { status: "twoFactor" }
@@ -49,16 +59,18 @@ function step(result: AuthResult): RefreshStep {
 /** better-auth's own client, loaded when a session has to be renewed. */
 async function authClientRefresh(): Promise<SessionRefresh> {
 	const { authClient } = await import("~/lib/auth-client");
-	const run = async (go: () => Promise<AuthResult>): Promise<RefreshStep> => {
+	const run = async (
+		go: () => Promise<AuthResult>,
+	): Promise<EnableSignInStep> => {
 		try {
-			return step(await go());
+			return signInStepOf(await go());
 		} catch {
-			return { status: "error", httpStatus: null };
+			return { status: "error", kind: "unreachable" };
 		}
 	};
 	return {
-		signIn: (email, password) =>
-			run(() => authClient.signIn.email({ email, password })),
+		signIn: (email, secret) =>
+			run(() => authClient.signIn.email({ email, password: secret })),
 		verifyCode: (code) => run(() => authClient.twoFactor.verifyTotp({ code })),
 	};
 }
@@ -74,24 +86,6 @@ export type WebEnableOptions = {
 	params?: { memoryKiB: number; passes: number };
 };
 
-/** Why a sign-in step failed, as the flow's code for it. */
-function stepFailure(
-	core: Core,
-	failed: { httpStatus: number | null },
-	refused: KeyFlowCode,
-) {
-	const { httpStatus } = failed;
-	return new core.KeyFlowError(
-		httpStatus === null
-			? "unavailable"
-			: httpStatus === 429
-				? "rateLimited"
-				: httpStatus === 401 || httpStatus === 400
-					? refused
-					: "failed",
-	);
-}
-
 function ports(
 	core: Core,
 	deps: WebEnableDeps,
@@ -103,6 +97,7 @@ function ports(
 		if (wire.status !== 200) throw refusal(core, wire);
 		return wire.body;
 	};
+	let session: SessionRefresh | undefined;
 	return {
 		primitives: base.primitives,
 		paint: base.paint,
@@ -113,31 +108,30 @@ function ports(
 			await answer("/api/v1/me/protection/enable", body, key);
 		},
 		open: (body) => answer("/api/v1/me/protection/keys/open", body),
-		signInAgain: async ({ password, code }) => {
-			const session = deps.session ?? (await authClientRefresh());
+		signIn: async (password) => {
 			let secret: string;
 			try {
-				// No keys yet, so this is the typed password; a keyed answer would
-				// give the key made from it.
+				// No keys yet, so this is the typed password; a device that holds the
+				// keyed record is refused here, as everywhere (signInSecretFor).
 				secret = await signInSecretFor(account.email, password, { deps });
 			} catch (error) {
-				throw new core.KeyFlowError(
-					error instanceof SignInSecretError && error.code === "rateLimited"
-						? "rateLimited"
-						: "unavailable",
-				);
+				const code = error instanceof SignInSecretError ? error.code : null;
+				return {
+					status: "error",
+					kind:
+						code === "rateLimited"
+							? "rateLimited"
+							: code === "unavailable"
+								? "unreachable"
+								: "other",
+				};
 			}
-			let next = await session.signIn(
-				account.email.trim().toLowerCase(),
-				secret,
-			);
-			if (next.status === "twoFactor") {
-				// The sheet asks for the code whenever it is on, so a missing one is a wrong one.
-				if (!code) throw new core.KeyFlowError("wrongCode");
-				next = await session.verifyCode(code);
-				if (next.status === "error") throw stepFailure(core, next, "wrongCode");
-			} else if (next.status === "error")
-				throw stepFailure(core, next, "wrongPassword");
+			session ??= deps.session ?? (await authClientRefresh());
+			return session.signIn(account.email.trim().toLowerCase(), secret);
+		},
+		verifyCode: async (code) => {
+			session ??= deps.session ?? (await authClientRefresh());
+			return session.verifyCode(code);
 		},
 	};
 }

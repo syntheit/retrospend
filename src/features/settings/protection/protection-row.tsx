@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useToast } from "~/components/ui/toast";
@@ -34,6 +34,8 @@ export function ProtectionRow() {
 		retry: false,
 	});
 	const [open, setOpen] = useState(false);
+	// The row's words, which name why its button is off or what it retries.
+	const metaId = useId();
 	// When the keys are made, for the saved file; set when the sheet opens.
 	const [made, setMade] = useState(() => new Date());
 	const user = session?.user;
@@ -48,7 +50,10 @@ export function ProtectionRow() {
 
 	const verified = user.emailVerified === true;
 	const row = (meta: React.ReactNode, action?: React.ReactNode) => (
-		<SettingRow label={t("row.title")} meta={meta}>
+		<SettingRow
+			label={t("row.title")}
+			meta={action ? <span id={metaId}>{meta}</span> : meta}
+		>
 			{action}
 		</SettingRow>
 	);
@@ -56,7 +61,12 @@ export function ProtectionRow() {
 	if (status.isError)
 		return row(
 			t("row.loadFailed"),
-			<Button kind="secondary" onClick={() => void status.refetch()} size="sm">
+			<Button
+				aria-describedby={metaId}
+				kind="secondary"
+				onClick={() => void status.refetch()}
+				size="sm"
+			>
 				{t("row.retry")}
 			</Button>,
 		);
@@ -67,6 +77,7 @@ export function ProtectionRow() {
 			{row(
 				verified ? t("row.off") : t("row.verifyEmailFirst"),
 				<Button
+					aria-describedby={metaId}
 					disabled={!verified || !callbacks}
 					kind="secondary"
 					onClick={() => {

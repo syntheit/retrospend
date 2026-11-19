@@ -9,7 +9,7 @@ import {
 	createEnableCallbacks,
 	type EnableCallbacks,
 	type EnablePorts,
-	KeyFlowError,
+	type EnableSignInStep,
 } from "@retrospend/crypto/client";
 import { newClientId } from "@/data/ids";
 import type { SignInStep } from "./auth-api";
@@ -44,19 +44,19 @@ const paintFrames = () =>
 		requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
 	);
 
-/** Why a sign-in step failed, as the flow's code for it. */
-function stepFailure(step: Extract<SignInStep, { status: "error" }>) {
+/** The session's sign-in answer as a step: invalid credentials and an invalid code are the server saying no to what was typed. */
+export function signInStepOf(step: SignInStep): EnableSignInStep {
+	if (step.status !== "error") return step;
 	switch (step.reason) {
 		case "invalidCredentials":
-			return new KeyFlowError("wrongPassword");
 		case "invalidCode":
-			return new KeyFlowError("wrongCode");
+			return { status: "error", kind: "rejected" };
 		case "rateLimited":
-			return new KeyFlowError("rateLimited");
+			return { status: "error", kind: "rateLimited" };
 		case "network":
-			return new KeyFlowError("unavailable");
+			return { status: "error", kind: "unreachable" };
 		default:
-			return new KeyFlowError("failed");
+			return { status: "error", kind: "other" };
 	}
 }
 
@@ -71,17 +71,10 @@ function ports(input: PhoneEnableInput, deps: PhoneEnableDeps): EnablePorts {
 			await call(() => input.api.enable(body, { context: { idempotencyKey } }));
 		},
 		open: (body) => call(() => input.api.openKeys(body)),
-		signInAgain: async ({ password, code }) => {
-			const session = input.session();
-			let step = await session.signIn(input.email, password);
-			if (step.status === "twoFactor") {
-				// The sheet asks for the code whenever it is on, so a missing one is a wrong one.
-				if (!code) throw new KeyFlowError("wrongCode");
-				step = await session.verifyCode(code);
-			}
-			if (step.status === "error") throw stepFailure(step);
-			if (step.status !== "signedIn") throw new KeyFlowError("failed");
-		},
+		signIn: async (password) =>
+			signInStepOf(await input.session().signIn(input.email, password)),
+		verifyCode: async (code) =>
+			signInStepOf(await input.session().verifyCode(code)),
 	};
 }
 

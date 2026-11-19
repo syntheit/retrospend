@@ -88,7 +88,8 @@
 		"tooMany": "Too many tries, wait a minute and try again.",
 		"notOffered": "Advanced protection is not available here.",
 		"failed": "Couldn't finish. Try again.",
-		"checkFailed": "Couldn't check your keys."
+		"checkFailed": "Your new password is set, but your keys couldn't be checked.",
+		"deviceKeysNotSaved": "Your new password is set, but this device couldn't save its keys."
 	},
 	"toast": {
 		"keysSaved": "Keys saved"
