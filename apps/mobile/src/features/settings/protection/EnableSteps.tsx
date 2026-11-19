@@ -9,7 +9,7 @@ import { ListGroup, ListRow } from "@/ui/List";
 import { Text } from "@/ui/Text";
 import { TextAction } from "@/ui/TextAction";
 import { FieldError, TextField } from "@/ui/TextField";
-import { PasswordRules } from "./PasswordRules";
+import { PasswordRules } from "../security/PasswordRules";
 
 /** Shown under a step's fields when something went wrong; read out at once. */
 export function StepError({ text }: { text: string | null }) {
