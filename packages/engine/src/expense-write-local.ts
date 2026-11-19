@@ -137,7 +137,7 @@ function storePort(r: Repos): ExpenseEditPort & { done(): ExpenseRow } {
 		},
 		expense: async (id) => {
 			const found = r.expenses.get(id);
-			return found && storedOf(found.expense, r);
+			return found ? storedOf(found.expense, r) : null;
 		},
 		category: async (id) => r.categories.get(id) ?? null,
 		rateBook: async () => rateBookOf(r),

@@ -97,8 +97,11 @@ async function refuses(
 
 const update = (db: LocalDb, over: Partial<UpdateExpenseInput> = {}) =>
 	db.write(EXPENSE_UPDATE, updateExpense(form(over)));
-const remove = (db: LocalDb, id = "e1", cursors = CAUGHT_UP) =>
-	db.write(EXPENSE_DELETE, deleteExpense({ id, cursors }));
+const remove = (
+	db: LocalDb,
+	id = "e1",
+	cursors: UpdateExpenseInput["cursors"] = CAUGHT_UP,
+) => db.write(EXPENSE_DELETE, deleteExpense({ id, cursors }));
 
 describe("what the device writes on an edit", () => {
 	it("keeps the version, the text it was not given and the rate legs, and changes what the form changed", async () => {
