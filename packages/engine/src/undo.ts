@@ -19,6 +19,7 @@ import { expenseCategory } from "@retrospend/domain/expense-write/category";
 import {
 	bookedInOtherHome,
 	CategoryNotFoundError,
+	UNDO_NOT_VALID,
 	undoAfterHomeChange,
 } from "@retrospend/domain/expense-write/refusals";
 import { CUSTOM_RATE_TYPE } from "@retrospend/domain/rate-booking";
@@ -125,10 +126,9 @@ function refuseEditUndo(w: Writer, token: RevertToken, home: string) {
 			throw e;
 		}
 	}
-	if (row && current !== home)
-		throw new InvalidInputError(
-			undoAfterHomeChange(row.rateType ?? null, row.homeCurrency ?? home),
-		);
+	// The signed figures were made under another home: the server's wording,
+	// whatever the rate type (a typed rate into today's home reaches this too).
+	if (row && current !== home) throw new InvalidInputError(UNDO_NOT_VALID);
 }
 
 /**

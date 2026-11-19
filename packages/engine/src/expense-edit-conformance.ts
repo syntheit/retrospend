@@ -234,6 +234,7 @@ export function expenseEditCases(vectors: EditVector[]): ExpenseEditCase[] {
 		},
 	});
 	const id = first.base.id;
+	const none = async () => {};
 	/** The base as a typed rate: 1 USD = 1600 ARS, into the home it starts with. */
 	const typed: CreateExpenseInput = {
 		...first.base,
@@ -245,11 +246,14 @@ export function expenseEditCases(vectors: EditVector[]): ExpenseEditCase[] {
 		edited: (a: ExpenseEditAdapter) => Promise<() => Promise<void>>,
 		message: string,
 		base: CreateExpenseInput,
+		/** Runs after the reset and before the base is created. */
+		start: (a: ExpenseEditAdapter) => Promise<void> = none,
 	): ExpenseEditCase => ({
 		name,
 		async run(make) {
 			const adapter = await make();
 			await adapter.reset(first.seed);
+			await start(adapter);
 			await adapter.create(base);
 			const undo = await edited(adapter);
 			const after = await adapter.read(base.id);
@@ -264,7 +268,6 @@ export function expenseEditCases(vectors: EditVector[]): ExpenseEditCase[] {
 		a.plant(id, kind);
 	const edit100to120 = (a: ExpenseEditAdapter) =>
 		a.edit(first.base, { amount: "120" });
-	const none = async () => {};
 	return [
 		...vectors.map((v) => ({
 			name: v.name,
@@ -337,6 +340,19 @@ export function expenseEditCases(vectors: EditVector[]): ExpenseEditCase[] {
 			},
 			otherHomeMessage("ARS"),
 			typed,
+		),
+		undoRefusal(
+			"a typed rate into today's home still says the undo is not valid when the figures were signed under another home",
+			async (a) => {
+				// The row is booked into EUR; the edit runs under ARS; back to EUR.
+				await a.changeHome("ARS");
+				const { undo } = await a.edit(typed, { title: "Renamed" });
+				await a.changeHome("EUR");
+				return undo;
+			},
+			UNDO_NOT_VALID,
+			typed,
+			(a) => a.changeHome("EUR"),
 		),
 		undoRefusal(
 			"a table rate's undo with the old category gone and the home changed says Category not found",
