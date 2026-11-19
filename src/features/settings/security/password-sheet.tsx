@@ -1,23 +1,18 @@
 "use client";
 
-import {
-	PASSWORD_CHECKS,
-	passwordChecks,
-	passwordReady,
-} from "@retrospend/api-contract";
-import { Check } from "lucide-react";
+import { passwordReady } from "@retrospend/api-contract";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Sheet } from "~/components/ui/sheet";
 import { useToast } from "~/components/ui/toast";
-import { cn } from "~/lib/cn";
 import {
 	useAccountIsKeyed,
 	useRotatePassword,
 } from "~/lib/protection/use-sign-in-secret";
 import { api } from "~/trpc/react";
+import { PasswordRules } from "../protection/password-rules";
 
 /** Change password: three fields, the rules as checks, an explicit Update password. */
 export function PasswordSheet({
@@ -45,7 +40,6 @@ export function PasswordSheet({
 		setConfirm("");
 	}, [open]);
 
-	const checks = passwordChecks(next);
 	const field = (
 		id: string,
 		label: string,
@@ -108,26 +102,7 @@ export function PasswordSheet({
 					"current-password",
 				)}
 				{field("pw-new", t("new"), next, setNext, "new-password")}
-				<ul aria-label={t("rules")} className="text-meta flex flex-col gap-1">
-					{PASSWORD_CHECKS.map((c) => (
-						<li
-							className={cn(
-								"flex items-center gap-2",
-								checks[c] ? "text-positive" : "text-fg-3",
-							)}
-							key={c}
-						>
-							<Check
-								aria-hidden="true"
-								className={cn("size-3.5", !checks[c] && "invisible")}
-							/>
-							{t(`check.${c}`)}
-							<span className="sr-only">
-								{checks[c] ? t("met") : t("notMet")}
-							</span>
-						</li>
-					))}
-				</ul>
+				<PasswordRules value={next} />
 				{field("pw-confirm", t("confirm"), confirm, setConfirm, "new-password")}
 				{confirm !== "" && confirm !== next && (
 					<p className="text-danger text-meta">{t("mismatch")}</p>
