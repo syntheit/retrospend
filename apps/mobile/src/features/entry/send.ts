@@ -34,6 +34,9 @@ export function entryOutbox(outbox: Outbox): Outbox {
 		...outbox,
 		pending: async () =>
 			(await outbox.pending()).filter((e) => isEntryEntity(e.entity)),
+		// The flush reads `all()`: `pending()` hides the parked entries its hold rule needs.
+		all: async () =>
+			(await outbox.all()).filter((e) => isEntryEntity(e.entity)),
 	};
 }
 
