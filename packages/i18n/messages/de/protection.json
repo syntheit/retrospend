@@ -8,6 +8,7 @@
 		"verifyEmailFirst": "Bestätige zuerst deine E-Mail-Adresse"
 	},
 	"enable": {
+		"back": "Zurück",
 		"what": {
 			"title": "Erweiterten Schutz einschalten",
 			"body": "Deine Ausgaben, Budgets und dein Vermögen werden mit einem Schlüssel versiegelt, den nur deine Geräte besitzen.",
@@ -16,7 +17,8 @@
 			"backups": "Beträge in älteren Backups bleiben 30 Tage erhalten.",
 			"features": "Einige Funktionen werden ausgeschaltet.",
 			"seeWhich": "Welche das sind",
-			"unchanged": "Deine Daten, Zahlen und die Anmeldung."
+			"unchanged": "Deine Daten, Zahlen und die Anmeldung.",
+			"unchangedTitle": "Was sich nicht ändert"
 		},
 		"newPassword": {
 			"title": "Neues Passwort festlegen",
@@ -49,7 +51,9 @@
 		"mismatch": "Stimmt nicht überein",
 		"group": "Gruppe {number}",
 		"label": "Wiederherstellungsschlüssel",
-		"fileTitle": "Retrospend-Wiederherstellungsschlüssel"
+		"fileTitle": "Retrospend-Wiederherstellungsschlüssel",
+		"fileAccount": "Konto",
+		"fileMade": "Erstellt"
 	},
 	"recover": {
 		"enterTitle": "Wiederherstellungsschlüssel verwenden",

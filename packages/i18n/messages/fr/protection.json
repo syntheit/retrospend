@@ -8,6 +8,7 @@
 		"verifyEmailFirst": "Vérifie d’abord ton e-mail"
 	},
 	"enable": {
+		"back": "Retour",
 		"what": {
 			"title": "Activer la protection avancée",
 			"body": "Tes dépenses, budgets et ton patrimoine sont scellés par une clé que seuls tes appareils détiennent.",
@@ -16,7 +17,8 @@
 			"backups": "Les montants des anciennes sauvegardes sont conservés 30 jours.",
 			"features": "Certaines fonctions sont désactivées.",
 			"seeWhich": "Voir lesquelles",
-			"unchanged": "Tes données, tes chiffres et ta connexion."
+			"unchanged": "Tes données, tes chiffres et ta connexion.",
+			"unchangedTitle": "Ce qui ne change pas"
 		},
 		"newPassword": {
 			"title": "Choisis un nouveau mot de passe",
@@ -49,7 +51,9 @@
 		"mismatch": "Ne correspond pas",
 		"group": "Groupe {number}",
 		"label": "Clé de récupération",
-		"fileTitle": "Clé de récupération Retrospend"
+		"fileTitle": "Clé de récupération Retrospend",
+		"fileAccount": "Compte",
+		"fileMade": "Créée"
 	},
 	"recover": {
 		"enterTitle": "Utilise ta clé de récupération",

@@ -8,6 +8,7 @@
 		"verifyEmailFirst": "Verifique seu e-mail primeiro"
 	},
 	"enable": {
+		"back": "Voltar",
 		"what": {
 			"title": "Ativar a proteção avançada",
 			"body": "Suas despesas, orçamentos e patrimônio são selados com uma chave que só seus dispositivos têm.",
@@ -16,7 +17,8 @@
 			"backups": "Valores em backups antigos ficam por 30 dias.",
 			"features": "Alguns recursos são desativados.",
 			"seeWhich": "Ver quais",
-			"unchanged": "Seus dados, números e acesso à conta."
+			"unchanged": "Seus dados, números e acesso à conta.",
+			"unchangedTitle": "O que não muda"
 		},
 		"newPassword": {
 			"title": "Defina uma nova senha",
@@ -49,7 +51,9 @@
 		"mismatch": "Não confere",
 		"group": "Grupo {number}",
 		"label": "Chave de recuperação",
-		"fileTitle": "Chave de recuperação do Retrospend"
+		"fileTitle": "Chave de recuperação do Retrospend",
+		"fileAccount": "Conta",
+		"fileMade": "Criada"
 	},
 	"recover": {
 		"enterTitle": "Use sua chave de recuperação",
