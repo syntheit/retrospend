@@ -1,12 +1,16 @@
 "use client";
 
-import { pickConfirmGroups, randomBelow } from "@retrospend/crypto/client";
+import {
+	type JobOutcome,
+	type KeyDraft,
+	pickConfirmGroups,
+	randomBelow,
+} from "@retrospend/crypto/client";
 import { useTranslations } from "next-intl";
 import { useEffect, useReducer, useRef } from "react";
 import { Sheet } from "~/components/ui/sheet";
 import { EnableBody } from "./enable-body";
 import { EnableFooter } from "./enable-footer";
-import type { JobOutcome, KeyDraft } from "./enable-lifecycle";
 import {
 	enableReducer,
 	enableView,

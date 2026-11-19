@@ -130,20 +130,25 @@ const GROUPS = KEY.split("-");
 const PASSWORD = "Battery staple 2";
 
 const makeKeys = jest.fn();
-const confirm = jest.fn();
-const discard = jest.fn();
+const saveKeys = jest.fn();
+// Every draft makeKeys hands out, so a test can say whose wipe ran.
+const drafts: { keyText: string; wipe: jest.Mock }[] = [];
+const draftOf = () => {
+	const draft = { keyText: KEY, wipe: jest.fn() };
+	drafts.push(draft);
+	return draft;
+};
 const onClose = jest.fn();
 
 function render(extra: Partial<EnableSheetProps> = {}) {
 	const element = (visible: boolean) => (
 		<EnableSheet
 			account="ana@example.com"
-			confirm={confirm}
-			discard={discard}
 			makeKeys={makeKeys}
 			onClose={onClose}
 			// Always the first candidate, so Back's "new groups" is visible.
 			random={() => 0}
+			save={saveKeys}
 			twoFactor={false}
 			visible={visible}
 			{...extra}
@@ -219,11 +224,12 @@ async function toConfirmYou(s: Screen) {
 }
 
 beforeEach(() => {
-	for (const fn of [makeKeys, confirm, discard, onClose, mockCopy, mockSave])
+	for (const fn of [makeKeys, saveKeys, onClose, mockCopy, mockSave])
 		fn.mockReset();
 	mockToast.show.mockReset();
-	makeKeys.mockResolvedValue({ ok: true, recoveryKeyText: KEY });
-	confirm.mockResolvedValue({ ok: true });
+	drafts.length = 0;
+	makeKeys.mockImplementation(async () => draftOf());
+	saveKeys.mockResolvedValue({ ok: true });
 });
 
 describe("EnableSheet, what changes", () => {
@@ -245,7 +251,6 @@ describe("EnableSheet, what changes", () => {
 		expect(s.texts()).not.toContain("See which");
 		await s.press("Cancel");
 		expect(onClose).toHaveBeenCalledTimes(1);
-		expect(discard).toHaveBeenCalled();
 	});
 
 	it("draws See which when the caller has a place for it", () => {
@@ -286,17 +291,17 @@ describe("EnableSheet, new password", () => {
 		expect(s.disabled("Making your keys")).toBe(true);
 		await s.press("Making your keys");
 		expect(makeKeys).toHaveBeenCalledTimes(1);
-		await act(async () => release({ ok: true, recoveryKeyText: KEY }));
+		await act(async () => release(draftOf()));
 		expect(s.title()).toBe("Add a way to get back in");
-		// Back to the password: the keys are dropped and the fields are empty.
+		// Back to the password: the keys are wiped, once, and the fields are empty.
 		await s.press("Back");
-		expect(discard).toHaveBeenCalled();
+		expect(drafts[0]?.wipe).toHaveBeenCalledTimes(1);
 		expect(s.find("field:New password")?.props.value).toBe("");
 		expect(s.find("field:Confirm new password")?.props.value).toBe("");
 	});
 
 	it("keeps the person here with the failure words when the keys cannot be made", async () => {
-		makeKeys.mockResolvedValue({ ok: false });
+		makeKeys.mockRejectedValue(new Error("not made"));
 		const s = render();
 		await s.press("Continue");
 		s.type("New password", PASSWORD);
@@ -445,9 +450,9 @@ describe("EnableSheet, confirm it is you", () => {
 		expect(s.disabled("Save keys")).toBe(true);
 		s.type("Password", "old password");
 		await s.press("Save keys");
-		expect(confirm).toHaveBeenCalledWith({
+		expect(saveKeys).toHaveBeenCalledWith(drafts[0], {
 			password: "old password",
-			code: "",
+			code: null,
 		});
 	});
 
@@ -459,7 +464,7 @@ describe("EnableSheet, confirm it is you", () => {
 		s.type("Authentication code", "123456");
 		expect(s.disabled("Save keys")).toBe(false);
 		await s.press("Save keys");
-		expect(confirm).toHaveBeenCalledWith({
+		expect(saveKeys).toHaveBeenCalledWith(drafts[0], {
 			password: "old password",
 			code: "123456",
 		});
@@ -474,21 +479,21 @@ describe("EnableSheet, confirm it is you", () => {
 			expect(s.disabled("Save keys")).toBe(true);
 			await s.press("Save keys");
 		}
-		expect(confirm).not.toHaveBeenCalled();
+		expect(saveKeys).not.toHaveBeenCalled();
 		s.type("Authentication code", "123456");
 		expect(s.disabled("Save keys")).toBe(false);
 	});
 
 	it("shows the busy state and ignores a second press", async () => {
 		let release: (r: unknown) => void = () => undefined;
-		confirm.mockReturnValue(new Promise((r) => (release = r)));
+		saveKeys.mockReturnValue(new Promise((r) => (release = r)));
 		const s = render();
 		await toConfirmYou(s);
 		s.type("Password", "old password");
 		await s.press("Save keys");
 		expect(s.disabled("Saving")).toBe(true);
 		await s.press("Saving");
-		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(saveKeys).toHaveBeenCalledTimes(1);
 		await act(async () => release({ ok: true }));
 		expect(s.title()).toBe("Keys saved");
 	});
@@ -501,7 +506,7 @@ describe("EnableSheet, confirm it is you", () => {
 	] as const)(
 		"keeps %s on the step and lets the person try again",
 		async (reason, words) => {
-			confirm.mockResolvedValue({ ok: false, reason });
+			saveKeys.mockResolvedValue({ ok: false, reason });
 			const s = render();
 			await toConfirmYou(s);
 			s.type("Password", "old password");
@@ -518,7 +523,7 @@ describe("EnableSheet, confirm it is you", () => {
 	] as const)(
 		"ends on %s with the words and a way to close, not to retry",
 		async (reason, words) => {
-			confirm.mockResolvedValue({ ok: false, reason });
+			saveKeys.mockResolvedValue({ ok: false, reason });
 			const s = render();
 			await toConfirmYou(s);
 			s.type("Password", "old password");
@@ -527,7 +532,7 @@ describe("EnableSheet, confirm it is you", () => {
 			expect(s.find("button:Save keys")).toBeUndefined();
 			await s.press("Close");
 			expect(onClose).toHaveBeenCalledTimes(1);
-			expect(discard).toHaveBeenCalled();
+			expect(drafts[0]?.wipe).toHaveBeenCalledTimes(1);
 		},
 	);
 });
@@ -554,32 +559,52 @@ describe("EnableSheet, the end", () => {
 	it("says Keys saved once, closes and drops the draft on Done", async () => {
 		const s = await toDone();
 		expect(mockToast.show).not.toHaveBeenCalled();
-		discard.mockClear();
+		// Saving never wipes: the keys are wiped when the sheet closes.
+		expect(drafts[0]?.wipe).not.toHaveBeenCalled();
 		await s.press("Done");
 		expect(mockToast.show).toHaveBeenCalledWith({ message: "Keys saved" });
 		expect(onClose).toHaveBeenCalledTimes(1);
-		expect(discard).toHaveBeenCalled();
+		expect(drafts[0]?.wipe).toHaveBeenCalledTimes(1);
 	});
 });
 
 describe("EnableSheet, nothing stays in a closed sheet", () => {
-	it("drops the draft when closed on the way", async () => {
+	/** Types a password and presses Continue, which sends makeKeys. */
+	async function sendKeys(s: Screen) {
+		s.type("New password", PASSWORD);
+		s.type("Confirm new password", PASSWORD);
+		await s.press("Continue");
+	}
+	/** A makeKeys call the test settles by hand, in either order. */
+	function slow() {
+		let resolve: (d: unknown) => void = () => undefined;
+		let reject: (e: unknown) => void = () => undefined;
+		const promise = new Promise((res, rej) => {
+			resolve = res;
+			reject = rej;
+		});
+		makeKeys.mockReturnValueOnce(promise);
+		return { resolve, reject };
+	}
+	const settle = (fn: () => void) => act(async () => fn());
+
+	it("wipes the draft it holds when closed on the way", async () => {
 		const s = render();
 		await toMethods(s);
-		discard.mockClear();
 		await act(async () => {
 			(s.must("sheet-close").props.onPress as () => void)();
 		});
-		expect(discard).toHaveBeenCalledTimes(1);
+		expect(drafts).toHaveLength(1);
+		expect(drafts[0]?.wipe).toHaveBeenCalledTimes(1);
 		expect(onClose).toHaveBeenCalledTimes(1);
 	});
 
-	it("starts again from the first step with empty fields when opened again", async () => {
+	it("wipes the draft when the parent hides the sheet, once, and starts again clean", async () => {
 		const s = render();
 		await toMethods(s);
 		await s.press("Create key");
 		s.setVisible(false);
-		expect(discard).toHaveBeenCalled();
+		expect(drafts[0]?.wipe).toHaveBeenCalledTimes(1);
 		s.setVisible(true);
 		expect(s.title()).toBe("Turn on Advanced protection");
 		await s.press("Continue");
@@ -588,64 +613,121 @@ describe("EnableSheet, nothing stays in a closed sheet", () => {
 		await s.press("Continue");
 		// The old key text is gone: Back through the steps never shows it.
 		expect(s.texts()).not.toContain(GROUPS[0]);
+		expect(drafts[0]?.wipe).toHaveBeenCalledTimes(1);
 	});
 
-	it("ignores a run that finishes after the sheet was closed", async () => {
-		let release: (r: unknown) => void = () => undefined;
-		makeKeys.mockReturnValue(new Promise((r) => (release = r)));
+	it("wipes the old draft when a new one replaces it", async () => {
+		const s = render();
+		await toMethods(s);
+		await s.press("Back");
+		// Back already wiped the first; the second is made fresh.
+		expect(drafts[0]?.wipe).toHaveBeenCalledTimes(1);
+		await sendKeys(s);
+		expect(drafts).toHaveLength(2);
+		expect(drafts[1]?.wipe).not.toHaveBeenCalled();
+	});
+
+	it("a draft that arrives late wipes only itself, and the reopened sheet keeps its own", async () => {
+		const old = slow();
 		const s = render();
 		await s.press("Continue");
-		s.type("New password", PASSWORD);
-		s.type("Confirm new password", PASSWORD);
-		await s.press("Continue");
+		await sendKeys(s);
 		s.setVisible(false);
 		s.setVisible(true);
-		discard.mockClear();
-		await act(async () => release({ ok: true, recoveryKeyText: KEY }));
-		// The adapter was handed a fresh draft by the late answer: drop it.
-		expect(discard).toHaveBeenCalledTimes(1);
-		expect(s.title()).toBe("Turn on Advanced protection");
-		expect(s.texts()).not.toContain(GROUPS[0]);
+		await s.press("Continue");
+		await sendKeys(s);
+		expect(s.title()).toBe("Add a way to get back in");
+		const lateDraft = draftOf();
+		await settle(() => old.resolve(lateDraft));
+		expect(lateDraft.wipe).toHaveBeenCalledTimes(1);
+		// The reopened sheet's draft is untouched and is the one saved.
+		expect(drafts[0]?.wipe).not.toHaveBeenCalled();
+		expect(s.title()).toBe("Add a way to get back in");
+		await s.press("Create key");
+		await s.press("I saved it");
+		s.type("Group 1", GROUPS[0] as string);
+		s.type("Group 2", GROUPS[1] as string);
+		await s.press("Continue");
+		await s.press("Continue");
+		s.type("Password", "old password");
+		await s.press("Save keys");
+		expect(saveKeys.mock.calls[0]?.[0]).toBe(drafts[0]);
 	});
-	it("drops a late failure of the keys after the sheet was reopened", async () => {
-		let fail: (e: unknown) => void = () => undefined;
-		makeKeys.mockReturnValue(new Promise((_, r) => (fail = r)));
+
+	it("a draft that arrives before the reopened sheet's own is wiped and the other stays current", async () => {
+		const old = slow();
+		const fresh = slow();
 		const s = render();
 		await s.press("Continue");
-		s.type("New password", PASSWORD);
-		s.type("Confirm new password", PASSWORD);
+		await sendKeys(s);
+		s.setVisible(false);
+		s.setVisible(true);
 		await s.press("Continue");
+		await sendKeys(s);
+		const lateDraft = draftOf();
+		const freshDraft = draftOf();
+		// The old job answers first this time, then the reopened sheet's.
+		await settle(() => old.resolve(lateDraft));
+		expect(lateDraft.wipe).toHaveBeenCalledTimes(1);
+		await settle(() => fresh.resolve(freshDraft));
+		expect(freshDraft.wipe).not.toHaveBeenCalled();
+		expect(s.title()).toBe("Add a way to get back in");
+		await s.press("Back");
+		expect(freshDraft.wipe).toHaveBeenCalledTimes(1);
+		expect(lateDraft.wipe).toHaveBeenCalledTimes(1);
+	});
+
+	it("drops a late failure of the keys after the sheet was reopened", async () => {
+		const old = slow();
+		const s = render();
+		await s.press("Continue");
+		await sendKeys(s);
 		s.setVisible(false);
 		s.setVisible(true);
 		await s.press("Continue");
 		expect(s.title()).toBe("Set a new password");
-		await act(async () => fail(new Error("closed")));
+		await settle(() => old.reject(new Error("closed")));
 		expect(s.texts()).not.toContain("Couldn't finish. Try again.");
 		expect(s.title()).toBe("Set a new password");
 	});
 
-	it("lets the reopened sheet run its own job while an old one is still out", async () => {
-		let release: (r: unknown) => void = () => undefined;
-		makeKeys.mockReturnValueOnce(new Promise((r) => (release = r)));
+	it("does not leave the reopened sheet stuck busy from the closed job", async () => {
+		const old = slow();
 		const s = render();
 		await s.press("Continue");
-		s.type("New password", PASSWORD);
-		s.type("Confirm new password", PASSWORD);
-		await s.press("Continue");
+		await sendKeys(s);
 		s.setVisible(false);
 		s.setVisible(true);
 		await s.press("Continue");
-		s.type("New password", PASSWORD);
-		s.type("Confirm new password", PASSWORD);
-		// Not stuck busy from the closed run: the new job goes out and lands.
-		await s.press("Continue");
+		await sendKeys(s);
 		expect(makeKeys).toHaveBeenCalledTimes(2);
 		expect(s.title()).toBe("Add a way to get back in");
-		// The old answer arrives last and changes nothing.
-		discard.mockClear();
-		await act(async () => release({ ok: true, recoveryKeyText: KEY }));
+		// The old one finishing must not clear a newer job's flag either.
+		await settle(() => old.resolve(draftOf()));
 		expect(s.title()).toBe("Add a way to get back in");
-		expect(discard).toHaveBeenCalledTimes(1);
+	});
+
+	it("a late save leaves the newer draft and screen alone", async () => {
+		let finish: (r: unknown) => void = () => undefined;
+		saveKeys.mockReturnValueOnce(new Promise((r) => (finish = r)));
+		const s = render();
+		await toConfirmYou(s);
+		s.type("Password", "old password");
+		await s.press("Save keys");
+		s.setVisible(false);
+		const first = drafts[0];
+		expect(first?.wipe).toHaveBeenCalledTimes(1);
+		s.setVisible(true);
+		// The reopened sheet makes its own keys and reaches the same step.
+		await toConfirmYou(s);
+		expect(s.title()).toBe("Confirm it's you");
+		await settle(() => finish({ ok: false, reason: "wrongPassword" }));
+		// Not shown as this sheet's refusal, not moved, no draft wiped by it.
+		expect(s.title()).toBe("Confirm it's you");
+		expect(s.texts()).not.toContain("Couldn't finish. Try again.");
+		expect(s.texts()).not.toContain("Wrong password");
+		expect(drafts[1]?.wipe).not.toHaveBeenCalled();
+		expect(first?.wipe).toHaveBeenCalledTimes(1);
 	});
 
 	it("drops a late save failure and a late copy after the sheet was reopened", async () => {
@@ -663,7 +745,7 @@ describe("EnableSheet, nothing stays in a closed sheet", () => {
 		await s.press("Continue");
 		expect(s.title()).toBe("Set a new password");
 		mockToast.show.mockClear();
-		await act(async () => {
+		await settle(() => {
 			failSave(new Error("closed"));
 			doneCopy();
 		});

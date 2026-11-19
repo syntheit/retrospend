@@ -1,5 +1,9 @@
-import { pickConfirmGroups, randomBelow } from "@retrospend/crypto/client";
-import { useEffect, useRef, useState } from "react";
+import {
+	type KeyDraft,
+	pickConfirmGroups,
+	randomBelow,
+} from "@retrospend/crypto/client";
+import { useRef, useState } from "react";
 import { ScrollView } from "react-native";
 import { useTranslations } from "use-intl";
 import { getPrimitives } from "@/crypto/native";
@@ -15,8 +19,8 @@ import {
 	type ConfirmResult,
 	type EnableStep,
 	isFinal,
-	type MakeKeysResult,
 } from "./types";
+import { useEnableLifecycle } from "./useEnableLifecycle";
 import { useKeyActions } from "./useKeyActions";
 
 type Pair = readonly [number, number];
@@ -29,15 +33,23 @@ export type EnableSheetProps = {
 	account: string;
 	/** Two-factor is on: the last step asks for a code too. */
 	twoFactor: boolean;
-	/** E2 Continue: derive the keys once (a busy moment) and answer with the key text. */
-	makeKeys: (password: string) => Promise<MakeKeysResult>;
-	/** Last step: sign in again if needed, send, read back. Never throws. */
-	confirm: (input: {
-		password: string;
-		code: string;
-	}) => Promise<ConfirmResult>;
-	/** Drop the keys made at E2: Back from the methods, close, cancel, and after the end. */
-	discard: () => void;
+	/**
+	 * E2 Continue: derive the keys once (a busy moment). Each call answers with
+	 * its own draft, whose `wipe` clears exactly the keys that call made; a
+	 * call that rejects holds none. The sheet wipes the draft it holds on
+	 * close, unmount and Back from the methods, a draft it replaces, and a
+	 * late one that arrives after its sheet is gone.
+	 */
+	makeKeys: (password: string) => Promise<KeyDraft>;
+	/**
+	 * Last step: sign in again if needed, send and read back with this draft.
+	 * It never wipes (closing does) and never throws; refusals are results.
+	 * `code` is null when two-factor is off.
+	 */
+	save: (
+		draft: KeyDraft,
+		input: { password: string; code: string | null },
+	) => Promise<ConfirmResult>;
 	/** E1's "See which": where the locked features are listed. Without it the link is not drawn. */
 	onSeeWhich?: () => void;
 	/** Tests only: the choice of which two groups to ask for. */
@@ -74,8 +86,7 @@ export function EnableSheet({
 	account,
 	twoFactor,
 	makeKeys,
-	confirm,
-	discard,
+	save,
 	onSeeWhich,
 	random,
 }: EnableSheetProps) {
@@ -99,13 +110,12 @@ export function EnableSheet({
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [final, setFinal] = useState(false);
-	// A run that outlives the sheet (closed during the Argon2id moment or the
-	// send) must not write into the next opening.
-	const run = useRef(0);
-	const keyActions = useKeyActions({ keyText, account, setError, run });
+	// Moves when the sheet closes, so a copy or save started before is stale.
+	const session = useRef(0);
+	const keyActions = useKeyActions({ keyText, account, setError, session });
 
 	function reset() {
-		run.current += 1;
+		session.current += 1;
 		setStep("what");
 		setNext("");
 		setAgain("");
@@ -121,18 +131,12 @@ export function EnableSheet({
 		setFinal(false);
 	}
 
-	// Closed from outside (the parent hides it): the same as the X.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `visible` is the trigger
-	useEffect(() => {
-		if (!visible) {
-			reset();
-			discard();
-		}
-	}, [visible]);
+	// The controller owns what a closed sheet leaves behind: the draft's wipe,
+	// the running flag, and what a job that outlives the sheet may do.
+	const life = useEnableLifecycle({ open: visible, reset });
 
 	function close() {
-		reset();
-		discard();
+		life.closed();
 		onClose();
 	}
 
@@ -142,32 +146,26 @@ export function EnableSheet({
 	}
 
 	async function makeThem() {
-		if (busy || !passwordStepReady(next, again)) return;
-		const mine = ++run.current;
+		if (life.running || !passwordStepReady(next, again)) return;
 		setBusy(true);
 		setError(null);
-		const made = await makeKeys(next).catch(
-			(): MakeKeysResult => ({ ok: false }),
-		);
-		if (mine !== run.current) {
-			// Closed meanwhile: the keys made for this run must not outlive it.
-			discard();
-			return;
-		}
+		const made = await life.makeDraft(() => makeKeys(next));
+		// Late: the sheet closed meanwhile; the controller wiped what was made.
+		if (made.status === "late" || made.status === "ignored") return;
 		setBusy(false);
-		if (!made.ok) {
+		if (made.status === "failed") {
 			setError(t("errors.failed"));
 			return;
 		}
 		// The new password is not needed again: the keys are made.
 		setNext("");
 		setAgain("");
-		setKeyText(made.recoveryKeyText);
+		setKeyText(made.value.keyText);
 		go("methods");
 	}
 
 	function backToPassword() {
-		discard();
+		life.back("methods");
 		setKeyText(null);
 		setKeySaved(false);
 		setPair(null);
@@ -194,15 +192,19 @@ export function EnableSheet({
 	}
 
 	async function submit() {
-		if (busy || !confirmYouReady(password, code, twoFactor)) return;
-		const mine = ++run.current;
+		const draft = life.draft;
+		// No draft: nothing to save (fails closed).
+		if (life.running || !draft || !confirmYouReady(password, code, twoFactor))
+			return;
 		setBusy(true);
 		setError(null);
-		const done = await confirm({ password, code }).catch(
-			(): ConfirmResult => ({ ok: false, reason: "failed" }),
+		const sent = await life.run(() =>
+			save(draft, { password, code: twoFactor ? code : null }),
 		);
-		if (mine !== run.current) return;
+		if (sent.status === "late" || sent.status === "ignored") return;
 		setBusy(false);
+		const done: ConfirmResult =
+			sent.status === "done" ? sent.value : { ok: false, reason: "failed" };
 		if (done.ok) {
 			// Saved and confirmed: nothing on this screen needs the key again.
 			setPassword("");

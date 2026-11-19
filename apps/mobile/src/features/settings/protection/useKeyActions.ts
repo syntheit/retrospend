@@ -10,33 +10,33 @@ export function useKeyActions({
 	keyText,
 	account,
 	setError,
-	run,
+	session,
 }: {
 	keyText: string | null;
 	account: string;
 	setError: (words: string | null) => void;
-	/** The sheet's run counter: it moves when the sheet closes, so an action started before is stale. */
-	run: { current: number };
+	/** The sheet's session counter: it moves when the sheet closes, so an action started before is stale. */
+	session: { current: number };
 }) {
 	const t = useTranslations("protection");
 	const toast = useToast();
 	return {
 		async copy() {
 			if (!keyText) return;
-			const mine = run.current;
+			const mine = session.current;
 			setError(null);
 			try {
 				await copyRecoveryKey(keyText);
-				if (mine === run.current)
+				if (mine === session.current)
 					toast.show({ message: t("recoveryKey.copied") });
 			} catch {
 				// A failure after the sheet closed belongs to no screen now.
-				if (mine === run.current) setError(t("errors.failed"));
+				if (mine === session.current) setError(t("errors.failed"));
 			}
 		},
 		async save() {
 			if (!keyText) return;
-			const mine = run.current;
+			const mine = session.current;
 			setError(null);
 			try {
 				const labels = {
@@ -47,9 +47,9 @@ export function useKeyActions({
 					keepSafe: t("recoveryKey.saveBody"),
 				};
 				const saved = await saveRecoveryKeyFile(labels, { keyText, account });
-				if (!saved && mine === run.current) setError(t("errors.failed"));
+				if (!saved && mine === session.current) setError(t("errors.failed"));
 			} catch {
-				if (mine === run.current) setError(t("errors.failed"));
+				if (mine === session.current) setError(t("errors.failed"));
 			}
 		},
 	};

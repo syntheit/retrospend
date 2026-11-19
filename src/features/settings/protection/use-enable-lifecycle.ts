@@ -1,12 +1,12 @@
-// The enable sheet's lifecycle (enable-lifecycle.ts) tied to React: the
+// The enable sheet's lifecycle (packages/crypto/src/client/enable-lifecycle.ts) tied to React: the
 // controller is made once, and two effects tell it when the sheet closes and
 // when it unmounts.
-import { useEffect, useRef } from "react";
 import {
 	createEnableLifecycle,
 	type EnableLifecycle,
 	type LifecyclePorts,
-} from "./enable-lifecycle";
+} from "@retrospend/crypto/client";
+import { useEffect, useRef } from "react";
 
 export function useEnableLifecycle({
 	open,

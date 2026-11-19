@@ -2,7 +2,7 @@
 // few lines that run effects the way React does (on mount, when a dependency
 // changed, cleanup on unmount), so the calls from the effects into the
 // controller are what is tested. The controller's own rules are in
-// enable-lifecycle.test.ts.
+// packages/crypto/test/client-enable-lifecycle.test.ts.
 import { describe, expect, it, vi } from "vitest";
 
 const react = vi.hoisted(() => {

@@ -8,11 +8,6 @@ export type EnableStep =
 	| "confirmYou"
 	| "done";
 
-/** What making the keys answers: the key as the person writes it down, or a refusal. */
-export type MakeKeysResult =
-	| { ok: true; recoveryKeyText: string }
-	| { ok: false };
-
 /** Why saving the keys was refused; each one has its words in `protection.errors`. */
 export type ConfirmFailure =
 	| "wrongPassword"

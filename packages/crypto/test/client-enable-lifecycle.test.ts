@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { createEnableLifecycle, type KeyDraft } from "./enable-lifecycle";
+import {
+	createEnableLifecycle,
+	type KeyDraft,
+} from "../src/client/enable-lifecycle";
 
 const setup = () => {
 	const ports = { reset: vi.fn() };
