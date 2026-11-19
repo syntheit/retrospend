@@ -428,6 +428,46 @@ describe("an entry stacked on an acked write", () => {
 	}
 });
 
+// A column a device-booked `before` lacks is its default, not a wildcard: a
+// pulled row that is a spread part or sits in an envelope is not the row the
+// entry was booked on, so the entry stays out of the overlay.
+describe("an entry whose before lacks a column the pulled row has", () => {
+	it.each([
+		["a spread part", { isAmortizedChild: true }, "isAmortizedChild"],
+		["a row in an envelope", { budgetEnvelopeId: "env1" }, "budgetEnvelopeId"],
+	] as const)("leaves the entry out for %s", async (_name, over, column) => {
+		const { engine, pending } = setup([page([booked("e1", over)])]);
+		await engine.pull();
+		const pulled = await pulledRow(engine);
+		const before: Record<string, unknown> = { ...pulled };
+		delete before[column];
+		pending.list = [
+			entry("c1", [change("e1", before as Row, { ...pulled, ...AMOUNT_120 })]),
+		];
+		const amount = await engine.readWithPending(
+			(view) => view.get("expenses", "e1")?.amount,
+		);
+		expect(amount).toBe("100");
+	});
+
+	it("takes the entry in when the pulled row has the default", async () => {
+		const { engine, pending } = setup([page([booked("e1")])]);
+		await engine.pull();
+		const pulled = await pulledRow(engine);
+		const before: Record<string, unknown> = { ...pulled };
+		delete before.isAmortizedChild;
+		delete before.budgetEnvelopeId;
+		pending.list = [
+			entry("c1", [change("e1", before as Row, { ...pulled, ...AMOUNT_120 })]),
+		];
+		expect(
+			await engine.readWithPending(
+				(view) => view.get("expenses", "e1")?.amount,
+			),
+		).toBe("120");
+	});
+});
+
 describe("retiring and comparing on a pull", () => {
 	/** An acked edit to USD 120 (or a create) that a later pull brings, with the server's row given. */
 	async function acked(
