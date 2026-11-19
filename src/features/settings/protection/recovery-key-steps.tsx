@@ -10,6 +10,7 @@ import { useToast } from "~/components/ui/toast";
 import { fieldsLocked, groupMismatch } from "./enable-model";
 import type { StepProps } from "./enable-steps";
 import {
+	copyRecoveryKey,
 	type KeyActions,
 	type KeyFile,
 	keyFileText,
@@ -25,15 +26,10 @@ export function SaveKeyStep({
 	const t = useTranslations("protection.recoveryKey");
 	const toast = useToast();
 	const [copyFailed, setCopyFailed] = useState(false);
-	// The clipboard can refuse (no permission, an insecure page): say so, never "Copied".
 	const copy = async () => {
-		try {
-			await actions.copy(state.keyText);
-			setCopyFailed(false);
-			toast.saved(t("copied"));
-		} catch {
-			setCopyFailed(true);
-		}
+		const copied = await copyRecoveryKey(actions, state.keyText);
+		setCopyFailed(!copied);
+		if (copied) toast.saved(t("copied"));
 	};
 	const items = recoveryKeyGroups(state.keyText).map((group, i) => ({
 		group,

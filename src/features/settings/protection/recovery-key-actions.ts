@@ -15,6 +15,23 @@ export type KeyActions = {
 	print: (fileText: string) => void;
 };
 
+/**
+ * Copies the key; false when the clipboard refuses (no permission, an
+ * insecure page), so a caller never says "Copied" for a copy that did not
+ * happen.
+ */
+export async function copyRecoveryKey(
+	actions: Pick<KeyActions, "copy">,
+	keyText: string,
+): Promise<boolean> {
+	try {
+		await actions.copy(keyText);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 /** The words around the key in the saved file, the account's email and the instant the keys were made. */
 export type KeyFile = {
 	labels: RecoveryFileLabels;
