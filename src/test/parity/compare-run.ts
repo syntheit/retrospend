@@ -98,7 +98,7 @@ export interface Checked {
  * (its first check makes the first pull). `browserZone` is the zone the
  * client would render in.
  */
-export async function checkAt(
+async function checkOnce(
 	clock: Date,
 	userId: string,
 	checks: readonly Check[],
@@ -131,3 +131,34 @@ export async function checkAt(
 		return { reports, logs };
 	});
 }
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** How many times a check that found the device behind is made again, and the wait between. */
+const SETTLE_TRIES = 12;
+const SETTLE_MS = 1_000;
+
+/**
+ * `checkOnce`, made again (a new engine each time) while a screen found the
+ * device behind the server's read or the rows still moving. Positions are
+ * cluster-wide transaction ids, so a transaction another worker's database
+ * holds open keeps every pull below the read until it ends: the compare is
+ * right to say `behind`, and a test that wants a real answer waits for it. The
+ * last attempt is returned, whatever it found.
+ */
+export async function checkAt(
+	clock: Date,
+	userId: string,
+	checks: readonly Check[],
+	options: { browserZone: string; alter?: Alter },
+): Promise<Checked> {
+	let last = await checkOnce(clock, userId, checks, options);
+	for (let i = 1; i < SETTLE_TRIES && notSettled(last.reports); i++) {
+		await sleep(SETTLE_MS);
+		last = await checkOnce(clock, userId, checks, options);
+	}
+	return last;
+}
+
+const notSettled = (reports: readonly CompareReport[]) =>
+	reports.some((r) => r.behind > 0 || r.skipped === "moving");

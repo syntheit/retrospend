@@ -64,6 +64,14 @@ beforeAll(async () => {
 	process.env.DEFAULT_TIME_ZONE = "Pacific/Auckland";
 	rates = await seedProofRates();
 	hand = await seedHandLedgers();
+	// A pull sees a row only once every transaction older than its write has
+	// ended, and another worker's database can hold one open: wait until each
+	// ledger is whole on a device, so a check never starts on a device that
+	// holds none of it (which would read 0 where the server reads a figure).
+	for (const userId of Object.values(hand))
+		await pullAll(await newDevice(userId), await expectedCounts(userId), {
+			shares: false,
+		});
 }, 300_000);
 
 afterAll(async () => {
@@ -96,6 +104,19 @@ async function readBoth(userId: string, ids: string[], clock: Date) {
 }
 
 const lineText = (report: CompareReport) => compareLine(report);
+
+/**
+ * `key` was found wrong. A check that settled says `differs`; one that stayed
+ * behind a transaction another worker holds open (checkAt waits for that to
+ * end) can say only `behind`, which is never `match`.
+ */
+function expectDiffers(report: CompareReport | undefined, key: string) {
+	expect(report, key).toBeDefined();
+	const r = report as CompareReport;
+	expect(r.state, JSON.stringify(r)).toBe("checked");
+	if (r.behind === 0) expect(r.differs, JSON.stringify(r)).toEqual([key]);
+	else expect(r.classes[key], JSON.stringify(r)).toBe("behind");
+}
 
 describe("hand-derived ledgers", () => {
 	it("EUR home: the figures are the worked-out ones on both sides", async () => {
@@ -191,7 +212,7 @@ describe("hand-derived ledgers", () => {
 				}),
 			},
 		);
-		expect(zero.reports[0]?.differs).toEqual(["glance.spent"]);
+		expectDiffers(zero.reports[0], "glance.spent");
 		// The server has no value where the device holds one.
 		const none = await checkAt(NOV_EDGE, hand.eur, [{ screen: "settings" }], {
 			browserZone: BA,
@@ -202,8 +223,11 @@ describe("hand-derived ledgers", () => {
 				),
 			}),
 		});
-		expect(none.reports[0]?.differs).toEqual(["glance.spent"]);
-		expect(none.logs.join("\n")).toContain('"differs":["glance.spent"]');
+		expectDiffers(none.reports[0], "glance.spent");
+		// What the engine logged for the check is the report's own line, nothing more.
+		expect(none.logs.at(-1)).toBe(
+			`compare ${compareLine(none.reports[0] as CompareReport)}`,
+		);
 	});
 
 	it("a wrong rate type in a figure differs", async () => {
@@ -219,7 +243,7 @@ describe("hand-derived ledgers", () => {
 				),
 			}),
 		});
-		expect(wrong.reports[0]?.differs).toEqual(["glance.spent"]);
+		expectDiffers(wrong.reports[0], "glance.spent");
 	});
 
 	it("stored UTC with the browser in Buenos Aires: the figures read in UTC", async () => {
@@ -366,10 +390,11 @@ describe("real ledgers: every screen, every narrowing value", () => {
 						held.set(report.screen, keys);
 					}
 					// Every key of every screen was held by some check.
-					for (const screen of SCREEN_ORDER)
-						expect(held.get(screen)?.size, screen).toBe(
-							reports.find((r) => r.screen === screen)?.of,
-						);
+					for (const screen of SCREEN_ORDER) {
+						const of = reports.find((r) => r.screen === screen)?.of ?? 0;
+						expect(of, screen).toBeGreaterThan(0);
+						expect(held.get(screen)?.size, screen).toBe(of);
+					}
 				});
 
 			it("names a figure the server got wrong by its key", async () => {
