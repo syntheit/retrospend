@@ -64,6 +64,7 @@ const usd100: Synced = {
 	homeAmount: "154500.00",
 	pricingSource: "MANUAL",
 	title: "x",
+	version: "2026-03-05T12:00:00.000Z",
 };
 
 const body = (over: Partial<CaptureBody> = {}): CaptureBody => ({
@@ -140,6 +141,7 @@ const food: TableRows["categories"] = {
 	name: "Food",
 	color: "red",
 	icon: null,
+	excludeByDefault: false,
 };
 
 describe("a create the device books exactly as the server did", () => {

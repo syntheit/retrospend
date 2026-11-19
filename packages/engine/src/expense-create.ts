@@ -159,6 +159,8 @@ export function createExpense(input: CreateExpenseInput): WriteFn<ExpenseRow> {
 			exchangeRate: booked.exchangeRate,
 			rateType: booked.rateType,
 			homeRate: booked.homeRate,
+			// No version until the server's answer names one.
+			version: null,
 		};
 		r.expenses.create({ expense: row, shares: [] });
 		return row;

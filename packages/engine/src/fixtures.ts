@@ -21,6 +21,7 @@ const FIXTURES: { [T in TableName]: (id: string) => TableRows[T] } = {
 		amountInUSD: "1",
 		homeCurrency: "ARS",
 		homeAmount: "1000.50",
+		version: null,
 	}),
 	shares: (id) => ({
 		id,
@@ -107,6 +108,7 @@ const FIXTURES: { [T in TableName]: (id: string) => TableRows[T] } = {
 		name: "Food",
 		color: "orange",
 		icon: null,
+		excludeByDefault: false,
 	}),
 	owed: (id) => ({ id, currency: "ARS", owedToYou: 250_000, youOwe: 100_000 }),
 	settings: (id) => ({

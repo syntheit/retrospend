@@ -62,9 +62,9 @@ export interface RateSyncRow extends WithId {
 
 /**
  * What an expense row keeps beyond the fields the spending rules read: its
- * text and both legs of its rate, as the server stores them. Optional, since
- * rows of figures-only fixtures and older rows have none; a row the device
- * creates has all the rate fields.
+ * text and both legs of its rate, as the server stores them. All optional but
+ * `version`, since rows of figures-only fixtures have no text or rate; a row
+ * the device creates has all the rate fields.
  */
 export interface ExpenseDetail {
 	readonly title?: string;
@@ -77,6 +77,12 @@ export interface ExpenseDetail {
 	readonly rateType?: string | null;
 	/** Units of homeCurrency per 1 unit of currency, at 12 decimals. */
 	readonly homeRate?: string | null;
+	/**
+	 * The server's version of the row, the base a write sends: opaque text (the
+	 * pulled `updatedAt` on the plain path). Null on a row the device booked
+	 * itself, until the server's answer names one. Never read as a time.
+	 */
+	readonly version: string | null;
 }
 
 /**
@@ -91,6 +97,8 @@ export interface CategoryRow extends WithId {
 	readonly name: string;
 	readonly color: string;
 	readonly icon: string | null;
+	/** A new expense in it stays out of analytics (the create rule reads this). */
+	readonly excludeByDefault: boolean;
 }
 
 /**

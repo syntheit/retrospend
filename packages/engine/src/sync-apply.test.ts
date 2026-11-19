@@ -51,16 +51,18 @@ const expense = (id: string, o: Partial<WireExpense> = {}) =>
 		homeCurrency: "ARS",
 		homeRate: "1",
 		homeAmount: "1000",
+		updatedAt: "2026-10-05T15:00:01.250Z",
 		...o,
 	}) as WireExpense;
 
-const category = (id: string, kind = "EXPENSE") =>
+const category = (id: string, kind = "EXPENSE", excludeByDefault = false) =>
 	({
 		id,
 		name: `Name ${id}`,
 		color: "blue",
 		icon: null,
 		kind,
+		excludeByDefault,
 	}) as WireCategory;
 
 const template = (id: string, categoryId: string | null) =>
@@ -110,6 +112,36 @@ async function apply(
 }
 
 describe("applySyncPage", () => {
+	it("keeps the pulled updatedAt text as the row's version, untouched", async () => {
+		const store = new MemoryStore();
+		await apply(store, (tx) =>
+			applySyncPage(tx, "expenses", {
+				items: [
+					expense("e1"),
+					// Not an ISO instant the engine would re-print the same way: the text is opaque.
+					expense("e2", { updatedAt: "2026-10-06T09:00:00.1Z" }),
+				],
+				tombstones: [],
+			}),
+		);
+		expect(store.get("expenses", "e1")?.version).toBe(
+			"2026-10-05T15:00:01.250Z",
+		);
+		expect(store.get("expenses", "e2")?.version).toBe("2026-10-06T09:00:00.1Z");
+	});
+
+	it("carries a category's excludeByDefault", async () => {
+		const store = new MemoryStore();
+		await apply(store, (tx) =>
+			applySyncPage(tx, "categories", {
+				items: [category("c1", "EXPENSE", true), category("c2")],
+				tombstones: [],
+			}),
+		);
+		expect(store.get("categories", "c1")?.excludeByDefault).toBe(true);
+		expect(store.get("categories", "c2")?.excludeByDefault).toBe(false);
+	});
+
 	it("puts the rows of a page by id and deletes its tombstones", async () => {
 		const store = new MemoryStore();
 		await apply(store, (tx) =>

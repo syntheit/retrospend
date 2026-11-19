@@ -18,10 +18,7 @@ import {
 	NotFoundError,
 	TABLE_NAMES,
 } from "./index";
-import {
-	localExpenseCreateAdapter,
-	seededStore,
-} from "./local-expense-create";
+import { localExpenseCreateAdapter, seededStore } from "./local-expense-create";
 
 describe("expense create conformance (memory store)", () => {
 	for (const c of expenseCreateCases)
@@ -63,6 +60,12 @@ describe("expense create on the local store", () => {
 			homeAmount: "154500.00",
 			amountInUSD: "100.00",
 		});
+	});
+
+	it("books the row with no version until the server's answer names one", async () => {
+		const { store, db } = await open();
+		await db.write(EXPENSE_CREATE, createExpense(entry({ id: "e9" })));
+		expect(store.get("expenses", "e9")?.version).toBeNull();
 	});
 
 	it("undo puts back exactly what was there, and redo the created row", async () => {
@@ -186,12 +189,17 @@ describe("expense create on the local store", () => {
 			await refused({ date: new Date(Number.NaN) });
 		});
 		it("an income category", () =>
-			refused({ category: { id: "c", kind: "INCOME", excludeByDefault: false } }));
+			refused({
+				category: { id: "c", kind: "INCOME", excludeByDefault: false },
+			}));
 		it("spreading over months, which needs parts the port has no row for", () =>
 			refused({ amortizeOver: 3 }));
 		it("a custom type with no rate, and a custom rate for the home currency", async () => {
 			await refused({ currency: "EUR", rateType: "custom" });
-			await refused({ currency: "ARS", customRate: { base: "ARS", value: "2" } });
+			await refused({
+				currency: "ARS",
+				customRate: { base: "ARS", value: "2" },
+			});
 			await refused({ customRate: { base: "USD", value: "0" } });
 		});
 		it("an id already in use", async () => {
