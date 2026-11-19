@@ -11,6 +11,13 @@ export {
 	prepareEnable,
 } from "./enable";
 export {
+	EnableFailure,
+	FAILURE_CODES,
+	type FailureCode,
+	failureCode,
+	isFinalFailure,
+} from "./enable-failure";
+export {
 	createEnableLifecycle,
 	type EnableLifecycle,
 	type JobOutcome,

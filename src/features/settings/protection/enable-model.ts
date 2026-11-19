@@ -13,7 +13,9 @@ import {
 } from "@retrospend/api-contract";
 import {
 	type ConfirmGroups,
+	type FailureCode,
 	groupMatches,
+	isFinalFailure,
 	recoveryKeyGroups,
 } from "@retrospend/crypto/client";
 
@@ -27,38 +29,6 @@ export const ENABLE_STEPS = [
 	"done",
 ] as const;
 export type EnableStep = (typeof ENABLE_STEPS)[number];
-
-/** What the caller's callbacks reject with, and the line each one gets (errors.* in protection.json). */
-export const FAILURE_CODES = [
-	"wrongPassword",
-	"wrongCode",
-	"tooMany",
-	"notOffered",
-	"failed",
-	"checkFailed",
-] as const;
-export type FailureCode = (typeof FAILURE_CODES)[number];
-
-export class EnableFailure extends Error {
-	constructor(readonly code: FailureCode) {
-		super(code);
-		this.name = "EnableFailure";
-	}
-}
-
-/** The code of whatever a callback threw; anything that is not an EnableFailure is `failed`. */
-export function failureCode(error: unknown): FailureCode {
-	return error instanceof EnableFailure ? error.code : "failed";
-}
-
-/**
- * Failures that end the flow: trying again cannot help. `notOffered` is the
- * server saying no; `checkFailed` is the read-back after the keys were saved
- * (the account stays keyed and OFF, and the email reset is the way back).
- */
-export function isFinalFailure(code: FailureCode | null): boolean {
-	return code === "notOffered" || code === "checkFailed";
-}
 
 export type EnableState = {
 	step: EnableStep;

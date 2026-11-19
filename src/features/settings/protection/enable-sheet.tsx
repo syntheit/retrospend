@@ -1,6 +1,7 @@
 "use client";
 
 import {
+	failureCode,
 	type JobOutcome,
 	type KeyDraft,
 	pickConfirmGroups,
@@ -11,12 +12,7 @@ import { useEffect, useReducer, useRef } from "react";
 import { Sheet } from "~/components/ui/sheet";
 import { EnableBody } from "./enable-body";
 import { EnableFooter } from "./enable-footer";
-import {
-	enableReducer,
-	enableView,
-	failureCode,
-	INITIAL_STATE,
-} from "./enable-model";
+import { enableReducer, enableView, INITIAL_STATE } from "./enable-model";
 import {
 	browserKeyActions,
 	type KeyActions,

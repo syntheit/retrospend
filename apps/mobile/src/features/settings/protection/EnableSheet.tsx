@@ -1,4 +1,7 @@
 import {
+	type FailureCode,
+	failureCode,
+	isFinalFailure,
 	type KeyDraft,
 	pickConfirmGroups,
 	randomBelow,
@@ -14,12 +17,7 @@ import { EnableBody } from "./EnableBody";
 import { EnableFooter } from "./EnableFooter";
 import { confirmYouReady, passwordStepReady } from "./EnableSteps";
 import { confirmMatches } from "./KeySteps";
-import {
-	type ConfirmFailure,
-	type ConfirmResult,
-	type EnableStep,
-	isFinal,
-} from "./types";
+import type { EnableStep } from "./types";
 import { useEnableLifecycle } from "./useEnableLifecycle";
 import { useKeyActions } from "./useKeyActions";
 
@@ -36,20 +34,22 @@ export type EnableSheetProps = {
 	/**
 	 * E2 Continue: derive the keys once (a busy moment). Each call answers with
 	 * its own draft, whose `wipe` clears exactly the keys that call made; a
-	 * call that rejects holds none. The sheet wipes the draft it holds on
+	 * call that rejects holds none and says why with an EnableFailure (a final
+	 * code stays final; anything else reads as `failed`). The sheet wipes the draft it holds on
 	 * close, unmount and Back from the methods, a draft it replaces, and a
 	 * late one that arrives after its sheet is gone.
 	 */
 	makeKeys: (password: string) => Promise<KeyDraft>;
 	/**
 	 * Last step: sign in again if needed, send and read back with this draft.
-	 * It never wipes (closing does) and never throws; refusals are results.
-	 * `code` is null when two-factor is off.
+	 * It must not wipe the draft (closing does). Reject with an EnableFailure
+	 * to name why; anything else reads as `failed`. `code` is null when
+	 * two-factor is off.
 	 */
 	save: (
 		draft: KeyDraft,
 		input: { password: string; code: string | null },
-	) => Promise<ConfirmResult>;
+	) => Promise<void>;
 	/** E1's "See which": where the locked features are listed. Without it the link is not drawn. */
 	onSeeWhich?: () => void;
 	/** Tests only: the choice of which two groups to ask for. */
@@ -154,7 +154,7 @@ export function EnableSheet({
 		if (made.status === "late" || made.status === "ignored") return;
 		setBusy(false);
 		if (made.status === "failed") {
-			setError(t("errors.failed"));
+			fail(failureCode(made.error));
 			return;
 		}
 		// The new password is not needed again: the keys are made.
@@ -162,6 +162,12 @@ export function EnableSheet({
 		setAgain("");
 		setKeyText(made.value.keyText);
 		go("methods");
+	}
+
+	/** A refusal: its words, and a final one leaves only Close. */
+	function fail(code: FailureCode) {
+		setError(t(`errors.${code}`));
+		setFinal(isFinalFailure(code));
 	}
 
 	function backToPassword() {
@@ -203,18 +209,15 @@ export function EnableSheet({
 		);
 		if (sent.status === "late" || sent.status === "ignored") return;
 		setBusy(false);
-		const done: ConfirmResult =
-			sent.status === "done" ? sent.value : { ok: false, reason: "failed" };
-		if (done.ok) {
-			// Saved and confirmed: nothing on this screen needs the key again.
-			setPassword("");
-			setCode("");
-			setKeyText(null);
-			go("done");
+		if (sent.status === "failed") {
+			fail(failureCode(sent.error));
 			return;
 		}
-		setError(t(`errors.${done.reason satisfies ConfirmFailure}`));
-		setFinal(isFinal(done.reason));
+		// Saved and confirmed: nothing on this screen needs the key again.
+		setPassword("");
+		setCode("");
+		setKeyText(null);
+		go("done");
 	}
 
 	function finish() {

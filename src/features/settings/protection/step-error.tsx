@@ -1,8 +1,8 @@
 "use client";
 
+import { type FailureCode, isFinalFailure } from "@retrospend/crypto/client";
 import { useTranslations } from "next-intl";
 import { Notice } from "~/components/ui/notice";
-import { type FailureCode, isFinalFailure } from "./enable-model";
 
 /**
  * What went wrong on this step. A try-again failure is one line under the

@@ -2,12 +2,7 @@ import type { Me } from "@retrospend/api-contract";
 import { createReadCache } from "@/data/cache";
 import { createMemoryStore } from "@/data/store";
 import { authFailureOf, isSessionEnded } from "./errors";
-import {
-	endSession,
-	type FetchMe,
-	openSession,
-	restoreSession,
-} from "./restore";
+import { endSession, type FetchMe, openSession, restoreSession } from "./restore";
 import type { TokenStore } from "./token-store";
 
 const me = { id: "u1", name: "Ana" } as Me;
@@ -194,17 +189,10 @@ describe("openSession", () => {
 	});
 
 	it("ends the session when the server says 401 after the optimistic open", async () => {
-		const o = open(
-			"t",
-			async () => ({ ok: false, reason: "unauthorized" }),
-			true,
-		);
+		const o = open("t", async () => ({ ok: false, reason: "unauthorized" }), true);
 		const opening = await o.run();
 		expect(opening.first.status).toBe("signedIn");
-		expect(await opening.settled).toEqual({
-			status: "signedOut",
-			expired: true,
-		});
+		expect(await opening.settled).toEqual({ status: "signedOut", expired: true });
 		expect(o.token()).toBeNull();
 		expect(await o.profileCache.read("me", 1)).toBeNull();
 	});
@@ -267,10 +255,7 @@ describe("openSession", () => {
 		});
 		await jest.advanceTimersByTimeAsync(4100);
 		answer({ ok: false, reason: "unauthorized" });
-		expect(await result?.settled).toEqual({
-			status: "signedOut",
-			expired: true,
-		});
+		expect(await result?.settled).toEqual({ status: "signedOut", expired: true });
 		expect(o.token()).toBeNull();
 	});
 });

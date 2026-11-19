@@ -2,16 +2,13 @@ import { TWO_FACTOR_CODE_LENGTH } from "@retrospend/api-contract";
 import { describe, expect, it } from "vitest";
 import {
 	type EnableAction,
-	EnableFailure,
 	type EnableState,
 	enableReducer,
 	enableView,
-	failureCode,
 	fieldsLocked,
 	groupMismatch,
 	groupsConfirmed,
 	INITIAL_STATE,
-	isFinalFailure,
 	newPasswordReady,
 } from "./enable-model";
 
@@ -333,27 +330,6 @@ describe("a final failure", () => {
 		expect(
 			enableReducer(s, { type: "text", field: "password", value: "x" }),
 		).toEqual(s);
-	});
-});
-
-describe("failures", () => {
-	it("reads a code off an EnableFailure and anything else as failed", () => {
-		expect(failureCode(new EnableFailure("tooMany"))).toBe("tooMany");
-		expect(failureCode(new Error("boom"))).toBe("failed");
-		expect(failureCode("wrongCode")).toBe("failed");
-	});
-
-	it("is final only when nothing can be retried", () => {
-		expect(isFinalFailure("checkFailed")).toBe(true);
-		expect(isFinalFailure("notOffered")).toBe(true);
-		for (const code of [
-			"wrongPassword",
-			"wrongCode",
-			"tooMany",
-			"failed",
-		] as const)
-			expect(isFinalFailure(code)).toBe(false);
-		expect(isFinalFailure(null)).toBe(false);
 	});
 });
 

@@ -1,3 +1,4 @@
+import { EnableFailure } from "@retrospend/crypto/client";
 import vectors from "@retrospend/crypto/vectors/keys.vectors.json";
 import { EnableSheet, type EnableSheetProps } from "./EnableSheet";
 
@@ -229,7 +230,7 @@ beforeEach(() => {
 	mockToast.show.mockReset();
 	drafts.length = 0;
 	makeKeys.mockImplementation(async () => draftOf());
-	saveKeys.mockResolvedValue({ ok: true });
+	saveKeys.mockResolvedValue(undefined);
 });
 
 describe("EnableSheet, what changes", () => {
@@ -298,6 +299,19 @@ describe("EnableSheet, new password", () => {
 		expect(drafts[0]?.wipe).toHaveBeenCalledTimes(1);
 		expect(s.find("field:New password")?.props.value).toBe("");
 		expect(s.find("field:Confirm new password")?.props.value).toBe("");
+	});
+
+	it("ends on a final code from makeKeys, with its words and only Close", async () => {
+		makeKeys.mockRejectedValue(new EnableFailure("notOffered"));
+		const s = render();
+		await s.press("Continue");
+		s.type("New password", PASSWORD);
+		s.type("Confirm new password", PASSWORD);
+		await s.press("Continue");
+		expect(s.texts()).toContain("Advanced protection is not available here.");
+		expect(s.find("button:Continue")).toBeUndefined();
+		await s.press("Close");
+		expect(onClose).toHaveBeenCalledTimes(1);
 	});
 
 	it("keeps the person here with the failure words when the keys cannot be made", async () => {
@@ -506,7 +520,7 @@ describe("EnableSheet, confirm it is you", () => {
 	] as const)(
 		"keeps %s on the step and lets the person try again",
 		async (reason, words) => {
-			saveKeys.mockResolvedValue({ ok: false, reason });
+			saveKeys.mockRejectedValue(new EnableFailure(reason));
 			const s = render();
 			await toConfirmYou(s);
 			s.type("Password", "old password");
@@ -517,13 +531,23 @@ describe("EnableSheet, confirm it is you", () => {
 		},
 	);
 
+	it("reads anything that is not an EnableFailure as a plain failure", async () => {
+		saveKeys.mockRejectedValue(new Error("boom"));
+		const s = render();
+		await toConfirmYou(s);
+		s.type("Password", "old password");
+		await s.press("Save keys");
+		expect(s.texts()).toContain("Couldn't finish. Try again.");
+		expect(s.disabled("Save keys")).toBe(false);
+	});
+
 	it.each([
 		["notOffered", "Advanced protection is not available here."],
 		["checkFailed", "Couldn't check your keys."],
 	] as const)(
 		"ends on %s with the words and a way to close, not to retry",
 		async (reason, words) => {
-			saveKeys.mockResolvedValue({ ok: false, reason });
+			saveKeys.mockRejectedValue(new EnableFailure(reason));
 			const s = render();
 			await toConfirmYou(s);
 			s.type("Password", "old password");
@@ -708,8 +732,8 @@ describe("EnableSheet, nothing stays in a closed sheet", () => {
 	});
 
 	it("a late save leaves the newer draft and screen alone", async () => {
-		let finish: (r: unknown) => void = () => undefined;
-		saveKeys.mockReturnValueOnce(new Promise((r) => (finish = r)));
+		let reject: (e: unknown) => void = () => undefined;
+		saveKeys.mockReturnValueOnce(new Promise((_, r) => (reject = r)));
 		const s = render();
 		await toConfirmYou(s);
 		s.type("Password", "old password");
@@ -721,7 +745,7 @@ describe("EnableSheet, nothing stays in a closed sheet", () => {
 		// The reopened sheet makes its own keys and reaches the same step.
 		await toConfirmYou(s);
 		expect(s.title()).toBe("Confirm it's you");
-		await settle(() => finish({ ok: false, reason: "wrongPassword" }));
+		await settle(() => reject(new EnableFailure("wrongPassword")));
 		// Not shown as this sheet's refusal, not moved, no draft wiped by it.
 		expect(s.title()).toBe("Confirm it's you");
 		expect(s.texts()).not.toContain("Couldn't finish. Try again.");

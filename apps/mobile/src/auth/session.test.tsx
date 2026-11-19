@@ -2,8 +2,8 @@ import { createElement } from "react";
 import { createReadCache } from "@/data/cache";
 import { engineScope } from "@/data/engine-db/names";
 import { createMemoryStore } from "@/data/store";
-import { SessionProvider, type SessionState, useSession } from "./session";
 import { tokenKey } from "./token-store";
+import { SessionProvider, type SessionState, useSession } from "./session";
 
 // The cold start: what the session says on each render while the saved
 // server and the keystore are read and /me is checked. Sign-in must never be
@@ -17,9 +17,7 @@ const me = { id: "u1", name: "Ana" };
 
 const mockStore = createMemoryStore();
 const mockKeystore = new Map<string, string>();
-let mockConnection: { status: string; baseUrl?: string } = {
-	status: "loading",
-};
+let mockConnection: { status: string; baseUrl?: string } = { status: "loading" };
 let mockMe: () => Promise<unknown> = async () => me;
 let mockClientOptions: { newIdempotencyKey?: () => string } | null = null;
 
