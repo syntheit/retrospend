@@ -102,7 +102,7 @@ export function EnableSheet({
 	// A run that outlives the sheet (closed during the Argon2id moment or the
 	// send) must not write into the next opening.
 	const run = useRef(0);
-	const keyActions = useKeyActions({ keyText, account, setError });
+	const keyActions = useKeyActions({ keyText, account, setError, run });
 
 	function reset() {
 		run.current += 1;

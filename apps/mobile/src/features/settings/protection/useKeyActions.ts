@@ -10,26 +10,33 @@ export function useKeyActions({
 	keyText,
 	account,
 	setError,
+	run,
 }: {
 	keyText: string | null;
 	account: string;
 	setError: (words: string | null) => void;
+	/** The sheet's run counter: it moves when the sheet closes, so an action started before is stale. */
+	run: { current: number };
 }) {
 	const t = useTranslations("protection");
 	const toast = useToast();
 	return {
 		async copy() {
 			if (!keyText) return;
+			const mine = run.current;
 			setError(null);
 			try {
 				await copyRecoveryKey(keyText);
-				toast.show({ message: t("recoveryKey.copied") });
+				if (mine === run.current)
+					toast.show({ message: t("recoveryKey.copied") });
 			} catch {
-				setError(t("errors.failed"));
+				// A failure after the sheet closed belongs to no screen now.
+				if (mine === run.current) setError(t("errors.failed"));
 			}
 		},
 		async save() {
 			if (!keyText) return;
+			const mine = run.current;
 			setError(null);
 			try {
 				const labels = {
@@ -39,10 +46,10 @@ export function useKeyActions({
 					key: t("recoveryKey.label"),
 					keepSafe: t("recoveryKey.saveBody"),
 				};
-				if (!(await saveRecoveryKeyFile(labels, { keyText, account })))
-					setError(t("errors.failed"));
+				const saved = await saveRecoveryKeyFile(labels, { keyText, account });
+				if (!saved && mine === run.current) setError(t("errors.failed"));
 			} catch {
-				setError(t("errors.failed"));
+				if (mine === run.current) setError(t("errors.failed"));
 			}
 		},
 	};

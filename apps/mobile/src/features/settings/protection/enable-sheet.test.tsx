@@ -607,4 +607,67 @@ describe("EnableSheet, nothing stays in a closed sheet", () => {
 		expect(s.title()).toBe("Turn on Advanced protection");
 		expect(s.texts()).not.toContain(GROUPS[0]);
 	});
+	it("drops a late failure of the keys after the sheet was reopened", async () => {
+		let fail: (e: unknown) => void = () => undefined;
+		makeKeys.mockReturnValue(new Promise((_, r) => (fail = r)));
+		const s = render();
+		await s.press("Continue");
+		s.type("New password", PASSWORD);
+		s.type("Confirm new password", PASSWORD);
+		await s.press("Continue");
+		s.setVisible(false);
+		s.setVisible(true);
+		await s.press("Continue");
+		expect(s.title()).toBe("Set a new password");
+		await act(async () => fail(new Error("closed")));
+		expect(s.texts()).not.toContain("Couldn't finish. Try again.");
+		expect(s.title()).toBe("Set a new password");
+	});
+
+	it("lets the reopened sheet run its own job while an old one is still out", async () => {
+		let release: (r: unknown) => void = () => undefined;
+		makeKeys.mockReturnValueOnce(new Promise((r) => (release = r)));
+		const s = render();
+		await s.press("Continue");
+		s.type("New password", PASSWORD);
+		s.type("Confirm new password", PASSWORD);
+		await s.press("Continue");
+		s.setVisible(false);
+		s.setVisible(true);
+		await s.press("Continue");
+		s.type("New password", PASSWORD);
+		s.type("Confirm new password", PASSWORD);
+		// Not stuck busy from the closed run: the new job goes out and lands.
+		await s.press("Continue");
+		expect(makeKeys).toHaveBeenCalledTimes(2);
+		expect(s.title()).toBe("Add a way to get back in");
+		// The old answer arrives last and changes nothing.
+		discard.mockClear();
+		await act(async () => release({ ok: true, recoveryKeyText: KEY }));
+		expect(s.title()).toBe("Add a way to get back in");
+		expect(discard).toHaveBeenCalledTimes(1);
+	});
+
+	it("drops a late save failure and a late copy after the sheet was reopened", async () => {
+		let failSave: (e: unknown) => void = () => undefined;
+		let doneCopy: () => void = () => undefined;
+		const s = render();
+		await toMethods(s);
+		await s.press("Create key");
+		mockSave.mockReturnValue(new Promise((_, r) => (failSave = r)));
+		mockCopy.mockReturnValue(new Promise<void>((r) => (doneCopy = r)));
+		await s.press("Save to Files");
+		await s.press("Copy");
+		s.setVisible(false);
+		s.setVisible(true);
+		await s.press("Continue");
+		expect(s.title()).toBe("Set a new password");
+		mockToast.show.mockClear();
+		await act(async () => {
+			failSave(new Error("closed"));
+			doneCopy();
+		});
+		expect(s.texts()).not.toContain("Couldn't finish. Try again.");
+		expect(mockToast.show).not.toHaveBeenCalled();
+	});
 });
