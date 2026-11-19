@@ -683,14 +683,8 @@ describe("a plain account is not drawn into recovery", () => {
 			protectionOn: false,
 		});
 		await expectProblem(await begin(token, wrongKey()), 404, "not_found");
-		const body = {
-			token,
-			recoveryAuthKey: wrongKey(),
-			newAuthKey: wrongKey(),
-			kdf: { salt: "A".repeat(22), memoryKiB: 65536, passes: 3 },
-			wrappedAccountKey: "A".repeat(100),
-			baseVersion: 1,
-		};
+		// A well-formed body (wrap bytes the checks accept) for an account with no keys.
+		const body = commitBody(p, await recoverable(), { token }).input;
 		await expectProblem(await commit(body), 404, "not_found");
 		expect(
 			await adminDb.passwordResetToken.count({
