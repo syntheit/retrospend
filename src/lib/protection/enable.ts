@@ -154,12 +154,18 @@ export function webEnableCallbacks(
 	const deps: WebEnableDeps = { ...defaults(), ...options.deps };
 	let built: Promise<EnableCallbacks> | null = null;
 	const callbacks = () => {
-		built ??= loadCore().then((core) =>
-			core.createEnableCallbacks(
-				ports(core, deps, account),
-				options.params ? { params: options.params } : undefined,
-			),
-		);
+		built ??= loadCore()
+			.then((core) =>
+				core.createEnableCallbacks(
+					ports(core, deps, account),
+					options.params ? { params: options.params } : undefined,
+				),
+			)
+			.catch((error: unknown) => {
+				// A script that failed to load is tried again, not remembered.
+				built = null;
+				throw error;
+			});
 		return built;
 	};
 	return {
