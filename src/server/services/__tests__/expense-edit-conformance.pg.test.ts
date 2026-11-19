@@ -161,11 +161,24 @@ function serverAdapter(): ExpenseEditAdapter {
 					data: { isAmortizedChild: true },
 				});
 			else {
-				// A transfer's fee: an account leg names the expense.
+				// A transfer's fee: the transfer names the expense, and so does its leg.
 				const row = await fixtureDb.expense.findUniqueOrThrow({ where });
+				const transfer = await fixtureDb.transfer.create({
+					data: {
+						userId,
+						kind: "TRANSFER",
+						date: row.date,
+						fromAmount: "100",
+						fromCurrency: row.currency,
+						toAmount: "100",
+						toCurrency: row.currency,
+						feeExpenseId: row.id,
+					},
+				});
 				await fixtureDb.accountLeg.create({
 					data: {
 						userId,
+						transferId: transfer.id,
 						expenseId: row.id,
 						currency: row.currency,
 						amount: "-100",
