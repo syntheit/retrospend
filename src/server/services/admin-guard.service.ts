@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient } from "~prisma";
+import { endSessions } from "./protection-keys/password-writes";
 
 /** The last active admin was about to be disabled or deleted. */
 export class LastAdminError extends TRPCError {
@@ -66,7 +67,7 @@ export async function disableUserKeepingAnAdmin(
 			select: { username: true },
 		});
 		// Sign the user out everywhere so the disable takes effect immediately
-		await tx.session.deleteMany({ where: { userId } });
+		await endSessions(tx, userId, { endAll: true });
 		return user;
 	});
 }

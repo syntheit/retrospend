@@ -14,6 +14,7 @@ import {
 	hasKeySet,
 	lockCredential,
 	ProtectedPasswordError,
+	endSessions,
 	type ResetBy,
 	settleKeysForReset,
 	swapCredentialHash,
@@ -63,6 +64,54 @@ export async function spendPasswordTry(
 	);
 	if (!user.allowed)
 		throw new PasswordTriesExceededError(user.retryAfterSeconds);
+}
+
+/**
+ * What holding a reset link and guessing at the recovery key can try: 5 per
+ * link and a looser 10 per user across their links, in an hour. A link is
+ * single use, so a person needs a begin, a commit and one spare.
+ */
+export const RECOVERY_TRIES = {
+	perToken: 5,
+	perUser: 10,
+	windowMs: 60 * 60_000,
+} as const;
+
+/** The caller has used their recovery tries; `retryAfterSeconds` says when to come back. */
+export class RecoveryTriesExceededError extends TRPCError {
+	constructor(readonly retryAfterSeconds: number) {
+		super({
+			code: "TOO_MANY_REQUESTS",
+			message: "Too many tries. Try again later.",
+		});
+	}
+}
+
+/**
+ * Counts one try at the recovery key for this reset link and user. Recovery
+ * begin and commit each spend one (the check spends none), after the link was
+ * found and before the proof is compared. `tokenHash` is the stored hash of the
+ * link, never the raw token, so the counter table never holds a usable secret.
+ * The only owner of these limits; the per-IP limit is the route's.
+ */
+export async function spendRecoveryTry(
+	userId: string,
+	tokenHash: string,
+): Promise<void> {
+	const token = await consumeRateLimit(
+		`recovery:token:${tokenHash}`,
+		RECOVERY_TRIES.perToken,
+		RECOVERY_TRIES.windowMs,
+	);
+	if (!token.allowed)
+		throw new RecoveryTriesExceededError(token.retryAfterSeconds);
+	const user = await consumeRateLimit(
+		`recovery:user:${userId}`,
+		RECOVERY_TRIES.perUser,
+		RECOVERY_TRIES.windowMs,
+	);
+	if (!user.allowed)
+		throw new RecoveryTriesExceededError(user.retryAfterSeconds);
 }
 
 export const WRONG_PASSWORD_MESSAGE = "Current password is incorrect";
@@ -118,11 +167,11 @@ export async function changeOwnPassword(input: {
 	const hashed = await hashPassword(input.newPassword);
 	const swapped = await db.$transaction((tx) =>
 		swapCredentialHash(tx, {
+			writer: "change",
 			userId: input.userId,
 			checked,
 			hashed,
-			keys: "absent",
-			keepSessionId: input.keepSessionId,
+			sessions: { keep: input.keepSessionId },
 		}),
 	);
 	if (swapped.ok) return { signedOut: swapped.signedOut };
@@ -157,9 +206,12 @@ export async function resetPasswordHash(input: {
 	whenNoCredential: "continue" | "not_found";
 }): Promise<void> {
 	await db.$transaction(async (tx) => {
+		// The credential row first, then the link, as every other writer takes
+		// them (swapCredentialHash locks, then drops links): the reverse order
+		// could deadlock with a recovery commit on the same user.
+		const locked = await lockCredential(tx, input.userId);
 		if (input.token)
 			await spendResetToken(tx, { token: input.token, userId: input.userId });
-		const locked = await lockCredential(tx, input.userId);
 		if (locked) {
 			await settleKeysForReset(tx, input.userId, locked, input.by);
 			await tx.account.updateMany({
@@ -172,7 +224,7 @@ export async function resetPasswordHash(input: {
 				message: "User does not have a credential account",
 			});
 		}
-		await tx.session.deleteMany({ where: { userId: input.userId } });
+		await endSessions(tx, input.userId, { endAll: true });
 		await deleteUserResetTokens(tx, input.userId);
 	});
 }

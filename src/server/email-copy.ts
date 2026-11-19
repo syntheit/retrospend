@@ -13,6 +13,7 @@ export const emailSubject = {
 	passwordReset: "Reset your password",
 	passwordChanged: "Your password was changed",
 	protectionEnabled: "Advanced protection keys were created",
+	passwordRecovered: "Your password was reset with your recovery key",
 	emailChangeConfirm: "Confirm your new email",
 	emailChangeAlert: "Email change requested",
 	smtpTest: "SMTP test",
@@ -46,6 +47,12 @@ export const emailCopy = {
 		body: "Your Retrospend account now signs in with a password that never leaves your devices, and you were signed out everywhere else.",
 		notice:
 			"If it was not you, reset your password now or contact your administrator.",
+	},
+	passwordRecovered: {
+		title: "Password reset with your recovery key",
+		body: "Your Retrospend password was reset with your recovery key. You were signed out everywhere, and your access tokens were removed.",
+		notice:
+			"If it was not you, contact your administrator now. Your recovery key may be exposed.",
 	},
 	emailChangeConfirm: {
 		title: "Confirm your new email",

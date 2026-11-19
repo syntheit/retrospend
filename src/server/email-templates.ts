@@ -196,6 +196,21 @@ export function getPasswordChangedAlertTemplate() {
 	});
 }
 
+/** Security alert after a recovery key reset the password. */
+export function getPasswordRecoveredAlertTemplate() {
+	const copy = emailCopy.passwordRecovered;
+	const content = `
+    ${heading(copy.title)}
+    ${paragraph(escapeHtml(copy.body))}
+    ${notice(copy.notice)}
+  `;
+	return baseEmailTemplate({
+		title: emailSubject.passwordRecovered,
+		content,
+		preheader: copy.body,
+	});
+}
+
 /** Security alert after Advanced protection keys were created. */
 export function getProtectionEnabledAlertTemplate() {
 	const copy = emailCopy.protectionEnabled;

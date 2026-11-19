@@ -104,7 +104,7 @@ export async function beginRotation(input: {
 }): Promise<BeginResult> {
 	const { userId, sessionId, currentAuthKey } = input;
 	const released = await releaseWraps(userId, {
-		kind: "password",
+		reader: "rotateBegin",
 		authKey: currentAuthKey,
 		sessionId,
 	}).catch((error: unknown) => {
@@ -160,11 +160,11 @@ export async function rotatePassword(input: {
 
 	const done = await db.$transaction(async (tx) => {
 		const swapped = await swapCredentialHash(tx, {
+			writer: "rotate",
 			userId,
 			checked,
 			hashed,
-			keys: "present",
-			keepSessionId: sessionId,
+			sessions: { keep: sessionId },
 			dropResetLinks: true,
 		});
 		if (!swapped.ok) throw new ProtectionKeysError("conflict");

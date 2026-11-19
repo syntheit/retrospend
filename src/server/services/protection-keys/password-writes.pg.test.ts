@@ -6,6 +6,8 @@
  * under it, so a writer that waits behind a turn-on sees the keys.
  */
 import { randomBytes, randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { problemCode } from "~/server/api/error-formatter";
@@ -23,14 +25,26 @@ import { auth } from "~/server/better-auth";
 import {
 	changeOwnPassword,
 	PasswordTriesExceededError,
+	resetPasswordHash,
 	spendPasswordTry,
 } from "~/server/services/account-security.service";
+import { disableUserKeepingAnAdmin } from "~/server/services/admin-guard.service";
+import { hashToken } from "~/server/lib/tokens";
+import {
+	approvedDeviceCode,
+	deviceCodeRows,
+	pollDeviceCode,
+} from "~/test/device-codes";
+import { holdCredentialLock as holdWhileWaiting } from "~/test/locks";
 import { issueLinkFor } from "~/test/reset-links";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
+import { REPO_ROOT } from "~/test/uiRules/paths";
 import {
 	lockCredential,
 	ProtectedPasswordError,
+	SWAP_WRITERS,
+	type SwapWriter,
 	swapCredentialHash,
 } from "./password-writes";
 
@@ -368,11 +382,11 @@ describe("swapCredentialHash", () => {
 		const hashed = await hashPassword("A new hash 4");
 		const result = await adminDb.$transaction((tx) =>
 			swapCredentialHash(tx, {
+				writer: "change",
 				userId: a.id,
 				checked,
 				hashed,
-				keys: "absent",
-				keepSessionId: "keep",
+				sessions: { keep: "keep" },
 				...over,
 			}),
 		);
@@ -411,19 +425,19 @@ describe("swapCredentialHash", () => {
 
 	it("refuses a keyed account when keys must be absent, and a keyless one when they must be present", async () => {
 		const keyless = await passwordUser();
-		expect((await swap(keyless, { keys: "present" })).result).toEqual({
+		expect((await swap(keyless, { writer: "rotate" })).result).toEqual({
 			ok: false,
 			refusal: "keys_missing",
 		});
 		const keyed = await passwordUser();
 		await giveKeys(keyed.id);
 		const before = await storedHash(keyed.id);
-		expect((await swap(keyed, { keys: "absent" })).result).toEqual({
+		expect((await swap(keyed, { writer: "change" })).result).toEqual({
 			ok: false,
 			refusal: "keys_present",
 		});
 		expect(await storedHash(keyed.id)).toBe(before);
-		expect((await swap(keyed, { keys: "present" })).result).toMatchObject({
+		expect((await swap(keyed, { writer: "rotate" })).result).toMatchObject({
 			ok: true,
 		});
 	});
@@ -432,14 +446,242 @@ describe("swapCredentialHash", () => {
 		const { user } = await createTestUser();
 		const result = await adminDb.$transaction((tx) =>
 			swapCredentialHash(tx, {
+				writer: "change",
 				userId: user.id,
 				checked: "x",
 				hashed: "y",
-				keys: "absent",
-				keepSessionId: "keep",
+				sessions: { keep: "keep" },
 			}),
 		);
 		expect(result).toEqual({ ok: false, refusal: "no_credential" });
+	});
+});
+
+/**
+ * Where each hash writer is driven through its own caller, one case per member
+ * of the union (a `Record`, so a writer added without a case fails typecheck).
+ * The change goes through changeOwnPassword in this file.
+ */
+const SWAP_DRIVEN_BY: Record<SwapWriter, { file: string }> = {
+	change: { file: "src/server/services/protection-keys/password-writes.pg.test.ts" },
+	enable: { file: "src/server/services/protection-keys/enable.pg.test.ts" },
+	rotate: { file: "src/server/services/protection-keys/rotate.pg.test.ts" },
+	recovery: { file: "src/server/services/protection-keys/recover.pg.test.ts" },
+};
+
+describe("the hash writer union", () => {
+	it("is the plan's writer table, and every member has a test that drives it", () => {
+		const plan = ["change", "enable", "rotate", "recovery"];
+		expect([...SWAP_WRITERS].sort()).toEqual([...plan].sort());
+		expect(Object.keys(SWAP_DRIVEN_BY).sort()).toEqual([...plan].sort());
+		for (const driven of Object.values(SWAP_DRIVEN_BY))
+			expect(existsSync(join(REPO_ROOT, driven.file)), driven.file).toBe(true);
+	});
+
+	const swapAs = async (
+		a: Account,
+		writer: SwapWriter,
+		sessions: Parameters<typeof swapCredentialHash>[1]["sessions"],
+	) => {
+		const checked = await storedHash(a.id);
+		const hashed = await hashPassword("A new hash 5");
+		const result = await adminDb
+			.$transaction((tx) =>
+				swapCredentialHash(tx, {
+					writer,
+					userId: a.id,
+					checked,
+					hashed,
+					sessions,
+				}),
+			)
+			.then(
+				(r) => r,
+				(e: unknown) => e,
+			);
+		return { result, checked, hashed };
+	};
+
+	it("recovery ends every session, the others keep the caller's", async () => {
+		const a = await passwordUser();
+		await giveKeys(a.id);
+		await adminDb.session.deleteMany({ where: { userId: a.id } });
+		const mine = await sessionFor(a.id);
+		const mineId = (await adminDb.session.findUniqueOrThrow({ where: { token: mine } })).id;
+		await sessionFor(a.id);
+		const rotated = await swapAs(a, "rotate", { keep: mineId });
+		expect(rotated.result).toEqual({ ok: true, signedOut: 1 });
+		expect(await adminDb.session.count({ where: { userId: a.id } })).toBe(1);
+		await sessionFor(a.id);
+		const recovered = await swapAs(a, "recovery", { endAll: true });
+		expect(recovered.result).toEqual({ ok: true, signedOut: 2 });
+		expect(await adminDb.session.count({ where: { userId: a.id } })).toBe(0);
+	});
+
+	it("refuses a session policy that does not fit the writer, before locking or writing", async () => {
+		const a = await passwordUser();
+		await giveKeys(a.id);
+		await adminDb.session.deleteMany({ where: { userId: a.id } });
+		await sessionFor(a.id);
+		const stored = await storedHash(a.id);
+		for (const [writer, sessions] of [
+			["recovery", { keep: "x" }],
+			["rotate", { endAll: true }],
+			["change", { endAll: true }],
+			["enable", { endAll: true }],
+		] as const) {
+			const { result } = await swapAs(a, writer, sessions);
+			expect(result, writer).toBeInstanceOf(Error);
+		}
+		expect(await storedHash(a.id)).toBe(stored);
+		expect(await adminDb.session.count({ where: { userId: a.id } })).toBe(1);
+	});
+
+	it("refuses an unknown writer, including names every object has, before anything is written", async () => {
+		const a = await passwordUser();
+		await giveKeys(a.id);
+		await sessionFor(a.id);
+		const stored = await storedHash(a.id);
+		const sessions = await adminDb.session.count({ where: { userId: a.id } });
+		// `endAll` fits what an unknown writer's missing rule would compare to, so
+		// the session check cannot be what refuses it.
+		for (const writer of ["admin", "constructor", "toString"]) {
+			const { result } = await swapAs(a, writer as SwapWriter, {
+				endAll: true,
+			});
+			expect(result, writer).toBeInstanceOf(Error);
+		}
+		expect(await storedHash(a.id)).toBe(stored);
+		expect(await adminDb.session.count({ where: { userId: a.id } })).toBe(
+			sessions,
+		);
+	});
+
+	it("applies each writer's key rule: recovery and rotate need keys, change and enable need none", async () => {
+		const keyless = await passwordUser();
+		for (const writer of ["recovery", "rotate"] as const)
+			expect(
+				(await swapAs(keyless, writer, writer === "recovery" ? { endAll: true } : { keep: "k" })).result,
+				writer,
+			).toEqual({ ok: false, refusal: "keys_missing" });
+		const keyed = await passwordUser();
+		await giveKeys(keyed.id);
+		for (const writer of ["change", "enable"] as const)
+			expect((await swapAs(keyed, writer, { keep: "k" })).result, writer).toEqual({
+				ok: false,
+				refusal: "keys_present",
+			});
+	});
+});
+
+describe("device codes end with the sessions", () => {
+	/** A user, an approved code of theirs, and a control user whose code must survive. */
+	async function withCodes() {
+		const a = await passwordUser();
+		const control = await passwordUser();
+		return {
+			a,
+			code: await approvedDeviceCode(a.id),
+			control,
+			controlCode: await approvedDeviceCode(control.id),
+		};
+	}
+	const gone = async (c: Awaited<ReturnType<typeof withCodes>>) => {
+		expect(await deviceCodeRows(c.a.id)).toBe(0);
+		expect(await pollDeviceCode(c.code)).toBe("refused");
+		// The poll path works, and another person's code is not touched.
+		expect(await deviceCodeRows(c.control.id)).toBe(1);
+		expect(await pollDeviceCode(c.controlCode)).toBe("session");
+	};
+
+	it("a password write that keeps one session ends the user's approved codes", async () => {
+		const c = await withCodes();
+		await giveKeys(c.a.id);
+		const checked = await storedHash(c.a.id);
+		const hashed = await hashPassword("A new hash 6");
+		const result = await adminDb.$transaction((tx) =>
+			swapCredentialHash(tx, {
+				writer: "rotate",
+				userId: c.a.id,
+				checked,
+				hashed,
+				sessions: { keep: "keep" },
+			}),
+		);
+		expect(result).toMatchObject({ ok: true });
+		await gone(c);
+	});
+
+	it("the email reset and the admin reset end them", async () => {
+		const c = await withCodes();
+		await resetPasswordHash({
+			userId: c.a.id,
+			hashed: await hashPassword("What the reset set"),
+			by: { kind: "email" },
+			whenNoCredential: "continue",
+		});
+		await gone(c);
+	});
+
+	it("disabling the account ends them", async () => {
+		const c = await withCodes();
+		await createTestUser({ role: "ADMIN" });
+		await disableUserKeepingAnAdmin(adminDb, c.a.id);
+		await gone(c);
+	});
+
+	it("cancelling an email change from the old address ends them", async () => {
+		const c = await withCodes();
+		const raw = randomBytes(16).toString("hex");
+		await adminDb.user.update({
+			where: { id: c.a.id },
+			data: {
+				pendingEmail: `${randomUUID()}@pg-test.invalid`,
+				pendingEmailToken: hashToken(raw),
+				pendingEmailExpiresAt: new Date(Date.now() + 60_000),
+			},
+		});
+		await publicCaller().revertEmailChange({ token: raw });
+		await gone(c);
+	});
+});
+
+describe("resetPasswordHash lock order", () => {
+	it("takes the credential row before the link: while it waits for the row, the link is not locked", async () => {
+		const a = await passwordUser();
+		const token = await issueLinkFor(a.id);
+		const hash = hashToken(token);
+		let probe: unknown = "not run";
+		const done = await holdWhileWaiting(
+			a.id,
+			async () => {
+				// A third connection: a link locked by the waiting reset would fail at once.
+				probe = await adminDb
+					.$transaction((tx) =>
+						tx.$queryRaw<{ token: string }[]>`
+							SELECT "token" FROM "password_reset_token"
+							WHERE "token" = ${hash} FOR UPDATE NOWAIT`,
+					)
+					.then(
+						(rows) => rows.length,
+						(e: unknown) => String(e),
+					);
+			},
+			() =>
+				resetPasswordHash({
+					userId: a.id,
+					hashed: "unused-after-the-lock-test",
+					by: { kind: "email" },
+					token,
+					whenNoCredential: "continue",
+				}).then(
+					() => "reset",
+					(e: unknown) => String(e),
+				),
+		);
+		expect(probe).toBe(1);
+		expect(done).toBe("reset");
+		expect(await tokenRows(a.id)).toBe(0);
 	});
 });
 
@@ -715,6 +957,39 @@ describe("better-auth password routes", () => {
 			}),
 		);
 		expect(res.status).toBe(404);
+	});
+});
+
+describe("better-auth session routes", () => {
+	it("does not route its own revoke routes: they would end sessions and leave device codes", async () => {
+		const a = await passwordUser();
+		const { cookie } = await webCookieFor(a.id);
+		const code = await approvedDeviceCode(a.id);
+		const other = await sessionFor(a.id);
+		const before = await adminDb.session.count({ where: { userId: a.id } });
+		for (const [path, body] of [
+			["/revoke-session", { token: other }],
+			["/revoke-sessions", {}],
+			["/revoke-other-sessions", {}],
+		] as const) {
+			const res = await auth.handler(
+				new Request(`http://localhost:3101/api/auth${path}`, {
+					method: "POST",
+					headers: {
+						"content-type": "application/json",
+						origin: "http://localhost:3101",
+						cookie,
+					},
+					body: JSON.stringify(body),
+				}),
+			);
+			expect(res.status, path).toBe(404);
+		}
+		expect(await adminDb.session.count({ where: { userId: a.id } })).toBe(
+			before,
+		);
+		expect(await deviceCodeRows(a.id)).toBe(1);
+		expect(code).toBeTruthy();
 	});
 });
 
