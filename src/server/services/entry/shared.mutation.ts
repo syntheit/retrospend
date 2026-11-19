@@ -221,9 +221,10 @@ export interface DeleteSharedInput extends Deferred {
  * A retraction takes back what an add told people, so it is only for an add
  * nobody has answered. Once someone accepted or rejected their share, the
  * split is theirs too and the undo must not delete it silently: they delete
- * it the ordinary way, which asks to confirm.
+ * it the ordinary way, which asks to confirm. The web's undo of an edit asks
+ * the same (guarded.mutation.ts): an answer does not move the row's stamp.
  */
-async function assertNobodyAnswered(tx: Tx, id: string, userId: string) {
+export async function assertNobodyAnswered(tx: Tx, id: string, userId: string) {
 	const answered = await tx.splitParticipant.count({
 		where: {
 			transactionId: id,

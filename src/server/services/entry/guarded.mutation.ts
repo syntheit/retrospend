@@ -7,6 +7,7 @@ import {
 	updateExpenseEntry,
 } from "./expense.mutation";
 import {
+	assertNobodyAnswered,
 	type Deferred,
 	type UpdatedShared,
 	type UpdateSharedInput,
@@ -122,8 +123,22 @@ export const revertExpenseEntry: MoneyMutation<
 /**
  * The web's undo of a shared edit: the edit's old values, written (and the
  * people on it told) only while the row still has the `updatedAt` that edit
- * left. Required in the input, so the preview twin refuses a stale undo too.
+ * left, and only while nobody has answered their share since (an answer
+ * writes the share, not the row, so the stamp alone cannot see it). Both
+ * checks run on the locked row before anything is written. Required in the
+ * input, so the preview twin refuses a stale undo too.
  */
+const answeredGuarded: MoneyMutation<
+	UpdateSharedInput & Deferred,
+	UpdatedShared
+> = {
+	...updateSharedExpense,
+	run: async (tx, input, actor) => {
+		await assertNobodyAnswered(tx, input.id, actor.userId);
+		return updateSharedExpense.run(tx, input, actor);
+	},
+};
+
 export const revertSharedExpense: MoneyMutation<
 	UpdateSharedInput & Deferred & { expectedUpdatedAt: string },
 	UpdatedShared & { updatedAt: string | null }
@@ -131,5 +146,5 @@ export const revertSharedExpense: MoneyMutation<
 	id: updateSharedExpense.id,
 	touches: updateSharedExpense.touches,
 	run: (tx, { expectedUpdatedAt, ...input }, actor) =>
-		guardedShared(updateSharedExpense, expectedUpdatedAt).run(tx, input, actor),
+		guardedShared(answeredGuarded, expectedUpdatedAt).run(tx, input, actor),
 };
