@@ -13,7 +13,7 @@ import {
 	quoteRate,
 	rateFromQuote,
 } from "@retrospend/domain/money";
-import { makeExpense } from "~/test/factories";
+import { makeExpense, makeStoredExpense } from "~/test/factories";
 import { createMockDb } from "~/test/mock-db";
 import { DEFAULT_RATES, useRateTable } from "~/test/rate-table";
 import { ExpenseService } from "../expense.service";
@@ -138,7 +138,7 @@ describe("ExpenseService money (server side)", () => {
 		});
 		service = new ExpenseService(db as never);
 		db.expense.create.mockResolvedValue(makeExpense());
-		db.expense.update.mockResolvedValue(makeExpense());
+		db.expense.update.mockResolvedValue(makeStoredExpense());
 	});
 
 	describe("bug 1: the server does not trust client conversions", () => {
@@ -263,7 +263,7 @@ describe("ExpenseService money (server side)", () => {
 
 	describe("bug 3: updates recompute instead of keeping stale values", () => {
 		const existingArs = () =>
-			makeExpense({
+			makeStoredExpense({
 				id: "exp-1",
 				userId: "user-1",
 				amount: 1000,

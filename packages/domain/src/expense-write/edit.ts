@@ -186,6 +186,18 @@ async function excludeAfterCategory(
 		: input.excludeFromAnalytics;
 }
 
+/**
+ * The category rule of an edit, alone, for a caller that must refuse a bad
+ * category before something else it runs ahead of the edit (v1's stamp
+ * compare). The edit applies it again, with the same answer.
+ */
+export async function checkEditCategory(
+	port: ExpenseEditPort,
+	input: EditInput,
+): Promise<void> {
+	await excludeAfterCategory(port, input, await port.expense(input.id));
+}
+
 export async function editExpense(
 	port: ExpenseEditPort,
 	input: EditInput,

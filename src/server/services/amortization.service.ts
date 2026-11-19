@@ -64,10 +64,10 @@ export class AmortizationService {
 			id: string;
 			userId: string;
 			title: string;
-			amount: number | Prisma.Decimal;
-			amountInUSD: number | Prisma.Decimal;
+			amount: DecimalInput;
+			amountInUSD: DecimalInput;
 			currency: string;
-			exchangeRate: number | Prisma.Decimal;
+			exchangeRate: DecimalInput;
 			pricingSource: string | null;
 			date: Date;
 			categoryId: string | null;

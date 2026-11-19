@@ -65,6 +65,15 @@ export function asBadRequest<T>(run: () => T): T {
 	}
 }
 
+/** asBadRequest for a promise: a rejection is mapped the same way. */
+export function asBadRequestAsync<T>(run: () => Promise<T>): Promise<T> {
+	return run().catch((error: unknown) =>
+		asBadRequest(() => {
+			throw error;
+		}),
+	);
+}
+
 // ── The user's default ───────────────────────────────────────────────────────
 
 async function loadUser(db: RateDb, userId: string) {

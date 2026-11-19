@@ -3,7 +3,7 @@
  * sheet previews the same update or delete it saves, and each returns the
  * input that puts the expense back, so the toast's Undo is one more call.
  *
- * - expense.update: ExpenseService.updateExpense on the preview's
+ * - expense.update: ExpenseService.editExpense on the preview's
  *   transaction; its undo is another expense.update with the values it had.
  * - expense.delete: the row and its spread parts go; its undo is
  *   expense.restore, which puts the stored rows back verbatim from a signed
@@ -17,6 +17,11 @@
  * amount from the 12-decimal rate).
  */
 
+import type {
+	SavedFigures,
+	StoredExpense,
+} from "@retrospend/domain/expense-write/edit";
+import { ENTRY_POLICY } from "@retrospend/domain/expense-write/policy";
 import { rateInputOf } from "@retrospend/domain/expense-write/put-body";
 import { otherHomeMessage } from "@retrospend/domain/expense-write/refusals";
 import { dec } from "@retrospend/domain/precise-decimal";
@@ -26,7 +31,7 @@ import { homeCurrencyOf } from "../accounts/ledger";
 import {
 	EXPENSE_RESTORE,
 	ExpenseService,
-	type SavedFigures,
+	type UpdateExpenseInput,
 } from "../expense.service";
 import { GLANCE_SPENT } from "../figures/spend-pace";
 import type { MoneyMutation } from "../preview/types";
@@ -49,14 +54,15 @@ export const EXPENSE_FIGURES = ["spent", GLANCE_SPENT];
 /** The kind of signed token expense.delete returns for its undo. */
 const EXPENSE_DELETE = "expense.delete";
 
-export type UpdateExpenseInput = Parameters<ExpenseService["updateExpense"]>[1];
-
-type ExpenseRow = Prisma.ExpenseGetPayload<{
-	include: { children: { select: { id: true } } };
-}>;
+export type { UpdateExpenseInput };
 
 /** The fields the form saves, as `row` holds them now, and its figures signed. */
-function fieldsOf(row: ExpenseRow, userId: string, home: string) {
+function fieldsOf(
+	row: StoredExpense,
+	parts: number,
+	userId: string,
+	home: string,
+) {
 	const amount = dec(row.amount).toFixed();
 	return {
 		title: row.title,
@@ -67,7 +73,7 @@ function fieldsOf(row: ExpenseRow, userId: string, home: string) {
 		location: row.location ?? undefined,
 		description: row.description ?? undefined,
 		categoryId: row.categoryId ?? undefined,
-		amortizeOver: row.isAmortizedParent ? row.children.length : undefined,
+		amortizeOver: row.isAmortizedParent ? parts : undefined,
 		excludeFromAnalytics: row.excludeFromAnalytics,
 		...rateInputOf(row),
 		restore: signRestore(EXPENSE_RESTORE, userId, {
@@ -82,32 +88,16 @@ function fieldsOf(row: ExpenseRow, userId: string, home: string) {
 	};
 }
 
-/** The booked figures as stored, as plain decimal text (dec never writes an exponent). */
-function figuresOf(row: ExpenseRow): SavedFigures {
-	const text = (v: { toString(): string } | null) =>
-		v === null ? null : dec(v).toFixed();
+/** The booked figures as stored, as plain decimal text. */
+function figuresOf(row: StoredExpense): SavedFigures {
 	return {
-		exchangeRate: dec(row.exchangeRate).toFixed(),
-		amountInUSD: dec(row.amountInUSD).toFixed(),
+		exchangeRate: row.exchangeRate,
+		amountInUSD: row.amountInUSD,
 		rateType: row.rateType,
 		homeCurrency: row.homeCurrency,
-		homeRate: text(row.homeRate),
-		homeAmount: text(row.homeAmount),
+		homeRate: row.homeRate,
+		homeAmount: row.homeAmount,
 	};
-}
-
-async function ownExpense(tx: Tx, userId: string, id: string) {
-	const row = await tx.expense.findFirst({
-		where: { id, userId, direction: "OUT", isAmortizedChild: false },
-		include: {
-			children: { select: { id: true } },
-			_count: { select: { accountLegs: true } },
-		},
-	});
-	if (!row) {
-		throw new TRPCError({ code: "NOT_FOUND", message: "Expense not found" });
-	}
-	return row;
 }
 
 /**
@@ -137,30 +127,58 @@ export interface UpdatedExpense {
 	readonly restore: UpdateExpenseInput;
 }
 
-export const updateExpenseEntry: MoneyMutation<
-	UpdateExpenseInput,
-	UpdatedExpense
-> = {
-	id: "expense.update",
-	touches: EXPENSE_FIGURES,
-	run: async (tx, input, actor) => {
-		const before = await ownExpense(tx, actor.userId, input.id);
-		await refuseOtherHome(tx, actor.userId, input.customRate?.home);
-		const home = await homeCurrencyOf(tx, actor.userId);
-		await new ExpenseService(tx).updateExpense(actor.userId, input);
-		return {
-			value: {
-				id: input.id,
-				restore: { id: input.id, ...fieldsOf(before, actor.userId, home) },
-			},
-			undo: {
-				kind: "revert",
-				mutation: "expense.update",
-				rows: [{ table: "expense", id: input.id }],
-			},
-		};
-	},
-};
+/**
+ * `categoryFirst` is v1's read order on a replace: a bad category answers
+ * before a missing row. The undo and the web's own edit read the row first.
+ */
+function updateExpenseMutation(options: {
+	categoryFirst?: boolean;
+}): MoneyMutation<UpdateExpenseInput, UpdatedExpense> {
+	return {
+		id: "expense.update",
+		touches: EXPENSE_FIGURES,
+		run: async (tx, input, actor) => {
+			let parts = 0;
+			const { before } = await new ExpenseService(tx).editExpense(
+				actor.userId,
+				input,
+				ENTRY_POLICY,
+				{
+					...options,
+					afterRead: async (row) => {
+						await refuseOtherHome(tx, actor.userId, input.customRate?.home);
+						if (row.isAmortizedParent)
+							parts = await tx.expense.count({
+								where: { parentId: row.id, userId: actor.userId },
+							});
+					},
+				},
+			);
+			const home = await homeCurrencyOf(tx, actor.userId);
+			return {
+				value: {
+					id: input.id,
+					restore: {
+						id: input.id,
+						...fieldsOf(before, parts, actor.userId, home),
+					},
+				},
+				undo: {
+					kind: "revert",
+					mutation: "expense.update",
+					rows: [{ table: "expense", id: input.id }],
+				},
+			};
+		},
+	};
+}
+
+export const updateExpenseEntry = updateExpenseMutation({});
+
+/** The v1 replace and its preview twin (api-v1/expenses.ts). */
+export const replaceExpenseEntry = updateExpenseMutation({
+	categoryFirst: true,
+});
 
 export interface DeletedExpense {
 	readonly id: string;
@@ -173,21 +191,18 @@ export const deleteExpenseEntry: MoneyMutation<{ id: string }, DeletedExpense> =
 		id: "expense.delete",
 		touches: EXPENSE_FIGURES,
 		run: async (tx, input, actor) => {
-			const before = await ownExpense(tx, actor.userId, input.id);
-			if (before._count.accountLegs > 0) {
-				// A transfer's fee: it goes with its transfer.
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message:
-						"This expense moved money in an account. Undo it from its transfer.",
-				});
-			}
-			const snapshot = await snapshotExpense(tx, actor.userId, input.id);
-			await new ExpenseService(tx).deleteExpense(actor.userId, input.id);
+			const kept: { snapshot?: ExpenseSnapshot } = {};
+			await new ExpenseService(tx).deleteExpense(actor.userId, input.id, {
+				policy: ENTRY_POLICY,
+				beforeRemove: async () => {
+					kept.snapshot = await snapshotExpense(tx, actor.userId, input.id);
+				},
+			});
+			if (!kept.snapshot) throw new Error("The delete took no snapshot");
 			return {
 				value: {
 					id: input.id,
-					restore: signRestore(EXPENSE_DELETE, actor.userId, snapshot),
+					restore: signRestore(EXPENSE_DELETE, actor.userId, kept.snapshot),
 				},
 				undo: {
 					kind: "revert",

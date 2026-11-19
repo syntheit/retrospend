@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { MissingRateError } from "../money";
 import { RateInputError } from "../rate-booking";
 import {
+	checkEditCategory,
 	deleteExpense,
 	type EditInput,
 	editExpense,
@@ -255,6 +256,25 @@ describe("editExpense category", () => {
 		};
 		expect(await flag()).toBe(true);
 		expect(await flag(false)).toBe(false);
+	});
+});
+
+describe("checkEditCategory", () => {
+	it("refuses a bad category on its own, before the row is judged, and writes nothing", async () => {
+		const p = fakePort(null, { categories: [income] });
+		await expect(
+			checkEditCategory(p.port, { ...same, categoryId: "c-inc" }),
+		).rejects.toBeInstanceOf(CategoryNotFoundError);
+		expect(p.log).not.toContain("write");
+	});
+
+	it("passes a good category and a category the row keeps", async () => {
+		const p = fakePort(arsRow, {
+			categories: [food, { ...income, id: "c-old" }],
+		});
+		await checkEditCategory(p.port, { ...same, categoryId: "c-new" });
+		await checkEditCategory(p.port, same);
+		expect(p.log).toEqual(["expense", "category", "expense"]);
 	});
 });
 

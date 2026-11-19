@@ -1,8 +1,10 @@
-import { CategoryNotFoundError } from "@retrospend/domain/expense-write/refusals";
+import {
+	CategoryNotFoundError,
+	EditRefusal,
+} from "@retrospend/domain/expense-write/refusals";
 import { MissingRateError } from "@retrospend/domain/money";
-import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { makeCategory, makeExpense } from "~/test/factories";
+import { makeCategory, makeExpense, makeStoredExpense } from "~/test/factories";
 import { createMockDb } from "~/test/mock-db";
 import { RATE_DATE, useRateTable } from "~/test/rate-table";
 import { ExpenseService } from "../expense.service";
@@ -285,7 +287,7 @@ describe("ExpenseService", () => {
 		};
 
 		it("updates expense when it exists", async () => {
-			const existing = makeExpense({ id: "exp-1", userId: "user-1" });
+			const existing = makeStoredExpense({ id: "exp-1", userId: "user-1" });
 			db.expense.findFirst.mockResolvedValue(existing);
 			db.expense.update.mockResolvedValue(existing);
 
@@ -299,7 +301,7 @@ describe("ExpenseService", () => {
 		});
 
 		it("always calls AmortizationService.syncAmortization on update", async () => {
-			const existing = makeExpense({ id: "exp-1", userId: "user-1" });
+			const existing = makeStoredExpense({ id: "exp-1", userId: "user-1" });
 			db.expense.findFirst.mockResolvedValue(existing);
 			db.expense.update.mockResolvedValue(existing);
 
@@ -308,13 +310,14 @@ describe("ExpenseService", () => {
 			expect(mockSyncAmortization).toHaveBeenCalled();
 		});
 
-		it("non-existent expense: throws NOT_FOUND", async () => {
+		it("non-existent expense: refuses as not found", async () => {
 			db.expense.findFirst.mockResolvedValue(null);
 
 			await expect(
 				service.updateExpense("user-1", UPDATE_INPUT),
 			).rejects.toMatchObject({
-				code: "NOT_FOUND",
+				kind: "notFound",
+				message: "Expense not found",
 			});
 		});
 
@@ -323,13 +326,13 @@ describe("ExpenseService", () => {
 
 			await expect(
 				service.updateExpense("user-1", UPDATE_INPUT),
-			).rejects.toThrow(TRPCError);
+			).rejects.toBeInstanceOf(EditRefusal);
 
 			expect(db.expense.update).not.toHaveBeenCalled();
 		});
 
-		it("changed categoryId not owned by user: throws FORBIDDEN and does not update", async () => {
-			const existing = makeExpense({
+		it("changed categoryId not owned by user: refuses (tRPC answers FORBIDDEN) and does not update", async () => {
+			const existing = makeStoredExpense({
 				id: "exp-1",
 				userId: "user-1",
 				categoryId: "cat-1",
@@ -342,28 +345,30 @@ describe("ExpenseService", () => {
 					...UPDATE_INPUT,
 					categoryId: "cat-other",
 				}),
-			).rejects.toMatchObject({ code: "FORBIDDEN" });
+			).rejects.toBeInstanceOf(CategoryNotFoundError);
 
+			// The person's category row is read; the core refuses an income one.
 			expect(db.category.findFirst).toHaveBeenCalledWith(
-				// Income categories never hold an expense.
 				expect.objectContaining({
-					where: { id: "cat-other", userId: "user-1", kind: "EXPENSE" },
+					where: { id: "cat-other", userId: "user-1" },
 				}),
 			);
 			expect(db.expense.update).not.toHaveBeenCalled();
 		});
 
 		it("changed categoryId owned by user: proceeds", async () => {
-			const existing = makeExpense({
+			const existing = makeStoredExpense({
 				id: "exp-1",
 				userId: "user-1",
 				categoryId: "cat-1",
 			});
 			db.expense.findFirst.mockResolvedValue(existing);
 			db.expense.update.mockResolvedValue(existing);
-			db.category.findFirst.mockResolvedValue(
-				makeCategory({ id: "cat-2", userId: "user-1" }),
-			);
+			db.category.findFirst.mockResolvedValue({
+				...makeCategory({ id: "cat-2", userId: "user-1" }),
+				kind: "EXPENSE",
+				excludeByDefault: false,
+			});
 
 			await service.updateExpense("user-1", {
 				...UPDATE_INPUT,
@@ -374,7 +379,7 @@ describe("ExpenseService", () => {
 		});
 
 		it("unchanged categoryId: skips the ownership lookup", async () => {
-			const existing = makeExpense({
+			const existing = makeStoredExpense({
 				id: "exp-1",
 				userId: "user-1",
 				categoryId: "cat-1",
@@ -396,10 +401,9 @@ describe("ExpenseService", () => {
 
 	describe("deleteExpense", () => {
 		it("normal (non-amortized) expense: deletes it, returns success", async () => {
-			db.expense.findFirst.mockResolvedValue({
-				id: "exp-1",
-				isAmortizedParent: false,
-			});
+			db.expense.findFirst.mockResolvedValue(
+				makeStoredExpense({ id: "exp-1" }),
+			);
 			db.expense.delete.mockResolvedValue({});
 
 			const result = await service.deleteExpense("user-1", "exp-1");
@@ -411,10 +415,9 @@ describe("ExpenseService", () => {
 		});
 
 		it("normal expense: does NOT delete children", async () => {
-			db.expense.findFirst.mockResolvedValue({
-				id: "exp-1",
-				isAmortizedParent: false,
-			});
+			db.expense.findFirst.mockResolvedValue(
+				makeStoredExpense({ id: "exp-1" }),
+			);
 			db.expense.delete.mockResolvedValue({});
 
 			await service.deleteExpense("user-1", "exp-1");
@@ -424,7 +427,7 @@ describe("ExpenseService", () => {
 
 		it("amortized parent: deletes children first, then parent", async () => {
 			db.expense.findFirst.mockResolvedValue({
-				id: "exp-1",
+				...makeStoredExpense({ id: "exp-1" }),
 				isAmortizedParent: true,
 			});
 			db.expense.delete.mockResolvedValue({});
@@ -439,21 +442,21 @@ describe("ExpenseService", () => {
 			});
 		});
 
-		it("non-existent expense: throws NOT_FOUND", async () => {
+		it("non-existent expense: refuses as not found", async () => {
 			db.expense.findFirst.mockResolvedValue(null);
 
 			await expect(
 				service.deleteExpense("user-1", "exp-999"),
 			).rejects.toMatchObject({
-				code: "NOT_FOUND",
+				kind: "notFound",
+				message: "Expense not found",
 			});
 		});
 
 		it("calls $executeRaw (set_config) inside transaction", async () => {
-			db.expense.findFirst.mockResolvedValue({
-				id: "exp-1",
-				isAmortizedParent: false,
-			});
+			db.expense.findFirst.mockResolvedValue(
+				makeStoredExpense({ id: "exp-1" }),
+			);
 			db.expense.delete.mockResolvedValue({});
 
 			await service.deleteExpense("user-1", "exp-1");
