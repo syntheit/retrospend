@@ -5,7 +5,9 @@
 		"keysReady": "Keys ready",
 		"turnOn": "Turn on",
 		"makeNewKey": "Make new key",
-		"verifyEmailFirst": "Verify your email first"
+		"verifyEmailFirst": "Verify your email first",
+		"loadFailed": "Couldn't load",
+		"retry": "Try again"
 	},
 	"enable": {
 		"back": "Back",

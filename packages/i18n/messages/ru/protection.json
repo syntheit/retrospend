@@ -5,7 +5,9 @@
 		"keysReady": "Ключи готовы",
 		"turnOn": "Включить",
 		"makeNewKey": "Создать новый ключ",
-		"verifyEmailFirst": "Сначала подтвердите почту"
+		"verifyEmailFirst": "Сначала подтвердите почту",
+		"loadFailed": "Не удалось загрузить",
+		"retry": "Повторить"
 	},
 	"enable": {
 		"back": "Назад",

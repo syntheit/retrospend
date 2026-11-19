@@ -5,7 +5,9 @@
 		"keysReady": "Claves listas",
 		"turnOn": "Activar",
 		"makeNewKey": "Crear clave nueva",
-		"verifyEmailFirst": "Verificá primero tu correo"
+		"verifyEmailFirst": "Verificá primero tu correo",
+		"loadFailed": "No se pudo cargar",
+		"retry": "Reintentá"
 	},
 	"enable": {
 		"back": "Atrás",

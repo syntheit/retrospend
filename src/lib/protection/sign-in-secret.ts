@@ -70,15 +70,15 @@ const paintFrame = (): Promise<void> =>
 		else next();
 	});
 
-const defaults = (): SignInSecretDeps => ({
+export const defaults = (): SignInSecretDeps => ({
 	fetch: (input, init) => fetch(input, init),
 	storage: browserStorage(),
 	paint: paintFrame,
 });
 
 // The shared flow loads when a prompt runs, not with the page.
-const loadCore = () => import("@retrospend/crypto/client");
-type Core = Awaited<ReturnType<typeof loadCore>>;
+export const loadCore = () => import("@retrospend/crypto/client");
+export type Core = Awaited<ReturnType<typeof loadCore>>;
 
 const webPrimitives = async () =>
 	(await import("@retrospend/crypto/web")).createWebPrimitives();
@@ -194,7 +194,7 @@ function lookupPort(
 	};
 }
 
-function flowPorts(
+export function flowPorts(
 	core: Core,
 	deps: SignInSecretDeps,
 	email: string,
@@ -295,12 +295,12 @@ export class PasswordRotationError extends Error {
 	}
 }
 
-type Wire = { status: number; body: unknown };
+export type Wire = { status: number; body: unknown };
 
 const asObject = (v: unknown): Record<string, unknown> =>
 	typeof v === "object" && v !== null ? (v as Record<string, unknown>) : {};
 
-async function post(
+export async function post(
 	core: Core,
 	deps: SignInSecretDeps,
 	path: string,
@@ -326,7 +326,7 @@ async function post(
 }
 
 /** The stable code of a refused answer; raw text from the server is never used. */
-const refusal = (core: Core, { status, body }: Wire) =>
+export const refusal = (core: Core, { status, body }: Wire) =>
 	new core.KeyFlowError(core.classifyRefusal(status, asObject(body).code));
 
 /**
