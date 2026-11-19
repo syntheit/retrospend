@@ -1,3 +1,4 @@
+import type { SyncExpenseDto } from "@retrospend/api-contract/sync";
 import type { DeviceApi, FigureBasis } from "./ports";
 
 // A server double for the device engine's tests (not a test itself): the sync
@@ -36,7 +37,12 @@ export const OWED = {
 	youOwe: { minor: 0, currency: "ARS" },
 };
 
-export const expense = (id: string, amount: string, date: string) => ({
+/** Typed as the contract's item, so a field the wire gains and the fake lacks fails typecheck. */
+export const expense = (
+	id: string,
+	amount: string,
+	date: string,
+): SyncExpenseDto => ({
 	id,
 	title: "row",
 	amount,
@@ -64,6 +70,11 @@ export const expense = (id: string, amount: string, date: string) => ({
 	homeCurrency: "ARS",
 	homeRate: "1",
 	homeAmount: amount,
+	createdAt: date,
+	updatedAt: date,
+	movedInAt: null,
+	planBatchId: null,
+	importFingerprint: null,
 });
 
 export interface Page {

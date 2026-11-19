@@ -1,8 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { bookValuationKey } from "@retrospend/domain/envelope/book-valuation-key";
+import type { Money } from "@retrospend/domain/money-minor";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fixtureRow } from "../fixtures";
 import type { TableRows } from "../port";
 import { readDeviceFigures } from "../registry";
+import type { VerdictView } from "./compare";
 import {
 	createDeviceEngine as create,
 	type DeviceEngineOptions,
@@ -10,8 +12,6 @@ import {
 } from "./engine";
 import { cursor, expense, fakeDeviceApi } from "./fake-api";
 import type { EngineStorage, FigureBasis, LoadedRows } from "./ports";
-import type { VerdictView } from "./compare";
-import type { Money } from "@retrospend/domain/money-minor";
 
 // Lets a test act while the figures are being read; reads as the real one otherwise.
 vi.mock("../registry", async (importOriginal) => {
@@ -64,6 +64,37 @@ afterEach(() => {
 });
 
 describe("pulling", () => {
+	it("keeps the server's updatedAt as a string version on every row the fake serves", async () => {
+		const committed: { table: string; row: unknown }[] = [];
+		const { api } = fakeDeviceApi({
+			expenses: [page(ROWS.slice(0, 2), cursor("100"))],
+		});
+		const engine = createDeviceEngine(api, "u1", Date.now, {
+			storage: async () => ({
+				loaded: { rows: {}, cursors: {}, complete: false },
+				persistence: {
+					commit: (changes) => {
+						for (const c of changes) committed.push(c);
+					},
+					beginPull: () => undefined,
+					finishPull: () => undefined,
+					abandonPull: () => undefined,
+					close: () => undefined,
+				},
+				dispose: async () => undefined,
+			}),
+		});
+		await engine.pull();
+		const rows = committed.filter((c) => c.table === "expenses") as {
+			row: { id: string; version: unknown };
+		}[];
+		expect(rows.map((c) => c.row.id).sort()).toEqual(["e1", "e2"]);
+		for (const { row } of rows) {
+			expect(typeof row.version).toBe("string");
+			expect(row.version).toBe(ROWS.find((r) => r.id === row.id)?.updatedAt);
+		}
+	});
+
 	it("runs one pull at a time", async () => {
 		const { api, calls } = fakeDeviceApi();
 		const engine = createDeviceEngine(api, "u1");

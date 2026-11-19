@@ -97,7 +97,7 @@ export interface CategoryRow extends WithId {
 	readonly name: string;
 	readonly color: string;
 	readonly icon: string | null;
-	/** A new expense in it stays out of analytics (the create rule reads this). */
+	/** A new expense in it stays out of analytics unless the person says otherwise. */
 	readonly excludeByDefault: boolean;
 }
 
