@@ -131,6 +131,8 @@ const ROWS: { [E in SyncEntity]: RowOf<E> } = {
 		exchangeRate: decimal(w.exchangeRate, `Expense ${w.id} exchangeRate`),
 		rateType: w.rateType,
 		homeRate: decimalOrNull(w.homeRate, `Expense ${w.id} homeRate`),
+		// Opaque: the text the server sent, never parsed into a time.
+		version: w.updatedAt,
 	}),
 	categories: (w) => ({
 		id: w.id,
@@ -138,6 +140,7 @@ const ROWS: { [E in SyncEntity]: RowOf<E> } = {
 		name: w.name,
 		color: w.color,
 		icon: w.icon,
+		excludeByDefault: w.excludeByDefault,
 	}),
 	recurringTemplates: (w, categories) => ({
 		id: w.id,

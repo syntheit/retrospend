@@ -23,12 +23,12 @@
  * A rate the server used and the device lacks is not a skip but a finding
  * (`rate_missing`), as is a booking the device refuses (`refused`).
  *
- * Known limit: the store row has no version or timestamp, so an edit made on
- * the web or another device between the create and the pull that is compared
- * shows as `differs`. The phone's own edits and deletes drop the capture first.
+ * Known limit: the compare reads no version, so an edit made on the web or
+ * another device between the create and the pull that is compared shows as
+ * `differs`. The phone's own edits and deletes drop the capture first.
  *
- * Not compared: excludeFromAnalytics. The store's category row has no
- * excludeByDefault, so the body's own value is passed and the field is left out.
+ * Not compared: excludeFromAnalytics. The category's own excludeByDefault comes
+ * from the store, but the field stays out of COMPARED.
  */
 import { toBookingInput } from "@retrospend/domain/expense-input";
 import { MissingRateError } from "@retrospend/domain/money";
@@ -209,7 +209,7 @@ export async function compareCreate(
 							category: {
 								id: category.id,
 								kind: category.kind,
-								excludeByDefault: false,
+								excludeByDefault: category.excludeByDefault,
 							},
 						}
 					: {}),

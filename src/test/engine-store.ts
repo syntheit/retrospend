@@ -244,6 +244,7 @@ export async function engineStoreOf(
 				name: c.name,
 				color: c.color,
 				icon: c.icon,
+				excludeByDefault: c.excludeByDefault,
 			})),
 			expenses: expenses.map((r) => ({
 				id: r.id,
@@ -267,6 +268,7 @@ export async function engineStoreOf(
 				amountInUSD: r.amountInUSD.toFixed(),
 				homeCurrency: r.homeCurrency,
 				homeAmount: text(r.homeAmount),
+				version: r.updatedAt.toISOString(),
 			})),
 			shares,
 			accounts: accounts.map((a) => ({

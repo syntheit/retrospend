@@ -296,6 +296,12 @@ describe("a file that cannot be trusted", () => {
 		after.persistence.close();
 	};
 
+	it("empties a file written before expenses carried a version", async () => {
+		await seed();
+		tamper("UPDATE meta SET value = '1' WHERE key = 'schemaVersion'");
+		expectWiped();
+	});
+
 	it("empties a file from another schema version", async () => {
 		await seed();
 		tamper("UPDATE meta SET value = '0' WHERE key = 'schemaVersion'");

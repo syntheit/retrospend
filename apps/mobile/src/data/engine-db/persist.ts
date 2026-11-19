@@ -24,7 +24,8 @@ import { decodeRow, encodeRow, SerializeError } from "./serialize";
 // pull-complete flag with its first commit so a cold start never reads
 // figures from rows that a pull was still filling.
 
-export const SCHEMA_VERSION = "1";
+// 2: expenses carry `version`, categories `excludeByDefault`; older files are wiped and pulled again.
+export const SCHEMA_VERSION = "2";
 
 /** Failed writes in one session after which the disk copy is given up. */
 export const WRITE_FAILURE_LIMIT = 3;

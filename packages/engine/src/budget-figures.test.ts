@@ -181,6 +181,7 @@ function ledger(o: Partial<Rows> = {}): Rows {
 				name: "Dining",
 				color: "red",
 				icon: null,
+				excludeByDefault: false,
 			},
 		],
 		rates: [
