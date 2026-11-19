@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { TWO_FACTOR_CODE_LENGTH } from "../account/security";
 import { v1 } from "../common/meta";
 import { timestampSchema } from "../core";
 import {
@@ -27,7 +28,7 @@ export const enableProtectionSchema = z
 		}),
 		totpCode: z
 			.string()
-			.regex(/^\d{6}$/)
+			.regex(new RegExp(`^\\d{${TWO_FACTOR_CODE_LENGTH}}$`))
 			.optional()
 			.meta({ description: "The current two-factor code, when it is on." }),
 		kdf: preloginKdfSchema,

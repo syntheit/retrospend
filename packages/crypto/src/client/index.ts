@@ -1,6 +1,7 @@
 // The client flows the web and the phone share: derive the sign-in secret,
 // refuse a downgrade, change the password of a keyed account. Platform code
 // fills in the ports (flow.ts) and maps KeyFlowError to its own wording.
+
 export {
 	type EnableBody,
 	type EnableInput,
@@ -9,6 +10,20 @@ export {
 	type PreparedEnable,
 	prepareEnable,
 } from "./enable";
+export {
+	EnableFailure,
+	FAILURE_CODES,
+	type FailureCode,
+	failureCode,
+	isFinalFailure,
+} from "./enable-failure";
+export {
+	createEnableLifecycle,
+	type EnableLifecycle,
+	type JobOutcome,
+	type KeyDraft,
+	type LifecyclePorts,
+} from "./enable-lifecycle";
 export {
 	asKeyFlowError,
 	classifyRefusal,
@@ -48,9 +63,11 @@ export {
 	type ConfirmGroups,
 	groupMatches,
 	pickConfirmGroups,
+	RECOVERY_KEY_FILE_NAME,
 	type RecoveryFileLabels,
 	randomBelow,
 	recoveryKeyFileText,
+	recoveryKeyGroups,
 } from "./recovery-key";
 export {
 	type BeginAnswer,

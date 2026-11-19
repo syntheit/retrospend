@@ -8,6 +8,8 @@
 		"verifyEmailFirst": "Verify your email first"
 	},
 	"enable": {
+		"back": "Back",
+		"making": "Making your keys",
 		"what": {
 			"title": "Turn on Advanced protection",
 			"body": "Your expenses, budgets and Wealth are sealed with a key only your devices hold.",
@@ -16,7 +18,8 @@
 			"backups": "Amounts in older backups stay for 30 days.",
 			"features": "Some features turn off.",
 			"seeWhich": "See which",
-			"unchanged": "Your data, figures and sign-in."
+			"unchanged": "Your data, figures and sign-in.",
+			"unchangedTitle": "What does not change"
 		},
 		"newPassword": {
 			"title": "Set a new password",
@@ -39,6 +42,7 @@
 		"saveTitle": "Save your recovery key",
 		"saveBody": "Without this key or your password, nobody can open your data, including us.",
 		"copy": "Copy",
+		"copied": "Copied",
 		"download": "Download",
 		"print": "Print",
 		"saveFiles": "Save to Files",
@@ -49,7 +53,9 @@
 		"mismatch": "Does not match",
 		"group": "Group {number}",
 		"label": "Recovery key",
-		"fileTitle": "Retrospend recovery key"
+		"fileTitle": "Retrospend recovery key",
+		"fileAccount": "Account",
+		"fileMade": "Made"
 	},
 	"recover": {
 		"enterTitle": "Use your recovery key",

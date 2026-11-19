@@ -1,10 +1,6 @@
-import {
-	PASSWORD_CHECKS,
-	passwordChecks,
-	passwordReady,
-} from "@retrospend/api-contract";
+import { passwordReady } from "@retrospend/api-contract";
 import { useEffect, useRef, useState } from "react";
-import { ScrollView, View } from "react-native";
+import { ScrollView } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import {
@@ -16,11 +12,11 @@ import {
 import { newClientId } from "@/data/ids";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
-import { Glyph } from "@/ui/Glyph";
 import { Sheet } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { TextField } from "@/ui/TextField";
 import { useToast } from "@/ui/Toast";
+import { PasswordRules } from "./PasswordRules";
 
 /** The status of a refused change, read from the server's problem. */
 function statusOf(error: unknown): number | null {
@@ -72,7 +68,7 @@ export function PasswordSheet({
 	const email = state.status === "signedIn" ? (state.me?.email ?? null) : null;
 	const userId = state.status === "signedIn" ? (state.me?.id ?? null) : null;
 	const toast = useToast();
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const [current, setCurrent] = useState("");
 	const [next, setNext] = useState("");
 	const [confirm, setConfirm] = useState("");
@@ -89,7 +85,6 @@ export function PasswordSheet({
 		key.current = newClientId();
 	}, [visible]);
 
-	const checks = passwordChecks(next);
 	const ready = passwordReady({ current, next, confirm });
 
 	async function submit() {
@@ -184,27 +179,7 @@ export function PasswordSheet({
 					secure
 					value={next}
 				/>
-				<View accessibilityLabel={t("rules")} style={{ gap: space[2] }}>
-					{PASSWORD_CHECKS.map((c) => (
-						<View
-							accessibilityLabel={`${t(`check.${c}`)}, ${checks[c] ? t("met") : t("notMet")}`}
-							accessible
-							key={c}
-							style={{
-								flexDirection: "row",
-								alignItems: "center",
-								gap: space[2],
-							}}
-						>
-							<View style={{ opacity: checks[c] ? 1 : 0 }}>
-								<Glyph color={color.fg} name="Check" size={type.small.size} />
-							</View>
-							<Text tone={checks[c] ? "fg" : "fg3"} variant="small">
-								{t(`check.${c}`)}
-							</Text>
-						</View>
-					))}
-				</View>
+				<PasswordRules value={next} />
 				<TextField
 					autoComplete="new-password"
 					invalid={confirm !== "" && confirm !== next}

@@ -1,6 +1,10 @@
 // Sign-in sends what the helper resolves, and never the typed password when
 // the helper refuses.
 const mockSignIn = jest.fn();
+jest.mock("@retrospend/api-contract", () => ({
+	TWO_FACTOR_CODE_LENGTH: require("../../test/twoFactorCodeLength")
+		.contractCodeLength,
+}));
 jest.mock("better-auth/client", () => ({
 	createAuthClient: () => ({
 		signIn: { email: mockSignIn },

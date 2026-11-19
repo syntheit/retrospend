@@ -571,6 +571,9 @@ importers:
 
   packages/crypto:
     dependencies:
+      '@retrospend/domain':
+        specifier: workspace:*
+        version: link:../domain
       libsodium-wrappers-sumo:
         specifier: 0.8.4
         version: 0.8.4

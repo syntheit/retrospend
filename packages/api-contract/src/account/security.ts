@@ -9,6 +9,9 @@ import {
 
 const TAG = ["Account"];
 
+/** The digits of an authenticator (two-factor) code: the one place every screen and schema takes it from. */
+export const TWO_FACTOR_CODE_LENGTH = 6;
+
 /** One schema for every new password the server accepts (the rules: password-rules.ts). */
 export const newPasswordSchema = z
 	.string()
