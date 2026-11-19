@@ -36,7 +36,6 @@
 			"body": "Digite sua senha.",
 			"continue": "Salvar chaves"
 		},
-		"making": "Criando suas chaves",
 		"notice": "Suas chaves estão prontas. Seus dados são selados quando a proteção avançada for ativada."
 	},
 	"recoveryKey": {

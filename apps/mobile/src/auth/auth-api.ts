@@ -4,7 +4,9 @@
 // session token back in `set-auth-token`. That token is the bearer for API
 // v1; the Expo client keeps its own cookie only for the 2FA step, which the
 // server ties to a cookie set by the password step.
+
 import { expoClient } from "@better-auth/expo/client";
+import { TWO_FACTOR_CODE_LENGTH } from "@retrospend/api-contract";
 import { createAuthClient } from "better-auth/client";
 import { twoFactorClient } from "better-auth/client/plugins";
 import { serverKey } from "@/lib/origin-key";
@@ -93,9 +95,9 @@ export function createAuthApi(
 		},
 		verifyCode: (code) => {
 			const clean = code.replace(/\s/g, "");
-			// A backup code is longer than the 6 digits an authenticator shows.
+			// A backup code is longer than the digits an authenticator shows.
 			return step(() =>
-				clean.length > 6
+				clean.length > TWO_FACTOR_CODE_LENGTH
 					? client.twoFactor.verifyBackupCode({ code: clean })
 					: client.twoFactor.verifyTotp({ code: clean }),
 			);

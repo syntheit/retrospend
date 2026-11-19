@@ -36,7 +36,6 @@
 			"body": "Escribe tu contraseña.",
 			"continue": "Guardar claves"
 		},
-		"making": "Creando tus claves",
 		"notice": "Tus claves están listas. Tus datos se sellan cuando se activa la protección avanzada."
 	},
 	"recoveryKey": {

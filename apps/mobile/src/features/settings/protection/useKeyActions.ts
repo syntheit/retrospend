@@ -1,4 +1,5 @@
 import { useTranslations } from "use-intl";
+import { useToast } from "@/ui/Toast";
 import { copyRecoveryKey, saveRecoveryKeyFile } from "./recoveryKeyActions";
 
 /**
@@ -15,12 +16,14 @@ export function useKeyActions({
 	setError: (words: string | null) => void;
 }) {
 	const t = useTranslations("protection");
+	const toast = useToast();
 	return {
 		async copy() {
 			if (!keyText) return;
 			setError(null);
 			try {
 				await copyRecoveryKey(keyText);
+				toast.show({ message: t("recoveryKey.copied") });
 			} catch {
 				setError(t("errors.failed"));
 			}

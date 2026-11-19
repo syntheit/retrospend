@@ -34,6 +34,3 @@ export type ConfirmResult =
 export function isFinal(reason: ConfirmFailure): boolean {
 	return reason === "notOffered" || reason === "checkFailed";
 }
-
-/** The two-factor code is six digits (the web's enable sheet holds the same rule). */
-export const CODE_LENGTH = 6;

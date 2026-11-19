@@ -61,7 +61,7 @@ export function EnableFooter({
 		case "password":
 			return (
 				<>
-					{secondary(tc("back"), () => go("what"))}
+					{secondary(t("enable.back"), () => go("what"))}
 					{primary(
 						t("enable.newPassword.continue"),
 						onMakeKeys,
@@ -72,28 +72,28 @@ export function EnableFooter({
 		case "methods":
 			return (
 				<>
-					{secondary(tc("back"), onBackToPassword)}
+					{secondary(t("enable.back"), onBackToPassword)}
 					{primary(t("enable.methods.continue"), () => go("confirmYou"))}
 				</>
 			);
 		case "saveKey":
 			return (
 				<>
-					{secondary(tc("back"), () => go("methods"))}
+					{secondary(t("enable.back"), () => go("methods"))}
 					{primary(t("recoveryKey.saved"), onConfirmGroups)}
 				</>
 			);
 		case "confirmKey":
 			return (
 				<>
-					{secondary(tc("back"), () => go("saveKey"))}
+					{secondary(t("enable.back"), () => go("saveKey"))}
 					{primary(t("enable.methods.continue"), onCheckGroups)}
 				</>
 			);
 		case "confirmYou":
 			return (
 				<>
-					{secondary(tc("back"), () => go("methods"))}
+					{secondary(t("enable.back"), () => go("methods"))}
 					{primary(t("enable.confirmYou.continue"), onSubmit, tc("saving"))}
 				</>
 			);

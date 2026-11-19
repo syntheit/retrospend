@@ -17,11 +17,13 @@ interface TestNode {
 
 // The contract's runtime is ESM, so the sheet gets the real password rules
 // file (it imports nothing) in its place.
-jest.mock("@retrospend/api-contract", () =>
-	jest.requireActual(
+jest.mock("@retrospend/api-contract", () => ({
+	...jest.requireActual(
 		"../../../../../../packages/api-contract/src/account/password-rules",
 	),
-);
+	TWO_FACTOR_CODE_LENGTH: require("../../../../test/twoFactorCodeLength")
+		.contractCodeLength,
+}));
 jest.mock("@/crypto/native", () => ({ getPrimitives: jest.fn() }));
 const mockToast = { show: jest.fn(), dismiss: jest.fn() };
 jest.mock("@/ui/Toast", () => ({ useToast: () => mockToast }));
@@ -335,6 +337,7 @@ describe("EnableSheet, save the key", () => {
 
 		await s.press("Copy");
 		expect(mockCopy).toHaveBeenCalledWith(KEY);
+		expect(mockToast.show).toHaveBeenCalledWith({ message: "Copied" });
 
 		mockSave.mockResolvedValue(true);
 		await s.press("Save to Files");
@@ -363,7 +366,9 @@ describe("EnableSheet, save the key", () => {
 		expect(s.texts()).toContain("Couldn't finish. Try again.");
 		mockSave.mockRejectedValue(new Error("closed"));
 		mockCopy.mockRejectedValue(new Error("no clipboard"));
+		mockToast.show.mockClear();
 		await s.press("Copy");
+		expect(mockToast.show).not.toHaveBeenCalled();
 		expect(s.texts()).toContain("Couldn't finish. Try again.");
 	});
 

@@ -1,3 +1,4 @@
+import { RECOVERY_KEY_FILE_NAME } from "@retrospend/crypto/client";
 import * as Clipboard from "expo-clipboard";
 import { AppState } from "react-native";
 import {
@@ -44,7 +45,6 @@ jest.mock("../security/exportFiles", () => ({
 		}
 	},
 }));
-jest.mock("@/lib/days", () => ({ dayKey: () => "2026-11-18" }));
 
 // The module listens for the app coming back once, at the first copy; the
 // handler it registers is kept here for the tests that play a return.
@@ -151,6 +151,8 @@ describe("saveRecoveryKeyFile", () => {
 	};
 
 	it("writes the shared file text, shares it, then deletes the copy", async () => {
+		// Midday UTC: the same calendar day in every zone the builder may use.
+		jest.setSystemTime(new Date("2026-11-18T12:00:00Z"));
 		const saved = await saveRecoveryKeyFile(labels, {
 			keyText: KEY,
 			account: "ana@example.com",
@@ -170,6 +172,7 @@ describe("saveRecoveryKeyFile", () => {
 				"",
 			].join("\n"),
 		);
+		expect(mockExportFile).toHaveBeenCalledWith(RECOVERY_KEY_FILE_NAME);
 		expect(mockShare).toHaveBeenCalledWith(mockFile.uri, {
 			mimeType: "text/plain",
 			UTI: "public.plain-text",

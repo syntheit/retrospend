@@ -36,7 +36,6 @@
 			"body": "Enter your password.",
 			"continue": "Save keys"
 		},
-		"making": "Making your keys",
 		"notice": "Your keys are ready. Your data is sealed when Advanced protection turns on."
 	},
 	"recoveryKey": {

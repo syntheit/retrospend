@@ -1,4 +1,7 @@
-import { passwordMeetsRules } from "@retrospend/api-contract";
+import {
+	passwordMeetsRules,
+	TWO_FACTOR_CODE_LENGTH,
+} from "@retrospend/api-contract";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
@@ -10,7 +13,6 @@ import { Text } from "@/ui/Text";
 import { TextAction } from "@/ui/TextAction";
 import { FieldError, TextField } from "@/ui/TextField";
 import { PasswordRules } from "../security/PasswordRules";
-import { CODE_LENGTH } from "./types";
 
 /** Shown under a step's fields when something went wrong; read out at once. */
 export function StepError({ text }: { text: string | null }) {
@@ -175,7 +177,9 @@ export function confirmYouReady(
 	code: string,
 	twoFactor: boolean,
 ): boolean {
-	return password !== "" && (!twoFactor || code.length === CODE_LENGTH);
+	return (
+		password !== "" && (!twoFactor || code.length === TWO_FACTOR_CODE_LENGTH)
+	);
 }
 
 /** The last step's fields: the current password, and the code when two-factor is on. */
@@ -216,7 +220,7 @@ export function ConfirmYouStep({
 					disabled={disabled}
 					inputMode="numeric"
 					label={ts("code")}
-					maxLength={CODE_LENGTH}
+					maxLength={TWO_FACTOR_CODE_LENGTH}
 					onChangeText={onCode}
 					value={code}
 				/>

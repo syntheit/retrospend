@@ -36,7 +36,6 @@
 			"body": "Saisis ton mot de passe.",
 			"continue": "Enregistrer les clés"
 		},
-		"making": "Création de tes clés",
 		"notice": "Tes clés sont prêtes. Tes données sont scellées quand la protection avancée est activée."
 	},
 	"recoveryKey": {

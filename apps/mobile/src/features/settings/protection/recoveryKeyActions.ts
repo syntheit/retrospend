@@ -1,11 +1,11 @@
 import {
+	RECOVERY_KEY_FILE_NAME,
 	type RecoveryFileLabels,
 	recoveryKeyFileText,
 } from "@retrospend/crypto/client";
 import * as Clipboard from "expo-clipboard";
 import * as Sharing from "expo-sharing";
 import { AppState } from "react-native";
-import { dayKey } from "@/lib/days";
 import {
 	exportFile,
 	removeFile,
@@ -14,8 +14,6 @@ import {
 
 /** How long the key stays on the clipboard. */
 export const CLIPBOARD_MS = 60_000;
-
-const FILE_NAME = "retrospend-recovery-key.txt";
 
 let wipe: {
 	text: string;
@@ -79,10 +77,10 @@ export async function saveRecoveryKeyFile(
 	// Built first: a key with a typo throws here and nothing is written.
 	const text = recoveryKeyFileText(labels, {
 		...file,
-		made: dayKey(new Date()),
+		made: new Date(),
 	});
 	if (!(await Sharing.isAvailableAsync())) return false;
-	const target = exportFile(FILE_NAME);
+	const target = exportFile(RECOVERY_KEY_FILE_NAME);
 	try {
 		target.create({ overwrite: true });
 		target.write(text);

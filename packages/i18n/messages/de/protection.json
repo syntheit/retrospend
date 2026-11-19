@@ -36,7 +36,6 @@
 			"body": "Gib dein Passwort ein.",
 			"continue": "Schlüssel speichern"
 		},
-		"making": "Deine Schlüssel werden erstellt",
 		"notice": "Deine Schlüssel sind bereit. Deine Daten werden versiegelt, sobald der erweiterte Schutz eingeschaltet ist."
 	},
 	"recoveryKey": {

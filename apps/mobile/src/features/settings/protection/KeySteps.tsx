@@ -1,4 +1,4 @@
-import { groupMatches } from "@retrospend/crypto/client";
+import { groupMatches, recoveryKeyGroups } from "@retrospend/crypto/client";
 import { Platform, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
@@ -6,7 +6,7 @@ import { Button } from "@/ui/Button";
 import { Text } from "@/ui/Text";
 import { FieldError, TextField } from "@/ui/TextField";
 import { StepError } from "./EnableSteps";
-import { groupsOf, RecoveryKeyGrid } from "./RecoveryKeyGrid";
+import { RecoveryKeyGrid } from "./RecoveryKeyGrid";
 
 /** R1: the key to write down, with Copy and the platform's way to save a file. */
 export function SaveKeyStep({
@@ -56,7 +56,7 @@ export function confirmMatches(
 	groups: readonly [number, number],
 	typed: readonly [string, string],
 ): [boolean, boolean] {
-	const all = groupsOf(keyText);
+	const all = recoveryKeyGroups(keyText);
 	return [
 		groupMatches(typed[0], all[groups[0]] ?? ""),
 		groupMatches(typed[1], all[groups[1]] ?? ""),
