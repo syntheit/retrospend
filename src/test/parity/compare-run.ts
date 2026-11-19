@@ -24,6 +24,8 @@ import {
 	type ServerFigures,
 } from "../../../packages/engine/src/device/index";
 import { handleV1Request } from "../../server/api/v1/handler";
+import { decodeCursor } from "../../server/services/api-v1/cursor";
+import { syncCursorSchema } from "../../server/services/sync/changes";
 import { adminDb } from "../pg-harness";
 import { apiOver, freshIp, longSession, sharesOf } from "./pull";
 
@@ -57,13 +59,31 @@ export type Alter = (
 	query: { ids: string } & FigureNarrowing,
 ) => ServerFigures;
 
-export function proofApi(userId: string, alter?: Alter): DeviceApi {
+/** The newest position any figures read of a check was taken at. */
+export interface Seen {
+	/** The `t` of the cursor in `basis.asOf`: the read's snapshot xmax minus one. */
+	asOf: bigint | null;
+}
+
+export function proofApi(
+	userId: string,
+	alter?: Alter,
+	seen?: Seen,
+): DeviceApi {
 	const client = rotatingClient(userId);
 	return {
 		...apiOver(client, sharesOf(userId)),
 		figures: {
 			read: async (query) => {
 				const answer = await client.figures.read(query);
+				// Decoded with the server's own decoder, so the format has one owner.
+				const asOf = answer.basis
+					? decodeCursor(answer.basis.asOf, syncCursorSchema)?.t
+					: undefined;
+				if (seen && asOf !== undefined) {
+					const t = BigInt(asOf);
+					if (seen.asOf === null || t > seen.asOf) seen.asOf = t;
+				}
 				return alter ? alter(answer, query) : answer;
 			},
 		},
@@ -91,6 +111,8 @@ export interface Check {
 
 export interface Checked {
 	reports: CompareReport[];
+	/** The newest position the server's figures were read at. */
+	position: bigint | null;
 	/** Everything the engine logged, in order. */
 	logs: string[];
 }
@@ -108,8 +130,9 @@ async function checkOnce(
 ): Promise<Checked> {
 	return atClock(clock, async () => {
 		const logs: string[] = [];
+		const seen: Seen = { asOf: null };
 		const engine = createDeviceEngine(
-			proofApi(userId, options.alter),
+			proofApi(userId, options.alter, seen),
 			userId,
 			Date.now,
 			{
@@ -130,50 +153,52 @@ async function checkOnce(
 		} finally {
 			await engine.dispose({ wipe: false });
 		}
-		return { reports, logs };
+		return { reports, logs, position: seen.asOf };
 	});
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** How long a check waits for the cluster to have no write transaction open, and how often it looks. */
-const QUIET_DEADLINE_MS = 60_000;
-const QUIET_POLL_MS = 500;
-/** Checks made, each after a quiet moment: a transaction can open between the wait and the server's read. */
-const ATTEMPTS = 3;
+/** How long the wait for a read's position takes at most, and how often it looks. */
+const WAIT_DEADLINE_MS = 60_000;
+const WAIT_POLL_MS = 500;
+/** Checks made at most: each follows a wait for the position of the one before. */
+const ROUNDS = 8;
 
 /**
  * Positions are cluster-wide transaction ids, so a write transaction that
  * another worker's database holds open keeps every pull below the server's
- * read until it ends: the compare rightly says `behind`. This waits until no
- * write transaction is open anywhere in the cluster (the snapshot's lowest
- * running id is its next id), so the check that follows starts with nothing
- * older than its read in the way. Fails loudly, naming the oldest open id.
+ * read until it ends: the compare rightly says `behind`. A pull ends at the
+ * snapshot's lowest running id minus one, so it reaches a read taken at `asOf`
+ * (that read's xmax minus one) once the lowest running id is above `asOf`.
+ * This waits for exactly that, and fails loudly, naming the oldest open id.
  */
-async function waitForQuiet(): Promise<void> {
-	const deadline = Date.now() + QUIET_DEADLINE_MS;
+async function waitPast(asOf: bigint): Promise<void> {
+	const deadline = Date.now() + WAIT_DEADLINE_MS;
 	for (;;) {
-		const [row] = await adminDb.$queryRaw<{ xmin: string; xmax: string }[]>`
-			SELECT pg_snapshot_xmin(pg_current_snapshot())::text AS xmin,
-			       pg_snapshot_xmax(pg_current_snapshot())::text AS xmax`;
-		if (row && row.xmin === row.xmax) return;
+		const [row] = await adminDb.$queryRaw<{ xmin: string }[]>`
+			SELECT pg_snapshot_xmin(pg_current_snapshot())::text AS xmin`;
+		if (row && BigInt(row.xmin) > asOf) return;
 		// Date is faked only inside a check, so this is the real clock.
 		if (Date.now() > deadline)
 			throw new Error(
-				`A write transaction stayed open for ${QUIET_DEADLINE_MS} ms: the oldest open id is ${row?.xmin}, the next id ${row?.xmax}`,
+				`A write transaction stayed open for ${WAIT_DEADLINE_MS} ms: the oldest open id is ${row?.xmin}, the read was at ${asOf}`,
 			);
-		await sleep(QUIET_POLL_MS);
+		await sleep(WAIT_POLL_MS);
 	}
 }
 
 const unsettled = (reports: readonly CompareReport[]) =>
 	reports.some((r) => r.behind > 0 || r.skipped === "moving");
 
+const summarize = (reports: readonly CompareReport[]) =>
+	`behind: ${reports.filter((r) => r.behind > 0).length} screens, moving: ${reports.filter((r) => r.skipped === "moving").length} screens\n${reports.map((r) => compareLine(r)).join("\n")}`;
+
 /**
- * `checkOnce` after a quiet moment (waitForQuiet). A check that still found the
- * device behind, because a transaction opened in between, is made again after
- * another quiet moment, up to ATTEMPTS times. It never returns such a report:
- * when none settles, it throws with the report of every attempt.
+ * `checkOnce`; a check that found the device behind the server's read, or the
+ * rows still moving, waits until a pull can pass that read's position
+ * (waitPast) and is made again. It never returns such a report: when none
+ * settles within ROUNDS, it throws with the report of every attempt.
  */
 export async function checkAt(
 	clock: Date,
@@ -182,13 +207,13 @@ export async function checkAt(
 	options: { browserZone: string; alter?: Alter },
 ): Promise<Checked> {
 	const attempts: string[] = [];
-	for (let i = 0; i < ATTEMPTS; i++) {
-		await waitForQuiet();
+	for (let i = 0; i < ROUNDS; i++) {
 		const done = await checkOnce(clock, userId, checks, options);
 		if (!unsettled(done.reports)) return done;
-		attempts.push(done.reports.map((r) => compareLine(r)).join("\n"));
+		attempts.push(summarize(done.reports));
+		if (done.position !== null) await waitPast(done.position);
 	}
 	throw new Error(
-		`The device stayed behind the server's read in ${ATTEMPTS} checks:\n${attempts.join("\n--\n")}`,
+		`The device did not settle in ${ROUNDS} checks:\n${attempts.join("\n--\n")}`,
 	);
 }
