@@ -9,6 +9,8 @@ import { Input } from "~/components/ui/input";
 import { Segmented } from "~/components/ui/segmented";
 import { useToast } from "~/components/ui/toast";
 import { cn } from "~/lib/cn";
+import { wealthValues } from "~/lib/device-engine/narrowings";
+import { useDeviceCompare } from "~/lib/device-engine/react";
 import { api } from "~/trpc/react";
 import { type AccountFilters, AccountList, NO_FILTERS } from "./account-list";
 import { Breakdown } from "./breakdown";
@@ -41,6 +43,7 @@ export function WealthScreen({
 	const [filters, setFilters] = useState<AccountFilters>(NO_FILTERS);
 	const [sort, setSort] = useState<WealthSort>(initialOrder.sort);
 	const [custom, setCustom] = useState<string[]>(initialOrder.order);
+	useDeviceCompare("wealth", wealthValues(view));
 	const toast = useToast();
 	const saveOrder = api.wealth.accounts.setOrder.useMutation();
 	const [sheet, setSheet] = useState<SheetState>(null);

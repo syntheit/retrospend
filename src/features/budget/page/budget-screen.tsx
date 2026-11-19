@@ -6,6 +6,8 @@ import { useMemo, useState } from "react";
 import { PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { useIsMobile } from "~/hooks/use-mobile";
+import { budgetValues } from "~/lib/device-engine/narrowings";
+import { useDeviceCompare } from "~/lib/device-engine/react";
 import type { GetMonthOutput } from "~/lib/schemas/envelope";
 import { api } from "~/trpc/react";
 import { BudgetSheetsProvider, useBudgetSheet } from "../use-budget-sheet";
@@ -170,6 +172,10 @@ export function BudgetScreen() {
 		today != null &&
 		current.data != null &&
 		!current.data.book.paused;
+	// Only the current month is held against the device. The verdict is not
+	// passed: its server read is a callback, which cannot reach the worker, and
+	// the worker has no tRPC client to run it.
+	useDeviceCompare("budget", budgetValues(full ? data : null, !other));
 	let body: React.ReactNode;
 	if (full)
 		body = (

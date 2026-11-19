@@ -4,11 +4,17 @@ import type { Span } from "@retrospend/domain/insights";
 import { ChartPie, SearchX } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback } from "react";
-import { useEntryActions } from "~/features/entry/entry-actions";
 import { PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { Button } from "~/components/ui/button";
 import { Empty } from "~/components/ui/empty-state";
+import { useEntryActions } from "~/features/entry/entry-actions";
+import { useSettings } from "~/hooks/use-settings";
+import {
+	insightsValues,
+	isDefaultInsightsView,
+} from "~/lib/device-engine/narrowings";
+import { useDeviceCompare } from "~/lib/device-engine/react";
 import { ActivityTabs } from "../activity/activity-tabs";
 import { useDimItems } from "../activity/activity-toolbar";
 import { CashflowSection } from "./cashflow-section";
@@ -62,6 +68,20 @@ export function InsightsPage() {
 	const narrowed = isNarrowed(view);
 	const named = summary?.missingRates ?? [];
 	const nothing = summary?.count === 0;
+	const { data: settings } = useSettings();
+	const defaultView = isDefaultInsightsView(
+		view,
+		today,
+		settings?.fiscalMonthStartDay ?? undefined,
+		{
+			summary: i.summary.isPlaceholderData,
+			months: i.months.isPlaceholderData,
+		},
+	);
+	useDeviceCompare(
+		"insights",
+		insightsValues(summary, i.months.data, defaultView),
+	);
 
 	return (
 		<PageFrame label="insights">

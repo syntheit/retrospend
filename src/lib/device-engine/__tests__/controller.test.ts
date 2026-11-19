@@ -30,7 +30,7 @@ function fakeClient(pull?: Pull) {
 	const client = {
 		dead: false,
 		start: vi.fn(async () => undefined),
-		compare: vi.fn(async () => report(1) as CompareReport | null),
+		compare: vi.fn<DeviceClient["compare"]>(async () => report(1)),
 		pull: vi.fn<Pull>(
 			pull ?? (async () => ({ status: "ready", generation: 1 })),
 		),
@@ -66,7 +66,7 @@ const refuse =
 describe("device controller: who starts", () => {
 	it("starts nothing without a signed-in account", async () => {
 		const { controller, load } = setup();
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		expect(load).not.toHaveBeenCalled();
 		expect(controller.state).toBe("off");
 	});
@@ -74,7 +74,7 @@ describe("device controller: who starts", () => {
 	it("starts nothing for a protected account", async () => {
 		const { controller, load } = setup();
 		controller.setUser({ id: "u1", protectedAccount: true });
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		await controller.tabVisible();
 		expect(load).not.toHaveBeenCalled();
 		expect(controller.state).toBe("terminal");
@@ -84,7 +84,7 @@ describe("device controller: who starts", () => {
 		const client = fakeClient();
 		const { controller, load } = setup([client]);
 		controller.setUser(ANA);
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		expect(load).toHaveBeenCalledTimes(1);
 		expect(client.start).toHaveBeenCalledWith("u1");
 		expect(client.pull).toHaveBeenCalledTimes(1);
@@ -95,7 +95,7 @@ describe("device controller: who starts", () => {
 	it("pulls once the account is known when Home opened first (layout effects run last)", async () => {
 		const client = fakeClient();
 		const { controller } = setup([client]);
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		expect(client.pull).not.toHaveBeenCalled();
 		controller.setUser(ANA);
 		await vi.waitFor(() => expect(client.pull).toHaveBeenCalledTimes(1));
@@ -104,7 +104,7 @@ describe("device controller: who starts", () => {
 	it("with the flag off (no worker) stays idle and never retries a load", async () => {
 		const { controller, load } = setup([]);
 		controller.setUser(ANA);
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		expect(controller.client).toBeNull();
 		expect(load).toHaveBeenCalledTimes(1);
 	});
@@ -120,12 +120,12 @@ describe("device controller: terminal refusals", () => {
 		const client = fakeClient(refuse(code));
 		const { controller, load, time } = setup([client, fakeClient()]);
 		controller.setUser(ANA);
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		expect(controller.state).toBe("terminal");
 		expect(client.terminate).toHaveBeenCalled();
 		// A day later, Home again, the tab back in front: still nothing.
 		time.now += 86_400_000;
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		await controller.tabVisible();
 		expect(load).toHaveBeenCalledTimes(1);
 		expect(client.pull).toHaveBeenCalledTimes(1);
@@ -138,9 +138,9 @@ describe("device controller: terminal refusals", () => {
 			second,
 		]);
 		controller.setUser(ANA);
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		controller.setUser({ id: "u2", protectedAccount: false });
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		expect(second.start).toHaveBeenCalledWith("u2");
 		expect(controller.state).toBe("running");
 	});
@@ -151,7 +151,7 @@ describe("device controller: end of the session", () => {
 		const client = fakeClient();
 		const { controller } = setup([client]);
 		controller.setUser(ANA);
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		controller.setUser(null);
 		expect(client.stop).toHaveBeenCalled();
 		expect(client.terminate).toHaveBeenCalled();
@@ -164,10 +164,10 @@ describe("device controller: end of the session", () => {
 		const second = fakeClient();
 		const { controller } = setup([first, second]);
 		controller.setUser(ANA);
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		controller.setUser({ id: "u2", protectedAccount: false });
 		expect(first.terminate).toHaveBeenCalled();
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		expect(second.start).toHaveBeenCalledWith("u2");
 		expect(controller.client).toBe(second);
 	});
@@ -183,7 +183,7 @@ describe("device controller: end of the session", () => {
 		);
 		const { controller } = setup([stale]);
 		controller.setUser(ANA);
-		const opening = controller.homeOpened();
+		const opening = controller.screenOpened("home", {});
 		await vi.waitFor(() => expect(stale.start).toHaveBeenCalled());
 		controller.setUser(null);
 		release();
@@ -205,7 +205,7 @@ describe("device controller: end of the session", () => {
 		const next = fakeClient();
 		const { controller } = setup([old, next]);
 		controller.setUser(ANA);
-		const first = controller.homeOpened();
+		const first = controller.screenOpened("home", {});
 		await vi.waitFor(() => expect(old.pull).toHaveBeenCalled());
 		controller.setUser({ id: "u2", protectedAccount: false });
 		refuseLate();
@@ -224,7 +224,7 @@ describe("device controller: when it pulls", () => {
 		controller.setUser(ANA);
 		await controller.tabVisible();
 		expect(load).not.toHaveBeenCalled();
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		await controller.tabVisible();
 		expect(client.pull).toHaveBeenCalledTimes(2);
 	});
@@ -234,7 +234,7 @@ describe("device controller: when it pulls", () => {
 		const { controller, load, time } = setup([client]);
 		controller.setUser(ANA);
 		time.visible = false;
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		await controller.tabVisible();
 		expect(load).not.toHaveBeenCalled();
 		expect(client.pull).not.toHaveBeenCalled();
@@ -256,7 +256,7 @@ describe("device controller: when it pulls", () => {
 		);
 		const { controller } = setup([client]);
 		controller.setUser(ANA);
-		const a = controller.homeOpened();
+		const a = controller.screenOpened("home", {});
 		await vi.waitFor(() => expect(client.pull).toHaveBeenCalled());
 		const b = controller.tabVisible();
 		finish();
@@ -270,7 +270,7 @@ describe("device controller: backing off", () => {
 		const client = fakeClient(refuse("rate_limited"));
 		const { controller, time } = setup([client]);
 		controller.setUser(ANA);
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		expect(controller.state).toBe("running");
 		await controller.tabVisible();
 		expect(client.pull).toHaveBeenCalledTimes(1);
@@ -308,12 +308,12 @@ describe("device controller: backing off", () => {
 		}));
 		const { controller, time } = setup([client]);
 		controller.setUser(ANA);
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		time.now += BACKOFF_MS - 1;
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		expect(client.pull).toHaveBeenCalledTimes(1);
 		time.now += 1;
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		expect(client.pull).toHaveBeenCalledTimes(2);
 	});
 
@@ -322,12 +322,12 @@ describe("device controller: backing off", () => {
 		const next = fakeClient();
 		const { controller, time, load } = setup([dead, next]);
 		controller.setUser(ANA);
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		expect(controller.client).toBeNull();
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		expect(load).toHaveBeenCalledTimes(1);
 		time.now += BACKOFF_MS;
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		expect(next.pull).toHaveBeenCalledTimes(1);
 	});
 });
@@ -338,15 +338,15 @@ describe("device controller: one worker per tab", () => {
 		for (const homeFirst of [true, false]) {
 			const { controller, load } = setup([fakeClient(), fakeClient()]);
 			if (homeFirst) {
-				void controller.homeOpened();
+				void controller.screenOpened("home", {});
 				controller.setUser(ANA);
 			} else {
 				controller.setUser(ANA);
-				void controller.homeOpened();
+				void controller.screenOpened("home", {});
 			}
 			void controller.tabVisible();
-			void controller.homeOpened();
-			await controller.homeOpened();
+			void controller.screenOpened("home", {});
+			await controller.screenOpened("home", {});
 			await controller.tabVisible();
 			expect(load).toHaveBeenCalledTimes(1);
 			expect(controller.state).toBe("running");
@@ -361,7 +361,7 @@ describe("device controller: one worker per tab", () => {
 		);
 		const { controller } = setup([late]);
 		controller.setUser(ANA);
-		const opening = controller.homeOpened();
+		const opening = controller.screenOpened("home", {});
 		await vi.waitFor(() => expect(late.start).toHaveBeenCalled());
 		controller.setUser({ id: "u1", protectedAccount: true });
 		release();
@@ -384,7 +384,7 @@ describe("device controller: one worker per tab", () => {
 		const next = fakeClient();
 		const { controller } = setup([old, next]);
 		controller.setUser(ANA);
-		const first = controller.homeOpened();
+		const first = controller.screenOpened("home", {});
 		await vi.waitFor(() => expect(old.start).toHaveBeenCalled());
 		controller.setUser({ id: "u2", protectedAccount: false });
 		await vi.waitFor(() => expect(next.start).toHaveBeenCalledWith("u2"));
@@ -411,16 +411,16 @@ describe("device controller: compare", () => {
 		const client = fakeClient(pulls([1]));
 		const { controller } = setup([client]);
 		controller.setUser(ANA);
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		expect(client.compare).toHaveBeenCalledTimes(1);
-		expect(client.compare).toHaveBeenCalledWith("home");
+		expect(client.compare).toHaveBeenCalledWith("home", {});
 		expect(controller.reports).toEqual({ home: report(1) });
 	});
 
 	it("forgets the reports of an account that is gone", async () => {
 		const { controller } = setup([fakeClient(pulls([1]))]);
 		controller.setUser(ANA);
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		expect(controller.reports.home).toEqual(report(1));
 		controller.setUser({ id: "u2", protectedAccount: false });
 		expect(controller.reports).toEqual({});
@@ -434,7 +434,7 @@ describe("device controller: compare", () => {
 		);
 		const { controller } = setup([client]);
 		controller.setUser(ANA);
-		const running = controller.homeOpened();
+		const running = controller.screenOpened("home", {});
 		await vi.waitFor(() => expect(client.compare).toHaveBeenCalled());
 		controller.setUser({ id: "u2", protectedAccount: false });
 		finish(report(1));
@@ -449,7 +449,7 @@ describe("device controller: compare", () => {
 		}));
 		const { controller } = setup([client]);
 		controller.setUser(ANA);
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		expect(client.compare).not.toHaveBeenCalled();
 		expect(controller.reports).toEqual({});
 	});
@@ -459,7 +459,7 @@ describe("device controller: compare", () => {
 		client.compare.mockImplementation(async () => report(1));
 		const { controller } = setup([client]);
 		controller.setUser(ANA);
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		await controller.tabVisible();
 		expect(client.compare).toHaveBeenCalledTimes(1);
 		client.compare.mockImplementation(async () => report(2));
@@ -472,7 +472,7 @@ describe("device controller: compare", () => {
 		client.compare.mockImplementation(async () => report(2));
 		const { controller } = setup([client]);
 		controller.setUser(ANA);
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		await controller.tabVisible();
 		expect(client.compare).toHaveBeenCalledTimes(1);
 	});
@@ -482,7 +482,7 @@ describe("device controller: compare", () => {
 		client.compare.mockRejectedValue(new DeviceError("rate_limited"));
 		const { controller, time } = setup([client]);
 		controller.setUser(ANA);
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		expect(client.compare).toHaveBeenCalledTimes(1);
 		time.now += BACKOFF_MS;
 		await controller.tabVisible();
@@ -501,7 +501,7 @@ describe("device controller: compare", () => {
 		client.compare.mockResolvedValue(null);
 		const { controller, time } = setup([client]);
 		controller.setUser(ANA);
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		expect(controller.reports).toEqual({});
 		await controller.tabVisible();
 		expect(client.compare).toHaveBeenCalledTimes(1);
@@ -520,7 +520,7 @@ describe("device controller: compare", () => {
 		limited.compare.mockRejectedValue(new DeviceError("rate_limited"));
 		const a = setup([limited]);
 		a.controller.setUser(ANA);
-		await a.controller.homeOpened();
+		await a.controller.screenOpened("home", {});
 		await a.controller.tabVisible();
 		expect(limited.pull).toHaveBeenCalledTimes(1);
 		a.time.now += BACKOFF_MS;
@@ -531,7 +531,7 @@ describe("device controller: compare", () => {
 		changed.compare.mockRejectedValue(new DeviceError("account_changed"));
 		const b = setup([changed]);
 		b.controller.setUser(ANA);
-		await b.controller.homeOpened();
+		await b.controller.screenOpened("home", {});
 		expect(b.controller.state).toBe("terminal");
 		expect(changed.terminate).toHaveBeenCalled();
 	});
@@ -544,7 +544,7 @@ describe("device controller: the dev readout", () => {
 		controller.setUser(ANA);
 		const heard = vi.fn();
 		controller.subscribe(heard);
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		expect(client.compare).toHaveBeenCalledTimes(1);
 		expect(controller.lastPullAt).toBe(time.now);
 		await controller.tabVisible();
@@ -559,7 +559,7 @@ describe("device controller: the dev readout", () => {
 		controller.setUser(ANA);
 		const heard = vi.fn();
 		controller.subscribe(heard)();
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		expect(heard).not.toHaveBeenCalled();
 	});
 });
@@ -574,7 +574,7 @@ describe("device controller: what the readout reports", () => {
 		}));
 		const { controller, time } = setup([client]);
 		controller.setUser(ANA);
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		const first = time.now;
 		expect(controller.lastPullAt).toBe(first);
 		time.now += 5_000;
@@ -590,7 +590,7 @@ describe("device controller: what the readout reports", () => {
 		client.pull.mockRejectedValueOnce(new DeviceError("rate_limited"));
 		const { controller } = setup([client]);
 		controller.setUser(ANA);
-		await controller.homeOpened();
+		await controller.screenOpened("home", {});
 		await controller.tabVisible();
 		expect(client.pull).toHaveBeenCalledTimes(1);
 		await controller.checkNow();
@@ -603,5 +603,145 @@ describe("device controller: what the readout reports", () => {
 		await controller.checkNow();
 		expect(controller.state).toBe("off");
 		expect(load).not.toHaveBeenCalled();
+	});
+});
+
+describe("device controller: every screen", () => {
+	const BUDGET = { envelopeId: ["e1", "e2"] };
+	const forScreen = (client: ReturnType<typeof fakeClient>) =>
+		client.compare.mockImplementation(async (screen) => ({
+			...report(1),
+			screen,
+		}));
+	const pulls = (generations: number[]): Pull => {
+		const queue = [...generations];
+		return async () => ({
+			status: "ready",
+			generation: queue.shift() ?? 99,
+		});
+	};
+
+	it("compares the screen that opened with the values it renders, and keeps each report", async () => {
+		const client = fakeClient(pulls([1]));
+		forScreen(client);
+		const { controller } = setup([client]);
+		controller.setUser(ANA);
+		await controller.screenOpened("budget", BUDGET);
+		expect(client.compare).toHaveBeenCalledTimes(1);
+		expect(client.compare).toHaveBeenCalledWith("budget", BUDGET);
+		expect(Object.keys(controller.reports)).toEqual(["budget"]);
+	});
+
+	it("compares only the screen switched to, once the one left has closed", async () => {
+		const client = fakeClient(pulls([1, 1, 1]));
+		forScreen(client);
+		const { controller } = setup([client]);
+		controller.setUser(ANA);
+		await controller.screenOpened("home", {});
+		controller.screenClosed("home");
+		await controller.screenOpened("budget", BUDGET);
+		expect(client.compare.mock.calls).toEqual([
+			["home", {}],
+			["budget", BUDGET],
+		]);
+		expect(Object.keys(controller.reports).sort()).toEqual(["budget", "home"]);
+		// Back on a screen already checked at this pull count: nothing again.
+		controller.screenClosed("budget");
+		await controller.screenOpened("budget", BUDGET);
+		expect(client.compare).toHaveBeenCalledTimes(2);
+	});
+
+	it("compares nothing for a screen that has closed, whatever the pull brings", async () => {
+		const client = fakeClient(pulls([1, 2]));
+		forScreen(client);
+		const { controller } = setup([client]);
+		controller.setUser(ANA);
+		await controller.screenOpened("budget", BUDGET);
+		controller.screenClosed("budget");
+		await controller.tabVisible();
+		expect(client.pull).toHaveBeenCalledTimes(2);
+		expect(client.compare).toHaveBeenCalledTimes(1);
+	});
+
+	it("a late close of the screen left does not close the one in front", async () => {
+		const client = fakeClient(pulls([1, 2]));
+		forScreen(client);
+		const { controller } = setup([client]);
+		controller.setUser(ANA);
+		await controller.screenOpened("home", {});
+		await controller.screenOpened("budget", BUDGET);
+		controller.screenClosed("home");
+		await controller.tabVisible();
+		expect(client.compare).toHaveBeenLastCalledWith("budget", BUDGET);
+		expect(client.compare).toHaveBeenCalledTimes(3);
+	});
+
+	it("checks the screen opened during a compare next, and not the one left again", async () => {
+		const client = fakeClient(pulls([1, 1]));
+		forScreen(client);
+		let finish: () => void = () => undefined;
+		client.compare.mockImplementationOnce(
+			(screen) =>
+				new Promise<CompareReport>((resolve) => {
+					finish = () => resolve({ ...report(1), screen });
+				}),
+		);
+		const { controller } = setup([client]);
+		controller.setUser(ANA);
+		const first = controller.screenOpened("home", {});
+		await vi.waitFor(() => expect(client.compare).toHaveBeenCalledTimes(1));
+		controller.screenClosed("home");
+		const second = controller.screenOpened("budget", BUDGET);
+		finish();
+		await Promise.all([first, second]);
+		expect(client.compare.mock.calls).toEqual([
+			["home", {}],
+			["budget", BUDGET],
+		]);
+	});
+
+	it("never starts for a protected account, on any screen", async () => {
+		const { controller, load } = setup([fakeClient()]);
+		controller.setUser({ id: "u1", protectedAccount: true });
+		await controller.screenOpened("wealth", { accountId: ["a1"] });
+		expect(load).not.toHaveBeenCalled();
+		expect(controller.state).toBe("terminal");
+	});
+
+	it("neither pulls nor compares in a hidden tab, and the screen is checked when it shows", async () => {
+		const client = fakeClient(pulls([1]));
+		forScreen(client);
+		const { controller, time } = setup([client]);
+		controller.setUser(ANA);
+		time.visible = false;
+		await controller.screenOpened("insights", { month: ["2026-11"] });
+		expect(client.pull).not.toHaveBeenCalled();
+		time.visible = true;
+		await controller.tabVisible();
+		expect(client.compare).toHaveBeenCalledWith("insights", {
+			month: ["2026-11"],
+		});
+	});
+
+	it("backs off a limited compare of any screen as it does for Home", async () => {
+		const client = fakeClient(pulls([1, 2]));
+		client.compare.mockRejectedValue(new DeviceError("rate_limited"));
+		const { controller, time } = setup([client]);
+		controller.setUser(ANA);
+		await controller.screenOpened("recurring", { recurringId: ["r1"] });
+		await controller.tabVisible();
+		expect(client.pull).toHaveBeenCalledTimes(1);
+		time.now += BACKOFF_MS;
+		await controller.tabVisible();
+		expect(client.compare).toHaveBeenCalledTimes(2);
+	});
+
+	it("an explicit check with no screen open compares Home", async () => {
+		const client = fakeClient(pulls([1]));
+		forScreen(client);
+		const { controller } = setup([client]);
+		controller.setUser(ANA);
+		await controller.checkNow();
+		expect(client.compare).toHaveBeenCalledWith("home", {});
 	});
 });
