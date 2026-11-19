@@ -87,6 +87,15 @@ export const expenseRestoreSchema = z.object({
 	restore: signedRestore.nullish(),
 });
 
+/**
+ * The web's undo of an edit: the restore plus the `updatedAt` the edit left
+ * (what expense.update returned). Required, so an undo can never write over a
+ * newer edit; guarded.mutation.ts compares it on the locked row.
+ */
+export const expenseRevertSchema = expenseRestoreSchema.extend({
+	expectedUpdatedAt: z.string().min(1).max(40),
+});
+
 const participant = z.object({
 	participantType: z.enum(["user", "guest", "shadow"]),
 	participantId: z.string().min(1),

@@ -7,6 +7,10 @@ import {
 	restoreExpenseEntry,
 	updateExpenseEntry,
 } from "~/server/services/entry/expense.mutation";
+import {
+	guardedExpense,
+	revertExpenseEntry,
+} from "~/server/services/entry/guarded.mutation";
 import * as schema from "~/server/services/entry/input";
 import { entryProjectMembers } from "~/server/services/entry/project-members";
 import {
@@ -140,10 +144,15 @@ export const entryRouter = createTRPCRouter({
 		create: money(schema.expenseFormSchema, createExpense, (v, c) =>
 			schema.toExpenseInput(v, c.timeZone),
 		),
-		update: money(schema.expenseFormSchema, updateExpenseEntry, (v, c) => ({
-			...schema.toExpenseInput(v, c.timeZone),
-			amount: toFloat(v.amount),
-		})),
+		// The stamp this edit leaves rides back as `updatedAt`, for its undo.
+		update: money(
+			schema.expenseFormSchema,
+			guardedExpense(updateExpenseEntry),
+			(v, c) => ({
+				...schema.toExpenseInput(v, c.timeZone),
+				amount: toFloat(v.amount),
+			}),
+		),
 		delete: money(
 			z.object({ id: z.string().min(1) }),
 			deleteExpenseEntry,
@@ -151,8 +160,8 @@ export const entryRouter = createTRPCRouter({
 		),
 		/** Undo of a delete: the same expense back, same id. */
 		restore: money(schema.restoreTokenSchema, restoreExpenseEntry, asIs),
-		/** Undo of an edit: the values it had. */
-		revert: money(schema.expenseRestoreSchema, updateExpenseEntry, (v) => ({
+		/** Undo of an edit: the values it had, refused once a newer edit landed. */
+		revert: money(schema.expenseRevertSchema, revertExpenseEntry, (v) => ({
 			...v,
 			amount: toFloat(v.amount),
 		})),

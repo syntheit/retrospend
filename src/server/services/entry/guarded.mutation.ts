@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { inPreview } from "~/server/db-tx";
 import { Prisma } from "~prisma";
 import type { MoneyMutation } from "../preview/types";
+import { type UpdateExpenseInput, updateExpenseEntry } from "./expense.mutation";
 
 const undoNoLongerSafe = () =>
 	new TRPCError({
@@ -56,3 +57,18 @@ export function guardedExpense<I extends object, V extends { id: string }>(
 		},
 	};
 }
+
+/**
+ * The web's undo of an edit: the edit's old values, written only while the
+ * row still has the `updatedAt` that edit left. The stamp rides in the input
+ * (required), so the preview twin refuses a stale undo the same way.
+ */
+export const revertExpenseEntry: MoneyMutation<
+	UpdateExpenseInput & { expectedUpdatedAt: string },
+	{ id: string; updatedAt: string | null }
+> = {
+	id: updateExpenseEntry.id,
+	touches: updateExpenseEntry.touches,
+	run: (tx, { expectedUpdatedAt, ...input }, actor) =>
+		guardedExpense(updateExpenseEntry, expectedUpdatedAt).run(tx, input, actor),
+};
