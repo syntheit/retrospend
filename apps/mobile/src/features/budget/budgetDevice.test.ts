@@ -37,6 +37,10 @@ const server = (o: Partial<BudgetMonth> = {}) =>
 		incomplete: false,
 		approximate: false,
 		verdict: verdict(5_000_000),
+		groups: [
+			{ envelopes: [{ id: "e1" }, { id: "e2" }] },
+			{ envelopes: [{ id: "e3" }] },
+		],
 		...o,
 	}) as BudgetMonth;
 
@@ -87,10 +91,21 @@ describe("the compare", () => {
 		expect(source.compare).toHaveBeenCalledTimes(1);
 		const [screen, narrowings, read] = source.compare.mock.calls[0] ?? [];
 		expect(screen).toBe("budget");
-		expect(narrowings).toEqual({});
+		// Every envelope the page lists, in its order, for envelope.left and .spent.
+		expect(narrowings).toEqual({ envelopeId: ["e1", "e2", "e3"] });
 		// The callback re-runs the screen's own query and maps it, so the
 		// compare holds what is on screen.
 		expect(await read?.()).toEqual(verdictViewOf(month));
+	});
+
+	it("is asked with no envelopes when there is no budget yet, and its verdict read is null", async () => {
+		const source = device();
+		const got = await fetchBudget(api(null), null, source)();
+		expect(got).toEqual({ month: null, payoff: null });
+		const [screen, narrowings, read] = source.compare.mock.calls[0] ?? [];
+		expect(screen).toBe("budget");
+		expect(narrowings).toEqual({ envelopeId: [] });
+		expect(await read?.()).toBeNull();
 	});
 
 	it("is not asked for an explicit month, the current one included", async () => {

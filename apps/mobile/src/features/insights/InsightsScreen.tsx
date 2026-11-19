@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import { useDeviceReads } from "@/data/useDeviceEngine";
 import { useFilterLeads } from "@/features/activity/filterLeads";
 import { useCategories } from "@/features/activity/useCategories";
 import { useAddEntry } from "@/features/entry/AddEntryProvider";
@@ -50,9 +51,10 @@ export function InsightsScreen() {
 	const [view, setView] = useState<InsightsView>(DEFAULT_VIEW);
 	const today = useMemo(() => dayKey(new Date()), []);
 	const words = useInsightsWords(today);
+	const device = useDeviceReads();
 	const fetch = useMemo(
-		() => (api ? fetchInsights(api, view, today) : null),
-		[api, view, today],
+		() => (api ? fetchInsights(api, view, today, device) : null),
+		[api, view, today, device],
 	);
 	const { state, reload } = useCachedRead(
 		{ name: viewKey(view, today), schema: 1 },

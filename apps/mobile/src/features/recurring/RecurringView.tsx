@@ -2,6 +2,7 @@ import { type ReactNode, useMemo, useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import { useDeviceReads } from "@/data/useDeviceEngine";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useMoneyText } from "@/features/read/useMoneyText";
@@ -346,7 +347,11 @@ export function RecurringView({
 	const tc = useTranslations("mobile.common");
 	const { space } = useTheme();
 	const { api } = useSession();
-	const fetch = useMemo(() => (api ? fetchRecurring(api) : null), [api]);
+	const device = useDeviceReads();
+	const fetch = useMemo(
+		() => (api ? fetchRecurring(api, device) : null),
+		[api, device],
+	);
 	const { state, reload } = useCachedRead(RECURRING_CACHE, fetch);
 	const [confirming, setConfirming] = useState<RecurringItem | null>(null);
 	const [skipping, setSkipping] = useState<RecurringItem | null>(null);
