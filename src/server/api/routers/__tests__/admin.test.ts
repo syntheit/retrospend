@@ -7,6 +7,7 @@ const mockDb = vi.hoisted(() => {
 	const db = {
 		user: { update: vi.fn() },
 		session: { deleteMany: vi.fn() },
+		deviceCode: { deleteMany: vi.fn() },
 		// disableUser runs in a transaction that first locks the active admins.
 		$queryRaw: vi.fn(async () => [] as unknown[]),
 		$transaction: vi.fn(),
@@ -105,6 +106,9 @@ describe("admin.disableUser", () => {
 			}),
 		);
 		expect(mockDb.session.deleteMany).toHaveBeenCalledWith({
+			where: { userId: "user-2" },
+		});
+		expect(mockDb.deviceCode.deleteMany).toHaveBeenCalledWith({
 			where: { userId: "user-2" },
 		});
 	});

@@ -31,7 +31,7 @@ import {
 	lookupResetToken,
 } from "~/server/services/auth/reset-tokens";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
-import { endSessions } from "~/server/services/protection-keys/password-writes";
+import { endAllSessions } from "~/server/services/protection-keys/password-writes";
 import { applyConfirmedEmail } from "~/server/services/profile.service";
 
 const rateLimiter = new InMemoryRateLimiter();
@@ -376,9 +376,7 @@ export const authRouter = createTRPCRouter({
 			});
 
 			// Invalidate all sessions for security (attacker may have the password)
-			await db.$transaction((tx) =>
-				endSessions(tx, user.id, { endAll: true }),
-			);
+			await endAllSessions(db, user.id);
 
 			return { success: true, email: user.email };
 		}),

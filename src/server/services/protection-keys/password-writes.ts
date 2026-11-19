@@ -12,7 +12,7 @@
  */
 import { isProtected } from "@retrospend/api-contract/protection-state";
 import { TRPCError } from "@trpc/server";
-import type { Prisma } from "~prisma";
+import type { Prisma, PrismaClient } from "~prisma";
 import { deleteUserResetTokens } from "../auth/reset-tokens";
 
 /**
@@ -77,6 +77,13 @@ export type SwapRefusal =
 export type CredentialSwap =
 	| { ok: true; signedOut: number }
 	| { ok: false; refusal: SwapRefusal };
+
+/** `endSessions` for everyone, in its own transaction (callers with no transaction of their own). */
+export const endAllSessions = (
+	db: Pick<PrismaClient, "$transaction">,
+	userId: string,
+): Promise<number> =>
+	db.$transaction((tx) => endSessions(tx, userId, { endAll: true }));
 
 /**
  * Every caller of `swapCredentialHash` names itself, so the list of paths that
