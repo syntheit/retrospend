@@ -4,20 +4,12 @@ import { ScrollView } from "react-native";
 import { useTranslations } from "use-intl";
 import { getPrimitives } from "@/crypto/native";
 import { useTheme } from "@/theme";
-import { Button } from "@/ui/Button";
 import { Sheet, useSheetBodySize } from "@/ui/Sheet";
 import { useToast } from "@/ui/Toast";
-import {
-	ConfirmYouStep,
-	DoneStep,
-	MethodsStep,
-	PasswordStep,
-	passwordStepReady,
-	StepError,
-	WhatStep,
-} from "./EnableSteps";
-import { ConfirmKeyStep, confirmMatches, SaveKeyStep } from "./KeySteps";
-import { copyRecoveryKey, saveRecoveryKeyFile } from "./recoveryKeyActions";
+import { EnableBody } from "./EnableBody";
+import { EnableFooter } from "./EnableFooter";
+import { confirmYouReady, passwordStepReady } from "./EnableSteps";
+import { confirmMatches } from "./KeySteps";
 import {
 	type ConfirmFailure,
 	type ConfirmResult,
@@ -25,6 +17,7 @@ import {
 	isFinal,
 	type MakeKeysResult,
 } from "./types";
+import { useKeyActions } from "./useKeyActions";
 
 type Pair = readonly [number, number];
 
@@ -87,7 +80,6 @@ export function EnableSheet({
 	random,
 }: EnableSheetProps) {
 	const t = useTranslations("protection");
-	const tc = useTranslations("mobile.common");
 	const toast = useToast();
 	const { space } = useTheme();
 	const body = useSheetBodySize({ footer: true });
@@ -110,6 +102,7 @@ export function EnableSheet({
 	// A run that outlives the sheet (closed during the Argon2id moment or the
 	// send) must not write into the next opening.
 	const run = useRef(0);
+	const keyActions = useKeyActions({ keyText, account, setError });
 
 	function reset() {
 		run.current += 1;
@@ -156,7 +149,11 @@ export function EnableSheet({
 		const made = await makeKeys(next).catch(
 			(): MakeKeysResult => ({ ok: false }),
 		);
-		if (mine !== run.current) return;
+		if (mine !== run.current) {
+			// Closed meanwhile: the keys made for this run must not outlive it.
+			discard();
+			return;
+		}
 		setBusy(false);
 		if (!made.ok) {
 			setError(t("errors.failed"));
@@ -196,36 +193,8 @@ export function EnableSheet({
 		}
 	}
 
-	async function copy() {
-		if (!keyText) return;
-		setError(null);
-		try {
-			await copyRecoveryKey(keyText);
-		} catch {
-			setError(t("errors.failed"));
-		}
-	}
-
-	async function save() {
-		if (!keyText) return;
-		setError(null);
-		try {
-			const labels = {
-				title: t("recoveryKey.fileTitle"),
-				account: t("recoveryKey.fileAccount"),
-				made: t("recoveryKey.fileMade"),
-				key: t("recoveryKey.label"),
-				keepSafe: t("recoveryKey.saveBody"),
-			};
-			if (!(await saveRecoveryKeyFile(labels, { keyText, account })))
-				setError(t("errors.failed"));
-		} catch {
-			setError(t("errors.failed"));
-		}
-	}
-
 	async function submit() {
-		if (busy || password === "" || (twoFactor && code === "")) return;
+		if (busy || !confirmYouReady(password, code, twoFactor)) return;
 		const mine = ++run.current;
 		setBusy(true);
 		setError(null);
@@ -259,56 +228,24 @@ export function EnableSheet({
 				: step === "methods"
 					? keySaved
 					: step === "confirmYou"
-						? password !== "" && (!twoFactor || code !== "")
+						? confirmYouReady(password, code, twoFactor)
 						: true;
 
-	const primary = (label: string, onPress: () => void, working?: string) => (
-		<Button
+	const footer = (
+		<EnableFooter
 			busy={busy}
-			disabled={busy || !ready}
-			label={busy && working ? working : label}
-			onPress={onPress}
-			variant="filled"
+			final={final}
+			go={go}
+			onBackToPassword={backToPassword}
+			onCheckGroups={checkGroups}
+			onClose={close}
+			onConfirmGroups={confirmGroups}
+			onFinish={finish}
+			onMakeKeys={makeThem}
+			onSubmit={submit}
+			ready={ready}
+			step={step}
 		/>
-	);
-	const secondary = (label: string, onPress: () => void) => (
-		<Button disabled={busy} label={label} onPress={onPress} variant="text" />
-	);
-
-	const footer = final ? (
-		secondary(tc("close"), close)
-	) : step === "what" ? (
-		<>
-			{secondary(tc("cancel"), close)}
-			{primary(t("enable.what.continue"), () => go("password"))}
-		</>
-	) : step === "password" ? (
-		<>
-			{secondary(tc("back"), () => go("what"))}
-			{primary(t("enable.newPassword.continue"), makeThem, t("enable.making"))}
-		</>
-	) : step === "methods" ? (
-		<>
-			{secondary(tc("back"), backToPassword)}
-			{primary(t("enable.methods.continue"), () => go("confirmYou"))}
-		</>
-	) : step === "saveKey" ? (
-		<>
-			{secondary(tc("back"), () => go("methods"))}
-			{primary(t("recoveryKey.saved"), confirmGroups)}
-		</>
-	) : step === "confirmKey" ? (
-		<>
-			{secondary(tc("back"), () => go("saveKey"))}
-			{primary(t("enable.methods.continue"), checkGroups)}
-		</>
-	) : step === "confirmYou" ? (
-		<>
-			{secondary(tc("back"), () => go("methods"))}
-			{primary(t("enable.confirmYou.continue"), submit, tc("saving"))}
-		</>
-	) : (
-		primary(tc("done"), finish)
 	);
 
 	return (
@@ -325,51 +262,30 @@ export function EnableSheet({
 				keyboardShouldPersistTaps="handled"
 				style={{ height: body.height }}
 			>
-				{final ? (
-					<StepError text={error} />
-				) : step === "what" ? (
-					<WhatStep onSeeWhich={onSeeWhich} />
-				) : step === "password" ? (
-					<PasswordStep
-						confirm={again}
-						disabled={busy}
-						error={error}
-						next={next}
-						onConfirm={setAgain}
-						onNext={setNext}
-					/>
-				) : step === "methods" ? (
-					<MethodsStep keyDone={keySaved} onCreateKey={() => go("saveKey")} />
-				) : step === "saveKey" && keyText ? (
-					<SaveKeyStep
-						error={error}
-						keyText={keyText}
-						onCopy={copy}
-						onSave={save}
-					/>
-				) : step === "confirmKey" && pair ? (
-					<ConfirmKeyStep
-						groups={pair}
-						onType={(i, v) => {
-							setTyped((was) => (i === 0 ? [v, was[1]] : [was[0], v]));
-							setWrong([false, false]);
-						}}
-						typed={typed}
-						wrong={wrong}
-					/>
-				) : step === "confirmYou" ? (
-					<ConfirmYouStep
-						code={code}
-						disabled={busy}
-						error={error}
-						onCode={setCode}
-						onPassword={setPassword}
-						password={password}
-						twoFactor={twoFactor}
-					/>
-				) : step === "done" ? (
-					<DoneStep />
-				) : null}
+				<EnableBody
+					busy={busy}
+					code={code}
+					error={error}
+					final={final}
+					go={go}
+					keyActions={keyActions}
+					keySaved={keySaved}
+					keyText={keyText}
+					next={{ value: next, again, set: setNext, setAgain }}
+					onSeeWhich={onSeeWhich}
+					onType={(i, v) => {
+						setTyped((was) => (i === 0 ? [v, was[1]] : [was[0], v]));
+						setWrong([false, false]);
+					}}
+					pair={pair}
+					password={password}
+					setCode={setCode}
+					setPassword={setPassword}
+					step={step}
+					twoFactor={twoFactor}
+					typed={typed}
+					wrong={wrong}
+				/>
 			</ScrollView>
 		</Sheet>
 	);

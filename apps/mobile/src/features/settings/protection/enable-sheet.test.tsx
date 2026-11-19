@@ -460,6 +460,20 @@ describe("EnableSheet, confirm it is you", () => {
 		});
 	});
 
+	it("waits for the whole six digit code, not any code", async () => {
+		const s = render({ twoFactor: true });
+		await toConfirmYou(s);
+		s.type("Password", "old password");
+		for (const short of ["1", "12345"]) {
+			s.type("Authentication code", short);
+			expect(s.disabled("Save keys")).toBe(true);
+			await s.press("Save keys");
+		}
+		expect(confirm).not.toHaveBeenCalled();
+		s.type("Authentication code", "123456");
+		expect(s.disabled("Save keys")).toBe(false);
+	});
+
 	it("shows the busy state and ignores a second press", async () => {
 		let release: (r: unknown) => void = () => undefined;
 		confirm.mockReturnValue(new Promise((r) => (release = r)));
@@ -581,7 +595,10 @@ describe("EnableSheet, nothing stays in a closed sheet", () => {
 		await s.press("Continue");
 		s.setVisible(false);
 		s.setVisible(true);
+		discard.mockClear();
 		await act(async () => release({ ok: true, recoveryKeyText: KEY }));
+		// The adapter was handed a fresh draft by the late answer: drop it.
+		expect(discard).toHaveBeenCalledTimes(1);
 		expect(s.title()).toBe("Turn on Advanced protection");
 		expect(s.texts()).not.toContain(GROUPS[0]);
 	});

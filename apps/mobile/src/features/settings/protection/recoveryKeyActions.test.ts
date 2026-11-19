@@ -1,3 +1,5 @@
+import * as Clipboard from "expo-clipboard";
+import { AppState } from "react-native";
 import {
 	CLIPBOARD_MS,
 	copyRecoveryKey,
@@ -44,6 +46,17 @@ jest.mock("../security/exportFiles", () => ({
 }));
 jest.mock("@/lib/days", () => ({ dayKey: () => "2026-11-18" }));
 
+// The module listens for the app coming back once, at the first copy; the
+// handler it registers is kept here for the tests that play a return.
+let onAppState: ((state: string) => void) | null = null;
+jest.spyOn(AppState, "addEventListener").mockImplementation(((
+	_type: string,
+	handler: (state: string) => void,
+) => {
+	onAppState = handler;
+	return { remove: jest.fn() };
+}) as unknown as typeof AppState.addEventListener);
+
 const KEY = "000000-000000-000000-000000-000000-000000-000000-000000-00011C";
 
 beforeEach(() => {
@@ -86,6 +99,44 @@ describe("copyRecoveryKey", () => {
 		await jest.advanceTimersByTimeAsync(40_000);
 		expect(mockClipboard.text).toBe(KEY);
 		await jest.advanceTimersByTimeAsync(20_000);
+		expect(mockClipboard.text).toBe("");
+	});
+});
+
+describe("copyRecoveryKey, a suspended app", () => {
+	// A suspended app runs no timers: the clock jumps and nothing fires.
+	const suspend = (ms: number) => jest.setSystemTime(Date.now() + ms);
+
+	it("clears the key when the app returns after the minute", async () => {
+		await copyRecoveryKey(KEY);
+		suspend(CLIPBOARD_MS);
+		expect(mockClipboard.text).toBe(KEY);
+		await jest.advanceTimersByTimeAsync(0);
+		onAppState?.("active");
+		await jest.advanceTimersByTimeAsync(0);
+		expect(mockClipboard.text).toBe("");
+	});
+
+	it("keeps the key for a return before the minute, and for other states", async () => {
+		await copyRecoveryKey(KEY);
+		suspend(CLIPBOARD_MS - 1);
+		onAppState?.("active");
+		await jest.advanceTimersByTimeAsync(0);
+		expect(mockClipboard.text).toBe(KEY);
+		suspend(1);
+		onAppState?.("background");
+		await jest.advanceTimersByTimeAsync(0);
+		expect(mockClipboard.text).toBe(KEY);
+	});
+});
+
+describe("copyRecoveryKey, a clipboard that cannot be read", () => {
+	it("clears anyway: the key must not stay", async () => {
+		await copyRecoveryKey(KEY);
+		jest
+			.mocked(Clipboard.getStringAsync)
+			.mockRejectedValueOnce(new Error("not allowed"));
+		await jest.advanceTimersByTimeAsync(CLIPBOARD_MS);
 		expect(mockClipboard.text).toBe("");
 	});
 });
