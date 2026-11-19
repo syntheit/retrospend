@@ -1,12 +1,14 @@
 // The shared parts of showing a recovery key (src/client/recovery-key.ts):
 // which two groups to ask for, whether a typed group matches, and the file.
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { CryptoError, type Primitives } from "../src";
 import {
 	groupMatches,
 	pickConfirmGroups,
+	RECOVERY_KEY_FILE_NAME,
 	randomBelow,
 	recoveryKeyFileText,
+	recoveryKeyGroups,
 } from "../src/client";
 import { createWebPrimitives } from "../src/web";
 import vectors from "../vectors/keys.vectors.json";
@@ -172,18 +174,29 @@ describe("recoveryKeyFileText", () => {
 		keepSafe: "Keep this file somewhere safe.",
 	};
 
+	// 23:30 on Nov 18 in Los Angeles is already Nov 19 in UTC: the file carries
+	// the person's day, not the UTC one, whatever zone the test runs in.
+	const zone = process.env.TZ;
+	beforeAll(() => {
+		process.env.TZ = "America/Los_Angeles";
+	});
+	afterAll(() => {
+		if (zone === undefined) delete process.env.TZ;
+		else process.env.TZ = zone;
+	});
+
 	it("writes the same lines on every platform", () => {
 		const text = recoveryKeyFileText(labels, {
 			keyText: ASCENDING.text,
 			account: "ana@example.com",
-			made: "Nov 18, 2026",
+			made: new Date("2026-11-19T07:30:00Z"),
 		});
 		expect(text).toBe(
 			[
 				"Retrospend recovery key",
 				"",
 				"Account: ana@example.com",
-				"Made: Nov 18, 2026",
+				"Made: 2026-11-18",
 				"",
 				"Recovery key:",
 				ASCENDING.text,
@@ -198,7 +211,7 @@ describe("recoveryKeyFileText", () => {
 		const text = recoveryKeyFileText(labels, {
 			keyText: ASCENDING.text.toLowerCase().replaceAll("-", " "),
 			account: "a",
-			made: "b",
+			made: new Date(2027, 0, 5, 0, 10),
 		});
 		expect(text).toContain(`\n${ASCENDING.text}\n`);
 	});
@@ -207,8 +220,37 @@ describe("recoveryKeyFileText", () => {
 		const typo = `${ASCENDING.text.slice(0, 5)}${ASCENDING.text[5] === "0" ? "1" : "0"}${ASCENDING.text.slice(6)}`;
 		expect(
 			code(() =>
-				recoveryKeyFileText(labels, { keyText: typo, account: "a", made: "b" }),
+				recoveryKeyFileText(labels, {
+					keyText: typo,
+					account: "a",
+					made: new Date(2027, 0, 5),
+				}),
 			),
 		).toBe("invalid_input");
+	});
+});
+
+describe("the file name", () => {
+	it("says what the file is and names no one", () => {
+		expect(RECOVERY_KEY_FILE_NAME).toBe("retrospend-recovery-key.txt");
+	});
+});
+
+describe("recoveryKeyGroups", () => {
+	it("gives the nine groups of the key, in order", () => {
+		expect(recoveryKeyGroups(ASCENDING.text)).toEqual(
+			ASCENDING.text.split("-"),
+		);
+	});
+
+	it("reads typed text the way the key is read", () => {
+		expect(
+			recoveryKeyGroups(ASCENDING.text.toLowerCase().replaceAll("-", " ")),
+		).toEqual(ASCENDING.text.split("-"));
+	});
+
+	it("refuses a key with a typo", () => {
+		const typo = `${ASCENDING.text.slice(0, 5)}${ASCENDING.text[5] === "0" ? "1" : "0"}${ASCENDING.text.slice(6)}`;
+		expect(code(() => recoveryKeyGroups(typo))).toBe("invalid_input");
 	});
 });

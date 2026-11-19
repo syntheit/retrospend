@@ -49,8 +49,10 @@ export {
 	groupMatches,
 	pickConfirmGroups,
 	type RecoveryFileLabels,
+	RECOVERY_KEY_FILE_NAME,
 	randomBelow,
 	recoveryKeyFileText,
+	recoveryKeyGroups,
 } from "./recovery-key";
 export {
 	type BeginAnswer,

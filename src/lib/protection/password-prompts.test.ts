@@ -49,6 +49,13 @@ const NOT_CHECKING = [
 	"app/(site)/signup/_components/signup-form.tsx",
 	"app/(site)/auth/reset-password/page.tsx",
 	"features/settings/security/password-sheet.tsx",
+	// The enable sheet's new password becomes keys in the browser (makeKeys) and
+	// is dropped. Its Confirm it's you step only hands the typed text to the
+	// sheet's `save` callback and sends nothing itself; the adapter that
+	// implements `save` (K1a-2, src/lib/protection/enable.ts) is the prompt that
+	// sends it and joins CHECKING_PROMPTS with its own SENDS entry.
+	"features/settings/protection/enable-steps.tsx",
+	"features/settings/protection/finish-steps.tsx",
 ];
 
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");

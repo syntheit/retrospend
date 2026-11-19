@@ -3,6 +3,7 @@
 // groups the person retypes to prove they saved it, whether what they typed
 // matches, and the text of the file they can save. keys.ts owns the format
 // (encode, parse, subkeys); nothing here stores or sends the key.
+import { dayKey } from "@retrospend/domain/time-zone";
 import { toBase64Url } from "../base64url";
 import { bad } from "../errors";
 import {
@@ -11,6 +12,7 @@ import {
 	normalizeRecoveryText,
 	parseRecoveryKey,
 	RECOVERY_GROUPS,
+	recoveryGroups,
 	recoverySubkeys,
 	wrapKey,
 } from "../keys";
@@ -74,6 +76,27 @@ export function groupMatches(typed: string, group: string): boolean {
 	}
 }
 
+/**
+ * The name of the saved recovery key file. It says what the file is and names
+ * no one, so the web and the phone save the same file name.
+ */
+export const RECOVERY_KEY_FILE_NAME = "retrospend-recovery-key.txt";
+
+/**
+ * The nine groups of a key's text, in order, read through the key's own
+ * format (so a typed key with spaces or look-alike letters gives its canonical
+ * groups, and a key with a typo throws `invalid_input`). The decoded key bytes
+ * are wiped before this returns.
+ */
+export function recoveryKeyGroups(keyText: string): string[] {
+	const bytes = parseRecoveryKey(keyText);
+	try {
+		return recoveryGroups(bytes);
+	} finally {
+		bytes.fill(0);
+	}
+}
+
 /** The words of the saved file: the platform's translations, passed in so every platform writes the same file. */
 export type RecoveryFileLabels = {
 	title: string;
@@ -85,19 +108,21 @@ export type RecoveryFileLabels = {
 
 /**
  * The text of the recovery key file, line by line. The key is parsed and
- * written again, so a key with a typo never lands in a file. `account` is a
- * display name for the account and `made` a date the platform formatted.
+ * written again, so a key with a typo never lands in a file. `account` is the
+ * account's email (its unique sign-in name) and `made` the instant the keys
+ * were made, written as the person's calendar day (`dayKey`, "yyyy-MM-dd")
+ * so every platform writes the same date format.
  */
 export function recoveryKeyFileText(
 	labels: RecoveryFileLabels,
-	file: { keyText: string; account: string; made: string },
+	file: { keyText: string; account: string; made: Date },
 ): string {
 	const key = encodeRecoveryKey(parseRecoveryKey(file.keyText));
 	return [
 		labels.title,
 		"",
 		`${labels.account}: ${file.account}`,
-		`${labels.made}: ${file.made}`,
+		`${labels.made}: ${dayKey(file.made)}`,
 		"",
 		`${labels.key}:`,
 		key,
