@@ -12,11 +12,19 @@ export {
 } from "./enable";
 export {
 	EnableFailure,
+	enableFailureFor,
 	FAILURE_CODES,
 	type FailureCode,
 	failureCode,
 	isFinalFailure,
 } from "./enable-failure";
+export {
+	createEnableCallbacks,
+	type EnableCallbacks,
+	type EnablePorts,
+	type EnableRequest,
+	type EnableSignInStep,
+} from "./enable-flow";
 export {
 	createEnableLifecycle,
 	type EnableLifecycle,

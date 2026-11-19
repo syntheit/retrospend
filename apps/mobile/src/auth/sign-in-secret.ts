@@ -17,6 +17,7 @@ import {
 	accountIsKeyed,
 	classifyRefusal,
 	type FlowPorts,
+	type KeyedRecord,
 	type KeyFlowCode,
 	KeyFlowError,
 	type LookupRoute,
@@ -98,7 +99,7 @@ export function keysLookup(api: RetrospendClient): KdfLookup {
 	return { route: "keys", ask: () => api.protection.keys() };
 }
 
-function statusOf(error: unknown): number | null {
+export function statusOf(error: unknown): number | null {
 	const status = (error as { status?: unknown } | null)?.status;
 	return typeof status === "number" ? status : null;
 }
@@ -116,6 +117,20 @@ function lookupPort(lookup: KdfLookup): FlowPorts["lookup"] {
 	};
 }
 
+/** The "this email is keyed on this server" record, in the keystore. A store that cannot be read or written throws (the flows then refuse). */
+export function keyedRecord(
+	input: { baseUrl: string; email: string },
+	deps: Pick<SecretDeps, "store">,
+): KeyedRecord {
+	return {
+		has: async () =>
+			(await deps.store.getItemAsync(
+				keyedRecordKey(input.baseUrl, input.email),
+			)) !== null,
+		set: () => markKeyed(input.baseUrl, input.email, deps),
+	};
+}
+
 function portsFor(
 	input: { baseUrl: string; email: string; lookup: KdfLookup },
 	deps: SecretDeps,
@@ -124,13 +139,7 @@ function portsFor(
 		primitives: deps.primitives,
 		lookup: lookupPort(input.lookup),
 		lookupRoute: input.lookup.route,
-		record: {
-			has: async () =>
-				(await deps.store.getItemAsync(
-					keyedRecordKey(input.baseUrl, input.email),
-				)) !== null,
-			set: () => markKeyed(input.baseUrl, input.email, deps),
-		},
+		record: keyedRecord(input, deps),
 	};
 }
 
@@ -145,7 +154,13 @@ const SECRET_FAILURES: Record<KeyFlowCode, SecretFailure> = {
 	wrongPassword: "unknown",
 	conflict: "unknown",
 	notOffered: "unknown",
-	// Recovery codes: no sign-in or rotation call can produce them.
+	// Enable and recovery codes: no sign-in or rotation call can produce them.
+	wrongCode: "unknown",
+	sessionNotFresh: "unknown",
+	readBackFailed: "unknown",
+	notFound: "unknown",
+	serverError: "unknown",
+	keyReused: "unknown",
 	typo: "unknown",
 	wrongRecoveryKey: "unknown",
 	tokenExpired: "unknown",
@@ -219,7 +234,13 @@ const ROTATE_FAILURES: Record<KeyFlowCode, RotateFailure> = {
 	conflict: "conflict",
 	notOffered: "unavailable",
 	unreadable: "unknown",
-	// Recovery codes: no rotation call can produce them.
+	// Enable and recovery codes: no rotation call can produce them.
+	wrongCode: "unknown",
+	sessionNotFresh: "unknown",
+	readBackFailed: "unknown",
+	notFound: "unknown",
+	serverError: "unknown",
+	keyReused: "unknown",
 	typo: "unknown",
 	wrongRecoveryKey: "unknown",
 	tokenExpired: "unknown",
@@ -247,7 +268,7 @@ export interface RotateInput {
 }
 
 /** A call's refusal as a KeyFlowError, from the problem's status and code only: server text is never used. */
-async function call<T>(run: () => Promise<T>): Promise<T> {
+export async function call<T>(run: () => Promise<T>): Promise<T> {
 	try {
 		return await run();
 	} catch (error) {

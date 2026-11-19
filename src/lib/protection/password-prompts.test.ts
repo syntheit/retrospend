@@ -51,9 +51,10 @@ const NOT_CHECKING = [
 	"features/settings/security/password-sheet.tsx",
 	// The enable sheet's new password becomes keys in the browser (makeKeys) and
 	// is dropped. Its Confirm it's you step only hands the typed text to the
-	// sheet's `save` callback and sends nothing itself; the adapter that
-	// implements `save` (K1a-2, src/lib/protection/enable.ts) is the prompt that
-	// sends it and joins CHECKING_PROMPTS with its own SENDS entry.
+	// sheet's `save` callback and sends nothing itself. What `save` sends is
+	// built in one place, the shared enable callbacks, which the "enable
+	// callbacks" test below inventories (it is not a .tsx prompt, so it cannot
+	// join CHECKING_PROMPTS); the web adapter sends only what they hand it.
 	"features/settings/protection/enable-steps.tsx",
 	"features/settings/protection/finish-steps.tsx",
 ];
@@ -155,6 +156,41 @@ const SENDS: Record<string, Entry[]> = {
 		{ key: "password", value: "await signInSecret(password)" },
 	],
 };
+
+describe("enable callbacks", () => {
+	const CORE = "../packages/crypto/src/client/enable-flow.ts";
+	const ADAPTER = "lib/protection/enable.ts";
+
+	it("put the typed password in one request, built after the keyed record was checked", () => {
+		const core = read(CORE);
+		// (Type literals with a password field also scan as entries; only the request is a send.)
+		expect(
+			passwordEntries(core).filter(
+				(e) => e.key === "currentPassword" && e.value === "input.password",
+			),
+		).toEqual([{ key: "currentPassword", value: "input.password" }]);
+		// Behavior is tested in packages/crypto/test/client-enable-flow.test.ts
+		// ("a device that knows the account is keyed"); this keeps the one
+		// request from moving above the check unnoticed.
+		expect(core.indexOf("ports.record.has()")).toBeGreaterThan(-1);
+		expect(core.indexOf("ports.record.has()")).toBeLessThan(
+			core.lastIndexOf("currentPassword:"),
+		);
+	});
+
+	it("send the web adapter's typed password nowhere but through the shared callbacks and the sign-in helper", () => {
+		// The adapter hands the typed password to the shared callbacks and to the
+		// sign-in helper (which refuses a keyed address); it builds no request of its own with one.
+		const adapter = read(ADAPTER);
+		// The one field is the sign-in secret the helper returned, as in the sign-in form.
+		expect(passwordEntries(adapter)).toEqual([
+			{ key: "password", value: "secret" },
+		]);
+		expect(adapter).toMatch(
+			/secret = await signInSecretFor\(account\.email, password,/,
+		);
+	});
+});
 
 describe("the scan for what a prompt sends", () => {
 	it("finds the forms a single regex missed", () => {

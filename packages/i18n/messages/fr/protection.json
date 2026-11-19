@@ -5,7 +5,9 @@
 		"keysReady": "Clés prêtes",
 		"turnOn": "Activer",
 		"makeNewKey": "Créer une nouvelle clé",
-		"verifyEmailFirst": "Vérifie d’abord ton e-mail"
+		"verifyEmailFirst": "Vérifie d’abord ton e-mail",
+		"loadFailed": "Impossible de charger",
+		"retry": "Réessayer"
 	},
 	"enable": {
 		"back": "Retour",
@@ -86,7 +88,8 @@
 		"tooMany": "Trop de tentatives, attends une minute et réessaie.",
 		"notOffered": "La protection avancée n’est pas disponible ici.",
 		"failed": "Impossible de terminer. Réessaie.",
-		"checkFailed": "Impossible de vérifier tes clés."
+		"checkFailed": "Ton nouveau mot de passe est défini, mais tes clés n’ont pas pu être vérifiées.",
+		"deviceRecordNotSaved": "Ton nouveau mot de passe est défini, reconnecte-toi sur cet appareil."
 	},
 	"toast": {
 		"keysSaved": "Clés enregistrées"

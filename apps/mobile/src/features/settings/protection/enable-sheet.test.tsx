@@ -543,7 +543,14 @@ describe("EnableSheet, confirm it is you", () => {
 
 	it.each([
 		["notOffered", "Advanced protection is not available here."],
-		["checkFailed", "Couldn't check your keys."],
+		[
+			"checkFailed",
+			"Your new password is set, but your keys couldn't be checked.",
+		],
+		[
+			"deviceRecordNotSaved",
+			"Your new password is set, so sign in again on this device.",
+		],
 	] as const)(
 		"ends on %s with the words and a way to close, not to retry",
 		async (reason, words) => {

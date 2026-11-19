@@ -467,14 +467,27 @@ describe("classifyRefusal", () => {
 		expect(classifyRefusal(409, "recovery_unavailable")).toBe(
 			"recoveryUnavailable",
 		);
-		expect(classifyRefusal(500, undefined)).toBe("failed");
+		expect(classifyRefusal(400, "wrong_two_factor_code")).toBe("wrongCode");
+		expect(classifyRefusal(400, "two_factor_required")).toBe("wrongCode");
+		expect(classifyRefusal(403, "session_not_fresh")).toBe("sessionNotFresh");
+		expect(classifyRefusal(500, undefined)).toBe("serverError");
 		// A code without its status is not enough, and a status without its code
 		// is not a wrong password.
-		expect(classifyRefusal(500, "wrong_password")).toBe("failed");
+		expect(classifyRefusal(500, "wrong_password")).toBe("serverError");
 		expect(classifyRefusal(200, "conflict")).toBe("failed");
 		expect(classifyRefusal(400, "validation")).toBe("failed");
-		expect(classifyRefusal(500, "wrong_recovery_key")).toBe("failed");
+		expect(classifyRefusal(500, "wrong_recovery_key")).toBe("serverError");
 		expect(classifyRefusal(400, "invalid_token")).toBe("failed");
 		expect(classifyRefusal(404, "wrong_recovery_key")).toBe("failed");
+		expect(classifyRefusal(404, "session_not_fresh")).toBe("failed");
+		// A gateway answers 502 and 504 without a problem body; any 5xx but 501 is a server failure.
+		expect(classifyRefusal(502, undefined)).toBe("serverError");
+		expect(classifyRefusal(504, undefined)).toBe("serverError");
+		expect(classifyRefusal(422, "idempotency_key_reused")).toBe("keyReused");
+		expect(classifyRefusal(400, "idempotency_key_reused")).toBe("failed");
+		expect(classifyRefusal(422, "validation")).toBe("failed");
+		expect(classifyRefusal(404, "not_found")).toBe("notFound");
+		expect(classifyRefusal(400, "not_found")).toBe("failed");
+		expect(classifyRefusal(500, "wrong_two_factor_code")).toBe("serverError");
 	});
 });

@@ -5,7 +5,9 @@
 		"keysReady": "Keys ready",
 		"turnOn": "Turn on",
 		"makeNewKey": "Make new key",
-		"verifyEmailFirst": "Verify your email first"
+		"verifyEmailFirst": "Verify your email first",
+		"loadFailed": "Couldn't load",
+		"retry": "Try again"
 	},
 	"enable": {
 		"back": "Back",
@@ -86,7 +88,8 @@
 		"tooMany": "Too many tries, wait a minute and try again.",
 		"notOffered": "Advanced protection is not available here.",
 		"failed": "Couldn't finish. Try again.",
-		"checkFailed": "Couldn't check your keys."
+		"checkFailed": "Your new password is set, but your keys couldn't be checked.",
+		"deviceRecordNotSaved": "Your new password is set, so sign in again on this device."
 	},
 	"toast": {
 		"keysSaved": "Keys saved"

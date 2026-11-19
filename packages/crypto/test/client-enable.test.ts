@@ -374,22 +374,48 @@ describe("prepareEnable", () => {
 		const allZero = (arrays: Uint8Array[]) =>
 			arrays.every((b) => b.every((x) => x === 0));
 
-		it("wipes the salt, the account key, the recovery key and the collection key after a run", async () => {
+		it("wipes the salt, the recovery key and the collection key after a run, and the account key when the draft is wiped", async () => {
 			const s = scripted();
-			await prepareEnable(
+			const prepared = await prepareEnable(
 				ports(s.prims),
 				{ userId: USER_ID, password: PASSWORD },
 				OPTIONS,
 			);
 			const [salt, ak, rk, keyId, collection] = s.handed;
-			expect(allZero([salt, ak, rk, collection] as Uint8Array[])).toBe(true);
+			expect(allZero([salt, rk, collection] as Uint8Array[])).toBe(true);
+			// The read-back needs the account key until the flow ends.
+			expect(ak?.some((x) => x !== 0)).toBe(true);
+			prepared.wipe();
+			expect(allZero([ak] as Uint8Array[])).toBe(true);
 			// The key id is public (it names the collection key) and is not wiped.
 			expect(keyId?.some((x) => x !== 0)).toBe(true);
+		});
+
+		it("wipes the account key it made when a check refuses, so no draft is left", async () => {
+			const s = scripted();
+			const prims: Primitives = {
+				...s.prims,
+				aeadEncrypt: (key, nonce, plain, aad) => {
+					const out = p.aeadEncrypt(key, nonce, plain, aad);
+					if (aad.includes("|private-key|")) out[0] = (out[0] ?? 0) ^ 1;
+					return out;
+				},
+			};
+			await expect(
+				prepareEnable(
+					ports(prims),
+					{ userId: USER_ID, password: PASSWORD },
+					OPTIONS,
+				),
+			).rejects.toMatchObject({ code: "malformed" });
+			const ak = s.handed[1] as Uint8Array;
+			expect(allZero([ak])).toBe(true);
 		});
 
 		it("wipes every derived key too, on success and on a refused check", async () => {
 			for (const refuse of [false, true]) {
 				const kept: Uint8Array[] = [];
+				let privateKey: Uint8Array | undefined;
 				const track = (b: Uint8Array) => {
 					kept.push(b);
 					return b;
@@ -402,7 +428,8 @@ describe("prepareEnable", () => {
 					aeadDecrypt: (...a) => track(base.aeadDecrypt(...a)),
 					boxKeypair: () => {
 						const pair = base.boxKeypair();
-						track(pair.privateKey);
+						// Held for the read-back: wiped with the draft, not before.
+						privateKey = pair.privateKey;
 						return pair;
 					},
 					aeadEncrypt: (key, nonce, plain, aad) => {
@@ -418,9 +445,15 @@ describe("prepareEnable", () => {
 					OPTIONS,
 				);
 				if (refuse) await expect(run).rejects.toBeInstanceOf(KeyFlowError);
-				else await run;
+				const prepared = refuse ? null : await run;
 				expect(kept.length).toBeGreaterThan(4);
 				expect(allZero(kept)).toBe(true);
+				// The private key is the one thing kept, until the draft is wiped.
+				if (prepared) {
+					expect(privateKey?.some((x) => x !== 0)).toBe(true);
+					prepared.wipe();
+				}
+				if (privateKey) expect(allZero([privateKey])).toBe(true);
 			}
 		});
 

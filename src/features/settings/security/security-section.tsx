@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import { useSession } from "~/hooks/use-session";
+import { ProtectionRow } from "../protection/protection-row";
 import { SectionShell } from "../section-shell";
 import { SettingRow, SettingRows } from "../setting-row";
 import { AdminAccessBlock } from "./admin-access-block";
@@ -64,6 +65,7 @@ export function SecuritySection() {
 						</Button>
 					)}
 				</SettingRow>
+				<ProtectionRow />
 			</SettingRows>
 			<DevicesBlock />
 			<AdminAccessBlock />

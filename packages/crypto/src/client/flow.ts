@@ -33,6 +33,12 @@ export type KeyFlowCode =
 	/** The keyed record cannot be read or written, so the defense cannot work. */
 	| "unreadable"
 	| "wrongPassword"
+	/** The two-factor code was refused, or one is required and was not sent. */
+	| "wrongCode"
+	/** The server wants a sign-in made in the last minutes before it changes the keys. */
+	| "sessionNotFresh"
+	/** The keys were saved, but what the server holds does not read back as what was sent. */
+	| "readBackFailed"
 	/** The recovery key text is not a key (a typo, a wrong length or a stray character). Nothing was sent. */
 	| "typo"
 	/** The recovery key's proof was refused (a key of another account, or an old one). */
@@ -43,9 +49,15 @@ export type KeyFlowCode =
 	| "recoveryUnavailable"
 	/** The key set changed under the run (a second run may succeed). */
 	| "conflict"
+	/** The server answered 404 not_found: the thing asked about is not there (no key set). */
+	| "notFound"
+	/** The server failed (a 5xx, a gateway among them): a write may or may not have committed. */
+	| "serverError"
+	/** The Idempotency-Key was already used for another request body (422). */
+	| "keyReused"
 	/** The server no longer offers Advanced protection. */
 	| "notOffered"
-	/** Anything else, including a server error on a write. */
+	/** Anything else the client cannot name (a server error is serverError). */
 	| "failed";
 
 /** Fixed text only: nothing typed, derived or stored ever lands in a message. */
@@ -158,13 +170,22 @@ export function classifyRefusal(
 	if (status === null) return "unavailable";
 	if (status === 429) return "rateLimited";
 	if (status === 400 && code === "wrong_password") return "wrongPassword";
+	if (
+		status === 400 &&
+		(code === "wrong_two_factor_code" || code === "two_factor_required")
+	)
+		return "wrongCode";
+	if (status === 403 && code === "session_not_fresh") return "sessionNotFresh";
 	if (status === 400 && code === "wrong_recovery_key")
 		return "wrongRecoveryKey";
 	if (status === 404 && code === "invalid_token") return "tokenExpired";
+	if (status === 404 && code === "not_found") return "notFound";
 	if (status === 409 && code === "recovery_unavailable")
 		return "recoveryUnavailable";
 	if (status === 409) return "conflict";
 	if (status === 501) return "notOffered";
+	if (status === 422 && code === "idempotency_key_reused") return "keyReused";
+	if (status >= 500) return "serverError";
 	return "failed";
 }
 

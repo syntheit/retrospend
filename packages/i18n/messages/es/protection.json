@@ -5,7 +5,9 @@
 		"keysReady": "Claves listas",
 		"turnOn": "Activar",
 		"makeNewKey": "Crear clave nueva",
-		"verifyEmailFirst": "Verifica primero tu correo"
+		"verifyEmailFirst": "Verifica primero tu correo",
+		"loadFailed": "No se pudo cargar",
+		"retry": "Reintentar"
 	},
 	"enable": {
 		"back": "Atrás",
@@ -86,7 +88,8 @@
 		"tooMany": "Demasiados intentos, espera un minuto e inténtalo de nuevo.",
 		"notOffered": "La protección avanzada no está disponible aquí.",
 		"failed": "No se pudo completar. Inténtalo de nuevo.",
-		"checkFailed": "No se pudieron comprobar tus claves."
+		"checkFailed": "Tu nueva contraseña está establecida, pero no se pudieron comprobar tus claves.",
+		"deviceRecordNotSaved": "Tu nueva contraseña está establecida, así que vuelve a iniciar sesión en este dispositivo."
 	},
 	"toast": {
 		"keysSaved": "Claves guardadas"

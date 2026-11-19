@@ -5,7 +5,9 @@
 		"keysReady": "Schlüssel bereit",
 		"turnOn": "Einschalten",
 		"makeNewKey": "Neuen Schlüssel erstellen",
-		"verifyEmailFirst": "Bestätige zuerst deine E-Mail-Adresse"
+		"verifyEmailFirst": "Bestätige zuerst deine E-Mail-Adresse",
+		"loadFailed": "Konnte nicht geladen werden",
+		"retry": "Erneut versuchen"
 	},
 	"enable": {
 		"back": "Zurück",
@@ -86,7 +88,8 @@
 		"tooMany": "Zu viele Versuche, warte eine Minute und versuche es erneut.",
 		"notOffered": "Erweiterter Schutz ist hier nicht verfügbar.",
 		"failed": "Das hat nicht geklappt. Versuch es erneut.",
-		"checkFailed": "Deine Schlüssel konnten nicht geprüft werden."
+		"checkFailed": "Dein neues Passwort ist gesetzt, aber deine Schlüssel konnten nicht geprüft werden.",
+		"deviceRecordNotSaved": "Dein neues Passwort ist gesetzt, melde dich auf diesem Gerät noch einmal an."
 	},
 	"toast": {
 		"keysSaved": "Schlüssel gespeichert"
