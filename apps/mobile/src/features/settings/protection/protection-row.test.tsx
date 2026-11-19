@@ -3,6 +3,7 @@ import {
 	act,
 	flush,
 	mount,
+	type TestNode,
 	type Tree,
 	textOf,
 	words,
