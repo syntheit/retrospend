@@ -80,7 +80,8 @@
 			"restored": "{title} restaurado",
 			"editOffline": "Você está offline. Editar precisa de conexão.",
 			"editRefused": "Não foi possível salvar esta alteração. Ela pode estar bloqueada.",
-			"editSynced": "Este lançamento já foi sincronizado. Abra-o em Atividade para editar."
+			"editSynced": "Este lançamento já foi sincronizado. Abra-o em Atividade para editar.",
+			"stillSending": "Este lançamento ainda está sendo enviado. Tente de novo em instantes."
 		},
 		"changes": {
 			"offline": "Você está offline. Isto é salvo no celular e sincronizado depois.",

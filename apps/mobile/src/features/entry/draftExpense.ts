@@ -95,6 +95,8 @@ export interface ExpenseEdit {
 	projectId: string | null;
 	/** The saved category, which may not be in your catalog. */
 	category: { id: string; name: string } | null;
+	/** The `updatedAt` the saved expense was read at: what a queued edit is based on. */
+	updatedAt?: string;
 }
 
 const NO_SPLIT = {
@@ -146,6 +148,7 @@ export function expenseFromEntry(
 		description: string | null;
 		amortizeOver: number | null;
 		excludeFromAnalytics: boolean;
+		updatedAt?: string;
 	},
 	locale: string,
 ): ExpenseDraft {
@@ -180,6 +183,7 @@ export function expenseFromEntry(
 			split: null,
 			projectId: null,
 			category: null,
+			...(entry.updatedAt ? { updatedAt: entry.updatedAt } : {}),
 		},
 	};
 }

@@ -233,24 +233,32 @@ export function undoSaved(input: {
 
 export type QueuedChange =
 	| { status: "queued"; clientId: string }
-	/** The row's last entry may already be on the server: nothing stacks on it yet. */
+	/**
+	 * Nothing safe to base it on: the row's last entry may already be on the
+	 * server (nothing stacks on it yet), or no version of the row was read.
+	 */
 	| { status: "busy" };
 
 /**
  * Queues an edit or a delete of a saved expense, under the dev flag. The
  * device books it over the writes still waiting; the entry is chained after
- * the last waiting entry for the row, or based on the row's own version. The
+ * the last waiting entry for the row, or based on `opened`, the `updatedAt`
+ * of the row as the screen read it. The booking never supplies the base: it
+ * can be missing (Sync first, a pull began) or version-less, and an entry
+ * sent with no `expectedUpdatedAt` would overwrite or delete unchecked. The
  * update and delete senders are PR10: until then nothing flushes it, and
  * Undo takes it back out of the outbox.
  */
 export function queueExpenseChange(input: {
 	outbox: Outbox;
 	writes: DeviceWrites;
+	/** The row's `updatedAt` as the screen opened it; null when it was not read. */
+	opened: string | null;
 	change:
 		| { kind: "update"; body: Record<string, unknown> }
 		| { kind: "delete"; id: string };
 }): Promise<QueuedChange> {
-	const { outbox, writes, change } = input;
+	const { outbox, writes, change, opened } = input;
 	const targetId =
 		change.kind === "delete" ? change.id : String(change.body.id);
 	const op: WriteOp =
@@ -262,10 +270,11 @@ export function queueExpenseChange(input: {
 			.filter((e) => e.targetId === targetId)
 			.at(-1);
 		if (earlier && earlier.attempts > 0) return { status: "busy" };
+		if (!earlier && !opened) return { status: "busy" };
 		const booked = await writes.book(op);
 		const base: BaseVersion = earlier
 			? { after: earlier.clientId }
-			: (booked?.base ?? null);
+			: (opened as string);
 		const clientId = newClientId();
 		await outbox.enqueue({
 			clientId,

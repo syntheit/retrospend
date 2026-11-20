@@ -65,9 +65,10 @@ export function useEntrySave({
 			outbox: local.outbox,
 			writes,
 			change: { kind: "update", body: write.body },
+			opened: form.expense.editing?.updatedAt ?? null,
 		}).finally(() => setBusy(false));
 		if (queued.status === "busy") {
-			toast.show({ message: t("toast.editSynced") });
+			toast.show({ message: t("toast.stillSending") });
 			return true;
 		}
 		announceEntryChange();

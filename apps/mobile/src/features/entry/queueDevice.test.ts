@@ -147,6 +147,7 @@ describe("queueExpenseChange", () => {
 			outbox,
 			writes,
 			change: { kind: "update", body: { ...write.body, amount: "120" } },
+			opened: null,
 		});
 		expect(queued.status).toBe("queued");
 		const all = await outbox.all();
@@ -157,13 +158,15 @@ describe("queueExpenseChange", () => {
 		});
 	});
 
-	it("bases an edit of a synced row on the version the device read", async () => {
+	it("bases a delete of a synced row on the version the screen read, not the booking's", async () => {
 		const outbox = open();
-		const writes = writesWith(async () => booked("2026-10-05T03:00:00.000Z"));
+		// The booking read another version (a pull moved the store): it is not the base.
+		const writes = writesWith(async () => booked("2026-10-06T00:00:00.000Z"));
 		await queueExpenseChange({
 			outbox,
 			writes,
 			change: { kind: "delete", id: ID },
+			opened: "2026-10-05T03:00:00.000Z",
 		});
 		const [entry] = await outbox.all();
 		expect(entry).toMatchObject({
@@ -171,6 +174,35 @@ describe("queueExpenseChange", () => {
 			baseVersion: "2026-10-05T03:00:00.000Z",
 			payload: { id: ID },
 		});
+	});
+
+	it("is busy, queuing nothing, when no version of the row was read", async () => {
+		const outbox = open();
+		// The booking returned a base, but it never stands in for the row's own version.
+		const writes = writesWith(async () => booked("2026-10-05T03:00:00.000Z"));
+		const queued = await queueExpenseChange({
+			outbox,
+			writes,
+			change: { kind: "update", body: write.body },
+			opened: null,
+		});
+		expect(queued).toEqual({ status: "busy" });
+		expect(await outbox.all()).toEqual([]);
+	});
+
+	it("still queues, stamped with the screen's version, when the device could not book it", async () => {
+		const outbox = open();
+		const writes = writesWith(async () => null);
+		const queued = await queueExpenseChange({
+			outbox,
+			writes,
+			change: { kind: "update", body: write.body },
+			opened: "2026-10-05T03:00:00.000Z",
+		});
+		expect(queued.status).toBe("queued");
+		const [entry] = await outbox.all();
+		expect(entry).toMatchObject({ baseVersion: "2026-10-05T03:00:00.000Z" });
+		expect(entry?.device).toBeUndefined();
 	});
 
 	it("nothing stacks on an entry whose send began", async () => {
@@ -183,6 +215,7 @@ describe("queueExpenseChange", () => {
 			outbox,
 			writes,
 			change: { kind: "update", body: write.body },
+			opened: "v1",
 		});
 		expect(queued).toEqual({ status: "busy" });
 		expect(await outbox.all()).toHaveLength(1);
@@ -195,6 +228,7 @@ describe("queueExpenseChange", () => {
 			outbox,
 			writes,
 			change: { kind: "update", body: write.body },
+			opened: "v1",
 		});
 		if (queued.status !== "queued") throw new Error("not queued");
 		expect(await undoSaved({ outbox, api, clientId: queued.clientId })).toBe(
@@ -227,6 +261,7 @@ describe("the sender sends creates only", () => {
 			outbox,
 			writes,
 			change: { kind: "update", body: write.body },
+			opened: "v1",
 		});
 		const [entry] = await outbox.all();
 		expect(await entryOutbox(outbox).all()).toEqual([]);

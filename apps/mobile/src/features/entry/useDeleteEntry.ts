@@ -37,6 +37,7 @@ export function useDeleteEntry(
 ): (target?: Partial<DeleteTargetArgs>) => void {
 	const t = useTranslations("mobile.composer.delete");
 	const tc = useTranslations("mobile.common");
+	const tt = useTranslations("mobile.composer.toast");
 	const { api, local } = useSession();
 	const toast = useToast();
 	const busy = useRef(false);
@@ -54,13 +55,19 @@ export function useDeleteEntry(
 	}: DeleteTargetArgs): Promise<boolean> {
 		const writes = api && !shared ? deviceWrites(api) : null;
 		if (!api || !local || !writes) return false;
+		// The version the delete is checked against: the row as the server holds it now.
+		const opened = await api.expenses.get({ id }).then(
+			(row) => row.updatedAt,
+			() => null,
+		);
 		const queued = await queueExpenseChange({
 			outbox: local.outbox,
 			writes,
 			change: { kind: "delete", id },
+			opened,
 		});
 		if (queued.status === "busy") {
-			toast.show({ message: t("failed") });
+			toast.show({ message: tt("stillSending") });
 			return true;
 		}
 		announceEntryChange();

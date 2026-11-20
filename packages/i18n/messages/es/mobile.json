@@ -80,7 +80,8 @@
 			"restored": "Se restauró {title}",
 			"editOffline": "Estás sin conexión. Editar necesita conexión.",
 			"editRefused": "No se pudo guardar este cambio. Puede estar bloqueado.",
-			"editSynced": "Este movimiento ya se sincronizó. Ábrelo desde Actividad para editarlo."
+			"editSynced": "Este movimiento ya se sincronizó. Ábrelo desde Actividad para editarlo.",
+			"stillSending": "Este movimiento aún se está enviando. Inténtalo de nuevo en un momento."
 		},
 		"changes": {
 			"offline": "Sin conexión. Se guarda en tu teléfono y se sincroniza después.",

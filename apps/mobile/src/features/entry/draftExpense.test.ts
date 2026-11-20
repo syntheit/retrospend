@@ -472,6 +472,17 @@ describe("opening a saved expense", () => {
 		);
 	});
 
+	it("keeps the version it was read at, for a queued edit to be based on", () => {
+		const read = "2026-10-05T03:00:00.000Z";
+		expect(
+			expenseFromEntry({ ...saved(1500, "JPY"), updatedAt: read }, "en-US")
+				.editing?.updatedAt,
+		).toBe(read);
+		expect(
+			expenseFromEntry(saved(1500, "JPY"), "en-US").editing?.updatedAt,
+		).toBeUndefined();
+	});
+
 	it("reads a saved refund's amount as its size", () => {
 		expect(expenseFromEntry(saved(-1500, "JPY"), "en-US").amountText).toBe(
 			"1,500",
