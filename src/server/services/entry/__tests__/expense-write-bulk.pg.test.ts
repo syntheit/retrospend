@@ -1,7 +1,7 @@
 /**
  * Characterization of today's bulk expense writes and their undo (slice-
- * device-writes PR0): bulk categorize on the legacy tRPC router and v1 (web
- * tRPC `entry.*` has none), bulk delete and the undo tokens on v1. Pins the
+ * device-writes PR0): bulk categorize on the web's tRPC `entry.expense.categorize`
+ * (PR7 replaced the legacy `expense.bulkUpdateCategory` with it) and v1, bulk delete and the undo tokens on v1. Pins the
  * status or code, the message, the counts and the stored rows. ARS home, USD
  * 100 at Blue 1,468 books ARS 146,800.
  */
@@ -69,31 +69,36 @@ const v1Bulk = async (
 	};
 };
 
-const legacyBulk = async (ids: string[], categoryId: string): Promise<Bulk> => {
+const trpcOut = async <T>(run: () => Promise<T>) => {
 	try {
-		const out = await w.callers.legacy.bulkUpdateCategory({
-			expenseIds: ids,
-			categoryId,
-		});
-		return { ok: true, updated: out.count };
+		return { ok: true as const, out: await run() };
 	} catch (error) {
 		if (error instanceof TRPCError)
-			return { ok: false, code: error.code, message: error.message };
+			return { ok: false as const, code: error.code, message: error.message };
 		throw error;
 	}
 };
 
-/** Bulk categorize through one transport (the web's `entry.*` has none). */
-const categorize = (
-	name: "v1" | "legacy",
-	ids: string[],
-	categoryId: string,
-) =>
+const entryMoves = (ids: string[], categoryId: string) => ({
+	moves: [{ categoryId, ids }],
+});
+
+const entryBulk = async (ids: string[], categoryId: string): Promise<Bulk> => {
+	const done = await trpcOut(() =>
+		w.callers.entry.expense.categorize.save(entryMoves(ids, categoryId)),
+	);
+	return done.ok
+		? { ok: true, updated: done.out.value.updated }
+		: { ok: false, code: done.code, message: done.message };
+};
+
+/** Bulk categorize through one transport. */
+const categorize = (name: "v1" | "entry", ids: string[], categoryId: string) =>
 	name === "v1"
 		? v1Bulk("/expenses/bulk-category", { ids, categoryId })
-		: legacyBulk(ids, categoryId);
+		: entryBulk(ids, categoryId);
 
-const BULK = ["v1", "legacy"] as const;
+const BULK = ["v1", "entry"] as const;
 const categoryOf = async (id: string) => (await stored(id))?.categoryId;
 const ids = (n: number) => Array.from({ length: n }, () => randomUUID());
 const refusedCategory = {
@@ -103,7 +108,7 @@ const refusedCategory = {
 		code: "forbidden",
 		message: CATEGORY_NOT_FOUND,
 	},
-	legacy: { ok: false, code: "FORBIDDEN", message: CATEGORY_NOT_FOUND },
+	entry: { ok: false, code: "FORBIDDEN", message: CATEGORY_NOT_FOUND },
 } as const;
 const tooSmall = {
 	ok: false,
@@ -121,7 +126,7 @@ const tooBig = (max: number) =>
 		errors: [`Too big: expected array to have <=${max} items`],
 	}) as const;
 /** zod's own text, printed by the router as JSON. */
-const legacyIssue = (issue: object) => ({
+const entryIssue = (issue: object) => ({
 	ok: false,
 	code: "BAD_REQUEST",
 	message: JSON.stringify([issue], null, 2),
@@ -142,15 +147,26 @@ describe("bulk categorize", () => {
 		async (name, _what, pick) => {
 			const mine = await book(w.userId, lunch(w));
 			const before = await stored(mine);
-			if (name === "v1") {
-				// The preview twin answers the same.
+			// The preview twin answers the same.
+			if (name === "v1")
 				expect(
 					await v1Bulk("/expenses/bulk-category/preview", {
 						ids: [mine],
 						categoryId: pick(w),
 					}),
 				).toEqual(refusedCategory.v1);
-			}
+			else
+				expect(
+					await trpcOut(() =>
+						w.callers.entry.expense.categorize.preview(
+							entryMoves([mine], pick(w)),
+						),
+					),
+				).toMatchObject({
+					ok: false,
+					code: "FORBIDDEN",
+					message: CATEGORY_NOT_FOUND,
+				});
 			expect(await categorize(name, [mine], pick(w))).toEqual(
 				refusedCategory[name],
 			);
@@ -171,7 +187,7 @@ describe("bulk categorize", () => {
 	);
 
 	it.each(BULK)(
-		"%s: moves only your own rows, counts them, and leaves the rest and excludeFromAnalytics alone",
+		"%s: moves only your own rows, counts them, and applies the category's analytics default",
 		async (name) => {
 			const target = w.holdByDefault;
 			const a = await book(w.userId, lunch(w, { title: "A" }));
@@ -182,8 +198,33 @@ describe("bulk categorize", () => {
 			expect(await categoryOf(a)).toBe(target);
 			expect(await categoryOf(b)).toBe(target);
 			expect(await categoryOf(theirs)).toBe(w.other);
-			// The category's exclude default applies to new and edited rows, not here.
-			expect((await stored(a))?.excludeFromAnalytics).toBe(false);
+			// Changed in PR7: a category held out by default now excludes the rows it takes, as an edit does.
+			expect((await stored(a))?.excludeFromAnalytics).toBe(true);
+			expect((await stored(theirs))?.excludeFromAnalytics).toBe(false);
+		},
+	);
+
+	it.each(BULK)(
+		"%s: a category with no default leaves the flag, and a row already in the category is counted and left alone",
+		async (name) => {
+			const kept = await book(
+				w.userId,
+				lunch(w, { categoryId: w.holdByDefault, excludeFromAnalytics: false }),
+			);
+			const flagged = await book(
+				w.userId,
+				lunch(w, { excludeFromAnalytics: true }),
+			);
+			expect(await categorize(name, [kept], w.holdByDefault)).toMatchObject({
+				ok: true,
+				updated: 1,
+			});
+			expect((await stored(kept))?.excludeFromAnalytics).toBe(false);
+			expect(await categorize(name, [flagged], w.food)).toMatchObject({
+				ok: true,
+				updated: 1,
+			});
+			expect((await stored(flagged))?.excludeFromAnalytics).toBe(true);
 		},
 	);
 
@@ -200,37 +241,52 @@ describe("bulk categorize", () => {
 		},
 	);
 
+	// Changed in PR7 (finding 5): categorize used to take every row of the person's.
 	it.each(BULK)(
-		"%s: takes income rows, transfer fees and spread parents and parts as any other row",
+		"%s: skips income rows, transfer fees and spread parents and parts, and moves the rest",
 		async (name) => {
 			const salary = await incomeRow(w.userId);
 			const feeId = await feeRow(w.userId);
 			const { id: parent, parts } = await spreadRow(w);
-			const all = [salary, feeId, parent, parts[0] ?? ""];
-			expect(await categorize(name, all, w.holdByDefault)).toMatchObject({
+			const plain = await book(w.userId, lunch(w));
+			const skipped = [salary, feeId, parent, parts[0] ?? ""];
+			const was = await Promise.all(skipped.map(categoryOf));
+			expect(
+				await categorize(name, [...skipped, plain], w.holdByDefault),
+			).toMatchObject({ ok: true, updated: 1 });
+			expect(await categoryOf(plain)).toBe(w.holdByDefault);
+			expect(await Promise.all(skipped.map(categoryOf))).toEqual(was);
+			expect(await categorize(name, skipped, w.holdByDefault)).toMatchObject({
 				ok: true,
-				updated: 4,
+				updated: 0,
 			});
-			for (const id of all)
-				expect(await categoryOf(id), id).toBe(w.holdByDefault);
 		},
 	);
 
-	it("v1 preview of a categorize moves no figure and writes nothing", async () => {
+	// Changed in PR7: the preview used to touch no figure; the category's default
+	// moves spent now. USD 100 at Blue 1,468 is ARS 146,800.00.
+	it("v1 preview of a categorize shows what the category's default takes out of spent, and writes nothing", async () => {
 		const mine = await book(w.userId, lunch(w));
 		const before = await stored(mine);
-		const res = await call("/expenses/bulk-category/preview", {
-			method: "POST",
-			headers: w.http,
-			body: { ids: [mine, randomUUID()], categoryId: w.holdByDefault },
-			idempotent: true,
+		const preview = async (categoryId: string) =>
+			(await (
+				await call("/expenses/bulk-category/preview", {
+					method: "POST",
+					headers: w.http,
+					body: { ids: [mine, randomUUID()], categoryId },
+					idempotent: true,
+				})
+			).json()) as { changes: { id: string; delta: unknown }[] };
+		const held = await preview(w.holdByDefault);
+		expect(held.changes.find((c) => c.id === "spent")?.delta).toEqual({
+			minor: -10_000,
+			currency: "USD",
 		});
-		expect(res.status).toBe(200);
-		expect(await res.json()).toEqual({
-			changes: [],
-			unchanged: [],
-			unavailable: [],
+		expect(held.changes.find((c) => c.id === "glance.spent")?.delta).toEqual({
+			minor: -14_680_000,
+			currency: "ARS",
 		});
+		expect((await preview(w.food)).changes).toEqual([]);
 		expect(await stored(mine)).toEqual(before);
 	});
 
@@ -242,32 +298,71 @@ describe("bulk categorize", () => {
 		});
 		expect(done).toMatchObject({ ok: true, updated: 1 });
 		expect(await categoryOf(mine)).toBe(w.holdByDefault);
+		expect((await stored(mine))?.excludeFromAnalytics).toBe(true);
 		const { undo } = (done as { json: { undo: string } }).json;
 		expect(await v1Bulk("/expenses/undo", { token: undo })).toMatchObject({
 			ok: true,
 		});
 		expect(await categoryOf(mine)).toBe(w.food);
+		// Changed in PR7: the undo puts the analytics flag back with the category.
+		expect((await stored(mine))?.excludeFromAnalytics).toBe(false);
+	});
+
+	// The web's Undo is this same save over the `previous` moves the first answered
+	// with. ARS home, USD 100 at Blue 1,468 is ARS 146,800.00 of spent.
+	it("entry: the web's undo puts category and flag back, and spent returns exactly", async () => {
+		const { expense } = w.callers.entry;
+		const mine = await book(w.userId, lunch(w));
+		const forward = entryMoves([mine], w.holdByDefault);
+		const spent = (r: { changes: readonly { id: string; delta: unknown }[] }) =>
+			r.changes.find((c) => c.id === "glance.spent")?.delta;
+
+		expect(spent(await expense.categorize.preview(forward))).toEqual({
+			minor: -14_680_000,
+			currency: "ARS",
+		});
+		const saved = await expense.categorize.save(forward);
+		expect(saved.value).toMatchObject({ updated: 1 });
+		expect(await categoryOf(mine)).toBe(w.holdByDefault);
+		expect((await stored(mine))?.excludeFromAnalytics).toBe(true);
+
+		const back = {
+			moves: saved.value.previous.map((m) => ({ ...m, ids: [...m.ids] })),
+			lenient: true,
+		};
+		expect(spent(await expense.categorize.preview(back))).toEqual({
+			minor: 14_680_000,
+			currency: "ARS",
+		});
+		await expense.categorize.save(back);
+		expect(await categoryOf(mine)).toBe(w.food);
+		expect((await stored(mine))?.excludeFromAnalytics).toBe(false);
+		// Moving it again drops the same ARS 146,800.00: it counted in spent again.
+		expect(spent(await expense.categorize.preview(forward))).toEqual({
+			minor: -14_680_000,
+			currency: "ARS",
+		});
 	});
 
 	const empty = {
 		v1: tooSmall,
-		legacy: legacyIssue({
+		entry: entryIssue({
 			origin: "array",
 			code: "too_small",
 			minimum: 1,
 			inclusive: true,
-			path: ["expenseIds"],
+			path: ["moves", 0, "ids"],
 			message: "Too small: expected array to have >=1 items",
 		}),
 	} as const;
 	const over = {
 		v1: tooBig(500),
-		legacy: legacyIssue({
+		entry: entryIssue({
 			origin: "array",
 			code: "too_big",
 			maximum: 500,
 			inclusive: true,
-			path: ["expenseIds"],
+			path: ["moves", 0, "ids"],
 			message: "Too big: expected array to have <=500 items",
 		}),
 	} as const;
@@ -290,18 +385,6 @@ describe("bulk categorize", () => {
 					categoryId: w.food,
 				}),
 			).toEqual(over.v1);
-	});
-	it("legacy: a category id that is not a cuid is refused before it is looked up", async () => {
-		expect(await legacyBulk([randomUUID()], "nope")).toEqual(
-			legacyIssue({
-				origin: "string",
-				code: "invalid_format",
-				format: "cuid",
-				pattern: "/^[cC][0-9a-z]{6,}$/",
-				path: ["categoryId"],
-				message: "Invalid cuid",
-			}),
-		);
 	});
 });
 
@@ -497,9 +580,9 @@ describe("single undo (v1) and the web's revert", () => {
 		const saved = await entry.expense.update.save(form);
 		await entry.expense.update.save({ ...form, title: "Newest" });
 		const before = await stored(id);
-		await expect(entry.expense.revert.save(undoOf(saved))).rejects.toMatchObject(
-			REFUSED,
-		);
+		await expect(
+			entry.expense.revert.save(undoOf(saved)),
+		).rejects.toMatchObject(REFUSED);
 		await expect(
 			entry.expense.revert.preview(undoOf(saved)),
 		).rejects.toMatchObject(REFUSED);

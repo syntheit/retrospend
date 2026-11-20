@@ -138,10 +138,10 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"expense.updateExpense": EXPENSE_DEPS,
 	"expense.deleteExpense": EXPENSE_DEPS,
 	"expense.importExpenses": EXPENSE_DEPS,
-	"expense.bulkUpdateCategory": ["insights"],
 
 	// ── Add family (4G): the same writes through the entry router ─────────
 	"entry.expense.create.save": [...EXPENSE_DEPS, "expense"],
+	"entry.expense.categorize.save": [...EXPENSE_DEPS, "expense"],
 	"entry.expense.update.save": [...EXPENSE_DEPS, "expense"],
 	"entry.expense.delete.save": [...EXPENSE_DEPS, "expense"],
 	"entry.expense.restore.save": [...EXPENSE_DEPS, "expense"],

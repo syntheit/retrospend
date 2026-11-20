@@ -50,11 +50,31 @@ export {
 export { sameValue } from "./equal";
 export { ConflictError, NotFoundError } from "./errors";
 export {
+	type CategorizeInput,
+	categorizeExpenses,
+	type DeleteManyInput,
+	deleteExpenses,
+	EXPENSE_CATEGORIZE,
+	EXPENSE_CATEGORIZE_MUTATION,
+	EXPENSE_DELETE_MANY,
+	EXPENSE_DELETE_MANY_MUTATION,
+} from "./expense-bulk-local";
+export {
 	type CreateExpenseInput,
 	createExpense,
 	EXPENSE_CREATE,
 	type ExpenseCategory,
 } from "./expense-create";
+export {
+	type DeleteExpenseInput,
+	type DeviceWriteContext,
+	deleteExpense,
+	EXPENSE_DELETE,
+	EXPENSE_UPDATE,
+	SYNC_FIRST,
+	type UpdateExpenseInput,
+	updateExpense,
+} from "./expense-write-local";
 export type {
 	ExpenseAggregate,
 	ExpenseRow,
@@ -102,6 +122,9 @@ export {
 	deviceMutation,
 	deviceUndoMutation,
 	EXPENSE_CREATE_MUTATION,
+	EXPENSE_DELETE_MUTATION,
+	EXPENSE_FIGURES,
+	EXPENSE_UPDATE_MUTATION,
 } from "./preview";
 export {
 	applyDailyTable,
