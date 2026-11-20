@@ -132,15 +132,20 @@ export function useExpenseSave(d: ExpenseDraft, o: Opts) {
 					...sharedFull,
 					id: editing.id,
 				});
+				const stamp = r.value.updatedAt;
 				toast.saved(t("saved", { title }), {
 					// The requests to fix it that this edit answered open again with it.
-					undo: () =>
-						m.sRevert.mutateAsync({
-							...r.value.restore,
-							...(r.value.answered.length > 0
-								? { reopenFixRequests: [...r.value.answered] }
-								: {}),
-						}),
+					// Refused once a newer edit changed the row since this one.
+					undo: stamp
+						? () =>
+								m.sRevert.mutateAsync({
+									...r.value.restore,
+									...(r.value.answered.length > 0
+										? { reopenFixRequests: [...r.value.answered] }
+										: {}),
+									expectedUpdatedAt: stamp,
+								})
+						: undefined,
 				});
 				return;
 			}

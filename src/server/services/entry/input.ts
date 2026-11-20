@@ -172,6 +172,15 @@ export const sharedRestoreSchema = z.object({
 		.optional(),
 });
 
+/**
+ * The web's undo of a shared edit: the restore plus the `updatedAt` the edit
+ * left (what shared.update returned). Required, so an undo can never write over
+ * a newer edit; guarded.mutation.ts compares it on the locked row.
+ */
+export const sharedRevertSchema = sharedRestoreSchema.extend({
+	expectedUpdatedAt: z.string().min(1).max(40),
+});
+
 export const sharedDeleteSchema = z.object({
 	id,
 	confirmUnsettled: z.boolean().optional(),

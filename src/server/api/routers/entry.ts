@@ -9,7 +9,9 @@ import {
 } from "~/server/services/entry/expense.mutation";
 import {
 	guardedExpense,
+	guardedShared,
 	revertExpenseEntry,
+	revertSharedExpense,
 } from "~/server/services/entry/guarded.mutation";
 import * as schema from "~/server/services/entry/input";
 import { entryProjectMembers } from "~/server/services/entry/project-members";
@@ -176,17 +178,19 @@ export const entryRouter = createTRPCRouter({
 				notify: n,
 			}),
 		),
+		// The stamp this edit leaves rides back as `updatedAt`, for its undo.
 		update: money(
 			schema.sharedUpdateSchema,
-			updateSharedExpense,
+			guardedShared(updateSharedExpense),
 			(v, c, n) => ({
 				...schema.toSharedInput(v, c.timeZone),
 				notify: n,
 			}),
 		),
+		/** Undo of an edit: refused, and nobody told, once a newer edit landed. */
 		revert: money(
-			schema.sharedRestoreSchema,
-			updateSharedExpense,
+			schema.sharedRevertSchema,
+			revertSharedExpense,
 			(v, _c, n) => ({
 				...v,
 				notify: n,
