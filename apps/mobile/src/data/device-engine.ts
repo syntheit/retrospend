@@ -1,5 +1,10 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import type { DeviceApi } from "@retrospend/engine/device";
+import type {
+	BookedWrite,
+	DeviceApi,
+	ServerPreview,
+	WriteOp,
+} from "@retrospend/engine/device";
 import {
 	createDeviceEngine as createCoreEngine,
 	type DeviceEngine,
@@ -11,6 +16,8 @@ import { engineScope } from "./engine-db/names";
 import type { OpenDeps } from "./engine-db/open";
 import { openEngineStorage } from "./engine-db/storage";
 import { registerLiveEngine } from "./engine-db/sweep";
+import type { Outbox } from "./outbox";
+import { createPendingSource, type OutboxPending } from "./pendingSource";
 
 // The device engine on the phone, behind the dev flag
 // EXPO_PUBLIC_DEV_DEVICE_ENGINE=1: the core (@retrospend/engine/device) with
@@ -47,10 +54,39 @@ const engines = new WeakMap<
 	RetrospendClient,
 	{
 		userId: string;
+		outbox: Outbox | undefined;
 		engine: DeviceEngine;
+		pending: OutboxPending | null;
 		unregister: () => void;
 	}
 >();
+
+/** What a save, an edit and a delete need of the engine of their client. */
+export interface DeviceWrites {
+	/** What the device booked for `op` and the version it was based on; null when it could not. */
+	book(op: WriteOp): Promise<BookedWrite | null>;
+	/** Holds the device preview against the server's dry run; never throws, shows nothing. */
+	comparePreview(op: WriteOp, server: ServerPreview): Promise<void>;
+	/** `DeviceEngine.pullsBegun`: what an ack carries, so a later pull retires the write. */
+	pullsBegun(): number;
+	/** Reads the outbox lists again, after a change the engine should see. */
+	refresh(): Promise<void>;
+}
+
+/** The write side of the engine of `api`, or null when it has none (or it was disposed). */
+export function writesFor(api: RetrospendClient): DeviceWrites | null {
+	const held = engines.get(api);
+	if (!held || held.engine.disposed) return null;
+	const { engine, pending } = held;
+	return {
+		book: (op) => engine.book(op),
+		comparePreview: async (op, server) => {
+			await engine.comparePreview(op, server);
+		},
+		pullsBegun: () => engine.pullsBegun,
+		refresh: () => pending?.refresh() ?? Promise.resolve(),
+	};
+}
 
 /**
  * The one engine of a client, account and server. A client outlives a sign
@@ -64,13 +100,23 @@ export function engineFor(
 	userId: string,
 	origin: string | null = null,
 	deps: OpenDeps = appOpenDeps(warn),
+	outbox?: Outbox,
 ): DeviceEngine {
 	const held = engines.get(api);
-	if (held?.userId === userId && !held.engine.disposed) return held.engine;
+	if (
+		held?.userId === userId &&
+		held.outbox === outbox &&
+		!held.engine.disposed
+	)
+		return held.engine;
 	held?.unregister();
 	void held?.engine.dispose({ wipe: true });
 	const scope = origin ? engineScope(origin, userId) : null;
+	// The engine reads the phone's unsent and acked writes through the outbox.
+	const pending = outbox ? createPendingSource(outbox) : null;
+	void pending?.refresh().catch(() => undefined);
 	const engine = createDeviceEngine(api, userId, Date.now, {
+		...(pending ? { pending } : {}),
 		storage: scope
 			? (hooks) => openEngineStorage(deps, scope, hooks)
 			: undefined,
@@ -78,6 +124,6 @@ export function engineFor(
 	const unregister = scope
 		? registerLiveEngine(scope, () => engine.dispose({ wipe: true }))
 		: () => undefined;
-	engines.set(api, { userId, engine, unregister });
+	engines.set(api, { userId, outbox, engine, pending, unregister });
 	return engine;
 }

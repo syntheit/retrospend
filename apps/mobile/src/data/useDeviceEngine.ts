@@ -6,14 +6,15 @@ import type { DeviceReads } from "./device-engine";
 import { deviceEngineModule } from "./deviceEngineModule";
 
 function useEngine() {
-	const { api, state, baseUrl } = useSession();
+	const { api, local, state, baseUrl } = useSession();
 	const userId = state.status === "signedIn" ? (state.me?.id ?? null) : null;
+	const outbox = local?.outbox;
 	return useMemo(() => {
 		const module = deviceEngineModule();
 		return module && api && userId
-			? module.engineFor(api, userId, baseUrl)
+			? module.engineFor(api, userId, baseUrl, undefined, outbox)
 			: null;
-	}, [api, userId, baseUrl]);
+	}, [api, userId, baseUrl, outbox]);
 }
 
 /** What Home and Budget compare their server figures against, or null when the flag is off or nobody is signed in. */

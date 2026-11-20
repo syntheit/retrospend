@@ -25,17 +25,21 @@ export function isEntryEntity(entity: string): entity is EntryEntity {
 }
 
 /**
- * The outbox as the composers' flush sees it: only their own entities. An
- * entry of another stream has no sender here and must not stop the queue.
+ * What this sender can send: a create of its own entities. An entry of
+ * another stream, or an update or delete (their sender is PR10, and only the
+ * dev flag queues them), has no sender here and must not stop the queue or
+ * go out as a create.
  */
+const sendable = (e: OutboxEntry): e is OutboxEntry & { entity: EntryEntity } =>
+	isEntryEntity(e.entity) && e.kind === "create";
+
+/** The outbox as the composers' flush sees it: only what `sendable` names. */
 export function entryOutbox(outbox: Outbox): Outbox {
 	return {
 		...outbox,
-		pending: async () =>
-			(await outbox.pending()).filter((e) => isEntryEntity(e.entity)),
+		pending: async () => (await outbox.pending()).filter(sendable),
 		// The flush reads `all()`: `pending()` hides the parked entries its hold rule needs.
-		all: async () =>
-			(await outbox.all()).filter((e) => isEntryEntity(e.entity)),
+		all: async () => (await outbox.all()).filter(sendable),
 	};
 }
 
@@ -124,8 +128,11 @@ export function createEntrySender(
 	options: SenderOptions = {},
 ): Sender {
 	return async (entry) => {
-		if (!isEntryEntity(entry.entity)) {
-			return { status: "retry", reason: `no sender for ${entry.entity}` };
+		if (!sendable(entry)) {
+			return {
+				status: "retry",
+				reason: `no sender for ${entry.kind} of ${entry.entity}`,
+			};
 		}
 		if (options.signal?.aborted) {
 			return { status: "retry", reason: "aborted", kind: "network" };

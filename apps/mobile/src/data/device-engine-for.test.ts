@@ -1,7 +1,7 @@
 import { cipherFake } from "../../test/cipherFake";
 import { fakeDeviceApi } from "../../test/deviceApi";
 import { removeDir, tempDir } from "../../test/nodeSqlite";
-import { createDeviceEngine, engineFor } from "./device-engine";
+import { createDeviceEngine, engineFor, writesFor } from "./device-engine";
 import { sweepEngineDbs } from "./engine-db/sweep";
 
 describe("engineFor", () => {
@@ -11,6 +11,25 @@ describe("engineFor", () => {
 		expect(engineFor(client, "u1")).toBe(mine);
 		expect(engineFor(client, "u2")).not.toBe(mine);
 		expect(engineFor(fakeDeviceApi().client, "u1")).not.toBe(mine);
+	});
+});
+
+describe("writesFor", () => {
+	it("is null until the client has an engine, then reads the engine's pulls begun", async () => {
+		const { client } = fakeDeviceApi();
+		expect(writesFor(client)).toBeNull();
+		const engine = engineFor(client, "u1");
+		const writes = writesFor(client);
+		expect(writes?.pullsBegun()).toBe(0);
+		await engine.pull();
+		expect(writes?.pullsBegun()).toBe(1);
+	});
+
+	it("is null once the engine is disposed", async () => {
+		const { client } = fakeDeviceApi();
+		const engine = engineFor(client, "u1");
+		await engine.dispose({ wipe: true });
+		expect(writesFor(client)).toBeNull();
 	});
 });
 

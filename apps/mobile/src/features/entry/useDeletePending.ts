@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import { deviceWrites } from "@/data/deviceWrites";
 import { showAlert } from "@/ui/alert";
 import { useToast } from "@/ui/Toast";
 import { announceEntryChange } from "./events";
@@ -33,7 +34,13 @@ export function useDeletePending(): (target: PendingTarget) => void {
 		if (!local || busy.current) return;
 		busy.current = true;
 		try {
-			const entry = await takeFromOutbox(local.outbox, clientId);
+			// Dev flag: an entry whose send began may be on the server, so it is
+			// not dropped here (the same rule as editing it).
+			const entry = await takeFromOutbox(
+				local.outbox,
+				clientId,
+				api !== null && deviceWrites(api) !== null,
+			);
 			// Gone already: the server has it now, and a delete there is another action.
 			if (!entry) {
 				toast.show({ message: t("failed") });
@@ -55,6 +62,7 @@ export function useDeletePending(): (target: PendingTarget) => void {
 								targetId: entry.targetId,
 								baseVersion: entry.baseVersion,
 								payload: entry.payload,
+								...(entry.device ? { device: entry.device } : {}),
 							}),
 						);
 						announceEntryChange();
