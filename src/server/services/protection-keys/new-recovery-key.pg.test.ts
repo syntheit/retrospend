@@ -80,6 +80,14 @@ beforeEach(() => {
 	mail.sendEmail.mockClear();
 });
 afterAll(async () => {
+	// A worker's database outlives the file, and the admin event log test counts
+	// USER_UPDATED rows: leave none of ours behind.
+	await adminDb.eventLog.deleteMany({
+		where: {
+			eventType: "USER_UPDATED",
+			metadata: { path: ["reason"], equals: "recovery_key_replaced" },
+		},
+	});
 	await adminDb.protectionKeyWrap.deleteMany({});
 	await adminDb.protectionKeySet.deleteMany({});
 });
