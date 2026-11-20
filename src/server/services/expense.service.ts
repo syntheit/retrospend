@@ -1,4 +1,3 @@
-import { categorize } from "@retrospend/domain/expense-write/bulk";
 import { expenseCategory } from "@retrospend/domain/expense-write/category";
 import { bookCreate } from "@retrospend/domain/expense-write/create";
 import {
@@ -24,7 +23,6 @@ import { CUSTOM_RATE_TYPE } from "~/lib/rate-selection";
 import { userTransaction } from "~/server/db-tx";
 import type { Prisma, PrismaClient } from "~prisma";
 import { AmortizationService } from "./amortization.service";
-import { expenseBulkPort } from "./entry/expense-bulk.prisma";
 import { bookContextOf, expenseEditPort } from "./entry/expense-edit.prisma";
 import { type RestoreToken, readRowRestore } from "./entry/restore-token";
 import { findDuplicateExpense } from "./expense-duplicate";
@@ -264,25 +262,6 @@ export class ExpenseService {
 				category: true,
 			},
 		});
-	}
-
-	/** One category for these expenses, on the domain's bulk rules (the rows it skips are not counted). */
-	async bulkUpdateCategory(
-		userId: string,
-		expenseIds: string[],
-		categoryId: string,
-	) {
-		return await this.runInTransaction(async (tx) => {
-			const done = await categorize(expenseBulkPort(tx, userId), [
-				{ categoryId, ids: expenseIds },
-			]);
-			// The category passed the owner's rule above, so it exists.
-			const category = await tx.category.findFirstOrThrow({
-				where: { id: categoryId, userId },
-				select: { name: true },
-			});
-			return { count: done.updated, categoryName: category.name };
-		}, userId);
 	}
 
 	async getFilterOptions(userId: string) {

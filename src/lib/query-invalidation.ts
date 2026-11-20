@@ -25,10 +25,7 @@ const SHARED_TX_DEPS = [
 ] as const;
 
 // The envelope budget reads every expense, share and settlement (build plan 02 §5.4).
-const EXPENSE_DEPS = [
-	"insights",
-	"envelope",
-] as const;
+const EXPENSE_DEPS = ["insights", "envelope"] as const;
 
 // A payment can lock the splits it settled (2C.2), which Activity and the entry views show.
 const SETTLEMENT_DEPS = [
@@ -50,11 +47,7 @@ const CATEGORY_DEPS = [
 ] as const;
 
 // Fiscal month start and home currency shift every month-scoped reader.
-const GENERAL_SETTINGS_DEPS = [
-	"insights",
-	"expense",
-	"envelope",
-] as const;
+const GENERAL_SETTINGS_DEPS = ["insights", "expense", "envelope"] as const;
 
 export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	// ── Shared transactions (project expenses) ──────────────────────────
@@ -69,11 +62,7 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"envelope.undoSetup": ["expense"],
 	"envelope.mergeEnvelopes": ["insights", "project"],
 	"envelope.archiveEnvelope": ["insights", "project"],
-	"envelope.undoChange": [
-		"insights",
-		"project",
-		"expense",
-	],
+	"envelope.undoChange": ["insights", "project", "expense"],
 	"envelope.confirmStartingMoney": ["expense"],
 	// Style, period and routing change what reports group and the dashboard shows.
 	"envelope.setStyle": ["insights"],
@@ -92,23 +81,9 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"envelope.revertHidden": ["expense", "insights"],
 	"envelope.dismissMigrationNotice": [],
 	"envelope.setDebtTerms": ["wealth"],
-	"envelope.recordDebtPayment": [
-		"wealth",
-		"expense",
-		"insights",
-	],
-	"envelope.forgive": [
-		"people",
-		"home",
-		"expense",
-		"sharedTransaction",
-	],
-	"envelope.unforgive": [
-		"people",
-		"home",
-		"expense",
-		"sharedTransaction",
-	],
+	"envelope.recordDebtPayment": ["wealth", "expense", "insights"],
+	"envelope.forgive": ["people", "home", "expense", "sharedTransaction"],
+	"envelope.unforgive": ["people", "home", "expense", "sharedTransaction"],
 
 	// ── Corrections, Ask to fix and Forgive (2C.2) ───────────────────────
 	// A correction moves balances, spending and the budget, and answers fix requests.
@@ -138,10 +113,10 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"expense.updateExpense": EXPENSE_DEPS,
 	"expense.deleteExpense": EXPENSE_DEPS,
 	"expense.importExpenses": EXPENSE_DEPS,
-	"expense.bulkUpdateCategory": ["insights"],
 
 	// ── Add family (4G): the same writes through the entry router ─────────
 	"entry.expense.create.save": [...EXPENSE_DEPS, "expense"],
+	"entry.expense.categorize.save": [...EXPENSE_DEPS, "expense"],
 	"entry.expense.update.save": [...EXPENSE_DEPS, "expense"],
 	"entry.expense.delete.save": [...EXPENSE_DEPS, "expense"],
 	"entry.expense.restore.save": [...EXPENSE_DEPS, "expense"],
@@ -165,18 +140,8 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"entry.shared.delete.save": [...SHARED_TX_DEPS, "sharedTransaction"],
 	"entry.transfer.save": ["wealth", "expense", "envelope"],
 	// Income feeds Insights' money in and savings rate.
-	"wealth.income.add.save": [
-		"insights",
-		"expense",
-		"envelope",
-		"recurring",
-	],
-	"wealth.income.delete.save": [
-		"insights",
-		"expense",
-		"envelope",
-		"recurring",
-	],
+	"wealth.income.add.save": ["insights", "expense", "envelope", "recurring"],
+	"wealth.income.delete.save": ["insights", "expense", "envelope", "recurring"],
 	"wealth.transfers.delete.save": ["expense", "envelope", "entry"],
 
 	// ── Settlements ─────────────────────────────────────────────────────
@@ -194,12 +159,7 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 		"people",
 		"insights",
 	],
-	"billingPeriod.settlePeriod": [
-		"project",
-		"settlement",
-		"people",
-		"insights",
-	],
+	"billingPeriod.settlePeriod": ["project", "settlement", "people", "insights"],
 	"billingPeriod.updateLabel": ["project"],
 
 	// ── Categories ──────────────────────────────────────────────────────
@@ -207,11 +167,7 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"categories.delete": CATEGORY_DEPS,
 
 	// ── Recurring ───────────────────────────────────────────────────────
-	"recurring.confirmAndCreate": [
-		"expense",
-		"insights",
-		"sharedTransaction",
-	],
+	"recurring.confirmAndCreate": ["expense", "insights", "sharedTransaction"],
 	"recurring.unconfirm": ["expense", "insights", "sharedTransaction"],
 
 	// ── Verification ────────────────────────────────────────────────────
@@ -244,12 +200,7 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"project.removeParticipant": ["people"],
 
 	// ── Exchange rates ──────────────────────────────────────────────────
-	"exchangeRate.syncNow": [
-		"wealth",
-		"project",
-		"people",
-		"insights",
-	],
+	"exchangeRate.syncNow": ["wealth", "project", "people", "insights"],
 
 	// ── Guest ───────────────────────────────────────────────────────────
 	"guest.joinWithAccount": ["project", "people"],

@@ -1,7 +1,9 @@
+import { toFloat } from "@retrospend/domain/precise-decimal";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { createTransferSchema } from "~/server/services/accounts/input";
 import { entryCatalog } from "~/server/services/entry/catalog";
+import { categorizeExpenses } from "~/server/services/entry/categorize.mutation";
 import {
 	deleteExpenseEntry,
 	restoreExpenseEntry,
@@ -33,7 +35,6 @@ import {
 	setDefaultRateType,
 } from "~/server/services/rate-types";
 import { createTransfer } from "~/server/services/transfers/create.mutation";
-import { toFloat } from "@retrospend/domain/precise-decimal";
 
 type Ctx = { session: { user: { id: string } }; timeZone?: string };
 type Notify = (() => Promise<void>)[];
@@ -158,6 +159,8 @@ export const entryRouter = createTRPCRouter({
 			deleteExpenseEntry,
 			asIs,
 		),
+		/** Bulk categorize; its undo is this save over the answer's `previous` moves. */
+		categorize: money(schema.categorizeSchema, categorizeExpenses, asIs),
 		/** Undo of a delete: the same expense back, same id. */
 		restore: money(schema.restoreTokenSchema, restoreExpenseEntry, asIs),
 		/** Undo of an edit: the values it had, refused once a newer edit landed. */

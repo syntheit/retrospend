@@ -132,13 +132,38 @@ function refuseEditUndo(w: Writer, token: RevertToken, home: string) {
 }
 
 /**
+ * A row a write moved out of a category gets it back, unless it is gone or
+ * no longer an expense category: then the row goes back uncategorized, as the
+ * server's lenient categorize undo does. An edit's token never reaches here
+ * with such a category (refuseEditUndo refuses it first, with its words).
+ */
+function withoutGoneCategory(
+	w: Writer,
+	c: RowChange,
+	row: TableRows["expenses"],
+): AnyRow {
+	const after = expenseOf(c, "after");
+	if (!row.categoryId || !after || row.categoryId === after.categoryId)
+		return row;
+	try {
+		expenseCategory(w.get("categories", row.categoryId), "not_found");
+		return row;
+	} catch (e) {
+		if (e instanceof CategoryNotFoundError)
+			return { ...row, categoryId: null, categoryKind: null };
+		throw e;
+	}
+}
+
+/**
  * A deleted expense comes back as it was, except that a category or template
  * deleted since is dropped, not invented (the server's restoreExpense), and
  * the category kind is read again.
  */
 function restoredRow(w: Writer, c: RowChange): AnyRow | null {
 	const row = expenseOf(c, "before");
-	if (!row || c.after !== null) return c.before;
+	if (!row) return c.before;
+	if (c.after !== null) return withoutGoneCategory(w, c, row);
 	return {
 		...row,
 		categoryKind: categoryKindOf(row.categoryId, (id) =>

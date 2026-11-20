@@ -244,6 +244,50 @@ describe("bulk categorize on the device", () => {
 			);
 	});
 
+	it("an undo whose old category is gone or no longer an expense category puts the row back uncategorized, with its flag", async () => {
+		for (const gone of ["deleted", "income"] as const) {
+			const { db, put, row } = await open();
+			await put((tx) =>
+				tx.put("expenses", {
+					...row("a"),
+					categoryId: "food",
+					categoryKind: "EXPENSE",
+				}),
+			);
+			const { undo } = await move(db, "hold", ["a"]);
+			expect(row("a").excludeFromAnalytics).toBe(true);
+			await put((tx) =>
+				gone === "deleted"
+					? tx.delete("categories", "food")
+					: tx.put("categories", category("food", "INCOME")),
+			);
+			await db.undo(undo);
+			expect(row("a"), gone).toMatchObject({
+				categoryId: null,
+				categoryKind: null,
+				excludeFromAnalytics: false,
+			});
+		}
+	});
+
+	it("an undo whose old category is still there puts it back", async () => {
+		const { db, put, row } = await open();
+		await put((tx) =>
+			tx.put("expenses", {
+				...row("a"),
+				categoryId: "food",
+				categoryKind: "EXPENSE",
+			}),
+		);
+		const { undo } = await move(db, "hold", ["a"]);
+		await db.undo(undo);
+		expect(row("a")).toMatchObject({
+			categoryId: "food",
+			categoryKind: "EXPENSE",
+			excludeFromAnalytics: false,
+		});
+	});
+
 	it("lenient: a gone category leaves the rows uncategorized", async () => {
 		const { db, row } = await open();
 		await move(db, "food", ["a"]);

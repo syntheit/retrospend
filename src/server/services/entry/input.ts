@@ -11,11 +11,11 @@ import {
 	userTextOrEmpty,
 } from "@retrospend/api-contract/common";
 import { toBookingInput } from "@retrospend/domain/expense-input";
+import { toFloat } from "@retrospend/domain/precise-decimal";
 import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { z } from "zod";
 import { customRateSchema } from "~/lib/schemas/rate";
 import type { CreateExpenseInput } from "../expense.service";
-import { toFloat } from "@retrospend/domain/precise-decimal";
 
 const decimal = z
 	.string()
@@ -183,6 +183,28 @@ export const sharedDeleteSchema = z.object({
 
 /** What sharedExpense.delete returned as `stash`. */
 export const sharedUndoSchema = z.object({ stash: z.string().min(1).max(200) });
+
+const expenseId = z.string().min(1).max(64);
+
+/**
+ * Bulk categorize (web): each move names a category (null: none) and the
+ * entries that go into it. An undo is the same write over the `previous`
+ * moves the save answered with: `excluded` puts each row's analytics flag
+ * back, and `lenient` drops a category deleted since instead of refusing.
+ */
+export const categorizeSchema = z.object({
+	moves: z
+		.array(
+			z.object({
+				categoryId: expenseId.nullable(),
+				ids: z.array(expenseId).min(1).max(500),
+				excluded: z.boolean().optional(),
+			}),
+		)
+		.min(1)
+		.max(100),
+	lenient: z.boolean().optional(),
+});
 
 /** A signed undo payload (restore-token.ts). */
 export const restoreTokenSchema = z.object({ token: signedRestore });
