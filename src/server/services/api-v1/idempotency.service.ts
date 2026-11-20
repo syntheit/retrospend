@@ -1,7 +1,7 @@
-import { createHash, createHmac } from "node:crypto";
+import { createHash } from "node:crypto";
 import { IDEMPOTENCY_TTL_MS } from "@retrospend/api-contract/common";
-import { env } from "~/env";
 import { db, type db as globalDb } from "~/server/db";
+import { keyedHash } from "~/server/lib/keyed-hash";
 import { keptUndoFiles } from "~/server/services/entry/undo-stash";
 import { deleteFile } from "~/server/storage";
 import { Prisma } from "~prisma";
@@ -100,20 +100,6 @@ export function redactSecrets(value: unknown): unknown {
 	return value;
 }
 
-/**
- * Key for request fingerprints, derived from AUTH_SECRET so it is used for
- * nothing else. A keyed hash matters because inputs can hold secrets (the
- * current password on PATCH /profile): a plain sha256 of a short password
- * stored in the database could be brute-forced offline.
- */
-let fingerprintKey: Buffer | undefined;
-function getFingerprintKey() {
-	fingerprintKey ??= createHmac("sha256", env.BETTER_AUTH_SECRET)
-		.update("idempotency-fingerprint")
-		.digest();
-	return fingerprintKey;
-}
-
 /** Fingerprint of a request: the same key must come with the same request. */
 export async function hashRequest(
 	method: string,
@@ -121,9 +107,12 @@ export async function hashRequest(
 	input: unknown,
 ): Promise<string> {
 	const canonical = canonicalJson(await describeFiles(redactSecrets(input)));
-	return createHmac("sha256", getFingerprintKey())
-		.update(`${method.toUpperCase()} ${path}\n${canonical}`)
-		.digest("hex");
+	// Keyed because inputs can hold secrets: a plain sha256 of a short password
+	// stored in the database could be brute-forced offline.
+	return keyedHash(
+		"idempotencyFingerprint",
+		`${method.toUpperCase()} ${path}\n${canonical}`,
+	);
 }
 
 function isUniqueViolation(error: unknown): boolean {

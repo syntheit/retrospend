@@ -11,11 +11,11 @@
  * of another kind, for another user or past its time, with the same clean
  * BAD_REQUEST as a forged one.
  */
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "node:crypto";
 import { UNDO_NOT_VALID } from "@retrospend/domain/expense-write/refusals";
 import { dec } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
-import { env } from "~/env";
+import { keyedHash } from "~/server/lib/keyed-hash";
 
 export interface RestoreToken {
 	readonly data: string;
@@ -25,16 +25,7 @@ export interface RestoreToken {
 /** How long an undo token stays good. */
 export const RESTORE_TTL_MS = 24 * 60 * 60 * 1000;
 
-let key: Buffer | undefined;
-function keyOf(): Buffer {
-	key ??= createHmac("sha256", env.BETTER_AUTH_SECRET)
-		.update("entry-restore-token")
-		.digest();
-	return key;
-}
-
-const sigOf = (data: string) =>
-	createHmac("sha256", keyOf()).update(data).digest("hex");
+const sigOf = (data: string) => keyedHash("restoreToken", data);
 
 const invalid = () =>
 	new TRPCError({

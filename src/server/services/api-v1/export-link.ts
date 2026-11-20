@@ -1,6 +1,6 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "node:crypto";
 import { EXPORT_LINK_TTL_MS } from "@retrospend/api-contract";
-import { env } from "~/env";
+import { keyedHash } from "~/server/lib/keyed-hash";
 
 /**
  * The token on an export download link: `<expires>.<signature>`. The
@@ -10,18 +10,8 @@ import { env } from "~/env";
  * and a link for one job never opens another.
  */
 
-let key: Buffer | undefined;
-function keyOf(): Buffer {
-	key ??= createHmac("sha256", env.BETTER_AUTH_SECRET)
-		.update("api-v1-export-download")
-		.digest();
-	return key;
-}
-
 const sigOf = (jobId: string, userId: string, expires: number) =>
-	createHmac("sha256", keyOf())
-		.update(`${jobId}.${userId}.${expires}`)
-		.digest("hex");
+	keyedHash("exportDownload", `${jobId}.${userId}.${expires}`);
 
 export function signExportLink(
 	jobId: string,
