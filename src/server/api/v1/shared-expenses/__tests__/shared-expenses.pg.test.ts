@@ -900,7 +900,7 @@ describe("/api/v1/shared-expenses", () => {
 		expect(after).toBe(before - 1500);
 	});
 
-	it("refuses an undo of an edit once a person on it answered, and keeps their answer", async () => {
+	it("refuses an undo that would change the amount once a person on it answered, and keeps their answer", async () => {
 		const made = await add({ description: "Dinner" });
 		const edited = await expectBody<Write>(
 			await put(`/shared-expenses/${made.id}`, {
@@ -918,7 +918,7 @@ describe("/api/v1/shared-expenses", () => {
 		const refused = {
 			code: "conflict",
 			detail:
-				"Someone already answered this expense, so it cannot be taken back. Delete it instead.",
+				"Someone already answered this expense, so this edit cannot be undone.",
 		};
 		for (const path of [
 			"/shared-expenses/undo",
@@ -930,6 +930,32 @@ describe("/api/v1/shared-expenses", () => {
 		}
 		expect(Number((await row(made.id))?.amount)).toBe(120);
 		expect((await row(made.id))?.description).toBe("Edited");
+		expect(
+			(await row(made.id))?.splitParticipants.find(
+				(p) => p.participantId === martin.user.id,
+			)?.verificationStatus,
+		).toBe("ACCEPTED");
+	});
+
+	it("undoes a text-only edit after a person answered, and leaves their answer", async () => {
+		const made = await add({ description: "Dinner" });
+		await waiting(made.id);
+		await expectBody<Verification>(
+			await post(`/shared-expenses/${made.id}/accept`, {}, asMartin),
+			c.accept,
+		);
+		const edited = await expectBody<Write>(
+			await put(`/shared-expenses/${made.id}`, {
+				...body({ description: "Dinnerr" }),
+				id: made.id,
+			}),
+			c.update,
+		);
+		await expectBody(
+			await post("/shared-expenses/undo", { token: edited.undo }),
+			c.undo,
+		);
+		expect((await row(made.id))?.description).toBe("Dinner");
 		expect(
 			(await row(made.id))?.splitParticipants.find(
 				(p) => p.participantId === martin.user.id,

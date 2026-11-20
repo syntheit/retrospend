@@ -7,7 +7,6 @@ import {
 	updateExpenseEntry,
 } from "./expense.mutation";
 import {
-	assertNobodyAnswered,
 	type Deferred,
 	type UpdatedShared,
 	type UpdateSharedInput,
@@ -120,13 +119,46 @@ export const revertExpenseEntry: MoneyMutation<
 		guardedExpense(updateExpenseEntry, expectedUpdatedAt).run(tx, input, actor),
 };
 
+const undoAnswered = () =>
+	new TRPCError({
+		code: "CONFLICT",
+		message:
+			"Someone already answered this expense, so this edit cannot be undone.",
+	});
+
+/** Each other person's share status on `id`, keyed by who they are. */
+async function shareStatuses(tx: Tx, id: string, userId: string) {
+	const rows = await tx.splitParticipant.findMany({
+		where: {
+			transactionId: id,
+			NOT: { participantType: "user", participantId: userId },
+		},
+		select: {
+			participantType: true,
+			participantId: true,
+			verificationStatus: true,
+		},
+	});
+	return new Map(
+		rows.map((r) => [
+			`${r.participantType}:${r.participantId}`,
+			r.verificationStatus,
+		]),
+	);
+}
+
 /**
- * The edit an undo of a shared edit runs, for the web and for v1's undo token
- * (one core, so the rule is written once): refused while a person on it has
- * answered their share. An answer writes the share, not the row, so the
- * stamp alone cannot see it. This is stricter than "answered since the edit"
- * on purpose: an answer that survived an edit with unchanged splits blocks the
- * undo too, which errs on the side of not overwriting what people agreed to.
+ * The edit an undo of a shared edit runs, for the web and for v1's undo and
+ * redo tokens (one core, so the rule is written once). It is refused when the
+ * write would take back an answer someone gave (accepted or rejected): an
+ * answer writes the share, not the row, so the stamp cannot see it. Which
+ * edits reset answers is the split service's own rule (amount, currency, date,
+ * payer, project, split), so this asks the write what it did instead of
+ * copying that list; a text-only undo leaves every answer and passes. Anyone
+ * who answered before this edit counts too, not only answers since it, which
+ * errs on the side of not overwriting what people agreed to. The refusal
+ * throws inside the transaction, so nothing is written and the queued notices
+ * are never sent.
  */
 export const updateSharedUnanswered: MoneyMutation<
 	UpdateSharedInput & Deferred,
@@ -134,17 +166,25 @@ export const updateSharedUnanswered: MoneyMutation<
 > = {
 	...updateSharedExpense,
 	run: async (tx, input, actor) => {
-		await assertNobodyAnswered(tx, input.id, actor.userId);
-		return updateSharedExpense.run(tx, input, actor);
+		const before = await shareStatuses(tx, input.id, actor.userId);
+		const done = await updateSharedExpense.run(tx, input, actor);
+		const answered = [...before].filter(
+			([, status]) => status === "ACCEPTED" || status === "REJECTED",
+		);
+		if (answered.length > 0) {
+			const after = await shareStatuses(tx, input.id, actor.userId);
+			if (answered.some(([who, status]) => after.get(who) !== status))
+				throw undoAnswered();
+		}
+		return done;
 	},
 };
 
 /**
  * The web's undo of a shared edit: the edit's old values, written (and the
  * people on it told) only while the row still has the `updatedAt` that edit
- * left and nobody has answered (`updateSharedUnanswered`). Both checks run on
- * the locked row before anything is written. Required in the input, so the
- * preview twin refuses a stale undo too.
+ * left and it takes back no answer (`updateSharedUnanswered`). Required in
+ * the input, so the preview twin refuses a stale undo too.
  */
 export const revertSharedExpense: MoneyMutation<
 	UpdateSharedInput & Deferred & { expectedUpdatedAt: string },

@@ -155,7 +155,7 @@ describe("the web's revert of a shared edit", () => {
 		expect(shares.map((p) => Number(p.shareAmount))).toEqual([3000, 6000]);
 	});
 
-	it("is refused once a person on it answered since the edit, and their answer stays", async () => {
+	it("is refused when it would change the amount after a person on it answered, and their answer stays", async () => {
 		const { entry } = w.callers;
 		const id = await addShared("Cena");
 		const saved = await entry.shared.update.save(form(id, "Cena B", "9600"));
@@ -179,7 +179,7 @@ describe("the web's revert of a shared edit", () => {
 		const refusal = {
 			code: "CONFLICT",
 			message:
-				"Someone already answered this expense, so it cannot be taken back. Delete it instead.",
+				"Someone already answered this expense, so this edit cannot be undone.",
 		};
 
 		await expect(entry.shared.revert.save(undoOf(saved))).rejects.toMatchObject(
@@ -195,6 +195,46 @@ describe("the web's revert of a shared edit", () => {
 			where: { transactionId: id, participantId: w.otherId },
 		});
 		expect(bob.verificationStatus).toBe("ACCEPTED");
+	});
+
+	const bobsStatus = async (id: string) =>
+		(
+			await adminDb.splitParticipant.findFirstOrThrow({
+				where: { transactionId: id, participantId: w.otherId },
+			})
+		).verificationStatus;
+	/** Bob's share waits for an answer (a project that asks), then he accepts. */
+	async function bobAccepts(id: string) {
+		await adminDb.splitParticipant.updateMany({
+			where: { transactionId: id, participantId: w.otherId },
+			data: { verificationStatus: "PENDING", verifiedAt: null },
+		});
+		await forUser(w.otherId).apply(answerShareMutation, {
+			transactionId: id,
+			answer: "accept",
+		});
+	}
+
+	it("undoes a text-only edit after a person answered, and leaves their answer", async () => {
+		const { entry } = w.callers;
+		const id = await addShared("Cena");
+		await bobAccepts(id);
+		const saved = await entry.shared.update.save(form(id, "Cenaa typo"));
+		expect(await bobsStatus(id)).toBe("ACCEPTED");
+
+		await entry.shared.revert.preview(undoOf(saved));
+		await entry.shared.revert.save(undoOf(saved));
+		expect((await stored(id)).description).toBe("Cena");
+		expect(await bobsStatus(id)).toBe("ACCEPTED");
+	});
+
+	it("undoes an amount edit nobody has answered yet", async () => {
+		const { entry } = w.callers;
+		const id = await addShared("Cena");
+		const saved = await entry.shared.update.save(form(id, "Cena", "9600"));
+		await entry.shared.revert.save(undoOf(saved));
+		const back = await stored(id);
+		expect(Number(back.amount)).toBe(9000);
 	});
 
 	it("puts the old values back for the latest edit, and its preview writes nothing", async () => {
