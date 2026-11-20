@@ -9,6 +9,7 @@ import { contract, SCOPES } from "@retrospend/api-contract";
 import { verifyPassword } from "better-auth/crypto";
 import { describe, expect, it, vi } from "vitest";
 import { auth } from "~/server/better-auth";
+import { stayInWindow } from "~/test/rate-window";
 import {
 	adminDb,
 	apiKeyFor,
@@ -121,6 +122,8 @@ describe("/api/v1/me/password", () => {
 	});
 
 	it("stops after 5 wrong tries with a 429 and Retry-After", async () => {
+		// Six tries must land in one 15 minute window, or the sixth starts a new count.
+		stayInWindow(15 * 60_000);
 		const id = await passwordUser();
 		const me = await mobile(id);
 		const wrong = {
@@ -145,6 +148,7 @@ describe("/api/v1/me/password", () => {
 	});
 
 	it("counts tries per session, so one session cannot lock out another", async () => {
+		stayInWindow(15 * 60_000);
 		const id = await passwordUser();
 		const stolen = await mobile(id);
 		const owner = await mobile(id);
