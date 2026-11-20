@@ -50,6 +50,7 @@ export const PROTECTED_FEED_TYPES: readonly string[] = [
 	"user.deleted",
 	"user.password_changed",
 	"user.protection_keys_created",
+	"user.recovery_key_replaced",
 	"user.session_ended",
 	"token.created",
 	"token.revoked",
