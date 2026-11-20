@@ -1,8 +1,7 @@
-import { CreateCaptures } from "@retrospend/engine/device";
 import { cipherFake } from "../../test/cipherFake";
-import { expense, fakeDeviceApi } from "../../test/deviceApi";
+import { fakeDeviceApi } from "../../test/deviceApi";
 import { removeDir, tempDir } from "../../test/nodeSqlite";
-import { captureSent, createDeviceEngine, engineFor } from "./device-engine";
+import { createDeviceEngine, engineFor } from "./device-engine";
 import { sweepEngineDbs } from "./engine-db/sweep";
 
 describe("engineFor", () => {
@@ -16,9 +15,8 @@ describe("engineFor", () => {
 });
 
 describe("sign-out", () => {
-	it("takes no create from a send that ends after the sweep", async () => {
+	it("disposes the engine when the sweep runs after a sign-out", async () => {
 		const dir = tempDir();
-		const add = jest.spyOn(CreateCaptures.prototype, "add");
 		try {
 			const phone = cipherFake(dir);
 			const { client } = fakeDeviceApi();
@@ -31,19 +29,7 @@ describe("sign-out", () => {
 			await engine.pull();
 			await sweepEngineDbs(null, phone.deps);
 			expect(engine.disposed).toBe(true);
-			// A send that was in flight at sign-out ends after the sweep.
-			captureSent(
-				client,
-				{
-					clientId: "e1",
-					entity: "expenses",
-					payload: { amount: "1", currency: "ARS", date: "2026-10-05" },
-				},
-				Date.now(),
-			);
-			expect(add).toHaveReturnedWith(false);
 		} finally {
-			add.mockRestore();
 			removeDir(dir);
 		}
 	});
@@ -64,85 +50,5 @@ describe("createDeviceEngine on the phone", () => {
 		} finally {
 			spy.mockRestore();
 		}
-	});
-});
-
-describe("captureSent", () => {
-	// USD 100 on 2026-10-05 in Buenos Aires (UTC-3) at blue 1545: 154500.00.
-	const rates = {
-		asOf: "2026-10-14T09:05:00.000Z",
-		rates: [
-			{
-				id: "r1",
-				currency: "ARS",
-				type: "blue",
-				date: "2026-10-14T00:00:00.000Z",
-				unitsPerUsd: "1545",
-			},
-		],
-	};
-	const row = (id: string) => ({
-		...expense(id, "100", "2026-10-05T03:00:00.000Z"),
-		currency: "USD",
-		amountInUSD: "100",
-		exchangeRate: "1",
-		rateType: "blue",
-		homeRate: "1545",
-		homeAmount: "154500.00",
-	});
-	const entry = (id: string, entity: string) => ({
-		clientId: id,
-		entity,
-		payload: {
-			id,
-			title: "Lunch with Zelda",
-			amount: "100",
-			currency: "USD",
-			date: "2026-10-05",
-		},
-	});
-	const pulled = async (rows: unknown[]) => {
-		const { client } = fakeDeviceApi({
-			rates,
-			expenses: [{ items: rows, tombstones: [], cursor: "c1", hasMore: false }],
-		});
-		const engine = engineFor(client, "u1");
-		await engine.pull();
-		return { client, engine };
-	};
-
-	it("books a create the server accepted and finds it the same after the next pull", async () => {
-		const spy = jest.spyOn(console, "warn").mockImplementation(() => {});
-		try {
-			const { client, engine } = await pulled([row("e1")]);
-			captureSent(client, entry("e1", "expenses"), Date.now() - 1000);
-			await engine.pull();
-			expect(engine.writeParity.counts).toEqual({ match: 1 });
-			const logged = JSON.stringify(spy.mock.calls);
-			expect(logged).toContain("RetrospendDeviceEngine: writes checked");
-			expect(logged).not.toMatch(/Zelda|Lunch|154500/);
-		} finally {
-			spy.mockRestore();
-		}
-	});
-
-	it("counts a split and a transfer as skipped and an income as nothing", async () => {
-		jest.spyOn(console, "warn").mockImplementation(() => {});
-		const { client, engine } = await pulled([row("e2"), row("i1")]);
-		const at = Date.now() - 1000;
-		captureSent(client, entry("e2", "shared-expenses"), at);
-		captureSent(client, entry("t1", "transfers"), at);
-		captureSent(client, entry("i1", "income"), at);
-		await engine.pull();
-		expect(engine.writeParity.counts).toEqual({
-			"skipped:split": 1,
-			"skipped:transfer": 1,
-		});
-	});
-
-	it("does nothing for a client with no engine", () => {
-		expect(() =>
-			captureSent(fakeDeviceApi().client, entry("e3", "expenses"), Date.now()),
-		).not.toThrow();
 	});
 });

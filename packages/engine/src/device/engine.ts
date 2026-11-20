@@ -2,17 +2,12 @@ import { monthVerdictIncomplete } from "@retrospend/domain/envelope/verdict";
 import { runtimeTimeZone } from "@retrospend/domain/time-zone";
 import { deviceMonthView } from "../budget-figures";
 import { budgetStatus } from "../budget-gate";
-import type { CreateCaptures } from "../create-captures";
 import { MemoryStore } from "../memory-store";
 import { type Change, type Reader, SETTINGS_ID } from "../port";
 import { ratesAsOf } from "../rates";
 import { DEVICE_FIGURE_IDS, readDeviceFigures } from "../registry";
 import { type PullCursors, type PullReport, pullAll } from "../sync-pull";
-import {
-	compareCreate,
-	compareWrite,
-	type WriteVerdict,
-} from "../write-parity";
+import { compareWrite, type WriteVerdict } from "../write-parity";
 import {
 	COMPARE_WHAT,
 	type CompareReport,
@@ -115,13 +110,6 @@ export interface DeviceEngineOptions {
 	/** Where the engine reports what went wrong: a short reason and ids and counts, never an amount. */
 	warn?: (what: string, detail?: string) => void;
 	/**
-	 * Creates the platform saw the server accept. After a pull that brings one
-	 * in, the engine books the same input in a scratch store and compares it
-	 * with the synced row, once per id. Dev only: the platform passes none in
-	 * a release build.
-	 */
-	captures?: CreateCaptures;
-	/**
 	 * The phone's outbox and acked list. After a pull, the acked writes it has
 	 * seen are compared with the rows it brought and retired through it. Absent:
 	 * no overlay and no write compare of entries.
@@ -174,7 +162,6 @@ export function createDeviceEngine(
 		storage?.persistence.commit(changes);
 	};
 	let store = new MemoryStore({ onCommit: commit });
-	options.captures?.bind(() => store.get("settings", SETTINGS_ID));
 
 	const hooks: StorageHooks = {
 		cursors: () => cursors,
@@ -292,35 +279,8 @@ export function createDeviceEngine(
 			const counted = () => {
 				writeCounts.error = (writeCounts.error ?? 0) + 1;
 			};
-			await compareWrites().catch(counted);
 			await compareEntries().catch(counted);
 		}
-	}
-
-	/**
-	 * Compares each captured create the last pull brought in, once, on a
-	 * committed snapshot: no live transaction, so a pull or a reset never
-	 * waits on it. A comparison that throws is a `refused` finding; anything
-	 * else that throws is counted as an error by the caller.
-	 */
-	async function compareWrites(): Promise<void> {
-		const captures = options.captures;
-		if (!captures) return;
-		const pending = captures.pending();
-		const expired = captures.takeExpired();
-		const snap = store.snapshot();
-		const verdicts: WriteVerdict[] = [];
-		for (const c of pending) {
-			// A transfer has no expense row to wait for; the rest wait for theirs.
-			if (c.kind !== "transfer" && !snap.get("expenses", c.id)) continue;
-			captures.drop(c.id);
-			verdicts.push(
-				await compareCreate(snap, c).catch(
-					(): WriteVerdict => ({ id: c.id, outcome: "refused" }),
-				),
-			);
-		}
-		report(verdicts, expired);
 	}
 
 	/**
@@ -430,7 +390,6 @@ export function createDeviceEngine(
 
 	async function dispose({ wipe }: { wipe: boolean }): Promise<void> {
 		disposed = true;
-		options.captures?.clear();
 		wipeOnDispose ||= wipe;
 		// Closing first makes a pull in flight fail at its next write instead of
 		// writing to a file that is about to go.
