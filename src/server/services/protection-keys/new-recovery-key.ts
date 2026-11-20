@@ -18,18 +18,21 @@
  * old recovery key cannot commit once this has landed.
  *
  * Nothing about the password, the sessions or the account key changes, so no
- * session ends. An ids-only audit entry goes in the transaction.
+ * session ends. An ids-only audit entry goes in the transaction, and an email
+ * goes after it.
  */
 
 import type { NewRecoveryKey } from "@retrospend/api-contract";
 import { isSignInSecret } from "@retrospend/crypto";
 import { verifyPassword } from "better-auth/crypto";
 import { db } from "~/server/db";
+import { emailSubject } from "~/server/email-copy";
+import { getRecoveryKeyReplacedAlertTemplate } from "~/server/email-templates";
 import { spendPasswordTry } from "../account-security.service";
 import { ProtectionKeysError, ReleaseError } from "./errors";
 import { hasKeySet, lockCredential } from "./password-writes";
 import { applyKeyChanges, type KeyChanges } from "./protection-keys.service";
-import { bytes, invalid, readCredentialHash } from "./shared";
+import { bytes, invalid, readCredentialHash, sendNotice } from "./shared";
 import { hashRecoveryProof, validateKeyChanges } from "./validate";
 
 /** The request as a key change: the one replaced wrap and the proof that checks it. */
@@ -97,7 +100,11 @@ export async function replaceRecoveryKey(input: {
 		throw new ReleaseError("wrong_proof");
 	}
 
-	return db.$transaction(async (tx) => {
+	const user = await db.user.findUnique({
+		where: { id: userId },
+		select: { email: true },
+	});
+	const done = await db.$transaction(async (tx) => {
 		await lockCredential(tx, userId);
 		const current = await tx.account.findFirst({
 			where: { userId, providerId: "credential" },
@@ -122,4 +129,12 @@ export async function replaceRecoveryKey(input: {
 		});
 		return { version };
 	});
+	// After the commit; the mail carries no key material and its failure never fails the request.
+	if (user)
+		await sendNotice(user.email, {
+			subject: emailSubject.recoveryKeyReplaced,
+			body: getRecoveryKeyReplacedAlertTemplate,
+			failure: "Could not send the recovery key notice",
+		});
+	return done;
 }

@@ -47,7 +47,9 @@ vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
 	cookies: async () => ({ get: () => undefined }),
 }));
-const mail = vi.hoisted(() => ({ sendEmail: vi.fn(async () => undefined) }));
+const mail = vi.hoisted(() => ({
+	sendEmail: vi.fn(async (_to: string, _subject: string, _html: string) => {}),
+}));
 vi.mock("~/server/mailer", () => mail);
 vi.mock("~/server/lib/email-delivery", () => ({
 	isEmailDeliveryEnabled: async () => true,
@@ -227,6 +229,51 @@ describe("POST /me/protection/recovery-key", () => {
 				where: { actorUserId: k.id, type: "user.recovery_key_replaced" },
 			}),
 		).toBe(1);
+	});
+
+	it("mails the account once after the commit, with no key material, and none after a refusal", async () => {
+		const k = await keyed();
+		const me = await mobile(k.id);
+		await expectProblem(
+			await replace(me.headers, newKeyOf(k.id, k.authKeyText, 2).body),
+			409,
+			"conflict",
+		);
+		await expectProblem(
+			await replace(
+				me.headers,
+				newKeyOf(k.id, signInSecret(p.randomBytes(32))).body,
+			),
+			400,
+			"wrong_password",
+		);
+		expect(mail.sendEmail).not.toHaveBeenCalled();
+		const r = newKeyOf(k.id, k.authKeyText);
+		await expectBody(await replace(me.headers, r.body), route.newRecoveryKey);
+		expect(mail.sendEmail).toHaveBeenCalledTimes(1);
+		const [to, subject, html] = mail.sendEmail.mock.calls[0] ?? ["", "", ""];
+		expect(to).toBe(k.email);
+		expect(subject).toBe("Your recovery key was replaced");
+		for (const secret of [
+			r.recoveryAuthKey,
+			r.body.wrappedRecoveryKey,
+			k.authKeyText,
+			k.recoveryAuthKey,
+			k.id,
+		])
+			expect(html).not.toContain(secret);
+	});
+
+	it("still answers 200 and stores the key when the mailer throws", async () => {
+		const k = await keyed();
+		const me = await mobile(k.id);
+		mail.sendEmail.mockRejectedValueOnce(new Error("smtp down"));
+		const r = newKeyOf(k.id, k.authKeyText);
+		await expectBody(await replace(me.headers, r.body), route.newRecoveryKey);
+		expect(mail.sendEmail).toHaveBeenCalledTimes(1);
+		expect(hex((await setRow(k.id)).recoveryHash)).toBe(
+			hex(hashRecoveryProof(r.recoveryAuthKey)),
+		);
 	});
 
 	it("shows the new wrap through its digest and nothing of the proof or the wrap in the answer", async () => {
