@@ -34,4 +34,17 @@ describe("categorizeSchema", () => {
 			}).success,
 		).toBe(false);
 	});
+
+	it("takes the undo of a 500-row move that came from 500 groups, and no more", () => {
+		const undo = (n: number) => ({
+			moves: Array.from({ length: n }, (_, i) => ({
+				categoryId: `c${i}`,
+				ids: [`e${i}`],
+				excluded: i % 2 === 0,
+			})),
+			lenient: true,
+		});
+		expect(categorizeSchema.safeParse(undo(500)).success).toBe(true);
+		expect(categorizeSchema.safeParse(undo(501)).success).toBe(false);
+	});
 });

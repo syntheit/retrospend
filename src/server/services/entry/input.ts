@@ -186,6 +186,9 @@ export const sharedUndoSchema = z.object({ stash: z.string().min(1).max(200) });
 
 const expenseId = z.string().min(1).max(64);
 
+/** Most rows one categorize move takes (as v1's bulk-category). */
+const CATEGORIZE_MAX_IDS = 500;
+
 /**
  * Bulk categorize (web): each move names a category (null: none) and the
  * entries that go into it. An undo is the same write over the `previous`
@@ -197,12 +200,14 @@ export const categorizeSchema = z.object({
 		.array(
 			z.object({
 				categoryId: expenseId.nullable(),
-				ids: z.array(expenseId).min(1).max(500),
+				ids: z.array(expenseId).min(1).max(CATEGORIZE_MAX_IDS),
 				excluded: z.boolean().optional(),
 			}),
 		)
 		.min(1)
-		.max(100),
+		// An undo has one move per category-and-flag group its rows were in:
+		// at most one per row of a max-size move.
+		.max(CATEGORIZE_MAX_IDS),
 	lenient: z.boolean().optional(),
 });
 

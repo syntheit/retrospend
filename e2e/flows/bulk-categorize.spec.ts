@@ -98,6 +98,16 @@ test("Activity: Categorize shows what it changes, and Undo puts the category and
 	);
 	await shoot("categorize-preview");
 
+	// A failed save keeps the sheet open with its error, and Move tries again.
+	await page.route(/categorize\.save/, (route) => route.abort());
+	await sheet.getByRole("button", { name: "Move" }).click();
+	await expect(sheet.getByRole("alert")).toBeVisible();
+	await expect(
+		sheet.getByText(`Move 2 expenses to ${held}`).first(),
+	).toBeVisible();
+	expect(await rowsOf(page, ids)).toEqual(before);
+	await page.unroute(/categorize\.save/);
+
 	await sheet.getByRole("button", { name: "Move" }).click();
 	await expect(page.getByText(`Moved 2 expenses to ${held}`)).toBeVisible();
 	const moved = await rowsOf(page, ids);
@@ -109,6 +119,23 @@ test("Activity: Categorize shows what it changes, and Undo puts the category and
 		.poll(async () => (await rowsOf(page, ids))[ids[0] ?? ""])
 		.toEqual(before[ids[0] ?? ""]);
 	expect(await rowsOf(page, ids)).toEqual(before);
+
+	// Rows already in that category: the sheet says nothing changes and Move stays off.
+	await sheet.waitFor({ state: "hidden" });
+	for (const n of [1, 2])
+		await main.getByRole("checkbox", { name: `Select ${title} ${n}` }).check();
+	await page.getByRole("button", { name: "Categorize" }).click();
+	await page.getByRole("menuitem", { name: held }).click();
+	await page.getByRole("button", { name: "Move" }).click();
+	await expect(page.getByText(`Moved 2 expenses to ${held}`)).toBeVisible();
+	for (const n of [1, 2])
+		await main.getByRole("checkbox", { name: `Select ${title} ${n}` }).check();
+	await page.getByRole("button", { name: "Categorize" }).click();
+	await page.getByRole("menuitem", { name: held }).click();
+	await expect(sheet.getByTestId("entry-changes")).toContainText(
+		"No change to",
+	);
+	await expect(sheet.getByRole("button", { name: "Move" })).toBeDisabled();
 
 	for (const id of ids) await post(page, "expense.deleteExpense", { id });
 });

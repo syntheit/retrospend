@@ -62,30 +62,34 @@ export function useBulkCategorize({
 		[],
 	);
 
+	// Every picked row is already in that category (or none can be moved): saving changes nothing.
+	const target = pending?.input.moves[0]?.categoryId;
+	const nothingMoves =
+		dry.fresh &&
+		dry.data !== null &&
+		(dry.data.value.updated === 0 ||
+			dry.data.value.previous.every((m) => m.categoryId === target));
+
+	/** A failed save throws, so the sheet stays open with its inline error and the person can retry. */
 	const send = async () => {
 		if (!pending) return;
+		let done: Awaited<ReturnType<typeof save.mutateAsync>>;
 		try {
-			const done = await save.mutateAsync(pending.input);
-			setPending(null);
-			onSaved();
-			const { updated, previous } = done.value;
-			if (updated === 0) {
-				toast.failed(t("failed"));
-			} else {
-				toast.saved(t("moved", { count: updated, name: pending.name }), {
-					undo: async () => {
-						await save.mutateAsync({
-							moves: previous.map((m) => ({ ...m, ids: [...m.ids] })),
-							lenient: true,
-						});
-						await onChanged();
-					},
-				});
-			}
+			done = await save.mutateAsync(pending.input);
 		} catch {
-			setPending(null);
-			toast.failed(t("failed"));
+			throw new Error(t("failed"));
 		}
+		const { updated, previous } = done.value;
+		onSaved();
+		toast.saved(t("moved", { count: updated, name: pending.name }), {
+			undo: async () => {
+				await save.mutateAsync({
+					moves: previous.map((m) => ({ ...m, ids: [...m.ids] })),
+					lenient: true,
+				});
+				await onChanged();
+			},
+		});
 		await onChanged();
 	};
 
@@ -97,7 +101,7 @@ export function useBulkCategorize({
 			}}
 			onSubmit={send}
 			open={pending !== null}
-			submitDisabled={!dry.fresh}
+			submitDisabled={!dry.fresh || nothingMoves}
 			submitLabel={t("move")}
 			title={
 				shown

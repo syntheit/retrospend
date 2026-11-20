@@ -54,9 +54,7 @@ function serviceInput(input: z.infer<typeof expenseInputSchema>) {
 	const { exchangeRate, ...rest } = input;
 	return {
 		...rest,
-		...(exchangeRate === undefined
-			? {}
-			: { exchangeRate: Number(exchangeRate) }),
+		...(exchangeRate === undefined ? {} : { exchangeRate: Number(exchangeRate) }),
 	};
 }
 

@@ -1,4 +1,3 @@
-import { toFloat } from "@retrospend/domain/precise-decimal";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { createTransferSchema } from "~/server/services/accounts/input";
@@ -35,6 +34,7 @@ import {
 	setDefaultRateType,
 } from "~/server/services/rate-types";
 import { createTransfer } from "~/server/services/transfers/create.mutation";
+import { toFloat } from "@retrospend/domain/precise-decimal";
 
 type Ctx = { session: { user: { id: string } }; timeZone?: string };
 type Notify = (() => Promise<void>)[];

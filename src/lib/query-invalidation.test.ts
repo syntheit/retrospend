@@ -32,20 +32,21 @@ describe("handleMutationSuccess", () => {
 		);
 	});
 
-	it.each(["create", "settleAll", "reject"])(
-		"settlement.%s refreshes project and people views",
-		(procedure) => {
-			const routers = invalidatedRouters(["settlement", procedure]);
-			expect(routers).toEqual(
-				expect.arrayContaining([
-					"settlement",
-					"project",
-					"people",
-					"billingPeriod",
-				]),
-			);
-		},
-	);
+	it.each([
+		"create",
+		"settleAll",
+		"reject",
+	])("settlement.%s refreshes project and people views", (procedure) => {
+		const routers = invalidatedRouters(["settlement", procedure]);
+		expect(routers).toEqual(
+			expect.arrayContaining([
+				"settlement",
+				"project",
+				"people",
+				"billingPeriod",
+			]),
+		);
+	});
 });
 
 /**
@@ -56,11 +57,19 @@ describe("handleMutationSuccess", () => {
 const REQUIRED_READERS: Record<string, string[]> = {
 	// Category edits change names, colors and exclusions shown everywhere.
 	"categories.update": ["categories", "expense"],
-	"categories.delete": ["categories", "expense", "insights"],
+	"categories.delete": [
+		"categories",
+		"expense",
+		"insights",
+	],
 	"entry.expense.categorize.save": ["expense", "insights"],
 
 	// The fiscal month start day moves every month boundary.
-	"settings.updateGeneral": ["settings", "expense", "insights"],
+	"settings.updateGeneral": [
+		"settings",
+		"expense",
+		"insights",
+	],
 
 	// Personal expenses feed Insights and the envelope budget.
 	"expense.createExpense": ["expense"],
@@ -68,9 +77,18 @@ const REQUIRED_READERS: Record<string, string[]> = {
 	"expense.deleteExpense": ["expense"],
 
 	// Shared expenses also move balances.
-	"sharedTransaction.create": ["project", "people"],
-	"sharedTransaction.update": ["project", "people"],
-	"sharedTransaction.delete": ["project", "people"],
+	"sharedTransaction.create": [
+		"project",
+		"people",
+	],
+	"sharedTransaction.update": [
+		"project",
+		"people",
+	],
+	"sharedTransaction.delete": [
+		"project",
+		"people",
+	],
 
 	// Answering your share moves balances, Needs you and the budget; so does its undo.
 	"verification.answer.save": [
