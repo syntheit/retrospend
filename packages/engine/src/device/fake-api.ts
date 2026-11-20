@@ -95,6 +95,8 @@ export interface DeviceApiOptions {
 	expensePages?: { items: unknown[]; cursor: string }[];
 	/** The categories route's answer in each pull, as `expenses`. */
 	categories?: Page[];
+	/** The transfers route's answer in each pull, as `expenses`. */
+	transfers?: Page[];
 	/** The settings the server holds (default: SETTINGS). */
 	settings?: typeof SETTINGS;
 	/** The daily rate table the server holds (default: empty). */
@@ -151,7 +153,9 @@ export function fakeDeviceApi(options: DeviceApiOptions = {}) {
 				? options.expenses
 				: name === "categories"
 					? options.categories
-					: undefined;
+					: name === "transfers"
+						? options.transfers
+						: undefined;
 		return queued
 			? (queued[Math.min(pulls, queued.length) - 1] ?? empty(name))
 			: empty(name);

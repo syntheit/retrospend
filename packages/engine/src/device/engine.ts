@@ -3,7 +3,13 @@ import { runtimeTimeZone } from "@retrospend/domain/time-zone";
 import { deviceMonthView } from "../budget-figures";
 import { budgetStatus } from "../budget-gate";
 import { MemoryStore } from "../memory-store";
-import { type Change, type Reader, SETTINGS_ID } from "../port";
+import { NotFoundError } from "../errors";
+import {
+	type Change,
+	InvalidInputError,
+	type Reader,
+	SETTINGS_ID,
+} from "../port";
 import { ratesAsOf } from "../rates";
 import { DEVICE_FIGURE_IDS, readDeviceFigures } from "../registry";
 import { type PullCursors, type PullReport, pullAll } from "../sync-pull";
@@ -21,7 +27,12 @@ import {
 	compareScreen,
 	type PulledPast,
 } from "./compare-run";
+import { type BookedWrite, bookIn, type WriteOp } from "./book";
 import { type PendingSource, readOverlaid, retiredBy } from "./pending";
+import {
+	comparePreview as runPreviewCompare,
+	type ServerPreview,
+} from "./preview-compare";
 import type { DeviceApi, EngineStorage, StorageHooks } from "./ports";
 
 // The device engine: a copy of the account's rows in memory, filled by the
@@ -92,6 +103,25 @@ export interface DeviceEngine extends DeviceReads {
 	 * read failed. With no pending source it reads the store as it is.
 	 */
 	readWithPending<R>(read: (view: Reader) => R | Promise<R>): Promise<R | null>;
+	/**
+	 * Books what the phone is about to save, the way the server will: the engine
+	 * mutation over the pending writes, in a transaction that is thrown away.
+	 * The result is what the outbox entry keeps (`device`); nothing is stored
+	 * or shown. Null when the device cannot book it (not ready, a pull began
+	 * during it, or a refusal such as "Sync first"): the entry then carries no
+	 * device booking and the server books it alone.
+	 */
+	book(op: WriteOp): Promise<BookedWrite | null>;
+	/**
+	 * Holds the device's preview of `op` against the server's dry run of it
+	 * (`pending_ahead` while an entry for the same row has not been shown back).
+	 * Counted and logged by ids and figure names; the screen keeps the server's
+	 * diff. Null when it could not run.
+	 */
+	comparePreview(
+		op: WriteOp,
+		server: ServerPreview,
+	): Promise<WriteVerdict | null>;
 	/** One pull at a time: a call while one runs waits for it. */
 	pull(): Promise<void>;
 	/** Pulls when none has finished yet or the last one is older than PULL_AFTER_MS. */
@@ -233,6 +263,8 @@ export function createDeviceEngine(
 	async function run(pastCut?: string): Promise<void> {
 		await ready;
 		if (disposed) return;
+		// The phone's lists as they are now: a write saved since the last read counts.
+		await options.pending?.refresh?.().catch(() => undefined);
 		pullsBegun += 1;
 		const mine = pullsBegun;
 		const before = status;
@@ -287,12 +319,18 @@ export function createDeviceEngine(
 	 * Tallies verdicts and logs them: ids, field names and counts only, no
 	 * amount ever reaches a log.
 	 */
-	function report(verdicts: readonly WriteVerdict[], expired: number) {
+	function report(
+		verdicts: readonly WriteVerdict[],
+		expired: number,
+		prefix = "",
+	) {
 		const bump = (key: string) => {
 			writeCounts[key] = (writeCounts[key] ?? 0) + 1;
 		};
 		for (const v of verdicts)
-			bump(v.outcome === "skipped" ? `skipped:${v.code}` : v.outcome);
+			bump(
+				`${prefix}${v.outcome === "skipped" ? `skipped:${v.code}` : v.outcome}`,
+			);
 		for (let i = 0; i < expired; i += 1) bump("expired");
 		writeRecent = [...writeRecent, ...verdicts].slice(-RECENT_WRITES);
 		if (verdicts.length === 0 && expired === 0) return;
@@ -499,6 +537,59 @@ export function createDeviceEngine(
 		}
 	}
 
+	async function book(op: WriteOp): Promise<BookedWrite | null> {
+		try {
+			await ready;
+			if (disposed || status !== "ready") return null;
+			const begun = pullsBegun;
+			const booked = await readOverlaid(
+				store,
+				options.pending?.entries() ?? [],
+				settledPull,
+				(tx) => bookIn(tx, op, cursors, now()),
+			).catch((error) => {
+				// A refusal is the domain's answer, not a fault: the server decides.
+				if (
+					error instanceof InvalidInputError ||
+					error instanceof NotFoundError
+				)
+					return null;
+				throw error;
+			});
+			return pullsBegun !== begun || status !== "ready" ? null : booked;
+		} catch (error) {
+			warn("booking failed", (error as Error)?.name);
+			return null;
+		}
+	}
+
+	async function comparePreview(
+		op: WriteOp,
+		server: ServerPreview,
+	): Promise<WriteVerdict | null> {
+		try {
+			await ready;
+			if (disposed || status !== "ready") return null;
+			const verdict = await runPreviewCompare(
+				{
+					store,
+					userId,
+					cursors,
+					entries: options.pending?.entries() ?? [],
+					settledPull,
+					now: () => new Date(now()),
+				},
+				op,
+				server,
+			);
+			report([verdict], 0, "preview:");
+			return verdict;
+		} catch (error) {
+			warn("preview check failed", (error as Error)?.name);
+			return null;
+		}
+	}
+
 	async function compare(
 		screen: ScreenName,
 		narrowings: NarrowValues = {},
@@ -549,6 +640,8 @@ export function createDeviceEngine(
 			return disposed;
 		},
 		readWithPending,
+		book,
+		comparePreview,
 		pull,
 		pullIfStale,
 		compare,

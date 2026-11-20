@@ -1,4 +1,5 @@
 export type { WriteVerdict } from "../write-parity";
+export type { BookedWrite, WriteBody, WriteOp } from "./book";
 export {
 	type CheckPlan,
 	COMPARE_WHAT,
@@ -41,6 +42,7 @@ export {
 	type WriteParity,
 } from "./engine";
 export type { PendingChange, PendingEntry, PendingSource } from "./pending";
+export type { ServerPreview } from "./preview-compare";
 export type {
 	DeviceApi,
 	EnginePersistence,
