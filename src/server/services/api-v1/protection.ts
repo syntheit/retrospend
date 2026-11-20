@@ -1,5 +1,6 @@
 import type {
 	EnableProtection,
+	NewRecoveryKey,
 	RotatePassword,
 } from "@retrospend/api-contract";
 import { toBase64Url } from "@retrospend/crypto";
@@ -7,6 +8,7 @@ import { env } from "~/env";
 import { problem } from "~/server/api/v1/errors";
 import { userTransaction } from "~/server/db-tx";
 import { enableProtection } from "~/server/services/protection-keys/enable";
+import { replaceRecoveryKey } from "~/server/services/protection-keys/new-recovery-key";
 import { getKeySet } from "~/server/services/protection-keys/protection-keys.service";
 import { releaseWraps } from "~/server/services/protection-keys/release";
 import {
@@ -46,6 +48,20 @@ export function beginPasswordRotation(caller: Caller, currentAuthKey: string) {
 export function changeKeyedPassword(caller: Caller, body: RotatePassword) {
 	if (!env.ADVANCED_PROTECTION_ENABLED) throw problem("not_implemented");
 	return rotatePassword({
+		userId: caller.principal.userId,
+		sessionId: caller.principal.tokenId,
+		body,
+	});
+}
+
+/**
+ * Make new key: replaces the recovery wrap and proof for a caller that proves
+ * the current sign-in secret. Offered only where the server turned Advanced
+ * protection on, as enable is.
+ */
+export function newRecoveryKey(caller: Caller, body: NewRecoveryKey) {
+	if (!env.ADVANCED_PROTECTION_ENABLED) throw problem("not_implemented");
+	return replaceRecoveryKey({
 		userId: caller.principal.userId,
 		sessionId: caller.principal.tokenId,
 		body,

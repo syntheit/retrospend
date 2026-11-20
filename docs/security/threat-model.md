@@ -85,6 +85,10 @@ An attacker who controls the app, the database and the master key, or a maliciou
   - Two-factor is never skipped: signing in after recovery still asks for the code. Recovery works in every protection state and with the flag off, so turning the flag off cannot strand a keyed account.
   - What it does not stop: someone who has the recovery key and the email account can take the account over (the recovery key is the whole account, section 5.7); a hostile server can refuse the routes, or answer `check` with "no keys" so a client offers the plain reset, which removes the keys only while protection is OFF and refuses with `protected_password` otherwise.
 
+  Making a new recovery key (K3-3):
+  - `POST /me/protection/recovery-key` replaces the `ak-recovery` wrap and the stored proof hash together, in one owner transaction through the key set's one compare-and-swap (`applyKeyChanges`, writer `newRecoveryKey`). The caller proves the current sign-in secret (a counted password try, the same counters as every password check), and the transaction requires the stored password hash to still be the one that was checked. A rotation, a recovery or an email reset that committed since the caller read the version is a 409. The device checks the new wrap opens from the key's text before it sends.
+  - The old recovery key stops working at that commit and not before. The recovery commit holds the same set lock and re-checks the proof under it, so an old key cannot commit once the new one has landed. A stolen password session can make a new recovery key only with the current sign-in secret, and the new wrap is not an offline target any earlier than the old one was: `keys/open` still shows only its digest.
+
 ### 4.3 Compromised backup
 
 A copy of the database dump, or of the sealed store, in someone else's hands.
