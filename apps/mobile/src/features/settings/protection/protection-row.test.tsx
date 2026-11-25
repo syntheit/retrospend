@@ -226,7 +226,7 @@ describe("the Advanced protection row", () => {
 		);
 		act(() => tap(button(tree, "Make new key")));
 		expect(props()?.visible).toBe(true);
-		act(() => (props()?.onClose as () => void)());
+		act(() => (props()?.onClose as (() => void) | undefined)?.());
 		expect(props()?.visible).toBe(false);
 	});
 

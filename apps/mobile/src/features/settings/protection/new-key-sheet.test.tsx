@@ -7,7 +7,7 @@ import {
 	mount,
 	pressAsync,
 	type Tree,
-	type,
+	type as typeInto,
 	words,
 } from "../../../../test/harness";
 import { NewKeySheet, type NewKeySheetProps } from "./NewKeySheet";
@@ -71,7 +71,7 @@ const show = () => mount(<Host />);
 const CHOOSE = "Your old key stops working when the new one is saved.";
 
 async function toKey(tree: Tree) {
-	type(tree, "Password", "my password");
+	typeInto(tree, "Password", "my password");
 	await pressAsync(tree, "Continue");
 }
 async function toConfirm(tree: Tree) {
@@ -91,7 +91,7 @@ describe("NewKeySheet", () => {
 		const tree = await show();
 		expect(words(tree)).toContain(CHOOSE);
 		expect(disabled(tree, "Continue")).toBe(true);
-		type(tree, "Password", "my password");
+		typeInto(tree, "Password", "my password");
 		expect(disabled(tree, "Continue")).toBe(false);
 		await pressAsync(tree, "Continue");
 		expect(makeKey).toHaveBeenCalledWith("my password");
@@ -115,11 +115,11 @@ describe("NewKeySheet", () => {
 		const tree = await show();
 		await toConfirm(tree);
 		expect(disabled(tree, "Save key")).toBe(true);
-		type(tree, "Group 1", GROUPS[0] ?? "");
-		type(tree, "Group 2", "ZZZZZZ");
+		typeInto(tree, "Group 1", GROUPS[0] ?? "");
+		typeInto(tree, "Group 2", "ZZZZZZ");
 		expect(words(tree)).toContain("Does not match");
 		expect(disabled(tree, "Save key")).toBe(true);
-		type(tree, "Group 2", GROUPS[1] ?? "");
+		typeInto(tree, "Group 2", GROUPS[1] ?? "");
 		expect(disabled(tree, "Save key")).toBe(false);
 		await pressAsync(tree, "Save key");
 		expect(save).toHaveBeenCalledWith(drafts[0]);
@@ -133,8 +133,8 @@ describe("NewKeySheet", () => {
 		save.mockRejectedValueOnce(new KeyFlowError("readBackFailed"));
 		const tree = await show();
 		await toConfirm(tree);
-		type(tree, "Group 1", GROUPS[0] ?? "");
-		type(tree, "Group 2", GROUPS[1] ?? "");
+		typeInto(tree, "Group 1", GROUPS[0] ?? "");
+		typeInto(tree, "Group 2", GROUPS[1] ?? "");
 		await pressAsync(tree, "Save key");
 		expect(words(tree)).toContain(
 			"Your new key could not be saved. Your old key still works.",
@@ -149,8 +149,8 @@ describe("NewKeySheet", () => {
 		save.mockRejectedValueOnce(new KeyFlowError("conflict"));
 		const tree = await show();
 		await toConfirm(tree);
-		type(tree, "Group 1", GROUPS[0] ?? "");
-		type(tree, "Group 2", GROUPS[1] ?? "");
+		typeInto(tree, "Group 1", GROUPS[0] ?? "");
+		typeInto(tree, "Group 2", GROUPS[1] ?? "");
 		await pressAsync(tree, "Save key");
 		expect(words(tree)).toContain("Your keys changed. Start again.");
 		expect(words(tree)).toContain(CHOOSE);

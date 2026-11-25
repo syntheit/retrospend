@@ -6,7 +6,7 @@ import {
 	pressAsync,
 	type TestNode,
 	type Tree,
-	type,
+	type as typeInto,
 	words,
 	world,
 } from "../../../test/harness";
@@ -95,7 +95,7 @@ async function toChoices(tree: Tree, protectionOn: boolean) {
 		protectionOn,
 	});
 	await toCode(tree);
-	type(tree, "Code", "7K2M-9PQ4");
+	typeInto(tree, "Code", "7K2M-9PQ4");
 	await pressAsync(tree, "Continue");
 }
 
@@ -117,9 +117,9 @@ describe("Forgot password, the email", () => {
 	it("starts with the email typed on the sign-in screen, and sends only a typed address", async () => {
 		const tree = await show("ana@example.com");
 		expect(field(tree, "Email")?.props.value).toBe("ana@example.com");
-		type(tree, "Email", "no at sign");
+		typeInto(tree, "Email", "no at sign");
 		expect(disabled(tree, "Send code")).toBe(true);
-		type(tree, "Email", "ana@example.com");
+		typeInto(tree, "Email", "ana@example.com");
 		await pressAsync(tree, "Send code");
 		expect(mockAsk.requestResetCode).toHaveBeenCalledWith(
 			expect.anything(),
@@ -172,7 +172,7 @@ describe("Forgot password, the code", () => {
 	it("refuses a code that cannot be one before asking the server", async () => {
 		const tree = await show();
 		await toCode(tree);
-		type(tree, "Code", "7K2M");
+		typeInto(tree, "Code", "7K2M");
 		await pressAsync(tree, "Continue");
 		expect(words(tree)).toContain("Check the code for a typo.");
 		expect(mockAsk.redeemResetCode).not.toHaveBeenCalled();
@@ -182,12 +182,12 @@ describe("Forgot password, the code", () => {
 		mockAsk.redeemResetCode.mockResolvedValue({ ok: false, reason: "wrongCode" });
 		const tree = await show();
 		await toCode(tree);
-		type(tree, "Code", "7K2M9PQ4");
+		typeInto(tree, "Code", "7K2M9PQ4");
 		await pressAsync(tree, "Continue");
 		expect(words(tree)).toContain("That code didn't work.");
 		expect(mockAsk.checkRecoveryLink).not.toHaveBeenCalled();
 		// Typing again clears the line.
-		type(tree, "Code", "7K2M9PQ5");
+		typeInto(tree, "Code", "7K2M9PQ5");
 		expect(words(tree)).not.toContain("That code didn't work.");
 	});
 
@@ -196,7 +196,7 @@ describe("Forgot password, the code", () => {
 		mockAsk.checkRecoveryLink.mockResolvedValue("invalid");
 		const tree = await show();
 		await toCode(tree);
-		type(tree, "Code", "7K2M9PQ4");
+		typeInto(tree, "Code", "7K2M9PQ4");
 		await pressAsync(tree, "Continue");
 		expect(words(tree)).toContain("That code has expired. Ask for a new one.");
 		expect(mockAsk.phoneRecoveryCallbacks).not.toHaveBeenCalled();
@@ -207,7 +207,7 @@ describe("Forgot password, the code", () => {
 		mockAsk.checkRecoveryLink.mockRejectedValue(new KeyFlowError("unavailable"));
 		const tree = await show();
 		await toCode(tree);
-		type(tree, "Code", "7K2M9PQ4");
+		typeInto(tree, "Code", "7K2M9PQ4");
 		await pressAsync(tree, "Continue");
 		expect(words(tree)).toContain(
 			"Couldn't reach the server. Check your connection.",
@@ -255,7 +255,8 @@ describe("Forgot password, the choices", () => {
 				typeof n.props.onPress === "function",
 		)[0];
 		expect(reset).toBeDefined();
-		act(() => (reset?.props.onPress as () => void)());
+		if (!reset) throw new Error("no Reset password link");
+		act(() => (reset.props.onPress as () => void)());
 		expect(mockOpenWeb).toHaveBeenCalledWith(
 			"https://example.test",
 			"/auth/forgot-password",
@@ -281,7 +282,7 @@ describe("Forgot password, the choices", () => {
 		});
 		const tree = await show();
 		await toCode(tree);
-		type(tree, "Code", "7K2M9PQ4");
+		typeInto(tree, "Code", "7K2M9PQ4");
 		await pressAsync(tree, "Continue");
 		expect(lastSheet().preset).toBe("unavailable");
 	});

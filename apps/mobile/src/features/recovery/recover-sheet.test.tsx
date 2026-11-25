@@ -8,7 +8,7 @@ import {
 	mount,
 	pressAsync,
 	type Tree,
-	type,
+	type as typeInto,
 	words,
 } from "../../../test/harness";
 import { RecoverSheet, type RecoverSheetProps } from "./RecoverSheet";
@@ -69,9 +69,9 @@ const group = (tree: Tree, n: number) =>
 			node.props.accessibilityLabel === `Group ${n}` &&
 			typeof node.props.onChangeText === "function",
 	)[0];
-const valueOf = (tree: Tree, n: number) => group(tree, n)?.props.value;
+const valueIn = (tree: Tree, n: number) => group(tree, n)?.props.value;
 const typeGroup = (tree: Tree, n: number, text: string) =>
-	type(tree, `Group ${n}`, text);
+	typeInto(tree, `Group ${n}`, text);
 const fillAll = (tree: Tree) => {
 	for (let i = 0; i < 9; i++) typeGroup(tree, i + 1, GROUPS[i] ?? "");
 };
@@ -80,8 +80,8 @@ const toPassword = async (tree: Tree) => {
 	await pressAsync(tree, "Continue");
 };
 const fillPasswords = (tree: Tree, a = PASSWORD, b = PASSWORD) => {
-	type(tree, "New password", a);
-	type(tree, "Confirm new password", b);
+	typeInto(tree, "New password", a);
+	typeInto(tree, "Confirm new password", b);
 };
 
 beforeEach(() => {
@@ -107,24 +107,24 @@ describe("RecoverSheet, the key", () => {
 	it("fills all nine groups from a whole key pasted into any one of them, whatever the case and separators", async () => {
 		const tree = await show();
 		typeGroup(tree, 5, KEY.toLowerCase());
-		for (let i = 0; i < 9; i++) expect(valueOf(tree, i + 1)).toBe(GROUPS[i]);
+		for (let i = 0; i < 9; i++) expect(valueIn(tree, i + 1)).toBe(GROUPS[i]);
 		expect(disabled(tree, "Continue")).toBe(false);
 		// Spaces instead of hyphens, and the look-alikes read as the key reads them.
 		const again = await show();
 		typeGroup(again, 2, KEY.replaceAll("-", " "));
-		for (let i = 0; i < 9; i++) expect(valueOf(again, i + 1)).toBe(GROUPS[i]);
+		for (let i = 0; i < 9; i++) expect(valueIn(again, i + 1)).toBe(GROUPS[i]);
 	});
 
 	it("fills from the group a partial paste lands in, and does not call one typed character a paste", async () => {
 		const tree = await show();
 		typeGroup(tree, 3, "AAAAAABBBBBB");
-		expect(valueOf(tree, 3)).toBe("AAAAAA");
-		expect(valueOf(tree, 4)).toBe("BBBBBB");
-		expect(valueOf(tree, 2)).toBe("");
+		expect(valueIn(tree, 3)).toBe("AAAAAA");
+		expect(valueIn(tree, 4)).toBe("BBBBBB");
+		expect(valueIn(tree, 2)).toBe("");
 		// A seventh character typed into a full group is cut, not spilled over.
 		typeGroup(tree, 3, "AAAAAAC");
-		expect(valueOf(tree, 3)).toBe("AAAAAA");
-		expect(valueOf(tree, 4)).toBe("BBBBBB");
+		expect(valueIn(tree, 3)).toBe("AAAAAA");
+		expect(valueIn(tree, 4)).toBe("BBBBBB");
 	});
 
 	it("says a typo and a wrong key under the groups and lets the person type again", async () => {
@@ -148,7 +148,7 @@ describe("RecoverSheet, the key", () => {
 		expect(words(tree)).toContain("This account has no recovery key.");
 		expect(disabled(tree, "Continue")).toBe(true);
 		typeGroup(tree, 1, "ABCDEF");
-		expect(valueOf(tree, 1)).toBe("");
+		expect(valueIn(tree, 1)).toBe("");
 	});
 
 	it("asks for the new password only after the key was proven", async () => {
@@ -267,7 +267,7 @@ describe("RecoverSheet, every way out wipes what the proof opened", () => {
 		expect(onClose).toHaveBeenCalledTimes(1);
 		await flush();
 		expect(words(tree)).toContain(ENTER);
-		expect(valueOf(tree, 1)).toBe("");
+		expect(valueIn(tree, 1)).toBe("");
 	});
 
 	it("closing from outside (visible turns false) wipes the handle and clears what was typed", async () => {
@@ -278,7 +278,7 @@ describe("RecoverSheet, every way out wipes what the proof opened", () => {
 		expect(handles[0]?.wipe).toHaveBeenCalledTimes(1);
 		await act(async () => setVisible(true));
 		expect(words(tree)).toContain(ENTER);
-		expect(valueOf(tree, 1)).toBe("");
+		expect(valueIn(tree, 1)).toBe("");
 	});
 
 	it("unmounting wipes the handle", async () => {
