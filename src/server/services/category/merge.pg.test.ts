@@ -389,6 +389,22 @@ describe("through categories.previewRemove, remove, restore and delete", () => {
 });
 
 describe("an ARS budget book keeps its figures, valued at the rate each row was booked at", () => {
+	// The book's starting balance needs a peso rate on the table; the rows
+	// carry their own booked blue rate and never read it.
+	beforeAll(async () => {
+		const today = new Date(
+			`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`,
+		);
+		for (const type of ["official", "blue"])
+			await adminDb.exchangeRate.upsert({
+				where: {
+					date_currency_type: { date: today, currency: "ARS", type },
+				},
+				create: { date: today, currency: "ARS", type, rate: String(BLUE) },
+				update: { rate: String(BLUE) },
+			});
+	});
+
 	async function arsBook() {
 		const s = await seedUser();
 		await adminDb.user.update({
