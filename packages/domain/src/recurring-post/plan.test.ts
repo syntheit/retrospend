@@ -78,6 +78,26 @@ describe("planConfirm", () => {
 		expect(store.template.nextDueDate).toEqual(NEXT);
 	});
 
+	it("the paid-on day is read in the request's zone: Tokyo at 2026-12-01T16:00Z, paid Dec 2, books 2026-12-01T15:00Z", async () => {
+		// Saved zone Buenos Aires, where Dec 2 has not started (it is Dec 1, 13:00);
+		// in Tokyo it is Dec 2, 01:00, and Dec 2 starts at 2026-12-01T15:00Z.
+		const store = baseStore();
+		await store.confirm(at("2026-12-01T16:00:00.000Z"), {
+			dueAt: DUE,
+			paidOn: "2026-12-02",
+			zone: TOKYO,
+		});
+		expect(datesOf(store)).toEqual(["2026-12-01T15:00:00.000Z"]);
+		expect(store.template.nextDueDate).toEqual(NEXT);
+		// The same call from Buenos Aires is a day still to come.
+		await expect(
+			baseStore().confirm(at("2026-12-01T16:00:00.000Z"), {
+				dueAt: DUE,
+				paidOn: "2026-12-02",
+			}),
+		).rejects.toMatchObject({ kind: "date_in_future" });
+	});
+
 	it("keeps the anchor through a short month: Jan 31 2028 to Feb 29, then Mar 31", async () => {
 		const store = baseStore({
 			template: { nextDueDate: ba("2028-01-31"), anchorDay: 31 },
@@ -645,7 +665,7 @@ describe("runCatchUp", () => {
 			expect(datesOf(store)).toEqual([SEP]);
 		});
 
-		it("a protection read that fails counts as protected", async () => {
+		it("a protection read that fails stops the run as protected, reported as unreadable", async () => {
 			const store = sept();
 			const port = {
 				...store.catchUpPort(now),
@@ -654,7 +674,7 @@ describe("runCatchUp", () => {
 				},
 			};
 			const run = await runCatchUp(port, ba("2026-09-01"), now);
-			expect(run.stopped).toBe("protected");
+			expect(run.stopped).toBe("protection_unreadable");
 			expect(run.results).toHaveLength(1);
 		});
 

@@ -135,6 +135,20 @@ describe("planPosterRun", () => {
 		});
 	});
 
+	it("a recurring income template plans nothing: the device posts expense templates only", async () => {
+		const store = baseStore({
+			template: {
+				direction: "IN",
+				anchorDay: null,
+				nextDueDate: ba("2026-12-01"),
+			},
+		});
+		expect(await planPosterRun(input(store))).toEqual({
+			entries: [],
+			stopped: "income",
+		});
+	});
+
 	it("auto-post off: the poster plans nothing", async () => {
 		const store = baseStore();
 		let read = false;
@@ -160,7 +174,7 @@ describe("planPosterRun", () => {
 			expect(run).toEqual({ entries: [], stopped: "protected" });
 		});
 
-		it("a read that fails counts as on", async () => {
+		it("a read that fails counts as on, reported as unreadable", async () => {
 			const store = baseStore(SEPT);
 			const run = await planPosterRun(
 				input(store, {
@@ -170,7 +184,23 @@ describe("planPosterRun", () => {
 					},
 				}),
 			);
-			expect(run).toEqual({ entries: [], stopped: "protected" });
+			expect(run).toEqual({ entries: [], stopped: "protection_unreadable" });
+		});
+
+		it("a read that fails after period 1 stops the run as unreadable", async () => {
+			const store = baseStore(SEPT);
+			let reads = 0;
+			const run = await planPosterRun(
+				input(store, {
+					now: NOV,
+					isProtected: async () => {
+						if (++reads > 1) throw new Error("offline");
+						return false;
+					},
+				}),
+			);
+			expect(run.stopped).toBe("protection_unreadable");
+			expect(run.entries).toHaveLength(1);
 		});
 
 		it("turning on after period 1 stops before period 2", async () => {

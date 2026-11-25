@@ -16,7 +16,8 @@ import {
 	type ConfirmPlan,
 	type PostTemplate,
 	planConfirm,
-	protectedOrUnknown,
+	protectionStop,
+	readProtection,
 	runCatchUp,
 } from "./plan";
 import { RecurringRefusal, type RecurringRefusalKind } from "./refusals";
@@ -30,6 +31,11 @@ export type PosterStamp =
 	| { readonly version: string }
 	| { readonly after: number };
 
+/**
+ * The enqueue (slice-device-recurring.md, PR12) maps `expectedStamp` onto the
+ * outbox's own base version and must keep this required-stamp guard for
+ * origin "poster": an entry with no stamp is never queued.
+ */
 export interface PosterEntry {
 	readonly origin: "poster";
 	readonly templateId: string;
@@ -84,10 +90,13 @@ export interface PosterRunInput {
  * - `auto_post_off`: the server's setting says nothing posts on its own.
  * - `no_stamp`: the template has no version to name yet (made on this device,
  *   not yet acknowledged), so no entry could carry the guard.
- * - `protected`: protection is on, or could not be read.
+ * - `income`: the device posts expense templates only; recurring income is
+ *   sent directly until M4 gives it a poster.
+ * - `protected`, `protection_unreadable`: protection is on, or could not be
+ *   read (which fails closed but is reported apart, for the caller to log).
  * - the rest are runCatchUp's: `caught_up`, `refused` (see `refusal`), `cap`.
  */
-export type PosterStop = CatchUpStop | "auto_post_off" | "no_stamp";
+export type PosterStop = CatchUpStop | "auto_post_off" | "no_stamp" | "income";
 
 export interface PosterRun {
 	readonly entries: readonly PosterEntry[];
@@ -105,8 +114,10 @@ export async function planPosterRun(input: PosterRunInput): Promise<PosterRun> {
 	if (!input.autoPost) return none("auto_post_off");
 	const stamp = input.template?.stamp;
 	if (!input.template) return none("refused", "not_found");
+	if (input.template.direction === "IN") return none("income");
 	if (!stamp) return none("no_stamp");
-	if (await protectedOrUnknown(input.isProtected)) return none("protected");
+	const stop = protectionStop(await readProtection(input.isProtected));
+	if (stop) return none(stop);
 
 	const entries: PosterEntry[] = [];
 	let working: PostTemplate = input.template;

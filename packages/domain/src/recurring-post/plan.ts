@@ -224,24 +224,44 @@ export interface CatchUpPort<O> {
  * - `refused`: a period did not post (its result is the last one); nothing
  *   after it is tried, so a missing rate on period k leaves k+1 on unposted.
  * - `protected`: protection turned on before a later period.
+ * - `protection_unreadable`: the protection read failed, which counts as
+ *   protected (fail closed) but is its own reason, so a caller can log it.
  * - `cap`: CATCH_UP_CAP periods posted and more are still due.
  */
-export type CatchUpStop = "caught_up" | "refused" | "protected" | "cap";
+export type CatchUpStop =
+	| "caught_up"
+	| "refused"
+	| "protected"
+	| "protection_unreadable"
+	| "cap";
 
 export interface CatchUpRun<O> {
 	readonly results: readonly PeriodResult<O>[];
 	readonly stopped: CatchUpStop;
 }
 
-/** Protected, or not known to be: a failed read fails closed. */
-export async function protectedOrUnknown(
+/** What a protection read says; a failed read is `unreadable`, never `off`. */
+export type ProtectionRead = "on" | "off" | "unreadable";
+
+export async function readProtection(
 	isProtected: () => Promise<boolean>,
-): Promise<boolean> {
+): Promise<ProtectionRead> {
 	try {
-		return await isProtected();
+		return (await isProtected()) ? "on" : "off";
 	} catch {
-		return true;
+		return "unreadable";
 	}
+}
+
+/** The stop a protection read gives, or null when it is off. */
+export function protectionStop(
+	read: ProtectionRead,
+): "protected" | "protection_unreadable" | null {
+	return read === "off"
+		? null
+		: read === "on"
+			? "protected"
+			: "protection_unreadable";
 }
 
 /**
@@ -260,8 +280,11 @@ export async function runCatchUp<O>(
 	let due = firstDue;
 	if (due > now) return { results, stopped: "caught_up" };
 	for (let index = 0; index < CATCH_UP_CAP; index++) {
-		if (index > 0 && (await protectedOrUnknown(() => port.isProtected())))
-			return { results, stopped: "protected" };
+		const stop =
+			index > 0
+				? protectionStop(await readProtection(() => port.isProtected()))
+				: null;
+		if (stop) return { results, stopped: stop };
 		const result = await port.post({ dueAt: due, index });
 		results.push(result);
 		if (!result.posted) return { results, stopped: "refused" };
