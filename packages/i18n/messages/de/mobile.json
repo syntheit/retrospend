@@ -497,6 +497,7 @@
 			"failed": "Die Ausgaben konnten nicht geändert werden",
 			"undone": "Rückgängig gemacht",
 			"undoError": "Rückgängig nicht möglich",
+			"syncFirst": "Zuerst synchronisieren: Einige sind noch nicht synchronisiert.",
 			"skipped": "{count, plural, one {# kann hier nicht gelöscht werden.} other {# können hier nicht gelöscht werden.}}"
 		},
 		"segment": {

@@ -497,6 +497,7 @@
 			"failed": "Não foi possível alterar essas despesas",
 			"undone": "Desfeito",
 			"undoError": "Não foi possível desfazer",
+			"syncFirst": "Sincronize primeiro: algumas ainda não foram sincronizadas.",
 			"skipped": "{count, plural, one {# não pode ser excluída aqui.} other {# não podem ser excluídas aqui.}}"
 		},
 		"segment": {

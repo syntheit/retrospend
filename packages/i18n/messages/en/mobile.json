@@ -497,6 +497,7 @@
 			"failed": "Couldn't change those expenses",
 			"undone": "Undone",
 			"undoError": "Couldn't undo",
+			"syncFirst": "Sync first: some of these haven't synced yet.",
 			"skipped": "{count, plural, one {# of them can't be deleted here.} other {# of them can't be deleted here.}}"
 		},
 		"segment": {
