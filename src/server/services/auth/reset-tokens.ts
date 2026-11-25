@@ -167,20 +167,23 @@ export async function issueResetToken(input: {
 /**
  * The start of every write that adds a secret for a user: the user's row lock
  * (false when the address is no longer `forEmail`), a per-user advisory lock
- * so two requests cannot both miss a trim, and a sweep of the user's expired
- * rows.
+ * so two requests cannot both miss a trim, and, when `sweepAt` is given, a
+ * sweep of the user's rows expired by then. The sweep is hygiene for the
+ * writers that add a row; it is no expiry guard, and redeeming a code passes
+ * none so that the compare filter stays the one guard there.
  */
 async function lockIssuing(
 	tx: Prisma.TransactionClient,
 	userId: string,
 	forEmail: string,
-	now: Date,
+	sweepAt?: Date,
 ): Promise<boolean> {
 	if ((await lockUserRow(tx, userId)) !== forEmail) return false;
 	await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`reset-link:${userId}`}, 0))`;
-	await tx.passwordResetToken.deleteMany({
-		where: { userId, expires: { lte: now } },
-	});
+	if (sweepAt)
+		await tx.passwordResetToken.deleteMany({
+			where: { userId, expires: { lte: sweepAt } },
+		});
 	return true;
 }
 
@@ -407,6 +410,8 @@ export async function redeemResetCode(input: {
 		throw new ResetCodeTriesExceededError(decision.retryAfterSeconds);
 
 	const typed = readTypedCode(input.code) ?? "";
+	// The one expiry guard of a redeem: an expired code is never compared. The
+	// spend below does not repeat it (one `now`, so it could never differ).
 	const rows = await db.passwordResetToken.findMany({
 		where: { userId: user?.id ?? "", origin: "code", expires: { gt: now } },
 		select: { token: true, codeHash: true },
@@ -425,7 +430,7 @@ export async function redeemResetCode(input: {
 
 	const token = randomBytes(32).toString("hex");
 	await db.$transaction(async (tx) => {
-		if (!(await lockIssuing(tx, user.id, user.email, now)))
+		if (!(await lockIssuing(tx, user.id, user.email)))
 			throw new InvalidResetTokenError();
 		const spent = await tx.passwordResetToken.deleteMany({
 			where: {
@@ -433,7 +438,6 @@ export async function redeemResetCode(input: {
 				userId: user.id,
 				origin: "code",
 				codeHash: hit.codeHash,
-				expires: { gt: now },
 			},
 		});
 		if (spent.count !== 1) throw new InvalidResetTokenError();

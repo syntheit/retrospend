@@ -39,6 +39,7 @@ import {
 	spendResetToken,
 } from "~/server/services/auth/reset-tokens";
 import { stayInWindow } from "~/test/rate-window";
+import { issueLinkFor } from "~/test/reset-links";
 import {
 	commitBody,
 	loadPrimitives,
@@ -616,6 +617,22 @@ describe("POST /auth/password-reset/code", () => {
 			await resolveRecoveryToken(token, new Date(expires.getTime() - 1)),
 		).toEqual({ userId: k.id });
 		expect(await resolveRecoveryToken(token, expires)).toBeNull();
+	});
+
+	it("sweeps the account's expired codes and links when it makes a new code", async () => {
+		const k = await recoverable();
+		const past = new Date(Date.now() - 2 * HOUR);
+		await codeFor(k, past);
+		await issueLinkFor(k.id, "email", past);
+		expect(await codeRows(k.id)).toHaveLength(1);
+		await codeFor(k);
+		// Only the new code and the account's live link (made by `recoverable`) remain.
+		expect(await codeRows(k.id)).toHaveLength(1);
+		expect(
+			await adminDb.passwordResetToken.count({
+				where: { userId: k.id, expires: { lte: new Date() } },
+			}),
+		).toBe(0);
 	});
 
 	it("makes no code for an address that changed after it was read", async () => {
