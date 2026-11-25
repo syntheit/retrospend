@@ -18,10 +18,12 @@ import { EnableFailure, enableFailureFor } from "./enable-failure";
 import type { KeyDraft } from "./enable-lifecycle";
 import {
 	asKeyFlowError,
+	couldNotAsk,
 	type FlowPorts,
 	type KeyedRecord,
 	type KeyFlowCode,
 	KeyFlowError,
+	mayHaveCommitted,
 } from "./flow";
 
 /** The enable route's body: the prepared body plus the person's proof. */
@@ -196,12 +198,7 @@ export function createEnableCallbacks(
 			// No answer, or a server failure (a gateway can answer 502 after the
 			// commit), may have stored it. A conflict or a reused key means an
 			// earlier send of this draft may have.
-			if (
-				code === "unavailable" ||
-				code === "serverError" ||
-				((code === "conflict" || code === "keyReused") && earlier > 0)
-			)
-				held.phase = "unknown";
+			if (mayHaveCommitted(code, earlier)) held.phase = "unknown";
 			throw error;
 		}
 		held.phase = "stored";
@@ -220,12 +217,7 @@ export function createEnableCallbacks(
 		} catch (error) {
 			const code = asKeyFlowError(error).code;
 			if (code === "notFound") return "absent";
-			if (
-				code === "unavailable" ||
-				code === "serverError" ||
-				code === "rateLimited"
-			)
-				throw error;
+			if (couldNotAsk(code)) throw error;
 			throw new KeyFlowError("readBackFailed");
 		}
 		try {

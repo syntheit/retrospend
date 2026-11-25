@@ -226,6 +226,7 @@ The rest are `planned` entries (`PLANNED` in `registry.ts`, with what each repla
 | Secondary | surface fill, line-strong border | Other visible actions; row actions in a fixed-width right column |
 | Ghost | no fill, fg-2 | Toolbar and icon actions |
 | Danger | danger fill | Only the confirm button of a destructive dialog, last |
+| Danger text | no fill, danger words | A row action that opens a destructive confirm (Delete account, Reset account); the mockup kit's `danger-text` |
 
 - One height per row: every control in a row is `h-ctl` (or all `h-ctl-sm`). [R31]
 - Icon-only buttons have an `aria-label` and a tooltip (UI-131). No icon-only destructive button.

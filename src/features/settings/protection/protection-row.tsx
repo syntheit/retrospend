@@ -6,9 +6,11 @@ import { useId, useMemo, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useToast } from "~/components/ui/toast";
+import { NewKeySheet } from "~/features/recovery/new-key-sheet";
 import { useSession } from "~/hooks/use-session";
 import { webEnableCallbacks } from "~/lib/protection/enable";
 import { KEYS_STATUS_KEY, readKeysStatus } from "~/lib/protection/keys-status";
+import { webNewKeyCallbacks } from "~/lib/protection/new-key";
 import { api } from "~/trpc/react";
 import { SettingRow } from "../setting-row";
 import { EnableSheet } from "./enable-sheet";
@@ -34,6 +36,7 @@ export function ProtectionRow() {
 		retry: false,
 	});
 	const [open, setOpen] = useState(false);
+	const [newKeyOpen, setNewKeyOpen] = useState(false);
 	// The row's words, which name why its button is off or what it retries.
 	const metaId = useId();
 	// When the keys are made, for the saved file; set when the sheet opens.
@@ -44,6 +47,11 @@ export function ProtectionRow() {
 	// One set of callbacks for the sheet's life: it remembers the drafts it made.
 	const callbacks = useMemo(
 		() => (id && email ? webEnableCallbacks({ id, email }) : null),
+		[id, email],
+	);
+	// Likewise for Make new key: the drafts it made stay with its sheet.
+	const newKey = useMemo(
+		() => (id && email ? webNewKeyCallbacks({ id, email }) : null),
 		[id, email],
 	);
 	if (!offered || !user) return null;
@@ -70,7 +78,37 @@ export function ProtectionRow() {
 				{t("row.retry")}
 			</Button>,
 		);
-	if (status.data === "keyed") return row(t("row.keysReady"));
+	if (status.data === "keyed")
+		return (
+			<>
+				{row(
+					t("row.keysReady"),
+					<Button
+						aria-describedby={metaId}
+						disabled={!newKey}
+						kind="secondary"
+						onClick={() => {
+							setMade(new Date());
+							setNewKeyOpen(true);
+						}}
+						size="sm"
+					>
+						{t("row.makeNewKey")}
+					</Button>,
+				)}
+				{newKey && (
+					<NewKeySheet
+						account={user.email}
+						made={made}
+						makeKey={newKey.makeKey}
+						onDone={() => toast.saved(t("toast.newKeySaved"))}
+						onOpenChange={setNewKeyOpen}
+						open={newKeyOpen}
+						save={newKey.save}
+					/>
+				)}
+			</>
+		);
 
 	return (
 		<>

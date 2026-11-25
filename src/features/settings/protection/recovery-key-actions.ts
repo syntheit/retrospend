@@ -6,8 +6,16 @@
 import {
 	RECOVERY_KEY_FILE_NAME,
 	type RecoveryFileLabels,
+	randomBelow,
 	recoveryKeyFileText,
 } from "@retrospend/crypto/client";
+
+/** A number below `below` from the browser's own randomness: which two groups the confirm step asks for. */
+export const browserRandom = (below: number) =>
+	randomBelow(
+		{ randomBytes: (n) => crypto.getRandomValues(new Uint8Array(n)) },
+		below,
+	);
 
 export type KeyActions = {
 	copy: (keyText: string) => Promise<void>;

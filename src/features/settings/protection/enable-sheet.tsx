@@ -5,20 +5,21 @@ import {
 	type JobOutcome,
 	type KeyDraft,
 	pickConfirmGroups,
-	randomBelow,
 } from "@retrospend/crypto/client";
 import { useTranslations } from "next-intl";
-import { useEffect, useReducer, useRef } from "react";
+import { useReducer, useRef } from "react";
 import { Sheet } from "~/components/ui/sheet";
 import { EnableBody } from "./enable-body";
 import { EnableFooter } from "./enable-footer";
 import { enableReducer, enableView, INITIAL_STATE } from "./enable-model";
 import {
 	browserKeyActions,
+	browserRandom,
 	type KeyActions,
-	type KeyFile,
 } from "./recovery-key-actions";
 import { useEnableLifecycle } from "./use-enable-lifecycle";
+import { useKeyFile } from "./use-key-file";
+import { useStepFocus } from "./use-step-focus";
 
 export type EnableSheetProps = {
 	open: boolean;
@@ -57,12 +58,6 @@ export type EnableSheetProps = {
 	random?: (below: number) => number;
 };
 
-const browserRandom = (below: number) =>
-	randomBelow(
-		{ randomBytes: (n) => crypto.getRandomValues(new Uint8Array(n)) },
-		below,
-	);
-
 /**
  * Turn on Advanced protection (E1 to E3, R1, R2 and Confirm it's you of the
  * mockup), one Sheet with steps. It knows nothing of the server: the caller
@@ -70,7 +65,6 @@ const browserRandom = (below: number) =>
  */
 export function EnableSheet(props: EnableSheetProps) {
 	const t = useTranslations();
-	const rk = useTranslations("protection.recoveryKey");
 	const [state, dispatch] = useReducer(enableReducer, INITIAL_STATE);
 	const view = enableView(state, { twoFactor: props.twoFactor });
 	const body = useRef<HTMLDivElement>(null);
@@ -78,25 +72,8 @@ export function EnableSheet(props: EnableSheetProps) {
 		open: props.open,
 		reset: () => dispatch({ type: "reset" }),
 	});
-	const file: KeyFile = {
-		labels: {
-			title: rk("fileTitle"),
-			account: rk("fileAccount"),
-			made: rk("fileMade"),
-			key: rk("label"),
-			keepSafe: rk("saveBody"),
-		},
-		account: props.account,
-		made: props.made,
-	};
-
-	// The step that held focus is gone: focus lands on the new step's first control.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: runs on a step change only
-	useEffect(() => {
-		body.current
-			?.querySelector<HTMLElement>("input, button:not([disabled])")
-			?.focus({ preventScroll: true });
-	}, [state.step]);
+	const file = useKeyFile(props.account, props.made);
+	useStepFocus(body, state.step);
 
 	const close = () => {
 		if (life.canClose()) props.onOpenChange(false);
