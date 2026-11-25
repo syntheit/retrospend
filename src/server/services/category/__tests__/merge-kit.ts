@@ -7,10 +7,7 @@ import { randomUUID } from "node:crypto";
 import { forUser } from "~/server/services/preview";
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
-import {
-	mergeCategories,
-	restoreCategory,
-} from "../merge.mutation";
+import { mergeCategories, restoreCategory } from "../merge.mutation";
 
 export const BLUE = 1545;
 
@@ -45,7 +42,7 @@ export function expense(
 			title: "Lunch",
 			amount: new Prisma.Decimal(usd),
 			currency: "USD",
-			date: new Date("2026-10-12T15:00:00Z"),
+			date: new Date(),
 			categoryId,
 			amountInUSD: new Prisma.Decimal(usd),
 			exchangeRate: new Prisma.Decimal(1),
@@ -77,7 +74,7 @@ export async function sharedTx(
 	categoryId: string | null,
 	extra: Partial<Prisma.SharedTransactionUncheckedCreateInput> = {},
 ) {
-	return adminDb.sharedTransaction.create({
+	return fixtureDb.sharedTransaction.create({
 		data: {
 			description: "Dinner",
 			amount: "30",
@@ -99,7 +96,7 @@ export const shareOf = (
 	categoryId: string | null,
 	extra: Partial<Prisma.SplitParticipantUncheckedCreateInput> = {},
 ) =>
-	adminDb.splitParticipant.create({
+	fixtureDb.splitParticipant.create({
 		data: {
 			transactionId,
 			participantType: "user",

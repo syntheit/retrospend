@@ -83,10 +83,9 @@ describe("every holder of a category id has a rule", () => {
 		const real = new Set(
 			schema.flatMap((m) => m.fields.map((f) => `${m.name}.${f.name}`)),
 		);
-		const named = [
-			...CATEGORY_LOOSE_HOLDERS,
-			...CATEGORY_LEFT_ALONE,
-		].map((h) => `${h.model}.${h.field}`);
+		const named = [...CATEGORY_LOOSE_HOLDERS, ...CATEGORY_LEFT_ALONE].map(
+			(h) => `${h.model}.${h.field}`,
+		);
 		expect(named.filter((c) => !real.has(c))).toEqual([]);
 		const jsonNamed = Object.keys(NO_CATEGORY_IDS);
 		expect(jsonNamed.filter((c) => !jsonColumns.includes(c))).toEqual([]);

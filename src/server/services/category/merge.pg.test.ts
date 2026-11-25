@@ -43,13 +43,27 @@ describe("merge moves every row the category holds", () => {
 			inType: "INCOME",
 		});
 		const fee = await expense(me, cafe.id, 1);
+		// A transfer's fee: an account leg names the row, so an edit or a delete would not reach it.
+		const transfer = await adminDb.transfer.create({
+			data: {
+				userId: me,
+				kind: "TRANSFER",
+				date: new Date(),
+				fromAmount: "100",
+				fromCurrency: "USD",
+				toAmount: "100",
+				toCurrency: "USD",
+				feeExpenseId: fee.id,
+			},
+		});
 		await adminDb.accountLeg.create({
 			data: {
 				userId: me,
 				currency: "USD",
 				amount: "-1",
-				date: new Date("2026-10-12T15:00:00Z"),
+				date: new Date(),
 				source: "FEE",
+				transferId: transfer.id,
 				expenseId: fee.id,
 			},
 		});
@@ -77,30 +91,31 @@ describe("merge moves every row the category holds", () => {
 		expect(flag(kept.id)).toBe(true);
 		expect(flag(counted.id)).toBe(false);
 		// Booked at blue: 10 USD x 1,545 and 4 USD x 1,545, untouched.
-		expect(
-			rows.find((r) => r.id === kept.id)?.homeAmount?.toFixed(),
-		).toBe("15450");
-		expect(
-			rows.find((r) => r.id === counted.id)?.homeAmount?.toFixed(),
-		).toBe("6180");
+		expect(rows.find((r) => r.id === kept.id)?.homeAmount?.toFixed()).toBe(
+			"15450",
+		);
+		expect(rows.find((r) => r.id === counted.id)?.homeAmount?.toFixed()).toBe(
+			"6180",
+		);
 		await expect(
 			fixtureDb.category.count({ where: { id: cafe.id } }),
 		).resolves.toBe(0);
 	});
 
 	it("previews the same merge without writing and says spent does not change", async () => {
-		const food = await category(me, "Dining");
-		const bar = await category(me, "Bar");
-		await expense(me, bar.id, 10);
-		await expense(me, bar.id, 4);
+		const own = await arsUser();
+		const food = await category(own, "Dining");
+		const bar = await category(own, "Bar");
+		await expense(own, bar.id, 10);
+		await expense(own, bar.id, 4);
 
-		const preview = await dry(me, bar.id, food.id);
+		const preview = await dry(own, bar.id, food.id);
 
 		expect(preview.value.counts.expense.moved).toBe(2);
 		expect(preview.changes.find((c) => c.id === "spent")).toBeUndefined();
 		const spent = preview.unchanged.find((u) => u.id === "spent");
-		// 10 + 4 dollars, whatever the category.
-		expect(JSON.stringify(spent?.value)).toContain("1400");
+		// 10 + 4 dollars, whatever the category: USD 14.00, in minor units.
+		expect(spent?.value).toEqual([{ minor: 1400, currency: "USD" }]);
 		await expect(
 			fixtureDb.category.count({ where: { id: bar.id } }),
 		).resolves.toBe(1);
@@ -124,7 +139,7 @@ describe("merge moves every row the category holds", () => {
 			[spending.id, salary.id],
 		] as const)
 			await expect(run(me, from, to)).rejects.toMatchObject({
-				cause: { problem: "category_kind_mismatch" },
+				problem: "category_kind_mismatch",
 			});
 		await expect(
 			fixtureDb.category.count({ where: { id: gigs.id } }),
@@ -222,27 +237,53 @@ describe("shared expenses and shares", () => {
 		});
 		expect(done.value.setToNone).toBe(1);
 		await expect(
-			adminDb.sharedTransaction.findUniqueOrThrow({ where: { id: mineTx.id } }),
+			fixtureDb.sharedTransaction.findUniqueOrThrow({
+				where: { id: mineTx.id },
+			}),
 		).resolves.toMatchObject({ categoryId: tgt.id, isLocked: true });
 		await expect(
-			adminDb.splitParticipant.findUniqueOrThrow({ where: { id: myShare.id } }),
+			fixtureDb.splitParticipant.findUniqueOrThrow({
+				where: { id: myShare.id },
+			}),
 		).resolves.toMatchObject({ categoryId: tgt.id, categorySource: "PROJECT" });
 		// Bob's row went to no category with the category.
 		await expect(
-			adminDb.sharedTransaction.findUniqueOrThrow({ where: { id: bobsTx.id } }),
+			fixtureDb.sharedTransaction.findUniqueOrThrow({
+				where: { id: bobsTx.id },
+			}),
 		).resolves.toMatchObject({ categoryId: null });
 
 		await undo(me, done.value.stash);
 		await expect(
-			adminDb.sharedTransaction.findUniqueOrThrow({ where: { id: mineTx.id } }),
+			fixtureDb.sharedTransaction.findUniqueOrThrow({
+				where: { id: mineTx.id },
+			}),
 		).resolves.toMatchObject({ categoryId: src.id, isLocked: true });
 		await expect(
-			adminDb.splitParticipant.findUniqueOrThrow({ where: { id: myShare.id } }),
+			fixtureDb.splitParticipant.findUniqueOrThrow({
+				where: { id: myShare.id },
+			}),
 		).resolves.toMatchObject({ categoryId: src.id, categorySource: "PROJECT" });
 		// Only what this mutation moved comes back.
 		await expect(
-			adminDb.sharedTransaction.findUniqueOrThrow({ where: { id: bobsTx.id } }),
+			fixtureDb.sharedTransaction.findUniqueOrThrow({
+				where: { id: bobsTx.id },
+			}),
 		).resolves.toMatchObject({ categoryId: null });
+	});
+
+	it("refuses a merge whose shares could not take the target, since a share's category is an expense category", async () => {
+		const me = await arsUser();
+		const gigs = await category(me, "Gigs", { kind: "INCOME" });
+		const pay = await category(me, "Pay", { kind: "INCOME" });
+		const tx = await sharedTx(me, null);
+		const share = await shareOf(tx.id, me, gigs.id);
+		await expect(run(me, gigs.id, pay.id)).rejects.toMatchObject({
+			code: "INVALID",
+		});
+		await expect(
+			fixtureDb.splitParticipant.findUniqueOrThrow({ where: { id: share.id } }),
+		).resolves.toMatchObject({ categoryId: gigs.id });
 	});
 
 	it("a delete takes the pick's source off the share and the undo gives it back", async () => {
@@ -252,11 +293,11 @@ describe("shared expenses and shares", () => {
 		const share = await shareOf(tx.id, me, src.id);
 		const done = await run(me, src.id, null);
 		await expect(
-			adminDb.splitParticipant.findUniqueOrThrow({ where: { id: share.id } }),
+			fixtureDb.splitParticipant.findUniqueOrThrow({ where: { id: share.id } }),
 		).resolves.toMatchObject({ categoryId: null, categorySource: null });
 		await undo(me, done.value.stash);
 		await expect(
-			adminDb.splitParticipant.findUniqueOrThrow({ where: { id: share.id } }),
+			fixtureDb.splitParticipant.findUniqueOrThrow({ where: { id: share.id } }),
 		).resolves.toMatchObject({ categoryId: src.id, categorySource: "USER" });
 	});
 });

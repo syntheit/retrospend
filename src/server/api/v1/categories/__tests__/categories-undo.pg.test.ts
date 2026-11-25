@@ -63,7 +63,10 @@ describe("/api/v1/categories delete and merge with undo", () => {
 			await post(`/categories/${from.id}/merge/preview`, { targetId: into.id }),
 			c.previewMerge,
 		);
-		expect(preview.detail).toMatchObject({ kind: "category.merge", mode: "merge" });
+		expect(preview.detail).toMatchObject({
+			kind: "category.merge",
+			mode: "merge",
+		});
 		await expect(
 			fixtureDb.category.count({ where: { id: from.id } }),
 		).resolves.toBe(1);

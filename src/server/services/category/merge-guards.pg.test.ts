@@ -8,6 +8,7 @@ import { SERVER_KEY_PREFIX } from "@retrospend/api-contract/common";
 import { addMonths } from "@retrospend/domain/envelope/calendar";
 import { budgetMonthOf, isoDateIn } from "@retrospend/domain/envelope/months";
 import { describe, expect, it } from "vitest";
+import { createUserScopedDb } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import { CsvService } from "~/server/services/csv.service";
 import { forUser } from "~/server/services/preview";
@@ -20,6 +21,8 @@ import {
 	category,
 	expense,
 	run,
+	sharedTx,
+	shareOf,
 	templateOf,
 	undo,
 } from "./__tests__/merge-kit";
@@ -102,7 +105,7 @@ describe("an undo is refused as a whole, changing nothing", () => {
 		).resolves.toBe(0);
 	});
 
-	it("when the name was taken since, and a retry after the name is free works", async () => {
+	it("when the name was taken since, and a retry after the other category is gone works", async () => {
 		const m = await merged();
 		const taken = await category(m.me, "Cafe");
 		await expect(undo(m.me, m.stash)).rejects.toMatchObject({
@@ -110,14 +113,21 @@ describe("an undo is refused as a whole, changing nothing", () => {
 			message: "Category name already exists",
 		});
 		await expectUntouched(m);
-		await fixtureDb.category.update({
-			where: { id: taken.id },
-			data: { name: "Cafe, later" },
-		});
+		await fixtureDb.category.delete({ where: { id: taken.id } });
 		await undo(m.me, m.stash);
 		await expect(
 			fixtureDb.category.count({ where: { id: m.src.id } }),
 		).resolves.toBe(1);
+	});
+
+	it("when a name that differs only by a trailing space was taken since", async () => {
+		const m = await merged();
+		await category(m.me, "Cafe ");
+		await expect(undo(m.me, m.stash)).rejects.toMatchObject({
+			code: "CONFLICT",
+			message: "Category name already exists",
+		});
+		await expectUntouched(m);
 	});
 
 	it("when a budget was moved with the category and then edited", async () => {
@@ -232,6 +242,55 @@ describe("an undo is refused as a whole, changing nothing", () => {
 		});
 	});
 
+	it("when a shared expense or your share of it was edited since", async () => {
+		const me = await arsUser();
+		const src = await category(me, "Trips");
+		const tgt = await category(me, "Travel");
+		const tx = await sharedTx(me, src.id);
+		const share = await shareOf(tx.id, me, src.id);
+		const first = await run(me, src.id, tgt.id);
+		await fixtureDb.sharedTransaction.update({
+			where: { id: tx.id },
+			data: { description: "Edited since" },
+		});
+		await expect(undo(me, first.value.stash)).rejects.toMatchObject({
+			code: "CONFLICT",
+		});
+
+		const src2 = await category(me, "Trips 2");
+		const tgt2 = await category(me, "Travel 2");
+		const tx2 = await sharedTx(me, null);
+		const share2 = await shareOf(tx2.id, me, src2.id);
+		const second = await run(me, src2.id, tgt2.id);
+		await adminDb.splitParticipant.update({
+			where: { id: share2.id },
+			data: { hasUnseenChanges: true },
+		});
+		await expect(undo(me, second.value.stash)).rejects.toMatchObject({
+			code: "CONFLICT",
+		});
+		await expect(
+			fixtureDb.category.count({ where: { id: { in: [src.id, src2.id] } } }),
+		).resolves.toBe(0);
+		expect(share.id).not.toBe(share2.id);
+	});
+
+	it("when the analytics preference that moved is gone, or an income rule that moved was edited", async () => {
+		const me = await arsUser();
+		const a = await category(me, "A");
+		const b = await category(me, "B");
+		const pref = await adminDb.analyticsCategoryPreference.create({
+			data: { userId: me, categoryId: a.id, isFlexible: true },
+		});
+		const done = await run(me, a.id, b.id);
+		await adminDb.analyticsCategoryPreference.delete({
+			where: { id: pref.id },
+		});
+		await expect(undo(me, done.value.stash)).rejects.toMatchObject({
+			code: "CONFLICT",
+		});
+	});
+
 	it("two undos of one stash run once", async () => {
 		const m = await merged();
 		const results = await Promise.allSettled([
@@ -277,7 +336,7 @@ describe("a pending import committed after the merge", () => {
 		const made = await arsUser();
 		const gone = await category(made, "Gone");
 		await run(made, gone.id, null);
-		const service = new CsvService(adminDb);
+		const service = new CsvService(createUserScopedDb(made));
 		await service.importExpensesFromRows(made, [
 			{
 				title: "Imported",
@@ -322,8 +381,16 @@ async function closedBook() {
 	// Snacks files in Dining and Utilities in Rent, frozen into each close.
 	await adminDb.envelopeCategory.createMany({
 		data: [
-			{ bookId: book.id, envelopeId: env.Dining as string, categoryId: snacks.id },
-			{ bookId: book.id, envelopeId: env.Rent as string, categoryId: utilities.id },
+			{
+				bookId: book.id,
+				envelopeId: env.Dining as string,
+				categoryId: snacks.id,
+			},
+			{
+				bookId: book.id,
+				envelopeId: env.Rent as string,
+				categoryId: utilities.id,
+			},
 		],
 	});
 	const start = addMonths(current, -2);
@@ -340,21 +407,37 @@ async function closedBook() {
 			where: { id: book.startingBalanceExpenseId },
 			data: { date: firstDay(start) },
 		});
-	await addRow(s.user.id, { amount: 100, categoryId: s.dining }, midMonth(start));
-	await addRow(s.user.id, { amount: 30, categoryId: snacks.id }, midMonth(start));
+	await addRow(
+		s.user.id,
+		{ amount: 100, categoryId: s.dining },
+		midMonth(start),
+	);
+	await addRow(
+		s.user.id,
+		{ amount: 30, categoryId: snacks.id },
+		midMonth(start),
+	);
 	await addRow(
 		s.user.id,
 		{ amount: 20, categoryId: utilities.id },
 		midMonth(addMonths(current, -1)),
 	);
 	await getMonth(s.user.id);
-	return { ...s, snacks, utilities, bookId: book.id, start };
+	return { ...s, snacks, utilities, bookId: book.id, start, env };
 }
 
+/** A month's envelope figures; the categories an envelope lists are today's setting, not a figure of the month. */
+const figuresOf = (groups: unknown) =>
+	JSON.parse(
+		JSON.stringify(groups, (key, value) =>
+			key === "categoryIds" ? undefined : value,
+		),
+	);
+
 const closedViews = async (b: Awaited<ReturnType<typeof closedBook>>) => ({
-	views: JSON.stringify(
-		await Promise.all(
-			[b.start, addMonths(b.start, 1)].map(async (m) => (await getMonth(b.user.id, m))?.groups),
+	views: await Promise.all(
+		[b.start, addMonths(b.start, 1)].map(async (m) =>
+			figuresOf((await getMonth(b.user.id, m))?.groups),
 		),
 	),
 	closes: (
@@ -388,12 +471,14 @@ describe("closed months", () => {
 	it("is refused, writing nothing, when a closed month filed the rows in another envelope", async () => {
 		const b = await closedBook();
 		const before = await closedViews(b);
-		await expect(run(b.user.id, b.utilities.id, b.dining)).rejects.toMatchObject({
-			cause: { problem: "category_closed_month" },
+		await expect(
+			run(b.user.id, b.utilities.id, b.dining),
+		).rejects.toMatchObject({
+			problem: "category_closed_month",
 		});
 		// A delete files the rows in Everything else, which is another envelope too.
 		await expect(run(b.user.id, b.utilities.id, null)).rejects.toMatchObject({
-			cause: { problem: "category_closed_month" },
+			problem: "category_closed_month",
 		});
 		await expect(
 			fixtureDb.category.count({ where: { id: b.utilities.id } }),
@@ -407,16 +492,14 @@ describe("closed months", () => {
 		await adminDb.envelopeCategory.create({
 			data: {
 				bookId: b.bookId,
-				envelopeId: (
-					await adminDb.envelope.findFirstOrThrow({
-						where: { bookId: b.bookId, name: "Rent" },
-					})
-				).id,
+				envelopeId: b.env.Rent as string,
 				categoryId: idle.id,
 			},
 		});
 		await addRow(b.user.id, { amount: 5, categoryId: idle.id }, new Date());
 		const done = await run(b.user.id, idle.id, b.dining);
-		expect(done.value.rerouted).toHaveLength(1);
+		expect(done.value.rerouted).toEqual([
+			{ bookId: b.bookId, from: b.env.Rent, to: b.env.Dining },
+		]);
 	});
 });

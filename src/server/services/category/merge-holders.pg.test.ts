@@ -7,10 +7,7 @@ import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { forUser } from "~/server/services/preview";
 import { adminDb, fixtureDb } from "~/test/pg-harness";
-import {
-	seedUser,
-	setupInput,
-} from "../envelope/__tests__/pg-fixture";
+import { seedUser, setupInput } from "../envelope/__tests__/pg-fixture";
 import { setupEnvelopeBook } from "../envelope/setup.mutation";
 import { arsUser, category, run, undo } from "./__tests__/merge-kit";
 
@@ -31,7 +28,12 @@ describe("budgets", () => {
 				data: { userId: me, categoryId: src.id, period: october, amount: "50" },
 			}),
 			adminDb.budget.create({
-				data: { userId: me, categoryId: src.id, period: november, amount: "60" },
+				data: {
+					userId: me,
+					categoryId: src.id,
+					period: november,
+					amount: "60",
+				},
 			}),
 		]);
 		await adminDb.budget.create({
@@ -67,9 +69,9 @@ describe("budgets", () => {
 			data: { userId: me, categoryId: src.id, period: october, amount: "75.5" },
 		});
 		const done = await run(me, src.id, null);
-		await expect(
-			adminDb.budget.count({ where: { id: b.id } }),
-		).resolves.toBe(0);
+		await expect(adminDb.budget.count({ where: { id: b.id } })).resolves.toBe(
+			0,
+		);
 		await undo(me, done.value.stash);
 		await expect(
 			adminDb.budget.findUniqueOrThrow({ where: { id: b.id } }),
@@ -175,7 +177,10 @@ describe("envelope links", () => {
 		expect(done.value.rerouted).toEqual([]);
 		await expect(
 			adminDb.envelopeCategory.findUniqueOrThrow({ where: { id: link.id } }),
-		).resolves.toMatchObject({ categoryId: treats.id, envelopeId: b.env.Dining });
+		).resolves.toMatchObject({
+			categoryId: treats.id,
+			envelopeId: b.env.Dining,
+		});
 	});
 
 	it("a delete sends the rows to Everything else and the undo links the category again", async () => {
@@ -194,8 +199,12 @@ describe("envelope links", () => {
 });
 
 describe("income rules", () => {
-	async function ruleFor(bookId: string, envelopeId: string, categoryId: string) {
-		return adminDb.incomeRule.create({
+	async function ruleFor(
+		bookId: string,
+		envelopeId: string,
+		categoryId: string,
+	) {
+		return fixtureDb.incomeRule.create({
 			data: {
 				id: randomUUID(),
 				bookId,
@@ -227,12 +236,30 @@ describe("income rules", () => {
 		).resolves.toMatchObject({ matchValue: gigs.id });
 	});
 
+	it("refuses the undo when the rule that moved was edited since", async () => {
+		const b = await bookFor();
+		const gigs = await category(b.user.id, "Gigs", { kind: "INCOME" });
+		const pay = await category(b.user.id, "Pay", { kind: "INCOME" });
+		const rule = await ruleFor(b.book.id, b.env.Dining as string, gigs.id);
+		const done = await run(b.user.id, gigs.id, pay.id);
+		await fixtureDb.incomeRule.update({
+			where: { id: rule.id },
+			data: { name: "Renamed since" },
+		});
+		await expect(undo(b.user.id, done.value.stash)).rejects.toMatchObject({
+			code: "CONFLICT",
+		});
+		await expect(
+			adminDb.incomeRule.findUniqueOrThrow({ where: { id: rule.id } }),
+		).resolves.toMatchObject({ matchValue: pay.id });
+	});
+
 	it("refuses a delete while a rule names the category, so no rule silently stops matching", async () => {
 		const b = await bookFor();
 		const gigs = await category(b.user.id, "Gigs", { kind: "INCOME" });
 		await ruleFor(b.book.id, b.env.Dining as string, gigs.id);
 		await expect(run(b.user.id, gigs.id, null)).rejects.toMatchObject({
-			cause: { problem: "category_income_rule" },
+			problem: "category_income_rule",
 		});
 		await expect(
 			fixtureDb.category.count({ where: { id: gigs.id } }),
@@ -251,7 +278,7 @@ describe("income rules", () => {
 		await ruleFor(theirs.book.id, theirs.env.Dining as string, gigs.id);
 
 		await expect(run(mine.user.id, gigs.id, pay.id)).rejects.toMatchObject({
-			cause: { problem: "category_income_rule" },
+			problem: "category_income_rule",
 		});
 		await expect(
 			fixtureDb.category.count({ where: { id: gigs.id } }),
