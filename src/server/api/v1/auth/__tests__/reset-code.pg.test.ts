@@ -22,8 +22,11 @@ import { authRouter } from "~/server/api/routers/auth";
 import { createCallerFactory } from "~/server/api/trpc";
 import { keyedHash } from "~/server/lib/keyed-hash";
 import { hashToken } from "~/server/lib/tokens";
+import { resetPasswordHash } from "~/server/services/account-security.service";
 import {
+	InvalidResetTokenError,
 	issueResetCode,
+	lookupPlainResetToken,
 	lookupResetToken,
 	PLAIN_RESET_ORIGINS,
 	RESET_CODE_LENGTH,
@@ -33,13 +36,14 @@ import {
 	redeemResetCode,
 	resetAddressKey,
 	resolveRecoveryToken,
+	spendResetToken,
 } from "~/server/services/auth/reset-tokens";
 import { stayInWindow } from "~/test/rate-window";
 import {
 	commitBody,
 	loadPrimitives,
 	passwordUser,
-	recoverable,
+	recoverable as makeRecoverable,
 	storedHash,
 } from "~/test/recoverable";
 import {
@@ -102,6 +106,13 @@ vi.mock("~/server/services/user-time-zone", async (original) => {
 	spies.zone.mockImplementation(actual.userTimeZone);
 	return { ...actual, userTimeZone: spies.zone };
 });
+
+/** Sign-up sends its own verification mail: a test that counts mail starts from none. */
+async function recoverable() {
+	const k = await makeRecoverable();
+	mail.sendEmail.mockClear();
+	return k;
+}
 
 const routes = contract.auth;
 const MINUTE = 60_000;
@@ -327,6 +338,8 @@ describe("POST /auth/password-reset", () => {
 		const victim = await recoverable();
 		const bystander = await recoverable();
 		const cookie = await webCookieFor(bystander.id);
+		spies.keyring.mockClear();
+		spies.zone.mockClear();
 		await request(victim.email, {
 			headers: { ...cookie, "idempotency-key": `req-${victim.id}` },
 		});
@@ -419,7 +432,27 @@ describe("POST /auth/password-reset/code", () => {
 		expect(await storedHash(k.id)).toBe(before);
 		// The token is still there for recovery, and the code row was not touched by the refusal.
 		expect(await resolveRecoveryToken(token)).toEqual({ userId: k.id });
-		expect(await lookupResetToken(token, PLAIN_RESET_ORIGINS)).toBeNull();
+		// Each layer refuses it on its own: the lookup, the spend, and the
+		// password writer that spends it (the router goes through the lookup first).
+		expect(await lookupPlainResetToken(token)).toBeNull();
+		await expect(
+			spendResetToken(adminDb, {
+				token,
+				userId: k.id,
+				origins: PLAIN_RESET_ORIGINS,
+			}),
+		).rejects.toBeInstanceOf(InvalidResetTokenError);
+		await expect(
+			resetPasswordHash({
+				userId: k.id,
+				hashed: "not-a-real-hash",
+				by: { kind: "email" },
+				token,
+				whenNoCredential: "continue",
+			}),
+		).rejects.toBeInstanceOf(InvalidResetTokenError);
+		expect(await storedHash(k.id)).toBe(before);
+		expect(await phoneRows(k.id)).toHaveLength(1);
 	});
 
 	it("never reads a code's own row as a token, even when the row is keyed by a hash someone knows", async () => {
@@ -460,7 +493,7 @@ describe("POST /auth/password-reset/code", () => {
 			[k.email, wrongCode(live)],
 			[k.email, "short"],
 			[k.email, "ÄÖÜÄÖÜÄÖ"],
-			[k.email, "O".repeat(40)],
+			[k.email, "O".repeat(32)],
 			[k.email, expired],
 			[k.email, used],
 			[k.email, theirs],
@@ -577,9 +610,12 @@ describe("POST /auth/password-reset/code", () => {
 			now: new Date(late.getTime() - 1),
 		});
 		const inside = new Date(late.getTime() - 1);
-		expect(await resolveRecoveryToken(token, inside)).toEqual({ userId: k.id });
-		expect(await resolveRecoveryToken(token, new Date(inside.getTime() + 1_000)))
-			.toBeNull();
+		// The token's own 15 minutes run from when the code was swapped.
+		const expires = new Date(inside.getTime() + RESET_CODE_TTL_MS);
+		expect(
+			await resolveRecoveryToken(token, new Date(expires.getTime() - 1)),
+		).toEqual({ userId: k.id });
+		expect(await resolveRecoveryToken(token, expires)).toBeNull();
 	});
 
 	it("makes no code for an address that changed after it was read", async () => {

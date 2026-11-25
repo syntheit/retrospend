@@ -15,12 +15,22 @@
 -- Checked by src/server/services/auth/reset-tokens-migration.pg.test.ts.
 -- Idempotent: running it twice changes nothing more.
 
-DELETE FROM "password_reset_token" WHERE "origin" IN ('code', 'phone');
+DO $$
+BEGIN
+  -- Only while the migration is in place: after it (or the older rollback) the
+  -- column is gone, and so is everything below.
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'password_reset_token' AND column_name = 'codeHash'
+  ) THEN
+    DELETE FROM "password_reset_token" WHERE "origin" IN ('code', 'phone');
+    ALTER TABLE "password_reset_token" DROP CONSTRAINT IF EXISTS "password_reset_token_code_check";
+    ALTER TABLE "password_reset_token" DROP CONSTRAINT IF EXISTS "password_reset_token_origin_check";
+    ALTER TABLE "password_reset_token"
+      ADD CONSTRAINT "password_reset_token_origin_check"
+      CHECK ("origin" IN ('email', 'admin'));
+    ALTER TABLE "password_reset_token" DROP COLUMN "codeHash";
+  END IF;
+END $$;
 
-ALTER TABLE "password_reset_token" DROP CONSTRAINT IF EXISTS "password_reset_token_code_check";
-ALTER TABLE "password_reset_token" DROP CONSTRAINT IF EXISTS "password_reset_token_origin_check";
-ALTER TABLE "password_reset_token"
-  ADD CONSTRAINT "password_reset_token_origin_check"
-  CHECK ("origin" IN ('email', 'admin'));
-ALTER TABLE "password_reset_token" DROP COLUMN IF EXISTS "codeHash";
 DELETE FROM "_prisma_migrations" WHERE "migration_name" = '20261124100000_reset_code';
