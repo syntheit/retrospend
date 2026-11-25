@@ -62,13 +62,44 @@
 	"recover": {
 		"enterTitle": "Utilise ta clé de récupération",
 		"enterBody": "Saisis les 9 groupes ou colle la clé entière.",
-		"typo": "Vérifie la clé, elle semble contenir une erreur.",
-		"wrongKey": "Ce n’est pas la clé de récupération de ce compte.",
-		"unavailable": "Ce compte n’a pas de clé de récupération.",
 		"newPasswordTitle": "Choisis un nouveau mot de passe",
 		"newPasswordBody": "Ta clé de récupération a ouvert tes données. Choisis un nouveau mot de passe.",
 		"unlock": "Se connecter",
-		"apiKeysRemoved": "Tes clés d’API ont été supprimées."
+		"apiKeysRemoved": "Tes clés d’API ont été supprimées.",
+		"continue": "Continuer",
+		"save": "Définir le mot de passe",
+		"saving": "Définition de ton mot de passe",
+		"linkFailed": "Impossible de vérifier ce lien.",
+		"choose": {
+			"titleOn": "Ouvre tes données protégées",
+			"titleOff": "Réinitialise ton mot de passe",
+			"bodyOn": "Ton mot de passe ne peut pas être réinitialisé par e-mail. Utilise l’une de ces options.",
+			"bodyOff": "Utilise ta clé de récupération pour garder tes clés.",
+			"useKey": "Utiliser la clé",
+			"nothingWorks": "Rien ne marche",
+			"resetMeta": "Supprime tes clés et la clé de récupération.",
+			"reset": "Réinitialiser le mot de passe"
+		},
+		"errors": {
+			"typo": "Vérifie la clé, elle semble contenir une erreur.",
+			"wrongKey": "Ce n’est pas la clé de récupération de ce compte.",
+			"unavailable": "Ce compte n’a pas de clé de récupération.",
+			"linkExpired": "Ce lien a expiré ou a déjà été utilisé.",
+			"keysChanged": "Tes clés ont changé. Recommence.",
+			"tooMany": "Trop de tentatives, attends une minute et réessaie.",
+			"notOffered": "La protection avancée n’est pas disponible ici.",
+			"wrongPassword": "Mot de passe incorrect",
+			"notSaved": "Ta nouvelle clé n’a pas pu être enregistrée. Ton ancienne clé fonctionne toujours.",
+			"failed": "Impossible de terminer. Réessaie."
+		}
+	},
+	"newKey": {
+		"title": "Créer une nouvelle clé",
+		"body": "Ton ancienne clé cesse de fonctionner dès que la nouvelle est enregistrée.",
+		"making": "Création de ta clé",
+		"saving": "Enregistrement de ta clé",
+		"continue": "Continuer",
+		"save": "Enregistrer la clé"
 	},
 	"methods": {
 		"device": "Un autre appareil",
@@ -92,6 +123,7 @@
 		"deviceRecordNotSaved": "Ton nouveau mot de passe est défini, reconnecte-toi sur cet appareil."
 	},
 	"toast": {
-		"keysSaved": "Clés enregistrées"
+		"keysSaved": "Clés enregistrées",
+		"newKeySaved": "Nouvelle clé de récupération enregistrée"
 	}
 }

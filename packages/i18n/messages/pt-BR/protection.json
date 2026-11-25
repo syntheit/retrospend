@@ -62,13 +62,44 @@
 	"recover": {
 		"enterTitle": "Use sua chave de recuperação",
 		"enterBody": "Digite os 9 grupos ou cole a chave inteira.",
-		"typo": "Confira a chave, ela parece ter um erro.",
-		"wrongKey": "Essa não é a chave de recuperação desta conta.",
-		"unavailable": "Esta conta não tem chave de recuperação.",
 		"newPasswordTitle": "Defina uma nova senha",
 		"newPasswordBody": "Sua chave de recuperação abriu seus dados. Escolha uma nova senha.",
 		"unlock": "Entrar",
-		"apiKeysRemoved": "Suas chaves de API foram removidas."
+		"apiKeysRemoved": "Suas chaves de API foram removidas.",
+		"continue": "Continuar",
+		"save": "Definir senha",
+		"saving": "Definindo sua senha",
+		"linkFailed": "Não foi possível verificar este link.",
+		"choose": {
+			"titleOn": "Abra seus dados protegidos",
+			"titleOff": "Redefina sua senha",
+			"bodyOn": "Sua senha não pode ser redefinida por e-mail. Use uma destas opções.",
+			"bodyOff": "Use sua chave de recuperação para manter suas chaves.",
+			"useKey": "Usar chave",
+			"nothingWorks": "Nada funciona",
+			"resetMeta": "Remove suas chaves e a chave de recuperação.",
+			"reset": "Redefinir senha"
+		},
+		"errors": {
+			"typo": "Confira a chave, ela parece ter um erro.",
+			"wrongKey": "Essa não é a chave de recuperação desta conta.",
+			"unavailable": "Esta conta não tem chave de recuperação.",
+			"linkExpired": "Este link expirou ou já foi usado.",
+			"keysChanged": "Suas chaves mudaram. Comece de novo.",
+			"tooMany": "Muitas tentativas, aguarde um minuto e tente de novo.",
+			"notOffered": "A proteção avançada não está disponível aqui.",
+			"wrongPassword": "Senha incorreta",
+			"notSaved": "Não foi possível salvar sua nova chave. Sua chave antiga ainda funciona.",
+			"failed": "Não foi possível concluir. Tente de novo."
+		}
+	},
+	"newKey": {
+		"title": "Criar nova chave",
+		"body": "Sua chave antiga deixa de funcionar quando a nova é salva.",
+		"making": "Criando sua chave",
+		"saving": "Salvando sua chave",
+		"continue": "Continuar",
+		"save": "Salvar chave"
 	},
 	"methods": {
 		"device": "Outro dispositivo",
@@ -92,6 +123,7 @@
 		"deviceRecordNotSaved": "Sua nova senha foi definida, então entre de novo neste dispositivo."
 	},
 	"toast": {
-		"keysSaved": "Chaves salvas"
+		"keysSaved": "Chaves salvas",
+		"newKeySaved": "Nova chave de recuperação salva"
 	}
 }

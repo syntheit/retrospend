@@ -62,13 +62,44 @@
 	"recover": {
 		"enterTitle": "Usá tu clave de recuperación",
 		"enterBody": "Escribí los 9 grupos o pegá la clave completa.",
-		"typo": "Revisá la clave, parece tener un error.",
-		"wrongKey": "Esa no es la clave de recuperación de esta cuenta.",
-		"unavailable": "Esta cuenta no tiene clave de recuperación.",
 		"newPasswordTitle": "Elegí una contraseña nueva",
 		"newPasswordBody": "Tu clave de recuperación abrió tus datos. Elegí una contraseña nueva.",
 		"unlock": "Iniciar sesión",
-		"apiKeysRemoved": "Se eliminaron tus claves de API."
+		"apiKeysRemoved": "Se eliminaron tus claves de API.",
+		"continue": "Continuar",
+		"save": "Definir contraseña",
+		"saving": "Definiendo tu contraseña",
+		"linkFailed": "No se pudo comprobar este enlace.",
+		"choose": {
+			"titleOn": "Abrí tus datos protegidos",
+			"titleOff": "Restablecé tu contraseña",
+			"bodyOn": "Tu contraseña no se puede restablecer por correo. Usá una de estas opciones.",
+			"bodyOff": "Usá tu clave de recuperación para conservar tus claves.",
+			"useKey": "Usar clave",
+			"nothingWorks": "Nada funciona",
+			"resetMeta": "Elimina tus claves y la clave de recuperación.",
+			"reset": "Restablecer contraseña"
+		},
+		"errors": {
+			"typo": "Revisá la clave, parece tener un error.",
+			"wrongKey": "Esa no es la clave de recuperación de esta cuenta.",
+			"unavailable": "Esta cuenta no tiene clave de recuperación.",
+			"linkExpired": "Este enlace venció o ya se usó.",
+			"keysChanged": "Tus claves cambiaron. Empezá de nuevo.",
+			"tooMany": "Demasiados intentos, esperá un minuto y volvé a intentar.",
+			"notOffered": "La protección avanzada no está disponible acá.",
+			"wrongPassword": "Contraseña incorrecta",
+			"notSaved": "No se pudo guardar tu clave nueva. Tu clave anterior sigue funcionando.",
+			"failed": "No se pudo completar. Volvé a intentar."
+		}
+	},
+	"newKey": {
+		"title": "Crear clave nueva",
+		"body": "Tu clave anterior deja de funcionar cuando se guarda la nueva.",
+		"making": "Creando tu clave",
+		"saving": "Guardando tu clave",
+		"continue": "Continuar",
+		"save": "Guardar clave"
 	},
 	"methods": {
 		"device": "Otro dispositivo",
@@ -92,6 +123,7 @@
 		"deviceRecordNotSaved": "Tu nueva contraseña está establecida, así que volvé a iniciar sesión en este dispositivo."
 	},
 	"toast": {
-		"keysSaved": "Claves guardadas"
+		"keysSaved": "Claves guardadas",
+		"newKeySaved": "Clave de recuperación nueva guardada"
 	}
 }

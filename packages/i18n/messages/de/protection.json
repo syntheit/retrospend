@@ -62,13 +62,44 @@
 	"recover": {
 		"enterTitle": "Wiederherstellungsschlüssel verwenden",
 		"enterBody": "Gib die 9 Gruppen ein oder füge den ganzen Schlüssel ein.",
-		"typo": "Prüfe den Schlüssel, er enthält wohl einen Tippfehler.",
-		"wrongKey": "Das ist nicht der Wiederherstellungsschlüssel dieses Kontos.",
-		"unavailable": "Dieses Konto hat keinen Wiederherstellungsschlüssel.",
 		"newPasswordTitle": "Neues Passwort festlegen",
 		"newPasswordBody": "Dein Wiederherstellungsschlüssel hat deine Daten geöffnet. Wähle ein neues Passwort.",
 		"unlock": "Anmelden",
-		"apiKeysRemoved": "Deine API-Schlüssel wurden entfernt."
+		"apiKeysRemoved": "Deine API-Schlüssel wurden entfernt.",
+		"continue": "Weiter",
+		"save": "Passwort festlegen",
+		"saving": "Dein Passwort wird festgelegt",
+		"linkFailed": "Der Link konnte nicht geprüft werden.",
+		"choose": {
+			"titleOn": "Geschützte Daten öffnen",
+			"titleOff": "Passwort zurücksetzen",
+			"bodyOn": "Dein Passwort kann nicht per E-Mail zurückgesetzt werden. Nutze eine dieser Möglichkeiten.",
+			"bodyOff": "Nutze deinen Wiederherstellungsschlüssel, um deine Schlüssel zu behalten.",
+			"useKey": "Schlüssel verwenden",
+			"nothingWorks": "Nichts klappt",
+			"resetMeta": "Entfernt deine Schlüssel und den Wiederherstellungsschlüssel.",
+			"reset": "Passwort zurücksetzen"
+		},
+		"errors": {
+			"typo": "Prüfe den Schlüssel, er enthält wohl einen Tippfehler.",
+			"wrongKey": "Das ist nicht der Wiederherstellungsschlüssel dieses Kontos.",
+			"unavailable": "Dieses Konto hat keinen Wiederherstellungsschlüssel.",
+			"linkExpired": "Dieser Link ist abgelaufen oder wurde schon verwendet.",
+			"keysChanged": "Deine Schlüssel haben sich geändert. Beginne von vorn.",
+			"tooMany": "Zu viele Versuche, warte eine Minute und versuche es erneut.",
+			"notOffered": "Erweiterter Schutz ist hier nicht verfügbar.",
+			"wrongPassword": "Falsches Passwort",
+			"notSaved": "Dein neuer Schlüssel konnte nicht gespeichert werden. Dein alter Schlüssel funktioniert weiterhin.",
+			"failed": "Das hat nicht geklappt. Versuch es erneut."
+		}
+	},
+	"newKey": {
+		"title": "Neuen Schlüssel erstellen",
+		"body": "Dein alter Schlüssel funktioniert nicht mehr, sobald der neue gespeichert ist.",
+		"making": "Dein Schlüssel wird erstellt",
+		"saving": "Dein Schlüssel wird gespeichert",
+		"continue": "Weiter",
+		"save": "Schlüssel speichern"
 	},
 	"methods": {
 		"device": "Weiteres Gerät",
@@ -92,6 +123,7 @@
 		"deviceRecordNotSaved": "Dein neues Passwort ist gesetzt, melde dich auf diesem Gerät noch einmal an."
 	},
 	"toast": {
-		"keysSaved": "Schlüssel gespeichert"
+		"keysSaved": "Schlüssel gespeichert",
+		"newKeySaved": "Neuer Wiederherstellungsschlüssel gespeichert"
 	}
 }
