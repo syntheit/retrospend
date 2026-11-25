@@ -64,7 +64,10 @@ type Commit = {
 function server(
 	script: {
 		/** n counts commits: lose its answer after spending the token, refuse it, or let it through. */
-		commit?: (n: number, spend: () => void) => "lost" | "refuse" | undefined;
+		commit?: (
+			n: number,
+			spend: () => void,
+		) => "lost" | "refuse" | "hang" | undefined;
 	} = {},
 ) {
 	let live = true;
@@ -109,6 +112,7 @@ function server(
 		commits.push(body);
 		if (!live) throw refusal(404, "invalid_token");
 		const outcome = script.commit?.(commits.length, spend);
+		if (outcome === "hang") return new Promise<never>(() => {});
 		if (outcome === "refuse") throw refusal(429, "rate_limited");
 		if (outcome === "lost") throw new TypeError("connection lost");
 		spend();
@@ -179,7 +183,7 @@ describe("phone recovery", () => {
 			"unconfirmed",
 		);
 		expect(await s.made.finish(handle, { password: NEW })).toBe("linkSpent");
-		expect(s.checkRecovery).toHaveBeenCalledWith({ token: TOKEN });
+		expect(s.checkRecovery).toHaveBeenCalledWith({ token: TOKEN }, expect.anything());
 		expect(s.recover).toHaveBeenCalledTimes(1);
 	});
 
@@ -217,6 +221,76 @@ describe("phone recovery", () => {
 	});
 });
 
+describe("a request that never answers", () => {
+	afterEach(() => jest.useRealTimers());
+
+	it("ends a commit as an unknown outcome after 30 seconds: not busy for good, the same body goes again, and the link check goes first", async () => {
+		const s = server({ commit: (n) => (n === 1 ? "hang" : undefined) });
+		const handle = await s.made.begin(RK.text);
+		jest.useFakeTimers();
+		const first = s.made.finish(handle, { password: NEW });
+		const settled = codeOf(first);
+		await jest.advanceTimersByTimeAsync(29_000);
+		expect(s.commits).toHaveLength(1);
+		await jest.advanceTimersByTimeAsync(1_000);
+		// The core's own word for "the send may have committed".
+		expect(await settled).toBe("unconfirmed");
+		jest.useRealTimers();
+		// Retry with another password typed: the very same request goes again.
+		expect(await s.made.finish(handle, { password: ANOTHER })).toBe("set");
+		expect(s.checkRecovery).toHaveBeenCalledTimes(1);
+		expect(s.commits).toHaveLength(2);
+		expect(s.commits[1]).toEqual(s.commits[0]);
+	});
+
+	it.each([
+		["asking for a code", (a: never) => h.requestResetCode(a, "ana@example.com"), { requestResetCode: true }],
+		["swapping the code", (a: never) => h.redeemResetCode(a, "ana@example.com", "7K2M9PQ4"), { redeemResetCode: true }],
+	])("%s gives up as a network failure", async (_name, run, which) => {
+		jest.useFakeTimers();
+		const signals: AbortSignal[] = [];
+		const hang = jest.fn(async (_b: unknown, o: { signal: AbortSignal }) => {
+			signals.push(o.signal);
+			return new Promise<never>(() => {});
+		});
+		const result = run(
+			Object.fromEntries(Object.keys(which).map((k) => [k, hang])) as never,
+		);
+		await jest.advanceTimersByTimeAsync(30_000);
+		expect(await result).toEqual({ ok: false, reason: "network" });
+		expect(signals[0]?.aborted).toBe(true);
+	});
+
+	it("gives up on the link check as unavailable, never as an unknown link", async () => {
+		jest.useFakeTimers();
+		const a = {
+			checkRecovery: jest.fn(
+				async (): Promise<never> => new Promise<never>(() => {}),
+			),
+		} as never;
+		const result = h.checkRecoveryLink(a, "t").then(
+			() => "resolved",
+			(e: unknown) => (e instanceof KeyFlowError ? e.code : "other"),
+		);
+		await jest.advanceTimersByTimeAsync(30_000);
+		expect(await result).toBe("unavailable");
+	});
+
+	it("takes a late answer of an aborted request for nothing", async () => {
+		jest.useFakeTimers();
+		let late: (v: unknown) => void = () => undefined;
+		const a = {
+			redeemResetCode: jest.fn(
+				async () => new Promise((resolve) => (late = resolve)),
+			),
+		} as never;
+		const result = h.redeemResetCode(a, "ana@example.com", "7K2M9PQ4");
+		await jest.advanceTimersByTimeAsync(30_000);
+		expect(await result).toEqual({ ok: false, reason: "network" });
+		late({ token: "t" });
+	});
+});
+
 describe("asking for and swapping the reset code", () => {
 	const api = (over: Record<string, unknown> = {}) =>
 		({
@@ -231,7 +305,10 @@ describe("asking for and swapping the reset code", () => {
 	it("asks with the address as typed less its edges, and says nothing about the account", async () => {
 		const a = api();
 		const first = await h.requestResetCode(a, "  ana@example.com ");
-		expect(a.requestResetCode).toHaveBeenCalledWith({ email: "ana@example.com" });
+		expect(a.requestResetCode).toHaveBeenCalledWith(
+			{ email: "ana@example.com" },
+			expect.anything(),
+		);
 		expect(first).toEqual({ ok: true, value: null });
 	});
 
@@ -267,10 +344,10 @@ describe("asking for and swapping the reset code", () => {
 	it("reads the typed code the way the recovery key is read, and sends its normal form", async () => {
 		const a = api();
 		const swapped = await h.redeemResetCode(a, "ana@example.com", " 7k2m-9pq4 ");
-		expect(a.redeemResetCode).toHaveBeenCalledWith({
-			email: "ana@example.com",
-			code: "7K2M9PQ4",
-		});
+		expect(a.redeemResetCode).toHaveBeenCalledWith(
+			{ email: "ana@example.com", code: "7K2M9PQ4" },
+			expect.anything(),
+		);
 		expect(swapped).toEqual({ ok: true, value: "t" });
 		// O, I and L are read as 0 and 1.
 		await h.redeemResetCode(a, "ana@example.com", "oilO 7K2M");
@@ -328,7 +405,7 @@ describe("checking what the token leads to", () => {
 			keys: "recovery",
 			protectionOn: false,
 		});
-		expect(a.checkRecovery).toHaveBeenCalledWith({ token: "t" });
+		expect(a.checkRecovery).toHaveBeenCalledWith({ token: "t" }, expect.anything());
 	});
 
 	it("a token the server does not know is invalid, not an error", async () => {

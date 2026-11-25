@@ -14,7 +14,11 @@ import {
 import { newClientId } from "@/data/ids";
 import type { SignInStep } from "./auth-api";
 import { paintFrames } from "./paint";
-import { call, keyedRecord, type SecretDeps } from "./sign-in-secret";
+import {
+	callWithTimeout,
+	keyedRecord,
+	type SecretDeps,
+} from "./sign-in-secret";
 
 /** Sign-in as the session holds it: the password step, then the code when the account has two-factor. */
 export interface SignInAgain {
@@ -63,9 +67,11 @@ function ports(input: PhoneEnableInput, deps: PhoneEnableDeps): EnablePorts {
 		userId: input.userId,
 		newKey: input.newKey ?? newClientId,
 		enable: async (body, idempotencyKey) => {
-			await call(() => input.api.enable(body, { context: { idempotencyKey } }));
+			await callWithTimeout((o) =>
+				input.api.enable(body, { ...o, context: { idempotencyKey } }),
+			);
 		},
-		open: (body) => call(() => input.api.openKeys(body)),
+		open: (body) => callWithTimeout((o) => input.api.openKeys(body, o)),
 		signIn: async (password) =>
 			signInStepOf(await input.session().signIn(input.email, password)),
 		verifyCode: async (code) =>

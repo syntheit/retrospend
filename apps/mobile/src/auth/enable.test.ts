@@ -68,6 +68,8 @@ function rig(
 		enable?: (n: number) => void;
 		/** The send commits and then its answer is lost (no answer at all). */
 		lose?: (n: number) => boolean;
+		/** The send never answers (and has stored nothing yet). */
+		hang?: (n: number) => boolean;
 		/** The send commits and a gateway answers 502. */
 		gateway?: (n: number) => boolean;
 		/** The keystore cannot be read. */
@@ -82,6 +84,7 @@ function rig(
 	let enables = 0;
 	const enable = jest.fn(async (body: Sent, _opts: unknown) => {
 		const n = enables++;
+		if (script.hang?.(n)) return new Promise<never>(() => {});
 		if (script.lose?.(n)) {
 			stored = body;
 			throw new TypeError("connection lost");
@@ -169,14 +172,20 @@ describe("phone enable", () => {
 
 		expect(r.enable).toHaveBeenCalledTimes(1);
 		const [body, opts] = r.enable.mock.calls[0] as [Sent, unknown];
-		expect(opts).toEqual({ context: { idempotencyKey: "idem-1" } });
+		expect(opts).toEqual({
+			context: { idempotencyKey: "idem-1" },
+			signal: expect.anything(),
+		});
 		expect(body.currentPassword).toBe(OLD);
 		expect("totpCode" in body).toBe(false);
 		expect(body.wraps).toHaveLength(4);
 		expect(JSON.stringify(body)).not.toContain(NEW);
 		expect(JSON.stringify(body)).not.toContain(draft.keyText);
 
-		expect(r.openKeys).toHaveBeenCalledWith({ authKey: body.authKey });
+		expect(r.openKeys).toHaveBeenCalledWith(
+			{ authKey: body.authKey },
+			expect.anything(),
+		);
 		// Recorded as keyed in the keystore, under a hash of the address.
 		expect([...r.items.values()]).toEqual(["1"]);
 		expect([...r.items.keys()][0]).not.toContain("ana");
@@ -443,5 +452,38 @@ describe("signInStepOf", () => {
 		expect(h.signInStepOf({ status: "signedIn" })).toEqual({
 			status: "signedIn",
 		});
+	});
+});
+
+describe("phone enable, a request that never answers", () => {
+	afterEach(() => jest.useRealTimers());
+
+	it("gives up on a send after 30 seconds, reads the server back, and sends again under a new Idempotency-Key when nothing was stored", async () => {
+		const r = rig({ hang: (n) => n === 0 });
+		const draft = await r.made.makeKeys(NEW);
+		jest.useFakeTimers();
+		const first = code(r.made.save(draft, { password: OLD, code: null }));
+		await jest.advanceTimersByTimeAsync(29_000);
+		expect(r.enable).toHaveBeenCalledTimes(1);
+		await jest.advanceTimersByTimeAsync(1_000);
+		// Not final: the person can try again.
+		expect(isFinalFailure(await first)).toBe(false);
+		jest.useRealTimers();
+		await r.made.save(draft, { password: OLD, code: null });
+		expect(r.enable).toHaveBeenCalledTimes(2);
+		const keys = (r.enable.mock.calls as [unknown, { context: { idempotencyKey: string } }][]).map(
+			(c) => c[1].context.idempotencyKey,
+		);
+		expect(keys[1]).not.toBe(keys[0]);
+	});
+
+	it("gives up on the read-back too, as a failure that is not final", async () => {
+		const r = rig({ open: () => new Promise<never>(() => {}) });
+		const draft = await r.made.makeKeys(NEW);
+		jest.useFakeTimers();
+		const run = code(r.made.save(draft, { password: OLD, code: null }));
+		await jest.advanceTimersByTimeAsync(30_000);
+		expect(isFinalFailure(await run)).toBe(false);
+		expect(r.openKeys).toHaveBeenCalledTimes(1);
 	});
 });

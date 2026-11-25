@@ -11,7 +11,11 @@ import {
 } from "@retrospend/crypto/client";
 import { newClientId } from "@/data/ids";
 import { paintFrames } from "./paint";
-import { call, lookupPort, type SecretDeps } from "./sign-in-secret";
+import {
+	callWithTimeout,
+	lookupPort,
+	type SecretDeps,
+} from "./sign-in-secret";
 
 export type PhoneNewKeyInput = {
 	api: Pick<
@@ -38,10 +42,13 @@ function ports(
 		lookup: lookupPort({ route: "keys", ask: () => input.api.keys() }),
 		lookupRoute: "keys",
 		userId: input.userId,
-		open: (body) => call(() => input.api.openKeys(body)),
+		open: (body) => callWithTimeout((o) => input.api.openKeys(body, o)),
 		commit: async (body, idempotencyKey) => {
-			await call(() =>
-				input.api.newRecoveryKey(body, { context: { idempotencyKey } }),
+			await callWithTimeout((o) =>
+				input.api.newRecoveryKey(body, {
+					...o,
+					context: { idempotencyKey },
+				}),
 			);
 		},
 		newKey: input.newKey ?? newClientId,

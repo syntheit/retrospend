@@ -231,6 +231,8 @@ describe("RecoverSheet, the new password", () => {
 		finish.mockRejectedValueOnce(new KeyFlowError("unconfirmed"));
 		await pressAsync(tree, "Set password");
 		expect(words(tree)).toContain("We couldn't confirm it. Try again.");
+		// The wait is over: the sheet can be closed, and Retry sends the same request.
+		expect(lastSheet().locked).toBe(false);
 		for (const label of ["New password", "Confirm new password"])
 			expect(group2(tree, label)?.props.editable).toBe(false);
 		await pressAsync(tree, "Set password");

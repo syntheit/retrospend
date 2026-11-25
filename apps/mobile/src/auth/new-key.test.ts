@@ -54,11 +54,12 @@ const refusal = (status: number, code?: string) =>
 
 type Sent = { currentAuthKey: string; wrappedRecoveryKey: string };
 
-function rig(over: { store?: boolean } = {}) {
+function rig(over: { store?: boolean; hang?: "commit" } = {}) {
 	let wrap: Uint8Array = new Uint8Array(SYMMETRIC_WRAP_BYTES).fill(7);
 	const pair = real.boxKeypair();
+	const hung = { commit: 0 };
 	const keys = jest.fn(async () => ({ kdf: KDF }));
-	const openKeys = jest.fn(async (body: { authKey: string }) => {
+	const openKeys = jest.fn(async (body: { authKey: string }, _o?: unknown) => {
 		if (body.authKey !== AUTH) throw refusal(400, "wrong_password");
 		return {
 			version: 4,
@@ -84,6 +85,9 @@ function rig(over: { store?: boolean } = {}) {
 		};
 	});
 	const newRecoveryKey = jest.fn(async (body: Sent, _opts: unknown) => {
+		if (over.hang === "commit" && hung.commit++ === 0) {
+			return new Promise<never>(() => {});
+		}
 		if (over.store !== false)
 			wrap = fromBase64Url(body.wrappedRecoveryKey) as Uint8Array;
 		return { version: 5 };
@@ -114,7 +118,10 @@ describe("phone Make new key", () => {
 		await r.made.save(draft);
 		expect(r.newRecoveryKey).toHaveBeenCalledTimes(1);
 		const [body, opts] = r.newRecoveryKey.mock.calls[0] as [Sent, unknown];
-		expect(opts).toEqual({ context: { idempotencyKey: "idem-1" } });
+		expect(opts).toEqual({
+			context: { idempotencyKey: "idem-1" },
+			signal: expect.anything(),
+		});
 		expect(body.currentAuthKey).toBe(AUTH);
 		const wire = JSON.stringify(body);
 		expect(wire).not.toContain(MASTER.password);
@@ -143,5 +150,38 @@ describe("phone Make new key", () => {
 		draft.wipe();
 		expect(await codeOf(r.made.save(draft))).toBe("failed");
 		expect(r.newRecoveryKey).not.toHaveBeenCalled();
+	});
+});
+
+describe("phone Make new key, a request that never answers", () => {
+	afterEach(() => jest.useRealTimers());
+
+	it("gives up on the keys read after 30 seconds as a network failure, with nothing sent", async () => {
+		const r = rig();
+		jest.useFakeTimers();
+		(r.openKeys as jest.Mock).mockImplementationOnce(
+			() => new Promise<never>(() => {}),
+		);
+		const made = codeOf(r.made.makeKey(MASTER.password));
+		await jest.advanceTimersByTimeAsync(30_000);
+		expect(await made).toBe("unavailable");
+		expect(r.newRecoveryKey).not.toHaveBeenCalled();
+	});
+
+	it("ends a save whose commit never answers as an unknown outcome, then reads the server back before anything is sent again", async () => {
+		const r = rig({ hang: "commit" });
+		const draft = await r.made.makeKey(MASTER.password);
+		jest.useFakeTimers();
+		const first = codeOf(r.made.save(draft));
+		await jest.advanceTimersByTimeAsync(30_000);
+		expect(await first).toBe("unavailable");
+		jest.useRealTimers();
+		const opens = r.openKeys.mock.calls.length;
+		// The read-back finds nothing stored, so the same key goes out again.
+		await r.made.save(draft);
+		expect(r.openKeys.mock.calls.length).toBeGreaterThan(opens);
+		expect(r.newRecoveryKey).toHaveBeenCalledTimes(2);
+		const [a, b] = r.newRecoveryKey.mock.calls.map((c) => c[0] as Sent);
+		expect(b?.wrappedRecoveryKey).toBe(a?.wrappedRecoveryKey);
 	});
 });

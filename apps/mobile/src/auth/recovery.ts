@@ -20,7 +20,7 @@ import {
 } from "@retrospend/crypto/client";
 import { getPrimitives } from "@/crypto/native";
 import { paintFrames } from "./paint";
-import { call, type SecretDeps } from "./sign-in-secret";
+import { callWithTimeout, type SecretDeps } from "./sign-in-secret";
 
 /** The public auth routes the recovery needs: none of them takes a session. */
 export type RecoveryApi = Pick<
@@ -83,7 +83,9 @@ export async function requestResetCode(
 	email: string,
 ): Promise<CodeResult<null>> {
 	try {
-		await call(() => api.requestResetCode({ email: email.trim() }));
+		await callWithTimeout((o) =>
+			api.requestResetCode({ email: email.trim() }, o),
+		);
 		return { ok: true, value: null };
 	} catch (error) {
 		return { ok: false, reason: requestFailure(failureOf(error)) };
@@ -103,8 +105,8 @@ export async function redeemResetCode(
 	const code = readResetCode(typed);
 	if (code === null) return { ok: false, reason: "typo" };
 	try {
-		const answer = (await call(() =>
-			api.redeemResetCode({ email: email.trim(), code }),
+		const answer = (await callWithTimeout((o) =>
+			api.redeemResetCode({ email: email.trim(), code }, o),
 		)) as { token?: unknown } | null;
 		const token = answer?.token;
 		if (typeof token !== "string" || token === "")
@@ -125,7 +127,9 @@ export async function checkRecoveryLink(
 	token: string,
 ): Promise<RecoveryLink | "invalid"> {
 	try {
-		return readRecoveryLink(await call(() => api.checkRecovery({ token })));
+		return readRecoveryLink(
+			await callWithTimeout((o) => api.checkRecovery({ token }, o)),
+		);
 	} catch (error) {
 		if (failureOf(error) === "tokenExpired") return "invalid";
 		throw error;
@@ -144,12 +148,13 @@ function ports(
 	return {
 		primitives: deps.primitives,
 		paint: deps.paint ?? paintFrames,
-		begin: (body) => call(() => api.beginRecovery({ token, ...body })),
+		begin: (body) =>
+			callWithTimeout((o) => api.beginRecovery({ token, ...body }, o)),
 		check: async () => {
-			await call(() => api.checkRecovery({ token }));
+			await callWithTimeout((o) => api.checkRecovery({ token }, o));
 		},
 		commit: async (body) => {
-			await call(() => api.recover({ token, ...body }));
+			await callWithTimeout((o) => api.recover({ token, ...body }, o));
 		},
 	};
 }

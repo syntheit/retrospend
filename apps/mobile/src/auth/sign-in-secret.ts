@@ -283,6 +283,41 @@ export async function call<T>(run: () => Promise<T>): Promise<T> {
 	}
 }
 
+/** How long a request of the recovery, Make new key and enable flows may take before it counts as a lost answer. Argon2id is not in it. */
+export const REQUEST_TIMEOUT_MS = 30_000;
+
+/**
+ * `call` with a request timeout: the one place the phone bounds the network
+ * part of these flows (the client has no timeout of its own, and Android's
+ * default read timeout is unlimited). A request with no answer by then is
+ * aborted and ends as `unavailable`, the same as a lost connection, so a
+ * commit that may have been stored is settled by the shared core's read-back
+ * and a screen that waits on it is never held for good. The late answer of an
+ * aborted request is ignored.
+ */
+export function callWithTimeout<T>(
+	run: (options: { signal: AbortSignal }) => Promise<T>,
+	ms: number = REQUEST_TIMEOUT_MS,
+): Promise<T> {
+	return new Promise<T>((resolve, reject) => {
+		const controller = new AbortController();
+		const timer = setTimeout(() => {
+			controller.abort();
+			reject(new KeyFlowError("unavailable"));
+		}, ms);
+		call(() => run({ signal: controller.signal })).then(
+			(value) => {
+				clearTimeout(timer);
+				resolve(value);
+			},
+			(error: unknown) => {
+				clearTimeout(timer);
+				reject(error);
+			},
+		);
+	});
+}
+
 function rotatePorts(input: RotateInput, deps: SecretDeps): RotatePorts {
 	return {
 		...portsFor(input, deps),
