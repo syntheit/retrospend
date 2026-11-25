@@ -9,6 +9,7 @@ import { api } from "~/trpc/react";
 import { type Choices, withMatched } from "./choices";
 import { colorFor, type MatchPick } from "./match-sheet";
 import type { CategoryPick } from "./row-controls";
+import { undoCreated } from "./undo-created";
 
 /**
  * Match categories' Apply: creates the categories you chose to create (real
@@ -74,15 +75,20 @@ export function useMatch({
 				: t("done", { count }),
 			{
 				undo: async () => {
-					// Refused when a created category holds expenses by now (the import
-					// committed): it keeps them rather than uncategorizing them, and the
-					// toast says the undo failed.
-					for (const c of created)
-						await remove.mutateAsync({
-							id: c.id,
-							targetId: null,
-							refuseIfUsed: true,
-						});
+					await undoCreated(
+						created.map((c) => c.id),
+						{
+							expenseCount: async (id) =>
+								(
+									await utils.categories.previewRemove.fetch(
+										{ id, targetId: null },
+										{ staleTime: 0 },
+									)
+								).value.counts.expense.moved,
+							remove: (id) =>
+								remove.mutateAsync({ id, targetId: null, refuseIfUsed: true }),
+						},
+					);
 					setChoices(before);
 					await utils.entry.catalog.invalidate();
 				},
