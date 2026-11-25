@@ -17,7 +17,9 @@ import {
 } from "../src";
 import {
 	createRecoveryCallbacks,
+	type KeyFlowCode,
 	KeyFlowError,
+	mayHaveCommitted,
 	type RecoverBody,
 	type RecoveryFlowPorts,
 } from "../src/client";
@@ -200,8 +202,12 @@ describe("createRecoveryCallbacks", () => {
 			const handle = await s.callbacks.begin(RK.text);
 			await expect(
 				codeOf(s.callbacks.finish(handle, { password: NEW_PASSWORD })),
-			).resolves.toBe("unavailable");
-			await s.callbacks.finish(handle, { password: NEW_PASSWORD });
+			).resolves.toBe("unconfirmed");
+			// A spent link is not "set": the caller cannot tell this commit from an
+			// expired link, so it says so and the sign-in tells.
+			await expect(
+				s.callbacks.finish(handle, { password: NEW_PASSWORD }),
+			).resolves.toBe("linkSpent");
 			expect(s.ports.check).toHaveBeenCalledTimes(1);
 			expect(s.commits).toHaveLength(1);
 		});
@@ -217,8 +223,10 @@ describe("createRecoveryCallbacks", () => {
 			const handle = await s.callbacks.begin(RK.text);
 			await expect(
 				codeOf(s.callbacks.finish(handle, { password: NEW_PASSWORD })),
-			).resolves.toBe("unavailable");
-			await s.callbacks.finish(handle, { password: NEW_PASSWORD });
+			).resolves.toBe("unconfirmed");
+			await expect(
+				s.callbacks.finish(handle, { password: NEW_PASSWORD }),
+			).resolves.toBe("set");
 			expect(s.commits).toHaveLength(2);
 			expect(s.commits[1]).toEqual(s.commits[0]);
 			expect(s.argon).toHaveLength(1);
@@ -277,20 +285,111 @@ describe("createRecoveryCallbacks", () => {
 		});
 	});
 
-	it("a rate limit at commit keeps the body, so a retry sends it without a second Argon2id run", async () => {
-		const s = setup({
-			commit: (n, spend) => {
-				if (n === 1) throw new KeyFlowError("rateLimited");
-				spend();
-				return undefined;
-			},
+	describe("what a retry sends", () => {
+		const OTHER_PASSWORD = "Another-Password-2027?";
+		/** The sign-in secret a password makes under the salt a body carries. */
+		const secretOf = (body: RecoverBody | undefined, password: string) =>
+			signInSecret(
+				masterSubkeys(
+					p,
+					deriveMasterKey(
+						p,
+						password,
+						fromBase64Url(body?.kdf.salt as string) as Uint8Array,
+						ARGON2_FLOOR,
+					),
+				).authKey,
+			);
+
+		it("a refused commit (a rate limit) makes the next body from the password typed then, not the first", async () => {
+			const s = setup({
+				commit: (n, spend) => {
+					if (n === 1) throw new KeyFlowError("rateLimited");
+					spend();
+					return undefined;
+				},
+			});
+			const handle = await s.callbacks.begin(RK.text);
+			await expect(
+				codeOf(s.callbacks.finish(handle, { password: NEW_PASSWORD })),
+			).resolves.toBe("rateLimited");
+			await expect(
+				s.callbacks.finish(handle, { password: OTHER_PASSWORD }),
+			).resolves.toBe("set");
+			expect(s.commits).toHaveLength(2);
+			expect(s.commits[1]?.newAuthKey).toBe(
+				secretOf(s.commits[1], OTHER_PASSWORD),
+			);
+			expect(s.commits[1]?.newAuthKey).not.toBe(
+				secretOf(s.commits[0], NEW_PASSWORD),
+			);
+			// A body made again is a second Argon2id run.
+			expect(s.argon).toHaveLength(2);
 		});
-		const handle = await s.callbacks.begin(RK.text);
-		await expect(
-			codeOf(s.callbacks.finish(handle, { password: NEW_PASSWORD })),
-		).resolves.toBe("rateLimited");
-		await s.callbacks.finish(handle, { password: NEW_PASSWORD });
-		expect(s.commits).toHaveLength(2);
-		expect(s.argon).toHaveLength(1);
+
+		it("a commit whose outcome is not known is sent again as it was, whatever password the retry carries", async () => {
+			const s = setup({
+				commit: (n, spend) => {
+					if (n === 1) return "lost";
+					spend();
+					return undefined;
+				},
+			});
+			const handle = await s.callbacks.begin(RK.text);
+			await expect(
+				codeOf(s.callbacks.finish(handle, { password: NEW_PASSWORD })),
+			).resolves.toBe("unconfirmed");
+			await s.callbacks.finish(handle, { password: OTHER_PASSWORD });
+			expect(s.commits).toHaveLength(2);
+			expect(s.commits[1]).toEqual(s.commits[0]);
+			expect(s.commits[1]?.newAuthKey).toBe(
+				secretOf(s.commits[0], NEW_PASSWORD),
+			);
+			expect(s.argon).toHaveLength(1);
+		});
+
+		it("keeps the same body through a refusal that follows an unknown commit", async () => {
+			const s = setup({
+				commit: (n, spend) => {
+					if (n === 1) return "lost";
+					if (n === 2) throw new KeyFlowError("rateLimited");
+					spend();
+					return undefined;
+				},
+			});
+			const handle = await s.callbacks.begin(RK.text);
+			await codeOf(s.callbacks.finish(handle, { password: NEW_PASSWORD }));
+			await codeOf(s.callbacks.finish(handle, { password: OTHER_PASSWORD }));
+			await s.callbacks.finish(handle, { password: OTHER_PASSWORD });
+			expect(s.commits).toHaveLength(3);
+			expect(s.commits[2]).toEqual(s.commits[0]);
+		});
+
+		it("every code the owner says may have committed keeps the body, and no other does", async () => {
+			const codes: KeyFlowCode[] = [
+				"unavailable",
+				"serverError",
+				"rateLimited",
+				"failed",
+				"malformed",
+			];
+			for (const code of codes) {
+				const s = setup({
+					commit: (n, spend) => {
+						if (n === 1) throw new KeyFlowError(code);
+						spend();
+						return undefined;
+					},
+				});
+				const handle = await s.callbacks.begin(RK.text);
+				await codeOf(s.callbacks.finish(handle, { password: NEW_PASSWORD }));
+				await s.callbacks.finish(handle, { password: OTHER_PASSWORD });
+				const same = mayHaveCommitted(code, 0);
+				expect(
+					s.commits[1]?.newAuthKey === s.commits[0]?.newAuthKey,
+					code,
+				).toBe(same);
+			}
+		});
 	});
 });

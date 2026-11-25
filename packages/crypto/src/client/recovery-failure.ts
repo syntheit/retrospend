@@ -16,6 +16,12 @@ export const RECOVERY_FAILURE_CODES = [
 	"linkExpired",
 	/** The keys changed under the run: start again from the first step. */
 	"keysChanged",
+	/**
+	 * The send may have gone through, or the check that would say could not be
+	 * made. Not final: trying again asks first, and a retry of a send sends the
+	 * same thing.
+	 */
+	"unconfirmed",
 	"tooMany",
 	"notOffered",
 	"wrongPassword",
@@ -36,6 +42,7 @@ const FAILURE_FOR_FLOW: Record<KeyFlowCode, RecoveryFailureCode> = {
 	recoveryUnavailable: "unavailable",
 	tokenExpired: "linkExpired",
 	conflict: "keysChanged",
+	unconfirmed: "unconfirmed",
 	rateLimited: "tooMany",
 	notOffered: "notOffered",
 	wrongPassword: "wrongPassword",
