@@ -297,7 +297,8 @@ export function keyPairMatches(p: Primitives, pair: BoxKeyPair): boolean {
 
 // Recovery key text.
 
-const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+/** The Crockford base32 alphabet: recovery key text and the phone reset code. */
+export const CROCKFORD_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const RK_VERSION = 1;
 const RK_DATA_SYMBOLS = 52;
 const RK_GROUP = 6;
@@ -333,7 +334,7 @@ export function encodeRecoveryKey(key: Uint8Array): string {
 	for (const byte of key) feed(byte, 8);
 	feed(RK_VERSION, 4);
 	symbols.push(...checkSymbols(symbols));
-	const text = symbols.map((s) => ALPHABET.charAt(s)).join("");
+	const text = symbols.map((s) => CROCKFORD_ALPHABET.charAt(s)).join("");
 	return text.match(new RegExp(`.{${RK_GROUP}}`, "g"))?.join("-") ?? bad();
 }
 
@@ -360,7 +361,7 @@ export function normalizeRecoveryText(text: string): string {
 export function parseRecoveryKey(text: string): Uint8Array {
 	const clean = normalizeRecoveryText(text);
 	if (clean.length !== RK_DATA_SYMBOLS + 2) bad();
-	const symbols = [...clean].map((ch) => ALPHABET.indexOf(ch));
+	const symbols = [...clean].map((ch) => CROCKFORD_ALPHABET.indexOf(ch));
 	if (symbols.includes(-1)) bad();
 	const data = symbols.slice(0, RK_DATA_SYMBOLS);
 	const [sum, weighted] = checkSymbols(data);

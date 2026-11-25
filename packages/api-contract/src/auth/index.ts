@@ -114,6 +114,36 @@ export const recoverResultSchema = z
 	})
 	.meta({ id: "RecoverResult" });
 
+export const requestResetCodeSchema = z
+	.object({ email: z.email().max(255) })
+	.meta({ id: "RequestResetCode" });
+
+export const requestResetCodeResultSchema = z
+	.object({ success: z.literal(true) })
+	.meta({ id: "RequestResetCodeResult" });
+
+export const redeemResetCodeSchema = z
+	.object({
+		email: z.email().max(255),
+		code: z.string().min(1).max(32).meta({
+			description:
+				"The 8-character code from the email. Read the way a recovery key is: upper or lower case, spaces and hyphens ignored, O as 0 and I and L as 1. A malformed code is a wrong code.",
+		}),
+	})
+	.meta({ id: "RedeemResetCode" });
+
+export const redeemResetCodeResultSchema = z
+	.object({
+		token: z.string().min(1).max(256).meta({
+			description:
+				"A recovery token for POST /auth/recovery/check, /begin and /auth/recovery. It lives 15 minutes and opens recovery with the recovery key only: the reset page never accepts it.",
+		}),
+	})
+	.meta({ id: "RedeemResetCodeResult" });
+
+export type RedeemResetCode = z.infer<typeof redeemResetCodeSchema>;
+export type RedeemResetCodeResult = z.infer<typeof redeemResetCodeResultSchema>;
+
 export type CheckRecoveryResult = z.infer<typeof checkRecoveryResultSchema>;
 export type BeginRecovery = z.infer<typeof beginRecoverySchema>;
 export type BeginRecoveryResult = z.infer<typeof beginRecoveryResultSchema>;
@@ -174,4 +204,31 @@ export const authContract = {
 		.meta({ scope: "public", publicWrite: "resetToken" })
 		.input(recoverSchema)
 		.output(recoverResultSchema),
+
+	requestResetCode: v1
+		.route({
+			method: "POST",
+			path: "/auth/password-reset",
+			operationId: "requestResetCode",
+			tags: TAG,
+			summary: "Email a code to start recovering a password",
+			description:
+				"Public. For an account with Advanced protection keys and a recovery key, mails an 8-character code that lives 15 minutes; for every other address nothing is sent. The answer is the same either way (success: true), so it does not say whether an account exists. Each address may ask 3 times an hour, counted for unknown addresses too, and each sender 5 times a minute; a refused call is 429 with Retry-After, and a refused address limit answers like any other request and sends nothing. 409 conflict when the server cannot send email. The code opens recovery only: it never resets a password. No Idempotency-Key: a retry mails another code, and earlier codes keep working.",
+		})
+		.meta({ scope: "public", publicWrite: "resetRequest" })
+		.input(requestResetCodeSchema)
+		.output(requestResetCodeResultSchema),
+	redeemResetCode: v1
+		.route({
+			method: "POST",
+			path: "/auth/password-reset/code",
+			operationId: "redeemResetCode",
+			tags: TAG,
+			summary: "Swap a reset code for a recovery token",
+			description:
+				"Public. Spends the code and returns a recovery token for POST /auth/recovery/check, /begin and /auth/recovery. Every call counts one try, 5 an hour per account across all live codes (a new code adds none); the sixth is 429 with Retry-After. 404 invalid_token for an unknown address, an unknown, wrong, expired or used code, with the same answer for each. The token opens recovery with the recovery key only; the plain password reset refuses it. The code works once, so there is no Idempotency-Key: a retry after a lost answer is 404 invalid_token and the person asks for a new code. Rate limited per sender with the recovery routes.",
+		})
+		.meta({ scope: "public", publicWrite: "resetToken" })
+		.input(redeemResetCodeSchema)
+		.output(redeemResetCodeResultSchema),
 };

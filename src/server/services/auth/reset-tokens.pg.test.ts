@@ -31,6 +31,7 @@ import {
 	issueResetToken,
 	LIVE_ADMIN_LINKS,
 	lockUserRow,
+	PLAIN_RESET_ORIGINS,
 	resetAddressKey,
 	lookupResetToken,
 	RESET_LINK_TTL_MS,
@@ -154,13 +155,17 @@ describe("what the table holds", () => {
 		const { user } = await createTestUser();
 		const token = await issueLinkFor(user.id, "email");
 		const stored = sha256(token);
-		expect(await lookupResetToken(token)).toEqual({
+		expect(await lookupResetToken(token, PLAIN_RESET_ORIGINS)).toEqual({
 			userId: user.id,
 			origin: "email",
 		});
-		expect(await lookupResetToken(stored)).toBeNull();
+		expect(await lookupResetToken(stored, PLAIN_RESET_ORIGINS)).toBeNull();
 		await expect(
-			spendResetToken(adminDb, { token: stored, userId: user.id }),
+			spendResetToken(adminDb, {
+				token: stored,
+				userId: user.id,
+				origins: PLAIN_RESET_ORIGINS,
+			}),
 		).rejects.toBeInstanceOf(InvalidResetTokenError);
 		expect(await rows(user.id)).toHaveLength(1);
 	});
@@ -221,7 +226,7 @@ describe("what ends a link", () => {
 			"email",
 			new Date(Date.now() - HOUR - 1_000),
 		);
-		expect(await lookupResetToken(token)).toBeNull();
+		expect(await lookupResetToken(token, PLAIN_RESET_ORIGINS)).toBeNull();
 		const before = await storedHash(a.id);
 		await expect(reset(token)).rejects.toMatchObject({ code: "NOT_FOUND" });
 		expect(await storedHash(a.id)).toBe(before);
@@ -232,8 +237,8 @@ describe("what ends a link", () => {
 		const issued = new Date(Date.now());
 		const token = await issueLinkFor(user.id, "email", issued);
 		const expires = issued.getTime() + HOUR;
-		expect(await lookupResetToken(token, new Date(expires - 1))).not.toBeNull();
-		expect(await lookupResetToken(token, new Date(expires))).toBeNull();
+		expect(await lookupResetToken(token, PLAIN_RESET_ORIGINS, new Date(expires - 1))).not.toBeNull();
+		expect(await lookupResetToken(token, PLAIN_RESET_ORIGINS, new Date(expires))).toBeNull();
 	});
 
 	it("is refused by the spend itself once expired, and the row stays for the purge", async () => {
@@ -242,12 +247,18 @@ describe("what ends a link", () => {
 		const token = await issueLinkFor(user.id, "email", issued);
 		const at = new Date(issued.getTime() + HOUR);
 		await expect(
-			spendResetToken(adminDb, { token, userId: user.id, now: at }),
+			spendResetToken(adminDb, {
+				token,
+				userId: user.id,
+				origins: PLAIN_RESET_ORIGINS,
+				now: at,
+			}),
 		).rejects.toBeInstanceOf(InvalidResetTokenError);
 		expect(await rows(user.id)).toHaveLength(1);
 		await spendResetToken(adminDb, {
 			token,
 			userId: user.id,
+			origins: PLAIN_RESET_ORIGINS,
 			now: new Date(at.getTime() - 1),
 		});
 		expect(await rows(user.id)).toHaveLength(0);
@@ -358,7 +369,7 @@ describe("a new request", () => {
 		const second = tokenInMail();
 		expect(second).not.toBe(first);
 		expect(await rows(a.id)).toHaveLength(2);
-		expect(await lookupResetToken(first)).not.toBeNull();
+		expect(await lookupResetToken(first, PLAIN_RESET_ORIGINS)).not.toBeNull();
 		await reset(first);
 		expect(await passwordIs(a.id, NEW_PASSWORD)).toBe(true);
 	});
@@ -371,7 +382,7 @@ describe("a new request", () => {
 			tokens.push(
 				await issueLinkFor(user.id, "admin", new Date(start + i * 1_000)),
 			);
-		const live = await Promise.all(tokens.map((t) => lookupResetToken(t)));
+		const live = await Promise.all(tokens.map((t) => lookupResetToken(t, PLAIN_RESET_ORIGINS)));
 		expect(live.map((l) => l !== null)).toEqual([false, true, true, true]);
 		expect(await rows(user.id)).toHaveLength(LIVE_ADMIN_LINKS);
 	});
@@ -386,7 +397,7 @@ describe("a new request", () => {
 			);
 		for (let i = 0; i < LIVE_ADMIN_LINKS + 2; i++)
 			await issueLinkFor(user.id, "admin", new Date(start + i * 1_000));
-		const live = await Promise.all(mine.map((t) => lookupResetToken(t)));
+		const live = await Promise.all(mine.map((t) => lookupResetToken(t, PLAIN_RESET_ORIGINS)));
 		expect(live.every((l) => l !== null)).toBe(true);
 	});
 
@@ -406,13 +417,13 @@ describe("a new request", () => {
 		}
 		expect(await allowResetRequest(email, at(63))).toBe(false);
 		// 11:03 is inside the person's link (it ends at 11:40): it still opens.
-		expect(await lookupResetToken(mine, at(63))).toEqual({
+		expect(await lookupResetToken(mine, PLAIN_RESET_ORIGINS, at(63))).toEqual({
 			userId: user.id,
 			origin: "email",
 		});
 		expect(await rows(user.id)).toHaveLength(4);
 		for (const t of stranger)
-			expect(await lookupResetToken(t, at(63))).not.toBeNull();
+			expect(await lookupResetToken(t, PLAIN_RESET_ORIGINS, at(63))).not.toBeNull();
 	});
 
 	it("sweeps the user's expired links when it makes a new one", async () => {
@@ -717,14 +728,18 @@ describe("an admin link", () => {
 
 		const [row] = await rows(a.id);
 		expect(row).toMatchObject({ origin: "admin", token: sha256(token) });
-		expect(await lookupResetToken(token)).toEqual({
+		expect(await lookupResetToken(token, PLAIN_RESET_ORIGINS)).toEqual({
 			userId: a.id,
 			origin: "admin",
 		});
 		// The check the recovery routes call (K3-2a): an admin link is no token.
 		expect(await resolveRecoveryToken(token)).toBeNull();
 		await expect(
-			spendResetToken(adminDb, { token, userId: a.id, origin: "email" }),
+			spendResetToken(adminDb, {
+				token,
+				userId: a.id,
+				origins: ["email"],
+			}),
 		).rejects.toBeInstanceOf(InvalidResetTokenError);
 		expect(await rows(a.id)).toHaveLength(1);
 
@@ -755,7 +770,7 @@ describe("an admin link", () => {
 		});
 		const adminToken = /token=([0-9a-f]+)/.exec(resetUrl)?.[1] ?? "";
 		await request(a.email);
-		expect(await lookupResetToken(adminToken)).not.toBeNull();
+		expect(await lookupResetToken(adminToken, PLAIN_RESET_ORIGINS)).not.toBeNull();
 		expect(await rows(a.id)).toHaveLength(2);
 	});
 });

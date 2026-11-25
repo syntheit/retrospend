@@ -53,6 +53,18 @@ const ALLOWED: { file: string; column: string; reason: string }[] = [
 		reason: "user.email lookups (verify, reset): the user table is not mapped",
 	},
 	{
+		file: "src/server/services/auth/reset-request.ts",
+		column: "email",
+		reason:
+			"user.email lookup for the phone reset request: the user table is not mapped",
+	},
+	{
+		file: "src/server/services/auth/reset-tokens.ts",
+		column: "email",
+		reason:
+			"user.email lookup when a reset code is typed: the user table is not mapped",
+	},
+	{
 		file: "src/server/api/routers/people.ts",
 		column: "email",
 		reason:

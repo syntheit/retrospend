@@ -11,8 +11,9 @@ import { type V1Context, v1 } from "../middleware";
 import { enforceRateLimit, RATE_LIMITS } from "../rate-limit";
 
 /**
- * The one sender limit of the recovery routes: check, begin and commit share a
- * bucket, so a client that walks the three steps spends three of the ten. It
+ * The one sender limit of the recovery routes: the code redeem, check, begin
+ * and commit share a bucket, so a client that walks the four steps spends
+ * four of the ten. It
  * runs first, before the link is looked up. These handlers never read the
  * session (the public-write rule drops it): the account is the link's.
  */
@@ -39,6 +40,22 @@ export const authRouter = {
 		);
 		return { kdf: await readPreloginKdf(input.email) };
 	}),
+	requestResetCode: v1.auth.requestResetCode.handler(
+		serve(async ({ context, input }) => {
+			await enforceRateLimit(
+				`reset-request:ip:${ipBucket(getClientIp(context.headers))}`,
+				RATE_LIMITS.resetRequestPerIp,
+				context.resHeaders,
+			);
+			return recovery.requestCode(input.email);
+		}),
+	),
+	redeemResetCode: v1.auth.redeemResetCode.handler(
+		serve(async ({ context, input }) => {
+			await limitRecoverySender(context);
+			return withTries(context, () => recovery.redeemCode(input));
+		}),
+	),
 	checkRecovery: v1.auth.checkRecovery.handler(
 		serve(async ({ context, input }) => {
 			await limitRecoverySender(context);

@@ -198,6 +198,8 @@ model PasswordResetToken {
   origin     String
   expires    DateTime
   identifier String?
+  // Keyed hash of a phone reset code, on a "code" row only (reset-tokens.ts).
+  codeHash   String?
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([identifier, token])

@@ -38,6 +38,7 @@ import { hashToken } from "~/server/lib/tokens";
 import { deleteAllAccessTokens } from "../api-v1/token.service";
 import {
 	InvalidResetTokenError,
+	RECOVERY_ORIGINS,
 	resolveRecoveryToken,
 	spendResetToken,
 } from "../auth/reset-tokens";
@@ -170,7 +171,7 @@ export async function commitRecovery(input: Recover): Promise<RecoverResult> {
 		await spendResetToken(tx, {
 			token: input.token,
 			userId,
-			origin: "email",
+			origins: RECOVERY_ORIGINS,
 		});
 		const swapped = await swapCredentialHash(tx, {
 			writer: "recovery",

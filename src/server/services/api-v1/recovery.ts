@@ -6,6 +6,8 @@ import type {
 import { toBase64Url } from "@retrospend/crypto";
 import { problem } from "~/server/api/v1/errors";
 import { ReleaseError } from "~/server/services/protection-keys/errors";
+import { requestResetCode } from "~/server/services/auth/reset-request";
+import { redeemResetCode } from "~/server/services/auth/reset-tokens";
 import {
 	beginRecovery,
 	checkRecovery,
@@ -51,3 +53,17 @@ export async function begin(input: BeginRecovery) {
 
 export const commit = (input: Recover): Promise<RecoverResult> =>
 	asRecoveryProof(() => commitRecovery(input));
+
+/** The phone's request. The answer never depends on the address (reset-request.ts). */
+export async function requestCode(email: string): Promise<{ success: true }> {
+	await requestResetCode(email);
+	return { success: true };
+}
+
+/** A typed code for a recovery token; a try is counted inside (reset-tokens.ts). */
+export async function redeemCode(input: {
+	email: string;
+	code: string;
+}): Promise<{ token: string }> {
+	return { token: await redeemResetCode(input) };
+}
