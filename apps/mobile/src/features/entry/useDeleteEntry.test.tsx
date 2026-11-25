@@ -16,6 +16,8 @@ const mockWrites = jest.fn();
 jest.mock("@/data/deviceWrites", () => ({
 	deviceWrites: () => mockWrites(),
 }));
+/** Flag off: the one door answers null, as it does in a build without the engine. */
+const flagOff = () => mockWrites.mockReturnValue(null);
 
 const diff = { changes: [], unchanged: [], unavailable: [] };
 
@@ -38,12 +40,14 @@ function client(read: "online" | "offline") {
 			previewDelete: read === "offline" ? down : async () => diff,
 			get: read === "offline" ? down : async () => ({ updatedAt: SERVER }),
 		},
+		"shared-expenses": { previewDelete: down },
 	} as unknown as RetrospendClient;
 }
 
 let alert: jest.SpyInstance;
 beforeEach(() => {
 	mockWrites.mockReset();
+	flagOff();
 	alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
 });
 afterEach(() => alert.mockRestore());
@@ -103,6 +107,30 @@ describe("a queued delete under the device flag", () => {
 			},
 		} as unknown as RetrospendClient;
 		mockWrites.mockReturnValue(writesBase(PULLED));
+		const hook = await renderHook(() => useDeleteEntry());
+		await act(async () => {
+			hook.result.current({ id: ID, shared: false, title: "Lunch" });
+		});
+		expect(alert).not.toHaveBeenCalled();
+		expect(lastToast().message).toBe("Couldn't delete this. Try again.");
+		expect(await world.local.outbox.all()).toEqual([]);
+	});
+
+	it("a shared expense offline gets the failure toast and no alert, flag on", async () => {
+		world.api = client("offline");
+		mockWrites.mockReturnValue(writesBase(PULLED));
+		const hook = await renderHook(() => useDeleteEntry());
+		await act(async () => {
+			hook.result.current({ id: ID, shared: true, title: "Dinner" });
+		});
+		expect(alert).not.toHaveBeenCalled();
+		expect(lastToast().message).toBe("Couldn't delete this. Try again.");
+		expect(await world.local.outbox.all()).toEqual([]);
+	});
+
+	it("an expense offline gets the failure toast and no alert, flag off", async () => {
+		world.api = client("offline");
+		flagOff();
 		const hook = await renderHook(() => useDeleteEntry());
 		await act(async () => {
 			hook.result.current({ id: ID, shared: false, title: "Lunch" });
