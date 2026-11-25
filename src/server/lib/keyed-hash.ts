@@ -15,6 +15,8 @@ export const KEYED_HASH_PURPOSES = {
 	resetAddress: "reset-request-address",
 	/** The per-address limit on prelogin (api/v1/auth). */
 	preloginAddress: "prelogin-address",
+	/** A phone reset code at rest, bound to its row and user (services/auth/reset-tokens). */
+	resetCode: "reset-code",
 } as const;
 export type KeyedHashPurpose = keyof typeof KEYED_HASH_PURPOSES;
 
