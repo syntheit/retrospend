@@ -51,6 +51,8 @@ function writesWith(
 		book,
 		comparePreview: async () => undefined,
 		pullsBegun: () => 7,
+		storedRebase: async () => null,
+		absentSince: async () => false,
 		refresh: jest.fn(async () => undefined),
 	};
 }

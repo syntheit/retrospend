@@ -42,7 +42,6 @@ export {
 	type WriteParity,
 } from "./engine";
 export type { PendingChange, PendingEntry, PendingSource } from "./pending";
-export type { ServerPreview } from "./preview-compare";
 export type {
 	DeviceApi,
 	EnginePersistence,
@@ -54,3 +53,5 @@ export type {
 	ServerFigures,
 	StorageHooks,
 } from "./ports";
+export type { ServerPreview } from "./preview-compare";
+export type { Rebase } from "./rebase";

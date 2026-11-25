@@ -510,6 +510,8 @@ describe("Save an edit", () => {
 			book: async () => ({ bookedAt: 1, changes: [], changed: [], base }),
 			comparePreview: async () => undefined,
 			pullsBegun: () => 1,
+			storedRebase: async () => null,
+			absentSince: async () => false,
 			refresh: async () => undefined,
 		});
 
