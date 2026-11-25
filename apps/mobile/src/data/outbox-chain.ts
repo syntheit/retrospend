@@ -58,6 +58,19 @@ export function isChainedTo(entry: OutboxEntry, clientId: string): boolean {
 	return typeof base === "object" && base !== null && base.after === clientId;
 }
 
+/**
+ * The ids among `ids` that an entry (open, parked or acked) still names as its
+ * target. The one "an entry exists for this row" check: the queue's undo and
+ * the phone's bulk actions read both lists through it.
+ */
+export function targetsWithEntries(
+	entries: readonly Pick<OutboxEntry, "targetId">[],
+	ids: readonly string[],
+): string[] {
+	const named = new Set(entries.map((e) => e.targetId));
+	return ids.filter((id) => named.has(id));
+}
+
 export const isUnresolved = (base: BaseVersion): base is { after: string } =>
 	typeof base === "object" && base !== null;
 

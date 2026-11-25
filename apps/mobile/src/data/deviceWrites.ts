@@ -1,5 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import type { DeviceWrites } from "./device-engine";
+import type { DeviceBulkWrites, DeviceWrites } from "./device-engine";
 import { deviceEngineModule } from "./deviceEngineModule";
 
 /**
@@ -12,6 +12,17 @@ import { deviceEngineModule } from "./deviceEngineModule";
 export function deviceWrites(api: RetrospendClient): DeviceWrites | null {
 	try {
 		return deviceEngineModule()?.writesFor(api) ?? null;
+	} catch {
+		return null;
+	}
+}
+
+/** The bulk side of `deviceWrites`: the same gate, the same fail-closed. */
+export function deviceBulkWrites(
+	api: RetrospendClient,
+): DeviceBulkWrites | null {
+	try {
+		return deviceEngineModule()?.bulkWritesFor(api) ?? null;
 	} catch {
 		return null;
 	}
