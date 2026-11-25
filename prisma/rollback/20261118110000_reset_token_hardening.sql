@@ -11,6 +11,9 @@
 -- columns the migration added, puts NOT NULL back on "identifier" and deletes
 -- the migration's row from "_prisma_migrations", so that starting this release
 -- again applies the migration again. A person who asked for a link asks again.
+-- If 20261124100000_reset_code is applied, run its rollback
+-- (prisma/rollback/20261124100000_reset_code.sql) first: it builds on this
+-- table shape.
 -- Checked by src/server/services/auth/reset-tokens-migration.pg.test.ts.
 -- Idempotent: running it twice changes nothing more.
 
