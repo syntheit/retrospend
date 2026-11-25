@@ -80,7 +80,8 @@ async function billed() {
 	if (!rent) throw new Error("no Rent envelope");
 	await adminDb.envelope.update({
 		where: { id: rent.id },
-		data: { kind: "BILL", targetTemplateId: id },
+		// A bill that follows a template has no amount of its own.
+		data: { kind: "BILL", targetTemplateId: id, targetAmount: null },
 	});
 	return { userId, id, rent: rent.id };
 }
@@ -175,7 +176,10 @@ describe("deleting a template the budget follows", () => {
 			fixtureDb.recurringTemplate.count({ where: { id } }),
 		).resolves.toBe(0);
 
-		await expect(restoreTemplate(userId, restore)).resolves.toEqual({ id });
+		expect(preview.relinkedEnvelopes).toBe(1);
+		await expect(restoreTemplate(adminDb, userId, restore)).resolves.toEqual({
+			id,
+		});
 		const after = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id },
 		});
@@ -192,6 +196,31 @@ describe("deleting a template the budget follows", () => {
 		expect((await read(userId)).plan).toEqual([ars(320_000)]);
 	});
 
+	it("a bill the person gave a manual target since keeps it on Undo", async () => {
+		const { userId, id, rent } = await billed();
+		const { restore } = await deleteTemplate(adminDb, userId, id);
+		// Rent now has a target of its own: 400.00 a month, due on the 15th.
+		await adminDb.envelope.update({
+			where: { id: rent },
+			data: {
+				targetAmount: "400",
+				targetDueDate: new Date("2026-12-15T00:00:00Z"),
+				targetRepeat: "MONTHLY",
+			},
+		});
+		const planBefore = (await read(userId)).plan;
+
+		const preview = await previewRestoreTemplate(userId, restore);
+		expect(preview.relinkedEnvelopes).toBe(0);
+		await restoreTemplate(adminDb, userId, restore);
+		// The template is back, but Rent still follows its own 400.00, not the 3,000.00 one.
+		await expect(
+			adminDb.envelope.findUniqueOrThrow({ where: { id: rent } }),
+		).resolves.toMatchObject({ targetTemplateId: null });
+		expect((await read(userId)).plan).toEqual(planBefore);
+		expect((await read(userId)).plan).not.toEqual([ars(320_000)]);
+	});
+
 	it("a template no envelope follows leaves the plan cost out", async () => {
 		const userId = await arsBook();
 		const id = await template(userId, "Gym");
@@ -205,13 +234,46 @@ describe("deleting a template the budget follows", () => {
 });
 
 describe("what the Undo refuses", () => {
-	it("a second restore of the same token, the template being back", async () => {
+	it("a template that is back already, for a token signed again", async () => {
 		const { userId, id } = await billed();
 		const { restore } = await deleteTemplate(adminDb, userId, id);
-		await restoreTemplate(userId, restore);
-		await expect(restoreTemplate(userId, restore)).rejects.toMatchObject({
-			code: "CONFLICT",
+		await restoreTemplate(adminDb, userId, restore);
+		// A fresh signature, so the single-use claim is not what refuses it.
+		const again = signRestore(
+			RECURRING_DELETE,
+			userId,
+			JSON.parse(restore.data).payload,
+		);
+		await expect(restoreTemplate(adminDb, userId, again)).rejects.toMatchObject(
+			{ code: "CONFLICT" },
+		);
+	});
+
+	it("a token used once, even after the template was deleted again", async () => {
+		const { userId, id } = await billed();
+		const first = await deleteTemplate(adminDb, userId, id);
+		await restoreTemplate(adminDb, userId, first.restore);
+		// Edited since, then deleted again: the first token holds the old version.
+		await fixtureDb.recurringTemplate.update({
+			where: { id },
+			data: { amount: "4000" },
 		});
+		const second = await deleteTemplate(adminDb, userId, id);
+		await expect(
+			restoreTemplate(adminDb, userId, first.restore),
+		).rejects.toMatchObject({ code: "CONFLICT" });
+		await expect(
+			fixtureDb.recurringTemplate.count({ where: { id } }),
+		).resolves.toBe(0);
+		await restoreTemplate(adminDb, userId, second.restore);
+		await expect(
+			fixtureDb.recurringTemplate.findUniqueOrThrow({ where: { id } }),
+		).resolves.toMatchObject({ amount: expect.anything() });
+		expect(
+			(
+				await fixtureDb.recurringTemplate.findUniqueOrThrow({ where: { id } })
+			).amount.toString(),
+		).toBe("4000");
 	});
 
 	it("a template made again by hand since", async () => {
@@ -219,7 +281,9 @@ describe("what the Undo refuses", () => {
 		const id = await template(userId, "Gym");
 		const { restore } = await deleteTemplate(adminDb, userId, id);
 		await template(userId, "gym");
-		await expect(restoreTemplate(userId, restore)).rejects.toMatchObject({
+		await expect(
+			restoreTemplate(adminDb, userId, restore),
+		).rejects.toMatchObject({
 			code: "CONFLICT",
 		});
 		await expect(
@@ -233,12 +297,15 @@ describe("what the Undo refuses", () => {
 		const other = await arsBook();
 		const bad = { code: "BAD_REQUEST" };
 		await expect(
-			restoreTemplate(userId, { ...restore, sig: "0".repeat(64) }),
+			restoreTemplate(adminDb, userId, { ...restore, sig: "0".repeat(64) }),
 		).rejects.toMatchObject(bad);
-		await expect(restoreTemplate(other, restore)).rejects.toMatchObject(bad);
+		await expect(
+			restoreTemplate(adminDb, other, restore),
+		).rejects.toMatchObject(bad);
 		const snapshot = JSON.parse(restore.data).payload;
 		await expect(
 			restoreTemplate(
+				adminDb,
 				userId,
 				signRestore(
 					RECURRING_DELETE,
@@ -249,7 +316,11 @@ describe("what the Undo refuses", () => {
 			),
 		).rejects.toMatchObject(bad);
 		await expect(
-			restoreTemplate(userId, signRestore("expense.delete", userId, snapshot)),
+			restoreTemplate(
+				adminDb,
+				userId,
+				signRestore("expense.delete", userId, snapshot),
+			),
 		).rejects.toMatchObject(bad);
 		await expect(
 			fixtureDb.recurringTemplate.count({ where: { id } }),
