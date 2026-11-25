@@ -8,6 +8,7 @@ import {
 } from "@retrospend/domain/expense-write/refusals";
 import { TRPCError } from "@trpc/server";
 import { describe, expect, it } from "vitest";
+import { PreviewBusyError } from "~/server/services/preview/busy";
 import { encodeProblem } from "../../errors";
 import { toProblem } from "../serve";
 
@@ -62,5 +63,24 @@ describe("an expense write refusal as problem+json", () => {
 			code: "bad_request",
 			detail: LEG_DELETE_REFUSED,
 		});
+	});
+});
+
+describe("a preview that stayed busy as problem+json", () => {
+	it("is a retryable 503 preview_busy, also inside a procedure's wrapper", () => {
+		const expected = {
+			status: 503,
+			code: "preview_busy",
+			title: "Something changed while this was loading. Try again.",
+		};
+		expect(encoded(new PreviewBusyError())).toMatchObject(expected);
+		expect(
+			encoded(
+				new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					cause: new PreviewBusyError(),
+				}),
+			),
+		).toMatchObject(expected);
 	});
 });

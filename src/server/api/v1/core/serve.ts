@@ -10,15 +10,16 @@ import { TRPCError } from "@trpc/server";
 import { uniqueViolation } from "~/server/api/unique-violation";
 import { textUnavailableProblem } from "~/server/crypto/field-open";
 import { InvalidCursorError } from "~/server/services/api-v1/cursor";
+import { InvalidResetTokenError } from "~/server/services/auth/reset-tokens";
 import { OverpayError } from "~/server/services/payments/procedures";
 import { RateOutOfRangeError } from "~/server/services/payments/rate-band";
+import { PreviewBusyError } from "~/server/services/preview/busy";
 import {
 	EnableProtectionError,
 	ProtectionKeysError,
 	ReleaseError,
 	RotatePasswordError,
 } from "~/server/services/protection-keys/errors";
-import { InvalidResetTokenError } from "~/server/services/auth/reset-tokens";
 import { ProtectedPasswordError } from "~/server/services/protection-keys/password-writes";
 import { ShareAnswerRefusedError } from "~/server/services/shared-expenses/answer-guard";
 import { SyncResetRequiredError } from "~/server/services/sync/changes";
@@ -128,6 +129,13 @@ export function toProblem(error: unknown, route?: string): unknown {
 		return problem(refused.v1Code, refused.message);
 	if (refused instanceof AmountRefusedError)
 		return problem("bad_request", refused.message);
+	// A preview that lost to a concurrent write twice: nothing was written.
+	if (
+		[error, (error as { cause?: unknown } | null)?.cause].some(
+			(e) => e instanceof PreviewBusyError,
+		)
+	)
+		return problem("preview_busy");
 	// A sealed text the caller may read whose key the server cannot load: the
 	// key store is lost or unreachable. The recorded code stays in the log.
 	const unavailable = textUnavailableProblem(error);

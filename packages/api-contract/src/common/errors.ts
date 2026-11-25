@@ -67,6 +67,9 @@ export const PROBLEM_STATUS = {
 	// A key was added since this server loaded its keys; it is loading them
 	// again, and a retry of the same request opens the text.
 	key_rotated: 503,
+	// A money preview lost to a concurrent write twice in a row. It wrote
+	// nothing; asking again gives the answer.
+	preview_busy: 503,
 	internal: 500,
 	not_implemented: 501,
 } as const satisfies Record<string, number>;

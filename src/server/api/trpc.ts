@@ -26,6 +26,7 @@ import type { Session } from "~/server/better-auth/config";
 import { assertNoSealedText } from "~/server/crypto/response-guard";
 import { getWebSession } from "~/server/better-auth/web-session";
 import { createUserScopedDb, db } from "~/server/db";
+import { PreviewBusyError } from "~/server/services/preview/busy";
 import { ensureUserKeyringWhenSealing } from "~/server/services/keys/data-key.service";
 import {
 	type AdminListView,
@@ -194,6 +195,16 @@ const timingMiddleware = t.middleware(async ({ next }) => {
 	if (!result.ok && result.error.cause instanceof MissingRateError) {
 		throw new TRPCError({
 			code: "BAD_REQUEST",
+			message: result.error.cause.message,
+			cause: result.error.cause,
+		});
+	}
+
+	// A preview that lost to a concurrent write twice wrote nothing: ask again.
+	// The code is `preview_busy` (error-formatter.ts), not a crash.
+	if (!result.ok && result.error.cause instanceof PreviewBusyError) {
+		throw new TRPCError({
+			code: "SERVICE_UNAVAILABLE",
 			message: result.error.cause.message,
 			cause: result.error.cause,
 		});
