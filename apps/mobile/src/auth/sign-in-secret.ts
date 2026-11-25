@@ -105,7 +105,7 @@ export function statusOf(error: unknown): number | null {
 }
 
 /** The lookup as a port: a missing route (404) is `missing`, the answer is handed over unread. */
-function lookupPort(lookup: KdfLookup): FlowPorts["lookup"] {
+export function lookupPort(lookup: KdfLookup): FlowPorts["lookup"] {
 	return async () => {
 		try {
 			return { body: await lookup.ask() };

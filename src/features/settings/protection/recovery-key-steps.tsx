@@ -1,6 +1,7 @@
 "use client";
 
 import {
+	groupMismatch,
 	type KeyConfirmState,
 	recoveryKeyGroups,
 } from "@retrospend/crypto/client";
@@ -10,7 +11,6 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { useToast } from "~/components/ui/toast";
-import { groupMismatch } from "./enable-model";
 import {
 	copyRecoveryKey,
 	type KeyActions,

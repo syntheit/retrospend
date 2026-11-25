@@ -14,11 +14,9 @@ import {
 import {
 	type ConfirmGroups,
 	type FailureCode,
-	groupMatches,
 	groupsConfirmed,
 	isFinalFailure,
 	type KeyConfirmState,
-	recoveryKeyGroups,
 } from "@retrospend/crypto/client";
 
 export const ENABLE_STEPS = [
@@ -251,19 +249,4 @@ function stepReady(state: EnableState, options: { twoFactor: boolean }) {
 		default:
 			return true;
 	}
-}
-
-/**
- * A typed group that is as long as the group and still not it. Shorter text is
- * still being typed, so it is not called wrong yet.
- */
-export function groupMismatch(state: KeyConfirmState, index: 0 | 1): boolean {
-	const at = state.groups?.[index];
-	if (at === undefined || state.keyText === "") return false;
-	const group = recoveryKeyGroups(state.keyText)[at] ?? "";
-	const typed = state.typed[index];
-	return (
-		typed.replace(/[\s-]/g, "").length >= group.length &&
-		!groupMatches(typed, group)
-	);
 }

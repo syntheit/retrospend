@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { CryptoError, type Primitives } from "../src";
 import {
 	groupMatches,
+	groupMismatch,
 	groupsConfirmed,
 	pickConfirmGroups,
 	RECOVERY_KEY_FILE_NAME,
@@ -293,6 +294,32 @@ describe("groupsConfirmed", () => {
 		).toBe(false);
 		expect(
 			groupsConfirmed({ keyText: "", groups: [0, 1], typed: ["", ""] }),
+		).toBe(false);
+	});
+});
+
+describe("groupMismatch", () => {
+	const [, , third, , , , seventh] = ASCENDING.text.split("-");
+	const typed = (a: string, b: string) => ({
+		keyText: ASCENDING.text,
+		groups: [2, 6] as [number, number],
+		typed: [a, b] as [string, string],
+	});
+
+	it("calls a full length wrong group wrong, and a short one not yet", () => {
+		const wrong = `${(third ?? "").slice(0, 5)}Z`;
+		expect(groupMismatch(typed((third ?? "").slice(0, 5), ""), 0)).toBe(false);
+		expect(groupMismatch(typed(wrong, ""), 0)).toBe(true);
+		expect(groupMismatch(typed(third ?? "", seventh ?? ""), 0)).toBe(false);
+		expect(groupMismatch(typed(third ?? "", "ZZZZZZ"), 1)).toBe(true);
+	});
+
+	it("is never true before a pair is asked", () => {
+		expect(
+			groupMismatch(
+				{ keyText: ASCENDING.text, groups: null, typed: ["ZZZZZZ", ""] },
+				0,
+			),
 		).toBe(false);
 	});
 });

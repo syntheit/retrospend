@@ -95,6 +95,21 @@ export function groupsConfirmed(state: KeyConfirmState): boolean {
 }
 
 /**
+ * A typed group that is as long as the group and still not it. Shorter text is
+ * still being typed, so it is not called wrong yet.
+ */
+export function groupMismatch(state: KeyConfirmState, index: 0 | 1): boolean {
+	const at = state.groups?.[index];
+	if (at === undefined || state.keyText === "") return false;
+	const group = recoveryKeyGroups(state.keyText)[at] ?? "";
+	const typed = state.typed[index];
+	return (
+		typed.replace(/[\s-]/g, "").length >= group.length &&
+		!groupMatches(typed, group)
+	);
+}
+
+/**
  * The name of the saved recovery key file. It says what the file is and names
  * no one, so the web and the phone save the same file name.
  */

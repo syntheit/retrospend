@@ -8,6 +8,7 @@
 import type {
 	RecoveryCallbacks,
 	RecoveryFlowPorts,
+	RecoveryLink,
 } from "@retrospend/crypto/client";
 import {
 	type Core,
@@ -22,12 +23,6 @@ import {
 const CHECK = "/api/v1/auth/recovery/check";
 const BEGIN = "/api/v1/auth/recovery/begin";
 const COMMIT = "/api/v1/auth/recovery";
-
-/** What a reset link leads to (the check route's answer, read by hand). */
-export type RecoveryLink = {
-	keys: "none" | "recovery" | "noRecovery";
-	protectionOn: boolean;
-};
 
 /**
  * Asks what the link leads to. `invalid` is the recovery check not knowing
@@ -47,15 +42,7 @@ export async function checkRecoveryLink(
 	const wire = await post(core, deps, CHECK, { token });
 	if (wire.status === 404) return "invalid";
 	if (wire.status !== 200) throw refusal(core, wire);
-	const { keys, protectionOn } = (
-		typeof wire.body === "object" && wire.body !== null ? wire.body : {}
-	) as Record<string, unknown>;
-	if (
-		(keys !== "none" && keys !== "recovery" && keys !== "noRecovery") ||
-		typeof protectionOn !== "boolean"
-	)
-		throw new core.KeyFlowError("unavailable");
-	return { keys, protectionOn };
+	return core.readRecoveryLink(wire.body);
 }
 
 function ports(

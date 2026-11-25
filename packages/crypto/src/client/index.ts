@@ -84,7 +84,9 @@ export {
 	type RecoverOptions,
 	type RecoverPorts,
 	type RecoveryDraft,
+	type RecoveryLink,
 	readRecoverBeginAnswer,
+	readRecoveryLink,
 	recoverAccount,
 } from "./recover";
 export {
@@ -106,6 +108,7 @@ export {
 } from "./recover-model";
 export {
 	blocksRecoveryScreen,
+	endsRecoveryHandle,
 	isFinalRecoveryFailure,
 	RECOVERY_FAILURE_CODES,
 	type RecoveryFailureCode,
@@ -121,6 +124,7 @@ export {
 export {
 	type ConfirmGroups,
 	groupMatches,
+	groupMismatch,
 	groupsConfirmed,
 	type KeyConfirmState,
 	pickConfirmGroups,

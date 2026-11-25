@@ -75,6 +75,29 @@ export function readRecoverBeginAnswer(body: unknown): RecoverBeginAnswer {
 	};
 }
 
+/** What a reset link leads to (the check route's answer). */
+export type RecoveryLink = {
+	keys: "none" | "recovery" | "noRecovery";
+	protectionOn: boolean;
+};
+
+/**
+ * The check route's answer from the port, unread until now. One that is not
+ * exactly this shape is "unavailable": a screen never reads it as "no keys"
+ * and shows the plain reset on a guess.
+ */
+export function readRecoveryLink(body: unknown): RecoveryLink {
+	const { keys, protectionOn } = (
+		typeof body === "object" && body !== null ? body : {}
+	) as Record<string, unknown>;
+	if (
+		(keys !== "none" && keys !== "recovery" && keys !== "noRecovery") ||
+		typeof protectionOn !== "boolean"
+	)
+		throw new KeyFlowError("unavailable");
+	return { keys, protectionOn };
+}
+
 /** The commit route's body (the reset token goes beside it, held by the adapter). */
 export type RecoverBody = {
 	recoveryAuthKey: string;

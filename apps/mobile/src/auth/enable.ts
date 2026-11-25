@@ -13,6 +13,7 @@ import {
 } from "@retrospend/crypto/client";
 import { newClientId } from "@/data/ids";
 import type { SignInStep } from "./auth-api";
+import { paintFrames } from "./paint";
 import { call, keyedRecord, type SecretDeps } from "./sign-in-secret";
 
 /** Sign-in as the session holds it: the password step, then the code when the account has two-factor. */
@@ -37,12 +38,6 @@ export type PhoneEnableDeps = Pick<SecretDeps, "primitives" | "store"> & {
 	/** Lets the busy state paint before Argon2id blocks the JS thread. */
 	paint?: () => Promise<void>;
 };
-
-/** Two frames, so "Making your keys" shows before the blocking work starts. */
-const paintFrames = () =>
-	new Promise<void>((resolve) =>
-		requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-	);
 
 /** The session's sign-in answer as a step: invalid credentials and an invalid code are the server saying no to what was typed. */
 export function signInStepOf(step: SignInStep): EnableSignInStep {

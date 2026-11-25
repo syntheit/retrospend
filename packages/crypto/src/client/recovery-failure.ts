@@ -87,3 +87,14 @@ export function isFinalRecoveryFailure(
 export const blocksRecoveryScreen = (
 	code: RecoveryFailureCode | null,
 ): boolean => isFinalRecoveryFailure(code) || code === "unavailable";
+
+/**
+ * Failures after which a recovery handle's proof or keys no longer stand: the
+ * sheet wipes it and the person starts again at the key.
+ */
+export const endsRecoveryHandle = (code: RecoveryFailureCode): boolean =>
+	code === "wrongKey" ||
+	code === "keysChanged" ||
+	code === "unavailable" ||
+	code === "linkExpired" ||
+	code === "notOffered";

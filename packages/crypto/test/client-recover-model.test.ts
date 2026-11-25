@@ -14,6 +14,10 @@ import {
 	recoverReducer,
 	recoverView,
 } from "../src/client/recover-model";
+import {
+	blocksRecoveryScreen,
+	endsRecoveryHandle,
+} from "../src/client/recovery-failure";
 
 const KEY = "000G40-R40M30-E20918-5GR38E-1W8124-GK2GAH-C5RR34-D1P70X-3RFH8K";
 const GROUPS = KEY.split("-");
@@ -246,5 +250,34 @@ describe("recoverReducer", () => {
 			run(onPassword, { type: "failed", code: "keysChanged" }).unconfirmed,
 		).toBe(false);
 		expect(run(onPassword, { type: "reset" }).unconfirmed).toBe(false);
+	});
+});
+
+describe("which failures end what", () => {
+	it("a handle's proof ends on exactly these codes", () => {
+		for (const code of [
+			"wrongKey",
+			"keysChanged",
+			"unavailable",
+			"linkExpired",
+			"notOffered",
+		] as const)
+			expect(endsRecoveryHandle(code), code).toBe(true);
+		// A typo never reached the server, and a rate limit or a lost answer
+		// leaves the proof standing.
+		for (const code of ["typo", "tooMany", "unconfirmed", "failed"] as const)
+			expect(endsRecoveryHandle(code), code).toBe(false);
+	});
+
+	it("the screen is blocked for good by the link, the feature, a lost new key or an account without a key", () => {
+		for (const code of [
+			"linkExpired",
+			"notOffered",
+			"notSaved",
+			"unavailable",
+		] as const)
+			expect(blocksRecoveryScreen(code), code).toBe(true);
+		for (const code of ["typo", "wrongKey", "tooMany", null] as const)
+			expect(blocksRecoveryScreen(code), String(code)).toBe(false);
 	});
 });

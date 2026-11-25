@@ -2,6 +2,7 @@
 
 import { passwordMeetsRules } from "@retrospend/api-contract";
 import {
+	endsRecoveryHandle,
 	keyComplete,
 	passwordsAlike,
 	type RecoveryCallbacks,
@@ -35,15 +36,6 @@ export type RecoverSheetProps = RecoveryCallbacks & {
 	onDone: (result: "set" | "linkSpent") => void;
 };
 
-/** Failures after which the handle's proof or keys no longer stand: it is wiped, and the person starts at the key. */
-const STALE: readonly RecoveryFailureCode[] = [
-	"wrongKey",
-	"keysChanged",
-	"unavailable",
-	"linkExpired",
-	"notOffered",
-];
-
 /**
  * Use your recovery key and Set a new password (the mockup's R3 and R4), one
  * Sheet with two steps. It knows nothing of the server: the caller proves the
@@ -73,7 +65,7 @@ export function RecoverSheet(props: RecoverSheetProps) {
 	};
 	const fail = (error: unknown) => {
 		const code = recoveryFailureOf(error);
-		if (STALE.includes(code)) life.drop();
+		if (endsRecoveryHandle(code)) life.drop();
 		dispatch({ type: "failed", code });
 	};
 	const advance = async () => {
