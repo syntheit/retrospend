@@ -85,6 +85,7 @@
 		"export": "CSV exportieren",
 		"delete": "Löschen",
 		"moved": "{count, plural, one {# Ausgabe} other {# Ausgaben}} nach {name} verschoben",
+		"movedSome": "{count, plural, one {# Ausgabe} other {# Ausgaben}} nach {name} verschoben. {left, plural, one {# konnte nicht verschoben werden} other {# konnten nicht verschoben werden}}",
 		"categorizeTitle": "{count, plural, one {# Ausgabe} other {# Ausgaben}} nach {name} verschieben",
 		"move": "Verschieben",
 		"moveFailed": "Das Verschieben kann nicht gespeichert werden",
