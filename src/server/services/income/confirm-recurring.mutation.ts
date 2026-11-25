@@ -119,6 +119,7 @@ export async function confirmRecurringIncomeIn(
 ): Promise<ConfirmedIncome> {
 	const input = await withUserZone(tx, userId, given);
 	const template = await dueTemplate(tx, userId, input);
+	const paidOn = input.paidOn;
 	const entry = await recurringEntryData(
 		tx,
 		template,
@@ -130,15 +131,9 @@ export async function confirmRecurringIncomeIn(
 					value: input.customRate,
 				}
 			: { kind: "table", rateType: input.rateType ?? null },
-		input.paidOn
+		paidOn
 			? asBadRequest(() =>
-					paidOnInstant(
-						input.paidOn,
-						"IN",
-						input.timeZone,
-						template,
-						new Date(),
-					),
+					paidOnInstant(paidOn, "IN", input.timeZone, template, new Date()),
 				)
 			: undefined,
 	);
