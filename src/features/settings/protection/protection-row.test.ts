@@ -48,6 +48,9 @@ vi.mock("~/components/ui/toast", () => ({
 vi.mock("./enable-sheet", () => ({
 	EnableSheet: () => h("div", { "data-sheet": "" }),
 }));
+vi.mock("~/features/recovery/new-key-sheet", () => ({
+	NewKeySheet: () => h("div", { "data-new-key-sheet": "" }),
+}));
 
 const { ProtectionRow } = await import("./protection-row");
 const row = protection.row;
@@ -142,11 +145,22 @@ describe("ProtectionRow", () => {
 		expect(target(failed, describedBy(failed))).toBe(row.loadFailed);
 	});
 
-	it("says keys are ready, with no Turn on and no sheet, once the account has them", () => {
+	it("says keys are ready with Make new key, and no Turn on and no enable sheet, once the account has them", () => {
 		setup({ data: { advancedProtection: true } }, { data: "keyed" });
 		const out = words(html());
 		expect(out).toContain(row.keysReady);
+		expect(out).toContain(`>${row.makeNewKey}</button>`);
+		expect(out).not.toMatch(
+			new RegExp(`<button[^>]*disabled=""[^>]*>${row.makeNewKey}`),
+		);
+		expect(out).toContain("data-new-key-sheet");
 		expect(out).not.toContain(row.turnOn);
 		expect(out).not.toContain("data-sheet");
+	});
+
+	it("does not draw Make new key for an account without keys", () => {
+		const out = words(html());
+		expect(out).not.toContain(row.makeNewKey);
+		expect(out).not.toContain("data-new-key-sheet");
 	});
 });

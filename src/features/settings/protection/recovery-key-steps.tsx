@@ -7,8 +7,7 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { useToast } from "~/components/ui/toast";
-import { fieldsLocked, groupMismatch } from "./enable-model";
-import type { StepProps } from "./enable-steps";
+import { groupMismatch, type KeyConfirmState } from "./enable-model";
 import {
 	copyRecoveryKey,
 	type KeyActions,
@@ -19,19 +18,23 @@ import { StepError } from "./step-error";
 
 /** R1: the key in nine groups, and the ways to keep it. Shown once; it is not read back from the server. */
 export function SaveKeyStep({
-	state,
+	keyText,
 	actions,
 	file,
-}: Pick<StepProps, "state"> & { actions: KeyActions; file: KeyFile }) {
+}: {
+	keyText: string;
+	actions: KeyActions;
+	file: KeyFile;
+}) {
 	const t = useTranslations("protection.recoveryKey");
 	const toast = useToast();
 	const [copyFailed, setCopyFailed] = useState(false);
 	const copy = async () => {
-		const copied = await copyRecoveryKey(actions, state.keyText);
+		const copied = await copyRecoveryKey(actions, keyText);
 		setCopyFailed(!copied);
 		if (copied) toast.saved(t("copied"));
 	};
-	const items = recoveryKeyGroups(state.keyText).map((group, i) => ({
+	const items = recoveryKeyGroups(keyText).map((group, i) => ({
 		group,
 		number: i + 1,
 	}));
@@ -55,14 +58,14 @@ export function SaveKeyStep({
 				</Button>
 				<Button
 					kind="secondary"
-					onClick={() => actions.download(keyFileText(file, state.keyText))}
+					onClick={() => actions.download(keyFileText(file, keyText))}
 					size="sm"
 				>
 					{t("download")}
 				</Button>
 				<Button
 					kind="secondary"
-					onClick={() => actions.print(keyFileText(file, state.keyText))}
+					onClick={() => actions.print(keyFileText(file, keyText))}
 					size="sm"
 				>
 					{t("print")}
@@ -73,12 +76,23 @@ export function SaveKeyStep({
 	);
 }
 
-/** R2: type two of the nine groups back. Which two is chosen when the step opens (see pickConfirmGroups). */
-export function ConfirmKeyStep({ state, dispatch }: StepProps) {
+/**
+ * R2: type two of the nine groups back. Which two is chosen when the step
+ * opens (see pickConfirmGroups). `locked` is the caller's: working, or failed
+ * for good.
+ */
+export function ConfirmKeyStep({
+	state,
+	dispatch,
+	locked,
+}: {
+	state: KeyConfirmState;
+	dispatch: (action: { type: "group"; index: 0 | 1; value: string }) => void;
+	locked: boolean;
+}) {
 	const t = useTranslations("protection.recoveryKey");
 	const ids = [useId(), useId()] as const;
 	const [first, second] = state.groups ?? [0, 1];
-	const locked = fieldsLocked(state);
 	return (
 		<div className="flex flex-col gap-4">
 			<p className="text-fg-2 text-small">

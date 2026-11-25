@@ -79,8 +79,11 @@ export type EnableAction =
 	| { type: "saved" }
 	| { type: "reset" };
 
+/** What the confirm step reads: the key as written down, the two groups asked for and what was typed. Enable and Make new key both fill it. */
+export type KeyConfirmState = Pick<EnableState, "keyText" | "groups" | "typed">;
+
 /** Both typed groups are the groups asked for. Nothing asked yet is never a match. */
-export function groupsConfirmed(state: EnableState): boolean {
+export function groupsConfirmed(state: KeyConfirmState): boolean {
 	if (!state.groups || state.keyText === "") return false;
 	const all = recoveryKeyGroups(state.keyText);
 	return state.groups.every((at, i) =>
@@ -264,7 +267,7 @@ function stepReady(state: EnableState, options: { twoFactor: boolean }) {
  * A typed group that is as long as the group and still not it. Shorter text is
  * still being typed, so it is not called wrong yet.
  */
-export function groupMismatch(state: EnableState, index: 0 | 1): boolean {
+export function groupMismatch(state: KeyConfirmState, index: 0 | 1): boolean {
 	const at = state.groups?.[index];
 	if (at === undefined || state.keyText === "") return false;
 	const group = recoveryKeyGroups(state.keyText)[at] ?? "";
