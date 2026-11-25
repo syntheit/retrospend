@@ -297,6 +297,10 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	// ── add sheets ───────────────────────────────────────────────────────
 	"entry.catalog": to("GET /entry/catalog"),
 	"entry.defaultRateTypes": to("GET /entry/default-rate-types"),
+	"entry.expense.categorize.preview": to(
+		"POST /expenses/bulk-category/preview",
+	),
+	"entry.expense.categorize.save": to("POST /expenses/bulk-category"),
 	"entry.expense.create.preview": to("POST /expenses/preview"),
 	"entry.expense.create.save": to("POST /expenses"),
 	"entry.expense.delete.preview": to("POST /expenses/{id}/delete/preview"),
@@ -342,7 +346,6 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"exchangeRate.syncNow": to("POST /rates/sync"),
 
 	// ── expenses ─────────────────────────────────────────────────────────
-	"expense.bulkUpdateCategory": withPreview("POST /expenses/bulk-category"),
 	"expense.checkDuplicate": to("GET /expenses/duplicates"),
 	"expense.createExpense": to("POST /expenses"),
 	"expense.deleteExpense": to("DELETE /expenses/{id}"),

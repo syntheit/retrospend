@@ -1,0 +1,123 @@
+import type { WriteBody, WriteOp } from "@retrospend/engine/device";
+import type { DeviceWrites } from "@/data/device-engine";
+import { newClientId } from "@/data/ids";
+import type { Outbox } from "@/data/outbox";
+import { deviceOf, exclusive } from "./queue";
+
+// Try again on a parked edit or delete that met another device's change. The
+// write is saved again over the row a pull brought: the pulled row becomes the
+// full PUT body (the domain's putBodyOf, in the account's zone, read by the
+// engine), and only the fields this phone changed are laid over it. It is a
+// new write under a new key, checked against the pulled version, and it is
+// previewed before it is sent.
+
+/** The rate fields travel as one group: a body never carries both a type and a typed rate. */
+const RATE = ["rateType", "customRate"] as const;
+const RATE_TRIGGERS = ["currency", ...RATE];
+
+/**
+ * `pulled` with this phone's value for each name in `changed`. A changed name
+ * the payload leaves out is a cleared field. A change to the currency or the
+ * rate takes the payload's whole rate group, so the pulled row's rate for the
+ * old currency never rides along.
+ */
+export function rebasedBody(
+	pulled: Record<string, unknown>,
+	payload: Record<string, unknown>,
+	changed: readonly string[],
+): Record<string, unknown> {
+	const names = new Set(changed);
+	if (changed.some((n) => RATE_TRIGGERS.includes(n)))
+		for (const n of RATE) names.add(n);
+	const body = { ...pulled };
+	for (const name of names) {
+		if (name in payload) body[name] = payload[name];
+		else delete body[name];
+	}
+	return body;
+}
+
+export interface RebasePlan {
+	op: WriteOp;
+	/** The pulled version the new write is checked against. */
+	version: string;
+	/** What the new entry sends. */
+	payload: Record<string, unknown>;
+}
+
+/**
+ * What Try again would save, or null when it cannot be read: the entry is not
+ * a parked update or delete of an expense, or the device has no whole,
+ * versioned copy of the row. Never a guess.
+ */
+export async function planRebase(input: {
+	outbox: Outbox;
+	writes: DeviceWrites;
+	clientId: string;
+}): Promise<RebasePlan | null> {
+	const { outbox, writes, clientId } = input;
+	const entry = (await outbox.all()).find((e) => e.clientId === clientId);
+	if (
+		entry?.state !== "conflict" ||
+		entry.entity !== "expenses" ||
+		entry.kind === "create"
+	)
+		return null;
+	const stored = await writes.storedRebase(entry.targetId);
+	if (!stored) return null;
+	if (entry.kind === "delete") {
+		return {
+			op: { kind: "delete", id: entry.targetId },
+			version: stored.version,
+			payload: { id: entry.targetId },
+		};
+	}
+	// Which fields this phone changed is known only from its booking. Without
+	// one an edit would read as no change at all, and lose it: never re-based.
+	if (!entry.device) return null;
+	const body = rebasedBody(
+		{ ...stored.body },
+		(entry.payload ?? {}) as Record<string, unknown>,
+		entry.device.changed,
+	);
+	return {
+		op: { kind: "update", body: body as unknown as WriteBody },
+		version: stored.version,
+		payload: body,
+	};
+}
+
+/**
+ * Swaps the parked entry for the re-based one: a fresh `clientId` (the old key
+ * holds the old request), the same row, the pulled version as its base, and
+ * the device's booking of it. Entries after it for the row are parked by the
+ * outbox: each is re-based on its own. Returns the new client id, or null when
+ * the entry is not parked any more, or an edit the device could not book (its
+ * changed fields would be lost).
+ */
+export function commitRebase(input: {
+	outbox: Outbox;
+	writes: DeviceWrites;
+	clientId: string;
+	plan: RebasePlan;
+}): Promise<string | null> {
+	const { outbox, writes, clientId, plan } = input;
+	return exclusive(outbox, async () => {
+		const old = (await outbox.all()).find((e) => e.clientId === clientId);
+		if (old?.state !== "conflict") return null;
+		const booked = await writes.book(plan.op);
+		if (plan.op.kind === "update" && !booked) return null;
+		const next = newClientId();
+		await outbox.replace(clientId, {
+			clientId: next,
+			entity: "expenses",
+			kind: old.kind,
+			targetId: old.targetId,
+			baseVersion: plan.version,
+			payload: plan.payload,
+			...(booked ? { device: deviceOf(booked) } : {}),
+		});
+		await writes.refresh().catch(() => undefined);
+		return next;
+	});
+}

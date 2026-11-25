@@ -545,7 +545,12 @@ describe("/api/v1/shared-expenses", () => {
 				status: "FINALIZED",
 			},
 		});
-		await refuse(c2.asDebtor, paid.id, "reject", "share_reject_reverses_payment");
+		await refuse(
+			c2.asDebtor,
+			paid.id,
+			"reject",
+			"share_reject_reverses_payment",
+		);
 
 		// Nothing was written by any of them.
 		for (const [id, who] of [
@@ -893,6 +898,69 @@ describe("/api/v1/shared-expenses", () => {
 		);
 		expect(await owedToYou()).toBe(after);
 		expect(after).toBe(before - 1500);
+	});
+
+	it("refuses an undo that would change the amount once a person on it answered, and keeps their answer", async () => {
+		const made = await add({ description: "Dinner" });
+		const edited = await expectBody<Write>(
+			await put(`/shared-expenses/${made.id}`, {
+				...body({ amount: "120", description: "Edited" }),
+				id: made.id,
+			}),
+			c.update,
+		);
+		// An answer writes the share, not the expense, so its stamp does not move.
+		await waiting(made.id);
+		await expectBody<Verification>(
+			await post(`/shared-expenses/${made.id}/accept`, {}, asMartin),
+			c.accept,
+		);
+		const refused = {
+			code: "conflict",
+			detail:
+				"Someone already answered this expense, so this edit cannot be undone.",
+		};
+		for (const path of [
+			"/shared-expenses/undo",
+			"/shared-expenses/undo/preview",
+		]) {
+			const res = await post(path, { token: edited.undo });
+			expect(res.status).toBe(409);
+			expect(await res.json()).toMatchObject(refused);
+		}
+		expect(Number((await row(made.id))?.amount)).toBe(120);
+		expect((await row(made.id))?.description).toBe("Edited");
+		expect(
+			(await row(made.id))?.splitParticipants.find(
+				(p) => p.participantId === martin.user.id,
+			)?.verificationStatus,
+		).toBe("ACCEPTED");
+	});
+
+	it("undoes a text-only edit after a person answered, and leaves their answer", async () => {
+		const made = await add({ description: "Dinner" });
+		await waiting(made.id);
+		await expectBody<Verification>(
+			await post(`/shared-expenses/${made.id}/accept`, {}, asMartin),
+			c.accept,
+		);
+		const edited = await expectBody<Write>(
+			await put(`/shared-expenses/${made.id}`, {
+				...body({ description: "Dinnerr" }),
+				id: made.id,
+			}),
+			c.update,
+		);
+		await expectBody(
+			await post("/shared-expenses/undo", { token: edited.undo }),
+			c.undo,
+		);
+		expect((await row(made.id))?.description).toBe("Dinner");
+		expect(
+			(await row(made.id))?.splitParticipants.find(
+				(p) => p.participantId === martin.user.id,
+			)?.verificationStatus,
+		).toBe("ACCEPTED");
 	});
 
 	it("refuses more decimals than the currency has, and amounts a float cannot hold", async () => {

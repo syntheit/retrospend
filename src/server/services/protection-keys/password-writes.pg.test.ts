@@ -700,6 +700,34 @@ describe("auth.resetPassword (email reset)", () => {
 		expect(await tokenRows(a.id)).toBe(0);
 	});
 
+	it("resets an account without keys with an admin's link, which the reset page offers the plain form for", async () => {
+		const a = await passwordUser();
+		const token = await resetToken(a.id, "admin");
+		await reset(token);
+		expect(
+			await verifyPassword({
+				password: NEW_PASSWORD,
+				hash: await storedHash(a.id),
+			}),
+		).toBe(true);
+		expect(await tokenRows(a.id)).toBe(0);
+	});
+
+	it.each([
+		"email",
+		"admin",
+	] as const)("refuses an account whose protection is on with a %s link, with ProtectedPasswordError, and changes nothing", async (origin) => {
+		const a = await passwordUser();
+		await giveKeys(a.id, "ON");
+		const before = await storedHash(a.id);
+		const error = await reset(await resetToken(a.id, origin)).catch(
+			(e: unknown) => e,
+		);
+		expect(error).toBeInstanceOf(ProtectedPasswordError);
+		expect(await storedHash(a.id)).toBe(before);
+		expect(await keyRows(a.id)).toEqual({ sets: 1, wraps: 1 });
+	});
+
 	it("removes the keys of an account whose protection is OFF with the new hash, and records ids only", async () => {
 		const a = await passwordUser();
 		await giveKeys(a.id);

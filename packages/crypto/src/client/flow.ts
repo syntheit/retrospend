@@ -49,6 +49,12 @@ export type KeyFlowCode =
 	| "recoveryUnavailable"
 	/** The key set changed under the run (a second run may succeed). */
 	| "conflict"
+	/**
+	 * A send ended without a usable answer, or a read-back that would tell
+	 * whether it committed could not be made. What was sent may be stored;
+	 * asking again, or sending the same thing again, is the way on.
+	 */
+	| "unconfirmed"
 	/** The server answered 404 not_found: the thing asked about is not there (no key set). */
 	| "notFound"
 	/** The server failed (a 5xx, a gateway among them): a write may or may not have committed. */
@@ -187,6 +193,37 @@ export function classifyRefusal(
 	if (status === 422 && code === "idempotency_key_reused") return "keyReused";
 	if (status >= 500) return "serverError";
 	return "failed";
+}
+
+/**
+ * Codes that mean a call got no usable answer, or was turned away for now:
+ * asking again may work, and nothing is learned about the keys. The one list
+ * every flow's read-back uses.
+ */
+const COULD_NOT_ASK: readonly KeyFlowCode[] = [
+	"unavailable",
+	"serverError",
+	"rateLimited",
+];
+export const couldNotAsk = (code: KeyFlowCode): boolean =>
+	COULD_NOT_ASK.includes(code);
+
+/**
+ * Whether a send that failed with `code` may have committed on the server: no
+ * answer, or a server failure (a gateway can answer 502 after the commit). A
+ * conflict or a reused key means so only after an earlier send of the same
+ * attempt (`earlierSends`), which may be the one that committed. The one rule
+ * every flow's "never send again blind" uses.
+ */
+export function mayHaveCommitted(
+	code: KeyFlowCode,
+	earlierSends: number,
+): boolean {
+	return (
+		code === "unavailable" ||
+		code === "serverError" ||
+		((code === "conflict" || code === "keyReused") && earlierSends > 0)
+	);
 }
 
 /** Anything a flow throws, as a KeyFlowError. */

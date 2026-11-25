@@ -62,13 +62,48 @@
 	"recover": {
 		"enterTitle": "Use your recovery key",
 		"enterBody": "Enter the 9 groups, or paste the whole key.",
-		"typo": "Check the key for a typo.",
-		"wrongKey": "That is not this account's recovery key.",
-		"unavailable": "This account has no recovery key.",
 		"newPasswordTitle": "Set a new password",
 		"newPasswordBody": "Your recovery key opened your data. Choose a new password.",
 		"unlock": "Sign in",
-		"apiKeysRemoved": "Your API keys were removed."
+		"apiKeysRemoved": "Your API keys were removed.",
+		"continue": "Continue",
+		"save": "Set password",
+		"saving": "Setting your password",
+		"linkFailed": "Couldn't check this link.",
+		"choose": {
+			"titleOn": "Open your protected data",
+			"titleOff": "Reset your password",
+			"bodyOn": "Your password cannot be reset by email. Use one of these.",
+			"bodyOff": "Use your recovery key to keep your keys.",
+			"useKey": "Use key",
+			"nothingWorks": "Nothing works",
+			"resetMeta": "Removes your keys and recovery key.",
+			"reset": "Reset password",
+			"resetAccount": "Reset account"
+		},
+		"errors": {
+			"typo": "Check the key for a typo.",
+			"wrongKey": "That is not this account's recovery key.",
+			"unavailable": "This account has no recovery key.",
+			"linkExpired": "This link has expired or was already used.",
+			"keysChanged": "Your keys changed. Start again.",
+			"tooMany": "Too many tries, wait a minute and try again.",
+			"notOffered": "Advanced protection is not available here.",
+			"wrongPassword": "Wrong password",
+			"notSaved": "Your new key could not be saved. Your old key still works.",
+			"failed": "Couldn't finish. Try again.",
+			"unconfirmed": "We couldn't confirm it. Try again."
+		},
+		"checking": "Checking your key",
+		"signInNew": "Sign in with your new password."
+	},
+	"newKey": {
+		"title": "Make new key",
+		"body": "Your old key stops working when the new one is saved.",
+		"making": "Making your key",
+		"saving": "Saving your key",
+		"continue": "Continue",
+		"save": "Save key"
 	},
 	"methods": {
 		"device": "Another device",
@@ -92,6 +127,7 @@
 		"deviceRecordNotSaved": "Your new password is set, so sign in again on this device."
 	},
 	"toast": {
-		"keysSaved": "Keys saved"
+		"keysSaved": "Keys saved",
+		"newKeySaved": "New recovery key saved"
 	}
 }

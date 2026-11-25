@@ -5,8 +5,8 @@ import type { Prisma } from "~prisma";
 
 /**
  * An undo is only safe against the state its write left behind (the same
- * rule as shared-guard.ts for shared expenses). The engine guards some of its
- * own undos (a movement taken back twice, an envelope edit that is not the
+ * rule as entry/guarded.mutation.ts, which owns it for expenses and shared
+ * expenses). The engine guards some of its own undos (a movement taken back twice, an envelope edit that is not the
  * newest). The rest are "put the previous value back" writes, and those must
  * refuse when the row changed since: a guard names the row, the write stores
  * its stamp, and the undo runs only while the stamp still reads the same, in

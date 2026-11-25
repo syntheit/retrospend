@@ -1,4 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
+import { deviceWrites } from "@/data/deviceWrites";
 import type { PendingWrite } from "./draft";
 import {
 	changeLines,
@@ -8,6 +9,9 @@ import {
 	sharesOf,
 	splitSharesOf,
 } from "./preview";
+
+jest.mock("@/data/deviceWrites", () => ({ deviceWrites: jest.fn(() => null) }));
+const mockWrites = deviceWrites as jest.Mock;
 
 const line = (minor: number, currency = "ARS") => ({ minor, currency });
 
@@ -239,6 +243,50 @@ describe("fetchPreview", () => {
 				body: { ...write.body, currency: "UYU" },
 			}),
 		).toEqual({ status: "refused", reason: "missingRate", currency: "UYU" });
+	});
+});
+
+describe("fetchPreview under the device flag", () => {
+	const write: PendingWrite = {
+		entity: "expenses",
+		kind: "update",
+		label: "Lunch",
+		body: { id: "e1", title: "Lunch", amount: "120", currency: "USD" },
+	};
+	const compare = jest.fn(async () => undefined);
+	const apiWith = (previewUpdate: () => Promise<unknown>) =>
+		({ expenses: { previewUpdate } }) as unknown as RetrospendClient;
+	beforeEach(() => {
+		compare.mockClear();
+		mockWrites.mockReturnValue({ comparePreview: compare });
+	});
+	afterEach(() => mockWrites.mockReturnValue(null));
+
+	it("hands the server's diff to the device compare and still returns the server's", async () => {
+		const api = apiWith(async () => incomeDiff);
+		expect(await fetchPreview(api, write)).toEqual({
+			status: "ready",
+			diff: incomeDiff,
+		});
+		expect(compare).toHaveBeenCalledWith(
+			{ kind: "update", body: write.body },
+			incomeDiff,
+		);
+	});
+
+	it("unprotected offline under the flag is offline: no device preview stands in", async () => {
+		const api = apiWith(async () => {
+			throw new TypeError("Network request failed");
+		});
+		expect(await fetchPreview(api, write)).toEqual({ status: "offline" });
+		expect(compare).not.toHaveBeenCalled();
+	});
+
+	it("is unchanged with the flag off", async () => {
+		mockWrites.mockReturnValue(null);
+		const api = apiWith(async () => incomeDiff);
+		expect((await fetchPreview(api, write)).status).toBe("ready");
+		expect(compare).not.toHaveBeenCalled();
 	});
 });
 

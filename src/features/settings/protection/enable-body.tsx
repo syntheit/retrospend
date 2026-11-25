@@ -1,5 +1,6 @@
 "use client";
 
+import { fieldsLocked } from "./enable-model";
 import {
 	MethodsStep,
 	PasswordStep,
@@ -29,10 +30,20 @@ export function EnableBody(props: BodyProps) {
 			return <MethodsStep dispatch={dispatch} state={state} />;
 		case "saveKey":
 			return (
-				<SaveKeyStep actions={props.actions} file={props.file} state={state} />
+				<SaveKeyStep
+					actions={props.actions}
+					file={props.file}
+					keyText={state.keyText}
+				/>
 			);
 		case "confirmKey":
-			return <ConfirmKeyStep dispatch={dispatch} state={state} />;
+			return (
+				<ConfirmKeyStep
+					dispatch={dispatch}
+					locked={fieldsLocked(state)}
+					state={state}
+				/>
+			);
 		case "confirmYou":
 			return (
 				<ConfirmYouStep

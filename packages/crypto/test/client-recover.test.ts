@@ -16,6 +16,8 @@ import {
 	wrapKey,
 } from "../src";
 import {
+	beginRecovery,
+	finishRecovery,
 	KeyFlowError,
 	NEW_PASSWORD_PARAMS,
 	type RecoverBody,
@@ -599,5 +601,126 @@ describe("recoverAccount", () => {
 				expect(allZero(t.rkInputs)).toBe(true);
 			},
 		);
+	});
+});
+
+describe("beginRecovery and finishRecovery", () => {
+	const allZero = (arrays: Uint8Array[]) =>
+		arrays.every((b) => b.every((x) => x === 0));
+
+	it("proves the key before any new password exists, and derives nothing from a password yet", async () => {
+		const argon = vi.fn(p.argon2id);
+		const r = rig({ ...scripted().prims, argon2id: argon });
+		const draft = await beginRecovery(r.ports, { recoveryKeyText: RK.text });
+		expect(r.begins).toHaveLength(1);
+		expect(argon).not.toHaveBeenCalled();
+		draft.wipe();
+	});
+
+	it("a wrong key stops at the first step with no draft and no password asked for", async () => {
+		const r = rig(scripted().prims);
+		await expect(
+			beginRecovery(r.ports, { recoveryKeyText: OTHER_RK.text }),
+		).rejects.toMatchObject({ code: "wrongRecoveryKey" });
+	});
+
+	it("finishes to the same body as the one-call flow", async () => {
+		const one = await run(rig(scripted().prims).ports);
+		const r = rig(scripted().prims);
+		const draft = await beginRecovery(r.ports, { recoveryKeyText: RK.text });
+		const two = await finishRecovery(
+			r.ports,
+			draft,
+			{ password: NEW_PASSWORD },
+			OPTIONS,
+		);
+		draft.wipe();
+		// The wrap's nonce is random, so the wraps differ as text; both open to the same key.
+		const { wrappedAccountKey: wrapOne, ...restOne } = one;
+		const { wrappedAccountKey: wrapTwo, ...restTwo } = two;
+		expect(restTwo).toEqual(restOne);
+		for (const wrapped of [wrapOne, wrapTwo])
+			expect(
+				unwrapKey(
+					p,
+					fromHex(MASTER.wrapKey),
+					"ak-password",
+					USER_ID,
+					fromBase64Url(wrapped) as Uint8Array,
+				),
+			).toEqual(AK);
+	});
+
+	it("keeps the account key in the draft only: it is zero after wipe, and a wiped draft finishes nothing", async () => {
+		const kept: Uint8Array[] = [];
+		const base = scripted().prims;
+		const prims: Primitives = {
+			...base,
+			aeadDecrypt: (...a) => {
+				const out = base.aeadDecrypt(...a);
+				kept.push(out);
+				return out;
+			},
+		};
+		const r = rig(prims);
+		const draft = await beginRecovery(r.ports, { recoveryKeyText: RK.text });
+		// The private key is gone with the step; the account key lives on, intact.
+		const [accountKey, privateKey] = kept;
+		expect(accountKey).toEqual(AK);
+		expect(allZero([privateKey as Uint8Array])).toBe(true);
+		draft.wipe();
+		expect(allZero(kept)).toBe(true);
+		await expect(
+			finishRecovery(r.ports, draft, { password: NEW_PASSWORD }, OPTIONS),
+		).rejects.toMatchObject({ code: "malformed" });
+	});
+
+	it("refuses a draft it did not make", async () => {
+		const r = rig(scripted().prims);
+		await expect(
+			finishRecovery(
+				r.ports,
+				{ wipe: () => {} },
+				{ password: NEW_PASSWORD },
+				OPTIONS,
+			),
+		).rejects.toMatchObject({ code: "malformed" });
+	});
+
+	it("wipes the account key when the second wrap does not open", async () => {
+		const kept: Uint8Array[] = [];
+		const base = scripted().prims;
+		const prims: Primitives = {
+			...base,
+			aeadDecrypt: (...a) => {
+				const out = base.aeadDecrypt(...a);
+				kept.push(out);
+				return out;
+			},
+		};
+		const a = goodAnswer();
+		const r = rig(
+			prims,
+			setWrap(a, "private-key", flipped(wrapOf(a, "private-key"))),
+		);
+		await expect(
+			beginRecovery(r.ports, { recoveryKeyText: RK.text }),
+		).rejects.toMatchObject({ code: "malformed" });
+		expect(kept.length).toBeGreaterThan(0);
+		expect(allZero(kept)).toBe(true);
+	});
+
+	it("checks parameters before it derives, on its own", async () => {
+		const r = rig(scripted().prims);
+		const draft = await beginRecovery(r.ports, { recoveryKeyText: RK.text });
+		await expect(
+			finishRecovery(
+				r.ports,
+				draft,
+				{ password: NEW_PASSWORD },
+				{ params: { memoryKiB: 8, passes: 1 } },
+			),
+		).rejects.toMatchObject({ code: "params" });
+		draft.wipe();
 	});
 });

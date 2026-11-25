@@ -80,7 +80,10 @@
 			"restored": "Se restauró {title}",
 			"editOffline": "Estás sin conexión. Editar necesita conexión.",
 			"editRefused": "No se pudo guardar este cambio. Puede estar bloqueado.",
-			"editSynced": "Este movimiento ya se sincronizó. Ábrelo desde Actividad para editarlo."
+			"editSynced": "Este movimiento ya se sincronizó. Ábrelo desde Actividad para editarlo.",
+			"stillSending": "Este movimiento aún se está enviando. Inténtalo de nuevo en un momento.",
+			"parkedRow": "Resuelve este gasto primero en «No se pudo sincronizar».",
+			"notRead": "No se pudo leer este movimiento. Inténtalo de nuevo en un momento."
 		},
 		"changes": {
 			"offline": "Sin conexión. Se guarda en tu teléfono y se sincroniza después.",
@@ -108,7 +111,11 @@
 			"title": "No se pudo sincronizar",
 			"refused": "El servidor no aceptó esto.",
 			"discard": "Descartar",
-			"retryFailed": "Todavía no se puede enviar. Inténtalo más tarde."
+			"retryFailed": "Todavía no se puede enviar. Inténtalo más tarde.",
+			"changed": "Cambiado en otro dispositivo",
+			"deleted": "Eliminado en otro dispositivo",
+			"lost": "Un cambio anterior en esto no se sincronizó.",
+			"rebaseTitle": "¿Guardar tu cambio de nuevo?"
 		},
 		"transferMode": "Transferencia",
 		"addTransfer": "Añadir transferencia",

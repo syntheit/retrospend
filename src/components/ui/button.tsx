@@ -55,6 +55,7 @@ const kindVariants = cva(
 					"border-line-strong bg-surface text-fg can-hover:hover:bg-raised",
 				ghost: "text-fg-2 can-hover:hover:bg-raised can-hover:hover:text-fg",
 				danger: "bg-danger text-danger-fg can-hover:hover:bg-danger-hover",
+				"danger-text": "text-danger can-hover:hover:bg-raised",
 			},
 			size: {
 				ctl: "h-ctl px-3 text-body",
@@ -78,6 +79,7 @@ const SPINNER: Record<Kind, string> = {
 	secondary: "text-fg-2",
 	ghost: "text-fg-2",
 	danger: "text-danger-fg",
+	"danger-text": "text-danger",
 };
 type LegacySize = NonNullable<VariantProps<typeof buttonVariants>["size"]>;
 

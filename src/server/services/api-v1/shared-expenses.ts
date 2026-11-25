@@ -9,6 +9,10 @@ import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
 import {
+	guardedShared,
+	updateSharedUnanswered,
+} from "~/server/services/entry/guarded.mutation";
+import {
 	type CreatedShared,
 	type CreateSharedInput,
 	createSharedExpense,
@@ -42,7 +46,6 @@ import {
 	toPreviewDto,
 	undoFor,
 } from "./money-write";
-import { guardedShared } from "./shared-guard";
 import { type ShareChange, withShares } from "./shared-shares";
 import { readUndo } from "./undo";
 
@@ -372,7 +375,7 @@ function inverseOf(caller: Caller, op: string, input: unknown): Inverse {
 			restore: StoredRestore;
 		} & Stamped;
 		const args = restoreOf(restore);
-		const mutation = guardedShared(updateSharedExpense, expectedUpdatedAt);
+		const mutation = guardedShared(updateSharedUnanswered, expectedUpdatedAt);
 		return {
 			preview: () => dryRun(caller, mutation, args),
 			apply: async () => {

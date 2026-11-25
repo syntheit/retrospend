@@ -1,5 +1,5 @@
-export { CreateCaptures, type SentCreate } from "../create-captures";
 export type { WriteVerdict } from "../write-parity";
+export type { BookedWrite, WriteBody, WriteOp } from "./book";
 export {
 	type CheckPlan,
 	COMPARE_WHAT,
@@ -53,3 +53,5 @@ export type {
 	ServerFigures,
 	StorageHooks,
 } from "./ports";
+export type { ServerPreview } from "./preview-compare";
+export type { Rebase } from "./rebase";

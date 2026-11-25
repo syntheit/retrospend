@@ -80,7 +80,10 @@
 			"restored": "Restored {title}",
 			"editOffline": "You're offline. Editing needs a connection.",
 			"editRefused": "Couldn't save this change. It may be locked.",
-			"editSynced": "This entry already synced. Open it from Activity to edit it."
+			"editSynced": "This entry already synced. Open it from Activity to edit it.",
+			"stillSending": "This expense is still sending. Try again in a moment.",
+			"parkedRow": "Fix this expense under Couldn't sync first.",
+			"notRead": "Couldn't read this expense. Try again in a moment."
 		},
 		"changes": {
 			"offline": "You're offline. This saves on your phone and syncs later.",
@@ -108,7 +111,11 @@
 			"title": "Couldn't sync",
 			"refused": "The server didn't accept this.",
 			"discard": "Discard",
-			"retryFailed": "Still can't send it. Try again later."
+			"retryFailed": "Still can't send it. Try again later.",
+			"changed": "Changed on another device",
+			"deleted": "Deleted on another device",
+			"lost": "An earlier change to this didn't sync.",
+			"rebaseTitle": "Save your change again?"
 		},
 		"transferMode": "Transfer",
 		"addTransfer": "Add transfer",

@@ -80,7 +80,10 @@
 			"restored": "{title} wiederhergestellt",
 			"editOffline": "Du bist offline. Bearbeiten braucht eine Verbindung.",
 			"editRefused": "Diese Änderung ließ sich nicht speichern. Sie ist vielleicht gesperrt.",
-			"editSynced": "Dieser Eintrag ist schon synchronisiert. Öffne ihn in der Aktivität, um ihn zu bearbeiten."
+			"editSynced": "Dieser Eintrag ist schon synchronisiert. Öffne ihn in der Aktivität, um ihn zu bearbeiten.",
+			"stillSending": "Diese Ausgabe wird noch gesendet. Versuche es gleich noch einmal.",
+			"parkedRow": "Kläre diese Ausgabe zuerst unter „Synchronisierung fehlgeschlagen“.",
+			"notRead": "Diese Ausgabe konnte nicht gelesen werden. Versuche es gleich noch einmal."
 		},
 		"changes": {
 			"offline": "Du bist offline. Das wird auf deinem Telefon gespeichert und später synchronisiert.",
@@ -108,7 +111,11 @@
 			"title": "Synchronisierung fehlgeschlagen",
 			"refused": "Der Server hat das nicht angenommen.",
 			"discard": "Verwerfen",
-			"retryFailed": "Senden klappt noch nicht. Versuche es später noch einmal."
+			"retryFailed": "Senden klappt noch nicht. Versuche es später noch einmal.",
+			"changed": "Auf einem anderen Gerät geändert",
+			"deleted": "Auf einem anderen Gerät gelöscht",
+			"lost": "Eine frühere Änderung daran wurde nicht synchronisiert.",
+			"rebaseTitle": "Deine Änderung erneut speichern?"
 		},
 		"transferMode": "Umbuchung",
 		"addTransfer": "Umbuchung hinzufügen",

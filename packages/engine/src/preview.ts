@@ -80,7 +80,7 @@ export function deviceUndoMutation(
 }
 
 /** The figures an expense write can change, as the server's EXPENSE_FIGURES lists them. */
-const EXPENSE_FIGURES = ["spent", GLANCE_SPENT] as const;
+export const EXPENSE_FIGURES = ["spent", GLANCE_SPENT] as const;
 
 /** expense.create on the device; touches what the server's mutation does (expense-create.mutation.ts). */
 export const EXPENSE_CREATE_MUTATION = deviceMutation({

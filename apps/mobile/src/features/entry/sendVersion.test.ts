@@ -1,11 +1,6 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import { createEntrySender } from "./send";
 
-jest.mock("@/data/captureSent", () => ({
-	captureSent: jest.fn(),
-	dropCaptured: jest.fn(),
-}));
-
 // An entry chained after a create takes the version the create's answer names.
 
 const entry = (entity: string) =>

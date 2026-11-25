@@ -1,5 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { dropCaptured } from "@/data/captureSent";
+import { deviceWrites } from "@/data/deviceWrites";
 import type { PreviewState } from "./preview";
 import { SEND_TIMEOUT_MS, type UndoRef } from "./send";
 
@@ -59,6 +59,10 @@ export async function previewDelete(
 	try {
 		if (!target.shared) {
 			const diff = await api.expenses.previewDelete({ id }, options);
+			// Dev flag: held against the device's own preview; nothing is shown from it.
+			void deviceWrites(api)
+				?.comparePreview({ kind: "delete", id }, diff)
+				.catch(() => undefined);
 			return {
 				state: { status: "ready", diff },
 				warning: null,
@@ -115,7 +119,6 @@ export async function runDelete(
 	const timer = setTimeout(() => timeout.abort(), SEND_TIMEOUT_MS);
 	const options = { context: { idempotencyKey }, signal: timeout.signal };
 	const { id } = target;
-	dropCaptured(api, id);
 	try {
 		if (target.shared) {
 			const result = await api["shared-expenses"].delete(

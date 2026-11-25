@@ -18,17 +18,17 @@
  * is refused (undo.ts).
  */
 import {
+	deleteExpense as deleteExpenseRow,
 	type EditInput,
 	type ExpenseEditPort,
 	type ExpensePatch,
-	deleteExpense as deleteExpenseRow,
 	editExpense,
 	type StoredExpense,
 } from "@retrospend/domain/expense-write/edit";
 import { ENTRY_POLICY } from "@retrospend/domain/expense-write/policy";
 import {
-	EditRefusal,
 	bookedInOtherHome,
+	EditRefusal,
 	otherHomeMessage,
 	SPREAD_NOT_ON_DEVICE,
 } from "@retrospend/domain/expense-write/refusals";
@@ -73,7 +73,7 @@ const text = (v: { toString(): string } | null | undefined) =>
 	v === null || v === undefined ? null : dec(v).toFixed();
 
 /** A row as the core reads it; a row without its booked rate cannot be edited. */
-function storedOf(row: ExpenseRow, r: Repos): StoredExpense {
+export function storedOf(row: ExpenseRow, r: Repos): StoredExpense {
 	if (row.exchangeRate === undefined || row.pricingSource === undefined)
 		throw new InvalidInputError("This expense has no booked rate");
 	return {
@@ -158,7 +158,7 @@ function storePort(r: Repos): ExpenseEditPort & { done(): ExpenseRow } {
  * Refuses until the transfers the expenses point at have been pulled. Anything
  * short of "reached" (no cursor, another epoch, a reset, behind) refuses.
  */
-function refuseUntilTransfersCaughtUp({ cursors }: DeviceWriteContext) {
+export function refuseUntilTransfersCaughtUp({ cursors }: DeviceWriteContext) {
 	const expenses = cursors.expenses;
 	if (
 		expenses === undefined ||
@@ -168,7 +168,7 @@ function refuseUntilTransfersCaughtUp({ cursors }: DeviceWriteContext) {
 }
 
 /** A spread parent is the server's: its parts are rows the device never edits. */
-function refuseSpreadParent(row: StoredExpense) {
+export function refuseSpreadParent(row: StoredExpense) {
 	if (row.isAmortizedParent)
 		throw new EditRefusal("badRequest", SPREAD_NOT_ON_DEVICE);
 }

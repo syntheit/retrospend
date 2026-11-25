@@ -80,7 +80,7 @@ export const defaults = (): SignInSecretDeps => ({
 export const loadCore = () => import("@retrospend/crypto/client");
 export type Core = Awaited<ReturnType<typeof loadCore>>;
 
-const webPrimitives = async () =>
+export const webPrimitives = async () =>
 	(await import("@retrospend/crypto/web")).createWebPrimitives();
 
 /**

@@ -69,7 +69,7 @@ export const REGISTRY: Primitive[] = [
 	{
 		file: "button",
 		status: "core",
-		job: "Every action button: `kind` primary, secondary, ghost, danger; sizes ctl and sm; icon-only and loading",
+		job: "Every action button: `kind` primary, secondary, ghost, danger, danger-text; sizes ctl and sm; icon-only and loading",
 	},
 	{
 		file: "calendar",

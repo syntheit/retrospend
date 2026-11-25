@@ -1,4 +1,5 @@
 import { db } from "~/server/db";
+import { retryAfterSeconds } from "./retry-after";
 
 export type RateLimitDecision = {
 	allowed: boolean;
@@ -49,7 +50,7 @@ export async function consumeRateLimit(
 		allowed: count <= limit,
 		count,
 		limit,
-		retryAfterSeconds: Math.max(1, Math.ceil((resetAt - now.getTime()) / 1000)),
+		retryAfterSeconds: retryAfterSeconds(resetAt, now.getTime()),
 	};
 }
 

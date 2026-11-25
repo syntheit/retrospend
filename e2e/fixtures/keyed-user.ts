@@ -2,15 +2,17 @@
  * One account that has Advanced protection keys, for the flows that sign in
  * through prelogin and Argon2id. It is written straight to Postgres like the
  * personas, but it is not one of them (no ledger, not in SEED_USERS), so the
- * seeded counts the other flows read do not change. A second one changes its
- * password in a flow (keyed-password-change.spec.ts), so no other flow may
- * sign in as it.
+ * seeded counts the other flows read do not change. Three more are used up by
+ * one flow each: one changes its password (keyed-password-change.spec.ts), one
+ * recovers with its recovery key (protection-recover.spec.ts) and one makes a
+ * new recovery key (protection-new-key.spec.ts), so no other flow may sign in
+ * as them.
  *
  * The stored password hash is the one of the sign-in secret, made here from
  * the typed password with the app's own derivation at the Argon2 floor, so a
  * sign-in takes a fraction of a second. All values are fake.
  */
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "~prisma";
 // Deep paths: the package index also loads the known-answer self-test, whose
@@ -26,6 +28,7 @@ import {
 } from "../../packages/crypto/src/keys";
 import { signInSecret } from "../../packages/crypto/src/sign-in-secret";
 import { createWebPrimitives } from "../../packages/crypto/src/web";
+import { E2E_DATABASE_URL } from "../constants";
 import { assertE2eDatabase } from "../db-guard";
 
 export const KEYED_USER = {
@@ -44,6 +47,23 @@ export const KEYED_ROTATE_USER = {
 	newPassword: "Changed-rotate-2027?",
 } as const;
 
+/** The keyed account that recovers with its recovery key (protection-recover.spec.ts); the new password is what it signs in with after. */
+export const KEYED_RECOVER_USER = {
+	name: "Keyed Recover E2E User",
+	username: "keyedrecover",
+	email: "keyed.recover.e2e@example.com",
+	password: "Keyed-recover-2026!",
+	newPassword: "Recovered-e2e-2027?",
+} as const;
+
+/** The keyed account that makes a new recovery key (protection-new-key.spec.ts); its password does not change. */
+export const KEYED_NEWKEY_USER = {
+	name: "Keyed New Key E2E User",
+	username: "keyednewkey",
+	email: "keyed.newkey.e2e@example.com",
+	password: "Keyed-newkey-2026!",
+} as const;
+
 /** The recovery key of every keyed fixture account (all values are fake), as the person would write it down. */
 const RECOVERY_KEY = Uint8Array.from({ length: 32 }, (_, i) => 0x90 + i);
 export const KEYED_RECOVERY_KEY_TEXT = encodeRecoveryKey(RECOVERY_KEY);
@@ -57,6 +77,8 @@ type Account = {
 
 const SALT = Uint8Array.from({ length: 16 }, (_, i) => 0xe0 + i);
 const ROTATE_SALT = Uint8Array.from({ length: 16 }, (_, i) => 0xd0 + i);
+const RECOVER_SALT = Uint8Array.from({ length: 16 }, (_, i) => 0xc0 + i);
+const NEWKEY_SALT = Uint8Array.from({ length: 16 }, (_, i) => 0xb0 + i);
 
 /** What prelogin must answer for the keyed account. */
 export const KEYED_KDF = {
@@ -152,7 +174,7 @@ type SignUp = (
 	username: string,
 ) => Promise<void>;
 
-/** Seeds both keyed accounts (see the header). */
+/** Seeds the keyed accounts (see the header). */
 export async function seedKeyedUser(
 	databaseUrl: string,
 	signUp: SignUp,
@@ -160,4 +182,40 @@ export async function seedKeyedUser(
 	assertE2eDatabase(databaseUrl);
 	await seedKeyedAccount(databaseUrl, KEYED_USER, SALT, signUp);
 	await seedKeyedAccount(databaseUrl, KEYED_ROTATE_USER, ROTATE_SALT, signUp);
+	await seedKeyedAccount(databaseUrl, KEYED_RECOVER_USER, RECOVER_SALT, signUp);
+	await seedKeyedAccount(databaseUrl, KEYED_NEWKEY_USER, NEWKEY_SALT, signUp);
+}
+
+/**
+ * A password reset link for one account, written straight to Postgres. The e2e
+ * app has no mail, so the email that carries the link cannot be read; this
+ * stores what the app stores (the SHA-256 of the token, the user, the origin,
+ * an hour to live) and hands back the raw token for the page's URL.
+ */
+export async function issueResetLink(
+	email: string,
+	origin: "email" | "admin" = "email",
+): Promise<string> {
+	assertE2eDatabase(E2E_DATABASE_URL);
+	const token = randomBytes(32).toString("hex");
+	const db = new PrismaClient({
+		adapter: new PrismaPg({ connectionString: E2E_DATABASE_URL }),
+	});
+	try {
+		const user = await db.user.findUniqueOrThrow({
+			where: { email },
+			select: { id: true },
+		});
+		await db.passwordResetToken.create({
+			data: {
+				token: createHash("sha256").update(token).digest("hex"),
+				userId: user.id,
+				origin,
+				expires: new Date(Date.now() + 60 * 60 * 1000),
+			},
+		});
+	} finally {
+		await db.$disconnect();
+	}
+	return token;
 }

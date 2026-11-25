@@ -34,11 +34,16 @@ export type JobOutcome<T> =
 /** The step Back from which drops the keys: they were made for the password that is being retyped. */
 const BACK_DROPS_KEYS_FROM = "methods";
 
-export function createEnableLifecycle(ports: LifecyclePorts) {
+/** Anything with secrets to wipe: the enable draft, and the recovery and Make new key drafts that share this lifecycle. */
+type Wipeable = { wipe: () => void };
+
+export function createEnableLifecycle<D extends Wipeable = KeyDraft>(
+	ports: LifecyclePorts,
+) {
 	// Counts closes and unmounts, so a job knows whether its sheet is the same one.
 	let epoch = 0;
 	let running = false;
-	let current: KeyDraft | null = null;
+	let current: D | null = null;
 
 	const wipeCurrent = () => {
 		const draft = current;
@@ -73,7 +78,7 @@ export function createEnableLifecycle(ports: LifecyclePorts) {
 		},
 
 		/** The keys the sheet holds now; `save` is given this one. */
-		get draft(): KeyDraft | null {
+		get draft(): D | null {
 			return current;
 		},
 
@@ -98,6 +103,11 @@ export function createEnableLifecycle(ports: LifecyclePorts) {
 			if (step === BACK_DROPS_KEYS_FROM) wipeCurrent();
 		},
 
+		/** The current draft is stale (a step that made it is being redone): wipe it. */
+		drop() {
+			wipeCurrent();
+		},
+
 		/** The person asked to close from inside the sheet: not while a job works. */
 		canClose() {
 			return !running;
@@ -109,9 +119,7 @@ export function createEnableLifecycle(ports: LifecyclePorts) {
 		 * Makes a draft. In time, it becomes the current one. Late, it wipes
 		 * itself (and only itself) and is dropped.
 		 */
-		async makeDraft(
-			job: () => Promise<KeyDraft>,
-		): Promise<JobOutcome<KeyDraft>> {
+		async makeDraft(job: () => Promise<D>): Promise<JobOutcome<D>> {
 			const outcome = await run(job);
 			if (outcome.status === "done") {
 				const before = current;
@@ -123,4 +131,6 @@ export function createEnableLifecycle(ports: LifecyclePorts) {
 	};
 }
 
-export type EnableLifecycle = ReturnType<typeof createEnableLifecycle>;
+export type EnableLifecycle<D extends Wipeable = KeyDraft> = ReturnType<
+	typeof createEnableLifecycle<D>
+>;

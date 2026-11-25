@@ -12,7 +12,7 @@ import { flushEntries } from "./queue";
  * the foreground and when the network returns. A write added offline thus
  * reaches the server without anyone opening the composer again. A flush that
  * parks a write says so, since nobody is looking at the composer. Entries of
- * other kinds stay where they are until their own sender exists. When the
+ * another stream stay where they are until their own sender exists. When the
  * account changes the run stops: nothing of the old account is sent after.
  */
 export function useOutboxFlush(): void {

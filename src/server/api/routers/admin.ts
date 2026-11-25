@@ -28,6 +28,7 @@ import { logEventAsync } from "~/server/services/audit.service";
 import { makeAdminResetLink } from "~/server/services/auth/reset-request";
 import { ProtectedPasswordError } from "~/server/services/protection-keys/password-writes";
 import { resetPasswordHash } from "~/server/services/account-security.service";
+import { eventLogPage } from "~/server/services/admin-event-logs.service";
 import { IntegrationService } from "~/server/services/integration.service";
 import {
 	adminSettingsView,
@@ -130,35 +131,7 @@ export const adminRouter = createTRPCRouter({
 				eventType: z.enum(EVENT_LOG_TYPES).optional(),
 			}),
 		)
-		.query(async ({ ctx, input }) => {
-			const { db } = ctx;
-
-			const where = {
-				...(input.eventType ? { eventType: input.eventType } : {}),
-				...(input.cursor
-					? { timestamp: { lt: new Date(input.cursor) } }
-					: {}),
-			};
-
-			const logs = await db.eventLog.findMany({
-				where,
-				include: {
-					user: {
-						select: { id: true, username: true, email: true },
-					},
-				},
-				orderBy: { timestamp: "desc" },
-				take: input.limit + 1,
-			});
-
-			let nextCursor: string | undefined;
-			if (logs.length > input.limit) {
-				const lastItem = logs.pop()!;
-				nextCursor = lastItem.timestamp.toISOString();
-			}
-
-			return { logs, nextCursor };
-		}),
+		.query(({ ctx, input }) => eventLogPage(ctx.db, input)),
 
 	listUsers: adminListProcedure("users").query(async ({ ctx }) => {
 		const { db } = ctx;

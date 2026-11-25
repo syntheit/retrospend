@@ -16,8 +16,7 @@ export function DangerSection() {
 			<SettingRows>
 				<SettingRow label={t("title")} meta={t("rowMeta")}>
 					<Button
-						className="text-danger can-hover:hover:text-danger"
-						kind="secondary"
+						kind="danger-text"
 						onClick={() => setOpen(true)}
 						size="sm"
 					>

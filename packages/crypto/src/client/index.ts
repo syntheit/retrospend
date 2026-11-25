@@ -35,6 +35,7 @@ export {
 export {
 	asKeyFlowError,
 	classifyRefusal,
+	couldNotAsk,
 	type FlowPorts,
 	type Kdf,
 	type KeyedRecord,
@@ -43,6 +44,7 @@ export {
 	type LookupAnswer,
 	type LookupRoute,
 	lookupKdf,
+	mayHaveCommitted,
 	NEW_PASSWORD_PARAMS,
 } from "./flow";
 export {
@@ -59,14 +61,35 @@ export {
 	readOpenAnswer,
 } from "./new-key";
 export {
+	createNewKeyCallbacks,
+	type NewKeyCallbacks,
+	type NewKeyFlowPorts,
+} from "./new-key-flow";
+export {
+	beginRecovery,
+	finishRecovery,
 	type RecoverBeginAnswer,
 	type RecoverBody,
 	type RecoverInput,
 	type RecoverOptions,
 	type RecoverPorts,
+	type RecoveryDraft,
 	readRecoverBeginAnswer,
 	recoverAccount,
 } from "./recover";
+export {
+	isFinalRecoveryFailure,
+	RECOVERY_FAILURE_CODES,
+	type RecoveryFailureCode,
+	recoveryFailureFor,
+	recoveryFailureOf,
+} from "./recovery-failure";
+export {
+	createRecoveryCallbacks,
+	type RecoveryCallbacks,
+	type RecoveryFlowPorts,
+	type RecoveryHandle,
+} from "./recovery-flow";
 export {
 	type ConfirmGroups,
 	groupMatches,

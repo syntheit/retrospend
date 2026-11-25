@@ -10,6 +10,7 @@ import { contract } from "@retrospend/api-contract";
 import { v1 as probe } from "@retrospend/api-contract/common";
 import { makeSignature } from "better-auth/crypto";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { stayInWindow } from "~/test/rate-window";
 import * as z from "zod";
 import { env } from "~/env";
 import { auth } from "~/server/better-auth";
@@ -500,6 +501,8 @@ describe("/api/v1 on Postgres", () => {
 		it("answers 429 with Retry-After once a token's window is full", async () => {
 			const { key, id } = await apiKeyFor(alice.user.id, ["read"]);
 			const { limit, windowMs } = RATE_LIMITS.perToken;
+			// The seeded count must be in the window the request lands in.
+			stayInWindow(windowMs, 12_000);
 			const windowStart = new Date(
 				Math.floor(Date.now() / windowMs) * windowMs,
 			);

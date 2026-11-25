@@ -573,10 +573,10 @@ export class SharedTransactionService {
 				return existing;
 			}
 
-			// Update the transaction
+			// Sets updatedAt itself: a split-only edit has no column, and Prisma leaves the stamp alone then
 			const updated = await tx.sharedTransaction.update({
 				where: { id: input.id },
-				data: columnsOf(fieldUpdates),
+				data: { ...columnsOf(fieldUpdates), updatedAt: new Date() },
 			});
 
 			// Auto-accept is decided by the expense's PROJECT (effectiveProjectId

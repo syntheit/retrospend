@@ -80,7 +80,10 @@
 			"restored": "{title} rétabli",
 			"editOffline": "Tu es hors ligne. Modifier demande une connexion.",
 			"editRefused": "Impossible d'enregistrer ce changement. Il est peut-être verrouillé.",
-			"editSynced": "Cette opération est déjà synchronisée. Ouvre-la depuis Activité pour la modifier."
+			"editSynced": "Cette opération est déjà synchronisée. Ouvre-la depuis Activité pour la modifier.",
+			"stillSending": "Cette opération est encore en cours d'envoi. Réessaie dans un instant.",
+			"parkedRow": "Règle d'abord cette dépense sous « Synchronisation impossible ».",
+			"notRead": "Impossible de lire cette opération. Réessaie dans un instant."
 		},
 		"changes": {
 			"offline": "Tu es hors ligne. C'est enregistré sur ton téléphone et synchronisé plus tard.",
@@ -108,7 +111,11 @@
 			"title": "Synchronisation impossible",
 			"refused": "Le serveur n'a pas accepté ceci.",
 			"discard": "Supprimer",
-			"retryFailed": "Envoi toujours impossible. Réessaie plus tard."
+			"retryFailed": "Envoi toujours impossible. Réessaie plus tard.",
+			"changed": "Modifié sur un autre appareil",
+			"deleted": "Supprimé sur un autre appareil",
+			"lost": "Une modification précédente n'a pas été synchronisée.",
+			"rebaseTitle": "Enregistrer ta modification à nouveau ?"
 		},
 		"transferMode": "Virement",
 		"addTransfer": "Ajouter un virement",

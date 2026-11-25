@@ -165,6 +165,7 @@ const SECRET_FAILURES: Record<KeyFlowCode, SecretFailure> = {
 	wrongRecoveryKey: "unknown",
 	tokenExpired: "unknown",
 	recoveryUnavailable: "unknown",
+	unconfirmed: "unknown",
 	failed: "unknown",
 };
 
@@ -245,6 +246,7 @@ const ROTATE_FAILURES: Record<KeyFlowCode, RotateFailure> = {
 	wrongRecoveryKey: "unknown",
 	tokenExpired: "unknown",
 	recoveryUnavailable: "unknown",
+	unconfirmed: "unknown",
 	failed: "unknown",
 };
 

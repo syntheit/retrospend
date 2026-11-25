@@ -72,6 +72,7 @@ const FAILURE_FOR_FLOW: Record<KeyFlowCode, FailureCode> = {
 	tokenExpired: "failed",
 	recoveryUnavailable: "failed",
 	conflict: "failed",
+	unconfirmed: "failed",
 	failed: "failed",
 };
 

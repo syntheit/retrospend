@@ -303,6 +303,46 @@ describe("/api/v1/admin", () => {
 		expect(more.items.length).toBeGreaterThanOrEqual(1);
 	});
 
+	it("walks event log pages without skipping or repeating a row, rows sharing a time included", async () => {
+		const at = (s: number) => new Date(`2025-06-01T00:00:0${s}Z`);
+		const seeded = await adminDb.eventLog.createManyAndReturn({
+			data: [5, 5, 5, 4, 3].map((s) => ({
+				eventType: "ACCOUNT_DISABLED" as const,
+				userId: bob,
+				timestamp: at(s),
+			})),
+			select: { id: true, timestamp: true },
+		});
+		// Newest first by time, then by id: the order the pages promise.
+		const expected = [...seeded]
+			.sort(
+				(x, y) =>
+					y.timestamp.getTime() - x.timestamp.getTime() ||
+					(y.id > x.id ? 1 : y.id < x.id ? -1 : 0),
+			)
+			.map((r) => r.id);
+		const mine = new Set(expected);
+		const walked: string[] = [];
+		let cursor: string | null = null;
+		do {
+			const page: { items: { id: string }[]; nextCursor: string | null } =
+				await read(
+					`/admin/event-logs?limit=1&eventType=ACCOUNT_DISABLED${cursor ? `&cursor=${cursor}` : ""}`,
+					a.eventLogs,
+				);
+			walked.push(
+				...page.items.map((i) => i.id).filter((id) => mine.has(id)),
+			);
+			cursor = page.nextCursor;
+		} while (cursor);
+		expect(walked).toEqual(expected);
+		await expectProblem(
+			await call("/admin/event-logs?cursor=bad", { headers: asAdmin }),
+			400,
+			"bad_request",
+		);
+	});
+
 	it("reports backups as unavailable without a sidecar", async () => {
 		const status = await read<{ available: boolean }>(
 			"/admin/backups",

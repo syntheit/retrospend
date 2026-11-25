@@ -13,7 +13,6 @@ import type { AuditPrivacyMode } from "~prisma";
 import { isoDay } from "./caller";
 import {
 	decodeCursor,
-	encodeCursor,
 	InvalidCursorError,
 	toPage,
 } from "./cursor";
@@ -241,8 +240,6 @@ export function allowedMetadata(
 	return out;
 }
 
-const logCursor = z.object({ before: z.iso.datetime() });
-
 type LogType = Parameters<
 	Awaited<ReturnType<typeof trpcAdmin>>["getEventLogsCursor"]
 >[0]["eventType"];
@@ -252,11 +249,11 @@ export async function eventLogs(
 	q: { cursor?: string; limit: number; eventType?: LogType },
 ) {
 	const t = await admin(caller);
-	const after = decodeCursor(q.cursor, logCursor);
+	// The router's cursor is already an opaque v1 cursor; it is passed through.
 	const page = await t.getEventLogsCursor({
 		limit: q.limit,
 		eventType: q.eventType,
-		cursor: after?.before,
+		cursor: q.cursor,
 	});
 	return {
 		items: page.logs.map((l) => ({
@@ -275,9 +272,7 @@ export async function eventLogs(
 					? allowedMetadata(l.metadata as Record<string, unknown>)
 					: null,
 		})),
-		nextCursor: page.nextCursor
-			? encodeCursor({ before: page.nextCursor })
-			: null,
+		nextCursor: page.nextCursor ?? null,
 	};
 }
 

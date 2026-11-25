@@ -1,7 +1,12 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import type { DeviceApi } from "@retrospend/engine/device";
+import type {
+	BookedWrite,
+	DeviceApi,
+	Rebase,
+	ServerPreview,
+	WriteOp,
+} from "@retrospend/engine/device";
 import {
-	CreateCaptures,
 	createDeviceEngine as createCoreEngine,
 	type DeviceEngine,
 	type DeviceEngineOptions,
@@ -12,6 +17,8 @@ import { engineScope } from "./engine-db/names";
 import type { OpenDeps } from "./engine-db/open";
 import { openEngineStorage } from "./engine-db/storage";
 import { registerLiveEngine } from "./engine-db/sweep";
+import type { Outbox } from "./outbox";
+import { createPendingSource, type OutboxPending } from "./pendingSource";
 
 // The device engine on the phone, behind the dev flag
 // EXPO_PUBLIC_DEV_DEVICE_ENGINE=1: the core (@retrospend/engine/device) with
@@ -48,42 +55,44 @@ const engines = new WeakMap<
 	RetrospendClient,
 	{
 		userId: string;
+		outbox: Outbox | undefined;
 		engine: DeviceEngine;
-		captures: CreateCaptures;
+		pending: OutboxPending | null;
 		unregister: () => void;
 	}
 >();
 
-const CAPTURED = {
-	expenses: "expense",
-	"shared-expenses": "split",
-	transfers: "transfer",
-} as const;
-
-/** Forgets the create of `id` the engine of `api` was holding: the row is about to change. */
-export function dropCaptured(api: object, id: string): void {
-	// Callers may hold the client as a narrower type; the key is the same object.
-	engines.get(api as RetrospendClient)?.captures.drop(id);
+/** What a save, an edit and a delete need of the engine of their client. */
+export interface DeviceWrites {
+	/** What the device booked for `op` and the version it was based on; null when it could not. */
+	book(op: WriteOp): Promise<BookedWrite | null>;
+	/** Holds the device preview against the server's dry run; never throws, shows nothing. */
+	comparePreview(op: WriteOp, server: ServerPreview): Promise<void>;
+	/** `DeviceEngine.pullsBegun`: what an ack carries, so a later pull retires the write. */
+	pullsBegun(): number;
+	/** The pulled row as the body that saves it again, for Try again; null when it cannot be read. */
+	storedRebase(id: string): Promise<Rebase | null>;
+	/** A pull that began after pull `pull` finished without this expense (see DeviceEngine). */
+	absentSince(id: string, pull: number): Promise<boolean>;
+	/** Reads the outbox lists again, after a change the engine should see. */
+	refresh(): Promise<void>;
 }
 
-/**
- * Hands the engine of `api` a create the server just accepted, for it to book
- * again and compare after the next pull. Only the entity's family and the
- * body go in; the engine keeps the booking fields and drops the rest.
- */
-export function captureSent(
-	api: RetrospendClient,
-	entry: { clientId: string; entity: string; payload: unknown },
-	startedAt: number,
-): void {
-	const kind = CAPTURED[entry.entity as keyof typeof CAPTURED];
-	if (!kind) return;
-	engines.get(api)?.captures.add({
-		id: entry.clientId,
-		kind,
-		body: entry.payload,
-		at: startedAt,
-	});
+/** The write side of the engine of `api`, or null when it has none (or it was disposed). */
+export function writesFor(api: RetrospendClient): DeviceWrites | null {
+	const held = engines.get(api);
+	if (!held || held.engine.disposed) return null;
+	const { engine, pending } = held;
+	return {
+		book: (op) => engine.book(op),
+		comparePreview: async (op, server) => {
+			await engine.comparePreview(op, server);
+		},
+		pullsBegun: () => engine.pullsBegun,
+		storedRebase: (id) => engine.storedRebase(id),
+		absentSince: (id, pull) => engine.absentSince(id, pull),
+		refresh: () => pending?.refresh() ?? Promise.resolve(),
+	};
 }
 
 /**
@@ -98,22 +107,30 @@ export function engineFor(
 	userId: string,
 	origin: string | null = null,
 	deps: OpenDeps = appOpenDeps(warn),
+	outbox?: Outbox,
 ): DeviceEngine {
 	const held = engines.get(api);
-	if (held?.userId === userId && !held.engine.disposed) return held.engine;
+	if (
+		held?.userId === userId &&
+		held.outbox === outbox &&
+		!held.engine.disposed
+	)
+		return held.engine;
 	held?.unregister();
 	void held?.engine.dispose({ wipe: true });
 	const scope = origin ? engineScope(origin, userId) : null;
-	const captures = new CreateCaptures();
+	// The engine reads the phone's unsent and acked writes through the outbox.
+	const pending = outbox ? createPendingSource(outbox) : null;
+	void pending?.refresh().catch(() => undefined);
 	const engine = createDeviceEngine(api, userId, Date.now, {
+		...(pending ? { pending } : {}),
 		storage: scope
 			? (hooks) => openEngineStorage(deps, scope, hooks)
 			: undefined,
-		captures,
 	});
 	const unregister = scope
 		? registerLiveEngine(scope, () => engine.dispose({ wipe: true }))
 		: () => undefined;
-	engines.set(api, { userId, engine, captures, unregister });
+	engines.set(api, { userId, outbox, engine, pending, unregister });
 	return engine;
 }

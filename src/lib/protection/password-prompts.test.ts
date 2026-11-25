@@ -47,7 +47,7 @@ const CHECKING_PROMPTS = [
  */
 const NOT_CHECKING = [
 	"app/(site)/signup/_components/signup-form.tsx",
-	"app/(site)/auth/reset-password/page.tsx",
+	"features/recovery/plain-reset-form.tsx",
 	"features/settings/security/password-sheet.tsx",
 	// The enable sheet's new password becomes keys in the browser (makeKeys) and
 	// is dropped. Its Confirm it's you step only hands the typed text to the
@@ -57,6 +57,13 @@ const NOT_CHECKING = [
 	// join CHECKING_PROMPTS); the web adapter sends only what they hand it.
 	"features/settings/protection/enable-steps.tsx",
 	"features/settings/protection/finish-steps.tsx",
+	// The recovery sheet's new password becomes wraps in the browser
+	// (finishRecovery) and goes nowhere else; Make new key's password step only
+	// hands the typed text to the sheet's `makeKey`, which derives the sign-in
+	// secret in the shared callbacks. The "recovery and new key callbacks"
+	// test below inventories what each sends.
+	"features/recovery/recover-steps.tsx",
+	"features/recovery/new-key-sheet.tsx",
 ];
 
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
@@ -192,6 +199,31 @@ describe("enable callbacks", () => {
 	});
 });
 
+describe("recovery and new key callbacks", () => {
+	const CLIENT = "../packages/crypto/src/client";
+
+	it("have web adapters that build no request with a typed password", () => {
+		expect(passwordEntries(read("lib/protection/recovery.ts"))).toEqual([]);
+		expect(passwordEntries(read("lib/protection/new-key.ts"))).toEqual([]);
+	});
+
+	it("hand the typed password only to the step that derives from it, and put none in a request", () => {
+		// Recovery: the new password goes to finishRecovery, which wraps the key
+		// and sends nothing but the derived sign-in secret.
+		// (Type literals with a password field also scan as entries, as `string`.)
+		const sent = (path: string) =>
+			passwordEntries(read(path)).filter((e) => e.value !== "string");
+		expect(sent(`${CLIENT}/recovery-flow.ts`)).toEqual([
+			{ key: "password", value: "input.password" },
+		]);
+		// Make new key: the current password goes to prepareNewRecoveryKey, which
+		// derives the sign-in secret in the browser; the commit body has none.
+		expect(sent(`${CLIENT}/new-key-flow.ts`)).toEqual([
+			{ key: "password", value: "password" },
+		]);
+	});
+});
+
 describe("the scan for what a prompt sends", () => {
 	it("finds the forms a single regex missed", () => {
 		const find = (code: string) => passwordEntries(code);
@@ -253,7 +285,7 @@ describe("web password prompts", () => {
 		expect(login).toContain("isDowngradeRefusal(e)");
 		expect(login).toMatch(/forgetKeyed\(staleFor\)[\s\S]*await signIn\(\)/);
 		expect(login).toContain("ConfirmationDialog");
-		expect(read("app/(site)/auth/reset-password/page.tsx")).toMatch(
+		expect(read("features/recovery/plain-reset-form.tsx")).toMatch(
 			/onSuccess: async \(\{ email \}\) => \{\s*await forgetKeyed\(email\)/,
 		);
 	});
