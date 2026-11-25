@@ -5,8 +5,11 @@
  * titles or notes.
  */
 import { contract } from "@retrospend/api-contract";
+import { TRPCError } from "@trpc/server";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { encodeCursor } from "~/server/services/api-v1/cursor";
+import { IntegrationError } from "~/server/services/integration-error";
+import { IntegrationService } from "~/server/services/integration.service";
 import { getAppSettings, updateAppSettings } from "~/server/services/settings";
 import {
 	adminDb,
@@ -361,8 +364,34 @@ describe("/api/v1/admin", () => {
 			a.getBackups,
 		);
 		expect(status.available).toBe(false);
-		const start = await write("/admin/backups", "POST", {});
-		await expectProblem(start, 502, "backup_unavailable");
+	});
+
+	it("answers a backup start by the sidecar's answer, not its text", async () => {
+		const worker = vi.spyOn(IntegrationService, "requestWorker");
+		try {
+			worker.mockRejectedValueOnce(
+				new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "fetch failed" }),
+			);
+			await expectProblem(
+				await write("/admin/backups", "POST", {}),
+				502,
+				"backup_unavailable",
+			);
+			worker.mockRejectedValueOnce(
+				new TRPCError({
+					code: "BAD_GATEWAY",
+					message: "External API request failed: Backup already in progress",
+					cause: new IntegrationError("busy", 409),
+				}),
+			);
+			await expectProblem(
+				await write("/admin/backups", "POST", {}),
+				409,
+				"backup_running",
+			);
+		} finally {
+			worker.mockRestore();
+		}
 	});
 
 	it("answers a test email the mail server refused with its own code, not the server's text", async () => {
