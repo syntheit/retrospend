@@ -16,6 +16,16 @@ import { type PullCursors, type PullReport, pullAll } from "../sync-pull";
 import { compareWrite, type WriteVerdict } from "../write-parity";
 import { type BookedWrite, bookIn, type WriteOp } from "./book";
 import {
+	answerVerdicts,
+	type BulkAnswer,
+	type BulkBooked,
+	type BulkOp,
+	type BulkSent,
+	bookBulkIn,
+	compareBulkRow,
+	comparePreviewBulk as runBulkCompare,
+} from "./bulk";
+import {
 	COMPARE_WHAT,
 	type CompareReport,
 	compareLine,
@@ -137,6 +147,30 @@ export interface DeviceEngine extends DeviceReads {
 		op: WriteOp,
 		server: ServerPreview,
 	): Promise<WriteVerdict | null>;
+	/**
+	 * What the device books for a bulk categorize or delete, over the pending
+	 * writes, in a transaction that is thrown away. Null when it cannot (not
+	 * ready, a pull began during it, or a refusal such as "Sync first").
+	 */
+	bookBulk(op: BulkOp): Promise<BulkBooked | null>;
+	/** `comparePreview` for a bulk action: `pending_ahead` while an entry touches a picked id. */
+	comparePreviewBulk(
+		op: BulkOp,
+		server: ServerPreview,
+	): Promise<WriteVerdict | null>;
+	/**
+	 * The server took a bulk action `key` names (its batch id). Holds the
+	 * device's booking against the answer now, retires the rows both left
+	 * alone, and holds the rest against the rows of the next pull.
+	 */
+	settleBulk(
+		key: string,
+		booked: BulkBooked,
+		answer: BulkAnswer,
+		ids: readonly string[],
+	): void;
+	/** The person undid bulk action `key`: its rows are not compared. */
+	undoneBulk(key: string): void;
 	/** One pull at a time: a call while one runs waits for it. */
 	pull(): Promise<void>;
 	/** Pulls when none has finished yet or the last one is older than PULL_AFTER_MS. */
@@ -181,6 +215,8 @@ export function createDeviceEngine(
 	let settledPull = 0;
 	/** Entries already compared, so a list that is slow to retire one never has it compared twice. */
 	const compared = new Set<string>();
+	/** Bulk actions the server took, until a pull that began after the answer compares their rows. */
+	const bulkSent = new Map<string, BulkSent>();
 	let pulledAt: number | null = null;
 	let inflight: Promise<void> | null = null;
 	let lastCompare: CompareReport | null = null;
@@ -327,6 +363,7 @@ export function createDeviceEngine(
 				writeCounts.error = (writeCounts.error ?? 0) + 1;
 			};
 			await compareEntries().catch(counted);
+			compareBulkSent();
 		}
 	}
 
@@ -402,6 +439,19 @@ export function createDeviceEngine(
 		];
 		for (const e of retired) compared.add(e.clientId);
 		pending.retire(retired.map((e) => e.clientId));
+		report(verdicts, 0);
+	}
+
+	/** Compares each bulk action a finished pull has seen with the rows it brought, once. */
+	function compareBulkSent(): void {
+		const snap = store.snapshot();
+		const verdicts: WriteVerdict[] = [];
+		for (const [key, sent] of bulkSent) {
+			if (settledPull <= sent.pull) continue;
+			bulkSent.delete(key);
+			for (const c of sent.changes)
+				verdicts.push(compareBulkRow(snap, c, sent.bookedAt));
+		}
 		report(verdicts, 0);
 	}
 
@@ -578,6 +628,87 @@ export function createDeviceEngine(
 		}
 	}
 
+	async function bookBulk(op: BulkOp): Promise<BulkBooked | null> {
+		try {
+			await ready;
+			if (disposed || status !== "ready") return null;
+			const begun = pullsBegun;
+			const booked = await readOverlaid(
+				store,
+				options.pending?.entries() ?? [],
+				settledPull,
+				(tx) => bookBulkIn(tx, op, cursors, now()),
+			).catch((error) => {
+				if (
+					error instanceof InvalidInputError ||
+					error instanceof NotFoundError
+				)
+					return null;
+				throw error;
+			});
+			return pullsBegun !== begun || status !== "ready" ? null : booked;
+		} catch (error) {
+			warn("bulk booking failed", (error as Error)?.name);
+			return null;
+		}
+	}
+
+	async function comparePreviewBulk(
+		op: BulkOp,
+		server: ServerPreview,
+	): Promise<WriteVerdict | null> {
+		try {
+			await ready;
+			if (disposed || status !== "ready") return null;
+			const verdict = await runBulkCompare(
+				{
+					store,
+					userId,
+					cursors,
+					entries: options.pending?.entries() ?? [],
+					settledPull,
+					now: () => new Date(now()),
+				},
+				op,
+				server,
+			);
+			report([verdict], 0, "preview:");
+			return verdict;
+		} catch (error) {
+			warn("bulk preview check failed", (error as Error)?.name);
+			return null;
+		}
+	}
+
+	function settleBulk(
+		key: string,
+		booked: BulkBooked,
+		answer: BulkAnswer,
+		ids: readonly string[],
+	): void {
+		report(answerVerdicts(booked, answer, ids), 0);
+		if (booked.changes.length > 0)
+			bulkSent.set(key, {
+				pull: pullsBegun,
+				bookedAt: booked.bookedAt,
+				changes: booked.changes,
+			});
+	}
+
+	function undoneBulk(key: string): void {
+		const sent = bulkSent.get(key);
+		if (!sent) return;
+		bulkSent.delete(key);
+		report(
+			sent.changes.map((c) => ({
+				id: c.id,
+				outcome: "skipped",
+				code: "undone",
+			})),
+			0,
+		);
+	}
+
 	/** Reads the store as the last pull left it; null while it is not a whole copy. */
 	async function readStored<R>(read: (view: Reader) => R): Promise<R | null> {
 		try {
@@ -678,6 +809,10 @@ export function createDeviceEngine(
 		storedRebase,
 		absentSince,
 		comparePreview,
+		bookBulk,
+		comparePreviewBulk,
+		settleBulk,
+		undoneBulk,
 		pull,
 		pullIfStale,
 		compare,

@@ -17,6 +17,7 @@ import {
 	SETTINGS_ID,
 	type Writer,
 } from "../port";
+import type { UndoToken } from "../undo";
 import type { PendingChange } from "./pending";
 
 // What the phone saves, as the device books it: the same engine mutations a
@@ -140,6 +141,23 @@ function changedOf(row: ExpenseRow, body: WriteBody, zone: string): string[] {
 	return changed.flatMap(([name, differs]) => (differs ? [name] : []));
 }
 
+/** The expense rows a write changed, as an outbox entry keeps them. An expense write always reverts (a mirror token is for budget movements). */
+export function pendingChangesOf(undo: UndoToken): PendingChange[] {
+	const rows = undo.kind === "revert" ? undo.changes : [];
+	return rows.flatMap((c): PendingChange[] =>
+		c.table === "expenses"
+			? [
+					{
+						table: "expenses",
+						id: c.id,
+						before: c.before ? withoutText(c.before as ExpenseRow) : null,
+						after: c.after ? withoutText(c.after as ExpenseRow) : null,
+					},
+				]
+			: [],
+	);
+}
+
 /**
  * Books `op` in `tx` (a transaction the caller throws away). A refusal throws
  * InvalidInputError or NotFoundError; a missing rate is `unbooked`, never a
@@ -160,20 +178,7 @@ export async function bookIn(
 		op.kind === "update" && row ? changedOf(row, op.body, zone) : [];
 	try {
 		const { undo } = await recordWrite(tx, id, write);
-		// An expense write always reverts (a mirror token is for budget movements).
-		const rows = undo.kind === "revert" ? undo.changes : [];
-		const changes = rows.flatMap((c): PendingChange[] =>
-			c.table === "expenses"
-				? [
-						{
-							table: "expenses",
-							id: c.id,
-							before: c.before ? withoutText(c.before as ExpenseRow) : null,
-							after: c.after ? withoutText(c.after as ExpenseRow) : null,
-						},
-					]
-				: [],
-		);
+		const changes = pendingChangesOf(undo);
 		return { ...base, changes, changed };
 	} catch (error) {
 		if (error instanceof MissingRateError)
