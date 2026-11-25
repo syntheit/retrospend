@@ -2,13 +2,17 @@ import { describe, expect, it } from "vitest";
 import { categorizeSchema } from "../input";
 
 describe("categorizeSchema", () => {
-	it("keeps what an undo sends: each move's analytics flag and lenient", () => {
+	it("keeps what an undo sends: each move's analytics flag, lenient and the stamps", () => {
 		const undo = {
 			moves: [
 				{ categoryId: "c1", ids: ["a"], excluded: false },
 				{ categoryId: null, ids: ["b"], excluded: true },
 			],
 			lenient: true,
+			expected: {
+				a: "2026-11-25T10:00:00.000Z",
+				b: "2026-11-25T10:00:01.000Z",
+			},
 		};
 		expect(categorizeSchema.parse(undo)).toEqual(undo);
 	});

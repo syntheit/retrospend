@@ -275,11 +275,12 @@ function serverSide(): Side {
 				updated: value.updated,
 				deleted: [],
 				skipped: reasons(value.skipped),
-				// The v1 undo: the same mutation over `previous`, lenient.
+				// The v1 undo: the same mutation over `previous`, lenient, with the stamps.
 				undo: async () => {
 					await forUser(userId).apply(categorizeExpenses, {
 						moves: value.previous,
 						lenient: true,
+						expected: value.stamps,
 					});
 				},
 			};

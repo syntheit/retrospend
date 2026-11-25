@@ -295,6 +295,7 @@ export async function categorizeExpenses(caller: Caller, input: Bulk) {
 		undo: undoFor(caller, "expense", "expense.categorize", {
 			moves: done.previous,
 			lenient: true,
+			expected: done.stamps,
 		}),
 	};
 }
@@ -445,7 +446,7 @@ function stepOf(op: string, input: unknown): Step<unknown, unknown> {
 				input: input as CategorizeInput,
 				redo: (v) => ({
 					op: "expense.categorize",
-					input: { moves: v.previous, lenient: true },
+					input: { moves: v.previous, lenient: true, expected: v.stamps },
 				}),
 				idOf: () => null,
 			});
