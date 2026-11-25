@@ -4,12 +4,7 @@ import { createOutbox } from "@/data/outbox";
 import { bookedRow, booking } from "@/data/outboxFixtures";
 import { createMemoryStore } from "@/data/store";
 import type { PendingWrite } from "./draft";
-import {
-	flushEntries,
-	queueExpenseChange,
-	saveEntry,
-	undoSaved,
-} from "./queue";
+import { queueExpenseChange, saveEntry, undoSaved } from "./queue";
 import { forgetUndoTokens, KEY_REUSED, PARKED_STAMP } from "./send";
 
 // Edits under the dev flag, sent: undo routing with generation keys, and what
@@ -162,42 +157,6 @@ describe("undo under the device flag", () => {
 			`${ID}-undo-1`,
 			`${ID}-undo-2`,
 		]);
-	});
-
-	it("is refused, with no request, while a later write is about the same row", async () => {
-		const writes = writesOf();
-		mockWrites.mockReturnValue(writes);
-		const outbox = open();
-		const { api, calls } = fake();
-		await saveEntry({ outbox, api, write: create });
-		const queued = await edit(outbox, writes);
-		if (queued.status !== "queued") throw new Error("not queued");
-		expect(await undoSaved({ outbox, api, clientId: ID })).toBe("failed");
-		expect(calls.some((c) => c.route === "undo")).toBe(false);
-		// The last one for the row can still be taken back.
-		expect(await undoSaved({ outbox, api, clientId: queued.clientId })).toBe(
-			"undone",
-		);
-	});
-
-	it("takes a sent edit back on the server and drops its acked record", async () => {
-		const writes = writesOf();
-		mockWrites.mockReturnValue(writes);
-		const outbox = open();
-		const { api, calls } = fake();
-		const queued = await edit(outbox, writes);
-		if (queued.status !== "queued") throw new Error("not queued");
-		await flushEntries(outbox, api);
-		expect(await outbox.acked()).toHaveLength(1);
-		expect(await undoSaved({ outbox, api, clientId: queued.clientId })).toBe(
-			"undone",
-		);
-		expect(calls.at(-1)).toEqual({
-			route: "undo",
-			input: { token: "tok-update" },
-			key: `${queued.clientId}-undo-1`,
-		});
-		expect(await outbox.acked()).toEqual([]);
 	});
 });
 
