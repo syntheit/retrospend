@@ -1,16 +1,23 @@
 /**
  * Keyed hashes of values the server must not keep in the clear but still needs
  * to count by (an address in a rate limit key), and signatures over a payload.
- * The one owner of the
- * derivation: an HMAC-SHA256 under a key derived from the auth secret with one
- * label per purpose, so a hash made for one purpose is no use for another, and a
- * table or backup holding them cannot be checked against a list of values
- * without the secret. Add a purpose here, never a second derivation elsewhere.
+ * The one owner of HMACs under a key derived from the auth secret: an
+ * HMAC-SHA256 under a key derived with one label per purpose, so a hash made
+ * for one purpose is no use for another, and a table or backup holding them
+ * cannot be checked against a list of values without the secret. Add a purpose
+ * here, never a second HMAC derivation elsewhere. (The webhook secret key in
+ * services/webhooks/secret.ts is an HKDF encryption key, a different job.)
  *
- * The one exception is src/lib/claim-token.ts and src/lib/unsubscribe-token.ts:
- * they HMAC under the raw secret with no label and a base64url encoding, and
- * moving them would void every link already sent. They stay as they are until
- * the owner schedules a dual-verify window (docs/roadmap/expense-write-findings-2026-11-18.md,
+ * Two token HMACs stay outside this module:
+ * - src/lib/claim-token.ts signs under the raw BETTER_AUTH_SECRET with no label.
+ *   That is safe only because a claim payload is always four ":"-joined fields
+ *   and no label here contains ":", so a claim signature can never equal a
+ *   purpose key. The keyed-hash test enforces the label rule.
+ * - src/lib/unsubscribe-token.ts signs under UNSUBSCRIBE_SECRET, a separate
+ *   operator setting, not the auth secret. Moving it here would change which
+ *   secret signs it.
+ * Moving either would void every link already sent, so they wait for a
+ * dual-verify window the owner schedules (docs/roadmap/expense-write-findings-2026-11-18.md,
  * "Security follow-ups"). Their tests pin today's output.
  */
 import { createHmac } from "node:crypto";
