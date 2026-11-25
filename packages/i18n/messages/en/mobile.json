@@ -395,6 +395,7 @@
 		"submit": "Sign in",
 		"verify": "Verify",
 		"resetAction": "I reset my password",
+		"forgot": "Forgot password",
 		"resetConfirm": "Sign in with your new password?",
 		"signingIn": "Signing in",
 		"error": {
@@ -406,6 +407,22 @@
 			"protectionRefused": "The server's answer about this account's protection looks wrong. Sign-in stopped.",
 			"network": "Couldn't reach the server. Check your connection.",
 			"unknown": "Couldn't sign in. Try again."
+		}
+	},
+	"recovery": {
+		"title": "Forgot password",
+		"emailBody": "Enter your email and we will send you a code.",
+		"sendCode": "Send code",
+		"sending": "Sending",
+		"codeBody": "If this email can use a recovery key, we sent it a code.",
+		"code": "Code",
+		"checking": "Checking",
+		"expired": "That code has expired. Ask for a new one.",
+		"errors": {
+			"typo": "Check the code for a typo.",
+			"wrongCode": "That code didn't work.",
+			"tooMany": "Too many tries. Try again later.",
+			"cannotSend": "This server can't send email."
 		}
 	},
 	"account": {

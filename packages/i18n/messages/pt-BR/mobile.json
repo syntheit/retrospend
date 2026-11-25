@@ -395,6 +395,7 @@
 		"submit": "Entrar",
 		"verify": "Verificar",
 		"resetAction": "Redefini minha senha",
+		"forgot": "Esqueci a senha",
 		"resetConfirm": "Entrar com sua nova senha?",
 		"signingIn": "Entrando",
 		"error": {
@@ -406,6 +407,22 @@
 			"protectionRefused": "A resposta do servidor sobre a proteção desta conta parece errada. Entrada interrompida.",
 			"network": "Não foi possível acessar o servidor. Verifique sua conexão.",
 			"unknown": "Não foi possível entrar. Tente de novo."
+		}
+	},
+	"recovery": {
+		"title": "Esqueci a senha",
+		"emailBody": "Digite seu e-mail e enviaremos um código.",
+		"sendCode": "Enviar código",
+		"sending": "Enviando",
+		"codeBody": "Se este e-mail puder usar uma chave de recuperação, enviamos um código para ele.",
+		"code": "Código",
+		"checking": "Verificando",
+		"expired": "Esse código expirou. Peça um novo.",
+		"errors": {
+			"typo": "Confira o código, pode haver um erro de digitação.",
+			"wrongCode": "Esse código não funcionou.",
+			"tooMany": "Muitas tentativas. Tente de novo mais tarde.",
+			"cannotSend": "Este servidor não pode enviar e-mails."
 		}
 	},
 	"account": {

@@ -395,6 +395,7 @@
 		"submit": "Anmelden",
 		"verify": "Bestätigen",
 		"resetAction": "Ich habe mein Passwort zurückgesetzt",
+		"forgot": "Passwort vergessen",
 		"resetConfirm": "Mit deinem neuen Passwort anmelden?",
 		"signingIn": "Anmeldung läuft",
 		"error": {
@@ -406,6 +407,22 @@
 			"protectionRefused": "Die Antwort des Servers zum Schutz dieses Kontos wirkt falsch. Anmeldung gestoppt.",
 			"network": "Der Server ist nicht erreichbar. Prüfe deine Verbindung.",
 			"unknown": "Anmeldung nicht möglich. Versuch es noch einmal."
+		}
+	},
+	"recovery": {
+		"title": "Passwort vergessen",
+		"emailBody": "Gib deine E-Mail-Adresse ein, dann senden wir dir einen Code.",
+		"sendCode": "Code senden",
+		"sending": "Wird gesendet",
+		"codeBody": "Wenn diese E-Mail-Adresse einen Wiederherstellungsschlüssel nutzen kann, haben wir ihr einen Code geschickt.",
+		"code": "Code",
+		"checking": "Wird geprüft",
+		"expired": "Dieser Code ist abgelaufen. Fordere einen neuen an.",
+		"errors": {
+			"typo": "Prüfe den Code auf einen Tippfehler.",
+			"wrongCode": "Dieser Code hat nicht funktioniert.",
+			"tooMany": "Zu viele Versuche. Versuche es später erneut.",
+			"cannotSend": "Dieser Server kann keine E-Mails senden."
 		}
 	},
 	"account": {
