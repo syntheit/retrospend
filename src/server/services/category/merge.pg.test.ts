@@ -326,7 +326,7 @@ describe("shared expenses and shares", () => {
 	});
 });
 
-describe("through categories.previewRemove, remove, restore and delete", () => {
+describe("through categories.previewRemove, remove and restore", () => {
 	const caller = (userId: string) =>
 		createCallerFactory(categoriesRouter)({
 			db: adminDb,
@@ -367,7 +367,27 @@ describe("through categories.previewRemove, remove, restore and delete", () => {
 		).resolves.toMatchObject({ categoryId: from.id });
 	});
 
-	it("words a refusal by its code and keeps the old delete's rule about expenses", async () => {
+	it("refuseIfUsed deletes an empty category and refuses one that holds expenses", async () => {
+		const me = await arsUser();
+		const empty = await category(me, "Made by an import");
+		const used = await category(me, "Used since");
+		const row = await expense(me, used.id, 3);
+		const api = caller(me);
+
+		await expect(
+			api.remove({ id: used.id, targetId: null, refuseIfUsed: true }),
+		).rejects.toMatchObject({ code: "CONFLICT" });
+		await expect(
+			fixtureDb.expense.findUniqueOrThrow({ where: { id: row.id } }),
+		).resolves.toMatchObject({ categoryId: used.id });
+
+		await api.remove({ id: empty.id, targetId: null, refuseIfUsed: true });
+		await expect(
+			fixtureDb.category.count({ where: { id: empty.id } }),
+		).resolves.toBe(0);
+	});
+
+	it("words a refusal by its code", async () => {
 		const me = await arsUser();
 		const spending = await category(me, "Misc");
 		const salary = await category(me, "Salary", { kind: "INCOME" });
@@ -377,14 +397,6 @@ describe("through categories.previewRemove, remove, restore and delete", () => {
 			.remove({ id: salary.id, targetId: spending.id })
 			.catch((e) => e as TRPCError);
 		expect(problemCode(refused as TRPCError)).toBe("category_kind_mismatch");
-
-		await expense(me, spending.id, 3);
-		await expect(api.delete({ id: spending.id })).rejects.toMatchObject({
-			code: "CONFLICT",
-		});
-		await expect(
-			api.delete({ id: spending.id, reassignToUncategorized: true }),
-		).resolves.toEqual({ success: true });
 	});
 });
 

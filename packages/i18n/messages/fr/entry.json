@@ -154,7 +154,9 @@
 			"envelope_left": "Enveloppe",
 			"recurring_cost_out_month": "Coût récurrent par mois",
 			"recurring_cost_in_month": "Revenu récurrent par mois",
-			"budget_planCost": "Coût du plan"
+			"budget_planCost": "Coût du plan",
+			"budget_leftInLimits": "Reste dans tes limites",
+			"budget_holds": "Ce que contient le budget"
 		},
 		"figuresInline": {
 			"spent": "tes dépenses",
@@ -171,7 +173,9 @@
 			"envelope_left": "l'enveloppe",
 			"recurring_cost_out_month": "coût récurrent par mois",
 			"recurring_cost_in_month": "revenu récurrent par mois",
-			"budget_planCost": "le coût du plan"
+			"budget_planCost": "le coût du plan",
+			"budget_leftInLimits": "le reste dans tes limites",
+			"budget_holds": "ce que contient le budget"
 		}
 	},
 	"income": {

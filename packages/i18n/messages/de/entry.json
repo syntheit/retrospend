@@ -154,7 +154,9 @@
 			"envelope_left": "Umschlag",
 			"recurring_cost_out_month": "Wiederkehrende Kosten pro Monat",
 			"recurring_cost_in_month": "Wiederkehrendes Einkommen pro Monat",
-			"budget_planCost": "Plankosten"
+			"budget_planCost": "Plankosten",
+			"budget_leftInLimits": "Noch in deinen Limits",
+			"budget_holds": "Was das Budget hält"
 		},
 		"figuresInline": {
 			"spent": "deine Ausgaben",
@@ -171,7 +173,9 @@
 			"envelope_left": "der Umschlag",
 			"recurring_cost_out_month": "wiederkehrende Kosten pro Monat",
 			"recurring_cost_in_month": "wiederkehrendes Einkommen pro Monat",
-			"budget_planCost": "die Plankosten"
+			"budget_planCost": "die Plankosten",
+			"budget_leftInLimits": "was in deinen Limits übrig ist",
+			"budget_holds": "was das Budget hält"
 		}
 	},
 	"income": {

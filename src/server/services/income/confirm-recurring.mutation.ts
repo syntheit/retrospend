@@ -10,7 +10,7 @@
  */
 
 import { countedOnArrival, inBudget } from "@retrospend/domain/accounts/places";
-import { dayOf, endOfDay } from "@retrospend/domain/accounts/series";
+import { endOfDay } from "@retrospend/domain/accounts/series";
 import {
 	homePerUnit,
 	unitsForHome,
@@ -20,7 +20,13 @@ import {
 	FIGURE_LEFT_TO_SPEND,
 	FIGURE_NOT_PLANNED_YET,
 } from "@retrospend/domain/envelope/verdict";
-import { dayKey } from "@retrospend/domain/time-zone";
+import { nextDueDay } from "@retrospend/domain/recurring";
+import { isDue } from "@retrospend/domain/recurring-post/due";
+import {
+	INCOME_ALREADY_CONFIRMED,
+	RECURRING_INCOME_NOT_FOUND,
+	RecurringRefusal,
+} from "@retrospend/domain/recurring-post/refusals";
 import { TRPCError } from "@trpc/server";
 import type { RestChoice } from "~/lib/schemas/envelope";
 import type { Money } from "~/server/figures/registry";
@@ -40,7 +46,6 @@ import {
 } from "../accounts/ledger";
 import { INCOME_FIGURES } from "./add.mutation";
 import { incomeRow } from "./delete.mutation";
-import { nextDueDay } from "./due-day";
 import {
 	applyPlanFor,
 	PLAN_NOT_REQUESTED,
@@ -85,27 +90,23 @@ export interface ConfirmedIncome {
 async function dueTemplate(
 	tx: Tx,
 	userId: string,
-	input: ConfirmRecurringIncomeInput,
+	input: ConfirmRecurringIncomeInput & { readonly timeZone: string },
 ) {
 	const template = await tx.recurringTemplate.findFirst({
 		where: { id: input.templateId, userId, isActive: true, direction: "IN" },
 	});
 	if (!template) {
-		throw new TRPCError({
-			code: "NOT_FOUND",
-			message: "Recurring income not found",
-		});
+		throw new RecurringRefusal("not_found", RECURRING_INCOME_NOT_FOUND);
+	}
+	if (
+		input.dueDate &&
+		input.dueDate.getTime() !== template.nextDueDate.getTime()
+	) {
+		throw new RecurringRefusal("already_posted", INCOME_ALREADY_CONFIRMED);
 	}
 	// Due once its day has come in the user's zone, the day every leg is dated by.
-	if (
-		(input.dueDate &&
-			input.dueDate.getTime() !== template.nextDueDate.getTime()) ||
-		dayOf(template.nextDueDate) > dayKey(new Date(), input.timeZone)
-	) {
-		throw new TRPCError({
-			code: "CONFLICT",
-			message: "This income was already confirmed",
-		});
+	if (!isDue(template.nextDueDate, new Date(), input.timeZone, "utc_day")) {
+		throw new RecurringRefusal("not_due", INCOME_ALREADY_CONFIRMED);
 	}
 	return template;
 }
@@ -156,10 +157,7 @@ export async function confirmRecurringIncomeIn(
 		},
 	});
 	if (advanced.count === 0) {
-		throw new TRPCError({
-			code: "CONFLICT",
-			message: "This income was already confirmed",
-		});
+		throw new RecurringRefusal("already_posted", INCOME_ALREADY_CONFIRMED);
 	}
 	const row = await tx.expense.create({
 		data: { ...entry, keepInWealth: kept },

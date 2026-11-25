@@ -149,7 +149,39 @@
 		"showAll": "Alle {count} Kategorien anzeigen",
 		"open": "{name} bearbeiten",
 		"excludedSaved": "Neue Ausgaben in {name} zählen nicht mehr in Summen",
-		"includedSaved": "Neue Ausgaben in {name} zählen in Summen"
+		"includedSaved": "Neue Ausgaben in {name} zählen in Summen",
+		"remove": {
+			"title": "{name} löschen",
+			"moveTo": "Ausgaben verschieben nach",
+			"none": "Keine Kategorie",
+			"delete": "Löschen",
+			"moveAndDelete": "Verschieben und löschen",
+			"category": "Kategorie",
+			"deleted": "Gelöscht",
+			"count": "{count, number}",
+			"rows": {
+				"expense": "Ausgaben",
+				"template": "Wiederkehrende Ausgaben",
+				"sharedTransaction": "Geteilte Ausgaben",
+				"sharedLocked": "Geteilte Ausgaben, die du nicht ändern kannst",
+				"share": "Deine Anteile",
+				"incomeRule": "Einnahmeregeln",
+				"draft": "Budgetentwürfe",
+				"budget": "Budgets",
+				"budgetRemoved": "Entfernte Budgets"
+			},
+			"reroute": "Ausgaben in {name}",
+			"otherEnvelope": "Anderer Umschlag",
+			"refusals": {
+				"category_kind_mismatch": "Eine Ausgaben- und eine Einnahmenkategorie lassen sich nicht zusammenführen.",
+				"category_closed_month": "Ein abgeschlossener Monat ordnet diese beiden Kategorien verschiedenen Umschlägen zu.",
+				"category_income_rule": "Eine Einnahmenregel, die du nicht ändern kannst, nutzt diese Kategorie."
+			},
+			"previewFailed": "Die Vorschau wurde nicht geladen.",
+			"failed": "Die Kategorie wurde nicht gelöscht.",
+			"toastDeleted": "{name} gelöscht",
+			"toastMoved": "{count, plural, one {# Ausgabe} other {# Ausgaben}} nach {target} verschoben und {name} gelöscht"
+		}
 	},
 	"payment": {
 		"title": "Zahlungsmethoden",

@@ -29,12 +29,7 @@ export function CategoryEditor({
 	exclude,
 	onExclude,
 	canDelete,
-	confirmingDelete,
-	onAskDelete,
-	onCancelDelete,
-	onConfirmDelete,
-	deleting,
-	displayedName,
+	onDelete,
 	onBack,
 }: {
 	name: string;
@@ -48,13 +43,8 @@ export function CategoryEditor({
 	exclude: boolean;
 	onExclude: (value: boolean) => void;
 	canDelete: boolean;
-	confirmingDelete: boolean;
-	onAskDelete: () => void;
-	onCancelDelete: () => void;
-	onConfirmDelete: () => void;
-	deleting: boolean;
-	/** The category's name as people see it, for the delete question. */
-	displayedName: string;
+	/** Opens the delete and merge sheet, which shows what changes before Save. */
+	onDelete: () => void;
 	/** Phones: back to the list. */
 	onBack: () => void;
 }) {
@@ -158,43 +148,15 @@ export function CategoryEditor({
 
 				{canDelete && (
 					<div className="border-line border-t pt-4">
-						{!confirmingDelete ? (
-							<Button
-								kind="ghost"
-								onClick={() => onAskDelete()}
-								size="sm"
-								type="button"
-							>
-								<Trash2 aria-hidden="true" />
-								{t("deleteCategory")}
-							</Button>
-						) : (
-							<div className="flex flex-col gap-3" role="alert">
-								<p className="text-fg text-small">
-									{t("deleteCategoryConfirm", {
-										name: displayedName,
-									})}
-								</p>
-								<div className="flex gap-2">
-									<Button
-										kind="secondary"
-										onClick={() => onCancelDelete()}
-										size="sm"
-									>
-										{t("cancel")}
-									</Button>
-									<Button
-										disabled={deleting}
-										kind="danger"
-										loading={deleting}
-										onClick={onConfirmDelete}
-										size="sm"
-									>
-										{t("deleteButton")}
-									</Button>
-								</div>
-							</div>
-						)}
+						<Button
+							kind="danger-text"
+							onClick={() => onDelete()}
+							size="sm"
+							type="button"
+						>
+							<Trash2 aria-hidden="true" />
+							{t("deleteCategory")}
+						</Button>
 					</div>
 				)}
 			</div>

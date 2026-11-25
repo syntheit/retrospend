@@ -149,7 +149,39 @@
 		"showAll": "Mostrar las {count} categorías",
 		"open": "Editar {name}",
 		"excludedSaved": "Los gastos nuevos de {name} quedan fuera de los totales",
-		"includedSaved": "Los gastos nuevos de {name} cuentan en los totales"
+		"includedSaved": "Los gastos nuevos de {name} cuentan en los totales",
+		"remove": {
+			"title": "Eliminar {name}",
+			"moveTo": "Mover los gastos a",
+			"none": "Sin categoría",
+			"delete": "Eliminar",
+			"moveAndDelete": "Mover y eliminar",
+			"category": "Categoría",
+			"deleted": "Eliminada",
+			"count": "{count, number}",
+			"rows": {
+				"expense": "Gastos",
+				"template": "Gastos recurrentes",
+				"sharedTransaction": "Gastos compartidos",
+				"sharedLocked": "Gastos compartidos que no podés editar",
+				"share": "Tus partes",
+				"incomeRule": "Reglas de ingresos",
+				"draft": "Borradores del presupuesto",
+				"budget": "Presupuestos",
+				"budgetRemoved": "Presupuestos eliminados"
+			},
+			"reroute": "Gastos en {name}",
+			"otherEnvelope": "Otro sobre",
+			"refusals": {
+				"category_kind_mismatch": "Una categoría de gastos y una de ingresos no se pueden combinar.",
+				"category_closed_month": "Un mes cerrado pone estas dos categorías en sobres distintos.",
+				"category_income_rule": "Una regla de ingresos que no podés cambiar usa esta categoría."
+			},
+			"previewFailed": "La vista previa no se cargó.",
+			"failed": "No se eliminó la categoría.",
+			"toastDeleted": "Se eliminó {name}",
+			"toastMoved": "Se {count, plural, one {movió # gasto} other {movieron # gastos}} a {target} y se eliminó {name}"
+		}
 	},
 	"payment": {
 		"title": "Medios de pago",

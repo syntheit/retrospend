@@ -7,6 +7,10 @@ import {
 	EditRefusal,
 } from "@retrospend/domain/expense-write/refusals";
 import { MissingRateError } from "@retrospend/domain/money";
+import {
+	RecurringRefusal,
+	type RecurringRefusalKind,
+} from "@retrospend/domain/recurring-post/refusals";
 import { TRPCError } from "@trpc/server";
 import { uniqueViolation } from "~/server/api/unique-violation";
 import { textUnavailableProblem } from "~/server/crypto/field-open";
@@ -99,6 +103,12 @@ function vaultProblem(error: VaultError) {
 	return problem("bad_request", error.message);
 }
 
+const RECURRING_PROBLEM = {
+	not_found: "not_found",
+	already_posted: "recurring_already_posted",
+	not_due: "recurring_not_due",
+} as const satisfies Record<RecurringRefusalKind, ProblemCode>;
+
 export function toProblem(error: unknown, route?: string): unknown {
 	if (error instanceof ORPCError) return error;
 	if (error instanceof InvalidCursorError)
@@ -131,6 +141,14 @@ export function toProblem(error: unknown, route?: string): unknown {
 		return problem(refused.v1Code, refused.message);
 	if (refused instanceof AmountRefusedError)
 		return problem("bad_request", refused.message);
+	// Confirming or skipping a recurring period: a code per refusal, so a client
+	// that queued the write can tell a period already posted (drop it) from one
+	// not due yet (wait).
+	const recurring = [error, (error as { cause?: unknown } | null)?.cause].find(
+		(e) => e instanceof RecurringRefusal,
+	);
+	if (recurring instanceof RecurringRefusal)
+		return problem(RECURRING_PROBLEM[recurring.kind], recurring.message);
 	// A preview that lost to a concurrent write twice: nothing was written.
 	if (
 		[error, (error as { cause?: unknown } | null)?.cause].some(

@@ -4,12 +4,11 @@ import { categoryTone } from "@retrospend/domain/category-tone";
 import { Check } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { CategoryTile } from "~/components/ui/category-badge";
-import { Label } from "~/components/ui/label";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { Sheet } from "~/components/ui/sheet";
 import { cn } from "~/lib/cn";
-import { SelectField } from "../select-field";
 import { CategoryEditor } from "./category-editor";
+import { RemoveCategorySheet } from "./remove-category-sheet";
 import {
 	type CategoryManagerProps,
 	useCategoryManager,
@@ -18,7 +17,8 @@ import {
 /**
  * The category manager (mockup): one wide sheet with the categories on the
  * left and the chosen one on the right: name, icon, color, Count in
- * spending and delete. Every change saves at once.
+ * spending and delete. Every change saves at once; delete opens its own
+ * sheet, which shows what changes before Save.
  */
 export function CategoryManager(props: CategoryManagerProps) {
 	const {
@@ -28,34 +28,25 @@ export function CategoryManager(props: CategoryManagerProps) {
 		setMobileView,
 		saveStatus,
 		categories,
-		deleteMutation,
 		selectedCategory,
 		editName,
 		editIcon,
 		editColor,
 		editExclude,
 		nameInputRef,
-		showDeleteConfirm,
-		setShowDeleteConfirm,
-		showReassignDialog,
-		setShowReassignDialog,
-		reassignExpenseCount,
-		replacementCategoryId,
-		setReplacementCategoryId,
+		removing,
+		setRemoving,
 		displayName,
 		handleNameChange,
 		handleIconChange,
 		handleColorChange,
 		handleExcludeChange,
-		confirmDelete,
-		handleReassignAndDelete,
+		handleRemoved,
 		handleOpenChange,
 		handleSelectCategory,
 		displayColors,
 	} = useCategoryManager(props);
 	const { open } = props;
-
-	const others = categories?.filter((c) => c.id !== selectedId) ?? [];
 
 	return (
 		<>
@@ -129,18 +120,13 @@ export function CategoryManager(props: CategoryManagerProps) {
 								canDelete={(categories?.length ?? 0) > 1}
 								color={editColor}
 								colors={displayColors}
-								confirmingDelete={showDeleteConfirm}
-								deleting={deleteMutation.isPending}
-								displayedName={displayName(selectedCategory.name)}
 								exclude={editExclude}
 								icon={editIcon}
 								name={editName}
 								nameRef={nameInputRef}
-								onAskDelete={() => setShowDeleteConfirm(true)}
 								onBack={() => setMobileView("list")}
-								onCancelDelete={() => setShowDeleteConfirm(false)}
 								onColor={handleColorChange}
-								onConfirmDelete={confirmDelete}
+								onDelete={() => setRemoving(true)}
 								onExclude={handleExcludeChange}
 								onIcon={handleIconChange}
 								onName={handleNameChange}
@@ -156,46 +142,20 @@ export function CategoryManager(props: CategoryManagerProps) {
 				</div>
 			</Sheet>
 
-			<Sheet
-				description={t("reassignDescription", { count: reassignExpenseCount })}
-				footer={
-					<>
-						<Button
-							kind="secondary"
-							onClick={() => setShowReassignDialog(false)}
-						>
-							{t("cancel")}
-						</Button>
-						<Button
-							disabled={deleteMutation.isPending}
-							kind="danger"
-							loading={deleteMutation.isPending}
-							onClick={handleReassignAndDelete}
-						>
-							{t("reassignAndDelete")}
-						</Button>
-					</>
+			<RemoveCategorySheet
+				categories={categories ?? []}
+				category={
+					selectedCategory
+						? {
+								id: selectedCategory.id,
+								name: displayName(selectedCategory.name),
+							}
+						: null
 				}
-				onOpenChange={setShowReassignDialog}
-				open={showReassignDialog}
-				title={t("reassignExpenses")}
-			>
-				<div className="flex flex-col gap-2">
-					<Label htmlFor="replacement-category">{t("reassignTo")}</Label>
-					<SelectField
-						id="replacement-category"
-						onChange={setReplacementCategoryId}
-						options={[
-							{ value: "uncategorized", label: t("uncategorized") },
-							...others.map((c) => ({
-								value: c.id,
-								label: displayName(c.name),
-							})),
-						]}
-						value={replacementCategoryId}
-					/>
-				</div>
-			</Sheet>
+				onOpenChange={setRemoving}
+				onRemoved={handleRemoved}
+				open={removing}
+			/>
 		</>
 	);
 }

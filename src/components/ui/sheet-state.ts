@@ -40,6 +40,8 @@ export interface SheetProps {
 	wide?: boolean;
 	/** The specific verb ("Add expense", "Record"). No submit button without it. */
 	submitLabel?: string;
+	/** Danger for the verb of a destructive confirm (delete); primary otherwise. */
+	submitKind?: "primary" | "danger";
 	cancelLabel?: string;
 	/**
 	 * Phone web only (ADD-EXPENSE-R2): the short save verb ("Add", "Save") in

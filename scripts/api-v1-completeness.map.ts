@@ -236,7 +236,6 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 
 	// ── categories ───────────────────────────────────────────────────────
 	"categories.create": to("POST /categories"),
-	"categories.delete": to("DELETE /categories/{id}"),
 	"categories.getAll": to("GET /categories"),
 	"categories.previewRemove": to(
 		"POST /categories/{id}/delete/preview",

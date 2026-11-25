@@ -149,7 +149,39 @@
 		"showAll": "Show all {count} categories",
 		"open": "Edit {name}",
 		"excludedSaved": "New {name} expenses are left out of totals",
-		"includedSaved": "New {name} expenses count in totals"
+		"includedSaved": "New {name} expenses count in totals",
+		"remove": {
+			"title": "Delete {name}",
+			"moveTo": "Move expenses to",
+			"none": "No category",
+			"delete": "Delete",
+			"moveAndDelete": "Move and delete",
+			"category": "Category",
+			"deleted": "Deleted",
+			"count": "{count, number}",
+			"rows": {
+				"expense": "Expenses",
+				"template": "Recurring expenses",
+				"sharedTransaction": "Shared expenses",
+				"sharedLocked": "Shared expenses you cannot edit",
+				"share": "Your shares",
+				"incomeRule": "Income rules",
+				"draft": "Budget drafts",
+				"budget": "Budgets",
+				"budgetRemoved": "Budgets removed"
+			},
+			"reroute": "Expenses in {name}",
+			"otherEnvelope": "Another envelope",
+			"refusals": {
+				"category_kind_mismatch": "An expense category and an income category cannot be merged.",
+				"category_closed_month": "A closed month files these two categories in different envelopes.",
+				"category_income_rule": "An income rule you cannot change uses this category."
+			},
+			"previewFailed": "The preview did not load.",
+			"failed": "The category was not deleted.",
+			"toastDeleted": "Deleted {name}",
+			"toastMoved": "Moved {count, plural, one {# expense} other {# expenses}} to {target} and deleted {name}"
+		}
 	},
 	"payment": {
 		"title": "Payment methods",
