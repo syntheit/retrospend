@@ -6,6 +6,7 @@ import type {
 	skipRecurringSchema,
 	updateRecurringSchema,
 } from "@retrospend/api-contract";
+import { UNDO_NOT_VALID } from "@retrospend/domain/expense-write/refusals";
 import { TRPCError } from "@trpc/server";
 import * as z from "zod";
 import {
@@ -211,7 +212,7 @@ function restoreOf(op: string, input: unknown) {
 	if (op !== "recurring.restore")
 		throw new TRPCError({
 			code: "BAD_REQUEST",
-			message: "This undo is not valid anymore",
+			message: UNDO_NOT_VALID,
 		});
 	const template = (input as { template: TemplateSnapshot }).template;
 	// A token minted before the links were carried has neither list.
@@ -371,7 +372,7 @@ function undoOf(op: string, input: unknown) {
 	if (op !== "recurring.unconfirm" && op !== "income.unconfirmRecurring")
 		throw new TRPCError({
 			code: "BAD_REQUEST",
-			message: "This undo is not valid anymore",
+			message: UNDO_NOT_VALID,
 		});
 	const { expenseId, dueAt, anchorDay } = input as {
 		expenseId: string;
@@ -450,7 +451,7 @@ function unskipOf(op: string, input: unknown) {
 	if (op !== "recurring.skip")
 		throw new TRPCError({
 			code: "BAD_REQUEST",
-			message: "This undo is not valid anymore",
+			message: UNDO_NOT_VALID,
 		});
 	const { templateId, dueAt } = input as { templateId: string; dueAt: string };
 	return { templateId, dueDate: new Date(dueAt) };

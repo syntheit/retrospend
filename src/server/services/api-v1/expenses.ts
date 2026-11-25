@@ -11,6 +11,7 @@ import type {
 import { withDefaultRange } from "@retrospend/api-contract";
 import { bookedRate } from "@retrospend/domain/activity-rows";
 import { toBookingInput } from "@retrospend/domain/expense-input";
+import { UNDO_NOT_VALID } from "@retrospend/domain/expense-write/refusals";
 import { dayKey, parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
@@ -451,7 +452,7 @@ function stepOf(op: string, input: unknown): Step<unknown, unknown> {
 		default:
 			throw new TRPCError({
 				code: "BAD_REQUEST",
-				message: "This undo is not valid anymore",
+				message: UNDO_NOT_VALID,
 			});
 	}
 }

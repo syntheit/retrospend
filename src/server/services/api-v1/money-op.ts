@@ -1,4 +1,5 @@
 import type { PreviewResult as PreviewDto } from "@retrospend/api-contract";
+import { UNDO_NOT_VALID } from "@retrospend/domain/expense-write/refusals";
 import { TRPCError } from "@trpc/server";
 import { forUser } from "~/server/services/preview";
 import type { MoneyMutation } from "~/server/services/preview/types";
@@ -120,7 +121,7 @@ export type AnyMutation = MoneyMutation<any, any>;
 const invalid = () =>
 	new TRPCError({
 		code: "BAD_REQUEST",
-		message: "This undo is not valid anymore",
+		message: UNDO_NOT_VALID,
 	});
 
 /**

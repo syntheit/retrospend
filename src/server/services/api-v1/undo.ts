@@ -1,3 +1,4 @@
+import { UNDO_NOT_VALID } from "@retrospend/domain/expense-write/refusals";
 import { TRPCError } from "@trpc/server";
 import {
 	readPayload,
@@ -37,7 +38,7 @@ type Payload = {
 const invalid = () =>
 	new TRPCError({
 		code: "BAD_REQUEST",
-		message: "This undo is not valid anymore",
+		message: UNDO_NOT_VALID,
 	});
 
 export function mintUndo(
