@@ -88,6 +88,7 @@
 		"categorizeTitle": "{count, plural, one {# Ausgabe} other {# Ausgaben}} nach {name} verschieben",
 		"move": "Verschieben",
 		"moveFailed": "Das Verschieben kann nicht gespeichert werden",
+		"moveBusy": "Beim Laden hat sich etwas geändert. Versuche es erneut.",
 		"exported": "{count, plural, one {# Zeile} other {# Zeilen}} als CSV exportiert",
 		"deleted": "{count, plural, one {# Ausgabe} other {# Ausgaben}} gelöscht",
 		"failed": "Die ausgewählten Ausgaben konnten nicht geändert werden",

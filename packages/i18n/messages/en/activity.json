@@ -88,6 +88,7 @@
 		"categorizeTitle": "Move {count, plural, one {# expense} other {# expenses}} to {name}",
 		"move": "Move",
 		"moveFailed": "This move can't be saved",
+		"moveBusy": "Something changed while this was loading. Try again.",
 		"exported": "Exported {count, plural, one {# row} other {# rows}} to CSV",
 		"deleted": "Deleted {count, plural, one {# expense} other {# expenses}}",
 		"failed": "Couldn't change the selected expenses",
