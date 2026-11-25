@@ -101,6 +101,28 @@ describe("createRetrospendClient", () => {
 		expect(error).toMatchObject({ code: "missing_rate", status: 422 });
 	});
 
+	it("hands the server's Date header of the answer to the call's onServerTime", async () => {
+		const seen: string[] = [];
+		const fetch = (async () =>
+			new Response(JSON.stringify({}), {
+				status: 200,
+				headers: {
+					"content-type": "application/json",
+					date: "Tue, 24 Nov 2026 12:00:05 GMT",
+				},
+			})) as unknown as typeof globalThis.fetch;
+		const client = createRetrospendClient({
+			baseUrl: "https://example.test",
+			fetch,
+		});
+		await client.platform
+			.serverInfo(undefined, {
+				context: { onServerTime: (d: string) => seen.push(d) },
+			})
+			.catch(() => undefined);
+		expect(seen).toEqual(["Tue, 24 Nov 2026 12:00:05 GMT"]);
+	});
+
 	it("turns problem+json into an ORPCError with the stable code", async () => {
 		const problem = {
 			type: "urn:retrospend:problem:missing_scope",
