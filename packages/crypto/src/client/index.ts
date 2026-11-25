@@ -59,11 +59,14 @@ export {
 	readOpenAnswer,
 } from "./new-key";
 export {
+	beginRecovery,
+	finishRecovery,
 	type RecoverBeginAnswer,
 	type RecoverBody,
 	type RecoverInput,
 	type RecoverOptions,
 	type RecoverPorts,
+	type RecoveryDraft,
 	readRecoverBeginAnswer,
 	recoverAccount,
 } from "./recover";
