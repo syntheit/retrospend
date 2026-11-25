@@ -366,11 +366,19 @@ describe("/api/v1/admin", () => {
 	});
 
 	it("reports backups as unavailable without a sidecar", async () => {
-		const status = await read<{ available: boolean }>(
-			"/admin/backups",
-			a.getBackups,
-		);
-		expect(status.available).toBe(false);
+		const worker = vi.spyOn(IntegrationService, "requestWorker");
+		try {
+			worker.mockRejectedValueOnce(
+				new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "fetch failed" }),
+			);
+			const status = await read<{ available: boolean }>(
+				"/admin/backups",
+				a.getBackups,
+			);
+			expect(status.available).toBe(false);
+		} finally {
+			worker.mockRestore();
+		}
 	});
 
 	it("answers a backup start by the sidecar's answer, not its text", async () => {
