@@ -35,6 +35,19 @@ jest.mock("./EnableSheet", () => ({
 	},
 }));
 jest.mock("@/ui/Glyph", () => ({ Glyph: () => null }));
+const mockNewKeyCallbacks = { makeKey: jest.fn(), save: jest.fn() };
+const mockNewKeyFactory = jest.fn(() => mockNewKeyCallbacks);
+jest.mock("@/auth/new-key", () => ({
+	phoneNewKeyCallbacks: (...a: unknown[]) =>
+		(mockNewKeyFactory as (...a: unknown[]) => unknown)(...a),
+}));
+const mockNewKeySheet = jest.fn();
+jest.mock("./NewKeySheet", () => ({
+	NewKeySheet: (props: Record<string, unknown>) => {
+		mockNewKeySheet(props);
+		return null;
+	},
+}));
 
 type Answer<T> = () => Promise<T>;
 function setApi(over: {
@@ -93,6 +106,8 @@ const setMe = (over: Record<string, unknown> = {}) => {
 
 beforeEach(() => {
 	mockSheet.mockClear();
+	mockNewKeySheet.mockClear();
+	mockNewKeyFactory.mockClear();
 	setMe();
 });
 
@@ -195,5 +210,32 @@ describe("the Advanced protection row", () => {
 		const text = words(await show());
 		expect(text).toContain("Keys ready");
 		expect(text).not.toContain("Turn on");
+	});
+
+	it("offers Make new key on keys ready, which opens the Make new key sheet for this account", async () => {
+		setApi({});
+		const tree = await show();
+		const props = () => mockNewKeySheet.mock.calls.at(-1)?.[0];
+		expect(props()).toMatchObject({
+			visible: false,
+			account: "ana@example.com",
+		});
+		expect(mockNewKeyFactory).toHaveBeenCalledWith(
+			expect.objectContaining({ userId: "me1" }),
+			expect.anything(),
+		);
+		act(() => tap(button(tree, "Make new key")));
+		expect(props()?.visible).toBe(true);
+		act(() => (props()?.onClose as () => void)());
+		expect(props()?.visible).toBe(false);
+	});
+
+	it("offers no Make new key before there are keys", async () => {
+		setApi({
+			keys: async () => {
+				throw missing();
+			},
+		});
+		expect(words(await show())).not.toContain("Make new key");
 	});
 });
