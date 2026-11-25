@@ -77,6 +77,29 @@ export function takeFromOutbox(
 	});
 }
 
+/**
+ * Puts an entry taken from the outbox back (the person undid a delete). It
+ * keeps its key, its booking and its sealed request: a send that may have
+ * landed is resent as it was, never sealed again under the same key.
+ */
+export function putBackInOutbox(
+	outbox: Outbox,
+	entry: OutboxEntry,
+): Promise<OutboxEntry> {
+	return exclusive(outbox, () =>
+		outbox.enqueue({
+			clientId: entry.clientId,
+			entity: entry.entity,
+			kind: entry.kind,
+			targetId: entry.targetId,
+			baseVersion: entry.baseVersion,
+			payload: entry.payload,
+			...(entry.device ? { device: entry.device } : {}),
+			...(entry.sealed ? { sealed: entry.sealed } : {}),
+		}),
+	);
+}
+
 /** One flush of the composers' entries, alone on the outbox. */
 export function flushEntries(
 	outbox: Outbox,

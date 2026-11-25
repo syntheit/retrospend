@@ -304,7 +304,8 @@ export function fakeVaultTransport(
 		},
 		/**
 		 * Takes a write back as the next version of its record, under the undo's
-		 * key (a new one per attempt, so nothing is resent). Refused when the
+		 * key (a new one per attempt, so nothing is resent; that holds with the device
+		 * engine on, which numbers the undo generations). Refused when the
 		 * record before is not known: it is never guessed.
 		 */
 		async undo(ref: { token: string }, key: string) {

@@ -8,8 +8,10 @@ import { parkedFrom } from "@/features/entry/parked-entry";
 import { resolveParked } from "@/features/entry/parked-resolve";
 import {
 	flushEntries,
+	putBackInOutbox,
 	queueExpenseChange,
 	saveEntry,
+	takeFromOutbox,
 	undoSaved,
 } from "@/features/entry/queue";
 import { commitRebase, planRebase } from "@/features/entry/rebase";
@@ -411,6 +413,24 @@ describe.each(harnesses)("the queue over the %s transport", (_name, make) => {
 			expect(sends).toHaveLength(2);
 			expect(sends[1]?.sent).toBe(sends[0]?.sent);
 			expect(h.rowOf(ID)).toMatchObject({ n: 2, body: { title: "Dinner" } });
+			expect(await outbox.all()).toEqual([]);
+		});
+	});
+
+	describe("a delete taken back", () => {
+		it("a sent create taken out and put back is resent as it was, and acks", async () => {
+			h.faults.lose = 1;
+			expect(await save()).toEqual({ status: "queued" });
+			// The flag off lets a sent entry be taken (the same rule as editing it).
+			mockWrites.mockReturnValue(null);
+			const taken = await takeFromOutbox(outbox, ID);
+			if (!taken) throw new Error("not taken");
+			await putBackInOutbox(outbox, taken);
+			expect(await flush()).toMatchObject({ sent: 1, conflicts: 0 });
+			const sends = h.requests().filter((r) => r.key === ID);
+			expect(sends).toHaveLength(2);
+			expect(sends[1]?.sent).toBe(sends[0]?.sent);
+			expect(h.rowOf(ID)).toMatchObject({ n: 1 });
 			expect(await outbox.all()).toEqual([]);
 		});
 	});
