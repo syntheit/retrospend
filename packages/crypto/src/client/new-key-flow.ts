@@ -19,8 +19,9 @@ import { recoveryWrapDigest } from "../keys";
 import type { KeyDraft } from "./enable-lifecycle";
 import {
 	asKeyFlowError,
-	type KeyFlowCode,
+	couldNotAsk,
 	KeyFlowError,
+	mayHaveCommitted,
 	sameBytes,
 } from "./flow";
 import {
@@ -48,6 +49,8 @@ type Held = {
 	body: NewKeyCommitBody | null;
 	idempotencyKey: string;
 	phase: Phase;
+	/** Sends made so far (a keyReused only means "ours may be stored" after an earlier one). */
+	sends: number;
 };
 
 export type NewKeyCallbacks = {
@@ -57,20 +60,16 @@ export type NewKeyCallbacks = {
 	save(draft: KeyDraft): Promise<void>;
 };
 
-/** Codes where the server may have committed the send. */
-const MAY_HAVE_COMMITTED: readonly KeyFlowCode[] = [
-	"unavailable",
-	"serverError",
-	"keyReused",
-];
-
 export function createNewKeyCallbacks(ports: NewKeyFlowPorts): NewKeyCallbacks {
 	const drafts = new WeakMap<KeyDraft, Held>();
 
 	/**
 	 * Whether the server holds the wrap this draft sent, by the digest keys/open
-	 * answers. An answer that never came is thrown as it is (it can be asked
-	 * again); any other refusal, or an answer of another shape, is a mismatch.
+	 * answers. Only a real answer settles it: no keys (`notFound`) or another
+	 * digest is a mismatch. A call that got no answer or was turned away for now
+	 * (couldNotAsk) is thrown as it is, and any other refusal (the session ended,
+	 * the password check failed) is `unconfirmed`, never a mismatch: the server
+	 * may well hold our key, and a retry asks again.
 	 */
 	async function stored(body: NewKeyCommitBody): Promise<boolean> {
 		let answer: unknown;
@@ -78,13 +77,8 @@ export function createNewKeyCallbacks(ports: NewKeyFlowPorts): NewKeyCallbacks {
 			answer = await ports.open({ authKey: body.currentAuthKey });
 		} catch (error) {
 			const code = asKeyFlowError(error).code;
-			if (
-				code === "unavailable" ||
-				code === "serverError" ||
-				code === "rateLimited"
-			)
-				throw error;
-			return false;
+			if (code === "notFound") return false;
+			throw couldNotAsk(code) ? error : new KeyFlowError("unconfirmed");
 		}
 		const digest = (answer as { recoveryWrapDigest?: unknown } | null)
 			?.recoveryWrapDigest;
@@ -96,17 +90,18 @@ export function createNewKeyCallbacks(ports: NewKeyFlowPorts): NewKeyCallbacks {
 	}
 
 	async function send(held: Held, body: NewKeyCommitBody): Promise<void> {
+		const earlier = held.sends++;
 		try {
 			await ports.commit(body, held.idempotencyKey);
 		} catch (error) {
 			const code = asKeyFlowError(error).code;
-			if (MAY_HAVE_COMMITTED.includes(code)) {
-				held.phase = "unknown";
+			// A conflict is never sent again, early or late: the server says
+			// whether it holds ours.
+			if (code === "conflict") {
+				if (await stored(body)) return;
 				throw error;
 			}
-			if (code !== "conflict") throw error;
-			// Not sent again: the server says whether it holds ours.
-			if (await stored(body)) return;
+			if (mayHaveCommitted(code, earlier)) held.phase = "unknown";
 			throw error;
 		}
 	}
@@ -121,6 +116,7 @@ export function createNewKeyCallbacks(ports: NewKeyFlowPorts): NewKeyCallbacks {
 				body: prepared.body,
 				idempotencyKey: ports.newKey(),
 				phase: "unsent",
+				sends: 0,
 			};
 			const draft: KeyDraft = {
 				keyText: prepared.recoveryKeyText,

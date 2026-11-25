@@ -14,7 +14,9 @@ import {
 	wrapKey,
 } from "../src";
 import {
+	couldNotAsk,
 	createNewKeyCallbacks,
+	isFinalRecoveryFailure,
 	type KeyDraft,
 	type KeyFlowCode,
 	KeyFlowError,
@@ -49,7 +51,12 @@ function setup(
 	over: {
 		/** Runs instead of the store when a commit arrives; throw to refuse, return "lost" to store and lose the answer. */
 		commit?: (n: number, store: () => void) => "lost" | undefined;
-		open?: (n: number, body: { authKey: string }) => unknown;
+		/** Answers instead of the server's own (`normal`) answer. */
+		open?: (
+			n: number,
+			body: { authKey: string },
+			normal: () => unknown,
+		) => unknown;
 	} = {},
 ) {
 	let version = 4;
@@ -58,6 +65,18 @@ function setup(
 	const commits: Commit[] = [];
 	const opens: { authKey: string }[] = [];
 	let keyN = 0;
+	const answer = () => ({
+		version,
+		kdf: KDF,
+		wraps: [
+			{
+				role: "ak-password",
+				targetId: USER_ID,
+				wrapped: toBase64Url(wrapKey(p, WRAP_KEY, "ak-password", USER_ID, AK)),
+			},
+		],
+		recoveryWrapDigest: toBase64Url(recoveryWrapDigest(p, wrap)),
+	});
 	const ports: NewKeyFlowPorts = {
 		userId: USER_ID,
 		primitives: async () => p,
@@ -65,22 +84,12 @@ function setup(
 		lookupRoute: "keys",
 		open: vi.fn(async (body: { authKey: string }) => {
 			opens.push(body);
-			if (over.open) return over.open(opens.length, body);
-			if (body.authKey !== AUTH_KEY) throw new KeyFlowError("wrongPassword");
-			return {
-				version,
-				kdf: KDF,
-				wraps: [
-					{
-						role: "ak-password",
-						targetId: USER_ID,
-						wrapped: toBase64Url(
-							wrapKey(p, WRAP_KEY, "ak-password", USER_ID, AK),
-						),
-					},
-				],
-				recoveryWrapDigest: toBase64Url(recoveryWrapDigest(p, wrap)),
+			const normal = () => {
+				if (body.authKey !== AUTH_KEY) throw new KeyFlowError("wrongPassword");
+				return answer();
 			};
+			if (over.open) return over.open(opens.length, body, normal);
+			return normal();
 		}),
 		commit: vi.fn(async (body, key) => {
 			commits.push({ body: { ...body }, key });
@@ -215,6 +224,82 @@ describe("createNewKeyCallbacks", () => {
 				"unavailable",
 			);
 			expect(s.commits).toHaveLength(1);
+		});
+	});
+
+	describe("a read-back that cannot be asked", () => {
+		/** A server that stores the commit and then refuses (or fails) every read-back after it. */
+		function afterCommit(refusal: () => KeyFlowError) {
+			let committed = false;
+			const s = setup({
+				commit: (_n, store) => {
+					store();
+					committed = true;
+					return undefined;
+				},
+				open: (_n, _body, normal) => {
+					if (committed) throw refusal();
+					return normal();
+				},
+			});
+			return s;
+		}
+
+		it.each([["wrongPassword"], ["sessionNotFresh"], ["failed"]] as const)(
+			"a %s refusal after a stored commit is unconfirmed, never the final notSaved, and asking again settles it",
+			async (code) => {
+				let refuse = true;
+				let committed = false;
+				const s = setup({
+					commit: (_n, store) => {
+						store();
+						committed = true;
+						return undefined;
+					},
+					open: (_n, _body, normal) => {
+						if (committed && refuse) throw new KeyFlowError(code);
+						return normal();
+					},
+				});
+				const draft = await made(s);
+				await expect(codeOf(s.callbacks.save(draft))).resolves.toBe(
+					"unconfirmed",
+				);
+				expect(recoveryFailureFor("unconfirmed")).toBe("unconfirmed");
+				expect(isFinalRecoveryFailure(recoveryFailureFor("unconfirmed"))).toBe(
+					false,
+				);
+				// Asked again with an answer, the server holds our key: saved, and nothing was sent again.
+				refuse = false;
+				await s.callbacks.save(draft);
+				expect(s.commits).toHaveLength(1);
+			},
+		);
+
+		it("a server that answers with another digest is still the final notSaved", async () => {
+			const s = setup();
+			s.ports.commit = vi.fn(async () => {});
+			const callbacks = createNewKeyCallbacks(s.ports);
+			const draft = await callbacks.makeKey(PASSWORD);
+			await expect(codeOf(callbacks.save(draft))).resolves.toBe(
+				"readBackFailed",
+			);
+			expect(isFinalRecoveryFailure(recoveryFailureFor("readBackFailed"))).toBe(
+				true,
+			);
+		});
+
+		it("the codes the owner calls could-not-ask stay as they are and are not mismatches", async () => {
+			for (const code of [
+				"unavailable",
+				"serverError",
+				"rateLimited",
+			] as const) {
+				expect(couldNotAsk(code)).toBe(true);
+				const s = afterCommit(() => new KeyFlowError(code));
+				const draft = await made(s);
+				await expect(codeOf(s.callbacks.save(draft))).resolves.toBe(code);
+			}
 		});
 	});
 
