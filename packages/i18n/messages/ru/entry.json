@@ -151,7 +151,9 @@
 			"budget_leftToSpend": "Можно потратить",
 			"budget_heldForOthers": "Удерживается для других",
 			"project_total": "Итого по проекту",
-			"envelope_left": "Конверт"
+			"envelope_left": "Конверт",
+			"budget_leftInLimits": "Осталось в лимитах",
+			"budget_holds": "Что держит бюджет"
 		},
 		"figuresInline": {
 			"spent": "ваши расходы",
@@ -165,7 +167,9 @@
 			"budget_leftToSpend": "доступно к тратам",
 			"budget_heldForOthers": "удерживаемое для других",
 			"project_total": "итог по проекту",
-			"envelope_left": "конверт"
+			"envelope_left": "конверт",
+			"budget_leftInLimits": "остаток в лимитах",
+			"budget_holds": "то, что держит бюджет"
 		}
 	},
 	"income": {

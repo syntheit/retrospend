@@ -149,7 +149,39 @@
 		"showAll": "Afficher les {count} catégories",
 		"open": "Modifier {name}",
 		"excludedSaved": "Les nouvelles dépenses de {name} sont exclues des totaux",
-		"includedSaved": "Les nouvelles dépenses de {name} comptent dans les totaux"
+		"includedSaved": "Les nouvelles dépenses de {name} comptent dans les totaux",
+		"remove": {
+			"title": "Supprimer {name}",
+			"moveTo": "Déplacer les dépenses vers",
+			"none": "Aucune catégorie",
+			"delete": "Supprimer",
+			"moveAndDelete": "Déplacer et supprimer",
+			"category": "Catégorie",
+			"deleted": "Supprimée",
+			"count": "{count, number}",
+			"rows": {
+				"expense": "Dépenses",
+				"template": "Dépenses récurrentes",
+				"sharedTransaction": "Dépenses partagées",
+				"sharedLocked": "Dépenses partagées que tu ne peux pas modifier",
+				"share": "Tes parts",
+				"incomeRule": "Règles de revenus",
+				"draft": "Brouillons du budget",
+				"budget": "Budgets",
+				"budgetRemoved": "Budgets supprimés"
+			},
+			"reroute": "Dépenses dans {name}",
+			"otherEnvelope": "Autre enveloppe",
+			"refusals": {
+				"category_kind_mismatch": "Une catégorie de dépenses et une catégorie de revenus ne peuvent pas être fusionnées.",
+				"category_closed_month": "Un mois clos classe ces deux catégories dans des enveloppes différentes.",
+				"category_income_rule": "Une règle de revenus que tu ne peux pas modifier utilise cette catégorie."
+			},
+			"previewFailed": "L'aperçu n'a pas pu se charger.",
+			"failed": "La catégorie n'a pas été supprimée.",
+			"toastDeleted": "{name} supprimée",
+			"toastMoved": "{count, plural, one {# dépense déplacée} other {# dépenses déplacées}} vers {target} et {name} supprimée"
+		}
 	},
 	"payment": {
 		"title": "Moyens de paiement",
