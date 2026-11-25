@@ -13,10 +13,13 @@ import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
 import {
 	type BulkAction,
+	bulkDevice,
 	previewBulk,
 	runBulk,
+	SyncFirstError,
 	skippedOf,
 	undoBulk,
+	unsyncedIds,
 } from "./bulkWrite";
 
 /**
@@ -41,12 +44,14 @@ export function BulkSheet({
 }) {
 	const t = useTranslations("mobile.activity.bulk");
 	const tc = useTranslations("mobile.common");
-	const { api } = useSession();
+	const { api, local } = useSession();
 	const toast = useToast();
 	const { space } = useTheme();
 	const [preview, setPreview] = useState<PreviewState>({ status: "loading" });
 	const [busy, setBusy] = useState(false);
 	const [failed, setFailed] = useState(false);
+	// Dev flag: a picked expense has a write that has not synced.
+	const [syncFirst, setSyncFirst] = useState(false);
 	// One id per opening: a second tap on Save replays the first write.
 	const batch = useRef("");
 
@@ -59,9 +64,25 @@ export function BulkSheet({
 		batch.current = newClientId();
 		setPreview({ status: "loading" });
 		setFailed(false);
-		previewBulk(api, action, ids).then((state) => {
-			if (!cancelled) setPreview(state);
-		});
+		setSyncFirst(false);
+		const device = bulkDevice(api, local?.outbox);
+		const showPreview = () =>
+			previewBulk(api, action, ids, device).then((state) => {
+				if (!cancelled) setPreview(state);
+			});
+		if (!device) void showPreview();
+		else
+			unsyncedIds(device, ids).then(
+				(held) => {
+					if (cancelled) return;
+					if (held.length > 0) setSyncFirst(true);
+					else void showPreview();
+				},
+				// An outbox that cannot be read is no reason to write: show the failed state.
+				() => {
+					if (!cancelled) setFailed(true);
+				},
+			);
 		return () => {
 			cancelled = true;
 		};
@@ -72,7 +93,8 @@ export function BulkSheet({
 		setBusy(true);
 		setFailed(false);
 		try {
-			const out = await runBulk(api, action, ids, batch.current);
+			const device = bulkDevice(api, local?.outbox);
+			const out = await runBulk(api, action, ids, batch.current, device);
 			announceEntryChange();
 			if (out.done === 0) {
 				setFailed(true);
@@ -91,7 +113,7 @@ export function BulkSheet({
 				undo: {
 					label: tc("undo"),
 					onUndo: async () => {
-						const ok = await undoBulk(api, out.tokens, undoBatch);
+						const ok = await undoBulk(api, out.tokens, undoBatch, device);
 						announceEntryChange();
 						toast.show({ message: ok ? t("undone") : t("undoError") });
 					},
@@ -99,8 +121,9 @@ export function BulkSheet({
 			});
 			onDone();
 			onClose();
-		} catch {
-			setFailed(true);
+		} catch (error) {
+			if (error instanceof SyncFirstError) setSyncFirst(true);
+			else setFailed(true);
 		} finally {
 			setBusy(false);
 		}
@@ -111,14 +134,13 @@ export function BulkSheet({
 		action?.kind === "delete"
 			? t("deleteTitle", { count })
 			: t("categorizeTitle", { count });
-	const ready = preview.status === "ready";
+	const ready = preview.status === "ready" && !syncFirst;
 	const skipped =
 		ready && action?.kind === "delete" ? skippedOf(preview.diff) : 0;
 
 	return (
 		<Sheet
 			detents={action?.kind === "delete" ? ["medium"] : undefined}
-			footerApart={action?.kind === "delete"}
 			footer={
 				<>
 					<Button label={tc("cancel")} onPress={onClose} variant="text" />
@@ -141,6 +163,7 @@ export function BulkSheet({
 					/>
 				</>
 			}
+			footerApart={action?.kind === "delete"}
 			onClose={onClose}
 			title={title}
 			visible={open}
@@ -153,7 +176,13 @@ export function BulkSheet({
 						})}
 					</Text>
 				)}
-				<ChangesBlock idle="" state={preview} />
+				{syncFirst ? (
+					<Text accessibilityLiveRegion="polite" tone="attention">
+						{t("syncFirst")}
+					</Text>
+				) : (
+					<ChangesBlock idle="" state={preview} />
+				)}
 				{skipped > 0 ? (
 					<Text tone="fg2" variant="small">
 						{t("skipped", { count: skipped })}

@@ -14,7 +14,17 @@ import { ratesAsOf } from "../rates";
 import { DEVICE_FIGURE_IDS, readDeviceFigures } from "../registry";
 import { type PullCursors, type PullReport, pullAll } from "../sync-pull";
 import { compareWrite, type WriteVerdict } from "../write-parity";
-import { type BookedWrite, bookIn, type WriteOp } from "./book";
+import { type BookedWrite, bookIn, targetOf, type WriteOp } from "./book";
+import {
+	answerVerdicts,
+	type BulkAnswer,
+	type BulkBooked,
+	type BulkOp,
+	type BulkSent,
+	bookBulkIn,
+	compareBulkRow,
+	comparePreviewBulk as runBulkCompare,
+} from "./bulk";
 import {
 	COMPARE_WHAT,
 	type CompareReport,
@@ -137,6 +147,37 @@ export interface DeviceEngine extends DeviceReads {
 		op: WriteOp,
 		server: ServerPreview,
 	): Promise<WriteVerdict | null>;
+	/**
+	 * What the device books for a bulk categorize or delete, over the pending
+	 * writes, in a transaction that is thrown away. Null when it cannot (not
+	 * ready, a pull began during it, or a refusal such as "Sync first").
+	 */
+	bookBulk(op: BulkOp): Promise<BulkBooked | null>;
+	/** `comparePreview` for a bulk action: `pending_ahead` while an entry touches a picked id. */
+	comparePreviewBulk(
+		op: BulkOp,
+		server: ServerPreview,
+	): Promise<WriteVerdict | null>;
+	/**
+	 * The server took a bulk action `key` names (its batch id). Holds the
+	 * device's booking (null when it could not book) against the answer now,
+	 * retires the rows both left alone, and holds the rest against the rows of
+	 * the next pull.
+	 */
+	settleBulk(
+		key: string,
+		booked: BulkBooked | null,
+		answer: BulkAnswer,
+		ids: readonly string[],
+	): void;
+	/** The person undid bulk action `key`: its rows are not compared, and wait for a pull. */
+	undoneBulk(key: string): void;
+	/**
+	 * The ids of every bulk action the server took that no pull has settled
+	 * yet. The store still holds their old rows, so the phone does not run
+	 * another bulk action over them ("Sync first").
+	 */
+	bulkUnsettled(): ReadonlySet<string>;
 	/** One pull at a time: a call while one runs waits for it. */
 	pull(): Promise<void>;
 	/** Pulls when none has finished yet or the last one is older than PULL_AFTER_MS. */
@@ -181,6 +222,10 @@ export function createDeviceEngine(
 	let settledPull = 0;
 	/** Entries already compared, so a list that is slow to retire one never has it compared twice. */
 	const compared = new Set<string>();
+	/** Bulk actions the server took, until a pull that began after the answer compares their rows. */
+	const bulkSent = new Map<string, BulkSent>();
+	/** When this phone last booked a write for each expense: a retired entry leaves the lists, the log stays. */
+	const lastBooked = new Map<string, number>();
 	let pulledAt: number | null = null;
 	let inflight: Promise<void> | null = null;
 	let lastCompare: CompareReport | null = null;
@@ -327,6 +372,7 @@ export function createDeviceEngine(
 				writeCounts.error = (writeCounts.error ?? 0) + 1;
 			};
 			await compareEntries().catch(counted);
+			compareBulkSent();
 		}
 	}
 
@@ -402,6 +448,31 @@ export function createDeviceEngine(
 		];
 		for (const e of retired) compared.add(e.clientId);
 		pending.retire(retired.map((e) => e.clientId));
+		report(verdicts, 0);
+	}
+
+	/** Whether this phone booked a write for `id` at or after `since`, from the log and from the lists. */
+	const bookedSince = (id: string, since: number): boolean =>
+		(lastBooked.get(id) ?? Number.NEGATIVE_INFINITY) >= since ||
+		(options.pending?.entries() ?? []).some(
+			(e) => e.bookedAt >= since && e.changes.some((c) => c.id === id),
+		);
+
+	/** Compares each bulk action a finished pull has seen with the rows it brought, once. */
+	function compareBulkSent(): void {
+		const snap = store.snapshot();
+		const verdicts: WriteVerdict[] = [];
+		for (const [key, sent] of bulkSent) {
+			if (settledPull <= sent.pull) continue;
+			bulkSent.delete(key);
+			for (const c of sent.changes)
+				verdicts.push(
+					compareBulkRow(snap, c, sent.bookedAt, {
+						laterBooking: bookedSince(c.id, sent.bookedAt),
+						serverAt: sent.serverAt,
+					}),
+				);
+		}
 		report(verdicts, 0);
 	}
 
@@ -553,6 +624,7 @@ export function createDeviceEngine(
 	}
 
 	async function book(op: WriteOp): Promise<BookedWrite | null> {
+		lastBooked.set(targetOf(op), now());
 		try {
 			await ready;
 			if (disposed || status !== "ready") return null;
@@ -577,6 +649,98 @@ export function createDeviceEngine(
 			return null;
 		}
 	}
+
+	async function bookBulk(op: BulkOp): Promise<BulkBooked | null> {
+		try {
+			await ready;
+			if (disposed || status !== "ready") return null;
+			const begun = pullsBegun;
+			const booked = await readOverlaid(
+				store,
+				options.pending?.entries() ?? [],
+				settledPull,
+				(tx) => bookBulkIn(tx, op, cursors, now()),
+			).catch((error) => {
+				if (
+					error instanceof InvalidInputError ||
+					error instanceof NotFoundError
+				)
+					return null;
+				throw error;
+			});
+			return pullsBegun !== begun || status !== "ready" ? null : booked;
+		} catch (error) {
+			warn("bulk booking failed", (error as Error)?.name);
+			return null;
+		}
+	}
+
+	async function comparePreviewBulk(
+		op: BulkOp,
+		server: ServerPreview,
+	): Promise<WriteVerdict | null> {
+		try {
+			await ready;
+			if (disposed || status !== "ready") return null;
+			const verdict = await runBulkCompare(
+				{
+					store,
+					userId,
+					cursors,
+					entries: options.pending?.entries() ?? [],
+					settledPull,
+					now: () => new Date(now()),
+				},
+				op,
+				server,
+			);
+			report([verdict], 0, "preview:");
+			return verdict;
+		} catch (error) {
+			warn("bulk preview check failed", (error as Error)?.name);
+			return null;
+		}
+	}
+
+	function settleBulk(
+		key: string,
+		booked: BulkBooked | null,
+		answer: BulkAnswer,
+		ids: readonly string[],
+	): void {
+		if (booked) report(answerVerdicts(booked, answer, ids), 0);
+		// Every picked id is held, not only the rows the device changed: a row it
+		// skipped (not pulled yet) or could not book may be one the server moved.
+		const touched = [...ids];
+		if (touched.length === 0) return;
+		const at = Date.parse(answer.serverTime ?? "");
+		bulkSent.set(key, {
+			pull: pullsBegun,
+			bookedAt: booked?.bookedAt ?? now(),
+			changes: booked?.changes ?? [],
+			ids: touched,
+			serverAt: Number.isNaN(at) ? null : at,
+		});
+	}
+
+	function undoneBulk(key: string): void {
+		const sent = bulkSent.get(key);
+		if (!sent) return;
+		// The server put the rows back: they are not compared, and the store
+		// holds the changed ones until a pull that begins now has seen it.
+		bulkSent.set(key, { ...sent, pull: pullsBegun, changes: [] });
+		report(
+			sent.changes.map((c) => ({
+				id: c.id,
+				outcome: "skipped",
+				code: "undone",
+			})),
+			0,
+		);
+	}
+
+	const bulkUnsettled = (): ReadonlySet<string> =>
+		new Set([...bulkSent.values()].flatMap((sent) => sent.ids));
 
 	/** Reads the store as the last pull left it; null while it is not a whole copy. */
 	async function readStored<R>(read: (view: Reader) => R): Promise<R | null> {
@@ -678,6 +842,11 @@ export function createDeviceEngine(
 		storedRebase,
 		absentSince,
 		comparePreview,
+		bookBulk,
+		comparePreviewBulk,
+		settleBulk,
+		undoneBulk,
+		bulkUnsettled,
 		pull,
 		pullIfStale,
 		compare,

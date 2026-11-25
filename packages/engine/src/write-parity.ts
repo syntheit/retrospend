@@ -38,6 +38,8 @@ export type SkipCode =
 	| "expired"
 	/** The row is gone from the pull, deleted elsewhere. */
 	| "gone_already"
+	/** A bulk action: the device and the server both left the row alone (a transfer's fee, a spread parent). */
+	| "refused"
 	/** A preview compare: the server has not seen the unsent entries the device preview started from. */
 	| "pending_ahead";
 

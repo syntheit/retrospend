@@ -497,6 +497,7 @@
 			"failed": "No se pudieron cambiar esos gastos",
 			"undone": "Deshecho",
 			"undoError": "No se pudo deshacer",
+			"syncFirst": "Sincroniza primero: algunos aún no se sincronizaron.",
 			"skipped": "{count, plural, one {# no se puede eliminar aquí.} other {# no se pueden eliminar aquí.}}"
 		},
 		"segment": {

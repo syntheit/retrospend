@@ -18,7 +18,14 @@ import {
  * action that is not retried (a button press) and wrong for a queued write:
  * an outbox passes its own stable key.
  */
-export type CallContext = { idempotencyKey?: string };
+export type CallContext = {
+	idempotencyKey?: string;
+	/**
+	 * Called with the server's own `Date` header of the answer (an HTTP date),
+	 * so a caller can read the server's clock instead of the phone's.
+	 */
+	onServerTime?: (httpDate: string) => void;
+};
 
 export type RetrospendClient = ContractRouterClient<Contract, CallContext>;
 
@@ -100,7 +107,14 @@ export function createRetrospendClient(
 				...(key ? { [IDEMPOTENCY_HEADER]: key } : {}),
 			};
 		},
-		fetch: problemAwareFetch(options.fetch ?? globalThis.fetch),
+		fetch: async (request, init, callOptions) => {
+			const response = await problemAwareFetch(
+				options.fetch ?? globalThis.fetch,
+			)(request, init);
+			const date = response.headers.get("date");
+			if (date) callOptions.context.onServerTime?.(date);
+			return response;
+		},
 		customErrorResponseBodyDecoder: (body, response) =>
 			isProblem(body)
 				? new ORPCError(body.code, {

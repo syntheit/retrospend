@@ -1,6 +1,9 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import type {
 	BookedWrite,
+	BulkAnswer,
+	BulkBooked,
+	BulkOp,
 	DeviceApi,
 	Rebase,
 	ServerPreview,
@@ -76,6 +79,42 @@ export interface DeviceWrites {
 	absentSince(id: string, pull: number): Promise<boolean>;
 	/** Reads the outbox lists again, after a change the engine should see. */
 	refresh(): Promise<void>;
+}
+
+/** What a bulk categorize or delete needs of the engine of its client. */
+export interface DeviceBulkWrites {
+	/** What the device books for a bulk categorize or delete; null when it could not. */
+	bookBulk(op: BulkOp): Promise<BulkBooked | null>;
+	/** `comparePreview` for a bulk action. */
+	comparePreviewBulk(op: BulkOp, server: ServerPreview): Promise<void>;
+	/** The server took bulk action `key`: its booking is held against the answer and the next pull. */
+	settleBulk(
+		key: string,
+		booked: BulkBooked | null,
+		answer: BulkAnswer,
+		ids: readonly string[],
+	): void;
+	/** Bulk action `key` was undone: its rows are not compared. */
+	undoneBulk(key: string): void;
+	/** The ids of bulk actions the server took that no pull has settled: "Sync first" for another action over them. */
+	bulkUnsettled(): ReadonlySet<string>;
+}
+
+/** The bulk side of the engine of `api`, or null when it has none (or it was disposed). */
+export function bulkWritesFor(api: RetrospendClient): DeviceBulkWrites | null {
+	const held = engines.get(api);
+	if (!held || held.engine.disposed) return null;
+	const { engine } = held;
+	return {
+		bookBulk: (op) => engine.bookBulk(op),
+		comparePreviewBulk: async (op, server) => {
+			await engine.comparePreviewBulk(op, server);
+		},
+		settleBulk: (key, booked, answer, ids) =>
+			engine.settleBulk(key, booked, answer, ids),
+		undoneBulk: (key) => engine.undoneBulk(key),
+		bulkUnsettled: () => engine.bulkUnsettled(),
+	};
 }
 
 /** The write side of the engine of `api`, or null when it has none (or it was disposed). */

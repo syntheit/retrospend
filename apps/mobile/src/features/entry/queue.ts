@@ -13,6 +13,7 @@ import type {
 	Outbox,
 	OutboxEntry,
 } from "@/data/outbox";
+import { targetsWithEntries } from "@/data/outbox-chain";
 import { type FlushOptions, flushOutbox } from "@/data/sync";
 import type { PendingWrite } from "./draft";
 import {
@@ -219,7 +220,9 @@ async function isLastForTarget(
 	const all = [...open, ...acked];
 	const entry = all.find((e) => e.clientId === clientId);
 	if (!entry) {
-		return target !== undefined && !all.some((e) => e.targetId === target);
+		return (
+			target !== undefined && targetsWithEntries(all, [target]).length === 0
+		);
 	}
 	return !all.some(
 		(e) => e.targetId === entry.targetId && (e.seq ?? 0) > (entry.seq ?? 0),

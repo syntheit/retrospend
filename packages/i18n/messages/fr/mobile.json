@@ -497,6 +497,7 @@
 			"failed": "Impossible de modifier ces dépenses",
 			"undone": "Annulé",
 			"undoError": "Impossible d'annuler",
+			"syncFirst": "Synchronise d'abord : certaines ne sont pas encore synchronisées.",
 			"skipped": "{count, plural, one {# ne peut pas être supprimée ici.} other {# ne peuvent pas être supprimées ici.}}"
 		},
 		"segment": {
