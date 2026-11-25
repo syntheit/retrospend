@@ -238,6 +238,18 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"categories.create": to("POST /categories"),
 	"categories.delete": to("DELETE /categories/{id}"),
 	"categories.getAll": to("GET /categories"),
+	"categories.previewRemove": to(
+		"POST /categories/{id}/delete/preview",
+		"POST /categories/{id}/merge/preview",
+	),
+	"categories.remove": to(
+		"DELETE /categories/{id}",
+		"POST /categories/{id}/merge",
+	),
+	"categories.restore": to(
+		"POST /categories/undo",
+		"POST /categories/undo/preview",
+	),
 	"categories.update": to("PATCH /categories/{id}"),
 
 	// ── claim ────────────────────────────────────────────────────────────

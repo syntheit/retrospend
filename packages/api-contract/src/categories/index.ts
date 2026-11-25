@@ -1,8 +1,10 @@
 import * as z from "zod";
 import { v1 } from "../common/meta";
 import { cursorQuerySchema, pageOf } from "../common/pagination";
+import { undoTokenSchema } from "../common/preview";
 import { userText } from "../common/user-text";
 import { idParamsSchema, idSchema, okSchema } from "../core";
+import { previewTwin, undoField, undoInputSchema } from "../ledger";
 
 /** Mirrors CATEGORY_COLORS in src/lib/constants.ts (a server test keeps them equal). */
 export const CATEGORY_COLORS = [
@@ -89,6 +91,24 @@ export const deleteCategorySchema = z
 	})
 	.meta({ id: "DeleteCategory" });
 
+export const categoryDeleteResultSchema = okSchema
+	.extend(undoField)
+	.meta({ id: "CategoryDeleteResult" });
+
+/** The target as it is after the merge, with the token that takes the merge back. */
+export const categoryMergedSchema = categorySchema
+	.extend(undoField)
+	.meta({ id: "CategoryMerged" });
+
+export const categoryUndoResultSchema = z
+	.object({
+		/** The category that is back, or that goes again on a redo. */
+		id: idSchema,
+		/** Puts the undo back (redo). */
+		redo: undoTokenSchema,
+	})
+	.meta({ id: "CategoryUndo" });
+
 const TAG = ["Categories"];
 
 export const categoriesContract = {
@@ -146,11 +166,20 @@ export const categoriesContract = {
 			tags: TAG,
 			summary: "Delete a category",
 			description:
-				"Refused with conflict while it has expenses, unless uncategorize is true.",
+				'Refused with conflict while it has expenses, unless uncategorize is true. Refused with `category_closed_month` when a closed budget month would file its rows in another envelope, and with `category_income_rule` while an income rule uses it. The undo token brings the category and everything it held back, once, for 24 hours. The preview\'s detail is `{ kind: "category.merge", mode, counts, rerouted, setToNone }`.',
 		})
 		.meta({ scope: "write:expenses", event: "category.deleted" })
 		.input(idParamsSchema.extend(deleteCategorySchema.shape))
-		.output(okSchema),
+		.output(categoryDeleteResultSchema),
+	previewDelete: previewTwin({
+		path: "/categories/{id}",
+		twinPath: "/categories/{id}/delete/preview",
+		of: "DELETE /categories/{id}",
+		operationId: "previewDeleteCategory",
+		tags: TAG,
+		scope: "write:expenses",
+		input: idParamsSchema.extend(deleteCategorySchema.shape),
+	}),
 	merge: v1
 		.route({
 			method: "POST",
@@ -159,9 +188,38 @@ export const categoriesContract = {
 			tags: TAG,
 			summary: "Move everything in this category into another, then delete it",
 			description:
-				"Expenses, recurring templates, shared expenses and budgets move to the target. Where both have a budget for the same month, the target's is kept.",
+				"Expenses (income, fees and spread parts too), recurring templates, shared expenses, your shares, budgets, envelope links, the analytics preference, income rules and drafts move to the target; the analytics flag of each expense stays as it is. Where both have a budget for the same month, the target's is kept; where both are in an envelope of one book, the target's envelope wins. An expense category and an income category are refused with `category_kind_mismatch`, a closed month that would route them differently with `category_closed_month`, and an income rule you cannot change with `category_income_rule`. The undo token brings everything back, once, for 24 hours.",
 		})
 		.meta({ scope: "write:expenses", event: "category.merged" })
 		.input(idParamsSchema.extend({ targetId: idSchema }))
-		.output(categorySchema),
+		.output(categoryMergedSchema),
+	previewMerge: previewTwin({
+		path: "/categories/{id}/merge",
+		of: "POST /categories/{id}/merge",
+		operationId: "previewMergeCategory",
+		tags: TAG,
+		scope: "write:expenses",
+		input: idParamsSchema.extend({ targetId: idSchema }),
+	}),
+	undo: v1
+		.route({
+			method: "POST",
+			path: "/categories/undo",
+			operationId: "undoCategoryWrite",
+			tags: TAG,
+			summary: "Take back a category delete or merge from its undo token",
+			description:
+				"The category comes back under its own id with its rows, budgets, envelope links, rules and drafts. Refused with a conflict, changing nothing, when any of them changed since, when the target is gone, or when the name was taken again. A shared expense you cannot edit that went to no category is not brought back.",
+		})
+		.meta({ scope: "write:expenses", event: "category.undone" })
+		.input(undoInputSchema)
+		.output(categoryUndoResultSchema),
+	previewUndo: previewTwin({
+		path: "/categories/undo",
+		of: "POST /categories/undo",
+		operationId: "previewUndoCategoryWrite",
+		tags: TAG,
+		scope: "write:expenses",
+		input: undoInputSchema,
+	}),
 };

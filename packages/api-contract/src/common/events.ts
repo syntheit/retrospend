@@ -16,6 +16,7 @@ export const EVENT_TYPES = [
 	"category.created",
 	"category.deleted",
 	"category.merged",
+	"category.undone",
 	"category.updated",
 	"category_preference.deleted",
 	"category_preference.updated",
