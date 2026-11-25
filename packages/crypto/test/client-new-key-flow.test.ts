@@ -27,6 +27,7 @@ import vectors from "../vectors/keys.vectors.json";
 const MASTER = vectors.masters[1];
 if (!MASTER) throw new Error("vector missing");
 const PASSWORD = MASTER.password;
+const WRAP_KEY = fromHex(MASTER.wrapKey);
 const AUTH_KEY = toBase64Url(fromHex(MASTER.authKey));
 const USER_ID = "0b1f2e3d-4c5b-4a69-8877-665544332211";
 const AK = Uint8Array.from({ length: 32 }, (_, i) => 0x20 + i);
@@ -53,7 +54,7 @@ function setup(
 ) {
 	let version = 4;
 	// A stand-in for the stored wrap (the right size, never opened here).
-	let wrap = new Uint8Array(SYMMETRIC_WRAP_BYTES).fill(7);
+	let wrap: Uint8Array = new Uint8Array(SYMMETRIC_WRAP_BYTES).fill(7);
 	const commits: Commit[] = [];
 	const opens: { authKey: string }[] = [];
 	let keyN = 0;
@@ -74,7 +75,7 @@ function setup(
 						role: "ak-password",
 						targetId: USER_ID,
 						wrapped: toBase64Url(
-							wrapKey(p, fromHex(MASTER.wrapKey), "ak-password", USER_ID, AK),
+							wrapKey(p, WRAP_KEY, "ak-password", USER_ID, AK),
 						),
 					},
 				],
@@ -195,13 +196,7 @@ describe("createNewKeyCallbacks", () => {
 									role: "ak-password",
 									targetId: USER_ID,
 									wrapped: toBase64Url(
-										wrapKey(
-											p,
-											fromHex(MASTER.wrapKey),
-											"ak-password",
-											USER_ID,
-											AK,
-										),
+										wrapKey(p, WRAP_KEY, "ak-password", USER_ID, AK),
 									),
 								},
 							],

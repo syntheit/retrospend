@@ -70,7 +70,7 @@ function setup(
 ) {
 	const calls: { url: string; init: RequestInit | undefined; body: Sent }[] =
 		[];
-	let wrap = new Uint8Array(SYMMETRIC_WRAP_BYTES).fill(5);
+	let wrap: Uint8Array = new Uint8Array(SYMMETRIC_WRAP_BYTES).fill(5);
 	let commits = 0;
 	const fetch = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
 		const path = String(url);
