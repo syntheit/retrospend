@@ -27,6 +27,13 @@ vi.mock("next/headers", () => ({
 	cookies: async () => ({ get: () => undefined }),
 }));
 
+// The backup start asks the sidecar only when a worker key is set; the tests
+// stub the sidecar, so the key is set here whatever the machine's .env holds.
+vi.mock("~/env", async (importOriginal) => {
+	const { env } = await importOriginal<typeof import("~/env")>();
+	return { env: { ...env, WORKER_API_KEY: "test-worker-key" } };
+});
+
 const sent = vi.hoisted(() => [] as { to: string }[]);
 // A test that sets this makes the next test email fail with that code.
 const mailFailure = vi.hoisted(() => ({ code: null as string | null }));
