@@ -3,15 +3,27 @@
  * that may get a link: make the link and mail it. Kept out of the router so
  * the router only validates, limits and answers.
  */
+import { randomBytes } from "node:crypto";
 import { isProtected } from "@retrospend/api-contract/protection-state";
 import { TRPCError } from "@trpc/server";
+import { hashPassword } from "better-auth/crypto";
 import { env } from "~/env";
 import { db } from "~/server/db";
 import { emailSubject } from "~/server/email-copy";
-import { getPasswordResetEmailTemplate } from "~/server/email-templates";
+import {
+	getPasswordResetCodeEmailTemplate,
+	getPasswordResetEmailTemplate,
+} from "~/server/email-templates";
+import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 import { sendEmail } from "~/server/mailer";
+import { normalizeEmail } from "../protection-keys/prelogin";
 import { hasKeySet } from "../protection-keys/password-writes";
-import { issueResetToken } from "./reset-tokens";
+import {
+	allowResetRequest,
+	groupResetCode,
+	issueResetCode,
+	issueResetToken,
+} from "./reset-tokens";
 
 const resetUrl = (token: string) =>
 	`${env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/reset-password?token=${token}`;
@@ -75,4 +87,63 @@ export async function makeAdminResetLink(user: {
 			message: "The account changed meanwhile. Try again.",
 		});
 	return resetUrl(token);
+}
+
+/**
+ * Whether a phone code may go out: only to an account whose keys a recovery
+ * key can open (a key set with a recovery proof). A code redeems recovery and
+ * nothing else, so for any other account it would open nothing.
+ */
+export async function mayGetResetCode(userId: string): Promise<boolean> {
+	const set = await db.protectionKeySet.findUnique({
+		where: { userId },
+		select: { recoveryHash: true },
+	});
+	return set?.recoveryHash != null;
+}
+
+/**
+ * Makes a phone reset code for the person and mails it, not awaited, like the
+ * link: a slow mail server must not tell a known address from an unknown one.
+ * The mail holds the code and words only, never a name or an address.
+ */
+export async function sendResetCode(user: {
+	id: string;
+	email: string;
+}): Promise<void> {
+	const code = await issueResetCode({ userId: user.id, forEmail: user.email });
+	if (!code) return;
+	sendEmail(
+		user.email,
+		emailSubject.passwordResetCode,
+		getPasswordResetCodeEmailTemplate(groupResetCode(code)),
+	).catch(() => console.error("Failed to send the password reset code email"));
+}
+
+/**
+ * The whole phone request for one address, shared by every transport. It is
+ * counted before the lookup, for every address (the same per-address limit as
+ * the web request), and runs one dummy password hash on every path, so a
+ * known address, an unknown one, an account without a recovery key and a
+ * used-up limit take about the same work and give the same answer: this
+ * returns nothing in all of them. Only a disabled mailer is told apart, and
+ * that says nothing about the address.
+ */
+export async function requestResetCode(email: string): Promise<void> {
+	if (!(await isEmailDeliveryEnabled()))
+		throw new TRPCError({
+			code: "PRECONDITION_FAILED",
+			message: "Email functionality is disabled",
+		});
+	const address = normalizeEmail(email);
+	const allowed = await allowResetRequest(address);
+	const user = allowed
+		? await db.user.findUnique({
+				where: { email: address },
+				select: { id: true, email: true },
+			})
+		: null;
+	await hashPassword(randomBytes(32).toString("hex"));
+	if (!user || !(await mayGetResetCode(user.id))) return;
+	await sendResetCode(user);
 }

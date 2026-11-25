@@ -11,6 +11,7 @@
 export const emailSubject = {
 	verifyEmail: "Verify your email",
 	passwordReset: "Reset your password",
+	passwordResetCode: "Your password reset code",
 	passwordChanged: "Your password was changed",
 	protectionEnabled: "Advanced protection keys were created",
 	passwordRecovered: "Your password was reset with your recovery key",
@@ -36,6 +37,11 @@ export const emailCopy = {
 		body: "Someone asked to reset your password. If it was not you, ignore this email.",
 		button: "Reset password",
 		expiry: "The link expires in 1 hour.",
+	},
+	passwordResetCode: {
+		title: "Your reset code",
+		body: "Enter this code in the app to start resetting your password. If it was not you, ignore this email.",
+		expiry: "The code expires in 15 minutes.",
 	},
 	passwordChanged: {
 		title: "Password changed",
