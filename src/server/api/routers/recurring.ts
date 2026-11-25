@@ -221,32 +221,6 @@ export const recurringRouter = createTRPCRouter({
 			});
 		}),
 
-	delete: protectedProcedure
-		.input(
-			z.object({
-				id: z.cuid(),
-			}),
-		)
-		.mutation(async ({ ctx, input }) => {
-			const { session, db } = ctx;
-
-			const result = await db.recurringTemplate.deleteMany({
-				where: {
-					id: input.id,
-					userId: session.user.id,
-				},
-			});
-
-			if (result.count === 0) {
-				throw new TRPCError({
-					code: "NOT_FOUND",
-					message: "Recurring template not found",
-				});
-			}
-
-			return { success: true };
-		}),
-
 	/**
 	 * Due templates waiting for a confirm: autoPay off, or an amount that
 	 * varies (ASK), which never posts on its own whatever autoPay says.
