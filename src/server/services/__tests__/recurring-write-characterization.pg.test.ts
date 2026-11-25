@@ -346,7 +346,14 @@ const GONE: Want = {
 	trpc: ["NOT_FOUND", NOT_FOUND],
 	v1: [404, "not_found"],
 };
-const STALE: Want = { trpc: ["CONFLICT", CONFIRMED], v1: [409, "conflict"] };
+const STALE: Want = {
+	trpc: ["CONFLICT", CONFIRMED],
+	v1: [409, "recurring_already_posted"],
+};
+const NOT_DUE: Want = {
+	trpc: ["CONFLICT", CONFIRMED],
+	v1: [409, "recurring_not_due"],
+};
 const BAD = (message: string): Want => ({
 	trpc: ["BAD_REQUEST", message],
 	v1: [400, "bad_request"],
@@ -376,12 +383,12 @@ const CONFIRM_REFUSALS: Refusal[] = [
 	{
 		name: "a day that has not started in the request zone",
 		now: BEFORE_DUE,
-		...STALE,
+		...NOT_DUE,
 	},
 	{
 		name: "a day that starts one millisecond later",
 		now: "2026-12-01T02:59:59.999Z",
-		...STALE,
+		...NOT_DUE,
 	},
 	{
 		name: "ask-me with no amount",
@@ -421,7 +428,7 @@ const CONFIRM_REFUSALS: Refusal[] = [
 		template: { amountMode: "ASK" },
 		now: BEFORE_DUE,
 		args: { dueAt: DUE },
-		...STALE,
+		...NOT_DUE,
 	},
 	{
 		name: "a stale dueAt and ask-me with no amount: the dueAt answers first",
@@ -433,7 +440,7 @@ const CONFIRM_REFUSALS: Refusal[] = [
 		name: "not due and paid on tomorrow: not due answers first",
 		now: BEFORE_DUE,
 		args: { dueAt: DUE, paidOn: "2026-12-02" },
-		...STALE,
+		...NOT_DUE,
 	},
 	{
 		name: "paid on tomorrow and ask-me with no amount: the paid-on day answers first",
@@ -518,7 +525,11 @@ describe("confirm refusals, with the template and the books left as they were", 
 
 const ALREADY_SKIPPED: Want = {
 	trpc: ["CONFLICT", SKIPPED],
-	v1: [409, "conflict"],
+	v1: [409, "recurring_already_posted"],
+};
+const SKIP_NOT_DUE: Want = {
+	trpc: ["CONFLICT", SKIPPED],
+	v1: [409, "recurring_not_due"],
 };
 
 const SKIP_REFUSALS: (Omit<Refusal, "args"> & { dueAt?: string })[] = [
@@ -540,12 +551,12 @@ const SKIP_REFUSALS: (Omit<Refusal, "args"> & { dueAt?: string })[] = [
 	{
 		name: "a day that has not started in the request zone",
 		now: BEFORE_DUE,
-		...ALREADY_SKIPPED,
+		...SKIP_NOT_DUE,
 	},
 	{
 		name: "a day that starts one millisecond later",
 		now: "2026-12-01T02:59:59.999Z",
-		...ALREADY_SKIPPED,
+		...SKIP_NOT_DUE,
 	},
 	{
 		name: "a stale dueAt on an ask-me template",
@@ -591,7 +602,7 @@ describe("skip refusals, with the template and the books left as they were", () 
 		});
 		await expectRefusal(
 			await v1("POST", `/recurring/${id}/skip`, { dueAt }),
-			[409, "conflict"],
+			[409, "recurring_not_due"],
 			SKIPPED,
 		);
 		expect(await templateState(id)).toMatchObject({ nextDueDate: dueAt });
@@ -678,7 +689,7 @@ describe("a repeat is refused, not booked for the next period", () => {
 		);
 		await expectRefusal(
 			await v1("POST", `/recurring/${b}/confirm`, { dueAt: DUE }),
-			[409, "conflict"],
+			[409, "recurring_already_posted"],
 			CONFIRMED,
 		);
 		expect(await booked(me)).toHaveLength(2);
@@ -801,7 +812,7 @@ describe("a lost race: another client moves the template between the read and th
 			data: { nextDueDate: new Date(NEXT) },
 		});
 
-	it("confirm is the same CONFLICT and books nothing", async () => {
+	it("confirm is refused as already posted and books nothing", async () => {
 		const me = await arsUser();
 		const id = await manual(me);
 		at(NOW);
@@ -813,7 +824,10 @@ describe("a lost race: another client moves the template between the read and th
 					{ userId: me },
 				),
 			),
-		).rejects.toMatchObject({ code: "CONFLICT", message: CONFIRMED });
+		).rejects.toMatchObject({
+			kind: "already_posted",
+			message: CONFIRMED,
+		});
 		expect(await booked(me)).toEqual([]);
 		expect(await templateState(id)).toMatchObject({
 			nextDueDate: NEXT,
@@ -821,7 +835,7 @@ describe("a lost race: another client moves the template between the read and th
 		});
 	});
 
-	it("skip is the same CONFLICT", async () => {
+	it("skip is refused as already posted", async () => {
 		const me = await arsUser();
 		const id = await manual(me);
 		at(NOW);
@@ -833,7 +847,7 @@ describe("a lost race: another client moves the template between the read and th
 					{ userId: me },
 				),
 			),
-		).rejects.toMatchObject({ code: "CONFLICT", message: SKIPPED });
+		).rejects.toMatchObject({ kind: "already_posted", message: SKIPPED });
 		expect(await templateState(id)).toMatchObject({ nextDueDate: NEXT });
 	});
 });
@@ -855,7 +869,7 @@ describe("auto: the sweep's confirm asks the template to still pay itself", () =
 		const id = await usdTemplate(me, template);
 		at(NOW);
 		await expect(auto(me, id)).rejects.toMatchObject({
-			code: "NOT_FOUND",
+			kind: "not_found",
 			message: NOT_FOUND,
 		});
 		expect(await booked(me)).toEqual([]);

@@ -6,11 +6,15 @@
  * stored differs (recurring.service dueInstant).
  */
 
-import { dayOf } from "@retrospend/domain/accounts/series";
-import { dayKey, startOfNextDayIn } from "@retrospend/domain/time-zone";
+import { dueAnchorDay, nextDueAfter } from "@retrospend/domain/recurring";
+import { isDue } from "@retrospend/domain/recurring-post/due";
+import {
+	ITEM_ALREADY_SETTLED,
+	RECURRING_NOT_FOUND,
+	RecurringRefusal,
+} from "@retrospend/domain/recurring-post/refusals";
 import { TRPCError } from "@trpc/server";
 import { userTimeZone } from "~/server/services/user-time-zone";
-import { dueAnchorDay, nextDueAfter } from "./income/due-day";
 import type { MoneyMutation } from "./preview/types";
 
 export interface SkipRecurringInput {
@@ -27,8 +31,6 @@ export interface SkippedRecurring {
 	readonly nextDueAt: Date;
 }
 
-const ALREADY = "This item was already confirmed or skipped";
-
 export const skipRecurring: MoneyMutation<
 	SkipRecurringInput,
 	SkippedRecurring
@@ -39,23 +41,19 @@ export const skipRecurring: MoneyMutation<
 		const template = await tx.recurringTemplate.findFirst({
 			where: { id: input.templateId, userId: actor.userId, isActive: true },
 		});
-		if (!template)
-			throw new TRPCError({
-				code: "NOT_FOUND",
-				message: "Recurring template not found",
-			});
+		if (!template) throw new RecurringRefusal("not_found", RECURRING_NOT_FOUND);
 		if (
 			input.dueDate &&
 			input.dueDate.getTime() !== template.nextDueDate.getTime()
 		)
-			throw new TRPCError({ code: "CONFLICT", message: ALREADY });
-		// Due once its day has come, as a confirm reads it.
+			throw new RecurringRefusal("already_posted", ITEM_ALREADY_SETTLED);
+		// Due once its day has come: income by its UTC day, an expense by its
+		// instant. This differs from confirm, which reads an income template by
+		// its instant too (recurring-confirm.mutation.ts); not unified here.
 		const zone = await userTimeZone(tx, actor.userId, input.timeZone);
-		const due =
-			template.direction === "IN"
-				? dayOf(template.nextDueDate) <= dayKey(new Date(), zone)
-				: template.nextDueDate < startOfNextDayIn(new Date(), zone);
-		if (!due) throw new TRPCError({ code: "CONFLICT", message: ALREADY });
+		const rule = template.direction === "IN" ? "utc_day" : "start_of_next_day";
+		if (!isDue(template.nextDueDate, new Date(), zone, rule))
+			throw new RecurringRefusal("not_due", ITEM_ALREADY_SETTLED);
 
 		// Due dates step in the user's saved zone, not this request's.
 		const stepZone = await userTimeZone(tx, actor.userId);
@@ -70,7 +68,7 @@ export const skipRecurring: MoneyMutation<
 			data: { nextDueDate: nextDueAt, anchorDay },
 		});
 		if (advanced.count === 0)
-			throw new TRPCError({ code: "CONFLICT", message: ALREADY });
+			throw new RecurringRefusal("already_posted", ITEM_ALREADY_SETTLED);
 		return {
 			value: {
 				templateId: template.id,

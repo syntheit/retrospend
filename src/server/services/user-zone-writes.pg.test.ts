@@ -81,7 +81,7 @@ describe("recurring.skip", () => {
 		const { id } = await template(userId);
 		await expect(
 			forUser(userId).apply(skipRecurring, { templateId: id }),
-		).rejects.toMatchObject({ code: "CONFLICT" });
+		).rejects.toMatchObject({ kind: "not_due" });
 		const row = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id },
 		});
@@ -204,7 +204,7 @@ describe("recurring.confirm", () => {
 		const { id } = await template(userId);
 		await expect(
 			forUser(userId).apply(confirmRecurringExpense, { templateId: id }),
-		).rejects.toMatchObject({ code: "CONFLICT" });
+		).rejects.toMatchObject({ kind: "not_due" });
 		expect(await fixtureDb.expense.count({ where: { userId } })).toBe(0);
 		const row = await fixtureDb.recurringTemplate.findUniqueOrThrow({
 			where: { id },
@@ -247,7 +247,7 @@ describe("income.confirmRecurring", () => {
 		const { id } = await template(userId);
 		await expect(
 			forUser(userId).apply(confirmRecurringIncome, { templateId: id }),
-		).rejects.toMatchObject({ code: "CONFLICT" });
+		).rejects.toMatchObject({ kind: "not_due" });
 		expect(await fixtureDb.expense.count({ where: { userId } })).toBe(0);
 	});
 

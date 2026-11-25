@@ -27,6 +27,7 @@ import {
 	FIGURE_LEFT_TO_SPEND,
 	FIGURE_NOT_PLANNED_YET,
 } from "@retrospend/domain/envelope/verdict";
+import { nextDueDay } from "@retrospend/domain/recurring";
 import { TRPCError } from "@trpc/server";
 import type { RestChoice } from "~/lib/schemas/envelope";
 import type { Money } from "~/server/figures/registry";
@@ -47,7 +48,6 @@ import {
 import { type RestoreToken, readRowRestore } from "../entry/restore-token";
 import { bookRate, loadRateContext, type RateChoice } from "../rate-types";
 import { typedAmount } from "../transfers/plan";
-import { nextDueDay } from "./due-day";
 import { applyPlanFor, PLAN_NOT_REQUESTED, type PlanResult } from "./plan-seam";
 
 type Tx = Prisma.TransactionClient;

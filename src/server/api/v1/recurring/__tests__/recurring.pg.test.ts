@@ -564,7 +564,7 @@ describe("/api/v1/recurring", () => {
 				dueAt: item.dueAt,
 			}),
 			409,
-			"conflict",
+			"recurring_already_posted",
 		);
 	});
 
@@ -734,7 +734,7 @@ describe("/api/v1/recurring", () => {
 			await expectProblem(
 				await send("POST", `/recurring/${item.id}/confirm`, {}),
 				409,
-				"conflict",
+				"recurring_not_due",
 			);
 		});
 	});
@@ -985,7 +985,7 @@ describe("/api/v1/recurring", () => {
 			await expectProblem(
 				await send("POST", `/recurring/${item.id}/skip`, { dueAt: item.dueAt }),
 				409,
-				"conflict",
+				"recurring_already_posted",
 			);
 
 			await expectBody(
@@ -1019,7 +1019,7 @@ describe("/api/v1/recurring", () => {
 		await expectProblem(
 			await send("POST", `/recurring/${later.id}/skip`, { dueAt: later.dueAt }),
 			409,
-			"conflict",
+			"recurring_not_due",
 		);
 
 		const item = await make({

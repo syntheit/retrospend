@@ -359,7 +359,7 @@ export const recurringContract = {
 			tags: TAG,
 			summary: "Confirm a due template, with the amount when it varies",
 			description:
-				"Books the entry for the due date and moves the template to its next date. Recurring income also lands in an account and can use the plan.",
+				"Books the entry for the due date and moves the template to its next date. Recurring income also lands in an account and can use the plan. A period that was already confirmed or skipped is 409 `recurring_already_posted`; one whose day has not come is 409 `recurring_not_due`. Nothing is written either way. The preview answers the same.",
 		})
 		.meta({ scope: "write:money", event: "recurring.confirmed" })
 		.input(confirmRecurringSchema)
@@ -380,7 +380,7 @@ export const recurringContract = {
 			tags: TAG,
 			summary: "Skip a due item this time",
 			description:
-				"Moves the template to its next date and books nothing. Fixed or varying, expense or income.",
+				"Moves the template to its next date and books nothing. Fixed or varying, expense or income. A period that was already confirmed or skipped is 409 `recurring_already_posted`; one whose day has not come is 409 `recurring_not_due`. The preview answers the same.",
 		})
 		.meta({ scope: "write:money", event: "recurring.skipped" })
 		.input(skipRecurringSchema)
