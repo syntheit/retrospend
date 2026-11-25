@@ -96,7 +96,7 @@ export const draftHolder: HolderAdapter<DraftHeld> = {
 	async restore(c, held) {
 		for (const d of held.drafts) {
 			const draft = await c.tx.budgetDraft.findFirst({
-				where: { id: d.id, updatedAt: new Date(held.stamp) },
+				where: { id: d.id },
 				select: { expectedIn: true, pretend: true },
 			});
 			if (!draft) throw staleUndo();
