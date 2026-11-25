@@ -28,19 +28,13 @@ import { logEventAsync } from "~/server/services/audit.service";
 import { makeAdminResetLink } from "~/server/services/auth/reset-request";
 import { ProtectedPasswordError } from "~/server/services/protection-keys/password-writes";
 import { resetPasswordHash } from "~/server/services/account-security.service";
-import { decodeCursor, encodeCursor } from "~/server/services/api-v1/cursor";
+import { eventLogPage } from "~/server/services/admin-event-logs.service";
 import { IntegrationService } from "~/server/services/integration.service";
 import {
 	adminSettingsView,
 	getAppSettings,
 	updateAppSettings,
 } from "~/server/services/settings";
-
-/**
- * Event log pages run newest first by time, then id, so rows sharing a time
- * are neither skipped nor repeated.
- */
-const eventLogKey = z.object({ timestamp: z.iso.datetime(), id: z.string() });
 
 export const adminRouter = createTRPCRouter({
 	getStats: adminProcedure.query(async ({ ctx }) => {
@@ -137,48 +131,7 @@ export const adminRouter = createTRPCRouter({
 				eventType: z.enum(EVENT_LOG_TYPES).optional(),
 			}),
 		)
-		.query(async ({ ctx, input }) => {
-			const { db } = ctx;
-
-			const after = decodeCursor(input.cursor, eventLogKey);
-			const where = {
-				...(input.eventType ? { eventType: input.eventType } : {}),
-				...(after
-					? {
-							OR: [
-								{ timestamp: { lt: new Date(after.timestamp) } },
-								{
-									timestamp: new Date(after.timestamp),
-									id: { lt: after.id },
-								},
-							],
-						}
-					: {}),
-			};
-
-			const rows = await db.eventLog.findMany({
-				where,
-				include: {
-					user: {
-						select: { id: true, username: true, email: true },
-					},
-				},
-				orderBy: [{ timestamp: "desc" }, { id: "desc" }],
-				take: input.limit + 1,
-			});
-
-			const logs = rows.slice(0, input.limit);
-			const last = logs.at(-1);
-			const nextCursor =
-				rows.length > input.limit && last
-					? encodeCursor({
-							timestamp: last.timestamp.toISOString(),
-							id: last.id,
-						})
-					: undefined;
-
-			return { logs, nextCursor };
-		}),
+		.query(({ ctx, input }) => eventLogPage(ctx.db, input)),
 
 	listUsers: adminListProcedure("users").query(async ({ ctx }) => {
 		const { db } = ctx;
