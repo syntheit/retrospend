@@ -51,11 +51,14 @@ if (sealed) {
 
 // A worker's database outlives the files it runs, and these tables are shared
 // by every user in it: a rate or setting one file wrote would change the next
-// file's figures. Each file starts from the template's state (all empty).
+// file's figures, and a rate-limit bucket written under a faked clock (a
+// window starting days ahead) would refuse the next file's requests with 429.
+// Each file starts from the template's state (all empty).
 const SHARED_TABLES = [
 	"exchange_rate",
 	"exchange_rate_history",
 	"app_settings",
+	"api_rate_limit",
 ];
 beforeAll(async () => {
 	const { db } = await import("~/server/db");
