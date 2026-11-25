@@ -6,7 +6,12 @@ import { createMemoryStore } from "@/data/store";
 import { parkedFrom } from "./parked-entry";
 import { flushEntries, queueExpenseChange } from "./queue";
 import { commitRebase, planRebase } from "./rebase";
-import { forgetNotFound, forgetUndoTokens, PARKED_STAMP } from "./send";
+import {
+	apiTransport,
+	forgetNotFound,
+	forgetUndoTokens,
+	PARKED_STAMP,
+} from "./send";
 
 // A stale stamp of a sent edit or delete under the dev flag, through Sync
 // issues. The 404 and the rest of the queue's conflicts are in
@@ -116,7 +121,7 @@ describe("a stale stamp", () => {
 			},
 		});
 		await edit(outbox, writes);
-		await flushEntries(outbox, api);
+		await flushEntries(outbox, api, apiTransport(api));
 		expect(await outbox.acked()).toHaveLength(1);
 		const deleted = await queueExpenseChange({
 			outbox,
@@ -125,7 +130,7 @@ describe("a stale stamp", () => {
 			opened: V0,
 		});
 		if (deleted.status !== "queued") throw new Error("not queued");
-		const report = await flushEntries(outbox, api);
+		const report = await flushEntries(outbox, api, apiTransport(api));
 		expect(report).toMatchObject({ sent: 0, conflicts: 1 });
 		const [parked] = await outbox.all();
 		expect(parkedFrom(parked as never)).toMatchObject({
@@ -149,7 +154,7 @@ describe("a stale stamp", () => {
 		});
 		expect(next).not.toBe(deleted.clientId);
 		api.expenses.delete = jest.fn(async () => ({ id: ID, undo: "t" })) as never;
-		await flushEntries(outbox, api);
+		await flushEntries(outbox, api, apiTransport(api));
 		expect(api.expenses.delete).toHaveBeenCalledWith(
 			{ params: { id: ID }, query: { expectedUpdatedAt: V1 } },
 			expect.objectContaining({ context: { idempotencyKey: next } }),

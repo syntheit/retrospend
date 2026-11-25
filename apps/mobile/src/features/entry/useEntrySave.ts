@@ -3,6 +3,7 @@ import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { deviceWrites } from "@/data/deviceWrites";
 import { newClientId } from "@/data/ids";
+import { transportFor } from "@/data/transport";
 import { useToast } from "@/ui/Toast";
 import type { PendingWrite } from "./draft";
 import { saveExpenseEdit } from "./edit";
@@ -14,7 +15,7 @@ import {
 	takeFromOutbox,
 	undoSaved,
 } from "./queue";
-import { undoWrite } from "./send";
+import { undoWith } from "./send";
 import type { EntryForm } from "./useEntryForm";
 
 /**
@@ -87,6 +88,7 @@ export function useEntrySave({
 					const result = await undoSaved({
 						outbox: local.outbox,
 						api,
+						transport: transportFor(api),
 						clientId: queued.clientId,
 					});
 					announceEntryChange();
@@ -128,7 +130,11 @@ export function useEntrySave({
 			undo: {
 				label: t("undo"),
 				onUndo: async () => {
-					const ok = await undoWrite(api, undo, newClientId()).then(
+					const ok = await undoWith(
+						transportFor(api),
+						undo,
+						newClientId(),
+					).then(
 						() => true,
 						() => false,
 					);
@@ -183,14 +189,24 @@ export function useEntrySave({
 				onDone();
 				return;
 			}
-			outcome = await saveEntry({ outbox: local.outbox, api, write });
+			outcome = await saveEntry({
+				outbox: local.outbox,
+				api,
+				transport: transportFor(api),
+				write,
+			});
 		} finally {
 			setBusy(false);
 		}
 		announceEntryChange();
 		const clientId = String(write.body.id);
 		showSaved(outcome, write.label, async () => {
-			const result = await undoSaved({ outbox: local.outbox, api, clientId });
+			const result = await undoSaved({
+				outbox: local.outbox,
+				api,
+				transport: transportFor(api),
+				clientId,
+			});
 			announceEntryChange();
 			toast.show({
 				message:

@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import { transportFor } from "@/data/transport";
 import { useToast } from "@/ui/Toast";
 import { announceEntryChange } from "./events";
 import { flushEntries } from "./queue";
@@ -29,7 +30,7 @@ export function useOutboxFlush(): void {
 		if (!api || !local || !online) return;
 		const run = new AbortController();
 		const flush = async () => {
-			const report = await flushEntries(local.outbox, api, {
+			const report = await flushEntries(local.outbox, api, transportFor(api), {
 				signal: run.signal,
 			});
 			if (run.signal.aborted) return;

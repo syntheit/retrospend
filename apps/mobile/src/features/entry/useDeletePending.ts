@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { deviceWrites } from "@/data/deviceWrites";
+import { transportFor } from "@/data/transport";
 import { showAlert } from "@/ui/alert";
 import { useToast } from "@/ui/Toast";
 import { announceEntryChange } from "./events";
@@ -68,7 +69,9 @@ export function useDeletePending(): (target: PendingTarget) => void {
 						announceEntryChange();
 						toast.show({ message: t("restored", { title }) });
 						if (api) {
-							await flushEntries(local.outbox, api).catch(() => undefined);
+							await flushEntries(local.outbox, api, transportFor(api)).catch(
+								() => undefined,
+							);
 							announceEntryChange();
 						}
 					},

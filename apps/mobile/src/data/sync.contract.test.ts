@@ -3,6 +3,7 @@ import { createOutbox, type Outbox } from "@/data/outbox";
 import { bookedRow } from "@/data/outboxFixtures";
 import { createMemoryStore } from "@/data/store";
 import { flushOutbox } from "@/data/sync";
+import type { PendingWrite } from "@/features/entry/draft";
 import { parkedFrom } from "@/features/entry/parked-entry";
 import { resolveParked } from "@/features/entry/parked-resolve";
 import {
@@ -18,7 +19,7 @@ import {
 	forgetNotFound,
 	forgetUndoTokens,
 	KEY_REUSED,
-	PARKED_NOT_FOUND,
+	MAYBE_GONE,
 	PARKED_STAMP,
 } from "@/features/entry/send";
 import {
@@ -109,15 +110,41 @@ function writesOf(h: Harness): DeviceWrites {
 			};
 		},
 		comparePreview: async () => undefined,
-		pullsBegun: () => 7,
+		pullsBegun: () => h.pullsBegun(),
 		storedRebase: async (id) => {
 			const row = h.rowOf(id);
 			return row && { body: row.body as never, version: row.version };
 		},
-		absentSince: jest.fn(async () => false),
+		absentSince: jest.fn(async (id: string, since: number) =>
+			h.absentSince(id, since),
+		),
 		refresh: async () => undefined,
 	} as DeviceWrites;
 }
+
+const lunch = (id: string): PendingWrite => ({
+	entity: "expenses",
+	label: "Lunch",
+	body: { ...BODY, id },
+});
+const coffee = (id: string): PendingWrite => ({
+	entity: "shared-expenses",
+	label: "Coffee",
+	body: {
+		id,
+		description: "Coffee",
+		amount: "12500.00",
+		currency: "ARS",
+		date: "2026-10-25",
+		categoryId: "food",
+		paidBy: { type: "user", id: "me1" },
+		splitMode: "EQUAL",
+		splitWith: [
+			{ type: "user", id: "me1" },
+			{ type: "user", id: "lucia1" },
+		],
+	},
+});
 
 const harnesses = [
 	["plain", plainHarness],
@@ -140,15 +167,14 @@ describe.each(harnesses)("the queue over the %s transport", (_name, make) => {
 		mockWrites.mockReturnValue(writes);
 	});
 
-	const save = (id = ID, waitMs?: number) =>
-		saveEntry({
-			outbox,
-			api: h.api,
-			transport: h.transport,
-			write: { entity: "expenses", label: "Lunch", body: { ...BODY, id } },
-			waitMs,
-		});
-	const flush = () => flushEntries(outbox, h.api, { transport: h.transport });
+	afterEach(() => {
+		// A queue that loops sends without end is stopped by the harness and named here.
+		expect(h.faults.capped).toBe(false);
+	});
+
+	const save = (id = ID, waitMs?: number, write: PendingWrite = lunch(id)) =>
+		saveEntry({ outbox, api: h.api, transport: h.transport, write, waitMs });
+	const flush = () => flushEntries(outbox, h.api, h.transport);
 	const undo = (clientId: string) =>
 		undoSaved({ outbox, api: h.api, clientId, transport: h.transport });
 	const queue = async (
@@ -178,7 +204,7 @@ describe.each(harnesses)("the queue over the %s transport", (_name, make) => {
 	describe("acks and chains", () => {
 		it("a save sends under its client id and waits acked at the version the answer named", async () => {
 			expect(await save()).toMatchObject({ status: "synced" });
-			expect(h.requests()).toEqual([{ key: ID, id: ID, base: null }]);
+			expect(h.requests()).toMatchObject([{ key: ID, id: ID, base: null }]);
 			expect(await outbox.all()).toEqual([]);
 			expect((await outbox.acked())[0]?.ack).toMatchObject({
 				version: h.stamp(1),
@@ -204,13 +230,18 @@ describe.each(harnesses)("the queue over the %s transport", (_name, make) => {
 
 		it("earlier writes go first, and order holds when one has to wait", async () => {
 			h.faults.down = true;
-			expect(await save("first")).toEqual({ status: "queued" });
+			const first = coffee("first");
+			expect(await save("first", undefined, first)).toEqual({
+				status: "queued",
+			});
 			expect(h.requests()).toEqual([]);
 			expect(await outbox.all()).toMatchObject([
 				{
 					clientId: "first",
+					entity: "shared-expenses",
 					kind: "create",
 					baseVersion: null,
+					payload: first.body,
 					state: "failed",
 					attempts: 1,
 					networkFailures: 1,
@@ -246,10 +277,7 @@ describe.each(harnesses)("the queue over the %s transport", (_name, make) => {
 			controller.abort();
 			const report = await flushOutbox(
 				entryOutbox(outbox),
-				createEntrySender(h.api, {
-					signal: controller.signal,
-					transport: h.transport,
-				}),
+				createEntrySender(h.transport, { signal: controller.signal }),
 			);
 			expect(report.stopped).toBe(true);
 			expect(h.requests()).toEqual([]);
@@ -340,7 +368,7 @@ describe.each(harnesses)("the queue over the %s transport", (_name, make) => {
 			expect(next).not.toBe(clientId);
 			await flush();
 			// This phone's title over the other device's amount (USD 80, ARS 123,600.00).
-			expect(h.requests().at(-1)).toEqual({ key: next, id: ID, base: 2 });
+			expect(h.requests().at(-1)).toMatchObject({ key: next, id: ID, base: 2 });
 			expect(h.rowOf(ID)).toMatchObject({
 				n: 3,
 				body: { title: "Dinner", amount: "80" },
@@ -358,7 +386,7 @@ describe.each(harnesses)("the queue over the %s transport", (_name, make) => {
 			expect(h.rowOf(ID)?.n).toBe(2);
 			expect(await flush()).toMatchObject({ sent: 1, stopped: false });
 			const sends = h.requests().filter((r) => r.key === clientId);
-			expect(sends).toEqual([
+			expect(sends).toMatchObject([
 				{ key: clientId, id: ID, base: 1 },
 				{ key: clientId, id: ID, base: 1 },
 			]);
@@ -367,6 +395,23 @@ describe.each(harnesses)("the queue over the %s transport", (_name, make) => {
 			expect(acked.find((e) => e.clientId === clientId)?.ack).toMatchObject({
 				version: h.stamp(2),
 			});
+		});
+	});
+
+	describe("a restart", () => {
+		it("an edit whose answer was lost goes again from a rebuilt transport with the same bytes, and acks", async () => {
+			await save();
+			h.pull();
+			const clientId = await queue(retitle("Dinner"));
+			h.faults.lose = 1;
+			expect(await flush()).toMatchObject({ stopped: true });
+			h.rebuildTransport();
+			expect(await flush()).toMatchObject({ sent: 1, stopped: false });
+			const sends = h.requests().filter((r) => r.key === clientId);
+			expect(sends).toHaveLength(2);
+			expect(sends[1]?.sent).toBe(sends[0]?.sent);
+			expect(h.rowOf(ID)).toMatchObject({ n: 2, body: { title: "Dinner" } });
+			expect(await outbox.all()).toEqual([]);
 		});
 	});
 
@@ -447,6 +492,8 @@ describe.each(harnesses)("the queue over the %s transport", (_name, make) => {
 
 		it("takes a sent edit back on the server and drops its acked record", async () => {
 			await save();
+			// The device holds the row it edits: undo puts that version back.
+			h.pull();
 			const edit = await queue(retitle("Dinner"));
 			await flush();
 			expect(await outbox.acked()).toHaveLength(2);
@@ -456,40 +503,51 @@ describe.each(harnesses)("the queue over the %s transport", (_name, make) => {
 		});
 	});
 
-	describe("a 404 resolves on absence after a later pull", () => {
-		const parkedAfterGone = async (kind: "update" | "delete") => {
+	// API v1 answers 404 for a gone row and the vault answers 409 for a gone row
+	// and a changed one alike: either way the entry parks, and only a pull that
+	// began after the answer and shows the row gone resolves it.
+	describe("a parked write resolves on absence after a later pull", () => {
+		const parkedAfterGone = async (
+			kind: "update" | "delete",
+			pullBeforeAnswer = false,
+		) => {
 			await save();
 			// Edited, then deleted: the delete's tombstone is not one version after this phone's base.
 			h.elsewhere.edit(ID, { amount: "80" });
 			h.elsewhere.remove(ID);
 			await queue(kind === "delete" ? { kind, id: ID } : retitle("Dinner"));
+			if (pullBeforeAnswer) h.pull();
 			await flush();
 			const entry = (await outbox.all())[0];
 			if (!entry) throw new Error("not parked");
+			expect(MAYBE_GONE).toContain(entry.lastError);
 			return entry;
 		};
 
-		it("a delete stays parked through a pull begun before the answer", async () => {
-			const entry = await parkedAfterGone("delete");
-			expect(entry.lastError).toBe(PARKED_NOT_FOUND);
+		it("a delete stays parked through a pull begun before the answer, and retires after a later one", async () => {
+			const entry = await parkedAfterGone("delete", true);
 			expect(await resolveParked(outbox, h.api, entry)).toMatchObject({
-				reason: PARKED_NOT_FOUND,
+				reason: entry.lastError,
 				gone: false,
 			});
-			expect(writes.absentSince).toHaveBeenCalledWith(ID, 7);
+			expect(writes.absentSince).toHaveBeenCalledWith(ID, h.pullsBegun());
 			expect(await outbox.all()).toHaveLength(1);
-		});
-
-		it("a delete retires after a later pull or reset without the row", async () => {
-			const entry = await parkedAfterGone("delete");
-			(writes.absentSince as jest.Mock).mockResolvedValue(true);
+			h.pull();
 			expect(await resolveParked(outbox, h.api, entry)).toBeNull();
 			expect(await outbox.all()).toEqual([]);
 		});
 
+		it("a delete is not retired before any pull shows the row gone", async () => {
+			const entry = await parkedAfterGone("delete");
+			expect(await resolveParked(outbox, h.api, entry)).toMatchObject({
+				gone: false,
+			});
+			expect(await outbox.all()).toHaveLength(1);
+		});
+
 		it("an edit of a gone row says so and keeps only Discard", async () => {
 			const entry = await parkedAfterGone("update");
-			(writes.absentSince as jest.Mock).mockResolvedValue(true);
+			h.pull();
 			expect(await resolveParked(outbox, h.api, entry)).toMatchObject({
 				kind: "update",
 				gone: true,
@@ -497,15 +555,33 @@ describe.each(harnesses)("the queue over the %s transport", (_name, make) => {
 			expect(await outbox.all()).toHaveLength(1);
 		});
 
-		it("never resolves a 409, or a 404 of an entry with no flag", async () => {
+		it("a delete with a stale base on a live row parks and is never retired, whatever pulls show", async () => {
+			await save();
+			h.elsewhere.edit(ID, { amount: "80" });
+			await queue({ kind: "delete", id: ID });
+			await flush();
+			const entry = (await outbox.all())[0];
+			expect(entry).toMatchObject({
+				state: "conflict",
+				lastError: PARKED_STAMP,
+			});
+			for (const pulled of [false, true]) {
+				if (pulled) h.pull();
+				expect(
+					await resolveParked(outbox, h.api, entry as never),
+				).toMatchObject({
+					reason: PARKED_STAMP,
+					kind: "delete",
+					gone: false,
+				});
+			}
+			expect(await outbox.all()).toHaveLength(1);
+			expect(h.rowOf(ID)).toMatchObject({ n: 2 });
+		});
+
+		it("never resolves an entry with no flag", async () => {
 			const entry = await parkedAfterGone("update");
-			(writes.absentSince as jest.Mock).mockResolvedValue(true);
-			expect(
-				await resolveParked(outbox, h.api, {
-					...entry,
-					lastError: PARKED_STAMP,
-				}),
-			).toMatchObject({ gone: false });
+			h.pull();
 			mockWrites.mockReturnValue(null);
 			expect(await resolveParked(outbox, h.api, entry)).toMatchObject({
 				gone: false,
@@ -515,18 +591,20 @@ describe.each(harnesses)("the queue over the %s transport", (_name, make) => {
 });
 
 describe("the vault sender", () => {
+	const open = () => createOutbox(createMemoryStore(), "scope");
+
 	// vault.service.ts:103: a tombstone over a tombstone at the same version is
 	// the same bytes, so it answers as applied where API v1 answers 404.
 	it("a delete of a row another device deleted at the same version is acked, with no Sync issue", async () => {
 		const h = vaultHarness();
-		const outbox = createOutbox(createMemoryStore(), "scope");
+		const outbox = open();
 		const writes = writesOf(h);
 		mockWrites.mockReturnValue(writes);
 		await saveEntry({
 			outbox,
 			api: h.api,
 			transport: h.transport,
-			write: { entity: "expenses", label: "Lunch", body: BODY },
+			write: lunch(ID),
 		});
 		h.elsewhere.remove(ID);
 		await queueExpenseChange({
@@ -535,28 +613,48 @@ describe("the vault sender", () => {
 			change: { kind: "delete", id: ID },
 			opened: h.stamp(1),
 		});
-		expect(
-			await flushEntries(outbox, h.api, { transport: h.transport }),
-		).toMatchObject({ sent: 1, conflicts: 0 });
+		expect(await flushEntries(outbox, h.api, h.transport)).toMatchObject({
+			sent: 1,
+			conflicts: 0,
+		});
 		expect(await outbox.all()).toEqual([]);
 		expect(h.rowOf(ID)).toBeNull();
 	});
 
 	it("a retry resends identical bytes: sealed once, however often it is sent", async () => {
 		const h = vaultHarness();
-		const outbox = createOutbox(createMemoryStore(), "scope");
+		const outbox = open();
 		mockWrites.mockReturnValue(writesOf(h));
 		h.faults.lose = 1;
 		await saveEntry({
 			outbox,
 			api: h.api,
 			transport: h.transport,
-			write: { entity: "expenses", label: "Lunch", body: BODY },
+			write: lunch(ID),
 		});
-		await flushEntries(outbox, h.api, { transport: h.transport });
-		expect(h.requests().map((r) => r.key)).toEqual([ID, ID]);
-		expect(h.sealedTimes?.(ID)).toBe(1);
+		await flushEntries(outbox, h.api, h.transport);
+		const [first, second] = h.requests();
+		expect(first?.key).toBe(ID);
+		expect(second?.sent).toBe(first?.sent);
+		expect(h.seals?.()).toBe(1);
 		expect(h.rowOf(ID)).toMatchObject({ n: 1, body: { amount: "100" } });
 		expect(await outbox.all()).toEqual([]);
+	});
+
+	it("keeps the sealed bytes in the entry before the request leaves, ciphertext only", async () => {
+		const h = vaultHarness();
+		const outbox = open();
+		mockWrites.mockReturnValue(writesOf(h));
+		h.faults.down = true;
+		await saveEntry({
+			outbox,
+			api: h.api,
+			transport: h.transport,
+			write: lunch(ID),
+		});
+		const [entry] = await outbox.all();
+		expect(entry?.sealed).toBeDefined();
+		expect(h.requests()).toEqual([]);
+		expect(entry?.sealed).not.toContain("Lunch");
 	});
 });

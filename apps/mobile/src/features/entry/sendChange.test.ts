@@ -1,6 +1,7 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import { bookedRow, booking } from "@/data/outboxFixtures";
 import {
+	apiTransport,
 	classify,
 	createEntrySender,
 	forgetNotFound,
@@ -54,7 +55,9 @@ describe("sending an update", () => {
 			undo: "tok",
 			expense: { updatedAt: "2026-10-05T03:00:09.000Z" },
 		}));
-		const sent = await createEntrySender(clientOf({ update }))(entry());
+		const sent = await createEntrySender(apiTransport(clientOf({ update })))(
+			entry(),
+		);
 		expect(sent).toEqual({
 			status: "sent",
 			version: "2026-10-05T03:00:09.000Z",
@@ -73,7 +76,9 @@ describe("sending an update", () => {
 			bookedRow(ID, { exchangeRate: "1545", version: STAMP }),
 			bookedRow(ID, { amount: "120.00", homeAmount: "185400.00" }),
 		);
-		await createEntrySender(clientOf({ update }))(entry({ device }));
+		await createEntrySender(apiTransport(clientOf({ update })))(
+			entry({ device }),
+		);
 		const [body] = update.mock.calls[0] as unknown as [Record<string, unknown>];
 		expect(Object.keys(body).sort()).toEqual(
 			[...Object.keys(BODY), "expectedUpdatedAt"].sort(),
@@ -84,14 +89,16 @@ describe("sending an update", () => {
 
 	it("is sent with no version when the answer named none", async () => {
 		const update = jest.fn(async () => ({ undo: "tok" }));
-		expect(await createEntrySender(clientOf({ update }))(entry())).toEqual({
+		expect(
+			await createEntrySender(apiTransport(clientOf({ update })))(entry()),
+		).toEqual({
 			status: "sent",
 		});
 	});
 
 	it("never sends one with no stamp to check, or one still waiting on another entry", async () => {
 		const update = jest.fn(async () => ({ undo: "tok" }));
-		const send = createEntrySender(clientOf({ update }));
+		const send = createEntrySender(apiTransport(clientOf({ update })));
 		for (const baseVersion of [null, { after: "other" }]) {
 			expect(await send(entry({ baseVersion }))).toEqual({
 				status: "conflict",
@@ -105,9 +112,9 @@ describe("sending an update", () => {
 describe("sending a delete", () => {
 	it("sends the id in the path and the stamp in the query, and names no version", async () => {
 		const del = jest.fn(async () => ({ id: ID, undo: "tok" }));
-		const sent = await createEntrySender(clientOf({ delete: del }))(
-			entry({ kind: "delete", payload: { id: ID } }),
-		);
+		const sent = await createEntrySender(
+			apiTransport(clientOf({ delete: del })),
+		)(entry({ kind: "delete", payload: { id: ID } }));
 		expect(sent).toEqual({ status: "sent", version: null });
 		expect(del).toHaveBeenCalledWith(
 			{ params: { id: ID }, query: { expectedUpdatedAt: STAMP } },
@@ -121,7 +128,9 @@ describe("refusals park", () => {
 		const update = jest.fn(async () => {
 			throw problem(409, PARKED_STAMP);
 		});
-		expect(await createEntrySender(clientOf({ update }))(entry())).toEqual({
+		expect(
+			await createEntrySender(apiTransport(clientOf({ update })))(entry()),
+		).toEqual({
 			status: "conflict",
 			reason: PARKED_STAMP,
 			http: 409,
@@ -151,11 +160,13 @@ describe("refusals park", () => {
 			throw problem(404, PARKED_NOT_FOUND);
 		};
 		const send = createEntrySender(
-			clientOf({
-				update: jest.fn(missing),
-				delete: jest.fn(missing),
-				create: jest.fn(missing),
-			}),
+			apiTransport(
+				clientOf({
+					update: jest.fn(missing),
+					delete: jest.fn(missing),
+					create: jest.fn(missing),
+				}),
+			),
 			{ pullsBegun: () => 3 },
 		);
 		await send(entry({ clientId: "u" }));

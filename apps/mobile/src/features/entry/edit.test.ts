@@ -1,7 +1,7 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import type { PendingWrite } from "./draft";
 import { saveExpenseEdit } from "./edit";
-import { createEntrySender, undoWrite } from "./send";
+import { apiTransport, createEntrySender, undoWith } from "./send";
 
 jest.mock("@/data/ids", () => ({ newClientId: () => "key-1" }));
 
@@ -61,7 +61,11 @@ describe("saving an edit", () => {
 
 	it("undoes through the expenses undo route", async () => {
 		const api = apiWith(async () => ({}));
-		await undoWrite(api, { entity: "expenses", token: "tok-1" }, "edit-1");
+		await undoWith(
+			apiTransport(api),
+			{ entity: "expenses", token: "tok-1" },
+			"edit-1",
+		);
 		expect(api.expenses.undo).toHaveBeenCalledWith(
 			{ token: "tok-1" },
 			expect.objectContaining({
@@ -76,7 +80,7 @@ describe("a transfer in the outbox", () => {
 		const create = jest.fn(async () => ({ transfer: {}, undo: "tok-t" }));
 		const undo = jest.fn(async () => ({}));
 		const api = { transfers: { create, undo } } as never as RetrospendClient;
-		const result = await createEntrySender(api)({
+		const result = await createEntrySender(apiTransport(api))({
 			clientId: ID,
 			entity: "transfers",
 			kind: "create",
@@ -92,7 +96,11 @@ describe("a transfer in the outbox", () => {
 		} as never);
 		expect(result).toEqual({ status: "sent" });
 		expect(create).toHaveBeenCalledTimes(1);
-		await undoWrite(api, { entity: "transfers", token: "tok-t" }, ID);
+		await undoWith(
+			apiTransport(api),
+			{ entity: "transfers", token: "tok-t" },
+			ID,
+		);
 		expect(undo).toHaveBeenCalledWith({ token: "tok-t" }, expect.anything());
 	});
 });

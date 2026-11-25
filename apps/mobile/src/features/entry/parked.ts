@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "@/auth/session";
 import { deviceWrites } from "@/data/deviceWrites";
+import { transportFor } from "@/data/transport";
 import { subscribeEntryChanges } from "./events";
 import { type ParkedEntry, parkedFrom } from "./parked-entry";
 import { resolveParked } from "./parked-resolve";
@@ -60,7 +61,7 @@ export function useParkedEntries() {
 		async (clientId: string) => {
 			if (!local || !api) return false;
 			await local.outbox.requeue(clientId);
-			await flushEntries(local.outbox, api);
+			await flushEntries(local.outbox, api, transportFor(api));
 			const still = (await local.outbox.all()).some(
 				(e) => e.clientId === clientId,
 			);
@@ -111,7 +112,7 @@ export function useParkedEntries() {
 						});
 						if (!next) return false;
 						forgetNotFound(clientId);
-						await flushEntries(local.outbox, api);
+						await flushEntries(local.outbox, api, transportFor(api));
 						const still = (await local.outbox.all()).some(
 							(e) => e.clientId === next,
 						);

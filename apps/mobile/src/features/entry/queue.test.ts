@@ -3,7 +3,7 @@ import { createOutbox } from "@/data/outbox";
 import { createMemoryStore } from "@/data/store";
 import type { PendingWrite } from "./draft";
 import { flushEntries, saveEntry, undoSaved } from "./queue";
-import { classify, forgetUndoTokens } from "./send";
+import { apiTransport, classify, forgetUndoTokens } from "./send";
 
 const ID = "6f1d1c1e-5b0e-4f5c-9c33-0a4a1c0f8a11";
 
@@ -92,7 +92,12 @@ describe("saveEntry", () => {
 	it("writes through the outbox with the client id as the idempotency key", async () => {
 		const outbox = setup();
 		const { api, calls } = fakeServer();
-		const outcome = await saveEntry({ outbox, api, write: coffee });
+		const outcome = await saveEntry({
+			outbox,
+			api,
+			transport: apiTransport(api),
+			write: coffee,
+		});
 		expect(outcome).toEqual({
 			status: "synced",
 			undo: { entity: "shared-expenses", token: `undo-${ID}`, target: ID },
@@ -113,10 +118,11 @@ describe("saveEntry", () => {
 			payload: coffee.body,
 		});
 		// A background flush sends it first.
-		await flushEntries(outbox, api);
+		await flushEntries(outbox, api, apiTransport(api));
 		const outcome = await saveEntry({
 			outbox,
 			api,
+			transport: apiTransport(api),
 			write: { ...coffee, body: { ...coffee.body, id: "next" } },
 		});
 		expect(outcome.status).toBe("synced");
@@ -129,7 +135,12 @@ describe("saveEntry", () => {
 			code: "id_taken",
 		});
 		const { api } = fakeServer({ refuse: taken });
-		const outcome = await saveEntry({ outbox, api, write: coffee });
+		const outcome = await saveEntry({
+			outbox,
+			api,
+			transport: apiTransport(api),
+			write: coffee,
+		});
 		// Sent, with no token to undo it by.
 		expect(outcome).toEqual({ status: "synced", undo: null });
 		expect(await outbox.all()).toEqual([]);
@@ -140,10 +151,20 @@ describe("undoSaved", () => {
 	it("sends a synced write's token to the undo route", async () => {
 		const outbox = setup();
 		const server = fakeServer();
-		await saveEntry({ outbox, api: server.api, write: coffee });
-		expect(await undoSaved({ outbox, api: server.api, clientId: ID })).toBe(
-			"undone",
-		);
+		await saveEntry({
+			outbox,
+			api: server.api,
+			transport: apiTransport(server.api),
+			write: coffee,
+		});
+		expect(
+			await undoSaved({
+				outbox,
+				api: server.api,
+				transport: apiTransport(server.api),
+				clientId: ID,
+			}),
+		).toBe("undone");
 		expect(server.calls[1]).toEqual({
 			route: "undo",
 			input: { token: `undo-${ID}` },
@@ -155,7 +176,12 @@ describe("undoSaved", () => {
 	it("keeps a write whose replay the server can not give back, and says failed", async () => {
 		const outbox = setup();
 		const lost = fakeServer({ failFirst: offline });
-		await saveEntry({ outbox, api: lost.api, write: coffee });
+		await saveEntry({
+			outbox,
+			api: lost.api,
+			transport: apiTransport(lost.api),
+			write: coffee,
+		});
 		// The key's stored answer is gone: the server may well hold the write.
 		const gone = fakeServer({
 			refuse: Object.assign(new Error("not stored"), {
@@ -163,9 +189,14 @@ describe("undoSaved", () => {
 				code: "idempotency_replay_unavailable",
 			}),
 		});
-		expect(await undoSaved({ outbox, api: gone.api, clientId: ID })).toBe(
-			"failed",
-		);
+		expect(
+			await undoSaved({
+				outbox,
+				api: gone.api,
+				transport: apiTransport(gone.api),
+				clientId: ID,
+			}),
+		).toBe("failed");
 		const kept = await outbox.all();
 		expect(kept).toHaveLength(1);
 		// Parked, so Couldn't sync shows it.

@@ -16,7 +16,6 @@ import type {
 import { type FlushOptions, flushOutbox } from "@/data/sync";
 import type { PendingWrite } from "./draft";
 import {
-	apiTransport,
 	createEntrySender,
 	entryOutbox,
 	notStored,
@@ -82,7 +81,8 @@ export function takeFromOutbox(
 export function flushEntries(
 	outbox: Outbox,
 	api: RetrospendClient,
-	options?: SenderOptions & FlushOptions,
+	transport: Transport,
+	options?: Omit<SenderOptions, "keepSealed"> & FlushOptions,
 ) {
 	return exclusive(outbox, async () => {
 		const mine = entryOutbox(outbox);
@@ -91,7 +91,11 @@ export function flushEntries(
 		const pullsBegun = options?.pullsBegun ?? writes?.pullsBegun;
 		const report = await flushOutbox(
 			mine,
-			createEntrySender(api, { ...options, pullsBegun }),
+			createEntrySender(transport, {
+				...options,
+				pullsBegun,
+				keepSealed: (clientId, bytes) => outbox.seal(clientId, bytes),
+			}),
 			{ pullsBegun },
 		);
 		// The engine reads the lists as of the last refresh: it sees the acks of this run.
@@ -130,10 +134,10 @@ export async function saveEntry(input: {
 	write: PendingWrite;
 	/** Test seam: the wait for the send. */
 	waitMs?: number;
-	/** Another transport than API v1 (the sealed vault, K9). */
-	transport?: Transport;
+	/** Where the write goes: `transportFor(api)`. */
+	transport: Transport;
 }): Promise<SaveOutcome> {
-	const { outbox, api, write } = input;
+	const { outbox, api, write, transport } = input;
 	const clientId = String(write.body.id);
 	// Under the dev flag the device books it first, over the writes still waiting.
 	const writes = write.entity === "expenses" ? deviceWrites(api) : null;
@@ -155,9 +159,7 @@ export async function saveEntry(input: {
 	// network, the entry stays in the outbox and goes when its turn comes.
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	await Promise.race([
-		flushEntries(outbox, api, { transport: input.transport }).catch(
-			() => undefined,
-		),
+		flushEntries(outbox, api, transport).catch(() => undefined),
 		new Promise<void>((resolve) => {
 			timer = setTimeout(resolve, input.waitMs ?? SAVE_WAIT_MS);
 		}),
@@ -216,11 +218,10 @@ export function undoSaved(input: {
 	outbox: Outbox;
 	api: RetrospendClient;
 	clientId: string;
-	/** Another transport than API v1 (the sealed vault, K9). */
-	transport?: Transport;
+	/** Where the write went: `transportFor(api)`. */
+	transport: Transport;
 }): Promise<UndoResult> {
-	const { outbox, api, clientId } = input;
-	const transport = input.transport ?? apiTransport(api);
+	const { outbox, api, clientId, transport } = input;
 	return exclusive(outbox, async () => {
 		const writes = deviceWrites(api);
 		try {
@@ -250,7 +251,9 @@ export function undoSaved(input: {
 				return "undone";
 			}
 			await outbox.markSending(clientId);
-			const sent = await createEntrySender(api, { transport })(entry);
+			const sent = await createEntrySender(transport, {
+				keepSealed: (id, bytes) => outbox.seal(id, bytes),
+			})(entry);
 			if (sent.status === "retry") {
 				await outbox.markFailed(clientId, sent.reason, sent.kind);
 				return "failed";
