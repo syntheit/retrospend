@@ -124,7 +124,6 @@
 		"title": "{name} löschen?",
 		"submit": "Wiederkehrende Ausgabe löschen",
 		"submitIn": "Wiederkehrende Einnahme löschen",
-		"cancel": "Abbrechen",
 		"future": "Künftige Fälligkeiten",
 		"futureValue": "Entfallen, nächste war {date}",
 		"autoPay": "Automatisch erfassen",
@@ -133,7 +132,6 @@
 		"targetsValue": "Entfernt",
 		"logged": "Bereits erfasste Einträge",
 		"loggedValue": "Bleiben",
-		"previewFailed": "Die Änderungen ließen sich nicht prüfen.",
-		"failed": "Löschen hat nicht geklappt. Versuche es nochmal."
+		"previewFailed": "Die Änderungen ließen sich nicht prüfen."
 	}
 }

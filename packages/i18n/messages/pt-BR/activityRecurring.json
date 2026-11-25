@@ -124,7 +124,6 @@
 		"title": "Excluir {name}?",
 		"submit": "Excluir gasto recorrente",
 		"submitIn": "Excluir receita recorrente",
-		"cancel": "Cancelar",
 		"future": "Próximas vezes",
 		"futureValue": "Param, a próxima era {date}",
 		"autoPay": "Registrar automaticamente",
@@ -133,7 +132,6 @@
 		"targetsValue": "Removidas",
 		"logged": "Lançamentos já registrados",
 		"loggedValue": "Permanecem",
-		"previewFailed": "Não foi possível verificar o que muda.",
-		"failed": "Não foi possível excluir. Tente de novo."
+		"previewFailed": "Não foi possível verificar o que muda."
 	}
 }

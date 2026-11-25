@@ -1,9 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
 import { useRowDates } from "~/components/rows/dates";
-import { Button } from "~/components/ui/button";
 import { Sheet } from "~/components/ui/sheet";
 import type { RecurringItemDTO } from "~/server/services/recurring-view.service";
 import { api } from "~/trpc/react";
@@ -42,49 +40,23 @@ export function DeleteSheet({
 	item: RecurringItemDTO;
 	today: string;
 	onOpenChange: (open: boolean) => void;
-	/** Throws the words to show when it fails. */
+	/** Throws the words to show when it fails; the sheet shows them and stays open. */
 	onDelete: () => Promise<void>;
 }) {
 	const t = useTranslations("activityRecurring.deleteSheet");
 	const { short } = useRowDates(today);
-	const [busy, setBusy] = useState(false);
-	const [error, setError] = useState<string | null>(null);
 	const preview = api.recurring.delete.preview.useMutation();
 	const dry = usePreview((id: string) => preview.mutateAsync({ id }), item.id);
-
-	const submit = async () => {
-		setError(null);
-		setBusy(true);
-		try {
-			await onDelete();
-			onOpenChange(false);
-		} catch (e) {
-			setError(e instanceof Error ? e.message : t("failed"));
-			setBusy(false);
-		}
-	};
 
 	return (
 		<Sheet
 			detent="medium"
-			footer={
-				<>
-					<Button kind="secondary" onClick={() => onOpenChange(false)}>
-						{t("cancel")}
-					</Button>
-					<Button
-						data-sheet-submit=""
-						disabled={!dry.fresh || busy}
-						kind="danger"
-						loading={busy}
-						onClick={() => void submit()}
-					>
-						{t(item.direction === "in" ? "submitIn" : "submit")}
-					</Button>
-				</>
-			}
 			onOpenChange={onOpenChange}
+			onSubmit={onDelete}
 			open
+			submitDisabled={!dry.fresh}
+			submitKind="danger"
+			submitLabel={t(item.direction === "in" ? "submitIn" : "submit")}
 			title={t("title", { name: item.title })}
 		>
 			<ChangesBlock
@@ -120,11 +92,6 @@ export function DeleteSheet({
 					) : null
 				}
 			/>
-			{error ? (
-				<p className="text-danger text-small mt-3" role="alert">
-					{error}
-				</p>
-			) : null}
 		</Sheet>
 	);
 }

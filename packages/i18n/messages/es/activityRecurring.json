@@ -124,7 +124,6 @@
 		"title": "¿Eliminar {name}?",
 		"submit": "Eliminar gasto recurrente",
 		"submitIn": "Eliminar ingreso recurrente",
-		"cancel": "Cancelar",
 		"future": "Próximas veces",
 		"futureValue": "Se detienen, la próxima era el {date}",
 		"autoPay": "Registrar automáticamente",
@@ -133,7 +132,6 @@
 		"targetsValue": "Se quitan",
 		"logged": "Movimientos ya registrados",
 		"loggedValue": "Se conservan",
-		"previewFailed": "No se pudo comprobar qué cambia.",
-		"failed": "No se pudo eliminar. Intenta de nuevo."
+		"previewFailed": "No se pudo comprobar qué cambia."
 	}
 }

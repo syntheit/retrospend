@@ -145,12 +145,12 @@ test("Recurring: add one, see it grouped and summed, confirm it", async ({
 	await expect(changes).toContainText("Recurring cost a month");
 	await expect(changes).toContainText("Entries already logged");
 	await expect(changes).toContainText("Stay");
-	// Nothing else is offered to delete with: a plain Cancel and the danger button.
 	await expect(
 		remove.getByRole("button", { name: "Delete recurring expense" }),
 	).toBeEnabled();
+	// Ctrl+Enter submits like the button: the danger button is the sheet's own submit.
 	await untilSaved(page, "recurring.delete.save", () =>
-		remove.getByRole("button", { name: "Delete recurring expense" }).click(),
+		page.keyboard.press("Control+Enter"),
 	);
 	await expect(remove).toBeHidden();
 	await expect(due).toHaveCount(0);

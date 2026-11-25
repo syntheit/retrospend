@@ -124,7 +124,6 @@
 		"title": "Delete {name}?",
 		"submit": "Delete recurring expense",
 		"submitIn": "Delete recurring income",
-		"cancel": "Cancel",
 		"future": "Future occurrences",
 		"futureValue": "Stop, next was {date}",
 		"autoPay": "Record automatically",
@@ -133,7 +132,6 @@
 		"targetsValue": "Cleared",
 		"logged": "Entries already logged",
 		"loggedValue": "Stay",
-		"previewFailed": "Couldn't check what this changes.",
-		"failed": "Couldn't delete it. Try again."
+		"previewFailed": "Couldn't check what this changes."
 	}
 }
