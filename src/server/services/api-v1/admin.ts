@@ -285,17 +285,7 @@ export async function backupStatus(caller: LedgerCaller) {
 }
 
 export async function startBackup(caller: LedgerCaller) {
-	const t = await admin(caller);
-	try {
-		return backupStartedSchema.parse(await t.triggerBackup());
-	} catch (error) {
-		if (error instanceof Error && /already in progress|409/.test(error.message))
-			throw new TRPCError({
-				code: "CONFLICT",
-				message: "A backup is already running",
-			});
-		throw error;
-	}
+	return backupStartedSchema.parse(await (await admin(caller)).triggerBackup());
 }
 
 // ── participants ────────────────────────────────────────────────────────

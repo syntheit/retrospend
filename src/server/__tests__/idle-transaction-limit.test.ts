@@ -27,7 +27,7 @@ const TRANSACTION_TIMEOUTS = {
 
 /** Files whose large `timeout:` is an HTTP request's, not a transaction's. */
 const HTTP_TIMEOUT_FILES = new Set([
-	"src/server/api/routers/admin.ts",
+	"src/server/services/admin-backup.ts",
 	"src/server/services/exchange-rate.service.ts",
 ]);
 
