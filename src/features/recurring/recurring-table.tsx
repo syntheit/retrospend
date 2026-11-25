@@ -105,6 +105,8 @@ function Row({ r, p }: { r: RecurringItemDTO; p: Props }) {
 				className={cn("cursor-pointer", r.paused && "text-fg-3")}
 				data-id={r.id}
 				onClick={(e) => {
+					// A click inside the ⋯ menu or a sheet reaches the row through React's tree, not the page's.
+					if (!e.currentTarget.contains(e.target as Node)) return;
 					if ((e.target as HTMLElement).closest("button,a,[role=switch]"))
 						return;
 					p.onOpen(r);

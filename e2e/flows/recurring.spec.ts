@@ -132,5 +132,32 @@ test("Recurring: add one, see it grouped and summed, confirm it", async ({
 		page.getByRole("button", { name: "Undo" }).click(),
 	);
 	await expect(due).toContainText("Overdue since");
+
+	// Delete: the step says what stops and that the entries it logged stay,
+	// then the danger button deletes it and the toast's Undo brings it back.
+	await due.getByRole("button", { name: /^More actions/ }).click();
+	await page.getByRole("menuitem", { name: "Delete" }).click();
+	const remove = page.getByRole("dialog", {
+		name: "Delete Seguro de la bici?",
+	});
+	await expect(remove).toBeVisible();
+	const changes = remove.getByTestId("entry-changes");
+	await expect(changes).toContainText("Recurring cost a month");
+	await expect(changes).toContainText("Entries already logged");
+	await expect(changes).toContainText("Stay");
+	// Nothing else is offered to delete with: a plain Cancel and the danger button.
+	await expect(
+		remove.getByRole("button", { name: "Delete recurring expense" }),
+	).toBeEnabled();
+	await untilSaved(page, "recurring.delete.save", () =>
+		remove.getByRole("button", { name: "Delete recurring expense" }).click(),
+	);
+	await expect(remove).toBeHidden();
+	await expect(due).toHaveCount(0);
+	await untilSaved(page, "recurring.restore.save", () =>
+		page.getByRole("button", { name: "Undo" }).click(),
+	);
+	await expect(due).toBeVisible();
+	await expect(due).toContainText("Overdue since");
 	expect(errors, "uncaught page errors").toEqual([]);
 });
