@@ -1,4 +1,3 @@
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { HISTORY_RANGES } from "~/features/currencies/types";
 import {

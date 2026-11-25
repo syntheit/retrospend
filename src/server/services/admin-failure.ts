@@ -10,7 +10,7 @@ import { IntegrationError } from "./integration-error";
  */
 const FAILURES: Record<
 	AdminFailureCode,
-	{ trpc: "CONFLICT" | "BAD_GATEWAY"; message: string }
+	{ trpc: "CONFLICT" | "BAD_GATEWAY" | "GATEWAY_TIMEOUT"; message: string }
 > = {
 	email_not_configured: {
 		trpc: "CONFLICT",
@@ -25,7 +25,7 @@ const FAILURES: Record<
 		message: "The email server could not be reached.",
 	},
 	email_timeout: {
-		trpc: "BAD_GATEWAY",
+		trpc: "GATEWAY_TIMEOUT",
 		message: "The email server took too long to answer.",
 	},
 	backup_running: { trpc: "CONFLICT", message: "A backup is already running." },

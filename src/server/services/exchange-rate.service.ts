@@ -1,7 +1,6 @@
 import { CRYPTO_CURRENCIES, CURRENCIES } from "@retrospend/domain/currencies";
 import { currencyDecimals } from "@retrospend/domain/money";
 import { dec } from "@retrospend/domain/precise-decimal";
-import { TRPCError } from "@trpc/server";
 import { env } from "~/env";
 import { db as globalDb } from "~/server/db";
 import { findExchangeRate } from "~/server/exchange-rates";
