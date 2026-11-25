@@ -21,6 +21,7 @@ import {
 } from "./protection-keys/password-writes";
 import {
 	deleteUserResetTokens,
+	PLAIN_RESET_ORIGINS,
 	spendResetToken,
 } from "./auth/reset-tokens";
 
@@ -211,7 +212,11 @@ export async function resetPasswordHash(input: {
 		// could deadlock with a recovery commit on the same user.
 		const locked = await lockCredential(tx, input.userId);
 		if (input.token)
-			await spendResetToken(tx, { token: input.token, userId: input.userId });
+			await spendResetToken(tx, {
+				token: input.token,
+				userId: input.userId,
+				origins: PLAIN_RESET_ORIGINS,
+			});
 		if (locked) {
 			await settleKeysForReset(tx, input.userId, locked, input.by);
 			await tx.account.updateMany({

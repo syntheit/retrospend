@@ -1,13 +1,13 @@
 import {
 	issueResetToken,
-	type ResetTokenOrigin,
+	type LinkOrigin,
 } from "~/server/services/auth/reset-tokens";
 import { adminDb } from "~/test/pg-harness";
 
 /** A reset link for the user's current address; the raw token, as the email would carry it. */
 export async function issueLinkFor(
 	userId: string,
-	origin: ResetTokenOrigin = "email",
+	origin: LinkOrigin = "email",
 	now?: Date,
 ): Promise<string> {
 	const { email } = await adminDb.user.findUniqueOrThrow({

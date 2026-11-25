@@ -29,6 +29,8 @@ export const KEYED_HASH_PURPOSES = {
 	resetAddress: "reset-request-address",
 	/** The per-address limit on prelogin (api/v1/auth). */
 	preloginAddress: "prelogin-address",
+	/** A phone reset code at rest, bound to its row and user (services/auth/reset-tokens). */
+	resetCode: "reset-code",
 	/** The fingerprint of an API v1 request under one Idempotency-Key (api-v1/idempotency.service). */
 	idempotencyFingerprint: "idempotency-fingerprint",
 	/** The signature on an export download link (api-v1/export-link). */

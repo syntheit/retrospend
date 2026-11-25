@@ -181,6 +181,22 @@ export function getPasswordResetEmailTemplate(resetUrl: string) {
 	});
 }
 
+/** The phone's reset code, shown in the title's type; the code is the whole point of the mail. */
+export function getPasswordResetCodeEmailTemplate(code: string) {
+	const copy = emailCopy.passwordResetCode;
+	const content = `
+    ${heading(copy.title)}
+    ${paragraph(escapeHtml(copy.body))}
+    ${heading(code)}
+    ${meta(copy.expiry)}
+  `;
+	return baseEmailTemplate({
+		title: emailSubject.passwordResetCode,
+		content,
+		preheader: copy.body,
+	});
+}
+
 /** Security alert after a password change. */
 export function getPasswordChangedAlertTemplate() {
 	const copy = emailCopy.passwordChanged;

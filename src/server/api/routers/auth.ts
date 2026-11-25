@@ -30,7 +30,7 @@ import {
 import {
 	allowResetRequest,
 	InvalidResetTokenError,
-	lookupResetToken,
+	lookupPlainResetToken,
 } from "~/server/services/auth/reset-tokens";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
 import { endAllSessions } from "~/server/services/protection-keys/password-writes";
@@ -166,7 +166,7 @@ export const authRouter = createTRPCRouter({
 			const { db } = ctx;
 
 			// The token belongs to a user id, whatever the address is now.
-			const resetToken = await lookupResetToken(input.token);
+			const resetToken = await lookupPlainResetToken(input.token);
 			if (!resetToken) throw new InvalidResetTokenError();
 
 			const user = await db.user.findUnique({

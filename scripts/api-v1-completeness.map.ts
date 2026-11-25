@@ -205,12 +205,15 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"auth.confirmEmailChange": internal(AUTH_MAIL),
 	"auth.getAppFeatures": to("GET /server-info"),
 	"auth.recordConsent": to("POST /me/consent"),
-	"auth.requestPasswordReset": internal(AUTH_MAIL),
+	// The phone asks for a code by email and swaps it for a recovery token; the
+	// web request and the reset link stay on tRPC and the web page.
+	"auth.requestPasswordReset": to("POST /auth/password-reset"),
 	"auth.resendVerificationEmail": internal(AUTH_MAIL),
 	// A keyed account sets a new password with its recovery key from the link in
 	// the reset email, through three public routes; the plain reset stays on
 	// tRPC and the web page.
 	"auth.resetPassword": to(
+		"POST /auth/password-reset/code",
 		"POST /auth/recovery/check",
 		"POST /auth/recovery/begin",
 		"POST /auth/recovery",

@@ -18,6 +18,7 @@ import {
 	getEmailChangeVerificationTemplate,
 	getFeedbackNotificationTemplate,
 	getPasswordChangedAlertTemplate,
+	getPasswordResetCodeEmailTemplate,
 	getPasswordResetEmailTemplate,
 	getProtectionEnabledAlertTemplate,
 	getRecoveryKeyReplacedAlertTemplate,
@@ -61,6 +62,12 @@ const cases: { name: string; subject: string; html: string; link: string }[] = [
 		subject: emailSubject.passwordReset,
 		html: getPasswordResetEmailTemplate(URL_IN),
 		link: URL_IN,
+	},
+	{
+		name: "password reset code",
+		subject: emailSubject.passwordResetCode,
+		html: getPasswordResetCodeEmailTemplate("ABCD-2345"),
+		link: "",
 	},
 	{
 		name: "password changed",
