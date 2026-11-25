@@ -26,5 +26,15 @@
   "autoPostNoRun": "No run yet",
   "autoPostOffBy": "Turned off by RECURRING_AUTO_POST",
   "autoPostJoin": "{head}, {tail}",
-  "autoPostOffEnv": "Off outside production"
+  "autoPostOffEnv": "Off outside production",
+  "failures": {
+    "email_not_configured": "Email is not set up on this server.",
+    "email_auth_failed": "The email server refused the sign-in.",
+    "email_unreachable": "The email server could not be reached.",
+    "email_timeout": "The email server took too long to answer.",
+    "backup_running": "A backup is already running.",
+    "backup_unavailable": "The backup service is not available.",
+    "backup_failed": "The backup could not start.",
+    "rate_sync_failed": "Rates could not be synced."
+  }
 }

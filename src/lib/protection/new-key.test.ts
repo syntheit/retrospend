@@ -37,8 +37,16 @@ const KDF = {
 let p: Primitives;
 let authKey: string;
 let passwordWrap: string;
+let privateKeyWrap: string;
+let publicKey: string;
 beforeAll(async () => {
 	p = await createWebPrimitives();
+	const ak = Uint8Array.from({ length: 32 }, (_, i) => 0x20 + i);
+	const pair = p.boxKeypair();
+	publicKey = toBase64Url(pair.publicKey);
+	privateKeyWrap = toBase64Url(
+		wrapKey(p, ak, "private-key", ACCOUNT.id, pair.privateKey),
+	);
 	const mine = masterSubkeys(
 		p,
 		deriveMasterKey(p, PASSWORD, SALT, ARGON2_FLOOR),
@@ -82,8 +90,14 @@ function setup(
 			return json({
 				version: 4,
 				kdf: KDF,
+				publicKey,
 				wraps: [
 					{ role: "ak-password", targetId: ACCOUNT.id, wrapped: passwordWrap },
+					{
+						role: "private-key",
+						targetId: ACCOUNT.id,
+						wrapped: privateKeyWrap,
+					},
 				],
 				recoveryWrapDigest: toBase64Url(recoveryWrapDigest(p, wrap)),
 			});

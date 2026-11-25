@@ -35,7 +35,11 @@
  * The table is closed to retrospend_app: this runs on the owner connection.
  */
 import { randomBytes, timingSafeEqual } from "node:crypto";
-import { CROCKFORD_ALPHABET, normalizeRecoveryText } from "@retrospend/crypto";
+import {
+	CROCKFORD_ALPHABET,
+	RESET_CODE_LENGTH,
+	readResetCode,
+} from "@retrospend/crypto";
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
 import { db } from "~/server/db";
@@ -65,7 +69,6 @@ export const RECOVERY_ORIGINS = ["email", "phone"] as const satisfies readonly B
 export const RESET_LINK_TTL_MS = 60 * 60 * 1000;
 /** A phone reset code, and the recovery token it is swapped for, live 15 minutes. */
 export const RESET_CODE_TTL_MS = 15 * 60 * 1000;
-export const RESET_CODE_LENGTH = 8;
 /** Tries at a code: the guessing limit, per user across every live code. */
 export const RESET_CODE_TRIES = { limit: 5, windowMs: 60 * 60 * 1000 } as const;
 /**
@@ -308,24 +311,6 @@ export const groupResetCode = (code: string): string =>
 	`${code.slice(0, 4)}-${code.slice(4)}`;
 
 /**
- * A typed code in its stored shape (case, spaces, hyphens and the Crockford
- * look-alikes are the recovery key's reading rule), or null for anything that
- * cannot be a code. Null still costs a try: a malformed code is a wrong one.
- */
-function readTypedCode(text: string): string | null {
-	let clean: string;
-	try {
-		clean = normalizeRecoveryText(text);
-	} catch {
-		return null;
-	}
-	if (clean.length !== RESET_CODE_LENGTH) return null;
-	return [...clean].every((ch) => CROCKFORD_ALPHABET.includes(ch))
-		? clean
-		: null;
-}
-
-/**
  * What a code is stored as: a keyed hash of its own row id, the user and the
  * code (keyed-hash.ts), so two rows with one code differ and a read of the
  * table cannot be checked against all 2^40 codes without the server secret.
@@ -409,7 +394,7 @@ export async function redeemResetCode(input: {
 	if (!decision.allowed)
 		throw new ResetCodeTriesExceededError(decision.retryAfterSeconds);
 
-	const typed = readTypedCode(input.code) ?? "";
+	const typed = readResetCode(input.code) ?? "";
 	// The one expiry guard of a redeem: an expired code is never compared. The
 	// spend below does not repeat it (one `now`, so it could never differ).
 	const rows = await db.passwordResetToken.findMany({

@@ -9,6 +9,7 @@ import { useToast } from "~/components/ui/toast";
 import { SettingRow, SettingRows } from "~/features/settings/setting-row";
 import { formatBytes } from "~/lib/format";
 import { api } from "~/trpc/react";
+import { adminFailureMessage } from "./admin-failure";
 
 interface BackupResult {
 	timestamp: string;
@@ -53,7 +54,8 @@ export function BackupStatus() {
 			// A moment later, so the running state shows.
 			setTimeout(() => void utils.admin.getBackupStatus.invalidate(), 2000);
 		},
-		onError: (error) => toast.failed(error.message),
+		onError: (error) =>
+			toast.failed(adminFailureMessage(error, ta, error.message)),
 	});
 	const status = data as BackupStatusData | undefined;
 

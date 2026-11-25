@@ -7,6 +7,7 @@ import { useToast } from "~/components/ui/toast";
 import { usePreview } from "~/features/corrections/use-preview";
 import { ChangesBlock } from "~/features/entry/changes";
 import { api, type RouterInputs } from "~/trpc/react";
+import { movedMessage } from "./bulk-categorize-message";
 
 type Input = RouterInputs["entry"]["expense"]["categorize"]["save"];
 
@@ -21,7 +22,8 @@ interface Pending {
  * sheet with the server's dry run of the same write Save makes (a category
  * held out of analytics moves your spending), Save runs it, and the Undo
  * toast is the same write over the moves the save answered with, which put
- * each row's category and analytics flag back.
+ * each row's category and analytics flag back. It carries the stamps the
+ * save left, so a row edited since refuses the whole undo.
  */
 export function useBulkCategorize({
 	onSaved,
@@ -79,13 +81,14 @@ export function useBulkCategorize({
 		} catch {
 			throw new Error(t("failed"));
 		}
-		const { updated, previous } = done.value;
+		const { previous, stamps } = done.value;
 		onSaved();
-		toast.saved(t("moved", { count: updated, name: pending.name }), {
+		toast.saved(movedMessage(t, done.value, pending.name), {
 			undo: async () => {
 				await save.mutateAsync({
 					moves: previous.map((m) => ({ ...m, ids: [...m.ids] })),
 					lenient: true,
+					expected: stamps,
 				});
 				await onChanged();
 			},

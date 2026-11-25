@@ -4,6 +4,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { CryptoError, type Primitives } from "../src";
 import {
 	groupMatches,
+	groupMismatch,
+	groupsConfirmed,
 	pickConfirmGroups,
 	RECOVERY_KEY_FILE_NAME,
 	randomBelow,
@@ -252,5 +254,72 @@ describe("recoveryKeyGroups", () => {
 	it("refuses a key with a typo", () => {
 		const typo = `${ASCENDING.text.slice(0, 5)}${ASCENDING.text[5] === "0" ? "1" : "0"}${ASCENDING.text.slice(6)}`;
 		expect(code(() => recoveryKeyGroups(typo))).toBe("invalid_input");
+	});
+});
+
+describe("groupsConfirmed", () => {
+	const KEY = ASCENDING.text;
+	const GROUPS = KEY.split("-");
+	const asked = (
+		typed: [string, string],
+		groups: [number, number] = [2, 6],
+	) => ({
+		keyText: KEY,
+		groups,
+		typed,
+	});
+
+	it("is true only when both typed groups are the groups asked for", () => {
+		expect(groupsConfirmed(asked([GROUPS[2] ?? "", GROUPS[6] ?? ""]))).toBe(
+			true,
+		);
+		expect(groupsConfirmed(asked([GROUPS[2] ?? "", ""]))).toBe(false);
+		// The two swapped, or other groups of the same key, are not the ones asked.
+		expect(groupsConfirmed(asked([GROUPS[6] ?? "", GROUPS[2] ?? ""]))).toBe(
+			false,
+		);
+		expect(groupsConfirmed(asked([GROUPS[0] ?? "", GROUPS[1] ?? ""]))).toBe(
+			false,
+		);
+	});
+
+	it("reads a typed group the way the key is read", () => {
+		const lower = (GROUPS[2] ?? "").toLowerCase().replace(/0/g, "o");
+		expect(groupsConfirmed(asked([lower, GROUPS[6] ?? ""]))).toBe(true);
+	});
+
+	it("never counts nothing asked as confirmed", () => {
+		expect(
+			groupsConfirmed({ keyText: KEY, groups: null, typed: ["", ""] }),
+		).toBe(false);
+		expect(
+			groupsConfirmed({ keyText: "", groups: [0, 1], typed: ["", ""] }),
+		).toBe(false);
+	});
+});
+
+describe("groupMismatch", () => {
+	const [, , third, , , , seventh] = ASCENDING.text.split("-");
+	const typed = (a: string, b: string) => ({
+		keyText: ASCENDING.text,
+		groups: [2, 6] as [number, number],
+		typed: [a, b] as [string, string],
+	});
+
+	it("calls a full length wrong group wrong, and a short one not yet", () => {
+		const wrong = `${(third ?? "").slice(0, 5)}Z`;
+		expect(groupMismatch(typed((third ?? "").slice(0, 5), ""), 0)).toBe(false);
+		expect(groupMismatch(typed(wrong, ""), 0)).toBe(true);
+		expect(groupMismatch(typed(third ?? "", seventh ?? ""), 0)).toBe(false);
+		expect(groupMismatch(typed(third ?? "", "ZZZZZZ"), 1)).toBe(true);
+	});
+
+	it("is never true before a pair is asked", () => {
+		expect(
+			groupMismatch(
+				{ keyText: ASCENDING.text, groups: null, typed: ["ZZZZZZ", ""] },
+				0,
+			),
+		).toBe(false);
 	});
 });

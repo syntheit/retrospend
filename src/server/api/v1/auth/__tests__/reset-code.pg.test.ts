@@ -8,7 +8,7 @@
  */
 import { randomBytes } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
-import type { Primitives } from "@retrospend/crypto";
+import { type Primitives, RESET_CODE_LENGTH } from "@retrospend/crypto";
 import {
 	afterAll,
 	beforeAll,
@@ -29,7 +29,6 @@ import {
 	lookupPlainResetToken,
 	lookupResetToken,
 	PLAIN_RESET_ORIGINS,
-	RESET_CODE_LENGTH,
 	RESET_CODE_TRIES,
 	RESET_CODE_TTL_MS,
 	RESET_REQUESTS_PER_ADDRESS,

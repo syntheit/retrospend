@@ -12,6 +12,8 @@ import type { MenuIcon } from "./menuIcons";
 export interface SheetFrameProps {
 	visible: boolean;
 	onClose: () => void;
+	/** A job is running that must not be cut off: the platform's own ways to dismiss are off (see Sheet). */
+	locked?: boolean;
 	detents?: ("medium" | "large")[];
 	/** The sheet's own color. */
 	background: string;

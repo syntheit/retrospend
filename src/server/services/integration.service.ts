@@ -1,16 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { env } from "~/env";
 
-export class IntegrationError extends Error {
-	constructor(
-		message: string,
-		public status?: number,
-		public statusText?: string,
-	) {
-		super(message);
-		this.name = "IntegrationError";
-	}
-}
+import { IntegrationError } from "./integration-error";
+
+export { IntegrationError };
 
 interface FetchOptions extends RequestInit {
 	timeout?: number;
@@ -68,6 +61,8 @@ export const IntegrationService = {
 				throw new TRPCError({
 					code: "BAD_GATEWAY",
 					message: error.message,
+					// The answer's status: callers branch on it (409 is a backup already running).
+					cause: error,
 				});
 			}
 

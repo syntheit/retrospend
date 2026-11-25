@@ -26,5 +26,15 @@
   "autoPostNoRun": "Noch kein Lauf",
   "autoPostOffBy": "Durch RECURRING_AUTO_POST ausgeschaltet",
   "autoPostJoin": "{head}, {tail}",
-  "autoPostOffEnv": "Außerhalb der Produktion aus"
+  "autoPostOffEnv": "Außerhalb der Produktion aus",
+  "failures": {
+    "email_not_configured": "E-Mail ist auf diesem Server nicht eingerichtet.",
+    "email_auth_failed": "Der E-Mail-Server hat die Anmeldung abgelehnt.",
+    "email_unreachable": "Der E-Mail-Server ist nicht erreichbar.",
+    "email_timeout": "Der E-Mail-Server hat zu lange nicht geantwortet.",
+    "backup_running": "Ein Backup läuft bereits.",
+    "backup_unavailable": "Der Backup-Dienst ist nicht verfügbar.",
+    "backup_failed": "Das Backup konnte nicht gestartet werden.",
+    "rate_sync_failed": "Die Kurse konnten nicht synchronisiert werden."
+  }
 }

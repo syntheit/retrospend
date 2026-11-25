@@ -13,11 +13,13 @@
  * `undo-icon:<stash>:<path>` (the path is a server-made name), same expiry,
  * taken with the stash.
  */
+
 import { randomUUID } from "node:crypto";
 import {
 	IDEMPOTENCY_TTL_MS,
 	SERVER_KEY_PREFIX,
 } from "@retrospend/api-contract/common";
+import { UNDO_NOT_VALID } from "@retrospend/domain/expense-write/refusals";
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
 
@@ -60,7 +62,7 @@ export async function keptUndoFiles(
 export const invalidUndo = () =>
 	new TRPCError({
 		code: "BAD_REQUEST",
-		message: "This undo is not valid anymore",
+		message: UNDO_NOT_VALID,
 	});
 
 /**

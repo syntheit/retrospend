@@ -11,7 +11,10 @@ const { act, create } = renderer;
 const mockSignIn = jest.fn();
 const mockForget = jest.fn();
 const mockAlert = jest.fn();
-jest.mock("expo-router", () => ({ Stack: { Screen: () => null } }));
+jest.mock("expo-router", () => ({
+	Stack: { Screen: () => null },
+	useRouter: () => ({ push: jest.fn() }),
+}));
 jest.mock("use-intl", () => ({
 	useTranslations: () => (key: string) => key,
 }));

@@ -1,27 +1,35 @@
-// The recovery sheet's rules (recover-model.ts): the groups, a paste, when
-// Continue is allowed, and where each failure sends the person.
+// The recovery sheet's rules (src/client/recover-model.ts), shared by the web
+// and the phone: the groups, a paste, when Continue is allowed, and where each
+// failure sends the person.
 import { describe, expect, it } from "vitest";
 import {
 	cleanGroup,
-	fieldsLocked,
-	initialState,
 	keyComplete,
-	keyText,
 	pasteGroups,
 	type RecoverAction,
 	type RecoverState,
+	recoverFieldsLocked,
+	recoverInitialState,
+	recoverKeyText,
 	recoverReducer,
 	recoverView,
-} from "./recover-model";
+} from "../src/client/recover-model";
+import {
+	blocksRecoveryScreen,
+	ENDS_RECOVERY_HANDLE,
+	endsRecoveryHandle,
+} from "../src/client/recovery-failure";
 
 const KEY = "000G40-R40M30-E20918-5GR38E-1W8124-GK2GAH-C5RR34-D1P70X-3RFH8K";
 const GROUPS = KEY.split("-");
 const PASSWORD = "Correct-horse-9-battery";
+/** The platform says the rules are met; the core only checks the two fields alike. */
+const RULES = { rulesMet: true };
 
 const run = (state: RecoverState, ...actions: RecoverAction[]) =>
 	actions.reduce(recoverReducer, state);
 const full = (patch: Partial<RecoverState> = {}): RecoverState => ({
-	...initialState(),
+	...recoverInitialState(),
 	groups: GROUPS,
 	...patch,
 });
@@ -35,7 +43,7 @@ describe("cleanGroup", () => {
 
 describe("pasteGroups", () => {
 	it("fills all nine groups from a whole key, whatever the separators and case", () => {
-		const empty = initialState().groups;
+		const empty = recoverInitialState().groups;
 		expect(pasteGroups(empty, 4, KEY)).toEqual(GROUPS);
 		expect(pasteGroups(empty, 0, KEY.toLowerCase())).toEqual(GROUPS);
 		expect(pasteGroups(empty, 7, KEY.replaceAll("-", " "))).toEqual(GROUPS);
@@ -43,12 +51,12 @@ describe("pasteGroups", () => {
 	});
 
 	it("reads O as 0 and I and L as 1, the way the key is read", () => {
-		const empty = initialState().groups;
+		const empty = recoverInitialState().groups;
 		expect(pasteGroups(empty, 0, "oIlOil")[0]).toBe("011011");
 	});
 
 	it("fills from the group it was pasted into when it is not a whole key, and stops at the ninth", () => {
-		const base = initialState().groups;
+		const base = recoverInitialState().groups;
 		const partial = pasteGroups(base, 6, "AAAAAABBBBBBCCCCCCDDDDDD");
 		expect(partial.slice(6)).toEqual(["AAAAAA", "BBBBBB", "CCCCCC"]);
 		expect(partial.slice(0, 6)).toEqual(base.slice(0, 6));
@@ -56,20 +64,20 @@ describe("pasteGroups", () => {
 	});
 
 	it("fills nothing for text the key reading refuses", () => {
-		const base = initialState().groups;
+		const base = recoverInitialState().groups;
 		expect(pasteGroups(base, 0, `${KEY}é`)).toEqual(base);
 	});
 });
 
 describe("recoverReducer", () => {
 	it("Continue needs all nine full groups", () => {
-		expect(keyComplete(initialState())).toBe(false);
+		expect(keyComplete(recoverInitialState())).toBe(false);
 		expect(keyComplete(full())).toBe(true);
 		const eight = full({ groups: [...GROUPS.slice(0, 8), "ABC"] });
 		expect(keyComplete(eight)).toBe(false);
-		expect(recoverView(eight).primaryDisabled).toBe(true);
-		expect(recoverView(full()).primaryDisabled).toBe(false);
-		expect(keyText(full())).toBe(KEY);
+		expect(recoverView(eight, RULES).primaryDisabled).toBe(true);
+		expect(recoverView(full(), RULES).primaryDisabled).toBe(false);
+		expect(recoverKeyText(full())).toBe(KEY);
 	});
 
 	it("moves to the new password only when the proof landed", () => {
@@ -78,7 +86,7 @@ describe("recoverReducer", () => {
 		expect(next.step).toBe("password");
 		expect(next.busy).toBe(false);
 		// A late proof after a reset finds the sheet at the start and changes nothing.
-		expect(run(initialState(), { type: "proven" }).step).toBe("enter");
+		expect(run(recoverInitialState(), { type: "proven" }).step).toBe("enter");
 	});
 
 	it("keeps what was typed when the key is wrong, and shows the line", () => {
@@ -99,8 +107,8 @@ describe("recoverReducer", () => {
 
 	it("a typo is a line under the groups, not a blocked screen", () => {
 		const after = run(full(), { type: "failed", code: "typo" });
-		expect(fieldsLocked(after)).toBe(false);
-		expect(recoverView(after).primaryDisabled).toBe(false);
+		expect(recoverFieldsLocked(after)).toBe(false);
+		expect(recoverView(after, RULES).primaryDisabled).toBe(false);
 	});
 
 	it("returns to the key, with the password gone, when the keys changed or the proof no longer stands", () => {
@@ -129,14 +137,14 @@ describe("recoverReducer", () => {
 		const after = run(onPassword, { type: "failed", code: "failed" });
 		expect(after.step).toBe("password");
 		expect(after.password).toBe(PASSWORD);
-		expect(recoverView(after).primaryDisabled).toBe(false);
+		expect(recoverView(after, RULES).primaryDisabled).toBe(false);
 	});
 
 	it("a link that is gone blocks everything until the sheet resets, and offers Close", () => {
 		const gone = run(full(), { type: "failed", code: "linkExpired" });
-		expect(fieldsLocked(gone)).toBe(true);
-		expect(recoverView(gone).primary).toBeNull();
-		expect(recoverView(gone).left).toBe("close");
+		expect(recoverFieldsLocked(gone)).toBe(true);
+		expect(recoverView(gone, RULES).primary).toBeNull();
+		expect(recoverView(gone, RULES).left).toBe("close");
 		// No keystroke, paste or retry moves it.
 		expect(run(gone, { type: "group", index: 0, value: "AAAAAA" })).toBe(gone);
 		expect(run(gone, { type: "paste", from: 0, text: KEY })).toBe(gone);
@@ -145,9 +153,9 @@ describe("recoverReducer", () => {
 	});
 
 	it("an account with no recovery key opens locked on that line, with Cancel and a disabled Continue", () => {
-		const state = initialState("unavailable");
-		expect(fieldsLocked(state)).toBe(true);
-		const view = recoverView(state);
+		const state = recoverInitialState("unavailable");
+		expect(recoverFieldsLocked(state)).toBe(true);
+		const view = recoverView(state, RULES);
 		expect(view.left).toBe("cancel");
 		expect(view.primaryDisabled).toBe(true);
 		// The reset after a close keeps the preset: the link has not changed.
@@ -157,14 +165,15 @@ describe("recoverReducer", () => {
 		expect(run(state, { type: "reset" }).error).toBeNull();
 	});
 
-	it("the new password needs the rules and the same confirmation", () => {
-		const on = (password: string, confirm: string) =>
-			recoverView(full({ step: "password", password, confirm }))
+	it("the new password needs the rules the platform checks and the same confirmation", () => {
+		const on = (password: string, confirm: string, rulesMet = true) =>
+			recoverView(full({ step: "password", password, confirm }), { rulesMet })
 				.primaryDisabled;
 		expect(on("", "")).toBe(true);
-		expect(on("short", "short")).toBe(true);
 		expect(on(PASSWORD, "Another-horse-9-battery")).toBe(true);
 		expect(on(PASSWORD, PASSWORD)).toBe(false);
+		// Alike but weak: the platform's rules say no.
+		expect(on("short", "short", false)).toBe(true);
 	});
 
 	it("ignores typing while it works, and groups on the password step", () => {
@@ -191,9 +200,9 @@ describe("recoverReducer", () => {
 			{ type: "failed", code: "unconfirmed" },
 		);
 		expect(unknown.unconfirmed).toBe(true);
-		expect(fieldsLocked(unknown)).toBe(true);
+		expect(recoverFieldsLocked(unknown)).toBe(true);
 		// Not final: Set password still works and sends the same request.
-		expect(recoverView(unknown).primaryDisabled).toBe(false);
+		expect(recoverView(unknown, RULES).primaryDisabled).toBe(false);
 		expect(run(unknown, { type: "text", field: "password", value: "x" })).toBe(
 			unknown,
 		);
@@ -208,7 +217,7 @@ describe("recoverReducer", () => {
 			{ type: "failed", code: "tooMany" },
 		);
 		expect(refused.unconfirmed).toBe(true);
-		expect(fieldsLocked(refused)).toBe(true);
+		expect(recoverFieldsLocked(refused)).toBe(true);
 		expect(refused.password).toBe(PASSWORD);
 	});
 
@@ -224,7 +233,7 @@ describe("recoverReducer", () => {
 			{ type: "failed", code: "tooMany" },
 		);
 		expect(refused.unconfirmed).toBe(false);
-		expect(fieldsLocked(refused)).toBe(false);
+		expect(recoverFieldsLocked(refused)).toBe(false);
 		expect(
 			run(refused, { type: "text", field: "password", value: "Other-Pw-2027?" })
 				.password,
@@ -242,5 +251,45 @@ describe("recoverReducer", () => {
 			run(onPassword, { type: "failed", code: "keysChanged" }).unconfirmed,
 		).toBe(false);
 		expect(run(onPassword, { type: "reset" }).unconfirmed).toBe(false);
+	});
+});
+
+describe("which failures end what", () => {
+	it("a handle ends on exactly these flow codes, the one list the callbacks and every sheet use", () => {
+		expect([...ENDS_RECOVERY_HANDLE].sort()).toEqual(
+			[
+				"conflict",
+				"notFound",
+				"notOffered",
+				"recoveryUnavailable",
+				"tokenExpired",
+				"wrongRecoveryKey",
+			].sort(),
+		);
+		for (const code of ENDS_RECOVERY_HANDLE)
+			expect(endsRecoveryHandle(code), code).toBe(true);
+		// A typo never reached the server, and a rate limit or a lost answer
+		// leaves the proof standing.
+		for (const code of [
+			"malformed",
+			"rateLimited",
+			"unavailable",
+			"serverError",
+			"unconfirmed",
+			"failed",
+		] as const)
+			expect(endsRecoveryHandle(code), code).toBe(false);
+	});
+
+	it("the screen is blocked for good by the link, the feature, a lost new key or an account without a key", () => {
+		for (const code of [
+			"linkExpired",
+			"notOffered",
+			"notSaved",
+			"unavailable",
+		] as const)
+			expect(blocksRecoveryScreen(code), code).toBe(true);
+		for (const code of ["typo", "wrongKey", "tooMany", null] as const)
+			expect(blocksRecoveryScreen(code), String(code)).toBe(false);
 	});
 });

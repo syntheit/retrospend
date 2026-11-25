@@ -13,6 +13,7 @@ import {
 	allowedParams,
 	asKeyFlowError,
 	binMasterSubkeys,
+	checkKeyPair,
 	type FlowPorts,
 	findWrap,
 	type Kdf,
@@ -46,6 +47,13 @@ export type NewKeyInput = {
 	 * wipes it; this function only reads it.
 	 */
 	accountKey: Uint8Array;
+	/**
+	 * The account's private-key wrap and public key: the account key must open
+	 * the one to the other before a new recovery key wraps it (a key that is
+	 * wiped, another account's or swapped is `malformed` and nothing is made).
+	 */
+	privateKeyWrap: Uint8Array;
+	publicKey: Uint8Array;
 	/** The key set version the account key was read from. */
 	baseVersion: number;
 };
@@ -63,6 +71,7 @@ export function makeNewRecoveryKey(
 	try {
 		if (!Number.isInteger(input.baseVersion))
 			throw new KeyFlowError("malformed");
+		checkKeyPair(p, bin, input);
 		const made = makeRecoveryKey(p, bin, input);
 		const body: NewKeyBody = {
 			wrappedRecoveryKey: made.wrapped,
@@ -82,21 +91,26 @@ export type OpenAnswer = {
 	version: number;
 	kdf: Kdf;
 	passwordWrap: string;
+	/** base64url: the key pair the account key must open before a new recovery key wraps it. */
+	publicKey: string;
+	privateKeyWrap: string;
 };
 
 /** The keys route's answer from the port, unread until now. Another shape is "unavailable". */
 export function readOpenAnswer(body: unknown): OpenAnswer {
-	const { version, kdf, wraps } =
+	const { version, kdf, wraps, publicKey } =
 		typeof body === "object" && body !== null
 			? (body as Record<string, unknown>)
 			: ({} as Record<string, unknown>);
 	const answerKdf = readKdf(kdf);
-	if (!answerKdf || !Number.isInteger(version))
+	if (!answerKdf || !Number.isInteger(version) || typeof publicKey !== "string")
 		throw new KeyFlowError("unavailable");
 	return {
 		version: version as number,
 		kdf: answerKdf,
 		passwordWrap: findWrap(wraps, "ak-password"),
+		publicKey,
+		privateKeyWrap: findWrap(wraps, "private-key"),
 	};
 }
 
@@ -161,9 +175,14 @@ export async function prepareNewRecoveryKey(
 			const accountKey = bin.keep(
 				unwrapKey(p, mine.wrapKey, "ak-password", input.userId, wrap),
 			);
+			const privateKeyWrap = fromBase64Url(opened.privateKeyWrap);
+			const publicKey = fromBase64Url(opened.publicKey);
+			if (!privateKeyWrap || !publicKey) throw new KeyFlowError("malformed");
 			const made = makeNewRecoveryKey(p, {
 				userId: input.userId,
 				accountKey,
+				privateKeyWrap,
+				publicKey,
 				baseVersion: opened.version,
 			});
 			return {
