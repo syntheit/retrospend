@@ -3,6 +3,7 @@ import { Modal, Pressable, useWindowDimensions, View } from "react-native";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { DIALOG_WIDTH, dialogHeight } from "./sheetContext";
+import { useRePresent } from "./useRePresent";
 import type { SheetFrameProps } from "./types";
 
 /**
@@ -27,6 +28,7 @@ export function SheetFrame({
 	const { color, radius } = useTheme();
 	const { tablet } = useLayoutClass();
 	const { height } = useWindowDimensions();
+	const [again, represent] = useRePresent();
 	if (tablet) {
 		return (
 			<Modal
@@ -64,8 +66,10 @@ export function SheetFrame({
 	return (
 		<BottomSheet
 			containerColor={background}
-			isPresented={visible}
-			onDismiss={locked ? () => undefined : onClose}
+			isPresented={visible && !again}
+			// A locked sheet is not closed: if the system dismissed it anyway, it
+			// is shown again, so the sheet never stays "visible" with nothing on screen.
+			onDismiss={locked ? represent : onClose}
 			scrimColor={color.scrim}
 			snapPoints={detents?.map((d) => (d === "medium" ? "half" : "full"))}
 		>

@@ -8,6 +8,7 @@ import {
 	presentationDragIndicator,
 } from "@expo/ui/swift-ui/modifiers";
 import { useEffect, useState } from "react";
+import { useRePresent } from "./useRePresent";
 import { Platform, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/theme";
@@ -45,6 +46,7 @@ export function SheetFrame({
 		if (visible) setAt(rest);
 	}, [visible]);
 	const now = shown?.includes(at) ? at : rest;
+	const [again, represent] = useRePresent();
 	const content = shown?.length
 		? sheetContentHeight(now, {
 				window: height,
@@ -57,10 +59,14 @@ export function SheetFrame({
 		<Host pointerEvents="none" style={{ position: "absolute" }}>
 			<BottomSheet
 				fitToContents={!shown?.length}
-				isPresented={visible}
+				isPresented={visible && !again}
 				onIsPresentedChange={(presented) => {
-					// A locked sheet is not dismissed (the swipe is off as well).
-					if (!presented && !locked) onClose();
+					if (presented) return;
+					// A locked sheet is not closed (the swipe is off as well). If the
+					// system dismissed it anyway, it is shown again: the sheet never
+					// stays "visible" with nothing on screen.
+					if (locked) represent();
+					else onClose();
 				}}
 			>
 				<Group

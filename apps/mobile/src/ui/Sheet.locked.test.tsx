@@ -12,6 +12,8 @@ const mockFrame = {
 	onIsPresentedChange: undefined as undefined | ((presented: boolean) => void),
 	onDismiss: undefined as undefined | (() => void),
 	modifiers: [] as unknown[],
+	/** `isPresented` as the native sheet was handed it, render by render. */
+	presented: [] as boolean[],
 };
 
 jest.mock("@/theme", () => ({
@@ -60,6 +62,7 @@ jest.mock("@expo/ui/swift-ui", () => ({
 		children: unknown;
 	}) => {
 		mockFrame.onIsPresentedChange = onIsPresentedChange;
+		mockFrame.presented.push(isPresented);
 		return isPresented ? children : null;
 	},
 }));
@@ -75,6 +78,7 @@ jest.mock("@expo/ui", () => ({
 		children: unknown;
 	}) => {
 		mockFrame.onDismiss = onDismiss;
+		mockFrame.presented.push(isPresented);
 		return isPresented ? children : null;
 	},
 }));
@@ -117,6 +121,7 @@ beforeEach(() => {
 	mockFrame.onIsPresentedChange = undefined;
 	mockFrame.onDismiss = undefined;
 	mockFrame.modifiers = [];
+	mockFrame.presented = [];
 });
 afterEach(() => {
 	Platform.OS = original;
@@ -135,6 +140,9 @@ describe("Sheet locked, on iOS", () => {
 		act(() => mockFrame.onIsPresentedChange?.(false));
 		expect(onClose).not.toHaveBeenCalled();
 		expect(closeItem(tree)).toHaveLength(0);
+		// The system took it down anyway: it is handed "not presented" and then
+		// "presented" again, so the sheet is never left visible with nothing on screen.
+		expect(mockFrame.presented.slice(-3)).toEqual([true, false, true]);
 	});
 
 	it("unlocked, the swipe, the system's dismissal and the close item all close it", () => {
@@ -144,6 +152,8 @@ describe("Sheet locked, on iOS", () => {
 		});
 		act(() => mockFrame.onIsPresentedChange?.(false));
 		expect(onClose).toHaveBeenCalledTimes(1);
+		// Closing is the caller's: the frame does not present it again.
+		expect(mockFrame.presented.every(Boolean)).toBe(true);
 		expect(closeItem(tree).length).toBeGreaterThan(0);
 	});
 });
@@ -168,6 +178,7 @@ describe("Sheet locked, on Android", () => {
 		// The frame's own dismissal (a swipe on the M3 sheet) closes nothing.
 		act(() => mockFrame.onDismiss?.());
 		expect(onClose).not.toHaveBeenCalled();
+		expect(mockFrame.presented.slice(-3)).toEqual([true, false, true]);
 		spy.mockRestore();
 	});
 
