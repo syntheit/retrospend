@@ -15,6 +15,7 @@ import {
 	callWithTimeout,
 	lookupPort,
 	type SecretDeps,
+	withTimeout,
 } from "./sign-in-secret";
 
 export type PhoneNewKeyInput = {
@@ -39,7 +40,10 @@ function ports(
 	return {
 		primitives: deps.primitives,
 		paint: deps.paint ?? paintFrames,
-		lookup: lookupPort({ route: "keys", ask: () => input.api.keys() }),
+		lookup: lookupPort({
+			route: "keys",
+			ask: () => withTimeout((o) => input.api.keys(undefined, o)),
+		}),
 		lookupRoute: "keys",
 		userId: input.userId,
 		open: (body) => callWithTimeout((o) => input.api.openKeys(body, o)),

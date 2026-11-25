@@ -14,6 +14,9 @@ const mockFrame = {
 	modifiers: [] as unknown[],
 	/** `isPresented` as the native sheet was handed it, render by render. */
 	presented: [] as boolean[],
+	/** How many times the Android sheet was mounted (a new key mounts it anew). */
+	mounts: 0,
+	dismissOn: undefined as undefined | { back?: boolean; outside?: boolean },
 };
 
 jest.mock("@/theme", () => ({
@@ -66,22 +69,30 @@ jest.mock("@expo/ui/swift-ui", () => ({
 		return isPresented ? children : null;
 	},
 }));
-jest.mock("@expo/ui", () => ({
-	RNHostView: ({ children }: { children: unknown }) => children,
-	BottomSheet: ({
-		isPresented,
-		onDismiss,
-		children,
-	}: {
-		isPresented: boolean;
-		onDismiss?: () => void;
-		children: unknown;
-	}) => {
-		mockFrame.onDismiss = onDismiss;
-		mockFrame.presented.push(isPresented);
-		return isPresented ? children : null;
-	},
-}));
+jest.mock("@expo/ui", () => {
+	const React = require("react");
+	return {
+		RNHostView: ({ children }: { children: unknown }) => children,
+		BottomSheet: (props: {
+			isPresented: boolean;
+			onDismiss?: () => void;
+			shouldDismissOnBackPress?: boolean;
+			shouldDismissOnClickOutside?: boolean;
+			children: unknown;
+		}) => {
+			mockFrame.onDismiss = props.onDismiss;
+			mockFrame.dismissOn = {
+				back: props.shouldDismissOnBackPress,
+				outside: props.shouldDismissOnClickOutside,
+			};
+			mockFrame.presented.push(props.isPresented);
+			React.useEffect(() => {
+				mockFrame.mounts += 1;
+			}, []);
+			return props.isPresented ? props.children : null;
+		},
+	};
+});
 jest.mock("@/ui/SheetFrame", () => {
 	const { Platform: P } = require("react-native");
 	const ios = jest.requireActual("@/ui/SheetFrame.ios");
@@ -122,6 +133,8 @@ beforeEach(() => {
 	mockFrame.onDismiss = undefined;
 	mockFrame.modifiers = [];
 	mockFrame.presented = [];
+	mockFrame.mounts = 0;
+	mockFrame.dismissOn = undefined;
 });
 afterEach(() => {
 	Platform.OS = original;
@@ -175,10 +188,14 @@ describe("Sheet locked, on Android", () => {
 		expect(presses).toHaveLength(1);
 		// true: the press is consumed, so the sheet is not closed by it.
 		expect(presses[0]?.()).toBe(true);
-		// The frame's own dismissal (a swipe on the M3 sheet) closes nothing.
+		// Back and a tap on the scrim do not dismiss it (the system does not ask).
+		expect(mockFrame.dismissOn).toEqual({ back: false, outside: false });
+		// The frame's own dismissal (a swipe on the M3 sheet) closes nothing, and
+		// the sheet is mounted again so it never stays "visible" with nothing shown.
+		expect(mockFrame.mounts).toBe(1);
 		act(() => mockFrame.onDismiss?.());
 		expect(onClose).not.toHaveBeenCalled();
-		expect(mockFrame.presented.slice(-3)).toEqual([true, false, true]);
+		expect(mockFrame.mounts).toBe(2);
 		spy.mockRestore();
 	});
 
@@ -186,8 +203,10 @@ describe("Sheet locked, on Android", () => {
 		const spy = jest.spyOn(BackHandler, "addEventListener");
 		mount(false);
 		expect(spy).not.toHaveBeenCalled();
+		expect(mockFrame.dismissOn).toEqual({ back: true, outside: true });
 		act(() => mockFrame.onDismiss?.());
 		expect(onClose).toHaveBeenCalledTimes(1);
+		expect(mockFrame.mounts).toBe(1);
 		spy.mockRestore();
 	});
 });

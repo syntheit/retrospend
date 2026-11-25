@@ -471,9 +471,12 @@ describe("phone enable, a request that never answers", () => {
 		jest.useRealTimers();
 		await r.made.save(draft, { password: OLD, code: null });
 		expect(r.enable).toHaveBeenCalledTimes(2);
-		const keys = (r.enable.mock.calls as [unknown, { context: { idempotencyKey: string } }][]).map(
-			(c) => c[1].context.idempotencyKey,
-		);
+		const keys = (
+			r.enable.mock.calls as [
+				unknown,
+				{ context: { idempotencyKey: string } },
+			][]
+		).map((c) => c[1].context.idempotencyKey);
 		expect(keys[1]).not.toBe(keys[0]);
 	});
 
@@ -485,5 +488,23 @@ describe("phone enable, a request that never answers", () => {
 		await jest.advanceTimersByTimeAsync(30_000);
 		expect(isFinalFailure(await run)).toBe(false);
 		expect(r.openKeys).toHaveBeenCalledTimes(1);
+	});
+
+	it("gives up on the sign-in again after 30 seconds, as unreachable, and sends nothing more", async () => {
+		const r = rig({
+			enable: (n) => {
+				if (n === 0) throw refusal(403, "session_not_fresh");
+			},
+			session: {
+				signIn: jest.fn(() => new Promise<never>(() => {})),
+				verifyCode: jest.fn(),
+			},
+		});
+		const draft = await r.made.makeKeys(NEW);
+		jest.useFakeTimers();
+		const run = code(r.made.save(draft, { password: OLD, code: null }));
+		await jest.advanceTimersByTimeAsync(30_000);
+		expect(isFinalFailure(await run)).toBe(false);
+		expect(r.enable).toHaveBeenCalledTimes(1);
 	});
 });

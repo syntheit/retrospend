@@ -287,15 +287,15 @@ export async function call<T>(run: () => Promise<T>): Promise<T> {
 export const REQUEST_TIMEOUT_MS = 30_000;
 
 /**
- * `call` with a request timeout: the one place the phone bounds the network
- * part of these flows (the client has no timeout of its own, and Android's
- * default read timeout is unlimited). A request with no answer by then is
- * aborted and ends as `unavailable`, the same as a lost connection, so a
- * commit that may have been stored is settled by the shared core's read-back
- * and a screen that waits on it is never held for good. The late answer of an
- * aborted request is ignored.
+ * Gives a request a time limit: the one place the phone bounds the network
+ * part of the recovery, Make new key and enable flows (the client has no
+ * timeout of its own, and Android's default read timeout is unlimited). A
+ * request with no answer by then is aborted and rejects as `unavailable`, the
+ * same as a lost connection. The late answer of an aborted request is ignored.
+ * Every network call a locked sheet waits on goes through here (a test lists
+ * the callers). A refusal is passed on as it came; `callWithTimeout` words it.
  */
-export function callWithTimeout<T>(
+export function withTimeout<T>(
 	run: (options: { signal: AbortSignal }) => Promise<T>,
 	ms: number = REQUEST_TIMEOUT_MS,
 ): Promise<T> {
@@ -305,7 +305,7 @@ export function callWithTimeout<T>(
 			controller.abort();
 			reject(new KeyFlowError("unavailable"));
 		}, ms);
-		call(() => run({ signal: controller.signal })).then(
+		run({ signal: controller.signal }).then(
 			(value) => {
 				clearTimeout(timer);
 				resolve(value);
@@ -316,6 +316,14 @@ export function callWithTimeout<T>(
 			},
 		);
 	});
+}
+
+/** `withTimeout` for a call whose refusal becomes a KeyFlowError (`call`). */
+export function callWithTimeout<T>(
+	run: (options: { signal: AbortSignal }) => Promise<T>,
+	ms: number = REQUEST_TIMEOUT_MS,
+): Promise<T> {
+	return withTimeout((o) => call(() => run(o)), ms);
 }
 
 function rotatePorts(input: RotateInput, deps: SecretDeps): RotatePorts {

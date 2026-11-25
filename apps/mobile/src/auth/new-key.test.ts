@@ -70,7 +70,13 @@ function rig(over: { store?: boolean; hang?: "commit" } = {}) {
 					role: "ak-password",
 					targetId: USER,
 					wrapped: toBase64Url(
-						wrapKey(real, fromHex(MASTER?.wrapKey ?? ""), "ak-password", USER, AK),
+						wrapKey(
+							real,
+							fromHex(MASTER?.wrapKey ?? ""),
+							"ak-password",
+							USER,
+							AK,
+						),
 					),
 				},
 				{
@@ -100,7 +106,7 @@ function rig(over: { store?: boolean; hang?: "commit" } = {}) {
 		},
 		{ primitives: async () => real, paint: async () => {} },
 	);
-	return { made, openKeys, newRecoveryKey };
+	return { made, keys, openKeys, newRecoveryKey };
 }
 
 const codeOf = async (run: Promise<unknown>): Promise<string> =>
@@ -165,6 +171,19 @@ describe("phone Make new key, a request that never answers", () => {
 		const made = codeOf(r.made.makeKey(MASTER.password));
 		await jest.advanceTimersByTimeAsync(30_000);
 		expect(await made).toBe("unavailable");
+		expect(r.newRecoveryKey).not.toHaveBeenCalled();
+	});
+
+	it("gives up on the kdf lookup after 30 seconds, before anything is derived or sent", async () => {
+		const r = rig();
+		(r.keys as jest.Mock).mockImplementationOnce(
+			() => new Promise<never>(() => {}),
+		);
+		jest.useFakeTimers();
+		const made = codeOf(r.made.makeKey(MASTER.password));
+		await jest.advanceTimersByTimeAsync(30_000);
+		expect(await made).toBe("unavailable");
+		expect(r.openKeys).not.toHaveBeenCalled();
 		expect(r.newRecoveryKey).not.toHaveBeenCalled();
 	});
 

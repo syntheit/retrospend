@@ -18,6 +18,7 @@ import {
 	callWithTimeout,
 	keyedRecord,
 	type SecretDeps,
+	withTimeout,
 } from "./sign-in-secret";
 
 /** Sign-in as the session holds it: the password step, then the code when the account has two-factor. */
@@ -59,6 +60,17 @@ export function signInStepOf(step: SignInStep): EnableSignInStep {
 	}
 }
 
+/** A sign-in step with a time limit: no answer is "could not reach the server", like a lost connection. */
+async function timedStep(
+	run: () => Promise<SignInStep>,
+): Promise<EnableSignInStep> {
+	try {
+		return signInStepOf(await withTimeout(() => run()));
+	} catch {
+		return { status: "error", kind: "unreachable" };
+	}
+}
+
 function ports(input: PhoneEnableInput, deps: PhoneEnableDeps): EnablePorts {
 	return {
 		primitives: deps.primitives,
@@ -72,10 +84,9 @@ function ports(input: PhoneEnableInput, deps: PhoneEnableDeps): EnablePorts {
 			);
 		},
 		open: (body) => callWithTimeout((o) => input.api.openKeys(body, o)),
-		signIn: async (password) =>
-			signInStepOf(await input.session().signIn(input.email, password)),
-		verifyCode: async (code) =>
-			signInStepOf(await input.session().verifyCode(code)),
+		signIn: (password) =>
+			timedStep(() => input.session().signIn(input.email, password)),
+		verifyCode: (code) => timedStep(() => input.session().verifyCode(code)),
 	};
 }
 

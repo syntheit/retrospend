@@ -118,3 +118,93 @@ describe("the phone's callers of the key routes", () => {
 			expect(mobileCallers(path), path).toEqual(["auth/recovery.ts"]);
 	});
 });
+
+// A locked sheet (recovery, Make new key, enable) waits on these adapters, so
+// no network call in them may be left without a time limit: a hang would hold
+// the person until the app is killed. The calls are found from the contract's
+// route table (every operation name) plus the session's sign-in calls; each
+// must sit inside `callWithTimeout(...)` or `withTimeout(...)`.
+const LOCKED_ADAPTERS = [
+	"auth/recovery.ts",
+	"auth/new-key.ts",
+	"auth/enable.ts",
+];
+
+function allOperationNames(): string[] {
+	const names = new Set<string>();
+	for (const group of Object.values(contract) as Record<string, unknown>[])
+		for (const [name, proc] of Object.entries(group))
+			if ((proc as { "~orpc"?: unknown } | undefined)?.["~orpc"])
+				names.add(name);
+	return [...names];
+}
+
+/** The [start, end) spans of the argument lists of `name(` calls in `text`. */
+function argumentSpans(text: string, name: string): [number, number][] {
+	const spans: [number, number][] = [];
+	const open = new RegExp(`\\b${name}\\(`, "g");
+	for (let m = open.exec(text); m; m = open.exec(text)) {
+		let depth = 1;
+		let i = m.index + m[0].length;
+		const start = i;
+		while (i < text.length && depth > 0) {
+			if (text[i] === "(") depth++;
+			else if (text[i] === ")") depth--;
+			i++;
+		}
+		spans.push([start, i]);
+	}
+	return spans;
+}
+
+/** Network calls in `text` that are not inside a time-limited wrapper. */
+export function unboundedCalls(text: string): string[] {
+	const wrapped = [
+		...argumentSpans(text, "callWithTimeout"),
+		...argumentSpans(text, "withTimeout"),
+		// enable.ts's own wrapper for a sign-in step; checked to be bounded below.
+		...argumentSpans(text, "timedStep"),
+	];
+	const found: string[] = [];
+	const clients = new RegExp(
+		`\\b(?:input\\.)?api\\.(?:${allOperationNames().join("|")})\\(|\\.session\\(\\)\\.(?:signIn|verifyCode)\\(`,
+		"g",
+	);
+	for (let m = clients.exec(text); m; m = clients.exec(text))
+		if (!wrapped.some(([from, to]) => m.index >= from && m.index < to))
+			found.push(m[0]);
+	return found;
+}
+
+describe("the phone's adapters under a locked sheet", () => {
+	it("every client and sign-in call is inside a time limit", () => {
+		for (const file of LOCKED_ADAPTERS)
+			expect(
+				unboundedCalls(readFileSync(join(MOBILE, file), "utf8")),
+				file,
+			).toEqual([]);
+	});
+
+	it("the sign-in step wrapper is itself inside a time limit", () => {
+		const text = readFileSync(join(MOBILE, "auth/enable.ts"), "utf8");
+		const body = text.slice(text.indexOf("async function timedStep("));
+		expect(body.slice(0, body.indexOf("\n}\n"))).toContain("withTimeout(");
+	});
+
+	it("finds a call that is not wrapped, and one that is", () => {
+		expect(unboundedCalls("await input.api.openKeys(body);")).toEqual([
+			"input.api.openKeys(",
+		]);
+		expect(unboundedCalls("await input.session().signIn(a, b);")).toEqual([
+			".session().signIn(",
+		]);
+		expect(
+			unboundedCalls("withTimeout((o) => input.api.keys(undefined, o))"),
+		).toEqual([]);
+		expect(
+			unboundedCalls(
+				"callWithTimeout((o) =>\n api.recover({ token, ...body }, o))",
+			),
+		).toEqual([]);
+	});
+});

@@ -79,7 +79,9 @@ function server(
 	const begin = jest.fn(
 		async (body: { token: string; recoveryAuthKey: string }) => {
 			if (!live || body.token !== TOKEN) throw refusal(404, "invalid_token");
-			if (toHex(fromBase64Url(body.recoveryAuthKey) as Uint8Array) !== RK?.authKey)
+			if (
+				toHex(fromBase64Url(body.recoveryAuthKey) as Uint8Array) !== RK?.authKey
+			)
 				throw refusal(400, "wrong_recovery_key");
 			return {
 				userId: USER,
@@ -90,7 +92,13 @@ function server(
 						role: "ak-recovery",
 						targetId: USER,
 						wrapped: toBase64Url(
-							wrapKey(real, fromHex(RK?.wrapKey ?? ""), "ak-recovery", USER, AK),
+							wrapKey(
+								real,
+								fromHex(RK?.wrapKey ?? ""),
+								"ak-recovery",
+								USER,
+								AK,
+							),
 						),
 					},
 					{
@@ -183,7 +191,10 @@ describe("phone recovery", () => {
 			"unconfirmed",
 		);
 		expect(await s.made.finish(handle, { password: NEW })).toBe("linkSpent");
-		expect(s.checkRecovery).toHaveBeenCalledWith({ token: TOKEN }, expect.anything());
+		expect(s.checkRecovery).toHaveBeenCalledWith(
+			{ token: TOKEN },
+			expect.anything(),
+		);
 		expect(s.recover).toHaveBeenCalledTimes(1);
 	});
 
@@ -244,8 +255,16 @@ describe("a request that never answers", () => {
 	});
 
 	it.each([
-		["asking for a code", (a: never) => h.requestResetCode(a, "ana@example.com"), { requestResetCode: true }],
-		["swapping the code", (a: never) => h.redeemResetCode(a, "ana@example.com", "7K2M9PQ4"), { redeemResetCode: true }],
+		[
+			"asking for a code",
+			(a: never) => h.requestResetCode(a, "ana@example.com"),
+			{ requestResetCode: true },
+		],
+		[
+			"swapping the code",
+			(a: never) => h.redeemResetCode(a, "ana@example.com", "7K2M9PQ4"),
+			{ redeemResetCode: true },
+		],
 	])("%s gives up as a network failure", async (_name, run, which) => {
 		jest.useFakeTimers();
 		const signals: AbortSignal[] = [];
@@ -343,7 +362,11 @@ describe("asking for and swapping the reset code", () => {
 
 	it("reads the typed code the way the recovery key is read, and sends its normal form", async () => {
 		const a = api();
-		const swapped = await h.redeemResetCode(a, "ana@example.com", " 7k2m-9pq4 ");
+		const swapped = await h.redeemResetCode(
+			a,
+			"ana@example.com",
+			" 7k2m-9pq4 ",
+		);
 		expect(a.redeemResetCode).toHaveBeenCalledWith(
 			{ email: "ana@example.com", code: "7K2M9PQ4" },
 			expect.anything(),
@@ -351,9 +374,10 @@ describe("asking for and swapping the reset code", () => {
 		expect(swapped).toEqual({ ok: true, value: "t" });
 		// O, I and L are read as 0 and 1.
 		await h.redeemResetCode(a, "ana@example.com", "oilO 7K2M");
-		expect(
-			(a.redeemResetCode as jest.Mock).mock.calls[1]?.[0],
-		).toEqual({ email: "ana@example.com", code: "01107K2M" });
+		expect((a.redeemResetCode as jest.Mock).mock.calls[1]?.[0]).toEqual({
+			email: "ana@example.com",
+			code: "01107K2M",
+		});
 	});
 
 	it("refuses text that cannot be a code without asking, so no try is spent", async () => {
@@ -385,10 +409,12 @@ describe("asking for and swapping the reset code", () => {
 	it("an answer without a token is a failure, never a token", async () => {
 		for (const answer of [{}, { token: "" }, { token: 4 }, null]) {
 			const a = api({ redeemResetCode: jest.fn(async () => answer) });
-			expect(await h.redeemResetCode(a, "ana@example.com", "7K2M9PQ4")).toEqual({
-				ok: false,
-				reason: "failed",
-			});
+			expect(await h.redeemResetCode(a, "ana@example.com", "7K2M9PQ4")).toEqual(
+				{
+					ok: false,
+					reason: "failed",
+				},
+			);
 		}
 	});
 });
@@ -405,7 +431,10 @@ describe("checking what the token leads to", () => {
 			keys: "recovery",
 			protectionOn: false,
 		});
-		expect(a.checkRecovery).toHaveBeenCalledWith({ token: "t" }, expect.anything());
+		expect(a.checkRecovery).toHaveBeenCalledWith(
+			{ token: "t" },
+			expect.anything(),
+		);
 	});
 
 	it("a token the server does not know is invalid, not an error", async () => {
