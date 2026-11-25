@@ -35,6 +35,7 @@ export {
 export {
 	asKeyFlowError,
 	classifyRefusal,
+	couldNotAsk,
 	type FlowPorts,
 	type Kdf,
 	type KeyedRecord,
@@ -43,6 +44,7 @@ export {
 	type LookupAnswer,
 	type LookupRoute,
 	lookupKdf,
+	mayHaveCommitted,
 	NEW_PASSWORD_PARAMS,
 } from "./flow";
 export {
