@@ -390,7 +390,8 @@ describe("/api/v1/recurring", () => {
 		const rent = booked.ids.Rent as string;
 		await adminDb.envelope.update({
 			where: { id: rent },
-			data: { kind: "BILL", targetTemplateId: item.id },
+			// A bill that follows a template has no amount of its own.
+			data: { kind: "BILL", targetTemplateId: item.id, targetAmount: null },
 		});
 		const confirmed = await expectBody<Confirm>(
 			await send("POST", `/recurring/${item.id}/confirm`, {}, mine),
