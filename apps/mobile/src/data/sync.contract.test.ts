@@ -415,6 +415,17 @@ describe.each(harnesses)("the queue over the %s transport", (_name, make) => {
 		});
 	});
 
+	describe("a restart, undo", () => {
+		it("takes back a create whose answer was lost, from a rebuilt transport", async () => {
+			h.faults.lose = 1;
+			expect(await save()).toEqual({ status: "queued" });
+			h.rebuildTransport();
+			expect(await undo(ID)).toBe("undone");
+			expect(h.rowOf(ID)).toBeNull();
+			expect(await outbox.all()).toEqual([]);
+		});
+	});
+
 	describe("undo", () => {
 		it("removes a write that never left the phone, with no request", async () => {
 			await outbox.enqueue({

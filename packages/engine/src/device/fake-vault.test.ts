@@ -168,7 +168,7 @@ describe("the sender over it", () => {
 		device: {
 			changes: [{ after: { amount: "120.00", homeAmount: "185400.00" } }],
 		},
-		attempts: 1,
+		attempts: 0,
 		...over,
 	});
 	// The entry's sealed request, as the outbox keeps it between sends.
@@ -203,7 +203,7 @@ describe("the sender over it", () => {
 		);
 		await sender.dispatch(entry(), call("c1"));
 		// The answer was lost; the sender is rebuilt and the entry goes again under its key.
-		await make().dispatch(entry({ attempts: 2 }), call("c1"));
+		await make().dispatch(entry({ attempts: 1 }), call("c1"));
 		expect(sealer.count).toBe(2);
 		const sealed = vault.read("a")?.ciphertext;
 		expect(sealed).toBe(entries.get("c1"));
@@ -313,7 +313,7 @@ describe("the sender over it", () => {
 		// The first send landed and its answer was lost; the app restarted.
 		await make().dispatch(entry(), call("c1"));
 		const restarted = make();
-		await restarted.dispatch(entry({ attempts: 2 }), call("c1"));
+		await restarted.dispatch(entry({ attempts: 1 }), call("c1"));
 		await expect(
 			restarted.undo({ token: "c1" }, "c1-undo-1"),
 		).rejects.toMatchObject({ status: 404 });

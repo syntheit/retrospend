@@ -187,7 +187,7 @@ export interface VaultEntry {
 	baseVersion: string | null | { after: string };
 	payload: unknown;
 	device?: { changes: readonly { after: unknown }[] };
-	/** Sends begun, this one included: 1 is the first. */
+	/** Sends begun before this one (the sender reads the entry before it counts the send): 0 is the first. */
 	attempts: number;
 }
 
@@ -252,7 +252,7 @@ export function fakeVaultTransport(
 						? Number(entry.baseVersion)
 						: Number.NaN;
 			if (!Number.isInteger(base)) throw new VaultProblem(400, "bad_request");
-			if (entry.attempts <= 1) {
+			if (entry.attempts === 0) {
 				const row = pulled(entry.targetId);
 				priors.set(
 					key,
