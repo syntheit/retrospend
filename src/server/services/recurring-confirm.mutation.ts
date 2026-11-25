@@ -5,14 +5,22 @@
  * own (income/confirm-recurring.mutation.ts). The undo removes the entry and
  * puts the template back on its due date.
  */
-import { nextRecurringDate } from "@retrospend/domain/recurring";
-import { startOfNextDayIn } from "@retrospend/domain/time-zone";
+import {
+	dueAnchorDay,
+	nextDueAfter,
+	nextRecurringDate,
+} from "@retrospend/domain/recurring";
+import { isDue } from "@retrospend/domain/recurring-post/due";
+import {
+	PAYMENT_ALREADY_CONFIRMED,
+	RECURRING_NOT_FOUND,
+	RecurringRefusal,
+} from "@retrospend/domain/recurring-post/refusals";
 import { TRPCError } from "@trpc/server";
+import { userTimeZone } from "~/server/services/user-time-zone";
 import { recurringEntryData } from "./money-in.service";
 import type { MoneyMutation } from "./preview/types";
-import { dueAnchorDay, nextDueAfter } from "./income/due-day";
 import { paidOnInstant } from "./recurring-paid-on";
-import { userTimeZone } from "~/server/services/user-time-zone";
 
 export interface ConfirmRecurringExpenseInput {
 	readonly templateId: string;
@@ -60,25 +68,17 @@ export const confirmRecurringExpense: MoneyMutation<
 				...(input.auto && { autoPay: true, amountMode: "FIXED" }),
 			},
 		});
-		if (!template)
-			throw new TRPCError({
-				code: "NOT_FOUND",
-				message: "Recurring template not found",
-			});
+		if (!template) throw new RecurringRefusal("not_found", RECURRING_NOT_FOUND);
 		if (
 			input.dueDate &&
 			input.dueDate.getTime() !== template.nextDueDate.getTime()
 		)
-			throw new TRPCError({
-				code: "CONFLICT",
-				message: "This payment was already confirmed",
-			});
+			throw new RecurringRefusal("already_posted", PAYMENT_ALREADY_CONFIRMED);
 		const zone = await userTimeZone(tx, actor.userId, input.timeZone);
-		if (template.nextDueDate >= startOfNextDayIn(new Date(), zone))
-			throw new TRPCError({
-				code: "CONFLICT",
-				message: "This payment was already confirmed",
-			});
+		// Either direction reads the start of the next day here, as it always has;
+		// income's own confirm and skip read the UTC day (income/confirm-recurring).
+		if (!isDue(template.nextDueDate, new Date(), zone, "start_of_next_day"))
+			throw new RecurringRefusal("not_due", PAYMENT_ALREADY_CONFIRMED);
 
 		// Direction, amount and the due date's rate (never 1) for the row.
 		const entry = await recurringEntryData(
@@ -108,10 +108,7 @@ export const confirmRecurringExpense: MoneyMutation<
 			},
 		});
 		if (advanced.count === 0)
-			throw new TRPCError({
-				code: "CONFLICT",
-				message: "This payment was already confirmed",
-			});
+			throw new RecurringRefusal("already_posted", PAYMENT_ALREADY_CONFIRMED);
 		const row = await tx.expense.create({ data: entry, select: { id: true } });
 		return {
 			value: {

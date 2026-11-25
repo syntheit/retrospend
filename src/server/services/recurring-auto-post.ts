@@ -24,13 +24,13 @@
  *   retries; Needs you shows it as overdue after an hour (needs-you/activity.ts).
  */
 import { MissingRateError } from "@retrospend/domain/money";
-import { TRPCError } from "@trpc/server";
+import { RecurringRefusal } from "@retrospend/domain/recurring-post/refusals";
 import { env } from "~/env";
-import { isProtectedNow } from "~/server/services/protection/now";
 import { textUnavailableProblem } from "~/server/crypto/field-open";
 import { db } from "~/server/db";
 import { ensureUserKeyringWhenSealing } from "~/server/services/keys/data-key.service";
 import { forUser } from "~/server/services/preview";
+import { isProtectedNow } from "~/server/services/protection/now";
 import type { Prisma } from "~prisma";
 import { confirmRecurringExpense } from "./recurring-confirm.mutation";
 
@@ -83,11 +83,8 @@ const errorCode = (error: unknown) => {
 };
 
 function outcomeOf(error: unknown): Outcome {
-	if (
-		error instanceof TRPCError &&
-		(error.code === "CONFLICT" || error.code === "NOT_FOUND")
-	)
-		return "raced";
+	// Not found, already posted or not due: someone else got there first.
+	if (error instanceof RecurringRefusal) return "raced";
 	if (error instanceof MissingRateError) return "missingRate";
 	if (textUnavailableProblem(error) === "key_rotated") return "retry";
 	console.error(

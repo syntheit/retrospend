@@ -17,6 +17,7 @@ import {
 	EditRefusal,
 } from "@retrospend/domain/expense-write/refusals";
 import { MissingRateError } from "@retrospend/domain/money";
+import { RecurringRefusal } from "@retrospend/domain/recurring-post/refusals";
 import { errorFormatter } from "~/server/api/error-formatter";
 import { uniqueViolation } from "~/server/api/unique-violation";
 import { TRPC_ALLOWED } from "~/server/api/protection/allowed";
@@ -225,6 +226,14 @@ const timingMiddleware = t.middleware(async ({ next }) => {
 		throw new TRPCError({
 			code:
 				result.error.cause.kind === "notFound" ? "NOT_FOUND" : "BAD_REQUEST",
+			message: result.error.cause.message,
+			cause: result.error.cause,
+		});
+	}
+	// Confirming or skipping a recurring period: the codes it always had.
+	if (!result.ok && result.error.cause instanceof RecurringRefusal) {
+		throw new TRPCError({
+			code: result.error.cause.kind === "not_found" ? "NOT_FOUND" : "CONFLICT",
 			message: result.error.cause.message,
 			cause: result.error.cause,
 		});
