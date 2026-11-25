@@ -153,13 +153,19 @@ const BOOKED = {
 const entry = (targetId: string) => ({ targetId });
 
 function fakeDevice(
-	over: { open?: unknown[]; acked?: unknown[]; booked?: unknown } = {},
+	over: {
+		open?: unknown[];
+		acked?: unknown[];
+		booked?: unknown;
+		unsettled?: string[];
+	} = {},
 ) {
 	const writes = {
 		bookBulk: jest.fn(async () => ("booked" in over ? over.booked : BOOKED)),
 		comparePreviewBulk: jest.fn(async () => undefined),
 		settleBulk: jest.fn(),
 		undoneBulk: jest.fn(),
+		bulkUnsettled: jest.fn(() => new Set(over.unsettled ?? [])),
 	};
 	const outbox = {
 		snapshot: jest.fn(async () => ({
@@ -223,7 +229,7 @@ describe("bulk under the device flag", () => {
 		expect(writes.settleBulk).toHaveBeenCalledWith(
 			"k1",
 			BOOKED,
-			{ reached: 3, skipped: ["ghost"] },
+			{ reached: 3, skipped: ["ghost"], serverTime: null },
 			PICKED,
 		);
 		expect(out).toEqual({ done: 3, failed: 1, tokens: ["tok-del"] });
@@ -247,17 +253,62 @@ describe("bulk under the device flag", () => {
 		expect(writes.settleBulk).toHaveBeenCalledWith(
 			"k2",
 			BOOKED,
-			{ reached: 3, skipped: null },
+			{ reached: 3, skipped: null, serverTime: null },
 			["a", "b", "c"],
 		);
 	});
 
-	it("sends when the device could not book, and settles nothing", async () => {
+	it("sends when the device could not book, and holds every picked id for a pull", async () => {
 		const { api, raw } = fakeApi();
 		const { device, writes } = fakeDevice({ booked: null });
 		await runBulk(api, { kind: "delete" }, PICKED, "k1", device);
 		expect(raw.expenses.bulkDelete).toHaveBeenCalledTimes(1);
-		expect(writes.settleBulk).not.toHaveBeenCalled();
+		expect(writes.settleBulk).toHaveBeenCalledWith(
+			"k1",
+			null,
+			expect.objectContaining({ reached: 3 }),
+			PICKED,
+		);
+	});
+
+	it("an id from an earlier bulk action no pull has settled refuses Sync first", async () => {
+		const { api, raw } = fakeApi();
+		const { device, writes } = fakeDevice({ unsettled: ["a"] });
+		await expect(
+			runBulk(api, { kind: "delete" }, PICKED, "k2", device),
+		).rejects.toBeInstanceOf(SyncFirstError);
+		expect(raw.expenses.bulkDelete).not.toHaveBeenCalled();
+		expect(writes.bookBulk).not.toHaveBeenCalled();
+		expect(await unsyncedIds(device, ["a", "zzz"])).toEqual(["a"]);
+	});
+
+	it("hands the server's Date header of the answer to the engine, never the phone's clock", async () => {
+		const date = "Mon, 05 Oct 2026 03:00:00 GMT";
+		const { api } = fakeApi({
+			bulkCategory: jest.fn(
+				async (
+					body: { ids: string[] },
+					options: { context: { onServerTime?: (d: string) => void } },
+				) => {
+					options.context.onServerTime?.(date);
+					return { updated: body.ids.length, undo: "tok-cat" };
+				},
+			),
+		});
+		const { device, writes } = fakeDevice();
+		await runBulk(
+			api,
+			{ kind: "category", categoryId: "hold", name: "Hold" },
+			["a"],
+			"k3",
+			device,
+		);
+		expect(writes.settleBulk).toHaveBeenCalledWith(
+			"k3",
+			BOOKED,
+			{ reached: 1, skipped: null, serverTime: date },
+			["a"],
+		);
 	});
 
 	it("an engine that throws never turns a write the server took into an error", async () => {

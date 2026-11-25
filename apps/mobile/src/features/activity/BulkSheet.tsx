@@ -72,11 +72,17 @@ export function BulkSheet({
 			});
 		if (!device) void showPreview();
 		else
-			void unsyncedIds(device, ids).then((held) => {
-				if (cancelled) return;
-				if (held.length > 0) setSyncFirst(true);
-				else void showPreview();
-			});
+			unsyncedIds(device, ids).then(
+				(held) => {
+					if (cancelled) return;
+					if (held.length > 0) setSyncFirst(true);
+					else void showPreview();
+				},
+				// An outbox that cannot be read is no reason to write: show the failed state.
+				() => {
+					if (!cancelled) setFailed(true);
+				},
+			);
 		return () => {
 			cancelled = true;
 		};

@@ -42,13 +42,17 @@ export class SyncFirstError extends Error {
 	}
 }
 
-/** The picked ids an outbox or acked entry still names, in the order picked. */
+/** The picked ids an outbox or acked entry, or a bulk action no pull has settled, still names, in the order picked. */
 export async function unsyncedIds(
 	device: BulkDevice,
 	ids: readonly string[],
 ): Promise<string[]> {
 	const { open, acked } = await device.outbox.snapshot();
-	return targetsWithEntries([...open, ...acked], ids);
+	return targetsWithEntries(
+		[...open, ...acked],
+		ids,
+		device.writes.bulkUnsettled(),
+	);
 }
 
 const opOf = (action: BulkAction, ids: readonly string[]): BulkOp =>
@@ -124,15 +128,30 @@ export async function runBulk(
 	batch: string,
 	device: BulkDevice | null = null,
 ): Promise<BulkResult> {
-	const options = { context: { idempotencyKey: batch } };
+	// The server's own clock at its answer, for the engine's compare of the rows.
+	let serverTime: string | null = null;
+	const options = {
+		context: device
+			? {
+					idempotencyKey: batch,
+					onServerTime: (date: string) => {
+						serverTime = date;
+					},
+				}
+			: { idempotencyKey: batch },
+	};
 	// Checked again at the tap: a write may have been saved while the sheet was open.
 	if (device && (await unsyncedIds(device, ids)).length > 0)
 		throw new SyncFirstError();
 	const booked = (await device?.writes.bookBulk(opOf(action, ids))) ?? null;
 	const settle = (reached: number, skipped: readonly string[] | null) => {
 		try {
-			if (booked)
-				device?.writes.settleBulk(batch, booked, { reached, skipped }, ids);
+			device?.writes.settleBulk(
+				batch,
+				booked,
+				{ reached, skipped, serverTime },
+				ids,
+			);
 		} catch {
 			// The compare never turns a write the server took into an error.
 		}

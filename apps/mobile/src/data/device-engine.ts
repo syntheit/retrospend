@@ -90,12 +90,14 @@ export interface DeviceBulkWrites {
 	/** The server took bulk action `key`: its booking is held against the answer and the next pull. */
 	settleBulk(
 		key: string,
-		booked: BulkBooked,
+		booked: BulkBooked | null,
 		answer: BulkAnswer,
 		ids: readonly string[],
 	): void;
 	/** Bulk action `key` was undone: its rows are not compared. */
 	undoneBulk(key: string): void;
+	/** The ids of bulk actions the server took that no pull has settled: "Sync first" for another action over them. */
+	bulkUnsettled(): ReadonlySet<string>;
 }
 
 /** The bulk side of the engine of `api`, or null when it has none (or it was disposed). */
@@ -111,6 +113,7 @@ export function bulkWritesFor(api: RetrospendClient): DeviceBulkWrites | null {
 		settleBulk: (key, booked, answer, ids) =>
 			engine.settleBulk(key, booked, answer, ids),
 		undoneBulk: (key) => engine.undoneBulk(key),
+		bulkUnsettled: () => engine.bulkUnsettled(),
 	};
 }
 

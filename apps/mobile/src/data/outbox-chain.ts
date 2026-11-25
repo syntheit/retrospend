@@ -60,15 +60,17 @@ export function isChainedTo(entry: OutboxEntry, clientId: string): boolean {
 
 /**
  * The ids among `ids` that an entry (open, parked or acked) still names as its
- * target. The one "an entry exists for this row" check: the queue's undo and
- * the phone's bulk actions read both lists through it.
+ * target, or that `alsoNamed` holds: bulk actions the server took and no pull
+ * has settled, which never enter the outbox. The one "this row is not synced"
+ * check: the queue's undo and the phone's bulk actions read it.
  */
 export function targetsWithEntries(
 	entries: readonly Pick<OutboxEntry, "targetId">[],
 	ids: readonly string[],
+	alsoNamed: ReadonlySet<string> = new Set(),
 ): string[] {
 	const named = new Set(entries.map((e) => e.targetId));
-	return ids.filter((id) => named.has(id));
+	return ids.filter((id) => named.has(id) || alsoNamed.has(id));
 }
 
 export const isUnresolved = (base: BaseVersion): base is { after: string } =>
