@@ -55,7 +55,8 @@ export function useDeleteEntry(
 	}: DeleteTargetArgs): Promise<boolean> {
 		const writes = api && !shared ? deviceWrites(api) : null;
 		if (!api || !local || !writes) return false;
-		// The version the delete is checked against: the row as the server holds it now.
+		// The version the delete is checked against: the row as the server holds it
+		// now. Offline this read fails and the device's last pulled version stands in.
 		const opened = await api.expenses.get({ id }).then(
 			(row) => row.updatedAt,
 			() => null,
@@ -66,8 +67,10 @@ export function useDeleteEntry(
 			change: { kind: "delete", id },
 			opened,
 		});
-		if (queued.status === "busy") {
-			toast.show({ message: tt("stillSending") });
+		if (queued.status !== "queued") {
+			toast.show({
+				message: tt(queued.status === "busy" ? "stillSending" : "notRead"),
+			});
 			return true;
 		}
 		announceEntryChange();

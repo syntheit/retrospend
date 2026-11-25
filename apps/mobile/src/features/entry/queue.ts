@@ -233,20 +233,20 @@ export function undoSaved(input: {
 
 export type QueuedChange =
 	| { status: "queued"; clientId: string }
-	/**
-	 * Nothing safe to base it on: the row's last entry may already be on the
-	 * server (nothing stacks on it yet), or no version of the row was read.
-	 */
-	| { status: "busy" };
+	/** The row's last entry began a send: it may be on the server, and nothing stacks on it yet. */
+	| { status: "busy" }
+	/** Neither the screen nor the device's copy has a version of the row: refused, never guessed. */
+	| { status: "unreadable" };
 
 /**
  * Queues an edit or a delete of a saved expense, under the dev flag. The
  * device books it over the writes still waiting; the entry is chained after
  * the last waiting entry for the row, or based on `opened`, the `updatedAt`
- * of the row as the screen read it. The booking never supplies the base: it
- * can be missing (Sync first, a pull began) or version-less, and an entry
- * sent with no `expectedUpdatedAt` would overwrite or delete unchecked. The
- * update and delete senders are PR10: until then nothing flushes it, and
+ * of the row as the screen read it. The screen's version wins; when the screen
+ * read none (offline), the booking's `base` stands in, which is the version
+ * the device last pulled for the row. With neither it is "unreadable": an
+ * entry sent with no `expectedUpdatedAt` would overwrite or delete unchecked.
+ * The update and delete senders are PR10: until then nothing flushes it, and
  * Undo takes it back out of the outbox.
  */
 export function queueExpenseChange(input: {
@@ -270,11 +270,12 @@ export function queueExpenseChange(input: {
 			.filter((e) => e.targetId === targetId)
 			.at(-1);
 		if (earlier && earlier.attempts > 0) return { status: "busy" };
-		if (!earlier && !opened) return { status: "busy" };
 		const booked = await writes.book(op);
+		const version = opened ?? booked?.base ?? null;
+		if (!earlier && !version) return { status: "unreadable" };
 		const base: BaseVersion = earlier
 			? { after: earlier.clientId }
-			: (opened as string);
+			: (version as string);
 		const clientId = newClientId();
 		await outbox.enqueue({
 			clientId,

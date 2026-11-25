@@ -176,9 +176,8 @@ describe("queueExpenseChange", () => {
 		});
 	});
 
-	it("is busy, queuing nothing, when no version of the row was read", async () => {
+	it("falls back to the version the device last pulled when the screen read none", async () => {
 		const outbox = open();
-		// The booking returned a base, but it never stands in for the row's own version.
 		const writes = writesWith(async () => booked("2026-10-05T03:00:00.000Z"));
 		const queued = await queueExpenseChange({
 			outbox,
@@ -186,7 +185,22 @@ describe("queueExpenseChange", () => {
 			change: { kind: "update", body: write.body },
 			opened: null,
 		});
-		expect(queued).toEqual({ status: "busy" });
+		expect(queued.status).toBe("queued");
+		const [entry] = await outbox.all();
+		expect(entry).toMatchObject({ baseVersion: "2026-10-05T03:00:00.000Z" });
+	});
+
+	it("is unreadable, queuing nothing, when neither the screen nor the device has a version", async () => {
+		const outbox = open();
+		for (const book of [async () => booked(null), async () => null]) {
+			const queued = await queueExpenseChange({
+				outbox,
+				writes: writesWith(book),
+				change: { kind: "delete", id: ID },
+				opened: null,
+			});
+			expect(queued).toEqual({ status: "unreadable" });
+		}
 		expect(await outbox.all()).toEqual([]);
 	});
 

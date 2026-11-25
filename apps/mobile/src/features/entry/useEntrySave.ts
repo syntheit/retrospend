@@ -67,8 +67,12 @@ export function useEntrySave({
 			change: { kind: "update", body: write.body },
 			opened: form.expense.editing?.updatedAt ?? null,
 		}).finally(() => setBusy(false));
-		if (queued.status === "busy") {
-			toast.show({ message: t("toast.stillSending") });
+		if (queued.status !== "queued") {
+			toast.show({
+				message: t(
+					queued.status === "busy" ? "toast.stillSending" : "toast.notRead",
+				),
+			});
 			return true;
 		}
 		announceEntryChange();

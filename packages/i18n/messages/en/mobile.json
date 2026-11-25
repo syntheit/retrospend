@@ -81,7 +81,8 @@
 			"editOffline": "You're offline. Editing needs a connection.",
 			"editRefused": "Couldn't save this change. It may be locked.",
 			"editSynced": "This entry already synced. Open it from Activity to edit it.",
-			"stillSending": "This expense is still sending. Try again in a moment."
+			"stillSending": "This expense is still sending. Try again in a moment.",
+			"notRead": "Couldn't read this expense. Try again in a moment."
 		},
 		"changes": {
 			"offline": "You're offline. This saves on your phone and syncs later.",
