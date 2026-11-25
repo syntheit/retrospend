@@ -8,10 +8,10 @@ import { join, relative } from "node:path";
 // without asking `transportFor`, fails here.
 
 const ROOT = join(__dirname, "..");
-// What is not bundled into the app: dependencies, tests, build plugins and
-// scripts, store and e2e assets, native projects.
+// What is not bundled into the app, by path from the app root: dependencies
+// (at any depth), then top-level folders only, so a folder of that name inside
+// src or app is still read. Native projects of the local modules too.
 const NOT_BUNDLED = new Set([
-	"node_modules",
 	"test",
 	"plugins",
 	"scripts",
@@ -21,13 +21,17 @@ const NOT_BUNDLED = new Set([
 	"ios",
 	"android",
 ]);
+const skipped = (name: string, rel: string) =>
+	name === "node_modules" ||
+	name.startsWith(".") ||
+	NOT_BUNDLED.has(rel) ||
+	/^modules\/[^/]+\/(ios|android)$/.test(rel);
 
 function* sources(dir: string): Generator<string> {
 	for (const entry of readdirSync(dir, { withFileTypes: true })) {
 		const path = join(dir, entry.name);
 		if (entry.isDirectory()) {
-			if (!NOT_BUNDLED.has(entry.name) && !entry.name.startsWith("."))
-				yield* sources(path);
+			if (!skipped(entry.name, relative(ROOT, path))) yield* sources(path);
 		} else if (/\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name))
 			yield path;
 	}
