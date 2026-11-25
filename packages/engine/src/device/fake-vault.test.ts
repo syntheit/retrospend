@@ -1,0 +1,322 @@
+import { describe, expect, it } from "vitest";
+import {
+	createFakeSealer,
+	FakeVault,
+	fakeVaultTransport,
+	openFake,
+	type VaultEntry,
+	VaultProblem,
+	type VaultRecord,
+	type VaultWrite,
+} from "./fake-vault";
+
+// The double's own rules, each one the real store's (cited in fake-vault.ts).
+// Values: USD 100 booked at blue 1,545 is ARS 154,500.00; edited to USD 120 it
+// is ARS 185,400.00.
+
+const w = (
+	id: string,
+	baseVersion: number,
+	ciphertext: string | null = `bytes-${id}-${baseVersion}`,
+	over: Partial<VaultWrite> = {},
+): VaultWrite => ({
+	id,
+	collectionId: "expenses",
+	entity: 1,
+	baseVersion,
+	ciphertext,
+	...over,
+});
+
+const refused = (run: () => unknown): VaultProblem => {
+	try {
+		run();
+	} catch (error) {
+		if (error instanceof VaultProblem) return error;
+	}
+	throw new Error("not refused");
+};
+
+describe("versions", () => {
+	it("a create is base 0 and becomes version 1; an edit becomes base + 1", () => {
+		const vault = new FakeVault();
+		expect(vault.write("k1", [w("a", 0)]).results).toEqual([
+			{ id: "a", version: 1 },
+		]);
+		expect(vault.write("k2", [w("a", 1)]).results).toEqual([
+			{ id: "a", version: 2 },
+		]);
+		expect(vault.read("a")?.version).toBe(2);
+	});
+
+	it("a stale base or a taken id is a conflict and stores nothing", () => {
+		const vault = new FakeVault();
+		vault.write("k1", [w("a", 0)]);
+		vault.write("k2", [w("a", 1)]);
+		const stale = refused(() => vault.write("k3", [w("a", 1, "other")]));
+		expect([stale.status, stale.code, stale.conflictIds]).toEqual([
+			409,
+			"conflict",
+			["a"],
+		]);
+		const taken = refused(() => vault.write("k4", [w("a", 0, "other")]));
+		expect(taken.code).toBe("conflict");
+		expect(vault.read("a")?.ciphertext).toBe("bytes-a-1");
+	});
+
+	it("lists every conflicting id in id order and keeps none of the batch", () => {
+		const vault = new FakeVault();
+		vault.write("k1", [w("b", 0), w("c", 0)]);
+		const error = refused(() =>
+			vault.write("k2", [w("c", 0, "x"), w("fresh", 0), w("b", 0, "y")]),
+		);
+		expect(error.conflictIds).toEqual(["b", "c"]);
+		expect(vault.read("fresh")).toBeUndefined();
+	});
+});
+
+describe("replay by exact bytes", () => {
+	it("a write already stored exactly answers as applied, under any key", () => {
+		const vault = new FakeVault();
+		vault.write("k1", [w("a", 0)]);
+		expect(vault.write("lost-answer-retry", [w("a", 0)]).results).toEqual([
+			{ id: "a", version: 1 },
+		]);
+		expect(vault.read("a")?.version).toBe(1);
+	});
+
+	it("the same version with other bytes is a conflict", () => {
+		const vault = new FakeVault();
+		vault.write("k1", [w("a", 0)]);
+		expect(refused(() => vault.write("k2", [w("a", 0, "resealed")])).code).toBe(
+			"conflict",
+		);
+	});
+
+	it("the same request under the same key answers the first answer without a second write", () => {
+		const vault = new FakeVault();
+		vault.write("k1", [w("a", 0)]);
+		vault.write("k2", [w("a", 1)]);
+		// k1 again: a stale base now, but the key answers what it did.
+		expect(vault.write("k1", [w("a", 0)]).results).toEqual([
+			{ id: "a", version: 1 },
+		]);
+		expect(vault.read("a")?.version).toBe(2);
+	});
+
+	it("other bytes under the same key are refused like a reused key", () => {
+		const vault = new FakeVault();
+		vault.write("k1", [w("a", 0)]);
+		const error = refused(() => vault.write("k1", [w("a", 0, "resealed")]));
+		expect([error.status, error.code]).toEqual([422, "idempotency_key_reused"]);
+	});
+
+	it("a refused request keeps no key, so a corrected batch may reuse it", () => {
+		const vault = new FakeVault();
+		vault.write("k1", [w("a", 0)]);
+		refused(() => vault.write("k2", [w("a", 0, "other")]));
+		expect(vault.write("k2", [w("a", 1)]).results).toEqual([
+			{ id: "a", version: 2 },
+		]);
+	});
+});
+
+describe("shape and tombstones", () => {
+	it("refuses a record that moves, a tombstone at base 0 and a repeated id", () => {
+		const vault = new FakeVault();
+		vault.write("k1", [w("a", 0)]);
+		expect(
+			refused(() => vault.write("k2", [w("a", 1, "x", { entity: 2 })])).code,
+		).toBe("bad_request");
+		expect(refused(() => vault.write("k3", [w("z", 0, null)])).status).toBe(
+			400,
+		);
+		expect(
+			refused(() => vault.write("k4", [w("y", 0), w("y", 0, "b")])).status,
+		).toBe(400);
+	});
+
+	it("a tombstone is a version, and a live write over it revives the record", () => {
+		const vault = new FakeVault();
+		vault.write("k1", [w("a", 0)]);
+		vault.write("k2", [w("a", 1, null)]);
+		expect(vault.read("a")).toMatchObject({ version: 2, ciphertext: null });
+		expect(vault.read("a")?.deletedAt).not.toBeNull();
+		vault.write("k3", [w("a", 2)]);
+		expect(vault.read("a")).toMatchObject({ version: 3, deletedAt: null });
+	});
+});
+
+describe("the sealer", () => {
+	it("sealing one record twice gives two byte strings, and each opens to the record and its version", () => {
+		const sealer = createFakeSealer();
+		const record = { amount: "100", homeAmount: "154500.00" };
+		const [first, second] = [sealer.seal(record, 1), sealer.seal(record, 1)];
+		expect(first).not.toBe(second);
+		expect(openFake(first)).toEqual({ version: 1, plain: record });
+		expect(openFake(second)).toEqual({ version: 1, plain: record });
+	});
+});
+
+describe("the sender over it", () => {
+	const entry = (over: Partial<VaultEntry> = {}): VaultEntry => ({
+		clientId: "c1",
+		kind: "update",
+		targetId: "a",
+		baseVersion: "1",
+		payload: { id: "a", amount: "120", currency: "USD" },
+		device: {
+			changes: [{ after: { amount: "120.00", homeAmount: "185400.00" } }],
+		},
+		attempts: 0,
+		...over,
+	});
+	// The entry's sealed request, as the outbox keeps it between sends.
+	const entries = new Map<string, string>();
+	const call = (clientId: string) => ({
+		context: { idempotencyKey: clientId },
+		sealed: {
+			bytes: entries.get(clientId),
+			keep: async (bytes: string) => {
+				entries.set(clientId, bytes);
+			},
+		},
+	});
+	const setup = () => {
+		entries.clear();
+		const vault = new FakeVault();
+		const sealer = createFakeSealer();
+		const pulledCopy = new Map<string, VaultRecord>();
+		const make = () =>
+			fakeVaultTransport(
+				{ write: (key, writes) => vault.write(key, writes) },
+				{ sealer, pulled: (id) => pulledCopy.get(id) },
+			);
+		return { vault, sealer, pulledCopy, make, sender: make() };
+	};
+
+	it("seals once: a retry resends the entry's bytes, even from another instance of the sender", async () => {
+		const { vault, sealer, make, sender } = setup();
+		await sender.dispatch(
+			entry({ kind: "create", baseVersion: null, clientId: "c0" }),
+			call("c0"),
+		);
+		await sender.dispatch(entry(), call("c1"));
+		// The answer was lost; the sender is rebuilt and the entry goes again under its key.
+		await make().dispatch(entry({ attempts: 1 }), call("c1"));
+		expect(sealer.count).toBe(2);
+		const sealed = vault.read("a")?.ciphertext;
+		expect(sealed).toBe(entries.get("c1"));
+		expect(openFake(sealed ?? "")).toMatchObject({
+			version: 2,
+			plain: { rows: [{ homeAmount: "185400.00" }] },
+		});
+	});
+
+	it("a create is base 0, an edit its stamp, a delete a tombstone", async () => {
+		const { vault, sender } = setup();
+		const made = await sender.dispatch(
+			entry({ kind: "create", baseVersion: null, clientId: "c0" }),
+			call("c0"),
+		);
+		const edited = await sender.dispatch(entry(), call("c1"));
+		const deleted = await sender.dispatch(
+			entry({ kind: "delete", baseVersion: "2", clientId: "c2" }),
+			call("c2"),
+		);
+		expect([made.version, edited.version, deleted.version]).toEqual([
+			"1",
+			"2",
+			null,
+		]);
+		expect(vault.read("a")).toMatchObject({ version: 3, ciphertext: null });
+		expect(vault.requests.map((r) => r.writes[0]?.baseVersion)).toEqual([
+			0, 1, 2,
+		]);
+	});
+
+	it("never turns a missing stamp into a create", async () => {
+		const { sender } = setup();
+		const error = await sender
+			.dispatch(entry({ baseVersion: null }), call("c1"))
+			.catch((e: VaultProblem) => e);
+		expect(error).toMatchObject({ status: 400 });
+	});
+
+	it("a conflict on an edit or a delete parks as expense_changed, the same for a changed and a gone record; a create's stays conflict", async () => {
+		const { vault, sealer, sender } = setup();
+		await sender.dispatch(
+			entry({ kind: "create", baseVersion: null, clientId: "c0" }),
+			call("c0"),
+		);
+		// Another device edits, then deletes: the sender cannot tell which it met.
+		vault.write("elsewhere", [
+			w("a", 1, sealer.seal({ payload: "theirs" }, 2)),
+		]);
+		const changed = await sender.dispatch(entry(), call("c1")).catch((e) => e);
+		expect(changed).toMatchObject({
+			status: 409,
+			code: "expense_changed",
+			conflictIds: ["a"],
+		});
+		vault.write("gone", [w("a", 2, null)]);
+		for (const kind of ["update", "delete"] as const) {
+			const clientId = `g-${kind}`;
+			const gone = await sender
+				.dispatch(entry({ kind, clientId }), call(clientId))
+				.catch((e) => e);
+			expect(gone).toMatchObject({ status: 409, code: "expense_changed" });
+		}
+		const taken = await sender
+			.dispatch(
+				entry({ kind: "create", baseVersion: null, clientId: "c4" }),
+				call("c4"),
+			)
+			.catch((e) => e);
+		expect(taken).toMatchObject({ status: 409, code: "conflict" });
+	});
+
+	it("undo writes back the record the client had pulled, and a create's undo is a tombstone", async () => {
+		const { vault, pulledCopy, sender } = setup();
+		const first = await sender.dispatch(
+			entry({
+				kind: "create",
+				baseVersion: null,
+				clientId: "c0",
+				payload: { amount: "100" },
+			}),
+			call("c0"),
+		);
+		const created = vault.read("a");
+		if (created) pulledCopy.set("a", created);
+		const second = await sender.dispatch(entry(), call("c1"));
+		await sender.undo({ token: second.undo }, "c1-undo-1");
+		expect(vault.read("a")?.version).toBe(3);
+		expect(openFake(vault.read("a")?.ciphertext ?? "").plain).toMatchObject({
+			payload: { amount: "100" },
+		});
+		// The create's undo is based on version 1, but the record moved on: refused.
+		await expect(
+			sender.undo({ token: first.undo }, "c0-undo-1"),
+		).rejects.toMatchObject({ status: 409 });
+		expect(vault.read("a")?.version).toBe(3);
+	});
+
+	it("undo is refused when the record before the write is not known, never guessed", async () => {
+		const { pulledCopy, vault, make } = setup();
+		await make().dispatch(
+			entry({ kind: "create", baseVersion: null, clientId: "c0" }),
+			call("c0"),
+		);
+		const created = vault.read("a");
+		if (created) pulledCopy.set("a", created);
+		// The first send landed and its answer was lost; the app restarted.
+		await make().dispatch(entry(), call("c1"));
+		const restarted = make();
+		await restarted.dispatch(entry({ attempts: 1 }), call("c1"));
+		await expect(
+			restarted.undo({ token: "c1" }, "c1-undo-1"),
+		).rejects.toMatchObject({ status: 404 });
+		expect(vault.read("a")?.version).toBe(2);
+	});
+});

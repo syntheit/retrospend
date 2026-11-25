@@ -1,5 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { createEntrySender } from "./send";
+import { apiTransport, createEntrySender } from "./send";
 
 // An entry chained after a create takes the version the create's answer names.
 
@@ -28,7 +28,9 @@ describe("the entry sender's version", () => {
 			undo: "tok",
 			expense: { updatedAt: "2026-10-15T15:00:01.000Z" },
 		}));
-		expect(await createEntrySender(apiOf(create))(entry("expenses"))).toEqual({
+		expect(
+			await createEntrySender(apiTransport(apiOf(create)))(entry("expenses")),
+		).toEqual({
 			status: "sent",
 			version: "2026-10-15T15:00:01.000Z",
 		});
@@ -41,7 +43,9 @@ describe("the entry sender's version", () => {
 				code: "id_taken",
 			});
 		});
-		expect(await createEntrySender(apiOf(create))(entry("expenses"))).toEqual({
+		expect(
+			await createEntrySender(apiTransport(apiOf(create)))(entry("expenses")),
+		).toEqual({
 			status: "sent",
 		});
 	});

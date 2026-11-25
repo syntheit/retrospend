@@ -3,10 +3,10 @@ import { deviceWrites } from "@/data/deviceWrites";
 import type { Outbox, OutboxEntry } from "@/data/outbox";
 import { type ParkedEntry, parkedFrom } from "./parked-entry";
 import { exclusive } from "./queue";
-import { forgetNotFound, notFoundPull, PARKED_NOT_FOUND } from "./send";
+import { forgetNotFound, MAYBE_GONE, notFoundPull } from "./send";
 
 /**
- * A parked 404 of an update or delete resolves on absence: a pull that began
+ * A parked 404 (or, over the vault, a 409) of an update or delete resolves on absence: a pull that began
  * after the answer and finished without the row shows another device deleted
  * it. A delete then has nothing left to do and leaves; an update stays as
  * "Deleted on another device". With the row still there, or no such pull yet,
@@ -22,7 +22,7 @@ export async function resolveParked(
 		!writes ||
 		entry.entity !== "expenses" ||
 		entry.kind === "create" ||
-		entry.lastError !== PARKED_NOT_FOUND ||
+		!MAYBE_GONE.includes(entry.lastError ?? "") ||
 		!(await writes.absentSince(entry.targetId, notFoundPull(entry.clientId)))
 	)
 		return parkedFrom(entry);

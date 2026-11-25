@@ -102,9 +102,15 @@ export function undoFor(clientId: string): UndoRef | undefined {
 }
 
 /**
- * The `pullsBegun` reading when a send of an update or delete was answered 404.
- * A pull numbered above it began after the answer, so only such a pull can
- * show that the row is gone. Memory only: a parked entry read from disk has
+ * What parks an update or delete when its row may be gone: API v1 answers 404
+ * for a gone row; the vault answers 409 for a gone row and a changed one alike.
+ */
+export const MAYBE_GONE: readonly string[] = [PARKED_NOT_FOUND, PARKED_STAMP];
+
+/**
+ * The `pullsBegun` reading when a send of an update or delete was parked for
+ * `MAYBE_GONE`. A pull numbered above it began after the answer, so only such
+ * a pull can show that the row is gone. Memory only: a parked entry read from disk has
  * none, and any pull of the new run began after its answer.
  */
 const notFoundAt = new Map<string, number>();
@@ -151,16 +157,35 @@ export function classify(error: unknown, serverErrors = 0): SendResult {
 	return { status: "conflict", reason, http: status };
 }
 
+/**
+ * What differs between where a write goes: the request and the undo. The
+ * policy around them (stamps, classify, counters, the 404 note) is one owner,
+ * `createEntrySender`; the sealed vault (K9) is another transport under it.
+ */
+export interface Transport {
+	dispatch(entry: OutboxEntry, options: CallOptions): Promise<Created>;
+	/** `key` is the undo's idempotency key (`undoKey`). */
+	undo(ref: UndoRef, key: string): Promise<void>;
+}
+
+/** API v1, the transport of every build today. */
+export const apiTransport = (api: RetrospendClient): Transport => ({
+	dispatch: (entry, options) => dispatch(api, entry, options),
+	undo: (ref, key) => undoWithKey(api, ref, key),
+});
+
 export interface SenderOptions {
 	/** Stops the run: the account changed, so nothing more is sent. */
 	signal?: AbortSignal;
-	/** `DeviceEngine.pullsBegun`, read when a 404 arrives. */
+	/** `DeviceEngine.pullsBegun`, read when a 404 or a conflict arrives. */
 	pullsBegun?: () => number;
+	/** Writes a sealed request into its entry (`Outbox.seal`). */
+	keepSealed?: (clientId: string, bytes: string) => Promise<void>;
 }
 
 /** The sender for the composers' entities. Undo tokens are kept for Undo. */
 export function createEntrySender(
-	api: RetrospendClient,
+	transport: Transport,
 	options: SenderOptions = {},
 ): Sender {
 	return async (entry) => {
@@ -183,9 +208,14 @@ export function createEntrySender(
 		const stop = () => timeout.abort();
 		options.signal?.addEventListener("abort", stop);
 		try {
-			const { undo: token, version } = await dispatch(api, entry, {
+			const { undo: token, version } = await transport.dispatch(entry, {
 				context: { idempotencyKey: entry.clientId },
 				signal: timeout.signal,
+				sealed: {
+					bytes: entry.sealed,
+					keep: (bytes) =>
+						options.keepSealed?.(entry.clientId, bytes) ?? Promise.resolve(),
+				},
 			});
 			rememberUndo(entry.clientId, {
 				entity: entry.entity,
@@ -206,7 +236,7 @@ export function createEntrySender(
 			if (
 				entry.kind !== "create" &&
 				result.status === "conflict" &&
-				result.http === 404
+				(result.http === 404 || MAYBE_GONE.includes(result.reason))
 			) {
 				notFoundAt.set(entry.clientId, options.pullsBegun?.() ?? 0);
 			}
@@ -218,16 +248,22 @@ export function createEntrySender(
 	};
 }
 
-interface CallOptions {
+export interface CallOptions {
 	context: { idempotencyKey: string };
 	signal: AbortSignal;
+	/**
+	 * A transport that seals reads `bytes` first and seals only when there are
+	 * none, then awaits `keep` before its request leaves: the entry is where
+	 * sealed bytes live, so a restart or a rebuilt transport resends them.
+	 */
+	sealed: { bytes: string | undefined; keep(bytes: string): Promise<void> };
 }
 
 /**
  * The undo token, and for an expense the `updatedAt` the server booked it at
  * (null for a delete: the row is gone).
  */
-interface Created {
+export interface Created {
 	undo: string;
 	version?: string | null;
 }
@@ -322,17 +358,25 @@ export const undoKey = (clientId: string, generation?: number): string =>
 		? `${clientId}-undo`
 		: `${clientId}-undo-${generation}`;
 
-/** Puts a saved write back through its family's undo route. */
-export async function undoWrite(
-	api: RetrospendClient,
+/** Puts a saved write back through the transport, under the undo key of this generation. */
+export function undoWith(
+	transport: Transport,
 	ref: UndoRef,
 	clientId: string,
 	generation?: number,
 ): Promise<void> {
+	return transport.undo(ref, undoKey(clientId, generation));
+}
+
+async function undoWithKey(
+	api: RetrospendClient,
+	ref: UndoRef,
+	key: string,
+): Promise<void> {
 	const timeout = new AbortController();
 	const timer = setTimeout(() => timeout.abort(), SEND_TIMEOUT_MS);
 	const options = {
-		context: { idempotencyKey: undoKey(clientId, generation) },
+		context: { idempotencyKey: key },
 		signal: timeout.signal,
 	};
 	const input = { token: ref.token };

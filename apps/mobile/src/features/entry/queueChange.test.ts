@@ -4,13 +4,13 @@ import { createOutbox } from "@/data/outbox";
 import { bookedRow, booking } from "@/data/outboxFixtures";
 import { createMemoryStore } from "@/data/store";
 import type { PendingWrite } from "./draft";
+import { queueExpenseChange, saveEntry, undoSaved } from "./queue";
 import {
-	flushEntries,
-	queueExpenseChange,
-	saveEntry,
-	undoSaved,
-} from "./queue";
-import { forgetUndoTokens, KEY_REUSED, PARKED_STAMP } from "./send";
+	apiTransport,
+	forgetUndoTokens,
+	KEY_REUSED,
+	PARKED_STAMP,
+} from "./send";
 
 // Edits under the dev flag, sent: undo routing with generation keys, and what
 // a parked row blocks. USD 100 at the blue rate (1,545 ARS).
@@ -121,7 +121,14 @@ describe("undo of a write that may be on the server", () => {
 				throw problem(422, KEY_REUSED);
 			},
 		});
-		expect(await undoSaved({ outbox, api, clientId: ID })).toBe("failed");
+		expect(
+			await undoSaved({
+				outbox,
+				api,
+				transport: apiTransport(api),
+				clientId: ID,
+			}),
+		).toBe("failed");
 		expect(await outbox.all()).toMatchObject([
 			{ state: "conflict", lastError: KEY_REUSED },
 		]);
@@ -136,7 +143,14 @@ describe("undo of a write that may be on the server", () => {
 				throw problem(422, "bad_request");
 			},
 		});
-		expect(await undoSaved({ outbox, api, clientId: ID })).toBe("undone");
+		expect(
+			await undoSaved({
+				outbox,
+				api,
+				transport: apiTransport(api),
+				clientId: ID,
+			}),
+		).toBe("undone");
 		expect(await outbox.all()).toEqual([]);
 	});
 });
@@ -155,49 +169,32 @@ describe("undo under the device flag", () => {
 				return { id: ID, redo: "r" };
 			},
 		});
-		await saveEntry({ outbox, api, write: create });
-		expect(await undoSaved({ outbox, api, clientId: ID })).toBe("failed");
-		expect(await undoSaved({ outbox, api, clientId: ID })).toBe("undone");
+		await saveEntry({
+			outbox,
+			api,
+			transport: apiTransport(api),
+			write: create,
+		});
+		expect(
+			await undoSaved({
+				outbox,
+				api,
+				transport: apiTransport(api),
+				clientId: ID,
+			}),
+		).toBe("failed");
+		expect(
+			await undoSaved({
+				outbox,
+				api,
+				transport: apiTransport(api),
+				clientId: ID,
+			}),
+		).toBe("undone");
 		expect(calls.filter((c) => c.route === "undo").map((c) => c.key)).toEqual([
 			`${ID}-undo-1`,
 			`${ID}-undo-2`,
 		]);
-	});
-
-	it("is refused, with no request, while a later write is about the same row", async () => {
-		const writes = writesOf();
-		mockWrites.mockReturnValue(writes);
-		const outbox = open();
-		const { api, calls } = fake();
-		await saveEntry({ outbox, api, write: create });
-		const queued = await edit(outbox, writes);
-		if (queued.status !== "queued") throw new Error("not queued");
-		expect(await undoSaved({ outbox, api, clientId: ID })).toBe("failed");
-		expect(calls.some((c) => c.route === "undo")).toBe(false);
-		// The last one for the row can still be taken back.
-		expect(await undoSaved({ outbox, api, clientId: queued.clientId })).toBe(
-			"undone",
-		);
-	});
-
-	it("takes a sent edit back on the server and drops its acked record", async () => {
-		const writes = writesOf();
-		mockWrites.mockReturnValue(writes);
-		const outbox = open();
-		const { api, calls } = fake();
-		const queued = await edit(outbox, writes);
-		if (queued.status !== "queued") throw new Error("not queued");
-		await flushEntries(outbox, api);
-		expect(await outbox.acked()).toHaveLength(1);
-		expect(await undoSaved({ outbox, api, clientId: queued.clientId })).toBe(
-			"undone",
-		);
-		expect(calls.at(-1)).toEqual({
-			route: "undo",
-			input: { token: "tok-update" },
-			key: `${queued.clientId}-undo-1`,
-		});
-		expect(await outbox.acked()).toEqual([]);
 	});
 });
 
@@ -207,11 +204,23 @@ describe("undo of a write the lists no longer hold", () => {
 		mockWrites.mockReturnValue(writes);
 		const outbox = open();
 		const { api, calls } = fake();
-		await saveEntry({ outbox, api, write: create });
+		await saveEntry({
+			outbox,
+			api,
+			transport: apiTransport(api),
+			write: create,
+		});
 		// A pull brought the row and retired the acked create; then B was queued on it.
 		await outbox.retire([ID]);
 		expect(await edit(outbox, writes)).toMatchObject({ status: "queued" });
-		expect(await undoSaved({ outbox, api, clientId: ID })).toBe("failed");
+		expect(
+			await undoSaved({
+				outbox,
+				api,
+				transport: apiTransport(api),
+				clientId: ID,
+			}),
+		).toBe("failed");
 		expect(calls.some((c) => c.route === "undo")).toBe(false);
 	});
 
@@ -219,9 +228,21 @@ describe("undo of a write the lists no longer hold", () => {
 		mockWrites.mockReturnValue(writesOf());
 		const outbox = open();
 		const { api } = fake();
-		await saveEntry({ outbox, api, write: create });
+		await saveEntry({
+			outbox,
+			api,
+			transport: apiTransport(api),
+			write: create,
+		});
 		await outbox.retire([ID]);
-		expect(await undoSaved({ outbox, api, clientId: ID })).toBe("undone");
+		expect(
+			await undoSaved({
+				outbox,
+				api,
+				transport: apiTransport(api),
+				clientId: ID,
+			}),
+		).toBe("undone");
 	});
 });
 

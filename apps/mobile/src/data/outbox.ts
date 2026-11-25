@@ -73,6 +73,12 @@ export interface OutboxEntry {
 	serverErrors: number;
 	state: OutboxState;
 	lastError: string | null;
+	/**
+	 * The sealed request a vault transport built at the first send (K9), kept so
+	 * a retry resends the same bytes under the same key. Ciphertext only: never
+	 * a title, a note or the plaintext it was sealed from.
+	 */
+	sealed?: string;
 	/** Its place in the order, read from the store: never written. */
 	seq?: number;
 }
@@ -92,7 +98,7 @@ export type NewOutboxEntry = Pick<
 	OutboxEntry,
 	"clientId" | "entity" | "kind" | "targetId" | "baseVersion" | "payload"
 > &
-	Partial<Pick<OutboxEntry, "device">>;
+	Partial<Pick<OutboxEntry, "device" | "sealed" | "attempts">>;
 
 export interface Ack {
 	/** The `updatedAt` from the answer; null for a delete, absent when it named none. */
@@ -120,6 +126,8 @@ export interface Outbox {
 	 * (a delete, or an answer that named none) is parked as chain_lost.
 	 */
 	markSent(clientId: string, ack?: Ack): Promise<void>;
+	/** Keeps the sealed request of an entry before its request leaves (see `OutboxEntry.sealed`). */
+	seal(clientId: string, bytes: string): Promise<void>;
 	/** `network`: no answer. `server`: a 5xx. */
 	markFailed(
 		clientId: string,
@@ -292,8 +300,10 @@ export function createOutbox(
 		);
 		if (entry.device && !entry.device.unbooked) {
 			ackPulls.set(clientId, answer.pull ?? Number.POSITIVE_INFINITY);
+			// The sealed request has done its work once the server answered.
+			const { sealed: _sealed, ...kept } = entry;
 			const record = {
-				...entry,
+				...kept,
 				ack: { version: version ?? null },
 				ackedAt: now().toISOString(),
 			};
@@ -391,7 +401,8 @@ export function createOutbox(
 			...input,
 			...(input.device ? { device: withoutDeviceText(input.device) } : {}),
 			createdAt: now().toISOString(),
-			attempts: 0,
+			// Only a put-back entry whose send began brings its count.
+			attempts: input.attempts ?? 0,
 			networkFailures: 0,
 			serverErrors: 0,
 			state: "pending",
@@ -420,6 +431,8 @@ export function createOutbox(
 				})),
 			),
 		markSent: (clientId, answer) => serial(() => settle(clientId, answer)),
+		seal: (clientId, bytes) =>
+			serial(() => update(clientId, () => ({ sealed: bytes }))),
 		markFailed: (clientId, error, kind = "network") =>
 			serial(() =>
 				update(clientId, (e) => ({

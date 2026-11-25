@@ -1,7 +1,7 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import { announceEntryChange } from "@/features/entry/events";
 import { flushEntries, saveEntry } from "@/features/entry/queue";
-import { forgetUndoTokens } from "@/features/entry/send";
+import { apiTransport, forgetUndoTokens } from "@/features/entry/send";
 import { forgetSent } from "@/features/entry/sentRetain";
 import { act, flush, renderHook, world } from "../../../test/harness";
 import type { ActivityItem } from "./source";
@@ -68,6 +68,7 @@ describe("waiting rows for the lists", () => {
 			await saveEntry({
 				outbox: world.local.outbox,
 				api: world.api as RetrospendClient,
+				transport: apiTransport(world.api as RetrospendClient),
 				write: { entity: "expenses", label: "Coffee", body },
 				waitMs: 20,
 			});
@@ -94,6 +95,7 @@ describe("waiting rows for the lists", () => {
 			await saveEntry({
 				outbox: world.local.outbox,
 				api: world.api as RetrospendClient,
+				transport: apiTransport(world.api as RetrospendClient),
 				write: { entity: "expenses", label: "Coffee", body },
 				waitMs: 20,
 			});
@@ -104,7 +106,8 @@ describe("waiting rows for the lists", () => {
 
 		// The network is back: the next flush sends it and it leaves the outbox.
 		await act(async () => {
-			await flushEntries(world.local.outbox, onlineApi());
+			const api = onlineApi();
+			await flushEntries(world.local.outbox, api, apiTransport(api));
 			announceEntryChange();
 		});
 		await flush();

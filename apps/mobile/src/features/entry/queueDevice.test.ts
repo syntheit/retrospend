@@ -9,7 +9,12 @@ import {
 	takeFromOutbox,
 	undoSaved,
 } from "./queue";
-import { createEntrySender, entryOutbox, forgetUndoTokens } from "./send";
+import {
+	apiTransport,
+	createEntrySender,
+	entryOutbox,
+	forgetUndoTokens,
+} from "./send";
 
 // Saves under the dev flag: the device books first, an edit or a delete is
 // queued behind what waits for the same row, and nothing stacks on or folds
@@ -84,7 +89,13 @@ describe("saveEntry under the device flag", () => {
 		const outbox = open();
 		const writes = writesWith(async () => booked());
 		mockWrites.mockReturnValue(writes);
-		await saveEntry({ outbox, api, write, waitMs: 0 });
+		await saveEntry({
+			outbox,
+			api,
+			transport: apiTransport(api),
+			write,
+			waitMs: 0,
+		});
 		const [entry] = await outbox.all();
 		expect(entry?.device?.changes).toHaveLength(1);
 		expect(JSON.stringify(entry?.device)).not.toContain(SECRET);
@@ -94,7 +105,13 @@ describe("saveEntry under the device flag", () => {
 	it("enqueues a plain create when the device could not book it", async () => {
 		const outbox = open();
 		mockWrites.mockReturnValue(writesWith(async () => null));
-		await saveEntry({ outbox, api, write, waitMs: 0 });
+		await saveEntry({
+			outbox,
+			api,
+			transport: apiTransport(api),
+			write,
+			waitMs: 0,
+		});
 		const [entry] = await outbox.all();
 		expect(entry?.device).toBeUndefined();
 	});
@@ -106,6 +123,7 @@ describe("saveEntry under the device flag", () => {
 		await saveEntry({
 			outbox,
 			api,
+			transport: apiTransport(api),
 			write: { ...write, entity: "shared-expenses" },
 			waitMs: 0,
 		});
@@ -122,7 +140,12 @@ describe("flush under the device flag", () => {
 			expense: { updatedAt: "2026-10-15T15:00:00.000Z" },
 		});
 		const client = { expenses: { create } } as unknown as RetrospendClient;
-		await saveEntry({ outbox, api: client, write });
+		await saveEntry({
+			outbox,
+			api: client,
+			transport: apiTransport(client),
+			write,
+		});
 		expect(await outbox.all()).toEqual([]);
 		const [acked] = await outbox.acked();
 		expect(acked?.ack).toEqual({
@@ -237,7 +260,13 @@ describe("queueExpenseChange", () => {
 		const outbox = open();
 		const writes = writesWith(async () => booked());
 		mockWrites.mockReturnValue(writes);
-		await saveEntry({ outbox, api, write, waitMs: 0 });
+		await saveEntry({
+			outbox,
+			api,
+			transport: apiTransport(api),
+			write,
+			waitMs: 0,
+		});
 		await outbox.markSending(ID);
 		const queued = await queueExpenseChange({
 			outbox,
@@ -259,9 +288,14 @@ describe("queueExpenseChange", () => {
 			opened: "v1",
 		});
 		if (queued.status !== "queued") throw new Error("not queued");
-		expect(await undoSaved({ outbox, api, clientId: queued.clientId })).toBe(
-			"undone",
-		);
+		expect(
+			await undoSaved({
+				outbox,
+				api,
+				transport: apiTransport(api),
+				clientId: queued.clientId,
+			}),
+		).toBe("undone");
 		expect(await outbox.all()).toEqual([]);
 	});
 });
@@ -270,7 +304,13 @@ describe("takeFromOutbox, unsent only", () => {
 	it("folds an entry that never began a send, and refuses one that did", async () => {
 		const outbox = open();
 		mockWrites.mockReturnValue(null);
-		await saveEntry({ outbox, api, write, waitMs: 0 });
+		await saveEntry({
+			outbox,
+			api,
+			transport: apiTransport(api),
+			write,
+			waitMs: 0,
+		});
 		await outbox.markSending(ID);
 		expect(await takeFromOutbox(outbox, ID, true)).toBeNull();
 		expect(await outbox.all()).toHaveLength(1);
@@ -296,7 +336,9 @@ describe("the sender sends an update to the update route", () => {
 		});
 		const [entry] = await outbox.all();
 		expect(await entryOutbox(outbox).all()).toHaveLength(1);
-		expect(await createEntrySender(client)(entry as never)).toMatchObject({
+		expect(
+			await createEntrySender(apiTransport(client))(entry as never),
+		).toMatchObject({
 			status: "sent",
 		});
 		expect(create).not.toHaveBeenCalled();

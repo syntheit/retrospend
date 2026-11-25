@@ -10,6 +10,32 @@ const T2 = "2026-10-15T15:00:02.000Z";
 
 const device = (id: string) => booking(id, null, bookedRow(id));
 
+describe("sealed request", () => {
+	it("is kept in its entry across a restart, and the entry keeps nothing else of it", async () => {
+		const store = createMemoryStore();
+		const outbox = createOutbox(store, "a");
+		await outbox.enqueue(create("e1"));
+		await outbox.enqueue(create("e2"));
+		await outbox.seal("e1", "ab12cd");
+		const restarted = createOutbox(store, "a");
+		const [first, second] = await restarted.all();
+		expect(first?.sealed).toBe("ab12cd");
+		expect(second?.sealed).toBeUndefined();
+	});
+});
+
+describe("an acked write", () => {
+	it("keeps no sealed request: the server answered, so it has no use", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		await outbox.enqueue(create("e1", device("e1")));
+		await outbox.seal("e1", "ab12cd");
+		await outbox.markSent("e1", { version: T1, pull: 1 });
+		const [acked] = await outbox.acked();
+		expect(acked?.clientId).toBe("e1");
+		expect(acked?.sealed).toBeUndefined();
+	});
+});
+
 describe("device field", () => {
 	it("holds no title, description or location", async () => {
 		const store = createMemoryStore();

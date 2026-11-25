@@ -4,12 +4,13 @@ import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { deviceWrites } from "@/data/deviceWrites";
 import { newClientId } from "@/data/ids";
+import { transportFor } from "@/data/transport";
 import { showAlert } from "@/ui/alert";
 import { useToast } from "@/ui/Toast";
 import { previewDelete, runDelete } from "./deleteEntry";
 import { announceEntryChange } from "./events";
 import { queueExpenseChange, undoSaved } from "./queue";
-import { undoWrite } from "./send";
+import { undoWith } from "./send";
 
 /**
  * Delete one entry: the server's dry run first (R30), then the system alert
@@ -88,6 +89,7 @@ export function useDeleteEntry(
 					const result = await undoSaved({
 						outbox: local.outbox,
 						api,
+						transport: transportFor(api),
 						clientId: queued.clientId,
 					});
 					announceEntryChange();
@@ -122,7 +124,11 @@ export function useDeleteEntry(
 				? {
 						label: tc("undo"),
 						onUndo: async () => {
-							const ok = await undoWrite(api, undo, newClientId()).then(
+							const ok = await undoWith(
+								transportFor(api),
+								undo,
+								newClientId(),
+							).then(
 								() => true,
 								() => false,
 							);

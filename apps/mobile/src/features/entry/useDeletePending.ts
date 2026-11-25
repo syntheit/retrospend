@@ -2,10 +2,11 @@ import { useRef } from "react";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { deviceWrites } from "@/data/deviceWrites";
+import { transportFor } from "@/data/transport";
 import { showAlert } from "@/ui/alert";
 import { useToast } from "@/ui/Toast";
 import { announceEntryChange } from "./events";
-import { exclusive, flushEntries, takeFromOutbox } from "./queue";
+import { flushEntries, putBackInOutbox, takeFromOutbox } from "./queue";
 import { releaseSent } from "./sentRetain";
 
 export interface PendingTarget {
@@ -54,21 +55,13 @@ export function useDeletePending(): (target: PendingTarget) => void {
 				undo: {
 					label: tc("undo"),
 					onUndo: async () => {
-						await exclusive(local.outbox, () =>
-							local.outbox.enqueue({
-								clientId: entry.clientId,
-								entity: entry.entity,
-								kind: entry.kind,
-								targetId: entry.targetId,
-								baseVersion: entry.baseVersion,
-								payload: entry.payload,
-								...(entry.device ? { device: entry.device } : {}),
-							}),
-						);
+						await putBackInOutbox(local.outbox, entry);
 						announceEntryChange();
 						toast.show({ message: t("restored", { title }) });
 						if (api) {
-							await flushEntries(local.outbox, api).catch(() => undefined);
+							await flushEntries(local.outbox, api, transportFor(api)).catch(
+								() => undefined,
+							);
 							announceEntryChange();
 						}
 					},

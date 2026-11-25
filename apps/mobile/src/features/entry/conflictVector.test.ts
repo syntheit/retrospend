@@ -8,7 +8,7 @@ import { createPendingSource } from "@/data/pendingSource";
 import { createMemoryStore } from "@/data/store";
 import { flushEntries, queueExpenseChange } from "./queue";
 import { commitRebase, planRebase } from "./rebase";
-import { PARKED_STAMP } from "./send";
+import { apiTransport, PARKED_STAMP } from "./send";
 
 // Two devices edit one expense, on the real device engine, outbox and queue.
 // Home is ARS in Buenos Aires, blue is 1545, "now" is 2026-10-15 15:00Z, and
@@ -167,7 +167,7 @@ describe("another device's edit under a pending one", () => {
 		// The entry expects 100 and the store holds 80: skipped, 123,600.00.
 		expect(await p.spent()).toBe(12_360_000);
 		const s = server();
-		await flushEntries(p.outbox, s.api);
+		await flushEntries(p.outbox, s.api, apiTransport(s.api));
 		expect((await p.outbox.all())[0]).toMatchObject({
 			clientId: a,
 			lastError: PARKED_STAMP,
@@ -191,7 +191,7 @@ describe("another device's edit under a pending one", () => {
 		// 80 to 120: spent reads 185,400.00, which is +61,800.00 over 123,600.00.
 		expect(await p.spent()).toBe(18_540_000);
 		expect(18_540_000 - 12_360_000).toBe(6_180_000);
-		await flushEntries(p.outbox, s.api);
+		await flushEntries(p.outbox, s.api, apiTransport(s.api));
 		expect(s.sent.map((x) => [x.key, x.stamp, x.amount])).toEqual([
 			[a, V1, "120"],
 			[next, V2, "120"],
@@ -213,7 +213,7 @@ describe("another device's edit under a pending one", () => {
 		);
 		await p.engine.pull();
 		const s = server();
-		await flushEntries(p.outbox, s.api);
+		await flushEntries(p.outbox, s.api, apiTransport(s.api));
 		// A was refused; B waits behind it, unsent.
 		expect(s.sent).toHaveLength(1);
 
@@ -234,7 +234,7 @@ describe("another device's edit under a pending one", () => {
 			state: "conflict",
 			lastError: PARKED_STAMP,
 		});
-		await flushEntries(p.outbox, s.api);
+		await flushEntries(p.outbox, s.api, apiTransport(s.api));
 		// A's re-based write went out at 80 (the other device's amount); B was not sent at all.
 		expect(s.sent).toHaveLength(2);
 		expect(s.sent.map((x) => x.description)).toEqual([undefined, undefined]);

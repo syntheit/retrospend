@@ -4,18 +4,18 @@ import { createOutbox } from "@/data/outbox";
 import { bookedRow, booking } from "@/data/outboxFixtures";
 import { createMemoryStore } from "@/data/store";
 import { parkedFrom } from "./parked-entry";
-import { resolveParked } from "./parked-resolve";
 import { flushEntries, queueExpenseChange } from "./queue";
 import { commitRebase, planRebase } from "./rebase";
 import {
+	apiTransport,
 	forgetNotFound,
 	forgetUndoTokens,
-	PARKED_NOT_FOUND,
 	PARKED_STAMP,
 } from "./send";
 
-// Conflicts of a sent edit or delete under the dev flag: a stale stamp through
-// Sync issues and a 404 resolved on absence.
+// A stale stamp of a sent edit or delete under the dev flag, through Sync
+// issues. The 404 and the rest of the queue's conflicts are in
+// data/sync.contract.test.ts, over every transport.
 
 const ID = "6f1d1c1e-5b0e-4f5c-9c33-0a4a1c0f8a11";
 const V0 = "2026-10-05T03:00:00.000Z";
@@ -121,7 +121,7 @@ describe("a stale stamp", () => {
 			},
 		});
 		await edit(outbox, writes);
-		await flushEntries(outbox, api);
+		await flushEntries(outbox, api, apiTransport(api));
 		expect(await outbox.acked()).toHaveLength(1);
 		const deleted = await queueExpenseChange({
 			outbox,
@@ -130,7 +130,7 @@ describe("a stale stamp", () => {
 			opened: V0,
 		});
 		if (deleted.status !== "queued") throw new Error("not queued");
-		const report = await flushEntries(outbox, api);
+		const report = await flushEntries(outbox, api, apiTransport(api));
 		expect(report).toMatchObject({ sent: 0, conflicts: 1 });
 		const [parked] = await outbox.all();
 		expect(parkedFrom(parked as never)).toMatchObject({
@@ -154,7 +154,7 @@ describe("a stale stamp", () => {
 		});
 		expect(next).not.toBe(deleted.clientId);
 		api.expenses.delete = jest.fn(async () => ({ id: ID, undo: "t" })) as never;
-		await flushEntries(outbox, api);
+		await flushEntries(outbox, api, apiTransport(api));
 		expect(api.expenses.delete).toHaveBeenCalledWith(
 			{ params: { id: ID }, query: { expectedUpdatedAt: V1 } },
 			expect.objectContaining({ context: { idempotencyKey: next } }),
@@ -165,85 +165,5 @@ describe("a stale stamp", () => {
 				.map((c) => (c.input as { query: unknown }).query),
 		).toEqual([{ expectedUpdatedAt: V0 }]);
 		expect(await outbox.all()).toEqual([]);
-	});
-});
-
-describe("a 404 resolves on absence after a later pull", () => {
-	const parkedDelete = async (
-		outbox: ReturnType<typeof open>,
-		writes: DeviceWrites,
-		kind: "update" | "delete",
-	) => {
-		const { api } = fake({
-			update: () => {
-				throw problem(404, PARKED_NOT_FOUND);
-			},
-			delete: () => {
-				throw problem(404, PARKED_NOT_FOUND);
-			},
-		});
-		const queued = await queueExpenseChange({
-			outbox,
-			writes,
-			change: kind === "delete" ? { kind, id: ID } : { kind, body: BODY },
-			opened: V0,
-		});
-		if (queued.status !== "queued") throw new Error("not queued");
-		await flushEntries(outbox, api);
-		const entry = (await outbox.all())[0];
-		if (!entry) throw new Error("not parked");
-		return { api, entry };
-	};
-
-	it("404 delete stays parked through a pull begun before it", async () => {
-		const writes = writesOf({ pullsBegun: () => 7 });
-		mockWrites.mockReturnValue(writes);
-		const outbox = open();
-		const { api, entry } = await parkedDelete(outbox, writes, "delete");
-		// The engine says no pull that began after the 404 has finished.
-		const row = await resolveParked(outbox, api, entry);
-		expect(row).toMatchObject({ reason: PARKED_NOT_FOUND, gone: false });
-		expect(writes.absentSince).toHaveBeenCalledWith(ID, 7);
-		expect(await outbox.all()).toHaveLength(1);
-	});
-
-	it("retires after a later pull or reset without the row", async () => {
-		const writes = writesOf({
-			pullsBegun: () => 7,
-			absentSince: jest.fn(async () => true),
-		});
-		mockWrites.mockReturnValue(writes);
-		const outbox = open();
-		const { api, entry } = await parkedDelete(outbox, writes, "delete");
-		expect(await resolveParked(outbox, api, entry)).toBeNull();
-		expect(await outbox.all()).toEqual([]);
-	});
-
-	it("an edit of a gone row says so and keeps only Discard", async () => {
-		const writes = writesOf({
-			absentSince: jest.fn(async () => true),
-		});
-		mockWrites.mockReturnValue(writes);
-		const outbox = open();
-		const { api, entry } = await parkedDelete(outbox, writes, "update");
-		expect(await resolveParked(outbox, api, entry)).toMatchObject({
-			kind: "update",
-			gone: true,
-		});
-		expect(await outbox.all()).toHaveLength(1);
-	});
-
-	it("never resolves a 409, or a 404 of an entry with no flag", async () => {
-		const writes = writesOf({ absentSince: jest.fn(async () => true) });
-		const outbox = open();
-		const { api, entry } = await parkedDelete(outbox, writes, "update");
-		mockWrites.mockReturnValue(writes);
-		expect(
-			await resolveParked(outbox, api, { ...entry, lastError: PARKED_STAMP }),
-		).toMatchObject({ gone: false });
-		mockWrites.mockReturnValue(null);
-		expect(await resolveParked(outbox, api, entry)).toMatchObject({
-			gone: false,
-		});
 	});
 });
