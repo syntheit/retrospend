@@ -17,7 +17,6 @@
  * lost response can always be replayed.
  */
 import { deleteMany } from "@retrospend/domain/expense-write/bulk";
-import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
 import type { MoneyMutation } from "../preview/types";
 import { EXPENSE_FIGURES } from "./expense.mutation";
@@ -27,6 +26,7 @@ import {
 	restoreExpense,
 	snapshotExpense,
 } from "./expense-snapshot";
+import { requireExpenseStamps } from "./guarded.mutation";
 import { invalidUndo, putUndoStash, takeUndoStash } from "./undo-stash";
 
 type Tx = Prisma.TransactionClient;
@@ -43,12 +43,6 @@ export interface DeletedMany {
 	/** expense.restoreMany with this stash brings every deleted row back. */
 	readonly stash: string;
 }
-
-const stale = () =>
-	new TRPCError({
-		code: "CONFLICT",
-		message: "This expense changed since. Undo is no longer safe.",
-	});
 
 /** Keeps the rows for as long as an undo token lives (24 hours). */
 const putStash = (tx: Tx, userId: string, snapshots: ExpenseSnapshot[]) =>
@@ -73,20 +67,20 @@ export const deleteExpensesBulk: MoneyMutation<DeleteManyInput, DeletedMany> = {
 	id: "expense.deleteMany",
 	touches: EXPENSE_FIGURES,
 	run: async (tx, input, actor) => {
+		// Every stamped row is locked and compared before any row goes, so an
+		// edit cannot commit between the compare and the delete.
+		if (input.expected)
+			await requireExpenseStamps(
+				tx,
+				actor.userId,
+				new Map(Object.entries(input.expected)),
+			);
 		const snapshots: ExpenseSnapshot[] = [];
 		const { deleted, skipped } = await deleteMany(
 			expenseBulkPort(tx, actor.userId),
 			input.ids,
 			{
 				beforeRemove: async (row) => {
-					const want = input.expected?.[row.id];
-					if (want) {
-						const stamp = await tx.expense.findFirst({
-							where: { id: row.id, userId: actor.userId },
-							select: { updatedAt: true },
-						});
-						if (stamp && stamp.updatedAt.toISOString() !== want) throw stale();
-					}
 					snapshots.push(await snapshotExpense(tx, actor.userId, row.id));
 				},
 			},

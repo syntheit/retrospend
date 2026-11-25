@@ -203,6 +203,8 @@ const CATEGORIZE_MAX_IDS = 500;
  * entries that go into it. An undo is the same write over the `previous`
  * moves the save answered with: `excluded` puts each row's analytics flag
  * back, and `lenient` drops a category deleted since instead of refusing.
+ * `expected` is the `stamps` the save answered with, which an undo must return
+ * (categorize.mutation.ts refuses an undo without them, or after any row moved).
  */
 export const categorizeSchema = z.object({
 	moves: z
@@ -218,6 +220,7 @@ export const categorizeSchema = z.object({
 		// at most one per row of a max-size move.
 		.max(CATEGORIZE_MAX_IDS),
 	lenient: z.boolean().optional(),
+	expected: z.record(expenseId, z.string().min(1).max(40)).optional(),
 });
 
 /** A signed undo payload (restore-token.ts). */
