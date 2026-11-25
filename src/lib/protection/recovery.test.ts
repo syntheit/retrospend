@@ -73,7 +73,7 @@ type Sent = Record<string, unknown>;
 type Script = {
 	check?: () => Response | null;
 	/** A commit that stores and loses its answer, or one that is refused. */
-	commit?: (n: number) => "lost" | Response | null;
+	commit?: (n: number) => "lost" | "lostLive" | Response | null;
 };
 
 function setup(script: Script = {}) {
@@ -96,6 +96,8 @@ function setup(script: Script = {}) {
 		if (path === COMMIT) {
 			const outcome = script.commit?.(commits++) ?? null;
 			if (outcome instanceof Response) return outcome;
+			// "lostLive": the request never arrived, so the link is still good.
+			if (outcome === "lostLive") throw new TypeError("connection lost");
 			live = false;
 			if (outcome === "lost") throw new TypeError("connection lost");
 			return json({ version: 4, signedOut: 2 });
@@ -235,8 +237,10 @@ describe("web recovery", () => {
 		const handle = await s.callbacks.begin(keyText);
 		expect(
 			await codeOf(s.callbacks.finish(handle, { password: PASSWORD })),
-		).toBe("unavailable");
-		await s.callbacks.finish(handle, { password: PASSWORD });
+		).toBe("unconfirmed");
+		await expect(
+			s.callbacks.finish(handle, { password: PASSWORD }),
+		).resolves.toBe("linkSpent");
 		expect(s.to(COMMIT)).toHaveLength(1);
 		expect(s.to(CHECK)).toHaveLength(1);
 	});
@@ -261,5 +265,43 @@ describe("web recovery", () => {
 				await codeOf(s.callbacks.finish(handle, { password: PASSWORD })),
 			).toBe(code);
 		}
+	});
+
+	it("sends the password typed at the retry after a rate limit, and the same request after a lost answer", async () => {
+		const OTHER = "Another-Password-2027?";
+		const secret = (body: Sent, password: string) => {
+			const kdf = body.kdf as { salt: string };
+			return signInSecret(
+				masterSubkeys(
+					p,
+					deriveMasterKey(
+						p,
+						password,
+						fromBase64Url(kdf.salt) as Uint8Array,
+						ARGON2_FLOOR,
+					),
+				).authKey,
+			);
+		};
+		const limited = setup({
+			commit: (n) => (n === 0 ? problem("too_many_requests", 429) : null),
+		});
+		const first = await limited.callbacks.begin(keyText);
+		expect(
+			await codeOf(limited.callbacks.finish(first, { password: PASSWORD })),
+		).toBe("rateLimited");
+		await limited.callbacks.finish(first, { password: OTHER });
+		const [, second] = limited.to(COMMIT);
+		expect(second?.body.newAuthKey).toBe(secret(second?.body ?? {}, OTHER));
+
+		const lost = setup({ commit: (n) => (n === 0 ? "lostLive" : null) });
+		const again = await lost.callbacks.begin(keyText);
+		await codeOf(lost.callbacks.finish(again, { password: PASSWORD }));
+		await expect(
+			lost.callbacks.finish(again, { password: OTHER }),
+		).resolves.toBe("set");
+		const [a, b] = lost.to(COMMIT);
+		expect(lost.to(COMMIT)).toHaveLength(2);
+		expect(b?.body).toEqual(a?.body);
 	});
 });

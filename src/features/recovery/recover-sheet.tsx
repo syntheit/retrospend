@@ -28,8 +28,12 @@ export type RecoverSheetProps = RecoveryCallbacks & {
 	onOpenChange: (open: boolean) => void;
 	/** A failure known before anything is typed (the link check found no recovery key on the account). */
 	preset?: RecoveryFailureCode | null;
-	/** The new password is set. The caller sends the person on. */
-	onDone: () => void;
+	/**
+	 * The new password is set (`set`), or the link was found spent after a
+	 * commit that got no answer (`linkSpent`): the caller sends the person to
+	 * sign in and says which.
+	 */
+	onDone: (result: "set" | "linkSpent") => void;
 };
 
 /** Failures after which the handle's proof or keys no longer stand: it is wiped, and the person starts at the key. */
@@ -84,7 +88,7 @@ export function RecoverSheet(props: RecoverSheetProps) {
 		const outcome = await life.run(() =>
 			props.finish(handle, { password: state.password }),
 		);
-		if (outcome.status === "done") props.onDone();
+		if (outcome.status === "done") props.onDone(outcome.value);
 		else if (outcome.status === "failed") fail(outcome.error);
 	};
 

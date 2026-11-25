@@ -178,4 +178,69 @@ describe("recoverReducer", () => {
 			run(full(), { type: "text", field: "password", value: "x" }),
 		).toEqual(full());
 	});
+
+	it("after a commit that may have gone through, locks both password fields for good, whatever the retry says", () => {
+		const onPassword = full({
+			step: "password",
+			password: PASSWORD,
+			confirm: PASSWORD,
+		});
+		const unknown = run(
+			onPassword,
+			{ type: "busy" },
+			{ type: "failed", code: "unconfirmed" },
+		);
+		expect(unknown.unconfirmed).toBe(true);
+		expect(fieldsLocked(unknown)).toBe(true);
+		// Not final: Set password still works and sends the same request.
+		expect(recoverView(unknown).primaryDisabled).toBe(false);
+		expect(run(unknown, { type: "text", field: "password", value: "x" })).toBe(
+			unknown,
+		);
+		expect(run(unknown, { type: "text", field: "confirm", value: "x" })).toBe(
+			unknown,
+		);
+		// A retry that is refused (a rate limit) does not unlock them: the core
+		// still holds the request that may have committed.
+		const refused = run(
+			unknown,
+			{ type: "busy" },
+			{ type: "failed", code: "tooMany" },
+		);
+		expect(refused.unconfirmed).toBe(true);
+		expect(fieldsLocked(refused)).toBe(true);
+		expect(refused.password).toBe(PASSWORD);
+	});
+
+	it("a refusal before any commit leaves the password fields editable, so the retry carries what is typed", () => {
+		const onPassword = full({
+			step: "password",
+			password: PASSWORD,
+			confirm: PASSWORD,
+		});
+		const refused = run(
+			onPassword,
+			{ type: "busy" },
+			{ type: "failed", code: "tooMany" },
+		);
+		expect(refused.unconfirmed).toBe(false);
+		expect(fieldsLocked(refused)).toBe(false);
+		expect(
+			run(refused, { type: "text", field: "password", value: "Other-Pw-2027?" })
+				.password,
+		).toBe("Other-Pw-2027?");
+	});
+
+	it("starting over at the key clears the lock", () => {
+		const onPassword = full({
+			step: "password",
+			password: PASSWORD,
+			confirm: PASSWORD,
+			unconfirmed: true,
+		});
+		expect(
+			run(onPassword, { type: "failed", code: "keysChanged" }).unconfirmed,
+		).toBe(false);
+		expect(run(onPassword, { type: "reset" }).unconfirmed).toBe(false);
+	});
 });

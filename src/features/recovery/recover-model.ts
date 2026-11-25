@@ -23,6 +23,12 @@ export type RecoverState = {
 	confirm: string;
 	busy: boolean;
 	error: RecoveryFailureCode | null;
+	/**
+	 * A commit was sent and its outcome is not known. A retry sends that very
+	 * request (the core keeps it), so the password stays as it was typed: both
+	 * fields are locked until the sheet starts over.
+	 */
+	unconfirmed: boolean;
 };
 
 /** `preset` is a failure known before anything is typed (the link check said the account has no recovery key). */
@@ -35,6 +41,7 @@ export const initialState = (
 	confirm: "",
 	busy: false,
 	error: preset,
+	unconfirmed: false,
 });
 
 export type RecoverAction =
@@ -95,9 +102,9 @@ export const passwordReady = (
 ): boolean =>
 	passwordMeetsRules(state.password) && state.password === state.confirm;
 
-/** Nothing can be typed or tried: working, or failed for good. */
+/** Nothing can be typed or tried: working, failed for good, or waiting on a commit that may have gone through. */
 export const fieldsLocked = (state: RecoverState): boolean =>
-	state.busy || blocksScreen(state.error);
+	state.busy || blocksScreen(state.error) || state.unconfirmed;
 
 export function recoverReducer(
 	state: RecoverState,
@@ -122,7 +129,7 @@ export function recoverReducer(
 						error: null,
 					};
 		case "text":
-			return state.busy || state.step !== "password"
+			return state.busy || state.unconfirmed || state.step !== "password"
 				? state
 				: { ...state, [action.field]: action.value, error: null };
 		case "busy":
@@ -144,8 +151,17 @@ export function recoverReducer(
 						confirm: "",
 						busy: false,
 						error: action.code,
+						unconfirmed: false,
 					}
-				: { ...state, busy: false, error: action.code };
+				: {
+						...state,
+						busy: false,
+						error: action.code,
+						// Once a send is unconfirmed it stays so, whatever the retry says.
+						unconfirmed:
+							state.unconfirmed ||
+							(state.step === "password" && action.code === "unconfirmed"),
+					};
 		}
 	}
 }
