@@ -31,6 +31,7 @@ import {
 	RateInputError,
 	type SavedRate,
 } from "@retrospend/domain/rate-booking";
+import { RecurringInputRefusal } from "@retrospend/domain/recurring-post/refusals";
 import { TRPCError } from "@trpc/server";
 import {
 	CUSTOM_RATE_TYPE,
@@ -54,12 +55,19 @@ export interface RateContext {
 	preferred: string | null;
 }
 
-/** Bad rate input is a BAD_REQUEST to the form; everything else passes through. */
+/**
+ * Bad rate input, or a recurring confirm's bad input (a paid-on day that
+ * cannot be, an amount given or missing), is a BAD_REQUEST to the form;
+ * everything else passes through.
+ */
 export function asBadRequest<T>(run: () => T): T {
 	try {
 		return run();
 	} catch (error) {
-		if (error instanceof RateInputError)
+		if (
+			error instanceof RateInputError ||
+			error instanceof RecurringInputRefusal
+		)
 			throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
 		throw error;
 	}
@@ -142,6 +150,15 @@ export async function loadRateContext(
 	};
 }
 
+/** The domain's booking context over the rate table `db` reads. */
+export function bookContextOf(db: RateDb, ctx: RateContext): BookContext {
+	return {
+		homeCurrency: ctx.homeCurrency,
+		preferred: ctx.preferred,
+		find: (currency, date, type) => findExchangeRate(db, currency, date, type),
+	};
+}
+
 /**
  * Books an entry's rate under `choice` (see RateChoice), reading the rate
  * table through `db`. An edit passes the row as saved, so an edit that moves
@@ -154,13 +171,8 @@ export async function bookRate(
 	choice: RateChoice,
 	saved?: SavedRate | null,
 ): Promise<BookedRate> {
-	const book: BookContext = {
-		homeCurrency: ctx.homeCurrency,
-		preferred: ctx.preferred,
-		find: (currency, date, type) => findExchangeRate(db, currency, date, type),
-	};
 	try {
-		return await bookRateWith(book, entry, choice, saved);
+		return await bookRateWith(bookContextOf(db, ctx), entry, choice, saved);
 	} catch (error) {
 		return asBadRequest(() => {
 			throw error;
