@@ -4,6 +4,7 @@ import {
 	defineConfig,
 	type TestProjectInlineConfiguration,
 } from "vitest/config";
+import { NO_MAIL } from "./src/test/no-mail";
 
 // `pnpm test:pg`: tests that need a real Postgres (TEST_DATABASE_URL).
 // vitest.config.ts excludes these, so `pnpm test` runs without a database.
@@ -53,6 +54,9 @@ for (const file of QUIET_FILES)
 
 const shared: NonNullable<TestProjectInlineConfiguration["test"]> = {
 	environment: "node",
+	// Tests never send real mail, whatever .env the run picks up: the mailer
+	// builds no transport without a host (src/server/mailer.ts).
+	env: NO_MAIL,
 	setupFiles: ["src/test/pg-env.ts"],
 	testTimeout: 30_000,
 };
