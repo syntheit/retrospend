@@ -98,7 +98,7 @@ export type NewOutboxEntry = Pick<
 	OutboxEntry,
 	"clientId" | "entity" | "kind" | "targetId" | "baseVersion" | "payload"
 > &
-	Partial<Pick<OutboxEntry, "device" | "sealed">>;
+	Partial<Pick<OutboxEntry, "device" | "sealed" | "attempts">>;
 
 export interface Ack {
 	/** The `updatedAt` from the answer; null for a delete, absent when it named none. */
@@ -401,7 +401,8 @@ export function createOutbox(
 			...input,
 			...(input.device ? { device: withoutDeviceText(input.device) } : {}),
 			createdAt: now().toISOString(),
-			attempts: 0,
+			// Only a put-back entry whose send began brings its count.
+			attempts: input.attempts ?? 0,
 			networkFailures: 0,
 			serverErrors: 0,
 			state: "pending",

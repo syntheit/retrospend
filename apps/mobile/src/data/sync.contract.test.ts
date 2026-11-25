@@ -435,6 +435,35 @@ describe.each(harnesses)("the queue over the %s transport", (_name, make) => {
 		});
 	});
 
+	describe("a delete taken back, then the save undone", () => {
+		it("a put-back entry whose send began is undone on the server, not dropped as unsent", async () => {
+			h.faults.lose = 1;
+			await save();
+			mockWrites.mockReturnValue(null);
+			const taken = await takeFromOutbox(outbox, ID);
+			if (!taken) throw new Error("not taken");
+			await putBackInOutbox(outbox, taken);
+			// Nothing stacks on it: its send began, so it may be on the server.
+			expect(
+				await queueExpenseChange({
+					outbox,
+					writes,
+					change: { kind: "update", body: { ...BODY, title: "Dinner" } },
+					opened: h.stamp(1),
+				}),
+			).toEqual({ status: "busy" });
+			expect(await undo(ID)).toBe("undone");
+			// The resend replayed the first answer, then the undo took the row back.
+			expect(h.requests().map((r) => r.key)).toEqual([
+				ID,
+				ID,
+				expect.any(String),
+			]);
+			expect(h.rowOf(ID)).toBeNull();
+			expect(await outbox.all()).toEqual([]);
+		});
+	});
+
 	describe("a restart, undo", () => {
 		it("takes back a create whose answer was lost, from a rebuilt transport", async () => {
 			h.faults.lose = 1;

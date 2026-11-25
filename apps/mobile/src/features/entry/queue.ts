@@ -79,8 +79,9 @@ export function takeFromOutbox(
 
 /**
  * Puts an entry taken from the outbox back (the person undid a delete). It
- * keeps its key, its booking and its sealed request: a send that may have
- * landed is resent as it was, never sealed again under the same key.
+ * keeps its key, its booking, its sealed request and the count of sends that
+ * began: one that may have landed is resent as it was (never sealed again under
+ * the same key) and is not taken for one the server never saw.
  */
 export function putBackInOutbox(
 	outbox: Outbox,
@@ -96,6 +97,7 @@ export function putBackInOutbox(
 			payload: entry.payload,
 			...(entry.device ? { device: entry.device } : {}),
 			...(entry.sealed ? { sealed: entry.sealed } : {}),
+			attempts: entry.attempts,
 		}),
 	);
 }
