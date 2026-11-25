@@ -47,6 +47,7 @@ import {
 	type SwapWriter,
 	swapCredentialHash,
 } from "./password-writes";
+import { stayInWindow } from "~/test/rate-window";
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -227,11 +228,6 @@ async function holdCredentialLock(
 
 const TRIES_WINDOW_MS = 15 * 60_000;
 /** The tries count in fixed 15 minute windows: a run near the edge waits it out. */
-async function clearTriesWindowEdge(): Promise<void> {
-	const left = TRIES_WINDOW_MS - (Date.now() % TRIES_WINDOW_MS);
-	if (left < 60_000) await new Promise((r) => setTimeout(r, left + 1_000));
-}
-
 let n = 0;
 const headers = () =>
 	new Headers({ "x-forwarded-for": `203.0.113.${10 + (n++ % 200)}` });
@@ -344,7 +340,7 @@ describe("changeOwnPassword", () => {
 	});
 
 	it("refuses a keyed account without spending a try: the sixth call still says protected_password", async () => {
-		await clearTriesWindowEdge();
+		stayInWindow(TRIES_WINDOW_MS);
 		const a = await passwordUser();
 		await giveKeys(a.id);
 		const session = randomUUID();
@@ -355,7 +351,7 @@ describe("changeOwnPassword", () => {
 	}, 120_000);
 
 	it("spends a try on every call of a keyless account, so the sixth from one session is refused", async () => {
-		await clearTriesWindowEdge();
+		stayInWindow(TRIES_WINDOW_MS);
 		const a = await passwordUser();
 		const session = randomUUID();
 		const wrong = () =>
@@ -796,13 +792,40 @@ describe("auth.requestPasswordReset", () => {
 		expect(await hashesFor(a.email)).toBe(unknown);
 	});
 
-	it("sends nothing to an account whose protection is on, and answers like it does for no account", async () => {
+	it("sends the link to a keyed account whose protection is on, answering as it does for no account, and the plain reset it leads to still refuses", async () => {
 		const a = await passwordUser();
 		await giveKeys(a.id, "ON");
 		mail.sendEmail.mockClear();
 		const answer = await request(a.email);
 		expect(answer).toEqual({ success: true });
 		expect(await request(`nobody-${a.id}@pg-test.invalid`)).toEqual(answer);
+		expect(mail.sendEmail).toHaveBeenCalledTimes(1);
+		expect((mail.sendEmail.mock.calls as unknown as string[][])[0]?.[0]).toBe(
+			a.email,
+		);
+		expect(await tokenRows(a.id)).toBe(1);
+
+		// The link is for recovery with the recovery key: the plain reset refuses
+		// and changes nothing.
+		const before = await storedHash(a.id);
+		await expect(
+			publicCaller().resetPassword({
+				token: tokenInMail(),
+				newPassword: NEW_PASSWORD,
+			}),
+		).rejects.toBeInstanceOf(ProtectedPasswordError);
+		expect(await storedHash(a.id)).toBe(before);
+		expect(await keyRows(a.id)).toEqual({ sets: 1, wraps: 1 });
+	});
+
+	it("sends nothing when protection is on and no key set can recover it", async () => {
+		const a = await passwordUser();
+		await adminDb.user.update({
+			where: { id: a.id },
+			data: { protectionState: "ON" },
+		});
+		mail.sendEmail.mockClear();
+		expect(await request(a.email)).toEqual({ success: true });
 		expect(mail.sendEmail).not.toHaveBeenCalled();
 		expect(await tokenRows(a.id)).toBe(0);
 	});
@@ -1033,7 +1056,7 @@ describe("better-auth two-factor routes that check the password", () => {
 	it.each(PATHS)(
 		"%s refuses once the session's five tries are used, and the route itself counts one",
 		async (path) => {
-			await clearTriesWindowEdge();
+			stayInWindow(TRIES_WINDOW_MS);
 			const a = await passwordUser();
 			const s = await webSession(a.id);
 			for (let i = 0; i < 4; i++) await spendPasswordTry(a.id, s.id);
@@ -1048,7 +1071,7 @@ describe("better-auth two-factor routes that check the password", () => {
 	);
 
 	it("counts a call made with a bearer for a web session, not only one with the cookie", async () => {
-		await clearTriesWindowEdge();
+		stayInWindow(TRIES_WINDOW_MS);
 		const a = await passwordUser();
 		const s = await webSession(a.id);
 		for (let i = 0; i < 5; i++) await spendPasswordTry(a.id, s.id);
@@ -1059,7 +1082,7 @@ describe("better-auth two-factor routes that check the password", () => {
 	}, 120_000);
 
 	it("charges the session better-auth authenticates, not a decoy under another cookie name", async () => {
-		await clearTriesWindowEdge();
+		stayInWindow(TRIES_WINDOW_MS);
 		// The decoy is made first, so an unordered lookup would find it first.
 		const attacker = await passwordUser();
 		const decoy = await webSession(attacker.id);
@@ -1075,7 +1098,7 @@ describe("better-auth two-factor routes that check the password", () => {
 	}, 120_000);
 
 	it("spends nothing for a call that carries no password, or no session", async () => {
-		await clearTriesWindowEdge();
+		stayInWindow(TRIES_WINDOW_MS);
 		const a = await passwordUser();
 		const s = await webSession(a.id);
 		for (let i = 0; i < 5; i++) await spendPasswordTry(a.id, s.id);
@@ -1092,7 +1115,7 @@ describe("better-auth two-factor routes that check the password", () => {
 
 describe("user.updateProfile with an email and a password change in one request", () => {
 	it("counts one try for the request, not one for each check", async () => {
-		await clearTriesWindowEdge();
+		stayInWindow(TRIES_WINDOW_MS);
 		const a = await passwordUser();
 		const caller = createCallerFactory(userRouter)({
 			session: makeSession({

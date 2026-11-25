@@ -11,11 +11,11 @@ import {
 	userTextOrEmpty,
 } from "@retrospend/api-contract/common";
 import { toBookingInput } from "@retrospend/domain/expense-input";
+import { toFloat } from "@retrospend/domain/precise-decimal";
 import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { z } from "zod";
 import { customRateSchema } from "~/lib/schemas/rate";
 import type { CreateExpenseInput } from "../expense.service";
-import { toFloat } from "@retrospend/domain/precise-decimal";
 
 const decimal = z
 	.string()
@@ -172,6 +172,15 @@ export const sharedRestoreSchema = z.object({
 		.optional(),
 });
 
+/**
+ * The web's undo of a shared edit: the restore plus the `updatedAt` the edit
+ * left (what shared.update returned). Required, so an undo can never write over
+ * a newer edit; guarded.mutation.ts compares it on the locked row.
+ */
+export const sharedRevertSchema = sharedRestoreSchema.extend({
+	expectedUpdatedAt: z.string().min(1).max(40),
+});
+
 export const sharedDeleteSchema = z.object({
 	id,
 	confirmUnsettled: z.boolean().optional(),
@@ -183,6 +192,33 @@ export const sharedDeleteSchema = z.object({
 
 /** What sharedExpense.delete returned as `stash`. */
 export const sharedUndoSchema = z.object({ stash: z.string().min(1).max(200) });
+
+const expenseId = z.string().min(1).max(64);
+
+/** Most rows one categorize move takes (as v1's bulk-category). */
+const CATEGORIZE_MAX_IDS = 500;
+
+/**
+ * Bulk categorize (web): each move names a category (null: none) and the
+ * entries that go into it. An undo is the same write over the `previous`
+ * moves the save answered with: `excluded` puts each row's analytics flag
+ * back, and `lenient` drops a category deleted since instead of refusing.
+ */
+export const categorizeSchema = z.object({
+	moves: z
+		.array(
+			z.object({
+				categoryId: expenseId.nullable(),
+				ids: z.array(expenseId).min(1).max(CATEGORIZE_MAX_IDS),
+				excluded: z.boolean().optional(),
+			}),
+		)
+		.min(1)
+		// An undo has one move per category-and-flag group its rows were in:
+		// at most one per row of a max-size move.
+		.max(CATEGORIZE_MAX_IDS),
+	lenient: z.boolean().optional(),
+});
 
 /** A signed undo payload (restore-token.ts). */
 export const restoreTokenSchema = z.object({ token: signedRestore });

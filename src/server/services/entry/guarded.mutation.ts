@@ -2,7 +2,16 @@ import { TRPCError } from "@trpc/server";
 import { inPreview } from "~/server/db-tx";
 import { Prisma } from "~prisma";
 import type { MoneyMutation } from "../preview/types";
-import { type UpdateExpenseInput, updateExpenseEntry } from "./expense.mutation";
+import {
+	type UpdateExpenseInput,
+	updateExpenseEntry,
+} from "./expense.mutation";
+import {
+	type Deferred,
+	type UpdatedShared,
+	type UpdateSharedInput,
+	updateSharedExpense,
+} from "./shared.mutation";
 
 const undoNoLongerSafe = () =>
 	new TRPCError({
@@ -10,21 +19,32 @@ const undoNoLongerSafe = () =>
 		message: "This expense changed since. Undo is no longer safe.",
 	});
 
+type Tx = Prisma.TransactionClient;
+
+/** The row's `updatedAt`, locked unless asked not to; undefined when it is gone. */
+type ReadStamp = (
+	tx: Tx,
+	id: string,
+	userId: string,
+	lock: boolean,
+) => Promise<Date | undefined>;
+
 /**
- * An undo is only safe against the state its write left behind, so an
- * expense write hands back the `updatedAt` it left (read in its own
- * transaction, null when the row is gone), and an undo that names the stamp
- * it expects runs only while the row still has it. The check is made in the
- * mutation's transaction on the locked row, so a concurrent edit cannot slip in
- * between (a preview skips the lock: it writes nothing, and its snapshot read
- * would fail on a row changed since). A row that is gone passes through, so
- * the mutation's own not-found answer stands.
- * `stale` builds the refusal for a caller that is not an undo.
+ * An undo is only safe against the state its write left behind, so a write
+ * hands back the `updatedAt` it left (read in its own transaction, null when
+ * the row is gone), and an undo that names the stamp it expects runs only
+ * while the row still has it. The check is made in the mutation's transaction
+ * on the locked row, so a concurrent edit cannot slip in between (a preview
+ * skips the lock: it writes nothing, and its snapshot read would fail on a
+ * row changed since). A row that is gone passes through, so the mutation's
+ * own not-found answer stands. This is the one owner of that rule; each table
+ * only says how to read its stamp.
  */
-export function guardedExpense<I extends object, V extends { id: string }>(
+function guarded<I extends object, V extends { id: string }>(
 	mutation: MoneyMutation<I, V>,
-	expectedUpdatedAt?: string,
-	stale: () => Error = undoNoLongerSafe,
+	readStamp: ReadStamp,
+	expectedUpdatedAt: string | undefined,
+	stale: () => Error,
 ): MoneyMutation<I, V & { updatedAt: string | null }> {
 	return {
 		...mutation,
@@ -34,28 +54,54 @@ export function guardedExpense<I extends object, V extends { id: string }>(
 				// FOR UPDATE makes the compare a compare-and-swap: a second writer
 				// holding the same stamp waits here for the first to commit, then
 				// reads the row it left and is refused. A gone row returns nothing.
-				const [row] = await tx.$queryRaw<{ updatedAt: Date }[]>`
-					SELECT "updatedAt" FROM "expense"
-					WHERE "id" = ${id} AND "userId" = ${actor.userId}
-					${inPreview() ? Prisma.empty : Prisma.sql`FOR UPDATE`}`;
+				const current = await readStamp(tx, id, actor.userId, !inPreview());
 				// By instant, so an offset spelling of the same time is not stale.
-				if (row && row.updatedAt.getTime() !== Date.parse(expectedUpdatedAt))
+				if (current && current.getTime() !== Date.parse(expectedUpdatedAt))
 					throw stale();
 			}
 			const done = await mutation.run(tx, input, actor);
-			const after = await tx.expense.findFirst({
-				where: { id: done.value.id, userId: actor.userId },
-				select: { updatedAt: true },
-			});
+			const after = await readStamp(tx, done.value.id, actor.userId, false);
 			return {
-				value: {
-					...done.value,
-					updatedAt: after?.updatedAt.toISOString() ?? null,
-				},
+				value: { ...done.value, updatedAt: after?.toISOString() ?? null },
 				undo: done.undo,
 			};
 		},
 	};
+}
+
+const expenseStamp: ReadStamp = async (tx, id, userId, lock) => {
+	const [row] = await tx.$queryRaw<{ updatedAt: Date }[]>`
+		SELECT "updatedAt" FROM "expense"
+		WHERE "id" = ${id} AND "userId" = ${userId}
+		${lock ? Prisma.sql`FOR UPDATE` : Prisma.empty}`;
+	return row?.updatedAt;
+};
+
+// A shared row is read through the caller's access, not a userId column.
+const sharedStamp: ReadStamp = async (tx, id, _userId, lock) => {
+	const [row] = await tx.$queryRaw<{ updatedAt: Date }[]>`
+		SELECT "updatedAt" FROM "shared_transaction"
+		WHERE "id" = ${id}
+		${lock ? Prisma.sql`FOR UPDATE` : Prisma.empty}`;
+	return row?.updatedAt;
+};
+
+/** `stale` builds the refusal for a caller that is not an undo. */
+export function guardedExpense<I extends object, V extends { id: string }>(
+	mutation: MoneyMutation<I, V>,
+	expectedUpdatedAt?: string,
+	stale: () => Error = undoNoLongerSafe,
+): MoneyMutation<I, V & { updatedAt: string | null }> {
+	return guarded(mutation, expenseStamp, expectedUpdatedAt, stale);
+}
+
+/** The same for a shared expense, which moves other people's balances too. */
+export function guardedShared<I extends object, V extends { id: string }>(
+	mutation: MoneyMutation<I, V>,
+	expectedUpdatedAt?: string,
+	stale: () => Error = undoNoLongerSafe,
+): MoneyMutation<I, V & { updatedAt: string | null }> {
+	return guarded(mutation, sharedStamp, expectedUpdatedAt, stale);
 }
 
 /**
@@ -71,4 +117,85 @@ export const revertExpenseEntry: MoneyMutation<
 	touches: updateExpenseEntry.touches,
 	run: (tx, { expectedUpdatedAt, ...input }, actor) =>
 		guardedExpense(updateExpenseEntry, expectedUpdatedAt).run(tx, input, actor),
+};
+
+const undoAnswered = () =>
+	new TRPCError({
+		code: "CONFLICT",
+		message:
+			"Someone already answered this expense, so this edit cannot be undone.",
+	});
+
+/** Each other person's share status on `id`, keyed by who they are. */
+async function shareStatuses(tx: Tx, id: string, userId: string) {
+	const rows = await tx.splitParticipant.findMany({
+		where: {
+			transactionId: id,
+			NOT: { participantType: "user", participantId: userId },
+		},
+		select: {
+			participantType: true,
+			participantId: true,
+			verificationStatus: true,
+		},
+	});
+	return new Map(
+		rows.map((r) => [
+			`${r.participantType}:${r.participantId}`,
+			r.verificationStatus,
+		]),
+	);
+}
+
+/**
+ * The edit an undo of a shared edit runs, for the web and for v1's undo and
+ * redo tokens (one core, so the rule is written once). It is refused when the
+ * write would take back an answer someone gave (accepted or rejected): an
+ * answer writes the share, not the row, so the stamp cannot see it. Which
+ * edits reset answers is the split service's own rule (amount, currency, date,
+ * payer, project, split), so this asks the write what it did instead of
+ * copying that list; a text-only undo leaves every answer and passes. Anyone
+ * who answered before this edit counts too, not only answers since it, which
+ * errs on the side of not overwriting what people agreed to. The refusal
+ * throws inside the transaction, so nothing is written and the queued notices
+ * are never sent.
+ */
+export const updateSharedUnanswered: MoneyMutation<
+	UpdateSharedInput & Deferred,
+	UpdatedShared
+> = {
+	...updateSharedExpense,
+	run: async (tx, input, actor) => {
+		const before = await shareStatuses(tx, input.id, actor.userId);
+		const done = await updateSharedExpense.run(tx, input, actor);
+		const answered = [...before].filter(
+			([, status]) => status === "ACCEPTED" || status === "REJECTED",
+		);
+		if (answered.length > 0) {
+			const after = await shareStatuses(tx, input.id, actor.userId);
+			if (answered.some(([who, status]) => after.get(who) !== status))
+				throw undoAnswered();
+		}
+		return done;
+	},
+};
+
+/**
+ * The web's undo of a shared edit: the edit's old values, written (and the
+ * people on it told) only while the row still has the `updatedAt` that edit
+ * left and it takes back no answer (`updateSharedUnanswered`). Required in
+ * the input, so the preview twin refuses a stale undo too.
+ */
+export const revertSharedExpense: MoneyMutation<
+	UpdateSharedInput & Deferred & { expectedUpdatedAt: string },
+	UpdatedShared & { updatedAt: string | null }
+> = {
+	id: updateSharedExpense.id,
+	touches: updateSharedExpense.touches,
+	run: (tx, { expectedUpdatedAt, ...input }, actor) =>
+		guardedShared(updateSharedUnanswered, expectedUpdatedAt).run(
+			tx,
+			input,
+			actor,
+		),
 };

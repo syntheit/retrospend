@@ -12,6 +12,7 @@ import { adminAccessRouter } from "~/server/api/routers/admin-access";
 import { feedbackRouter } from "~/server/api/routers/feedback";
 import { inviteRouter } from "~/server/api/routers/invite";
 import { createCallerFactory } from "~/server/api/trpc";
+import { encodeCursor } from "~/server/services/api-v1/cursor";
 import { openFeedbackScreenshotAsAdmin } from "~/server/services/feedback-screenshot.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
@@ -104,7 +105,7 @@ describe("admin reads: lists across many people go to the admin audit", () => {
 	it("writes nothing for a page after the first", async () => {
 		const a = await createTestUser({ role: "ADMIN" });
 		await adminAs(a).getEventLogsCursor({
-			cursor: new Date().toISOString(),
+			cursor: encodeCursor({ timestamp: new Date().toISOString(), id: "x" }),
 		});
 		await feedbackAs(a).list({ cursor: "some-id" });
 		await inviteAs(a).list({ page: 2 });

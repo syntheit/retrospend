@@ -196,22 +196,6 @@ export const expenseRouter = createTRPCRouter({
 			}
 		}),
 
-	bulkUpdateCategory: protectedProcedure
-		.input(
-			z.object({
-				expenseIds: z.array(expenseId).min(1).max(500),
-				categoryId: z.cuid(),
-			}),
-		)
-		.mutation(async ({ ctx, input }) => {
-			const service = new ExpenseService(ctx.db);
-			return await service.bulkUpdateCategory(
-				ctx.session.user.id,
-				input.expenseIds,
-				input.categoryId,
-			);
-		}),
-
 	getFilterOptions: protectedProcedure.query(async ({ ctx }) => {
 		const service = new ExpenseService(ctx.db);
 		return await service.getFilterOptions(ctx.session.user.id);

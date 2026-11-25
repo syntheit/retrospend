@@ -42,6 +42,13 @@ describe("keyedHash", () => {
 		);
 	});
 
+	it("has no label a claim payload could equal, so a claim signature is never a purpose key", async () => {
+		const { KEYED_HASH_PURPOSES } = await import("./keyed-hash");
+		for (const label of Object.values(KEYED_HASH_PURPOSES)) {
+			expect(label).not.toContain(":");
+		}
+	});
+
 	it("changes with the secret, so a copy of the table is no use without it", async () => {
 		const first = (await import("./keyed-hash")).keyedHash(
 			"preloginAddress",

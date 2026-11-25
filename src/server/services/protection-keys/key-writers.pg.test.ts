@@ -38,16 +38,17 @@ const EXPECTED: Record<KeyWriter, { creates: boolean; proof: boolean }> = {
 };
 
 /**
- * Where each writer is driven through its own caller. Make new key has no
- * route yet (K3-3 adds it); until then its case is the direct call below, and
- * the PR that adds the route replaces `pending` with the test file. The
- * recovery commit is driven by its service (K3-2b adds its route).
+ * Where each writer is driven through its own caller: the pg test file that
+ * runs it through its route (the recovery commit through its service, whose
+ * route test is in api/v1/auth).
  */
-const DRIVEN_BY: Record<KeyWriter, { file: string } | { pending: string }> = {
+const DRIVEN_BY: Record<KeyWriter, { file: string }> = {
 	enable: { file: "src/server/services/protection-keys/enable.pg.test.ts" },
 	rotate: { file: "src/server/services/protection-keys/rotate.pg.test.ts" },
 	recovery: { file: "src/server/services/protection-keys/recover.pg.test.ts" },
-	newRecoveryKey: { pending: "K3-3" },
+	newRecoveryKey: {
+		file: "src/server/services/protection-keys/new-recovery-key.pg.test.ts",
+	},
 };
 
 let p: Primitives;
@@ -108,10 +109,7 @@ describe("the writer union", () => {
 		expect(Object.keys(EXPECTED).sort()).toEqual([...PLAN_WRITERS].sort());
 		expect(Object.keys(DRIVEN_BY).sort()).toEqual([...PLAN_WRITERS].sort());
 		for (const driven of Object.values(DRIVEN_BY))
-			if ("file" in driven)
-				expect(existsSync(join(REPO_ROOT, driven.file)), driven.file).toBe(
-					true,
-				);
+			expect(existsSync(join(REPO_ROOT, driven.file)), driven.file).toBe(true);
 	});
 });
 

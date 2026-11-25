@@ -20,8 +20,10 @@ type JsonObject = Record<string, unknown>;
  * 1.2.0: POST /me/protection/enable takes the recovery proof (recoveryAuthKey).
  * 1.3.0: PUT and DELETE /expenses/{id} and their previews take expectedUpdatedAt; 409 expense_changed.
  * 1.4.0: POST /me/protection/keys/open releases the password-opened key wraps.
+ * 1.5.0: POST /auth/recovery/check, /auth/recovery/begin and /auth/recovery set a new password with the recovery key; 404 invalid_token, 400 wrong_recovery_key, 409 recovery_unavailable.
+ * 1.6.0: POST /me/protection/recovery-key replaces the recovery wrap and proof (event user.recovery_key_replaced).
  */
-export const CONTRACT_VERSION = "1.4.0";
+export const CONTRACT_VERSION = "1.6.0";
 
 const PROTECTION_OVERVIEW = [
 	"Accounts with Advanced protection.",
@@ -30,6 +32,8 @@ const PROTECTION_OVERVIEW = [
 	"Sealed records move through GET /vault/changes and POST /vault/writes. The server stores them and cannot open them.",
 	"An account with protection keys changes its password with POST /me/protection/password/begin and POST /me/protection/password. POST /me/password answers 403 `protected_password` for it. A change that needs a recent sign-in answers 403 `session_not_fresh`.",
 	"POST /auth/prelogin tells a client whether to derive the sign-in secret from the password before it signs in.",
+	"A person who forgot the password of an account with protection keys sets a new one with the recovery key, from the link in the reset email: POST /auth/recovery/check, POST /auth/recovery/begin and POST /auth/recovery. They are public, take the token from the link, and ignore any session sent with them. An unusable link is 404 `invalid_token`, a wrong recovery key 400 `wrong_recovery_key`, and keys made before the recovery proof existed 409 `recovery_unavailable`. A successful recovery signs out every session and deletes the account's API keys.",
+	"An account with protection keys makes a new recovery key with POST /me/protection/recovery-key, which needs the current sign-in secret and replaces the recovery wrap and proof together; the old recovery key stops working when it commits.",
 ].join("\n\n");
 
 const PROBLEM_REF = { $ref: "#/components/schemas/Problem" };

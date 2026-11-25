@@ -20,6 +20,7 @@ import {
 	getPasswordChangedAlertTemplate,
 	getPasswordResetEmailTemplate,
 	getProtectionEnabledAlertTemplate,
+	getRecoveryKeyReplacedAlertTemplate,
 	getShadowInviteEmailTemplate,
 	getTestEmailTemplate,
 	getVerificationEmailTemplate,
@@ -71,6 +72,12 @@ const cases: { name: string; subject: string; html: string; link: string }[] = [
 		name: "protection enabled",
 		subject: emailSubject.protectionEnabled,
 		html: getProtectionEnabledAlertTemplate(),
+		link: "",
+	},
+	{
+		name: "recovery key replaced",
+		subject: emailSubject.recoveryKeyReplaced,
+		html: getRecoveryKeyReplacedAlertTemplate(),
 		link: "",
 	},
 	{

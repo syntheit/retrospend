@@ -3,15 +3,34 @@
  * that may get a link: make the link and mail it. Kept out of the router so
  * the router only validates, limits and answers.
  */
+import { isProtected } from "@retrospend/api-contract/protection-state";
 import { TRPCError } from "@trpc/server";
 import { env } from "~/env";
+import { db } from "~/server/db";
 import { emailSubject } from "~/server/email-copy";
 import { getPasswordResetEmailTemplate } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
+import { hasKeySet } from "../protection-keys/password-writes";
 import { issueResetToken } from "./reset-tokens";
 
 const resetUrl = (token: string) =>
 	`${env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/reset-password?token=${token}`;
+
+/**
+ * Whether the person's own reset link may go out. A keyed account gets it in
+ * every state (K3-2b, owner decision 9): with protection OFF a plain reset
+ * removes the keys, and with protection on the link leads to recovery with the
+ * recovery key while the plain reset still refuses (`protected_password`).
+ * Protection on with no key set has nothing to recover and gets none. The
+ * admin's link (`makeAdminResetLink`) keeps refusing a protected account: it
+ * never opens recovery.
+ */
+export async function mayGetResetLink(user: {
+	id: string;
+	protectionState: string | null;
+}): Promise<boolean> {
+	return !isProtected(user.protectionState) || (await hasKeySet(db, user.id));
+}
 
 /**
  * Makes the person's own link and mails it. The mail is not awaited: a slow

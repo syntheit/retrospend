@@ -35,6 +35,7 @@ import {
 import { auth } from "~/server/better-auth";
 import { issueLinkFor } from "~/test/reset-links";
 import { lockCredential } from "./password-writes";
+import { stayInWindow } from "~/test/rate-window";
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -248,11 +249,6 @@ const hex = (b: Uint8Array) => Buffer.from(b).toString("hex");
 
 const TRIES_WINDOW_MS = 15 * 60_000;
 /** Waits until at least a minute is left in the current tries window. */
-async function clearTriesWindowEdge(): Promise<void> {
-	const left = TRIES_WINDOW_MS - (Date.now() % TRIES_WINDOW_MS);
-	if (left < 60_000) await new Promise((r) => setTimeout(r, left + 1_000));
-}
-
 /** Holds the credential lock in its own owner transaction until `commit`. */
 async function holdCredentialLock(
 	userId: string,
@@ -343,7 +339,7 @@ describe("POST /me/protection/password/begin", () => {
 	});
 
 	it("refuses a wrong auth key with no wrap in the answer, and counts a try, up to the limit", async () => {
-		await clearTriesWindowEdge();
+		stayInWindow(TRIES_WINDOW_MS);
 		const u = await passwordUser();
 		const k = await keyed(u.id);
 		const me = await mobile(u.id);
@@ -366,7 +362,7 @@ describe("POST /me/protection/password/begin", () => {
 	}, 120_000);
 
 	it("is a conflict for an account without keys, and spends no try", async () => {
-		await clearTriesWindowEdge();
+		stayInWindow(TRIES_WINDOW_MS);
 		const u = await passwordUser();
 		const me = await mobile(u.id);
 		for (let i = 0; i < 6; i++)
@@ -641,7 +637,7 @@ describe("POST /me/protection/password", () => {
 	});
 
 	it("counts a wrong current key as a try and changes nothing, then stops at the limit", async () => {
-		await clearTriesWindowEdge();
+		stayInWindow(TRIES_WINDOW_MS);
 		const u = await passwordUser();
 		const k = await keyed(u.id);
 		const me = await mobile(u.id);
@@ -670,7 +666,7 @@ describe("POST /me/protection/password", () => {
 	}, 120_000);
 
 	it("leaves a session room for begin, commit, a retry's begin and commit, and one more call", async () => {
-		await clearTriesWindowEdge();
+		stayInWindow(TRIES_WINDOW_MS);
 		const u = await passwordUser();
 		const k = await keyed(u.id);
 		const me = await mobile(u.id);
@@ -766,7 +762,7 @@ describe("POST /me/protection/password", () => {
 	});
 
 	it("answers conflict for every commit of an account without keys, and spends no try", async () => {
-		await clearTriesWindowEdge();
+		stayInWindow(TRIES_WINDOW_MS);
 		const u = await passwordUser();
 		const me = await mobile(u.id);
 		const r = rotationOf(u.id, signInSecret(p.randomBytes(32)));

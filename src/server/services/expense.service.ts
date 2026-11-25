@@ -19,7 +19,6 @@ import {
 	type SavedRate,
 	storedAmount,
 } from "@retrospend/domain/rate-booking";
-import { TRPCError } from "@trpc/server";
 import { CUSTOM_RATE_TYPE } from "~/lib/rate-selection";
 import { userTransaction } from "~/server/db-tx";
 import type { Prisma, PrismaClient } from "~prisma";
@@ -263,31 +262,6 @@ export class ExpenseService {
 				category: true,
 			},
 		});
-	}
-
-	async bulkUpdateCategory(
-		userId: string,
-		expenseIds: string[],
-		categoryId: string,
-	) {
-		const category = await (this.db as PrismaClient).category.findFirst({
-			where: { id: categoryId, userId, kind: "EXPENSE" },
-			select: { id: true, name: true },
-		});
-		if (!category) {
-			throw new TRPCError({
-				code: "FORBIDDEN",
-				message: "Category not found",
-			});
-		}
-
-		return await this.runInTransaction(async (tx) => {
-			const result = await tx.expense.updateMany({
-				where: { id: { in: expenseIds }, userId },
-				data: { categoryId },
-			});
-			return { count: result.count, categoryName: category.name };
-		}, userId);
 	}
 
 	async getFilterOptions(userId: string) {

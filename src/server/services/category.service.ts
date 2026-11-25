@@ -254,6 +254,10 @@ export async function seedDefaultCategories(
  * (user, category, period): where the target already budgets a month the
  * source's budget for it is dropped; without a target budgets are deleted,
  * since a budget with no category reads as a global one.
+ *
+ * Its own updateMany, not the expense bulk core (domain expense-write/bulk.ts):
+ * a merge moves every row of the category, income rows included, which the
+ * core's entry policy refuses. It belongs to the category merge lane (M3).
  */
 async function moveAndDelete(
 	db: AppDb,

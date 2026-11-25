@@ -211,6 +211,21 @@ export function getPasswordRecoveredAlertTemplate() {
 	});
 }
 
+/** Security alert after the recovery key was replaced. */
+export function getRecoveryKeyReplacedAlertTemplate() {
+	const copy = emailCopy.recoveryKeyReplaced;
+	const content = `
+    ${heading(copy.title)}
+    ${paragraph(escapeHtml(copy.body))}
+    ${notice(copy.notice)}
+  `;
+	return baseEmailTemplate({
+		title: emailSubject.recoveryKeyReplaced,
+		content,
+		preheader: copy.body,
+	});
+}
+
 /** Security alert after Advanced protection keys were created. */
 export function getProtectionEnabledAlertTemplate() {
 	const copy = emailCopy.protectionEnabled;

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { createTransferSchema } from "~/server/services/accounts/input";
 import { entryCatalog } from "~/server/services/entry/catalog";
+import { categorizeExpenses } from "~/server/services/entry/categorize.mutation";
 import {
 	deleteExpenseEntry,
 	restoreExpenseEntry,
@@ -9,7 +10,9 @@ import {
 } from "~/server/services/entry/expense.mutation";
 import {
 	guardedExpense,
+	guardedShared,
 	revertExpenseEntry,
+	revertSharedExpense,
 } from "~/server/services/entry/guarded.mutation";
 import * as schema from "~/server/services/entry/input";
 import { entryProjectMembers } from "~/server/services/entry/project-members";
@@ -158,6 +161,8 @@ export const entryRouter = createTRPCRouter({
 			deleteExpenseEntry,
 			asIs,
 		),
+		/** Bulk categorize; its undo is this save over the answer's `previous` moves. */
+		categorize: money(schema.categorizeSchema, categorizeExpenses, asIs),
 		/** Undo of a delete: the same expense back, same id. */
 		restore: money(schema.restoreTokenSchema, restoreExpenseEntry, asIs),
 		/** Undo of an edit: the values it had, refused once a newer edit landed. */
@@ -176,17 +181,19 @@ export const entryRouter = createTRPCRouter({
 				notify: n,
 			}),
 		),
+		// The stamp this edit leaves rides back as `updatedAt`, for its undo.
 		update: money(
 			schema.sharedUpdateSchema,
-			updateSharedExpense,
+			guardedShared(updateSharedExpense),
 			(v, c, n) => ({
 				...schema.toSharedInput(v, c.timeZone),
 				notify: n,
 			}),
 		),
+		/** Undo of an edit: refused, and nobody told, once a newer edit landed. */
 		revert: money(
-			schema.sharedRestoreSchema,
-			updateSharedExpense,
+			schema.sharedRevertSchema,
+			revertSharedExpense,
 			(v, _c, n) => ({
 				...v,
 				notify: n,

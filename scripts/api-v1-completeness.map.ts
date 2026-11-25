@@ -207,7 +207,14 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"auth.recordConsent": to("POST /me/consent"),
 	"auth.requestPasswordReset": internal(AUTH_MAIL),
 	"auth.resendVerificationEmail": internal(AUTH_MAIL),
-	"auth.resetPassword": internal(AUTH_MAIL),
+	// A keyed account sets a new password with its recovery key from the link in
+	// the reset email, through three public routes; the plain reset stays on
+	// tRPC and the web page.
+	"auth.resetPassword": to(
+		"POST /auth/recovery/check",
+		"POST /auth/recovery/begin",
+		"POST /auth/recovery",
+	),
 	"auth.revertEmailChange": internal(AUTH_MAIL),
 	"auth.verifyEmail": internal(AUTH_MAIL),
 
@@ -287,6 +294,10 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	// ── add sheets ───────────────────────────────────────────────────────
 	"entry.catalog": to("GET /entry/catalog"),
 	"entry.defaultRateTypes": to("GET /entry/default-rate-types"),
+	"entry.expense.categorize.preview": to(
+		"POST /expenses/bulk-category/preview",
+	),
+	"entry.expense.categorize.save": to("POST /expenses/bulk-category"),
 	"entry.expense.create.preview": to("POST /expenses/preview"),
 	"entry.expense.create.save": to("POST /expenses"),
 	"entry.expense.delete.preview": to("POST /expenses/{id}/delete/preview"),
@@ -332,7 +343,6 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"exchangeRate.syncNow": to("POST /rates/sync"),
 
 	// ── expenses ─────────────────────────────────────────────────────────
-	"expense.bulkUpdateCategory": withPreview("POST /expenses/bulk-category"),
 	"expense.checkDuplicate": to("GET /expenses/duplicates"),
 	"expense.createExpense": to("POST /expenses"),
 	"expense.deleteExpense": to("DELETE /expenses/{id}"),
@@ -470,12 +480,14 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	// An account with protection keys changes its password through the two
 	// protection routes; the plain route refuses it with protected_password.
 	// keys/open is the read that step one and the unlock share: no web
-	// procedure has it, a device opens its wraps with it.
+	// procedure has it, a device opens its wraps with it. recovery-key is
+	// Make new key, a protection-keys route with no web procedure either.
 	"profile.changePassword": to(
 		"POST /me/password",
 		"POST /me/protection/password/begin",
 		"POST /me/protection/password",
 		"POST /me/protection/keys/open",
+		"POST /me/protection/recovery-key",
 	),
 	"profile.getBackgroundSettings": to("GET /profile/background"),
 	"profile.getLifetimeStats": to("GET /profile/stats"),
