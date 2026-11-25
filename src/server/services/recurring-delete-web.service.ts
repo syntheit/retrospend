@@ -10,6 +10,7 @@
  * back already, or one like it was made by hand since.
  */
 
+import { spendSignature } from "~/server/services/api-v1/money-write";
 import { forUser } from "~/server/services/preview";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import type { Prisma } from "~prisma";
@@ -99,18 +100,26 @@ export async function previewRestoreTemplate(
 	token: RestoreToken,
 ) {
 	const input = snapshotOf(userId, token);
-	const { value: _row, ...preview } = await forUser(userId).preview(
+	const { value, ...preview } = await forUser(userId).preview(
 		restoreRecurringFor(input.template),
 		input,
 	);
-	return preview;
+	// How many envelopes follow it again, for the sheet's own line.
+	return { ...preview, relinkedEnvelopes: value.relinkedEnvelopes };
 }
 
-export async function restoreTemplate(userId: string, token: RestoreToken) {
+/** Puts the template back. A token works once, like v1's: an old one cannot bring back a version since replaced. */
+export async function restoreTemplate(
+	db: Parameters<typeof spendSignature>[0],
+	userId: string,
+	token: RestoreToken,
+) {
 	const input = snapshotOf(userId, token);
-	const done = await forUser(userId).apply(
-		restoreRecurringFor(input.template),
-		input,
-	);
-	return { id: done.value.id };
+	return spendSignature(db, userId, token.sig, async () => {
+		const done = await forUser(userId).apply(
+			restoreRecurringFor(input.template),
+			input,
+		);
+		return { id: done.value.id };
+	});
 }

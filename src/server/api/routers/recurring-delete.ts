@@ -38,7 +38,7 @@ export const recurringDeleteRouter = createTRPCRouter({
 		save: protectedProcedure
 			.input(restoreTokenSchema)
 			.mutation(({ ctx, input }) =>
-				restoreTemplate(ctx.session.user.id, input.token),
+				restoreTemplate(ctx.db, ctx.session.user.id, input.token),
 			),
 	}),
 });
