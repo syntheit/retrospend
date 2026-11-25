@@ -46,7 +46,10 @@ const keyStateFiles =
 			)
 		: [];
 
-const QUIET_FILES = ["src/test/parity/compare-proof.pg.test.ts"];
+const QUIET_FILES = [
+	"src/test/parity/compare-proof.pg.test.ts",
+	"src/test/parity/category-merge-sync.pg.test.ts",
+];
 for (const file of QUIET_FILES)
 	if (!existsSync(file))
 		throw new Error(`QUIET_FILES names a missing file: ${file}`);
