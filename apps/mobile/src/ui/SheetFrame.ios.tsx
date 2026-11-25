@@ -1,6 +1,7 @@
 import { BottomSheet, Group, Host, RNHostView } from "@expo/ui/swift-ui";
 import {
 	frame,
+	interactiveDismissDisabled,
 	padding,
 	presentationBackground,
 	presentationDetents,
@@ -25,6 +26,7 @@ import type { SheetFrameProps } from "./types";
 export function SheetFrame({
 	visible,
 	onClose,
+	locked = false,
 	detents,
 	background,
 	children,
@@ -57,7 +59,8 @@ export function SheetFrame({
 				fitToContents={!shown?.length}
 				isPresented={visible}
 				onIsPresentedChange={(presented) => {
-					if (!presented) onClose();
+					// A locked sheet is not dismissed (the swipe is off as well).
+					if (!presented && !locked) onClose();
 				}}
 			>
 				<Group
@@ -75,6 +78,7 @@ export function SheetFrame({
 							bottom: 0,
 						}),
 						presentationDragIndicator("visible"),
+						...(locked ? [interactiveDismissDisabled()] : []),
 						...(shown?.length
 							? [
 									presentationDetents(shown, {

@@ -22,6 +22,7 @@ import {
 	mayHaveCommitted,
 	type RecoverBody,
 	type RecoveryFlowPorts,
+	type RecoveryHandle,
 } from "../src/client";
 import { wrapKeyWithNonce } from "../src/keys";
 import { signInSecret } from "../src/sign-in-secret";
@@ -50,6 +51,10 @@ function setup(
 		/** n counts commits; return "lost" to spend the link and lose the answer, or throw to refuse. */
 		commit?: (n: number, spend: () => void) => "lost" | undefined;
 		check?: () => void;
+		/** Runs where the core waits for the busy state to paint. */
+		paint?: () => Promise<void>;
+		/** Wraps the primitives, to make one of them misbehave. */
+		prims?: (base: Primitives) => Primitives;
 	} = {},
 ) {
 	let live = true;
@@ -59,7 +64,7 @@ function setup(
 	const begins: { recoveryAuthKey: string }[] = [];
 	const commits: RecoverBody[] = [];
 	const wiped: Uint8Array[] = [];
-	const prims: Primitives = {
+	const counted: Primitives = {
 		...p,
 		argon2id: (...a) => {
 			const out = p.argon2id(...a);
@@ -67,9 +72,10 @@ function setup(
 			return out;
 		},
 	};
+	const prims = over.prims ? over.prims(counted) : counted;
 	const ports: RecoveryFlowPorts = {
 		primitives: async () => prims,
-		paint: async () => {},
+		paint: over.paint ?? (async () => {}),
 		begin: vi.fn(async (body: { recoveryAuthKey: string }) => {
 			begins.push(body);
 			if (!live) throw new KeyFlowError("tokenExpired");
@@ -135,6 +141,42 @@ const codeOf = async (promise: Promise<unknown>) => {
 	}
 	return "none";
 };
+
+describe("a sheet closed while the busy state paints", () => {
+	const finishCode = async (s: ReturnType<typeof setup>, h: RecoveryHandle) =>
+		codeOf(s.callbacks.finish(h, { password: NEW_PASSWORD }));
+
+	it("wipes the handle during the wait and the run refuses: nothing is derived, wrapped or sent", async () => {
+		let handle: RecoveryHandle | undefined;
+		const s = setup({ paint: async () => handle?.wipe() });
+		handle = await s.callbacks.begin(RK.text);
+		// "failed" is the lost race. A wiped (all zero) account key that went on
+		// would be refused as "malformed" by the key pair check, and that is a
+		// different guard.
+		await expect(finishCode(s, handle)).resolves.toBe("failed");
+		expect(s.commits).toHaveLength(0);
+		expect(s.argon).toHaveLength(0);
+	});
+
+	it("never wraps an account key that is not the account's, even if the handle was not wiped", async () => {
+		// The key pair check opens the private key by sealing and opening a probe:
+		// the first run (at begin) passes, the second (before wrapping) does not.
+		let probes = 0;
+		const s = setup({
+			prims: (base) => ({
+				...base,
+				sealOpen: (...a) => {
+					if (++probes === 2) throw new Error("not the account's key");
+					return base.sealOpen(...a);
+				},
+			}),
+		});
+		const handle = await s.callbacks.begin(RK.text);
+		await expect(finishCode(s, handle)).resolves.toBe("malformed");
+		expect(s.commits).toHaveLength(0);
+		expect(s.argon).toHaveLength(0);
+	});
+});
 
 describe("createRecoveryCallbacks", () => {
 	it("proves the key at begin, before any new password exists, then commits the body", async () => {

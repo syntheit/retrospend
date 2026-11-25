@@ -2,6 +2,7 @@
 
 import { passwordMeetsRules } from "@retrospend/api-contract";
 import {
+	asKeyFlowError,
 	endsRecoveryHandle,
 	keyComplete,
 	passwordsAlike,
@@ -13,7 +14,7 @@ import {
 	recoverKeyText,
 	recoverReducer,
 	recoverView,
-	recoveryFailureOf,
+	recoveryFailureFor,
 } from "@retrospend/crypto/client";
 import { useTranslations } from "next-intl";
 import { useReducer, useRef } from "react";
@@ -64,9 +65,9 @@ export function RecoverSheet(props: RecoverSheetProps) {
 		if (life.canClose()) props.onOpenChange(false);
 	};
 	const fail = (error: unknown) => {
-		const code = recoveryFailureOf(error);
-		if (endsRecoveryHandle(code)) life.drop();
-		dispatch({ type: "failed", code });
+		const flow = asKeyFlowError(error).code;
+		if (endsRecoveryHandle(flow)) life.drop();
+		dispatch({ type: "failed", code: recoveryFailureFor(flow) });
 	};
 	const advance = async () => {
 		if (state.busy || view.primaryDisabled) return;

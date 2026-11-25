@@ -16,6 +16,7 @@ import {
 } from "../src/client/recover-model";
 import {
 	blocksRecoveryScreen,
+	ENDS_RECOVERY_HANDLE,
 	endsRecoveryHandle,
 } from "../src/client/recovery-failure";
 
@@ -254,18 +255,29 @@ describe("recoverReducer", () => {
 });
 
 describe("which failures end what", () => {
-	it("a handle's proof ends on exactly these codes", () => {
-		for (const code of [
-			"wrongKey",
-			"keysChanged",
-			"unavailable",
-			"linkExpired",
-			"notOffered",
-		] as const)
+	it("a handle ends on exactly these flow codes, the one list the callbacks and every sheet use", () => {
+		expect([...ENDS_RECOVERY_HANDLE].sort()).toEqual(
+			[
+				"conflict",
+				"notFound",
+				"notOffered",
+				"recoveryUnavailable",
+				"tokenExpired",
+				"wrongRecoveryKey",
+			].sort(),
+		);
+		for (const code of ENDS_RECOVERY_HANDLE)
 			expect(endsRecoveryHandle(code), code).toBe(true);
 		// A typo never reached the server, and a rate limit or a lost answer
 		// leaves the proof standing.
-		for (const code of ["typo", "tooMany", "unconfirmed", "failed"] as const)
+		for (const code of [
+			"malformed",
+			"rateLimited",
+			"unavailable",
+			"serverError",
+			"unconfirmed",
+			"failed",
+		] as const)
 			expect(endsRecoveryHandle(code), code).toBe(false);
 	});
 

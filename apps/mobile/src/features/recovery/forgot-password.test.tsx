@@ -67,7 +67,6 @@ const callbacks = { begin: jest.fn(), finish: jest.fn() };
 const lastSheet = () =>
 	mockSheet.mock.calls.at(-1)?.[0] as {
 		visible: boolean;
-		preset: string | null;
 		begin: unknown;
 		finish: unknown;
 		onClose: () => void;
@@ -223,6 +222,73 @@ describe("Forgot password, the code", () => {
 	});
 });
 
+describe("Forgot password, a check that failed after the swap", () => {
+	it("keeps the token and asks only the check again, never the spent code", async () => {
+		mockAsk.redeemResetCode.mockResolvedValue({ ok: true, value: "token-1" });
+		mockAsk.checkRecoveryLink
+			.mockRejectedValueOnce(new KeyFlowError("unavailable"))
+			.mockResolvedValue({ keys: "recovery", protectionOn: true });
+		const tree = await show();
+		await toCode(tree);
+		typeInto(tree, "Code", "7K2M9PQ4");
+		await pressAsync(tree, "Continue");
+		expect(words(tree)).toContain(
+			"Couldn't reach the server. Check your connection.",
+		);
+		// Continue stays on, whatever the code field says now.
+		expect(disabled(tree, "Continue")).toBe(false);
+		await pressAsync(tree, "Continue");
+		expect(mockAsk.redeemResetCode).toHaveBeenCalledTimes(1);
+		expect(mockAsk.checkRecoveryLink).toHaveBeenCalledTimes(2);
+		expect(mockAsk.checkRecoveryLink).toHaveBeenLastCalledWith(
+			expect.anything(),
+			"token-1",
+		);
+		expect(words(tree)).toContain("Open your protected data");
+	});
+
+	it("asks for a new code once the server no longer knows the token", async () => {
+		mockAsk.redeemResetCode.mockResolvedValue({ ok: true, value: "token-1" });
+		mockAsk.checkRecoveryLink
+			.mockRejectedValueOnce(new KeyFlowError("unavailable"))
+			.mockResolvedValueOnce("invalid")
+			.mockResolvedValue({ keys: "recovery", protectionOn: true });
+		const tree = await show();
+		await toCode(tree);
+		typeInto(tree, "Code", "7K2M9PQ4");
+		await pressAsync(tree, "Continue");
+		await pressAsync(tree, "Continue");
+		expect(words(tree)).toContain("That code has expired. Ask for a new one.");
+		// The token is gone: the next Continue swaps a typed code again.
+		typeInto(tree, "Code", "7K2M9PQ5");
+		await pressAsync(tree, "Continue");
+		expect(mockAsk.redeemResetCode).toHaveBeenCalledTimes(2);
+	});
+
+	it("going Back to the email forgets the token", async () => {
+		mockAsk.redeemResetCode.mockResolvedValue({ ok: true, value: "token-1" });
+		mockAsk.checkRecoveryLink.mockRejectedValue(new KeyFlowError("unavailable"));
+		const tree = await show();
+		await toCode(tree);
+		typeInto(tree, "Code", "7K2M9PQ4");
+		await pressAsync(tree, "Continue");
+		await pressAsync(tree, "Back");
+		await toCode(tree);
+		expect(disabled(tree, "Continue")).toBe(true);
+	});
+});
+
+describe("Forgot password, the code field", () => {
+	it("is read as a one-time code that is typed in capitals", async () => {
+		const tree = await show();
+		await toCode(tree);
+		const code = field(tree, "Code");
+		expect(code?.props.textContentType).toBe("oneTimeCode");
+		expect(code?.props.autoComplete).toBe("one-time-code");
+		expect(code?.props.autoCapitalize).toBe("characters");
+	});
+});
+
 describe("Forgot password, the choices", () => {
 	it("with protection on: the key leads, another device says why not, and Reset account is disabled", async () => {
 		const tree = await show();
@@ -264,7 +330,7 @@ describe("Forgot password, the choices", () => {
 		);
 	});
 
-	it("Use key opens the recovery sheet with the token's callbacks and no preset", async () => {
+	it("Use key opens the recovery sheet with the token's callbacks", async () => {
 		const tree = await show();
 		await toChoices(tree, true);
 		expect(lastSheet().visible).toBe(false);
@@ -272,10 +338,9 @@ describe("Forgot password, the choices", () => {
 		expect(lastSheet().visible).toBe(true);
 		expect(lastSheet().begin).toBe(callbacks.begin);
 		expect(lastSheet().finish).toBe(callbacks.finish);
-		expect(lastSheet().preset).toBeNull();
 	});
 
-	it("a link that leads to no recovery key opens the sheet on its reason", async () => {
+	it("a link that leads to no recovery key keeps Use key, disabled, with its reason and no sheet", async () => {
 		mockAsk.redeemResetCode.mockResolvedValue({ ok: true, value: "t" });
 		mockAsk.checkRecoveryLink.mockResolvedValue({
 			keys: "noRecovery",
@@ -285,7 +350,9 @@ describe("Forgot password, the choices", () => {
 		await toCode(tree);
 		typeInto(tree, "Code", "7K2M9PQ4");
 		await pressAsync(tree, "Continue");
-		expect(lastSheet().preset).toBe("unavailable");
+		expect(words(tree)).toContain("This account has no recovery key.");
+		expect(disabled(tree, "Use key")).toBe(true);
+		expect(lastSheet().visible).toBe(false);
 	});
 
 	it("a new password goes back to sign-in with the words that say to use it", async () => {

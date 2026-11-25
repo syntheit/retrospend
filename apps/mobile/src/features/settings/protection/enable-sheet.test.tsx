@@ -784,3 +784,27 @@ describe("EnableSheet, nothing stays in a closed sheet", () => {
 		expect(mockToast.show).not.toHaveBeenCalled();
 	});
 });
+
+describe("EnableSheet, the app switcher", () => {
+	it("covers the sheet while the app is not in front, and shows it again on return", () => {
+		const listeners: ((state: string) => void)[] = [];
+		const { AppState } = require("react-native");
+		jest
+			.spyOn(AppState, "addEventListener")
+			.mockImplementation((_event: unknown, listener: unknown) => {
+				listeners.push(listener as (state: string) => void);
+				return { remove: () => undefined };
+			});
+		const s = render();
+		expect(s.find("privacy-cover")).toBeUndefined();
+		act(() => {
+			for (const l of listeners) l("inactive");
+		});
+		expect(s.find("privacy-cover")).toBeDefined();
+		act(() => {
+			for (const l of listeners) l("active");
+		});
+		expect(s.find("privacy-cover")).toBeUndefined();
+		jest.restoreAllMocks();
+	});
+});

@@ -12,7 +12,6 @@
 import { fromBase64Url, toBase64Url } from "../base64url";
 import {
 	deriveMasterKey,
-	keyPairMatches,
 	parseRecoveryKey,
 	recoverySubkeys,
 	unwrapKey,
@@ -29,6 +28,7 @@ import {
 	allowedParams,
 	asKeyFlowError,
 	binMasterSubkeys,
+	checkKeyPair,
 	checkOpens,
 	type FlowPorts,
 	findWrap,
@@ -143,6 +143,9 @@ type Held = {
 	version: number;
 	recoveryAuthKey: string;
 	accountKey: Uint8Array;
+	/** What the key pair is checked against again just before the account key is wrapped. */
+	privateKeyWrap: Uint8Array;
+	publicKey: Uint8Array;
 	wiped: boolean;
 };
 const drafts = new WeakMap<RecoveryDraft, Held>();
@@ -205,12 +208,13 @@ export async function beginRecovery(
 			begun.userId,
 			recoveryWrap,
 		);
-		const privateKey = bin.keep(
-			unwrapKey(p, accountKey, "private-key", begun.userId, privateKeyWrap),
-		);
 		// A private key of another set would unlock nothing the account holds.
-		if (!keyPairMatches(p, { publicKey, privateKey }))
-			throw new KeyFlowError("malformed");
+		checkKeyPair(p, bin, {
+			userId: begun.userId,
+			accountKey,
+			privateKeyWrap,
+			publicKey,
+		});
 
 		const held: Held = {
 			p,
@@ -218,6 +222,8 @@ export async function beginRecovery(
 			version: begun.version,
 			recoveryAuthKey,
 			accountKey,
+			privateKeyWrap,
+			publicKey,
 			wiped: false,
 		};
 		const draft: RecoveryDraft = {
@@ -260,6 +266,17 @@ export async function finishRecovery(
 		const bin = secretBin(p);
 		try {
 			await ports.paint?.();
+			// The sheet may have been closed while the busy state painted, and a
+			// wipe zeroes the account key: look again after the only wait, and
+			// never wrap a key that is not the account's (an all-zero key would
+			// wrap and open as itself, and the person would see "saved").
+			if (held.wiped) throw new KeyFlowError("failed");
+			checkKeyPair(p, bin, {
+				userId: held.userId,
+				accountKey: held.accountKey,
+				privateKeyWrap: held.privateKeyWrap,
+				publicKey: held.publicKey,
+			});
 			const salt = bin.keep(p.randomBytes(SALT_BYTES));
 			const fresh = binMasterSubkeys(
 				p,

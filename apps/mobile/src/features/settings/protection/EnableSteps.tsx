@@ -17,7 +17,7 @@ import { PasswordRules } from "../security/PasswordRules";
 /** Shown under a step's fields when something went wrong; read out at once. */
 export function StepError({ text }: { text: string | null }) {
 	return text ? (
-		<Text accessibilityRole="alert" tone="danger">
+		<Text accessibilityLiveRegion="polite" accessibilityRole="alert" tone="danger">
 			{text}
 		</Text>
 	) : null;

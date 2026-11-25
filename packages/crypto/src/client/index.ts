@@ -108,6 +108,7 @@ export {
 } from "./recover-model";
 export {
 	blocksRecoveryScreen,
+	ENDS_RECOVERY_HANDLE,
 	endsRecoveryHandle,
 	isFinalRecoveryFailure,
 	RECOVERY_FAILURE_CODES,

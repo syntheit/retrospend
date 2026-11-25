@@ -89,12 +89,20 @@ export const blocksRecoveryScreen = (
 ): boolean => isFinalRecoveryFailure(code) || code === "unavailable";
 
 /**
- * Failures after which a recovery handle's proof or keys no longer stand: the
- * sheet wipes it and the person starts again at the key.
+ * What ends a recovery handle: its proof or its key set no longer stands (the
+ * link is gone or spent, the proof was refused, the keys changed, the account
+ * has no recovery proof, the server does not offer the feature, the keys are
+ * not found). The one list: the callbacks wipe the handle on these (the retry
+ * would send a stale body) and every sheet drops its handle and starts again
+ * at the key. A failure that may have committed, or a rate limit, is not here.
  */
-export const endsRecoveryHandle = (code: RecoveryFailureCode): boolean =>
-	code === "wrongKey" ||
-	code === "keysChanged" ||
-	code === "unavailable" ||
-	code === "linkExpired" ||
-	code === "notOffered";
+export const ENDS_RECOVERY_HANDLE: readonly KeyFlowCode[] = [
+	"conflict",
+	"tokenExpired",
+	"wrongRecoveryKey",
+	"recoveryUnavailable",
+	"notOffered",
+	"notFound",
+];
+export const endsRecoveryHandle = (code: KeyFlowCode): boolean =>
+	ENDS_RECOVERY_HANDLE.includes(code);

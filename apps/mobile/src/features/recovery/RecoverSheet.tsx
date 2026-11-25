@@ -1,17 +1,17 @@
 import { passwordMeetsRules } from "@retrospend/api-contract";
 import {
+	asKeyFlowError,
 	endsRecoveryHandle,
 	keyComplete,
 	passwordsAlike,
 	type RecoveryCallbacks,
-	type RecoveryFailureCode,
 	type RecoveryHandle,
 	recoverFieldsLocked,
 	recoverInitialState,
 	recoverKeyText,
 	recoverReducer,
 	recoverView,
-	recoveryFailureOf,
+	recoveryFailureFor,
 } from "@retrospend/crypto/client";
 import { useReducer } from "react";
 import { ScrollView } from "react-native";
@@ -19,14 +19,13 @@ import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Sheet, useSheetBodySize } from "@/ui/Sheet";
+import { PrivacyCover } from "../settings/protection/PrivacyCover";
 import { useEnableLifecycle } from "../settings/protection/useEnableLifecycle";
 import { EnterKeyStep, NewPasswordStep } from "./RecoverSteps";
 
 export type RecoverSheetProps = RecoveryCallbacks & {
 	visible: boolean;
 	onClose: () => void;
-	/** A failure known before anything is typed (the link check found no recovery key on the account). */
-	preset?: RecoveryFailureCode | null;
 	/**
 	 * The new password is set (`set`), or the link was found spent after a
 	 * commit that got no answer (`linkSpent`): the caller sends the person to
@@ -52,27 +51,29 @@ export function RecoverSheet(props: RecoverSheetProps) {
 	const tc = useTranslations("mobile.common");
 	const { space } = useTheme();
 	const body = useSheetBodySize({ footer: true });
-	const preset = props.preset ?? null;
 	const [state, dispatch] = useReducer(
 		recoverReducer,
-		preset,
+		null,
 		recoverInitialState,
 	);
 	const rulesMet = passwordMeetsRules(state.password);
 	const view = recoverView(state, { rulesMet });
 	const life = useEnableLifecycle<RecoveryHandle>({
 		open: props.visible,
-		reset: () => dispatch({ type: "reset", preset }),
+		reset: () => dispatch({ type: "reset" }),
 	});
 
 	function close() {
+		// Not while a job runs: a proof or a commit is not cut off by a swipe or
+		// Android's back (the sheet is locked too, and the web does the same).
+		if (!life.canClose()) return;
 		life.closed();
 		props.onClose();
 	}
 	function fail(error: unknown) {
-		const code = recoveryFailureOf(error);
-		if (endsRecoveryHandle(code)) life.drop();
-		dispatch({ type: "failed", code });
+		const flow = asKeyFlowError(error).code;
+		if (endsRecoveryHandle(flow)) life.drop();
+		dispatch({ type: "failed", code: recoveryFailureFor(flow) });
 	}
 	async function advance() {
 		if (life.running || view.primaryDisabled) return;
@@ -133,6 +134,7 @@ export function RecoverSheet(props: RecoverSheetProps) {
 			detents={["large"]}
 			footer={footer}
 			footerApart={false}
+			locked={state.busy}
 			onClose={close}
 			title={t(view.title)}
 			visible={props.visible}
@@ -158,6 +160,7 @@ export function RecoverSheet(props: RecoverSheetProps) {
 					/>
 				)}
 			</ScrollView>
+			<PrivacyCover />
 		</Sheet>
 	);
 }

@@ -19,7 +19,12 @@ export function FieldLabel({ children }: { children: string }) {
 /** What is wrong with a field, under it: 12 in danger, read out at once. */
 export function FieldError({ children }: { children: string }) {
 	return (
-		<Text accessibilityRole="alert" tone="danger" variant="meta">
+		<Text
+			accessibilityLiveRegion="polite"
+			accessibilityRole="alert"
+			tone="danger"
+			variant="meta"
+		>
 			{children}
 		</Text>
 	);
@@ -56,6 +61,7 @@ export function TextField({
 	align,
 	testID,
 	inputRef,
+	onKeyPress,
 }: {
 	label: string;
 	value: string;
@@ -74,7 +80,7 @@ export function TextField({
 		| "email-address";
 	placeholder?: string;
 	maxLength?: number;
-	autoCapitalize?: "none" | "sentences" | "words";
+	autoCapitalize?: "none" | "sentences" | "words" | "characters";
 	/** Hides what is typed (passwords). */
 	secure?: boolean;
 	/** What the system may fill in (a saved password, a one-time code). */
@@ -102,6 +108,8 @@ export function TextField({
 	testID?: string;
 	/** The input itself, for a form that moves focus to the next field (the recovery key groups). */
 	inputRef?: Ref<TextInputHandle>;
+	/** A key press, by its name ("Backspace"): a form that steps back a field on Backspace in an empty one. */
+	onKeyPress?: (key: string) => void;
 }) {
 	const theme = useTheme();
 	const { color, radius, size, space } = theme;
@@ -152,6 +160,9 @@ export function TextField({
 					onBlur={() => focus(false)}
 					onChangeText={onChangeText}
 					onFocus={() => focus(true)}
+					onKeyPress={
+						onKeyPress ? (e) => onKeyPress(e.nativeEvent.key) : undefined
+					}
 					onSubmitEditing={onSubmitEditing}
 					placeholder={placeholder}
 					placeholderTextColor={color.fg3}

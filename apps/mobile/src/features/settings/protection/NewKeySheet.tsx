@@ -23,6 +23,7 @@ import { TextField } from "@/ui/TextField";
 import { useToast } from "@/ui/Toast";
 import { StepError } from "./EnableSteps";
 import { ConfirmKeyStep, SaveKeyStep } from "./KeySteps";
+import { PrivacyCover } from "./PrivacyCover";
 import { useEnableLifecycle } from "./useEnableLifecycle";
 import { useKeyActions } from "./useKeyActions";
 
@@ -80,6 +81,8 @@ export function NewKeySheet(props: NewKeySheetProps) {
 	});
 
 	function close() {
+		// Not while a job runs: a save is not cut off by a swipe or Android's back.
+		if (!life.canClose()) return;
 		life.closed();
 		props.onClose();
 	}
@@ -172,6 +175,7 @@ export function NewKeySheet(props: NewKeySheetProps) {
 			detents={["large"]}
 			footer={footer}
 			footerApart={false}
+			locked={state.busy}
 			onClose={close}
 			title={t(view.title)}
 			visible={props.visible}
@@ -189,6 +193,8 @@ export function NewKeySheet(props: NewKeySheetProps) {
 							disabled={locked}
 							label={ts("password")}
 							onChangeText={(value) => dispatch({ type: "password", value })}
+							onSubmitEditing={() => void advance()}
+							returnKeyType="go"
 							secure
 							value={state.current}
 						/>
@@ -217,6 +223,7 @@ export function NewKeySheet(props: NewKeySheetProps) {
 					</View>
 				) : null}
 			</ScrollView>
+			<PrivacyCover />
 		</Sheet>
 	);
 }

@@ -21,7 +21,25 @@ jest.mock("@retrospend/api-contract", () =>
 	),
 );
 jest.mock("@/crypto/native", () => ({ getPrimitives: jest.fn() }));
-jest.mock("@/ui/Sheet", () => require("../../../../test/native").sheetMock);
+const mockSheetProps = jest.fn();
+jest.mock("@/ui/Sheet", () => ({
+	useSheetBodySize: () => ({}),
+	Sheet: (props: {
+		visible?: boolean;
+		children?: unknown;
+		footer?: unknown;
+	}) => {
+		mockSheetProps(props);
+		return props.visible === false
+			? null
+			: ([props.children, props.footer] as never);
+	},
+}));
+const lastSheet = () =>
+	mockSheetProps.mock.calls.at(-1)?.[0] as {
+		locked: boolean;
+		onClose: () => void;
+	};
 jest.mock("@/ui/Button", () => require("../../../../test/native").buttonMock);
 jest.mock("@/ui/Glyph", () => ({ Glyph: () => null }));
 const mockCopy = jest.fn();
@@ -80,7 +98,8 @@ async function toConfirm(tree: Tree) {
 }
 
 beforeEach(() => {
-	for (const fn of [makeKey, save, onClose, onDone, mockCopy]) fn.mockReset();
+	for (const fn of [makeKey, save, onClose, onDone, mockCopy, mockSheetProps])
+		fn.mockReset();
 	drafts.length = 0;
 	makeKey.mockImplementation(async () => draftOf());
 	save.mockResolvedValue(undefined);
@@ -186,5 +205,65 @@ describe("NewKeySheet", () => {
 		await toKey(tree);
 		act(() => tree.unmount());
 		expect(drafts[0]?.wipe).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("NewKeySheet, a running job is not cut off", () => {
+	it("is locked and refuses a swipe down or back while the key is being saved", async () => {
+		let release: () => void = () => undefined;
+		save.mockReturnValue(new Promise<void>((r) => (release = r)));
+		const tree = await show();
+		await toConfirm(tree);
+		typeInto(tree, "Group 1", GROUPS[0] ?? "");
+		typeInto(tree, "Group 2", GROUPS[1] ?? "");
+		expect(lastSheet().locked).toBe(false);
+		await pressAsync(tree, "Save key");
+		expect(lastSheet().locked).toBe(true);
+		act(() => lastSheet().onClose());
+		expect(onClose).not.toHaveBeenCalled();
+		expect(drafts[0]?.wipe).not.toHaveBeenCalled();
+		await act(async () => release());
+		expect(onDone).toHaveBeenCalledTimes(1);
+		expect(onClose).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("NewKeySheet, the password step", () => {
+	it("makes the key from the keyboard's Go, and says so", async () => {
+		const tree = await show();
+		typeInto(tree, "Password", "my password");
+		const field = tree.root.findAll(
+			(n) =>
+				n.props.accessibilityLabel === "Password" &&
+				typeof n.props.onSubmitEditing === "function",
+		)[0];
+		expect(field?.props.returnKeyType).toBe("go");
+		if (!field) throw new Error("no password field");
+		await act(async () => (field.props.onSubmitEditing as () => void)());
+		expect(makeKey).toHaveBeenCalledWith("my password");
+	});
+});
+
+describe("NewKeySheet, the app switcher", () => {
+	it("covers the sheet while the app is not in front", async () => {
+		const listeners: ((state: string) => void)[] = [];
+		const { AppState } = require("react-native");
+		jest
+			.spyOn(AppState, "addEventListener")
+			.mockImplementation((_event: unknown, listener: unknown) => {
+				listeners.push(listener as (state: string) => void);
+				return { remove: () => undefined };
+			});
+		const tree = await show();
+		const cover = () =>
+			tree.root.findAll(
+				(n) => typeof n.type === "string" && n.props.testID === "privacy-cover",
+			);
+		expect(cover()).toHaveLength(0);
+		await act(async () => {
+			for (const l of listeners) l("background");
+		});
+		expect(cover().length).toBeGreaterThan(0);
+		jest.restoreAllMocks();
 	});
 });

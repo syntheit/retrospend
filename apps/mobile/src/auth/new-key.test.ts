@@ -56,18 +56,27 @@ type Sent = { currentAuthKey: string; wrappedRecoveryKey: string };
 
 function rig(over: { store?: boolean } = {}) {
 	let wrap: Uint8Array = new Uint8Array(SYMMETRIC_WRAP_BYTES).fill(7);
+	const pair = real.boxKeypair();
 	const keys = jest.fn(async () => ({ kdf: KDF }));
 	const openKeys = jest.fn(async (body: { authKey: string }) => {
 		if (body.authKey !== AUTH) throw refusal(400, "wrong_password");
 		return {
 			version: 4,
 			kdf: KDF,
+			publicKey: toBase64Url(pair.publicKey),
 			wraps: [
 				{
 					role: "ak-password",
 					targetId: USER,
 					wrapped: toBase64Url(
 						wrapKey(real, fromHex(MASTER?.wrapKey ?? ""), "ak-password", USER, AK),
+					),
+				},
+				{
+					role: "private-key",
+					targetId: USER,
+					wrapped: toBase64Url(
+						wrapKey(real, AK, "private-key", USER, pair.privateKey),
 					),
 				},
 			],

@@ -8,6 +8,7 @@ import { CryptoError } from "../errors";
 import {
 	ARGON2_DEFAULT,
 	checkArgon2Params,
+	keyPairMatches,
 	masterSubkeys,
 	type SymmetricRole,
 	unwrapKey,
@@ -313,4 +314,40 @@ export function checkOpens(
 	}
 	if (!sameBytes(opened, check.expected)) throw new KeyFlowError("malformed");
 	return opened;
+}
+
+/**
+ * The account key in hand must be the one that opens this account's private
+ * key, and that private key must belong to the stored public key. A key that
+ * is wiped (all zero), another account's, or swapped by a server fails here
+ * (`malformed`), so it is never wrapped under a new password or a new recovery
+ * key. Recovery and Make new key both call it just before they wrap. Rotate
+ * cannot: its begin answer carries no private-key wrap.
+ */
+export function checkKeyPair(
+	p: Primitives,
+	bin: ReturnType<typeof secretBin>,
+	check: {
+		userId: string;
+		accountKey: Uint8Array;
+		privateKeyWrap: Uint8Array;
+		publicKey: Uint8Array;
+	},
+): void {
+	let privateKey: Uint8Array;
+	try {
+		privateKey = bin.keep(
+			unwrapKey(
+				p,
+				check.accountKey,
+				"private-key",
+				check.userId,
+				check.privateKeyWrap,
+			),
+		);
+	} catch {
+		throw new KeyFlowError("malformed");
+	}
+	if (!keyPairMatches(p, { publicKey: check.publicKey, privateKey }))
+		throw new KeyFlowError("malformed");
 }

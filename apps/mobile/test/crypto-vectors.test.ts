@@ -188,6 +188,8 @@ describe("crypto vectors on the phone toolchain", () => {
 		const made = makeNewRecoveryKey(p, {
 			userId,
 			accountKey: ak,
+			privateKeyWrap: wrapKey(p, ak, "private-key", userId, pair.privateKey),
+			publicKey: pair.publicKey,
 			baseVersion: 3,
 		});
 		const next = parseRecoveryKey(made.recoveryKeyText);

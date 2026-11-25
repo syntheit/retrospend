@@ -12,6 +12,7 @@ import {
 	words,
 } from "../../../test/harness";
 import { RecoverSheet, type RecoverSheetProps } from "./RecoverSheet";
+import { focusAfterKey, focusAfterTyping } from "./RecoverSteps";
 
 // Use your recovery key and Set a new password on the phone: the nine groups,
 // a paste, the proof before a password is asked for, and that what the proof
@@ -22,7 +23,25 @@ jest.mock("@retrospend/api-contract", () =>
 		"../../../../../packages/api-contract/src/account/password-rules",
 	),
 );
-jest.mock("@/ui/Sheet", () => require("../../../test/native").sheetMock);
+// The sheet as a stand-in that keeps what it was given, so a test can swipe it
+// down (call its onClose) and see whether it is locked.
+const mockSheetProps = jest.fn();
+jest.mock("@/ui/Sheet", () => ({
+	useSheetBodySize: () => ({}),
+	Sheet: (props: {
+		visible?: boolean;
+		children?: unknown;
+		footer?: unknown;
+	}) => {
+		mockSheetProps(props);
+		return props.visible === false ? null : ([props.children, props.footer] as never);
+	},
+}));
+const lastSheet = () =>
+	mockSheetProps.mock.calls.at(-1)?.[0] as {
+		locked: boolean;
+		onClose: () => void;
+	};
 jest.mock("@/ui/Button", () => require("../../../test/native").buttonMock);
 jest.mock("@/ui/Glyph", () => ({ Glyph: () => null }));
 
@@ -85,7 +104,8 @@ const fillPasswords = (tree: Tree, a = PASSWORD, b = PASSWORD) => {
 };
 
 beforeEach(() => {
-	for (const fn of [begin, finish, onClose, onDone]) fn.mockReset();
+	for (const fn of [begin, finish, onClose, onDone, mockSheetProps])
+		fn.mockReset();
 	handles.length = 0;
 	begin.mockImplementation(async () => handleOf());
 	finish.mockResolvedValue("set");
@@ -141,14 +161,6 @@ describe("RecoverSheet, the key", () => {
 		// Typing a group clears the line.
 		typeGroup(tree, 1, "ZZZZZZ");
 		expect(words(tree)).not.toContain("That is not this account's recovery key.");
-	});
-
-	it("opens locked on its reason when the link says the account has no recovery key", async () => {
-		const tree = await show({ preset: "unavailable" });
-		expect(words(tree)).toContain("This account has no recovery key.");
-		expect(disabled(tree, "Continue")).toBe(true);
-		typeGroup(tree, 1, "ABCDEF");
-		expect(valueIn(tree, 1)).toBe("");
 	});
 
 	it("asks for the new password only after the key was proven", async () => {
@@ -313,5 +325,108 @@ describe("RecoverSheet, every way out wipes what the proof opened", () => {
 		await closeFromOutside();
 		await act(async () => release("set"));
 		expect(onDone).toHaveBeenCalledWith("set");
+	});
+});
+
+describe("RecoverSheet, a running job is not cut off", () => {
+	it("is locked and refuses a swipe down or Android's back while the commit runs, then closes when it is done", async () => {
+		let release: (v: "set") => void = () => undefined;
+		finish.mockReturnValue(new Promise((r) => (release = r)));
+		const tree = await show();
+		await toPassword(tree);
+		fillPasswords(tree);
+		expect(lastSheet().locked).toBe(false);
+		await pressAsync(tree, "Set password");
+		expect(lastSheet().locked).toBe(true);
+		// The sheet's own onClose is what the platform calls for a swipe or back.
+		act(() => lastSheet().onClose());
+		expect(onClose).not.toHaveBeenCalled();
+		expect(handles[0]?.wipe).not.toHaveBeenCalled();
+		await act(async () => release("set"));
+		expect(onDone).toHaveBeenCalledWith("set");
+		// The job is over: the sheet closes again (the caller then leaves the screen).
+		act(() => lastSheet().onClose());
+		expect(onClose).toHaveBeenCalledTimes(1);
+	});
+
+	it("is locked while the key is being proven too", async () => {
+		begin.mockReturnValue(new Promise(() => {}));
+		const tree = await show();
+		fillAll(tree);
+		await pressAsync(tree, "Continue");
+		expect(lastSheet().locked).toBe(true);
+		act(() => lastSheet().onClose());
+		expect(onClose).not.toHaveBeenCalled();
+	});
+
+	it("a commit that is refused after the sheet closed is dropped: nothing is reported as set", async () => {
+		let fail: (e: unknown) => void = () => undefined;
+		finish.mockReturnValue(new Promise((_, reject) => (fail = reject)));
+		const tree = await show();
+		await toPassword(tree);
+		fillPasswords(tree);
+		await pressAsync(tree, "Set password");
+		await closeFromOutside();
+		await act(async () => fail(new KeyFlowError("rateLimited")));
+		expect(onDone).not.toHaveBeenCalled();
+	});
+});
+
+describe("RecoverSheet, the app switcher", () => {
+	it("covers the sheet while the app is not in front, and shows it again on return", async () => {
+		const listeners: ((state: string) => void)[] = [];
+		const { AppState } = require("react-native");
+		jest
+			.spyOn(AppState, "addEventListener")
+			.mockImplementation((_event: unknown, listener: unknown) => {
+				listeners.push(listener as (state: string) => void);
+				return { remove: () => undefined };
+			});
+		const tree = await show();
+		const cover = () =>
+			tree.root.findAll(
+				(n) => typeof n.type === "string" && n.props.testID === "privacy-cover",
+			);
+		expect(cover()).toHaveLength(0);
+		await act(async () => {
+			for (const l of listeners) l("inactive");
+		});
+		expect(cover().length).toBeGreaterThan(0);
+		await act(async () => {
+			for (const l of listeners) l("active");
+		});
+		expect(cover()).toHaveLength(0);
+		jest.restoreAllMocks();
+	});
+});
+
+describe("RecoverSheet, the groups", () => {
+	it("says Next on every group but the last, which says Done", async () => {
+		const tree = await show();
+		const fields = tree.root.findAll(
+			(n) =>
+				typeof n.type === "string" &&
+				typeof n.props.onChangeText === "function" &&
+				typeof n.props.accessibilityLabel === "string" &&
+				n.props.accessibilityLabel.startsWith("Group "),
+		);
+		expect(fields).toHaveLength(9);
+		for (const field of fields.slice(0, 8))
+			expect(field.props.returnKeyType).toBe("next");
+		expect(fields[8]?.props.returnKeyType).toBe("done");
+	});
+
+	it("moves to the next group once one is full, and not before, and not past the ninth", () => {
+		expect(focusAfterTyping(0, "ABCDE")).toBeNull();
+		expect(focusAfterTyping(0, "ABCDEF")).toBe(1);
+		expect(focusAfterTyping(4, "abcdef")).toBe(5);
+		expect(focusAfterTyping(8, "ABCDEF")).toBeNull();
+	});
+
+	it("steps back on Backspace in an empty group only", () => {
+		expect(focusAfterKey(3, "Backspace", "")).toBe(2);
+		expect(focusAfterKey(3, "Backspace", "A")).toBeNull();
+		expect(focusAfterKey(3, "a", "")).toBeNull();
+		expect(focusAfterKey(0, "Backspace", "")).toBeNull();
 	});
 });

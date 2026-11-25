@@ -289,9 +289,13 @@ export function keyPairMatches(p: Primitives, pair: BoxKeyPair): boolean {
 			pair.publicKey,
 			pair.privateKey,
 		);
-		return opened.every((byte, i) => byte === probe[i]);
+		const same = opened.every((byte, i) => byte === probe[i]);
+		p.wipe(opened);
+		return same;
 	} catch {
 		return false;
+	} finally {
+		p.wipe(probe);
 	}
 }
 

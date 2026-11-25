@@ -18,6 +18,7 @@ import { EnableFooter } from "./EnableFooter";
 import { confirmYouReady, passwordStepReady } from "./EnableSteps";
 import { confirmMatches } from "./KeySteps";
 import type { EnableStep } from "./types";
+import { PrivacyCover } from "./PrivacyCover";
 import { useEnableLifecycle } from "./useEnableLifecycle";
 import { useKeyActions } from "./useKeyActions";
 
@@ -292,6 +293,7 @@ export function EnableSheet({
 					wrong={wrong}
 				/>
 			</ScrollView>
+			<PrivacyCover />
 		</Sheet>
 	);
 }

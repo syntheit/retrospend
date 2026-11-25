@@ -19,6 +19,7 @@ import type { SheetFrameProps } from "./types";
 export function SheetFrame({
 	visible,
 	onClose,
+	locked = false,
 	detents,
 	background,
 	children,
@@ -30,7 +31,7 @@ export function SheetFrame({
 		return (
 			<Modal
 				animationType="fade"
-				onRequestClose={onClose}
+				onRequestClose={locked ? () => undefined : onClose}
 				statusBarTranslucent
 				transparent
 				visible={visible}
@@ -64,7 +65,7 @@ export function SheetFrame({
 		<BottomSheet
 			containerColor={background}
 			isPresented={visible}
-			onDismiss={onClose}
+			onDismiss={locked ? () => undefined : onClose}
 			scrimColor={color.scrim}
 			snapPoints={detents?.map((d) => (d === "medium" ? "half" : "full"))}
 		>

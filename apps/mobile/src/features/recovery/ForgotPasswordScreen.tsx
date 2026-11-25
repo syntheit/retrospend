@@ -2,12 +2,11 @@ import { readResetCode } from "@retrospend/crypto";
 import {
 	KeyFlowError,
 	type RecoveryCallbacks,
-	type RecoveryFailureCode,
 	type RecoveryLink,
 } from "@retrospend/crypto/client";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { publicAuthApi } from "@/auth/public-api";
 import {
@@ -100,20 +99,33 @@ export function ForgotPasswordScreen({
 
 	async function redeem() {
 		if (!api || busy) return;
-		// Text that cannot be a code is refused here, so it spends no try.
-		if (readResetCode(code) === null) return setFailure("typo");
-		setBusy(true);
-		setFailure(null);
-		const swapped = await redeemResetCode(api, email, code);
-		if (!swapped.ok) {
-			setBusy(false);
-			return setFailure(swapped.reason);
+		// A token already swapped is kept: when only its check failed, Continue
+		// asks the check again and never sends the spent code a second time.
+		let current = token;
+		if (current === null) {
+			// Text that cannot be a code is refused here, so it spends no try.
+			if (readResetCode(code) === null) return setFailure("typo");
+			setBusy(true);
+			setFailure(null);
+			const swapped = await redeemResetCode(api, email, code);
+			if (!swapped.ok) {
+				setBusy(false);
+				return setFailure(swapped.reason);
+			}
+			current = swapped.value;
+			setToken(current);
+		} else {
+			setBusy(true);
+			setFailure(null);
 		}
 		try {
-			const found = await checkRecoveryLink(api, swapped.value);
+			const found = await checkRecoveryLink(api, current);
 			setBusy(false);
-			if (found === "invalid") return setFailure("expired");
-			setToken(swapped.value);
+			if (found === "invalid") {
+				// The server does not know it any more: a new code is needed.
+				setToken(null);
+				return setFailure("expired");
+			}
 			setLink(found);
 			setCode("");
 			setStep("choices");
@@ -136,8 +148,9 @@ export function ForgotPasswordScreen({
 		else router.replace("/sign-in");
 	}
 
-	const preset: RecoveryFailureCode | null =
-		link?.keys === "recovery" ? null : "unavailable";
+	// A link that leads to no recovery key (made before the proof existed)
+	// offers none: the control stays, disabled, with its reason.
+	const hasKey = link?.keys === "recovery";
 	const protectionOn = link?.protectionOn ?? false;
 
 	return (
@@ -174,7 +187,8 @@ export function ForgotPasswordScreen({
 				<View style={{ gap: space[4] }}>
 					<Text tone="fg2">{t("codeBody")}</Text>
 					<TextField
-						autoComplete="off"
+						autoCapitalize="characters"
+						autoComplete={Platform.OS === "android" ? "sms-otp" : "one-time-code"}
 						disabled={busy}
 						invalid={failure !== null}
 						label={t("code")}
@@ -184,12 +198,13 @@ export function ForgotPasswordScreen({
 						}}
 						onSubmitEditing={redeem}
 						returnKeyType="go"
+						textContentType="oneTimeCode"
 						value={code}
 					/>
 					<StepError text={failure ? words(failure) : null} />
 					<Button
 						busy={busy}
-						disabled={busy || code.trim() === ""}
+						disabled={busy || (token === null && code.trim() === "")}
 						label={busy ? t("checking") : p("recover.continue")}
 						onPress={redeem}
 					/>
@@ -198,6 +213,7 @@ export function ForgotPasswordScreen({
 						label={tc("back")}
 						onPress={() => {
 							setFailure(null);
+							setToken(null);
 							setStep("email");
 						}}
 						variant="text"
@@ -216,12 +232,14 @@ export function ForgotPasswordScreen({
 						<ListRow
 							end={
 								<Button
+									disabled={!hasKey}
 									label={p("recover.choose.useKey")}
 									onPress={() => setSheet(true)}
 									size="small"
 									variant="outlined"
 								/>
 							}
+							sub={hasKey ? undefined : p("recover.errors.unavailable")}
 							title={p("methods.key")}
 						/>
 						<ListRow
@@ -275,7 +293,6 @@ export function ForgotPasswordScreen({
 						setSheet(false);
 						done();
 					}}
-					preset={preset}
 					visible={sheet}
 				/>
 			) : null}

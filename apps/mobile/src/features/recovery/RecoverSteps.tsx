@@ -30,6 +30,22 @@ export function isPaste(was: string, now: string): boolean {
 	return now.length - was.length > 1 || /[\s-]/.test(now);
 }
 
+/** The group that takes focus after one is typed into: the next, once this one is full. */
+export function focusAfterTyping(index: number, text: string): number | null {
+	return cleanGroup(text).length >= GROUP_LENGTH && index < GROUP_COUNT - 1
+		? index + 1
+		: null;
+}
+
+/** The group that takes focus after a key: the one before, on Backspace in an empty group. */
+export function focusAfterKey(
+	index: number,
+	key: string,
+	group: string,
+): number | null {
+	return key === "Backspace" && group === "" && index > 0 ? index - 1 : null;
+}
+
 /** R3: the key in nine fields, or pasted whole into any of them. */
 export function EnterKeyStep({
 	state,
@@ -62,19 +78,22 @@ export function EnterKeyStep({
 										inputs.current[index] = node;
 									}}
 									label={group("group", { number: index + 1 })}
+									onKeyPress={(key) => {
+										const back = focusAfterKey(index, key, state.groups[index] ?? "");
+										if (back !== null) inputs.current[back]?.focus();
+									}}
 									onChangeText={(text) => {
 										const was = state.groups[index] ?? "";
 										if (isPaste(was, text))
 											return dispatch({ type: "paste", from: index, text });
 										dispatch({ type: "group", index, value: text });
 										// A full group moves on to the next one.
-										if (
-											cleanGroup(text).length >= GROUP_LENGTH &&
-											index < GROUP_COUNT - 1
-										)
-											inputs.current[index + 1]?.focus();
+										const next = focusAfterTyping(index, text);
+										if (next !== null) inputs.current[next]?.focus();
 									}}
+									onSubmitEditing={() => inputs.current[index + 1]?.focus()}
 									placeholder={group("group", { number: index + 1 })}
+									returnKeyType={index < GROUP_COUNT - 1 ? "next" : "done"}
 									value={state.groups[index] ?? ""}
 								/>
 							</View>
