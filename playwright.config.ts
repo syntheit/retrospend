@@ -12,6 +12,7 @@ import {
 } from "./e2e/constants";
 import { assertE2eDatabase } from "./e2e/db-guard";
 import { SEED_TIME_ZONE } from "./e2e/fixtures/personas";
+import { NO_MAIL } from "./src/test/no-mail";
 
 // Before anything starts: `pnpm dev:test` migrates this database and global
 // setup wipes it.
@@ -147,6 +148,8 @@ export default defineConfig({
 				// Playwright started this process group and stops exactly it.
 				gracefulShutdown: { signal: "SIGTERM", timeout: 10_000 },
 				env: {
+					// The e2e server never sends real mail, whatever .env it finds.
+					...NO_MAIL,
 					DATABASE_URL: E2E_DATABASE_URL,
 					AUTH_SECRET: E2E_AUTH_SECRET,
 					PUBLIC_URL: E2E_BASE_URL,

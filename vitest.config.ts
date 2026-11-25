@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { configDefaults, defineConfig } from "vitest/config";
+import { NO_MAIL } from "./src/test/no-mail";
 
 export default defineConfig({
 	plugins: [react()],
@@ -14,6 +15,8 @@ export default defineConfig({
 	},
 	test: {
 		environment: "node",
+		// Tests never send real mail, whatever .env the run picks up.
+		env: NO_MAIL,
 		setupFiles: ["src/test/unit-env.ts"],
 		include: [
 			"src/**/*.test.ts",
