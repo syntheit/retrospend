@@ -10,7 +10,9 @@
 import { randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { EMAIL_CHECKS } from "~/server/services/shadow-profile.service";
 import { adminDb, fixtureDb } from "~/test/pg-harness";
+import { stayInWindow } from "~/test/rate-window";
 import {
 	ars,
 	arsUser,
@@ -310,6 +312,7 @@ describe("/api/v1/people", () => {
 	});
 
 	it("meters adding a person with an email", async () => {
+		stayInWindow(EMAIL_CHECKS.windowMs);
 		const [spammer] = [await arsUser()];
 		const headers = await asMobile(spammer.user.id);
 		const add = (i: number) =>

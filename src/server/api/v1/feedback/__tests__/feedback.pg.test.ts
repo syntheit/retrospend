@@ -13,6 +13,7 @@ import {
 	sweepSupportData,
 } from "~/server/services/api-v1/retention-sweep";
 import { anonymizeAndDeleteUser } from "~/server/services/user-deletion.service";
+import { stayInWindow } from "~/test/rate-window";
 import {
 	adminDb,
 	asKey,
@@ -368,15 +369,10 @@ describe("/api/v1/feedback and /error-reports", () => {
 				idempotent: true,
 			});
 		// The window is a fixed minute, so six slow uploads under load could
-		// straddle a boundary and land in two windows. Hold the clock still.
-		const minute = Math.floor(Date.now() / 60_000) * 60_000;
-		vi.useFakeTimers({ toFake: ["Date"], now: minute + 1_000 });
-		try {
-			for (let n = 0; n < 5; n++) expect((await put()).status).toBe(200);
-			await expectProblem(await put(), 429, "rate_limited");
-		} finally {
-			vi.useRealTimers();
-		}
+		// straddle a boundary and land in two windows.
+		stayInWindow(60_000, 30_000);
+		for (let n = 0; n < 5; n++) expect((await put()).status).toBe(200);
+		await expectProblem(await put(), 429, "rate_limited");
 	});
 
 	it("leaves one file when uploads arrive at the same moment", async () => {

@@ -8,6 +8,7 @@ import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
 import sharp from "sharp";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { stayInWindow } from "~/test/rate-window";
 import { env } from "~/env";
 import { auth } from "~/server/better-auth";
 import { uploadFile } from "~/server/storage";
@@ -143,8 +144,7 @@ describe("/api/v1/profile", () => {
 
 	it("counts each email-change password check as a try, so the sixth is a 429 even with the right password", async () => {
 		// The tries count in fixed 15 minute windows: all six must land in one.
-		const left = 15 * 60_000 - (Date.now() % (15 * 60_000));
-		if (left < 60_000) await new Promise((r) => setTimeout(r, left + 1_000));
+		stayInWindow(15 * 60_000);
 		const guesser = await passwordUser();
 		const headers = await asMobile(guesser.id);
 		const next = `${randomUUID()}@pg-test.invalid`;
