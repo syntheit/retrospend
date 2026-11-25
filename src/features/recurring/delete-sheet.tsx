@@ -51,6 +51,8 @@ export function DeleteSheet({
 	return (
 		<Sheet
 			detent="medium"
+			// No field to focus: the sheet itself, so Ctrl+Enter reaches it (a disabled submit cannot take focus).
+			focusField={false}
 			onOpenChange={onOpenChange}
 			onSubmit={onDelete}
 			open
