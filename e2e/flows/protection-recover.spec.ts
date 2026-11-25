@@ -54,7 +54,8 @@ test("a keyed account recovers with its recovery key, signs in with the new pass
 	test.setTimeout(240_000);
 	const sent: { url: string; body: string }[] = [];
 	page.on("request", (req) => {
-		if (req.url().includes(RECOVERY))
+		// The link check at page load is not a proof or a commit: left out.
+		if (req.url().includes(RECOVERY) && !req.url().endsWith("/check"))
 			sent.push({
 				url: req.url().replace(/^.*\/api/, "/api"),
 				body: req.postData() ?? "",
