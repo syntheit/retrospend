@@ -146,6 +146,17 @@ describe("shape and tombstones", () => {
 	});
 });
 
+describe("the sealer", () => {
+	it("sealing one record twice gives two byte strings, and each opens to the record and its version", () => {
+		const sealer = createFakeSealer();
+		const record = { amount: "100", homeAmount: "154500.00" };
+		const [first, second] = [sealer.seal(record, 1), sealer.seal(record, 1)];
+		expect(first).not.toBe(second);
+		expect(openFake(first)).toEqual({ version: 1, plain: record });
+		expect(openFake(second)).toEqual({ version: 1, plain: record });
+	});
+});
+
 describe("the sender over it", () => {
 	const entry = (over: Partial<VaultEntry> = {}): VaultEntry => ({
 		clientId: "c1",
