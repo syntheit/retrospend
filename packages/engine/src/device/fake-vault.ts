@@ -129,14 +129,15 @@ export class FakeVault {
 	}
 }
 
+// UTF-16 code units as four hex digits each: the engine's lib has no TextEncoder.
 const hex = (text: string) =>
-	[...new TextEncoder().encode(text)]
-		.map((b) => b.toString(16).padStart(2, "0"))
-		.join("");
-const unhex = (text: string) =>
-	new TextDecoder().decode(
-		Uint8Array.from(text.match(/../g) ?? [], (h) => Number.parseInt(h, 16)),
+	Array.from(text, (c) => c.charCodeAt(0).toString(16).padStart(4, "0")).join(
+		"",
 	);
+const unhex = (text: string) =>
+	(text.match(/.{4}/g) ?? [])
+		.map((h) => String.fromCharCode(Number.parseInt(h, 16)))
+		.join("");
 
 /**
  * A sealer whose every call differs, as the real one does (a fresh random

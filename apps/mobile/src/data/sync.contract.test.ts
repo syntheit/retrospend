@@ -81,7 +81,9 @@ function writesOf(h: Harness): DeviceWrites {
 			}
 			const id = op.kind === "delete" ? op.id : String(op.body.id);
 			const body =
-				op.kind === "update" ? (op.body as Record<string, unknown>) : null;
+				op.kind === "update"
+					? (op.body as unknown as Record<string, unknown>)
+					: null;
 			const amount = String(body?.amount ?? "100");
 			return {
 				bookedAt: 1,
