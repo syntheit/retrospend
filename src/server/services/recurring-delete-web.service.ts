@@ -104,7 +104,7 @@ export async function previewRestoreTemplate(
 		restoreRecurringFor(input.template),
 		input,
 	);
-	// How many envelopes follow it again, for the sheet's own line.
+	// How many envelopes follow it again; read by tests and v1 parity, no web code yet.
 	return { ...preview, relinkedEnvelopes: value.relinkedEnvelopes };
 }
 

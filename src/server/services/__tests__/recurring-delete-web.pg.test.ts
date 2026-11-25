@@ -21,9 +21,15 @@ import { readFigures } from "~/server/figures/read";
 import { signRestore } from "~/server/services/entry/restore-token";
 import { forUser } from "~/server/services/preview";
 import { adminDb, fixtureDb } from "~/test/pg-harness";
-import { arsUser, seedArsRates, TODAY } from "../accounts/test-fixtures";
+import {
+	arsUser,
+	openAccount,
+	seedArsRates,
+	TODAY,
+} from "../accounts/test-fixtures";
 import { addRow, setupInput } from "../envelope/__tests__/pg-fixture";
 import { setupEnvelopeBook } from "../envelope/setup.mutation";
+import { NO_TARGET, replaceTarget } from "../envelope/target-write";
 import {
 	deleteTemplate,
 	previewDeleteTemplate,
@@ -221,6 +227,55 @@ describe("deleting a template the budget follows", () => {
 		expect((await read(userId)).plan).not.toEqual([ars(320_000)]);
 	});
 
+	it("a bill the person pointed at a debt since keeps it on Undo", async () => {
+		const { userId, id, rent } = await billed();
+		const { restore } = await deleteTemplate(adminDb, userId, id);
+		// Rent now follows a 100,000.00 ARS loan, written the way "Set a target" writes it.
+		const loan = await openAccount(
+			userId,
+			"Loan",
+			"LIABILITY_LOAN",
+			"ARS",
+			100_000,
+		);
+		await adminDb.envelope.update({
+			where: { id: rent },
+			data: replaceTarget(
+				{ kind: "BILL_LIABILITY", liabilityId: loan },
+				"ARS",
+				1,
+			),
+		});
+
+		const preview = await previewRestoreTemplate(userId, restore);
+		expect(preview.relinkedEnvelopes).toBe(0);
+		await restoreTemplate(adminDb, userId, restore);
+		await expect(
+			adminDb.envelope.findUniqueOrThrow({ where: { id: rent } }),
+		).resolves.toMatchObject({
+			kind: "BILL",
+			targetTemplateId: null,
+			targetLiabilityId: loan,
+		});
+	});
+
+	it("an envelope the person set to No target since stays unlinked on Undo", async () => {
+		const { userId, id, rent } = await billed();
+		const { restore } = await deleteTemplate(adminDb, userId, id);
+		// No target: the kind goes to NONE and every target column is clear.
+		await adminDb.envelope.update({
+			where: { id: rent },
+			data: { ...NO_TARGET, kind: "NONE" },
+		});
+
+		const preview = await previewRestoreTemplate(userId, restore);
+		expect(preview.relinkedEnvelopes).toBe(0);
+		await restoreTemplate(adminDb, userId, restore);
+		await expect(
+			adminDb.envelope.findUniqueOrThrow({ where: { id: rent } }),
+		).resolves.toMatchObject({ kind: "NONE", targetTemplateId: null });
+	});
+
 	it("a template no envelope follows leaves the plan cost out", async () => {
 		const userId = await arsBook();
 		const id = await template(userId, "Gym");
@@ -238,6 +293,11 @@ describe("what the Undo refuses", () => {
 		const { userId, id } = await billed();
 		const { restore } = await deleteTemplate(adminDb, userId, id);
 		await restoreTemplate(adminDb, userId, restore);
+		// Edited to 4,000.00, so it is not the same one by hand: only the id can refuse.
+		await fixtureDb.recurringTemplate.update({
+			where: { id },
+			data: { amount: "4000" },
+		});
 		// A fresh signature, so the single-use claim is not what refuses it.
 		const again = signRestore(
 			RECURRING_DELETE,
@@ -245,8 +305,14 @@ describe("what the Undo refuses", () => {
 			JSON.parse(restore.data).payload,
 		);
 		await expect(restoreTemplate(adminDb, userId, again)).rejects.toMatchObject(
-			{ code: "CONFLICT" },
+			{ code: "CONFLICT", message: "This template is back already" },
 		);
+		// The edited template is left as it is.
+		expect(
+			(
+				await fixtureDb.recurringTemplate.findUniqueOrThrow({ where: { id } })
+			).amount.toString(),
+		).toBe("4000");
 	});
 
 	it("a token used once, even after the template was deleted again", async () => {
