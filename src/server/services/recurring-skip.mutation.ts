@@ -6,15 +6,14 @@
  * stored differs (recurring.service dueInstant).
  */
 
-import { dueAnchorDay, nextDueAfter } from "@retrospend/domain/recurring";
-import { isDue } from "@retrospend/domain/recurring-post/due";
+import { nextDueAfter } from "@retrospend/domain/recurring";
 import {
-	ITEM_ALREADY_SETTLED,
-	RECURRING_NOT_FOUND,
-	RecurringRefusal,
-} from "@retrospend/domain/recurring-post/refusals";
+	assertAdvanced,
+	planSkip,
+} from "@retrospend/domain/recurring-post/plan";
 import { TRPCError } from "@trpc/server";
 import { userTimeZone } from "~/server/services/user-time-zone";
+import { postTemplateOf } from "./money-in.service";
 import type { MoneyMutation } from "./preview/types";
 
 export interface SkipRecurringInput {
@@ -39,46 +38,36 @@ export const skipRecurring: MoneyMutation<
 	touches: [],
 	run: async (tx, input, actor) => {
 		const template = await tx.recurringTemplate.findFirst({
-			where: { id: input.templateId, userId: actor.userId, isActive: true },
+			where: { id: input.templateId, userId: actor.userId },
 		});
-		if (!template) throw new RecurringRefusal("not_found", RECURRING_NOT_FOUND);
-		if (
-			input.dueDate &&
-			input.dueDate.getTime() !== template.nextDueDate.getTime()
-		)
-			throw new RecurringRefusal("already_posted", ITEM_ALREADY_SETTLED);
-		// Due once its day has come: income by its UTC day, an expense by its
-		// instant. This differs from confirm, which reads an income template by
-		// its instant too (recurring-confirm.mutation.ts); not unified here.
-		const zone = await userTimeZone(tx, actor.userId, input.timeZone);
-		const rule = template.direction === "IN" ? "utc_day" : "start_of_next_day";
-		if (!isDue(template.nextDueDate, new Date(), zone, rule))
-			throw new RecurringRefusal("not_due", ITEM_ALREADY_SETTLED);
-
-		// Due dates step in the user's saved zone, not this request's.
-		const stepZone = await userTimeZone(tx, actor.userId);
-		const nextDueAt = nextDueAfter(template, template.nextDueDate, stepZone);
-		const anchorDay = dueAnchorDay(template, stepZone);
+		// Due once its day has come, in this request's zone. Due dates step in
+		// the user's saved zone, not this request's.
+		const plan = planSkip(template && postTemplateOf(template), {
+			userId: actor.userId,
+			now: new Date(),
+			zone: await userTimeZone(tx, actor.userId, input.timeZone),
+			stepZone: await userTimeZone(tx, actor.userId),
+			dueAt: input.dueDate,
+		});
 		const advanced = await tx.recurringTemplate.updateMany({
 			where: {
-				id: template.id,
+				id: plan.templateId,
 				userId: actor.userId,
-				nextDueDate: template.nextDueDate,
+				nextDueDate: plan.dueAt,
 			},
-			data: { nextDueDate: nextDueAt, anchorDay },
+			data: { nextDueDate: plan.nextDueDate, anchorDay: plan.anchorDay },
 		});
-		if (advanced.count === 0)
-			throw new RecurringRefusal("already_posted", ITEM_ALREADY_SETTLED);
+		assertAdvanced(advanced.count, "skip");
 		return {
 			value: {
-				templateId: template.id,
-				dueAt: template.nextDueDate,
-				nextDueAt,
+				templateId: plan.templateId,
+				dueAt: plan.dueAt,
+				nextDueAt: plan.nextDueDate,
 			},
 			undo: {
 				kind: "revert",
 				mutation: "recurring.unskip",
-				rows: [{ table: "recurring_template", id: template.id }],
+				rows: [{ table: "recurring_template", id: plan.templateId }],
 			},
 		};
 	},

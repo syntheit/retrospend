@@ -14,7 +14,8 @@
  *   inside its transaction: the person may have turned either off since the
  *   ids were read.
  * - After downtime a template posts every missed period, each dated its own
- *   due date with that day's rate, up to CATCH_UP_CAP per pass.
+ *   due date with that day's rate, up to CATCH_UP_CAP (the domain's
+ *   runCatchUp) per pass.
  * - A protected account's templates never post (its personal rows live in the
  *   vault, F9): the due list leaves them out, and the state is read again
  *   before every period, so a template whose owner turns protection on
@@ -24,6 +25,10 @@
  *   retries; Needs you shows it as overdue after an hour (needs-you/activity.ts).
  */
 import { MissingRateError } from "@retrospend/domain/money";
+import {
+	type CatchUpPort,
+	runCatchUp,
+} from "@retrospend/domain/recurring-post/plan";
 import { RecurringRefusal } from "@retrospend/domain/recurring-post/refusals";
 import { env } from "~/env";
 import { textUnavailableProblem } from "~/server/crypto/field-open";
@@ -35,9 +40,6 @@ import type { Prisma } from "~prisma";
 import { confirmRecurringExpense } from "./recurring-confirm.mutation";
 
 const EVERY_MS = 15 * 60 * 1000;
-
-/** Periods one template posts in one pass; a template years behind continues next pass. */
-export const CATCH_UP_CAP = 31;
 
 /** The `system_status` row with the last pass's counts. */
 export const AUTO_POST_STATUS_KEY = "recurring_auto_post";
@@ -82,50 +84,54 @@ const errorCode = (error: unknown) => {
 	return error instanceof Error ? error.name : "unknown";
 };
 
-function outcomeOf(error: unknown): Outcome {
+const logFailure = (code: string) =>
+	console.error("Recurring auto-post failed for one template:", code);
+
+function outcomeOf(error: unknown): Exclude<Outcome, "posted"> {
 	// Not found, already posted or not due: someone else got there first.
 	if (error instanceof RecurringRefusal) return "raced";
 	if (error instanceof MissingRateError) return "missingRate";
 	if (textUnavailableProblem(error) === "key_rotated") return "retry";
-	console.error(
-		"Recurring auto-post failed for one template:",
-		errorCode(error),
-	);
+	logFailure(errorCode(error));
 	return "failed";
 }
 
-/** Posts one period; the template's next due date when it posted. */
-async function postOne(
-	c: Candidate,
-): Promise<{ outcome: Outcome; nextDueAt?: Date }> {
-	try {
-		const { value } = await forUser(c.userId).apply(confirmRecurringExpense, {
-			templateId: c.id,
-			dueDate: c.nextDueDate,
-			auto: true,
-		});
-		return { outcome: "posted", nextDueAt: value.nextDueAt };
-	} catch (error) {
-		return { outcome: outcomeOf(error) };
-	}
+/** The domain's catch-up loop over this server: one confirm per period, one protection read before each later one. */
+function catchUpPort(c: Candidate): CatchUpPort<ReturnType<typeof outcomeOf>> {
+	return {
+		isProtected: () => isProtectedNow(c.userId),
+		post: async ({ dueAt }) => {
+			try {
+				const { value } = await forUser(c.userId).apply(
+					confirmRecurringExpense,
+					{ templateId: c.id, dueDate: dueAt, auto: true },
+				);
+				return { posted: true, nextDueDate: value.nextDueAt };
+			} catch (error) {
+				return { posted: false, outcome: outcomeOf(error) };
+			}
+		},
+	};
 }
 
-/** Every due period of one template, oldest first, each in its own transaction. */
+/**
+ * Every due period of one template, oldest first, each in its own transaction.
+ * A protection read that fails stops the template and is logged and counted
+ * as a failure, like any other failed post; nothing advances.
+ */
 async function postTemplate(
 	c: Candidate,
 	now: Date,
 	counts: Record<keyof RecurringAutoPostResult, number>,
 ) {
-	let due = c.nextDueDate;
-	for (let i = 0; i < CATCH_UP_CAP; i++) {
-		// Period 0 was checked before the key was made.
-		if (i > 0 && (await isProtectedNow(c.userId))) return;
-		const { outcome, nextDueAt } = await postOne({ ...c, nextDueDate: due });
-		counts[outcome] += 1;
-		if (!nextDueAt || nextDueAt > now) return;
-		due = nextDueAt;
+	const run = await runCatchUp(catchUpPort(c), c.nextDueDate, now);
+	for (const result of run.results)
+		counts[result.posted ? "posted" : result.outcome] += 1;
+	if (run.stopped === "cap") counts.capped += 1;
+	if (run.stopped === "protection_unreadable") {
+		logFailure("protection_unreadable");
+		counts.failed += 1;
 	}
-	counts.capped += 1;
 }
 
 /**

@@ -5,22 +5,20 @@
  * own (income/confirm-recurring.mutation.ts). The undo removes the entry and
  * puts the template back on its due date.
  */
+import { nextRecurringDate } from "@retrospend/domain/recurring";
 import {
-	dueAnchorDay,
-	nextDueAfter,
-	nextRecurringDate,
-} from "@retrospend/domain/recurring";
-import { isDue } from "@retrospend/domain/recurring-post/due";
-import {
-	PAYMENT_ALREADY_CONFIRMED,
-	RECURRING_NOT_FOUND,
-	RecurringRefusal,
-} from "@retrospend/domain/recurring-post/refusals";
+	assertAdvanced,
+	planConfirm,
+} from "@retrospend/domain/recurring-post/plan";
 import { TRPCError } from "@trpc/server";
 import { userTimeZone } from "~/server/services/user-time-zone";
-import { recurringEntryData } from "./money-in.service";
+import { postTemplateOf, recurringTitle } from "./money-in.service";
 import type { MoneyMutation } from "./preview/types";
-import { paidOnInstant } from "./recurring-paid-on";
+import {
+	asBadRequestAsync,
+	bookContextOf,
+	loadRateContext,
+} from "./rate-types";
 
 export interface ConfirmRecurringExpenseInput {
 	readonly templateId: string;
@@ -58,72 +56,67 @@ export const confirmRecurringExpense: MoneyMutation<
 	id: "recurring.confirm",
 	touches: FIGURES,
 	run: async (tx, input, actor) => {
+		// Either direction: the web's older confirm still posts recurring income
+		// through here. /api/v1 sends income to its own mutation. The plan
+		// refuses a paused template, or an auto post's template that no longer
+		// pays automatically with a fixed amount.
 		const template = await tx.recurringTemplate.findFirst({
-			where: {
-				id: input.templateId,
-				userId: actor.userId,
-				isActive: true,
-				// Either direction: the web's older confirm still posts recurring
-				// income through here. /api/v1 sends income to its own mutation.
-				...(input.auto && { autoPay: true, amountMode: "FIXED" }),
-			},
+			where: { id: input.templateId, userId: actor.userId },
 		});
-		if (!template) throw new RecurringRefusal("not_found", RECURRING_NOT_FOUND);
-		if (
-			input.dueDate &&
-			input.dueDate.getTime() !== template.nextDueDate.getTime()
-		)
-			throw new RecurringRefusal("already_posted", PAYMENT_ALREADY_CONFIRMED);
 		const zone = await userTimeZone(tx, actor.userId, input.timeZone);
-		// Either direction reads the start of the next day here, as it always has;
-		// income's own confirm and skip read the UTC day (income/confirm-recurring).
-		if (!isDue(template.nextDueDate, new Date(), zone, "start_of_next_day"))
-			throw new RecurringRefusal("not_due", PAYMENT_ALREADY_CONFIRMED);
-
-		// Direction, amount and the due date's rate (never 1) for the row.
-		const entry = await recurringEntryData(
-			tx,
-			template,
-			input.amount ?? undefined,
-			undefined,
-			input.paidOn
-				? paidOnInstant(input.paidOn, template.direction, zone, template)
-				: undefined,
-		);
 		// Due dates are stored as the start of a day in the user's saved zone, so
 		// they step there whatever zone this request came from.
 		const stepZone = await userTimeZone(tx, actor.userId);
-		const nextDueAt = nextDueAfter(template, template.nextDueDate, stepZone);
+		const book = bookContextOf(tx, await loadRateContext(tx, actor.userId));
+		// The refusals in their order, then direction, amount and the due date's
+		// rate (never 1) for the row.
+		const plan = await asBadRequestAsync(() =>
+			planConfirm(
+				template && postTemplateOf(template),
+				{
+					userId: actor.userId,
+					now: new Date(),
+					zone,
+					stepZone,
+					dueAt: input.dueDate,
+					confirmedAmount: input.amount,
+					paidOn: input.paidOn,
+					auto: input.auto,
+				},
+				book,
+			),
+		);
+		// The plan found the template, so its name is there; a sealed one throws.
+		const title = recurringTitle(template?.name ?? "");
 		// The advance only succeeds while nextDueDate is still the one read,
 		// so two confirms racing each other create a single expense.
 		const advanced = await tx.recurringTemplate.updateMany({
 			where: {
-				id: template.id,
+				id: plan.templateId,
 				userId: actor.userId,
-				nextDueDate: template.nextDueDate,
+				nextDueDate: plan.dueAt,
 			},
-			data: {
-				nextDueDate: nextDueAt,
-				anchorDay: dueAnchorDay(template, stepZone),
-			},
+			data: { nextDueDate: plan.nextDueDate, anchorDay: plan.anchorDay },
 		});
-		if (advanced.count === 0)
-			throw new RecurringRefusal("already_posted", PAYMENT_ALREADY_CONFIRMED);
-		const row = await tx.expense.create({ data: entry, select: { id: true } });
+		assertAdvanced(advanced.count, "confirm");
+		const row = await tx.expense.create({
+			data: { ...plan.entry, title },
+			select: { id: true },
+		});
 		return {
 			value: {
 				expenseId: row.id,
-				templateId: template.id,
-				nextDueAt,
-				dueAt: template.nextDueDate,
-				anchorDay: template.anchorDay,
+				templateId: plan.templateId,
+				nextDueAt: plan.nextDueDate,
+				dueAt: plan.dueAt,
+				anchorDay: plan.previousAnchorDay,
 			},
 			undo: {
 				kind: "revert",
 				mutation: "recurring.unconfirm",
 				rows: [
 					{ table: "expense", id: row.id },
-					{ table: "recurring_template", id: template.id },
+					{ table: "recurring_template", id: plan.templateId },
 				],
 			},
 		};

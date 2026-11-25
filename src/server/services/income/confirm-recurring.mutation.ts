@@ -22,6 +22,7 @@ import {
 } from "@retrospend/domain/envelope/verdict";
 import { nextDueDay } from "@retrospend/domain/recurring";
 import { isDue } from "@retrospend/domain/recurring-post/due";
+import { paidOnInstant } from "@retrospend/domain/recurring-post/paid-on";
 import {
 	INCOME_ALREADY_CONFIRMED,
 	RECURRING_INCOME_NOT_FOUND,
@@ -33,7 +34,7 @@ import type { Money } from "~/server/figures/registry";
 import { forgetMonthViews } from "~/server/services/envelope/month-read";
 import { recurringEntryData } from "~/server/services/money-in.service";
 import type { MoneyMutation } from "~/server/services/preview/types";
-import { paidOnInstant } from "~/server/services/recurring-paid-on";
+import { asBadRequest } from "~/server/services/rate-types";
 import { withUserZone } from "~/server/services/user-time-zone";
 import type { Prisma } from "~prisma";
 import {
@@ -118,6 +119,7 @@ export async function confirmRecurringIncomeIn(
 ): Promise<ConfirmedIncome> {
 	const input = await withUserZone(tx, userId, given);
 	const template = await dueTemplate(tx, userId, input);
+	const paidOn = input.paidOn;
 	const entry = await recurringEntryData(
 		tx,
 		template,
@@ -129,8 +131,10 @@ export async function confirmRecurringIncomeIn(
 					value: input.customRate,
 				}
 			: { kind: "table", rateType: input.rateType ?? null },
-		input.paidOn
-			? paidOnInstant(input.paidOn, "IN", input.timeZone, template)
+		paidOn
+			? asBadRequest(() =>
+					paidOnInstant(paidOn, "IN", input.timeZone, template, new Date()),
+				)
 			: undefined,
 	);
 	const home = await homeCurrencyOf(tx, userId);

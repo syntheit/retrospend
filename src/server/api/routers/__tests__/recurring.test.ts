@@ -20,6 +20,7 @@ type Template = {
 	nextDueDate: Date;
 	anchorDay: number | null;
 	isActive: boolean;
+	updatedAt: Date;
 	direction?: "OUT" | "IN";
 	amountMode?: "FIXED" | "ASK";
 };
@@ -80,6 +81,7 @@ function setTemplate(overrides: Partial<Template> = {}) {
 		nextDueDate: local(2026, 1, 31),
 		anchorDay: 31,
 		isActive: true,
+		updatedAt: new Date("2026-01-01T00:00:00.000Z"),
 		...overrides,
 	};
 }
