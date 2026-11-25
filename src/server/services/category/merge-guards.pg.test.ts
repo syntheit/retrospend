@@ -105,6 +105,20 @@ describe("an undo is refused as a whole, changing nothing", () => {
 		).resolves.toBe(0);
 	});
 
+	it("when the target is gone and the category held nothing, so no row could say so", async () => {
+		const me = await arsUser();
+		const empty = await category(me, "Empty");
+		const tgt = await category(me, "Food");
+		const done = await run(me, empty.id, tgt.id);
+		await fixtureDb.category.delete({ where: { id: tgt.id } });
+		await expect(undo(me, done.value.stash)).rejects.toMatchObject({
+			code: "CONFLICT",
+		});
+		await expect(
+			fixtureDb.category.count({ where: { id: empty.id } }),
+		).resolves.toBe(0);
+	});
+
 	it("when the name was taken since, and a retry after the other category is gone works", async () => {
 		const m = await merged();
 		const taken = await category(m.me, "Cafe");

@@ -4,7 +4,11 @@
  * blue rate (1 USD = 1,545 ARS). Expected values are worked out by hand.
  */
 import { randomUUID } from "node:crypto";
+import type { TRPCError } from "@trpc/server";
 import { beforeAll, describe, expect, it } from "vitest";
+import { problemCode } from "~/server/api/error-formatter";
+import { categoriesRouter } from "~/server/api/routers/categories";
+import { createCallerFactory } from "~/server/api/trpc";
 import { adminDb, fixtureDb } from "~/test/pg-harness";
 import {
 	arsUser,
@@ -299,5 +303,67 @@ describe("shared expenses and shares", () => {
 		await expect(
 			fixtureDb.splitParticipant.findUniqueOrThrow({ where: { id: share.id } }),
 		).resolves.toMatchObject({ categoryId: src.id, categorySource: "USER" });
+	});
+});
+
+describe("through categories.previewRemove, remove, restore and delete", () => {
+	const caller = (userId: string) =>
+		createCallerFactory(categoriesRouter)({
+			db: adminDb,
+			session: {
+				user: {
+					id: userId,
+					role: "USER",
+					email: `${userId}@pg-test.invalid`,
+					name: "Tester",
+					isActive: true,
+					protectionState: "OFF",
+				},
+			} as never,
+			headers: new Headers(),
+		});
+
+	it("previews without writing, removes, and restores from the stash", async () => {
+		const me = await arsUser();
+		const from = await category(me, "Cafe");
+		const into = await category(me, "Food");
+		const row = await expense(me, from.id, 10);
+		const api = caller(me);
+
+		const preview = await api.previewRemove({ id: from.id, targetId: into.id });
+		expect(preview.value.counts.expense.moved).toBe(1);
+		await expect(
+			fixtureDb.category.count({ where: { id: from.id } }),
+		).resolves.toBe(1);
+
+		const done = await api.remove({ id: from.id, targetId: into.id });
+		await expect(
+			fixtureDb.expense.findUniqueOrThrow({ where: { id: row.id } }),
+		).resolves.toMatchObject({ categoryId: into.id });
+
+		await api.restore({ stash: done.value.stash });
+		await expect(
+			fixtureDb.expense.findUniqueOrThrow({ where: { id: row.id } }),
+		).resolves.toMatchObject({ categoryId: from.id });
+	});
+
+	it("words a refusal by its code and keeps the old delete's rule about expenses", async () => {
+		const me = await arsUser();
+		const spending = await category(me, "Misc");
+		const salary = await category(me, "Salary", { kind: "INCOME" });
+		const api = caller(me);
+
+		const refused = await api
+			.remove({ id: salary.id, targetId: spending.id })
+			.catch((e) => e as TRPCError);
+		expect(problemCode(refused as TRPCError)).toBe("category_kind_mismatch");
+
+		await expense(me, spending.id, 3);
+		await expect(api.delete({ id: spending.id })).rejects.toMatchObject({
+			code: "CONFLICT",
+		});
+		await expect(
+			api.delete({ id: spending.id, reassignToUncategorized: true }),
+		).resolves.toEqual({ success: true });
 	});
 });
