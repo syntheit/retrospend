@@ -56,6 +56,7 @@ export const prismaBudgetReads: BudgetReads<FigureDb> = {
 
 	async debt(db, userId, pass) {
 		const read = async () => {
+			// No forgetMonthViews: the month view only says a budget exists, and projectIn reads the liabilities itself.
 			if (!(await monthViewIn(db, userId, new Date()))) return null;
 			return projectIn(db, userId, {}, new Date());
 		};
