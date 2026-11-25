@@ -59,6 +59,11 @@ export {
 	readOpenAnswer,
 } from "./new-key";
 export {
+	createNewKeyCallbacks,
+	type NewKeyCallbacks,
+	type NewKeyFlowPorts,
+} from "./new-key-flow";
+export {
 	beginRecovery,
 	finishRecovery,
 	type RecoverBeginAnswer,
@@ -70,6 +75,13 @@ export {
 	readRecoverBeginAnswer,
 	recoverAccount,
 } from "./recover";
+export {
+	isFinalRecoveryFailure,
+	RECOVERY_FAILURE_CODES,
+	type RecoveryFailureCode,
+	recoveryFailureFor,
+	recoveryFailureOf,
+} from "./recovery-failure";
 export {
 	type ConfirmGroups,
 	groupMatches,
