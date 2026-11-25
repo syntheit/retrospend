@@ -150,9 +150,7 @@
 			"label": "Пропустить в этот раз"
 		},
 		"delete": {
-			"label": "Удалить",
-			"confirmTitle": "Удалить {name}?",
-			"confirmButton": "Удалить регулярный расход"
+			"label": "Удалить"
 		}
 	},
 	"category": {

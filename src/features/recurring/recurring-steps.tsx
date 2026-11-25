@@ -1,11 +1,12 @@
 "use client";
 
 import { ConfirmSheet } from "./confirm-sheet";
+import { DeleteSheet } from "./delete-sheet";
 import { SkipSheet } from "./skip-sheet";
 import type { useRecurring } from "./use-recurring";
 
 /**
- * The Confirm and Skip steps of a due recurring item, wired to useRecurring.
+ * The Confirm, Skip and Delete steps of a recurring item, wired to useRecurring.
  * Skip this time inside Confirm hands over to the skip step.
  */
 export function RecurringSteps({
@@ -15,7 +16,7 @@ export function RecurringSteps({
 	recurring: ReturnType<typeof useRecurring>;
 	today: string;
 }) {
-	const { confirming, skipping } = r;
+	const { confirming, skipping, deleting } = r;
 	return (
 		<>
 			{confirming && (
@@ -39,6 +40,16 @@ export function RecurringSteps({
 						if (!open) r.closeSkip();
 					}}
 					onSkip={() => r.skipItem(skipping)}
+					today={today}
+				/>
+			)}
+			{deleting && (
+				<DeleteSheet
+					item={deleting}
+					onDelete={() => r.deleteItem(deleting)}
+					onOpenChange={(open) => {
+						if (!open) r.closeDelete();
+					}}
 					today={today}
 				/>
 			)}

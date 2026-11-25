@@ -119,5 +119,21 @@
 		"next": "Próximo vencimiento",
 		"nextValue": "{before} → {after}",
 		"unchanged": "Nada más cambia: no se registra ningún gasto y el monto sigue igual."
+	},
+	"deleteSheet": {
+		"title": "¿Eliminar {name}?",
+		"submit": "Eliminar gasto recurrente",
+		"submitIn": "Eliminar ingreso recurrente",
+		"cancel": "Cancelar",
+		"future": "Próximas veces",
+		"futureValue": "Se detienen, la próxima era el {date}",
+		"autoPay": "Registrar automáticamente",
+		"autoPayValue": "Se detiene",
+		"targets": "Objetivos de los sobres",
+		"targetsValue": "Se quitan",
+		"logged": "Movimientos ya registrados",
+		"loggedValue": "Se conservan",
+		"previewFailed": "No se pudo comprobar qué cambia.",
+		"failed": "No se pudo eliminar. Probá de nuevo."
 	}
 }

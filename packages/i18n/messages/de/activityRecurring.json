@@ -119,5 +119,21 @@
 		"next": "Nächste Fälligkeit",
 		"nextValue": "{before} → {after}",
 		"unchanged": "Sonst ändert sich nichts: Es wird keine Ausgabe erfasst und der Betrag bleibt gleich."
+	},
+	"deleteSheet": {
+		"title": "{name} löschen?",
+		"submit": "Wiederkehrende Ausgabe löschen",
+		"submitIn": "Wiederkehrende Einnahme löschen",
+		"cancel": "Abbrechen",
+		"future": "Künftige Fälligkeiten",
+		"futureValue": "Entfallen, nächste war {date}",
+		"autoPay": "Automatisch erfassen",
+		"autoPayValue": "Endet",
+		"targets": "Ziele der Umschläge",
+		"targetsValue": "Entfernt",
+		"logged": "Bereits erfasste Einträge",
+		"loggedValue": "Bleiben",
+		"previewFailed": "Die Änderungen ließen sich nicht prüfen.",
+		"failed": "Löschen hat nicht geklappt. Versuche es nochmal."
 	}
 }

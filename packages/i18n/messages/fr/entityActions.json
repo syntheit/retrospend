@@ -150,9 +150,7 @@
 			"label": "Ignorer cette fois"
 		},
 		"delete": {
-			"label": "Supprimer",
-			"confirmTitle": "Supprimer {name} ?",
-			"confirmButton": "Supprimer la dépense récurrente"
+			"label": "Supprimer"
 		}
 	},
 	"category": {

@@ -150,9 +150,7 @@
 			"label": "Saltar esta vez"
 		},
 		"delete": {
-			"label": "Eliminar",
-			"confirmTitle": "¿Eliminar {name}?",
-			"confirmButton": "Eliminar gasto recurrente"
+			"label": "Eliminar"
 		}
 	},
 	"category": {

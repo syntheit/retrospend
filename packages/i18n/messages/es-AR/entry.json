@@ -151,7 +151,10 @@
 			"budget_leftToSpend": "Disponible para gastar",
 			"budget_heldForOthers": "Reservado para otros",
 			"project_total": "Total del proyecto",
-			"envelope_left": "Sobre"
+			"envelope_left": "Sobre",
+			"recurring_cost_out_month": "Costo recurrente por mes",
+			"recurring_cost_in_month": "Ingreso recurrente por mes",
+			"budget_planCost": "Costo del plan"
 		},
 		"figuresInline": {
 			"spent": "tus gastos",
@@ -165,7 +168,10 @@
 			"budget_leftToSpend": "lo disponible para gastar",
 			"budget_heldForOthers": "lo reservado para otros",
 			"project_total": "el total del proyecto",
-			"envelope_left": "el sobre"
+			"envelope_left": "el sobre",
+			"recurring_cost_out_month": "costo recurrente por mes",
+			"recurring_cost_in_month": "ingreso recurrente por mes",
+			"budget_planCost": "el costo del plan"
 		}
 	},
 	"income": {
