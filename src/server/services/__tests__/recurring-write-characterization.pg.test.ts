@@ -731,6 +731,38 @@ describe("a repeat is refused, not booked for the next period", () => {
 	});
 });
 
+describe("two skips of one due date at once", () => {
+	it("one skips, the other is the same 409, on both transports", async () => {
+		const me = await arsUser();
+		const [a, b] = [await manual(me), await manual(me, { name: "Rent two" })];
+		const trpc = await trpcFor(me);
+		const v1 = await v1For(me);
+		at(NOW);
+		const viaTrpc = await Promise.allSettled([
+			skipViaTrpc(trpc, a),
+			skipViaTrpc(trpc, a),
+		]);
+		expect(viaTrpc.map((r) => r.status).sort()).toEqual([
+			"fulfilled",
+			"rejected",
+		]);
+		expect(viaTrpc.find((r) => r.status === "rejected")).toMatchObject({
+			reason: { code: "CONFLICT", message: SKIPPED },
+		});
+		const viaV1 = await Promise.all([
+			v1("POST", `/recurring/${b}/skip`, { dueAt: DUE }),
+			v1("POST", `/recurring/${b}/skip`, { dueAt: DUE }),
+		]);
+		expect(viaV1.map((r) => r.status).sort()).toEqual([200, 409]);
+		// One step each, not two: both templates rest on Jan 1.
+		for (const id of [a, b])
+			expect(await templateState(id)).toMatchObject({
+				nextDueDate: NEXT,
+				expenses: 0,
+			});
+	});
+});
+
 /** `run` with its template write preceded by `rival`, as another client's commit would be. */
 function losingTo(
 	userId: string,
