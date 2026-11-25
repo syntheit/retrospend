@@ -69,17 +69,23 @@ vi.mock("~/server/services/protection/now", async (importOriginal) => {
 // to the nearest row, so the only way to reach it is to cut the lookup.
 const finder = vi.hoisted(() => ({
 	missing: undefined as undefined | ((currency: string, date: Date) => boolean),
+	/** Runs inside a post's transaction, once the confirm has read its template. */
+	during: undefined as
+		| undefined
+		| ((currency: string, date: Date) => Promise<void>),
 }));
 vi.mock("~/server/exchange-rates", async (importOriginal) => {
 	const real = await importOriginal<typeof import("~/server/exchange-rates")>();
 	return {
 		...real,
-		findExchangeRate: (
+		findExchangeRate: async (
 			...args: Parameters<typeof real.findExchangeRate>
-		): ReturnType<typeof real.findExchangeRate> =>
-			finder.missing?.(args[1], args[2])
-				? Promise.resolve(null)
-				: real.findExchangeRate(...args),
+		): ReturnType<typeof real.findExchangeRate> => {
+			await finder.during?.(args[1], args[2]);
+			return finder.missing?.(args[1], args[2])
+				? null
+				: real.findExchangeRate(...args);
+		},
 	};
 });
 
@@ -96,16 +102,21 @@ afterEach(() => {
 	vi.useRealTimers();
 	watch.before = undefined;
 	finder.missing = undefined;
+	finder.during = undefined;
 });
 afterAll(() => vi.restoreAllMocks());
 
 type Source = Parameters<typeof sweepRecurringAutoPost>[1];
+
+/** Whose templates the due query returned, before `only` narrows them. */
+const listed: string[] = [];
 
 /** The real id read, kept to `userIds`; `then` runs after the read, before any post. */
 function only(userIds: string[], then?: () => Promise<unknown>): Source {
 	return {
 		$queryRaw: (async (...args: Parameters<typeof adminDb.$queryRaw>) => {
 			const rows = (await adminDb.$queryRaw(...args)) as { userId: string }[];
+			listed.splice(0, listed.length, ...rows.map((r) => r.userId));
 			await then?.();
 			return rows.filter((r) => userIds.includes(r.userId));
 		}) as typeof adminDb.$queryRaw,
@@ -178,6 +189,48 @@ describe("a due template posts the confirm's row", () => {
 		]);
 	});
 
+	it("an auto-pay income template posts too, as money in on its UTC day (no direction filter in the due list)", async () => {
+		const me = await arsUser();
+		const id = await usdTemplate(me, {
+			name: "Salary",
+			direction: "IN",
+			anchorDay: null,
+			nextDueDate: new Date("2026-12-01T00:00:00.000Z"),
+		});
+		expect(await sweep(NOW, [me])).toEqual({ ...NONE, posted: 1 });
+		expect(await booked(me)).toEqual([
+			row(id, {
+				title: "Salary",
+				date: "2026-12-01T00:00:00.000Z",
+				direction: "IN",
+				inType: "INCOME",
+			}),
+		]);
+		expect(await templateState(id)).toMatchObject({
+			nextDueDate: "2027-01-01T00:00:00.000Z",
+			anchorDay: 1,
+		});
+	});
+
+	it("a protected account's due auto-pay template is not even listed, and posts nothing", async () => {
+		const [open, closed] = [await arsUser(), await arsUser()];
+		await adminDb.user.update({
+			where: { id: closed },
+			data: { protectionState: "ON" },
+		});
+		await usdTemplate(open);
+		const held = await usdTemplate(closed);
+		expect(await sweep(NOW, [open, closed])).toEqual({ ...NONE, posted: 1 });
+		// The due query itself leaves the protected owner out (protectionState = 'OFF').
+		expect(listed).toContain(open);
+		expect(listed).not.toContain(closed);
+		expect(await booked(closed)).toEqual([]);
+		expect(await templateState(held)).toMatchObject({
+			nextDueDate: DUE,
+			expenses: 0,
+		});
+	});
+
 	it("an excludeByDefault category does not reach the row: excludeFromAnalytics stays false", async () => {
 		const me = await arsUser();
 		const category = await fixtureDb.category.create({
@@ -211,7 +264,7 @@ describe("the due instant, not the day, decides when the sweep posts", () => {
 		expect(await dueOf(id)).toBe(NEXT);
 	});
 
-	it("saved zone Tokyo: nothing at 2026-11-30T15:30Z (Dec 1, 00:30 there) though the day has started; posts at 03:00Z and steps to 2026-12-31T15:00Z", async () => {
+	it("the instant gate (nextDueDate <= now) holds in a Tokyo-saved zone too: nothing at 2026-11-30T15:30Z though Dec 1 has started there; posts at 03:00Z and steps to 2026-12-31T15:00Z", async () => {
 		const me = await arsUser(TOKYO);
 		const id = await usdTemplate(me);
 		expect(await sweep("2026-11-30T15:30:00.000Z", [me])).toEqual(NONE);
@@ -324,7 +377,27 @@ describe("a catch-up stops where the next period cannot post", () => {
 	const OCT = "2026-10-01T03:00:00.000Z";
 	const NOV_NOW = "2026-11-01T12:00:00.000Z";
 
-	/** Runs `change` just before the check that follows the first period's post. */
+	/**
+	 * Runs `change` while the first period is being posted, after its confirm
+	 * has read the template. The move is therefore seen only by the second
+	 * period's own re-check in the confirm, never by the sweep's protection
+	 * read between periods, so removing either guard shows in its own test.
+	 */
+	function duringFirstPeriod(change: () => Promise<unknown>) {
+		let moved = false;
+		finder.during = async (currency, date) => {
+			if (
+				!moved &&
+				currency === "ARS" &&
+				date.getTime() === ba("2026-09-01").getTime()
+			) {
+				moved = true;
+				await change();
+			}
+		};
+	}
+
+	/** Runs `change` just before the protection read that follows the first period's post. */
 	function afterFirstPeriod(me: string, change: () => Promise<unknown>) {
 		watch.before = async (userId) => {
 			if (
@@ -338,7 +411,7 @@ describe("a catch-up stops where the next period cannot post", () => {
 	it("auto-pay turned off between periods: period 1 posts, period 2 is raced, the template rests on Oct 1", async () => {
 		const me = await arsUser();
 		const id = await usdTemplate(me, { nextDueDate: ba("2026-09-01") });
-		afterFirstPeriod(me, () =>
+		duringFirstPeriod(() =>
 			fixtureDb.recurringTemplate.update({
 				where: { id },
 				data: { autoPay: false },
@@ -356,7 +429,7 @@ describe("a catch-up stops where the next period cannot post", () => {
 	it("paused between periods: the same stop", async () => {
 		const me = await arsUser();
 		const id = await usdTemplate(me, { nextDueDate: ba("2026-09-01") });
-		afterFirstPeriod(me, () =>
+		duringFirstPeriod(() =>
 			fixtureDb.recurringTemplate.update({
 				where: { id },
 				data: { isActive: false },
@@ -373,7 +446,7 @@ describe("a catch-up stops where the next period cannot post", () => {
 	it("switched to ask-me between periods: the same stop", async () => {
 		const me = await arsUser();
 		const id = await usdTemplate(me, { nextDueDate: ba("2026-09-01") });
-		afterFirstPeriod(me, () =>
+		duringFirstPeriod(() =>
 			fixtureDb.recurringTemplate.update({
 				where: { id },
 				data: { amountMode: "ASK" },
