@@ -38,4 +38,11 @@ export const protectionRouter = {
 			),
 		),
 	),
+	newRecoveryKey: p.newRecoveryKey.handler(
+		serve(({ context, input }) =>
+			withTries(context, () =>
+				protection.newRecoveryKey(signedIn(context), input),
+			),
+		),
+	),
 };

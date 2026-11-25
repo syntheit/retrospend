@@ -139,8 +139,33 @@ export const rotatePasswordResultSchema = z
 	})
 	.meta({ id: "RotatePasswordResult" });
 
+export const newRecoveryKeySchema = z
+	.object({
+		currentAuthKey: z.string().regex(KEY_TEXT).meta({
+			description:
+				"The sign-in secret of the current password, base64url, 43 characters. Counted as a try, like every password check.",
+		}),
+		wrappedRecoveryKey: z.string().regex(WRAP_TEXT).meta({
+			description:
+				"Your account key wrapped under the new recovery key, base64url. Replaces the stored recovery wrap.",
+		}),
+		recoveryAuthKey: z.string().regex(KEY_TEXT).meta({
+			description:
+				"The proof derived from the new recovery key, 32 bytes as base64url. The server stores only its SHA-256, which replaces the old proof.",
+		}),
+		baseVersion: z.int().min(1).meta({
+			description: "The key set version you read before making the new key.",
+		}),
+	})
+	.meta({ id: "NewRecoveryKey" });
+
+export const newRecoveryKeyResultSchema = z
+	.object({ version: z.int().min(2) })
+	.meta({ id: "NewRecoveryKeyResult" });
+
 export type EnableProtection = z.infer<typeof enableProtectionSchema>;
 export type RotatePassword = z.infer<typeof rotatePasswordSchema>;
+export type NewRecoveryKey = z.infer<typeof newRecoveryKeySchema>;
 export type OpenProtectionKeysResult = z.infer<
 	typeof openProtectionKeysResultSchema
 >;
@@ -218,4 +243,17 @@ export const protectionContract = {
 		.meta({ scope: "account:security", event: "user.password_changed" })
 		.input(rotatePasswordSchema)
 		.output(rotatePasswordResultSchema),
+	newRecoveryKey: v1
+		.route({
+			method: "POST",
+			path: "/me/protection/recovery-key",
+			operationId: "replaceRecoveryKey",
+			tags: TAG,
+			summary: "Replace your recovery key",
+			description:
+				"The device made a new recovery key, wrapped the account key under it and checked the wrap opens before sending. Needs the current sign-in secret (a counted try, shared with every password check, then 429; a wrong one is 400 wrong_password). Replaces the stored recovery wrap and proof together: the old recovery key stops working when this commits, and not before. 409 when you have no keys or they changed since you read the version: start again from keys/open. 501 when the server does not offer Advanced protection.",
+		})
+		.meta({ scope: "account:security", event: "user.recovery_key_replaced" })
+		.input(newRecoveryKeySchema)
+		.output(newRecoveryKeyResultSchema),
 };

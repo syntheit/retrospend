@@ -480,12 +480,14 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	// An account with protection keys changes its password through the two
 	// protection routes; the plain route refuses it with protected_password.
 	// keys/open is the read that step one and the unlock share: no web
-	// procedure has it, a device opens its wraps with it.
+	// procedure has it, a device opens its wraps with it. recovery-key is
+	// Make new key, a protection-keys route with no web procedure either.
 	"profile.changePassword": to(
 		"POST /me/password",
 		"POST /me/protection/password/begin",
 		"POST /me/protection/password",
 		"POST /me/protection/keys/open",
+		"POST /me/protection/recovery-key",
 	),
 	"profile.getBackgroundSettings": to("GET /profile/background"),
 	"profile.getLifetimeStats": to("GET /profile/stats"),

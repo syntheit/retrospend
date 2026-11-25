@@ -247,6 +247,11 @@ describe("/api/v1/admin", () => {
 	});
 
 	it("pages through event logs and drops user text from their metadata", async () => {
+		// The event log route has no user filter, so rows other files wrote in
+		// this worker database would page ahead of the seeded ones.
+		await adminDb.eventLog.deleteMany({
+			where: { eventType: { in: ["USER_UPDATED", "ACCOUNT_ENABLED"] } },
+		});
 		await adminDb.eventLog.createMany({
 			data: [
 				{
