@@ -257,6 +257,22 @@ function bucket<T extends { month: MonthKey }>(
 	return out;
 }
 
+/**
+ * The envelope a category's rows land in under `links` (a month's closed
+ * links, or today's): its linked envelope when the book still has it, else
+ * the default one. The one owner of that rule: the engine routes with it and
+ * the category merge asks it where two categories sit.
+ */
+export function envelopeForCategory(
+	links: ReadonlyMap<string, string>,
+	envelopeIds: ReadonlySet<string>,
+	defaultEnvelopeId: string,
+	categoryId: string | null,
+): string {
+	const linked = categoryId ? links.get(categoryId) : undefined;
+	return linked && envelopeIds.has(linked) ? linked : defaultEnvelopeId;
+}
+
 function router(input: EngineInput) {
 	const ids = new Set(input.envelopes.map((e) => e.id));
 	if (!ids.has(input.defaultEnvelopeId))
@@ -280,10 +296,12 @@ function router(input: EngineInput) {
 		},
 	) => {
 		if (entry.envelopeId && ids.has(entry.envelopeId)) return entry.envelopeId;
-		const linked = entry.categoryId
-			? linksAt(entry.month).get(entry.categoryId)
-			: undefined;
-		return linked && ids.has(linked) ? linked : input.defaultEnvelopeId;
+		return envelopeForCategory(
+			linksAt(entry.month),
+			ids,
+			input.defaultEnvelopeId,
+			entry.categoryId,
+		);
 	};
 	return { known, envelopeOf, byCategory };
 }
