@@ -11,6 +11,7 @@ import { createHash } from "node:crypto";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 
+import { CategoryMergeRefusal } from "@retrospend/domain/category-merge/refusals";
 import {
 	AmountRefusedError,
 	CategoryNotFoundError,
@@ -225,6 +226,14 @@ const timingMiddleware = t.middleware(async ({ next }) => {
 		throw new TRPCError({
 			code:
 				result.error.cause.kind === "notFound" ? "NOT_FOUND" : "BAD_REQUEST",
+			message: result.error.cause.message,
+			cause: result.error.cause,
+		});
+	}
+	// A category merge or delete the budget refuses; the web words it by its code.
+	if (!result.ok && result.error.cause instanceof CategoryMergeRefusal) {
+		throw new TRPCError({
+			code: "CONFLICT",
 			message: result.error.cause.message,
 			cause: result.error.cause,
 		});

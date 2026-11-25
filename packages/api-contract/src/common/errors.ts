@@ -56,6 +56,10 @@ export const PROBLEM_STATUS = {
 	share_locked: 409,
 	share_is_correction: 409,
 	share_reject_reverses_payment: 409,
+	// A category merge or delete the budget refuses (category-merge/refusals.ts).
+	category_kind_mismatch: 409,
+	category_closed_month: 409,
+	category_income_rule: 409,
 	// A sync cursor the log can no longer honor: another epoch, a position the
 	// server has not reached, or one older than the kept tombstones. The client
 	// drops that entity's rows and pulls again from the start.

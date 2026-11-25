@@ -62,6 +62,8 @@ const REQUIRED_READERS: Record<string, string[]> = {
 		"expense",
 		"insights",
 	],
+	"categories.remove": ["categories", "expense", "insights", "envelope"],
+	"categories.restore": ["categories", "expense", "insights", "envelope"],
 	"entry.expense.categorize.save": ["expense", "insights"],
 
 	// The fiscal month start day moves every month boundary.

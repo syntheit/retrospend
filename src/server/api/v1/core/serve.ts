@@ -1,5 +1,6 @@
 import { ORPCError } from "@orpc/server";
 import type { ProblemCode } from "@retrospend/api-contract/common";
+import { CategoryMergeRefusal } from "@retrospend/domain/category-merge/refusals";
 import {
 	AmountRefusedError,
 	CategoryNotFoundError,
@@ -150,6 +151,11 @@ export function toProblem(error: unknown, route?: string): unknown {
 	// to Ask to fix, so a client words it.
 	if (error instanceof ShareAnswerRefusedError)
 		return problem(error.problem, error.message);
+	const merge = [error, (error as { cause?: unknown } | null)?.cause].find(
+		(e) => e instanceof CategoryMergeRefusal,
+	);
+	if (merge instanceof CategoryMergeRefusal)
+		return problem(merge.problem, merge.message);
 	// An admin action whose cause is known (mail server, backup, rate sync):
 	// a code per cause, with the fixed sentence and never the upstream's text.
 	if (error instanceof AdminFailureError)

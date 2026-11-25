@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { DEFAULT_CATEGORIES } from "~/lib/constants";
 import type { db as globalDb } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
-import type { CategoryColor, Prisma } from "~prisma";
+import type { CategoryColor, CategoryKind, Prisma } from "~prisma";
 import type { Keyring } from "../crypto/field-crypto";
 import {
 	categoryNameIndexesFor,
@@ -130,13 +130,51 @@ async function assertNameFree(
  * the new one on the name index) is the same answer as one that sees the
  * name taken.
  */
-function asNameTaken(error: unknown): unknown {
+export function asNameTaken(error: unknown): unknown {
 	return isUniqueViolation(error) ? nameTaken() : error;
 }
 
 /** `masterKeyring` is for tests: null means no master key. */
 export interface CategoryWriteOptions {
 	masterKeyring?: Keyring | null;
+}
+
+/** Every column of a category row, as an insert takes it. */
+export interface CategoryInsert extends CategoryInput {
+	/** Set by an undo, which brings the category back under its own id. */
+	id?: string;
+	isFixed?: boolean;
+	kind?: CategoryKind;
+}
+
+/**
+ * The one way a category row is inserted (create, and the undo of a delete or
+ * merge): the name index made with the current key, the name checked free by
+ * index and by trimmed name, then the row. Runs in the caller's user
+ * transaction; a taken name is the CONFLICT every caller answers.
+ */
+export async function insertCategory(
+	tx: Prisma.TransactionClient,
+	userId: string,
+	input: CategoryInsert,
+	masterKeyring?: Keyring | null,
+): Promise<CategoryRow> {
+	const nameIndex = await categoryNameIndexFor(tx, input.name, masterKeyring);
+	await assertNameFree(tx, userId, input.name, nameIndex);
+	return tx.category.create({
+		data: {
+			...(input.id ? { id: input.id } : {}),
+			name: input.name,
+			nameIndex,
+			color: input.color,
+			icon: input.icon ?? undefined,
+			isFixed: input.isFixed ?? false,
+			excludeByDefault: input.excludeByDefault ?? false,
+			kind: input.kind ?? "EXPENSE",
+			userId,
+		},
+		select: CATEGORY_SELECT,
+	});
 }
 
 export async function createCategory(
@@ -147,25 +185,9 @@ export async function createCategory(
 ): Promise<CategoryRow> {
 	await ensureUserKeyringWhenSealing(userId, options.masterKeyring);
 	try {
-		return await userTransaction(db, userId, async (tx) => {
-			const nameIndex = await categoryNameIndexFor(
-				tx,
-				input.name,
-				options.masterKeyring,
-			);
-			await assertNameFree(tx, userId, input.name, nameIndex);
-			return tx.category.create({
-				data: {
-					name: input.name,
-					nameIndex,
-					color: input.color,
-					icon: input.icon ?? undefined,
-					excludeByDefault: input.excludeByDefault ?? false,
-					userId,
-				},
-				select: CATEGORY_SELECT,
-			});
-		});
+		return await userTransaction(db, userId, (tx) =>
+			insertCategory(tx, userId, input, options.masterKeyring),
+		);
 	} catch (error) {
 		throw asNameTaken(error);
 	}
@@ -246,110 +268,4 @@ export async function seedDefaultCategories(
 	return userTransaction(db, userId, (tx) =>
 		insertCategoriesOnce(tx, userId, DEFAULT_CATEGORIES, options.masterKeyring),
 	);
-}
-
-/**
- * Moves everything filed under `fromId` to `toId` (null: uncategorized),
- * then deletes `fromId`, in one transaction. Budgets have a unique
- * (user, category, period): where the target already budgets a month the
- * source's budget for it is dropped; without a target budgets are deleted,
- * since a budget with no category reads as a global one.
- *
- * Its own updateMany, not the expense bulk core (domain expense-write/bulk.ts):
- * a merge moves every row of the category, income rows included, which the
- * core's entry policy refuses. It belongs to the category merge lane (M3).
- */
-async function moveAndDelete(
-	db: AppDb,
-	userId: string,
-	fromId: string,
-	toId: string | null,
-) {
-	await userTransaction(db, userId, async (tx) => {
-		const from = { categoryId: fromId, userId };
-		await tx.expense.updateMany({ where: from, data: { categoryId: toId } });
-		await tx.recurringTemplate.updateMany({
-			where: from,
-			data: { categoryId: toId },
-		});
-		// Shared expenses carry their creator's category; RLS limits this to
-		// the ones the caller may edit, and the rest fall back to none when
-		// the category goes.
-		await tx.sharedTransaction.updateMany({
-			where: { categoryId: fromId },
-			data: { categoryId: toId },
-		});
-		if (toId) {
-			const taken = await tx.budget.findMany({
-				where: { categoryId: toId, userId },
-				select: { period: true },
-			});
-			await tx.budget.deleteMany({
-				where: { ...from, period: { in: taken.map((b) => b.period) } },
-			});
-			await tx.budget.updateMany({ where: from, data: { categoryId: toId } });
-		} else {
-			await tx.budget.deleteMany({ where: from });
-		}
-		await tx.category.delete({ where: { id: fromId, userId } });
-	});
-}
-
-/**
- * Deletes a category. One that still has expenses needs a replacement
- * category or `reassignToUncategorized`, else CONFLICT.
- */
-export async function deleteCategory(
-	db: AppDb,
-	userId: string,
-	id: string,
-	options: {
-		replacementCategoryId?: string;
-		reassignToUncategorized?: boolean;
-	},
-): Promise<void> {
-	await getCategory(db, userId, id);
-	const expenses = await db.expense.count({
-		where: { categoryId: id, userId },
-	});
-	const { replacementCategoryId, reassignToUncategorized } = options;
-	if (expenses > 0 && !replacementCategoryId && !reassignToUncategorized) {
-		throw new TRPCError({
-			code: "CONFLICT",
-			message: `This category has ${expenses} expense(s). Please choose a replacement category or select "Uncategorized".`,
-		});
-	}
-	if (expenses > 0 && replacementCategoryId) {
-		await mergeCategory(db, userId, id, replacementCategoryId);
-		return;
-	}
-	await moveAndDelete(db, userId, id, null);
-}
-
-/** Moves everything in `id` into `targetId`, deletes `id`, returns the target. */
-export async function mergeCategory(
-	db: AppDb,
-	userId: string,
-	id: string,
-	targetId: string,
-): Promise<CategoryRow> {
-	if (id === targetId) {
-		throw new TRPCError({
-			code: "BAD_REQUEST",
-			message: "A category cannot be merged into itself",
-		});
-	}
-	await getCategory(db, userId, id);
-	const target = await db.category.findFirst({
-		where: { id: targetId, userId },
-		select: { id: true },
-	});
-	if (!target) {
-		throw new TRPCError({
-			code: "BAD_REQUEST",
-			message: "Replacement category not found",
-		});
-	}
-	await moveAndDelete(db, userId, id, targetId);
-	return getCategory(db, userId, targetId);
 }
