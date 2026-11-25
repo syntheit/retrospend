@@ -4,10 +4,17 @@ import { PreviewBusyError, runTransaction } from "./busy";
 const serialization = (code = "P2034") =>
 	Object.assign(new Error("could not serialize access"), { code });
 
+// What @prisma/adapter-pg and Prisma really produce: a raw query's 40001 and
+// 40P01 are a TransactionWriteConflict with the SQLSTATE in originalCode and
+// no `code`, wrapped as P2010 (not P2034).
 const driverCancelled = (sqlstate: string) =>
 	Object.assign(new Error("cancelled"), {
 		code: "P2010",
-		meta: { driverAdapterError: { cause: { code: sqlstate } } },
+		meta: {
+			driverAdapterError: {
+				cause: { kind: "TransactionWriteConflict", originalCode: sqlstate },
+			},
+		},
 	});
 
 describe("runTransaction", () => {

@@ -208,6 +208,8 @@ describe("preview that hits a serialization failure", () => {
 		collideOn: number[];
 		/** Throws a write conflict (P2034) or a plain error itself, in any isolation level. */
 		fail?: "conflict" | "plain";
+		/** Take the row with a raw FOR UPDATE (what the account and share locks do) instead of an update. */
+		rawLock?: boolean;
 	}
 
 	/** One mutation object per test, so its attempt counter is the test's. */
@@ -230,10 +232,13 @@ describe("preview that hits a serialization failure", () => {
 							where: { id: input.categoryId },
 							data: { color: attempts === 1 ? "orange" : "emerald" },
 						});
-					await tx.category.update({
-						where: { id: input.categoryId },
-						data: { color: "violet" },
-					});
+					if (input.rawLock)
+						await tx.$queryRaw`SELECT "id" FROM "category" WHERE "id" = ${input.categoryId} FOR UPDATE`;
+					else
+						await tx.category.update({
+							where: { id: input.categoryId },
+							data: { color: "violet" },
+						});
 					const name = `Preview ${randomUUID()}`;
 					const row = await tx.category.create({
 						data: {
@@ -292,6 +297,38 @@ describe("preview that hits a serialization failure", () => {
 
 		expect(thrown).toBeInstanceOf(PreviewBusyError);
 		expect(raced.attempts()).toBe(2);
+		expect(await countFor(user)).toBe(1);
+	});
+
+	it("retries a raw FOR UPDATE lock that lost the race, and ends busy on a second loss", async () => {
+		const user = await createTestUser();
+		const seed = await addCategoryTo(user);
+		const clean = renameMutation();
+		const expected = await runnerFor(user).preview(clean.mutation, {
+			categoryId: seed.id,
+			collideOn: [],
+			rawLock: true,
+		});
+
+		const once = renameMutation();
+		const result = await runnerFor(user).preview(once.mutation, {
+			categoryId: seed.id,
+			collideOn: [1],
+			rawLock: true,
+		});
+		expect(once.attempts()).toBe(2);
+		expect(result).toEqual(expected);
+
+		const twice = renameMutation();
+		const thrown = await runnerFor(user)
+			.preview(twice.mutation, {
+				categoryId: seed.id,
+				collideOn: [1, 2],
+				rawLock: true,
+			})
+			.catch((error: unknown) => error);
+		expect(thrown).toBeInstanceOf(PreviewBusyError);
+		expect(twice.attempts()).toBe(2);
 		expect(await countFor(user)).toBe(1);
 	});
 
