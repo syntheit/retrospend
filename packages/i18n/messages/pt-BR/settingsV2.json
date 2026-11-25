@@ -149,7 +149,39 @@
 		"showAll": "Mostrar todas as {count} categorias",
 		"open": "Editar {name}",
 		"excludedSaved": "Novas despesas de {name} ficam fora dos totais",
-		"includedSaved": "Novas despesas de {name} contam nos totais"
+		"includedSaved": "Novas despesas de {name} contam nos totais",
+		"remove": {
+			"title": "Excluir {name}",
+			"moveTo": "Mover as despesas para",
+			"none": "Sem categoria",
+			"delete": "Excluir",
+			"moveAndDelete": "Mover e excluir",
+			"category": "Categoria",
+			"deleted": "Excluída",
+			"count": "{count, number}",
+			"rows": {
+				"expense": "Despesas",
+				"template": "Despesas recorrentes",
+				"sharedTransaction": "Despesas compartilhadas",
+				"sharedLocked": "Despesas compartilhadas que você não pode editar",
+				"share": "Suas partes",
+				"incomeRule": "Regras de renda",
+				"draft": "Rascunhos do orçamento",
+				"budget": "Orçamentos",
+				"budgetRemoved": "Orçamentos excluídos"
+			},
+			"reroute": "Despesas em {name}",
+			"otherEnvelope": "Outro envelope",
+			"refusals": {
+				"category_kind_mismatch": "Uma categoria de despesas e uma de receitas não podem ser mescladas.",
+				"category_closed_month": "Um mês fechado coloca essas duas categorias em envelopes diferentes.",
+				"category_income_rule": "Uma regra de receitas que você não pode alterar usa esta categoria."
+			},
+			"previewFailed": "A prévia não carregou.",
+			"failed": "A categoria não foi excluída.",
+			"toastDeleted": "{name} excluída",
+			"toastMoved": "{count, plural, one {# despesa movida} other {# despesas movidas}} para {target} e {name} excluída"
+		}
 	},
 	"payment": {
 		"title": "Formas de pagamento",

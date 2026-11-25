@@ -1,0 +1,199 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useState } from "react";
+import { Label } from "~/components/ui/label";
+import { Sheet } from "~/components/ui/sheet";
+import { useToast } from "~/components/ui/toast";
+import { usePreview } from "~/features/corrections/use-preview";
+import { ChangesBlock } from "~/features/entry/changes";
+import { useCategoryName } from "~/hooks/use-category-name";
+import { api, type RouterInputs } from "~/trpc/react";
+import { SelectField } from "../select-field";
+import { RemoveLines } from "./remove-lines";
+import { removeRefusalOf } from "./remove-refusal";
+
+type Input = RouterInputs["categories"]["remove"];
+
+/** The select's value for "no category": a delete that leaves the rows uncategorized. */
+const NONE = "none";
+
+export interface RemovableCategory {
+	id: string;
+	/** As people see it (a default category's name is translated). */
+	name: string;
+}
+
+/**
+ * Delete a category, or merge it into another of its kind, as a money action (R30, R15):
+ * the choice of where its expenses go opens the server's dry run of the same
+ * write Save makes (what moves, what is dropped, which envelopes the rows end
+ * up in, and that your spending does not change), a refusal is worded by its
+ * code, and Save ends with an Undo toast that restores the category and puts
+ * every row back (it is refused whole when something changed since).
+ */
+export function RemoveCategorySheet({
+	category,
+	categories,
+	open,
+	onOpenChange,
+	onRemoved,
+}: {
+	category: RemovableCategory | null;
+	categories: readonly { id: string; name: string; kind: string }[];
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	/** After the delete committed: the manager moves its selection off it. */
+	onRemoved: (id: string) => Promise<unknown> | unknown;
+}) {
+	const t = useTranslations("settingsV2.categories.remove");
+	const toast = useToast();
+	const utils = api.useUtils();
+	const { displayName } = useCategoryName();
+	const remove = api.categories.remove.useMutation();
+	const restore = api.categories.restore.useMutation();
+	// null: not chosen yet, so the first category of its kind (the mockup).
+	const [chosen, setChosen] = useState<string | null>(null);
+	// Every opening has its own preview: the last answer, for the same input,
+	// must not let Save go before the dry run of this opening is back.
+	const [session, setSession] = useState(0);
+	const [armed, setArmed] = useState(false);
+	// The sheet keeps its content while it closes.
+	const [shown, setShown] = useState<RemovableCategory | null>(null);
+	// Keyed on the id: the manager passes a new object on every render.
+	const categoryId = category?.id;
+	const categoryName = category?.name;
+	useEffect(() => {
+		if (!open || !categoryId) {
+			setArmed(false);
+			return;
+		}
+		setShown({ id: categoryId, name: categoryName ?? "" });
+		setChosen(null);
+		setSession((n) => n + 1);
+		setArmed(true);
+	}, [open, categoryId, categoryName]);
+
+	// Envelope names for the reroute lines: the person's own book, this month.
+	const month = api.envelope.getMonth.useQuery(
+		{},
+		{ enabled: open, retry: false },
+	);
+	const envelopeName = useCallback(
+		(bookId: string, envelopeId: string) => {
+			if (month.data?.book.id !== bookId) return null;
+			return (
+				month.data.groups
+					.flatMap((g) => g.envelopes)
+					.find((e) => e.id === envelopeId)?.name ?? null
+			);
+		},
+		[month.data],
+	);
+
+	// Only the same kind: an expense and an income category are refused, so
+	// that choice is never offered (the server refusal stays the guard).
+	const kind = categories.find((c) => c.id === shown?.id)?.kind;
+	const others = categories.filter(
+		(c) => c.id !== shown?.id && c.kind === kind,
+	);
+	const first = others[0]?.id ?? NONE;
+	const target =
+		chosen !== null && (chosen === NONE || others.some((c) => c.id === chosen))
+			? chosen
+			: first;
+	const targetName =
+		target === NONE
+			? null
+			: displayName(others.find((c) => c.id === target)?.name ?? "");
+	const input: Input | null =
+		open && shown
+			? { id: shown.id, targetId: target === NONE ? null : target }
+			: null;
+
+	const dry = usePreview(
+		({ session: _opening, ...i }: Input & { session: number }) =>
+			utils.categories.previewRemove
+				.fetch(i, { staleTime: 0 })
+				.catch((e: unknown) => {
+					const refusal = removeRefusalOf(e);
+					throw new Error(
+						refusal ? t(`refusals.${refusal}`) : t("previewFailed"),
+					);
+				}),
+		input && armed ? { ...input, session } : null,
+	);
+
+	/** A failed save throws, so the sheet stays open with its inline error and Delete tries again. */
+	const send = async () => {
+		if (!input || !shown) return;
+		let done: Awaited<ReturnType<typeof remove.mutateAsync>>;
+		try {
+			done = await remove.mutateAsync(input);
+		} catch (e) {
+			const refusal = removeRefusalOf(e);
+			throw new Error(refusal ? t(`refusals.${refusal}`) : t("failed"));
+		}
+		await onRemoved(shown.id);
+		const { stash, counts } = done.value;
+		const name = shown.name;
+		const moved = counts.expense.moved;
+		toast.saved(
+			targetName && moved > 0
+				? t("toastMoved", { count: moved, name, target: targetName })
+				: t("toastDeleted", { name }),
+			{
+				undo: async () => {
+					await restore.mutateAsync({ stash });
+					await utils.categories.getAll.invalidate();
+				},
+			},
+		);
+	};
+
+	return (
+		<Sheet
+			detent="large"
+			onOpenChange={onOpenChange}
+			onSubmit={send}
+			open={open}
+			submitDisabled={!dry.fresh}
+			submitKind="danger"
+			submitLabel={target === NONE ? t("delete") : t("moveAndDelete")}
+			title={shown ? t("title", { name: shown.name }) : ""}
+		>
+			<div className="flex flex-col gap-4">
+				<div className="flex flex-col gap-2">
+					<Label htmlFor="remove-category-target">{t("moveTo")}</Label>
+					<SelectField
+						id="remove-category-target"
+						onChange={setChosen}
+						options={[
+							{ value: NONE, label: t("none") },
+							...others.map((c) => ({
+								value: c.id,
+								label: displayName(c.name),
+							})),
+						]}
+						value={target}
+					/>
+				</div>
+				<ChangesBlock
+					cannot={dry.error}
+					diff={dry.data}
+					loading={dry.loading}
+					rows={
+						dry.data && shown ? (
+							<RemoveLines
+								envelopeName={envelopeName}
+								name={shown.name}
+								targetName={targetName}
+								value={dry.data.value}
+							/>
+						) : null
+					}
+				/>
+			</div>
+		</Sheet>
+	);
+}

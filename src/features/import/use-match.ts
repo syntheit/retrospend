@@ -9,6 +9,7 @@ import { api } from "~/trpc/react";
 import { type Choices, withMatched } from "./choices";
 import { colorFor, type MatchPick } from "./match-sheet";
 import type { CategoryPick } from "./row-controls";
+import { undoCreated } from "./undo-created";
 
 /**
  * Match categories' Apply: creates the categories you chose to create (real
@@ -30,7 +31,7 @@ export function useMatch({
 	const toast = useToast();
 	const utils = api.useUtils();
 	const create = api.categories.create.useMutation();
-	const remove = api.categories.delete.useMutation();
+	const remove = api.categories.remove.useMutation();
 
 	const apply = async (picks: Record<string, MatchPick>) => {
 		if (!data) return;
@@ -74,8 +75,21 @@ export function useMatch({
 				: t("done", { count }),
 			{
 				undo: async () => {
+					await undoCreated(
+						created.map((c) => c.id),
+						{
+							expenseCount: async (id) =>
+								(
+									await utils.categories.previewRemove.fetch(
+										{ id, targetId: null },
+										{ staleTime: 0 },
+									)
+								).value.counts.expense.moved,
+							remove: (id) =>
+								remove.mutateAsync({ id, targetId: null, refuseIfUsed: true }),
+						},
+					);
 					setChoices(before);
-					for (const c of created) await remove.mutateAsync({ id: c.id });
 					await utils.entry.catalog.invalidate();
 				},
 			},

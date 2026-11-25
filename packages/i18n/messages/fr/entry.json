@@ -151,7 +151,9 @@
 			"budget_leftToSpend": "Reste à dépenser",
 			"budget_heldForOthers": "Gardé pour les autres",
 			"project_total": "Total du projet",
-			"envelope_left": "Enveloppe"
+			"envelope_left": "Enveloppe",
+			"budget_leftInLimits": "Reste dans tes limites",
+			"budget_holds": "Ce que contient le budget"
 		},
 		"figuresInline": {
 			"spent": "tes dépenses",
@@ -165,7 +167,9 @@
 			"budget_leftToSpend": "le reste à dépenser",
 			"budget_heldForOthers": "ce qui est gardé pour les autres",
 			"project_total": "le total du projet",
-			"envelope_left": "l'enveloppe"
+			"envelope_left": "l'enveloppe",
+			"budget_leftInLimits": "le reste dans tes limites",
+			"budget_holds": "ce que contient le budget"
 		}
 	},
 	"income": {

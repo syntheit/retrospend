@@ -151,7 +151,9 @@
 			"budget_leftToSpend": "Noch verfügbar",
 			"budget_heldForOthers": "Für andere gehalten",
 			"project_total": "Projektsumme",
-			"envelope_left": "Umschlag"
+			"envelope_left": "Umschlag",
+			"budget_leftInLimits": "Noch in deinen Limits",
+			"budget_holds": "Was das Budget hält"
 		},
 		"figuresInline": {
 			"spent": "deine Ausgaben",
@@ -165,7 +167,9 @@
 			"budget_leftToSpend": "was noch verfügbar ist",
 			"budget_heldForOthers": "was für andere gehalten wird",
 			"project_total": "die Projektsumme",
-			"envelope_left": "der Umschlag"
+			"envelope_left": "der Umschlag",
+			"budget_leftInLimits": "was in deinen Limits übrig ist",
+			"budget_holds": "was das Budget hält"
 		}
 	},
 	"income": {

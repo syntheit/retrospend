@@ -79,15 +79,9 @@ export function SheetChanges({
 				<>
 					{children}
 					{lines.map((l) => (
-						<div
-							className="text-small flex min-h-6 items-baseline justify-between gap-3"
-							key={l.key}
-						>
-							<span className="text-fg-2">{l.label}</span>
-							<span className="flex flex-wrap items-baseline justify-end gap-x-2 text-right">
-								{l.value}
-							</span>
-						</div>
+						<ChangeRow key={l.key} label={l.label}>
+							{l.value}
+						</ChangeRow>
 					))}
 					{stays.length > 0 ? (
 						<p className="text-fg-3 text-small">
@@ -106,6 +100,24 @@ export function SheetChanges({
 				</>
 			)}
 		</section>
+	);
+}
+
+/** One line of the block: the place left, what happens to it right. For the lines a sheet's own write states, as `children` of SheetChanges. */
+export function ChangeRow({
+	label,
+	children,
+}: {
+	label: ReactNode;
+	children: ReactNode;
+}) {
+	return (
+		<div className="text-small flex min-h-6 items-baseline justify-between gap-3">
+			<span className="text-fg-2">{label}</span>
+			<span className="flex flex-wrap items-baseline justify-end gap-x-2 text-right">
+				{children}
+			</span>
+		</div>
 	);
 }
 
