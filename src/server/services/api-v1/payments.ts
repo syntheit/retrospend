@@ -4,6 +4,7 @@ import type {
 	PreviewResult as PreviewDto,
 	recordPaymentSchema,
 } from "@retrospend/api-contract";
+import { UNDO_NOT_VALID } from "@retrospend/domain/expense-write/refusals";
 import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
 import { participantLabel } from "~/server/services/notifications";
@@ -14,9 +15,9 @@ import {
 	unconfirmPayment,
 } from "~/server/services/payments/confirm.mutation";
 import {
-	OverpayError,
 	applyConfirm,
 	applyPayment,
+	OverpayError,
 	previewConfirm,
 	previewPayment,
 } from "~/server/services/payments/procedures";
@@ -284,7 +285,7 @@ export async function remindPayment(caller: Caller, paymentId: string) {
 const invalidUndo = () =>
 	new TRPCError({
 		code: "BAD_REQUEST",
-		message: "This undo is not valid anymore",
+		message: UNDO_NOT_VALID,
 	});
 
 type Unconfirm = {

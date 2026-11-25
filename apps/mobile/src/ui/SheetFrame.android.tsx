@@ -1,4 +1,5 @@
 import { BottomSheet, RNHostView } from "@expo/ui";
+import { useState } from "react";
 import { Modal, Pressable, useWindowDimensions, View } from "react-native";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
@@ -19,6 +20,7 @@ import type { SheetFrameProps } from "./types";
 export function SheetFrame({
 	visible,
 	onClose,
+	locked = false,
 	detents,
 	background,
 	children,
@@ -26,11 +28,17 @@ export function SheetFrame({
 	const { color, radius } = useTheme();
 	const { tablet } = useLayoutClass();
 	const { height } = useWindowDimensions();
+	// A swipe down cannot be switched off through the universal sheet (the
+	// Compose sheet's own `sheetGesturesEnabled` is not passed on), and showing
+	// a hidden Compose sheet again by flipping `isPresented` does not work (its
+	// hide animation settles after the flip). So a locked sheet the system
+	// dismissed is mounted anew: a new key, presented from the start.
+	const [epoch, setEpoch] = useState(0);
 	if (tablet) {
 		return (
 			<Modal
 				animationType="fade"
-				onRequestClose={onClose}
+				onRequestClose={locked ? () => undefined : onClose}
 				statusBarTranslucent
 				transparent
 				visible={visible}
@@ -64,7 +72,13 @@ export function SheetFrame({
 		<BottomSheet
 			containerColor={background}
 			isPresented={visible}
-			onDismiss={onClose}
+			key={epoch}
+			// A locked sheet is not closed: not by back, not by a tap on the scrim,
+			// and if a swipe took it down anyway it is mounted again, so the sheet
+			// never stays "visible" with nothing on screen.
+			onDismiss={locked ? () => setEpoch((n) => n + 1) : onClose}
+			shouldDismissOnBackPress={!locked}
+			shouldDismissOnClickOutside={!locked}
 			scrimColor={color.scrim}
 			snapPoints={detents?.map((d) => (d === "medium" ? "half" : "full"))}
 		>

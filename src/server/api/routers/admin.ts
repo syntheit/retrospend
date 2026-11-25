@@ -19,7 +19,8 @@ import {
 	anonymizeAndDeleteUser,
 } from "~/server/services/user-deletion.service";
 import { generatePassword } from "~/server/lib/generate-password";
-import { sendEmail } from "~/server/mailer";
+import { sendEmailOrThrow } from "~/server/mailer";
+import { requestBackup } from "~/server/services/admin-backup";
 import { adminTestEmail, guardTestEmail } from "~/server/services/admin-test-email";
 import { getAiUsageSummary } from "~/server/services/ai-access.service";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
@@ -499,19 +500,9 @@ export const adminRouter = createTRPCRouter({
 		)
 		.mutation(async ({ ctx, input }) => {
 			guardTestEmail(ctx.session.user.id, input.type);
-			try {
-				const { subject, html } = adminTestEmail(input.type);
-				await sendEmail(input.email, subject, html, true);
-				return { success: true, message: "Test email sent successfully" };
-			} catch (error) {
-				throw new TRPCError({
-					code: "INTERNAL_SERVER_ERROR",
-					message:
-						error instanceof Error
-							? error.message
-							: "Failed to send test email",
-				});
-			}
+			const { subject, html } = adminTestEmail(input.type);
+			await sendEmailOrThrow(input.email, subject, html);
+			return { success: true, message: "Test email sent successfully" };
 		}),
 
 	generatePasswordResetLink: adminProcedure
@@ -723,18 +714,5 @@ export const adminRouter = createTRPCRouter({
 			return { success: true };
 		}),
 
-	triggerBackup: adminProcedure.mutation(async () => {
-		try {
-			const response = await IntegrationService.requestWorker(
-				`${env.SIDECAR_URL}/backups/run`,
-				{ method: "POST", timeout: 300000 },
-			);
-			return await response.json();
-		} catch (error) {
-			throw new TRPCError({
-				code: "INTERNAL_SERVER_ERROR",
-				message: `Backup trigger failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-			});
-		}
-	}),
+	triggerBackup: adminProcedure.mutation(() => requestBackup()),
 });

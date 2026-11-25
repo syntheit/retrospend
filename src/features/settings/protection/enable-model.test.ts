@@ -1,4 +1,5 @@
 import { TWO_FACTOR_CODE_LENGTH } from "@retrospend/api-contract";
+import { groupsConfirmed } from "@retrospend/crypto/client";
 import { describe, expect, it } from "vitest";
 import {
 	type EnableAction,
@@ -6,8 +7,6 @@ import {
 	enableReducer,
 	enableView,
 	fieldsLocked,
-	groupMismatch,
-	groupsConfirmed,
 	INITIAL_STATE,
 	newPasswordReady,
 } from "./enable-model";
@@ -166,14 +165,6 @@ describe("the recovery key steps", () => {
 		const s = confirming(["E20918", "C5RR3"]);
 		expect(run([{ type: "keyConfirmed" }], s)).toEqual(s);
 		expect(enableView(s, OPTIONS).primaryDisabled).toBe(true);
-	});
-
-	it("calls a full length wrong group wrong, and a short one not yet", () => {
-		expect(groupMismatch(confirming(["E2091", ""]), 0)).toBe(false);
-		expect(groupMismatch(confirming(["E20919", ""]), 0)).toBe(true);
-		expect(groupMismatch(confirming(["E20918", "C5RR35"]), 0)).toBe(false);
-		expect(groupMismatch(confirming(["E20918", "C5RR35"]), 1)).toBe(true);
-		expect(groupMismatch(confirming(), 0)).toBe(false);
 	});
 
 	it("keeps the asked pair on Back so the next pair can differ, and clears what was typed", () => {

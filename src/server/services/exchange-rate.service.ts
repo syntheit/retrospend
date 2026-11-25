@@ -1,10 +1,13 @@
 import { CRYPTO_CURRENCIES, CURRENCIES } from "@retrospend/domain/currencies";
 import { currencyDecimals } from "@retrospend/domain/money";
 import { dec } from "@retrospend/domain/precise-decimal";
-import { TRPCError } from "@trpc/server";
 import { env } from "~/env";
 import { db as globalDb } from "~/server/db";
 import { findExchangeRate } from "~/server/exchange-rates";
+import {
+	AdminFailureError,
+	workerFailure,
+} from "~/server/services/admin-failure";
 import { IntegrationService } from "~/server/services/integration.service";
 import { Prisma } from "~prisma";
 
@@ -166,7 +169,11 @@ export class RateSyncUnavailable extends Error {
 /** /sync-rates fetches before it answers: well past the 5 s default. */
 const SYNC_TIMEOUT_MS = 120_000;
 
-/** Asks the sidecar to fetch rates now. Throws when the worker refuses. */
+/**
+ * Asks the sidecar to fetch rates now. Throws RateSyncUnavailable when there
+ * is no sidecar to ask, and an AdminFailureError when it answered with an
+ * error or was too slow; anything else is thrown as it is.
+ */
 export async function requestRateSync(): Promise<void> {
 	if (!env.WORKER_API_KEY) throw new RateSyncUnavailable();
 	try {
@@ -175,9 +182,9 @@ export async function requestRateSync(): Promise<void> {
 			timeout: SYNC_TIMEOUT_MS,
 		});
 	} catch (error) {
-		// IntegrationService turns a fetch that got no answer at all into this one.
-		if (error instanceof TRPCError && error.code === "INTERNAL_SERVER_ERROR")
-			throw new RateSyncUnavailable();
+		const failure = workerFailure(error);
+		if (failure?.kind === "no-answer") throw new RateSyncUnavailable();
+		if (failure) throw new AdminFailureError("rate_sync_failed");
 		throw error;
 	}
 }

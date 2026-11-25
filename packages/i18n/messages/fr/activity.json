@@ -85,6 +85,7 @@
 		"export": "Exporter en CSV",
 		"delete": "Supprimer",
 		"moved": "{count, plural, one {# dépense déplacée} other {# dépenses déplacées}} vers {name}",
+		"movedSome": "{count, plural, one {# dépense déplacée} other {# dépenses déplacées}} vers {name}. {left, plural, one {# n'a pas pu être déplacée} other {# n'ont pas pu être déplacées}}",
 		"categorizeTitle": "Déplacer {count, plural, one {# dépense} other {# dépenses}} vers {name}",
 		"move": "Déplacer",
 		"moveFailed": "Impossible d'enregistrer ce déplacement",

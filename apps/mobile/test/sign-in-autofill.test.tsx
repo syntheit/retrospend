@@ -18,6 +18,7 @@ const { act, create } = renderer;
 
 jest.mock("expo-router", () => ({
 	Stack: { Screen: () => null },
+	useRouter: () => ({ push: jest.fn() }),
 }));
 jest.mock("use-intl", () => ({
 	useTranslations: () => (key: string) => key,

@@ -26,6 +26,8 @@ import {
 	type PublicRole,
 	parseRecoveryKey,
 	RECOVERY_GROUPS,
+	RESET_CODE_LENGTH,
+	readResetCode,
 	recoveryGroups,
 	recoverySubkeys,
 	recoveryWrapDigest,
@@ -453,6 +455,25 @@ describe("recovery groups and reading", () => {
 	it("normalizes case, spaces, hyphens and the Crockford look-alikes", () => {
 		expect(normalizeRecoveryText(" a1-OIl  b\n")).toBe("A1011B");
 		expect(code(() => normalizeRecoveryText("ab\u00e9"))).toBe("invalid_input");
+	});
+});
+
+describe("reset code text", () => {
+	it("reads 8 Crockford characters the way the recovery key is read", () => {
+		expect(RESET_CODE_LENGTH).toBe(8);
+		expect(readResetCode("7k2m-9pq4")).toBe("7K2M9PQ4");
+		// Spaces, hyphens, case, and O, I and L as 0 and 1.
+		expect(readResetCode(" oi1l 7K2M ")).toBe("01117K2M");
+	});
+
+	it("refuses anything that cannot be a code, instead of guessing", () => {
+		// Seven and nine characters.
+		expect(readResetCode("7K2M9PQ")).toBeNull();
+		expect(readResetCode("7K2M9PQ4X")).toBeNull();
+		// U is not in the alphabet; a non-ASCII character is refused too.
+		expect(readResetCode("7K2M9PQU")).toBeNull();
+		expect(readResetCode("7K2M9P\u00e9")).toBeNull();
+		expect(readResetCode("")).toBeNull();
 	});
 });
 

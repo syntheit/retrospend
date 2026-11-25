@@ -1,4 +1,5 @@
 import type { addIncomeSchema, moveInSchema } from "@retrospend/api-contract";
+import { UNDO_NOT_VALID } from "@retrospend/domain/expense-write/refusals";
 import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
 import {
@@ -203,7 +204,7 @@ function inverseOf(caller: LedgerCaller, op: string, input: unknown) {
 	}
 	throw new TRPCError({
 		code: "BAD_REQUEST",
-		message: "This undo is not valid anymore",
+		message: UNDO_NOT_VALID,
 	});
 }
 

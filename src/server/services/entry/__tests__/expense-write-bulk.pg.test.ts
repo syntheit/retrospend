@@ -329,6 +329,7 @@ describe("bulk categorize", () => {
 		const back = {
 			moves: saved.value.previous.map((m) => ({ ...m, ids: [...m.ids] })),
 			lenient: true,
+			expected: saved.value.stamps,
 		};
 		expect(spent(await expense.categorize.preview(back))).toEqual({
 			minor: 14_680_000,

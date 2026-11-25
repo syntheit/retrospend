@@ -19,10 +19,10 @@
 import type { Argon2Params } from "../primitives";
 import {
 	asKeyFlowError,
-	type KeyFlowCode,
 	KeyFlowError,
 	mayHaveCommitted,
 } from "./flow";
+import { endsRecoveryHandle } from "./recovery-failure";
 import {
 	beginRecovery,
 	finishRecovery,
@@ -77,15 +77,6 @@ export type RecoveryCallbacks = {
 		input: { password: string },
 	): Promise<"set" | "linkSpent">;
 };
-
-/** Refusals that make a handle useless: its proof or its version is no longer good, so it is wiped and never sent again. */
-const ENDS_HANDLE: readonly KeyFlowCode[] = [
-	"conflict",
-	"tokenExpired",
-	"wrongRecoveryKey",
-	"recoveryUnavailable",
-	"notFound",
-];
 
 export function createRecoveryCallbacks(
 	ports: RecoveryFlowPorts,
@@ -150,7 +141,7 @@ export function createRecoveryCallbacks(
 					await ports.commit(body);
 				} catch (error) {
 					const code = asKeyFlowError(error).code;
-					if (ENDS_HANDLE.includes(code)) handle.wipe();
+					if (endsRecoveryHandle(code)) handle.wipe();
 					if (!held.wiped && mayHaveCommitted(code, earlier)) {
 						held.unknownBody = body;
 						// Only the body is needed to send it again.

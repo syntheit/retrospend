@@ -105,7 +105,7 @@ export function statusOf(error: unknown): number | null {
 }
 
 /** The lookup as a port: a missing route (404) is `missing`, the answer is handed over unread. */
-function lookupPort(lookup: KdfLookup): FlowPorts["lookup"] {
+export function lookupPort(lookup: KdfLookup): FlowPorts["lookup"] {
 	return async () => {
 		try {
 			return { body: await lookup.ask() };
@@ -281,6 +281,49 @@ export async function call<T>(run: () => Promise<T>): Promise<T> {
 			),
 		);
 	}
+}
+
+/** How long a request of the recovery, Make new key and enable flows may take before it counts as a lost answer. Argon2id is not in it. */
+export const REQUEST_TIMEOUT_MS = 30_000;
+
+/**
+ * Gives a request a time limit: the one place the phone bounds the network
+ * part of the recovery, Make new key and enable flows (the client has no
+ * timeout of its own, and Android's default read timeout is unlimited). A
+ * request with no answer by then is aborted and rejects as `unavailable`, the
+ * same as a lost connection. The late answer of an aborted request is ignored.
+ * Every network call a locked sheet waits on goes through here (a test lists
+ * the callers). A refusal is passed on as it came; `callWithTimeout` words it.
+ */
+export function withTimeout<T>(
+	run: (options: { signal: AbortSignal }) => Promise<T>,
+	ms: number = REQUEST_TIMEOUT_MS,
+): Promise<T> {
+	return new Promise<T>((resolve, reject) => {
+		const controller = new AbortController();
+		const timer = setTimeout(() => {
+			controller.abort();
+			reject(new KeyFlowError("unavailable"));
+		}, ms);
+		run({ signal: controller.signal }).then(
+			(value) => {
+				clearTimeout(timer);
+				resolve(value);
+			},
+			(error: unknown) => {
+				clearTimeout(timer);
+				reject(error);
+			},
+		);
+	});
+}
+
+/** `withTimeout` for a call whose refusal becomes a KeyFlowError (`call`). */
+export function callWithTimeout<T>(
+	run: (options: { signal: AbortSignal }) => Promise<T>,
+	ms: number = REQUEST_TIMEOUT_MS,
+): Promise<T> {
+	return withTimeout((o) => call(() => run(o)), ms);
 }
 
 function rotatePorts(input: RotateInput, deps: SecretDeps): RotatePorts {

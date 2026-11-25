@@ -70,11 +70,36 @@ export const PROBLEM_STATUS = {
 	// A money preview lost to a concurrent write twice in a row. It wrote
 	// nothing; asking again gives the answer.
 	preview_busy: 503,
+	// An admin action whose cause is known (admin-failure.ts): the email server
+	// refused or could not be reached, the sidecar's backup or rate sync did not
+	// go through. Never carries the server's own error text.
+	email_not_configured: 409,
+	email_auth_failed: 502,
+	email_unreachable: 502,
+	email_timeout: 504,
+	backup_running: 409,
+	backup_unavailable: 502,
+	backup_failed: 502,
+	rate_sync_failed: 502,
 	internal: 500,
 	not_implemented: 501,
 } as const satisfies Record<string, number>;
 
 export type ProblemCode = keyof typeof PROBLEM_STATUS;
+
+/** The admin action failures with a known cause, each with its own sentence on the web. */
+export const ADMIN_FAILURE_CODES = [
+	"email_not_configured",
+	"email_auth_failed",
+	"email_unreachable",
+	"email_timeout",
+	"backup_running",
+	"backup_unavailable",
+	"backup_failed",
+	"rate_sync_failed",
+] as const satisfies readonly ProblemCode[];
+
+export type AdminFailureCode = (typeof ADMIN_FAILURE_CODES)[number];
 
 export const PROBLEM_CODES = Object.keys(PROBLEM_STATUS) as ProblemCode[];
 

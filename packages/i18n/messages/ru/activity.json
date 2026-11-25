@@ -85,6 +85,7 @@
 		"export": "Экспорт CSV",
 		"delete": "Удалить",
 		"moved": "Перемещено в {name}: {count}",
+		"movedSome": "Перемещено в {name}: {count}. Не удалось переместить: {left}",
 		"categorizeTitle": "Переместить в {name}: {count}",
 		"move": "Переместить",
 		"moveFailed": "Не удалось сохранить перемещение",

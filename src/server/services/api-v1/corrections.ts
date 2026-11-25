@@ -6,6 +6,7 @@ import type {
 	PreviewResult as PreviewDto,
 } from "@retrospend/api-contract";
 import { MAX_LOCK_STATE_IDS, parseLockStateIds } from "@retrospend/api-contract";
+import { UNDO_NOT_VALID } from "@retrospend/domain/expense-write/refusals";
 import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
 import type {
@@ -261,7 +262,7 @@ type Open = {
 const invalid = () =>
 	new TRPCError({
 		code: "BAD_REQUEST",
-		message: "This undo is not valid anymore",
+		message: UNDO_NOT_VALID,
 	});
 
 function open(caller: Caller, op: string, input: unknown): Open {

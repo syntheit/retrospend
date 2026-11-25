@@ -9,6 +9,7 @@ import { useToast } from "~/components/ui/toast";
 import { SelectField } from "~/features/settings/select-field";
 import { SettingRow, SettingRows } from "~/features/settings/setting-row";
 import { api } from "~/trpc/react";
+import { adminFailureMessage } from "./admin-failure";
 import type { AdminSettings, SettingsUpdate } from "./admin-settings-sections";
 
 type TestType =
@@ -30,6 +31,7 @@ export function EmailSection({
 	onSave: (updates: SettingsUpdate, message: string) => Promise<void>;
 }) {
 	const t = useTranslations("admin");
+	const ta = useTranslations("adminPage");
 	const toast = useToast();
 	const [testEmail, setTestEmail] = useState(adminEmail ?? "");
 	const [testType, setTestType] = useState<TestType>("basic");
@@ -37,7 +39,8 @@ export function EmailSection({
 	const { data: features, isLoading } = api.auth.getAppFeatures.useQuery();
 	const sendTest = api.admin.sendTestEmail.useMutation({
 		onSuccess: (data) => toast.saved(data.message),
-		onError: (error) => toast.failed(error.message),
+		onError: (error) =>
+			toast.failed(adminFailureMessage(error, ta, error.message)),
 	});
 	const configured = features?.isSmtpConfigured ?? false;
 

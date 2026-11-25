@@ -1,13 +1,16 @@
 "use client";
 
-import { recoveryKeyGroups } from "@retrospend/crypto/client";
+import {
+	groupMismatch,
+	type KeyConfirmState,
+	recoveryKeyGroups,
+} from "@retrospend/crypto/client";
 import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { useToast } from "~/components/ui/toast";
-import { groupMismatch, type KeyConfirmState } from "./enable-model";
 import {
 	copyRecoveryKey,
 	type KeyActions,

@@ -26,6 +26,11 @@ import { forUser } from "~/server/services/preview";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import { defaultTimeZone } from "~/server/services/user-time-zone";
 import { adminDb } from "~/test/pg-harness";
+import {
+	deleteExpensesBulk,
+	restoreExpensesBulk,
+} from "./bulk-delete.mutation";
+import { categorizeExpenses } from "./categorize.mutation";
 import { deleteExpenseEntry, updateExpenseEntry } from "./expense.mutation";
 import { guardedExpense } from "./guarded.mutation";
 
@@ -203,5 +208,84 @@ describe("guardedExpense is a compare-and-swap on the expense row", () => {
 		await expect(
 			fixtureDb.expense.count({ where: { id: made.id } }),
 		).resolves.toBe(0);
+	});
+
+	it("a bulk categorize undo holding the old stamps is refused after an edit to one of its rows commits", async () => {
+		const other = (
+			await fixtureDb.category.create({
+				data: {
+					userId,
+					name: `Other ${randomUUID().slice(0, 6)}`,
+					color: "teal",
+				},
+			})
+		).id;
+		const a = await add("A");
+		const b = await add("B");
+		const { value } = await forUser(userId).apply(categorizeExpenses, {
+			moves: [{ categoryId: other, ids: [a.id, b.id] }],
+		});
+		const undo = {
+			moves: value.previous,
+			lenient: true,
+			expected: value.stamps,
+		};
+		const first = heldOpen(updateExpenseEntry);
+
+		const winner = forUser(userId).apply(
+			guardedExpense(first.held, value.stamps[b.id], stale),
+			edit(b.id, "Edited"),
+		);
+		await first.written;
+		const loser = forUser(userId).apply(categorizeExpenses, undo);
+		const loserOutcome = loser.then(
+			() => "undone",
+			(error: Error) => error.message,
+		);
+		await waitUntilBlocked();
+		first.release();
+
+		await expect(winner).resolves.toBeDefined();
+		await expect(loserOutcome).resolves.toBe(
+			"This expense changed since. Undo is no longer safe.",
+		);
+		expect((await row(a.id)).categoryId).toBe(other);
+		expect((await row(b.id)).title).toBe("Edited");
+	});
+
+	it("the redo of a bulk delete holding the old stamps is refused after an edit to one of its rows commits, and the edited row survives", async () => {
+		const a = await add("A");
+		const b = await add("B");
+		const user = forUser(userId);
+		const first = await user.apply(deleteExpensesBulk, { ids: [a.id, b.id] });
+		const back = await user.apply(restoreExpensesBulk, {
+			stash: first.value.stash,
+		});
+		const held = heldOpen(updateExpenseEntry);
+
+		const winner = user.apply(
+			guardedExpense(held.held, back.value.stamps[b.id], stale),
+			edit(b.id, "Edited"),
+		);
+		await held.written;
+		const loser = user.apply(deleteExpensesBulk, {
+			ids: [a.id, b.id],
+			expected: back.value.stamps,
+		});
+		const loserOutcome = loser.then(
+			() => "deleted",
+			(error: Error) => error.message,
+		);
+		await waitUntilBlocked();
+		held.release();
+
+		await expect(winner).resolves.toBeDefined();
+		await expect(loserOutcome).resolves.toBe(
+			"This expense changed since. Undo is no longer safe.",
+		);
+		expect((await row(b.id)).title).toBe("Edited");
+		await expect(
+			fixtureDb.expense.count({ where: { id: { in: [a.id, b.id] } } }),
+		).resolves.toBe(2);
 	});
 });

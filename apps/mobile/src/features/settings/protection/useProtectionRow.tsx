@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
 import { phoneEnableCallbacks } from "@/auth/enable";
+import { phoneNewKeyCallbacks } from "@/auth/new-key";
 import { useSession } from "@/auth/session";
 import { getPrimitives } from "@/crypto/native";
 import { secureStore } from "@/lib/secure-store";
@@ -8,6 +9,7 @@ import { ListRow, NavEnd } from "@/ui/List";
 import { Skeleton } from "@/ui/Skeleton";
 import { TextAction } from "@/ui/TextAction";
 import { EnableSheet } from "./EnableSheet";
+import { NewKeySheet } from "./NewKeySheet";
 import { useProtectionStatus } from "./useProtectionStatus";
 
 /**
@@ -24,6 +26,7 @@ export function useProtectionRow() {
 	const me = state.status === "signedIn" ? state.me : null;
 	const { status, reload } = useProtectionStatus(me ? api : null);
 	const [open, setOpen] = useState(false);
+	const [newKeyOpen, setNewKeyOpen] = useState(false);
 	// Read when signing in again is needed: the session value changes on every state change.
 	const session = useRef({ signIn, verifyCode });
 	session.current = { signIn, verifyCode };
@@ -46,6 +49,17 @@ export function useProtectionRow() {
 				: null,
 		[api, baseUrl, meId, email],
 	);
+	// One set of callbacks for the sheet's life, like the enable sheet's.
+	const newKeyCallbacks = useMemo(
+		() =>
+			api && meId
+				? phoneNewKeyCallbacks(
+						{ api: api.protection, userId: meId },
+						{ primitives: getPrimitives },
+					)
+				: null,
+		[api, meId],
+	);
 	if (!me || status === "hidden") return { row: null, sheet: null };
 
 	const title = t("row.title");
@@ -62,7 +76,18 @@ export function useProtectionRow() {
 				title={title}
 			/>
 		) : status === "keyed" ? (
-			<ListRow sub={t("row.keysReady")} title={title} />
+			<ListRow
+				end={
+					newKeyCallbacks ? (
+						<TextAction
+							label={t("row.makeNewKey")}
+							onPress={() => setNewKeyOpen(true)}
+						/>
+					) : undefined
+				}
+				sub={t("row.keysReady")}
+				title={title}
+			/>
 		) : (
 			<ListRow
 				end={verified ? <NavEnd value={t("row.turnOn")} /> : undefined}
@@ -77,18 +102,31 @@ export function useProtectionRow() {
 				title={title}
 			/>
 		);
-	const sheet = callbacks ? (
-		<EnableSheet
-			account={me.email}
-			makeKeys={callbacks.makeKeys}
-			onClose={() => {
-				setOpen(false);
-				void reload();
-			}}
-			save={callbacks.save}
-			twoFactor={me.twoFactorEnabled}
-			visible={open}
-		/>
-	) : null;
+	const sheet = (
+		<>
+			{callbacks ? (
+				<EnableSheet
+					account={me.email}
+					makeKeys={callbacks.makeKeys}
+					onClose={() => {
+						setOpen(false);
+						void reload();
+					}}
+					save={callbacks.save}
+					twoFactor={me.twoFactorEnabled}
+					visible={open}
+				/>
+			) : null}
+			{newKeyCallbacks ? (
+				<NewKeySheet
+					account={me.email}
+					makeKey={newKeyCallbacks.makeKey}
+					onClose={() => setNewKeyOpen(false)}
+					save={newKeyCallbacks.save}
+					visible={newKeyOpen}
+				/>
+			) : null}
+		</>
+	);
 	return { row, sheet };
 }

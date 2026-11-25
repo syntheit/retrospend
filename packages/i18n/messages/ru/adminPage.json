@@ -26,5 +26,15 @@
   "autoPostNoRun": "Запусков пока нет",
   "autoPostOffBy": "Выключено через RECURRING_AUTO_POST",
   "autoPostJoin": "{head}, {tail}",
-  "autoPostOffEnv": "Выключено вне продакшена"
+  "autoPostOffEnv": "Выключено вне продакшена",
+  "failures": {
+    "email_not_configured": "Электронная почта не настроена на этом сервере.",
+    "email_auth_failed": "Почтовый сервер отклонил вход.",
+    "email_unreachable": "Не удалось подключиться к почтовому серверу.",
+    "email_timeout": "Почтовый сервер слишком долго не отвечал.",
+    "backup_running": "Резервное копирование уже идёт.",
+    "backup_unavailable": "Служба резервного копирования недоступна.",
+    "backup_failed": "Не удалось начать резервное копирование.",
+    "rate_sync_failed": "Не удалось синхронизировать курсы."
+  }
 }

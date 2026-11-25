@@ -6,6 +6,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
+import { TRPCError } from "@trpc/server";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { env } from "~/env";
 import { IntegrationService } from "~/server/services/integration.service";
@@ -250,6 +251,29 @@ describe("/api/v1 currencies and rates", () => {
 			expect(worker).not.toHaveBeenCalled();
 		} finally {
 			(env as { WORKER_API_KEY?: string }).WORKER_API_KEY = key;
+			worker.mockRestore();
+		}
+	});
+
+	it("answers 502 rate_sync_failed, with none of the sidecar's text, when it errors", async () => {
+		const worker = vi.spyOn(IntegrationService, "requestWorker").mockRejectedValue(
+			new TRPCError({
+				code: "BAD_GATEWAY",
+				message: "External API request failed: pq: password for dbuser",
+			}),
+		);
+		try {
+			const admin = await webCookieFor(
+				(await createTestUser({ role: "ADMIN" })).user.id,
+			);
+			const res = await call("/rates/sync", {
+				method: "POST",
+				headers: admin,
+				idempotent: true,
+			});
+			expect(await res.clone().text()).not.toContain("dbuser");
+			await expectProblem(res, 502, "rate_sync_failed");
+		} finally {
 			worker.mockRestore();
 		}
 	});

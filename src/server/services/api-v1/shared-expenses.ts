@@ -5,6 +5,7 @@ import type {
 	PreviewResult as PreviewDto,
 	updateSharedExpenseSchema,
 } from "@retrospend/api-contract";
+import { UNDO_NOT_VALID } from "@retrospend/domain/expense-write/refusals";
 import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
@@ -322,7 +323,7 @@ async function sharesView(caller: Caller, shares: readonly ShareChange[]) {
 const invalidUndo = () =>
 	new TRPCError({
 		code: "BAD_REQUEST",
-		message: "This undo is not valid anymore",
+		message: UNDO_NOT_VALID,
 	});
 
 /** A restore as the token carries it (JSON turns its date into text). */

@@ -73,6 +73,14 @@
 							"encrypted_text_unavailable",
 							"key_rotated",
 							"preview_busy",
+							"email_not_configured",
+							"email_auth_failed",
+							"email_unreachable",
+							"email_timeout",
+							"backup_running",
+							"backup_unavailable",
+							"backup_failed",
+							"rate_sync_failed",
 							"internal",
 							"not_implemented"
 						],
@@ -68562,7 +68570,7 @@
 		},
 		"/expenses/undo": {
 			"post": {
-				"description": "Tokens from create, update, delete, bulk-category and bulk-delete (and from this route, as redo). A token is for its user, works once and expires after 24 hours. An update or create is refused with a conflict once the expense changed after it.",
+				"description": "Tokens from create, update, delete, bulk-category and bulk-delete (and from this route, as redo). A token is for its user, works once and expires after 24 hours. An update or create is refused with a conflict once the expense changed after it; a bulk-category undo is refused, and changes nothing, once any expense it moved changed after it.",
 				"operationId": "undoExpenseWrite",
 				"parameters": [
 					{

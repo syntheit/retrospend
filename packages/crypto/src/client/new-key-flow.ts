@@ -90,6 +90,9 @@ export function createNewKeyCallbacks(ports: NewKeyFlowPorts): NewKeyCallbacks {
 	}
 
 	async function send(held: Held, body: NewKeyCommitBody): Promise<void> {
+		// The draft may have been wiped while the read-back before this was
+		// asking: a wiped draft sends nothing, whatever this call captured.
+		if (!held.body) throw new KeyFlowError("failed");
 		const earlier = held.sends++;
 		try {
 			await ports.commit(body, held.idempotencyKey);
