@@ -295,11 +295,23 @@ describe.each(harnesses)("the queue over the %s transport", (_name, make) => {
 			await save();
 			h.elsewhere.edit(ID, { amount: "80" });
 			await queue(retitle("Dinner"));
-			await queue(retitle("Brunch"));
+			// Stamped with a version of its own, so only the hold rule keeps it back
+			// (a chained one would also park as chain_lost).
+			await outbox.enqueue({
+				clientId: "behind",
+				entity: "expenses",
+				kind: "update",
+				targetId: ID,
+				baseVersion: h.stamp(2),
+				payload: { ...BODY, title: "Brunch" },
+			});
 			await flush();
 			// The create and the first edit reached the server; the second never left.
 			expect(h.requests()).toHaveLength(2);
-			expect(await outbox.all()).toHaveLength(2);
+			expect(await outbox.all()).toMatchObject([
+				{ state: "conflict", lastError: PARKED_STAMP },
+				{ clientId: "behind", state: "pending", attempts: 0 },
+			]);
 		});
 
 		it("a create under a key the server holds for another request parks with Discard only", async () => {
