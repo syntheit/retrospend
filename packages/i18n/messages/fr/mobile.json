@@ -114,6 +114,7 @@
 			"retryFailed": "Envoi toujours impossible. Réessaie plus tard.",
 			"changed": "Modifié sur un autre appareil",
 			"deleted": "Supprimé sur un autre appareil",
+			"lost": "Une modification précédente n'a pas été synchronisée.",
 			"rebaseTitle": "Enregistrer ta modification à nouveau ?"
 		},
 		"transferMode": "Virement",

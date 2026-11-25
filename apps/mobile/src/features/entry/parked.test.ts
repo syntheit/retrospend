@@ -58,6 +58,7 @@ describe("parkedFrom", () => {
 			reason: "forbidden",
 			kind: "create",
 			gone: false,
+			retryable: true,
 		});
 	});
 
@@ -88,6 +89,23 @@ describe("rebases", () => {
 		expect(rebases(parked("update", "expense_changed"))).toBe(true);
 		expect(rebases(parked("delete", "expense_changed"))).toBe(true);
 		expect(rebases(parked("update", "chain_lost"))).toBe(true);
+		// Sent again as it is, these answer the same: the same stamp, the same key.
+		expect(rebases(parked("update", "no_stamp"))).toBe(true);
+		expect(rebases(parked("delete", "idempotency_key_reused"))).toBe(true);
+	});
+
+	it("an edit with no device booking is not retryable, a create or delete is", () => {
+		const bare = (kind: OutboxEntry["kind"]) =>
+			parkedFrom({ ...entry({ id: "e1" }, "expense_changed"), kind });
+		expect(bare("update").retryable).toBe(false);
+		expect(bare("delete").retryable).toBe(true);
+		expect(bare("create").retryable).toBe(true);
+		const booked = parkedFrom({
+			...entry({ id: "e1" }, "expense_changed"),
+			kind: "update",
+			device: { bookedAt: 1, changed: ["title"], changes: [] },
+		});
+		expect(booked.retryable).toBe(true);
 	});
 
 	it("is not for a create, or for a write the server refused outright", () => {

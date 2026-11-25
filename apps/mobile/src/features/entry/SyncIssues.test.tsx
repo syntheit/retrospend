@@ -43,6 +43,7 @@ const coffee = {
 	reason: "forbidden",
 	kind: "create",
 	gone: false,
+	retryable: true,
 };
 beforeEach(() => {
 	mockRebase.mockReset();
@@ -147,7 +148,8 @@ it("Try again on a changed row shows the dry run of the re-based write, and send
 	const save = jest.fn(async () => true);
 	mockRebase.mockResolvedValue({
 		kind: "update",
-		// 80 to 120 USD at blue 1,545: spent moves by ARS 61,800.00.
+		// Only the wiring: what the dry run's lines say. The numbers a re-base
+		// previews are derived on the real engine in conflictVector.test.
 		diff: {
 			changes: [
 				{
@@ -211,4 +213,25 @@ it("Try again on a changed row that cannot be previewed sends nothing", async ()
 	});
 	expect(mockShowAlert).not.toHaveBeenCalled();
 	act(() => tree.unmount());
+});
+
+it("says an earlier change never synced in its own words, and offers Try again", async () => {
+	const { labels, said } = await labelsOf({
+		...coffee,
+		reason: "chain_lost",
+		kind: "update",
+	});
+	expect(said).toContain("sync.lost");
+	expect(said).not.toContain("sync.refused");
+	expect(labels).toEqual(["retry, Coffee", "sync.discard, Coffee"]);
+});
+
+it("an edit with no booking, whose changed fields are unknown, offers Discard only", async () => {
+	const { labels } = await labelsOf({
+		...coffee,
+		reason: "expense_changed",
+		kind: "update",
+		retryable: false,
+	});
+	expect(labels).toEqual(["sync.discard, Coffee"]);
 });

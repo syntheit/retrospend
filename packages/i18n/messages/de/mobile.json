@@ -114,6 +114,7 @@
 			"retryFailed": "Senden klappt noch nicht. Versuche es später noch einmal.",
 			"changed": "Auf einem anderen Gerät geändert",
 			"deleted": "Auf einem anderen Gerät gelöscht",
+			"lost": "Eine frühere Änderung daran wurde nicht synchronisiert.",
 			"rebaseTitle": "Deine Änderung erneut speichern?"
 		},
 		"transferMode": "Umbuchung",

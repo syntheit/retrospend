@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
+import { PARKED_CHAIN_LOST } from "@/data/outbox-chain";
 import { useFigureLabel } from "@/features/write/useFigureLabel";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
@@ -16,13 +17,15 @@ import { type ParkedEntry, rebases } from "./parked-entry";
 import { changeLines } from "./preview";
 import { PARKED_STAMP } from "./send";
 
-/** What the row says: another device changed or deleted it, or the server refused it. */
+/** What the row says: another device changed or deleted it, an earlier change never synced, or the server refused it. */
 const lineOf = (entry: ParkedEntry) =>
 	entry.gone
 		? "sync.deleted"
 		: entry.reason === PARKED_STAMP
 			? "sync.changed"
-			: "sync.refused";
+			: entry.reason === PARKED_CHAIN_LOST
+				? "sync.lost"
+				: "sync.refused";
 
 /**
  * "Couldn't sync": entries the server refused, kept on the phone. Each has
@@ -128,7 +131,7 @@ export function SyncIssues({ padded }: { padded?: boolean }) {
 						{retrying === entry.clientId ? (
 							<LoadingIndicator size={space[6]} />
 						) : null}
-						{entry.gone ? null : (
+						{entry.gone || !entry.retryable ? null : (
 							<TextAction
 								accessibilityLabel={`${tc("retry")}, ${name(entry)}`}
 								label={tc("retry")}

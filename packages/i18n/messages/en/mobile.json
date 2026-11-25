@@ -114,6 +114,7 @@
 			"retryFailed": "Still can't send it. Try again later.",
 			"changed": "Changed on another device",
 			"deleted": "Deleted on another device",
+			"lost": "An earlier change to this didn't sync.",
 			"rebaseTitle": "Save your change again?"
 		},
 		"transferMode": "Transfer",

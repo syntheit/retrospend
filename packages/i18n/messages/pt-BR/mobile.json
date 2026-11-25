@@ -114,6 +114,7 @@
 			"retryFailed": "Ainda não dá para enviar. Tente mais tarde.",
 			"changed": "Alterado em outro dispositivo",
 			"deleted": "Excluído em outro dispositivo",
+			"lost": "Uma alteração anterior neste item não foi sincronizada.",
 			"rebaseTitle": "Salvar sua alteração de novo?"
 		},
 		"transferMode": "Transferência",
