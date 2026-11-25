@@ -39,16 +39,22 @@ jest.mock("@/ui/Sheet", () => {
 			title,
 			visible,
 			onClose,
+			locked,
 		}: {
 			children: unknown;
 			footer: unknown;
 			title: string;
 			visible: boolean;
 			onClose: () => void;
+			locked?: boolean;
 		}) =>
 			visible ? (
 				<View>
-					<Text onPress={onClose} testID="sheet-close">
+					<Text
+						accessibilityState={{ disabled: !!locked }}
+						onPress={onClose}
+						testID="sheet-close"
+					>
 						{title}
 					</Text>
 					{children}
@@ -806,5 +812,38 @@ describe("EnableSheet, the app switcher", () => {
 		});
 		expect(s.find("privacy-cover")).toBeUndefined();
 		jest.restoreAllMocks();
+	});
+});
+
+describe("EnableSheet, a running job is not cut off", () => {
+	it("is locked and refuses a swipe down or back while the keys are made, then closes when it is done", async () => {
+		let release: (r: unknown) => void = () => undefined;
+		makeKeys.mockReturnValue(new Promise((r) => (release = r)));
+		const s = render();
+		const locked = () =>
+			(
+				s.find("sheet-close")?.props.accessibilityState as
+					| { disabled: boolean }
+					| undefined
+			)?.disabled;
+		await s.press("Continue");
+		s.type("New password", PASSWORD);
+		s.type("Confirm new password", PASSWORD);
+		expect(locked()).toBe(false);
+		await s.press("Continue");
+		expect(locked()).toBe(true);
+		// The sheet's onClose is what the platform calls for a swipe or back.
+		await act(async () => {
+			(s.must("sheet-close").props.onPress as () => void)();
+		});
+		expect(onClose).not.toHaveBeenCalled();
+		await act(async () => release(draftOf()));
+		expect(drafts[0]?.wipe).not.toHaveBeenCalled();
+		expect(locked()).toBe(false);
+		await act(async () => {
+			(s.must("sheet-close").props.onPress as () => void)();
+		});
+		expect(onClose).toHaveBeenCalledTimes(1);
+		expect(drafts[0]?.wipe).toHaveBeenCalledTimes(1);
 	});
 });

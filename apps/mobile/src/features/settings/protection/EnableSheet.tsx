@@ -137,6 +137,8 @@ export function EnableSheet({
 	const life = useEnableLifecycle({ open: visible, reset });
 
 	function close() {
+		// Not while a job runs: the keys are not cut off by a swipe or Android's back.
+		if (!life.canClose()) return;
 		life.closed();
 		onClose();
 	}
@@ -259,6 +261,7 @@ export function EnableSheet({
 			detents={["large"]}
 			footer={footer}
 			footerApart={false}
+			locked={busy}
 			onClose={close}
 			title={t(TITLES[step])}
 			visible={visible}
