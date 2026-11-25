@@ -28,6 +28,7 @@ export {
 	ARGON2_DEFAULT,
 	ARGON2_FLOOR,
 	checkArgon2Params,
+	CROCKFORD_ALPHABET,
 	deriveMasterKey,
 	encodeProquint,
 	encodeRecoveryKey,
