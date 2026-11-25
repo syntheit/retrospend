@@ -2,7 +2,10 @@
  * Shared pieces of the recurring characterization files: an ARS user in a
  * chosen zone, a USD template at the base case, the rate table, and the two
  * transports (the web's tRPC caller and the v1 HTTP handler) on a long-lived
- * session, so a test can set the clock to any instant.
+ * session, so a test can set the clock to any instant. The harness's own
+ * sessions (core/__tests__/harness.ts) expire at the real now plus a day,
+ * which a faked clock in December 2026 is already past, so these are made
+ * here with an expiry in 2100.
  */
 import { randomBytes, randomUUID } from "node:crypto";
 import { makeSignature } from "better-auth/crypto";
