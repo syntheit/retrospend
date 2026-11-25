@@ -94,6 +94,12 @@ describe("rebases", () => {
 		expect(rebases(parked("delete", "idempotency_key_reused"))).toBe(true);
 	});
 
+	it("a create parked because its key holds another request is not retryable", () => {
+		const create = (reason: string) => parkedFrom(entry({ id: "e1" }, reason));
+		expect(create("idempotency_key_reused").retryable).toBe(false);
+		expect(create("forbidden").retryable).toBe(true);
+	});
+
 	it("an edit with no device booking is not retryable, a create or delete is", () => {
 		const bare = (kind: OutboxEntry["kind"]) =>
 			parkedFrom({ ...entry({ id: "e1" }, "expense_changed"), kind });

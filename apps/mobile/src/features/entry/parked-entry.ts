@@ -14,9 +14,10 @@ export interface ParkedEntry {
 	/** A pull showed the row is gone, so an edit of it cannot be saved. */
 	gone: boolean;
 	/**
-	 * False for an edit with no device booking: which fields it changed is
-	 * unknown, so sending or re-basing it could lose or overwrite a change.
-	 * Discard only.
+	 * False for an edit with no device booking (which fields it changed is
+	 * unknown, so sending or re-basing it could lose or overwrite a change) and
+	 * for a create the server holds another request under the key of (a resend
+	 * under that key can never succeed). Discard only.
 	 */
 	retryable: boolean;
 }
@@ -59,7 +60,10 @@ export function parkedFrom(entry: OutboxEntry, gone = false): ParkedEntry {
 		reason: entry.lastError ?? "refused",
 		kind: entry.kind,
 		gone,
-		retryable: entry.kind !== "update" || entry.device !== undefined,
+		retryable:
+			entry.kind === "create"
+				? entry.lastError !== KEY_REUSED
+				: entry.kind !== "update" || entry.device !== undefined,
 	};
 }
 
