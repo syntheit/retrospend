@@ -201,7 +201,63 @@ describe("undo under the device flag", () => {
 	});
 });
 
+describe("undo of a write the lists no longer hold", () => {
+	it("is refused when an entry is queued on the row, whatever pulled the acked one out", async () => {
+		const writes = writesOf();
+		mockWrites.mockReturnValue(writes);
+		const outbox = open();
+		const { api, calls } = fake();
+		await saveEntry({ outbox, api, write: create });
+		// A pull brought the row and retired the acked create; then B was queued on it.
+		await outbox.retire([ID]);
+		expect(await edit(outbox, writes)).toMatchObject({ status: "queued" });
+		expect(await undoSaved({ outbox, api, clientId: ID })).toBe("failed");
+		expect(calls.some((c) => c.route === "undo")).toBe(false);
+	});
+
+	it("still undoes when nothing else is about the row", async () => {
+		mockWrites.mockReturnValue(writesOf());
+		const outbox = open();
+		const { api } = fake();
+		await saveEntry({ outbox, api, write: create });
+		await outbox.retire([ID]);
+		expect(await undoSaved({ outbox, api, clientId: ID })).toBe("undone");
+	});
+});
+
 describe("a parked row", () => {
+	it("blocks an edit or a delete behind a later entry too, not only when it is the last", async () => {
+		const writes = writesOf();
+		const outbox = open();
+		await outbox.enqueue({
+			clientId: "a",
+			entity: "expenses",
+			kind: "update",
+			targetId: ID,
+			baseVersion: V0,
+			payload: BODY,
+		});
+		await outbox.enqueue({
+			clientId: "b",
+			entity: "expenses",
+			kind: "update",
+			targetId: ID,
+			baseVersion: { after: "a" },
+			payload: BODY,
+		});
+		await outbox.markConflict("a", PARKED_STAMP);
+		// B is the last for the row and not parked, but A is: C and a delete never stack.
+		for (const change of [
+			{ kind: "update", body: BODY } as const,
+			{ kind: "delete", id: ID } as const,
+		]) {
+			expect(
+				await queueExpenseChange({ outbox, writes, change, opened: V0 }),
+			).toEqual({ status: "parked" });
+		}
+		expect(await outbox.all()).toHaveLength(2);
+	});
+
 	it("an edit or delete of it points to Sync issues and queues nothing", async () => {
 		const writes = writesOf();
 		const outbox = open();

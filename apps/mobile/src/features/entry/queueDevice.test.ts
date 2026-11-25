@@ -206,19 +206,31 @@ describe("queueExpenseChange", () => {
 		expect(await outbox.all()).toEqual([]);
 	});
 
-	it("still queues, stamped with the screen's version, when the device could not book it", async () => {
+	it("still queues a delete, stamped with the screen's version, when the device could not book it", async () => {
 		const outbox = open();
 		const writes = writesWith(async () => null);
 		const queued = await queueExpenseChange({
 			outbox,
 			writes,
-			change: { kind: "update", body: write.body },
+			change: { kind: "delete", id: ID },
 			opened: "2026-10-05T03:00:00.000Z",
 		});
 		expect(queued.status).toBe("queued");
 		const [entry] = await outbox.all();
 		expect(entry).toMatchObject({ baseVersion: "2026-10-05T03:00:00.000Z" });
 		expect(entry?.device).toBeUndefined();
+	});
+
+	it("queues no edit the device could not book: which fields it changed would be unknown", async () => {
+		const outbox = open();
+		const queued = await queueExpenseChange({
+			outbox,
+			writes: writesWith(async () => null),
+			change: { kind: "update", body: write.body },
+			opened: "2026-10-05T03:00:00.000Z",
+		});
+		expect(queued).toEqual({ status: "unreadable" });
+		expect(await outbox.all()).toEqual([]);
 	});
 
 	it("nothing stacks on an entry whose send began", async () => {

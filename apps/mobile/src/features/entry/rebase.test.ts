@@ -161,6 +161,42 @@ describe("planRebase", () => {
 	});
 });
 
+describe("an edit whose changed fields are unknown", () => {
+	it("is never re-based: no plan without a device booking", async () => {
+		const outbox = createOutbox(createMemoryStore(), "s");
+		await outbox.enqueue({
+			clientId: "old",
+			entity: "expenses",
+			kind: "update",
+			targetId: ID,
+			baseVersion: "2026-03-01T00:00:00.000Z",
+			payload: { ...pulled, title: "Taxi home" },
+		});
+		await outbox.markConflict("old", PARKED_STAMP);
+		expect(
+			await planRebase({ outbox, writes: writes(), clientId: "old" }),
+		).toBeNull();
+	});
+
+	it("is not swapped in when the device cannot book the re-based edit", async () => {
+		const outbox = createOutbox(createMemoryStore(), "s");
+		await parked(outbox);
+		const plan = await planRebase({
+			outbox,
+			writes: writes(),
+			clientId: "old",
+		});
+		if (!plan) throw new Error("no plan");
+		const blind = writes({ book: jest.fn(async () => null) });
+		expect(
+			await commitRebase({ outbox, writes: blind, clientId: "old", plan }),
+		).toBeNull();
+		expect((await outbox.all()).map((e) => [e.clientId, e.state])).toEqual([
+			["old", "conflict"],
+		]);
+	});
+});
+
 describe("commitRebase", () => {
 	it("Try again sends a new clientId, same targetId", async () => {
 		const outbox = createOutbox(createMemoryStore(), "s");
@@ -191,7 +227,7 @@ describe("commitRebase", () => {
 		expect(all[0]?.device).toBeDefined();
 	});
 
-	it("re-base re-points dependents to the new clientId", async () => {
+	it("re-base parks the later entries for the row, never re-pointing them", async () => {
 		const outbox = createOutbox(createMemoryStore(), "s");
 		await parked(outbox);
 		await outbox.enqueue({
@@ -205,14 +241,13 @@ describe("commitRebase", () => {
 		const w = writes();
 		const plan = await planRebase({ outbox, writes: w, clientId: "old" });
 		if (!plan) throw new Error("no plan");
-		const next = await commitRebase({
-			outbox,
-			writes: w,
-			clientId: "old",
-			plan,
-		});
+		await commitRebase({ outbox, writes: w, clientId: "old", plan });
 		const later = (await outbox.all()).find((e) => e.clientId === "later");
-		expect(later?.baseVersion).toEqual({ after: next });
+		expect(later).toMatchObject({
+			state: "conflict",
+			lastError: PARKED_STAMP,
+			baseVersion: { after: "old" },
+		});
 	});
 
 	it("does nothing for an entry that is not parked any more", async () => {

@@ -173,16 +173,21 @@ export type UndoResult = "undone" | "failed";
 /**
  * Whether no later entry, waiting or acked, is about the same row. A write is
  * undone only while it is the last for its row: an undo under a later write
- * would take back more than the person asked for.
+ * would take back more than the person asked for. An entry the lists no longer
+ * hold (a pull retired it) is judged by the row the sender noted: any entry
+ * still about that row, or no known row, refuses. Fail closed.
  */
 async function isLastForTarget(
 	outbox: Outbox,
 	clientId: string,
+	target: string | undefined,
 ): Promise<boolean> {
 	const { open, acked } = await outbox.snapshot();
 	const all = [...open, ...acked];
 	const entry = all.find((e) => e.clientId === clientId);
-	if (!entry) return true;
+	if (!entry) {
+		return target !== undefined && !all.some((e) => e.targetId === target);
+	}
 	return !all.some(
 		(e) => e.targetId === entry.targetId && (e.seq ?? 0) > (entry.seq ?? 0),
 	);
@@ -210,7 +215,11 @@ export function undoSaved(input: {
 	return exclusive(outbox, async () => {
 		const writes = deviceWrites(api);
 		try {
-			if (writes && !(await isLastForTarget(outbox, clientId))) return "failed";
+			if (
+				writes &&
+				!(await isLastForTarget(outbox, clientId, undoFor(clientId)?.target))
+			)
+				return "failed";
 			// Raised and stored before the request leaves.
 			const generation = () =>
 				writes ? outbox.nextUndoGeneration(clientId) : undefined;
@@ -277,6 +286,8 @@ export type QueuedChange =
  * read none (offline), the booking's `base` stands in, which is the version
  * the device last pulled for the row. With neither it is "unreadable": an
  * entry sent with no `expectedUpdatedAt` would overwrite or delete unchecked.
+ * An edit the device could not book is unreadable too: the names of the fields
+ * it changed are known only from the booking.
  * A flush sends it; until then Undo takes it back out of the outbox.
  */
 export function queueExpenseChange(input: {
@@ -296,13 +307,16 @@ export function queueExpenseChange(input: {
 			? { kind: "delete", id: targetId }
 			: { kind: "update", body: change.body as unknown as WriteBody };
 	return exclusive(outbox, async () => {
-		const earlier = (await outbox.all())
-			.filter((e) => e.targetId === targetId)
-			.at(-1);
-		// Parked first: a parked entry has begun a send too, and waiting never clears it.
-		if (earlier?.state === "conflict") return { status: "parked" };
+		const forRow = (await outbox.all()).filter((e) => e.targetId === targetId);
+		// Any parked entry for the row blocks, not only the last: a parked entry
+		// has begun a send too, and waiting never clears it.
+		if (forRow.some((e) => e.state === "conflict")) return { status: "parked" };
+		const earlier = forRow.at(-1);
 		if (earlier && earlier.attempts > 0) return { status: "busy" };
 		const booked = await writes.book(op);
+		// Which fields this phone changed comes from the booking alone. Without it
+		// a later re-base could not tell an edit from no edit: never queued blind.
+		if (change.kind === "update" && !booked) return { status: "unreadable" };
 		const version = opened ?? booked?.base ?? null;
 		if (!earlier && !version) return { status: "unreadable" };
 		const base: BaseVersion = earlier

@@ -106,7 +106,7 @@ describe("saveEntry", () => {
 		const outcome = await saveEntry({ outbox, api, write: coffee });
 		expect(outcome).toEqual({
 			status: "synced",
-			undo: { entity: "shared-expenses", token: `undo-${ID}` },
+			undo: { entity: "shared-expenses", token: `undo-${ID}`, target: ID },
 		});
 		expect(calls).toEqual([{ route: "create", input: coffee.body, key: ID }]);
 		expect(await outbox.all()).toEqual([]);

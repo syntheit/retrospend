@@ -20,6 +20,8 @@ export const DEVICE_TEXT_COLUMNS = [
 ] as const;
 
 export const PARKED_CHAIN_LOST = "chain_lost";
+/** The server holds a newer version of the row than the entry was based on. */
+export const PARKED_STAMP = "expense_changed";
 /** An entry being taken out of line: parked first, so a crash never sends it. */
 export const PARKED_DISCARDING = "discarding";
 const REPLACED = "replaced:";

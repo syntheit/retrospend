@@ -1,5 +1,6 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import type { Outbox, OutboxEntry } from "@/data/outbox";
+import { PARKED_STAMP } from "@/data/outbox-chain";
 import type { Sender, SendResult } from "@/data/sync";
 
 // Sends the composers' outbox entries to API v1. The entry's client id is the
@@ -10,6 +11,8 @@ import type { Sender, SendResult } from "@/data/sync";
 export interface UndoRef {
 	entity: EntryEntity;
 	token: string;
+	/** The row the write was about, when the sender knows it: undo checks nothing else waits on it. */
+	target?: string;
 }
 
 export const ENTRY_ENTITIES = [
@@ -59,7 +62,7 @@ export const SEND_TIMEOUT_MS = 10_000;
 export const NOT_STORED_STATUSES: readonly number[] = [400, 403, 404, 422];
 
 /** The codes a parked write is told apart by (Sync issues words them). */
-export const PARKED_STAMP = "expense_changed";
+export { PARKED_STAMP };
 export const PARKED_NOT_FOUND = "not_found";
 /** The server holds a different request under this key: never "not stored". */
 export const KEY_REUSED = "idempotency_key_reused";
@@ -184,7 +187,11 @@ export function createEntrySender(
 				context: { idempotencyKey: entry.clientId },
 				signal: timeout.signal,
 			});
-			rememberUndo(entry.clientId, { entity: entry.entity, token });
+			rememberUndo(entry.clientId, {
+				entity: entry.entity,
+				token,
+				target: entry.targetId,
+			});
 			// A delete names null: nothing chained after it has a version to take.
 			return {
 				status: "sent",

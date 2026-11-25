@@ -72,10 +72,13 @@ export async function planRebase(input: {
 			payload: { id: entry.targetId },
 		};
 	}
+	// Which fields this phone changed is known only from its booking. Without
+	// one an edit would read as no change at all, and lose it: never re-based.
+	if (!entry.device) return null;
 	const body = rebasedBody(
 		{ ...stored.body },
 		(entry.payload ?? {}) as Record<string, unknown>,
-		entry.device?.changed ?? [],
+		entry.device.changed,
 	);
 	return {
 		op: { kind: "update", body: body as unknown as WriteBody },
@@ -87,8 +90,10 @@ export async function planRebase(input: {
 /**
  * Swaps the parked entry for the re-based one: a fresh `clientId` (the old key
  * holds the old request), the same row, the pulled version as its base, and
- * the device's booking of it. Entries chained after it follow. Returns the new
- * client id, or null when the entry is not parked any more.
+ * the device's booking of it. Entries after it for the row are parked by the
+ * outbox: each is re-based on its own. Returns the new client id, or null when
+ * the entry is not parked any more, or an edit the device could not book (its
+ * changed fields would be lost).
  */
 export function commitRebase(input: {
 	outbox: Outbox;
@@ -101,6 +106,7 @@ export function commitRebase(input: {
 		const old = (await outbox.all()).find((e) => e.clientId === clientId);
 		if (old?.state !== "conflict") return null;
 		const booked = await writes.book(plan.op);
+		if (plan.op.kind === "update" && !booked) return null;
 		const next = newClientId();
 		await outbox.replace(clientId, {
 			clientId: next,
