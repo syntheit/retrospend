@@ -1,4 +1,4 @@
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { useState } from "react";
 import { Platform, View } from "react-native";
 import { useTranslations } from "use-intl";
@@ -27,6 +27,7 @@ export default function SignInScreen() {
 	const t = useTranslations("mobile.signIn");
 	const tc = useTranslations("mobile.common");
 	const { space } = useTheme();
+	const router = useRouter();
 	const { connection, disconnect } = useServerConnection();
 	const { state, signIn, verifyCode } = useSession();
 	const [step, setStep] = useState<Step>("password");
@@ -171,6 +172,19 @@ export default function SignInScreen() {
 					onPress={submit}
 					testID={TEST_IDS.signIn.submit}
 				/>
+				{step === "password" ? (
+					<Button
+						disabled={busy}
+						label={t("forgot")}
+						onPress={() =>
+							router.push({
+								pathname: "/forgot-password",
+								params: { email: email.trim() },
+							})
+						}
+						variant="text"
+					/>
+				) : null}
 				{step === "password" && connection.status === "connected" ? (
 					<Button
 						disabled={busy}

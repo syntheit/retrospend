@@ -58,7 +58,7 @@ export function passwordStepReady(next: string, confirm: string): boolean {
 	return passwordMeetsRules(next) && next === confirm;
 }
 
-/** E2: the new password, with its rules, typed twice. */
+/** E2: the new password, with its rules, typed twice. Recovery's R4 is the same step with its own sentence (`body`). */
 export function PasswordStep({
 	next,
 	confirm,
@@ -66,6 +66,7 @@ export function PasswordStep({
 	onConfirm,
 	disabled,
 	error,
+	body,
 }: {
 	next: string;
 	confirm: string;
@@ -73,6 +74,7 @@ export function PasswordStep({
 	onConfirm: (value: string) => void;
 	disabled: boolean;
 	error: string | null;
+	body?: string;
 }) {
 	const t = useTranslations("protection.enable.newPassword");
 	const tp = useTranslations("mobile.settings.security.password");
@@ -80,7 +82,7 @@ export function PasswordStep({
 	const differs = confirm !== "" && confirm !== next;
 	return (
 		<View style={{ gap: space[4] }}>
-			<Text tone="fg2">{t("body")}</Text>
+			<Text tone="fg2">{body ?? t("body")}</Text>
 			<TextField
 				autoComplete="new-password"
 				disabled={disabled}

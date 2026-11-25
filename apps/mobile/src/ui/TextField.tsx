@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type Ref, useState } from "react";
 import { TextInput, type TextInputProps, View } from "react-native";
 import { useTheme } from "@/theme";
 import { HAIRLINE } from "./metrics";
@@ -52,6 +52,7 @@ export function TextField({
 	bare,
 	align,
 	testID,
+	inputRef,
 }: {
 	label: string;
 	value: string;
@@ -96,6 +97,8 @@ export function TextField({
 	align?: "center";
 	/** The stable id the Maestro flows find it by (src/lib/testIds.ts). */
 	testID?: string;
+	/** The input itself, for a form that moves focus to the next field (the recovery key groups). */
+	inputRef?: Ref<TextInput>;
 }) {
 	const theme = useTheme();
 	const { color, radius, size, space } = theme;
@@ -136,6 +139,7 @@ export function TextField({
 					autoComplete={autoComplete}
 					autoCorrect={autoCapitalize === "sentences"}
 					editable={!disabled}
+					ref={inputRef}
 					importantForAutofill={autoComplete ? "yes" : "auto"}
 					inputMode={inputMode}
 					keyboardType={keyboardType}
