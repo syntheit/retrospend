@@ -162,10 +162,13 @@ test("a keyed account recovers with its recovery key, signs in with the new pass
 	});
 	await page.context().clearCookies();
 	await gotoReady(page, `/auth/reset-password?token=${token}`);
+	// The recovery check does not know it now, so the page shows the plain form
+	// and the server refuses the spent link when the form is sent.
 	await expect(
-		page.getByRole("heading", { name: "Invalid link" }),
+		page.getByRole("heading", { name: "Set new password" }),
 	).toBeVisible();
-	await expect(
-		page.getByText("This link has expired or was already used."),
-	).toBeVisible();
+	await page.getByLabel("New password", { exact: true }).fill(USER.newPassword);
+	await page.getByLabel("Confirm password").fill(USER.newPassword);
+	await page.getByRole("button", { name: "Confirm and save" }).click();
+	await expect(page.getByText("Invalid or expired token")).toBeVisible();
 });

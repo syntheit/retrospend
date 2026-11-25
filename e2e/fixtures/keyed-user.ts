@@ -189,10 +189,13 @@ export async function seedKeyedUser(
 /**
  * A password reset link for one account, written straight to Postgres. The e2e
  * app has no mail, so the email that carries the link cannot be read; this
- * stores what the app stores (the SHA-256 of the token, the user, the origin
- * "email", an hour to live) and hands back the raw token for the page's URL.
+ * stores what the app stores (the SHA-256 of the token, the user, the origin,
+ * an hour to live) and hands back the raw token for the page's URL.
  */
-export async function issueResetLink(email: string): Promise<string> {
+export async function issueResetLink(
+	email: string,
+	origin: "email" | "admin" = "email",
+): Promise<string> {
 	assertE2eDatabase(E2E_DATABASE_URL);
 	const token = randomBytes(32).toString("hex");
 	const db = new PrismaClient({
@@ -207,7 +210,7 @@ export async function issueResetLink(email: string): Promise<string> {
 			data: {
 				token: createHash("sha256").update(token).digest("hex"),
 				userId: user.id,
-				origin: "email",
+				origin,
 				expires: new Date(Date.now() + 60 * 60 * 1000),
 			},
 		});
