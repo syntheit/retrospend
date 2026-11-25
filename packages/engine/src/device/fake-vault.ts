@@ -1,6 +1,9 @@
 // A vault double for the transport contract (not shipped: only tests import it,
-// through the "./device-fake-vault" export). It models the rules of the real
-// store, each cited, and nothing the real store lacks:
+// through the "./device-fake-vault" export). The store models the rules of the
+// real one, each cited. The sender below uses only what a client has: its
+// outbox entry, POST /vault/writes (`VaultPort.write`) and the records it
+// pulled through GET /vault/changes (`pulled`). `FakeVault.read` is for a
+// test's own assertions, never the sender's:
 //   src/server/services/vault/vault.service.ts   writes, versions, conflicts
 //   src/server/services/vault/validate.ts        batch shape
 //   src/server/api/v1/idempotency.ts             a key keeps an exact request
@@ -51,9 +54,14 @@ export class FakeVault {
 	/** Each request that reached the vault, in order: its key and the bytes it carried. */
 	readonly requests: { key: string; writes: readonly VaultWrite[] }[] = [];
 
+	/** For a test's own assertions and its pull: the sender never reads the store. */
 	read(id: string): VaultRecord | undefined {
 		const row = this.records.get(id);
 		return row && { ...row };
+	}
+
+	all(): VaultRecord[] {
+		return [...this.records.values()].map((row) => ({ ...row }));
 	}
 
 	/**
@@ -166,10 +174,9 @@ export function openFake(ciphertext: string): {
 	return { version: Number(version), plain: JSON.parse(rest.join("|")) };
 }
 
-/** What the sender needs of the store: a test may put a network in front of `write`. */
+/** The one call the sender makes on the store (POST /vault/writes); a test may put a network in front of it. */
 export interface VaultPort {
 	write(key: string, writes: readonly VaultWrite[]): unknown;
-	read(id: string): VaultRecord | undefined;
 }
 
 /** The part of an outbox entry a vault write is made from. */
@@ -180,72 +187,63 @@ export interface VaultEntry {
 	baseVersion: string | null | { after: string };
 	payload: unknown;
 	device?: { changes: readonly { after: unknown }[] };
+	/** Sends begun, this one included: 1 is the first. */
+	attempts: number;
+}
+
+/** What a vault transport is given with each request (the phone's `CallOptions`, as far as it reads it). */
+export interface VaultCall {
+	context: { idempotencyKey: string };
+	/** The entry's sealed request: read first, written (awaited) before the request leaves. */
+	sealed: { bytes: string | undefined; keep(bytes: string): Promise<void> };
 }
 
 /** Where expense records live in the vault (the clients' registry number, never interpreted by the store). */
 export const EXPENSES_COLLECTION = "expenses";
 export const EXPENSES_ENTITY = 1;
 
-interface Prepared {
-	/** What the write carries: sealed once, never again. Null is a tombstone. */
-	ciphertext: string | null;
-	/** What the record held before, for Undo. */
-	prior: unknown;
-}
+/** What the record held before a write, when this client cannot know it any more. */
+const UNKNOWN = Symbol("unknown prior");
 
 /**
  * The sender side of the vault (K9): an outbox entry becomes one write,
  * sealed once. A create is base 0, an edit the version the entry was based on,
  * a delete a tombstone. A version is the vault's integer, carried as its
  * decimal text. Structurally a `Transport` of the phone's sender, so the same
- * queue runs over it.
+ * queue runs over it. The sealed bytes live in the entry (`call.sealed`), so
+ * a retry after a restart, or by another instance of this sender, resends the
+ * same bytes: a second seal would be another request (a reused key).
+ * `pulled` is the record as this client last pulled it; Undo restores it.
  */
 export function fakeVaultTransport(
 	vault: VaultPort,
-	sealer = createFakeSealer(),
+	options: {
+		sealer?: ReturnType<typeof createFakeSealer>;
+		pulled?: (id: string) => VaultRecord | undefined;
+	} = {},
 ) {
-	// Fixed at the first send of a key: a retry resends these bytes under the
-	// same key, and a second seal would be another request (a reused key).
-	const prepared = new Map<string, Prepared>();
-	const sealedFor = new Map<string, number>();
+	const sealer = options.sealer ?? createFakeSealer();
+	const pulled = options.pulled ?? (() => undefined);
+	// Taken at the first send, while it is still what the write replaced.
+	const priors = new Map<string, unknown>();
 	const history = new Map<
 		string,
 		{ id: string; next: number; prior: unknown }
 	>();
 
-	const prepare = (key: string, make: () => Prepared): Prepared => {
-		let ready = prepared.get(key);
-		if (!ready) {
-			ready = make();
-			prepared.set(key, ready);
-		}
-		return ready;
-	};
-	const seal = (key: string, plain: unknown, version: number) => {
-		sealedFor.set(key, (sealedFor.get(key) ?? 0) + 1);
-		return sealer.seal(plain, version);
-	};
-
-	// A conflict on a record that is gone is the plain path's 404; on a live
-	// one it is a newer version. The sender reads the record to tell them apart.
-	const refusal = (error: unknown, entry: VaultEntry) => {
-		if (!(error instanceof VaultProblem) || error.code !== "conflict")
-			return error;
-		if (entry.kind === "create") return error;
-		const row = vault.read(entry.targetId);
-		return row && row.deletedAt === null
+	// A conflict does not say whether the record changed or is gone, and the
+	// client may not look at the store to find out: it parks, and a later pull
+	// shows a tombstone or nothing (the queue resolves it like a 404).
+	const refusal = (error: unknown, entry: VaultEntry) =>
+		error instanceof VaultProblem &&
+		error.code === "conflict" &&
+		entry.kind !== "create"
 			? new VaultProblem(409, "expense_changed", error.conflictIds)
-			: new VaultProblem(404, "not_found");
-	};
+			: error;
 
 	return {
-		/** How often a key's write was sealed: 1 however often it was sent. */
-		sealedTimes: (key: string) => sealedFor.get(key) ?? 0,
-		async dispatch(
-			entry: VaultEntry,
-			options: { context: { idempotencyKey: string } },
-		) {
-			const key = options.context.idempotencyKey;
+		async dispatch(entry: VaultEntry, call: VaultCall) {
+			const key = call.context.idempotencyKey;
 			// A stamp that is not a version is never a base: 0 would create.
 			const base =
 				entry.kind === "create"
@@ -254,24 +252,27 @@ export function fakeVaultTransport(
 						? Number(entry.baseVersion)
 						: Number.NaN;
 			if (!Number.isInteger(base)) throw new VaultProblem(400, "bad_request");
-			const ready = prepare(key, () => {
-				const row = vault.read(entry.targetId);
-				return {
-					ciphertext:
-						entry.kind === "delete"
-							? null
-							: seal(
-									key,
-									{
-										id: entry.targetId,
-										payload: entry.payload,
-										rows: entry.device?.changes.map((c) => c.after) ?? [],
-									},
-									base + 1,
-								),
-					prior: row?.ciphertext ? openFake(row.ciphertext).plain : null,
-				};
-			});
+			if (entry.attempts <= 1) {
+				const row = pulled(entry.targetId);
+				priors.set(
+					key,
+					row?.ciphertext ? openFake(row.ciphertext).plain : null,
+				);
+			}
+			let ciphertext: string | null = null;
+			if (entry.kind !== "delete") {
+				ciphertext =
+					call.sealed.bytes ??
+					sealer.seal(
+						{
+							id: entry.targetId,
+							payload: entry.payload,
+							rows: entry.device?.changes.map((c) => c.after) ?? [],
+						},
+						base + 1,
+					);
+				if (call.sealed.bytes === undefined) await call.sealed.keep(ciphertext);
+			}
 			try {
 				await vault.write(key, [
 					{
@@ -279,7 +280,7 @@ export function fakeVaultTransport(
 						collectionId: EXPENSES_COLLECTION,
 						entity: EXPENSES_ENTITY,
 						baseVersion: base,
-						ciphertext: ready.ciphertext,
+						ciphertext,
 					},
 				]);
 			} catch (error) {
@@ -288,7 +289,12 @@ export function fakeVaultTransport(
 			history.set(entry.clientId, {
 				id: entry.targetId,
 				next: base + 1,
-				prior: ready.prior,
+				prior:
+					entry.kind === "create"
+						? null
+						: priors.has(key)
+							? priors.get(key)
+							: UNKNOWN,
 			});
 			return {
 				// The token is the entry's own id: Undo is one more write, not a server route.
@@ -296,22 +302,23 @@ export function fakeVaultTransport(
 				version: entry.kind === "delete" ? null : String(base + 1),
 			};
 		},
-		/** Takes a write back as the next version of its record, sealed once under the undo's key. */
+		/**
+		 * Takes a write back as the next version of its record, under the undo's
+		 * key (a new one per attempt, so nothing is resent). Refused when the
+		 * record before is not known: it is never guessed.
+		 */
 		async undo(ref: { token: string }, key: string) {
 			const done = history.get(ref.token);
-			if (!done) throw new VaultProblem(404, "not_found");
-			const { ciphertext } = prepare(key, () => ({
-				ciphertext:
-					done.prior === null ? null : seal(key, done.prior, done.next + 1),
-				prior: null,
-			}));
+			if (!done || done.prior === UNKNOWN)
+				throw new VaultProblem(404, "not_found");
 			await vault.write(key, [
 				{
 					id: done.id,
 					collectionId: EXPENSES_COLLECTION,
 					entity: EXPENSES_ENTITY,
 					baseVersion: done.next,
-					ciphertext,
+					ciphertext:
+						done.prior === null ? null : sealer.seal(done.prior, done.next + 1),
 				},
 			]);
 		},
