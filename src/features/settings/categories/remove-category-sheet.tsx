@@ -26,7 +26,7 @@ export interface RemovableCategory {
 }
 
 /**
- * Delete a category, or merge it into another, as a money action (R30, R15):
+ * Delete a category, or merge it into another of its kind, as a money action (R30, R15):
  * the choice of where its expenses go opens the server's dry run of the same
  * write Save makes (what moves, what is dropped, which envelopes the rows end
  * up in, and that your spending does not change), a refusal is worded by its
@@ -41,7 +41,7 @@ export function RemoveCategorySheet({
 	onRemoved,
 }: {
 	category: RemovableCategory | null;
-	categories: readonly { id: string; name: string }[];
+	categories: readonly { id: string; name: string; kind: string }[];
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	/** After the delete committed: the manager moves its selection off it. */
@@ -85,7 +85,12 @@ export function RemoveCategorySheet({
 		[month.data],
 	);
 
-	const others = categories.filter((c) => c.id !== shown?.id);
+	// Only the same kind: an expense and an income category are refused, so
+	// that choice is never offered (the server refusal stays the guard).
+	const kind = categories.find((c) => c.id === shown?.id)?.kind;
+	const others = categories.filter(
+		(c) => c.id !== shown?.id && c.kind === kind,
+	);
 	const targetName =
 		target === NONE
 			? null

@@ -57,8 +57,22 @@ describe("handleMutationSuccess", () => {
 const REQUIRED_READERS: Record<string, string[]> = {
 	// Category edits change names, colors and exclusions shown everywhere.
 	"categories.update": ["categories", "expense"],
-	"categories.remove": ["categories", "expense", "insights", "envelope"],
-	"categories.restore": ["categories", "expense", "insights", "envelope"],
+	"categories.remove": [
+		"categories",
+		"expense",
+		"insights",
+		"envelope",
+		"entry",
+		"recurring",
+	],
+	"categories.restore": [
+		"categories",
+		"expense",
+		"insights",
+		"envelope",
+		"entry",
+		"recurring",
+	],
 	"entry.expense.categorize.save": ["expense", "insights"],
 
 	// The fiscal month start day moves every month boundary.

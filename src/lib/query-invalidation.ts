@@ -41,12 +41,15 @@ const SETTLEMENT_DEPS = [
 	"sharedTransaction",
 ] as const;
 
+// Activity's category filter and the recurring pickers read the catalog too.
 const CATEGORY_DEPS = [
 	"insights",
 	"expense",
 	"sharedTransaction",
 	"project",
 	"envelope",
+	"entry",
+	"recurring",
 ] as const;
 
 // Fiscal month start and home currency shift every month-scoped reader.
