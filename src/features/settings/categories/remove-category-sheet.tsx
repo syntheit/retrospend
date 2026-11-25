@@ -58,12 +58,15 @@ export function RemoveCategorySheet({
 	const [error, setError] = useState<string | null>(null);
 	// The sheet keeps its content while it closes.
 	const [shown, setShown] = useState<RemovableCategory | null>(null);
+	// Keyed on the id: the manager passes a new object on every render.
+	const categoryId = category?.id;
+	const categoryName = category?.name;
 	useEffect(() => {
-		if (!open || !category) return;
-		setShown(category);
+		if (!open || !categoryId) return;
+		setShown({ id: categoryId, name: categoryName ?? "" });
 		setTarget(NONE);
 		setError(null);
-	}, [open, category]);
+	}, [open, categoryId, categoryName]);
 
 	// Envelope names for the reroute lines: the person's own book, this month.
 	const month = api.envelope.getMonth.useQuery(
