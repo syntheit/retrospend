@@ -236,7 +236,8 @@ describe("Forgot password, the choices", () => {
 		const reset = tree.root.findAll(
 			(n) =>
 				n.props.accessibilityRole === "button" &&
-				n.props.accessibilityState?.disabled === true &&
+				(n.props.accessibilityState as { disabled?: boolean } | undefined)
+					?.disabled === true &&
 				words({ root: n } as Tree).includes("Reset account"),
 		);
 		expect(reset.length).toBeGreaterThan(0);

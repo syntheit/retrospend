@@ -6,11 +6,11 @@ import {
 	type RecoverState,
 } from "@retrospend/crypto/client";
 import { useRef } from "react";
-import { type TextInput, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { Text } from "@/ui/Text";
-import { TextField } from "@/ui/TextField";
+import { TextField, type TextInputHandle } from "@/ui/TextField";
 import { PasswordStep, StepError } from "../settings/protection/EnableSteps";
 
 /** Groups per row: nine in three rows of three, as the key is shown. */
@@ -45,7 +45,7 @@ export function EnterKeyStep({
 	const t = useTranslations("protection.recover");
 	const group = useTranslations("protection.recoveryKey");
 	const { space } = useTheme();
-	const inputs = useRef<(TextInput | null)[]>([]);
+	const inputs = useRef<(TextInputHandle | null)[]>([]);
 	return (
 		<View style={{ gap: space[4] }}>
 			<Text tone="fg2">{t("enterBody")}</Text>

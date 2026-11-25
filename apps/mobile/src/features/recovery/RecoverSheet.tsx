@@ -44,7 +44,11 @@ export type RecoverSheetProps = RecoveryCallbacks & {
  * proof opened.
  */
 export function RecoverSheet(props: RecoverSheetProps) {
-	const t = useTranslations();
+	// The shared views name their words as catalog keys from the root.
+	const t = useTranslations() as (
+		key: string,
+		values?: Record<string, string | number>,
+	) => string;
 	const tc = useTranslations("mobile.common");
 	const { space } = useTheme();
 	const body = useSheetBodySize({ footer: true });

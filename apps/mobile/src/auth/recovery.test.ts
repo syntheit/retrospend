@@ -76,7 +76,7 @@ function server(
 	const begin = jest.fn(
 		async (body: { token: string; recoveryAuthKey: string }) => {
 			if (!live || body.token !== TOKEN) throw refusal(404, "invalid_token");
-			if (toHex(fromBase64Url(body.recoveryAuthKey) as Uint8Array) !== RK.authKey)
+			if (toHex(fromBase64Url(body.recoveryAuthKey) as Uint8Array) !== RK?.authKey)
 				throw refusal(400, "wrong_recovery_key");
 			return {
 				userId: USER,
@@ -87,7 +87,7 @@ function server(
 						role: "ak-recovery",
 						targetId: USER,
 						wrapped: toBase64Url(
-							wrapKey(real, fromHex(RK.wrapKey), "ak-recovery", USER, AK),
+							wrapKey(real, fromHex(RK?.wrapKey ?? ""), "ak-recovery", USER, AK),
 						),
 					},
 					{

@@ -49,7 +49,11 @@ async function drawWith(): Promise<(below: number) => number> {
  * old key stops working only when `save` resolves; every exit wipes the draft.
  */
 export function NewKeySheet(props: NewKeySheetProps) {
-	const t = useTranslations();
+	// The shared views name their words as catalog keys from the root.
+	const t = useTranslations() as (
+		key: string,
+		values?: Record<string, string | number>,
+	) => string;
 	const tc = useTranslations("mobile.common");
 	const ts = useTranslations("mobile.signIn");
 	const toast = useToast();

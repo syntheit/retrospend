@@ -1,8 +1,11 @@
-import { type Ref, useState } from "react";
+import { type ElementRef, type Ref, useState } from "react";
 import { TextInput, type TextInputProps, View } from "react-native";
 import { useTheme } from "@/theme";
 import { HAIRLINE } from "./metrics";
 import { TEXT_SCALE_CAP, Text, typeStyle } from "./Text";
+
+/** What a ref to the field's input points at. */
+export type TextInputHandle = ElementRef<typeof TextInput>;
 
 /** A field's label above it: 13/400 in fg-2, as in iOS Settings. */
 export function FieldLabel({ children }: { children: string }) {
@@ -98,7 +101,7 @@ export function TextField({
 	/** The stable id the Maestro flows find it by (src/lib/testIds.ts). */
 	testID?: string;
 	/** The input itself, for a form that moves focus to the next field (the recovery key groups). */
-	inputRef?: Ref<TextInput>;
+	inputRef?: Ref<TextInputHandle>;
 }) {
 	const theme = useTheme();
 	const { color, radius, size, space } = theme;
