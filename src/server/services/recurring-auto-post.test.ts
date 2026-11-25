@@ -3,7 +3,15 @@
  * itself is tested on Postgres (recurring-auto-post.pg.test.ts).
  */
 import { readFileSync } from "node:fs";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+	afterAll,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
 
 const env = vi.hoisted(() => ({
 	NODE_ENV: "production",
@@ -14,12 +22,28 @@ const db = vi.hoisted(() => ({
 	$queryRaw: vi.fn(async () => []),
 	systemStatus: { upsert: vi.fn(async () => ({})) },
 }));
+const port = vi.hoisted(() => ({
+	apply: vi.fn(),
+	isProtectedNow: vi.fn(async (_userId: string) => false),
+}));
 vi.mock("~/env", () => ({ env }));
 vi.mock("~/server/db", () => ({ db }));
-vi.mock("~/server/services/preview", () => ({ forUser: vi.fn() }));
+vi.mock("~/server/services/preview", () => ({
+	forUser: vi.fn(() => ({ apply: port.apply })),
+}));
+vi.mock("~/server/services/protection/now", () => ({
+	isProtectedNow: port.isProtectedNow,
+}));
+vi.mock("~/server/services/keys/data-key.service", () => ({
+	ensureUserKeyringWhenSealing: vi.fn(async () => undefined),
+}));
 
-const { autoPostEnabled, autoPostOffReason, startRecurringAutoPost } =
-	await import("./recurring-auto-post");
+const {
+	autoPostEnabled,
+	autoPostOffReason,
+	startRecurringAutoPost,
+	sweepRecurringAutoPost,
+} = await import("./recurring-auto-post");
 
 describe("autoPostEnabled", () => {
 	it("is on by default only in production", () => {
@@ -93,5 +117,65 @@ describe("the auto input", () => {
 			"packages/api-contract/src/recurring/index.ts",
 		])
 			expect(readFileSync(file, "utf8"), file).not.toMatch(/\bauto\b(?!-)/);
+	});
+});
+
+describe("the sweep's catch-up over the domain plan", () => {
+	const DAY = 24 * 60 * 60 * 1000;
+	const now = new Date("2026-03-10T12:00:00.000Z");
+	const first = new Date(now.getTime() - 3 * DAY);
+
+	beforeEach(() => {
+		db.$queryRaw.mockResolvedValueOnce([
+			{ id: "t1", userId: "u1", nextDueDate: first },
+		] as never);
+		port.apply.mockReset();
+		port.isProtectedNow.mockReset().mockResolvedValue(false);
+	});
+
+	it("posts each due period at its own date and counts them", async () => {
+		const dueDates: Date[] = [];
+		port.apply.mockImplementation(async (_m, input) => {
+			dueDates.push(input.dueDate);
+			return { value: { nextDueAt: new Date(input.dueDate.getTime() + DAY) } };
+		});
+		const counts = await sweepRecurringAutoPost(now, db as never);
+		expect(dueDates.map((d) => d.toISOString())).toEqual([
+			"2026-03-07T12:00:00.000Z",
+			"2026-03-08T12:00:00.000Z",
+			"2026-03-09T12:00:00.000Z",
+			"2026-03-10T12:00:00.000Z",
+		]);
+		expect(counts).toMatchObject({ posted: 4, capped: 0, failed: 0 });
+	});
+
+	it("stops a template whose protection read fails and logs it as a failure", async () => {
+		const log = vi.spyOn(console, "error").mockImplementation(() => {});
+		port.isProtectedNow
+			.mockResolvedValueOnce(false) // the sweep's own read before the key
+			.mockRejectedValueOnce(new Error("db down at u1")); // before period 2
+		port.apply.mockResolvedValue({
+			value: { nextDueAt: new Date(first.getTime() + DAY) },
+		});
+		const counts = await sweepRecurringAutoPost(now, db as never);
+		expect(port.apply).toHaveBeenCalledTimes(1);
+		expect(counts).toMatchObject({ posted: 1, failed: 1 });
+		expect(log).toHaveBeenCalledWith(
+			"Recurring auto-post failed for one template:",
+			"protection_unreadable",
+		);
+		log.mockRestore();
+	});
+
+	it("stops without a failure when protection turns on before period 2", async () => {
+		port.isProtectedNow
+			.mockResolvedValueOnce(false)
+			.mockResolvedValueOnce(true);
+		port.apply.mockResolvedValue({
+			value: { nextDueAt: new Date(first.getTime() + DAY) },
+		});
+		const counts = await sweepRecurringAutoPost(now, db as never);
+		expect(port.apply).toHaveBeenCalledTimes(1);
+		expect(counts).toMatchObject({ posted: 1, failed: 0, capped: 0 });
 	});
 });
