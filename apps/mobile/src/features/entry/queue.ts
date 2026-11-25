@@ -16,14 +16,16 @@ import type {
 import { type FlushOptions, flushOutbox } from "@/data/sync";
 import type { PendingWrite } from "./draft";
 import {
+	apiTransport,
 	createEntrySender,
 	entryOutbox,
 	notStored,
 	SEND_TIMEOUT_MS,
 	type SenderOptions,
+	type Transport,
 	type UndoRef,
 	undoFor,
-	undoWrite,
+	undoKey,
 } from "./send";
 import { releaseSent, retainSent } from "./sentRetain";
 
@@ -128,6 +130,8 @@ export async function saveEntry(input: {
 	write: PendingWrite;
 	/** Test seam: the wait for the send. */
 	waitMs?: number;
+	/** Another transport than API v1 (the sealed vault, K9). */
+	transport?: Transport;
 }): Promise<SaveOutcome> {
 	const { outbox, api, write } = input;
 	const clientId = String(write.body.id);
@@ -151,7 +155,9 @@ export async function saveEntry(input: {
 	// network, the entry stays in the outbox and goes when its turn comes.
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	await Promise.race([
-		flushEntries(outbox, api).catch(() => undefined),
+		flushEntries(outbox, api, { transport: input.transport }).catch(
+			() => undefined,
+		),
 		new Promise<void>((resolve) => {
 			timer = setTimeout(resolve, input.waitMs ?? SAVE_WAIT_MS);
 		}),
@@ -210,8 +216,11 @@ export function undoSaved(input: {
 	outbox: Outbox;
 	api: RetrospendClient;
 	clientId: string;
+	/** Another transport than API v1 (the sealed vault, K9). */
+	transport?: Transport;
 }): Promise<UndoResult> {
 	const { outbox, api, clientId } = input;
+	const transport = input.transport ?? apiTransport(api);
 	return exclusive(outbox, async () => {
 		const writes = deviceWrites(api);
 		try {
@@ -224,7 +233,7 @@ export function undoSaved(input: {
 			const generation = () =>
 				writes ? outbox.nextUndoGeneration(clientId) : undefined;
 			const undoNow = async (token: UndoRef) => {
-				await undoWrite(api, token, clientId, await generation());
+				await transport.undo(token, undoKey(clientId, await generation()));
 				releaseSent(clientId);
 				await outbox.undone(clientId);
 				await writes?.refresh().catch(() => undefined);
@@ -241,7 +250,7 @@ export function undoSaved(input: {
 				return "undone";
 			}
 			await outbox.markSending(clientId);
-			const sent = await createEntrySender(api)(entry);
+			const sent = await createEntrySender(api, { transport })(entry);
 			if (sent.status === "retry") {
 				await outbox.markFailed(clientId, sent.reason, sent.kind);
 				return "failed";
