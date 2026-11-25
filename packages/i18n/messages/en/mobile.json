@@ -111,7 +111,10 @@
 			"title": "Couldn't sync",
 			"refused": "The server didn't accept this.",
 			"discard": "Discard",
-			"retryFailed": "Still can't send it. Try again later."
+			"retryFailed": "Still can't send it. Try again later.",
+			"changed": "Changed on another device",
+			"deleted": "Deleted on another device",
+			"rebaseTitle": "Save your change again?"
 		},
 		"transferMode": "Transfer",
 		"addTransfer": "Add transfer",

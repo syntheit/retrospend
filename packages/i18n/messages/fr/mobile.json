@@ -111,7 +111,10 @@
 			"title": "Synchronisation impossible",
 			"refused": "Le serveur n'a pas accepté ceci.",
 			"discard": "Supprimer",
-			"retryFailed": "Envoi toujours impossible. Réessaie plus tard."
+			"retryFailed": "Envoi toujours impossible. Réessaie plus tard.",
+			"changed": "Modifié sur un autre appareil",
+			"deleted": "Supprimé sur un autre appareil",
+			"rebaseTitle": "Enregistrer ta modification à nouveau ?"
 		},
 		"transferMode": "Virement",
 		"addTransfer": "Ajouter un virement",

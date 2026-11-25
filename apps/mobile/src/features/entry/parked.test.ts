@@ -1,5 +1,5 @@
 import type { OutboxEntry } from "@/data/outbox";
-import { parkedFrom } from "./parked-entry";
+import { parkedFrom, rebases } from "./parked-entry";
 
 const entry = (payload: unknown, lastError: string | null): OutboxEntry => ({
 	clientId: "c1",
@@ -17,6 +17,32 @@ const entry = (payload: unknown, lastError: string | null): OutboxEntry => ({
 });
 
 describe("parkedFrom", () => {
+	it("names a parked delete by the amount the device booked, with no title", () => {
+		const parked = parkedFrom({
+			...entry({ id: "e1" }, "expense_changed"),
+			kind: "delete",
+			targetId: "e1",
+			device: {
+				bookedAt: 1,
+				changed: [],
+				changes: [
+					{
+						table: "expenses",
+						id: "e1",
+						before: { amount: "100.00", currency: "USD" } as never,
+						after: null,
+					},
+				],
+			},
+		});
+		expect(parked).toMatchObject({
+			title: "",
+			amount: { minor: 10_000, currency: "USD" },
+			reason: "expense_changed",
+			kind: "delete",
+		});
+	});
+
 	it("names a parked expense with its amount in minor units", () => {
 		expect(
 			parkedFrom(
@@ -30,6 +56,8 @@ describe("parkedFrom", () => {
 			title: "Taxi",
 			amount: { minor: 1_250_050, currency: "ARS" },
 			reason: "forbidden",
+			kind: "create",
+			gone: false,
 		});
 	});
 
@@ -49,5 +77,22 @@ describe("parkedFrom", () => {
 			parkedFrom(entry({ title: "Odd", amount: "x", currency: "ARS" }, null))
 				.amount,
 		).toBeNull();
+	});
+});
+
+describe("rebases", () => {
+	const parked = (kind: OutboxEntry["kind"], reason: string) =>
+		parkedFrom({ ...entry({ id: "e1" }, reason), kind });
+
+	it("is Try again over the pulled row for an edit or delete that met a newer row or lost its chain", () => {
+		expect(rebases(parked("update", "expense_changed"))).toBe(true);
+		expect(rebases(parked("delete", "expense_changed"))).toBe(true);
+		expect(rebases(parked("update", "chain_lost"))).toBe(true);
+	});
+
+	it("is not for a create, or for a write the server refused outright", () => {
+		expect(rebases(parked("create", "expense_changed"))).toBe(false);
+		expect(rebases(parked("update", "forbidden"))).toBe(false);
+		expect(rebases(parked("update", "not_found"))).toBe(false);
 	});
 });

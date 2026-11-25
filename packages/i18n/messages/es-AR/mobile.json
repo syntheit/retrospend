@@ -111,7 +111,10 @@
 			"title": "No se pudo sincronizar",
 			"refused": "El servidor no aceptó esto.",
 			"discard": "Descartar",
-			"retryFailed": "Todavía no se puede enviar. Probá más tarde."
+			"retryFailed": "Todavía no se puede enviar. Probá más tarde.",
+			"changed": "Cambiado en otro dispositivo",
+			"deleted": "Eliminado en otro dispositivo",
+			"rebaseTitle": "¿Guardar tu cambio de nuevo?"
 		},
 		"transferMode": "Transferencia",
 		"addTransfer": "Agregar transferencia",

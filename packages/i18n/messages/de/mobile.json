@@ -111,7 +111,10 @@
 			"title": "Synchronisierung fehlgeschlagen",
 			"refused": "Der Server hat das nicht angenommen.",
 			"discard": "Verwerfen",
-			"retryFailed": "Senden klappt noch nicht. Versuche es später noch einmal."
+			"retryFailed": "Senden klappt noch nicht. Versuche es später noch einmal.",
+			"changed": "Auf einem anderen Gerät geändert",
+			"deleted": "Auf einem anderen Gerät gelöscht",
+			"rebaseTitle": "Deine Änderung erneut speichern?"
 		},
 		"transferMode": "Umbuchung",
 		"addTransfer": "Umbuchung hinzufügen",

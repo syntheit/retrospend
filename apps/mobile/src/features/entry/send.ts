@@ -193,7 +193,7 @@ export function createEntrySender(
 		} catch (error) {
 			// The id exists: an earlier try went through and its answer got lost.
 			// No answer, so no version: an entry chained after it parks as
-			// chain_lost. PR10 reads the row to get one.
+			// chain_lost, and Try again re-bases it over the pulled row.
 			if (entry.kind === "create" && idTaken(error)) return { status: "sent" };
 			const result = classify(error, entry.serverErrors);
 			if (
