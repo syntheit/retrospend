@@ -105,8 +105,10 @@ describe("device field", () => {
 
 	it("stamps a chained template edit with the version its predecessor was acked at", async () => {
 		const outbox = createOutbox(createMemoryStore(), "a");
-		const t = (before: object, after: object) =>
-			booking("t1", before, after, {}, "recurringTemplates");
+		const t = (
+			before: Record<string, unknown>,
+			after: Record<string, unknown>,
+		) => booking("t1", before, after, {}, "recurringTemplates");
 		await outbox.enqueue(
 			edit(
 				"u1",
