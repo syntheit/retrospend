@@ -11,7 +11,7 @@ import {
 	planLinks,
 	planPreference,
 } from "@retrospend/domain/category-merge/plan";
-import { type BudgetType, Prisma } from "~prisma";
+import type { BudgetType } from "~prisma";
 import { type HolderAdapter, type Stamped, staleUndo, swapAll } from "./holder";
 
 export interface BudgetHeld extends Stamped {
@@ -61,11 +61,11 @@ export const budgetHolder: HolderAdapter<BudgetHeld> = {
 				stamp: c.stamp.toISOString(),
 				dropped: dropped.map((b) => ({
 					id: b.id,
-					amount: b.amount.toFixed(),
+					amount: b.amount.toString(),
 					currency: b.currency,
 					period: b.period.toISOString(),
 					isRollover: b.isRollover,
-					rolloverAmount: b.rolloverAmount.toFixed(),
+					rolloverAmount: b.rolloverAmount.toString(),
 					pegToActual: b.pegToActual,
 					type: b.type,
 					createdAt: b.createdAt.toISOString(),
@@ -99,11 +99,11 @@ export const budgetHolder: HolderAdapter<BudgetHeld> = {
 				id: b.id,
 				userId: c.userId,
 				categoryId: c.sourceId,
-				amount: new Prisma.Decimal(b.amount),
+				amount: b.amount,
 				currency: b.currency,
 				period: new Date(b.period),
 				isRollover: b.isRollover,
-				rolloverAmount: new Prisma.Decimal(b.rolloverAmount),
+				rolloverAmount: b.rolloverAmount,
 				pegToActual: b.pegToActual,
 				type: b.type,
 				createdAt: new Date(b.createdAt),

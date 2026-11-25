@@ -76,10 +76,10 @@ export const CATEGORY_LOOSE_HOLDERS = [
 ] as const satisfies readonly Holder[];
 
 /**
- * Json and text columns that name a category id and are left as written. A
- * pending import's body is sealed user text the server must not open (6.4); a
- * history record describes what was; a closed month's links are refused
- * against (closed-months.ts).
+ * Json and text columns that name a category id and are left as written. The
+ * body of a pending file upload is sealed user text the server must not open
+ * (6.4); a history record describes what was; the links of a closed month are
+ * checked instead (closedMonthClash refuses a merge that would change them).
  */
 export const CATEGORY_LEFT_ALONE = [
 	{
