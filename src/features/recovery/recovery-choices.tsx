@@ -5,9 +5,6 @@ import { AuthPanel } from "~/app/(site)/_components/auth-panel";
 import { Button } from "~/components/ui/button";
 import { SettingRow, SettingRows } from "~/features/settings/setting-row";
 
-/** The mockup's danger text button: a ghost button whose words are the danger color (the filled danger button is only a destructive dialog's confirm). */
-const DANGER_TEXT = "text-danger can-hover:hover:text-danger";
-
 /**
  * X1 of the mockup: what a reset link leads to for an account with keys. The
  * recovery key leads. Another device and, with protection on, Reset account
@@ -42,15 +39,14 @@ export function RecoveryChoices({
 				</SettingRow>
 				{protectionOn ? (
 					<SettingRow label={t("nothingWorks")} meta={methods("reason")}>
-						<Button className={DANGER_TEXT} disabled kind="ghost" size="sm">
+						<Button disabled kind="danger-text" size="sm">
 							{t("resetAccount")}
 						</Button>
 					</SettingRow>
 				) : (
 					<SettingRow label={t("nothingWorks")} meta={t("resetMeta")}>
 						<Button
-							className={DANGER_TEXT}
-							kind="ghost"
+							kind="danger-text"
 							onClick={onReset}
 							size="sm"
 						>

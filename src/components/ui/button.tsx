@@ -55,6 +55,7 @@ const kindVariants = cva(
 					"border-line-strong bg-surface text-fg can-hover:hover:bg-raised",
 				ghost: "text-fg-2 can-hover:hover:bg-raised can-hover:hover:text-fg",
 				danger: "bg-danger text-danger-fg can-hover:hover:bg-danger-hover",
+				"danger-text": "text-danger can-hover:hover:bg-raised",
 			},
 			size: {
 				ctl: "h-ctl px-3 text-body",
