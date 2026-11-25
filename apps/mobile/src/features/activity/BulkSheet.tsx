@@ -66,16 +66,17 @@ export function BulkSheet({
 		setFailed(false);
 		setSyncFirst(false);
 		const device = bulkDevice(api, local?.outbox);
-		const blocked = device
-			? unsyncedIds(device, ids).then((held) => held.length > 0)
-			: Promise.resolve(false);
-		blocked.then((held) => {
-			if (cancelled) return;
-			if (held) return setSyncFirst(true);
+		const showPreview = () =>
 			previewBulk(api, action, ids, device).then((state) => {
 				if (!cancelled) setPreview(state);
 			});
-		});
+		if (!device) void showPreview();
+		else
+			void unsyncedIds(device, ids).then((held) => {
+				if (cancelled) return;
+				if (held.length > 0) setSyncFirst(true);
+				else void showPreview();
+			});
 		return () => {
 			cancelled = true;
 		};
