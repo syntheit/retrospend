@@ -24,6 +24,18 @@ describe("sealed request", () => {
 	});
 });
 
+describe("an acked write", () => {
+	it("keeps no sealed request: the server answered, so it has no use", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		await outbox.enqueue(create("e1", device("e1")));
+		await outbox.seal("e1", "ab12cd");
+		await outbox.markSent("e1", { version: T1, pull: 1 });
+		const [acked] = await outbox.acked();
+		expect(acked?.clientId).toBe("e1");
+		expect(acked?.sealed).toBeUndefined();
+	});
+});
+
 describe("device field", () => {
 	it("holds no title, description or location", async () => {
 		const store = createMemoryStore();

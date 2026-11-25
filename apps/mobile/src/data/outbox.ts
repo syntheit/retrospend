@@ -98,7 +98,7 @@ export type NewOutboxEntry = Pick<
 	OutboxEntry,
 	"clientId" | "entity" | "kind" | "targetId" | "baseVersion" | "payload"
 > &
-	Partial<Pick<OutboxEntry, "device">>;
+	Partial<Pick<OutboxEntry, "device" | "sealed">>;
 
 export interface Ack {
 	/** The `updatedAt` from the answer; null for a delete, absent when it named none. */
@@ -300,8 +300,10 @@ export function createOutbox(
 		);
 		if (entry.device && !entry.device.unbooked) {
 			ackPulls.set(clientId, answer.pull ?? Number.POSITIVE_INFINITY);
+			// The sealed request has done its work once the server answered.
+			const { sealed: _sealed, ...kept } = entry;
 			const record = {
-				...entry,
+				...kept,
 				ack: { version: version ?? null },
 				ackedAt: now().toISOString(),
 			};
