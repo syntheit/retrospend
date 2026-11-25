@@ -82,6 +82,7 @@
 			"editRefused": "Impossible d'enregistrer ce changement. Il est peut-être verrouillé.",
 			"editSynced": "Cette opération est déjà synchronisée. Ouvre-la depuis Activité pour la modifier.",
 			"stillSending": "Cette opération est encore en cours d'envoi. Réessaie dans un instant.",
+			"parkedRow": "Règle d'abord cette dépense sous « Synchronisation impossible ».",
 			"notRead": "Impossible de lire cette opération. Réessaie dans un instant."
 		},
 		"changes": {

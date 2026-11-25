@@ -82,6 +82,7 @@
 			"editRefused": "No pudimos guardar este cambio. Puede estar bloqueado.",
 			"editSynced": "Este movimiento ya se sincronizó. Abrilo desde Actividad para editarlo.",
 			"stillSending": "Este movimiento todavía se está enviando. Probá de nuevo en un momento.",
+			"parkedRow": "Resolvé este gasto primero en «No se pudo sincronizar».",
 			"notRead": "No se pudo leer este movimiento. Probá de nuevo en un momento."
 		},
 		"changes": {

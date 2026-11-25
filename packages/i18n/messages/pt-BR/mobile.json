@@ -82,6 +82,7 @@
 			"editRefused": "Não foi possível salvar esta alteração. Ela pode estar bloqueada.",
 			"editSynced": "Este lançamento já foi sincronizado. Abra-o em Atividade para editar.",
 			"stillSending": "Este lançamento ainda está sendo enviado. Tente de novo em instantes.",
+			"parkedRow": "Resolva este gasto primeiro em “Não foi possível sincronizar”.",
 			"notRead": "Não foi possível ler este lançamento. Tente de novo em instantes."
 		},
 		"changes": {
