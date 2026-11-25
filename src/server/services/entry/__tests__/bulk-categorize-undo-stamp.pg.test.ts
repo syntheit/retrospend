@@ -102,7 +102,8 @@ describe("web: entry.expense.categorize", () => {
 	const editB = (id: string) =>
 		w.callers.entry.expense.update.save({
 			id,
-			...lunch(w, { amount: "50", categoryId: third }),
+			...lunch(w, { amount: "50" }),
+			categoryId: third,
 		});
 
 	it("answers the stamp each reached row has now", async () => {
@@ -177,7 +178,8 @@ describe("web: entry.expense.categorize", () => {
 		expect(saved.value.updated).toBe(2);
 		await w.callers.entry.expense.update.save({
 			id: held,
-			...lunch(w, { amount: "10", categoryId: third }),
+			...lunch(w, { amount: "10" }),
+			categoryId: third,
 		});
 		const before = await snapshot([held, moved]);
 		await expect(expense.categorize.save(undoOf(saved))).rejects.toMatchObject({
