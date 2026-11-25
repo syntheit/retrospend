@@ -3,6 +3,7 @@
  * instance-key.service.ts). Each service passes a factory that builds its own
  * typed error from the kind.
  */
+import { sqlstateOf } from "~/server/db-contention";
 import { Prisma } from "~prisma";
 
 export type KeystoreFailure =
@@ -31,16 +32,14 @@ export class KeystoreError extends Error {
 export function pgCode(error: unknown): string | undefined {
 	if (!(error instanceof Prisma.PrismaClientKnownRequestError))
 		return undefined;
-	const meta = error.meta as
-		| { driverAdapterError?: { cause?: { originalCode?: string } } }
-		| undefined;
-	return meta?.driverAdapterError?.cause?.originalCode;
+	return sqlstateOf(error);
 }
 
 /** The failure kind a SQLSTATE stands for, undefined for any other error. */
 export function keystoreFailure(error: unknown): KeystoreFailure | undefined {
 	const code = pgCode(error);
-	if (code === "42P01" || code === "3F000" || code === "42883") return "missing";
+	if (code === "42P01" || code === "3F000" || code === "42883")
+		return "missing";
 	if (code === "28000") return "refused";
 	if (code === "42501") return "grants";
 	if (code === "KS001") return "lost";
