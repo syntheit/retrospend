@@ -1,8 +1,8 @@
 import {
+	issueResetLink,
 	KEYED_RECOVERY_KEY_TEXT as OLD_KEY,
 	KEYED_NEWKEY_USER as USER,
 } from "../fixtures/keyed-user";
-import { issueResetLink } from "../fixtures/reset-link";
 import { expect, type Locator, test } from "../fixtures/sealed-guard";
 import { gotoReady, waitUntilReady } from "../helpers/navigation";
 

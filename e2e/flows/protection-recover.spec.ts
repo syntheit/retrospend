@@ -1,10 +1,10 @@
 import { encodeRecoveryKey } from "../../packages/crypto/src/keys";
 import { E2E_BASE_URL } from "../constants";
 import {
+	issueResetLink,
 	KEYED_RECOVERY_KEY_TEXT,
 	KEYED_RECOVER_USER as USER,
 } from "../fixtures/keyed-user";
-import { issueResetLink } from "../fixtures/reset-link";
 import {
 	expect,
 	type Locator,

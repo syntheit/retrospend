@@ -12,7 +12,7 @@
  * the typed password with the app's own derivation at the Argon2 floor, so a
  * sign-in takes a fraction of a second. All values are fake.
  */
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "~prisma";
 // Deep paths: the package index also loads the known-answer self-test, whose
@@ -28,6 +28,7 @@ import {
 } from "../../packages/crypto/src/keys";
 import { signInSecret } from "../../packages/crypto/src/sign-in-secret";
 import { createWebPrimitives } from "../../packages/crypto/src/web";
+import { E2E_DATABASE_URL } from "../constants";
 import { assertE2eDatabase } from "../db-guard";
 
 export const KEYED_USER = {
@@ -183,4 +184,35 @@ export async function seedKeyedUser(
 	await seedKeyedAccount(databaseUrl, KEYED_ROTATE_USER, ROTATE_SALT, signUp);
 	await seedKeyedAccount(databaseUrl, KEYED_RECOVER_USER, RECOVER_SALT, signUp);
 	await seedKeyedAccount(databaseUrl, KEYED_NEWKEY_USER, NEWKEY_SALT, signUp);
+}
+
+/**
+ * A password reset link for one account, written straight to Postgres. The e2e
+ * app has no mail, so the email that carries the link cannot be read; this
+ * stores what the app stores (the SHA-256 of the token, the user, the origin
+ * "email", an hour to live) and hands back the raw token for the page's URL.
+ */
+export async function issueResetLink(email: string): Promise<string> {
+	assertE2eDatabase(E2E_DATABASE_URL);
+	const token = randomBytes(32).toString("hex");
+	const db = new PrismaClient({
+		adapter: new PrismaPg({ connectionString: E2E_DATABASE_URL }),
+	});
+	try {
+		const user = await db.user.findUniqueOrThrow({
+			where: { email },
+			select: { id: true },
+		});
+		await db.passwordResetToken.create({
+			data: {
+				token: createHash("sha256").update(token).digest("hex"),
+				userId: user.id,
+				origin: "email",
+				expires: new Date(Date.now() + 60 * 60 * 1000),
+			},
+		});
+	} finally {
+		await db.$disconnect();
+	}
+	return token;
 }
