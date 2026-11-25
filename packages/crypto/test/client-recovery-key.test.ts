@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { CryptoError, type Primitives } from "../src";
 import {
 	groupMatches,
+	groupsConfirmed,
 	pickConfirmGroups,
 	RECOVERY_KEY_FILE_NAME,
 	randomBelow,
@@ -252,5 +253,46 @@ describe("recoveryKeyGroups", () => {
 	it("refuses a key with a typo", () => {
 		const typo = `${ASCENDING.text.slice(0, 5)}${ASCENDING.text[5] === "0" ? "1" : "0"}${ASCENDING.text.slice(6)}`;
 		expect(code(() => recoveryKeyGroups(typo))).toBe("invalid_input");
+	});
+});
+
+describe("groupsConfirmed", () => {
+	const KEY = ASCENDING.text;
+	const GROUPS = KEY.split("-");
+	const asked = (
+		typed: [string, string],
+		groups: [number, number] = [2, 6],
+	) => ({
+		keyText: KEY,
+		groups,
+		typed,
+	});
+
+	it("is true only when both typed groups are the groups asked for", () => {
+		expect(groupsConfirmed(asked([GROUPS[2] ?? "", GROUPS[6] ?? ""]))).toBe(
+			true,
+		);
+		expect(groupsConfirmed(asked([GROUPS[2] ?? "", ""]))).toBe(false);
+		// The two swapped, or other groups of the same key, are not the ones asked.
+		expect(groupsConfirmed(asked([GROUPS[6] ?? "", GROUPS[2] ?? ""]))).toBe(
+			false,
+		);
+		expect(groupsConfirmed(asked([GROUPS[0] ?? "", GROUPS[1] ?? ""]))).toBe(
+			false,
+		);
+	});
+
+	it("reads a typed group the way the key is read", () => {
+		const lower = (GROUPS[2] ?? "").toLowerCase().replace(/0/g, "o");
+		expect(groupsConfirmed(asked([lower, GROUPS[6] ?? ""]))).toBe(true);
+	});
+
+	it("never counts nothing asked as confirmed", () => {
+		expect(
+			groupsConfirmed({ keyText: KEY, groups: null, typed: ["", ""] }),
+		).toBe(false);
+		expect(
+			groupsConfirmed({ keyText: "", groups: [0, 1], typed: ["", ""] }),
+		).toBe(false);
 	});
 });

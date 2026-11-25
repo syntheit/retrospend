@@ -1,4 +1,5 @@
 import { TWO_FACTOR_CODE_LENGTH } from "@retrospend/api-contract";
+import { groupsConfirmed } from "@retrospend/crypto/client";
 import { describe, expect, it } from "vitest";
 import {
 	type EnableAction,
@@ -7,7 +8,6 @@ import {
 	enableView,
 	fieldsLocked,
 	groupMismatch,
-	groupsConfirmed,
 	INITIAL_STATE,
 	newPasswordReady,
 } from "./enable-model";

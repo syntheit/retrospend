@@ -357,6 +357,29 @@ export function normalizeRecoveryText(text: string): string {
 		.replace(/[IL]/g, "1");
 }
 
+/** The reset code mailed for the phone's recovery: 8 Crockford characters (40 bits). The server makes it and the phone reads it. */
+export const RESET_CODE_LENGTH = 8;
+
+/**
+ * A typed reset code in its stored shape (case, spaces, hyphens and the
+ * Crockford look-alikes are the recovery key's reading rule), or null for
+ * anything that cannot be a code. The one reading, for the server's redeem and
+ * the phone's code field. The server still counts a null as a wrong try, so
+ * the phone refuses it before sending.
+ */
+export function readResetCode(text: string): string | null {
+	let clean: string;
+	try {
+		clean = normalizeRecoveryText(text);
+	} catch {
+		return null;
+	}
+	if (clean.length !== RESET_CODE_LENGTH) return null;
+	return [...clean].every((ch) => CROCKFORD_ALPHABET.includes(ch))
+		? clean
+		: null;
+}
+
 /** `invalid_input` for a wrong length, a stray character, a typo or an unknown version. */
 export function parseRecoveryKey(text: string): Uint8Array {
 	const clean = normalizeRecoveryText(text);

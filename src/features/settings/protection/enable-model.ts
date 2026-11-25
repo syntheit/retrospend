@@ -15,7 +15,9 @@ import {
 	type ConfirmGroups,
 	type FailureCode,
 	groupMatches,
+	groupsConfirmed,
 	isFinalFailure,
+	type KeyConfirmState,
 	recoveryKeyGroups,
 } from "@retrospend/crypto/client";
 
@@ -78,18 +80,6 @@ export type EnableAction =
 	| { type: "keyConfirmed" }
 	| { type: "saved" }
 	| { type: "reset" };
-
-/** What the confirm step reads: the key as written down, the two groups asked for and what was typed. Enable and Make new key both fill it. */
-export type KeyConfirmState = Pick<EnableState, "keyText" | "groups" | "typed">;
-
-/** Both typed groups are the groups asked for. Nothing asked yet is never a match. */
-export function groupsConfirmed(state: KeyConfirmState): boolean {
-	if (!state.groups || state.keyText === "") return false;
-	const all = recoveryKeyGroups(state.keyText);
-	return state.groups.every((at, i) =>
-		groupMatches(state.typed[i] ?? "", all[at] ?? ""),
-	);
-}
 
 /** The new password meets the rules and the confirmation is the same. */
 export function newPasswordReady(

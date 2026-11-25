@@ -1,9 +1,17 @@
 "use client";
 
+import { passwordMeetsRules } from "@retrospend/api-contract";
 import {
+	keyComplete,
+	passwordsAlike,
 	type RecoveryCallbacks,
 	type RecoveryFailureCode,
 	type RecoveryHandle,
+	recoverFieldsLocked,
+	recoverInitialState,
+	recoverKeyText,
+	recoverReducer,
+	recoverView,
 	recoveryFailureOf,
 } from "@retrospend/crypto/client";
 import { useTranslations } from "next-intl";
@@ -12,15 +20,6 @@ import { Sheet } from "~/components/ui/sheet";
 import { EnableFooter } from "~/features/settings/protection/enable-footer";
 import { useEnableLifecycle } from "~/features/settings/protection/use-enable-lifecycle";
 import { useStepFocus } from "~/features/settings/protection/use-step-focus";
-import {
-	fieldsLocked,
-	initialState,
-	keyComplete,
-	keyText,
-	passwordReady,
-	recoverReducer,
-	recoverView,
-} from "./recover-model";
 import { EnterKeyStep, NewPasswordStep } from "./recover-steps";
 
 export type RecoverSheetProps = RecoveryCallbacks & {
@@ -54,8 +53,14 @@ const STALE: readonly RecoveryFailureCode[] = [
 export function RecoverSheet(props: RecoverSheetProps) {
 	const t = useTranslations();
 	const preset = props.preset ?? null;
-	const [state, dispatch] = useReducer(recoverReducer, preset, initialState);
-	const view = recoverView(state);
+	const [state, dispatch] = useReducer(
+		recoverReducer,
+		preset,
+		recoverInitialState,
+	);
+	const view = recoverView(state, {
+		rulesMet: passwordMeetsRules(state.password),
+	});
 	const body = useRef<HTMLDivElement>(null);
 	const life = useEnableLifecycle<RecoveryHandle>({
 		open: props.open,
@@ -76,13 +81,15 @@ export function RecoverSheet(props: RecoverSheetProps) {
 		if (state.step === "enter") {
 			if (!keyComplete(state)) return;
 			dispatch({ type: "busy" });
-			const outcome = await life.makeDraft(() => props.begin(keyText(state)));
+			const outcome = await life.makeDraft(() =>
+				props.begin(recoverKeyText(state)),
+			);
 			if (outcome.status === "done") dispatch({ type: "proven" });
 			else if (outcome.status === "failed") fail(outcome.error);
 			return;
 		}
 		const handle = life.draft;
-		if (!passwordReady(state)) return;
+		if (!(passwordMeetsRules(state.password) && passwordsAlike(state))) return;
 		if (!handle) return dispatch({ type: "failed", code: "failed" });
 		dispatch({ type: "busy" });
 		const outcome = await life.run(() =>
@@ -116,13 +123,13 @@ export function RecoverSheet(props: RecoverSheetProps) {
 				{state.step === "enter" ? (
 					<EnterKeyStep
 						dispatch={dispatch}
-						locked={fieldsLocked(state)}
+						locked={recoverFieldsLocked(state)}
 						state={state}
 					/>
 				) : (
 					<NewPasswordStep
 						dispatch={dispatch}
-						locked={fieldsLocked(state)}
+						locked={recoverFieldsLocked(state)}
 						state={state}
 					/>
 				)}

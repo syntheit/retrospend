@@ -1,8 +1,13 @@
 "use client";
 
 import {
+	groupsConfirmed,
 	type KeyDraft,
+	NEW_KEY_INITIAL_STATE,
 	type NewKeyCallbacks,
+	newKeyFieldsLocked,
+	newKeyReducer,
+	newKeyView,
 	pickConfirmGroups,
 	recoveryFailureOf,
 } from "@retrospend/crypto/client";
@@ -12,7 +17,6 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Sheet } from "~/components/ui/sheet";
 import { EnableFooter } from "~/features/settings/protection/enable-footer";
-import { groupsConfirmed } from "~/features/settings/protection/enable-model";
 import {
 	browserKeyActions,
 	browserRandom,
@@ -25,12 +29,6 @@ import {
 import { useEnableLifecycle } from "~/features/settings/protection/use-enable-lifecycle";
 import { useKeyFile } from "~/features/settings/protection/use-key-file";
 import { useStepFocus } from "~/features/settings/protection/use-step-focus";
-import {
-	fieldsLocked,
-	INITIAL_STATE,
-	newKeyReducer,
-	newKeyView,
-} from "./new-key-model";
 import { RecoveryError } from "./recovery-error";
 
 export type NewKeySheetProps = NewKeyCallbacks & {
@@ -96,7 +94,7 @@ function PasswordStep({
 export function NewKeySheet(props: NewKeySheetProps) {
 	const t = useTranslations();
 	const saving = useTranslations("protection.newKey");
-	const [state, dispatch] = useReducer(newKeyReducer, INITIAL_STATE);
+	const [state, dispatch] = useReducer(newKeyReducer, NEW_KEY_INITIAL_STATE);
 	const view = newKeyView(state);
 	const body = useRef<HTMLDivElement>(null);
 	const life = useEnableLifecycle<KeyDraft>({
@@ -182,7 +180,7 @@ export function NewKeySheet(props: NewKeySheetProps) {
 					<PasswordStep
 						busy={state.busy}
 						error={state.error}
-						locked={fieldsLocked(state)}
+						locked={newKeyFieldsLocked(state)}
 						onChange={(value) => dispatch({ type: "password", value })}
 						value={state.current}
 					/>
@@ -198,7 +196,7 @@ export function NewKeySheet(props: NewKeySheetProps) {
 					<div className="flex flex-col gap-4">
 						<ConfirmKeyStep
 							dispatch={dispatch}
-							locked={fieldsLocked(state)}
+							locked={newKeyFieldsLocked(state)}
 							state={state}
 						/>
 						{state.busy ? (

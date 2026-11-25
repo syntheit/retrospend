@@ -78,3 +78,12 @@ export function isFinalRecoveryFailure(
 ): boolean {
 	return code === "linkExpired" || code === "notOffered" || code === "notSaved";
 }
+
+/**
+ * A failure after which the recovery screen cannot be used again: the link is
+ * gone, the server does not offer the feature, a new key was not saved, or the
+ * account has no recovery key to try. The rest can be tried again.
+ */
+export const blocksRecoveryScreen = (
+	code: RecoveryFailureCode | null,
+): boolean => isFinalRecoveryFailure(code) || code === "unavailable";

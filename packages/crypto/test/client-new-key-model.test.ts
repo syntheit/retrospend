@@ -2,13 +2,13 @@
 // failures end the sheet and which send it back to the password.
 import { describe, expect, it } from "vitest";
 import {
-	fieldsLocked,
-	INITIAL_STATE,
+	NEW_KEY_INITIAL_STATE,
 	type NewKeyAction,
 	type NewKeyState,
+	newKeyFieldsLocked,
 	newKeyReducer,
 	newKeyView,
-} from "./new-key-model";
+} from "../src/client/new-key-model";
 
 const KEY = "000G40-R40M30-E20918-5GR38E-1W8124-GK2GAH-C5RR34-D1P70X-3RFH8K";
 const GROUPS = KEY.split("-");
@@ -17,7 +17,7 @@ const run = (state: NewKeyState, ...actions: NewKeyAction[]) =>
 
 const keyShown = (): NewKeyState =>
 	run(
-		{ ...INITIAL_STATE, current: "my password" },
+		{ ...NEW_KEY_INITIAL_STATE, current: "my password" },
 		{ type: "busy" },
 		{ type: "keyMade", keyText: KEY },
 	);
@@ -26,8 +26,8 @@ const confirming = (): NewKeyState =>
 
 describe("newKeyReducer", () => {
 	it("needs the password to continue, and drops it once the key is made", () => {
-		expect(newKeyView(INITIAL_STATE).primaryDisabled).toBe(true);
-		const typed = run(INITIAL_STATE, { type: "password", value: "pw" });
+		expect(newKeyView(NEW_KEY_INITIAL_STATE).primaryDisabled).toBe(true);
+		const typed = run(NEW_KEY_INITIAL_STATE, { type: "password", value: "pw" });
 		expect(newKeyView(typed).primaryDisabled).toBe(false);
 		const shown = keyShown();
 		expect(shown.step).toBe("saveKey");
@@ -36,9 +36,9 @@ describe("newKeyReducer", () => {
 	});
 
 	it("only a run that began at the password step lands its key", () => {
-		expect(run(INITIAL_STATE, { type: "keyMade", keyText: KEY }).step).toBe(
-			"password",
-		);
+		expect(
+			run(NEW_KEY_INITIAL_STATE, { type: "keyMade", keyText: KEY }).step,
+		).toBe("password");
 		expect(run(keyShown(), { type: "keyMade", keyText: "other" }).keyText).toBe(
 			KEY,
 		);
@@ -69,7 +69,7 @@ describe("newKeyReducer", () => {
 
 	it("Back from the key drops it, Back from the confirm keeps the groups so the next pair differs", () => {
 		const back = run(keyShown(), { type: "back" });
-		expect(back).toEqual(INITIAL_STATE);
+		expect(back).toEqual(NEW_KEY_INITIAL_STATE);
 		const confirm = run(confirming(), { type: "back" });
 		expect(confirm.step).toBe("saveKey");
 		expect(confirm.keyText).toBe(KEY);
@@ -79,13 +79,13 @@ describe("newKeyReducer", () => {
 
 	it("a wrong password is a line on the password step and nothing is final", () => {
 		const after = run(
-			{ ...INITIAL_STATE, current: "pw" },
+			{ ...NEW_KEY_INITIAL_STATE, current: "pw" },
 			{ type: "busy" },
 			{ type: "failed", code: "wrongPassword" },
 		);
 		expect(after.error).toBe("wrongPassword");
 		expect(after.busy).toBe(false);
-		expect(fieldsLocked(after)).toBe(false);
+		expect(newKeyFieldsLocked(after)).toBe(false);
 		expect(newKeyView(after).primaryDisabled).toBe(false);
 	});
 
@@ -110,10 +110,10 @@ describe("newKeyReducer", () => {
 		const view = newKeyView(gone);
 		expect(view.primary).toBeNull();
 		expect(view.left).toBe("close");
-		expect(fieldsLocked(gone)).toBe(true);
+		expect(newKeyFieldsLocked(gone)).toBe(true);
 		expect(run(gone, { type: "back" })).toBe(gone);
 		expect(run(gone, { type: "group", index: 0, value: "X" })).toBe(gone);
-		expect(run(gone, { type: "reset" })).toEqual(INITIAL_STATE);
+		expect(run(gone, { type: "reset" })).toEqual(NEW_KEY_INITIAL_STATE);
 	});
 
 	it("a failure that can be tried again keeps the key and the typed groups", () => {

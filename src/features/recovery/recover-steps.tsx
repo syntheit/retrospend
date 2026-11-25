@@ -1,16 +1,16 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { useId, useRef } from "react";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import { PasswordRules } from "~/features/settings/protection/password-rules";
 import {
 	GROUP_COUNT,
 	GROUP_LENGTH,
 	type RecoverAction,
 	type RecoverState,
-} from "./recover-model";
+} from "@retrospend/crypto/client";
+import { useTranslations } from "next-intl";
+import { useId, useRef } from "react";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { PasswordRules } from "~/features/settings/protection/password-rules";
 import { RecoveryError } from "./recovery-error";
 
 /** The nine groups, by place: the key of each input is its place in the key. */
