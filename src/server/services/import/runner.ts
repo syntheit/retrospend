@@ -9,6 +9,7 @@ import { db } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import { type FigureDb, figures } from "~/server/figures/registry";
 import { Prisma } from "~prisma";
+import { runTransaction } from "../preview/busy";
 import { createPreviewRunner, type PreviewRunner } from "../preview/runner";
 import type { TransactionPurpose } from "../preview/types";
 
@@ -25,9 +26,11 @@ export function importRunner(userId: string): PreviewRunner<FigureDb> {
 		figures,
 		actor: { userId },
 		transaction: (work, purpose) =>
-			userTransaction(db, userId, work, {
-				isolationLevel: ISOLATION[purpose],
-				timeout: IMPORT_TIMEOUT_MS,
-			}),
+			runTransaction(purpose, () =>
+				userTransaction(db, userId, work, {
+					isolationLevel: ISOLATION[purpose],
+					timeout: IMPORT_TIMEOUT_MS,
+				}),
+			),
 	});
 }
