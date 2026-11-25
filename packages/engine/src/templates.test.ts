@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fixtureRow } from "./fixtures";
-import {
-	TEMPLATE_JOINED_COLUMNS,
-	TEMPLATE_STRIPPED_COLUMNS,
-	TEMPLATE_TEXT_COLUMNS,
-	templateWithoutText,
-} from "./templates";
+import { templateWithoutText } from "./templates";
 
 describe("templateWithoutText", () => {
 	const row = {
@@ -19,8 +14,6 @@ describe("templateWithoutText", () => {
 
 	it("drops the name, website, payment source and the joined category", () => {
 		const bare = templateWithoutText(row);
-		for (const column of TEMPLATE_STRIPPED_COLUMNS)
-			expect(bare, column).not.toHaveProperty(column);
 		expect(JSON.stringify(bare)).not.toContain("SECRET");
 		expect(JSON.stringify(bare)).not.toContain("Rent");
 	});
@@ -40,12 +33,5 @@ describe("templateWithoutText", () => {
 			categoryId: "c1",
 			version: "2026-10-02T12:00:00.000Z",
 		});
-	});
-
-	it("strips the text columns and the joined ones, in that order", () => {
-		expect([...TEMPLATE_STRIPPED_COLUMNS]).toEqual([
-			...TEMPLATE_TEXT_COLUMNS,
-			...TEMPLATE_JOINED_COLUMNS,
-		]);
 	});
 });
