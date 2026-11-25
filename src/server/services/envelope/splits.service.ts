@@ -47,6 +47,22 @@ import type { UnsavedChoice } from "./splits-input";
 
 type Tx = Prisma.TransactionClient;
 
+/**
+ * The one rule for what a share's category may be: one of your own expense
+ * categories. A merge that moves your shares asks here too.
+ */
+export async function assertOwnExpenseCategory(
+	tx: Tx,
+	userId: string,
+	categoryId: string,
+): Promise<void> {
+	const mine = await tx.category.count({
+		where: { id: categoryId, userId, kind: "EXPENSE" },
+	});
+	if (mine === 0)
+		throw new EnvelopeError("INVALID", "pick one of your own categories");
+}
+
 export async function setShareCategory(
 	tx: Tx,
 	userId: string,
@@ -62,13 +78,8 @@ export async function setShareCategory(
 	});
 	if (!share)
 		throw new EnvelopeError("NOT_FOUND", "you are not on that expense");
-	if (input.categoryId) {
-		const mine = await tx.category.count({
-			where: { id: input.categoryId, userId, kind: "EXPENSE" },
-		});
-		if (mine === 0)
-			throw new EnvelopeError("INVALID", "pick one of your own categories");
-	}
+	if (input.categoryId)
+		await assertOwnExpenseCategory(tx, userId, input.categoryId);
 	const source = input.categoryId ? input.source : null;
 	await tx.splitParticipant.update({
 		where: { id: share.id },

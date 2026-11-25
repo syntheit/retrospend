@@ -35,9 +35,37 @@ export const categoriesRouter = {
 			),
 		),
 	),
+	previewDelete: c.previewDelete.handler(
+		serve(({ context, input }) =>
+			categories.previewRemoveCategory(
+				signedIn(context),
+				input.id,
+				input.uncategorize ?? false,
+			),
+		),
+	),
 	merge: c.merge.handler(
 		serve(({ context, input }) =>
-			categories.mergeCategories(signedIn(context), input.id, input.targetId),
+			categories.mergeCategoryInto(signedIn(context), input.id, input.targetId),
+		),
+	),
+	previewMerge: c.previewMerge.handler(
+		serve(({ context, input }) =>
+			categories.previewMergeCategory(
+				signedIn(context),
+				input.id,
+				input.targetId,
+			),
+		),
+	),
+	undo: c.undo.handler(
+		serve(({ context, input }) =>
+			categories.undoCategoryWrite(signedIn(context), input.token),
+		),
+	),
+	previewUndo: c.previewUndo.handler(
+		serve(({ context, input }) =>
+			categories.previewUndoCategoryWrite(signedIn(context), input.token),
 		),
 	),
 };

@@ -32,6 +32,11 @@ export const MUTATION_EVENTS: Readonly<Record<string, EventName>> = {
 	"expense.categorize": "expenses.categorized",
 	"expense.deleteMany": "expenses.deleted",
 	"expense.restoreMany": "expense.undone",
+	"category.merge": (value) =>
+		(value as { mode?: unknown } | undefined)?.mode === "delete"
+			? "category.deleted"
+			: "category.merged",
+	"category.restore": "category.undone",
 	"sharedExpense.create": "shared_expense.created",
 	"sharedExpense.update": "shared_expense.updated",
 	"sharedExpense.delete": "shared_expense.deleted",

@@ -1,6 +1,6 @@
 /**
- * Deleting a category never leaves its budgets behind as global budgets
- * (batch 4, bug 2).
+ * Category names on the tRPC router. What a delete or merge does with the
+ * rows and budgets is covered on Postgres (services/category/merge*.pg.test.ts).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "~/test/mock-db";
@@ -38,7 +38,6 @@ const caller = () =>
 	});
 
 const CATEGORY = "clcategory0000000000001";
-const REPLACEMENT = "clcategory0000000000002";
 
 beforeEach(() => {
 	vi.useFakeTimers();
@@ -51,64 +50,6 @@ beforeEach(() => {
 
 afterEach(() => {
 	vi.useRealTimers();
-});
-
-function budgetWrites() {
-	return {
-		moved: mockDb.budget.updateMany.mock.calls.map((c) => c[0]),
-		deleted: mockDb.budget.deleteMany.mock.calls.map((c) => c[0]),
-	};
-}
-
-describe("categories.delete", () => {
-	it("reassigning to uncategorized deletes the category's budgets", async () => {
-		mockDb.expense.count.mockResolvedValue(3);
-
-		await callAndFlush(() =>
-			caller().delete({ id: CATEGORY, reassignToUncategorized: true }),
-		);
-
-		const { moved, deleted } = budgetWrites();
-		expect(moved).toEqual([]);
-		expect(deleted).toEqual([
-			{ where: { categoryId: CATEGORY, userId: "user-1" } },
-		]);
-		expect(mockDb.expense.updateMany).toHaveBeenCalledWith({
-			where: { categoryId: CATEGORY, userId: "user-1" },
-			data: { categoryId: null },
-		});
-	});
-
-	it("a category without expenses takes its budgets with it", async () => {
-		mockDb.expense.count.mockResolvedValue(0);
-
-		await callAndFlush(() => caller().delete({ id: CATEGORY }));
-
-		const { moved, deleted } = budgetWrites();
-		expect(moved).toEqual([]);
-		expect(deleted).toEqual([
-			{ where: { categoryId: CATEGORY, userId: "user-1" } },
-		]);
-		expect(mockDb.category.delete).toHaveBeenCalled();
-	});
-
-	it("a replacement category receives the budgets", async () => {
-		mockDb.expense.count.mockResolvedValue(2);
-		mockDb.category.findFirst.mockResolvedValue({ id: REPLACEMENT });
-		mockDb.budget.findMany.mockResolvedValue([]);
-
-		await callAndFlush(() =>
-			caller().delete({ id: CATEGORY, replacementCategoryId: REPLACEMENT }),
-		);
-
-		const { moved } = budgetWrites();
-		expect(moved).toEqual([
-			{
-				where: { categoryId: CATEGORY, userId: "user-1" },
-				data: { categoryId: REPLACEMENT },
-			},
-		]);
-	});
 });
 
 describe("categories name", () => {

@@ -23,9 +23,10 @@ type JsonObject = Record<string, unknown>;
  * 1.5.0: POST /auth/recovery/check, /auth/recovery/begin and /auth/recovery set a new password with the recovery key; 404 invalid_token, 400 wrong_recovery_key, 409 recovery_unavailable.
  * 1.6.0: POST /me/protection/recovery-key replaces the recovery wrap and proof (event user.recovery_key_replaced).
  * 1.7.0: POST /auth/password-reset mails a reset code and POST /auth/password-reset/code swaps it for a recovery token (recovery only).
- * 1.8.0: POST /recurring/{id}/confirm and /skip answer a period already posted or skipped with 409 recurring_already_posted and one not due yet with 409 recurring_not_due (both were 409 conflict).
+ * 1.8.0: DELETE /categories/{id} and POST /categories/{id}/merge return an undo token and have previews; POST /categories/undo takes it back; 409 category_kind_mismatch, category_closed_month and category_income_rule.
+ * 1.9.0: POST /recurring/{id}/confirm and /skip, and their previews, answer a period already posted or skipped with 409 recurring_already_posted and one not due yet with 409 recurring_not_due (both were 409 conflict).
  */
-export const CONTRACT_VERSION = "1.8.0";
+export const CONTRACT_VERSION = "1.9.0";
 
 const PROTECTION_OVERVIEW = [
 	"Accounts with Advanced protection.",

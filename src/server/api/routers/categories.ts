@@ -3,8 +3,13 @@ import { z } from "zod";
 import { CATEGORY_COLORS } from "~/lib/constants";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
+	applyRemove,
+	applyRestore,
+	deleteRequest,
+	previewRemove,
+} from "~/server/services/category/remove";
+import {
 	createCategory,
-	deleteCategory,
 	listCategoriesByUsage,
 	updateCategory,
 } from "~/server/services/category.service";
@@ -23,6 +28,12 @@ function withoutCount<T extends { _count: unknown }>(row: T) {
 	const { _count, ...rest } = row;
 	return rest;
 }
+
+const removeSchema = z.object({
+	id: z.cuid(),
+	/** The category the rows move to; null deletes and leaves them uncategorized. */
+	targetId: z.cuid().nullable(),
+});
 
 export const categoriesRouter = createTRPCRouter({
 	getAll: protectedProcedure.query(({ ctx }) =>
@@ -44,6 +55,22 @@ export const categoriesRouter = createTRPCRouter({
 			);
 		}),
 
+	/** Delete or merge, as the web's sheet shows it: what changes and what does not. */
+	previewRemove: protectedProcedure
+		.input(removeSchema)
+		.query(({ ctx, input }) => previewRemove(ctx.session.user.id, input)),
+
+	/** Delete or merge; its undo is `restore` with the answer's stash. */
+	remove: protectedProcedure
+		.input(removeSchema)
+		.mutation(({ ctx, input }) => applyRemove(ctx.session.user.id, input)),
+
+	restore: protectedProcedure
+		.input(z.object({ stash: z.uuid() }))
+		.mutation(({ ctx, input }) =>
+			applyRestore(ctx.session.user.id, input.stash),
+		),
+
 	delete: protectedProcedure
 		.input(
 			z.object({
@@ -54,7 +81,11 @@ export const categoriesRouter = createTRPCRouter({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const { id, ...options } = input;
-			await deleteCategory(ctx.db, ctx.session.user.id, id, options);
+			const userId = ctx.session.user.id;
+			await applyRemove(
+				userId,
+				await deleteRequest(ctx.db, userId, id, options),
+			);
 			return { success: true };
 		}),
 });
