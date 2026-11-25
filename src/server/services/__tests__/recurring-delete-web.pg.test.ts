@@ -72,9 +72,12 @@ async function template(userId: string, name = "Rent") {
 async function billed() {
 	const userId = await arsBook();
 	const id = await template(userId);
-	const rent = await adminDb.envelope.findFirstOrThrow({
-		where: { name: "Rent", book: { createdById: userId } },
+	// By its 500.00 target: the envelope's name may be sealed, which a filter cannot read.
+	const envelopes = await adminDb.envelope.findMany({
+		where: { book: { createdById: userId } },
 	});
+	const rent = envelopes.find((e) => e.targetAmount?.toString() === "500");
+	if (!rent) throw new Error("no Rent envelope");
 	await adminDb.envelope.update({
 		where: { id: rent.id },
 		data: { kind: "BILL", targetTemplateId: id },
