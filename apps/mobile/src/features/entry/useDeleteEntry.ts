@@ -43,9 +43,9 @@ export function useDeleteEntry(
 	const busy = useRef(false);
 
 	/**
-	 * Dev flag: the delete is booked on the device and queued, not sent. The
-	 * delete sender is PR10, so for now it waits in the outbox and Undo takes
-	 * it back out. Null when the flag is off (the server delete runs as ever).
+	 * Dev flag: the delete is booked on the device and queued; a flush sends
+	 * it, and until then Undo takes it back out. False when the flag is off
+	 * (the server delete runs as ever).
 	 */
 	async function queueDelete({
 		id,
@@ -69,7 +69,13 @@ export function useDeleteEntry(
 		});
 		if (queued.status !== "queued") {
 			toast.show({
-				message: tt(queued.status === "busy" ? "stillSending" : "notRead"),
+				message: tt(
+					queued.status === "busy"
+						? "stillSending"
+						: queued.status === "parked"
+							? "parkedRow"
+							: "notRead",
+				),
 			});
 			return true;
 		}

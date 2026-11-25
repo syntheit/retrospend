@@ -1,5 +1,6 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import type { Outbox, OutboxEntry } from "@/data/outbox";
+import { PARKED_STAMP } from "@/data/outbox-chain";
 import type { Sender, SendResult } from "@/data/sync";
 
 // Sends the composers' outbox entries to API v1. The entry's client id is the
@@ -10,6 +11,8 @@ import type { Sender, SendResult } from "@/data/sync";
 export interface UndoRef {
 	entity: EntryEntity;
 	token: string;
+	/** The row the write was about, when the sender knows it: undo checks nothing else waits on it. */
+	target?: string;
 }
 
 export const ENTRY_ENTITIES = [
@@ -25,13 +28,12 @@ export function isEntryEntity(entity: string): entity is EntryEntity {
 }
 
 /**
- * What this sender can send: a create of its own entities. An entry of
- * another stream, or an update or delete (their sender is PR10, and only the
- * dev flag queues them), has no sender here and must not stop the queue or
- * go out as a create.
+ * What this sender can send: a create of its own entities, and an update or
+ * delete of an expense (only the dev flag queues those). An entry of another
+ * stream has no sender here and must not stop the queue.
  */
 const sendable = (e: OutboxEntry): e is OutboxEntry & { entity: EntryEntity } =>
-	isEntryEntity(e.entity) && e.kind === "create";
+	isEntryEntity(e.entity) && (e.kind === "create" || e.entity === "expenses");
 
 /** The outbox as the composers' flush sees it: only what `sendable` names. */
 export function entryOutbox(outbox: Outbox): Outbox {
@@ -59,6 +61,23 @@ export const SEND_TIMEOUT_MS = 10_000;
  */
 export const NOT_STORED_STATUSES: readonly number[] = [400, 403, 404, 422];
 
+/** The codes a parked write is told apart by (Sync issues words them). */
+export { PARKED_STAMP };
+export const PARKED_NOT_FOUND = "not_found";
+/** The server holds a different request under this key: never "not stored". */
+export const KEY_REUSED = "idempotency_key_reused";
+/** An update or delete with no stamp to check: never sent, never guessed. */
+export const PARKED_NO_STAMP = "no_stamp";
+
+/** The server answered that it did not take the write, and said nothing of an earlier try. */
+export function notStored(sent: { http?: number; reason: string }): boolean {
+	return (
+		sent.http !== undefined &&
+		NOT_STORED_STATUSES.includes(sent.http) &&
+		sent.reason !== KEY_REUSED
+	);
+}
+
 /** What the server said the first time, kept so Undo can find the token. */
 const sentTokens = new Map<string, UndoRef>();
 const MAX_TOKENS = 50;
@@ -80,6 +99,21 @@ export function forgetUndoTokens(): void {
 
 export function undoFor(clientId: string): UndoRef | undefined {
 	return sentTokens.get(clientId);
+}
+
+/**
+ * The `pullsBegun` reading when a send of an update or delete was answered 404.
+ * A pull numbered above it began after the answer, so only such a pull can
+ * show that the row is gone. Memory only: a parked entry read from disk has
+ * none, and any pull of the new run began after its answer.
+ */
+const notFoundAt = new Map<string, number>();
+
+export const notFoundPull = (clientId: string): number =>
+	notFoundAt.get(clientId) ?? 0;
+
+export function forgetNotFound(clientId: string): void {
+	notFoundAt.delete(clientId);
 }
 
 /** A client-made id that the server already holds: an earlier try got through. */
@@ -120,6 +154,8 @@ export function classify(error: unknown, serverErrors = 0): SendResult {
 export interface SenderOptions {
 	/** Stops the run: the account changed, so nothing more is sent. */
 	signal?: AbortSignal;
+	/** `DeviceEngine.pullsBegun`, read when a 404 arrives. */
+	pullsBegun?: () => number;
 }
 
 /** The sender for the composers' entities. Undo tokens are kept for Undo. */
@@ -137,23 +173,44 @@ export function createEntrySender(
 		if (options.signal?.aborted) {
 			return { status: "retry", reason: "aborted", kind: "network" };
 		}
+		// A write to an existing row is checked against the version it was based
+		// on; with none it would overwrite or delete unchecked.
+		if (entry.kind !== "create" && typeof entry.baseVersion !== "string") {
+			return { status: "conflict", reason: PARKED_NO_STAMP };
+		}
 		const timeout = new AbortController();
 		const timer = setTimeout(() => timeout.abort(), SEND_TIMEOUT_MS);
 		const stop = () => timeout.abort();
 		options.signal?.addEventListener("abort", stop);
 		try {
-			const { undo: token, version } = await create(api, entry, {
+			const { undo: token, version } = await dispatch(api, entry, {
 				context: { idempotencyKey: entry.clientId },
 				signal: timeout.signal,
 			});
-			rememberUndo(entry.clientId, { entity: entry.entity, token });
-			return { status: "sent", ...(version ? { version } : {}) };
+			rememberUndo(entry.clientId, {
+				entity: entry.entity,
+				token,
+				target: entry.targetId,
+			});
+			// A delete names null: nothing chained after it has a version to take.
+			return {
+				status: "sent",
+				...(version !== undefined ? { version } : {}),
+			};
 		} catch (error) {
 			// The id exists: an earlier try went through and its answer got lost.
 			// No answer, so no version: an entry chained after it parks as
-			// chain_lost. PR10 reads the row to get one.
-			if (idTaken(error)) return { status: "sent" };
-			return classify(error, entry.serverErrors);
+			// chain_lost, and Try again re-bases it over the pulled row.
+			if (entry.kind === "create" && idTaken(error)) return { status: "sent" };
+			const result = classify(error, entry.serverErrors);
+			if (
+				entry.kind !== "create" &&
+				result.status === "conflict" &&
+				result.http === 404
+			) {
+				notFoundAt.set(entry.clientId, options.pullsBegun?.() ?? 0);
+			}
+			return result;
 		} finally {
 			clearTimeout(timer);
 			options.signal?.removeEventListener("abort", stop);
@@ -166,10 +223,50 @@ interface CallOptions {
 	signal: AbortSignal;
 }
 
-/** The undo token, and for an expense the `updatedAt` the server booked it at. */
+/**
+ * The undo token, and for an expense the `updatedAt` the server booked it at
+ * (null for a delete: the row is gone).
+ */
 interface Created {
 	undo: string;
-	version?: string;
+	version?: string | null;
+}
+
+/** An update or delete of an expense, checked against the version the entry was based on. */
+async function change(
+	api: RetrospendClient,
+	entry: OutboxEntry,
+	options: CallOptions,
+): Promise<Created> {
+	const expectedUpdatedAt = entry.baseVersion as string;
+	if (entry.kind === "delete") {
+		const gone = await api.expenses.delete(
+			{ params: { id: entry.targetId }, query: { expectedUpdatedAt } },
+			options,
+		);
+		return { undo: gone.undo, version: null };
+	}
+	const written = await api.expenses.update(
+		{
+			...(entry.payload as Omit<
+				Body<typeof api.expenses.update>,
+				"expectedUpdatedAt"
+			>),
+			expectedUpdatedAt,
+		},
+		options,
+	);
+	return { undo: written.undo, version: written.expense?.updatedAt };
+}
+
+function dispatch(
+	api: RetrospendClient,
+	entry: OutboxEntry,
+	options: CallOptions,
+): Promise<Created> {
+	return entry.kind === "create"
+		? create(api, entry, options)
+		: change(api, entry, options);
 }
 
 async function create(
@@ -215,16 +312,27 @@ async function create(
 	}
 }
 
+/**
+ * The key of an undo. A write undone under the dev flag has a generation
+ * (`outbox.nextUndoGeneration`), so a second undo is a new request; without
+ * one the key is as it always was.
+ */
+export const undoKey = (clientId: string, generation?: number): string =>
+	generation === undefined
+		? `${clientId}-undo`
+		: `${clientId}-undo-${generation}`;
+
 /** Puts a saved write back through its family's undo route. */
 export async function undoWrite(
 	api: RetrospendClient,
 	ref: UndoRef,
 	clientId: string,
+	generation?: number,
 ): Promise<void> {
 	const timeout = new AbortController();
 	const timer = setTimeout(() => timeout.abort(), SEND_TIMEOUT_MS);
 	const options = {
-		context: { idempotencyKey: `${clientId}-undo` },
+		context: { idempotencyKey: undoKey(clientId, generation) },
 		signal: timeout.signal,
 	};
 	const input = { token: ref.token };

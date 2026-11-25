@@ -212,10 +212,11 @@ describe("a crash in the middle of a step", () => {
 			"crash",
 		);
 		const entries = await createOutbox(store, "a").all();
-		// The re-based write is not lost, and the dependent follows it.
+		// The re-based write is not lost, and the entry after it is parked, never sent.
 		expect(entries.find((e) => e.clientId === "u1b")?.baseVersion).toBe(T2);
-		expect(entries.find((e) => e.clientId === "u2")?.baseVersion).toEqual({
-			after: "u1b",
+		expect(entries.find((e) => e.clientId === "u2")).toMatchObject({
+			state: "conflict",
+			lastError: "expense_changed",
 		});
 	});
 
@@ -377,16 +378,20 @@ describe("chains", () => {
 		});
 	});
 
-	it("replacing an entry follows it with the entries chained after it", async () => {
+	it("replacing an entry parks every later entry for the row, and no other row", async () => {
 		const outbox = createOutbox(createMemoryStore(), "a");
 		await outbox.enqueue(edit("u1", "e1", T1));
 		await outbox.enqueue(edit("u2", "e1", { after: "u1" }));
+		await outbox.enqueue(edit("u3", "e2", T1));
+		await outbox.enqueue(edit("u4", "e1", { after: "u2" }));
 		await outbox.replace("u1", edit("u1b", "e1", T2));
 		expect(
-			(await outbox.all()).map((e) => [e.clientId, e.baseVersion]),
+			(await outbox.all()).map((e) => [e.clientId, e.state, e.lastError]),
 		).toEqual([
-			["u1b", T2],
-			["u2", { after: "u1b" }],
+			["u1b", "pending", null],
+			["u2", "conflict", "expense_changed"],
+			["u3", "pending", null],
+			["u4", "conflict", "expense_changed"],
 		]);
 	});
 });

@@ -52,9 +52,8 @@ export function useEntrySave({
 	}
 
 	/**
-	 * Dev flag: the edit is booked on the device and queued, not sent. The
-	 * update sender is PR10, so for now it waits in the outbox and Undo takes
-	 * it back out.
+	 * Dev flag: the edit is booked on the device and queued; a flush sends it,
+	 * and until then Undo takes it back out.
 	 */
 	async function queueEdit(): Promise<boolean> {
 		const writes =
@@ -70,7 +69,11 @@ export function useEntrySave({
 		if (queued.status !== "queued") {
 			toast.show({
 				message: t(
-					queued.status === "busy" ? "toast.stillSending" : "toast.notRead",
+					queued.status === "busy"
+						? "toast.stillSending"
+						: queued.status === "parked"
+							? "toast.parkedRow"
+							: "toast.notRead",
 				),
 			});
 			return true;

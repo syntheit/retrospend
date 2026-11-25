@@ -2,6 +2,7 @@ import type { RetrospendClient } from "@retrospend/api-client";
 import type {
 	BookedWrite,
 	DeviceApi,
+	Rebase,
 	ServerPreview,
 	WriteOp,
 } from "@retrospend/engine/device";
@@ -69,6 +70,10 @@ export interface DeviceWrites {
 	comparePreview(op: WriteOp, server: ServerPreview): Promise<void>;
 	/** `DeviceEngine.pullsBegun`: what an ack carries, so a later pull retires the write. */
 	pullsBegun(): number;
+	/** The pulled row as the body that saves it again, for Try again; null when it cannot be read. */
+	storedRebase(id: string): Promise<Rebase | null>;
+	/** A pull that began after pull `pull` finished without this expense (see DeviceEngine). */
+	absentSince(id: string, pull: number): Promise<boolean>;
 	/** Reads the outbox lists again, after a change the engine should see. */
 	refresh(): Promise<void>;
 }
@@ -84,6 +89,8 @@ export function writesFor(api: RetrospendClient): DeviceWrites | null {
 			await engine.comparePreview(op, server);
 		},
 		pullsBegun: () => engine.pullsBegun,
+		storedRebase: (id) => engine.storedRebase(id),
+		absentSince: (id, pull) => engine.absentSince(id, pull),
 		refresh: () => pending?.refresh() ?? Promise.resolve(),
 	};
 }

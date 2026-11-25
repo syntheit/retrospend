@@ -5,6 +5,7 @@ import {
 	encodeEntry,
 	isChainedTo,
 	PARKED_DISCARDING,
+	PARKED_STAMP,
 	parkedReplacedBy,
 	replacementOf,
 	stampedBy,
@@ -132,8 +133,9 @@ export interface Outbox {
 	 */
 	discard(clientId: string): Promise<void>;
 	/**
-	 * Swaps an entry for a new one in the same place (a re-base): entries
-	 * chained after it follow to the new client id.
+	 * Swaps an entry for a new one in the same place (a re-base). Every later
+	 * entry for the same row is parked as `expense_changed`: it was written for
+	 * a version the re-base moved past, so it is re-based on its own.
 	 */
 	replace(clientId: string, entry: NewOutboxEntry): Promise<OutboxEntry | null>;
 	/** Puts a parked entry back in line, with its server-error count cleared. */
@@ -345,12 +347,27 @@ export function createOutbox(
 			lastError: parkedReplacedBy(input.clientId),
 		});
 		await write(next, entry);
-		await finishReplace(key, clientId, input.clientId);
+		await finishReplace(key, old.targetId);
 		return entry;
 	}
 
-	async function finishReplace(key: string, oldId: string, newId: string) {
-		await forDependents(oldId, () => ({ baseVersion: { after: newId } }));
+	/**
+	 * A re-based entry rests on a newer version than the entries after it were
+	 * written for, so none of them may follow it: each later entry for the row
+	 * is parked as a conflict, never sent and never given a stamp, and is
+	 * re-based on its own. Its chain reference stays as it was.
+	 */
+	async function finishReplace(key: string, target: string) {
+		const slot = seqOf(key, prefix);
+		for (const other of await store.keys(prefix)) {
+			const later = await read(other);
+			if (later && later.targetId === target && (later.seq ?? 0) > slot)
+				await write(other, {
+					...later,
+					state: "conflict",
+					lastError: PARKED_STAMP,
+				});
+		}
 		await store.delete(key);
 	}
 
@@ -365,7 +382,7 @@ export function createOutbox(
 				await finishDiscard(key, entry);
 			const by = replacementOf(entry);
 			if (by && [...entries, ...acked].some((e) => e.clientId === by))
-				await finishReplace(key, entry.clientId, by);
+				await finishReplace(key, entry.targetId);
 		}
 	}
 

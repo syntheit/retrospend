@@ -82,6 +82,7 @@
 			"editRefused": "Não foi possível salvar esta alteração. Ela pode estar bloqueada.",
 			"editSynced": "Este lançamento já foi sincronizado. Abra-o em Atividade para editar.",
 			"stillSending": "Este lançamento ainda está sendo enviado. Tente de novo em instantes.",
+			"parkedRow": "Resolva este gasto primeiro em “Não foi possível sincronizar”.",
 			"notRead": "Não foi possível ler este lançamento. Tente de novo em instantes."
 		},
 		"changes": {
@@ -110,7 +111,11 @@
 			"title": "Não foi possível sincronizar",
 			"refused": "O servidor não aceitou isto.",
 			"discard": "Descartar",
-			"retryFailed": "Ainda não dá para enviar. Tente mais tarde."
+			"retryFailed": "Ainda não dá para enviar. Tente mais tarde.",
+			"changed": "Alterado em outro dispositivo",
+			"deleted": "Excluído em outro dispositivo",
+			"lost": "Uma alteração anterior neste item não foi sincronizada.",
+			"rebaseTitle": "Salvar sua alteração de novo?"
 		},
 		"transferMode": "Transferência",
 		"addTransfer": "Adicionar transferência",

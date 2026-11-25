@@ -51,6 +51,8 @@ function writesWith(
 		book,
 		comparePreview: async () => undefined,
 		pullsBegun: () => 7,
+		storedRebase: async () => null,
+		absentSince: async () => false,
 		refresh: jest.fn(async () => undefined),
 	};
 }
@@ -204,19 +206,31 @@ describe("queueExpenseChange", () => {
 		expect(await outbox.all()).toEqual([]);
 	});
 
-	it("still queues, stamped with the screen's version, when the device could not book it", async () => {
+	it("still queues a delete, stamped with the screen's version, when the device could not book it", async () => {
 		const outbox = open();
 		const writes = writesWith(async () => null);
 		const queued = await queueExpenseChange({
 			outbox,
 			writes,
-			change: { kind: "update", body: write.body },
+			change: { kind: "delete", id: ID },
 			opened: "2026-10-05T03:00:00.000Z",
 		});
 		expect(queued.status).toBe("queued");
 		const [entry] = await outbox.all();
 		expect(entry).toMatchObject({ baseVersion: "2026-10-05T03:00:00.000Z" });
 		expect(entry?.device).toBeUndefined();
+	});
+
+	it("queues no edit the device could not book: which fields it changed would be unknown", async () => {
+		const outbox = open();
+		const queued = await queueExpenseChange({
+			outbox,
+			writes: writesWith(async () => null),
+			change: { kind: "update", body: write.body },
+			opened: "2026-10-05T03:00:00.000Z",
+		});
+		expect(queued).toEqual({ status: "unreadable" });
+		expect(await outbox.all()).toEqual([]);
 	});
 
 	it("nothing stacks on an entry whose send began", async () => {
@@ -265,11 +279,14 @@ describe("takeFromOutbox, unsent only", () => {
 	});
 });
 
-describe("the sender sends creates only", () => {
-	it("never posts an update or a delete as a create", async () => {
+describe("the sender sends an update to the update route", () => {
+	it("never posts an update as a create", async () => {
 		const outbox = open();
 		const create = jest.fn(async () => ({ undo: "u" }));
-		const client = { expenses: { create } } as unknown as RetrospendClient;
+		const update = jest.fn(async () => ({ undo: "u2" }));
+		const client = {
+			expenses: { create, update },
+		} as unknown as RetrospendClient;
 		const writes = writesWith(async () => booked("v1"));
 		await queueExpenseChange({
 			outbox,
@@ -278,10 +295,11 @@ describe("the sender sends creates only", () => {
 			opened: "v1",
 		});
 		const [entry] = await outbox.all();
-		expect(await entryOutbox(outbox).all()).toEqual([]);
+		expect(await entryOutbox(outbox).all()).toHaveLength(1);
 		expect(await createEntrySender(client)(entry as never)).toMatchObject({
-			status: "retry",
+			status: "sent",
 		});
 		expect(create).not.toHaveBeenCalled();
+		expect(update).toHaveBeenCalledTimes(1);
 	});
 });

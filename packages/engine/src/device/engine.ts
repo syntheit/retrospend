@@ -2,8 +2,8 @@ import { monthVerdictIncomplete } from "@retrospend/domain/envelope/verdict";
 import { runtimeTimeZone } from "@retrospend/domain/time-zone";
 import { deviceMonthView } from "../budget-figures";
 import { budgetStatus } from "../budget-gate";
-import { MemoryStore } from "../memory-store";
 import { NotFoundError } from "../errors";
+import { MemoryStore } from "../memory-store";
 import {
 	type Change,
 	InvalidInputError,
@@ -14,6 +14,7 @@ import { ratesAsOf } from "../rates";
 import { DEVICE_FIGURE_IDS, readDeviceFigures } from "../registry";
 import { type PullCursors, type PullReport, pullAll } from "../sync-pull";
 import { compareWrite, type WriteVerdict } from "../write-parity";
+import { type BookedWrite, bookIn, type WriteOp } from "./book";
 import {
 	COMPARE_WHAT,
 	type CompareReport,
@@ -27,13 +28,13 @@ import {
 	compareScreen,
 	type PulledPast,
 } from "./compare-run";
-import { type BookedWrite, bookIn, type WriteOp } from "./book";
 import { type PendingSource, readOverlaid, retiredBy } from "./pending";
+import type { DeviceApi, EngineStorage, StorageHooks } from "./ports";
 import {
 	comparePreview as runPreviewCompare,
 	type ServerPreview,
 } from "./preview-compare";
-import type { DeviceApi, EngineStorage, StorageHooks } from "./ports";
+import { type Rebase, rebaseOf } from "./rebase";
 
 // The device engine: a copy of the account's rows in memory, filled by the
 // pull driver through a DeviceApi, and the figures read from those rows. It
@@ -112,6 +113,20 @@ export interface DeviceEngine extends DeviceReads {
 	 * device booking and the server books it alone.
 	 */
 	book(op: WriteOp): Promise<BookedWrite | null>;
+	/**
+	 * The body that saves the expense again as the last pull left it, with no
+	 * pending write laid over it, and the version it is checked against (Try
+	 * again on a parked edit). Null when the row is not there, was booked on the
+	 * device only, or cannot be saved from the phone; never guessed.
+	 */
+	storedRebase(id: string): Promise<Rebase | null>;
+	/**
+	 * True when a pull that began after pull number `pull` (a `pullsBegun`
+	 * reading) has finished and the store has no such expense: another device
+	 * deleted it, or a sync reset took it. A pull that began before `pull`
+	 * resolves nothing. False when it cannot tell.
+	 */
+	absentSince(id: string, pull: number): Promise<boolean>;
 	/**
 	 * Holds the device's preview of `op` against the server's dry run of it
 	 * (`pending_ahead` while an entry for the same row has not been shown back).
@@ -563,6 +578,25 @@ export function createDeviceEngine(
 		}
 	}
 
+	/** Reads the store as the last pull left it; null while it is not a whole copy. */
+	async function readStored<R>(read: (view: Reader) => R): Promise<R | null> {
+		try {
+			await ready;
+			if (disposed || status !== "ready") return null;
+			return await readOverlaid(store, [], settledPull, read);
+		} catch (error) {
+			warn("stored read failed", (error as Error)?.name);
+			return null;
+		}
+	}
+
+	const storedRebase = (id: string) => readStored((view) => rebaseOf(view, id));
+
+	async function absentSince(id: string, pull: number): Promise<boolean> {
+		if (settledPull <= pull) return false;
+		return (await readStored((view) => !view.get("expenses", id))) === true;
+	}
+
 	async function comparePreview(
 		op: WriteOp,
 		server: ServerPreview,
@@ -641,6 +675,8 @@ export function createDeviceEngine(
 		},
 		readWithPending,
 		book,
+		storedRebase,
+		absentSince,
 		comparePreview,
 		pull,
 		pullIfStale,
