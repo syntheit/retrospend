@@ -26,10 +26,8 @@ import {
 } from "~/server/services/recurring-confirm.mutation";
 import { createRecurring } from "~/server/services/recurring-create.mutation";
 import {
-	deleteRecurring,
-	deleteRecurringWithPlan,
-	restoreRecurring,
-	restoreRecurringWithPlan,
+	deleteRecurringFor,
+	restoreRecurringFor,
 	type TemplateSnapshot,
 } from "~/server/services/recurring-delete.mutation";
 import {
@@ -172,23 +170,10 @@ export async function changeRecurring(
 	return readRecurring(caller, id);
 }
 
-/** Whether a BILL envelope follows the template: then deleting it can move the plan cost. */
-async function hasBillEnvelope(caller: LedgerCaller, id: string) {
-	const count = await caller.db.envelope.count({
-		where: {
-			targetTemplateId: id,
-			targetTemplate: { userId: caller.principal.userId },
-		},
-	});
-	return count > 0;
-}
-
 export async function removeRecurring(caller: LedgerCaller, id: string) {
 	const template = await applyWrite(
 		caller,
-		(await hasBillEnvelope(caller, id))
-			? deleteRecurringWithPlan
-			: deleteRecurring,
+		await deleteRecurringFor(caller.db, caller.principal.userId, id),
 		{ templateId: id },
 	);
 	return {
@@ -201,9 +186,7 @@ export async function removeRecurring(caller: LedgerCaller, id: string) {
 export async function previewRemoveRecurring(caller: LedgerCaller, id: string) {
 	return previewWrite(
 		caller,
-		(await hasBillEnvelope(caller, id))
-			? deleteRecurringWithPlan
-			: deleteRecurring,
+		await deleteRecurringFor(caller.db, caller.principal.userId, id),
 		{ templateId: id },
 	);
 }
@@ -226,14 +209,11 @@ function restoreOf(op: string, input: unknown) {
 	};
 }
 
-const restoreMutation = (template: TemplateSnapshot) =>
-	template.envelopeIds.length > 0 ? restoreRecurringWithPlan : restoreRecurring;
-
 export async function undoRemoveRecurring(caller: LedgerCaller, token: string) {
 	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
 	const restore = restoreOf(op, input);
 	await spendUndo(caller, token, () =>
-		applyWrite(caller, restoreMutation(restore.template), restore),
+		applyWrite(caller, restoreRecurringFor(restore.template), restore),
 	);
 	return readRecurring(caller, restore.template.id);
 }
@@ -244,7 +224,7 @@ export function previewUndoRemoveRecurring(
 ) {
 	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
 	const restore = restoreOf(op, input);
-	return previewWrite(caller, restoreMutation(restore.template), restore);
+	return previewWrite(caller, restoreRecurringFor(restore.template), restore);
 }
 
 // ── Confirm ─────────────────────────────────────────────────────────────────

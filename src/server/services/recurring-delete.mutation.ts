@@ -120,6 +120,32 @@ export const deleteRecurringWithPlan = deleteWith([
 	FIGURE_PLAN_COST,
 ]);
 
+/** Whether a BILL envelope follows the template: then deleting it can move the plan cost. */
+async function hasBillEnvelope(
+	db: Pick<Prisma.TransactionClient, "envelope">,
+	userId: string,
+	templateId: string,
+) {
+	const count = await db.envelope.count({
+		where: { targetTemplateId: templateId, targetTemplate: { userId } },
+	});
+	return count > 0;
+}
+
+/**
+ * The delete to run for this template: the one that names the plan cost when
+ * a BILL envelope follows it. The one place that chooses, for /api/v1 and the web.
+ */
+export async function deleteRecurringFor(
+	db: Pick<Prisma.TransactionClient, "envelope">,
+	userId: string,
+	templateId: string,
+) {
+	return (await hasBillEnvelope(db, userId, templateId))
+		? deleteRecurringWithPlan
+		: deleteRecurring;
+}
+
 export interface RestoreRecurringInput {
 	readonly template: TemplateSnapshot;
 }
@@ -245,3 +271,7 @@ export const restoreRecurringWithPlan = restoreWith([
 	...RECURRING_COST_FIGURES,
 	FIGURE_PLAN_COST,
 ]);
+
+/** The restore to run for a snapshot: the one that names the plan cost when it had BILL envelopes. */
+export const restoreRecurringFor = (template: TemplateSnapshot) =>
+	template.envelopeIds.length > 0 ? restoreRecurringWithPlan : restoreRecurring;
