@@ -205,6 +205,8 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	// ── Categories ──────────────────────────────────────────────────────
 	"categories.update": CATEGORY_DEPS,
 	"categories.delete": CATEGORY_DEPS,
+	"categories.remove": CATEGORY_DEPS,
+	"categories.restore": CATEGORY_DEPS,
 
 	// ── Recurring ───────────────────────────────────────────────────────
 	"recurring.confirmAndCreate": [

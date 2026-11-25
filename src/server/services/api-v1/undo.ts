@@ -23,7 +23,8 @@ export type UndoFamily =
 	| "project"
 	| "budget"
 	| "account"
-	| "correction";
+	| "correction"
+	| "category";
 
 type Payload = {
 	v: 1;

@@ -23,7 +23,7 @@ describe("merge rules", () => {
 		for (const [a, b] of [
 			["EXPENSE", "INCOME"],
 			["INCOME", "EXPENSE"],
-		]) {
+		] as const) {
 			expect(() => checkMergeKinds({ kind: a }, { kind: b })).toThrow(
 				expect.objectContaining({ problem: "category_kind_mismatch" }),
 			);

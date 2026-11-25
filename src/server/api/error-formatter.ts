@@ -1,3 +1,4 @@
+import { CategoryMergeRefusal } from "@retrospend/domain/category-merge/refusals";
 import type { TRPCError } from "@trpc/server";
 import { ZodError, z } from "zod";
 import { uniqueViolation } from "~/server/api/unique-violation";
@@ -24,6 +25,7 @@ export function problemCode(error: TRPCError) {
 	if (error instanceof ProtectedPasswordError) return "protected_password";
 	if (error instanceof RateOutOfRangeError) return "rate_out_of_range";
 	if (error instanceof ShareAnswerRefusedError) return error.problem;
+	if (error.cause instanceof CategoryMergeRefusal) return error.cause.problem;
 	if (error.code === "CONFLICT") {
 		const taken = uniqueViolation(error.cause);
 		if (taken) return taken.problem;

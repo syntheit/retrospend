@@ -1,5 +1,6 @@
 import { ORPCError } from "@orpc/server";
 import type { ProblemCode } from "@retrospend/api-contract/common";
+import { CategoryMergeRefusal } from "@retrospend/domain/category-merge/refusals";
 import {
 	AmountRefusedError,
 	CategoryNotFoundError,
@@ -141,6 +142,11 @@ export function toProblem(error: unknown, route?: string): unknown {
 	// to Ask to fix, so a client words it.
 	if (error instanceof ShareAnswerRefusedError)
 		return problem(error.problem, error.message);
+	const merge = [error, (error as { cause?: unknown } | null)?.cause].find(
+		(e) => e instanceof CategoryMergeRefusal,
+	);
+	if (merge instanceof CategoryMergeRefusal)
+		return problem(merge.problem, merge.message);
 	// The password is the account's key wrap: only a client can change it.
 	if (error instanceof ProtectedPasswordError)
 		return problem("protected_password", error.message);
