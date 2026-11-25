@@ -195,6 +195,9 @@ export function ForgotPasswordScreen({
 						onChangeText={(text) => {
 							setCode(text);
 							setFailure(null);
+							// A changed code is a new attempt: the token of the earlier
+							// one is not reused for it.
+							setToken(null);
 						}}
 						onSubmitEditing={redeem}
 						returnKeyType="go"
@@ -204,7 +207,7 @@ export function ForgotPasswordScreen({
 					<StepError text={failure ? words(failure) : null} />
 					<Button
 						busy={busy}
-						disabled={busy || (token === null && code.trim() === "")}
+						disabled={busy || code.trim() === ""}
 						label={busy ? t("checking") : p("recover.continue")}
 						onPress={redeem}
 					/>

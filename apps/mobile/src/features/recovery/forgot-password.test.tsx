@@ -247,6 +247,31 @@ describe("Forgot password, a check that failed after the swap", () => {
 		expect(words(tree)).toContain("Open your protected data");
 	});
 
+	it("a changed code is a new attempt: the kept token is dropped and the edit is swapped", async () => {
+		mockAsk.redeemResetCode
+			.mockResolvedValueOnce({ ok: true, value: "token-1" })
+			.mockResolvedValueOnce({ ok: true, value: "token-2" });
+		mockAsk.checkRecoveryLink
+			.mockRejectedValueOnce(new KeyFlowError("unavailable"))
+			.mockResolvedValue({ keys: "recovery", protectionOn: true });
+		const tree = await show();
+		await toCode(tree);
+		typeInto(tree, "Code", "7K2M9PQ4");
+		await pressAsync(tree, "Continue");
+		typeInto(tree, "Code", "7K2M9PQ5");
+		await pressAsync(tree, "Continue");
+		expect(mockAsk.redeemResetCode).toHaveBeenCalledTimes(2);
+		expect(mockAsk.redeemResetCode).toHaveBeenLastCalledWith(
+			expect.anything(),
+			"ana@example.com",
+			"7K2M9PQ5",
+		);
+		expect(mockAsk.checkRecoveryLink).toHaveBeenLastCalledWith(
+			expect.anything(),
+			"token-2",
+		);
+	});
+
 	it("asks for a new code once the server no longer knows the token", async () => {
 		mockAsk.redeemResetCode.mockResolvedValue({ ok: true, value: "token-1" });
 		mockAsk.checkRecoveryLink
