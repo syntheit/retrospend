@@ -15,7 +15,10 @@
  *   whole, changing nothing, when anything changed since.
  */
 import type { HolderId } from "@retrospend/domain/category-merge/holders";
-import { checkMergeKinds } from "@retrospend/domain/category-merge/plan";
+import {
+	checkMergeKinds,
+	type Reroute,
+} from "@retrospend/domain/category-merge/plan";
 import {
 	FIGURE_LEFT_IN_LIMITS,
 	FIGURE_LEFT_TO_SPEND,
@@ -56,8 +59,8 @@ export interface CategoryMerged {
 	readonly counts: Readonly<
 		Record<HolderId, { moved: number; dropped: number }>
 	>;
-	/** Where the source's rows land in an envelope book now, where that differs. */
-	readonly rerouted: readonly { bookId: string; from: string; to: string }[];
+	/** Every envelope change of rows in a book: whose rows, from where, to where. */
+	readonly rerouted: readonly Reroute[];
 	/** Shared expenses the caller may not write: they go to no category with the category, and the undo does not bring them back. */
 	readonly setToNone: number;
 	/** category.restore with this stash puts everything back. */

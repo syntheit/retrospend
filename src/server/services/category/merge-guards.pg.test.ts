@@ -7,9 +7,8 @@ import { randomUUID } from "node:crypto";
 import { SERVER_KEY_PREFIX } from "@retrospend/api-contract/common";
 import { addMonths } from "@retrospend/domain/envelope/calendar";
 import { budgetMonthOf, isoDateIn } from "@retrospend/domain/envelope/months";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createUserScopedDb } from "~/server/db";
-import { userTransaction } from "~/server/db-tx";
 import { CsvService } from "~/server/services/csv.service";
 import { forUser } from "~/server/services/preview";
 import { adminDb, fixtureDb } from "~/test/pg-harness";
@@ -26,7 +25,7 @@ import {
 	templateOf,
 	undo,
 } from "./__tests__/merge-kit";
-import { budgetHolder } from "./holders-budget";
+import { HOLDERS } from "./holders";
 
 const stashRows = (userId: string, stash: string) =>
 	adminDb.idempotencyKey.count({
@@ -169,31 +168,6 @@ describe("an undo is refused as a whole, changing nothing", () => {
 		).resolves.toBe(0);
 	});
 
-	it("when a budget for the source exists by the time the rows come back", async () => {
-		const me = await arsUser();
-		const src = await category(me, "Cafe");
-		await adminDb.budget.create({
-			data: {
-				userId: me,
-				categoryId: src.id,
-				period: new Date("2026-11-01T00:00:00Z"),
-				amount: "60",
-			},
-		});
-		const ctx = (tx: Parameters<Parameters<typeof userTransaction>[2]>[0]) => ({
-			tx,
-			userId: me,
-			sourceId: src.id,
-			targetId: null,
-			stamp: new Date(),
-		});
-		await expect(
-			userTransaction(adminDb, me, (tx) =>
-				budgetHolder.restore(ctx(tx), { ids: [], stamp: "", dropped: [] }),
-			),
-		).rejects.toMatchObject({ code: "CONFLICT" });
-	});
-
 	it("when an envelope link of the target was changed since", async () => {
 		const s = await seedUser();
 		await forUser(s.user.id).apply(setupEnvelopeBook, {
@@ -321,6 +295,54 @@ describe("an undo is refused as a whole, changing nothing", () => {
 	});
 });
 
+describe("the merge holds the category while it moves rows", () => {
+	it("a row filed into it meanwhile waits for the merge and then fails, never silently uncategorized", async () => {
+		const me = await arsUser();
+		const src = await category(me, "Cafe");
+		const tgt = await category(me, "Food");
+		await expense(me, src.id, 1);
+		let release = () => {};
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let entered = () => {};
+		const inside = new Promise<void>((resolve) => {
+			entered = resolve;
+		});
+		const original = HOLDERS.expense.move.bind(HOLDERS.expense);
+		const spy = vi
+			.spyOn(HOLDERS.expense, "move")
+			.mockImplementation(async (c) => {
+				entered();
+				await gate;
+				return original(c);
+			});
+		try {
+			const merge = run(me, src.id, tgt.id);
+			await inside;
+			let settled = false;
+			const insert = expense(me, src.id, 2).then(
+				() => "inserted",
+				(error: unknown) => error,
+			);
+			void insert.then(() => {
+				settled = true;
+			});
+			await new Promise((resolve) => setTimeout(resolve, 500));
+			expect(settled).toBe(false);
+			release();
+			await merge;
+			expect(await insert).not.toBe("inserted");
+			await expect(
+				fixtureDb.expense.count({ where: { userId: me, categoryId: null } }),
+			).resolves.toBe(0);
+		} finally {
+			release();
+			spy.mockRestore();
+		}
+	});
+});
+
 describe("events carry ids and no name", () => {
 	it("a merge, a delete and an undo append category.merged, category.deleted and category.undone", async () => {
 		const me = await arsUser();
@@ -383,6 +405,9 @@ async function closedBook() {
 	const s = await seedUser();
 	const snacks = await category(s.user.id, "Snacks");
 	const utilities = await category(s.user.id, "Utilities");
+	// Fresh files in Rent and holds nothing; Loose files nowhere and holds a closed month's row.
+	const fresh = await category(s.user.id, "Fresh");
+	const loose = await category(s.user.id, "Loose");
 	await forUser(s.user.id).apply(setupEnvelopeBook, {
 		...setupInput(s),
 		timeZone: "UTC",
@@ -404,6 +429,11 @@ async function closedBook() {
 				bookId: book.id,
 				envelopeId: env.Rent as string,
 				categoryId: utilities.id,
+			},
+			{
+				bookId: book.id,
+				envelopeId: env.Rent as string,
+				categoryId: fresh.id,
 			},
 		],
 	});
@@ -436,8 +466,9 @@ async function closedBook() {
 		{ amount: 20, categoryId: utilities.id },
 		midMonth(addMonths(current, -1)),
 	);
+	await addRow(s.user.id, { amount: 7, categoryId: loose.id }, midMonth(start));
 	await getMonth(s.user.id);
-	return { ...s, snacks, utilities, bookId: book.id, start, env };
+	return { ...s, snacks, utilities, fresh, loose, bookId: book.id, start, env };
 }
 
 /** A month's envelope figures; the categories an envelope lists are today's setting, not a figure of the month. */
@@ -500,6 +531,36 @@ describe("closed months", () => {
 		expect(await closedViews(b)).toEqual(before);
 	});
 
+	it("a closed month's frozen links keep the target's rows where they were, so a link may move onto it", async () => {
+		const b = await closedBook();
+		const before = await closedViews(b);
+		await run(b.user.id, b.fresh.id, b.loose.id);
+		expect(await closedViews(b)).toEqual(before);
+	});
+
+	it("is refused when a close that kept no links holds only the target's rows, which would leave Everything else for the source's envelope", async () => {
+		const b = await closedBook();
+		// An older close: its months route by today's links.
+		for (const close of await adminDb.monthClose.findMany({
+			where: { bookId: b.bookId },
+		})) {
+			const { links: _links, ...summary } = close.summary as Record<
+				string,
+				unknown
+			>;
+			await adminDb.monthClose.update({
+				where: { id: close.id },
+				data: { summary: summary as never },
+			});
+		}
+		await expect(run(b.user.id, b.fresh.id, b.loose.id)).rejects.toMatchObject({
+			problem: "category_closed_month",
+		});
+		await expect(
+			fixtureDb.category.count({ where: { id: b.fresh.id } }),
+		).resolves.toBe(1);
+	});
+
 	it("passes when the category has no row in a closed month, and its open rows follow the target's envelope", async () => {
 		const b = await closedBook();
 		const idle = await category(b.user.id, "Idle");
@@ -513,7 +574,7 @@ describe("closed months", () => {
 		await addRow(b.user.id, { amount: 5, categoryId: idle.id }, new Date());
 		const done = await run(b.user.id, idle.id, b.dining);
 		expect(done.value.rerouted).toEqual([
-			{ bookId: b.bookId, from: b.env.Rent, to: b.env.Dining },
+			{ bookId: b.bookId, rows: "source", from: b.env.Rent, to: b.env.Dining },
 		]);
 	});
 });

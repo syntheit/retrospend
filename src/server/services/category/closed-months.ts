@@ -18,19 +18,19 @@ import { findPersonalBook } from "../envelope/inputs";
 import type { MergeCtx, Tx } from "./holder";
 
 /** The dates of everything the caller has filed under the category: rows, shared expenses and shares. */
-async function sourceDates(tx: Tx, userId: string, sourceId: string) {
+async function categoryDates(tx: Tx, userId: string, categoryId: string) {
 	const own = { participantType: "user" as const, participantId: userId };
 	const [rows, shared, shares] = await Promise.all([
 		tx.expense.findMany({
-			where: { userId, categoryId: sourceId },
+			where: { userId, categoryId },
 			select: { date: true },
 		}),
 		tx.sharedTransaction.findMany({
-			where: { categoryId: sourceId },
+			where: { categoryId },
 			select: { date: true },
 		}),
 		tx.splitParticipant.findMany({
-			where: { ...own, categoryId: sourceId },
+			where: { ...own, categoryId },
 			select: { transaction: { select: { date: true } } },
 		}),
 	]);
@@ -63,11 +63,16 @@ export async function assertNoClosedMonthChange(c: MergeCtx): Promise<void> {
 		fromMonth: p.fromMonth,
 		startDay: p.startDay,
 	}));
-	const sourceMonths = new Set<MonthKey>(
-		(await sourceDates(c.tx, c.userId, c.sourceId)).map((d) =>
-			budgetMonthOf(isoDateIn(d, book.timeZone), periods),
-		),
-	);
+	const monthsOf = async (categoryId: string) =>
+		new Set<MonthKey>(
+			(await categoryDates(c.tx, c.userId, categoryId)).map((d) =>
+				budgetMonthOf(isoDateIn(d, book.timeZone), periods),
+			),
+		);
+	const sourceMonths = await monthsOf(c.sourceId);
+	const targetMonths = c.targetId
+		? await monthsOf(c.targetId)
+		: new Set<MonthKey>();
 	const clash = closedMonthClash({
 		sourceId: c.sourceId,
 		targetId: c.targetId,
@@ -86,6 +91,7 @@ export async function assertNoClosedMonthChange(c: MergeCtx): Promise<void> {
 			};
 		}),
 		sourceMonths,
+		targetMonths,
 	});
 	if (clash !== null) throw new CategoryMergeRefusal("category_closed_month");
 }

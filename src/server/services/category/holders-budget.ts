@@ -10,6 +10,7 @@ import {
 	planBudgets,
 	planLinks,
 	planPreference,
+	type Reroute,
 } from "@retrospend/domain/category-merge/plan";
 import type { BudgetType } from "~prisma";
 import { type HolderAdapter, type Stamped, staleUndo, swapAll } from "./holder";
@@ -76,12 +77,6 @@ export const budgetHolder: HolderAdapter<BudgetHeld> = {
 		};
 	},
 	async restore(c, held) {
-		// A budget filed under the category since the undo began is something the
-		// recreated rows would collide with, so the undo is refused.
-		const filed = await c.tx.budget.count({
-			where: { userId: c.userId, categoryId: c.sourceId },
-		});
-		if (filed > 0) throw staleUndo();
 		await swapAll(held.ids, (chunk) =>
 			c.tx.budget.updateMany({
 				where: {
@@ -120,8 +115,8 @@ export interface LinkHeld {
 		envelopeId: string;
 		createdAt: string;
 	}[];
-	/** Where the source's rows land now, per book. */
-	readonly rerouted: readonly { bookId: string; from: string; to: string }[];
+	/** Every envelope change of rows, per book. */
+	readonly rerouted: readonly Reroute[];
 }
 
 export const envelopeLinkHolder: HolderAdapter<LinkHeld> = {

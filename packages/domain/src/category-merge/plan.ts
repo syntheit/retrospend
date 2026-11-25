@@ -77,14 +77,24 @@ export interface LinkPlan {
 	move: string[];
 	/** Source links the target has one of (or all, with no target): the row goes. */
 	drop: string[];
-	/** Where the source's rows now land, per book, where that differs. */
-	rerouted: { bookId: string; from: string; to: string }[];
+	/** Every envelope change of rows in a book: whose rows ("source" or "target"), from where, to where. */
+	rerouted: Reroute[];
+}
+
+export interface Reroute {
+	bookId: string;
+	rows: "source" | "target";
+	from: string;
+	to: string;
 }
 
 /**
  * The unique key on (book, category) decides: where the target is already
  * linked in a book, the source's link goes and its rows follow the target's
- * envelope. With no target the rows fall back to the book's default envelope.
+ * envelope. Where it is not, the source's link moves onto the target, so the
+ * target's own rows (which sat in the book's default envelope) follow the
+ * source's envelope. With no target the source's rows fall back to the
+ * default envelope. `rerouted` lists every one of those changes.
  */
 export function planLinks(
 	source: readonly LinkFacts[],
@@ -93,16 +103,29 @@ export function planLinks(
 ): LinkPlan {
 	const plan: LinkPlan = { move: [], drop: [], rerouted: [] };
 	const targetByBook = new Map((target ?? []).map((l) => [l.bookId, l]));
+	const reroute = (
+		bookId: string,
+		rows: Reroute["rows"],
+		from: string,
+		to: string | undefined,
+	) => {
+		if (to && to !== from) plan.rerouted.push({ bookId, rows, from, to });
+	};
 	for (const link of source) {
 		const same = targetByBook.get(link.bookId);
+		const fallback = defaultEnvelopes.get(link.bookId);
 		if (target && !same) {
 			plan.move.push(link.id);
+			if (fallback) reroute(link.bookId, "target", fallback, link.envelopeId);
 			continue;
 		}
 		plan.drop.push(link.id);
-		const to = same?.envelopeId ?? defaultEnvelopes.get(link.bookId);
-		if (to && to !== link.envelopeId)
-			plan.rerouted.push({ bookId: link.bookId, from: link.envelopeId, to });
+		reroute(
+			link.bookId,
+			"source",
+			link.envelopeId,
+			same?.envelopeId ?? fallback,
+		);
 	}
 	return plan;
 }
@@ -193,6 +216,8 @@ export interface ClosedMonthFacts {
 	readonly closed: readonly ClosedMonthRouting[];
 	/** The budget months holding a row, a share or a shared expense filed under the source. */
 	readonly sourceMonths: ReadonlySet<MonthKey>;
+	/** The same for the target: its rows move too when the source's link lands on it. */
+	readonly targetMonths: ReadonlySet<MonthKey>;
 }
 
 /** Today's links once the merge ran: the source's is gone, and the target takes its envelope when it had none. */
@@ -206,23 +231,32 @@ function linksAfterMerge(f: ClosedMonthFacts): ReadonlyMap<string, string> {
 }
 
 /**
- * The first closed month whose rows would land in another envelope: a month
- * routes by the links it closed with (a month with none, by today's), so a
- * merge that gives the source's rows the target's route changes a closed
- * month's figures exactly when the two routes differ there and the source has
- * rows in it. The merge is refused then, never written into a closed month.
+ * The first closed month in which a row of the source or of the target would
+ * land in another envelope. A month routes by the links it closed with (a
+ * month with none, by today's links), and the merge changes today's links:
+ * the source's goes, and the target takes its envelope when it had none. So a
+ * source row moves to the target's route, and a legacy month's target rows
+ * move to the source's envelope. The merge is refused then, never written
+ * into a closed month.
  */
 export function closedMonthClash(f: ClosedMonthFacts): MonthKey | null {
 	const after = linksAfterMerge(f);
 	const route = (links: ReadonlyMap<string, string>, id: string | null) =>
 		envelopeForCategory(links, f.envelopeIds, f.defaultEnvelopeId, id);
 	for (const m of [...f.closed].sort((a, b) => a.month - b.month)) {
-		if (!f.sourceMonths.has(m.month)) continue;
-		const was = route(m.links ?? f.links, f.sourceId);
-		const will = m.links
-			? route(m.links, f.targetId)
-			: route(after, f.targetId);
-		if (was !== will) return m.month;
+		const before = m.links ?? f.links;
+		const later = m.links ?? after;
+		if (
+			f.sourceMonths.has(m.month) &&
+			route(before, f.sourceId) !== route(later, f.targetId)
+		)
+			return m.month;
+		if (
+			f.targetId &&
+			f.targetMonths.has(m.month) &&
+			route(before, f.targetId) !== route(later, f.targetId)
+		)
+			return m.month;
 	}
 	return null;
 }

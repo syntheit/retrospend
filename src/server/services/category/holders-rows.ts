@@ -127,8 +127,14 @@ const writeShared = (c: MergeCtx, t: Table, id: string) =>
 		data: { categoryId: c.targetId, updatedAt: c.stamp },
 	});
 
-const isRefusedByPolicy = (error: unknown) =>
-	/row-level security|42501/.test(
+/**
+ * Only a row-level security refusal (the policy's WITH CHECK, or a guard
+ * trigger that says so) means "not yours to write". Any other failure, a
+ * missing grant (also 42501) included, must stop the merge: counting it as a
+ * refusal would send every shared row to no category.
+ */
+export const isRefusedByPolicy = (error: unknown) =>
+	/row-level security/i.test(
 		`${(error as { message?: string })?.message ?? ""} ${JSON.stringify((error as { meta?: unknown })?.meta ?? "")}`,
 	);
 

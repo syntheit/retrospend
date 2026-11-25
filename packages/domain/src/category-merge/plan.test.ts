@@ -68,8 +68,11 @@ describe("planLinks", () => {
 		const plan = planLinks(src, tgt, new Map([["B", "other"]]));
 		expect(plan.move).toEqual(["l2"]);
 		expect(plan.drop).toEqual(["l1"]);
+		// A's source rows follow the target to treats; B's link moves onto the
+		// target, so the target's rows leave B's default envelope for fun.
 		expect(plan.rerouted).toEqual([
-			{ bookId: "A", from: "food", to: "treats" },
+			{ bookId: "A", rows: "source", from: "food", to: "treats" },
+			{ bookId: "B", rows: "target", from: "other", to: "fun" },
 		]);
 	});
 	it("reroutes nothing when both sit in one envelope", () => {
@@ -88,7 +91,9 @@ describe("planLinks", () => {
 			]),
 		);
 		expect(plan.drop).toEqual(["l1", "l2"]);
-		expect(plan.rerouted).toEqual([{ bookId: "A", from: "food", to: "rest" }]);
+		expect(plan.rerouted).toEqual([
+			{ bookId: "A", rows: "source", from: "food", to: "rest" },
+		]);
 	});
 });
 
@@ -140,6 +145,8 @@ describe("closedMonthClash", () => {
 			["src", "food"],
 			["tgt", "treats"],
 		]),
+		sourceMonths: new Set<number>(),
+		targetMonths: new Set<number>(),
 	};
 	const closedWith = (links: [string, string][] | null) => [
 		{ month: 202609, links: links ? new Map(links) : null },
@@ -194,23 +201,45 @@ describe("closedMonthClash", () => {
 			}),
 		).toBe(202609);
 	});
-	it("reads a month with no frozen links by today's links, the target taking the source's envelope when it had none", () => {
-		const rows = new Set([202609]);
+	it("reads a month with no frozen links by today's links: the source's rows pass when the target takes their envelope", () => {
 		expect(
 			closedMonthClash({
 				...base,
 				links: new Map([["src", "food"]]),
 				closed: closedWith(null),
-				sourceMonths: rows,
+				sourceMonths: new Set([202609]),
 			}),
 		).toBeNull();
 		expect(
 			closedMonthClash({
 				...base,
 				closed: closedWith(null),
-				sourceMonths: rows,
+				sourceMonths: new Set([202609]),
 			}),
 		).toBe(202609);
+	});
+	it("refuses a month with no frozen links that holds only the target's rows, which would move from Everything else to the source's envelope", () => {
+		const legacy = {
+			...base,
+			links: new Map([["src", "food"]]),
+			closed: closedWith(null),
+		};
+		expect(
+			closedMonthClash({ ...legacy, targetMonths: new Set([202609]) }),
+		).toBe(202609);
+		// With the target's rows in another month there is nothing to move.
+		expect(
+			closedMonthClash({ ...legacy, targetMonths: new Set([202610]) }),
+		).toBeNull();
+		// Frozen links keep the target's rows where they were.
+		expect(
+			closedMonthClash({
+				...base,
+				links: new Map([["src", "food"]]),
+				closed: closedWith([["src", "food"]]),
+				targetMonths: new Set([202609]),
+			}),
+		).toBeNull();
 	});
 });
 

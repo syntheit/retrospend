@@ -9,9 +9,15 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { problemCode } from "~/server/api/error-formatter";
 import { categoriesRouter } from "~/server/api/routers/categories";
 import { createCallerFactory } from "~/server/api/trpc";
+import { forUser } from "~/server/services/preview";
 import { adminDb, fixtureDb } from "~/test/pg-harness";
+import { Prisma } from "~prisma";
+import { seedUser, setupInput } from "../envelope/__tests__/pg-fixture";
+import { getMonth } from "../envelope/read.service";
+import { setupEnvelopeBook } from "../envelope/setup.mutation";
 import {
 	arsUser,
+	BLUE,
 	category,
 	dry,
 	expense,
@@ -106,26 +112,40 @@ describe("merge moves every row the category holds", () => {
 		).resolves.toBe(0);
 	});
 
-	it("previews the same merge without writing and says spent does not change", async () => {
+	it("previews the same merge without writing and says spent does not change, per currency", async () => {
 		const own = await arsUser();
 		const food = await category(own, "Dining");
 		const bar = await category(own, "Bar");
+		// Pesos at blue: 15,450 and 6,180 ARS are USD 10 and USD 4, and a dollar row beside them.
+		for (const pesos of [15450, 6180])
+			await expense(own, bar.id, pesos, {
+				currency: "ARS",
+				exchangeRate: new Prisma.Decimal(BLUE),
+				amountInUSD: new Prisma.Decimal(pesos / BLUE),
+				homeRate: new Prisma.Decimal(1),
+				homeAmount: new Prisma.Decimal(pesos),
+			});
 		await expense(own, bar.id, 10);
-		await expense(own, bar.id, 4);
 
 		const preview = await dry(own, bar.id, food.id);
 
-		expect(preview.value.counts.expense.moved).toBe(2);
+		expect(preview.value.counts.expense.moved).toBe(3);
 		expect(preview.changes.find((c) => c.id === "spent")).toBeUndefined();
 		const spent = preview.unchanged.find((u) => u.id === "spent");
-		// 10 + 4 dollars, whatever the category: USD 14.00, in minor units.
-		expect(spent?.value).toEqual([{ minor: 1400, currency: "USD" }]);
+		// ARS 21,630 (15,450 + 6,180) and USD 10, never added together.
+		expect(spent?.value).toEqual(
+			expect.arrayContaining([
+				{ minor: 2_163_000, currency: "ARS" },
+				{ minor: 1_000, currency: "USD" },
+			]),
+		);
+		expect(spent?.value).toHaveLength(2);
 		await expect(
 			fixtureDb.category.count({ where: { id: bar.id } }),
 		).resolves.toBe(1);
 		await expect(
 			fixtureDb.expense.count({ where: { categoryId: bar.id } }),
-		).resolves.toBe(2);
+		).resolves.toBe(3);
 	});
 
 	it("moves recurring templates, income rows between income categories, and refuses a mixed pair", async () => {
@@ -365,5 +385,67 @@ describe("through categories.previewRemove, remove, restore and delete", () => {
 		await expect(
 			api.delete({ id: spending.id, reassignToUncategorized: true }),
 		).resolves.toEqual({ success: true });
+	});
+});
+
+describe("an ARS budget book keeps its figures, valued at the rate each row was booked at", () => {
+	async function arsBook() {
+		const s = await seedUser();
+		await adminDb.user.update({
+			where: { id: s.user.id },
+			data: { homeCurrency: "ARS" },
+		});
+		await forUser(s.user.id).apply(setupEnvelopeBook, {
+			...setupInput(s),
+			timeZone: "UTC",
+		});
+		const book = await adminDb.budgetBook.findFirstOrThrow({
+			where: { createdById: s.user.id },
+			include: { envelopes: true },
+		});
+		const env = Object.fromEntries(book.envelopes.map((e) => [e.name, e.id]));
+		const cafe = await category(s.user.id, "Cafe");
+		await adminDb.envelopeCategory.create({
+			data: {
+				bookId: book.id,
+				envelopeId: env.Dining as string,
+				categoryId: cafe.id,
+			},
+		});
+		// USD 10 and USD 4 booked at blue 1,545: ARS 15,450 and 6,180.
+		await expense(s.user.id, cafe.id, 10);
+		await expense(s.user.id, cafe.id, 4);
+		return { ...s, cafe, env: env as Record<string, string> };
+	}
+
+	const spentIn = async (userId: string, envelopeId: string) =>
+		(await getMonth(userId))?.groups
+			.flatMap((g) => g.envelopes)
+			.find((e) => e.id === envelopeId)?.spent;
+
+	it("a merge inside one envelope changes nothing; into another envelope it moves exactly ARS 21,630", async () => {
+		const b = await arsBook();
+		// (10 + 4) x 1,545 = 21,630 pesos = 2,163,000 minor, not USD 14.
+		const arsSpent = { minor: 2_163_000, currency: "ARS" };
+		expect(await spentIn(b.user.id, b.env.Dining as string)).toEqual(arsSpent);
+
+		const same = await category(b.user.id, "Dining too");
+		await adminDb.envelopeCategory.create({
+			data: {
+				bookId: (
+					await adminDb.budgetBook.findFirstOrThrow({
+						where: { createdById: b.user.id },
+					})
+				).id,
+				envelopeId: b.env.Dining as string,
+				categoryId: same.id,
+			},
+		});
+		await run(b.user.id, b.cafe.id, same.id);
+		expect(await spentIn(b.user.id, b.env.Dining as string)).toEqual(arsSpent);
+
+		await run(b.user.id, same.id, b.rent);
+		expect(await spentIn(b.user.id, b.env.Rent as string)).toEqual(arsSpent);
+		expect((await spentIn(b.user.id, b.env.Dining as string))?.minor).toBe(0);
 	});
 });

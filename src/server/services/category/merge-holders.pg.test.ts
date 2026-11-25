@@ -9,7 +9,7 @@ import { forUser } from "~/server/services/preview";
 import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { seedUser, setupInput } from "../envelope/__tests__/pg-fixture";
 import { setupEnvelopeBook } from "../envelope/setup.mutation";
-import { arsUser, category, run, undo } from "./__tests__/merge-kit";
+import { arsUser, category, dry, run, undo } from "./__tests__/merge-kit";
 
 const october = new Date("2026-10-01T00:00:00Z");
 const november = new Date("2026-11-01T00:00:00Z");
@@ -143,7 +143,12 @@ describe("envelope links", () => {
 
 		expect(done.value.counts.envelopeLink).toEqual({ moved: 0, dropped: 1 });
 		expect(done.value.rerouted).toEqual([
-			{ bookId: b.book.id, from: b.env.Rent, to: b.env.Dining },
+			{
+				bookId: b.book.id,
+				rows: "source",
+				from: b.env.Rent,
+				to: b.env.Dining,
+			},
 		]);
 		await expect(
 			adminDb.envelopeCategory.count({ where: { id: link.id } }),
@@ -159,7 +164,7 @@ describe("envelope links", () => {
 		});
 	});
 
-	it("a category the target does not share a book link with keeps its envelope and reroutes nothing", async () => {
+	it("a link that moves onto a target with none takes the target's rows into its envelope, and the preview lists it as the write does", async () => {
 		const b = await bookFor();
 		const snacks = await category(b.user.id, "Snacks");
 		const treats = await category(b.user.id, "Treats");
@@ -171,10 +176,20 @@ describe("envelope links", () => {
 			},
 		});
 
+		const preview = await dry(b.user.id, snacks.id, treats.id);
 		const done = await run(b.user.id, snacks.id, treats.id);
 
+		const moved = [
+			{
+				bookId: b.book.id,
+				rows: "target",
+				from: b.env.Spending,
+				to: b.env.Dining,
+			},
+		];
 		expect(done.value.counts.envelopeLink).toEqual({ moved: 1, dropped: 0 });
-		expect(done.value.rerouted).toEqual([]);
+		expect(done.value.rerouted).toEqual(moved);
+		expect(preview.value.rerouted).toEqual(moved);
 		await expect(
 			adminDb.envelopeCategory.findUniqueOrThrow({ where: { id: link.id } }),
 		).resolves.toMatchObject({
@@ -187,7 +202,12 @@ describe("envelope links", () => {
 		const b = await bookFor();
 		const done = await run(b.user.id, b.dining, null);
 		expect(done.value.rerouted).toEqual([
-			{ bookId: b.book.id, from: b.env.Dining, to: b.env.Spending },
+			{
+				bookId: b.book.id,
+				rows: "source",
+				from: b.env.Dining,
+				to: b.env.Spending,
+			},
 		]);
 		await undo(b.user.id, done.value.stash);
 		await expect(
