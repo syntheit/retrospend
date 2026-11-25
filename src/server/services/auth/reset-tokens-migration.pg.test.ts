@@ -20,10 +20,7 @@ const snippet = () => read(`prisma/rollback/${NAME}.sql`);
 // The reset code migration builds on this one, so its rollback runs first.
 const NEWER = "20261124100000_reset_code";
 const newerMigration = () => read(`prisma/migrations/${NEWER}/migration.sql`);
-const rollBack = async (client: Client) => {
-	await client.query(read(`prisma/rollback/${NEWER}.sql`));
-	await client.query(snippet());
-};
+const newerSnippet = () => read(`prisma/rollback/${NEWER}.sql`);
 
 const columns = async (client: Client) => {
 	const { rows } = await client.query(
@@ -121,7 +118,8 @@ describe("the migration SQL", () => {
 	it("deletes the pending links once and keeps the ones made after, run twice", async () => {
 		const { user } = await createTestUser();
 		await inRolledBackTransaction(async (client) => {
-			await rollBack(client);
+			await client.query(newerSnippet());
+			await client.query(snippet());
 			// The shape the older code wrote: an address and a raw token.
 			await client.query(
 				`INSERT INTO "password_reset_token" ("identifier", "token", "expires")
@@ -154,8 +152,10 @@ describe("the rollback snippet", () => {
 			const migrated = await state(client);
 			expect(migrated).toMatchObject({ record: 1, constraints: 2, indexes: 1 });
 
-			await rollBack(client);
-			await rollBack(client);
+			await client.query(newerSnippet());
+			await client.query(snippet());
+			await client.query(newerSnippet());
+			await client.query(snippet());
 			expect(await state(client)).toEqual({
 				record: 0,
 				constraints: 0,
@@ -179,7 +179,8 @@ describe("the rollback snippet", () => {
 		const { user } = await createTestUser();
 		await inRolledBackTransaction(async (client) => {
 			await insertLink(client, user.id);
-			await rollBack(client);
+			await client.query(newerSnippet());
+			await client.query(snippet());
 			expect(await count(client)).toBe(0);
 		});
 	});

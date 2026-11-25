@@ -209,6 +209,10 @@ export async function lookupResetToken(
 	return { userId: row.userId, origin: row.origin };
 }
 
+/** `lookupResetToken` for the plain password reset: a link, never a phone token. */
+export const lookupPlainResetToken = (token: string, now?: Date) =>
+	lookupResetToken(token, PLAIN_RESET_ORIGINS, now);
+
 /**
  * The user a token may open recovery for: a link the person asked for by
  * email or a redeemed code's token (`RECOVERY_ORIGINS`). An admin link, an
