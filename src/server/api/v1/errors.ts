@@ -5,6 +5,7 @@ import {
 	type ProblemCode,
 	problemType,
 } from "@retrospend/api-contract/common";
+import { PREVIEW_BUSY_MESSAGE } from "~/server/services/preview/busy";
 
 const TITLES: Record<ProblemCode, string> = {
 	bad_request: "Bad request",
@@ -42,6 +43,7 @@ const TITLES: Record<ProblemCode, string> = {
 	rate_limited: "Too many requests",
 	encrypted_text_unavailable: "Encrypted text unavailable",
 	key_rotated: "Encryption key changed, try again",
+	preview_busy: PREVIEW_BUSY_MESSAGE,
 	email_not_configured: "Email is not set up",
 	email_auth_failed: "The email server refused the sign-in",
 	email_unreachable: "The email server is unreachable",

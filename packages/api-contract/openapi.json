@@ -72,6 +72,7 @@
 							"rate_limited",
 							"encrypted_text_unavailable",
 							"key_rotated",
+							"preview_busy",
 							"email_not_configured",
 							"email_auth_failed",
 							"email_unreachable",

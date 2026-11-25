@@ -67,6 +67,9 @@ export const PROBLEM_STATUS = {
 	// A key was added since this server loaded its keys; it is loading them
 	// again, and a retry of the same request opens the text.
 	key_rotated: 503,
+	// A money preview lost to a concurrent write twice in a row. It wrote
+	// nothing; asking again gives the answer.
+	preview_busy: 503,
 	// An admin action whose cause is known (admin-failure.ts): the email server
 	// refused or could not be reached, the sidecar's backup or rate sync did not
 	// go through. Never carries the server's own error text.

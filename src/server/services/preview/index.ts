@@ -38,7 +38,8 @@
  *
  * A preview runs at REPEATABLE READ so its before and after snapshots see one
  * consistent view of other users' writes; apply runs at READ COMMITTED like
- * every other write.
+ * every other write. A preview that hits a serialization failure runs once more
+ * from a fresh transaction, then throws `PreviewBusyError` (busy.ts).
  */
 import { db } from "~/server/db";
 import { type UserTransactionOptions, userTransaction } from "~/server/db-tx";
@@ -46,6 +47,7 @@ import { type FigureDb, figures } from "~/server/figures/registry";
 import { notifyEventsCommitted } from "~/server/services/events/notify";
 import { recordMutationEvent } from "~/server/services/events/scope";
 import { Prisma } from "~prisma";
+import { runTransaction } from "./busy";
 import { createPreviewRunner, type PreviewRunner } from "./runner";
 import type { TransactionPurpose, TransactionRunner } from "./types";
 
@@ -74,7 +76,9 @@ export function userTransactionRunner(
 	userId: string,
 ): TransactionRunner<FigureDb> {
 	return (work, purpose) =>
-		userTransaction(db, userId, work, TRANSACTION_OPTIONS[purpose]);
+		runTransaction(purpose, () =>
+			userTransaction(db, userId, work, TRANSACTION_OPTIONS[purpose]),
+		);
 }
 
 export function forUser(userId: string): PreviewRunner<FigureDb> {
@@ -88,5 +92,6 @@ export function forUser(userId: string): PreviewRunner<FigureDb> {
 	});
 }
 
+export { PreviewBusyError } from "./busy";
 export type { PreviewRunner } from "./runner";
 export type * from "./types";

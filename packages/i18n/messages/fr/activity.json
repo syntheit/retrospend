@@ -89,6 +89,7 @@
 		"categorizeTitle": "Déplacer {count, plural, one {# dépense} other {# dépenses}} vers {name}",
 		"move": "Déplacer",
 		"moveFailed": "Impossible d'enregistrer ce déplacement",
+		"moveBusy": "Quelque chose a changé pendant le chargement. Réessayez.",
 		"exported": "{count, plural, one {# ligne exportée} other {# lignes exportées}} en CSV",
 		"deleted": "{count, plural, one {# dépense supprimée} other {# dépenses supprimées}}",
 		"failed": "Impossible de modifier les dépenses sélectionnées",

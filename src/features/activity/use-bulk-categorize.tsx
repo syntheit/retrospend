@@ -44,8 +44,12 @@ export function useBulkCategorize({
 		(input: Input) =>
 			utils.entry.expense.categorize.preview
 				.fetch(input, { staleTime: 0 })
-				.catch(() => {
-					throw new Error(t("moveFailed"));
+				.catch((error: unknown) => {
+					// The server asked again later: nothing is wrong with this move.
+					const busy =
+						(error as { data?: { problem?: string } } | null)?.data?.problem ===
+						"preview_busy";
+					throw new Error(t(busy ? "moveBusy" : "moveFailed"));
 				}),
 		pending?.input ?? null,
 	);

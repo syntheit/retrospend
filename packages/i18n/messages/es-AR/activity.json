@@ -89,6 +89,7 @@
 		"categorizeTitle": "Mover {count, plural, one {# gasto} other {# gastos}} a {name}",
 		"move": "Mover",
 		"moveFailed": "No se puede guardar este cambio",
+		"moveBusy": "Algo cambió mientras cargaba. Probá de nuevo.",
 		"exported": "{count, plural, one {# fila exportada} other {# filas exportadas}} a CSV",
 		"deleted": "{count, plural, one {# gasto eliminado} other {# gastos eliminados}}",
 		"failed": "No se pudieron cambiar los gastos seleccionados",

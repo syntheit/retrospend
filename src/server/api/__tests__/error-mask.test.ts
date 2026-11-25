@@ -4,8 +4,9 @@
  * routes that fail the ways production routes do. No personal data, file
  * path or database text may reach the response.
  */
-import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
+
 import { TRPCError } from "@trpc/server";
+import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("~/env", () => ({
@@ -23,6 +24,7 @@ vi.mock("~/server/better-auth", () => ({
 
 import { describeInternalError } from "~/server/api/error-formatter";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { PreviewBusyError } from "~/server/services/preview/busy";
 import { Prisma } from "~prisma";
 
 const PATH = "/home/someone/checkout/src/server/services/expense.ts:42";
@@ -48,6 +50,14 @@ const router = createTRPCRouter({
 	}),
 	takenName: publicProcedure.mutation(() => {
 		throw unique({ modelName: "Category", target: ["userId", "name"] });
+	}),
+	busy: publicProcedure.mutation(() => {
+		throw new PreviewBusyError({
+			cause: new Prisma.PrismaClientKnownRequestError(
+				`Invalid \`prisma.expense.updateMany()\` invocation in ${PATH}: could not serialize access`,
+				{ code: "P2034", clientVersion: "test" },
+			),
+		});
 	}),
 	refused: publicProcedure.mutation(() => {
 		throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
@@ -101,6 +111,18 @@ describe("what a client reads from a failed procedure", () => {
 		expect(status).toBe(409);
 		expect(body.message).toBe("That id or name is already used");
 		expect(body.data.problem).toBe("conflict");
+	});
+
+	it("a preview that stayed busy is a retryable 503 with a code, never internal", async () => {
+		const { status, text, body } = await call("busy");
+		expect(status).toBe(503);
+		expect(body.data.code).toBe("SERVICE_UNAVAILABLE");
+		expect(body.data.problem).toBe("preview_busy");
+		expect(body.message).toBe(
+			"Something changed while this was loading. Try again.",
+		);
+		expect(text).not.toContain("/home");
+		expect(text).not.toContain("prisma");
 	});
 
 	it("a refusal the code threw on purpose keeps its message", async () => {
