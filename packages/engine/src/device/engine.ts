@@ -709,8 +709,9 @@ export function createDeviceEngine(
 		ids: readonly string[],
 	): void {
 		if (booked) report(answerVerdicts(booked, answer, ids), 0);
-		// Rows the device could not book are held back too: the server may have moved them.
-		const touched = booked ? booked.changes.map((c) => c.id) : [...ids];
+		// Every picked id is held, not only the rows the device changed: a row it
+		// skipped (not pulled yet) or could not book may be one the server moved.
+		const touched = [...ids];
 		if (touched.length === 0) return;
 		const at = Date.parse(answer.serverTime ?? "");
 		bulkSent.set(key, {

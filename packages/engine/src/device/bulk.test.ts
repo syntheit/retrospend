@@ -471,7 +471,7 @@ describe("a write after the bulk action", () => {
 		release();
 		await running;
 		expect(engine.writeParity.counts.differs).toBeUndefined();
-		expect([...engine.bulkUnsettled()]).toEqual(["a"]);
+		expect([...engine.bulkUnsettled()].sort()).toEqual(["a", "b", "c"]);
 		await engine.pull();
 		expect(engine.writeParity.counts.differs).toBe(1);
 		expect(engine.bulkUnsettled().size).toBe(0);
@@ -481,7 +481,7 @@ describe("a write after the bulk action", () => {
 // The store holds the old rows until a pull, so another bulk action over them
 // would be booked from different rows than the server's.
 describe("bulk ids waiting for a pull", () => {
-	it("a bulk action's changed ids wait until a pull has settled them", async () => {
+	it("a bulk action's picked ids wait until a pull has settled them", async () => {
 		const { engine } = await setup();
 		const booked = await engine.bookBulk(toHold);
 		expect(engine.bulkUnsettled().size).toBe(0);
@@ -491,9 +491,25 @@ describe("bulk ids waiting for a pull", () => {
 			{ reached: 1, skipped: null, serverTime: SERVER_TIME },
 			toHold.ids,
 		);
-		expect([...engine.bulkUnsettled()]).toEqual(["a"]);
+		expect([...engine.bulkUnsettled()].sort()).toEqual(["a", "b", "c"]);
 		await engine.pull();
 		expect(engine.bulkUnsettled().size).toBe(0);
+	});
+
+	it("a row the device skipped but the server applied is held too, so a second bulk over it says Sync first", async () => {
+		// x is not pulled yet: the device skips it as not found, the server moves it.
+		const { engine } = await setup();
+		const op = { kind: "categorize", categoryId: "hold", ids: ["x"] } as const;
+		const booked = await engine.bookBulk(op);
+		expect(booked?.skipped).toEqual([{ id: "x", reason: "notFound" }]);
+		expect(booked?.changes).toEqual([]);
+		engine.settleBulk(
+			"k1",
+			booked,
+			{ reached: 1, skipped: null, serverTime: SERVER_TIME },
+			["x"],
+		);
+		expect(engine.bulkUnsettled().has("x")).toBe(true);
 	});
 
 	it("an action the device could not book holds every picked id", async () => {
@@ -524,7 +540,7 @@ describe("bulk ids waiting for a pull", () => {
 			toHold.ids,
 		);
 		engine.undoneBulk("k2");
-		expect([...engine.bulkUnsettled()]).toEqual(["a"]);
+		expect([...engine.bulkUnsettled()].sort()).toEqual(["a", "b", "c"]);
 		await engine.pull();
 		expect(engine.bulkUnsettled().size).toBe(0);
 	});
