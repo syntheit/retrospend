@@ -5,7 +5,6 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
 	applyRemove,
 	applyRestore,
-	deleteRequest,
 	previewRemove,
 } from "~/server/services/category/remove";
 import {
@@ -70,22 +69,4 @@ export const categoriesRouter = createTRPCRouter({
 		.mutation(({ ctx, input }) =>
 			applyRestore(ctx.session.user.id, input.stash),
 		),
-
-	delete: protectedProcedure
-		.input(
-			z.object({
-				id: z.cuid(),
-				replacementCategoryId: z.cuid().optional(),
-				reassignToUncategorized: z.boolean().optional(),
-			}),
-		)
-		.mutation(async ({ ctx, input }) => {
-			const { id, ...options } = input;
-			const userId = ctx.session.user.id;
-			await applyRemove(
-				userId,
-				await deleteRequest(ctx.db, userId, id, options),
-			);
-			return { success: true };
-		}),
 });

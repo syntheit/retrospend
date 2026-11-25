@@ -57,11 +57,6 @@ describe("handleMutationSuccess", () => {
 const REQUIRED_READERS: Record<string, string[]> = {
 	// Category edits change names, colors and exclusions shown everywhere.
 	"categories.update": ["categories", "expense"],
-	"categories.delete": [
-		"categories",
-		"expense",
-		"insights",
-	],
 	"categories.remove": ["categories", "expense", "insights", "envelope"],
 	"categories.restore": ["categories", "expense", "insights", "envelope"],
 	"entry.expense.categorize.save": ["expense", "insights"],

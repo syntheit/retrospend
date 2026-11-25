@@ -30,7 +30,7 @@ export function useMatch({
 	const toast = useToast();
 	const utils = api.useUtils();
 	const create = api.categories.create.useMutation();
-	const remove = api.categories.delete.useMutation();
+	const remove = api.categories.remove.useMutation();
 
 	const apply = async (picks: Record<string, MatchPick>) => {
 		if (!data) return;
@@ -75,7 +75,8 @@ export function useMatch({
 			{
 				undo: async () => {
 					setChoices(before);
-					for (const c of created) await remove.mutateAsync({ id: c.id });
+					for (const c of created)
+						await remove.mutateAsync({ id: c.id, targetId: null });
 					await utils.entry.catalog.invalidate();
 				},
 			},
