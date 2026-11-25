@@ -14,7 +14,7 @@ import { ratesAsOf } from "../rates";
 import { DEVICE_FIGURE_IDS, readDeviceFigures } from "../registry";
 import { type PullCursors, type PullReport, pullAll } from "../sync-pull";
 import { compareWrite, type WriteVerdict } from "../write-parity";
-import { type BookedWrite, bookIn, type WriteOp } from "./book";
+import { type BookedWrite, bookIn, targetOf, type WriteOp } from "./book";
 import {
 	answerVerdicts,
 	type BulkAnswer,
@@ -160,17 +160,24 @@ export interface DeviceEngine extends DeviceReads {
 	): Promise<WriteVerdict | null>;
 	/**
 	 * The server took a bulk action `key` names (its batch id). Holds the
-	 * device's booking against the answer now, retires the rows both left
-	 * alone, and holds the rest against the rows of the next pull.
+	 * device's booking (null when it could not book) against the answer now,
+	 * retires the rows both left alone, and holds the rest against the rows of
+	 * the next pull.
 	 */
 	settleBulk(
 		key: string,
-		booked: BulkBooked,
+		booked: BulkBooked | null,
 		answer: BulkAnswer,
 		ids: readonly string[],
 	): void;
-	/** The person undid bulk action `key`: its rows are not compared. */
+	/** The person undid bulk action `key`: its rows are not compared, and wait for a pull. */
 	undoneBulk(key: string): void;
+	/**
+	 * The ids of every bulk action the server took that no pull has settled
+	 * yet. The store still holds their old rows, so the phone does not run
+	 * another bulk action over them ("Sync first").
+	 */
+	bulkUnsettled(): ReadonlySet<string>;
 	/** One pull at a time: a call while one runs waits for it. */
 	pull(): Promise<void>;
 	/** Pulls when none has finished yet or the last one is older than PULL_AFTER_MS. */
@@ -217,6 +224,8 @@ export function createDeviceEngine(
 	const compared = new Set<string>();
 	/** Bulk actions the server took, until a pull that began after the answer compares their rows. */
 	const bulkSent = new Map<string, BulkSent>();
+	/** When this phone last booked a write for each expense: a retired entry leaves the lists, the log stays. */
+	const lastBooked = new Map<string, number>();
 	let pulledAt: number | null = null;
 	let inflight: Promise<void> | null = null;
 	let lastCompare: CompareReport | null = null;
@@ -442,6 +451,13 @@ export function createDeviceEngine(
 		report(verdicts, 0);
 	}
 
+	/** Whether this phone booked a write for `id` at or after `since`, from the log and from the lists. */
+	const bookedSince = (id: string, since: number): boolean =>
+		(lastBooked.get(id) ?? Number.NEGATIVE_INFINITY) >= since ||
+		(options.pending?.entries() ?? []).some(
+			(e) => e.bookedAt >= since && e.changes.some((c) => c.id === id),
+		);
+
 	/** Compares each bulk action a finished pull has seen with the rows it brought, once. */
 	function compareBulkSent(): void {
 		const snap = store.snapshot();
@@ -450,7 +466,12 @@ export function createDeviceEngine(
 			if (settledPull <= sent.pull) continue;
 			bulkSent.delete(key);
 			for (const c of sent.changes)
-				verdicts.push(compareBulkRow(snap, c, sent.bookedAt));
+				verdicts.push(
+					compareBulkRow(snap, c, sent.bookedAt, {
+						laterBooking: bookedSince(c.id, sent.bookedAt),
+						serverAt: sent.serverAt,
+					}),
+				);
 		}
 		report(verdicts, 0);
 	}
@@ -603,6 +624,7 @@ export function createDeviceEngine(
 	}
 
 	async function book(op: WriteOp): Promise<BookedWrite | null> {
+		lastBooked.set(targetOf(op), now());
 		try {
 			await ready;
 			if (disposed || status !== "ready") return null;
@@ -682,23 +704,30 @@ export function createDeviceEngine(
 
 	function settleBulk(
 		key: string,
-		booked: BulkBooked,
+		booked: BulkBooked | null,
 		answer: BulkAnswer,
 		ids: readonly string[],
 	): void {
-		report(answerVerdicts(booked, answer, ids), 0);
-		if (booked.changes.length > 0)
-			bulkSent.set(key, {
-				pull: pullsBegun,
-				bookedAt: booked.bookedAt,
-				changes: booked.changes,
-			});
+		if (booked) report(answerVerdicts(booked, answer, ids), 0);
+		// Rows the device could not book are held back too: the server may have moved them.
+		const touched = booked ? booked.changes.map((c) => c.id) : [...ids];
+		if (touched.length === 0) return;
+		const at = Date.parse(answer.serverTime ?? "");
+		bulkSent.set(key, {
+			pull: pullsBegun,
+			bookedAt: booked?.bookedAt ?? now(),
+			changes: booked?.changes ?? [],
+			ids: touched,
+			serverAt: Number.isNaN(at) ? null : at,
+		});
 	}
 
 	function undoneBulk(key: string): void {
 		const sent = bulkSent.get(key);
 		if (!sent) return;
-		bulkSent.delete(key);
+		// The server put the rows back: they are not compared, and the store
+		// holds the changed ones until a pull that begins now has seen it.
+		bulkSent.set(key, { ...sent, pull: pullsBegun, changes: [] });
 		report(
 			sent.changes.map((c) => ({
 				id: c.id,
@@ -708,6 +737,9 @@ export function createDeviceEngine(
 			0,
 		);
 	}
+
+	const bulkUnsettled = (): ReadonlySet<string> =>
+		new Set([...bulkSent.values()].flatMap((sent) => sent.ids));
 
 	/** Reads the store as the last pull left it; null while it is not a whole copy. */
 	async function readStored<R>(read: (view: Reader) => R): Promise<R | null> {
@@ -813,6 +845,7 @@ export function createDeviceEngine(
 		comparePreviewBulk,
 		settleBulk,
 		undoneBulk,
+		bulkUnsettled,
 		pull,
 		pullIfStale,
 		compare,

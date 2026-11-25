@@ -80,8 +80,14 @@ class Pending implements PendingSource {
 	takeLeft = () => [];
 }
 
-/** `later` is what the next pull brings. */
-async function setup(later: { items?: unknown[]; gone?: string[] } = {}) {
+/** The server's `Date` for a bulk answer at the time the pulled rows were stamped. */
+const SERVER_TIME = new Date("2026-10-05T03:00:00.000Z").toUTCString();
+
+/** `later` is what the next pull brings; `clock.t` is the phone's clock. */
+async function setup(
+	later: { items?: unknown[]; gone?: string[] } = {},
+	clock = { t: NOW },
+) {
 	const pending = new Pending();
 	const { api } = fakeDeviceApi({
 		rates,
@@ -95,12 +101,12 @@ async function setup(later: { items?: unknown[]; gone?: string[] } = {}) {
 		categories: [page([category("food", false), category("hold", true)])],
 		transfers: [page([feeOfC])],
 	});
-	const engine = createDeviceEngine(api, "u1", () => NOW, {
+	const engine = createDeviceEngine(api, "u1", () => clock.t, {
 		pending,
 		warn: vi.fn(),
 	});
 	await engine.pull();
-	return { engine, pending };
+	return { engine, pending, api };
 }
 
 const deleteAll = {
@@ -287,7 +293,7 @@ describe("DeviceEngine.settleBulk", () => {
 		engine.settleBulk(
 			"k1",
 			booked as NonNullable<typeof booked>,
-			{ reached: 1, skipped: null },
+			{ reached: 1, skipped: null, serverTime: SERVER_TIME },
 			toHold.ids,
 		);
 		await engine.pull();
@@ -305,7 +311,7 @@ describe("DeviceEngine.settleBulk", () => {
 		engine.settleBulk(
 			"k1",
 			booked as NonNullable<typeof booked>,
-			{ reached: 1, skipped: null },
+			{ reached: 1, skipped: null, serverTime: SERVER_TIME },
 			toHold.ids,
 		);
 		await engine.pull();
@@ -320,7 +326,7 @@ describe("DeviceEngine.settleBulk", () => {
 		engine.settleBulk(
 			"k1",
 			booked as NonNullable<typeof booked>,
-			{ reached: 1, skipped: null },
+			{ reached: 1, skipped: null, serverTime: SERVER_TIME },
 			toHold.ids,
 		);
 		await engine.pull();
@@ -345,5 +351,181 @@ describe("DeviceEngine.settleBulk", () => {
 		expect(engine.writeParity.counts["skipped:undone"]).toBe(1);
 		expect(engine.writeParity.counts.differs).toBeUndefined();
 		expect(engine.writeParity.counts.match).toBeUndefined();
+	});
+});
+
+// Another write to the row after the bulk action looks like a mismatch in the
+// category columns, so the compare needs to know it came later.
+describe("a write after the bulk action", () => {
+	// Another category than the device's "hold", as a later edit leaves it.
+	const elsewhere = { ...A, categoryId: "food", excludeFromAnalytics: true };
+	const settle = async (
+		engine: Awaited<ReturnType<typeof setup>>["engine"],
+		serverTime: string | null = SERVER_TIME,
+	) => {
+		const booked = await engine.bookBulk(toHold);
+		engine.settleBulk(
+			"k1",
+			booked,
+			{ reached: 1, skipped: null, serverTime },
+			toHold.ids,
+		);
+	};
+
+	it("a web edit stamped past the server's answer is a skip, not a difference", async () => {
+		const row = { ...elsewhere, updatedAt: "2026-10-05T03:00:05.000Z" };
+		const { engine } = await setup({ items: [row] });
+		await settle(engine);
+		await engine.pull();
+		expect(engine.writeParity.counts["skipped:changed_since"]).toBe(1);
+		expect(engine.writeParity.counts.differs).toBeUndefined();
+	});
+
+	it("this phone's own later edit is a skip even after its entry left the lists", async () => {
+		const clock = { t: NOW };
+		const { engine } = await setup({ items: [elsewhere] }, clock);
+		await settle(engine);
+		clock.t += 1_000;
+		await engine.book({
+			kind: "update",
+			body: {
+				id: "a",
+				title: "row",
+				amount: "10",
+				currency: "USD",
+				date: "2026-10-05",
+				categoryId: "food",
+			},
+		});
+		await engine.pull();
+		expect(engine.writeParity.counts["skipped:changed_since"]).toBe(1);
+		expect(engine.writeParity.counts.differs).toBeUndefined();
+	});
+
+	it("an entry in the lists booked after the bulk action is a skip", async () => {
+		const { engine, pending } = await setup({ items: [elsewhere] });
+		await settle(engine);
+		pending.list = [
+			{
+				clientId: "c1",
+				bookedAt: NOW + 1_000,
+				changes: [{ table: "expenses", id: "a", before: null, after: null }],
+				changed: ["categoryId"],
+				parked: false,
+			},
+		];
+		await engine.pull();
+		expect(engine.writeParity.counts["skipped:changed_since"]).toBe(1);
+		expect(engine.writeParity.counts.differs).toBeUndefined();
+	});
+
+	it("an answer with no server time cannot tell, so it skips", async () => {
+		const { engine } = await setup({ items: [elsewhere] });
+		await settle(engine, null);
+		await engine.pull();
+		expect(engine.writeParity.counts["skipped:changed_since"]).toBe(1);
+		expect(engine.writeParity.counts.differs).toBeUndefined();
+	});
+
+	it("a category the server and the device disagree on, with no later write, is a difference", async () => {
+		const { engine } = await setup({ items: [elsewhere] });
+		await settle(engine);
+		await engine.pull();
+		expect(engine.writeParity.recent).toContainEqual({
+			id: "a",
+			outcome: "differs",
+			fields: ["categoryId"],
+		});
+	});
+
+	it("a pull already running at the answer is ignored: it may not have seen the write", async () => {
+		const { engine, api } = await setup({ items: [elsewhere] });
+		const booked = await engine.bookBulk(toHold);
+		let release = () => {};
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const sync = api.sync as unknown as Record<
+			string,
+			(q: unknown) => Promise<unknown>
+		>;
+		const expenses = sync.expenses as (q: unknown) => Promise<unknown>;
+		let reached = () => {};
+		const inFlight = new Promise<void>((resolve) => {
+			reached = resolve;
+		});
+		sync.expenses = async (q) => {
+			reached();
+			await gate;
+			return expenses(q);
+		};
+		const running = engine.pull();
+		// The pull has begun (it is counted) once it asks the server for rows.
+		await inFlight;
+		engine.settleBulk(
+			"k1",
+			booked,
+			{ reached: 1, skipped: null, serverTime: SERVER_TIME },
+			toHold.ids,
+		);
+		release();
+		await running;
+		expect(engine.writeParity.counts.differs).toBeUndefined();
+		expect([...engine.bulkUnsettled()]).toEqual(["a"]);
+		await engine.pull();
+		expect(engine.writeParity.counts.differs).toBe(1);
+		expect(engine.bulkUnsettled().size).toBe(0);
+	});
+});
+
+// The store holds the old rows until a pull, so another bulk action over them
+// would be booked from different rows than the server's.
+describe("bulk ids waiting for a pull", () => {
+	it("a bulk action's changed ids wait until a pull has settled them", async () => {
+		const { engine } = await setup();
+		const booked = await engine.bookBulk(toHold);
+		expect(engine.bulkUnsettled().size).toBe(0);
+		engine.settleBulk(
+			"k1",
+			booked,
+			{ reached: 1, skipped: null, serverTime: SERVER_TIME },
+			toHold.ids,
+		);
+		expect([...engine.bulkUnsettled()]).toEqual(["a"]);
+		await engine.pull();
+		expect(engine.bulkUnsettled().size).toBe(0);
+	});
+
+	it("an action the device could not book holds every picked id", async () => {
+		const { engine } = await setup();
+		engine.settleBulk(
+			"k1",
+			null,
+			{ reached: 3, skipped: null, serverTime: SERVER_TIME },
+			toHold.ids,
+		);
+		expect([...engine.bulkUnsettled()].sort()).toEqual(["a", "b", "c"]);
+	});
+
+	it("an undone action holds its ids until a pull has seen the undo", async () => {
+		const { engine } = await setup();
+		const booked = await engine.bookBulk(toHold);
+		engine.settleBulk(
+			"k1",
+			booked,
+			{ reached: 1, skipped: null, serverTime: SERVER_TIME },
+			toHold.ids,
+		);
+		await engine.pull();
+		engine.settleBulk(
+			"k2",
+			booked,
+			{ reached: 1, skipped: null, serverTime: SERVER_TIME },
+			toHold.ids,
+		);
+		engine.undoneBulk("k2");
+		expect([...engine.bulkUnsettled()]).toEqual(["a"]);
+		await engine.pull();
+		expect(engine.bulkUnsettled().size).toBe(0);
 	});
 });

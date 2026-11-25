@@ -1,5 +1,4 @@
 import type { BulkSkip } from "@retrospend/domain/expense-write/bulk";
-import { NotFoundError } from "../errors";
 import {
 	categorizeExpenses,
 	deleteExpenses,
@@ -7,23 +6,13 @@ import {
 	EXPENSE_DELETE_MANY,
 } from "../expense-bulk-local";
 import { recordWrite, type WriteFn } from "../local-db";
-import { InvalidInputError, type Reader, type Writer } from "../port";
-import {
-	createDevicePreviewRunner,
-	deviceMutation,
-	EXPENSE_FIGURES,
-} from "../preview";
-import { deviceFigures } from "../registry";
+import type { Reader, Writer } from "../port";
 import { compareWrite, type WriteVerdict } from "../write-parity";
 import { pendingChangesOf, type WriteCursors } from "./book";
+import type { PendingChange } from "./pending";
 import {
-	countsInOverlay,
-	type PendingChange,
-	type PendingEntry,
-} from "./pending";
-import {
-	differingFigures,
 	type PreviewCompareDeps,
+	previewVerdict,
 	type ServerPreview,
 } from "./preview-compare";
 
@@ -90,6 +79,8 @@ export async function bookBulkIn(
 export interface BulkAnswer {
 	reached: number;
 	skipped: readonly string[] | null;
+	/** The server's `Date` header of the answer (an HTTP date); never the phone's clock. */
+	serverTime?: string | null;
 }
 
 /**
@@ -130,6 +121,10 @@ export interface BulkSent {
 	pull: number;
 	bookedAt: number;
 	changes: readonly PendingChange[];
+	/** Every id the action changed or may have changed: the phone waits ("Sync first") until a pull has settled them. */
+	ids: readonly string[];
+	/** The server's clock at its answer, epoch ms; null when it gave none. */
+	serverAt: number | null;
 }
 
 /** The columns a bulk categorize sets; another difference means the row was written since. */
@@ -139,71 +134,54 @@ const CATEGORIZED = new Set([
 	"excludeFromAnalytics",
 ]);
 
+/** What tells a later write from the bulk action's own. */
+export interface WrittenSince {
+	/** The phone booked a write for this row at or after the bulk action. */
+	laterBooking: boolean;
+	serverAt: number | null;
+}
+
+/**
+ * Whether the pulled row was written after the bulk action. Its `updatedAt` is
+ * the server's clock and the answer's `Date` the same clock, whole seconds and
+ * stamped after the write: a row stamped a full second past it is later. A
+ * time that cannot be read counts as later (a skip is safe, a false finding
+ * is not).
+ */
+function writtenSince(
+	live: Reader,
+	id: string,
+	{ laterBooking, serverAt }: WrittenSince,
+): boolean {
+	if (laterBooking || serverAt === null) return true;
+	const at = Date.parse(live.get("expenses", id)?.version ?? "");
+	return Number.isNaN(at) || at >= serverAt + 1000;
+}
+
 /**
  * One changed row against the row a later pull brought. A categorize row that
- * differs outside the columns it set was edited elsewhere since: a skip, not a
- * finding (the v1 answer names no row versions to tell the two apart).
+ * differs, but was written since (by this phone or another device) or differs
+ * outside the columns it set, is a skip, not a finding: the v1 answer names
+ * no row versions to tell the bulk action's write from a later one.
  */
 export function compareBulkRow(
 	live: Reader,
 	change: PendingChange,
 	bookedAt: number,
+	since: WrittenSince,
 ): WriteVerdict {
 	const verdict = compareWrite(live, change, { bookedAt, version: null });
-	return verdict.outcome === "differs" &&
-		change.after !== null &&
-		verdict.fields.some((f) => !CATEGORIZED.has(f))
+	if (verdict.outcome !== "differs" || change.after === null) return verdict;
+	return verdict.fields.some((f) => !CATEGORIZED.has(f)) ||
+		writtenSince(live, change.id, since)
 		? { id: change.id, outcome: "skipped", code: "changed_since" }
 		: verdict;
 }
 
-/** Whether an unsent or acked entry the server has not shown back touches any of `ids`. */
-export const pendingAhead = (
-	entries: readonly PendingEntry[],
-	settledPull: number,
-	ids: readonly string[],
-) =>
-	entries.some(
-		(e) =>
-			countsInOverlay(e, settledPull) &&
-			e.changes.some((c) => ids.includes(c.id)),
-	);
-
-/**
- * The device preview of `op`, held against the server's dry run. While an
- * entry the server has not shown back touches a picked id the two start from
- * different rows, so nothing is compared (`pending_ahead`).
- */
-export async function comparePreviewBulk(
+/** The device preview of `op`, held against the server's dry run (see `previewVerdict`). */
+export const comparePreviewBulk = (
 	deps: PreviewCompareDeps,
 	op: BulkOp,
 	server: ServerPreview,
-): Promise<WriteVerdict> {
-	const id = op.ids[0] ?? "";
-	if (pendingAhead(deps.entries, deps.settledPull, op.ids))
-		return { id, outcome: "skipped", code: "pending_ahead" };
-	try {
-		const { id: mutationId, write } = bulkPlanOf(op, deps.cursors);
-		const runner = createDevicePreviewRunner({
-			store: deps.store,
-			figures: deviceFigures({ clock: deps.now }),
-			actor: { userId: deps.userId },
-		});
-		const diff = await runner.preview(
-			deviceMutation<void, unknown>({
-				id: mutationId,
-				touches: EXPENSE_FIGURES,
-				write: () => write,
-			}),
-			undefined,
-		);
-		const fields = differingFigures(diff, server);
-		return fields.length === 0
-			? { id, outcome: "match" }
-			: { id, outcome: "differs", fields };
-	} catch (error) {
-		if (error instanceof InvalidInputError || error instanceof NotFoundError)
-			return { id, outcome: "refused" };
-		throw error;
-	}
-}
+): Promise<WriteVerdict> =>
+	previewVerdict(deps, op.ids, () => bulkPlanOf(op, deps.cursors), server);

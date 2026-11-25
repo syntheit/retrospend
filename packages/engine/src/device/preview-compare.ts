@@ -1,11 +1,12 @@
 import type { FiguresDiff } from "@retrospend/domain/figures/diff";
 import { MissingRateError } from "@retrospend/domain/money";
 import { NotFoundError } from "../errors";
+import type { WriteFn } from "../local-db";
 import { InvalidInputError, type Store } from "../port";
 import {
 	createDevicePreviewRunner,
 	deviceMutation,
-	EXPENSE_UPDATE_MUTATION,
+	EXPENSE_FIGURES,
 } from "../preview";
 import { deviceFigures } from "../registry";
 import type { WriteVerdict } from "../write-parity";
@@ -80,31 +81,30 @@ export interface PreviewCompareDeps {
 }
 
 /**
- * Runs the device preview of `op` over the store as the last pull left it and
- * compares it with `server`. While an entry the server has not shown back
- * (unsent, or acked and not pulled) touches the same row, the two start from
- * different rows, so nothing is compared: `pending_ahead`.
+ * Runs the device preview of the write `plan` names over the store as the last
+ * pull left it and compares it with `server`: the one owner of the runner, the
+ * `pending_ahead` rule and the refusal verdicts, for a save and for a bulk
+ * action. While an entry the server has not shown back (unsent, or acked and
+ * not pulled) touches any of `ids`, the two start from different rows, so
+ * nothing is compared: `pending_ahead`. The verdict is named by the first id.
  */
-export async function comparePreview(
+export async function previewVerdict(
 	deps: PreviewCompareDeps,
-	op: WriteOp,
+	ids: readonly string[],
+	plan: () => { id: string; write: WriteFn<unknown> },
 	server: ServerPreview,
 ): Promise<WriteVerdict> {
-	const id = targetOf(op);
+	const id = ids[0] ?? "";
 	if (
 		deps.entries.some(
 			(e) =>
 				countsInOverlay(e, deps.settledPull) &&
-				e.changes.some((c) => c.id === id),
+				e.changes.some((c) => ids.includes(c.id)),
 		)
 	)
 		return { id, outcome: "skipped", code: "pending_ahead" };
 	try {
-		const { id: mutationId, write } = planOf(
-			op,
-			deps.store.snapshot(),
-			deps.cursors,
-		);
+		const { id: mutationId, write } = plan();
 		const runner = createDevicePreviewRunner({
 			store: deps.store,
 			figures: deviceFigures({ clock: deps.now }),
@@ -113,7 +113,7 @@ export async function comparePreview(
 		const diff = await runner.preview(
 			deviceMutation<void, unknown>({
 				id: mutationId,
-				touches: EXPENSE_UPDATE_MUTATION.touches,
+				touches: EXPENSE_FIGURES,
 				write: () => write,
 			}),
 			undefined,
@@ -130,3 +130,16 @@ export async function comparePreview(
 		throw error;
 	}
 }
+
+/** The device preview of a save, held against the server's dry run of it. */
+export const comparePreview = (
+	deps: PreviewCompareDeps,
+	op: WriteOp,
+	server: ServerPreview,
+): Promise<WriteVerdict> =>
+	previewVerdict(
+		deps,
+		[targetOf(op)],
+		() => planOf(op, deps.store.snapshot(), deps.cursors),
+		server,
+	);
