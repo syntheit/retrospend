@@ -79,6 +79,7 @@ const SPINNER: Record<Kind, string> = {
 	secondary: "text-fg-2",
 	ghost: "text-fg-2",
 	danger: "text-danger-fg",
+	"danger-text": "text-danger",
 };
 type LegacySize = NonNullable<VariantProps<typeof buttonVariants>["size"]>;
 
