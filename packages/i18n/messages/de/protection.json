@@ -78,7 +78,8 @@
 			"useKey": "Schlüssel verwenden",
 			"nothingWorks": "Nichts klappt",
 			"resetMeta": "Entfernt deine Schlüssel und den Wiederherstellungsschlüssel.",
-			"reset": "Passwort zurücksetzen"
+			"reset": "Passwort zurücksetzen",
+			"resetAccount": "Konto zurücksetzen"
 		},
 		"errors": {
 			"typo": "Prüfe den Schlüssel, er enthält wohl einen Tippfehler.",
@@ -90,8 +91,11 @@
 			"notOffered": "Erweiterter Schutz ist hier nicht verfügbar.",
 			"wrongPassword": "Falsches Passwort",
 			"notSaved": "Dein neuer Schlüssel konnte nicht gespeichert werden. Dein alter Schlüssel funktioniert weiterhin.",
-			"failed": "Das hat nicht geklappt. Versuch es erneut."
-		}
+			"failed": "Das hat nicht geklappt. Versuch es erneut.",
+			"unconfirmed": "Das konnte nicht bestätigt werden. Versuch es erneut."
+		},
+		"checking": "Dein Schlüssel wird geprüft",
+		"signInNew": "Melde dich mit deinem neuen Passwort an."
 	},
 	"newKey": {
 		"title": "Neuen Schlüssel erstellen",

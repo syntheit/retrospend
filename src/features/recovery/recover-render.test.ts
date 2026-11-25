@@ -54,6 +54,17 @@ describe("the key step", () => {
 		expect(html.match(/spellCheck="false"/g)?.length).toBe(9);
 	});
 
+	it("has no placeholder that repeats the box's name", () => {
+		expect(enter({})).not.toContain("placeholder=");
+	});
+
+	it("says it is checking the key only while it works, as a status line", () => {
+		const busy = enter({ busy: true }, true);
+		expect(busy).toContain(p.recover.checking);
+		expect(busy).toContain('role="status"');
+		expect(enter({})).not.toContain(p.recover.checking);
+	});
+
 	it("limits each input to one group", () => {
 		expect(enter({}).match(/maxLength="6"/g)?.length).toBe(9);
 	});
@@ -139,15 +150,28 @@ describe("the choices", () => {
 		expect(html).toContain(p.methods.device);
 		expect(html).toContain(p.recover.choose.nothingWorks);
 		expect(html.split(p.methods.reason).length - 1).toBe(2);
-		expect(html).not.toContain(p.recover.choose.reset);
-		expect(html.match(/<button/g)?.length).toBe(1);
+		// Reset account keeps its place as a disabled danger-text button with the
+		// reason; nothing resets an account by email while protection is on.
+		expect(html).toContain(p.recover.choose.resetAccount);
+		expect(html).toMatch(
+			new RegExp(
+				`<button[^>]*text-danger[^>]*disabled=""[^>]*>${p.recover.choose.resetAccount}</button>|<button[^>]*disabled=""[^>]*text-danger[^>]*>${p.recover.choose.resetAccount}</button>`,
+			),
+		);
+		expect(html).not.toContain(`>${p.recover.choose.reset}</button>`);
+		expect(html.match(/<button/g)?.length).toBe(2);
 	});
 
 	it("with protection off, Use key and today's reset, which says it removes the keys", () => {
 		const html = choices(false);
 		expect(html).toContain(p.recover.choose.titleOff);
 		expect(html).toContain(`>${p.recover.choose.useKey}</button>`);
-		expect(html).toContain(`>${p.recover.choose.reset}</button>`);
+		expect(html).toMatch(
+			new RegExp(
+				`<button(?![^>]*\\sdisabled="")[^>]*text-danger[^>]*>${p.recover.choose.reset}</button>`,
+			),
+		);
+		expect(html).not.toContain(p.recover.choose.resetAccount);
 		expect(html).toContain(p.recover.choose.resetMeta);
 		// Another device still gives its reason.
 		expect(html.split(p.methods.reason).length - 1).toBe(1);

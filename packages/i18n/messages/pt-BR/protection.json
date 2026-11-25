@@ -78,7 +78,8 @@
 			"useKey": "Usar chave",
 			"nothingWorks": "Nada funciona",
 			"resetMeta": "Remove suas chaves e a chave de recuperação.",
-			"reset": "Redefinir senha"
+			"reset": "Redefinir senha",
+			"resetAccount": "Redefinir conta"
 		},
 		"errors": {
 			"typo": "Confira a chave, ela parece ter um erro.",
@@ -90,8 +91,11 @@
 			"notOffered": "A proteção avançada não está disponível aqui.",
 			"wrongPassword": "Senha incorreta",
 			"notSaved": "Não foi possível salvar sua nova chave. Sua chave antiga ainda funciona.",
-			"failed": "Não foi possível concluir. Tente de novo."
-		}
+			"failed": "Não foi possível concluir. Tente de novo.",
+			"unconfirmed": "Não foi possível confirmar. Tente de novo."
+		},
+		"checking": "Verificando sua chave",
+		"signInNew": "Entre com sua nova senha."
 	},
 	"newKey": {
 		"title": "Criar nova chave",

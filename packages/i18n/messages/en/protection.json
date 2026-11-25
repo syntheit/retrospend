@@ -78,7 +78,8 @@
 			"useKey": "Use key",
 			"nothingWorks": "Nothing works",
 			"resetMeta": "Removes your keys and recovery key.",
-			"reset": "Reset password"
+			"reset": "Reset password",
+			"resetAccount": "Reset account"
 		},
 		"errors": {
 			"typo": "Check the key for a typo.",
@@ -90,8 +91,11 @@
 			"notOffered": "Advanced protection is not available here.",
 			"wrongPassword": "Wrong password",
 			"notSaved": "Your new key could not be saved. Your old key still works.",
-			"failed": "Couldn't finish. Try again."
-		}
+			"failed": "Couldn't finish. Try again.",
+			"unconfirmed": "We couldn't confirm it. Try again."
+		},
+		"checking": "Checking your key",
+		"signInNew": "Sign in with your new password."
 	},
 	"newKey": {
 		"title": "Make new key",

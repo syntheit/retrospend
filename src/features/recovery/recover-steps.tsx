@@ -58,7 +58,6 @@ export function EnterKeyStep({ state, dispatch, locked }: StepProps) {
 								text: e.clipboardData.getData("text"),
 							});
 						}}
-						placeholder={group("group", { number: index + 1 })}
 						ref={(node) => {
 							inputs.current[index] = node;
 						}}
@@ -67,6 +66,11 @@ export function EnterKeyStep({ state, dispatch, locked }: StepProps) {
 					/>
 				))}
 			</div>
+			{state.busy ? (
+				<p className="text-fg-3 text-small" role="status">
+					{t("checking")}
+				</p>
+			) : null}
 			<RecoveryError code={state.error} />
 		</div>
 	);

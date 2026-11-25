@@ -78,7 +78,8 @@
 			"useKey": "Utiliser la clé",
 			"nothingWorks": "Rien ne marche",
 			"resetMeta": "Supprime tes clés et la clé de récupération.",
-			"reset": "Réinitialiser le mot de passe"
+			"reset": "Réinitialiser le mot de passe",
+			"resetAccount": "Réinitialiser le compte"
 		},
 		"errors": {
 			"typo": "Vérifie la clé, elle semble contenir une erreur.",
@@ -90,8 +91,11 @@
 			"notOffered": "La protection avancée n’est pas disponible ici.",
 			"wrongPassword": "Mot de passe incorrect",
 			"notSaved": "Ta nouvelle clé n’a pas pu être enregistrée. Ton ancienne clé fonctionne toujours.",
-			"failed": "Impossible de terminer. Réessaie."
-		}
+			"failed": "Impossible de terminer. Réessaie.",
+			"unconfirmed": "Impossible de confirmer. Réessaie."
+		},
+		"checking": "Vérification de ta clé",
+		"signInNew": "Connecte-toi avec ton nouveau mot de passe."
 	},
 	"newKey": {
 		"title": "Créer une nouvelle clé",

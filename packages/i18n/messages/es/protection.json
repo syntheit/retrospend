@@ -78,7 +78,8 @@
 			"useKey": "Usar clave",
 			"nothingWorks": "Nada funciona",
 			"resetMeta": "Elimina tus claves y la clave de recuperación.",
-			"reset": "Restablecer contraseña"
+			"reset": "Restablecer contraseña",
+			"resetAccount": "Restablecer cuenta"
 		},
 		"errors": {
 			"typo": "Revisa la clave, parece tener un error.",
@@ -90,8 +91,11 @@
 			"notOffered": "La protección avanzada no está disponible aquí.",
 			"wrongPassword": "Contraseña incorrecta",
 			"notSaved": "No se pudo guardar tu clave nueva. Tu clave anterior sigue funcionando.",
-			"failed": "No se pudo completar. Inténtalo de nuevo."
-		}
+			"failed": "No se pudo completar. Inténtalo de nuevo.",
+			"unconfirmed": "No se pudo confirmar. Inténtalo de nuevo."
+		},
+		"checking": "Comprobando tu clave",
+		"signInNew": "Inicia sesión con tu contraseña nueva."
 	},
 	"newKey": {
 		"title": "Crear clave nueva",
