@@ -83,6 +83,12 @@ export {
 	recoveryFailureOf,
 } from "./recovery-failure";
 export {
+	createRecoveryCallbacks,
+	type RecoveryCallbacks,
+	type RecoveryFlowPorts,
+	type RecoveryHandle,
+} from "./recovery-flow";
+export {
 	type ConfirmGroups,
 	groupMatches,
 	pickConfirmGroups,
