@@ -9,6 +9,7 @@ import { MissingRateError } from "@retrospend/domain/money";
 import { TRPCError } from "@trpc/server";
 import { uniqueViolation } from "~/server/api/unique-violation";
 import { textUnavailableProblem } from "~/server/crypto/field-open";
+import { AdminFailureError } from "~/server/services/admin-failure";
 import { InvalidCursorError } from "~/server/services/api-v1/cursor";
 import { OverpayError } from "~/server/services/payments/procedures";
 import { RateOutOfRangeError } from "~/server/services/payments/rate-band";
@@ -140,6 +141,10 @@ export function toProblem(error: unknown, route?: string): unknown {
 	// An answer the expense's state refuses: a code per reason, each pointing
 	// to Ask to fix, so a client words it.
 	if (error instanceof ShareAnswerRefusedError)
+		return problem(error.problem, error.message);
+	// An admin action whose cause is known (mail server, backup, rate sync):
+	// a code per cause, with the fixed sentence and never the upstream's text.
+	if (error instanceof AdminFailureError)
 		return problem(error.problem, error.message);
 	// The password is the account's key wrap: only a client can change it.
 	if (error instanceof ProtectedPasswordError)

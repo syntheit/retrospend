@@ -1,6 +1,7 @@
 import type { TRPCError } from "@trpc/server";
 import { ZodError, z } from "zod";
 import { uniqueViolation } from "~/server/api/unique-violation";
+import { AdminFailureError } from "~/server/services/admin-failure";
 import { ProtectedAccountError } from "~/server/api/protection/guard";
 import { textUnavailableProblem } from "~/server/crypto/field-open";
 import { RateOutOfRangeError } from "~/server/services/payments/rate-band";
@@ -23,6 +24,7 @@ export function problemCode(error: TRPCError) {
 	if (error instanceof ProtectedAccountError) return "protected_account";
 	if (error instanceof ProtectedPasswordError) return "protected_password";
 	if (error instanceof RateOutOfRangeError) return "rate_out_of_range";
+	if (error instanceof AdminFailureError) return error.problem;
 	if (error instanceof ShareAnswerRefusedError) return error.problem;
 	if (error.code === "CONFLICT") {
 		const taken = uniqueViolation(error.cause);
