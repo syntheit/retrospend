@@ -2,6 +2,19 @@
 import { userText } from "@retrospend/api-contract/common";
 import { z } from "zod";
 
+/**
+ * A template's id. Templates made on a phone carry a client-made uuid, those
+ * made here a cuid, so the id is any non-empty string and every query filters
+ * by userId (the same rule as the API v1 id).
+ */
+export const templateIdSchema = z.string().min(1).max(64);
+
+/** The template's updatedAt the caller last read; as an instant, so it compares as time. */
+export const templateStampInput = z.iso
+	.datetime({ offset: true })
+	.transform((stamp) => new Date(stamp))
+	.optional();
+
 export const createRecurringInput = z.object({
 	name: userText("recurring.name", 191),
 	amount: z.number().positive(),
@@ -15,7 +28,8 @@ export const createRecurringInput = z.object({
 });
 
 export const updateRecurringInput = z.object({
-	id: z.cuid(),
+	id: templateIdSchema,
+	expectedUpdatedAt: templateStampInput,
 	name: userText("recurring.name", 191).optional(),
 	amount: z.number().positive().optional(),
 	currency: z.string().length(3).optional(),

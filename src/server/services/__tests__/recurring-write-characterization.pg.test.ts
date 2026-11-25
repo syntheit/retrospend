@@ -982,7 +982,7 @@ describe("the zone of the request decides whether a day is due; the saved zone s
 });
 
 describe("template ids and delete", () => {
-	it("tRPC takes a cuid only: a uuid is BAD_REQUEST on id before anything runs, on confirm and skip", async () => {
+	it("tRPC takes a uuid template id (PR4 widened it from cuid only): it reads as a template that does not exist, on confirm and skip", async () => {
 		const me = await arsUser();
 		const trpc = await trpcFor(me);
 		const uuid = randomUUID();
@@ -990,14 +990,11 @@ describe("template ids and delete", () => {
 		for (const run of [
 			() => confirmViaTrpc(trpc, uuid),
 			() => skipViaTrpc(trpc, uuid),
-		]) {
-			const error = (await run().catch((e: unknown) => e)) as {
-				code: string;
-				cause: { issues: { path: string[] }[] };
-			};
-			expect(error.code).toBe("BAD_REQUEST");
-			expect(error.cause.issues.map((i) => i.path.join("."))).toEqual(["id"]);
-		}
+		])
+			await expect(run()).rejects.toMatchObject({
+				code: "NOT_FOUND",
+				message: NOT_FOUND,
+			});
 	});
 
 	it("v1 reads the same uuid as a template that does not exist", async () => {

@@ -5,6 +5,8 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
 	createRecurringInput,
+	templateIdSchema,
+	templateStampInput,
 	updateRecurringInput,
 } from "~/lib/schemas/recurring";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -102,7 +104,7 @@ export const recurringRouter = createTRPCRouter({
 	get: protectedProcedure
 		.input(
 			z.object({
-				id: z.cuid(),
+				id: templateIdSchema,
 			}),
 		)
 		.query(async ({ ctx, input }) => {
@@ -211,6 +213,7 @@ export const recurringRouter = createTRPCRouter({
 				paymentSource: input.paymentSource,
 				autoPay: input.autoPay,
 				isActive: input.isActive,
+				expectedUpdatedAt: input.expectedUpdatedAt,
 			});
 
 			return db.recurringTemplate.findUniqueOrThrow({
@@ -224,7 +227,7 @@ export const recurringRouter = createTRPCRouter({
 	delete: protectedProcedure
 		.input(
 			z.object({
-				id: z.cuid(),
+				id: templateIdSchema,
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -287,7 +290,7 @@ export const recurringRouter = createTRPCRouter({
 	confirmAndCreate: protectedProcedure
 		.input(
 			z.object({
-				id: z.cuid(),
+				id: templateIdSchema,
 				// The due date the user is confirming. When sent, a repeat of the
 				// same confirm (double click, second tab) is rejected instead of
 				// booking the next period.
@@ -295,6 +298,7 @@ export const recurringRouter = createTRPCRouter({
 				// The real amount, required for a template whose amount varies (ASK).
 				amount: z.number().positive().optional(),
 				paidOn: z.iso.date().optional(),
+				expectedUpdatedAt: templateStampInput,
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -308,6 +312,7 @@ export const recurringRouter = createTRPCRouter({
 						dueDate: input.dueDate,
 						amount,
 						paidOn: input.paidOn,
+						expectedUpdatedAt: input.expectedUpdatedAt,
 						timeZone: ctx.timeZone,
 					},
 					{ userId },

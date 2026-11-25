@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { templateIdSchema, templateStampInput } from "~/lib/schemas/recurring";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { userTransaction } from "~/server/db-tx";
 import { unconfirmRecurringIncome } from "~/server/services/income/confirm-recurring.mutation";
@@ -38,7 +39,13 @@ export const recurringStepsRouter = createTRPCRouter({
 
 	/** Skips one due item: the template moves to its next date and no entry is booked. */
 	skip: protectedProcedure
-		.input(z.object({ id: z.cuid(), dueDate: z.date() }))
+		.input(
+			z.object({
+				id: templateIdSchema,
+				dueDate: z.date(),
+				expectedUpdatedAt: templateStampInput,
+			}),
+		)
 		.mutation(async ({ ctx, input }) => {
 			const userId = ctx.session.user.id;
 			const done = await userTransaction(ctx.db, userId, (tx) =>
@@ -47,6 +54,7 @@ export const recurringStepsRouter = createTRPCRouter({
 					{
 						templateId: input.id,
 						dueDate: input.dueDate,
+						expectedUpdatedAt: input.expectedUpdatedAt,
 						timeZone: ctx.timeZone,
 					},
 					{ userId },
@@ -57,7 +65,7 @@ export const recurringStepsRouter = createTRPCRouter({
 
 	/** Puts a skipped item back on its due date, while the skip is the newest change. */
 	unskip: protectedProcedure
-		.input(z.object({ id: z.cuid(), dueDate: z.date() }))
+		.input(z.object({ id: templateIdSchema, dueDate: z.date() }))
 		.mutation(async ({ ctx, input }) => {
 			const userId = ctx.session.user.id;
 			const done = await userTransaction(ctx.db, userId, (tx) =>
