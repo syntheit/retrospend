@@ -40,6 +40,13 @@ export const PROBLEM_STATUS = {
 	// changed since (another device edited it). Nothing was written; the client
 	// reads the row again and decides.
 	expense_changed: 409,
+	// Confirm or skip of a recurring period that was already posted or skipped
+	// (the due date named is not the template's now, or another write got there
+	// first). Nothing was written; a queued write for it can be dropped.
+	recurring_already_posted: 409,
+	// Confirm or skip of a recurring period whose day has not come. Nothing was
+	// written; a queued write for it can wait and try again later.
+	recurring_not_due: 409,
 	// A vault write from an account that has no protection key set: nothing a
 	// client sealed could ever be opened, so the server refuses to hold it.
 	protection_keys_missing: 409,
