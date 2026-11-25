@@ -9,7 +9,7 @@ import { recordWrite, type WriteFn } from "../local-db";
 import type { Reader, Writer } from "../port";
 import { compareWrite, type WriteVerdict } from "../write-parity";
 import { pendingChangesOf, type WriteCursors } from "./book";
-import type { PendingChange } from "./pending";
+import type { ExpenseChange } from "./pending";
 import {
 	type PreviewCompareDeps,
 	previewVerdict,
@@ -56,7 +56,7 @@ export interface BulkBooked {
 	/** Epoch ms the device booked it. */
 	bookedAt: number;
 	/** Each expense it changed. */
-	changes: PendingChange[];
+	changes: ExpenseChange[];
 	/** The rows it left alone, with the reason. */
 	skipped: BulkSkip[];
 	/** Rows it took: a categorize counts one already in the category. */
@@ -120,7 +120,7 @@ export interface BulkSent {
 	/** `DeviceEngine.pullsBegun` at the answer: a pull that began after it has seen the write. */
 	pull: number;
 	bookedAt: number;
-	changes: readonly PendingChange[];
+	changes: readonly ExpenseChange[];
 	/** Every id the action changed or may have changed: the phone waits ("Sync first") until a pull has settled them. */
 	ids: readonly string[];
 	/** The server's clock at its answer, epoch ms; null when it gave none. */
@@ -166,7 +166,7 @@ function writtenSince(
  */
 export function compareBulkRow(
 	live: Reader,
-	change: PendingChange,
+	change: ExpenseChange,
 	bookedAt: number,
 	since: WrittenSince,
 ): WriteVerdict {

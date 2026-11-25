@@ -3,9 +3,11 @@ import { createExpense, EXPENSE_CREATE } from "../expense-create";
 import { arsHome } from "../expense-create-vectors";
 import { EXPENSE_UPDATE, updateExpense } from "../expense-write-local";
 import { type ExpenseRow, withoutText } from "../expenses";
+import { fixtureRow } from "../fixtures";
 import { LocalDb } from "../local-db";
 import { seededStore } from "../local-expense-create";
 import { readDeviceFigures } from "../registry";
+import { templateWithoutText } from "../templates";
 import type { UndoToken } from "../undo";
 import { createDeviceEngine, type DeviceEngine } from "./engine";
 import { cursor, expense, fakeDeviceApi } from "./fake-api";
@@ -193,6 +195,25 @@ describe("the overlay read", () => {
 		pending.list = [
 			entry("c1", rows, { parked: true }),
 			entry("c2", rows, { unbooked: "no_rate" }),
+		];
+		expect(await spentOf(engine)).toBe(15_450_000);
+	});
+
+	it("leaves out an entry that also changed a template, whole", async () => {
+		const { engine, pending } = setup([page([booked("e1")])]);
+		await engine.pull();
+		const e1 = await pulledRow(engine);
+		const t1 = fixtureRow("recurringTemplates", "t1");
+		pending.list = [
+			entry("c1", [
+				change("n1", null, created(e1)),
+				{
+					table: "recurringTemplates",
+					id: "t1",
+					before: templateWithoutText(t1),
+					after: templateWithoutText({ ...t1, autoPay: true }),
+				},
+			]),
 		];
 		expect(await spentOf(engine)).toBe(15_450_000);
 	});
@@ -506,6 +527,19 @@ describe("retiring and comparing on a pull", () => {
 		expect(engine.writeParity.counts).toEqual({ match: 1 });
 		expect(pending.retired).toEqual(["c1"]);
 		expect(warn).toHaveBeenCalledWith("writes checked", expect.any(String));
+	});
+
+	it("skips a template change as not compared, never a match or a finding", async () => {
+		const t1 = fixtureRow("recurringTemplates", "t1");
+		const { engine, pending } = await acked(edited(), () => ({
+			table: "recurringTemplates",
+			id: "t1",
+			before: templateWithoutText(t1),
+			after: templateWithoutText({ ...t1, autoPay: true }),
+		}));
+		await engine.pull();
+		expect(engine.writeParity.counts).toEqual({ "skipped:not_compared": 1 });
+		expect(pending.retired).toEqual(["c1"]);
 	});
 
 	it("names a differing field by id and name, with no amount, title or note in the log", async () => {

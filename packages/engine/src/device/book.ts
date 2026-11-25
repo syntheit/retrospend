@@ -18,7 +18,7 @@ import {
 	type Writer,
 } from "../port";
 import type { UndoToken } from "../undo";
-import type { PendingChange } from "./pending";
+import type { ExpenseChange } from "./pending";
 
 // What the phone saves, as the device books it: the same engine mutations a
 // preview runs, over the pending writes, in a transaction that is thrown away
@@ -61,7 +61,7 @@ export interface BookedWrite {
 	/** Epoch ms the device booked it. */
 	bookedAt: number;
 	/** Each expense it changed; empty when the device had no rate. */
-	changes: PendingChange[];
+	changes: ExpenseChange[];
 	/** The body fields the person changed (names only). */
 	changed: string[];
 	/** The device had no rate: the server books it. */
@@ -142,9 +142,9 @@ function changedOf(row: ExpenseRow, body: WriteBody, zone: string): string[] {
 }
 
 /** The expense rows a write changed, as an outbox entry keeps them. An expense write always reverts (a mirror token is for budget movements). */
-export function pendingChangesOf(undo: UndoToken): PendingChange[] {
+export function pendingChangesOf(undo: UndoToken): ExpenseChange[] {
 	const rows = undo.kind === "revert" ? undo.changes : [];
-	return rows.flatMap((c): PendingChange[] =>
+	return rows.flatMap((c): ExpenseChange[] =>
 		c.table === "expenses"
 			? [
 					{

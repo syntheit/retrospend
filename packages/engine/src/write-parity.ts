@@ -18,6 +18,7 @@
  * Not compared: projectId (not a column of the engine's expense row).
  */
 import { dec } from "@retrospend/domain/precise-decimal";
+import type { PendingChange } from "./device/pending";
 import { sameValue } from "./equal";
 import type { BookedExpense } from "./expense-create-conformance";
 import type { ExpenseRow, TextFreeExpenseRow } from "./expenses";
@@ -40,6 +41,8 @@ export type SkipCode =
 	| "gone_already"
 	/** A bulk action: the device and the server both left the row alone (a transfer's fee, a spread parent). */
 	| "refused"
+	/** The write changed a table the compare does not read yet (a template); never a finding. */
+	| "not_compared"
 	/** A preview compare: the server has not seen the unsent entries the device preview started from. */
 	| "pending_ahead";
 
@@ -190,4 +193,18 @@ export function compareWrite(
 		// The device row carries no booking: a finding, not a match.
 		return { id, outcome: "refused" };
 	}
+}
+
+/**
+ * `compareWrite` for any row an entry changed. A template is not compared yet:
+ * it is skipped, so it can neither match by accident nor count as a finding.
+ */
+export function compareChange(
+	live: Reader,
+	change: PendingChange,
+	acked: AckedWrite,
+): WriteVerdict {
+	return change.table === "expenses"
+		? compareWrite(live, change, acked)
+		: skipped(change.id, "not_compared");
 }
