@@ -370,7 +370,7 @@ describe("/api/v1/feedback and /error-reports", () => {
 			});
 		// The window is a fixed minute, so six slow uploads under load could
 		// straddle a boundary and land in two windows.
-		stayInWindow(60_000);
+		stayInWindow(60_000, 30_000);
 		for (let n = 0; n < 5; n++) expect((await put()).status).toBe(200);
 		await expectProblem(await put(), 429, "rate_limited");
 	});
