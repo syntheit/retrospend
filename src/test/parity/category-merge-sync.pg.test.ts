@@ -159,9 +159,17 @@ describe("a phone sees a category merge and its undo", () => {
 		const device = await newDevice(me);
 		await catchUp(device);
 
+		// The device's copy is made stale on purpose: only a row the server
+		// sends again can put "Cafe" back.
+		const held = categoriesOf(device).get(cafe.id);
+		if (!held) throw new Error("the device never held the category");
+		await device.store.transaction((tx) =>
+			tx.put("categories", { ...held, name: "Stale" }),
+		);
+
 		const merged = await run(me, cafe.id, food.id);
 		await undo(me, merged.value.stash);
-		// The delete's stamp became a live stamp again: the category arrives as a change.
+		// The delete's stamp became a live stamp again: the category is sent as a change.
 		await catchUp(device);
 		expect(categoriesOf(device).get(cafe.id)).toMatchObject({
 			name: "Cafe",

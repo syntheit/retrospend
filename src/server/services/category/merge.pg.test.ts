@@ -367,6 +367,26 @@ describe("through categories.previewRemove, remove and restore", () => {
 		).resolves.toMatchObject({ categoryId: from.id });
 	});
 
+	it("refuseIfUsed deletes an empty category and refuses one that holds expenses", async () => {
+		const me = await arsUser();
+		const empty = await category(me, "Made by an import");
+		const used = await category(me, "Used since");
+		const row = await expense(me, used.id, 3);
+		const api = caller(me);
+
+		await expect(
+			api.remove({ id: used.id, targetId: null, refuseIfUsed: true }),
+		).rejects.toMatchObject({ code: "CONFLICT" });
+		await expect(
+			fixtureDb.expense.findUniqueOrThrow({ where: { id: row.id } }),
+		).resolves.toMatchObject({ categoryId: used.id });
+
+		await api.remove({ id: empty.id, targetId: null, refuseIfUsed: true });
+		await expect(
+			fixtureDb.category.count({ where: { id: empty.id } }),
+		).resolves.toBe(0);
+	});
+
 	it("words a refusal by its code", async () => {
 		const me = await arsUser();
 		const spending = await category(me, "Misc");

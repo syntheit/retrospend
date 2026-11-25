@@ -2,7 +2,6 @@
 
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
-import { Button } from "~/components/ui/button";
 import { Label } from "~/components/ui/label";
 import { Sheet } from "~/components/ui/sheet";
 import { useToast } from "~/components/ui/toast";
@@ -48,24 +47,31 @@ export function RemoveCategorySheet({
 	onRemoved: (id: string) => Promise<unknown> | unknown;
 }) {
 	const t = useTranslations("settingsV2.categories.remove");
-	const sheet = useTranslations("overlays.sheet");
 	const toast = useToast();
 	const utils = api.useUtils();
 	const { displayName } = useCategoryName();
 	const remove = api.categories.remove.useMutation();
 	const restore = api.categories.restore.useMutation();
-	const [target, setTarget] = useState(NONE);
-	const [error, setError] = useState<string | null>(null);
+	// null: not chosen yet, so the first category of its kind (the mockup).
+	const [chosen, setChosen] = useState<string | null>(null);
+	// Every opening has its own preview: the last answer, for the same input,
+	// must not let Save go before the dry run of this opening is back.
+	const [session, setSession] = useState(0);
+	const [armed, setArmed] = useState(false);
 	// The sheet keeps its content while it closes.
 	const [shown, setShown] = useState<RemovableCategory | null>(null);
 	// Keyed on the id: the manager passes a new object on every render.
 	const categoryId = category?.id;
 	const categoryName = category?.name;
 	useEffect(() => {
-		if (!open || !categoryId) return;
+		if (!open || !categoryId) {
+			setArmed(false);
+			return;
+		}
 		setShown({ id: categoryId, name: categoryName ?? "" });
-		setTarget(NONE);
-		setError(null);
+		setChosen(null);
+		setSession((n) => n + 1);
+		setArmed(true);
 	}, [open, categoryId, categoryName]);
 
 	// Envelope names for the reroute lines: the person's own book, this month.
@@ -91,6 +97,11 @@ export function RemoveCategorySheet({
 	const others = categories.filter(
 		(c) => c.id !== shown?.id && c.kind === kind,
 	);
+	const first = others[0]?.id ?? NONE;
+	const target =
+		chosen !== null && (chosen === NONE || others.some((c) => c.id === chosen))
+			? chosen
+			: first;
 	const targetName =
 		target === NONE
 			? null
@@ -101,7 +112,7 @@ export function RemoveCategorySheet({
 			: null;
 
 	const dry = usePreview(
-		(i: Input) =>
+		({ session: _opening, ...i }: Input & { session: number }) =>
 			utils.categories.previewRemove
 				.fetch(i, { staleTime: 0 })
 				.catch((e: unknown) => {
@@ -110,22 +121,19 @@ export function RemoveCategorySheet({
 						refusal ? t(`refusals.${refusal}`) : t("previewFailed"),
 					);
 				}),
-		input,
+		input && armed ? { ...input, session } : null,
 	);
 
-	/** A failed save keeps the sheet open with its error, and Delete tries again. */
+	/** A failed save throws, so the sheet stays open with its inline error and Delete tries again. */
 	const send = async () => {
 		if (!input || !shown) return;
-		setError(null);
 		let done: Awaited<ReturnType<typeof remove.mutateAsync>>;
 		try {
 			done = await remove.mutateAsync(input);
 		} catch (e) {
 			const refusal = removeRefusalOf(e);
-			setError(refusal ? t(`refusals.${refusal}`) : t("failed"));
-			return;
+			throw new Error(refusal ? t(`refusals.${refusal}`) : t("failed"));
 		}
-		onOpenChange(false);
 		await onRemoved(shown.id);
 		const { stash, counts } = done.value;
 		const name = shown.name;
@@ -146,23 +154,12 @@ export function RemoveCategorySheet({
 	return (
 		<Sheet
 			detent="large"
-			footer={
-				<>
-					<Button kind="secondary" onClick={() => onOpenChange(false)}>
-						{sheet("cancel")}
-					</Button>
-					<Button
-						disabled={!dry.fresh}
-						kind="danger"
-						loading={remove.isPending}
-						onClick={() => void send()}
-					>
-						{target === NONE ? t("delete") : t("moveAndDelete")}
-					</Button>
-				</>
-			}
 			onOpenChange={onOpenChange}
+			onSubmit={send}
 			open={open}
+			submitDisabled={!dry.fresh}
+			submitKind="danger"
+			submitLabel={target === NONE ? t("delete") : t("moveAndDelete")}
 			title={shown ? t("title", { name: shown.name }) : ""}
 		>
 			<div className="flex flex-col gap-4">
@@ -170,7 +167,7 @@ export function RemoveCategorySheet({
 					<Label htmlFor="remove-category-target">{t("moveTo")}</Label>
 					<SelectField
 						id="remove-category-target"
-						onChange={setTarget}
+						onChange={setChosen}
 						options={[
 							{ value: NONE, label: t("none") },
 							...others.map((c) => ({
@@ -181,11 +178,6 @@ export function RemoveCategorySheet({
 						value={target}
 					/>
 				</div>
-				{error ? (
-					<p className="text-danger text-small" role="alert">
-						{error}
-					</p>
-				) : null}
 				<ChangesBlock
 					cannot={dry.error}
 					diff={dry.data}

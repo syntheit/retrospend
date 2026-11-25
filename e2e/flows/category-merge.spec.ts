@@ -121,11 +121,36 @@ test("Settings: merging a category shows what moves, Save moves it, Undo brings 
 
 	const sheet = page.getByRole("dialog", { name: `Delete ${from}` });
 	await expect(sheet).toBeVisible();
-	// Delete with nothing chosen: the rows go to no category, and your spending stays.
 	const changes = sheet.getByTestId("entry-changes");
 	await expect(changes).toContainText("your spending");
 	const row = (label: string) =>
 		changes.locator(`div:has(> span:text-is("${label}"))`);
+	const save = sheet.getByRole("button", {
+		name: /^(Delete|Move and delete)$/,
+	});
+	await expect(save).toBeEnabled();
+	// The first category of its kind is the default, not No category, and an
+	// income category is not offered for an expense category.
+	const move = sheet.getByRole("combobox", { name: "Move expenses to" });
+	await expect(move).not.toContainText("No category");
+	await move.click();
+	await expect(page.getByRole("option", { name: "No category" })).toBeVisible();
+	await expect(
+		page.getByRole("option", { name: income.name, exact: true }),
+	).toHaveCount(0);
+	await page.keyboard.press("Escape");
+
+	// A second opening is not the first one's answer: Save waits for a dry run
+	// made after the sheet opened, even for the same category and target.
+	await sheet.getByRole("button", { name: "Cancel" }).click();
+	await expect(sheet).toBeHidden();
+	await page.getByRole("button", { name: "Delete category" }).click();
+	await expect(save).toBeDisabled();
+	await expect(save).toBeEnabled();
+
+	// Delete with no target: the rows go to no category, and your spending stays.
+	await sheet.getByRole("combobox", { name: "Move expenses to" }).click();
+	await page.getByRole("option", { name: "No category" }).click();
 	await expect(row("Expenses")).toContainText("3");
 	await expect(row("Expenses")).toContainText("No category");
 	await shoot("category-delete-preview");
@@ -139,23 +164,19 @@ test("Settings: merging a category shows what moves, Save moves it, Undo brings 
 	await expect(changes).toContainText("your spending");
 	await shoot("category-merge-preview");
 
-	// An income category cannot take expenses: the sheet says so and Save stays off.
-	await sheet.getByRole("combobox", { name: "Move expenses to" }).click();
-	await page.getByRole("option", { name: income.name, exact: true }).click();
-	await expect(changes).toContainText(
-		"An expense category and an income category cannot be merged.",
-	);
-	await expect(
-		sheet.getByRole("button", { name: "Move and delete" }),
-	).toBeDisabled();
-	await shoot("category-refusal-kind");
-
-	// The other two refusals reach the web the same way, by their code: the
-	// real answer, with the code swapped, so only the wording is under test.
+	// The sheet's wording of each refusal, by its code (shots only). The real
+	// server refuses an expense category merged into an income one; the other
+	// two codes are that answer with the code swapped, so only the wording is
+	// under test.
+	const pick = async (name: string) => {
+		await sheet.getByRole("combobox", { name: "Move expenses to" }).click();
+		await page.getByRole("option", { name, exact: true }).click();
+	};
 	if (shotsDir) {
-		let swapped: string = "category_kind_mismatch";
+		let swapped = "";
 		await page.route(/categories\.previewRemove/, async (route) => {
-			const res = await route.fetch();
+			const url = route.request().url().split(target.id).join(income.id);
+			const res = await route.fetch({ url });
 			const body = (await res.text()).replace(
 				"category_kind_mismatch",
 				swapped,
@@ -163,20 +184,21 @@ test("Settings: merging a category shows what moves, Save moves it, Undo brings 
 			await route.fulfill({ response: res, body });
 		});
 		for (const [code, name] of [
+			["category_kind_mismatch", "category-refusal-kind"],
 			["category_closed_month", "category-refusal-closed-month"],
 			["category_income_rule", "category-refusal-income-rule"],
 		] as const) {
 			swapped = code;
-			await sheet.getByRole("combobox", { name: "Move expenses to" }).click();
-			await page.getByRole("option", { name: into }).click();
-			await sheet.getByRole("combobox", { name: "Move expenses to" }).click();
-			await page
-				.getByRole("option", { name: income.name, exact: true })
-				.click();
+			await pick("No category");
+			await pick(into);
 			await expect(changes).toContainText("This cannot be saved.");
+			await expect(
+				sheet.getByRole("button", { name: "Move and delete" }),
+			).toBeDisabled();
 			await shoot(name);
 		}
 		await page.unroute(/categories\.previewRemove/);
+		await pick("No category");
 	}
 
 	// Back to the merge: a failed save keeps the sheet open with its error.
@@ -191,7 +213,8 @@ test("Settings: merging a category shows what moves, Save moves it, Undo brings 
 	expect(await categoriesOf(page, ids)).toEqual(before);
 	await page.unroute(/categories\.remove/);
 
-	await sheet.getByRole("button", { name: "Move and delete" }).click();
+	// Cmd or Ctrl+Enter saves, like every sheet.
+	await page.keyboard.press("Control+Enter");
 	await expect(
 		page.getByText(`Moved 3 expenses to ${into} and deleted ${from}`),
 	).toBeVisible();

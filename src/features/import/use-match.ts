@@ -74,9 +74,16 @@ export function useMatch({
 				: t("done", { count }),
 			{
 				undo: async () => {
-					setChoices(before);
+					// Refused when a created category holds expenses by now (the import
+					// committed): it keeps them rather than uncategorizing them, and the
+					// toast says the undo failed.
 					for (const c of created)
-						await remove.mutateAsync({ id: c.id, targetId: null });
+						await remove.mutateAsync({
+							id: c.id,
+							targetId: null,
+							refuseIfUsed: true,
+						});
+					setChoices(before);
 					await utils.entry.catalog.invalidate();
 				},
 			},
