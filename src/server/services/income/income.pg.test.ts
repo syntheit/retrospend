@@ -535,7 +535,7 @@ describe("income.confirmRecurring", () => {
 				templateId: template.id,
 				dueDate: TODAY,
 			}),
-		).rejects.toMatchObject({ code: "CONFLICT" });
+		).rejects.toMatchObject({ kind: "already_posted" });
 	});
 
 	it("undo removes the row and puts the template back on its due date", async () => {
