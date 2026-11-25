@@ -66,6 +66,16 @@ export {
 	type NewKeyFlowPorts,
 } from "./new-key-flow";
 export {
+	NEW_KEY_INITIAL_STATE,
+	type NewKeyAction,
+	type NewKeyState,
+	type NewKeyStep,
+	type NewKeyView,
+	newKeyFieldsLocked,
+	newKeyReducer,
+	newKeyView,
+} from "./new-key-model";
+export {
 	beginRecovery,
 	finishRecovery,
 	type RecoverBeginAnswer,
@@ -74,10 +84,32 @@ export {
 	type RecoverOptions,
 	type RecoverPorts,
 	type RecoveryDraft,
+	type RecoveryLink,
 	readRecoverBeginAnswer,
+	readRecoveryLink,
 	recoverAccount,
 } from "./recover";
 export {
+	cleanGroup,
+	GROUP_COUNT,
+	GROUP_LENGTH,
+	keyComplete,
+	passwordsAlike,
+	pasteGroups,
+	type RecoverAction,
+	type RecoverState,
+	type RecoverStep,
+	type RecoverView,
+	recoverFieldsLocked,
+	recoverInitialState,
+	recoverKeyText,
+	recoverReducer,
+	recoverView,
+} from "./recover-model";
+export {
+	blocksRecoveryScreen,
+	ENDS_RECOVERY_HANDLE,
+	endsRecoveryHandle,
 	isFinalRecoveryFailure,
 	RECOVERY_FAILURE_CODES,
 	type RecoveryFailureCode,
@@ -93,6 +125,9 @@ export {
 export {
 	type ConfirmGroups,
 	groupMatches,
+	groupMismatch,
+	groupsConfirmed,
+	type KeyConfirmState,
 	pickConfirmGroups,
 	RECOVERY_KEY_FILE_NAME,
 	type RecoveryFileLabels,

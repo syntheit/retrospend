@@ -138,6 +138,19 @@ const failsWith = async (run: Promise<unknown>, code: string) => {
 	expect(failureCode(error)).toBe(code);
 };
 
+describe("a draft wiped while the keyed record is read", () => {
+	it("sends nothing: the sheet that made it is gone", async () => {
+		const s = setup();
+		const draft = await s.callbacks.makeKeys("new password 1A");
+		s.ports.record.has.mockImplementationOnce(async () => {
+			draft.wipe();
+			return false;
+		});
+		await failsWith(s.callbacks.save(draft, INPUT), "failed");
+		expect(s.ports.enable).not.toHaveBeenCalled();
+	});
+});
+
 describe("makeKeys", () => {
 	it("makes keys once, shows the key text and sends nothing", async () => {
 		const s = setup();

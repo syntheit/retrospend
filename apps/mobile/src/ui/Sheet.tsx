@@ -1,5 +1,6 @@
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import {
+	BackHandler,
 	Platform,
 	Pressable,
 	ScrollView,
@@ -125,6 +126,14 @@ interface SheetProps {
 	 */
 	onBack?: () => void;
 	backLabel?: string;
+	/**
+	 * A job that must not be cut off is running (a commit whose answer has not
+	 * come): the sheet cannot be dismissed. iOS turns off the swipe down, the
+	 * header's close item is not drawn, and Android's back is taken before the
+	 * sheet. The caller's own `onClose` refuses while it holds as well, so a
+	 * dismissal that gets past a platform never closes the sheet's state.
+	 */
+	locked?: boolean;
 	children: ReactNode;
 }
 
@@ -238,9 +247,16 @@ export function Sheet({
 	grouped = false,
 	onBack,
 	backLabel,
+	locked = false,
 	children,
 }: SheetProps) {
 	const { color, space } = useTheme();
+	// Android's back would close the sheet: while locked it is taken here.
+	useEffect(() => {
+		if (!locked || !visible || Platform.OS !== "android") return;
+		const hold = BackHandler.addEventListener("hardwareBackPress", () => true);
+		return () => hold.remove();
+	}, [locked, visible]);
 	// A big text size rests every sheet with detents at large (the body
 	// scrolls above the pinned footer); the default size keeps its own.
 	const { fontScale, height: windowHeight } = useWindowDimensions();
@@ -251,7 +267,7 @@ export function Sheet({
 	const detents = scrolls
 		? ["large" as const]
 		: detentsForScale(wanted, fontScale);
-	const way = dismiss ?? (title ? "close" : "none");
+	const way = locked ? "none" : (dismiss ?? (title ? "close" : "none"));
 	// A form hands its primary action up (usePinnedAction); the sheet draws it
 	// in the footer, under the scrolling body.
 	const [pinned, setPinned] = useState<PinnedAction | null>(null);
@@ -381,6 +397,7 @@ export function Sheet({
 		<SheetFrame
 			background={grouped ? color.bg : color.surface}
 			detents={detents}
+			locked={locked}
 			onClose={onClose}
 			visible={visible}
 		>

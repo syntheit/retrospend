@@ -40,8 +40,10 @@ const KDF = {
 };
 
 let p: Primitives;
+let pair: { publicKey: Uint8Array; privateKey: Uint8Array };
 beforeAll(async () => {
 	p = await createWebPrimitives();
+	pair = p.boxKeypair();
 });
 
 type Commit = { body: Record<string, unknown>; key: string };
@@ -68,11 +70,19 @@ function setup(
 	const answer = () => ({
 		version,
 		kdf: KDF,
+		publicKey: toBase64Url(pair.publicKey),
 		wraps: [
 			{
 				role: "ak-password",
 				targetId: USER_ID,
 				wrapped: toBase64Url(wrapKey(p, WRAP_KEY, "ak-password", USER_ID, AK)),
+			},
+			{
+				role: "private-key",
+				targetId: USER_ID,
+				wrapped: toBase64Url(
+					wrapKey(p, AK, "private-key", USER_ID, pair.privateKey),
+				),
 			},
 		],
 		recoveryWrapDigest: toBase64Url(recoveryWrapDigest(p, wrap)),
@@ -119,6 +129,24 @@ const codeOf = async (promise: Promise<unknown>) => {
 async function made(s: ReturnType<typeof setup>): Promise<KeyDraft> {
 	return s.callbacks.makeKey(PASSWORD);
 }
+
+describe("a draft wiped while the read-back asks", () => {
+	it("sends nothing: a wiped draft is not sent by a call that captured its body", async () => {
+		let draft: KeyDraft | undefined;
+		const s = setup({
+			commit: (n) => (n === 1 ? "lost" : undefined),
+			open: (n, _body, normal) => {
+				// The first open makes the key; the second is the read-back before the retry.
+				if (n === 2) draft?.wipe();
+				return normal();
+			},
+		});
+		draft = await made(s);
+		expect(await codeOf(s.callbacks.save(draft))).toBe("unavailable");
+		expect(await codeOf(s.callbacks.save(draft))).toBe("failed");
+		expect(s.commits).toHaveLength(1);
+	});
+});
 
 describe("createNewKeyCallbacks", () => {
 	it("makes a key from the password and commits it, then reads it back by its digest", async () => {
@@ -200,12 +228,20 @@ describe("createNewKeyCallbacks", () => {
 						return {
 							version: 4,
 							kdf: KDF,
+							publicKey: toBase64Url(pair.publicKey),
 							wraps: [
 								{
 									role: "ak-password",
 									targetId: USER_ID,
 									wrapped: toBase64Url(
 										wrapKey(p, WRAP_KEY, "ak-password", USER_ID, AK),
+									),
+								},
+								{
+									role: "private-key",
+									targetId: USER_ID,
+									wrapped: toBase64Url(
+										wrapKey(p, AK, "private-key", USER_ID, pair.privateKey),
 									),
 								},
 							],

@@ -1,13 +1,15 @@
-// The recovery sheet's states and rules, with no React and no network: the nine
-// groups of the key (typed or pasted), when Continue is allowed, what each
-// failure sends the person back to. The sheet (recover-sheet.tsx) only draws
-// this and calls the callbacks it is given. The order is the mockup's (R3, R4):
-// the recovery key, proven by the server before anything else, then a new
-// password.
-import { passwordMeetsRules } from "@retrospend/api-contract";
-import { normalizeRecoveryText } from "@retrospend/crypto";
-import type { RecoveryFailureCode } from "@retrospend/crypto/client";
-import { blocksScreen } from "./recovery-error";
+// The recovery sheet's states and rules, with no React and no network, for the
+// web and the phone: the nine groups of the key (typed or pasted), when
+// Continue is allowed, what each failure sends the person back to. Each
+// platform's sheet only draws this and calls the callbacks it is given. The
+// order is the mockup's (R3, R4): the recovery key, proven by the server
+// before anything else, then a new password. The new password's rules are
+// api-contract's, so the platform tells the view whether they are met.
+import { normalizeRecoveryText } from "../keys";
+import {
+	blocksRecoveryScreen,
+	type RecoveryFailureCode,
+} from "./recovery-failure";
 
 export const GROUP_COUNT = 9;
 export const GROUP_LENGTH = 6;
@@ -32,7 +34,7 @@ export type RecoverState = {
 };
 
 /** `preset` is a failure known before anything is typed (the link check said the account has no recovery key). */
-export const initialState = (
+export const recoverInitialState = (
 	preset: RecoveryFailureCode | null = null,
 ): RecoverState => ({
 	step: "enter",
@@ -94,25 +96,25 @@ export const keyComplete = (state: Pick<RecoverState, "groups">): boolean =>
 	state.groups.every((g) => g.length === GROUP_LENGTH);
 
 /** The key as the core reads it (any separators; the core refuses a typo). */
-export const keyText = (state: Pick<RecoverState, "groups">): string =>
+export const recoverKeyText = (state: Pick<RecoverState, "groups">): string =>
 	state.groups.join("-");
 
-export const passwordReady = (
+/** The new password is typed twice alike. Whether it meets the rules is the platform's to say (`rulesMet`). */
+export const passwordsAlike = (
 	state: Pick<RecoverState, "password" | "confirm">,
-): boolean =>
-	passwordMeetsRules(state.password) && state.password === state.confirm;
+): boolean => state.password !== "" && state.password === state.confirm;
 
 /** Nothing can be typed or tried: working, failed for good, or waiting on a commit that may have gone through. */
-export const fieldsLocked = (state: RecoverState): boolean =>
-	state.busy || blocksScreen(state.error) || state.unconfirmed;
+export const recoverFieldsLocked = (state: RecoverState): boolean =>
+	state.busy || blocksRecoveryScreen(state.error) || state.unconfirmed;
 
 export function recoverReducer(
 	state: RecoverState,
 	action: RecoverAction,
 ): RecoverState {
-	if (action.type === "reset") return initialState(action.preset);
+	if (action.type === "reset") return recoverInitialState(action.preset);
 	// A blocking failure stays until the sheet closes (reset).
-	if (blocksScreen(state.error)) return state;
+	if (blocksRecoveryScreen(state.error)) return state;
 	switch (action.type) {
 		case "group": {
 			if (state.busy || state.step !== "enter") return state;
@@ -175,12 +177,19 @@ export type RecoverView = {
 	left: "cancel" | "close";
 };
 
-export function recoverView(state: RecoverState): RecoverView {
+/**
+ * `rulesMet` says whether the typed new password meets the password rules
+ * (`passwordMeetsRules` from api-contract), which the core does not import.
+ */
+export function recoverView(
+	state: RecoverState,
+	options: { rulesMet: boolean },
+): RecoverView {
 	const title =
 		state.step === "enter"
 			? "protection.recover.enterTitle"
 			: "protection.recover.newPasswordTitle";
-	if (blocksScreen(state.error) && state.error !== "unavailable")
+	if (blocksRecoveryScreen(state.error) && state.error !== "unavailable")
 		return { title, primary: null, primaryDisabled: true, left: "close" };
 	return {
 		title,
@@ -189,8 +198,10 @@ export function recoverView(state: RecoverState): RecoverView {
 				? "protection.recover.continue"
 				: "protection.recover.save",
 		primaryDisabled:
-			blocksScreen(state.error) ||
-			(state.step === "enter" ? !keyComplete(state) : !passwordReady(state)),
+			blocksRecoveryScreen(state.error) ||
+			(state.step === "enter"
+				? !keyComplete(state)
+				: !(options.rulesMet && passwordsAlike(state))),
 		left: "cancel",
 	};
 }

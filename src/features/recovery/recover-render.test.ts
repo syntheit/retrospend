@@ -3,11 +3,14 @@
 // checked without a browser; what it cannot reach is the Sheet itself, focus
 // moving to the next group, and what a real paste does: the e2e flow covers
 // those).
+import {
+	type RecoverState,
+	recoverInitialState,
+} from "@retrospend/crypto/client";
 import protection from "@retrospend/i18n/messages/en/protection.json";
 import { createElement as h } from "react";
 import { describe, expect, it } from "vitest";
 import { render } from "~/components/ui/__tests__/render";
-import { initialState, type RecoverState } from "./recover-model";
 import { EnterKeyStep, NewPasswordStep } from "./recover-steps";
 import { RecoveryChoices } from "./recovery-choices";
 import { RecoveryError } from "./recovery-error";
@@ -20,7 +23,7 @@ const words = (html: string) =>
 		.replaceAll("&amp;", "&")
 		.replaceAll("&quot;", '"');
 const state = (patch: Partial<RecoverState>): RecoverState => ({
-	...initialState(),
+	...recoverInitialState(),
 	...patch,
 });
 const enter = (patch: Partial<RecoverState>, locked = false) =>

@@ -395,6 +395,7 @@
 		"submit": "Iniciar sesión",
 		"verify": "Verificar",
 		"resetAction": "Restablecí mi contraseña",
+		"forgot": "Olvidé mi contraseña",
 		"resetConfirm": "¿Iniciar sesión con tu nueva contraseña?",
 		"signingIn": "Iniciando sesión",
 		"error": {
@@ -406,6 +407,22 @@
 			"protectionRefused": "La respuesta del servidor sobre la protección de esta cuenta parece incorrecta. Se detuvo el inicio de sesión.",
 			"network": "No se pudo conectar con el servidor. Comprueba tu conexión.",
 			"unknown": "No se pudo iniciar sesión. Inténtalo de nuevo."
+		}
+	},
+	"recovery": {
+		"title": "Olvidé mi contraseña",
+		"emailBody": "Escribe tu correo electrónico y te enviaremos un código.",
+		"sendCode": "Enviar código",
+		"sending": "Enviando",
+		"codeBody": "Si este correo puede usar una clave de recuperación, le enviamos un código.",
+		"code": "Código",
+		"checking": "Comprobando",
+		"expired": "Ese código caducó. Pide uno nuevo.",
+		"errors": {
+			"typo": "Revisa el código por si hay un error de escritura.",
+			"wrongCode": "Ese código no funcionó.",
+			"tooMany": "Demasiados intentos. Inténtalo más tarde.",
+			"cannotSend": "Este servidor no puede enviar correos."
 		}
 	},
 	"account": {

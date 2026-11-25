@@ -37,20 +37,27 @@ const allZero = (arrays: Uint8Array[]) =>
 	arrays.every((b) => b.every((x) => x === 0));
 
 let p: Primitives;
+let pair: { publicKey: Uint8Array; privateKey: Uint8Array };
 beforeAll(async () => {
 	p = await createWebPrimitives();
+	pair = p.boxKeypair();
 });
+/** The account's private key wrapped under its account key, as the server holds it. */
+const privateWrap = (accountKey: Uint8Array = AK, id = USER_ID) =>
+	wrapKey(p, accountKey, "private-key", id, pair.privateKey);
 
-/** Hands out the vector recovery key for the first 32-byte request. Everything else is real. */
+/**
+ * Hands out the vector recovery key for the second 32-byte request (the first
+ * is the key pair check's probe, which runs before the key is made).
+ * Everything else is real.
+ */
 function scripted(base: Primitives = p): Primitives {
-	let first = true;
+	let requests = 0;
 	return {
 		...base,
 		randomBytes: (n: number) => {
-			if (n === 32 && first) {
-				first = false;
+			if (n === 32 && ++requests === 2)
 				return Uint8Array.from(fromHex(RK?.recoveryKey as string));
-			}
 			return base.randomBytes(n);
 		},
 	};
@@ -69,6 +76,8 @@ describe("makeNewRecoveryKey", () => {
 	const input = () => ({
 		userId: USER_ID,
 		accountKey: Uint8Array.from(AK),
+		privateKeyWrap: privateWrap(),
+		publicKey: pair.publicKey,
 		baseVersion: 5,
 	});
 
@@ -119,6 +128,41 @@ describe("makeNewRecoveryKey", () => {
 		const given = input();
 		makeNewRecoveryKey(scripted(), given);
 		expect(given.accountKey).toEqual(AK);
+	});
+
+	describe("the account key must be the account's before it is wrapped", () => {
+		const refusedWith = (given: ReturnType<typeof input>) => {
+			try {
+				makeNewRecoveryKey(scripted(), given);
+			} catch (e) {
+				return e instanceof KeyFlowError ? e.code : `other:${String(e)}`;
+			}
+			return "none";
+		};
+
+		it("refuses a wiped (all zero) account key, which would wrap and open as itself", () => {
+			expect(
+				refusedWith({ ...input(), accountKey: new Uint8Array(32) }),
+			).toBe("malformed");
+		});
+
+		it("refuses another account's key", () => {
+			expect(
+				refusedWith({ ...input(), accountKey: seq(32, 0x70) }),
+			).toBe("malformed");
+		});
+
+		it("refuses a private key that does not belong to the public key", () => {
+			expect(
+				refusedWith({ ...input(), publicKey: p.boxKeypair().publicKey }),
+			).toBe("malformed");
+		});
+
+		it("refuses a private-key wrap bound to another account", () => {
+			expect(
+				refusedWith({ ...input(), privateKeyWrap: privateWrap(AK, "other") }),
+			).toBe("malformed");
+		});
 	});
 
 	describe("before sending: nothing that does not open is returned", () => {
@@ -219,11 +263,7 @@ describe("makeNewRecoveryKey", () => {
 
 		it("wipes the recovery key, both subkeys and the copy read back from the text, on success", () => {
 			const t = tracked();
-			makeNewRecoveryKey(t.prims, {
-				userId: USER_ID,
-				accountKey: Uint8Array.from(AK),
-				baseVersion: 1,
-			});
+			makeNewRecoveryKey(t.prims, { ...input(), baseVersion: 1 });
 			// the made key, four subkeys
 			expect(t.kept.length).toBeGreaterThanOrEqual(5);
 			expect(allZero(t.kept)).toBe(true);
@@ -242,11 +282,7 @@ describe("makeNewRecoveryKey", () => {
 				},
 			});
 			expect(() =>
-				makeNewRecoveryKey(t.prims, {
-					userId: USER_ID,
-					accountKey: Uint8Array.from(AK),
-					baseVersion: 1,
-				}),
+				makeNewRecoveryKey(t.prims, { ...input(), baseVersion: 1 }),
 			).toThrow(KeyFlowError);
 			expect(t.kept.length).toBeGreaterThanOrEqual(3);
 			expect(allZero(t.kept)).toBe(true);
@@ -266,11 +302,21 @@ describe("prepareNewRecoveryKey (password in)", () => {
 	const openAnswer = (over: Record<string, unknown> = {}) => ({
 		version: 4,
 		kdf: KDF,
+		publicKey: toBase64Url(pair.publicKey),
 		wraps: [
-			{ role: "private-key", targetId: USER_ID, wrapped: "AAAA" },
+			{
+				role: "private-key",
+				targetId: USER_ID,
+				wrapped: toBase64Url(privateWrap()),
+			},
 			{ role: "ak-password", targetId: USER_ID, wrapped: passwordWrap() },
 		],
 		...over,
+	});
+
+	const privateRole = () => ({
+		role: "private-key",
+		wrapped: toBase64Url(privateWrap()),
 	});
 
 	function rig(
@@ -350,7 +396,10 @@ describe("prepareNewRecoveryKey (password in)", () => {
 		const r = rig(scripted(), {
 			open: () =>
 				openAnswer({
-					wraps: [{ role: "ak-password", wrapped: toBase64Url(bytes) }],
+					wraps: [
+						{ role: "ak-password", wrapped: toBase64Url(bytes) },
+						privateRole(),
+					],
 				}),
 		});
 		await expect(r.run()).rejects.toMatchObject({ code: "malformed" });
@@ -362,10 +411,38 @@ describe("prepareNewRecoveryKey (password in)", () => {
 				openAnswer({
 					wraps: [
 						{ role: "ak-password", wrapped: passwordWrap("someone-else") },
+						privateRole(),
 					],
 				}),
 		});
 		await expect(r.run()).rejects.toMatchObject({ code: "malformed" });
+	});
+
+	it("refuses a server whose private-key wrap or public key is not the account's, and makes no key", async () => {
+		for (const over of [
+			// A private key wrapped under some other account key.
+			{
+				wraps: [
+					{ role: "ak-password", wrapped: passwordWrap() },
+					{ role: "private-key", wrapped: toBase64Url(privateWrap(seq(32, 9))) },
+				],
+			},
+			// A public key that is not the private key's.
+			{ publicKey: toBase64Url(p.boxKeypair().publicKey) },
+		]) {
+			const r = rig(scripted(), { open: () => openAnswer(over) });
+			await expect(r.run()).rejects.toMatchObject({ code: "malformed" });
+		}
+	});
+
+	it("is unavailable for an answer without a public key or a private-key wrap", async () => {
+		for (const over of [
+			{ publicKey: undefined },
+			{ wraps: [{ role: "ak-password", wrapped: passwordWrap() }] },
+		]) {
+			const r = rig(scripted(), { open: () => openAnswer(over) });
+			await expect(r.run()).rejects.toMatchObject({ code: "unavailable" });
+		}
 	});
 
 	it("is unavailable for an answer without exactly one ak-password wrap, or of the wrong shape", async () => {

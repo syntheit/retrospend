@@ -20,8 +20,10 @@ const mockServer = { current: "https://money.example.com/app" };
 jest.mock("expo-web-browser", () => ({
 	openBrowserAsync: (url: string) => mockOpen(url),
 }));
+const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
 	Stack: { Screen: () => null },
+	useRouter: () => ({ push: (...a: unknown[]) => mockPush(...a) }),
 }));
 jest.mock("use-intl", () => ({
 	useTranslations: () => (key: string) => key,
@@ -77,8 +79,22 @@ describe("sign-in create an account", () => {
 	it("sits between Sign in and Change server", () => {
 		expect(buttons().map((b) => b.label)).toEqual([
 			"submit",
+			"forgot",
 			"createAccount",
 			"changeServer",
 		]);
+	});
+});
+
+describe("sign-in forgot password", () => {
+	it("opens the Forgot password screen", () => {
+		mockPush.mockClear();
+		const link = buttons().find((b) => b.label === "forgot");
+		if (!link) throw new Error("no Forgot password button");
+		(link.onPress as () => void)();
+		expect(mockPush).toHaveBeenCalledTimes(1);
+		expect(mockPush.mock.calls[0]?.[0]).toMatchObject({
+			pathname: "/forgot-password",
+		});
 	});
 });

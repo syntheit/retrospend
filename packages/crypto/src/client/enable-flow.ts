@@ -182,6 +182,9 @@ export function createEnableCallbacks(
 			keyed = true;
 		}
 		if (keyed) throw new KeyFlowError("downgrade");
+		// The sheet may have closed while the record was read: a wiped draft
+		// sends nothing.
+		if (held.wiped) throw new KeyFlowError("failed");
 		const earlier = held.sends++;
 		try {
 			await sendEnable(

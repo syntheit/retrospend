@@ -1,19 +1,19 @@
-// The Make new key sheet's states and rules, with no React and no network:
-// which step shows, what it asks for, when Continue is allowed, what Back does
-// and what each failure means. The sheet (new-key-sheet.tsx) only draws this
-// and calls the callbacks it is given. The order: the current password, the
+// The Make new key sheet's states and rules, with no React and no network, for
+// the web and the phone: which step shows, what it asks for, when Continue is
+// allowed, what Back does and what each failure means. Each platform's sheet
+// only draws this and calls the callbacks it is given. The order: the current password, the
 // new key shown, two groups typed back, then the save. The old key keeps
 // working until the save commits, so nothing here is final until then.
+
 import {
-	type ConfirmGroups,
 	isFinalRecoveryFailure,
 	type RecoveryFailureCode,
-} from "@retrospend/crypto/client";
-import type { EnableView } from "~/features/settings/protection/enable-model";
+} from "./recovery-failure";
 import {
+	type ConfirmGroups,
 	groupsConfirmed,
 	type KeyConfirmState,
-} from "~/features/settings/protection/enable-model";
+} from "./recovery-key";
 
 export type NewKeyStep = "password" | "saveKey" | "confirmKey";
 
@@ -25,7 +25,7 @@ export type NewKeyState = KeyConfirmState & {
 	error: RecoveryFailureCode | null;
 };
 
-export const INITIAL_STATE: NewKeyState = {
+export const NEW_KEY_INITIAL_STATE: NewKeyState = {
 	step: "password",
 	current: "",
 	keyText: "",
@@ -46,7 +46,7 @@ export type NewKeyAction =
 	| { type: "reset" };
 
 /** Nothing can be typed, tried or changed: it is working, or it failed for good. */
-export const fieldsLocked = (state: NewKeyState): boolean =>
+export const newKeyFieldsLocked = (state: NewKeyState): boolean =>
 	state.busy || isFinalRecoveryFailure(state.error);
 
 export function newKeyReducer(
@@ -58,7 +58,7 @@ export function newKeyReducer(
 		return state;
 	switch (action.type) {
 		case "reset":
-			return INITIAL_STATE;
+			return NEW_KEY_INITIAL_STATE;
 		case "password":
 			return state.busy || state.step !== "password"
 				? state
@@ -74,12 +74,16 @@ export function newKeyReducer(
 		case "failed":
 			// The keys changed under the run: the key made is stale, so start over.
 			return action.code === "keysChanged"
-				? { ...INITIAL_STATE, error: action.code }
+				? { ...NEW_KEY_INITIAL_STATE, error: action.code }
 				: { ...state, busy: false, error: action.code };
 		case "keyMade":
 			// Only the run that began at the password step may land.
 			if (state.step !== "password" || !state.busy) return state;
-			return { ...INITIAL_STATE, step: "saveKey", keyText: action.keyText };
+			return {
+				...NEW_KEY_INITIAL_STATE,
+				step: "saveKey",
+				keyText: action.keyText,
+			};
 		case "savedIt":
 			return state.step === "saveKey" && !state.busy
 				? {
@@ -99,7 +103,7 @@ function goBack(state: NewKeyState): NewKeyState {
 	switch (state.step) {
 		case "saveKey":
 			// The key was made for a password that is gone, so it goes with it.
-			return { ...INITIAL_STATE };
+			return { ...NEW_KEY_INITIAL_STATE };
 		case "confirmKey":
 			// The groups stay so the next pair is never this one (pickConfirmGroups).
 			return { ...state, step: "saveKey", typed: ["", ""], error: null };
@@ -120,7 +124,16 @@ const PRIMARY: Record<NewKeyStep, string> = {
 	confirmKey: "protection.newKey.save",
 };
 
-export function newKeyView(state: NewKeyState): EnableView {
+/** What a footer needs: the title's catalog key, the left button, the primary's catalog key (null: none) and whether it is disabled. */
+export type NewKeyView = {
+	/** A key of the message catalog, from the root. */
+	title: string;
+	left: "cancel" | "back" | "close";
+	primary: string | null;
+	primaryDisabled: boolean;
+};
+
+export function newKeyView(state: NewKeyState): NewKeyView {
 	const title = TITLE[state.step];
 	if (isFinalRecoveryFailure(state.error))
 		return { title, left: "close", primary: null, primaryDisabled: true };

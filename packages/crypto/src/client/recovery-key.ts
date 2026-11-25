@@ -76,6 +76,39 @@ export function groupMatches(typed: string, group: string): boolean {
 	}
 }
 
+/** What the confirm step reads: the key as written down, the two groups asked for and what was typed. Enable and Make new key both fill it, on every platform. */
+export type KeyConfirmState = {
+	/** The recovery key as written down; empty until the keys are made. */
+	keyText: string;
+	/** The two groups asked for at the confirm step, counted from 0. */
+	groups: ConfirmGroups | null;
+	typed: readonly [string, string];
+};
+
+/** Both typed groups are the groups asked for. Nothing asked yet is never a match. */
+export function groupsConfirmed(state: KeyConfirmState): boolean {
+	if (!state.groups || state.keyText === "") return false;
+	const all = recoveryKeyGroups(state.keyText);
+	return state.groups.every((at, i) =>
+		groupMatches(state.typed[i] ?? "", all[at] ?? ""),
+	);
+}
+
+/**
+ * A typed group that is as long as the group and still not it. Shorter text is
+ * still being typed, so it is not called wrong yet.
+ */
+export function groupMismatch(state: KeyConfirmState, index: 0 | 1): boolean {
+	const at = state.groups?.[index];
+	if (at === undefined || state.keyText === "") return false;
+	const group = recoveryKeyGroups(state.keyText)[at] ?? "";
+	const typed = state.typed[index];
+	return (
+		typed.replace(/[\s-]/g, "").length >= group.length &&
+		!groupMatches(typed, group)
+	);
+}
+
 /**
  * The name of the saved recovery key file. It says what the file is and names
  * no one, so the web and the phone save the same file name.

@@ -13,7 +13,13 @@ import {
 } from "@retrospend/crypto/client";
 import { newClientId } from "@/data/ids";
 import type { SignInStep } from "./auth-api";
-import { call, keyedRecord, type SecretDeps } from "./sign-in-secret";
+import { paintFrames } from "./paint";
+import {
+	callWithTimeout,
+	keyedRecord,
+	type SecretDeps,
+	withTimeout,
+} from "./sign-in-secret";
 
 /** Sign-in as the session holds it: the password step, then the code when the account has two-factor. */
 export interface SignInAgain {
@@ -38,12 +44,6 @@ export type PhoneEnableDeps = Pick<SecretDeps, "primitives" | "store"> & {
 	paint?: () => Promise<void>;
 };
 
-/** Two frames, so "Making your keys" shows before the blocking work starts. */
-const paintFrames = () =>
-	new Promise<void>((resolve) =>
-		requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-	);
-
 /** The session's sign-in answer as a step: invalid credentials and an invalid code are the server saying no to what was typed. */
 export function signInStepOf(step: SignInStep): EnableSignInStep {
 	if (step.status !== "error") return step;
@@ -60,6 +60,17 @@ export function signInStepOf(step: SignInStep): EnableSignInStep {
 	}
 }
 
+/** A sign-in step with a time limit: no answer is "could not reach the server", like a lost connection. */
+async function timedStep(
+	run: () => Promise<SignInStep>,
+): Promise<EnableSignInStep> {
+	try {
+		return signInStepOf(await withTimeout(() => run()));
+	} catch {
+		return { status: "error", kind: "unreachable" };
+	}
+}
+
 function ports(input: PhoneEnableInput, deps: PhoneEnableDeps): EnablePorts {
 	return {
 		primitives: deps.primitives,
@@ -68,13 +79,14 @@ function ports(input: PhoneEnableInput, deps: PhoneEnableDeps): EnablePorts {
 		userId: input.userId,
 		newKey: input.newKey ?? newClientId,
 		enable: async (body, idempotencyKey) => {
-			await call(() => input.api.enable(body, { context: { idempotencyKey } }));
+			await callWithTimeout((o) =>
+				input.api.enable(body, { ...o, context: { idempotencyKey } }),
+			);
 		},
-		open: (body) => call(() => input.api.openKeys(body)),
-		signIn: async (password) =>
-			signInStepOf(await input.session().signIn(input.email, password)),
-		verifyCode: async (code) =>
-			signInStepOf(await input.session().verifyCode(code)),
+		open: (body) => callWithTimeout((o) => input.api.openKeys(body, o)),
+		signIn: (password) =>
+			timedStep(() => input.session().signIn(input.email, password)),
+		verifyCode: (code) => timedStep(() => input.session().verifyCode(code)),
 	};
 }
 
