@@ -85,6 +85,7 @@
 		"export": "Exportar CSV",
 		"delete": "Excluir",
 		"moved": "{count, plural, one {# despesa movida} other {# despesas movidas}} para {name}",
+		"movedSome": "{count, plural, one {# despesa movida} other {# despesas movidas}} para {name}. {left, plural, one {# não pôde ser movida} other {# não puderam ser movidas}}",
 		"categorizeTitle": "Mover {count, plural, one {# despesa} other {# despesas}} para {name}",
 		"move": "Mover",
 		"moveFailed": "Não foi possível salvar esta mudança",

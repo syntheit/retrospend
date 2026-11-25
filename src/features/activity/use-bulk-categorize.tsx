@@ -7,6 +7,7 @@ import { useToast } from "~/components/ui/toast";
 import { usePreview } from "~/features/corrections/use-preview";
 import { ChangesBlock } from "~/features/entry/changes";
 import { api, type RouterInputs } from "~/trpc/react";
+import { movedMessage } from "./bulk-categorize-message";
 
 type Input = RouterInputs["entry"]["expense"]["categorize"]["save"];
 
@@ -79,9 +80,9 @@ export function useBulkCategorize({
 		} catch {
 			throw new Error(t("failed"));
 		}
-		const { updated, previous } = done.value;
+		const { previous } = done.value;
 		onSaved();
-		toast.saved(t("moved", { count: updated, name: pending.name }), {
+		toast.saved(movedMessage(t, done.value, pending.name), {
 			undo: async () => {
 				await save.mutateAsync({
 					moves: previous.map((m) => ({ ...m, ids: [...m.ids] })),
