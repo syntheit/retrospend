@@ -42,10 +42,12 @@ const insert = (
 		 VALUES ($1, $2, $3, now() + interval '1 hour', $4)`,
 		[`row-${Math.random()}`, userId, origin, codeHash],
 	);
-const origins = async (client: Client) =>
+// One user's rows: the table is shared with every other test in the database.
+const origins = async (client: Client, userId: string) =>
 	(
 		await client.query(
-			`SELECT "origin" FROM "password_reset_token" ORDER BY 1`,
+			`SELECT "origin" FROM "password_reset_token" WHERE "userId" = $1 ORDER BY 1`,
+			[userId],
 		)
 	).rows.map((r) => r.origin as string);
 const hasColumn = async (client: Client) =>
@@ -77,7 +79,7 @@ describe("the migrated table", () => {
 			await insert(client, user.id, "admin");
 			await insert(client, user.id, "phone");
 			await insert(client, user.id, "code", "digest");
-			expect(await origins(client)).toEqual(["admin", "code", "email", "phone"]);
+			expect(await origins(client, user.id)).toEqual(["admin", "code", "email", "phone"]);
 
 			// An origin off the list, a code with no hash, and a hash on any other row.
 			expect(await failureOf(client, user.id, "bogus", null)).toBe("23514");
@@ -109,7 +111,7 @@ describe("the migration SQL", () => {
 			await insert(client, user.id, "code", "digest");
 			await client.query(migration());
 			await client.query(migration());
-			expect(await origins(client)).toEqual(["code", "email"]);
+			expect(await origins(client, user.id)).toEqual(["code", "email"]);
 			expect(await hasColumn(client)).toBe(true);
 			expect(await failureOf(client, user.id, "bogus", null)).toBe("23514");
 		});
@@ -127,7 +129,7 @@ describe("the rollback snippet", () => {
 
 			await client.query(snippet());
 			await client.query(snippet());
-			expect(await origins(client)).toEqual(["admin", "email"]);
+			expect(await origins(client, user.id)).toEqual(["admin", "email"]);
 			expect(await hasColumn(client)).toBe(false);
 			expect(
 				(
@@ -150,7 +152,7 @@ describe("the rollback snippet", () => {
 			await client.query(migration());
 			expect(await hasColumn(client)).toBe(true);
 			await insert(client, user.id, "phone");
-			expect(await origins(client)).toEqual(["admin", "email", "phone"]);
+			expect(await origins(client, user.id)).toEqual(["admin", "email", "phone"]);
 		});
 	}, 60_000);
 });
