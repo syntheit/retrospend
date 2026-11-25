@@ -47,6 +47,10 @@ export const PROBLEM_STATUS = {
 	// Confirm or skip of a recurring period whose day has not come. Nothing was
 	// written; a queued write for it can wait and try again later.
 	recurring_not_due: 409,
+	// A write that named the template's updatedAt it last read, and the template
+	// changed since (another device or the web edited, posted or skipped it).
+	// Nothing was written; the client reads the template again and decides.
+	recurring_changed: 409,
 	// A vault write from an account that has no protection key set: nothing a
 	// client sealed could ever be opened, so the server refuses to hold it.
 	protection_keys_missing: 409,

@@ -21,10 +21,14 @@ export interface SkipRecurringInput {
 	/** The due date being skipped; a repeat of the same skip is refused. */
 	readonly dueDate?: Date | null;
 	readonly timeZone?: string;
+	/** The template's updatedAt the caller read; a template changed since is refused as `changed`. */
+	readonly expectedUpdatedAt?: Date | null;
 }
 
 export interface SkippedRecurring {
 	readonly templateId: string;
+	/** The template's updatedAt after this skip, for the next write's stamp. */
+	readonly templateUpdatedAt: Date;
 	/** The due date that was skipped, for the undo to put back. */
 	readonly dueAt: Date;
 	readonly nextDueAt: Date;
@@ -48,6 +52,7 @@ export const skipRecurring: MoneyMutation<
 			zone: await userTimeZone(tx, actor.userId, input.timeZone),
 			stepZone: await userTimeZone(tx, actor.userId),
 			dueAt: input.dueDate,
+			expectedStamp: input.expectedUpdatedAt?.toISOString(),
 		});
 		const advanced = await tx.recurringTemplate.updateMany({
 			where: {
@@ -58,9 +63,14 @@ export const skipRecurring: MoneyMutation<
 			data: { nextDueDate: plan.nextDueDate, anchorDay: plan.anchorDay },
 		});
 		assertAdvanced(advanced.count, "skip");
+		const stamp = await tx.recurringTemplate.findFirstOrThrow({
+			where: { id: plan.templateId, userId: actor.userId },
+			select: { updatedAt: true },
+		});
 		return {
 			value: {
 				templateId: plan.templateId,
+				templateUpdatedAt: stamp.updatedAt,
 				dueAt: plan.dueAt,
 				nextDueAt: plan.nextDueDate,
 			},

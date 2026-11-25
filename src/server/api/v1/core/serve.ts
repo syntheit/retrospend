@@ -107,9 +107,7 @@ const RECURRING_PROBLEM = {
 	not_found: "not_found",
 	already_posted: "recurring_already_posted",
 	not_due: "recurring_not_due",
-	// No transport sends a template stamp yet, so this is not reached; the
-	// typed code lands with the contract (slice-device-recurring.md, PR4).
-	changed: "conflict",
+	changed: "recurring_changed",
 } as const satisfies Record<RecurringRefusalKind, ProblemCode>;
 
 export function toProblem(error: unknown, route?: string): unknown {

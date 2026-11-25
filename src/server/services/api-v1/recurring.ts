@@ -121,6 +121,10 @@ export async function readRecurring(caller: LedgerCaller, id: string) {
 	return item;
 }
 
+/** A wire stamp as the instant it names, so the compare reads time and not text. */
+const stampOf = (stamp: string | undefined) =>
+	stamp ? new Date(stamp) : undefined;
+
 function createInput(
 	caller: LedgerCaller,
 	input: z.infer<typeof createRecurringSchema>,
@@ -159,9 +163,10 @@ export async function changeRecurring(
 	caller: LedgerCaller,
 	input: z.infer<typeof updateRecurringSchema>,
 ) {
-	const { id, paused, amountMode, ...rest } = input;
+	const { id, paused, amountMode, expectedUpdatedAt, ...rest } = input;
 	await updateTemplate(caller.db, caller.principal.userId, id, {
 		...rest,
+		expectedUpdatedAt: stampOf(expectedUpdatedAt),
 		amountMode: amountMode
 			? amountMode === "ask"
 				? "ASK"
@@ -251,6 +256,9 @@ export function previewUndoRemoveRecurring(
 
 type ConfirmInput = z.infer<typeof confirmRecurringSchema>;
 
+/** Recurring income has its own confirm: it takes no client id and no template stamp. */
+const EXPENSE_ONLY = ["expenseId", "expectedUpdatedAt"] as const;
+
 const INCOME_ONLY = [
 	"rateType",
 	"customRate",
@@ -264,6 +272,12 @@ function incomeInput(
 	caller: LedgerCaller,
 	input: ConfirmInput,
 ): ConfirmRecurringIncomeInput {
+	const stray = EXPENSE_ONLY.filter((k) => input[k] !== undefined);
+	if (stray.length > 0)
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: `${stray.join(", ")} only apply to recurring expenses`,
+		});
 	return {
 		templateId: input.id,
 		dueDate: input.dueAt ? new Date(input.dueAt) : null,
@@ -294,6 +308,8 @@ function expenseInput(caller: LedgerCaller, input: ConfirmInput) {
 		amount: input.amount,
 		paidOn: input.paidOn,
 		timeZone: caller.timeZone,
+		expenseId: input.expenseId,
+		expectedUpdatedAt: stampOf(input.expectedUpdatedAt),
 	};
 }
 
@@ -320,6 +336,7 @@ export async function confirmRecurring(
 				account: v.into ? accountChangeDto(v.into) : null,
 				kept: v.kept,
 				plan: planDto(v.plan),
+				templateUpdatedAt: null,
 			},
 			undo: undoFor(caller, FAMILY, "income.unconfirmRecurring", {
 				expenseId: v.expenseId,
@@ -342,6 +359,7 @@ export async function confirmRecurring(
 			account: null,
 			kept: null,
 			plan: null,
+			templateUpdatedAt: v.templateUpdatedAt.toISOString(),
 		},
 		undo: undoFor(caller, FAMILY, "recurring.unconfirm", {
 			expenseId: v.expenseId,
@@ -422,6 +440,7 @@ function skipInput(caller: LedgerCaller, input: SkipInput) {
 		templateId: input.id,
 		dueDate: new Date(input.dueAt),
 		timeZone: caller.timeZone,
+		expectedUpdatedAt: stampOf(input.expectedUpdatedAt),
 	};
 }
 
@@ -435,6 +454,7 @@ export async function skipRecurringItem(
 			templateId: v.templateId,
 			skippedAt: v.dueAt.toISOString(),
 			nextDueAt: v.nextDueAt.toISOString(),
+			templateUpdatedAt: v.templateUpdatedAt.toISOString(),
 		},
 		undo: undoFor(caller, FAMILY, "recurring.skip", {
 			templateId: v.templateId,

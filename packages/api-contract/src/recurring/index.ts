@@ -105,8 +105,25 @@ const templateFields = {
 };
 
 export const createRecurringSchema = z
-	.object(templateFields)
+	.object({
+		id: z.uuid().optional().meta({
+			description:
+				"A client-made id. Sending the same id twice is a conflict, not a second template.",
+		}),
+		...templateFields,
+	})
 	.meta({ id: "CreateRecurring" });
+
+/**
+ * The template's `updatedAt` as the caller last read it (an item's `updatedAt`,
+ * or the `templateUpdatedAt` of its last write). Given, the write runs only
+ * while the template still has it; a newer one answers 409 `recurring_changed`
+ * and nothing is written. Left out, nothing is checked.
+ */
+export const recurringStampSchema = timestampSchema.meta({
+	description:
+		"The template's updatedAt you last read. If the template changed since, the answer is 409 recurring_changed and nothing is written. Left out, nothing is checked.",
+});
 
 export const updateRecurringSchema = z
 	.object({
@@ -122,6 +139,7 @@ export const updateRecurringSchema = z
 		paymentSource: userText("recurring.paymentSource", 191).nullable(),
 		autoPay: z.boolean(),
 		paused: z.boolean(),
+		expectedUpdatedAt: recurringStampSchema,
 	})
 	.partial({
 		name: true,
@@ -135,6 +153,7 @@ export const updateRecurringSchema = z
 		paymentSource: true,
 		autoPay: true,
 		paused: true,
+		expectedUpdatedAt: true,
 	})
 	.meta({ id: "UpdateRecurring" });
 
@@ -169,6 +188,14 @@ export const confirmRecurringSchema = z
 			description: "Recurring income only: assign it by the envelope plan.",
 		}),
 		planRest: planRestSchema.optional(),
+		expenseId: z.uuid().optional().meta({
+			description:
+				"A client-made id for the entry this confirm books. A taken id is 409 id_taken and nothing is written. Recurring expenses only.",
+		}),
+		expectedUpdatedAt: recurringStampSchema.optional().meta({
+			description:
+				"The template's updatedAt you last read. A newer one is 409 recurring_changed and nothing is written. Recurring expenses only; left out, nothing is checked.",
+		}),
 	})
 	.meta({ id: "ConfirmRecurring" });
 
@@ -185,6 +212,8 @@ export const recurringConfirmResultSchema = z
 		account: accountChangeSchema.nullable(),
 		kept: z.boolean().nullable(),
 		plan: planResultSchema.nullable(),
+		/** The template's updatedAt after this confirm, for the next write's expectedUpdatedAt. Null for recurring income. */
+		templateUpdatedAt: timestampSchema.nullable(),
 	})
 	.meta({ id: "RecurringConfirm" });
 
@@ -195,6 +224,7 @@ export const skipRecurringSchema = z
 			description:
 				"The item's dueAt. A repeat of the same skip is refused instead of skipping the next period.",
 		}),
+		expectedUpdatedAt: recurringStampSchema.optional(),
 	})
 	.meta({ id: "SkipRecurring" });
 
@@ -205,6 +235,8 @@ export const recurringSkipResultSchema = z
 		skippedAt: timestampSchema,
 		/** The new due instant of the template. */
 		nextDueAt: timestampSchema,
+		/** The template's updatedAt after this skip, for the next write's expectedUpdatedAt. */
+		templateUpdatedAt: timestampSchema,
 	})
 	.meta({ id: "RecurringSkip" });
 
@@ -305,6 +337,8 @@ export const recurringContract = {
 			operationId: "updateRecurring",
 			tags: TAG,
 			summary: "Change a template, or pause it with paused",
+			description:
+				"Give `expectedUpdatedAt` as the updatedAt you last read, and a newer one answers 409 `recurring_changed` with nothing changed.",
 		})
 		.meta({ scope: "write:expenses", event: "recurring.updated" })
 		.input(updateRecurringSchema)
@@ -359,7 +393,7 @@ export const recurringContract = {
 			tags: TAG,
 			summary: "Confirm a due template, with the amount when it varies",
 			description:
-				"Books the entry for the due date and moves the template to its next date. Recurring income also lands in an account and can use the plan. A period that was already confirmed or skipped is 409 `recurring_already_posted`; one whose day has not come is 409 `recurring_not_due`. Nothing is written either way. The preview answers the same.",
+				"Books the entry for the due date and moves the template to its next date. Recurring income also lands in an account and can use the plan. A period that was already confirmed or skipped is 409 `recurring_already_posted`; one whose day has not come is 409 `recurring_not_due`. Nothing is written either way. With `expectedUpdatedAt`, a template changed since is 409 `recurring_changed`, checked after the due date. The preview answers the same.",
 		})
 		.meta({ scope: "write:money", event: "recurring.confirmed" })
 		.input(confirmRecurringSchema)
@@ -380,7 +414,7 @@ export const recurringContract = {
 			tags: TAG,
 			summary: "Skip a due item this time",
 			description:
-				"Moves the template to its next date and books nothing. Fixed or varying, expense or income. A period that was already confirmed or skipped is 409 `recurring_already_posted`; one whose day has not come is 409 `recurring_not_due`. The preview answers the same.",
+				"Moves the template to its next date and books nothing. Fixed or varying, expense or income. A period that was already confirmed or skipped is 409 `recurring_already_posted`; one whose day has not come is 409 `recurring_not_due`. With `expectedUpdatedAt`, a template changed since is 409 `recurring_changed`. The preview answers the same.",
 		})
 		.meta({ scope: "write:money", event: "recurring.skipped" })
 		.input(skipRecurringSchema)
