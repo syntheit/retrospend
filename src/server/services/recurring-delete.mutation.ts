@@ -10,8 +10,10 @@
  * creation time, with the envelopes that followed it and the entries it
  * logged linked again. The snapshot is signed into the undo token, so a
  * client can carry it but never write its own. Anything that changed in
- * between is left alone: an envelope that follows another template now, or an
- * entry that was deleted or linked elsewhere, is not touched.
+ * between is left alone: an envelope is relinked only while it is still as the
+ * delete left it (a bill with no target of its own), so one given a manual or
+ * debt target, another template, or another kind keeps what the person set;
+ * an entry that was deleted or linked elsewhere is not touched either.
  */
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
@@ -185,7 +187,10 @@ async function sameByHand(
 /** Puts a deleted template back, unless one with its id, or the same one by hand, exists. */
 function restoreWith(
 	touches: readonly string[],
-): MoneyMutation<RestoreRecurringInput, { readonly id: string }> {
+): MoneyMutation<
+	RestoreRecurringInput,
+	{ readonly id: string; readonly relinkedEnvelopes: number }
+> {
 	return {
 		id: "recurring.restore",
 		touches,
@@ -237,12 +242,23 @@ function restoreWith(
 				},
 				select: { id: true },
 			});
-			// Only what is still unlinked: a newer choice is not overwritten.
-			if (t.envelopeIds.length > 0)
-				await tx.envelope.updateMany({
-					where: { id: { in: [...t.envelopeIds] }, targetTemplateId: null },
-					data: { targetTemplateId: t.id },
-				});
+			// Only an envelope still as the delete left it: a bill with no target of
+			// its own. One the person gave a manual or debt target since keeps it.
+			const relinked =
+				t.envelopeIds.length > 0
+					? await tx.envelope.updateMany({
+							where: {
+								id: { in: [...t.envelopeIds] },
+								kind: "BILL",
+								targetTemplateId: null,
+								targetLiabilityId: null,
+								targetDueDate: null,
+								targetAmount: null,
+								targetMonthlyAmount: null,
+							},
+							data: { targetTemplateId: t.id },
+						})
+					: { count: 0 };
 			if (t.expenseIds.length > 0)
 				await tx.expense.updateMany({
 					where: {
@@ -253,7 +269,7 @@ function restoreWith(
 					data: { recurringTemplateId: t.id },
 				});
 			return {
-				value: { id: t.id },
+				value: { id: t.id, relinkedEnvelopes: relinked.count },
 				undo: {
 					kind: "revert",
 					mutation: "recurring.delete",
