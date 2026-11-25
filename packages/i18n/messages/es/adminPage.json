@@ -26,5 +26,15 @@
   "autoPostNoRun": "Aún sin ejecuciones",
   "autoPostOffBy": "Apagado por RECURRING_AUTO_POST",
   "autoPostJoin": "{head}, {tail}",
-  "autoPostOffEnv": "Apagado fuera de producción"
+  "autoPostOffEnv": "Apagado fuera de producción",
+  "failures": {
+    "email_not_configured": "El correo no está configurado en este servidor.",
+    "email_auth_failed": "El servidor de correo rechazó el inicio de sesión.",
+    "email_unreachable": "No se pudo conectar con el servidor de correo.",
+    "email_timeout": "El servidor de correo tardó demasiado en responder.",
+    "backup_running": "Ya hay una copia de seguridad en curso.",
+    "backup_unavailable": "El servicio de copias de seguridad no está disponible.",
+    "backup_failed": "No se pudo iniciar la copia de seguridad.",
+    "rate_sync_failed": "No se pudieron sincronizar los tipos de cambio."
+  }
 }
