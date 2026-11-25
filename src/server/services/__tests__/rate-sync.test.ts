@@ -12,6 +12,7 @@ vi.mock("~/server/services/integration.service", () => ({
 	IntegrationService: { requestWorker },
 }));
 
+import { AdminFailureError } from "../admin-failure";
 import { RateSyncUnavailable, requestRateSync } from "../exchange-rate.service";
 
 // Staging runs without the sidecar: Sync now must say it cannot sync here,
@@ -45,15 +46,28 @@ describe("requestRateSync", () => {
 		await expect(requestRateSync()).rejects.toBeInstanceOf(RateSyncUnavailable);
 	});
 
-	it("fails when the sidecar is too slow", async () => {
-		const slow = new TRPCError({ code: "TIMEOUT", message: "timed out" });
-		requestWorker.mockRejectedValueOnce(slow);
-		await expect(requestRateSync()).rejects.toBe(slow);
+	it("fails with its own code when the sidecar is too slow", async () => {
+		requestWorker.mockRejectedValueOnce(
+			new TRPCError({ code: "TIMEOUT", message: "timed out: http://sidecar" }),
+		);
+		const error = await requestRateSync().catch((e: unknown) => e);
+		expect(error).toBeInstanceOf(AdminFailureError);
+		expect((error as AdminFailureError).problem).toBe("rate_sync_failed");
 	});
 
-	it("fails when the sidecar answers with an error", async () => {
-		const refused = new TRPCError({ code: "BAD_GATEWAY", message: "500" });
-		requestWorker.mockRejectedValue(refused);
-		await expect(requestRateSync()).rejects.toBe(refused);
+	it("fails with its own code, not the sidecar's text, when it answers with an error", async () => {
+		requestWorker.mockRejectedValue(
+			new TRPCError({ code: "BAD_GATEWAY", message: "pq: password for dbuser" }),
+		);
+		const error = await requestRateSync().catch((e: unknown) => e);
+		expect(error).toBeInstanceOf(AdminFailureError);
+		expect((error as AdminFailureError).problem).toBe("rate_sync_failed");
+		expect((error as Error).message).not.toContain("dbuser");
+	});
+
+	it("passes an error it does not know as it is", async () => {
+		const bug = new Error("boom");
+		requestWorker.mockRejectedValue(bug);
+		await expect(requestRateSync()).rejects.toBe(bug);
 	});
 });

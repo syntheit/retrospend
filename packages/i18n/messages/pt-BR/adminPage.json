@@ -26,5 +26,15 @@
   "autoPostNoRun": "Nenhuma execução ainda",
   "autoPostOffBy": "Desligado por RECURRING_AUTO_POST",
   "autoPostJoin": "{head}, {tail}",
-  "autoPostOffEnv": "Desligado fora de produção"
+  "autoPostOffEnv": "Desligado fora de produção",
+  "failures": {
+    "email_not_configured": "O e-mail não está configurado neste servidor.",
+    "email_auth_failed": "O servidor de e-mail recusou o login.",
+    "email_unreachable": "Não foi possível conectar ao servidor de e-mail.",
+    "email_timeout": "O servidor de e-mail demorou demais para responder.",
+    "backup_running": "Já há um backup em andamento.",
+    "backup_unavailable": "O serviço de backup não está disponível.",
+    "backup_failed": "Não foi possível iniciar o backup.",
+    "rate_sync_failed": "Não foi possível sincronizar as cotações."
+  }
 }

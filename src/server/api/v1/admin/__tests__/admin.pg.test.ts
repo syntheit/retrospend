@@ -5,8 +5,11 @@
  * titles or notes.
  */
 import { contract } from "@retrospend/api-contract";
+import { TRPCError } from "@trpc/server";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { encodeCursor } from "~/server/services/api-v1/cursor";
+import { IntegrationError } from "~/server/services/integration-error";
+import { IntegrationService } from "~/server/services/integration.service";
 import { getAppSettings, updateAppSettings } from "~/server/services/settings";
 import {
 	adminDb,
@@ -24,12 +27,24 @@ vi.mock("next/headers", () => ({
 	cookies: async () => ({ get: () => undefined }),
 }));
 
-const sent = vi.hoisted(() => [] as { to: string; bypass: unknown }[]);
-vi.mock("~/server/mailer", () => ({
-	sendEmail: async (to: string, _subject: string, _html: string, bypass?: unknown) => {
-		sent.push({ to, bypass });
-	},
-}));
+const sent = vi.hoisted(() => [] as { to: string }[]);
+// A test that sets this makes the next test email fail with that code.
+const mailFailure = vi.hoisted(() => ({ code: null as string | null }));
+vi.mock("~/server/mailer", async () => {
+	const { AdminFailureError } = await import("~/server/services/admin-failure");
+	return {
+		sendEmail: async (to: string) => {
+			sent.push({ to });
+		},
+		sendEmailOrThrow: async (to: string) => {
+			if (mailFailure.code)
+				throw new AdminFailureError(
+					mailFailure.code as ConstructorParameters<typeof AdminFailureError>[0],
+				);
+			sent.push({ to });
+		},
+	};
+});
 
 const a = contract.admin;
 const SECRET = "SECRET-TITLE-Q7";
@@ -349,8 +364,51 @@ describe("/api/v1/admin", () => {
 			a.getBackups,
 		);
 		expect(status.available).toBe(false);
-		const start = await write("/admin/backups", "POST", {});
-		expect(start.status).toBe(500);
+	});
+
+	it("answers a backup start by the sidecar's answer, not its text", async () => {
+		const worker = vi.spyOn(IntegrationService, "requestWorker");
+		try {
+			worker.mockRejectedValueOnce(
+				new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "fetch failed" }),
+			);
+			await expectProblem(
+				await write("/admin/backups", "POST", {}),
+				502,
+				"backup_unavailable",
+			);
+			worker.mockRejectedValueOnce(
+				new TRPCError({
+					code: "BAD_GATEWAY",
+					message: "External API request failed: Backup already in progress",
+					cause: new IntegrationError("busy", 409),
+				}),
+			);
+			await expectProblem(
+				await write("/admin/backups", "POST", {}),
+				409,
+				"backup_running",
+			);
+		} finally {
+			worker.mockRestore();
+		}
+	});
+
+	it("answers a test email the mail server refused with its own code, not the server's text", async () => {
+		const other = (await createTestUser({ role: "ADMIN" })).user.id;
+		const headers = await asKey(other, ["admin"]);
+		mailFailure.code = "email_auth_failed";
+		try {
+			const res = await call("/admin/test-email", {
+				method: "POST",
+				headers,
+				body: {},
+				idempotent: "test-mail-refused",
+			});
+			await expectProblem(res, 502, "email_auth_failed");
+		} finally {
+			mailFailure.code = null;
+		}
 	});
 
 	it("lists participants and deletes a shadow profile or guest session", async () => {
@@ -399,7 +457,7 @@ describe("/api/v1/admin", () => {
 		});
 		sent.length = 0;
 		expect((await write("/admin/test-email", "POST", {})).status).toBe(200);
-		expect(sent).toEqual([{ to: me.email, bypass: true }]);
+		expect(sent).toEqual([{ to: me.email }]);
 	});
 
 	it("throttles test emails to 3 a minute per admin (409 conflict) and logs each one", async () => {

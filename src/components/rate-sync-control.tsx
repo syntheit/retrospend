@@ -6,11 +6,13 @@ import { useState } from "react";
 import { Section } from "~/components/layout/section";
 import { Button } from "~/components/ui/button";
 import { SettingRow, SettingRows } from "~/features/settings/setting-row";
+import { adminFailureMessage } from "~/components/admin/admin-failure";
 import { api } from "~/trpc/react";
 
 /** Exchange rates: when they last synced and one Sync now. */
 export function RateSyncControl() {
 	const t = useTranslations("currencies");
+	const ta = useTranslations("adminPage");
 	const [syncResult, setSyncResult] = useState<{
 		success: boolean;
 		unavailable?: boolean;
@@ -33,7 +35,7 @@ export function RateSyncControl() {
 		} catch (error) {
 			setSyncResult({
 				success: false,
-				message: error instanceof Error ? error.message : t("syncFailed"),
+				message: adminFailureMessage(error, ta, t("syncFailed")),
 			});
 		}
 	};

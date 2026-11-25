@@ -2,6 +2,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
+import { AdminFailureError } from "~/server/services/admin-failure";
 import { RateOutOfRangeError } from "~/server/services/payments/rate-band";
 import { ShareAnswerRefusedError } from "~/server/services/shared-expenses/answer-guard";
 import { errorFormatter, zodErrorData } from "../error-formatter";
@@ -31,6 +32,15 @@ const router = t.router({
 	}),
 	locked: t.procedure.mutation(() => {
 		throw new ShareAnswerRefusedError("share_locked", "This expense is settled.");
+	}),
+	mailRefused: t.procedure.mutation(() => {
+		throw new AdminFailureError("email_auth_failed");
+	}),
+	backupRunning: t.procedure.mutation(() => {
+		throw new AdminFailureError("backup_running");
+	}),
+	mailBug: t.procedure.mutation(() => {
+		throw new Error("535 5.7.8 ana@example.com rejected by smtp.example.com");
 	}),
 	fail: t.procedure.mutation(() => {
 		throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
@@ -95,6 +105,23 @@ describe("tRPC error formatter", () => {
 		expect(locked.status).toBe(409);
 		expect(locked.body.error.data.problem).toBe("share_locked");
 		expect((await call("fail")).body.error.data.problem).toBeNull();
+	});
+
+	it("names an admin failure by its code and says only the fixed sentence", async () => {
+		const mail = await call("mailRefused");
+		expect(mail.status).toBe(502);
+		expect(mail.body.error.data.problem).toBe("email_auth_failed");
+		expect(mail.body.error.message).toBe("The email server refused the sign-in.");
+		const backup = await call("backupRunning");
+		expect(backup.status).toBe(409);
+		expect(backup.body.error.data.problem).toBe("backup_running");
+	});
+
+	it("keeps an error it does not know masked, with no code", async () => {
+		const { status, body } = await call("mailBug");
+		expect(status).toBe(500);
+		expect(body.error.data.problem).toBeNull();
+		expect(JSON.stringify(body)).not.toMatch(/ana@|smtp\.example|535/);
 	});
 
 	it("only reads ZodError causes", () => {

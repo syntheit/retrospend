@@ -26,5 +26,15 @@
   "autoPostNoRun": "Aucune exécution",
   "autoPostOffBy": "Désactivé par RECURRING_AUTO_POST",
   "autoPostJoin": "{head}, {tail}",
-  "autoPostOffEnv": "Désactivé hors production"
+  "autoPostOffEnv": "Désactivé hors production",
+  "failures": {
+    "email_not_configured": "L'e-mail n'est pas configuré sur ce serveur.",
+    "email_auth_failed": "Le serveur de messagerie a refusé la connexion.",
+    "email_unreachable": "Impossible de joindre le serveur de messagerie.",
+    "email_timeout": "Le serveur de messagerie a mis trop de temps à répondre.",
+    "backup_running": "Une sauvegarde est déjà en cours.",
+    "backup_unavailable": "Le service de sauvegarde n'est pas disponible.",
+    "backup_failed": "La sauvegarde n'a pas pu démarrer.",
+    "rate_sync_failed": "Les taux n'ont pas pu être synchronisés."
+  }
 }

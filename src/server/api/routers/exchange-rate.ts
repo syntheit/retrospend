@@ -1,4 +1,3 @@
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { HISTORY_RANGES } from "~/features/currencies/types";
 import {
@@ -132,10 +131,7 @@ export const exchangeRateRouter = createTRPCRouter({
 			// No sidecar here (staging): a state to show, not a failure.
 			if (error instanceof RateSyncUnavailable)
 				return { success: false, unavailable: true, message: error.message };
-			throw new TRPCError({
-				code: "INTERNAL_SERVER_ERROR",
-				message: `Sync failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-			});
+			throw error;
 		}
 	}),
 });
